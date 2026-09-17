@@ -49,6 +49,7 @@ import { runPromptV25Tier } from "./prompt-v25-catch-test";
 import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
 import { runGestionSinVeredictoTier } from "./gestion-sin-veredicto-catch-test";
 import { runFlujoDiezAniosTier } from "./flujo-diez-anios-catch-test";
+import { runFusionGestionFlujoTier } from "./fusion-gestion-flujo-catch-test";
 import { runPatchQueEmpeoraTier } from "./patch-que-empeora-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
@@ -302,9 +303,17 @@ async function printStrSemantic() {
   // ── Tier FLUJO-DIEZ-AÑOS (16-sep-2026, 0 tokens, sin base): el gráfico del capítulo II
   // STR. Fija que el promedio mensual se divide por 12 —también en los años parciales, que
   // llevan cargos que el motor no prorratea—, que los años sin operación no se dibujan, que
-  // el cero siempre está en el dominio, y que el capítulo II ya no tiene cierre. Fixtures
+  // el cero siempre está en el dominio, y que `CierresStr` no trae `flujo`. Fixtures
   // sintéticos con piso POR FIXTURE. Verificado en rojo con 5 mutaciones. Siempre con el QUICK.
   totalHard += runFlujoDiezAniosTier().hard;
+  // ── Tier FUSIÓN-GESTIÓN-FLUJO (17-sep-2026, 0 tokens, sin base): la primera mitad del
+  // capítulo V dentro del capítulo II. Fija que las dos comisiones nunca coexisten —son la
+  // misma variable del motor—, que el bloque del administrador CIERRA LA SUMA a tres filas y
+  // no a dos, que la comisión sale del motor y no de un `* 0.2` en el render, que el cierre
+  // del II arranca en el quiebre sin repetir el costo que las filas ya muestran, y que el
+  // cierre del V habla con los dos signos de la sobre-renta. Verificado en rojo con 5
+  // mutaciones. Siempre con el QUICK.
+  totalHard += runFusionGestionFlujoTier().hard;
   // ── Tier PATCH-QUE-EMPEORA (16-sep-2026, 0 tokens, sin base): un patch que empeora el caso
   // no puede cruzar hacia un veredicto mejor, así que no se prueba. Con el caso en auto el
   // builder no sondea «administrador» NI CON UNA SONDA MENTIROSA — que es lo que distingue

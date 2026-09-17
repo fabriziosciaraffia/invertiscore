@@ -105,25 +105,41 @@ for (const s of salidas) {
   }
 }
 
-// ── 3 · y sí dice las tres cosas (afirmativo, no solo prohibitivo) ──────────
+// ── 3 · y sí dice lo que le queda (afirmativo, no solo prohibitivo) ─────────
+// ⛔ DOS DE ESTAS REGLAS LAS DEROGÓ LA FUSIÓN DEL 17-sep-2026, y se retiran acá EN EL MISMO
+// CAMBIO que las deroga — no se dejan en rojo. Un tier rojo que nadie corrige deja de poder
+// leerse: a los dos días ya no se sabe si el producto se rompió o si la regla cambió.
+//
+//   · «EL CIERRE DICE QUÉ CUESTA LA COMISIÓN» — ya no, y a propósito. El costo son ahora dos
+//     FILAS del capítulo II («Un administrador cobra el 20%» y «Te quedaría, con
+//     administrador», con el sobrecosto en su sub). Repetirlo en prosa debajo de la tabla que
+//     lo acaba de mostrar es la regla del repo al revés. Lo que sí se conserva —y se endurece
+//     abajo— es que el cierre NO lo repita: eso lo vigila `fusion-gestion-flujo-catch-test`.
+//   · «EL CASO QUE YA DELEGA SE ESCRIBE DESDE SU LADO» — esa asimetría vivía en las cuatro
+//     redacciones de «qué cuesta», que se fueron enteras. El quiebre sí conserva su lado
+//     («tu administrador tiene que estar consiguiéndote…») y eso se sigue midiendo.
+//   · «EL HILO DEL LARGO SOLO CON SOBRE-RENTA NEGATIVA» — se mudó a `cierreLargoStr`, que
+//     cierra el capítulo V y habla con LOS DOS signos. Su gate está en el tier de la fusión.
 for (const s of salidas) {
-  if (!/cuesta|se quedarían en tu bolsillo/i.test(s.txt)) F(`3 · ${s.key}: el cierre no dice QUÉ CUESTA la comisión`);
   if (!/\d puntos de ocupación más/i.test(s.txt)) F(`3 · ${s.key}: el cierre no dice el PUNTO DE QUIEBRE`);
   if (!/a la misma tarifa/i.test(s.txt)) F(`3 · ${s.key}: falta la cláusula «a la misma tarifa» — sin ella el quiebre deja de ser verdadero si el administrador sube el ADR`);
   if (!/no lo medimos/i.test(s.txt)) F(`3 · ${s.key}: el cierre no declara que el beneficio NO está medido`);
   if (!/Pídele su ocupación de los últimos doce meses/i.test(s.txt)) F(`3 · ${s.key}: falta la pregunta que el usuario le hace al operador`);
 }
 
-// el caso de quien YA delega se escribe desde su lado, no desde el del auto
+// el caso de quien YA delega conserva SU lado en el quiebre: el condicional del auto
+// («tendría que conseguirte») describe a un administrador que todavía no contrataste, y
+// a quien ya delega hay que hablarle en presente.
 const yaDelega = salidas[3];
-if (!/Ya lo estás delegando/i.test(yaDelega.txt)) F("3 · el caso en modo administrador no está escrito desde su lado (el contrafáctico corre al revés)");
+if (!/tiene que estar consiguiéndote/i.test(yaDelega.txt)) F("3 · el caso en modo administrador no usa el presente de quien YA delega");
 if (/tendría que conseguirte/i.test(yaDelega.txt)) F("3 · el caso en modo administrador usa el condicional del lado auto");
 
-// el hilo del largo entra SOLO cuando el corto no le gana
+// y el hilo del largo NO puede volver acá: vive en `cierreLargoStr`, que cierra el capítulo V.
+// Si reapareciera, el informe diría la comparación contra el largo dos veces y en dos unidades
+// —que es exactamente lo que la fusión vino a arreglar—.
 const HILO = /ni (?:autogestionado|delegado) el corto le gana al largo/i;
-if (!HILO.test(salidas[2].txt)) F("3 · con sobre-renta negativa falta el hilo del largo");
-for (const i of [0, 1, 3]) {
-  if (HILO.test(salidas[i].txt)) F(`3 · ${salidas[i].key}: el hilo del largo aparece con sobre-renta POSITIVA`);
+for (const s of salidas) {
+  if (HILO.test(s.txt)) F(`3 · ${s.key}: el hilo del largo volvió al cierre del capítulo II; su lugar es \`cierreLargoStr\``);
 }
 
 // ── 4 · piso de cobertura: las cuatro redacciones salen distintas ───────────
@@ -150,7 +166,7 @@ if (unicas.size !== 4) {
 export function runGestionSinVeredictoTier(): { hard: number } {
   console.log("\n─── TIER GESTIÓN-SIN-VEREDICTO (el informe no toma posición sobre delegar · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log(`  ✓ VERDE — el quiebre empata por identidad en los ${CASOS.length} casos, ninguna redacción emite veredicto, las cuatro dicen costo + quiebre + «no lo medimos», el modo administrador va escrito desde su lado, el hilo del largo solo con sobre-renta negativa, y el motor ya no emite conclusión`);
+    console.log(`  ✓ VERDE — el quiebre empata por identidad en los ${CASOS.length} casos, ninguna redacción emite veredicto, las cuatro dicen quiebre + «a la misma tarifa» + «no lo medimos», el modo administrador va en presente, el hilo del largo no volvió al capítulo II, y el motor ya no emite conclusión`);
   } else {
     for (const m of fallas) console.log(`  ✗ ${m}`);
   }

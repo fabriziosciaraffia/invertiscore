@@ -21,7 +21,15 @@
 //      indistinguibles de un año que cierra justo.
 //   3. EL CERO SIEMPRE ESTÁ EN EL DOMINIO de la curva, o el color por signo pierde contra
 //      qué se lee.
-//   4. EL CAPÍTULO II YA NO TIENE CIERRE: `CierresStr` no trae `flujo`.
+//   4. `CierresStr` NO TRAE `flujo`: el cierre que reponía en prosa lo que la tabla mostraba
+//      está retirado y no vuelve.
+//      ⛔ OJO CON LEER ESTO COMO «EL CAPÍTULO II NO TIENE CIERRE»: eso fue cierto entre el
+//      16 y el 17-sep-2026 y HOY ES FALSO. La fusión del capítulo V (17-sep) le devolvió un
+//      cierre, pero es OTRO —`cierres.gestion`, el punto de quiebre de la comisión— y entra
+//      por otra clave. Lo que este invariante protege es que no vuelva EL DE ANTES, el que
+//      repetía la tabla. Se deja escrito porque un guard cuya razón caducó y nadie corrigió
+//      es peor que no tenerlo: después no se sabe si el producto se rompió o si la regla se
+//      derogó.
 //
 //   + PISO DE COBERTURA: los fixtures tienen que ejercitar las tres formas (cruza el cero /
 //     todo de un signo / con años descartados). Sin eso, un `filter` que se coma todo dejaría
@@ -97,7 +105,7 @@ for (const [k, proy] of Object.entries(CASOS)) {
   if (!(min <= 0 && max >= 0)) F(`3 · ${k}: el cero quedó fuera del dominio [${min}, ${max}]`);
 }
 
-// ── 4 · el capítulo II ya no tiene cierre ───────────────────────────────────
+// ── 4 · `CierresStr` no trae `flujo` ────────────────────────────────────────
 {
   // Esto lo enforcea el TYPE-CHECKER, no el runtime, y está bien que así sea: si alguien
   // reintroduce `flujo` en `CierresStr`, `SinFlujo` pasa a "TIENE", la asignación de abajo
@@ -106,7 +114,7 @@ for (const [k, proy] of Object.entries(CASOS)) {
   // esté escrito como invariante y no como ausencia.
   type SinFlujo = CierresStr extends { flujo: unknown } ? "TIENE" : "ok";
   const marca: SinFlujo = "ok";
-  if ((marca as string) !== "ok") F("4 · `CierresStr` volvió a traer `flujo`: el capítulo II no debe tener cierre");
+  if ((marca as string) !== "ok") F("4 · `CierresStr` volvió a traer `flujo`: el cierre que repetía la tabla está retirado");
 }
 
 // ── PISO DE COBERTURA ───────────────────────────────────────────────────────
@@ -140,7 +148,7 @@ for (const [k, proy] of Object.entries(CASOS)) {
 export function runFlujoDiezAniosTier(): { hard: number } {
   console.log("\n─── TIER FLUJO-DIEZ-AÑOS (el gráfico del capítulo II STR · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el promedio se divide por 12 también en el año parcial, los años sin operación no entran, el cero está en el dominio de las tres formas, el capítulo II no tiene cierre, y los fixtures ejercitan cruce, signo único y descarte");
+    console.log("  ✓ VERDE — el promedio se divide por 12 también en el año parcial, los años sin operación no entran, el cero está en el dominio de las tres formas, `CierresStr` no trae `flujo`, y los fixtures ejercitan cruce, signo único y descarte");
   } else {
     for (const m of fallas) console.log(`  ✗ ${m}`);
   }
