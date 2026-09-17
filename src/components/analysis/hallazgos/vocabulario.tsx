@@ -531,70 +531,12 @@ export function Composicion({
   );
 }
 
-/** Barra de $100 con banda de referencia y corte marcado. `desborde` ⇒ el corte
- *  real excede 100: la barra se corta en 100 y la cifra va afuera; nunca se
- *  dibuja un segmento negativo. */
-export function Cien({
-  segmentos,
-  banda,
-  cortePct,
-  corteLabel,
-  desborde,
-}: {
-  segmentos: { k: string; v: string; sub?: string; pct: number; tono: "oper" | "com" | "util" }[];
-  banda?: { desde: number; hasta: number; label: string } | null;
-  cortePct: number;
-  corteLabel: string;
-  desborde?: boolean;
-}) {
-  const clamp = (n: number) => Math.max(0, Math.min(100, n));
-  const corte = clamp(cortePct);
-  // Regla de etiquetas: la banda ancla al borde MÁS LEJANO del corte, para que
-  // las dos se separen en vez de encimarse cuando el corte cae dentro o al lado.
-  const bandaIzq = banda ? clamp(banda.desde) : 0;
-  const bandaDer = banda ? clamp(banda.hasta) : 0;
-  const bandaAncla = banda && corte >= bandaDer ? "izq" : "der";
-  return (
-    <div className="cien">
-      {banda && (
-        <>
-          <div
-            className="cien-banda"
-            style={{ left: `${bandaIzq}%`, width: `${Math.max(0, bandaDer - bandaIzq)}%` }}
-          />
-          <div
-            className={`cien-banda-lbl ${bandaAncla}`}
-            style={bandaAncla === "izq" ? { left: `${bandaIzq}%` } : { left: `${bandaDer}%` }}
-          >
-            {banda.label}
-          </div>
-        </>
-      )}
-      <div className="cien-track">
-        {segmentos.map((s, i) => (
-          <div key={i} className={`cien-seg ${s.tono}`} style={{ width: `${clamp(s.pct)}%` }} />
-        ))}
-        {desborde && <div className="cien-desborde" />}
-      </div>
-      <div className="cien-corte" style={{ left: `${corte}%` }} />
-      <div className="cien-corte-lbl" style={{ left: `${corte}%` }}>
-        {corteLabel}
-      </div>
-      <div className="compo-leg">
-        {segmentos.map((s, i) => (
-          <div key={i} className="compo-leg-row">
-            <span className={`compo-sw ${s.tono}`} />
-            <span className="compo-k">
-              {s.k}
-              {s.sub && <small>{s.sub}</small>}
-            </span>
-            <span className="compo-v">{s.v}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ⛔ `Cien` y `ParBarras` (con su tipo `FilaPar`) SE RETIRARON el 17-sep-2026.
+// Su único consumidor eran los seis `Drawer*Str`, inalcanzables desde el 5-sep. No las
+// marcaba el lint —estaban exportadas, así que nunca son «unused»— ni ningún gate: una
+// primitiva del vocabulario sin consumidor se ve igual que una con consumidor.
+// `CmpPares` estaba en el mismo lote y NO salió: la usa `EstructuraComparada`, que los
+// capítulos sí montan.
 
 export type ParCmp = {
   /** Concepto comparado ("Por metro cuadrado", "Tasa de interés"). */
@@ -762,41 +704,6 @@ export function VCollapse({ t, children }: { t: string; children: ReactNode }) {
     </>
   );
 }
-
-export type FilaPar = { k: string; consecuencia: string; v: string; pct: number; destacada?: boolean };
-
-/** Par de barras con consecuencia: compara dos modos y muestra qué resulta de
- *  cada uno. La consecuencia va arriba de la barra, nunca sobre el track. */
-export function ParBarras({ filas, cap }: { filas: FilaPar[]; cap?: ReactNode }) {
-  if (!filas.length) return null;
-  return (
-    <div className="par">
-      {cap && <div className="par-cap">{cap}</div>}
-      {filas.map((f, i) => (
-        <div key={i} className="par-row">
-          <div className="par-top">
-            <span className="par-k">{f.k}</span>
-            <span className="par-cons">{f.consecuencia}</span>
-          </div>
-          <div className="par-bar">
-            <div className="par-track">
-              <div
-                className={`par-fill${f.destacada ? " alta" : ""}`}
-                style={{ width: `${Math.max(0, Math.min(100, f.pct))}%` }}
-              />
-            </div>
-            <span className="par-v">{f.v}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PRIMITIVAS DEL CONTRATO CONGELADO (02-sep-2026) — T0 del rediseño de la página.
-// Sin llamador todavía: entran en T2/T3. Cero cambio visible en este tramo.
-// ─────────────────────────────────────────────────────────────────────────────
 
 /** Subtítulo de tramo dentro de un capítulo: serif, un escalón bajo el título del
  *  capítulo, Ink, 24px de aire arriba. Reemplaza los eyebrows mono que separaban

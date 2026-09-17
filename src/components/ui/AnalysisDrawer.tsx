@@ -10,7 +10,6 @@ import type {
   AnalisisInput,
   HallazgoPuestaAPunto,
   HallazgoEstructuraFinanciamiento,
-  HallazgoCapRate,
   AINegociacionWalkAway,
 } from "@/lib/types";
 import { calcFlujoDesglose, calcMesVacio, tirForPrice, calcDividendo } from "@/lib/analysis";
@@ -34,7 +33,6 @@ import {
   VCollapse,
   VFuente,
   VSub,
-  Thermo,
   Fall,
   type FallRow,
   Dial,
@@ -48,12 +46,17 @@ import { ZonaCeldasLtr, buildZonaLtr, sintesisZonaLtr } from "@/components/analy
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
+// ⛔ `capRate` y `largoPlazo` SALIERON el 17-sep-2026. Sin ruta desde `81b05cce`
+// (`drawerSequence = ["zona"]`) y su contenido vive en superficies que sí se ven: el cap
+// rate contra su referencia lo dibuja el capítulo I (`CapitulosInversion.tsx:202`), y la
+// caja «La apuesta que haces» la imprime el PDF de LTR (`DocumentoLTR.tsx:393`).
+// Quedan en el tipo las claves cuyo contenido SÍ monta alguien: `costoMensual`,
+// `negociacion` y `capexPuestaAPunto` los montan los capítulos por su cuenta, y `zona` es
+// la única que el ruteo alcanza.
 export type DrawerKey =
   | "costoMensual"
-  | "capRate"
   | "negociacion"
   | "reestructuracion"
-  | "largoPlazo"
   | "zona"
   | "capexPuestaAPunto";
 
@@ -102,10 +105,8 @@ interface DrawerProps {
 // navegación vive en `sequence` (orden de la pirámide), no acá.
 const DRAWER_META: Record<DrawerKey, { label: string }> = {
   costoMensual: { label: "Flujo mensual" },
-  capRate: { label: "Lo que renta hoy" },
   negociacion: { label: "El precio" },
   reestructuracion: { label: "Tu estructura" },
-  largoPlazo: { label: "A 10 años" },
   zona: { label: "La zona" },
   capexPuestaAPunto: { label: "Puesta a punto" },
 };
@@ -1139,62 +1140,6 @@ export function PlanNegociacion({
   );
 }
 
-// ─── Largo plazo drawer ─────────────────────────────
-function DrawerLargoPlazo({
-  data,
-  currency,
-}: {
-  data: AISection;
-  currency: "CLP" | "UF";
-}) {
-  // paridad drawer STR — prose-only. El waterfall de patrimonio se retiró (espejo del
-  // strip STR, decisión Fabrizio): vive en DrawerPatrimonioLtr. Este drawer es el JUICIO
-  // del horizonte (contrafactual de instrumentos + condicional de plusvalía + posición) y
-  // NO recita equity/valor/flujo (guard en el prompt v2). Antes traía un waterfall b3Rows
-  // que duplicaba el drawer patrimonio y estaba huérfano desde la migración grid→pirámide.
-  const contenido = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-  const caja = currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf;
-  if (!contenido?.trim()) {
-    return (
-      <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text-secondary)]">
-        Franco está preparando este detalle…
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-4">
-      {/* ─── VS. OTRO INSTRUMENTO (largoPlazo.contenido) ─── depósito UF / fondo mutuo +
-          costo de oportunidad ajustado por esfuerzo. NO recita la planilla de patrimonio. */}
-      <div
-        style={{
-          background: "color-mix(in srgb, var(--franco-text) 2%, var(--franco-card))",
-          border: "0.5px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
-          borderRadius: 10,
-          padding: "18px 20px",
-        }}
-      >
-        <div className="mb-2">
-          <span
-            className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text)", fontWeight: 600 }}
-          >
-            Vs. poner la misma plata en otro lado
-          </span>
-        </div>
-        <div
-          className="font-body m-0 whitespace-pre-wrap"
-          style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 78%, transparent)", lineHeight: 1.6 }}
-        >
-          {renderPlumon(contenido)}
-        </div>
-      </div>
-
-      {/* ─── La apuesta que haces (narrativa IA editorial) ─── */}
-      <VCierre titulo={data.cajaLabel || "La apuesta que haces"}>{plumonInline(caja)}</VCierre>
-    </div>
-  );
-}
-
 // ─── Riesgos drawer ─────────────────────────────────
 // Fase 3.6 v9 — truncado limpio con ellipsis. Reemplaza slice(0, n) que cortaba
 // mid-word/mid-sentence sin "…". Busca último espacio o cierre de oración antes
@@ -1714,98 +1659,6 @@ export function DrawerCapexPuestaAPunto({
   );
 }
 
-// Drawer del hallazgo cap_rate (motor, no IA). Contenido liviano solo-motor, sin
-// chart: cap rate del deal vs referencia comunal, traducción a plata (arriendo
-// anual neto vs precio) y qué arriendo mensual pediría para alcanzar la
-// referencia. Los montos se derivan del cap rate × precio para ser 100%
-// consistentes con los % mostrados (no se recalcula NOI por otra vía).
-function DrawerCapRate({
-  hallazgo,
-  results,
-  currency,
-  valorUF,
-}: {
-  hallazgo: HallazgoCapRate;
-  results: FullAnalysisResult;
-  currency: "CLP" | "UF";
-  valorUF: number;
-}) {
-  const { capRatePct, capRefPct, gapPts } = hallazgo.valor;
-  const adverso = hallazgo.direccion === "adverso"; // rinde bajo la referencia
-  // Banda "en línea" (|gap| < 0,2 — direccion "neutral" en hallazgos nuevos). Se deriva
-  // del gap y no de direccion para cubrir también filas legacy persistidas (binarias).
-  const enLinea = Math.abs(gapPts) < 0.2;
-  const precioCLP = results.metrics?.precioCLP ?? 0;
-  const arriendoActual = results.metrics?.ingresoMensual ?? 0;
-
-  // Arriendo anual neto (NOI) derivado del cap rate mostrado × precio — misma
-  // base que el %, sin recomputar por otra vía. El objetivo usa la referencia.
-  const noiAnual = (capRatePct / 100) * precioCLP;
-  const noiObjetivoAnual = (capRefPct / 100) * precioCLP;
-  // Gastos operativos constantes ⇒ Δneto ≈ Δarriendo bruto. Cálculo directo.
-  const gapNetoMensual = (noiObjetivoAnual - noiAnual) / 12; // >0 ⇒ falta rendimiento
-  const arriendoObjetivo = arriendoActual + gapNetoMensual;
-
-  const fmt = (n: number) => fmtMoney(n, currency, valorUF);
-  const pct = (n: number) => n.toFixed(1).replace(".", ",");
-
-  // FASE 4 — migrado al VOCABULARIO ÚNICO (era uno de los 3 cuerpos con markup
-  // duplicado a mano). Mantra visual-first: el termómetro muestra dónde cae el
-  // cap rate frente a la referencia; la prosa deja de contar lo que se ve.
-  const rango = Math.max(capRatePct, capRefPct) * 1.35 || 1;
-  return (
-    <div>
-      <VProsa>
-        <p className="inline-flex items-center gap-1 m-0">
-          <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
-          <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes de la cuota del crédito) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
-        </p>
-      </VProsa>
-
-      <VViz t="Dónde cae tu rendimiento frente a la referencia">
-        <Thermo
-          pct={(capRatePct / rango) * 100}
-          refPct={(capRefPct / rango) * 100}
-          legend={[
-            { k: "Tu cap rate", v: `${pct(capRatePct)}%` },
-            { k: "Referencia", v: `${pct(capRefPct)}%` },
-            { k: "Brecha", v: `${gapPts > 0 ? "+" : gapPts < 0 ? "−" : ""}${pct(Math.abs(gapPts))} pts` },
-          ]}
-        />
-        <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
-          Hoy: {fmt(noiAnual)} netos al año sobre un precio de {fmt(precioCLP)}.
-        </p>
-      </VViz>
-
-      <VCierre
-        titulo={adverso ? "Qué haces con esto" : enLinea ? "Qué significa" : "Qué significa"}
-      >
-        {adverso ? (
-          <>
-            <span className="font-mono font-bold" style={{ fontSize: 20, fontStyle: "normal", marginRight: 8 }}>
-              {fmt(arriendoObjetivo)}/mes
-            </span>
-            Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de mercado ({pct(capRefPct)}%)
-            necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
-          </>
-        ) : enLinea ? (
-          <>
-            Tu arriendo de {fmt(arriendoActual)} al mes renta lo esperable para la referencia de mercado (
-            {pct(capRefPct)}%). Ni ventaja ni castigo por este lado: el caso se decide en las otras piezas.
-          </>
-        ) : (
-          <>
-            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de mercado (
-            {pct(capRefPct)}%). El activo trabaja a tu favor.
-          </>
-        )}
-      </VCierre>
-
-      <VFuente>{procedenciaExtendida(hallazgo, currency, valorUF)}</VFuente>
-    </div>
-  );
-}
-
 // ─── Main drawer ────────────────────────────────────
 function ZoneSkeleton() {
   return (
@@ -1968,11 +1821,6 @@ export function AnalysisDrawer({
   sobreprecio,
   medianaResolvedAt,
 }: DrawerProps) {
-  // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer capRate.
-  const capRateHallazgo =
-    results.hallazgos?.find((h): h is HallazgoCapRate => h.id === "cap_rate") ??
-    results.metrics?.hallazgoCapRate ??
-    undefined;
 
 
 
@@ -1998,7 +1846,6 @@ export function AnalysisDrawer({
     ? "¿Y si cambias la estructura?"
     : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
-  const capRateTitle = "Lo que renta hoy vs lo que debería";
   // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
   // fallback del drawer de reestructuración cuando no hay sección IA.
   const estructuraHallazgo = results.hallazgos?.find(
@@ -2017,9 +1864,7 @@ export function AnalysisDrawer({
         ? ({ pregunta: reestructuracionTitle } as { pregunta: string })
         : activeKey === "capexPuestaAPunto"
           ? ({ pregunta: capexTitle } as { pregunta: string })
-          : activeKey === "capRate"
-            ? ({ pregunta: capRateTitle } as { pregunta: string })
-            : aiAnalysis?.[activeKey];
+          : aiAnalysis?.[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -2039,14 +1884,6 @@ export function AnalysisDrawer({
       if (absDev <= 0.02) return "¿Vale la pena negociar?";
       if (dev > 0) return "¿Vale la pena seguir negociando?"; // esPasada
       return "¿Cuánto bajar el precio?"; // esSobreprecio
-    }
-    if (activeKey === "largoPlazo") {
-      const exit = results.exitScenario;
-      const gananciaSobreTotal = exit?.gananciaSobreTotal ?? 0;
-      const aniosPlazo = exit?.anios ?? 10;
-      if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
-      if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
-      return `¿Vale la pena a ${aniosPlazo} años?`;
     }
     // Sin prosa no hay `section`: el header cae al label del drawer (DRAWER_META),
     // que es determinista. En modo inline este título ni se usa — lo muestra la
@@ -2122,20 +1959,6 @@ export function AnalysisDrawer({
           hallazgo={capexHallazgo}
           currency={currency}
           valorUF={valorUF}
-        />
-      )}
-      {activeKey === "capRate" && capRateHallazgo && (
-        <DrawerCapRate
-          hallazgo={capRateHallazgo}
-          results={results}
-          currency={currency}
-          valorUF={valorUF}
-        />
-      )}
-      {activeKey === "largoPlazo" && (
-        <DrawerLargoPlazo
-          data={section as AISection}
-          currency={currency}
         />
       )}
       {activeKey === "zona" && (

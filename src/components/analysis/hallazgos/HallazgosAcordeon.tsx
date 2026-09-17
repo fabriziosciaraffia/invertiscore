@@ -306,8 +306,9 @@ export function TokensHallazgos() {
          y su p en sans normal eran literalmente esto—. Y no era solo redundante: pintaba un
          border-left gris que chocaría con la regla superior de arriba.
          Medido antes de sacarla: ningún capítulo apila dos cierres. El único apilamiento real
-         está en DrawerPatrimonioStr; los demás casos son ramas de un ternario, donde solo
-         una renderiza. */
+         estaba en DrawerPatrimonioStr, que se retiró el 17-sep-2026 por inalcanzable; los
+         demás casos eran ramas de un ternario, donde solo una renderiza. O sea que hoy la
+         regla no tendría ni un caso que atender. */
       .v-fuente{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);margin-top:12px}
       /* .v-fuente.aviso — cuando la procedencia deja de ser una nota al pie y pasa a ser
          una advertencia: el dato del que cuelga el capitulo no esta contrastado. Sube de
