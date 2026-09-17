@@ -50,6 +50,7 @@ import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
 import { runGestionSinVeredictoTier } from "./gestion-sin-veredicto-catch-test";
 import { runFlujoDiezAniosTier } from "./flujo-diez-anios-catch-test";
 import { runFusionGestionFlujoTier } from "./fusion-gestion-flujo-catch-test";
+import { runCierreSinBarraRojaTier } from "./cierre-sin-barra-roja-catch-test";
 import { runPatchQueEmpeoraTier } from "./patch-que-empeora-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
@@ -314,6 +315,14 @@ async function printStrSemantic() {
   // cierre del V habla con los dos signos de la sobre-renta. Verificado en rojo con 5
   // mutaciones. Siempre con el QUICK.
   totalHard += runFusionGestionFlujoTier().hard;
+  // -- Tier CIERRE-SIN-BARRA-ROJA (17-sep-2026, 0 tokens, sin base): la forma nueva de
+  // `VCierre`, que gobierna los 28 cierres del informe desde un solo bloque de CSS. Fija que
+  // el cierre no lleva Signal Red, ni italica, ni serif; que el plumon esta NEUTRALIZADO y
+  // no sacado del selector (sin regla propia cae al amarillo del navegador); que la prosa si
+  // lo conserva; que el rotulo NO baja a --doc-tx4 (2,2:1 medido); y que la regla degradada
+  // no vuelve. Lee el CSS SIN COMENTARIOS, porque el acta nombra todo lo que el predicado
+  // prohibe. Verificado en rojo con 7 mutaciones, una de ellas borrando el bloque entero.
+  totalHard += runCierreSinBarraRojaTier().hard;
   // ── Tier PATCH-QUE-EMPEORA (16-sep-2026, 0 tokens, sin base): un patch que empeora el caso
   // no puede cruzar hacia un veredicto mejor, así que no se prueba. Con el caso en auto el
   // builder no sondea «administrador» NI CON UNA SONDA MENTIROSA — que es lo que distingue
