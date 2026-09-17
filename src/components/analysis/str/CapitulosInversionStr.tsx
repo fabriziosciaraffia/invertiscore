@@ -399,34 +399,44 @@ export function CapitulosInversionStr({
               $112.226: faltaba el 3% que DEJA de pagarse. La fila del medio lo hace explícito,
               y de paso demuestra en aritmética lo que antes era una afirmación en un sub
               («reemplaza al 3%, no se suma»). Las dos comisiones son la MISMA variable del
-              motor (short-term-engine.ts:1226, ternario), así que nunca coexisten. */}
+              motor (short-term-engine.ts:1226, ternario), así que nunca coexisten.
+
+              ⛔ SIN VERDE, Y NO POR CONTRASTE. `--doc-good` existe y `.drow.cruza` lo aplica,
+              pero el VERDE NO ENTRÓ NUNCA a ninguna superficie del informe nuevo: el capítulo
+              II pinta `--signal-red` lo que sale y deja en TINTA lo que queda, y esa es la
+              doctrina viva (la fila total, abajo, hace exactamente eso). Un verde acá sería el
+              único de la página, y encima pintaría de «bueno» la PEOR de las dos cifras.
+              La comparación la carga el SUB («$233.464 menos al mes · $2.801.568 al año»), que
+              es donde vive el juicio.
+              Aparte —y esto es cola, no la razón— `--doc-good` en claro da 3,44-4,00:1 contra
+              los tres papeles, bajo AA para 14px semibold. Ver cola-signal-red-contraste-oscuro. */}
             {fl && q && (
               <>
                 <VPuente>{modo === "administrador" ? "Y si lo operaras tú:" : "Y si no vas a operarlo tú:"}</VPuente>
                 <FilasDato>
                   {modo === "administrador" ? (
                     <>
-                      <FilaDato tono="cruza" k={`Dejas de pagar la comisión del ${comAdminPct}%`} tip="La comisión del administrador que hoy pagas" v={signed(adminMonto)} unidad="/mes" />
+                      <FilaDato k={`Dejas de pagar la comisión del ${comAdminPct}%`} tip="La comisión del administrador que hoy pagas" v={signed(adminMonto)} unidad="/mes" />
                       <FilaDato tono="neg" k="La plataforma te cobra su 3%" tip="Al operar tú, el cobro del administrador se reemplaza por el de la plataforma" v={signed(-escAuto.comisionMensual)} unidad="/mes" />
                       <FilaDato
                         tono="tot"
                         k="Te quedaría, operándolo tú"
                         tip="Mismo ingreso, mismos costos, misma cuota: solo cambia la comisión"
                         sub={`${money(Math.abs(q.sobrecostoMensual))} más al mes · ${money(Math.abs(q.sobrecostoAnual))} al año`}
-                        v={<span style={{ color: escAuto.flujoCajaMensual < 0 ? "var(--signal-red)" : "var(--doc-good)" }}>{neg(escAuto.flujoCajaMensual)}</span>}
+                        v={<span style={{ color: escAuto.flujoCajaMensual < 0 ? "var(--signal-red)" : undefined }}>{neg(escAuto.flujoCajaMensual)}</span>}
                         unidad="/mes"
                       />
                     </>
                   ) : (
                     <>
                       <FilaDato tono="neg" k={`Un administrador cobra el ${comAdminPct}% del ingreso`} tip="Comisión del administrador sobre el ingreso bruto del mes" v={signed(-adminMonto)} unidad="/mes" />
-                      <FilaDato tono="cruza" k="Dejas de pagar el 3% de la plataforma" tip="El cobro del administrador reemplaza al de la plataforma: no se suman" v={signed(escAuto.comisionMensual)} unidad="/mes" />
+                      <FilaDato k="Dejas de pagar el 3% de la plataforma" tip="El cobro del administrador reemplaza al de la plataforma: no se suman" v={signed(escAuto.comisionMensual)} unidad="/mes" />
                       <FilaDato
                         tono="tot"
                         k="Te quedaría, con administrador"
                         tip="Mismo ingreso, mismos costos, misma cuota: solo cambia la comisión"
                         sub={`${money(Math.abs(q.sobrecostoMensual))} menos al mes · ${money(Math.abs(q.sobrecostoAnual))} al año`}
-                        v={<span style={{ color: escAdmin.flujoCajaMensual < 0 ? "var(--signal-red)" : "var(--doc-good)" }}>{neg(escAdmin.flujoCajaMensual)}</span>}
+                        v={<span style={{ color: escAdmin.flujoCajaMensual < 0 ? "var(--signal-red)" : undefined }}>{neg(escAdmin.flujoCajaMensual)}</span>}
                         unidad="/mes"
                       />
                     </>
