@@ -307,9 +307,17 @@ export default async function STRResultPage({
   //
   // La cañería se reusa para la LÍNEA DEL PLAZO, que sí se lee. Mismo costo —4 recomputes—
   // y ahora con destino.
+  //
+  // ⛔ LA UF ES `ufFrozen`, LA MISMA QUE VIAJA COMO `ufValue`, Y NO `ufCongelada`.
+  // `simularPieStr` —el consumidor anterior de esta cañería— usaba `ufCongelada ?? ufFrozen`,
+  // y copiarlo sin mirar habría partido la conversión en dos: el interés se GUARDA en UF
+  // dividiendo por la de acá y el render lo CONVIERTE multiplicando por `valorUF`, que es
+  // `ufFrozen`. Medido sobre el parque: coinciden en 202 de 253 filas y en 47 falta uno de
+  // los dos, pero en 4 (1,6%) difieren —hasta 5,27%—, y ahí el interés salía escalado por
+  // esa razón. Una cifra por informe, no una por función.
   const nivelesPlazo = (() => {
     const raw = data.input_data as Record<string, unknown> | null;
-    const uf = Number(raw?.ufCongelada) || ufFrozen;
+    const uf = ufFrozen;
     if (!raw || !data.created_at || !(uf > 0)) return [];
     try {
       return simularPlazoStr(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
