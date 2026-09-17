@@ -17,7 +17,7 @@ import { costoOportunidad, calcDividendo } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
-import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
+import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
 import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
@@ -288,8 +288,18 @@ export function CapitulosInversionStr({
   const filaII: FilaHallazgo = (() => {
     const fl = m?.desgloseFall ?? null;
     const reparto = m?.repartoIngreso ?? null;
-    // Lo que cobraría un operador al 20% del ingreso (CONGELADO: "con operador al 20% serían −$118.402").
-    const adminMonto = Math.round(ingreso * 0.2);
+    // ⛔ EL 20% SALÍA DE UN LITERAL EN EL RENDER (`Math.round(ingreso * 0.2)`), no del motor.
+    // Hoy no mordía porque `state.adminPct` no lo escribe ningún componente del wizard
+    // —aparece solo en `nuevo-v2/page.tsx:492-493`— así que `comisionAdministrador` siempre
+    // cae al default. Pero era una SEGUNDA VERDAD sobre la misma cifra: el motor la calcula
+    // con `input.comisionAdministrador` y acá se recalculaba con otra constante. El día que
+    // el wizard pregunte la comisión (ver cola-wizard-comision-str-escondida), este capítulo
+    // habría dicho 20% con cualquier valor declarado.
+    const q = results.comparativa.quiebreGestion ?? null;
+    const escAuto = results.comparativa.str_auto;
+    const escAdmin = results.comparativa.str_admin;
+    const comAdminPct = q ? Math.round(q.comisionAdminDec * 100) : 20;
+    const adminMonto = q ? q.comisionMensual : escAdmin.comisionMensual;
     return {
       id: "flujo",
       numero: ROMANO.flujo,
@@ -347,21 +357,24 @@ export function CapitulosInversionStr({
                   que se rotula `comisionPlataforma` en auto y `administrador` con operador
                   (short-term-engine.ts:1415-1416)—, así que una de las dos SIEMPRE vale cero y
                   nunca se suman. Eso es lo que el lector no puede deducir mirando la tabla. */}
+                {/* LAS DOS FILAS DE $0 SE FUERON (fusión 17-sep-2026). Había una fila
+                  «Comisión de la plataforma» y otra «Administrador», y una de las dos SIEMPRE
+                  valía $0 —en el motor son la misma variable, `base.comisionMensual`, rotulada
+                  `comisionPlataforma` en auto y `administrador` con operador
+                  (short-term-engine.ts:1524-1525)—. La que valía cero llevaba encima un sub y
+                  un ⓘ explicando un cobro que no existe. Ahora se muestra LA QUE SE COBRA, con
+                  su nombre; la otra bajó al bloque del contrafáctico, donde es una alternativa
+                  y no un cargo. */}
                 <FilaDato
-                  k="Comisión de la plataforma"
-                  tip="Este costo y el del administrador son el mismo: se cobra en una fila o en la otra según quién opere, nunca en las dos."
-                  sub={modo === "administrador" ? "no la pagas: opera un administrador" : "3% del ingreso"}
-                  v={neg(-fl.comisionPlataforma)}
+                  k={modo === "administrador" ? "Comisión del administrador" : "Comisión de la plataforma"}
+                  tip={modo === "administrador"
+                    ? `El administrador cobra ${comAdminPct}% del ingreso y reemplaza el 3% de la plataforma: no se suman.`
+                    : "La plataforma cobra 3% al anfitrión. Con un administrador este cobro se reemplaza por su comisión, no se suma."}
+                  sub={modo === "administrador" ? `${comAdminPct}% del ingreso` : "3% del ingreso"}
+                  v={neg(-(fl.comisionPlataforma + fl.administrador))}
                   unidad="/mes"
                 />
                 <FilaDato k="Luz, agua, internet e insumos" tip="Costos directos declarados por ti" sub="limpieza y reposición incluidas en insumos" v={neg(-fl.costosDirectos)} unidad="/mes" />
-                <FilaDato
-                  k="Administrador"
-                  tip="Comisión del administrador, si lo hubiera"
-                  sub={modo === "administrador" ? "operador al 20% del ingreso" : adminMonto > 0 ? `autogestionas · con operador al 20% serían ${neg(-adminMonto)}` : "autogestionas"}
-                  v={neg(-fl.administrador)}
-                  unidad="/mes"
-                />
                 <FilaDato k="Gastos comunes y mantención" tip="Declarados por ti" v={neg(-fl.gastosComunesMantencion)} unidad="/mes" />
                 <FilaDato k="Contribuciones" tip="Contribuciones ÷ 3" sub={`${money(fl.contribucionesMensuales * 3)} al trimestre`} v={neg(-fl.contribucionesMensuales)} unidad="/mes" />
                 <FilaDato k="Cuota del crédito" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? `${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} v={neg(-fl.cuota)} unidad="/mes" />
@@ -374,6 +387,52 @@ export function CapitulosInversionStr({
                 <FilaDato k="Cuota del crédito" v={neg(-results.dividendoMensual)} unidad="/mes" />
                 <FilaDato tono="tot" k={flujo < 0 ? "Sale de tu bolsillo" : "Te queda"} v={neg(flujo)} unidad="/mes" />
               </FilasDato>
+            )}
+            {/* ═══ EL BLOQUE QUE BAJÓ DEL CAPÍTULO V (fusión 17-sep-2026) ═══
+              El capítulo «Cómo lo gestionas» abría con esta comparación en INGRESO NETO,
+              mientras el capítulo II hablaba en FLUJO, y las dos cifras del administrador se
+              contradecían en el 100% de las filas. Acá hay una sola unidad —flujo, la del
+              capítulo— y una sola definición del costo.
+
+              LA SUMA CIERRA A TRES FILAS, NO A DOS. El mockup mostraba solo «un administrador
+              cobra −$274.663» y el total, y un lector que restara obtenía $71.027 en vez de
+              $112.226: faltaba el 3% que DEJA de pagarse. La fila del medio lo hace explícito,
+              y de paso demuestra en aritmética lo que antes era una afirmación en un sub
+              («reemplaza al 3%, no se suma»). Las dos comisiones son la MISMA variable del
+              motor (short-term-engine.ts:1226, ternario), así que nunca coexisten. */}
+            {fl && q && (
+              <>
+                <VPuente>{modo === "administrador" ? "Y si lo operaras tú:" : "Y si no vas a operarlo tú:"}</VPuente>
+                <FilasDato>
+                  {modo === "administrador" ? (
+                    <>
+                      <FilaDato tono="cruza" k={`Dejas de pagar la comisión del ${comAdminPct}%`} tip="La comisión del administrador que hoy pagas" v={signed(adminMonto)} unidad="/mes" />
+                      <FilaDato tono="neg" k="La plataforma te cobra su 3%" tip="Al operar tú, el cobro del administrador se reemplaza por el de la plataforma" v={signed(-escAuto.comisionMensual)} unidad="/mes" />
+                      <FilaDato
+                        tono="tot"
+                        k="Te quedaría, operándolo tú"
+                        tip="Mismo ingreso, mismos costos, misma cuota: solo cambia la comisión"
+                        sub={`${money(Math.abs(q.sobrecostoMensual))} más al mes · ${money(Math.abs(q.sobrecostoAnual))} al año`}
+                        v={<span style={{ color: escAuto.flujoCajaMensual < 0 ? "var(--signal-red)" : "var(--doc-good)" }}>{neg(escAuto.flujoCajaMensual)}</span>}
+                        unidad="/mes"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <FilaDato tono="neg" k={`Un administrador cobra el ${comAdminPct}% del ingreso`} tip="Comisión del administrador sobre el ingreso bruto del mes" v={signed(-adminMonto)} unidad="/mes" />
+                      <FilaDato tono="cruza" k="Dejas de pagar el 3% de la plataforma" tip="El cobro del administrador reemplaza al de la plataforma: no se suman" v={signed(escAuto.comisionMensual)} unidad="/mes" />
+                      <FilaDato
+                        tono="tot"
+                        k="Te quedaría, con administrador"
+                        tip="Mismo ingreso, mismos costos, misma cuota: solo cambia la comisión"
+                        sub={`${money(Math.abs(q.sobrecostoMensual))} menos al mes · ${money(Math.abs(q.sobrecostoAnual))} al año`}
+                        v={<span style={{ color: escAdmin.flujoCajaMensual < 0 ? "var(--signal-red)" : "var(--doc-good)" }}>{neg(escAdmin.flujoCajaMensual)}</span>}
+                        unidad="/mes"
+                      />
+                    </>
+                  )}
+                </FilasDato>
+              </>
             )}
           </VViz>
           {serieAnios.length >= 2 && (() => {
@@ -427,8 +486,22 @@ export function CapitulosInversionStr({
               no por olvido: el capítulo V ya compara largo contra corto en su segunda mitad, y
               tener la misma comparación en dos capítulos CON DOS MÉTRICAS DISTINTAS —acá el
               flujo, allá el NOI— es peor que no tenerla en uno. Si al abrir el goal del V ese
-              hilo queda flojo, se resuelve ahí, que es donde vive. */}
-          <VFuente>Motor Franco · {ufFecha} · costos declarados por ti; comisión de plataforma 3%</VFuente>
+              hilo queda flojo, se resuelve ahí, que es donde vive.
+
+              ⛔ Y EL CIERRE VOLVIÓ, pero diciendo otra cosa (fusión 17-sep-2026). No es el
+              cierre que se retiró: aquél reponía en prosa lo que la tabla mostraba. Éste dice
+              EL PUNTO DE QUIEBRE de la comisión —cuántos puntos de ocupación tendría que
+              agregar el administrador para pagarse solo—, que es lo único de este capítulo que
+              ninguna fila puede mostrar, porque no es una cifra del mes sino una condición. */}
+          {q && q.puntosExtra > 0 && (
+            <VCierre titulo="Qué significa">
+              <SegsCierre segs={cierres.gestion} />
+            </VCierre>
+          )}
+          <VFuente>
+            Motor Franco · {ufFecha} · costos declarados por ti; comisión de plataforma 3%
+            {q ? ` · administrador: ${comAdminPct}% del ingreso, declarado por ti` : ""}
+          </VFuente>
         </div>
       ),
     };
@@ -677,7 +750,21 @@ export function CapitulosInversionStr({
     };
   })();
 
-  // ═══════════════ V · CÓMO LO GESTIONAS ═══════════════
+  // ═══════════════ V · CORTO O LARGO ═══════════════
+  // ⛔ ERA «CÓMO LO GESTIONAS» Y SE FUNDIÓ CON EL II el 17-sep-2026. Su primera mitad
+  // —autogestión contra administrador— bajó al capítulo II, donde ya vivía la otra mitad de
+  // esa comparación en OTRA UNIDAD: el V hablaba en ingreso neto y el II en flujo, y las dos
+  // cifras del administrador se contradecían en el 100% de las filas. Con la fusión hay una
+  // sola unidad y una sola definición del costo.
+  //
+  // LO QUE QUEDA es la segunda mitad, que nunca fue sobre gestión: el corto contra el arriendo
+  // largo. El TÍTULO cambia con ella —un capítulo llamado «Cómo lo gestionas» que no habla de
+  // gestión miente más que el desajuste que teníamos—, pero el `id`, el romano y el ancla NO
+  // se tocan: son claves de navegación y de la prosa ya generada.
+  //
+  // DÓNDE VIVE ESTO AL FINAL está sin decidir (el hero es candidato y quedó fuera de alcance).
+  // Mientras tanto se queda acá, que es la única opción que no pierde el contenido.
+  // Ver [[cola-capitulo-v-str-hilo-largo]].
   const filaV: FilaHallazgo = (() => {
     const auto = results.comparativa.str_auto;
     const admin = results.comparativa.str_admin;
@@ -689,40 +776,32 @@ export function CapitulosInversionStr({
     const srAdmin = admin.noiMensual - ltr.noiMensual;
     const pctDe = (x: number) => (ltr.noiMensual > 0 ? `${x >= 0 ? "+" : "−"}${Math.round(Math.abs((x / ltr.noiMensual) * 100))}%` : null);
     const valorV = confiable ? `${srPct >= 0 ? "+" : "−"}${Math.round(Math.abs(srPct * 100))}%` : signed(sr);
-    const maxNoi = Math.max(auto.noiMensual, admin.noiMensual, 1);
-    const horas = auto.noiMensual - admin.noiMensual;
     const payback = results.comparativa.paybackMeses;
     const amob = m?.dia1.amoblamientoCLP ?? Number(inputData?.costoAmoblamiento) ?? 0;
     return {
       id: "gestion",
       numero: ROMANO.gestion,
-      pregunta: "Cómo lo gestionas",
+      pregunta: "Corto o largo",
       valor: conApellido("vs arriendo largo", valorV),
       valorRojo: sr < 0,
-      ksub: [`autogestión ${signed(auto.flujoCajaMensual)} al mes`, `con administrador ${signed(admin.flujoCajaMensual)}`, `${valorV} sobre el arriendo largo`].join(" · "),
+      // El ksub ya no trae las dos cifras de gestión: se fueron al capítulo II con su bloque.
+      ksub: [`${valorV} sobre el arriendo largo`, `ingreso neto largo ${money(ltr.noiMensual)} al mes`].join(" · "),
       anchorId: anchorCapituloStr("gestion"),
       cuerpo: (
         <div>
+          {/* LAS BARRAS «AUTOGESTIÓN CONTRA ADMINISTRADOR» Y SUS TRES FILAS SE FUERON AL
+            CAPÍTULO II (17-sep-2026), convertidas en el bloque «Y si no vas a operarlo tú».
+            Con ellas se fue la fila «Lo que cuesta no poner las horas», que rotulaba como
+            COSTO DE LAS HORAS una diferencia que es solo de comisión: `str_auto` y `str_admin`
+            corren con el mismo ingreso, el mismo ADR y la misma ocupación (ver
+            `QuiebreGestionSTR`), así que las horas no estaban medidas en ningún lado de esa
+            resta. En el capítulo II la misma cifra se llama por su nombre.
+
+            La prosa de apertura también salió: presentaba un capítulo sobre gestión. */}
           <VProsa>
-            Una renta corta la operas tú o la opera un administrador. Cambian la comisión y las horas; el ingreso es el mismo. Y al lado, la cifra que justifica cualquiera de
-            las dos: cuánto más deja el corto que arrendar largo el mismo depto.
+            La renta corta pide amoblar, operar y reponer. Lo que tiene que justificar todo eso es
+            la diferencia contra lo simple: arrendar el mismo depto a un arrendatario largo.
           </VProsa>
-          <VViz t="Lo que deja cada forma de gestionar al mes · después de costos, antes de la cuota">
-            <VSub>Autogestión contra administrador</VSub>
-            <Bars
-              rows={[
-                // Ink para autogestión, gris para administrador; Signal Red solo en lo que sale del bolsillo.
-                { k: "Autogestión", v: money(auto.noiMensual), pct: (auto.noiMensual / maxNoi) * 100, tono: "ink", neg: auto.noiMensual < 0 },
-                { k: "Con administrador", v: money(admin.noiMensual), pct: (admin.noiMensual / maxNoi) * 100, neg: admin.noiMensual < 0 },
-              ]}
-            />
-            <FilasDato style={{ marginTop: 8 }}>
-              <FilaDato k={auto.flujoCajaMensual < 0 ? "Lo que pones cada mes, autogestionando" : "Lo que te queda cada mes, autogestionando"} tip="Flujo mensual con autogestión" sub={`ingreso neto menos la cuota de ${money(m?.desgloseFall.cuota ?? results.dividendoMensual)}`} v={neg(auto.flujoCajaMensual)} unidad="/mes" tono={auto.flujoCajaMensual < 0 ? "neg" : undefined} />
-              <FilaDato k={admin.flujoCajaMensual < 0 ? "Lo que pones cada mes, con administrador" : "Lo que te queda cada mes, con administrador"} tip="Flujo mensual con administrador al 20%" v={neg(admin.flujoCajaMensual)} unidad="/mes" tono={admin.flujoCajaMensual < 0 ? "neg" : undefined} />
-              <FilaDato k="Lo que cuesta no poner las horas" tip="Diferencia de ingreso neto entre autogestión y administrador" sub={`${money(horas * 12)} al año`} v={money(horas)} unidad="/mes" />
-            </FilasDato>
-          </VViz>
-          <VPuente>Y la cifra que justifica el esfuerzo: la ventaja sobre el largo.</VPuente>
           <VViz t="Cuánto más deja el corto que arrendar largo el mismo depto">
             <VSub>La ventaja sobre el arriendo largo</VSub>
             <div className="colchon">
@@ -750,9 +829,9 @@ export function CapitulosInversionStr({
             </p>
           </VViz>
           <VCierre titulo="Qué significa">
-            <SegsCierre segs={cierres.gestion} />
+            <SegsCierre segs={cierres.largo} />
           </VCierre>
-          <VFuente>Arriendo largo declarado por ti · ingreso neto largo: arriendo menos administración, gastos comunes, mantención y contribuciones · administrador: 20% del ingreso · Motor Franco</VFuente>
+          <VFuente>Arriendo largo declarado por ti · ingreso neto largo: arriendo menos administración, gastos comunes, mantención y contribuciones · Motor Franco</VFuente>
         </div>
       ),
     };
