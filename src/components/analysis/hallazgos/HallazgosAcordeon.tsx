@@ -261,29 +261,53 @@ export function TokensHallazgos() {
       .v-prosa{font-size:14px;line-height:1.75;color:var(--doc-tx2);margin-bottom:16px;max-width:60ch}
       .v-prosa p{margin:0 0 12px}
       .v-prosa p:last-child{margin-bottom:0}
-      .v-prosa mark,.v-cierre p mark{
+      /* EL PLUMÓN SE QUEDA EN LA PROSA Y SALE DEL CIERRE (17-sep-2026). Antes era UNA
+         regla para los dos. Ver la neutralización explícita más abajo: sacar el cierre de
+         este selector NO alcanza — lo dejaría sin regla propia y <mark> cae al AMARILLO
+         por defecto del navegador, porque el repo no tiene reset global de mark. */
+      .v-prosa mark{
         background:linear-gradient(transparent 60%,var(--doc-hl) 60%);
         color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       .v-viz{margin:0 0 18px}
       .v-viz-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
         color:var(--doc-tx4);margin-bottom:10px}
-      /* La única superficie del informe que apilaba de verdad: «paper2» sobre una
-         sección «paper2». No desaparecía —tiene borde— pero su relleno no aportaba
-         nada. Con la escalera queda un escalón adentro de lo que la contenga, sea
-         una sección de cualquier tono o el modal. */
-      .v-cierre{background:var(--doc-inset-1);border:1px solid var(--doc-line);border-left:3px solid var(--signal-red);
-        border-radius:3px;padding:16px 18px;margin-top:4px;margin-bottom:4px}
-      .v-cierre .t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-        color:var(--signal-red);font-weight:700;margin-bottom:8px}
-      .v-cierre p{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14.5px;line-height:1.7;
+      /* ⛔ LA FORMA EDITORIAL SALIÓ (17-sep-2026). Era de cuando el informe era una
+         revista: caja con fondo, barra roja de 3px, rótulo en versalita ROJA weight 700 y
+         cuerpo en itálica. Tres cosas la mataron, y ninguna es estética:
+
+         · EL ROJO ESTABA GASTADO. Cinco piezas del informe llevan barra roja y hacen tres
+           trabajos distintos; una sola es alarma de verdad (el aviso de que falta el
+           análisis STR). El precedente de esta decisión ya estaba escrito en este mismo
+           archivo, cuatro líneas más abajo: «no Signal Red: un caveat no es una alarma».
+         · DOS DE SUS CUATRO SEÑALES NO EXISTÍAN. Pedía --font-heading (Georgia, serif) y
+           --font-mono, pero en el informe web los tres tokens de tipografía valen Inter
+           (medido). O sea que el «serif itálico» era Inter itálica y la «versalita mono»
+           era Inter.
+         · Y EL RÓTULO INVERTÍA LA JERARQUÍA: gritaba en rojo weight 700 mientras el rótulo
+           que nombra cada diagrama del mismo capítulo susurra en gris weight 400.
+
+         El rótulo va a --doc-tx3, NO a --doc-tx4 como el de los diagramas. Igualarlos
+         sonaba coherente y era una regresión medible: sobre los papeles del informe,
+         --doc-tx4 da 2,15-2,33:1 y el cierre venía de Signal Red a 4,81:1. --doc-tx3 da
+         4,06-4,40:1 en claro y 6,77:1 en oscuro. Que .v-viz-t esté en 2,2:1 es un
+         problema real y de todos los diagramas, no de esta pieza: va en su propia cola. */
+      .v-cierre{border-top:1px solid var(--doc-line);padding:12px 0 0;margin:18px 0 4px}
+      .v-cierre .t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--doc-tx3);font-weight:500;margin-bottom:7px}
+      .v-cierre p{font-family:var(--font-body, system-ui);font-size:13.5px;line-height:1.65;
         color:var(--doc-tx2);max-width:58ch;margin:0}
-      /* CIERRE ÚNICO: los cuerpos heredados apilaban 2-4 cajas de cierre. Si hay
-         una posterior, esta se degrada a prosa — el cierre es el último. */
-      .hall-body .v-cierre:has(~ .v-cierre){background:none;border:none;border-left:2px solid var(--doc-line2);
-        border-radius:0;padding:0 0 0 14px;margin:0 0 16px}
-      .hall-body .v-cierre:has(~ .v-cierre) .t{color:var(--doc-tx4);font-weight:400}
-      .hall-body .v-cierre:has(~ .v-cierre) p{font-family:var(--font-body, sans-serif);font-style:normal;font-size:14px;
-        line-height:1.75;color:var(--doc-tx2)}
+      /* ⛔ NEUTRALIZADO, NO SACADO DEL SELECTOR. 19 de los 28 cierres pueden traer <mark>
+         —por el motor vía SegsCierre, por plumonInline o escrito a mano en el JSX— y sin
+         esta regla quedarían con el amarillo por defecto del navegador. */
+      .v-cierre p mark{background:none;color:inherit;padding:0;font-weight:inherit}
+      /* LA REGLA DEGRADADA SE RETIRA (17-sep-2026). Existía para que dos cierres apilados no
+         dieran dos cajas: la primera perdía fondo y borde y pasaba a sans normal. Con la forma
+         única NO HAY CAJA, así que todos los cierres son ya el caso degradado —su .t en gris
+         y su p en sans normal eran literalmente esto—. Y no era solo redundante: pintaba un
+         border-left gris que chocaría con la regla superior de arriba.
+         Medido antes de sacarla: ningún capítulo apila dos cierres. El único apilamiento real
+         está en DrawerPatrimonioStr; los demás casos son ramas de un ternario, donde solo
+         una renderiza. */
       .v-fuente{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);margin-top:12px}
       /* .v-fuente.aviso — cuando la procedencia deja de ser una nota al pie y pasa a ser
          una advertencia: el dato del que cuelga el capitulo no esta contrastado. Sube de

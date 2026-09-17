@@ -38,8 +38,16 @@ export function VViz({ t, children }: { t?: ReactNode; children: ReactNode }) {
 }
 
 /** 3 · Cierre único. `titulo` rota: interpretación ("Qué significa") vs acción
- *  ("Qué haces con esto"). El `data-v="cierre"` habilita la regla de cierre
- *  único del acordeón (ver TokensHallazgos). */
+ *  ("Qué haces con esto").
+ *
+ *  FORMA (17-sep-2026): regla de 1px arriba, sin caja, sin barra roja y sin itálica; el
+ *  rótulo en `--doc-tx3` y el cuerpo en la misma escala que la prosa del capítulo. El
+ *  plumón se conserva en `VProsa` y está NEUTRALIZADO acá. Todo eso vive en un solo bloque
+ *  de `HallazgosAcordeon`, con su acta.
+ *
+ *  `data-v="cierre"` ya no habilita nada: la regla de cierre único que decía habilitar
+ *  (`.hall-body .v-cierre:has(~ .v-cierre)`) se retiró con la forma nueva, y además
+ *  seleccionaba por CLASE, no por este atributo. Se conserva como gancho de QA. */
 export function VCierre({ titulo, children }: { titulo: ReactNode; children: ReactNode }) {
   return (
     <div className="v-cierre" data-v="cierre">
