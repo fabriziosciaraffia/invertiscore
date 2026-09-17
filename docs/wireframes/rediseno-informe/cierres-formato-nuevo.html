@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La familia de la barra roja · propuesta de formato</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     PROPUESTA · 17-sep-2026. Nada de esto está implementado.
+
+     Los seis cierres son REALES, leídos del DOM en
+     /analisis/renta-corta/3f50506d-…  (Ñuñoa, veredicto COMPRAR).
+     El plumón se reproduce con el color real de esa fila: `--doc-hl` deriva del
+     veredicto, y en COMPRAR es AZUL (#2B558F al 32%), no rojo.
+
+     ⛔ EL ANTES ESTÁ DIBUJADO CON LO QUE SE VE EN PANTALLA, NO CON LO QUE DICE EL
+     CSS. El CSS pide `--font-heading (Georgia, serif)` para el cuerpo y
+     `--font-mono` para el rótulo, pero en el informe web los tres tokens de
+     tipografía valen Inter (medido). Así que el «serif itálico» es Inter itálica y
+     la «versalita mono» es Inter. De las cuatro señales del formato editorial, dos
+     son no-op en esta superficie.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad-s:12px}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--inset:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--hl:rgba(43,85,143,.32)}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--inset:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--hl:rgba(108,155,224,.34)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:900px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:78ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+  .clab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--tx3);font:inherit;font-size:12px;padding:5px 11px;cursor:pointer}
+  .seg button.on{background:var(--tx);color:var(--page)}
+  .seg button+button{border-left:1px solid var(--line2)}
+
+  .rot{max-width:900px;margin:34px auto 10px}
+  .rot h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);font-weight:700}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+
+  .par{max-width:900px;margin:0 auto 16px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.par{grid-template-columns:1fr}}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:16px}
+  .col > .eti{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+    margin-bottom:12px;display:block}
+  .col.a > .eti{color:var(--signal)}
+  .col.b > .eti{color:var(--tx3)}
+
+  /* ── ANTES: el formato editorial tal como se ve hoy ── */
+  .viejo{background:var(--inset);border:1px solid var(--line);border-left:3px solid var(--signal);
+    border-radius:3px;padding:16px 18px;margin-bottom:12px}
+  .viejo .t{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);
+    font-weight:700;margin-bottom:8px}
+  .viejo p{font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:58ch}
+
+  /* ── DESPUÉS: la forma propuesta ── */
+  .nuevo{border-top:1px solid var(--line);padding-top:12px;margin:14px 0 12px}
+  /* ⛔ tx3 y NO tx4, aunque tx4 sea el del rótulo de diagrama. Medido: tx4 sobre los
+     papeles del informe da 2,15-2,33:1, y el cierre viene de Signal Red a 4,81:1 —
+     igualarlos habría sido una regresión de legibilidad disfrazada de coherencia.
+     tx3 da 4,06-4,40:1. Ver la nota al pie. */
+  .nuevo .t{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);
+    font-weight:500;margin-bottom:7px}
+  .nuevo p{font-size:13.5px;line-height:1.65;color:var(--tx2);max-width:58ch}
+
+  mark{background:linear-gradient(transparent 60%,var(--hl) 60%);color:inherit;padding:0 2px;font-weight:500}
+
+  /* ── el rótulo de diagrama, para comparar jerarquía ── */
+  .vizt{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);font-weight:400;
+    margin-bottom:8px}
+  .vsub{font-size:15px;font-weight:600;margin-bottom:8px}
+  .fila{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);
+    font-size:12.5px;color:var(--tx2)}
+  .fila b{font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* ── la nota «f. —» ── */
+  .fnote-viejo{font-style:italic;font-size:13.5px;line-height:1.6;color:var(--signal);
+    margin:14px 0 16px;padding-left:14px;border-left:2px solid var(--signal);max-width:56ch}
+  .fnote-nuevo{font-size:13.5px;line-height:1.6;color:var(--tx2);
+    margin:14px 0 16px;padding-left:14px;border-left:2px solid var(--signal);max-width:56ch}
+  .fnote-viejo b,.fnote-nuevo b{font-style:normal;font-weight:700;letter-spacing:.02em}
+  .fnote-nuevo b{color:var(--signal)}
+
+  /* ── la alarma de verdad ── */
+  .alarma{border-left:3px solid var(--signal);background:color-mix(in srgb,#C8323C 6%,transparent);
+    border-radius:0 8px 8px 0;padding:14px 16px;max-width:56ch}
+  .alarma .t{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+    color:var(--signal);margin-bottom:5px}
+  .alarma p{font-size:12.5px;line-height:1.5;color:var(--tx2)}
+
+  .tabla{max-width:900px;margin:0 auto 20px;border-collapse:collapse;width:100%;font-size:12.5px}
+  .tabla th{text-align:left;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);
+    font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line2)}
+  .tabla td{padding:10px;border-bottom:1px solid var(--line);color:var(--tx2);line-height:1.45;vertical-align:top}
+  .tabla code{font-size:11px;background:var(--inset);padding:1px 5px;border-radius:3px}
+  .tabla tr td:first-child{white-space:nowrap}
+  .keep{color:var(--tx3)}
+  .go{color:var(--signal);font-weight:600}
+
+  .nota{max-width:900px;margin:0 auto 30px;font-size:12px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .nota code{font-size:11px;background:var(--inset);padding:1px 4px;border-radius:3px}
+  .marca{display:inline-block;width:15px;font-weight:700;color:var(--tx)}
+  .marca.q{color:var(--tx3)}
+  .marca.x{color:var(--signal)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">La familia de la barra roja · propuesta de formato</h1>
+  <p class="subx">
+    Cinco piezas del informe llevan barra roja al costado y hacen <b>tres trabajos distintos</b>.
+    La propuesta no es «sacar la barra»: es que la barra roja quede reservada al único trabajo que
+    justifica el rojo, y que cada una de las otras se resuelva por lo que hace.
+    <b>Nada de esto está implementado.</b>
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg">
+      <button class="on" onclick="document.documentElement.setAttribute('data-theme','light');this.classList.add('on');this.nextElementSibling.classList.remove('on')">Claro</button>
+      <button onclick="document.documentElement.setAttribute('data-theme','dark');this.classList.add('on');this.previousElementSibling.classList.remove('on')">Oscuro</button>
+    </span>
+  </div>
+</div>
+
+<!-- ══════════════ EL PRECEDENTE ══════════════ -->
+<div class="rot">
+  <h2>El argumento, y ya está escrito en el repo</h2>
+  <p>Esta decisión se tomó una vez, para una sola pieza, y quedó con acta.</p>
+</div>
+<div class="nota">
+  <p><code>HallazgosAcordeon.tsx:294-297</code>, sobre <code>.v-fuente.aviso</code>:</p>
+  <p style="margin-top:8px;padding-left:14px;border-left:2px solid var(--line2);color:var(--tx2);font-size:12.5px;line-height:1.6">
+    «…toma el borde izquierdo de 3px en <code>--doc-tx3</code>, <b>no Signal Red: un caveat no es una alarma</b>.»
+  </p>
+  <p style="margin-top:10px">La regla está bien y se aplicó a una pieza. Las otras cuatro quedaron sin revisar.
+  Lo que sigue es aplicarla al resto.</p>
+</div>
+
+<!-- ══════════════ QUÉ SE VE HOY, DE VERDAD ══════════════ -->
+<div class="rot">
+  <h2>Antes de proponer: lo que el formato realmente es en pantalla</h2>
+</div>
+<div class="nota">
+  <p><span class="marca x">✗</span> <b>El serif no llega y la mono tampoco.</b> El CSS pide
+  <code>--font-heading (Georgia, serif)</code> para el cuerpo y <code>--font-mono</code> para el rótulo.
+  Medido en el informe web: los <b>tres</b> tokens de tipografía valen Inter. O sea que «itálica serif» es
+  Inter itálica y «versalita mono» es Inter. <b>De las cuatro señales del formato editorial, dos son no-op
+  en esta superficie.</b> Lo que queda en pie es la barra, el rótulo rojo, la itálica y el fondo.</p>
+  <p style="margin-top:8px"><span class="marca q">?</span> <b>La itálica ya es rara en el capítulo:</b> de
+  74 nodos de texto del cuerpo, <b>71 son normales y 3 itálicos</b> — el cierre y los dos puentes.</p>
+  <p style="margin-top:8px"><span class="marca q">?</span> <b>El acordeón es exclusivo</b>, así que nunca hay
+  más de un cierre en pantalla. El problema no es acumulación: es que el cierre <b>grita más que todo lo que
+  tiene alrededor</b>, incluido el rótulo que nombra cada diagrama.</p>
+</div>
+
+<!-- ══════════════ 1 · EL CIERRE ══════════════ -->
+<div class="rot">
+  <h2>1 · El cierre interpretativo — <code>.v-cierre</code>, 21 usos en 5 archivos</h2>
+  <p>«Qué significa» y «Qué haces con esto». Es la conclusión del capítulo, en prosa. Los seis textos son reales.</p>
+</div>
+
+<div class="par">
+  <div class="col a">
+    <span class="eti">Hoy</span>
+    <div class="viejo">
+      <div class="t">Qué significa</div>
+      <p><mark>Para que esa comisión se pague sola, el administrador tendría que conseguirte 14,9 puntos de ocupación más que tú, a la misma tarifa: de 70,0% a 84,9%.</mark> Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.</p>
+    </div>
+    <div class="viejo">
+      <div class="t">Guión para la contraoferta</div>
+      <p>Ya entras 10,0% bajo la mediana de 296 publicaciones de la comuna, así que el vendedor sabe que su precio es competitivo. Del crédito no esperes el cierre: la tasa ya está bajo el mercado y 15 combinaciones de pie y plazo dejan el mes en verde, y ninguna cambia el veredicto.</p>
+    </div>
+  </div>
+  <div class="col b">
+    <span class="eti">Propuesta</span>
+    <div class="nuevo">
+      <div class="t">Qué significa</div>
+      <p><mark>Para que esa comisión se pague sola, el administrador tendría que conseguirte 14,9 puntos de ocupación más que tú, a la misma tarifa: de 70,0% a 84,9%.</mark> Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.</p>
+    </div>
+    <div class="nuevo">
+      <div class="t">Guión para la contraoferta</div>
+      <p>Ya entras 10,0% bajo la mediana de 296 publicaciones de la comuna, así que el vendedor sabe que su precio es competitivo. Del crédito no esperes el cierre: la tasa ya está bajo el mercado y 15 combinaciones de pie y plazo dejan el mes en verde, y ninguna cambia el veredicto.</p>
+    </div>
+  </div>
+</div>
+
+<div class="nota">
+  <p><b>Tres cambios, y el tercero es el que importa:</b></p>
+  <p style="margin-top:8px"><span class="marca">1</span> <b>Fuera la barra roja, el fondo y el borde.</b>
+  Queda una regla superior de 1px en <code>--doc-line</code>, que separa sin encajonar. No es un recurso nuevo:
+  es el mismo que ya usa <code>.doc-capitulo</code> para separar secciones.</p>
+  <p style="margin-top:6px"><span class="marca">2</span> <b>Fuera la itálica.</b> 13,5px/1,65 en
+  <code>--doc-tx2</code>, la misma escala del resto de la prosa del capítulo. El plumón se queda: es el
+  mecanismo de énfasis de todo el informe, y no es del cierre.</p>
+  <p style="margin-top:6px"><span class="marca">3</span> <b>El rótulo baja al nivel que le corresponde, pero
+  no hasta el del diagrama.</b> Hoy «QUÉ SIGNIFICA» va en Signal Red y weight 700, mientras el rótulo que
+  nombra cada diagrama va en <code>--doc-tx4</code> y weight 400. Son el mismo nivel jerárquico y uno grita
+  mucho más fuerte. <b>Pero igualarlos era una regresión</b>, y lo vi midiendo:</p>
+  <table class="tabla" style="margin:10px 0 0;max-width:520px">
+    <thead><tr><th>Tinta del rótulo</th><th>card</th><th>papel</th><th>inset</th></tr></thead>
+    <tbody>
+      <tr><td>Signal Red · hoy</td><td>4,81</td><td>4,56</td><td>4,44</td></tr>
+      <tr><td><code>--doc-tx4</code> · el del diagrama</td><td class="go">2,33</td><td class="go">2,21</td><td class="go">2,15</td></tr>
+      <tr><td><code>--doc-tx3</code> · <b>lo propuesto</b></td><td>4,40</td><td>4,17</td><td>4,06</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:10px">Así que va <code>--doc-tx3</code> con weight 500: pierde el grito sin perder
+  la lectura. Queda <b>un escalón por encima</b> del rótulo de diagrama, y eso es correcto —el cierre es la
+  conclusión del capítulo, el otro es el pie de una figura.</p>
+  <p style="margin-top:8px"><span class="marca x">✗</span> <b>Y de paso apareció esto, que no es de este
+  goal:</b> el rótulo de TODOS los diagramas del informe (<code>.v-viz-t</code>, <code>--doc-tx4</code>) está
+  en <b>2,15–2,33:1</b>. No es bajo AA: es bajo el 3:1 que ni siquiera cubre texto grande. En oscuro pasa
+  (<code>--doc-tx4</code> vale otro hex y da 3,59). Lo anoto como cola aparte.</p>
+</div>
+
+<!-- ══════════════ EL CIERRE EN CONTEXTO ══════════════ -->
+<div class="rot">
+  <h2>Y en contexto, que es donde se decide</h2>
+  <p>Un cierre suelto siempre se ve bien. Lo que importa es cómo cae después de la tabla del capítulo.</p>
+</div>
+
+<div class="par">
+  <div class="col a">
+    <span class="eti">Hoy</span>
+    <div class="vizt">Lo que entra y lo que sale en un mes</div>
+    <div class="vsub">Tu flujo mensual</div>
+    <div class="fila"><span>Te queda</span><b>$345.690</b></div>
+    <div class="fila"><span>Un administrador cobra el 20%</span><b>−$274.663</b></div>
+    <div class="fila" style="border-bottom:0"><span>Te quedaría, con administrador</span><b>$112.226</b></div>
+    <div class="viejo" style="margin-top:14px">
+      <div class="t">Qué significa</div>
+      <p><mark>Para que esa comisión se pague sola, el administrador tendría que conseguirte 14,9 puntos de ocupación más que tú, a la misma tarifa: de 70,0% a 84,9%.</mark> Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos.</p>
+    </div>
+  </div>
+  <div class="col b">
+    <span class="eti">Propuesta</span>
+    <div class="vizt">Lo que entra y lo que sale en un mes</div>
+    <div class="vsub">Tu flujo mensual</div>
+    <div class="fila"><span>Te queda</span><b>$345.690</b></div>
+    <div class="fila"><span>Un administrador cobra el 20%</span><b>−$274.663</b></div>
+    <div class="fila" style="border-bottom:0"><span>Te quedaría, con administrador</span><b>$112.226</b></div>
+    <div class="nuevo">
+      <div class="t">Qué significa</div>
+      <p><mark>Para que esa comisión se pague sola, el administrador tendría que conseguirte 14,9 puntos de ocupación más que tú, a la misma tarifa: de 70,0% a 84,9%.</mark> Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos.</p>
+    </div>
+  </div>
+</div>
+
+<div class="nota">
+  <p><span class="marca q">?</span> <b>A la izquierda el cierre es otra cosa pegada abajo</b> — otro fondo, otro
+  borde, otra tipografía, otro color de rótulo. A la derecha es la última línea del mismo bloque, que es lo que
+  realmente es: el capítulo termina explicando lo que la tabla mostró.</p>
+</div>
+
+<!-- ══════════════ 2 · LA NOTA «f. —» ══════════════ -->
+<div class="rot">
+  <h2>2 · La nota al margen «f. —» — <code>.doc-fnote</code> y su copia en el hero STR</h2>
+  <p>Es la voz de Franco interrumpiendo la prosa. Hoy va con el <b>texto entero</b> en Signal Red.</p>
+</div>
+
+<div class="par">
+  <div class="col a">
+    <span class="eti">Hoy</span>
+    <p style="font-size:13.5px;line-height:1.62;color:var(--tx2);max-width:56ch">
+      El corto saca ventaja real al arriendo largo, pero esa ventaja descansa en una ocupación
+      que hoy la zona no alcanza por sí sola.
+    </p>
+    <p class="fnote-viejo"><b>f. —</b> Si el administrador no te trae ocupación por encima de lo que
+      consigues tú, la comisión es un costo y nada más.</p>
+  </div>
+  <div class="col b">
+    <span class="eti">Propuesta</span>
+    <p style="font-size:13.5px;line-height:1.62;color:var(--tx2);max-width:56ch">
+      El corto saca ventaja real al arriendo largo, pero esa ventaja descansa en una ocupación
+      que hoy la zona no alcanza por sí sola.
+    </p>
+    <p class="fnote-nuevo"><b>f. —</b> Si el administrador no te trae ocupación por encima de lo que
+      consigues tú, la comisión es un costo y nada más.</p>
+  </div>
+</div>
+
+<div class="nota">
+  <p><b>Acá la barra SE QUEDA.</b> Es la firma de Franco y está puesta a propósito: marca dónde el informe
+  deja de describir y opina. Lo que cambia es que <b>el texto baja a <code>--doc-tx2</code></b> y el rojo queda
+  solo en la barra y en el «f.». Un párrafo entero en Signal Red se lee como error del sistema, no como una
+  nota de autor.</p>
+  <p style="margin-top:8px"><span class="marca x">✗</span> <b>Y son dos copias.</b>
+  <code>PortadaInforme.tsx:1566</code> la define en CSS y <code>HeroStrDictamen.tsx:294</code> la reescribe
+  inline en Tailwind, con 2px igual pero sin compartir nada. Van a derivar. La propuesta las unifica en una
+  pieza; si no, el cambio hay que hacerlo dos veces y acordarse las dos.</p>
+</div>
+
+<!-- ══════════════ 3 · LA ALARMA ══════════════ -->
+<div class="rot">
+  <h2>3 · La alarma de verdad — <code>results-client.tsx:816</code></h2>
+  <p>El único caso donde el rojo dice lo que el rojo tiene que decir.</p>
+</div>
+
+<div class="par">
+  <div class="col b" style="grid-column:1 / -1;max-width:none">
+    <span class="eti">Se queda tal cual — con un arreglo</span>
+    <div class="alarma">
+      <div class="t">Análisis Airbnb no se generó</div>
+      <p>Falta la parte de renta corta de este análisis. Puedes reintentarlo sin gastar un crédito.</p>
+    </div>
+    <p style="font-size:12px;color:var(--tx3);line-height:1.6;margin-top:12px">
+      Esto <b>sí</b> es una alarma: algo que el usuario esperaba no está. Barra roja, fondo rojo al 6%, rótulo
+      rojo. Correcto.<br>
+      El arreglo es otro: usa el hex crudo <code>#C8323C</code> dos veces en vez de
+      <code>var(--signal-red)</code>, así que no sigue al tema ni a ningún cambio futuro del color de marca.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ LA TABLA ══════════════ -->
+<div class="rot">
+  <h2>Las cinco piezas y qué pasa con cada una</h2>
+</div>
+
+<table class="tabla">
+  <thead>
+    <tr><th>Pieza</th><th>Usos</th><th>Qué trabajo hace</th><th>Propuesta</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.v-cierre</code></td>
+      <td>21 en 5 archivos</td>
+      <td>Cierra el capítulo interpretando lo que se mostró.</td>
+      <td class="go">Forma nueva: regla de 1px arriba, sin fondo, sin itálica, rótulo al nivel de los diagramas.</td>
+    </tr>
+    <tr>
+      <td><code>.doc-fnote</code><br><code>HeroStrDictamen:294</code></td>
+      <td>2 implementaciones</td>
+      <td>La voz de Franco interrumpiendo la prosa.</td>
+      <td class="go">Conserva la barra. El texto baja a <code>--doc-tx2</code>. Y las dos copias se unifican.</td>
+    </tr>
+    <tr>
+      <td><code>.pos-main</code></td>
+      <td>1</td>
+      <td>Acento de una card entera («la posición de Franco»), no prosa suelta.</td>
+      <td class="keep">Se queda. Es el borde de una card, y el rojo ahí es identidad, no alarma. <b>Decisión tuya si igual sale.</b></td>
+    </tr>
+    <tr>
+      <td><code>results-client:816</code></td>
+      <td>1</td>
+      <td><b>Alarma real</b>: falta una parte del análisis.</td>
+      <td class="keep">Se queda. Solo se cambia el hex crudo por <code>var(--signal-red)</code>.</td>
+    </tr>
+    <tr>
+      <td><code>.v-fuente.aviso</code></td>
+      <td>—</td>
+      <td>Caveat de procedencia.</td>
+      <td class="keep">Ya resuelto en su momento: barra en <code>--doc-tx3</code>. Es el precedente de todo esto.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota">
+  <p><b>Alcance si esto va:</b> un bloque CSS en <code>HallazgosAcordeon.tsx</code> gobierna los 21 cierres de
+  una sola vez, así que el cambio en sí es chico. Lo que no es chico es <b>la revisión</b>: los cierres viven en
+  los seis capítulos de STR, los tres de LTR, <code>ZonaStrSection</code> y los 8 usos de
+  <code>AnalysisDrawer</code>, que es la superficie con menos gates del repo.</p>
+  <p style="margin-top:8px"><span class="marca q">?</span> <b>Lo que no propongo tocar acá:</b> el plumón.
+  Deriva del veredicto (<code>--doc-hl</code>, azul en COMPRAR, ciruela en AJUSTA, rojo en BUSCAR OTRA) y lo usa
+  también <code>.v-prosa</code>. Sacarlo del cierre y dejarlo en la prosa sería inventar una diferencia que no
+  existe.</p>
+  <p style="margin-top:8px"><span class="marca q">?</span> <b>Y una pregunta abierta:</b> tres de los seis
+  cierres reales <b>no traen plumón</b>. Sin barra, sin fondo y sin itálica, ésos quedan visualmente idénticos a
+  un párrafo de prosa, separados solo por la regla y el rótulo. Puede estar bien —es lo que son— o puede ser
+  poco. Es lo único de esta propuesta que no me deja tranquilo.</p>
+</div>
+
+</body>
+</html>

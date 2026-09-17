@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo II · Tu flujo mensual (STR) · los cuatro cambios</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TOKENS — heredados de `popup-menu-respuestas.html`, sin agregar ninguno.
+       · `--good` / `--signal` — el SEMÁFORO DEL DATO, y solo donde hay un dato con
+         signo. Acá gobierna el flujo mensual, que es exactamente eso.
+       · `--comprar` NO se declara: en este capítulo no se nombra ningún veredicto.
+     Todos los valores salen de la fila REAL `540deb26` (Santiago, modo auto),
+     recomputada el 16-sep-2026. Ningún número de este mockup está inventado.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;
+    --sombra-h:0 6px 20px rgba(0,0,0,.08)}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;
+    --sombra-h:0 6px 20px rgba(0,0,0,.5)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:860px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:70ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;
+    color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+
+  .rot{max-width:860px;margin:34px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:72ch;line-height:1.5}
+
+  /* la escena: el cuerpo del capítulo, al ancho del informe */
+  .escena{max-width:700px;margin:0 auto;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--rad);padding:26px 30px}
+  [data-view="mobile"] .escena{max-width:390px;padding:18px 16px}
+
+  /* ── primitivas del vocabulario v12, tal como las dibuja el informe ── */
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--tx4);margin-bottom:10px}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);
+    padding-left:9px;margin-top:16px}
+  .drow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  .drow:last-child{border-bottom:none}
+  .drow.in .dk{font-weight:600;color:var(--tx)}
+  .drow.tot{border-top:1.5px solid var(--tx3);border-bottom:none;margin-top:4px;padding-top:11px}
+  .drow.tot .dk{font-weight:600;color:var(--tx);font-size:13px}
+  .drow.tot .dv{font-weight:700;font-size:14px}
+  .dk{font-size:12.5px;color:var(--tx2);line-height:1.35}
+  .dk small{display:block;font-size:10.5px;color:var(--tx4);margin-top:2px;line-height:1.35}
+  .dk .tip{font-style:normal;font-size:11px;color:var(--tx4);margin-left:5px;cursor:help}
+  .dv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dv em{font-style:normal;font-size:10.5px;color:var(--tx4);margin-left:2px}
+
+  /* la línea del reparto (ya en producción desde el 16-sep) */
+  .doc-reparto{font-size:13px;line-height:1.5;color:var(--tx2);margin:2px 0 14px}
+  .doc-reparto b{color:var(--tx);font-weight:700}
+
+  /* ── LA PRIMITIVA NUEVA · serie por AÑO con signo ────────────────────────
+     No existe en el repo y es el único elemento sin precedente del mockup.
+     `CurvaAnual` es de 12 MESES; `CurvaPatrimonio` tiene eje de años pero es un área
+     de patrimonio; `Bars` toma `pct` 0-100 y no admite negativos. Acá hace falta eje
+     de años + línea de cero + color por signo, porque la serie CRUZA el cero en 40 de
+     252 filas (15,9%) — y ésta es una de ellas. */
+  .curva-anios{width:100%;height:auto;display:block;margin:2px 0 4px}
+  .ca-cero{stroke:var(--tx3);stroke-width:1;stroke-dasharray:3 3}
+  .ca-linea{fill:none;stroke:var(--tx2);stroke-width:1.5}
+  .ca-eje{font-size:9.5px;fill:var(--tx4);font-family:var(--sans)}
+  .ca-val{font-size:10px;fill:var(--tx3);font-family:var(--sans);font-variant-numeric:tabular-nums}
+  .ca-pt-neg{fill:var(--signal)}
+  .ca-pt-pos{fill:var(--good)}
+  .ca-pt{fill:var(--tx3)}
+
+  /* anotaciones del mockup, NO parte del diseño */
+  .nota{max-width:860px;margin:10px auto 0;font-size:11.5px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .marca{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;
+    background:var(--signal);color:#fff;border-radius:4px;padding:1px 5px;margin-right:6px;
+    vertical-align:1px}
+  .fuera{opacity:.32;text-decoration:line-through;text-decoration-color:var(--signal);
+    text-decoration-thickness:1.5px}
+  table.cmp{max-width:860px;margin:14px auto 0;border-collapse:collapse;font-size:12px;width:100%}
+  table.cmp th,table.cmp td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);
+    vertical-align:top;line-height:1.5}
+  table.cmp th{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  table.cmp td:first-child{white-space:nowrap;color:var(--tx3)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">Capítulo II · «Tu flujo mensual» (STR) — los cuatro cambios</h1>
+  <p class="subx">
+    Fila real <b>540deb26</b> (Santiago, modo auto), recomputada el 16-sep-2026. Todos los números
+    salen del motor: ninguno está inventado. Lo que va tachado en rojo es lo que sale.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" onclick="T('light',this)">Claro</button><button onclick="T('dark',this)">Oscuro</button></span>
+    <span class="clab" style="margin-left:10px">Ancho</span>
+    <span class="seg"><button class="on" onclick="V('wide',this)">780</button><button onclick="V('mobile',this)">390</button></span>
+  </div>
+</div>
+
+<!-- ══════════════════ ANTES ══════════════════ -->
+<div class="rot">
+  <h2>Antes</h2>
+  <p>Lo que se ve hoy. Cuatro piezas marcadas para salir o cambiar.</p>
+</div>
+<div class="escena">
+  <p class="fuera" style="font-size:13.5px;line-height:1.55;margin-bottom:14px">
+    Lo que factura cada mes contra todo lo que sale: la comisión de la plataforma, lo que cuesta
+    tener el depto operando y la cuota del crédito. Lo que queda es lo que te llevas.
+  </p>
+  <div class="v-sub fuera">Qué pasa con los $688.242 del ingreso</div>
+  <div class="v-sub">Lo que entra y lo que sale cada mes</div>
+  <p class="doc-reparto">La cuota se lleva el <b>72%</b> de lo que entra y operar el depto, el <b>27%</b>. Quedan <b>$3.802</b> al mes.</p>
+  <div>
+    <div class="drow in"><span class="dk">Ingreso mensual estabilizado<i class="tip">ⓘ</i><small>lo que factura un mes típico con la ocupación estimada</small></span><span class="dv">$688.242<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Comisión de la plataforma<i class="tip">ⓘ</i><small>3% del ingreso</small></span><span class="dv">−$20.647<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Luz, agua, internet e insumos<i class="tip">ⓘ</i><small>limpieza y reposición incluidas en insumos</small></span><span class="dv">−$85.000<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Administrador<i class="tip">ⓘ</i><small>autogestionas · con operador al 20% serían −$137.648</small></span><span class="dv">$0<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Gastos comunes y mantención<i class="tip">ⓘ</i></span><span class="dv">−$65.000<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Contribuciones<i class="tip">ⓘ</i><small>$47.505 al trimestre</small></span><span class="dv">−$15.835<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Cuota del crédito<i class="tip">ⓘ</i></span><span class="dv">−$497.958<em>/mes</em></span></div>
+    <div class="drow tot"><span class="dk">Te queda</span><span class="dv" style="color:var(--good)">$3.802<em>/mes</em></span></div>
+  </div>
+  <div style="margin-top:16px;padding:12px 14px;background:var(--sunk);border-radius:var(--rad-xs)">
+    <div class="v-sub" style="margin-bottom:6px">Qué significa</div>
+    <p class="fuera" style="font-size:13px;line-height:1.55">
+      Te quedan <b>$3.802</b> cada mes después de todo, con la ocupación estimada. El primer año
+      arranca con <b>$1.032.363</b> de estabilización mientras el aviso gana reseñas.
+      Con administrador el mes pasa a <b>−$113.199</b>.
+    </p>
+  </div>
+  <div class="v-fuente">Motor Franco · UF al 16 sept 2026</div>
+</div>
+
+<div class="nota">
+  <p><span class="marca">1</span> La bajada y el rótulo <b>«Qué pasa con los $688.242»</b> salen: la tabla los dice. Queda «Lo que entra y lo que sale cada mes» como único encabezado.</p>
+  <p><span class="marca">2</span> <b>«Te queda $3.802»</b> no dice de qué mes es. No es el promedio ni el primer mes: es el <b>mes estabilizado, a precios de hoy</b>.</p>
+  <p><span class="marca">3</span> Falta el flujo a diez años. El motor ya lo tiene.</p>
+  <p><span class="marca">4</span> El cierre dice tres cosas: una repite la tabla, otra la absorbe el gráfico, y una sola es dato que no está en ningún otro lado.</p>
+</div>
+
+<!-- ══════════════════ DESPUÉS ══════════════════ -->
+<div class="rot">
+  <h2>Después</h2>
+  <p>Dos bloques: lo que pasa en un mes, y lo que pasa en diez años.</p>
+</div>
+<div class="escena">
+  <div class="v-sub">Lo que entra y lo que sale cada mes</div>
+  <p class="doc-reparto">La cuota se lleva el <b>72%</b> de lo que entra y operar el depto, el <b>27%</b>. Quedan <b>$3.802</b> al mes.</p>
+  <div>
+    <div class="drow in"><span class="dk">Ingreso mensual estabilizado<i class="tip">ⓘ</i><small>lo que factura un mes típico con la ocupación estimada</small></span><span class="dv">$688.242<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Comisión de la plataforma<i class="tip">ⓘ</i><small>3% del ingreso</small></span><span class="dv">−$20.647<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Luz, agua, internet e insumos<i class="tip">ⓘ</i><small>limpieza y reposición incluidas en insumos</small></span><span class="dv">−$85.000<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Administrador<i class="tip">ⓘ</i><small>autogestionas · con operador al 20% serían −$137.648</small></span><span class="dv">$0<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Gastos comunes y mantención<i class="tip">ⓘ</i></span><span class="dv">−$65.000<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Contribuciones<i class="tip">ⓘ</i><small>$47.505 al trimestre</small></span><span class="dv">−$15.835<em>/mes</em></span></div>
+    <div class="drow"><span class="dk">Cuota del crédito<i class="tip">ⓘ</i></span><span class="dv">−$497.958<em>/mes</em></span></div>
+    <!-- CAMBIO 2 · el rótulo del mes -->
+    <div class="drow tot"><span class="dk">Te queda<small>en un mes estabilizado, a precios de hoy</small></span><span class="dv" style="color:var(--good)">$3.802<em>/mes</em></span></div>
+  </div>
+
+  <!-- CAMBIO 4 · VA DE PIE, NO DE FILA. Es un escenario alternativo, no un egreso:
+       metido en la tabla rompe la suma, porque el total de arriba ya está cerrado.
+       ⚠ Y LA SEGUNDA ORACIÓN NO ES UN CAVEAT DECORATIVO. El contrafáctico del motor
+       (`comparativa.str_admin`) corre con el MISMO ingreso, ADR y ocupación que el caso
+       base y solo cambia la comisión —«invariante al modo salvo la comisión»—, así que
+       delegar sale peor en 252 de 252 filas POR CONSTRUCCIÓN. El mismo motor calibra que
+       la gestión profesional sube la ocupación 10 puntos (0,55 → 0,65, experimento AirROI)
+       y el contrafáctico no lo usa. Sin la segunda oración, el lector concluye que delegar
+       nunca conviene: eso es lo que el número dice, no lo que el motor cree. -->
+  <p class="doc-reparto" style="margin-top:14px">
+    Con un operador al 20% y <b>la misma ocupación</b>, el mes queda en
+    <b style="color:var(--signal)">−$113.199</b>. El modelo no le acredita la ocupación
+    extra que la gestión profesional suele conseguir.
+  </p>
+
+  <!-- CAMBIO 3 · el gráfico por año -->
+  <div class="v-sub" style="margin-top:24px">Lo que queda cada mes, año por año</div>
+  <!-- ⛔ LA GEOMETRÍA ESTÁ CALCULADA, NO DIBUJADA A OJO. La primera versión de este mockup
+       puso la línea de cero en y=118 «donde se veía bien»: con la serie real el cero cae en
+       y=109,5, y esos 8 px de más hacían que el año 2 pareciera el doble de arriba del cero de
+       lo que está. Un mockup cuyo eje miente es exactamente lo que este capítulo está sacando.
+         y(v) = 165 − ((v − min) / (max − min)) × 85     min=−82.228  max=43.764 -->
+  <svg class="curva-anios" viewBox="0 0 620 182" role="img"
+       aria-label="Flujo mensual promedio por año: año 1 −$82.228, año 2 $7.254, sube hasta $43.764 en el año 10">
+    <line class="ca-cero" x1="38" y1="109.5" x2="606" y2="109.5"></line>
+    <text class="ca-eje" x="4" y="112.5">$0</text>
+    <polyline class="ca-linea" points="52,165 114,104.6 175,102.2 237,99.5 298,96.7 360,93.8 421,90.6 483,87.3 544,83.7 606,80"></polyline>
+    <circle class="ca-pt-neg" cx="52"  cy="165"   r="4"></circle>
+    <circle class="ca-pt-pos" cx="114" cy="104.6" r="3"></circle>
+    <circle class="ca-pt-pos" cx="175" cy="102.2" r="3"></circle>
+    <circle class="ca-pt-pos" cx="237" cy="99.5"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="298" cy="96.7"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="360" cy="93.8"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="421" cy="90.6"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="483" cy="87.3"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="544" cy="83.7"  r="3"></circle>
+    <circle class="ca-pt-pos" cx="606" cy="80"    r="4"></circle>
+    <!-- solo se rotulan los extremos y el primer año positivo: el resto se lee por la forma -->
+    <text class="ca-val" x="52"  y="179" text-anchor="middle">−$82.228</text>
+    <text class="ca-val" x="120" y="99"  text-anchor="middle">$7.254</text>
+    <text class="ca-val" x="606" y="73"  text-anchor="end">$43.764</text>
+    <text class="ca-eje" x="52"  y="124" text-anchor="middle">año 1</text>
+    <text class="ca-eje" x="114" y="124" text-anchor="middle">2</text>
+    <text class="ca-eje" x="298" y="124" text-anchor="middle">5</text>
+    <text class="ca-eje" x="606" y="124" text-anchor="end">10</text>
+  </svg>
+  <p class="doc-reparto" style="margin-top:2px">
+    El año 1 pone <b style="color:var(--signal)">−$82.228</b> al mes: el aviso todavía no tiene
+    reseñas y se ocupa menos, y eso cuesta <b>un mes y medio de facturación</b>. Desde el año 2
+    el arriendo sube y la deuda baja.
+  </p>
+
+  <div class="v-fuente">Motor Franco · UF al 16 sept 2026 · cada año a sus precios</div>
+</div>
+
+<div class="nota">
+  <table class="cmp">
+    <tr><th>lo que decía el cierre</th><th>criterio</th><th>dónde queda</th></tr>
+    <tr><td>«Te quedan $3.802»</td><td>lo dicen los datos</td><td><b>sale</b> — está en la fila total</td></tr>
+    <tr><td>«con la ocupación estimada»</td><td>rotula un dato</td><td><b>baja a la fila</b> como «en un mes estabilizado, a precios de hoy»</td></tr>
+    <tr><td>«$1.032.363 de estabilización»</td><td>lo absorbe el gráfico (explica el 102% del bache del año 1)</td><td><b>sale el monto</b>; queda la escala, «un mes y medio de facturación»</td></tr>
+    <tr><td>«Con administrador $−113.199»</td><td>dato, y no está en ningún otro lado</td><td><b>baja a PIE</b>, no a fila: es un escenario alternativo y en la tabla rompería la suma</td></tr>
+  </table>
+  <p style="margin-top:12px"><b>El cierre en prosa desaparece entero.</b> No quedó ninguna oración que dijera algo que los datos no dicen — que es exactamente el criterio. Lo que sobrevive son dos pies, y cada uno dice algo que ningún dato dice: por qué el año 1 es peor, y qué NO está modelando el contrafáctico del administrador.</p>
+
+  <p style="margin-top:16px;padding:12px 14px;background:var(--sunk);border-radius:var(--rad-xs);border-left:3px solid var(--signal)">
+    <b>Decisión abierta, y es de modelo, no de copy.</b> El pie dice «con la misma ocupación»
+    porque es lo único que el cálculo respalda: <code>comparativa.str_admin</code> corre con el
+    mismo ingreso, ADR y ocupación que el caso base y solo cambia la comisión. Medido:
+    <b>delegar da peor flujo en 252 de 252 filas (100%)</b>, brecha p50 <b>−$115.408</b>.
+    Pero el mismo motor calibra que la gestión profesional sube la ocupación de 0,55 a 0,65
+    (banda <code>admin_pro_residencial</code>, experimento AirROI), y el escenario «agresivo» es
+    literalmente «potencial con gestión profesional». Con las dos mitades juntas,
+    <b>delegar conviene en 147 de 252 (58,3%)</b>, brecha p50 <b>+$19.209</b>.
+    El pie de arriba es la opción honesta mientras el modelo no se arregle; arreglarlo es un
+    goal propio y toca <code>comparativa</code>, que leen más superficies que este capítulo.
+  </p>
+</div>
+
+<script>
+  function T(t,b){document.documentElement.setAttribute('data-theme',t);
+    b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function V(v,b){document.documentElement.setAttribute('data-view',v);
+    b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+</script>
+</body>
+</html>

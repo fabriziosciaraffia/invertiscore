@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo V fundido con el II · STR · lo que se implementó</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     ACTUALIZADO EL 17-sep-2026 TRAS IMPLEMENTAR. Antes este archivo dibujaba dos
+     variantes a elegir; ahora dibuja lo que se implementó, con DOS CORRECCIONES
+     sobre lo aprobado, marcadas ✗ en las notas:
+
+       1 · EL BLOQUE LLEVA TRES FILAS, NO DOS. A dos filas la suma no cerraba:
+           $345.690 − $274.663 daba $71.027 y el total declarado era $112.226.
+           Faltaba el 3% que DEJA de pagarse.
+       2 · SIN VERDE. `--doc-good` existe como token y `.drow.cruza` lo aplica,
+           pero el verde NUNCA ENTRÓ a ninguna superficie del informe nuevo. La
+           doctrina viva del capítulo II es Signal Red para lo que sale y TINTA
+           para lo que queda — su fila total ya hace exactamente eso. Un verde acá
+           sería el único de la página y pintaría de «bueno» la menor de las dos
+           cifras. La comparación la carga el SUB.
+
+     CIFRAS: las dos filas son REALES, recomputadas por el motor el 17-sep-2026 y
+     leídas del DOM en producción local.
+       · modo auto          → `3f50506d` Ñuñoa
+       · modo administrador → `df8c0141` Santiago
+     Ningún número está inventado, y las dos sumas cierran.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;
+    --sombra-h:0 6px 20px rgba(0,0,0,.08)}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;
+    --sombra-h:0 6px 20px rgba(0,0,0,.5)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:880px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:76ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+  .clab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--tx3);font:inherit;font-size:12px;
+    padding:5px 11px;cursor:pointer}
+  .seg button.on{background:var(--tx);color:var(--page)}
+  .seg button+button{border-left:1px solid var(--line2)}
+
+  .rot{max-width:880px;margin:0 auto 10px}
+  .rot h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);font-weight:700}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:78ch;line-height:1.5}
+
+  .escena{max-width:700px;margin:0 auto 14px;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--rad);padding:20px}
+  [data-view="mobile"] .escena{max-width:390px;padding:14px}
+
+  .v-prosa{font-size:13.5px;line-height:1.6;color:var(--tx2);margin-bottom:14px;max-width:62ch}
+  .v-viz{margin:16px 0}
+  .v-viz-t{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);
+    font-weight:600;margin-bottom:8px;line-height:1.4}
+  .v-sub{font-size:15px;font-weight:600;margin-bottom:10px}
+  .v-puente{font-size:12px;color:var(--tx3);font-style:italic;margin:14px 0 6px}
+  .v-cierre{border-left:3px solid var(--signal);padding:10px 0 10px 12px;margin:16px 0 10px}
+  .v-cierre .t{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--signal);
+    font-weight:700;margin-bottom:6px}
+  .v-cierre p{font-size:13px;line-height:1.6;color:var(--tx2);font-style:italic}
+  .v-cierre mark{background:transparent;color:inherit;font-weight:600;
+    box-shadow:inset 0 -7px 0 rgba(200,50,60,.16)}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx4);
+    padding-left:9px;margin-top:14px}
+
+  /* filas de dato */
+  .dk{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  .dk:last-child{border-bottom:0}
+  .dk .k{font-size:12.5px;color:var(--tx2);line-height:1.35}
+  .dk .k small{display:block;font-size:10.5px;color:var(--tx4);margin-top:2px}
+  .dk .v{font-size:14px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .dk .v small{font-size:10.5px;color:var(--tx4);font-weight:400}
+  .dk.tot{border-top:1.5px solid var(--line2);border-bottom:0;margin-top:2px;padding-top:11px}
+  .dk.in .k{color:var(--tx);font-weight:600}
+  .neg{color:var(--signal)}
+  /* ⛔ NO HAY CLASE `.pos`. Lo que queda va en tinta, que es el color por defecto.
+     La versión anterior de este archivo tenía `.pos{color:var(--good)}` y un token
+     `--good`; los dos se retiraron con el verde. */
+
+  .doc-reparto{font-size:12px;color:var(--tx3);line-height:1.5;margin:8px 0 0}
+
+  /* etiquetas de unidad — solo en el ANTES, para mostrar el problema que se arregló */
+  .uni{display:inline-block;font-size:8.5px;letter-spacing:.09em;font-weight:700;padding:1px 5px;
+    border-radius:3px;vertical-align:2px;margin-left:5px}
+  .uni.flu{background:rgba(200,50,60,.12);color:var(--signal)}
+  .uni.noi{background:var(--sunk);color:var(--tx3)}
+
+  /* barras — solo en el ANTES, que es lo que se retiró */
+  .bar-row{display:grid;grid-template-columns:132px 1fr auto;gap:10px;align-items:center;margin:7px 0}
+  .bk{font-size:12px;color:var(--tx3)}
+  .bar-track{height:15px;background:var(--sunk);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--tx)}
+  .bar-fill.gris{background:var(--tx4)}
+  .bv{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  [data-view="mobile"] .bar-row{grid-template-columns:104px 1fr auto;gap:7px}
+
+  .colchon{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+    padding:8px 0;border-bottom:1px solid var(--line)}
+  .colchon .k{font-size:12px;color:var(--tx3);line-height:1.4}
+  .colchon .v{font-size:14px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .colchon .v small{font-size:10.5px;color:var(--tx4);font-weight:400}
+
+  .nota{max-width:700px;margin:0 auto 34px;font-size:12px;color:var(--tx3);line-height:1.55}
+  .nota b{color:var(--tx2)}
+  .nota code{font-size:11px;background:var(--sunk);padding:1px 4px;border-radius:3px}
+  .marca{display:inline-block;width:15px;font-weight:700}
+  .marca.ok{color:var(--tx)}
+  .marca.q{color:var(--tx3)}
+  .marca.x{color:var(--signal)}
+
+  .tag{display:inline-block;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+    font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid var(--line2);
+    color:var(--tx4);margin-left:6px;vertical-align:1px}
+
+  .sum{max-width:700px;margin:0 auto 34px;background:var(--sunk);border-radius:var(--rad-s);
+    padding:12px 14px;font-size:12.5px;color:var(--tx2);line-height:1.6;
+    font-variant-numeric:tabular-nums}
+  .sum b{color:var(--tx)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">Capítulo V fundido con el II · lo que se implementó</h1>
+  <p class="subx">
+    <b>Dos cosas cambiaron respecto de lo que aprobaste</b>, y las dos están marcadas con ✗ abajo:
+    el bloque del administrador lleva <b>tres filas y no dos</b> —a dos la suma no cerraba— y
+    <b>no hay verde en ninguna cifra</b>. Todo lo demás es lo que se dibujó.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg">
+      <button class="on" onclick="document.documentElement.setAttribute('data-theme','light');this.classList.add('on');this.nextElementSibling.classList.remove('on')">Claro</button>
+      <button onclick="document.documentElement.setAttribute('data-theme','dark');this.classList.add('on');this.previousElementSibling.classList.remove('on')">Oscuro</button>
+    </span>
+    <span class="clab" style="margin-left:14px">Ancho</span>
+    <span class="seg">
+      <button class="on" onclick="document.documentElement.setAttribute('data-view','wide');this.classList.add('on');this.nextElementSibling.classList.remove('on')">700</button>
+      <button onclick="document.documentElement.setAttribute('data-view','mobile');this.classList.add('on');this.previousElementSibling.classList.remove('on')">390</button>
+    </span>
+  </div>
+</div>
+
+<!-- ══════════════════ ANTES ══════════════════ -->
+<div class="rot">
+  <h2>Antes — la primera mitad del capítulo V</h2>
+  <p>La unidad cambiaba adentro del mismo bloque. Valores de <code>3f50506d</code>, Ñuñoa.</p>
+</div>
+
+<div class="escena">
+  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600;margin-bottom:3px">
+    V · Cómo lo gestionas
+  </div>
+  <p class="v-prosa" style="margin-top:10px">
+    Una renta corta la operas tú o la opera un administrador. Cambian la comisión y las horas; el
+    ingreso es el mismo.
+  </p>
+  <div class="v-viz">
+    <div class="v-viz-t">Lo que deja cada forma de gestionar al mes · después de costos, antes de la cuota</div>
+    <div class="v-sub">Autogestión contra administrador <span class="uni noi">NOI</span></div>
+    <div class="bar-row"><span class="bk">Autogestión</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bv">$1.109.906</span></div>
+    <div class="bar-row"><span class="bk">Con administrador</span><div class="bar-track"><div class="bar-fill gris" style="width:78.9%"></div></div><span class="bv">$876.442</span></div>
+    <div style="margin-top:10px">
+      <div class="dk"><span class="k">Lo que te queda cada mes, autogestionando ⓘ<small>ingreso neto menos la cuota de $764.216</small></span><span class="v">$345.690 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Lo que te queda cada mes, con administrador ⓘ</span><span class="v">$112.226 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Lo que cuesta no poner las horas ⓘ<small>$2.801.568 al año</small></span><span class="v">$233.464 <small>/mes</small></span></div>
+    </div>
+    <div style="font-size:10.5px;color:var(--tx4);margin-top:6px">↑ estas tres filas hablan en <span class="uni flu">FLUJO</span>, las barras de arriba en <span class="uni noi">NOI</span></div>
+  </div>
+</div>
+
+<div class="nota">
+  <p><span class="marca x">✗</span> <b>Dos unidades en el mismo bloque:</b> las barras en NOI, las tres filas en flujo, sin que nada lo diga.</p>
+  <p style="margin-top:6px"><span class="marca x">✗</span> <b>«Lo que cuesta no poner las horas» no mide horas.</b> <code>str_auto</code> y <code>str_admin</code> corren con el mismo ingreso, el mismo ADR y la misma ocupación: lo único que cambia es la comisión. Las horas no estaban en ningún lado de esa resta.</p>
+  <p style="margin-top:6px"><span class="marca x">✗</span> <b>El capítulo II decía $274.663 del mismo administrador</b> (el 20% del ingreso) y acá decía $233.464 (el sobrecosto sobre el 3%). Las dos correctas, nada en pantalla decía que eran cosas distintas. En el <b>100% de las filas</b>.</p>
+</div>
+
+<!-- ══════════════════ DESPUÉS · AUTO ══════════════════ -->
+<div class="rot">
+  <h2>Después — capítulo II fundido · el caso autogestiona</h2>
+  <p>Fila <code>3f50506d</code>, Ñuñoa, comisión del administrador 20%. Flujo de punta a punta, una sola unidad.</p>
+</div>
+
+<div class="escena">
+  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600;margin-bottom:3px">
+    II · Tu flujo mensual
+  </div>
+  <div class="v-viz" style="margin-top:10px">
+    <div class="v-sub">Lo que entra y lo que sale en un mes estabilizado, a precios de hoy</div>
+    <div>
+      <div class="dk in"><span class="k">Ingreso mensual ⓘ<small>lo que factura un mes típico con la ocupación estimada</small></span><span class="v">$1.373.313 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Comisión de la plataforma ⓘ<small>3% del ingreso</small></span><span class="v">−$41.199 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Luz, agua, internet e insumos ⓘ<small>limpieza y reposición incluidas en insumos</small></span><span class="v">−$85.000 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Gastos comunes y mantención ⓘ</span><span class="v">−$88.000 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Contribuciones ⓘ<small>$147.624 al trimestre</small></span><span class="v">−$49.208 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Cuota del crédito ⓘ<small>$154,3 MM a 25 años al 3,4%</small></span><span class="v">−$764.216 <small>/mes</small></span></div>
+      <div class="dk tot"><span class="k">Te queda ⓘ</span><span class="v">$345.690 <small>/mes</small></span></div>
+    </div>
+
+    <div class="v-puente" style="margin-top:16px">Y si no vas a operarlo tú:</div>
+    <div>
+      <div class="dk"><span class="k">Un administrador cobra el 20% del ingreso ⓘ</span><span class="v neg">−$274.663 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Dejas de pagar el 3% de la plataforma ⓘ</span><span class="v">+$41.199 <small>/mes</small></span></div>
+      <div class="dk tot"><span class="k">Te quedaría, con administrador ⓘ<small>$233.464 menos al mes · $2.801.568 al año</small></span><span class="v">$112.226 <small>/mes</small></span></div>
+    </div>
+  </div>
+
+  <div class="v-puente">Y lo mismo a diez años, que es donde la estabilización deja de pesar.</div>
+  <div class="v-viz">
+    <div class="v-sub">Lo que queda cada mes, año por año</div>
+    <div style="height:70px;position:relative;margin:8px 0 22px">
+      <div style="position:absolute;left:0;top:-3px;right:0;border-top:1px dashed var(--line2)"></div>
+      <div style="position:absolute;left:0;top:-13px;font-size:10px;color:var(--tx4)">$0</div>
+      <div style="position:absolute;left:4%;top:30px;width:92%;height:2px;background:var(--tx)"></div>
+      <div style="position:absolute;right:0;top:40px;font-size:10.5px;color:var(--tx4)">la curva real, sin cambios en este goal</div>
+    </div>
+  </div>
+
+  <div class="v-cierre">
+    <div class="t">Qué significa</div>
+    <p>
+      <mark>Para que esa comisión se pague sola, el administrador tendría que conseguirte 14,9 puntos
+      de ocupación más que tú, a la misma tarifa: de 70,0% a 84,9%.</mark>
+      Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto
+      más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.
+    </p>
+  </div>
+  <div class="v-fuente">Motor Franco · UF al 17 sept 2026 · costos declarados por ti; comisión de plataforma 3% · administrador: 20% del ingreso, declarado por ti</div>
+</div>
+
+<div class="sum">
+  <b>$345.690</b> &nbsp;−&nbsp; <b>$274.663</b> &nbsp;+&nbsp; <b>$41.199</b> &nbsp;=&nbsp; <b>$112.226</b> &nbsp;✓ cierra<br>
+  <span style="color:var(--tx3)">a dos filas daba $71.027, y el total decía $112.226</span>
+</div>
+
+<div class="nota">
+  <p><span class="marca x">✗</span> <b>La suma cierra a TRES filas — esto no es lo que aprobaste.</b>
+  El mockup anterior mostraba «un administrador cobra −$274.663» y el total, y un lector que restara
+  obtenía <b>$71.027</b>: faltaba el 3% que deja de pagarse. Con la fila del medio la resta da el total,
+  y de paso «reemplaza al 3%, no se suma» pasa de ser una afirmación en un sub a estar
+  <b>demostrado en aritmética</b>.</p>
+  <p style="margin-top:6px"><span class="marca x">✗</span> <b>Sin verde — tampoco es lo que aprobaste.</b>
+  Lo que queda va en tinta, como ya hace la fila total del capítulo II. El sub carga la comparación.
+  Signal Red se reserva a la plata que sale, que acá es una sola fila.</p>
+  <p style="margin-top:6px"><span class="marca ok">✓</span> <b>Las dos filas de $0 se fueron.</b> Había una
+  «Comisión de la plataforma» y otra «Administrador», y una de las dos siempre valía cero, con un sub y un ⓘ
+  explicando un cobro inexistente. En el motor son la misma variable
+  (<code>short-term-engine.ts:1524-1525</code>).</p>
+  <p style="margin-top:6px"><span class="marca ok">✓</span> <b>El 20% ahora sale del motor.</b> El render hacía
+  <code>Math.round(ingreso * 0.2)</code> — una segunda verdad sobre la misma cifra.</p>
+</div>
+
+<!-- ══════════════════ DESPUÉS · ADMINISTRADOR ══════════════════ -->
+<div class="rot">
+  <h2>Después — capítulo II fundido · el caso YA delega</h2>
+  <p>Fila <code>df8c0141</code>, Santiago, modo administrador. El bloque se invierte: el contrafáctico es operarlo tú.</p>
+</div>
+
+<div class="escena">
+  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600;margin-bottom:3px">
+    II · Tu flujo mensual
+  </div>
+  <div class="v-viz" style="margin-top:10px">
+    <div class="v-sub">Lo que entra y lo que sale en un mes estabilizado, a precios de hoy</div>
+    <div>
+      <div class="dk in"><span class="k">Ingreso mensual ⓘ<small>lo que factura un mes típico con la ocupación estimada</small></span><span class="v">$832.658 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Comisión del administrador ⓘ<small>20% del ingreso</small></span><span class="v">−$166.532 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Luz, agua, internet e insumos ⓘ<small>limpieza y reposición incluidas en insumos</small></span><span class="v">−$111.000 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Gastos comunes y mantención ⓘ</span><span class="v">−$101.000 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Contribuciones ⓘ<small>$69.771 al trimestre</small></span><span class="v">−$23.257 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">Cuota del crédito ⓘ<small>$99,3 MM a 25 años al 4,1%</small></span><span class="v">−$530.341 <small>/mes</small></span></div>
+      <div class="dk tot"><span class="k">Sale de tu bolsillo ⓘ</span><span class="v neg">−$99.472 <small>/mes</small></span></div>
+    </div>
+
+    <div class="v-puente" style="margin-top:16px">Y si lo operaras tú:</div>
+    <div>
+      <div class="dk"><span class="k">Dejas de pagar la comisión del 20% ⓘ</span><span class="v">+$166.532 <small>/mes</small></span></div>
+      <div class="dk"><span class="k">La plataforma te cobra su 3% ⓘ</span><span class="v neg">−$24.980 <small>/mes</small></span></div>
+      <div class="dk tot"><span class="k">Te quedaría, operándolo tú ⓘ<small>$141.552 más al mes · $1.698.624 al año</small></span><span class="v">$42.080 <small>/mes</small></span></div>
+    </div>
+  </div>
+
+  <div class="v-cierre">
+    <div class="t">Qué significa</div>
+    <p>
+      <mark>Para que esa comisión se pague sola, tu administrador tiene que estar consiguiéndote 10,0
+      puntos de ocupación más de los que conseguirías tú, a la misma tarifa: de 46,9% a 56,9%.</mark>
+      Puede estar consiguiéndolos, o puede conseguir mejor tarifa, y te saca la operación de encima;
+      cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.
+    </p>
+  </div>
+  <div class="v-fuente">Motor Franco · UF al 17 sept 2026 · costos declarados por ti; comisión de plataforma 3% · administrador: 20% del ingreso, declarado por ti</div>
+</div>
+
+<div class="sum">
+  <b>−$99.472</b> &nbsp;+&nbsp; <b>$166.532</b> &nbsp;−&nbsp; <b>$24.980</b> &nbsp;=&nbsp; <b>$42.080</b> &nbsp;✓ cierra
+</div>
+
+<div class="nota">
+  <p><span class="marca ok">✓</span> <b>Simétrico.</b> Cada fila cambia de signo y el total sigue siendo el flujo del otro modo.</p>
+  <p style="margin-top:6px"><span class="marca ok">✓</span> <b>El rojo del total no es del contrafáctico.</b>
+  «Sale de tu bolsillo» va en Signal Red porque el caso es negativo, por la regla que ya existía — no por ser
+  el peor de los dos escenarios. En el bloque, la única roja es la fila que cobra.</p>
+  <p style="margin-top:6px"><span class="marca ok">✓</span> <b>El cierre habla en presente</b> («tu administrador
+  tiene que estar consiguiéndote»), no en condicional: a quien ya delega no se le describe un administrador
+  hipotético.</p>
+</div>
+
+<!-- ══════════════════ EL CAPÍTULO V QUE QUEDA ══════════════════ -->
+<div class="rot">
+  <h2>Y el capítulo V, con su título nuevo</h2>
+  <p>Pierde la primera mitad. Lo que queda nunca fue sobre gestión. Valores de <code>df8c0141</code>.</p>
+</div>
+
+<div class="escena">
+  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600;margin-bottom:3px">
+    V · Corto o largo <span class="tag">era «Cómo lo gestionas»</span>
+  </div>
+  <p class="v-prosa" style="margin-top:10px">
+    La renta corta pide amoblar, operar y reponer. Lo que tiene que justificar todo eso es la diferencia
+    contra lo simple: arrendar el mismo depto a un arrendatario largo.
+  </p>
+  <div class="v-viz">
+    <div class="v-viz-t">Cuánto más deja el corto que arrendar largo el mismo depto</div>
+    <div class="v-sub">La ventaja sobre el arriendo largo <span class="uni noi">NOI</span></div>
+    <div class="colchon">
+      <span class="k">Autogestionado · sobre el ingreso neto del largo ($298.493 con $445.000 de arriendo)</span>
+      <span class="v">+$273.928 <small>/mes · +92%</small></span>
+    </div>
+    <div class="colchon" style="margin-top:8px">
+      <span class="k">Con administrador</span>
+      <span class="v">+$132.376 <small>/mes · +44%</small></span>
+    </div>
+    <p class="doc-reparto" style="margin-top:10px">
+      El amoblamiento ($7.350.000) se recupera con la ventaja con administrador en 56 meses.
+      La ventaja compara un corto estabilizado, con la ocupación estimada, contra un arriendo largo sin gestión.
+    </p>
+  </div>
+
+  <div class="v-cierre">
+    <div class="t">Qué significa</div>
+    <p>
+      Delegado, el corto <mark>deja $132.376 más al mes que arrendar el mismo depto</mark>, sobre un
+      ingreso neto largo de $298.493. Esa diferencia es la que tiene que pagar el amoblamiento y las horas:
+      compara un corto ya estabilizado contra un largo sin gestión, así que es el techo, no el primer año.
+    </p>
+  </div>
+  <div class="v-fuente">Arriendo largo declarado por ti · ingreso neto largo: arriendo menos administración, gastos comunes, mantención y contribuciones · Motor Franco</div>
+</div>
+
+<div class="nota">
+  <p><span class="marca ok">✓</span> <b>El cierre habla con los dos signos.</b> Antes era el último segmento del
+  cierre de gestión y solo se emitía cuando la sobre-renta era <b>negativa</b>. Promovido a cierre de capítulo
+  habría dejado la mayoría de las filas cerrando en blanco. Ésta es la redacción positiva, la que antes no existía.</p>
+  <p style="margin-top:6px"><span class="marca ok">✓</span> <b>El título nombra lo que el capítulo contiene.</b>
+  El <code>id</code>, el romano y el ancla siguen siendo <code>gestion</code>: son claves de navegación y de la
+  prosa ya generada. Es reversible en una línea si preferís otro.</p>
+  <p style="margin-top:6px"><span class="marca q">?</span> <b>Sigue en NOI, y es la única unidad posible.</b>
+  El largo y el corto comparten el mismo dividendo, así que el monto de la diferencia es el mismo en flujo —
+  pero el porcentaje no, y en flujo el denominador del largo es negativo en <b>232 de 252 filas</b>.</p>
+  <p style="margin-top:6px"><span class="marca q">?</span> <b>Dónde vive esto al final está sin decidir.</b>
+  El hero es candidato y quedó fuera de alcance. Mientras tanto se queda acá, que es lo único que no pierde
+  el contenido. → <code>cola-capitulo-v-str-hilo-largo</code></p>
+</div>
+
+<!-- ══════════════════ LO QUE NO SE TOCÓ ══════════════════ -->
+<div class="rot">
+  <h2>Lo que no se tocó, y queda anotado</h2>
+</div>
+
+<div class="nota">
+  <p><span class="marca q">?</span> <b>La palanca del pop-up y el capítulo dan dos cifras del mismo costo.</b>
+  En <code>df8c0141</code> la palanca «La comisión del administrador» muestra <b>−$166.532</b> (la comisión bruta)
+  y el capítulo dice <b>$141.552 más al mes</b> (el sobrecosto neto). La diferencia son los $24.980 del 3%.
+  Las dos son correctas y miden cosas distintas. El hero de esa misma fila ya usa la neta
+  («+$141.552 de ahorro al mes»), así que la palanca queda sola con la bruta.
+  → <code>cola-palanca-gestion-vs-capitulo-ii</code></p>
+  <p style="margin-top:6px"><span class="marca q">?</span> <b>«Qué significa» conserva el formato editorial</b>
+  — barra roja, versalita en rojo, itálica serif, plumón; se ve tal cual en las tres escenas de arriba.
+  Es pieza compartida: <b>21 usos en 5 archivos</b>, así que cambiarla toca los seis capítulos de STR, los tres
+  de LTR y los drawers. Es otro goal. → <code>cola-vcierre-formato-editorial</code></p>
+  <p style="margin-top:6px"><span class="marca q">?</span> <b>El semáforo del dato falla AA de forma cruzada.</b>
+  Medido contra los papeles reales del informe: <code>--doc-good</code> en claro da 3,44–4,00:1 y Signal Red en
+  oscuro 3,26–3,49:1. Cada tinta falla en el tema donde la otra pasa, que es por qué nunca se vio completo.
+  No afecta a este capítulo —que quedó sin verde— pero sí al Dial, al Thermo y a la matriz.
+  → <code>cola-signal-red-contraste-oscuro</code></p>
+  <p style="margin-top:6px"><span class="marca q">?</span> <b>¿El 20% reemplaza al 3% o se suma?</b>
+  El motor los trata como excluyentes (<code>short-term-engine.ts:1226</code>, un ternario) y el informe es fiel
+  a eso. Si en la realidad fueran aditivos, el sobrecosto pasaría de 17 a 20 puntos del bruto y el punto de
+  quiebre de esta fila de 14,9 a 18,2 puntos. No hay fuente para decidirlo.
+  → <code>cola-comision-admin-reemplaza-o-suma</code></p>
+</div>
+
+</body>
+</html>
