@@ -259,38 +259,32 @@ export interface ArgsCierreGestionStr {
  * ocupación que `str_auto` y solo cambia la comisión: delegar salía peor en el 100% del
  * parque POR CONSTRUCCIÓN, no por medición.
  *
- * Ahora no toma posición. Dice tres cosas, en este orden:
- *   1 · QUÉ CUESTA la comisión, con cuatro redacciones — la del caso que la aguanta, la del
- *       que deja de cerrar por ella, la del que ya estaba en pérdida, y la de quien YA
- *       delega (donde el contrafáctico corre al revés).
- *   2 · EL PUNTO DE QUIEBRE, que es aritmética de las dos comisiones y por eso es verdadero
+ * ⛔ Y PARTIDO EN DOS el 17-sep-2026, cuando el capítulo V se fundió con el II. Este cierre
+ * ahora cierra EL CAPÍTULO II, debajo de las filas del administrador. Dice dos cosas:
+ *   1 · EL PUNTO DE QUIEBRE, que es aritmética de las dos comisiones y por eso es verdadero
  *       con cualquier calibración de ocupación. Lleva el plumón.
- *   3 · La línea CUALITATIVA, sin números, más la pregunta que el usuario le hace al operador.
+ *   2 · La línea CUALITATIVA, sin números, más la pregunta que el usuario le hace al operador.
  *
- * El hilo del LTR sobrevive SOLO cuando la sobre-renta es negativa: ahí «ni autogestionado
- * le gana al largo» es la conclusión más importante del capítulo, y no es sobre delegar.
+ * LO QUE SE FUE, y por qué:
+ *   · QUÉ CUESTA la comisión (las cuatro redacciones) — lo dicen ahora las DOS FILAS que la
+ *     fusión trajo al capítulo II: «Un administrador cobra el 20%» con su monto, y «Te
+ *     quedaría, con administrador» con el total y el sobrecosto en el sub. Repetirlo en prosa
+ *     debajo de la tabla que lo acaba de mostrar es la regla del repo al revés: si un dato se
+ *     puede mostrar, no se cuenta. El cierre arranca directo en el quiebre, que es lo único
+ *     que las filas NO pueden decir.
+ *   · EL HILO DEL LARGO — se fue a `cierreLargoStr`, que cierra lo que queda del capítulo V.
+ *     No es sobre delegar y no tiene por qué viajar con la comisión.
  */
 export function cierreGestionStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCierre[] {
   const segs: SegCierre[] = [];
   const auto = a.modo === "auto";
-  const flujoAuto = auto ? a.flujoMensual : a.flujoOtroModo;
-  const flujoAdmin = auto ? a.flujoOtroModo : a.flujoMensual;
+  // `flujoMensual` y `flujoOtroModo` ya no se leen acá: los mostraba la parte «qué cuesta»,
+  // que ahora son las dos filas del capítulo II. Siguen en los args porque `cierreLargoStr`
+  // comparte la misma estructura y porque el contrato del ensamblador es uno solo.
   const q = a.quiebre;
-  const sobrecosto = flujoAuto - flujoAdmin;
-  const pctCom = q ? `${Math.round(q.comisionAdminDec * 100)}%` : "su comisión";
 
-  // ── 1 · qué cuesta ──
-  if (!auto) {
-    segs.push({ t: `Ya lo estás delegando: la comisión del ${pctCom} son ${q ? f.money(q.comisionMensual) : f.money(sobrecosto)} al mes. Operándolo tú, ${f.money(sobrecosto)} de eso se quedarían en tu bolsillo y el mes pasaría de ${f.money(flujoAdmin)} a ${f.money(flujoAuto)}. ` });
-  } else if (flujoAuto < 0) {
-    segs.push({ t: `El mes ya te pide ${f.money(-flujoAuto)} autogestionando. Delegarlo cuesta ${f.money(sobrecosto)} más al mes —la comisión del ${pctCom}, por sobre el 3% que Airbnb ya cobra— y lo lleva a ${f.money(-flujoAdmin)}. ` });
-  } else if (flujoAdmin < 0) {
-    segs.push({ t: `Delegarlo cuesta ${f.money(sobrecosto)} al mes, más que los ${f.money(flujoAuto)} que te queda: con administrador el mes deja de cerrar y pasa a pedirte ${f.money(-flujoAdmin)}. ` });
-  } else {
-    segs.push({ t: `Delegarlo cuesta ${f.money(sobrecosto)} al mes, ${f.money(sobrecosto * 12)} al año. Tu flujo lo aguanta: el mes baja de ${f.money(flujoAuto)} a ${f.money(flujoAdmin)} y sigue cerrando en positivo. ` });
-  }
-
-  // ── 2 · el punto de quiebre ──
+  // ── 1 · el punto de quiebre ──
+  // Arranca acá y no en «qué cuesta»: el costo son las dos filas de arriba. Ver el acta.
   if (q && q.puntosExtra > 0) {
     const pts = f.pct1(Math.round(q.puntosExtra * 1000) / 10);
     segs.push(
@@ -300,13 +294,41 @@ export function cierreGestionStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCier
     );
   }
 
-  // ── 3 · la línea cualitativa, sin números ──
+  // ── 2 · la línea cualitativa, sin números ──
   segs.push({ t: `${auto ? "Puede conseguirlos" : "Puede estar consiguiéndolos"}, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.` });
 
-  // ── 4 · el hilo del largo, solo cuando el corto no le gana ──
-  if (a.sobreRenta < 0) {
-    segs.push({ t: ` Y algo que no depende de quién opere: ni ${auto ? "autogestionado" : "delegado"} el corto le gana al largo — deja ${f.money(-a.sobreRenta)} menos al mes que arrendar el mismo depto, con un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}.` });
-  }
+  return trimUltimo(segs);
+}
 
+/**
+ * Cierre de lo que queda del capítulo V tras la fusión (17-sep-2026): el corto contra el
+ * arriendo largo. Era el segmento 4 de `cierreGestionStr`, que solo se emitía cuando la
+ * sobre-renta era NEGATIVA — colgado de un cierre sobre delegar, y mudo en la mayoría de las
+ * filas.
+ *
+ * Acá habla SIEMPRE, porque ahora es el cierre del capítulo y un capítulo no puede cerrar en
+ * blanco. Dos redacciones, por el SIGNO de la sobre-renta y nada más.
+ *
+ * La unidad es INGRESO NETO (NOI), no flujo, y por eso el capítulo se quedó en NOI: el largo y
+ * el corto comparten el mismo dividendo, así que el MONTO de la diferencia es el mismo en las
+ * dos unidades, pero el PORCENTAJE no — y en flujo el denominador del largo es negativo en el
+ * 92% del parque (medido 16-sep-2026: flujo del largo > 0 en 20 de 252 filas).
+ */
+export function cierreLargoStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCierre[] {
+  const segs: SegCierre[] = [];
+  const auto = a.modo === "auto";
+  if (a.sobreRenta < 0) {
+    segs.push(
+      { t: `Ni ${auto ? "autogestionado" : "delegado"} el corto le gana al largo: ` },
+      { t: `deja ${f.money(-a.sobreRenta)} menos al mes que arrendar el mismo depto`, mark: true },
+      { t: `, con un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}. Lo que decide acá no es quién opera, sino la modalidad.` },
+    );
+  } else {
+    segs.push(
+      { t: `${auto ? "Autogestionado" : "Delegado"}, el corto ` },
+      { t: `deja ${f.money(a.sobreRenta)} más al mes que arrendar el mismo depto`, mark: true },
+      { t: `, sobre un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}. Esa diferencia es la que tiene que pagar el amoblamiento y las horas: compara un corto ya estabilizado contra un largo sin gestión, así que es el techo, no el primer año.` },
+    );
+  }
   return trimUltimo(segs);
 }

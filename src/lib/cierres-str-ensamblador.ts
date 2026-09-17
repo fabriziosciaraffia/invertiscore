@@ -14,7 +14,7 @@ import { costoOportunidad } from "./analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import type { FmtCierre, SegCierre } from "./cierres-capitulos";
 import {
-  cierreRentaStr, cierreNochesStr, cierrePagasStr, cierreGestionStr, cierreResultadoStr,
+  cierreRentaStr, cierreNochesStr, cierrePagasStr, cierreGestionStr, cierreLargoStr, cierreResultadoStr,
   type ArgsCierreRentaStr, type ArgsCierreNochesStr, type ArgsCierrePagasStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
 } from "./cierres-capitulos-str";
 
@@ -41,7 +41,10 @@ export interface CierresStr {
   renta: SegCierre[];
   noches: SegCierre[];
   pagas: SegCierre[];
+  /** Cierra el capítulo II, debajo de las filas del administrador (fusión 17-sep-2026). */
   gestion: SegCierre[];
+  /** Cierra lo que queda del capítulo V: el corto contra el arriendo largo. */
+  largo: SegCierre[];
   resultado: SegCierre[];
 }
 
@@ -147,7 +150,9 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
   };
 }
 
-/** Los seis cierres redactados. */
+/** Los cierres redactados. `gestion` y `largo` salen de los MISMOS args: eran un solo cierre
+ *  hasta que la fusión del 17-sep-2026 mandó la comisión al capítulo II y dejó el hilo del
+ *  largo en el V. */
 export function cierresStr(e: EntradaCierresStr, f: FmtCierre = fmtCierreCLP()): CierresStr {
   const a = argsCierresStr(e);
   return {
@@ -155,6 +160,7 @@ export function cierresStr(e: EntradaCierresStr, f: FmtCierre = fmtCierreCLP()):
     noches: cierreNochesStr(a.noches, f),
     pagas: cierrePagasStr(a.pagas, f),
     gestion: cierreGestionStr(a.gestion, f),
+    largo: cierreLargoStr(a.gestion, f),
     resultado: cierreResultadoStr(a.resultado, f),
   };
 }
