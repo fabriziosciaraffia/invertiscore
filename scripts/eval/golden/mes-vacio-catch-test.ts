@@ -72,9 +72,28 @@ for (const c of cierres) {
   if (!/\$\{fmt\(mesVacio\)\}/.test(c)) F(`2 · un cierre no usa mesVacio: «${c}»`);
   if (/desglose\.dividendo/.test(c)) F(`2 · un cierre sigue usando desglose.dividendo (el bug de 14,9%): «${c}»`);
 }
-// Y que la fuente única siga siendo una: los dos consumidores llaman a calcMesVacio.
-const llamadas = (src.match(/calcMesVacio\(/g) ?? []).length;
-if (llamadas < 2) F(`2 · calcMesVacio tiene ${llamadas} llamada(s) en AnalysisDrawer: el cierre del capítulo II y el bloque del drawer de estructura deben compartirla`);
+// ⛔ ANTES ESTO CONTABA LLAMADAS (`>= 2`) Y SE REESCRIBIÓ EL 17-sep-2026.
+// Los dos consumidores eran el cierre del capítulo II y el drawer de estructura; el
+// segundo se retiró con `DrawerEstructuraSana`, inalcanzable desde el 5-sep. Bajar el
+// umbral a `>= 1` habría dejado un predicado que satisface una llamada EN CUALQUIER
+// PARTE del archivo —incluso en un componente nuevo y equivocado—, que es medir la
+// presencia y no el cableado. Así que en vez del umbral va el CONSUMIDOR QUE SOBREVIVE,
+// nombrado, y acotado a su cuerpo.
+// Con FRONTERA: `indexOf("function DrawerCostoMensual")` matchea por prefijo, así que
+// renombrar el componente a `DrawerCostoMensualX` dejaba el guard VERDE — el slice seguía
+// encontrando cuerpo y el regex seguía calzando. Cazado mutando.
+const mIni = /function DrawerCostoMensual\b/.exec(src);
+const mFin = /function DrawerNegociacion\b/.exec(src);
+const ini = mIni ? mIni.index : -1;
+const fin = mFin ? mFin.index : -1;
+if (ini === -1 || fin === -1 || fin <= ini) {
+  F("2 · no se pudo acotar el cuerpo de DrawerCostoMensual: el extractor no midió nada");
+} else {
+  const cuerpo = src.slice(ini, fin);
+  if (!/calcMesVacio\(/.test(cuerpo)) {
+    F("2 · DrawerCostoMensual dejó de llamar a calcMesVacio: el cierre del capítulo II estaría recalculando el mes vacío por su cuenta");
+  }
+}
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runMesVacioTier(): { hard: number } {

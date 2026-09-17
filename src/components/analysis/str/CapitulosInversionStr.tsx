@@ -17,6 +17,8 @@ import { costoOportunidad, calcDividendo } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
+import { LineaPlazo } from "@/components/analysis/hallazgos/linea-plazo";
+import type { NivelPlazo } from "@/lib/analysis";
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
@@ -83,6 +85,7 @@ export function CapitulosInversionStr({
   results,
   francoScore,
   hallazgos,
+  nivelesPlazo,
   simulacion,
   inputData,
   currency,
@@ -96,6 +99,8 @@ export function CapitulosInversionStr({
   results: ShortTermResult;
   francoScore: FrancoScoreSTR;
   hallazgos: Hallazgo[];
+  /** Niveles de plazo del server (`simularPlazoStr`) — los consume la línea del plazo. */
+  nivelesPlazo?: NivelPlazo[];
   simulacion: SimulacionStr | null;
   inputData: Record<string, unknown> | null;
   currency: "CLP" | "UF";
@@ -748,6 +753,21 @@ export function CapitulosInversionStr({
               />
             </VViz>
           )}
+
+          {/* LA LÍNEA DEL PLAZO (17-sep-2026) — va PEGADA a la matriz y no en otro capítulo,
+              porque es lo que la contesta. Medido sobre 300 análisis: de los 169 que pueden
+              estirar, la TIR a 10 años SUBE en 127 (75%), así que la matriz sola dice
+              «estirá siempre» con cara de dato. El interés total del crédito —lo único que
+              decía la escalera del plazo y no dice ninguna otra superficie— es el costo que
+              vive FUERA de los diez años que el informe proyecta. Separadas, pierden el
+              razonamiento. */}
+          <LineaPlazo
+            niveles={nivelesPlazo ?? []}
+            valorUF={valorUF}
+            flujoPersistido={m?.desgloseFall.saleDeTuBolsillo ?? flujo}
+            currency={currency}
+          />
+
           <VCierre titulo="Guión para la contraoferta">
             <SegsCierre segs={cierres.pagas} />
           </VCierre>

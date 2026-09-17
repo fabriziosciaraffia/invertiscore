@@ -5,11 +5,9 @@ import type {
   AIAnalysisV2,
   AISection,
   AINegociacionSection,
-  AIReestructuracionSection,
   FullAnalysisResult,
   AnalisisInput,
   HallazgoPuestaAPunto,
-  HallazgoEstructuraFinanciamiento,
   AINegociacionWalkAway,
 } from "@/lib/types";
 import { calcFlujoDesglose, calcMesVacio, tirForPrice, calcDividendo } from "@/lib/analysis";
@@ -20,17 +18,11 @@ import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
-import { EscaleraPlazo } from "@/components/analysis/hallazgos/escalera-plazo";
-import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { FilaDato, FilasDato } from "@/components/analysis/shared";
-import { simularPie, simularPlazo } from "@/lib/analysis";
-import { MARKET_AVG_TASA_UF } from "@/lib/financing-health";
 import {
   VProsa,
   VViz,
   VCierre,
-  VCollapse,
   VFuente,
   VSub,
   Fall,
@@ -56,7 +48,6 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 export type DrawerKey =
   | "costoMensual"
   | "negociacion"
-  | "reestructuracion"
   | "zona"
   | "capexPuestaAPunto";
 
@@ -106,7 +97,6 @@ interface DrawerProps {
 const DRAWER_META: Record<DrawerKey, { label: string }> = {
   costoMensual: { label: "Flujo mensual" },
   negociacion: { label: "El precio" },
-  reestructuracion: { label: "Tu estructura" },
   zona: { label: "La zona" },
   capexPuestaAPunto: { label: "Puesta a punto" },
 };
@@ -1254,332 +1244,6 @@ export function extractRiesgos(
 // siendo el del motor (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3),
 // y el drawer aparece como tab adicional con la palanca de reestructuración
 // financiera. No es un veredicto distinto.
-/**
- * ⛔ SIN SUPERFICIE, Y A PROPÓSITO SE CONSERVA (17-sep-2026).
- *
- * Este drawer no se alcanza: `drawerSequence = ["zona"]` desde `81b05cce` y ningún
- * capítulo lo monta. Lo que SÍ se retiró es el campo de prosa `reestructuracion` del
- * prompt —dos bloques de 3-5 frases escritos para este drawer— porque el texto no tenía
- * dónde leerse y el ahorro es hoy.
- *
- * EL AHORRO, MEDIDO sobre el parque y no estimado: el prompt adelgaza 1.435 caracteres en
- * TODAS las generaciones LTR, y la salida deja de escribirse en el 38% de ellas —261 de
- * 686 filas con prosa lo traen, mediana de 1.317 caracteres los dos bloques juntos, unos
- * 376 tokens—. No es «dos bloques por generación»: el Nivel 3 de `financingHealth` no
- * dispara siempre, y decirlo redondo infla el ahorro casi tres veces.
- *
- * PERO LAS TRES PIEZAS DE RENDER SE QUEDAN, y no por inercia:
- *  · `EscaleraPie` — el tramo del pie contra su óptimo;
- *  · `EscaleraPlazo` — lo mismo para el plazo;
- *  · `referenciaTasa` — la procedencia de la tasa: contra qué se compara la tuya.
- *
- * NINGUNA SUPERFICIE VIVA LAS DICE. El pop-up hace pie × plazo como una GRILLA de
- * veredictos, que es otra cosa que una escalera contra el óptimo, y la TASA no está en el
- * pop-up en ninguna forma. `EstructuraComparada`, que era la cuarta pieza, sí migró a los
- * dos capítulos y por eso no está en esta lista.
- *
- * O SEA QUE ESTO NO ES CÓDIGO HUÉRFANO: es render terminado esperando un capítulo. Si
- * alguna vez la escalera entra a uno, el componente está y el prompt vuelve a pedir el
- * texto. Lo que NO se podía hacer es lo contrario — sacar el render y dejar al modelo
- * escribiendo (decisión Fabrizio, 17-sep).
- *
- * NO SON LAS ÚNICAS PIEZAS APAGADAS, y conviene que estén contadas en un solo lugar. El
- * mismo día quedaron sin lector `Palancas` (`vocabulario.tsx`) y `introModalVias`
- * (`palancas-en-palabras.ts`), las dos con su acta al lado. Y el censo encontró dos más
- * que YA estaban apagadas antes de este goal y no las apagó nadie de acá: `Composicion` y
- * `Escenarios`, cero montajes en el repo también en `HEAD`. Ésas quedan fuera del radio —no
- * se tocan sin decisión— pero anotadas, que es la diferencia entre apagado y olvidado.
- */
-function DrawerReestructuracion({
-  data,
-  currency,
-  results,
-  valorUF,
-  inputData,
-  createdAt,
-}: {
-  data: AIReestructuracionSection;
-  currency: "CLP" | "UF";
-  results: FullAnalysisResult;
-  valorUF: number;
-  inputData?: AnalisisInput;
-  createdAt?: string;
-}) {
-  const nivelesPie = useMemo(() => {
-    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
-    const precioCLP = results.metrics?.precioCLP ?? 0;
-    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
-    return simularPie(inputData, ufCongelado, new Date(createdAt));
-  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
-
-  // Escalera del plazo — segunda palanca del mismo cuerpo. `simularPlazo` no necesita
-  // `asOf`: no proyecta ni calcula TIR, solo cuota, flujo e interés del crédito.
-  const nivelesPlazo = useMemo(() => {
-    if (!inputData || !(inputData.precio > 0)) return [];
-    const precioCLP = results.metrics?.precioCLP ?? 0;
-    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
-    return simularPlazo(inputData, ufCongelado);
-  }, [inputData, results.metrics?.precioCLP, valorUF]);
-
-  const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-  // RESIDUO ANOTADO: con la caja muerta, `data.estructuraSugerida` ya no lo lee
-  // NADIE en el render. El motor lo sigue sobrescribiendo determinísticamente
-  // (`ai-generation.ts`, FASE A) y el prompt le sigue pidiendo al modelo que lo
-  // copie. Retirarlo del contrato toca tipo + schema + filas persistidas: va al
-  // backlog, no de rebote acá.
-
-
-  return (
-    <div>
-      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>El depto está bien. Lo que no cierra es la matemática del financiamiento.</span>
-        <InfoTooltip content="Reestructuración del crédito sugerida cuando el problema dominante es pie/tasa/plazo, no el precio del depto." />
-      </p>
-
-      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
-        {renderPlumon(content)}
-      </div>
-
-      {/* LA CAJA "ESTRUCTURA SUGERIDA" MURIÓ (v14). Nació con tres chips —pie,
-          plazo, tasa—. El pie salió en el tramo 1 (era la constante de 25%, no un
-          óptimo) y el plazo salió acá (passthrough puro del input). Quedaba la
-          tasa sola en una grilla de una columna: un número grande en mono, con
-          borde y rótulo de recomendación, para un valor que no recomienda nada.
-          Peor: `tasaObjetivo_pct` es `min(tu tasa, MARKET_AVG_TASA_UF)`, así que
-          al comprador que ya negoció bien le devolvía SU PROPIA TASA rotulada
-          como sugerencia — el mismo vicio del chip del plazo.
-          La tasa no es una recomendación, es una REFERENCIA: contra qué se
-          compara lo que tienes. Ese es exactamente el lugar de VFuente en el
-          vocabulario, y ahí baja — al pie del drawer, junto a la escalera, que es
-          la que sí muestra un trade-off. */}
-      {/* EL BLOQUE DE AHORRO SALIÓ (v14). Mostraba `impactoCuotaMensual_clp`, que
-          medido sobre 343 filas del parque era **97% efecto del pie** — y el pie
-          que asumía era la constante de 25%, no un óptimo calculado. Muerta la
-          constante, el número perdió su causa y no había forma honesta de
-          recalcularlo: sobre la tasa sola daba 0 en el 92% de los casos.
-          La escalera, justo abajo, ya muestra el delta de cuota por escalón y con
-          niveles que el lector puede encontrar. Esto es una resta, no un hueco. */}
-      {/* CONVERSIÓN 17 · la escalera va también en la rama con prosa IA: es el mismo
-          hallazgo ("cómo estás financiando") y el trade-off del pie no depende de que
-          la IA haya escrito su bloque. */}
-      <EscaleraPie
-        niveles={nivelesPie}
-        valorUF={valorUF}
-        flujoPersistido={results.metrics?.flujoNetoMensual}
-        currency={currency}
-      />
-
-      {/* SEGUNDA LECTURA, PLEGADA. Las dos escaleras comparten la columna de flujo y
-          se leen como dos maneras de mover el mismo número con costos distintos: el
-          pie cuesta retorno, el plazo cuesta interés. Va colapsada porque el pie es la
-          palanca dominante del cuerpo y dos tablas abiertas compiten. */}
-      {nivelesPlazo.length > 0 && (
-        <VCollapse t="↓ Ver qué pasa si cambias el plazo">
-          <EscaleraPlazo
-            niveles={nivelesPlazo}
-            valorUF={valorUF}
-            flujoPersistido={results.metrics?.flujoNetoMensual}
-            currency={currency}
-          />
-        </VCollapse>
-      )}
-
-      <VFuente>{referenciaTasa(inputData?.tasaInteres)}</VFuente>
-    </div>
-  );
-}
-
-/** Procedencia de la tasa: qué es la referencia y dónde cae la del usuario contra
- *  ella. Reemplaza al chip "Tasa objetivo", que presentaba como recomendación un
- *  `min(tu tasa, referencia)` — y por lo tanto le repetía su propia tasa a quien
- *  ya estaba bajo el promedio. Acá la referencia se nombra una vez y la
- *  comparación se dice, que es lo que el lector necesita para saber si tiene
- *  margen que pedir. */
-function referenciaTasa(tasaUsuario?: number): string {
-  // T4 (contrato CONGELADO): la fuente cita fuente, fecha y alcance. La comparación
-  // "la tuya está por encima" ya la muestra el diagrama de estructura.
-  void tasaUsuario;
-  return `Tasa de referencia: ${MARKET_AVG_TASA_UF.toFixed(1).replace(".", ",")}% anual en UF, promedio de mercado · Motor Franco, actualización manual`;
-}
-
-// Fallback del drawer de estructura/financiamiento: cuando NO existe
-// aiAnalysis.reestructuracion (salud financiera sana, sin Nivel 3), el "ver
-// detalle" del hallazgo estructura abre este contenido liviano solo-motor. Sin
-// IA, sin chart. BIFURCA por direccion del hallazgo (fase 3b · D4): favorable →
-// confirma que la estructura está sana; adverso → estructura tensionada (intro
-// del hallazgo o del caso pie 0, vacancia en plata, palanca honesta).
-// Estilo sobrio de DrawerCapexPuestaAPunto.
-function DrawerEstructuraSana({
-  hallazgo,
-  results,
-  currency,
-  valorUF,
-  inputData,
-  createdAt,
-}: {
-  hallazgo: HallazgoEstructuraFinanciamiento;
-  results: FullAnalysisResult;
-  currency: "CLP" | "UF";
-  valorUF: number;
-  // La escalera del pie recompute sobre un clon del input: necesita el input y la
-  // fecha del análisis (sin ella los meses hasta la entrega saldrían de "hoy").
-  inputData?: AnalisisInput;
-  createdAt?: string;
-}) {
-  const nivelesPie = useMemo(() => {
-    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
-    const precioCLP = results.metrics?.precioCLP ?? 0;
-    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
-    return simularPie(inputData, ufCongelado, new Date(createdAt));
-  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
-
-  // Escalera del plazo — segunda palanca del mismo cuerpo. `simularPlazo` no necesita
-  // `asOf`: no proyecta ni calcula TIR, solo cuota, flujo e interés del crédito.
-  const nivelesPlazo = useMemo(() => {
-    if (!inputData || !(inputData.precio > 0)) return [];
-    const precioCLP = results.metrics?.precioCLP ?? 0;
-    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
-    return simularPlazo(inputData, ufCongelado);
-  }, [inputData, results.metrics?.precioCLP, valorUF]);
-
-  const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
-  const cuotaActual = results.metrics?.dividendo ?? 0;
-
-  // Pie cero (fase 3b · D4, mockup 98e2319): el drawer deja de ser fallback
-  // ciego y BIFURCA por direccion del hallazgo. Favorable → texto "sana" de
-  // siempre. Adverso → estructura tensionada (el caso pie 5% que antes caía en
-  // "está sana" ahora cae acá), con pie 0 como caso extremo.
-  const adverso = hallazgo.direccion === "adverso";
-  const sinPie = piePct === 0;
-  const m = results.metrics;
-  // Obligaciones duras del dueño en un mes sin arrendatario. La aritmética se mudó a
-  // `calcMesVacio` (analysis.ts) para que este bloque y el cierre del capítulo II
-  // digan la MISMA cifra: estaban calculándola por separado y la del capítulo II
-  // subestimaba el golpe un 8%.
-  const contribMes = m ? Math.round(m.contribuciones / 3) : 0;
-  const vacanciaMes = m ? calcMesVacio({ dividendo: m.dividendo, ggcc: m.gastos, contribuciones: m.contribuciones }) : null;
-  const creditoCLP = m ? m.precioCLP - m.pieCLP : null;
-
-  return (
-    <div>
-      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>
-          {!adverso
-            ? "Tu estructura de financiamiento está sana: el pie y la tasa no están frenando el deal."
-            : sinPie
-              ? "Tu estructura de financiamiento está tensionada: financias el 100% con crédito, el dividendo queda en su punto más alto y no hay colchón de capital."
-              : hallazgo.fraseCanonica}
-        </span>
-        <InfoTooltip
-          content={
-            !adverso
-              ? "Cuando el pie y la tasa están en rango, el problema —si lo hay— está en el precio o el flujo, no en cómo financias."
-              : "Con la estructura fuera de rango el financiamiento no acompaña: la cuota queda más alta y el margen ante imprevistos, menor."
-          }
-        />
-      </p>
-
-      {/* AUDITORÍA fase42 D-L2 — los chips pelados se reemplazan por la MISMA
-          comparación dibujada del 13 (componente compartido): tasa contra el
-          promedio de mercado con chip de juicio (acá 4,7 vs 4,1 es justamente la
-          floja), pie como barra propia con la escalera de contexto. */}
-      <VViz t="Tu estructura contra la referencia">
-        <EstructuraComparada
-          piePct={piePct}
-          tasaPct={tasaPct}
-          tasaMarketPct={tasaMarketPct}
-          cuotaFmt={fmtMoney(cuotaActual, currency, valorUF)}
-          pie={sinPie && creditoCLP !== null
-            ? `Financiamiento 100% · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
-            : undefined}
-        />
-      </VViz>
-
-      {/* ═══ CONVERSIÓN 17 (FASE 4.2) · ESCALERA DEL PIE ═══
-          Reemplaza la referencia de "óptimo de pie 25%". Ese 25 se rastreó hasta el
-          fondo y no tiene fundamento: no marca umbral de mejora de tasa, ni el punto
-          donde el flujo cruza a neutro, ni un requisito bancario — es una convención
-          adoptada en may-2026 y nunca cuestionada. Dibujarla como referencia le habría
-          dado autoridad de dato. Acá no se declara ningún óptimo: se muestra el
-          intercambio calculado y el lector decide según su liquidez. */}
-      <EscaleraPie
-        niveles={nivelesPie}
-        valorUF={valorUF}
-        flujoPersistido={results.metrics?.flujoNetoMensual}
-        currency={currency}
-      />
-
-      {/* SEGUNDA LECTURA, PLEGADA. Las dos escaleras comparten la columna de flujo y
-          se leen como dos maneras de mover el mismo número con costos distintos: el
-          pie cuesta retorno, el plazo cuesta interés. Va colapsada porque el pie es la
-          palanca dominante del cuerpo y dos tablas abiertas compiten. */}
-      {nivelesPlazo.length > 0 && (
-        <VCollapse t="↓ Ver qué pasa si cambias el plazo">
-          <EscaleraPlazo
-            niveles={nivelesPlazo}
-            valorUF={valorUF}
-            flujoPersistido={results.metrics?.flujoNetoMensual}
-            currency={currency}
-          />
-        </VCollapse>
-      )}
-
-      {!adverso ? (
-        /* fase42 D-L2 — VCierre del vocabulario en vez de caja ad-hoc. */
-        <VCierre titulo="Qué haces con esto">
-          No hay una palanca de financiamiento urgente que mover. <mark>Si este deal necesita ajuste, está
-          en el precio o el flujo</mark>, no en cómo lo financias.
-        </VCierre>
-      ) : (
-        /* Estado en contra (D4): la vacancia en plata + dónde está la palanca.
-           Signal Red legítimo: monto negativo crítico que sale del bolsillo (uso #2). */
-        <>
-          {/* fase42 D-L2 (decisión A) — la suma narrada era un waterfall contado:
-              pasa a Fall de 3 filas + total, la forma del 17. La advertencia
-              condicional baja al cierre (el orden v12 no admite prosa entre viz y
-              cierre). Signal Red legítimo: plata que sale del bolsillo (uso #2). */}
-          {vacanciaMes !== null && m && vacanciaMes > 0 && (
-            <VViz t="Un mes de vacancia, en plata">
-              <Fall
-                rows={([
-                  { k: "Dividendo", v: fmtMoney(m.dividendo, currency, valorUF), pct: (m.dividendo / vacanciaMes) * 100, tone: "red" },
-                  { k: "Gastos comunes", v: fmtMoney(m.gastos, currency, valorUF), pct: (m.gastos / vacanciaMes) * 100, tone: "red" },
-                  { k: "Contribuciones (mes)", v: fmtMoney(contribMes, currency, valorUF), pct: (contribMes / vacanciaMes) * 100, tone: "red" },
-                ] as FallRow[])}
-                total={{ k: "Un mes vacío, de tu bolsillo", v: fmtMoney(vacanciaMes, currency, valorUF) }}
-              />
-            </VViz>
-          )}
-          {/* fase42 D-L2 — las tres cajas apiladas quedan en UNA de cierre: "Dónde
-              está la palanca" ES el "qué haces con esto" del cuerpo. */}
-          <VCierre titulo="Qué haces con esto">
-            {sinPie ? (
-              <>Acá la palanca no es subir el pie que no tienes: <mark>es el precio — cada peso menos es
-              crédito que no tomas</mark> — y asegurar flujo estable antes de firmar. Sin colchón de
-              capital, no tienes margen ante vacancia prolongada o un alza de tasa al renovar.</>
-            ) : driver === "tasa" ? (
-              <>La palanca acá es la tasa: <mark>cotizar en otro banco puede bajar la cuota</mark>. Con la
-              cuota en este nivel, una vacancia prolongada o un alza de tasa al renovar pegan directo en
-              tu flujo.</>
-            ) : driver === "ambos" ? (
-              <>Hay palanca en el pie y en la tasa: <mark>subir el pie y cotizar la tasa en otro banco
-              bajan la cuota</mark>. Con la cuota en este nivel, una vacancia prolongada o un alza de tasa
-              al renovar pegan directo en tu flujo.</>
-            ) : (
-              <>La palanca acá es el pie: <mark>subirlo baja el crédito y la cuota</mark>, y te acerca al
-              rango sano. Con la cuota en este nivel, una vacancia prolongada pega directo en tu flujo.</>
-            )}
-          </VCierre>
-        </>
-      )}
-
-      {/* T1 — línea de fuente al pie, posición única del v12 (absorbe la frase de
-          actualización manual que vivía en "De dónde sale"). */}
-      <VFuente>Tasa de referencia: promedio de mercado en UF · Motor Franco, actualización manual</VFuente>
-    </div>
-  );
-}
-
 // Drawer del hallazgo CapEx puesta a punto (motor, no IA). Muestra los montos
 // precomputados + decisividad + procedencia visible (no audit-only).
 export function DrawerCapexPuestaAPunto({
@@ -1838,19 +1502,9 @@ export function AnalysisDrawer({
     };
   }, [sequence, activeKey]);
 
-  // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
+  // Zona no encaja con AISection — placeholder pregunta.
   const zonaTitle = `La zona · ${comuna ?? (inputData.comuna || "tu comuna")}`;
-  // Sin IA de reestructuración (estructura sana), el título del fallback no debe
-  // insinuar una palanca que mover.
-  const reestructuracionTitle = aiAnalysis?.reestructuracion
-    ? "¿Y si cambias la estructura?"
-    : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
-  // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
-  // fallback del drawer de reestructuración cuando no hay sección IA.
-  const estructuraHallazgo = results.hallazgos?.find(
-    (h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento",
-  );
   // Hallazgo capex (motor-seeded) — .find por id, NO índice posicional (paridad con
   // capRate/estructura). Antes se gateaba con results.hallazgos[0] y el drawer no
   // renderizaba si otro hallazgo quedaba en [0].
@@ -1860,8 +1514,6 @@ export function AnalysisDrawer({
   const section =
     activeKey === "zona"
       ? ({ pregunta: zonaTitle } as { pregunta: string })
-      : activeKey === "reestructuracion"
-        ? ({ pregunta: reestructuracionTitle } as { pregunta: string })
         : activeKey === "capexPuestaAPunto"
           ? ({ pregunta: capexTitle } as { pregunta: string })
           : aiAnalysis?.[activeKey];
@@ -1934,26 +1586,6 @@ export function AnalysisDrawer({
           createdAt={createdAt}
         />
       )}
-      {activeKey === "reestructuracion" &&
-        (aiAnalysis?.reestructuracion ? (
-          <DrawerReestructuracion
-            data={aiAnalysis.reestructuracion}
-            currency={currency}
-            results={results}
-            valorUF={valorUF}
-            inputData={inputData}
-            createdAt={createdAt}
-          />
-        ) : estructuraHallazgo ? (
-          <DrawerEstructuraSana
-            hallazgo={estructuraHallazgo}
-            results={results}
-            currency={currency}
-            valorUF={valorUF}
-            inputData={inputData}
-            createdAt={createdAt}
-          />
-        ) : null)}
       {activeKey === "capexPuestaAPunto" && capexHallazgo && (
         <DrawerCapexPuestaAPunto
           hallazgo={capexHallazgo}

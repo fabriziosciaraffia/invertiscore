@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La línea del plazo · qué cuesta el crédito fuera del horizonte</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     PROPUESTA · 17-sep-2026. Nada implementado.
+
+     La escalera del plazo se convierte en LÍNEA y se para debajo de la matriz
+     pie × plazo, que es lo que diría «estirá siempre» si nadie la contesta.
+
+     TODAS LAS CIFRAS SON REALES, recomputadas con `simularPlazo` (LTR) y con la
+     cuota francesa del motor (STR):
+       · LTR  cb208f1f  Las Condes, 25 años
+       · LTR  3b10232c  Santiago, 30 años (el caso del tope)
+       · STR  879f208c  Santiago, 25 años, tasa 4,11%
+       · STR  ae17aebf  Providencia, 30 años, tasa 4,39%
+     Las celdas de la matriz NO se dibujan con números: la matriz no cambia en este
+     goal y no voy a inventarle valores para ilustrarla.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad-s:12px}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--inset:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--inset:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:900px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:78ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+  .clab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--tx3);font:inherit;font-size:12px;padding:5px 11px;cursor:pointer}
+  .seg button.on{background:var(--tx);color:var(--page)}
+  .seg button+button{border-left:1px solid var(--line2)}
+
+  .rot{max-width:900px;margin:34px auto 10px}
+  .rot h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);font-weight:700}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+
+  .escena{max-width:700px;margin:0 auto 14px;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:20px}
+  .capn{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);font-weight:600;margin-bottom:12px}
+
+  .v-viz-t{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:8px}
+  .v-sub{font-size:15px;font-weight:600;margin-bottom:10px}
+
+  /* la matriz, como forma y sin números inventados */
+  .mx{border:1px solid var(--line2);border-radius:4px;overflow:hidden;margin-bottom:4px}
+  .mx-top{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:7px 10px;border-bottom:1px solid var(--line2);font-size:10.5px;color:var(--tx3)}
+  .mx-tog{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+  .mx-tog span{font-size:10px;padding:3px 9px;color:var(--tx3)}
+  .mx-tog span.on{background:var(--tx);color:var(--page)}
+  .mx-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+  .mx-grid div{height:30px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    background:var(--inset)}
+  .mx-grid div:nth-child(4n){border-right:0}
+  .mx-nota{font-size:10.5px;color:var(--tx4);text-align:right;padding:5px 2px 0}
+
+  /* LA LÍNEA — el recurso propuesto */
+  .linea{font-size:12.5px;color:var(--tx3);line-height:1.55;margin:10px 0 0;max-width:72ch}
+  .linea b{color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums}
+  .par{margin:10px 0 0}
+  .par p{font-size:12.5px;color:var(--tx3);line-height:1.55;margin:0 0 3px}
+  .par p b{color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums}
+
+  .caso{max-width:900px;margin:0 auto 14px;background:var(--inset);border-radius:10px;padding:13px 15px}
+  .caso .q{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);font-weight:700;margin-bottom:7px}
+  .caso .linea,.caso .par p{color:var(--tx2)}
+  .caso .fuente{font-size:10.5px;color:var(--tx4);margin-top:8px}
+
+  .tabla{max-width:900px;margin:0 auto 18px;border-collapse:collapse;width:100%;font-size:12.5px}
+  .tabla th{text-align:left;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx4);
+    font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line2)}
+  .tabla td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--tx2);line-height:1.45;vertical-align:top}
+  .tabla td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tabla code{font-size:11px;background:var(--inset);padding:1px 5px;border-radius:3px}
+  .si{color:var(--tx);font-weight:600}
+  .no{color:var(--signal);font-weight:600}
+
+  .nota{max-width:900px;margin:0 auto 30px;font-size:12px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .nota code{font-size:11px;background:var(--inset);padding:1px 4px;border-radius:3px}
+  .marca{display:inline-block;width:15px;font-weight:700;color:var(--tx)}
+  .marca.x{color:var(--signal)}
+  .marca.q{color:var(--tx3)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">La línea del plazo · lo que el crédito cuesta fuera del horizonte</h1>
+  <p class="subx">
+    La escalera del plazo deja de ser diagrama y pasa a línea, debajo de la matriz pie × plazo.
+    <b>Nada implementado.</b> Todas las cifras son reales; las celdas de la matriz van sin números
+    porque la matriz no cambia acá y no le invento valores.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg">
+      <button class="on" onclick="document.documentElement.setAttribute('data-theme','light');this.classList.add('on');this.nextElementSibling.classList.remove('on')">Claro</button>
+      <button onclick="document.documentElement.setAttribute('data-theme','dark');this.classList.add('on');this.previousElementSibling.classList.remove('on')">Oscuro</button>
+    </span>
+  </div>
+</div>
+
+<!-- ══════════════ EN CONTEXTO ══════════════ -->
+<div class="rot">
+  <h2>En contexto — por qué va pegada abajo</h2>
+  <p>La matriz responde «¿qué me conviene dentro de los diez años?». La línea, «¿y qué cuesta fuera de ellos?». Separadas, la matriz dice «estirá siempre» sin que nadie la contradiga.</p>
+</div>
+
+<div class="escena">
+  <div class="capn">IV · Cómo lo pagas <span style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">· STR</span></div>
+
+  <div class="v-viz-t">Tu flujo mensual según pie y plazo</div>
+  <div class="mx">
+    <div class="mx-top">
+      <span>Plazo del crédito × Pie que pones</span>
+      <span class="mx-tog"><span class="on">Flujo</span><span>TIR</span></span>
+    </div>
+    <div class="mx-grid">
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+  <div class="mx-nota">la matriz real, sin cambios en este goal</div>
+
+  <p class="linea">
+    Estirar a 30 años te deja <b>$39.821</b> más al mes y te cuesta <b>$11,1M</b> de interés a lo
+    largo del crédito.
+  </p>
+</div>
+
+<div class="nota">
+  <p><span class="marca">↑</span> Fila <code>879f208c</code> Santiago · hoy 25 años · tasa 4,11% · crédito $79,4M.
+  La línea usa el mismo gris y tamaño que las notas de reparto del capítulo II: es un pie del diagrama de arriba,
+  no un bloque nuevo.</p>
+</div>
+
+<!-- ══════════════ REDACCIÓN A ══════════════ -->
+<div class="rot">
+  <h2>Redacción A — puede estirar · 74,2% LTR · 66,8% STR</h2>
+</div>
+
+<div class="caso">
+  <div class="q">LTR · cb208f1f Las Condes · hoy 25 años</div>
+  <p class="linea">Estirar a 30 años te deja <b>$84.337</b> más al mes y te cuesta <b>$26,9M</b> de interés a lo largo del crédito.</p>
+  <div class="fuente">flujo hoy $133.970 · cuota $953.809 → $869.472 · interés $115M → $141M</div>
+</div>
+
+<div class="caso">
+  <div class="q">STR · 879f208c Santiago · hoy 25 años</div>
+  <p class="linea">Estirar a 30 años te deja <b>$39.821</b> más al mes y te cuesta <b>$11,1M</b> de interés a lo largo del crédito.</p>
+  <div class="fuente">cuota $423.954 → $384.133 · interés $47,8M → $58,9M</div>
+</div>
+
+<!-- ══════════════ REDACCIÓN B ══════════════ -->
+<div class="rot">
+  <h2>Redacción B — ya en el tope · 25,6% LTR · 32,8% STR</h2>
+  <p>No se le ofrece estirar a quien ya está en 30: se le dice lo que cuesta estar ahí.</p>
+</div>
+
+<div class="caso">
+  <div class="q">LTR · 3b10232c Santiago · hoy 30 años</div>
+  <p class="linea">Ya estás en el plazo más largo que dan los bancos. Acortar a 25 te sube la cuota <b>$64.782</b> al mes y te ahorra <b>$13,8M</b> de interés.</p>
+</div>
+
+<div class="caso">
+  <div class="q">STR · ae17aebf Providencia · hoy 30 años · tasa 4,39% · crédito $210M</div>
+  <p class="linea">Ya estás en el plazo más largo que dan los bancos. Acortar a 25 te sube la cuota <b>$103.709</b> al mes y te ahorra <b>$31,8M</b> de interés.</p>
+  <div class="fuente">el ahorro son el 15% del crédito, y hoy el informe no lo dice en ninguna parte</div>
+</div>
+
+<!-- ══════════════ LA VARIANTE DEL ACORTAR ══════════════ -->
+<div class="rot">
+  <h2>La variante del acortar — y la medición que descarta dos formas</h2>
+  <p>Pediste nombrar las dos direcciones sin volverlo párrafo. Se puede, pero no en una línea: la respuesta corta está abajo del todo.</p>
+</div>
+
+<div class="nota">
+  <p><span class="marca x">✗</span> <b>Los dos sentidos NO son espejo, y eso descarta las formas cortas.</b>
+  La cuota es convexa, así que un tramo hacia arriba compra menos alivio del que cuesta un tramo hacia abajo.
+  Medido en las dos filas:</p>
+</div>
+
+<table class="tabla">
+  <thead><tr><th>Fila · hoy 25 años</th><th>Estirar a 30</th><th>Acortar a 20</th><th>Interés por peso de cuota</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>LTR <code>cb208f1f</code></td>
+      <td class="n">+$84.337/mes · +$26,9M</td>
+      <td class="n">−$131.817/mes · −$25,6M</td>
+      <td class="n">estirar <b>$319</b> · acortar <b>$194</b></td>
+    </tr>
+    <tr>
+      <td>STR <code>879f208c</code></td>
+      <td class="n">+$39.821/mes · +$11,1M</td>
+      <td class="n">−$61.825/mes · −$10,6M</td>
+      <td class="n">estirar <b>$279</b> · acortar <b>$171</b></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota">
+  <p>Por el <b>mismo</b> movimiento de interés (~$26M en LTR), estirar compra $84.337 de alivio y acortar cuesta
+  $131.817. O sea que el peso que ganás estirando es <b>1,6 veces más caro</b> en interés que el que devolvés
+  acortando.</p>
+</div>
+
+<div class="rot">
+  <h2>Las tres formas, y por qué dos se caen</h2>
+</div>
+
+<div class="caso">
+  <div class="q">✗ Forma 1 — «acortar corre al revés»</div>
+  <p class="linea">Estirar a 30 años te deja <b>$84.337</b> más al mes y cuesta <b>$26,9M</b> de interés. Acortar corre al revés, tramo a tramo de 5 años.</p>
+  <div class="fuente">Cae: «al revés» afirma simetría, y no la hay — 1,6× de diferencia. Es corta y es falsa.</div>
+</div>
+
+<div class="caso">
+  <div class="q">✗ Forma 2 — «cada 5 años de plazo»</div>
+  <p class="linea">Cada 5 años de plazo te alivian el mes y te cuestan interés: a 30 son <b>$84.337</b> más al mes y <b>$26,9M</b> de interés.</p>
+  <div class="fuente">Cae por lo mismo: el tramo 25→30 vale $84.337 y el 20→25 vale $131.817. «Cada 5 años» sugiere un paso constante que no existe.</div>
+</div>
+
+<div class="caso">
+  <div class="q">✓ Forma 3 — el par, dos líneas cortas</div>
+  <div class="par">
+    <p>Estirar a 30 años: <b>$84.337</b> más al mes, <b>$26,9M</b> más de interés.</p>
+    <p>Acortar a 20: <b>$131.817</b> menos al mes, <b>$25,6M</b> menos de interés.</p>
+  </div>
+  <div class="fuente">20 palabras en dos renglones. Cada dirección con sus dos cifras, sin afirmar simetría. No es una línea: es un par, y se lee como par.</div>
+</div>
+
+<div class="escena" style="margin-top:20px">
+  <div class="capn">IV · Cómo lo pagas <span style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">· STR, con el par</span></div>
+  <div class="v-viz-t">Tu flujo mensual según pie y plazo</div>
+  <div class="mx">
+    <div class="mx-top">
+      <span>Plazo del crédito × Pie que pones</span>
+      <span class="mx-tog"><span class="on">Flujo</span><span>TIR</span></span>
+    </div>
+    <div class="mx-grid">
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+  <div class="mx-nota">la matriz real, sin cambios en este goal</div>
+  <div class="par">
+    <p>Estirar a 30 años: <b>$39.821</b> más al mes, <b>$11,1M</b> más de interés.</p>
+    <p>Acortar a 20: <b>$61.825</b> menos al mes, <b>$10,6M</b> menos de interés.</p>
+  </div>
+</div>
+
+<div class="nota">
+  <p><span class="marca q">?</span> <b>La respuesta a tu pregunta:</b> en UNA línea no se puede nombrar las dos
+  direcciones sin mentir sobre la simetría. En <b>dos renglones cortos</b> sí, y siguen sin ser un párrafo.
+  Si preferís una sola línea, hay que perder el acortar — la Forma 3 es el precio mínimo de conservarlo.</p>
+  <p style="margin-top:8px"><span class="marca q">?</span> <b>Y la redacción B no cambia con esto:</b> quien está
+  en 30 ya recibe la dirección de acortar, porque es la única que tiene. Ahí el par sería una línea repetida.</p>
+</div>
+
+<!-- ══════════════ ALCANCE ══════════════ -->
+<div class="rot">
+  <h2>Dos cosas que cambian el alcance</h2>
+</div>
+
+<div class="nota">
+  <p><span class="marca x">✗</span> <b>En STR es código nuevo, no una mudanza.</b> <code>simularPlazo</code> es de
+  LTR: toma <code>AnalisisInput</code> y corre <code>calcMetrics</code>. El drawer STR solo usaba la escalera del
+  <i>pie</i>, así que <b><code>simularPlazoStr</code> no existe</b>. Las cifras de STR de este mockup las derivé
+  con la cuota francesa que <code>calcDividendo</code> ya calcula — es chico, pero hay que escribirlo.</p>
+  <p style="margin-top:8px"><span class="marca x">✗</span> <b><code>Escalera</code> y <code>FilaEscalera</code>
+  mueren con esto.</b> La primitiva del vocabulario la usan exactamente dos archivos —<code>escalera-pie.tsx</code>
+  y <code>escalera-plazo.tsx</code>—. Si el pie se retira y el plazo pasa a línea, quedan sin consumidor y salen
+  del vocabulario. No estaba en la lista del retiro.</p>
+  <p style="margin-top:8px"><span class="marca">✓</span> <b>Lo que sobrevive:</b> <code>simularPlazo</code> y
+  <code>NivelPlazo</code> pasan a ser la fuente de la línea. Y <code>nivelActualValidado</code> se conserva: la
+  línea necesita la misma guarda que la escalera —si el «hoy» no reproduce el flujo que el informe muestra, se
+  calla— o puede afirmar un delta contra un número que la página no dice.</p>
+</div>
+
+</body>
+</html>

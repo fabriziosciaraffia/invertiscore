@@ -47,7 +47,7 @@ import { CapitulosInversionStr, type CapituloStrId } from "@/components/analysis
 import { ZonaStrSection } from "@/components/analysis/str/ZonaStrSection";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
-import type { NivelPie } from "@/lib/analysis";
+import type { NivelPlazo } from "@/lib/analysis";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import type { ZonaStr } from "@/lib/zona-str";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
@@ -101,9 +101,10 @@ interface STRResultsProps {
   /** Anónimo-DUEÑO (cap F2-2): informe completo sin sesión — se suprimen los
    * POST de regen IA (exigen login) y el header pasa a la variante de guardado. */
   isAnonOwner?: boolean;
-  /** Escalera del pie precalculada en el server (`simularPieStr`): el reconstructor
-   *  del input arrastra `next/headers` y no puede importarse desde el cliente. */
-  nivelesPie?: NivelPie[];
+  /** Niveles de plazo precalculados en el server (`simularPlazoStr`): el reconstructor
+   *  del input arrastra `next/headers` y no puede importarse desde el cliente, y de paso
+   *  los 4 recomputes no corren en el teléfono del lector. Los consume `LineaPlazo`. */
+  nivelesPlazo?: NivelPlazo[];
   /** Simulaciones del CONGELADO (T0): fronteras de los diales y las matrices, calculadas en
    *  el server. T1 las dibuja; hasta entonces viajan y no se leen. */
   simulacionStr?: SimulacionStr | null;
@@ -131,6 +132,7 @@ export function STRResultsClient({
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
+  nivelesPlazo = [],
   simulacionStr = null,
   zonaStr = null,
 }: STRResultsProps) {
@@ -552,6 +554,7 @@ export function STRResultsClient({
               francoScore={francoScore}
               hallazgos={results.hallazgos ?? []}
               simulacion={simulacionStr}
+              nivelesPlazo={nivelesPlazo}
               inputData={inputData}
               currency={currency}
               valorUF={ufValue}

@@ -42,6 +42,8 @@ import {
   VViz,
 } from "./hallazgos/vocabulario";
 import { SensibilidadDial } from "./drawers/DrawersPropios";
+import { LineaPlazo } from "./hallazgos/linea-plazo";
+import { simularPlazo } from "@/lib/analysis";
 import { DrawerCostoMensual, DrawerNegociacion } from "@/components/ui/AnalysisDrawer";
 import { EstructuraComparada } from "./hallazgos/estructura-comparada";
 import { PatrimonioChart } from "./PatrimonioChart";
@@ -445,6 +447,28 @@ export function CapitulosInversion({
                       escrito qué aportaba y adónde se mudó su invariante. Renta corta SÍ
                       conserva la suya: `simularPieYPlazoStr` en lib/analysis/simular-str.ts,
                       dibujada en str/CapitulosInversionStr.tsx. */}
+
+                  {/* LA LÍNEA DEL PLAZO (17-sep-2026) — lo único que decía la escalera del
+                      plazo y no dice ninguna otra superficie: el interés total del crédito.
+                      Ni la matriz, ni la grilla del pop-up (veredicto y score), ni el PDF lo
+                      muestran, y no es una omisión tapable: las tres trabajan dentro de los
+                      diez años que el informe proyecta y este costo vive a 25 o 30.
+
+                      COSTO: `simularPlazo` son 4 recomputes (uno por tramo comercial). La
+                      matriz que se retiró en 6ecd80c1 costaba 16 — esto es la cuarta parte, y
+                      a cambio de la única cifra del financiamiento que el informe no tenía. */}
+                  {(() => {
+                    const niveles = simularPlazo(inputData, valorUF);
+                    if (niveles.length === 0) return null;
+                    return (
+                      <LineaPlazo
+                        niveles={niveles}
+                        valorUF={valorUF}
+                        flujoPersistido={results.metrics?.flujoNetoMensual}
+                        currency={currency}
+                      />
+                    );
+                  })()}
                 </>
               )}
               {capexV && (

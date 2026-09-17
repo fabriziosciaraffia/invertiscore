@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
-import { simularPieStr } from "@/lib/analysis/simular-pie-str";
+import { simularPlazoStr } from "@/lib/analysis/simular-plazo-str";
 import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
@@ -298,14 +298,23 @@ export default async function STRResultPage({
   // —4 × calcShortTerm— deja de correr en el teléfono del lector.
   // El UF es el CONGELADO del análisis, no el vigente: con el de hoy el precio en
   // pesos cambia y el invariante del render apaga la escalera.
-  const nivelesPie = (() => {
+  // ⛔ ACÁ SE CALCULABA `nivelesPie` PARA UN PROP QUE NADIE LEÍA (17-sep-2026). La
+  // escalera del pie murió el 5-sep con la maquinaria que la abría (`b6406180`), pero el
+  // recompute siguió corriendo en cada carga de cada informe STR durante doce días: cuatro
+  // `calcShortTerm` para alimentar un prop declarado y sin lector. Es el mismo huérfano que
+  // la lección del retiro: borrar un caller deja vivo lo que lo alimentaba, y eso no lo caza
+  // ningún gate.
+  //
+  // La cañería se reusa para la LÍNEA DEL PLAZO, que sí se lee. Mismo costo —4 recomputes—
+  // y ahora con destino.
+  const nivelesPlazo = (() => {
     const raw = data.input_data as Record<string, unknown> | null;
     const uf = Number(raw?.ufCongelada) || ufFrozen;
     if (!raw || !data.created_at || !(uf > 0)) return [];
     try {
-      return simularPieStr(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
+      return simularPlazoStr(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
     } catch {
-      // Un fallo del recompute NUNCA rompe el informe: sin niveles, no hay escalera.
+      // Un fallo del recompute NUNCA rompe el informe: sin niveles, no hay línea.
       return [];
     }
   })();
@@ -373,7 +382,7 @@ export default async function STRResultPage({
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,
-    nivelesPie,
+    nivelesPlazo,
     simulacionStr,
     zonaStr,
   };

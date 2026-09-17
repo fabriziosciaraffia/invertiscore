@@ -619,76 +619,11 @@ export function Escenarios({ filas, pie }: { filas: FilaEscenario[]; pie?: React
   );
 }
 
-/** Una fila de escalera. Campos NEUTROS a propósito: la primitiva la comparten la
- *  escalera del pie (nivel = pie · costo = TIR) y la del plazo (nivel = años ·
- *  costo = interés total del crédito). Nombrarlos `pie`/`tir` obligaba al segundo
- *  llamador a usar campos que mienten sobre lo que llevan. */
-export type FilaEscalera = {
-  /** Columna 1: el nivel ("20%", "25 años"). */
-  nivel: string;
-  /** Subtexto del nivel ("$19,0M", "hoy"). */
-  nivelSub: string;
-  esActual: boolean;
-  /** Columna 2: el efecto en el mes. Compartida por las dos escaleras. */
-  flujo: string;
-  flujoNegativo: boolean;
-  /** Delta contra el nivel actual ("+$52K mejor"). Vacío en la fila actual. */
-  flujoDelta?: string;
-  /** Columna 3: el COSTO propio de esa palanca — TIR en el pie, interés total en el
-   *  plazo. Sin ella la escalera muestra media verdad ("más siempre mejor"), que es
-   *  el sesgo del óptimo fijo que este diagrama reemplazó. */
-  costo: string;
-  /** Subtexto del costo. En el plazo lleva el horizonte de ESA fila ("a 25 años"),
-   *  que es la única cifra del informe que no habla a 10 años. */
-  costoSub?: string;
-};
-
-/** Escalera: el trade-off completo, un nivel por fila. Las DOS columnas de valor son
- *  obligatorias. `cols` rota los rótulos entre las dos palancas; `ancha` da a la
- *  tercera columna el espacio que necesita un monto (la del pie lleva un porcentaje
- *  y le bastan 62px). */
-export function Escalera({
-  filas,
-  pie,
-  cols = ["Pie", "Tu flujo mensual", "TIR"],
-  ancha,
-}: {
-  filas: FilaEscalera[];
-  pie?: ReactNode;
-  cols?: [string, string, string];
-  ancha?: boolean;
-}) {
-  if (!filas.length) return null;
-  return (
-    <div className={`esca${ancha ? " ancha" : ""}`}>
-      <div className="esca-head">
-        <span>{cols[0]}</span>
-        <span>{cols[1]}</span>
-        <span>{cols[2]}</span>
-      </div>
-      {filas.map((f, i) => (
-        <div key={i} className={`esca-row${f.esActual ? " hoy" : ""}`}>
-          <span className="esca-pie">
-            {f.nivel}
-            <small>
-              {f.nivelSub}
-              {f.esActual ? " · hoy" : ""}
-            </small>
-          </span>
-          <span className={`esca-v${f.flujoNegativo ? " neg" : " pos"}`}>
-            {f.flujo}
-            {f.flujoDelta && <small>{f.flujoDelta}</small>}
-          </span>
-          <span className="esca-v">
-            {f.costo}
-            {f.costoSub && <small>{f.costoSub}</small>}
-          </span>
-        </div>
-      ))}
-      {pie && <div className="esca-foot">{pie}</div>}
-    </div>
-  );
-}
+// ⛔ `Escalera` y su tipo `FilaEscalera` SE RETIRARON el 17-sep-2026. Sus dos únicos
+// consumidores eran `escalera-pie.tsx` y `escalera-plazo.tsx`: la del pie se retiró porque
+// el capítulo IV ya dice lo mismo con más detalle (matriz pie × plazo con toggle Flujo/TIR),
+// y la del plazo se convirtió en `LineaPlazo` —dos renglones— porque lo único que decía y
+// nadie más dice es el interés total del crédito, que no necesita cuatro filas para caber.
 
 /** Plegable del vocabulario. El CSS (`.v-collapse`) existía desde el rediseño y no
  *  tenía llamador: se escribió para exactamente esto — una segunda lectura que no
