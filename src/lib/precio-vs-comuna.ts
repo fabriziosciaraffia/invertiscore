@@ -14,8 +14,30 @@
 // La mediana es ASYNC (scraped_properties): el caller la resuelve y la inyecta YA
 // RESUELTA; este builder es síncrono y puro, no hace queries.
 
-import type { PrecioVsComuna } from "./types";
+import type { PosicionEnComuna, PrecioVsComuna } from "./types";
 import type { CondicionMercado } from "./comuna-stats";
+
+/**
+ * POSICIÓN DEL SUJETO POR CUARTILES (21-sep-2026). Devuelve null —no un cuartil
+ * inventado— cuando falta alguno o cuando la terna no es coherente (p25 ≤ mediana ≤ p75):
+ * un snapshot corrupto no puede producir «sobre_p75». Los bordes van con el cuartil de
+ * abajo (≤), igual que `desviacionPct` trata «en la mediana» como no-adverso.
+ */
+export function posicionEnComuna(
+  sujetoUfM2: number,
+  mediana: number,
+  p25: number | null | undefined,
+  p75: number | null | undefined,
+): PosicionEnComuna | null {
+  if (typeof p25 !== "number" || typeof p75 !== "number") return null;
+  if (!Number.isFinite(p25) || !Number.isFinite(p75) || !(p25 > 0) || !(p75 > 0)) return null;
+  if (!(p25 <= mediana && mediana <= p75)) return null;
+  if (!(sujetoUfM2 > 0)) return null;
+  if (sujetoUfM2 <= p25) return "bajo_p25";
+  if (sujetoUfM2 <= mediana) return "p25_mediana";
+  if (sujetoUfM2 <= p75) return "mediana_p75";
+  return "sobre_p75";
+}
 
 /**
  * Empaqueta la cifra UF/m² del sujeto (sin estacionamiento) + la desviación vs la
@@ -38,10 +60,17 @@ export function buildPrecioVsComuna(p: {
   n: number;
   /** Universo de la muestra (nuevo|usado). Ausente ⇒ mediana mixta pre-segmentación. */
   universo?: CondicionMercado;
+  /** Cuartiles UF/m² de la misma muestra. `undefined` = snapshot anterior al campo (no se
+   *  emite nada); `null` = se midió y no alcanzó. */
+  p25UfM2?: number | null;
+  p75UfM2?: number | null;
 }): PrecioVsComuna {
   const sujetoUfM2 = Math.round(p.sujetoUfM2 * 10) / 10;
   const mediana = p.medianaComunaUfM2;
   const universo = p.universo ? { universo: p.universo } : {};
+  // Los cuartiles viajan solo si el caller los trae (aunque sean null): ausencia ≠ null.
+  const traeCuartiles = p.p25UfM2 !== undefined || p.p75UfM2 !== undefined;
+  const cuartiles = traeCuartiles ? { p25UfM2: p.p25UfM2 ?? null, p75UfM2: p.p75UfM2 ?? null } : {};
 
   const sujetoOk = Number.isFinite(sujetoUfM2) && sujetoUfM2 > 0;
   const medianaOk = typeof mediana === "number" && Number.isFinite(mediana) && mediana > 0;
@@ -56,6 +85,8 @@ export function buildPrecioVsComuna(p: {
       confiable: false,
       n: p.n,
       ...universo,
+      ...cuartiles,
+      ...(traeCuartiles ? { posicion: null } : {}),
     };
   }
 
@@ -71,5 +102,7 @@ export function buildPrecioVsComuna(p: {
     confiable: true,
     n: p.n,
     ...universo,
+    ...cuartiles,
+    ...(traeCuartiles ? { posicion: posicionEnComuna(sujetoUfM2, mediana, p.p25UfM2, p.p75UfM2) } : {}),
   };
 }

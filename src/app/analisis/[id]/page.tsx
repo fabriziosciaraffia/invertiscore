@@ -172,7 +172,9 @@ export default async function AnalisisDetallePage({
     | undefined;
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
-        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0 }
+        // Los cuartiles viajan con la mediana (21-sep-2026): `undefined` en snapshots
+        // anteriores al campo, y ahí el motor no emite posición.
+        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0, p25: medianaSnapshot.p25, p75: medianaSnapshot.p75 }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
   // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute

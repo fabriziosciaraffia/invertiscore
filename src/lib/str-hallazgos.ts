@@ -70,8 +70,9 @@ export interface BuildStrHallazgosCtx {
   piePct: number;   // % (ej. 20)
   tasaPct: number;  // % (ej. 4.5)
   plazoAnios: number;
-  /** mediana comunal de venta UF/m² ya resuelta (sobreprecio-sync). */
-  mediana: { mediana: number | null; n: number };
+  /** mediana comunal de venta UF/m² ya resuelta (sobreprecio-sync). Los cuartiles son
+   *  opcionales: STR resuelve la mediana viva y los trae; una fila persistida sin ellos no. */
+  mediana: { mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null };
   valorUF: number;  // UF→CLP del momento (patrimonio CLP↔UF, financing)
   incluyeCorretaje: boolean;
   /**
@@ -215,6 +216,11 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       medianaComunaUfM2: ctx.mediana.mediana,
       confiable,
       n: ctx.mediana.n,
+      // STR declara universo desde el 21-sep-2026: la mediana viva ya lo traía y el ctx lo
+      // dejaba caer, así que la frase decía «la mediana de la comuna» sin «usados/nuevos».
+      universo: ctx.mediana.universo,
+      p25UfM2: ctx.mediana.p25,
+      p75UfM2: ctx.mediana.p75,
     });
     if (pvc.confiable && pvc.desviacionPct != null) {
       out.push(

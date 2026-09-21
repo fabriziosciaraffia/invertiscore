@@ -20,6 +20,25 @@ export function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+/**
+ * Percentil `p` (0..1) por interpolación lineal entre vecinos (R-7, el de Excel y
+ * numpy). Con p = 0,5 coincide con `median` para n par e impar.
+ *
+ * Existe porque la mediana sola no dice si un +14% es «caro»: en Santiago 1D el p75
+ * está +18% sobre la mediana y en Providencia 2D +9% (medido el 21-sep-2026 sobre
+ * `scraped_properties`, usado, 90 días). Las mismas filas que ya bajan para la
+ * mediana dan p25 y p75 sin una consulta más.
+ */
+export function percentil(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const pos = Math.min(Math.max(p, 0), 1) * (sorted.length - 1);
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
 // Factor de correccion publicado->cierre para precios de VENTA de scraped_properties.
 // Los precios son PUBLICADOS (TocToc), inflados ~5-10% sobre el cierre real en USADOS.
 // Centro del rango chileno ~7% (factor 0.93); comunas premium de alta rotacion ~5% (0.95).
@@ -119,6 +138,10 @@ export type MedianaComunaInyectada = {
   mediana: number | null;
   n: number;
   universo?: CondicionMercado;
+  /** Cuartiles UF/m² de la MISMA muestra que la mediana. Opcionales: los snapshots
+   *  anteriores al 21-sep-2026 no los traen, y sin ellos el motor no inventa posición. */
+  p25?: number | null;
+  p75?: number | null;
 };
 
 /** Resultado de la mediana comunal, con el universo y la ventana que la produjeron. */
@@ -131,6 +154,10 @@ export interface MedianaComunaVenta {
   universo: CondicionMercado;
   /** Ventana de frescura (días) que produjo la muestra. null si ninguna alcanzó. */
   ventanaDias: number | null;
+  /** Cuartiles UF/m² de la misma muestra (p25 ≤ mediana ≤ p75). null cuando la
+   *  mediana es null: salen de las mismas filas, así que no existe uno sin la otra. */
+  p25: number | null;
+  p75: number | null;
 }
 
 // Alias de comuna (form/UI) -> forma canónica almacenada en scraped_properties.
@@ -294,7 +321,7 @@ export async function getComunaMedianaVentaUF(
     if (ventas.length >= MIN_VENTAS_MEDIANA) break;
   }
   if (ventas.length < MIN_VENTAS_MEDIANA) {
-    return { mediana: null, n: ventas.length, universo: condicion, ventanaDias: null };
+    return { mediana: null, n: ventas.length, universo: condicion, ventanaDias: null, p25: null, p75: null };
   }
 
   const m2sUF: number[] = [];
@@ -310,12 +337,16 @@ export async function getComunaMedianaVentaUF(
     m2sUF.push(precioUF / sup);
   }
   if (m2sUF.length < MIN_VENTAS_MEDIANA) {
-    return { mediana: null, n: m2sUF.length, universo: condicion, ventanaDias: null };
+    return { mediana: null, n: m2sUF.length, universo: condicion, ventanaDias: null, p25: null, p75: null };
   }
+  // La dispersión sale de las MISMAS filas que la mediana: sin ella «caro» era la misma
+  // frase en Providencia (p75 +9% sobre la mediana) y en Santiago centro (p75 +18%).
   return {
     mediana: Math.round(median(m2sUF) * 100) / 100,
     n: m2sUF.length,
     universo: condicion,
     ventanaDias: ventanaUsada,
+    p25: Math.round(percentil(m2sUF, 0.25) * 100) / 100,
+    p75: Math.round(percentil(m2sUF, 0.75) * 100) / 100,
   };
 }

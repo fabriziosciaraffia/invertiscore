@@ -114,7 +114,7 @@ export default async function DocumentoLTRPage({
     | undefined;
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
-        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0 }
+        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0, p25: medianaSnapshot.p25, p75: medianaSnapshot.p75 }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
 

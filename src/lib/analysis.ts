@@ -536,6 +536,10 @@ function calcMetrics(
     // fraseCanonica: es lo que evita volver a rotular "la mediana de la comuna"
     // a una mediana que es de un solo universo.
     universo: medianaComunaVentaUF?.universo,
+    // Cuartiles de la misma muestra (21-sep-2026): viajan del snapshot o de la query,
+    // igual que el universo. Ausentes en filas anteriores al campo.
+    p25UfM2: medianaComunaVentaUF?.p25,
+    p75UfM2: medianaComunaVentaUF?.p75,
   });
   // Hallazgo de sobreprecio: builder puro y determinístico sobre precioVsComuna
   // (NO recalcula la desviación). null cuando la mediana no es confiable — caso

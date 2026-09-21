@@ -496,6 +496,14 @@ export interface ValorMercadoRef {
   radioMetros?: number | null;
 }
 
+/**
+ * Dónde cae el sujeto dentro de la distribución de la muestra comunal, por cuartiles.
+ * Es lo que vuelve comparable un «+14%» entre comunas: en una cae dentro de la mitad
+ * central del mercado y en otra en el cuarto superior. Solo existe con p25 y p75
+ * persistidos (snapshots desde el 21-sep-2026 o mediana resuelta viva).
+ */
+export type PosicionEnComuna = "bajo_p25" | "p25_mediana" | "mediana_p75" | "sobre_p75";
+
 export interface PrecioVsComuna {
   /** Precio depto / superficie, SIN estacionamiento (base comparable a la mediana comunal). NO es metrics.precioM2. */
   sujetoUfM2: number;
@@ -513,6 +521,13 @@ export interface PrecioVsComuna {
    *  OPCIONAL — ausente en análisis con snapshot anterior al fix de segmentación,
    *  cuya mediana es de universo mixto y por eso no se rotula. */
   universo?: CondicionMercado;
+  /** Cuartiles UF/m² de la MISMA muestra que la mediana. null cuando no son confiables;
+   *  ausentes cuando el snapshot es anterior al campo. Ver `PosicionEnComuna`. */
+  p25UfM2?: number | null;
+  p75UfM2?: number | null;
+  /** Posición del sujeto por cuartiles. null si faltan los cuartiles o no son
+   *  coherentes (p25 ≤ mediana ≤ p75). */
+  posicion?: PosicionEnComuna | null;
 }
 
 // Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
@@ -661,6 +676,12 @@ export interface HallazgoSobreprecio {
     // Universo de la muestra. Ausente ⇒ mediana de universo mixto (snapshot
     // pre-segmentación): la frase NO declara universo. Ver sobreprecio-hallazgo.ts.
     universo?: CondicionMercado;
+    // Cuartiles de la misma muestra y posición del sujeto entre ellos (21-sep-2026).
+    // Copiados tal cual de precioVsComuna: el hallazgo no recalcula nada. Ausentes en
+    // filas cuyo snapshot es anterior al campo.
+    p25UfM2?: number | null;
+    p75UfM2?: number | null;
+    posicion?: PosicionEnComuna | null;
   };
   // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: BAJO la mediana = favorable
   // (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro = peor.

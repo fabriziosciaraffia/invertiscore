@@ -72,7 +72,7 @@ export async function prefetchMedianaComunaVenta(
     );
   } catch (e) {
     console.error("[prefetchMedianaComunaVenta] falló (no bloquea el análisis):", e);
-    return { mediana: null, n: 0, universo: condicion, ventanaDias: null };
+    return { mediana: null, n: 0, universo: condicion, ventanaDias: null, p25: null, p75: null };
   }
 }
 
@@ -90,12 +90,17 @@ export interface MedianaComunaSnapshot {
    *  ⇒ la prosa no declara universo (no se le pone etiqueta a un número que no la
    *  tiene). Ver sobreprecio-hallazgo.ts. */
   universo?: CondicionMercado;
+  /** Cuartiles UF/m² de la misma muestra que la mediana (21-sep-2026). OPCIONALES: los
+   *  snapshots anteriores no los tienen y el motor no les inventa posición. Sin ellos
+   *  «caro» es la misma frase en Providencia y en Santiago centro. */
+  p25?: number | null;
+  p75?: number | null;
 }
 
 /** Envuelve el `{ mediana, n }` del prefetch con el timestamp y el nivel de
  * procedencia, en el shape único que persisten los flujos de creación. */
 export function buildMedianaSnapshot(
-  resuelta: { mediana: number | null; n: number; universo?: CondicionMercado }
+  resuelta: { mediana: number | null; n: number; universo?: CondicionMercado; p25?: number | null; p75?: number | null }
 ): MedianaComunaSnapshot {
   return {
     mediana: resuelta.mediana,
@@ -103,6 +108,10 @@ export function buildMedianaSnapshot(
     resolvedAt: new Date().toISOString(),
     nivel: "prefetch",
     ...(resuelta.universo ? { universo: resuelta.universo } : {}),
+    // Se persisten aunque sean null: distingue «se midió y no alcanzó» de «snapshot
+    // anterior al campo», que es ausencia.
+    ...(resuelta.p25 !== undefined ? { p25: resuelta.p25 } : {}),
+    ...(resuelta.p75 !== undefined ? { p75: resuelta.p75 } : {}),
   };
 }
 
