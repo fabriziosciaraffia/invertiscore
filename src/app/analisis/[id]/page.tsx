@@ -16,7 +16,8 @@ import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
-import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -170,11 +171,23 @@ export default async function AnalisisDetallePage({
     | MedianaComunaSnapshot
     | null
     | undefined;
+  // Referencia de cap rate de la comuna (21-sep-2026): misma regla, snapshot presente gana;
+  // las filas anteriores al campo la resuelven viva (y el prefetch de la mediana ya la trae).
+  const capRefSnapshot = (data as Record<string, unknown>).capref_comuna_snapshot as
+    | CapRefComunaSnapshot
+    | null
+    | undefined;
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
         // Los cuartiles viajan con la mediana (21-sep-2026): `undefined` en snapshots
         // anteriores al campo, y ahí el motor no emite posición.
-        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0, p25: medianaSnapshot.p25, p75: medianaSnapshot.p75 }
+        ? {
+            mediana: medianaSnapshot.mediana,
+            n: medianaSnapshot.n ?? 0,
+            p25: medianaSnapshot.p25,
+            p75: medianaSnapshot.p75,
+            capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
+          }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
   // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute

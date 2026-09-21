@@ -28,6 +28,8 @@ import {
   type CondicionMercado,
 } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
+import { resolverCapRefComunaVivo } from "@/lib/capref-comuna-query";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { vmFrancoUFDe } from "@/lib/valor-mercado";
 import {
   esReferenciaContrastable,
@@ -1049,6 +1051,8 @@ export function techoSinUmbralEnNegociacion(ai: Record<string, unknown> | null |
 export interface RazonesHeroClaim {
   viasCruzan: string[];
   capRatePct?: number | null;
+  /** La cifra del sujeto en la base de la referencia (`valor.sujetoPct`). */
+  capSujetoPct?: number | null;
   capRefPct?: number | null;
   arriendoM?: number | null;
   dividendoM?: number | null;
@@ -1108,7 +1112,8 @@ function razonHero(r: RazonesHeroClaim, sujeto: SujetoHero, comp: ComparadorHero
     case "patrimonio/fondo": return { nombre, valor: div(r.exitEquityCLP, r.fondoCLP) };
     case "cap/deposito": return { nombre, valor: div(r.capRatePct, 5) };
     case "cap/fondo": return { nombre, valor: div(r.capRatePct, 7) };
-    case "cap/referencia": return { nombre, valor: div(r.capRatePct, r.capRefPct) };
+    // En la base de la referencia (bruto contra bruto con el benchmark de avisos).
+    case "cap/referencia": return { nombre, valor: div(r.capSujetoPct ?? r.capRatePct, r.capRefPct) };
     case "precioM2/mediana": case "precioM2/referencia": case "precio/mediana":
       return { nombre, valor: r.medianaConfiable ? div(r.sujetoUfM2, r.medianaUfM2) : null };
     case "precio/vm": case "precioM2/vm":
@@ -1159,7 +1164,13 @@ function datosHallazgoParaPrompt(h: Hallazgo): string {
     }
     case "cap_rate": {
       const v = h.valor;
-      return `qué: rentabilidad neta anual del arriendo sobre el precio (CAP rate) · cuánto: ${pct(v.capRatePct)}% contra ${pct(v.capRefPct)}% de referencia (${v.gapPts >= 0 ? "+" : ""}${pct(v.gapPts)} pts) · dirección: ${dir} · ${conf}`;
+      const base = v.base === "bruta"
+        ? `rentabilidad BRUTA anual del arriendo sobre el precio (antes de gastos; el cap rate neto es ${pct(v.capRatePct)}%)`
+        : "rentabilidad neta anual del arriendo sobre el precio (CAP rate)";
+      const ref = v.nivel === "celda" || v.nivel === "comuna"
+        ? `de referencia de los avisos de ${v.celda}`
+        : v.nivel === "bdo" ? `neto de referencia de BDO para la comuna` : "de referencia nacional";
+      return `qué: ${base} · cuánto: ${pct(v.sujetoPct ?? v.capRatePct)}% contra ${pct(v.capRefPct)}% ${ref} (${v.gapPts >= 0 ? "+" : ""}${pct(v.gapPts)} pts) · dirección: ${dir} · ${conf}`;
     }
     case "sobreprecio": {
       const v = h.valor;
@@ -1392,9 +1403,22 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // self-contained desde input → idénticas a las que recomputa el render
     // (recomputeResultsForLegacy→runAnalysis→calcDecisividades). Se inyectan en los
     // 6 builders de abajo; ningún builder recalcula su decisividad.
+    // La referencia de cap rate de la comuna (21-sep-2026): el snapshot de la fila gana; las
+    // filas anteriores al campo la resuelven viva. La misma que lee el render, para que la
+    // decisividad y la brecha que narra la prosa sean las de la card.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let capRefGen = ((analysis as any).capref_comuna_snapshot ?? null) as CapRefComunaSnapshot | null;
+    if (!capRefGen) {
+      try {
+        capRefGen = await resolverCapRefComunaVivo(supabase, input, UF_CLP);
+      } catch (e) {
+        console.error("[generateAiAnalysis] referencia de cap rate de la comuna no resuelta (cae al nacional):", e);
+      }
+    }
     const decisividades = calcDecisividades(input, UF_CLP, {
       mediana: precioM2ZonaConfiable ? precioM2Zona : null,
       n: 0,
+      capRefComuna: capRefGen,
     });
 
     // FASE B — Hallazgo de SOBREPRECIO (4º hallazgo). Vive acá y NO en el motor:
@@ -2206,7 +2230,8 @@ estructuraFinancieraSugerida (referencia para tu prosa — NO inventes ni recalc
         ?.valor as { capRatePct?: number } | undefined)?.capRatePct ?? m.capRate;
     const hallazgoCapRateGen = buildHallazgoCapRate({
       capRatePct: capRateCard,
-      ref: getCapRefComuna(input.comuna),
+      brutoPct: m.rentabilidadBruta,
+      ref: getCapRefComuna(input.comuna, capRefGen),
       comuna: input.comuna,
       modalidad: "ltr",
       decisividad: decisividades.cap_rate?.decisividad ?? 0,
@@ -3597,6 +3622,7 @@ Responde SOLO este JSON, sin texto alrededor:
     const ctxClaim: RazonesHeroClaim = {
       viasCruzan,
       capRatePct: hallazgoCapRateGen?.valor.capRatePct ?? null,
+      capSujetoPct: hallazgoCapRateGen?.valor.sujetoPct ?? null,
       capRefPct: hallazgoCapRateGen?.valor.capRefPct ?? null,
       arriendoM: Number(input.arriendo) || null,
       dividendoM: hallazgoFlujoGen?.valor.dividendoMensualCLP ?? null,

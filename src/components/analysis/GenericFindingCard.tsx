@@ -107,9 +107,10 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: "Lo que renta hoy vs lo que debería",
         kpi: `${pct1(v.capRatePct)}%`,
         kpiRed: false,
+        // La comparación va en la base de la referencia: «bruto» contra los avisos de la comuna.
         ksub: capEnLinea
-          ? `cap rate · en línea con el mercado (${pct1(v.capRefPct)}%)`
-          : `cap rate · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} el mercado (${pct1(v.capRefPct)}%)`,
+          ? `cap rate${v.base === "bruta" ? ` bruto ${pct1(v.sujetoPct)}%` : ""} · en línea con ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`
+          : `cap rate${v.base === "bruta" ? ` bruto ${pct1(v.sujetoPct)}%` : ""} · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`,
       };
     }
     case "flujo_mensual": {

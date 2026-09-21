@@ -142,6 +142,12 @@ export type MedianaComunaInyectada = {
    *  anteriores al 21-sep-2026 no los traen, y sin ellos el motor no inventa posición. */
   p25?: number | null;
   p75?: number | null;
+  /** Referencia de cap rate de la comuna (capref-comuna.ts), resuelta async en el pipeline y
+   *  persistida en `analisis.capref_comuna_snapshot`. Viaja por el mismo parámetro que la
+   *  mediana porque es el mismo tipo de dato: mercado de la comuna, ya resuelto, que el motor
+   *  síncrono recibe y no busca. Ausente ⇒ el hallazgo cap_rate compara contra el promedio
+   *  nacional (nivel «nacional»). */
+  capRefComuna?: import("./capref-comuna").CapRefComunaSnapshot | null;
 };
 
 /** Resultado de la mediana comunal, con el universo y la ventana que la produjeron. */
@@ -160,11 +166,17 @@ export interface MedianaComunaVenta {
   p75: number | null;
 }
 
-// Alias de comuna (form/UI) -> forma canónica almacenada en scraped_properties.
+// Alias de comuna (form/UI/prosa) -> forma canónica almacenada en scraped_properties.
 // El form usa "Santiago Centro" pero la tabla guarda "Santiago"; un mismatch en
-// .eq("comuna", ...) devuelve 0 filas. Extensible: agregar alias acá si aparecen.
-const COMUNA_ALIASES: Record<string, string> = {
+// .eq("comuna", ...) devuelve 0 filas. ÚNICO mapa de alias del repo (21-sep-2026): la mediana
+// comunal, el benchmark de cap rate, la tabla de BDO, el guard de comunas de la prosa
+// (`cifras-guard.ts`), el roster (`comunas-disponibles.ts`) y el universo STR pasan por acá.
+// Había tres copias y «Santiago Centro» sin normalizar dejó 17 filas fuera del cruce con BDO.
+// Extensible: agregar alias acá si aparecen.
+export const COMUNA_ALIASES: Record<string, string> = {
   "Santiago Centro": "Santiago",
+  // El prompt viejo le enseñó al modelo a escribir «Santiago centro» (minúscula).
+  "Santiago centro": "Santiago",
 };
 export function normalizeComuna(comuna: string): string {
   return COMUNA_ALIASES[comuna] ?? comuna;

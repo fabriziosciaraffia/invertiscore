@@ -6,6 +6,7 @@ import { metricaValorONull } from "@/lib/types";
 import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
 import { fmtMoney, menos } from "./utils";
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
+import { capRateDisplayPct } from "@/lib/cap-rate-hallazgo";
 
 /**
  * LOS NÚMEROS — contrato CONGELADO 02-sep-2026 (T2).
@@ -29,14 +30,18 @@ export function LosNumeros({
   metrics,
   results,
   capRefPct,
+  capRefBase,
   currency,
   valorUF,
   onCalculo,
 }: {
   metrics: AnalysisMetrics;
   results: FullAnalysisResult;
-  /** Referencia de mercado del cap rate neto (del hallazgo o de `getCapRefComuna`). */
+  /** Referencia de mercado del cap rate (del hallazgo o de `getCapRefComuna`). */
   capRefPct: number | null;
+  /** En qué base está la referencia: «bruta» (avisos de la comuna) va bajo el cap rate bruto;
+   *  «neta» (BDO, nacional) bajo el neto. Ausente ⇒ neta (filas viejas). */
+  capRefBase?: "bruta" | "neta";
   currency: "CLP" | "UF";
   valorUF: number;
   onCalculo?: () => void;
@@ -59,17 +64,23 @@ export function LosNumeros({
       v: pct1(metrics.rentabilidadBruta),
       tr: (
         <>
-          <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el arriendo de un año, <b>antes</b> de gastos.
+          <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el arriendo de un año, <b>antes</b> de gastos.{" "}
+          {capRefPct != null && capRefBase === "bruta" ? <b>Los avisos de la comuna rinden {pct1(capRefPct)}.</b> : null}
         </>
       ),
     },
     {
       k: <><Ang>Cap rate</Ang> neto</>,
-      v: pct1(metrics.capRate),
+      // LA MISMA CIFRA que lee el capítulo I: `valor.capRatePct` del hallazgo, redondeada UNA
+      // vez desde el crudo. `metrics.capRate` viene redondeado a DOS decimales y formatearlo a
+      // uno es redondear dos veces (2,848 → 2,85 → «2,9» acá, 2,8 en el capítulo): 55 filas
+      // del parque mostraban dos cap rates en la misma página (21-sep-2026). Sin hallazgo
+      // (filas sin ingreso), el crudo redondeado una vez.
+      v: pct1(metrics.hallazgoCapRate?.valor.capRatePct ?? capRateDisplayPct(metrics.capRate)),
       tr: (
         <>
           Lo mismo, ya descontados los gastos.{" "}
-          {capRefPct != null ? <b>La referencia de mercado es {pct1(capRefPct)}.</b> : null}
+          {capRefPct != null && capRefBase !== "bruta" ? <b>La referencia de mercado es {pct1(capRefPct)}.</b> : null}
         </>
       ),
     },

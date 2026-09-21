@@ -192,6 +192,9 @@ export async function POST(request: Request) {
         // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
         // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
+        // Referencia de cap rate de la comuna, resuelta en el mismo prefetch (foto fija; la
+        // migración 20260921_capref_comuna_snapshot.sql va ANTES del deploy).
+        capref_comuna_snapshot: medianaComuna.capRefComuna ?? null,
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
         // Cap anónimo: el hash del token de la cookie es la ventana de claim.
         // `charge_mode` (arriba) queda en 'anon_cap' como marca de origen

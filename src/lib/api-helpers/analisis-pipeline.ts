@@ -19,11 +19,14 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { cookies } from "next/headers";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { resolverCapRefComunaVivo } from "@/lib/capref-comuna-query";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import {
   getComunaMedianaVentaUF,
   resolverCondicionMercado,
   type CondicionMercado,
   type MedianaComunaVenta,
+  type MedianaComunaInyectada,
 } from "@/lib/comuna-stats";
 import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
@@ -59,20 +62,41 @@ export async function prefetchMedianaComunaVenta(
   input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios"> &
     Partial<Pick<AnalisisInput, "esNuevo" | "antiguedad">>,
   ufValue: number
-): Promise<MedianaComunaVenta> {
+): Promise<MedianaComunaVenta & { capRefComuna: CapRefComunaSnapshot | null }> {
   const condicion = resolverCondicionMercado(input);
+  // La referencia de cap rate de la comuna se resuelve JUNTO con la mediana (mismo dato: el
+  // mercado de la comuna, ya resuelto, que el motor recibe): todo caller de este prefetch —
+  // creación, recalculate, comparativa, filas viejas sin snapshot— la obtiene sin cablear nada.
+  const [mediana, capRefComuna] = await Promise.all([
+    (async () => {
+      try {
+        return await getComunaMedianaVentaUF(supabase, input.comuna, input.superficie, input.dormitorios, ufValue, condicion);
+      } catch (e) {
+        console.error("[prefetchMedianaComunaVenta] falló (no bloquea el análisis):", e);
+        return { mediana: null, n: 0, universo: condicion, ventanaDias: null, p25: null, p75: null } as MedianaComunaVenta;
+      }
+    })(),
+    prefetchCapRefComuna(supabase, input, ufValue),
+  ]);
+  return { ...mediana, capRefComuna };
+}
+
+/**
+ * Referencia de cap rate de la comuna (capref-comuna-query.ts), defensiva: null si la
+ * resolución falla, y el motor cae al promedio nacional declarándolo. Se usa sola cuando la
+ * fila ya tiene snapshot de mediana pero no de referencia (filas anteriores al 21-sep-2026).
+ */
+export async function prefetchCapRefComuna(
+  supabase: SupabaseClient,
+  input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios"> &
+    Partial<Pick<AnalisisInput, "esNuevo" | "antiguedad">>,
+  ufValue: number,
+): Promise<CapRefComunaSnapshot | null> {
   try {
-    return await getComunaMedianaVentaUF(
-      supabase,
-      input.comuna,
-      input.superficie,
-      input.dormitorios,
-      ufValue,
-      condicion
-    );
+    return await resolverCapRefComunaVivo(supabase, input, ufValue);
   } catch (e) {
-    console.error("[prefetchMedianaComunaVenta] falló (no bloquea el análisis):", e);
-    return { mediana: null, n: 0, universo: condicion, ventanaDias: null, p25: null, p75: null };
+    console.error("[prefetchCapRefComuna] falló (no bloquea el análisis):", e);
+    return null;
   }
 }
 
@@ -452,7 +476,7 @@ export async function buildShortTermAnalysisRow(
   ufValue: number,
   /** Mediana comunal de venta UF/m² pre-fetcheada (sobreprecio de la pirámide STR). Si el
    *  caller no la resuelve, el hallazgo de sobreprecio se omite (N−1) — patrón LTR. */
-  medianaComuna?: { mediana: number | null; n: number },
+  medianaComuna?: MedianaComunaInyectada,
   /** Colector de timing (Goal A): objeto mutable del caller. Solo medición —
    *  esta función escribe airroi_ms/airroi_cache/motor_ms y nada más. */
   timing?: { airroi_ms?: number; airroi_cache?: "hit" | "miss"; motor_ms?: number },

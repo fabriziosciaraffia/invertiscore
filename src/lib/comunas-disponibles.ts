@@ -13,6 +13,8 @@
  *  - El resto de los nombres coinciden con el dataset (acentos incluidos).
  */
 
+import { normalizeComuna } from "@/lib/comuna-stats";
+
 export const COMUNAS_DISPONIBLES = [
   "Santiago",
   "Providencia",
@@ -58,15 +60,6 @@ function normalizar(comuna: string): string {
     .trim();
 }
 
-/**
- * Alias normalizados -> comuna disponible canónica (normalizada).
- * Cubre las distintas formas en que una misma comuna puede llegar
- * (Google Places vs dataset interno).
- */
-const COMUNA_ALIASES: Record<string, string> = {
-  "santiago centro": "santiago",
-};
-
 const DISPONIBLES_NORMALIZADAS = new Set(COMUNAS_DISPONIBLES.map(normalizar));
 
 /**
@@ -75,7 +68,7 @@ const DISPONIBLES_NORMALIZADAS = new Set(COMUNAS_DISPONIBLES.map(normalizar));
  */
 export function isComunaDisponible(comuna: string | null | undefined): boolean {
   if (!comuna) return false;
-  const n = normalizar(comuna);
-  const canon = COMUNA_ALIASES[n] ?? n;
-  return DISPONIBLES_NORMALIZADAS.has(canon);
+  // El alias lo resuelve el único mapa del repo (`comuna-stats`), ANTES de aplanar acentos y
+  // mayúsculas; después se compara aplanado, como siempre.
+  return DISPONIBLES_NORMALIZADAS.has(normalizar(normalizeComuna(comuna)));
 }

@@ -47,7 +47,7 @@ export function referenciaHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF:
   const money = (n: number) => fmtMoney(n, currency, valorUF);
   switch (h.id) {
     case "cap_rate":
-      return `promedio ${pct1(h.valor.capRefPct)}`;
+      return h.valor.base === "bruta" ? `comuna ${pct1(h.valor.capRefPct)} bruto` : `promedio ${pct1(h.valor.capRefPct)}`;
     case "rentabilidad_str":
       return `umbral ${pct1(h.valor.umbralPct)}`;
     case "plusvalia":

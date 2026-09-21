@@ -120,6 +120,8 @@ export async function POST(request: Request) {
         input_data: safeInput,
         // Re-snapshot al recalcular (mismo shape que la creación, Fase A).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
+        // Re-snapshot de la referencia de cap rate de la comuna, con el mismo prefetch.
+        capref_comuna_snapshot: medianaComuna.capRefComuna ?? null,
         // INVALIDAR el insight de zona. Su prosa cita la mediana comunal y el
         // % vs esa mediana, tomados del snapshot que esta misma línea acaba de
         // reemplazar: dejarlo cacheado hace que el informe se contradiga a sí

@@ -18,7 +18,8 @@ import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
-import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -112,9 +113,19 @@ export default async function DocumentoLTRPage({
     | MedianaComunaSnapshot
     | null
     | undefined;
+  const capRefSnapshot = (data as Record<string, unknown>).capref_comuna_snapshot as
+    | CapRefComunaSnapshot
+    | null
+    | undefined;
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
-        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0, p25: medianaSnapshot.p25, p75: medianaSnapshot.p75 }
+        ? {
+            mediana: medianaSnapshot.mediana,
+            n: medianaSnapshot.n ?? 0,
+            p25: medianaSnapshot.p25,
+            p75: medianaSnapshot.p75,
+            capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
+          }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
 

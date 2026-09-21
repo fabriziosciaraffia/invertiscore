@@ -21,15 +21,15 @@
 // El copy visible dice "datos de mercado"; el proveedor no se nombra al usuario.
 
 import { STR_UNIVERSO_V2, type DatoComunaSTR, type UniversoComunaSTR } from "./str-universo-santiago.gen";
+import { normalizeComuna } from "@/lib/comuna-stats";
 export { STR_UNIVERSO_V2, STR_UNIVERSO_V2_META } from "./str-universo-santiago.gen";
 export type { DatoComunaSTR, UniversoComunaSTR } from "./str-universo-santiago.gen";
 
-const ALIAS_COMUNA: Record<string, string> = { "Santiago Centro": "Santiago" };
-
-/** Datos V2 de una comuna, o null = sin datos suficientes. Acepta el alias "Santiago Centro". */
+/** Datos V2 de una comuna, o null = sin datos suficientes. Los alias («Santiago Centro») los
+ *  resuelve el único mapa del repo, `normalizeComuna` (21-sep-2026). */
 export function datosComunaSTR(comuna: string | null | undefined): UniversoComunaSTR | null {
   if (!comuna) return null;
-  return STR_UNIVERSO_V2[ALIAS_COMUNA[comuna] ?? comuna] ?? null;
+  return STR_UNIVERSO_V2[normalizeComuna(comuna)] ?? null;
 }
 
 // Tarifa por noche mediana por comuna (CLP), derivada de V2.

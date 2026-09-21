@@ -24,7 +24,7 @@ import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { resolverModeloCostos, provisionMantencionAnio, getMantencionRateLegacy } from "./modelo-costos";
-import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
+import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto, DIST_PIE_TOPE_PCT, DIST_TOPE_AJUSTA_PCT } from "./distancia-veredicto-hallazgo";
@@ -481,7 +481,10 @@ function calcMetrics(
     precioCLP > 0 && ingresoMensual > 0
       ? buildHallazgoCapRate({
           capRatePct: capRate,
-          ref: getCapRefComuna(input.comuna),
+          brutoPct: rentabilidadBruta,
+          // La referencia de la comuna viaja inyectada con la mediana (snapshot o resolución
+          // viva); sin ella, el promedio nacional, declarado como tal.
+          ref: getCapRefComuna(input.comuna, medianaComunaVentaUF?.capRefComuna),
           comuna: input.comuna,
           modalidad: "ltr",
           decisividad: decisividades?.cap_rate?.decisividad ?? 0,
@@ -1932,13 +1935,16 @@ function solveArriendoForCapRate(
   ufClp: number,
   mediana: MedianaComunaInyectada | undefined,
   targetCapPct: number,
+  // En qué base está el objetivo: la del hallazgo (bruta con el benchmark de avisos, neta con
+  // BDO o el nacional). El cap rate y la bruta son monótonos crecientes en arriendo.
+  base: "bruta" | "neta",
 ): number {
   let lo = 0;
   let hi = Math.max(input.arriendo * 10, 1_000_000);
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
     const m = calcMetrics({ ...input, arriendo: Math.round(mid) }, ufClp, mediana);
-    if (m.capRate < targetCapPct) lo = mid;
+    if ((base === "bruta" ? m.rentabilidadBruta : m.capRate) < targetCapPct) lo = mid;
     else hi = mid;
   }
   return Math.round((lo + hi) / 2);
@@ -1991,10 +1997,14 @@ export function calcDecisividades(
     out.capex_puesta_a_punto = fin(sNeu, evalVeredicto(sNeu, mNeu, baseBreakEven));
   }
 
-  // ── cap_rate: neutraliza el arriendo para que el CAP rate == referencia de
-  //    mercado. Toca flujo (mismo driver arriendo) → recomputa break-even. ──
+  // ── cap_rate: neutraliza el arriendo para que el cap rate == LA MISMA referencia que
+  //    compara el hallazgo (la de la comuna si viene inyectada; el nacional si no). Hasta el
+  //    21-sep-2026 neutralizaba contra el 4% nacional aunque el hallazgo comparara contra
+  //    otra cosa: la deriva de siempre entre el acta y el call site. Toca flujo (mismo driver
+  //    arriendo) → recomputa break-even. ──
   if (baseMetrics.precioCLP > 0 && baseMetrics.ingresoMensual > 0 && Number.isFinite(baseMetrics.capRate)) {
-    const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, CAP_RATE_REF_NACIONAL);
+    const refNeu = getCapRefComuna(input.comuna, medianaComuna?.capRefComuna);
+    const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, refNeu.pct, refNeu.base);
     const inputNeu = { ...input, arriendo: arriendoNeu };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
     const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf, tirDe(inputNeu, mNeu, ufClp, asOf));

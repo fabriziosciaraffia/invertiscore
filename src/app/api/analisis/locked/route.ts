@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { randomUUID } from "crypto";
 import type { AnalisisInput } from "@/lib/types";
+import type { MedianaComunaInyectada } from "@/lib/comuna-stats";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import {
@@ -50,7 +51,7 @@ export const maxDuration = 120;
 function buildLockedLtrRow(
   body: AnalisisInput,
   ufValue: number,
-  medianaComuna?: { mediana: number | null; n: number }
+  medianaComuna?: MedianaComunaInyectada
 ) {
   // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad):
   // mismo criterio que /api/analisis — se normaliza antes del motor y del
@@ -85,6 +86,8 @@ function buildLockedLtrRow(
     input_data: body,
     // Snapshot de la mediana (Fase A): null si el caller no resolvió mediana.
     mediana_comuna_snapshot: medianaComuna ? buildMedianaSnapshot(medianaComuna) : null,
+    // Referencia de cap rate de la comuna (mismo prefetch que la mediana); null si no se resolvió.
+    capref_comuna_snapshot: medianaComuna?.capRefComuna ?? null,
     pending_payment: true,
   };
 }

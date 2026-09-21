@@ -1,4 +1,5 @@
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { COMUNA_ALIASES, normalizeComuna } from "@/lib/comuna-stats";
 // ── Guard de CIFRAS — la prosa no recalcula números del motor ─────────────────
 // Compartido LTR + STR (nació como STR-CIFRA en ai-generation-str; extraído acá al
 // portarlo a LTR). La capa primaria es la regla del system prompt (STR §1.quater /
@@ -151,14 +152,14 @@ export function comunasFueraDeAlternativa(userPrompt: string, ai: unknown): stri
   // mande a «Santiago centro» esquiva el guard, y una de Santiago que diga su propio
   // nombre alternativo se marca como violación cuando no lo es. Medido: de seis filas
   // reales del parque el guard cazaba cinco y se le escapaba justo ésa.
-  const ALIAS: Record<string, string> = { "Santiago centro": "Santiago", "Santiago Centro": "Santiago" };
-  const objetivo = (txtComuna: string) => ALIAS[txtComuna] ?? txtComuna;
+  // Un solo mapa de alias en el repo: el de `comuna-stats` (21-sep-2026).
+  const objetivo = normalizeComuna;
 
   const strings: { path: string; value: string }[] = [];
   collectStrings(ai, "", strings);
   const out: string[] = [];
   for (const { path, value } of strings) {
-    for (const c of [...COMUNAS_DISPONIBLES, ...Object.keys(ALIAS)]) {
+    for (const c of [...COMUNAS_DISPONIBLES, ...Object.keys(COMUNA_ALIASES)]) {
       const canon = objetivo(c);
       if (canon === objetivo(propia) || permitidas.some((p) => objetivo(p) === canon)) continue;
       // Límite de palabra a los dos lados: «Santiago» no debe dispararse dentro de

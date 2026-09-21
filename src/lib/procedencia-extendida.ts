@@ -48,7 +48,10 @@ export function procedenciaExtendida(
       return "Motor Franco · flujo mensual del análisis";
     case "cap_rate": {
       const v = h.valor;
-      const scope = v.scope === "comuna" ? "referencia de la comuna" : "referencia nacional";
+      const scope =
+        v.nivel === "celda" || v.nivel === "comuna"
+          ? "referencia bruta de la comuna, aviso contra aviso"
+          : v.nivel === "bdo" ? "referencia neta de la comuna (BDO)" : "referencia nacional";
       return `${v.fuente} · ${scope}`;
     }
     case "sobreprecio": {

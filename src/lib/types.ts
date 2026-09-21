@@ -587,13 +587,32 @@ export interface HallazgoCapRate {
   id: "cap_rate";
   tipo: "rentabilidad_operativa";
   valor: {
-    capRatePct: number;   // cap rate del sujeto, % NETO (NOI) — reusado de :250
-    capRefPct: number;    // referencia de mercado contra la que se compara
-    gapPts: number;       // capRatePct − capRefPct, en puntos (signed)
+    capRatePct: number;   // cap rate del sujeto, % NETO (NOI): la cifra del hero
+    /** La cifra del sujeto EN LA BASE de la referencia: el bruto cuando la referencia es el
+     *  benchmark de avisos de la comuna, el neto cuando es BDO o el promedio nacional. */
+    sujetoPct: number;
+    capRefPct: number;    // referencia contra la que se compara, en la base `base`
+    base: "bruta" | "neta";
+    /** Peldaño de la cascada que produjo la referencia (capref-comuna.ts). Declarado. */
+    nivel: "celda" | "comuna" | "bdo" | "nacional";
+    gapPts: number;       // sujetoPct − capRefPct, en puntos (signed)
     banda: number;        // banda de saturación de la decisividad, en puntos
     fuente: string;       // procedencia de la referencia (auditoría de la brecha)
     scope: "nacional" | "comuna";
     modalidad: "ltr" | "str" | "ambas";
+    /** Cruce citable: el neto que BDO publica para la comuna (null si no la cubre). */
+    bdoNeto: number | null;
+    nArriendo: number;
+    nVenta: number;
+    /** Obra nueva comparada con arriendos de usado (no hay avisos de arriendo nuevo). */
+    arriendoProxyUsado: boolean;
+    /** Rótulo corto de la celda («Ñuñoa · usado · 2D · 45–68 m²»). */
+    celda: string;
+    /** Comuna canónica de la referencia, dormitorios de la celda y ventana: lo que la fuente
+     *  del capítulo dice en una línea (capref-copy.ts). */
+    comuna: string;
+    celdaDormitorios: number | null;
+    ventanaDias: number | null;
   };
   // favorable si capRate ≥ referencia; adverso si <. "neutral" cuando |gap| < 0,2
   // (paquete A, familia 6 del censo): "rinde en línea con el mercado" no es ni
@@ -1351,8 +1370,18 @@ export interface HallazgoRentabilidadStr {
   tipo: "rentabilidad_operativa_str";
   valor: {
     capRatePct: number;   // CAP rate STR del sujeto, % NETO (NOI) — reusado de base.capRate
-    umbralPct: number;    // umbral STR nacional (5,0%)
+    umbralPct: number;    // el umbral: rentabilidad bruta de la comuna + 1 pt (5,0 en el peldaño nacional)
     gapPts: number;       // capRatePct − umbralPct, en puntos (signed)
+    /** De dónde sale el umbral (21-sep-2026): la referencia de la comuna (capref-comuna.ts) y la
+     *  prima. OPCIONALES: los hallazgos persistidos antes del campo no los traen. */
+    refPct?: number;
+    primaPts?: number;
+    nivel?: "celda" | "comuna" | "bdo" | "nacional";
+    comuna?: string;
+    celdaDormitorios?: number | null;
+    ventanaDias?: number | null;
+    nArriendo?: number;
+    nVenta?: number;
     banda: number;        // banda de saturación de magnitudContinua, en puntos
     modalidad: "ltr" | "str" | "ambas";
   };

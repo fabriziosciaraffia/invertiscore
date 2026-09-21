@@ -241,10 +241,10 @@ export function SubjectCardGrid({
   })();
   // Referencia del cap rate neto: la del hallazgo (motor) o la del catálogo por comuna.
   const capRefInfo = (() => {
-    const h = (results?.metrics as { hallazgoCapRate?: { valor?: { capRefPct?: number; fuente?: string } } | null } | undefined)?.hallazgoCapRate;
-    if (h?.valor && typeof h.valor.capRefPct === "number") return { pct: h.valor.capRefPct, fuente: h.valor.fuente ?? "" };
+    const h = (results?.metrics as { hallazgoCapRate?: { valor?: { capRefPct?: number; fuente?: string; base?: "bruta" | "neta" } } | null } | undefined)?.hallazgoCapRate;
+    if (h?.valor && typeof h.valor.capRefPct === "number") return { pct: h.valor.capRefPct, fuente: h.valor.fuente ?? "", base: h.valor.base ?? "neta" };
     const ref = getCapRefComuna(comunaPortada);
-    return { pct: ref.pct, fuente: ref.fuente };
+    return { pct: ref.pct, fuente: ref.fuente, base: ref.base };
   })();
   // «↓ Ver detalle» abre el capítulo donde vive el desarrollo del hallazgo (el
   // acordeón lo ancla arriba). Sin capítulo mapeado, cae a la sección entera.
@@ -363,6 +363,7 @@ export function SubjectCardGrid({
                 metrics={results.metrics}
                 results={results}
                 capRefPct={capRefInfo.pct}
+                capRefBase={capRefInfo.base}
                 currency={currency}
                 valorUF={valorUF}
                 onCalculo={() => setCalculoAbierto(true)}

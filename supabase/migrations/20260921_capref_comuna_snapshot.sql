@@ -1,0 +1,17 @@
+-- Snapshot de la referencia de cap rate de la comuna (benchmark de avisos propios), resuelta
+-- UNA vez al crear el análisis, como `mediana_comuna_snapshot`. Foto fija: el hallazgo
+-- cap_rate compara contra este dato y NO se re-resuelve por render. Las filas anteriores
+-- (NULL) resuelven vivo al leer (prefetchCapRefComuna).
+--
+-- Shape del jsonb (src/lib/capref-comuna.ts · CapRefComunaSnapshot):
+--   {
+--     nivel: "celda" | "comuna" | "bdo" | "nacional",  -- peldaño de la cascada, DECLARADO
+--     bruto: number | null,        -- cap rate bruto de avisos, % (celda / comuna)
+--     bdoNeto: number | null,      -- neto que BDO publica para la comuna (cruce citable)
+--     nArriendo: number, nVenta: number,
+--     ventana: number | null,      -- días de frescura de la muestra
+--     celda: { comuna, condicion, dormitorios, superficieM2 },
+--     arriendoProxyUsado: boolean, -- obra nueva con arriendo usado como proxy
+--     fuente: string, resolvedAt: string
+--   }
+ALTER TABLE analisis ADD COLUMN IF NOT EXISTS capref_comuna_snapshot JSONB DEFAULT NULL;
