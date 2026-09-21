@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo II · Tu flujo mensual (LTR) · al lado del STR aprobado</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 21-sep-2026 · «Tu flujo mensual» LTR, al lado del STR aprobado (16/17-sep).
+     Tokens y primitivas heredados de `capitulo-ii-flujo-str.html`, sin agregar ninguno.
+     LA ESCENA STR ES LA APROBADA, copiada tal cual (fila 540deb26, modo auto). LA ESCENA LTR
+     se dibuja desde los datos de la fila REAL `ec331711` (Santiago, 2D usado de 15 años,
+     56 m², v3 con CapEx), recomputada el 21-sep-2026 con el motor UNIFICADO de mantención
+     (`scripts/of-fila-mockup-flujo-ltr.ts`). La geometría del gráfico se calcula desde la
+     serie (misma función que `CurvaAnios`: el cero siempre en el dominio), no a ojo.
+     Las cinco marcas ①-⑤ son las diferencias por modalidad; todo lo demás es mudanza directa.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;--sombra-h:0 6px 20px rgba(0,0,0,.08)}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;--sombra-h:0 6px 20px rgba(0,0,0,.5)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1000px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1000px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par2{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  [data-view="mobile"] .par2{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par2{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cab{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:12px;display:flex;justify-content:space-between;gap:8px}
+  .cab b{color:var(--tx2)}
+  /* primitivas del vocabulario v12 */
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
+  .v-fuente.aviso{border-left-color:var(--signal)}
+  .v-fuente.arriba{margin:0 0 14px}
+  .v-puente{font-size:13px;color:var(--tx2);margin:16px 0 10px;line-height:1.5}
+  .v-cierre{margin-top:16px;padding:12px 14px;background:var(--sunk);border-radius:var(--rad-xs)}
+  .v-cierre .t{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:5px}
+  .v-cierre p{font-size:13px;line-height:1.5;color:var(--tx2)}
+  .v-cierre b{color:var(--tx);font-weight:600}
+  .drow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .drow:last-child{border-bottom:none}
+  .drow.in .dk{font-weight:600;color:var(--tx)}
+  .drow.tot{border-top:1.5px solid var(--tx3);border-bottom:none;margin-top:4px;padding-top:11px}
+  .drow.tot .dk{font-weight:600;color:var(--tx);font-size:13px}
+  .drow.tot .dv{font-weight:700;font-size:14px}
+  .dk{font-size:12.5px;color:var(--tx2);line-height:1.35}
+  .dk small{display:block;font-size:10.5px;color:var(--tx4);margin-top:2px;line-height:1.35}
+  .dk .tip{font-style:normal;font-size:11px;color:var(--tx4);margin-left:5px;cursor:help}
+  .dv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dv em{font-style:normal;font-size:10.5px;color:var(--tx4);margin-left:2px}
+  .doc-reparto{font-size:13px;line-height:1.5;color:var(--tx2);margin:2px 0 14px}
+  .doc-reparto b{color:var(--tx);font-weight:700}
+  /* la curva por año (misma primitiva que STR) */
+  .curva-anios{width:100%;height:auto;display:block;margin:2px 0 4px}
+  .ca-cero{stroke:var(--tx3);stroke-width:1;stroke-dasharray:3 3}
+  .ca-linea{fill:none;stroke:var(--tx2);stroke-width:1.5}
+  .ca-eje{font-size:9.5px;fill:var(--tx4);font-family:var(--sans)}
+  .ca-val{font-size:10px;fill:var(--tx3);font-family:var(--sans);font-variant-numeric:tabular-nums}
+  .ca-pt-neg{fill:var(--signal)}
+  .ca-pt-pos{fill:var(--good)}
+  /* las marcas del mockup, NO parte del diseño */
+  .m{display:inline-block;font-size:9px;font-weight:700;background:var(--signal);color:#fff;border-radius:999px;width:15px;height:15px;line-height:15px;text-align:center;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums}
+  .m.g{background:var(--tx3)}
+  .nota{max-width:1000px;margin:12px auto 0;font-size:11.5px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .fuera{opacity:.32;text-decoration:line-through;text-decoration-color:var(--signal);text-decoration-thickness:1.5px}
+  table.cmp{max-width:1000px;margin:14px auto 0;border-collapse:collapse;font-size:12px;width:100%}
+  table.cmp th,table.cmp td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+  table.cmp th{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  table.cmp td:first-child{white-space:nowrap;color:var(--tx3)}
+  .decision{max-width:1000px;margin:16px auto 0;padding:12px 14px;background:var(--sunk);border-radius:var(--rad-xs);border-left:3px solid var(--signal);font-size:11.5px;line-height:1.6;color:var(--tx3)}
+  .decision b{color:var(--tx2)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">Capítulo II · «Tu flujo mensual» — LTR al lado del STR aprobado</h1>
+  <p class="subx">
+    A la izquierda, la escena STR aprobada (fila 540deb26, tal cual). A la derecha, LTR con la fila real
+    <b>ec331711</b> (Santiago · 2D usado de 15 años · 56 m² · pie 50% · crédito a 15 años), recomputada el
+    21-sep-2026 con la mantención ya unificada. Las marcas rojas ①-⑤ son lo distinto por modalidad; lo demás
+    es mudanza directa. Ningún número está inventado.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" onclick="T('light',this)">Claro</button><button onclick="T('dark',this)">Oscuro</button></span>
+    <span class="clab" style="margin-left:10px">Ancho</span>
+    <span class="seg"><button class="on" onclick="V('wide',this)">2 × 490</button><button onclick="V('mobile',this)">390</button></span>
+  </div>
+</div>
+
+<div class="nota" style="margin-top:-8px;margin-bottom:6px">
+  <p><b>Lo que sale del capítulo LTR</b>: <span class="fuera">la bajada «Lo que entra cada mes contra todo lo que sale…»</span> ·
+  <span class="fuera">el rótulo «Qué pasa con los $X del arriendo»</span> · <span class="fuera">la caja IA de `costoMensual`</span> (prosa de
+  contrato ≤ v20, solo la ve el invitado) · <span class="fuera">el «¿Tienes $X disponibles cada mes?»</span> (repite la fila del total).
+  <b>Lo que entra</b>: el sub de la cuota con monto, plazo y tasa · el rótulo del mes · el gráfico a diez años con su pie · el mes vacío como cierre.</p>
+</div>
+
+<div class="par2" id="escenas">
+  <!-- ═══════════ STR · APROBADA (copia de capitulo-ii-flujo-str.html, «Después») ═══════════ -->
+  <div class="escena">
+    <div class="cab"><span>STR · aprobada · 540deb26</span><b>Flujo +$3.802</b></div>
+    <div class="v-sub">Lo que entra y lo que sale en un mes estabilizado, a precios de hoy</div>
+    <p class="doc-reparto">La cuota se lleva el <b>72%</b> de lo que entra y operar el depto, el <b>27%</b>. Quedan <b>$3.802</b> al mes.</p>
+    <div>
+      <div class="drow in"><span class="dk">Ingreso mensual<i class="tip">ⓘ</i><small>lo que factura un mes típico con la ocupación estimada</small></span><span class="dv">$688.242<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Comisión de la plataforma<i class="tip">ⓘ</i><small>3% del ingreso</small></span><span class="dv">−$20.647<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Luz, agua, internet e insumos<i class="tip">ⓘ</i><small>limpieza y reposición incluidas en insumos</small></span><span class="dv">−$85.000<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Gastos comunes y mantención<i class="tip">ⓘ</i></span><span class="dv">−$65.000<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Contribuciones<i class="tip">ⓘ</i><small>$47.505 al trimestre</small></span><span class="dv">−$15.835<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Cuota del crédito<i class="tip">ⓘ</i><small>$93,9 MM a 25 años al 4,0%</small></span><span class="dv">−$497.958<em>/mes</em></span></div>
+      <div class="drow tot"><span class="dk">Te queda</span><span class="dv">$3.802<em>/mes</em></span></div>
+    </div>
+    <p class="v-puente">Y si no vas a operarlo tú:</p>
+    <div>
+      <div class="drow"><span class="dk">Un administrador cobra el 20% del ingreso<i class="tip">ⓘ</i></span><span class="dv" style="color:var(--signal)">−$137.648<em>/mes</em></span></div>
+      <div class="drow"><span class="dk">Dejas de pagar el 3% de la plataforma<i class="tip">ⓘ</i></span><span class="dv">+$20.647<em>/mes</em></span></div>
+      <div class="drow tot"><span class="dk">Te quedaría, con administrador<small>$117.001 menos al mes · $1.404.012 al año</small></span><span class="dv" style="color:var(--signal)">−$113.199<em>/mes</em></span></div>
+    </div>
+    <p class="v-puente">Y lo mismo a diez años, que es donde la estabilización deja de pesar.</p>
+    <div class="v-sub">Lo que queda cada mes, año por año</div>
+    <div id="curva-str"></div>
+    <p class="doc-reparto" style="margin-top:2px">El año 1 es el más duro: el aviso todavía no tiene reseñas y se ocupa menos, y esa estabilización cuesta <b>un mes y medio de facturación</b>. Desde ahí el arriendo sube con la inflación y la deuda baja, así que cada año deja más que el anterior.</p>
+    <div class="v-cierre"><div class="t">Qué significa</div><p>Para que esa comisión se pague sola, el administrador tendría que conseguirte <b>9,8 puntos de ocupación más</b> que tú, a la misma tarifa: de 46,3% a 56,1%. Puede conseguirlos, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.</p></div>
+    <div class="v-fuente">Motor Franco · UF 40.935 al 15 sept 2026 · costos declarados por ti; comisión de plataforma 3% · administrador: 20% del ingreso</div>
+  </div>
+
+  <!-- ═══════════ LTR · PROPUESTA (fila ec331711, dibujada desde los datos) ═══════════ -->
+  <div class="escena" id="escena-ltr"></div>
+</div>
+
+<div class="rot"><h2>Las cinco diferencias, y por qué</h2></div>
+<table class="cmp">
+  <tr><th>#</th><th>STR (aprobado)</th><th>LTR (propuesta)</th><th>por qué es distinto</th></tr>
+  <tr><td><span class="m">1</span></td><td>La tarifa y la ocupación se declaran en el cap. I (tuya o de mercado).</td><td>El <b>respaldo del arriendo</b> va ARRIBA de la tabla, como fuente con aviso: el arriendo lo puso el usuario y es el único caveat epistémico del informe. Ya está en producción; se queda.</td><td>Sin referencia en 34,8% de las filas, muestra chica 4,5%, declarado con brecha 15,2% (esta fila: 12% bajo la mediana de 94 avisos).</td></tr>
+  <tr><td><span class="m">2</span></td><td>«en un mes <b>estabilizado</b>, a precios de hoy» — hay ramp-up.</td><td>«en un mes <b>promedio del año 1</b>, a precios de hoy»: no hay ramp-up, y la vacancia, el corretaje y el recambio van prorrateados.</td><td>El mes de la tabla es un promedio (vacancia 0,6 meses ÷ 12), no un mes que el dueño viva. Decirlo evita leer «$20.000 de vacancia» como un cobro mensual.</td></tr>
+  <tr><td><span class="m">3</span></td><td>Serie ÷12, sin años sin operación (`serieFlujoMensualPorAnio`, tipada STR).</td><td>Serie <b>÷ meses operativos</b>, diez años, sin años sin operación: hace falta un gemelo LTR sobre `YearProjection`.</td><td>LTR prorratea todo por meses; ÷12 en un año parcial muestra el 42% del mes real (100 filas). Y son 20 años en el motor: se cortan a 10.</td></tr>
+  <tr><td><span class="m">4</span></td><td>«El año 1 es el más duro … desde ahí cada año deja más.»</td><td>El pie dice <b>por qué baja</b>: el arriendo sube, pero la cuota y los gastos suben más porque crecen sobre una base mayor.</td><td>Con el motor unificado la serie a diez años baja en 913 de 1.213 (75%); el año 1 es el mínimo solo en 179. Descompuesto (p50 al mes, año 10 − año 1): arriendo +207 mil, cuota −197 mil, gastos operativos −106 mil.</td></tr>
+  <tr><td><span class="m">5</span></td><td>Bloque de tres filas del administrador + cierre con el punto de quiebre.</td><td>No hay contrafáctico de gestión en LTR (`usaAdministrador` en 33 filas, sin motor). En su lugar, el <b>mes vacío</b> como cierre determinista con la fórmula a la vista.</td><td>Es la condición que ninguna fila muestra, igual que el punto de quiebre en STR: supera al flujo del mes en el 98,2% de las filas (gate `mes-vacio-catch-test`).</td></tr>
+  <tr><td><span class="m g">=</span></td><td colspan="3">Mudanza directa, sin marca: sin bajada ni rótulo · la frase del reparto (motor) · las filas con ⓘ y sub · el sub de la cuota con monto, plazo y tasa (cola anotada) · la primitiva `CurvaAnios` (el cero en el dominio, tres rótulos) · la fuente.</td></tr>
+</table>
+
+<div class="decision">
+  <b>Lo que este mockup asume del motor.</b> Los números salen de la mantención unificada (FASE 1): esta fila es v3 con CapEx, así que el
+  mes de la tabla ya lleva el reset (mantención $3.821 y no $14.550) y el gráfico sube de banda en los años 4 y 9. Para las 858 filas con
+  provisión declarada la forma del gráfico depende de la decisión abierta (¿la declarada se reajusta o envejece con el modelo?): hoy se
+  reajusta, y con eso la serie baja en el 75% del parque y no en el 78%. El pie del gráfico se escribe desde la descomposición del motor, así
+  que cambia solo si cambia la serie.
+</div>
+
+<script>
+  /* ── LTR · fila real ec331711 (scripts/of-fila-mockup-flujo-ltr.ts, 21-sep-2026) ── */
+  const F = {
+    id:"ec331711", comuna:"Santiago", uf:40943, tipo:"2D usado · 15 años · 56 m²",
+    arriendo:400000, cuota:470691, mantencion:3821, vacancia:20000, corretaje:8333, recambio:8333, contribucionesMes:24761, contribucionesTrim:74282, ggccVacancia:7000, gestion:0,
+    flujo:-142939, gastosCompletos:140000, mesVacio:635452,
+    reparto:{ antes:"La cuota sola se lleva el 118% de lo que entra. Con los gastos, de tu bolsillo pones ", monto:"$142.939", despues:" al mes.", sale:true },
+    respaldo:{ texto:"Mediana de 94 arriendos publicados a menos de 500 m: $455.000. Lo que declaraste queda 12% bajo esa mediana.", aviso:false },
+    credito:{ monto:63461650, plazo:15, tasa:4.04 }, vacanciaMeses:0.6,
+    serie:[[1,-142939],[2,-145411],[3,-147893],[4,-156647],[5,-159333],[6,-162027],[7,-164732],[8,-167439],[9,-179831],[10,-182835]],
+    // descomposición año 10 − año 1, al mes (del motor)
+    delta:{ arriendo:145159, cuota:143454, gastos:41601 },
+  };
+  const miles = n => Math.round(Math.abs(n)).toLocaleString("es-CL");
+  const $ = n => "$" + miles(n);
+  const neg = n => (n < 0 ? "−" : "") + $(n);
+  const M = n => "$" + (n/1e6).toFixed(1).replace(".",",") + " MM";
+  const pct1 = n => n.toFixed(1).replace(".",",").replace(",0","");
+
+  /* la curva por año: MISMA GEOMETRÍA que CurvaAnios — el cero entra siempre al dominio;
+     se rotulan el primero, el último y el primer cambio de signo. */
+  function curva(serie, fmt){
+    const vals = serie.map(p=>p[1]); const min=Math.min(...vals,0), max=Math.max(...vals,0);
+    const W=620, H=182, x0=52, x1=606, yTop=80, yBot=165;
+    const x = i => x0 + (x1-x0)*i/(serie.length-1);
+    const y = v => yBot - ((v-min)/(max-min||1))*(yBot-yTop);
+    const pts = serie.map((p,i)=>`${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join(" ");
+    const firstFlip = serie.findIndex((p,i)=> i>0 && Math.sign(p[1])!==Math.sign(serie[i-1][1]));
+    const labels = [0, serie.length-1]; if (firstFlip>0) labels.push(firstFlip);
+    const lab = serie.map((p,i)=> labels.includes(i) ? `<text class="ca-val" x="${x(i).toFixed(1)}" y="${(p[1]<0? y(p[1])+14 : y(p[1])-7).toFixed(1)}" text-anchor="${i===0?"start":i===serie.length-1?"end":"middle"}">${fmt(p[1])}</text>` : "").join("");
+    const ejes = [0,1,4,serie.length-1].map(i=>`<text class="ca-eje" x="${x(i).toFixed(1)}" y="${(y(0)+(min<0?-6:14)).toFixed(1)}" text-anchor="${i===serie.length-1?"end":"middle"}">${i===0?"año 1":serie[i][0]}</text>`).join("");
+    return `<svg class="curva-anios" viewBox="0 0 ${W} ${H}" role="img" aria-label="Flujo mensual promedio por año">
+      <line class="ca-cero" x1="38" y1="${y(0).toFixed(1)}" x2="${x1}" y2="${y(0).toFixed(1)}"></line><text class="ca-eje" x="4" y="${(y(0)+3).toFixed(1)}">$0</text>
+      <polyline class="ca-linea" points="${pts}"></polyline>
+      ${serie.map((p,i)=>`<circle class="${p[1]<0?"ca-pt-neg":"ca-pt-pos"}" cx="${x(i).toFixed(1)}" cy="${y(p[1]).toFixed(1)}" r="${labels.includes(i)?4:3}"></circle>`).join("")}
+      ${lab}${ejes}</svg>`;
+  }
+  // STR: la serie aprobada de 540deb26. Los tres rótulos son los del mockup aprobado (año 1
+  // −82.228, año 2 7.254, año 10 43.764); los puntos intermedios se despejan de la polyline
+  // de ese mockup con su propia función y(v) = 165 − ((v − min)/(max − min)) × 85.
+  document.getElementById("curva-str").innerHTML = curva([[1,-82228],[2,7254],[3,10857],[4,14859],[5,19009],[6,23309],[7,28052],[8,32944],[9,38280],[10,43764]], neg);
+
+  const filas = [
+    ["Cuota del crédito", F.cuota, "Dividendo del crédito hipotecario", `${M(F.credito.monto)} a ${F.credito.plazo} años al ${F.credito.tasa.toFixed(1).replace(".",",")}%`],
+    ["Contribuciones", F.contribucionesMes, "Impuesto territorial trimestral del SII, prorrateado a mensual", `${$(F.contribucionesTrim)} al trimestre`],
+    ["Vacancia", F.vacancia, "Ingreso perdido por meses sin arrendatario, prorrateado al mes", `${String(F.vacanciaMeses).replace(".",",")} meses al año, prorrateados`],
+    ["Corretaje", F.corretaje, "Comisión del corredor para captar arrendatario, prorrateada al mes", null],
+    ["Recambio", F.recambio, "Costo de turnover entre arrendatarios, prorrateado al mes", null],
+    ["Gastos comunes", F.ggccVacancia, "Los paga el arrendatario; los asumes tú los meses sin arrendar", `${$(F.gastosCompletos)} completos; acá solo la vacancia`],
+    ["Mantención", F.mantencion, "Provisión mensual para reparaciones y mantenimiento", "recién puesto a punto: parte en la banda más baja y sube con los años"],
+  ].filter(r=>r[1]>0).sort((a,b)=>b[1]-a[1]);
+  const s0=F.serie[0][1], s9=F.serie[F.serie.length-1][1];
+  document.getElementById("escena-ltr").innerHTML = `
+    <div class="cab"><span>LTR · propuesta · ${F.id} · ${F.tipo}</span><b>Flujo ${neg(F.flujo)}</b></div>
+    <div class="v-fuente arriba ${F.respaldo.aviso?"aviso":""}"><span class="m">1</span>${F.respaldo.texto}</div>
+    <div class="v-sub"><span class="m">2</span>Lo que entra y lo que sale en un mes promedio del año 1, a precios de hoy</div>
+    <p class="doc-reparto">${F.reparto.antes}<b style="${F.reparto.sale?"color:var(--signal)":""}">${F.reparto.monto}</b>${F.reparto.despues}</p>
+    <div>
+      <div class="drow in"><span class="dk">Arriendo mensual<i class="tip">ⓘ</i><small>lo que entra antes de cuota y gastos; ${String(F.vacanciaMeses).replace(".",",")} meses de vacancia al año, prorrateados</small></span><span class="dv">${$(F.arriendo)}<em>/mes</em></span></div>
+      ${filas.map(([k,v,tip,sub])=>`<div class="drow"><span class="dk">${k}<i class="tip" title="${tip}">ⓘ</i>${sub?`<small>${sub}</small>`:""}</span><span class="dv">−${$(v)}<em>/mes</em></span></div>`).join("")}
+      <div class="drow tot"><span class="dk">${F.flujo<0?"Sale de tu bolsillo":"Te queda"}<small><span class="m">2</span>en un mes promedio del año 1, a precios de hoy</small></span><span class="dv" style="${F.flujo<0?"color:var(--signal)":""}">${neg(F.flujo)}<em>/mes</em></span></div>
+    </div>
+    <p class="v-puente">Y lo mismo a diez años, que es donde se ve hacia dónde va.</p>
+    <div class="v-sub"><span class="m">3</span>Lo que queda cada mes, año por año</div>
+    ${curva(F.serie, neg)}
+    <p class="doc-reparto" style="margin-top:2px"><span class="m">4</span>Cada año deja un poco menos. En diez años el arriendo sube <b>${$(F.delta.arriendo)}</b> al mes, pero la cuota sube casi lo mismo —<b>${$(F.delta.cuota)}</b>, porque crece con la UF sobre una base que ya es el 118% del arriendo— y los gastos suben <b>${$(F.delta.gastos)}</b> más: la mantención cambia de banda con la edad. De <b style="color:var(--signal)">${neg(s0)}</b> el año 1 a <b style="color:var(--signal)">${neg(s9)}</b> el año 10.</p>
+    <div class="v-cierre"><div class="t"><span class="m">5</span>Qué significa</div><p>Un mes sin arrendatario son <b>${$(F.mesVacio)}</b> de tu bolsillo: la cuota completa (${$(F.cuota)}) más los gastos comunes enteros (${$(F.gastosCompletos)}) y las contribuciones del mes (${$(F.contribucionesMes)}). No es el promedio: es el mes que sí vas a vivir.</p></div>
+    <div class="v-fuente">Motor Franco · UF ${miles(F.uf)} al 16 sept 2026 · gastos y contribuciones declarados por ti · cada año a sus precios</div>`;
+
+  function T(t,b){document.documentElement.setAttribute('data-theme',t);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function V(v,b){document.documentElement.setAttribute('data-view',v);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+</script>
+</body>
+</html>
