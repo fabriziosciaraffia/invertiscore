@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide" data-frase="propuesta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>«Cómo lo pagas» · tres bloques · LTR y STR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 21-sep-2026 · «Cómo lo pagas» (LTR III / STR IV) en tres bloques.
+     Nada implementado. Tokens heredados de `capitulo-ii-flujo-str.html`.
+     TODAS LAS CIFRAS SON REALES: seis filas del parque recomputadas por la cadena de cada
+     página el 21-sep-2026 (`scripts/of-filas-mockup-pagas.ts`), con los cuartiles
+     resueltos vivos sobre `scraped_properties` (los snapshots LTR son anteriores al campo).
+     La geometría de la franja de cuartiles se CALCULA desde los datos (script al pie), no
+     se dibuja a ojo.
+       · `--verdict` solo en la píldora que NOMBRA un veredicto (tríada tinta).
+       · `--signal` solo en el dato con signo negativo (flujo, sobreprecio adverso).
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;
+    --buscar:#C8323C;--ajustar:#6E4560;--comprar:#2B558F;--sombra-h:0 6px 20px rgba(0,0,0,.08)}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;--sombra-h:0 6px 20px rgba(0,0,0,.5)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:900px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:900px;margin:38px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par2{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  [data-view="mobile"] .par2{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par2{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cabeza{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+  .cabeza .q{font-size:15.5px;font-weight:600}
+  .cabeza .q small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  .cabeza .val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .cabeza .val small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3)}
+  /* primitivas del vocabulario v12 */
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px}
+  .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
+  .v-prosa b{color:var(--tx);font-weight:600}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:14px}
+  .bloque{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .bloque:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .num{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--tx4);margin-right:6px}
+  /* BLOQUE 1 · franja de cuartiles */
+  .franja{position:relative;height:82px;margin:8px 0 6px}
+  .franja .barra{position:absolute;left:0;right:0;top:24px;height:6px;background:var(--line2);border-radius:3px}
+  .franja .iqr{position:absolute;top:24px;height:6px;background:var(--tx3);border-radius:3px}
+  .franja .tick{position:absolute;top:19px;width:1px;height:16px;background:var(--tx2)}
+  .franja .tick.med{width:2px;top:17px;height:20px;background:var(--tx)}
+  .franja .lab{position:absolute;top:40px;font-size:9.5px;color:var(--tx4);white-space:nowrap;transform:translateX(-50%);font-variant-numeric:tabular-nums}
+  .franja .lab b{color:var(--tx3);font-weight:600}
+  .franja .pin{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:700;white-space:nowrap;padding:2px 6px;border-radius:5px;background:var(--tx);color:var(--page);line-height:1.2}
+  .franja .pin::after{content:"";position:absolute;left:50%;top:100%;width:0;height:0;border:4px solid transparent;border-top-color:var(--tx);transform:translateX(-50%)}
+  /* el recomendado va en fila propia BAJO la barra, apuntando hacia arriba: dos pines en la
+     misma fila se solapaban en 4 de las 6 filas reales (medido en el DOM, 21-sep). */
+  .franja .pin.rec{background:var(--page);color:var(--tx);border:1px solid var(--tx2);top:auto;bottom:0}
+  .franja .pin.rec::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:var(--tx2)}
+  .frase{margin-top:10px;font-size:13.5px;line-height:1.5}
+  .frase .act,.frase .prop{padding:8px 11px;border-radius:var(--rad-xs);background:var(--sunk)}
+  .frase .tag{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);display:block;margin-bottom:3px}
+  [data-frase="propuesta"] .frase .act{display:none}
+  [data-frase="actual"] .frase .prop{display:none}
+  .frase .caro{color:var(--signal);font-weight:600}
+  /* BLOQUE 2 · el ancla */
+  .ancla{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:14px 14px;background:var(--sunk);border-radius:var(--rad-xs)}
+  .ancla .k{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:3px}
+  .ancla .n{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.1}
+  .ancla .n small{display:block;font-size:11px;font-weight:500;color:var(--tx3);margin-top:3px}
+  .ancla .fl{font-size:18px;color:var(--tx3)}
+  .ancla .hoy .n{color:var(--tx3);text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:var(--tx4)}
+  .ancla .hoy.sind .n{text-decoration:none}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0;font-size:11.5px}
+  .chip{padding:3px 8px;border:1px solid var(--line2);border-radius:999px;color:var(--tx2);background:var(--page)}
+  .chip s{color:var(--tx4);text-decoration-thickness:1px}
+  .chip.dcto{font-weight:700;color:var(--tx);border-color:var(--tx2)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;color:#fff;letter-spacing:.02em}
+  .pill[data-v="COMPRAR"]{background:var(--comprar)}.pill[data-v="AJUSTA SUPUESTOS"]{background:var(--ajustar)}.pill[data-v="BUSCAR OTRA"]{background:var(--buscar)}
+  .banda{margin-top:10px;font-size:11.5px;color:var(--tx3)}
+  .banda b{color:var(--tx);font-weight:600}
+  .estrategia{margin-top:14px;display:grid;gap:9px}
+  .paso{display:grid;grid-template-columns:118px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+  .paso:first-child{border-top:none;padding-top:0}
+  .paso .k{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);padding-top:2px}
+  .paso .t{font-size:13px;line-height:1.5;color:var(--tx2)}
+  .paso .t b{color:var(--tx);font-weight:600}
+  .paso .t .neg{color:var(--signal);font-weight:600}
+  [data-view="mobile"] .paso{grid-template-columns:1fr;gap:3px}
+  .linea{margin-top:14px;font-size:12.5px;line-height:1.55;color:var(--tx2);padding:10px 12px;background:var(--sunk);border-radius:var(--rad-xs)}
+  .linea b{color:var(--tx);font-weight:600}
+  /* BLOQUE 3 · puesta a punto */
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  [data-view="mobile"] .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpi .k{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:4px}
+  .kpi .n{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.05}
+  .kpi .n small{font-size:12px;font-weight:500;color:var(--tx3)}
+  /* anotaciones del mockup, NO parte del diseño */
+  .nota{max-width:900px;margin:12px auto 0;font-size:11.5px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .marca{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;background:var(--signal);color:#fff;border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:1px}
+  .marca.q{background:var(--tx3)}
+  table.cmp{max-width:900px;margin:14px auto 0;border-collapse:collapse;font-size:12px;width:100%}
+  table.cmp th,table.cmp td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+  table.cmp th{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  table.cmp td:first-child{white-space:nowrap;color:var(--tx3)}
+  .fuera{opacity:.45;text-decoration:line-through;text-decoration-color:var(--signal);text-decoration-thickness:1.5px}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">«Cómo lo pagas» — tres bloques, dos modalidades, seis casos</h1>
+  <p class="subx">
+    Doce filas reales del parque, recomputadas el 21-sep-2026 por la cadena de cada página, con los
+    cuartiles de la comuna resueltos vivos. El <b>precio recomendado</b> (el mix de la card §5) es el ancla:
+    todo lo demás cuelga de él. Ningún número está inventado.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" onclick="T('light',this)">Claro</button><button onclick="T('dark',this)">Oscuro</button></span>
+    <span class="clab" style="margin-left:10px">Ancho</span>
+    <span class="seg"><button class="on" onclick="V('wide',this)">2 × 440</button><button onclick="V('mobile',this)">390</button></span>
+    <span class="clab" style="margin-left:10px">Frase del bloque 1</span>
+    <span class="seg"><button class="on" onclick="Fr('propuesta',this)">Propuesta (cuartiles)</button><button onclick="Fr('actual',this)">Actual («caro / barato»)</button></span>
+  </div>
+</div>
+
+<div class="nota" style="margin-top:-8px;margin-bottom:6px">
+  <p><b>Lo que sale del capítulo</b> (decidido el 21-sep): <span class="fuera">dial de precio</span> ·
+  <span class="fuera">plan de cuatro precios</span> · <span class="fuera">primera oferta a −5%</span> ·
+  <span class="fuera">«donde el aporte se vuelve sostenible»</span> · <span class="fuera">pie, cuota y tasa vs referencia</span> ·
+  <span class="fuera">matriz pie × plazo (STR)</span> · <span class="fuera">cierre IA / determinista</span> ·
+  <span class="fuera">línea del interés total</span> (va al pop-up de la recomendación, junto a los siete pares antes→después) ·
+  <span class="fuera">las tres notas al pie</span>.</p>
+</div>
+
+<div id="escenas"></div>
+
+<!-- ══════════════════ NOTAS ══════════════════ -->
+<div class="rot"><h2>Qué decide cada bloque, y con qué dato</h2></div>
+<div class="nota">
+  <p><span class="marca">1</span> <b>Caro o barato.</b> La franja es la muestra de la comuna con la que ya se calcula la mediana
+  (mismas filas: superficie ±20%, dormitorios, usado/nuevo, 90 días). Los dos pines son <b>tu precio</b> y <b>el recomendado</b>,
+  en UF/m². La frase tiene dos versiones conmutables arriba: la actual («Estás pagando caro / Entras barato», que dice lo mismo
+  con +14% en Providencia y en Santiago centro) y la propuesta por cuartil («en el cuarto más caro de tu comuna»). <b>Es propuesta,
+  no cambio</b>: la <code>fraseCanonica</code> entra a prompts y golden.</p>
+  <p><span class="marca">2</span> <b>Cómo llegar al precio recomendado.</b> El ancla es el mix con sus chips (lo que mueves tú) y
+  el descuento que resulta, con la banda de esfuerzo del motor. Después, <b>cuál negociación te toca</b>: el argumento es el
+  <b>mercado</b> cuando el vendedor pide más que la comuna (y llega hasta la mediana: de ahí para abajo es tu caja), o es <b>tu caja</b>
+  cuando el depto ya está bajo la mediana (lo que pides es lo que a ti te cierra). Luego <b>hasta dónde</b> (el límite TIR 6% del
+  motor y el precio donde el flujo es positivo, como marco) y <b>si no cede</b> (la alternativa de comunas en LTR; en STR el motor
+  todavía no la calcula, §12).</p>
+  <p><span class="marca">3</span> <b>Puesta a punto.</b> La razón antes del monto: el arriendo (o la tarifa) que el análisis asume es
+  el de mercado, y el mercado lo paga a un depto que está a su nivel. Después los tres KPIs del hallazgo.</p>
+  <p><span class="marca">4</span> <b>BUSCAR OTRO, las dos formas.</b> En LTR el motor todavía no mide el mix hacia Comprar desde
+  Buscar (<code>mixPalancasHastaComprar</code> ausente en 244 de 244 filas): la card cae a «sin salida» y el capítulo dice qué haría
+  falta —fuera de rango— y a dónde ir. En STR sí lo mide: en 13 de 126 filas hay una combinación que llega a Comprar, y es grande
+  (Recoleta: −23,7% con el pie de 10% a 30%); el capítulo la desarrolla como cualquier recomendación, con la banda «difícil» al frente.</p>
+  <p><span class="marca">5</span> <b>COMPRAR y sin descuento, las dos variantes que el código tenía y el mockup no.</b> En
+  COMPRAR no hay recomendación (<code>recomendacionPagas</code> devuelve null): el bloque 2 se titula «Qué margen tienes» y
+  dice «cierra al precio pedido» y hasta dónde sigue siendo Comprar (<code>precioMaximoComprarUF</code> del hallazgo de
+  sensibilidad en LTR; <code>fronteraPrecio.caeA</code> en STR). En <b>sin descuento</b> el mix cruza con
+  <code>sinDescuento: true</code>: el recomendado es el precio pedido, el chip fuerte dice «Sin pedirle un peso al vendedor»
+  y no hay banda de esfuerzo ni «con qué» (no hay negociación que ubicar). <b>Para mirar:</b> la fila STR de COMPRAR
+  (540deb26) tiene el metro 59% sobre la mediana de Santiago y el capítulo cierra «al precio pedido» sin retomar ese dato;
+  es lo que el código dice hoy.</p>
+  <p style="margin-top:10px"><span class="marca q">?</span> <b>Lo que las notas al pie decían y ahora no dice nadie.</b> Salieron las
+  tres. Una decía algo que evita una mala lectura: la mediana es de <b>avisos, no de transacciones</b> (precio pedido, no precio de
+  cierre). Si va a algún lado, es al ⓘ de la franja o a «Cómo se calcula», no al pie del capítulo.</p>
+</div>
+
+<div class="rot"><h2>La frase del bloque 1, en las doce filas</h2><p>Lo que dice hoy el hallazgo contra lo que diría por cuartil. La posición sale del motor desde el 21-sep.</p></div>
+<table class="cmp" id="tabla-frase"><tr><th>fila</th><th>desviación</th><th>posición</th><th>hoy</th><th>propuesta</th></tr></table>
+
+<script>
+  /* ── datos reales, una fila por caso y modalidad (scripts/of-filas-mockup-pagas.ts, 21-sep-2026) ── */
+  const FILAS = [
+    /* LTR · en el parque NO hay fila donde el precio recomendado (mix hacia Comprar) quede sobre la
+       mediana: 0 de 89. El argumento de mercado en LTR es siempre «hasta la mediana; de ahí, tu caja».
+       Solo 11 filas AJUSTA tienen sobreprecio adverso con mix dibujado; ésta es una de las dos con
+       banda que no es normal y con puesta a punto. */
+    { caso:"Argumento de mercado", mod:"LTR", id:"bc6c70bb", comuna:"Vitacura", ver:"AJUSTA SUPUESTOS", uf:40870, precioUF:8900, sup:85, tipo:"3D usado · 25 años · 85 m²",
+      mix:{ dcto:17.2, pieDe:50, pieA:50, plazoDe:25, plazoA:30, destino:"COMPRAR", costoUF:-765, solo:21.1, banda:"dificil" },
+      sobre:{ sujeto:104.7, med:97.7, p25:84.8, p75:123.2, pos:"mediana_p75", desv:7, n:40, univ:"usados", dias:90 },
+      limiteUF:null, mesUF:7558, altern:null,
+      capex:{ uf:510, min:510, max:510, clp:20843700, ufm2:6.0, frac:9.9, antig:25, supUtil:85 } },
+    { caso:"Argumento de mercado", mod:"STR", id:"a89598a4", comuna:"Santiago", ver:"AJUSTA SUPUESTOS", uf:40872, precioUF:2845, sup:33, tipo:"1D usado · 15 años · 33 m² · $48.732 la noche · 41% ocupación",
+      mix:{ dcto:6.0, pieDe:10, pieA:20, plazoDe:30, plazoA:30, destino:"COMPRAR", costoUF:250, solo:4.7, banda:"con_argumentos" },
+      sobre:{ sujeto:86.2, med:55.3, p25:48.1, p75:65.0, pos:"sobre_p75", desv:56, n:2288, univ:null, dias:90 },
+      limiteUF:4075, mesUF:2379, altern:null,
+      capex:{ uf:115.5, min:115.5, max:115.5, clp:4720716, ufm2:3.5, frac:22.3, antig:15, supUtil:33 },
+      plazo:{ act:{p:30,cuota:499628,int:1840}, up:null, dn:{p:25,cuota:552396,int:1494} } },
+    { caso:"Argumento de caja", mod:"LTR", id:"c17b7642", comuna:"Vitacura", ver:"AJUSTA SUPUESTOS", uf:40872, precioUF:10500, sup:142, tipo:"4D usado · 25 años · 142 m²",
+      mix:{ dcto:4.9, pieDe:20, pieA:30, plazoDe:30, plazoA:30, destino:"COMPRAR", costoUF:896, solo:10.9, banda:"normal" },
+      sobre:{ sujeto:73.9, med:91.5, p25:79.4, p75:104.8, pos:"bajo_p25", desv:-19, n:119, univ:"usados", dias:90 },
+      limiteUF:10664, mesUF:8656, altern:null,
+      capex:{ uf:852, min:852, max:852, clp:34822944, ufm2:6.0, frac:26.9, antig:25, supUtil:142 },
+      plazo:{ act:{p:30,cuota:1648997,int:6124}, up:null, dn:{p:25,cuota:1821687,int:4971} } },
+    { caso:"Argumento de caja", mod:"STR", id:"f3a3cc57", comuna:"Ñuñoa", ver:"AJUSTA SUPUESTOS", uf:40975, precioUF:2800, sup:34, tipo:"1D usado · 8 años · 34 m² · $47.082 la noche · 42% ocupación",
+      mix:{ dcto:9.5, pieDe:20, pieA:30, plazoDe:30, plazoA:30, destino:"COMPRAR", costoUF:200, solo:12.5, banda:"con_argumentos" },
+      sobre:{ sujeto:82.4, med:87.7, p25:79.3, p75:96.9, pos:"p25_mediana", desv:-6, n:413, univ:null, dias:90 },
+      limiteUF:4229, mesUF:2629, altern:null,
+      capex:{ uf:25, min:15, max:30, clp:1024375, ufm2:0.7, frac:3.6, antig:8, supUtil:34 },
+      plazo:{ act:{p:30,cuota:440310,int:1628}, up:null, dn:{p:25,cuota:486499,int:1322} } },
+    { caso:"Difícil, sin evidencia", mod:"LTR", id:"27d21e2c", comuna:"Ñuñoa", ver:"AJUSTA SUPUESTOS", uf:40863, precioUF:3850, sup:61, tipo:"2D usado · 8 años · 61 m²",
+      mix:{ dcto:12.9, pieDe:20, pieA:25, plazoDe:25, plazoA:25, destino:"COMPRAR", costoUF:68, solo:18.3, banda:"dificil" },
+      sobre:{ sujeto:63.1, med:76.3, p25:67.9, p75:86.4, pos:"bajo_p25", desv:-17, n:739, univ:"usados", dias:90 },
+      limiteUF:3970, mesUF:2937, altern:"En Puente Alto o Conchalí un departamento como este sí convendría.",
+      capex:{ uf:213.5, min:213.5, max:213.5, clp:8724251, ufm2:3.5, frac:20.1, antig:8, supUtil:61 },
+      plazo:{ act:{p:25,cuota:664325,int:1797}, up:{p:30,cuota:600866,int:2214}, dn:{p:20,cuota:762675,int:1399} } },
+    { caso:"Difícil, sin evidencia", mod:"STR", id:"aad691e4", comuna:"Providencia", ver:"AJUSTA SUPUESTOS", uf:40870, precioUF:3250, sup:32, tipo:"1D usado · 15 años · 32 m² · $52.390 la noche · 46% ocupación",
+      mix:{ dcto:13.3, pieDe:15, pieA:30, plazoDe:25, plazoA:30, destino:"COMPRAR", costoUF:358, solo:22.1, banda:"dificil" },
+      sobre:{ sujeto:101.6, med:107.8, p25:99.2, p75:120.3, pos:"p25_mediana", desv:-6, n:53, univ:null, dias:90 },
+      limiteUF:4368, mesUF:2667, altern:null,
+      capex:{ uf:112, min:112, max:112, clp:4577440, ufm2:3.5, frac:15.4, antig:15, supUtil:32 } },
+    /* BUSCAR OTRO · LTR: el motor no mide el mix hacia Comprar desde Buscar (ausente en 244/244);
+       la card dice «sin salida» y el capítulo no tiene precio recomendado. Verificado en
+       /analisis/b696a71e-02bb-4262-8061-f43b1fcd4717 el 21-sep. */
+    { caso:"Buscar otro", mod:"LTR", id:"b696a71e", comuna:"Santiago", ver:"BUSCAR OTRA", uf:40935, precioUF:2500, sup:40, tipo:"1D usado · 8 años · 40 m²", sinSalida:true,
+      fueraDeRango:{ palanca:"precio", pct:-35.3, otras:"precio, arriendo, plazo y pie por separado tampoco alcanzan" },
+      sobre:{ sujeto:62.5, med:52.9, p25:46.2, p75:62.1, pos:"sobre_p75", desv:18, n:1612, univ:"usados", dias:90 },
+      limiteUF:2813, mesUF:1527, altern:null,
+      capex:{ uf:30, min:20, max:35, clp:1228050, ufm2:0.7, frac:6.6, antig:8, supUtil:40 } },
+    /* BUSCAR OTRO · STR: acá el motor SÍ mide el mix hacia Comprar (13 de 126 filas lo tienen), y
+       es grande: −23,7% con el pie de 10% a 30%. Se desarrolla como cualquier recomendación, con
+       «difícil» al frente. El recomendado cae justo en la mediana (+0,1%). */
+    { caso:"Buscar otro", mod:"STR", id:"d57a6603", comuna:"Recoleta", ver:"BUSCAR OTRA", uf:40863, precioUF:5000, sup:82, tipo:"3D usado · 4 años · 82 m² · $77.861 la noche · 40% ocupación",
+      mix:{ dcto:23.7, pieDe:10, pieA:30, plazoDe:30, plazoA:30, destino:"COMPRAR", costoUF:645, solo:null, banda:"dificil" },
+      sobre:{ sujeto:61.0, med:46.5, p25:40.3, p75:52.0, pos:"sobre_p75", desv:31, n:69, univ:null, dias:90 },
+      limiteUF:5462, mesUF:3204, altern:null,
+      capex:{ uf:123, min:123, max:123, clp:5026149, ufm2:1.5, frac:14.6, antig:4, supUtil:82 } },
+    /* COMPRAR · el veredicto ya es Comprar: no hay descuento que pedir y el bloque 2 dice el
+       margen (hasta qué precio sigue siendo Comprar, y a qué cae). Sin pin recomendado. Cifras
+       de scripts/of-filas-pagas-comprar-sindcto.ts (21-sep-2026). */
+    { caso:"Comprar", mod:"LTR", id:"637c35fb", comuna:"Las Condes", ver:"COMPRAR", uf:38800, precioUF:5000, sup:64, tipo:"3D usado · 25 años · 64 m²", comprar:true,
+      sobre:{ sujeto:78.1, med:85.0, p25:78.6, p75:100.2, pos:"bajo_p25", desv:-8, n:48, univ:"usados", dias:90 },
+      limiteUF:7872, mesUF:5722, maxUF:6010, caeA:null, altern:null,
+      capex:{ uf:85, min:65, max:100, clp:3298000, ufm2:1.3, frac:12.4, antig:25, supUtil:64 } },
+    /* COMPRAR · STR con el metro en el cuarto MÁS CARO de la comuna (+59%) y aun así Comprar:
+       el bloque 1 dice «caro» y el bloque 2 «cierra al precio pedido». Es lo que el código
+       dice hoy; está acá para que se vea. */
+    { caso:"Comprar", mod:"STR", id:"540deb26", comuna:"Santiago", ver:"COMPRAR", uf:40935, precioUF:2700, sup:30, tipo:"1D usado · 8 años · 30 m² · $48.899 la noche · 46% ocupación", comprar:true,
+      sobre:{ sujeto:90.0, med:56.4, p25:49.0, p75:66.5, pos:"sobre_p75", desv:59, n:2176, univ:"usados", dias:90 },
+      limiteUF:5160, mesUF:2700, maxUF:3085, caeA:"AJUSTA SUPUESTOS", altern:null,
+      capex:{ uf:20, min:15, max:25, clp:818700, ufm2:0.7, frac:3.7, antig:8, supUtil:30 } },
+    /* SIN DESCUENTO · el mix cruza a Comprar moviendo solo lo tuyo (pie y plazo): el precio
+       recomendado ES el pedido, el «hoy» no se tacha, no hay banda de esfuerzo ni «con qué».
+       LTR con alternativa de comunas → «si no cede» aparece igual (no depende de la banda). */
+    { caso:"Sin descuento", mod:"LTR", id:"58682714", comuna:"Santiago", ver:"AJUSTA SUPUESTOS", uf:40872, precioUF:2250, sup:48, tipo:"2D usado · 15 años · 48 m²", sinDescuento:true,
+      mix:{ dcto:0, pieDe:20, pieA:25, plazoDe:25, plazoA:30, destino:"COMPRAR", costoUF:113, solo:3.9, banda:"normal" },
+      sobre:{ sujeto:46.9, med:50.1, p25:43.6, p75:57.8, pos:"p25_mediana", desv:-6, n:1907, univ:"usados", dias:90 },
+      limiteUF:2461, mesUF:2024, altern:"En Puente Alto o Conchalí un departamento como este sí convendría.",
+      capex:{ uf:168, min:168, max:168, clp:6866496, ufm2:3.5, frac:25.3, antig:15, supUtil:48 } },
+    /* STR sin descuento con el metro 7% SOBRE la mediana (mitad central, lado caro) y aun así
+       sin pedirle un peso: el pie y el plazo alcanzan solos. El bloque 1 lo dice; el 2 no lo retoma. */
+    { caso:"Sin descuento", mod:"STR", id:"63278e88", comuna:"Santiago", ver:"AJUSTA SUPUESTOS", uf:38800, precioUF:2212, sup:36, tipo:"1D usado · 5 años · 36 m² · $40.756 la noche · 41% ocupación", sinDescuento:true,
+      mix:{ dcto:0, pieDe:20, pieA:25, plazoDe:25, plazoA:30, destino:"COMPRAR", costoUF:111, solo:5.6, banda:"normal" },
+      sobre:{ sujeto:61.4, med:57.5, p25:49.7, p75:67.7, pos:"mediana_p75", desv:7, n:2193, univ:"usados", dias:90 },
+      limiteUF:3254, mesUF:2021, altern:null,
+      capex:{ uf:54, min:54, max:54, clp:2095200, ufm2:1.5, frac:8.9, antig:5, supUtil:36 } },
+  ];
+
+  /* ── formato ── */
+  const miles = n => Math.round(n).toLocaleString("es-CL");
+  const $ = n => "$" + miles(n);
+  const M = n => "$" + (n/1e6).toFixed(1).replace(".",",") + " M";
+  const UF = n => "UF " + miles(n);
+  const pct1 = n => n.toFixed(1).replace(".",",");
+  const uf1 = n => "UF " + n.toFixed(1).replace(".",",");
+  const VER = { "COMPRAR":"Comprar", "AJUSTA SUPUESTOS":"Ajustar", "BUSCAR OTRA":"Buscar otro" };
+  const BANDA = { normal:"negociación normal — lo que se conversa en cualquier compraventa",
+                  con_argumentos:"alcanzable con argumentos — exigente, pero dentro de lo que se negocia cuando hay razones",
+                  dificil:"difícil — solo si el vendedor necesita vender" };
+  const POS = { sobre_p75:"en el cuarto más caro de tu comuna", mediana_p75:"en la mitad central de tu comuna, del lado caro",
+                p25_mediana:"en la mitad central de tu comuna, del lado barato", bajo_p25:"en el cuarto más barato de tu comuna" };
+  const HOY = f => f.sobre.desv > 2 ? "Estás pagando caro el metro para esta comuna."
+                 : f.sobre.desv < -2 ? "Entras barato: el metro está bajo la mediana comunal."
+                 : "Pagas el metro a precio de comuna, sin sobreprecio.";
+
+  function franja(f){
+    const s=f.sobre, rec=f.mix?f.precioUF*(1-f.mix.dcto/100)/f.sup:null;
+    const lo=Math.min(s.p25,s.sujeto,rec??s.sujeto)*0.92, hi=Math.max(s.p75,s.sujeto,rec??s.sujeto)*1.08;
+    const x=v=>((v-lo)/(hi-lo)*100).toFixed(2)+"%";
+    return `<div class="franja">
+      <div class="barra"></div><div class="iqr" style="left:${x(s.p25)};width:${((s.p75-s.p25)/(hi-lo)*100).toFixed(2)}%"></div>
+      <div class="tick" style="left:${x(s.p25)}"></div><div class="tick med" style="left:${x(s.med)}"></div><div class="tick" style="left:${x(s.p75)}"></div>
+      <div class="lab" style="left:${x(s.p25)}">p25 ${uf1(s.p25)}</div><div class="lab" style="left:${x(s.med)}"><b>mediana ${uf1(s.med)}</b></div><div class="lab" style="left:${x(s.p75)}">p75 ${uf1(s.p75)}</div>
+      <div class="pin" style="left:${x(s.sujeto)}">tu precio ${uf1(s.sujeto)}/m²</div>
+      ${rec!=null?`<div class="pin rec" style="left:${x(rec)}">recomendado ${uf1(rec)}/m²</div>`:""}
+    </div>`;
+  }
+
+  function estrategia(f){
+    const recUF=f.precioUF*(1-f.mix.dcto/100), recCLP=recUF*f.uf, recM2=recUF/f.sup, s=f.sobre;
+    const recVsMed=(recM2-s.med)/s.med*100;
+    const banda=f.mix.banda, adverso=s.desv>2;
+    let quien, con;
+    if (adverso && recVsMed>=-2){
+      quien="Tu argumento es el mercado.";
+      con=`El vendedor pide <b>${s.desv}% más</b> que la mediana de ${miles(s.n)} avisos comparables${s.univ?" de "+s.univ:""} en ${f.comuna}. `+(recVsMed>2
+        ?`Aun cerrando en ${UF(recUF)} sigue <b>${Math.round(recVsMed)}% arriba</b> de esa mediana: le pides que baje a un precio que todavía es alto para la comuna. Ese dato va en la mesa.`
+        :`Cerrando en ${UF(recUF)} quedas <b>en la mediana</b> de la comuna: no le pides más que lo que el mercado ya dice. Ese dato va en la mesa.`);
+    } else if (adverso){
+      // el mercado lleva hasta la mediana; de ahí para abajo, la caja
+      const medUF=s.med*f.sup;
+      quien="Tu argumento es el mercado hasta la mediana; de ahí para abajo, tu caja.";
+      con=`El vendedor pide <b>${s.desv}% más</b> que la mediana de ${miles(s.n)} avisos comparables: eso lo lleva hasta <b>${UF(medUF)}</b>, y es el dato que va en la mesa. Lo que pides queda ${Math.abs(Math.round(recVsMed))}% más abajo todavía, y ese tramo no lo respalda la comuna: es el número al que a ti te cierra${f.mix.pieA!==f.mix.pieDe?`, poniendo ${f.mix.pieA}% de pie`:""}.${banda==="dificil"?" Y es difícil: cierra solo con un vendedor que necesita vender.":""}`;
+    } else if (banda!=="dificil"){
+      quien="Tu argumento es tu caja, no el mercado.";
+      con=`El depto ya está <b>${Math.abs(s.desv)}% bajo</b> la mediana de ${miles(s.n)} avisos comparables, y lo que pides queda <b>${Math.abs(Math.round(recVsMed))}% bajo</b>. El vendedor no tiene un comparable que le diga que está caro: lo que tienes es el número al que a ti te cierra, poniendo ${f.mix.pieA}% de pie. Dilo así — no como si el mercado lo respaldara.`;
+    } else {
+      quien="No hay argumento de mercado.";
+      con=`El depto ya está <b>${Math.abs(s.desv)}% bajo</b> la mediana de ${miles(s.n)} avisos comparables y pides <b>${pct1(f.mix.dcto)}% más</b>: lo que pides queda ${Math.abs(Math.round(recVsMed))}% bajo la comuna. Esto cierra solo con un vendedor que necesita vender. Si no cede, la respuesta honesta es mirar otro, no forzar este.`;
+    }
+    const limite=(f.limiteUF?`Sobre <b>${UF(f.limiteUF)}</b> la TIR a 10 años baja del 6%: ahí conviene más otro tipo de inversión. Y el`:`El`)+` flujo mensual es positivo recién en <b>${UF(f.mesUF)}</b>, ${Math.round((1-f.mesUF/f.precioUF)*100)}% bajo tu precio — no es el número a pelear, es el marco.`;
+    const planB = f.altern ? `<b>${f.altern}</b>` : (f.mod==="STR" ? `En renta corta el motor todavía no calcula comunas alternativas (§12): si el vendedor no cede, la otra vía es la tarifa y la ocupación del capítulo III.` : `Sin comuna alternativa que cruce para este depto.`);
+    const pasos=[["Qué pides",`<b>${UF(recUF)}</b> · ${$(recCLP)} — <b>−${pct1(f.mix.dcto)}%</b> sobre el precio de hoy, con ${f.mix.pieA}% de pie${f.mix.plazoA!==f.mix.plazoDe?` y ${f.mix.plazoA} años`:""}.`],
+      ["Con qué",`<b>${quien}</b> ${con}`],
+      ["Hasta dónde",limite]];
+    if (banda==="dificil" || f.altern) pasos.push(["Si no cede",planB]);
+    return pasos.map(([k,t])=>`<div class="paso"><div class="k">${k}</div><div class="t">${t}</div></div>`).join("");
+  }
+
+  /* LA LÍNEA DEL INTERÉS TOTAL SALIÓ DEL CAPÍTULO (21-sep): va al pop-up de la recomendación,
+     junto a los siete pares antes→después. Cola: cola-popup-interes-total-del-credito. */
+
+  /* BUSCAR OTRO · SIN SALIDA. La recomendación no existe: el mix hacia COMPRAR no cruza (o LTR
+     todavía no lo mide) y la card dice «Franco no encontró una combinación que lo haga
+     convenir». El bloque 2 no puede decir «cómo llegar al precio recomendado»: dice qué haría
+     falta —fuera de rango— y a dónde ir. */
+  function escenaSinSalida(f){
+    const s=f.sobre, c=f.capex, rango=c.max>c.min, fr=f.fueraDeRango;
+    return `<div class="escena">
+      <div class="cabeza">
+        <div class="q">Cómo lo pagas<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div>
+        <div class="val">Sin precio recomendado<small>hoy ${UF(f.precioUF)}</small></div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">1</span>Caro o barato</div>
+        ${franja(f)}
+        <div class="frase">
+          <div class="act"><span class="tag">hoy</span><span class="${s.desv>2?'caro':''}">${HOY(f)}</span> Tu precio por m² (${uf1(s.sujeto)}) está ${Math.abs(s.desv)}% ${s.desv>0?"sobre":"bajo"} la mediana (${uf1(s.med)}).</div>
+          <div class="prop"><span class="tag">propuesta</span>Tu precio por m² está <b>${POS[s.pos]}</b>: ${uf1(s.sujeto)} contra una mediana de ${uf1(s.med)}, y la mitad de los avisos comparables va de ${uf1(s.p25)} a ${uf1(s.p75)}.</div>
+        </div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">2</span>Por qué no hay un precio que negociar</div>
+        <div class="estrategia">
+          <div class="paso"><div class="k">Qué haría falta</div><div class="t">Llegar a <span class="pill" data-v="COMPRAR">Comprar</span> pediría un <b>${pct1(Math.abs(fr.pct))}% menos de precio</b> (${UF(f.precioUF*(1-Math.abs(fr.pct)/100))}), fuera de todo rango${fr.otras?`; ${fr.otras}`:""}. Franco no encontró una combinación de pie, plazo y descuento que lo haga convenir.</div></div>
+          <div class="paso"><div class="k">Con qué</div><div class="t">${s.desv>2?`El vendedor pide <b>${s.desv}% más</b> que la mediana de ${miles(s.n)} avisos comparables: el dato de la comuna existe, pero ni un descuento a la mediana alcanza para que el caso convenga.`:`El depto ya está <b>${Math.abs(s.desv)}% bajo</b> la mediana de ${miles(s.n)} avisos comparables: no hay argumento de mercado y el problema es la estructura, no el precio.`}</div></div>
+          <div class="paso"><div class="k">Hasta dónde</div><div class="t">El flujo mensual es positivo recién en <b>${UF(f.mesUF)}</b>, ${Math.round((1-f.mesUF/f.precioUF)*100)}% bajo tu precio: no es una oferta, es la medida del problema.</div></div>
+          <div class="paso"><div class="k">Qué hacer</div><div class="t">${f.altern?`<b>${f.altern}</b>`:`Prueba con otro departamento.`}</div></div>
+        </div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">3</span>Puesta a punto antes de ${f.mod==="STR"?"publicar":"arrendar"}</div>
+        <p class="v-prosa">${capexIntro(f)}</p>
+        <div class="kpis">
+          <div class="kpi"><div class="k">${rango?"Rango estimado":"Inversión"}</div><div class="n">${rango?`UF ${miles(c.min)}–${miles(c.max)}`:UF(c.uf)}</div></div>
+          <div class="kpi"><div class="k">Por m²</div><div class="n">${pct1(c.ufm2)} <small>UF/m²</small></div></div>
+          <div class="kpi"><div class="k">De tu plata día 1</div><div class="n">${Math.round(c.frac)}%</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* PUESTA A PUNTO · la razón va antes del monto: para captar el arriendo (o la tarifa) de
+     mercado que el análisis asume, el depto tiene que estar al nivel de ese mercado. */
+  function capexIntro(f){
+    const c=f.capex;
+    const que = f.mod==="STR" ? "la tarifa por noche que el análisis asume es la de mercado para un depto como este, y el mercado la paga a un depto que está a su nivel" : "el arriendo que el análisis asume es el de mercado para un depto como este, y el mercado lo paga a un depto que está a su nivel";
+    return `Antes de cobrar hay que gastar: ${que}. Ponerlo a ese nivel —un depto de ${c.antig} años y ${c.supUtil} m² útiles— es la puesta a punto, y Franco la corre con <b>${UF(c.uf)}</b> (${$(c.clp)}) dentro de la plata del día 1 que el score usa. Con una cotización real, el número se ajusta${c.frac>=20?"; acá pesa: es más de un quinto de lo que pones el día 1":""}.`;
+  }
+
+  function escena(f){
+    const s=f.sobre, recUF=f.precioUF*(1-f.mix.dcto/100), c=f.capex, rango=c.max>c.min;
+    return `<div class="escena">
+      <div class="cabeza">
+        <div class="q">Cómo lo pagas<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div>
+        <div class="val">Precio recomendado ${UF(recUF)}<small>hoy ${UF(f.precioUF)}</small></div>
+      </div>
+
+      <div class="bloque">
+        <div class="v-sub"><span class="num">1</span>Caro o barato</div>
+        ${franja(f)}
+        <div class="frase">
+          <div class="act"><span class="tag">hoy</span><span class="${s.desv>2?'caro':''}">${HOY(f)}</span> Tu precio por m² (${uf1(s.sujeto)}) está ${Math.abs(s.desv)}% ${s.desv>0?"sobre":"bajo"} la mediana (${uf1(s.med)}).</div>
+          <div class="prop"><span class="tag">propuesta</span>Tu precio por m² está <b>${POS[s.pos]}</b>: ${uf1(s.sujeto)} contra una mediana de ${uf1(s.med)}, y la mitad de los avisos comparables va de ${uf1(s.p25)} a ${uf1(s.p75)}.</div>
+        </div>
+      </div>
+
+      <div class="bloque">
+        <div class="v-sub"><span class="num">2</span>Cómo llegar al precio recomendado</div>
+        <div class="ancla">
+          <div class="hoy"><div class="k">Hoy</div><div class="n">${UF(f.precioUF)}<small>${$(f.precioUF*f.uf)}</small></div></div>
+          <div class="fl">→</div>
+          <div><div class="k">Lo que Franco recomienda</div><div class="n">${UF(recUF)}<small>${$(recUF*f.uf)} · −${pct1(f.mix.dcto)}%</small></div></div>
+        </div>
+        <div class="chips">
+          ${f.mix.pieA!==f.mix.pieDe?`<span class="chip">Pie <s>${f.mix.pieDe}%</s> ${f.mix.pieA}%</span>`:`<span class="chip">Pie ${f.mix.pieDe}%</span>`}
+          ${f.mix.plazoA!==f.mix.plazoDe?`<span class="chip">Plazo <s>${f.mix.plazoDe}</s> ${f.mix.plazoA} años</span>`:`<span class="chip">Plazo ${f.mix.plazoDe} años</span>`}
+          <span class="chip dcto">Negocias −${pct1(f.mix.dcto)}% de precio</span>
+          <span class="chip">→ <span class="pill" data-v="${f.mix.destino}">${VER[f.mix.destino]}</span></span>
+        </div>
+        <div class="banda"><b>${BANDA[f.mix.banda]}</b>${typeof f.mix.solo==="number"&&f.mix.solo!==f.mix.dcto?` · −${pct1(f.mix.solo)}% si solo modificas el precio`:""}${f.mix.costoUF>0?` · poner ese pie cuesta ${UF(f.mix.costoUF)} más el día uno.`:f.mix.costoUF<0?` · con el precio negociado, el mismo pie son ${UF(-f.mix.costoUF)} menos el día uno.`:"."}</div>
+        <div class="estrategia">${estrategia(f)}</div>
+      </div>
+
+      <div class="bloque">
+        <div class="v-sub"><span class="num">3</span>Puesta a punto antes de ${f.mod==="STR"?"publicar":"arrendar"}</div>
+        <p class="v-prosa">${capexIntro(f)}</p>
+        <div class="kpis">
+          <div class="kpi"><div class="k">${rango?"Rango estimado":"Inversión"}</div><div class="n">${rango?`UF ${miles(c.min)}–${miles(c.max)}`:UF(c.uf)}</div></div>
+          <div class="kpi"><div class="k">Por m²</div><div class="n">${pct1(c.ufm2)} <small>UF/m²</small></div></div>
+          <div class="kpi"><div class="k">De tu plata día 1</div><div class="n">${Math.round(c.frac)}%</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* COMPRAR · «Qué margen tienes». No hay recomendación: el pin recomendado no existe, el
+     bloque 2 no tiene ancla ni chips, y los pasos son «qué pides» (nada: cierra al precio
+     pedido) y «hasta dónde» (hasta qué precio sigue siendo Comprar y a qué cae). Espejo de
+     construirComoLoPagas, rama `caso === "comprar"`. */
+  function escenaComprar(f){
+    const s=f.sobre, c=f.capex, rango=c.max>c.min;
+    // el puente (decisión 21-sep, directo al código): con el metro caro, el bloque 2 lo retoma
+    const pasos=[["Qué pides", s.desv>2
+      ? `Nada que necesites: a <b>${UF(f.precioUF)}</b> el caso ya cierra. Si igual quieres negociar, tienes el argumento del mercado: el vendedor pide <b>${s.desv}% más</b> que la mediana de ${miles(s.n)} avisos comparables${s.univ?" de "+s.univ:""} en ${f.comuna}.`
+      : `Nada: a <b>${UF(f.precioUF)}</b> el caso ya es Comprar. Cierra al precio pedido.`]];
+    if (f.maxUF && f.maxUF>f.precioUF){ const pct=Math.round((f.maxUF/f.precioUF-1)*1000)/10;
+      pasos.push(["Hasta dónde",`Sigue siendo Comprar hasta <b>${UF(f.maxUF)}</b> (+${pct1(pct)}%)${f.caeA?`; sobre eso cae a ${VER[f.caeA]}`:""}.`]); }
+    return `<div class="escena">
+      <div class="cabeza">
+        <div class="q">Cómo lo pagas<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div>
+        <div class="val">Precio ${UF(f.precioUF)}<small>ya es Comprar</small></div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">1</span>Caro o barato</div>
+        ${franja(f)}
+        <div class="frase">
+          <div class="act"><span class="tag">hoy</span><span class="${s.desv>2?'caro':''}">${HOY(f)}</span> Tu precio por m² (${uf1(s.sujeto)}) está ${Math.abs(s.desv)}% ${s.desv>0?"sobre":"bajo"} la mediana (${uf1(s.med)}).</div>
+          <div class="prop"><span class="tag">propuesta</span>Tu precio por m² está <b>${POS[s.pos]}</b>: ${uf1(s.sujeto)} contra una mediana de ${uf1(s.med)}, y la mitad de los avisos comparables va de ${uf1(s.p25)} a ${uf1(s.p75)}.</div>
+        </div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">2</span>Qué margen tienes</div>
+        <div class="estrategia">${pasos.map(([k,t])=>`<div class="paso"><div class="k">${k}</div><div class="t">${t}</div></div>`).join("")}</div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">3</span>Puesta a punto antes de ${f.mod==="STR"?"publicar":"arrendar"}</div>
+        <p class="v-prosa">${capexIntro(f)}</p>
+        <div class="kpis">
+          <div class="kpi"><div class="k">${rango?"Rango estimado":"Inversión"}</div><div class="n">${rango?`UF ${miles(c.min)}–${miles(c.max)}`:UF(c.uf)}</div></div>
+          <div class="kpi"><div class="k">Por m²</div><div class="n">${pct1(c.ufm2)} <small>UF/m²</small></div></div>
+          <div class="kpi"><div class="k">De tu plata día 1</div><div class="n">${Math.round(c.frac)}%</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* SIN DESCUENTO · «Cómo llegar sin pedir descuento». El mix cruza moviendo solo lo tuyo:
+     el recomendado es el precio pedido (pin recomendado bajo el pin «tu precio», misma x),
+     el «hoy» no se tacha, el chip fuerte dice «Sin pedirle un peso al vendedor», NO hay línea
+     de banda de esfuerzo ni paso «con qué». Espejo de la rama `caso === "sin_descuento"`. */
+  function escenaSinDescuento(f){
+    const s=f.sobre, c=f.capex, rango=c.max>c.min;
+    const limite=(f.limiteUF?`Sobre <b>${UF(f.limiteUF)}</b> la TIR a 10 años baja del 6%: ahí conviene más otro tipo de inversión. Y el`:`El`)+` flujo mensual es positivo recién en <b>${UF(f.mesUF)}</b>, ${Math.round((1-f.mesUF/f.precioUF)*100)}% bajo tu precio — no es el número a pelear, es el marco.`;
+    const pasos=[["Qué pides",`Nada al vendedor: con <b>${f.mix.pieA}% de pie${f.mix.plazoA!==f.mix.plazoDe?` y ${f.mix.plazoA} años`:""}</b> el caso llega a ${VER[f.mix.destino]} sin pedirle un peso. Lo que cambia es lo tuyo.`],["Hasta dónde",limite]];
+    if (f.altern) pasos.push(["Si no cede",`<b>${f.altern}</b>`]);
+    return `<div class="escena">
+      <div class="cabeza">
+        <div class="q">Cómo lo pagas<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div>
+        <div class="val">Precio recomendado ${UF(f.precioUF)}<small>hoy ${UF(f.precioUF)} · sin descuento</small></div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">1</span>Caro o barato</div>
+        ${franja(f)}
+        <div class="frase">
+          <div class="act"><span class="tag">hoy</span><span class="${s.desv>2?'caro':''}">${HOY(f)}</span> Tu precio por m² (${uf1(s.sujeto)}) está ${Math.abs(s.desv)}% ${s.desv>0?"sobre":"bajo"} la mediana (${uf1(s.med)}).</div>
+          <div class="prop"><span class="tag">propuesta</span>Tu precio por m² está <b>${POS[s.pos]}</b>: ${uf1(s.sujeto)} contra una mediana de ${uf1(s.med)}, y la mitad de los avisos comparables va de ${uf1(s.p25)} a ${uf1(s.p75)}.</div>
+        </div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">2</span>Cómo llegar sin pedir descuento</div>
+        <div class="ancla">
+          <div class="hoy sind"><div class="k">Hoy</div><div class="n">${UF(f.precioUF)}<small>${$(f.precioUF*f.uf)}</small></div></div>
+          <div class="fl">→</div>
+          <div><div class="k">Lo que Franco recomienda</div><div class="n">${UF(f.precioUF)}<small>${$(f.precioUF*f.uf)} · sin descuento</small></div></div>
+        </div>
+        <div class="chips">
+          ${f.mix.pieA!==f.mix.pieDe?`<span class="chip">Pie <s>${f.mix.pieDe}%</s> ${f.mix.pieA}%</span>`:`<span class="chip">Pie ${f.mix.pieDe}%</span>`}
+          ${f.mix.plazoA!==f.mix.plazoDe?`<span class="chip">Plazo <s>${f.mix.plazoDe}</s> ${f.mix.plazoA} años</span>`:`<span class="chip">Plazo ${f.mix.plazoDe} años</span>`}
+          <span class="chip dcto">Sin pedirle un peso al vendedor</span>
+          <span class="chip">→ <span class="pill" data-v="${f.mix.destino}">${VER[f.mix.destino]}</span></span>
+        </div>
+        <div class="estrategia">${pasos.map(([k,t])=>`<div class="paso"><div class="k">${k}</div><div class="t">${t}</div></div>`).join("")}</div>
+      </div>
+      <div class="bloque">
+        <div class="v-sub"><span class="num">3</span>Puesta a punto antes de ${f.mod==="STR"?"publicar":"arrendar"}</div>
+        <p class="v-prosa">${capexIntro(f)}</p>
+        <div class="kpis">
+          <div class="kpi"><div class="k">${rango?"Rango estimado":"Inversión"}</div><div class="n">${rango?`UF ${miles(c.min)}–${miles(c.max)}`:UF(c.uf)}</div></div>
+          <div class="kpi"><div class="k">Por m²</div><div class="n">${pct1(c.ufm2)} <small>UF/m²</small></div></div>
+          <div class="kpi"><div class="k">De tu plata día 1</div><div class="n">${Math.round(c.frac)}%</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* render por caso, LTR | STR */
+  const cont=document.getElementById("escenas");
+  const casos=[...new Set(FILAS.map(f=>f.caso))];
+  for (const caso of casos){
+    const rot=document.createElement("div"); rot.className="rot";
+    const fs=FILAS.filter(f=>f.caso===caso);
+    const sub = caso.startsWith("Argumento de mercado") ? "El depto está sobre la mediana: el dato de la comuna es el argumento. En STR el recomendado sigue arriba de la mediana; en LTR nunca (0 de 89), así que el mercado te lleva hasta la mediana y de ahí para abajo es tu caja."
+      : caso.startsWith("Argumento de caja") ? "El depto ya está bajo la mediana: el descuento es lo que tu caja necesita, y la estrategia lo dice así."
+      : caso==="Comprar" ? "El veredicto ya es Comprar: no hay precio que negociar y el bloque 2 dice el margen — hasta qué precio sigue siendo Comprar y a qué cae. Sin pin recomendado. La STR está en el cuarto más caro de Santiago (+59%) y aun así es Comprar: el bloque 1 lo dice, el bloque 2 no lo retoma."
+      : caso==="Sin descuento" ? "El mix cruza a Comprar sin pedirle un peso al vendedor: lo que cambia es el pie y el plazo. El precio recomendado es el pedido, el «hoy» no se tacha y no hay banda de esfuerzo ni «con qué». En LTR con comuna alternativa, «si no cede» aparece igual."
+      : caso.startsWith("Buscar otro") ? "En LTR no hay precio recomendado (el motor no mide el mix hacia Comprar desde Buscar) y el capítulo dice qué haría falta. En STR sí lo mide, y es un cambio grande: se desarrolla con «difícil» al frente."
+      : "Banda difícil y el depto ya barato para la comuna: no hay comparable que lo sostenga. El límite y el plan B van al lado.";
+    rot.innerHTML=`<h2>${caso}</h2><p>${sub}</p>`;
+    cont.appendChild(rot);
+    const par=document.createElement("div"); par.className="par2"; par.innerHTML=fs.map(f=>f.comprar?escenaComprar(f):f.sinDescuento?escenaSinDescuento(f):f.sinSalida?escenaSinSalida(f):escena(f)).join(""); cont.appendChild(par);
+  }
+  const tabla=document.getElementById("tabla-frase");
+  for (const f of FILAS) tabla.insertAdjacentHTML("beforeend",`<tr><td>${f.mod} ${f.id} · ${f.comuna}</td><td>${f.sobre.desv>0?"+":""}${f.sobre.desv}% (n ${miles(f.sobre.n)})</td><td><code>${f.sobre.pos}</code></td><td>${HOY(f)}</td><td>Tu precio por m² está <b>${POS[f.sobre.pos]}</b>.</td></tr>`);
+
+  function T(t,b){document.documentElement.setAttribute('data-theme',t);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function V(v,b){document.documentElement.setAttribute('data-view',v);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function Fr(v,b){document.documentElement.setAttribute('data-frase',v);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+</script>
+</body>
+</html>
