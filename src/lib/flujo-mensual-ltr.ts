@@ -40,6 +40,13 @@ export interface SegFlujo {
 
 export const ROTULO_MES_LTR = "Lo que entra y lo que sale en un mes promedio del año 1, a precios de hoy";
 export const SUB_TOTAL_MES_LTR = "en un mes promedio del año 1, a precios de hoy";
+/** Con ENTREGA FUTURA el año 1 no tiene arrendatario (77 filas, 6% del parque): el mes de la
+ *  tabla es el del primer año operativo, y el rótulo lo dice así en vez de mentir. */
+export const ROTULO_MES_LTR_PRE_ENTREGA = "Lo que entra y lo que sale en un mes promedio del primer año con arrendatario, a precios de hoy";
+export const SUB_TOTAL_MES_LTR_PRE_ENTREGA = "en un mes promedio del primer año con arrendatario, a precios de hoy";
+export function rotuloMesLtr(preEntrega: boolean): { sub: string; total: string } {
+  return preEntrega ? { sub: ROTULO_MES_LTR_PRE_ENTREGA, total: SUB_TOTAL_MES_LTR_PRE_ENTREGA } : { sub: ROTULO_MES_LTR, total: SUB_TOTAL_MES_LTR };
+}
 export const HORIZONTE_CURVA_ANIOS = 10;
 
 export interface PuntoFlujoAnualLtr {

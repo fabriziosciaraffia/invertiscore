@@ -41,7 +41,7 @@ import { SensibilidadDial } from "./drawers/DrawersPropios";
 import { CurvaAnios, type PuntoAnio } from "./shared/CurvaAnios";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { resolverModeloCostos } from "@/lib/modelo-costos";
-import { ROTULO_MES_LTR, SUB_TOTAL_MES_LTR, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr, type SegFlujo } from "@/lib/flujo-mensual-ltr";
+import { rotuloMesLtr, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr, type SegFlujo } from "@/lib/flujo-mensual-ltr";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
@@ -357,6 +357,8 @@ export function CapitulosInversion({
         // no se deriva nada, para que el gate lea lo mismo que el render.
         const serie = serieFlujoMensualPorAnioLtr(results.projections);
         const puntos: PuntoAnio[] = serie.map((p) => ({ anio: p.anio, v: p.flujoMensual }));
+        // Con entrega futura el primer año operativo no es el año 1: el rótulo del mes lo dice.
+        const rotulo = rotuloMesLtr((serie[0]?.anio ?? 1) > 1);
         const desc = descomposicionFlujoLtr(results.projections);
         const pie = desc ? pieCurvaFlujoLtr(desc, { mantencionPorBandas: !declarada, money }) : null;
         const cierre = cierreMesVacioLtr({ mesVacio, cuota: d.dividendo, gastosComunes, contribucionesMes: d.contribucionesMes, money });
@@ -365,7 +367,7 @@ export function CapitulosInversion({
         return (
           <>
             <VViz>
-              <VSub>{ROTULO_MES_LTR}</VSub>
+              <VSub>{rotulo.sub}</VSub>
               {reparto && (() => {
                 const fr = fraseReparto(reparto, "los gastos", money);
                 return (
@@ -385,7 +387,7 @@ export function CapitulosInversion({
                   tono="tot"
                   k={isNeg ? "Sale de tu bolsillo" : "Te queda"}
                   tip="Arriendo − cuota − gastos"
-                  sub={SUB_TOTAL_MES_LTR}
+                  sub={rotulo.total}
                   v={<span style={{ color: isNeg ? "var(--signal-red)" : undefined }}>{`${isNeg ? "−" : "+"}${money(Math.abs(d.flujoNeto))}`}</span>}
                   unidad="/mes"
                 />

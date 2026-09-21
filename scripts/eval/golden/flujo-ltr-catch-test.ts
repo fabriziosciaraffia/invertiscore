@@ -22,6 +22,7 @@
 //
 // VERIFICADO EN ROJO (21-sep-2026), mutando y devolviendo cada línea:
 //   · el rótulo cambiado a «mes estabilizado» → cae 1.
+//   · `rotuloMesLtr` ignorando la pre-entrega (siempre «año 1») → cae 1.
 //   · la serie con `/ 12` en vez de `/ p.meses` → cae 2.
 //   · el cierre interpolando `p.cuota` donde va `p.mesVacio` → cae 3.
 //
@@ -30,7 +31,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROTULO_MES_LTR, SUB_TOTAL_MES_LTR, HORIZONTE_CURVA_ANIOS, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr } from "../../../src/lib/flujo-mensual-ltr";
+import { ROTULO_MES_LTR, SUB_TOTAL_MES_LTR, rotuloMesLtr, HORIZONTE_CURVA_ANIOS, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr } from "../../../src/lib/flujo-mensual-ltr";
 import { calcMesVacio } from "../../../src/lib/analysis";
 import type { YearProjection } from "../../../src/lib/types";
 
@@ -57,8 +58,15 @@ export function runFlujoLtrTier(): { hard: number } {
   if (ROTULO_MES_LTR !== "Lo que entra y lo que sale en un mes promedio del año 1, a precios de hoy") F(`1 · el rótulo del mes cambió: «${ROTULO_MES_LTR}»`);
   if (SUB_TOTAL_MES_LTR !== "en un mes promedio del año 1, a precios de hoy") F(`1 · el sub del total cambió: «${SUB_TOTAL_MES_LTR}»`);
   if (/estabilizado/.test(ROTULO_MES_LTR)) F("1 · LTR no tiene ramp-up: el rótulo no puede decir «estabilizado»");
-  if (!/<VSub>\{ROTULO_MES_LTR\}<\/VSub>/.test(cuerpo)) F("1 · el capítulo no usa ROTULO_MES_LTR en el sub del bloque");
-  if (!/sub=\{SUB_TOTAL_MES_LTR\}/.test(cuerpo)) F("1 · la fila del total no lleva SUB_TOTAL_MES_LTR");
+  // Con entrega futura el año 1 no tiene arrendatario (77 filas): el rótulo dice «del primer
+  // año con arrendatario» en vez de mentir. La función decide; el capítulo la llama con la
+  // condición real (el primer punto de la serie no es el año 1).
+  const r0 = rotuloMesLtr(false), r1 = rotuloMesLtr(true);
+  if (r0.sub !== ROTULO_MES_LTR || r0.total !== SUB_TOTAL_MES_LTR) F("1 · sin pre-entrega el rótulo no es el del año 1");
+  if (!/del primer año con arrendatario, a precios de hoy$/.test(r1.sub) || !/^en un mes promedio del primer año con arrendatario, a precios de hoy$/.test(r1.total) || /año 1/.test(r1.sub)) F(`1 · con pre-entrega el rótulo tiene que decir «del primer año con arrendatario» (dio «${r1.sub}»)`);
+  if (!/const rotulo = rotuloMesLtr\(\(serie\[0\]\?\.anio \?\? 1\) > 1\)/.test(cuerpo)) F("1 · el capítulo no decide el rótulo con el primer año operativo de la serie");
+  if (!/<VSub>\{rotulo\.sub\}<\/VSub>/.test(cuerpo)) F("1 · el capítulo no usa el rótulo del mes en el sub del bloque");
+  if (!/sub=\{rotulo\.total\}/.test(cuerpo)) F("1 · la fila del total no lleva el rótulo del mes");
 
   // 2 · la serie ÷ meses operativos, diez años, sin años sin operación
   const veinte: YearProjection[] = [anio(1, 0, 0), anio(2, 8, -100000), ...Array.from({ length: 18 }, (_, i) => anio(i + 3, 12, -90000 + i * 1000))];
