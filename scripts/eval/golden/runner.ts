@@ -63,6 +63,8 @@ import { runGrillaPopupTier } from "./grilla-popup-catch-test";
 import { runPopupAjustesTier } from "./popup-ajustes-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
+import { runMantencionUnaSolaTier } from "./mantencion-una-sola-catch-test";
+import { runFlujoLtrTier } from "./flujo-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
@@ -356,6 +358,12 @@ async function printStrSemantic() {
   // fijada, la frase del hallazgo por cuartil y el cableado en los dos capítulos.
   // Verificado en rojo con 6 mutaciones. Siempre con el QUICK; la sonda viva va standalone.
   totalHard += runComoLoPagasTier().hard;
+  // ── Tier MANTENCIÓN UNA SOLA (21-sep-2026): el mes de la tabla y el año 1 del loop salen
+  //    de la misma función; declarada respetada, legacy sin +1, v3 con reset. ──
+  totalHard += runMantencionUnaSolaTier().hard;
+  // ── Tier FLUJO LTR (21-sep-2026): el capítulo II de LTR como capítulo — rótulo del mes,
+  //    serie ÷ meses a diez años, pie por datos, mes vacío como cierre. ──
+  totalHard += runFlujoLtrTier().hard;
   // ── Tier STANDALONE (17-sep-2026): los catch-tests que corrían SOLO a mano. Nueve de los
   // 28 estaban en rojo cuando se los corrió, y `zona` llevaba 14 días protegiendo una regla
   // derogada a propósito — o sea que su rojo ya no se podía leer. Entran los 12 que no tocan

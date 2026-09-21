@@ -1,29 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo } from "react";
 import type {
   AIAnalysisV2,
-  AISection,
   FullAnalysisResult,
   AnalisisInput,
   HallazgoPuestaAPunto,
 } from "@/lib/types";
-import { calcFlujoDesglose, calcMesVacio } from "@/lib/analysis";
-import { fraseReparto } from "@/lib/reparto-ingreso";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { FilaDato, FilasDato } from "@/components/analysis/shared";
 import {
   VProsa,
   VViz,
-  VCierre,
   VFuente,
-  VSub,
-  Fall,
-  type FallRow,
 } from "@/components/analysis/hallazgos/vocabulario";
 import type { HallazgoSobreprecio } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
@@ -93,239 +84,21 @@ const DRAWER_META: Record<DrawerKey, { label: string }> = {
   capexPuestaAPunto: { label: "Puesta a punto" },
 };
 
-function fmtCLP(n: number): string {
-  return "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
-}
-
-function fmtMoney(n: number, currency: "CLP" | "UF", valorUF: number): string {
-  if (currency === "UF") {
-    const uf = Math.abs(n) / (valorUF || 1);
-    const rounded = Math.round(uf * 100) / 100;
-    if (rounded >= 100) return "UF " + Math.round(rounded).toLocaleString("es-CL");
-    return "UF " + rounded.toFixed(2).replace(".", ",");
-  }
-  return fmtCLP(n);
-}
-
 // Compact format that always fits in narrow cards (~70px wide).
 // CLP: $X,XB (billones, ≥1.000M) / $XM (≥100M) / $X,XM (<100M).
 // UF: UF X,XK (≥10k) / UF X (redondeo).
 
-// ─── Costo mensual drawer ───────────────────────────
-export function DrawerCostoMensual({
-  data,
-  currency,
-  results,
-  inputData,
-  valorUF,
-  capitulo,
-}: {
-  /** Prosa IA de la sección; puede faltar (informe sin redacción). */
-  data?: AISection;
-  currency: "CLP" | "UF";
-  results: FullAnalysisResult;
-  inputData: AnalisisInput;
-  valorUF: number;
-  /** T3 (capítulo II del CONGELADO): intro fija en vez del párrafo IA, sin la nota
-   *  educativa, subtítulo serif de tramo y la fuente con la UF del análisis. */
-  capitulo?: { intro: ReactNode; fuente: ReactNode };
-}) {
-  const desglose = calcFlujoDesglose({
-    arriendo: results.metrics?.ingresoMensual ?? inputData.arriendo ?? 0,
-    dividendo: results.metrics?.dividendo ?? 0,
-    ggcc: results.metrics?.gastos ?? 0,
-    contribuciones: results.metrics?.contribuciones ?? 0,
-    mantencion: results.metrics?.provisionMantencionAjustada ?? 0,
-    vacanciaMeses: inputData.vacanciaMeses ?? 0,
-    usaAdministrador: inputData.usaAdministrador,
-    comisionAdministrador: inputData.comisionAdministrador,
-  });
-
-  const arriendo = desglose.arriendo;
-  const flujo = desglose.flujoNeto;
-  const isNeg = flujo < 0;
-  const fmt = (v: number) => fmtMoney(v, currency, valorUF);
-  // El reparto del ingreso lo emite el motor desde el 16-sep-2026 (`reparto-ingreso.ts`);
-  // acá NO se deriva nada, que era justo lo que hacía el call site de la barra retirada.
-  const reparto = results.metrics?.repartoIngreso ?? null;
-
-  // Ítems del grupo "Sale" en orden de magnitud de los fijos primero, variables después.
-  const saleItems: Array<{ name: string; value: number; tooltip: string }> = [
-    {
-      name: "Cuota del crédito",
-      value: desglose.dividendo,
-      tooltip: "Cuota mensual del crédito hipotecario (capital + interés).",
-    },
-    {
-      name: "Gastos comunes",
-      value: desglose.ggccVacancia,
-      tooltip: "Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia).",
-    },
-    {
-      name: "Contribuciones",
-      value: desglose.contribucionesMes,
-      tooltip: "Impuesto territorial trimestral del SII, prorrateado a mensual. Lo paga el propietario.",
-    },
-    {
-      name: "Vacancia",
-      value: desglose.vacanciaProrrata,
-      tooltip: "Ingreso perdido por meses sin arrendatario. Se prorratea al mes según el % de vacancia configurado.",
-    },
-    {
-      name: "Mantención",
-      value: desglose.mantencion,
-      // #17 pasada tooltips — el supuesto del modelo (0,3-1,5% según antigüedad)
-      // subió al VFuente del cuerpo; el ⓘ queda como definición.
-      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto.",
-    },
-    {
-      name: "Corretaje",
-      value: desglose.corretajeProrrata,
-      tooltip: "Comisión del corredor para captar arrendatario, prorrateada al mes.",
-    },
-    {
-      name: "Recambio",
-      value: desglose.recambio,
-      tooltip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores.",
-    },
-    {
-      name: "Gestión del arriendo",
-      value: desglose.administracion,
-      // ⛔ SE SACÓ «0% si autogestionas» (16-sep-2026). La fila se dibuja con
-      // `.filter((r) => r.value > 0)`, así que cuando autogestionas NO EXISTE: la
-      // frase solo podía leerla quien no está en el caso que explicaba. Y es la fila
-      // de menor población de la tabla —29 de 1.179 (2,5%)— con el tooltip más largo.
-      tooltip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Distinto de gastos comunes del edificio.",
-    },
-  ];
-  // Items SALE ordenados por value desc; los zero al final (manteniendo
-  // grayed-out). Tooltips se asocian por nombre (no por posición), así que
-  // un sort no rompe el mapeo.
-  const saleItemsSorted = [...saleItems].sort((a, b) => {
-    const aZero = a.value <= 0;
-    const bZero = b.value <= 0;
-    if (aZero && !bZero) return 1;
-    if (!aZero && bZero) return -1;
-    return b.value - a.value;
-  });
-
-  // EL MES VACÍO, COMPLETO. Hasta acá esta frase decía solo el dividendo y se quedaba
-  // corta: en Providencia (7710a017) anunciaba $978.290 cuando el golpe real es
-  // $1.149.025 — 14,9% menos de lo que el dueño paga (le faltaban los $90.000 de
-  // gastos comunes completos y los $80.735 de contribuciones del mes). Desde v21 este cierre es el ÚNICO
-  // lugar del informe LTR donde el lector ve el escenario (la prosa de `costoMensual`
-  // murió y el bloque del drawer de estructura es inalcanzable), así que la cifra
-  // incompleta era la única que quedaba en pie.
-  const mesVacio = calcMesVacio({
-    dividendo: desglose.dividendo,
-    ggcc: results.metrics?.gastos ?? inputData.gastos ?? 0,
-    contribuciones: results.metrics?.contribuciones ?? inputData.contribuciones ?? 0,
-  });
-  const caja = data ? (currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) : "";
-  const contenido = data ? (currency === "CLP" ? data.contenido_clp : data.contenido_uf) : "";
-  return (
-    <div>
-      {capitulo ? (
-        <VProsa>{capitulo.intro}</VProsa>
-      ) : (
-        <>
-          {contenido && (
-            <div className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
-              {renderPlumon(contenido)}
-            </div>
-          )}
-
-          {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
-              gastos que otros análisis omiten. */}
-          <p className="font-mono text-[11px] mt-1 mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-            ● A diferencia de otros análisis, Franco considera todos los gastos que impactan tu flujo real: vacancia, mantención, corretaje, recambio y gestión. Una evaluación honesta los incluye.
-          </p>
-        </>
-      )}
-
-      {/* FASE 4 — el flujo mensual pasa al WATERFALL del vocabulario: el arriendo
-          entero como banda y cada egreso comiéndose su parte, con el resultado
-          como total. Reemplaza los dos grupos de barras ENTRA/SALE. */}
-      <VViz t={`Qué pasa con los ${fmt(arriendo)} del arriendo`}>
-        {capitulo && <VSub>Lo que entra y lo que sale cada mes</VSub>}
-        {capitulo ? (
-          /* Goal "LTR hereda" (05-sep-2026): el capítulo II usa las mismas piezas que STR II
-             (barra de tramos + filas de dato). Mismos ítems y mismas cifras que el waterfall. */
-          <>
-            {/* LA BARRA DE TRAMOS SALIÓ Y NO SE REEMPLAZA POR OTRO GRÁFICO (16-sep-2026).
-              No se fue por fea: **cambiaba de unidad a mitad del parque sin avisar**. Su escala
-              era `max(ingreso, costosOperar + cuota)`, así que mientras la cuota cabe en el
-              ingreso el ancho del negro decía «qué fracción de lo que ENTRA se lleva la cuota»,
-              y cuando no cabe pasaba a decir «qué fracción de lo que SALE es la cuota». Medido:
-              la cuota supera el 100%% del ingreso en más de la mitad de las filas LTR (p50 =
-              110%%), o sea que el segundo modo era la mayoría. Y encima el negro se dibujaba
-              ENCIMA de la banda gris, así que el gris dejaba de leerse como continente.
-              Lo que la barra intentaba decir ahora está escrito, que es lo único que este
-              capítulo no decía: qué se lleva la plata. El reparto lo emite el MOTOR
-              (`metrics.repartoIngreso`), no el render. */}
-            {reparto && (() => {
-              const f = fraseReparto(reparto, "los gastos", fmt);
-              return (
-                <p className="doc-reparto">
-                  {f.antes}
-                  <b style={f.sale ? { color: "var(--signal-red)" } : undefined}>{f.monto}</b>
-                  {f.despues}
-                </p>
-              );
-            })()}
-            <FilasDato>
-              <FilaDato tono="in" k="Arriendo mensual" tip="Lo que entra cada mes, antes de cuota y gastos" v={fmt(arriendo)} unidad="/mes" />
-              {saleItemsSorted
-                .filter((r) => r.value > 0)
-                .map((r) => (
-                  <FilaDato key={r.name} k={r.name} tip={r.tooltip} v={`−${fmt(r.value)}`} unidad="/mes" />
-                ))}
-              <FilaDato
-                tono="tot"
-                k={isNeg ? "Sale de tu bolsillo" : "Te queda cada mes"}
-                tip="Arriendo − cuota − gastos"
-                v={<span style={{ color: isNeg ? "var(--signal-red)" : undefined }}>{`${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`}</span>}
-                unidad="/mes"
-              />
-            </FilasDato>
-          </>
-        ) : (
-          <Fall
-            rows={saleItemsSorted
-              .filter((r) => r.value > 0)
-              .map((r, i) => ({
-                k: r.name,
-                v: `−${fmt(r.value)}`,
-                pct: r.value,
-                tone: (i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red") as FallRow["tone"],
-                // CORRECCIÓN 5 — el mapeo al waterfall descartaba `tooltip` y se perdían las
-                // glosas de cada egreso (contribuciones, provisión de mantención, etc.).
-                tip: r.tooltip ? <InfoTooltip content={r.tooltip} /> : undefined,
-              }))}
-            total={{
-              k: isNeg ? "Sale de tu bolsillo" : "Te queda cada mes",
-              v: `${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`,
-            }}
-          />
-        )}
-      </VViz>
-
-      {caja ? (
-        <VCierre titulo={capitulo ? "Qué haces con esto" : data?.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(caja)}</VCierre>
-      ) : (
-        <VCierre titulo="Qué haces con esto">
-          {isNeg
-            ? `¿Tienes ${fmt(Math.abs(flujo))} disponibles cada mes sin comprometer otro gasto fijo? Un mes sin arrendatario son ${fmt(mesVacio)} de tu bolsillo: el dividendo completo más gastos comunes y contribuciones.`
-            : `El arriendo cubre la cuota y los gastos y deja ${fmt(flujo)} al mes. Un mes sin arrendatario son ${fmt(mesVacio)} de tu bolsillo: el dividendo completo más gastos comunes y contribuciones.`}
-        </VCierre>
-      )}
-
-      {/* T4 (contrato CONGELADO): la fuente cita, no explica. Los supuestos del
-          modelo (mantención por antigüedad, recambio) viven en "Cómo se calcula". */}
-      <VFuente>{capitulo ? capitulo.fuente : "Motor Franco · flujo mensual del análisis"}</VFuente>
-    </div>
-  );
-}
+// ─── Costo mensual drawer — RETIRADO (21-sep-2026) ───────────────────────
+// `DrawerCostoMensual` salió entero. Tenía dos caminos: el drawer (`activeKey ===
+// "costoMensual"`), que ninguna superficie abría desde que `drawerSequence` quedó en
+// ["zona"], y el prop `capitulo`, que era el cuerpo del capítulo II de LTR embebido. El
+// capítulo pasó a ser capítulo de verdad, como STR, en `CapitulosInversion.tsx` (contrato
+// docs/wireframes/rediseno-informe/capitulo-ii-flujo-ltr.html), con lo distinto por
+// modalidad en `src/lib/flujo-mensual-ltr.ts`. Con él se fueron la bajada fija, el rótulo
+// «Qué pasa con los $X del arriendo», la caja IA de `costoMensual` (prosa de contrato ≤ v20)
+// y el «¿Tienes $X disponibles cada mes?»; el mes vacío (`calcMesVacio`) sigue siendo el
+// cierre, ahora con la fórmula a la vista. `DrawerKey` conserva la clave porque la leen
+// `DRAWER_META` y la telemetría.
 
 // ─── Negociación drawer — RETIRADO (21-sep-2026) ─────────────────────────
 // `DrawerNegociacion` y `PlanNegociacion` salieron enteros con el rediseño de «Cómo lo
@@ -767,15 +540,6 @@ export function AnalysisDrawer({
   // INLINE del acordeón de hallazgos (FASE 4).
   const cuerpoDrawer = (
     <>
-      {activeKey === "costoMensual" && (
-        <DrawerCostoMensual
-          data={section as AISection}
-          currency={currency}
-          results={results}
-          inputData={inputData}
-          valorUF={valorUF}
-        />
-      )}
       {activeKey === "capexPuestaAPunto" && capexHallazgo && (
         <DrawerCapexPuestaAPunto
           hallazgo={capexHallazgo}

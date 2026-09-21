@@ -62,16 +62,24 @@ if (mv <= conProrrata) F(`1 · calcMesVacio (${mv}) no supera a la versión con 
 if (calcMesVacio({ dividendo: 0, ggcc: 0, contribuciones: 300 }) !== 100) F("1 · las contribuciones no se están mensualizando (/3)");
 
 // ── 2 · que la frase la use ─────────────────────────────────────────────────
-const DRAWER = join(__dirname, "..", "..", "..", "src", "components", "ui", "AnalysisDrawer.tsx");
-const src = readFileSync(DRAWER, "utf-8");
+// DESDE EL 21-sep-2026 EL CIERRE VIVE EN EL CAPÍTULO, NO EN EL DRAWER. `DrawerCostoMensual`
+// se retiró (el capítulo II de LTR pasó a ser capítulo, como STR) y el cierre es
+// `cierreMesVacioLtr` (src/lib/flujo-mensual-ltr.ts), una sola rama para los dos signos del
+// flujo, con la fórmula a la vista. Se mide en dos capas: la función interpola `mesVacio`
+// (y no la cuota), y el capítulo se lo pasa desde `calcMesVacio`.
+const LIB = join(__dirname, "..", "..", "..", "src", "lib", "flujo-mensual-ltr.ts");
+const lib = readFileSync(LIB, "utf-8");
+const cierreSrc = (() => {
+  const i = lib.indexOf("export function cierreMesVacioLtr");
+  return i >= 0 ? lib.slice(i) : "";
+})();
+if (!cierreSrc) F("2 · no existe cierreMesVacioLtr en flujo-mensual-ltr.ts: el cierre del capítulo II no tiene función");
+if (!/Un mes sin arrendatario son /.test(cierreSrc)) F("2 · el cierre no nombra el mes sin arrendatario");
+if (!/\{ t: p\.money\(p\.mesVacio\), b: true \}/.test(cierreSrc)) F("2 · la cifra del cierre no es mesVacio (el bug del 14,9% era interpolar la cuota)");
+if (!/la cuota completa \(\$\{p\.money\(p\.cuota\)\}\) más los gastos comunes enteros \(\$\{p\.money\(p\.gastosComunes\)\}\) y las contribuciones del mes \(\$\{p\.money\(p\.contribucionesMes\)\}\)/.test(cierreSrc)) F("2 · la fórmula del mes vacío no está a la vista en el cierre");
 
-// El cierre determinista del capítulo II: las dos ramas (flujo negativo y positivo).
-const cierres = src.match(/Un mes sin arrendatario son \$\{[^}]+\}/g) ?? [];
-if (cierres.length !== 2) F(`2 · se esperaban 2 cierres «Un mes sin arrendatario son …», hay ${cierres.length}`);
-for (const c of cierres) {
-  if (!/\$\{fmt\(mesVacio\)\}/.test(c)) F(`2 · un cierre no usa mesVacio: «${c}»`);
-  if (/desglose\.dividendo/.test(c)) F(`2 · un cierre sigue usando desglose.dividendo (el bug de 14,9%): «${c}»`);
-}
+const CAP = join(__dirname, "..", "..", "..", "src", "components", "analysis", "CapitulosInversion.tsx");
+const src = readFileSync(CAP, "utf-8");
 // ⛔ ANTES ESTO CONTABA LLAMADAS (`>= 2`) Y SE REESCRIBIÓ EL 17-sep-2026.
 // Los dos consumidores eran el cierre del capítulo II y el drawer de estructura; el
 // segundo se retiró con `DrawerEstructuraSana`, inalcanzable desde el 5-sep. Bajar el
@@ -82,20 +90,19 @@ for (const c of cierres) {
 // Con FRONTERA: `indexOf("function DrawerCostoMensual")` matchea por prefijo, así que
 // renombrar el componente a `DrawerCostoMensualX` dejaba el guard VERDE — el slice seguía
 // encontrando cuerpo y el regex seguía calzando. Cazado mutando.
-const mIni = /function DrawerCostoMensual\b/.exec(src);
-// El cierre del cuerpo es la SIGUIENTE función de nivel superior, sea cual sea: hasta el
-// 21-sep-2026 era `DrawerNegociacion`, que se retiró con el rediseño de «Cómo lo pagas»,
-// y un marcador con nombre propio deja el guard sin medir el día que ese nombre se va.
-const resto = mIni ? src.slice(mIni.index + 1) : "";
-const mFin = /^(?:export )?function \w+/m.exec(resto);
-const ini = mIni ? mIni.index : -1;
-const fin = mIni && mFin ? mIni.index + 1 + mFin.index : -1;
+// Acotado al CUERPO DEL CAPÍTULO II (entre su banner y el del III), que es el consumidor que
+// sobrevive, nombrado: una llamada en cualquier otra parte del archivo no cuenta.
+const ini = src.indexOf("II · TU FLUJO MENSUAL");
+const fin = src.indexOf("III · CÓMO LO PAGAS");
 if (ini === -1 || fin === -1 || fin <= ini) {
-  F("2 · no se pudo acotar el cuerpo de DrawerCostoMensual: el extractor no midió nada");
+  F("2 · no se pudo acotar el cuerpo del capítulo II en CapitulosInversion.tsx: el extractor no midió nada");
 } else {
   const cuerpo = src.slice(ini, fin);
-  if (!/calcMesVacio\(/.test(cuerpo)) {
-    F("2 · DrawerCostoMensual dejó de llamar a calcMesVacio: el cierre del capítulo II estaría recalculando el mes vacío por su cuenta");
+  if (!/calcMesVacio\(\{ dividendo: d\.dividendo, ggcc: gastosComunes, contribuciones: contribTrim \}\)/.test(cuerpo)) {
+    F("2 · el capítulo II dejó de calcular el mes vacío con calcMesVacio (gastos comunes ENTEROS, contribuciones trimestrales)");
+  }
+  if (!/cierreMesVacioLtr\(\{ mesVacio,/.test(cuerpo)) {
+    F("2 · el capítulo II no le pasa mesVacio al cierre: estaría recalculando el mes vacío por su cuenta");
   }
 }
 
@@ -103,7 +110,7 @@ if (ini === -1 || fin === -1 || fin <= ini) {
 export function runMesVacioTier(): { hard: number } {
   console.log("\n─── TIER MES VACÍO (el escenario en plata lo pone el motor · analysis.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log(`  ✓ VERDE — aritmética (dividendo + GGCC completo + contribuciones) y las dos ramas del cierre la usan`);
+    console.log(`  ✓ VERDE — aritmética (dividendo + GGCC completo + contribuciones), el cierre la interpola con la fórmula a la vista y el capítulo II se la pasa`);
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

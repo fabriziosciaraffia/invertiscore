@@ -17,6 +17,8 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `seed-db.ts` | upsert idempotente de las 10 filas a Supabase (§1) | — |
 | `recompute.ts` | tier QUICK: carga fila persistida, recompute UF-congelada, clase a+b+B8 | 0 |
 | `dispersion-comunal-catch-test.ts` | p25/p75 salen de la misma muestra que la mediana, se persisten en el snapshot y el motor deriva la posición del sujeto (21-sep-2026). Tier puro en el QUICK; standalone agrega sonda viva. | 0 |
+| `flujo-ltr-catch-test.ts` | el capítulo II de LTR como capítulo (21-sep-2026): rótulo «mes promedio del año 1», serie ÷ meses operativos a diez años (fixtures con año parcial y pre-entrega), pie del gráfico por datos, mes vacío como cierre con la fórmula a la vista, y que `DrawerCostoMensual` no vuelva. | 0 |
+| `mantencion-una-sola-catch-test.ts` | la provisión de mantención es UNA función (`provisionMantencionAnio`): el mes de la tabla y el año 1 del loop coinciden, la declarada se respeta en los dos, legacy sin «+1», v3 con reset por CapEx también en metrics (21-sep-2026). Fixtures sintéticos sobre `runAnalysis`. | 0 |
 | `como-lo-pagas-catch-test.ts` | «Cómo lo pagas» se ancla al precio recomendado leído de `mixAComprar` —sin caer al escalón—, los seis casos, la copia fijada, la frase del hallazgo por cuartil y el cableado en los dos capítulos (21-sep-2026). Tier puro en el QUICK; standalone agrega una fila STR real. | 0 |
 | `generate.ts` | tier FULL AUTO: `generateAiAnalysis(persist:false)` ×K, checks AUTO | sí |
 | `semantic.ts` | tier FULL semántico: juez Opus (reusa `../judge.ts`) | sí |

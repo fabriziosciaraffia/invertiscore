@@ -17,7 +17,7 @@ import type {
   HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import { calcDividendo, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
+import { calcDividendo, calcFlujoDesglose, calcMesVacio, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
@@ -38,7 +38,10 @@ import {
   VViz,
 } from "./hallazgos/vocabulario";
 import { SensibilidadDial } from "./drawers/DrawersPropios";
-import { DrawerCostoMensual } from "@/components/ui/AnalysisDrawer";
+import { CurvaAnios, type PuntoAnio } from "./shared/CurvaAnios";
+import { fraseReparto } from "@/lib/reparto-ingreso";
+import { resolverModeloCostos } from "@/lib/modelo-costos";
+import { ROTULO_MES_LTR, SUB_TOTAL_MES_LTR, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr, type SegFlujo } from "@/lib/flujo-mensual-ltr";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
@@ -104,7 +107,8 @@ const Segs = SegsCierre;
 export function CapitulosInversion({
   results,
   inputData,
-  prosa,
+  // `prosa` sigue en el tipo (lo pasa SubjectCardGrid) pero desde el 21-sep-2026 ningún
+  // capítulo la lee: el II era el último y pasó a ser determinista.
   currency,
   valorUF,
   comuna,
@@ -303,18 +307,110 @@ export function CapitulosInversion({
         const dudoso = r.estado === "sin_referencia" || r.estado === "muestra_chica" || r.estado === "orden_de_magnitud";
         return <VFuente aviso={dudoso}>{r.texto}</VFuente>;
       })()}
-      <DrawerCostoMensual
-        data={prosa?.costoMensual}
-        currency={currency}
-        results={results}
-        inputData={inputData}
-        valorUF={valorUF}
-        capitulo={{
-          intro:
-            "Lo que entra cada mes contra todo lo que sale: la cuota, lo que no paga el arrendatario y lo que cuesta tener el depto arrendado. Lo que queda es lo que pones tú.",
-          fuente: `Motor Franco · ${ufFecha}`,
-        }}
-      />      </>
+      {/* EL CAPÍTULO DE VERDAD (21-sep-2026), como STR: deja de ser `DrawerCostoMensual`
+          embebido. Contrato: docs/wireframes/rediseno-informe/capitulo-ii-flujo-ltr.html, al
+          lado del STR aprobado. Se reusa casi todo de STR; lo distinto por modalidad lo emite
+          `src/lib/flujo-mensual-ltr.ts` (rótulo del mes, serie ÷ meses, pie del gráfico con
+          la historia inversa, mes vacío como cierre) y acá solo se pinta.
+          Salió con esto: la bajada fija, el rótulo «Qué pasa con los $X del arriendo», la caja
+          IA de `costoMensual` (prosa de contrato ≤ v20, que solo veía el invitado) y el
+          «¿Tienes $X disponibles cada mes?», que repetía la fila del total. */}
+      {(() => {
+        const d = calcFlujoDesglose({
+          arriendo,
+          dividendo: m?.dividendo ?? 0,
+          ggcc: m?.gastos ?? 0,
+          contribuciones: m?.contribuciones ?? 0,
+          mantencion: m?.provisionMantencionAjustada ?? 0,
+          vacanciaMeses: inputData.vacanciaMeses ?? 0,
+          usaAdministrador: inputData.usaAdministrador,
+          comisionAdministrador: inputData.comisionAdministrador,
+        });
+        const reparto = m?.repartoIngreso ?? null;
+        const gastosComunes = m?.gastos ?? 0;
+        const contribTrim = m?.contribuciones ?? 0;
+        // EL MES VACÍO lo pone el motor (`calcMesVacio`: cuota completa + gastos comunes ENTEROS +
+        // contribuciones del mes); acá no se recalcula. Gate: mes-vacio-catch-test.
+        const mesVacio = calcMesVacio({ dividendo: d.dividendo, ggcc: gastosComunes, contribuciones: contribTrim });
+        const declarada = (inputData.provisionMantencion ?? 0) > 0;
+        const reset = resolverModeloCostos(inputData.methodologyVersion) === "v3" && (m?.capexPuestaAPuntoCLP ?? 0) > 0 && !declarada;
+        const vacTxt = String(inputData.vacanciaMeses ?? 0).replace(".", ",");
+        const credito = precioCLP - pieCLP;
+        const plazoCred = Number(inputData.plazoCredito) || 0;
+        const tasaCred = Number(inputData.tasaInteres) || 0;
+        const neg = (n: number) => `${n < 0 ? "−" : ""}${money(n)}`;
+        // Las filas que salen: las de $0 no se dibujan (gestión del arriendo es 2,7% del parque).
+        const salidas: Array<{ k: string; v: number; tip: string; sub?: string }> = [
+          { k: "Cuota del crédito", v: d.dividendo, tip: "Cuota mensual del crédito hipotecario (capital + interés).", sub: credito > 0 ? `${compact(credito)} a ${plazoCred} años al ${pct1(tasaCred)}%` : "sin crédito" },
+          { k: "Gastos comunes", v: d.ggccVacancia, tip: "Los paga el arrendatario; los asumes tú los meses sin arrendar.", sub: `${money(gastosComunes)} completos; acá solo la vacancia` },
+          { k: "Contribuciones", v: d.contribucionesMes, tip: "Impuesto territorial trimestral del SII, prorrateado a mensual. Lo paga el propietario.", sub: `${money(contribTrim)} al trimestre` },
+          { k: "Vacancia", v: d.vacanciaProrrata, tip: "Ingreso perdido por meses sin arrendatario, prorrateado al mes.", sub: `${vacTxt} meses al año, prorrateados` },
+          { k: "Mantención", v: d.mantencion, tip: "Provisión mensual para reparaciones y mantenimiento del depto.", sub: declarada ? "declarada por ti" : reset ? "recién puesto a punto: parte en la banda más baja y sube con los años" : undefined },
+          { k: "Corretaje", v: d.corretajeProrrata, tip: "Comisión del corredor para captar arrendatario, prorrateada al mes." },
+          { k: "Recambio", v: d.recambio, tip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores, prorrateado al mes." },
+          { k: "Gestión del arriendo", v: d.administracion, tip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario)." },
+        ]
+          .filter((r) => r.v > 0)
+          .sort((a, b) => b.v - a.v);
+        const isNeg = d.flujoNeto < 0;
+        // LA SERIE Y SU DESCOMPOSICIÓN LAS HACE EL MOTOR (÷ meses operativos, diez años); acá
+        // no se deriva nada, para que el gate lea lo mismo que el render.
+        const serie = serieFlujoMensualPorAnioLtr(results.projections);
+        const puntos: PuntoAnio[] = serie.map((p) => ({ anio: p.anio, v: p.flujoMensual }));
+        const desc = descomposicionFlujoLtr(results.projections);
+        const pie = desc ? pieCurvaFlujoLtr(desc, { mantencionPorBandas: !declarada, money }) : null;
+        const cierre = cierreMesVacioLtr({ mesVacio, cuota: d.dividendo, gastosComunes, contribucionesMes: d.contribucionesMes, money });
+        const pinta = (segs: SegFlujo[]) =>
+          segs.map((s, i) => (s.b ? <b key={i} style={{ fontWeight: 600, color: s.rojo ? "var(--signal-red)" : "var(--doc-tx)" }}>{s.t}</b> : <span key={i}>{s.t}</span>));
+        return (
+          <>
+            <VViz>
+              <VSub>{ROTULO_MES_LTR}</VSub>
+              {reparto && (() => {
+                const fr = fraseReparto(reparto, "los gastos", money);
+                return (
+                  <p className="doc-reparto">
+                    {fr.antes}
+                    <b style={fr.sale ? { color: "var(--signal-red)" } : undefined}>{fr.monto}</b>
+                    {fr.despues}
+                  </p>
+                );
+              })()}
+              <FilasDato>
+                <FilaDato tono="in" k="Arriendo mensual" tip="Lo que entra cada mes, antes de cuota y gastos" sub={`${vacTxt} meses de vacancia al año, prorrateados`} v={money(arriendo)} unidad="/mes" />
+                {salidas.map((r) => (
+                  <FilaDato key={r.k} k={r.k} tip={r.tip} sub={r.sub} v={`−${money(r.v)}`} unidad="/mes" />
+                ))}
+                <FilaDato
+                  tono="tot"
+                  k={isNeg ? "Sale de tu bolsillo" : "Te queda"}
+                  tip="Arriendo − cuota − gastos"
+                  sub={SUB_TOTAL_MES_LTR}
+                  v={<span style={{ color: isNeg ? "var(--signal-red)" : undefined }}>{`${isNeg ? "−" : "+"}${money(Math.abs(d.flujoNeto))}`}</span>}
+                  unidad="/mes"
+                />
+              </FilasDato>
+            </VViz>
+            {puntos.length >= 2 && (
+              <>
+                <VPuente>Y lo mismo a diez años, que es donde se ve hacia dónde va.</VPuente>
+                <VViz>
+                  <VSub>Lo que queda cada mes, año por año</VSub>
+                  <CurvaAnios puntos={puntos} fmt={neg} />
+                  {pie && (
+                    <p className="doc-reparto" style={{ marginTop: 2 }}>
+                      {pinta(pie)}
+                    </p>
+                  )}
+                </VViz>
+              </>
+            )}
+            <VCierre titulo="Qué significa">{pinta(cierre)}</VCierre>
+            <VFuente>Motor Franco · {ufFecha} · gastos y contribuciones declarados por ti · cada año a sus precios</VFuente>
+          </>
+        );
+      })()}
+      </>
     ),
   };
   // ═══════════════ III · CÓMO LO PAGAS ═══════════════
