@@ -1,5 +1,5 @@
 import type { AnalisisInput, AnalysisMetrics } from "@/lib/types";
-import { calcMantencionMensual, resolverModeloCostos } from "@/lib/modelo-costos";
+import { provisionMantencionAnio, resolverModeloCostos } from "@/lib/modelo-costos";
 import { estimarContribuciones } from "@/lib/contribuciones";
 
 /**
@@ -37,18 +37,20 @@ export function enrichMetricsLegacy(
         : estimarContribuciones(precioCLP, esNuevoOReciente)),
     provisionMantencionAjustada:
       metrics.provisionMantencionAjustada
-      ?? (input.provisionMantencion > 0
-        ? input.provisionMantencion
-        // Misma fuente única que calcMetrics. Estas filas son pre-B1 (2026-05),
-        // así que sin methodologyVersion caen a legacy, que es lo que las generó.
-        // La UF se reconstruye del snapshot (precioCLP / precio UF); solo la usa v3.
-        : calcMantencionMensual({
-            modelo: resolverModeloCostos(input.methodologyVersion),
-            antiguedad: input.antiguedad ?? 0,
-            superficieUtilM2: input.superficie ?? 0,
-            precioCLP,
-            arriendoCLP: input.arriendo ?? 0,
-            ufClp: input.precio > 0 ? precioCLP / input.precio : 0,
-          })),
+      // Misma fuente única que calcMetrics (`provisionMantencionAnio`, t = 0): declarada si
+      // la hay, si no la fórmula. Estas filas son pre-B1 (2026-05), así que sin
+      // methodologyVersion caen a legacy, que es lo que las generó, y legacy no tiene reset
+      // por CapEx. La UF se reconstruye del snapshot (precioCLP / precio UF); solo la usa v3.
+      ?? provisionMantencionAnio({
+          declarada: input.provisionMantencion ?? 0,
+          modelo: resolverModeloCostos(input.methodologyVersion),
+          antiguedadReal: input.antiguedad ?? 0,
+          t: 0,
+          tieneCapex: false,
+          superficieUtilM2: input.superficie ?? 0,
+          precioCLP,
+          arriendoCLP: input.arriendo ?? 0,
+          ufClp: input.precio > 0 ? precioCLP / input.precio : 0,
+        }),
   };
 }

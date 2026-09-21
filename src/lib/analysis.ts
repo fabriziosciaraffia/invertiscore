@@ -23,7 +23,7 @@ import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
-import { resolverModeloCostos, calcMantencionMensual, antiguedadEfectiva, getMantencionRateLegacy } from "./modelo-costos";
+import { resolverModeloCostos, provisionMantencionAnio, getMantencionRateLegacy } from "./modelo-costos";
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
@@ -58,10 +58,11 @@ import type { Veredicto } from "./types";
 // recálculos en runtime (UF default 38800). Ver
 // audit/sesionA-residual-2/diagnostico.md.
 
-// Mantención mensual: fuente única en modelo-costos.ts (`calcMantencionMensual`),
-// gateada por `input.methodologyVersion` (legacy = % del precio; v3 = UF/m² por
-// antigüedad con techo 6% del arriendo). La tabla legacy sigue viva ahí para que
-// los análisis previos recomputen byte-idéntico.
+// Mantención mensual: fuente única en modelo-costos.ts (`provisionMantencionAnio`, que
+// respeta la provisión declarada y si no llama a `calcMantencionMensual` con la antigüedad
+// efectiva), gateada por `input.methodologyVersion` (legacy = % del precio; v3 = UF/m² por
+// antigüedad con techo 6% del arriendo). El mes de la tabla (t = 0) y el año 1 del loop de
+// proyecciones son EL MISMO número desde el 21-sep-2026; antes diferían en 328 filas.
 
 // DEUDA (fuera de alcance del hallazgo de plusvalía): la proyección de patrimonio
 // (calcProjections, :488/548) usa esta tasa GLOBAL hardcodeada en vez de la tasa
@@ -369,15 +370,31 @@ function calcMetrics(
   // en el output (metrics.*) para que clientes y server los lean ahí.
   // Gate por versión del modelo de costos (mantención + curva CapEx). Ver modelo-costos.ts.
   const modeloCostos = resolverModeloCostos(input.methodologyVersion);
-  const provisionMantencionAjustada = input.provisionMantencion
-    || calcMantencionMensual({
-      modelo: modeloCostos,
-      antiguedad: input.antiguedad,
-      superficieUtilM2: input.superficie,
-      precioCLP,
-      arriendoCLP: input.arriendo,
-      ufClp,
-    });
+  // CapEx de puesta a punto (usados): se calcula ANTES de la provisión porque la gobierna —
+  // con puesta a punto pagada el día 1 la mantención parte en antigüedad 0 (v3). Hasta el
+  // 21-sep-2026 el reset lo hacía solo el loop de proyecciones y el mes de la tabla cobraba
+  // la mantención de la edad real ADEMÁS del CapEx. Ver `provisionMantencionAnio`.
+  // Nuevo ⇒ antiguedad 0 ⇒ curva 0 ⇒ sin CapEx ni hallazgo. Determinístico.
+  const capexPuestaAPunto = calcCapexPuestaAPunto({
+    antiguedad: input.antiguedad,
+    superficieUtilM2: input.superficie,
+    valorUF: ufClp,
+    overrideCLP: input.costoPuestaAPuntoCLP,
+    modelo: modeloCostos,
+  });
+  // LA PROVISIÓN DEL MES es la misma función que usa el loop de proyecciones con t = 0:
+  // declarada si la hay, si no la fórmula con la antigüedad efectiva. Fuente única.
+  const provisionMantencionAjustada = provisionMantencionAnio({
+    declarada: input.provisionMantencion,
+    modelo: modeloCostos,
+    antiguedadReal: input.antiguedad,
+    t: 0,
+    tieneCapex: modeloCostos === "v3" && capexPuestaAPunto.montoCLP > 0,
+    superficieUtilM2: input.superficie,
+    precioCLP,
+    arriendoCLP: input.arriendo,
+    ufClp,
+  });
   const contribucionesValor = input.contribuciones
     || estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
   const gastosValor = input.gastos || Math.round(input.superficie * 1200);
@@ -425,14 +442,7 @@ function calcMetrics(
   // distorsionaba cashOnCash y mesesPaybackPie. Modelo A — Item 9 auditoría.
   const gastosCompra = Math.round(precioCLP * GASTOS_CIERRE_PCT);
   // CapEx puesta a punto (usados): suma a la base de capital como equity día 1.
-  // Nuevo ⇒ antiguedad 0 ⇒ curva 0 ⇒ sin CapEx ni hallazgo. Determinístico.
-  const capexPuestaAPunto = calcCapexPuestaAPunto({
-    antiguedad: input.antiguedad,
-    superficieUtilM2: input.superficie,
-    valorUF: ufClp,
-    overrideCLP: input.costoPuestaAPuntoCLP,
-    modelo: modeloCostos,
-  });
+  // (`capexPuestaAPunto` se calculó arriba, antes de la provisión de mantención.)
   // Override de neutralización (E1): calcDecisividades pasa capex 0 para medir
   // cuánto mueve la decisión sacando la puesta a punto. Ausente ⇒ monto real.
   const capexParaCapital =
@@ -805,14 +815,22 @@ export function calcProjections(args: {
     // (año 1 ⇒ antigüedad + 1) para no mover análisis previos; v3 parte en 0 el
     // año 1, que es lo que el reset post-CapEx necesita y lo que el año 1 de
     // `metrics` ya asume.
-    const t = modeloCostos === "v3" ? Math.max(0, anio - 1 - aniosEntrega) : Math.max(0, anio - aniosEntrega);
-    const antiguedadActual = antiguedadEfectiva(input.antiguedad, t, tieneCapex);
+    // `t` = años operativos transcurridos, EN LOS DOS MODELOS (21-sep-2026). Legacy usaba
+    // «año 1 ⇒ antigüedad + 1» por byte-identidad con análisis viejos, y eso hacía que el
+    // año 1 del gráfico cobrara una mantención distinta de la del mes de la tabla en 74
+    // filas (las que cruzan banda con el +1). Ver `provisionMantencionAnio`.
+    const t = Math.max(0, anio - 1 - aniosEntrega);
     // El FACTOR de inflación sí corre continuo desde el año 1: expresa el monto en
     // plata del año `anio`, igual que el resto de los términos. El techo v3 (6%)
     // se compara contra el arriendo del depto reajustado al mismo año.
-    const mantencionAnual = calcMantencionMensual({
+    // MISMA FUNCIÓN que `calcMetrics` (provisión declarada respetada, antigüedad efectiva):
+    // con t = 0 y factor 1 reproduce `metrics.provisionMantencionAjustada` exacto.
+    const mantencionAnual = provisionMantencionAnio({
+      declarada: input.provisionMantencion,
       modelo: modeloCostos,
-      antiguedad: antiguedadActual,
+      antiguedadReal: input.antiguedad,
+      t,
+      tieneCapex,
       superficieUtilM2: input.superficie,
       precioCLP,
       arriendoCLP: input.arriendo * Math.pow(1 + ARRIENDO_INFLACION, anio - 1),

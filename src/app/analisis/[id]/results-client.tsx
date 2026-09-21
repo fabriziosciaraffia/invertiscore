@@ -5,7 +5,7 @@ import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs, type InformeAiEstado } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose } from "@/lib/analysis";
-import { resolverModeloCostos, calcMantencionMensual, antiguedadEfectiva } from "@/lib/modelo-costos";
+import { resolverModeloCostos, provisionMantencionAnio } from "@/lib/modelo-costos";
 import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
@@ -541,14 +541,16 @@ export function PremiumResults({
     const ufCliente = inputData.precio > 0 ? m.precioCLP / inputData.precio : 0;
     function getMantencionForMonth(mes: number): number {
       const anioProyeccion = Math.ceil(mes / 12);
-      // Convención de `t` espejo del motor: legacy año 1 ⇒ antigüedad + 1; v3 parte en 0.
-      const t = modeloCostos === "v3"
-        ? Math.max(0, anioProyeccion - 1 - aniosEntregaCliente)
-        : anioProyeccion;
-      const antiguedadActual = antiguedadEfectiva(inputData!.antiguedad, t, tieneCapex);
-      return calcMantencionMensual({
+      // MISMA FUNCIÓN Y MISMA CONVENCIÓN que el motor (21-sep-2026): `t` = años operativos
+      // transcurridos en los dos modelos, provisión declarada respetada, antigüedad
+      // efectiva. Antes legacy usaba «año 1 ⇒ antigüedad + 1» e ignoraba la declarada.
+      const t = Math.max(0, anioProyeccion - 1 - aniosEntregaCliente);
+      return provisionMantencionAnio({
+        declarada: inputData!.provisionMantencion,
         modelo: modeloCostos,
-        antiguedad: antiguedadActual,
+        antiguedadReal: inputData!.antiguedad,
+        t,
+        tieneCapex,
         superficieUtilM2: inputData!.superficie,
         precioCLP: m!.precioCLP,
         arriendoCLP: inputData!.arriendo * Math.pow(1 + arriendoGrowth / 100, anioProyeccion - 1),

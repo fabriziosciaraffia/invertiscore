@@ -108,7 +108,62 @@ export function antiguedadEfectiva(antiguedadReal: number, t: number, tieneCapex
   return tieneCapex ? tt : antiguedadReal + tt;
 }
 
-// ── Mantención mensual — fuente única ────────────────────────────────────────
+// ── La provisión de mantención de UN AÑO — la fuente única de verdad ─────────
+
+export interface ProvisionMantencionAnioParams {
+  /** `input.provisionMantencion`: la provisión DECLARADA por el usuario (0 = auto). */
+  declarada: number;
+  modelo: ModeloCostos;
+  antiguedadReal: number;
+  /** Años operativos transcurridos (0 = el primer año operativo; el mes de la tabla). */
+  t: number;
+  tieneCapex: boolean;
+  superficieUtilM2: number;
+  precioCLP: number;
+  /** Arriendo del depto ya reajustado al año `t` (techo v3). */
+  arriendoCLP: number;
+  ufClp: number;
+  /** Factor de inflación del año (1 = primer año operativo). */
+  factorInflacion?: number;
+}
+
+/**
+ * LA PROVISIÓN DE MANTENCIÓN DE UN AÑO, y es UNA sola para el mes de la tabla (`calcMetrics`,
+ * `t = 0`), el loop de proyecciones (TIR, gráfico a diez años) y el simulador del cliente.
+ *
+ * Hasta el 21-sep-2026 había DOS: `calcMetrics` respetaba la provisión declarada y usaba la
+ * antigüedad real; el loop la ignoraba —recalculaba siempre con la fórmula— y encima usaba
+ * otra antigüedad (legacy: año 1 ⇒ antigüedad + 1; v3 con CapEx: reset a 0 que metrics no
+ * aplicaba). Medido sobre 1.213 filas: el mes de la tabla y el año 1 del gráfico diferían en
+ * 328 (p50 $16.813/mes): 225 por la provisión declarada que el loop no leía, 74 por el +1 de
+ * legacy cruzando banda, 28 por el reset del CapEx que metrics no hacía. Con el gráfico al
+ * lado de la tabla eso era una contradicción sin historia.
+ *
+ * Las tres reglas, en orden:
+ *   1. Si el usuario DECLARÓ una provisión, es su número: se respeta y se reajusta con la
+ *      inflación de costos, igual que los gastos comunes y las contribuciones declarados.
+ *      No se re-modela.
+ *   2. Si no, la fórmula del modelo (`calcMantencionMensual`) con la antigüedad EFECTIVA del
+ *      año: con CapEx pagado el día 1 el depto parte en 0 (v3), sin CapEx la real + t.
+ *   3. `t = 0` es el primer año operativo EN LOS DOS MODELOS. El «año 1 ⇒ antigüedad + 1»
+ *      de legacy era un off-by-one conservado por byte-identidad, y esa byte-identidad ya no
+ *      existe: las filas se recomputan al cargar con el motor vigente.
+ */
+export function provisionMantencionAnio(p: ProvisionMantencionAnioParams): number {
+  const factor = p.factorInflacion ?? 1;
+  if (p.declarada > 0) return factor === 1 ? Math.round(p.declarada) : Math.round(p.declarada * factor);
+  return calcMantencionMensual({
+    modelo: p.modelo,
+    antiguedad: antiguedadEfectiva(p.antiguedadReal, p.t, p.tieneCapex),
+    superficieUtilM2: p.superficieUtilM2,
+    precioCLP: p.precioCLP,
+    arriendoCLP: p.arriendoCLP,
+    ufClp: p.ufClp,
+    factorInflacion: p.factorInflacion,
+  });
+}
+
+// ── Mantención mensual — la fórmula del modelo (la llama provisionMantencionAnio) ──
 
 export interface MantencionMensualParams {
   modelo: ModeloCostos;

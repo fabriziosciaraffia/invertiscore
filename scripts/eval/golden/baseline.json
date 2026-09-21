@@ -1,6 +1,6 @@
 {
   "uf": 38800,
-  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 12-sep-2026, «rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como dimensiones, esquema A, curva calibrada) — acta por seed en ACTAS-score-retorno.md.",
+  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 21-sep-2026, «la provisión de mantención es una» (declarada respetada y reajustada, reset por CapEx también en metrics, legacy sin el +1) — acta por seed en ACTAS-mantencion-una-sola.md. Anterior: 12-sep-2026, «rentabilidad sobre lo puesto en el score» — ACTAS-score-retorno.md.",
   "seeds": {
     "GS-1": {
       "veredicto": "COMPRAR",
@@ -41,8 +41,8 @@
       "capRatePct": 4.58,
       "sobreprecioPct": 33,
       "flujoNetoMensual": -18161,
-      "tirPct": 12.83,
-      "patrimonioMult": 3.17
+      "tirPct": 11.84,
+      "patrimonioMult": 3.01
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -61,9 +61,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 6.34,
+      "capRatePct": 6.39,
       "sobreprecioPct": 70,
-      "flujoNetoMensual": -66618,
+      "flujoNetoMensual": -62932,
       "tirPct": 10.03,
       "patrimonioMult": 2.35
     },
@@ -83,15 +83,15 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.98,
+      "capRatePct": 3.07,
       "sobreprecioPct": 78,
-      "flujoNetoMensual": -361072,
+      "flujoNetoMensual": -349755,
       "tirPct": 4.66,
       "patrimonioMult": 1.38
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 59,
+      "score": 60,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -105,15 +105,15 @@
         "sensibilidad",
         "tir"
       ],
-      "capRatePct": 4.9,
+      "capRatePct": 5.02,
       "sobreprecioPct": null,
-      "flujoNetoMensual": -107628,
+      "flujoNetoMensual": -95180,
       "tirPct": 9.41,
       "patrimonioMult": 2.17
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 30,
+      "score": 31,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -127,9 +127,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.92,
+      "capRatePct": 2.98,
       "sobreprecioPct": 90,
-      "flujoNetoMensual": -626030,
+      "flujoNetoMensual": -614713,
       "tirPct": 4.27,
       "patrimonioMult": 1.28
     },
@@ -151,8 +151,8 @@
       "capRatePct": 2.85,
       "sobreprecioPct": 59,
       "flujoNetoMensual": -329290,
-      "tirPct": 7.86,
-      "patrimonioMult": 1.57
+      "tirPct": 6.97,
+      "patrimonioMult": 1.47
     },
     "GS-PC1": {
       "veredicto": "BUSCAR OTRA",
@@ -194,7 +194,7 @@
     },
     "GS-PJ": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 69,
+      "score": 70,
       "N": 10,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -209,9 +209,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 5.66,
+      "capRatePct": 5.8,
       "sobreprecioPct": 0,
-      "flujoNetoMensual": -31677,
+      "flujoNetoMensual": -22624,
       "tirPct": 11.24,
       "patrimonioMult": 2.76
     },
@@ -231,9 +231,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 9.92,
+      "capRatePct": 9.97,
       "sobreprecioPct": 11,
-      "flujoNetoMensual": 277726,
+      "flujoNetoMensual": 282091,
       "tirPct": 23.89,
       "patrimonioMult": 3.26
     },
@@ -253,9 +253,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.63,
+      "capRatePct": 2.67,
       "sobreprecioPct": 91,
-      "flujoNetoMensual": -429365,
+      "flujoNetoMensual": -424515,
       "tirPct": 3.84,
       "patrimonioMult": 1.29
     },
@@ -275,9 +275,9 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 6.55,
+      "capRatePct": 6.59,
       "sobreprecioPct": 67,
-      "flujoNetoMensual": 30836,
+      "flujoNetoMensual": 34716,
       "tirPct": 14.12,
       "patrimonioMult": 3.29
     }
