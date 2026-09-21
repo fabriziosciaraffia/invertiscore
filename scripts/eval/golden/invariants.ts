@@ -97,6 +97,15 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
 
   // B1 — KPI(body) refleja el valor del motor dentro de la precisión de display.
   for (const fact of f.facts) {
+    // B1.legible — si el motor tiene cifra y el body no se deja leer, NO se salta: es el
+    // «cero de medición que no distingue no corrió». Apareció el 21-sep-2026 con la frase
+    // del sobreprecio por cuartil, que dejó de llevar «N% sobre/bajo»: el parser daba null y
+    // el hallazgo quedaba verde y vacío. Acotado a sobreprecio, que es el único con dos
+    // redacciones; los otros tipos siguen saltando cuando el body no trae cifra.
+    if (fact.id === "sobreprecio" && fact.engineKpi != null && fact.bodyKpi == null) {
+      out.push({ rule: `B1.legible[${fact.id}]`, pass: false, detail: `engine=${fact.engineKpi} y el body no se pudo parsear` });
+      continue;
+    }
     if (fact.bodyKpi == null || fact.engineKpi == null) continue;
     const unit = displayUnit(fact.id);
     const pass = Math.abs(fact.bodyKpi - fact.engineKpi) <= unit + 1e-9;

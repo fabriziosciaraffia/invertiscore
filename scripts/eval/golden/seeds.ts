@@ -28,7 +28,11 @@ export const GOLDEN_UF = AUDIT_UF; // 38800
  */
 export const GOLDEN_ASOF = new Date(2026, 6, 9); // 2026-07-09 local
 
-export type MedianaSnapshot = { mediana: number | null; n: number };
+/** Cuartiles OPCIONALES de la misma muestra (21-sep-2026): con ellos el motor emite la posición
+ *  del sujeto y la fraseCanonica del sobreprecio nombra el cuarto de la comuna. Dos seeds los
+ *  llevan (GS-1 bajo_p25, GS-3 sobre_p75) para que la frase por cuartil se pruebe contra prosa
+ *  real; el resto sigue sin ellos, como los snapshots anteriores al campo. */
+export type MedianaSnapshot = { mediana: number | null; n: number; p25?: number | null; p75?: number | null };
 
 export interface GoldenSeed {
   key: string; // "GS-1"
@@ -59,8 +63,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
       plazoCredito: 25, gastos: 120000, vacanciaMeses: 1,
       lat: -33.4445, lng: -70.6005,
     }),
-    mediana: { mediana: 58, n: 540 },
-    nota: "Arriendo declarado alto ($780k vs zona ~$480k): el flujo se da vuelta si el arriendo real es el de mercado → sensibilidad frágil (<7%). Corona por cap_rate favorable.",
+    // cuartiles (21-sep-2026): sujeto 52 UF/m² < p25 53 → bajo_p25 («Entras en el cuarto más barato»)
+    mediana: { mediana: 58, n: 540, p25: 53, p75: 64 },
+    nota: "Arriendo declarado alto ($780k vs zona ~$480k): el flujo se da vuelta si el arriendo real es el de mercado → sensibilidad frágil (<7%). Corona por cap_rate favorable. Con cuartiles desde el 21-sep: posición bajo_p25, frase por cuartil.",
   },
   {
     key: "GS-2",
@@ -95,8 +100,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
       plazoCredito: 25, gastos: 120000, vacanciaMeses: 1,
       lat: -33.4180, lng: -70.6360,
     }),
-    mediana: { mediana: 40.3, n: 118 },
-    nota: "Tasa 6,2% (210 bps sobre mercado) → estructura problemática, reestructuración sí. Sobreprecio +70%. Multi-matiz → pirámide alta.",
+    // cuartiles (21-sep-2026): sujeto 68,4 UF/m² > p75 46 → sobre_p75 («Pagas el metro en el cuarto más caro»)
+    mediana: { mediana: 40.3, n: 118, p25: 35, p75: 46 },
+    nota: "Tasa 6,2% (210 bps sobre mercado) → estructura problemática, reestructuración sí. Sobreprecio +70%. Multi-matiz → pirámide alta. Con cuartiles desde el 21-sep: posición sobre_p75, frase por cuartil.",
   },
   {
     key: "GS-4",

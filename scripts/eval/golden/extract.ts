@@ -76,7 +76,24 @@ export function bodyKpiValue(h: Hallazgo): number | null {
     }
     case "sobreprecio": {
       const mm = f.match(/(\d+(?:,\d+)?)\s*%\s+(sobre|bajo)/i);
-      return mm ? parseComaNum(mm[1]) : null;
+      if (mm) return parseComaNum(mm[1]);
+      // La frase POR CUARTIL (21-sep-2026) no lleva la desviación: «Tu precio por m² (UF 68,4)
+      // está en el cuarto más caro de la comuna: la mediana de 118 publicaciones … es UF 40,3 y
+      // la mitad de los avisos comparables va de UF 35,0 a UF 46,0.» La cifra del KPI se deriva
+      // de sujeto y mediana. Sin esta rama bodyKpi daba null y B1 se saltaba el hallazgo en
+      // silencio: verde y vacío. `B1.legible` lo caza ahora.
+      // Y la frase NEUTRAL («está en línea con la mediana … (UF 52,0). Pagas lo que vale el
+      // metro») tampoco lleva porcentaje: B1.legible la cazó en GS-PJ el mismo día — llevaba
+      // meses saltándose en silencio. Misma derivación: sujeto y mediana.
+      const q =
+        f.match(/\(UF\s+([\d.]+(?:,\d+)?)\)\s+está en [^:]+:\s+la mediana de [^:]*? es UF\s+([\d.]+(?:,\d+)?)\s+y la mitad de los avisos/i) ||
+        f.match(/\(UF\s+([\d.]+(?:,\d+)?)\)\s+está en línea con [^(]*\(UF\s+([\d.]+(?:,\d+)?)\)/i);
+      if (q) {
+        const sujeto = parseComaNum(q[1]);
+        const mediana = parseComaNum(q[2]);
+        return mediana > 0 ? Math.abs((sujeto / mediana - 1) * 100) : null;
+      }
+      return null;
     }
     case "flujo_mensual": {
       const mm = f.match(/\$\s*(-?[\d.]+)/);
