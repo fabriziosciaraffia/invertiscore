@@ -195,8 +195,11 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   // El apellido puede ir como literal directo o elegido en la llamada («Cómo lo pagas» dice
   // «Precio recomendado» o «Precio» según haya recomendación, 21-sep-2026): se busca dentro
   // de la llamada, acotado a 120 caracteres, y se cuentan LLAMADAS, no literales.
-  for (const ap of ["Cap rate", "Flujo", "Al año", "Precio", "vs arriendo largo", "Resultado"]) {
-    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?"${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
+  // «Cap rate» dejó de ser el apellido del capítulo I el 21-sep-2026: en STR es «Rentabilidad»
+  // (`NOMBRE_RENTABILIDAD.str`, capref-copy.ts); el gate cuanto-renta fija la nomenclatura.
+  for (const ap of ["Rentabilidad", "Flujo", "Al año", "Precio", "vs arriendo largo", "Resultado"]) {
+    const lit = ap === "Rentabilidad" ? '(?:"Rentabilidad"|NOMBRE_RENTABILIDAD\\.str)' : `"${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`;
+    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?${lit}`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
   }
   const n = [...CAPS_STR.matchAll(/conApellido\(/g)].length;
   if (n !== 6) F(`6 · ${n} filas con apellido en STR; §7 pide seis`);

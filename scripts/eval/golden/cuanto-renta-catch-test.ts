@@ -107,13 +107,9 @@ export function runCuantoRentaTier(): { hard: number } {
     return a >= 0 && b > a ? src.slice(a, b) : "";
   };
   const ltr = capI(leer("src/components/analysis/CapitulosInversion.tsx"));
-  // El render STR nuevo espera la decisión de Fabrizio sobre la copy de los casos COMPRAR bajo el
-  // umbral (21-sep-2026): por ahora solo se fija que el capítulo STR anterior lea el umbral del
-  // motor y no la constante.
   const str = capI(leer("src/components/analysis/str/CapitulosInversionStr.tsx"));
   if (!ltr || !str) F("4 · no se encontró el bloque del capítulo I en uno de los dos renders");
-  if (/CAP_STR_UMBRAL_PCT/.test(str) || !/umbralStr/.test(str)) F("4 · STR: el capítulo I sigue leyendo la constante 5% y no el umbral del motor");
-  for (const [n, src] of [["LTR", ltr]] as const) {
+  for (const [n, src] of [["LTR", ltr], ["STR", str]] as const) {
     // Lo que el usuario lee: strings y JSX, sin los comentarios del acta.
     const visible = src.replace(/\/\/[^\n]*/g, "").replace(/\/\*[^]*?\*\//g, "");
     if (/cap rate|Cap rate|CAP rate|<Ang>cap/i.test(visible)) F(`4 · ${n}: el capítulo I escribe «cap rate»`);
@@ -122,7 +118,24 @@ export function runCuantoRentaTier(): { hard: number } {
     if (!/NOMBRE_RENTABILIDAD\./.test(visible)) F(`4 · ${n}: la cifra no se nombra con NOMBRE_RENTABILIDAD`);
   }
   if (!/fuenteCapRef\(v\)/.test(ltr) || !/explicacionCapRef\(v\)/.test(ltr)) F("4 · LTR no usa la fuente y la explicación de capref-copy");
+  if (!/fuenteUmbralStr\(vRef, umbral\)/.test(str) || !/explicacionUmbralStr\(vRef\)/.test(str)) F("4 · STR no usa la fuente y la explicación de capref-copy");
   if (!/conApellido\(nombreCifra, `\$\{pct1\(v\.sujetoPct\)\}%`\)/.test(ltr) || /pct1\(v\.capRatePct\)/.test(ltr)) F("4 · LTR no muestra la bruta (sujetoPct) como cifra del capítulo, o vuelve a mostrar el neto");
+  if (!/hRenta\?\.valor\.umbralPct \?\? CAP_STR_UMBRAL_PCT/.test(str) || /refPct=\{pos\(CAP_STR_UMBRAL_PCT\)\}/.test(str)) F("4 · STR no toma el umbral del hallazgo");
+  // 5 · COMPRAR bajo la referencia de la comuna (decisión de Fabrizio, 21-sep-2026): el capítulo
+  //     no dice «apuesta»; nombra la tensión (rinde algo menos de lo que Franco pide para renta
+  //     corta en esa zona), dice que el caso cierra igual y que el break-even lo confirma.
+  const ramaComprar = str.match(/veredicto === "COMPRAR" && cap < umbral[^]*?\?\s*<>([^]*?)<\/>\s*\n\s*:/);
+  if (!ramaComprar) F("5 · STR: no existe la rama de COMPRAR bajo el umbral en el cruce");
+  else {
+    const txt = ramaComprar[1];
+    if (/apuesta/i.test(txt)) F("5 · STR: la rama COMPRAR bajo el umbral dice «apuesta»");
+    if (!/rinde algo menos de lo que Franco pide para una renta corta en/.test(txt)) F("5 · STR: la rama COMPRAR no nombra la tensión (rinde algo menos de lo que Franco pide…)");
+    if (!/el caso cierra igual/.test(txt)) F("5 · STR: la rama COMPRAR no dice que el caso cierra igual");
+    if (!/punto de equilibrio/.test(txt)) F("5 · STR: la rama COMPRAR no cita el break-even");
+    if (!/\{be\b/.test(txt)) F("5 · STR: la rama COMPRAR no usa el break-even del motor (be)");
+  }
+  const posBe = str.indexOf("const be = sensStr"); const posCruce = str.indexOf("const cruce = holgura");
+  if (posBe < 0 || posCruce < 0 || posBe > posCruce) F("5 · STR: el break-even se lee después de la copy que lo cita");
   if (NOMBRE_RENTABILIDAD.ltr !== "Rentabilidad bruta" || NOMBRE_RENTABILIDAD.str !== "Rentabilidad") F("4 · la nomenclatura es «Rentabilidad bruta» / «Rentabilidad»");
 
   if (fallas.length) {

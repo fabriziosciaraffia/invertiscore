@@ -1,15 +1,15 @@
 "use client";
 
-import { Ang } from "@/components/analysis/shared/Ang";
 import { useMemo } from "react";
 import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSensibilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
+import { NOMBRE_RENTABILIDAD, explicacionUmbralStr, fuenteUmbralStr } from "@/lib/capref-copy";
 import { barraDia1 } from "@/lib/plata-dia1";
 import { costoOportunidad, calcDividendo } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -18,7 +18,7 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
-import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
 
@@ -110,9 +110,8 @@ export function CapitulosInversionStr({
   const modo: "auto" | "administrador" = inputData?.modoGestion === "administrador" ? "administrador" : "auto";
   const dist = hallazgos.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const sobre = hallazgos.find((h): h is HallazgoSobreprecio => h.id === "sobreprecio");
-  // El umbral del motor (bruta de la comuna + 1 pt desde el 21-sep-2026; 5 sin referencia). El
-  // render sigue siendo el anterior: la copy nueva del capítulo STR espera decisión de Fabrizio.
-  const umbralStr = (hallazgos.find((h): h is HallazgoRentabilidadStr => h.id === "rentabilidad_str"))?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
+  const hRenta = hallazgos.find((h): h is HallazgoRentabilidadStr => h.id === "rentabilidad_str");
+  const sensStr = hallazgos.find((h): h is HallazgoSensibilidadStr => h.id === "sensibilidad_str");
 
   // ── formato (dueño de moneda y UF): los cierres siguen el toggle ──
   const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
@@ -134,7 +133,6 @@ export function CapitulosInversionStr({
     if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1).replace(".", ",")} MM`;
     return "$" + Math.round(abs).toLocaleString("es-CL");
   };
-  const corto = (n: number) => `${n < 0 ? "−" : ""}${currency === "UF" ? `UF ${Math.round(Math.abs(n) / (valorUF || 1))}` : `$${Math.round(Math.abs(n) / 1000)}k`}`;
   const ufTxt = (n: number) => `UF ${Math.round(n).toLocaleString("es-CL")}`;
   const f: FmtCierre = { money, compact, pct1: (n) => pct1(n) };
   const fecha = fechaCortaCL(createdAt);
@@ -176,112 +174,101 @@ export function CapitulosInversionStr({
   const vsTxt = vsComuna === "mas" ? "más que" : vsComuna === "menos" ? "menos que" : vsComuna === "similar" ? "parecido a" : null;
 
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
+  // Habla AL USUARIO (21-sep-2026): «Rentabilidad», sin «cap rate», contra el umbral de la comuna
+  // (un punto sobre la bruta de los avisos, capref-comuna.ts + rentabilidad-str-hallazgo.ts). La
+  // tarifa que hace falta al centro, el dial desde las fronteras, el break-even en una frase con
+  // su banda, y la fuente en una línea. Salen: la tabla tarifa × ocupación (tres de las seis
+  // cifras del hero), el termómetro y la matriz (es del capítulo II). Mockup capitulo-i-cuanto-renta.html.
   const filaI: FilaHallazgo = (() => {
-    const aguanta = fr?.abajo ? `la tarifa aguanta −${pct1((1 - fr.abajo.factor) * 100)}%` : "";
-    const lo = Math.min(umbralStr - 3, cap - 0.5);
-    const hi = Math.max(umbralStr + 3, cap + 0.5);
-    const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
+    const umbral = hRenta?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
+    const refTxt = `${pct1(umbral)}%`;
+    const vRef = { nivel: hRenta?.valor.nivel ?? "nacional", comuna: hRenta?.valor.comuna ?? comuna, celdaDormitorios: hRenta?.valor.celdaDormitorios ?? null, ventanaDias: hRenta?.valor.ventanaDias ?? null, nArriendo: hRenta?.valor.nArriendo ?? 0, nVenta: hRenta?.valor.nVenta ?? 0 } as const;
+    const adrRef = args.renta.adrRef;
+    const holgura = adrRef <= adr;
     const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${money(adr * fl.factor)} por noche`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
     const colchon = fr?.abajo ? adr - adr * fr.abajo.factor : null;
-    const mto = simulacion?.matrizTarifaOcupacion ?? null;
+    const occPct = Math.round(occ * 100);
+    const cobras = adrEsTuya ? <>Cobras <b>{money(adr)}</b> por noche, un dato tuyo, al {occPct}% de ocupación ({money(ingreso)} al mes)</> : <>El sector tiene una tarifa de <b>{money(adr)}</b> por noche al {occPct}% de ocupación ({money(ingreso)} al mes)</>;
+    // El break-even (sensibilidad_str) se lee antes: la copy de COMPRAR bajo el umbral lo cita.
+    const be = sensStr ? Math.round(sensStr.valor.beRatioPct) : null;
+    const cruce = holgura
+      ? <>{cobras}: llegarías a la rentabilidad de referencia ({refTxt}) incluso cobrando <b>{money(adr - adrRef)} menos</b> por noche.</>
+      : veredicto === "COMPRAR" && cap < umbral
+        // COMPRAR bajo la referencia de la comuna (decisión de Fabrizio, 21-sep-2026): no se dice
+        // «apuesta». Se nombra la tensión —rinde algo menos de lo que Franco pide para renta corta
+        // en esa zona— y por qué no cambia el veredicto: el caso cierra igual y el break-even lo
+        // confirma. Misma resolución que el «cuarto más caro» en COMPRAR.
+        ? <>{cobras}: rinde algo menos de lo que Franco pide para una renta corta en {vRef.comuna} ({refTxt}), y el caso cierra igual. {be !== null ? (be <= 100 ? <>Lo confirma el punto de equilibrio: cuadras facturando el {be}% de lo que rinde la zona.</> : <>El punto de equilibrio, más abajo, dice con cuánto margen: necesitas facturar el {be}% de lo que rinde la zona.</>) : <>Lo que deja cada mes lo sostiene.</>}</>
+        : <>{cobras}: para una rentabilidad de {refTxt} hacen falta <b>{money(adrRef - adr)} más</b> por noche, un <span className="neg">+{Math.round((adrRef / adr - 1) * 100)}%</span> sobre lo que paga la zona. No es un supuesto tuyo: es una apuesta a rendir sobre el mercado.</>;
+    // 3 · el break-even, dicho en una frase (la del hallazgo) y en una barra con las puertas.
+    const beBar = (() => {
+      if (!sensStr || be === null) return null;
+      const fr1 = sensStr.valor.corteFragil, inv = sensStr.valor.corteInviable ?? 130, fav = sensStr.valor.corteFavorable;
+      const lo = Math.min(70, be - 5), hi = Math.max(150, be + 5);
+      const pos = (x: number) => ((Math.min(Math.max(x, lo), hi) - lo) / (hi - lo)) * 100;
+      const zonas: ZonaDial[] = [
+        { k: "hay colchón", pct: pos(fav) - pos(lo), tono: "comprar" },
+        { k: "poco margen", pct: pos(fr1) - pos(fav), tono: "ajusta" },
+        { k: "frágil", pct: pos(inv) - pos(fr1), tono: "ajusta" },
+        { k: "no cierra", pct: pos(hi) - pos(inv), tono: "buscar" },
+      ];
+      const bordes: BordeDial[] = [
+        { pos: pos(fr1), delta: `+${fr1 - 100}%`, v: "sobre la zona", k: "frágil", dir: "abajo" },
+        { pos: pos(inv), delta: `+${inv - 100}%`, v: "sobre la zona", k: "no cierra", dir: "arriba" },
+      ];
+      return <Dial zonas={zonas} bordes={bordes} marcaPct={pos(be)} marcaK="Tu equilibrio" marcaV={`${be}% de la zona`} />;
+    })();
     return {
       id: "renta",
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
-      valor: conApellido("Cap rate", `${pct1(cap)}%`),
-      valorRojo: cap < umbralStr,
-      ksub: (
-        <>
-          {money(adr)} × {Math.round(occ * 100)}% = {money(ingreso)} al mes · <Ang>cap rate</Ang> STR {pct1(cap)}% · referencia {pct1(umbralStr)}%{aguanta ? ` · ${aguanta}` : ""}
-        </>
-      ),
+      valor: conApellido(NOMBRE_RENTABILIDAD.str, `${pct1(cap)}%`),
+      valorRojo: cap < umbral,
+      ksub: `referencia ${refTxt}`,
       anchorId: anchorCapituloStr("renta"),
       cuerpo: (
         <div>
-          <VProsa>
-            El ingreso de una renta corta es una multiplicación: la tarifa por noche por las noches que se ocupan. Lo que ese ingreso deja al año sobre el precio, ya
-            descontados los costos, es la rentabilidad operativa.{fr?.abajo ? " Y cuánto aguanta la tarifa antes de que el veredicto cambie." : ""}
-          </VProsa>
-          <VViz t="Tarifa × ocupación = lo que factura un mes típico">
-            <VSub>De dónde sale el ingreso</VSub>
-            <p className="v-copy">
-              {money(adr)} por noche × {noches} noches ÷ 12 meses.{" "}
-              {adrEsTuya ? "La tarifa es la que tú definiste" : "La tarifa es la mediana que cobra la zona hoy"}
-              {occEsTuya ? " y la ocupación es el supuesto que tú definiste." : " y la ocupación es la que el mercado estima para un depto como el tuyo: ninguna de las dos es un supuesto tuyo."}
-            </p>
-            <FilasDato>
-              <FilaDato k="Tarifa por noche" tip={adrEsTuya ? "La tarifa que definiste" : "Mediana de la zona"} v={money(adr)} />
-              <FilaDato k="Ocupación" tip={occEsTuya ? "El supuesto que definiste" : "Estimación de mercado para este depto"} sub={`${noches} noches al año · ${Math.round(noches / 12)} al mes`} v={`${Math.round(occ * 100)}%`} />
-              <FilaDato k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" v={money(ingreso)} unidad="/mes" tono="tot" />
-            </FilasDato>
-          </VViz>
-          <VPuente>Ese ingreso, menos los costos, sobre el precio: la rentabilidad operativa.</VPuente>
-          <VViz t={<>Dónde cae tu <Ang>cap rate</Ang></>}>
-            <VSub>Cuánto rinde frente a la referencia</VSub>
-            <Thermo
-              invertido
-              pct={pos(cap)}
-              refPct={pos(umbralStr)}
-              marca={`Tú · ${pct1(cap)}%`}
-              legend={[
-                { k: "Rinde poco", v: `${pct1(lo)}%` },
-                { k: "Umbral renta corta", v: `${pct1(umbralStr)}%` },
-                { k: "Rinde mucho", v: `${pct1(hi)}%` },
-              ]}
-            />
+          <VViz t={`Para rendir como la referencia: ${refTxt}`}>
+            <p className="v-explica">{explicacionUmbralStr(vRef)}</p>
+            <div className="v-centro">
+              <div className="hoy">
+                <div className="k">{adrEsTuya ? "Tu tarifa" : "La zona cobra"}</div>
+                <div className="n">{money(adr)}<small>/noche · rinde {pct1(cap)}%</small></div>
+              </div>
+              <div className="fl">→</div>
+              <div>
+                <div className="k">Para rendir {refTxt}</div>
+                <div className="n">{money(adrRef)}<small>/noche · {Math.round(Math.abs(adrRef / adr - 1) * 100)}% {holgura ? "menos" : "más"}, a la misma ocupación</small></div>
+              </div>
+            </div>
+            <p className="v-cruce">{cruce}</p>
           </VViz>
           {dial && (
-            <>
-              <VPuente>Eso es con {adrEsTuya ? "tu tarifa" : "la tarifa mediana"}. ¿Y si cobras distinto?</VPuente>
-              <VViz t="Tu veredicto según la tarifa por noche">
-                <VSub>Cuánto aguanta la tarifa antes de que cambie el veredicto</VSub>
-                <Dial zonas={dial.zonas} bordes={dial.bordes} marcaPct={dial.marcaPct} marcaK={adrEsTuya ? "Tu tarifa" : "Mediana de la zona"} marcaV={money(adr)} />
-                {colchon != null && (
-                  <div className="colchon">
-                    <span className="k">Colchón hasta el borde de abajo</span>
-                    <span className="v">
-                      {money(colchon)} <small>/noche</small>
-                    </span>
-                  </div>
-                )}
-              </VViz>
-            </>
+            <VViz t="Cuánto aguanta la tarifa antes de que cambie el veredicto">
+              <Dial zonas={dial.zonas} bordes={dial.bordes} marcaPct={dial.marcaPct} marcaK={adrEsTuya ? "Tu tarifa" : "Mediana de la zona"} marcaV={money(adr)} />
+              {colchon != null && (
+                <div className="compo-total">
+                  <span className="k">Colchón hasta el borde de abajo</span>
+                  <span className="v">
+                    {money(colchon)} <small>/noche</small>
+                  </span>
+                </div>
+              )}
+            </VViz>
           )}
-          {mto && mto.celdas.length > 0 && (
-            <>
-              <VPuente>Y las dos juntas, tarifa y ocupación, en lo que queda cada mes.</VPuente>
-              <VViz t="Lo que queda cada mes después de comisión, costos y cuota">
-                <VSub>Tarifa por ocupación: tu flujo mensual</VSub>
-                <Matriz
-                  id="mz-str-i"
-                  ejeX={{ label: "→ más tarifa", niveles: mto.tarifas.map((t) => ({ k: money(t), sub: "por noche" })) }}
-                  ejeY={{ label: "↓ más ocupación", niveles: mto.ocupaciones.map((o) => ({ k: `${Math.round(o * 100)}%`, sub: `${Math.round((o * 365) / 12)} noches` })) }}
-                  celdas={mto.ocupaciones.map((o) =>
-                    mto.tarifas.map((t) => {
-                      const c = mto.celdas.find((x) => x.tarifaCLP === t && x.ocupacion === o);
-                      return c ? { v: corto(c.flujoMensual), neg: c.flujoMensual < 0, umbral: c.flujoMensual >= 0, veredicto: c.veredicto, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · ${nombreVeredicto(c.veredicto)} · ${money(t)} por noche al ${Math.round(o * 100)}%` } : { v: "—" };
-                    }),
-                  )}
-                  veredictoBase={veredicto as Veredicto}
-                  leyenda={{ hoy: "hoy", umbral: "cierra el mes", umbralCorto: "cierra" }}
-                  nota="Cada celda es el flujo mensual con esa tarifa y esa ocupación, con la misma comisión, costos y cuota de tu caso. Las celdas con flecha cambian tu veredicto."
-                />
-              </VViz>
-            </>
+          {sensStr && beBar && (
+            <VViz t="Cuánto tienes que facturar para no perder plata">
+              <p className="v-cruce"><b>{sensStr.titular}</b> {sensStr.fraseCanonica}</p>
+              {beBar}
+            </VViz>
           )}
-          <VCierre titulo="Qué significa">
-            <SegsCierre segs={cierres.renta} />
-          </VCierre>
           <VFuente>
-            Datos de mercado · {adrEsTuya ? "tarifa definida por ti" : "mediana de tarifa"} y {occEsTuya ? "ocupación definida por ti" : "ocupación estimada para este depto"}
-            {fecha ? ` · ${fecha}` : ""} · referencia {pct1(umbralStr)}%: un punto sobre lo que rinden los avisos de la comuna
-            {mto ? " · matriz: misma aritmética del motor (comisión, costos declarados, cuota)" : ""}
+            {fuenteUmbralStr(vRef, umbral)} Tarifa {adrEsTuya ? "definida por ti" : "de los avisos de la zona"}; ocupación {occEsTuya ? "definida por ti" : "estimada para este depto"}.
           </VFuente>
         </div>
       ),
     };
   })();
-
   // ═══════════════ II · TU FLUJO MENSUAL ═══════════════
   const filaII: FilaHallazgo = (() => {
     const fl = m?.desgloseFall ?? null;
