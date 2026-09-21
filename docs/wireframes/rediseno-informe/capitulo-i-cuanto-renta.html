@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide" data-moneda="CLP">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo I · «Cuánto renta» · LTR y STR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 21-sep-2026 · «Cuánto renta» (capítulo I) en las dos modalidades.
+     Tokens y primitivas heredados de `capitulo-ii-flujo-str.html`. Nada implementado.
+     TODAS LAS CIFRAS SON REALES: cuatro filas del parque recomputadas el 21-sep-2026 por la
+     cadena de cada página (`scripts/of-filas-mockup-renta.ts`), ya con el cap rate redondeado
+     una sola vez (hero ≡ capítulo). La geometría de los diales se calcula desde los datos.
+     LO QUE VA AL CENTRO: la referencia traducida a pesos —qué arriendo (o qué tarifa) haría
+     falta para rendir como el mercado— cruzada en LTR con la mediana de arriendo de la zona.
+     LO QUE SALE: el termómetro, el cierre A, la matriz del flujo (STR) y lo que el hero ya dice.
+     REVISIÓN 21-sep (motor aprobado): la referencia ya no es el 4% nacional sino el BENCHMARK DE LA
+     COMUNA (capref-comuna.ts): bruto de avisos propios en la celda del motor, bruto contra bruto,
+     cascada declarada (celda → comuna → BDO → nacional) y BDO como cruce con su advertencia de que
+     es otro activo. Cifras de `scripts/of-filas-mockup-capref.ts` (91c1e585: celda, obra nueva con
+     arriendo usado de proxy; 637c35fb: peldaño comuna, sin tipología).
+     CORRECCIÓN DE DIRECCIÓN (Fabrizio, 21-sep): el capítulo habla AL USUARIO, no del cálculo. Un
+     solo número (la rentabilidad BRUTA, que es lo que se compara; el neto queda en las seis cifras
+     del hero), sin ⓘ técnico, sin BDO, y la fuente en una línea sin peldaños, celdas, ventanas ni
+     n. La cascada, los n, la celda y BDO siguen en el dato (`capref_comuna_snapshot`) y en la
+     memoria: son lo que defiende el número, no lo que se muestra.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;--buscar:#C8323C;--ajustar:#6E4560;--comprar:#2B558F}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1000px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1000px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par2{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  [data-view="mobile"] .par2{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par2{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cabeza{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+  .cabeza .q{font-size:15.5px;font-weight:600}
+  .cabeza .q small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  .cabeza .val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .cabeza .val small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3)}
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px}
+  .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
+  .v-prosa b{color:var(--tx);font-weight:600}
+  .v-puente{font-size:13px;color:var(--tx2);margin:16px 0 10px;line-height:1.5}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
+  .v-fuente.aviso{border-left-color:var(--signal)}
+  .v-cruce{font-size:11px;color:var(--tx3);line-height:1.45;border-left:3px solid var(--line2);padding-left:9px;margin-top:8px}
+  .v-cruce b{color:var(--tx2);font-weight:600}
+  .peldano{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line2);border-radius:4px;padding:0 5px;margin-right:5px;color:var(--tx3)}
+  .bloque{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .bloque:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .num{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--tx4);margin-right:6px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;color:#fff;letter-spacing:.02em}
+  .pill[data-v="COMPRAR"]{background:var(--comprar)}.pill[data-v="AJUSTA SUPUESTOS"]{background:var(--ajustar)}.pill[data-v="BUSCAR OTRA"]{background:var(--buscar)}
+  /* EL CENTRO · la referencia en pesos */
+  .centro{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:14px;background:var(--sunk);border-radius:var(--rad-xs)}
+  .centro .k{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:3px}
+  .centro .n{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.1}
+  .centro .n small{display:block;font-size:11px;font-weight:500;color:var(--tx3);margin-top:3px}
+  .centro .fl{font-size:18px;color:var(--tx3)}
+  .centro .hoy .n{color:var(--tx3)}
+  [data-view="mobile"] .centro{grid-template-columns:1fr;gap:6px}
+  [data-view="mobile"] .centro .fl{display:none}
+  .cruce{margin-top:12px;font-size:13px;line-height:1.5;color:var(--tx2)}
+  .cruce b{color:var(--tx);font-weight:600}
+  .cruce .neg{color:var(--signal);font-weight:600}
+  /* el dial (misma geometría que Dial: zonas por veredicto + marca + bordes) */
+  .dial{position:relative;height:78px;margin:6px 0 4px}
+  .dial .zona{position:absolute;top:26px;height:10px;border-radius:5px}
+  .dial .zona.comprar{background:var(--comprar)}.dial .zona.ajusta{background:var(--ajustar)}.dial .zona.buscar{background:var(--buscar)}
+  .dial .marca{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:700;white-space:nowrap;padding:2px 6px;border-radius:5px;background:var(--tx);color:var(--page);line-height:1.2}
+  .dial .marca::after{content:"";position:absolute;left:50%;top:100%;width:0;height:0;border:4px solid transparent;border-top-color:var(--tx);transform:translateX(-50%)}
+  .dial .borde{position:absolute;top:44px;transform:translateX(-50%);font-size:9.5px;color:var(--tx3);white-space:nowrap;text-align:center;line-height:1.3;font-variant-numeric:tabular-nums}
+  .dial .borde b{display:block;color:var(--tx2);font-weight:600}
+  .dial .tick{position:absolute;top:22px;width:1px;height:18px;background:var(--tx2)}
+  .colchon{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--tx2)}
+  .colchon .v{font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums}
+  .colchon .v small{font-weight:500;color:var(--tx3)}
+  .banda{margin-top:8px;font-size:11.5px;color:var(--tx3)}
+  .banda b{color:var(--tx);font-weight:600}
+  .explica{font-size:12.5px;line-height:1.5;color:var(--tx3);margin:-4px 0 10px}
+  .tip{font-style:normal;font-size:11px;color:var(--tx4);margin-left:5px;cursor:help;text-transform:none;letter-spacing:0}
+  /* el equilibrio: cero al centro = lo que factura la zona */
+  .eq{position:relative;height:84px;margin:10px 0 0}
+  .eq .eje{position:absolute;left:0;right:0;top:30px;height:1px;background:var(--line2)}
+  .eq .lado{position:absolute;top:26px;height:9px;border-radius:5px;opacity:.9}
+  .eq .lado.menos{background:var(--comprar)}.eq .lado.mas{background:var(--ajustar)}
+  .eq .cero{position:absolute;top:20px;width:2px;height:21px;background:var(--tx)}
+  .eq .lab{position:absolute;top:44px;font-size:9.5px;color:var(--tx4);white-space:nowrap;transform:translateX(-50%)}
+  .eq .lab.izq{transform:none}.eq .lab.der{transform:translateX(-100%)}
+  .eq .gate{position:absolute;top:22px;width:1px;height:17px;background:var(--tx3)}
+  .eq .glab{position:absolute;top:56px;transform:translateX(-50%);font-size:9px;color:var(--tx4);white-space:nowrap;text-align:center;line-height:1.2}
+  .eq .glab b{display:block;color:var(--tx3);font-weight:600}
+  .eq .marca{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:700;white-space:nowrap;padding:2px 6px;border-radius:5px;background:var(--tx);color:var(--page);line-height:1.2}
+  .eq .marca::after{content:"";position:absolute;left:50%;top:100%;width:0;height:0;border:4px solid transparent;border-top-color:var(--tx);transform:translateX(-50%)}
+  /* sensibilidad_str · las cuatro bandas del break-even */
+  .be{position:relative;height:64px;margin:6px 0 2px}
+  .be .seg4{position:absolute;top:26px;height:10px}
+  .be .seg4.b1{background:var(--comprar);border-radius:5px 0 0 5px}.be .seg4.b2{background:var(--tx3)}.be .seg4.b3{background:var(--ajustar)}.be .seg4.b4{background:var(--buscar);border-radius:0 5px 5px 0}
+  .be .lab{position:absolute;top:42px;font-size:9.5px;color:var(--tx4);white-space:nowrap;transform:translateX(-50%);font-variant-numeric:tabular-nums}
+  .be .lab.izq{transform:none}.be .lab.der{transform:translateX(-100%)}
+  .be .marca{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:700;white-space:nowrap;padding:2px 6px;border-radius:5px;background:var(--tx);color:var(--page);line-height:1.2}
+  .be .marca::after{content:"";position:absolute;left:50%;top:100%;width:0;height:0;border:4px solid transparent;border-top-color:var(--tx);transform:translateX(-50%)}
+  /* anotaciones del mockup */
+  .nota{max-width:1000px;margin:12px auto 0;font-size:11.5px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--tx2)}
+  .marca-n{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;background:var(--signal);color:#fff;border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:1px}
+  .fuera{opacity:.32;text-decoration:line-through;text-decoration-color:var(--signal);text-decoration-thickness:1.5px}
+  table.cmp{max-width:1000px;margin:14px auto 0;border-collapse:collapse;font-size:12px;width:100%}
+  table.cmp th,table.cmp td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+  table.cmp th{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);font-weight:600}
+  table.cmp td:first-child{white-space:nowrap;color:var(--tx3)}
+  .decision{max-width:1000px;margin:16px auto 0;padding:12px 14px;background:var(--sunk);border-radius:var(--rad-xs);border-left:3px solid var(--signal);font-size:11.5px;line-height:1.6;color:var(--tx3)}
+  .decision b{color:var(--tx2)}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <h1 class="lt">«Cuánto renta» — la referencia en pesos al centro, en las dos modalidades</h1>
+  <p class="subx">
+    Cuatro filas reales. El capítulo responde lo único que el hero no responde: <b>qué arriendo, o qué tarifa, haría
+    falta para rendir como el mercado</b>, y en LTR lo cruza con la mediana de arriendo de la zona. Después el dial de
+    sensibilidad con su banda cuando existe, en STR el break-even con sus cuatro bandas, y la referencia una vez, con procedencia.
+    <b>Revisión del 21-sep:</b> en LTR la referencia es la de <b>la comuna</b>: lo que rinden los avisos de arriendo y venta de deptos
+    parecidos. El capítulo habla de <b>un solo número, la rentabilidad bruta</b> (el neto ya está en las seis cifras del hero), y la fuente
+    es una línea que dice de dónde sale. Cascada, n, celda y BDO viven en el dato y en el acta, no acá.
+  </p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" onclick="T('light',this)">Claro</button><button onclick="T('dark',this)">Oscuro</button></span>
+    <span class="clab" style="margin-left:10px">Ancho</span>
+    <span class="seg"><button class="on" onclick="V('wide',this)">2 × 490</button><button onclick="V('mobile',this)">390</button></span>
+    <span class="clab" style="margin-left:10px">Moneda</span>
+    <span class="seg"><button class="on" onclick="Mo('CLP',this)">CLP</button><button onclick="Mo('UF',this)">UF</button></span>
+  </div>
+</div>
+
+<div class="nota" style="margin-top:-8px;margin-bottom:6px">
+  <p><b>Lo que sale</b>: <span class="fuera">el termómetro</span> (repite la fila) · <span class="fuera">el cierre A «rindes seis décimas bajo la referencia»</span> (repite el termómetro) ·
+  <span class="fuera">la prosa de apertura</span> · en STR <span class="fuera">la tabla tarifa × ocupación = ingreso</span> (son tres de las seis cifras del hero) y
+  <span class="fuera">la matriz del flujo</span> (es del capítulo II) · en LTR <span class="fuera">«posible solo si el mercado lo valida»</span>: ahora lo dice el dato.</p>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>Qué decide cada bloque, y con qué dato</h2></div>
+<table class="cmp">
+  <tr><th>bloque</th><th>LTR</th><th>STR</th><th>de dónde sale</th></tr>
+  <tr><td><span class="marca-n">1</span>Para rendir como el mercado</td><td>El arriendo mensual al que el cap rate neto igualaría la referencia: (referencia × precio + gastos operativos del año) ÷ 12. Hoy → hace falta.</td><td>La tarifa por noche a la que el cap rate STR igualaría el umbral 5%, a la misma ocupación y con la comisión y los costos del caso.</td><td>`arriendoRef` (cap. I LTR, hoy en el cierre A) · `adrRef` (`argsCierresStr.renta`). Ninguna es nueva: se ponen al frente.</td></tr>
+  <tr><td><span class="marca-n">2</span>El cruce con la zona</td><td>La mediana de arriendo de la zona (la del cap. II, `resolverArriendoReferencia`): si el arriendo que hace falta está por encima, el capítulo dice cuánto, con n y radio, y remata que con este precio la palanca no es el arriendo sino el precio (cap. III). Con muestra chica o sin referencia, lo dice el aviso.</td><td>La tarifa de hoy ya ES la mediana de la zona en 220 de 254 filas (`adrFuente` modelo): el cruce es contra ella misma. Cuando la tarifa es tuya, se cruza contra la mediana.</td><td>Población LTR: 791 con mediana; en 524 (66%) el arriendo que hace falta está sobre lo que la zona paga, p50 +14%.</td></tr>
+  <tr><td><span class="marca-n">3</span>El dial, con su banda</td><td>`HallazgoSensibilidad`: zonas por veredicto, piso, colchón y la banda del margen (`bandaMargen`: sin colchón &lt; 7 · acotado 7–15 · amplio ≥ 15). Solo en 540 filas (COMPRAR + AJUSTA).</td><td>`fronterasIngreso`: hacia abajo y hacia arriba, con el colchón por noche. En 127 filas hay frontera abajo; 190 arriba.</td><td>Lo que ya se dibuja, más la banda como texto.</td></tr>
+  <tr><td><span class="marca-n">4</span>Cuánto tienes que facturar para no perder plata (solo STR)</td><td>—</td><td>`sensibilidad_str.beRatioPct` dicho en una frase: «para cubrir todos tus costos necesitas facturar un 14% más de lo que factura la zona típica», y por qué importa. La banda del motor entra como CALIFICACIÓN de la frase (hay colchón · poco margen · frágil · no cierra), no como rótulo. La barra: cero al centro = la zona; las dos puertas del motor (+10% frágil, +30% no cierra) como marcas.</td><td>Parque: holgado 59 · apretado 23 · frágil 50 · inviable 121.</td></tr>
+  <tr><td><span class="marca-n">5</span>La referencia, una vez</td><td>Una línea: «Referencia: avisos de arriendo y venta de deptos de 1 dormitorio en Providencia, últimos 90 días.» Cuando cae a comuna sin tipología: «…de deptos en Las Condes, últimos 90 días.» Cuando cae a nacional: «Referencia: promedio de Santiago.» Muestra débil: «(muestra acotada)», sin la cifra. Después el arriendo del sector y la UF del análisis. Sin peldaños, celdas, ventanas, n ni BDO: eso vive en el dato.</td><td>«umbral 5,0%: piso de renta corta Franco para Santiago» + tarifa (mediana o tuya) y ocupación (estimada o tuya).</td><td>`procedenciaExtendida` / la fuente actual del cap. I STR.</td></tr>
+</table>
+
+<div class="decision">
+  <b>Lo que NO se muestra (y sigue existiendo).</b> La cascada (celda → comuna sin tipología → BDO → nacional), los n por lado, la celda con su superficie,
+  la ventana, «precios pedidos, no cerrados» y el neto de BDO con su advertencia viven en <code>capref_comuna_snapshot</code>, en la memoria y en el acta del
+  motor: son lo que defiende el número. El usuario ve un solo número (la rentabilidad bruta), la de su comuna, y una línea de fuente. En el peldaño BDO la
+  referencia es neta y el capítulo lo dirá con la misma forma («Referencia: edificios de renta en Ñuñoa»); copy pendiente para cuando se implemente, 54 filas.
+</div>
+
+<div class="decision">
+  <b>La moneda.</b> Todo el capítulo sigue el toggle. La referencia en pesos se calcula en CLP con el precio del análisis y se
+  muestra en UF dividiendo por <b>la UF del análisis</b> (la congelada al crearse), igual que el resto del informe. La mediana de la
+  zona viene en pesos del input congelado al crear el análisis, o sea de <b>la misma fecha</b> que esa UF: convertirla con la UF del
+  día mezclaría dos fechas en una sola comparación y haría que la cifra en UF cambiara entre visitas mientras la de pesos no.
+  Así que también con la UF del análisis. El cap rate y sus referencias son porcentajes: no cambian con la perilla.
+</div>
+
+<script>
+  /* ── datos reales (scripts/of-filas-mockup-renta.ts, 21-sep-2026) ── */
+  const FILAS = [
+    { mod:"LTR", id:"91c1e585", comuna:"Providencia", ver:"AJUSTA SUPUESTOS", uf:40869, tipo:"UF 5.300 · usado",
+      cap:3.4, bruto:4.0, ref:3.6,
+      capref:{ nivel:"celda", dorms:1, nArr:60, nVta:66, ventana:90 },
+      arriendo:720000, arriendoDeclarado:true, arriendoRef:649817,
+      mediana:{ clp:680000, n:47, radioM:500, estado:"declarado_con_brecha" },
+      sens:{ margen:18.5, banda:"amplio", base:"AJUSTA SUPUESTOS", nuevo:"BUSCAR OTRA", piso:586800, colchon:133200 },
+      palancaPrecio:{ deltaPct:-19.1, objetivoUF:4288 } },
+    { mod:"LTR", id:"637c35fb", comuna:"Las Condes", ver:"COMPRAR", uf:38800, tipo:"UF 5.000 · usado",
+      cap:7.4, bruto:7.9, ref:5.3,
+      capref:{ nivel:"comuna", dorms:3, nArr:125, nVta:372, ventana:90 },
+      arriendo:1276000, arriendoDeclarado:false, arriendoRef:856833,
+      mediana:{ clp:1276000, n:8, radioM:2000, estado:"muestra_chica" },
+      sens:{ margen:18, banda:"amplio", base:"COMPRAR", nuevo:"AJUSTA SUPUESTOS", piso:1046320, colchon:229680 },
+      palancaPrecio:null },
+    { mod:"STR", id:"a89598a4", comuna:"Santiago", ver:"AJUSTA SUPUESTOS", uf:40872, tipo:"1D usado · 33 m²",
+      cap:4.3, ref:5.0, fuente:"umbral 5,0%: piso de renta corta Franco para Santiago",
+      adr:48732, adrTuya:false, occ:0.412, ingreso:610114, adrRef:54200,
+      fr:{ abajo:{ factor:0.8749, ver:"BUSCAR OTRA", tarifa:42636 }, arriba:{ factor:1.0352, ver:"COMPRAR", tarifa:50445 } },
+      be:{ pct:114, titular:"El veredicto se sostiene solo si la ocupación se cumple.", frase:"Para no perder plata necesitas facturar el 114% del nivel de mercado — sobre lo que rinde la zona típica. Es un margen apretado: si la ocupación o la tarifa diaria (ADR) vienen algo abajo, el corto deja de cuadrar. Confírmalas contra listings comparables activos antes de comprar." } },
+    { mod:"STR", id:"540deb26", comuna:"Santiago", ver:"COMPRAR", uf:40935, tipo:"1D usado · 30 m²",
+      cap:5.4, ref:5.0, fuente:"umbral 5,0%: piso de renta corta Franco para Santiago",
+      adr:48899, adrTuya:false, occ:0.463, ingreso:688242, adrRef:45900,
+      fr:{ abajo:{ factor:0.9036, ver:"AJUSTA SUPUESTOS", tarifa:44186 }, arriba:null },
+      be:{ pct:99, titular:"El veredicto aguanta aunque rindas bajo la zona.", frase:"Tu punto de equilibrio está en el 99% del nivel de mercado: cuadras facturando por debajo de lo que rinde la zona típica. Hay colchón si la ocupación o la tarifa diaria (ADR) vienen algo más bajas de lo asumido." } },
+  ];
+
+  /* ── moneda: todo sigue la perilla; UF con la UF del ANÁLISIS ── */
+  let MONEDA = "CLP";
+  const miles = n => Math.round(n).toLocaleString("es-CL");
+  // UF con la UF del ANÁLISIS: entero desde 100, un decimal desde 10, dos bajo 10 (tarifas por noche)
+  const money = (n, uf) => { if (MONEDA !== "UF") return "$" + miles(Math.abs(n)); const v = Math.abs(n)/uf; return "UF " + (v >= 100 ? miles(v) : v >= 10 ? v.toFixed(1).replace(".",",") : v.toFixed(2).replace(".",",")); };
+  const pct1 = n => n.toFixed(1).replace(".",",");
+  const VER = { "COMPRAR":"Comprar", "AJUSTA SUPUESTOS":"Ajustar", "BUSCAR OTRA":"Buscar otro" };
+  const tono = v => v === "COMPRAR" ? "comprar" : v === "BUSCAR OTRA" ? "buscar" : "ajusta";
+  const BANDA = { sin_colchon:"sin colchón", acotado:"colchón acotado — entre 7% y 15% de caída del arriendo", amplio:"colchón amplio — aguanta 15% o más de caída del arriendo" };
+
+  function dial(zonas, marca, bordes){
+    // zonas: [{k, desde, hasta, ver}] en % del eje; marca {pct, k, v}; bordes [{pct, k, v}]
+    return `<div class="dial">
+      ${zonas.map(z=>`<div class="zona ${tono(z.ver)}" style="left:${z.desde}%;width:${z.hasta-z.desde}%"></div>`).join("")}
+      ${bordes.map(b=>`<div class="tick" style="left:${b.pct}%"></div><div class="borde" style="left:${b.pct}%"><b>${b.v}</b>${b.k}</div>`).join("")}
+      <div class="marca" style="left:${marca.pct}%">${marca.k} · ${marca.v}</div>
+    </div>`;
+  }
+
+  /* ── LA EXPLICACIÓN DE LA REFERENCIA VA VISIBLE, NO SOLO EN EL ⓘ (decisión 21-sep): los ⓘ no se
+     abren en mobile (cola abierta) y el 4% / 5% es lo que sostiene el capítulo. Una línea bajo el
+     título; el ⓘ conserva la versión larga para escritorio. ── */
+  /* La referencia de la comuna (21-sep): la explicación corta va visible bajo el título y nombra la
+     celda y los n; la larga (ⓘ) dice por qué bruto contra bruto y qué es la cascada. */
+  /* UNA frase, visible (los ⓘ no se abren en mobile): qué es la rentabilidad bruta y de dónde sale la de
+     la comuna. Sin peldaños, celdas ni n: eso vive en el dato y en el acta. */
+  const REF_LTR = f => `La rentabilidad bruta es el arriendo de un año sobre el precio. La de ${f.comuna} sale de los avisos publicados de deptos parecidos.`;
+  /* La fuente, en una línea. Por peldaño: celda → «de deptos de N dormitorios en Comuna»; comuna → «de deptos
+     en Comuna»; nacional → «promedio de Santiago». La muestra débil se dice con una palabra, no con la cifra. */
+  const FUENTE_LTR = f => {
+    const c = f.capref;
+    const debil = Math.min(c.nArr, c.nVta) < 30 ? " (muestra acotada)" : "";
+    if (c.nivel === "celda") return `Referencia: avisos de arriendo y venta de deptos de ${c.dorms} dormitorio${c.dorms === 1 ? "" : "s"} en ${f.comuna}, últimos ${c.ventana} días${debil}.`;
+    if (c.nivel === "comuna") return `Referencia: avisos de arriendo y venta de deptos en ${f.comuna}, últimos ${c.ventana} días${debil}.`;
+    return "Referencia: promedio de Santiago.";
+  };
+  const REF_STR = {
+    corta: "el piso que Franco pide a una renta corta en Santiago: rinde más que un arriendo largo porque cuesta más operarla y su ingreso es más variable",
+    larga: "El cap rate de una renta corta es lo que el ingreso neto de un año (tarifa × noches ocupadas, menos comisión y costos) deja sobre el precio del depto. El 5% es el piso que Franco fija para Santiago: un punto sobre la referencia del arriendo largo, porque operar por noches cuesta más y el ingreso depende de la ocupación. Bajo el 5%, el corto no compensa el trabajo ni el riesgo frente a arrendarlo por mes.",
+  };
+  const tip = t => `<i class="tip" title="${t.replace(/"/g,"&quot;")}">ⓘ</i>`;
+
+  function escenaLtr(f){
+    const $ = n => money(n, f.uf);
+    const hace = f.arriendoRef, hoy = f.arriendo, med = f.mediana;
+    const holgura = hace <= hoy;
+    const dif = Math.round((hace/med.clp - 1)*100);
+    const radio = med.radioM>=1000 ? (med.radioM/1000).toFixed(1).replace(".",",")+" km" : med.radioM+" m";
+    // 2 · el cruce con el sector, dicho con el dato (redacción Fabrizio, 21-sep)
+    let cruce;
+    if (med.estado === "muestra_chica" || med.estado === "sin_referencia"){
+      const aviso = med.estado==="muestra_chica" ? `mediana de solo ${med.n} avisos a ${radio}: muestra chica para contrastar` : "sin avisos publicados cerca para contrastar";
+      cruce = holgura
+        ? `El sector paga <b>${$(med.clp)}</b> de arriendo (${aviso}): llegarías a la rentabilidad de la comuna (${pct1(f.ref).replace(",0","")}%) incluso arrendando <b>${$(hoy-hace)} menos</b>. El margen se apoya en ${f.arriendoDeclarado ? "el arriendo que declaraste" : "el arriendo que usa el análisis"}, no en lo que la zona confirma.`
+        : `El sector paga <b>${$(med.clp)}</b> de arriendo (${aviso}): para llegar a la rentabilidad de la comuna (${pct1(f.ref).replace(",0","")}%) hace falta que el arriendo suba <b>${$(hace-hoy)}</b>, y la zona no alcanza a decir si los paga.`;
+    } else if (holgura){
+      cruce = `El sector paga <b>${$(med.clp)}</b> de arriendo (mediana de ${med.n} avisos a ${radio}): llegarías a la rentabilidad de la comuna (${pct1(f.ref).replace(",0","")}%) incluso arrendando <b>${$(hoy-hace)} menos</b>.`;
+    } else {
+      cruce = `El sector paga <b>${$(med.clp)}</b> de arriendo (mediana de ${med.n} avisos a ${radio}): para llegar a la rentabilidad de la comuna (${pct1(f.ref).replace(",0","")}%) hace falta que el arriendo suba un <span class="neg">${dif}% por encima</span> de lo que se publica; algo difícil de lograr. Con este precio, rendir como el mercado no depende del arriendo${f.palancaPrecio ? `: depende del precio —a UF ${miles(f.palancaPrecio.objetivoUF)}, ${pct1(Math.abs(f.palancaPrecio.deltaPct))}% menos, el caso ya es ${VER[f.palancaPrecio.destino ?? "COMPRAR"]}— y eso es el capítulo III` : "; la palanca está en el precio (capítulo III)"}.`;
+    }
+    // 3 · el dial de sensibilidad con banda (misma geometría que SensibilidadDial)
+    let dialHtml = "";
+    if (f.sens){
+      const s = f.sens; const lo = s.piso*0.92, hi = hoy*1.08; const pos = x => ((x-lo)/(hi-lo))*100;
+      dialHtml = `<div class="bloque"><div class="v-sub"><span class="num">2</span>Cuánto aguanta ese arriendo antes de que cambie el veredicto</div>
+        ${dial([{desde:0,hasta:pos(s.piso),ver:s.nuevo},{desde:pos(s.piso),hasta:100,ver:s.base}], {pct:pos(hoy),k:f.arriendoDeclarado?"Declaraste":"Usamos",v:$(hoy)}, [{pct:pos(s.piso),v:`−${pct1(s.margen).replace(",0","")}% · ${$(s.piso)}`,k:`y cae a ${VER[s.nuevo]}`}])}
+        <div class="colchon"><span>Colchón hasta el borde de abajo</span><span class="v">${$(s.colchon)} <small>/mes</small></span></div>
+        <div class="banda"><b>${BANDA[s.banda]}</b>.</div></div>`;
+    }
+    return `<div class="escena">
+      <div class="cabeza"><div class="q">Cuánto renta<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div><div class="val">Rentabilidad bruta ${pct1(f.bruto)}%<small>la comuna ${pct1(f.ref)}%</small></div></div>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Para rendir como la comuna: ${pct1(f.ref).replace(",0","")}%</div>
+        <p class="explica">${REF_LTR(f)}</p>
+        <div class="centro">
+          <div class="hoy"><div class="k">Hoy ${f.arriendoDeclarado ? "declaras" : "el análisis usa"}</div><div class="n">${$(hoy)}<small>/mes · rinde ${pct1(f.bruto)}%</small></div></div>
+          <div class="fl">→</div>
+          <div><div class="k">Para rendir ${pct1(f.ref).replace(",0","")}%</div><div class="n">${$(hace)}<small>/mes · ${Math.round(Math.abs(hace/hoy-1)*100)}% ${holgura ? "menos" : "más"} que hoy</small></div></div>
+        </div>
+        <p class="cruce">${cruce}</p></div>
+      ${dialHtml}
+      <div class="v-fuente ${med.estado==="muestra_chica"||med.estado==="sin_referencia"?"aviso":""}">${FUENTE_LTR(f)} El arriendo del sector: ${med.estado==="muestra_chica" ? `avisos a ${radio} (muestra chica)` : med.estado==="sin_referencia" ? "sin avisos cerca" : `avisos a ${radio}`}. UF ${miles(f.uf)} del análisis.</div>
+    </div>`;
+  }
+
+  /* ── EL PUNTO DE EQUILIBRIO, DICHO EN UNA FRASE (21-sep). El motor emite `beRatioPct`: lo que
+     tienes que facturar para cubrir todos tus costos (comisión, costos, cuota) como % de lo que
+     factura la zona típica. 114 = «un 14% más que la zona». La frase dice el número y por qué
+     importa; la banda del motor entra como CALIFICACIÓN, no como rótulo. ── */
+  function equilibrio(be, fmt){
+    const d = be.pct - 100;
+    const que = d > 0
+      ? `Para cubrir todos tus costos —comisión, gastos y cuota— necesitas facturar <b>un ${d}% más</b> de lo que factura la zona típica.`
+      : d < 0
+        ? `Cubres todos tus costos —comisión, gastos y cuota— facturando <b>un ${-d}% menos</b> de lo que factura la zona típica.`
+        : `Cubres todos tus costos —comisión, gastos y cuota— facturando <b>justo lo que factura</b> la zona típica.`;
+    const porQue = be.pct <= 100
+      ? "Hay colchón: un mes flojo de ocupación o de tarifa no te deja pagando de tu bolsillo."
+      : be.pct <= 110
+        ? "Es poco margen: con un mes flojo de ocupación o de tarifa quedas en cero."
+        : be.pct <= 130
+          ? "Es un margen frágil: el veredicto se sostiene solo si la ocupación y la tarifa se cumplen. Confírmalas contra avisos comparables activos antes de comprar."
+          : "Eso no es una renta corta que cierre: tendrías que rendir muy por sobre la zona, y por eso el veredicto es Buscar otro.";
+    // la barra: cero al centro = lo que factura la zona; a la derecha, más; a la izquierda, menos
+    const lo = -30, hi = 50; const pos = x => ((Math.min(Math.max(x,lo),hi)-lo)/(hi-lo))*100;
+    const barra = `<div class="eq">
+      <div class="eje"></div><div class="lado menos" style="left:0;width:${pos(0)}%"></div><div class="lado mas" style="left:${pos(0)}%;width:${100-pos(0)}%"></div>
+      <div class="cero" style="left:${pos(0)}%"></div><div class="lab" style="left:${pos(0)}%">lo que factura la zona</div>
+      <div class="lab izq" style="left:0">menos</div><div class="lab der" style="left:100%">más</div>
+      <div class="gate" style="left:${pos(10)}%"></div><div class="glab" style="left:${pos(10)}%"><b>+10%</b>frágil</div><div class="gate" style="left:${pos(30)}%"></div><div class="glab" style="left:${pos(30)}%"><b>+30%</b>no cierra</div>
+      <div class="marca" style="left:${pos(d)}%">necesitas ${d>0?"+"+d:d<0?"−"+(-d):""}${d===0?"lo mismo":"%"}</div>
+    </div>`;
+    return `<p class="cruce">${que} ${porQue}</p>${barra}`;
+  }
+
+  function escenaStr(f){
+    const $ = n => money(n, f.uf);
+    const hace = f.adrRef, hoy = f.adr; const holgura = hace <= hoy;
+    const ref = pct1(f.ref).replace(",0","");
+    const cruce = holgura
+      ? `El sector tiene una tarifa de <b>${$(hoy)}</b> por noche al ${Math.round(f.occ*100)}% de ocupación (${$(f.ingreso)} al mes): llegarías al Cap Rate de referencia (${ref}%) incluso cobrando <b>${$(hoy-hace)} menos</b> por noche.`
+      : `El sector tiene una tarifa de <b>${$(hoy)}</b> por noche al ${Math.round(f.occ*100)}% de ocupación (${$(f.ingreso)} al mes): para un Cap Rate de ${ref}% hacen falta <span class="neg">${$(hace-hoy)} más por noche</span>, un +${Math.round((hace/hoy-1)*100)}% sobre lo que paga la zona. No es un supuesto tuyo: es una apuesta a rendir sobre el mercado.`;
+    // 2 · el dial desde las fronteras del ingreso
+    const fr = f.fr; const pts = [hoy]; if (fr.abajo) pts.push(fr.abajo.tarifa); if (fr.arriba) pts.push(fr.arriba.tarifa);
+    const lo = Math.min(...pts)*0.92, hi = Math.max(...pts)*1.08; const pos = x => ((x-lo)/(hi-lo))*100;
+    const zonas = []; let a = 0;
+    if (fr.abajo){ zonas.push({desde:0,hasta:pos(fr.abajo.tarifa),ver:fr.abajo.ver}); a = pos(fr.abajo.tarifa); }
+    if (fr.arriba){ zonas.push({desde:a,hasta:pos(fr.arriba.tarifa),ver:f.ver},{desde:pos(fr.arriba.tarifa),hasta:100,ver:fr.arriba.ver}); } else zonas.push({desde:a,hasta:100,ver:f.ver});
+    const bordes = []; if (fr.abajo) bordes.push({pct:pos(fr.abajo.tarifa),v:`−${pct1((1-fr.abajo.factor)*100)}% · ${$(fr.abajo.tarifa)}`,k:`y cae a ${VER[fr.abajo.ver]}`}); if (fr.arriba) bordes.push({pct:pos(fr.arriba.tarifa),v:`+${pct1((fr.arriba.factor-1)*100)}% · ${$(fr.arriba.tarifa)}`,k:`y sube a ${VER[fr.arriba.ver]}`});
+    const colchon = fr.abajo ? hoy - fr.abajo.tarifa : null;
+    return `<div class="escena">
+      <div class="cabeza"><div class="q">Cuánto renta<small>${f.mod} · ${f.comuna} · ${f.id} · <span class="pill" data-v="${f.ver}">${VER[f.ver]}</span></small></div><div class="val">Cap rate ${pct1(f.cap)}%<small>referencia ${pct1(f.ref)}%</small></div></div>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Para rendir como la referencia: ${ref}%</div>
+        <p class="explica">El ${ref}% es ${REF_STR.corta}.</p>
+        <div class="centro">
+          <div class="hoy"><div class="k">${f.adrTuya ? "Tu tarifa" : "La zona cobra"}</div><div class="n">${$(hoy)}<small>/noche · cap rate ${pct1(f.cap)}%</small></div></div>
+          <div class="fl">→</div>
+          <div><div class="k">Para rendir ${ref}%</div><div class="n">${$(hace)}<small>/noche · ${Math.round(Math.abs(hace/hoy-1)*100)}% ${holgura ? "menos" : "más"}, a la misma ocupación</small></div></div>
+        </div>
+        <p class="cruce">${cruce}</p></div>
+      <div class="bloque"><div class="v-sub"><span class="num">2</span>Cuánto aguanta la tarifa antes de que cambie el veredicto</div>
+        ${dial(zonas, {pct:pos(hoy),k:f.adrTuya?"Tu tarifa":"Mediana de la zona",v:$(hoy)}, bordes)}
+        ${colchon!=null ? `<div class="colchon"><span>Colchón hasta el borde de abajo</span><span class="v">${$(colchon)} <small>/noche</small></span></div>` : `<div class="banda"><b>Hacia abajo el veredicto es firme</b>: ni con el ingreso a un tercio cambia.</div>`}
+        <div class="banda">Tarifa y ocupación mueven el mismo ingreso: el borde de abajo es también <b>${Math.round(f.occ*fr.abajo.factor*100)}% de ocupación</b> a la tarifa de hoy.</div></div>
+      <div class="bloque"><div class="v-sub"><span class="num">3</span>Cuánto tienes que facturar para no perder plata</div>
+        ${equilibrio(f.be, $)}</div>
+      <div class="v-fuente">Referencia: piso de renta corta de Franco para Santiago (${ref}%). Tarifa ${f.adrTuya ? "definida por ti" : "de los avisos de la zona"}; ocupación ${f.occTuya ? "definida por ti" : "estimada para este depto"}. UF ${miles(f.uf)} del análisis.</div>
+    </div>`;
+  }
+
+  function render(){
+    const cont = document.getElementById("escenas"); cont.innerHTML = "";
+    for (const [mod, sub] of [["LTR","El arriendo que haría falta para rendir como la comuna, cruzado con lo que la zona paga. Un solo número: la rentabilidad bruta. A la izquierda la referencia es de deptos de 1 dormitorio en Providencia; a la derecha, de deptos en Las Condes (la tipología no juntó muestra, y la fuente lo dice sin cifras), con la zona sin muestra para contrastar."],["STR","La tarifa por noche que haría falta para rendir como una renta corta, a la misma ocupación. Después el dial desde las fronteras del ingreso, y lo nuevo: el break-even con sus cuatro bandas."]]){
+      const rot = document.createElement("div"); rot.className = "rot"; rot.innerHTML = `<h2>${mod}</h2><p>${sub}</p>`; cont.appendChild(rot);
+      const par = document.createElement("div"); par.className = "par2"; par.innerHTML = FILAS.filter(f=>f.mod===mod).map(f=>f.mod==="LTR"?escenaLtr(f):escenaStr(f)).join(""); cont.appendChild(par);
+    }
+  }
+  render();
+  function T(t,b){document.documentElement.setAttribute('data-theme',t);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function V(v,b){document.documentElement.setAttribute('data-view',v);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+  function Mo(m,b){MONEDA=m;document.documentElement.setAttribute('data-moneda',m);b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');render();}
+</script>
+</body>
+</html>

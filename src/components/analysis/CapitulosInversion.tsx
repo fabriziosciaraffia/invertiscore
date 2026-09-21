@@ -1,7 +1,6 @@
 "use client";
 import { SegsCierre } from "./shared/SegsCierre";
 import { FilaDato, FilasDato } from "./shared/FilaDato";
-import { Ang } from "./shared/Ang";
 import { useMemo, type ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import type {
@@ -20,10 +19,10 @@ import { metricaValorONull } from "@/lib/types";
 import { calcDividendo, calcFlujoDesglose, calcMesVacio, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
-import { procedenciaExtendida } from "@/lib/procedencia-extendida";
-import { respaldoArriendo } from "@/lib/arriendo-referencia";
+import { respaldoArriendo, resolverArriendoReferencia, resolverProcedenciaArriendo, fmtRadioArriendo } from "@/lib/arriendo-referencia";
+import { NOMBRE_RENTABILIDAD, explicacionCapRef, fuenteCapRef, nombreReferenciaCapRef } from "@/lib/capref-copy";
 import { barraDia1 } from "@/lib/plata-dia1";
-import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
+import { cierrePlusvalia, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
 import {
   BarraApilada,
@@ -81,7 +80,6 @@ const PROY_PCT = String(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100));
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
 const mult2 = (n: number) => n.toFixed(2).replace(".", ",");
 /** Margen de sensibilidad: entero sin decimal (−6%), coma chilena si no (−6,2%). */
-const pctMargin = (n: number) => (Number.isInteger(Math.round(n * 10) / 10) ? String(Math.round(n)) : pct1(n));
 /**
  * LA CIFRA CON APELLIDO (contrato §7). Regla general del informe: un numero sin apellido
  * no se entiende solo, salvo que el contexto lo de pegado.
@@ -187,89 +185,96 @@ export function CapitulosInversion({
   );
   if (!m) return null;
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
+  // Habla AL USUARIO, no del cálculo (21-sep-2026): un solo número —la rentabilidad bruta, que
+  // es lo que se compara con la comuna; el neto queda en las seis cifras del hero—, sin «cap
+  // rate», sin peldaños, celdas, n ni BDO, y la fuente en una línea (capref-copy.ts). La
+  // cascada, los n y la celda siguen en `valor` y en el snapshot: defienden el número, no se
+  // muestran. Geometría del mockup capitulo-i-cuanto-renta.html.
   const filaI: FilaHallazgo | null = capRate
     ? (() => {
         const v = capRate.valor;
         const noi = m.noi ?? (v.capRatePct / 100) * precioCLP;
         const gastosOpAnual = Math.max(arriendo * 12 - noi, 0);
-        const arriendoRef = ((v.capRefPct / 100) * precioCLP + gastosOpAnual) / 12;
-        // Eje: referencia al centro, ±2 puntos (el CONGELADO: 2,0% · 4,0% · 6,0%).
-        const lo = Math.min(v.capRefPct - 2, v.capRatePct - 0.5);
-        const hi = Math.max(v.capRefPct + 2, v.capRatePct + 0.5);
-        const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
-        const aguanta = sens ? (sens.valor.firme ? "el arriendo aguanta −50% o más" : `el arriendo aguanta −${pctMargin(sens.valor.marginPct)}%`) : "";
-        const arriba =
-          dist && !dist.valor.esEstructural && dist.valor.palancaMasBarata
-            ? { palanca: dist.valor.palancaMasBarata.palanca, deltaPct: dist.valor.palancaMasBarata.deltaPct, objetivo: dist.valor.palancaMasBarata.objetivo, veredictoObjetivo: dist.valor.veredictoObjetivo }
-            : null;
-        const viaArr = dist?.valor.vias?.find((x) => x.palanca === "arriendo") ?? null;
-        const viaArriendo =
-          viaArr?.estado === "cruza"
-            ? { estado: "cruza" as const, deltaPct: viaArr.deltaPct }
-            : viaArr?.estado === "noCruza"
-              ? { estado: "noCruza" as const, topeExplorado: viaArr.topeExplorado }
-              : viaArr?.estado === "noAplica"
-                ? { estado: "noAplica" as const }
-                : null;
-        const segs = cierreRenta(
-          {
-            arriendo,
-            gapPts: v.gapPts,
-            capRefPct: v.capRefPct,
-            arriendoRef,
-            sens: sens
-              ? { marginPct: sens.valor.marginPct, firme: sens.valor.firme, veredictoBase: sens.valor.veredictoBase, veredictoNuevo: sens.valor.veredictoNuevo, corteAdverso: sens.valor.corteAdverso, corteFavorable: sens.valor.corteFavorable }
-              : null,
-            arriba,
-            viaArriendo,
-          },
-          f,
-        );
+        // El arriendo al que rendirías como la referencia, EN SU BASE: bruta (avisos, edificios
+        // de renta) es capRef × precio / 12; neta (promedio nacional) suma los gastos del año.
+        const arriendoRef =
+          v.base === "bruta"
+            ? ((v.capRefPct / 100) * precioCLP) / 12
+            : ((v.capRefPct / 100) * precioCLP + gastosOpAnual) / 12;
+        const holgura = arriendoRef <= arriendo;
+        const refTxt = `${pct1(v.capRefPct)}%`;
+        const nombreRef = nombreReferenciaCapRef(v);
+        const nombreCifra = v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : "Rentabilidad neta";
+        // El arriendo del sector (cap. II, misma fuente): mediana a radio, con su estado.
+        const zona = resolverArriendoReferencia(inputData);
+        const respaldo = respaldoArriendo(inputData, arriendo);
+        const radio = zona ? fmtRadioArriendo(zona.radioMetros) : "";
+        const declaras = !zona || resolverProcedenciaArriendo(arriendo, zona) !== "estimacion_franco";
+        const pp = dist && !dist.valor.esEstructural && dist.valor.palancaMasBarata?.palanca === "precio" ? dist.valor.palancaMasBarata : null;
+        const precioObj = pp ? `: depende del precio —a UF ${Math.round(pp.objetivo).toLocaleString("es-CL")}, ${pct1(Math.abs(pp.deltaPct))}% menos, el caso ya es ${dist!.valor.veredictoObjetivo}— y eso es el capítulo III` : "; la palanca está en el precio (capítulo III)";
+        // 1b · el cruce con el sector, dicho con el dato (redacción aprobada el 21-sep).
+        let cruce: ReactNode;
+        if (!zona || respaldo.estado === "sin_referencia" || respaldo.estado === "orden_de_magnitud") {
+          cruce = holgura
+            ? <>Sin arriendos publicados cerca para contrastar: llegarías a la rentabilidad de {nombreRef} ({refTxt}) incluso arrendando <b>{money(arriendo - arriendoRef)} menos</b>, pero el margen se apoya en {declaras ? "el arriendo que declaraste" : "el arriendo que usa el análisis"}, no en lo que la zona confirma.</>
+            : <>Sin arriendos publicados cerca para contrastar: para llegar a la rentabilidad de {nombreRef} ({refTxt}) hace falta que el arriendo suba <b>{money(arriendoRef - arriendo)}</b>, y la zona no alcanza a decir si los paga.</>;
+        } else if (respaldo.estado === "muestra_chica") {
+          const aviso = `mediana de solo ${zona.n} ${zona.n === 1 ? "aviso" : "avisos"} a ${radio}: muestra chica para contrastar`;
+          cruce = holgura
+            ? <>El sector paga <b>{money(zona.valorCLP)}</b> de arriendo ({aviso}): llegarías a la rentabilidad de {nombreRef} ({refTxt}) incluso arrendando <b>{money(arriendo - arriendoRef)} menos</b>. El margen se apoya en {declaras ? "el arriendo que declaraste" : "el arriendo que usa el análisis"}, no en lo que la zona confirma.</>
+            : <>El sector paga <b>{money(zona.valorCLP)}</b> de arriendo ({aviso}): para llegar a la rentabilidad de {nombreRef} ({refTxt}) hace falta que el arriendo suba <b>{money(arriendoRef - arriendo)}</b>, y la zona no alcanza a decir si los paga.</>;
+        } else if (holgura) {
+          cruce = <>El sector paga <b>{money(zona.valorCLP)}</b> de arriendo (mediana de {zona.n} avisos a {radio}): llegarías a la rentabilidad de {nombreRef} ({refTxt}) incluso arrendando <b>{money(arriendo - arriendoRef)} menos</b>.</>;
+        } else {
+          const dif = Math.round((arriendoRef / zona.valorCLP - 1) * 100);
+          cruce =
+            dif <= 0
+              ? <>El sector paga <b>{money(zona.valorCLP)}</b> de arriendo (mediana de {zona.n} avisos a {radio}): la zona paga lo que hace falta para rendir como {nombreRef} ({money(arriendoRef)}); el arriendo que usa el análisis quedó por debajo.</>
+              : <>El sector paga <b>{money(zona.valorCLP)}</b> de arriendo (mediana de {zona.n} avisos a {radio}): para llegar a la rentabilidad de {nombreRef} ({refTxt}) hace falta que el arriendo suba un <span className="neg">{dif}% por encima</span> de lo que se publica; algo difícil de lograr. Con este precio, rendir como el mercado no depende del arriendo{precioObj}.</>;
+        }
+        // 2 · la banda del colchón (los cortes del hallazgo, no números inventados).
+        const banda = sens
+          ? sens.valor.firme || sens.valor.marginPct >= sens.valor.corteFavorable
+            ? `colchón amplio — aguanta ${Math.round(sens.valor.corteFavorable)}% o más de caída del arriendo`
+            : sens.valor.marginPct >= sens.valor.corteAdverso
+              ? `colchón acotado — entre ${Math.round(sens.valor.corteAdverso)}% y ${Math.round(sens.valor.corteFavorable)}% de caída del arriendo`
+              : `sin colchón — menos de ${Math.round(sens.valor.corteAdverso)}% de caída del arriendo cambia el veredicto`
+          : null;
+        const sector = !zona
+          ? "El arriendo del sector: sin avisos cerca."
+          : `El arriendo del sector: avisos a ${radio}${respaldo.estado === "muestra_chica" ? " (muestra chica)" : ""}.`;
         return {
           id: "renta",
           numero: "I",
           pregunta: "Cuánto renta",
-          valor: conApellido("Cap rate", `${pct1(v.capRatePct)}%`),
+          valor: conApellido(nombreCifra, `${pct1(v.sujetoPct)}%`),
           valorRojo: capRate.direccion === "adverso",
-          ksub: (
-            <>
-              <Ang>cap rate</Ang> neto {pct1(v.capRatePct)}% · referencia {pct1(v.capRefPct)}%{aguanta ? ` · ${aguanta}` : ""}
-            </>
-          ),
+          ksub: `${nombreRef} ${refTxt}`,
           anchorId: anchorCapitulo("renta"),
           cuerpo: (
             <div>
-              <VProsa>
-                Lo que el arriendo deja al año sobre el precio, ya descontados los gastos, contra lo que rinde el mercado.
-                {sens ? " Y cuánto aguanta ese número si el arriendo real resulta distinto del declarado." : ""}
-              </VProsa>
-              <VViz t="Dónde cae tu rendimiento frente a la referencia">
-                <VSub>Cuánto rinde frente al mercado</VSub>
-                <Thermo
-                  invertido
-                  pct={pos(v.capRatePct)}
-                  refPct={pos(v.capRefPct)}
-                  marca={`Tú · ${pct1(v.capRatePct)}%`}
-                  legend={[
-                    { k: "Rinde poco", v: `${pct1(lo)}%` },
-                    { k: "Referencia de mercado", v: `${pct1(v.capRefPct)}%` },
-                    { k: "Rinde mucho", v: `${pct1(hi)}%` },
-                  ]}
-                />
+              <VViz t={`Para rendir como ${nombreRef}: ${refTxt}`}>
+                <p className="v-explica">{explicacionCapRef(v)}</p>
+                <div className="v-centro">
+                  <div className="hoy">
+                    <div className="k">Hoy {declaras ? "declaras" : "el análisis usa"}</div>
+                    <div className="n">{money(arriendo)}<small>/mes · rinde {pct1(v.sujetoPct)}%</small></div>
+                  </div>
+                  <div className="fl">→</div>
+                  <div>
+                    <div className="k">Para rendir {refTxt}</div>
+                    <div className="n">{money(arriendoRef)}<small>/mes · {Math.round(Math.abs(arriendoRef / arriendo - 1) * 100)}% {holgura ? "menos" : "más"} que hoy</small></div>
+                  </div>
+                </div>
+                <p className="v-cruce">{cruce}</p>
               </VViz>
               {sens && arriendo > 0 && (
-                <>
-                  <VPuente>Eso es con el arriendo declarado. ¿Y si el arriendo real es menor?</VPuente>
-                  <VViz t="Tu veredicto según el arriendo mensual">
-                    <VSub>Cuánto aguanta ese arriendo antes de que cambie el veredicto</VSub>
-                    <SensibilidadDial hallazgo={sens} results={results} currency={currency} valorUF={valorUF} />
-                  </VViz>
-                </>
+                <VViz t="Cuánto aguanta ese arriendo antes de que cambie el veredicto">
+                  <SensibilidadDial hallazgo={sens} results={results} currency={currency} valorUF={valorUF} marcaK={declaras ? "Declaraste" : "Usamos"} />
+                  {banda && <p className="v-banda"><b>{banda}</b>.</p>}
+                </VViz>
               )}
-              <VCierre titulo="Qué significa">
-                <Segs segs={segs} />
-              </VCierre>
-              <VFuente>{procedenciaExtendida(capRate, currency, valorUF)}</VFuente>
+              <VFuente>{fuenteCapRef(v)} {sector}</VFuente>
             </div>
           ),
         };

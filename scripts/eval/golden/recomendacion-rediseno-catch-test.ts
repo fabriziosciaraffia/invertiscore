@@ -199,11 +199,16 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // LA CIFRA CON APELLIDO. En la fila de capítulo el título es una pregunta y la cifra
   // vive al otro extremo: «4,3%» solo no dice de qué. En las tarjetas de cifra y de zona
   // el rótulo va a 9 px ENCIMA del valor —medido—, así que ahí la cifra va sola.
-  const APELLIDOS = ["Cap rate", "Flujo", "Precio", "Plusvalía", "Resultado"];
+  // «Cap rate» dejó de ser el apellido del capítulo I el 21-sep-2026 (decisión de Fabrizio: el
+  // capítulo habla de «Rentabilidad bruta», el neto queda en las seis cifras del hero). El
+  // apellido sale de `NOMBRE_RENTABILIDAD.ltr` (capref-copy.ts) vía `nombreCifra`; el gate
+  // cuanto-renta fija la nomenclatura.
+  const APELLIDOS = ["Rentabilidad bruta", "Flujo", "Precio", "Plusvalía", "Resultado"];
   for (const a of APELLIDOS) {
     // El apellido puede ir literal o elegido dentro de la llamada («Precio recomendado» /
     // «Precio», 21-sep-2026): se busca dentro de `conApellido(`, acotado a 120 caracteres.
-    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?"${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`).test(CAPS)) {
+    const lit = a === "Rentabilidad bruta" ? '(?:"Rentabilidad bruta"|nombreCifra|NOMBRE_RENTABILIDAD\\.ltr)' : `"${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`;
+    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?${lit}`).test(CAPS)) {
       F(`9 · la cifra del capítulo perdió su apellido «${a}». Un número sin apellido no se entiende solo salvo que el contexto lo dé pegado, y acá no lo da.`);
     }
   }

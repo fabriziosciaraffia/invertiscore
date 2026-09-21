@@ -4,7 +4,7 @@ import { Ang } from "@/components/analysis/shared/Ang";
 import { useMemo } from "react";
 import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, Veredicto } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
@@ -110,6 +110,9 @@ export function CapitulosInversionStr({
   const modo: "auto" | "administrador" = inputData?.modoGestion === "administrador" ? "administrador" : "auto";
   const dist = hallazgos.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const sobre = hallazgos.find((h): h is HallazgoSobreprecio => h.id === "sobreprecio");
+  // El umbral del motor (bruta de la comuna + 1 pt desde el 21-sep-2026; 5 sin referencia). El
+  // render sigue siendo el anterior: la copy nueva del capítulo STR espera decisión de Fabrizio.
+  const umbralStr = (hallazgos.find((h): h is HallazgoRentabilidadStr => h.id === "rentabilidad_str"))?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
 
   // ── formato (dueño de moneda y UF): los cierres siguen el toggle ──
   const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
@@ -175,8 +178,8 @@ export function CapitulosInversionStr({
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
   const filaI: FilaHallazgo = (() => {
     const aguanta = fr?.abajo ? `la tarifa aguanta −${pct1((1 - fr.abajo.factor) * 100)}%` : "";
-    const lo = Math.min(CAP_STR_UMBRAL_PCT - 3, cap - 0.5);
-    const hi = Math.max(CAP_STR_UMBRAL_PCT + 3, cap + 0.5);
+    const lo = Math.min(umbralStr - 3, cap - 0.5);
+    const hi = Math.max(umbralStr + 3, cap + 0.5);
     const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
     const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${money(adr * fl.factor)} por noche`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
     const colchon = fr?.abajo ? adr - adr * fr.abajo.factor : null;
@@ -186,10 +189,10 @@ export function CapitulosInversionStr({
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
       valor: conApellido("Cap rate", `${pct1(cap)}%`),
-      valorRojo: cap < CAP_STR_UMBRAL_PCT,
+      valorRojo: cap < umbralStr,
       ksub: (
         <>
-          {money(adr)} × {Math.round(occ * 100)}% = {money(ingreso)} al mes · <Ang>cap rate</Ang> STR {pct1(cap)}% · referencia {pct1(CAP_STR_UMBRAL_PCT)}%{aguanta ? ` · ${aguanta}` : ""}
+          {money(adr)} × {Math.round(occ * 100)}% = {money(ingreso)} al mes · <Ang>cap rate</Ang> STR {pct1(cap)}% · referencia {pct1(umbralStr)}%{aguanta ? ` · ${aguanta}` : ""}
         </>
       ),
       anchorId: anchorCapituloStr("renta"),
@@ -218,11 +221,11 @@ export function CapitulosInversionStr({
             <Thermo
               invertido
               pct={pos(cap)}
-              refPct={pos(CAP_STR_UMBRAL_PCT)}
+              refPct={pos(umbralStr)}
               marca={`Tú · ${pct1(cap)}%`}
               legend={[
                 { k: "Rinde poco", v: `${pct1(lo)}%` },
-                { k: "Umbral renta corta", v: `${pct1(CAP_STR_UMBRAL_PCT)}%` },
+                { k: "Umbral renta corta", v: `${pct1(umbralStr)}%` },
                 { k: "Rinde mucho", v: `${pct1(hi)}%` },
               ]}
             />
@@ -271,7 +274,7 @@ export function CapitulosInversionStr({
           </VCierre>
           <VFuente>
             Datos de mercado · {adrEsTuya ? "tarifa definida por ti" : "mediana de tarifa"} y {occEsTuya ? "ocupación definida por ti" : "ocupación estimada para este depto"}
-            {fecha ? ` · ${fecha}` : ""} · umbral {pct1(CAP_STR_UMBRAL_PCT)}%: piso de renta corta Franco para Santiago
+            {fecha ? ` · ${fecha}` : ""} · referencia {pct1(umbralStr)}%: un punto sobre lo que rinden los avisos de la comuna
             {mto ? " · matriz: misma aritmética del motor (comisión, costos declarados, cuota)" : ""}
           </VFuente>
         </div>

@@ -132,17 +132,21 @@ export function SensibilidadDial({
   results,
   currency,
   valorUF,
+  marcaK = "Declaraste",
 }: {
   hallazgo: HallazgoSensibilidad;
   results: FullAnalysisResult;
   currency: Currency;
   valorUF: number;
+  /** Rótulo de la aguja: «Declaraste» si el arriendo es del usuario, «Usamos» si es la
+   *  mediana de la zona (el capítulo I lo sabe por la procedencia; el drawer no). */
+  marcaK?: string;
 }) {
   const d = derivarSensibilidad(hallazgo, results, currency, valorUF);
   if (!(d.arriendo > 0)) return null;
   return (
     <>
-      <Dial zonas={d.zonas} marcaPct={d.marcaPct} marcaK="Declaraste" marcaV={d.arriendoStr} bordes={d.bordes} />
+      <Dial zonas={d.zonas} marcaPct={d.marcaPct} marcaK={marcaK} marcaV={d.arriendoStr} bordes={d.bordes} />
       {!d.v.firme && d.nuevo ? (
         <div className="compo-total">
           <span className="k">Colchón hasta el borde de abajo</span>

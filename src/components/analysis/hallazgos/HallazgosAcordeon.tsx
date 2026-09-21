@@ -310,6 +310,21 @@ export function TokensHallazgos() {
          demás casos eran ramas de un ternario, donde solo una renderiza. O sea que hoy la
          regla no tendría ni un caso que atender. */
       .v-fuente{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);margin-top:12px}
+      /* «Cuánto renta» (21-sep-2026): la referencia en pesos al centro, el cruce con la zona y la
+         banda del colchón. Geometría del mockup capitulo-i-cuanto-renta.html, tokens del acordeón. */
+      .v-explica{font-size:12.5px;line-height:1.5;color:var(--doc-tx3);margin:-4px 0 10px}
+      .v-centro{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:14px;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:3px}
+      .v-centro .k{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4);margin-bottom:3px}
+      .v-centro .n{font-family:var(--font-mono, ui-monospace);font-size:20px;font-weight:700;line-height:1.1;color:var(--doc-tx);letter-spacing:-.01em}
+      .v-centro .n small{display:block;font-family:var(--font-sans, inherit);font-size:11px;font-weight:500;color:var(--doc-tx3);margin-top:3px;letter-spacing:0}
+      .v-centro .fl{font-size:18px;color:var(--doc-tx3)}
+      .v-centro .hoy .n{color:var(--doc-tx3)}
+      @media (max-width:640px){.v-centro{grid-template-columns:1fr;gap:6px}.v-centro .fl{display:none}}
+      .v-cruce{margin-top:12px;font-size:13px;line-height:1.5;color:var(--doc-tx2)}
+      .v-cruce b{color:var(--doc-tx);font-weight:600}
+      .v-cruce .neg{color:var(--signal-red);font-weight:600}
+      .v-banda{margin-top:8px;font-size:11.5px;color:var(--doc-tx3)}
+      .v-banda b{color:var(--doc-tx);font-weight:600}
       /* .v-fuente.aviso — cuando la procedencia deja de ser una nota al pie y pasa a ser
          una advertencia: el dato del que cuelga el capitulo no esta contrastado. Sube de
          --doc-tx4 (el gris mas apagado) al gris de cuerpo, gana el tamano de la prosa
