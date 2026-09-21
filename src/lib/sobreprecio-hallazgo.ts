@@ -21,6 +21,7 @@
 // desviación. La fraseCanonica es la línea determinística (sin LLM); la IA la
 // narra aguas abajo. Voz: tuteo neutro chileno, SIN voseo.
 
+import type { PosicionEnComuna } from "./types";
 import type { HallazgoSobreprecio, PrecioVsComuna } from "./types";
 import type { CondicionMercado } from "./comuna-stats";
 
@@ -119,7 +120,25 @@ export function buildHallazgoSobreprecio(
 
   let fraseCanonica: string;
   let titular: string;
-  if (direccion === "neutral") {
+  // LA FRASE POR CUARTIL (21-sep-2026, decisión Fabrizio tras el mockup). Con la posición
+  // del sujeto en la distribución de la comuna, «caro» deja de ser la misma palabra en
+  // Providencia (p75 +9% sobre la mediana) y en Santiago centro (p75 +18%): la frase dice
+  // en qué cuarto de la comuna cae el metro. Sin cuartiles (snapshot anterior al campo),
+  // la redacción de siempre, byte-idéntica. La DIRECCIÓN no cambia: sigue por desviación,
+  // porque el gate y las flechas de la pirámide leen eso.
+  const cuartiles = pvc.posicion && pvc.p25UfM2 != null && pvc.p75UfM2 != null ? { pos: pvc.posicion, p25: fmtUF(pvc.p25UfM2), p75: fmtUF(pvc.p75UfM2) } : null;
+  if (cuartiles) {
+    const nombre: Record<PosicionEnComuna, { titular: string; donde: string }> = {
+      sobre_p75: { titular: "Pagas el metro en el cuarto más caro de la comuna.", donde: "en el cuarto más caro" },
+      mediana_p75: { titular: "Pagas el metro en la mitad central de la comuna, del lado caro.", donde: "en la mitad central, del lado caro" },
+      p25_mediana: { titular: "Pagas el metro en la mitad central de la comuna, del lado barato.", donde: "en la mitad central, del lado barato" },
+      bajo_p25: { titular: "Entras en el cuarto más barato de la comuna.", donde: "en el cuarto más barato" },
+    };
+    titular = nombre[cuartiles.pos].titular;
+    fraseCanonica =
+      `Tu precio por m² (${sujetoFmt}) está ${nombre[cuartiles.pos].donde} de la comuna: ` +
+      `${ref} es ${medianaFmt} y la mitad de los avisos comparables va de ${cuartiles.p25} a ${cuartiles.p75}.`;
+  } else if (direccion === "neutral") {
     titular = "Pagas el metro a precio de comuna, sin sobreprecio.";
     fraseCanonica =
       `Tu precio por m² (${sujetoFmt}) está en línea con ${ref} (${medianaFmt}). ` +
@@ -150,6 +169,11 @@ export function buildHallazgoSobreprecio(
       n: pvc.n,
       comuna: comuna.trim(),
       ...(pvc.universo ? { universo: pvc.universo } : {}),
+      // Cuartiles y posición, copiados de FASE A sin recalcular (round-una-vez, a 1
+      // decimal como la mediana). Solo cuando el snapshot los trae.
+      ...(pvc.p25UfM2 !== undefined ? { p25UfM2: pvc.p25UfM2 == null ? null : Math.round(pvc.p25UfM2 * 10) / 10 } : {}),
+      ...(pvc.p75UfM2 !== undefined ? { p75UfM2: pvc.p75UfM2 == null ? null : Math.round(pvc.p75UfM2 * 10) / 10 } : {}),
+      ...(pvc.posicion !== undefined ? { posicion: pvc.posicion } : {}),
     },
     direccion,
     decisividad,

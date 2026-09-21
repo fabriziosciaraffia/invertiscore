@@ -673,8 +673,15 @@ const POSICION = leer("src/components/analysis/shared/PosicionFranco.tsx");
     else if (!/palancasHastaComprar|solasAComprar/.test(solas)) {
       F("17 · la tabla de las solas sigue leyendo `palancas` pelado: en BUSCAR OTRA eso apunta a AJUSTA y el chip promete COMPRAR");
     }
-    if (!/Array\.isArray\([^)]*palancasHastaComprar\)/.test(POPUP)) {
-      F("17 · el pop-up no distingue AUSENTE de VACÍO en `palancasHastaComprar`: sin `Array.isArray` una fila vieja publica una medición que nadie hizo");
+    // Desde el 21-sep-2026 `solasAComprar` (y `mixAComprar`) viven en `src/lib/mix-a-comprar.ts`,
+    // porque los lee también «Cómo lo pagas». El predicado sigue midiendo la regla —el
+    // `Array.isArray`— donde ahora vive, y que el pop-up la importe de ahí y no la reescriba.
+    const MIXLIB = leer("src/lib/mix-a-comprar.ts");
+    if (!/Array\.isArray\([^)]*palancasHastaComprar\)/.test(MIXLIB)) {
+      F("17 · `solasAComprar` no distingue AUSENTE de VACÍO en `palancasHastaComprar`: sin `Array.isArray` una fila vieja publica una medición que nadie hizo");
+    }
+    if (!/import \{ mixAComprar, solasAComprar \} from "@\/lib\/mix-a-comprar"/.test(POPUP) || /^function (mixAComprar|solasAComprar)\b/m.test(POPUP)) {
+      F("17 · el pop-up tiene que importar `mixAComprar`/`solasAComprar` de la lib, no definir los suyos");
     }
     // EL GATE DEL BOTÓN LEE LA MISMA FUENTE. Si no, el hero dibuja el botón de un pop-up
     // que abriría vacío — el estado que el invariante 6 existe para impedir.

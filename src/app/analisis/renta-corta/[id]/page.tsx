@@ -7,7 +7,6 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
-import { simularPlazoStr } from "@/lib/analysis/simular-plazo-str";
 import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
@@ -290,42 +289,10 @@ export default async function STRResultPage({
   const showCtaWelcome =
     isOwner &&
     (data as Record<string, unknown>).charge_mode === "welcome";
-
-  // ESCALERA DEL PIE (conversión 13) — se calcula ACÁ, en el server: el
-  // reconstructor del input STR (`buildStrRecomputeCtx`) arrastra
-  // `analisis-pipeline`, que usa `next/headers`, así que no puede importarse desde
-  // un componente cliente (tira 500 y el tsc no lo ve). De paso, el recompute
-  // —4 × calcShortTerm— deja de correr en el teléfono del lector.
-  // El UF es el CONGELADO del análisis, no el vigente: con el de hoy el precio en
-  // pesos cambia y el invariante del render apaga la escalera.
-  // ⛔ ACÁ SE CALCULABA `nivelesPie` PARA UN PROP QUE NADIE LEÍA (17-sep-2026). La
-  // escalera del pie murió el 5-sep con la maquinaria que la abría (`b6406180`), pero el
-  // recompute siguió corriendo en cada carga de cada informe STR durante doce días: cuatro
-  // `calcShortTerm` para alimentar un prop declarado y sin lector. Es el mismo huérfano que
-  // la lección del retiro: borrar un caller deja vivo lo que lo alimentaba, y eso no lo caza
-  // ningún gate.
-  //
-  // La cañería se reusa para la LÍNEA DEL PLAZO, que sí se lee. Mismo costo —4 recomputes—
-  // y ahora con destino.
-  //
-  // ⛔ LA UF ES `ufFrozen`, LA MISMA QUE VIAJA COMO `ufValue`, Y NO `ufCongelada`.
-  // `simularPieStr` —el consumidor anterior de esta cañería— usaba `ufCongelada ?? ufFrozen`,
-  // y copiarlo sin mirar habría partido la conversión en dos: el interés se GUARDA en UF
-  // dividiendo por la de acá y el render lo CONVIERTE multiplicando por `valorUF`, que es
-  // `ufFrozen`. Medido sobre el parque: coinciden en 202 de 253 filas y en 47 falta uno de
-  // los dos, pero en 4 (1,6%) difieren —hasta 5,27%—, y ahí el interés salía escalado por
-  // esa razón. Una cifra por informe, no una por función.
-  const nivelesPlazo = (() => {
-    const raw = data.input_data as Record<string, unknown> | null;
-    const uf = ufFrozen;
-    if (!raw || !data.created_at || !(uf > 0)) return [];
-    try {
-      return simularPlazoStr(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
-    } catch {
-      // Un fallo del recompute NUNCA rompe el informe: sin niveles, no hay línea.
-      return [];
-    }
-  })();
+  // ⛔ ACÁ VIVIÓ EL RECOMPUTE DE `nivelesPlazo` (17→21-sep-2026), la cañería de la escalera del
+  // pie reusada para la línea del plazo. La línea salió de «Cómo lo pagas» el 21-sep y va al
+  // pop-up de la recomendación (cola-popup-interes-total-del-credito): hasta que se monte
+  // ahí, no hay consumidor y no se calcula. `simularPlazoStr` sigue en su módulo.
 
   // SIMULACIONES DEL CONGELADO (T0 · 04-sep-2026): fronteras de los diales y las dos
   // matrices, en el server por la misma razón que la escalera. Nada se bisecciona en el
@@ -390,7 +357,6 @@ export default async function STRResultPage({
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,
-    nivelesPlazo,
     simulacionStr,
     zonaStr,
   };

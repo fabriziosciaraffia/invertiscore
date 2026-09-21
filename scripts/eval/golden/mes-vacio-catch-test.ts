@@ -83,9 +83,13 @@ for (const c of cierres) {
 // renombrar el componente a `DrawerCostoMensualX` dejaba el guard VERDE — el slice seguía
 // encontrando cuerpo y el regex seguía calzando. Cazado mutando.
 const mIni = /function DrawerCostoMensual\b/.exec(src);
-const mFin = /function DrawerNegociacion\b/.exec(src);
+// El cierre del cuerpo es la SIGUIENTE función de nivel superior, sea cual sea: hasta el
+// 21-sep-2026 era `DrawerNegociacion`, que se retiró con el rediseño de «Cómo lo pagas»,
+// y un marcador con nombre propio deja el guard sin medir el día que ese nombre se va.
+const resto = mIni ? src.slice(mIni.index + 1) : "";
+const mFin = /^(?:export )?function \w+/m.exec(resto);
 const ini = mIni ? mIni.index : -1;
-const fin = mFin ? mFin.index : -1;
+const fin = mIni && mFin ? mIni.index + 1 + mFin.index : -1;
 if (ini === -1 || fin === -1 || fin <= ini) {
   F("2 · no se pudo acotar el cuerpo de DrawerCostoMensual: el extractor no midió nada");
 } else {

@@ -140,18 +140,21 @@ async function main() {
     // flujo_str
     const fs = hallazgos.find((h) => h.id === "flujo_str");
     if (!fs || !/ocupación estimada para tu depto/.test(fs.fraseCanonica)) F(`eb7b · flujo_str: ${fs?.fraseCanonica.slice(0, 80)}`);
+    // cierres — el CIERRE IV se retiró el 21-sep-2026: «Cómo lo pagas» ya no cierra con prosa,
+    // se ancla al precio recomendado (como-lo-pagas.ts, tier como-lo-pagas). Sus cuatro pins
+    // («Bajo UF 2.536», la mediana de 181, «solo 30% de pie a 30 años», «$47.510 por noche»)
+    // vigilaban una superficie que ya no existe.
     // cierres — el CIERRE II se retiró el 16-sep-2026 con el cierre en prosa del
     // capítulo II. Las cuatro cifras que pineaba ($84.407, $888.018, «un tercio»,
     // $185.049) vigilaban una superficie que ya no existe; lo que medían —el monto, la
     // comparación contra el largo y el otro modo— vive ahora en la tabla y en el V.
-    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), pagas: textoCierre(cierres.pagas), gestion: textoCierre(cierres.gestion), resultado: textoCierre(cierres.resultado) };
+    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), gestion: textoCierre(cierres.gestion), resultado: textoCierre(cierres.resultado) };
     if (!/sube a COMPRAR/.test(T.renta) || !/\$47\.5\d\d por noche/.test(T.renta) || !/cruza a COMPRAR aunque el mes quede en −\$919/.test(T.renta)) F(`eb7b · cierre I: ${T.renta}`);
     if (!/156 noches/.test(T.noches) || !/sube con 163/.test(T.noches) || !/menos de dos puntos/.test(T.noches) || !/un solo mes en verde/.test(T.noches)) F(`eb7b · cierre III: ${T.noches}`);
-    if (!/Bajo UF 2\.536/.test(T.pagas) || !/25,0% bajo la mediana de 181/.test(T.pagas) || !/solo 30% de pie a 30 años llega a COMPRAR/.test(T.pagas) || !/\$47\.510 por noche/.test(T.pagas)) F(`eb7b · cierre IV: ${T.pagas}`);
     if (!/\$150\.102/.test(T.gestion) || !/\$49\.460/.test(T.gestion) || !/dos tercios/.test(T.gestion) || !/\$185\.049/.test(T.gestion)) F(`eb7b · cierre V: ${T.gestion}`);
     if (!/×2,20/.test(T.resultado) && !/9,3/.test(T.resultado)) F(`eb7b · cierre VI: ${T.resultado}`);
     textoLimpio("eb7b", Object.values(T).concat(hallazgos.map((h) => h.fraseCanonica)));
-    console.log("  eb7b3a66 · Sta. Rosa · " + francoScore.veredicto + "\n    I  " + T.renta + "\n    III " + T.noches + "\n    IV " + T.pagas + "\n    V  " + T.gestion + "\n    VI " + T.resultado);
+    console.log("  eb7b3a66 · Sta. Rosa · " + francoScore.veredicto + "\n    I  " + T.renta + "\n    III " + T.noches + "\n    V  " + T.gestion + "\n    VI " + T.resultado);
   }
 
   // ── 2 · Estructural ──
@@ -162,11 +165,9 @@ async function main() {
     if ((dv?.valor.vias ?? []).some((v) => v.estado === "cruza")) F("18f2 · ninguna vía debía cruzar");
     if (!/Ni a 30 años, ni con pie 30% ni con administrador cambia\./.test(dv?.fraseCanonica ?? "")) F(`18f2 · frase estructural: ${dv?.fraseCanonica}`);
     if (sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("18f2 · la matriz pie × plazo no debía cruzar");
-    const T = { renta: textoCierre(cierres.renta), pagas: textoCierre(cierres.pagas), noches: textoCierre(cierres.noches) };
-    if (/negociación y no otro departamento/.test(T.pagas)) F(`18f2 · cierre IV promete precio: ${T.pagas}`);
-    if (!/ninguna cambia el veredicto/.test(T.pagas)) F(`18f2 · cierre IV debía decir que ninguna combinación cambia: ${T.pagas}`);
+    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
     textoLimpio("18f2", Object.values(T));
-    console.log(`  18f29784 · estructural · ${francoScore.veredicto}\n    I  ${T.renta}\n    IV ${T.pagas}`);
+    console.log(`  18f29784 · estructural · ${francoScore.veredicto}\n    I  ${T.renta}`);
   }
 
   // ── 3 · COMPRAR con mes negativo ──
@@ -176,7 +177,7 @@ async function main() {
     if (sim.fronterasIngreso.arriba !== null || sim.fronteraPrecio.subeA !== null) F("2ff7 · en COMPRAR no hay frontera hacia arriba");
     if (sim.matrizTarifaOcupacion.celdas.some((c) => c.cruza) || sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("2ff7 · en COMPRAR ninguna celda cruza");
     if (r.metrics!.repartoIngreso!.exceso <= 0 || r.metrics!.repartoIngreso!.libre !== 0) F(`2ff7 · reparto ${JSON.stringify(r.metrics!.repartoIngreso)}`);
-    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), pagas: textoCierre(cierres.pagas) };
+    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
     if (/sube a/.test(T.renta)) F(`2ff7 · cierre I ofrece subir en COMPRAR: ${T.renta}`);
     if (!/antes de caer a/.test(T.renta) && !/firme/.test(T.renta)) F(`2ff7 · cierre I sin colchón: ${T.renta}`);
     if (!/ya no necesita más/.test(T.noches)) F(`2ff7 · cierre III: ${T.noches}`);

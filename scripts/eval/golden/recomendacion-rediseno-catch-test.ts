@@ -201,7 +201,9 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // el rótulo va a 9 px ENCIMA del valor —medido—, así que ahí la cifra va sola.
   const APELLIDOS = ["Cap rate", "Flujo", "Precio", "Plusvalía", "Resultado"];
   for (const a of APELLIDOS) {
-    if (!CAPS.includes(`conApellido("${a}"`)) {
+    // El apellido puede ir literal o elegido dentro de la llamada («Precio recomendado» /
+    // «Precio», 21-sep-2026): se busca dentro de `conApellido(`, acotado a 120 caracteres.
+    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?"${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`).test(CAPS)) {
       F(`9 · la cifra del capítulo perdió su apellido «${a}». Un número sin apellido no se entiende solo salvo que el contexto lo dé pegado, y acá no lo da.`);
     }
   }

@@ -1,12 +1,9 @@
 "use client";
-
 import { SegsCierre } from "./shared/SegsCierre";
-
 import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { Ang } from "./shared/Ang";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-
 import type {
   AIAnalysisV2,
   AnalisisInput,
@@ -17,7 +14,6 @@ import type {
   HallazgoPlusvalia,
   HallazgoSensibilidad,
   HallazgoSobreprecio,
-  HallazgoEstructuraFinanciamiento,
   HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
@@ -42,13 +38,11 @@ import {
   VViz,
 } from "./hallazgos/vocabulario";
 import { SensibilidadDial } from "./drawers/DrawersPropios";
-import { LineaPlazo } from "./hallazgos/linea-plazo";
-import { simularPlazo } from "@/lib/analysis";
-import { DrawerCostoMensual, DrawerNegociacion } from "@/components/ui/AnalysisDrawer";
-import { EstructuraComparada } from "./hallazgos/estructura-comparada";
+import { DrawerCostoMensual } from "@/components/ui/AnalysisDrawer";
+import { construirComoLoPagas } from "@/lib/como-lo-pagas";
+import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
+import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { PatrimonioChart } from "./PatrimonioChart";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -70,26 +64,21 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
  * sus sliders e Indicators, el render de largoPlazo y "La apuesta", las escaleras
  * separadas y DrawerTIRLtr como cuerpo. STR no cambia.
  */
-
 export type CapituloId = "renta" | "flujo" | "pagas" | "plusvalia" | "resultado";
-
 /* CAPITULO_DE_HALLAZGO SE RETIRA CON ACTA (09-sep-2026).
  * Mapeaba cada hallazgo al capitulo donde vive su desarrollo, y su unico consumidor
  * era el atajo de la fila de hallazgos. Con la fila ya no clicable el mapa quedo sin
  * lector: un export vivo sin consumidor se lee como un vinculo que existe, y no existe.
  * Nada queda inalcanzable — cada capitulo es su propio boton en el acordeon. La
  * relacion hallazgo↔capitulo, si vuelve a hacer falta, esta en el historial. */
-
 export function anchorCapitulo(id: CapituloId): string {
   return `cap-${id}`;
 }
-
 const PROY_PCT = String(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100));
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
 const mult2 = (n: number) => n.toFixed(2).replace(".", ",");
 /** Margen de sensibilidad: entero sin decimal (−6%), coma chilena si no (−6,2%). */
 const pctMargin = (n: number) => (Number.isInteger(Math.round(n * 10) / 10) ? String(Math.round(n)) : pct1(n));
-const capVer = (v: string) => etiquetaVeredicto(v, "frase", v);
 /**
  * LA CIFRA CON APELLIDO (contrato §7). Regla general del informe: un numero sin apellido
  * no se entiende solo, salvo que el contexto lo de pegado.
@@ -104,7 +93,6 @@ export const conApellido = (apellido: string, cifra: ReactNode): ReactNode => (
     <span className="val-ap">{apellido}</span> {cifra}
   </>
 );
-
 function formatearEntrega(fecha?: string | null): string {
   if (!fecha) return "";
   const [y, m] = String(fecha).split("-").map((x) => Number(x));
@@ -112,9 +100,7 @@ function formatearEntrega(fecha?: string | null): string {
   const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   return `${meses[m - 1] ?? ""} ${y}`.trim();
 }
-
 const Segs = SegsCierre;
-
 export function CapitulosInversion({
   results,
   inputData,
@@ -147,8 +133,6 @@ export function CapitulosInversion({
   const dist = hs.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const plus = (hs.find((h) => h.id === "plusvalia") as HallazgoPlusvalia | undefined) ?? m?.hallazgoPlusvalia ?? undefined;
   const pat = hs.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
-
-  const estr = hs.find((h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento");
   const sobre = (m?.hallazgoSobreprecio as HallazgoSobreprecio | null | undefined) ?? (hs.find((h) => h.id === "sobreprecio") as HallazgoSobreprecio | undefined) ?? null;
   // Puesta a punto (usados). null con antigüedad ≤ 2 (CapEx 0): no se nombra en
   // ninguna parte. Se consume tal cual lo emite el motor — cero re-derivación.
@@ -162,7 +146,6 @@ export function CapitulosInversion({
   const capexRango = !!capexV && capexV.montoMinUF != null && capexV.montoMaxUF != null && capexV.montoMaxUF > capexV.montoMinUF;
   const ufN = (n: number) => Math.round(n).toLocaleString("es-CL");
   const capexRangoUF = capexV && capexRango ? `UF ${ufN(capexV.montoMinUF!)}–${ufN(capexV.montoMaxUF!)}` : capexV ? `UF ${ufN(capexV.montoUF)}` : "";
-
   // ── formato (dueño de moneda y UF) ──
   const money = (n: number) => {
     const abs = Math.abs(n);
@@ -185,21 +168,20 @@ export function CapitulosInversion({
     const fecha = f ? ` al ${f}` : "";
     return `UF ${Math.round(valorUF).toLocaleString("es-CL")}${fecha}`;
   })();
-
   const precioCLP = m?.precioCLP ?? 0;
   const arriendo = m?.ingresoMensual ?? 0;
-  const dividendo = m?.dividendo ?? 0;
   const pieCLP = m?.pieCLP ?? 0;
   const pe = m?.preEntrega ?? null;
   const preEntrega = pe && pe.aniosEspera > 0 ? pe : null;
   const anios = exit?.anios ?? 10;
   const tir = metricaValorONull(exit?.tir);
-
-
-
-
+  // LA ALTERNATIVA DE COMUNAS para «Cómo lo pagas» (plan B del bloque 2). Son 23 corridas
+  // del motor: solo cuando el veredicto no es COMPRAR, y memoizadas por input.
+  const lineaAlternativa = useMemo(
+    () => (veredicto !== "COMPRAR" ? lineaAlternativaComunas(construirAlternativaComunas({ input: inputData, ufClp: valorUF, asOf: new Date(createdAt ?? Date.now()) })) : null),
+    [veredicto, inputData, valorUF, createdAt],
+  );
   if (!m) return null;
-
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
   const filaI: FilaHallazgo | null = capRate
     ? (() => {
@@ -289,7 +271,6 @@ export function CapitulosInversion({
         };
       })()
     : null;
-
   // ═══════════════ II · TU FLUJO MENSUAL ═══════════════
   const flujo = m.flujoNetoMensual;
   const filaII: FilaHallazgo = {
@@ -334,203 +315,56 @@ export function CapitulosInversion({
           fuente: `Motor Franco · ${ufFecha}`,
         }}
       />      </>
-
     ),
   };
-
   // ═══════════════ III · CÓMO LO PAGAS ═══════════════
-  // La tira lee la MISMA fuente que el dial del cuerpo: el umbral de veredicto de
-  // `results.negociacion` (idéntico al objetivo de distancia_veredicto en el motor);
-  // sin ese campo (filas viejas), la palanca de precio de distancia.
-  const neg = results.negociacion;
-  const umbralNeg = neg && typeof neg.precioUmbralVeredictoUF === "number" && neg.precioUmbralVeredictoUF > 0 && neg.veredictoAlUmbral
-    ? { objetivo: neg.precioUmbralVeredictoUF, veredicto: neg.veredictoAlUmbral, deltaPct: inputData.precio > 0 ? ((neg.precioUmbralVeredictoUF - inputData.precio) / inputData.precio) * 100 : 0 }
-    : null;
-  const palancaDist = dist && !dist.valor.esEstructural ? dist.valor.palancas.find((p) => p.palanca === "precio") ?? null : null;
-  const palancaPrecio = umbralNeg
-    ? { objetivo: umbralNeg.objetivo, deltaPct: umbralNeg.deltaPct, veredicto: umbralNeg.veredicto }
-    : palancaDist && dist
-      ? { objetivo: palancaDist.objetivo, deltaPct: palancaDist.deltaPct, veredicto: dist.valor.veredictoObjetivo }
-      : null;
-  const objetivoPrecioUF = palancaPrecio ? palancaPrecio.objetivo : null;
-  const viaPrecio = dist?.valor.vias?.find((x) => x.palanca === "precio") ?? null;
-  const precioNoCruza = !palancaPrecio && viaPrecio?.estado === "noCruza" ? viaPrecio : null;
+  // TRES BLOQUES ANCLADOS AL PRECIO RECOMENDADO (21-sep-2026, contrato
+  // docs/wireframes/rediseno-informe/capitulo-como-lo-pagas.html): caro o barato → cómo
+  // llegar al precio recomendado → puesta a punto. El modelo es `construirComoLoPagas`
+  // (puro, compartido con STR); acá solo se juntan las entradas del motor LTR.
+  //
+  // LO QUE SALIÓ CON ESTO, y por qué: el drawer embebido (`DrawerNegociacion` con el prop
+  // `capitulo`, que tenía dos bloques muertos por `!capitulo` y el hero de sobreprecio
+  // inalcanzable), el dial de precio y el plan de cuatro precios —ninguno era el
+  // recomendado: coincidían solo cuando la card no dibujaba el mix por redundante (65/65) y
+  // en pantalla juntos diferían siempre—, la primera oferta a −5% (sin fuente), el
+  // financiamiento (pie en el hero, cuota en el cap. II, movimiento en el pop-up) y la
+  // línea del interés total (cola-popup-interes-total-del-credito).
+  // `plazo` y `tasaPct` los leen los capítulos IV y V (pre-entrega, escenarios).
   const tasaPct = Number(inputData.tasaInteres) || 0;
   const plazo = Number(inputData.plazoCredito) || 0;
-  const piePct = Number(inputData.piePct) || 0;
-  const ksubIII = [
-    `precio UF ${Math.round(inputData.precio).toLocaleString("es-CL")}`,
-    `pie ${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`,
-    plazo > 0 ? `${plazo} años al ${pct1(tasaPct)}%` : "sin crédito",
-    // Cuarta pata: la plata del día 1 que no es pie. Rango (v3), cotización
-    // (override) o valor único (legacy). Sin CapEx no aparece.
-    capexV ? `puesta a punto ${capexRangoUF}${capexV.origen === "override" ? " (tu cotización)" : ""}` : "",
-    objetivoPrecioUF && palancaPrecio
-      ? `cierra en ${capVer(palancaPrecio.veredicto)} bajo UF ${Math.round(objetivoPrecioUF).toLocaleString("es-CL")}`
-      : precioNoCruza && dist
-        ? `ni con −${precioNoCruza.topeExplorado}% de precio sube a ${capVer(dist.valor.veredictoObjetivo)}`
-        : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const valorIII = palancaPrecio
-    ? { v: `−${pct1(Math.abs(palancaPrecio.deltaPct))}%`, rojo: true }
-    : sobre
-      ? { v: `${sobre.valor.desviacionPct > 0 ? "+" : ""}${pct1(sobre.valor.desviacionPct)}%`, rojo: sobre.direccion === "adverso" }
-      : { v: money(dividendo), rojo: false };
-
-  const cuotasPie = Number(inputData.cuotasPie) || 0;
-  const montoCuota = Number(inputData.montoCuota) || 0;
+  const modeloPagas = construirComoLoPagas({
+    modalidad: "LTR",
+    veredicto: results.veredicto ?? veredicto,
+    precioUF: inputData.precio,
+    superficieM2: inputData.superficie,
+    comuna,
+    piePctActual: Number(inputData.piePct) || 0,
+    plazoActual: Number(inputData.plazoCredito) || 0,
+    distancia: dist?.valor ?? null,
+    sobre,
+    limiteTirUF: typeof results.negociacion?.precioLimiteUF === "number" && results.negociacion.precioLimiteUF > 0 ? results.negociacion.precioLimiteUF : null,
+    mesCierraUF: typeof m.precioFlujoNeutroUF === "number" && m.precioFlujoNeutroUF > 0 ? m.precioFlujoNeutroUF : null,
+    precioMaximoComprarUF: sens?.valor.precioMaximoComprarUF ?? null,
+    caeA: sens?.valor.veredictoSobrePrecioMaximo ?? null,
+    alternativa: lineaAlternativa,
+    capex: capexV,
+    valorUF,
+  });
   const filaIII: FilaHallazgo = {
     id: "pagas",
     numero: "III",
     pregunta: "Cómo lo pagas",
-    valor: conApellido("Precio", valorIII.v),
-    valorRojo: valorIII.rojo,
-    ksub: ksubIII,
-    anchorId: anchorCapitulo("pagas"),
-    cuerpo: (
-      <DrawerNegociacion
-        data={prosa?.negociacion}
-        currency={currency}
-        inputData={inputData}
-        results={results}
-        valorUF={valorUF}
-        createdAt={createdAt}
-        capitulo={{
-          intro: "Dos decisiones fijan cuánto cargas cada mes: el precio al que cierras y el crédito con el que lo pagas. Esto es lo que cambia en tu caso con cada una.",
-          entreMedio: (
-            <>
-              {/* F2 (2/2) · EL SOBREPRECIO EN PLATA. La línea de hallazgo dice el ratio
-                  (UF 68 · med 40, −24%) y el capítulo el precio, pero nadie decía cuánto
-                  es esa brecha en total. La prosa lo suplía en 14 de 30 generaciones
-                  («pagas UF 1.181 más de lo que valen los metros»). Cierra la mitad de
-                  precio, justo antes del puente al crédito.
-                  Neutral (|desv| ≤ 2) no entra: ahí el propio hallazgo dice «pagas lo
-                  justo» y una cifra de brecha contradiría esa lectura. */}
-              {sobre && Math.abs(sobre.valor.desviacionPct) > 2 && inputData.superficie > 0 && (
-                <VFuente>
-                  En plata son {money(Math.abs(sobre.valor.sobreprecioUfM2) * inputData.superficie * valorUF)}{" "}
-                  {sobre.valor.sobreprecioUfM2 > 0 ? "por sobre" : "por debajo de"} la mediana de{" "}
-                  {sobre.valor.comuna || "la comuna"}, por los {inputData.superficie} m² de este depto.
-                </VFuente>
-              )}
-              {plazo > 0 && piePct < 100 && (
-                <>
-                  <VPuente>El precio es lo primero. Ahora veamos cómo lo financias: el crédito.</VPuente>
-                  <VViz t="Tu estructura contra la referencia">
-                    <VSub>Cómo lo financias: el crédito que tienes</VSub>
-                    {estr && (
-                      <EstructuraComparada
-                        soloTasa
-                        piePct={piePct}
-                        tasaPct={estr.valor.tasaPct}
-                        tasaMarketPct={estr.valor.tasaMarketPct}
-                        cuotaFmt={money(dividendo)}
-                      />
-                    )}
-                    <FilasDato>
-                      <FilaDato
-                        k="Pie"
-                        tip="Lo que pones el día 1 sobre el precio"
-                        sub={`${compact(pieCLP)}${cuotasPie > 0 && montoCuota > 0 ? ` · ${cuotasPie} cuotas de ${compact(montoCuota)} durante la construcción` : ""}`}
-                        v={`${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`}
-                      />
-                      <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} unidad="/mes" />
-                    </FilasDato>
-                  </VViz>
-                  {/* En LTR ya no hay matriz pie × plazo: se retiró en 6ecd80c1 junto con
-                      el productor `simularPieYPlazo` y el campo `matrizPiePlazo` de
-                      FullAnalysisResult. No la montaba nadie —el pop-up dibuja la suya
-                      desde la grilla del mix— y costaba 16 recomputes completos por
-                      carga LTR (−20% de tiempo de página). El acta del commit deja por
-                      escrito qué aportaba y adónde se mudó su invariante. Renta corta SÍ
-                      conserva la suya: `simularPieYPlazoStr` en lib/analysis/simular-str.ts,
-                      dibujada en str/CapitulosInversionStr.tsx. */}
-
-                  {/* LA LÍNEA DEL PLAZO (17-sep-2026) — lo único que decía la escalera del
-                      plazo y no dice ninguna otra superficie: el interés total del crédito.
-                      Ni la matriz, ni la grilla del pop-up (veredicto y score), ni el PDF lo
-                      muestran, y no es una omisión tapable: las tres trabajan dentro de los
-                      diez años que el informe proyecta y este costo vive a 25 o 30.
-
-                      COSTO: `simularPlazo` son 4 recomputes (uno por tramo comercial). La
-                      matriz que se retiró en 6ecd80c1 costaba 16 — esto es la cuarta parte, y
-                      a cambio de la única cifra del financiamiento que el informe no tenía. */}
-                  {(() => {
-                    const niveles = simularPlazo(inputData, valorUF);
-                    if (niveles.length === 0) return null;
-                    return (
-                      <LineaPlazo
-                        niveles={niveles}
-                        valorUF={valorUF}
-                        flujoPersistido={results.metrics?.flujoNetoMensual}
-                        currency={currency}
-                      />
-                    );
-                  })()}
-                </>
-              )}
-              {capexV && (
-                <>
-                  <VPuente>Y hay una parte de la plata del día 1 que no es pie ni crédito: dejar el depto listo para arrendar.</VPuente>
-                  <VViz t="Puesta a punto antes de arrendar">
-                    <VSub>Lo que cuesta dejarlo en estándar de arriendo</VSub>
-                    {/* Viz duplicada de DrawerCapexPuestaAPunto (AnalysisDrawer.tsx):
-                        extraerla creaba una abstracción de un consumidor y medio. Si
-                        cambia allá, cambia acá. */}
-                    <div className={`grid grid-cols-2 gap-3 ${capexRango ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
-                      <div>
-                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
-                          {capexRango ? "Rango estimado" : capexV.origen === "override" ? "Tu cotización" : "Inversión"}
-                        </p>
-                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
-                          {capexRango
-                            ? (currency === "UF" ? capexRangoUF : `${compact(capexV.montoMinCLP ?? capexV.montoCLP)}–${compact(capexV.montoMaxCLP ?? capexV.montoCLP)}`)
-                            : (currency === "UF" ? `UF ${ufN(capexV.montoUF)}` : money(capexV.montoCLP))}
-                        </p>
-                      </div>
-                      {capexRango && (
-                        <div>
-                          <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>Corre el caso con</p>
-                          {/* El punto es un entero en UF (múltiplo de 5): sin el decimal de money(). */}
-                          <p className="font-mono font-bold m-0" style={{ fontSize: 18, lineHeight: 1.05, color: "var(--doc-tx)" }}>{currency === "UF" ? `UF ${ufN(capexV.montoUF)}` : money(capexV.montoCLP)}</p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>Por m²</p>
-                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
-                          {capexRango && capexV.ufM2Min != null && capexV.ufM2Max != null
-                            ? `${pct1(capexV.ufM2Min)}–${pct1(capexV.ufM2Max)}`
-                            : pct1(capexV.ufM2)}{" "}
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>UF/m²</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>De tu plata día 1</p>
-                        {/* Sin Signal Red acá: el rojo condicional del KPI vive en el drawer del hallazgo, no en el capítulo. */}
-                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
-                          {Math.round(capexV.fraccionInversion * 100)}%
-                        </p>
-                      </div>
-                    </div>
-                    <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
-                      Franco corre el caso con UF {ufN(capexV.montoUF)} · ${ufN(capexV.montoCLP)}.{" "}
-                      {capexV.origen === "override"
-                        ? "Es tu cotización: entra tal cual a la inversión inicial."
-                        : `Estimación según la antigüedad del depto (${capexV.antiguedadAnios} años, ${capexV.superficieUtilM2} m² útiles). Con una cotización real, el número se ajusta.`}
-                    </p>
-                  </VViz>
-                </>
-              )}
-            </>
-          ),
-          fuente: `${sobre ? procedenciaExtendida(sobre, currency, valorUF) : `Mediana de publicaciones de venta en ${comuna}`}${plazo > 0 ? " · tasa de referencia: promedio de mercado, Motor Franco" : ""}${capex && capexV ? ` · puesta a punto: ${procedenciaExtendida(capex, currency, valorUF)}` : ""}`,
-        }}
-      />
+    // §7: la fila dice el precio que manda. Con recomendación, el recomendado; en COMPRAR,
+    // el de hoy (no hay descuento que pedir); sin salida, lo dice.
+    valor: conApellido(
+      modeloPagas.rec ? "Precio recomendado" : "Precio",
+      modeloPagas.rec ? `UF ${ufN(modeloPagas.rec.precioUF)}` : modeloPagas.caso === "comprar" ? `UF ${ufN(inputData.precio)}` : "sin recomendación",
     ),
+    valorRojo: false,
+    anchorId: anchorCapitulo("pagas"),
+    cuerpo: <CapituloComoLoPagas modelo={modeloPagas} valorUF={valorUF} />,
   };
-
   // ═══════════════ IV · PLUSVALÍA ═══════════════
   const filaIV: FilaHallazgo | null = plus
     ? (() => {
@@ -643,7 +477,6 @@ export function CapitulosInversion({
         };
       })()
     : null;
-
   // ═══════════════ V · TU RESULTADO A 10 AÑOS ═══════════════
   const filaV: FilaHallazgo | null =
     pat && exit && exit.valorVenta > 0
@@ -863,10 +696,8 @@ export function CapitulosInversion({
           };
         })()
       : null;
-
   const filas = [filaI, filaII, filaIII, filaIV, filaV].filter((x): x is FilaHallazgo => x !== null);
   if (filas.length === 0) return null;
-
   return (
     <HallazgosAcordeon
       variante="capitulo"
@@ -878,4 +709,3 @@ export function CapitulosInversion({
     />
   );
 }
-

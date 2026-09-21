@@ -26,6 +26,7 @@ import type { MixPalancas } from "@/lib/types";
 import { QUIEN_LA_PONE, type FilaLoQueHariaYo, type QuienLaPone } from "@/lib/lo-que-haria-yo";
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { mixAComprar, solasAComprar } from "@/lib/mix-a-comprar";
 import { bandaEsfuerzoDescuento, ETIQUETA_BANDA_ESFUERZO } from "@/lib/distancia-veredicto-hallazgo";
 import { ETIQUETA_BANDA_MARGEN } from "@/lib/sensibilidad-hallazgo";
 
@@ -91,9 +92,9 @@ const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
  *
  * Misma regla que la card (`salidaPorMixStr`), que ya lo hacía bien.
  */
-function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
-  return v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
-}
+// `mixAComprar` y `solasAComprar` viven en `@/lib/mix-a-comprar` desde el 21-sep-2026: el
+// capítulo «Cómo lo pagas» lee la MISMA regla, y escribirla dos veces fue lo que
+// reintrodujo el bug en el mockup. Las actas de cada una están allá.
 
 /**
  * LAS PALANCAS QUE LLEGAN AL DESTINO, y solo esas (17-sep-2026).
@@ -115,10 +116,6 @@ function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
  * leer el undefined como lista vacía haría que el pop-up publicara una medición que no
  * existe. Por eso el predicado es `Array.isArray` y no `?? []`.
  */
-function solasAComprar(v: HallazgoDistanciaVeredicto["valor"]): PalancaDistancia[] {
-  if (v.veredictoBase !== "BUSCAR OTRA") return v.palancas ?? [];
-  return Array.isArray(v.palancasHastaComprar) ? v.palancasHastaComprar : [];
-}
 
 /**
  * LO QUE LA CELDA ESCRIBE (14-sep-2026). Cada celda muestra su lectura en el descuento

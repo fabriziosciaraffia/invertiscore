@@ -16,6 +16,8 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `invariants.ts` | clase (a) vs baseline + clase (b) estructural (B1-B6) | — |
 | `seed-db.ts` | upsert idempotente de las 10 filas a Supabase (§1) | — |
 | `recompute.ts` | tier QUICK: carga fila persistida, recompute UF-congelada, clase a+b+B8 | 0 |
+| `dispersion-comunal-catch-test.ts` | p25/p75 salen de la misma muestra que la mediana, se persisten en el snapshot y el motor deriva la posición del sujeto (21-sep-2026). Tier puro en el QUICK; standalone agrega sonda viva. | 0 |
+| `como-lo-pagas-catch-test.ts` | «Cómo lo pagas» se ancla al precio recomendado leído de `mixAComprar` —sin caer al escalón—, los seis casos, la copia fijada, la frase del hallazgo por cuartil y el cableado en los dos capítulos (21-sep-2026). Tier puro en el QUICK; standalone agrega una fila STR real. | 0 |
 | `generate.ts` | tier FULL AUTO: `generateAiAnalysis(persist:false)` ×K, checks AUTO | sí |
 | `semantic.ts` | tier FULL semántico: juez Opus (reusa `../judge.ts`) | sí |
 | `catch-test.ts` | meta-validación: rompe invariantes y verifica que el runner CAZA | 0 |
@@ -90,7 +92,7 @@ a re-baseline, no bloquea). Flags semánticos → reporte, no bloquean.
 
 ## Invariantes clase (b) — nunca deben romperse
 
-- **B1** cifra del body (fraseCanonica) refleja el `valor` del motor dentro de la precisión de display.
+- **B1** cifra del body (fraseCanonica) refleja el `valor` del motor dentro de la precisión de display. Para `sobreprecio` el parser lee las dos redacciones (la desviación «N% sobre/bajo» y, desde el 21-sep-2026, la frase por cuartil, de la que deriva la desviación con sujeto y mediana), y **B1.legible** falla si el motor tiene cifra y el body no se deja leer: sin eso el hallazgo se saltaba en silencio. GS-1 (bajo_p25) y GS-3 (sobre_p75) llevan cuartiles en `seeds.ts` para que la frase nueva se pruebe contra prosa real.
 - **B2** dirección del hallazgo coherente con su valor y su corte.
 - **B4** dedup por id (titular gana) + corona == #1 adverso por decisividad.
 - **B5** N de la pirámide ∈ [5,9].

@@ -41,7 +41,6 @@ import {
   caminosQueAbren,
   lineaMiniSalida,
   pieDocumentoSalida,
-  SUBTITULO_PLAN_SALIDA,
 } from "../../../src/lib/salida-por-mix";
 import { distanciaFindingDisplay, lineaDistanciaMini } from "../../../src/lib/distancia-copy";
 import { cierraSobreElVendedor } from "../../../src/lib/cifras-guard";
@@ -133,7 +132,9 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
     const posiciones: [string, string][] = [
       ["B · footer de la card del hero", lineaFooterVias(0, 4, true)],
       ["D · línea de comparativa", lineaDistanciaMini(conSalida, "BUSCAR OTRA") ?? ""],
-      ["E · subtítulo del capítulo", SUBTITULO_PLAN_SALIDA],
+      // E · el subtítulo del capítulo («El plan no pasa por el vendedor») se retiró el 21-sep-2026
+      //     con el plan de cuatro precios: «Cómo lo pagas» se ancla al precio recomendado y tiene
+      //     su propio tier (como-lo-pagas-catch-test.ts).
       ["G · pie del PDF LTR", pieDocumentoSalida(s)],
       ["copy · la línea mini", lineaMiniSalida(s, base)],
     ];
@@ -203,7 +204,7 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   //   tiene que llamar, no el nombre del módulo.
   const CABLEADOS: [string, string, RegExp][] = [
     ["D · línea de comparativa", "src/lib/distancia-copy.ts", /salidaPorMix\s*\(/],
-    ["E · capítulo de negociación", "src/components/ui/AnalysisDrawer.tsx", /SUBTITULO_PLAN_SALIDA/],
+    // E · el capítulo de negociación ya no lee `SUBTITULO_PLAN_SALIDA` (retirado el 21-sep-2026).
     ["G · PDF LTR", "src/app/analisis/[id]/documento/DocumentoLTR.tsx", /pieDocumentoSalida\s*\(/],
   ];
   for (const [donde, ruta, pide] of CABLEADOS) {

@@ -192,10 +192,13 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (!/export const conApellido/.test(CAPS_LTR)) F("6 · `conApellido` no se exporta de CapitulosInversion.tsx: STR tiene que usar el mismo helper, no una copia");
   if (!/import \{[^}]*conApellido[^}]*\} from "@\/components\/analysis\/CapitulosInversion"/.test(CAPS_STR)) F("6 · CapitulosInversionStr no importa `conApellido` de LTR");
   if (/useRediseno/.test(CAPS_STR)) F("6 · CapitulosInversionStr volvió a leer un interruptor que ya no existe");
+  // El apellido puede ir como literal directo o elegido en la llamada («Cómo lo pagas» dice
+  // «Precio recomendado» o «Precio» según haya recomendación, 21-sep-2026): se busca dentro
+  // de la llamada, acotado a 120 caracteres, y se cuentan LLAMADAS, no literales.
   for (const ap of ["Cap rate", "Flujo", "Al año", "Precio", "vs arriendo largo", "Resultado"]) {
-    if (!new RegExp(`conApellido\\("${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
+    if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?"${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
   }
-  const n = [...CAPS_STR.matchAll(/conApellido\("/g)].length;
+  const n = [...CAPS_STR.matchAll(/conApellido\(/g)].length;
   if (n !== 6) F(`6 · ${n} filas con apellido en STR; §7 pide seis`);
   if (!/noches/.test(CAPS_STR.slice(CAPS_STR.indexOf('conApellido("Al año"'), CAPS_STR.indexOf('conApellido("Al año"') + 120))) F("6 · «Al año» va con la unidad: «Al año 171 noches»");
 }

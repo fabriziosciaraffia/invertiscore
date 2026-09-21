@@ -61,6 +61,8 @@ import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
 import { runGrillaPopupTier } from "./grilla-popup-catch-test";
 import { runPopupAjustesTier } from "./popup-ajustes-catch-test";
+import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
+import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
@@ -344,6 +346,16 @@ async function printStrSemantic() {
   // standalone»— y el runner no lo importaba: veinte invariantes del pop-up vivían fuera del
   // gate, verdes solo si alguien los invocaba a mano. Un guard que no corre no es un guard.
   totalHard += runPopupAjustesTier().hard;
+  // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
+  // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
+  // sujeto por cuartiles — sin inventarla cuando el snapshot es anterior al campo.
+  // Verificado en rojo con 5 mutaciones. Siempre con el QUICK; la sonda viva va standalone.
+  totalHard += runDispersionComunalTier().hard;
+  // Tier COMO-LO-PAGAS (21-sep-2026, 0 tokens, sin base): el capítulo se ancla al precio
+  // recomendado leído de `mixAComprar` —sin caer al escalón—, los seis casos, la copia
+  // fijada, la frase del hallazgo por cuartil y el cableado en los dos capítulos.
+  // Verificado en rojo con 6 mutaciones. Siempre con el QUICK; la sonda viva va standalone.
+  totalHard += runComoLoPagasTier().hard;
   // ── Tier STANDALONE (17-sep-2026): los catch-tests que corrían SOLO a mano. Nueve de los
   // 28 estaban en rojo cuando se los corrió, y `zona` llevaba 14 días protegiendo una regla
   // derogada a propósito — o sea que su rojo ya no se podía leer. Entran los 12 que no tocan

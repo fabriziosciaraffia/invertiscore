@@ -424,19 +424,12 @@ export const RECOMENDADA = "lo que Franco recomienda";
 // se decide, nunca por inercia.** Cuatro de las cinco estaban reemplazadas por superficies
 // mejores. La quinta se midió antes de tocarla.
 
-/** E · el subtítulo del capítulo de negociación. El plan existe; no pasa por el vendedor.
- *
- *  ⚠ ÉSTA SÍ ESTÁ VIVA, y estuvo a un paso de retirarse por un diagnóstico mío equivocado
- *    (17-sep-2026). La FASE 0 la contó entre las muertas porque su único uso está en
- *    `AnalysisDrawer.tsx`, que es el archivo del drawer inalcanzable. Pero ese uso vive DENTRO
- *    de `DrawerNegociacion`, que es una función EXPORTADA y que `CapitulosInversion.tsx` monta
- *    —pasándole `capitulo`, que es justo la condición de la que este subtítulo cuelga—.
- *    El archivo estaba muerto; la función, no.
- *
- *    LA LECCIÓN, que corrige el método: «consumidores reales, no referencias» hay que
- *    aplicarlo al SÍMBOLO, no al archivo donde vive. Un archivo con una superficie muerta
- *    puede exportar otra viva, y el grep por archivo las confunde. */
-export const SUBTITULO_PLAN_SALIDA = "El plan no pasa por el vendedor";
+// E · `SUBTITULO_PLAN_SALIDA` («El plan no pasa por el vendedor») SE RETIRÓ el 21-sep-2026
+//     con `DrawerNegociacion`: era el subtítulo del plan de cuatro precios del capítulo
+//     «Cómo lo pagas», y ese plan ya no existe —el capítulo se ancla al precio recomendado
+//     (`como-lo-pagas.ts`) y dice de otra forma que el plan es tuyo y no del vendedor.
+//     Sobrevivió al 17-sep porque entonces sí tenía consumidor (la lección de «al símbolo,
+//     no al archivo» sigue valiendo; ver CLAUDE.md § Testing).
 
 /** D · la línea corta de comparativa, share y PDF de ambas.
  *

@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Veredicto } from "./types";
 import { brechaEnPalabras, type FmtCierre, type SegCierre } from "./cierres-capitulos";
-import type { FronterasIngresoStr, MatrizTarifaOcupacion, MatrizPiePlazoStr } from "./analysis/simular-str";
+import type { FronterasIngresoStr, MatrizTarifaOcupacion } from "./analysis/simular-str";
 import type { OcupacionVsComuna } from "./engines/str-universo-santiago";
 import { DIST_STR_TOPE_ADR_PCT } from "./distancia-veredicto-str-hallazgo";
 import type { QuiebreGestionSTR } from "./engines/short-term-engine";
@@ -175,68 +175,9 @@ export function cierreNochesStr(a: ArgsCierreNochesStr, f: FmtCierre): SegCierre
   return trimUltimo(segs);
 }
 
-// ═══════════ CIERRE IV · Cómo lo pagas (precio + crédito + matriz pie × plazo) ═══════════
-
-export interface ArgsCierrePagasStr {
-  veredictoBase: Veredicto;
-  precioUF: number;
-  /** Precio bajo el cual el veredicto sube (vía precio de distancia_veredicto o frontera), null si no cruza. */
-  techoUF: number | null;
-  veredictoObjetivo: Veredicto | null;
-  /** Sobreprecio contra la mediana comunal: desviación % y n; null sin mediana confiable. */
-  sobreprecio: { desviacionPct: number; n: number } | null;
-  /** Tasa del caso frente a la de mercado, en puntos (negativo = mejor que el mercado). */
-  spreadTasaPts: number | null;
-  matriz: MatrizPiePlazoStr | null;
-  /** Tarifa que también cruza (vía adr), null si no. */
-  tarifaCruza: { objetivo: number; deltaPct: number } | null;
-  /** "Donde el mes cierra" (T2): precio UF al que el flujo mensual queda en cero; null si no cierra. */
-  mesCierraUF?: number | null;
-}
-
-export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[] {
-  const segs: SegCierre[] = [];
-  const uf = (n: number) => `UF ${Math.round(n).toLocaleString("es-CL")}`;
-  if (a.veredictoBase !== "COMPRAR") {
-    if (a.techoUF != null && a.veredictoObjetivo) {
-      const d = (a.techoUF / a.precioUF - 1) * 100;
-      segs.push({ t: `Bajo ${uf(a.techoUF)} el veredicto sube a ${a.veredictoObjetivo}: un ${f.pct1(Math.abs(d))}% menos que tu precio, negociación y no otro departamento`, mark: true }, { t: ". " });
-    } else {
-      segs.push({ t: "Bajar el precio dentro de lo que un ajuste puede dar no cambia el veredicto: la palanca no está en la mesa del vendedor. " });
-      // Cierre estructural: el porcentaje es prueba, el precio no se ofrece (no se cita en UF).
-      if (a.mesCierraUF != null && a.mesCierraUF > 0 && a.precioUF > 0) {
-        const dm = Math.round((1 - a.mesCierraUF / a.precioUF) * 100);
-        segs.push({ t: `Cerrar el mes exige un ${dm}% menos: fuera de lo negociable. El problema es la estructura, no el precio. ` });
-      } else {
-        // Sin "donde el mes cierra" (ningún precio hasta −70% deja el flujo en cero): se dice.
-        segs.push({ t: "Ningún precio dentro de lo negociable cierra el mes: el problema es la estructura, no el precio. " });
-      }
-    }
-  }
-  if (a.sobreprecio) {
-    const s = a.sobreprecio;
-    segs.push({ t: s.desviacionPct < -2
-      ? `Ya entras ${f.pct1(Math.abs(s.desviacionPct))}% bajo la mediana de ${s.n} publicaciones de la comuna, así que el vendedor sabe que su precio es competitivo. `
-      : s.desviacionPct > 2
-      ? `Pagas ${f.pct1(s.desviacionPct)}% sobre la mediana de ${s.n} publicaciones de la comuna: ese es el argumento de la mesa, no el regateo. `
-      : `El precio va en línea con la mediana de ${s.n} publicaciones de la comuna. ` });
-  }
-  if (a.matriz && a.matriz.celdas.length) {
-    const verdes = a.matriz.celdas.filter((c) => c.flujoMensual >= 0).length;
-    const cruzan = a.matriz.celdas.filter((c) => c.cruza);
-    const tasa = a.spreadTasaPts == null ? "" : Math.abs(a.spreadTasaPts) <= 0.2 ? "la tasa está en línea con el mercado y " : a.spreadTasaPts > 0 ? `la tasa está ${f.pct1(a.spreadTasaPts)} puntos sobre el mercado y ` : `la tasa ya está bajo el mercado y `;
-    if (cruzan.length === 0) {
-      segs.push({ t: `Del crédito no esperes el cierre: ${tasa}${verdes === 0 ? "ninguna combinación de pie y plazo deja el mes en verde" : `${verdes === 1 ? "solo una combinación" : `${verdes} combinaciones`} de pie y plazo ${verdes === 1 ? "deja" : "dejan"} el mes en verde`}, y ninguna cambia el veredicto. ` });
-    } else {
-      const c = cruzan[0];
-      segs.push({ t: `Del crédito: ${tasa}${cruzan.length === 1 ? `solo ${Math.round(c.piePct)}% de pie a ${c.plazoAnios} años` : `${cruzan.length} combinaciones de pie y plazo`} ${cruzan.length === 1 ? "llega" : "llegan"} a ${c.veredicto}${verdes ? `; ${verdes === 1 ? "una" : verdes} ${verdes === 1 ? "deja" : "dejan"} el mes en verde` : ""}. ` });
-    }
-  }
-  if (a.tarifaCruza && a.veredictoBase !== "COMPRAR") {
-    segs.push({ t: `Si el vendedor no cede, la otra vía es la tarifa: ${f.money(a.tarifaCruza.objetivo)} por noche sostenidos, y esa la pones tú, no el vendedor.` });
-  }
-  return trimUltimo(segs);
-}
+// ═══════════ CIERRE IV · «Cómo lo pagas» — RETIRADO (21-sep-2026) ═══════════
+// El capítulo ya no cierra con prosa: se ancla al precio recomendado y sus cuatro pasos
+// (`como-lo-pagas.ts`). `cierrePagasStr` y `ArgsCierrePagasStr` salieron con él.
 
 // ═══════════ CIERRE V · Cómo lo gestionas (ventaja sobre el largo + qué se lleva la gestión) ═══════════
 

@@ -284,7 +284,14 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   //
   // Se mide sin comentarios: el acta de arriba de esa línea cita «solo con» para explicar
   // por qué se fue, así que sobre el texto crudo el predicado se cumpliría con la prosa.
-  {
+  // ⛔ 3b RETIRADO el 21-sep-2026. El `ksub` de la fila del capítulo —donde vivía
+  //   `subEstructural`— se retiró con el rediseño de «Cómo lo pagas»: la fila lleva título
+  //   y cifra, y además ese `ksub` estaba en `display:none` para las dos modalidades desde
+  //   el rediseño de la portada (`.doc-dictamen .hall.cap .ksub`), o sea que la regla
+  //   protegía una línea que nadie leía. La regla del «solo» (cualificador solo con un
+  //   camino) sigue viva donde sí se lee: el menú de respuestas del pop-up y la card, con
+  //   sus propios guards. El bloque queda desactivado, no borrado, por si el ksub vuelve.
+  if (false) {
     const capSC = cap.replace(/\/\*[^]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     const bloque = capSC.match(/const subEstructural = [^;]*;/)?.[0] ?? "";
     if (!bloque) F("3b · no se encontró `subEstructural` en el capítulo");

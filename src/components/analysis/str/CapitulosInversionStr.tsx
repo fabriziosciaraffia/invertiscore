@@ -1,27 +1,23 @@
 "use client";
 
 import { Ang } from "@/components/analysis/shared/Ang";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoEstructuraFinanciamiento, HallazgoSobreprecio, Veredicto } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
-import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
 import { barraDia1 } from "@/lib/plata-dia1";
-import { salidaPorMixStr, mixAlEscalonStr, loTuyo } from "@/lib/salida-por-mix";
 import { costoOportunidad, calcDividendo } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
-import { LineaPlazo } from "@/components/analysis/hallazgos/linea-plazo";
-import type { NivelPlazo } from "@/lib/analysis";
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
-import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
-import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
+import { construirComoLoPagas } from "@/lib/como-lo-pagas";
+import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
 import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
@@ -85,7 +81,6 @@ export function CapitulosInversionStr({
   results,
   francoScore,
   hallazgos,
-  nivelesPlazo,
   simulacion,
   inputData,
   currency,
@@ -99,8 +94,6 @@ export function CapitulosInversionStr({
   results: ShortTermResult;
   francoScore: FrancoScoreSTR;
   hallazgos: Hallazgo[];
-  /** Niveles de plazo del server (`simularPlazoStr`) — los consume la línea del plazo. */
-  nivelesPlazo?: NivelPlazo[];
   simulacion: SimulacionStr | null;
   inputData: Record<string, unknown> | null;
   currency: "CLP" | "UF";
@@ -111,13 +104,11 @@ export function CapitulosInversionStr({
   accessLevel: string;
   abrir?: { id: string; nonce: number } | null;
 }) {
-  const [serieIV, setSerieIV] = useState<"flujo" | "tir">("flujo");
   const m = results.metrics;
   const base = results.escenarios.base;
   const exit = results.exitScenario;
   const modo: "auto" | "administrador" = inputData?.modoGestion === "administrador" ? "administrador" : "auto";
   const dist = hallazgos.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
-  const fin = hallazgos.find((h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento");
   const sobre = hallazgos.find((h): h is HallazgoSobreprecio => h.id === "sobreprecio");
 
   // ── formato (dueño de moneda y UF): los cierres siguen el toggle ──
@@ -175,7 +166,6 @@ export function CapitulosInversionStr({
   const plazo = Number(inputData?.plazoCredito) || 0;
   const tasa = Number(inputData?.tasaInteres) || 0;
   const fr = simulacion?.fronterasIngreso ?? null;
-  const objetivo = dist?.valor.veredictoObjetivo ?? "COMPRAR";
   const adrEsTuya = results.adrFuente === "override";
   const occEsTuya = results.occFuente === "override";
   const vsComuna = results.zonaSTR?.ocupacionVsComuna ?? null;
@@ -608,177 +598,48 @@ export function CapitulosInversionStr({
   })();
 
   // ═══════════════ IV · CÓMO LO PAGAS ═══════════════
-  const filaIV: FilaHallazgo = (() => {
-    const fp = simulacion?.fronteraPrecio ?? null;
-    const techoUF = args.pagas.techoUF;
-    const techoDeltaPct = techoUF != null && precioUF > 0 ? ((techoUF - precioUF) / precioUF) * 100 : null;
-    const subeTxt = techoUF != null && args.pagas.veredictoObjetivo ? `sube a ${nombreVeredicto(args.pagas.veredictoObjetivo)} bajo ${ufTxt(techoUF)}` : "";
-    const dialPrecio = fp
-      ? (() => {
-          const pts = [fp.precioUFActual, fp.subeA?.precioUF, fp.caeA?.precioUF].filter((x): x is number => typeof x === "number" && x > 0);
-          const lo = Math.min(...pts) * 0.9;
-          const hi = Math.max(...pts) * 1.1;
-          const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
-          const zonas: ZonaDial[] = [];
-          const bordes: BordeDial[] = [];
-          let cursor = lo;
-          if (fp.subeA) {
-            zonas.push({ k: nombreVeredicto(fp.subeA.veredicto), pct: pos(fp.subeA.precioUF) - pos(cursor), tono: tonoVeredicto(fp.subeA.veredicto) });
-            cursor = fp.subeA.precioUF;
-            bordes.push({ pos: pos(fp.subeA.precioUF), delta: `−${pct1((1 - fp.subeA.factor) * 100)}%`, v: ufTxt(fp.subeA.precioUF), k: `y sube a ${nombreVeredicto(fp.subeA.veredicto)}`, dir: "abajo" });
-          }
-          const fin = fp.caeA ? fp.caeA.precioUF : hi;
-          zonas.push({ k: nombreVeredicto(veredicto), pct: pos(fin) - pos(cursor), tono: tonoVeredicto(veredicto) });
-          if (fp.caeA) {
-            zonas.push({ k: nombreVeredicto(fp.caeA.veredicto), pct: pos(hi) - pos(fp.caeA.precioUF), tono: tonoVeredicto(fp.caeA.veredicto) });
-            bordes.push({ pos: pos(fp.caeA.precioUF), delta: `+${pct1((fp.caeA.factor - 1) * 100)}%`, v: ufTxt(fp.caeA.precioUF), k: `y cae a ${nombreVeredicto(fp.caeA.veredicto)}`, dir: "arriba" });
-          }
-          return { zonas, bordes, marcaPct: pos(fp.precioUFActual) };
-        })()
-      : null;
-    const mpp = simulacion?.matrizPiePlazo ?? null;
-    const cuota = m?.desgloseFall.cuota ?? results.dividendoMensual;
-    const planObjetivo = techoUF != null && techoDeltaPct != null && techoDeltaPct < 0 ? { uf: techoUF, clp: techoUF * valorUF, veredicto: args.pagas.veredictoObjetivo ?? objetivo } : null;
-    // ESTRUCTURAL SIN PLAN, como LTR (T2): cuando ninguna vía cruza no hay plan que
-    // ofrecer; "donde el mes cierra" sigue existiendo para la zona y el cierre del
-    // capítulo, pero no como oferta de negociación. Es el mismo caso que cubre el guard
-    // [STR-ESTRUCTURAL] en la prosa (esDistanciaEstructural lee dist.valor.esEstructural).
-    const esEstructural = dist?.valor.esEstructural === true;
-    // Con combinación (12-sep-2026) el subtítulo no dice «fuera de lo negociable»: 15 de las 16
-    // filas salen con un descuento negociado dentro del mix. Misma fuente que la card.
-    const salidaCap = dist && esEstructural ? salidaPorMixStr(dist.valor) ?? mixAlEscalonStr(dist.valor) : null;
-    // ⛔ EL «SOLO» ERA FALSO EN 4 FILAS (17-sep-2026). `loTuyo` describe la combinación
-    //    EQUILIBRADA, y desde el menú de respuestas el motor ofrece hasta tres: medido sobre
-    //    el parque, en 4 filas STR esta línea decía «solo con pie y plazo» mientras el menú
-    //    ofrecía además una respuesta que mueve UNA sola dimensión. La palabra que mentía era
-    //    «solo», no `loTuyo` — la función describe bien lo que describe.
-    //
-    //    Con más de un camino se nombra CUÁL es éste, con el nombre que ese mismo plan lleva
-    //    en el menú («Lo que Franco recomienda», `TITULO_RESPUESTA`); con uno solo, «solo»
-    //    es verdad y se queda. El booleano lo trae el motor: ver `hayOtrosCaminos` en
-    //    `salida-por-mix.ts`, que explica por qué el cualificador lo pone la superficie.
-    // TRES RAMAS, Y LA DEL MEDIO LA CAZÓ LA REVISIÓN ADVERSARIA. Con `hayOtrosCaminos` en
-    //   `null` —`respuestas` ausente, o sea que nadie lo midió— caer en «solo con…» es
-    //   afirmar exclusividad SIN DATO: el bug de este goal entrando por el default. Ahí no va
-    //   ni el «solo» ni el cualificador. Ver el acta del campo en `salida-por-mix.ts`.
-    const subEstructural = !salidaCap
-      ? "fuera de lo negociable"
-      : salidaCap.hayOtrosCaminos === true
-        // ⚠ CON RAYA Y NO CON « · »: ese punto medio es el separador del `join` de abajo, así
-        //   que el cualificador salía como un CHIP hermano de «precio» y «pie» —cinco ítems
-        //   donde hay cuatro datos— en vez de calificar la frase anterior.
-        ? `con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"} — lo que Franco recomienda`
-        : salidaCap.hayOtrosCaminos === false
-          ? `solo con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}`
-          : `con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}`;
-    return {
-      id: "pagas",
-      numero: ROMANO.pagas,
-      pregunta: "Cómo lo pagas",
-      // §7: la fila dice el PRECIO («Precio UF 5.042»); el delta al techo sigue en el cuerpo.
-      valor: conApellido("Precio", ufTxt(precioUF)),
-      valorRojo: false,
-      ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? subEstructural : subeTxt].filter(Boolean).join(" · "),
-      anchorId: anchorCapituloStr("pagas"),
-      cuerpo: (
-        <div>
-          <VProsa>Dos decisiones fijan cuánto cargas cada mes: el precio al que cierras y el crédito con el que lo pagas. Esto es lo que cambia en tu caso con cada una.</VProsa>
-          {dialPrecio && (
-            <VViz t="Qué veredicto tiene este depto según el precio">
-              <VSub>A qué precio conviene cerrar</VSub>
-              <Dial zonas={dialPrecio.zonas} bordes={dialPrecio.bordes} marcaPct={dialPrecio.marcaPct} marcaK="Tu precio" marcaV={ufTxt(precioUF)} />
-            </VViz>
-          )}
-          {/* Un nombre por precio, el MISMO componente que LTR: Primera oferta · Objetivo (donde
-              cambia el veredicto) · estructural: lo que haría falta, fuera de rango. "Donde el mes
-              cierra" solo si el motor lo trae (STR aún no lo emite). La conversión va junto a la
-              cifra (el componente formatea por moneda). */}
-          {!esEstructural && (planObjetivo || simulacion?.mesCierra) && (
-            <VViz>
-              <VSub>Cómo negociarlo: tu plan</VSub>
-              {/* Un nombre por precio (T2): umbral = donde cambia el veredicto (objetivo) ·
-                  sugerido = donde el mes cierra (caja en cero, del motor) · límite = donde la
-                  TIR baja del 6% (walk-away). Los tres salen de bisecciones en el server. */}
-              <PlanNegociacion
-                objetivo={planObjetivo}
-                primeraOferta={planObjetivo ? { uf: planObjetivo.uf * 0.95, clp: planObjetivo.clp * 0.95 } : null}
-                sostenible={null}
-                minimoFueraDeRango={null}
-                labelLimite={`Límite · TIR ${TIR_LIMITE_PCT}%`}
-                walkAway={
-                  simulacion?.limiteTir
-                    ? { precio_uf: simulacion.limiteTir.precioUF, precio_clp: simulacion.limiteTir.precioCLP, razon: `Sobre este precio la TIR a 10 años baja del ${TIR_LIMITE_PCT}%: conviene más otra inversión.` }
-                    : null
-                }
-                currency={currency}
-                precioActualCLP={precioCLP}
-                valorUF={valorUF}
-                neutroUF={simulacion?.mesCierra?.precioUF}
-                neutroCLP={simulacion?.mesCierra?.precioCLP}
-                descuentoNeutroPct={simulacion?.mesCierra && precioCLP > 0 ? ((precioCLP - simulacion.mesCierra.precioCLP) / precioCLP) * 100 : undefined}
-                sinCredito={!(results.montoCredito > 0)}
-              />
-            </VViz>
-          )}
-          <VPuente>El precio es lo primero. Ahora veamos cómo lo financias: el crédito.</VPuente>
-          <VViz t="Tu estructura contra la referencia">
-            <VSub>Cómo lo financias: el crédito que tienes</VSub>
-            {/* Como en LTR: solo la tasa se compara (tuya vs mercado); pie y cuota son datos sin
-                referencia y van como fila de dato. */}
-            {fin && results.montoCredito > 0 && <EstructuraComparada soloTasa piePct={fin.valor.piePct} tasaPct={fin.valor.tasaPct} tasaMarketPct={fin.valor.tasaMarketPct} cuotaFmt={money(cuota)} />}
-            <FilasDato>
-              <FilaDato k="Pie" tip="Lo que pones el día 1 sobre el precio" sub={money(results.pie)} v={`${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`} />
-              <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? `crédito de ${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} v={money(cuota)} unidad="/mes" />
-            </FilasDato>
-          </VViz>
-          {mpp && mpp.celdas.length > 0 && (
-            <VViz t="Tu flujo mensual según pie y plazo">
-              <Matriz
-                id="mz-str-iv"
-                cabecera="Cuánto cambia el mes según pie y plazo"
-                toggle={{ opciones: [{ id: "flujo", label: "Flujo" }, { id: "tir", label: "TIR" }], activo: serieIV, onChange: (id) => setSerieIV(id as "flujo" | "tir") }}
-                ejeX={{ label: "→ más plazo", niveles: mpp.plazos.map((p) => ({ k: String(p), sub: "años" })) }}
-                ejeY={{ label: "↓ más pie", niveles: mpp.pies.map((p) => ({ k: `${p}%`, sub: compact(precioCLP * (p / 100)) })) }}
-                celdas={mpp.pies.map((p) =>
-                  mpp.plazos.map((pl) => {
-                    const c = mpp.celdas.find((x) => x.piePct === p && x.plazoAnios === pl);
-                    if (!c) return { v: "—" };
-                    const v = serieIV === "flujo" ? corto(c.flujoMensual) : c.tirPct != null ? `${pct1(c.tirPct)}%` : "—";
-                    const umbral = serieIV === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= TIR_LIMITE_PCT;
-                    return { v, neg: serieIV === "flujo" && c.flujoMensual < 0, umbral, veredicto: c.veredicto, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? `${pct1(c.tirPct)}%` : "—"} · ${nombreVeredicto(c.veredicto)} · pie ${p}% a ${pl} años` };
-                  }),
-                )}
-                veredictoBase={veredicto as Veredicto}
-                leyenda={{ hoy: "hoy", umbral: serieIV === "flujo" ? "cierra el mes" : `sobre TIR ${TIR_LIMITE_PCT}%`, umbralCorto: serieIV === "flujo" ? "cierra" : `TIR ≥ ${TIR_LIMITE_PCT}%` }}
-              />
-            </VViz>
-          )}
+  // TRES BLOQUES ANCLADOS AL PRECIO RECOMENDADO (21-sep-2026), el MISMO modelo y el mismo
+  // render que LTR (`construirComoLoPagas` + `CapituloComoLoPagas`); acá solo se juntan
+  // las entradas del motor STR: la distancia (el mix hacia COMPRAR sale de `mixAComprar`,
+  // nunca del escalón), el sobreprecio con universo, el límite TIR y «donde el mes cierra»
+  // de la simulación, y el capex que siembra `calcShortTerm`. Salieron el dial de precio,
+  // `PlanNegociacion`, la matriz pie × plazo (vive en el pop-up), el financiamiento y la
+  // línea del plazo (cola del pop-up), y el cierre `cierrePagasStr`.
+  const capexStr = hallazgos.find((h): h is HallazgoPuestaAPunto => h.id === "capex_puesta_a_punto");
+  const modeloPagas = construirComoLoPagas({
+    modalidad: "STR",
+    veredicto,
+    precioUF,
+    superficieM2: Number(inputData?.superficieUtil) || 0,
+    comuna,
+    piePctActual: piePct,
+    plazoActual: plazo,
+    distancia: dist?.valor ?? null,
+    sobre: sobre ?? null,
+    limiteTirUF: simulacion?.limiteTir?.precioUF ?? null,
+    mesCierraUF: simulacion?.mesCierra?.precioUF ?? null,
+    precioMaximoComprarUF: simulacion?.fronteraPrecio?.caeA?.precioUF ?? null,
+    caeA: simulacion?.fronteraPrecio?.caeA?.veredicto ?? null,
+    // Las comunas alternativas de STR quedan para cuando el motor STR las calcule (§12).
+    alternativa: null,
+    capex: capexStr?.valor ?? null,
+    valorUF,
+  });
+  const filaIV: FilaHallazgo = {
+    id: "pagas",
+    numero: ROMANO.pagas,
+    pregunta: "Cómo lo pagas",
+    // §7: la fila dice el precio que manda —el recomendado; en COMPRAR el de hoy; sin salida,
+    // lo dice—. Un solo apellido por fila (el tier «card-str» los cuenta).
+    valor: conApellido(
+      modeloPagas.rec ? "Precio recomendado" : "Precio",
+      modeloPagas.rec ? ufTxt(modeloPagas.rec.precioUF) : modeloPagas.caso === "comprar" ? ufTxt(precioUF) : "sin recomendación",
+    ),
+    valorRojo: false,
+    anchorId: anchorCapituloStr("pagas"),
+    cuerpo: <CapituloComoLoPagas modelo={modeloPagas} valorUF={valorUF} />,
+  };
 
-          {/* LA LÍNEA DEL PLAZO (17-sep-2026) — va PEGADA a la matriz y no en otro capítulo,
-              porque es lo que la contesta. Medido sobre 300 análisis: de los 169 que pueden
-              estirar, la TIR a 10 años SUBE en 127 (75%), así que la matriz sola dice
-              «estirá siempre» con cara de dato. El interés total del crédito —lo único que
-              decía la escalera del plazo y no dice ninguna otra superficie— es el costo que
-              vive FUERA de los diez años que el informe proyecta. Separadas, pierden el
-              razonamiento. */}
-          <LineaPlazo
-            niveles={nivelesPlazo ?? []}
-            valorUF={valorUF}
-            flujoPersistido={m?.desgloseFall.saleDeTuBolsillo ?? flujo}
-            currency={currency}
-          />
-
-          <VCierre titulo="Guión para la contraoferta">
-            <SegsCierre segs={cierres.pagas} />
-          </VCierre>
-          <VFuente>
-            {sobre && sobre.valor.n > 0 ? `Mediana de ${sobre.valor.n} publicaciones de venta en ${sobre.valor.comuna || comuna}` : "Precio declarado por ti"}
-            {fin ? ` · tasa de referencia: promedio de mercado ${pct1(fin.valor.tasaMarketPct)}%` : ""} · matriz: misma aritmética del motor
-          </VFuente>
-        </div>
-      ),
-    };
-  })();
 
   // ═══════════════ V · CORTO O LARGO ═══════════════
   // ⛔ ERA «CÓMO LO GESTIONAS» Y SE FUNDIÓ CON EL II el 17-sep-2026. Su primera mitad
