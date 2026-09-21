@@ -19,7 +19,8 @@ import { GLOSA_BRAZO } from "./engines/short-term-score";
 import { metricaValorONull } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
-import { buildHallazgoRentabilidadStr } from "./rentabilidad-str-hallazgo";
+import { buildHallazgoRentabilidadStr, umbralStrDesde } from "./rentabilidad-str-hallazgo";
+import { getCapRefComuna } from "./cap-rate-hallazgo";
 import { buildHallazgoFlujoStr } from "./flujo-str-hallazgo";
 import { buildHallazgoOcupacionVsEstimacion, OCC_FALLBACK_PCT } from "./ocupacion-vs-estimacion-hallazgo";
 import { buildHallazgoVentajaVsLtr } from "./ventaja-vs-ltr-hallazgo";
@@ -72,7 +73,12 @@ export interface BuildStrHallazgosCtx {
   plazoAnios: number;
   /** mediana comunal de venta UF/m² ya resuelta (sobreprecio-sync). Los cuartiles son
    *  opcionales: STR resuelve la mediana viva y los trae; una fila persistida sin ellos no. */
-  mediana: { mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null };
+  mediana: {
+    mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null;
+    /** Referencia de cap rate de la comuna (viaja con la mediana desde el prefetch): de acá
+     *  sale el umbral STR = bruta de la comuna + 1 pt. Ausente ⇒ umbral nacional 5%. */
+    capRefComuna?: import("./capref-comuna").CapRefComunaSnapshot | null;
+  };
   valorUF: number;  // UF→CLP del momento (patrimonio CLP↔UF, financing)
   incluyeCorretaje: boolean;
   /**
@@ -96,11 +102,14 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   const out: (Hallazgo | null)[] = [];
   if (!base) return [];
 
+  // El umbral STR se resuelve UNA vez acá y lo reciben el hallazgo y la neutralización de la
+  // decisividad: la misma referencia de la comuna que usa LTR, más la prima (21-sep-2026).
+  const umbralStr = umbralStrDesde(getCapRefComuna(ctx.comuna || "", ctx.mediana.capRefComuna));
   // Decisividad real: una sola llamada sobre el MISMO ctx (y la misma base) que produjo el
   // veredicto. Los siete con knob reciben su factor; el resto declara 0 abajo.
   const dec = calcDecisividadesSTR(
     ctx.veredictoCtx,
-    { comuna: ctx.comuna || "", medianaUfM2: ctx.mediana.mediana, medianaN: ctx.mediana.n, superficieM2: ctx.superficieM2, valorUF: ctx.valorUF },
+    { comuna: ctx.comuna || "", medianaUfM2: ctx.mediana.mediana, medianaN: ctx.mediana.n, superficieM2: ctx.superficieM2, valorUF: ctx.valorUF, umbralPct: umbralStr.pct },
     { result: r, francoScore: fs },
   );
 
@@ -111,6 +120,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         capRatePct: base.capRate * 100,
         decisividad: dec.rentabilidad_str?.decisividad ?? 0,
         modalidad: "str",
+        umbral: umbralStr,
       }),
       dec.rentabilidad_str,
     ),

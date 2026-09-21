@@ -73,6 +73,8 @@ export interface DecisividadesStrExtras {
   /** Mediana comunal de venta UF/m² ya resuelta (sobreprecio); null ⇒ no aplicable. */
   medianaUfM2: number | null;
   medianaN: number;
+  /** El umbral STR resuelto (bruta de la comuna + 1 pt); ausente ⇒ 5% nacional. */
+  umbralPct?: number;
   superficieM2: number;
   valorUF: number;
 }
@@ -126,12 +128,13 @@ export function calcDecisividadesSTR(
   const fin = (fsNeu: FrancoScoreSTR) => decisividadDesdeStr(fsBase, fsNeu);
   const inp = ctx.inputs;
 
-  // ── rentabilidad_str: la tarifa que deja el cap rate en el umbral (5,0%). Mueve
+  // ── rentabilidad_str: la tarifa que deja el cap rate en el umbral (bruta de la comuna + 1). Mueve
   //    también flujo, ventaja y gates: es el mismo driver, igual que en LTR el arriendo
   //    neutralizado del cap rate arrastra el flujo. ──
   const adrRef = r.ejesAplicados?.adrFinal;
   if (inp.precioCompra > 0 && Number.isFinite(b.capRate) && typeof adrRef === "number" && adrRef > 0) {
-    const adrNeu = solveAdrForCapRate(ctx, adrRef, CAP_STR_UMBRAL_PCT / 100);
+    // Contra el umbral resuelto de la comuna (21-sep-2026), el mismo que compara el hallazgo.
+    const adrNeu = solveAdrForCapRate(ctx, adrRef, (extras.umbralPct ?? CAP_STR_UMBRAL_PCT) / 100);
     out.rentabilidad_str = fin(recomputeStrConPatch(ctx, { adrOverride: adrNeu }).francoScore);
   }
 

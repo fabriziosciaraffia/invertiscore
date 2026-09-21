@@ -103,6 +103,8 @@ export interface RazonesHeroClaimStr {
   occBanda?: number | null;
   occTarget?: number | null;
   capPct?: number | null;
+  /** El umbral del hallazgo rentabilidad_str (bruta de la comuna + 1 pt); ausente ⇒ 5%. */
+  umbralPct?: number | null;
   /** Break-even como fracción del ingreso de mercado (1,53 = 153%). */
   breakEvenPct?: number | null;
   sujetoUfM2?: number | null;
@@ -152,6 +154,7 @@ export function razonesHeroClaimStr(
     occBanda: comunaOcc,
     occTarget: num(ejes?.ocupacionTarget),
     capPct: base && Number.isFinite(base.capRate) ? base.capRate * 100 : null,
+    umbralPct: num(((r.hallazgos ?? []).find((h) => h.id === "rentabilidad_str") as { valor?: { umbralPct?: number } } | undefined)?.valor?.umbralPct),
     breakEvenPct: num(r.breakEvenPctDelMercado),
     sujetoUfM2: num(sobre?.valor?.sujetoUfM2),
     medianaUfM2: num(sobre?.valor?.medianaComunaUfM2),
@@ -230,7 +233,7 @@ function razonStr(r: RazonesHeroClaimStr, s: SujetoStr, c: ComparadorStr, oracio
     case "ocupacion/banda": return { nombre, valor: div(r.occFinal, r.occBanda) };
     case "ocupacion/referencia": case "ocupacion/mediana": return { nombre, valor: div(r.occFinal, r.occRef) };
     case "ocupacion/base": return { nombre, valor: div(r.occTarget, r.occFinal) };
-    case "cap/umbral": case "cap/referencia": return { nombre, valor: div(r.capPct, CAP_STR_UMBRAL_PCT) };
+    case "cap/umbral": case "cap/referencia": return { nombre, valor: div(r.capPct, r.umbralPct ?? CAP_STR_UMBRAL_PCT) };
     case "cap/deposito": return { nombre, valor: div(r.capPct, 5) };
     case "cap/fondo": return { nombre, valor: div(r.capPct, 7) };
     case "precioM2/mediana": case "precio/mediana": case "precioM2/referencia":

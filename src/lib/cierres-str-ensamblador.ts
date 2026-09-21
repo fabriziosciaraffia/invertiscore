@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
-import type { Hallazgo } from "./types";
+import type { Hallazgo, HallazgoRentabilidadStr } from "./types";
 import { metricaValorONull } from "./types";
 import type { SimulacionStr } from "./analysis/simular-str";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
@@ -72,7 +72,10 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
   const ingreso = m?.desgloseFall.ingreso ?? base.ingresoBrutoMensual;
   const comRate = ingreso > 0 ? base.comisionMensual / ingreso : 0;
   const costosFijos = m ? m.desgloseFall.costosDirectos + m.desgloseFall.gastosComunesMantencion + m.desgloseFall.contribucionesMensuales : base.costosOperativos;
-  const adrRef = occ > 0 && comRate < 1 ? ((CAP_STR_UMBRAL_PCT / 100) * precioCLP / 12 + costosFijos) / (1 - comRate) / ((occ * 365) / 12) : adr;
+  // El umbral del hallazgo (bruta de la comuna + 1 pt; 5% nacional si la fila no lo trae).
+  const hRenta = e.hallazgos.find((h) => h.id === "rentabilidad_str") as HallazgoRentabilidadStr | undefined;
+  const umbralPct = hRenta?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
+  const adrRef = occ > 0 && comRate < 1 ? ((umbralPct / 100) * precioCLP / 12 + costosFijos) / (1 - comRate) / ((occ * 365) / 12) : adr;
   const otro = e.modoGestion === "auto" ? r.comparativa.str_admin : r.comparativa.str_auto;
   const exit = r.exitScenario;
   const bolsillo = (r.projections ?? []).reduce((acc, p) => acc + (p.flujoOperacionalAnual < 0 ? -p.flujoOperacionalAnual : 0), 0);
@@ -82,8 +85,8 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
       adr,
       adrEsDelUsuario: r.adrFuente === "override",
       capPct,
-      capRefPct: CAP_STR_UMBRAL_PCT,
-      gapPts: capPct - CAP_STR_UMBRAL_PCT,
+      capRefPct: umbralPct,
+      gapPts: capPct - umbralPct,
       adrRef: Math.round(adrRef / 100) * 100,
       fronteras: sim?.fronterasIngreso ?? null,
       matriz: sim?.matrizTarifaOcupacion ?? null,

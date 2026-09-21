@@ -180,7 +180,7 @@ export function recomputeShortTermForLegacy(
   persistedResults: { airbnbRaw?: unknown; ocupacionRealizadaComparables?: ShortTermResult["ocupacionRealizadaComparables"] } | null | undefined,
   ufClp: number,
   asOf: Date,
-  mediana: { mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null },
+  mediana: { mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null; capRefComuna?: import("@/lib/capref-comuna").CapRefComunaSnapshot | null },
 ): ShortTermResultsPersisted | null {
   // La MISMA función que usa la metadata: un solo camino al veredicto, no dos.
   const base = veredictoStrRecomputado(inputData, persistedResults, ufClp, asOf);

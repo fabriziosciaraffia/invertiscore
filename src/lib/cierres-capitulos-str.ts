@@ -47,11 +47,11 @@ export function cierreRentaStr(a: ArgsCierreRentaStr, f: FmtCierre): SegCierre[]
   const cobras = a.adrEsDelUsuario ? `Cobras ${f.money(a.adr)} por noche, un dato tuyo,` : "Cobras la mediana de la zona";
   // Oración A · dónde cae el cap rate (banda neutral ±0,2 como el hallazgo)
   if (a.gapPts <= -0.2) {
-    segs.push({ t: `${cobras} y rindes ${brechaEnPalabras(a.gapPts, f.pct1)} bajo el umbral (${ref}): para rendir como una renta corta necesitarías cerca de ${f.money(a.adrRef)} por noche. ` });
+    segs.push({ t: `${cobras} y rindes ${brechaEnPalabras(a.gapPts, f.pct1)} bajo la referencia (${ref}): para rendir como una renta corta acá necesitarías cerca de ${f.money(a.adrRef)} por noche. ` });
   } else if (a.gapPts >= 0.2) {
-    segs.push({ t: `${cobras} y rindes ${brechaEnPalabras(a.gapPts, f.pct1)} sobre el umbral (${ref}): incluso cobrando ${f.money(a.adrRef)} por noche rendirías como una renta corta, hay holgura. ` });
+    segs.push({ t: `${cobras} y rindes ${brechaEnPalabras(a.gapPts, f.pct1)} sobre la referencia (${ref}): incluso cobrando ${f.money(a.adrRef)} por noche rendirías como una renta corta, hay holgura. ` });
   } else {
-    segs.push({ t: `${cobras} y rindes en línea con el umbral (${ref}): la tarifa de la zona es justo la que hace que este precio se justifique. ` });
+    segs.push({ t: `${cobras} y rindes en línea con la referencia (${ref}): la tarifa de la zona es justo la que hace que este precio se justifique. ` });
   }
   // Oración B · hacia arriba (frontera del ingreso)
   const fr = a.fronteras;
