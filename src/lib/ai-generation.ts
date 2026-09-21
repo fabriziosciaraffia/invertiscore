@@ -1164,7 +1164,21 @@ function datosHallazgoParaPrompt(h: Hallazgo): string {
     case "sobreprecio": {
       const v = h.valor;
       const lado = v.desviacionPct >= 0 ? "SOBRE" : "BAJO";
-      return `qué: precio por m² contra la mediana de la comuna${v.comuna ? ` (${v.comuna})` : ""} · cuánto: UF ${pct(v.sujetoUfM2)}/m² contra mediana UF ${pct(v.medianaComunaUfM2)}/m², un ${Math.abs(Math.round(v.desviacionPct))}% ${lado} la mediana (${v.n} ventas) · dirección: ${dir} · ${conf}`;
+      // La posición en la distribución de la comuna (21-sep-2026): con cuartiles, el
+      // modelo sabe en qué cuarto cae el metro y puede nombrarlo — «caro» no es la misma
+      // palabra en Providencia (p75 +9%) que en Santiago centro (p75 +18%). Sin
+      // cuartiles (snapshot anterior al campo) la línea es la de siempre.
+      const donde: Record<string, string> = {
+        sobre_p75: "en el cuarto más caro de la comuna",
+        mediana_p75: "en la mitad central de la comuna, del lado caro",
+        p25_mediana: "en la mitad central de la comuna, del lado barato",
+        bajo_p25: "en el cuarto más barato de la comuna",
+      };
+      const posicion =
+        v.posicion && v.p25UfM2 != null && v.p75UfM2 != null
+          ? ` · posición en la comuna: ${donde[v.posicion]} (la mitad de los avisos comparables va de UF ${pct(v.p25UfM2)} a UF ${pct(v.p75UfM2)}/m²; nómbrala al narrar el precio, dice más que el %)`
+          : "";
+      return `qué: precio por m² contra la mediana de la comuna${v.comuna ? ` (${v.comuna})` : ""} · cuánto: UF ${pct(v.sujetoUfM2)}/m² contra mediana UF ${pct(v.medianaComunaUfM2)}/m², un ${Math.abs(Math.round(v.desviacionPct))}% ${lado} la mediana (${v.n} ventas)${posicion} · dirección: ${dir} · ${conf}`;
     }
     case "plusvalia": {
       const v = h.valor;
@@ -1277,17 +1291,25 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const condicionSujeto = resolverCondicionMercado(input);
     let universoZona: CondicionMercado | undefined;
     let nZona = 0;
+    // Cuartiles de la MISMA muestra que la mediana (21-sep-2026): viajan con ella —del vivo
+    // o del snapshot— hasta buildPrecioVsComuna, que deriva la posición del sujeto; sin
+    // ellos el hallazgo cae a la frase por desviación. La FULL del golden mostró que la
+    // generación los perdía acá aunque el recompute del render ya los tuviera.
+    let p25Zona: number | null = null;
+    let p75Zona: number | null = null;
 
     // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties,
     // DENTRO del universo del sujeto (misma fuente y umbral que el drawer zone-insight).
     {
-      const { mediana: medianaUF, n, universo } = await getComunaMedianaVentaUF(
+      const { mediana: medianaUF, n, universo, p25, p75 } = await getComunaMedianaVentaUF(
         supabase, input.comuna, input.superficie, input.dormitorios, UF_CLP, condicionSujeto);
       if (typeof medianaUF === "number" && medianaUF > 0) {
         precioM2Zona = medianaUF;
         precioM2ZonaConfiable = true;
         universoZona = universo;
         nZona = n;
+        p25Zona = p25 ?? null;
+        p75Zona = p75 ?? null;
       }
     }
     // 2º nivel RETIRADO (2026-08-17): era el cache de `zone_insight`, y con la
@@ -1323,7 +1345,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // cadena de precio/m² (el arriendo de zona ya no sale de ahí).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const medianaSnapshot = (analysis as any).mediana_comuna_snapshot as
-      { mediana: number | null; n: number; universo?: CondicionMercado } | null | undefined;
+      { mediana: number | null; n: number; universo?: CondicionMercado; p25?: number | null; p75?: number | null } | null | undefined;
     if (medianaSnapshot != null) {
       if (typeof medianaSnapshot.mediana === "number" && medianaSnapshot.mediana > 0) {
         precioM2Zona = medianaSnapshot.mediana;
@@ -1332,10 +1354,16 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         // trae una mediana de universo mixto y NO debe rotularse (undefined).
         universoZona = medianaSnapshot.universo;
         nZona = medianaSnapshot.n ?? 0;
+        // Y los cuartiles también: la foto fija gana entera. Un snapshot anterior al
+        // campo los trae en undefined → sin posición, aunque el vivo los tenga hoy.
+        p25Zona = medianaSnapshot.p25 ?? null;
+        p75Zona = medianaSnapshot.p75 ?? null;
       } else {
         precioM2ZonaConfiable = false; // snapshot congeló "sin mediana confiable"
         universoZona = undefined;
         nZona = 0;
+        p25Zona = null;
+        p75Zona = null;
       }
     }
 
@@ -1356,6 +1384,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       confiable: precioM2ZonaConfiable,
       n: precioM2ZonaConfiable ? nZona : 0,
       universo: precioM2ZonaConfiable ? universoZona : undefined,
+      p25UfM2: precioM2ZonaConfiable ? p25Zona : null,
+      p75UfM2: precioM2ZonaConfiable ? p75Zona : null,
     });
 
     // Decisividades calibradas (E2 · escala común "Δdecisión"). Fuente única y
