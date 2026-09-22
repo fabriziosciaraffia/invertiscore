@@ -16,7 +16,8 @@ import type {
   HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import { calcDividendo, calcFlujoDesglose, calcMesVacio, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
+import { calcFlujoDesglose, calcMesVacio, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
+import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { respaldoArriendo, resolverArriendoReferencia, resolverProcedenciaArriendo, fmtRadioArriendo } from "@/lib/arriendo-referencia";
@@ -615,10 +616,10 @@ export function CapitulosInversion({
           const altMoney = (n: number) =>
             currency === "UF" ? "$" + Math.round(n).toLocaleString("es-CL") : "UF " + Math.round(n / (valorUF || 1)).toLocaleString("es-CL");
           const oport = costoOportunidad(inversionInicial, anios);
-          const ltv = 0.7;
-          const nuevoCredito = Math.round(exit.valorVenta * ltv);
-          const liquidez = nuevoCredito - exit.saldoCredito;
-          const cuotaNueva = plazo > 0 ? calcDividendo(nuevoCredito, tasaPct, plazo) : 0;
+          // El refinanciamiento es EL DEL MOTOR (calcRefinanceScenario, al año de salida, REFI_LTV):
+          // el capítulo no calcula el suyo. Decisión de Fabrizio, 22-sep-2026.
+          const refi = results.refinanceScenario ?? null;
+          const veces = refi?.ratioCuota != null ? refi.ratioCuota.toFixed(1).replace(".", ",") : null;
           const segs = cierreResultado(
             {
               comuna,
@@ -776,16 +777,20 @@ export function CapitulosInversion({
                         <FilaDato k="Te queda" tip="Valor − deuda − comisión" v={money(exit.equityCLP)} tono="tot" />
                       </FilasDato>
                     </div>
-                    {plazo > 0 && liquidez > 0 && (
+                    {refi && plazo > 0 && refi.capitalLiberado > 0 && (
                       <div>
                         <h4>Si refinancias</h4>
                         <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
                         <FilasDato>
-                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${anios}`} sub={`${Math.round(ltv * 100)}% del valor`} v={money(nuevoCredito)} />
+                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor`} v={money(refi.nuevoCredito)} />
                           <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={`−${money(exit.saldoCredito)}`} tono="neg" />
-                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasaPct)}%`} v={money(cuotaNueva)} unidad="/mes" />
-                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={money(liquidez)} tono="tot" />
+                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasaPct)}%`} v={money(refi.nuevoDividendo)} unidad="/mes" />
+                          <FilaDato k="Tu mes con la cuota nueva" tip="Arriendo − cuota nueva − gastos" v={<span style={{ color: refi.nuevoFlujoNeto < 0 ? "var(--signal-red)" : undefined }}>{`${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))}`}</span>} unidad="/mes" />
+                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={money(refi.capitalLiberado)} tono="tot" />
                         </FilasDato>
+                        {avisaCuotaRefi(refi.ratioCuota) && veces && (
+                          <p className="ex">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
+                        )}
                       </div>
                     )}
                   </div>

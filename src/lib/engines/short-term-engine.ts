@@ -25,7 +25,8 @@ import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
 import { resolverModeloCostos } from "../modelo-costos";
-import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital } from "../types";
+import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital, RefinanceScenario } from "../types";
+import { REFI_LTV, ratioCuotaRefi } from "../refinanciamiento";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "../types";
 import { calcIRRPct } from "../finance/irr";
 
@@ -426,6 +427,8 @@ export interface ShortTermResult {
   // Opcionales para no romper análisis STR persistidos pre-4b.
   projections?: YearProjectionSTR[];
   exitScenario?: ExitScenarioSTR;
+  /** Refinanciamiento al año de salida (22-sep-2026); opcional por filas persistidas anteriores. */
+  refinanceScenario?: RefinanceScenario;
   // Commit E.2 · 2026-05-13 — campos `engineSignal` y `francoVerdict` removidos.
   // El veredicto único vive en `veredicto` (arriba). Read-path tolera análisis
   // legacy con cualquiera de las tres llaves via `readVeredicto()`.
@@ -1083,6 +1086,31 @@ function buildProjections(
   return projections;
 }
 
+function buildRefinanceScenario(
+  input: ShortTermInputs,
+  projections: YearProjectionSTR[],
+  anios: number,
+  dividendoActual: number,
+  flujoCajaMensual: number,
+): RefinanceScenario {
+  const proy = projections[Math.min(anios - 1, projections.length - 1)];
+  const nuevoAvaluo = proy?.valorDepto ?? 0;
+  const nuevoCredito = Math.round(nuevoAvaluo * REFI_LTV);
+  const capitalLiberado = nuevoCredito - (proy?.saldoCredito ?? 0);
+  const nuevoDividendo = input.plazoCredito > 0 ? calcDividendo(nuevoCredito, input.tasaCredito, input.plazoCredito) : 0;
+  return {
+    anios,
+    ltv: REFI_LTV,
+    nuevoAvaluo: Math.round(nuevoAvaluo),
+    nuevoCredito,
+    capitalLiberado: Math.round(capitalLiberado),
+    nuevoDividendo: Math.round(nuevoDividendo),
+    dividendoActual: Math.round(dividendoActual),
+    ratioCuota: ratioCuotaRefi(nuevoDividendo, dividendoActual),
+    nuevoFlujoNeto: Math.round(flujoCajaMensual - (nuevoDividendo - dividendoActual)),
+  };
+}
+
 /**
  * Escenario de salida en año N. Ronda 4b.
  * Replica la firma de `calcExitScenario` del LTR adaptada a STR.
@@ -1416,6 +1444,11 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     asOf,
   );
   const exitScenario = buildExitScenario(projections, capitalInvertido, pie, razonSinPie);
+  // Refinanciamiento al año de salida, espejo de calcRefinanceScenario (LTR): crédito nuevo al
+  // REFI_LTV del valor proyectado, cuota con la tasa y el plazo del crédito actual, y el flujo
+  // del mes base con la cuota nueva. Hasta el 22-sep-2026 STR no lo emitía y el capítulo VI
+  // calculaba el suyo.
+  const refinanceScenario = buildRefinanceScenario(input, projections, exitScenario.yearVenta, dividendoMensual, base.flujoCajaMensual);
 
   // --- 9. Subsidio Ley 21.748 (Commit 3a · 2026-05-12) ---
   // Paridad con LTR analysis.ts:307-311. La rebaja NO se aplica al cálculo
@@ -1572,6 +1605,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     sensibilidadPrecio,
     projections,
     exitScenario,
+    refinanceScenario,
     // Commit E.2 · 2026-05-13 — el motor STR ya no emite `engineSignal` ni
     // `francoVerdict`. FrancoScoreSTR es la única fuente del veredicto canónico
     // y se persiste como `veredicto` directo. Análisis legacy con esas llaves

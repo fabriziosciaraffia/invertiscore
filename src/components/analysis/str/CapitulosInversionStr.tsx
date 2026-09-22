@@ -11,7 +11,8 @@ import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
 import { NOMBRE_RENTABILIDAD, explicacionUmbralStr, fuenteUmbralStr } from "@/lib/capref-copy";
 import { barraDia1 } from "@/lib/plata-dia1";
-import { costoOportunidad, calcDividendo } from "@/lib/analysis";
+import { costoOportunidad } from "@/lib/analysis";
+import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
@@ -748,10 +749,10 @@ export function CapitulosInversionStr({
           const bolsillo = args.resultado.bolsilloCLP;
           const pctFirme = patrimonio > 0 ? Math.round(((results.pie + amort) / patrimonio) * 100) : 0;
           const pctPlus = patrimonio > 0 ? Math.max(0, 100 - pctFirme) : 0;
-          const ltv = 0.7;
-          const nuevoCredito = Math.round(exit.valorVenta * ltv);
-          const liquidez = nuevoCredito - exit.saldoCreditoAlVender;
-          const cuotaNueva = plazo > 0 ? calcDividendo(nuevoCredito, tasa, plazo) : 0;
+          // El refinanciamiento es EL DEL MOTOR (buildRefinanceScenario, al año de salida, REFI_LTV):
+          // el capítulo no calcula el suyo. Decisión de Fabrizio, 22-sep-2026.
+          const refi = results.refinanceScenario ?? null;
+          const veces = refi?.ratioCuota != null ? refi.ratioCuota.toFixed(1).replace(".", ",") : null;
           const proyPct = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
           return {
             id: "resultado",
@@ -826,16 +827,22 @@ export function CapitulosInversionStr({
                         <FilaDato k="Te queda" tip="Valor − deuda − gastos" v={money(patrimonio)} tono="tot" />
                       </FilasDato>
                     </div>
-                    <div>
-                      <h4>Si refinancias</h4>
-                      <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
-                      <FilasDato>
-                        <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${anios}`} sub={`70% del valor del año ${anios}`} v={money(nuevoCredito)} />
-                        <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={neg(-exit.saldoCreditoAlVender)} />
-                        {cuotaNueva > 0 && <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasa)}%`} v={money(cuotaNueva)} unidad="/mes" />}
-                        <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={neg(liquidez)} tono="tot" />
-                      </FilasDato>
-                    </div>
+                    {refi && plazo > 0 && refi.capitalLiberado > 0 && (
+                      <div>
+                        <h4>Si refinancias</h4>
+                        <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
+                        <FilasDato>
+                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}`} v={money(refi.nuevoCredito)} />
+                          <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={neg(-exit.saldoCreditoAlVender)} />
+                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasa)}%`} v={money(refi.nuevoDividendo)} unidad="/mes" />
+                          <FilaDato k="Tu mes con la cuota nueva" tip="Ingreso neto − cuota nueva" v={neg(refi.nuevoFlujoNeto)} unidad="/mes" />
+                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={neg(refi.capitalLiberado)} tono="tot" />
+                        </FilasDato>
+                        {avisaCuotaRefi(refi.ratioCuota) && veces && (
+                          <p className="ex">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${neg(refi.nuevoFlujoNeto)} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </VViz>
                 <VCierre titulo="Qué significa">

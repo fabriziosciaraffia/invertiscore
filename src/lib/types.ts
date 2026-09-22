@@ -332,10 +332,18 @@ export interface ExitScenario {
 }
 
 export interface RefinanceScenario {
+  /** Año del refinanciamiento: el MISMO de la salida (exitScenario.anios), desde el 22-sep-2026. */
+  anios: number;
+  /** Loan-to-value del crédito nuevo (REFI_LTV, refinanciamiento.ts). */
+  ltv: number;
   nuevoAvaluo: number;
   nuevoCredito: number;
   capitalLiberado: number;
   nuevoDividendo: number;
+  /** La cuota de hoy, para leer el salto sin recalcular. */
+  dividendoActual: number;
+  /** nuevoDividendo ÷ dividendoActual; null sin crédito actual. El capítulo avisa sobre REFI_AVISO_CUOTA_RATIO. */
+  ratioCuota: number | null;
   nuevoFlujoNeto: number;
 }
 

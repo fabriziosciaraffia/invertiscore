@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
 import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
+import { REFI_LTV, ratioCuotaRefi } from "./refinanciamiento";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
@@ -1067,10 +1068,13 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
 // Refinance Scenario
 // =========================================
 
-function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 5): RefinanceScenario {
+// Al AÑO DE SALIDA (el mismo de exitScenario) desde el 22-sep-2026: el capítulo «Tu resultado»
+// pone venta y refinanciamiento lado a lado en el mismo año, y hasta hoy calculaba el suyo
+// (70%, plazo y tasa originales) mientras este se emitía a 5 años y no lo leía nadie.
+export function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): RefinanceScenario {
   const proy = projections[Math.min(anios - 1, projections.length - 1)];
   const nuevoAvaluo = proy.valorPropiedad;
-  const nuevoCredito = Math.round(nuevoAvaluo * 0.80);
+  const nuevoCredito = Math.round(nuevoAvaluo * REFI_LTV);
   const capitalLiberado = nuevoCredito - proy.saldoCredito;
   const nuevoDividendo = calcDividendo(nuevoCredito, input.tasaInteres, input.plazoCredito);
   const refi = calcFlujoDesglose({
@@ -1086,10 +1090,14 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
   const nuevoFlujoNeto = refi.flujoNeto;
 
   return {
+    anios,
+    ltv: REFI_LTV,
     nuevoAvaluo: Math.round(nuevoAvaluo),
     nuevoCredito,
     capitalLiberado: Math.round(capitalLiberado),
     nuevoDividendo,
+    dividendoActual: metrics.dividendo,
+    ratioCuota: ratioCuotaRefi(nuevoDividendo, metrics.dividendo),
     nuevoFlujoNeto: Math.round(nuevoFlujoNeto),
   };
 }
@@ -1329,7 +1337,7 @@ function tirDe(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number, as
  *    calculable, y entonces su peso se reparte entre las demás (`combinarConReparto`).
  * La penalización por entrega futura se aplica sobre el score, como siempre.
  */
-function dimensionesScoreLtr(
+export function dimensionesScoreLtr(
   input: AnalisisInput,
   metrics: AnalysisMetrics,
   ufClp: number,
@@ -2445,7 +2453,7 @@ export function runAnalysis(
     metrics.hallazgoFlujoMensual = aplicarHorizonteAFlujo(metrics.hallazgoFlujoMensual, projections, metrics);
   }
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
-  const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
+  const refinanceScenario = calcRefinanceScenario(input, metrics, projections, exitScenario.anios);
   // Score y desglose salen de la MISMA llamada (una sola fórmula, ver dimensionesScoreLtr).
   const dimsScore = dimensionesScoreLtr(input, metrics, ufClp, asOf, undefined, metricaValorONull(exitScenario.tir));
   const score = dimsScore.score;

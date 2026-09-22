@@ -183,10 +183,14 @@ const DEMO_RESULTS: FullAnalysisResult = {
     };
   })(),
   refinanceScenario: {
+    anios: 10,
+    ltv: 0.8,
     nuevoAvaluo: projections[9].valorPropiedad,
     nuevoCredito: Math.round(projections[9].valorPropiedad * 0.8),
     capitalLiberado: Math.round(projections[9].valorPropiedad * 0.8 - projections[9].saldoCredito),
     nuevoDividendo: 650000,
+    dividendoActual: DIVIDENDO,
+    ratioCuota: 650000 / DIVIDENDO,
     nuevoFlujoNeto: -180000,
   },
   sensitivity: [
