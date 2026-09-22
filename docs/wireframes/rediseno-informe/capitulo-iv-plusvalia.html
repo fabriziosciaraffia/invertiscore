@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo IV · «Plusvalía» · LTR y STR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 22-sep-2026 · «Plusvalía» (IV en LTR; en STR se monta el MISMO capítulo). Nada implementado.
+     LO PROPIO QUE SE QUEDA: el histórico de la comuna contra el 3% que usa el informe, con su fuente.
+     LO QUE ENTRA: el gráfico de la serie anual GfK de la comuna (UF/m² de deptos nuevos, precio de
+     oferta, 2015-2024; diez puntos que viven en `GFK_SERIE` y hasta hoy solo leía /comunas), el
+     estimado 2025 de Franco como punto hueco con su banda (`PLUSVALIA_ESTIMADO_2025`), y la línea del
+     3% compuesta desde 2015 como referencia visible: la distancia entre las dos es el capítulo.
+     ¿REAL O NOMINAL? La serie está en UF por m², y la UF se reajusta con el IPC: es REAL. El 3%
+     (`PLUSVALIA_PROYECCION_ANUAL`, «3% real anual, nominal flat») se aplica sobre el precio en CLP con
+     la UF congelada del análisis, o sea también en términos reales. Las dos curvas son comparables y
+     el rótulo lo dice: «en UF, o sea ya descontada la inflación».
+     LO QUE SALE: dos de las tres veces que decía «3% parejo» (intro y cierre); la proyección del valor
+     (vive en «Tu resultado»); el termómetro (la distancia la muestra el gráfico); «Franco no usa el
+     histórico» (falso: el score lo usa al 30% de la dimensión plusvalía, que pesa 17 de 100) y
+     «supuesto neutro» (el 3% se aplica sobre el precio de mercado, no sobre lo que pagaste; en un
+     tercio de las filas «Tu resultado» resta el sobreprecio).
+     STR: el mismo capítulo, sin la compra en verde (STR no modela entrega), con una intro de una frase
+     —la plusvalía no depende de cómo lo operas— y la frase del 3% del VI se muda acá.
+     CIFRAS REALES (22-sep-2026, recompute de cada página): LTR 8395ea55 (Las Condes, 3,3% > 3%,
+     sobreprecio 5%) y 6db7a9ac (Providencia, 2,9% < 3%, sin sobreprecio); STR 11a6dc52 (Santiago, 5,0%
+     > 3%, sobreprecio 34%) y fc156834 (Providencia, 2,9% < 3%). Series de `plusvalia-estimado.gen.ts`.
+     LA FUENTE: una línea, con la forma que el informe ya usa. Hoy conviven TRES formas (ver el panel
+     «Formas de citar» abajo): la del informe (`ATRIBUCION_GFK`), la de /comunas («elaboración propia en
+     base a datos públicos de…») y la de /metodologia. El mockup usa la del informe, reordenada como
+     pidió Fabrizio; la elección es suya.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--ink1:#71717A}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--ink1:#8A8A90}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1000px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1000px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par2{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  [data-view="mobile"] .par2{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par2{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cabeza{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+  .cabeza .q{font-size:15.5px;font-weight:600}
+  .cabeza .q small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  .cabeza .val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .cabeza .val.rojo{color:var(--signal)}
+  .cabeza .val small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3)}
+  .bloque{margin-top:18px}
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+  .v-sub .num{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--tx);color:var(--page);font-size:9.5px;align-items:center;justify-content:center;font-weight:700}
+  .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
+  .v-prosa b{color:var(--tx);font-weight:600}
+  .v-pie{font-size:12.5px;line-height:1.55;color:var(--tx2);margin-top:8px}
+  .v-pie b{color:var(--tx);font-weight:600}
+  .v-cierre{margin-top:18px;font-size:13.5px;line-height:1.6;color:var(--tx2)}
+  .v-cierre b{color:var(--tx);font-weight:600}
+  .v-cierre mark{background:transparent;box-shadow:inset 0 -.42em 0 color-mix(in srgb, var(--tx) 22%, transparent);color:inherit}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
+  .chart{width:100%;height:210px;display:block}
+  .leyenda{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:6px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .cont{font-size:10px;color:var(--tx4);text-align:right;margin-top:8px}
+  .decision{max-width:1000px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.formas{font-size:12px;border-collapse:collapse;max-width:1000px;margin:8px auto}
+  table.formas td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line)}
+  table.formas td:first-child{color:var(--tx4);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Capítulo IV · «Plusvalía» · el histórico de la comuna contra el 3% del informe</h1>
+  <p class="subx">Mockup del 22-sep-2026. Lo propio del capítulo en tres piezas: el gráfico de la serie de la comuna con la línea del 3% (la distancia se lee sin termómetro), un párrafo de qué entra al informe (el histórico al veredicto, el 3% real sobre el precio de mercado a la proyección), y un cierre de una oración. STR monta el mismo capítulo con una intro de una frase y sin la compra en verde. El contador de cada escena dice cuánto queda contra los 1.088–1.188 de hoy.</p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Ancho</span>
+    <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Real, no nominal.</b> La serie GfK es UF por m², y la UF sigue al IPC: es real. El 3% se aplica sobre el precio en CLP con la UF congelada del análisis: también real. El rótulo del eje lo dice una vez: «UF/m², o sea ya descontada la inflación».</li>
+    <li><b>Encabezado:</b> «Plusvalía X% anual», en rojo cuando la comuna quedó bajo el 3% (hallazgo adverso, 19% del parque); sub «Comuna 2015–2025 · proyección 3%».</li>
+    <li><b>1 · El gráfico:</b> la serie 2015–2024 en tinta plena, el estimado 2025 como punto hueco con su banda, y el 3% compuesto desde 2015 en tinta tenue punteada. A la derecha, el acumulado de cada una: «+50%» contra «+34%». Sin verde ni ocre; la serie no es plata que sale.</li>
+    <li><b>2 · Lo que entra al informe,</b> en un párrafo y con el 3% dicho UNA vez: el histórico entra al veredicto (30% de la dimensión plusvalía, 17 puntos del score) y la proyección a diez años usa 3% real para todas las comunas sobre el precio de mercado; con sobreprecio, la frase nombra cuánto y que «Tu resultado» lo descuenta.</li>
+    <li><b>Cierre</b> de una oración, por rama: supera / al ritmo / bajo el 3% / sin serie propia. La compra en verde (10% de LTR) sigue como bloque propio en LTR; STR no lo tiene.</li>
+    <li><b>Fuente</b> en una línea con la forma del informe, reordenada como la pediste; las tres formas que conviven hoy están abajo para que elijas.</li>
+  </ul>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>Formas de citar que conviven hoy</h2><p>Tres, en superficies distintas. El mockup usa la primera, con el orden que pediste («Histórico de Ñuñoa: precios de oferta…»).</p></div>
+<table class="formas">
+  <tr><td>Informe (hallazgo, capítulo IV, zona, PDF vía procedencia)</td><td>«Histórico 2015-2025 · GfK/NielsenIQ, precios de oferta de deptos nuevos · Providencia» — <code>fuenteHistoricaPlusvalia</code> sobre <code>ATRIBUCION_GFK</code> / <code>ATRIBUCION_ARENAS_CAYO</code> («Arenas &amp; Cayo, Tinsa, Propital, Activo Más»). La zona abrevia a «GfK 2015-2025» en la celda y repite la larga en el pie.</td></tr>
+  <tr><td>/comunas (sección de plusvalía)</td><td>«Fuente: elaboración propia en base a datos públicos de GfK/NielsenIQ, Tinsa, Colliers y Arenas &amp; Cayo.» — una sola línea para todas las comunas, sin período ni distinción de cuál alimentó a cuál.</td></tr>
+  <tr><td>/metodologia</td><td>«GfK / NielsenIQ» y «Arenas &amp; Cayo (con Tinsa, Propital y Activo Más)» como nombres de fuente, con su descripción aparte.</td></tr>
+  <tr><td>Prompt y zone-insight (no visibles)</td><td>«Arenas &amp; Cayo, Propital, Tinsa» y «serie anual de la comuna (GfK)»: heredan la del informe.</td></tr>
+</table>
+
+<script>
+  const pct1 = (n) => n.toFixed(1).replace(".", ",") + "%";
+  const mm = (n) => "$" + (n / 1e6).toFixed(1).replace(".", ",") + " MM";
+  // ── Series reales (plusvalia-estimado.gen.ts): UF/m² de deptos nuevos, precio de oferta, promedio anual ──
+  const SERIES = {
+    "Santiago":    { desde: 2015, valores: [52.8, 55.3, 57.1, 61.6, 69.2, 72.3, 78.3, 81.4, 80.5, 84], est2025: { ufM2: 79.1, min: 75.2, max: 83 }, anual: 5.0, acum: 50 },
+    "Providencia": { desde: 2015, valores: [81.9, 84.7, 85.1, 89.3, 93.8, 98.2, 101.4, 103.3, 103.9, 105], est2025: { ufM2: 106.5, min: 104.4, max: 108.6 }, anual: 2.9, acum: 30 },
+    "Las Condes":  { desde: 2015, valores: [82.6, 86.7, 88.3, 92.7, 98.3, 102.8, 107.1, 109.3, 110.3, 111.1], est2025: { ufM2: 112.1, min: 109.8, max: 114.3 }, anual: 3.3, acum: 36 },
+  };
+  const FILAS = [
+    { id: "8395ea55", mod: "LTR", comuna: "Las Condes", titulo: "Las Condes 1D · AJUSTA · el histórico supera al 3% · sobreprecio 5%", motor: "el arriendo", sobre: { pct: 5, clp: 10507114 }, preEntrega: null },
+    { id: "6db7a9ac", mod: "LTR", comuna: "Providencia", titulo: "Demo · Providencia 2D · AJUSTA · el histórico no llega al 3%", motor: "el arriendo", sobre: null, preEntrega: null },
+    { id: "11a6dc52", mod: "STR", comuna: "Santiago", titulo: "Santiago 1D · renta corta · el histórico supera al 3% · sobreprecio 34%", motor: "la operación por noche", sobre: { pct: 34, clp: 31582042 }, preEntrega: null },
+    { id: "fc156834", mod: "STR", comuna: "Providencia", titulo: "Providencia 1D · renta corta · COMPRAR · el histórico no llega al 3%", motor: "la operación por noche", sobre: null, preEntrega: null },
+  ];
+
+  function grafico(s) {
+    const W = 600, H = 210, L = 44, R = 70, T = 14, B = 24;
+    const anios = s.valores.map((_, i) => s.desde + i).concat([s.desde + s.valores.length]);
+    const base = s.valores[0];
+    const ref = anios.map((a, i) => base * Math.pow(1.03, i));
+    const all = [...s.valores, s.est2025.max, ...ref];
+    const mn = Math.min(...all) * 0.97, mx = Math.max(...all) * 1.03;
+    const x = (i) => L + (i / (anios.length - 1)) * (W - L - R);
+    const y = (v) => T + (1 - (v - mn) / (mx - mn)) * (H - T - B);
+    const serie = s.valores.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const refPath = ref.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const iE = s.valores.length;
+    const acumRef = Math.round((Math.pow(1.03, iE) - 1) * 100);
+    const ticks = [mn, (mn + mx) / 2, mx].map((v) => Math.round(v));
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-label="UF por m² de deptos nuevos en ${s.comuna}, 2015 a 2025, contra un 3% real al año">
+      ${ticks.map((t) => `<line x1="${L}" y1="${y(t)}" x2="${W - R}" y2="${y(t)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${L - 5}" y="${y(t) + 3}" font-size="8.5" fill="var(--tx3)" text-anchor="end" font-family="Inter">${t}</text>`).join("")}
+      ${anios.map((a, i) => (i % 2 === 0 || i === anios.length - 1) ? `<text x="${x(i)}" y="${H - 8}" font-size="9" fill="var(--tx4)" text-anchor="middle" font-family="Inter">${a}</text>` : "").join("")}
+      <path d="${refPath}" fill="none" stroke="var(--ink1)" stroke-width="1.6" stroke-dasharray="4 4"/>
+      <path d="${serie}" fill="none" stroke="var(--tx)" stroke-width="2.2"/>
+      ${s.valores.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="2.6" fill="var(--tx)"/>`).join("")}
+      <line x1="${x(iE)}" y1="${y(s.est2025.min)}" x2="${x(iE)}" y2="${y(s.est2025.max)}" stroke="var(--tx)" stroke-width="1.2"/>
+      <circle cx="${x(iE)}" cy="${y(s.est2025.ufM2)}" r="3.2" fill="var(--card)" stroke="var(--tx)" stroke-width="1.6"/>
+      <text x="${x(iE) + 8}" y="${y(s.valores[iE - 1]) + 3}" font-size="10" font-weight="700" fill="var(--tx)" font-family="Inter">+${s.acum}%</text>
+      <text x="${x(iE) + 8}" y="${y(ref[iE]) + 3}" font-size="10" fill="var(--ink1)" font-family="Inter">+${acumRef}% al 3%</text>
+    </svg><div class="leyenda"><span><i style="background:var(--tx)"></i>${s.comuna} · UF/m² de deptos nuevos</span><span><i style="background:repeating-linear-gradient(90deg,var(--ink1) 0 4px,transparent 4px 8px)"></i>3% real al año desde 2015</span><span><i style="background:transparent;border:1.5px solid var(--tx);height:8px;width:8px;border-radius:50%"></i>2025 estimado, con su banda</span></div>`;
+  }
+
+  function escena(f) {
+    const s = { ...SERIES[f.comuna], comuna: f.comuna };
+    const g = Math.round((s.anual - 3) * 10) / 10;
+    const rama = Math.abs(g) < 0.3 ? "ritmo" : g > 0 ? "supera" : "menos";
+    const rojo = s.anual < 3;
+    const intro = f.mod === "STR" ? `<p class="v-prosa">La plusvalía es del depto, no de cómo lo operas: un Airbnb en ${f.comuna} vale lo mismo que un arriendo largo el día que lo vendes.</p>` : "";
+    const sobreTxt = f.sobre ? ` En este caso pagaste ${f.sobre.pct}% sobre la mediana: los ${mm(f.sobre.clp)} de sobreprecio se descuentan en «Tu resultado» antes de proyectar.` : "";
+    const entra = `<p class="v-pie"><b>Lo que entra al informe.</b> El histórico de ${f.comuna} entra al veredicto (es el 30% de la dimensión plusvalía, 17 puntos del score). La proyección a diez años no lo usa: aplica 3% real al año a todas las comunas, sobre el precio de mercado del depto, no sobre lo que pagaste.${sobreTxt}</p>`;
+    const cierre = rama === "supera"
+      ? `${f.comuna} subió <b>${pct1(s.anual)} real al año</b> entre 2015 y 2025, más que el 3% proyectado: <mark>si repite su década este informe se queda corto, y si no la repite, no estás contando con algo que no ocurrió.</mark>`
+      : rama === "ritmo"
+        ? `${f.comuna} subió <b>${pct1(s.anual)} real al año</b> entre 2015 y 2025, al ritmo del 3% proyectado: <mark>el histórico no es garantía, y todo lo que sigue en este informe descansa en ese ritmo.</mark>`
+        : `${f.comuna} subió <b>${pct1(s.anual)} real al año</b> entre 2015 y 2025, menos que el 3% proyectado: <mark>todo lo que sigue supone que la comuna hace en la próxima década lo que no hizo en la anterior.</mark>`;
+    return `<div class="escena" data-id="${f.id}">
+      <div class="cabeza"><div class="q">Plusvalía<small>${f.mod} · ${f.titulo}</small></div><div class="val${rojo ? " rojo" : ""}">Plusvalía ${pct1(s.anual)} anual<small>${f.comuna} 2015–2025 · proyección 3%</small></div></div>
+      ${intro}
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Cuánto subió ${f.comuna}, contra el 3% del informe</div>${grafico(s)}
+        <p class="v-pie">De UF ${s.valores[0].toLocaleString("es-CL")} a UF ${s.valores[s.valores.length - 1].toLocaleString("es-CL")} el m² entre 2015 y 2024, en UF, o sea ya descontada la inflación: <b>${pct1(s.anual)} al año</b>. El período cruza el boom, el estallido y la pandemia: es un promedio de años atípicos, no una proyección.</p>
+      </div>
+      <div class="bloque">${entra}</div>
+      <p class="v-cierre"><b>Qué significa.</b> ${cierre}</p>
+      <div class="v-fuente">Histórico de ${f.comuna}: precios de oferta de deptos nuevos, GfK/NielsenIQ 2015–2025; el 2025 es estimado de Franco sobre la misma base.</div>
+      <div class="cont"></div>
+    </div>`;
+  }
+
+  const cont = document.getElementById("escenas");
+  const rot = document.createElement("div"); rot.className = "rot";
+  rot.innerHTML = `<h2>Cuatro escenas</h2><p>LTR: Las Condes (supera) y Providencia (no llega). STR: Santiago (supera, con sobreprecio) y Providencia (no llega). La comuna con serie Arenas &amp; Cayo (dos puntos, 2014-2024: Independencia, Huechuraba, Recoleta…) dibuja los dos extremos unidos por una recta con la misma línea del 3%; sin serie propia (0,7%), el promedio Gran Santiago y su rótulo.</p>`;
+  cont.appendChild(rot);
+  const grid = document.createElement("div"); grid.className = "par2";
+  grid.innerHTML = FILAS.map(escena).join("");
+  cont.appendChild(grid);
+  document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo (hoy 1.088–1.188)`; });
+  document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));
+  document.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.view = b.dataset.v; document.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("on", x === b)); }));
+</script>
+</body>
+</html>
