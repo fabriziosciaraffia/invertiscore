@@ -35,6 +35,12 @@ export type NivelStrRef = "celda" | "comuna" | "sin_referencia";
 
 /** Mínimo por lado (direcciones estimadas y ventas usadas) para publicar un peldaño. */
 export const MIN_STRREF = 15;
+/** El peldaño «comuna» pooled-ea las estimaciones, pero solo vale si la tipología del sujeto está en
+ *  el pool: al menos `n` estimaciones y al menos `share` del pool. Fijado el 22-sep-2026 con el pool
+ *  real: Ñuñoa 3D era 6 de 120 (5%) y daba 0,2%; Macul 1D y 3D, 2 de 20 (10%); Vitacura 1D, 2 de 27
+ *  (7%). La Florida 1D, 11 de 101 (11%), queda y da 5,0%. Un umbral construido con el ingreso de
+ *  otra tipología no es referencia débil: es referencia falsa. */
+export const MIN_TIPOLOGIA_POOL = { n: 5, share: 0.1 } as const;
 
 /** Peldaños de avisos, en orden. La resolución viva y el gate iteran ESTA lista. */
 export const CASCADA_STRREF: ReadonlyArray<"celda" | "comuna"> = ["celda", "comuna"];
@@ -113,11 +119,18 @@ export function evaluarPeldanoStrRef(
 ): StrRefZonaSnapshot | null {
   const ingresos = direcciones.map((d) => d.ingresoAnual).filter((x) => x > 0);
   if (ingresos.length < MIN_STRREF || !venta || venta.n < MIN_STRREF || !(venta.precioP50 > 0) || !(venta.m2P50 > 0)) return null;
+  if (nivel === "comuna") {
+    const enPool = direcciones.filter((d) => d.dormitorios === celda.dormitorios && d.ingresoAnual > 0).length;
+    if (enPool < MIN_TIPOLOGIA_POOL.n || enPool / ingresos.length < MIN_TIPOLOGIA_POOL.share) return null;
+  }
   const ingresoAnual = Math.round(median(ingresos));
   // En «comuna» las estimaciones son pooled (todas las tipologías) pero la venta y los costos son
   // los de la tipología del sujeto; `celda.dormitorios` queda null para declarar el peldaño.
   const dormitorios = nivel === "celda" ? celda.dormitorios : null;
   const y = yieldStrZona({ ingresoAnual, precio: venta.precioP50, m2: venta.m2P50, comuna: celda.comuna, dormitorios: celda.dormitorios });
+  // Un umbral en cero o negativo no es referencia débil: es referencia falsa (Vitacura 3D daba −0,4,
+  // Vitacura 2D 0,02 que el informe imprime «0,0%»). Positivo AL DECIMAL QUE SE MUESTRA.
+  if (!(Math.round(y.neto * 10) / 10 > 0)) return null;
   const fuente =
     `${ingresos.length} estimaciones de Airbnb (${rotuloDorms(dormitorios)}) en ${celda.comuna} ` +
     `sobre ${venta.n} avisos de venta usados (${rotuloDorms(dormitoriosVentaProxy(celda.dormitorios))}, 90 días); ` +

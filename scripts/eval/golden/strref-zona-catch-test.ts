@@ -33,6 +33,7 @@ import { join } from "node:path";
 import {
   CASCADA_STRREF,
   MIN_STRREF,
+  MIN_TIPOLOGIA_POOL,
   comunaDeDireccionAirroi,
   dormitoriosVentaProxy,
   evaluarPeldanoStrRef,
@@ -83,13 +84,30 @@ export function runStrRefZonaTier(): { hard: number } {
   // tipología del sujeto (Vitacura daba −0,3% con la venta pooled de 148 m²; decisión 21-sep).
   if (!/estimaciones de Airbnb \(todas las tipologías\)/.test(soloComuna.fuente) || !/venta usados \(1D, 90 días\)/.test(soloComuna.fuente)) F(`2b · la fuente de «comuna» no declara estimaciones pooled sobre la venta de la tipología (${soloComuna.fuente})`);
   const enCeldaC = resolverStrRefCascada({ comuna: "Santiago", dormitorios: 3 }, () => ({ direcciones: dirs(15, 3), venta: venta(15) }), T0);
-  const comunaC = resolverStrRefCascada({ comuna: "Santiago", dormitorios: 3 }, (n) => (n === "comuna" ? { direcciones: dirs(30, 1), venta: venta(15) } : { direcciones: dirs(3, 3), venta: venta(15) }), T0);
+  const comunaC = resolverStrRefCascada({ comuna: "Santiago", dormitorios: 3 }, (n) => (n === "comuna" ? { direcciones: [...dirs(5, 3), ...dirs(25, 1)], venta: venta(15) } : { direcciones: dirs(3, 3), venta: venta(15) }), T0);
   if (enCeldaC.costosMes !== comunaC.costosMes || comunaC.costosMes === null) F(`2b · los costos de «comuna» no son los de la tipología del sujeto (3D: celda ${enCeldaC.costosMes} vs comuna ${comunaC.costosMes})`);
   // 2c · el caché de AirROI se lee con el service role: `airbnb_estimates` tiene RLS sin políticas
   // y el cliente de sesión devuelve CERO filas sin error (el snapshot nacía «sin referencia»).
   const qCache = q.replace(/\/\/[^\n]*/g, "");
   const fnDirs = qCache.match(/async function direccionesDeComuna\(([^)]*)\)[^]*?\n}/);
   if (!fnDirs || /supabase/.test(fnDirs[1]) || !/process\.env\.SUPABASE_SERVICE_ROLE_KEY/.test(qCache) || !/const supabase = clienteAdminCache\(\);/.test(fnDirs[0])) F("2c · direccionesDeComuna no lee airbnb_estimates con el cliente admin (service role)");
+  // 2d · el peldaño «comuna» solo vale con la tipología del sujeto en el pool (n ≥ 5 y ≥ 10%), y un
+  //      yield ≤ 0 nunca es referencia (decisión de Fabrizio, 22-sep-2026: las 20 filas de Vitacura,
+  //      Ñuñoa 3D y Macul 3D caen a «sin referencia»).
+  if (MIN_TIPOLOGIA_POOL.n !== 5 || MIN_TIPOLOGIA_POOL.share !== 0.1) F(`2d · MIN_TIPOLOGIA_POOL debía ser n 5 / share 0,10 (es ${JSON.stringify(MIN_TIPOLOGIA_POOL)})`);
+  const c3 = { comuna: "Santiago", dormitorios: 3 };
+  const pool = (n3: number, n1: number) => [...dirs(n3, 3), ...dirs(n1, 1)];
+  const poolCorto = resolverStrRefCascada(c3, (n) => (n === "comuna" ? { direcciones: pool(4, 40), venta: venta(15) } : { direcciones: dirs(4, 3), venta: venta(15) }), T0);
+  if (poolCorto.nivel !== "sin_referencia") F(`2d · con 4 de la tipología en el pool (< n 5) el peldaño comuna publicó (${poolCorto.nivel})`);
+  const poolDiluido = resolverStrRefCascada(c3, (n) => (n === "comuna" ? { direcciones: pool(5, 60), venta: venta(15) } : { direcciones: dirs(5, 3), venta: venta(15) }), T0);
+  if (poolDiluido.nivel !== "sin_referencia") F(`2d · con 5 de 65 (8% < share) el peldaño comuna publicó (${poolDiluido.nivel})`);
+  const poolOk = resolverStrRefCascada(c3, (n) => (n === "comuna" ? { direcciones: pool(5, 40), venta: venta(15) } : { direcciones: dirs(5, 3), venta: venta(15) }), T0);
+  if (poolOk.nivel !== "comuna") F(`2d · con 5 de 45 (11%) el peldaño comuna no publicó (${poolOk.nivel})`);
+  const negativo = resolverStrRefCascada(celda, () => ({ direcciones: dirs(20), venta: venta(20, 900_000_000, 32) }), T0);
+  if (negativo.nivel !== "sin_referencia") F(`2d · un yield neto ≤ 0 se publicó como referencia (${negativo.nivel} / ${negativo.neto})`);
+  // Positivo al decimal que se muestra: con este precio el neto da 0,04 (se imprime «0,0%»).
+  const casiCero = resolverStrRefCascada(celda, () => ({ direcciones: dirs(20), venta: venta(20, 604_343_481, 32) }), T0);
+  if (casiCero.nivel !== "sin_referencia") F(`2d · un yield que se imprime «0,0%» se publicó como referencia (${casiCero.nivel} / ${casiCero.neto})`);
   const qVenta = q.replace(/\/\/[^\n]*/g, "");
   if ((qVenta.match(/ventaDe\(supabase, comuna, dormitoriosVentaProxy\(d\), ufValue\)/g) ?? []).length !== 1 || /ventaDe\(supabase, comuna, (null|nivel)/.test(qVenta)) F("2b · la resolución viva no trae UNA venta de la tipología del sujeto para los dos peldaños");
 

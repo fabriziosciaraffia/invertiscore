@@ -36,7 +36,7 @@ function clienteAdminCache(): SupabaseClient | null {
   return createClient(url, key);
 }
 
-async function direccionesDeComuna(comuna: string): Promise<DireccionEstimada[]> {
+export async function direccionesDeComuna(comuna: string): Promise<DireccionEstimada[]> {
   const supabase = clienteAdminCache();
   if (!supabase) {
     reportarFalloQuery({ message: "sin SUPABASE_SERVICE_ROLE_KEY: no se puede leer el caché de AirROI" }, { ruta: "lib/strref-zona-query", operacion: "cliente-admin", tags: { tabla: "airbnb_estimates" }, extra: { comuna } });
