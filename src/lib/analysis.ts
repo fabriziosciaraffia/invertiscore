@@ -18,6 +18,7 @@ import type {
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
 import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
 import { REFI_LTV, ratioCuotaRefi } from "./refinanciamiento";
+import { sobreprecioDeHoy } from "./sobreprecio-venta";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
@@ -957,7 +958,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   if (!proy) {
     return {
       anios,
-      valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
+      valorVenta: 0, sobreprecioVenta: null, precioVentaEsperado: 0, saldoCredito: 0, comisionVenta: 0,
       equityCLP: 0, flujoAcumulado: 0, retornoTotal: 0,
       multiplicadorCapital: sinPie ? metricaNoAplica(razonPie) : metricaValor(0),
       // Sin proyección para el horizonte pedido no hay TIR que calcular, y
@@ -974,8 +975,13 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   }
 
   const valorVenta = proy.valorPropiedad;
-  const comisionVenta = Math.round(valorVenta * COMISION_VENTA);
-  const equityCLP = valorVenta - proy.saldoCredito - comisionVenta;
+  // Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano al vender. La desviación
+  // es la FUENTE ÚNICA de precioVsComuna (la misma del hallazgo y del gate de sobreprecio).
+  const pvc = metrics.precioVsComuna;
+  const sobreprecioVenta = sobreprecioDeHoy({ precioCLP: metrics.precioCLP, desviacionPct: pvc?.desviacionPct, confiable: pvc?.confiable === true, n: pvc?.n ?? 0 });
+  const precioVentaEsperado = valorVenta - (sobreprecioVenta?.clp ?? 0);
+  const comisionVenta = Math.round(precioVentaEsperado * COMISION_VENTA);
+  const equityCLP = precioVentaEsperado - proy.saldoCredito - comisionVenta;
   const retornoTotal = proy.flujoAcumulado + equityCLP;
 
   // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
@@ -1031,7 +1037,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   for (let i = 0; i < anios; i++) {
     let flujo = projections[i].flujoAnual;
     if (i === anios - 1) {
-      flujo += valorVenta - proy.saldoCredito - comisionVenta;
+      flujo += equityCLP;
     }
     flujos.push(flujo);
   }
@@ -1049,6 +1055,8 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   return {
     anios,
     valorVenta: Math.round(valorVenta),
+    sobreprecioVenta,
+    precioVentaEsperado: Math.round(precioVentaEsperado),
     saldoCredito: Math.round(proy.saldoCredito),
     comisionVenta,
     equityCLP: Math.round(equityCLP),

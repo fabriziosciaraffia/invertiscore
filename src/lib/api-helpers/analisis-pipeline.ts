@@ -587,6 +587,9 @@ export async function buildShortTermAnalysisRow(
     methodologyVersion: METHODOLOGY_VERSION_ACTUAL,
     precioCompra: body.precioCompra,
     superficie: body.superficieUtil,
+    // Variante B (22-sep-2026): la mediana comunal entra al motor para el sobreprecio en la venta.
+    medianaComunaUfM2: medianaComuna?.mediana ?? null,
+    medianaN: medianaComuna?.n ?? 0,
     dormitorios: body.dormitorios,
     banos: body.banos,
     tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,

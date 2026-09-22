@@ -27,6 +27,8 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puest
 import { resolverModeloCostos } from "../modelo-costos";
 import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital, RefinanceScenario } from "../types";
 import { REFI_LTV, ratioCuotaRefi } from "../refinanciamiento";
+import { sobreprecioDeHoy, type SobreprecioVenta } from "../sobreprecio-venta";
+import { buildPrecioVsComuna } from "../precio-vs-comuna";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "../types";
 import { calcIRRPct } from "../finance/irr";
 
@@ -64,6 +66,11 @@ export interface ShortTermInputs {
   // Propiedad
   precioCompra: number;
   superficie: number;
+  /** Mediana comunal de venta UF/m² (usados/nuevos, la misma del hallazgo de sobreprecio) y su n.
+   *  Desde el 22-sep-2026 el exit la lee para descontar el sobreprecio de hoy en la venta
+   *  (variante B); ausente ⇒ sin descuento. La traen el pipeline y el recompute (ctx). */
+  medianaComunaUfM2?: number | null;
+  medianaN?: number;
   dormitorios: number;
   banos: number;
   /** Tipo de propiedad: "Nuevo" / "Usado" (forma canónica) o lowercase del
@@ -268,6 +275,10 @@ export interface YearProjectionSTR {
   flujoAcumulado: number;
   aporteMensualPromedio: number;     // si flujo<0, lo que aporta el dueño /12
   patrimonioNeto: number;            // valorDepto - saldoCredito (SIN flujo — homologación LTR)
+  /** Tu parte SI VENDES ESE AÑO: valorDepto − saldo − gastos de venta − sobreprecio de hoy. En el
+   *  año de venta es EXACTAMENTE exit.equityCLP: un solo patrimonio en el informe (22-sep-2026).
+   *  Opcional por filas persistidas anteriores; el motor lo emite siempre. */
+  parteAlVender?: number;
   // ── Desglose anual (T0 CONGELADO STR · 04-sep-2026) — alimenta la planilla "Flujo por
   //    año" del modal. Son los MISMOS términos con los que el loop arma
   //    `flujoOperacionalAnual`; la identidad ingresoNeto − cuota − estabilización −
@@ -288,7 +299,13 @@ export interface YearProjectionSTR {
 // Escenario "si vendes en año N". Ronda 4b.
 export interface ExitScenarioSTR {
   yearVenta: number;
+  /** Valor PROYECTADO al año de venta: precioCompra × (1 + plusvalía)^años. */
   valorVenta: number;
+  /** El sobreprecio de hoy, descontado PLANO al vender (variante B, 22-sep-2026); null sin
+   *  mediana confiable o con precio en/bajo la mediana. Espejo exacto de LTR. */
+  sobreprecioVenta: SobreprecioVenta | null;
+  /** Lo que el mercado paga: valorVenta − sobreprecio. Sobre esto van cierre y equity. */
+  precioVentaEsperado: number;
   saldoCreditoAlVender: number;
   gastosCierre: number;              // 2% del precio venta
   flujoAcumuladoAlVender: number;
@@ -1120,6 +1137,7 @@ function buildExitScenario(
   capitalInicial: number,
   pieCLP: number,
   razonSinPie: RazonSinCapital,
+  sobreprecioVenta: SobreprecioVenta | null = null,
   yearVenta: number = HORIZONTE_DEFAULT,
 ): ExitScenarioSTR {
   // Pie cero (fase 1-2): sin capital propio el multiplicador no aplica, aunque
@@ -1129,7 +1147,7 @@ function buildExitScenario(
   const proy = projections[idx];
   if (!proy) {
     return {
-      yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
+      yearVenta, valorVenta: 0, sobreprecioVenta, precioVentaEsperado: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
       flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0, inversionInicial: Math.round(capitalInicial),
       multiplicadorCapital: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
       tirAnual: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
@@ -1138,13 +1156,16 @@ function buildExitScenario(
 
   const valorVenta = proy.valorDepto;
   const saldoCreditoAlVender = proy.saldoCredito;
-  const gastosCierre = Math.round(valorVenta * GASTOS_CIERRE_VENTA);
+  // Variante B: el sobreprecio de hoy se descuenta plano; cierre y equity van sobre lo que el
+  // mercado paga.
+  const precioVentaEsperado = valorVenta - (sobreprecioVenta?.clp ?? 0);
+  const gastosCierre = Math.round(precioVentaEsperado * GASTOS_CIERRE_VENTA);
   const flujoAcumuladoAlVender = proy.flujoAcumulado;
   // EQUITY al vender = valor − deuda − cierre, SIN flujo acumulado. Homologación EXACTA con
   // LTR (analysis.ts:682): "lo que te queda en la mano al liquidar el activo". El flujo
   // operativo ya lo recibiste durante los años → vive aparte en `retornoTotal` (espejo
   // analysis.ts:683), no dentro del equity/patrimonio.
-  const equityCLP = valorVenta - saldoCreditoAlVender - gastosCierre;
+  const equityCLP = precioVentaEsperado - saldoCreditoAlVender - gastosCierre;
   const retornoTotal = flujoAcumuladoAlVender + equityCLP;
   // Multiplicador = EQUITY(sin flujo) / total aportado, con totalAportado = capital inicial
   // + Σ aportes mensuales negativos. Espejo EXACTO de analysis.ts:704,727-729: mata el
@@ -1166,7 +1187,7 @@ function buildExitScenario(
   for (let i = 0; i < yearVenta && i < projections.length; i++) {
     let flujo = projections[i].flujoOperacionalAnual;
     if (i === yearVenta - 1) {
-      flujo += valorVenta - saldoCreditoAlVender - gastosCierre;
+      flujo += equityCLP;
     }
     flujos.push(flujo);
   }
@@ -1182,6 +1203,8 @@ function buildExitScenario(
   return {
     yearVenta,
     valorVenta: Math.round(valorVenta),
+    sobreprecioVenta,
+    precioVentaEsperado: Math.round(precioVentaEsperado),
     saldoCreditoAlVender: Math.round(saldoCreditoAlVender),
     gastosCierre,
     flujoAcumuladoAlVender: Math.round(flujoAcumuladoAlVender),
@@ -1443,7 +1466,23 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     perdidaRampUp,
     asOf,
   );
-  const exitScenario = buildExitScenario(projections, capitalInvertido, pie, razonSinPie);
+  // Variante B (22-sep-2026): el sobreprecio de hoy contra la mediana comunal (la MISMA
+  // desviación que el hallazgo de sobreprecio: precio UF ÷ superficie contra mediana UF/m²).
+  const sobreprecioVenta = (() => {
+    const precioUFsujeto = input.valorUF > 0 ? input.precioCompra / input.valorUF : 0;
+    const sujetoUfM2 = input.superficie > 0 && precioUFsujeto > 0 ? precioUFsujeto / input.superficie : NaN;
+    const confiable = typeof input.medianaComunaUfM2 === "number" && input.medianaComunaUfM2 > 0 && (input.medianaN ?? 0) > 0;
+    if (!confiable || !Number.isFinite(sujetoUfM2)) return null;
+    const pvc = buildPrecioVsComuna({ sujetoUfM2, medianaComunaUfM2: input.medianaComunaUfM2 ?? null, confiable, n: input.medianaN ?? 0 });
+    return sobreprecioDeHoy({ precioCLP: input.precioCompra, desviacionPct: pvc.desviacionPct, confiable: pvc.confiable, n: pvc.n });
+  })();
+  const exitScenario = buildExitScenario(projections, capitalInvertido, pie, razonSinPie, sobreprecioVenta);
+  // Un solo patrimonio: tu parte si vendes ese año, neta de gastos de venta y del sobreprecio de
+  // hoy; en el año de venta coincide exacto con exit.equityCLP.
+  for (const p of projections) {
+    const precioEsperadoAnio = p.valorDepto - (sobreprecioVenta?.clp ?? 0);
+    p.parteAlVender = Math.round(precioEsperadoAnio - p.saldoCredito - Math.round(precioEsperadoAnio * GASTOS_CIERRE_VENTA));
+  }
   // Refinanciamiento al año de salida, espejo de calcRefinanceScenario (LTR): crédito nuevo al
   // REFI_LTV del valor proyectado, cuota con la tasa y el plazo del crédito actual, y el flujo
   // del mes base con la cuota nueva. Hasta el 22-sep-2026 STR no lo emitía y el capítulo VI

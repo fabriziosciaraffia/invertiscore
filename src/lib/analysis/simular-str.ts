@@ -23,7 +23,7 @@ import { metricaValorONull, type MixPalancas, type Veredicto } from "@/lib/types
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 import { biseccionFactor, DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
 import { calcularMixPalancas } from "@/lib/mix-palancas";
-import { buildStrRecomputeCtx } from "./recompute-short-term-for-legacy";
+import { buildStrRecomputeCtx, type MedianaParaMotorStr } from "./recompute-short-term-for-legacy";
 import { recomputeStrConPatch, sondaStrConPatch, type VeredictoStrCtx } from "./veredicto-str-con-patch";
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
@@ -349,8 +349,9 @@ export function simularStrDesdePersistido(
   persistedResults: { airbnbRaw?: unknown } | null | undefined,
   ufClp: number,
   asOf: Date,
+  mediana?: MedianaParaMotorStr,
 ): SimulacionStr | null {
-  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp);
+  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp, mediana);
   if (!ctx) return null;
   const vctx: VeredictoStrCtx = { inputs: ctx.inputs, scoreExtras: ctx.scoreExtras, asOf };
   const base = recomputeStrConPatch(vctx, {});

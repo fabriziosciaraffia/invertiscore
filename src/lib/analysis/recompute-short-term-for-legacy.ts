@@ -41,10 +41,14 @@ export type ShortTermResultsPersisted = ShortTermResult & {
  * Devuelve `null` con los mismos guards que el recompute (sin airbnbRaw / sin input_data).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** La mediana comunal que el motor STR lee para el sobreprecio en la venta (variante B). */
+export type MedianaParaMotorStr = { mediana: number | null; n: number } | null | undefined;
+
 export function buildStrRecomputeCtx(
   inputData: Record<string, any> | null | undefined,
   persistedResults: { airbnbRaw?: unknown } | null | undefined,
   ufClp: number,
+  mediana?: MedianaParaMotorStr,
 ): { inputs: ShortTermInputs; scoreExtras: ScoreSTRExtras; airbnbRaw: unknown } | null {
   const airbnbRaw = persistedResults?.airbnbRaw;
   if (!airbnbRaw || !inputData || typeof inputData.precioCompra !== "number") return null;
@@ -107,6 +111,11 @@ export function buildStrRecomputeCtx(
     costoAmoblamiento: inputData.estaAmoblado ? 0 : (inputData.costoAmoblamiento || 0),
     arriendoLargoMensual: inputData.arriendoLargoMensual,
     valorUF: ufClp,
+    // Variante B (22-sep-2026): sin mediana no hay descuento; con ella el exit descuenta el
+    // sobreprecio de hoy, así que quien recompute SIN mediana (metadata, simulación) puede
+    // divergir del cuerpo en las filas con sobreprecio — por eso todos la reciben.
+    medianaComunaUfM2: mediana?.mediana ?? null,
+    medianaN: mediana?.n ?? 0,
     // Gate del modelo de costos: la versión estampada al crear. Filas previas no
     // la traen ⇒ legacy ⇒ curva de CapEx idéntica a la que las generó.
     methodologyVersion: typeof inputData.methodologyVersion === "string" ? inputData.methodologyVersion : undefined,
@@ -163,8 +172,9 @@ export function veredictoStrRecomputado(
   persistedResults: { airbnbRaw?: unknown } | null | undefined,
   ufClp: number,
   asOf: Date,
+  mediana?: MedianaParaMotorStr,
 ): { result: ShortTermResult; francoScore: ReturnType<typeof calcFrancoScoreSTR>; ctx: NonNullable<ReturnType<typeof buildStrRecomputeCtx>> } | null {
-  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp);
+  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp, mediana);
   if (!ctx || !inputData) return null;
   const result = calcShortTerm(ctx.inputs, asOf);
   const francoScore = calcFrancoScoreSTR({
@@ -183,7 +193,7 @@ export function recomputeShortTermForLegacy(
   mediana: { mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null; strRefZona?: import("@/lib/strref-zona").StrRefZonaSnapshot | null },
 ): ShortTermResultsPersisted | null {
   // La MISMA función que usa la metadata: un solo camino al veredicto, no dos.
-  const base = veredictoStrRecomputado(inputData, persistedResults, ufClp, asOf);
+  const base = veredictoStrRecomputado(inputData, persistedResults, ufClp, asOf, mediana);
   if (!base || !inputData) return null;
   const { result, francoScore } = base;
   const { inputs, scoreExtras, airbnbRaw } = base.ctx;

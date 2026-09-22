@@ -168,6 +168,8 @@ const DEMO_RESULTS: FullAnalysisResult = {
     return {
       anios: 10,
       valorVenta,
+      sobreprecioVenta: null,
+      precioVentaEsperado: valorVenta,
       saldoCredito,
       comisionVenta,
       equityCLP: gananciaNeta, // rename honesto gananciaNeta→equityCLP (campo del tipo)

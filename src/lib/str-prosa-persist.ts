@@ -83,7 +83,7 @@ export async function generarYPersistirProsaStr(args: {
     // Simulaciones del CONGELADO (fronteras y matrices) para el prompt y [HERO-CLAIM].
     // Un fallo acá no frena la prosa: sin simulación el bloque no entra.
     let simulacion = null;
-    try { simulacion = simularStrDesdePersistido(input, results as unknown as { airbnbRaw?: unknown }, ufFrozen, asOfFrozen); } catch { simulacion = null; }
+    try { simulacion = simularStrDesdePersistido(input, results as unknown as { airbnbRaw?: unknown }, ufFrozen, asOfFrozen, medianaStr); } catch { simulacion = null; }
     const gen = await generateStrProse({
       anthropic,
       inp: input,

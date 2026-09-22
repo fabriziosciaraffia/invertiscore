@@ -772,8 +772,12 @@ export function CapitulosInversion({
                       <p className="ex">Vendes al valor proyectado, pagas lo que queda del crédito y la comisión. Lo que sobra es tu parte.</p>
                       <FilasDato>
                         <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% al año por ${anios} años`} sub={`${PROY_PCT}% al año desde la compra`} v={money(exit.valorVenta)} />
+                        {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
+                        {exit.sobreprecioVenta && (
+                          <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna`} v={`−${money(exit.sobreprecioVenta.clp)}`} tono="neg" />
+                        )}
                         <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" sub={`lo que queda del crédito el año ${anios}`} v={`−${money(exit.saldoCredito)}`} tono="neg" />
-                        <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del valor de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
+                        <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del precio de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
                         <FilaDato k="Te queda" tip="Valor − deuda − comisión" v={money(exit.equityCLP)} tono="tot" />
                       </FilasDato>
                     </div>
@@ -798,7 +802,10 @@ export function CapitulosInversion({
                 <VCierre titulo="Qué significa">
                   <Segs segs={segs} />
                 </VCierre>
-                <VFuente>Motor Franco · proyección a {PROY_PCT}% anual · {ufFecha}</VFuente>
+                <VFuente>
+                  Motor Franco · proyección a {PROY_PCT}% anual · {ufFecha}
+                  {exit.sobreprecioVenta ? ` · Sobreprecio contra la mediana de ${exit.sobreprecioVenta.n.toLocaleString("es-CL")} avisos comparables de la comuna${exit.sobreprecioVenta.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}.` : ""}
+                </VFuente>
               </div>
             ),
           };

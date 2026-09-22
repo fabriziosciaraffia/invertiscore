@@ -307,7 +307,13 @@ export interface YearProjection {
 
 export interface ExitScenario {
   anios: number;
+  /** Valor PROYECTADO al año de salida: precio × (1 + plusvalía)^años. */
   valorVenta: number;
+  /** El sobreprecio de hoy, descontado PLANO al vender (variante B, 22-sep-2026); null sin
+   *  mediana confiable o con precio en/bajo la mediana. Ver sobreprecio-venta.ts. */
+  sobreprecioVenta: import("./sobreprecio-venta").SobreprecioVenta | null;
+  /** Lo que el mercado paga: valorVenta − sobreprecio. Sobre esto van comisión y equity. */
+  precioVentaEsperado: number;
   saldoCredito: number;
   comisionVenta: number;
   // Rename honesto (paridad STR · b931831): EQUITY = lo que te queda al vender

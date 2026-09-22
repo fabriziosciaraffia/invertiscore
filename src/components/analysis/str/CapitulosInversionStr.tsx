@@ -771,10 +771,14 @@ export function CapitulosInversionStr({
                 {pr.length > 0 && (
                   <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
                     <VSub>Cómo crece tu parte, año a año</VSub>
+                    {/* UN SOLO PATRIMONIO (22-sep-2026): la curva dibuja tu parte SI VENDES ESE AÑO —neta de gastos
+                        de venta y del sobreprecio de hoy, `parteAlVender` del motor— y su etiqueta final es
+                        exit.equityCLP, el mismo número del encabezado y de «Te queda». Antes rotulaba
+                        `patrimonioNeto` (valor − deuda), 3% más que «tus $X» de la línea siguiente. */}
                     <CurvaPatrimonio
-                      anios={pr.map((p) => ({ year: p.year, valor: p.valorDepto, aporte: inversion + Math.max(0, -p.flujoAcumulado), patrimonio: p.patrimonioNeto }))}
-                      etiquetaFinal={compact(pr[pr.length - 1].patrimonioNeto)}
-                      fmtLeyenda={{ aporte: "Aporte acumulado", valor: `Valor del depto · ${proyPct}% al año`, parte: "Tu parte (valor − deuda)" }}
+                      anios={pr.map((p) => ({ year: p.year, valor: p.valorDepto, aporte: inversion + Math.max(0, -p.flujoAcumulado), patrimonio: p.parteAlVender ?? p.patrimonioNeto }))}
+                      etiquetaFinal={compact(patrimonio)}
+                      fmtLeyenda={{ aporte: "Aporte acumulado", valor: `Valor del depto · ${proyPct}% al año`, parte: "Tu parte si vendes ese año" }}
                     />
                   </VViz>
                 )}
@@ -822,8 +826,12 @@ export function CapitulosInversionStr({
                       <p className="ex">Vendes al valor proyectado, pagas lo que queda del crédito y los gastos de venta. Lo que sobra es tu parte.</p>
                       <FilasDato>
                         <FilaDato k="Valor de venta estimado" tip={`Precio × 1,0${proyPct} elevado a ${anios}`} sub={`${proyPct}% al año desde la compra`} v={money(exit.valorVenta)} />
+                        {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
+                        {exit.sobreprecioVenta && (
+                          <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna`} v={neg(-exit.sobreprecioVenta.clp)} />
+                        )}
                         <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" sub={`lo que queda del crédito el año ${anios}`} v={neg(-exit.saldoCreditoAlVender)} />
-                        <FilaDato k="Gastos de venta" tip="Comisión de corretaje" sub="2% del valor de venta" v={neg(-exit.gastosCierre)} />
+                        <FilaDato k="Gastos de venta" tip="Comisión de corretaje" sub="2% del precio de venta" v={neg(-exit.gastosCierre)} />
                         <FilaDato k="Te queda" tip="Valor − deuda − gastos" v={money(patrimonio)} tono="tot" />
                       </FilasDato>
                     </div>
@@ -850,6 +858,7 @@ export function CapitulosInversionStr({
                 </VCierre>
                 <VFuente>
                   Motor Franco · proyección a {proyPct}% anual · {ufFecha}
+                  {exit.sobreprecioVenta ? ` · Sobreprecio contra la mediana de ${exit.sobreprecioVenta.n.toLocaleString("es-CL")} avisos comparables de la comuna${exit.sobreprecioVenta.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}.` : ""}
                 </VFuente>
               </div>
             ),

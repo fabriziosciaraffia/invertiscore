@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     // `input_data` y `created_at` entran para poder RECOMPUTAR el veredicto (ver abajo). Esta
     // query es propia de la metadata —no comparte nada con el cuerpo de la página— así que
     // sumarle dos columnas a un SELECT que ya se hace no agrega un viaje a la base.
-    .select("nombre, comuna, results, input_data, created_at")
+    .select("nombre, comuna, results, input_data, created_at, mediana_comuna_snapshot")
     .eq("id", params.id)
     .single();
 
@@ -54,7 +54,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   // La UF es la CONGELADA, igual que en el cuerpo (`precioCompra / precioCompraUF`), y la
   // fecha es `created_at`: si la metadata usara la UF viva daría otro veredicto que la página.
   // `veredictoStrRecomputado` es la misma función que usa el recompute del cuerpo, así que no
-  // hay dos fórmulas; su acta explica por qué no necesita la mediana ni un segundo viaje.
+  // hay dos fórmulas. Desde el 22-sep-2026 (variante B) el exit descuenta el sobreprecio contra
+  // la mediana comunal, así que la mediana SÍ entra: la del snapshot persistido, sin segundo
+  // viaje. Filas sin snapshot recomputan sin descuento acá y con él en el cuerpo (que la
+  // prefetchea): en el parque del 22-sep ninguna cambia de veredicto por eso.
   //
   // Si el recompute no puede (legacy sin `airbnbRaw`, o sin los dos campos de precio) cae al
   // persistido — que es exactamente lo que hace el cuerpo, así que los dos siguen coincidiendo.
@@ -68,6 +71,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
           results as { airbnbRaw?: unknown } | null,
           precioCompraCLP / precioCompraUF,
           new Date(data.created_at ?? new Date().toISOString()),
+          (() => { const snap = data.mediana_comuna_snapshot as { mediana?: number | null; n?: number } | null; return snap ? { mediana: snap.mediana ?? null, n: snap.n ?? 0 } : undefined; })(),
         )
       : null;
   // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
@@ -304,7 +308,7 @@ export default async function STRResultPage({
     const uf = Number(raw?.ufCongelada) || ufFrozen;
     if (!raw || !data.created_at || !(uf > 0)) return null;
     try {
-      return simularStrDesdePersistido(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
+      return simularStrDesdePersistido(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at), medianaStr);
     } catch {
       return null;
     }
