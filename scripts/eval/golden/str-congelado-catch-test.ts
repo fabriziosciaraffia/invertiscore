@@ -150,7 +150,8 @@ async function main() {
     // comparación contra el largo y el otro modo— vive ahora en la tabla y en el V.
     const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), gestion: textoCierre(cierres.gestion), resultado: textoCierre(cierres.resultado) };
     if (!/sube a COMPRAR/.test(T.renta) || !/\$47\.5\d\d por noche/.test(T.renta) || !/cruza a COMPRAR aunque el mes quede en −\$919/.test(T.renta)) F(`eb7b · cierre I: ${T.renta}`);
-    if (!/156 noches/.test(T.noches) || !/sube con 163/.test(T.noches) || !/menos de dos puntos/.test(T.noches) || !/un solo mes en verde/.test(T.noches)) F(`eb7b · cierre III: ${T.noches}`);
+    // Cierre III desde el 22-sep-2026 («Ocupación en renta corta»): sin avisos parecidos guardados en esta fila, once meses en rojo.
+    if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches) || !/once meses en rojo/.test(T.noches)) F(`eb7b · cierre III: ${T.noches}`);
     if (!/\$150\.102/.test(T.gestion) || !/\$49\.460/.test(T.gestion) || !/dos tercios/.test(T.gestion) || !/\$185\.049/.test(T.gestion)) F(`eb7b · cierre V: ${T.gestion}`);
     if (!/×2,20/.test(T.resultado) && !/9,3/.test(T.resultado)) F(`eb7b · cierre VI: ${T.resultado}`);
     textoLimpio("eb7b", Object.values(T).concat(hallazgos.map((h) => h.fraseCanonica)));
@@ -180,7 +181,7 @@ async function main() {
     const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
     if (/sube a/.test(T.renta)) F(`2ff7 · cierre I ofrece subir en COMPRAR: ${T.renta}`);
     if (!/antes de caer a/.test(T.renta) && !/firme/.test(T.renta)) F(`2ff7 · cierre I sin colchón: ${T.renta}`);
-    if (!/ya no necesita más/.test(T.noches)) F(`2ff7 · cierre III: ${T.noches}`);
+    if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches)) F(`2ff7 · cierre III: ${T.noches}`);
     textoLimpio("2ff7", Object.values(T));
     console.log(`  2ff73320 · COMPRAR con mes negativo (${r.metrics!.flujoMensual})\n    I  ${T.renta}\n    III ${T.noches}`);
   }
