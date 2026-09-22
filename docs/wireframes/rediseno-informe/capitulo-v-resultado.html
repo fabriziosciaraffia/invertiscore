@@ -242,11 +242,15 @@
         <p class="tip mob">En mobile un tap sobre un tramo no abre nada: es la cola de los ⓘ. El ~40% de los usuarios vería una barra de colores sin saber qué es cada uno (solo la leyenda firme / proyectado de arriba).</p>`;
     }
     if (forma === "B") {
-      // B · rótulo y cifra sobre cada segmento; los angostos (< 14%) van debajo con guía.
-      const anchos = segs.filter((x) => x.pct >= 14), angostos = segs.filter((x) => x.pct < 14);
+      // B · rótulo y cifra sobre cada segmento. Dentro del tramo solo si es sólido y pasa del 30% del
+      //     ancho (a 700 px son ~95 px: cabe «Amortización $27,3 MM»); la plusvalía va SIEMPRE debajo
+      //     con guía, porque sobre la trama al 45% el texto no se lee. Los angostos también debajo.
+      const nombre = (x) => (x.t === "amort" ? "Amortización" : x.t === "plus" ? "Plusvalía" : "Pie");
+      const dentro = (x) => x.t !== "plus" && x.pct >= 30;
+      const abajo = segs.filter((x) => !dentro(x));
       let acc = 0; const centros = segs.map((x) => { const c = acc + x.pct / 2; acc += x.pct; return c; });
-      return `${fp}<div class="ba alta">${segs.map((x) => `<div class="s ${x.t}${x.pct >= 14 ? " lab" : ""}" style="width:${x.pct}%">${x.pct >= 14 ? `${x.k.split(" ")[0] === "Tu" ? "Pie" : x.t === "amort" ? "Amortización" : "Plusvalía"} ${mm(x.v)}` : ""}</div>`).join("")}</div>
-        ${angostos.length ? `<div class="rotulos">${angostos.map((x) => `<span style="left:${centros[segs.indexOf(x)]}%"><b>${x.t === "amort" ? "Amortización" : x.t === "plus" ? "Plusvalía" : "Pie"}</b>${mm(x.v)}</span>`).join("")}</div>` : ""}
+      return `${fp}<div class="ba alta">${segs.map((x) => `<div class="s ${x.t}${dentro(x) ? " lab" : ""}" style="width:${x.pct}%">${dentro(x) ? `${nombre(x)} ${mm(x.v)}` : ""}</div>`).join("")}</div>
+        ${abajo.length ? `<div class="rotulos">${abajo.map((x) => `<span style="left:${Math.min(88, Math.max(12, centros[segs.indexOf(x)]))}%"><b>${nombre(x)}</b>${mm(x.v)}</span>`).join("")}</div>` : ""}
         <p class="tip">${segs.map((x) => `${x.t === "pie" ? "Pie: lo que pusiste, vuelve entero" : x.t === "amort" ? `Amortización: lo que ${f.motor} pagó del crédito` : "Plusvalía: proyectada, neta de gastos de venta" + (f.sobre ? " y sobreprecio" : "")}`).join(" · ")}.</p>`;
     }
     // C · cascada vertical: cada tramo es una fila con su barra a escala y su rótulo al lado.
