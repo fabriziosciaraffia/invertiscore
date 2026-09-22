@@ -174,15 +174,19 @@ export function CapitulosInversionStr({
   const vsTxt = vsComuna === "mas" ? "más que" : vsComuna === "menos" ? "menos que" : vsComuna === "similar" ? "parecido a" : null;
 
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
-  // Habla AL USUARIO (21-sep-2026): «Rentabilidad», sin «cap rate», contra el umbral de la comuna
-  // (un punto sobre la bruta de los avisos, capref-comuna.ts + rentabilidad-str-hallazgo.ts). La
-  // tarifa que hace falta al centro, el dial desde las fronteras, el break-even en una frase con
-  // su banda, y la fuente en una línea. Salen: la tabla tarifa × ocupación (tres de las seis
-  // cifras del hero), el termómetro y la matriz (es del capítulo II). Mockup capitulo-i-cuanto-renta.html.
+  // Habla AL USUARIO (21-sep-2026): «Rentabilidad», sin «cap rate», contra lo que proyectan los
+  // Airbnb de la misma comuna y tipología (strref-zona.ts + rentabilidad-str-hallazgo.ts): el
+  // número y la fuente en una línea. La tarifa que hace falta al centro, el dial desde las
+  // fronteras, el break-even en una frase con su banda. Salen: la tabla tarifa × ocupación (tres
+  // de las seis cifras del hero), el termómetro y la matriz (es del capítulo II).
+  // SIN REFERENCIA (nivel «sin_referencia»): el capítulo lo dice y NO compara — ni centro «para
+  // rendir X», ni cruce contra el umbral, ni rojo en el valor; el 5% de respaldo es del motor,
+  // no del informe. Quedan el dial de la tarifa y el break-even, que no dependen de la referencia.
   const filaI: FilaHallazgo = (() => {
     const umbral = hRenta?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
     const refTxt = `${pct1(umbral)}%`;
     const vRef = { nivel: hRenta?.valor.nivel ?? "sin_referencia", comuna: hRenta?.valor.comuna ?? comuna, celdaDormitorios: hRenta?.valor.celdaDormitorios ?? null } as const;
+    const hayRef = vRef.nivel !== "sin_referencia";
     const adrRef = args.renta.adrRef;
     const holgura = adrRef <= adr;
     const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${money(adr * fl.factor)} por noche`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
@@ -223,26 +227,33 @@ export function CapitulosInversionStr({
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
       valor: conApellido(NOMBRE_RENTABILIDAD.str, `${pct1(cap)}%`),
-      valorRojo: cap < umbral,
-      ksub: `referencia ${refTxt}`,
+      valorRojo: hayRef && cap < umbral,
+      ksub: hayRef ? `referencia ${refTxt}` : "sin referencia en la zona",
       anchorId: anchorCapituloStr("renta"),
       cuerpo: (
         <div>
-          <VViz t={`Para rendir como la referencia: ${refTxt}`}>
-            <p className="v-explica">{explicacionUmbralStr(vRef)}</p>
-            <div className="v-centro">
-              <div className="hoy">
-                <div className="k">{adrEsTuya ? "Tu tarifa" : "La zona cobra"}</div>
-                <div className="n">{money(adr)}<small>/noche · rinde {pct1(cap)}%</small></div>
+          {hayRef ? (
+            <VViz t={`Para rendir como la referencia: ${refTxt}`}>
+              <p className="v-explica">{explicacionUmbralStr(vRef)}</p>
+              <div className="v-centro">
+                <div className="hoy">
+                  <div className="k">{adrEsTuya ? "Tu tarifa" : "La zona cobra"}</div>
+                  <div className="n">{money(adr)}<small>/noche · rinde {pct1(cap)}%</small></div>
+                </div>
+                <div className="fl">→</div>
+                <div>
+                  <div className="k">Para rendir {refTxt}</div>
+                  <div className="n">{money(adrRef)}<small>/noche · {Math.round(Math.abs(adrRef / adr - 1) * 100)}% {holgura ? "menos" : "más"}, a la misma ocupación</small></div>
+                </div>
               </div>
-              <div className="fl">→</div>
-              <div>
-                <div className="k">Para rendir {refTxt}</div>
-                <div className="n">{money(adrRef)}<small>/noche · {Math.round(Math.abs(adrRef / adr - 1) * 100)}% {holgura ? "menos" : "más"}, a la misma ocupación</small></div>
-              </div>
-            </div>
-            <p className="v-cruce">{cruce}</p>
-          </VViz>
+              <p className="v-cruce">{cruce}</p>
+            </VViz>
+          ) : (
+            <VViz t="Qué rinde, sin referencia de la zona">
+              <p className="v-explica">{explicacionUmbralStr(vRef)}</p>
+              <p className="v-cruce">{cobras}: rinde <b>{pct1(cap)}%</b> sobre el precio, después de operar. No hay Airbnb suficientes de {vRef.comuna} en nuestra base para decir si eso es mucho o poco para la zona, así que este capítulo no lo compara. Lo que sí se puede leer es cuánto aguanta la tarifa y cuánto tienes que facturar para no perder plata.</p>
+            </VViz>
+          )}
           {dial && (
             <VViz t="Cuánto aguanta la tarifa antes de que cambie el veredicto">
               <Dial zonas={dial.zonas} bordes={dial.bordes} marcaPct={dial.marcaPct} marcaK={adrEsTuya ? "Tu tarifa" : "Mediana de la zona"} marcaV={money(adr)} />

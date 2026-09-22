@@ -124,6 +124,23 @@ export function runCuantoRentaTier(): { hard: number } {
     if (!/punto de equilibrio/.test(txt)) F("5 · STR: la rama COMPRAR no cita el break-even");
     if (!/\{be\b/.test(txt)) F("5 · STR: la rama COMPRAR no usa el break-even del motor (be)");
   }
+  // 6 · sin referencia el capítulo LO DICE y NO COMPARA (decisión de Fabrizio, 21-sep-2026): el
+  //     valor no va en rojo, el sub no dice «referencia X», y la rama sin referencia no nombra el
+  //     umbral ni la tarifa «para rendir X»; el dial y el break-even quedan (no dependen de la
+  //     referencia).
+  if (!/const hayRef = vRef\.nivel !== "sin_referencia";/.test(str)) F("6 · STR no deriva hayRef del nivel del hallazgo");
+  if (!/valorRojo: hayRef && cap < umbral,/.test(str)) F("6 · STR: el rojo del valor no está gateado por hayRef");
+  if (!/ksub: hayRef \? `referencia \$\{refTxt\}` : "sin referencia en la zona",/.test(str)) F("6 · STR: el sub no cambia sin referencia");
+  // Las dos ramas se cierran en su </VViz>: un `)}` pelado corta en el primer `{pct1(cap)}`.
+  const ramas = str.match(/\{hayRef \? \(([^]*?)<\/VViz>\s*\) : \(([^]*?)<\/VViz>\s*\)\}/);
+  if (!ramas) F("6 · STR: el cuerpo no bifurca por hayRef");
+  else {
+    if (!/Para rendir como la referencia/.test(ramas[1]) || !/\{cruce\}/.test(ramas[1])) F("6 · STR: la rama con referencia perdió el centro o el cruce");
+    if (/refTxt|adrRef|umbral|\{cruce\}|Para rendir/.test(ramas[2])) F("6 · STR: la rama sin referencia compara contra el umbral");
+    if (!/no lo compara/.test(ramas[2]) || !/No hay Airbnb suficientes de \{vRef\.comuna\}/.test(ramas[2])) F("6 · STR: la rama sin referencia no dice que no compara ni por qué");
+    if (!/explicacionUmbralStr\(vRef\)/.test(ramas[2])) F("6 · STR: la rama sin referencia no explica qué es la rentabilidad");
+  }
+  if (!/\{dial && \(/.test(str) || !/\{sensStr && beBar && \(/.test(str)) F("6 · STR: el dial o el break-even dejaron de estar fuera de la bifurcación");
   const posBe = str.indexOf("const be = sensStr"); const posCruce = str.indexOf("const cruce = holgura");
   if (posBe < 0 || posCruce < 0 || posBe > posCruce) F("5 · STR: el break-even se lee después de la copy que lo cita");
   if (NOMBRE_RENTABILIDAD.ltr !== "Rentabilidad bruta" || NOMBRE_RENTABILIDAD.str !== "Rentabilidad") F("4 · la nomenclatura es «Rentabilidad bruta» / «Rentabilidad»");
@@ -132,7 +149,7 @@ export function runCuantoRentaTier(): { hard: number } {
     console.log(`   cuanto-renta ✗ ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     - ${f}`);
   } else {
-    console.log("   cuanto-renta ✓ (fuente en una línea por peldaño, explicación de una frase, umbral STR = comuna + 1, render sin cap rate ni UF ni BDO)");
+    console.log("   cuanto-renta ✓ (fuente en una línea por peldaño, explicación de una frase, umbral STR = lo que proyectan los Airbnb de la zona, sin referencia no compara, render sin cap rate ni UF ni BDO)");
   }
   return { hard: fallas.length };
 }
