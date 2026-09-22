@@ -88,7 +88,7 @@ export function runResultadoCapituloTier(): { hard: number } {
   if (!/\.pb-aporte\{fill:var\(--signal-red\)\}/.test(bloque)) F("5 · el aporte acumulado no va en Signal Red");
   if (!/\.pb-parte\{fill:none;stroke:var\(--doc-tx\)/.test(bloque) || !/\.bb-s\.amort\{background:var\(--doc-tx\)\}/.test(bloque) || !/\.bb-s\.pie\{background:var\(--doc-ink1\)\}/.test(bloque)) F("5 · tu parte / amortización / pie no salen de la tinta");
   if (!/\.bb-s\.plus::after\{[^}]*var\(--doc-trama-linea\)/.test(bloque)) F("5 · la plusvalía no lleva trama de tinta");
-  if (!/className=\{`bb-s \$\{t\.tono\}\$\{dentro\(t\) \? " bb-lab" : ""\}`\}/.test(bb) || !/const UMBRAL_DENTRO_PCT = 30;/.test(bb) || !/t\.tono !== "plus" && t\.pct >= UMBRAL_DENTRO_PCT && \(ancho == null \|\| \(t\.pct \/ 100\) \* ancho >= MIN_PX_DENTRO\)/.test(bb) || !/const MIN_PX_DENTRO = 96;/.test(bb)) F("6 · BarraApiladaB no es la forma B (rótulo dentro solo si sólido, ≥ 30% y caben 96 px; plusvalía abajo)");
+  if (!/className=\{`bb-s \$\{t\.tono\}\$\{dentro\(t\) \? " bb-lab" : ""\}`\}/.test(bb) || !/const UMBRAL_DENTRO_PCT = 30;/.test(bb) || !/t\.tono !== "plus" && t\.pct >= UMBRAL_DENTRO_PCT && \(ancho == null \|\| \(t\.pct \/ 100\) \* ancho >= MIN_PX_DENTRO\)/.test(bb) || !/const MIN_PX_DENTRO = 130;/.test(bb)) F("6 · BarraApiladaB no es la forma B (rótulo dentro solo si sólido, ≥ 30% y caben 130 px; plusvalía abajo)");
   if (!/width=\{W\} height=\{H\}/.test(pb) || /preserveAspectRatio="none"/.test(pb) || !/useAncho/.test(pb)) F("6 · PatrimonioBarras no se dibuja al ancho medido (estira el texto de los ejes)");
 
   // 7 · el cierre

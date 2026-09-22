@@ -655,7 +655,7 @@ export function CapitulosInversion({
                     {exit.sobreprecioVenta && (
                       <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna; se descuenta plano`} v={`−${money(exit.sobreprecioVenta.clp)}`} tono="neg" />
                     )}
-                    <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" v={`−${money(exit.saldoCredito)}`} tono="neg" />
+                    <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" v={exit.saldoCredito > 0 ? `−${money(exit.saldoCredito)}` : money(0)} tono="neg" />
                     <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del precio de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
                     <FilaDato k="Te queda" tip="Valor − sobreprecio − deuda − comisión" v={<span style={{ color: mult < 1 ? "var(--signal-red)" : undefined }}>{money(exit.equityCLP)}</span>} tono="tot" />
                   </FilasDato>

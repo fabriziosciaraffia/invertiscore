@@ -22,8 +22,9 @@ export interface TramoApilado {
 }
 
 const UMBRAL_DENTRO_PCT = 30;
-/** Píxeles que necesita «Amortización $27,3 MM» a 10,5 px: bajo esto el rótulo baja con guía. */
-const MIN_PX_DENTRO = 96;
+/** Píxeles que necesita «Amortización $37,9 MM» a 10,5 px en negrita (medido en mobile: a 99 px se
+ *  recortaba): bajo esto el rótulo baja con guía. */
+const MIN_PX_DENTRO = 130;
 
 export function BarraApiladaB({
   tramos,
