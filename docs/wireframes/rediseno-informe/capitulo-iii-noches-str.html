@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Capítulo III · STR · «Cuántas noches vas a tener»</title>
+<title>Capítulo III · STR · «Ocupación en renta corta»</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -30,7 +30,7 @@
      CIFRAS REALES (22-sep-2026, recompute): 06d44c93 (Santiago 2D, AJUSTA, comparables 41% = estimación
      41%), c0b01d27 (Las Condes 1D, AJUSTA, comparables 22% contra 49%), dc086820 (Providencia 2D, AJUSTA,
      sin comparables guardados).
-     TÍTULO: «Cuántas noches necesitas» era la pregunta del dial, y el dial se va. Propuestas abajo.
+     TÍTULO (decisión de Fabrizio, 22-sep): «Ocupación en renta corta». Las propuestas quedan abajo como registro.
      ═══════════════════════════════════════════════════════════════════════════ */
   :root{--sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;--signal:#C8323C;--rad:16px;--rad-s:12px}
   [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--ink1:#71717A}
@@ -84,15 +84,16 @@
   /* la barra de las dos marcas: un eje 0–100 de ocupación, la estimación en tinta plena y lo realizado en
      tinta tenue. No es un termómetro contra nada: son dos marcas sobre el mismo eje, y la distancia entre
      ellas es la confianza. */
-  .eje{position:relative;height:6px;border-radius:3px;background:var(--line2);margin:22px 6px 26px}
+  .eje{position:relative;height:6px;border-radius:3px;background:var(--line2);margin:22px 10px 40px}
+  .eje .tk{position:absolute;top:6px;width:1px;height:4px;background:var(--line2);transform:translateX(-50%)}
+  .eje .tk.may{height:7px;background:var(--tx4)}
   .eje .m{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;transform:translateX(-50%)}
   .eje .m.est{background:var(--tx)}
   .eje .m.real{background:var(--ink1)}
   .eje .l{position:absolute;font-family:var(--mono);font-size:10px;font-weight:700;transform:translateX(-50%);white-space:nowrap}
   .eje .l.est{top:-20px;color:var(--tx)}
-  .eje .l.real{top:12px;color:var(--ink1)}
-  .eje .t{position:absolute;top:12px;font-size:9.5px;color:var(--tx4)}
-  .eje .t.a{left:0}.eje .t.b{right:0}
+  .eje .l.real{top:26px;color:var(--ink1)}
+  .eje .t{position:absolute;top:15px;font-size:9.5px;color:var(--tx4);transform:translateX(-50%)}
   /* ── 2 · la curva del año ── */
   .curva{width:100%;height:150px;display:block}
   .leyenda{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:4px;flex-wrap:wrap}
@@ -117,8 +118,8 @@
     <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
   </div>
   <ul class="decision">
-    <li><b>Encabezado:</b> «Al año 151 noches», sub «con la ocupación estimada (41%) · los avisos parecidos ocuparon 41%». Con supuesto propio: «con la ocupación que definiste». Sin comparables: «sin avisos parecidos para contrastar».</li>
-    <li><b>1 · La estimación y lo que realizaron los parecidos.</b> Dos cifras: la ocupación estimada para tu depto (con sus noches al año) y la que realizaron el último año los avisos parecidos con que se estimó (con el n y cuántos son superhost). Debajo, las dos marcas sobre un eje 0–100: la distancia entre ellas es la confianza. La lectura en una frase, por rama: <b>cerca</b> (|Δ| ≤ 5 pts) «los avisos parecidos ocuparon lo mismo: el número se sostiene en lo que ya pasa en la zona» · <b>lejos</b> «ocuparon X, N puntos menos: la estimación cuenta con que operes mejor que la mayoría de los que hoy están publicados» · <b>sin comparables</b> «no hay avisos parecidos suficientes guardados para contrastarla».</li>
+    <li><b>Título:</b> «Ocupación en renta corta» (decisión de Fabrizio, 22-sep). <b>Encabezado:</b> «Al año 151 noches», sub «con la ocupación estimada (41%) · los avisos parecidos ocuparon 41%». Con supuesto propio: «con la ocupación que definiste». Sin comparables: «sin avisos parecidos para contrastar».</li>
+    <li><b>1 · La estimación y lo que realizaron los parecidos.</b> Dos cifras: la ocupación estimada para tu depto (con sus noches al año) y la que realizaron el último año los avisos parecidos con que se estimó (con el n y cuántos son superhost). Debajo, las dos marcas sobre el eje 0–100 con sus divisiones (cada 5, rotuladas cada 25), la estimación arriba y la mediana de los avisos similares abajo, cada una con su porcentaje. La lectura en una frase, por rama: <b>cerca</b> (|Δ| ≤ 5 pts) «los avisos parecidos ocuparon lo mismo: el número se sostiene en lo que ya pasa en la zona» · <b>lejos</b> «ocuparon X, N puntos menos: la estimación cuenta con que operes mejor que la mayoría de los que hoy están publicados» · <b>sin comparables</b> «No hay avisos parecidos suficientes guardados para contrastar la estimación: 171 noches es lo que el mercado estima para un depto como el tuyo.»</li>
     <li><b>El comentario</b>, fijo, sin alarma: la estimación es lo que logra un depto como el tuyo bien operado; los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan; una administración profesional aumenta las posibilidades de llegar a esa ocupación. Va después de la brecha y solo cuando hay comparables.</li>
     <li><b>2 · Cómo se reparte el año.</b> La misma curva de hoy (ingreso de cada mes contra el promedio), los meses en que pones plata en rojo y el resto en tinta. Copy: pico, valle, cuántos meses pones plata, y el arranque en caja (única mención del ramp-up en el capítulo; el II ya dice cuánto cuesta en facturación).</li>
     <li><b>Cierre</b> de una oración que junta las dos piezas: la confianza de las noches y la forma del año. No repite la cifra del ramp-up ni la frontera del veredicto (vive en el I).</li>
@@ -128,9 +129,9 @@
 
 <div id="escenas"></div>
 
-<div class="rot"><h2>El título</h2><p>«Cuántas noches necesitas» era la pregunta del dial, y el dial se va. Lo que queda pregunta cuántas noches vas a tener y cuánta confianza merece el número. Tres propuestas, en el tono de «Cuánto renta», «Tu flujo mensual», «Cómo lo pagas».</p></div>
+<div class="rot"><h2>El título</h2><p>Decidido: «Ocupación en renta corta». Las tres propuestas quedan como registro.</p></div>
 <table class="titulos">
-  <tr><td>Cuántas noches vas a tener</td><td>La recomendada. Pregunta como «Cuánto renta», habla de lo que va a pasar y no de una condición; el sub del encabezado pone la confianza al lado («los avisos parecidos ocuparon 41%»).</td></tr>
+  <tr><td>Cuántas noches vas a tener</td><td>Propuesta. Pregunta como «Cuánto renta», habla de lo que va a pasar y no de una condición; el sub del encabezado pone la confianza al lado («los avisos parecidos ocuparon 41%»).</td></tr>
   <tr><td>Tus noches al año</td><td>Como «Tu flujo mensual»: nombra la cifra del encabezado («Al año 151 noches») sin preguntar. Más corta, menos dice sobre la confianza.</td></tr>
   <tr><td>Cuántas noches, de verdad</td><td>Dice lo de la confianza en el título mismo: la estimación contra lo que realizan los parecidos. Es la que más promete y la que más cuesta cumplir sin comparables (42 filas).</td></tr>
 </table>
@@ -175,17 +176,20 @@
     // 1 · las dos cifras
     const celdas = `<div class="dos">
         <div class="c"><div class="k">${f.tuya ? "Tu supuesto" : "Estimada para tu depto"}</div><div class="n">${f.occ}%<small>${f.noches} noches al año</small></div><div class="s">${f.tuya ? "El número que definiste tú, no un dato de mercado." : "Lo que los datos de mercado estiman para un depto como el tuyo, estabilizado."}</div></div>
-        ${r ? `<div class="c tenue"><div class="k">Los avisos parecidos ocuparon</div><div class="n">${r.p50}%<small>${Math.round(r.p50 * 3.65)} noches</small></div><div class="s">Mediana del último año de los ${r.n} avisos con que se estimó; ${r.nSh} son superhost y ocuparon ${r.sh}%.</div></div>`
-           : `<div class="c vacia"><div class="k">Los avisos parecidos ocuparon</div><div class="n">sin dato</div><div class="s">Este análisis no guardó los avisos con que se estimó: no hay con qué contrastar.</div></div>`}
+        ${r ? `<div class="c tenue"><div class="k">Ocupación avisos similares</div><div class="n">${r.p50}%<small>${Math.round(r.p50 * 3.65)} noches</small></div><div class="s">Mediana del último año de los ${r.n} avisos con que se estimó; ${r.nSh} son superhost y ocuparon ${r.sh}%.</div></div>`
+           : `<div class="c vacia"><div class="k">Ocupación avisos similares</div><div class="n">sin dato</div><div class="s">Este análisis no guardó los avisos con que se estimó: no hay con qué contrastar.</div></div>`}
       </div>`;
-    const eje = r ? `<div class="eje"><span class="t a">0%</span><span class="t b">100%</span>
+    // El eje 0–100 con sus divisiones (cada 5, rotuladas cada 25): la estimación en tinta plena arriba,
+    // la mediana de los avisos similares en tinta tenue abajo, cada una con su porcentaje al lado.
+    const ticks = Array.from({ length: 21 }, (_, i) => i * 5).map((v) => `<span class="tk${v % 25 === 0 ? " may" : ""}" style="left:${v}%"></span>${v % 25 === 0 ? `<span class="t" style="left:${v}%">${v}%</span>` : ""}`).join("");
+    const eje = r ? `<div class="eje">${ticks}
         <span class="m est" style="left:${f.occ}%"></span><span class="l est" style="left:${f.occ}%">estimada ${f.occ}%</span>
-        <span class="m real" style="left:${r.p50}%"></span><span class="l real" style="left:${r.p50}%">realizaron ${r.p50}%</span></div>` : "";
+        <span class="m real" style="left:${r.p50}%"></span><span class="l real" style="left:${r.p50}%">avisos similares ${r.p50}%</span></div>` : "";
     const lectura = rama === "cerca"
       ? `<p class="v-pie">Los avisos parecidos ocuparon lo mismo que estima el mercado para tu depto: <b>el número se sostiene en lo que ya pasa en la zona</b>, no en una expectativa.</p>`
       : rama === "lejos"
         ? `<p class="v-pie">Los avisos parecidos ocuparon ${r.p50}%, <span class="neg">${Math.abs(delta)} puntos menos</span> que la estimación: <b>el número cuenta con que operes mejor que la mayoría de los que hoy están publicados</b>.</p>`
-        : `<p class="v-pie">No hay avisos parecidos suficientes guardados para contrastar la estimación: <b>${f.noches} noches es lo que el mercado estima para un depto como el tuyo</b>, y este capítulo no puede decir cuánta confianza merece.</p>`;
+        : `<p class="v-pie">No hay avisos parecidos suficientes guardados para contrastar la estimación: <b>${f.noches} noches es lo que el mercado estima para un depto como el tuyo</b>.</p>`;
     const comentario = r ? `<p class="v-pie">Por qué difieren: la estimación es lo que logra un depto como el tuyo bien operado. Los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan, y por eso ocupan menos. Una administración profesional aumenta las posibilidades de llegar a esa ocupación.</p>` : "";
     // 2 · el año
     const ing = f.fe.map((m) => m[0]); const iMax = ing.indexOf(Math.max(...ing)), iMin = ing.indexOf(Math.min(...ing));
@@ -200,8 +204,8 @@
         : `Las ${f.noches} noches son la estimación del mercado sin avisos parecidos que la contrasten: <mark>tómalas como el techo de lo razonable, no como el piso, y el año con ellas ya deja ${rojos} de doce meses en rojo.</mark>`;
     const fuente = `Datos de mercado · ocupación ${f.tuya ? "definida por ti" : "estimada para este depto"} y curva mensual de la zona${r ? ` · ${r.n} avisos parecidos, ocupación del último año` : ""} · ${f.fecha}`;
     return `<div class="escena" data-id="${f.id}">
-      <div class="cabeza"><div class="q">Cuántas noches vas a tener<small>STR · ${f.titulo}</small></div><div class="val">Al año ${f.noches} noches<small>${subCab}</small></div></div>
-      <div class="bloque"><div class="v-sub"><span class="num">1</span>La estimación, y lo que realizaron los avisos parecidos</div>${celdas}${eje}${lectura}${comentario}</div>
+      <div class="cabeza"><div class="q">Ocupación en renta corta<small>STR · ${f.titulo}</small></div><div class="val">Al año ${f.noches} noches<small>${subCab}</small></div></div>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Ocupación estimada para tu depto, y la alcanzada por avisos parecidos al tuyo</div>${celdas}${eje}${lectura}${comentario}</div>
       <div class="bloque"><div class="v-sub"><span class="num">2</span>Cómo se reparte el año</div>${curva(f.fe)}${anio}</div>
       <p class="v-cierre"><b>Qué significa.</b> ${cierre}</p>
       <div class="v-fuente">${fuente}</div>
