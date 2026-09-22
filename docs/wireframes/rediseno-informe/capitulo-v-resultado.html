@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo V · «Tu resultado a 10 años» · LTR y STR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 22-sep-2026 · «Tu resultado a 10 años» (V en LTR, VI en STR). Nada implementado
+     del render: lo que SÍ está implementado (y de donde salen las cifras) es el motor:
+       · el refinanciamiento es el del motor, al año de salida, 80% del valor, con la cuota y el
+         flujo nuevos y el aviso sobre 1,5× (commit f6d41ea3);
+       · el sobreprecio de hoy se descuenta PLANO en la venta, como línea visible (variante B,
+         commit 6cdadfbb); las 12 filas con muestra chica llevan la misma regla y la fuente lo dice;
+       · un solo patrimonio en STR: la curva dibuja tu parte si vendes ese año, y su etiqueta es
+         el mismo número del encabezado.
+     Tokens y primitivas heredados de `capitulo-i-cuanto-renta.html`.
+     TODAS LAS CIFRAS SON REALES: cuatro filas recomputadas el 22-sep-2026 por la cadena de cada
+     página (`scripts/of-filas-mockup-resultado.ts` + lectura en localhost):
+       · 6db7a9ac (demo LTR, Providencia): sin sobreprecio, ×2,21, refinanciamiento sin aviso;
+       · 8395ea55 (LTR, Las Condes): sobreprecio 5% sobre 107 avisos; pie 100%; es la fila que con B
+         pasa de COMPRAR a AJUSTA;
+       · 1a3a0c50 (LTR, Las Condes): ×0,98 —una de las dos filas donde patrimonio y multiplicador se
+         leen distinto—, valor en rojo, BUSCAR OTRA;
+       · 11a6dc52 (STR, Santiago): sobreprecio 34%, un solo patrimonio ($61,6 MM en la curva y en
+         «te queda»).
+     LO QUE QUEDA: encabezado con el resultado corregido por B · la curva (un patrimonio) · LA VENTA
+     AL AÑO DIEZ COMO PIEZA CENTRAL (cuatro filas y «te queda») · el refinanciamiento (cuatro filas
+     y la liquidez, con el aviso) · la descomposición firme/proyectado EN UNA LÍNEA · el cierre ·
+     la fuente.
+     LO QUE SALE: la barra del día 1, la barra apilada con sus cinco filas y tags, la nota de los
+     aportes, «La misma plata en otro lado» (el remate del cierre ya cita el depósito), el puente.
+     Censo del 22-sep: 2.633 caracteres → ~1.150 en este mockup (medido abajo, por escena).
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1000px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1000px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par2{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  [data-view="mobile"] .par2{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par2{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cabeza{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+  .cabeza .q{font-size:15.5px;font-weight:600}
+  .cabeza .q small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  .cabeza .val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .cabeza .val.rojo{color:var(--signal)}
+  .cabeza .val small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3)}
+  .bloque{margin-top:18px}
+  .bloque.central{background:var(--page);border:1px solid var(--line2);border-radius:var(--rad-s);padding:14px 16px}
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+  .v-sub .num{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--tx);color:var(--page);font-size:9.5px;align-items:center;justify-content:center;font-weight:700}
+  .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
+  .v-prosa b{color:var(--tx);font-weight:600}
+  .fila{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:baseline}
+  .fila:last-child{border-bottom:none}
+  .fila .k{color:var(--tx2)}
+  .fila .k small{display:block;font-size:11px;color:var(--tx4);margin-top:1px}
+  .fila .v{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+  .fila .v.neg{color:var(--tx3)}
+  .fila .v.rojo{color:var(--signal)}
+  .fila.tot{border-top:1px solid var(--line2);margin-top:2px;padding-top:9px}
+  .fila.tot .k,.fila.tot .v{font-weight:700;color:var(--tx)}
+  .linea{font-size:12.5px;line-height:1.55;color:var(--tx2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line2)}
+  .linea b{color:var(--tx);font-weight:600}
+  .aviso{font-size:12.5px;line-height:1.5;color:var(--tx2);margin-top:10px;padding:8px 10px;border-left:3px solid var(--signal);background:var(--sunk);border-radius:0 8px 8px 0}
+  .v-cierre{margin-top:18px;font-size:13.5px;line-height:1.6;color:var(--tx2)}
+  .v-cierre b{color:var(--tx);font-weight:600}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
+  .v-fuente.aviso2{border-left-color:var(--signal)}
+  .curva{width:100%;height:120px;display:block;margin-top:4px}
+  .leyenda{display:flex;gap:14px;font-size:10.5px;color:var(--tx3);margin-top:4px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .cont{font-size:10px;color:var(--tx4);text-align:right;margin-top:8px}
+  .decision{max-width:1000px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Capítulo V · «Tu resultado a 10 años» · la venta al año diez como pieza central</h1>
+  <p class="subx">Mockup del 22-sep-2026 sobre el motor ya corregido: el resultado del encabezado descuenta el sobreprecio de hoy (variante B), el refinanciamiento es el del motor al año de salida, y en STR hay un solo patrimonio. Cuatro escenas con cifras reales del parque. El cuerpo baja de siete bloques a cuatro y de 2.633 caracteres a los que dice el contador de cada escena.</p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Ancho</span>
+    <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Encabezado:</b> «Resultado» = tu parte al vender el año 10, ya neta del sobreprecio, la comisión y la deuda; el sub lleva ×mult y TIR. En rojo solo cuando ×mult &lt; 1.</li>
+    <li><b>1 · La curva</b> se queda (es lo único «año a año» del capítulo) con UN patrimonio: tu parte si vendes ese año. Sin barra del día 1 ni barra apilada.</li>
+    <li><b>2 · La venta al año diez, pieza central:</b> valor proyectado → menos el sobreprecio de hoy → deuda → comisión → <b>te queda</b>. Debajo, la descomposición firme/proyectado en una línea.</li>
+    <li><b>3 · Si refinancias:</b> crédito nuevo, cuota nueva, tu mes con la cuota nueva, liquidez; el aviso cuando la cuota supera 1,5× la actual.</li>
+    <li><b>Cierre</b> de dos oraciones (de dónde sale tu parte; firme contra proyectado con el remate del depósito). Sale «La misma plata en otro lado» como bloque: el remate ya dice el número.</li>
+  </ul>
+</div>
+
+<div id="escenas"></div>
+
+<script>
+  const money = (n) => (n < 0 ? "−" : "") + "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
+  const mm = (n) => (n < 0 ? "−" : "") + "$" + (Math.abs(n) / 1e6).toFixed(1).replace(".", ",") + " MM";
+  const pct1 = (n) => n.toFixed(1).replace(".", ",") + "%";
+  const mult2 = (n) => "×" + n.toFixed(2).replace(".", ",");
+
+  // ── Cifras reales (recompute del 22-sep-2026 tras B; ver la cabecera del archivo) ──
+  const FILAS = [
+    { id: "6db7a9ac", mod: "LTR", titulo: "Demo · Providencia 2D · AJUSTA SUPUESTOS", motor: "el arriendo", comuna: "Providencia",
+      equity: 93194403, mult: 2.21, tir: 9.3, pie: 25488000, amort: 27303074, aportado: 42264529, dia1: 31322363, bolsillo: 10942166, flujoAcum: -10942166,
+      valorVenta: 171268703, sobre: null, saldo: 74648926, comision: 3425374, nComision: "comisión",
+      refi: { credito: 137014962, cuota: 778784, cuotaActual: 579488, plazo: 25, tasa: 4.72, mes: -55999, liquidez: 62366036, ratio: 1.34 },
+      deposito: 51020829, curva: { valor: [131263200, 147739000, 171268703], aporte: [32400000, 36800000, 42264529], parte: [4000000, 44000000, 93194403], y0: 0 } },
+    { id: "8395ea55", mod: "LTR", titulo: "Las Condes 1D · sobreprecio 5% · pie 100% · la fila que con B pasa de COMPRAR a AJUSTA", motor: "el arriendo", comuna: "Las Condes",
+      equity: 280306684, mult: 1.19, tir: 4.55, pie: 220649400, amort: 0, aportado: 235910984, dia1: 235910984, bolsillo: 0, flujoAcum: 72134885,
+      valorVenta: 296534343, sobre: { clp: 10507114, pct: 5, n: 107, chica: false }, saldo: 0, comision: 5720545, nComision: "comisión",
+      refi: { credito: 237227474, cuota: 1252174, cuotaActual: 0, plazo: 25, tasa: 4.0, mes: -476436, liquidez: 237227474, ratio: null },
+      deposito: 384274134, curva: { valor: [227268882, 255800000, 296534343], aporte: [235910984, 235910984, 235910984], parte: [212000000, 240000000, 280306684] } },
+    { id: "1a3a0c50", mod: "LTR", titulo: "Las Condes 1D2B · ×0,98 · BUSCAR OTRA · valor en rojo", motor: "el arriendo", comuna: "Las Condes",
+      equity: 289645133, mult: 0.98, tir: -0.24, pie: 77635900, amort: 88941561, aportado: 294219891, dia1: 117679680, bolsillo: 176540211, flujoAcum: -176540211,
+      valorVenta: 521680788, sobre: null, saldo: 221602039, comision: 10433616, nComision: "comisión",
+      refi: { credito: 417344630, cuota: 2202899, cuotaActual: 1639164, plazo: 25, tasa: 4.0, mes: -1501285, liquidez: 195742591, ratio: 1.34 },
+      deposito: 191687798, curva: { valor: [399824885, 450000000, 521680788], aporte: [135000000, 206000000, 294219891], parte: [92000000, 180000000, 289645133] } },
+    { id: "11a6dc52", mod: "STR", titulo: "Santiago 1D · renta corta · sobreprecio 34% · un solo patrimonio", motor: "la operación por noche", comuna: "Santiago",
+      equity: 61637453, mult: 1.74, tir: 5.8, pie: 24894080, amort: 28231921, aportado: 35348469, dia1: 33502488, bolsillo: 1845981, flujoAcum: -1845981,
+      valorVenta: 167277809, sobre: { clp: 31582042, pct: 34, n: 315, chica: false }, saldo: 71344399, comision: 2713915, nComision: "gastos de venta",
+      refi: { credito: 133822247, cuota: 714516, cuotaActual: 540000, plazo: 25, tasa: 4.1, mes: -201433, liquidez: 62477848, ratio: 1.32 },
+      deposito: 54572023, curva: { valor: [128204000, 144300000, 167277809], aporte: [33502488, 34700000, 35348469], parte: [-6000000, 26000000, 61637453] } },
+  ];
+
+  function curvaSvg(c) {
+    const W = 600, H = 120, L = 34, R = 8, T = 10, B = 22;
+    const xs = [1, 5, 10].map((a) => L + ((a - 1) / 9) * (W - L - R));
+    const all = [...c.valor, ...c.aporte, ...c.parte, 0];
+    const mn = Math.min(...all), mx = Math.max(...all);
+    const y = (v) => T + (1 - (v - mn) / (mx - mn)) * (H - T - B);
+    const path = (arr) => arr.map((v, i) => `${i ? "L" : "M"}${xs[i].toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Aporte, valor y tu parte, año a año (esquema desde los valores reales de los años 1, 5 y 10)">
+      <line x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}" stroke="var(--line2)" stroke-width="1"/>
+      <path d="${path(c.valor)}" fill="none" stroke="var(--tx4)" stroke-width="1.5"/>
+      <path d="${path(c.aporte)}" fill="none" stroke="var(--signal)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="${path(c.parte)}" fill="none" stroke="var(--tx)" stroke-width="2.2"/>
+      ${[1, 5, 10].map((a, i) => `<text x="${xs[i]}" y="${H - 6}" font-size="9" fill="var(--tx4)" text-anchor="middle" font-family="Inter">${a}</text>`).join("")}
+      <text x="${xs[2] - 4}" y="${Math.max(12, y(c.parte[2]) - 6)}" font-size="10.5" font-weight="700" fill="var(--tx)" text-anchor="end" font-family="Inter">${mm(c.parte[2])}</text>
+    </svg>`;
+  }
+
+  function escena(f) {
+    const cierra = f.mult >= 1;
+    const plus = f.equity - f.pie - f.amort;
+    const pctFirme = Math.round(((f.pie + f.amort) / f.equity) * 100);
+    const sub = [`tu parte al vender el año 10`, mult2(f.mult) + " sobre lo puesto", `TIR ${pct1(f.tir)}`].join(" · ");
+    const sobreFila = f.sobre
+      ? `<div class="fila"><span class="k">Menos el sobreprecio de hoy<small>pagaste ${f.sobre.pct}% sobre la mediana de la comuna; se descuenta plano, no se capitaliza</small></span><span class="v neg">${money(-f.sobre.clp)}</span></div>`
+      : `<div class="fila"><span class="k">Sobreprecio de hoy<small>pagaste en línea con la mediana de la comuna: nada que descontar</small></span><span class="v neg">—</span></div>`;
+    const linea = cierra
+      ? `<p class="linea"><b>Firme ${pctFirme}%</b>: tu pie (${mm(f.pie)})${f.amort > 0 ? ` y ${mm(f.amort)} que amortizó ${f.motor}` : ""} vuelven sin depender de nadie. <b>Proyectado ${100 - pctFirme}%</b>: ${mm(plus)} de plusvalía, ya neta de ${f.nComision}${f.sobre ? " y del sobreprecio" : ""}, si ${f.comuna} rinde el 3%.${f.bolsillo > 0 ? ` Para llegar acá pusiste ${mm(f.aportado)}: ${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes.` : ` Para llegar acá pusiste ${mm(f.aportado)} el día 1.`}</p>`
+      : `<p class="linea">Pusiste <b>${mm(f.aportado)}</b> (${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes) y te quedan <b>${mm(f.equity)}</b>: <b>${mult2(f.mult)}</b>. Lo firme —tu pie y ${mm(f.amort)} que amortizó ${f.motor}— es ${mm(f.pie + f.amort)}; el resto es plusvalía proyectada.</p>`;
+    const aviso = f.refi.ratio != null && f.refi.ratio > 1.5
+      ? `<p class="aviso">La cuota nueva es ${f.refi.ratio.toFixed(1).replace(".", ",")} veces la actual (${money(f.refi.cuota)} contra ${money(f.refi.cuotaActual)}); con ella el mes queda en ${money(f.refi.mes)}: la liquidez sale de tu bolsillo, en cuotas.</p>`
+      : "";
+    const remate = f.pie + f.amort <= f.deposito ? "el negocio se parece más al depósito que al depto" : `sigues sobre el depósito, con ${mm(f.pie + f.amort)} contra ${mm(f.deposito)}`;
+    const cierreA = f.pie / f.equity < 0.5
+      ? `Más de la mitad de tu parte no salió de tu bolsillo: la puso ${f.motor} pagando deuda (${mm(f.amort)}) y la plusvalía (${mm(plus)}).`
+      : `La mayor parte de tu parte es tu propio pie que vuelve: ${f.motor} amortizó ${mm(f.amort)} y la plusvalía suma ${mm(plus)}.`;
+    const cierreC = f.mult >= 2
+      ? `La amortización es firme; la plusvalía, proyección: si ${f.comuna} no rinde el 3%, ${remate}.`
+      : f.mult >= 1
+        ? `Terminas sobre lo puesto (${mult2(f.mult)}) pero sin holgura: la amortización es firme y la plusvalía es proyección; sin ese 3% en ${f.comuna}, ${remate}.`
+        : `Terminas con menos de lo que pusiste (${mult2(f.mult)}) incluso con la plusvalía proyectada; sin ella te quedan ${mm(f.pie + f.amort)} de ${mm(f.aportado)}.`;
+    const fuente = `Motor Franco · proyección a 3% anual${f.sobre ? ` · Sobreprecio contra la mediana de ${f.sobre.n.toLocaleString("es-CL")} avisos comparables de la comuna${f.sobre.chica ? ", muestra chica: la corrección es más dudosa" : ""}` : ""} · refinanciamiento al 80% del valor del año 10, con la tasa y el plazo de tu crédito.`;
+    const html = `<div class="escena" data-id="${f.id}">
+      <div class="cabeza"><div class="q">Tu resultado a 10 años<small>${f.mod} · ${f.titulo}</small></div><div class="val${cierra ? "" : " rojo"}">Resultado ${mm(f.equity)}<small>${sub}</small></div></div>
+      <p class="v-prosa">Con qué te quedas si vendes el año 10, y cómo crece tu parte hasta ahí.</p>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Cómo crece tu parte, año a año</div>${curvaSvg(f.curva)}
+        <div class="leyenda"><span><i style="background:var(--signal)"></i>Aporte acumulado</span><span><i style="background:var(--tx4)"></i>Valor del depto · 3% al año</span><span><i style="background:var(--tx)"></i>Tu parte si vendes ese año</span></div></div>
+      <div class="bloque central"><div class="v-sub"><span class="num">2</span>Si vendes el año 10</div>
+        <div class="fila"><span class="k">Valor de venta estimado<small>3% al año desde la compra</small></span><span class="v">${money(f.valorVenta)}</span></div>
+        ${sobreFila}
+        <div class="fila"><span class="k">Deuda pendiente<small>lo que queda del crédito el año 10</small></span><span class="v neg">${money(-f.saldo)}</span></div>
+        <div class="fila"><span class="k">${f.nComision === "comisión" ? "Comisión de venta" : "Gastos de venta"}<small>2% del precio de venta</small></span><span class="v neg">${money(-f.comision)}</span></div>
+        <div class="fila tot"><span class="k">Te queda</span><span class="v${cierra ? "" : " rojo"}">${money(f.equity)}</span></div>
+        ${linea}
+      </div>
+      <div class="bloque"><div class="v-sub"><span class="num">3</span>Si refinancias en el año 10</div>
+        <div class="fila"><span class="k">Nuevo crédito<small>80% del valor del año 10</small></span><span class="v">${money(f.refi.credito)}</span></div>
+        <div class="fila"><span class="k">Cuota nueva<small>${f.refi.plazo} años al ${pct1(f.refi.tasa)}${f.refi.cuotaActual > 0 ? ` · hoy pagas ${money(f.refi.cuotaActual)}` : " · hoy no tienes crédito"}</small></span><span class="v">${money(f.refi.cuota)}/mes</span></div>
+        <div class="fila"><span class="k">Tu mes con la cuota nueva</span><span class="v${f.refi.mes < 0 ? " rojo" : ""}">${money(f.refi.mes)}/mes</span></div>
+        <div class="fila tot"><span class="k">Liquidez sin vender<small>crédito nuevo − deuda pendiente</small></span><span class="v">${money(f.refi.liquidez)}</span></div>
+        ${aviso}
+      </div>
+      <p class="v-cierre"><b>Qué significa.</b> ${cierreA} ${cierreC}</p>
+      <div class="v-fuente${f.sobre && f.sobre.chica ? " aviso2" : ""}">${fuente}</div>
+      <div class="cont"></div>
+    </div>`;
+    return html;
+  }
+
+  const cont = document.getElementById("escenas");
+  const rot = document.createElement("div"); rot.className = "rot";
+  rot.innerHTML = `<h2>Cuatro escenas</h2><p>Demo sin sobreprecio · la fila que cambia de veredicto con B · la fila con ×0,98 · una STR con sobreprecio y un solo patrimonio. La curva es un esquema desde los valores reales de los años 1, 5 y 10.</p>`;
+  cont.appendChild(rot);
+  const grid = document.createElement("div"); grid.className = "par2";
+  grid.innerHTML = FILAS.map(escena).join("");
+  cont.appendChild(grid);
+  const rot2 = document.createElement("div"); rot2.className = "rot";
+  rot2.innerHTML = `<h2>Variante del aviso</h2><p>Cuando la cuota nueva supera 1,5× la actual (8% de LTR, 4% de STR). Cifras de ec331711 (LTR, Santiago): cuota actual $470.691, nueva $1.012.112.</p>`;
+  cont.appendChild(rot2);
+  const av = document.createElement("div"); av.className = "par2";
+  av.innerHTML = `<div class="escena"><div class="bloque" style="margin-top:0"><div class="v-sub"><span class="num">3</span>Si refinancias en el año 10</div>
+      <div class="fila"><span class="k">Nuevo crédito<small>80% del valor del año 10</small></span><span class="v">$136.459.442</span></div>
+      <div class="fila"><span class="k">Cuota nueva<small>15 años al 4,0% · hoy pagas $470.691</small></span><span class="v">$1.012.112/mes</span></div>
+      <div class="fila"><span class="k">Tu mes con la cuota nueva</span><span class="v rojo">−$552.507/mes</span></div>
+      <div class="fila tot"><span class="k">Liquidez sin vender<small>crédito nuevo − deuda pendiente</small></span><span class="v">$110.926.379</span></div>
+      <p class="aviso">La cuota nueva es 2,2 veces la actual ($1.012.112 contra $470.691); con ella el mes queda en −$552.507 al mes: la liquidez sale de tu bolsillo, en cuotas.</p></div></div>`;
+  cont.appendChild(av);
+
+  // contador de caracteres por escena (lo que se lee, sin el SVG)
+  document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo (antes 2.633)`; });
+
+  document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));
+  document.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.view = b.dataset.v; document.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("on", x === b)); }));
+</script>
+</body>
+</html>
