@@ -15,6 +15,48 @@ export function TokensShared() {
     <style
       dangerouslySetInnerHTML={{
         __html: `
+      /* ── «Tu resultado a 10 años» (capitulo-v-resultado.html, aprobado 22-sep-2026) ──
+         Regla de color del informe, más estrecha que la skill: ROJO para plata que sale, TINTA para
+         todo lo demás, con trama o intensidad para distinguir series. El verde y el ocre
+         (--doc-good / --doc-warn) no entran acá. Tokens propios del capítulo: la segunda tinta y la
+         trama, por tema; el pie en claro a #71717A es el que pasa contraste (3,67:1 contra la tinta
+         plena; 4,83:1 con el rótulo blanco). Contrastes medidos en el mockup, panel «Contraste». */
+      .doc-dictamen,.doc-tokens{ --doc-ink1:#8A8A90; --doc-lab1:#0C0C0E; --doc-trama-base:#2C2C2F; --doc-trama-linea:#9D9D9E }
+      [data-theme="light"] .doc-dictamen,[data-theme="light"] .doc-tokens{ --doc-ink1:#71717A; --doc-lab1:#FFFFFF; --doc-trama-base:#E4E4E7; --doc-trama-linea:#737374 }
+      /* gráfico de barras del patrimonio (PatrimonioBarras) */
+      .pb-svg{width:100%;height:190px;display:block;margin-top:2px}
+      .pb-grid{stroke:var(--doc-line);stroke-dasharray:3 3}
+      .pb-tick{font-size:8.5px;fill:var(--doc-tx3);font-family:var(--font-body, system-ui)}
+      .pb-anio{font-size:9px;fill:var(--doc-tx4);font-family:var(--font-body, system-ui)}
+      .pb-aporte{fill:var(--signal-red)}
+      .pb-precio{fill:var(--doc-tx);fill-opacity:.22}
+      .pb-trama-base{fill:var(--doc-tx);fill-opacity:.06}
+      .pb-trama-linea{stroke:var(--doc-tx);stroke-opacity:.42}
+      .pb-parte{fill:none;stroke:var(--doc-tx);stroke-width:2.2}
+      .pb-parte-pt{fill:var(--doc-tx)}
+      .pb-leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:var(--doc-tx3)}
+      .pb-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+      .pb-sw-aporte{background:var(--signal-red)}
+      .pb-sw-precio{background:var(--doc-tx);opacity:.22}
+      .pb-sw-plus{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--doc-tx3) 2px,var(--doc-tx3) 3px)}
+      .pb-sw-parte{height:3px;vertical-align:middle;background:var(--doc-tx)}
+      /* barra apilada firme/proyectado, forma B (BarraApiladaB) */
+      .bb-fp{display:flex;justify-content:space-between;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);margin:12px 0 5px}
+      .bb-rojo{color:var(--signal-red)}
+      .bb-bar{display:flex;height:44px;border-radius:3px;overflow:hidden}
+      .bb-s{height:100%;position:relative}
+      .bb-s+.bb-s{box-shadow:inset 1px 0 0 var(--doc-paper)}
+      .bb-s.pie{background:var(--doc-ink1)} .bb-s.amort{background:var(--doc-tx)}
+      .bb-s.plus{background:var(--doc-trama-base)}
+      .bb-s.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--doc-trama-linea) 4px,var(--doc-trama-linea) 5.5px)}
+      .bb-lab{display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+      .bb-lab.pie{color:var(--doc-lab1)} .bb-lab.amort{color:var(--doc-paper)}
+      .bb-rotulos{position:relative;height:34px;margin-top:4px;font-size:10.5px;color:var(--doc-tx2);font-variant-numeric:tabular-nums}
+      .bb-rotulos span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
+      .bb-rotulos span::before{content:'';position:absolute;left:50%;top:-6px;width:1px;height:6px;background:var(--doc-line2)}
+      .bb-rotulos span b{display:block;color:var(--doc-tx);font-weight:600}
+      .bb-nota{font-size:11px;color:var(--doc-tx3);margin-top:6px;line-height:1.45}
+      .refi-aviso{font-size:12.5px;line-height:1.5;color:var(--doc-tx2);margin-top:10px;padding:8px 10px;border-left:3px solid var(--signal-red);background:var(--doc-paper2);border-radius:0 8px 8px 0}
       /* ── matriz de sensibilización (mockup-tablas) ── */
       /* §5.7 · anglicismo que el mercado usa: cursiva en todas sus apariciones */
       .ang{font-style:italic}
@@ -161,24 +203,7 @@ export function TokensShared() {
       .perfil-row.dom .pn::before{content:'Dominante · ';font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red)}
 
       /* ── el día 1 (CONGELADO · VI) ── */
-      .dia1{margin:14px 0 6px}
-      .dia1-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
-      .dia1-head .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
-      .dia1-head .v{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;color:var(--doc-tx)}
-      .dia1-head .v small{font-size:10.5px;font-weight:500;color:var(--doc-tx3)}
-      .dia1-bar{display:flex;height:38px;border-radius:3px;overflow:hidden;max-width:100%}
-      .dia1-bar span{position:relative;height:100%}
-      .dia1-bar .pie{background:var(--doc-neutral)}
-      .dia1-bar .gastos{background:var(--doc-tx4)}
-      .dia1-bar .amoblamiento{background:var(--doc-line2)}
-      .dia1-bar .capex{background:var(--doc-line2)}
-      .dia1-bar .capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)}
-      .dia1-mult{font-family:var(--font-mono, ui-monospace);font-size:12px;color:var(--doc-tx2);margin-top:10px}
-      .dia1-mult b{color:var(--doc-tx);font-weight:700}
-      .dia1-nota{font-size:11.5px;color:var(--doc-tx3);margin-bottom:10px}
       /* cuarto tono en la barra apilada de "de dónde sale tu parte" (LTR pasa 0 y no lo dibuja) */
-      .ba-sw.amoblamiento,.ba-seg.amoblamiento{background:var(--doc-line2)}
-      .ba-sw.amoblamiento::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 6px)}
 
       @media (max-width: 767px){
         /* en 390 el cuerpo del capítulo mide ~280px: la fila de cabecera se angosta y las cuatro columnas reparten el resto sin scroll */

@@ -114,8 +114,9 @@ export function runSobreprecioVentaTier(): { hard: number } {
     if (!/muestraChica \? ", muestra chica: la corrección es más dudosa" : ""/.test(s) || !/avisos comparables de la comuna/.test(s)) F(`5 · ${mod}: la fuente no nombra la muestra ni la muestra chica`);
   }
   const st = leer("src/components/analysis/str/CapitulosInversionStr.tsx");
-  if (!/patrimonio: p\.parteAlVender \?\? p\.patrimonioNeto/.test(st) || !/etiquetaFinal=\{compact\(patrimonio\)\}/.test(st)) F("5 · la curva STR no dibuja parteAlVender con la etiqueta = equity");
-  if (/etiquetaFinal=\{compact\(pr\[pr\.length - 1\]\.patrimonioNeto\)\}/.test(st)) F("5 · la curva STR sigue rotulando patrimonioNeto");
+  // Desde el mockup aprobado (22-sep) el gráfico STR es PatrimonioBarras y la serie lee parteAlVender.
+  if (!/parte: results\.projections\?\.\[r\.anio - 1\]\?\.parteAlVender/.test(st) || !/<PatrimonioBarras filas=\{filasBarras\}/.test(st)) F("5 · el gráfico STR no dibuja parteAlVender en PatrimonioBarras");
+  if (/CurvaPatrimonio|etiquetaFinal=/.test(st)) F("5 · el capítulo STR sigue con la curva vieja");
   const eng = leer("src/lib/engines/short-term-engine.ts");
   if (!/const precioEsperadoAnio = p\.valorDepto - \(sobreprecioVenta\?\.clp \?\? 0\);\s*p\.parteAlVender = Math\.round\(precioEsperadoAnio - p\.saldoCredito - Math\.round\(precioEsperadoAnio \* GASTOS_CIERRE_VENTA\)\);/.test(eng)) F("5 · el motor STR no emite parteAlVender neto de gastos de venta y sobreprecio, sobre lo que paga el mercado");
 

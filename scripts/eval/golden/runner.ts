@@ -71,6 +71,7 @@ import { runCuantoRentaTier } from "./cuanto-renta-catch-test";
 import { runStrRefZonaTier } from "./strref-zona-catch-test";
 import { runRefinanciamientoTier } from "./refinanciamiento-catch-test";
 import { runSobreprecioVentaTier } from "./sobreprecio-venta-catch-test";
+import { runResultadoCapituloTier } from "./resultado-capitulo-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
@@ -377,6 +378,7 @@ async function printStrSemantic() {
   totalHard += runStrRefZonaTier().hard;
   totalHard += runRefinanciamientoTier().hard;
   totalHard += runSobreprecioVentaTier().hard;
+  totalHard += runResultadoCapituloTier().hard;
   // ── Tier STANDALONE (17-sep-2026): los catch-tests que corrían SOLO a mano. Nueve de los
   // 28 estaban en rojo cuando se los corrió, y `zona` llevaba 14 días protegiendo una regla
   // derogada a propósito — o sea que su rojo ya no se podía leer. Entran los 12 que no tocan

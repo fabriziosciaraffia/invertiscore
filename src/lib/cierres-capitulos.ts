@@ -202,11 +202,15 @@ export interface ArgsCierreResultado {
 }
 
 export function cierreResultado(a: ArgsCierreResultado, f: FmtCierre): SegCierre[] {
+  // DOS ORACIONES (mockup aprobado 22-sep-2026): de dónde sale tu parte, y firme contra proyectado
+  // con el remate del depósito. La oración de la caja («uno de los tres motores resta…») se retiró:
+  // caía en la misma rama el 90% de las veces y el capítulo II ya dice la caja año a año.
   const segs: SegCierre[] = [];
   const motor = a.motor ?? "el arriendo";
   const plusvaliaNeta = a.patrimonioCLP - a.pieCLP - a.amortizacionCLP;
   const pctPie = a.patrimonioCLP > 0 ? (a.pieCLP / a.patrimonioCLP) * 100 : 100;
   const sinPlusCLP = a.pieCLP + a.amortizacionCLP;
+  const sinCredito = !(a.amortizacionCLP > 0);
   // Oración A · de dónde sale tu parte
   if (a.sinCapitalPropio) {
     segs.push({ t: `Sin pie, todo lo que es tuyo al año 10 lo puso ${motor} amortizando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
@@ -214,21 +218,13 @@ export function cierreResultado(a: ArgsCierreResultado, f: FmtCierre): SegCierre
     segs.push({ t: `Tu parte es menos que el pie más lo que amortizó ${motor}: la plusvalía proyectada no alcanza a cubrir la comisión de venta. ` });
   } else if (pctPie < 50) {
     segs.push({ t: `Más de la mitad de tu parte no salió de tu bolsillo: la puso ${motor} pagando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
+  } else if (sinCredito) {
+    // Pie 100%: no hay deuda que amortizar, y decir «amortizó $0,0 MM» era mentir con una cifra.
+    segs.push({ t: `La mayor parte de tu parte es tu propio pie que vuelve; sin crédito no hay deuda que amortizar, y la plusvalía suma ${f.compact(plusvaliaNeta)}. ` });
   } else {
     segs.push({ t: `La mayor parte de tu parte es tu propio pie que vuelve: ${motor} amortizó ${f.compact(a.amortizacionCLP)} y la plusvalía suma ${f.compact(plusvaliaNeta)}. ` });
   }
-  // Oración B · la caja (signo del flujo acumulado a 10 años)
-  const tir = a.tirPct != null ? `el ${f.pct1(a.tirPct)}%` : "el resultado";
-  if (a.flujoAcumulado < 0) {
-    segs.push(
-      { t: "Pero " },
-      { t: "uno de los tres motores del retorno resta en vez de sumar", mark: true },
-      { t: `, la caja te pide ${f.compact(a.bolsilloCLP)} en diez años, y ${tir} ya lo trae descontado. ` },
-    );
-  } else {
-    segs.push({ t: `Y los tres motores suman: la caja deja ${f.compact(a.flujoAcumulado)} en diez años, ya contados en ${tir}. ` });
-  }
-  // Oración C · firme contra proyectado (por multiplicador; remate contra el depósito)
+  // Oración B · firme contra proyectado (por multiplicador; remate contra el depósito)
   const remate =
     sinPlusCLP <= a.depositoCLP
       ? "el negocio se parece más al depósito que al depto"
@@ -241,7 +237,6 @@ export function cierreResultado(a: ArgsCierreResultado, f: FmtCierre): SegCierre
   } else if (a.multiplicador >= 1) {
     segs.push({ t: `Terminas sobre lo puesto (${mult}) pero sin holgura: la amortización es firme y la plusvalía es proyección; sin ese ${a.proyPct}% en ${a.comuna}, ${remate}.` });
   } else {
-    // Ajuste (b) de Fabrizio: queda el hecho, sin la frase-veredicto.
     segs.push({ t: `Terminas con menos de lo que pusiste (${mult}) incluso con la plusvalía proyectada; sin ella te quedan ${f.compact(sinPlusCLP)} de ${f.compact(a.aportadoCLP)}.` });
   }
   return segs;

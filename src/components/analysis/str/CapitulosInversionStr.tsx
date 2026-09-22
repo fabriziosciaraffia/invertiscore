@@ -10,16 +10,15 @@ import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierre
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
 import { NOMBRE_RENTABILIDAD, explicacionUmbralStr, fuenteUmbralStr } from "@/lib/capref-copy";
-import { barraDia1 } from "@/lib/plata-dia1";
-import { costoOportunidad } from "@/lib/analysis";
 import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
-import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
+import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
-import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, PatrimonioBarras, BarraApiladaB, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { buildPatrimonioSeriesSTR } from "@/lib/patrimonio-series-str";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
 
@@ -731,26 +730,30 @@ export function CapitulosInversionStr({
   })();
 
   // ═══════════════ VI · TU RESULTADO A 10 AÑOS ═══════════════
+  // Mismo capítulo que el V de LTR (mockup capitulo-v-resultado.html, aprobado 22-sep-2026): el
+  // gráfico de barras con `parteAlVender` (un solo patrimonio), la venta al año diez con la fila
+  // del sobreprecio, UNA barra apilada en forma B, el refinanciamiento del motor con el aviso, y el
+  // cierre de dos oraciones. Salieron la barra del día 1 (con el amoblamiento como cuarto tono),
+  // las filas con tags y subs, la nota, «La misma plata» y el puente.
   const filaVI: FilaHallazgo | null =
     exit && exit.valorVenta > 0
       ? (() => {
           const anios = exit.yearVenta;
-          const pr = (results.projections ?? []).slice(0, anios);
           const mult = metricaValorONull(exit.multiplicadorCapital);
           const tir = m?.tirPct ?? metricaValorONull(exit.tirAnual);
-          const inversion = exit.inversionInicial ?? m?.dia1.inversionInicial ?? results.capitalInvertido;
           const amort = Math.max(results.montoCredito - exit.saldoCreditoAlVender, 0);
-          const plusNeta = exit.valorVenta - precioCLP - exit.gastosCierre;
           const patrimonio = exit.equityCLP;
-          const d1 = m?.dia1 ?? { pieCLP: results.pie, gastosCompraCLP: Math.max(0, inversion - results.pie), amoblamientoCLP: 0, capexCLP: 0, inversionInicial: inversion };
-          const barra = barraDia1({ ...d1, patrimonio });
-          const altMoney = (n: number) => (currency === "UF" ? "$" + Math.round(n).toLocaleString("es-CL") : "UF " + Math.round(n / (valorUF || 1)).toLocaleString("es-CL"));
-          const oport = costoOportunidad(inversion, anios);
-          const bolsillo = args.resultado.bolsilloCLP;
+          const plusNeta = patrimonio - results.pie - amort;
+          const cierra = (mult ?? 1) >= 1 && plusNeta >= 0;
           const pctFirme = patrimonio > 0 ? Math.round(((results.pie + amort) / patrimonio) * 100) : 0;
-          const pctPlus = patrimonio > 0 ? Math.max(0, 100 - pctFirme) : 0;
-          // El refinanciamiento es EL DEL MOTOR (buildRefinanceScenario, al año de salida, REFI_LTV):
-          // el capítulo no calcula el suyo. Decisión de Fabrizio, 22-sep-2026.
+          const sobre = exit.sobreprecioVenta;
+          const filasBarras = buildPatrimonioSeriesSTR(results).slice(0, anios).map((r) => ({
+            anio: r.anio,
+            aporte: r.aporteAcum,
+            precio: r.precioPactadoCLP,
+            valor: r.valorDepto ?? 0,
+            parte: results.projections?.[r.anio - 1]?.parteAlVender ?? r.patrimonioNeto,
+          }));
           const refi = results.refinanceScenario ?? null;
           const veces = refi?.ratioCuota != null ? refi.ratioCuota.toFixed(1).replace(".", ",") : null;
           const proyPct = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
@@ -759,106 +762,59 @@ export function CapitulosInversionStr({
             numero: ROMANO.resultado,
             pregunta: `Tu resultado a ${anios} años`,
             valor: conApellido("Resultado", compact(patrimonio)),
-            valorRojo: patrimonio < 0,
+            valorRojo: mult != null ? mult < 1 : patrimonio < 0,
             ksub: [`tu parte al vender el año ${anios}`, mult != null ? `×${mult.toFixed(2).replace(".", ",")} sobre lo puesto` : "", tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
             anchorId: anchorCapituloStr("resultado"),
             cuerpo: (
               <div>
-                <VProsa>
-                  Lo que llevas puesto contra lo que vale el depto, año a año — y con qué te quedas si vendes o refinancias en el año {anios}. La plusvalía entra como
-                  supuesto: {proyPct}% al año, parejo.
-                </VProsa>
-                {pr.length > 0 && (
-                  <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
-                    <VSub>Cómo crece tu parte, año a año</VSub>
-                    {/* UN SOLO PATRIMONIO (22-sep-2026): la curva dibuja tu parte SI VENDES ESE AÑO —neta de gastos
-                        de venta y del sobreprecio de hoy, `parteAlVender` del motor— y su etiqueta final es
-                        exit.equityCLP, el mismo número del encabezado y de «Te queda». Antes rotulaba
-                        `patrimonioNeto` (valor − deuda), 3% más que «tus $X» de la línea siguiente. */}
-                    <CurvaPatrimonio
-                      anios={pr.map((p) => ({ year: p.year, valor: p.valorDepto, aporte: inversion + Math.max(0, -p.flujoAcumulado), patrimonio: p.parteAlVender ?? p.patrimonioNeto }))}
-                      etiquetaFinal={compact(patrimonio)}
-                      fmtLeyenda={{ aporte: "Aporte acumulado", valor: `Valor del depto · ${proyPct}% al año`, parte: "Tu parte si vendes ese año" }}
-                    />
+                <VProsa>Con qué te quedas si vendes el año {anios}, de dónde sale, y cómo crece tu parte hasta ahí. La plusvalía entra como supuesto: {proyPct}% al año, parejo.</VProsa>
+                <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
+                  <PatrimonioBarras filas={filasBarras} fmtEje={(n) => `${Math.round(n / 1e6)}M`} />
+                </VViz>
+                <VViz t={`Si vendes el año ${anios}`}>
+                  <FilasDato>
+                    <FilaDato k="Valor de venta estimado" tip={`Precio × 1,0${proyPct} elevado a ${anios}`} sub={`${proyPct}% al año desde la compra`} v={money(exit.valorVenta)} />
+                    {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
+                    {exit.sobreprecioVenta && (
+                      <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna; se descuenta plano`} v={neg(-exit.sobreprecioVenta.clp)} />
+                    )}
+                    <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" v={neg(-exit.saldoCreditoAlVender)} />
+                    <FilaDato k="Gastos de venta" tip="Comisión de corretaje" sub="2% del precio de venta" v={neg(-exit.gastosCierre)} />
+                    <FilaDato k="Te queda" tip="Valor − sobreprecio − deuda − gastos" v={<span style={{ color: mult != null && mult < 1 ? "var(--signal-red)" : undefined }}>{money(patrimonio)}</span>} tono="tot" />
+                  </FilasDato>
+                </VViz>
+                <VViz t={`De dónde salen tus ${compact(patrimonio)}`}>
+                  <BarraApiladaB
+                    tramos={[
+                      { tono: "pie", k: "Pie", v: results.pie },
+                      { tono: "amort", k: "Amortización", v: amort },
+                      { tono: "plus", k: "Plusvalía", v: plusNeta },
+                    ]}
+                    leyenda={cierra ? { izq: `Firme · ${pctFirme}%`, der: `Proyectado · ${100 - pctFirme}%` } : { izq: `Pusiste ${compact(exit.totalAportado)}`, der: `Te queda ${compact(patrimonio)}`, rojo: true }}
+                    fmt={compact}
+                    nota={`Pie: lo que pusiste, vuelve entero · Amortización: lo que la operación por noche pagó del crédito · Plusvalía: proyectada, neta de gastos de venta${sobre ? " y sobreprecio" : ""}.`}
+                  />
+                </VViz>
+                {refi && plazo > 0 && refi.capitalLiberado > 0 && (
+                  <VViz t={`Si refinancias en el año ${refi.anios}`}>
+                    <FilasDato>
+                      <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}`} v={money(refi.nuevoCredito)} />
+                      <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasa)}%${refi.dividendoActual > 0 ? ` · hoy pagas ${money(refi.dividendoActual)}` : " · hoy no tienes crédito"}`} v={money(refi.nuevoDividendo)} unidad="/mes" />
+                      <FilaDato k="Tu mes con la cuota nueva" tip="Ingreso neto − cuota nueva" v={neg(refi.nuevoFlujoNeto)} unidad="/mes" />
+                      <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={neg(refi.capitalLiberado)} tono="tot" />
+                    </FilasDato>
+                    {avisaCuotaRefi(refi.ratioCuota) && veces && (
+                      <p className="refi-aviso">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${neg(refi.nuevoFlujoNeto)} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
+                    )}
                   </VViz>
                 )}
-                <VViz t={`De dónde salen tus ${compact(patrimonio)} si vendes el año ${anios}`}>
-                  <VSub>De dónde sale tu parte</VSub>
-                  <BloqueDia1 barra={barra} total={money(inversion)} totalAlt={altMoney(inversion)} multiplicador={mult != null ? `×${mult.toFixed(2).replace(".", ",")}` : null} fmt={money} />
-                  <BarraApilada
-                    llaves={patrimonio > 0 ? [{ k: <><b>Firme</b> · {pctFirme}%</>, pct: pctFirme }, { k: <><b>Proyectado</b> · {pctPlus}%</>, pct: pctPlus }] : []}
-                    segmentos={patrimonio > 0 ? [{ tono: "pie", pct: (results.pie / patrimonio) * 100 }, { tono: "amort", pct: (amort / patrimonio) * 100 }, { tono: "plus", pct: Math.max(0, (plusNeta / patrimonio) * 100) }] : []}
-                    filas={[
-                      { tono: "pie", k: "Tu pie", sub: "lo que desembolsas el día 1, vuelve entero", v: money(results.pie), tag: "firme" },
-                      { tono: "gastos", k: "Gastos de compra", sub: "el día 1 — no vuelve", v: money(d1.gastosCompraCLP), tag: "no vuelve" },
-                      ...(d1.amoblamientoCLP > 0 ? [{ tono: "amoblamiento" as const, k: "Amoblamiento", sub: "se compra el día 1 — no vuelve como patrimonio", v: money(d1.amoblamientoCLP), tag: "no vuelve" }] : []),
-                      ...(d1.capexCLP > 0 ? [{ tono: "capex" as const, k: "Puesta a punto", sub: "el día 1 — no vuelve", v: money(d1.capexCLP), tag: "no vuelve" }] : []),
-                      { tono: "amort", k: "Deuda que amortizó la operación", sub: `lo que bajó el crédito en ${anios} años`, v: money(amort), tag: "firme" },
-                      { tono: "plus", k: "Plusvalía neta de gastos de venta", sub: `${proyPct}% al año, supuesto`, v: neg(plusNeta), tag: "proyectado" },
-                    ]}
-                    total={{ k: `Tu parte el año ${anios}`, v: money(patrimonio) }}
-                    nota={{
-                      texto:
-                        bolsillo > 0
-                          ? `Los ${money(d1.gastosCompraCLP + d1.amoblamientoCLP + d1.capexCLP)} del día 1 que no son pie no vuelven como patrimonio, y los ${money(bolsillo)} que pusiste mes a mes pagaron intereses y costos.`
-                          : `Los ${money(d1.gastosCompraCLP + d1.amoblamientoCLP + d1.capexCLP)} del día 1 que no son pie no vuelven como patrimonio.`,
-                      v: mult != null ? `×${mult.toFixed(2).replace(".", ",")}` : undefined,
-                    }}
-                  />
-                  <div className="oport">
-                    <div className="bt">La misma plata en otro lado</div>
-                    <FilasDato>
-                      <FilaDato k="Depósito a plazo en UF al 5%" tip={`${money(inversion)} a 5% anual por ${anios} años`} v={money(oport.depositoUF)} />
-                      <FilaDato k="Fondo mutuo al 7%" tip={`${money(inversion)} a 7% anual por ${anios} años`} v={money(oport.fondoMutuo)} />
-                      <FilaDato k="Este depto" tip={`Tu parte al vender el año ${anios}`} v={money(patrimonio)} tono="in" />
-                    </FilasDato>
-                    <p className="nota">
-                      Los tres parten de los mismos {compact(inversion)}. El depto es el único que te pide {bolsillo > 0 ? `${compact(bolsillo)} más en el camino, ` : ""}horas cada semana, y el único cuya ganancia depende de que la plusvalía ocurra.
-                    </p>
-                  </div>
-                </VViz>
-                <VPuente>Así crece tu parte. Y esto es lo que te llevas si vendes.</VPuente>
-                <VViz t={`Venta o refinanciamiento en el año ${anios}`}>
-                  <VSub>Si vendes o refinancias en el año {anios}</VSub>
-                  <div className="venta">
-                    <div>
-                      <h4>Si vendes</h4>
-                      <p className="ex">Vendes al valor proyectado, pagas lo que queda del crédito y los gastos de venta. Lo que sobra es tu parte.</p>
-                      <FilasDato>
-                        <FilaDato k="Valor de venta estimado" tip={`Precio × 1,0${proyPct} elevado a ${anios}`} sub={`${proyPct}% al año desde la compra`} v={money(exit.valorVenta)} />
-                        {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
-                        {exit.sobreprecioVenta && (
-                          <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna`} v={neg(-exit.sobreprecioVenta.clp)} />
-                        )}
-                        <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" sub={`lo que queda del crédito el año ${anios}`} v={neg(-exit.saldoCreditoAlVender)} />
-                        <FilaDato k="Gastos de venta" tip="Comisión de corretaje" sub="2% del precio de venta" v={neg(-exit.gastosCierre)} />
-                        <FilaDato k="Te queda" tip="Valor − deuda − gastos" v={money(patrimonio)} tono="tot" />
-                      </FilasDato>
-                    </div>
-                    {refi && plazo > 0 && refi.capitalLiberado > 0 && (
-                      <div>
-                        <h4>Si refinancias</h4>
-                        <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
-                        <FilasDato>
-                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}`} v={money(refi.nuevoCredito)} />
-                          <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={neg(-exit.saldoCreditoAlVender)} />
-                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasa)}%`} v={money(refi.nuevoDividendo)} unidad="/mes" />
-                          <FilaDato k="Tu mes con la cuota nueva" tip="Ingreso neto − cuota nueva" v={neg(refi.nuevoFlujoNeto)} unidad="/mes" />
-                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={neg(refi.capitalLiberado)} tono="tot" />
-                        </FilasDato>
-                        {avisaCuotaRefi(refi.ratioCuota) && veces && (
-                          <p className="ex">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${neg(refi.nuevoFlujoNeto)} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </VViz>
                 <VCierre titulo="Qué significa">
                   <SegsCierre segs={cierres.resultado} />
                 </VCierre>
                 <VFuente>
                   Motor Franco · proyección a {proyPct}% anual · {ufFecha}
-                  {exit.sobreprecioVenta ? ` · Sobreprecio contra la mediana de ${exit.sobreprecioVenta.n.toLocaleString("es-CL")} avisos comparables de la comuna${exit.sobreprecioVenta.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}.` : ""}
+                  {sobre ? ` · Sobreprecio contra la mediana de ${sobre.n.toLocaleString("es-CL")} avisos comparables de la comuna${sobre.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}` : ""}
+                  {refi ? ` · refinanciamiento al ${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}, con la tasa y el plazo de tu crédito` : ""}.
                 </VFuente>
               </div>
             ),

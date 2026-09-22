@@ -2461,6 +2461,12 @@ export function runAnalysis(
     metrics.hallazgoFlujoMensual = aplicarHorizonteAFlujo(metrics.hallazgoFlujoMensual, projections, metrics);
   }
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
+  // Un solo patrimonio: tu parte si vendes ese año, con la MISMA fórmula del exit (sobreprecio de
+  // hoy plano, comisión sobre lo que paga el mercado). En el año de salida ≡ equityCLP.
+  for (const p of projections) {
+    const precioEsperadoAnio = p.valorPropiedad - (exitScenario.sobreprecioVenta?.clp ?? 0);
+    p.parteAlVender = Math.round(precioEsperadoAnio - p.saldoCredito - Math.round(precioEsperadoAnio * COMISION_VENTA));
+  }
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, exitScenario.anios);
   // Score y desglose salen de la MISMA llamada (una sola fórmula, ver dimensionesScoreLtr).
   const dimsScore = dimensionesScoreLtr(input, metrics, ufClp, asOf, undefined, metricaValorONull(exitScenario.tir));

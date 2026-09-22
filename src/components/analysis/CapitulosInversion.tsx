@@ -16,18 +16,15 @@ import type {
   HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import { calcFlujoDesglose, calcMesVacio, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
+import { calcFlujoDesglose, calcMesVacio, costoOportunidad } from "@/lib/analysis";
 import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { respaldoArriendo, resolverArriendoReferencia, resolverProcedenciaArriendo, fmtRadioArriendo } from "@/lib/arriendo-referencia";
 import { NOMBRE_RENTABILIDAD, explicacionCapRef, fuenteCapRef, nombreReferenciaCapRef } from "@/lib/capref-copy";
-import { barraDia1 } from "@/lib/plata-dia1";
 import { cierrePlusvalia, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
 import {
-  BarraApilada,
-  Bars,
   LineaTiempo,
   Thermo,
   VCierre,
@@ -45,7 +42,8 @@ import { rotuloMesLtr, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieC
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
-import { PatrimonioChart } from "./PatrimonioChart";
+import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
+import { PatrimonioBarras, BarraApiladaB } from "./shared";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -146,9 +144,7 @@ export function CapitulosInversion({
   const capexV = capex && capex.valor.montoUF > 0 ? capex.valor : null;
   // Rango solo cuando el motor lo trae y no es degenerado (v3 derivado). Override
   // (cotización real) y filas legacy → valor único.
-  const capexRango = !!capexV && capexV.montoMinUF != null && capexV.montoMaxUF != null && capexV.montoMaxUF > capexV.montoMinUF;
   const ufN = (n: number) => Math.round(n).toLocaleString("es-CL");
-  const capexRangoUF = capexV && capexRango ? `UF ${ufN(capexV.montoMinUF!)}–${ufN(capexV.montoMaxUF!)}` : capexV ? `UF ${ufN(capexV.montoUF)}` : "";
   // ── formato (dueño de moneda y UF) ──
   const money = (n: number) => {
     const abs = Math.abs(n);
@@ -582,6 +578,14 @@ export function CapitulosInversion({
       })()
     : null;
   // ═══════════════ V · TU RESULTADO A 10 AÑOS ═══════════════
+  // Mockup aprobado (capitulo-v-resultado.html, 22-sep-2026): cuatro bloques. 1 · el gráfico de
+  // barras del patrimonio con `parteAlVender` (un solo patrimonio: el del encabezado); 2 · LA VENTA
+  // AL AÑO DIEZ como pieza central, con la fila del sobreprecio de hoy (variante B del motor);
+  // 3 · «de dónde sale tu parte» como UNA barra apilada en forma B; 4 · el refinanciamiento DEL
+  // MOTOR con el aviso sobre 1,5×. Cierre de dos oraciones. Salieron: la barra del día 1, las filas
+  // con tags y subs, la nota de aportes, «La misma plata en otro lado», el puente y la oración de la
+  // caja del cierre (caía en la misma rama el 90% de las veces). Color: rojo para plata que sale,
+  // tinta para todo lo demás (TokensShared).
   const filaV: FilaHallazgo | null =
     pat && exit && exit.valorVenta > 0
       ? (() => {
@@ -592,32 +596,25 @@ export function CapitulosInversion({
           const creditoInicial = precioCLP - pieCLP;
           const amort = Math.max(creditoInicial - exit.saldoCredito, 0);
           const plusvaliaNeta = patrimonio - pieCLP - amort;
-          const bolsillo = exit.flujoMensualAcumuladoNegativo ?? 0;
-          const plusvaliaBruta = exit.valorVenta - precioCLP;
-          const composicionCierra = patrimonio > 0 && amort >= 0 && plusvaliaNeta >= 0 && mult >= 1;
+          const cierra = mult >= 1 && plusvaliaNeta >= 0;
           const pctFirme = patrimonio > 0 ? Math.round(((pieCLP + amort) / patrimonio) * 100) : 0;
           const inversionInicial = exit.inversionInicial ?? pieCLP;
-          // Descomposición de la plata del día 1, tal cual la suma el motor:
-          // pie + gastos de compra (cierre + corretaje) + puesta a punto === inversionInicial.
-          // `gastosCompraCLP` lo emite calcMetrics desde el mismo lugar que
-          // calcInversionInicialCLP; la resta es FALLBACK para filas persistidas
-          // anteriores al campo, no la fuente. El invariante de la suma vive en
-          // plata-dia1.ts (avisoDia1), que es quien posee estos montos.
-          const capexDia1 = m.capexPuestaAPuntoCLP ?? 0;
-          const gastosCompra = m.gastosCompraCLP ?? Math.max(0, inversionInicial - pieCLP - capexDia1);
-          const capexSub = capexV
-            ? `${capexRango ? `${capexRangoUF}, corre con UF ${ufN(capexV.montoUF)}` : `UF ${ufN(capexV.montoUF)}${capexV.origen === "override" ? ", tu cotización" : ""}`} — no vuelve`
-            : "no vuelve";
-          // Barra "Lo que pusiste · el día 1" a la MISMA escala que la de abajo
-          // (ancho = inversión inicial / tu parte al vender). Geometría pura en
-          // plata-dia1.ts; los montos son los mismos de las filas de la leyenda.
-          // LTR no tiene amoblamiento: va en 0 y el tramo no se dibuja (cuarto tono, solo STR).
-          const dia1 = barraDia1({ pieCLP, gastosCompraCLP: gastosCompra, amoblamientoCLP: 0, capexCLP: capexDia1, inversionInicial, patrimonio });
-          const altMoney = (n: number) =>
-            currency === "UF" ? "$" + Math.round(n).toLocaleString("es-CL") : "UF " + Math.round(n / (valorUF || 1)).toLocaleString("es-CL");
+          const sobre = exit.sobreprecioVenta;
+          const sobreCLP = sobre?.clp ?? 0;
           const oport = costoOportunidad(inversionInicial, anios);
-          // El refinanciamiento es EL DEL MOTOR (calcRefinanceScenario, al año de salida, REFI_LTV):
-          // el capítulo no calcula el suyo. Decisión de Fabrizio, 22-sep-2026.
+          // 1 · la serie: aporte, precio pactado y valor del motor (patrimonio-series), tu parte del
+          // motor (`parteAlVender`, misma fórmula del exit). El año 0 no tiene proyección: se deriva con
+          // la misma fórmula sobre el precio pactado y el crédito inicial.
+          const porAnio = new Map((results.projections ?? []).map((p) => [p.anio, p.parteAlVender]));
+          const parteAnio0 = Math.round(precioCLP - sobreCLP - creditoInicial - Math.round((precioCLP - sobreCLP) * 0.02));
+          const filasBarras = buildPatrimonioSeries(results.projections ?? [], m, inputData, valorUF, anios).map((r) => ({
+            anio: r.anio,
+            aporte: r.aporteAcum,
+            precio: r.precioPactadoCLP,
+            valor: r.valorDepto ?? 0,
+            parte: r.anio === 0 ? parteAnio0 : (porAnio.get(r.anio) ?? r.patrimonioNeto),
+          }));
+          // 4 · el refinanciamiento es EL DEL MOTOR (calcRefinanceScenario, al año de salida, REFI_LTV).
           const refi = results.refinanceScenario ?? null;
           const veces = refi?.ratioCuota != null ? refi.ratioCuota.toFixed(1).replace(".", ",") : null;
           const segs = cierreResultado(
@@ -630,14 +627,13 @@ export function CapitulosInversion({
               multiplicador: mult,
               sinCapitalPropio: !!v.sinCapitalPropio,
               flujoAcumulado: exit.flujoAcumulado,
-              bolsilloCLP: bolsillo,
+              bolsilloCLP: exit.flujoMensualAcumuladoNegativo ?? 0,
               tirPct: tir,
               depositoCLP: oport.depositoUF,
               proyPct: PROY_PCT,
             },
             f,
           );
-          const pctSeg = (n: number) => (patrimonio > 0 ? Math.max(0, (n / patrimonio) * 100) : 0);
           return {
             id: "resultado",
             numero: "V",
@@ -648,163 +644,54 @@ export function CapitulosInversion({
             anchorId: anchorCapitulo("resultado"),
             cuerpo: (
               <div>
-                <VProsa>
-                  Lo que llevas puesto contra lo que vale el depto, año a año, y con qué te quedas si vendes o refinancias en el año {anios}.
-                </VProsa>
+                <VProsa>Con qué te quedas si vendes el año {anios}, de dónde sale, y cómo crece tu parte hasta ahí.</VProsa>
                 <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
-                  <VSub>Cómo crece tu parte, año a año</VSub>
-                  <PatrimonioChart projections={results.projections ?? []} metrics={m} inputData={inputData} currency={currency} valorUF={valorUF} plazoFijo={anios} capitulo />
+                  <PatrimonioBarras filas={filasBarras} fmtEje={(n) => `${Math.round(n / 1e6)}M`} />
                 </VViz>
-                <VViz t={`De dónde salen tus ${compact(patrimonio)} si vendes el año ${anios}`}>
-                  <VSub>De dónde sale tu parte</VSub>
-                  {composicionCierra && dia1.anchoPct > 0 && (
-                    /* Barra ADITIVA sobre la actual: la plata del día 1, de tu bolsillo, a la
-                       misma escala que "tu parte a N años". La barra de abajo, sus % y sus
-                       filas no cambian. Tonos y trama: los mismos de BarraApilada (.ba-seg). */
-                    <div style={{ marginBottom: 16 }}>
-                      <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginBottom: 10 }}>
-                        Las dos barras están a la misma escala.
-                      </p>
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-                        <span className="font-mono uppercase" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)" }}>
-                          Lo que pusiste · el día 1, de tu bolsillo
-                        </span>
-                        <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--doc-tx)", whiteSpace: "nowrap" }}>
-                          {money(inversionInicial)}{" "}
-                          <small style={{ fontSize: 10.5, fontWeight: 500, color: "var(--doc-tx3)" }}>{altMoney(inversionInicial)}</small>
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", height: 38, borderRadius: 3, overflow: "hidden", width: `${dia1.anchoPct}%`, maxWidth: "100%" }}>
-                        {dia1.segmentos.map((s) => (
-                          <div key={s.tono} className={`ba-seg ${s.tono}`} style={{ width: `${s.pct}%`, position: "relative" }}>
-                            {s.tono === "capex" && (
-                              <span
-                                aria-hidden
-                                style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)" }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {/* El multiplicador es el MISMO que ya muestra "Tu parte a N años" (v.multiplicador): no se recalcula. Ink, sin Signal Red. */}
-                      {!v.sinCapitalPropio && (
-                        <p className="font-mono m-0" style={{ fontSize: 12, color: "var(--doc-tx2)", marginTop: 10 }}>
-                          <b style={{ color: "var(--doc-tx)", fontWeight: 700 }}>×{mult2(mult)}</b> por cada peso que pusiste
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {composicionCierra ? (
-                    <BarraApilada
-                      llaves={[
-                        { k: <>Firme · <b>{pctFirme}%</b></>, pct: pctFirme },
-                        { k: <>Proyectado · <b>{100 - pctFirme}%</b></>, pct: 100 - pctFirme },
-                      ]}
-                      segmentos={[
-                        { tono: "pie", pct: pctSeg(pieCLP) },
-                        { tono: "amort", pct: pctSeg(amort) },
-                        { tono: "plus", pct: pctSeg(plusvaliaNeta) },
-                      ]}
-                      filas={[
-                        ...(pieCLP > 0 ? [{ tono: "pie" as const, k: "Tu pie", sub: "lo que desembolsaste el día 1, vuelve entero", v: compact(pieCLP), tag: "firme" }] : []),
-                        // Lo demás que pusiste el día 1 y que NO es patrimonio: se lista, no entra a la barra.
-                        ...(gastosCompra > 0 ? [{ tono: "gastos" as const, k: "Gastos de compra", sub: "notaría, CBR, corretaje — no vuelven", v: compact(gastosCompra), tag: "no vuelve" }] : []),
-                        ...(capexDia1 > 0 ? [{ tono: "capex" as const, k: "Puesta a punto", sub: capexSub, v: compact(capexDia1), tag: "no vuelve" }] : []),
-                        { tono: "amort", k: "Deuda que amortizó el arriendo", sub: "sale del contrato, no de una proyección", v: compact(amort), tag: "firme" },
-                        {
-                          tono: "plus",
-                          k: "Plusvalía proyectada, neta de comisión",
-                          sub: `${compact(plusvaliaBruta)} si la comuna rinde ${PROY_PCT}% · menos ${compact(exit.comisionVenta)} de venta`,
-                          v: compact(plusvaliaNeta),
-                          tag: "proyectado",
-                        },
-                      ]}
-                      total={{ k: `Tu parte a ${anios} años`, v: money(patrimonio) }}
-                      nota={{
-                        texto:
-                          // Con puesta a punto, la frase la nombra aparte de los gastos de compra;
-                          // sin CapEx conserva su forma anterior.
-                          bolsillo > 0
-                            ? `Para llegar acá pusiste ${compact(aportado)}: ${compact(inversionInicial)} el día 1 y ${compact(bolsillo)} mes a mes. ${
-                                capexDia1 > 0
-                                  ? `Los ${compact(gastosCompra)} de gastos de compra, ${compact(capexDia1)} de puesta a punto y ${compact(bolsillo)} de aportes pagaron intereses y costos, no vuelven como patrimonio.`
-                                  : `Los ${compact(aportado - pieCLP)} de gastos de compra y aportes pagaron intereses y costos, no vuelven como patrimonio.`
-                              }`
-                            : `Para llegar acá pusiste ${compact(aportado)} el día 1${
-                                capexDia1 > 0
-                                  ? `; ${compact(gastosCompra)} de gastos de compra y ${compact(capexDia1)} de puesta a punto pagaron costos, no vuelven como patrimonio`
-                                  : aportado - pieCLP > 0
-                                    ? `; los ${compact(aportado - pieCLP)} de gastos de compra pagaron costos, no vuelven como patrimonio`
-                                    : ""
-                              }.`,
-                        v: v.sinCapitalPropio ? undefined : `×${mult2(mult)}`,
-                      }}
-                    />
-                  ) : (
-                    <Bars
-                      rows={[
-                        { k: "Pusiste", v: money(aportado), pct: aportado >= patrimonio ? 100 : (aportado / Math.max(patrimonio, 1)) * 100 },
-                        { k: `Te queda a ${anios} años`, v: money(patrimonio), pct: patrimonio >= aportado ? 100 : (patrimonio / Math.max(aportado, 1)) * 100, destacada: mult < 1 },
-                      ]}
-                    />
-                  )}
-                  <div className="oport">
-                    <div className="bt">La misma plata en otro lado</div>
-                    <FilasDato>
-                      <FilaDato k={`Depósito a plazo en UF al ${Math.round(INSTRUMENTOS_REFERENCIA.depositoUF * 100)}%`} tip={`${compact(inversionInicial)} a ${Math.round(INSTRUMENTOS_REFERENCIA.depositoUF * 100)}% anual por ${anios} años`} v={money(oport.depositoUF)} />
-                      <FilaDato k={`Fondo mutuo al ${Math.round(INSTRUMENTOS_REFERENCIA.fondoMutuo * 100)}%`} tip={`${compact(inversionInicial)} a ${Math.round(INSTRUMENTOS_REFERENCIA.fondoMutuo * 100)}% anual por ${anios} años`} v={money(oport.fondoMutuo)} />
-                      <FilaDato k="Este depto" tip={`Tu parte al vender el año ${anios}`} v={money(patrimonio)} tono="in" />
-                    </FilasDato>
-                    <p className="nota">
-                      Los tres parten de los mismos {compact(inversionInicial)}.{" "}
-                      {bolsillo > 0
-                        ? `El depto es el único que te pide ${compact(bolsillo)} más en el camino y el único cuya ganancia depende de que la plusvalía ocurra.`
-                        : "El depto es el único cuya ganancia depende de que la plusvalía ocurra."}
-                    </p>
-                  </div>
-                </VViz>
-                <VPuente>Así crece tu parte. Y esto es lo que te llevas si vendes.</VPuente>
-                <VViz t={`Venta o refinanciamiento en el año ${anios}`}>
-                  <VSub>Si vendes o refinancias en el año {anios}</VSub>
-                  <div className="venta">
-                    <div>
-                      <h4>Si vendes</h4>
-                      <p className="ex">Vendes al valor proyectado, pagas lo que queda del crédito y la comisión. Lo que sobra es tu parte.</p>
-                      <FilasDato>
-                        <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% al año por ${anios} años`} sub={`${PROY_PCT}% al año desde la compra`} v={money(exit.valorVenta)} />
-                        {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
-                        {exit.sobreprecioVenta && (
-                          <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna`} v={`−${money(exit.sobreprecioVenta.clp)}`} tono="neg" />
-                        )}
-                        <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" sub={`lo que queda del crédito el año ${anios}`} v={`−${money(exit.saldoCredito)}`} tono="neg" />
-                        <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del precio de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
-                        <FilaDato k="Te queda" tip="Valor − deuda − comisión" v={money(exit.equityCLP)} tono="tot" />
-                      </FilasDato>
-                    </div>
-                    {refi && plazo > 0 && refi.capitalLiberado > 0 && (
-                      <div>
-                        <h4>Si refinancias</h4>
-                        <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
-                        <FilasDato>
-                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor`} v={money(refi.nuevoCredito)} />
-                          <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={`−${money(exit.saldoCredito)}`} tono="neg" />
-                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasaPct)}%`} v={money(refi.nuevoDividendo)} unidad="/mes" />
-                          <FilaDato k="Tu mes con la cuota nueva" tip="Arriendo − cuota nueva − gastos" v={<span style={{ color: refi.nuevoFlujoNeto < 0 ? "var(--signal-red)" : undefined }}>{`${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))}`}</span>} unidad="/mes" />
-                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={money(refi.capitalLiberado)} tono="tot" />
-                        </FilasDato>
-                        {avisaCuotaRefi(refi.ratioCuota) && veces && (
-                          <p className="ex">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
-                        )}
-                      </div>
+                <VViz t={`Si vendes el año ${anios}`}>
+                  <FilasDato>
+                    <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% al año por ${anios} años`} sub={`${PROY_PCT}% al año desde la compra`} v={money(exit.valorVenta)} />
+                    {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
+                    {exit.sobreprecioVenta && (
+                      <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna; se descuenta plano`} v={`−${money(exit.sobreprecioVenta.clp)}`} tono="neg" />
                     )}
-                  </div>
+                    <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" v={`−${money(exit.saldoCredito)}`} tono="neg" />
+                    <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del precio de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
+                    <FilaDato k="Te queda" tip="Valor − sobreprecio − deuda − comisión" v={<span style={{ color: mult < 1 ? "var(--signal-red)" : undefined }}>{money(exit.equityCLP)}</span>} tono="tot" />
+                  </FilasDato>
                 </VViz>
+                <VViz t={`De dónde salen tus ${compact(patrimonio)}`}>
+                  <BarraApiladaB
+                    tramos={[
+                      { tono: "pie", k: "Pie", v: pieCLP },
+                      { tono: "amort", k: "Amortización", v: amort },
+                      { tono: "plus", k: "Plusvalía", v: plusvaliaNeta },
+                    ]}
+                    leyenda={cierra ? { izq: `Firme · ${pctFirme}%`, der: `Proyectado · ${100 - pctFirme}%` } : { izq: `Pusiste ${compact(aportado)}`, der: `Te queda ${compact(patrimonio)}`, rojo: true }}
+                    fmt={compact}
+                    nota={`Pie: lo que pusiste, vuelve entero · Amortización: lo que el arriendo pagó del crédito · Plusvalía: proyectada, neta de comisión${sobre ? " y sobreprecio" : ""}.`}
+                  />
+                </VViz>
+                {refi && plazo > 0 && refi.capitalLiberado > 0 && (
+                  <VViz t={`Si refinancias en el año ${refi.anios}`}>
+                    <FilasDato>
+                      <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${refi.anios}`} sub={`${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}`} v={money(refi.nuevoCredito)} />
+                      <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasaPct)}%${refi.dividendoActual > 0 ? ` · hoy pagas ${money(refi.dividendoActual)}` : " · hoy no tienes crédito"}`} v={money(refi.nuevoDividendo)} unidad="/mes" />
+                      <FilaDato k="Tu mes con la cuota nueva" tip="Arriendo − cuota nueva − gastos" v={<span style={{ color: refi.nuevoFlujoNeto < 0 ? "var(--signal-red)" : undefined }}>{`${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))}`}</span>} unidad="/mes" />
+                      <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={money(refi.capitalLiberado)} tono="tot" />
+                    </FilasDato>
+                    {avisaCuotaRefi(refi.ratioCuota) && veces && (
+                      <p className="refi-aviso">{fraseAvisoCuotaRefi({ veces, cuotaNueva: money(refi.nuevoDividendo), cuotaActual: money(refi.dividendoActual), flujoNuevo: `${refi.nuevoFlujoNeto < 0 ? "−" : "+"}${money(Math.abs(refi.nuevoFlujoNeto))} al mes`, flujoNuevoNegativo: refi.nuevoFlujoNeto < 0 })}</p>
+                    )}
+                  </VViz>
+                )}
                 <VCierre titulo="Qué significa">
                   <Segs segs={segs} />
                 </VCierre>
                 <VFuente>
                   Motor Franco · proyección a {PROY_PCT}% anual · {ufFecha}
-                  {exit.sobreprecioVenta ? ` · Sobreprecio contra la mediana de ${exit.sobreprecioVenta.n.toLocaleString("es-CL")} avisos comparables de la comuna${exit.sobreprecioVenta.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}.` : ""}
+                  {sobre ? ` · Sobreprecio contra la mediana de ${sobre.n.toLocaleString("es-CL")} avisos comparables de la comuna${sobre.muestraChica ? ", muestra chica: la corrección es más dudosa" : ""}` : ""}
+                  {refi ? ` · refinanciamiento al ${Math.round(refi.ltv * 100)}% del valor del año ${refi.anios}, con la tasa y el plazo de tu crédito` : ""}.
                 </VFuente>
               </div>
             ),

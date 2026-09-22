@@ -285,6 +285,11 @@ export interface YearProjection {
   valorPropiedad: number;
   saldoCredito: number;
   patrimonioNeto: number;
+  /** Tu parte SI VENDES ESE AÑO: valor − sobreprecio de hoy − saldo − comisión sobre lo que paga el
+   *  mercado. En el año de salida es EXACTAMENTE exitScenario.equityCLP: un solo patrimonio en el
+   *  informe (22-sep-2026, espejo de STR). Opcional por filas persistidas anteriores; el motor lo
+   *  emite siempre (runAnalysis, después del exit). */
+  parteAlVender?: number;
   // ── Desglose anual (T1 del rediseño de la página, contrato CONGELADO 02-sep-2026) ──
   // Alimenta la tabla "Flujo por año" del modal de cálculo. Son los MISMOS términos
   // con los que el loop arma `flujoAnual`, solo que emitidos por separado; la

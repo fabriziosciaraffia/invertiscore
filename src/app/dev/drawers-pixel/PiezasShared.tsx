@@ -7,10 +7,8 @@
 // y `simulacion` del fixture.
 // ============================================================================
 import { useState } from "react";
-import { barraDia1 } from "@/lib/plata-dia1";
-import { metricaValorONull } from "@/lib/types";
 import { VViz } from "@/components/analysis/hallazgos/vocabulario";
-import { Matriz, Planilla, FilaDato, FilasDato, CurvaAnual, SeisCifras, BloqueDia1, CurvaPatrimonio } from "@/components/analysis/shared";
+import { Matriz, Planilla, FilaDato, FilasDato, CurvaAnual, SeisCifras, PatrimonioBarras, BarraApiladaB } from "@/components/analysis/shared";
 
 const clp = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n)).toLocaleString("es-CL")}`;
 const k = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n) / 1000)}k`;
@@ -145,22 +143,20 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
     const pr = (r.projections as any[]).slice(0, 10);
     const inv = r.exitScenario.inversionInicial ?? r.pie;
     bloques.push({
-      id: "patrimonio", titulo: "Curva de patrimonio (VI)", node: (
+      id: "patrimonio", titulo: "Barras de patrimonio (VI)", node: (
         <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
-          <CurvaPatrimonio anios={pr.map((p) => ({ year: p.year, valor: p.valorDepto, aporte: inv + Math.max(0, -p.flujoAcumulado), patrimonio: p.patrimonioNeto }))} etiquetaFinal={mm(pr[pr.length - 1].patrimonioNeto)} />
+          <PatrimonioBarras filas={pr.map((p) => ({ anio: p.year, aporte: inv + Math.max(0, -p.flujoAcumulado), precio: r.pie + r.montoCredito, valor: p.valorDepto, parte: p.parteAlVender ?? p.patrimonioNeto }))} fmtEje={(n) => `${Math.round(n / 1e6)}M`} />
         </VViz>
       ),
     });
   }
   if (on("dia1") && m && r.exitScenario) {
-    const d = m.dia1;
-    const barra = barraDia1({ pieCLP: d.pieCLP, gastosCompraCLP: d.gastosCompraCLP, amoblamientoCLP: d.amoblamientoCLP, capexCLP: d.capexCLP, inversionInicial: d.inversionInicial, patrimonio: r.exitScenario.equityCLP });
-    const multV = metricaValorONull(r.exitScenario.multiplicadorCapital);
-    const mult = multV != null ? `×${multV.toFixed(2).replace(".", ",")}` : null;
+    const amort = Math.max(r.montoCredito - r.exitScenario.saldoCreditoAlVender, 0);
+    const plus = r.exitScenario.equityCLP - r.pie - amort;
     bloques.push({
-      id: "dia1", titulo: "Bloque del día 1 (VI, cuatro tonos)", node: (
-        <VViz t={`De dónde salen tus ${mm(r.exitScenario.equityCLP)} si vendes el año 10`}>
-          <BloqueDia1 barra={barra} total={clp(d.inversionInicial)} totalAlt={`UF ${Math.round(d.inversionInicial / fix.uf).toLocaleString("es-CL")}`} multiplicador={mult} fmt={clp} />
+      id: "dia1", titulo: "Barra apilada forma B (VI)", node: (
+        <VViz t={`De dónde salen tus ${mm(r.exitScenario.equityCLP)}`}>
+          <BarraApiladaB tramos={[{ tono: "pie", k: "Pie", v: r.pie }, { tono: "amort", k: "Amortización", v: amort }, { tono: "plus", k: "Plusvalía", v: plus }]} leyenda={{ izq: "Firme", der: "Proyectado" }} fmt={mm} />
         </VViz>
       ),
     });

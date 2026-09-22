@@ -553,28 +553,6 @@ export function TokensHallazgos() {
       .tl-delta::before{content:'→';display:block;color:var(--doc-tx4);font-size:14px}
       .lectura{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14px;color:var(--doc-tx2);margin-top:12px;line-height:1.6}
       /* barra apilada (propuesta-04) */
-      .ba-brackets{display:flex;margin-bottom:5px}
-      .ba-bracket{position:relative;text-align:center;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);padding-bottom:7px}
-      .ba-bracket::after{content:'';position:absolute;left:3px;right:3px;bottom:0;height:5px;border:1px solid var(--doc-line2);border-bottom:none;border-radius:3px 3px 0 0}
-      .ba-bracket b{color:var(--doc-tx);font-size:11px}
-      .ba-compo{display:flex;height:38px;border-radius:3px;overflow:hidden}
-      .ba-seg{height:100%;position:relative}
-      .ba-seg.pie,.ba-sw.pie{background:var(--doc-neutral)} .ba-seg.amort,.ba-sw.amort{background:var(--doc-good)} .ba-seg.plus,.ba-sw.plus{background:var(--doc-good);opacity:.45}
-      .ba-seg.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
-      .ba-sw.gastos,.ba-seg.gastos{background:var(--doc-line2)} .ba-sw.capex,.ba-seg.capex{background:var(--doc-line2)}
-      .ba-sw.capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 6px)}
-      .ba-leg{margin-top:14px}
-      .ba-row{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--doc-line)}
-      .ba-row:last-child{border-bottom:none}
-      .ba-sw{width:12px;height:12px;border-radius:2px;position:relative;top:2px}
-      .ba-sw.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.4) 3px,rgba(255,255,255,.4) 6px)}
-      .ba-k{font-size:12.5px;color:var(--doc-tx2)} .ba-k small{display:block;font-size:11px;color:var(--doc-tx3);margin-top:1px}
-      .ba-v{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;white-space:nowrap;text-align:right;color:var(--doc-tx)}
-      .ba-v small{display:block;font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);font-weight:400;margin-top:1px}
-      .ba-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:11px;border-top:2px solid var(--doc-tx)}
-      .ba-total .k{font-size:13px;font-weight:600;color:var(--doc-tx)} .ba-total .v{font-family:var(--font-mono, ui-monospace);font-size:19px;font-weight:700;color:var(--doc-tx)}
-      .ba-mult{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:3px;margin-top:12px}
-      .ba-mult .k{font-size:12px;color:var(--doc-tx3);flex:1;line-height:1.45} .ba-mult .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-good);white-space:nowrap}
       /* modal (overlay Ink 60%, panel 720px, pantalla completa en mobile) */
       /* El overlay toma --overlay dentro del informe: los dos overlays del
          informe usaban el mismo alfa sobre dos negros distintos, sin razon. */
