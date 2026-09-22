@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capítulo III · STR · «Cuántas noches vas a tener»</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 22-sep-2026 · capítulo III de STR. Nada implementado.
+     EL CAPÍTULO PASA de «la misma frontera en noches» a «cuántas noches, contra qué realidad, con cuánta
+     confianza». FASE 0 (of-censo-noches.ts, 254 filas): el dial de ocupación era el del capítulo I en
+     otra unidad (misma `fronterasIngreso`, 252/254); el termómetro comparaba el p50 del estimador
+     contra la mediana comunal del mismo p50 («parecido» en 213/254, p50 1 punto) y estaba pintado al
+     revés y con verde y ocre; la ocupación se decía cinco veces dentro del capítulo; el ramp-up tres
+     veces entre el II y el III.
+     LO QUE SE QUEDA: la curva del año (pico, valle, meses en rojo) y el arranque en caja.
+     LO QUE ENTRA: la ocupación realizada de los comparables (`ocupacionRealizadaComparables`: p50,
+     p50Superhost, n, nSuperhost — persistida en 212/254 filas y sin render hasta hoy) como el dato de
+     confianza de la estimación, con el n; y un comentario corto que explica la brecha sin alarmar (la
+     estimación es lo que logra un depto bien operado; los comparables incluyen a los que operan mal, los
+     estacionales y los que recién arrancan; una administración profesional aumenta las posibilidades de
+     llegar a esa ocupación — es lo que AirROI mismo dijo).
+     LO QUE SALE: el dial de ocupación, el termómetro contra la comuna, cuatro de las cinco menciones de
+     la ocupación, la tercera mención del ramp-up (la del cierre; queda la del año, que es la de la caja).
+     TOKENS: tinta y rojo. La curva pinta en rojo los meses en que pones plata, como la de diez años;
+     los demás en tinta. Sin verde ni ocre.
+     SIN COMPARABLES (42 filas): estimación y curva, y una línea que dice que no hay avisos parecidos
+     suficientes para contrastar.
+     CIFRAS REALES (22-sep-2026, recompute): 06d44c93 (Santiago 2D, AJUSTA, comparables 41% = estimación
+     41%), c0b01d27 (Las Condes 1D, AJUSTA, comparables 22% contra 49%), dc086820 (Providencia 2D, AJUSTA,
+     sin comparables guardados).
+     TÍTULO: «Cuántas noches necesitas» era la pregunta del dial, y el dial se va. Propuestas abajo.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;--signal:#C8323C;--rad:16px;--rad-s:12px}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--ink1:#71717A}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--ink1:#8A8A90}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1000px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:80ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1000px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:80ch;line-height:1.5}
+  .par3{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  [data-view="mobile"] .par3{grid-template-columns:1fr;max-width:390px}
+  @media (max-width:920px){.par3{grid-template-columns:1fr;max-width:700px}}
+  .escena{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:22px 24px;min-width:0}
+  [data-view="mobile"] .escena{padding:18px 16px}
+  .cabeza{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+  .cabeza .q{font-size:15.5px;font-weight:600}
+  .cabeza .q small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  .cabeza .val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .cabeza .val small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3);white-space:normal}
+  .bloque{margin-top:18px}
+  .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+  .v-sub .num{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--tx);color:var(--page);font-size:9.5px;align-items:center;justify-content:center;font-weight:700;flex:none}
+  .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
+  .v-prosa b{color:var(--tx);font-weight:600}
+  .v-pie{font-size:12.5px;line-height:1.55;color:var(--tx2);margin-top:8px}
+  .v-pie b{color:var(--tx);font-weight:600}
+  .v-pie .neg{color:var(--signal);font-weight:600}
+  .v-cierre{margin-top:18px;font-size:13.5px;line-height:1.6;color:var(--tx2)}
+  .v-cierre b{color:var(--tx);font-weight:600}
+  .v-cierre mark{background:transparent;box-shadow:inset 0 -.42em 0 color-mix(in srgb, var(--tx) 22%, transparent);color:inherit}
+  .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
+  /* ── 1 · las dos cifras: la estimación y lo que realizaron los comparables ── */
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 2px}
+  [data-view="mobile"] .dos{grid-template-columns:1fr}
+  .dos .c{background:var(--sunk);border-radius:var(--rad-s);padding:12px 14px}
+  .dos .k{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4)}
+  .dos .n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--tx);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
+  .dos .n small{font-family:var(--sans);font-size:11.5px;font-weight:500;color:var(--tx3);margin-left:6px}
+  .dos .s{font-size:11.5px;color:var(--tx3);margin-top:5px;line-height:1.45}
+  .dos .c.tenue .n{color:var(--ink1)}
+  .dos .c.vacia .n{color:var(--tx4);font-size:18px}
+  /* la barra de las dos marcas: un eje 0–100 de ocupación, la estimación en tinta plena y lo realizado en
+     tinta tenue. No es un termómetro contra nada: son dos marcas sobre el mismo eje, y la distancia entre
+     ellas es la confianza. */
+  .eje{position:relative;height:6px;border-radius:3px;background:var(--line2);margin:22px 6px 26px}
+  .eje .m{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;transform:translateX(-50%)}
+  .eje .m.est{background:var(--tx)}
+  .eje .m.real{background:var(--ink1)}
+  .eje .l{position:absolute;font-family:var(--mono);font-size:10px;font-weight:700;transform:translateX(-50%);white-space:nowrap}
+  .eje .l.est{top:-20px;color:var(--tx)}
+  .eje .l.real{top:12px;color:var(--ink1)}
+  .eje .t{position:absolute;top:12px;font-size:9.5px;color:var(--tx4)}
+  .eje .t.a{left:0}.eje .t.b{right:0}
+  /* ── 2 · la curva del año ── */
+  .curva{width:100%;height:150px;display:block}
+  .leyenda{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:4px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .cont{font-size:10px;color:var(--tx4);text-align:right;margin-top:8px}
+  .decision{max-width:1000px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.titulos{font-size:12.5px;border-collapse:collapse;max-width:1000px;margin:8px auto}
+  table.titulos td{padding:6px 14px 6px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.titulos td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Capítulo III · STR · cuántas noches vas a tener, contra qué realidad, con cuánta confianza</h1>
+  <p class="subx">Mockup del 22-sep-2026. Dos piezas: la estimación de ocupación al lado de lo que realizaron los avisos parecidos del mismo proveedor (el dato de confianza, con su n, hoy persistido y sin mostrar), con un comentario corto que explica la brecha; y la curva del año con los meses en rojo y el arranque en caja. Sale el dial (es el del capítulo I en noches), sale el termómetro contra la comuna (el estimador contra sí mismo), y la ocupación se dice una vez. El contador de cada escena dice cuánto queda contra los 2.042–2.244 de hoy.</p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Ancho</span>
+    <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Encabezado:</b> «Al año 151 noches», sub «con la ocupación estimada (41%) · los avisos parecidos ocuparon 41%». Con supuesto propio: «con la ocupación que definiste». Sin comparables: «sin avisos parecidos para contrastar».</li>
+    <li><b>1 · La estimación y lo que realizaron los parecidos.</b> Dos cifras: la ocupación estimada para tu depto (con sus noches al año) y la que realizaron el último año los avisos parecidos con que se estimó (con el n y cuántos son superhost). Debajo, las dos marcas sobre un eje 0–100: la distancia entre ellas es la confianza. La lectura en una frase, por rama: <b>cerca</b> (|Δ| ≤ 5 pts) «los avisos parecidos ocuparon lo mismo: el número se sostiene en lo que ya pasa en la zona» · <b>lejos</b> «ocuparon X, N puntos menos: la estimación cuenta con que operes mejor que la mayoría de los que hoy están publicados» · <b>sin comparables</b> «no hay avisos parecidos suficientes guardados para contrastarla».</li>
+    <li><b>El comentario</b>, fijo, sin alarma: la estimación es lo que logra un depto como el tuyo bien operado; los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan; una administración profesional aumenta las posibilidades de llegar a esa ocupación. Va después de la brecha y solo cuando hay comparables.</li>
+    <li><b>2 · Cómo se reparte el año.</b> La misma curva de hoy (ingreso de cada mes contra el promedio), los meses en que pones plata en rojo y el resto en tinta. Copy: pico, valle, cuántos meses pones plata, y el arranque en caja (única mención del ramp-up en el capítulo; el II ya dice cuánto cuesta en facturación).</li>
+    <li><b>Cierre</b> de una oración que junta las dos piezas: la confianza de las noches y la forma del año. No repite la cifra del ramp-up ni la frontera del veredicto (vive en el I).</li>
+    <li><b>Fuente:</b> «Datos de mercado · ocupación estimada para este depto y curva mensual de la zona · N avisos parecidos, ocupación del último año · fecha».</li>
+  </ul>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>El título</h2><p>«Cuántas noches necesitas» era la pregunta del dial, y el dial se va. Lo que queda pregunta cuántas noches vas a tener y cuánta confianza merece el número. Tres propuestas, en el tono de «Cuánto renta», «Tu flujo mensual», «Cómo lo pagas».</p></div>
+<table class="titulos">
+  <tr><td>Cuántas noches vas a tener</td><td>La recomendada. Pregunta como «Cuánto renta», habla de lo que va a pasar y no de una condición; el sub del encabezado pone la confianza al lado («los avisos parecidos ocuparon 41%»).</td></tr>
+  <tr><td>Tus noches al año</td><td>Como «Tu flujo mensual»: nombra la cifra del encabezado («Al año 151 noches») sin preguntar. Más corta, menos dice sobre la confianza.</td></tr>
+  <tr><td>Cuántas noches, de verdad</td><td>Dice lo de la confianza en el título mismo: la estimación contra lo que realizan los parecidos. Es la que más promete y la que más cuesta cumplir sin comparables (42 filas).</td></tr>
+</table>
+<div class="rot"><p>Cola anotada: «Cómo lo pagas» tiene el mismo problema —el financiamiento salió del capítulo y el título sigue hablando de pagar—. Se resuelve cuando cierre este.</p></div>
+
+<script>
+  const money = (n) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
+  const mm = (n) => "$" + (Math.abs(n) / 1e6).toFixed(1).replace(".", ",") + " MM";
+  const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const MESES_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const EN_PALABRAS = ["Ninguno", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Los doce"];
+  // ── filas reales (recompute 22-sep-2026) ──
+  const FILAS = [
+    { id: "06d44c93", titulo: "Santiago 2D · AJUSTA · los parecidos ocuparon lo mismo", comuna: "Santiago", occ: 41, tuya: false, noches: 151, real: { p50: 41, sh: 45, n: 25, nSh: 14 }, ramp: 1091046, fecha: "22 sep 2026",
+      fe: [[696458,-187579],[597162,-283896],[698879,-185230],[618152,-263536],[624972,-256920],[708626,-175776],[983445,90799],[811946,-75555],[691427,-192459],[765544,-120565],[795140,-91857],[736611,-148630]] },
+    { id: "c0b01d27", titulo: "Las Condes 1D · AJUSTA · los parecidos ocuparon 27 puntos menos", comuna: "Las Condes", occ: 49, tuya: false, noches: 179, real: { p50: 22, sh: 22, n: 25, nSh: 17 }, ramp: 1416965, fecha: "1 ago 2026",
+      fe: [[935684,-144275],[868424,-209517],[970352,-110647],[891933,-186713],[903852,-175152],[925664,-153994],[1053150,-30333],[956030,-124539],[927854,-151870],[975667,-105491],[952904,-127571],[974204,-106910]] },
+    { id: "dc086820", titulo: "Providencia 2D · AJUSTA · sin avisos parecidos guardados", comuna: "Providencia", occ: 47, tuya: false, noches: 171, real: null, ramp: 1239870, fecha: "12 jun 2026",
+      fe: [[787923,-150457],[651736,-282558],[775993,-162029],[696664,-238978],[711372,-224711],[800285,-138466],[1125739,177225],[951546,8258],[810521,-128537],[849040,-91173],[918789,-23517],[839346,-100576]] },
+  ];
+
+  function curva(fe) {
+    const W = 600, H = 150, x0 = 34, x1 = 594, yT = 20, yB = 120;
+    const vals = fe.map((m) => m[0]); const prom = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const mn = Math.min(...vals, prom), mx = Math.max(...vals, prom), span = mx - mn || 1;
+    const y = (v) => yB - ((v - mn) / span) * (yB - yT); const x = (i) => x0 + (i * (x1 - x0)) / 11;
+    const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Ingreso de cada mes frente al mes promedio">
+      <line x1="${x0}" y1="${y(prom).toFixed(1)}" x2="${x1}" y2="${y(prom).toFixed(1)}" stroke="var(--line2)" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="${x1 + 2}" y="${(y(prom) + 4).toFixed(1)}" font-family="Inter" font-size="10" fill="var(--tx4)">promedio</text>
+      <polyline fill="none" stroke="var(--tx)" stroke-width="2.5" points="${pts}"/>
+      ${fe.map((m, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(m[0]).toFixed(1)}" r="3.6" fill="${m[1] < 0 ? "var(--signal)" : "var(--tx)"}"/>`).join("")}
+      ${MESES.map((m, i) => `<text x="${x(i).toFixed(1)}" y="142" font-family="Inter" font-size="11" fill="var(--tx4)" text-anchor="middle">${m}</text>`).join("")}
+    </svg><div class="leyenda"><span><i style="background:var(--signal)"></i>mes en que pones plata</span><span><i style="background:var(--tx)"></i>mes que deja</span></div>`;
+  }
+
+  function escena(f) {
+    const r = f.real; const delta = r ? r.p50 - f.occ : null;
+    const rama = !r ? "sin" : Math.abs(delta) <= 5 ? "cerca" : "lejos";
+    const origen = f.tuya ? "la ocupación que definiste" : "la ocupación estimada";
+    const subCab = !r ? `con ${origen} (${f.occ}%) · sin avisos parecidos para contrastar` : `con ${origen} (${f.occ}%) · los avisos parecidos ocuparon ${r.p50}%`;
+    // 1 · las dos cifras
+    const celdas = `<div class="dos">
+        <div class="c"><div class="k">${f.tuya ? "Tu supuesto" : "Estimada para tu depto"}</div><div class="n">${f.occ}%<small>${f.noches} noches al año</small></div><div class="s">${f.tuya ? "El número que definiste tú, no un dato de mercado." : "Lo que los datos de mercado estiman para un depto como el tuyo, estabilizado."}</div></div>
+        ${r ? `<div class="c tenue"><div class="k">Los avisos parecidos ocuparon</div><div class="n">${r.p50}%<small>${Math.round(r.p50 * 3.65)} noches</small></div><div class="s">Mediana del último año de los ${r.n} avisos con que se estimó; ${r.nSh} son superhost y ocuparon ${r.sh}%.</div></div>`
+           : `<div class="c vacia"><div class="k">Los avisos parecidos ocuparon</div><div class="n">sin dato</div><div class="s">Este análisis no guardó los avisos con que se estimó: no hay con qué contrastar.</div></div>`}
+      </div>`;
+    const eje = r ? `<div class="eje"><span class="t a">0%</span><span class="t b">100%</span>
+        <span class="m est" style="left:${f.occ}%"></span><span class="l est" style="left:${f.occ}%">estimada ${f.occ}%</span>
+        <span class="m real" style="left:${r.p50}%"></span><span class="l real" style="left:${r.p50}%">realizaron ${r.p50}%</span></div>` : "";
+    const lectura = rama === "cerca"
+      ? `<p class="v-pie">Los avisos parecidos ocuparon lo mismo que estima el mercado para tu depto: <b>el número se sostiene en lo que ya pasa en la zona</b>, no en una expectativa.</p>`
+      : rama === "lejos"
+        ? `<p class="v-pie">Los avisos parecidos ocuparon ${r.p50}%, <span class="neg">${Math.abs(delta)} puntos menos</span> que la estimación: <b>el número cuenta con que operes mejor que la mayoría de los que hoy están publicados</b>.</p>`
+        : `<p class="v-pie">No hay avisos parecidos suficientes guardados para contrastar la estimación: <b>${f.noches} noches es lo que el mercado estima para un depto como el tuyo</b>, y este capítulo no puede decir cuánta confianza merece.</p>`;
+    const comentario = r ? `<p class="v-pie">Por qué difieren: la estimación es lo que logra un depto como el tuyo bien operado. Los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan, y por eso ocupan menos. Una administración profesional aumenta las posibilidades de llegar a esa ocupación.</p>` : "";
+    // 2 · el año
+    const ing = f.fe.map((m) => m[0]); const iMax = ing.indexOf(Math.max(...ing)), iMin = ing.indexOf(Math.min(...ing));
+    const rojos = f.fe.filter((m) => m[1] < 0).length;
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const anio = `<p class="v-pie">${cap(MESES_L[iMax])} es el pico (${money(ing[iMax])}${f.fe[iMax][1] >= 0 ? `, ${rojos === 11 ? "el único mes que deja" : "deja"} ${money(f.fe[iMax][1])}` : `, y aun así pones ${money(f.fe[iMax][1])}`}); ${MESES_L[iMin]} el valle (${money(ing[iMin])}, pones ${money(f.fe[iMin][1])}). <b>${rojos === 12 ? "Los doce" : `${EN_PALABRAS[rojos]} de doce`} meses pones plata.</b> Y antes de eso, los primeros meses el aviso se ocupa menos mientras gana reseñas: ${mm(f.ramp)} que tienes que tener en caja antes de arrancar.</p>`;
+    // cierre
+    const cierre = rama === "cerca"
+      ? `Las ${f.noches} noches que estima el mercado son las que ya hacen los avisos parecidos, <mark>así que lo que sigue no descansa en una ocupación optimista: descansa en un año que deja ${rojos} de doce meses en rojo.</mark>`
+      : rama === "lejos"
+        ? `Las ${f.noches} noches que estima el mercado son ${Math.round((f.occ - r.p50) * 3.65)} más de las que hacen hoy los avisos parecidos: <mark>todo lo que sigue supone que operas mejor que la mayoría, y aun con esas noches el año deja ${rojos === 12 ? "los doce" : rojos} meses en rojo.</mark>`
+        : `Las ${f.noches} noches son la estimación del mercado sin avisos parecidos que la contrasten: <mark>tómalas como el techo de lo razonable, no como el piso, y el año con ellas ya deja ${rojos} de doce meses en rojo.</mark>`;
+    const fuente = `Datos de mercado · ocupación ${f.tuya ? "definida por ti" : "estimada para este depto"} y curva mensual de la zona${r ? ` · ${r.n} avisos parecidos, ocupación del último año` : ""} · ${f.fecha}`;
+    return `<div class="escena" data-id="${f.id}">
+      <div class="cabeza"><div class="q">Cuántas noches vas a tener<small>STR · ${f.titulo}</small></div><div class="val">Al año ${f.noches} noches<small>${subCab}</small></div></div>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>La estimación, y lo que realizaron los avisos parecidos</div>${celdas}${eje}${lectura}${comentario}</div>
+      <div class="bloque"><div class="v-sub"><span class="num">2</span>Cómo se reparte el año</div>${curva(f.fe)}${anio}</div>
+      <p class="v-cierre"><b>Qué significa.</b> ${cierre}</p>
+      <div class="v-fuente">${fuente}</div>
+      <div class="cont"></div>
+    </div>`;
+  }
+
+  const cont = document.getElementById("escenas");
+  const rot = document.createElement("div"); rot.className = "rot";
+  rot.innerHTML = `<h2>Tres escenas</h2><p>Santiago 2D, donde los avisos parecidos ocuparon exactamente lo que estima el mercado (41% contra 41%); Las Condes 1D, donde ocuparon 22% contra 49% estimado; Providencia 2D, sin avisos guardados (42 filas del parque). Las tres AJUSTA. Con supuesto propio del usuario (33 filas) la celda izquierda dice «Tu supuesto» y la lectura compara ese supuesto contra lo realizado.</p>`;
+  cont.appendChild(rot);
+  const grid = document.createElement("div"); grid.className = "par3";
+  grid.innerHTML = FILAS.map(escena).join("");
+  cont.appendChild(grid);
+  document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo (hoy 2.042–2.244)`; });
+  document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));
+  document.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.view = b.dataset.v; document.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("on", x === b)); }));
+</script>
+</body>
+</html>
