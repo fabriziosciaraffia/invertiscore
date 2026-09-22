@@ -8,7 +8,7 @@
 // ============================================================================
 import { useState } from "react";
 import { VViz } from "@/components/analysis/hallazgos/vocabulario";
-import { Matriz, Planilla, FilaDato, FilasDato, CurvaAnual, SeisCifras, PatrimonioBarras, BarraApiladaB } from "@/components/analysis/shared";
+import { Matriz, Planilla, FilaDato, FilasDato, CurvaFlujoAnual, SeisCifras, PatrimonioBarras, BarraApiladaB } from "@/components/analysis/shared";
 
 const clp = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n)).toLocaleString("es-CL")}`;
 const k = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n) / 1000)}k`;
@@ -128,12 +128,10 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
   if (on("curva") && r.flujoEstacional) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fe = r.flujoEstacional as any[];
-    const ingresos = fe.map((x) => x.ingresoBruto ?? 0);
-    const prom = ingresos.reduce((a, b) => a + b, 0) / (ingresos.length || 1);
     bloques.push({
       id: "curva", titulo: "Curva anual (III)", node: (
-        <VViz t="Ingreso de cada mes frente al mes promedio · curva real de la zona">
-          <CurvaAnual puntos={fe.map((x, i) => ({ v: ingresos[i], positivo: (x.flujo ?? 0) > 0 }))} promedio={prom} />
+        <VViz t="Lo que deja o cuesta cada mes, según la temporada">
+          <CurvaFlujoAnual flujos={fe.map((x) => Number(x.flujo ?? 0))} fmt={(n) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n)).toLocaleString("es-CL")}`} />
         </VViz>
       ),
     });

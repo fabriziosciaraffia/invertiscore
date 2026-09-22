@@ -341,10 +341,6 @@ export function TokensHallazgos() {
       .v-collapse:hover{color:var(--doc-tx);border-color:var(--doc-tx4)}
 
       /* ===== PRIMITIVAS DE DIAGRAMA ===== */
-      .thermo{padding:6px 0 2px}
-      .thermo.con-marca{padding-top:28px}
-      .thermo-you{position:absolute;top:-24px;transform:translateX(-50%);font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;
-        color:var(--doc-tx);white-space:nowrap}
       /* T3 · capítulo V: la misma plata en otro lado + venta/refinanciamiento */
       .oport{margin-top:18px;padding:14px 16px;border:1px solid var(--doc-line);border-radius:3px;background:var(--doc-paper2)}
       .oport .bt{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx4);margin-bottom:6px}
@@ -353,20 +349,8 @@ export function TokensHallazgos() {
       .venta h4{font-family:var(--font-heading, Georgia, serif);font-size:15px;font-weight:600;margin:0 0 4px;color:var(--doc-tx)}
       .venta .ex{font-size:12px;line-height:1.55;color:var(--doc-tx3);margin:0 0 8px}
       @media (max-width: 767px){ .venta{grid-template-columns:1fr;gap:18px} .hall.cap .num{font-size:20px} }
-      .thermo-track{position:relative;height:6px;border-radius:3px;
-        background:linear-gradient(90deg,var(--doc-good),var(--doc-warn),var(--signal-red))}
-      /* v9b — eje donde la calidad crece hacia la derecha (ocupación): el color
-         codifica calidad, no posición. */
-      .thermo-track.inv{background:linear-gradient(90deg,var(--signal-red),var(--doc-warn),var(--doc-good))}
-      .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--doc-tx);
-        border:3px solid var(--doc-paper);transform:translate(-50%,-50%)}
-      .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--doc-tx3)}
-      /* Hito del CERO (goal plusvalía): más tenue que la referencia — es un punto de
-         lectura, no el umbral contra el que se compara. */
-      .thermo-cero{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--doc-tx4)}
-      .thermo-legend{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--font-mono, ui-monospace);
-        font-size:9.5px;color:var(--doc-tx4);letter-spacing:.06em}
-      .thermo-legend b{color:var(--doc-tx2);display:block;font-size:12px;margin-top:2px}
+      /* .thermo-* se retiró el 22-sep-2026 con el Thermo (único consumidor: el III de STR); con él se fue
+         el único degradado verde→ocre→rojo de las primitivas. */
       .fall-visual{display:flex;height:26px;border-radius:2px;overflow:hidden;margin-bottom:12px}
       .fall-visual span{height:100%}
       .fall-row{display:grid;grid-template-columns:1fr 130px;align-items:center;gap:12px;padding:7px 0;
@@ -388,7 +372,6 @@ export function TokensHallazgos() {
       /* Convención del informe (Capa 1): el rojo del NUMERAL lo decide el signo, no
          el destaque de la serie. */
       .bar-row .bv.neg{color:var(--signal-red)}
-      .spark{width:100%;height:110px;display:block}
       .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:6px}
       .tbl{border-collapse:collapse;width:100%;min-width:390px}
       .tbl th{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
@@ -410,7 +393,6 @@ export function TokensHallazgos() {
          cadena). Bajo un Thermo no sirve: su leyenda es de dos líneas y el pie se
          metía dentro de la fila de valores (el 3,0% central quedaba en el párrafo).
          Se neutraliza SOLO en ese vecindario, sin tocar los cuerpos donde funciona. */
-      .thermo + .viz-pie{margin-top:8px}
       /* GOAL 16 (c) — sub-label del KPI en la fila del acordeón. Mono chico y en
          tx3 para que no compita con la pregunta: es la unidad del número de la
          derecha, no un segundo titular. */
@@ -668,7 +650,6 @@ export function TokensHallazgos() {
         .fall-row{grid-template-columns:1fr 108px;gap:8px}
         .bar-row{grid-template-columns:88px 1fr auto;gap:8px}
         .bar-row .bk{font-size:11px}
-        .spark{height:96px}
         .dial-zone{font-size:7px;letter-spacing:.04em}
         .dial-marklbl .v{font-size:11.5px}
         .dial-edge .d{font-size:11px}

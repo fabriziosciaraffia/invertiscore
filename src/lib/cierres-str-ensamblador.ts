@@ -4,6 +4,7 @@
 // hallazgos, comparativa, zonaSTR, exit). Es la única costura entre motor y cierres: el
 // render y los fixtures llaman esto, no recalculan nada por su cuenta.
 // ─────────────────────────────────────────────────────────────────────────────
+import { ramaOcupacion } from "@/components/analysis/shared/OcupacionComparables";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
 import type { Hallazgo, HallazgoRentabilidadStr } from "./types";
@@ -14,8 +15,8 @@ import { costoOportunidad } from "./analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import type { FmtCierre, SegCierre } from "./cierres-capitulos";
 import {
-  cierreRentaStr, cierreNochesStr, cierreGestionStr, cierreLargoStr, cierreResultadoStr,
-  type ArgsCierreRentaStr, type ArgsCierreNochesStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
+  cierreRentaStr, cierreOcupacionStr, cierreGestionStr, cierreLargoStr, cierreResultadoStr,
+  type ArgsCierreRentaStr, type ArgsCierreOcupacionStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
 } from "./cierres-capitulos-str";
 
 export interface EntradaCierresStr {
@@ -31,7 +32,7 @@ export interface EntradaCierresStr {
 
 export interface ArgsCierresStr {
   renta: ArgsCierreRentaStr;
-  noches: ArgsCierreNochesStr;
+  noches: ArgsCierreOcupacionStr;
   gestion: ArgsCierreGestionStr;
   resultado: ArgsCierreResultadoStr;
 }
@@ -91,19 +92,19 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
       fronteras: sim?.fronterasIngreso ?? null,
       matriz: sim?.matrizTarifaOcupacion ?? null,
     },
-    noches: {
-      veredictoBase: veredicto,
-      noches: Math.round(occ * 365),
-      nochesArriba: sim?.fronterasIngreso.ocupacion.arriba != null ? Math.round(sim.fronterasIngreso.ocupacion.arriba * 365) : null,
-      ocupacionPct: occ * 100,
-      ocupacionArribaPct: sim?.fronterasIngreso.ocupacion.arriba != null ? sim.fronterasIngreso.ocupacion.arriba * 100 : null,
-      veredictoArriba: sim?.fronterasIngreso.arriba?.veredicto ?? null,
-      ocupacionEsDelUsuario: r.occFuente === "override",
-      vsComuna: r.zonaSTR?.ocupacionVsComuna ?? null,
-      comuna: e.comuna,
-      mesesEnVerde: r.flujoEstacional.filter((f) => f.flujo >= 0).length,
-      estabilizacionCLP: r.perdidaRampUp,
-    },
+    noches: (() => {
+      const real = r.ocupacionRealizadaComparables ?? null;
+      const { rama, deltaPts } = ramaOcupacion(occ * 100, real);
+      void deltaPts;
+      return {
+        noches: Math.round(occ * 365),
+        ocupacionPct: occ * 100,
+        ocupacionEsDelUsuario: r.occFuente === "override",
+        realizadaPct: real && real.n > 0 ? Math.round(real.p50 * 100) : null,
+        rama,
+        mesesEnRojo: r.flujoEstacional.filter((f) => f.flujo < 0).length,
+      };
+    })(),
     gestion: {
       modo: e.modoGestion,
       sobreRenta: r.comparativa.sobreRenta,
@@ -137,7 +138,7 @@ export function cierresStr(e: EntradaCierresStr, f: FmtCierre = fmtCierreCLP()):
   const a = argsCierresStr(e);
   return {
     renta: cierreRentaStr(a.renta, f),
-    noches: cierreNochesStr(a.noches, f),
+    noches: cierreOcupacionStr(a.noches),
     gestion: cierreGestionStr(a.gestion, f),
     largo: cierreLargoStr(a.gestion, f),
     resultado: cierreResultadoStr(a.resultado, f),

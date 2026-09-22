@@ -12,7 +12,6 @@
 import type { Veredicto } from "./types";
 import { brechaEnPalabras, type FmtCierre, type SegCierre } from "./cierres-capitulos";
 import type { FronterasIngresoStr, MatrizTarifaOcupacion } from "./analysis/simular-str";
-import type { OcupacionVsComuna } from "./engines/str-universo-santiago";
 import { DIST_STR_TOPE_ADR_PCT } from "./distancia-veredicto-str-hallazgo";
 import type { QuiebreGestionSTR } from "./engines/short-term-engine";
 
@@ -124,55 +123,57 @@ export function cierreRentaStr(a: ArgsCierreRentaStr, f: FmtCierre): SegCierre[]
 // lo que hay que mirar — el V es el único lugar donde esa comparación existe ahora, y su
 // métrica es el NOI. Se resuelve ahí, que es donde vive.
 
-// ═══════════ CIERRE III · Cuántas noches necesitas (estimación + frontera + zona + año) ═══════════
+// ═══════════ CIERRE III · Ocupación en renta corta (confianza de las noches + forma del año) ═══════════
+// UNA ORACIÓN (mockup capitulo-iii-noches-str.html, aprobado 22-sep-2026): las noches del caso contra
+// las que REALIZARON los avisos parecidos (la rama la decide `ramaOcupacion`, 5 puntos), y cuántos
+// meses del año quedan en rojo. No repite la cifra del ramp-up (vive en el bloque del año) ni la
+// frontera del veredicto (vive en el capítulo I).
 
-export interface ArgsCierreNochesStr {
-  veredictoBase: Veredicto;
-  /** Noches al año con la ocupación del caso y con la de la frontera (null sin frontera). */
+export interface ArgsCierreOcupacionStr {
+  /** Noches al año con la ocupación del caso. */
   noches: number;
-  nochesArriba: number | null;
   ocupacionPct: number;
-  ocupacionArribaPct: number | null;
-  veredictoArriba: Veredicto | null;
   ocupacionEsDelUsuario: boolean;
-  vsComuna: OcupacionVsComuna | null;
-  comuna: string;
-  mesesEnVerde: number;
-  estabilizacionCLP: number;
+  /** Mediana de ocupación realizada por los avisos parecidos, en %; null sin comparables. */
+  realizadaPct: number | null;
+  /** cerca (|Δ| ≤ 5 pts) · lejos (realizaron menos) · sobre (realizaron más) · sin (sin comparables). */
+  rama: "cerca" | "lejos" | "sobre" | "sin";
+  /** Meses del año con flujo negativo (0-12). */
+  mesesEnRojo: number;
 }
 
-export function cierreNochesStr(a: ArgsCierreNochesStr, f: FmtCierre): SegCierre[] {
-  const segs: SegCierre[] = [];
-  const origen = a.ocupacionEsDelUsuario ? "Tú supusiste" : "El mercado estima";
-  if (a.veredictoBase !== "COMPRAR" && a.nochesArriba != null && a.ocupacionArribaPct != null) {
-    const faltan = a.nochesArriba - a.noches;
-    const pts = a.ocupacionArribaPct - a.ocupacionPct;
-    segs.push(
-      { t: `${origen} ${a.noches} noches al año para tu depto y el veredicto sube con ${a.nochesArriba}: ` },
-      { t: faltan <= 30 ? `faltan ${faltan} noches al año, ${pts < 2 ? "menos de dos puntos" : `${f.pct1(pts)} puntos`} de ocupación, no un mercado distinto` : `faltan ${faltan} noches al año, ${f.pct1(pts)} puntos de ocupación: eso ya es otro mercado`, mark: true },
-      { t: ". " },
-    );
-    if (!a.ocupacionEsDelUsuario) segs.push({ t: "Pero son noches por sobre la estimación, que ya es la de un depto estabilizado" });
-    else segs.push({ t: "Y son noches por sobre tu propio supuesto, que el mercado no confirma" });
-  } else if (a.veredictoBase !== "COMPRAR") {
-    segs.push({ t: `${origen} ${a.noches} noches al año para tu depto y ninguna ocupación realista cambia el veredicto` });
-  } else {
-    segs.push({ t: `${origen} ${a.noches} noches al año para tu depto y el veredicto ya no necesita más` });
+const EN_ROJO = ["ningún mes", "un mes", "dos meses", "tres meses", "cuatro meses", "cinco meses", "seis meses", "siete meses", "ocho meses", "nueve meses", "diez meses", "once meses", "los doce meses"];
+
+export function cierreOcupacionStr(a: ArgsCierreOcupacionStr): SegCierre[] {
+  const rojo = EN_ROJO[Math.max(0, Math.min(12, a.mesesEnRojo))];
+  // «no deja ningún mes en rojo» con cero: «deja ningún mes» no concuerda.
+  const dejaRojo = a.mesesEnRojo === 0 ? "no deja ningún mes en rojo" : `deja ${rojo} en rojo`;
+  const origen = a.ocupacionEsDelUsuario ? `Supusiste ${a.noches} noches al año` : `El mercado estima ${a.noches} noches al año para tu depto`;
+  const nochesReal = a.realizadaPct != null ? Math.round((a.realizadaPct / 100) * 365) : null;
+  if (a.rama === "sin" || nochesReal == null) {
+    return [
+      { t: `Las ${a.noches} noches son ${a.ocupacionEsDelUsuario ? "tu supuesto" : "la estimación del mercado"} sin avisos parecidos que ${a.ocupacionEsDelUsuario ? "lo" : "la"} contrasten: ` },
+      { t: `tómalas como el techo de lo razonable, no como el piso, y el año con ellas ya ${dejaRojo}.`, mark: true },
+    ];
   }
-  if (a.vsComuna && a.vsComuna !== "sin_datos") {
-    segs.push({ t: a.vsComuna === "mas" ? `, y tu zona ocupa más que el resto de ${a.comuna}. ` : a.vsComuna === "menos" ? `, y tu zona ocupa menos que el resto de ${a.comuna}. ` : `, y tu zona no ocupa más que el resto de ${a.comuna}. ` });
-  } else {
-    segs.push({ t: ". " });
+  if (a.rama === "cerca") {
+    return [
+      { t: `${origen} y los avisos parecidos ya las hacen: ` },
+      { t: `lo que sigue no descansa en una ocupación optimista, sino en un año que ${dejaRojo}.`, mark: true },
+    ];
   }
-  const meses = a.mesesEnVerde;
-  segs.push({
-    t: meses === 0
-      ? `El año además es parejo hacia abajo, sin un solo mes en verde, y arranca con ${f.money(a.estabilizacionCLP)} de pérdida mientras el aviso gana reseñas.`
-      : meses <= 3
-      ? `El año además es parejo hacia abajo, con ${meses === 1 ? "un solo mes" : `${meses} meses`} en verde, y arranca con ${f.money(a.estabilizacionCLP)} de pérdida mientras el aviso gana reseñas.`
-      : `El año reparte ${meses} meses en verde y arranca con ${f.money(a.estabilizacionCLP)} de pérdida mientras el aviso gana reseñas.`,
-  });
-  return trimUltimo(segs);
+  if (a.rama === "sobre") {
+    return [
+      { t: `${origen}, ${nochesReal - a.noches} menos de las que hacen hoy los avisos parecidos: ` },
+      { t: `el número es conservador, y aun así el año ${dejaRojo}.`, mark: true },
+    ];
+  }
+  return [
+    { t: `${origen}, ${a.noches - nochesReal} más de las que hacen hoy los avisos parecidos: ` },
+    { t: a.ocupacionEsDelUsuario
+        ? `el veredicto descansa en un número que el mercado no confirma, y aun con esas noches el año ${dejaRojo}.`
+        : `todo lo que sigue supone que operas mejor que la mayoría, y aun con esas noches el año ${dejaRojo}.`, mark: true },
+  ];
 }
 
 // ═══════════ CIERRE IV · «Cómo lo pagas» — RETIRADO (21-sep-2026) ═══════════

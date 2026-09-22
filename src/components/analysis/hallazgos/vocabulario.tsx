@@ -67,59 +67,8 @@ export function VFuente({ children, aviso = false }: { children: ReactNode; avis
 
 // ═══════════════════ PRIMITIVAS DE DIAGRAMA ═══════════════════
 
-/** Termómetro: posición en un rango, con marca propia y referencia opcional.
- *  `pct` y `refPct` en 0-100. Leyendas [izquierda, centro, derecha]. */
-export function Thermo({
-  pct,
-  refPct,
-  ceroPct,
-  legend,
-  invertido,
-  marca,
-}: {
-  pct: number;
-  refPct?: number | null;
-  /** Posición del CERO cuando la escala baja bajo cero (goal plusvalía): sin este
-   *  hito, una marca a la izquierda de la referencia no distingue "creció menos"
-   *  de "retrocedió". Se omite cuando el dominio arranca en 0 — ahí el cero es el
-   *  borde y dibujarlo sería ruido. */
-  ceroPct?: number | null;
-  legend: [{ k: string; v: string }, { k: string; v: string }, { k: string; v: string }];
-  /** Etiqueta sobre la marca ("Tú · 3,7%") — el CONGELADO la pone en los
-   *  termómetros de capítulo, donde la leyenda son los extremos del eje. */
-  marca?: string;
-  /** true ⇒ el degradado corre rojo→ámbar→verde (la calidad CRECE hacia la
-   *  derecha: ocupación, ingresos). El default (verde a la izquierda) es para
-   *  ejes donde crecer es empeorar (caída de arriendo que aguanta el veredicto).
-   *  El color codifica CALIDAD, no posición — misma semántica que el Dial. */
-  invertido?: boolean;
-}) {
-  const clamp = (n: number) => Math.max(0, Math.min(100, n));
-  return (
-    <div className={`thermo${marca ? " con-marca" : ""}`}>
-      <div className={`thermo-track${invertido ? " inv" : ""}`}>
-        {marca && <div className="thermo-you" style={{ left: `${clamp(pct)}%` }}>{marca}</div>}
-        {ceroPct != null && <div className="thermo-cero" style={{ left: `${clamp(ceroPct)}%` }} />}
-        {refPct != null && <div className="thermo-ref" style={{ left: `${clamp(refPct)}%` }} />}
-        <div className="thermo-mark" style={{ left: `${clamp(pct)}%` }} />
-      </div>
-      <div className="thermo-legend">
-        <span>
-          {legend[0].k}
-          <b>{legend[0].v}</b>
-        </span>
-        <span style={{ textAlign: "center" }}>
-          {legend[1].k}
-          <b>{legend[1].v}</b>
-        </span>
-        <span style={{ textAlign: "right" }}>
-          {legend[2].k}
-          <b>{legend[2].v}</b>
-        </span>
-      </div>
-    </div>
-  );
-}
+/* `Thermo` se retiró el 22-sep-2026 con el capítulo III de STR, su único consumidor: comparaba el
+ * estimador contra su propia mediana comunal y pintaba verde→ocre→rojo (al revés para ocupación). */
 
 export type FallRow = {
   k: string;
@@ -220,35 +169,7 @@ export function Bars({ rows }: { rows: BarRow[] }) {
   );
 }
 
-/** Sparkline SVG: serie temporal con área. `puntos` normalizados 0-1. */
-export function Spark({ puntos, ejeX, aria }: { puntos: number[]; ejeX: string[]; aria: string }) {
-  if (puntos.length < 2) return null;
-  const W = 600;
-  const H = 150;
-  const paso = (W - 20) / (puntos.length - 1);
-  const y = (p: number) => H - 26 - Math.max(0, Math.min(1, p)) * (H - 52);
-  const pts = puntos.map((p, i) => `${10 + i * paso},${y(p).toFixed(1)}`).join(" ");
-  return (
-    <>
-      <svg className="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={aria}>
-        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="var(--doc-line2)" strokeWidth="1" strokeDasharray="4 4" />
-        {/* área bajo la curva: wash Ink, no el plumón (--doc-hl es color de veredicto desde el goal "material del informe") */}
-        <polygon fill="color-mix(in srgb, var(--doc-tx) 10%, transparent)" points={`${pts} ${10 + (puntos.length - 1) * paso},${H} 10,${H}`} />
-        <polyline fill="none" stroke="var(--signal-red)" strokeWidth="3" points={pts} />
-      </svg>
-      <div className="thermo-legend" style={{ marginTop: 4 }}>
-        {ejeX.map((e, i) => (
-          <span
-            key={i}
-            style={i === ejeX.length - 1 ? { textAlign: "right" } : i > 0 ? { textAlign: "center" } : undefined}
-          >
-            {e}
-          </span>
-        ))}
-      </div>
-    </>
-  );
-}
+/* `Spark` se retiró el 22-sep-2026: no lo montaba ninguna superficie y su leyenda usaba la CSS del Thermo. */
 
 export type TablaFila = {
   celdas: string[];

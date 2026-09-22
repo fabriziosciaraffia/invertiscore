@@ -57,6 +57,42 @@ export function TokensShared() {
       .bb-rotulos span b{display:block;color:var(--doc-tx);font-weight:600}
       .bb-nota{font-size:11px;color:var(--doc-tx3);margin-top:6px;line-height:1.45}
       .refi-aviso{font-size:12.5px;line-height:1.5;color:var(--doc-tx2);margin-top:10px;padding:8px 10px;border-left:3px solid var(--signal-red);background:var(--doc-paper2);border-radius:0 8px 8px 0}
+      /* ── «Ocupación en renta corta» (capitulo-iii-noches-str.html, aprobado 22-sep-2026): las dos
+         celdas y el eje 0–100 (.oc-*), la curva del flujo mensual (.cf-*). Tinta y rojo. ── */
+      .oc-dos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 2px}
+      @media (max-width:520px){.oc-dos{grid-template-columns:1fr}}
+      .oc-c{background:var(--doc-inset-1);border-radius:12px;padding:12px 14px}
+      .oc-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
+      .oc-n{font-family:var(--font-mono, ui-monospace);font-size:24px;font-weight:700;color:var(--doc-tx);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
+      .oc-n small{font-family:var(--font-body, system-ui);font-size:11.5px;font-weight:500;color:var(--doc-tx3);margin-left:6px}
+      .oc-s{font-size:11.5px;color:var(--doc-tx3);margin-top:5px;line-height:1.45}
+      .oc-c.tenue .oc-n{color:var(--doc-ink1)}
+      .oc-c.vacia .oc-n{color:var(--doc-tx4);font-size:18px}
+      .oc-eje{position:relative;height:6px;border-radius:3px;background:var(--doc-line2);margin:24px 10px 42px}
+      .oc-tk{position:absolute;top:6px;width:1px;height:4px;background:var(--doc-line2);transform:translateX(-50%)}
+      .oc-tk.may{height:7px;background:var(--doc-tx4)}
+      .oc-t{position:absolute;top:15px;font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);transform:translateX(-50%)}
+      .oc-m{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;transform:translateX(-50%)}
+      .oc-m.est{background:var(--doc-tx)}
+      .oc-m.real{background:var(--doc-ink1)}
+      .oc-l{position:absolute;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:700;transform:translateX(-50%);white-space:nowrap}
+      .oc-l.est{top:-20px;color:var(--doc-tx)}
+      .oc-l.real{top:26px;color:var(--doc-ink1)}
+      .cf-svg{width:100%;height:170px;display:block}
+      .cf-grid{stroke:var(--doc-line);stroke-dasharray:3 3}
+      .cf-tick{font-size:9px;fill:var(--doc-tx4);font-family:var(--font-mono, ui-monospace)}
+      .cf-mes{font-size:11px;fill:var(--doc-tx4);font-family:var(--font-mono, ui-monospace)}
+      .cf-cero{stroke:var(--doc-tx3);stroke-width:1}
+      .cf-prom{stroke:var(--doc-ink1);stroke-width:1;stroke-dasharray:4 4}
+      .cf-linea{stroke:var(--doc-tx);stroke-width:2.5}
+      .cf-pt{fill:var(--doc-tx)}
+      .cf-pt.neg{fill:var(--signal-red)}
+      .cf-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--doc-tx3);margin-top:4px}
+      .cf-leg b{color:var(--doc-ink1);font-weight:600}
+      .cf-sw{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--doc-tx);margin-right:5px;vertical-align:middle}
+      .cf-sw.neg{background:var(--signal-red)}
+      .cf-sw.cero{width:14px;height:2px;border-radius:0;background:var(--doc-tx3)}
+      .cf-sw.prom{width:14px;height:2px;border-radius:0;background:repeating-linear-gradient(90deg,var(--doc-ink1) 0 4px,transparent 4px 8px)}
       /* ── «Plusvalía» (capitulo-iv-plusvalia.html, aprobado 22-sep-2026): la serie de la comuna contra
          el 3%, tinta plena y tinta tenue; sin verde ni ocre. Los valores intermedios aparecen al
          tocar (click, que sí llega tras el tap) o al pasar el cursor; los extremos van fijos. ── */

@@ -14,10 +14,10 @@ import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
-import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
+import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
-import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { nombreVeredicto, FilaDato, FilasDato, CurvaFlujoAnual, OcupacionComparables, ramaOcupacion, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
 import { cierrePlusvalia } from "@/lib/cierres-capitulos";
 import { fuentePlusvaliaLinea, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { resolveSeriePlusvalia } from "@/lib/plusvalia-hallazgo";
@@ -27,7 +27,7 @@ import { conApellido } from "@/components/analysis/CapitulosInversion";
 
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
- *   I Cuánto renta · II Tu flujo mensual · III Cuántas noches necesitas · IV Cómo lo
+ *   I Cuánto renta · II Tu flujo mensual · III Ocupación en renta corta · IV Cómo lo
  *   pagas · V Cómo lo gestionas · VI Tu resultado a 10 años.
  * Cáscara propia (LTR intacto en CapitulosInversion): arma `FilaHallazgo[]` y monta el
  * mismo acordeón con `variante="capitulo"` y `tipo="str"` (telemetría
@@ -174,9 +174,6 @@ export function CapitulosInversionStr({
   const fr = simulacion?.fronterasIngreso ?? null;
   const adrEsTuya = results.adrFuente === "override";
   const occEsTuya = results.occFuente === "override";
-  const vsComuna = results.zonaSTR?.ocupacionVsComuna ?? null;
-  const comunaOcc = results.zonaSTR?.comunaOcupacion ?? null;
-  const vsTxt = vsComuna === "mas" ? "más que" : vsComuna === "menos" ? "menos que" : vsComuna === "similar" ? "parecido a" : null;
 
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
   // Habla AL USUARIO (21-sep-2026): «Rentabilidad», sin «cap rate», contra lo que proyectan los
@@ -518,85 +515,71 @@ export function CapitulosInversionStr({
     };
   })();
 
-  // ═══════════════ III · CUÁNTAS NOCHES NECESITAS ═══════════════
+  // ═══════════════ III · OCUPACIÓN EN RENTA CORTA ═══════════════
+  // Según el mockup aprobado el 22-sep-2026 (capitulo-iii-noches-str.html): cuántas noches, contra
+  // qué realidad, con cuánta confianza. Dos piezas: la ocupación del caso al lado de la que
+  // REALIZARON los avisos parecidos con que se estimó (`ocupacionRealizadaComparables`, persistida
+  // en el 83% del parque y sin render hasta hoy), con la frase por rama y el comentario de la
+  // brecha; y la curva del año como flujo mensual en pesos. Salieron: el dial de ocupación (era
+  // el del capítulo I en otra unidad: la misma `fronterasIngreso`), el termómetro contra la comuna
+  // (comparaba el p50 del estimador contra la mediana comunal del mismo p50: «parecido» en el 84%,
+  // y pintado al revés con verde y ocre), cuatro de las cinco menciones de la ocupación y la
+  // tercera mención del ramp-up (queda la de la caja, en el bloque del año).
   const filaIII: FilaHallazgo = (() => {
-    const arribaTxt = args.noches.nochesArriba != null && args.noches.veredictoArriba ? `sube a ${nombreVeredicto(args.noches.veredictoArriba)} con ${args.noches.nochesArriba} (${pct1(args.noches.ocupacionArribaPct ?? 0)}%)` : "";
-    const zonaTxt = vsTxt ? `tu zona ocupa ${vsTxt} lo típico de ${comuna}` : "";
-    const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${pct1(occ * fl.factor * 100)}% · ${Math.round(occ * fl.factor * 365)} noches`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
     const fe = results.flujoEstacional ?? [];
+    const occPct = Math.round(occ * 100);
+    const real = results.ocupacionRealizadaComparables ?? null;
+    const { rama, deltaPts } = ramaOcupacion(occPct, real);
+    const realPct = real && real.n > 0 ? Math.round(real.p50 * 100) : null;
+    const rojos = fe.filter((x) => x.flujo < 0).length;
     const ingresos = fe.map((x) => x.ingresoBruto);
-    const prom = ingresos.length ? ingresos.reduce((a, b) => a + b, 0) / ingresos.length : 0;
     const iMax = ingresos.length ? ingresos.indexOf(Math.max(...ingresos)) : -1;
     const iMin = ingresos.length ? ingresos.indexOf(Math.min(...ingresos)) : -1;
-    const enVerde = args.noches.mesesEnVerde;
-    const enRojo = fe.length - enVerde;
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const subCab = `con la ocupación ${occEsTuya ? "que definiste" : "estimada"} (${occPct}%) · ${realPct != null ? `los avisos parecidos ocuparon ${realPct}%` : "sin avisos parecidos para contrastar"}`;
+    const lectura =
+      rama === "cerca" ? <>Los avisos parecidos ocuparon lo mismo que {occEsTuya ? "supusiste" : "estima el mercado para tu depto"}: <b>el número se sostiene en lo que ya pasa en la zona</b>, no en una expectativa.</>
+      : rama === "lejos" ? <>Los avisos parecidos ocuparon {realPct}%, <span className="neg">{Math.abs(deltaPts ?? 0)} puntos menos</span> que {occEsTuya ? "tu supuesto" : "la estimación"}: <b>el número cuenta con que operes mejor que la mayoría de los que hoy están publicados</b>.</>
+      : rama === "sobre" ? <>Los avisos parecidos ocuparon {realPct}%, {deltaPts} puntos más que {occEsTuya ? "tu supuesto" : "la estimación"}: <b>el número es conservador frente a lo que ya pasa en la zona</b>.</>
+      : <>No hay avisos parecidos suficientes guardados para contrastar {occEsTuya ? "tu supuesto" : "la estimación"}: <b>{noches} noches es lo que {occEsTuya ? "definiste" : "el mercado estima para un depto como el tuyo"}</b>.</>;
     return {
       id: "noches",
       numero: ROMANO.noches,
-      pregunta: "Cuántas noches necesitas",
+      pregunta: "Ocupación en renta corta",
       // «Al año 171 noches»: la unidad va con la cifra porque el apellido solo no la da.
       valor: conApellido("Al año", `${noches} noches`),
-      ksub: [`${noches} noches al año con la ocupación ${occEsTuya ? "que definiste" : "estimada"} (${Math.round(occ * 100)}%)`, arribaTxt, zonaTxt].filter(Boolean).join(" · "),
+      ksub: subCab,
       anchorId: anchorCapituloStr("noches"),
       cuerpo: (
         <div>
-          <VProsa>
-            Una renta corta vive de la ocupación: las noches que se venden en el año. Dónde está la tuya frente a la zona, cuántas noches más hacen cambiar el veredicto y
-            cómo se reparte el año.
-          </VProsa>
-          <VViz t={`La ocupación ${occEsTuya ? "que definiste" : "estimada para tu depto"} frente a lo típico de ${comuna}`}>
-            <VSub>Tu ocupación frente a la zona</VSub>
-            <Thermo
-              pct={Math.max(0, Math.min(100, ((occ * 100 - 20) / 60) * 100))}
-              refPct={comunaOcc ? Math.max(0, Math.min(100, ((comunaOcc.valor * 100 - 20) / 60) * 100)) : null}
-              marca={`Tú · ${Math.round(occ * 100)}%`}
-              legend={[
-                { k: "Se ocupa poco", v: "20%" },
-                { k: comunaOcc ? `Típico de ${comuna}` : "Referencia", v: comunaOcc ? `${Math.round(comunaOcc.valor * 100)}%` : "—" },
-                { k: "Se ocupa mucho", v: "80%" },
-              ]}
-            />
-            <p className="v-copy" style={{ marginTop: 10 }}>
-              {occEsTuya ? `Definiste ${Math.round(occ * 100)}% de ocupación` : `Los datos de mercado estiman ${Math.round(occ * 100)}% para un depto como el tuyo en esta zona`}: {noches} noches al año, {Math.round(noches / 12)} al mes.
-              {comunaOcc && vsTxt ? ` Tu zona ocupa ${vsTxt} lo típico de ${comuna} (${Math.round(comunaOcc.valor * 100)}%, sobre ${comunaOcc.n} estimaciones de la comuna).` : ""}
-              {occEsTuya ? "" : " No pusiste un supuesto propio: el cálculo usa la estimación."}
-            </p>
+          <VViz t={`Ocupación ${occEsTuya ? "que definiste" : "estimada"} para tu depto, y la alcanzada por avisos parecidos al tuyo`}>
+            <OcupacionComparables occPct={occPct} noches={noches} esTuya={occEsTuya} real={real} />
+            <p className="viz-pie" style={{ marginTop: 8 }}>{lectura}</p>
+            {rama !== "sin" && (
+              <p className="viz-pie">
+                Por qué difieren: la estimación es lo que logra un depto como el tuyo bien operado. Los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan, y por eso ocupan menos. Una administración profesional aumenta las posibilidades de llegar a esa ocupación.
+              </p>
+            )}
           </VViz>
-          {dial && (
-            <>
-              <VPuente>{occEsTuya ? "Ese es tu supuesto." : "Esa es la estimación."} ¿Cuántas noches más hacen cambiar el veredicto?</VPuente>
-              <VViz t="Tu veredicto según las noches que se ocupan">
-                <VSub>La ocupación a la que cambia el veredicto</VSub>
-                <Dial zonas={dial.zonas} bordes={dial.bordes} marcaPct={dial.marcaPct} marcaK={occEsTuya ? "Tu supuesto" : "Estimada"} marcaV={`${pct1(occ * 100)}%`} />
-              </VViz>
-            </>
-          )}
           {fe.length === 12 && (
-            <>
-              <VPuente>Y el año no es parejo: así se reparte, y así arranca.</VPuente>
-              <VViz t="Ingreso de cada mes frente al mes promedio · curva real de la zona">
-                <VSub>Cómo se reparte el año</VSub>
-                <CurvaAnual puntos={fe.map((x) => ({ v: x.ingresoBruto, positivo: x.flujo > 0 }))} promedio={prom} />
-                <p className="v-copy" style={{ marginTop: 10 }}>
-                  {iMax >= 0 && iMin >= 0 ? (
-                    <>
-                      {MESES[iMax].charAt(0).toUpperCase() + MESES[iMax].slice(1)} es el pico ({money(ingresos[iMax])}
-                      {fe[iMax].flujo > 0 ? `, ${enVerde === 1 ? "el único mes con flujo positivo" : "con flujo positivo"}: ${money(fe[iMax].flujo)}` : `, y aun así pones ${money(-fe[iMax].flujo)}`}); {MESES[iMin]} el valle ({money(ingresos[iMin])}
-                      {fe[iMin].flujo < 0 ? `, pones ${money(-fe[iMin].flujo)}` : ""}).{" "}
-                    </>
-                  ) : null}
-                  {enRojo > 0 ? `${enRojo === 12 ? "Los doce" : `${EN_PALABRAS[enRojo]} de doce`} meses pones plata.` : "Ningún mes pones plata."}
-                  {results.perdidaRampUp > 0 ? ` Y antes de eso, los primeros meses el aviso se ocupa menos mientras gana reseñas: ${money(results.perdidaRampUp)} acumulados que tienes que tener en caja antes de arrancar.` : ""}
-                </p>
-              </VViz>
-            </>
+            <VViz t="Lo que deja o cuesta cada mes, según la temporada">
+              <CurvaFlujoAnual flujos={fe.map((x) => x.flujo)} fmt={(n) => neg(n)} />
+              <p className="viz-pie" style={{ marginTop: 8 }}>
+                {iMax >= 0 && iMin >= 0 ? (
+                  <>
+                    {cap(MESES[iMax])} es el mes que más factura ({money(ingresos[iMax])}){fe[iMax].flujo >= 0 ? ` y deja ${money(fe[iMax].flujo)}` : ` y aun así pones ${money(-fe[iMax].flujo)}`}; {MESES[iMin]} el que menos ({money(ingresos[iMin])}){fe[iMin].flujo < 0 ? ` y pones ${money(-fe[iMin].flujo)}` : ` y deja ${money(fe[iMin].flujo)}`}.{" "}
+                  </>
+                ) : null}
+                <b>{rojos === 0 ? "Ningún mes pones plata." : `${rojos === 12 ? "Los doce" : `${EN_PALABRAS[rojos]} de doce`} meses pones plata.`}</b>
+                {results.perdidaRampUp > 0 ? ` Y antes de eso, los primeros meses el aviso se ocupa menos mientras gana reseñas: ${compact(results.perdidaRampUp)} que tienes que tener en caja antes de arrancar.` : ""}
+              </p>
+            </VViz>
           )}
           <VCierre titulo="Qué significa">
             <SegsCierre segs={cierres.noches} />
           </VCierre>
           <VFuente>
-            Datos de mercado · ocupación {occEsTuya ? "definida por ti" : "estimada para este depto"} y curva mensual de la zona{fecha ? ` · ${fecha}` : ""}
-            {comunaOcc ? ` · típico de la comuna: mediana de ${comunaOcc.n} estimaciones en ${comuna}` : ""}
+            Datos de mercado · ocupación {occEsTuya ? "definida por ti" : "estimada para este depto"} y curva mensual de la zona{real && real.n > 0 ? ` · ${real.n} avisos parecidos, ocupación del último año` : ""}{fecha ? ` · ${fecha}` : ""}
           </VFuente>
         </div>
       ),
