@@ -10,24 +10,24 @@
 //   1. la fuente en UNA línea por peldaño, sin peldaños, celdas, ventanas, n, BDO ni UF; la
 //      muestra débil con una palabra («muestra acotada»), no con la cifra;
 //   2. la explicación visible: una frase, qué es la rentabilidad y de dónde sale la referencia;
-//   3. el umbral STR: referencia de la comuna + PRIMA_STR_PTS (1,0) en celda/comuna/bdo, y el 5%
-//      de siempre en nacional; el hallazgo lo declara con su procedencia; la neutralización y
-//      los cierres usan EL MISMO umbral (no la constante);
+//   3. el umbral STR (desde el 21-sep, tarde): el yield neto de los Airbnb de la zona, sin punto
+//      (lo fija strref-zona-catch-test); el hallazgo lo declara con su procedencia; la
+//      neutralización, los cierres y el guard usan EL MISMO umbral (no la constante);
 //   4. el render: los dos capítulos nombran la cifra como «Rentabilidad», no escriben «cap rate»
 //      en el capítulo I, no ponen la UF en la fuente y no mencionan BDO ni peldaños; el LTR
 //      compara `sujetoPct` (la bruta) y no el neto.
 // VERIFICADO EN ROJO (21-sep-2026), mutando y devolviendo cada línea:
 //   · `fuenteCapRef` con «peldaño 1 de 4» en la línea → cae 1; con la cifra del n → cae 1;
 //   · `explicacionCapRef` en dos temas (cascada) → cae 2;
-//   · `PRIMA_STR_PTS` a 2 → cae 3; `umbralStrDesde` devolviendo 5 siempre → cae 3;
+//   · `umbralStrDesdeZona` sumando un punto → cae 3;
 //   · el ensamblador STR volviendo a `CAP_STR_UMBRAL_PCT` → cae 3;
 //   · el render LTR con «cap rate» en el ksub, o con `valorUF` en la fuente → cae 4.
 //   node --import tsx scripts/eval/golden/cuanto-renta-catch-test.ts
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fuenteCapRef, explicacionCapRef, fuenteUmbralStr, explicacionUmbralStr, NOMBRE_RENTABILIDAD } from "../../../src/lib/capref-copy";
-import { buildHallazgoRentabilidadStr, umbralStrDesde, umbralStrNacional, CAP_STR_UMBRAL_PCT, PRIMA_STR_PTS } from "../../../src/lib/rentabilidad-str-hallazgo";
+import { fuenteCapRef, explicacionCapRef, NOMBRE_RENTABILIDAD } from "../../../src/lib/capref-copy";
+import { buildHallazgoRentabilidadStr, umbralStrDesdeZona, CAP_STR_UMBRAL_PCT } from "../../../src/lib/rentabilidad-str-hallazgo";
 import { capRefNacional, capRefDesdeSnapshot } from "../../../src/lib/cap-rate-hallazgo";
 import type { CapRefComunaSnapshot } from "../../../src/lib/capref-comuna";
 
@@ -64,40 +64,30 @@ export function runCuantoRentaTier(): { hard: number } {
     if (got !== e) F(`1 · fuente ${v.nivel}: «${got}» ≠ «${e}»`);
     if (TECNICO.test(got)) F(`1 · la fuente ${v.nivel} habla del cálculo: «${got}»`);
   }
-  if (fuenteUmbralStr(vCelda, 4.6) !== "Referencia: un punto sobre lo que rinden los avisos de arriendo y venta de deptos de 1 dormitorio en Providencia, últimos 90 días.") F(`1 · fuente STR celda: «${fuenteUmbralStr(vCelda, 4.6)}»`);
-  if (fuenteUmbralStr(vBdo, 5.3) !== "Referencia: un punto sobre lo que rinden los edificios de renta en Ñuñoa.") F(`1 · fuente STR bdo: «${fuenteUmbralStr(vBdo, 5.3)}»`);
-  if (fuenteUmbralStr(vNac, 5) !== "Referencia: piso de renta corta de Franco para Santiago (5%).") F(`1 · fuente STR nacional: «${fuenteUmbralStr(vNac, 5)}»`);
 
   // 2 · la explicación: una cosa, sin cascada
   for (const v of [vCelda, vComuna, vBdo, vNac]) {
     const e = explicacionCapRef(v);
     if (TECNICO.test(e) || e.split(". ").length > 2) F(`2 · explicación ${v.nivel} habla del cálculo o dice más de dos frases: «${e}»`);
     if (!/rentabilidad bruta|rentabilidad es/i.test(e)) F(`2 · explicación ${v.nivel} no dice qué es la rentabilidad`);
-    const es = explicacionUmbralStr(v);
-    if (TECNICO.test(es) || /cap rate/i.test(es)) F(`2 · explicación STR ${v.nivel} habla del cálculo: «${es}»`);
   }
   if (!/Providencia/.test(explicacionCapRef(vCelda)) || !/edificios de renta/.test(explicacionCapRef(vBdo)) || !/promedio de Santiago/.test(explicacionCapRef(vNac))) F("2 · la explicación nombra la comuna, los edificios de renta o el promedio según el peldaño");
 
-  // 3 · el umbral STR = referencia de la comuna + 1 punto; 5 en nacional
-  if (PRIMA_STR_PTS !== 1) F(`3 · la prima STR es un punto (es ${PRIMA_STR_PTS})`);
-  const u = umbralStrDesde(vCelda);
-  if (u.pct !== 4.6 || u.refPct !== 3.6 || u.nivel !== "celda" || u.comuna !== "Providencia") F(`3 · umbral STR de Providencia 3,62 debía ser 4,6 (dio ${u.pct}/${u.refPct}/${u.nivel})`);
-  const uB = umbralStrDesde(vBdo);
-  if (uB.pct !== 5.3 || uB.nivel !== "bdo") F(`3 · umbral STR bdo (3,4 neto → 4,25 bruto) debía ser 5,3 (dio ${uB.pct})`);
-  const uN = umbralStrDesde(vNac);
-  if (uN.pct !== CAP_STR_UMBRAL_PCT || uN.nivel !== "nacional" || umbralStrNacional().pct !== 5) F(`3 · sin referencia el umbral STR sigue siendo 5 (dio ${uN.pct})`);
-  const h = buildHallazgoRentabilidadStr({ capRatePct: 5.4, decisividad: 0.5, modalidad: "str", umbral: umbralStrDesde({ ...vCelda, pct: 5.0, comuna: "Santiago", celdaDormitorios: 1 }) });
-  if (!h || h.valor.umbralPct !== 6 || h.direccion !== "adverso" || h.valor.gapPts !== -0.6 || h.valor.nivel !== "celda" || h.valor.refPct !== 5) F(`3 · con la comuna en 5,0 y el sujeto en 5,4 el hallazgo compara contra 6,0 y es adverso (dio ${h?.valor.umbralPct} ${h?.direccion})`);
-  if (h && !/Santiago/.test(h.fraseCanonica)) F("3 · la frase STR nombra la comuna");
+  // 3 · el umbral STR (21-sep, tarde): STR contra STR de la zona, sin punto; lo fija a fondo
+  //     strref-zona-catch-test. Acá solo que el motor lo lee del snapshot y no de una constante.
+  const uZ = umbralStrDesdeZona({ nivel: "celda", neto: 4.62, bruto: 8.7, ingresoAnual: 6825431, precio: 78688474, m2: 32, costosMes: 187000, nDirecciones: 60, nVenta: 2963, celda: { comuna: "Santiago", dormitorios: 1 }, fuente: "x", resolvedAt: "2026-09-21T00:00:00.000Z" });
+  if (uZ.pct !== 4.6 || uZ.nivel !== "celda") F(`3 · el umbral STR es el neto de la zona a un decimal (dio ${uZ.pct}/${uZ.nivel})`);
+  const h = buildHallazgoRentabilidadStr({ capRatePct: 5.4, decisividad: 0.5, modalidad: "str", umbral: uZ });
+  if (!h || h.valor.umbralPct !== 4.6 || h.direccion !== "favorable" || h.valor.gapPts !== 0.8) F(`3 · con la zona en 4,6 y el sujeto en 5,4 el hallazgo es favorable (dio ${h?.valor.umbralPct} ${h?.direccion})`);
   if (h && /cap rate/i.test(h.fraseCanonica)) F("3 · la frase STR dice «cap rate»");
   const h5 = buildHallazgoRentabilidadStr({ capRatePct: 5.4, decisividad: 0.5, modalidad: "str" });
-  if (!h5 || h5.valor.umbralPct !== 5 || h5.direccion !== "favorable") F("3 · sin umbral el builder usa el 5 nacional");
+  if (!h5 || h5.valor.umbralPct !== CAP_STR_UMBRAL_PCT || h5.valor.nivel !== "sin_referencia") F("3 · sin umbral el builder declara sin_referencia con el 5 de respaldo");
   const ens = leer("src/lib/cierres-str-ensamblador.ts");
   if (!/const umbralPct = hRenta\?\.valor\.umbralPct \?\? CAP_STR_UMBRAL_PCT;/.test(ens) || !/capRefPct: umbralPct,/.test(ens) || /\(CAP_STR_UMBRAL_PCT \/ 100\) \* precioCLP/.test(ens)) F("3 · los cierres STR no usan el umbral del hallazgo");
   const dec = leer("src/lib/decisividades-str.ts");
   if (!/\(extras\.umbralPct \?\? CAP_STR_UMBRAL_PCT\) \/ 100/.test(dec)) F("3 · la neutralización STR no usa el umbral resuelto");
   const asm = leer("src/lib/str-hallazgos.ts");
-  if (!/umbralStrDesde\(getCapRefComuna\(ctx\.comuna \|\| "", ctx\.mediana\.capRefComuna\)\)/.test(asm) || !/umbral: umbralStr,/.test(asm) || !/umbralPct: umbralStr\.pct/.test(asm)) F("3 · el ensamblador STR no resuelve el umbral una vez para hallazgo y decisividad");
+  if (!/umbralStrDesdeZona\(ctx\.mediana\.strRefZona, ctx\.comuna \|\| ""\)/.test(asm) || !/umbral: umbralStr,/.test(asm) || !/umbralPct: umbralStr\.pct/.test(asm)) F("3 · el ensamblador STR no resuelve el umbral una vez para hallazgo y decisividad");
   const guards = leer("src/lib/str-guards.ts");
   if (!/div\(r\.capPct, r\.umbralPct \?\? CAP_STR_UMBRAL_PCT\)/.test(guards)) F("3 · el guard STR compara contra la constante, no contra el umbral del hallazgo");
 
@@ -118,7 +108,7 @@ export function runCuantoRentaTier(): { hard: number } {
     if (!/NOMBRE_RENTABILIDAD\./.test(visible)) F(`4 · ${n}: la cifra no se nombra con NOMBRE_RENTABILIDAD`);
   }
   if (!/fuenteCapRef\(v\)/.test(ltr) || !/explicacionCapRef\(v\)/.test(ltr)) F("4 · LTR no usa la fuente y la explicación de capref-copy");
-  if (!/fuenteUmbralStr\(vRef, umbral\)/.test(str) || !/explicacionUmbralStr\(vRef\)/.test(str)) F("4 · STR no usa la fuente y la explicación de capref-copy");
+  if (!/fuenteUmbralStr\(vRef\)/.test(str) || !/explicacionUmbralStr\(vRef\)/.test(str)) F("4 · STR no usa la fuente y la explicación de capref-copy");
   if (!/conApellido\(nombreCifra, `\$\{pct1\(v\.sujetoPct\)\}%`\)/.test(ltr) || /pct1\(v\.capRatePct\)/.test(ltr)) F("4 · LTR no muestra la bruta (sujetoPct) como cifra del capítulo, o vuelve a mostrar el neto");
   if (!/hRenta\?\.valor\.umbralPct \?\? CAP_STR_UMBRAL_PCT/.test(str) || /refPct=\{pos\(CAP_STR_UMBRAL_PCT\)\}/.test(str)) F("4 · STR no toma el umbral del hallazgo");
   // 5 · COMPRAR bajo la referencia de la comuna (decisión de Fabrizio, 21-sep-2026): el capítulo

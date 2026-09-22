@@ -2,32 +2,29 @@
 // determinístico STR. DECISIVO: 1:1 con la dim `rentabilidad` del score de 4 dimensiones
 // (decisividad_dim = |dimScore−50|/50, inyectada por el assembler). Envuelve
 // escenarios.base.capRate (short-term-engine.ts:136, = noiAnual/precioCompra) SIN
-// recalcular, contra el UMBRAL de la comuna. Diseño congelado en of-e1a-piramide-str.md.
+// recalcular, contra el UMBRAL de la zona. Diseño congelado en of-e1a-piramide-str.md.
 //
-// EL UMBRAL (21-sep-2026, decisión de Fabrizio): UN PUNTO sobre la rentabilidad bruta de la
-// comuna (el benchmark de avisos de capref-comuna.ts, el mismo de LTR), no el 5% fijo. La
-// razón, para el acta: el cap rate STR ya es DESPUÉS de operar, así que la prima cubre solo
-// riesgo, y ese riesgo el score ya lo cobra por sensibilidad y break-even; dos puntos sería
-// cobrarlo dos veces. Es un supuesto nuestro, revisable cuando HOM publique su informe.
-// Cuando la comuna no tiene referencia (peldaño nacional: 4% neto), el umbral es el 5% de
-// siempre (4 + 1), así que ninguna fila queda peor que hoy por falta de dato.
-// Medido (21-sep, 254 filas STR): bajo el umbral 190 con el 5% fijo → 204 con comuna + 1;
-// cambian 24 (19 sobre→bajo, 14 de ellas COMPRAR; 5 bajo→sobre). Umbral p50 5,2; Santiago 4,4,
-// Ñuñoa 4,6, Las Condes 5,5, Providencia 5,7. El umbral NO entra al score ni a las puertas.
+// EL UMBRAL (21-sep-2026, decisión de Fabrizio): lo que rinde, DESPUÉS DE OPERAR, un Airbnb
+// típico de la misma comuna y tipología —la referencia STR contra STR de strref-zona.ts, con la
+// misma base del estimador que usa el motor para el usuario y el mismo modelo de costos—, SIN
+// punto extra: cuando la referencia es el mismo negocio no se compensa; el riesgo de la renta
+// corta ya lo cobra el score por sensibilidad y break-even. Cascada corta: celda → comuna →
+// sin referencia. Sin BDO, sin LTR. Sin referencia, el motor conserva el 5% de siempre para sus
+// mecánicas (dirección, neutralización) y el capítulo lo dice y no compara.
+// Historia: hasta el 21-sep el umbral fue 5% fijo; ese mismo día pasó un rato por «LTR de la
+// comuna + 1 punto», que castigaba a las comunas con arriendo largo fuerte sin decir nada del
+// Airbnb (memoria cola-umbral-str-anclado-al-ltr-comunal).
 //
 // REGLA A4/D4 (aprobación Fabrizio): la frase ANCLA al umbral, NUNCA compara el CAP pelado
 // con un instrumento (depósito UF, fondo). Esa comparación rica vive en el drawer/largoPlazo,
 // idéntico a la anti-colisión del TIR (tir-hallazgo.ts:12-14).
 
 import type { HallazgoRentabilidadStr } from "./types";
-import type { CapRef } from "./cap-rate-hallazgo";
-import type { NivelCapRef } from "./capref-comuna";
+import type { NivelStrRef, StrRefZonaSnapshot } from "./strref-zona";
 
-/** Umbral STR NACIONAL: el último peldaño (4% neto nacional + 1 punto). Es la línea COMPRAR de
- *  la dim (ESCALA_CAP_RATE: 5%→70) y el que regía para todos hasta el 21-sep-2026. */
+/** Umbral STR de respaldo (sin referencia de la zona): la línea COMPRAR de la dim
+ *  (ESCALA_CAP_RATE: 5%→70), el que regía para todos hasta el 21-sep-2026. */
 export const CAP_STR_UMBRAL_PCT = 5.0;
-/** La prima del corto sobre la rentabilidad bruta de la comuna, en puntos. Supuesto nuestro. */
-export const PRIMA_STR_PTS = 1.0;
 export const CAP_STR_BANDA_PTS = 3.0;
 const EN_LINEA_PTS = 0.2; // |gap| ≤ 0,2 ⇒ la frase dice "en línea"; señal-máquina binaria en 0
 
@@ -35,47 +32,33 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-/** El umbral STR resuelto: la referencia de la comuna más la prima, con su procedencia. */
+/** El umbral STR resuelto, con su procedencia. */
 export interface UmbralStr {
-  /** El umbral, en % (referencia + prima; 5,0 en el peldaño nacional). */
+  /** El umbral, en %: el yield neto de la zona; 5,0 solo sin referencia. */
   pct: number;
-  /** La rentabilidad bruta de referencia sobre la que se suma la prima. */
-  refPct: number;
-  primaPts: number;
-  nivel: NivelCapRef;
+  nivel: NivelStrRef;
   comuna: string;
-  celdaDormitorios: number | null;
-  ventanaDias: number | null;
-  nArriendo: number;
+  /** Dormitorios de la celda (null en «comuna» y sin referencia). */
+  dormitorios: number | null;
+  nDirecciones: number;
   nVenta: number;
 }
 
-/** Deriva el umbral STR de la referencia de cap rate de la comuna (getCapRefComuna). */
-export function umbralStrDesde(ref: CapRef): UmbralStr {
-  const nacional = ref.nivel === "nacional";
-  return {
-    pct: nacional ? CAP_STR_UMBRAL_PCT : r1(ref.pct + PRIMA_STR_PTS),
-    refPct: nacional ? CAP_STR_UMBRAL_PCT - PRIMA_STR_PTS : r1(ref.pct),
-    primaPts: PRIMA_STR_PTS,
-    nivel: ref.nivel,
-    comuna: ref.comuna,
-    celdaDormitorios: ref.celdaDormitorios,
-    ventanaDias: ref.ventanaDias,
-    nArriendo: ref.nArriendo,
-    nVenta: ref.nVenta,
-  };
+/** Deriva el umbral STR del snapshot de la zona. Sin snapshot ⇒ sin referencia. */
+export function umbralStrDesdeZona(s: StrRefZonaSnapshot | null | undefined, comuna = ""): UmbralStr {
+  if (s && (s.nivel === "celda" || s.nivel === "comuna") && typeof s.neto === "number" && Number.isFinite(s.neto)) {
+    return { pct: r1(s.neto), nivel: s.nivel, comuna: s.celda.comuna, dormitorios: s.celda.dormitorios, nDirecciones: s.nDirecciones, nVenta: s.nVenta };
+  }
+  return { pct: CAP_STR_UMBRAL_PCT, nivel: "sin_referencia", comuna: s?.celda.comuna ?? comuna, dormitorios: null, nDirecciones: s?.nDirecciones ?? 0, nVenta: s?.nVenta ?? 0 };
 }
 
-/** El umbral de siempre, cuando no hay referencia resuelta (callers viejos, fixtures). */
-export function umbralStrNacional(comuna = ""): UmbralStr {
-  return { pct: CAP_STR_UMBRAL_PCT, refPct: CAP_STR_UMBRAL_PCT - PRIMA_STR_PTS, primaPts: PRIMA_STR_PTS, nivel: "nacional", comuna, celdaDormitorios: null, ventanaDias: null, nArriendo: 0, nVenta: 0 };
-}
+const rotuloDorms = (d: number | null) => (d === null ? "" : d === 0 ? " studio" : ` de ${d} dormitorio${d === 1 ? "" : "s"}`);
 
 /** Cómo nombra la frase a la referencia, por peldaño. */
 function queUmbral(u: UmbralStr): string {
   const pct = pct1(u.pct);
-  if (u.nivel === "celda" || u.nivel === "comuna") return `lo que se le pide a una renta corta en ${u.comuna} (${pct}%: un punto sobre lo que rinden los avisos de la comuna)`;
-  if (u.nivel === "bdo") return `lo que se le pide a una renta corta en ${u.comuna} (${pct}%: un punto sobre lo que rinden los edificios de renta de la comuna)`;
+  if (u.nivel === "celda") return `lo que proyectan los Airbnb${rotuloDorms(u.dormitorios)} en ${u.comuna} (${pct}%)`;
+  if (u.nivel === "comuna") return `lo que proyectan los Airbnb de ${u.comuna} (${pct}%)`;
   return `el umbral de ${pct}% que le pedimos a una renta corta en Santiago`;
 }
 
@@ -90,11 +73,11 @@ export function buildHallazgoRentabilidadStr(p: {
   /** Decisividad de la dim rentabilidad (0..1), inyectada por el assembler STR. */
   decisividad: number;
   modalidad: "ltr" | "str" | "ambas";
-  /** El umbral resuelto (umbralStrDesde). Ausente ⇒ el nacional de siempre. */
+  /** El umbral resuelto (umbralStrDesdeZona). Ausente ⇒ sin referencia (5%). */
   umbral?: UmbralStr;
 }): HallazgoRentabilidadStr | null {
   if (!Number.isFinite(p.capRatePct)) return null;
-  const u = p.umbral ?? umbralStrNacional();
+  const u = p.umbral ?? umbralStrDesdeZona(null);
 
   // Redondeo de display (1 decimal) ANTES de decidir dirección: el KPI y el body usan el
   // MISMO número (evita el bug KPI-vs-body del cap_rate LTR: 9,4 KPI vs 9,5 body en el borde).
@@ -108,7 +91,12 @@ export function buildHallazgoRentabilidadStr(p: {
   const ref = queUmbral(u);
   let titular: string;
   let fraseCanonica: string;
-  if (gapAbs <= EN_LINEA_PTS) {
+  if (u.nivel === "sin_referencia") {
+    titular = direccion === "favorable" ? "El metro cuadrado rinde de sobra en corto." : "La rentabilidad operativa se queda corta.";
+    fraseCanonica =
+      `Tu rentabilidad en corto es ${capFmt}%. No hay Airbnb suficientes de esta zona para compararla; ` +
+      `${direccion === "favorable" ? "queda sobre" : "queda bajo"} ${ref}.`;
+  } else if (gapAbs <= EN_LINEA_PTS) {
     titular = "La rentabilidad operativa está justo en el umbral.";
     fraseCanonica =
       `Tu rentabilidad en corto es ${capFmt}%, justo en ${ref}. ` +
@@ -122,7 +110,7 @@ export function buildHallazgoRentabilidadStr(p: {
     titular = "La rentabilidad operativa se queda corta.";
     fraseCanonica =
       `Tu rentabilidad en corto es ${capFmt}%, bajo ${ref}. ` +
-      `Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.`;
+      `Genera caja, pero por debajo de lo que rinde un Airbnb típico de la zona.`;
   }
 
   return {
@@ -134,13 +122,11 @@ export function buildHallazgoRentabilidadStr(p: {
       gapPts: r1(gap),
       banda: CAP_STR_BANDA_PTS,
       modalidad: p.modalidad,
-      refPct: u.refPct,
-      primaPts: u.primaPts,
+      refPct: u.pct,
       nivel: u.nivel,
       comuna: u.comuna,
-      celdaDormitorios: u.celdaDormitorios,
-      ventanaDias: u.ventanaDias,
-      nArriendo: u.nArriendo,
+      celdaDormitorios: u.dormitorios,
+      nDirecciones: u.nDirecciones,
       nVenta: u.nVenta,
     },
     direccion,
@@ -148,10 +134,10 @@ export function buildHallazgoRentabilidadStr(p: {
     magnitudContinua,
     procedencia: {
       base:
-        u.nivel === "nacional"
-          ? "CAP neto (NOI) sobre tu precio y los ingresos del escenario base; umbral STR nacional 5%, sin referencia de la comuna"
-          : `CAP neto (NOI) sobre tu precio y los ingresos del escenario base; umbral = rentabilidad bruta de ${u.comuna} (avisos) + ${pct1(u.primaPts)} pt de prima`,
-      confianza: u.nivel === "nacional" ? "baja" : "media",
+        u.nivel === "sin_referencia"
+          ? "CAP neto (NOI) sobre tu precio y los ingresos del escenario base; sin referencia de Airbnb de la zona, umbral de respaldo 5%"
+          : `CAP neto (NOI) sobre tu precio y los ingresos del escenario base; umbral = yield neto de los Airbnb de ${u.comuna} con el estimador y los costos del motor, sin prima`,
+      confianza: u.nivel === "celda" ? "media" : "baja",
     },
     titular,
     fraseCanonica,

@@ -13,7 +13,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { encodeShareToken } from "@/lib/share-token";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { buildResumenLTR, buildResumenSTR } from "@/lib/resumen-anexo";
@@ -166,7 +166,7 @@ export default async function ComparativaPage({
 
   const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
   const strMediana = strInput
-    ? await prefetchMedianaComunaVenta(
+    ? await prefetchMercadoStr(
         supabase,
         {
           comuna: (strInput.comuna as string) ?? str.comuna ?? "",

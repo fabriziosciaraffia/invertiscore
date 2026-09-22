@@ -1370,17 +1370,15 @@ export interface HallazgoRentabilidadStr {
   tipo: "rentabilidad_operativa_str";
   valor: {
     capRatePct: number;   // CAP rate STR del sujeto, % NETO (NOI) — reusado de base.capRate
-    umbralPct: number;    // el umbral: rentabilidad bruta de la comuna + 1 pt (5,0 en el peldaño nacional)
+    umbralPct: number;    // el umbral: yield neto de los Airbnb de la zona (strref-zona.ts); 5,0 solo sin referencia
     gapPts: number;       // capRatePct − umbralPct, en puntos (signed)
-    /** De dónde sale el umbral (21-sep-2026): la referencia de la comuna (capref-comuna.ts) y la
+    /** De dónde sale el umbral (21-sep-2026): la referencia STR contra STR de la zona, sin
      *  prima. OPCIONALES: los hallazgos persistidos antes del campo no los traen. */
     refPct?: number;
-    primaPts?: number;
-    nivel?: "celda" | "comuna" | "bdo" | "nacional";
+    nivel?: "celda" | "comuna" | "sin_referencia";
     comuna?: string;
     celdaDormitorios?: number | null;
-    ventanaDias?: number | null;
-    nArriendo?: number;
+    nDirecciones?: number;
     nVenta?: number;
     banda: number;        // banda de saturación de magnitudContinua, en puntos
     modalidad: "ltr" | "str" | "ambas";

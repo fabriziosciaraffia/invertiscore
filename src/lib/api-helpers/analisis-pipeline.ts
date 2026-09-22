@@ -21,6 +21,8 @@ import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { resolverCapRefComunaVivo } from "@/lib/capref-comuna-query";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
+import { resolverStrRefZonaVivo } from "@/lib/strref-zona-query";
+import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import {
   getComunaMedianaVentaUF,
   resolverCondicionMercado,
@@ -79,6 +81,42 @@ export async function prefetchMedianaComunaVenta(
     prefetchCapRefComuna(supabase, input, ufValue),
   ]);
   return { ...mediana, capRefComuna };
+}
+
+/**
+ * El mercado de la comuna para un análisis STR: la mediana de venta (sobreprecio) y la referencia
+ * STR contra STR de la zona (strref-zona-query.ts), que alimenta el umbral de rentabilidad_str.
+ * Con `snapshot` (la fila ya lo persistió) no se resuelve vivo: la foto fija gana, como en LTR.
+ * Defensivo: si la referencia falla queda null y el hallazgo declara «sin referencia».
+ */
+export async function prefetchMercadoStr(
+  supabase: SupabaseClient,
+  input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios"> &
+    Partial<Pick<AnalisisInput, "esNuevo" | "antiguedad">>,
+  ufValue: number,
+  snapshot?: StrRefZonaSnapshot | null,
+): Promise<MedianaComunaVenta & { strRefZona: StrRefZonaSnapshot | null }> {
+  const condicion = resolverCondicionMercado(input);
+  const [mediana, strRefZona] = await Promise.all([
+    (async () => {
+      try {
+        return await getComunaMedianaVentaUF(supabase, input.comuna, input.superficie, input.dormitorios, ufValue, condicion);
+      } catch (e) {
+        console.error("[prefetchMercadoStr] mediana falló (no bloquea el análisis):", e);
+        return { mediana: null, n: 0, universo: condicion, ventanaDias: null, p25: null, p75: null } as MedianaComunaVenta;
+      }
+    })(),
+    (async () => {
+      if (snapshot) return snapshot;
+      try {
+        return await resolverStrRefZonaVivo(supabase, { comuna: input.comuna, dormitorios: input.dormitorios }, ufValue);
+      } catch (e) {
+        console.error("[prefetchMercadoStr] referencia STR de la zona falló (sin referencia):", e);
+        return null;
+      }
+    })(),
+  ]);
+  return { ...mediana, strRefZona };
 }
 
 /**
@@ -657,6 +695,9 @@ export async function buildShortTermAnalysisRow(
       direccion: body.direccion || null,
       tipo: "Departamento",
       tipo_analisis: "short-term",
+      // Referencia STR contra STR de la zona, resuelta en el mismo prefetch (foto fija; la
+      // migración 20260921b_strref_zona_snapshot.sql va ANTES del deploy).
+      strref_zona_snapshot: medianaComuna?.strRefZona ?? null,
       // Sep-2026: v3 = modelo de costos recalibrado (curva de CapEx en rango).
       // Espejo de input_data.methodologyVersion (abajo), que es lo que lee el
       // motor. Requiere la migración 20260903_methodology_version_v3.sql

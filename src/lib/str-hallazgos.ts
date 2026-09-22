@@ -19,8 +19,7 @@ import { GLOSA_BRAZO } from "./engines/short-term-score";
 import { metricaValorONull } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
-import { buildHallazgoRentabilidadStr, umbralStrDesde } from "./rentabilidad-str-hallazgo";
-import { getCapRefComuna } from "./cap-rate-hallazgo";
+import { buildHallazgoRentabilidadStr, umbralStrDesdeZona } from "./rentabilidad-str-hallazgo";
 import { buildHallazgoFlujoStr } from "./flujo-str-hallazgo";
 import { buildHallazgoOcupacionVsEstimacion, OCC_FALLBACK_PCT } from "./ocupacion-vs-estimacion-hallazgo";
 import { buildHallazgoVentajaVsLtr } from "./ventaja-vs-ltr-hallazgo";
@@ -75,9 +74,9 @@ export interface BuildStrHallazgosCtx {
    *  opcionales: STR resuelve la mediana viva y los trae; una fila persistida sin ellos no. */
   mediana: {
     mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null;
-    /** Referencia de cap rate de la comuna (viaja con la mediana desde el prefetch): de acá
-     *  sale el umbral STR = bruta de la comuna + 1 pt. Ausente ⇒ umbral nacional 5%. */
-    capRefComuna?: import("./capref-comuna").CapRefComunaSnapshot | null;
+    /** Referencia STR contra STR de la zona (viaja con la mediana desde prefetchMercadoStr): de
+     *  acá sale el umbral de rentabilidad_str, sin prima. Ausente ⇒ sin referencia (5%). */
+    strRefZona?: import("./strref-zona").StrRefZonaSnapshot | null;
   };
   valorUF: number;  // UF→CLP del momento (patrimonio CLP↔UF, financing)
   incluyeCorretaje: boolean;
@@ -103,8 +102,8 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   if (!base) return [];
 
   // El umbral STR se resuelve UNA vez acá y lo reciben el hallazgo y la neutralización de la
-  // decisividad: la misma referencia de la comuna que usa LTR, más la prima (21-sep-2026).
-  const umbralStr = umbralStrDesde(getCapRefComuna(ctx.comuna || "", ctx.mediana.capRefComuna));
+  // decisividad: el yield neto de los Airbnb de la zona (strref-zona.ts), sin prima (21-sep-2026).
+  const umbralStr = umbralStrDesdeZona(ctx.mediana.strRefZona, ctx.comuna || "");
   // Decisividad real: una sola llamada sobre el MISMO ctx (y la misma base) que produjo el
   // veredicto. Los siete con knob reciben su factor; el resto declara 0 abajo.
   const dec = calcDecisividadesSTR(

@@ -148,6 +148,9 @@ export type MedianaComunaInyectada = {
    *  síncrono recibe y no busca. Ausente ⇒ el hallazgo cap_rate compara contra el promedio
    *  nacional (nivel «nacional»). */
   capRefComuna?: import("./capref-comuna").CapRefComunaSnapshot | null;
+  /** Referencia STR contra STR de la zona (strref-zona.ts), para el umbral de rentabilidad_str.
+   *  La traen solo los callers STR (prefetchMercadoStr); persistida en `strref_zona_snapshot`. */
+  strRefZona?: import("./strref-zona").StrRefZonaSnapshot | null;
 };
 
 /** Resultado de la mediana comunal, con el universo y la ventana que la produjeron. */

@@ -7,6 +7,7 @@
 // va en la fuente: es trazabilidad, y vive en el dato.
 import type { HallazgoCapRate } from "./types";
 import { AVISOS_CAPREF_CONFIANZA_ALTA } from "./capref-comuna";
+import type { NivelStrRef } from "./strref-zona";
 
 type ValorCapRef = HallazgoCapRate["valor"];
 
@@ -45,19 +46,35 @@ export function explicacionCapRef(v: Pick<ValorCapRef, "nivel" | "comuna" | "bas
   return `${que} La referencia es el promedio de Santiago: la comuna no tiene avisos suficientes.`;
 }
 
-/** La fuente del umbral STR, en una línea: la misma referencia de LTR, «un punto sobre». */
-export function fuenteUmbralStr(v: Pick<ValorCapRef, "nivel" | "comuna" | "celdaDormitorios" | "ventanaDias" | "nArriendo" | "nVenta">, umbralPct: number): string {
-  if (v.nivel === "nacional") return `Referencia: piso de renta corta de Franco para Santiago (${umbralPct.toFixed(1).replace(".", ",").replace(",0", "")}%).`;
-  const base = fuenteCapRef(v).replace(/^Referencia: /, "");
-  return `Referencia: un punto sobre lo que rinden los ${base}`;
+/** La referencia STR contra STR de la zona, como la ve el capítulo (strref-zona.ts). */
+export interface RefStrCopy {
+  nivel: NivelStrRef;
+  comuna: string;
+  celdaDormitorios: number | null;
 }
 
-/** La frase visible bajo el título, en STR: qué es la rentabilidad del corto y qué se le pide. */
-export function explicacionUmbralStr(v: Pick<ValorCapRef, "nivel" | "comuna">): string {
+const airbnbDe = (v: RefStrCopy) => {
+  const d = v.celdaDormitorios;
+  const tip = v.nivel === "celda" && d !== null ? (d === 0 ? "los Airbnb studio" : `los Airbnb de ${d} dormitorio${d === 1 ? "" : "s"}`) : "los Airbnb";
+  return `${tip} ${v.nivel === "celda" && d !== null ? "en" : "de"} ${v.comuna}`;
+};
+
+/**
+ * La fuente del umbral STR, en una línea (decisión de Fabrizio, 21-sep-2026):
+ *   celda          → «Referencia: lo que proyectan los Airbnb de 1 dormitorio en Providencia.»
+ *   comuna         → «Referencia: lo que proyectan los Airbnb de Providencia.»
+ *   sin referencia → «Sin referencia: no hay Airbnb suficientes de esta zona para comparar.»
+ */
+export function fuenteUmbralStr(v: RefStrCopy): string {
+  if (v.nivel === "sin_referencia") return "Sin referencia: no hay Airbnb suficientes de esta zona para comparar.";
+  return `Referencia: lo que proyectan ${airbnbDe(v)}.`;
+}
+
+/** La frase visible bajo el título, en STR: qué es la rentabilidad del corto y de dónde sale la referencia. */
+export function explicacionUmbralStr(v: RefStrCopy): string {
   const que = "La rentabilidad es lo que el ingreso de un año deja sobre el precio, descontados comisión y costos.";
-  if (v.nivel === "celda" || v.nivel === "comuna") return `${que} A una renta corta en ${v.comuna} se le pide un punto más que lo que rinden los avisos de arriendo de la comuna.`;
-  if (v.nivel === "bdo") return `${que} A una renta corta en ${v.comuna} se le pide un punto más que lo que rinden los edificios de renta de la comuna.`;
-  return `${que} Es el piso que Franco pide a una renta corta en Santiago: más que un arriendo largo, porque operarla cuesta más.`;
+  if (v.nivel === "sin_referencia") return `${que} No hay Airbnb suficientes de ${v.comuna} para compararla.`;
+  return `${que} La referencia es lo que proyectan ${airbnbDe(v)}, con los mismos costos.`;
 }
 
 /** Cómo se llama la referencia en el capítulo («la comuna» / «Santiago»). */

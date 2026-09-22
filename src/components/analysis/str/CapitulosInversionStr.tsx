@@ -182,7 +182,7 @@ export function CapitulosInversionStr({
   const filaI: FilaHallazgo = (() => {
     const umbral = hRenta?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
     const refTxt = `${pct1(umbral)}%`;
-    const vRef = { nivel: hRenta?.valor.nivel ?? "nacional", comuna: hRenta?.valor.comuna ?? comuna, celdaDormitorios: hRenta?.valor.celdaDormitorios ?? null, ventanaDias: hRenta?.valor.ventanaDias ?? null, nArriendo: hRenta?.valor.nArriendo ?? 0, nVenta: hRenta?.valor.nVenta ?? 0 } as const;
+    const vRef = { nivel: hRenta?.valor.nivel ?? "sin_referencia", comuna: hRenta?.valor.comuna ?? comuna, celdaDormitorios: hRenta?.valor.celdaDormitorios ?? null } as const;
     const adrRef = args.renta.adrRef;
     const holgura = adrRef <= adr;
     const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${money(adr * fl.factor)} por noche`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
@@ -263,7 +263,7 @@ export function CapitulosInversionStr({
             </VViz>
           )}
           <VFuente>
-            {fuenteUmbralStr(vRef, umbral)} Tarifa {adrEsTuya ? "definida por ti" : "de los avisos de la zona"}; ocupación {occEsTuya ? "definida por ti" : "estimada para este depto"}.
+            {fuenteUmbralStr(vRef)} Tarifa {adrEsTuya ? "definida por ti" : "de los avisos de la zona"}; ocupación {occEsTuya ? "definida por ti" : "estimada para este depto"}.
           </VFuente>
         </div>
       ),

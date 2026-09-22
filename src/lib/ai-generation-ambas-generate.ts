@@ -41,7 +41,7 @@ import { normalizeLegacyVerdict } from "@/lib/types";
 import { resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 import { captureApiError } from "@/lib/observabilidad";
 
@@ -121,7 +121,7 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
 
   const strAsOfRc = new Date((strRow.created_at as string) ?? new Date().toISOString());
   const strMedianaRc = strInput
-    ? await prefetchMedianaComunaVenta(
+    ? await prefetchMercadoStr(
         supabase,
         { comuna: (strInput.comuna as string) ?? (strRow.comuna as string) ?? "", superficie: Number(strInput.superficieUtil) || 0, dormitorios: Number(strInput.dormitorios) || 0,
           esNuevo: strInput.tipoPropiedad === "nuevo", antiguedad: typeof strInput.antiguedad === "number" ? strInput.antiguedad : undefined },

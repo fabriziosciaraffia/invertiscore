@@ -12,7 +12,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
+import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
@@ -84,7 +85,7 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
   const ufFrozen = precioCompraUF > 0 ? precioCompraCLP / precioCompraUF : ufValue;
   const asOfFrozen = new Date(data.created_at ?? new Date().toISOString());
   const medianaStr = inputDataStr
-    ? await prefetchMedianaComunaVenta(
+    ? await prefetchMercadoStr(
         supabase,
         {
           comuna: (inputDataStr.comuna as string) ?? "",
@@ -94,6 +95,7 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
           antiguedad: typeof inputDataStr.antiguedad === "number" ? inputDataStr.antiguedad : undefined,
         },
         ufFrozen,
+        ((data as Record<string, unknown>).strref_zona_snapshot as StrRefZonaSnapshot | null | undefined) ?? null,
       )
     : { mediana: null, n: 0 };
 

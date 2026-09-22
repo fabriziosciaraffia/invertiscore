@@ -10,7 +10,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { SharedComparativaClient } from "./shared-client";
 
@@ -106,7 +106,7 @@ export default async function ShareComparativaPage({
   ) as LTRResultsWithCache;
   const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
   const strMediana = strInput
-    ? await prefetchMedianaComunaVenta(
+    ? await prefetchMercadoStr(
         supabase,
         {
           comuna: (strInput.comuna as string) ?? str.comuna ?? "",

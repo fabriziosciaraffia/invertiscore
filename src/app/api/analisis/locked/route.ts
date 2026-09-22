@@ -12,8 +12,7 @@ import {
   buildShortTermAnalysisRow,
   prefetchMedianaComunaVenta,
   buildMedianaSnapshot,
-  type ShortTermAnalysisBody,
-} from "@/lib/api-helpers/analisis-pipeline";
+  type ShortTermAnalysisBody, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
 import { AMBAS_ENABLED, AMBAS_OFF_ERROR } from "@/lib/ambas-flag";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
       // STR primero: puede fallar (AirROI caído / sin datos) con su propio
       // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
       const tMedianaBoth = Date.now();
-      const medianaStrBoth = await prefetchMedianaComunaVenta(
+      const medianaStrBoth = await prefetchMercadoStr(
         supabase,
         { comuna: strPayload.comuna ?? "", superficie: strPayload.superficieUtil, dormitorios: strPayload.dormitorios,
           esNuevo: strPayload.tipoPropiedad === "nuevo", antiguedad: strPayload.antiguedad },
@@ -267,7 +266,7 @@ export async function POST(request: Request) {
       if (!plausibleStr.ok) return plausibleStr.response;
 
       const tMedianaStr = Date.now();
-      const medianaStr = await prefetchMedianaComunaVenta(
+      const medianaStr = await prefetchMercadoStr(
         supabase,
         { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios,
           esNuevo: bodyStr.tipoPropiedad === "nuevo", antiguedad: bodyStr.antiguedad },

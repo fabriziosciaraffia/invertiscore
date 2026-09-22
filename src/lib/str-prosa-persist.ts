@@ -26,7 +26,8 @@ import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { camposUpdateUsage } from "@/lib/ai-usage";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
+import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { persistGeneracionTiming, type GeneracionTrigger } from "@/lib/pipeline-timing";
 
 export async function generarYPersistirProsaStr(args: {
@@ -63,7 +64,7 @@ export async function generarYPersistirProsaStr(args: {
     const precioCompraCLP = Number(input.precioCompra) || 0;
     const ufFrozen = precioCompraUF > 0 ? precioCompraCLP / precioCompraUF : 38800;
     const asOfFrozen = new Date((analysis.created_at as string) ?? new Date().toISOString());
-    const medianaStr = await prefetchMedianaComunaVenta(
+    const medianaStr = await prefetchMercadoStr(
       supabase,
       {
         comuna: (input.comuna as string) ?? comuna,
@@ -73,6 +74,8 @@ export async function generarYPersistirProsaStr(args: {
         antiguedad: typeof input.antiguedad === "number" ? input.antiguedad : undefined,
       },
       ufFrozen,
+      // La foto fija de la fila gana (STR contra STR, 21-sep-2026); las viejas resuelven vivo.
+      ((analysis as Record<string, unknown>).strref_zona_snapshot as StrRefZonaSnapshot | null | undefined) ?? null,
     );
     const rGen = (recomputeShortTermForLegacy(input, results, ufFrozen, asOfFrozen, medianaStr) ?? results) as
       ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] };

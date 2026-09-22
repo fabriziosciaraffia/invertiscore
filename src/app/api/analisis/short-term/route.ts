@@ -11,8 +11,7 @@ import {
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   buildShortTermAnalysisRow,
-  prefetchMedianaComunaVenta,
-} from "@/lib/api-helpers/analisis-pipeline";
+  prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import {
   resolveActor,
   emitirCookieAnon,
@@ -111,7 +110,7 @@ export async function POST(request: Request) {
     // Mediana comunal pre-fetcheada para el hallazgo de sobreprecio de la pirámide STR
     // (patrón LTR). No bloquea: cae a { mediana:null } y sobreprecio se omite.
     const tMediana = Date.now();
-    const medianaComuna = await prefetchMedianaComunaVenta(
+    const medianaComuna = await prefetchMercadoStr(
       supabase,
       { comuna: body.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios,
         esNuevo: body.tipoPropiedad === "nuevo", antiguedad: body.antiguedad },
