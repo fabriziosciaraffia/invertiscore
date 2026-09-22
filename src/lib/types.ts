@@ -778,6 +778,14 @@ export interface HallazgoPlusvalia {
     // SEPARADOS de la trayectoria a propósito (guarda anti-mezcla del audit).
     nivelUfM2?: number;
     nivelPeriodo?: string;
+    /** La serie histórica de la comuna que dibuja el capítulo «Plusvalía» (22-sep-2026): GfK
+     *  2015→último año con dato más el cierre estimado del año siguiente como un punto más;
+     *  Arenas & Cayo, los dos extremos; sin serie propia, el promedio Gran Santiago. Hasta hoy
+     *  solo la leía /comunas. Opcional por filas persistidas anteriores; el builder la emite
+     *  siempre (resolveSeriePlusvalia). */
+    serie?: { anio: number; valor: number }[];
+    /** Qué mide `serie[].valor`: UF/m² (GfK, Gran Santiago) o UF del depto entero (A&C). */
+    serieUnidad?: "uf_m2" | "uf_depto";
     modalidad: "ltr" | "str" | "ambas";
   };
   // favorable si la comuna apreció ≥ umbral real (ganó valor real); adverso si <

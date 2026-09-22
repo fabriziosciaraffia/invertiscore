@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSensibilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPlusvalia, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSensibilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
@@ -17,7 +17,10 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
-import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, PatrimonioBarras, BarraApiladaB, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { cierrePlusvalia } from "@/lib/cierres-capitulos";
+import { fuentePlusvaliaLinea, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
+import { resolveSeriePlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildPatrimonioSeriesSTR } from "@/lib/patrimonio-series-str";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
@@ -35,7 +38,7 @@ import { conApellido } from "@/components/analysis/CapitulosInversion";
  * Fallback por pieza: sin `metrics` o sin simulación (filas sin airbnbRaw) cada viz que
  * los necesita no se dibuja; el capítulo sigue con lo que tiene.
  */
-export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "gestion" | "resultado";
+export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "gestion" | "plusvalia" | "resultado";
 
 /* CAPITULO_DE_HALLAZGO_STR SE RETIRA CON ACTA (09-sep-2026).
  * Mapeaba cada hallazgo al capitulo donde vive su desarrollo, y su unico consumidor
@@ -45,7 +48,9 @@ export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "gestion" |
  * relacion hallazgo↔capitulo, si vuelve a hacer falta, esta en el historial. */
 export const anchorCapituloStr = (id: CapituloStrId) => `cap-str-${id}`;
 
-const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches: "III", pagas: "IV", gestion: "V", resultado: "VI" };
+// «Plusvalía» entra como VI el 22-sep-2026 (mockup capitulo-iv-plusvalia.html): el mismo capítulo
+// de LTR, sin la compra en verde; «Tu resultado» pasa a VII.
+const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches: "III", pagas: "IV", gestion: "V", plusvalia: "VI", resultado: "VII" };
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const EN_PALABRAS = ["Ninguno", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Los doce"];
 const tonoVeredicto = (v: Veredicto | string): ZonaDial["tono"] => (v === "COMPRAR" ? "comprar" : v === "AJUSTA SUPUESTOS" ? "ajusta" : "buscar");
@@ -729,7 +734,66 @@ export function CapitulosInversionStr({
     };
   })();
 
-  // ═══════════════ VI · TU RESULTADO A 10 AÑOS ═══════════════
+  // ═══════════════ VI · PLUSVALÍA ═══════════════
+  // El MISMO capítulo de LTR (mockup capitulo-iv-plusvalia.html, 22-sep-2026): la serie de la comuna
+  // contra el 3%, «Lo que entra al informe» con el 3% dicho UNA vez, el cierre de una oración. Con la
+  // intro de una frase —la plusvalía es del depto, no de cómo lo operas— y sin la compra en verde
+  // (STR no modela entrega). La frase del 3% que vivía en «Tu resultado» se mudó acá.
+  const plusStr = hallazgos.find((h): h is HallazgoPlusvalia => h.id === "plusvalia") ?? null;
+  const filaPlus: FilaHallazgo | null = plusStr
+    ? (() => {
+        const v = plusStr.valor;
+        const anual = v.anualizadaPct;
+        const rango = procedenciaPlusvalia(comuna).rango;
+        const [r0, r1] = rango.split("-");
+        const proyPctNum = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
+        const serie = v.serie ?? resolveSeriePlusvalia(comuna).puntos;
+        const unidad = v.serieUnidad ?? resolveSeriePlusvalia(comuna).unidad;
+        const fmtUF = (n: number) => `UF ${n.toLocaleString("es-CL", { maximumFractionDigits: unidad === "uf_m2" ? 1 : 0 })}`;
+        const nombreSerie = v.tieneData ? comuna : "Gran Santiago";
+        const sobre = exit?.sobreprecioVenta ?? null;
+        const segs = cierrePlusvalia({ comuna, anualizadaPct: anual, refPct: v.refPct, gapPts: v.gapPts, tieneData: v.tieneData, proyPct: String(proyPctNum), preEntrega: null, rango }, f);
+        return {
+          id: "plusvalia",
+          numero: ROMANO.plusvalia,
+          pregunta: "Plusvalía",
+          valor: conApellido("Plusvalía", `${pct1(anual)}% anual`),
+          valorRojo: plusStr.direccion === "adverso",
+          ksub: [v.tieneData ? `${comuna} ${rango.replace("-", "–")}` : "sin serie propia · promedio Gran Santiago", `proyección ${proyPctNum}%`].join(" · "),
+          anchorId: anchorCapituloStr("plusvalia"),
+          cuerpo: (
+            <div>
+              <VProsa>La plusvalía es del depto, no de cómo lo operas: un Airbnb en {comuna} vale lo mismo que un arriendo largo el día que lo vendes.</VProsa>
+              <VViz t={`Cuánto subió ${nombreSerie}, contra el ${proyPctNum}% del informe`}>
+                <SeriePlusvalia
+                  puntos={serie}
+                  refPct={proyPctNum}
+                  rotuloSerie={`${nombreSerie} · ${unidad === "uf_m2" ? "UF/m² de deptos nuevos" : "UF por depto"}`}
+                  rotuloRef={`${proyPctNum}% real al año desde ${serie[0]?.anio ?? r0}`}
+                  fmtValor={fmtUF}
+                />
+                <p className="viz-pie" style={{ marginTop: 8 }}>
+                  De {fmtUF(serie[0]?.valor ?? 0)} a {fmtUF(serie[serie.length - 1]?.valor ?? 0)} {unidad === "uf_m2" ? "el m²" : "el depto"} entre {serie[0]?.anio ?? r0} y {serie[serie.length - 1]?.anio ?? r1}, en UF, o sea ya descontada la inflación: <b>{pct1(anual)}% al año</b>.
+                  {glosaPeriodoPlusvalia(rango) ? ` ${glosaPeriodoPlusvalia(rango)}` : ""}
+                </p>
+              </VViz>
+              <VViz>
+                <p className="viz-pie" style={{ marginTop: 0 }}>
+                  <b>Lo que entra al informe.</b> Lo que subió {nombreSerie} pesa en tu veredicto. Para proyectar a diez años, Franco usa {proyPctNum}% al año para todas las comunas, sobre lo que vale el depto en el mercado, no sobre lo que pagaste.
+                  {sobre ? ` Pagaste ${sobre.desviacionPct}% sobre la mediana de la comuna: esos ${compact(sobre.clp)} los descuenta «Tu resultado» antes de proyectar.` : ""}
+                </p>
+              </VViz>
+              <VCierre titulo="Qué significa">
+                <SegsCierre segs={segs} />
+              </VCierre>
+              <VFuente>{fuentePlusvaliaLinea(comuna, v.tieneData)}</VFuente>
+            </div>
+          ),
+        };
+      })()
+    : null;
+
+  // ═══════════════ VII · TU RESULTADO A 10 AÑOS ═══════════════
   // Mismo capítulo que el V de LTR (mockup capitulo-v-resultado.html, aprobado 22-sep-2026): el
   // gráfico de barras con `parteAlVender` (un solo patrimonio), la venta al año diez con la fila
   // del sobreprecio, UNA barra apilada en forma B, el refinanciamiento del motor con el aviso, y el
@@ -767,7 +831,7 @@ export function CapitulosInversionStr({
             anchorId: anchorCapituloStr("resultado"),
             cuerpo: (
               <div>
-                <VProsa>Con qué te quedas si vendes el año {anios}, de dónde sale, y cómo crece tu parte hasta ahí. La plusvalía entra como supuesto: {proyPct}% al año, parejo.</VProsa>
+                <VProsa>Con qué te quedas si vendes el año {anios}, de dónde sale, y cómo crece tu parte hasta ahí.</VProsa>
                 <VViz t="Lo que pusiste, lo que vale y tu parte · año a año">
                   <PatrimonioBarras filas={filasBarras} fmtEje={(n) => `${Math.round(n / 1e6)}M`} />
                 </VViz>
@@ -822,6 +886,6 @@ export function CapitulosInversionStr({
         })()
       : null;
 
-  const filas = [filaI, filaII, filaIII, filaIV, filaV, filaVI].filter((x): x is FilaHallazgo => x !== null);
+  const filas = [filaI, filaII, filaIII, filaIV, filaV, filaPlus, filaVI].filter((x): x is FilaHallazgo => x !== null);
   return <HallazgosAcordeon variante="capitulo" tipo="str" filas={filas} veredicto={veredicto} accessLevel={accessLevel} abrir={abrir} />;
 }

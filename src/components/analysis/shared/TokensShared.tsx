@@ -57,6 +57,24 @@ export function TokensShared() {
       .bb-rotulos span b{display:block;color:var(--doc-tx);font-weight:600}
       .bb-nota{font-size:11px;color:var(--doc-tx3);margin-top:6px;line-height:1.45}
       .refi-aviso{font-size:12.5px;line-height:1.5;color:var(--doc-tx2);margin-top:10px;padding:8px 10px;border-left:3px solid var(--signal-red);background:var(--doc-paper2);border-radius:0 8px 8px 0}
+      /* ── «Plusvalía» (capitulo-iv-plusvalia.html, aprobado 22-sep-2026): la serie de la comuna contra
+         el 3%, tinta plena y tinta tenue; sin verde ni ocre. Los valores intermedios aparecen al
+         tocar (click, que sí llega tras el tap) o al pasar el cursor; los extremos van fijos. ── */
+      .sp-svg{width:100%;height:210px;display:block}
+      .sp-grid{stroke:var(--doc-line);stroke-dasharray:3 3}
+      .sp-tick{font-size:8.5px;fill:var(--doc-tx3);font-family:var(--font-body, system-ui)}
+      .sp-anio{font-size:9px;fill:var(--doc-tx4);font-family:var(--font-body, system-ui)}
+      .sp-ref{fill:none;stroke:var(--doc-ink1);stroke-width:1.6}
+      .sp-serie{fill:none;stroke:var(--doc-tx);stroke-width:2.2}
+      .sp-pt{fill:var(--doc-tx);pointer-events:none}
+      .sp-toque{fill:transparent;cursor:pointer;outline:none}
+      .sp-toque:focus-visible+.sp-pt{r:4}
+      .sp-valor{font-size:10px;font-weight:600;fill:var(--doc-tx);font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums;pointer-events:none}
+      .sp-acum{font-size:10px;font-weight:700;fill:var(--doc-tx);font-family:var(--font-body, system-ui)}
+      .sp-acum-ref{font-size:10px;fill:var(--doc-ink1);font-family:var(--font-body, system-ui)}
+      .sp-leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:var(--doc-tx3)}
+      .sp-sw{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+      .sp-sw-serie{background:var(--doc-tx)} .sp-sw-ref{background:var(--doc-ink1)}
       /* ── matriz de sensibilización (mockup-tablas) ── */
       /* §5.7 · anglicismo que el mercado usa: cursiva en todas sus apariciones */
       .ang{font-style:italic}

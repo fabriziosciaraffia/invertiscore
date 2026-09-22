@@ -19,14 +19,14 @@ import { metricaValorONull } from "@/lib/types";
 import { calcFlujoDesglose, calcMesVacio, costoOportunidad } from "@/lib/analysis";
 import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
-import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
+import { fuentePlusvaliaLinea, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
+import { resolveSeriePlusvalia } from "@/lib/plusvalia-hallazgo";
 import { respaldoArriendo, resolverArriendoReferencia, resolverProcedenciaArriendo, fmtRadioArriendo } from "@/lib/arriendo-referencia";
 import { NOMBRE_RENTABILIDAD, explicacionCapRef, fuenteCapRef, nombreReferenciaCapRef } from "@/lib/capref-copy";
 import { cierrePlusvalia, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
 import {
   LineaTiempo,
-  Thermo,
   VCierre,
   VFuente,
   VProsa,
@@ -43,14 +43,14 @@ import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
-import { PatrimonioBarras, BarraApiladaB } from "./shared";
+import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia } from "./shared";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
  *   I   Cuánto renta          cap rate vs referencia → colchón del arriendo (Dial)
  *   II  Tu flujo mensual      waterfall del arriendo → pregunta de la IA
  *   III Cómo lo pagas         dial de precio + plan → crédito (tasa) → matriz pie×plazo
- *   IV  Plusvalía             comuna (Thermo) → proyección → compra en verde (línea)
+ *   IV  Plusvalía             serie de la comuna contra el 3% (SeriePlusvalia) → lo que entra → compra en verde (línea)
  *   V   Tu resultado a 10 años  patrimonio año a año → composición → misma plata en
  *                             otro lado → venta o refinanciamiento
  *
@@ -466,30 +466,28 @@ export function CapitulosInversion({
     cuerpo: <CapituloComoLoPagas modelo={modeloPagas} valorUF={valorUF} />,
   };
   // ═══════════════ IV · PLUSVALÍA ═══════════════
+  // Mockup aprobado (capitulo-iv-plusvalia.html, 22-sep-2026): tres piezas. 1 · la serie de la
+  // comuna contra el 3% que el informe proyecta (SeriePlusvalia: real contra real, la serie en UF);
+  // 2 · «Lo que entra al informe», para el usuario, con el 3% dicho UNA vez en el capítulo; 3 · el
+  // cierre de una oración. Con compra en verde (10%), su bloque y su oración. Salieron: el termómetro,
+  // la proyección del valor (vive en «Tu resultado»), «Franco no usa el histórico» (el score lo usa)
+  // y «supuesto neutro» (el 3% va sobre el precio de mercado, y con sobreprecio el V lo descuenta).
   const filaIV: FilaHallazgo | null = plus
     ? (() => {
         const v = plus.valor;
         const anual = v.anualizadaPct;
-        const lo = Math.min(0, Math.floor(anual - 1));
-        const hi = Math.max(6, Math.ceil(anual + 1));
-        const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
-        const g = Math.round(v.gapPts * 10) / 10;
-        // Período y fuente de ESTA comuna (plusvalia-procedencia.ts): antes el capítulo decía
-        // "Providencia 2014-2024" con la cifra GfK 2015-2025 en la zona.
-        const fuenteHist = v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : fuenteHistoricaPlusvalia(comuna, v.tieneData);
         const rango = procedenciaPlusvalia(comuna).rango;
         const [r0, r1] = rango.split("-");
+        const proyPctNum = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
         const segs = cierrePlusvalia(
-          { comuna, anualizadaPct: anual, refPct: v.refPct, gapPts: v.gapPts, tieneData: v.tieneData, proyPct: PROY_PCT, preEntrega },
+          { comuna, anualizadaPct: anual, refPct: v.refPct, gapPts: v.gapPts, tieneData: v.tieneData, proyPct: PROY_PCT, preEntrega, rango },
           f,
         );
-        const proyeccion = !v.tieneData
-          ? `Franco no usa el histórico de la comuna: proyecta ${PROY_PCT}% parejo para todos. Es un supuesto neutro: ni premia ni castiga. ${comuna} no tiene serie propia; el eje muestra el promedio del Gran Santiago.`
-          : Math.abs(g) < 0.3
-            ? `Franco no usa el histórico de la comuna: proyecta ${PROY_PCT}% parejo para todos. Es un supuesto neutro: ni premia ni castiga. En ${comuna} histórico y proyección coinciden.`
-            : g > 0
-              ? `Franco no usa el histórico de la comuna: proyecta ${PROY_PCT}% parejo para todos. Es un supuesto neutro: ni premia ni castiga. En ${comuna} el histórico fue mayor (${pct1(anual)}%): la proyección se queda corta si la comuna repite su década.`
-              : `Franco no usa el histórico de la comuna: proyecta ${PROY_PCT}% parejo para todos. Es un supuesto neutro: ni premia ni castiga. En ${comuna} el histórico fue menor (${pct1(anual)}%): la proyección supone más de lo que la comuna hizo.`;
+        const serie = v.serie ?? resolveSeriePlusvalia(comuna).puntos;
+        const unidad = v.serieUnidad ?? resolveSeriePlusvalia(comuna).unidad;
+        const fmtUF = (n: number) => `UF ${n.toLocaleString("es-CL", { maximumFractionDigits: unidad === "uf_m2" ? 1 : 0 })}`;
+        const nombreSerie = v.tieneData ? comuna : "Gran Santiago";
+        const sobre = exit?.sobreprecioVenta ?? null;
         const valorVenta = exit?.valorVenta ?? 0;
         const entregaTxt = formatearEntrega(inputData.fechaEntrega);
         const aniosPost = preEntrega ? anios - preEntrega.aniosEspera : anios;
@@ -500,8 +498,8 @@ export function CapitulosInversion({
           valor: conApellido("Plusvalía", `${pct1(anual)}% anual`),
           valorRojo: plus.direccion === "adverso",
           ksub: [
-            v.tieneData ? `${comuna} ${rango}` : `sin serie propia · promedio Gran Santiago`,
-            `${pct1(anual)}% al año`,
+            v.tieneData ? `${comuna} ${rango.replace("-", "–")}` : `sin serie propia · promedio Gran Santiago`,
+            `proyección ${proyPctNum}%`,
             preEntrega ? `compra en verde +${pct1(preEntrega.gananciaPct)}% a la entrega` : "",
           ]
             .filter(Boolean)
@@ -509,37 +507,26 @@ export function CapitulosInversion({
           anchorId: anchorCapitulo("plusvalia"),
           cuerpo: (
             <div>
-              <VProsa>
-                {preEntrega
-                  ? "Tres cosas distintas que suelen mezclarse: cuánto subió la comuna, cuánto proyecta Franco para este depto, y qué ganas por comprar en verde antes de que esté construido."
-                  : "Dos cosas distintas que suelen mezclarse: cuánto subió la comuna y cuánto proyecta Franco para este depto."}
-              </VProsa>
-              <VViz>
-                <VSub>{v.tieneData ? `Cuánto se ha valorizado ${comuna}` : "Cuánto se ha valorizado el Gran Santiago"}</VSub>
-                <Thermo
-                  invertido
-                  pct={pos(anual)}
-                  refPct={pos(v.refPct)}
-                  ceroPct={lo < 0 ? pos(0) : null}
-                  marca={`${v.tieneData ? comuna : "Gran Santiago"} · ${pct1(anual)}% al año`}
-                  legend={[
-                    { k: anual < 0 ? "Perdió valor" : "Subió poco", v: `${lo}%` },
-                    { k: "Referencia de largo plazo", v: `${pct1(v.refPct)}%` },
-                    { k: "Subió mucho", v: `${hi}%` },
-                  ]}
+              <VViz t={`Cuánto subió ${nombreSerie}, contra el ${proyPctNum}% del informe`}>
+                <SeriePlusvalia
+                  puntos={serie}
+                  refPct={proyPctNum}
+                  rotuloSerie={`${nombreSerie} · ${unidad === "uf_m2" ? "UF/m² de deptos nuevos" : "UF por depto"}`}
+                  rotuloRef={`${proyPctNum}% real al año desde ${serie[0]?.anio ?? r0}`}
+                  fmtValor={fmtUF}
                 />
-                <p className="viz-pie" style={{ marginTop: 12 }}>
-                  Entre {r0} y {r1} los departamentos {v.tieneData ? "de la comuna" : "del Gran Santiago"} {anual < 0 ? "bajaron" : "subieron"} {pct1(Math.abs(anual))}% al año, ya descontada la inflación. La referencia de largo plazo es {pct1(v.refPct)}%.
-                  {/* F3 · el caveat del período. Va pegado a la frase que ya nombra el rango:
-                      el pie declara el número y esta línea dice qué tiene ese número de raro.
-                      Determinista (plusvalia-procedencia.ts); antes lo decía la prosa en 9 de
-                      30 generaciones, o sea que en 21 el lector no se enteraba. */}
+                <p className="viz-pie" style={{ marginTop: 8 }}>
+                  De {fmtUF(serie[0]?.valor ?? 0)} a {fmtUF(serie[serie.length - 1]?.valor ?? 0)} {unidad === "uf_m2" ? "el m²" : "el depto"} entre {serie[0]?.anio ?? r0} y {serie[serie.length - 1]?.anio ?? r1}, en UF, o sea ya descontada la inflación: <b>{pct1(anual)}% al año</b>.
                   {glosaPeriodoPlusvalia(rango) ? ` ${glosaPeriodoPlusvalia(rango)}` : ""}
                 </p>
               </VViz>
+              {/* «Lo que entra al informe»: el 3% se dice acá y en ningún otro lugar del capítulo. La
+                  tercera frase solo existe con sobreprecio, y nombra el monto que el V descuenta. */}
               <VViz>
-                <VSub>Lo que Franco proyecta para este depto</VSub>
-                <p className="viz-pie" style={{ marginTop: 0 }}>{proyeccion}</p>
+                <p className="viz-pie" style={{ marginTop: 0 }}>
+                  <b>Lo que entra al informe.</b> Lo que subió {nombreSerie} pesa en tu veredicto. Para proyectar a diez años, Franco usa {proyPctNum}% al año para todas las comunas, sobre lo que vale el depto en el mercado, no sobre lo que pagaste.
+                  {sobre ? ` Pagaste ${sobre.desviacionPct}% sobre la mediana de la comuna: esos ${compact(sobre.clp)} los descuenta «Tu resultado» antes de proyectar.` : ""}
+                </p>
               </VViz>
               {preEntrega && valorVenta > 0 && (
                 <VViz>
@@ -567,11 +554,7 @@ export function CapitulosInversion({
               <VCierre titulo="Qué significa">
                 <Segs segs={segs} />
               </VCierre>
-              <VFuente>
-                {fuenteHist}
-                {fuenteHist.includes(rango) ? "" : ` · ${rango}`}
-                {v.tieneData ? ` · ${comuna}` : ""}
-              </VFuente>
+              <VFuente>{fuentePlusvaliaLinea(comuna, v.tieneData)}</VFuente>
             </div>
           ),
         };

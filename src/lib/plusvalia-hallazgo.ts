@@ -11,7 +11,7 @@
 // buena (Franco es pro-honestidad: no vender plusvalía histórica como futura).
 
 import type { HallazgoPlusvalia, CoberturaHallazgo } from "./types";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, GFK_NIVEL } from "./plusvalia-estimado.gen";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, GFK_NIVEL, GFK_SERIE, GFK_GRAN_SANTIAGO, PLUSVALIA_ESTIMADO_2025, ANIO_ESTIMADO } from "./plusvalia-estimado.gen";
 import { fuenteHistoricaPlusvalia, procedenciaPlusvalia } from "./plusvalia-procedencia";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 
@@ -96,6 +96,31 @@ export function resolvePlusvaliaComuna(comuna: string): {
 // ─── Builder del hallazgo ─────────────────────────────────────────────────
 
 const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
+
+/**
+ * La serie histórica que dibuja el capítulo «Plusvalía» (22-sep-2026), por la MISMA cadena que
+ * el histórico: GfK año a año hasta el último dato más el cierre estimado del año siguiente
+ * como un punto más (es elaboración propia: sin punto hueco, sin banda, sin «estimado»);
+ * Arenas & Cayo, los dos extremos del rango; sin serie propia, el promedio Gran Santiago.
+ */
+export function resolveSeriePlusvalia(comuna: string): { puntos: { anio: number; valor: number }[]; unidad: "uf_m2" | "uf_depto" } {
+  const c = comuna.trim();
+  const gfk = GFK_SERIE[c];
+  if (gfk) {
+    const puntos = gfk.valores.map((valor, i) => ({ anio: gfk.desde + i, valor }));
+    const est = PLUSVALIA_ESTIMADO_2025[c];
+    const ultimo = puntos[puntos.length - 1].anio;
+    if (est && ultimo === ANIO_ESTIMADO - 1) puntos.push({ anio: ANIO_ESTIMADO, valor: est.ufM2 });
+    return { puntos, unidad: "uf_m2" };
+  }
+  const entry = PLUSVALIA_HISTORICA[c];
+  if (entry) {
+    const [a0, a1] = entry.rangoHist.split("-").map(Number);
+    return { puntos: [{ anio: a0, valor: entry.precioInicio }, { anio: a1, valor: entry.precioFin }], unidad: entry.unidadPrecio };
+  }
+  const gs = GFK_GRAN_SANTIAGO.serie;
+  return { puntos: gs.valores.map((valor, i) => ({ anio: gs.desde + i, valor })), unidad: "uf_m2" };
+}
 
 /**
  * Construye el proto-hallazgo de plusvalía reusando la tasa histórica del scoring.
@@ -223,6 +248,8 @@ export function buildHallazgoPlusvalia(p: {
       // solo se emite si existe — nunca se inventa ni se hereda de otra comuna.
       ...(p.cobertura ? { cobertura: p.cobertura } : {}),
       ...(p.nivelUfM2 != null ? { nivelUfM2: p.nivelUfM2, nivelPeriodo: p.nivelPeriodo } : {}),
+      serie: resolveSeriePlusvalia(p.comuna).puntos,
+      serieUnidad: resolveSeriePlusvalia(p.comuna).unidad,
       modalidad: p.modalidad,
     },
     direccion,

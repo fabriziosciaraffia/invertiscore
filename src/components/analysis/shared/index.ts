@@ -9,6 +9,7 @@ export { CurvaAnios, dominioCurvaAnios, type PuntoAnio } from "./CurvaAnios";
 export { SeisCifras, type CifraInforme } from "./SeisCifras";
 export { PatrimonioBarras, type FilaPatrimonio } from "./PatrimonioBarras";
 export { BarraApiladaB, type TramoApilado } from "./BarraApiladaB";
+export { SeriePlusvalia, type PuntoSerie } from "./SeriePlusvalia";
 export { PosicionFranco, type FooterPosicion } from "./PosicionFranco";
 export { SegsCierre } from "./SegsCierre";
 export { ModalCalculoBase, type BloqueCalculo } from "./ModalCalculoBase";

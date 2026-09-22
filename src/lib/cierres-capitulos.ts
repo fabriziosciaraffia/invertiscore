@@ -123,6 +123,8 @@ export function cierreRenta(a: ArgsCierreRenta, f: FmtCierre): SegCierre[] {
 // ═══════════ CIERRE IV · Cuánto crece (comuna + proyección + en verde) ═══════════
 
 export interface ArgsCierrePlusvalia {
+  /** Período de la serie de la comuna («2015-2025»); sin él la oración no nombra años. */
+  rango?: string;
   comuna: string;
   anualizadaPct: number;
   refPct: number;
@@ -134,40 +136,39 @@ export interface ArgsCierrePlusvalia {
 }
 
 export function cierrePlusvalia(a: ArgsCierrePlusvalia, f: FmtCierre): SegCierre[] {
+  // UNA ORACIÓN (mockup capitulo-iv-plusvalia.html, aprobado 22-sep-2026): la comuna contra lo que
+  // el informe proyecta, sin volver a decir «Franco proyecta 3% parejo» (el 3% se dice UNA vez en
+  // el capítulo, en «Lo que entra al informe»). La segunda oración solo existe con compra en verde.
   const segs: SegCierre[] = [];
   const anual = `${f.pct1(a.anualizadaPct)}%`;
-  const ref = `${f.pct1(a.refPct)}%`;
-  // Oración A · la comuna contra la referencia — y su B, que cierra la frase
+  const periodo = a.rango ? ` entre ${a.rango.replace("-", " y ")}` : "";
   if (!a.tieneData) {
     segs.push(
-      { t: `${a.comuna} no tiene serie propia y Franco usa el promedio del Gran Santiago (${anual} real al año): el histórico acá no dice nada de esta comuna en particular, ` },
-      // Ajuste (a) de Fabrizio: A0 lleva su propia B.
-      { t: `y la proyección de Franco usa ese mismo ${a.proyPct}%: no hay historia de esta comuna que la respalde ni la contradiga.`, mark: true },
+      { t: `${a.comuna} no tiene serie propia y el gráfico es el promedio del Gran Santiago (${anual} real al año): ` },
+      { t: `no hay historia de esta comuna que respalde ni contradiga lo que el informe proyecta.`, mark: true },
     );
   } else if (a.anualizadaPct < 0) {
     segs.push(
-      { t: `${a.comuna} perdió valor real en la década (${anual} al año), ` },
-      { t: `y Franco proyecta ${a.proyPct}% igual: todo lo que sigue en este informe supone que la comuna revierte una década en la que perdió valor real.`, mark: true },
+      { t: `${a.comuna} perdió valor real${periodo} (${anual} al año): ` },
+      { t: `todo lo que sigue supone que la comuna revierte una década en la que perdió valor real.`, mark: true },
     );
   } else if (a.gapPts <= -0.3) {
     segs.push(
-      { t: `${a.comuna} subió menos que la referencia (${anual} real al año contra ${ref}), ` },
-      { t: `y Franco proyecta ${a.proyPct}% igual: todo lo que sigue en este informe supone que la comuna hace en la próxima década lo que no hizo en la anterior.`, mark: true },
+      { t: `${a.comuna} subió ${anual} real al año${periodo}, menos de lo que el informe proyecta: ` },
+      { t: `todo lo que sigue supone que la comuna hace en la próxima década lo que no hizo en la anterior.`, mark: true },
     );
   } else if (a.gapPts >= 0.3) {
     segs.push(
-      { t: `${a.comuna} subió más que la referencia (${anual} real al año contra ${ref}), ` },
-      { t: `pero Franco proyecta ${a.proyPct}% parejo, no ese ritmo`, mark: true },
-      { t: ": si la comuna repite su década este informe se queda corto, y si no la repite, no estás contando con algo que no ocurrió." },
+      { t: `${a.comuna} subió ${anual} real al año${periodo}, más de lo que el informe proyecta: ` },
+      { t: `si repite su década este informe se queda corto, y si no la repite, no estás contando con algo que no ocurrió.`, mark: true },
     );
   } else {
     segs.push(
-      { t: `${a.comuna} subió al ritmo de la referencia (${anual} real al año), y la proyección de Franco la da por hecha: ` },
-      { t: `el histórico no es garantía, y todo lo que sigue en este informe descansa en ese ${a.proyPct}%`, mark: true },
-      { t: "." },
+      { t: `${a.comuna} subió ${anual} real al año${periodo}, al ritmo de lo que el informe proyecta: ` },
+      { t: `el histórico no es garantía, y todo lo que sigue descansa en ese ritmo.`, mark: true },
     );
   }
-  // Oración C · el tramo en verde (umbral 10%, decisión (2) de Fabrizio)
+  // Compra en verde (solo LTR con entrega futura): el tramo en verde, umbral 10% (decisión de Fabrizio)
   if (a.preEntrega && a.preEntrega.aniosEspera > 0 && a.preEntrega.gananciaCLP > 0) {
     const pe = a.preEntrega;
     const anios = pe.aniosEspera === 1 ? "un año" : `${pe.aniosEspera} años`;

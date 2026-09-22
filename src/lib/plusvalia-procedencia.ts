@@ -51,6 +51,16 @@ export function fuenteHistoricaPlusvalia(comuna: string | null | undefined, tien
   return p.propia ? `Histórico ${p.rango} · ${p.atribucion}` : `Histórico de la comuna · ${ATRIBUCION_ARENAS_CAYO}`;
 }
 
+/** La fuente del capítulo «Plusvalía» en UNA línea, con la forma de /comunas (decisión de Fabrizio,
+ *  22-sep-2026): «Elaboración propia sobre datos de GfK/NielsenIQ 2015–2025». Con Arenas & Cayo
+ *  nombra ese estudio; sin serie propia, el promedio Gran Santiago sobre GfK. */
+export function fuentePlusvaliaLinea(comuna: string | null | undefined, tieneData: boolean): string {
+  const p = procedenciaPlusvalia(comuna);
+  const rango = (p.propia && tieneData ? p.rango : RANGO_GRAN_SANTIAGO).replace("-", "–");
+  if (p.propia && tieneData && p.entry?.fuente === "arenas_cayo") return `Elaboración propia sobre datos de Arenas & Cayo ${rango}.`;
+  return `Elaboración propia sobre datos de GfK/NielsenIQ ${rango}${p.propia && tieneData ? "" : ", promedio Gran Santiago"}.`;
+}
+
 /** El período que declara una línea de fuente ya escrita por el builder ("Histórico
  *  2015-2025 · …"), para superficies que solo tienen el hallazgo y no la comuna. */
 export function rangoDesdeFuente(fuente: string | null | undefined): string | null {
