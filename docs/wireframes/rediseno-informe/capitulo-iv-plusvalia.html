@@ -151,8 +151,7 @@
       ${s.valores.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="2.6" fill="var(--tx)"/>`).join("")}
       <line x1="${x(iE)}" y1="${y(s.est2025.min)}" x2="${x(iE)}" y2="${y(s.est2025.max)}" stroke="var(--tx)" stroke-width="1.2"/>
       <circle cx="${x(iE)}" cy="${y(s.est2025.ufM2)}" r="3.2" fill="var(--card)" stroke="var(--tx)" stroke-width="1.6"/>
-      <text x="${x(iE) + 8}" y="${y(s.valores[iE - 1]) + 3}" font-size="10" font-weight="700" fill="var(--tx)" font-family="Inter">+${s.acum}%</text>
-      <text x="${x(iE) + 8}" y="${y(ref[iE]) + 3}" font-size="10" fill="var(--ink1)" font-family="Inter">+${acumRef}% al 3%</text>
+      ${(() => { const ys = y(s.valores[iE - 1]), yr = y(ref[iE]); const cerca = Math.abs(ys - yr) < 12; const y1 = cerca ? Math.min(ys, yr) - 3 : ys + 3; const y2 = cerca ? Math.min(ys, yr) + 10 : yr + 3; return `<text x="${x(iE) + 8}" y="${y1}" font-size="10" font-weight="700" fill="var(--tx)" font-family="Inter">+${s.acum}%</text><text x="${x(iE) + 8}" y="${y2}" font-size="10" fill="var(--ink1)" font-family="Inter">+${acumRef}% al 3%</text>`; })()}
     </svg><div class="leyenda"><span><i style="background:var(--tx)"></i>${s.comuna} · UF/m² de deptos nuevos</span><span><i style="background:repeating-linear-gradient(90deg,var(--ink1) 0 4px,transparent 4px 8px)"></i>3% real al año desde 2015</span><span><i style="background:transparent;border:1.5px solid var(--tx);height:8px;width:8px;border-radius:50%"></i>2025 estimado, con su banda</span></div>`;
   }
 
