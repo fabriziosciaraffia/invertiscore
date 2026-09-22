@@ -23,8 +23,10 @@
      llegar a esa ocupación — es lo que AirROI mismo dijo).
      LO QUE SALE: el dial de ocupación, el termómetro contra la comuna, cuatro de las cinco menciones de
      la ocupación, la tercera mención del ramp-up (la del cierre; queda la del año, que es la de la caja).
-     TOKENS: tinta y rojo. La curva pinta en rojo los meses en que pones plata, como la de diez años;
-     los demás en tinta. Sin verde ni ocre.
+     TOKENS: tinta y rojo. La curva del año (corrección 22-sep) dibuja UNA serie, el flujo mensual en pesos:
+     eje Y con divisiones, línea del cero, promedio rotulado; los meses bajo cero en rojo, como la de diez
+     años. Hoy dibuja el ingreso bruto y pinta por el signo del flujo, dos series en un gráfico. La forma es
+     la distribución mensual de ingreso de la zona (`monthly_revenue_distributions`), NO la ocupación mensual.
      SIN COMPARABLES (42 filas): estimación y curva, y una línea que dice que no hay avisos parecidos
      suficientes para contrastar.
      CIFRAS REALES (22-sep-2026, recompute): 06d44c93 (Santiago 2D, AJUSTA, comparables 41% = estimación
@@ -95,7 +97,7 @@
   .eje .l.real{top:26px;color:var(--ink1)}
   .eje .t{position:absolute;top:15px;font-size:9.5px;color:var(--tx4);transform:translateX(-50%)}
   /* ── 2 · la curva del año ── */
-  .curva{width:100%;height:150px;display:block}
+  .curva{width:100%;height:170px;display:block}
   .leyenda{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:4px;flex-wrap:wrap}
   .leyenda i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
   .cont{font-size:10px;color:var(--tx4);text-align:right;margin-top:8px}
@@ -121,7 +123,7 @@
     <li><b>Título:</b> «Ocupación en renta corta» (decisión de Fabrizio, 22-sep). <b>Encabezado:</b> «Al año 151 noches», sub «con la ocupación estimada (41%) · los avisos parecidos ocuparon 41%». Con supuesto propio: «con la ocupación que definiste». Sin comparables: «sin avisos parecidos para contrastar».</li>
     <li><b>1 · La estimación y lo que realizaron los parecidos.</b> Dos cifras: la ocupación estimada para tu depto (con sus noches al año) y la que realizaron el último año los avisos parecidos con que se estimó (con el n y cuántos son superhost). Debajo, las dos marcas sobre el eje 0–100 con sus divisiones (cada 5, rotuladas cada 25), la estimación arriba y la mediana de los avisos similares abajo, cada una con su porcentaje. La lectura en una frase, por rama: <b>cerca</b> (|Δ| ≤ 5 pts) «los avisos parecidos ocuparon lo mismo: el número se sostiene en lo que ya pasa en la zona» · <b>lejos</b> «ocuparon X, N puntos menos: la estimación cuenta con que operes mejor que la mayoría de los que hoy están publicados» · <b>sin comparables</b> «No hay avisos parecidos suficientes guardados para contrastar la estimación: 171 noches es lo que el mercado estima para un depto como el tuyo.»</li>
     <li><b>El comentario</b>, fijo, sin alarma: la estimación es lo que logra un depto como el tuyo bien operado; los avisos parecidos incluyen a los que operan mal, los estacionales y los que recién arrancan; una administración profesional aumenta las posibilidades de llegar a esa ocupación. Va después de la brecha y solo cuando hay comparables.</li>
-    <li><b>2 · Cómo se reparte el año.</b> La misma curva de hoy (ingreso de cada mes contra el promedio), los meses en que pones plata en rojo y el resto en tinta. Copy: pico, valle, cuántos meses pones plata, y el arranque en caja (única mención del ramp-up en el capítulo; el II ya dice cuánto cuesta en facturación).</li>
+    <li><b>2 · Lo que deja o cuesta cada mes.</b> Una sola serie: el flujo de cada mes en pesos (la curva de hoy dibujaba el ingreso bruto y pintaba por el signo del flujo: dos series). Eje Y en pesos con divisiones, la línea del cero, el promedio rotulado con su valor, y en rojo los meses bajo cero. La forma es la de la distribución mensual de ingreso de la zona, que no es la ocupación mensual: mezcla tarifa y ocupación por mes. Copy: pico, valle, cuántos meses pones plata, y el arranque en caja (única mención del ramp-up en el capítulo; el II ya dice cuánto cuesta en facturación).</li>
     <li><b>Cierre</b> de una oración que junta las dos piezas: la confianza de las noches y la forma del año. No repite la cifra del ramp-up ni la frontera del veredicto (vive en el I).</li>
     <li><b>Fuente:</b> «Datos de mercado · ocupación estimada para este depto y curva mensual de la zona · N avisos parecidos, ocupación del último año · fecha».</li>
   </ul>
@@ -140,6 +142,7 @@
 <script>
   const money = (n) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const mm = (n) => "$" + (Math.abs(n) / 1e6).toFixed(1).replace(".", ",") + " MM";
+  const money2 = (n) => (n < 0 ? "−" : "") + "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   const MESES_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   const EN_PALABRAS = ["Ninguno", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Los doce"];
@@ -153,19 +156,33 @@
       fe: [[787923,-150457],[651736,-282558],[775993,-162029],[696664,-238978],[711372,-224711],[800285,-138466],[1125739,177225],[951546,8258],[810521,-128537],[849040,-91173],[918789,-23517],[839346,-100576]] },
   ];
 
+  // LA CURVA DIBUJA UNA SOLA SERIE: el flujo de cada mes en pesos (`flujoEstacional[].flujo`, lo que
+  // queda después de comisión, costos y cuota). La forma es la del ingreso bruto mensual (la
+  // distribución de ingreso por mes de la zona, `monthly_revenue_distributions`, que mezcla tarifa y
+  // ocupación: NO es la ocupación mensual), y el flujo es esa misma forma desplazada por los costos
+  // fijos, así que la estacionalidad se ve igual. Eje Y en pesos con divisiones, la línea del cero (los
+  // meses bajo ella son los que pones plata, en rojo) y el promedio con su valor.
   function curva(fe) {
-    const W = 600, H = 150, x0 = 34, x1 = 594, yT = 20, yB = 120;
-    const vals = fe.map((m) => m[0]); const prom = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const mn = Math.min(...vals, prom), mx = Math.max(...vals, prom), span = mx - mn || 1;
+    const W = 600, H = 170, x0 = 64, x1 = 586, yT = 14, yB = 134;
+    const vals = fe.map((m) => m[1]); const prom = vals.reduce((a, b) => a + b, 0) / vals.length;
+    let mn = Math.min(...vals, 0), mx = Math.max(...vals, 0); const pad = (mx - mn) * 0.08 || 1; mn -= pad; mx += pad;
+    const span = mx - mn;
     const y = (v) => yB - ((v - mn) / span) * (yB - yT); const x = (i) => x0 + (i * (x1 - x0)) / 11;
+    const paso = (() => { const b = span / 4; const e = Math.pow(10, Math.floor(Math.log10(b))); return [1, 2, 2.5, 5, 10].map((k) => k * e).find((k) => k >= b); })();
+    const ticks = []; for (let v = Math.ceil(mn / paso) * paso; v <= mx; v += paso) ticks.push(v);
+    const k = (n) => (n === 0 ? "0" : (n < 0 ? "−" : "") + "$" + (Math.abs(n) >= 1e6 ? (Math.abs(n) / 1e6).toFixed(1).replace(".", ",") + " MM" : Math.round(Math.abs(n) / 1000) + " mil"));
     const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-    return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Ingreso de cada mes frente al mes promedio">
-      <line x1="${x0}" y1="${y(prom).toFixed(1)}" x2="${x1}" y2="${y(prom).toFixed(1)}" stroke="var(--line2)" stroke-width="1" stroke-dasharray="4 4"/>
-      <text x="${x0}" y="${(y(prom) - 5).toFixed(1)}" font-family="Inter" font-size="10" fill="var(--tx4)">promedio</text>
+    const yProm = y(prom), yCero = y(0);
+    const promArriba = Math.abs(yProm - yCero) < 12 ? (prom < 0 ? 11 : -5) : -5;
+    return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Lo que deja o cuesta cada mes, en pesos">
+      ${ticks.map((t) => `<line x1="${x0}" y1="${y(t).toFixed(1)}" x2="${x1}" y2="${y(t).toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${x0 - 6}" y="${(y(t) + 3).toFixed(1)}" font-family="Inter" font-size="9" fill="var(--tx4)" text-anchor="end">${k(t)}</text>`).join("")}
+      <line x1="${x0}" y1="${yCero.toFixed(1)}" x2="${x1}" y2="${yCero.toFixed(1)}" stroke="var(--tx3)" stroke-width="1"/>
+      <line x1="${x0}" y1="${yProm.toFixed(1)}" x2="${x1}" y2="${yProm.toFixed(1)}" stroke="var(--ink1)" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="${x1}" y="${(yProm + promArriba).toFixed(1)}" font-family="Inter" font-size="9.5" font-weight="600" fill="var(--ink1)" text-anchor="end">promedio ${money2(prom)}/mes</text>
       <polyline fill="none" stroke="var(--tx)" stroke-width="2.5" points="${pts}"/>
-      ${fe.map((m, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(m[0]).toFixed(1)}" r="3.6" fill="${m[1] < 0 ? "var(--signal)" : "var(--tx)"}"/>`).join("")}
-      ${MESES.map((m, i) => `<text x="${x(i).toFixed(1)}" y="142" font-family="Inter" font-size="11" fill="var(--tx4)" text-anchor="middle">${m}</text>`).join("")}
-    </svg><div class="leyenda"><span><i style="background:var(--signal)"></i>mes en que pones plata</span><span><i style="background:var(--tx)"></i>mes que deja</span></div>`;
+      ${fe.map((m, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(m[1]).toFixed(1)}" r="3.6" fill="${m[1] < 0 ? "var(--signal)" : "var(--tx)"}"/>`).join("")}
+      ${MESES.map((m, i) => `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-family="Inter" font-size="11" fill="var(--tx4)" text-anchor="middle">${m}</text>`).join("")}
+    </svg><div class="leyenda"><span><i style="background:var(--signal)"></i>mes en que pones plata</span><span><i style="background:var(--tx)"></i>mes que deja</span><span><i style="background:var(--tx3);height:2px;border-radius:0;width:14px"></i>cero</span></div>`;
   }
 
   function escena(f) {
@@ -195,7 +212,8 @@
     const ing = f.fe.map((m) => m[0]); const iMax = ing.indexOf(Math.max(...ing)), iMin = ing.indexOf(Math.min(...ing));
     const rojos = f.fe.filter((m) => m[1] < 0).length;
     const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    const anio = `<p class="v-pie">${cap(MESES_L[iMax])} es el pico (${money(ing[iMax])}${f.fe[iMax][1] >= 0 ? `, ${rojos === 11 ? "el único mes que deja" : "deja"} ${money(f.fe[iMax][1])}` : `, y aun así pones ${money(f.fe[iMax][1])}`}); ${MESES_L[iMin]} el valle (${money(ing[iMin])}, pones ${money(f.fe[iMin][1])}). <b>${rojos === 12 ? "Los doce" : `${EN_PALABRAS[rojos]} de doce`} meses pones plata.</b> Y antes de eso, los primeros meses el aviso se ocupa menos mientras gana reseñas: ${mm(f.ramp)} que tienes que tener en caja antes de arrancar.</p>`;
+    const fl = f.fe.map((m) => m[1]); const iMaxF = fl.indexOf(Math.max(...fl)), iMinF = fl.indexOf(Math.min(...fl));
+    const anio = `<p class="v-pie">${cap(MESES_L[iMax])} es el mes que más factura (${money(ing[iMax])})${f.fe[iMax][1] >= 0 ? ` y deja ${money(f.fe[iMax][1])}` : ` y aun así pones ${money(f.fe[iMax][1])}`}; ${MESES_L[iMin]} el que menos (${money(ing[iMin])}) y pones ${money(f.fe[iMin][1])}. <b>${rojos === 12 ? "Los doce" : `${EN_PALABRAS[rojos]} de doce`} meses pones plata.</b> Y antes de eso, los primeros meses el aviso se ocupa menos mientras gana reseñas: ${mm(f.ramp)} que tienes que tener en caja antes de arrancar.</p>`;
     // cierre
     const cierre = rama === "cerca"
       ? `Las ${f.noches} noches que estima el mercado son las que ya hacen los avisos parecidos, <mark>así que lo que sigue no descansa en una ocupación optimista: descansa en un año que deja ${rojos} de doce meses en rojo.</mark>`
@@ -206,7 +224,7 @@
     return `<div class="escena" data-id="${f.id}">
       <div class="cabeza"><div class="q">Ocupación en renta corta<small>STR · ${f.titulo}</small></div><div class="val">Al año ${f.noches} noches<small>${subCab}</small></div></div>
       <div class="bloque"><div class="v-sub"><span class="num">1</span>Ocupación estimada para tu depto, y la alcanzada por avisos parecidos al tuyo</div>${celdas}${eje}${lectura}${comentario}</div>
-      <div class="bloque"><div class="v-sub"><span class="num">2</span>Cómo se reparte el año</div>${curva(f.fe)}${anio}</div>
+      <div class="bloque"><div class="v-sub"><span class="num">2</span>Lo que deja o cuesta cada mes, según la temporada</div>${curva(f.fe)}${anio}</div>
       <p class="v-cierre"><b>Qué significa.</b> ${cierre}</p>
       <div class="v-fuente">${fuente}</div>
       <div class="cont"></div>
