@@ -31,7 +31,7 @@
      la fuente.
      LO QUE SALE: la barra del día 1, la barra apilada con sus cinco filas y tags, la nota de los
      aportes, «La misma plata en otro lado» (el remate del cierre ya cita el depósito), el puente.
-     Censo del 22-sep: 2.633 caracteres → ~1.150 en este mockup (medido abajo, por escena).
+     Censo del 22-sep: 2.633 caracteres → 1.500–1.800 en este mockup (contador por escena, medido en el navegador).
      ═══════════════════════════════════════════════════════════════════════════ */
   :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px}
   [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
@@ -169,7 +169,7 @@
       ? `<div class="fila"><span class="k">Menos el sobreprecio de hoy<small>pagaste ${f.sobre.pct}% sobre la mediana de la comuna; se descuenta plano, no se capitaliza</small></span><span class="v neg">${money(-f.sobre.clp)}</span></div>`
       : `<div class="fila"><span class="k">Sobreprecio de hoy<small>pagaste en línea con la mediana de la comuna: nada que descontar</small></span><span class="v neg">—</span></div>`;
     const linea = cierra
-      ? `<p class="linea"><b>Firme ${pctFirme}%</b>: tu pie (${mm(f.pie)})${f.amort > 0 ? ` y ${mm(f.amort)} que amortizó ${f.motor}` : ""} vuelven sin depender de nadie. <b>Proyectado ${100 - pctFirme}%</b>: ${mm(plus)} de plusvalía, ya neta de ${f.nComision}${f.sobre ? " y del sobreprecio" : ""}, si ${f.comuna} rinde el 3%.${f.bolsillo > 0 ? ` Para llegar acá pusiste ${mm(f.aportado)}: ${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes.` : ` Para llegar acá pusiste ${mm(f.aportado)} el día 1.`}</p>`
+      ? `<p class="linea"><b>Firme ${pctFirme}%</b>: tu pie (${mm(f.pie)})${f.amort > 0 ? ` y ${mm(f.amort)} que amortizó ${f.motor} vuelven` : " vuelve"} sin depender de nadie. <b>Proyectado ${100 - pctFirme}%</b>: ${mm(plus)} de plusvalía, ya neta de ${f.nComision}${f.sobre ? " y del sobreprecio" : ""}, si ${f.comuna} rinde el 3%.${f.bolsillo > 0 ? ` Para llegar acá pusiste ${mm(f.aportado)}: ${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes.` : ` Para llegar acá pusiste ${mm(f.aportado)} el día 1.`}</p>`
       : `<p class="linea">Pusiste <b>${mm(f.aportado)}</b> (${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes) y te quedan <b>${mm(f.equity)}</b>: <b>${mult2(f.mult)}</b>. Lo firme —tu pie y ${mm(f.amort)} que amortizó ${f.motor}— es ${mm(f.pie + f.amort)}; el resto es plusvalía proyectada.</p>`;
     const aviso = f.refi.ratio != null && f.refi.ratio > 1.5
       ? `<p class="aviso">La cuota nueva es ${f.refi.ratio.toFixed(1).replace(".", ",")} veces la actual (${money(f.refi.cuota)} contra ${money(f.refi.cuotaActual)}); con ella el mes queda en ${money(f.refi.mes)}: la liquidez sale de tu bolsillo, en cuotas.</p>`
@@ -177,7 +177,7 @@
     const remate = f.pie + f.amort <= f.deposito ? "el negocio se parece más al depósito que al depto" : `sigues sobre el depósito, con ${mm(f.pie + f.amort)} contra ${mm(f.deposito)}`;
     const cierreA = f.pie / f.equity < 0.5
       ? `Más de la mitad de tu parte no salió de tu bolsillo: la puso ${f.motor} pagando deuda (${mm(f.amort)}) y la plusvalía (${mm(plus)}).`
-      : `La mayor parte de tu parte es tu propio pie que vuelve: ${f.motor} amortizó ${mm(f.amort)} y la plusvalía suma ${mm(plus)}.`;
+      : f.amort > 0 ? `La mayor parte de tu parte es tu propio pie que vuelve: ${f.motor} amortizó ${mm(f.amort)} y la plusvalía suma ${mm(plus)}.` : `La mayor parte de tu parte es tu propio pie que vuelve; sin crédito no hay deuda que amortizar, y la plusvalía suma ${mm(plus)}.`;
     const cierreC = f.mult >= 2
       ? `La amortización es firme; la plusvalía, proyección: si ${f.comuna} no rinde el 3%, ${remate}.`
       : f.mult >= 1
