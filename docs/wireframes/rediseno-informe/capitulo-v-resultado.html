@@ -28,10 +28,22 @@
      La línea de tu parte del gráfico 1 es «si vendes ese año»: valor − deuda − 2% − sobreprecio, la
      misma definición del encabezado (en LTR hoy el chart dibuja valor − deuda; con la implementación
      LTR emite `parteAlVender` como STR).
+     SEGUNDA CORRECCIÓN (Fabrizio, 22-sep): (1) los colores del gráfico 1 salen del SEMÁFORO DEL DATO
+     del informe (skill franco-design-system › «Color por veredicto»: la pieza mide un dato sin nombrar
+     el veredicto ⇒ --doc-good / --doc-warn / --signal-red y la escala Ink), no del chart viejo (que
+     mezclaba --signal-red con --franco-text del chrome): aporte acumulado = --doc-warn (lo que pones),
+     precio pactado = Ink tenue, plusvalía = trama Ink (proyectado), tu parte = --doc-good (lo que te
+     queda). (2) «De dónde sale tu parte» es UNA barra apilada y nada más —sin la barra del día 1, sin
+     filas—, en TRES FORMAS conmutables arriba: A leyenda al tocar (la cola de los ⓘ: en mobile el tap
+     no abre nada y el ~40% ve colores sin nombre); B rótulo y cifra sobre cada segmento, se lee sin
+     tocar; C cascada vertical (pie → +amortización → +plusvalía = tu parte), que resuelve el segmento
+     angosto porque el rótulo va al lado y no encima. El contador de cada escena cambia con la forma.
+     Con la barra sola salen del capítulo gastos de compra, puesta a punto y amoblamiento (lo que
+     pusiste y no vuelve): viven en «Cómo lo pagas».
      ═══════════════════════════════════════════════════════════════════════════ */
   :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px}
-  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57;--neutral:#8C8880}
-  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;--neutral:#6E6A63}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57;--warn:#B7791F;--neutral:#8C8880}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;--warn:#DFA34F;--neutral:#6E6A63}
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
   .ctrl{max-width:1000px;margin:0 auto}
@@ -89,6 +101,20 @@
   .s.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
   .s.gastos,.sw.gastos,.s.capex,.sw.capex,.s.amoblamiento,.sw.amoblamiento{background:var(--line2)}
   .s.capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)}
+  .ba .s.lab{display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+  .ba .s.lab.pie{color:#fff} .ba .s.lab.plus{color:var(--tx)}
+  .ba.alta{height:44px}
+  .rotulos{position:relative;height:34px;margin-top:4px;font-size:10.5px;color:var(--tx2);font-variant-numeric:tabular-nums}
+  .rotulos span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
+  .rotulos span::before{content:'';position:absolute;left:50%;top:-6px;width:1px;height:6px;background:var(--line2)}
+  .rotulos span b{display:block;color:var(--tx);font-weight:600}
+  .tip{font-size:11px;color:var(--tx3);margin-top:6px}
+  .tip.mob{color:var(--signal)}
+  .casc{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:12.5px;margin-top:6px}
+  .casc .k{color:var(--tx2)} .casc .v{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+  .casc .bar{height:16px;border-radius:2px;position:relative}
+  .casc .tot .k,.casc .tot .v{font-weight:700;color:var(--tx)}
+  .casc .tot .bar{outline:1px solid var(--line2);outline-offset:-1px}
   .barra-k{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:10px 0 5px}
   .barra-k .t{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4)}
   .barra-k .m{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -110,12 +136,15 @@
     <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
     <span class="clab">Ancho</span>
     <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
+    <span class="clab">Forma de «de dónde sale tu parte»</span>
+    <span class="seg"><button data-f="A">A · leyenda al tocar</button><button class="on" data-f="B">B · rótulo sobre el tramo</button><button data-f="C">C · cascada</button></span>
   </div>
   <ul class="decision">
     <li><b>Encabezado:</b> «Resultado» = tu parte al vender el año 10, neta del sobreprecio, la comisión y la deuda; el sub lleva ×mult y TIR. En rojo solo con ×mult &lt; 1.</li>
     <li><b>1 · Lo que pusiste, lo que vale y tu parte, año a año:</b> el gráfico de barras anterior. Aporte acumulado en Signal Red; valor del depto en precio pactado más plusvalía con trama; tu parte si vendes ese año como línea. Sin cifra final duplicada: la dice el encabezado.</li>
     <li><b>2 · Si vendes el año 10, pieza central:</b> valor proyectado → menos el sobreprecio de hoy → deuda → comisión → <b>te queda</b>.</li>
-    <li><b>3 · De dónde sale tu parte:</b> la barra del día 1 (misma escala que la de abajo) con ×mult, la barra apilada firme/proyectado y sus filas, sin tags ni subs. Pie · gastos de compra · amoblamiento (STR) · puesta a punto · deuda amortizada · plusvalía neta · tu parte.</li>
+    <li><b>3 · De dónde sale tu parte:</b> UNA barra apilada (pie · amortización · plusvalía neta) y nada más. Tres formas conmutables arriba; el contador de cada escena cambia con la forma. Con la barra sola, gastos de compra, puesta a punto y amoblamiento salen del capítulo (viven en «Cómo lo pagas»); el ×mult ya va en el encabezado.</li>
+    <li><b>Colores del gráfico 1:</b> semáforo del dato del informe. Aporte acumulado en <span style="color:var(--warn);font-weight:600">--doc-warn</span> (lo que pones), precio pactado en Ink tenue, plusvalía en trama Ink (proyectado), tu parte en <span style="color:var(--good);font-weight:600">--doc-good</span> (lo que te queda). Ni Signal Red ni tokens del chrome.</li>
     <li><b>4 · Si refinancias:</b> crédito nuevo, cuota nueva, tu mes con la cuota nueva, liquidez; el aviso sobre 1,5×.</li>
     <li><b>Cierre</b> de dos oraciones (de dónde sale tu parte; firme contra proyectado con el remate del depósito). El «$0,0 MM» del pie 100% se arregla en `cierres-capitulos.ts` con la implementación.</li>
   </ul>
@@ -183,39 +212,48 @@
     for (const t of ticks) out += `<line x1="${L}" y1="${y(t)}" x2="${W - R}" y2="${y(t)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${L - 4}" y="${y(t) + 3}" font-size="8.5" fill="var(--tx3)" text-anchor="end" font-family="Inter">${(t / 1e6).toFixed(0)}M</text>`;
     rows.forEach((r, i) => {
       const x = xs[i];
-      out += `<rect x="${x - bw - 1}" y="${y(r.aporte)}" width="${bw}" height="${y(0) - y(r.aporte)}" fill="var(--signal)"/>`;
+      out += `<rect x="${x - bw - 1}" y="${y(r.aporte)}" width="${bw}" height="${y(0) - y(r.aporte)}" fill="var(--warn)"/>`;
       out += `<rect x="${x + 1}" y="${y(r.precio)}" width="${bw}" height="${y(0) - y(r.precio)}" fill="var(--tx)" fill-opacity="0.22"/>`;
       if (r.plus > 0) out += `<rect x="${x + 1}" y="${y(r.valor)}" width="${bw}" height="${y(r.precio) - y(r.valor)}" fill="url(#hatch-${f.id})"/>`;
       out += `<text x="${x}" y="${H - 7}" font-size="9" fill="var(--tx4)" text-anchor="middle" font-family="Inter">a${r.a}</text>`;
     });
-    out += `<path d="${rows.map((r, i) => `${i ? "L" : "M"}${xs[i]},${y(r.parte)}`).join(" ")}" fill="none" stroke="var(--tx)" stroke-width="2.2"/>`;
-    rows.forEach((r, i) => { out += `<circle cx="${xs[i]}" cy="${y(r.parte)}" r="2.6" fill="var(--tx)"/>`; });
-    return out + `</svg><div class="leyenda"><span><i style="background:var(--signal)"></i>Aporte acumulado</span><span><i style="background:var(--tx);opacity:.22"></i>Precio que pactaste</span><span><i style="background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--tx3) 2px,var(--tx3) 3px)"></i>Plusvalía acumulada</span><span><i class="linea" style="background:var(--tx)"></i>Tu parte si vendes ese año</span></div>`;
+    out += `<path d="${rows.map((r, i) => `${i ? "L" : "M"}${xs[i]},${y(r.parte)}`).join(" ")}" fill="none" stroke="var(--good)" stroke-width="2.2"/>`;
+    rows.forEach((r, i) => { out += `<circle cx="${xs[i]}" cy="${y(r.parte)}" r="2.6" fill="var(--good)"/>`; });
+    return out + `</svg><div class="leyenda"><span><i style="background:var(--warn)"></i>Aporte acumulado</span><span><i style="background:var(--tx);opacity:.22"></i>Precio que pactaste</span><span><i style="background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--tx3) 2px,var(--tx3) 3px)"></i>Plusvalía acumulada</span><span><i class="linea" style="background:var(--good)"></i>Tu parte si vendes ese año</span></div>`;
   }
 
   // ── Gráfico 3: la barra del día 1 (misma escala) + la apilada firme/proyectado, sin tags ni subs ──
-  function descomposicion(f) {
-    const d = f.dia1, plus = f.equity - f.pie - f.amort, cierra = f.mult >= 1 && plus >= 0;
+  // ── Gráfico 3: UNA barra apilada firme/proyectado, sin la barra del día 1 y sin filas. Tres formas. ──
+  let FORMA = "B";
+  function segmentos(f) {
+    const plus = f.equity - f.pie - f.amort;
+    const segs = [["pie", "Tu pie", f.pie], ["amort", `Deuda que amortizó ${f.motor}`, f.amort], ["plus", `Plusvalía neta${f.sobre ? " (comisión y sobreprecio)" : ""}`, plus]].filter(([, , v]) => v > 0);
+    const total = f.pie + f.amort + Math.max(plus, 0);
+    return { segs: segs.map(([t, k, v]) => ({ t, k, v, pct: (v / total) * 100 })), total, plus, cierra: f.mult >= 1 && plus >= 0 };
+  }
+  function descomposicion(f, forma = FORMA) {
+    const { segs, plus, cierra } = segmentos(f);
     const pctFirme = Math.round(((f.pie + f.amort) / f.equity) * 100);
-    const ancho = Math.min(100, (d.inversion / f.equity) * 100);
-    const segDia1 = [["pie", d.pie], ["gastos", d.gastos], ["amoblamiento", d.amoblamiento], ["capex", d.capex]].filter(([, v]) => v > 0);
-    const dia1Html = `<div class="barra-k"><span class="t">Lo que pusiste · el día 1</span><span class="m">${money(d.inversion)} <small>${ufN(d.inversion, f.uf)}</small></span></div>
-      <div class="ba" style="width:${ancho}%">${segDia1.map(([t, v]) => `<div class="s ${t}" style="width:${(v / d.inversion) * 100}%"></div>`).join("")}</div>
-      ${f.pie > 0 ? `<p class="mult"><b>${mult2(f.mult)}</b> por cada peso que pusiste</p>` : ""}`;
-    const apilada = cierra
-      ? `<div class="fp"><span>Firme · ${pctFirme}%</span><span>Proyectado · ${100 - pctFirme}%</span></div>
-         <div class="ba"><div class="s pie" style="width:${(f.pie / f.equity) * 100}%"></div><div class="s amort" style="width:${(f.amort / f.equity) * 100}%"></div><div class="s plus" style="width:${(plus / f.equity) * 100}%"></div></div>`
-      : `<div class="fp"><span>Pusiste ${mm(f.aportado)}</span><span>Te queda ${mm(f.equity)}</span></div>
-         <div class="ba"><div class="s pie" style="width:${Math.min(100, (f.equity / f.aportado) * 100)}%"></div><div class="s gastos" style="flex:1"></div></div>`;
-    const filas = [
-      ["pie", "Tu pie", f.pie],
-      ["gastos", "Gastos de compra", d.gastos],
-      ["amoblamiento", "Amoblamiento", d.amoblamiento],
-      ["capex", "Puesta a punto", d.capex],
-      ["amort", `Deuda que amortizó ${f.motor}`, f.amort],
-      ["plus", `Plusvalía neta de ${f.nComision}${f.sobre ? " y sobreprecio" : ""}`, plus],
-    ].filter(([, , v]) => v > 0 || v < 0).map(([t, k, v]) => `<div class="fila compacta"><span class="k"><i class="sw ${t}"></i>${k}</span><span class="v${v < 0 ? " rojo" : ""}">${money(v)}</span></div>`).join("");
-    return `${dia1Html}${apilada}<div style="margin-top:8px">${filas}<div class="fila compacta tot"><span class="k">Tu parte a 10 años</span><span class="v${cierra ? "" : " rojo"}">${money(f.equity)}</span></div></div>`;
+    const fp = cierra ? `<div class="fp"><span>Firme · ${pctFirme}%</span><span>Proyectado · ${100 - pctFirme}%</span></div>` : `<div class="fp"><span>Pusiste ${mm(f.aportado)}</span><span>Te queda ${mm(f.equity)}</span></div>`;
+    if (forma === "A") {
+      // A · leyenda al tocar: cada segmento lleva su rótulo y cifra en title (hover/tap con puntero).
+      return `${fp}<div class="ba alta">${segs.map((x) => `<div class="s ${x.t}" style="width:${x.pct}%" title="${x.k}: ${money(x.v)}" tabindex="0" aria-label="${x.k}: ${money(x.v)}"></div>`).join("")}</div>
+        <p class="tip">Toca cada tramo para ver qué es y cuánto.</p>
+        <p class="tip mob">En mobile un tap sobre un tramo no abre nada: es la cola de los ⓘ. El ~40% de los usuarios vería una barra de colores sin saber qué es cada uno (solo la leyenda firme / proyectado de arriba).</p>`;
+    }
+    if (forma === "B") {
+      // B · rótulo y cifra sobre cada segmento; los angostos (< 14%) van debajo con guía.
+      const anchos = segs.filter((x) => x.pct >= 14), angostos = segs.filter((x) => x.pct < 14);
+      let acc = 0; const centros = segs.map((x) => { const c = acc + x.pct / 2; acc += x.pct; return c; });
+      return `${fp}<div class="ba alta">${segs.map((x) => `<div class="s ${x.t}${x.pct >= 14 ? " lab" : ""}" style="width:${x.pct}%">${x.pct >= 14 ? `${x.k.split(" ")[0] === "Tu" ? "Pie" : x.t === "amort" ? "Amortización" : "Plusvalía"} ${mm(x.v)}` : ""}</div>`).join("")}</div>
+        ${angostos.length ? `<div class="rotulos">${angostos.map((x) => `<span style="left:${centros[segs.indexOf(x)]}%"><b>${x.t === "amort" ? "Amortización" : x.t === "plus" ? "Plusvalía" : "Pie"}</b>${mm(x.v)}</span>`).join("")}</div>` : ""}
+        <p class="tip">${segs.map((x) => `${x.t === "pie" ? "Pie: lo que pusiste, vuelve entero" : x.t === "amort" ? `Amortización: lo que ${f.motor} pagó del crédito` : "Plusvalía: proyectada, neta de gastos de venta" + (f.sobre ? " y sobreprecio" : "")}`).join(" · ")}.</p>`;
+    }
+    // C · cascada vertical: cada tramo es una fila con su barra a escala y su rótulo al lado.
+    const max = f.equity;
+    let acc = 0;
+    const filas = segs.map((x) => { const left = (acc / max) * 100; acc += x.v; return `<span class="k">${x.k}</span><span class="bar"><span class="s ${x.t}" style="position:absolute;left:${left}%;width:${(x.v / max) * 100}%;height:100%;display:block;border-radius:2px"></span></span><span class="v">${money(x.v)}</span>`; }).join("");
+    return `${fp}<div class="casc">${filas}<span class="k tot" style="font-weight:700;color:var(--tx)">Tu parte a 10 años</span><span class="bar tot"><span class="s pie" style="position:absolute;left:0;width:${(f.pie / max) * 100}%;height:100%;display:block"></span><span class="s amort" style="position:absolute;left:${(f.pie / max) * 100}%;width:${(f.amort / max) * 100}%;height:100%;display:block"></span><span class="s plus" style="position:absolute;left:${((f.pie + f.amort) / max) * 100}%;width:${(Math.max(plus, 0) / max) * 100}%;height:100%;display:block"></span></span><span class="v" style="font-weight:700;color:var(--tx)">${money(f.equity)}</span></div>`;
   }
 
   function escena(f) {
@@ -249,7 +287,7 @@
         <div class="fila"><span class="k">${f.nComision === "comisión" ? "Comisión de venta" : "Gastos de venta"}<small>2% del precio de venta</small></span><span class="v neg">${money(-f.comision)}</span></div>
         <div class="fila tot"><span class="k">Te queda</span><span class="v${cierra ? "" : " rojo"}">${money(f.equity)}</span></div>
       </div>
-      <div class="bloque"><div class="v-sub"><span class="num">3</span>De dónde salen tus ${mm(f.equity)}</div>${descomposicion(f)}</div>
+      <div class="bloque"><div class="v-sub"><span class="num">3</span>De dónde salen tus ${mm(f.equity)}</div><div class="desc" data-id="${f.id}">${descomposicion(f)}</div></div>
       <div class="bloque"><div class="v-sub"><span class="num">4</span>Si refinancias en el año 10</div>
         <div class="fila"><span class="k">Nuevo crédito<small>80% del valor del año 10</small></span><span class="v">${money(f.refi.credito)}</span></div>
         <div class="fila"><span class="k">Cuota nueva<small>${f.refi.plazo} años al ${pct1(f.refi.tasa)}${f.refi.cuotaActual > 0 ? ` · hoy pagas ${money(f.refi.cuotaActual)}` : " · hoy no tienes crédito"}</small></span><span class="v">${money(f.refi.cuota)}/mes</span></div>
@@ -282,8 +320,29 @@
       <p class="aviso">La cuota nueva es 2,2 veces la actual ($1.012.112 contra $470.691); con ella el mes queda en −$552.507 al mes: la liquidez sale de tu bolsillo, en cuotas.</p></div></div>`;
   cont.appendChild(av);
 
+  // Las tres formas lado a lado, con su peso (demo LTR y la STR)
+  const rot3 = document.createElement("div"); rot3.className = "rot";
+  rot3.innerHTML = `<h2>Las tres formas de «de dónde sale tu parte»</h2><p>Mismo dato, tres lecturas. Debajo de cada una, cuánto pesa el bloque y cuánto queda el capítulo entero con esa forma.</p>`;
+  cont.appendChild(rot3);
+  for (const f of [FILAS[0], FILAS[3]]) {
+    const g = document.createElement("div"); g.className = "par2"; g.style.gridTemplateColumns = "1fr 1fr 1fr";
+    g.innerHTML = ["A", "B", "C"].map((fo) => `<div class="escena"><div class="v-sub"><span class="num">3</span>${f.mod} · forma ${fo}</div>${descomposicion(f, fo)}<div class="cont" data-forma="${fo}" data-id="${f.id}"></div></div>`).join("");
+    cont.appendChild(g);
+  }
+  function pesos() {
+    document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo con la forma ${FORMA} (antes 2.633)`; });
+    document.querySelectorAll(".cont[data-forma]").forEach((c) => {
+      const f = FILAS.find((x) => x.id === c.dataset.id), fo = c.dataset.forma;
+      const bloque = c.parentElement.innerText.replace(/\s+/g, " ").length - c.textContent.length;
+      const tmp = document.createElement("div"); tmp.innerHTML = descomposicion(f, "B"); const base = document.querySelector(`.escena[data-id="${f.id}"]`).innerText.replace(/\s+/g, " ").length;
+      const tmpF = document.createElement("div"); document.body.appendChild(tmpF); tmpF.innerHTML = descomposicion(f, fo); const nF = tmpF.innerText.replace(/\s+/g, " ").length; tmpF.remove();
+      const tmpB = document.createElement("div"); document.body.appendChild(tmpB); tmpB.innerHTML = descomposicion(f, FORMA); const nB = tmpB.innerText.replace(/\s+/g, " ").length; tmpB.remove();
+      c.textContent = `bloque: ${nF.toLocaleString("es-CL")} · capítulo con esta forma: ${(base - nB + nF).toLocaleString("es-CL")}`;
+    });
+  }
+  document.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { FORMA = b.dataset.f; document.querySelectorAll("[data-f]").forEach((x) => x.classList.toggle("on", x === b)); document.querySelectorAll(".desc[data-id]").forEach((d) => { d.innerHTML = descomposicion(FILAS.find((x) => x.id === d.dataset.id)); }); pesos(); }));
+  pesos();
   // contador de caracteres por escena: lo que se lee (innerText, sin el SVG)
-  document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo (antes 2.633)`; });
 
   document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));
   document.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.view = b.dataset.v; document.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("on", x === b)); }));
