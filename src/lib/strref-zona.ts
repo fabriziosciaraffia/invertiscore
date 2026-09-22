@@ -21,8 +21,11 @@
 // yield sale bajo. Los listings no traen m². Studio (0 dormitorios) usa la venta de 1D.
 //
 // CASCADA CORTA, declarada en el dato (`nivel`): celda (comuna × dormitorios, n ≥ 15 direcciones
-// y n ≥ 15 ventas) → comuna (todas las tipologías, los dos lados) → sin_referencia (el capítulo
-// lo dice y no compara; el motor conserva el 5% para sus mecánicas internas). Sin BDO, sin LTR.
+// y n ≥ 15 ventas) → comuna (las estimaciones de TODAS las tipologías, pooled, sobre la venta de
+// la tipología del sujeto: mezclar tipologías en la venta daba −0,3% en Vitacura, con ingreso de
+// 2D contra un precio pooled de 148 m²; decisión de Fabrizio, 21-sep) → sin_referencia (el
+// capítulo lo dice y no compara; el motor conserva el 5% para sus mecánicas internas). Sin BDO,
+// sin LTR.
 import { median, normalizeComuna } from "@/lib/comuna-stats";
 import { getMarketData } from "@/lib/comunas";
 import { COMISION_AIRBNB, COSTOS_DEFAULT } from "@/lib/engines/short-term-engine";
@@ -44,7 +47,7 @@ export interface DireccionEstimada {
   ingresoAnual: number;
 }
 
-/** La venta usada de la tipología (o de la comuna entera en el peldaño «comuna»). */
+/** La venta usada de la tipología del sujeto (en los dos peldaños). */
 export interface VentaTipologia {
   n: number;
   precioP50: number;
@@ -111,12 +114,14 @@ export function evaluarPeldanoStrRef(
   const ingresos = direcciones.map((d) => d.ingresoAnual).filter((x) => x > 0);
   if (ingresos.length < MIN_STRREF || !venta || venta.n < MIN_STRREF || !(venta.precioP50 > 0) || !(venta.m2P50 > 0)) return null;
   const ingresoAnual = Math.round(median(ingresos));
+  // En «comuna» las estimaciones son pooled (todas las tipologías) pero la venta y los costos son
+  // los de la tipología del sujeto; `celda.dormitorios` queda null para declarar el peldaño.
   const dormitorios = nivel === "celda" ? celda.dormitorios : null;
-  const y = yieldStrZona({ ingresoAnual, precio: venta.precioP50, m2: venta.m2P50, comuna: celda.comuna, dormitorios: dormitorios ?? 1 });
+  const y = yieldStrZona({ ingresoAnual, precio: venta.precioP50, m2: venta.m2P50, comuna: celda.comuna, dormitorios: celda.dormitorios });
   const fuente =
     `${ingresos.length} estimaciones de Airbnb (${rotuloDorms(dormitorios)}) en ${celda.comuna} ` +
-    `sobre ${venta.n} avisos de venta usados (${rotuloDorms(dormitorios === null ? null : dormitoriosVentaProxy(dormitorios))}, 90 días); ` +
-    `ingreso proyectado por el estimador, precio típico de la tipología, costos del motor`;
+    `sobre ${venta.n} avisos de venta usados (${rotuloDorms(dormitoriosVentaProxy(celda.dormitorios))}, 90 días); ` +
+    `ingreso proyectado por el estimador, precio típico de la tipología del sujeto, costos del motor`;
   return {
     nivel,
     neto: y.neto,

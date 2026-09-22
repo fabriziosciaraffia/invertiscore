@@ -79,6 +79,19 @@ export function runStrRefZonaTier(): { hard: number } {
   if (sin.nDirecciones !== 2 || sin.nVenta !== 3) F("2 · sin referencia declara el n máximo que juntó");
   const s = leer("src/lib/strref-zona.ts");
   if (/bdo|BDO|nacional|capref/i.test(s.replace(/\/\/[^\n]*/g, ""))) F("2 · strref-zona.ts nombra BDO, nacional o el benchmark LTR fuera de comentarios");
+  // 2b · el peldaño «comuna» pooled-ea SOLO las estimaciones: la venta y los costos son los de la
+  // tipología del sujeto (Vitacura daba −0,3% con la venta pooled de 148 m²; decisión 21-sep).
+  if (!/estimaciones de Airbnb \(todas las tipologías\)/.test(soloComuna.fuente) || !/venta usados \(1D, 90 días\)/.test(soloComuna.fuente)) F(`2b · la fuente de «comuna» no declara estimaciones pooled sobre la venta de la tipología (${soloComuna.fuente})`);
+  const enCeldaC = resolverStrRefCascada({ comuna: "Santiago", dormitorios: 3 }, () => ({ direcciones: dirs(15, 3), venta: venta(15) }), T0);
+  const comunaC = resolverStrRefCascada({ comuna: "Santiago", dormitorios: 3 }, (n) => (n === "comuna" ? { direcciones: dirs(30, 1), venta: venta(15) } : { direcciones: dirs(3, 3), venta: venta(15) }), T0);
+  if (enCeldaC.costosMes !== comunaC.costosMes || comunaC.costosMes === null) F(`2b · los costos de «comuna» no son los de la tipología del sujeto (3D: celda ${enCeldaC.costosMes} vs comuna ${comunaC.costosMes})`);
+  // 2c · el caché de AirROI se lee con el service role: `airbnb_estimates` tiene RLS sin políticas
+  // y el cliente de sesión devuelve CERO filas sin error (el snapshot nacía «sin referencia»).
+  const qCache = q.replace(/\/\/[^\n]*/g, "");
+  const fnDirs = qCache.match(/async function direccionesDeComuna\(([^)]*)\)[^]*?\n}/);
+  if (!fnDirs || /supabase/.test(fnDirs[1]) || !/process\.env\.SUPABASE_SERVICE_ROLE_KEY/.test(qCache) || !/const supabase = clienteAdminCache\(\);/.test(fnDirs[0])) F("2c · direccionesDeComuna no lee airbnb_estimates con el cliente admin (service role)");
+  const qVenta = q.replace(/\/\/[^\n]*/g, "");
+  if ((qVenta.match(/ventaDe\(supabase, comuna, dormitoriosVentaProxy\(d\), ufValue\)/g) ?? []).length !== 1 || /ventaDe\(supabase, comuna, (null|nivel)/.test(qVenta)) F("2b · la resolución viva no trae UNA venta de la tipología del sujeto para los dos peldaños");
 
   // 3 · el mínimo por lado
   if (MIN_STRREF !== 15) F(`3 · MIN_STRREF debía ser 15 (es ${MIN_STRREF})`);

@@ -5,8 +5,14 @@
 // Direcciones del estimador: filas del caché cuya dirección se resuelve a la comuna (regla de
 // strref-zona.ts) o que coinciden con la dirección de un análisis STR persistido de la comuna;
 // una por (dirección, dormitorios), la más reciente; el ingreso es adr p50 × occ p50 × 365 de
-// esa misma respuesta (nunca los listings realizados). Venta: usado, 90 días, tipología exacta
-// en el peldaño «celda» y toda la comuna en «comuna»; mediana del precio total y del m².
+// esa misma respuesta (nunca los listings realizados). Venta: usado, 90 días, siempre la tipología
+// del sujeto (en «comuna» se pooled-ean solo las estimaciones); mediana del precio total y del m².
+// SOLO SERVIDOR: `airbnb_estimates` tiene RLS sin políticas (nadie la lee salvo el service role;
+// get-estimate.ts hace lo mismo), así que las direcciones del estimador y las de los análisis STR
+// de otros usuarios se leen con el cliente admin. Con el cliente de sesión la lectura devolvía
+// CERO filas sin error y el snapshot nacía «sin referencia» (cazado el 21-sep al crear un STR
+// real). La venta (`scraped_properties`, lectura pública) sigue por el cliente que llega.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { PAGINA_POSTGREST, normalizeComuna, median } from "@/lib/comuna-stats";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import {
@@ -23,8 +29,19 @@ import {
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function direccionesDeComuna(supabase: any, comuna: string): Promise<DireccionEstimada[]> {
+function clienteAdminCache(): SupabaseClient | null {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!key || !url) return null;
+  return createClient(url, key);
+}
+
+async function direccionesDeComuna(comuna: string): Promise<DireccionEstimada[]> {
+  const supabase = clienteAdminCache();
+  if (!supabase) {
+    reportarFalloQuery({ message: "sin SUPABASE_SERVICE_ROLE_KEY: no se puede leer el caché de AirROI" }, { ruta: "lib/strref-zona-query", operacion: "cliente-admin", tags: { tabla: "airbnb_estimates" }, extra: { comuna } });
+    return [];
+  }
   // Direcciones de análisis STR persistidos en la comuna (la fila sí trae comuna): cubren las
   // direcciones cortas que no nombran la comuna.
   const conocidas = new Set<string>();
@@ -121,13 +138,16 @@ export async function resolverStrRefZonaVivo(
   const celda: CeldaStrRef = { comuna, dormitorios: d };
   const resolvedAt = new Date().toISOString();
   let direcciones: DireccionEstimada[] = [];
-  try { direcciones = await direccionesDeComuna(supabase, comuna); } catch (e) { console.error("[resolverStrRefZonaVivo] direcciones:", e); }
-  let nD = 0, nV = 0;
+  try { direcciones = await direccionesDeComuna(comuna); } catch (e) { console.error("[resolverStrRefZonaVivo] direcciones:", e); }
+  // La venta es SIEMPRE la de la tipología del sujeto (una sola consulta, los dos peldaños); en
+  // «comuna» lo único que se pooled-ea son las estimaciones.
+  let venta: VentaTipologia | null = null;
+  try { venta = await ventaDe(supabase, comuna, dormitoriosVentaProxy(d), ufValue); } catch (e) { console.error("[resolverStrRefZonaVivo] venta:", e); }
+  let nD = 0;
+  const nV = venta?.n ?? 0;
   for (const nivel of CASCADA_STRREF) {
     const dirs = nivel === "celda" ? direcciones.filter((x) => x.dormitorios === d) : direcciones;
-    let venta: VentaTipologia | null = null;
-    try { venta = await ventaDe(supabase, comuna, nivel === "celda" ? dormitoriosVentaProxy(d) : null, ufValue); } catch (e) { console.error("[resolverStrRefZonaVivo] venta:", e); }
-    nD = Math.max(nD, dirs.length); nV = Math.max(nV, venta?.n ?? 0);
+    nD = Math.max(nD, dirs.length);
     const r = evaluarPeldanoStrRef(nivel, dirs, venta, celda, resolvedAt);
     if (r) return r;
   }
