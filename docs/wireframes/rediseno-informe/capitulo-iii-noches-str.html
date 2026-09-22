@@ -160,7 +160,7 @@
     const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
     return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Ingreso de cada mes frente al mes promedio">
       <line x1="${x0}" y1="${y(prom).toFixed(1)}" x2="${x1}" y2="${y(prom).toFixed(1)}" stroke="var(--line2)" stroke-width="1" stroke-dasharray="4 4"/>
-      <text x="${x1 + 2}" y="${(y(prom) + 4).toFixed(1)}" font-family="Inter" font-size="10" fill="var(--tx4)">promedio</text>
+      <text x="${x0}" y="${(y(prom) - 5).toFixed(1)}" font-family="Inter" font-size="10" fill="var(--tx4)">promedio</text>
       <polyline fill="none" stroke="var(--tx)" stroke-width="2.5" points="${pts}"/>
       ${fe.map((m, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(m[0]).toFixed(1)}" r="3.6" fill="${m[1] < 0 ? "var(--signal)" : "var(--tx)"}"/>`).join("")}
       ${MESES.map((m, i) => `<text x="${x(i).toFixed(1)}" y="142" font-family="Inter" font-size="11" fill="var(--tx4)" text-anchor="middle">${m}</text>`).join("")}
