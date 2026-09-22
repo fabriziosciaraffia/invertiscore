@@ -7,35 +7,31 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* ═══════════════════════════════════════════════════════════════════════════
-     MOCKUP · 22-sep-2026 · «Tu resultado a 10 años» (V en LTR, VI en STR). Nada implementado
-     del render: lo que SÍ está implementado (y de donde salen las cifras) es el motor:
-       · el refinanciamiento es el del motor, al año de salida, 80% del valor, con la cuota y el
-         flujo nuevos y el aviso sobre 1,5× (commit f6d41ea3);
-       · el sobreprecio de hoy se descuenta PLANO en la venta, como línea visible (variante B,
-         commit 6cdadfbb); las 12 filas con muestra chica llevan la misma regla y la fuente lo dice;
-       · un solo patrimonio en STR: la curva dibuja tu parte si vendes ese año, y su etiqueta es
-         el mismo número del encabezado.
-     Tokens y primitivas heredados de `capitulo-i-cuanto-renta.html`.
-     TODAS LAS CIFRAS SON REALES: cuatro filas recomputadas el 22-sep-2026 por la cadena de cada
-     página (`scripts/of-filas-mockup-resultado.ts` + lectura en localhost):
+     MOCKUP · 22-sep-2026 (corregido el mismo día) · «Tu resultado a 10 años» (V en LTR, VI en STR).
+     Lo implementado en el motor, de donde salen las cifras: el refinanciamiento del motor al año de
+     salida con el aviso sobre 1,5× (f6d41ea3); el sobreprecio de hoy descontado PLANO en la venta,
+     como línea visible (variante B, 6cdadfbb); un solo patrimonio en STR (`parteAlVender`, ≡ equity en
+     el año de venta). Nada implementado del render.
+     CORRECCIÓN (Fabrizio, 22-sep): vuelven los DOS GRÁFICOS. La curva no reemplazaba bien al gráfico de
+     barras del patrimonio (dos columnas por año: aporte acumulado en Signal Red; valor del depto en
+     precio pactado + plusvalía con trama; la línea de tu parte), y la descomposición firme/proyectado
+     vuelve a ser gráfico —la barra del día 1 y la barra apilada— porque el párrafo de siete cifras se
+     leía peor. Con recorte: sin los tags «firme / no vuelve», sin el sub de cada fila, sin la nota de
+     los aportes y sin «La misma plata en otro lado» (el remate del cierre ya cita el depósito). Lo que
+     pesaba 1.161 caracteres era el andamiaje alrededor de las barras, no las barras.
+     TODAS LAS CIFRAS SON REALES: cuatro filas recomputadas el 22-sep-2026 por la cadena de cada página
+     (`scripts/of-filas-mockup-resultado.ts` y `of-filas-mockup-series.ts`, más lectura en localhost):
        · 6db7a9ac (demo LTR, Providencia): sin sobreprecio, ×2,21, refinanciamiento sin aviso;
-       · 8395ea55 (LTR, Las Condes): sobreprecio 5% sobre 107 avisos; pie 100%; es la fila que con B
-         pasa de COMPRAR a AJUSTA;
-       · 1a3a0c50 (LTR, Las Condes): ×0,98 —una de las dos filas donde patrimonio y multiplicador se
-         leen distinto—, valor en rojo, BUSCAR OTRA;
-       · 11a6dc52 (STR, Santiago): sobreprecio 34%, un solo patrimonio ($61,6 MM en la curva y en
-         «te queda»).
-     LO QUE QUEDA: encabezado con el resultado corregido por B · la curva (un patrimonio) · LA VENTA
-     AL AÑO DIEZ COMO PIEZA CENTRAL (cuatro filas y «te queda») · el refinanciamiento (cuatro filas
-     y la liquidez, con el aviso) · la descomposición firme/proyectado EN UNA LÍNEA · el cierre ·
-     la fuente.
-     LO QUE SALE: la barra del día 1, la barra apilada con sus cinco filas y tags, la nota de los
-     aportes, «La misma plata en otro lado» (el remate del cierre ya cita el depósito), el puente.
-     Censo del 22-sep: 2.633 caracteres → 1.500–1.800 en este mockup (contador por escena, medido en el navegador).
+       · 8395ea55 (LTR, Las Condes): sobreprecio 5% sobre 107 avisos; pie 100%; con B pasa de COMPRAR a AJUSTA;
+       · 1a3a0c50 (LTR, Las Condes): ×0,98, valor en rojo, BUSCAR OTRA (composición que no cierra);
+       · 11a6dc52 (STR, Santiago): sobreprecio 34%, un solo patrimonio ($61,6 MM en la curva y en «te queda»).
+     La línea de tu parte del gráfico 1 es «si vendes ese año»: valor − deuda − 2% − sobreprecio, la
+     misma definición del encabezado (en LTR hoy el chart dibuja valor − deuda; con la implementación
+     LTR emite `parteAlVender` como STR).
      ═══════════════════════════════════════════════════════════════════════════ */
   :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px}
-  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA}
-  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--good:#2E8B57;--neutral:#8C8880}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--good:#57B98A;--neutral:#6E6A63}
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
   .ctrl{max-width:1000px;margin:0 auto}
@@ -66,7 +62,6 @@
   .v-sub{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);margin:0 0 10px;display:flex;gap:8px;align-items:center}
   .v-sub .num{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--tx);color:var(--page);font-size:9.5px;align-items:center;justify-content:center;font-weight:700}
   .v-prosa{font-size:13.5px;line-height:1.55;color:var(--tx2)}
-  .v-prosa b{color:var(--tx);font-weight:600}
   .fila{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:baseline}
   .fila:last-child{border-bottom:none}
   .fila .k{color:var(--tx2)}
@@ -76,16 +71,30 @@
   .fila .v.rojo{color:var(--signal)}
   .fila.tot{border-top:1px solid var(--line2);margin-top:2px;padding-top:9px}
   .fila.tot .k,.fila.tot .v{font-weight:700;color:var(--tx)}
-  .linea{font-size:12.5px;line-height:1.55;color:var(--tx2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line2)}
-  .linea b{color:var(--tx);font-weight:600}
+  .fila.compacta{padding:5px 0;font-size:12.5px}
+  .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:-1px}
   .aviso{font-size:12.5px;line-height:1.5;color:var(--tx2);margin-top:10px;padding:8px 10px;border-left:3px solid var(--signal);background:var(--sunk);border-radius:0 8px 8px 0}
   .v-cierre{margin-top:18px;font-size:13.5px;line-height:1.6;color:var(--tx2)}
   .v-cierre b{color:var(--tx);font-weight:600}
   .v-fuente{font-size:11px;color:var(--tx4);line-height:1.45;border-left:3px solid var(--tx3);padding-left:9px;margin-top:16px}
   .v-fuente.aviso2{border-left-color:var(--signal)}
-  .curva{width:100%;height:120px;display:block;margin-top:4px}
-  .leyenda{display:flex;gap:14px;font-size:10.5px;color:var(--tx3);margin-top:4px;flex-wrap:wrap}
-  .leyenda i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .chart{width:100%;height:190px;display:block;margin-top:2px}
+  .leyenda{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:6px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .leyenda i.linea{height:3px;vertical-align:middle}
+  /* barras de la descomposición: tonos de BarraApilada (.ba-seg) con los tokens del documento */
+  .ba{display:flex;height:30px;border-radius:3px;overflow:hidden}
+  .ba .s{height:100%;position:relative}
+  .s.pie,.sw.pie{background:var(--neutral)} .s.amort,.sw.amort{background:var(--good)} .s.plus,.sw.plus{background:var(--good);opacity:.45}
+  .s.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
+  .s.gastos,.sw.gastos,.s.capex,.sw.capex,.s.amoblamiento,.sw.amoblamiento{background:var(--line2)}
+  .s.capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)}
+  .barra-k{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:10px 0 5px}
+  .barra-k .t{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4)}
+  .barra-k .m{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .barra-k .m small{font-weight:500;color:var(--tx3);font-size:10.5px}
+  .mult{font-size:12px;color:var(--tx2);margin-top:6px} .mult b{color:var(--tx)}
+  .fp{display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);margin:12px 0 5px}
   .cont{font-size:10px;color:var(--tx4);text-align:right;margin-top:8px}
   .decision{max-width:1000px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
   .decision li{margin:4px 0 4px 18px}
@@ -94,8 +103,8 @@
 </head>
 <body>
 <div class="ctrl">
-  <h1 class="lt">Capítulo V · «Tu resultado a 10 años» · la venta al año diez como pieza central</h1>
-  <p class="subx">Mockup del 22-sep-2026 sobre el motor ya corregido: el resultado del encabezado descuenta el sobreprecio de hoy (variante B), el refinanciamiento es el del motor al año de salida, y en STR hay un solo patrimonio. Cuatro escenas con cifras reales del parque. El cuerpo baja de siete bloques a cuatro y de 2.633 caracteres a los que dice el contador de cada escena.</p>
+  <h1 class="lt">Capítulo V · «Tu resultado a 10 años» · los dos gráficos de vuelta, con recorte</h1>
+  <p class="subx">Mockup corregido del 22-sep-2026. Vuelven el gráfico de barras del patrimonio (con sus series, en los tokens de ahora) y la descomposición como gráfico: la barra del día 1 y la barra apilada firme/proyectado. Se va el andamiaje: tags, subs de fila, la nota de los aportes y «La misma plata en otro lado». La venta al año diez sigue como pieza central, con el sobreprecio de hoy como línea. El contador de cada escena dice cuánto queda.</p>
   <div class="panel">
     <span class="clab">Tema</span>
     <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
@@ -103,11 +112,12 @@
     <span class="seg"><button class="on" data-v="wide">700 px</button><button data-v="mobile">Mobile</button></span>
   </div>
   <ul class="decision">
-    <li><b>Encabezado:</b> «Resultado» = tu parte al vender el año 10, ya neta del sobreprecio, la comisión y la deuda; el sub lleva ×mult y TIR. En rojo solo cuando ×mult &lt; 1.</li>
-    <li><b>1 · La curva</b> se queda (es lo único «año a año» del capítulo) con UN patrimonio: tu parte si vendes ese año. Sin barra del día 1 ni barra apilada.</li>
-    <li><b>2 · La venta al año diez, pieza central:</b> valor proyectado → menos el sobreprecio de hoy → deuda → comisión → <b>te queda</b>. Debajo, la descomposición firme/proyectado en una línea.</li>
-    <li><b>3 · Si refinancias:</b> crédito nuevo, cuota nueva, tu mes con la cuota nueva, liquidez; el aviso cuando la cuota supera 1,5× la actual.</li>
-    <li><b>Cierre</b> de dos oraciones (de dónde sale tu parte; firme contra proyectado con el remate del depósito). Sale «La misma plata en otro lado» como bloque: el remate ya dice el número.</li>
+    <li><b>Encabezado:</b> «Resultado» = tu parte al vender el año 10, neta del sobreprecio, la comisión y la deuda; el sub lleva ×mult y TIR. En rojo solo con ×mult &lt; 1.</li>
+    <li><b>1 · Lo que pusiste, lo que vale y tu parte, año a año:</b> el gráfico de barras anterior. Aporte acumulado en Signal Red; valor del depto en precio pactado más plusvalía con trama; tu parte si vendes ese año como línea. Sin cifra final duplicada: la dice el encabezado.</li>
+    <li><b>2 · Si vendes el año 10, pieza central:</b> valor proyectado → menos el sobreprecio de hoy → deuda → comisión → <b>te queda</b>.</li>
+    <li><b>3 · De dónde sale tu parte:</b> la barra del día 1 (misma escala que la de abajo) con ×mult, la barra apilada firme/proyectado y sus filas, sin tags ni subs. Pie · gastos de compra · amoblamiento (STR) · puesta a punto · deuda amortizada · plusvalía neta · tu parte.</li>
+    <li><b>4 · Si refinancias:</b> crédito nuevo, cuota nueva, tu mes con la cuota nueva, liquidez; el aviso sobre 1,5×.</li>
+    <li><b>Cierre</b> de dos oraciones (de dónde sale tu parte; firme contra proyectado con el remate del depósito). El «$0,0 MM» del pie 100% se arregla en `cierres-capitulos.ts` con la implementación.</li>
   </ul>
 </div>
 
@@ -118,59 +128,103 @@
   const mm = (n) => (n < 0 ? "−" : "") + "$" + (Math.abs(n) / 1e6).toFixed(1).replace(".", ",") + " MM";
   const pct1 = (n) => n.toFixed(1).replace(".", ",") + "%";
   const mult2 = (n) => "×" + n.toFixed(2).replace(".", ",");
+  const ufN = (n, uf) => "UF " + Math.round(n / uf).toLocaleString("es-CL");
 
-  // ── Cifras reales (recompute del 22-sep-2026 tras B; ver la cabecera del archivo) ──
+  // ── Cifras reales (recompute del 22-sep-2026 tras B). `serie`: aporte acumulado, precio pactado,
+  //    valor del depto y saldo del crédito por año (del motor); la línea de tu parte se deriva con la
+  //    MISMA fórmula del exit: valor − sobreprecio − saldo − 2% de lo que paga el mercado. ──
   const FILAS = [
-    { id: "6db7a9ac", mod: "LTR", titulo: "Demo · Providencia 2D · AJUSTA SUPUESTOS", motor: "el arriendo", comuna: "Providencia",
-      equity: 93194403, mult: 2.21, tir: 9.3, pie: 25488000, amort: 27303074, aportado: 42264529, dia1: 31322363, bolsillo: 10942166, flujoAcum: -10942166,
+    { id: "6db7a9ac", mod: "LTR", titulo: "Demo · Providencia 2D · AJUSTA SUPUESTOS", motor: "el arriendo", comuna: "Providencia", uf: 39825,
+      equity: 93194403, mult: 2.21, tir: 9.3, pie: 25488000, amort: 27303074, aportado: 42264529,
+      dia1: { pie: 25488000, gastos: 2548800, amoblamiento: 0, capex: 3285563, inversion: 31322363 },
       valorVenta: 171268703, sobre: null, saldo: 74648926, comision: 3425374, nComision: "comisión",
       refi: { credito: 137014962, cuota: 778784, cuotaActual: 579488, plazo: 25, tasa: 4.72, mes: -55999, liquidez: 62366036, ratio: 1.34 },
-      deposito: 51020829, curva: { valor: [131263200, 147739000, 171268703], aporte: [32400000, 36800000, 42264529], parte: [4000000, 44000000, 93194403], y0: 0 } },
-    { id: "8395ea55", mod: "LTR", titulo: "Las Condes 1D · sobreprecio 5% · pie 100% · la fila que con B pasa de COMPRAR a AJUSTA", motor: "el arriendo", comuna: "Las Condes",
-      equity: 280306684, mult: 1.19, tir: 4.55, pie: 220649400, amort: 0, aportado: 235910984, dia1: 235910984, bolsillo: 0, flujoAcum: 72134885,
+      deposito: 51020829,
+      serie: [[0,31322363,127440000,127440000,101952000],[1,32460623,127440000,131263200,99763330],[2,33593651,127440000,135201096,97469090],[3,34719938,127440000,139257129,95064189],[4,35837829,127440000,143434843,92543288],[5,36945594,127440000,147737888,89900793],[6,38041389,127440000,152170025,87130838],[7,39123291,127440000,156735125,84227275],[8,40189246,127440000,161437179,81183660],[9,41237101,127440000,166280295,77993237],[10,42264529,127440000,171268703,74648926]] },
+    { id: "8395ea55", mod: "LTR", titulo: "Las Condes 1D · sobreprecio 5% · pie 100% · con B pasa de COMPRAR a AJUSTA", motor: "el arriendo", comuna: "Las Condes", uf: 40861,
+      equity: 280306684, mult: 1.19, tir: 4.55, pie: 220649400, amort: 0, aportado: 235910984,
+      dia1: { pie: 220649400, gastos: 8825976, amoblamiento: 0, capex: 6435608, inversion: 235910984 },
       valorVenta: 296534343, sobre: { clp: 10507114, pct: 5, n: 107, chica: false }, saldo: 0, comision: 5720545, nComision: "comisión",
       refi: { credito: 237227474, cuota: 1252174, cuotaActual: 0, plazo: 25, tasa: 4.0, mes: -476436, liquidez: 237227474, ratio: null },
-      deposito: 384274134, curva: { valor: [227268882, 255800000, 296534343], aporte: [235910984, 235910984, 235910984], parte: [212000000, 240000000, 280306684] } },
-    { id: "1a3a0c50", mod: "LTR", titulo: "Las Condes 1D2B · ×0,98 · BUSCAR OTRA · valor en rojo", motor: "el arriendo", comuna: "Las Condes",
-      equity: 289645133, mult: 0.98, tir: -0.24, pie: 77635900, amort: 88941561, aportado: 294219891, dia1: 117679680, bolsillo: 176540211, flujoAcum: -176540211,
+      deposito: 384274134,
+      serie: [[0,235910984,220649400,220649400,0],[1,235910984,220649400,227268882,0],[2,235910984,220649400,234086948,0],[3,235910984,220649400,241109557,0],[4,235910984,220649400,248342844,0],[5,235910984,220649400,255793129,0],[6,235910984,220649400,263466923,0],[7,235910984,220649400,271370930,0],[8,235910984,220649400,279512058,0],[9,235910984,220649400,287897420,0],[10,235910984,220649400,296534343,0]] },
+    { id: "1a3a0c50", mod: "LTR", titulo: "Las Condes 1D2B · ×0,98 · BUSCAR OTRA · valor en rojo", motor: "el arriendo", comuna: "Las Condes", uf: 40861,
+      equity: 289645133, mult: 0.98, tir: -0.24, pie: 77635900, amort: 88941561, aportado: 294219891,
+      dia1: { pie: 77635900, gastos: 15527180, amoblamiento: 0, capex: 24516600, inversion: 117679680 },
       valorVenta: 521680788, sobre: null, saldo: 221602039, comision: 10433616, nComision: "comisión",
       refi: { credito: 417344630, cuota: 2202899, cuotaActual: 1639164, plazo: 25, tasa: 4.0, mes: -1501285, liquidez: 195742591, ratio: 1.34 },
-      deposito: 191687798, curva: { valor: [399824885, 450000000, 521680788], aporte: [135000000, 206000000, 294219891], parte: [92000000, 180000000, 289645133] } },
-    { id: "11a6dc52", mod: "STR", titulo: "Santiago 1D · renta corta · sobreprecio 34% · un solo patrimonio", motor: "la operación por noche", comuna: "Santiago",
-      equity: 61637453, mult: 1.74, tir: 5.8, pie: 24894080, amort: 28231921, aportado: 35348469, dia1: 33502488, bolsillo: 1845981, flujoAcum: -1845981,
-      valorVenta: 167277809, sobre: { clp: 31582042, pct: 34, n: 315, chica: false }, saldo: 71344399, comision: 2713915, nComision: "gastos de venta",
+      deposito: 191687798,
+      serie: [[0,117679680,388179500,388179500,310543600],[1,133364496,388179500,399824885,303161010],[2,149458788,388179500,411819632,295477642],[3,165972669,388179500,424174220,287481242],[4,182916504,388179500,436899447,279159056],[5,200300925,388179500,450006431,270497811],[6,218136761,388179500,463506623,261483694],[7,236435126,388179500,477411822,252102328],[8,255207337,388179500,491734177,242338750],[9,274464974,388179500,506486202,232177389],[10,294219891,388179500,521680788,221602039]] },
+    { id: "11a6dc52", mod: "STR", titulo: "Santiago 1D · renta corta · sobreprecio 34% · un solo patrimonio", motor: "la operación por noche", comuna: "Santiago", uf: 40865,
+      equity: 61637453, mult: 1.74, tir: 5.8, pie: 24894080, amort: 28231921, aportado: 35348469,
+      dia1: { pie: 24894080, gastos: 2489408, amoblamiento: 3500000, capex: 2619000, inversion: 33502488 },
+      valorVenta: 167277809, sobre: { clp: 31582042, pct: 34, n: 1788, chica: false }, saldo: 71344399, comision: 2713915, nComision: "gastos de venta",
       refi: { credito: 133822247, cuota: 714516, cuotaActual: 540000, plazo: 25, tasa: 4.1, mes: -201433, liquidez: 62477848, ratio: 1.32 },
-      deposito: 54572023, curva: { valor: [128204000, 144300000, 167277809], aporte: [33502488, 34700000, 35348469], parte: [-6000000, 26000000, 61637453] } },
+      deposito: 54572023,
+      serie: [[1,34828859,124470400,128204512,97245314],[2,35015746,124470400,132050647,94816679],[3,35163931,124470400,136012167,92286324],[4,35270702,124470400,140092532,89649991],[5,35333211,124470400,144295308,86903239],[6,35348469,124470400,148624167,84041445],[7,35348469,124470400,153082892,81059790],[8,35348469,124470400,157675379,77953255],[9,35348469,124470400,162405640,74716607],[10,35348469,124470400,167277809,71344399]] },
   ];
 
-  function curvaSvg(c) {
-    const W = 600, H = 120, L = 34, R = 8, T = 10, B = 22;
-    const xs = [1, 5, 10].map((a) => L + ((a - 1) / 9) * (W - L - R));
-    const all = [...c.valor, ...c.aporte, ...c.parte, 0];
-    const mn = Math.min(...all), mx = Math.max(...all);
+  // ── Gráfico 1: el de barras del patrimonio (PatrimonioChart) en SVG con los tokens de ahora ──
+  function barrasSvg(f) {
+    const sobre = f.sobre ? f.sobre.clp : 0;
+    const rows = f.serie.map(([a, aporte, precio, valor, saldo]) => {
+      const paga = valor - sobre;
+      return { a, aporte, precio: Math.min(precio, valor), plus: Math.max(0, valor - precio), valor, parte: paga - saldo - Math.round(paga * 0.02) };
+    });
+    const W = 600, H = 190, L = 44, R = 8, T = 12, B = 22;
+    const mx = Math.max(...rows.map((r) => Math.max(r.valor, r.aporte, r.parte)));
+    const mn = Math.min(0, ...rows.map((r) => r.parte));
     const y = (v) => T + (1 - (v - mn) / (mx - mn)) * (H - T - B);
-    const path = (arr) => arr.map((v, i) => `${i ? "L" : "M"}${xs[i].toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-    return `<svg class="curva" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Aporte, valor y tu parte, año a año (esquema desde los valores reales de los años 1, 5 y 10)">
-      <line x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}" stroke="var(--line2)" stroke-width="1"/>
-      <path d="${path(c.valor)}" fill="none" stroke="var(--tx4)" stroke-width="1.5"/>
-      <path d="${path(c.aporte)}" fill="none" stroke="var(--signal)" stroke-width="1.5" stroke-dasharray="4 3"/>
-      <path d="${path(c.parte)}" fill="none" stroke="var(--tx)" stroke-width="2.2"/>
-      ${[1, 5, 10].map((a, i) => `<text x="${xs[i]}" y="${H - 6}" font-size="9" fill="var(--tx4)" text-anchor="middle" font-family="Inter">${a}</text>`).join("")}
-      <text x="${xs[2] - 4}" y="${Math.max(12, y(c.parte[2]) - 6)}" font-size="10.5" font-weight="700" fill="var(--tx)" text-anchor="end" font-family="Inter">${mm(c.parte[2])}</text>
-    </svg>`;
+    const n = rows.length, slot = (W - L - R) / n, bw = Math.max(5, Math.min(14, slot * 0.28));
+    const xs = rows.map((_, i) => L + slot * i + slot / 2);
+    const ticks = [0, 0.5, 1].map((k) => mn + (mx - mn) * k);
+    let out = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Aporte acumulado, valor del depto y tu parte, año a año">
+      <defs><pattern id="hatch-${f.id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--tx)" fill-opacity="0.06"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--tx)" stroke-opacity="0.42" stroke-width="1.6"/></pattern></defs>`;
+    for (const t of ticks) out += `<line x1="${L}" y1="${y(t)}" x2="${W - R}" y2="${y(t)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${L - 4}" y="${y(t) + 3}" font-size="8.5" fill="var(--tx3)" text-anchor="end" font-family="Inter">${(t / 1e6).toFixed(0)}M</text>`;
+    rows.forEach((r, i) => {
+      const x = xs[i];
+      out += `<rect x="${x - bw - 1}" y="${y(r.aporte)}" width="${bw}" height="${y(0) - y(r.aporte)}" fill="var(--signal)"/>`;
+      out += `<rect x="${x + 1}" y="${y(r.precio)}" width="${bw}" height="${y(0) - y(r.precio)}" fill="var(--tx)" fill-opacity="0.22"/>`;
+      if (r.plus > 0) out += `<rect x="${x + 1}" y="${y(r.valor)}" width="${bw}" height="${y(r.precio) - y(r.valor)}" fill="url(#hatch-${f.id})"/>`;
+      out += `<text x="${x}" y="${H - 7}" font-size="9" fill="var(--tx4)" text-anchor="middle" font-family="Inter">a${r.a}</text>`;
+    });
+    out += `<path d="${rows.map((r, i) => `${i ? "L" : "M"}${xs[i]},${y(r.parte)}`).join(" ")}" fill="none" stroke="var(--tx)" stroke-width="2.2"/>`;
+    rows.forEach((r, i) => { out += `<circle cx="${xs[i]}" cy="${y(r.parte)}" r="2.6" fill="var(--tx)"/>`; });
+    return out + `</svg><div class="leyenda"><span><i style="background:var(--signal)"></i>Aporte acumulado</span><span><i style="background:var(--tx);opacity:.22"></i>Precio que pactaste</span><span><i style="background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--tx3) 2px,var(--tx3) 3px)"></i>Plusvalía acumulada</span><span><i class="linea" style="background:var(--tx)"></i>Tu parte si vendes ese año</span></div>`;
+  }
+
+  // ── Gráfico 3: la barra del día 1 (misma escala) + la apilada firme/proyectado, sin tags ni subs ──
+  function descomposicion(f) {
+    const d = f.dia1, plus = f.equity - f.pie - f.amort, cierra = f.mult >= 1 && plus >= 0;
+    const pctFirme = Math.round(((f.pie + f.amort) / f.equity) * 100);
+    const ancho = Math.min(100, (d.inversion / f.equity) * 100);
+    const segDia1 = [["pie", d.pie], ["gastos", d.gastos], ["amoblamiento", d.amoblamiento], ["capex", d.capex]].filter(([, v]) => v > 0);
+    const dia1Html = `<div class="barra-k"><span class="t">Lo que pusiste · el día 1</span><span class="m">${money(d.inversion)} <small>${ufN(d.inversion, f.uf)}</small></span></div>
+      <div class="ba" style="width:${ancho}%">${segDia1.map(([t, v]) => `<div class="s ${t}" style="width:${(v / d.inversion) * 100}%"></div>`).join("")}</div>
+      ${f.pie > 0 ? `<p class="mult"><b>${mult2(f.mult)}</b> por cada peso que pusiste</p>` : ""}`;
+    const apilada = cierra
+      ? `<div class="fp"><span>Firme · ${pctFirme}%</span><span>Proyectado · ${100 - pctFirme}%</span></div>
+         <div class="ba"><div class="s pie" style="width:${(f.pie / f.equity) * 100}%"></div><div class="s amort" style="width:${(f.amort / f.equity) * 100}%"></div><div class="s plus" style="width:${(plus / f.equity) * 100}%"></div></div>`
+      : `<div class="fp"><span>Pusiste ${mm(f.aportado)}</span><span>Te queda ${mm(f.equity)}</span></div>
+         <div class="ba"><div class="s pie" style="width:${Math.min(100, (f.equity / f.aportado) * 100)}%"></div><div class="s gastos" style="flex:1"></div></div>`;
+    const filas = [
+      ["pie", "Tu pie", f.pie],
+      ["gastos", "Gastos de compra", d.gastos],
+      ["amoblamiento", "Amoblamiento", d.amoblamiento],
+      ["capex", "Puesta a punto", d.capex],
+      ["amort", `Deuda que amortizó ${f.motor}`, f.amort],
+      ["plus", `Plusvalía neta de ${f.nComision}${f.sobre ? " y sobreprecio" : ""}`, plus],
+    ].filter(([, , v]) => v > 0 || v < 0).map(([t, k, v]) => `<div class="fila compacta"><span class="k"><i class="sw ${t}"></i>${k}</span><span class="v${v < 0 ? " rojo" : ""}">${money(v)}</span></div>`).join("");
+    return `${dia1Html}${apilada}<div style="margin-top:8px">${filas}<div class="fila compacta tot"><span class="k">Tu parte a 10 años</span><span class="v${cierra ? "" : " rojo"}">${money(f.equity)}</span></div></div>`;
   }
 
   function escena(f) {
     const cierra = f.mult >= 1;
     const plus = f.equity - f.pie - f.amort;
-    const pctFirme = Math.round(((f.pie + f.amort) / f.equity) * 100);
     const sub = [`tu parte al vender el año 10`, mult2(f.mult) + " sobre lo puesto", `TIR ${pct1(f.tir)}`].join(" · ");
     const sobreFila = f.sobre
-      ? `<div class="fila"><span class="k">Menos el sobreprecio de hoy<small>pagaste ${f.sobre.pct}% sobre la mediana de la comuna; se descuenta plano, no se capitaliza</small></span><span class="v neg">${money(-f.sobre.clp)}</span></div>`
-      : `<div class="fila"><span class="k">Sobreprecio de hoy<small>pagaste en línea con la mediana de la comuna: nada que descontar</small></span><span class="v neg">—</span></div>`;
-    const linea = cierra
-      ? `<p class="linea"><b>Firme ${pctFirme}%</b>: tu pie (${mm(f.pie)})${f.amort > 0 ? ` y ${mm(f.amort)} que amortizó ${f.motor} vuelven` : " vuelve"} sin depender de nadie. <b>Proyectado ${100 - pctFirme}%</b>: ${mm(plus)} de plusvalía, ya neta de ${f.nComision}${f.sobre ? " y del sobreprecio" : ""}, si ${f.comuna} rinde el 3%.${f.bolsillo > 0 ? ` Para llegar acá pusiste ${mm(f.aportado)}: ${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes.` : ` Para llegar acá pusiste ${mm(f.aportado)} el día 1.`}</p>`
-      : `<p class="linea">Pusiste <b>${mm(f.aportado)}</b> (${mm(f.dia1)} el día 1 y ${mm(f.bolsillo)} mes a mes) y te quedan <b>${mm(f.equity)}</b>: <b>${mult2(f.mult)}</b>. Lo firme —tu pie y ${mm(f.amort)} que amortizó ${f.motor}— es ${mm(f.pie + f.amort)}; el resto es plusvalía proyectada.</p>`;
+      ? `<div class="fila"><span class="k">Menos el sobreprecio de hoy<small>pagaste ${f.sobre.pct}% sobre la mediana de la comuna; se descuenta plano</small></span><span class="v neg">${money(-f.sobre.clp)}</span></div>`
+      : "";
     const aviso = f.refi.ratio != null && f.refi.ratio > 1.5
       ? `<p class="aviso">La cuota nueva es ${f.refi.ratio.toFixed(1).replace(".", ",")} veces la actual (${money(f.refi.cuota)} contra ${money(f.refi.cuotaActual)}); con ella el mes queda en ${money(f.refi.mes)}: la liquidez sale de tu bolsillo, en cuotas.</p>`
       : "";
@@ -184,36 +238,34 @@
         ? `Terminas sobre lo puesto (${mult2(f.mult)}) pero sin holgura: la amortización es firme y la plusvalía es proyección; sin ese 3% en ${f.comuna}, ${remate}.`
         : `Terminas con menos de lo que pusiste (${mult2(f.mult)}) incluso con la plusvalía proyectada; sin ella te quedan ${mm(f.pie + f.amort)} de ${mm(f.aportado)}.`;
     const fuente = `Motor Franco · proyección a 3% anual${f.sobre ? ` · Sobreprecio contra la mediana de ${f.sobre.n.toLocaleString("es-CL")} avisos comparables de la comuna${f.sobre.chica ? ", muestra chica: la corrección es más dudosa" : ""}` : ""} · refinanciamiento al 80% del valor del año 10, con la tasa y el plazo de tu crédito.`;
-    const html = `<div class="escena" data-id="${f.id}">
+    return `<div class="escena" data-id="${f.id}">
       <div class="cabeza"><div class="q">Tu resultado a 10 años<small>${f.mod} · ${f.titulo}</small></div><div class="val${cierra ? "" : " rojo"}">Resultado ${mm(f.equity)}<small>${sub}</small></div></div>
-      <p class="v-prosa">Con qué te quedas si vendes el año 10, y cómo crece tu parte hasta ahí.</p>
-      <div class="bloque"><div class="v-sub"><span class="num">1</span>Cómo crece tu parte, año a año</div>${curvaSvg(f.curva)}
-        <div class="leyenda"><span><i style="background:var(--signal)"></i>Aporte acumulado</span><span><i style="background:var(--tx4)"></i>Valor del depto · 3% al año</span><span><i style="background:var(--tx)"></i>Tu parte si vendes ese año</span></div></div>
+      <p class="v-prosa">Con qué te quedas si vendes el año 10, de dónde sale, y cómo crece tu parte hasta ahí.</p>
+      <div class="bloque"><div class="v-sub"><span class="num">1</span>Lo que pusiste, lo que vale y tu parte · año a año</div>${barrasSvg(f)}</div>
       <div class="bloque central"><div class="v-sub"><span class="num">2</span>Si vendes el año 10</div>
         <div class="fila"><span class="k">Valor de venta estimado<small>3% al año desde la compra</small></span><span class="v">${money(f.valorVenta)}</span></div>
         ${sobreFila}
-        <div class="fila"><span class="k">Deuda pendiente<small>lo que queda del crédito el año 10</small></span><span class="v neg">${money(-f.saldo)}</span></div>
+        <div class="fila"><span class="k">Deuda pendiente</span><span class="v neg">${money(-f.saldo)}</span></div>
         <div class="fila"><span class="k">${f.nComision === "comisión" ? "Comisión de venta" : "Gastos de venta"}<small>2% del precio de venta</small></span><span class="v neg">${money(-f.comision)}</span></div>
         <div class="fila tot"><span class="k">Te queda</span><span class="v${cierra ? "" : " rojo"}">${money(f.equity)}</span></div>
-        ${linea}
       </div>
-      <div class="bloque"><div class="v-sub"><span class="num">3</span>Si refinancias en el año 10</div>
+      <div class="bloque"><div class="v-sub"><span class="num">3</span>De dónde salen tus ${mm(f.equity)}</div>${descomposicion(f)}</div>
+      <div class="bloque"><div class="v-sub"><span class="num">4</span>Si refinancias en el año 10</div>
         <div class="fila"><span class="k">Nuevo crédito<small>80% del valor del año 10</small></span><span class="v">${money(f.refi.credito)}</span></div>
         <div class="fila"><span class="k">Cuota nueva<small>${f.refi.plazo} años al ${pct1(f.refi.tasa)}${f.refi.cuotaActual > 0 ? ` · hoy pagas ${money(f.refi.cuotaActual)}` : " · hoy no tienes crédito"}</small></span><span class="v">${money(f.refi.cuota)}/mes</span></div>
         <div class="fila"><span class="k">Tu mes con la cuota nueva</span><span class="v${f.refi.mes < 0 ? " rojo" : ""}">${money(f.refi.mes)}/mes</span></div>
-        <div class="fila tot"><span class="k">Liquidez sin vender<small>crédito nuevo − deuda pendiente</small></span><span class="v">${money(f.refi.liquidez)}</span></div>
+        <div class="fila tot"><span class="k">Liquidez sin vender</span><span class="v">${money(f.refi.liquidez)}</span></div>
         ${aviso}
       </div>
       <p class="v-cierre"><b>Qué significa.</b> ${cierreA} ${cierreC}</p>
       <div class="v-fuente${f.sobre && f.sobre.chica ? " aviso2" : ""}">${fuente}</div>
       <div class="cont"></div>
     </div>`;
-    return html;
   }
 
   const cont = document.getElementById("escenas");
   const rot = document.createElement("div"); rot.className = "rot";
-  rot.innerHTML = `<h2>Cuatro escenas</h2><p>Demo sin sobreprecio · la fila que cambia de veredicto con B · la fila con ×0,98 · una STR con sobreprecio y un solo patrimonio. La curva es un esquema desde los valores reales de los años 1, 5 y 10.</p>`;
+  rot.innerHTML = `<h2>Cuatro escenas</h2><p>Demo sin sobreprecio · la fila que cambia de veredicto con B · la fila con ×0,98 (composición que no cierra: la apilada cae a «Pusiste / Te queda») · una STR con sobreprecio, amoblamiento y un solo patrimonio.</p>`;
   cont.appendChild(rot);
   const grid = document.createElement("div"); grid.className = "par2";
   grid.innerHTML = FILAS.map(escena).join("");
@@ -222,15 +274,15 @@
   rot2.innerHTML = `<h2>Variante del aviso</h2><p>Cuando la cuota nueva supera 1,5× la actual (8% de LTR, 4% de STR). Cifras de ec331711 (LTR, Santiago): cuota actual $470.691, nueva $1.012.112.</p>`;
   cont.appendChild(rot2);
   const av = document.createElement("div"); av.className = "par2";
-  av.innerHTML = `<div class="escena"><div class="bloque" style="margin-top:0"><div class="v-sub"><span class="num">3</span>Si refinancias en el año 10</div>
+  av.innerHTML = `<div class="escena"><div class="bloque" style="margin-top:0"><div class="v-sub"><span class="num">4</span>Si refinancias en el año 10</div>
       <div class="fila"><span class="k">Nuevo crédito<small>80% del valor del año 10</small></span><span class="v">$136.459.442</span></div>
       <div class="fila"><span class="k">Cuota nueva<small>15 años al 4,0% · hoy pagas $470.691</small></span><span class="v">$1.012.112/mes</span></div>
       <div class="fila"><span class="k">Tu mes con la cuota nueva</span><span class="v rojo">−$552.507/mes</span></div>
-      <div class="fila tot"><span class="k">Liquidez sin vender<small>crédito nuevo − deuda pendiente</small></span><span class="v">$110.926.379</span></div>
+      <div class="fila tot"><span class="k">Liquidez sin vender</span><span class="v">$110.926.379</span></div>
       <p class="aviso">La cuota nueva es 2,2 veces la actual ($1.012.112 contra $470.691); con ella el mes queda en −$552.507 al mes: la liquidez sale de tu bolsillo, en cuotas.</p></div></div>`;
   cont.appendChild(av);
 
-  // contador de caracteres por escena (lo que se lee, sin el SVG)
+  // contador de caracteres por escena: lo que se lee (innerText, sin el SVG)
   document.querySelectorAll(".escena[data-id]").forEach((e) => { const n = e.innerText.replace(/\s+/g, " ").length; e.querySelector(".cont").textContent = `${n.toLocaleString("es-CL")} caracteres de cuerpo (antes 2.633)`; });
 
   document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));

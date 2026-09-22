@@ -1,6 +1,6 @@
 {
   "uf": 38800,
-  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 21-sep-2026, «la provisión de mantención es una» (declarada respetada y reajustada, reset por CapEx también en metrics, legacy sin el +1) — acta por seed en ACTAS-mantencion-una-sola.md. Anterior: 12-sep-2026, «rentabilidad sobre lo puesto en el score» — ACTAS-score-retorno.md.",
+  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 22-sep-2026, «el sobreprecio de hoy se descuenta plano en la venta» (variante B; GS-2 pasa de COMPRAR a AJUSTA) — acta por seed en ACTAS-sobreprecio-venta.md. Anteriores: 21-sep-2026 «la provisión de mantención es una» (ACTAS-mantencion-una-sola.md); 12-sep-2026 «rentabilidad sobre lo puesto en el score» (ACTAS-score-retorno.md).",
   "seeds": {
     "GS-1": {
       "veredicto": "COMPRAR",
@@ -24,12 +24,13 @@
       "patrimonioMult": 3.34
     },
     "GS-2": {
-      "veredicto": "COMPRAR",
-      "score": 72,
-      "N": 8,
-      "corona": "cap_rate",
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 69,
+      "N": 9,
+      "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -41,12 +42,12 @@
       "capRatePct": 4.58,
       "sobreprecioPct": 33,
       "flujoNetoMensual": -18161,
-      "tirPct": 11.84,
-      "patrimonioMult": 3.01
+      "tirPct": 7.09,
+      "patrimonioMult": 1.96
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 68,
+      "score": 63,
       "N": 10,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -64,12 +65,12 @@
       "capRatePct": 6.39,
       "sobreprecioPct": 70,
       "flujoNetoMensual": -62932,
-      "tirPct": 10.03,
-      "patrimonioMult": 2.35
+      "tirPct": -0.01,
+      "patrimonioMult": 1
     },
     "GS-4": {
       "veredicto": "BUSCAR OTRA",
-      "score": 39,
+      "score": 34,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -86,8 +87,8 @@
       "capRatePct": 3.07,
       "sobreprecioPct": 78,
       "flujoNetoMensual": -349755,
-      "tirPct": 4.66,
-      "patrimonioMult": 1.38
+      "tirPct": -8.72,
+      "patrimonioMult": 0.57
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -113,7 +114,7 @@
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 31,
+      "score": 26,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -130,12 +131,12 @@
       "capRatePct": 2.98,
       "sobreprecioPct": 90,
       "flujoNetoMensual": -614713,
-      "tirPct": 4.27,
-      "patrimonioMult": 1.28
+      "tirPct": -19.68,
+      "patrimonioMult": 0.38
     },
     "GS-7": {
       "veredicto": "BUSCAR OTRA",
-      "score": 33,
+      "score": 27,
       "N": 8,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -151,8 +152,8 @@
       "capRatePct": 2.85,
       "sobreprecioPct": 59,
       "flujoNetoMensual": -329290,
-      "tirPct": 6.97,
-      "patrimonioMult": 1.47
+      "tirPct": -10.19,
+      "patrimonioMult": 0.61
     },
     "GS-PC1": {
       "veredicto": "BUSCAR OTRA",
@@ -234,12 +235,12 @@
       "capRatePct": 9.97,
       "sobreprecioPct": 11,
       "flujoNetoMensual": 282091,
-      "tirPct": 23.89,
-      "patrimonioMult": 3.26
+      "tirPct": 22.87,
+      "patrimonioMult": 2.83
     },
     "BE-patrimonio": {
       "veredicto": "BUSCAR OTRA",
-      "score": 33,
+      "score": 29,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -256,12 +257,12 @@
       "capRatePct": 2.67,
       "sobreprecioPct": 91,
       "flujoNetoMensual": -424515,
-      "tirPct": 3.84,
-      "patrimonioMult": 1.29
+      "tirPct": -12.54,
+      "patrimonioMult": 0.47
     },
     "BE-sensibilidad": {
       "veredicto": "COMPRAR",
-      "score": 75,
+      "score": 72,
       "N": 9,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -278,8 +279,8 @@
       "capRatePct": 6.59,
       "sobreprecioPct": 67,
       "flujoNetoMensual": 34716,
-      "tirPct": 14.12,
-      "patrimonioMult": 3.29
+      "tirPct": 6.4,
+      "patrimonioMult": 1.53
     }
   }
 }
