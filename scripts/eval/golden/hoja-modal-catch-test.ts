@@ -13,6 +13,12 @@
 //       scroll VUELVE a la posición de apertura al cerrar (`scrollTo` en el cleanup, sin el smooth).
 //   3 · EL HISTORIAL SE CONSUME: al abrir la hoja se empuja un estado, `popstate` cierra, y cerrar
 //       por otra vía hace `history.back()` solo si el estado sigue arriba y no fue consumido.
+//       ACTA 23-sep-2026 (el ⓘ apila una hoja sobre otra): el historial y Esc ya no los escucha
+//       cada `Modal` —con dos abiertas, un Esc o un atrás cerraba las dos— sino la PILA
+//       (`src/lib/hoja-pila.ts`), que lo hace una vez para todas y solo cierra la de arriba. Acá
+//       se fija el CABLEADO del Modal a la pila; la conducta de la pila (empujar, consumir, que
+//       el atrás de la de arriba no llegue a la de abajo) la ejercita `info-indicadores-catch-test`
+//       sobre la función pura.
 //   4 · EL ARRASTRE, sobre la función pura: desde la cabecera cierra pasado el umbral; desde el
 //       cuerpo solo en el tope; sin umbral no cierra; hacia arriba nunca.
 //   5 · LOS CUATRO CONSUMIDORES NO SE TOCAN: siguen montando `<Modal abierto onClose titulo>` con
@@ -120,13 +126,13 @@ export function runHojaModalTier(): { hard: number } {
   if (!/html\.style\.scrollBehavior = "auto"[^]*?window\.scrollTo/.test(modal)) F("2 · el scrollTo de vuelta corre con el smooth de html puesto");
 
   // ── 3 · historial ──
-  const hist = modal.slice(modal.indexOf("window.history.pushState"), modal.indexOf("}, [abierto, esHoja]);", modal.indexOf("window.history.pushState")));
-  if (!hist) F("3 · no hay efecto de historial");
-  if (!/window\.history\.pushState\(\{ francoHoja: true \}, ""\)/.test(hist)) F("3 · no se empuja el estado de la hoja al abrir");
-  if (!/addEventListener\("popstate", onPop\)/.test(hist)) F("3 · nadie escucha popstate");
-  if (!/const onPop = \(\) => \{\s*consumido = true;\s*onCloseRef\.current\(\);/.test(hist)) F("3 · popstate no cierra y marca consumido");
-  if (!/if \(!consumido && window\.history\.state\?\.francoHoja\) window\.history\.back\(\)/.test(hist)) F("3 · cerrar por otra vía no consume el estado (o lo consume sin verificar que sigue arriba)");
-  if (!/if \(!abierto \|\| !esHoja\) return;\s*window\.history\.pushState/.test(modal)) F("3 · el historial se empuja también en escritorio");
+  // La hoja entra a la pila con historial solo cuando es hoja (en escritorio no ocupa entradas).
+  if (!/const id = pila\.apilar\(\(\) => onCloseRef\.current\(\), \{ conHistorial: esHoja \}\);/.test(modal)) F("3 · el Modal no entra a la pila (o entra con historial también en escritorio)");
+  // Cerrar por cualquier vía la saca de la pila, que consume su entrada: en los dos retornos del efecto.
+  if ((modal.match(/pila\.desapilar\(id\)/g) ?? []).length < 2) F("3 · cerrar no saca a la hoja de la pila en los dos caminos (primer nivel y apilada)");
+  // Y ya no escucha por su cuenta: un listener propio de popstate o de Esc es el doble cierre.
+  if (/addEventListener\("popstate"/.test(modal) || /addEventListener\("keydown"/.test(modal)) F("3 · el Modal volvió a escuchar popstate / keydown por su cuenta: con dos abiertas cierran las dos");
+  if (/history\.(pushState|back)\(/.test(modal)) F("3 · el Modal toca el historial directo, sin la pila");
 
   // ── 4 · el arrastre, sobre la función pura ──
   const U = HOJA_UMBRAL_CIERRE_PX;

@@ -21,6 +21,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { pilaHojas } from "@/lib/hoja-pila";
 
 /** 1 · Prosa. El <mark> del plumón lo pinta el CSS del acordeón. */
 export function VProsa({ children }: { children: ReactNode }) {
@@ -628,7 +630,7 @@ export function debeCerrarPorArrastre(a: { dy: number; origen: OrigenArrastre; s
 }
 
 /** `true` bajo 768 px de ancho (la forma hoja); `false` en el primer render, hasta medir. */
-function useEsHoja(): boolean {
+export function useEsHoja(): boolean {
   const [esHoja, setEsHoja] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${HOJA_MAX_ANCHO_PX}px)`);
@@ -653,7 +655,14 @@ function useEsHoja(): boolean {
  * página vuelve a la posición de apertura al cerrar. Motivo: medido el 22-sep en 390,
  * el modal a pantalla completa cerraba solo por la ✕ (que se iba con el scroll) y al
  * llegar al fondo encadenaba el scroll a la página, que quedaba 385 px más abajo.
- * Es información de otra índole que no debe competir con el flujo de lectura.
+ *
+ * APILABLE (23-sep-2026, el ⓘ de los indicadores): la hoja chica de una glosa se abre ENCIMA
+ * de la hoja de un capítulo o de la planilla. Atrás y Esc los administra `pilaHojas()` y cierran
+ * solo la de arriba; el body lo bloquea solo el primer nivel (el segundo, al abrir, leería
+ * `scrollY` = 0 y al cerrar devolvería la página al principio).
+ * `variante="glosa"`: la hoja del alto del contenido con tope cerca de media pantalla, sin
+ * sub ni pie, y en PORTAL al `.doc-dictamen` más cercano (fuera de la hoja de abajo, que
+ * recorta y se transforma al arrastrar, pero dentro de los tokens del informe).
  */
 export function Modal({
   abierto,
@@ -662,6 +671,8 @@ export function Modal({
   sub,
   pie,
   children,
+  variante,
+  ancla,
 }: {
   abierto: boolean;
   onClose: () => void;
@@ -669,6 +680,10 @@ export function Modal({
   sub?: ReactNode;
   pie?: ReactNode;
   children: ReactNode;
+  /** «glosa»: la hoja chica del ⓘ (solo teléfono; en escritorio el ⓘ abre un popover). */
+  variante?: "glosa";
+  /** Para la glosa: un elemento de adentro del informe, para portalizar al `.doc-dictamen` que lo contiene. */
+  ancla?: HTMLElement | null;
 }) {
   // Los consumidores pasan `onClose` inline (identidad nueva en cada render); los efectos
   // con estado propio —historial, arrastre— leen la ref para no re-correr por eso.
@@ -677,21 +692,18 @@ export function Modal({
   const hojaRef = useRef<HTMLDivElement>(null);
   const cuerpoRef = useRef<HTMLDivElement>(null);
   const esHoja = useEsHoja();
+  const esGlosa = variante === "glosa";
 
+  // La pila: atrás y Esc cierran solo el nivel de arriba (hoja-pila.ts). El primer nivel,
+  // además, bloquea el body y restaura el scroll al cerrar (position:fixed en body:
+  // `overflow:hidden` solo no frena el touch en iOS), sin el `scroll-behavior:smooth` de
+  // html en el medio.
   useEffect(() => {
     if (!abierto) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [abierto]);
-
-  // Body bloqueado mientras está abierto (position:fixed en body: `overflow:hidden` solo
-  // no frena el touch en iOS), y el scroll de la página restaurado al cerrar, sin el
-  // `scroll-behavior:smooth` de html en el medio.
-  useEffect(() => {
-    if (!abierto) return;
+    const pila = pilaHojas();
+    const primero = pila.profundidad() === 0;
+    const id = pila.apilar(() => onCloseRef.current(), { conHistorial: esHoja });
+    if (!primero) return () => pila.desapilar(id);
     const body = document.body;
     const html = document.documentElement;
     const y = window.scrollY;
@@ -707,6 +719,7 @@ export function Modal({
     body.style.right = "0";
     html.style.overflow = "hidden";
     return () => {
+      pila.desapilar(id);
       body.style.position = previo.position;
       body.style.top = previo.top;
       body.style.left = previo.left;
@@ -717,23 +730,6 @@ export function Modal({
       html.style.scrollBehavior = "auto";
       window.scrollTo({ top: y, left: 0, behavior: "instant" });
       html.style.scrollBehavior = suave;
-    };
-  }, [abierto]);
-
-  // Botón atrás (solo hoja): un estado de historial al abrir; «atrás» lo saca y cierra la
-  // hoja; cerrar por otra vía lo consume con `history.back()` para no dejarlo colgado.
-  useEffect(() => {
-    if (!abierto || !esHoja) return;
-    window.history.pushState({ francoHoja: true }, "");
-    let consumido = false;
-    const onPop = () => {
-      consumido = true;
-      onCloseRef.current();
-    };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      if (!consumido && window.history.state?.francoHoja) window.history.back();
     };
   }, [abierto, esHoja]);
 
@@ -786,9 +782,9 @@ export function Modal({
   }, [abierto, esHoja]);
 
   if (!abierto) return null;
-  return (
-    <div className="v-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="v-modal" ref={hojaRef}>
+  const nodo = (
+    <div className={`v-modal-overlay${esGlosa ? " v-glosa-overlay" : ""}`} role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`v-modal${esGlosa ? " v-glosa" : ""}`} ref={hojaRef}>
         <div className="v-modal-asa" aria-hidden="true" />
         <div className="v-modal-head">
           <div className="v-modal-tit">
@@ -806,4 +802,7 @@ export function Modal({
       </div>
     </div>
   );
+  if (!esGlosa) return nodo;
+  const destino = (ancla?.closest(".doc-dictamen") as HTMLElement | null) ?? (typeof document !== "undefined" ? document.body : null);
+  return destino ? createPortal(<div className="doc-tokens">{nodo}</div>, destino) : nodo;
 }

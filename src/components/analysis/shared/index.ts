@@ -14,4 +14,4 @@ export { SeriePlusvalia, type PuntoSerie } from "./SeriePlusvalia";
 export { PosicionFranco, type FooterPosicion } from "./PosicionFranco";
 export { SegsCierre } from "./SegsCierre";
 export { ModalCalculoBase, type BloqueCalculo } from "./ModalCalculoBase";
-export { Ang, angliza } from "./Ang";
+export { Glosa, GlosaIndicador } from "./Glosa";

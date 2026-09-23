@@ -112,8 +112,40 @@ export function TokensShared() {
       .sp-sw{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
       .sp-sw-serie{background:var(--doc-tx)} .sp-sw-ref{background:var(--doc-ink1)}
       /* ── matriz de sensibilización (mockup-tablas) ── */
-      /* §5.7 · anglicismo que el mercado usa: cursiva en todas sus apariciones */
-      .ang{font-style:italic}
+      /* ── EL ⓘ (23-sep-2026, info-indicadores.html · opción A) ──
+         Disparador de 24 × 24 (WCAG 2.5.8) con el glifo de 15 px adentro; abierto se rellena de
+         tinta. Márgenes negativos para que el blanco táctil no empuje la línea del rótulo. */
+      .v-i{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-5px -5px -5px -1px;padding:0;
+        vertical-align:middle;background:none;border:none;border-radius:99px;cursor:pointer;flex:none;color:inherit}
+      .v-i::before{content:"i";display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:99px;
+        border:1.2px solid var(--doc-tx4);font-family:var(--font-heading, Georgia, serif);font-style:italic;font-weight:700;font-size:10px;
+        line-height:1;color:var(--doc-tx3);letter-spacing:0;text-transform:none}
+      .v-i.on::before{background:var(--doc-tx);border-color:var(--doc-tx);color:var(--doc-paper)}
+      .v-i:focus-visible{outline:2px solid var(--doc-tx);outline-offset:1px}
+      /* La hoja chica (solo teléfono): alto del contenido, tope cerca de media pantalla. Gana a la
+         regla de la hoja grande (.v-modal-overlay[role=dialog] .v-modal) por especificidad. El
+         velo es más liviano: la hoja de abajo se apaga sin taparse. */
+      .v-modal-overlay.v-glosa-overlay{z-index:70}
+      @media (max-width: 767px){
+        .v-modal-overlay.v-glosa-overlay{background:rgba(0,0,0,.28)}
+        .v-modal-overlay[role="dialog"] .v-modal.v-glosa{height:auto;max-height:52vh;max-height:52dvh;box-shadow:0 -10px 30px rgba(0,0,0,.22)}
+        .v-modal.v-glosa .v-modal-head{border-bottom:none;padding:8px 16px 2px 20px}
+        .v-modal.v-glosa .v-modal-head h3{font-family:var(--font-body, system-ui);font-size:16px;font-weight:600}
+        .v-modal.v-glosa .v-modal-cuerpo{padding:6px 20px 22px}
+      }
+      .v-glosa-txt{font-size:14px;line-height:1.6;color:var(--doc-tx2);margin:0}
+      .v-glosa-aca{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:14px;padding-top:10px;border-top:1px solid var(--doc-line);font-size:12.5px;color:var(--doc-tx3)}
+      .v-glosa-aca b{font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx);text-align:right}
+      /* El popover de escritorio: 300 px anclado al ⓘ, fijo a la ventana, arriba si cabe. */
+      .v-pop{position:fixed;z-index:80;width:300px;background:var(--doc-paper);border:1px solid var(--doc-line2);border-radius:12px;
+        box-shadow:0 10px 30px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);padding:14px 16px;color:var(--doc-tx);text-align:left;
+        text-transform:none;letter-spacing:0;font-family:var(--font-body, system-ui)}
+      .v-pop::before{content:"";position:absolute;top:-6px;left:calc(var(--flecha, 40px) - 5px);width:10px;height:10px;background:var(--doc-paper);
+        border-left:1px solid var(--doc-line2);border-top:1px solid var(--doc-line2);transform:rotate(45deg)}
+      .v-pop.arriba::before{top:auto;bottom:-6px;transform:rotate(225deg)}
+      .v-pop-t{font-size:14px;font-weight:600;margin-bottom:6px}
+      .v-pop p{font-size:13px;line-height:1.55;color:var(--doc-tx2);margin:0}
+      [data-theme="dark"] .v-pop,:root:not([data-theme="light"]) .v-pop{box-shadow:0 10px 30px rgba(0,0,0,.5)}
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}
       .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}
@@ -169,7 +201,7 @@ export function TokensShared() {
       .drows{margin-top:4px}
       .drow{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:14px;min-height:30px;padding:5px 0;border-bottom:1px solid var(--doc-line)}
       .drow .dk{font-size:12.5px;color:var(--doc-tx2);line-height:1.35}
-      .drow .tip{font-style:normal;font-family:var(--font-body, system-ui);font-size:11px;color:var(--doc-tx4);margin-left:5px;cursor:help;vertical-align:1px}
+      .drow .dk .v-i{margin-left:1px}
       .drow .dk small{display:block;font-size:10.5px;color:var(--doc-tx4);margin-top:1px;line-height:1.35}
       .drow .dv{font-family:var(--font-mono, ui-monospace);font-size:12.5px;color:var(--doc-tx);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
       .drow .dv em{font-style:normal;font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);display:inline-block;width:30px;text-align:left;margin-left:5px}

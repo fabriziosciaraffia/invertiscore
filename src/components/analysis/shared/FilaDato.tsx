@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Glosa } from "./Glosa";
 
 /**
  * Fila de dato compartida (contrato `mockup-tablas.html`, `.drow`): etiqueta con
@@ -27,7 +28,9 @@ export function FilaDato({
 }: {
   k: ReactNode;
   sub?: ReactNode;
-  /** Glosa corta (tooltip nativo): qué es y de dónde sale. */
+  /** Glosa corta: qué es y de dónde sale. Abre con el ⓘ del informe (`Glosa`), que en el
+   *  teléfono es la hoja chica: hasta el 23-sep-2026 era el `title` nativo, que no abría con
+   *  un toque, no se alcanzaba con teclado y medía 11 × 13 px. */
   tip?: string;
   v: ReactNode;
   /** Unidad pegada al valor ("/mes", "/año"). */
@@ -38,11 +41,7 @@ export function FilaDato({
     <div className={`drow${tono ? ` ${tono}` : ""}`}>
       <span className="dk">
         {k}
-        {tip && (
-          <i className="tip" title={tip} aria-label={tip}>
-            ⓘ
-          </i>
-        )}
+        {tip && <Glosa titulo={typeof k === "string" ? k : "Qué es"} texto={tip} />}
         {sub && <small>{sub}</small>}
       </span>
       <span className="dv">

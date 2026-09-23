@@ -17,7 +17,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { FranjaPagas, ModeloComoLoPagas, Seg } from "@/lib/como-lo-pagas";
 import { BANDA_PAGAS } from "@/lib/como-lo-pagas";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { InfoTooltip } from "@/components/ui/tooltip";
+import { Glosa } from "./Glosa";
 import { VProsa, VSub } from "@/components/analysis/hallazgos/vocabulario";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -104,7 +104,7 @@ export function CapituloComoLoPagas({ modelo, valorUF }: { modelo: ModeloComoLoP
     <div>
       {/* ── 1 · CARO O BARATO ── */}
       {m.franja && m.fraseFranja && (
-        <Bloque n="1" titulo={<>Caro o barato{m.notaFranja && <InfoTooltip content={m.notaFranja} />}</>}>
+        <Bloque n="1" titulo={<>Caro o barato{m.notaFranja && <Glosa titulo="Caro o barato" texto={m.notaFranja} />}</>}>
           <FranjaCuartiles f={m.franja} />
           <VProsa>
             <p>
