@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El ⓘ de los indicadores</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 23-sep-2026 · EL ⓘ DE LOS INDICADORES y sus nombres de mercado. Nada implementado.
+     DECISIONES DE FABRIZIO (23-sep): cap rate, cash on cash y TIR con su nombre de mercado en cada
+     aparición, cada una con ⓘ; «Cash on cash» sin guiones ni cursiva; cap rate vuelve al capítulo I
+     (da vuelta a propósito el «Rentabilidad bruta» del 21-sep); «Retorno sobre lo puesto» sale; el
+     Franco Score lleva ⓘ; NOI pasa a «ingreso neto»; se corrigen «cap rate por día» (hero STR) y
+     «cap rate neto» (pop-up STR). El PDF queda afuera.
+     EL MECANISMO: variante liviana del mismo `Modal`. Teléfono: hoja del alto del contenido, tope
+     cerca de media pantalla, apilable (cada nivel su entrada de historial, solo la de arriba escucha
+     atrás y Esc), en portal al body. Escritorio: popover anclado al ⓘ. Disparador de 24 × 24.
+     DOS OPCIONES PARA ELEGIR MIRANDO, con el mismo indicador en 390:
+       A · la hoja chica SIEMPRE, también apilada sobre la hoja grande;
+       B · dentro de una hoja (capítulo o planilla) el texto se despliega en el lugar, bajo la cifra;
+           la hoja chica solo cuando no hay otra hoja abierta.
+     CIFRAS REALES, leídas en localhost el 23-sep-2026:
+       · /analisis/38b9e336-a568-4871-bad7-114c196358bb (LTR, Ñuñoa): score 42, cap rate bruto 5,0%,
+         neto 3,2%, cash on cash −12,7%, cobertura 0,82×, TIR 0,6%; planilla de scripts/of-planilla-filas-mockup.ts;
+       · /analisis/renta-corta/143bc85b-62b8-4069-9f7d-3036c3e70c29 (STR, Providencia): score 47,
+         cap rate 3,1%, TIR 5,5%, equilibrio 141% de la zona.
+     Las cifras de referencia de los textos salen de las constantes: TIR_LIMITE_PCT = 6
+     (tir-limite.ts), CAP_STR_UMBRAL_PCT = 5 (rentabilidad-str-hallazgo.ts), cortes 70 / 45
+     (evalVeredicto, analysis.ts:1529 — HOY LITERALES: hay que subirlos a constante).
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;--serif:Georgia,"Source Serif 4",serif;--signal:#C8323C}
+  [data-theme="light"]{--page:#F6F6F7;--card:#F4F4F6;--sunk:#EFEFF2;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--paper:#FFFFFF;--overlay:rgba(20,19,17,.55);--pop-sh:0 10px 30px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08)}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#1E1E22;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--paper:#141416;--overlay:rgba(0,0,0,.62);--pop-sh:0 10px 30px rgba(0,0,0,.5),0 0 0 1px #37373D}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:92ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:9px 14px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:36px auto 12px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:92ch;line-height:1.5}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px} .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto;width:100%}
+  table.t td,table.t th{padding:6px 14px 6px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5;text-align:left}
+  table.t th{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+  .tachado{text-decoration:line-through;color:var(--tx4)}
+  .par{max-width:1100px;margin:0 auto;display:flex;gap:26px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .par figure{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .par figcaption{font-size:11.5px;color:var(--tx3);max-width:390px;text-align:center;line-height:1.45}
+  .par figcaption b{color:var(--tx)}
+
+  /* ── marcos ── */
+  .tel{width:390px;height:844px;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line2);background:var(--paper);box-shadow:0 12px 40px rgba(0,0,0,.18);flex:none}
+  .tel .pagina{position:absolute;inset:0;overflow:hidden;padding:0 16px}
+  .velo{position:absolute;inset:0;background:var(--overlay)}
+  .velo.dos{background:rgba(0,0,0,.28)}
+  .estado{position:absolute;top:10px;left:12px;z-index:9;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:6px}
+  .hoja{position:absolute;left:0;right:0;bottom:0;height:calc(100% - 56px);background:var(--paper);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  .asa{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 0;flex:none}
+  .cab{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px 10px 20px;border-bottom:1px solid var(--line)}
+  .cab h3{font-family:var(--serif);font-size:18px;font-weight:700;line-height:1.2}
+  .cab .sub{font-size:11.5px;color:var(--tx3);margin-top:2px;line-height:1.45}
+  .x{width:32px;height:32px;border:1px solid var(--line2);border-radius:99px;background:none;color:var(--tx3);font-family:var(--mono);font-size:14px;flex:none}
+  .hoja .cuerpo{flex:1;min-height:0;overflow:hidden;padding:16px 20px 24px}
+  .corrido{margin-top:var(--off,0)}
+
+  /* ═════════════ EL ⓘ (lo que se implementa) ═════════════ */
+  /* disparador: 24 × 24 de blanco táctil, glifo de 15 px adentro */
+  .i{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-5px -4px -5px 0;vertical-align:middle;background:none;border:none;cursor:pointer;flex:none;border-radius:99px}
+  .i::before{content:"i";display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:99px;border:1.2px solid var(--tx4);font-family:var(--serif);font-style:italic;font-weight:700;font-size:10px;line-height:1;color:var(--tx3)}
+  .i.on::before{background:var(--tx);border-color:var(--tx);color:var(--paper)}
+  .i:focus-visible{outline:2px solid var(--tx);outline-offset:1px}
+  /* A · la hoja chica (teléfono) */
+  .glosa{position:absolute;left:0;right:0;bottom:0;max-height:52%;background:var(--paper);border-radius:18px 18px 0 0;display:flex;flex-direction:column;box-shadow:0 -10px 30px rgba(0,0,0,.22);z-index:5}
+  .glosa .cab{border-bottom:none;padding:8px 16px 2px 20px}
+  .glosa .cab h3{font-family:var(--sans);font-size:16px;font-weight:600}
+  .glosa .txt{padding:6px 20px 0;font-size:14px;line-height:1.6;color:var(--tx2)}
+  .glosa .aca{margin:14px 20px 0;padding:10px 0 22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--tx3);display:flex;justify-content:space-between;gap:12px}
+  .glosa .aca b{font-family:var(--mono);font-weight:700;color:var(--tx);font-size:13px}
+  .glosa .aca b.rojo{color:var(--signal)}
+  /* B · el despliegue en el lugar */
+  .despliega{margin:8px 0 2px;padding:10px 12px;background:var(--sunk);border-radius:10px;font-size:13px;line-height:1.55;color:var(--tx2)}
+  .despliega .cerrar{display:block;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--tx3)}
+  /* escritorio · el popover */
+  .pop{position:absolute;width:300px;background:var(--paper);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--pop-sh);padding:14px 16px 14px;z-index:5}
+  .pop::before{content:"";position:absolute;top:-6px;left:var(--flecha,40px);width:10px;height:10px;background:var(--paper);border-left:1px solid var(--line2);border-top:1px solid var(--line2);transform:rotate(45deg)}
+  .pop.arriba::before{top:auto;bottom:-6px;transform:rotate(225deg)}
+  .pop h4{font-size:14px;font-weight:600;color:var(--tx);margin-bottom:6px;display:flex;justify-content:space-between;gap:10px}
+  .pop h4 span{font-family:var(--mono);font-size:11px;color:var(--tx4);font-weight:400}
+  .pop p{font-size:13px;line-height:1.55;color:var(--tx2)}
+
+  /* ── piezas del informe (réplicas para el contexto) ── */
+  .top{height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin:0 -16px;padding:0 16px}
+  .wm{font-family:var(--serif);font-size:20px;font-weight:700}.wm i{font-style:normal;font-weight:400;opacity:.28}.wm em{font-style:normal;font-family:var(--sans);font-size:12px;color:var(--signal);font-weight:600}
+  .score{padding:18px 0 14px;border-bottom:1px solid var(--line)}
+  .score .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:4px}
+  .score .n{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1.05;margin-top:4px}
+  .score .n small{font-size:14px;color:var(--tx3);font-weight:400}
+  .banda{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:#fff;background:var(--signal);padding:5px 10px;border-radius:6px}
+  .sec-t{font-family:var(--serif);font-size:22px;font-weight:700;margin:20px 0 12px}
+  .nums{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
+  .num{background:var(--paper);padding:12px 12px 12px}
+  .num .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px;display:flex;align-items:center;gap:2px;min-height:18px}
+  .num .v{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1}
+  .num .v.rojo{color:var(--signal)}
+  .num .tr{font-size:11.5px;line-height:1.45;color:var(--tx3);margin-top:7px}
+  .num.foco{outline:2px solid var(--tx);outline-offset:-2px}
+  .lnk{display:inline-block;margin-top:12px;font-size:12.5px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+  /* planilla (la de planilla-como-se-calcula.html) */
+  .pb-t{font-size:14px;font-weight:600;margin-bottom:3px}
+  .pb-b{font-size:13px;line-height:1.5;color:var(--tx3);margin-bottom:8px}
+  .ind{padding:11px 0;border-bottom:1px solid var(--line)}
+  .ind-n{font-size:13px;font-weight:600;display:flex;align-items:center;gap:2px}
+  .ind-f{font-size:12px;color:var(--tx3);line-height:1.45;margin-top:2px}
+  .ind-c{font-family:var(--mono);font-size:11.5px;color:var(--tx2);margin-top:6px;line-height:1.55}
+  .ind-r{font-family:var(--mono);font-size:14px;font-weight:700;margin-top:3px}
+  .ind-r.rojo{color:var(--signal)}
+  .ind.activo{background:linear-gradient(var(--paper),var(--paper))}
+  /* capítulo I STR · el equilibrio */
+  .vt{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);margin:0 0 8px}
+  .v-prosa{font-size:13.5px;line-height:1.6;color:var(--tx2)}
+  .dial{margin-top:12px}
+  .dial .eq{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .dial .eq .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:2px}
+  .dial .eq .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--signal)}
+  .barra{position:relative;display:flex;height:10px;border-radius:3px;overflow:hidden;margin-top:10px;gap:2px}
+  .barra span{height:100%}
+  .barra .a{background:var(--line2);flex:10}.barra .b{background:var(--tx4);flex:20}.barra .c{background:var(--tx2);flex:15}
+  .marca{position:absolute;top:-4px;width:2px;height:18px;background:var(--signal);left:calc(var(--m) * 1%)}
+  .leyb{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--tx3);margin-top:6px}
+  .fuente{font-size:11.5px;line-height:1.55;color:var(--tx3);margin-top:12px}
+  /* escritorio */
+  .esc{width:1100px;position:relative;border-radius:14px;border:1px solid var(--line2);overflow:hidden;background:var(--paper);padding:26px 64px 40px;flex:none}
+  .esc .nums{grid-template-columns:repeat(3,1fr)}
+  .esc .num{padding:14px 16px 13px}
+  .esc .num .v{font-size:23px}
+  .esc .num .tr{font-size:12px}
+  /* fragmentos de nombre */
+  .frag{background:var(--paper);border:1px solid var(--line2);border-radius:12px;padding:14px 16px;width:360px}
+  .frag .ttl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  .filacap{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .filacap .q{font-size:14px;font-weight:600}
+  .filacap .val{font-family:var(--mono);font-size:13px;font-weight:700;display:flex;align-items:center;gap:2px}
+  .filacap .val small{font-family:var(--sans);font-weight:500;font-size:12px;color:var(--tx3);margin-right:2px}
+  .parx{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .parx .l{color:var(--tx2);display:flex;align-items:center;gap:2px}
+  .parx .v{font-family:var(--mono);font-weight:600}
+  .antes{font-size:10.5px;color:var(--tx4);margin:8px 0 2px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">El ⓘ de los indicadores · y sus nombres de mercado</h1>
+  <p class="subx">Mockup del 23-sep-2026. El ⓘ abierto en tres lugares: sobre la planilla en teléfono, en un capítulo y en escritorio como popover. Cada caso de teléfono va en dos opciones, <b>A</b> (hoja chica siempre, apilada si hace falta) y <b>B</b> (dentro de una hoja se despliega en el lugar). Abajo: los nombres corregidos y los textos de los nueve ⓘ. Cifras reales, leídas en localhost.</p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg" id="seg-tema"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>El disparador:</b> un botón de 24 × 24 con el glifo de 15 px adentro. Es enfocable y lleva <span class="medida">aria-expanded</span> y <span class="medida">aria-controls</span>. Abierto, el glifo se rellena de tinta. Va pegado al nombre del indicador, nunca a la cifra.</li>
+    <li><b>La hoja chica:</b> alto del contenido, con tope en el 52% de la pantalla. Tiene asa, arrastre, velo tocable y ✕. El título es el nombre del indicador en Inter, no en serif, para que no se confunda con un capítulo. Tres frases y una línea «en este depto» con la cifra del caso. Sin sub ni pie.</li>
+    <li><b>Apilada (A):</b> la hoja chica sube sobre la grande, y un segundo velo, más liviano, apaga la grande sin taparla. Atrás, Esc o el velo cierran solo la de arriba.</li>
+    <li><b>En el lugar (B):</b> dentro de una hoja, el ⓘ abre un bloque hundido bajo la cifra. Se cierra tocando el ⓘ otra vez o «Cerrar», y hay uno abierto a la vez. No toca el historial: no hay nada que apilar.</li>
+    <li><b>Escritorio:</b> popover de 300 px anclado al ⓘ, con flecha. Se cierra con Esc, clic afuera o abriendo otro. Es el mismo en la página, en la planilla y en los capítulos: sobre 767 px no hay hojas que apilar.</li>
+  </ul>
+</div>
+
+<!-- ═════════════ 1 · SOBRE LA PLANILLA ═════════════ -->
+<div class="rot"><h2>1 · Sobre la planilla, en teléfono · cash on cash</h2><p>LTR Ñuñoa, la planilla nueva (planilla-como-se-calcula.html) corrida hasta los indicadores. Mismo indicador en las dos opciones. <span class="medida">/analisis/38b9e336-a568-4871-bad7-114c196358bb</span></p></div>
+<div class="par">
+  <figure>
+    <div class="tel" id="pl-a"></div>
+    <figcaption><b>A · hoja chica apilada.</b> La planilla queda atrás con su velo; la hoja chica tapa la mitad de abajo.</figcaption>
+  </figure>
+  <figure>
+    <div class="tel" id="pl-b"></div>
+    <figcaption><b>B · en el lugar.</b> El texto se abre bajo «Cash on cash», dentro de la misma hoja. La cuenta y el resultado bajan 150 px.</figcaption>
+  </figure>
+</div>
+
+<!-- ═════════════ 2 · EN UN CAPÍTULO ═════════════ -->
+<div class="rot"><h2>2 · En un capítulo, en teléfono · punto de equilibrio</h2><p>STR Providencia, capítulo I «Cuánto renta», el bloque «Cuánto tienes que facturar para no perder plata». <span class="medida">/analisis/renta-corta/143bc85b-62b8-4069-9f7d-3036c3e70c29</span></p></div>
+<div class="par">
+  <figure>
+    <div class="tel" id="cap-a"></div>
+    <figcaption><b>A · hoja chica apilada</b> sobre el capítulo.</figcaption>
+  </figure>
+  <figure>
+    <div class="tel" id="cap-b"></div>
+    <figcaption><b>B · en el lugar</b>, bajo «Tu equilibrio».</figcaption>
+  </figure>
+</div>
+
+<!-- ═════════════ 3 · SIN HOJA ABIERTA ═════════════ -->
+<div class="rot"><h2>3 · Sin otra hoja abierta · las dos opciones coinciden</h2><p>En la página no hay hoja debajo: A y B abren la misma hoja chica. Hero STR con los nombres corregidos, y el Franco Score LTR.</p></div>
+<div class="par">
+  <figure>
+    <div class="tel" id="hero-str"></div>
+    <figcaption><b>Cap rate</b>, hero STR. Antes decía «cap rate por día».</figcaption>
+  </figure>
+  <figure>
+    <div class="tel" id="hero-score"></div>
+    <figcaption><b>Franco Score</b>, portada LTR. Texto nuevo.</figcaption>
+  </figure>
+</div>
+
+<!-- ═════════════ 4 · ESCRITORIO ═════════════ -->
+<div class="rot"><h2>4 · Escritorio · popover · TIR</h2><p>Las cifras LTR a 1100, con el popover abierto sobre «TIR a 10 años». <span class="medida">/analisis/38b9e336-a568-4871-bad7-114c196358bb</span></p></div>
+<div class="par"><div class="esc" id="esc"></div></div>
+
+<!-- ═════════════ 5 · NOMBRES ═════════════ -->
+<div class="rot"><h2>5 · Los nombres corregidos</h2><p>Antes (tachado) y ahora, con las cifras de las dos filas.</p></div>
+<div class="par" id="nombres"></div>
+
+<div class="rot"><h2>Los nueve ⓘ</h2><p>Tres frases como máximo, sin fórmulas. Las cifras marcadas <span class="medida">{…}</span> se leen de la constante del motor.</p></div>
+<table class="t" id="glosario"></table>
+
+<div class="rot"><h2>Dónde aparece cada nombre nuevo</h2><p>Del censo de la FASE 0, sin el PDF (queda afuera) ni AMBAS (va aparte).</p></div>
+<table class="t">
+  <tr><th>Cambio</th><th>Dónde</th></tr>
+  <tr><td>«Retorno sobre lo puesto» → «Cash on cash»</td><td>La cifra del hero LTR (`LosNumeros.tsx:91`) · la planilla STR (`ModalCalculoStr.tsx:96`, «Retorno sobre el capital puesto») · la etiqueta de la dimensión del score STR (`short-term-score.ts:417`), que la leen el PDF y el desglose. En el pop-up el par sigue «Por cada $100 que pones, al año», porque ya es la glosa; se le agrega el nombre arriba: «Cash on cash», y la frase queda como su bajada.</td></tr>
+  <tr><td>«Rentabilidad bruta / neta» → «Cap rate bruto / neto»</td><td>Capítulo I LTR: la fila, el sub del capítulo y la frase `explicacionCapRef` (`capref-copy.ts:15, 40`). La primera oración de esa frase («La rentabilidad bruta es…») sale: existía porque el ⓘ no abría en el teléfono. Queda la segunda, la de la fuente.</td></tr>
+  <tr><td>«Rentabilidad» → «Cap rate» (STR)</td><td>Capítulo I STR: la fila, el sub y `explicacionUmbralStr` (`capref-copy.ts:72`), con el mismo recorte.</td></tr>
+  <tr><td>«Cap rate por día» → «Cap rate»</td><td>Hero STR (`SeisCifrasStr.tsx:100`).</td></tr>
+  <tr><td>«Cap rate neto» → «Cap rate» en STR</td><td>Pop-up de ajustes (`PopupAjustes.tsx:1415`): el rótulo pasa a depender de la modalidad; LTR sigue «Cap rate neto».</td></tr>
+  <tr><td>«NOI» → «ingreso neto»</td><td>Con la planilla nueva la columna NOI desaparece, y la fórmula del cap rate neto ya dice «arriendo − gastos». En la web no queda otro «NOI» vivo fuera del PDF y de AMBAS.</td></tr>
+  <tr><td>«*Cash-on-cash*» con cursiva</td><td>Sale la cursiva y los guiones: `angliza()` y `<Ang>` dejan de envolverlo. <i>Cap rate</i> sigue en cursiva según §5.7, salvo que decidas lo mismo para él (ver abajo).</td></tr>
+</table>
+
+<div class="rot"><h2>Para decidir</h2></div>
+<table class="t">
+  <tr><td>A o B</td><td>El mockup no elige. A es un gesto (tocar ⓘ, se abre algo que tapa) que se aprende una vez. B no apila hojas y no toca el historial, pero empuja el contenido: en la planilla, la cuenta y el resultado del indicador bajan 150 px justo cuando lo querías leer. B además no resuelve la página: fuera de una hoja igual hace falta la hoja chica, así que <b>B es A más un segundo modo</b>, no un reemplazo.</td></tr>
+  <tr><td>La cursiva de <i>cap rate</i></td><td>«Cash on cash» va sin cursiva por decisión tuya. Si <i>cap rate</i> y TIR siguen en cursiva, el informe tiene tres nombres de mercado tratados de dos formas. Propongo sacarla a los tres y reescribir §5.7: el nombre de mercado va sin marca y lo explica el ⓘ.</td></tr>
+  <tr><td>Las dos referencias del cap rate STR</td><td>El hero STR dice «la referencia para renta corta es 5,0%» (`CAP_STR_UMBRAL_PCT`); el capítulo I dice «referencia 2,2%» (lo que proyectan los Airbnb de la zona). Son dos referencias distintas para la misma cifra en la misma página. Por eso el ⓘ del cap rate STR no nombra ninguna. Es la cola <span class="medida">cola-umbral-str-anclado-al-ltr-comunal</span>, no se resuelve acá.</td></tr>
+  <tr><td>Los cortes del score</td><td>70 y 45 son literales en `evalVeredicto` (`analysis.ts:1529`). Para que el ⓘ del Franco Score los lea, pasan a constante exportada en el mismo cambio. Los nombres del veredicto salen de `etiquetaVeredicto(…, "frase")`: Comprar, Ajustar, Buscar otro.</td></tr>
+</table>
+
+<script>
+const TXT = {
+  bruto: { t: "Cap rate bruto", p: "Cuánto renta el depto en un año, comparado con lo que cuesta, antes de pagar cualquier gasto. Sirve para comparar deptos rápido, pero se queda corto: todavía no descuenta gastos comunes, contribuciones ni mantención." },
+  neto: { t: "Cap rate neto", p: "Cuánto renta el depto en un año, comparado con lo que cuesta, ya descontado lo que cuesta mantenerlo. No mira el crédito: mide el depto como negocio, lo compres con deuda o sin ella. Es la cifra para compararlo con otros de la comuna." },
+  capstr: { t: "Cap rate", p: "Cuánto deja el depto en un año arrendado por noche, comparado con lo que cuesta, después de la comisión y de los gastos de operarlo. No mira el crédito: mide el depto como negocio." },
+  coc: { t: "Cash on cash", p: "Cuánto te devuelve el depto cada año por cada peso que pusiste de tu bolsillo al comprar. Este sí mira el crédito: si la cuota se come el arriendo, sale negativo, y significa que todavía estás poniendo plata. No cuenta lo que el depto gana de valor." },
+  tir: { t: "TIR", p: "La rentabilidad anual de toda la operación en diez años: lo que pones al comprar, lo que entra o sale cada mes y lo que te queda al vender. Es la cifra para comparar el depto con otra inversión. Con crédito de por medio, bajo {TIR_LIMITE_PCT = 6}% al año suele convenir otra cosa." },
+  cob: { t: "Cobertura de cuota", p: "Cuánto del dividendo alcanza a pagar el arriendo. Sobre 1× el arriendo cubre la cuota entera; bajo 1×, la diferencia la pones tú cada mes." },
+  eq: { t: "Punto de equilibrio", p: "Cuánto tienes que facturar, comparado con lo que factura un depto típico de la zona, para no poner plata cada mes. Bajo 100% te alcanza con menos que el promedio; sobre 100% tienes que operar mejor que la mayoría." },
+  mult: { t: "Multiplicador", p: "Cuántas veces recuperas lo que pusiste si vendes el año diez. ×1 es recuperar lo mismo; bajo ×1, pierdes parte de lo que pusiste." },
+  score: { t: "Franco Score", p: "Una nota de 1 a 100 que junta en una cifra lo que renta el depto, lo que te cuesta cada mes, lo que te devuelve la plata que pusiste y lo que puede ganar de valor. Desde {70} el veredicto es Comprar; desde {45}, Ajustar; bajo {45}, Buscar otro. Algunas señales graves, como un flujo mensual muy negativo, bajan el veredicto aunque la nota dé para más." },
+};
+// en el render las llaves se reemplazan por el valor de la constante; acá se muestra el valor
+const limpio = (s) => s.replace(/\{(?:[A-Z_]+ = )?([^}]+)\}/g, "$1");
+const I = (on) => `<button class="i${on ? " on" : ""}" aria-label="Qué es" aria-expanded="${on ? "true" : "false"}"></button>`;
+const glosa = (k, aca, rojo) => `<div class="glosa"><div class="asa"></div><div class="cab"><h3>${TXT[k].t}</h3><button class="x" aria-label="Cerrar">✕</button></div><p class="txt">${limpio(TXT[k].p)}</p>${aca ? `<div class="aca"><span>En este depto</span><b class="${rojo ? "rojo" : ""}">${aca}</b></div>` : ""}</div>`;
+const despliega = (k) => `<div class="despliega">${limpio(TXT[k].p)}<span class="cerrar">Cerrar</span></div>`;
+const hojaGrande = (titulo, sub, cuerpo, off = 0) => `<div class="velo"></div><div class="hoja"><div class="asa"></div><div class="cab"><div><h3>${titulo}</h3><div class="sub">${sub}</div></div><button class="x">✕</button></div><div class="cuerpo"><div class="corrido" style="--off:${off}px">${cuerpo}</div></div></div>`;
+const fondo = `<div class="pagina"><div class="top"><span class="wm"><i>re</i>franco<em>.ai</em></span></div></div>`;
+
+// ── 1 · planilla LTR ──
+const ind = (n, f, c, r, rojo, iOn, extra = "") => `<div class="ind"><div class="ind-n">${n}${iOn !== undefined ? I(iOn) : ""}</div>${extra}<div class="ind-f">${f}</div><div class="ind-c">${c}</div><div class="ind-r${rojo ? " rojo" : ""}">= ${r}</div></div>`;
+const planilla = (modo) => `
+  <div class="pb-t">Indicadores</div><div class="pb-b">Con el arriendo y los gastos de hoy, año base.</div>
+  ${ind(`Cap rate bruto`, "Arriendo anual ÷ precio", "$6.000.000 ÷ $120.000.192", "5,00%", false, false)}
+  ${ind(`Cap rate neto`, "(Arriendo anual − gastos comunes en vacancia − contribuciones − mantención) ÷ precio", "($6.000.000 − $2.109.516) ÷ $120.000.192", "3,24%", false, false)}
+  ${ind(`Cash on cash`, "Flujo anual ÷ lo que pusiste el día 1 (pie + gastos de compra + puesta a punto)", "−$4.291.260 ÷ $33.757.002", "−12,71%", true, true, modo === "B" ? despliega("coc") : "")}
+  ${ind("Cobertura de cuota", "Arriendo mensual ÷ cuota", "$500.000 ÷ $610.978", "0,82×", false, false)}
+  ${ind("TIR a 10 años", "La tasa que iguala lo que pones hoy con el flujo de cada año y lo que te queda al vender", "−$36,2 MM hoy<br>los 10 flujos de la tabla<br>+$87,6 MM al vender el año 10", "0,63%", false, false)}`;
+const SUBPL = "La planilla detrás de cada cifra: el flujo año a año y los indicadores con sus valores sustituidos.";
+document.getElementById("pl-a").innerHTML = fondo + hojaGrande("Cómo se calcula", SUBPL, planilla("A"), -40) + `<div class="velo dos"></div>` + glosa("coc", "−12,71%", true) + `<span class="estado">A · apilada</span>`;
+document.getElementById("pl-b").innerHTML = fondo + hojaGrande("Cómo se calcula", SUBPL, planilla("B"), -40) + `<span class="estado">B · en el lugar</span>`;
+
+// ── 2 · capítulo I STR ──
+const cap = (modo) => `
+  <p class="vt">Cuánto tienes que facturar para no perder plata</p>
+  <p class="v-prosa">No cuadra al nivel que rinde la zona. Para no perder plata necesitas facturar el 141% del nivel de mercado: un 41% por sobre lo que rinde la zona típica.</p>
+  <div class="dial">
+    <div class="eq"><span class="k">Tu equilibrio${I(true)}</span><span class="v">141% de la zona</span></div>
+    ${modo === "B" ? despliega("eq") : ""}
+    <div class="barra"><span class="a"></span><span class="b"></span><span class="c"></span><i class="marca" style="--m:92"></i></div>
+    <div class="leyb"><span>HAY COLCHÓN</span><span>+10%</span><span>FRÁGIL</span><span>+30%</span><span>NO CIERRA</span></div>
+  </div>
+  <p class="fuente">Referencia: lo que proyectan los Airbnb de 2 dormitorios en Providencia. Tarifa de los avisos de la zona; ocupación estimada para este depto.</p>`;
+document.getElementById("cap-a").innerHTML = fondo + hojaGrande("Cuánto renta", `Cap rate 3,1% · referencia 2,2%`, cap("A")) + `<div class="velo dos"></div>` + glosa("eq", "141% de la zona", true) + `<span class="estado">A · apilada</span>`;
+document.getElementById("cap-b").innerHTML = fondo + hojaGrande("Cuánto renta", `Cap rate 3,1% · referencia 2,2%`, cap("B")) + `<span class="estado">B · en el lugar</span>`;
+
+// ── 3 · sin hoja ──
+const num = (k, v, tr, rojo, iOn, foco) => `<div class="num${foco ? " foco" : ""}"><div class="k">${k}${iOn !== undefined ? I(iOn) : ""}</div><div class="v${rojo ? " rojo" : ""}">${v}</div><div class="tr">${tr}</div></div>`;
+const cifrasStr = (focoCap) => `<div class="nums">
+  ${num("Tarifa por noche", "$74.713", "Lo que cobras cada noche ocupada. La mediana de la zona, sin ajuste.")}
+  ${num("Ocupación", "48%", "Noches ocupadas sobre el año. La que estima el mercado para este depto.")}
+  ${num("Ingreso mensual", "$1.080.555", "Lo que factura un mes típico con esa ocupación, antes de comisiones y costos.")}
+  ${num("Flujo mensual", "−$331.685", "Lo que sale de tu bolsillo cada mes después de todo: comisión, costos, cuota.", true)}
+  ${num("Cap rate", "3,1%", "El ingreso neto de un año sobre el precio. La referencia para renta corta es 5,0%.", true, focoCap, focoCap)}
+  ${num("TIR a 10 años", "5,5%", "Lo que rinde tu plata al año con operación, aportes y venta.", false, false)}</div>`;
+document.getElementById("hero-str").innerHTML = `<div class="pagina"><div class="top"><span class="wm"><i>re</i>franco<em>.ai</em></span></div><div class="sec-t">Las cifras</div>${cifrasStr(true)}</div><div class="velo"></div>` + glosa("capstr", "3,1%", true) + `<span class="estado">hoja chica · sin otra hoja</span>`;
+document.getElementById("hero-score").innerHTML = `<div class="pagina"><div class="top"><span class="wm"><i>re</i>franco<em>.ai</em></span></div>
+  <div class="score"><div class="k">Franco Score${I(true)}</div><div class="n">42 <small>de 100</small></div><span class="banda">BUSCAR OTRO</span></div>
+  <div class="sec-t">Las cifras</div></div><div class="velo"></div>` + glosa("score", "42 · Buscar otro", false) + `<span class="estado">hoja chica · sin otra hoja</span>`;
+
+// ── 4 · escritorio ──
+const cifrasLtr = `<div class="nums" style="position:relative">
+  ${num("Cap rate bruto", "5,0%", "El arriendo de un año sobre el precio, antes de gastos. Los avisos de la comuna rinden 3,9%.", false, false)}
+  ${num("Cap rate neto", "3,2%", "Lo mismo, ya descontados los gastos.", false, false)}
+  ${num("Cash on cash", "−12,7%", "Por cada $100 que pusiste, este año pones $12,71 más en vez de recibir.", true, false)}
+  ${num("Flujo mensual", "−$357.605", "Lo que sale de tu bolsillo cada mes, después de todo: dividendo, gastos y vacancia.", true)}
+  ${num("Cobertura de cuota", "0,82×", "El arriendo no alcanza a pagar el dividendo: falta un 18%, antes de gastos.", false, false)}
+  ${num("TIR a 10 años", "0,6%", "Lo que rinde tu plata al año, sumando arriendo, aportes y venta. Bajo 6%, conviene más otra inversión.", false, true, true)}
+  <div class="pop arriba" style="bottom:calc(50% - 22px);right:24px;--flecha:112px"><h4>TIR <span>Esc para cerrar</span></h4><p>${limpio(TXT.tir.p)}</p></div></div>`;
+document.getElementById("esc").innerHTML = `<div class="top" style="margin:0 -64px;padding:0 40px"><span class="wm"><i>re</i>franco<em>.ai</em></span></div><div class="sec-t" style="font-size:26px;margin-top:28px">Las cifras</div>${cifrasLtr}<a class="lnk">Ver cómo se calcula →</a><span class="estado">escritorio · 1100 · popover</span>`;
+
+// ── 5 · nombres ──
+document.getElementById("nombres").innerHTML = `
+  <div class="frag"><div class="ttl">Capítulo I · la fila (LTR y STR)</div>
+    <div class="antes">Antes</div>
+    <div class="filacap"><span class="q">Cuánto renta</span><span class="val"><small class="tachado">Rentabilidad bruta</small> 5,0%</span></div>
+    <div class="filacap"><span class="q">Cuánto renta</span><span class="val"><small class="tachado">Rentabilidad</small> 3,1%</span></div>
+    <div class="antes">Ahora</div>
+    <div class="filacap"><span class="q">Cuánto renta</span><span class="val"><small>Cap rate bruto</small> 5,0%</span></div>
+    <div class="filacap"><span class="q">Cuánto renta</span><span class="val"><small>Cap rate</small> 3,1%</span></div>
+    <p class="fuente">La fila del acordeón no lleva ⓘ: toda la fila abre el capítulo, y un segundo blanco adentro competiría con él. El ⓘ va en el sub del capítulo abierto.</p></div>
+  <div class="frag"><div class="ttl">Pop-up de ajustes · STR · hoy</div>
+    <div class="antes">Antes</div>
+    <div class="parx"><span class="l">Por cada $100 que pones, al año</span><span class="v">−$7,9</span></div>
+    <div class="parx"><span class="l tachado">Cap rate neto</span><span class="v">3,1%</span></div>
+    <div class="antes">Ahora</div>
+    <div class="parx"><span class="l" style="flex-wrap:wrap">Cash on cash${I(false)}<small style="flex-basis:100%;font-size:11.5px;color:var(--tx3)">por cada $100 que pones, al año</small></span><span class="v">−$7,9</span></div>
+    <div class="parx"><span class="l">Cap rate${I(false)}</span><span class="v">3,1%</span></div>
+    <div class="parx"><span class="l">TIR a 10 años${I(false)}</span><span class="v">5,5%</span></div>
+    <div class="parx"><span class="l">Franco Score${I(false)}</span><span class="v">47</span></div>
+    <p class="fuente">Solo la columna de hoy, para mostrar los rótulos; la de después depende de la combinación elegida. Las cifras salen del motor (el pop-up no abre sin sesión, así que no se leyeron en la página). El pop-up es una hoja: su ⓘ se comporta como el de la planilla (A o B).</p></div>
+  <div class="frag"><div class="ttl">Hero · la celda</div>
+    <div class="antes">Antes · LTR</div>
+    <div class="nums" style="grid-template-columns:1fr">${num('<span class="tachado">Retorno sobre lo puesto</span>', "−12,7%", "<i>Cash-on-cash</i>: por cada $100 que pusiste, este año pones $12,71 más en vez de recibir.", true)}</div>
+    <div class="antes">Ahora · LTR</div>
+    <div class="nums" style="grid-template-columns:1fr">${num("Cash on cash", "−12,7%", "Por cada $100 que pusiste, este año pones $12,71 más en vez de recibir.", true, false)}</div>
+    <div class="antes">Antes · STR</div>
+    <div class="nums" style="grid-template-columns:1fr">${num('<span class="tachado"><i>Cap rate</i> por día</span>', "3,1%", "El ingreso neto de un año sobre el precio. La referencia para renta corta es 5,0%.", true)}</div>
+    <p class="fuente">El sub del cap rate bruto LTR pierde su paréntesis («Cap rate (lo que renta al año sobre el precio): …»): la glosa se muda al ⓘ.</p></div>`;
+
+// ── glosario ──
+const ORDEN = ["bruto", "neto", "capstr", "coc", "tir", "cob", "eq", "mult", "score"];
+const DONDE = { bruto: "hero LTR · cap. I LTR · planilla LTR", neto: "hero LTR · planilla LTR · pop-up LTR", capstr: "hero STR · cap. I STR · planilla STR · pop-up STR", coc: "hero LTR · planilla LTR y STR · pop-up", tir: "hero LTR y STR · cap. V/VI · «Cómo lo pagas» · planilla · pop-up", cob: "hero LTR · planilla LTR y STR", eq: "cap. I STR · planilla STR", mult: "cap. V/VI (ksub y cierre)", score: "portada LTR y STR · pop-up" };
+document.getElementById("glosario").innerHTML = `<tr><th>ⓘ</th><th>Texto</th><th>Aparece en</th></tr>` + ORDEN.map((k) => `<tr><td>${TXT[k].t}</td><td>${TXT[k].p.replace(/\{([^}]+)\}/g, '<span class="medida">{$1}</span>')}</td><td>${DONDE[k]}</td></tr>`).join("");
+
+document.querySelectorAll("#seg-tema button").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("#seg-tema button").forEach((x) => x.classList.toggle("on", x === b)); }));
+</script>
+</body>
+</html>
