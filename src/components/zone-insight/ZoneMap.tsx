@@ -14,9 +14,17 @@ interface IconSpec {
   pathSvg: string;
 }
 
+/** UN SOLO COLOR PARA TODAS LAS CATEGORÍAS (23-sep-2026, decisión de Fabrizio). La skill manda los
+ *  POIs de la zona en Ink con iconografía monocromática: se distinguen por la FORMA del ícono, no
+ *  por color. Hasta hoy eran nueve colores —entre ellos un ámbar (#F59E0B, trenes) y un lima
+ *  (#84CC16, parques)— más la cruz roja de clínicas. Es `--ink-600` de globals.css, literal porque
+ *  el ícono es un SVG en data-URI y ahí no llegan las variables CSS. El pin de «tu depto» sigue
+ *  en Signal Red (uso permitido: el pin de la propiedad). */
+const MARCADOR = "#5F5E5A";
+
 const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
   metro: {
-    bg: "#EF4444",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Vagón simplificado
     pathSvg:
@@ -26,7 +34,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<circle cx="11" cy="10.5" r="1" fill="#FAFAF8" stroke="none"/>',
   },
   trenes: {
-    bg: "#F59E0B",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Locomotora + rieles
     pathSvg:
@@ -36,15 +44,14 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<line x1="13" y1="13" x2="15" y2="15"/>',
   },
   clinicas: {
-    // Excepción: fondo blanco, cruz roja
-    bg: "#FAFAF8",
-    stroke: "#DC2626",
+    bg: MARCADOR,
+    stroke: "#FAFAF8",
     pathSvg:
       '<line x1="8" y1="2" x2="8" y2="14" stroke-width="3"/>' +
       '<line x1="2" y1="8" x2="14" y2="8" stroke-width="3"/>',
   },
   universidades: {
-    bg: "#3B82F6",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Birrete
     pathSvg:
@@ -52,7 +59,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<path d="M3 7 V11 C3 13 13 13 13 11 V7"/>',
   },
   institutos: {
-    bg: "#8B5CF6",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Diploma
     pathSvg:
@@ -61,7 +68,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<line x1="4" y1="9" x2="9" y2="9"/>',
   },
   colegios: {
-    bg: "#6366F1",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Escuela con bandera
     pathSvg:
@@ -72,7 +79,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<line x1="10" y1="10" x2="11" y2="10"/>',
   },
   parques: {
-    bg: "#84CC16",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Árbol
     pathSvg:
@@ -80,7 +87,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<line x1="8" y1="13" x2="8" y2="16"/>',
   },
   malls: {
-    bg: "#EC4899",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Bolsa de compras
     pathSvg:
@@ -89,7 +96,7 @@ const CATEGORY_ICONS: Record<CategoryKey, IconSpec> = {
       '<path d="M5 4 V7 C5 9 11 9 11 7 V4"/>',
   },
   negocios: {
-    bg: "#A855F7",
+    bg: MARCADOR,
     stroke: "#FAFAF8",
     // Maletín
     pathSvg:
@@ -119,15 +126,22 @@ function getMapStyle(): google.maps.MapTypeStyle[] {
   return francoMapStyleForTheme(isLightMode() ? "light" : "dark") as google.maps.MapTypeStyle[];
 }
 
-function buildMarkerIcon(spec: IconSpec, size = 32): google.maps.Icon {
-  const svg =
+/** El SVG del marcador de una categoría: el mismo en el mapa y en la leyenda. */
+function markerSvg(spec: IconSpec, size = 32): string {
+  return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">` +
     `<circle cx="16" cy="16" r="14" fill="${spec.bg}" stroke="#0F0F0F" stroke-width="2"/>` +
     `<g transform="translate(8, 8)" stroke="${spec.stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
     spec.pathSvg +
-    `</g></svg>`;
+    `</g></svg>`
+  );
+}
+
+const markerDataUri = (spec: IconSpec, size = 32) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(markerSvg(spec, size))}`;
+
+function buildMarkerIcon(spec: IconSpec, size = 32): google.maps.Icon {
   return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    url: markerDataUri(spec, size),
     scaledSize: new google.maps.Size(size, size),
     anchor: new google.maps.Point(size / 2, size / 2),
   };
@@ -310,10 +324,7 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           </span>
         </div>
       )}
-      {/* data-mapa-leyenda: la paleta de categorías del mapa (una familia propia, ni tríada ni
-          semáforo; el ámbar y el lima de acá esperan decisión) — la sonda sin-ocre-verde la exceptúa por este atributo. */}
       <div
-        data-mapa-leyenda=""
         className="absolute left-2 right-2 bottom-2 px-2.5 py-2 rounded-[6px] flex flex-wrap gap-x-3 gap-y-1 overflow-x-auto"
         style={{
           background: legendBg,
@@ -326,13 +337,10 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           const spec = CATEGORY_ICONS[k];
           return (
             <div key={k} className="flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{
-                  background: spec.bg,
-                  border: k === "clinicas" ? `1.5px solid ${spec.stroke}` : "1px solid rgba(0,0,0,0.3)",
-                }}
-              />
+              {/* El ícono de la categoría, no un punto de color: con un solo color la forma es
+                  lo que distingue (23-sep-2026). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={markerDataUri(spec, 16)} width={14} height={14} alt="" aria-hidden="true" className="shrink-0" />
               <span
                 className="font-mono uppercase whitespace-nowrap"
                 style={{ fontSize: 9, letterSpacing: "1px", color: legendText }}
@@ -345,8 +353,7 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
         {/* Tu depto — siempre visible al final */}
         <div className="flex items-center gap-1.5">
           {/* TODO(franco-design): el border var(--ink-100) se pierde en light mode
-              cuando legendBg es rgba(255,255,255,0.92). Mismo bug aplica al fondo
-              del legend dot de "clinicas" (#FAFAF8). Resolver en rediseño Drawer Zona. */}
+              cuando legendBg es rgba(255,255,255,0.92). Resolver en rediseño Drawer Zona. */}
           <span
             className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{ background: "var(--signal-red)", border: "1.5px solid var(--ink-100)" }}

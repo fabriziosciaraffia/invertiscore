@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // SONDA VIVA · sin ocre ni verde en el informe (23-sep-2026). El censo que sacó el semáforo, hecho
-// gate: sale con 1 si algo visible se pinta ocre o verde, salvo la leyenda del mapa
-// ([data-mapa-leyenda], familia propia que espera decisión). Standalone contra un dev server, con
+// gate: sale con 1 si algo visible se pinta ocre o verde, sin excepciones (el mapa pasó a un solo
+// color el 23-sep-2026). Standalone contra un dev server, con
 // Chrome headless (puppeteer-core). Complementa el tier estático `sin-semaforo-catch-test`.
 // Abre cada superficie (página, capítulos, planilla, pop-up, comparables, ficha) en
 // 390, en oscuro y en claro, y escanea color / fondo / borde / fill / stroke / degradados de cada
@@ -47,7 +47,6 @@ window.__escanear = (raiz, superficie) => {
   for (const e of todos) {
     if (!(raiz === document) && !raiz.contains(e)) continue;
     if (raiz === document && e.closest(".v-modal-overlay")) continue;
-    if (e.closest("[data-mapa-leyenda]")) continue;
     const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
     const cs = getComputedStyle(e); if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity === 0) continue;
     const props = { color: e.childNodes.length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) ? cs.color : "", fondo: cs.backgroundColor, degradado: cs.backgroundImage !== "none" ? cs.backgroundImage : "", borde: cs.borderTopWidth !== "0px" && cs.borderTopStyle !== "none" ? cs.borderTopColor : "", fill: e instanceof SVGElement ? cs.fill : "", stroke: e instanceof SVGElement && cs.stroke !== "none" ? cs.stroke : "" };
@@ -76,7 +75,8 @@ window.__escanear = (raiz, superficie) => {
   const fotos = new Set<string>();
   for (const [nombre, ruta] of Object.entries(PAGINAS)) {
     for (const tema of ["dark", "light"]) {
-      await t.goto(BASE + ruta, { waitUntil: "networkidle2", timeout: 120000 });
+      // Reintenta: con el dev server recompilando, una navegación puede cortarse a la mitad.
+      for (let k = 0; k < 3; k++) { try { await t.goto(BASE + ruta, { waitUntil: "networkidle2", timeout: 120000 }); break; } catch (e) { if (k === 2) throw e; await sleep(3000); } }
       await sleep(1800);
       const veredicto = await t.evaluate((tm: string, esc: string) => { document.documentElement.dataset.theme = tm; (0, eval)(esc); return document.querySelector("[data-verdict]")?.getAttribute("data-verdict") ?? "?"; }, tema, ESCANER);
       await sleep(300);
@@ -121,6 +121,6 @@ window.__escanear = (raiz, superficie) => {
   const g = new Map<string, any>();
   for (const h of todo) { const k = `${h.tono} | ${h.familia} | ${h.superficie.replace(/«.*»/, (m: string) => m)} | .${h.clase} | ${h.prop}`; const x = g.get(k) ?? { n: 0, temas: new Set(), modos: new Set(), ej: h }; x.n++; x.temas.add(h.tema); x.modos.add(h.pagina.split("·")[0]); g.set(k, x); }
   for (const [k, x] of [...g.entries()].sort()) console.log(`${k} · ${[...x.modos].join("+")} · ${[...x.temas].join("+")} · n=${x.n} · «${x.ej.texto}» · ${x.ej.rgb} · ${x.ej.foto ?? ""}`);
-  console.log(todo.length ? `\n✗ SIN-OCRE-VERDE (sonda) · ${todo.length} elemento(s) ocre o verde` : "\n✓ SIN-OCRE-VERDE (sonda) · nada visible en ocre ni verde en 7 filas, las dos modalidades, 390, oscuro y claro, con cada hoja abierta (salvo la leyenda del mapa, declarada)");
+  console.log(todo.length ? `\n✗ SIN-OCRE-VERDE (sonda) · ${todo.length} elemento(s) ocre o verde` : "\n✓ SIN-OCRE-VERDE (sonda) · nada visible en ocre ni verde en 7 filas, las dos modalidades, 390, oscuro y claro, con cada hoja abierta");
   process.exit(todo.length ? 1 : 0);
 })();

@@ -13,8 +13,13 @@
 //   2 · SUS HEX, SOLO EN SU DECLARACIÓN: #2E8B57 · #57B98A · #B7791F · #DFA34F no aparecen sueltos.
 //   3 · LAS ZONAS DEL DIAL LEEN LA TRÍADA CON NOMBRE (--verdict-buscar / -ajusta / -comprar), y esos
 //       tres valen lo mismo que las reglas [data-verdict] de globals.css.
-// Afuera, declarada: la paleta de categorías del mapa (ZoneMap.tsx, #F59E0B y #84CC16 entre otros),
-// que no es ni tríada ni semáforo y espera decisión. Lo del DOM lo mide `sin-ocre-verde-sonda.ts`.
+//   4 · EL MAPA EN UN SOLO COLOR (decisión de Fabrizio, 23-sep-2026): las nueve categorías de
+//       ZoneMap con el mismo relleno —--ink-600, el valor de globals.css—, sin la cruz roja de
+//       clínicas, y la leyenda con el ícono de la categoría (con un color, la forma distingue).
+//       Eran nueve colores, con un ámbar (trenes) y un lima (parques).
+//   5 · EL DIAL LTR DICE «AJUSTAR», como STR: sus zonas, fronteras y total pasan por
+//       etiquetaVeredicto(…, "frase"); imprimía el valor persistido («AJUSTA SUPUESTOS», «BUSCAR OTRA»).
+// Lo del DOM lo mide `sin-ocre-verde-sonda.ts`.
 // Verificado EN ROJO por mutación. Corre solo: node --import tsx scripts/eval/golden/sin-semaforo-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -60,11 +65,30 @@ export function runSinSemaforoTier(): { hard: number } {
     if (!nom(k) || nom(k) !== tri(v)) F(`3 · --verdict-${k} (${nom(k)}) no vale lo mismo que [data-verdict="${v}"] (${tri(v)})`);
   }
 
+  // ── 4 · el mapa en un solo color ──
+  const Z = sinComentarios(leer("src/components/zone-insight/ZoneMap.tsx"));
+  const ink600 = (G.match(/--ink-600:\s*(#[0-9A-Fa-f]{6})/) ?? [])[1]?.toUpperCase();
+  const marcador = (Z.match(/const MARCADOR = "(#[0-9A-Fa-f]{6})"/) ?? [])[1]?.toUpperCase();
+  if (!marcador || marcador !== ink600) F(`4 · el marcador del mapa (${marcador}) no es --ink-600 (${ink600})`);
+  const cat = Z.slice(Z.indexOf("const CATEGORY_ICONS"), Z.indexOf("const CATEGORY_LABELS"));
+  const fondos = [...cat.matchAll(/bg: ([^,\n]+),/g)].map((m) => m[1].trim());
+  if (fondos.length !== 9 || fondos.some((f) => f !== "MARCADOR")) F(`4 · las categorías del mapa no comparten el color (${fondos.join(" · ")})`);
+  const trazos = [...cat.matchAll(/stroke: "(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1].toUpperCase());
+  if (trazos.some((t) => t !== "#FAFAF8")) F(`4 · algún ícono del mapa no es blanco (${trazos.join(" · ")})`);
+  if (!/<img src=\{markerDataUri\(spec, 16\)\}/.test(Z) || /background: spec\.bg/.test(Z)) F("4 · la leyenda del mapa vuelve al punto de color en vez del ícono");
+
+  // ── 5 · el Dial LTR con la etiqueta visible ──
+  const D = sinComentarios(leer("src/components/analysis/drawers/DrawersPropios.tsx"));
+  if (!/const rotulo = \(v: string\): string => etiquetaVeredicto\(v, "frase"\);/.test(D)) F("5 · el Dial LTR no tiene el rótulo de la etiqueta visible");
+  if (/zonas\.push\(\{ k: (?!rotulo\()/.test(D)) F("5 · una zona del Dial LTR imprime el valor persistido del veredicto");
+  if (/k: `y (?:cae|sube) a \$\{(?!rotulo\()/.test(D)) F("5 · una frontera del Dial LTR imprime el valor persistido del veredicto");
+  if (/\{d\.base\}/.test(D)) F("5 · el total del Dial LTR imprime el valor persistido del veredicto");
+
   if (fallas.length) {
     console.log(`  ✗ SIN-SEMÁFORO · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — ningún consumidor de --doc-good / --doc-warn en src, sus hex solo en la declaración, y las zonas del Dial con la tríada con nombre (mismos hex que [data-verdict])");
+    console.log("  ✓ VERDE — ningún consumidor de --doc-good / --doc-warn en src, sus hex solo en la declaración, las zonas del Dial con la tríada con nombre (mismos hex que [data-verdict]), el mapa en un solo color con la leyenda por ícono, y el Dial LTR con la etiqueta visible");
   }
   return { hard: fallas.length };
 }

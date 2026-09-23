@@ -43,6 +43,12 @@ import {
   type ZonaDial,
   type BordeDial,
 } from "@/components/analysis/hallazgos/vocabulario";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+
+/** Lo que el lector lee: «Buscar otro · Ajustar · Comprar», como STR y el resto del informe
+ *  (23-sep-2026). Hasta hoy el Dial LTR imprimía el valor persistido —«AJUSTA SUPUESTOS»,
+ *  «BUSCAR OTRA»— en las zonas, en las fronteras y en el total. */
+const rotulo = (v: string): string => etiquetaVeredicto(v, "frase");
 
 // ── Formato (coma decimal chilena, UTF-8 directo) ──────────────────────────────
 type Currency = "CLP" | "UF";
@@ -103,21 +109,21 @@ function derivarSensibilidad(hallazgo: HallazgoSensibilidad, results: FullAnalys
   const zonas: ZonaDial[] = [];
   const bordes: BordeDial[] = [];
   if (v.firme || !nuevo) {
-    zonas.push({ k: base, pct: 100, tono: tonoDe(base) });
+    zonas.push({ k: rotulo(base), pct: 100, tono: tonoDe(base) });
   } else {
-    zonas.push({ k: nuevo, pct: pos(piso), tono: tonoDe(nuevo) });
+    zonas.push({ k: rotulo(nuevo), pct: pos(piso), tono: tonoDe(nuevo) });
     const finBase = arribaX ? pos(arribaX) : 100;
-    zonas.push({ k: base, pct: finBase - pos(piso), tono: tonoDe(base) });
-    if (arribaX && objetivoArriba) zonas.push({ k: objetivoArriba, pct: 100 - finBase, tono: tonoDe(objetivoArriba) });
+    zonas.push({ k: rotulo(base), pct: finBase - pos(piso), tono: tonoDe(base) });
+    if (arribaX && objetivoArriba) zonas.push({ k: rotulo(objetivoArriba), pct: 100 - finBase, tono: tonoDe(objetivoArriba) });
     // Formato único tira↔cuerpo (editorial T3): entero sin decimal, coma si no.
     const margenStr = Number.isInteger(round1(v.marginPct)) ? `${Math.round(v.marginPct)}%` : pctStr(v.marginPct);
-    bordes.push({ pos: pos(piso), delta: `−${margenStr}`, v: pisoStr, k: `y cae a ${nuevo}`, dir: "abajo" });
+    bordes.push({ pos: pos(piso), delta: `−${margenStr}`, v: pisoStr, k: `y cae a ${rotulo(nuevo)}`, dir: "abajo" });
     if (arribaX && objetivoArriba) {
       bordes.push({
         pos: pos(arribaX),
         delta: `+${pctStr(Math.abs(palancaArriba!.deltaPct))}`,
         v: fmtMoney(arribaX, currency, valorUF),
-        k: `y sube a ${objetivoArriba}`,
+        k: `y sube a ${rotulo(objetivoArriba)}`,
         dir: "arriba",
       });
     }
@@ -158,7 +164,7 @@ export function SensibilidadDial({
       ) : (
         <div className="compo-total">
           <span className="k">No hay borde dentro del rango probado</span>
-          <span className="v">{d.base}</span>
+          <span className="v">{rotulo(d.base)}</span>
         </div>
       )}
     </>
