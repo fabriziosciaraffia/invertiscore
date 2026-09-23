@@ -124,8 +124,9 @@ async function evaluarStrBranch(
     superficie: str.superficieUtil,
     lat: typeof str.lat === "number" ? str.lat : -33.4378,
     lng: typeof str.lng === "number" ? str.lng : -70.6504,
-    ingresoP50: airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0,
     ingresoMensualScore: Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [],
+    // La demanda de la zona (factibilidad), la misma que la creación del análisis.
+    ocupacionRealizadaP50: airbnb.realizedOccupancy && airbnb.realizedOccupancy.n > 0 ? airbnb.realizedOccupancy.p50 : null,
   };
 
   const d = evaluarStr(inputs, scoreCtx, asOf, STR_DELTA_TARIFA, STR_DELTA_OCC_PP, { esEstimacion });

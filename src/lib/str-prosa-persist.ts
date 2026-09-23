@@ -26,6 +26,7 @@ import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { camposUpdateUsage } from "@/lib/ai-usage";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { persistGeneracionTiming, type GeneracionTrigger } from "@/lib/pipeline-timing";
@@ -77,13 +78,16 @@ export async function generarYPersistirProsaStr(args: {
       // La foto fija de la fila gana (STR contra STR, 21-sep-2026); las viejas resuelven vivo.
       ((analysis as Record<string, unknown>).strref_zona_snapshot as StrRefZonaSnapshot | null | undefined) ?? null,
     );
-    const rGen = (recomputeShortTermForLegacy(input, results, ufFrozen, asOfFrozen, medianaStr) ?? results) as
+    // La demanda de la zona del score, completada UNA vez para el recálculo y la simulación: si
+    // cada uno leyera otra, el prompt describiría celdas con otro veredicto que el de la página.
+    const resultsOc = await conOcupacionRealizadaDelCache(input, results);
+    const rGen = (recomputeShortTermForLegacy(input, resultsOc, ufFrozen, asOfFrozen, medianaStr) ?? results) as
       ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] };
 
     // Simulaciones del CONGELADO (fronteras y matrices) para el prompt y [HERO-CLAIM].
     // Un fallo acá no frena la prosa: sin simulación el bloque no entra.
     let simulacion = null;
-    try { simulacion = simularStrDesdePersistido(input, results as unknown as { airbnbRaw?: unknown }, ufFrozen, asOfFrozen, medianaStr); } catch { simulacion = null; }
+    try { simulacion = simularStrDesdePersistido(input, resultsOc as unknown as { airbnbRaw?: unknown }, ufFrozen, asOfFrozen, medianaStr); } catch { simulacion = null; }
     const gen = await generateStrProse({
       anthropic,
       inp: input,

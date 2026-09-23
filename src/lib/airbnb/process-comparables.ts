@@ -74,24 +74,33 @@ export function getTopComparables(comparables: AirROIComparable[]): TopComparabl
     }));
 }
 
+/** Shape mínimo del listing crudo de AirROI (solo lo que la ocupación realizada necesita). */
+export type RawListingPerf = {
+  performance_metrics?: { ttm_occupancy?: number; ttm_revenue?: number };
+  host_info?: { superhost?: boolean };
+};
+
+// ⛔ FILTRO DE LISTINGS DE LA OCUPACIÓN REALIZADA — ÚNICO (23-sep-2026).
+// Lo usan el dato del caso (`summarizeRealizedOccupancy`) y el ANCLA de la demanda del score
+// STR (`ocupacion-realizada-santiago.gen.ts`, la mediana de Santiago con este mismo filtro).
+// Si cambia, el ancla tiene que regenerarse: el gen guarda la huella del texto entre los dos
+// marcadores y el tier `factibilidad-demanda` la compara. No muevas los marcadores.
+// <filtro-ocupacion-realizada>
+export function listingConOcupacionRealizada(l: RawListingPerf): boolean {
+  return (l.performance_metrics?.ttm_occupancy ?? 0) > 0 && (l.performance_metrics?.ttm_revenue ?? 0) > 0;
+}
+// </filtro-ocupacion-realizada>
+
 /**
- * Resumen DISPLAY-ONLY de ocupación realizada desde `comparable_listings` (raw
- * AirROI). Función PURA — no toca el scoring. Devuelve null si no hay pool
- * válida. Transparencia 2026-06. Ver `RealizedOccupancy` en types.ts.
+ * Resumen de ocupación realizada desde `comparable_listings` (raw AirROI). Función PURA.
+ * Devuelve null si no hay pool válida. Transparencia 2026-06; desde el 23-sep-2026 su p50 es
+ * además la DEMANDA DE LA ZONA en la factibilidad del score STR (el NIVEL, no la brecha contra
+ * el estimador). Ver `RealizedOccupancy` en types.ts.
  */
 export function summarizeRealizedOccupancy(listings: unknown): RealizedOccupancy | null {
   if (!Array.isArray(listings) || listings.length === 0) return null;
 
-  // Shape mínimo del listing crudo (solo lo que necesitamos del raw).
-  type RawListingPerf = {
-    performance_metrics?: { ttm_occupancy?: number; ttm_revenue?: number };
-    host_info?: { superhost?: boolean };
-  };
-
-  const valid = (listings as RawListingPerf[]).filter(
-    (l) => (l.performance_metrics?.ttm_occupancy ?? 0) > 0
-        && (l.performance_metrics?.ttm_revenue ?? 0) > 0,
-  );
+  const valid = (listings as RawListingPerf[]).filter(listingConOcupacionRealizada);
   if (valid.length === 0) return null;
 
   const occ = (l: RawListingPerf) => l.performance_metrics!.ttm_occupancy as number;

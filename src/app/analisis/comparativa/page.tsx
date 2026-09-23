@@ -12,6 +12,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { encodeShareToken } from "@/lib/share-token";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
@@ -180,7 +181,7 @@ export default async function ComparativaPage({
     : { mediana: null, n: 0 };
   const strResults = (recomputeShortTermForLegacy(
     strInput,
-    strResultsPersisted,
+    await conOcupacionRealizadaDelCache(strInput, strResultsPersisted),
     ltrUfFrozen,
     strAsOfFrozen,
     strMediana,

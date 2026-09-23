@@ -41,6 +41,7 @@ import { normalizeLegacyVerdict } from "@/lib/types";
 import { resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 import { captureApiError } from "@/lib/observabilidad";
@@ -128,7 +129,7 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
         ltrUf,
       )
     : { mediana: null, n: 0 };
-  const strResults = (recomputeShortTermForLegacy(strInput, strResultsPersisted, ltrUf, strAsOfRc, strMedianaRc) ?? strResultsPersisted) as STRResultsExtended;
+  const strResults = (recomputeShortTermForLegacy(strInput, await conOcupacionRealizadaDelCache(strInput, strResultsPersisted), ltrUf, strAsOfRc, strMedianaRc) ?? strResultsPersisted) as STRResultsExtended;
 
   const comuna = (ltrRow.comuna as string) ?? (strRow.comuna as string) ?? "—";
   const superficie = (ltrRow.superficie as number) ?? 0;

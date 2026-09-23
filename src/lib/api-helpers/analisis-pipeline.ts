@@ -639,7 +639,6 @@ export async function buildShortTermAnalysisRow(
   const lng = typeof body.lng === "number" ? body.lng : -70.6504;
 
   const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
-  const ingresoP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
 
   const scoreInputs: ScoreSTRInputs = {
     results: result,
@@ -648,8 +647,10 @@ export async function buildShortTermAnalysisRow(
     superficie: body.superficieUtil,
     lat,
     lng,
-    ingresoP50,
     ingresoMensualScore,
+    // La demanda de la zona (factibilidad): la ocupación realizada de los comparables que AirROI
+    // devolvió para esta estimación, la misma que se guarda en `ocupacionRealizadaComparables`.
+    ocupacionRealizadaP50: airbnbResult.realizedOccupancy && airbnbResult.realizedOccupancy.n > 0 ? airbnbResult.realizedOccupancy.p50 : null,
   };
 
   const francoScore = calcFrancoScoreSTR(scoreInputs);
@@ -678,8 +679,8 @@ export async function buildShortTermAnalysisRow(
         superficie: scoreInputs.superficie,
         lat: scoreInputs.lat,
         lng: scoreInputs.lng,
-        ingresoP50: scoreInputs.ingresoP50,
         ingresoMensualScore: scoreInputs.ingresoMensualScore,
+        ocupacionRealizadaP50: scoreInputs.ocupacionRealizadaP50,
       },
       asOf: asOfPipeline,
     },

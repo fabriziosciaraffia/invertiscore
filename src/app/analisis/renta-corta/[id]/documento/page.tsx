@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
@@ -101,7 +102,7 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
 
   const recomputed = recomputeShortTermForLegacy(
     inputDataStr,
-    persistedResults,
+    await conOcupacionRealizadaDelCache(inputDataStr, persistedResults),
     ufFrozen,
     asOfFrozen,
     medianaStr,

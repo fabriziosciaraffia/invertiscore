@@ -25,6 +25,7 @@ import fs from "fs";
 import { calcShortTerm } from "../src/lib/engines/short-term-engine";
 import type { ShortTermResult, STRVerdict } from "../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../src/lib/engines/short-term-score";
+import { conOcupacionRealizadaDelCache } from "../src/lib/airbnb/ocupacion-realizada-cache";
 import type { FrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
@@ -63,6 +64,8 @@ interface RecomputeOut { rec: ShortTermResult; score: FrancoScoreSTR; hallazgos:
 
 // Recompute forward-only + ensamble de pirámide. Espeja buildShortTermAnalysisRow SIN re-fetch.
 async function recompute(d: any, oldResults: any, comuna: string): Promise<RecomputeOut> {
+  // La demanda de la zona (factibilidad): las filas que no la guardaron la leen del caché de AirROI.
+  oldResults = await conOcupacionRealizadaDelCache(d, oldResults);
   const uf = d.precioCompra / d.precioCompraUF;
   const airbnbData = buildAirbnbData(oldResults.airbnbRaw, uf); // EXPORTADO, misma transformación que prod
   const rec = calcShortTerm(buildInputs(d, airbnbData, uf) as any);  // (mismos inputs que veredictoCtx abajo)
@@ -71,7 +74,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   const score = calcFrancoScoreSTR({
     results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios, superficie: d.superficieUtil,
     lat, lng,
-    ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
+    ingresoMensualScore: airbnbData.monthly_revenue, ocupacionRealizadaP50: oldResults.ocupacionRealizadaComparables?.n > 0 ? oldResults.ocupacionRealizadaComparables.p50 : null,
   } as any);
   // mediana comunal real (sobreprecio) — mismo helper que el prefetch del pipeline.
   let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
@@ -90,7 +93,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
         dormitorios: d.dormitorios, superficie: d.superficieUtil,
         lat: typeof d.lat === "number" ? d.lat : -33.4378,
         lng: typeof d.lng === "number" ? d.lng : -70.6504,
-        ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
+        ingresoMensualScore: airbnbData.monthly_revenue, ocupacionRealizadaP50: oldResults.ocupacionRealizadaComparables?.n > 0 ? oldResults.ocupacionRealizadaComparables.p50 : null,
       },
       asOf: new Date(),
     },

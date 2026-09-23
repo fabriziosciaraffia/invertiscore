@@ -46,7 +46,10 @@ export type MedianaParaMotorStr = { mediana: number | null; n: number } | null |
 
 export function buildStrRecomputeCtx(
   inputData: Record<string, any> | null | undefined,
-  persistedResults: { airbnbRaw?: unknown } | null | undefined,
+  // `ocupacionRealizadaComparables`: la demanda de la zona que lee la factibilidad del score. Las
+  // filas anteriores a que se guardara la traen resuelta del caché de AirROI por el caller
+  // (`conOcupacionRealizadaDelCache`), nunca escrita en la base (23-sep-2026).
+  persistedResults: { airbnbRaw?: unknown; ocupacionRealizadaComparables?: { p50: number; n: number } | null } | null | undefined,
   ufClp: number,
   mediana?: MedianaParaMotorStr,
 ): { inputs: ShortTermInputs; scoreExtras: ScoreSTRExtras; airbnbRaw: unknown } | null {
@@ -130,7 +133,8 @@ export function buildStrRecomputeCtx(
   const lat = typeof inputData.lat === "number" ? inputData.lat : -33.4378;
   const lng = typeof inputData.lng === "number" ? inputData.lng : -70.6504;
   const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
-  const ingresoP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
+  const oc = persistedResults?.ocupacionRealizadaComparables;
+  const ocupacionRealizadaP50 = oc && oc.n > 0 && Number.isFinite(oc.p50) ? oc.p50 : null;
 
   return {
     inputs,
@@ -140,8 +144,8 @@ export function buildStrRecomputeCtx(
       superficie: inputData.superficieUtil,
       lat,
       lng,
-      ingresoP50,
       ingresoMensualScore,
+      ocupacionRealizadaP50,
     },
   };
 }

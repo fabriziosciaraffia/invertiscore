@@ -15,6 +15,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { recomputeShortTermForLegacy, veredictoStrRecomputado } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
@@ -39,7 +40,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     };
   }
 
-  const results = data.results as ShortTermResult | null;
+  // La demanda de la zona del score: las filas que no la guardaron la leen del caché de AirROI,
+  // igual que el cuerpo de la página (si no, el título diría otro veredicto).
+  const results = await conOcupacionRealizadaDelCache(data.input_data as Record<string, unknown> | null, data.results as ShortTermResult | null);
   // ⛔ EL TÍTULO RECOMPUTA, COMO EL CUERPO (17-sep-2026).
   //
   // Citaba `data.results.veredicto`, la columna persistida, mientras el cuerpo de la MISMA
@@ -135,7 +138,12 @@ export default async function STRResultPage({
     redirect(user ? "/dashboard" : "/");
   }
 
-  const persistedResults = normalizarResultsStrPersistidos(data.results as (ShortTermResult & { tipoAnalisis?: string }) | null);
+  // La demanda de la zona del score (factibilidad): las filas anteriores a que se guardara la leen
+  // del caché de AirROI; nada se escribe en la base (23-sep-2026).
+  const persistedResults = await conOcupacionRealizadaDelCache(
+    data.input_data as Record<string, unknown> | null,
+    normalizarResultsStrPersistidos(data.results as (ShortTermResult & { tipoAnalisis?: string }) | null),
+  );
 
   // Commit E.1 · 2026-05-13 — guard simétrico LTR↔STR.
   // Antes solo se chequeaba results.tipoAnalisis (jsonb). Ahora se valida

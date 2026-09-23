@@ -4,6 +4,7 @@ import { PESOS_SCORE_STR, puntajeCashOnCash, puntajeTir, combinarConReparto } fr
 import { SCORE_CORTE_COMPRAR, SCORE_CORTE_AJUSTA } from '../score-cortes';
 import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from '../data/str-attractors';
 import { findNearestStation } from '../metro-stations';
+import { OCUPACION_REALIZADA_SANTIAGO } from '../data/ocupacion-realizada-santiago.gen';
 
 // ============================================================
 // TIPOS
@@ -136,14 +137,21 @@ export interface ScoreSTRInputs {
   dormitorios: number;
   superficie: number;
   // `regulacionEdificio` vivió acá hasta el 11-sep-2026: el score ya no lee el reglamento
-  // del edificio (retiro V1, ver PUNTAJE_REGULACION_RETIRADA). El `input_data` de las
-  // filas persistidas conserva `edificioPermiteAirbnb`; se ignora, no se borra.
+  // del edificio (retiro V1). El `input_data` de las filas persistidas conserva
+  // `edificioPermiteAirbnb`; se ignora, no se borra.
 
   lat: number;
   lng: number;
 
-  ingresoP50: number;
+  // `ingresoP50` vivió acá hasta el 23-sep-2026: la factibilidad ya no compara el ingreso del
+  // estimador contra un monto fijo (lo repetía contra sí mismo). Ver DIMENSIÓN 4.
   ingresoMensualScore: number[];
+
+  /** La DEMANDA DE LA ZONA: ocupación realizada p50 de los listings comparables de AirROI
+   *  (fracción). El NIVEL, nunca la brecha contra la ocupación estimada —esa brecha es la
+   *  operación y la explica «Ocupación en renta corta»—. `null` sin comparables: la
+   *  factibilidad cae a los atractores de respaldo. */
+  ocupacionRealizadaP50: number | null;
 
   // Remediación metro 2026-06: `distanciaMetro` deprecado. La distancia a metro
   // se deriva de lat/lng dentro de calcAtractores (findNearestStation, filtro
@@ -263,52 +271,36 @@ function calcSostenibilidad(
 // DIMENSIÓN 4: FACTIBILIDAD (25%)
 // ============================================================
 
-const REVENUE_BENCHMARKS: Record<number, number> = {
-  0: 6500000,
-  1: 8200000,
-  2: 11500000,
-  3: 15000000,
-};
+// ── ACTA · LA FACTIBILIDAD MIDE LA DEMANDA DE LA ZONA (decisión de Fabrizio, 23-sep-2026) ──
+// Hasta hoy la factibilidad era 0,30 ingreso del estimador ÷ un monto fijo por dormitorios +
+// 0,20 tipología (tabla dormitorios × m²) + 0,25 regulación CONSTANTE 100 + 0,25 atractores.
+// Medido en 257 filas: p10 66 · p50 82 · p90 90, ninguna bajo 45 —casi nunca castigaba—.
+// Tres piezas no medían lo que la dimensión dice: la constante era un resto del retiro de la
+// regulación (V1, 11-sep); el ingreso repetía el mismo p50 de AirROI que ya decide la
+// rentabilidad, contra montos escritos a mano en abr-2026 sin fuente; y la tipología iba en
+// contra de lo observado (correlación −0,13 con la ocupación realizada; con los 10.571 listings
+// del caché la ocupación casi no cambia por dormitorios: 30,1 % en 1D contra 25,8 % en 4D+).
+// Salen las tres.
+//
+// Entra la DEMANDA DE LA ZONA: la ocupación realizada p50 de los listings comparables que
+// AirROI devuelve para el caso —ya elegidos por dormitorios—. El NIVEL, NUNCA la brecha contra
+// la ocupación estimada: esa brecha es la operación (un listing bien operado contra el parque
+// tal como está) y ya la explica «Ocupación en renta corta»; puntuarla sería cobrarla dos veces.
+// Curva B, anclada en la mediana de Santiago con el MISMO filtro de listings que el dato del caso
+// (`ocupacion-realizada-santiago.gen.ts`): la mediana → 65, su mitad → 25, 1,6 veces → 90.
+// Sin comparables (casos futuros en que AirROI no devuelva ninguno) la factibilidad cae a los
+// atractores. Medido: cambian 8 veredictos de 257, todos hacia abajo (6 COMPRAR → AJUSTA,
+// 2 AJUSTA → BUSCAR): se va el piso de 25 puntos que ponía la constante.
+const ANCLA_DEMANDA = OCUPACION_REALIZADA_SANTIAGO.mediana;
 
-const ESCALA_REVENUE_RELATIVO: [number, number][] = [
-  [1.8, 100],
-  [1.4, 85],
-  [1.0, 65],
-  [0.75, 45],
-  [0.50, 25],
-  [0.30, 5],
-];
-
-function calcTipologia(dormitorios: number, superficie: number): number {
-  if (dormitorios === 1 && superficie <= 50) return 100;
-  if (dormitorios === 0 && superficie <= 35) return 95;
-  if (dormitorios === 1 && superficie <= 70) return 85;
-  if (dormitorios === 2 && superficie <= 65) return 80;
-  if (dormitorios === 0 && superficie > 40) return 75;
-  if (dormitorios === 2 && superficie <= 90) return 65;
-  if (dormitorios === 3 && superficie <= 90) return 45;
-  if (dormitorios === 3 && superficie > 90) return 30;
-  if (dormitorios >= 4) return 15;
-  return 60;
+/** La demanda de la zona como puntaje: el NIVEL de ocupación realizada contra la mediana de
+ *  Santiago. Mediana → 65 · mitad de la mediana (o menos) → 25 · 1,6 × mediana (o más) → 90. */
+export function puntajeDemandaZona(ocupacionRealizada: number): number {
+  const m = ANCLA_DEMANDA;
+  const lin = (x: number, x0: number, y0: number, x1: number, y1: number) =>
+    Math.max(Math.min(y0 + ((x - x0) / (x1 - x0)) * (y1 - y0), Math.max(y0, y1)), Math.min(y0, y1));
+  return ocupacionRealizada <= m ? lin(ocupacionRealizada, m / 2, 25, m, 65) : lin(ocupacionRealizada, m, 65, 1.6 * m, 90);
 }
-
-// ── ACTA · LA REGULACIÓN DEL EDIFICIO SE RETIRÓ DEL PRODUCTO (V1, 11-sep-2026) ───────
-// Decisión de Fabrizio: no se pregunta en el wizard, no se muestra en el informe y no
-// pesa en el score. Hasta acá `calcRegulacion` daba 100 («sí») · 45 («no seguro») · 5
-// («no») y el 25% de la factibilidad; «no» además disparaba el gate g1_regulacion.
-//
-// POR QUÉ UNA CONSTANTE Y NO RENORMALIZAR. Medido sobre las 246 filas recomputables del
-// parque (11-sep-2026): con la dimensión retirada y la factibilidad renormalizada a
-// 0,75, siete filas «sí» BAJAN de veredicto (cinco COMPRAR → AJUSTA en 70 → 69, dos
-// AJUSTA → BUSCAR en 46/45 → 44), porque el 100 que las sostenía desaparece. Con la
-// constante en el valor de «sí», las 183 «sí» quedan byte-idénticas y cambian cuatro
-// veredictos, todos hacia arriba: la única fila «no» (era BUSCAR solo por el gate) y
-// tres «no seguro» (+3,4 puntos). Ese es el costo asumido.
-//
-// ES UNA CONSTANTE MUERTA, NO UN DATO: ocupa 25 puntos fijos dentro de la factibilidad
-// y se limpia —renormalizando los otros tres pesos— cuando se rediseñe el score STR.
-// Hasta entonces, nadie la lee como si midiera algo.
-const PUNTAJE_REGULACION_RETIRADA = 100;
 
 // Distancia "metro lejano" usada cuando no hay estación derivable (sin coords o
 // sin estaciones activas en el dataset). >4000m → cae al tramo final (score 10).
@@ -372,30 +364,18 @@ function calcAtractores(lat: number, lng: number): { score: number; detail: stri
 }
 
 function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
-  const benchmark = REVENUE_BENCHMARKS[inputs.dormitorios] || REVENUE_BENCHMARKS[1];
-  const ingresoRatio = benchmark > 0 ? inputs.ingresoP50 / benchmark : 0;
-  const puntajeIngreso = interpolate(ingresoRatio, ESCALA_REVENUE_RELATIVO);
-
-  const puntajeTipologia = calcTipologia(inputs.dormitorios, inputs.superficie);
-
-  // Retiro V1: la regulación ya no se lee; la constante conserva el 25% con el valor «sí».
-  const puntajeRegulacion = PUNTAJE_REGULACION_RETIRADA;
-
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const occ = inputs.ocupacionRealizadaP50;
+  // Con comparables: la demanda de la zona, por su NIVEL (ver el acta de arriba).
+  if (typeof occ === "number" && Number.isFinite(occ) && occ > 0) {
+    const score = Math.round(puntajeDemandaZona(occ));
+    const detail = `Demanda de la zona: los Airbnb comparables se ocupan ${pct(occ)} del año, contra ${pct(ANCLA_DEMANDA)} de la mediana de Santiago.`;
+    return { score, label: "Factibilidad", detail, peso: PESOS_SCORE_STR.factibilidad };
+  }
+  // Sin comparables: respaldo por los atractores de la zona.
   const atractores = calcAtractores(inputs.lat, inputs.lng);
-
-  const score = Math.round(
-    puntajeIngreso * 0.30 +
-    puntajeTipologia * 0.20 +
-    puntajeRegulacion * 0.25 +
-    atractores.score * 0.25
-  );
-
-  let detail = "";
-  if (score >= 70) detail = `Buena zona y tipología para Airbnb. ${atractores.detail}`;
-  else if (score >= 45) detail = `Zona aceptable. ${atractores.detail}`;
-  else detail = `Zona con fundamentos débiles para STR. ${atractores.detail}`;
-
-  return { score, label: "Factibilidad", detail, peso: PESOS_SCORE_STR.factibilidad };
+  const detail = `Sin Airbnb comparables en la zona: se estima por la cercanía a metro, clínicas y zonas de negocio y turismo. ${atractores.detail}`;
+  return { score: atractores.score, label: "Factibilidad", detail, peso: PESOS_SCORE_STR.factibilidad };
 }
 
 // ============================================================

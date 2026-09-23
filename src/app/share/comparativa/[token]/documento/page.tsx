@@ -19,6 +19,7 @@ import type { Analisis, FullAnalysisResult, AIAnalysisComparativa, AnalisisInput
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
@@ -120,7 +121,7 @@ export default async function DocumentoAmbasPage({
     : { mediana: null, n: 0 };
   const strResults = (recomputeShortTermForLegacy(
     strInput,
-    strResultsPersisted,
+    await conOcupacionRealizadaDelCache(strInput, strResultsPersisted),
     ltrUfFrozen,
     strAsOfFrozen,
     strMediana,
