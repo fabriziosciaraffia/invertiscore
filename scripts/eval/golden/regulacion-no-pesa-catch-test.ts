@@ -13,8 +13,10 @@
 //      veredicto de una fila «no» sale de sus números, no de un input que ya no se pide.
 //   2. NO PESA. Con el input en «no», en «no_seguro» y en «sí» el score y el veredicto son
 //      IDÉNTICOS: la dimensión no lee el campo.
-//   3. LAS «SÍ» QUEDAN BYTE-IDÉNTICAS. La constante vale lo que valía «sí» (100 × 0,25 de
-//      factibilidad): GE-1 da el mismo score que congeló `str-baseline.json`.
+//   3. NI COMO CONSTANTE (23-sep-2026). Hasta hoy la regla era «las "sí" quedan byte-idénticas»:
+//      la constante valía lo que valía «sí» (100 × 0,25 de la factibilidad). La factibilidad pasó
+//      a medir la demanda de la zona y la constante salió (tier `factibilidad-demanda`), así que
+//      lo que se fija ahora es que no exista.
 //
 // Verificado EN ROJO antes del retiro: (1) y (2) caían con el motor viejo.
 //   node --import tsx scripts/eval/golden/regulacion-no-pesa-catch-test.ts
@@ -69,28 +71,16 @@ function scoreCon(key: string, regulacion: string): FrancoScoreSTR | null {
   }
 }
 
-// ── 3 · las «sí» quedan byte-idénticas: GE-1 contra la baseline congelada ─
+// ── 3 · ni como constante: la regulación no ocupa ningún lugar en la factibilidad ─
 {
-  const si = scoreCon("GE-1", "si");
-  let baseline: Record<string, { score: number; veredicto: string }> | null = null;
-  try {
-    baseline = JSON.parse(readFileSync(join(process.cwd(), "scripts/eval/golden/str-baseline.json"), "utf-8")).seeds ?? null;
-  } catch {
-    baseline = null;
-  }
-  const b = baseline?.["GE-1"];
-  if (!si) F("3 · GE-1 no se pudo recomputar");
-  else if (!b) F("3 · sin str-baseline.json (o sin GE-1) no hay contra qué fijar la constante");
-  else {
-    if (si.score !== b.score) F(`3 · una fila «sí» cambió de score con el retiro: ${si.score} vs baseline ${b.score} (la constante no vale 100)`);
-    if (si.veredicto !== b.veredicto) F(`3 · una fila «sí» cambió de veredicto: ${si.veredicto} vs baseline ${b.veredicto}`);
-  }
+  const motor = readFileSync(join(process.cwd(), "src/lib/engines/short-term-score.ts"), "utf-8").replace(/\/\*[^]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");
+  if (/PUNTAJE_REGULACION_RETIRADA|puntajeRegulacion|regulacion/i.test(motor)) F("3 · la regulación sigue en el código del score, como constante o como lectura");
 }
 
 export function runRegulacionNoPesaTier(): { hard: number } {
   console.log("\n─── TIER REGULACIÓN NO PESA (retiro V1 · short-term-score.ts, 0 tokens, sin base) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — sin gate g1_regulacion, «no» = «no_seguro» = «sí» en score y veredicto, y las «sí» byte-idénticas a la baseline");
+    console.log("  ✓ VERDE — sin gate g1_regulacion, «no» = «no_seguro» = «sí» en score y veredicto, y la regulación fuera del score, también como constante");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

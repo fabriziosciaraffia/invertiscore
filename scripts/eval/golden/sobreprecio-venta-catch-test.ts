@@ -103,7 +103,8 @@ export function runSobreprecioVentaTier(): { hard: number } {
   const sim = leer("src/lib/analysis/simular-str.ts");
   if (!/buildStrRecomputeCtx\(inputData, persistedResults, ufClp, mediana\)/.test(sim)) F("4 · simularStrDesdePersistido no pasa la mediana al ctx");
   const prosa = leer("src/lib/str-prosa-persist.ts");
-  if (!/simularStrDesdePersistido\(input, results as unknown as \{ airbnbRaw\?: unknown \}, ufFrozen, asOfFrozen, medianaStr\)/.test(prosa)) F("4 · la prosa persistida simula sin la mediana");
+  // `resultsOc` desde el 23-sep-2026: los results con la demanda de la zona completada del caché.
+  if (!/simularStrDesdePersistido\(input, resultsOc as unknown as \{ airbnbRaw\?: unknown \}, ufFrozen, asOfFrozen, medianaStr\)/.test(prosa)) F("4 · la prosa persistida simula sin la mediana");
 
   // 5 · los capítulos
   for (const [mod, p] of [["LTR", "src/components/analysis/CapitulosInversion.tsx"], ["STR", "src/components/analysis/str/CapitulosInversionStr.tsx"]] as const) {

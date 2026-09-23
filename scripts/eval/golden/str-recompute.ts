@@ -65,9 +65,11 @@ const PC_ADR_MULT = 1.4;
 
 // Aplica la síntesis del caso (GE-5 occ-strip; GE-PC pie 0; GE-PJ precio justo) sobre el
 // frozen. `reg_no` (GE-3) se retiró con la regulación el 11-sep-2026.
-function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any } {
+function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; occReal: number | null } {
   const d = { ...fx.input_data };
   let raw = fx.airbnbRaw;
+  // La demanda de la zona (factibilidad, 23-sep-2026): la ocupación realizada congelada.
+  let occReal: number | null = fx.ocupacionRealizadaComparables && fx.ocupacionRealizadaComparables.n > 0 ? fx.ocupacionRealizadaComparables.p50 : null;
   if (s === "pie_cero_banda") {
     const ab = buildAirbnbData(fx.airbnbRaw as any, fx.uf) as any;
     const adrBase = ab.adr ?? ab.percentiles?.adr?.p50 ?? 45000;
@@ -79,6 +81,9 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any } {
   if (s === "occ_strip") {
     // Quita toda señal de ocupación → resolveOccObservada cae a fallback 0,45.
     raw = { ...fx.airbnbRaw, estimated_occupancy: 0, percentiles: { ...fx.airbnbRaw.percentiles, occupancy: { p25: 0, p50: 0, p75: 0, p90: 0, avg: 0 } } };
+    // «Sin toda señal de ocupación» incluye la realizada: esta seed ejercita el RESPALDO de la
+    // factibilidad (atractores), el camino de los casos sin comparables.
+    occReal = null;
   }
   if (s === "precio_justo") {
     // GE-PJ (§1.12.4): tarifa y ocupación ancladas a la mediana observada — CERO
@@ -87,7 +92,7 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any } {
     d.adrOverride = null;
     d.occOverride = null;
   }
-  return { d, raw };
+  return { d, raw, occReal };
 }
 
 interface Check { rule: string; pass: boolean; detail: string }
@@ -222,7 +227,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   // que reg_no/occ_strip sintetizan sobre la suya. Cero datos nuevos congelados.
   const fx = frozen[seed.key] ?? frozen[FILA_BASE[seed.key] ?? ""];
   if (!fx) return null;
-  const { d, raw } = synth(fx, seed.sintesis);
+  const { d, raw, occReal } = synth(fx, seed.sintesis);
   const airbnbData = buildAirbnbData(raw as any, fx.uf);
   // asOf constante fija (determinismo golden). Hoy es no-op en la aritmética (pre-entrega
   // diferido; buildProjections la void-ea) pero fija la firma para cuando el modelo de
@@ -232,7 +237,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   const rec = calcShortTerm(inputs, asOfGolden);
   const scoreExtras = { dormitorios: d.dormitorios, superficie: d.superficieUtil,
     lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
-    ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue };
+    ingresoMensualScore: airbnbData.monthly_revenue, ocupacionRealizadaP50: occReal };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
   // Mediana comunal confiable con DESVIACIÓN CONOCIDA por seed (MEDIANA_DESV_POR_SEED):
   // mediana = sujeto / (1 + desv), así el sobreprecio del seed mide exactamente `desv`.

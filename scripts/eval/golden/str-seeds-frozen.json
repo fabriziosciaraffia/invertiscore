@@ -88,6 +88,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.47,
       "estimated_annual_revenue": 9841754
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.384,
+      "p50Superhost": 0.463,
+      "n": 25,
+      "nSuperhost": 17
     }
   },
   "GE-2": {
@@ -179,6 +185,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.48,
       "estimated_annual_revenue": 11134811
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.482,
+      "p50Superhost": 0.425,
+      "n": 25,
+      "nSuperhost": 17
     }
   },
   "GE-4": {
@@ -271,6 +283,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.48,
       "estimated_annual_revenue": 11134811
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.474,
+      "p50Superhost": 0.489,
+      "n": 25,
+      "nSuperhost": 16
     }
   },
   "GE-6": {
@@ -363,6 +381,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.47,
       "estimated_annual_revenue": 9841754
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.384,
+      "p50Superhost": 0.463,
+      "n": 25,
+      "nSuperhost": 17
     }
   },
   "GE-3": {
@@ -455,6 +479,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.49,
       "estimated_annual_revenue": 12036144
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.455,
+      "p50Superhost": 0.6,
+      "n": 25,
+      "nSuperhost": 15
     }
   },
   "GE-5": {
@@ -542,6 +572,12 @@
       "comparables_count": 0,
       "estimated_occupancy": 0.47,
       "estimated_annual_revenue": 9994573
+    },
+    "ocupacionRealizadaComparables": {
+      "p50": 0.381,
+      "p50Superhost": 0.4315,
+      "n": 25,
+      "nSuperhost": 16
     }
   }
 }

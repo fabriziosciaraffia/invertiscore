@@ -81,6 +81,7 @@ import { runSinSemaforoTier } from "./sin-semaforo-catch-test";
 import { runPlanillaCalculoTier } from "./planilla-calculo-catch-test";
 import { runCapRateNetoTier } from "./cap-rate-neto-catch-test";
 import { runFindingDisplayLegacyTier } from "./finding-display-legacy-catch-test";
+import { runFactibilidadDemandaTier } from "./factibilidad-demanda-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -415,6 +416,10 @@ async function printStrSemantic() {
   // ── La card de un hallazgo GUARDADO no revienta (23-sep-2026): leer `sujetoPct` sin mirar
   //    rompió el build de master (prerender de /dev/finding-card) y el anexo con filas viejas. ──
   totalHard += runFindingDisplayLegacyTier().hard;
+  // ── La factibilidad STR mide la demanda de la zona (23-sep-2026): sin constante, ingreso ni
+  //    tipología; el nivel de ocupación realizada, no la brecha; las filas sin el dato lo leen
+  //    del caché; el ancla es del filtro vigente. Lo que necesita base: `factibilidad-demanda-sonda.ts`. ──
+  totalHard += runFactibilidadDemandaTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es

@@ -84,6 +84,9 @@ export interface FrozenFixture {
   uf: number;
   input_data: Record<string, any>;
   airbnbRaw: Record<string, any>;
+  /** La ocupación realizada de los comparables de AirROI (la demanda de la zona que lee la
+   *  factibilidad del score), congelada del caché el 23-sep-2026 con el helper del recálculo. */
+  ocupacionRealizadaComparables?: { p50: number; p50Superhost: number; n: number; nSuperhost: number } | null;
 }
 
 export function loadFrozen(): Record<string, FrozenFixture> {
