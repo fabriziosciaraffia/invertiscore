@@ -1411,7 +1411,6 @@ export function DocTokens() {
       .calc-tbl td{font-family:var(--font-mono, ui-monospace);font-size:10px;padding:7px 4px;text-align:right;border-bottom:1px solid var(--doc-line);white-space:nowrap;color:var(--doc-tx)}
       .calc-tbl td:first-child{text-align:left;color:var(--doc-tx3)}
       .calc-tbl tr.pre td{color:var(--doc-tx4)}
-      .calc-tbl tr.ent td:first-child{color:var(--doc-warn);font-weight:700}
       .calc-tbl tr.tot td{font-weight:700;border-top:2px solid var(--doc-tx);border-bottom:none;color:var(--doc-tx)}
       .calc-tbl .neg,.ind-tbl .neg{color:var(--signal-red)}
       .ind-tbl{border-collapse:collapse;width:100%}
@@ -1425,7 +1424,7 @@ export function DocTokens() {
       .kv.tot{border-top:2px solid var(--doc-tx);border-bottom:none;margin-top:4px;padding-top:9px;color:var(--doc-tx);font-weight:600}
       .kv.tot .v{font-weight:700;font-size:14px}
       .compo{display:flex;height:22px;border-radius:3px;overflow:hidden;margin-top:12px}
-      .compo span{height:100%} .compo .f{background:var(--doc-tx)} .compo .p{background:var(--doc-good);opacity:.45}
+      .compo span{height:100%} .compo .f{background:var(--doc-tx)} .compo .p{background:var(--doc-tx4)}
       .compo-leg{display:flex;justify-content:space-between;gap:10px;font-family:var(--font-mono, ui-monospace);font-size:10px;color:var(--doc-tx3);margin-top:6px}
       .compo-leg b{color:var(--doc-tx)}
       @media (max-width: 767px){

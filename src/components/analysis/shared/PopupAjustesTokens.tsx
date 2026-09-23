@@ -238,7 +238,7 @@ export function PopupAjustesTokens() {
       .paj-par .fl{color:var(--doc-tx4);font-weight:700}
       .paj-par .b1{font-size:16px;font-weight:700;white-space:nowrap;letter-spacing:-.015em}
       /* Semáforo del DATO, y solo donde hay un dato con signo: flujo y retorno. */
-      .paj-par .b1.bien{color:var(--doc-good)}
+      .paj-par .b1.bien{color:var(--doc-tx)}
       .paj-par .b1.mal{color:var(--signal-red)}
       /* El Score de después NO es un dato con signo: es el número que declara el veredicto
          al que llegas. Iba en verde fijo —«bien» pase lo que pase—, que pintaba de bueno un

@@ -1030,6 +1030,13 @@ input[type="number"] {
 .doc-dictamen:not([data-verdict]),.doc-tokens:not([data-verdict] *){
   --verdict:var(--doc-tx); --verdict-deep:var(--doc-tx); --verdict-band-0:var(--verdict);
 }
+/* LOS TRES, CON NOMBRE (23-sep-2026). `--verdict` vale el veredicto de LA FILA; una pieza que
+   muestra los tres a la vez —las zonas del Dial, que dicen «Buscar otro · Ajustar · Comprar»—
+   necesita nombrarlos por separado. Mismos hex de la tríada, una sola fuente: las tres reglas de
+   abajo los leen de acá. Hasta hoy el Dial pintaba esas zonas con el semáforo (--doc-warn ocre,
+   --doc-good verde) aunque NOMBRAN un veredicto, que es justo lo que la regla del 07-sep manda a
+   la tríada. */
+:root{--verdict-buscar:#C8323C; --verdict-ajusta:#6E4560; --verdict-comprar:#2B558F}
 [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
 [data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B; --verdict-band-0:var(--verdict)}
 [data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559; --verdict-band-0:var(--verdict)}

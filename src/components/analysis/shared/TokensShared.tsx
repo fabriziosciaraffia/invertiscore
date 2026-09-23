@@ -190,8 +190,8 @@ export function TokensShared() {
       .mz-colh small,.mz-rowh small{display:block;font-family:var(--font-body, system-ui);font-size:9.5px;font-weight:400;color:var(--doc-tx4);margin-top:2px;white-space:nowrap}
       .mz-cell{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:2px;font-family:var(--font-mono, ui-monospace);font-size:11px;color:var(--doc-tx);cursor:help;font-variant-numeric:tabular-nums}
       .mz-cell.neg{color:var(--signal-red)}
-      .mz-cell.umbral{border:1px solid var(--doc-good)}
-      .mz-cell.umbral::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--doc-good)}
+      .mz-cell.umbral{border:1px solid var(--doc-tx)}
+      .mz-cell.umbral::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--doc-tx)}
       /* salto de veredicto: marca mono en Ink al pie de la celda (sin color nuevo) */
       .mz-cell.conver .mz-v{transform:translateY(-5px)}
       .mz-ver{position:absolute;left:0;right:0;bottom:4px;text-align:center;font-family:var(--font-mono, ui-monospace);font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--doc-tx);line-height:1;white-space:nowrap}
@@ -204,8 +204,8 @@ export function TokensShared() {
       .mz-leg i{width:11px;height:11px;border-radius:2px;border:1px solid var(--doc-line);background:var(--doc-paper2)}
       .mz-leg .sh{display:none}
       .mz-leg i.hoy{box-shadow:inset 0 0 0 2px var(--doc-tx)}
-      .mz-leg i.umbral{border-color:var(--doc-good);position:relative}
-      .mz-leg i.umbral::after{content:'';position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;background:var(--doc-good)}
+      .mz-leg i.umbral{border-color:var(--doc-tx);position:relative}
+      .mz-leg i.umbral::after{content:'';position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;background:var(--doc-tx)}
       .mz-leg i.ver{border:0;background:none;width:auto;height:auto;font-style:normal;font-weight:700;color:var(--doc-tx);font-size:10px;line-height:1}
 
       /* ── planilla (mockup-tablas) ── */
@@ -217,7 +217,7 @@ export function TokensShared() {
       .pl tbody th{color:var(--doc-tx3);font-weight:400}
       .pl tr.tot th,.pl tr.tot td{font-weight:700;color:var(--doc-tx);border-top:2px solid var(--doc-tx);border-bottom:none;padding-top:7px}
       .pl tr.pre th,.pl tr.pre td{color:var(--doc-tx4)}
-      .pl tr.ent th{color:var(--doc-warn);font-weight:700}
+      .pl tr.ent th{color:var(--doc-tx);font-weight:700}
       .pl .neg{color:var(--signal-red)}
       /* dentro del modal (720px) las ocho columnas entran con el padding corto */
       .v-modal .pl th,.v-modal .pl td{padding:5px 4px;font-size:10px}
@@ -237,7 +237,6 @@ export function TokensShared() {
       .drow.in .dk{color:var(--doc-tx);font-weight:600}
       .drow.in .dv{font-weight:700}
       .drow.neg .dv{color:var(--signal-red)}
-      .drow.cruza .dv{color:var(--doc-good)}
       .drow.tot{border-top:2px solid var(--doc-tx);border-bottom:none;margin-top:3px;padding-top:8px}
       .drow.tot .dk{color:var(--doc-tx);font-weight:600;font-size:13px}
       .drow.tot .dv{font-weight:700;font-size:14px}

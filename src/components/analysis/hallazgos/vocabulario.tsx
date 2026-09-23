@@ -92,7 +92,7 @@ export function Fall({ rows, total }: { rows: FallRow[]; total?: { k: string; v:
     t === "red"
       ? "var(--signal-red)"
       : t === "warn"
-        ? "var(--doc-warn)"
+        ? "var(--doc-tx2)"
         : t === "muted"
           ? "var(--doc-tx4)"
           : "var(--doc-neutral)";

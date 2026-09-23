@@ -434,10 +434,10 @@ export function TokensHallazgos() {
         border-bottom:1px solid var(--doc-line);color:var(--doc-tx)}
       .tbl td:first-child{text-align:left;font-family:var(--font-body, sans-serif);color:var(--doc-tx3);white-space:nowrap}
       .tbl tr.hl td{background:var(--doc-paper3)}
-      .tbl tr.cruce td{border-top:2px solid var(--doc-good)}
+      .tbl tr.cruce td{border-top:2px solid var(--doc-tx)}
       .tbl-crucelbl{display:block;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.08em;
-        text-transform:uppercase;color:var(--doc-good);padding-top:7px}
-      .cell-neg{color:var(--signal-red)} .cell-pos{color:var(--doc-good)}
+        text-transform:uppercase;color:var(--doc-tx);padding-top:7px}
+      .cell-neg{color:var(--signal-red)}
       .tbl-scrollcue{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
         color:var(--doc-tx4);margin-bottom:16px}
       /* Pie de diagrama: el texto que describe el gráfico cuelga de él, no es un cierre. */
@@ -473,14 +473,10 @@ export function TokensHallazgos() {
         border:1px solid var(--doc-line2);white-space:nowrap}
       .pal-row.off{opacity:.62}
       .pal-row.off .pal-name{color:var(--doc-tx2)}
-      .pal-row.wash-warn{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 7%,transparent),transparent 70%)}
-      .pal-row.wash-good{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-good) 8%,transparent),transparent 72%)}
       .pal-name{font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
       .pal-delta{font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;padding:1px 5px;border-radius:2px}
-      .pal-delta.si{color:var(--doc-good);background:color-mix(in srgb,var(--doc-good) 12%,transparent)}
       .pal-delta.no{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 8%,transparent)}
       .pal-verdict{font-size:13px;text-align:right;line-height:1.4}
-      .pal-verdict.si{color:var(--doc-good)}
       .pal-verdict.no{color:var(--doc-tx4)}
       .pal-detail{grid-column:1/-1;font-family:var(--font-mono, ui-monospace);font-size:11px;color:var(--doc-tx3)}
       .pal-arrow{margin:0 6px;color:var(--doc-tx4)}
@@ -498,9 +494,12 @@ export function TokensHallazgos() {
       .dial-zone{display:flex;align-items:center;justify-content:center;overflow:hidden;
         font-family:var(--font-mono, ui-monospace);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:#fff}
       .dial-zone span{padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .dial-zone.buscar{background:var(--signal-red)}
-      .dial-zone.ajusta{background:var(--doc-warn)}
-      .dial-zone.comprar{background:var(--doc-good)}
+      /* LAS ZONAS NOMBRAN UN VEREDICTO → LA TRÍADA (23-sep-2026). Pintaban ajusta en --doc-warn
+         (ocre) y comprar en --doc-good (verde): el semáforo en una pieza que dice «Ajustar» y
+         «Comprar». Con texto blanco la tríada da 5,28 · 7,83 · 7,50. */
+      .dial-zone.buscar{background:var(--verdict-buscar)}
+      .dial-zone.ajusta{background:var(--verdict-ajusta)}
+      .dial-zone.comprar{background:var(--verdict-comprar)}
       .dial-mark{position:absolute;top:29px;height:32px;width:3px;border-radius:2px;background:var(--doc-tx);
         transform:translateX(-50%);z-index:2}
       .dial-tick{position:absolute;top:30px;width:1px;height:30px;background:var(--doc-tx);opacity:.55;z-index:3}
@@ -509,7 +508,7 @@ export function TokensHallazgos() {
       .dial-edge{font-family:var(--font-mono, ui-monospace);text-align:left;white-space:normal;min-height:1px}
       .dial-edge.arriba{text-align:right}
       .dial-edge .d{display:block;font-size:12px;font-weight:700;color:var(--doc-tx)}
-      .dial-edge.abajo .d{color:var(--signal-red)} .dial-edge.arriba .d{color:var(--doc-good)}
+      .dial-edge.abajo .d{color:var(--signal-red)}
       .dial-edge .v{display:block;font-size:11px;color:var(--doc-tx2);margin-top:2px}
       .dial-edge .k{display:block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4);margin-top:3px;line-height:1.35}
 
@@ -525,8 +524,6 @@ export function TokensHallazgos() {
       .compo-seg.pie,.compo-sw.pie{background:var(--doc-tx3)}
       .compo-seg.aporte,.compo-sw.aporte{background:var(--doc-tx4)}
       .compo-seg.amort,.compo-sw.amort,.compo-seg.oper,.compo-sw.oper{background:var(--doc-neutral)}
-      .compo-seg.plus,.compo-sw.plus,.compo-seg.util,.compo-sw.util{background:var(--doc-good)}
-      .compo-seg.com,.compo-sw.com{background:var(--doc-warn)}
       .compo-seg.proy,.compo-sw.proy{background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,
         rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 6px)}
       .compo-leg{margin-top:12px}
@@ -554,8 +551,6 @@ export function TokensHallazgos() {
       .cien-track{position:relative;display:flex;height:26px;border-radius:2px;overflow:hidden}
       .cien-seg{height:100%}
       .cien-seg.oper{background:var(--doc-neutral)}
-      .cien-seg.com{background:var(--doc-warn)}
-      .cien-seg.util{background:var(--doc-good)}
       .cien-desborde{position:absolute;right:0;top:0;bottom:0;width:9px;z-index:3;
         background:repeating-linear-gradient(90deg,var(--signal-red) 0,var(--signal-red) 2px,transparent 2px,transparent 4px)}
       .cien-corte{position:absolute;top:18px;height:34px;width:2px;background:var(--doc-tx);transform:translateX(-50%);z-index:4}
@@ -579,12 +574,11 @@ export function TokensHallazgos() {
       /* línea de tiempo */
       .tl{display:grid;align-items:start;gap:8px;margin:14px 0 6px}
       .hito{border-top:3px solid var(--doc-tx);padding-top:10px}
-      .hito.mid{border-top-color:var(--doc-warn)} .hito.end{border-top-color:var(--doc-good)}
       .hito .k{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx3);display:block}
       .hito .d{font-size:11px;color:var(--doc-tx4);display:block;margin-top:1px}
       .hito .v{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;color:var(--doc-tx);display:block;margin-top:6px}
       .tl-delta{align-self:center;text-align:center;font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx2);padding:0 4px}
-      .tl-delta b{display:block;font-size:12px;color:var(--doc-good)}
+      .tl-delta b{display:block;font-size:12px;color:var(--doc-tx)}
       .tl-delta::before{content:'→';display:block;color:var(--doc-tx4);font-size:14px}
       .lectura{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14px;color:var(--doc-tx2);margin-top:12px;line-height:1.6}
       /* barra apilada (propuesta-04) */
@@ -638,7 +632,6 @@ export function TokensHallazgos() {
       .cmp-k small{display:block;font-size:10.5px;color:var(--doc-tx4);margin-top:1px}
       .cmp-tag{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
         white-space:nowrap;padding:2px 6px;border-radius:2px}
-      .cmp-tag.ok{color:var(--doc-good);background:color-mix(in srgb,var(--doc-good) 12%,transparent)}
       .cmp-tag.flojo{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 8%,transparent)}
       .cmp-tag.par{color:var(--doc-tx4);background:var(--doc-paper3)}
       .cmp-line{display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:10px}
@@ -650,8 +643,6 @@ export function TokensHallazgos() {
          ámbar, no en Signal Red: el rojo quedaba en filas neutras (pie, cuota) y
          viola la regla del color (rojo = solo atención). Toca también las barras
          de precio STR (K1), que heredaban el rojo por defecto. */
-      .cmp-fill.tuyo{background:var(--doc-warn)}
-      .cmp-fill.tuyo.ok{background:var(--doc-good)}
       .cmp-fill.ref{background:var(--doc-tx4)}
       .cmp-v{font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
       .cmp-pie{font-size:11.5px;line-height:1.6;color:var(--doc-tx4);margin-top:2px}
@@ -668,14 +659,12 @@ export function TokensHallazgos() {
       .esca.ancha .esca-head,.esca.ancha .esca-row{grid-template-columns:0.85fr 1.1fr 1.05fr}
       .esca-row{border-bottom:1px dotted var(--doc-line)}
       .esca-row:last-child{border-bottom:none}
-      .esca-row.hoy{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 12%,transparent),transparent 78%)}
       .esca-pie{font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx)}
       .esca-pie small{display:block;font-family:var(--font-body, sans-serif);font-size:10px;font-weight:400;
         color:var(--doc-tx4);margin-top:2px;letter-spacing:0}
       .esca-row.hoy .esca-pie small{color:var(--doc-tx3)}
       .esca-v{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
       .esca-v.neg{color:var(--signal-red)}
-      .esca-v.pos{color:var(--doc-good)}
       .esca-v small{display:block;font-family:var(--font-body, sans-serif);font-size:10px;font-weight:400;
         color:var(--doc-tx4);margin-top:2px}
       .esca-foot{padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--doc-tx4);
@@ -695,7 +684,6 @@ export function TokensHallazgos() {
       .esc-fill{height:100%;border-radius:2px}
       .esc-fill.pes{background:var(--signal-red)}
       .esc-fill.base{background:var(--doc-neutral)}
-      .esc-fill.opt{background:var(--doc-good)}
       .esc-v{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
       .esc-foot{font-size:11.5px;line-height:1.6;color:var(--doc-tx4);margin-top:4px}
 

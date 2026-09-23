@@ -310,7 +310,10 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           </span>
         </div>
       )}
+      {/* data-mapa-leyenda: la paleta de categorías del mapa (una familia propia, ni tríada ni
+          semáforo; el ámbar y el lima de acá esperan decisión) — la sonda sin-ocre-verde la exceptúa por este atributo. */}
       <div
+        data-mapa-leyenda=""
         className="absolute left-2 right-2 bottom-2 px-2.5 py-2 rounded-[6px] flex flex-wrap gap-x-3 gap-y-1 overflow-x-auto"
         style={{
           background: legendBg,
