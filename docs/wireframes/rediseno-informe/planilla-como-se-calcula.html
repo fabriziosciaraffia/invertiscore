@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>«Cómo se calcula» · LTR y STR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 23-sep-2026 · «Cómo se calcula» (la planilla que abre «Ver cómo se calcula →» del
+     hero), LTR y STR. Nada implementado.
+     ACTUALIZADO el 23-sep-2026 (tarde) a lo que entró después de aprobarse: nombres de mercado con ⓘ
+     (cash on cash, cap rate, ingreso neto), capas en oscuro, sin semáforo, y el pie STR con la
+     referencia de la zona. Ver la tabla «Qué ya entró en la rama y se superpone».
+     PARA QUIÉN: el lector que quiere rehacer la cuenta. Se queda lo que sirve para eso (el flujo año
+     a año y los indicadores con sus valores sustituidos) y sale lo que contradice al informe.
+     SALE: el bloque «Escenario de salida» (copia de «Tu resultado» sin el sobreprecio: contradice en
+     466 de 1.214 filas LTR y 91 de 254 STR) y su barra firme/proyectado (verde al 45%, rota en 81
+     filas). En su lugar, UNA fila que remite a «Tu resultado» con la cifra que usa la TIR.
+     CAMBIA: flujo por año en cinco columnas (año · entra · gastos · cuota · flujo neto); vacancia,
+     rotación, estabilización y amoblamiento dentro de gastos. Indicadores con el resultado DEBAJO de
+     la cuenta. El cash on cash divide por el capital del motor (sin el corretaje de compra), que el
+     motor emite como campo. Textos fijos leídos del dato. Moneda con
+     el toggle. Tinta y rojo; títulos de bloque en tinta; bajadas en Inter.
+     CIFRAS REALES: tres filas recomputadas el 23-sep-2026 con la cadena de cada página
+     (`scripts/of-planilla-filas-mockup.ts`, untracked). Identidad entra − gastos − cuota = flujo
+     verificada año por año en las tres (diferencia 0).
+       · 38b9e336 (LTR, Ñuñoa): sobreprecio 11% sobre 100 avisos, vacancia 1,2 meses;
+       · 9102b7e6 (STR, Santiago): entrega en agosto de 2027, autogestión;
+       · 143bc85b (STR, Providencia): administrador al 25%.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;--signal:#C8323C}
+  [data-theme="light"]{--page:#F6F6F7;--card:#F4F4F6;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--paper:#FFFFFF;--hoja:#FFFFFF;--hoja-borde:transparent;--overlay:rgba(20,19,17,.55)}
+  /* oscuro con las capas (ba7d2e42): página #0C0C0E → hoja #1A1A1E, borde --line2 arriba, velo .86 */
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--line:#2C2C30;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--paper:#0C0C0E;--hoja:#1A1A1E;--hoja-borde:#37373D;--overlay:rgba(12,12,14,.86)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:90ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:9px 14px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:34px auto 12px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:90ch;line-height:1.5}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto;width:100%}
+  table.t td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+  .med-ok{color:var(--tx2)} .med-mal{color:var(--signal);font-weight:600}
+
+  /* ── escenas ── */
+  .fila-esc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:22px;align-items:center}
+  .tel{width:var(--telw,390px);height:844px;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line2);background:var(--page);box-shadow:0 12px 40px rgba(0,0,0,.18);flex:none}
+  body.alto-completo .tel{height:auto;padding-top:56px}
+  body.alto-completo .tel .hoja{position:relative;height:auto}
+  body.alto-completo .tel .hoja .cuerpo{overflow:visible}
+  .tel .velo,.esc .velo{position:absolute;inset:0;background:var(--overlay)}
+  .hoja{position:absolute;left:0;right:0;bottom:0;height:calc(100% - 56px);background:var(--hoja);border-top:1px solid var(--hoja-borde);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  .hoja .asa{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 0;flex:none}
+  .cab{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px 10px 20px;border-bottom:1px solid var(--line)}
+  .cab h3{font-family:Georgia,"Source Serif 4",serif;font-size:18px;font-weight:700;line-height:1.2}
+  .cab .sub{font-size:11.5px;color:var(--tx3);margin-top:2px;line-height:1.45}
+  .x{width:32px;height:32px;border:1px solid var(--line2);border-radius:99px;background:none;color:var(--tx3);font-family:var(--mono);font-size:14px;flex:none}
+  .hoja .cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 20px 24px}
+  .esc{width:1100px;position:relative;border-radius:14px;border:1px solid var(--line2);overflow:hidden;background:var(--page);padding:40px 20px;display:flex;justify-content:center}
+  .esc .panel720{position:relative;width:100%;max-width:720px;background:var(--hoja);border:1px solid var(--line2);border-radius:16px;padding:26px 28px 24px}
+  .esc .cab{padding:0 0 0;border-bottom:none;align-items:flex-start;margin-bottom:6px}
+  .esc .cab h3{font-size:22px}
+  .esc .cab .sub{font-size:13px;margin-top:6px}
+  .esc .cuerpo{margin-top:14px}
+  .estado{position:absolute;top:10px;left:12px;z-index:3;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px}
+
+  /* ═════════════ LA PLANILLA (lo que se implementa) ═════════════ */
+  .pb{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+  .pb:first-child{margin-top:0;padding-top:0;border-top:none}
+  .pb-t{font-size:14px;font-weight:600;color:var(--tx);margin-bottom:3px}
+  .pb-b{font-size:13px;line-height:1.5;color:var(--tx3);margin-bottom:12px}
+  .pb-u{font-size:11px;color:var(--tx3);margin:0 0 6px}
+  .pl{width:100%;border-collapse:collapse;font-family:var(--mono);font-variant-numeric:tabular-nums;table-layout:fixed}
+  .pl th,.pl td{padding:6px 0 6px 6px;text-align:right;white-space:nowrap;font-size:11px;line-height:1.3;color:var(--tx);border-bottom:1px solid var(--line);font-weight:400}
+  .pl col.c-anio{width:22%}
+  .pl thead th{font-family:var(--sans);font-size:10.5px;font-weight:600;color:var(--tx3);padding-bottom:7px;vertical-align:bottom;white-space:normal;line-height:1.2}
+  .pl th:first-child,.pl td:first-child{text-align:left;padding-left:0}
+  .pl tbody td:first-child{color:var(--tx3);font-family:var(--sans);font-size:11.5px;white-space:normal}
+  .pl tbody td:first-child small{display:block;font-size:10px;color:var(--tx3);margin-top:1px}
+  .pl tr.ent td:first-child{color:var(--tx);font-weight:600}
+  .pl td.rojo{color:var(--signal)}
+  .pl tr.tot td{font-weight:700;border-top:1.5px solid var(--tx);border-bottom:none;padding-top:8px}
+  .pl tr.tot td:first-child{color:var(--tx);font-weight:600}
+  .esc .pl th,.esc .pl td{font-size:12px;padding:7px 0 7px 10px}
+  .esc .pl thead th{font-size:11px}
+  .esc .pl col.c-anio{width:18%}
+  .fuente{font-size:11.5px;line-height:1.55;color:var(--tx3);margin-top:10px}
+  .fuente b{font-weight:600;color:var(--tx2)}
+  /* indicadores: el resultado DEBAJO de la cuenta, en las dos formas */
+  .ind{padding:11px 0;border-bottom:1px solid var(--line)}
+  .ind:last-of-type{border-bottom:none}
+  .ind-n{font-size:13px;font-weight:600;color:var(--tx)}
+  .ind-n{display:flex;align-items:center;gap:2px}
+  .i{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-5px -5px -5px -1px;padding:0;background:none;border:none;flex:none}
+  .i::before{content:"i";display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:99px;border:1.2px solid var(--tx4);font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:10px;line-height:1;color:var(--tx3)}
+  .pl-nota{font-size:11px;color:var(--tx3);margin-top:6px}
+  .ind-f{font-size:12px;color:var(--tx3);line-height:1.45;margin-top:2px}
+  .ind-c{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--tx2);margin-top:6px;line-height:1.55}
+  .ind-c span{display:block}
+  .ind-r{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--tx);margin-top:3px}
+  .ind-r.rojo{color:var(--signal)}
+  .esc .ind{display:grid;grid-template-columns:40% 1fr;gap:4px 24px}
+  .esc .ind-c{margin-top:0}
+  .esc .ind-r{grid-column:2}
+  .esc .ind-f{grid-column:1}
+  .esc .ind .der{grid-column:2;grid-row:1 / span 2}
+  /* la fila que remite a «Tu resultado» */
+  .remite{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:baseline;padding:12px 0 0;margin-top:4px;border-top:1px solid var(--line)}
+  .remite .k{font-size:13px;font-weight:600;color:var(--tx)}
+  .remite .s{font-size:11.5px;color:var(--tx3);grid-column:1;line-height:1.45}
+  .remite .v{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;grid-column:2;grid-row:1}
+  .remite .lnk{grid-column:1 / -1;font-size:12px;font-weight:600;color:var(--tx);text-decoration:underline;text-underline-offset:3px;margin-top:6px}
+  .pie{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--tx3);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">«Cómo se calcula» · la planilla para rehacer la cuenta</h1>
+  <p class="subx">Mockup del 23-sep-2026. Tres filas reales, cada una en la hoja de teléfono (390) y en el panel de escritorio (1100, modal de 720). Queda el flujo por año en cinco columnas y los indicadores con el resultado bajo la cuenta; sale la venta al año 10, que ahora es una fila que remite a «Tu resultado». Todas las cifras salen del motor, con la cadena de cada página.</p>
+  <div class="panel">
+    <span class="clab">Moneda</span>
+    <span class="seg" id="seg-mon"><button class="on" data-mon="clp">CLP</button><button data-mon="uf">UF</button></span>
+    <span class="clab">Tema</span>
+    <span class="seg" id="seg-tema"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Teléfono</span>
+    <span class="seg" id="seg-tel"><button class="on" data-w="390">390</button><button data-w="350">350</button></span>
+    <span class="clab">Alto</span>
+    <span class="seg" id="seg-alto"><button class="on" data-a="tel">Pantalla</button><button data-a="full">Completo</button></span>
+    <span class="clab">Montos en escritorio</span>
+    <span class="seg" id="seg-esc"><button class="on" data-e="exacto">Exactos</button><button data-e="mm">Millones</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Flujo por año:</b> año · entra · gastos · cuota · flujo neto, y una fila de total. «Gastos» junta todo lo que no es cuota. En LTR son los gastos operativos, la vacancia y la rotación; en STR, la comisión o el administrador, los costos, la estabilización y el amoblamiento. En teléfono los montos van en millones con un decimal («−4,3»); el acumulado sale. La TIR no lo necesita: se calcula con el flujo de cada año, que ya está en la tabla, y la fila de total da la suma.</li>
+    <li><b>Indicadores:</b> nombre, fórmula en palabras, cuenta con los valores y, debajo, «= resultado». En teléfono la fórmula en palabras deja de esconderse: ya no compite por el ancho. En escritorio la cuenta y el resultado pasan a la columna derecha, pero el resultado sigue debajo de la cuenta.</li>
+    <li><b>Cash on cash:</b> se divide por el capital del motor, que el motor emite como campo, o sea pie, gastos de compra y puesta a punto, sin el corretaje de compra (ese sí entra en la TIR). En la fila LTR de este mockup el resultado es −12,71%. La planilla de hoy dividía por $36.157.006, que es −11,87%, y abajo escribía −12,71%.</li>
+    <li><b>La venta:</b> sale el bloque entero y su barra. Queda una fila con lo que te queda al vender, que es la cifra que usa la TIR, y un enlace a «Tu resultado», donde están el sobreprecio, la deuda y la comisión.</li>
+    <li><b>Color:</b> gastos y cuota van en tinta con el signo menos, como las salidas del capítulo II; el flujo neto va en rojo cuando es negativo. Los títulos de bloque van en tinta. No hay verde ni ocre: el año de entrega se marca con peso tipográfico, no con color.</li>
+  </ul>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>Medido al vuelo en esta página</h2><p>Ancho de cada tabla contra su contenedor, en las seis escenas. Se recalcula al cambiar la moneda o el ancho de teléfono.</p></div>
+<table class="t" id="medidas"></table>
+
+<div class="rot"><h2>Textos que dejan de ser fijos</h2><p>Lo que hoy es una frase escrita a mano y pasa a leerse del dato.</p></div>
+<table class="t">
+  <tr><td>Vacancia (LTR)</td><td>Hoy dice «0,6 mes de arriendo» en todas las filas; 394 de 1.214 tienen otra (368 tienen 1). Pasa a `inputData.vacanciaMeses`: en esta fila, <b>1,2 meses al año</b>.</td></tr>
+  <tr><td>Administración (LTR)</td><td>Hoy no se nombra. Con `usaAdministrador` se agrega «+ administración X% del arriendo» a lo que junta la columna gastos (33 filas).</td></tr>
+  <tr><td>Entrega (STR)</td><td>Hoy dice «Entrega inmediata» en todas; 26 filas tienen entrega futura. Pasa a leer `mesesOperativos` del primer año operativo y `fechaEntrega`: «el depto se entrega en agosto de 2027: el año 1 opera 1 mes». El amoblamiento entra en gastos ese año, como lo hace el motor.</td></tr>
+  <tr><td>Comisión (STR)</td><td>Hoy dice «comisión de plataforma 3%» en todas; 14 filas operan con administrador. Pasa a leer el modo de gestión: autogestión dice «comisión de plataforma 3% del ingreso»; administrador dice «administrador 25% del ingreso, en vez de la comisión de plataforma».</td></tr>
+  <tr><td>Estabilización (STR)</td><td>Ya se lee del dato (`perdidaRampUp`); queda.</td></tr>
+  <tr><td>Sub del modal</td><td>Sale «y el escenario de salida».</td></tr>
+</table>
+
+<div class="rot"><h2>Lo que sale del código</h2></div>
+<table class="t">
+  <tr><td>Bloque (c)</td><td>La venta al año 10 en `ModalCalculo.tsx` (`.kv`, `.compo`, `.compo-leg`, con `firme`, `amortizacion`, `plusvaliaNeta`, `pctFirme` y `pctProy` locales) y en `ModalCalculoStr.tsx` (`FilasDato`). Lo reemplaza la fila que remite.</td></tr>
+  <tr><td>CSS muerto</td><td>`PortadaInforme.tsx`: `.calc-tbl` (su regla de ocre ya salió), `.ind-tbl`, `.m-tblwrap`, `.m-scrollcue`, `.kv`, `.compo`, `.compo-leg`, y en el bloque móvil `.m-scrollcue{display:block}` y `.ind-tbl td:nth-child(2){display:none}`. `TokensShared.tsx`: `.pl.ind td:nth-child(2){display:none}` (el ocre de `.pl tr.ent th` ya salió con el semáforo, 8aa0fe68) y la columna fija de la tabla (`position:sticky`), que con cinco columnas ya no hace falta. `.m-block .bt` deja el rojo; `.m-block .bq` deja el serif.</td></tr>
+  <tr><td>La letra de cada bloque</td><td>«a · b · c» sale: con dos bloques no ordena nada.</td></tr>
+</table>
+
+<div class="rot"><h2>Decidido</h2></div>
+<table class="t">
+  <tr><td>Montos</td><td>Pesos exactos en escritorio (las cinco columnas miden 662 px de 662); millones con un decimal en teléfono, con el redondeo avisado bajo la tabla: «Redondeado a cien mil pesos: una fila puede no sumar por una décima. El flujo neto es siempre el del motor.» (en UF, sin decimales). En estas tres filas el redondeo descuadra <span id="descuadres" class="medida">…</span> de 30 años-fila.</td></tr>
+</table>
+
+<div class="rot"><h2>Qué ya entró en la rama y se superpone con este mockup</h2><p>Desde que se aprobó entraron los nombres de mercado con ⓘ (3eabc74b), las capas en oscuro (ba7d2e42) y el retiro del semáforo (8aa0fe68). Lo que ya tocó la planilla de hoy y cómo queda acá.</p></div>
+<table class="t">
+  <tr><td>Nombres</td><td><b>Ya entró en la planilla de hoy</b>: «Cash on cash» en LTR y STR (antes «Cash-on-cash» y «Retorno sobre el capital puesto»), «Cap rate bruto / neto», «Cap rate» en STR (antes «Cap rate STR»), sin cursiva, y la columna «NOI» pasó a «Ingreso neto». El mockup se actualiza a eso. <b>Nuevo acá</b>: sin la columna NOI la fórmula del cap rate neto se escribe «Ingreso neto anual ÷ precio» y la definición del ingreso neto baja al pie del bloque.</td></tr>
+  <tr><td>ⓘ</td><td><b>Ya entró</b>: cada nombre de indicador de la planilla lleva su ⓘ (`GlosaIndicador` en el `th`), y en el teléfono abre la hoja chica apilada sobre la planilla. En el mockup va en los mismos nombres: cap rate bruto y neto, cash on cash, cobertura, TIR; en STR cap rate, cash on cash, cobertura, punto de equilibrio y TIR. Ingreso mensual, ingreso neto mensual y flujo mensual no son indicadores y no llevan.</td></tr>
+  <tr><td>Semáforo</td><td><b>Ya entró</b>: la barra firme/proyectado del bloque (c) pasó de verde a tinta tenue, y el año de entrega pasó de ocre a tinta con peso. <b>Con este mockup</b> la barra desaparece junto con el bloque (c), así que ese arreglo queda sin efecto; el año de entrega queda como está.</td></tr>
+  <tr><td>Capas en oscuro</td><td><b>Ya entró</b>: la hoja de la planilla es un escalón más clara que el informe (#1A1A1E sobre #0C0C0E), con borde arriba y velo .86, y la escalera de tokens sube adentro. El mockup en oscuro ahora pinta así la hoja. <b>Se simplifica con este mockup</b>: la columna fija de la tabla (`position: sticky`, que tapaba lo que scrolleaba y era la única excepción de la sonda de capas) sale, porque con cinco columnas no hay scroll horizontal.</td></tr>
+  <tr><td>Referencia STR</td><td><b>Contradicción que este mockup cierra</b>: el pie de la planilla STR dice «umbral de renta corta 5,0%», la constante que el hero y el capítulo I dejaron de citar (hoy dicen «la referencia de la zona»: 5,8% en 9102b7e6 y 2,2% en 143bc85b). El pie pasa a la misma referencia (`referenciaCapRateStr`).</td></tr>
+  <tr><td>Lo que no se superpone</td><td>La salida al año 10, las cinco columnas, el resultado bajo la cuenta, el denominador del cash on cash, los textos desde el dato y el toggle de moneda: nada de eso entró todavía.</td></tr>
+</table>
+
+<script>
+const D = {"ltr":{"id":"38b9e336-a568-4871-bad7-114c196358bb","comuna":"Ñuñoa","nombre":"Depto 1D1B Ñuñoa","uf":40872,"anios":10,"vacanciaMeses":1.2,"usaAdministrador":false,"filas":[{"anio":1,"entra":6000000,"gastos":2959524,"cuota":7331736,"flujo":-4291260,"acum":-4291260,"meses":12},{"anio":2,"entra":6210000,"gastos":3052536,"cuota":7551684,"flujo":-4394220,"acum":-8685480,"meses":12},{"anio":3,"entra":6427350,"gastos":3148524,"cuota":7778244,"flujo":-4499418,"acum":-13184898,"meses":12},{"anio":4,"entra":6652307,"gastos":3247524,"cuota":8011584,"flujo":-4606801,"acum":-17791699,"meses":12},{"anio":5,"entra":6885138,"gastos":3349644,"cuota":8251932,"flujo":-4716438,"acum":-22508137,"meses":12},{"anio":6,"entra":7126118,"gastos":3455040,"cuota":8499492,"flujo":-4828414,"acum":-27336551,"meses":12},{"anio":7,"entra":7375532,"gastos":3563736,"cuota":8754480,"flujo":-4942684,"acum":-32279235,"meses":12},{"anio":8,"entra":7633676,"gastos":3675864,"cuota":9017112,"flujo":-5059300,"acum":-37338535,"meses":12},{"anio":9,"entra":7900854,"gastos":3791556,"cuota":9287628,"flujo":-5178330,"acum":-42516865,"meses":12},{"anio":10,"entra":8177384,"gastos":3910908,"cuota":9566256,"flujo":-5299780,"acum":-47816645,"meses":12}],"precio":120000192,"pie":24000038,"arriendoMes":500000,"noi":3890484,"dividendo":610978,"flujoMes":-357605,"bruta":5,"cap":3.24,"coc":-12.71,"capitalCoc":33757002,"gastosCompra":2400004,"capex":7356960,"corretaje":2400004,"ggccVac":null,"tir":0.63,"inversionInicial":36157006,"flujoAcum":-47816645,"equity":87629420,"sobreprecio":{"clp":11891911,"desviacionPct":11,"n":100,"muestraChica":false},"valorVenta":161270224,"cocCheck":-12.7122070852145},"strEnt":{"id":"9102b7e6-3bae-4174-971f-afb8bd99547c","comuna":"Santiago","nombre":"Renta Corta - Huérfanos 801, 8320176 Santiago, Región Metropolitana, Chile","uf":40878.00014167316,"anios":10,"fechaEntrega":"2027-8","estadoVenta":"futura","modo":"auto","comisionAdmin":0.2,"filas":[{"anio":1,"meses":1,"entra":610126,"comision":18304,"costos":187201,"estab":915189,"amob":2500000,"gastos":3620694,"cuota":609203,"flujo":-3619771,"acum":-3619771,"neto":404621},{"anio":2,"meses":12,"entra":7577767,"comision":227333,"costos":2313804,"estab":0,"amob":0,"gastos":2541137,"cuota":7529749,"flujo":-2493119,"acum":-6112890,"neto":5036630},{"anio":3,"meses":12,"entra":7842989,"comision":235290,"costos":2383218,"estab":0,"amob":0,"gastos":2618508,"cuota":7755642,"flujo":-2531161,"acum":-8644051,"neto":5224481},{"anio":4,"meses":12,"entra":8117493,"comision":243525,"costos":2454715,"estab":0,"amob":0,"gastos":2698240,"cuota":7988311,"flujo":-2569057,"acum":-11213108,"neto":5419254},{"anio":5,"meses":12,"entra":8401606,"comision":252048,"costos":2528356,"estab":0,"amob":0,"gastos":2780404,"cuota":8227960,"flujo":-2606759,"acum":-13819867,"neto":5621201},{"anio":6,"meses":12,"entra":8695662,"comision":260870,"costos":2604207,"estab":0,"amob":0,"gastos":2865077,"cuota":8474799,"flujo":-2644214,"acum":-16464081,"neto":5830585},{"anio":7,"meses":12,"entra":9000010,"comision":270000,"costos":2682333,"estab":0,"amob":0,"gastos":2952333,"cuota":8729043,"flujo":-2681367,"acum":-19145448,"neto":6047676},{"anio":8,"meses":12,"entra":9315010,"comision":279450,"costos":2762803,"estab":0,"amob":0,"gastos":3042253,"cuota":8990914,"flujo":-2718157,"acum":-21863605,"neto":6272757},{"anio":9,"meses":12,"entra":9641036,"comision":289231,"costos":2845688,"estab":0,"amob":0,"gastos":3134919,"cuota":9260642,"flujo":-2754524,"acum":-24618130,"neto":6506117},{"anio":10,"meses":12,"entra":9978472,"comision":299354,"costos":2931058,"estab":0,"amob":0,"gastos":3230412,"cuota":9538461,"flujo":-2790401,"acum":-27408531,"neto":6748060}],"tarifa":48733,"occ":0.4116090187931017,"ingreso":610126,"comisionPlat":18304,"administrador":0,"costos":187201,"ingNeto":404621,"cuota":609203,"flujo":-204582,"precio":144268682,"pie":28853736,"cap":3.3655620420792363,"coc":-0.07734886075885555,"capital":31739110,"dia1":{"pieCLP":28853736,"gastosCompraCLP":2885374,"amoblamientoCLP":0,"capexCLP":0,"inversionInicial":31739110},"breakEvenAnual":9852421,"be":1.345680825031544,"tir":7.45,"perdidaRampUp":915189,"flujoAcum":-27408531,"equity":104039128,"sobreprecio":null},"strAdm":{"id":"143bc85b-62b8-4069-9f7d-3036c3e70c29","comuna":"Providencia","nombre":"Renta Corta - Av. Providencia 1500, Providencia, Región Metropolitana, Chile","uf":38800,"anios":10,"fechaEntrega":null,"estadoVenta":null,"modo":"administrador","comisionAdmin":0.25,"filas":[{"anio":1,"meses":12,"entra":12966663,"comision":3241666,"costos":3671820,"estab":1620833,"amob":0,"gastos":8534319,"cuota":10033392,"flujo":-5601048,"acum":-5601048,"neto":6053177},{"anio":2,"meses":12,"entra":13420496,"comision":3355124,"costos":3781975,"estab":0,"amob":0,"gastos":7137099,"cuota":10334394,"flujo":-4050996,"acum":-9652044,"neto":6283398},{"anio":3,"meses":12,"entra":13890214,"comision":3472553,"costos":3895434,"estab":0,"amob":0,"gastos":7367987,"cuota":10644426,"flujo":-4122199,"acum":-13774243,"neto":6522226},{"anio":4,"meses":12,"entra":14376371,"comision":3594093,"costos":4012297,"estab":0,"amob":0,"gastos":7606390,"cuota":10963758,"flujo":-4193777,"acum":-17968020,"neto":6769981},{"anio":5,"meses":12,"entra":14879544,"comision":3719886,"costos":4132666,"estab":0,"amob":0,"gastos":7852552,"cuota":11292671,"flujo":-4265679,"acum":-22233699,"neto":7026992},{"anio":6,"meses":12,"entra":15400328,"comision":3850082,"costos":4256646,"estab":0,"amob":0,"gastos":8106728,"cuota":11631451,"flujo":-4337851,"acum":-26571550,"neto":7293600},{"anio":7,"meses":12,"entra":15939340,"comision":3984835,"costos":4384345,"estab":0,"amob":0,"gastos":8369180,"cuota":11980395,"flujo":-4410235,"acum":-30981785,"neto":7570160},{"anio":8,"meses":12,"entra":16497216,"comision":4124304,"costos":4515875,"estab":0,"amob":0,"gastos":8640179,"cuota":12339807,"flujo":-4482770,"acum":-35464555,"neto":7857037},{"anio":9,"meses":12,"entra":17074619,"comision":4268655,"costos":4651352,"estab":0,"amob":0,"gastos":8920007,"cuota":12710001,"flujo":-4555388,"acum":-40019943,"neto":8154613},{"anio":10,"meses":12,"entra":17672231,"comision":4418058,"costos":4790892,"estab":0,"amob":0,"gastos":9208950,"cuota":13091301,"flujo":-4628020,"acum":-44647963,"neto":8463281}],"tarifa":74713,"occ":0.47548758665741603,"ingreso":1080555,"comisionPlat":0,"administrador":270139,"costos":305985,"ingNeto":504431,"cuota":836116,"flujo":-331685,"precio":195746000,"pie":39149200,"cap":3.0923605080052723,"coc":-0.07877861108714017,"capital":50524120,"dia1":{"pieCLP":39149200,"gastosCompraCLP":3914920,"amoblamientoCLP":4550000,"capexCLP":2910000,"inversionInicial":50524120},"breakEvenAnual":18273616,"be":1.409276696710634,"tir":5.48,"perdidaRampUp":1620833,"flujoAcum":-44647963,"equity":143707205,"sobreprecio":{"clp":1938079,"desviacionPct":1,"n":77,"muestraChica":false}}};
+
+let MON = "clp", ESC = "exacto";
+const ES = (n, d = 0) => n.toLocaleString("es-CL", { minimumFractionDigits: d, maximumFractionDigits: d });
+const sg = (n) => (n < 0 ? "−" : "");
+// montos: modo compacto (millones / UF enteras) o exacto (pesos / UF con un decimal)
+function monto(n, uf, compacto, conSimbolo = false) {
+  if (MON === "uf") { const u = n / uf; const s = sg(u) + ES(Math.abs(u), compacto ? 0 : 1); return conSimbolo ? `${sg(u)}UF ${ES(Math.abs(u), compacto ? 0 : 1)}` : s; }
+  if (compacto) return sg(n) + ES(Math.abs(n) / 1e6, 1);
+  return conSimbolo ? `${sg(n)}$${ES(Math.round(Math.abs(n)))}` : sg(n) + ES(Math.round(Math.abs(n)));
+}
+const plata = (n, uf) => monto(n, uf, false, true);
+const plataMM = (n, uf) => (MON === "uf" ? monto(n, uf, true, true) : `${sg(n)}$${ES(Math.abs(n) / 1e6, 1)} MM`);
+const pct = (n, d = 2) => `${sg(n)}${ES(Math.abs(n), d)}%`;
+const unidad = (compacto) => (MON === "uf" ? "UF" + (compacto ? ", sin decimales" : "") : compacto ? "Millones de pesos" : "Pesos") + " de cada año";
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const fechaTxt = (f) => { const [y, m] = String(f).split("-").map(Number); return `${MESES[m - 1]} de ${y}`; };
+
+// ── tabla de flujo ──
+function tablaFlujo(x, compacto) {
+  const uf = x.uf, f = (n) => monto(n, uf, compacto);
+  const primerOp = x.filas.find((p) => (p.meses ?? 12) > 0);
+  const tot = x.filas.reduce((a, p) => ({ entra: a.entra + p.entra, gastos: a.gastos + p.gastos, cuota: a.cuota + p.cuota, flujo: a.flujo + p.flujo }), { entra: 0, gastos: 0, cuota: 0, flujo: 0 });
+  const filas = x.filas.map((p) => {
+    const ent = x.fechaEntrega && p === primerOp && (p.meses ?? 12) < 12;
+    return `<tr class="${ent ? "ent" : ""}"><td>${p.anio}${ent ? `<small>entrega · ${p.meses} ${p.meses === 1 ? "mes" : "meses"}</small>` : ""}</td><td>${f(p.entra)}</td><td>${f(-p.gastos)}</td><td>${f(-p.cuota)}</td><td class="${p.flujo < 0 ? "rojo" : ""}">${f(p.flujo)}</td></tr>`;
+  }).join("");
+  return `<p class="pb-u">${unidad(compacto)}</p>
+    <table class="pl"><colgroup><col class="c-anio"><col><col><col><col></colgroup>
+    <thead><tr><th>Año</th><th>Entra</th><th>Gastos</th><th>Cuota</th><th>Flujo neto</th></tr></thead>
+    <tbody>${filas}<tr class="tot"><td>Total ${x.anios} años</td><td>${f(tot.entra)}</td><td>${f(-tot.gastos)}</td><td>${f(-tot.cuota)}</td><td class="${tot.flujo < 0 ? "rojo" : ""}">${f(tot.flujo)}</td></tr></tbody></table>
+    ${compacto ? `<p class="pl-nota">${MON === "uf" ? "En UF sin decimales" : "Redondeado a cien mil pesos"}: una fila puede no sumar por una décima. El flujo neto es siempre el del motor.</p>` : ""}`;
+}
+const I = `<button class="i" aria-label="Qué es"></button>`;
+function ind(n, formula, cuenta, res, rojo) {
+  const c = (Array.isArray(cuenta) ? cuenta : [cuenta]).map((s) => `<span>${s}</span>`).join("");
+  return `<div class="ind"><div class="ind-n">${n}</div><div class="ind-f">${formula}</div><div class="der"><div class="ind-c">${c}</div><div class="ind-r${rojo ? " rojo" : ""}">= ${res}</div></div></div>`;
+}
+function remite(x) {
+  const uf = x.uf;
+  const sub = x.sobreprecio ? "valor − sobreprecio de hoy − deuda − comisión" : "valor − deuda − comisión";
+  return `<div class="remite"><div class="k">Si vendes el año ${x.anios}, te queda</div><div class="v">${plata(x.equity, uf)}</div><div class="s">${sub}. Es la cifra que usa la TIR.</div><a class="lnk">El desglose, en «Tu resultado a ${x.anios} años» →</a></div>`;
+}
+
+function planillaLtr(x, compacto) {
+  const uf = x.uf, P = (n) => plata(n, uf);
+  const gastosOpAnual = x.arriendoMes * 12 - x.noi;
+  const cob = x.arriendoMes / x.dividendo;
+  const cuentaTir = compacto
+    ? [`−${plataMM(x.inversionInicial, uf).replace("−", "")} hoy`, `los ${x.anios} flujos de la tabla`, `+${plataMM(x.equity, uf)} al vender el año ${x.anios}`]
+    : [`−${P(x.inversionInicial).replace("−", "")} hoy · los ${x.anios} flujos de la tabla · +${P(x.equity)} al vender el año ${x.anios}`];
+  return `
+  <div class="pb"><div class="pb-t">Flujo por año</div><div class="pb-b">Cada año con el arriendo, los gastos y la cuota reajustados.</div>
+    ${tablaFlujo(x, compacto)}
+    <p class="fuente">Arriendo reajustado 3,5% al año · gastos y cuota 3% al año · <b>gastos</b> = gastos comunes en vacancia + contribuciones + mantención + vacancia de ${ES(x.vacanciaMeses, 1)} meses al año + corretaje y recambio${x.usaAdministrador ? " + administración" : ""}</p>
+  </div>
+  <div class="pb"><div class="pb-t">Indicadores</div><div class="pb-b">Con el arriendo y los gastos de hoy, año base.</div>
+    ${ind(`Cap rate bruto${I}`, "Arriendo anual ÷ precio", `${P(x.arriendoMes * 12)} ÷ ${P(x.precio)}`, pct(x.bruta))}
+    ${ind(`Cap rate neto${I}`, "Ingreso neto anual ÷ precio", `(${P(x.arriendoMes * 12)} − ${P(gastosOpAnual)}) ÷ ${P(x.precio)}`, pct(x.cap))}
+    ${ind(`Cash on cash${I}`, "Flujo anual ÷ lo que pusiste el día 1 (pie + gastos de compra + puesta a punto)", `${P(x.flujoMes * 12)} ÷ ${P(x.capitalCoc)}`, pct(x.coc), x.coc < 0)}
+    ${ind(`Cobertura de cuota${I}`, "Arriendo mensual ÷ cuota", `${P(x.arriendoMes)} ÷ ${P(x.dividendo)}`, `${ES(cob, 2)}×`)}
+    ${ind(`TIR a ${x.anios} años${I}`, "La tasa que iguala lo que pones hoy con el flujo de cada año y lo que te queda al vender", cuentaTir, pct(x.tir))}
+    <p class="fuente"><b>Ingreso neto</b> = arriendo − gastos comunes en vacancia − contribuciones − mantención. Lo que pusiste el día 1 = pie ${P(x.pie)} + gastos de compra ${P(x.gastosCompra)} + puesta a punto ${P(x.capex)}. El corretaje de compra (${P(x.corretaje)}) no entra acá; en la TIR sí: hoy pones ${P(x.inversionInicial)}.</p>
+    ${remite(x)}
+  </div>`;
+}
+function planillaStr(x, compacto) {
+  const uf = x.uf, P = (n) => plata(n, uf);
+  const admin = x.modo === "administrador";
+  const primerOp = x.filas.find((p) => (p.meses ?? 12) > 0);
+  const futura = !!x.fechaEntrega && (primerOp?.meses ?? 12) < 12;
+  const amob = x.filas.reduce((a, p) => a + (p.amob || 0), 0);
+  const bajada = futura
+    ? `El depto se entrega en ${fechaTxt(x.fechaEntrega)}: el año ${primerOp.anio} opera ${primerOp.meses} ${primerOp.meses === 1 ? "mes" : "meses"}, y ahí entran la estabilización y el amoblamiento.`
+    : "Entrega inmediata: el año 1 ya opera, con la estabilización inicial descontada.";
+  const comTxt = admin ? `administrador ${ES(x.comisionAdmin * 100)}% del ingreso, en vez de la comisión de plataforma` : "comisión de plataforma 3% del ingreso";
+  const comNombre = admin ? `administrador ${ES(x.comisionAdmin * 100)}%` : "comisión 3%";
+  const coc = x.coc * 100, cob = x.ingNeto / x.cuota;
+  const cuentaTir = compacto
+    ? [`−${plataMM(x.capital, uf).replace("−", "")} hoy`, `los ${x.anios} flujos de la tabla`, `+${plataMM(x.equity, uf)} al vender el año ${x.anios}`]
+    : [`−${P(x.capital).replace("−", "")} hoy · los ${x.anios} flujos de la tabla · +${P(x.equity)} al vender el año ${x.anios}`];
+  const d1 = x.dia1;
+  return `
+  <div class="pb"><div class="pb-t">Flujo por año</div><div class="pb-b">${bajada}</div>
+    ${tablaFlujo(x, compacto)}
+    <p class="fuente">Ingreso reajustado 3,5% al año · costos y cuota 3% al año · <b>gastos</b> = ${comTxt} + luz, agua, internet, insumos, gastos comunes, mantención y contribuciones + estabilización inicial ${P(x.perdidaRampUp)}${amob > 0 ? ` + amoblamiento ${P(amob)} el año de la entrega` : ""}</p>
+  </div>
+  <div class="pb"><div class="pb-t">Indicadores</div><div class="pb-b">Con la tarifa y la ocupación estimadas de hoy, año base.</div>
+    ${ind("Ingreso mensual", "Tarifa por noche × ocupación × 365 ÷ 12", `${P(x.tarifa)} × ${pct(x.occ * 100, 1)} × 365 ÷ 12`, P(x.ingreso))}
+    ${ind("Ingreso neto mensual", `Ingreso − ${admin ? "administrador" : "comisión"} − costos`, `${P(x.ingreso)} − ${P(x.comisionPlat + x.administrador)} − ${P(x.costos)}`, P(x.ingNeto))}
+    ${ind(`Cap rate${I}`, "Ingreso neto anual ÷ precio", `${P(x.ingNeto * 12)} ÷ ${P(x.precio)}`, pct(x.cap))}
+    ${ind("Flujo mensual", "Ingreso neto − cuota", `${P(x.ingNeto)} − ${P(x.cuota)}`, P(x.flujo), x.flujo < 0)}
+    ${ind(`Cash on cash${I}`, "Flujo anual ÷ lo que pusiste el día 1", `${P(x.flujo * 12)} ÷ ${P(x.capital)}`, pct(coc), coc < 0)}
+    ${ind(`Cobertura de cuota${I}`, "Ingreso neto ÷ cuota", `${P(x.ingNeto)} ÷ ${P(x.cuota)}`, `${ES(cob, 2)}×`)}
+    ${ind(`Punto de equilibrio${I}`, "Ingreso que cubre costos y cuota ÷ ingreso estimado", `${P(x.breakEvenAnual)} ÷ ${P(x.ingreso * 12)}`, `${ES(Math.round(x.be * 100))}%`)}
+    ${ind(`TIR a ${x.anios} años${I}`, "La tasa que iguala lo que pones hoy con el flujo de cada año y lo que te queda al vender", cuentaTir, pct(x.tir))}
+    <p class="fuente">Lo que pusiste el día 1 = pie ${P(d1.pieCLP)} + gastos de compra ${P(d1.gastosCompraCLP)}${d1.amoblamientoCLP > 0 ? ` + amoblamiento ${P(d1.amoblamientoCLP)}` : ""}${d1.capexCLP > 0 ? ` + puesta a punto ${P(d1.capexCLP)}` : ""}${futura && amob > 0 ? ". El amoblamiento no va el día 1: con entrega futura se compra al recibir el depto y está en la tabla" : ""} · costos = luz, agua, internet, insumos, gastos comunes, mantención y contribuciones</p>
+    ${remite(x)}
+  </div>`;
+}
+
+const ESCENAS = [
+  { k: "ltr", tit: "LTR con sobreprecio", url: "/analisis/38b9e336-a568-4871-bad7-114c196358bb", nota: "Ñuñoa 1D1B · sobreprecio de 11% sobre 100 avisos · vacancia 1,2 meses · cash on cash con el denominador del motor" },
+  { k: "strEnt", tit: "STR con entrega futura", url: "/analisis/renta-corta/9102b7e6-3bae-4174-971f-afb8bd99547c", nota: "Santiago · entrega en agosto de 2027 · el año 1 opera un mes y carga la estabilización y el amoblamiento · autogestión" },
+  { k: "strAdm", tit: "STR con administrador", url: "/analisis/renta-corta/143bc85b-62b8-4069-9f7d-3036c3e70c29", nota: "Providencia · administrador al 25% · entrega inmediata · sobreprecio de 1%" },
+];
+const SUB = "La planilla detrás de cada cifra: el flujo año a año y los indicadores con sus valores sustituidos.";
+const REF_ZONA = { strEnt: "5,8%", strAdm: "2,2%" }; // leídas del hero en localhost el 23-sep-2026: la misma referencia del capítulo I
+function pie(x) { return `<div class="pie">Motor Franco · UF ${ES(Math.round(x.uf))} · proyección a ${x.anios} años${x.k === "ltr" ? "" : ` · referencia de la zona ${REF_ZONA[x.k]}`}</div>`; }
+
+function render() {
+  const cont = document.getElementById("escenas");
+  cont.innerHTML = ESCENAS.map((e) => {
+    const x = { ...D[e.k], k: e.k }; const esLtr = e.k === "ltr";
+    const cuerpoTel = esLtr ? planillaLtr(x, true) : planillaStr(x, true);
+    const cuerpoEsc = esLtr ? planillaLtr(x, ESC === "mm") : planillaStr(x, ESC === "mm");
+    return `<div class="rot"><h2>${e.tit}</h2><p>${e.nota} · <span class="medida">${e.url}</span></p></div>
+    <div class="fila-esc">
+      <div class="tel" data-esc="${e.k}-tel"><div class="velo"></div><span class="estado">teléfono</span>
+        <div class="hoja"><div class="asa"></div><div class="cab"><div><h3>Cómo se calcula</h3><div class="sub">${SUB}</div></div><button class="x">✕</button></div>
+          <div class="cuerpo">${cuerpoTel}${pie(x)}</div></div></div>
+      <div class="esc" data-esc="${e.k}-1100"><div class="velo"></div><span class="estado">escritorio · 1100</span>
+        <div class="panel720"><div class="cab"><div><h3>Cómo se calcula</h3><div class="sub">${SUB}</div></div><button class="x">✕</button></div>
+          <div class="cuerpo">${cuerpoEsc}${pie(x)}</div></div></div>
+    </div>`;
+  }).join("");
+  medir();
+}
+function medir() {
+  const filas = [...document.querySelectorAll("[data-esc]")].map((esc) => {
+    const t = esc.querySelector(".pl"); const cont = t.parentElement;
+    const inds = [...esc.querySelectorAll(".ind")]; const indMal = inds.filter((i) => i.scrollWidth > i.clientWidth + 1).length;
+    // table-layout fixed: el desborde no agranda la tabla, se ve en la celda
+    const celdasMal = [...t.querySelectorAll("td,th")].filter((c) => c.scrollWidth > c.clientWidth + 1).length;
+    const ok = t.scrollWidth <= cont.clientWidth + 1 && celdasMal === 0;
+    return `<tr><td>${esc.dataset.esc}</td><td class="medida ${ok ? "med-ok" : "med-mal"}">flujo: tabla ${t.scrollWidth} px en ${cont.clientWidth} px · celdas que desbordan ${celdasMal}${ok ? "" : " · DESBORDA"}</td><td class="medida ${indMal ? "med-mal" : "med-ok"}">indicadores que desbordan: ${indMal} de ${inds.length}</td></tr>`;
+  });
+  document.getElementById("medidas").innerHTML = filas.join("");
+  // descuadres del redondeo a un decimal (millones), en las tres filas
+  let n = 0, tot = 0;
+  for (const k of ["ltr", "strEnt", "strAdm"]) for (const p of D[k].filas) {
+    tot++; const r = (v) => Math.round(v / 1e5) / 10;
+    if (Math.abs(r(p.entra) - r(p.gastos) - r(p.cuota) - r(p.flujo)) > 0.049) n++;
+  }
+  document.getElementById("descuadres").textContent = `${n}`;
+}
+const conSeg = (id, attr, fn) => document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener("click", () => { document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); }));
+conSeg("seg-mon", "mon", (v) => { MON = v; render(); });
+conSeg("seg-esc", "e", (v) => { ESC = v; render(); });
+conSeg("seg-tema", "t", (v) => { document.documentElement.dataset.theme = v; });
+conSeg("seg-tel", "w", (v) => { document.documentElement.style.setProperty("--telw", v + "px"); medir(); });
+conSeg("seg-alto", "a", (v) => { document.body.classList.toggle("alto-completo", v === "full"); medir(); });
+render();
+</script>
+</body>
+</html>
