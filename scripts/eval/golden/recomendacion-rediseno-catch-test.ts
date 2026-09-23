@@ -24,8 +24,12 @@
 //      `:focus-visible` desde antes del rediseño; es lo que una reescritura de la fila
 //      deja caer sin que se note.
 //
-//   7. LA PUERTA DE LOS CAPÍTULOS NO CAMBIA. Son un acordeón que expande en el mismo
-//      lugar, no un pop-up. `.fila-nav` cambia la FILA, no adónde lleva.
+//   7. LA PUERTA DE LOS CAPÍTULOS ES EL POP-UP (reescrito el 23-sep-2026). El acta
+//      original fijaba «un acordeón que expande en el mismo lugar, no un pop-up;
+//      convertirlos es un arco propio». Ese arco fue la mudanza del 23-sep: la fila
+//      sigue igual y el clic abre el `Modal` (hoja en teléfono, panel en escritorio).
+//      Lo que se fija ahora es la puerta nueva: el cuerpo inline queda solo para la
+//      variante «hallazgo» y el capítulo abierto se monta dentro del Modal.
 //
 // Corre dentro del QUICK (tier "recomendacion-rediseno") y standalone:
 //   node --import tsx scripts/eval/golden/recomendacion-rediseno-catch-test.ts
@@ -150,12 +154,16 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   else if (!/grid-template-columns:\s*1fr auto auto/.test(head)) F("6 · la fila de capítulo no usa la rejilla «1fr auto auto» de la primitiva");
 }
 
-// ── 7 · la puerta no cambia ───────────────────────────────────────────────
+// ── 7 · la puerta es el pop-up (acta del 23-sep-2026) ─────────────────────
 {
-  // El acordeón sigue expandiendo en el mismo lugar. Si alguien lo convierte en modal,
-  // eso es el arco de los pop-ups y no entra de pasada por un cambio de fila.
-  if (!/\{open && f\.cuerpo && \(/.test(ACO)) {
-    F("7 · los capítulos dejaron de expandirse en el mismo lugar. `.fila-nav` cambia la FILA, no adónde lleva; convertirlos en pop-up es un arco propio.");
+  // REESCRITO el 23-sep-2026, mudanza de los once capítulos al pop-up. El predicado viejo
+  // (`{open && f.cuerpo && (`) fijaba el acordeón; ahora el cuerpo inline queda gateado a la
+  // variante «hallazgo» y el capítulo abierto vive dentro del Modal.
+  if (!/\{open && !esCapitulo && f\.cuerpo && \(/.test(ACO)) {
+    F("7 · el cuerpo inline volvió a montarse para los capítulos: desde el 23-sep-2026 la puerta de los capítulos es el pop-up, y el acordeón in-place queda solo para los hallazgos");
+  }
+  if (!/<Modal\s+abierto=\{filaAbierta !== null\}/.test(ACO)) {
+    F("7 · el capítulo abierto ya no se monta dentro del Modal (hoja en teléfono, panel en escritorio)");
   }
   // INVERTIDO el 12-sep-2026 (retiro del andamio): las piezas compartidas ya no leen ningún
   // interruptor; el rediseño es el único camino en las dos modalidades.
@@ -380,7 +388,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo con el mix, la card sin firma y con CTA blanco, lo tuyo primero en su caja, Resultado con signo y después de la caja, «Alternativamente» en una oración, la píldora de la bajada solo con salida, las tres acotaciones iguales, el chip en el pop-up, y los capítulos sin romano, con foco y sin cambiar de puerta");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo con el mix, la card sin firma y con CTA blanco, lo tuyo primero en su caja, Resultado con signo y después de la caja, «Alternativamente» en una oración, la píldora de la bajada solo con salida, las tres acotaciones iguales, el chip en el pop-up, y los capítulos sin romano, con foco y abriendo en el pop-up");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

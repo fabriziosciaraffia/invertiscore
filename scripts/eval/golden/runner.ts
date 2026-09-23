@@ -75,6 +75,7 @@ import { runResultadoCapituloTier } from "./resultado-capitulo-catch-test";
 import { runPlusvaliaCapituloTier } from "./plusvalia-capitulo-catch-test";
 import { runOcupacionStrTier } from "./ocupacion-str-catch-test";
 import { runHojaModalTier } from "./hoja-modal-catch-test";
+import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
 import { runMixStrTier } from "./mix-str-catch-test";
@@ -389,6 +390,11 @@ async function printStrSemantic() {
   // ── Tier HOJA-MODAL (23-sep-2026): el Modal con dos formas por ancho — hoja bajo 768 (body
   //    bloqueado, historial consumido, arrastre) y panel de 720 arriba. 26 mutaciones en rojo. ──
   totalHard += runHojaModalTier().hard;
+  // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
+  //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
+  //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es
+  //    `mudanza-capitulos-sonda.ts`, standalone contra el dev server. ──
+  totalHard += runMudanzaCapitulosTier().hard;
   // ── Tier STANDALONE (17-sep-2026): los catch-tests que corrían SOLO a mano. Nueve de los
   // 28 estaban en rojo cuando se los corrió, y `zona` llevaba 14 días protegiendo una regla
   // derogada a propósito — o sea que su rojo ya no se podía leer. Entran los 12 que no tocan
