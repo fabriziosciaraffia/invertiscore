@@ -22,7 +22,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runAnalysis } from "../../../src/lib/analysis";
-import { capRateDisplayPct } from "../../../src/lib/cap-rate-hallazgo";
+import { capRateDisplayPct, capRateNetoLtrPct } from "../../../src/lib/cap-rate-hallazgo";
 import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 
 const fallas: string[] = [];
@@ -38,31 +38,33 @@ export function runCapRateRedondeoTier(): { hard: number } {
     if (capRateDisplayPct(crudo) !== esperado) F(`1 · capRateDisplayPct(${crudo}) = ${capRateDisplayPct(crudo)}, esperaba ${esperado}`);
   }
   if (capRateDisplayPct(Number((2.8482721364822945).toFixed(2))) === capRateDisplayPct(2.8482721364822945)) F("1 · PISO · el fixture ya no distingue el doble redondeo del simple");
-  // 2 · hero ≡ capítulo en las seeds, con la misma expresión que usa LosNumeros
+  // 2 · hero ≡ hallazgo en las seeds, con la misma función que usa LosNumeros. Desde el
+  //     23-sep-2026 la cifra es el cap rate NETO de mercado (`rentabilidadNeta`); el capítulo I
+  //     ya no la muestra (compara bruto contra bruto), pero el hallazgo la lleva y el prompt la cita.
   for (const s of [...GOLDEN_SEEDS, ...BORDE_SEEDS]) {
     const r: any = runAnalysis(s.input, GOLDEN_UF, s.mediana, GOLDEN_ASOF);
     const h = (r.hallazgos ?? []).find((x: any) => x.id === "cap_rate") ?? r.metrics?.hallazgoCapRate;
     if (!h) continue;
-    const hero = pct1(r.metrics.hallazgoCapRate?.valor.capRatePct ?? capRateDisplayPct(r.metrics.capRate));
-    const cap = pct1(h.valor.capRatePct);
-    if (hero !== cap) F(`2 · ${s.key}: hero «${hero}» ≠ capítulo «${cap}»`);
-    // y la cifra del hallazgo sale del CRUDO (noi ÷ precio), no de metrics.capRate ya
-    // redondeado a dos: si el builder redondeara dos veces, hero y capítulo coincidirían en
-    // la cifra equivocada y el invariante de arriba quedaría verde y vacío.
-    const crudo = r.metrics.precioCLP > 0 ? (r.metrics.noi / r.metrics.precioCLP) * 100 : 0;
-    if (h.valor.capRatePct !== capRateDisplayPct(crudo)) F(`2 · ${s.key}: el hallazgo (${h.valor.capRatePct}) no es el crudo redondeado una vez (${capRateDisplayPct(crudo)})`);
+    const heroN = capRateNetoLtrPct(r.metrics);
+    if (heroN == null || pct1(heroN) !== pct1(h.valor.capRatePct)) F(`2 · ${s.key}: hero «${heroN}» ≠ hallazgo «${h.valor.capRatePct}»`);
+    // y la cifra sale del CRUDO (arriendo − todos los gastos, sobre el precio), no de
+    // `rentabilidadNeta` ya redondeada a dos: si se redondeara dos veces, hero y hallazgo
+    // coincidirían en la cifra equivocada y el invariante de arriba quedaría verde y vacío.
+    const M = r.metrics;
+    const crudo = M.precioCLP > 0 ? ((M.ingresoMensual * 12 - (M.egresosMensuales - M.dividendo) * 12) / M.precioCLP) * 100 : 0;
+    if (h.valor.capRatePct !== capRateDisplayPct(crudo) || heroN !== capRateDisplayPct(crudo)) F(`2 · ${s.key}: el neto (${h.valor.capRatePct} / ${heroN}) no es el crudo redondeado una vez (${capRateDisplayPct(crudo)})`);
   }
   // 3 · cableado
   const hero = leer("src/components/analysis/LosNumeros.tsx");
-  if (!/pct1\(metrics\.hallazgoCapRate\?\.valor\.capRatePct \?\? capRateDisplayPct\(metrics\.capRate\)\)/.test(hero)) F("3 · LosNumeros no muestra valor.capRatePct del hallazgo (con capRateDisplayPct de respaldo)");
-  if (/pct1\(metrics\.capRate\)/.test(hero)) F("3 · LosNumeros vuelve a formatear metrics.capRate a pelo");
+  if (!/const n = capRateNetoLtrPct\(metrics\);/.test(hero)) F("3 · LosNumeros no muestra el cap rate neto con capRateNetoLtrPct");
+  if (/metrics\.capRate\b/.test(hero)) F("3 · LosNumeros vuelve a leer metrics.capRate");
   const builder = leer("src/lib/cap-rate-hallazgo.ts");
   if (!/const capRatePct = capRateDisplayPct\(p\.capRatePct\);/.test(builder)) F("3 · el builder del hallazgo no usa capRateDisplayPct");
   if (fallas.length) {
     console.log(`   caprate-redondeo ✗ ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     - ${f}`);
   } else {
-    console.log("   caprate-redondeo ✓ (una sola forma de redondear el cap rate; hero ≡ capítulo en las 13 seeds)");
+    console.log("   caprate-redondeo ✓ (una sola forma de redondear el cap rate; hero ≡ hallazgo en las 13 seeds, el neto desde el crudo)");
   }
   return { hard: fallas.length };
 }

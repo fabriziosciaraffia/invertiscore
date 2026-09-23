@@ -50,7 +50,7 @@ import {
   type CapRefComunaSnapshot,
   type MuestraCapRef,
 } from "../../../src/lib/capref-comuna";
-import { CAP_RATE_REF_NACIONAL, capRateDisplayPct, getCapRefComuna } from "../../../src/lib/cap-rate-hallazgo";
+import { CAP_RATE_REF_NACIONAL, capRateDisplayPct, capRateNetoLtrPct, getCapRefComuna } from "../../../src/lib/cap-rate-hallazgo";
 import { BDO_CAPRATE_COMUNA, bdoCapRateNetoComuna } from "../../../src/lib/data/bdo-caprate-comuna";
 import { normalizeComuna } from "../../../src/lib/comuna-stats";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
@@ -143,7 +143,8 @@ export function runCapRefComunaTier(): { hard: number } {
   if (!h) { F("6 · el hallazgo cap_rate debía existir"); } else {
     if (h.valor.base !== "bruta" || h.valor.nivel !== "celda" || h.valor.scope !== "comuna") F(`6 · con referencia de celda el hallazgo compara en base bruta, nivel celda, scope comuna (dio ${h.valor.base}/${h.valor.nivel}/${h.valor.scope})`);
     if (h.valor.sujetoPct !== capRateDisplayPct(brutoSujeto)) F(`6 · sujetoPct debía ser la bruta del sujeto redondeada una vez (${capRateDisplayPct(brutoSujeto)}), dio ${h.valor.sujetoPct}`);
-    if (h.valor.capRatePct !== capRateDisplayPct((base.metrics.noi / base.metrics.precioCLP) * 100)) F("6 · capRatePct sigue siendo el neto del hero");
+    // capRatePct es el neto DEL HERO: desde el 23-sep-2026, `rentabilidadNeta` (capRateNetoLtrPct).
+    if (h.valor.capRatePct !== capRateNetoLtrPct(base.metrics)) F("6 · capRatePct no es el cap rate neto del hero (rentabilidadNeta)");
     if (h.valor.capRefPct !== capRateDisplayPct(refCelda.bruto as number)) F("6 · capRefPct es el bruto inyectado");
     if (Math.abs(h.valor.gapPts - Math.round((h.valor.sujetoPct - h.valor.capRefPct) * 10) / 10) > 1e-9) F("6 · gapPts = sujeto − referencia, en la base bruta");
     if (h.direccion !== "adverso") F("6 · 1,5 puntos bajo la referencia es adverso");
@@ -151,10 +152,12 @@ export function runCapRefComunaTier(): { hard: number } {
     if (!/avisos de/.test(h.fraseCanonica) || /referencia nacional/.test(h.fraseCanonica)) F("6 · la frase nombra los avisos de la comuna, no la referencia nacional");
   }
   const sin: any = base.metrics.hallazgoCapRate;
-  if (!sin || sin.valor.nivel !== "nacional" || sin.valor.base !== "neta" || sin.valor.capRefPct !== CAP_RATE_REF_NACIONAL) F("6 · sin referencia inyectada el hallazgo declara nivel nacional, base neta, 4,0");
+  // Sin referencia, el nacional llevado a BRUTO con el factor de BDO (4,0 ÷ 0,8 = 5,0): el
+  // capítulo compara siempre bruto contra bruto (23-sep-2026).
+  if (!sin || sin.valor.nivel !== "nacional" || sin.valor.base !== "bruta" || sin.valor.capRefPct !== brutoImplicitoBdo(CAP_RATE_REF_NACIONAL) || sin.valor.sujetoPct !== capRateDisplayPct(base.metrics.rentabilidadBruta)) F("6 · sin referencia inyectada el hallazgo declara nivel nacional y compara bruto contra 5,0 bruto");
   // La neutralización sigue a la referencia: con la referencia igual a la bruta del sujeto, el
   // arriendo neutralizado es el propio y la decisión no se mueve (magnitud 0); con el nacional
-  // (neto 4 contra un neto distinto) sí se mueve.
+  // (5,0 bruto contra una bruta distinta) sí se mueve.
   const refIgual: CapRefComunaSnapshot = { ...celda90, bruto: brutoSujeto };
   const igual: any = runAnalysis(seed.input, GOLDEN_UF, { ...seed.mediana, capRefComuna: refIgual }, GOLDEN_ASOF);
   const magIgual = igual.metrics.hallazgoCapRate?.magnitudContinua ?? -1;
@@ -163,7 +166,7 @@ export function runCapRefComunaTier(): { hard: number } {
   if (magNac === 0) F("6 · PISO · GS-1 contra el nacional debía mover la decisión (magnitud 0): el fixture ya no distingue la referencia");
   const an = leer("src/lib/analysis.ts");
   if (/CAP_RATE_REF_NACIONAL/.test(an)) F("6 · analysis.ts vuelve a neutralizar contra CAP_RATE_REF_NACIONAL a pelo");
-  if (!/solveArriendoForCapRate\(input, ufClp, medianaComuna, refNeu\.pct, refNeu\.base\)/.test(an)) F("6 · la neutralización no usa la referencia resuelta (pct y base)");
+  if (!/solveArriendoForCapRate\(input, ufClp, medianaComuna, refNeu\.pct\)/.test(an)) F("6 · la neutralización no usa la referencia resuelta");
   if (!/getCapRefComuna\(input\.comuna, medianaComunaVentaUF\?\.capRefComuna\)/.test(an)) F("6 · calcMetrics no pasa la referencia inyectada al builder");
   for (const p of ["src/app/api/analisis/route.ts", "src/app/api/analisis/recalculate/route.ts"]) {
     if (!/capref_comuna_snapshot: medianaComuna\.capRefComuna \?\? null/.test(leer(p))) F(`6 · ${p} no persiste capref_comuna_snapshot`);

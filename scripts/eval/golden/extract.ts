@@ -122,7 +122,10 @@ export function engineKpiValue(h: Hallazgo): number | null {
   switch (h.id) {
     // abs() donde el body narra magnitud y la dirección va en h.direccion (flujo de
     // bolsillo "$X", plusvalía negativa "perdió X%"): B1 compara magnitudes.
-    case "cap_rate": return typeof v.capRatePct === "number" ? v.capRatePct : null;
+    // La frase y la card narran lo que se compara: el BRUTO (`sujetoPct`), siempre desde el
+    // 23-sep-2026. Antes las seeds caían al peldaño nacional, neto contra neto, y ahí `capRatePct`
+    // coincidía con el cuerpo; ya no hay rama neta.
+    case "cap_rate": return typeof v.sujetoPct === "number" ? v.sujetoPct : null;
     case "sobreprecio": return typeof v.desviacionPct === "number" ? Math.abs(v.desviacionPct) : null;
     case "flujo_mensual": return typeof v.flujoNetoMensualCLP === "number" ? Math.abs(v.flujoNetoMensualCLP) : null;
     case "plusvalia": return typeof v.anualizadaPct === "number" ? Math.abs(v.anualizadaPct) : null;

@@ -26,7 +26,8 @@
 //
 // ACTA 23-sep-2026 (decisión de Fabrizio, el ⓘ de los indicadores): LA NOMENCLATURA SE DA VUELTA
 // A PROPÓSITO. El capítulo I nombra la cifra con su nombre de mercado —«Cap rate bruto» (o
-// «Cap rate neto» cuando la referencia es neta) en LTR, «Cap rate» en STR—, sin cursiva y con su
+// «Cap rate neto» cuando la referencia era neta, rama retirada el 23-sep-2026: el capítulo compara
+// siempre bruto contra bruto) en LTR, «Cap rate» en STR—, sin cursiva y con su
 // ⓘ, que es quien explica qué es. Por eso (2) se invierte: la explicación visible YA NO define la
 // cifra (lo hacía porque el ⓘ no abría en el teléfono); dice de dónde sale la referencia. Y el
 // umbral STR del render lo lee `referenciaCapRateStr`, la misma función que el hero, en vez de
@@ -162,10 +163,11 @@ export function runCuantoRentaTier(): { hard: number } {
   if (!/\{dial && \(/.test(str) || !/\{sensStr && beBar && \(/.test(str)) F("6 · STR: el dial o el break-even dejaron de estar fuera de la bifurcación");
   const posBe = str.indexOf("const be = sensStr"); const posCruce = str.indexOf("const cruce = holgura");
   if (posBe < 0 || posCruce < 0 || posBe > posCruce) F("5 · STR: el break-even se lee después de la copy que lo cita");
-  if (NOMBRE_RENTABILIDAD.ltr !== "Cap rate bruto" || NOMBRE_RENTABILIDAD.ltrNeta !== "Cap rate neto" || NOMBRE_RENTABILIDAD.str !== "Cap rate") F("4 · la nomenclatura es «Cap rate bruto» / «Cap rate neto» / «Cap rate»");
+  // El capítulo I LTR nombra solo el bruto: compara siempre bruto contra bruto (23-sep-2026).
+  if (NOMBRE_RENTABILIDAD.ltr !== "Cap rate bruto" || "ltrNeta" in NOMBRE_RENTABILIDAD || NOMBRE_RENTABILIDAD.str !== "Cap rate") F("4 · la nomenclatura del capítulo es «Cap rate bruto» / «Cap rate», sin neto");
   if (NOMBRE_RENTABILIDAD.ltr !== GLOSAS.capRateBruto.nombre || NOMBRE_RENTABILIDAD.str !== GLOSAS.capRateStr.nombre) F("4 · el apellido del capítulo y el título del ⓘ no son el mismo nombre");
   // El ⓘ va en el sub del capítulo abierto (campo `glosa`), no en la fila.
-  if (!/glosa: <GlosaIndicador glosa=\{v\.base === "bruta" \? "capRateBruto" : "capRateNeto"\}/.test(ltr)) F("4 · LTR: el capítulo I no lleva el ⓘ del cap rate en el sub");
+  if (!/glosa: <GlosaIndicador glosa="capRateBruto"/.test(ltr)) F("4 · LTR: el capítulo I no lleva el ⓘ del cap rate bruto en el sub");
   if (!/glosa: <GlosaIndicador glosa="capRateStr"/.test(str)) F("4 · STR: el capítulo I no lleva el ⓘ del cap rate en el sub");
 
   if (fallas.length) {

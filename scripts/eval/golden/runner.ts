@@ -79,6 +79,7 @@ import { runInfoIndicadoresTier } from "./info-indicadores-catch-test";
 import { runCapasOscuroTier } from "./capas-oscuro-catch-test";
 import { runSinSemaforoTier } from "./sin-semaforo-catch-test";
 import { runPlanillaCalculoTier } from "./planilla-calculo-catch-test";
+import { runCapRateNetoTier } from "./cap-rate-neto-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -407,6 +408,9 @@ async function printStrSemantic() {
   //    denominador del motor, textos desde el dato y la moneda del toggle. Lo del DOM (tres filas ×
   //    390/350/1100 × temas × monedas) lo mide `planilla-calculo-sonda.ts`, standalone. ──
   totalHard += runPlanillaCalculoTier().hard;
+  // ── Una sola «cap rate neto» (23-sep-2026): rentabilidadNeta en el hero, el pop-up, la planilla,
+  //    el anexo y el prompt; capRate no se muestra; el capítulo I compara siempre bruto contra bruto. ──
+  totalHard += runCapRateNetoTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es
