@@ -11,7 +11,8 @@
 //
 // Fija CINCO cosas:
 //
-//   1. LA VERSIÓN ES 25. El sello de la prosa y la invalidación lazy cuelgan de ella.
+//   1. LA VERSIÓN NO BAJA DE 25 (v26 del 23-sep-2026 la subió; el número exacto lo fija el tier
+//      de cada bump). El sello de la prosa y la invalidación lazy cuelgan de ella.
 //
 //   2. EL USER PROMPT LLEVA LAS SEIS con nombre, puntaje y pesos, y el caso pie cero dice
 //      que la TIR no aplica y reparte su peso. Se fija sobre el TEMPLATE (el user prompt
@@ -46,7 +47,9 @@ const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").r
 const GEN = leer("src/lib/ai-generation.ts");
 
 // ── 1 · la versión ──────────────────────────────────────────────────────────
-if (PROMPT_VERSION_LTR !== 25) F(`1 · PROMPT_VERSION_LTR = ${PROMPT_VERSION_LTR}, esperado 25`);
+// Lo que v25 metió sigue vigente en las versiones que vienen después: acá se exige que la
+// versión no baje de 25. El número exacto lo fija el tier de su bump (v26: `cap-rate-neto`).
+if (PROMPT_VERSION_LTR < 25) F(`1 · PROMPT_VERSION_LTR = ${PROMPT_VERSION_LTR}, esperado ≥ 25`);
 
 // ── 2 · el user prompt: las seis, con pesos, y el pie cero ─────────────────
 {

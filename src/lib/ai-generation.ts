@@ -230,7 +230,14 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 //   no identifica una forma única de salida. Cualquier instrumento que cense por versión
 //   (`scripts/eval/editorial/censo.ts`) tiene que tolerar el campo ausente, y el próximo
 //   bump —por la razón que sea— cierra la ambigüedad solo.
-export const PROMPT_VERSION_LTR = 25;
+// v26 (23-sep-2026) · UNA SOLA «CAP RATE NETO». El user prompt citaba «Cap rate» (= `capRate`,
+// sin la vacancia ni la gestión) y aparte «Rentabilidad neta»; ahora cita una sola «Cap rate
+// neto» = `rentabilidadNeta`, la cifra que muestra el hero, y el hallazgo del capítulo I compara
+// siempre bruto contra bruto (el nacional llega 5,0 bruto). Sin el bump, la prosa ya escrita
+// seguiría citando el `capRate` viejo contra un hero que dice otro número: la contradicción que
+// este cambio cerró (decisión de Fabrizio). Regenera por lazy-on-open, como cualquier bump. Y cierra
+// la ambigüedad de v25: toda fila sellada 26 viene sin `reestructuracion`.
+export const PROMPT_VERSION_LTR = 26;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 

@@ -31,6 +31,7 @@ import { capRateNetoLtrPct, capRefNacional, capRefDesdeSnapshot, buildHallazgoCa
 import { brutoImplicitoBdo, type CapRefComunaSnapshot } from "../../../src/lib/capref-comuna";
 import { LosNumeros } from "../../../src/components/analysis/LosNumeros";
 import { buildResumenLTR } from "../../../src/lib/resumen-anexo";
+import { PROMPT_VERSION_LTR } from "../../../src/lib/ai-generation";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 
 // El JSX de los componentes compila a React.createElement bajo tsx: el global lo resuelve.
@@ -84,6 +85,11 @@ export function runCapRateNetoTier(): { hard: number } {
   const A = sinComentarios(leer("src/lib/ai-generation.ts"));
   if (!/- Cap rate neto \(descuenta gastos, vacancia y gestión\): \$\{pct\(capRateCard\)\}%/.test(A) || /- Rentabilidad neta:/.test(A)) F("1 · el prompt no cita una sola «Cap rate neto»");
   if (!/\?\.capRatePct \?\? capRateNetoLtrPct\(m\) \?\? 0;/.test(A)) F("1 · el respaldo del prompt no es la neta");
+  // La prosa ya escrita citaba el `capRate` viejo: el bump a 26 la manda a regenerar al abrir.
+  if (PROMPT_VERSION_LTR !== 26) F(`1 · PROMPT_VERSION_LTR = ${PROMPT_VERSION_LTR}: el cambio de cifra del prompt va con el bump a 26`);
+  for (const p of ["src/app/analisis/[id]/page.tsx", "src/app/api/analisis/ai/route.ts"]) {
+    if (!/promptVersion === PROMPT_VERSION_LTR/.test(sinComentarios(leer(p)))) F(`1 · ${p} no invalida la prosa por versión`);
+  }
 
   // ── 2 · hero y pop-up leen la misma cifra ──
   let medidas = 0;
