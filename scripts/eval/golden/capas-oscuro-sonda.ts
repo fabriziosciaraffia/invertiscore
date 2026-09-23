@@ -107,7 +107,7 @@ const medirHojas = (t: Page): Promise<Medida[]> =>
           const r = await t.evaluate(async () => {
             const sleep = (ms: number) => new Promise((x) => setTimeout(x, ms));
             [...document.querySelectorAll<HTMLButtonElement>("button")].find((x) => /Ver cómo se calcula/.test(x.innerText))?.click(); await sleep(800);
-            [...document.querySelectorAll(".v-modal .pl.ind th")].find((x) => /Cash on cash/.test((x as HTMLElement).innerText))?.querySelector<HTMLElement>(".v-i")?.click(); await sleep(500);
+            [...document.querySelectorAll(".v-modal .pc-ind-n")].find((x) => /Cash on cash/.test((x as HTMLElement).innerText))?.querySelector<HTMLElement>(".v-i")?.click(); await sleep(500);
             const p = document.querySelector(".v-pop"); const h = document.querySelector(".v-modal");
             return { pop: p ? getComputedStyle(p).backgroundColor : "", panel: h ? getComputedStyle(h).backgroundColor : "" };
           });

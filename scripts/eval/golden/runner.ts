@@ -78,6 +78,7 @@ import { runHojaModalTier } from "./hoja-modal-catch-test";
 import { runInfoIndicadoresTier } from "./info-indicadores-catch-test";
 import { runCapasOscuroTier } from "./capas-oscuro-catch-test";
 import { runSinSemaforoTier } from "./sin-semaforo-catch-test";
+import { runPlanillaCalculoTier } from "./planilla-calculo-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -402,6 +403,10 @@ async function printStrSemantic() {
   // ── Sin ocre ni verde fuera de la tríada (23-sep-2026). Lo del DOM lo mide
   //    `sin-ocre-verde-sonda.ts`, standalone contra el dev server. ──
   totalHard += runSinSemaforoTier().hard;
+  // ── «Cómo se calcula» del mockup aprobado (23-sep-2026): sin la venta, el cash on cash con el
+  //    denominador del motor, textos desde el dato y la moneda del toggle. Lo del DOM (tres filas ×
+  //    390/350/1100 × temas × monedas) lo mide `planilla-calculo-sonda.ts`, standalone. ──
+  totalHard += runPlanillaCalculoTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es
