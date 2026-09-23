@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La hoja · el contenedor de teléfono</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 23-sep-2026 · LA HOJA: el contenedor de teléfono para los pop-ups y, después, para los once
+     capítulos. Nada implementado.
+     POR QUÉ: medido el 22-sep en 390×844 con tap, el modal actual (`Modal` de vocabulario.tsx, `.v-modal`)
+     en ≤767 px es pantalla completa sin margen ni radio, se cierra por un solo punto (la ✕, 30 px, que se va
+     con el scroll), y el scroll de adentro encadena a la página al llegar al fondo (sin body lock ni
+     overscroll-behavior): STR corrió la página 385 px detrás y al cerrar el lector quedó en otro lugar.
+     Multiplicarlo por once es cambiar de problema.
+     LA FORMA (decisión de Fabrizio): en teléfono, HOJA DESDE ABAJO. Cabecera fija con título y ✕, arrastrar
+     hacia abajo para cerrar, el botón atrás del navegador cierra la hoja en vez de irse de la página, scroll
+     de atrás bloqueado mientras está abierta, `overscroll-behavior: contain`. En escritorio (≥768) el modal de
+     720 centrado sigue como está.
+     CONTENIDO REAL: las imágenes son capturas a 390 del pop-up de ajustes (LTR 8395ea55, 1.318 px de alto, el
+     más largo que existe) y del capítulo III de STR (11a6dc52, 982 px). Van como imagen para que la hoja se
+     juzgue como contenedor; el layout de adentro no cambia salvo lo que dice el panel «Qué asume el pop-up».
+     DOS ESTADOS por contenido: recién abierta (arriba) y scrolleada al fondo, para ver que la cabecera queda.
+     Lo que no se mide en headless (barra del navegador que colapsa, el gesto real, el atrás) va en la lista
+     «Para probar en teléfono».
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;--signal:#C8323C}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--paper:#FFFFFF;--overlay:rgba(20,19,17,.55)}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--line:#232327;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--paper:#141416;--overlay:rgba(0,0,0,.6)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:90ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:30px auto 10px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:90ch;line-height:1.5}
+  .escenas{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:18px;justify-items:center}
+  .tel{width:390px;height:844px;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line2);background:#0C0C0E;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .tel .fondo{position:absolute;inset:0;width:390px;height:844px;object-fit:cover;object-position:top}
+  .tel .velo{position:absolute;inset:0;background:var(--overlay)}
+  /* ── LA HOJA ── */
+  .hoja{position:absolute;left:0;right:0;bottom:0;height:calc(100% - 56px);background:var(--paper);border-radius:18px 18px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.25);overflow:hidden}
+  .hoja .asa{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 0;flex:none}
+  .hoja .cab{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px 10px 20px;border-bottom:1px solid var(--line);background:var(--paper)}
+  .hoja .cab h3{font-family:Georgia,"Source Serif 4",serif;font-size:18px;font-weight:700;line-height:1.2;color:var(--tx)}
+  .hoja .cab .x{width:32px;height:32px;border:1px solid var(--line2);border-radius:6px;background:none;color:var(--tx3);font-family:var(--mono);font-size:14px;flex:none}
+  .hoja .cab .sub{font-size:11px;color:var(--tx3);margin-top:2px}
+  .hoja .cuerpo{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .hoja .cuerpo img{display:block;width:auto;max-width:100%;height:auto;margin:0 auto}
+  .hoja .cuerpo.con-margen{padding:14px 16px 0}
+  .hoja .cuerpo .fin{padding:14px 20px 28px;font-size:11px;color:var(--tx4);border-top:1px solid var(--line);text-align:center}
+  .estado{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px}
+  .leyenda{max-width:1100px;margin:6px auto 0;font-size:11px;color:var(--tx4);text-align:center}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto}
+  table.t td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">La hoja · el contenedor de teléfono para pop-ups y capítulos</h1>
+  <p class="subx">Mockup del 23-sep-2026, en 390 × 844 con el contenido real capturado a esa anchura: el pop-up de ajustes (el más largo que existe, 1.318 px) y el capítulo III de STR (982 px). La hoja sube desde abajo, deja 56 px del informe a la vista, y tiene cabecera fija con el título y la ✕. Cada contenido va en dos estados: recién abierta y scrolleada al fondo, para ver que la cabecera queda. En escritorio el modal de 720 centrado sigue como está.</p>
+  <div class="panel">
+    <span class="clab">Tema del marco</span>
+    <span class="seg"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab" style="margin-left:10px">Las capturas de adentro son en claro; el tema solo pinta la hoja</span>
+  </div>
+  <ul class="decision">
+    <li><b>Geometría:</b> la hoja ocupa la pantalla menos 56 px; arriba queda el informe atenuado con el velo. Radio 18 px solo en las esquinas de arriba, asa de 40 × 4 px. En ≥768 px el contenedor es el modal de hoy (720 centrado, 92 vh).</li>
+    <li><b>Cabecera fija:</b> asa, título en serif (18 px), sub opcional, ✕ de 32 × 32 a la derecha. No se va con el scroll: es lo que hoy falla en el modal a pantalla completa.</li>
+    <li><b>Cierres:</b> la ✕; arrastrar la hoja hacia abajo desde la cabecera (o desde el cuerpo cuando está en el tope); el botón atrás del navegador (la hoja empuja un estado de historial al abrir y lo consume al cerrar); tocar el velo. Esc en escritorio.</li>
+    <li><b>Scroll:</b> el cuerpo es el único que scrollea (`overflow-y: auto; overscroll-behavior: contain`) y el body queda bloqueado mientras la hoja está abierta (`overflow: hidden` en `html` + restaurar el scroll al cerrar). Al cerrar, el lector vuelve exactamente donde abrió.</li>
+    <li><b>Alto real del teléfono:</b> la hoja mide contra el viewport dinámico (`100dvh`), no `100vh`, para que la barra del navegador no le coma el pie. No se puede verificar en headless: va en la lista de abajo.</li>
+  </ul>
+</div>
+
+<div class="rot"><h2>Cuatro escenas</h2><p>El pop-up de ajustes y el capítulo III STR, cada uno recién abierto y al fondo. El fondo es el informe LTR 8395ea55 a 390 en la sección de la recomendación.</p></div>
+<div class="escenas" id="escenas"></div>
+<p class="leyenda">Contenido real: <span class="medida">img/hoja-contenido-ajustes.png</span> (390 × 1.318) · <span class="medida">img/hoja-contenido-capitulo.png</span> (358 × 982) · fondo <span class="medida">img/hoja-fondo.png</span>.</p>
+
+<div class="rot"><h2>Qué asume el pop-up de ajustes del modal actual</h2><p>Leído en PopupAjustes.tsx y PopupAjustesTokens.tsx el 23-sep-2026.</p></div>
+<table class="t">
+  <tr><td>Ancho</td><td>Nada: no lee `innerWidth` ni mide con `useAncho`; todo es CSS fluido con un corte `@media (max-width: 460px)` que achica la matriz (celdas de 130 px) y quita sangrías. En la hoja (390 de ancho útil, igual que hoy) cae en el mismo corte. Sin cambio.</td></tr>
+  <tr><td>Cabecera</td><td>El título y el sub los pone `Modal` (`.v-modal-head`, `.v-modal-sub`), no el pop-up. La hoja los toma de los mismos props. Sin cambio en el pop-up.</td></tr>
+  <tr><td>Padding</td><td>El modal de hoy pone 22 / 20 px en mobile alrededor del cuerpo; el pop-up no trae padding propio. La hoja tiene que darle los mismos 20 px laterales o la matriz de 2 columnas (36 + 130 + 130 + espaciado = 300 px) queda pegada al borde.</td></tr>
+  <tr><td>Matriz</td><td>`table-layout: fixed` con anchos por celda: a 390 entra sin desborde (medido: ningún elemento con scrollWidth > clientWidth). Con la variante «sola» (una sola columna de plazo) las celdas van a 170 px y también entran.</td></tr>
+  <tr><td>Scroll interno</td><td>Ninguno propio: el pop-up delega el scroll al contenedor (`.paj-mwrap` y `.paj-mtxbox` tienen `max-height: none`). En la hoja el scroll lo hace `.cuerpo`. Sin cambio.</td></tr>
+  <tr><td>Foco y cierre</td><td>El pop-up no cierra nada por sí mismo; `onClose` lo maneja `Modal`. La hoja hereda la misma interfaz (`abierto`, `onClose`, `titulo`, `sub`, `pie`), así que los cuatro consumidores no se tocan: PosicionFranco (×2), ModalCalculoBase y ZonaStrSection.</td></tr>
+  <tr><td>Lo que sí cambia</td><td>Solo `Modal`: en ≤767 px renderiza la hoja (cabecera fija, cuerpo con scroll, gesto, historial, body lock) y en ≥768 el modal de siempre. Un componente, dos formas. El modal «Cómo se calcula» de STR desborda a lo ancho (la planilla mide 682 px en 350): eso es del contenido, no del contenedor, y queda anotado.</td></tr>
+</table>
+
+<div class="rot"><h2>Para probar en teléfono (no se mide en headless)</h2><p>Fabrizio lo prueba en el suyo antes de dar el OK. Cada punto con lo que tiene que pasar.</p></div>
+<table class="t">
+  <tr><td>Barra del navegador</td><td>Con la barra desplegada y colapsada, el pie de la hoja (última fila, «cerrar») queda visible en los dos estados. Si con la barra desplegada el pie queda tapado, `100dvh` no está funcionando.</td></tr>
+  <tr><td>Arrastrar hacia abajo</td><td>Desde la cabecera cierra siempre. Desde el cuerpo cierra solo cuando el cuerpo está en el tope (scrollTop 0); a media lectura, arrastrar hacia abajo scrollea el contenido, no cierra.</td></tr>
+  <tr><td>Botón atrás</td><td>Con la hoja abierta, «atrás» cierra la hoja y deja la página donde estaba. Un segundo «atrás» sí sale de la página.</td></tr>
+  <tr><td>Scroll de atrás</td><td>Con la hoja abierta y el cuerpo al fondo, un deslizar más no mueve el informe de atrás. Al cerrar, el informe está donde estaba al abrir.</td></tr>
+  <tr><td>Tap en el velo</td><td>Tocar los 56 px de arriba cierra la hoja.</td></tr>
+  <tr><td>Matriz</td><td>En el pop-up de ajustes, la matriz de pie × plazo entra sin scroll horizontal y las celdas se tocan sin error de dedo.</td></tr>
+  <tr><td>Zoom del sistema</td><td>Con el texto del teléfono en grande, la cabecera sigue en una línea o parte en dos sin tapar la ✕.</td></tr>
+</table>
+
+<script>
+  const ESCENAS = [
+    { id: "ajustes-arriba", titulo: "Recomendación de ajustes", sub: "Un cambio a la vez, o la combinación que Franco probó", img: "img/hoja-contenido-ajustes.png", fondo: true, estado: "recién abierta" },
+    { id: "ajustes-fondo", titulo: "Recomendación de ajustes", sub: "Un cambio a la vez, o la combinación que Franco probó", img: "img/hoja-contenido-ajustes.png", fondo: true, estado: "al fondo", scrollFin: true },
+    { id: "capitulo-arriba", titulo: "Ocupación en renta corta", sub: "III · Al año 169 noches", img: "img/hoja-contenido-capitulo.png", margen: true, estado: "recién abierta" },
+    { id: "capitulo-fondo", titulo: "Ocupación en renta corta", sub: "III · Al año 169 noches", img: "img/hoja-contenido-capitulo.png", margen: true, estado: "al fondo", scrollFin: true },
+  ];
+  const cont = document.getElementById("escenas");
+  cont.innerHTML = ESCENAS.map((e) => `<div class="tel" data-id="${e.id}">
+      <img class="fondo" src="img/hoja-fondo.png" alt="">
+      <div class="velo"></div>
+      <div class="hoja">
+        <div class="asa"></div>
+        <div class="cab"><div><h3>${e.titulo}</h3><div class="sub">${e.sub}</div></div><button class="x" aria-label="Cerrar">✕</button></div>
+        <div class="cuerpo${e.margen ? " con-margen" : ""}"><img src="${e.img}" alt=""><div class="fin">Deslizá hacia abajo o toca ✕ para cerrar</div></div>
+      </div>
+      <span class="estado">${e.estado}</span>
+    </div>`).join("");
+  window.addEventListener("load", () => {
+    document.querySelectorAll(".tel").forEach((t) => {
+      const e = ESCENAS.find((x) => x.id === t.dataset.id); const c = t.querySelector(".cuerpo");
+      if (e.scrollFin) c.scrollTop = c.scrollHeight;
+    });
+  });
+  document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach((x) => x.classList.toggle("on", x === b)); }));
+</script>
+</body>
+</html>
