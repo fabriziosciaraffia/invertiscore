@@ -36,7 +36,6 @@ import {
   distanciaMinima,
 } from "@/lib/data/str-attractors";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
-import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica, metricaValorONull } from "@/lib/types";
@@ -163,7 +162,11 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // QUIEBRE, con la prohibición explícita de concluir que delegar conviene o no conviene. Y el
 // escenario upside deja de rotularse «gestión profesional»: es el techo de la banda del
 // propio caso (system §NOTACIÓN y §1, user ×2). Mueve el hash del system y el del user.
-export const PROMPT_VERSION_STR = 21;
+// v22 (22-sep-2026) · SE RETIRA LA COMPARACIÓN CON EL LARGO: §3.bis, el bloque «COMPARATIVA STR vs
+// LTR» del user, la sección `vsLTR` del schema y el guard [STR-MODALIDAD]. `estrategiaSugerida`
+// (la ACCIÓN dentro de «Lo que haría yo») se muda a `conviene`, sin la cláusula del largo. El score
+// pasa a cinco dimensiones (sin «ventaja vs LTR»).
+export const PROMPT_VERSION_STR = 22;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -241,21 +244,13 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 **Ángulo 2 — Costos operativos vs ingreso bruto.** Si el input marca que costos+comisión superan el rango sano que el análisis reporta, menciónalo en \`rentabilidad.contenido\`. Usa el rango que trae el input, no uno inventado.
 
-**Ángulo 3 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionarlo en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
+**Ángulo 3 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`conviene.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionarlo en \`conviene.estrategiaSugerida\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
 
 **Ángulo 4 — Sensibilidad / punto de equilibrio.** El break-even como % del mercado tiene su PROPIO drawer de cifras (tabla de percentiles) — el usuario lo ve ahí. Menciónalo UNA sola vez, donde más pese (\`riesgos.contenido\` si el punto de equilibrio es alto de fondo, O \`rentabilidad.contenido\`, nunca en ambas), y en \`conviene\` solo si es el driver del veredicto. NO lo repitas en tres secciones.
 
 **Ángulo 5 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer de cifras. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
 
 NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer de cifras y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "el techo de tu banda, estabilizado").
-
-## 3.bis Corto o largo — una sola fuente
-
-Qué modalidad rinde más neto lo dice UN dato: la sobre-renta medida del bloque "STR vs LTR" (NOI mensual STR − LTR, el mismo del hallazgo \`ventaja_vs_ltr\`). Su SIGNO dice quién gana; su MAGNITUD, cuánto. La recomendación (\`recomendacionModalidad\`) sale de ese mismo dato: LTR_PREFERIDO = el largo rinde más neto por 5% o más · INDIFERENTE = está parejo (entre −5% y +15%) · STR_VENTAJA_CLARA = el corto rinde 15% o más, sostenible al break-even.
-- Ninguna oración de ningún campo puede afirmar que "rinde / conviene / deja más" la modalidad contraria al signo. Si la sobre-renta es positiva, el corto rinde más neto (aunque sea poco); si es negativa, el largo. La demanda de la zona (tier) es CONTEXTO de La zona: describe el mercado, no decide la modalidad ni contradice el dato.
-- Con LTR_PREFERIDO: cuantifica cuánto más deja el largo con la sobre-renta del input y di que el esfuerzo del corto no se justifica con ese margen; no redirijas a "ajusta la estrategia STR". Con STR_VENTAJA_CLARA: cuantifica el upside y di que el esfuerzo se justifica. Con INDIFERENTE: di "está parejo" y deja la decisión en el usuario (disponibilidad operativa, tolerancia a estacionalidad), sin inventar un ganador.
-
-Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arranca del NOI absoluto o de lo que mueves, no repitiendo la dirección (§1.bis).
 
 ## 3.ter Ocupación: el caso central y su fuente
 
@@ -281,8 +276,8 @@ Regla simple: si el dato no está en el input, no existe para ti. Cuando dudes, 
 ## 5. Salud financiera del usuario (si el input trae \`financingHealth\`)
 
 NIVEL 1 — Validación silenciosa (\`overall\` ∈ {optimo, aceptable}): una frase en \`conviene.reencuadre\`.
-NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`vsLTR.estrategiaSugerida\`.
-NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES lo que hay que mover; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`vsLTR.estrategiaSugerida\`.
+NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`conviene.estrategiaSugerida\`.
+NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES lo que hay que mover; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`conviene.estrategiaSugerida\`.
 Si no viene, omite esta capa.
 
 ## 5.bis Pie 0 — financiamiento 100% (SOLO si el input lo declara)
@@ -296,7 +291,7 @@ Se activa ÚNICAMENTE cuando el input dice pie 0% (línea "FINANCIAMIENTO DEL 10
 
 ## 5.ter EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES
 
-El Franco Score STR tiene SEIS dimensiones, con pesos 15/20/20/20/15/10: rentabilidad, sostenibilidad, ventaja vs LTR, factibilidad, retorno sobre lo puesto y TIR. Las seis llegan con su puntaje en el bloque "FRANCO SCORE STR". Dos son sobre TU capital, no sobre el activo, y son las que el lector no sabe leer solo:
+El Franco Score STR tiene CINCO dimensiones, con pesos 18,75/25/25/18,75/12,5: rentabilidad, sostenibilidad, factibilidad, retorno sobre lo puesto y TIR. Las cinco llegan con su puntaje en el bloque "FRANCO SCORE STR". Dos son sobre TU capital, no sobre el activo, y son las que el lector no sabe leer solo:
 - **retorno sobre lo puesto** — por cada $100 que pones el día uno (pie, amoblamiento, gastos de cierre), cuánto te devuelve la operación al año después del dividendo, la comisión y los costos; negativo significa que cada año pones plata además de lo inicial. Su dato es el Cash-on-Cash del bloque base.
 - **TIR a 10 años** — lo que rinde al año todo lo que pusiste, contando el flujo de la operación, la deuda que se amortiza y la plusvalía al vender.
 
@@ -392,9 +387,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
   "conviene": {
     "respuestaDirecta": string,   // 3 oraciones · ≤85 palabras · lead del hero · capas 1+2+3 · alineado al coronado (§7.bis)
     "reencuadre": string,         // 2 oraciones · ≤55 palabras · bajo los KPIs del hero · contexto de inversor · UNA marca \`**…**\` obligatoria
-    "cajaAccionable": string      // (≤75) StateBox de cierre del hero · posición o acción
-  },
-  "vsLTR": {
+    "cajaAccionable": string,     // (≤75) StateBox de cierre del hero · posición o acción
     "estrategiaSugerida": string  // 2 oraciones · ≤75 palabras · la ACCIÓN, dentro de «Lo que haría yo» · recomendación con cifra
   },
   "veredicto": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // copia EXACTA del veredicto calculado
@@ -405,7 +398,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
 LARGO POR CAMPO — ejemplos de FORMA, no de contenido (los corchetes son huecos que llenas con el dato del caso; no copies las frases, copia el tamaño):
 - conviene.respuestaDirecta · 3 oraciones · ≤85 palabras: «Operando por día [te quedan / pones] [cifra] al mes, pagado todo, con la ocupación que el mercado estima para este depto. El supuesto que cambia la decisión es [supuesto con su cifra]. Sin eso, [consecuencia en una frase].» (39 palabras)
 - conviene.reencuadre · 2 oraciones · ≤55 palabras: «Para un inversionista este depto es [tipo de apuesta]: [razón con su cifra]. Lo que compras no es el flujo de hoy sino [qué].» (24 palabras)
-- vsLTR.estrategiaSugerida · 2 oraciones · ≤75 palabras: «Si sigues por el corto, [acción concreta con su cifra]. Si el margen sobre el largo no paga tus horas, [alternativa].» (21 palabras)
+- conviene.estrategiaSugerida · 2 oraciones · ≤75 palabras: «Si sigues adelante, [acción concreta con su cifra]. Si [el supuesto que decide] no se cumple, [alternativa].» (19 palabras)
 REGLA DURA: \`veredicto\` = EXACTAMENTE el valor del bloque "FRANCO SCORE STR". Cópialo. Si discrepas, va a \`francoCaveat\`.
 
 ## 14. Verificación numérica obligatoria
@@ -441,7 +434,7 @@ export const SECTION_BUDGETS_STR: Record<string, number> = {
   "conviene.respuestaDirecta": 85,
   "conviene.reencuadre": 55,
   "conviene.cajaAccionable": 75,
-  "vsLTR.estrategiaSugerida": 75,
+  "conviene.estrategiaSugerida": 75,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -483,7 +476,6 @@ const ordenarHallazgos = (hallazgos: Hallazgo[]): Hallazgo[] =>
 /** fraseCanónica + titular de una card por id de hallazgo (para "LO QUE LA CARD YA MOSTRÓ" + strip). */
 export interface CardFrasesSTR {
   rentabilidad?: { titular: string; frase: string };
-  vsLTR?: { titular: string; frase: string };
   ocupacion?: { titular: string; frase: string };
   coronado?: { titular: string; frase: string };
 }
@@ -498,7 +490,6 @@ function extraerCardFrases(hallazgos: Hallazgo[] | undefined | null): CardFrases
   const top = ordenados[0];
   return {
     rentabilidad: byId("rentabilidad_str"),
-    vsLTR: byId("ventaja_vs_ltr"),
     ocupacion: byId("ocupacion_vs_estimacion"),
     coronado: top && top.titular && top.fraseCanonica ? { titular: top.titular, frase: top.fraseCanonica } : undefined,
   };
@@ -581,14 +572,6 @@ export function buildUserPromptSTR(
   if (estabRatio < 0.5 && maxM > 0) {
     anomalias.push(`ESTACIONALIDAD EXTREMA: el mes más bajo genera ${Math.round(estabRatio * 100)}% del peak. Caja fluctúa fuerte.`);
   }
-  // P3 (Rama 0b): gatear por sobre-renta ABSOLUTA, no por el signo del pct — con NOI-LTR ≤0 el
-  // ratio se invierte y "LTR gana" dispararía falso (ej. sobreRenta +$696K pero pct −3483%).
-  if (comp.sobreRenta < 0) {
-    const conf = sobreRentaPctEsConfiable(comp.ltr.noiMensual, comp.sobreRentaPct);
-    anomalias.push(conf
-      ? `LTR GANA: arriendo tradicional genera ${Math.abs(Math.round(comp.sobreRentaPct * 100))}% más neto que STR. La estrategia STR no compensa.`
-      : `LTR GANA: arriendo tradicional genera ${fmtCLP(Math.abs(comp.sobreRenta))}/mes más neto que STR (el NOI-LTR ≈0 hace ilegible el porcentaje). La estrategia STR no compensa.`);
-  }
   if (base.capRate < 0.03) {
     anomalias.push(`CAP RATE BAJO: ${pct(base.capRate * 100)}% — el NOI apenas justifica el precio de compra.`);
   }
@@ -616,7 +599,7 @@ export function buildUserPromptSTR(
   // no aplica —la TIR sin pie— queda fuera del ranking: no se puede sumar ni restar lo que
   // no se calculó.
   const DIMS_STR: [string, { score: number; aplica?: boolean } | undefined][] = fs
-    ? [["rentabilidad", fs.desglose.rentabilidad], ["sostenibilidad", fs.desglose.sostenibilidad], ["ventaja vs LTR", fs.desglose.ventaja],
+    ? [["rentabilidad", fs.desglose.rentabilidad], ["sostenibilidad", fs.desglose.sostenibilidad],
        ["factibilidad", fs.desglose.factibilidad], ["retorno sobre lo puesto", fs.desglose.cashOnCash], ["TIR", fs.desglose.tir]]
     : [];
   const rankStr = DIMS_STR.filter((x): x is [string, { score: number; aplica?: boolean }] => !!x[1] && x[1].aplica !== false)
@@ -967,7 +950,7 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
     if (!list.length) return "";
     const NOMBRE_H: Record<string, string> = {
       rentabilidad_str: "rentabilidad operativa (cap rate)", flujo_str: "flujo mensual", sobreprecio: "precio por m² frente a la mediana comunal",
-      ventaja_vs_ltr: "corto frente a largo", ocupacion_vs_estimacion: "ocupación del caso frente a la estimación", sensibilidad_str: "punto de equilibrio",
+      ocupacion_vs_estimacion: "ocupación del caso frente a la estimación", sensibilidad_str: "punto de equilibrio",
       estructura_costos_str: "costos de operar", estructura_financiamiento: "estructura de financiamiento", plusvalia: "plusvalía histórica de la comuna",
       tir: "TIR a 10 años", patrimonio: "tu parte a 10 años", capex_puesta_a_punto: "puesta a punto", distancia_veredicto: "distancia al veredicto de arriba", gate_veredicto: "lo que retiene el veredicto",
     };
@@ -978,7 +961,6 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
         case "rentabilidad_str": return `${pct(n("capRatePct") ?? 0)}% frente a ${pct(n("umbralPct") ?? 5)}%`;
         case "flujo_str": return `${fmtCLP(n("flujoMensualCLP") ?? 0)} al mes`;
         case "sobreprecio": return `${pct(n("desviacionPct") ?? 0)}% frente a la mediana`;
-        case "ventaja_vs_ltr": return `${pct(n("sobreRentaPct") ?? 0)}% de sobre-renta`;
         case "ocupacion_vs_estimacion": return `${n("ocupacionPct") ?? 0}% frente a ${n("estimacionPct") ?? 0}% estimado`;
         case "sensibilidad_str": return `${n("beRatioPct") ?? 0}% del ingreso de mercado para no perder plata`;
         case "estructura_costos_str": return `${n("costStackPct") ?? 0} de cada 100 pesos`;
@@ -997,10 +979,7 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
     const bolsillo = flujoCaso < 0 ? `pones ${fmtCLP(-flujoCaso)} de tu bolsillo cada mes` : `te quedan ${fmtCLP(flujoCaso)} cada mes`;
     // La razón que manda, como dato. Cuando el #1 es la ventaja frente al largo, el dato que
     // manda es el bolsillo (lo que pone o le queda cada mes) y la comparación es el segundo.
-    const esVentaja = top.id === "ventaja_vs_ltr";
-    const datoManda = esVentaja
-      ? `qué = lo que te deja operar por día, pagado todo · cuánto = ${bolsillo} · dirección = ${flujoCaso < 0 ? "en contra" : "a favor"}. SEGUNDO DATO: ${NOMBRE_H[top.id]} · ${cuanto(top)} · ${dir(top)}.`
-      : `qué = ${NOMBRE_H[top.id] ?? top.id} · cuánto = ${cuanto(top) || "(sin cifra)"} · dirección = ${dir(top)}.`;
+    const datoManda = `qué = ${NOMBRE_H[top.id] ?? top.id} · cuánto = ${cuanto(top) || "(sin cifra)"} · dirección = ${dir(top)}.`;
     // Ejemplo positivo pegado al campo, con la cifra de ESTE caso (patrón de los ejemplos del titular).
     const v = top.valor as Record<string, unknown>;
     const n = (k: string) => (typeof v[k] === "number" ? (v[k] as number) : 0);
@@ -1009,9 +988,6 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
         case "rentabilidad_str": return n("capRatePct") < n("umbralPct")
           ? `Rinde ${pct(n("capRatePct"))}% sobre el precio, bajo el ${pct(n("umbralPct"))}% que le pedimos a una renta corta: **el precio no se justifica con lo que deja operar por día**.`
           : `Rinde ${pct(n("capRatePct"))}% sobre el precio, sobre el ${pct(n("umbralPct"))}% que le pedimos a una renta corta: **el metro se paga solo operando por día**.`;
-        case "ventaja_vs_ltr": return flujoCaso < 0
-          ? `Operando por día ${bolsillo}, pagado todo; **le gana al largo, pero esa ventaja la pagas con tus horas**.`
-          : `Operando por día ${bolsillo}, pagado todo: **le gana al largo con la ocupación que el mercado estima**.`;
         case "flujo_str": return flujoCaso < 0
           ? `**${bolsillo[0].toUpperCase()}${bolsillo.slice(1)}** con la ocupación que el mercado estima para tu depto: la operación no se paga sola.`
           : `**${bolsillo[0].toUpperCase()}${bolsillo.slice(1)}**, pagado todo, con la ocupación que el mercado estima para tu depto.`;
@@ -1044,7 +1020,7 @@ Ejemplo del patrón para la primera oración de \`conviene.respuestaDirecta\` (l
 === CASO PRECIO-JUSTO STR (§1.12.4 — PRECIO E INGRESOS A MERCADO, VEREDICTO ${String(r.francoScore?.veredicto ?? "")}) ===
 El precio está alineado con la mediana comunal (dato confiable) Y la tarifa/ocupación corren ancladas a la mediana observada de la zona (sin datos tuyos: tarifa y ocupación de mercado). El problema NO es el departamento — es la zona.
 REENCUADRE OBLIGATORIO (lenguaje canónico; adáptalo lo mínimo): "esta zona no sostiene renta corta a los precios de compra actuales".
-SALIDA CONSTRUCTIVA: no un descuento cosmético — la comparación honesta con el arriendo largo (sección vsLTR / recomendación de modalidad) y, si el dato lo permite, dónde el corto sí rinde.
+SALIDA CONSTRUCTIVA: no un descuento cosmético — di, si el dato lo permite, dónde el corto sí rinde, o qué supuesto tendría que cambiar para que rinda acá.
 PROHIBIDO resolver este caso pidiendo un descuento chico "por matemática propia" sin este reencuadre. Si el descuento que arreglaría el caso excede lo plausible, se dice — no se maquilla.`
     : "";
 
@@ -1110,7 +1086,6 @@ Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
 veredicto (dado — úsalo como conclusión, no lo contradigas · §7): ${veredictoMotor}
 ${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.rentabilidad.detail} (peso ${PESOS_SCORE_STR.rentabilidad}%)
 Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail} (peso ${PESOS_SCORE_STR.sostenibilidad}%)
-Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail} (peso ${PESOS_SCORE_STR.ventaja}%)
 Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail} (peso ${PESOS_SCORE_STR.factibilidad}%)
 ${fs.desglose.cashOnCash ? `Retorno sobre lo puesto: ${fs.desglose.cashOnCash.score}/100 — ${fs.desglose.cashOnCash.detail} (peso ${PESOS_SCORE_STR.cashOnCash}%)` : ""}
 ${!fs.desglose.tir ? "" : fs.desglose.tir.aplica === false ? `TIR a 10 años: no aplica (sin pie: su peso de ${PESOS_SCORE_STR.tir}% se reparte entre las demás)` : `TIR a 10 años: ${fs.desglose.tir.score}/100 — ${fs.desglose.tir.detail} (peso ${PESOS_SCORE_STR.tir}%)`}
@@ -1138,11 +1113,6 @@ Cash-on-Cash: ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(base.cashOn
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
 ${labelBaseEscenario}: NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
 Upside (techo de tu banda, estabilizado): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
-
-=== COMPARATIVA STR vs LTR ===
-Arriendo largo (LTR): Ingreso bruto ${fmtCLP(comp.ltr.ingresoBruto)}/mes · NOI ${fmtCLPSigned(comp.ltr.noiMensual)}/mes · Flujo ${fmtCLPSigned(comp.ltr.flujoCaja)}/mes
-STR (modo ${modoGestion}, base): NOI ${fmtCLPSigned(base.noiMensual)}/mes · Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
-DIFERENCIA: Sobre-renta NOI ${fmtCLPSigned(comp.sobreRenta)}/mes${sobreRentaPctEsConfiable(comp.ltr.noiMensual, comp.sobreRentaPct) ? ` (${comp.sobreRentaPct >= 0 ? "+" : ""}${Math.round(comp.sobreRentaPct * 100)}%)` : ` (porcentaje N/D — NOI-LTR ≈0; usá el monto, nunca un %)`} · STR ${base.flujoCajaMensual > comp.ltr.flujoCaja ? "GANA" : "PIERDE"} en flujo · Payback amoblamiento: ${comp.paybackMeses > 0 ? comp.paybackMeses + " meses" : comp.paybackMeses === 0 ? "sin amoblamiento" : "no se recupera con sobre-renta"}
 
 === AUTO-GESTIÓN vs ADMINISTRADOR ===
 Auto (comisión 3% Airbnb): NOI ${fmtCLPSigned(strAuto.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAuto.flujoCajaMensual)}/mes — requiere ~8-12 hrs/semana del usuario.
@@ -1184,8 +1154,6 @@ Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR S
 ${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
 ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilIngreso}
 ${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacionVsComuna !== "sin_datos" ? `Contexto comunal (datos de mercado): la estimación para esta dirección es ${Math.round(r.zonaSTR.occZona * 100)}% de ocupación frente a ${Math.round(r.zonaSTR.comunaOcupacion.valor * 100)}% típico de la comuna (${r.zonaSTR.comunaOcupacion.n} direcciones) → tu zona ocupa ${r.zonaSTR.ocupacionVsComuna === "mas" ? "más" : r.zonaSTR.ocupacionVsComuna === "menos" ? "menos" : "parecido a"} lo típico de la comuna. Es CONTEXTO de La zona, no un hallazgo: nómbralo en \`operacion\`/\`riesgos\` solo si cambia la lectura, y di "datos de mercado", nunca el nombre del proveedor.` : "(comuna sin datos de mercado suficientes — NO compares con la comuna; usa caveat al mencionar percentiles)"}` : "(sin datos de zonaSTR)"}
-Corto o largo (UNA fuente — §3.bis): la sobre-renta medida es ${fmtCLPSigned(r.comparativa.sobreRenta)}/mes${sobreRentaPctEsConfiable(r.comparativa.ltr.noiMensual, r.comparativa.sobreRentaPct) ? ` (${r.comparativa.sobreRentaPct >= 0 ? "+" : ""}${Math.round(r.comparativa.sobreRentaPct * 100)}%)` : " (porcentaje N/D: usa el monto)"} → ${r.comparativa.sobreRenta > 0 ? "el CORTO rinde más neto que el largo" : r.comparativa.sobreRenta < 0 ? "el LARGO rinde más neto que el corto" : "rinden igual"}. Recomendación derivada: ${r.recomendacionModalidad ?? "(no disponible)"}. Tier de demanda de la zona (${r.zonaSTR?.tierZona ?? "sin dato"}): contexto de La zona, no decide.
-${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ En \`vsLTR.estrategiaSugerida\`: cuantifica cuánto más deja el largo con esa sobre-renta y di que el esfuerzo del corto no se justifica con ese margen. NO endulces (§1.1). Arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside del corto sobre el largo; el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo" sin inventar un ganador contrario al signo; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 
 === SUBSIDIO LEY 21.748 (ayuda financiera externa · Ángulo 4) ===
 ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
@@ -1712,14 +1680,7 @@ Responde SOLO este JSON, sin texto alrededor:
       (v) => `afirma un múltiplo que el análisis contradice — ${v.join("; ")}`,
       `RAZONES DEL ANÁLISIS (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del análisis dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
     );
-    // 6. [STR-MODALIDAD] — "corto o largo" con una sola fuente: el signo de la sobre-renta medida.
-    const srGuard = ctxGuards.sobreRenta;
-    await reintentoQuirurgico(
-      "modalidad",
-      "[STR-MODALIDAD]",
-      (v) => `afirma que rinde / conviene más la modalidad contraria al dato medido: ${v.map((x) => `«${x.slice(0, 120)}»`).join(" · ")}`,
-      `EL DATO: la sobre-renta medida es ${fmtCLPSigned(srGuard)}/mes, o sea ${srGuard > 0 ? "el CORTO (STR) rinde más neto que el largo" : "el LARGO (LTR) rinde más neto que el corto"}. Reescribe cada campo sin afirmar lo contrario: si el margen es chico, di que está parejo y cuánto es; la demanda de la zona es contexto y no cambia quién rinde más.`,
-    );
+    // 6. [STR-MODALIDAD] se retiró el 22-sep-2026 con la comparación contra el largo.
     // 3. [STR-INTERNAS] — nombres de la mecánica interna.
     await reintentoQuirurgico(
       "internas",
@@ -1860,7 +1821,7 @@ Responde SOLO este JSON, sin texto alrededor:
   addRes("budget", sectionsOverBudget(best as unknown as Record<string, unknown>, 1.3).map((o) => o.path).filter((p) => !sinRender(p)));
   {
     const ctxRes = contextoGuardsStr(r, inp, comuna, simulacion);
-    for (const regla of ["estructural", "hero-claim", "modalidad", "internas", "engineism", "copia"] as ReglaStr[]) {
+    for (const regla of ["estructural", "hero-claim", "internas", "engineism", "copia"] as ReglaStr[]) {
       const v = violacionesPorCampo(best, regla, ctxRes, PROSA_RETRY_PATHS_STR);
       addRes(regla, Object.keys(v).filter((p) => v[p].length > 0));
     }

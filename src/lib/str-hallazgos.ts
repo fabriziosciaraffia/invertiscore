@@ -22,7 +22,6 @@ import type { FrancoScoreSTR } from "./engines/short-term-score";
 import { buildHallazgoRentabilidadStr, umbralStrDesdeZona } from "./rentabilidad-str-hallazgo";
 import { buildHallazgoFlujoStr } from "./flujo-str-hallazgo";
 import { buildHallazgoOcupacionVsEstimacion, OCC_FALLBACK_PCT } from "./ocupacion-vs-estimacion-hallazgo";
-import { buildHallazgoVentajaVsLtr } from "./ventaja-vs-ltr-hallazgo";
 import { buildHallazgoSensibilidadStr } from "./sensibilidad-str-hallazgo";
 import { buildHallazgoEstructuraCostosStr } from "./estructura-costos-str-hallazgo";
 import { buildHallazgoEstructuraFinanciamiento } from "./estructura-financiamiento-hallazgo";
@@ -161,24 +160,6 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       ),
     );
   }
-  {
-    const comp = r.comparativa;
-    if (comp) {
-      out.push(
-        calibrar(
-          buildHallazgoVentajaVsLtr({
-            sobreRentaPct: comp.sobreRentaPct,
-            sobreRentaCLP: comp.sobreRenta,
-            ltrNoiMensual: comp.ltr?.noiMensual ?? NaN,
-            decisividad: dec.ventaja_vs_ltr?.decisividad ?? 0,
-            modalidad: "str",
-          }),
-          dec.ventaja_vs_ltr,
-        ),
-      );
-    }
-  }
-
   // ── INFORMATIVOS propios del corto (0 declarado en el builder) ──
   out.push(
     buildHallazgoSensibilidadStr({

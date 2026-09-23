@@ -26,28 +26,26 @@ import type { BrazoSTR } from "./engines/short-term-score";
 
 // La familia `regulacion` («el edificio no permite arriendo por días») existió hasta el
 // 11-sep-2026: se retiró con el gate g1_regulacion (retiro V1 de la regulación).
-export type FamiliaMotivo = "ingreso" | "bolsillo" | "vsLargo";
+// `vsLargo` («rinde más con arrendatario fijo») existió hasta el 22-sep-2026: se retiró con el
+// gate g2_ltrGana y la dimensión ventaja (vestigio de AMBAS).
+export type FamiliaMotivo = "ingreso" | "bolsillo";
 
 /**
  * Brazo → familia. Cada brazo cae en UNA sola familia, la de su lectura dominante.
  *
- * `g1_flujoSevero` (flujo < −$250.000 Y sin ventaja sobre el largo) toca dos temas;
- * se clasifica en "bolsillo" porque esa es la parte que el usuario vive todos los
- * meses — la comparación contra el largo ya tiene su propia familia y su propio brazo.
+ * Sin `g1_flujoSevero` ni `g2_ltrGana` desde el 22-sep-2026 (retiro de la ventaja vs LTR).
  */
 const FAMILIA_DE: Record<BrazoSTR, FamiliaMotivo> = {
   g1_beInviable: "ingreso",
   g1_capRateMinimo: "ingreso",
   g2_beApretado: "ingreso",
   g1_cocSevero: "bolsillo",
-  g1_flujoSevero: "bolsillo",
   g2_cocFuerte: "bolsillo",
   g2_flujoSinHorizonte: "bolsillo",
-  g2_ltrGana: "vsLargo",
 };
 
 /** Orden de presentación: primero lo que cierra la puerta, después lo que aprieta. */
-const ORDEN_FAMILIA: FamiliaMotivo[] = ["ingreso", "bolsillo", "vsLargo"];
+const ORDEN_FAMILIA: FamiliaMotivo[] = ["ingreso", "bolsillo"];
 
 /**
  * Lectura de cada familia. Frase corta, en consecuencia vivida, sin cifras: los montos
@@ -64,7 +62,6 @@ const ORDEN_FAMILIA: FamiliaMotivo[] = ["ingreso", "bolsillo", "vsLargo"];
 const CLAUSULA: Record<FamiliaMotivo, string> = {
   ingreso: "lo que puede facturar arrendando por día no da para su precio",
   bolsillo: "pones plata de tu bolsillo todos los meses que ni la venta a 10 años alcanza a devolverte",
-  vsLargo: "arrendarlo a un arrendatario fijo te dejaría más plata y con menos trabajo",
 };
 
 /**
@@ -77,8 +74,6 @@ const FRASE_SOLA: Record<FamiliaMotivo, string> = {
     "No cierra por una razón concreta: lo que este depto puede facturar arrendando por día no da para su precio.",
   bolsillo:
     "No cierra por una razón concreta: pones plata de tu bolsillo todos los meses, y ni la venta a 10 años alcanza a devolvértela.",
-  vsLargo:
-    "No cierra por una razón concreta: arrendarlo a un arrendatario fijo te deja más plata que arrendarlo por días, y con bastante menos trabajo.",
 };
 
 /**
@@ -101,7 +96,6 @@ const FRASE_COMBINADA: Record<string, string> = {
 const ETIQUETA: Record<FamiliaMotivo, string> = {
   ingreso: "No da para su precio",
   bolsillo: "Pones plata cada mes",
-  vsLargo: "Rinde más con arrendatario fijo",
 };
 
 export interface MotivosDescritos {

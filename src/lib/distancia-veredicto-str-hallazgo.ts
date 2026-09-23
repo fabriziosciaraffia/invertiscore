@@ -100,9 +100,7 @@ const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
 const GLOSA_MOTIVO: Record<string, string> = {
   g1_cocSevero: "lo que pones de tu bolsillo se come el capital que aportaste",
   g1_beInviable: "el arriendo corto no alcanza a cubrir la operación ni con la zona rindiendo lo que rinde",
-  g1_flujoSevero: "cada mes tienes que poner una cifra fuerte de tu bolsillo, y el corto no compensa frente al arriendo tradicional",
   g1_capRateMinimo: "lo que deja la operación sobre el precio es demasiado poco",
-  g2_sobreRentaNegativa: "el arriendo tradicional te deja más neto que el corto",
   g2_cocApretado: "lo que pones de tu bolsillo pesa demasiado sobre el capital que aportaste",
   g2_beApretado: "el margen de operación queda sin holgura",
   g2_flujoSinHorizonte: "el flujo mensual queda en negativo y ni la plusvalía ni la deuda que amortizas alcanzan a compensarlo",

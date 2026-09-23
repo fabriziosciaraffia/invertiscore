@@ -25,7 +25,6 @@
 // del cap rate domina) ⇒ del orden de 5 ms.
 
 import type { ShortTermResult } from "./engines/short-term-engine";
-import { COMISION_LTR } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
 import {
   francoScoreStrDeResultado,
@@ -49,7 +48,6 @@ export interface DecisividadesSTR {
   rentabilidad_str?: DecisividadFactor;
   flujo_str?: DecisividadFactor;
   ocupacion_vs_estimacion?: DecisividadFactor;
-  ventaja_vs_ltr?: DecisividadFactor;
   sobreprecio?: DecisividadFactor;
   estructura_financiamiento?: DecisividadFactor;
   capex_puesta_a_punto?: DecisividadFactor;
@@ -160,15 +158,6 @@ export function calcDecisividadesSTR(
   if (Number.isFinite(b.ocupacionReferencia)) {
     const estimacion = typeof r.occObservada === "number" && r.occObservada > 0 && r.occObservada <= 1 ? r.occObservada : b.ocupacionReferencia;
     out.ocupacion_vs_estimacion = fin(recomputeStrConPatch(ctx, { occOverride: estimacion }).francoScore);
-  }
-
-  // ── ventaja_vs_ltr: sobre-renta → 0. El NOI del largo es lineal en el arriendo
-  //    (comisión fija, GGCC, mantención y contribuciones/3 fijos), así que el arriendo
-  //    neutro sale en forma cerrada: el que iguala el NOI del corto. ──
-  if (r.comparativa && Number.isFinite(b.noiMensual)) {
-    const fijos = (inp.gastosComunes || 0) + (inp.mantencion || 0) + Math.round((inp.contribuciones || 0) / 3);
-    const arriendoNeu = Math.max(0, Math.round((b.noiMensual + fijos) / (1 - COMISION_LTR)));
-    out.ventaja_vs_ltr = fin(recomputeStrConPatch(ctx, { arriendoLargoMensual: arriendoNeu }).francoScore);
   }
 
   // ── sobreprecio: precio = mediana comunal × superficie (en CLP, unidad del motor).

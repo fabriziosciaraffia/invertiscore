@@ -1464,29 +1464,8 @@ export interface HallazgoOcupacionVsEstimacion {
   fraseCanonica: string;
 }
 
-// 4 · VENTAJA_VS_LTR (DECISIVO — dim ventaja) · el hallazgo estrella. Envuelve
-// comparativa.sobreRentaPct/sobreRenta (sobre NOI). Corte 0, borde [0,+15%). Rama
-// LTR-negativo (ltr_noiMensual ≤ 0): KPI en CLP, cero %. La favorable lleva la cláusula
-// estabilizado-vs-contractual. Ver ventaja-vs-ltr-hallazgo.ts.
-export interface HallazgoVentajaVsLtr {
-  id: "ventaja_vs_ltr";
-  tipo: "ventaja_vs_ltr";
-  valor: {
-    sobreRentaPct: number;    // (NOI_str − NOI_ltr)/NOI_ltr — reusado de comparativa.sobreRentaPct
-    sobreRentaCLP: number;    // NOI_str − NOI_ltr, CLP/mes — comparativa.sobreRenta
-    ltrNoiMensual: number;    // NOI LTR mensual (para detectar el denominador ≤ 0)
-    ltrNegativo: boolean;     // true si ltr_noiMensual ≤ 0 → % ilegible, usar CLP
-    pctConfiable: boolean;    // P3 (Rama 0b): false si NOI-LTR ≤0 o ratio explotado → KPI en CLP, no %
-    bordePct: number;         // umbral de borde (+15%): bajo esto la ventaja no paga el esfuerzo
-    modalidad: "ltr" | "str" | "ambas";
-  };
-  direccion: "favorable" | "adverso"; // favorable si sobreRenta ≥ 0
-  decisividad: number;                // dim ventaja: |dimScore−50|/50
-  magnitudContinua?: number;
-  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
-  titular: string;
-  fraseCanonica: string;
-}
+// 4 · VENTAJA_VS_LTR se retiró el 22-sep-2026 (vestigio de AMBAS): el usuario evalúa cada
+// modalidad en su mérito. Las filas persistidas con el hallazgo lo pierden al recompute.
 
 // 5 · SENSIBILIDAD_STR (SOLO-LECTURA, decisividad 0). Robustez del veredicto vía
 // breakEvenPctDelMercado (atajo determinístico). Cortes 1,00/1,10 (alineados a Gate-2 STR).
@@ -1574,7 +1553,6 @@ export type Hallazgo =
   | HallazgoRentabilidadStr
   | HallazgoFlujoStr
   | HallazgoOcupacionVsEstimacion
-  | HallazgoVentajaVsLtr
   | HallazgoSensibilidadStr
   | HallazgoEstructuraCostosStr;
 
@@ -1961,8 +1939,12 @@ export interface AIConvieneSTRv2 {
   veredictoFrase?: string;
   reencuadre: string;
   cajaAccionable: string;
+  /** v22 (22-sep-2026): la ACCIÓN dentro de «Lo que haría yo». Vivía en `vsLTR.estrategiaSugerida`
+   *  hasta que la comparación con el largo se retiró de STR; las filas ≤v21 la traen allá. */
+  estrategiaSugerida?: string;
 }
 
+/** Legacy (≤v21): la sección «STR vs LTR» de la prosa. v22 no la genera; se lee de filas viejas. */
 export interface AIVsLtrSTRv2 {
   pregunta?: string;            // v2 legacy · v3 no lo emite (título de drawer hardcodeado)
   contenido: string;
@@ -1987,7 +1969,7 @@ export interface AIAnalysisSTRv2 {
   siendoFrancoHeadline_uf?: string;
   conviene: AIConvieneSTRv2;
   rentabilidad: AISectionSTRv2;
-  vsLTR: AIVsLtrSTRv2;
+  vsLTR?: AIVsLtrSTRv2;
   operacion: AISectionSTRv2;
   largoPlazo: AISectionSTRv2;
   riesgos: AISectionSTRv2;

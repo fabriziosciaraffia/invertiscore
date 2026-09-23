@@ -37,13 +37,15 @@ export const PESOS_SCORE_LTR = {
  * y factibilidad no bajan de 20 porque ahí viven el flujo y la zona. Medido: 5 de 249
  * veredictos cambian (1 baja, 4 suben), bandas sostenidas (cortes equivalentes 69 / 46).
  */
+// La dimensión «ventaja vs LTR» (20) se retiró el 22-sep-2026: era un vestigio de AMBAS
+// (LTR no compara contra el corto y no le falta), y el usuario evalúa cada modalidad en su
+// mérito. Su peso se repartió a prorrata: sostenibilidad y factibilidad son las que más ganan.
 export const PESOS_SCORE_STR = {
-  rentabilidad: 15,
-  sostenibilidad: 20,
-  ventaja: 20,
-  factibilidad: 20,
-  cashOnCash: 15,
-  tir: 10,
+  rentabilidad: 18.75,
+  sostenibilidad: 25,
+  factibilidad: 25,
+  cashOnCash: 18.75,
+  tir: 12.5,
 } as const;
 
 /**

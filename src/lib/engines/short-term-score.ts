@@ -23,12 +23,8 @@ export interface GatesBrazosSTR {
   g1_cocSevero: boolean;
   /** Break-even > 130% del nivel de la zona: depende de occ/ADR fuera de alcance. */
   g1_beInviable: boolean;
-  /** Flujo < −$250.000 Y sin ventaja clara sobre el arriendo largo. */
-  g1_flujoSevero: boolean;
   /** CAP rate < 2%: el NOI no justifica montar la operación. */
   g1_capRateMinimo: boolean;
-  /** El arriendo largo rinde más neto que el corto. */
-  g2_ltrGana: boolean;
   /** Cash-on-Cash < −10%: esfuerzo mensual significativo. */
   g2_cocFuerte: boolean;
   /** Flujo negativo y el horizonte a 10 años no lo compensa. */
@@ -42,12 +38,12 @@ export type BrazoSTR = keyof GatesBrazosSTR;
 /** Precedencia de GATE 1 — el orden ES el de la cadena if/else-if original. */
 // `g1_regulacion` encabezaba la lista hasta el 11-sep-2026 (retiro de la regulación, V1).
 export const G1_BRAZOS = [
-  'g1_cocSevero', 'g1_beInviable', 'g1_flujoSevero', 'g1_capRateMinimo',
+  'g1_cocSevero', 'g1_beInviable', 'g1_capRateMinimo',
 ] as const satisfies readonly BrazoSTR[];
 
 /** Precedencia de GATE 2 — idem. */
 export const G2_BRAZOS = [
-  'g2_ltrGana', 'g2_cocFuerte', 'g2_flujoSinHorizonte', 'g2_beApretado',
+  'g2_cocFuerte', 'g2_flujoSinHorizonte', 'g2_beApretado',
 ] as const satisfies readonly BrazoSTR[];
 
 /**
@@ -58,9 +54,7 @@ export const G2_BRAZOS = [
 export const GLOSA_BRAZO: Record<BrazoSTR, string> = {
   g1_cocSevero: 'Cash-on-Cash <-30% — pérdida estructural insostenible',
   g1_beInviable: 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance',
-  g1_flujoSevero: 'Flujo muy negativo sin ventaja clara sobre LTR',
   g1_capRateMinimo: 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR',
-  g2_ltrGana: 'LTR genera más que STR — el veredicto no pasa del medio (gate 2)',
   g2_cocFuerte: 'Cash-on-Cash <-10% — esfuerzo mensual significativo',
   g2_flujoSinHorizonte: 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador de equity insuficiente)',
   g2_beApretado: 'Break-even >110% del mercado — margen operativo apretado',
@@ -79,16 +73,13 @@ export function evalGatesSTR(p: {
   coc: number | null;
   beRatio: number;
   flujoCajaMensual: number;
-  sobreRentaPct: number;
   capRate: number;
   horizonteCierraFavorable: boolean;
 }): GatesBrazosSTR {
   return {
     g1_cocSevero: p.coc !== null && p.coc < -0.30,
     g1_beInviable: p.beRatio > 1.30,
-    g1_flujoSevero: p.flujoCajaMensual < -250000 && p.sobreRentaPct < 0.10,
     g1_capRateMinimo: p.capRate < 0.02,
-    g2_ltrGana: p.sobreRentaPct < 0,
     g2_cocFuerte: p.coc !== null && p.coc < -0.10,
     g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable,
     g2_beApretado: p.beRatio > 1.10,
@@ -115,7 +106,6 @@ export interface FrancoScoreSTR {
   desglose: {
     rentabilidad: DimensionScore;
     sostenibilidad: DimensionScore;
-    ventaja: DimensionScore;
     factibilidad: DimensionScore;
     /** Retorno sobre lo puesto (12-sep-2026, `score-retorno.ts`). Ausentes en filas
      *  persistidas antes de ese día. */
@@ -264,32 +254,9 @@ function calcSostenibilidad(
   return { score, label: "Sostenibilidad", detail, peso: PESOS_SCORE_STR.sostenibilidad };
 }
 
-// ============================================================
-// DIMENSIÓN 3: VENTAJA vs LTR (25%)
-// ============================================================
-
-const ESCALA_SOBRENTA: [number, number][] = [
-  [0.60, 100],
-  [0.40, 85],
-  [0.25, 70],
-  [0.15, 55],
-  [0.05, 40],
-  [0.00, 30],
-  [-0.10, 15],
-  [-0.25, 0],
-];
-
-function calcVentaja(sobreRentaPct: number): DimensionScore {
-  const score = Math.round(interpolate(sobreRentaPct, ESCALA_SOBRENTA));
-
-  let detail = "";
-  if (sobreRentaPct >= 0.20) detail = `STR genera +${Math.round(sobreRentaPct * 100)}% más que arriendo largo`;
-  else if (sobreRentaPct >= 0.05) detail = `STR genera +${Math.round(sobreRentaPct * 100)}% más — ventaja moderada`;
-  else if (sobreRentaPct >= 0) detail = `STR y LTR generan similar — el esfuerzo extra no se justifica`;
-  else detail = `LTR gana por ${Math.abs(Math.round(sobreRentaPct * 100))}% — STR no conviene`;
-
-  return { score, label: "Ventaja vs LTR", detail, peso: PESOS_SCORE_STR.ventaja };
-}
+// La DIMENSIÓN 3 (ventaja vs LTR) y los gates g1_flujoSevero / g2_ltrGana se retiraron el
+// 22-sep-2026: vestigio de AMBAS. La comparativa (`comparativa.ltr`, `recomendacionModalidad`,
+// `veredictoComparativo`) sigue en el motor porque el comparativo de los pares la lee.
 
 // ============================================================
 // DIMENSIÓN 4: FACTIBILIDAD (25%)
@@ -472,13 +439,12 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     inputs.results.breakEvenPctDelMercado,
     inputs.ingresoMensualScore
   );
-  const ventaja = calcVentaja(inputs.results.comparativa.sobreRentaPct);
   const factibilidad = calcFactibilidad(inputs);
   const cashOnCash = calcCashOnCashDim(metricaValorONull(base.cashOnCash), base.capRate);
   const tirDim = calcTirDim(metricaValorONull(inputs.results.exitScenario?.tirAnual));
 
   // Una sola fórmula, pesos de `score-retorno.ts`; la TIR sin aplicar reparte su peso.
-  const dims = { rentabilidad, sostenibilidad, ventaja, factibilidad, cashOnCash, tir: tirDim };
+  const dims = { rentabilidad, sostenibilidad, factibilidad, cashOnCash, tir: tirDim };
   let score = combinarConReparto(
     (Object.keys(PESOS_SCORE_STR) as (keyof typeof PESOS_SCORE_STR)[]).map((k) => ({
       peso: PESOS_SCORE_STR[k],
@@ -498,7 +464,6 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // Gates explícitos (audit §2.4). Orden: BUSCAR (severos) → max AJUSTA
   // (degrade COMPRAR) → resto se respeta del score base.
   let overrideApplied: string | null = null;
-  const sobreRentaPct = inputs.results.comparativa.sobreRentaPct;
   // decimal (-0.10 = -10%). Pie cero: null = 'no_aplica' ⇒ los brazos CoC de los
   // gates se OMITEN (ni true ni false) y manda el brazo de flujo (opción a).
   // metricaValorONull tolera también el number crudo de results legacy.
@@ -547,7 +512,6 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     coc,
     beRatio,
     flujoCajaMensual: base.flujoCajaMensual,
-    sobreRentaPct,
     capRate: base.capRate,
     horizonteCierraFavorable,
   });
@@ -579,6 +543,6 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
       // cuando el veredicto salió de la banda del score y ningún gate disparó.
       motivos: activosDecisivos,
     },
-    desglose: { rentabilidad, sostenibilidad, ventaja, factibilidad, cashOnCash, tir: tirDim },
+    desglose: { rentabilidad, sostenibilidad, factibilidad, cashOnCash, tir: tirDim },
   };
 }
