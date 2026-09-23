@@ -121,7 +121,23 @@ Antes del push final, en el worktree:
    escribo yo>` no es un gate: es tan bueno como mi memoria de lo que toqué.**
    El lint entero cuesta **3 segundos** —lo mismo que `tsc --noEmit`, medido— así que no hay
    nada que optimizar salteándolo.
-3. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
+3. **`npm run build` COMPLETO, sin excepción** (decisión de Fabrizio, 23-sep-2026), en un árbol
+   limpio aparte —un `git worktree` nuevo sobre el commit a pushear, con su propio `npm ci` y
+   el `.env.local` copiado—, nunca en el worktree que tiene un `next dev` vivo: el build le pisa
+   el `.next`. `tsc` y `lint` no alcanzan: `next build` además **PRERENDERIZA** las páginas
+   estáticas, o sea que EJECUTA código, y un error de ejecución no lo ve ningún chequeo estático.
+   El 23-sep-2026 master se rompió así, con `tsc` y `next lint` en verde: `findingDisplay` leía
+   `valor.sujetoPct` sin mirar, `/dev/finding-card` se prerenderiza con un hallazgo guardado en
+   formato viejo, y el build cayó con `TypeError: reading 'toFixed'` (tres deploys en ERROR,
+   producción quedó en el commit anterior). **Si el build local falla por env faltante, eso se
+   arregla —copiando la variable al `.env.local` del árbol limpio, desde VS Code o el dashboard—,
+   no se usa como permiso para saltearlo.**
+4. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
+5. **Mirar el deploy después de CADA push hasta que quede READY** (decisión de Fabrizio,
+   23-sep-2026): el preview de la rama, y cuando Fabrizio mergea, el de producción. Vercel MCP
+   `list_deployments` por `sha` o `get_deployment` → `state: READY`. Si queda en ERROR, los logs
+   del build (`list_deployment_events`) antes de tocar nada. Un push sin mirar su deploy no está
+   cerrado: el 23-sep-2026 el primer preview rojo ya estaba ahí cuando se pusheó el segundo.
 
 **Y antes de cerrar, medir el índice de memoria.** Corta en **23,4 KiB**, un KiB antes del límite real (24,4), que a `276 caracteres por goal son casi cuatro goals de aviso:
 
@@ -158,7 +174,10 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
   lo de abajo describe un entorno que hoy no se da, y **no es razón para saltear el lint
   completo**. Se conserva por si vuelve, no como expectativa.
 - **Lint en worktrees, si aparece:** `next lint` puede fallar con exit 1 y `Plugin "@next/next" was conflicted between ".eslintrc.json" and "..\..\..\.eslintrc.json"` — incluso sobre archivos intactos — porque ESLint sube el árbol y carga dos veces el `.eslintrc.json` del repo principal. Es entorno, no código: aíslalo corriendo lint sobre un archivo que no tocaste. Gate alternativo que sí corre: `node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to <repo-principal> --ext .ts,.tsx <archivos>`. En T5 (03-sep-2026) el conflicto NO apareció en una sesión entera usando `node <repo-principal>/node_modules/next/dist/bin/next lint --file …`; el arreglo de fondo (`"root": true` en `.eslintrc.json`) es config compartida y va en su propio cambio.
-- `npm run build` puede fallar localmente por env faltante (p.ej. `FIRECRAWL_API_KEY`): usá `tsc` para el chequeo local.
+- `npm run build` puede fallar localmente por env faltante (p.ej. `FIRECRAWL_API_KEY`). **Eso se
+  arregla, no es permiso para cambiarlo por `tsc`** (derogado el 23-sep-2026: la regla vieja
+  decía «usá `tsc` para el chequeo local», y así llegó a master un error de prerender que ningún
+  chequeo estático ve). Ver el paso 3 del cierre.
 - Antes de cada commit: `tsc` limpio (exit 0) + lint. **El lint por archivo (`--file`) sirve
   para iterar rápido mientras escribís; el que decide es el ENTERO, y va sí o sí antes de
   pushear** (ver el gate de cierre). Si usás `--file`, derivá la lista del diff
