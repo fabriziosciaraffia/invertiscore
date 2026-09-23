@@ -401,6 +401,11 @@ export interface AnalysisMetrics {
   // Sobre capital propio: 'no_aplica' cuando pieCLP === 0 (pie cero · fase 1-2).
   // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
   cashOnCash: MetricaSobreCapital;
+  /** El denominador del cash on cash, con sus sumandos: pie + gastos de compra + puesta a punto
+   *  (sin el corretaje de compra, que entra en la TIR y no acá). Lo lee la planilla «Cómo se
+   *  calcula» para que la cuenta dé el resultado. Opcional por filas persistidas anteriores; el
+   *  motor lo emite siempre (23-sep-2026). */
+  capitalCashOnCash?: { totalCLP: number; pieCLP: number; gastosCompraCLP: number; capexCLP: number };
   precioM2: number;
   mesesPaybackPie: MetricaSobreCapital;
   dividendo: number;

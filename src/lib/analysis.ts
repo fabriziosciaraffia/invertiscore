@@ -614,6 +614,11 @@ function calcMetrics(
     rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100,
     capRate: Math.round(capRate * 100) / 100,
     cashOnCash,
+    // EL DENOMINADOR DEL CASH ON CASH, COMO CAMPO (23-sep-2026). La planilla «Cómo se calcula»
+    // dividía por `exitScenario.inversionInicial`, que SUMA el corretaje de compra, y mostraba como
+    // resultado este `cashOnCash`, que no lo suma: la cuenta no daba el resultado en 403 de 1.214
+    // filas (0,56 puntos de mediana, hasta 6,10). Ahora la lee de acá, con sus sumandos.
+    capitalCashOnCash: { totalCLP: capitalInvertido, pieCLP, gastosCompraCLP: gastosCompra, capexCLP: capexParaCapital },
     precioM2: Math.round(precioM2 * 10) / 10,
     mesesPaybackPie,
     dividendo,
