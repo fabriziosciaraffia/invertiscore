@@ -278,7 +278,7 @@ ${dormitorios}D${banos}B en ${comuna} · ${superficie} m² · ${fmtUFAmbas(preci
 === ESTADO DEL VEREDICTO (coherencia total, Parte III) ===
 estadoVeredicto: ${estadoLabel[banda]}
 recomendacion (cópiala EXACTO al JSON): ${reco}
-gestión: el corto se opera tú (3% de comisión) o delegado (${Math.round(comisionAdminDec * 100)}%). El motor NO sabe si delegar conviene — mide qué CUESTA la comisión, no si se paga sola. No afirmes ninguna de las dos cosas.
+gestión: el corto se opera tú (3% de comisión) o delegado (${Math.round(comisionAdminDec * 100)}%). Si delegar conviene no está medido — lo medido es qué CUESTA la comisión, no si se paga sola. No afirmes ninguna de las dos cosas.
 ${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada ? " · comuna sin datos de mercado suficientes — atenúa" : ""}` : "zona STR no calculada"}
 
 === VIABILIDAD DE COMPRA (ver sección homónima del system) ===
@@ -287,7 +287,7 @@ análisis renta larga: ${ltrVerdict ?? "sin veredicto"} (score ${ltrScoreHijo})
 análisis renta corta: ${strVerdict ?? "sin veredicto"} (score ${strScoreHijo})
 Tu prosa NUNCA contradice estos veredictos de compra.${bloquePrecioJustoAmbas}
 
-=== APERTURA YA ESCRITA POR EL MOTOR (${aperturaWC} palabras) ===
+=== APERTURA YA ESCRITA (${aperturaWC} palabras) ===
 Se antepone automáticamente. NO la escribas, NO la parafrasees. Tu movimiento 1 CONTINÚA después de ella:
 «${apertura}»
 
@@ -314,7 +314,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
 3. cierre = la CONDICIÓN que sostiene la jugada + costo emocional. NO la posición (ya está en el hero).
 4. switchPath en rangos condicionales, nunca plazos exactos como certeza.
 5. Voz §2.1 tuteo neutro chileno. Cero voseo (-ás/-és/-ís). Cero chilenismo. Cero cliché.
-6. JSON válido y completo. Sin \`apertura\` ni \`headline\` (los pone el motor). Sin texto fuera del JSON.`;
+6. JSON válido y completo. Sin \`apertura\` ni \`headline\` (ya vienen escritos). Sin texto fuera del JSON.`;
 
   const wcCont = (ai: AIAnalysisComparativa | null): number => {
     if (!ai?.conviene) return 0;
@@ -381,7 +381,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
   const contWC = wcCont(aiResult);
   if (contWC > maxTotal * 1.1) {
     log(`[AMBAS-PLANC-BUDGET] continuación ${contWC} palabras > máx ${maxTotal} — retry`);
-    const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu continuación midió ${contWC} palabras; el MÁXIMO total es ${maxTotal} (quienDeberiasSer ≤${maxQuien}, switchPath ≤${maxSwitch}, cierre ≤${maxCierre}). Reescribí el JSON COMPLETO desarrollando UN matiz por movimiento, dentro del techo. Sin cifras de tarjeta.`;
+    const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu continuación midió ${contWC} palabras; el MÁXIMO total es ${maxTotal} (quienDeberiasSer ≤${maxQuien}, switchPath ≤${maxSwitch}, cierre ≤${maxCierre}). Reescribe el JSON COMPLETO desarrollando UN matiz por movimiento, dentro del techo. Sin cifras de tarjeta.`;
     try {
       const regen = await reg.medir("planc-budget", CLAUDE_MODEL, () => anthropic.messages.create({
         model: CLAUDE_MODEL,
