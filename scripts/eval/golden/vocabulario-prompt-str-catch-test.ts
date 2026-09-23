@@ -19,6 +19,10 @@
 //      vías, por el de salida combinada y por los avisos del precio.
 //   3. Las instrucciones de los reintentos quirúrgicos (el tramo de `reintentoQuirurgico`
 //      en ai-generation-str.ts) tampoco: van al modelo igual que el prompt.
+//   4. AMBAS (23-sep-2026): el system (con «motor» solo en la línea de A11), el user prompt y el
+//      correctivo de presupuesto. El user se arma dentro de la función que lee la base, así que
+//      se mide la plantilla: sus literales y las cadenas de sus expresiones, con un piso que
+//      exige el texto real. Verificado en rojo, también con la palabra dentro de un ternario.
 //
 //   node --env-file=.env.local --import tsx scripts/eval/golden/vocabulario-prompt-str-catch-test.ts
 // ============================================================================
@@ -26,6 +30,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SYSTEM_PROMPT_STR, buildUserPromptSTR } from "../../../src/lib/ai-generation-str";
 import { simularStrDesdePersistido } from "../../../src/lib/analysis/simular-str";
+import { SYSTEM_PROMPT_AMBAS } from "../../../src/lib/ai-generation-ambas";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -95,11 +100,71 @@ contar(SYSTEM_PROMPT_STR, "system", 5);
   }
 }
 
+// ── 4 · AMBAS (23-sep-2026) ─────────────────────────────────────────────────
+// El prompt de AMBAS no lo miraba nadie, y ahí «motor» pasaba: 12 veces en el system y dos en
+// el user prompt, incluida la misma frase de gestión que se corrigió en STR. Mismas cinco
+// palabras, mismas reglas: «motor» solo en la línea de A11, que la cita para prohibirla.
+/**
+ * El TEXTO que una plantilla `…` le manda al modelo: sus tramos literales y, dentro de cada
+ * `${…}`, las cadenas que la expresión puede devolver (un ternario con texto también llega al
+ * modelo). Los identificadores y el código de las expresiones no son texto del modelo.
+ */
+function textoDePlantilla(src: string, desde: number): string {
+  let i = src.indexOf("`", desde);
+  if (i === -1) return "";
+  const out: string[] = [];
+  const plantilla = (): void => {
+    i++; // el backtick de apertura
+    while (i < src.length && src[i] !== "`") {
+      if (src[i] === "\\") { out.push(src[i + 1] ?? ""); i += 2; continue; }
+      if (src[i] === "$" && src[i + 1] === "{") { i += 2; expresion(); continue; }
+      out.push(src[i]); i++;
+    }
+    i++; // el de cierre
+    out.push("\n");
+  };
+  const expresion = (): void => {
+    let prof = 1;
+    while (i < src.length && prof > 0) {
+      const c = src[i];
+      if (c === "`") { plantilla(); continue; }
+      if (c === '"' || c === "'") {
+        const q = c; i++;
+        let s = "";
+        while (i < src.length && src[i] !== q) { if (src[i] === "\\") { s += src[i + 1] ?? ""; i += 2; continue; } s += src[i]; i++; }
+        i++; out.push(s, "\n"); continue;
+      }
+      if (c === "{") prof++;
+      if (c === "}") prof--;
+      i++;
+    }
+  };
+  plantilla();
+  return out.join("");
+}
+{
+  // «motor» solo en la línea de A11 (la regla que lo prohíbe citándolo).
+  const sinA11 = SYSTEM_PROMPT_AMBAS.split("\n").filter((l) => !/^- A11 Engine-ism:/.test(l)).join("\n");
+  if (sinA11 === SYSTEM_PROMPT_AMBAS) F("4 · no se encontró la regla A11 en el system de AMBAS: el tope de «motor» no se puede medir");
+  contar(sinA11, "system AMBAS (fuera de A11)", 0);
+  const gen = leer("src/lib/ai-generation-ambas-generate.ts");
+  const iUser = gen.indexOf("const userPrompt = `");
+  const iCorr = gen.indexOf("const correctivo = `");
+  if (iUser === -1 || iCorr === -1) F("4 · no se encontró la plantilla del user prompt o del correctivo de AMBAS");
+  else {
+    const user = textoDePlantilla(gen, iUser);
+    // PISO: la extracción tiene que traer el texto real, no quedarse vacía o corta.
+    if (!/Genera la prosa comparativa/.test(user) || !/INSTRUCCIÓN FINAL/.test(user) || !/zona STR no calculada/.test(user)) F("4 · PISO · la extracción del user prompt de AMBAS no trae el texto (plantilla o sus ternarios)");
+    contar(user, "user AMBAS", 0);
+    contar(textoDePlantilla(gen, iCorr), "correctivo AMBAS", 0);
+  }
+}
+
 /** Tier para el runner: cada palabra nuestra en texto del modelo es una falla dura. */
 export function runVocabularioPromptStrTier(): { hard: number } {
-  console.log("\n─── TIER VOCABULARIO-PROMPT-STR (v19 · el modelo escribe como lee · 0 tokens) ───");
+  console.log("\n─── TIER VOCABULARIO-PROMPT-STR (v19 · el modelo escribe como lee · STR y AMBAS · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — ni palanca, ni vía, ni brecha, ni estructural en el system, en cuatro user prompts reales ni en los reintentos; «motor» solo donde A11 lo prohíbe");
+    console.log("  ✓ VERDE — ni palanca, ni vía, ni brecha, ni estructural en el system, en cuatro user prompts reales ni en los reintentos, en STR y en AMBAS; «motor» solo donde A11 lo prohíbe");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
