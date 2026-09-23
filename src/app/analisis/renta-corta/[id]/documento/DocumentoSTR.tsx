@@ -295,9 +295,9 @@ export function DocumentoSTR({
             <div className="dim"><p className="dk">Rentabilidad</p><div className="dbar"><i style={{ width: `${d.rentabilidad.score}%` }} /></div><div className="dv">{Math.round(d.rentabilidad.score)}</div><div className="dw">peso {d.rentabilidad.peso}%</div></div>
             <div className="dim"><p className="dk">Sostenibilidad</p><div className="dbar"><i style={{ width: `${d.sostenibilidad.score}%` }} /></div><div className="dv">{Math.round(d.sostenibilidad.score)}</div><div className="dw">peso {d.sostenibilidad.peso}%</div></div>
             <div className="dim"><p className="dk">Factibilidad</p><div className="dbar"><i style={{ width: `${d.factibilidad.score}%` }} /></div><div className="dv">{Math.round(d.factibilidad.score)}</div><div className="dw">peso {d.factibilidad.peso}%</div></div>
-            {/* Retorno sobre lo puesto y TIR (12-sep-2026). Filas persistidas antes no las traen. */}
+            {/* Cash on cash y TIR (12-sep-2026). Filas persistidas antes no las traen. */}
             {d.cashOnCash && (
-              <div className="dim"><p className="dk">Retorno sobre lo puesto</p><div className="dbar"><i style={{ width: `${d.cashOnCash.score}%` }} /></div><div className="dv">{Math.round(d.cashOnCash.score)}</div><div className="dw">peso {d.cashOnCash.peso}%</div></div>
+              <div className="dim"><p className="dk">Cash on cash</p><div className="dbar"><i style={{ width: `${d.cashOnCash.score}%` }} /></div><div className="dv">{Math.round(d.cashOnCash.score)}</div><div className="dw">peso {d.cashOnCash.peso}%</div></div>
             )}
             {d.tir && (
               d.tir.aplica === false
@@ -368,7 +368,7 @@ export function DocumentoSTR({
             <div className="c"><p className="ck">Ingreso bruto</p><div className="cv">{money(base.ingresoBrutoMensual)}<small>/mes</small></div></div>
             <div className="c"><p className="ck">NOI mensual</p><div className="cv">{money(base.noiMensual)}</div></div>
             <div className="c"><p className="ck">CAP rate</p><div className={`cv ${capBasePct < 5 ? "neg" : "pos"}`}>{pct(capBasePct)}</div></div>
-            <div className="c"><p className="ck">Cash-on-cash</p><div className={`cv ${(cocBasePct ?? 0) < 0 ? "neg" : "pos"}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
+            <div className="c"><p className="ck">Cash on cash</p><div className={`cv ${(cocBasePct ?? 0) < 0 ? "neg" : "pos"}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
           </div>
           <p className="foot">El escenario base factura la ocupación mediana observada de la zona ({occPct}%), no la potencial con gestión profesional.</p>
         </div>
@@ -522,7 +522,7 @@ export function DocumentoSTR({
                   del tratamiento. El `!== 0` se conserva para el legacy pre-4b. */}
               <div className="kpi"><p className="kk">TIR a {exit?.yearVenta ?? 10} años</p><div className="kv" style={tirNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{tirNA ? "No aplica*" : exit && tirNum !== null && tirNum !== 0 ? pct(tirNum) : "—"}</div></div>
               <div className="kpi"><p className="kk">CAP rate</p><div className={`kv ${capBasePct < 5 ? "neg" : ""}`}>{pct(capBasePct)}</div></div>
-              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${(cocBasePct ?? 0) < 0 ? "neg" : ""}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
+              <div className="kpi"><p className="kk">Cash on cash</p><div className={`kv ${(cocBasePct ?? 0) < 0 ? "neg" : ""}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
               <div className="kpi"><p className="kk">NOI mensual</p><div className="kv">{money(base.noiMensual)}</div></div>
               <div className="kpi"><p className="kk">Recup. amoblam.</p><div className="kv">{c.paybackMeses > 0 ? `${c.paybackMeses} m` : c.paybackMeses === 0 ? "—" : "N/A"}</div></div>
               <div className="kpi"><p className="kk">Ocupación</p><div className="kv">{occPct}%</div></div>

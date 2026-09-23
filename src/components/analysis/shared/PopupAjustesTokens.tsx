@@ -232,6 +232,7 @@ export function PopupAjustesTokens() {
       .paj-par{padding:10px 0;font-size:13px}
       .paj-par+.paj-par{border-top:1px solid var(--doc-line2)}
       .paj-par .l{color:var(--doc-tx3);margin-bottom:3px}
+      .paj-par .l small{display:block;font-size:11.5px;color:var(--doc-tx4);margin-top:1px}
       .paj-par .p{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
       .paj-par .a1{font-size:13px;color:var(--doc-tx4);white-space:nowrap}
       .paj-par .fl{color:var(--doc-tx4);font-weight:700}

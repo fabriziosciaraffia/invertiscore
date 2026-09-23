@@ -1,6 +1,6 @@
 "use client";
 
-import { Ang } from "./shared/Ang";
+import { GlosaIndicador } from "./shared/Glosa";
 import type { AnalisisInput, AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { ModalCalculoBase } from "./shared/ModalCalculoBase";
@@ -13,8 +13,8 @@ import { Planilla, type FilaPlanilla } from "./shared/Planilla";
  * Tres bloques apilados, todos DETERMINISTAS desde `projections` y `metrics` (cero
  * prosa):
  *   (a) Flujo por año — desde el desglose anual que emite calcProjections (T1). El
- *       NOI es el del motor (excluye vacancia, corretaje y recambio, que van en su
- *       propia columna): así el NOI cuadra con el cap rate neto y el flujo con el del
+ *       ingreso neto es el del motor (excluye vacancia, corretaje y recambio, que van en su
+ *       propia columna): así cuadra con el cap rate neto y el flujo con el del
  *       informe. Filas de pre-entrega marcadas.
  *   (b) Indicadores — fórmula en palabras · valores sustituidos · resultado, con el
  *       año base (arriendo y gastos de hoy), que es lo que muestran las celdas.
@@ -98,12 +98,12 @@ export function ModalCalculo({
   });
 
   const filasInd: FilaPlanilla[] = [
-    { th: <><Ang>Cap rate</Ang> bruto</>, celdas: [{ v: "Arriendo anual ÷ precio" }, { v: `${clp(arriendoAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.rentabilidadBruta) }] },
-    { th: <><Ang>Cap rate</Ang> neto</>, celdas: [{ v: "NOI anual ÷ precio" }, { v: `${clp(noiAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.capRate) }] },
-    { th: <Ang>Cash-on-cash</Ang>, celdas: [{ v: "Flujo anual ÷ capital aportado" }, { v: coc != null ? `${clp(flujoAnual0)} ÷ ${clp(capital)}` : "sin pie: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
-    { th: "Cobertura de cuota", celdas: [{ v: "Arriendo mensual ÷ dividendo" }, { v: cobertura != null ? `${clp(metrics.ingresoMensual)} ÷ ${clp(metrics.dividendo)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
+    { th: <>Cap rate bruto<GlosaIndicador glosa="capRateBruto" /></>, celdas: [{ v: "Arriendo anual ÷ precio" }, { v: `${clp(arriendoAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.rentabilidadBruta) }] },
+    { th: <>Cap rate neto<GlosaIndicador glosa="capRateNeto" /></>, celdas: [{ v: "Ingreso neto anual ÷ precio" }, { v: `${clp(noiAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.capRate) }] },
+    { th: <>Cash on cash<GlosaIndicador glosa="cashOnCash" /></>, celdas: [{ v: "Flujo anual ÷ capital aportado" }, { v: coc != null ? `${clp(flujoAnual0)} ÷ ${clp(capital)}` : "sin pie: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
+    { th: <>Cobertura de cuota<GlosaIndicador glosa="cobertura" /></>, celdas: [{ v: "Arriendo mensual ÷ dividendo" }, { v: cobertura != null ? `${clp(metrics.ingresoMensual)} ÷ ${clp(metrics.dividendo)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
     {
-      th: `TIR a ${anios} años`,
+      th: <>TIR a {anios} años<GlosaIndicador glosa="tir" /></>,
       celdas: [
         { v: "Tasa que iguala lo que pones con lo que recibes" },
         { v: exit ? `−${mm(capital)} hoy · ${exit.flujoAcumulado < 0 ? "−" : "+"}${mm(Math.abs(exit.flujoAcumulado))} en ${anios - preEntregaAnios} años · +${mm(equity)} el año ${anios}` : "—" },
@@ -119,7 +119,7 @@ export function ModalCalculo({
       pie={
         <>
           Motor Franco · UF {Math.round(valorUF).toLocaleString("es-CL")}
-          {capRef ? <> · <Ang>cap rate</Ang> de referencia: {capRef.fuente}</> : null}
+          {capRef ? <> · cap rate de referencia: {capRef.fuente}</> : null}
         </>
       }
       bloques={[
@@ -132,7 +132,7 @@ export function ModalCalculo({
               : "Cada año con el arriendo y los gastos reajustados.",
           children: conDesglose ? (
             <>
-              <Planilla columnas={["Año", "Arriendo", "Gastos op.", "NOI", "Vac. y rotación", "Dividendo", "Flujo neto", "Acumulado"]} filas={filasFlujo} />
+              <Planilla columnas={["Año", "Arriendo", "Gastos op.", "Ingreso neto", "Vac. y rotación", "Dividendo", "Flujo neto", "Acumulado"]} filas={filasFlujo} />
               <div className="v-fuente">
                 Arriendo reajustado 3,5% al año · gastos y dividendo 3% al año · gastos operativos = gastos comunes en vacancia +
                 contribuciones + mantención · vacancia y rotación = 0,6 mes de arriendo + corretaje y recambio
@@ -150,7 +150,7 @@ export function ModalCalculo({
             <>
               <Planilla variante="ind" columnas={[]} filas={filasInd} />
               <div className="v-fuente">
-                Capital aportado = pie {clp(metrics.pieCLP)} + gastos de compra {clp(Math.max(capital - metrics.pieCLP, 0))} · NOI = arriendo − gastos comunes
+                Capital aportado = pie {clp(metrics.pieCLP)} + gastos de compra {clp(Math.max(capital - metrics.pieCLP, 0))} · ingreso neto = arriendo − gastos comunes
                 en vacancia − contribuciones − mantención
               </div>
             </>

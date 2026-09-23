@@ -141,11 +141,14 @@ function enOrden(txt: string, agujas: string[]): string | null {
   const rama = i === -1 ? "" : CIF.slice(i, CIF.indexOf("\n    ];", i));
   if (!rama) F("4 · no se encontró la lista de cifras STR (`const cifras: CifraInforme[] = [ … ];`)");
   else {
-    const falla = enOrden(rama, ['k: "Tarifa por noche"', 'k: "Ocupación"', 'k: "Ingreso mensual"', 'k: "Flujo mensual"', "por día", 'k: "TIR a 10 años"']);
-    if (falla) F(`4 · el orden de §6 se rompió en las cifras STR: no encontré «${falla}» después de lo anterior (tarifa · ocupación · ingreso · flujo · cap rate por día · TIR)`);
+    // ACTA 23-sep-2026: «cap rate por día» era un error de nombre —la cifra es anual— y pasa a
+    // «Cap rate»; su referencia deja de ser la constante de 5% y es la de la zona, la misma que
+    // lee el capítulo I (`referenciaCapRateStr`). El orden de §6 no cambia.
+    const falla = enOrden(rama, ['k: "Tarifa por noche"', 'k: "Ocupación"', 'k: "Ingreso mensual"', 'k: "Flujo mensual"', 'k: "Cap rate"', 'k: "TIR a 10 años"']);
+    if (falla) F(`4 · el orden de §6 se rompió en las cifras STR: no encontré «${falla}» después de lo anterior (tarifa · ocupación · ingreso · flujo · cap rate · TIR)`);
     const destacadas = [...rama.matchAll(/destacada: true/g)].length;
     if (destacadas !== 2) F(`4 · ${destacadas} cifras destacadas en la rama del rediseño; §6 destaca exactamente las DOS primeras (tarifa y ocupación)`);
-    if (!/CAP_STR_UMBRAL_PCT/.test(rama)) F("4 · el cap rate por día perdió su referencia del motor (CAP_STR_UMBRAL_PCT = 5,0%)");
+    if (!/ref\.hayRef && cap < ref\.pct/.test(rama) || !/ref\.pct/.test(rama)) F("4 · el cap rate de las cifras STR no lee la referencia de la zona (`referenciaCapRateStr`)");
   }
   if (!/Las dos primeras son el supuesto del que cuelga todo lo demás\./.test(CIF)) F("4 · falta la línea «Las dos primeras son el supuesto del que cuelga todo lo demás.»: en renta corta el ingreso es una estimación y eso se declara (§6)");
   if (!/encabezado="Las dos primeras son el supuesto/.test(CIF)) F("4 · la línea del supuesto dejó de pasarse a la primitiva como `encabezado`");

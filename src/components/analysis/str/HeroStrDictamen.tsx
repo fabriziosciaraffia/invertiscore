@@ -165,6 +165,7 @@ export function HeroStrDictamen({
       <PopupAjustesTokens />
       <PopupAjustes
         veredicto={veredicto as Veredicto}
+        modalidad="STR"
         distancia={distancia ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}
         // La grilla de COMPRAR sale de la simulación, como las otras dos matrices de STR, y

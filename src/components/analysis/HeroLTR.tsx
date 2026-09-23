@@ -231,6 +231,7 @@ export function HeroLTR({
       <PopupAjustesTokens />
       <PopupAjustes
         veredicto={veredicto as Veredicto}
+        modalidad="LTR"
         distancia={distanciaRow ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}
         // La grilla de COMPRAR viene por su propio campo: el hallazgo de distancia es null

@@ -1,6 +1,5 @@
 "use client";
 
-import { Ang } from "./shared/Ang";
 import type { AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
@@ -47,7 +46,7 @@ export function LosNumeros({
   onCalculo?: () => void;
 }) {
   // El signo tipográfico sale de `menos` (utils.ts). Afecta las dos celdas que
-  // pueden ir en negativo —«Retorno sobre lo puesto» y la TIR—, que hasta acá
+  // pueden ir en negativo —el cash on cash y la TIR—, que hasta acá
   // imprimían el guion ASCII al lado de las filas de hallazgo, ya con «−».
   const pct1 = (n: number) => `${menos(n.toFixed(1).replace(".", ","))}%`;
   const coc = metricaValorONull(metrics.cashOnCash);
@@ -60,17 +59,21 @@ export function LosNumeros({
 
   const cifras: CifraInforme[] = [
     {
-      k: <><Ang>Cap rate</Ang> bruto</>,
+      // Nombre de mercado, sin cursiva, con su ⓘ (§5.7, 23-sep-2026): la glosa entre paréntesis
+      // que abría esta línea se mudó al ⓘ.
+      k: "Cap rate bruto",
+      glosa: "capRateBruto",
       v: pct1(metrics.rentabilidadBruta),
       tr: (
         <>
-          <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el arriendo de un año, <b>antes</b> de gastos.{" "}
+          El arriendo de un año sobre el precio, <b>antes</b> de gastos.{" "}
           {capRefPct != null && capRefBase === "bruta" ? <b>Los avisos de la comuna rinden {pct1(capRefPct)}.</b> : null}
         </>
       ),
     },
     {
-      k: <><Ang>Cap rate</Ang> neto</>,
+      k: "Cap rate neto",
+      glosa: "capRateNeto",
       // LA MISMA CIFRA que lee el capítulo I: `valor.capRatePct` del hallazgo, redondeada UNA
       // vez desde el crudo. `metrics.capRate` viene redondeado a DOS decimales y formatearlo a
       // uno es redondear dos veces (2,848 → 2,85 → «2,9» acá, 2,8 en el capítulo): 55 filas
@@ -85,8 +88,10 @@ export function LosNumeros({
       ),
     },
     {
-      // §5.7: el rótulo en español, de una línea; el anglicismo en cursiva abre la glosa.
-      k: "Retorno sobre lo puesto",
+      // «Retorno sobre lo puesto» salió (decisión de Fabrizio, 23-sep-2026): el indicador va con
+      // su nombre de mercado y el ⓘ lo explica.
+      k: "Cash on cash",
+      glosa: "cashOnCash",
       v: coc != null ? pct1(coc) : "—",
       neg: coc != null && coc < 0,
       tr:
@@ -94,11 +99,11 @@ export function LosNumeros({
           <>Sin pie no hay capital propio sobre el que medirlo.</>
         ) : coc < 0 ? (
           <>
-            <Ang>Cash-on-cash</Ang>: por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
+            Por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
           </>
         ) : (
           <>
-            <Ang>Cash-on-cash</Ang>: por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
+            Por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
           </>
         ),
     },
@@ -119,6 +124,7 @@ export function LosNumeros({
     },
     {
       k: "Cobertura de cuota",
+      glosa: "cobertura",
       // El múltiplo Y su porcentaje. No es dato nuevo: es el mismo número en la unidad
       // que se entiende sin pensar. Medido sobre 30 generaciones v21, la prosa traducía
       // «0,71×» a «cubre el 71% de la cuota» en 8 de ellas — gastaba palabras en una
@@ -148,6 +154,7 @@ export function LosNumeros({
     },
     {
       k: `TIR a ${anios} años`,
+      glosa: "tir",
       v: tir != null ? pct1(tir) : "—",
       tr:
         tir == null ? (

@@ -23,11 +23,21 @@
 //   · el ensamblador STR volviendo a `CAP_STR_UMBRAL_PCT` → cae 3;
 //   · el render LTR con «cap rate» en el ksub, o con `valorUF` en la fuente → cae 4.
 //   node --import tsx scripts/eval/golden/cuanto-renta-catch-test.ts
+//
+// ACTA 23-sep-2026 (decisión de Fabrizio, el ⓘ de los indicadores): LA NOMENCLATURA SE DA VUELTA
+// A PROPÓSITO. El capítulo I nombra la cifra con su nombre de mercado —«Cap rate bruto» (o
+// «Cap rate neto» cuando la referencia es neta) en LTR, «Cap rate» en STR—, sin cursiva y con su
+// ⓘ, que es quien explica qué es. Por eso (2) se invierte: la explicación visible YA NO define la
+// cifra (lo hacía porque el ⓘ no abría en el teléfono); dice de dónde sale la referencia. Y el
+// umbral STR del render lo lee `referenciaCapRateStr`, la misma función que el hero, en vez de
+// derivarlo en el capítulo. El resto (fuente, umbral del motor, COMPRAR bajo la referencia, sin
+// referencia no compara) sigue igual.
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fuenteCapRef, explicacionCapRef, NOMBRE_RENTABILIDAD } from "../../../src/lib/capref-copy";
-import { buildHallazgoRentabilidadStr, umbralStrDesdeZona, CAP_STR_UMBRAL_PCT } from "../../../src/lib/rentabilidad-str-hallazgo";
+import { buildHallazgoRentabilidadStr, umbralStrDesdeZona, CAP_STR_UMBRAL_PCT, referenciaCapRateStr } from "../../../src/lib/rentabilidad-str-hallazgo";
+import { GLOSAS } from "../../../src/lib/glosas-indicadores";
 import { capRefNacional, capRefDesdeSnapshot } from "../../../src/lib/cap-rate-hallazgo";
 import type { CapRefComunaSnapshot } from "../../../src/lib/capref-comuna";
 
@@ -69,7 +79,10 @@ export function runCuantoRentaTier(): { hard: number } {
   for (const v of [vCelda, vComuna, vBdo, vNac]) {
     const e = explicacionCapRef(v);
     if (TECNICO.test(e) || e.split(". ").length > 2) F(`2 · explicación ${v.nivel} habla del cálculo o dice más de dos frases: «${e}»`);
-    if (!/rentabilidad bruta|rentabilidad es/i.test(e)) F(`2 · explicación ${v.nivel} no dice qué es la rentabilidad`);
+    // Qué es la cifra lo dice su ⓘ (acta 23-sep): la explicación no la define, y si la nombra
+    // es en minúscula dentro de la frase (§5.7).
+    if (/rentabilidad bruta es|rentabilidad es|cap rate (bruto |neto )?es\b/i.test(e)) F(`2 · explicación ${v.nivel} vuelve a definir la cifra (eso es del ⓘ): «${e}»`);
+    if (/Cap rate/.test(e.slice(1))) F(`2 · explicación ${v.nivel} escribe «Cap rate» con mayúscula dentro de la frase`);
   }
   if (!/Providencia/.test(explicacionCapRef(vCelda)) || !/edificios de renta/.test(explicacionCapRef(vBdo)) || !/promedio de Santiago/.test(explicacionCapRef(vNac))) F("2 · la explicación nombra la comuna, los edificios de renta o el promedio según el peldaño");
 
@@ -102,7 +115,8 @@ export function runCuantoRentaTier(): { hard: number } {
   for (const [n, src] of [["LTR", ltr], ["STR", str]] as const) {
     // Lo que el usuario lee: strings y JSX, sin los comentarios del acta.
     const visible = src.replace(/\/\/[^\n]*/g, "").replace(/\/\*[^]*?\*\//g, "");
-    if (/cap rate|Cap rate|CAP rate|<Ang>cap/i.test(visible)) F(`4 · ${n}: el capítulo I escribe «cap rate»`);
+    // El nombre sale de NOMBRE_RENTABILIDAD (que es el de GLOSAS), nunca escrito a mano.
+    if (/"[^"\n]*cap rate[^"\n]*"|`[^`\n]*cap rate[^`\n]*`|>[^<{\n]*cap rate/i.test(visible)) F(`4 · ${n}: el capítulo I escribe «cap rate» a mano en vez de leer NOMBRE_RENTABILIDAD`);
     if (/BDO|peldaño|celda exacta/.test(visible)) F(`4 · ${n}: el capítulo I menciona BDO o peldaños`);
     if (/<VFuente>[^]*?(ufFecha|valorUF|UF \$)[^]*?<\/VFuente>/.test(visible)) F(`4 · ${n}: la fuente lleva la UF del análisis`);
     if (!/NOMBRE_RENTABILIDAD\./.test(visible)) F(`4 · ${n}: la cifra no se nombra con NOMBRE_RENTABILIDAD`);
@@ -110,7 +124,12 @@ export function runCuantoRentaTier(): { hard: number } {
   if (!/fuenteCapRef\(v\)/.test(ltr) || !/explicacionCapRef\(v\)/.test(ltr)) F("4 · LTR no usa la fuente y la explicación de capref-copy");
   if (!/fuenteUmbralStr\(vRef\)/.test(str) || !/explicacionUmbralStr\(vRef\)/.test(str)) F("4 · STR no usa la fuente y la explicación de capref-copy");
   if (!/conApellido\(nombreCifra, `\$\{pct1\(v\.sujetoPct\)\}%`\)/.test(ltr) || /pct1\(v\.capRatePct\)/.test(ltr)) F("4 · LTR no muestra la bruta (sujetoPct) como cifra del capítulo, o vuelve a mostrar el neto");
-  if (!/hRenta\?\.valor\.umbralPct \?\? CAP_STR_UMBRAL_PCT/.test(str) || /refPct=\{pos\(CAP_STR_UMBRAL_PCT\)\}/.test(str)) F("4 · STR no toma el umbral del hallazgo");
+  if (!/const ref = referenciaCapRateStr\(hallazgos, comuna\);\s*const umbral = ref\.pct;/.test(str) || /CAP_STR_UMBRAL_PCT/.test(str)) F("4 · STR no toma el umbral del hallazgo por referenciaCapRateStr");
+  // Y la función lee el hallazgo, no la constante: con zona 2,2 dice 2,2; sin hallazgo, sin referencia.
+  const refZ = referenciaCapRateStr([{ id: "rentabilidad_str", valor: { umbralPct: 2.2, nivel: "celda", comuna: "Providencia", celdaDormitorios: 2 } } as never]);
+  if (refZ.pct !== 2.2 || !refZ.hayRef || refZ.comuna !== "Providencia") F(`4 · referenciaCapRateStr no lee el umbral del hallazgo (dio ${refZ.pct} ${refZ.hayRef})`);
+  const refN = referenciaCapRateStr([]);
+  if (refN.hayRef || refN.nivel !== "sin_referencia") F("4 · referenciaCapRateStr sin hallazgo no declara sin_referencia");
   // 5 · COMPRAR bajo la referencia de la comuna (decisión de Fabrizio, 21-sep-2026): el capítulo
   //     no dice «apuesta»; nombra la tensión (rinde algo menos de lo que Franco pide para renta
   //     corta en esa zona), dice que el caso cierra igual y que el break-even lo confirma.
@@ -128,7 +147,7 @@ export function runCuantoRentaTier(): { hard: number } {
   //     valor no va en rojo, el sub no dice «referencia X», y la rama sin referencia no nombra el
   //     umbral ni la tarifa «para rendir X»; el dial y el break-even quedan (no dependen de la
   //     referencia).
-  if (!/const hayRef = vRef\.nivel !== "sin_referencia";/.test(str)) F("6 · STR no deriva hayRef del nivel del hallazgo");
+  if (!/const hayRef = ref\.hayRef;/.test(str) || !/const vRef = \{ nivel: ref\.nivel,/.test(str)) F("6 · STR no deriva hayRef del nivel del hallazgo");
   if (!/valorRojo: hayRef && cap < umbral,/.test(str)) F("6 · STR: el rojo del valor no está gateado por hayRef");
   if (!/ksub: hayRef \? `referencia \$\{refTxt\}` : "sin referencia en la zona",/.test(str)) F("6 · STR: el sub no cambia sin referencia");
   // Las dos ramas se cierran en su </VViz>: un `)}` pelado corta en el primer `{pct1(cap)}`.
@@ -143,7 +162,11 @@ export function runCuantoRentaTier(): { hard: number } {
   if (!/\{dial && \(/.test(str) || !/\{sensStr && beBar && \(/.test(str)) F("6 · STR: el dial o el break-even dejaron de estar fuera de la bifurcación");
   const posBe = str.indexOf("const be = sensStr"); const posCruce = str.indexOf("const cruce = holgura");
   if (posBe < 0 || posCruce < 0 || posBe > posCruce) F("5 · STR: el break-even se lee después de la copy que lo cita");
-  if (NOMBRE_RENTABILIDAD.ltr !== "Rentabilidad bruta" || NOMBRE_RENTABILIDAD.str !== "Rentabilidad") F("4 · la nomenclatura es «Rentabilidad bruta» / «Rentabilidad»");
+  if (NOMBRE_RENTABILIDAD.ltr !== "Cap rate bruto" || NOMBRE_RENTABILIDAD.ltrNeta !== "Cap rate neto" || NOMBRE_RENTABILIDAD.str !== "Cap rate") F("4 · la nomenclatura es «Cap rate bruto» / «Cap rate neto» / «Cap rate»");
+  if (NOMBRE_RENTABILIDAD.ltr !== GLOSAS.capRateBruto.nombre || NOMBRE_RENTABILIDAD.str !== GLOSAS.capRateStr.nombre) F("4 · el apellido del capítulo y el título del ⓘ no son el mismo nombre");
+  // El ⓘ va en el sub del capítulo abierto (campo `glosa`), no en la fila.
+  if (!/glosa: <GlosaIndicador glosa=\{v\.base === "bruta" \? "capRateBruto" : "capRateNeto"\}/.test(ltr)) F("4 · LTR: el capítulo I no lleva el ⓘ del cap rate en el sub");
+  if (!/glosa: <GlosaIndicador glosa="capRateStr"/.test(str)) F("4 · STR: el capítulo I no lleva el ⓘ del cap rate en el sub");
 
   if (fallas.length) {
     console.log(`   cuanto-renta ✗ ${fallas.length} falla(s):`);

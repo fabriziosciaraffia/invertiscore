@@ -39,6 +39,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PESOS_SCORE_LTR, PESOS_SCORE_STR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "../../../src/lib/score-retorno";
+import { SCORE_CORTE_COMPRAR, SCORE_CORTE_AJUSTA } from "../../../src/lib/score-cortes";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { metricaValorONull } from "../../../src/lib/types";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
@@ -160,8 +161,13 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   if (!/cocSevero: coc !== null && coc < -30,/.test(A)) F("6 · G1 cocSevero dejó de ser CoC < −30");
   if (!/\(cocGate2 < -10 \|\| \(flujoMuyNegativoRatio < -0\.05 && cocGate2 < 0\)\)/.test(A)) F("6 · G2 LTR cambió sus umbrales (CoC < −10 / flujo < −5 % con CoC < 0)");
   if (!/metrics\.flujoNetoMensual >= 0 &&\s*metrics\.rentabilidadNeta >= 4(?![\d.])/.test(A)) F("6 · G3 LTR cambió (flujo ≥ 0 y neta ≥ 4)");
-  if (!/score >= 70 \? "COMPRAR" : score >= 45 \? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"/.test(A)) F("6 · las bandas LTR dejaron de ser 70/45");
+  // ACTA 23-sep-2026: los cortes suben a constante (`score-cortes.ts`) porque el ⓘ del Franco
+  // Score los cita. Se fija el VALOR de la constante y que las dos bandas la LEAN: un literal
+  // que vuelva a `evalVeredicto` o a `calcFrancoScoreSTR` la deja sin lector y cae acá.
+  if (SCORE_CORTE_COMPRAR !== 70 || SCORE_CORTE_AJUSTA !== 45) F("6 · las bandas dejaron de ser 70/45 (score-cortes.ts)");
+  if (!/score >= SCORE_CORTE_COMPRAR \? "COMPRAR" : score >= SCORE_CORTE_AJUSTA \? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"/.test(A)) F("6 · las bandas LTR no leen SCORE_CORTE_COMPRAR / SCORE_CORTE_AJUSTA");
   const S = leer("src/lib/engines/short-term-score.ts");
+  if (!/if \(score >= SCORE_CORTE_COMPRAR\) veredicto = 'COMPRAR';\s*else if \(score >= SCORE_CORTE_AJUSTA\) veredicto = 'AJUSTA SUPUESTOS';/.test(S)) F("6 · las bandas STR no leen SCORE_CORTE_COMPRAR / SCORE_CORTE_AJUSTA");
   for (const brazo of ["g1_cocSevero: p.coc !== null && p.coc < -0.30", "g1_beInviable: p.beRatio > 1.30", "g1_capRateMinimo: p.capRate < 0.02", "g2_cocFuerte: p.coc !== null && p.coc < -0.10", "g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable", "g2_beApretado: p.beRatio > 1.10"]) {
     // Con la coma: `p.capRate < 0.02,` no está en `p.capRate < 0.025,` ni en `p.capRate < 0.02 && x,`.
     if (!S.includes(`${brazo},`)) F(`6 · el brazo STR «${brazo.split(":")[0]}» cambió su umbral`);

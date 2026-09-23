@@ -22,6 +22,7 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
 // --verdict / --verdict-deep que DocTokens fija según `data-verdict` en la raíz del
@@ -148,7 +149,10 @@ export function PortadaInforme({
       {(
         /* Score en TEXTO PLANO. La barra de bloques se retira del hero: sobre el
            espectro compite con el botón, que es lo que tiene que mirarse primero. */
-        <p className="doc-hero-score">Franco Score {score ?? "—"} de 100</p>
+        <p className="doc-hero-score">
+          Franco Score {score ?? "—"} de 100
+          <GlosaIndicador glosa="francoScore" aca={score != null ? `${score} · ${etiquetaVeredicto(veredicto)}` : undefined} />
+        </p>
       )}
 
       {/* Grid portada: contenido + mapa (mapa solo PC) */}

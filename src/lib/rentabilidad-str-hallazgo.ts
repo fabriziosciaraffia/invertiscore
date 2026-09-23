@@ -52,6 +52,31 @@ export function umbralStrDesdeZona(s: StrRefZonaSnapshot | null | undefined, com
   return { pct: CAP_STR_UMBRAL_PCT, nivel: "sin_referencia", comuna: s?.celda.comuna ?? comuna, dormitorios: null, nDirecciones: s?.nDirecciones ?? 0, nVenta: s?.nVenta ?? 0 };
 }
 
+/** La referencia del cap rate STR COMO LA LEE EL INFORME: la del hallazgo (lo que proyectan los
+ *  Airbnb de la zona), con su nivel. Una sola lectura para el hero y el capítulo I
+ *  (23-sep-2026): el hero decía «la referencia para renta corta es 5,0%» —la constante de
+ *  respaldo— y el capítulo, en la misma página, «referencia 2,2%». Sin hallazgo o sin
+ *  referencia de la zona: `hayRef` false, y nadie compara ni pinta en rojo contra el 5%. */
+export interface ReferenciaCapRateStr {
+  pct: number;
+  hayRef: boolean;
+  nivel: NivelStrRef;
+  comuna: string;
+  celdaDormitorios: number | null;
+}
+
+export function referenciaCapRateStr(hallazgos: ReadonlyArray<{ id: string }> | null | undefined, comuna = ""): ReferenciaCapRateStr {
+  const h = (hallazgos ?? []).find((x): x is HallazgoRentabilidadStr => x.id === "rentabilidad_str");
+  const nivel = h?.valor.nivel ?? "sin_referencia";
+  return {
+    pct: h?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT,
+    hayRef: nivel !== "sin_referencia",
+    nivel,
+    comuna: h?.valor.comuna ?? comuna,
+    celdaDormitorios: h?.valor.celdaDormitorios ?? null,
+  };
+}
+
 const rotuloDorms = (d: number | null) => (d === null ? "" : d === 0 ? " studio" : ` de ${d} dormitorio${d === 1 ? "" : "s"}`);
 
 /** Cómo nombra la frase a la referencia, por peldaño. */

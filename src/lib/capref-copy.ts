@@ -1,18 +1,23 @@
 // La copy del capítulo I «Cuánto renta» sobre la referencia de la comuna (21-sep-2026).
 //
-// EL CAPÍTULO HABLA AL USUARIO, NO DEL CÁLCULO (decisión de Fabrizio, 21-sep): un solo número —la
-// rentabilidad BRUTA, que es lo que se compara—, sin «cap rate», sin peldaños, celdas, ventanas,
-// n por lado ni BDO. Todo eso sigue en el dato (`capref_comuna_snapshot`, `valor` del hallazgo)
+// EL CAPÍTULO HABLA AL USUARIO, NO DEL CÁLCULO (decisión de Fabrizio, 21-sep): un solo número —el
+// cap rate BRUTO, que es lo que se compara—, sin peldaños, celdas, ventanas, n por lado ni BDO.
+// EL NOMBRE (decisión de Fabrizio, 23-sep-2026, da vuelta a propósito la del 21-sep): el
+// indicador va con su nombre de mercado —«cap rate bruto», «cap rate neto», «cap rate» en STR—,
+// sin cursiva y con su ⓘ, que es quien explica qué es. Por eso la explicación visible ya no
+// define la cifra (lo hacía porque el ⓘ no abría en el teléfono): solo dice de dónde sale la
+// referencia. Todo eso sigue en el dato (`capref_comuna_snapshot`, `valor` del hallazgo)
 // y en el acta: es lo que defiende el número, no lo que se muestra. La UF del análisis tampoco
 // va en la fuente: es trazabilidad, y vive en el dato.
 import type { HallazgoCapRate } from "./types";
 import { AVISOS_CAPREF_CONFIANZA_ALTA } from "./capref-comuna";
 import type { NivelStrRef } from "./strref-zona";
+import { GLOSAS } from "./glosas-indicadores";
 
 type ValorCapRef = HallazgoCapRate["valor"];
 
-/** Nombre del número que compara el capítulo, por modalidad. Nunca «cap rate». */
-export const NOMBRE_RENTABILIDAD = { ltr: "Rentabilidad bruta", str: "Rentabilidad" } as const;
+/** Nombre del número que compara el capítulo, por modalidad y base: el de mercado, el mismo del ⓘ. */
+export const NOMBRE_RENTABILIDAD = { ltr: GLOSAS.capRateBruto.nombre, ltrNeta: GLOSAS.capRateNeto.nombre, str: GLOSAS.capRateStr.nombre } as const;
 
 /**
  * La fuente, en UNA línea. Por peldaño:
@@ -35,15 +40,13 @@ export function fuenteCapRef(v: Pick<ValorCapRef, "nivel" | "comuna" | "celdaDor
   return "Referencia: promedio de Santiago.";
 }
 
-/** La frase visible bajo el título (los ⓘ no se abren en mobile): qué es la rentabilidad bruta y de
- *  dónde sale la de la comuna. Una cosa, en una o dos frases. */
+/** La frase visible bajo el título: de dónde sale la referencia de la comuna, en una frase. Qué es
+ *  el cap rate lo dice su ⓘ (23-sep-2026); nombre en minúscula dentro de la frase (§5.7). */
 export function explicacionCapRef(v: Pick<ValorCapRef, "nivel" | "comuna" | "base">): string {
-  const que = v.base === "bruta"
-    ? "La rentabilidad bruta es el arriendo de un año sobre el precio."
-    : "La rentabilidad es lo que el arriendo de un año deja sobre el precio, descontados los gastos.";
-  if (v.nivel === "celda" || v.nivel === "comuna") return `${que} La de ${v.comuna} sale de los avisos publicados de deptos parecidos.`;
-  if (v.nivel === "bdo") return `${que} La de ${v.comuna} sale de lo que rinden los edificios de renta de la comuna.`;
-  return `${que} La referencia es el promedio de Santiago: la comuna no tiene avisos suficientes.`;
+  const nombre = (v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : NOMBRE_RENTABILIDAD.ltrNeta).toLowerCase();
+  if (v.nivel === "celda" || v.nivel === "comuna") return `El ${nombre} de ${v.comuna} sale de los avisos publicados de deptos parecidos.`;
+  if (v.nivel === "bdo") return `El ${nombre} de ${v.comuna} sale de lo que rinden los edificios de renta de la comuna.`;
+  return "La referencia es el promedio de Santiago: la comuna no tiene avisos suficientes.";
 }
 
 /** La referencia STR contra STR de la zona, como la ve el capítulo (strref-zona.ts). */
@@ -70,11 +73,10 @@ export function fuenteUmbralStr(v: RefStrCopy): string {
   return `Referencia: lo que proyectan ${airbnbDe(v)}.`;
 }
 
-/** La frase visible bajo el título, en STR: qué es la rentabilidad del corto y de dónde sale la referencia. */
+/** La frase visible bajo el título, en STR: de dónde sale la referencia. Qué es el cap rate lo dice su ⓘ. */
 export function explicacionUmbralStr(v: RefStrCopy): string {
-  const que = "La rentabilidad es lo que el ingreso de un año deja sobre el precio, descontados comisión y costos.";
-  if (v.nivel === "sin_referencia") return `${que} No hay Airbnb suficientes de ${v.comuna} para compararla.`;
-  return `${que} La referencia es lo que proyectan ${airbnbDe(v)}, con los mismos costos.`;
+  if (v.nivel === "sin_referencia") return `No hay Airbnb suficientes de ${v.comuna} para compararlo.`;
+  return `La referencia es lo que proyectan ${airbnbDe(v)}, con los mismos costos.`;
 }
 
 /** Cómo se llama la referencia en el capítulo («la comuna» / «Santiago»). */

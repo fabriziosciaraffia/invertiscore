@@ -288,7 +288,7 @@ export function DrawerCapexPuestaAPunto({
         </div>
         <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
           Depto de {antiguedadAnios} años · {superficieUtilM2} m² útiles.
-          {rango && " El punto medio del rango es lo que entra a la inversión inicial, al cash-on-cash y a la TIR; los extremos son la banda de la estimación."}
+          {rango && " El punto medio del rango es lo que entra a la inversión inicial, al cash on cash y a la TIR; los extremos son la banda de la estimación."}
         </p>
       </VViz>
 

@@ -43,7 +43,7 @@ import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
-import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia } from "./shared";
+import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia, GlosaIndicador } from "./shared";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -201,7 +201,7 @@ export function CapitulosInversion({
         const holgura = arriendoRef <= arriendo;
         const refTxt = `${pct1(v.capRefPct)}%`;
         const nombreRef = nombreReferenciaCapRef(v);
-        const nombreCifra = v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : "Rentabilidad neta";
+        const nombreCifra = v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : NOMBRE_RENTABILIDAD.ltrNeta;
         // El arriendo del sector (cap. II, misma fuente): mediana a radio, con su estado.
         const zona = resolverArriendoReferencia(inputData);
         const respaldo = respaldoArriendo(inputData, arriendo);
@@ -245,6 +245,8 @@ export function CapitulosInversion({
           numero: "I",
           pregunta: "Cuánto renta",
           valor: conApellido(nombreCifra, `${pct1(v.sujetoPct)}%`),
+          // El ⓘ va en el sub del capítulo abierto, no en la fila: toda la fila abre el capítulo.
+          glosa: <GlosaIndicador glosa={v.base === "bruta" ? "capRateBruto" : "capRateNeto"} aca={`${pct1(v.sujetoPct)}%`} />,
           valorRojo: capRate.direccion === "adverso",
           ksub: `${nombreRef} ${refTxt}`,
           anchorId: anchorCapitulo("renta"),
@@ -624,6 +626,13 @@ export function CapitulosInversion({
             valor: conApellido("Resultado", compact(patrimonio)),
             valorRojo: mult < 1,
             ksub: [`tu parte al vender el año ${anios}`, v.sinCapitalPropio ? "" : `×${mult2(mult)} sobre lo puesto`, tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
+            ksubAbierto: (
+              <>
+                tu parte al vender el año {anios}
+                {!v.sinCapitalPropio && <> · ×{mult2(mult)} sobre lo puesto<GlosaIndicador glosa="multiplicador" aca={`×${mult2(mult)}`} /></>}
+                {tir != null && <> · TIR {pct1(tir)}%<GlosaIndicador glosa="tir" aca={`${pct1(tir)}%`} /></>}
+              </>
+            ),
             anchorId: anchorCapitulo("resultado"),
             cuerpo: (
               <div>

@@ -20,7 +20,9 @@
 //      LTR           772            0              270        160
 //      STR           114            6               73         56
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { GlosaIndicador } from "./Glosa";
+import { rotuloCapRate, glosaCapRate, type GlosaId } from "@/lib/glosas-indicadores";
 import type { CeldaMix, CriterioRespuesta, MetricasCelda, RespuestaMix } from "@/lib/mix-palancas";
 import type { MixPalancas } from "@/lib/types";
 import { QUIEN_LA_PONE, type FilaLoQueHariaYo, type QuienLaPone } from "@/lib/lo-que-haria-yo";
@@ -250,6 +252,9 @@ function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
  */
 export interface PopupAjustesProps {
   veredicto: Veredicto;
+  /** Para el rótulo del cap rate: «Cap rate neto» en LTR, «Cap rate» en STR, que tiene uno solo
+   *  (23-sep-2026: el pop-up STR decía «neto»). */
+  modalidad: "LTR" | "STR";
   /** El hallazgo de distancia con la grilla y las palancas. Ausente en COMPRAR. */
   distancia?: HallazgoDistanciaVeredicto | null;
   /** Las filas de la card en COMPRAR: Margen, Precio, Verifica. */
@@ -290,6 +295,7 @@ export function hayAjustesQueMostrar(p: {
 
 export function PopupAjustes({
   veredicto,
+  modalidad,
   distancia,
   filasComprar,
   mixComprar,
@@ -460,6 +466,7 @@ export function PopupAjustes({
           valorUF={valorUF}
           precioUF={precioUF}
           antes={antes ?? null}
+          modalidad={modalidad}
         />
       )}
 
@@ -1317,8 +1324,10 @@ function SeccionOptimo({
   valorUF,
   precioUF,
   antes,
+  modalidad,
 }: {
   mix: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalancas"]>;
+  modalidad: "LTR" | "STR";
   /** La respuesta que se está leyendo. `null` en filas sin menú persistido, y ahí todo se
    *  lee de la raíz, que es exactamente lo que este bloque hacía antes. */
   respuesta: RespuestaMix | null;
@@ -1407,15 +1416,18 @@ function SeccionOptimo({
         {/* EL PAR DEL RETORNO VA SIEMPRE. Con pie 0 no existe y va con guion: omitirlo
             dejaría seis pares donde el contrato dice siete (21 filas LTR, 8 STR). */}
         <Par
-          label="Por cada $100 que pones, al año"
+          label="Cash on cash"
+          sub="por cada $100 que pones, al año"
+          glosa="cashOnCash"
           antes={antes?.cocPct != null ? `${antes.cocPct >= 0 ? "+" : "−"}$${dec1(Math.abs(antes.cocPct)).replace("−", "")}` : PAR_SIN_VALOR}
           despues={d?.cocPct != null ? `${d.cocPct >= 0 ? "+" : "−"}$${dec1(Math.abs(d.cocPct)).replace("−", "")}` : PAR_SIN_VALOR}
           tono={d?.cocPct != null ? (d.cocPct >= 0 ? "bien" : "mal") : undefined}
         />
-        <Par label="Cap rate neto" antes={antes?.capRateNetoPct != null ? pct1(antes.capRateNetoPct) : PAR_SIN_VALOR} despues={d?.capRateNetoPct != null ? pct1(d.capRateNetoPct) : PAR_SIN_VALOR} />
-        <Par label="TIR a 10 años" antes={antes?.tirPct != null ? pct1(antes.tirPct) : PAR_SIN_VALOR} despues={d?.tirPct != null ? pct1(d.tirPct) : PAR_SIN_VALOR} />
+        <Par label={rotuloCapRate(modalidad)} glosa={glosaCapRate(modalidad)} antes={antes?.capRateNetoPct != null ? pct1(antes.capRateNetoPct) : PAR_SIN_VALOR} despues={d?.capRateNetoPct != null ? pct1(d.capRateNetoPct) : PAR_SIN_VALOR} />
+        <Par label="TIR a 10 años" glosa="tir" antes={antes?.tirPct != null ? pct1(antes.tirPct) : PAR_SIN_VALOR} despues={d?.tirPct != null ? pct1(d.tirPct) : PAR_SIN_VALOR} />
         <Par
           label="Franco Score"
+          glosa="francoScore"
           antes={antes?.score != null ? String(antes.score) : actual?.scoreSinDescuento != null ? String(actual.scoreSinDescuento) : PAR_SIN_VALOR}
           despues={score != null ? String(score) : PAR_SIN_VALOR}
           tono="destino"
@@ -1432,10 +1444,14 @@ function SeccionOptimo({
  *   · `destino` es el Franco Score de después, que no es un dato con signo sino el número
  *     que declara el veredicto al que llegas: va con el azul de Comprar.
  */
-function Par({ label, antes, despues, tono }: { label: string; antes: string; despues: string; tono?: "bien" | "mal" | "destino" }) {
+function Par({ label, sub, glosa, antes, despues, tono }: { label: ReactNode; sub?: string; glosa?: GlosaId; antes: string; despues: string; tono?: "bien" | "mal" | "destino" }) {
   return (
     <div className="paj-par">
-      <div className="l">{label}</div>
+      <div className="l">
+        {label}
+        {glosa && <GlosaIndicador glosa={glosa} />}
+        {sub && <small>{sub}</small>}
+      </div>
       <div className="p">
         <span className="a1">{antes}</span>
         <span className="fl">→</span>

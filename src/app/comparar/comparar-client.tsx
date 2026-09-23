@@ -134,7 +134,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         higherIsBetter: true,
       },
       {
-        label: "Cash-on-Cash",
+        label: "Cash on cash",
         values: analisis.map((a) => {
           if (!a.results?.metrics) return "—";
           if (esMetricaNoAplica(a.results.metrics.cashOnCash)) return NO_APLICA_VALOR;

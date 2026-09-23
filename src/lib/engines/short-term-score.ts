@@ -1,6 +1,7 @@
 import { ShortTermResult } from './short-term-engine';
 import { metricaValorONull } from '../types';
 import { PESOS_SCORE_STR, puntajeCashOnCash, puntajeTir, combinarConReparto } from '../score-retorno';
+import { SCORE_CORTE_COMPRAR, SCORE_CORTE_AJUSTA } from '../score-cortes';
 import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from '../data/str-attractors';
 import { findNearestStation } from '../metro-stations';
 
@@ -414,7 +415,7 @@ function calcCashOnCashDim(cocDecimal: number | null, capRate: number): Dimensio
     : pct >= 0 ? `Cash-on-cash ${pct.toFixed(1)}% anual — el depto se paga solo`
     : pct >= -5 ? `Cash-on-cash ${pct.toFixed(1)}% anual — aporte moderado de tu bolsillo`
     : `Cash-on-cash ${pct.toFixed(1)}% anual — aporte fuerte de tu bolsillo`;
-  return { score, label: "Retorno sobre lo puesto", detail, peso: PESOS_SCORE_STR.cashOnCash };
+  return { score, label: "Cash on cash", detail, peso: PESOS_SCORE_STR.cashOnCash };
 }
 
 function calcTirDim(tirPct: number | null): DimensionScore {
@@ -457,8 +458,8 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
   // Antes: 65 / 40. Bandas coherentes con slider visual de 3 segmentos.
   let veredicto: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
-  if (score >= 70) veredicto = 'COMPRAR';
-  else if (score >= 45) veredicto = 'AJUSTA SUPUESTOS';
+  if (score >= SCORE_CORTE_COMPRAR) veredicto = 'COMPRAR';
+  else if (score >= SCORE_CORTE_AJUSTA) veredicto = 'AJUSTA SUPUESTOS';
   else veredicto = 'BUSCAR OTRA';
 
   // Gates explícitos (audit §2.4). Orden: BUSCAR (severos) → max AJUSTA

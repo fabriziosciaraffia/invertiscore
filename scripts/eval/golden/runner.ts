@@ -75,6 +75,7 @@ import { runResultadoCapituloTier } from "./resultado-capitulo-catch-test";
 import { runPlusvaliaCapituloTier } from "./plusvalia-capitulo-catch-test";
 import { runOcupacionStrTier } from "./ocupacion-str-catch-test";
 import { runHojaModalTier } from "./hoja-modal-catch-test";
+import { runInfoIndicadoresTier } from "./info-indicadores-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -390,6 +391,9 @@ async function printStrSemantic() {
   // ── Tier HOJA-MODAL (23-sep-2026): el Modal con dos formas por ancho — hoja bajo 768 (body
   //    bloqueado, historial consumido, arrastre) y panel de 720 arriba. 26 mutaciones en rojo. ──
   totalHard += runHojaModalTier().hard;
+  // ── El ⓘ de los indicadores (23-sep-2026): la pila de hojas, los nombres de mercado, la
+  //    referencia STR única, sin cursiva y FilaDato sin title. ──
+  totalHard += runInfoIndicadoresTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es

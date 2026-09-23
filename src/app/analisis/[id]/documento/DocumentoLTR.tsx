@@ -267,7 +267,7 @@ export function DocumentoLTR({
           <div className="dim"><p className="dk">Rentabilidad</p><div className="dbar"><i style={{ width: `${d.rentabilidad}%` }} /></div><div className="dv">{Math.round(d.rentabilidad)}</div><div className="dw">peso {W.rentabilidad}%</div></div>
           <div className="dim"><p className="dk">Flujo de caja</p><div className="dbar"><i style={{ width: `${d.flujoCaja}%` }} /></div><div className="dv">{Math.round(d.flujoCaja)}</div><div className="dw">peso {W.flujoCaja}%</div></div>
           {typeof d.cashOnCash === "number" && (
-            <div className="dim"><p className="dk">Retorno sobre lo puesto</p><div className="dbar"><i style={{ width: `${d.cashOnCash}%` }} /></div><div className="dv">{Math.round(d.cashOnCash)}</div><div className="dw">peso {W.cashOnCash}%</div></div>
+            <div className="dim"><p className="dk">Cash on cash</p><div className="dbar"><i style={{ width: `${d.cashOnCash}%` }} /></div><div className="dv">{Math.round(d.cashOnCash)}</div><div className="dw">peso {W.cashOnCash}%</div></div>
           )}
           {d.tir !== undefined && (
             d.tir === null
@@ -505,7 +505,7 @@ export function DocumentoLTR({
                   propio y acá la razón es otra. Antes caía a un "—" pelado. */}
               <div className="kpi"><p className="kk">TIR</p><div className="kv" style={sinPie || tirActual === null ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : tirActual === null ? "No aplica" : metricaDisplay(exit.tir, pct)}</div></div>
               <div className="kpi"><p className="kk">Rent. neta</p><div className="kv">{pct(m.rentabilidadNeta)}</div></div>
-              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${!sinPie && metricaODefault(m.cashOnCash, 0) < 0 ? "neg" : ""}`} style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : metricaDisplay(m.cashOnCash, pct)}</div></div>
+              <div className="kpi"><p className="kk">Cash on cash</p><div className={`kv ${!sinPie && metricaODefault(m.cashOnCash, 0) < 0 ? "neg" : ""}`} style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : metricaDisplay(m.cashOnCash, pct)}</div></div>
               <div className="kpi"><p className="kk">Múltiplo</p><div className="kv" style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : `${metricaDisplay(exit.multiplicadorCapital, dec)}×`}</div></div>
               <div className="kpi"><p className="kk">Rent. bruta</p><div className="kv">{pct(m.rentabilidadBruta)}</div></div>
               <div className="kpi"><p className="kk">Plusvalía proy.</p><div className="kv">{plusvProyPct}</div></div>

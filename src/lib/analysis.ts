@@ -52,6 +52,7 @@ import {
 import { classifyFinancingHealth, MARKET_AVG_TASA_UF } from "./financing-health";
 import { buildHallazgoEstructuraFinanciamiento } from "./estructura-financiamiento-hallazgo";
 import type { Veredicto } from "./types";
+import { SCORE_CORTE_COMPRAR, SCORE_CORTE_AJUSTA } from "./score-cortes";
 
 // El valor de la UF se pasa explícitamente como parámetro a cada función que
 // lo necesita. Antes existía un módulo-level `UF_CLP` mutable vía `setUFValue`,
@@ -1526,7 +1527,7 @@ function evalVeredicto(
 ): { veredicto: Veredicto; gates: GateFlags } {
   // Base por bandas (70 / 45 / 0). Commit E.1 · 2026-05-13: thresholds unificados
   // LTR+STR (skill analysis-voice-franco §1.7). La sub-banda 40-44 cae a BUSCAR.
-  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+  let veredicto: Veredicto = score >= SCORE_CORTE_COMPRAR ? "COMPRAR" : score >= SCORE_CORTE_AJUSTA ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
   // Solo GATE 2 lo usa; el ratio |flujo|/dividendo de GATE 1 vive en evalGate1Brazos.
   const flujoMuyNegativoRatio =

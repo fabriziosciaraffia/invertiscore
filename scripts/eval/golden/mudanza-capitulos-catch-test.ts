@@ -70,7 +70,9 @@ export function runMudanzaCapitulosTier(): { hard: number } {
   if (!/\{open && !esCapitulo && f\.cuerpo && \(/.test(comp)) F("1 · el cuerpo inline no está gateado a la variante «hallazgo»");
   if (!/<Modal\s+abierto=\{filaAbierta !== null\}/.test(comp)) F("1 · el capítulo abierto no se monta dentro del Modal");
   if (!/titulo=\{filaAbierta\?\.pregunta \?\? ""\}/.test(comp)) F("1 · el Modal no lleva el título de la fila");
-  if (!/\{filaAbierta\.valor\}/.test(comp) || !/\{filaAbierta\.ksub && /.test(comp)) F("1 · el sub del Modal no lleva la cifra apellidada y su ksub");
+  // ACTA 23-sep-2026: el ksub del capítulo abierto puede venir en su forma con ⓘ (`ksubAbierto`,
+  // cuando nombra indicadores); la de la fila sigue siendo `ksub`, sin botones.
+  if (!/\{filaAbierta\.valor\}/.test(comp) || !/\{\(filaAbierta\.ksubAbierto \?\? filaAbierta\.ksub\) && /.test(comp)) F("1 · el sub del Modal no lleva la cifra apellidada y su ksub");
   if (!/>\s*\{filaAbierta\?\.cuerpo\}\s*<\/Modal>/.test(comp)) F("1 · el cuerpo de la fila no es el hijo del Modal");
   if (!/const filaAbierta = esCapitulo \? \(filas\.find\(\(f\) => f\.id === abierta\) \?\? null\) : null;/.test(comp)) F("1 · filaAbierta no sale del estado `abierta` en la variante capítulo");
   if (/hall-close|hall-end/.test(comp)) F("1 · queda el «↑ Cerrar» de capítulo en el JSX");

@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { Glosa as GlosaTexto, GlosaId } from "@/lib/glosas-indicadores";
+import { GlosaIndicador } from "./Glosa";
 
 /**
  * "Los números" como lista (CONGELADO · seis cifras). Reusa el grid `.nums` /
@@ -18,6 +20,8 @@ export type CifraInforme = {
   /** Contrato §6 · STR: la cifra es un SUPUESTO (tarifa, ocupación) y lleva contorno.
    *  Opcional; LTR no la pasa. Sin el rediseño la clase no hace nada. */
   destacada?: boolean;
+  /** El ⓘ del indicador (glosas-indicadores.ts). Va pegado al rótulo; «en este depto» lleva `v`. */
+  glosa?: GlosaId | GlosaTexto;
 };
 
 export function SeisCifras({
@@ -36,7 +40,10 @@ export function SeisCifras({
       <div className="nums">
         {cifras.map((c, i) => (
           <div key={i} className={`num-cell${c.destacada ? " destacada" : ""}`}>
-            <div className="k">{c.k}</div>
+            <div className="k">
+              {c.k}
+              {c.glosa && <GlosaIndicador glosa={c.glosa} aca={c.v} />}
+            </div>
             <div className={`v${c.neg ? " neg" : ""}`}>{c.v}</div>
             <div className="tr">{c.tr}</div>
           </div>

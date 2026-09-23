@@ -171,8 +171,11 @@ const POSICION = leer("src/components/analysis/shared/PosicionFranco.tsx");
       ["Pie el día uno", "el pie del día uno"],
       ["Cuota mensual", "la cuota"],
       ["Flujo mensual", "el flujo"],
-      ["Por cada \\$100 que pones", "el retorno sobre lo puesto"],
-      ["Cap rate neto", "el cap rate"],
+      // ACTA 23-sep-2026: el par del retorno se llama «Cash on cash» (nombre de mercado, con
+      // su ⓘ) y la frase del $100 queda como su bajada; el cap rate lo rotula la modalidad
+      // (`rotuloCapRate`: «Cap rate neto» en LTR, «Cap rate» en STR, que tiene uno solo).
+      ['label="Cash on cash"\\s+sub="por cada \\$100 que pones', "el cash on cash"],
+      ["label=\\{rotuloCapRate\\(modalidad\\)\\}", "el cap rate"],
       ["TIR a 10 años", "la TIR"],
       ["Franco Score", "el score"],
     ] as const) {

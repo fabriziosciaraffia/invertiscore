@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPlusvalia, HallazgoPuestaAPunto, HallazgoRentabilidadStr, HallazgoSensibilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoPlusvalia, HallazgoPuestaAPunto, HallazgoSensibilidadStr, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
 import type { FmtCierre } from "@/lib/cierres-capitulos";
-import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
+import { referenciaCapRateStr } from "@/lib/rentabilidad-str-hallazgo";
 import { NOMBRE_RENTABILIDAD, explicacionUmbralStr, fuenteUmbralStr } from "@/lib/capref-copy";
 import { avisaCuotaRefi, fraseAvisoCuotaRefi } from "@/lib/refinanciamiento";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -17,7 +17,7 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
-import { nombreVeredicto, FilaDato, FilasDato, CurvaFlujoAnual, OcupacionComparables, ramaOcupacion, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
+import { nombreVeredicto, FilaDato, FilasDato, CurvaFlujoAnual, OcupacionComparables, ramaOcupacion, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, GlosaIndicador, type PuntoAnio } from "@/components/analysis/shared";
 import { cierrePlusvalia } from "@/lib/cierres-capitulos";
 import { fuentePlusvaliaLinea, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { resolveSeriePlusvalia } from "@/lib/plusvalia-hallazgo";
@@ -115,7 +115,6 @@ export function CapitulosInversionStr({
   const modo: "auto" | "administrador" = inputData?.modoGestion === "administrador" ? "administrador" : "auto";
   const dist = hallazgos.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const sobre = hallazgos.find((h): h is HallazgoSobreprecio => h.id === "sobreprecio");
-  const hRenta = hallazgos.find((h): h is HallazgoRentabilidadStr => h.id === "rentabilidad_str");
   const sensStr = hallazgos.find((h): h is HallazgoSensibilidadStr => h.id === "sensibilidad_str");
 
   // ── formato (dueño de moneda y UF): los cierres siguen el toggle ──
@@ -185,10 +184,12 @@ export function CapitulosInversionStr({
   // rendir X», ni cruce contra el umbral, ni rojo en el valor; el 5% de respaldo es del motor,
   // no del informe. Quedan el dial de la tarifa y el break-even, que no dependen de la referencia.
   const filaI: FilaHallazgo = (() => {
-    const umbral = hRenta?.valor.umbralPct ?? CAP_STR_UMBRAL_PCT;
+    // La MISMA lectura que el hero (`referenciaCapRateStr`): una referencia por página.
+    const ref = referenciaCapRateStr(hallazgos, comuna);
+    const umbral = ref.pct;
     const refTxt = `${pct1(umbral)}%`;
-    const vRef = { nivel: hRenta?.valor.nivel ?? "sin_referencia", comuna: hRenta?.valor.comuna ?? comuna, celdaDormitorios: hRenta?.valor.celdaDormitorios ?? null } as const;
-    const hayRef = vRef.nivel !== "sin_referencia";
+    const vRef = { nivel: ref.nivel, comuna: ref.comuna, celdaDormitorios: ref.celdaDormitorios } as const;
+    const hayRef = ref.hayRef;
     const adrRef = args.renta.adrRef;
     const holgura = adrRef <= adr;
     const dial = fr ? dialDesdeFronteras(veredicto, fr.abajo, fr.arriba, (fl, dir) => ({ v: `${money(adr * fl.factor)} por noche`, k: `y ${dir === "abajo" ? "cae" : "sube"} a ${nombreVeredicto(fl.veredicto)}` })) : null;
@@ -229,6 +230,7 @@ export function CapitulosInversionStr({
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
       valor: conApellido(NOMBRE_RENTABILIDAD.str, `${pct1(cap)}%`),
+      glosa: <GlosaIndicador glosa="capRateStr" aca={`${pct1(cap)}%`} />,
       valorRojo: hayRef && cap < umbral,
       ksub: hayRef ? `referencia ${refTxt}` : "sin referencia en la zona",
       anchorId: anchorCapituloStr("renta"),
@@ -270,7 +272,7 @@ export function CapitulosInversionStr({
             </VViz>
           )}
           {sensStr && beBar && (
-            <VViz t="Cuánto tienes que facturar para no perder plata">
+            <VViz t={<>Cuánto tienes que facturar para no perder plata<GlosaIndicador glosa="equilibrio" aca={be !== null ? `${be}% de la zona` : undefined} /></>}>
               <p className="v-cruce"><b>{sensStr.titular}</b> {sensStr.fraseCanonica}</p>
               {beBar}
             </VViz>
@@ -728,6 +730,13 @@ export function CapitulosInversionStr({
             valor: conApellido("Resultado", compact(patrimonio)),
             valorRojo: mult != null ? mult < 1 : patrimonio < 0,
             ksub: [`tu parte al vender el año ${anios}`, mult != null ? `×${mult.toFixed(2).replace(".", ",")} sobre lo puesto` : "", tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
+            ksubAbierto: (
+              <>
+                tu parte al vender el año {anios}
+                {mult != null && <> · ×{mult.toFixed(2).replace(".", ",")} sobre lo puesto<GlosaIndicador glosa="multiplicador" aca={`×${mult.toFixed(2).replace(".", ",")}`} /></>}
+                {tir != null && <> · TIR {pct1(tir)}%<GlosaIndicador glosa="tir" aca={`${pct1(tir)}%`} /></>}
+              </>
+            ),
             anchorId: anchorCapituloStr("resultado"),
             cuerpo: (
               <div>

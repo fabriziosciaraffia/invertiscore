@@ -1,6 +1,7 @@
 "use client";
 
-import { Ang } from "@/components/analysis/shared/Ang";
+import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
+import { GLOSA_COBERTURA_STR } from "@/lib/glosas-indicadores";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { metricaValorONull } from "@/lib/types";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -91,13 +92,13 @@ export function ModalCalculoStr({
   const filasInd: FilaPlanilla[] = [
     { th: "Ingreso mensual", celdas: [{ v: "Tarifa × ocupación × 365 ÷ 12" }, { v: `${clp(tarifa)} × ${pct1(occ * 100)} × 365 ÷ 12` }, { v: clp(ingreso) }] },
     { th: "Ingreso neto mensual", celdas: [{ v: "Ingreso − comisión − costos" }, { v: `${clp(ingreso)} − ${clp(comision + admin)} − ${clp(costos)}` }, { v: clp(ingresoNeto) }] },
-    { th: <><Ang>Cap rate</Ang> STR</>, celdas: [{ v: "Ingreso neto anual ÷ precio" }, { v: `${clp(ingresoNeto * 12)} ÷ ${clp(precio)}` }, { v: pct2(cap) }] },
+    { th: <>Cap rate<GlosaIndicador glosa="capRateStr" /></>, celdas: [{ v: "Ingreso neto anual ÷ precio" }, { v: `${clp(ingresoNeto * 12)} ÷ ${clp(precio)}` }, { v: pct2(cap) }] },
     { th: "Flujo mensual", celdas: [{ v: "Ingreso neto − cuota" }, { v: `${clp(ingresoNeto)} − ${clp(cuota)}` }, { v: clp(flujo), neg: flujo < 0 }] },
-    { th: "Retorno sobre el capital puesto", celdas: [{ v: "Flujo anual ÷ capital del día 1" }, { v: coc != null ? `${clp(flujo * 12)} ÷ ${clp(capital)}` : "sin capital propio: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
-    { th: "Cobertura de cuota", celdas: [{ v: "Ingreso neto ÷ cuota" }, { v: cobertura != null ? `${clp(ingresoNeto)} ÷ ${clp(cuota)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
-    { th: "Punto de equilibrio", celdas: [{ v: "Ingreso que cubre costos y cuota ÷ ingreso estimado" }, { v: `${clp(results.breakEvenIngresoAnual)} ÷ ${clp(ingreso * 12)}` }, { v: `${Math.round(be * 100)}%` }] },
+    { th: <>Cash on cash<GlosaIndicador glosa="cashOnCash" /></>, celdas: [{ v: "Flujo anual ÷ capital del día 1" }, { v: coc != null ? `${clp(flujo * 12)} ÷ ${clp(capital)}` : "sin capital propio: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
+    { th: <>Cobertura de cuota<GlosaIndicador glosa={GLOSA_COBERTURA_STR} /></>, celdas: [{ v: "Ingreso neto ÷ cuota" }, { v: cobertura != null ? `${clp(ingresoNeto)} ÷ ${clp(cuota)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
+    { th: <>Punto de equilibrio<GlosaIndicador glosa="equilibrio" /></>, celdas: [{ v: "Ingreso que cubre costos y cuota ÷ ingreso estimado" }, { v: `${clp(results.breakEvenIngresoAnual)} ÷ ${clp(ingreso * 12)}` }, { v: `${Math.round(be * 100)}%` }] },
     {
-      th: `TIR a ${anios} años`,
+      th: <>TIR a {anios} años<GlosaIndicador glosa="tir" /></>,
       celdas: [
         { v: "Tasa que iguala lo que pones con lo que recibes" },
         { v: exit ? `−${mm(capital)} hoy · ${mm(exit.flujoAcumuladoAlVender)} en ${anios} años · +${mm(exit.equityCLP)} el año ${anios}` : "—" },

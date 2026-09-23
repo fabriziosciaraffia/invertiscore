@@ -1,9 +1,8 @@
 "use client";
 
-import { Ang } from "@/components/analysis/shared/Ang";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { metricaValorONull } from "@/lib/types";
-import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
+import { referenciaCapRateStr } from "@/lib/rentabilidad-str-hallazgo";
 import { SeisCifras, type CifraInforme } from "@/components/analysis/shared";
 import { fmtMoney } from "@/components/analysis/utils";
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
@@ -19,8 +18,13 @@ import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
  * tarifa y ocupación PRIMERO, destacadas con contorno, y la línea «Las dos primeras son
  * el supuesto del que cuelga todo lo demás» encima. En renta corta el ingreso no es un
  * dato, es una estimación, y eso se dice antes de mostrar lo que cuelga de ella:
- * ingreso, flujo, cap rate por día (referencia 5,0%) y TIR. Mismas seis cifras, misma
- * fuente; lo que cambia es qué se lee primero.
+ * ingreso, flujo, cap rate y TIR. Mismas seis cifras, misma fuente; lo que cambia es qué se
+ * lee primero.
+ *
+ * EL CAP RATE (23-sep-2026): se llama «Cap rate», sin «por día» —es anual— y con su ⓘ; y lee
+ * la MISMA referencia que el capítulo I (`referenciaCapRateStr`, lo que proyectan los Airbnb de
+ * la zona), no la constante de 5%: eran dos referencias distintas para la misma cifra en la
+ * misma página.
  */
 export function SeisCifrasStr({
   results,
@@ -45,6 +49,7 @@ export function SeisCifrasStr({
   const occ = m?.ocupacion ?? results.ejesAplicados?.ocupacionFinal ?? base.ocupacionReferencia;
   const tarifaEsTuya = results.adrFuente === "override";
   const occEsTuya = results.occFuente === "override";
+  const ref = referenciaCapRateStr(results.hallazgos);
 
   const trFlujo =
     flujo < 0 ? (
@@ -97,16 +102,19 @@ export function SeisCifrasStr({
         },
         { k: "Flujo mensual", v: money(flujo), neg: flujo < 0, tr: trFlujo },
         {
-          k: <><Ang>Cap rate</Ang> por día</>,
+          k: "Cap rate",
+          glosa: "capRateStr",
           v: pct1(cap),
-          neg: cap < CAP_STR_UMBRAL_PCT,
-          tr: (
+          neg: ref.hayRef && cap < ref.pct,
+          tr: ref.hayRef ? (
             <>
-              El ingreso neto de un año sobre el precio. <b>La referencia para renta corta es {pct1(CAP_STR_UMBRAL_PCT)}.</b>
+              El ingreso neto de un año sobre el precio. <b>La referencia de la zona es {pct1(ref.pct)}.</b>
             </>
+          ) : (
+            <>El ingreso neto de un año sobre el precio. No hay Airbnb suficientes de la zona para compararlo.</>
           ),
         },
-        { k: "TIR a 10 años", v: tir != null ? pct1(tir) : "—", tr: trTir },
+        { k: "TIR a 10 años", glosa: "tir", v: tir != null ? pct1(tir) : "—", tr: trTir },
       ];
   return (
     <SeisCifras

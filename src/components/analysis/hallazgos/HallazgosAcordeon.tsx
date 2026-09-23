@@ -61,6 +61,12 @@ export type FilaHallazgo = {
    *  sujeto-vs-mediana solo vivía dentro del párrafo IA del cuerpo 16, el mismo que
    *  este goal desarma; sin este consumidor el dato desaparecía del informe. */
   ksub?: ReactNode;
+  /** El ⓘ del indicador de la cifra (23-sep-2026). Va SOLO en el sub del capítulo abierto: en
+   *  la fila no, porque toda la fila abre el capítulo y un segundo blanco adentro competiría. */
+  glosa?: ReactNode;
+  /** El ksub del capítulo ABIERTO, cuando nombra indicadores y necesita sus ⓘ (el de la fila
+   *  sigue siendo `ksub`, sin botones: la fila entera es un botón). */
+  ksubAbierto?: ReactNode;
   /** El valor pide Signal Red (adverso). */
   valorRojo?: boolean;
   /** Ancla estable para deep-link desde otras superficies. */
@@ -249,7 +255,8 @@ export function HallazgosAcordeon({
             filaAbierta ? (
               <>
                 {filaAbierta.valor}
-                {filaAbierta.ksub && <> · {filaAbierta.ksub}</>}
+                {filaAbierta.glosa}
+                {(filaAbierta.ksubAbierto ?? filaAbierta.ksub) && <> · {filaAbierta.ksubAbierto ?? filaAbierta.ksub}</>}
               </>
             ) : undefined
           }
