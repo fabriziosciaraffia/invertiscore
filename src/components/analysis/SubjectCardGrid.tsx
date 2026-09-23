@@ -239,12 +239,12 @@ export function SubjectCardGrid({
   const fechaCorta = (() => {
     return fechaCortaCL(fechaProsa ?? createdAt);
   })();
-  // Referencia del cap rate neto: la del hallazgo (motor) o la del catálogo por comuna.
+  // Referencia BRUTA del cap rate: la del hallazgo (motor) o, sin hallazgo, la del último peldaño.
   const capRefInfo = (() => {
-    const h = (results?.metrics as { hallazgoCapRate?: { valor?: { capRefPct?: number; fuente?: string; base?: "bruta" | "neta" } } | null } | undefined)?.hallazgoCapRate;
-    if (h?.valor && typeof h.valor.capRefPct === "number") return { pct: h.valor.capRefPct, fuente: h.valor.fuente ?? "", base: h.valor.base ?? "neta" };
+    const h = results?.metrics?.hallazgoCapRate;
+    if (h?.valor && typeof h.valor.capRefPct === "number") return { pct: h.valor.capRefPct, nivel: h.valor.nivel };
     const ref = getCapRefComuna(comunaPortada);
-    return { pct: ref.pct, fuente: ref.fuente, base: ref.base };
+    return { pct: ref.pct, nivel: ref.nivel };
   })();
   // «↓ Ver detalle» abre el capítulo donde vive el desarrollo del hallazgo (el
   // acordeón lo ancla arriba). Sin capítulo mapeado, cae a la sección entera.
@@ -363,7 +363,7 @@ export function SubjectCardGrid({
                 metrics={results.metrics}
                 results={results}
                 capRefPct={capRefInfo.pct}
-                capRefBase={capRefInfo.base}
+                capRefNivel={capRefInfo.nivel}
                 currency={currency}
                 valorUF={valorUF}
                 onCalculo={() => setCalculoAbierto(true)}

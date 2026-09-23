@@ -26,7 +26,7 @@ import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { resolverModeloCostos, provisionMantencionAnio, getMantencionRateLegacy } from "./modelo-costos";
-import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
+import { getCapRefComuna, buildHallazgoCapRate, capRateDisplayPct, capRateNetoLtrPct } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto, DIST_PIE_TOPE_PCT, DIST_TOPE_AJUSTA_PCT } from "./distancia-veredicto-hallazgo";
@@ -429,12 +429,16 @@ function calcMetrics(
   const rentaAnual = ingresoMensual * 12;
   const rentabilidadBruta = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
 
-  // Rentabilidad Operativa (CAP Rate): solo gastos operativos directos (NO incluye administración)
+  // Rentabilidad operativa (`capRate`): solo gastos operativos directos, sin la vacancia del
+  // arriendo ni la gestión. NO SE MUESTRA desde el 23-sep-2026: no tiene nombre de mercado y queda
+  // entre el bruto y el neto sin decir nada propio. «Cap rate neto» es `rentabilidadNeta`, abajo.
   const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
   const noi = rentaAnual - gastosOperativosAnuales;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
 
-  // Rentabilidad Neta: TODOS los gastos (operativos + vacancia + corretaje + recambio + administración)
+  // Rentabilidad neta = CAP RATE NETO, el NOI de mercado: TODOS los gastos (operativos + vacancia +
+  // corretaje + recambio + administración). Es la que leen el score, el gate 3 y el pop-up, y la
+  // que muestran el hero, la planilla, el anexo y /comparar (23-sep-2026).
   const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
   const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
 
@@ -483,7 +487,9 @@ function calcMetrics(
   const hallazgoCapRate =
     precioCLP > 0 && ingresoMensual > 0
       ? buildHallazgoCapRate({
-          capRatePct: capRate,
+          // El NETO de mercado, crudo: el builder lo redondea una vez, igual que
+          // `capRateNetoDisplayPct`. Hero, pop-up y hallazgo leen una sola cifra (23-sep-2026).
+          capRatePct: rentabilidadNeta,
           brutoPct: rentabilidadBruta,
           // La referencia de la comuna viaja inyectada con la mediana (snapshot o resolución
           // viva); sin ella, el promedio nacional, declarado como tal.
@@ -612,6 +618,10 @@ function calcMetrics(
   return {
     rentabilidadBruta: Math.round(rentabilidadBruta * 100) / 100,
     rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100,
+    // «Cap rate neto» como se muestra: el crudo redondeado UNA vez a un decimal. Lo leen el hero,
+    // los dos lados del pop-up y el hallazgo (23-sep-2026). Solo display: score y gates siguen
+    // leyendo `rentabilidadNeta`.
+    capRateNetoDisplayPct: capRateDisplayPct(rentabilidadNeta),
     capRate: Math.round(capRate * 100) / 100,
     cashOnCash,
     // EL DENOMINADOR DEL CASH ON CASH, COMO CAMPO (23-sep-2026). La planilla «Cómo se calcula»
@@ -1829,7 +1839,9 @@ export function sondaConPatch(
       cuotaMensual: Number.isFinite(m.dividendo) ? m.dividendo : null,
       flujoMensual: Number.isFinite(m.flujoNetoMensual) ? m.flujoNetoMensual : null,
       cocPct: metricaValorONull(m.cashOnCash),
-      capRateNetoPct: Number.isFinite(m.rentabilidadNeta) ? m.rentabilidadNeta : null,
+      // El cap rate neto como lo muestra el hero: el lado «hoy» del par lee la misma función, y
+      // los dos lados comparan igual (23-sep-2026).
+      capRateNetoPct: capRateNetoLtrPct(m),
       tirPct: tir,
     },
   };
@@ -1948,25 +1960,23 @@ function decisividadDesde(
 }
 
 /**
- * Busca el arriendo que lleva el CAP rate del sujeto a la referencia de mercado
- * (neutralización de cap_rate). capRate es monótono creciente en arriendo →
- * bisección robusta. Reusa calcMetrics (no asume linealidad del NOI).
+ * Busca el arriendo que lleva el cap rate BRUTO del sujeto a la referencia de mercado
+ * (neutralización de cap_rate). El capítulo I compara siempre bruto contra bruto (23-sep-2026),
+ * así que el objetivo está en esa base. La bruta es monótona creciente en arriendo →
+ * bisección robusta. Reusa calcMetrics.
  */
 function solveArriendoForCapRate(
   input: AnalisisInput,
   ufClp: number,
   mediana: MedianaComunaInyectada | undefined,
   targetCapPct: number,
-  // En qué base está el objetivo: la del hallazgo (bruta con el benchmark de avisos, neta con
-  // BDO o el nacional). El cap rate y la bruta son monótonos crecientes en arriendo.
-  base: "bruta" | "neta",
 ): number {
   let lo = 0;
   let hi = Math.max(input.arriendo * 10, 1_000_000);
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
     const m = calcMetrics({ ...input, arriendo: Math.round(mid) }, ufClp, mediana);
-    if ((base === "bruta" ? m.rentabilidadBruta : m.capRate) < targetCapPct) lo = mid;
+    if (m.rentabilidadBruta < targetCapPct) lo = mid;
     else hi = mid;
   }
   return Math.round((lo + hi) / 2);
@@ -2024,9 +2034,9 @@ export function calcDecisividades(
   //    21-sep-2026 neutralizaba contra el 4% nacional aunque el hallazgo comparara contra
   //    otra cosa: la deriva de siempre entre el acta y el call site. Toca flujo (mismo driver
   //    arriendo) → recomputa break-even. ──
-  if (baseMetrics.precioCLP > 0 && baseMetrics.ingresoMensual > 0 && Number.isFinite(baseMetrics.capRate)) {
+  if (baseMetrics.precioCLP > 0 && baseMetrics.ingresoMensual > 0 && Number.isFinite(baseMetrics.rentabilidadBruta)) {
     const refNeu = getCapRefComuna(input.comuna, medianaComuna?.capRefComuna);
-    const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, refNeu.pct, refNeu.base);
+    const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, refNeu.pct);
     const inputNeu = { ...input, arriendo: arriendoNeu };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
     const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf, tirDe(inputNeu, mNeu, ufClp, asOf));
@@ -2142,8 +2152,8 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date
   const pros: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 
-  if (metrics.capRate >= 4)
-    pros.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) supera el promedio del mercado. Buena relación entre lo que produce y lo que cuesta.`);
+  if (metrics.rentabilidadNeta >= 4)
+    pros.push(`El cap rate neto (${(capRateNetoLtrPct(metrics) ?? 0).toFixed(1)}%) supera el promedio del mercado. Buena relación entre lo que produce y lo que cuesta.`);
   if (metrics.rentabilidadBruta >= 5)
     pros.push(`El arriendo representa un ${metrics.rentabilidadBruta.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
   if (metrics.flujoNetoMensual > 0)
@@ -2201,8 +2211,8 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics, asOf: D
   const contras: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
-  if (metrics.capRate < 3.5)
-    contras.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.`);
+  if (metrics.rentabilidadNeta < 3.5)
+    contras.push(`El cap rate neto (${(capRateNetoLtrPct(metrics) ?? 0).toFixed(1)}%) está bajo el promedio. Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.`);
   if (metrics.flujoNetoMensual < 0)
     contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
   if (input.antiguedad > 15)
@@ -2540,8 +2550,8 @@ export function runAnalysis(
 
   const resumen = `El arriendo genera ${fmtR(metrics.ingresoMensual)} al mes y los costos totales (dividendo + gastos + mantención) suman ${fmtR(metrics.egresosMensuales)}. ` +
     `${metrics.flujoNetoMensual >= 0 ? `Te quedan ${fmtR(metrics.flujoNetoMensual)} de ganancia mensual.` : `Falta cubrir ${fmtR(metrics.flujoNetoMensual)} al mes de tu bolsillo.`} ` +
-    `La rentabilidad bruta es de ${metrics.rentabilidadBruta.toFixed(1)}% y la rentabilidad operativa (CAP rate) es ${metrics.capRate.toFixed(1)}%. ` +
-    `${metrics.capRate >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones."} ` +
+    `La rentabilidad bruta es de ${metrics.rentabilidadBruta.toFixed(1)}% y el cap rate neto es ${(capRateNetoLtrPct(metrics) ?? 0).toFixed(1)}%. ` +
+    `${metrics.rentabilidadNeta >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.rentabilidadNeta >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones."} ` +
     `${input.enConstruccion || input.antiguedad <= 2 ? "Al ser nueva, los costos de mantención serán bajos por años." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención inesperada." : input.antiguedad > 20 ? "Ojo: la antigüedad puede traer gastos de mantención importantes pronto." : "La antigüedad es moderada."} ` +
     `Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.`;
 

@@ -47,7 +47,8 @@ export function referenciaHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF:
   const money = (n: number) => fmtMoney(n, currency, valorUF);
   switch (h.id) {
     case "cap_rate":
-      return h.valor.base === "bruta" ? `comuna ${pct1(h.valor.capRefPct)} bruto` : `promedio ${pct1(h.valor.capRefPct)}`;
+      // Siempre bruto (23-sep-2026); el promedio de Santiago también llega en bruto.
+      return `${h.valor.nivel === "nacional" ? "Santiago" : "comuna"} ${pct1(h.valor.capRefPct)} bruto`;
     case "rentabilidad_str":
       return `umbral ${pct1(h.valor.umbralPct)}`;
     case "plusvalia":

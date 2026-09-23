@@ -71,6 +71,9 @@ export function ModalCalculo({
 
   // Indicadores, año base.
   const arriendoAnual = metrics.ingresoMensual * 12;
+  // Los gastos del cap rate neto: todo lo que no es cuota —los mismos de la columna «gastos»—,
+  // en pesos exactos (egresos del mes − dividendo, × 12). Así la cuenta da `rentabilidadNeta`.
+  const gastosNetosAnual = (metrics.egresosMensuales - metrics.dividendo) * 12;
   const precio = metrics.precioCLP;
   const coc = metricaValorONull(metrics.cashOnCash);
   const capCoc = metrics.capitalCashOnCash;
@@ -128,8 +131,8 @@ export function ModalCalculo({
               <Indicador
                 nombre={<>Cap rate neto<GlosaIndicador glosa="capRateNeto" /></>}
                 formula="Ingreso neto anual ÷ precio"
-                cuenta={`(${P(arriendoAnual)} − ${P(arriendoAnual - metrics.noi)}) ÷ ${P(precio)}`}
-                resultado={pct2(metrics.capRate)}
+                cuenta={`(${P(arriendoAnual)} − ${P(gastosNetosAnual)}) ÷ ${P(precio)}`}
+                resultado={pct2(metrics.rentabilidadNeta)}
               />
               <Indicador
                 nombre={<>Cash on cash<GlosaIndicador glosa="cashOnCash" /></>}
@@ -151,7 +154,8 @@ export function ModalCalculo({
                 resultado={tir != null ? pct2(tir) : "—"}
               />
               <p className="pc-fuente">
-                <b>Ingreso neto</b> = arriendo − gastos comunes en vacancia − contribuciones − mantención.
+                <b>Ingreso neto</b> = arriendo − los gastos de la tabla: gastos comunes en vacancia, contribuciones, mantención, vacancia, corretaje y recambio
+                {inputData?.usaAdministrador ? ", administración" : ""}.
                 {capCoc && (
                   <>
                     {" "}Lo que pusiste el día 1 = pie {P(capCoc.pieCLP)} + gastos de compra {P(capCoc.gastosCompraCLP)}

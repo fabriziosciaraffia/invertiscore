@@ -1,6 +1,7 @@
 import type { YearProjection, AnalysisMetrics, AnalisisInput, MetricaTIRSimulador } from "@/lib/types";
 import { metricaODefault, metricaNoAplica, metricaNoAplicaHorizonte } from "@/lib/types";
 import { calcExitScenario } from "@/lib/analysis";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 // Predicado compartido con la comparativa (src/lib/pre-entrega-serie.ts): vivía
 // acá y se movió para que las dos superficies no puedan divergir.
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
@@ -87,8 +88,9 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
     metrics.pieCLP + Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT) +
     (metrics.corretajeInicialCLP ?? 0);
 
-  // Cap Rate sale del motor y no depende del slider.
-  const capRate = metrics.capRate ?? 0;
+  // Cap rate NETO: sale del motor y no depende del slider. Es `rentabilidadNeta`, la misma cifra
+  // del hero (23-sep-2026); `metrics.capRate` ya no se muestra en ninguna parte.
+  const capRate = capRateNetoLtrPct(metrics) ?? 0;
 
   // Cash-on-Cash: flujo anual promedio / inversion inicial × 100.
   const flujoAcumuladoPlazo = usable.reduce((s, p) => s + p.flujoAnual, 0);

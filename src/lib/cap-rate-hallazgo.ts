@@ -3,10 +3,13 @@
 // número que YA calcula (analysis.ts) en un hallazgo tipado; NO recalcula el
 // cap rate base. La IA lo narra aguas abajo (skill analysis-voice-franco).
 //
-// La CIFRA del sujeto sigue siendo el cap rate NETO (NOI) sobre arriendo y precio declarados.
-// La COMPARACIÓN se hace en la base de la referencia: BRUTO contra BRUTO cuando la referencia
-// es el benchmark de avisos de la comuna (capref-comuna.ts: el benchmark no conoce los costos
-// del depto), NETO contra NETO cuando cae a BDO o al promedio nacional.
+// La CIFRA del sujeto es el cap rate NETO: `rentabilidadNeta`, el NOI de mercado —descuenta la
+// vacancia, el corretaje, el recambio y la administración— sobre el precio (23-sep-2026: antes
+// era `capRate`, que no descontaba la vacancia y no tiene nombre de mercado).
+// La COMPARACIÓN es SIEMPRE BRUTO CONTRA BRUTO (decisión de Fabrizio, 23-sep-2026): el benchmark
+// de avisos no conoce los costos del depto, BDO se lleva a bruto con su propio factor, y el
+// promedio nacional también, con el mismo factor. Así el capítulo no depende de cómo definen el
+// neto Houm y Assetplan. No hay rama neta.
 
 import type { HallazgoCapRate } from "./types";
 import { AVISOS_CAPREF_CONFIANZA_ALTA, brutoImplicitoBdo, rotuloCeldaCapRef, type CapRefComunaSnapshot, type NivelCapRef } from "./capref-comuna";
@@ -20,10 +23,12 @@ import { AVISOS_CAPREF_CONFIANZA_ALTA, brutoImplicitoBdo, rotuloCeldaCapRef, typ
 // Sin snapshot cae al ancla nacional, y lo dice.
 
 /**
- * Ancla nacional de cap rate NETO (NOI), en %. No es un número a dedo: refleja
- * el promedio neto residencial de Santiago (~3–4,5%), referenciado a estimaciones
- * públicas de Houm/Assetplan (may-2026). Es el ÚLTIMO peldaño de la cascada (nivel
- * «nacional»): se usa solo cuando la comuna no tiene ni avisos suficientes ni cobertura de BDO.
+ * Ancla nacional de cap rate NETO, en %. No es un número a dedo: refleja el promedio neto
+ * residencial de Santiago (~3–4,5%), referenciado a estimaciones públicas de Houm/Assetplan
+ * (may-2026). Es el ÚLTIMO peldaño de la cascada (nivel «nacional»): se usa solo cuando la
+ * comuna no tiene ni avisos suficientes ni cobertura de BDO. El capítulo NO lo compara como
+ * neto: lo lleva a bruto con el factor de BDO (`capRefNacional`), porque no sabemos con qué
+ * definición de neto lo calculan esas fuentes.
  */
 export const CAP_RATE_REF_NACIONAL = 4.0;
 
@@ -35,10 +40,11 @@ export const CAP_RATE_REF_NACIONAL = 4.0;
 export const CAP_RATE_BANDA_DEFAULT = 2.0;
 
 export interface CapRef {
-  /** Cap rate de referencia, en %, en la base que dice `base`. */
+  /** Cap rate BRUTO de referencia, en %. */
   pct: number;
-  /** Base de la comparación: «bruta» (benchmark de avisos) o «neta» (BDO, nacional). */
-  base: "bruta" | "neta";
+  /** Base de la comparación: siempre bruta (23-sep-2026). El campo queda porque viaja en el
+   *  hallazgo; ya no tiene otro valor. */
+  base: "bruta";
   /** Peldaño de la cascada que la produjo. Declarado, no inferido. */
   nivel: NivelCapRef;
   /** Banda de saturación de la decisividad, en puntos porcentuales. */
@@ -66,14 +72,15 @@ export interface CapRef {
   ventanaDias: number | null;
 }
 
-/** La referencia nacional, como último peldaño. Exportada para que el gate la compare. */
+/** La referencia nacional, como último peldaño: el 4% neto llevado a bruto con el factor de BDO
+ *  (4,0 ÷ 0,8 = 5,0). Exportada para que el gate la compare. */
 export function capRefNacional(comuna: string, fuente?: string): CapRef {
   return {
-    pct: CAP_RATE_REF_NACIONAL,
-    base: "neta",
+    pct: brutoImplicitoBdo(CAP_RATE_REF_NACIONAL),
+    base: "bruta",
     nivel: "nacional",
     banda: CAP_RATE_BANDA_DEFAULT,
-    fuente: fuente ?? `sin referencia de ${comuna}: promedio neto residencial Santiago 3–4,5% (Houm/Assetplan, may-2026)`,
+    fuente: fuente ?? `sin referencia de ${comuna}: promedio neto residencial Santiago 3–4,5% (Houm/Assetplan, may-2026), ${CAP_RATE_REF_NACIONAL}% neto llevado a bruto con el factor de BDO`,
     confianza: "baja",
     scope: "nacional",
     bdoNeto: null,
@@ -136,6 +143,20 @@ export function capRateDisplayPct(capRatePct: number): number {
   return Math.round(capRatePct * 10) / 10;
 }
 
+/**
+ * «CAP RATE NETO» LTR, COMO SE MUESTRA — una sola cifra (decisión de Fabrizio, 23-sep-2026).
+ * Es `rentabilidadNeta` (el NOI de mercado: descuenta vacancia, corretaje, recambio y
+ * administración) redondeada UNA vez desde el crudo (`capRateNetoDisplayPct`, que emite el motor).
+ * La leen el hero, los dos lados del pop-up, el anexo, los KPI y /comparar. `capRate` ya no se
+ * muestra en ninguna parte. Filas persistidas sin el campo: la neta de dos decimales, redondeada
+ * a uno. `null` sin la métrica.
+ */
+export function capRateNetoLtrPct(m: { rentabilidadNeta?: number | null; capRateNetoDisplayPct?: number | null } | null | undefined): number | null {
+  if (typeof m?.capRateNetoDisplayPct === "number" && Number.isFinite(m.capRateNetoDisplayPct)) return m.capRateNetoDisplayPct;
+  const v = m?.rentabilidadNeta;
+  return typeof v === "number" && Number.isFinite(v) ? capRateDisplayPct(v) : null;
+}
+
 const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
 
 /**
@@ -147,10 +168,10 @@ const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
  * reescribe aguas abajo. Voz: tuteo neutro chileno.
  */
 export function buildHallazgoCapRate(p: {
-  /** Cap rate del sujeto, en % NETO (NOI). Reusado de analysis.ts. */
+  /** Cap rate NETO del sujeto, en %: `metrics.rentabilidadNeta`. Viaja como la cifra del hero;
+   *  no es lo que se compara. */
   capRatePct: number;
-  /** Rentabilidad BRUTA del sujeto, en % (arriendo × 12 / precio). Es lo que se compara cuando
-   *  la referencia es el benchmark de avisos. */
+  /** Rentabilidad BRUTA del sujeto, en % (arriendo × 12 / precio). Es lo que se compara. */
   brutoPct: number;
   /** Referencia ya resuelta (getCapRefComuna). */
   ref: CapRef;
@@ -162,14 +183,13 @@ export function buildHallazgoCapRate(p: {
   /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
   magnitudContinua: number;
 }): HallazgoCapRate | null {
-  if (!Number.isFinite(p.capRatePct) || !Number.isFinite(p.ref.pct)) return null;
-  if (p.ref.base === "bruta" && !Number.isFinite(p.brutoPct)) return null;
+  if (!Number.isFinite(p.capRatePct) || !Number.isFinite(p.ref.pct) || !Number.isFinite(p.brutoPct)) return null;
 
   // Redondeo a 1 decimal UNA vez (precisión de display): body (fmt1), gap, dirección y
   // valor leen de acá; el KPI/ksub reformatean el valor → mismo string.
   const capRatePct = capRateDisplayPct(p.capRatePct);
-  // La cifra del sujeto EN LA BASE DE LA REFERENCIA: bruto contra bruto, neto contra neto.
-  const sujetoPct = p.ref.base === "bruta" ? capRateDisplayPct(p.brutoPct) : capRatePct;
+  // Lo que se compara: el bruto del sujeto contra el bruto de la referencia.
+  const sujetoPct = capRateDisplayPct(p.brutoPct);
   const refPct = capRateDisplayPct(p.ref.pct);
 
   const gap = sujetoPct - refPct; // signed
@@ -186,18 +206,15 @@ export function buildHallazgoCapRate(p: {
   const gapFmt = fmt1(gapAbs);
 
   // Glosa inline (familia 4 del censo): la card es standalone — no hay orden de "primer uso"
-  // que garantice la glosa de la prosa. En la base bruta la glosa es la del bruto.
-  const glosaCap =
-    p.ref.base === "bruta"
-      ? `Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos—`
-      : `Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos—`;
+  // que garantice la glosa de la prosa. Lo que se compara es el bruto.
+  const glosaCap = `Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos—`;
   // Qué es la referencia, dicho en la frase: avisos de la comuna, BDO o el promedio nacional.
   const queRef =
     p.ref.nivel === "celda" || p.ref.nivel === "comuna"
       ? `lo que rinden los avisos de ${p.ref.celda} (${refFmt}%)`
       : p.ref.nivel === "bdo"
         ? `lo que rinden los edificios de renta de ${p.ref.comuna} (${refFmt}%)`
-        : `la referencia nacional (${refFmt}%)`;
+        : `el promedio de Santiago (${refFmt}%)`;
 
   let fraseCanonica: string;
   let titular: string;
@@ -218,7 +235,7 @@ export function buildHallazgoCapRate(p: {
     id: "cap_rate",
     tipo: "rentabilidad_operativa",
     valor: {
-      capRatePct, // ya redondeado a 1 decimal — mismo valor que el KPI del hero
+      capRatePct, // el NETO, ya redondeado a 1 decimal — el mismo valor del hero y del pop-up
       sujetoPct,
       capRefPct: refPct,
       base: p.ref.base,
@@ -241,10 +258,7 @@ export function buildHallazgoCapRate(p: {
     decisividad: p.decisividad,
     magnitudContinua: p.magnitudContinua,
     procedencia: {
-      base:
-        p.ref.base === "bruta"
-          ? "Rentabilidad bruta sobre tu arriendo y precio declarados, contra la de los avisos de la comuna; el cap rate neto descuenta gastos operativos"
-          : "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
+      base: "Rentabilidad bruta sobre tu arriendo y precio declarados, contra la bruta de la referencia; el cap rate neto descuenta gastos, vacancia y gestión",
       confianza: p.ref.confianza,
     },
     titular,

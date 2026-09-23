@@ -20,12 +20,12 @@ export const GLOSAS: Record<GlosaId, Glosa> = {
   capRateBruto: {
     nombre: "Cap rate bruto",
     texto:
-      "Cuánto renta el depto en un año, comparado con lo que cuesta, antes de pagar cualquier gasto. Sirve para comparar deptos rápido, pero se queda corto: todavía no descuenta gastos comunes, contribuciones ni mantención.",
+      "Cuánto renta el depto en un año, comparado con lo que cuesta, antes de pagar cualquier gasto. Es la cifra para compararlo con otros de la comuna, pero se queda corta: todavía no descuenta gastos, vacancia ni gestión.",
   },
   capRateNeto: {
     nombre: "Cap rate neto",
     texto:
-      "Cuánto renta el depto en un año, comparado con lo que cuesta, ya descontado lo que cuesta mantenerlo. No mira el crédito: mide el depto como negocio, lo compres con deuda o sin ella. Es la cifra para compararlo con otros de la comuna.",
+      "Cuánto renta el depto en un año, comparado con lo que cuesta, ya descontado lo que cuesta mantenerlo, los meses sin arrendatario y la gestión. No mira el crédito: mide el depto como negocio, lo compres con deuda o sin ella.",
   },
   capRateStr: {
     nombre: "Cap rate",

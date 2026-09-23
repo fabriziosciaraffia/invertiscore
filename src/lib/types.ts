@@ -397,6 +397,9 @@ export interface PreEntregaGanancia {
 export interface AnalysisMetrics {
   rentabilidadBruta: number;
   rentabilidadNeta: number;
+  /** «Cap rate neto» como se muestra: `rentabilidadNeta` cruda redondeada una vez a un decimal.
+   *  Opcional por filas persistidas anteriores al 23-sep-2026 (ver `capRateNetoLtrPct`). */
+  capRateNetoDisplayPct?: number;
   capRate: number;
   // Sobre capital propio: 'no_aplica' cuando pieCLP === 0 (pie cero · fase 1-2).
   // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
@@ -611,12 +614,11 @@ export interface HallazgoCapRate {
   id: "cap_rate";
   tipo: "rentabilidad_operativa";
   valor: {
-    capRatePct: number;   // cap rate del sujeto, % NETO (NOI): la cifra del hero
-    /** La cifra del sujeto EN LA BASE de la referencia: el bruto cuando la referencia es el
-     *  benchmark de avisos de la comuna, el neto cuando es BDO o el promedio nacional. */
+    capRatePct: number;   // cap rate NETO del sujeto (`rentabilidadNeta`): la cifra del hero
+    /** Lo que se compara: el BRUTO del sujeto, siempre (23-sep-2026). */
     sujetoPct: number;
-    capRefPct: number;    // referencia contra la que se compara, en la base `base`
-    base: "bruta" | "neta";
+    capRefPct: number;    // referencia BRUTA contra la que se compara
+    base: "bruta";
     /** Peldaño de la cascada que produjo la referencia (capref-comuna.ts). Declarado. */
     nivel: "celda" | "comuna" | "bdo" | "nacional";
     gapPts: number;       // sujetoPct − capRefPct, en puntos (signed)

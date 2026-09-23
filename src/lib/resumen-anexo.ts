@@ -14,6 +14,7 @@ import type { FullAnalysisResult, AnalisisInput, Hallazgo, Veredicto } from "@/l
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 
 export type ResumenKPI = { label: string; value: string; sub?: string; red?: boolean };
@@ -152,9 +153,10 @@ export function buildResumenLTR(args: {
       ? { label: "Aporte mensual", value: fmtCLP(m.flujoNetoMensual), sub: "De tu bolsillo", red: m.flujoNetoMensual < 0 }
       : null);
   if (aporte) kpis.push(aporte);
-  const cap =
-    kpiFromHallazgo(hall, "cap_rate", "CAP rate", ufValue) ??
-    (typeof m?.capRate === "number" ? { label: "CAP rate", value: fmtPct(m.capRate), sub: "Anual sobre precio" } : null);
+  // El cap rate neto de mercado (`rentabilidadNeta`), la misma cifra del hero (23-sep-2026).
+  const capNeto = capRateNetoLtrPct(m);
+  // No sale de la card del hallazgo: la card dice el BRUTO, que es lo que el hallazgo compara.
+  const cap = capNeto != null ? { label: "Cap rate neto", value: fmtPct(capNeto), sub: "Anual sobre precio" } : null;
   if (cap) kpis.push(cap);
   const tir = kpiFromHallazgo(hall, "tir", "TIR a 10 años", ufValue);
   if (tir) kpis.push(tir);

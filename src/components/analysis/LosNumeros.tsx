@@ -5,7 +5,7 @@ import { metricaValorONull } from "@/lib/types";
 import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
 import { fmtMoney, menos } from "./utils";
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
-import { capRateDisplayPct } from "@/lib/cap-rate-hallazgo";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 
 /**
  * LOS NÚMEROS — contrato CONGELADO 02-sep-2026 (T2).
@@ -29,18 +29,18 @@ export function LosNumeros({
   metrics,
   results,
   capRefPct,
-  capRefBase,
+  capRefNivel,
   currency,
   valorUF,
   onCalculo,
 }: {
   metrics: AnalysisMetrics;
   results: FullAnalysisResult;
-  /** Referencia de mercado del cap rate (del hallazgo o de `getCapRefComuna`). */
+  /** Referencia BRUTA de mercado del cap rate (del hallazgo o de `getCapRefComuna`). Va bajo el
+   *  cap rate bruto: el capítulo I compara siempre bruto contra bruto (23-sep-2026). */
   capRefPct: number | null;
-  /** En qué base está la referencia: «bruta» (avisos de la comuna) va bajo el cap rate bruto;
-   *  «neta» (BDO, nacional) bajo el neto. Ausente ⇒ neta (filas viejas). */
-  capRefBase?: "bruta" | "neta";
+  /** De qué peldaño sale, para nombrarla: avisos, edificios de renta o el promedio de Santiago. */
+  capRefNivel?: "celda" | "comuna" | "bdo" | "nacional";
   currency: "CLP" | "UF";
   valorUF: number;
   onCalculo?: () => void;
@@ -67,25 +67,26 @@ export function LosNumeros({
       tr: (
         <>
           El arriendo de un año sobre el precio, <b>antes</b> de gastos.{" "}
-          {capRefPct != null && capRefBase === "bruta" ? <b>Los avisos de la comuna rinden {pct1(capRefPct)}.</b> : null}
+          {capRefPct != null ? (
+            <b>
+              {capRefNivel === "nacional" ? "El promedio de Santiago rinde" : capRefNivel === "bdo" ? "Los edificios de renta de la comuna rinden" : "Los avisos de la comuna rinden"}{" "}
+              {pct1(capRefPct)}.
+            </b>
+          ) : null}
         </>
       ),
     },
     {
       k: "Cap rate neto",
       glosa: "capRateNeto",
-      // LA MISMA CIFRA que lee el capítulo I: `valor.capRatePct` del hallazgo, redondeada UNA
-      // vez desde el crudo. `metrics.capRate` viene redondeado a DOS decimales y formatearlo a
-      // uno es redondear dos veces (2,848 → 2,85 → «2,9» acá, 2,8 en el capítulo): 55 filas
-      // del parque mostraban dos cap rates en la misma página (21-sep-2026). Sin hallazgo
-      // (filas sin ingreso), el crudo redondeado una vez.
-      v: pct1(metrics.hallazgoCapRate?.valor.capRatePct ?? capRateDisplayPct(metrics.capRate)),
-      tr: (
-        <>
-          Lo mismo, ya descontados los gastos.{" "}
-          {capRefPct != null && capRefBase !== "bruta" ? <b>La referencia de mercado es {pct1(capRefPct)}.</b> : null}
-        </>
-      ),
+      // UNA SOLA «cap rate neto» (decisión de Fabrizio, 23-sep-2026): `rentabilidadNeta`, el NOI
+      // de mercado, con la misma función que los dos lados del pop-up. Antes esta celda leía
+      // `capRate`, que no descuenta la vacancia: el pop-up decía otra cifra con el mismo nombre.
+      v: (() => {
+        const n = capRateNetoLtrPct(metrics);
+        return n != null ? pct1(n) : "—";
+      })(),
+      tr: <>Lo mismo, ya descontados los gastos, la vacancia y la gestión.</>,
     },
     {
       // «Retorno sobre lo puesto» salió (decisión de Fabrizio, 23-sep-2026): el indicador va con

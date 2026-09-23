@@ -102,14 +102,16 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       // "bajo/sobre el mercado" mientras el dot dice "Leve" y la prosa "en línea".
       const capEnLinea = Math.abs(v.gapPts) < 0.2;
       return {
-        kick: "Rendimiento operativo",
+        // La card dice lo que el hallazgo compara: el BRUTO (siempre, desde el 23-sep-2026), el
+        // mismo número de su frase. El neto (`capRatePct`) vive en el hero.
+        kick: "Cap rate bruto",
         title: "Lo que renta hoy vs lo que debería",
-        kpi: `${pct1(v.capRatePct)}%`,
+        kpi: `${pct1(v.sujetoPct)}%`,
         kpiRed: false,
-        // La comparación va en la base de la referencia: «bruto» contra los avisos de la comuna.
+        // La comparación es siempre bruto contra bruto (23-sep-2026).
         ksub: capEnLinea
-          ? `cap rate${v.base === "bruta" ? ` bruto ${pct1(v.sujetoPct)}%` : ""} · en línea con ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`
-          : `cap rate${v.base === "bruta" ? ` bruto ${pct1(v.sujetoPct)}%` : ""} · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`,
+          ? `cap rate bruto ${pct1(v.sujetoPct)}% · en línea con ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`
+          : `cap rate bruto ${pct1(v.sujetoPct)}% · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`,
       };
     }
     case "flujo_mensual": {

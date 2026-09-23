@@ -190,18 +190,13 @@ export function CapitulosInversion({
   const filaI: FilaHallazgo | null = capRate
     ? (() => {
         const v = capRate.valor;
-        const noi = m.noi ?? (v.capRatePct / 100) * precioCLP;
-        const gastosOpAnual = Math.max(arriendo * 12 - noi, 0);
-        // El arriendo al que rendirías como la referencia, EN SU BASE: bruta (avisos, edificios
-        // de renta) es capRef × precio / 12; neta (promedio nacional) suma los gastos del año.
-        const arriendoRef =
-          v.base === "bruta"
-            ? ((v.capRefPct / 100) * precioCLP) / 12
-            : ((v.capRefPct / 100) * precioCLP + gastosOpAnual) / 12;
+        // El arriendo al que rendirías como la referencia: bruto contra bruto siempre (23-sep-2026;
+        // el promedio nacional también llega en bruto), así que es capRef × precio / 12.
+        const arriendoRef = ((v.capRefPct / 100) * precioCLP) / 12;
         const holgura = arriendoRef <= arriendo;
         const refTxt = `${pct1(v.capRefPct)}%`;
         const nombreRef = nombreReferenciaCapRef(v);
-        const nombreCifra = v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : NOMBRE_RENTABILIDAD.ltrNeta;
+        const nombreCifra = NOMBRE_RENTABILIDAD.ltr;
         // El arriendo del sector (cap. II, misma fuente): mediana a radio, con su estado.
         const zona = resolverArriendoReferencia(inputData);
         const respaldo = respaldoArriendo(inputData, arriendo);
@@ -246,7 +241,7 @@ export function CapitulosInversion({
           pregunta: "Cuánto renta",
           valor: conApellido(nombreCifra, `${pct1(v.sujetoPct)}%`),
           // El ⓘ va en el sub del capítulo abierto, no en la fila: toda la fila abre el capítulo.
-          glosa: <GlosaIndicador glosa={v.base === "bruta" ? "capRateBruto" : "capRateNeto"} aca={`${pct1(v.sujetoPct)}%`} />,
+          glosa: <GlosaIndicador glosa="capRateBruto" aca={`${pct1(v.sujetoPct)}%`} />,
           valorRojo: capRate.direccion === "adverso",
           ksub: `${nombreRef} ${refTxt}`,
           anchorId: anchorCapitulo("renta"),

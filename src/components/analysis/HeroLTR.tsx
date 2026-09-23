@@ -8,6 +8,7 @@ import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, Hallazg
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { PopupAjustes, hayAjustesQueMostrar } from "./shared/PopupAjustes";
 import { metricaValorONull } from "@/lib/types";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { PopupAjustesTokens } from "./shared/PopupAjustesTokens";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
@@ -246,7 +247,8 @@ export function HeroLTR({
                 cuotaMensual: results.metrics.dividendo ?? null,
                 flujoMensual: results.metrics.flujoNetoMensual ?? null,
                 cocPct: metricaValorONull(results.metrics.cashOnCash),
-                capRateNetoPct: results.metrics.rentabilidadNeta ?? null,
+                // La misma cifra que el hero (`capRateNetoLtrPct`): una sola «cap rate neto».
+                capRateNetoPct: capRateNetoLtrPct(results.metrics),
                 tirPct: metricaValorONull(results.exitScenario?.tir),
                 score: results.score ?? null,
               }

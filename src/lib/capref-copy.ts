@@ -16,8 +16,9 @@ import { GLOSAS } from "./glosas-indicadores";
 
 type ValorCapRef = HallazgoCapRate["valor"];
 
-/** Nombre del número que compara el capítulo, por modalidad y base: el de mercado, el mismo del ⓘ. */
-export const NOMBRE_RENTABILIDAD = { ltr: GLOSAS.capRateBruto.nombre, ltrNeta: GLOSAS.capRateNeto.nombre, str: GLOSAS.capRateStr.nombre } as const;
+/** Nombre del número que compara el capítulo, por modalidad: el de mercado, el mismo del ⓘ. En LTR
+ *  es siempre el bruto (23-sep-2026: el capítulo ya no compara neto contra neto). */
+export const NOMBRE_RENTABILIDAD = { ltr: GLOSAS.capRateBruto.nombre, str: GLOSAS.capRateStr.nombre } as const;
 
 /**
  * La fuente, en UNA línea. Por peldaño:
@@ -42,8 +43,8 @@ export function fuenteCapRef(v: Pick<ValorCapRef, "nivel" | "comuna" | "celdaDor
 
 /** La frase visible bajo el título: de dónde sale la referencia de la comuna, en una frase. Qué es
  *  el cap rate lo dice su ⓘ (23-sep-2026); nombre en minúscula dentro de la frase (§5.7). */
-export function explicacionCapRef(v: Pick<ValorCapRef, "nivel" | "comuna" | "base">): string {
-  const nombre = (v.base === "bruta" ? NOMBRE_RENTABILIDAD.ltr : NOMBRE_RENTABILIDAD.ltrNeta).toLowerCase();
+export function explicacionCapRef(v: Pick<ValorCapRef, "nivel" | "comuna">): string {
+  const nombre = NOMBRE_RENTABILIDAD.ltr.toLowerCase();
   if (v.nivel === "celda" || v.nivel === "comuna") return `El ${nombre} de ${v.comuna} sale de los avisos publicados de deptos parecidos.`;
   if (v.nivel === "bdo") return `El ${nombre} de ${v.comuna} sale de lo que rinden los edificios de renta de la comuna.`;
   return "La referencia es el promedio de Santiago: la comuna no tiene avisos suficientes.";

@@ -39,7 +39,7 @@ import {
 } from "@/lib/arriendo-referencia";
 import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
 import { buildReestructuracionFinanciera } from "@/lib/financing-health";
-import { getCapRefComuna, buildHallazgoCapRate } from "@/lib/cap-rate-hallazgo";
+import { getCapRefComuna, buildHallazgoCapRate, capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "@/lib/flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
@@ -1164,13 +1164,12 @@ function datosHallazgoParaPrompt(h: Hallazgo): string {
     }
     case "cap_rate": {
       const v = h.valor;
-      const base = v.base === "bruta"
-        ? `rentabilidad BRUTA anual del arriendo sobre el precio (antes de gastos; el cap rate neto es ${pct(v.capRatePct)}%)`
-        : "rentabilidad neta anual del arriendo sobre el precio (CAP rate)";
+      // Siempre bruto contra bruto (23-sep-2026): BDO y el promedio nacional llegan llevados a bruto.
+      const base = `rentabilidad BRUTA anual del arriendo sobre el precio (antes de gastos; el cap rate neto es ${pct(v.capRatePct)}%)`;
       const ref = v.nivel === "celda" || v.nivel === "comuna"
         ? `de referencia de los avisos de ${v.celda}`
-        : v.nivel === "bdo" ? `neto de referencia de BDO para la comuna` : "de referencia nacional";
-      return `qué: ${base} · cuánto: ${pct(v.sujetoPct ?? v.capRatePct)}% contra ${pct(v.capRefPct)}% ${ref} (${v.gapPts >= 0 ? "+" : ""}${pct(v.gapPts)} pts) · dirección: ${dir} · ${conf}`;
+        : v.nivel === "bdo" ? `bruto de referencia de los edificios de renta de la comuna` : "bruto de referencia del promedio de Santiago";
+      return `qué: ${base} · cuánto: ${pct(v.sujetoPct)}% contra ${pct(v.capRefPct)}% ${ref} (${v.gapPts >= 0 ? "+" : ""}${pct(v.gapPts)} pts) · dirección: ${dir} · ${conf}`;
     }
     case "sobreprecio": {
       const v = h.valor;
@@ -2224,10 +2223,11 @@ estructuraFinancieraSugerida (referencia para tu prosa — NO inventes ni recalc
     // render (crudo 2,8493 → card "2,8"; m.capRate 2,85 → prompt "2,9"; casos
     // bbcb0448/71512dec/23b9cb27/c09c2ebf, los cuatro exactos en frontera). El
     // prompt cita SIEMPRE el número de la card: el valor 1-decimal del hallazgo
-    // recomputado. m.capRate queda solo de fallback (hallazgo no emitido).
+    // recomputado. Desde el 23-sep-2026 ese valor es el cap rate NETO (`rentabilidadNeta`,
+    // con `capRateNetoLtrPct`, la misma función del hero); el fallback también.
     const capRateCard =
       ((results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "cap_rate")
-        ?.valor as { capRatePct?: number } | undefined)?.capRatePct ?? m.capRate;
+        ?.valor as { capRatePct?: number } | undefined)?.capRatePct ?? capRateNetoLtrPct(m) ?? 0;
     const hallazgoCapRateGen = buildHallazgoCapRate({
       capRatePct: capRateCard,
       brutoPct: m.rentabilidadBruta,
@@ -2695,8 +2695,7 @@ INDICADORES CALCULADOS
 - veredicto (dado — úsalo como tal, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único; cítalos y cita los pesos tal cual, sin recalcular): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · retorno sobre lo puesto ${Math.round(d.cashOnCash ?? NaN)}/100 · TIR ${d.tir == null ? "no aplica (sin pie: su peso se reparte entre las demás)" : `${Math.round(d.tir)}/100`} · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100 · pesos ${PESOS_SCORE_LTR.rentabilidad}/${PESOS_SCORE_LTR.flujoCaja}/${PESOS_SCORE_LTR.cashOnCash}/${PESOS_SCORE_LTR.tir}/${PESOS_SCORE_LTR.plusvalia}/${PESOS_SCORE_LTR.eficiencia} (rentabilidad/flujo/retorno sobre lo puesto/TIR/plusvalia/eficiencia) · las dos que más suman: ${dimsQueSuman} · las dos que más restan: ${dimsQueRestan}
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
-- Cap rate: ${pct(capRateCard)}%
-- Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
+- Cap rate neto (descuenta gastos, vacancia y gestión): ${pct(capRateCard)}%
 - Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}${esMetricaNoAplica(m.cashOnCash) || !fechaEntregaFmt || input.estadoVenta === "inmediata" ? "" : ` — es el RÉGIMEN, no el hoy: este depto se entrega en ${fechaEntregaFmt}, así que ese porcentaje es lo que rentará el pie una vez arrendado. Nárralo en futuro ("cuando lo recibas"), nunca en presente ("tu pie está rentando")`}
 ${tirLineaPrompt}- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 ${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplica!.razon)}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza con el precio/m² según la razón declarada.

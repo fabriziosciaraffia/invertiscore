@@ -9,6 +9,7 @@ import type { Analisis, Desglose } from "@/lib/types";
 import { metricaValorONull, metricaODefault, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_VALOR } from "@/lib/no-aplica-copy";
 import { fmtM, fmtMult } from "@/components/analysis/utils";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 
 // Paleta congelada Ink + Signal Red: las series NO se distinguen por matiz
 // (fuera de paleta), sino por tono de Ink + patrón de línea — misma doctrina
@@ -106,7 +107,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     section: "Rentabilidad",
     rows: [
       {
-        label: "Rentabilidad Bruta",
+        label: "Cap rate bruto",
         values: analisis.map((a) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const raw = a.results?.metrics as any;
@@ -117,20 +118,16 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         higherIsBetter: true,
       },
       {
-        label: "Rentabilidad Neta",
+        // «Cap rate neto» es `rentabilidadNeta`, la misma cifra del hero; la fila de `capRate`
+        // («Rent. Operativa») salió: no tiene nombre de mercado (23-sep-2026).
+        label: "Cap rate neto",
         values: analisis.map((a) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const raw = a.results?.metrics as any;
-          return raw ? formatPct(raw.rentabilidadNeta ?? raw.yieldNeto ?? 0) : "—";
+          return raw ? formatPct(capRateNetoLtrPct(raw) ?? raw.yieldNeto ?? 0) : "—";
         }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        raw: analisis.map((a) => { const raw = a.results?.metrics as any; return raw?.rentabilidadNeta ?? raw?.yieldNeto ?? 0; }),
-        higherIsBetter: true,
-      },
-      {
-        label: "Rent. Operativa (CAP Rate)",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.capRate ?? 0) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.capRate ?? 0),
+        raw: analisis.map((a) => { const raw = a.results?.metrics as any; return capRateNetoLtrPct(raw) ?? raw?.yieldNeto ?? 0; }),
         higherIsBetter: true,
       },
       {
