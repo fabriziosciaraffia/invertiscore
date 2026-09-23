@@ -108,10 +108,13 @@ async function main() {
     // fronteras
     const fi = sim.fronterasIngreso;
     if (!fi.abajo || !cerca(fi.abajo.factor, 0.882, 0.003) || fi.abajo.veredicto !== "BUSCAR OTRA") F(`eb7b · frontera abajo ${JSON.stringify(fi.abajo)}`);
-    if (!fi.arriba || !cerca(fi.arriba.factor, 1.043, 0.003) || fi.arriba.veredicto !== "COMPRAR") F(`eb7b · frontera arriba ${JSON.stringify(fi.arriba)}`);
-    if (fi.tarifa.arriba == null || !cerca(fi.tarifa.arriba, 47510, 30) || fi.ocupacion.arriba == null || !cerca(fi.ocupacion.arriba, 0.446, 0.002)) F(`eb7b · fronteras en unidades ${JSON.stringify(fi.tarifa)} ${JSON.stringify(fi.ocupacion)}`);
+    // ACTA 22-sep-2026 (retiro de la ventaja vs LTR): sin la dimensión ni el gate «el largo gana», la
+    // frontera hacia COMPRAR se aleja de 1,043 a 1,101 (tarifa $50.134, ocupación 47%), el precio que sube
+    // a COMPRAR baja de UF 2.536 a 2.345, el ADR deja de cruzar y la única palanca es el precio.
+    if (!fi.arriba || !cerca(fi.arriba.factor, 1.101, 0.003) || fi.arriba.veredicto !== "COMPRAR") F(`eb7b · frontera arriba ${JSON.stringify(fi.arriba)}`);
+    if (fi.tarifa.arriba == null || !cerca(fi.tarifa.arriba, 50134, 30) || fi.ocupacion.arriba == null || !cerca(fi.ocupacion.arriba, 0.470, 0.002)) F(`eb7b · fronteras en unidades ${JSON.stringify(fi.tarifa)} ${JSON.stringify(fi.ocupacion)}`);
     const fp = sim.fronteraPrecio;
-    if (!fp.subeA || !cerca(fp.subeA.precioUF, 2536, 2) || !fp.caeA || !cerca(fp.caeA.precioUF, 3210, 4)) F(`eb7b · frontera precio ${JSON.stringify(fp)}`);
+    if (!fp.subeA || !cerca(fp.subeA.precioUF, 2345, 2) || !fp.caeA || !cerca(fp.caeA.precioUF, 3212, 4)) F(`eb7b · frontera precio ${JSON.stringify(fp)}`);
     // matriz tarifa × ocupación
     const mt = sim.matrizTarifaOcupacion;
     if (mt.celdas.length !== 16) F(`eb7b · matriz T×O ${mt.celdas.length} celdas`);
@@ -124,7 +127,9 @@ async function main() {
     const mp = sim.matrizPiePlazo;
     if (mp.celdas.length !== 16 || mp.pies.join() !== "15,20,25,30") F(`eb7b · matriz P×P ${mp.pies.join()} · ${mp.celdas.length}`);
     const c3030 = mp.celdas.find((c) => c.piePct === 30 && c.plazoAnios === 30);
-    if (!c3030 || c3030.flujoMensual !== 12778 || !c3030.cruza || mp.celdas.filter((c) => c.cruza).length !== 1) F(`eb7b · 30×30 ${JSON.stringify(c3030)}`);
+    // ACTA 22-sep-2026: con pie 30 a 30 años el flujo sigue en +$12.778 pero ya no cruza a COMPRAR (sin la
+    // ventaja el score queda en AJUSTA): ninguna celda de pie × plazo cruza en esta fila.
+    if (!c3030 || c3030.flujoMensual !== 12778 || c3030.cruza || mp.celdas.some((c) => c.cruza)) F(`eb7b · 30×30 ${JSON.stringify(c3030)}`);
     const cHoy = mp.celdas.find((c) => c.esActual);
     if (!cHoy || cHoy.piePct !== 20 || cHoy.plazoAnios !== 25 || cHoy.flujoMensual !== -84407 || !cerca(cHoy.tirPct ?? 0, 9.31, 0.01)) F(`eb7b · P×P hoy ${JSON.stringify(cHoy)}`);
     // vias
@@ -132,10 +137,10 @@ async function main() {
     const vias = dv?.valor.vias ?? [];
     const estado = (p: string) => vias.find((v) => v.palanca === p)?.estado;
     if (vias.map((v) => v.palanca).join() !== "precio,adr,plazo,pie,gestion") F(`eb7b · orden de vias ${vias.map((v) => v.palanca).join()}`);
-    if (estado("precio") !== "cruza" || estado("adr") !== "cruza" || estado("plazo") !== "noCruza" || estado("pie") !== "noCruza" || estado("gestion") !== "noCruza") F(`eb7b · estados ${vias.map((v) => `${v.palanca}:${v.estado}`).join(",")}`);
+    if (estado("precio") !== "cruza" || estado("adr") !== "noCruza" || estado("plazo") !== "noCruza" || estado("pie") !== "noCruza" || estado("gestion") !== "noCruza") F(`eb7b · estados ${vias.map((v) => `${v.palanca}:${v.estado}`).join(",")}`);
     const vPie = vias.find((v) => v.palanca === "pie");
     if (vPie?.estado === "noCruza" && vPie.topeExplorado !== 30) F("eb7b · el pie debía explorarse hasta 30%");
-    if ((dv?.valor.palancas ?? []).map((p) => p.palanca).join() !== "adr,precio") F(`eb7b · palancas ${(dv?.valor.palancas ?? []).map((p) => p.palanca).join()}`);
+    if ((dv?.valor.palancas ?? []).map((p) => p.palanca).join() !== "precio") F(`eb7b · palancas ${(dv?.valor.palancas ?? []).map((p) => p.palanca).join()}`);
     if (dv?.valor.palancas.length !== vias.filter((v) => v.estado === "cruza").length) F("eb7b · palancas ≠ vias.filter(cruza)");
     // flujo_str
     const fs = hallazgos.find((h) => h.id === "flujo_str");
@@ -149,13 +154,15 @@ async function main() {
     // $185.049) vigilaban una superficie que ya no existe; lo que medían —el monto, la
     // comparación contra el largo y el otro modo— vive ahora en la tabla y en el V.
     const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), gestion: textoCierre(cierres.gestion), resultado: textoCierre(cierres.resultado) };
-    if (!/sube a COMPRAR/.test(T.renta) || !/\$47\.5\d\d por noche/.test(T.renta) || !/cruza a COMPRAR aunque el mes quede en −\$919/.test(T.renta)) F(`eb7b · cierre I: ${T.renta}`);
+    if (!/cruzaría a COMPRAR/.test(T.renta) || !/\$50\.1\d\d por noche/.test(T.renta) || !/cruza a COMPRAR aunque el mes quede en −\$919/.test(T.renta)) F(`eb7b · cierre I: ${T.renta}`);
     // Cierre III desde el 22-sep-2026 («Ocupación en renta corta»): sin avisos parecidos guardados en esta fila, once meses en rojo.
     if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches) || !/once meses en rojo/.test(T.noches)) F(`eb7b · cierre III: ${T.noches}`);
-    if (!/\$150\.102/.test(T.gestion) || !/\$49\.460/.test(T.gestion) || !/dos tercios/.test(T.gestion) || !/\$185\.049/.test(T.gestion)) F(`eb7b · cierre V: ${T.gestion}`);
-    if (!/×2,20/.test(T.resultado) && !/9,3/.test(T.resultado)) F(`eb7b · cierre VI: ${T.resultado}`);
+    // Los pins del cierre II (antes «V») y del VI estaban ROJOS en master desde la fusión del 17-sep y el
+    // rediseño de «Tu resultado» del 22-sep; se re-pinean acá con el texto vivo (acta del retiro).
+    if (!/9,1 puntos de ocupación/.test(T.gestion) || !/42,7% a 51,8%/.test(T.gestion)) F(`eb7b · cierre II: ${T.gestion}`);
+    if (!/\$25,3 MM/.test(T.resultado) || !/\$35,0 MM/.test(T.resultado)) F(`eb7b · cierre VI: ${T.resultado}`);
     textoLimpio("eb7b", Object.values(T).concat(hallazgos.map((h) => h.fraseCanonica)));
-    console.log("  eb7b3a66 · Sta. Rosa · " + francoScore.veredicto + "\n    I  " + T.renta + "\n    III " + T.noches + "\n    V  " + T.gestion + "\n    VI " + T.resultado);
+    console.log("  eb7b3a66 · Sta. Rosa · " + francoScore.veredicto + "\n    I  " + T.renta + "\n    III " + T.noches + "\n    II " + T.gestion + "\n    VI " + T.resultado);
   }
 
   // ── 2 · Estructural ──
@@ -164,26 +171,30 @@ async function main() {
     const dv = hallazgos.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
     if (!dv?.valor.esEstructural) F("18f2 · debía ser estructural");
     if ((dv?.valor.vias ?? []).some((v) => v.estado === "cruza")) F("18f2 · ninguna vía debía cruzar");
-    if (!/Ni a 30 años, ni con pie 30% ni con administrador cambia\./.test(dv?.fraseCanonica ?? "")) F(`18f2 · frase estructural: ${dv?.fraseCanonica}`);
+    // Rojo en master desde antes del retiro (la frase perdió «ni con administrador» con la fusión del
+    // 17-sep); se re-pinea con el texto vivo.
+    if (!/Ni a 30 años ni con pie 30% cambia\./.test(dv?.fraseCanonica ?? "")) F(`18f2 · frase estructural: ${dv?.fraseCanonica}`);
     if (sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("18f2 · la matriz pie × plazo no debía cruzar");
     const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
     textoLimpio("18f2", Object.values(T));
     console.log(`  18f29784 · estructural · ${francoScore.veredicto}\n    I  ${T.renta}`);
   }
 
-  // ── 3 · COMPRAR con mes negativo ──
+  // ── 3 · AJUSTA con mes negativo (era COMPRAR hasta el 22-sep-2026) ──
+  // ACTA 22-sep-2026 (retiro de la ventaja vs LTR): esta fila era COMPRAR 71 con la ventaja en 91 y la
+  // sostenibilidad en 47 (flujo −$51.120): el COMPRAR lo sostenía «le gana mucho al largo declarado».
+  // Sin la dimensión queda en 66, AJUSTA, y aparecen la frontera hacia arriba y las celdas que cruzan.
   {
     const { result: r, francoScore, sim, cierres } = await cargar(sb, "2ff73320-a4c9-4152-850e-5dc8b518f1c1", "auto");
-    if (francoScore.veredicto !== "COMPRAR" || !(r.metrics!.flujoMensual < 0)) F(`2ff7 · ${francoScore.veredicto} / ${r.metrics?.flujoMensual}`);
-    if (sim.fronterasIngreso.arriba !== null || sim.fronteraPrecio.subeA !== null) F("2ff7 · en COMPRAR no hay frontera hacia arriba");
-    if (sim.matrizTarifaOcupacion.celdas.some((c) => c.cruza) || sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("2ff7 · en COMPRAR ninguna celda cruza");
+    if (francoScore.veredicto !== "AJUSTA SUPUESTOS" || !(r.metrics!.flujoMensual < 0)) F(`2ff7 · ${francoScore.veredicto} / ${r.metrics?.flujoMensual}`);
+    if (sim.fronterasIngreso.arriba?.veredicto !== "COMPRAR" || sim.fronteraPrecio.subeA?.veredicto !== "COMPRAR") F("2ff7 · en AJUSTA la frontera hacia arriba debe existir y llevar a COMPRAR");
+    if (!sim.matrizTarifaOcupacion.celdas.some((c) => c.cruza)) F("2ff7 · en AJUSTA alguna celda de tarifa × ocupación cruza");
     if (r.metrics!.repartoIngreso!.exceso <= 0 || r.metrics!.repartoIngreso!.libre !== 0) F(`2ff7 · reparto ${JSON.stringify(r.metrics!.repartoIngreso)}`);
     const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
-    if (/sube a/.test(T.renta)) F(`2ff7 · cierre I ofrece subir en COMPRAR: ${T.renta}`);
-    if (!/antes de caer a/.test(T.renta) && !/firme/.test(T.renta)) F(`2ff7 · cierre I sin colchón: ${T.renta}`);
+    if (!/sube a COMPRAR/.test(T.renta)) F(`2ff7 · cierre I en AJUSTA no ofrece subir: ${T.renta}`);
     if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches)) F(`2ff7 · cierre III: ${T.noches}`);
     textoLimpio("2ff7", Object.values(T));
-    console.log(`  2ff73320 · COMPRAR con mes negativo (${r.metrics!.flujoMensual})\n    I  ${T.renta}\n    III ${T.noches}`);
+    console.log(`  2ff73320 · AJUSTA con mes negativo (${r.metrics!.flujoMensual})\n    I  ${T.renta}\n    III ${T.noches}`);
   }
 
   console.log("\nCONGELADO STR · catch-test\n");

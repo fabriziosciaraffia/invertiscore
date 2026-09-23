@@ -9,8 +9,8 @@
 // Fija SEIS cosas, medidas en FASE 0 sobre 1.204 LTR y 249 STR:
 //
 //   1. LOS PESOS. LTR: rentabilidad 20 · flujo 20 · cash-on-cash 20 · TIR 10 · plusvalía 17 ·
-//      eficiencia 13 (= 100). STR: cap rate 15 · sostenibilidad 20 · ventaja 20 · factibilidad
-//      20 · cash-on-cash 15 · TIR 10 (= 100). Una sola fuente (`score-retorno.ts`) para las
+//      eficiencia 13 (= 100). STR: cap rate 18,75 · sostenibilidad 25 · factibilidad 25 ·
+//      cash-on-cash 18,75 · TIR 12,5 (= 100; sin ventaja vs LTR desde el 22-sep-2026). Una sola fuente (`score-retorno.ts`) para las
 //      dos modalidades y para el PDF, que hasta hoy hardcodeaba 30/25/25/20.
 //
 //   2. LAS CURVAS, CALIBRADAS AL PARQUE. La mediana de cada veredicto cae donde caen hoy sus
@@ -58,7 +58,8 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   if (suma(PESOS_SCORE_STR) !== 100) F(`1 · los pesos STR suman ${suma(PESOS_SCORE_STR)}, no 100`);
   const esperadoLtr = { rentabilidad: 20, flujoCaja: 20, cashOnCash: 20, tir: 10, plusvalia: 17, eficiencia: 13 };
   for (const [k, v] of Object.entries(esperadoLtr)) if ((PESOS_SCORE_LTR as any)[k] !== v) F(`1 · peso LTR «${k}» = ${(PESOS_SCORE_LTR as any)[k]}, esperado ${v} (esquema A)`);
-  const esperadoStr = { rentabilidad: 15, sostenibilidad: 20, ventaja: 20, factibilidad: 20, cashOnCash: 15, tir: 10 };
+  // 22-sep-2026: sin «ventaja vs LTR» (vestigio de AMBAS); su 20 se repartió a prorrata.
+  const esperadoStr = { rentabilidad: 18.75, sostenibilidad: 25, factibilidad: 25, cashOnCash: 18.75, tir: 12.5 };
   for (const [k, v] of Object.entries(esperadoStr)) if ((PESOS_SCORE_STR as any)[k] !== v) F(`1 · peso STR «${k}» = ${(PESOS_SCORE_STR as any)[k]}, esperado ${v} (esquema A)`);
 }
 
@@ -125,13 +126,13 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
     if (!d.cashOnCash || !d.tir) F("5 · el desglose STR de GE-1 no trae las dimensiones `cashOnCash` y `tir`");
     else {
       const w = PESOS_SCORE_STR;
-      const pesos = { rentabilidad: d.rentabilidad.peso, sostenibilidad: d.sostenibilidad.peso, ventaja: d.ventaja.peso, factibilidad: d.factibilidad.peso, cashOnCash: d.cashOnCash.peso, tir: d.tir.peso };
+      const pesos = { rentabilidad: d.rentabilidad.peso, sostenibilidad: d.sostenibilidad.peso, factibilidad: d.factibilidad.peso, cashOnCash: d.cashOnCash.peso, tir: d.tir.peso };
       for (const [k, v] of Object.entries(w)) if ((pesos as any)[k] !== v) F(`5 · la dimensión STR «${k}» declara peso ${(pesos as any)[k]}, el esquema dice ${v}: el PDF STR lee ese campo`);
       const coc = metricaValorONull(conPie.rec.escenarios.base.cashOnCash)! * 100; const tir = conPie.rec.metrics.tirPct;
       if (!cerca(d.cashOnCash.score, puntajeCashOnCash(coc), 0.51)) F(`5 · STR desglose.cashOnCash.score (${d.cashOnCash.score}) no es la curva del CoC (${coc.toFixed(2)} → ${puntajeCashOnCash(coc)})`);
       if (!cerca(d.tir.score, puntajeTir(tir), 0.51)) F(`5 · STR desglose.tir.score (${d.tir.score}) no es la curva de la TIR (${tir} → ${puntajeTir(tir)})`);
       const esperado = combinarConReparto(Object.keys(w).map((k) => ({ peso: (w as any)[k], puntaje: d[k].aplica === false ? null : d[k].score })));
-      if (fs.score !== esperado) F(`5 · el score STR de GE-1 (${fs.score}) no es la media ponderada de sus seis dimensiones (${esperado})`);
+      if (fs.score !== esperado) F(`5 · el score STR de GE-1 (${fs.score}) no es la media ponderada de sus cinco dimensiones (${esperado})`);
     }
   }
   const sinPie = recomputeStrSeed(STR_GE_SEEDS.find((s) => s.key === "GE-PC")!, frozen);
@@ -161,7 +162,7 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   if (!/metrics\.flujoNetoMensual >= 0 &&\s*metrics\.rentabilidadNeta >= 4(?![\d.])/.test(A)) F("6 · G3 LTR cambió (flujo ≥ 0 y neta ≥ 4)");
   if (!/score >= 70 \? "COMPRAR" : score >= 45 \? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"/.test(A)) F("6 · las bandas LTR dejaron de ser 70/45");
   const S = leer("src/lib/engines/short-term-score.ts");
-  for (const brazo of ["g1_cocSevero: p.coc !== null && p.coc < -0.30", "g1_beInviable: p.beRatio > 1.30", "g1_flujoSevero: p.flujoCajaMensual < -250000 && p.sobreRentaPct < 0.10", "g1_capRateMinimo: p.capRate < 0.02", "g2_ltrGana: p.sobreRentaPct < 0", "g2_cocFuerte: p.coc !== null && p.coc < -0.10", "g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable", "g2_beApretado: p.beRatio > 1.10"]) {
+  for (const brazo of ["g1_cocSevero: p.coc !== null && p.coc < -0.30", "g1_beInviable: p.beRatio > 1.30", "g1_capRateMinimo: p.capRate < 0.02", "g2_cocFuerte: p.coc !== null && p.coc < -0.10", "g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable", "g2_beApretado: p.beRatio > 1.10"]) {
     // Con la coma: `p.capRate < 0.02,` no está en `p.capRate < 0.025,` ni en `p.capRate < 0.02 && x,`.
     if (!S.includes(`${brazo},`)) F(`6 · el brazo STR «${brazo.split(":")[0]}» cambió su umbral`);
   }

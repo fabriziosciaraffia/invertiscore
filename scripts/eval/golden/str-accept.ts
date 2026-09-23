@@ -29,7 +29,7 @@ for (const s of STR_GE_SEEDS) {
 }
 
 const payload = {
-  note: "POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y " +
+  note: "RE-BASELINE 22-sep-2026 · retiro de la ventaja vs LTR (ver ACTAS-retiro-ventaja-ltr.md): score sin la dimensión, sin g1_flujoSevero/g2_ltrGana, N sin ventaja_vs_ltr; GE-4 pasa a COMPRAR. Antes: POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y " +
     "equityCLP ya NO incluyen flujo acumulado (= valor − deuda [− comisión]); multiplicadorCapital = " +
     "equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el " +
     "doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la " +

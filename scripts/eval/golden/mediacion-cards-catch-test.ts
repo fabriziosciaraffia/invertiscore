@@ -92,7 +92,7 @@ console.log("── integración: el testigo deja de estar coronado por un favor
 {
   const piramide = [
     hz({ id: "rentabilidad_str", tipo: "rentabilidad_str", decisividad: 1 }),
-    hz({ id: "ventaja_vs_ltr", tipo: "ventaja_vs_ltr", decisividad: 1 }),
+    hz({ id: "plusvalia", tipo: "plusvalia", decisividad: 1 }),
     hz({ id: "patrimonio", tipo: "patrimonio", decisividad: 0 }),
   ];
   const antes = ordenarHallazgosUnico(piramide);

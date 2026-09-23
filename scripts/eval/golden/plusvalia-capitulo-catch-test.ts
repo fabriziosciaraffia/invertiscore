@@ -93,8 +93,9 @@ export function runPlusvaliaCapituloTier(): { hard: number } {
   }
   if (/Compras en verde/.test(capS)) F("5 · STR monta la compra en verde");
   if (!/<VProsa>La plusvalía es del depto, no de cómo lo operas/.test(capS)) F("5 · STR no lleva la intro de una frase");
-  if (!/const filas = \[filaI, filaII, filaIII, filaIV, filaV, filaPlus, filaVI\]/.test(S)) F("5 · STR no monta filaPlus en las filas");
-  if (!/plusvalia: "VI", resultado: "VII"/.test(S)) F("5 · STR no numera Plusvalía VI y Tu resultado VII");
+  if (!/const filas = \[filaI, filaII, filaIII, filaIV, filaPlus, filaVI\]/.test(S)) F("5 · STR no monta filaPlus en las filas");
+  // Desde el 22-sep-2026 («Corto o largo» retirado) Plusvalía es V y «Tu resultado» VI.
+  if (!/plusvalia: "V", resultado: "VI"/.test(S)) F("5 · STR no numera Plusvalía V y Tu resultado VI");
   if (/La plusvalía entra como supuesto/.test(S)) F("5 · la frase del 3% sigue en «Tu resultado» STR");
   // 4 · componente y tokens
   const sp = sinComentarios(leer("src/components/analysis/shared/SeriePlusvalia.tsx"));

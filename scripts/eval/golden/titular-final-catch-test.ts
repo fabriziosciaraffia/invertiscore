@@ -27,11 +27,11 @@ const FLUJO = hallazgo("flujo_mensual", "Pones algo de tu bolsillo cada mes.", 0
 const SOBREPRECIO = hallazgo("sobreprecio", "Entras barato: el metro está bajo la mediana comunal.", 1, "favorable");
 const CON_MONTO = hallazgo("cap_rate", "Te faltan $283.194 al mes.", 1, "adverso");
 const RESPUESTA_AJUSTA = "Todavía no: tienes que ajustar los supuestos.";
-// STR: ids reales de la pirámide (rentabilidad_str, ocupacion_vs_estimacion, ventaja_vs_ltr, flujo_str).
+// STR: ids reales de la pirámide (rentabilidad_str, ocupacion_vs_estimacion, plusvalia, flujo_str).
 const STR_RENTABILIDAD_ADVERSA = hallazgo("rentabilidad_str", "La rentabilidad operativa se queda corta.", 1, "adverso");
 const STR_RENTABILIDAD_FAVORABLE = hallazgo("rentabilidad_str", "El metro cuadrado rinde de sobra en corto.", 1, "favorable");
 const STR_OCUPACION_ADVERSA = hallazgo("ocupacion_vs_estimacion", "Supusiste más ocupación que la que estima el mercado.", 1, "adverso");
-const STR_VS_LTR = hallazgo("ventaja_vs_ltr", "El corto le saca ventaja clara al arriendo largo.", 0.68, "favorable");
+const STR_VS_LTR = hallazgo("plusvalia", "La comuna viene subiendo más que lo que proyecta el informe.", 0.68, "favorable");
 const STR_FLUJO = hallazgo("flujo_str", "Pones plata de tu bolsillo todos los meses.", 0.28, "adverso");
 
 const VEINTICINCO =

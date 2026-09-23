@@ -119,11 +119,16 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
     F(`1 · el cierre al escalón no lee el descuento del motor (${dG}%): «${g.fraseCanonica.slice(-160)}»`);
   }
 
-  // Sin combinación (maculStrSinSalida 213d321c): nada cambia.
+  // Sin combinación (maculStrSinSalida 213d321c): el hallazgo no nombra ninguna.
+  // ACTA 22-sep-2026 (retiro de la ventaja vs LTR): esta fila dejó de ser «sin salida». Sin el gate «el
+  // largo gana» ni la dimensión ventaja, el precio sí la lleva a COMPRAR («Está cerca del veredicto de
+  // arriba por el lado del precio»), y ningún fixture STR queda estructural sin combinación. Lo que
+  // sigue siendo regla —y lo que se vigila— es que sin mix ni escalón el titular y el cierre no
+  // prometan una combinación.
   const m = distanciaDe("maculStrSinSalida");
   if (salidaPorMixStr(m.valor) || mixAlEscalonStr(m.valor)) F("1 · maculStrSinSalida no tenía combinación");
-  if (m.titular !== "Ningún ajuste realista lo lleva al veredicto de arriba.") F(`1 · sin combinación el titular cambió: «${m.titular}»`);
-  if (!/La brecha (es del negocio|no es de este departamento)/.test(m.fraseCanonica)) F("1 · sin combinación el cierre de siempre tenía que quedar");
+  if (/juntos, sí/.test(m.titular)) F(`1 · sin combinación el titular promete una: «${m.titular}»`);
+  if (/Con lo tuyo|lo que Franco recomienda/.test(m.fraseCanonica)) F("1 · sin combinación el cierre nombra una combinación");
 }
 
 // ── 2 · el copy, desde el único módulo ──────────────────────────────────────

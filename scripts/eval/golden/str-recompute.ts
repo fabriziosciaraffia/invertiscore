@@ -157,9 +157,7 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   out.push({ rule: "BS4.patrimonio⟺exit", pass: has("patrimonio") === !!rec.exitScenario, detail: `patr=${has("patrimonio")}` });
   out.push({ rule: "BS4.sobreprecio⟺mediana", pass: has("sobreprecio") === medianaConfiable, detail: `sob=${has("sobreprecio")} conf=${medianaConfiable}` });
 
-  // BS5 — ventaja LTR-negativo ⇒ KPI en CLP ($), sin % de ventaja en la frase.
-  const ve = byId("ventaja_vs_ltr");
-  if (ve && ve.valor.ltrNegativo) out.push({ rule: "BS5.ventaja-CLP", pass: ve.fraseCanonica.includes("$") && ve.fraseCanonica.includes("porcentaje no dice"), detail: "frase usa CLP y declina el %" });
+  // BS5 (ventaja LTR-negativo) se retiró el 22-sep-2026 con el hallazgo ventaja_vs_ltr.
 
   // BS6 — ocupación fallback ⇒ confianza baja, frase declara supuesto, cero "ramp-up".
   const oc = byId("ocupacion_vs_estimacion");

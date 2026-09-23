@@ -58,7 +58,7 @@ const CASOS: { id: string }[] = [
   { id: "29bbcd75-96a8-4f9f-bef1-5e0a179b4d83" },
   { id: "9102b7e6-3bae-4174-971f-afb8bd99547c" },
 ];
-const CON_KNOB: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "ventaja_vs_ltr", "sobreprecio", "estructura_financiamiento", "capex_puesta_a_punto"];
+const CON_KNOB: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "sobreprecio", "estructura_financiamiento", "capex_puesta_a_punto"];
 
 // ⛔ PISO DE COBERTURA — sin esto, TODO lo de abajo es condicional a la presencia.
 //
@@ -78,7 +78,7 @@ const CON_KNOB: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "
 // por razones legítimas y por eso NO entran acá: `sobreprecio` necesita mediana comunal
 // (ausente en 9102b7e6) y `capex_puesta_a_punto` necesita CapEx > 0 (ausente en las tres,
 // antigüedad 0). Exigirlos sería volver a fijar una cifra de fila viva por la puerta de atrás.
-const SIEMPRE_PRESENTES: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "ventaja_vs_ltr", "estructura_financiamiento"];
+const SIEMPRE_PRESENTES: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "estructura_financiamiento"];
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -114,7 +114,7 @@ async function main() {
   // el tipo no admite no habría compilado, y eso es el tipo haciendo su trabajo.
   const h = (id: Hallazgo["id"], direccion: Hallazgo["direccion"], decisividad: number) =>
     ({ id, direccion, decisividad, magnitudContinua: decisividad } as unknown as Hallazgo);
-  const FAV = "ventaja_vs_ltr";
+  const FAV = "plusvalia";
   const ADV = "rentabilidad_str";
   {
     // (i) el adverso bajo el tope PERO sobre el piso sube a 01.

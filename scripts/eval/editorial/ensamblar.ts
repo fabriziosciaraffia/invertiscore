@@ -242,7 +242,7 @@ function ensamblarSTR(fila: FilaAnalisis): InformeEnsamblado {
       : null,
     ...cardsPiramide(ordenadas, respuesta, ufFrozen),
     drawerStr("rentabilidad", ai.rentabilidad),
-    drawerStr("vsLTR (corto vs largo)", ai.vsLTR, [ai.vsLTR?.estrategiaSugerida], "Guión para decidir:"),
+    drawerStr("vsLTR (corto vs largo)", ai.vsLTR, [ai.vsLTR?.estrategiaSugerida ?? ai.conviene?.estrategiaSugerida ?? null], "Guión para decidir:"),
     ai.riesgos || ai.operacion
       ? seccion("drawer:factibilidad (riesgos + operación)", [
           ai.riesgos?.contenido,

@@ -66,7 +66,6 @@ const STANDALONE = [
   "jerarquia",
   "marcas",
   "mediacion-cards",
-  "modalidad-str",
   "palabras-internas-str",
   "referencias-zona",
   "voseo",

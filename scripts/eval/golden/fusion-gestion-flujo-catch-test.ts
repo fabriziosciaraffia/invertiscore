@@ -40,7 +40,7 @@ import {
   type AirbnbData,
   type ShortTermInputs,
 } from "../../../src/lib/engines/short-term-engine";
-import { cierreGestionStr, cierreLargoStr, type ArgsCierreGestionStr } from "../../../src/lib/cierres-capitulos-str";
+import { cierreGestionStr, type ArgsCierreGestionStr } from "../../../src/lib/cierres-capitulos-str";
 import { fmtCierreCLP, textoCierre } from "../../../src/lib/cierres-str-ensamblador";
 
 const fallas: string[] = [];
@@ -166,10 +166,8 @@ for (const [k, { r }] of Object.entries(CASOS)) {
   const q = r.comparativa.quiebreGestion!;
   const args: ArgsCierreGestionStr = {
     modo: "auto",
-    sobreRenta: r.comparativa.sobreRenta,
     flujoMensual: r.comparativa.str_auto.flujoCajaMensual,
     flujoOtroModo: r.comparativa.str_admin.flujoCajaMensual,
-    ltrIngresoNeto: r.comparativa.ltr.noiMensual,
     quiebre: q,
   };
   const txt = textoCierre(cierreGestionStr(args, f));
@@ -190,44 +188,7 @@ for (const [k, { r }] of Object.entries(CASOS)) {
   }
 }
 
-// ── 5 · cierreLargoStr habla con los dos signos ─────────────────────────────
-{
-  const mk = (sobreRenta: number, modo: "auto" | "administrador"): ArgsCierreGestionStr => ({
-    modo,
-    sobreRenta,
-    flujoMensual: 100_000,
-    flujoOtroModo: 50_000,
-    ltrIngresoNeto: 420_000,
-    quiebre: CASOS.auto.r.comparativa.quiebreGestion,
-  });
-  for (const [etiqueta, sr] of [["gana", 180_000], ["pierde", -180_000]] as const) {
-    for (const modo of ["auto", "administrador"] as const) {
-      const segs = cierreLargoStr(mk(sr, modo), f);
-      const txt = textoCierre(segs);
-      if (!txt.trim()) F(`5 · ${etiqueta}/${modo}: el cierre del capítulo V salió VACÍO`);
-      if (!/arrendar el mismo depto/.test(txt)) F(`5 · ${etiqueta}/${modo}: el cierre no nombra la comparación contra el largo`);
-      if (!segs.some((s) => s.mark)) F(`5 · ${etiqueta}/${modo}: el cierre no lleva plumón en la cifra`);
-      if (txt.includes(f.money(0))) F(`5 · ${etiqueta}/${modo}: el cierre imprimió un $0`);
-    }
-  }
-  // ⛔ NO ALCANZA CON QUE LAS DOS REDACCIONES DIFIERAN. La primera versión pedía solo
-  // `gana !== pierde`, y quedó VERDE al mutar la guardia del signo a `if (true)` —con las dos
-  // ramas en la redacción NEGATIVA los textos siguen siendo distintos, porque el monto cambia
-  // de signo—. O sea: el capítulo podía decirle «el corto no le gana al largo» a un caso donde
-  // sí le gana, y el tier no se enteraba. Cazado mutando. Ahora cada rama tiene que decir lo
-  // que su signo significa, y no solo ser distinta de la otra.
-  const gana = textoCierre(cierreLargoStr(mk(180_000, "auto"), f));
-  const pierde = textoCierre(cierreLargoStr(mk(-180_000, "auto"), f));
-  if (gana === pierde) F("5 · las dos redacciones del signo son idénticas: la rama no está haciendo nada");
-  if (!/le gana al largo/.test(pierde)) F("5 · la redacción del caso que PIERDE no lo dice");
-  if (!/menos al mes/.test(pierde)) F("5 · el caso que PIERDE no dice «menos al mes»");
-  if (/le gana al largo/.test(gana)) F("5 · el caso que GANA dice que no le gana: la guardia del signo no separa las ramas");
-  if (!/más al mes/.test(gana)) F("5 · el caso que GANA no dice «más al mes»");
-  // y ninguna de las dos puede imprimir un monto negativo: cada rama ya invierte el signo
-  for (const [etiqueta, txt] of [["gana", gana], ["pierde", pierde]] as const) {
-    if (/−\s*\$|-\$/.test(txt)) F(`5 · el caso que ${etiqueta.toUpperCase()} imprime un monto negativo: la rama está usando el signo del otro lado`);
-  }
-}
+// ── 5 · `cierreLargoStr` se retiró el 22-sep-2026 con el capítulo V «Corto o largo» ──
 
 // ── PISO DE COBERTURA ───────────────────────────────────────────────────────
 // Cada fixture tiene que hacer lo que su nombre declara. Sin esto, `auto` y `admin` podrían

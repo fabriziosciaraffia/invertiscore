@@ -52,12 +52,12 @@ const GEN = leer("src/lib/ai-generation-str.ts");
 // en v20 y no pueden RETROCEDER: una versión anterior no las tendría.
 if (PROMPT_VERSION_STR < 20) F(`1 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}, y las seis dimensiones entraron en la 20`);
 
-// ── 2 · el bloque del score lleva las seis, con pesos del motor ─────────────
+// ── 2 · el bloque del score lleva las cinco (la ventaja vs LTR salió el 22-sep-2026), con pesos del motor ─────────────
 {
   const i = GEN.indexOf("=== FRANCO SCORE STR:");
   const bloque = i === -1 ? "" : GEN.slice(i, i + 2600);
   if (!bloque) F("2 · no se encontró el bloque «=== FRANCO SCORE STR:» del user prompt");
-  for (const k of ["desglose.rentabilidad", "desglose.sostenibilidad", "desglose.ventaja", "desglose.factibilidad", "desglose.cashOnCash", "desglose.tir"]) {
+  for (const k of ["desglose.rentabilidad", "desglose.sostenibilidad", "desglose.factibilidad", "desglose.cashOnCash", "desglose.tir"]) {
     if (!bloque.includes(k)) F(`2 · el bloque del score no lleva «${k}»`);
   }
   if (!/Retorno sobre lo puesto|retorno sobre lo puesto/.test(bloque)) F("2 · el bloque no nombra «retorno sobre lo puesto» (el nombre que lee el lector, no cashOnCash)");
@@ -78,7 +78,7 @@ if (PROMPT_VERSION_STR < 20) F(`1 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR},
 {
   if (!/EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no trae el bloque «EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES»");
   if (!/por cada \$100 que pones/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no explica el cash-on-cash como «por cada $100 que pones…»");
-  if (!/15\/20\/20\/20\/15\/10/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no declara los seis pesos (15/20/20/20/15/10)");
+  if (!/18,75\/25\/25\/18,75\/12,5/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no declara los cinco pesos (18,75/25/25/18,75/12,5)");
   if (!/no calcules ni redondees/i.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no prohíbe recalcular o redondear puntajes y pesos");
   if (!/«las dos que más suman» y «las dos que más restan»/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no usa el ranking que le manda el motor");
   if (!/N[ÓO]MBRALO/.test(SYSTEM_PROMPT_STR)) F("4 · el system STR no manda nombrar el retorno sobre lo puesto cuando manda");

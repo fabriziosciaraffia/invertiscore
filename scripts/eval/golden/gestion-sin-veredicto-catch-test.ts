@@ -63,19 +63,19 @@ function quiebreDe(occ: number, com: number, flujoAuto: number, flujoAdmin: numb
 const CASOS: Array<{ key: string; args: ArgsCierreGestionStr }> = [
   {
     key: "AGUANTA · 3f50506d Ñuñoa",
-    args: { modo: "auto", flujoMensual: 345690, flujoOtroModo: 112226, sobreRenta: 120000, ltrIngresoNeto: 400000, quiebre: quiebreDe(0.70, 0.20, 345690, 112226) },
+    args: { modo: "auto", flujoMensual: 345690, flujoOtroModo: 112226, quiebre: quiebreDe(0.70, 0.20, 345690, 112226) },
   },
   {
     key: "CAMBIA EL SIGNO · f2c31622 Huechuraba",
-    args: { modo: "auto", flujoMensual: 138050, flujoOtroModo: -141175, sobreRenta: 90000, ltrIngresoNeto: 500000, quiebre: quiebreDe(0.60, 0.20, 138050, -141175) },
+    args: { modo: "auto", flujoMensual: 138050, flujoOtroModo: -141175, quiebre: quiebreDe(0.60, 0.20, 138050, -141175) },
   },
   {
     key: "YA EN PÉRDIDA · 4940c056 Ñuñoa",
-    args: { modo: "auto", flujoMensual: -392904, flujoOtroModo: -489982, sobreRenta: -50000, ltrIngresoNeto: 300000, quiebre: quiebreDe(0.444, 0.20, -392904, -489982) },
+    args: { modo: "auto", flujoMensual: -392904, flujoOtroModo: -489982, quiebre: quiebreDe(0.444, 0.20, -392904, -489982) },
   },
   {
     key: "YA DELEGA · c925e85a Las Condes",
-    args: { modo: "administrador", flujoMensual: 79028, flujoOtroModo: 278300, sobreRenta: 140000, ltrIngresoNeto: 600000, quiebre: quiebreDe(0.491, 0.20, 278300, 79028) },
+    args: { modo: "administrador", flujoMensual: 79028, flujoOtroModo: 278300, quiebre: quiebreDe(0.491, 0.20, 278300, 79028) },
   },
 ];
 

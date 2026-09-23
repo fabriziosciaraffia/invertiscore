@@ -169,15 +169,7 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (/modalidad:/.test(HERO_LTR)) F("3 · HeroLTR pasa `modalidad`: el default del constructor es LTR y el call site no debía tocarse");
 }
 
-// ── 4 · renta larga solo con el hallazgo, y solo en sin salida ─────────────
-{
-  if (!/Analízalo como renta larga/.test(HSTR)) F("4 · falta la salida «Analízalo como renta larga» en el hero STR");
-  if (!/direccion === "adverso"[\s\S]{0,120}pctConfiable/.test(HSTR)) F("4 · la salida a renta larga no exige `ventaja_vs_ltr` adverso CON `pctConfiable`");
-  const i = HSTR.indexOf("Analízalo como renta larga");
-  const tramo = i === -1 ? "" : HSTR.slice(Math.max(0, i - 700), i + 200);
-  if (tramo && !/sin_salida/.test(tramo)) F("4 · la salida a renta larga no está condicionada al estado sin salida: en cualquier otro estado la card ya tiene qué decir");
-  if (!/alternativa=\{/.test(HSTR)) F("4 · el hero STR no pasa `alternativa` a la card");
-}
+// ── 4 · «Analízalo como renta larga» se retiró el 22-sep-2026 con la ventaja vs LTR ──
 
 // ── 5 · el estado real, y el CTA de sin salida ──────────────────────────────
 {
@@ -198,12 +190,12 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   // «Cap rate» dejó de ser el apellido del capítulo I el 21-sep-2026: en STR es «Rentabilidad»
   // (`NOMBRE_RENTABILIDAD.str`, capref-copy.ts); el gate cuanto-renta fija la nomenclatura.
   // «Plusvalía» entra como séptimo capítulo STR el 22-sep-2026 (mockup capitulo-iv-plusvalia.html).
-  for (const ap of ["Rentabilidad", "Flujo", "Al año", "Precio", "vs arriendo largo", "Plusvalía", "Resultado"]) {
+  for (const ap of ["Rentabilidad", "Flujo", "Al año", "Precio", "Plusvalía", "Resultado"]) {
     const lit = ap === "Rentabilidad" ? '(?:"Rentabilidad"|NOMBRE_RENTABILIDAD\\.str)' : `"${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`;
     if (!new RegExp(`conApellido\\([\\s\\S]{0,120}?${lit}`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
   }
   const n = [...CAPS_STR.matchAll(/conApellido\(/g)].length;
-  if (n !== 7) F(`6 · ${n} filas con apellido en STR; §7 pide seis más «Plusvalía» (22-sep-2026)`);
+  if (n !== 6) F(`6 · ${n} filas con apellido en STR; §7 pide seis («Corto o largo» salió el 22-sep-2026)`);
   if (!/noches/.test(CAPS_STR.slice(CAPS_STR.indexOf('conApellido("Al año"'), CAPS_STR.indexOf('conApellido("Al año"') + 120))) F("6 · «Al año» va con la unidad: «Al año 171 noches»");
 }
 
