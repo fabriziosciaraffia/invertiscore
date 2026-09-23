@@ -80,6 +80,7 @@ import { runCapasOscuroTier } from "./capas-oscuro-catch-test";
 import { runSinSemaforoTier } from "./sin-semaforo-catch-test";
 import { runPlanillaCalculoTier } from "./planilla-calculo-catch-test";
 import { runCapRateNetoTier } from "./cap-rate-neto-catch-test";
+import { runFindingDisplayLegacyTier } from "./finding-display-legacy-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -411,6 +412,9 @@ async function printStrSemantic() {
   // ── Una sola «cap rate neto» (23-sep-2026): rentabilidadNeta en el hero, el pop-up, la planilla,
   //    el anexo y el prompt; capRate no se muestra; el capítulo I compara siempre bruto contra bruto. ──
   totalHard += runCapRateNetoTier().hard;
+  // ── La card de un hallazgo GUARDADO no revienta (23-sep-2026): leer `sujetoPct` sin mirar
+  //    rompió el build de master (prerender de /dev/finding-card) y el anexo con filas viejas. ──
+  totalHard += runFindingDisplayLegacyTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es
