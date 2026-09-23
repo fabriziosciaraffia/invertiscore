@@ -31,6 +31,10 @@ const FIXTURE = {
       fraseCanonica: "Tu precio por m² (UF 110,0) está 90% sobre la mediana de la comuna (UF 58,0). Estás pagando caro el metro para esta comuna.",
     },
     {
+      // FORMATO VIEJO A PROPÓSITO (23-sep-2026): sin `sujetoPct` ni `base`, como los hallazgos
+      // guardados antes del 21-sep que todavía leen el anexo y el PDF STR. Esta página se
+      // prerenderiza en `next build`, así que cada deploy ejercita ese camino: leerlo sin mirar
+      // rompió el build de 64b6e1ca. El gate `finding-display-legacy` lo prueba aparte.
       id: "cap_rate", tipo: "rentabilidad_operativa",
       valor: { capRatePct: 1.98, capRefPct: 4, gapPts: -2, banda: 2, fuente: "promedio neto residencial Santiago 3–4,5% (Houm/Assetplan, may-2026)", scope: "nacional", modalidad: "ltr" },
       direccion: "adverso", decisividad: 0.88, magnitudContinua: 0.88,

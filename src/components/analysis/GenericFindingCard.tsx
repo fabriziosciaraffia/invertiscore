@@ -100,18 +100,25 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       const v = h.valor;
       // Banda "en línea" (|gap| < 0,2 — dirección neutral): el ksub no puede decir
       // "bajo/sobre el mercado" mientras el dot dice "Leve" y la prosa "en línea".
-      const capEnLinea = Math.abs(v.gapPts) < 0.2;
+      const capEnLinea = Math.abs(v.gapPts ?? 0) < 0.2;
+      // La card dice lo que el hallazgo compara: el BRUTO (`sujetoPct`, siempre desde el
+      // 23-sep-2026), el mismo número de su frase. LOS HALLAZGOS GUARDADOS ANTES DEL 21-SEP NO
+      // TRAEN `sujetoPct` —comparaban neto contra neto— y se siguen leyendo: el anexo, el PDF STR
+      // y la card de hallazgos los reciben de filas viejas. Con esos, la card dice lo que ELLOS
+      // comparaban (`capRatePct`), sin el apellido «bruto». Leer `sujetoPct` sin mirar rompió el
+      // build el 23-sep-2026 (TypeError en el prerender de /dev/finding-card).
+      const esBruto = typeof v.sujetoPct === "number" && Number.isFinite(v.sujetoPct);
+      const sujeto: number | null = esBruto ? v.sujetoPct : typeof v.capRatePct === "number" ? v.capRatePct : null;
+      const p1 = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? pct1(n) : "—");
+      const cifra = `cap rate${esBruto ? " bruto" : ""} ${p1(sujeto)}%`;
       return {
-        // La card dice lo que el hallazgo compara: el BRUTO (siempre, desde el 23-sep-2026), el
-        // mismo número de su frase. El neto (`capRatePct`) vive en el hero.
-        kick: "Cap rate bruto",
+        kick: esBruto ? "Cap rate bruto" : "Cap rate",
         title: "Lo que renta hoy vs lo que debería",
-        kpi: `${pct1(v.sujetoPct)}%`,
+        kpi: `${p1(sujeto)}%`,
         kpiRed: false,
-        // La comparación es siempre bruto contra bruto (23-sep-2026).
         ksub: capEnLinea
-          ? `cap rate bruto ${pct1(v.sujetoPct)}% · en línea con ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`
-          : `cap rate bruto ${pct1(v.sujetoPct)}% · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${pct1(v.capRefPct)}%)`,
+          ? `${cifra} · en línea con ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${p1(v.capRefPct)}%)`
+          : `${cifra} · ${p1(Math.abs(v.gapPts ?? 0))} pts ${(v.gapPts ?? 0) < 0 ? "bajo" : "sobre"} ${v.scope === "comuna" ? "la comuna" : "el mercado"} (${p1(v.capRefPct)}%)`,
       };
     }
     case "flujo_mensual": {

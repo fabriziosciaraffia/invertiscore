@@ -189,7 +189,9 @@ export function CapitulosInversion({
   // muestran. Geometría del mockup capitulo-i-cuanto-renta.html.
   const filaI: FilaHallazgo | null = capRate
     ? (() => {
-        const v = capRate.valor;
+        // Las filas sin input_data llegan con los hallazgos GUARDADOS, y los anteriores al 21-sep
+        // no traen `sujetoPct`: se cae a la cifra que ellos comparaban, nunca a `undefined`.
+        const v = { ...capRate.valor, sujetoPct: capRate.valor.sujetoPct ?? capRate.valor.capRatePct };
         // El arriendo al que rendirías como la referencia: bruto contra bruto siempre (23-sep-2026;
         // el promedio nacional también llega en bruto), así que es capRef × precio / 12.
         const arriendoRef = ((v.capRefPct / 100) * precioCLP) / 12;
