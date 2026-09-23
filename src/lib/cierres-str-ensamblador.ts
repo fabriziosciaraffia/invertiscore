@@ -15,7 +15,7 @@ import { costoOportunidad } from "./analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import type { FmtCierre, SegCierre } from "./cierres-capitulos";
 import {
-  cierreRentaStr, cierreOcupacionStr, cierreGestionStr, cierreLargoStr, cierreResultadoStr,
+  cierreRentaStr, cierreOcupacionStr, cierreGestionStr, cierreResultadoStr,
   type ArgsCierreRentaStr, type ArgsCierreOcupacionStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
 } from "./cierres-capitulos-str";
 
@@ -42,8 +42,6 @@ export interface CierresStr {
   noches: SegCierre[];
   /** Cierra el capítulo II, debajo de las filas del administrador (fusión 17-sep-2026). */
   gestion: SegCierre[];
-  /** Cierra lo que queda del capítulo V: el corto contra el arriendo largo. */
-  largo: SegCierre[];
   resultado: SegCierre[];
 }
 
@@ -107,10 +105,8 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
     })(),
     gestion: {
       modo: e.modoGestion,
-      sobreRenta: r.comparativa.sobreRenta,
       flujoMensual: flujo,
       flujoOtroModo: otro.flujoCajaMensual,
-      ltrIngresoNeto: r.comparativa.ltr.noiMensual,
       quiebre: r.comparativa.quiebreGestion ?? null,
     },
     resultado: {
@@ -140,7 +136,6 @@ export function cierresStr(e: EntradaCierresStr, f: FmtCierre = fmtCierreCLP()):
     renta: cierreRentaStr(a.renta, f),
     noches: cierreOcupacionStr(a.noches),
     gestion: cierreGestionStr(a.gestion, f),
-    largo: cierreLargoStr(a.gestion, f),
     resultado: cierreResultadoStr(a.resultado, f),
   };
 }

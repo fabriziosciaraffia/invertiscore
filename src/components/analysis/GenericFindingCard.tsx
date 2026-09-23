@@ -315,22 +315,6 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
           : "Datos de mercado: estimación para un depto como este en esta zona",
       };
     }
-    case "ventaja_vs_ltr": {
-      const v = h.valor;
-      return {
-        kick: "Ventaja vs arriendo largo",
-        title: h.titular,
-        // P3 (Rama 0b): % no confiable (NOI-LTR ≤0 o ratio explotado) ⇒ KPI en CLP absoluto
-        // (dual-moneda). Si es confiable, %.
-        kpi: !v.pctConfiable
-          ? fmtSigned(v.sobreRentaCLP, currency, valorUF)
-          : `${v.sobreRentaPct >= 0 ? "+" : "−"}${Math.abs(Math.round(v.sobreRentaPct))}%`,
-        kpiRed: false,
-        ksub: !v.pctConfiable
-          ? (v.ltrNegativo ? "Corto vs largo · ambos negativos" : "Sobre-renta en pesos · % no informa")
-          : "Sobre-renta neta · vs LTR",
-      };
-    }
     case "sensibilidad_str": {
       const v = h.valor;
       return {

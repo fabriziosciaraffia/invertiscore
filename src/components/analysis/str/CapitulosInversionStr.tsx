@@ -28,7 +28,7 @@ import { conApellido } from "@/components/analysis/CapitulosInversion";
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
  *   I Cuánto renta · II Tu flujo mensual · III Ocupación en renta corta · IV Cómo lo
- *   pagas · V Cómo lo gestionas · VI Tu resultado a 10 años.
+ *   pagas · V Plusvalía · VI Tu resultado a 10 años. («Corto o largo» salió el 22-sep-2026.)
  * Cáscara propia (LTR intacto en CapitulosInversion): arma `FilaHallazgo[]` y monta el
  * mismo acordeón con `variante="capitulo"` y `tipo="str"` (telemetría
  * `informe_capitulo_abierto` con tipo str). Todo lee del motor T0: `metrics`,
@@ -38,7 +38,7 @@ import { conApellido } from "@/components/analysis/CapitulosInversion";
  * Fallback por pieza: sin `metrics` o sin simulación (filas sin airbnbRaw) cada viz que
  * los necesita no se dibuja; el capítulo sigue con lo que tiene.
  */
-export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "gestion" | "plusvalia" | "resultado";
+export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "plusvalia" | "resultado";
 
 /* CAPITULO_DE_HALLAZGO_STR SE RETIRA CON ACTA (09-sep-2026).
  * Mapeaba cada hallazgo al capitulo donde vive su desarrollo, y su unico consumidor
@@ -50,7 +50,7 @@ export const anchorCapituloStr = (id: CapituloStrId) => `cap-str-${id}`;
 
 // «Plusvalía» entra como VI el 22-sep-2026 (mockup capitulo-iv-plusvalia.html): el mismo capítulo
 // de LTR, sin la compra en verde; «Tu resultado» pasa a VII.
-const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches: "III", pagas: "IV", gestion: "V", plusvalia: "VI", resultado: "VII" };
+const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches: "III", pagas: "IV", plusvalia: "V", resultado: "VI" };
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const EN_PALABRAS = ["Ninguno", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Los doce"];
 const tonoVeredicto = (v: Veredicto | string): ZonaDial["tono"] => (v === "COMPRAR" ? "comprar" : v === "AJUSTA SUPUESTOS" ? "ajusta" : "buscar");
@@ -630,92 +630,9 @@ export function CapitulosInversionStr({
   };
 
 
-  // ═══════════════ V · CORTO O LARGO ═══════════════
-  // ⛔ ERA «CÓMO LO GESTIONAS» Y SE FUNDIÓ CON EL II el 17-sep-2026. Su primera mitad
-  // —autogestión contra administrador— bajó al capítulo II, donde ya vivía la otra mitad de
-  // esa comparación en OTRA UNIDAD: el V hablaba en ingreso neto y el II en flujo, y las dos
-  // cifras del administrador se contradecían en el 100% de las filas. Con la fusión hay una
-  // sola unidad y una sola definición del costo.
-  //
-  // LO QUE QUEDA es la segunda mitad, que nunca fue sobre gestión: el corto contra el arriendo
-  // largo. El TÍTULO cambia con ella —un capítulo llamado «Cómo lo gestionas» que no habla de
-  // gestión miente más que el desajuste que teníamos—, pero el `id`, el romano y el ancla NO
-  // se tocan: son claves de navegación y de la prosa ya generada.
-  //
-  // DÓNDE VIVE ESTO AL FINAL está sin decidir (el hero es candidato y quedó fuera de alcance).
-  // Mientras tanto se queda acá, que es la única opción que no pierde el contenido.
-  // Ver [[cola-capitulo-v-str-hilo-largo]].
-  const filaV: FilaHallazgo = (() => {
-    const auto = results.comparativa.str_auto;
-    const admin = results.comparativa.str_admin;
-    const ltr = results.comparativa.ltr;
-    const sr = results.comparativa.sobreRenta;
-    const srPct = results.comparativa.sobreRentaPct;
-    const confiable = results.comparativa.sobreRentaPctConfiable;
-    const srAuto = auto.noiMensual - ltr.noiMensual;
-    const srAdmin = admin.noiMensual - ltr.noiMensual;
-    const pctDe = (x: number) => (ltr.noiMensual > 0 ? `${x >= 0 ? "+" : "−"}${Math.round(Math.abs((x / ltr.noiMensual) * 100))}%` : null);
-    const valorV = confiable ? `${srPct >= 0 ? "+" : "−"}${Math.round(Math.abs(srPct * 100))}%` : signed(sr);
-    const payback = results.comparativa.paybackMeses;
-    const amob = m?.dia1.amoblamientoCLP ?? Number(inputData?.costoAmoblamiento) ?? 0;
-    return {
-      id: "gestion",
-      numero: ROMANO.gestion,
-      pregunta: "Corto o largo",
-      valor: conApellido("vs arriendo largo", valorV),
-      valorRojo: sr < 0,
-      // El ksub ya no trae las dos cifras de gestión: se fueron al capítulo II con su bloque.
-      ksub: [`${valorV} sobre el arriendo largo`, `ingreso neto largo ${money(ltr.noiMensual)} al mes`].join(" · "),
-      anchorId: anchorCapituloStr("gestion"),
-      cuerpo: (
-        <div>
-          {/* LAS BARRAS «AUTOGESTIÓN CONTRA ADMINISTRADOR» Y SUS TRES FILAS SE FUERON AL
-            CAPÍTULO II (17-sep-2026), convertidas en el bloque «Y si no vas a operarlo tú».
-            Con ellas se fue la fila «Lo que cuesta no poner las horas», que rotulaba como
-            COSTO DE LAS HORAS una diferencia que es solo de comisión: `str_auto` y `str_admin`
-            corren con el mismo ingreso, el mismo ADR y la misma ocupación (ver
-            `QuiebreGestionSTR`), así que las horas no estaban medidas en ningún lado de esa
-            resta. En el capítulo II la misma cifra se llama por su nombre.
-
-            La prosa de apertura también salió: presentaba un capítulo sobre gestión. */}
-          <VProsa>
-            La renta corta pide amoblar, operar y reponer. Lo que tiene que justificar todo eso es
-            la diferencia contra lo simple: arrendar el mismo depto a un arrendatario largo.
-          </VProsa>
-          <VViz t="Cuánto más deja el corto que arrendar largo el mismo depto">
-            <VSub>La ventaja sobre el arriendo largo</VSub>
-            <div className="colchon">
-              <span className="k">
-                Autogestionado · sobre el ingreso neto del largo ({money(ltr.noiMensual)}
-                {ltr.ingresoBruto > 0 ? ` con ${money(ltr.ingresoBruto)} de arriendo` : ""})
-              </span>
-              <span className={`v${srAuto < 0 ? " neg" : ""}`}>
-                {signed(srAuto)} <small>/mes{pctDe(srAuto) ? ` · ${pctDe(srAuto)}` : ""}</small>
-              </span>
-            </div>
-            <div className="colchon" style={{ marginTop: 8 }}>
-              <span className="k">Con administrador</span>
-              <span className={`v${srAdmin < 0 ? " neg" : ""}`}>
-                {signed(srAdmin)} <small>/mes{pctDe(srAdmin) ? ` · ${pctDe(srAdmin)}` : ""}</small>
-              </span>
-            </div>
-            <p className="v-copy" style={{ marginTop: 10 }}>
-              {amob > 0
-                ? payback > 0
-                  ? `El amoblamiento (${money(amob)}) se recupera con la ventaja ${modo === "auto" ? "autogestionada" : "con administrador"} en ${payback} meses. `
-                  : `El amoblamiento (${money(amob)}) no se recupera con la sobre-renta: la ventaja no alcanza. `
-                : ""}
-              La ventaja compara un corto estabilizado, con la ocupación {occEsTuya ? "que definiste" : "estimada"}, contra un arriendo largo sin gestión.
-            </p>
-          </VViz>
-          <VCierre titulo="Qué significa">
-            <SegsCierre segs={cierres.largo} />
-          </VCierre>
-          <VFuente>Arriendo largo declarado por ti · ingreso neto largo: arriendo menos administración, gastos comunes, mantención y contribuciones · Motor Franco</VFuente>
-        </div>
-      ),
-    };
-  })();
+  // El capítulo V «Corto o largo» se retiró el 22-sep-2026 con la ventaja vs LTR: era un
+  // vestigio de AMBAS (la comparación tiene informe propio en el par) y el usuario evalúa cada
+  // modalidad en su mérito. El índice STR queda en seis.
 
   // ═══════════════ VI · PLUSVALÍA ═══════════════
   // El MISMO capítulo de LTR (mockup capitulo-iv-plusvalia.html, 22-sep-2026): la serie de la comuna
@@ -869,6 +786,6 @@ export function CapitulosInversionStr({
         })()
       : null;
 
-  const filas = [filaI, filaII, filaIII, filaIV, filaV, filaPlus, filaVI].filter((x): x is FilaHallazgo => x !== null);
+  const filas = [filaI, filaII, filaIII, filaIV, filaPlus, filaVI].filter((x): x is FilaHallazgo => x !== null);
   return <HallazgosAcordeon variante="capitulo" tipo="str" filas={filas} veredicto={veredicto} accessLevel={accessLevel} abrir={abrir} />;
 }

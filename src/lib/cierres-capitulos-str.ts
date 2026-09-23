@@ -184,12 +184,8 @@ export function cierreOcupacionStr(a: ArgsCierreOcupacionStr): SegCierre[] {
 
 export interface ArgsCierreGestionStr {
   modo: "auto" | "administrador";
-  /** Sobre-renta del corto sobre el largo (ingreso neto), en el modo del caso. */
-  sobreRenta: number;
   flujoMensual: number;
   flujoOtroModo: number;
-  /** Ingreso neto del largo, para decir "no le gana" cuando la sobre-renta es negativa. */
-  ltrIngresoNeto: number;
   /** Lo que el motor mide sobre la comisión. Sin él, el cierre dice solo lo que cuesta. */
   quiebre: QuiebreGestionSTR | null;
 }
@@ -242,35 +238,5 @@ export function cierreGestionStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCier
   return trimUltimo(segs);
 }
 
-/**
- * Cierre de lo que queda del capítulo V tras la fusión (17-sep-2026): el corto contra el
- * arriendo largo. Era el segmento 4 de `cierreGestionStr`, que solo se emitía cuando la
- * sobre-renta era NEGATIVA — colgado de un cierre sobre delegar, y mudo en la mayoría de las
- * filas.
- *
- * Acá habla SIEMPRE, porque ahora es el cierre del capítulo y un capítulo no puede cerrar en
- * blanco. Dos redacciones, por el SIGNO de la sobre-renta y nada más.
- *
- * La unidad es INGRESO NETO (NOI), no flujo, y por eso el capítulo se quedó en NOI: el largo y
- * el corto comparten el mismo dividendo, así que el MONTO de la diferencia es el mismo en las
- * dos unidades, pero el PORCENTAJE no — y en flujo el denominador del largo es negativo en el
- * 92% del parque (medido 16-sep-2026: flujo del largo > 0 en 20 de 252 filas).
- */
-export function cierreLargoStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCierre[] {
-  const segs: SegCierre[] = [];
-  const auto = a.modo === "auto";
-  if (a.sobreRenta < 0) {
-    segs.push(
-      { t: `Ni ${auto ? "autogestionado" : "delegado"} el corto le gana al largo: ` },
-      { t: `deja ${f.money(-a.sobreRenta)} menos al mes que arrendar el mismo depto`, mark: true },
-      { t: `, con un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}. Lo que decide acá no es quién opera, sino la modalidad.` },
-    );
-  } else {
-    segs.push(
-      { t: `${auto ? "Autogestionado" : "Delegado"}, el corto ` },
-      { t: `deja ${f.money(a.sobreRenta)} más al mes que arrendar el mismo depto`, mark: true },
-      { t: `, sobre un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}. Esa diferencia es la que tiene que pagar el amoblamiento y las horas: compara un corto ya estabilizado contra un largo sin gestión, así que es el techo, no el primer año.` },
-    );
-  }
-  return trimUltimo(segs);
-}
+// `cierreLargoStr` (el cierre del capítulo V «Corto o largo») se retiró el 22-sep-2026 con la
+// ventaja vs LTR.

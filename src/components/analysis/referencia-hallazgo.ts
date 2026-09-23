@@ -56,8 +56,6 @@ export function referenciaHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF:
       return `umbral ${pct1(h.valor.umbralPct)}`;
     case "ocupacion_vs_estimacion":
       return `estimado ${pct(h.valor.estimacionPct)}`;
-    case "ventaja_vs_ltr":
-      return `borde ${pct(h.valor.bordePct)}`;
     case "sensibilidad":
       // Dos cortes tipados; el que informa es el de firmeza (sobre él, el veredicto
       // no depende del supuesto). El de fragilidad vive en el drawer.

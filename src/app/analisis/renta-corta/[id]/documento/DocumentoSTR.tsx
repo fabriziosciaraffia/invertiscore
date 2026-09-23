@@ -168,26 +168,6 @@ export function DocumentoSTR({
   const auto = c.str_auto;
   const adminEsBase = modoGestion === "administrador";
 
-  // Variante E (anexo) — palanca de gestión, 3 ramas deterministas (espejo del
-  // tirMejoraMaterial del LTR, usando flipGestion + los flujos de str_auto/str_admin).
-  const flujoAlto = Math.max(auto.flujoCajaMensual, admin.flujoCajaMensual); // = auto (menor comisión)
-  const flujoBajo = Math.min(auto.flujoCajaMensual, admin.flujoCajaMensual); // = admin
-  const gestionLever: { label: string; text: string } =
-    flujoBajo >= 0
-      ? {
-          label: "La gestión es margen, no rescate",
-          text: `La operación deja caja positiva incluso pagando administración (${money(admin.flujoCajaMensual)}/mes). Autogestionar (comisión 3%) la sube a ${money(auto.flujoCajaMensual)}, pero acá la gestión es margen extra, no lo que decide la compra.`,
-        }
-      : flujoAlto >= 0
-        ? {
-            label: "Estrategia sugerida",
-            text: `Si autogestionas en vez de pagar ${comisionPct}% de administración, tu flujo pasa de ${money(admin.flujoCajaMensual)} a ${money(auto.flujoCajaMensual)} al mes y el CAP sube a ${pct(auto.capRate * 100)}. Es la misma propiedad: la diferencia entera está en quién opera. Empieza autogestionando y contrata administración solo cuando el volumen lo justifique.`,
-          }
-        : {
-            label: "La gestión no es la palanca acá",
-            text: `Ni autogestionando (comisión 3%) el flujo se da vuelta: pasa de ${money(admin.flujoCajaMensual)} a ${money(auto.flujoCajaMensual)} al mes, sigue negativo. El problema no es quién opera — es estructural (precio, ocupación o costos). La palanca de gestión no salva este caso.`,
-          };
-
   // ── Sensibilidad P25–P90 (motor) ──
   const sens = results.sensibilidad ?? [];
   // Redondeo ANTES de decidir la rama (espejo del hallazgo): el KPI que se muestra y la
@@ -208,17 +188,7 @@ export function DocumentoSTR({
         ? { red: true, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50) — justo en el borde. Cuadras si la zona rinde lo típico, pero sin colchón para un mal trimestre de ocupación o tarifa.` }
         : { red: false, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50): cuadras facturando por debajo de lo que rinde la zona típica. Hay colchón si la ocupación o la tarifa vienen algo más bajas de lo asumido.` };
 
-  // ── Ventaja vs LTR (motor) ──
-  const sobreRentaPct = c.sobreRentaPct * 100;
-  const sobreRentaConfiable = c.sobreRentaPctConfiable;
-
-  // ── Factibilidad · banda (variante F) ──
-  const banda = results.veredictoComparativo?.banda ?? results.recomendacionModalidad;
-  const bandaLabel =
-    banda === "STR_VENTAJA_CLARA" ? "STR ventaja clara"
-    : banda === "STR_FRAGIL" ? "STR frágil"
-    : banda === "LTR_PREFERIDO" ? "LTR preferido"
-    : "Indiferente";
+  // La ventaja vs LTR y la banda de modalidad salieron del PDF STR el 22-sep-2026 (vestigio de AMBAS).
   const tierZona = results.zonaSTR?.tierZona;
   const tierLabel = tierZona === "alta" ? "Alta" : tierZona === "baja" ? "Baja" : "Media";
 
@@ -240,7 +210,6 @@ export function DocumentoSTR({
   const conviene = ai?.conviene;
   const aiRent = ai?.rentabilidad;
   const aiOper = ai?.operacion;
-  const aiVs = ai?.vsLTR;
   const aiLargo = ai?.largoPlazo;
   const aiRiesgos = ai?.riesgos;
 
@@ -325,7 +294,6 @@ export function DocumentoSTR({
           <div className="dims avoid-break">
             <div className="dim"><p className="dk">Rentabilidad</p><div className="dbar"><i style={{ width: `${d.rentabilidad.score}%` }} /></div><div className="dv">{Math.round(d.rentabilidad.score)}</div><div className="dw">peso {d.rentabilidad.peso}%</div></div>
             <div className="dim"><p className="dk">Sostenibilidad</p><div className="dbar"><i style={{ width: `${d.sostenibilidad.score}%` }} /></div><div className="dv">{Math.round(d.sostenibilidad.score)}</div><div className="dw">peso {d.sostenibilidad.peso}%</div></div>
-            <div className="dim"><p className="dk">Ventaja vs LTR</p><div className="dbar"><i style={{ width: `${d.ventaja.score}%` }} /></div><div className="dv">{Math.round(d.ventaja.score)}</div><div className="dw">peso {d.ventaja.peso}%</div></div>
             <div className="dim"><p className="dk">Factibilidad</p><div className="dbar"><i style={{ width: `${d.factibilidad.score}%` }} /></div><div className="dv">{Math.round(d.factibilidad.score)}</div><div className="dw">peso {d.factibilidad.peso}%</div></div>
             {/* Retorno sobre lo puesto y TIR (12-sep-2026). Filas persistidas antes no las traen. */}
             {d.cashOnCash && (
@@ -370,8 +338,7 @@ export function DocumentoSTR({
               <div className="titem"><span className="tno">02</span><span className="tname">Rentabilidad y costos</span><span className="tlead" /></div>
               <div className="titem"><span className="tno">03</span><span className="tname">Sostenibilidad · estacionalidad</span><span className="tlead" /></div>
               <div className="titem"><span className="tno">04</span><span className="tname">Sensibilidad</span><span className="tlead" /></div>
-              <div className={`titem ${veredicto !== "COMPRAR" ? "tcrit" : ""}`}><span className="tno">05</span><span className="tname">Ventaja vs arriendo largo</span><span className="tlead" /></div>
-              <div className={`titem ${veredicto !== "COMPRAR" ? "tcrit" : ""}`}><span className="tno">06</span><span className="tname">Factibilidad y riesgos</span><span className="tlead" /></div>
+              <div className={`titem ${veredicto !== "COMPRAR" ? "tcrit" : ""}`}><span className="tno">05</span><span className="tname">Factibilidad y riesgos</span><span className="tlead" /></div>
               <div className="titem"><span className="tno">·</span><span className="tname">Simulación · zona</span><span className="tlead" /></div>
             </div>
           </div>
@@ -463,14 +430,13 @@ export function DocumentoSTR({
 
         <div className="chapter"><span className="no">04</span><h2 className="subtitle">Sensibilidad — cómo se mueve si el mercado rinde distinto</h2></div>
         <p className="body sec" style={{ marginTop: 2, marginBottom: 10 }}>
-          Cada fila toma un nivel de ingresos brutos anuales de la zona —de su cuarto más bajo (P25) al décimo superior (P90)— y recalcula el NOI mensual y la sobre-renta frente al arriendo largo. El P50 es tu escenario base.
+          Cada fila toma un nivel de ingresos brutos anuales de la zona —de su cuarto más bajo (P25) al décimo superior (P90)— y recalcula el NOI mensual. El P50 es tu escenario base.
         </p>
 
         <div className="sens">
-          <div className="hdr"><div>Nivel de mercado</div><div>Ingresos brutos/año</div><div>NOI mensual</div><div>Sobre-renta vs LTR</div></div>
+          <div className="hdr"><div>Nivel de mercado</div><div>Ingresos brutos/año</div><div>NOI mensual</div></div>
           {sens.map((r) => {
             const es50 = r.label === "P50";
-            const srPos = r.sobreRenta >= 0;
             const nivelLabel =
               r.label === "P25" ? "cuarto bajo" : r.label === "P50" ? "base"
               : r.label === "P75" ? "cuarto alto" : r.label === "P90" ? "décimo sup." : "";
@@ -479,7 +445,6 @@ export function DocumentoSTR({
                 <div className="pk">{r.label} {nivelLabel && <small>· {nivelLabel}</small>}</div>
                 <div className="sv">{money(r.ingresoAnual)}</div>
                 <div className="sv">{money(r.noiMensual)}</div>
-                <div className={`sv ${srPos ? "pos" : "neg"}`}>{r.sobreRentaPctConfiable ? `${srPos ? "+" : ""}${money(r.sobreRenta)} · ${srPos ? "+" : ""}${Math.round(r.sobreRentaPct * 100)}%` : money(r.sobreRenta)}</div>
               </div>
             );
           })}
@@ -493,32 +458,14 @@ export function DocumentoSTR({
         <p className="note">Estimación de mercado (AirROI), no transacciones cerradas. Los percentiles P25–P90 refieren al nivel de ingresos brutos de la zona, no a escenarios de ocupación.</p>
       </section>
 
-      {/* ═══════════ SECCIÓN 5 · 05 VENTAJA VS LTR + 06 FACTIBILIDAD (hoja compartida) ═══════════ */}
+      {/* ═══════════ SECCIÓN 5 · 05 FACTIBILIDAD (la ventaja vs LTR salió el 22-sep-2026) ═══════════ */}
       <section className="doc-section">
-        <div className={`chapter ${veredicto !== "COMPRAR" ? "crit" : ""}`}><span className="no">05</span><h2 className="subtitle">Ventaja vs arriendo largo — ¿rinde lo suficiente más?</h2></div>
-
-        {aiVs?.contenido && <p className="body">{aiVs.contenido}</p>}
-
-        {!aiVs?.contenido && (
-          <p className="body">
-            En corto tu NOI es {money(base.noiMensual)} al mes contra {money(c.ltr.noiMensual)} del arriendo largo{sobreRentaConfiable ? ` —un ${Math.round(sobreRentaPct)}% ${sobreRentaPct >= 0 ? "más" : "menos"} neto` : ""}. La ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado.
-          </p>
-        )}
-
-        <div className="strat">
-          <p className="sl">{aiVs?.estrategiaSugerida ? "Estrategia sugerida" : gestionLever.label}</p>
-          <p className="st">{aiVs?.estrategiaSugerida ?? gestionLever.text}</p>
-        </div>
-
-        <div className="divider" />
-
-        <div className={`chapter ${veredicto !== "COMPRAR" ? "crit" : ""}`}><span className="no">06</span><h2 className="subtitle">Factibilidad y riesgos — lo que puede salir distinto</h2></div>
+        <div className={`chapter ${veredicto !== "COMPRAR" ? "crit" : ""}`}><span className="no">05</span><h2 className="subtitle">Factibilidad y riesgos — lo que puede salir distinto</h2></div>
 
         <div className="chips">
           <p className="cl">Datos de factibilidad</p>
           <div className="grid g3">
             <div className="c"><p className="ck">Zona · demanda STR</p><div className="cv">{tierLabel}</div></div>
-            <div className="c"><p className="ck">Recomendación</p><div className="cv">{bandaLabel}</div></div>
           </div>
         </div>
 

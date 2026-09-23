@@ -1,7 +1,7 @@
 "use client";
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto, HallazgoVentajaVsLtr, Veredicto } from "@/lib/types";
+import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
@@ -84,7 +84,8 @@ export function HeroStrDictamen({
   const cajaAccionable = conviene?.cajaAccionable?.trim() || null;
   // LA ACCIÓN, dentro de «Lo que haría yo» (v17): el único bloque de prosa que no tenía
   // equivalente determinista. Antes no se renderizaba en ninguna parte de la página.
-  const estrategia = podada ? ai?.vsLTR?.estrategiaSugerida?.trim() || null : null;
+  // v22: la acción vive en `conviene.estrategiaSugerida`; las filas ≤v21 la traen en `vsLTR`.
+  const estrategia = podada ? (ai?.conviene?.estrategiaSugerida ?? ai?.vsLTR?.estrategiaSugerida)?.trim() || null : null;
   // EL TÍTULO ES LA RESPUESTA, NO LA PREGUNTA (v17) — mismo criterio y misma fuente que
   // LTR: `lineaQueDeclara` sobre los tres veredictos, que STR persiste iguales. No hay
   // una formulación propia de STR: la decisión que el lector toma es la misma, y tener
@@ -230,22 +231,16 @@ export function HeroStrDictamen({
   // «con_salida», «sin_salida», o «sin_bloque» solo si el motor no midió (filas viejas).
   const estadoRec = estadoRecomendacion(veredicto, bloqueDeterminista);
   const sinSalidaRecomendacion = estadoRec === "sin_salida";
-  // LA SALIDA DE STR EN SIN SALIDA (§5 y §11): «Analízalo como renta larga» —mismo depto,
-  // mismo precio, otra operación— SOLO cuando el motor lo dice: el hallazgo
-  // `ventaja_vs_ltr` adverso con el porcentaje confiable. Si no, la card cae al puente.
-  // Las comunas alternativas de STR quedan para cuando el motor STR las calcule (§12).
-  const ventaja = hallazgosMotor.find((h): h is HallazgoVentajaVsLtr => h.id === "ventaja_vs_ltr");
-  const alternativa =
-    sinSalidaRecomendacion && ventaja && ventaja.direccion === "adverso" && ventaja.valor.pctConfiable
-      ? "Analízalo como renta larga"
-      : null;
+  // «Analízalo como renta larga» (la salida en sin salida) se retiró el 22-sep-2026 con la
+  // ventaja vs LTR: el informe STR ya no compara contra el largo. Las comunas alternativas de
+  // STR quedan para cuando el motor STR las calcule (§12).
   const recomendacion = (
     <PosicionFranco
       cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
       prosa={estrategia ? renderPlumon(estrategia) : undefined}
       bloque={
         bloqueDeterminista ? (
-          <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={alternativa} />
+          <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} />
         ) : undefined
       }
       titulo="La recomendación de Franco"
