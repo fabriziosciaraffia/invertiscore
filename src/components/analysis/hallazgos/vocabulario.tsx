@@ -20,7 +20,7 @@
 // mismo documento que la portada.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 /** 1 · Prosa. El <mark> del plumón lo pinta el CSS del acordeón. */
 export function VProsa({ children }: { children: ReactNode }) {
@@ -605,9 +605,54 @@ export function LineaTiempo({ hitos, deltas, lectura }: { hitos: HitoLinea[]; de
 }
 
 
+/** Hasta este ancho (px) el modal es HOJA desde abajo; desde el siguiente, panel centrado de 720. */
+export const HOJA_MAX_ANCHO_PX = 767;
+/** Lo que la hoja deja ver del informe por arriba, en px (el velo tocable que cierra). */
+export const HOJA_VELO_PX = 56;
+/** Arrastre hacia abajo (px) a partir del cual soltar cierra la hoja. */
+export const HOJA_UMBRAL_CIERRE_PX = 90;
+
+export type OrigenArrastre = "cabecera" | "cuerpo";
+
 /**
- * Modal del contrato: overlay Ink al 60%, panel centrado de 720px máx (pantalla
- * completa en mobile), título serif, cierre con ✕, con Esc y con click fuera.
+ * El gesto sigue al dedo (y puede cerrar) desde la cabecera siempre, y desde el cuerpo
+ * solo cuando el cuerpo está en el tope: a media lectura, arrastrar hacia abajo es scroll.
+ */
+export function arrastreSigueAlDedo(origen: OrigenArrastre, scrollTop: number): boolean {
+  return origen === "cabecera" || scrollTop <= 0;
+}
+
+/** Soltar cierra si el gesto seguía al dedo y pasó el umbral. */
+export function debeCerrarPorArrastre(a: { dy: number; origen: OrigenArrastre; scrollTop: number }): boolean {
+  return a.dy >= HOJA_UMBRAL_CIERRE_PX && arrastreSigueAlDedo(a.origen, a.scrollTop);
+}
+
+/** `true` bajo 768 px de ancho (la forma hoja); `false` en el primer render, hasta medir. */
+function useEsHoja(): boolean {
+  const [esHoja, setEsHoja] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${HOJA_MAX_ANCHO_PX}px)`);
+    const leer = () => setEsHoja(mq.matches);
+    leer();
+    mq.addEventListener("change", leer);
+    return () => mq.removeEventListener("change", leer);
+  }, []);
+  return esHoja;
+}
+
+/**
+ * Modal del contrato, con DOS FORMAS por ancho en un solo componente (23-sep-2026):
+ *  · ≥768 px: overlay Ink al 60%, panel centrado de 720 px máx, título serif, cierre
+ *    con ✕, con Esc y con click fuera. Como estaba.
+ *  · ≤767 px: HOJA desde abajo. Deja HOJA_VELO_PX del informe a la vista, radio arriba,
+ *    asa, cabecera fija (título, sub y ✕) y el cuerpo es lo único que scrollea, con
+ *    `overscroll-behavior: contain`. Cierra con la ✕, arrastrando hacia abajo (desde la
+ *    cabecera, o desde el cuerpo en el tope), con el botón atrás del navegador (la hoja
+ *    empuja un estado de historial al abrir y lo consume al cerrar) y tocando el velo.
+ * En las dos formas el body queda bloqueado mientras está abierto y el scroll de la
+ * página vuelve a la posición de apertura al cerrar. Motivo: medido el 22-sep en 390,
+ * el modal a pantalla completa cerraba solo por la ✕ (que se iba con el scroll) y al
+ * llegar al fondo encadenaba el scroll a la página, que quedaba 385 px más abajo.
  * Es información de otra índole que no debe competir con el flujo de lectura.
  */
 export function Modal({
@@ -625,27 +670,139 @@ export function Modal({
   pie?: ReactNode;
   children: ReactNode;
 }) {
+  // Los consumidores pasan `onClose` inline (identidad nueva en cada render); los efectos
+  // con estado propio —historial, arrastre— leen la ref para no re-correr por eso.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const hojaRef = useRef<HTMLDivElement>(null);
+  const cuerpoRef = useRef<HTMLDivElement>(null);
+  const esHoja = useEsHoja();
+
   useEffect(() => {
     if (!abierto) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [abierto, onClose]);
+  }, [abierto]);
+
+  // Body bloqueado mientras está abierto (position:fixed en body: `overflow:hidden` solo
+  // no frena el touch en iOS), y el scroll de la página restaurado al cerrar, sin el
+  // `scroll-behavior:smooth` de html en el medio.
+  useEffect(() => {
+    if (!abierto) return;
+    const body = document.body;
+    const html = document.documentElement;
+    const y = window.scrollY;
+    const previo = {
+      position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right,
+      paddingRight: body.style.paddingRight, overflow: html.style.overflow,
+    };
+    const barra = window.innerWidth - html.clientWidth;
+    if (barra > 0) body.style.paddingRight = `${barra}px`;
+    body.style.position = "fixed";
+    body.style.top = `-${y}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    html.style.overflow = "hidden";
+    return () => {
+      body.style.position = previo.position;
+      body.style.top = previo.top;
+      body.style.left = previo.left;
+      body.style.right = previo.right;
+      body.style.paddingRight = previo.paddingRight;
+      html.style.overflow = previo.overflow;
+      const suave = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo({ top: y, left: 0, behavior: "instant" });
+      html.style.scrollBehavior = suave;
+    };
+  }, [abierto]);
+
+  // Botón atrás (solo hoja): un estado de historial al abrir; «atrás» lo saca y cierra la
+  // hoja; cerrar por otra vía lo consume con `history.back()` para no dejarlo colgado.
+  useEffect(() => {
+    if (!abierto || !esHoja) return;
+    window.history.pushState({ francoHoja: true }, "");
+    let consumido = false;
+    const onPop = () => {
+      consumido = true;
+      onCloseRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!consumido && window.history.state?.francoHoja) window.history.back();
+    };
+  }, [abierto, esHoja]);
+
+  // Arrastrar hacia abajo (solo hoja). Listeners nativos: React registra touchmove como
+  // passive y no deja frenar el scroll del cuerpo mientras la hoja sigue al dedo.
+  useEffect(() => {
+    if (!abierto || !esHoja) return;
+    const hoja = hojaRef.current;
+    const cuerpo = cuerpoRef.current;
+    if (!hoja || !cuerpo) return;
+    let y0 = 0;
+    let dy = 0;
+    let origen: OrigenArrastre = "cabecera";
+    let activo = false;
+    const onStart = (e: TouchEvent) => {
+      y0 = e.touches[0].clientY;
+      dy = 0;
+      origen = cuerpo.contains(e.target as Node) ? "cuerpo" : "cabecera";
+      activo = arrastreSigueAlDedo(origen, cuerpo.scrollTop);
+      if (activo) hoja.style.transition = "none";
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!activo) return;
+      dy = e.touches[0].clientY - y0;
+      if (dy <= 0) {
+        hoja.style.transform = "";
+        if (origen === "cuerpo") activo = false; // el gesto se volvió scroll
+        return;
+      }
+      e.preventDefault();
+      hoja.style.transform = `translateY(${dy}px)`;
+    };
+    const onEnd = () => {
+      if (!activo) return;
+      activo = false;
+      hoja.style.transition = "";
+      if (debeCerrarPorArrastre({ dy, origen, scrollTop: cuerpo.scrollTop })) onCloseRef.current();
+      else hoja.style.transform = "";
+    };
+    hoja.addEventListener("touchstart", onStart, { passive: true });
+    hoja.addEventListener("touchmove", onMove, { passive: false });
+    hoja.addEventListener("touchend", onEnd);
+    hoja.addEventListener("touchcancel", onEnd);
+    return () => {
+      hoja.removeEventListener("touchstart", onStart);
+      hoja.removeEventListener("touchmove", onMove);
+      hoja.removeEventListener("touchend", onEnd);
+      hoja.removeEventListener("touchcancel", onEnd);
+    };
+  }, [abierto, esHoja]);
+
   if (!abierto) return null;
   return (
     <div className="v-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="v-modal">
+      <div className="v-modal" ref={hojaRef}>
+        <div className="v-modal-asa" aria-hidden="true" />
         <div className="v-modal-head">
-          <h3>{titulo}</h3>
+          <div className="v-modal-tit">
+            <h3>{titulo}</h3>
+            {sub && <p className="v-modal-sub">{sub}</p>}
+          </div>
           <button type="button" className="v-modal-x" onClick={onClose} aria-label="Cerrar">
             ✕
           </button>
         </div>
-        {sub && <p className="v-modal-sub">{sub}</p>}
-        {children}
-        {pie && <div className="v-modal-pie">{pie}</div>}
+        <div className="v-modal-cuerpo" ref={cuerpoRef}>
+          {children}
+          {pie && <div className="v-modal-pie">{pie}</div>}
+        </div>
       </div>
     </div>
   );

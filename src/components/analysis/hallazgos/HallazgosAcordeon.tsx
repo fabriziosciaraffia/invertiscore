@@ -548,9 +548,12 @@ export function TokensHallazgos() {
       .v-modal{
         --doc-inset-0:var(--doc-paper); --doc-inset-1:var(--doc-paper2); --doc-inset-2:var(--doc-paper3);
         width:100%;max-width:720px;max-height:92vh;overflow-y:auto;background:var(--doc-inset-0);border:1px solid var(--doc-line2);border-radius:4px;padding:26px 28px 24px;position:relative;color:var(--doc-tx)}
+      .v-modal-asa{display:none}
       .v-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px}
+      .v-modal-tit{min-width:0}
       .v-modal-head h3{font-family:var(--font-heading, Georgia, serif);font-size:22px;font-weight:700;line-height:1.2;margin:0}
-      .v-modal-sub{font-size:13px;color:var(--doc-tx3);line-height:1.5;margin:0 0 18px}
+      .v-modal-sub{font-size:13px;color:var(--doc-tx3);line-height:1.5;margin:6px 0 12px}
+      .v-modal-cuerpo{min-width:0}
       .v-modal-x{background:none;border:1px solid var(--doc-line2);border-radius:4px;width:30px;height:30px;font-family:var(--font-mono, ui-monospace);font-size:14px;color:var(--doc-tx3);cursor:pointer;flex-shrink:0}
       .v-modal-x:hover{color:var(--doc-tx);border-color:var(--doc-tx4)}
       .v-modal-pie{margin-top:18px;padding-top:12px;border-top:1px solid var(--doc-line);font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);line-height:1.5}
@@ -563,9 +566,24 @@ export function TokensHallazgos() {
       @media (max-width: 767px){
         .tl{grid-template-columns:1fr !important;gap:6px} .tl-delta::before{content:'↓'} .hito .v{font-size:14px}
         .ba-total .v{font-size:17px}
-        .v-modal-overlay{padding:0} .v-modal{max-width:none;max-height:none;height:100%;border-radius:0;border:none;padding:22px 20px 24px}
+        /* LA HOJA (23-sep-2026, mockup docs/wireframes/rediseno-informe/hoja-mobile.html): desde
+           abajo, deja 56 px del informe (el velo, tocable), radio arriba, asa, cabecera fija y el
+           cuerpo como único scroll con overscroll contenido. El selector con [role] gana a
+           .doc-dictamen .v-modal (border-radius) de la portada sin depender del orden. */
+        .v-modal-overlay{padding:0;align-items:flex-end}
+        .v-modal-overlay[role="dialog"] .v-modal{max-width:none;max-height:none;height:calc(100vh - 56px);height:calc(100dvh - 56px);
+          border-radius:18px 18px 0 0;border:none;padding:0;display:flex;flex-direction:column;overflow:hidden;
+          transition:transform .18s ease-out;animation:v-hoja-sube .22s ease-out}
+        .v-modal-asa{display:block;flex:none;width:40px;height:4px;border-radius:2px;background:var(--doc-line2);margin:8px auto 0}
+        .v-modal-head{flex:none;margin:0;padding:8px 16px 10px 20px;border-bottom:1px solid var(--doc-line);gap:12px;align-items:center}
+        .v-modal-head h3{font-size:18px}
+        .v-modal-sub{font-size:11.5px;margin:2px 0 0}
+        .v-modal-x{width:32px;height:32px}
+        .v-modal-cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px 20px 24px}
         .hall.cap .hall-body{margin-left:8px;padding-left:22px}
       }
+      @keyframes v-hoja-sube{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      @media (prefers-reduced-motion:reduce){.v-modal-overlay[role="dialog"] .v-modal{animation:none;transition:none}}
       .cmp-row{display:flex;flex-direction:column;gap:5px}
       .cmp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px}
       .cmp-k{font-size:12.5px;color:var(--doc-tx)}
