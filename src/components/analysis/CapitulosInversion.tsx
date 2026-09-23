@@ -49,7 +49,7 @@ import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia } from "./shared";
  *
  *   I   Cuánto renta          cap rate vs referencia → colchón del arriendo (Dial)
  *   II  Tu flujo mensual      waterfall del arriendo → pregunta de la IA
- *   III Cómo lo pagas         dial de precio + plan → crédito (tasa) → matriz pie×plazo
+ *   III A qué precio cerrar   dial de precio + plan → crédito (tasa) → matriz pie×plazo
  *   IV  Plusvalía             serie de la comuna contra el 3% (SeriePlusvalia) → lo que entra → compra en verde (línea)
  *   V   Tu resultado a 10 años  patrimonio año a año → composición → misma plata en
  *                             otro lado → venta o refinanciamiento
@@ -454,7 +454,7 @@ export function CapitulosInversion({
   const filaIII: FilaHallazgo = {
     id: "pagas",
     numero: "III",
-    pregunta: "Cómo lo pagas",
+    pregunta: "A qué precio cerrar",
     // §7: la fila dice el precio que manda. Con recomendación, el recomendado; en COMPRAR,
     // el de hoy (no hay descuento que pedir); sin salida, lo dice.
     valor: conApellido(

@@ -680,10 +680,10 @@ export function DocTokens() {
          tarjeta navegable: fondo propio, radio, la cifra a la derecha y el disco del
          chevron. La rejilla es «1fr auto auto» — pregunta, cifra, disco.
 
-         LA PUERTA NO CAMBIA. Los capítulos NO abren un pop-up: son un acordeón que
-         expande «.hall-body» en el mismo lugar, con su «↑ Cerrar» al pie. Eso queda
-         igual. Lo que cambia es la FILA, no adónde lleva, y por eso el chevron sigue
-         girando al abrirse en vez de apuntar a la derecha.
+         LA PUERTA CAMBIÓ EL 23-SEP-2026: los capítulos abren un pop-up (el Modal:
+         hoja en teléfono, panel en escritorio). Antes eran un acordeón que expandía
+         «.hall-body» en el mismo lugar; el «›» del disco ahora sí lleva a algo y por
+         eso ya no gira al abrirse.
 
          MUEREN LOS NÚMEROS ROMANOS (§7 los nombra explícitamente). El romano ocupaba
          46 px de ancho y competía con la cifra, que es el dato que hace la lista útil
@@ -723,25 +723,21 @@ export function DocTokens() {
       /* EL DISCO LLEVA «›», no la flecha hacia abajo. El «↓» del acordeon dice «esto se
          despliega»; el «›» dice «esto lleva a algo», que es lo que la primitiva de fila
          navegable promete. El caracter del JSX se oculta con «font-size:0» en vez de
-         cambiarse, porque esa pieza la monta tambien STR. Al abrirse gira 90 grados y
-         vuelve a apuntar hacia abajo, que es adonde efectivamente se abrio. */
+         cambiarse, porque esa pieza la monta tambien STR. No gira al abrirse: desde la
+         mudanza al pop-up (23-sep-2026) el capitulo no se abre hacia abajo. */
       .doc-dictamen .hall.cap .chev{
         width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
         justify-content:center;background:var(--page);border:1px solid var(--line2);
         color:var(--tx3);font-size:0;line-height:1;
         transition:background .13s,border-color .13s,color .13s,transform .2s}
       .doc-dictamen .hall.cap .chev::after{content:"›";font-size:17px;line-height:1}
-      .doc-dictamen .hall.cap.open .chev{transform:rotate(90deg)}
       .doc-dictamen .hall.cap .hall-head:not([disabled]):hover .chev{
         background:var(--tx);border-color:var(--tx);color:var(--page)}
-      .doc-dictamen .hall.cap.open .hall-head{border-color:var(--line2)}
-      .doc-dictamen .hall.cap .hall-body{padding:14px 17px 20px}
       .doc-dictamen .chapters-eyebrow{border-bottom:none;padding-bottom:6px}
       @media (max-width: 767px){
         .doc-dictamen .hall.cap .hall-head{padding:14px 14px;gap:0 11px}
         .doc-dictamen .hall.cap .hall-head:not([disabled]):hover{padding-left:14px}
         .doc-dictamen .hall.cap .q{font-size:14.5px}
-        .doc-dictamen .hall.cap .hall-body{padding:12px 14px 18px}
       }
       @media (prefers-reduced-motion:reduce){
         .doc-dictamen .hall.cap .hall-head{transition:none}

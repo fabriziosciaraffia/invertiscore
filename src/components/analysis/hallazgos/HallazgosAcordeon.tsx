@@ -10,12 +10,22 @@
 // mueren los tres niveles de la pirámide: acá todas las filas pesan lo mismo,
 // el orden ya dice la jerarquía.
 //
-// Decisiones congeladas que implementa:
+// Decisiones congeladas que implementa (variante «hallazgo»):
 //  1. ACORDEÓN EXCLUSIVO — uno abierto a la vez.
 //  2. Al abrir, ANCLA ARRIBA con scroll suave; el encabezado queda visible.
 //  3. Cierre DOBLE — el encabezado sigue siendo toggle + botón "↑ Cerrar" al pie
 //     (que además devuelve la fila al centro para no dejar al lector perdido).
 //  5. Vocabulario único de 4 piezas (ver vocabulario.tsx).
+//
+// LA MUDANZA (23-sep-2026, variante «capitulo»): los once capítulos —cinco de LTR, seis
+// de STR— dejan de expandirse en el mismo lugar y abren un POP-UP: el `Modal` de
+// vocabulario.tsx, que es hoja desde abajo en teléfono y panel de 720 en escritorio. La
+// fila no cambia (título, dato, disco «›»); el clic abre el modal con título, sub (la
+// cifra apellidada y su ksub) y el cuerpo; salen el «↑ Cerrar» y el cuerpo inline. La
+// apertura externa (`abrir`) y el enlace profundo (`#cap-…` al montar) abren el mismo
+// modal, y la telemetría dispara en la apertura igual que antes. Motivo: medido el
+// 22-sep, un cuerpo de 1.000-1.800 px expandido en la lista dejaba al lector sin fila
+// a la vista y sin salida cerca; el pop-up de ajustes ya había resuelto el contenedor.
 //
 // Telemetría: `informe_hallazgo_abierto {n, id_hallazgo, tipo, veredicto,
 // access_level}` pasa a medir EXPANSIONES REALES (la serie nació en FASE 1
@@ -28,6 +38,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
+import { Modal } from "./vocabulario";
 
 export type FilaHallazgo = {
   /** id del hallazgo (viaja en la telemetría). */
@@ -115,6 +126,12 @@ export function HallazgosAcordeon({
 
   const toggle = useCallback(
     (fila: FilaHallazgo, indice: number) => {
+      if (esCapitulo) {
+        // La puerta de los capítulos es el pop-up: la fila abre, el modal cierra.
+        setAbierta(fila.id);
+        medir(fila, indice);
+        return;
+      }
       const yaAbierta = abierta === fila.id;
       setAbierta(yaAbierta ? null : fila.id);
       if (yaAbierta) return;
@@ -125,7 +142,7 @@ export function HallazgosAcordeon({
         refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 60);
     },
-    [abierta, medir],
+    [abierta, medir, esCapitulo],
   );
 
   // Apertura externa (capítulos): mismo camino que el tap, sin pasar por el botón.
@@ -136,6 +153,7 @@ export function HallazgosAcordeon({
     if (!fila || !fila.cuerpo) return;
     setAbierta(fila.id);
     medir(fila, i);
+    if (esCapitulo) return;
     const t = setTimeout(() => {
       refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
@@ -143,10 +161,27 @@ export function HallazgosAcordeon({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrir?.id, abrir?.nonce]);
 
+  // Enlace profundo (capítulos): al montar, si el hash coincide con el ancla de una fila,
+  // se abre su pop-up. El scroll nativo al ancla ya lo hace el navegador; antes de esto
+  // el lector aterrizaba en la fila cerrada y nada la abría.
+  useEffect(() => {
+    if (!esCapitulo || typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const i = filas.findIndex((f) => f.anchorId === hash);
+    const fila = filas[i];
+    if (!fila || !fila.cuerpo) return;
+    setAbierta(fila.id);
+    medir(fila, i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const cerrarYVolver = useCallback((fila: FilaHallazgo) => {
     setAbierta(null);
     refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
+  const cerrarCapitulo = useCallback(() => setAbierta(null), []);
+  const filaAbierta = esCapitulo ? (filas.find((f) => f.id === abierta) ?? null) : null;
 
   if (filas.length === 0) return null;
 
@@ -169,12 +204,13 @@ export function HallazgosAcordeon({
             ref={(el) => {
               refs.current[f.id] = el;
             }}
-            className={`hall${esCapitulo ? " cap" : ""}${open ? " open" : ""}`}
+            className={`hall${esCapitulo ? " cap" : ""}${open && !esCapitulo ? " open" : ""}`}
           >
             <button
               type="button"
               className="hall-head"
-              aria-expanded={open}
+              aria-expanded={esCapitulo ? undefined : open}
+              aria-haspopup={esCapitulo ? "dialog" : undefined}
               disabled={!f.cuerpo}
               onClick={() => f.cuerpo && toggle(f, i)}
             >
@@ -192,25 +228,35 @@ export function HallazgosAcordeon({
                 </span>
               )}
             </button>
-            {open && f.cuerpo && (
+            {open && !esCapitulo && f.cuerpo && (
               <div className="hall-body">
                 {f.cuerpo}
-                {esCapitulo ? (
-                  <div className="hall-end">
-                    <button type="button" className="hall-close" onClick={() => cerrarYVolver(f)}>
-                      ↑ Cerrar
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" className="v-collapse" onClick={() => cerrarYVolver(f)}>
-                    ↑ Cerrar
-                  </button>
-                )}
+                <button type="button" className="v-collapse" onClick={() => cerrarYVolver(f)}>
+                  ↑ Cerrar
+                </button>
               </div>
             )}
           </div>
         );
       })}
+
+      {esCapitulo && (
+        <Modal
+          abierto={filaAbierta !== null}
+          onClose={cerrarCapitulo}
+          titulo={filaAbierta?.pregunta ?? ""}
+          sub={
+            filaAbierta ? (
+              <>
+                {filaAbierta.valor}
+                {filaAbierta.ksub && <> · {filaAbierta.ksub}</>}
+              </>
+            ) : undefined
+          }
+        >
+          {filaAbierta?.cuerpo}
+        </Modal>
+      )}
 
       {total != null && <div className="hall-foot">{total} hallazgos</div>}
     </section>
@@ -557,12 +603,8 @@ export function TokensHallazgos() {
       .v-modal-x{background:none;border:1px solid var(--doc-line2);border-radius:4px;width:30px;height:30px;font-family:var(--font-mono, ui-monospace);font-size:14px;color:var(--doc-tx3);cursor:pointer;flex-shrink:0}
       .v-modal-x:hover{color:var(--doc-tx);border-color:var(--doc-tx4)}
       .v-modal-pie{margin-top:18px;padding-top:12px;border-top:1px solid var(--doc-line);font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);line-height:1.5}
-      /* cuerpo de capítulo (B): extensión de la fila — línea bajo el número, indentado, chip de cierre a la derecha */
-      .hall.cap .hall-body{margin-left:12px;padding:6px 0 18px 74px;border-left:2px solid color-mix(in srgb,var(--doc-tx) 30%,transparent)}
-      .hall-end{display:flex;justify-content:flex-end;margin-top:16px}
-      .hall-close{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx3);background:none;
-        border:1px solid var(--doc-line2);border-radius:3px;padding:6px 12px;cursor:pointer}
-      .hall-close:hover{color:var(--doc-tx);border-color:var(--doc-tx4)}
+      /* El cuerpo inline de capítulo (.hall.cap .hall-body, .hall-end, .hall-close) se retiró el
+         23-sep-2026: el capítulo abre en el Modal. */
       @media (max-width: 767px){
         .tl{grid-template-columns:1fr !important;gap:6px} .tl-delta::before{content:'↓'} .hito .v{font-size:14px}
         .ba-total .v{font-size:17px}
@@ -580,7 +622,6 @@ export function TokensHallazgos() {
         .v-modal-sub{font-size:11.5px;margin:2px 0 0}
         .v-modal-x{width:32px;height:32px}
         .v-modal-cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px 20px 24px}
-        .hall.cap .hall-body{margin-left:8px;padding-left:22px}
       }
       @keyframes v-hoja-sube{from{transform:translateY(100%)}to{transform:translateY(0)}}
       @media (prefers-reduced-motion:reduce){.v-modal-overlay[role="dialog"] .v-modal{animation:none;transition:none}}

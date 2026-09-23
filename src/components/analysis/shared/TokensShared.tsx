@@ -219,7 +219,7 @@ export function TokensShared() {
         transform:translate(-50%,-50%);pointer-events:none}
       .ca-pt.ext{width:9px;height:9px}
       .ca-pt.neg{background:var(--signal-red)}
-      .ca-pt.pos{background:var(--doc-good)}
+      .ca-pt.pos{background:var(--doc-tx)}
       .ca-val{position:absolute;font-family:var(--font-mono, ui-monospace);font-size:10.5px;
         color:var(--doc-tx3);white-space:nowrap;font-variant-numeric:tabular-nums}
       .ca-cero-lbl{position:absolute;left:0;transform:translateY(-50%);

@@ -617,7 +617,7 @@ export function CapitulosInversionStr({
   const filaIV: FilaHallazgo = {
     id: "pagas",
     numero: ROMANO.pagas,
-    pregunta: "Cómo lo pagas",
+    pregunta: "A qué precio cerrar",
     // §7: la fila dice el precio que manda —el recomendado; en COMPRAR el de hoy; sin salida,
     // lo dice—. Un solo apellido por fila (el tier «card-str» los cuenta).
     valor: conApellido(
