@@ -3,12 +3,10 @@
 import type { ReactNode } from "react";
 
 /**
- * Planilla (contrato `mockup-tablas.html`, `.pl`): la tabla del modal "Cómo se
- * calcula". Dos variantes: `flujo` (año a año, columnas numéricas con total) e `ind`
- * (indicadores: nombre · fórmula en palabras · valores sustituidos · resultado).
- * Render puro: columnas, filas y total llegan ya formateados desde un adaptador por
- * modalidad (LTR: arriendo · gastos · NOI · vacancia · dividendo; STR: ingreso ·
- * comisión y costos · ingreso neto · cuota · estabilización).
+ * Planilla (contrato `mockup-tablas.html`, `.pl`): tabla numérica con encabezado y
+ * filas ya formateadas. La usa la tabla de avisos de la zona STR. «Cómo se calcula»
+ * dejó de usarla el 23-sep-2026 (ahora `PlanillaCalculo`), y con eso salió la
+ * variante `ind` de indicadores.
  */
 export type CeldaPlanilla = { v: ReactNode; neg?: boolean };
 export type FilaPlanilla = {
@@ -18,10 +16,10 @@ export type FilaPlanilla = {
   clase?: "pre" | "ent" | "tot";
 };
 
-export function Planilla({ columnas, filas, variante = "flujo" }: { columnas: ReactNode[]; filas: FilaPlanilla[]; variante?: "flujo" | "ind" }) {
+export function Planilla({ columnas, filas }: { columnas: ReactNode[]; filas: FilaPlanilla[] }) {
   return (
     <div className="pl-wrap">
-      <table className={`pl${variante === "ind" ? " ind" : ""}`}>
+      <table className="pl">
         {columnas.length > 0 && (
           <thead>
             <tr>

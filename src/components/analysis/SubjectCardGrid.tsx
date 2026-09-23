@@ -375,7 +375,11 @@ export function SubjectCardGrid({
                 results={results}
                 inputData={inputData}
                 valorUF={valorUF}
-                capRef={capRefInfo}
+                currency={currency}
+                onVerResultado={() => {
+                  setCalculoAbierto(false);
+                  abrirCapitulo("resultado");
+                }}
               />
             </SeccionInforme>
           )}

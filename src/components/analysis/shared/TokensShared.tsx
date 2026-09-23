@@ -221,10 +221,6 @@ export function TokensShared() {
       .pl .neg{color:var(--signal-red)}
       /* dentro del modal (720px) las ocho columnas entran con el padding corto */
       .v-modal .pl th,.v-modal .pl td{padding:5px 4px;font-size:10px}
-      .pl.ind td:nth-child(2){color:var(--doc-tx3);font-family:var(--font-body, system-ui);font-size:11.5px;white-space:normal;text-align:left}
-      .pl.ind td:nth-child(3){color:var(--doc-tx2);text-align:left}
-      .pl.ind th{color:var(--doc-tx);font-weight:600;font-family:var(--font-body, system-ui);font-size:12px;white-space:normal}
-      .pl.ind td:last-child{font-weight:700;color:var(--doc-tx)}
 
       /* ── fila de dato compartida (mockup-tablas) ── */
       .drows{margin-top:4px}
@@ -333,7 +329,6 @@ export function TokensShared() {
         .mz-leg .lg{display:none}
         .mz-leg .sh{display:inline}
         .pl th:first-child,.pl td:first-child{position:sticky;left:0;background:var(--doc-paper);z-index:1;box-shadow:1px 0 0 var(--doc-line)}
-        .pl.ind td:nth-child(2){display:none}
         .curva{height:130px}
         .zona-cells{grid-template-columns:1fr 1fr}
         .zona-cells div:last-child{grid-column:span 2}

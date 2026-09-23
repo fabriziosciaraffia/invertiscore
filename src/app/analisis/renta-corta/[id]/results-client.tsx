@@ -537,7 +537,19 @@ export function STRResultsClient({
         >
           <MarcaSeccion seccion="numeros" tipo="str" accessLevel={accessLevel} />
           <SeisCifrasStr results={results} currency={currency} valorUF={ufValue} onCalculo={() => setCalculoAbierto(true)} />
-          <ModalCalculoStr abierto={calculoAbierto} onClose={() => setCalculoAbierto(false)} results={results} valorUF={ufValue} fechaUF={fechaCortaCL(createdAt)} />
+          <ModalCalculoStr
+            abierto={calculoAbierto}
+            onClose={() => setCalculoAbierto(false)}
+            results={results}
+            inputData={inputData}
+            valorUF={ufValue}
+            fechaUF={fechaCortaCL(createdAt)}
+            currency={currency}
+            onVerResultado={() => {
+              setCalculoAbierto(false);
+              abrirCapitulo("resultado");
+            }}
+          />
         </SeccionInforme>
         <SeccionInforme
           id="la-inversion"

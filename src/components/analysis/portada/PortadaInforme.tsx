@@ -1399,34 +1399,40 @@ export function DocTokens() {
       .num-cell .tr b{color:var(--doc-tx2);font-weight:500}
       .nums-foot{display:flex;justify-content:flex-end;margin-top:12px}
       /* modal de cálculo */
-      .m-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--doc-line)}
+      /* «Cómo se calcula» (planilla-como-se-calcula.html, aprobado 23-sep-2026): dos bloques, título en tinta,
+         bajada en sans; flujo en cinco columnas; indicadores con el resultado DEBAJO de la cuenta. */
+      .m-block{margin-top:24px;padding-top:18px;border-top:1px solid var(--doc-line)}
       .m-block:first-of-type{margin-top:0;padding-top:0;border-top:none}
-      .m-block .bt{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal-red);font-weight:700;margin-bottom:4px}
-      .m-block .bq{font-family:var(--font-heading, Georgia, serif);font-size:16px;font-weight:600;margin-bottom:10px;color:var(--doc-tx)}
-      .m-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-      .m-scrollcue{display:none;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx4);margin-top:8px}
-      .calc-tbl{border-collapse:collapse;width:100%;min-width:560px}
-      .calc-tbl th{font-family:var(--font-mono, ui-monospace);font-size:8px;letter-spacing:.04em;text-transform:uppercase;color:var(--doc-tx4);padding:7px 4px;text-align:right;border-bottom:1px solid var(--doc-line);font-weight:400;white-space:nowrap}
-      .calc-tbl th:first-child{text-align:left}
-      .calc-tbl td{font-family:var(--font-mono, ui-monospace);font-size:10px;padding:7px 4px;text-align:right;border-bottom:1px solid var(--doc-line);white-space:nowrap;color:var(--doc-tx)}
-      .calc-tbl td:first-child{text-align:left;color:var(--doc-tx3)}
-      .calc-tbl tr.pre td{color:var(--doc-tx4)}
-      .calc-tbl tr.tot td{font-weight:700;border-top:2px solid var(--doc-tx);border-bottom:none;color:var(--doc-tx)}
-      .calc-tbl .neg,.ind-tbl .neg{color:var(--signal-red)}
-      .ind-tbl{border-collapse:collapse;width:100%}
-      .ind-tbl td{padding:9px 0;border-bottom:1px solid var(--doc-line);font-size:12.5px;vertical-align:baseline;color:var(--doc-tx2)}
-      .ind-tbl td:first-child{color:var(--doc-tx);font-weight:600;width:28%}
-      .ind-tbl td:nth-child(2){color:var(--doc-tx3);font-size:12px;padding-right:12px}
-      .ind-tbl td:nth-child(3){font-family:var(--font-mono, ui-monospace);font-size:11.5px;padding-right:12px}
-      .ind-tbl td:last-child{font-family:var(--font-mono, ui-monospace);font-weight:700;text-align:right;white-space:nowrap;width:12%;color:var(--doc-tx)}
-      .kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dotted var(--doc-line);font-size:12.5px;color:var(--doc-tx3)}
-      .kv .v{font-family:var(--font-mono, ui-monospace);color:var(--doc-tx);white-space:nowrap} .kv .v.neg{color:var(--signal-red)}
-      .kv.tot{border-top:2px solid var(--doc-tx);border-bottom:none;margin-top:4px;padding-top:9px;color:var(--doc-tx);font-weight:600}
-      .kv.tot .v{font-weight:700;font-size:14px}
-      .compo{display:flex;height:22px;border-radius:3px;overflow:hidden;margin-top:12px}
-      .compo span{height:100%} .compo .f{background:var(--doc-tx)} .compo .p{background:var(--doc-tx4)}
-      .compo-leg{display:flex;justify-content:space-between;gap:10px;font-family:var(--font-mono, ui-monospace);font-size:10px;color:var(--doc-tx3);margin-top:6px}
-      .compo-leg b{color:var(--doc-tx)}
+      .m-block .bt{font-family:var(--font-body, system-ui);font-size:14px;font-weight:600;color:var(--doc-tx);margin-bottom:3px}
+      .m-block .bq{font-family:var(--font-body, system-ui);font-size:13px;line-height:1.5;color:var(--doc-tx3);margin-bottom:12px}
+      .pc-u{font-size:11px;color:var(--doc-tx3);margin:0 0 6px}
+      .pc-flujo{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums}
+      .pc-flujo col.c-anio{width:18%}
+      .pc-flujo th,.pc-flujo td{padding:7px 0 7px 10px;text-align:right;white-space:nowrap;font-size:12px;line-height:1.3;color:var(--doc-tx);border-bottom:1px solid var(--doc-line);font-weight:400}
+      .pc-flujo thead th{font-family:var(--font-body, system-ui);font-size:11px;font-weight:600;color:var(--doc-tx3);padding-bottom:7px;vertical-align:bottom;white-space:normal;line-height:1.2}
+      .pc-flujo th:first-child,.pc-flujo td:first-child{text-align:left;padding-left:0}
+      .pc-flujo tbody td:first-child{color:var(--doc-tx3);font-family:var(--font-body, system-ui);font-size:11.5px;white-space:normal}
+      .pc-flujo tbody td:first-child small{display:block;font-size:10px;color:var(--doc-tx3);margin-top:1px;font-weight:400}
+      .pc-flujo tr.ent td:first-child{color:var(--doc-tx);font-weight:600}
+      .pc-flujo td.neg{color:var(--signal-red)}
+      .pc-flujo tr.tot td{font-weight:700;border-top:1.5px solid var(--doc-tx);border-bottom:none;padding-top:8px}
+      .pc-flujo tr.tot td:first-child{color:var(--doc-tx);font-weight:600}
+      .pc-nota{font-size:11px;line-height:1.45;color:var(--doc-tx3);margin-top:6px}
+      .pc-fuente{font-size:11.5px;line-height:1.55;color:var(--doc-tx3);margin-top:10px}
+      .pc-fuente b{font-weight:600;color:var(--doc-tx2)}
+      .pc-ind{padding:11px 0;border-bottom:1px solid var(--doc-line);display:grid;grid-template-columns:40% minmax(0,1fr);gap:4px 24px}
+      .pc-ind-n{grid-column:1;font-size:13px;font-weight:600;color:var(--doc-tx);display:flex;align-items:center;gap:2px}
+      .pc-ind-f{grid-column:1;font-size:12px;line-height:1.45;color:var(--doc-tx3)}
+      .pc-ind-der{grid-column:2;grid-row:1 / span 2;min-width:0}
+      .pc-ind-c{font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums;font-size:11.5px;line-height:1.55;color:var(--doc-tx2);overflow-wrap:anywhere}
+      .pc-ind-c span{display:block}
+      .pc-ind-r{font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--doc-tx);margin-top:3px}
+      .pc-ind-r.neg{color:var(--signal-red)}
+      .pc-remite{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:baseline;padding-top:12px;margin-top:4px}
+      .pc-remite .k{font-size:13px;font-weight:600;color:var(--doc-tx)}
+      .pc-remite .v{grid-column:2;grid-row:1;font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
+      .pc-remite .s{grid-column:1;font-size:11.5px;line-height:1.45;color:var(--doc-tx3)}
+      .pc-remite .lnk{grid-column:1 / -1;justify-self:start;margin-top:6px;padding:4px 0;background:none;border:none;font:inherit;font-size:12px;font-weight:600;color:var(--doc-tx);text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
       @media (max-width: 767px){
         .doc-sec{margin:0 -22px;padding:26px 22px 32px}
         .doc-sec-t{font-size:25px}
@@ -1435,8 +1441,13 @@ export function DocTokens() {
         .hz-lin p{font-size:15px} .hz-n{font-size:14px}
         .hz-lin{grid-template-columns:14px 1fr 104px;gap:10px}
         .nums{grid-template-columns:repeat(2,1fr)} .num-cell .v{font-size:19px}
-        .m-scrollcue{display:block}
-        .ind-tbl td:nth-child(2){display:none}
+        /* la planilla en el teléfono: millones con un decimal, indicadores apilados */
+        .pc-flujo col.c-anio{width:22%}
+        .pc-flujo th,.pc-flujo td{font-size:11px;padding:6px 0 6px 6px}
+        .pc-flujo thead th{font-size:10.5px}
+        .pc-ind{display:block}
+        .pc-ind-f{margin-top:2px}
+        .pc-ind-c{margin-top:6px}
       }
       /* la zona (T4): síntesis + tres celdas comparadas + explorar · drawer: lugares como filas */
       .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);margin-top:18px}
