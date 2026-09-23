@@ -76,6 +76,7 @@ import { runPlusvaliaCapituloTier } from "./plusvalia-capitulo-catch-test";
 import { runOcupacionStrTier } from "./ocupacion-str-catch-test";
 import { runHojaModalTier } from "./hoja-modal-catch-test";
 import { runInfoIndicadoresTier } from "./info-indicadores-catch-test";
+import { runCapasOscuroTier } from "./capas-oscuro-catch-test";
 import { runMudanzaCapitulosTier } from "./mudanza-capitulos-catch-test";
 import { runRetiroVentajaLtrTier } from "./retiro-ventaja-ltr-catch-test";
 import { runStandaloneTier } from "./standalone-tier";
@@ -394,6 +395,9 @@ async function printStrSemantic() {
   // ── El ⓘ de los indicadores (23-sep-2026): la pila de hojas, los nombres de mercado, la
   //    referencia STR única, sin cursiva y FilaDato sin title. ──
   totalHard += runInfoIndicadoresTier().hard;
+  // ── Las capas en oscuro (23-sep-2026): cada capa un escalón más clara. Lo del DOM —ninguna
+  //    pieza del color de su contenedor— lo mide `capas-oscuro-sonda.ts`, standalone contra el dev server. ──
+  totalHard += runCapasOscuroTier().hard;
   // ── Tier MUDANZA-CAPÍTULOS (23-sep-2026): los once capítulos abren en el pop-up, el hash y la
   //    apertura externa abren, medir dispara, useAncho mide al montar, el PDF no importa de la
   //    superficie mudada, título y tinta. La medición viva (width del SVG dentro de la hoja) es

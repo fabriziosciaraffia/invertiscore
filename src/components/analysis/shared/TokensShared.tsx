@@ -146,6 +146,35 @@ export function TokensShared() {
       .v-pop-t{font-size:14px;font-weight:600;margin-bottom:6px}
       .v-pop p{font-size:13px;line-height:1.55;color:var(--doc-tx2);margin:0}
       [data-theme="dark"] .v-pop,:root:not([data-theme="light"]) .v-pop{box-shadow:0 10px 30px rgba(0,0,0,.5)}
+      /* ── LAS CAPAS EN OSCURO (23-sep-2026, aprobado sobre capturas: docs/wireframes/rediseno-informe/shots-capas) ──
+         En oscuro la sombra casi no se ve, así que la separación la da la SUPERFICIE: cada capa que
+         sube es un escalón más clara que la de abajo, con los tokens del informe —página --page
+         #0C0C0E → hoja grande --card #1A1A1E → hoja chica --sunk #232328 → popover --line-sunk
+         #2C2C30—, un velo más fuerte y un borde fino arriba de cada hoja. Medido con el velo
+         compuesto: ΔL* de 5,4 a 8,7 entre capas vecinas, contra 0 a 1,4 antes (la hoja grande y la
+         página eran idénticas). El popover es de escritorio y la hoja chica de teléfono: no conviven.
+         SOLO OSCURO: todo va detrás de html:not([data-theme="light"]); el claro no cambia.
+         DENTRO de cada hoja la escalera de tokens SUBE UN ESCALÓN ENTERA —crudos (--page, --card,
+         --sunk, --line) y --doc-*—: aclarar solo el fondo dejaba cinco piezas del color de la hoja
+         nueva (.v-centro, y paj-pill, hoy, fila-nav y paj-eleg del pop-up). Los valores de partida se
+         capturan en la hoja (--esc-*) y la subida se declara en sus hijos: redeclarar --card y leer
+         var(--card) en el mismo elemento se resolvería en cadena. El .doc-tokens de adentro también
+         sube, porque «.doc-dictamen .doc-tokens» redeclara los crudos con hex literal. */
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"]{background:rgba(12,12,14,.86)}
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"] .v-modal{
+        --esc-1:var(--card); --esc-2:var(--sunk); --esc-3:var(--line-sunk);
+        background:var(--esc-1);border-top:1px solid var(--line2)}
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"] .v-modal > *,
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"] .v-modal .doc-tokens{
+        --page:var(--esc-1); --card:var(--esc-2); --sunk:var(--esc-3); --line:var(--esc-3);
+        --doc-paper:var(--esc-1); --doc-paper2:var(--esc-2); --doc-paper3:var(--esc-3); --doc-paper4:var(--esc-3);
+        --doc-line:var(--esc-3); --doc-inset-0:var(--esc-1); --doc-inset-1:var(--esc-2); --doc-inset-2:var(--esc-3)}
+      html:not([data-theme="light"]) .v-modal-overlay.v-glosa-overlay[role="dialog"]{background:rgba(12,12,14,.55)}
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"] .v-modal.v-glosa{
+        --esc-1:var(--sunk); --esc-2:var(--line-sunk); --esc-3:var(--line-sunk)}
+      html:not([data-theme="light"]) .v-modal-overlay[role="dialog"] .v-modal.v-glosa > *{--line:var(--line2); --doc-line:var(--line2)}
+      html:not([data-theme="light"]) .v-pop{background:var(--line-sunk);border-color:var(--line2)}
+      html:not([data-theme="light"]) .v-pop::before{background:var(--line-sunk);border-color:var(--line2)}
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}
       .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}
