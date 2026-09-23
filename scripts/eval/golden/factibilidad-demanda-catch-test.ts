@@ -17,6 +17,8 @@
 //   4 · EL ANCLA Y EL FILTRO SON EL MISMO: la huella guardada con el ancla es la del filtro
 //       vigente, el dato del caso y el generador usan esa misma función, y el motor ancla en ese
 //       generado.
+//   5 · LA PROSA STR SE REGENERA: PROMPT_VERSION_STR ≥ 23 (el bump de este cambio), y la página y
+//       la ruta invalidan por versión.
 // Lo que necesita la base (las 42 filas del parque leyendo del caché) lo mide
 // `factibilidad-demanda-sonda.ts`. Verificado EN ROJO por mutación. Corre solo:
 //   node --env-file=.env.local --import tsx scripts/eval/golden/factibilidad-demanda-catch-test.ts
@@ -31,6 +33,7 @@ import { huellaFiltro } from "./huella-filtro-ocupacion";
 import { loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import { STR_GE_SEEDS } from "./str-seeds";
+import { PROMPT_VERSION_STR } from "../../../src/lib/ai-generation-str";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -139,6 +142,14 @@ export function runFactibilidadDemandaTier(): { hard: number } {
   ]);
   if (!res || res.n !== 2 || Math.abs(res.p50 - 0.3) > 1e-9) F(`4 · el dato del caso no aplica el filtro (${JSON.stringify(res)})`);
   if (!(OCUPACION_REALIZADA_SANTIAGO.n >= 1000 && M > 0.1 && M < 0.6)) F("4 · el ancla generada no es plausible");
+
+  // ── 5 · la prosa STR se regenera (v23): el cambio de factibilidad movió veredictos, y la prosa
+  //    guardada no puede narrar el anterior. Se exige ≥ 23, no el número exacto: un bump posterior
+  //    por otra razón no tiene por qué poner este tier en rojo. ──
+  if (!(PROMPT_VERSION_STR >= 23)) F(`5 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}: el cambio de factibilidad va con el prompt STR en v23 o más`);
+  for (const p of ["src/app/analisis/renta-corta/[id]/page.tsx", "src/app/api/analisis/short-term/ai/route.ts"]) {
+    if (!/promptVersion === PROMPT_VERSION_STR/.test(sinComentarios(leer(p)))) F(`5 · ${p} no invalida la prosa STR por versión`);
+  }
 
   if (fallas.length) {
     console.log(`  ✗ FACTIBILIDAD-DEMANDA · ${fallas.length} falla(s):`);

@@ -166,7 +166,15 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // LTR» del user, la sección `vsLTR` del schema y el guard [STR-MODALIDAD]. `estrategiaSugerida`
 // (la ACCIÓN dentro de «Lo que haría yo») se muda a `conviene`, sin la cláusula del largo. El score
 // pasa a cinco dimensiones (sin «ventaja vs LTR»).
-export const PROMPT_VERSION_STR = 22;
+// v23 (23-sep-2026) · LA FACTIBILIDAD MIDE LA DEMANDA DE LA ZONA (117c1c7e, decisión de Fabrizio):
+// salen la constante de regulación, el ingreso del estimador y la tipología; entra la ocupación
+// realizada de los comparables por su nivel. El score cambió en todo el parque y el veredicto en 8
+// filas (6 COMPRAR → AJUSTA, 2 AJUSTA → BUSCAR), y el `detail` de la factibilidad que llega al user
+// prompt dice otra cosa («Demanda de la zona: los Airbnb comparables se ocupan X % del año…»). Sin
+// el bump, la prosa ya escrita de esas filas seguiría narrando el veredicto anterior contra una card
+// que dice otro: la contradicción que se viene sacando. Regenera por lazy-on-open, como cualquier
+// bump. El prompt en sí no cambia de texto: cambia lo que el motor le pasa.
+export const PROMPT_VERSION_STR = 23;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
