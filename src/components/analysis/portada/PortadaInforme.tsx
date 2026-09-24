@@ -77,7 +77,6 @@ export function PortadaInforme({
   currency,
   onCurrencyChange,
   mapa,
-  onAjustarSupuestos,
 }: {
   veredicto: string;
   score: number | null;
@@ -97,7 +96,6 @@ export function PortadaInforme({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza. */
   mapa: { lat: number; lng: number; comparables: Comparable[]; count: number; label: string } | null;
-  onAjustarSupuestos?: () => void;
 }) {
   const [fichaOpen, setFichaOpen] = useState(false);
   const bandaLabel = bandaLabelDe(veredicto);
@@ -183,7 +181,7 @@ export function PortadaInforme({
           {/* Línea de utilidades: link ficha + toggle CLP/UF (decisión e del PARÁ 0) */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <button type="button" className="doc-props-link" onClick={() => setFichaOpen(true)}>
-              🏢 Ficha del depto evaluado →
+              Ficha del depto →
             </button>
             {/* LOS COLORES DEL TOGGLE SON INLINE, así que una regla CSS no los puede
                 pisar: sobre el espectro hay que cambiarlos acá. Mismo tratamiento que el
@@ -228,7 +226,7 @@ export function PortadaInforme({
         )}
       </div>
 
-      <FichaModal ficha={ficha} open={fichaOpen} onClose={() => setFichaOpen(false)} onAjustar={onAjustarSupuestos} />
+      <FichaModal ficha={ficha} open={fichaOpen} onClose={() => setFichaOpen(false)} />
 
       {/* aria: el titular plano para lectores cuando hay marcas */}
       {titular && <span className="sr-only">{stripMarcas(titular)}</span>}
@@ -398,7 +396,6 @@ export function DocTokens() {
         --sombra-h:0 2px 5px rgba(0,0,0,.07),0 14px 32px rgba(0,0,0,.10);
         --overlay:rgba(24,24,27,.55);
       }
-      .doc-dictamen .doc-ficha-overlay{background:var(--overlay)}
 
       /* ═══════════════ REDISEÑO · ESTRUCTURA (contrato §2) ═══════════════
          SOLO DOS SECCIONES LLEVAN CAJA —borde redondo, sombra, fondo propio—: el hero y
@@ -1536,26 +1533,27 @@ export function DocTokens() {
         font-family:var(--font-mono, ui-monospace);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx2);
         border-bottom:1px dashed var(--doc-line2);padding:0 0 3px;transition:color .15s,border-color .15s}
       .doc-props-link:hover{color:var(--signal-red);border-color:var(--signal-red)}
-      /* ficha modal */
-      .doc-ficha-overlay{position:fixed;inset:0;background:rgba(10,10,10,.6);backdrop-filter:blur(3px);
-        display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
-      .doc-ficha-sheet{width:100%;max-width:480px;max-height:86vh;overflow-y:auto;background:var(--doc-paper);
-        border:1px solid var(--doc-line2);color:var(--doc-tx)}
-      .doc-specfranja{display:flex;flex-wrap:wrap;border-top:2px solid var(--doc-tx);border-bottom:1px solid var(--doc-line);margin-bottom:22px}
-      .doc-specfranja .sp{flex:1 1 auto;padding:12px 16px 12px 0;margin-right:16px;border-right:1px solid var(--doc-line)}
-      .doc-specfranja .sp:last-child{border-right:none;margin-right:0}
-      .doc-specfranja .sk{font-family:var(--font-mono, ui-monospace);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx4);margin-bottom:4px}
-      .doc-specfranja .sv{font-family:var(--font-mono, ui-monospace);font-size:14.5px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
-      @media (max-width: 480px){
-        .doc-specfranja .sp{flex:1 1 30%;padding-right:10px;margin-right:10px}
-        .doc-specfranja .sv{font-size:13px}
+      /* LA FICHA DEL DEPTO (forma A, 24-sep-2026): grupos de filas rótulo | valor dentro del Modal
+         del informe. Sin mono ni serif: Inter con cifras tabulares (contrato §1). La diferencia
+         contra la referencia lleva el tono de la card de zona. */
+      .fa{font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+      .fa-g + .fa-g{margin-top:16px}
+      .fa-t{font-size:12.5px;font-weight:600;color:var(--doc-tx3);margin:0 4px 6px}
+      .fa-c{background:var(--doc-inset-1);border-radius:12px;padding:0 14px}
+      .fa-f{display:grid;grid-template-columns:1fr auto;gap:1px 12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--doc-line)}
+      .fa-f:last-child{border-bottom:none}
+      .fa-k{font-size:14px;color:var(--doc-tx2)}
+      .fa-v{font-size:14px;font-weight:600;color:var(--doc-tx);text-align:right;white-space:nowrap}
+      .fa-s{font-size:12px;color:var(--doc-tx3)}
+      .fa-d{font-size:12px;font-weight:600;text-align:right;white-space:nowrap}
+      .fa-d-mal{color:var(--signal-red)} .fa-d-bien{color:var(--up)} .fa-d-neu{color:var(--doc-tx3)}
+      .fa-tag{display:inline-block;margin-left:6px;padding:0 7px;border:1px solid var(--doc-line2);border-radius:99px;
+        font-size:11px;font-weight:500;line-height:17px;color:var(--doc-tx3);vertical-align:1px;white-space:nowrap}
+      @media (min-width: 768px){
+        .fa{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}
+        .fa-g + .fa-g{margin-top:0}
+        .fa-g:nth-child(n+3){margin-top:16px}
       }
-      .doc-tick{width:14px;height:3px;background:var(--signal-red);display:inline-block}
-      .doc-g2{display:flex;flex-wrap:wrap;row-gap:18px}
-      .doc-g2 .cell{flex:1 1 33%;min-width:33%;padding-right:14px}
-      @media (max-width: 480px){ .doc-g2 .cell{min-width:50%} }
-      .doc-g2 .k{font-size:11px;color:var(--doc-tx3);margin-bottom:3px}
-      .doc-g2 .v{font-family:var(--font-mono, ui-monospace);font-size:13.5px;color:var(--doc-tx)}
       /* ═══ CUERPO DEL DOCUMENTO (FASE 4) ═══ */
       /* SIN COLUMNA DE MARGEN. Tenía 56px reservados para el isotipo f. sticky, y
          eso hacía tres cosas a la vez, todas malas desde que el bloque de veredicto

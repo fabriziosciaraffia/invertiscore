@@ -373,7 +373,6 @@ export function STRResultsClient({
     lng: lngPortada,
   });
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
-  const scrollASimulacion = () => abrirCapitulo("pagas");
 
   const isSubscriber = accessLevel === "subscriber";
 
@@ -488,7 +487,6 @@ export function STRResultsClient({
                 }
               : null
           }
-          onAjustarSupuestos={scrollASimulacion}
         />
         </SeccionInforme>
         {/* ═══ T1 (04-sep-2026) · el interior STR sobre piezas compartidas: hero con el

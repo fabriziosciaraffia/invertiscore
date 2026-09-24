@@ -17,6 +17,16 @@
 //       n de la card, y el rango P10–P90 de la comuna no aparece en ninguna de las dos.
 //   5 · SIN MONO NI SERIF en la zona: ni en el código de la sección, del modal y del mapa, ni en
 //       las filas de lugares.
+//   6 · LA FICHA EN EL MODAL: `FichaModal` monta el `Modal` del informe en un portal (fuera del
+//       hero, cuya regla `> *{position:relative}` le robaba el `fixed`), y el overlay viejo no
+//       existe ni en el componente ni en el CSS.
+//   7 · LA FICHA ES DE SOLO LECTURA: ningún botón ni link en su cuerpo, ningún texto de edición,
+//       y ni la ficha ni la portada reciben una acción de «ajustar».
+//   8 · LAS ETIQUETAS DE PROCEDENCIA dicen la verdad: arriendo igual a la referencia = sugerido,
+//       distinto = declarado; tarifa y ocupación STR = estimada sin override, definida con él.
+//   9 · TODO RESPETA CLP/UF: en UF ningún monto de la ficha lleva pesos (cuotas del pie,
+//       amoblamiento y tarifa incluidos); en CLP los mismos llevan pesos.
+//  10 · SIN MONO NI SERIF en la ficha: ni en el componente ni en su CSS ni en su HTML.
 // Verificado EN ROJO por mutación. Corre solo:
 //   node --import tsx scripts/eval/golden/ficha-comparables-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,6 +38,8 @@ import { join } from "node:path";
 import { resumirComparablesRadio, median } from "../../../src/lib/services/comparables-radio";
 import { leerMuestraArriendo } from "../../../src/lib/arriendo-referencia";
 import { buildLtrPayload, type SubmitContext } from "../../../src/components/formulario-v4/wizardV4Submit";
+import { buildFichaLtr, buildFichaStr, type FichaDepto } from "../../../src/lib/ficha-depto";
+import { FichaCuerpo } from "../../../src/components/analysis/portada/FichaModal";
 
 // El JSX de los componentes compila a React.createElement bajo tsx: el global lo resuelve.
 (globalThis as any).React = React;
@@ -182,11 +194,66 @@ export function runFichaComparablesTier(): { hard: number } {
   const portada = leer("src/components/analysis/portada/PortadaInforme.tsx");
   for (const regla of portada.match(/\.lugar[^{]*\{[^}]*\}/g) ?? []) if (MONO_SERIF.test(regla)) F(`5 · la fila de lugares usa mono: ${regla.slice(0, 60)}`);
 
+  // ── 6 · la ficha en el Modal, sin el overlay viejo ──
+  const fichaSrc = sinComentarios(leer("src/components/analysis/portada/FichaModal.tsx"));
+  const portadaSrc = sinComentarios(leer("src/components/analysis/portada/PortadaInforme.tsx"));
+  if (!/<Modal\b/.test(fichaSrc)) F("6 · FichaModal no abre el Modal del informe");
+  if (!/createPortal\(/.test(fichaSrc)) F("6 · FichaModal no va en portal: dentro del hero pierde el position:fixed");
+  if (/doc-ficha-overlay|doc-ficha-sheet/.test(fichaSrc + portadaSrc)) F("6 · el overlay viejo de la ficha sigue en el componente o en el CSS");
+
+  // ── 7 · solo lectura ──
+  if (/onAjustar/.test(fichaSrc + portadaSrc)) F("7 · la ficha o la portada reciben una acción de ajustar");
+  const inLtr = (arriendo: number, extra: Record<string, unknown> = {}): any => ({
+    precio: 4205, superficie: 38, dormitorios: 1, banos: 1, arriendo, gastos: 68000, piePct: 20, tasaInteres: 3.4, plazoCredito: 30,
+    estadoVenta: "futura", fechaEntrega: "2029-8", cuotasPie: 35, montoCuota: 981831, esNuevo: true, antiguedad: 0, estacionamiento: "si", bodega: true,
+    zonaRadio: { arriendoPromedio: 498000, sampleSizeArriendo: 22, radioMetros: 500 }, ...extra,
+  });
+  const fLtr = (arriendo: number, moneda: "CLP" | "UF") => buildFichaLtr({ input: inLtr(arriendo), results: null, medianaUfM2: 107.5, universoMediana: "nuevo", nMediana: 496, desviacionMediana: 3, direccion: "Av. Irarrázaval 401", comuna: "Ñuñoa", ufValue: 40861, moneda });
+  const inStr = (extra: Record<string, unknown> = {}) => ({ precioCompra: 195746000, precioCompraUF: 5045, superficieUtil: 50, dormitorios: 2, banos: 1, tipoPropiedad: "usado", antiguedad: 4,
+    capacidadHuespedes: 2, modoGestion: "administrador", comisionAdministrador: 0.25, costoAmoblamiento: 4550000, piePct: 20, tasaInteres: 4.11, plazoCredito: 25, adrOverride: null, occOverride: null, ...extra });
+  const fStr = (moneda: "CLP" | "UF", extra: Record<string, unknown> = {}) => buildFichaStr({ input: inStr(extra), adrNoche: 74713, ocupacionZona: 0.4755, direccion: "Av. Providencia 1500", comuna: "Providencia", moneda });
+  const fichas: [string, FichaDepto][] = [["LTR sugerido", fLtr(498000, "CLP")], ["LTR declarado", fLtr(750000, "UF")], ["STR", fStr("CLP")]];
+  for (const [nombre, f] of fichas) {
+    const h = html(createElement(FichaCuerpo, { ficha: f }));
+    if (/<button|<a[\s>]/.test(h)) F(`7 · la ficha ${nombre} trae un botón o un link`);
+    if (/cambiar|ajust|editar|modificar|corrig/i.test(h)) F(`7 · la ficha ${nombre} ofrece editar: «${(h.match(/[^>]*(cambiar|ajust|editar|modificar|corrig)[^<]*/i) ?? [""])[0]}»`);
+    if (MONO_SERIF.test(h)) F(`10 · el HTML de la ficha ${nombre} trae una clase mono o serif`);
+  }
+
+  // ── 8 · etiquetas de procedencia ──
+  const etiqueta = (f: FichaDepto, k: string) => f.grupos.flatMap((g) => g.filas).find((x) => x.k === k)?.etiqueta ?? null;
+  if (etiqueta(fLtr(498000, "CLP"), "Arriendo") !== "sugerido") F("8 · un arriendo igual a la mediana sugerida no dice «sugerido»");
+  if (etiqueta(fLtr(750000, "CLP"), "Arriendo") !== "declarado") F("8 · un arriendo distinto a la referencia no dice «declarado»");
+  if (etiqueta(buildFichaLtr({ input: inLtr(750000, { zonaRadio: undefined }), results: null, medianaUfM2: null, direccion: "", comuna: "Ñuñoa", ufValue: 40861, moneda: "CLP" }), "Arriendo") !== "declarado") F("8 · un arriendo sin referencia no dice «declarado»");
+  if (etiqueta(fStr("CLP"), "Tarifa por noche") !== "estimada" || etiqueta(fStr("CLP"), "Ocupación") !== "estimada") F("8 · tarifa u ocupación STR sin override no dicen «estimada»");
+  if (etiqueta(fStr("CLP", { adrOverride: 80000, occOverride: 0.6 }), "Tarifa por noche") !== "definida") F("8 · una tarifa con override no dice «definida»");
+
+  // ── 9 · CLP/UF ──
+  const valores = (f: FichaDepto) => f.grupos.flatMap((g) => g.filas.map((x) => `${x.k}: ${x.v}`));
+  const MONTOS = /^(Precio|Arriendo|Mediana de la zona|Gastos comunes|Pie|Cuotas del pie|Crédito|Amoblamiento|Tarifa por noche):/;
+  for (const [nombre, f] of [["LTR", fLtr(498000, "UF")], ["LTR declarado", fLtr(750000, "UF")], ["STR", fStr("UF")]] as const) {
+    const conPesos = valores(f).filter((v) => /\$/.test(v));
+    if (conPesos.length) F(`9 · en UF la ficha ${nombre} deja montos en pesos: ${conPesos.join(" · ")}`);
+    const sinMontoUf = valores(f).filter((v) => MONTOS.test(v) && !/UF /.test(v));
+    if (sinMontoUf.length) F(`9 · en UF la ficha ${nombre} tiene montos sin UF: ${sinMontoUf.join(" · ")}`);
+  }
+  for (const [nombre, f] of [["LTR", fLtr(750000, "CLP")], ["STR", fStr("CLP")]] as const) {
+    const sinPesos = valores(f).filter((v) => MONTOS.test(v) && !/^Precio por m²/.test(v) && !/\$/.test(v));
+    if (sinPesos.length) F(`9 · en CLP la ficha ${nombre} tiene montos sin pesos: ${sinPesos.join(" · ")}`);
+  }
+
+  // ── 10 · sin mono ni serif en el código y el CSS de la ficha ──
+  {
+    const m = fichaSrc.match(MONO_SERIF);
+    if (m) F(`10 · FichaModal.tsx usa «${m[0]}»`);
+    for (const regla of leer("src/components/analysis/portada/PortadaInforme.tsx").match(/\.fa[-\w]*[^{]*\{[^}]*\}/g) ?? []) if (MONO_SERIF.test(regla)) F(`10 · el CSS de la ficha usa mono o serif: ${regla.slice(0, 60)}`);
+  }
+
   if (fallas.length) {
     console.log(`  ✗ FICHA-COMPARABLES · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card y sin mono ni serif");
+    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card; la ficha abre en el Modal, de solo lectura, con su procedencia y en CLP/UF; y nada de las dos usa mono ni serif");
   }
   return { hard: fallas.length };
 }

@@ -214,6 +214,8 @@ export function SubjectCardGrid({
         results,
         medianaUfM2: sobreprecioPortada?.valor.medianaComunaUfM2 ?? null,
         universoMediana: sobreprecioPortada?.valor.universo ?? null,
+        nMediana: sobreprecioPortada?.valor.n ?? null,
+        desviacionMediana: sobreprecioPortada?.valor.desviacionPct ?? null,
         direccion: direccionPortada,
         comuna: comunaPortada,
         ufValue: valorUF,
@@ -241,9 +243,6 @@ export function SubjectCardGrid({
   // «↓ Ver detalle» abre el capítulo donde vive el desarrollo del hallazgo (el
   // acordeón lo ancla arriba). Sin capítulo mapeado, cae a la sección entera.
   const abrirCapitulo = (id: CapituloId) => setCapituloAbrir({ id, nonce: Date.now() });
-  // La portada: «Ajustar supuestos» lleva a "Cómo lo pagas" (precio, crédito y la
-  // matriz pie×plazo son los supuestos que se pueden mover).
-  const scrollASimulacion = () => abrirCapitulo("pagas");
 
   return (
     <div id="informe-pro-section" className="mb-8">
@@ -281,7 +280,6 @@ export function SubjectCardGrid({
                 }
               : null
           }
-          onAjustarSupuestos={scrollASimulacion}
         />
       )}
       </SeccionInforme>
