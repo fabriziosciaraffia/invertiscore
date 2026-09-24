@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { estimarContribuciones } from "../contribuciones";
+import type { MuestraArriendo } from "../arriendo-referencia";
 
 /** Fila tal como la devuelve la RPC (migración 20260904). Los opcionales faltaban en la función vieja. */
 export interface FilaRadio {
@@ -38,6 +39,21 @@ export interface ResumenRadio {
   /** Precio por m² (con factor de cierre aplicado). */
   precioM2?: number;
   sampleSize: number;
+  /** Los avisos limpios detrás de la mediana, por distancia. El wizard la guarda en
+   *  `zonaRadio.muestraArriendo` para que «Ver los comparables» muestre ESTA muestra. */
+  muestra: MuestraArriendo;
+}
+
+/** La muestra en la forma que se guarda: enteros y por distancia, el más cercano primero. */
+function muestraDe(clean: FilaRadio[], modo: MuestraArriendo["modo"]): MuestraArriendo {
+  const avisos = clean
+    .map((a) => ({
+      distanciaM: typeof a.distance_meters === "number" && Number.isFinite(a.distance_meters) ? Math.round(a.distance_meters) : null,
+      precio: Math.round(Number(a.precio)),
+      m2: a.superficie_m2 && a.superficie_m2 > 0 ? Math.round(Number(a.superficie_m2) * 10) / 10 : null,
+    }))
+    .sort((x, y) => (x.distanciaM ?? 1e9) - (y.distanciaM ?? 1e9));
+  return { modo, avisos };
 }
 
 export function median(arr: number[]): number {
@@ -136,6 +152,7 @@ export function resumirComparablesRadio(
       contribTrim: estimarContribuciones(Math.round(medianaM2 * superficie)),
       precioM2: Math.round(medianaM2 * opts.factorCierre),
       sampleSize: clean.length,
+      muestra: muestraDe(clean, "sinDorms"),
     };
   }
 
@@ -148,5 +165,6 @@ export function resumirComparablesRadio(
       : estimarContribuciones(superficie * 2_000_000),
     precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2) * opts.factorCierre) : undefined,
     sampleSize: clean.length,
+    muestra: muestraDe(clean, "conDorms"),
   };
 }

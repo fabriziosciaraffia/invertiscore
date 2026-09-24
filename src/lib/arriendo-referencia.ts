@@ -80,6 +80,53 @@ export type ProcedenciaArriendo =
 /** Tolerancia en CLP para la igualdad exacta (el wizard escribe el entero). */
 const EPSILON_CLP = 1;
 
+/**
+ * LA MUESTRA DETRÁS DE LA MEDIANA DE RADIO (24-sep-2026). Hasta hoy el análisis guardaba la
+ * mediana y el n, no los avisos, y recalcular después con el mismo filtro da OTRO conjunto
+ * (00f9c0eb: 22 guardados, 41 hoy; 995e2bf8: 47 guardados, 14 hoy). Así que la lista que
+ * muestra «Ver los comparables» es la que se guardó AL CREAR, o ninguna: las filas de antes
+ * dicen que no la tienen. Nunca se reconstruye.
+ *
+ * `modo` es el de `resumirComparablesRadio`: con el filtro de dormitorios la referencia es la
+ * mediana de los PRECIOS; sin él, la mediana del precio por m² llevada a tu superficie.
+ */
+export interface AvisoMuestraArriendo {
+  /** Distancia al depto, en metros enteros. */
+  distanciaM: number | null;
+  /** Arriendo publicado, CLP/mes. */
+  precio: number;
+  m2: number | null;
+}
+export interface MuestraArriendo {
+  modo: "conDorms" | "sinDorms";
+  avisos: AvisoMuestraArriendo[];
+}
+
+/**
+ * La muestra guardada, o `null` si la fila no la tiene. Se exige que sea la MISMA muestra de
+ * la referencia: fuente radio y tantos avisos como el n guardado. Una lista que no calza con
+ * el n es otra muestra, y mostrarla junto a la mediana volvería a poner dos referencias.
+ */
+export function leerMuestraArriendo(input: unknown): MuestraArriendo | null {
+  const ref = resolverArriendoReferencia(input);
+  if (!ref || ref.fuente !== "radio") return null;
+  const m = (input as { zonaRadio?: { muestraArriendo?: unknown } } | null | undefined)?.zonaRadio?.muestraArriendo as
+    | { modo?: unknown; avisos?: unknown }
+    | null
+    | undefined;
+  if (!m || (m.modo !== "conDorms" && m.modo !== "sinDorms") || !Array.isArray(m.avisos)) return null;
+  const avisos: AvisoMuestraArriendo[] = [];
+  for (const a of m.avisos as { distanciaM?: unknown; precio?: unknown; m2?: unknown }[]) {
+    const precio = Number(a?.precio);
+    if (!Number.isFinite(precio) || precio <= 0) return null;
+    const d = Number(a?.distanciaM);
+    const s = Number(a?.m2);
+    avisos.push({ distanciaM: Number.isFinite(d) ? d : null, precio, m2: Number.isFinite(s) && s > 0 ? s : null });
+  }
+  if (avisos.length === 0 || avisos.length !== ref.n) return null;
+  return { modo: m.modo, avisos };
+}
+
 type ConZonaRadio = {
   zonaRadio?: {
     arriendoPromedio?: number | null;

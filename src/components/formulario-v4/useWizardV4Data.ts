@@ -9,6 +9,7 @@ import type { Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { useAirRoiSuggestion, type AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 import type { FuenteArriendo } from "./derive";
+import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const UF_FALLBACK = 38800;
 const TASA_FALLBACK = 4.72;
@@ -31,6 +32,8 @@ export interface WizardV4Data {
   arriendoFuente: FuenteArriendo;
   /** Solo con arriendoFuente comuna-m2: rango del estimado (∓ error residual). */
   arriendoRango: { min: number; max: number } | null;
+  /** Solo radio: los avisos detrás de la mediana, para guardarlos con el análisis. */
+  muestraArriendo: MuestraArriendo | null;
   /** GGCC típico estimado (CLP/mes) de la zona, o null. */
   ggccSugerido: number | null;
   /** UF/m² de venta de la zona (para valorMercadoFranco y aviso de subsidio). */
@@ -57,6 +60,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [arriendoN, setArriendoN] = useState(0);
   const [arriendoFuente, setArriendoFuente] = useState<WizardV4Data["arriendoFuente"]>("sin-dato");
   const [arriendoRango, setArriendoRango] = useState<WizardV4Data["arriendoRango"]>(null);
+  const [muestraArriendo, setMuestraArriendo] = useState<MuestraArriendo | null>(null);
   const [ggccSugerido, setGgccSugerido] = useState<number | null>(null);
   const [precioM2Clp, setPrecioM2Clp] = useState<number | null>(null); // CLP/m² crudo del RPC
   const [radiusUsed, setRadiusUsed] = useState<number | null>(null);
@@ -98,6 +102,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     if (!lat || !lng || !comuna) {
       setComparablesCount(0);
       setComparables([]);
+      setMuestraArriendo(null);
       return;
     }
     const seq = ++reqSeq.current;
@@ -141,6 +146,9 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
               : null,
           );
           setGgccSugerido(typeof arr?.ggcc === "number" ? arr.ggcc : null);
+          setMuestraArriendo(
+            arr?.source === "radio" && arr?.muestraArriendo && Array.isArray(arr.muestraArriendo.avisos) ? (arr.muestraArriendo as MuestraArriendo) : null,
+          );
           setRadiusUsed(typeof arr?.radiusUsed === "number" ? arr.radiusUsed : null);
           // precioM2 viene en CLP/m² → se convierte a UF en el return (÷ ufCLP), igual que v3.
           setPrecioM2Clp(typeof venta?.precioM2 === "number" ? venta.precioM2 : null);
@@ -153,6 +161,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           if (seq !== reqSeq.current) return;
           setComparablesCount(0);
           setComparables([]);
+      setMuestraArriendo(null);
           setArriendoSugerido(null);
           setArriendoN(0);
           setArriendoFuente("sin-dato");
@@ -195,6 +204,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     arriendoN,
     arriendoFuente,
     arriendoRango,
+    muestraArriendo,
     ggccSugerido,
     // precioM2 del RPC viene en CLP/m² → UF/m² (÷ ufCLP), como v3.
     precioM2UF: precioM2Clp != null && ufCLP > 0 ? precioM2Clp / ufCLP : null,

@@ -27,6 +27,7 @@ import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
 import { leerNum, type FuenteArriendo } from "./derive";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
+import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -41,6 +42,8 @@ export interface SubmitContext {
   arriendoFuente: FuenteArriendo;
   /** Solo comuna-m2: rango del estimado, persistido junto a la fuente. */
   arriendoRango: { min: number; max: number } | null;
+  /** Solo radio: la muestra detrás de la mediana. Se guarda solo si calza con `arriendoN`. */
+  muestraArriendo?: MuestraArriendo | null;
   precioM2UF: number | null;
   radiusUsed: number | null;
   ggccSugerido: number | null;
@@ -160,6 +163,12 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
       arriendoFuente: ctx.arriendoFuente,
       arriendoRangoMin: ctx.arriendoRango?.min ?? null,
       arriendoRangoMax: ctx.arriendoRango?.max ?? null,
+      // La lista de «Ver los comparables» (24-sep-2026): la MISMA muestra de la mediana, o
+      // nada. `leerMuestraArriendo` vuelve a exigir que calce con el n al leer.
+      muestraArriendo:
+        ctx.arriendoFuente === "radio" && ctx.muestraArriendo && ctx.muestraArriendo.avisos.length === ctx.arriendoN
+          ? ctx.muestraArriendo
+          : undefined,
       sampleSizeVenta: ctx.ventaN,
       ventaFuente: ctx.ventaFuente,
       ventaUniverso: ctx.ventaUniverso,

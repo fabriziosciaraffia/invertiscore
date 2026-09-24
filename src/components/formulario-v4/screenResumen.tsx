@@ -735,6 +735,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     arriendoN: data.arriendoN,
     arriendoFuente: data.arriendoFuente,
     arriendoRango: data.arriendoRango,
+    muestraArriendo: data.muestraArriendo,
     precioM2UF: data.precioM2UF,
     radiusUsed: data.radiusUsed,
     ggccSugerido: data.ggccSugerido,

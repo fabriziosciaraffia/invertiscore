@@ -10,6 +10,7 @@ import {
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const RUTA = "GET /api/data/suggestions";
 
@@ -66,6 +67,9 @@ export interface Sugerencias {
   nearbyProperties?: NearbyPropertyPoint[];
   totalInRadius?: number;
   filteredInRadius?: number;
+  /** Solo ARRIENDO con source="radio": los avisos detrás de la mediana (ver
+   *  `MuestraArriendo`). El wizard la persiste en `zonaRadio.muestraArriendo`. */
+  muestraArriendo?: MuestraArriendo;
 }
 
 // Radio adaptativo: objetivo 20 comparables, tope 2000m.
@@ -119,8 +123,10 @@ export async function getSugerencias(
     }
 
     if (best && bestMap) {
+      const { muestra, ...resto } = best as Sugerencias & { muestra?: MuestraArriendo };
       return {
-        ...best,
+        ...resto,
+        ...(propType === "arriendo" && muestra ? { muestraArriendo: muestra } : {}),
         nearbyProperties: bestMap.all,
         totalInRadius: bestMap.all.length,
         filteredInRadius: dormFilter ? bestMap.filteredCount : bestMap.all.length,
