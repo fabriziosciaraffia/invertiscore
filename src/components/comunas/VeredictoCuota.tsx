@@ -30,9 +30,9 @@ const NOMBRE_TIPOLOGIA: Record<number, string> = {
 };
 
 const ETIQUETA_BANDA: Record<BandaEsfuerzo, string> = {
-  normal: "Banda 1 · negociación normal",
+  normal: "Banda 1 · negociación factible",
   "con-argumentos": "Banda 2 · alcanzable con argumentos",
-  dificil: "Banda 3 · difícil, requiere vendedor motivado",
+  dificil: "Banda 3 · difícil",
   estructural: "Banda 4 · estructural",
 };
 

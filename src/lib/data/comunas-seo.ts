@@ -3,6 +3,7 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { slugify } from "@/lib/utils";
 import { calcDividendo, calcPrecioParaCuota } from "@/lib/analysis";
 import { esTasaPlausible } from "@/lib/uf";
+import { BANDA_TOPE_FACTIBLE_PCT, BANDA_TOPE_ARGUMENTOS_PCT } from "@/lib/banda-esfuerzo";
 import { TASA_MERCADO_FALLBACK } from "@/lib/constants/subsidio";
 import {
   arriendoDeReferencia,
@@ -79,10 +80,16 @@ function median(values: number[]): number {
  */
 export type BandaEsfuerzo = "normal" | "con-argumentos" | "dificil" | "estructural";
 
-/** Clasifica el descuento (en % positivo) según los cortes de la doctrina. */
+/**
+ * Clasifica el descuento (en % positivo). ALINEADA CON EL INFORME DESDE EL 24-sep-2026: las tres
+ * primeras bandas usan los cortes declarados de Franco (`banda-esfuerzo.ts`: 5 / 10), no los 5 / 12
+ * doctrinales de antes (decisión de Fabrizio: «las de /comunas se alinean»). La cuarta, sobre 25,
+ * sigue siendo propia de esta página por la razón escrita arriba: acá se clasifica un agregado
+ * comunal, no un caso con su tope.
+ */
 export function bandaDeEsfuerzo(descuentoPct: number): BandaEsfuerzo {
-  if (descuentoPct <= 5) return "normal";
-  if (descuentoPct <= 12) return "con-argumentos";
+  if (descuentoPct <= BANDA_TOPE_FACTIBLE_PCT) return "normal";
+  if (descuentoPct <= BANDA_TOPE_ARGUMENTOS_PCT) return "con-argumentos";
   if (descuentoPct <= 25) return "dificil";
   return "estructural";
 }
