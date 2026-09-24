@@ -9,7 +9,7 @@
 // (`scripts/eval/golden/como-lo-pagas-catch-test.ts`).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { HallazgoDistanciaVeredicto, PalancaDistancia } from "./types";
+import type { HallazgoDistanciaVeredicto, MixPalancas, PalancaDistancia } from "./types";
 
 type ValorDistancia = HallazgoDistanciaVeredicto["valor"];
 
@@ -41,4 +41,34 @@ export function mixAComprar(v: ValorDistancia) {
 export function solasAComprar(v: ValorDistancia): PalancaDistancia[] {
   if (v.veredictoBase !== "BUSCAR OTRA") return v.palancas ?? [];
   return Array.isArray(v.palancasHastaComprar) ? v.palancasHastaComprar : [];
+}
+
+/**
+ * LA RECOMENDACIÓN DE FRANCO, UNA SOLA VEZ (24-sep-2026).
+ *
+ * La leen tres superficies y tienen que decir lo mismo: la card «Lo que haría yo», el pop-up
+ * (la celda marcada «Franco») y el capítulo «A qué precio cerrar» (`como-lo-pagas.ts`, que se
+ * ancla a su precio). Hasta hoy cada una la derivaba por su lado —la card y el capítulo
+ * saltaban el mix cuando era «redundante» con la palanca sola de precio y mostraban la palanca;
+ * el pop-up marcaba la celda coronada—, y con la corona por banda eso las habría separado: la
+ * celda Franco diría «pie 30% y 30 años, sin descuento» y la card «−25% de precio».
+ *
+ * Qué es: la raíz del mix hacia COMPRAR (`mixAComprar`) cuando cabe en el tope de capital y
+ * llega a COMPRAR —su celda es la que lleva `esElegida`—. Sin eso, la palanca sola de precio
+ * si alcanza (filas persistidas antes del mix, sin grilla). Si no, no hay recomendación.
+ *
+ * ⚠ LA REDUNDANCIA YA NO ESCONDE LA RECOMENDACIÓN. `redundanteConPalancaSola` decía «el mix
+ * repite una fila que la card ya muestra», y la card mostraba la fila. La card simplificada
+ * del 24-sep ya no muestra filas: muestra la recomendación, que es la raíz. El campo sigue
+ * existiendo para quien lo necesite; esta función no lo lee.
+ */
+export type RecomendacionFranco =
+  | { via: "mix"; mix: MixPalancas }
+  | { via: "precio_solo"; palanca: PalancaDistancia };
+
+export function recomendacionFranco(v: ValorDistancia): RecomendacionFranco | null {
+  const mix = mixAComprar(v);
+  if (mix && mix.dentroDelAlcance && (mix.destino ?? v.veredictoObjetivo) === "COMPRAR") return { via: "mix", mix };
+  const precio = solasAComprar(v).find((p) => p.palanca === "precio" && p.deltaPct < 0);
+  return precio ? { via: "precio_solo", palanca: precio } : null;
 }

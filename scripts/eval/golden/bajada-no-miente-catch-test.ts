@@ -41,8 +41,8 @@ const mixA = (destino: "COMPRAR" | "AJUSTA SUPUESTOS"): MixLoQueHariaYo => ({
   contraste: null,
   costo: "$1 más el día uno",
   descuento: "−4,8%",
-  // COHERENTE con el descuento de arriba: −4,8% cae bajo el corte de 5, o sea «normal».
-  bandaEsfuerzo: "normal",
+  // COHERENTE con el descuento de arriba: −4,8% cae bajo el corte de 5, o sea «factible» (banda-esfuerzo.ts, 24-sep-2026).
+  bandaEsfuerzo: "factible",
   sinDescuento: null,
 });
 

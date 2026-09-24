@@ -140,7 +140,10 @@ export function runInfoIndicadoresTier(): { hard: number } {
     }
     const P = visible(leer("src/components/analysis/shared/PopupAjustes.tsx"));
     if (/"Cap rate neto"/.test(P)) F("3 · el pop-up volvió a escribir «Cap rate neto» a mano (en STR es «Cap rate»)");
-    if (!/label=\{rotuloCapRate\(modalidad\)\}/.test(P)) F("3 · el pop-up no rotula el cap rate por modalidad");
+    // ⚠ ACTA (24-sep-2026) · el pop-up ya no muestra cap rate: los pares «hoy → con esta
+    // combinación» salieron, y la celda tocada dice cuatro cifras (cuánto te queda al mes, pie el
+    // día uno, TIR, Franco Score). Si vuelve a mostrarlo, tiene que rotularlo por modalidad.
+    if (/[Cc]ap rate/.test(P) && !/rotuloCapRate\(modalidad\)/.test(P)) F("3 · el pop-up volvió a mostrar un cap rate sin rotularlo por modalidad");
     if (!/modalidad="STR"/.test(visible(leer("src/components/analysis/str/HeroStrDictamen.tsx")))) F("3 · el hero STR no le dice al pop-up que es STR");
     if (!/modalidad="LTR"/.test(visible(leer("src/components/analysis/HeroLTR.tsx")))) F("3 · el hero LTR no le dice al pop-up que es LTR");
   }

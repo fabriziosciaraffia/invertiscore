@@ -6,50 +6,49 @@
 // —precio, pie y plazo— y para cada combinación de pie × plazo devuelve el
 // descuento mínimo de precio que cruza al veredicto de arriba.
 //
-// CUÁL DE ESAS COMBINACIONES SE OFRECE (13-sep-2026). Hasta el 12-sep ganaba la de MENOR
-// DESCUENTO, con la plata del día uno como desempate: un criterio sobre lo que hay que
-// pedirle a un tercero, no sobre el negocio que queda. Desde hoy gana la de MAYOR FRANCO
-// SCORE entre las que cruzan, y el descuento desempata.
+// CUÁL DE ESAS COMBINACIONES RECOMIENDA FRANCO (24-sep-2026) — LA BANDA MÁS FÁCIL, Y DENTRO
+// DE ELLA EL MEJOR NEGOCIO.
 //
-// POR QUÉ EL SCORE Y NO UNA MÉTRICA SOLA. Se midieron tres criterios sobre las mismas
-// celdas (375 filas LTR, 59 STR). Elegir por cash-on-cash sube el retorno anual pero BAJA
-// la TIR en 9 de cada 10 filas donde cambia la elegida: compra retorno con más pie, y más
-// pie es menos apalancamiento. Elegir por TIR hace lo inverso y encima la compra con
-// descuento —pide 10,6 puntos más de rebaja en la mediana—, o sea le exige mucho más al
-// vendedor y empeora el mes del comprador. El score pondera flujo, retorno sobre lo puesto
-// y TIR juntas, así que no hay que elegir entre las dos, y es la MISMA vara con la que la
-// página declara el veredicto: el mix deja de poder ofrecer una combinación que el informe
-// que la muestra considera peor negocio. Medido: sube el score en el 100% de las filas
-// donde cambia la elegida (mediana +2 pts), sube la TIR en el 69% y pide la mitad de
-// descuento que el criterio por TIR.
+// La regla: entre las combinaciones que llegan a la meta y caben en el tope de capital, se toma
+// la BANDA de dificultad del descuento más baja disponible —sin descuento · factible (≤5%) ·
+// con argumentos (5-10%) · difícil (>10%), `banda-esfuerzo.ts`— y dentro de esa banda la de
+// mayor Franco Score. El descuento, la plata del día uno, el pie y el plazo desempatan, en ese
+// orden. La raíz del mix y `esElegida` describen esa celda; la leen la card «Lo que haría yo»,
+// el pop-up (la celda «Franco») y el capítulo «A qué precio cerrar» (`como-lo-pagas.ts`, que se
+// ancla a su precio). Una sola corona para las tres superficies.
 //
-// El score se mide EN la celda con su descuento mínimo: si el descuento fuera libre la
-// regla lo llevaría siempre al tope. Llega por la sonda ya calculado, así que este módulo
-// no sabe de modalidades ni de unidades del motor.
+// LA HISTORIA, porque esta es la tercera regla y cada una se midió:
+//  · Hasta el 12-sep ganaba la de MENOR DESCUENTO (desempate: plata del día uno).
+//  · El 12-sep pasó a mayor retorno sobre lo puesto (`e19d97bc`): bajaba la TIR en 9 de 10.
+//  · El 13-sep pasó a MAYOR FRANCO SCORE (`b22fa085`). Medido entonces sobre 375 filas LTR y 59
+//    STR contra la de menor descuento: subía el score en el 100% de las que cambiaban, la TIR
+//    en el 69%, y pedía 6,1 puntos más de descuento en la mediana. Se aceptó a sabiendas.
 //
-// Y DESDE EL 16-sep-2026 ESA ELECCIÓN DEJÓ DE SER LO ÚNICO QUE SE MUESTRA.
+// POR QUÉ SE CAMBIÓ (Fabrizio, 24-sep). El pop-up pasó a mostrar la grilla como un MAPA: cada
+// celda dice cuánto descuento falta, con su banda. Con la corona por score, Franco marcaba
+// celdas «difíciles» teniendo al lado otras «factibles» o sin descuento que también llegaban a
+// Comprar, casi siempre por uno a tres puntos de score. El caso que lo mostró, La Reina
+// (78dc0cb3): −25% con score 69 contra −1,2% con score 68 y el mismo flujo del mes. La lectura
+// de Fabrizio: a igual negocio, pídele menos al vendedor; y la dificultad se lee por banda,
+// porque nadie negocia décimas.
 //
-// LA VARA ÚNICA ES PARA EL VEREDICTO, NO PARA EL CONSEJO. Franco juzga con una sola vara
-// —el Franco Score, la misma con la que la página declara el veredicto— y después muestra
-// que hay más de un camino para llegar ahí. El acta de arriba sigue vigente palabra por
-// palabra: decide con qué vara se CORONA la recomendación, y esa corona no se movió ni una
-// fila. Lo que entra al lado es qué MÁS se muestra, y son dos preguntas que el lector se
-// hace de verdad y que el score, justamente por ponderarlas juntas, no puede contestar por
-// separado: ¿cuál rinde más? ¿cuál me cierra el mes?
+// LO QUE SE PIERDE, dicho en voz alta (medido 24-sep, `scripts/of-medir-celda-franco.ts`):
+//  · El argumento central del 13-sep —«el mix no puede ofrecer una combinación que el propio
+//    informe considere peor negocio»— deja de valer. Cambia la celda en 120 de 422 AJUSTA LTR
+//    y 7 de 70 STR, y ahí la recomendada tiene 3 puntos menos de score en la mediana (máx 8).
+//  · «La TIR se compra con descuento»: la recomendada compra la salida con PIE. En las que
+//    cambian, el descuento baja 12,7 puntos (p50) y el pie del día uno sube UF 455 (p50); la
+//    TIR baja. El flujo del mes mejora en 101 de las 120.
+//  · La mejor por score sigue existiendo como RESPUESTA (`respuestas`, criterio «score») y la
+//    lee el prompt de la IA, que no se toca. Ya no es la raíz: ver `coronaPorCriterio`.
 //
-// La medición de arriba —el CoC sube el retorno y baja la TIR; la TIR pide 10,6 puntos más
-// de descuento— no dice que esas preguntas sean malas. Dice que son malas COMO VARA ÚNICA,
-// porque cada una compra su virtud pagándola con la otra y en silencio. Como respuesta
-// declarada, al lado de la recomendada y con su costo escrito, ese mismo trade-off deja de
-// ser una trampa y pasa a ser la información: el contrato del menú obliga a que cada línea
-// lo diga en voz alta («rinde 3,2 puntos más y libera UF 205 el día uno, a cambio de 4,5
-// puntos más de descuento»). Ofrecer sin decir el precio es lo que el acta de arriba
-// prohíbe; ofrecer diciéndolo es lo contrario.
+// El score se sigue midiendo EN la celda con su descuento mínimo: si el descuento fuera libre,
+// ordenar por score lo llevaría siempre al tope. Llega por la sonda ya calculado, así que este
+// módulo no sabe de modalidades ni de unidades del motor. En «mejorar» (COMPRAR) no hay
+// descuento: toda la grilla está en la banda cero y corona el score, como siempre.
 //
-// Por eso la raíz sigue describiendo la equilibrada y el menú entra al lado, en
-// `respuestas`: ninguno de los veinte consumidores de la raíz se entera. Medido sobre el
-// parque, contra una predicción firmada ANTES de escribir el motor: la equilibrada es
-// idéntica en 364 de 364 filas; 228 dan dos respuestas distintas y 136 fusionan.
+// EL MENÚ DE RESPUESTAS (16-sep-2026) sale del pop-up con este cambio: el mapa las reemplaza.
+// `respuestas` se sigue calculando porque el prompt lo lee.
 //
 // El arriendo y la tasa quedan fuera por definición, no por costo: el arriendo lo
 // pone el mercado y la tasa el banco. Un mix que le pide al comprador mover algo
@@ -66,6 +65,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { MixPalancas, PalancaDistancia, Veredicto } from "./types";
+import { nivelDeDescuento } from "./banda-esfuerzo";
 
 /** Paso de la grilla del pie, en puntos. El mismo que usa `simularPieYPlazoStr`. */
 export const MIX_PIE_PASO_PCT = 5;
@@ -216,9 +216,9 @@ export type CeldaMix = {
   /** La combinación declarada en el análisis (pie y plazo de hoy). */
   esActual: boolean;
   /**
-   * La que el mix corona POR SCORE. Exactamente una celda la lleva, y sigue siendo así con
-   * el menú de respuestas: es la tinta plena del pop-up, que el contrato manda no mover
-   * («el fondo de tinta no se mueve: marca siempre lo que Franco recomienda»).
+   * LA RECOMENDACIÓN DE FRANCO: la que corona la raíz —desde el 24-sep-2026 por banda de
+   * dificultad y después score, ver la cabecera—. Exactamente una celda la lleva: es la celda
+   * «Franco» del pop-up, la de la card y la del capítulo «A qué precio cerrar».
    *
    * Las otras coronas —tasa y flujo— NO entran acá; viajan en `coronaDe`. Quien quiera
    * «¿qué respuestas corona esta celda?» tiene que preguntarle a ese campo: éste contesta
@@ -291,8 +291,10 @@ export type CeldaMix = {
   /**
    * LOS CRITERIOS QUE CORONAN ESTA CELDA (16-sep-2026). Vacío en las que no corona ninguno.
    *
-   * ⚠ ES REDUNDANTE CON `esElegida`, A PROPÓSITO, Y HAY QUE SABERLO PARA QUE NO DIVERJAN:
-   * `esElegida` ⟺ `coronaDe.includes("score")`. Las dos dicen lo mismo de la equilibrada.
+   * ⛔ DESDE EL 24-sep-2026 YA NO ES REDUNDANTE CON `esElegida`. Hasta ese día valía
+   * `esElegida` ⟺ `coronaDe.includes("score")`, porque la raíz coronaba por score. Ahora la
+   * raíz corona por banda y después score, y `coronaDe: ["score"]` marca la de MEJOR SCORE, que
+   * solo lee el prompt. Pueden caer en celdas distintas (120 de 422 filas AJUSTA LTR, medido).
    *
    * Se conservan las dos porque contestan preguntas distintas y tienen dueños distintos.
    * `esElegida` es el booleano que ya viaja PERSISTIDO en las filas del parque y del que
@@ -406,7 +408,7 @@ export type RespuestaMix = {
  * salida más barata cuando ninguna cabe. Quien lea esta unión como «cuatro criterios
  * equivalentes» va a terminar ofreciendo el borde como si fuera un plan.
  */
-export type CriterioEleccion = CriterioRespuesta | "costo";
+export type CriterioEleccion = CriterioRespuesta | "costo" | "franco";
 
 /**
  * EL VALOR CON EL QUE COMPITE CADA CRITERIO. `null` ⇒ esa celda no puede contestar esa
@@ -428,7 +430,8 @@ const VALOR_DEL_CRITERIO: Record<CriterioRespuesta, (c: Combinacion) => number |
 };
 
 export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: CriterioEleccion): T[] {
-  const valor = criterio === "costo" ? null : VALOR_DEL_CRITERIO[criterio];
+  // «franco» compite por el score DENTRO de su banda: el valor es el del score.
+  const valor = criterio === "costo" ? null : VALOR_DEL_CRITERIO[criterio === "franco" ? "score" : criterio];
   const porValor = (a: T, b: T) => {
     if (!valor) return 0;
     // null al final: sin número no se compite (filas legacy sin métricas recomputables, y
@@ -480,7 +483,12 @@ export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: C
         (a, b) => a.costoPtsPrecio - b.costoPtsPrecio || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios
       : criterio === "flujo"
         ? (a, b) => porValor(a, b) || a.costoDiaUnoUF - b.costoDiaUnoUF || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios
-        : (a, b) => porValor(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios;
+        : criterio === "franco"
+          ? // LA RECOMENDACIÓN (24-sep-2026): primero la BANDA de dificultad más baja (sin
+            // descuento · factible · con argumentos · difícil), y dentro de ella el mejor score.
+            // El resto del desempate es el mismo del score. Ver el acta de la cabecera.
+            (a, b) => nivelDeDescuento(a.descuentoPct) - nivelDeDescuento(b.descuentoPct) || porValor(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios
+          : (a, b) => porValor(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios;
   return [...xs].sort(cmp);
 }
 
@@ -771,15 +779,16 @@ export function calcularMixPalancas(p: {
   const alcanzables = mejorar ? combos : combos.filter((c) => c.costoPtsPrecio <= MIX_COSTO_TOPE_PTS_PRECIO);
   const dentroDelAlcance = alcanzables.length > 0;
 
-  // LA REGLA (13-sep-2026): entre las que cruzan, la de MAYOR Franco Score; el descuento
-  // desempata. Es la misma vara con la que la página declara el veredicto, así que el mix
-  // no puede ofrecer una combinación que el propio informe considere peor negocio.
+  // LA REGLA (24-sep-2026, reemplaza la del 13-sep): entre las que cruzan, la de la BANDA de
+  // dificultad más baja disponible, y dentro de ella la de mayor Franco Score. Ver el acta de
+  // la cabecera. En «mejorar» (COMPRAR) no hay descuento que clasificar y sigue el score: toda
+  // la grilla está en la banda cero.
   //
   // Sin ninguna alcanzable se devuelve igual la MÁS BARATA de las que cruzan, con
   // `dentroDelAlcance: false`. Mismo criterio que `deltaMinimoFueraDeTope`: el número
   // existe aunque la puerta esté cerrada, y decir «costaría 30 puntos del precio» es
   // más honesto que callar. Quien decide si eso es una salida es `sinSalida`, no acá.
-  const elegibles = dentroDelAlcance ? elegirCelda(alcanzables, "score") : elegirCelda(combos, "costo");
+  const elegibles = dentroDelAlcance ? elegirCelda(alcanzables, mejorar ? "score" : "franco") : elegirCelda(combos, "costo");
   const mejor = elegibles[0];
   const segunda = elegibles[1] ?? null;
 
@@ -802,11 +811,12 @@ export function calcularMixPalancas(p: {
     a.piePct === b.piePct && a.plazoAnios === b.plazoAnios && a.descuentoPct === b.descuentoPct;
 
   const coronaPorCriterio = (criterio: CriterioRespuesta): Combinacion | null => {
-    // LA EQUILIBRADA ES `mejor`, POR CONSTRUCCIÓN Y NO POR COINCIDENCIA. Recalcularla acá
-    // la dejaría libre de divergir de la raíz en el borde donde ninguna celda alcanza y
-    // `mejor` sale del narrador; que la primera línea del menú SEA la raíz es lo que hace
-    // que ningún consumidor de la raíz se entere de que hay menú.
-    if (criterio === "score") return mejor;
+    // ⚠ DESDE EL 24-sep-2026 LA RESPUESTA «score» YA NO ES LA RAÍZ. La raíz corona por banda
+    // y después score (la recomendación); esta respuesta sigue siendo «la de mejor score», que
+    // el pop-up ya no muestra pero el PROMPT sí lee (`caminosQueAbren.recomendado`), y Fabrizio
+    // decidió no tocar el prompt: la IA sale del informe. En el borde sin alcanzables y en
+    // «mejorar» las dos coinciden con `mejor`, como antes.
+    if (criterio === "score") return !dentroDelAlcance || mejorar ? mejor : elegirCelda(alcanzables, "score")[0];
     const caben = combos.filter((c) => c.costoPtsPrecio <= TOPE_DE_LA_RESPUESTA[criterio]);
     if (caben.length === 0) return null;
     const primera = elegirCelda(caben, criterio)[0];

@@ -9,7 +9,6 @@ import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
 import { PopupAjustes, hayAjustesQueMostrar } from "@/components/analysis/shared/PopupAjustes";
-import { metricaValorONull } from "@/lib/types";
 import { PopupAjustesTokens } from "@/components/analysis/shared/PopupAjustesTokens";
 import { PosicionFranco, type FooterPosicion } from "@/components/analysis/shared";
 import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
@@ -19,7 +18,9 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import { LoQueHariaYoBloque } from "@/components/analysis/shared/LoQueHariaYoBloque";
+import { LoQueHariaYoBloque, CardBuscarOtra } from "@/components/analysis/shared/LoQueHariaYoBloque";
+import { causaBuscarOtraStr, distanciaBuscarOtra } from "@/lib/buscar-otra-copy";
+import type { BrazoSTR } from "@/lib/engines/short-term-score";
 import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
 
 /**
@@ -155,10 +156,11 @@ export function HeroStrDictamen({
 
   // ¿HAY ALGO QUE MOSTRAR? (13-sep-2026) Sin grilla NI palancas que crucen, la card ya lo
   // dice todo y el pop-up repetiría. Ahí no se dibuja el botón: 73 filas STR.
+  // BUSCAR OTRA NO TIENE POP-UP (24-sep-2026): `hayAjustesQueMostrar` lo dice por construcción.
   const hayQueMostrar = hayAjustesQueMostrar({
     veredicto: veredicto as Veredicto,
     distancia: distancia ?? null,
-    filasComprar: bloqueDeterminista?.filas ?? null,
+    mixComprar: simulacion?.mixComprar ?? null,
   });
   const cuerpoAjustes = (
     <>
@@ -167,26 +169,12 @@ export function HeroStrDictamen({
         veredicto={veredicto as Veredicto}
         modalidad="STR"
         distancia={distancia ?? null}
-        filasComprar={bloqueDeterminista?.filas ?? null}
         // La grilla de COMPRAR sale de la simulación, como las otras dos matrices de STR, y
         // no del hallazgo de distancia, que es null en COMPRAR. Ver `simular-str.ts`.
         mixComprar={simulacion?.mixComprar ?? null}
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0)}
-        antes={(() => {
-          const base = results.escenarios?.base;
-          if (!base) return null;
-          const coc = metricaValorONull(base.cashOnCash);
-          return {
-            cuotaMensual: results.metrics?.desgloseFall?.cuota ?? null,
-            flujoMensual: base.flujoCajaMensual ?? null,
-            cocPct: coc === null ? null : coc * 100,
-            capRateNetoPct: Number.isFinite(base.capRate) ? base.capRate * 100 : null,
-            tirPct: results.exitScenario ? metricaValorONull(results.exitScenario.tirAnual) : null,
-            score: (results as { francoScore?: { score?: number } }).francoScore?.score ?? null,
-          };
-        })()}
       />
     </>
   );
@@ -197,7 +185,7 @@ export function HeroStrDictamen({
       : distancia && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto",
-          k: "Recomendación de ajustes",
+          k: "Ajustar supuestos",
           l: (() => {
             const vias = distancia.valor.vias;
             if (!vias || vias.length === 0) return lineaFooterVias(null, 5);
@@ -212,7 +200,7 @@ export function HeroStrDictamen({
               salidaEscalon ? etiquetaVeredicto("AJUSTA SUPUESTOS") : null,
             );
           })(),
-          btn: "Ver ajustes",
+          btn: "Ver todas las combinaciones",
           cuerpo: cuerpoAjustes,
         }
       : veredicto === "COMPRAR"
@@ -222,9 +210,9 @@ export function HeroStrDictamen({
             key: "sensibilidad",
             // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
             // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
-            k: "Tu margen",
-            l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
-            btn: "Ver margen",
+            k: "Cómo queda con otro pie o plazo",
+            l: "Franco probó cada combinación de pie y plazo al precio pedido.",
+            btn: "Ver cómo queda con otro pie o plazo",
             cuerpo: cuerpoAjustes,
           }
         : null;
@@ -235,22 +223,40 @@ export function HeroStrDictamen({
   // «Analízalo como renta larga» (la salida en sin salida) se retiró el 22-sep-2026 con la
   // ventaja vs LTR: el informe STR ya no compara contra el largo. Las comunas alternativas de
   // STR quedan para cuando el motor STR las calcule (§12).
+  // ── BUSCAR OTRA: LA CAUSA Y LA DISTANCIA (24-sep-2026) ─────────────────────
+  // Sin combinación que ofrecer, la card dice por qué no conviene y a qué distancia queda
+  // Comprar. Sin botón y sin pop-up. El texto sale de `buscar-otra-copy.ts`.
+  const esBuscar = veredicto === "BUSCAR OTRA";
+  const bePctMercado = (() => {
+    const be = Number((results as { breakEvenPctDelMercado?: number }).breakEvenPctDelMercado);
+    // El campo viaja como fracción (1,27) en unas filas y como porcentaje (127) en otras.
+    return Number.isFinite(be) && be > 0 ? (be <= 5 ? be * 100 : be) : null;
+  })();
+  const cardBuscar = esBuscar ? (
+    <CardBuscarOtra
+      causa={causaBuscarOtraStr({
+        motivos: (results as { francoScore?: { gates?: { motivos?: BrazoSTR[] } } }).francoScore?.gates?.motivos ?? [],
+        flujoMensualCLP: Number(results.escenarios?.base?.flujoCajaMensual ?? 0),
+        breakEvenPctDelMercado: bePctMercado,
+      })}
+      distancia={distanciaBuscarOtra(distancia?.valor, "str")}
+    />
+  ) : null;
+
   const recomendacion = (
     <PosicionFranco
       cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
       prosa={estrategia ? renderPlumon(estrategia) : undefined}
       bloque={
-        bloqueDeterminista ? (
-          <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} />
-        ) : undefined
+        cardBuscar ?? (bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined)
       }
       titulo="La recomendación de Franco"
-      estado={estadoRec}
+      estado={esBuscar ? "sin_salida" : estadoRec}
       fechaFirma={fechaFirma}
       footer={
         /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan ajustes
            que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo; cambia el rótulo. */
-        footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+        esBuscar ? null : footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
       }
       tipo="str"
       veredicto={veredicto}

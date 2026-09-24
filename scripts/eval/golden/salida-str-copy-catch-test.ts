@@ -186,8 +186,12 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
     // que sobre el texto crudo una nota satisface al predicado. (Cuarta vez en este arco.)
     const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx")
       .replace(/\{\/\*[^]*?\*\/\}/g, "").replace(/\/\*[^]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    if (!/score: "Lo que Franco recomienda"/.test(POPUP)) {
-      F("2b · el menú dejó de llamarla «Lo que Franco recomienda»: el cualificador del PDF y del share quedó con un nombre que ya no existe");
+    // ⚠ ACTA (24-sep-2026) · el menú de tres respuestas salió del pop-up (decisión de Fabrizio).
+    // La recomendada del PDF y del share es ahora la celda marcada «Franco» en la matriz, que
+    // es la raíz del mix (`esElegida`): el cualificador tiene que seguir nombrando algo que el
+    // pop-up muestra con ese nombre, y que salga de `celdaFranco`, no de otra elección.
+    if (!/<span className="pjx-tag fr">Franco<\/span>/.test(POPUP) || !/celdaFranco\(/.test(POPUP)) {
+      F("2b · el pop-up dejó de marcar la celda «Franco» desde `celdaFranco`: el cualificador del PDF y del share quedó con un nombre que ya no existe");
     }
   }
 
@@ -273,7 +277,9 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   // el tier del pop-up (`popup-ajustes`) lo caza por el lado del hero.
   const popup = leer("src/components/analysis/shared/PopupAjustes.tsx");
   if (!popup) F("3 · no se encontró PopupAjustes, el cuerpo del pop-up");
-  if (!/mixPalancas/.test(popup) || !/\.celdas/.test(popup)) F("3 · el pop-up no lee la grilla del motor (`mixPalancas.celdas`)");
+  // ⚠ ACTA (24-sep-2026) · el pop-up lee la grilla por `grillaDelPopup` (matriz-popup.ts), que
+  // devuelve el mix del motor según el veredicto. Se exige esa fuente y sus celdas.
+  if (!/grillaDelPopup\(/.test(popup) || !/grilla\?\.celdas/.test(popup)) F("3 · el pop-up no lee la grilla del motor (`grillaDelPopup` → celdas)");
   const pdf = leer("src/app/analisis/renta-corta/[id]/documento/DocumentoSTR.tsx");
   if (!/pieDocumentoSalidaStr\(/.test(pdf)) F("3 · DocumentoSTR no usa pieDocumentoSalidaStr con combinación");
   const hero = leer("src/components/analysis/str/HeroStrDictamen.tsx");

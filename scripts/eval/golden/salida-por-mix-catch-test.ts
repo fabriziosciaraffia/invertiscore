@@ -220,8 +220,11 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   // hacer, y se fija acá, es leer la grilla: una superficie que dibuja el mix desde otra
   // fuente podría mostrar una combinación distinta de la que la card promete.
   const popup = readFileSync(join(__dirname, "..", "..", "..", "src/components/analysis/shared/PopupAjustes.tsx"), "utf8");
-  if (!/mixPalancas/.test(popup) || !/\.celdas/.test(popup)) F("7 · A · el pop-up no dibuja la grilla del motor (`mixPalancas.celdas`)");
-  if (!/despues/.test(popup)) F("7 · A · el pop-up no lee el «después» de la celda elegida");
+  // ⚠ ACTA (24-sep-2026) · el pop-up nuevo lee la grilla por `grillaDelPopup` y marca la
+  // elegida por `celdaFranco` (la raíz del mix, la misma que usa `salidaPorMix`). El «después»
+  // de la celda salió con los pares: la celda tocada dice sus dos veredictos y sus 4 cifras.
+  if (!/grillaDelPopup\(/.test(popup) || !/grilla\?\.celdas/.test(popup)) F("7 · A · el pop-up no dibuja la grilla del motor (`grillaDelPopup` → celdas)");
+  if (!/celdaFranco\(/.test(popup)) F("7 · A · el pop-up no marca la celda elegida desde `celdaFranco`");
 
   // B es el único que no importa el módulo: recibe la respuesta por parámetro, porque
   // `lineaFooterVias` es una plantilla de conteo y no debe saber de hallazgos.

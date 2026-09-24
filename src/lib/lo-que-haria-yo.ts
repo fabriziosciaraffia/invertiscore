@@ -16,7 +16,7 @@
 
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia, Veredicto } from "./types";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
-import { bandaEsfuerzoDescuento, type BandaEsfuerzo } from "./distancia-veredicto-hallazgo";
+import { bandaDeDescuento, type BandaDescuento } from "./banda-esfuerzo";
 import { bandaMargen, type BandaMargen } from "./sensibilidad-hallazgo";
 
 /** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
@@ -85,7 +85,7 @@ export interface MixLoQueHariaYo {
    *
    * null cuando no hay descuento que juzgar — el mix cruza sin pedir nada.
    */
-  bandaEsfuerzo: BandaEsfuerzo | null;
+  bandaEsfuerzo: BandaDescuento | null;
   /**
    * Qué se dice DONDE IRÍA EL DESCUENTO cuando el mix no pide ninguno. Hoy ahí no se
    * dibujaba nada, y un hueco no distingue «no pide» de «no se calculó» — que es
@@ -395,7 +395,11 @@ export function construirLoQueHariaYo(p: {
   // combinación medida hacia COMPRAR. LTR no la emite todavía (AUSENTE = no calculado),
   // así que cae al de siempre, que la card filtra por destino: nada cambia allá.
   const m = esBuscar && dv.mixPalancasHastaComprar !== undefined ? dv.mixPalancasHastaComprar : dv.mixPalancas;
-  const dibujarMix = !!m && m.dentroDelAlcance && !m.redundanteConPalancaSola;
+  // ⛔ LA REDUNDANCIA YA NO ESCONDE EL MIX (24-sep-2026). Cuando el mix repetía una palanca
+  // sola, la card mostraba la palanca como línea principal. La card simplificada muestra SOLO
+  // la recomendación de Franco, y la recomendación es la raíz del mix: la misma que marca la
+  // celda «Franco» del pop-up y la que ancla «A qué precio cerrar» (`recomendacionFranco`).
+  const dibujarMix = !!m && m.dentroDelAlcance;
   const mix: MixLoQueHariaYo | null = dibujarMix && m
     ? {
         // Cuando NO hay ninguna palanca sola, el mix deja de ser un apéndice y pasa a
@@ -436,7 +440,7 @@ export function construirLoQueHariaYo(p: {
         costo: m.costoDiaUnoUF > 0 ? `Poner ese pie cuesta ${enUF(m.costoDiaUnoUF)} más el día uno.` : null,
         descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
         // La MISMA banda que el pop-up, del mismo número y por la misma función.
-        bandaEsfuerzo: m.sinDescuento ? null : bandaEsfuerzoDescuento(Math.abs(m.descuentoPct)).banda,
+        bandaEsfuerzo: m.sinDescuento ? null : bandaDeDescuento(Math.abs(m.descuentoPct)),
         // Va en el lugar de «Negocias −X% dcto. en precio», con su flecha y sin paréntesis.
         sinDescuento: m.sinDescuento ? "Sin pedirle un peso al vendedor" : null,
       }

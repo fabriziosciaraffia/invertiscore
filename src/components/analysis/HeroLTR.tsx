@@ -7,12 +7,11 @@ import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { PopupAjustes, hayAjustesQueMostrar } from "./shared/PopupAjustes";
-import { metricaValorONull } from "@/lib/types";
-import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { PopupAjustesTokens } from "./shared/PopupAjustesTokens";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
-import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
+import { LoQueHariaYoBloque, CardBuscarOtra } from "./shared/LoQueHariaYoBloque";
+import { causaBuscarOtraLtr, distanciaBuscarOtra } from "@/lib/buscar-otra-copy";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "@/lib/arriendo-referencia";
@@ -222,10 +221,11 @@ export function HeroLTR({
   // alternativa de comunas— y un pop-up que repita eso es ruido. Ahí NO se dibuja el botón.
   // Medido: 267 filas LTR caen en ese caso. OJO con no confundirlo con el estado
   // `sin_salida` de la card (600 filas): 333 de esas SÍ tienen grilla y sí abren el pop-up.
+  // BUSCAR OTRA NO TIENE POP-UP (24-sep-2026): `hayAjustesQueMostrar` lo dice por construcción.
   const hayQueMostrar = hayAjustesQueMostrar({
     veredicto: veredicto as Veredicto,
     distancia: distanciaRow ?? null,
-    filasComprar: bloqueDeterminista?.filas ?? null,
+    mixComprar: results?.mixComprar ?? null,
   });
   const cuerpoAjustes = (
     <>
@@ -234,26 +234,12 @@ export function HeroLTR({
         veredicto={veredicto as Veredicto}
         modalidad="LTR"
         distancia={distanciaRow ?? null}
-        filasComprar={bloqueDeterminista?.filas ?? null}
         // La grilla de COMPRAR viene por su propio campo: el hallazgo de distancia es null
         // ahí, así que no puede viajar dentro. Ver el jsdoc de `FullAnalysisResult`.
         mixComprar={results?.mixComprar ?? null}
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(inputData?.precio ?? 0)}
-        antes={
-          results?.metrics
-            ? {
-                cuotaMensual: results.metrics.dividendo ?? null,
-                flujoMensual: results.metrics.flujoNetoMensual ?? null,
-                cocPct: metricaValorONull(results.metrics.cashOnCash),
-                // La misma cifra que el hero (`capRateNetoLtrPct`): una sola «cap rate neto».
-                capRateNetoPct: capRateNetoLtrPct(results.metrics),
-                tirPct: metricaValorONull(results.exitScenario?.tir),
-                score: results.score ?? null,
-              }
-            : null
-        }
       />
     </>
   );
@@ -263,7 +249,7 @@ export function HeroLTR({
       : distanciaRow && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto" as const,
-          k: "Recomendación de ajustes",
+          k: "Ajustar supuestos",
           // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
           // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
           // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
@@ -276,7 +262,7 @@ export function HeroLTR({
               salidaPorMix(distanciaRow.valor) !== null,
             );
           })(),
-          btn: "Ver ajustes",
+          btn: "Ver todas las combinaciones",
           // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo.
           // (Hasta el 17-sep-2026 ese cuerpo era `DrawerDistanciaLtr`, que se borró con el
           //  resto de lo que colgaba de `drawerSequence = ["zona"]`; hoy el cuerpo es
@@ -294,9 +280,9 @@ export function HeroLTR({
             key: "sensibilidad" as const,
             // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
             // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
-            k: "Tu margen",
-            l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
-            btn: "Ver margen",
+            k: "Cómo queda con otro pie o plazo",
+            l: "Franco probó cada combinación de pie y plazo al precio pedido.",
+            btn: "Ver cómo queda con otro pie o plazo",
             sub: undefined,
             cuerpo: cuerpoAjustes,
           }
@@ -400,13 +386,29 @@ export function HeroLTR({
   /* Pieza compartida desde T1 (PosicionFranco): la caja IA + la firma en el cuerpo
      con la línea roja, y el footer con el botón que abre el modal. Sin caja ni
      footer no hay bloque. */
+  // ── BUSCAR OTRA: LA CAUSA Y LA DISTANCIA (24-sep-2026) ─────────────────────
+  // Sin combinación que ofrecer, la card dice por qué no conviene y a qué distancia queda
+  // Comprar. Sin botón y sin pop-up. El texto sale de `buscar-otra-copy.ts`.
+  const esBuscar = veredicto === "BUSCAR OTRA";
+  const cardBuscar = esBuscar ? (
+    <CardBuscarOtra
+      causa={causaBuscarOtraLtr({
+        brazosGate1Activos: distanciaRow?.valor.brazosGate1Activos ?? [],
+        arriendoCLP: Number(inputData?.arriendo ?? 0),
+        flujoMensualCLP: Number(results?.metrics?.flujoNetoMensual ?? 0),
+        desviacionPct: results?.metrics?.precioVsComuna?.confiable ? results.metrics.precioVsComuna.desviacionPct ?? null : null,
+      })}
+      distancia={Number(inputData?.arriendo ?? 0) > 0 ? distanciaBuscarOtra(distanciaRow?.valor, "ltr") : null}
+    />
+  ) : null;
+
   const recomendacion = (
     <PosicionFranco
       cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
       bloque={
-          bloqueDeterminista ? (
+          cardBuscar ?? (bloqueDeterminista ? (
             <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={lineaAlternativa} />
-          ) : undefined
+          ) : undefined)
         }
       prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
       chip={dosBloques ? objetivoChip : undefined}
@@ -420,7 +422,7 @@ export function HeroLTR({
            comunas y el padre no se enteraba: habría dibujado un botón hacia un modal vacío.
            EL RÓTULO es el eco de la línea que la cita, el mismo patrón de «Ver qué se probó»
            contra «Las combinaciones que Franco probó». */
-        alternativa && alternativa.todas.length > 0
+        !esBuscar && alternativa && alternativa.todas.length > 0
           ? {
               key: "alternativaComunas",
               k: "Dónde sí convendría",
@@ -430,14 +432,14 @@ export function HeroLTR({
           : null
       }
       titulo="La recomendación de Franco"
-      estado={estadoRec}
+      estado={esBuscar ? "sin_salida" : estadoRec}
       fechaFirma={fechaFirma}
       footer={
         /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
            ajustes que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo — ahí
            sigue el mix que llega al escalón intermedio, que es donde el contrato
            §5 lo manda. Solo cambia el rótulo del botón. */
-        footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+        esBuscar ? null : footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
       }
       tipo="ltr"
       veredicto={veredicto}

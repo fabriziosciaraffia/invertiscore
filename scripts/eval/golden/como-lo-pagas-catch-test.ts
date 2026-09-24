@@ -88,9 +88,12 @@ function tierPuro() {
   const recAjusta = recomendacionPagas({ veredicto: "AJUSTA SUPUESTOS", precioUF: 3000, piePctActual: 20, plazoActual: 25, distancia: dv({ mixPalancas: mix({ descuentoPct: 12.9 }) }) });
   if (!recAjusta || recAjusta.descuentoPct !== 12.9) F("1 · AJUSTA debía anclar a mixPalancas (que ya apunta a Comprar)");
 
-  // 2 · redundante ⇒ palanca sola; sin descuento ⇒ el precio de hoy
+  // 2 · redundante ⇒ EL MIX (invertido, acta del 24-sep-2026); sin descuento ⇒ el precio de hoy
+  // Antes, con el mix redundante el capítulo anclaba a la palanca precio sola. Ahora la card, la
+  // celda «Franco» del pop-up y este capítulo leen la MISMA recomendación (`recomendacionFranco`):
+  // si la raíz del mix llega a Comprar dentro del alcance, es ella, redundante o no.
   const red = recomendacionPagas({ veredicto: "AJUSTA SUPUESTOS", precioUF: 3000, piePctActual: 20, plazoActual: 25, distancia: dv({ mixPalancas: mix({ redundanteConPalancaSola: true }), palancas: [{ palanca: "precio", actual: 3000, objetivo: 2670, deltaPct: -11 }] }) });
-  if (!red || red.via !== "precio_solo" || red.precioUF !== 2670 || red.descuentoPct !== 11 || red.pieA !== 20) F("2 · con mix redundante el ancla debía ser la palanca precio sola (UF 2.670, −11%)");
+  if (!red || red.via !== "mix") F(`2 · con mix redundante el ancla tiene que seguir siendo el mix (la misma recomendación que la card y el pop-up); dio ${red?.via ?? "null"}`);
   const sinD = construirComoLoPagas(entrada({ distancia: dv({ mixPalancas: mix({ sinDescuento: true, descuentoPct: 0 }) }) }));
   if (sinD.caso !== "sin_descuento" || sinD.rec?.precioUF !== 3000 || sinD.rec?.descuentoPct !== 0) F("2 · mix sin descuento debía ser sin_descuento con el precio de hoy");
   if (!sinD.pasos.some((p) => p.k === "Qué pides" && /sin pedirle un peso/.test(texto(p.segs)))) F("2 · sin_descuento debía decir «sin pedirle un peso»");
@@ -98,7 +101,7 @@ function tierPuro() {
   if (fuera !== null) F("2 · mix fuera de alcance sin palanca sola no debía anclar nada");
 
   // 3 · el caso lo decide la evidencia
-  const rec = (d: number): RecomendacionPagas => ({ precioUF: 3000 * (1 - d / 100), descuentoPct: d, via: "mix", pieDe: 20, pieA: 30, plazoDe: 25, plazoA: 25, destino: "COMPRAR", costoDiaUnoUF: 100, descuentoSoloPrecioPct: null, banda: d <= 5 ? "normal" : d <= 12 ? "con_argumentos" : "dificil" });
+  const rec = (d: number): RecomendacionPagas => ({ precioUF: 3000 * (1 - d / 100), descuentoPct: d, via: "mix", pieDe: 20, pieA: 30, plazoDe: 25, plazoA: 25, destino: "COMPRAR", costoDiaUnoUF: 100, descuentoSoloPrecioPct: null, banda: d <= 5 ? "factible" : d <= 10 ? "con_argumentos" : "dificil" });
   const casos: Array<[string, Parameters<typeof casoPagas>[0], string]> = [
     ["comprar", { veredicto: "COMPRAR", rec: null, sobre: null, recVsMedianaPct: null }, "comprar"],
     ["sin salida", { veredicto: "BUSCAR OTRA", rec: null, sobre: sobre(18), recVsMedianaPct: null }, "sin_salida"],
@@ -109,7 +112,7 @@ function tierPuro() {
     ["favorable, con argumentos", { veredicto: "AJUSTA SUPUESTOS", rec: rec(9.5), sobre: sobre(-6), recVsMedianaPct: -15 }, "caja"],
     ["favorable, difícil", { veredicto: "AJUSTA SUPUESTOS", rec: rec(12.9), sobre: sobre(-17), recVsMedianaPct: -28 }, "dificil_sin_evidencia"],
     ["neutral, difícil", { veredicto: "AJUSTA SUPUESTOS", rec: rec(13.3), sobre: sobre(0), recVsMedianaPct: -13 }, "dificil_sin_evidencia"],
-    ["sin descuento", { veredicto: "AJUSTA SUPUESTOS", rec: { ...rec(0), banda: "normal" }, sobre: sobre(-5), recVsMedianaPct: -5 }, "sin_descuento"],
+    ["sin descuento", { veredicto: "AJUSTA SUPUESTOS", rec: { ...rec(0), banda: "factible" }, sobre: sobre(-5), recVsMedianaPct: -5 }, "sin_descuento"],
   ];
   for (const [k, p, esperado] of casos) { const got = casoPagas(p); if (got !== esperado) F(`3 · ${k}: esperaba ${esperado}, dio ${got}`); }
   // …y el modelo entero mueve «con qué» con el caso
@@ -184,7 +187,10 @@ function tierPuro() {
   if (/mixPalancasHastaComprar \?\?|\?\? (dv|v)\.mixPalancas\b/.test(lib)) F("6 · como-lo-pagas.ts no puede tener un fallback al escalón");
   if (!/from "\.\/mix-a-comprar"/.test(lib)) F("6 · como-lo-pagas.ts lee mixAComprar de la lib");
   const popup = src("src/components/analysis/shared/PopupAjustes.tsx");
-  if (!/import \{ mixAComprar, solasAComprar \} from "@\/lib\/mix-a-comprar"/.test(popup) || /^function mixAComprar/m.test(popup)) F("6 · el pop-up importa mixAComprar de la lib y no lo define");
+  // ⚠ ACTA (24-sep-2026) · el pop-up lee la grilla por `matriz-popup.ts`, que es quien importa
+  // `mixAComprar` y `recomendacionFranco` de la lib. Lo invariante sigue: nadie lo redefine.
+  const mz = src("src/lib/matriz-popup.ts");
+  if (!/from "\.\/mix-a-comprar"/.test(mz) || /^(export )?function mixAComprar/m.test(popup + mz) || !/from "@\/lib\/matriz-popup"/.test(popup)) F("6 · el pop-up tiene que leer la grilla por matriz-popup.ts, que importa mixAComprar de la lib sin redefinirlo");
   const drawer = src("src/components/ui/AnalysisDrawer.tsx");
   if (/export function (DrawerNegociacion|PlanNegociacion)\b/.test(drawer)) F("6 · el drawer de negociación y el plan tienen que estar retirados");
   const strH = src("src/lib/str-hallazgos.ts");

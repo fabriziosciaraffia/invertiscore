@@ -163,11 +163,15 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
 
 // ── 3 · «(c/u por separado)» solo con dos, y la línea en singular ───────────
 {
-  if (!/alternativas\.length > 1 && <em>\(c\/u por separado\)<\/em>/.test(BLO)) F("3 · la card imprime «(c/u por separado)» también con UNA alternativa: solo va con dos");
+  // ⚠ ACTA (24-sep-2026) · la card simplificada ya no dibuja «Alternativamente … (c/u por
+  // separado)»: las palancas solas son celdas del pop-up, y el arriendo, una línea «depende del
+  // mercado». Sale el chequeo del render; `lineaNoDependeDeTi` sigue en el modelo y se fija abajo.
+  if (/c\/u por separado/.test(BLO)) F("3 · volvió «(c/u por separado)» a la card simplificada: las alternativas viven en el pop-up");
   if (lineaNoDependeDeTi(["vendedor"]) !== "Pero eso no depende de ti: lo pone el vendedor.") F(`3 · con una alternativa la línea va en singular: «${lineaNoDependeDeTi(["vendedor"])}»`);
   if (lineaNoDependeDeTi(["mercado", "vendedor"]) !== "Pero eso no depende de ti: lo pone el mercado o el vendedor.") F("3 · con dos la línea nombra a los dos");
   // y la card dibuja la oración de las filas COMPRAR
-  if (!/f\.oracion/.test(BLO)) F("3 · la card no dibuja `f.oracion` en las filas COMPRAR");
+  // ⚠ ACTA (24-sep-2026) · en Comprar la card dibuja SOLO el margen: la oración es la suya.
+  if (!/margen\.oracion/.test(BLO)) F("3 · la card no dibuja la oración del margen en COMPRAR");
   const o = CSS.match(/\.doc-dictamen \.rec-v\.rec-o\{([^}]*)\}/)?.[1] ?? "";
   if (!o) F("3 · falta la regla «.doc-dictamen .rec-v.rec-o» de la oración (cuerpo de lectura, no cifra en mono)");
   else if (!/font-size:\s*13\.5px/.test(o)) F(`3 · la oración de COMPRAR va a 13,5 px: «${o.trim()}»`);

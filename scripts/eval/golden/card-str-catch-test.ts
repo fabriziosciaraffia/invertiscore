@@ -176,7 +176,9 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (!/estadoRecomendacion\(veredicto, bloqueDeterminista\)/.test(HSTR)) F("5 · PosicionFranco sigue recibiendo el estado de `estadoRecomendacion(veredicto, null)`: tiene que ser el del bloque construido");
   if (!/btn: "Ver qué se probó"/.test(HSTR)) F("5 · el CTA del estado sin salida no dice «Ver qué se probó» (mismo rótulo que LTR)");
   if (!/<LoQueHariaYoBloque bloque=\{bloqueDeterminista\}/.test(HSTR)) F("5 · el hero STR no monta `LoQueHariaYoBloque` con el bloque determinista");
-  if (!/bloque=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?bloqueDeterminista \?/.test(HSTR)) F("5 · el bloque no va a PosicionFranco desde el bloque construido");
+  // ⚠ ACTA (24-sep-2026) · en Buscar otra el bloque es `CardBuscarOtra` (causa y distancia,
+  // sin pop-up); en los otros dos sigue siendo el bloque construido.
+  if (!/bloque=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?cardBuscar \?\? \(bloqueDeterminista \?/.test(HSTR)) F("5 · el bloque no va a PosicionFranco desde el bloque construido");
 }
 
 // ── 6 · los capítulos de §7 con apellido ────────────────────────────────────

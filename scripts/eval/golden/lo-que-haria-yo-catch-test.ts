@@ -296,7 +296,10 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   else if (b.mix.titulo !== "La única vía para llegar a Comprar") F(`3e · sin destino manda el veredicto objetivo, que acá es COMPRAR: dio «${b.mix.titulo}»`);
 }
 
-// ── 4 · BORDE · mix REDUNDANTE ⇒ no se dibuja ──────────────────────────────
+// ── 4 · BORDE · mix REDUNDANTE ⇒ SE DIBUJA (invertido, acta del 24-sep-2026) ─
+// Antes el mix que repetía una palanca sola se escondía. Con la card simplificada la
+// recomendación ES la celda Franco del pop-up: si la card la escondiera, la card y el pop-up
+// dirían dos recomendaciones distintas (decisión de Fabrizio: los tres lectores, una sola).
 {
   // El plazo cruza SOLO hasta COMPRAR, así que el mix «plazo 25→30» repite esa misma fila.
   const b = bloque({
@@ -309,7 +312,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   if (!b) F("4 · el bloque no se construyó");
   else {
     if (b.filas.length === 0) F("4 · el plazo cruza solo: tiene que estar como fila");
-    if (b.mix !== null) F("4 · el mix repite la palanca de plazo que ya está arriba: NO se dibuja");
+    if (b.mix === null) F("4 · el mix repite una palanca sola y se escondió: la card tiene que mostrar la misma recomendación que la celda Franco del pop-up");
   }
 }
 

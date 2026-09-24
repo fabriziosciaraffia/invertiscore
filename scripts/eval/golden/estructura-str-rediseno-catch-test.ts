@@ -218,7 +218,9 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/<HeroStrDictamen[\s\S]{0,700}hallazgos=\{/.test(STR)) F("7 · la página STR no le pasa `hallazgos` a HeroStrDictamen");
   if (!/<HeroStrDictamen[\s\S]{0,700}accessLevel=\{accessLevel\}/.test(STR)) F("7 · la página STR no le pasa `accessLevel` a HeroStrDictamen, que ahora emite las marcas");
   // 7d · la recomendación recibe el estado de §5 y el título del contrato, solo con el rediseño.
-  if (!/estado=\{estadoRec\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
+  // ⚠ ACTA (24-sep-2026) · Buscar otra tiene su card propia (causa y distancia) y va siempre
+  // con estado «sin_salida»; los otros dos veredictos siguen leyendo `estadoRec`.
+  if (!/estado=\{esBuscar \? "sin_salida" : estadoRec\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
   if (!/estadoRecomendacion\(veredicto,/.test(HSTR)) F("7 · el estado de la recomendación STR no sale de `estadoRecomendacion`, la fuente única de LTR");
   if (!/titulo="La recomendación de Franco"/.test(HSTR)) F("7 · el título de la caja no es «La recomendación de Franco» (§5)");
 }

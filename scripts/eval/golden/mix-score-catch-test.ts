@@ -2,6 +2,19 @@
 // GOLDEN · LA REGLA DEL MIX ELIGE POR SCORE — catch-test (13-sep-2026).
 // 0 tokens, sin base.
 // ============================================================================
+// ⛔ ACTA 24-sep-2026 · LA RAÍZ YA NO CORONA SOLO POR SCORE. Decisión de Fabrizio con el pop-up
+// del mapa: la recomendación es la BANDA de dificultad más fácil disponible (sin descuento ·
+// ≤5 · 5-10 · >10, `banda-esfuerzo.ts`) y, dentro de ella, el mayor score. Ver el acta nueva de
+// `mix-palancas.ts`.
+//
+// Por qué este tier siguió VERDE con la regla cambiada, y es lo que hay que saber de él: su
+// caso 2 —«la fila que separa las reglas»— compara dos celdas que cruzan AMBAS sin descuento, o
+// sea en la misma banda, y ahí la regla nueva también corona por score. Separaba la regla del
+// 13-sep de la del 12-sep, no la del 24-sep de la del 13-sep. Los casos 2 a 7 siguen vigentes
+// tal cual (el score manda DENTRO de la banda, el descuento desempata, el tope de 15 es barrera,
+// sin score cae al descuento, una sola función, el score es el del veredicto). Entra el caso 8,
+// que es el que separa las dos: una celda difícil con más score contra una factible con menos.
+// ============================================================================
 // Hasta el 12-sep el mix elegía la celda de MENOR DESCUENTO, y a igual descuento la que
 // costaba menos plata el día uno: un criterio sobre lo que hay que pedirle a un tercero,
 // no sobre el negocio que queda. El 12-sep pasó a elegir por retorno sobre lo puesto, y
@@ -217,6 +230,36 @@ const donde = (m: { piePct: number; plazoAnios: number } | null) => (m ? `pie ${
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
+// ── 8 · la banda más fácil primero, y dentro de ella el mejor score (24-sep-2026) ───
+//
+// LA FILA QUE SEPARA LA REGLA DEL 24-sep DE LA DEL 13-sep. Cuatro celdas que cruzan:
+//   (20,25) con 12% — difícil — score 78 · (30,25) con 14% — difícil — score 76
+//   (20,30) con 3%  — factible — score 70 · (25,30) con 4% — factible — score 72
+// La regla del 13-sep corona (20,25), la de más score. La del 24-sep toma la banda factible
+// (la más fácil disponible) y dentro de ella la de más score: (25,30). Si corona (20,30), la
+// banda está bien pero el score no manda dentro de ella.
+{
+  const pide: Record<string, number> = { "20-25": 12, "30-25": 14, "20-30": 3, "25-30": 4 };
+  const sc: Record<string, number> = { "20-25": 78, "30-25": 76, "20-30": 70, "25-30": 72 };
+  const m = mix({
+    piePct: 20,
+    plazoCredito: 25,
+    topePct: 30,
+    cruza: (c, d) => pide[`${c.pie}-${c.plazo}`] != null && d >= pide[`${c.pie}-${c.plazo}`],
+    score: (c) => sc[`${c.pie}-${c.plazo}`] ?? null,
+  });
+  if (!m) F("8 · el mix devolvió null con cuatro celdas que cruzan");
+  else if (m.piePct === 20 && m.plazoAnios === 25) F("8 · coronó la celda DIFÍCIL de más score (−12%, 78) teniendo factibles al lado: la raíz sigue coronando solo por score");
+  else if (m.piePct === 20 && m.plazoAnios === 30) F("8 · coronó la factible de MENOS score (−3%, 70): dentro de la banda tiene que mandar el score (−4%, 72)");
+  else if (!(m.piePct === 25 && m.plazoAnios === 30)) F(`8 · eligió ${donde(m)}; la recomendación es pie 25% · plazo 30a (banda factible, score 72)`);
+  // Y la celda que la matriz marca «Franco» es la misma raíz.
+  const elegida = m?.celdas?.find((c) => c.esElegida);
+  if (m && !(elegida && elegida.piePct === m.piePct && elegida.plazoAnios === m.plazoAnios)) F("8 · `esElegida` no marca la misma celda que la raíz del mix");
+  // La respuesta «score» —la que lee el prompt— sigue siendo la de más score (decisión: el prompt no se toca).
+  const rScore = m?.respuestas?.find((r) => r.criterio === "score");
+  if (m && !(rScore && rScore.piePct === 20 && rScore.plazoAnios === 25)) F("8 · la respuesta «score» dejó de ser la de mayor score: el prompt, que no se toca, leería otra cosa");
+}
+
 export function runMixScoreTier(): { hard: number } {
   console.log("\n─── TIER MIX-SCORE (la elegida es la de mayor score · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {

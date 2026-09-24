@@ -1,1068 +1,213 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
-// GOLDEN · EL POP-UP DE AJUSTES — catch-test (13-sep-2026). 0 tokens, sin base.
+// GOLDEN · EL POP-UP DE AJUSTES — catch-test. 0 tokens, sin base.
 // ============================================================================
-// Contrato visual: docs/wireframes/rediseno-informe/popup-palancas-final.html
-// Datos: los emite el bloque A (`mixPalancas.celdas`, `.score`, `.despues` y
-// `palancas[].score/destino`). Este tier fija el RENDER: que lea del motor y no invente,
-// que cada estado dibuje lo suyo, y que el estado sin nada no abra pop-up.
+// ⛔ ACTA 24-sep-2026 · ESTE TIER SE REESCRIBIÓ CON EL POP-UP. Contrato visual nuevo:
+// docs/wireframes/rediseno-informe/popup-matriz-aprobado.html (aprobado por Fabrizio). El
+// pop-up dejó de ser «matriz de veredicto + menú de respuestas + siete pares + tabla de
+// palancas solas» y pasó a ser un MAPA: cada celda dice, con el color, el veredicto de esa
+// combinación al precio pedido, y con el número lo que falta (el descuento hasta Comprar con su
+// banda; en Comprar, cuánto te queda al mes).
 //
-// LOS CUATRO ESTADOS (medidos sobre el parque recomputado, 13-sep-2026):
+// DE LOS TRECE INVARIANTES DEL 13-sep, QUÉ PASÓ CON CADA UNO:
+//  · SE CONSERVAN, reescritos contra el componente nuevo: el pop-up lee del motor (1); «hoy» no
+//    se inventa (3); sin grilla no hay pop-up (7); el CTA va inerte y fuera de Comprar (8); la
+//    celda habla del precio de hoy (10, que ahora vale para TODAS las celdas, no solo el aro).
+//  · SE RETIRAN, porque la pieza que vigilaban salió por decisión del 24-sep: «la celda muestra
+//    veredicto y score, no el descuento» (2: ahora muestra el descuento); los siete pares (4:
+//    quedan cuatro cifras de la celda tocada); Comprar sin matriz y con los márgenes (5: Comprar
+//    tiene matriz de flujo y el margen vive en la card); el cuarto estado «solo palancas» (6: la
+//    tabla de palancas solas salió); el menú, el aro de la respuesta y el panel separado (9, 11,
+//    12, 13: el mapa reemplaza al menú y el panel es uno solo).
 //
-//              con grilla   sin grilla+solas   sin nada   COMPRAR
-//   LTR            772             0             270        160
-//   STR            114             6              73         56
-//
-// Fija TRECE cosas:
-//
-//   1. EL POP-UP LEE DEL MOTOR. La matriz sale de `mixPalancas.celdas` y la tabla de
-//      `palancas[]`; el componente no recalcula descuentos ni scores. Si alguien mete
-//      aritmética de veredicto en el render, el informe puede decir dos cosas distintas
-//      del mismo caso.
-//
-//   2. LA CELDA MUESTRA VEREDICTO Y SCORE, no el descuento. El descuento es del panel de
-//      detalle, con el pie extra, y aparece al tocar la celda.
-//
-//   3. «HOY» NO SE INVENTA. 16 filas LTR y 2 STR no tienen celda actual porque su plazo
-//      declarado no está en la grilla del mix. Ahí no se marca nada ni se nombra en la
-//      leyenda (decisión Fabrizio, 13-sep-2026).
-//
-//   4. EL ÓPTIMO SON SIETE PARES y el del retorno va SIEMPRE, con guion cuando no aplica
-//      (pie 0: 21 filas LTR, 8 STR). No se omite la fila.
-//
-//   5. EN COMPRAR NO HAY MATRIZ NI ÓPTIMO: no hay a dónde subir. Van los márgenes de la
-//      card —Margen, Precio, Verifica— y la tabla de las solas si alguna mueve algo.
-//
-//   6. SIN GRILLA NI PALANCAS, NO HAY POP-UP. La card ya lo dice todo —«no hay forma», el
-//      número y la alternativa de comunas— y repetirlo en un pop-up es ruido. El botón no
-//      se dibuja (decisión Fabrizio, 13-sep-2026).
-//
-//   9. EL COLOR VA POR FAMILIA. Lo que nombra un VEREDICTO se pinta con la tríada
-//      (`--doc-comprar`), no con el verde `--doc-good` del semáforo del dato. Son dos
-//      afirmaciones distintas —«este caso pasa a Comprar» contra «este dato está bien»— y
-//      con el mismo color el pop-up decía las dos a la vez. El verde queda donde hay un
-//      dato con signo: flujo mensual y retorno. Y la selección de una celda es un aro de
-//      tinta, no un color de veredicto (decisión Fabrizio, 13-sep-2026).
-//
-//   7. EL CTA VA INERTE. Se dibuja con el precio negociado y no navega: la decisión de
-//      créditos es del bloque C. Un CTA que navega antes de esa decisión cobraría un
-//      análisis sin que nadie lo haya decidido.
-//
-//   8. EL CUARTO ESTADO TIENE FIXTURE. «Sin grilla, con palancas solas» son 6 filas STR y
-//      ninguna estaba volcada: el estado no se podía ver ni fotografiar.
-//      `providenciaStrSoloPalancas` lo cubre, y el invariante fija que ahí el pop-up no
-//      dibuje matriz vacía ni óptimo inventado.
-//
-// Corre dentro del QUICK (tier "popup-ajustes") y standalone:
-//   node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
+// FIJA, y los cinco primeros son los gates pedidos por Fabrizio, verificados EN ROJO por mutación:
+//   G1 · LA CELDA MUESTRA EL VEREDICTO REAL DE ESA COMBINACIÓN al precio pedido
+//        (`veredictoSinDescuento`), en el modelo y en el HTML renderizado.
+//   G2 · FRANCO NUNCA MARCA UNA CELDA MÁS DIFÍCIL QUE LA MÁS FÁCIL DISPONIBLE.
+//   G3 · LA CARD, EL POP-UP Y «A QUÉ PRECIO CERRAR» LEEN LA MISMA RECOMENDACIÓN.
+//   G4 · COMPRAR NO TIENE CELDA DE FRANCO.
+//   G5 · BUSCAR OTRA NO TIENE POP-UP (ni grilla, ni botón en los dos heros).
+//   6 · La anatomía del contrato: la línea «Toca una celda…», las flechas (cuatro en Ajustar,
+//       dos en Comprar), la leyenda de la tríada, las cuatro cifras, y que no vuelvan el menú,
+//       los pares ni «Un cambio a la vez».
+//   7 · El arriendo o la tarifa, en su línea «pero eso depende del mercado».
+//   8 · El CTA inerte, solo con descuento, nunca en Comprar.
+// Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
 // ============================================================================
+import React, { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import fixtures from "../../../src/app/dev/drawers-pixel/fixtures.json";
+import { runAnalysis } from "../../../src/lib/analysis";
+import { AUDIT_FIXTURES, AUDIT_UF } from "../fixtures";
+import { PopupAjustes } from "../../../src/components/analysis/shared/PopupAjustes";
+import { celdaFranco, grillaDelPopup, hayAjustesQueMostrar, lecturaCelda, nivelMasFacilDisponible } from "../../../src/lib/matriz-popup";
+import { nivelDeDescuento } from "../../../src/lib/banda-esfuerzo";
+import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
+import { recomendacionPagas } from "../../../src/lib/como-lo-pagas";
+import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
 
-const fallas: string[] = [];
-const F = (m: string) => fallas.push(m);
+(globalThis as any).React = React;
 const RAIZ = join(__dirname, "..", "..", "..");
-const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n"); } catch { return ""; } };
+const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
+const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+const CLASE: Record<Veredicto, string> = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b" };
 
-/**
- * EL CUERPO DE UNA FUNCIÓN DE NIVEL SUPERIOR, SIN SU FIRMA, hasta el `}` solo en la columna 0.
- *
- * Las DOS mitades de la trampa que cazó al invariante 18, que arregla las dos:
- *  · EL FINAL busca `\n}\n` y no `\n}`. `PanelCelda` declara su tipo de props inline y sus dos
- *    cierres —`}: {` y `}) {`— empiezan en la columna 0: con el patrón corto la captura moría
- *    en la firma y el resto del cuerpo quedaba sin medir.
- *  · Y EL PRINCIPIO descarta la lista de props, que contiene los tokens `esComprar`, `destino`
- *    y `sel`. Hoy ningún predicado de 22-25 se satisfaría con ellos, pero el invariante 18 dio
- *    verde sobre código revertido exactamente así, y una captura que incluye su firma es una
- *    trampa esperando a que alguien escriba el predicado equivocado.
- */
-function cuerpoDe(src: string, firma: string): string {
-  const i = src.indexOf(firma);
-  if (i < 0) return "";
-  const j = src.indexOf("\n}\n", i);
-  const todo = j < 0 ? src.slice(i) : src.slice(i, j + 2);
-  // De `) {` de la firma en adelante: el último `) {` antes del primer salto con contenido.
-  const k = todo.indexOf("}) {");
-  return k < 0 ? todo.slice(todo.indexOf("{")) : todo.slice(k + 4);
-}
-
-/**
- * EL CÓDIGO SIN SUS COMENTARIOS. Cuarta vez en este arco que hace falta: las actas de este
- * repo citan textualmente el literal que el guard busca —los invariantes de abajo exigen
- * «Pides de descuento» y «Pie extra el día uno», que el acta del panel nombra para explicar
- * por qué se fueron— así que sin esto la prosa satisface al predicado y borrar el render
- * entero deja el tier VERDE.
- */
-function sinComentarios(src: string): string {
-  return src
-    .replace(/\{\/\*[^]*?\*\/\}/g, "")
-    .replace(/\/\*[^]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
-}
-
-
-const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx");
-const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
-const HERO_STR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
-const CSS = leer("src/components/analysis/shared/PopupAjustesTokens.tsx");
-const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
-// La card de §5: es el PRECEDENTE del invariante 17 y la regla espejo se mide contra ella.
-const CARD = leer("src/lib/lo-que-haria-yo.ts");
-// La caja que monta el pop-up Y la tabla de comunas: el invariante 21 vive acá.
-const POSICION = leer("src/components/analysis/shared/PosicionFranco.tsx");
-
-// ── 1 · existe y lee del motor ─────────────────────────────────────────────
-{
-  if (!POPUP) F("1 · no existe `src/components/analysis/shared/PopupAjustes.tsx`");
-  else {
-    if (!/mixPalancas/.test(POPUP) || !/\.celdas/.test(POPUP)) F("1 · el pop-up no lee `mixPalancas.celdas`: la matriz saldría de otra fuente que la del motor");
-    if (!/despues/.test(POPUP)) F("1 · el pop-up no lee `despues`: los pares del óptimo no tendrían lado derecho");
-    // El render NO decide veredictos: nada de recomputar ni de comparar bandas acá.
-    if (/deriveVeredicto|calcMetrics|calcScoreFromMetrics|calcularMixPalancas/.test(POPUP)) {
-      F("1 · el pop-up llama al motor: el render pinta lo que el motor ya decidió, no lo recalcula");
-    }
-  }
-}
-
-// ── 2 · la celda dice veredicto y score; el descuento es del panel ─────────
-{
-  if (POPUP && !/score/.test(POPUP)) F("2 · la celda no muestra el score");
-  if (POPUP && !/etiquetaVeredicto|veredicto/.test(POPUP)) F("2 · la celda no muestra el veredicto");
-  if (POPUP && !/descuentoPct/.test(POPUP)) F("2 · el panel de detalle no muestra el descuento que se pide");
-  if (POPUP && !/costoDiaUnoUF/.test(POPUP)) F("2 · el panel de detalle no muestra el pie extra del día uno");
-  if (POPUP && !/no llega a/.test(POPUP)) F("2 · el panel no contempla la celda que no cruza («no llega a Comprar»)");
-  // ENSANCHADO (16-sep-2026): «no llega» es de UNA sola celda, y antes era de dos.
-  // La condición era `descuentoPct === null || !alcanzable` y las dos ramas escribían lo
-  // mismo. Solo la primera es cierta: la segunda CRUZA y cuesta más de lo que la
-  // recomendación pone, y en 43 filas del parque es justo la que el menú ofrece. El panel
-  // tiene que separarlas o vuelve a decirle «no llega» a una celda que llega.
-  if (POPUP) {
-    // El corte va hasta el siguiente `function` de columna 0, no hasta el primer `\n}`: el
-    // cuerpo de PanelCelda tiene llaves anidadas y un corte no-goloso se detenía adentro de
-    // la destructuración, así que el guard leía un fragmento y daba rojo sano por la razón
-    // equivocada. Es la misma trampa de «un guard se acota al componente, no al archivo».
-    const panel = POPUP.match(/function PanelCelda\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
-    if (!panel) F("2 · no se encontró `PanelCelda` para auditar su condición");
-    else {
-      if (/descuentoPct === null \|\| !sel\.alcanzable/.test(panel)) {
-        F("2 · el panel volvió a colapsar los dos casos: una celda que cruza y cuesta de más NO es una que no llega");
-      }
-      if (!/!sel\.alcanzable/.test(panel)) {
-        F("2 · el panel dejó de declarar el caso de la celda que llega y cuesta más de lo que Franco recomienda poner");
-      }
-    }
-  }
-}
-
-// ── 3 · «hoy» no se inventa ────────────────────────────────────────────────
-{
-  if (POPUP && !/esActual/.test(POPUP)) F("3 · el pop-up no mira `esActual`: no podría marcar la celda de hoy");
-  // La leyenda de «hoy» solo existe si alguna celda lo es.
-  if (POPUP && !/some\(\(?c\)? => c\.esActual\)|hayActual/.test(POPUP)) {
-    F("3 · la leyenda nombra «hoy» sin comprobar que exista la celda: 16 filas LTR y 2 STR no la tienen");
-  }
-}
-
-// ── 4 · los siete pares, con el retorno siempre ────────────────────────────
-{
-  if (!POPUP) F("4 · sin componente no hay pares que fijar");
-  else {
-    for (const [k, etiqueta] of [
-      ["Pie el día uno", "el pie del día uno"],
-      ["Cuota mensual", "la cuota"],
-      ["Flujo mensual", "el flujo"],
-      // ACTA 23-sep-2026: el par del retorno se llama «Cash on cash» (nombre de mercado, con
-      // su ⓘ) y la frase del $100 queda como su bajada; el cap rate lo rotula la modalidad
-      // (`rotuloCapRate`: «Cap rate neto» en LTR, «Cap rate» en STR, que tiene uno solo).
-      ['label="Cash on cash"\\s+sub="por cada \\$100 que pones', "el cash on cash"],
-      ["label=\\{rotuloCapRate\\(modalidad\\)\\}", "el cap rate"],
-      ["TIR a 10 años", "la TIR"],
-      ["Franco Score", "el score"],
-    ] as const) {
-      if (!new RegExp(k).test(POPUP)) F(`4 · falta el par de ${etiqueta}`);
-    }
-    // El par del retorno NO se omite con pie 0: va con guion.
-    if (!/PAR_SIN_VALOR|—/.test(POPUP)) F("4 · no hay marca de «sin valor»: con pie 0 el par del retorno tiene que ir con guion, no omitirse");
-  }
-}
-
-// ── 5 · COMPRAR: los márgenes Y la matriz, sin CTA (ensanchado 15-sep-2026) ─
-//
-// ⚠ ESTE INVARIANTE DECÍA «SIN MATRIZ NI ÓPTIMO», y era cierto por omisión: el hallazgo de
-// distancia devuelve null en COMPRAR y sin él no había grilla que dibujar. No era una
-// decisión de producto, era la ausencia del dato. Desde el 15-sep la grilla entra por su
-// propia puerta (`mixComprar`) y la matriz dibuja en los tres veredictos.
-//
-// Lo que se fija ahora es lo que es cierto: las filas de márgenes SIGUEN —son la respuesta a
-// «cuánto aguanta», que la matriz no contesta—, la matriz ya NO cuelga de `!esComprar`, la
-// grilla viene por su prop, los DOS heros la pasan, y el CTA se queda afuera porque nombra un
-// precio negociado que en COMPRAR no existe.
-{
-  if (POPUP && !/Margen/.test(POPUP)) F("5 · en COMPRAR el pop-up no muestra la fila «Margen» de la card");
-  if (POPUP && !/Verifica/.test(POPUP)) F("5 · en COMPRAR el pop-up no muestra la fila «Verifica» de la card");
-  if (POPUP && !/COMPRAR/.test(POPUP)) F("5 · el pop-up no distingue el caso COMPRAR");
-  if (POPUP) {
-    // La grilla llega por su propia puerta, no dentro del hallazgo.
-    if (!/mixComprar/.test(POPUP)) F("5 · el pop-up no lee `mixComprar`: en COMPRAR el hallazgo de distancia es null y sin ese prop no hay grilla");
-    // Y la matriz dejó de colgar del veredicto.
-    if (/esComprar \? \(\s*<SeccionComprar/.test(POPUP)) {
-      F("5 · la matriz volvió a ser excluyente con las filas de márgenes: en COMPRAR van las dos");
-    }
-    if (/\{hayMenu && !esComprar &&/.test(POPUP)) F("5 · el menú de respuestas volvió a apagarse en COMPRAR");
-    if (/\{!esComprar && mix && celdas\.length > 0 && \(\s*<SeccionOptimo/.test(POPUP)) F("5 · «El ajuste» volvió a apagarse en COMPRAR");
-    // El CTA sí se queda afuera, y ahora por su razón propia.
-    if (!/\{!esComprar && mix && celdas\.length > 0 && <Cta/.test(POPUP)) {
-      F("5 · el CTA dejó de estar acotado a los veredictos con descuento: en COMPRAR nombraría el precio de hoy");
-    }
-  }
-  // LOS DOS HEROS LA PASAN. Sin esto renta corta queda sin matriz en COMPRAR y los dos
-  // usuarios con el mismo veredicto ven cosas distintas — que es la asimetría que este goal
-  // existe para cerrar.
-  for (const [src, quien] of [[HERO_LTR, "HeroLTR"], [HERO_STR, "HeroStrDictamen"]] as const) {
-    if (src && !/mixComprar=/.test(src)) F(`5 · ${quien} no le pasa \`mixComprar\` al pop-up: en COMPRAR su matriz no se dibuja`);
-  }
-}
-
-// ── 6 · sin grilla ni palancas, no hay botón ───────────────────────────────
-{
-  for (const [src, quien] of [[HERO_LTR, "HeroLTR"], [HERO_STR, "HeroStrDictamen"]] as const) {
-    if (!src) { F(`6 · no se pudo leer ${quien}`); continue; }
-    if (!/abrePopupAjustes|hayAjustesQueMostrar/.test(src)) {
-      F(`6 · ${quien} no decide si hay algo que mostrar antes de dibujar el botón: el estado sin grilla ni palancas no puede abrir un pop-up que repite la card`);
-    }
-  }
-}
-
-// ── 7 · el CTA va inerte ───────────────────────────────────────────────────
-{
-  if (POPUP) {
-    if (!/Analízalo a UF/.test(POPUP)) F("7 · el CTA no dibuja el precio negociado («Analízalo a UF X»)");
-    // Inerte de verdad: ni link ni handler de navegación.
-    if (/<Link|href=|router\.push|window\.location/.test(POPUP)) {
-      F("7 · el CTA navega: hasta el bloque C tiene que ser inerte (la decisión de créditos no está tomada)");
-    }
-    if (!/inerte/i.test(POPUP)) F("7 · el CTA no declara en el código que es inerte a propósito: sin esa nota, el próximo lector lo lee como un bug");
-  }
-}
-
-// ── 8 · el cuarto estado: sin grilla, con palancas solas ───────────────────
-//
-// Son 6 filas STR del parque y ninguna estaba volcada, así que el estado vivía sin
-// fixture: nadie podía verlo ni fotografiarlo. `providenciaStrSoloPalancas` lo cubre
-// (13-sep-2026). Lo que este invariante protege es que el pop-up NO dibuje matriz vacía
-// ni óptimo inventado cuando el motor no encontró combinación: solo la tabla.
-{
-  const fx = (fixtures as Record<string, unknown>)["providenciaStrSoloPalancas"] as
-    | { results?: { hallazgos?: { id: string; valor?: Record<string, unknown> }[] } }
-    | undefined;
-  if (!fx) F("8 · falta el fixture `providenciaStrSoloPalancas`: el cuarto estado del pop-up quedaría sin cobertura");
-  else {
-    const dv = (fx.results?.hallazgos ?? []).find((h) => h.id === "distancia_veredicto")?.valor as
-      | { mixPalancas?: { celdas?: unknown[] } | null; mixPalancasHastaComprar?: { celdas?: unknown[] } | null; palancas?: unknown[] }
-      | undefined;
-    if (!dv) F("8 · el fixture del cuarto estado no trae hallazgo de distancia");
-    else {
-      const celdas = (dv.mixPalancas ?? dv.mixPalancasHastaComprar)?.celdas ?? [];
-      const solas = dv.palancas ?? [];
-      if (celdas.length) F(`8 · el fixture del cuarto estado trae ${celdas.length} celdas: ya no es «sin grilla» y deja de cubrir el estado`);
-      if (!solas.length) F("8 · el fixture del cuarto estado no trae palancas que crucen solas");
-    }
-  }
-  // Y el componente tiene que sobrevivir a ese caso: la matriz y el óptimo cuelgan de que
-  // HAYA celdas, y el CTA del mix. Si alguno se dibujara sin grilla, sería una caja vacía.
-  if (POPUP) {
-    if (!/celdas\.length > 0 && \(\s*\n?\s*<SeccionMatriz|celdas\.length > 0 &&/.test(POPUP)) {
-      F("8 · la matriz no está condicionada a que haya celdas: sin grilla dibujaría una caja vacía");
-    }
-    if (!/celdas\.length > 0 && <Cta|celdas\.length > 0 && <SeccionOptimo/.test(POPUP)) {
-      F("8 · el óptimo o el CTA no están condicionados a que haya grilla");
-    }
-    if (!/solas\.length > 0 &&/.test(POPUP)) F("8 · la tabla de las solas no está condicionada a que existan");
-  }
-}
-
-// ── 9 · el color va por familia ─────────────────────────────────────────────
-{
-  // El token tiene que existir en los DOS temas: sin la variante clara la celda se pinta
-  // con el azul de papel oscuro sobre blanco, o no se pinta.
-  if (PORTADA) {
-    const decls = PORTADA.match(/--doc-comprar:\s*#[0-9A-Fa-f]{6}/g) ?? [];
-    if (decls.length < 2) {
-      F(`9 · «--doc-comprar» está declarado ${decls.length} vez/veces: hacen falta las dos, oscuro y claro`);
-    }
-  }
-  if (CSS) {
-    // Cada regla que nombra un veredicto, con el color que le toca.
-    const porVeredicto: [RegExp, string][] = [
-      [/\.paj-mtx td\.cruza\{[^}]*\}/, "la celda que llega a Comprar"],
-      [/\.paj-sw\.b\{[^}]*\}/, "el cuadrito de la leyenda"],
-      [/\.paj-unica \.v\.cruza\{[^}]*\}/, "la celda única que cruza"],
-      [/\.paj-nod \.dst\.comprar\{[^}]*\}/, "«llegas a Comprar» de la tabla de las solas"],
-      [/\.paj-par \.b1\.destino\{[^}]*\}/, "el Franco Score de destino"],
-    ];
-    for (const [re, quien] of porVeredicto) {
-      const m = CSS.match(re);
-      if (!m) { F(`9 · no se encuentra la regla de ${quien}`); continue; }
-      if (/--doc-good|--doc-warn/.test(m[0])) {
-        F(`9 · ${quien} se pinta con el semáforo del dato: nombra un veredicto, va con «--doc-comprar»`);
-      }
-      if (!/--doc-comprar/.test(m[0])) F(`9 · ${quien} no usa «--doc-comprar»`);
-    }
-    // El verde sobrevive SOLO en el semáforo del dato. Cualquier otro uso es una cuarta
-    // familia de color entrando por la ventana.
-    const usos = (CSS.match(/^[ ]*\.[^{\n]*\{[^}]*--doc-good[^}]*\}/gm) ?? []).map((r) => r.split("{")[0].trim());
-    const permitidos = [".paj-par .b1.bien"];
-    for (const u of usos) {
-      if (!permitidos.includes(u)) F(`9 · «${u}» usa el verde del dato fuera del semáforo`);
-    }
-    // La selección es tinta, no veredicto.
-    const selRule = CSS.match(/\.paj-mtx td\.sel\{[^}]*\}/);
-    if (!selRule) F("9 · no se encuentra la regla del aro de selección");
-    else if (/--verdict/.test(selRule[0])) {
-      F("9 · el aro de selección usa «--verdict»: en una fila Ajusta dibuja un aro ciruela alrededor de una celda que dice «llega a Comprar»");
-    }
-    // Las barras de COMPRAR se retiraron: las tres filas lo dicen con oraciones completas.
-    if (/paj-fr/.test(CSS) || /BarraFrontera/.test(POPUP)) {
-      F("9 · volvieron las barras de frontera de COMPRAR: repiten las tres filas y se leían en direcciones opuestas");
-    }
-  }
-}
-
-// ── 10 · LA CELDA DEL ARO HABLA DEL HOY, Y LA MATRIZ LO DECLARA ────────────
-//
-// `esActual` significa «el pie y el plazo que tienes declarados», no «tu caso actual». El
-// render dibujaba ahí la lectura EN EL DESCUENTO MÍNIMO, así que el aro prometía «tu
-// situación» y el contenido mostraba «tu situación con un descuento encima». Medido el
-// 14-sep-2026: en 501 de 739 filas esa celda mostraba un veredicto distinto al de la fila,
-// y en el 100% de las 360 que el pop-up dibuja pasaba a decir «Comprar» sobre un caso que
-// la propia página declara «Ajustar».
-//
-// Tres cosas que tienen que viajar juntas, o el arreglo se deshace solo:
-//   · la celda del aro lee `veredictoSinDescuento` / `scoreSinDescuento`;
-//   · la matriz DECLARA que tiene dos lecturas — el subtítulo lo dice en palabras y el aro
-//     marca cuál es;
-//   · cuando el aro coincide con la coronada, el fondo de tinta se retira (145 filas): un
-//     fondo que dice «lo que Franco recomienda» sobre una celda que dice «Ajustar» promete
-//     lo contrario de lo que pasa.
-//
-// LA MARCA ES EL ARO, NO UN CHIP (15-sep-2026). Entre el 14 y el 15 este invariante exigía
-// un chip de tinta pegado a la celda. Se retiró, y la aserción no se borró: se reescribió
-// leyendo del contrato visual (popup-palancas-final.html:77 y :189), que marca esa celda
-// con el aro y nada más, y que ya la mostraba diciendo «Ajustar score 62».
-// El chip era ambiguo acá porque la tinta plena de esta matriz ya significa «el óptimo»
-// (td.mix y el swatch .paj-sw.a); en la matriz de origen ninguna celda lleva tinta.
-{
-  if (!POPUP) F("10 · sin componente no hay celda del aro que fijar");
-  else {
-    if (!/veredictoSinDescuento/.test(POPUP)) {
-      F("10 · el render no lee `veredictoSinDescuento`: la celda del aro sigue mostrando su lectura con descuento y contradice el veredicto de la fila");
-    }
-    if (!/scoreSinDescuento/.test(POPUP)) F("10 · el render no lee `scoreSinDescuento`");
-    // La declaración de las dos lecturas: el subtítulo tiene que nombrar el precio de hoy.
-    if (!/precio de hoy/i.test(POPUP)) {
-      F("10 · la matriz no declara que la celda del aro va a precio de hoy: sin esa línea el próximo lector deshace el arreglo");
-    }
-    // La regla de las 145: si el aro es la coronada, no hay tinta plena.
-    if (!/esActual\s*&&\s*c\.esElegida|c\.esElegida\s*&&\s*!c\.esActual/.test(POPUP)) {
-      F("10 · la clase de tinta plena no excluye la celda del aro: en 145 filas el fondo diría «lo que Franco recomienda» sobre el veredicto de partida");
-    }
-    // Y la marca tiene que existir en el render: sin la clase, el CSS del aro no cuelga de nada.
-    if (!/c\.esActual \? "hoy"|esActual.*"hoy"/.test(POPUP)) {
-      F("10 · el render no le pone la clase `hoy` a la celda del aro: la marca que la leyenda nombra no tendría de dónde colgar");
-    }
-  }
-  // LA MARCA DEL ARO, EN EL CSS. No alcanza con que exista: tiene que ir en sombra inset y
-  // NO en outline, porque `td.sel` también es outline, con la misma especificidad y
-  // declarado después, así que se la lleva puesta y al tocar la celda del aro el aro gris
-  // desaparece. Medido en el navegador el 14-sep-2026. Precedente: `.mz-cell.hoy`
-  // (TokensShared.tsx:42) marca el hoy con box-shadow inset por esta misma razón.
-  {
-    const regla = CSS.match(/\.paj-mtx td\.hoy\{[^}]*\}/)?.[0] ?? "";
-    if (CSS && !regla) F("10 · no existe la regla de `td.hoy`: la celda del aro quedaría sin marca");
-    else if (regla && !/box-shadow:\s*inset/.test(regla)) {
-      F("10 · el aro de hoy no va en sombra inset: con outline, el aro de selección lo reemplaza y la celda pierde la marca que la leyenda llama «hoy»");
-    }
-    // Y la sombra de hover es la misma propiedad, así que la celda de hoy tiene que listar
-    // las dos o pierde el realce que dice que se puede tocar.
-    if (CSS && regla && !/\.paj-mtx td\.hoy:hover\{[^}]*inset[^}]*,/.test(CSS)) {
-      F("10 · `td.hoy` no repone la sombra de hover junto al aro: el aro gris se come el realce y la celda deja de parecer tocable");
-    }
-  }
-}
-
-// ── 13 · LA BANDA DE ESFUERZO SE DIBUJA, Y SOLO EN DOS LUGARES ─────────────
-//
-// El juicio sobre cuán conseguible es el descuento EXISTE desde hace tiempo:
-// `bandaEsfuerzoDescuento` (distancia-veredicto-hallazgo.ts:85), tres bandas con cortes
-// doctrinales 5 y 12 (§1.12.1 del skill analysis-voice-franco) y lenguaje canónico. Hasta
-// el 15-sep-2026 sus únicos consumidores eran builders de prompt: el juicio se calculaba,
-// se le pasaba al modelo para que lo narrara, y el usuario no lo veía nunca.
-//
-// Medido sobre el parque: de las 265 filas LTR con descuento de mix, el 86,8% cae en la
-// banda «difícil, requiere vendedor motivado» y se publicaba con la misma cara que un 4%.
-//
-// DOS LUGARES Y NINGUNO MÁS, y el «ninguno más» es la mitad del invariante:
-//   · `.paj-neg` del pop-up y `.rec-pides` de la card §5 — el MISMO número, el que Franco
-//     recomienda pedir;
-//   · NO la tabla de palancas solas ni el drawer. Ese es otro descuento —el precio como
-//     palanca única— y cae en banda DISTINTA en el 10,5% de las filas. Las dos marcas en
-//     el mismo modal emitirían dos juicios sobre «el descuento» en una pantalla.
-//
-// Y TRES BANDAS, NO CUATRO. `/comunas` tiene una segunda implementación con un cuarto
-// corte en 25 que llama «estructural»; ese 25 es `DIST_STR_TOPE_AJUSTA_PCT`, el tope de
-// RENTA CORTA. La doctrina dice «hasta el tope aplicable», que en LTR es 30, y medido:
-// 0 de 265 filas superan 30. Llamar estructural a algo que está dentro de su tope diría
-// algo falso, y el caso estructural de verdad ya tiene su propia frase, no una banda.
-{
-  const LQHY = leer("src/components/analysis/shared/LoQueHariaYoBloque.tsx");
-  if (!LQHY) F("13 · no se pudo leer LoQueHariaYoBloque.tsx");
-  const BUILDER = leer("src/lib/lo-que-haria-yo.ts");
-  for (const [src, quien] of [[POPUP, "el pop-up"], [LQHY, "la card §5"]] as const) {
-    if (!src) continue;
-    // DIBUJARLA es usar la etiqueta canónica; de dónde sale la CLASE es otra pregunta y la
-    // contesta el bloque de abajo. El pop-up clasifica al vuelo porque su descuento es un
-    // número; la card lee `mix.bandaEsfuerzo`, que su builder ya clasificó — y eso es MÁS
-    // doctrinal, no menos (§1.12.1: «la banda se calcula en el builder»).
-    if (!/ETIQUETA_BANDA_ESFUERZO/.test(src)) {
-      F(`13 · ${quien} no dibuja la banda de esfuerzo: el juicio existe en el motor y el usuario sigue sin verlo`);
-    }
-    // UNA SOLA VEZ POR SUPERFICIE. Dos usos en el mismo archivo ya serían la banda esparcida.
-    const veces = (src.match(/ETIQUETA_BANDA_ESFUERZO\[/g) ?? []).length;
-    if (veces > 1) F(`13 · ${quien} dibuja la banda ${veces} veces: va en un solo lugar por superficie`);
-    // NO SE RECLASIFICA EN EL RENDER. Los cortes viven en la fuente, §1.1.
-    if (/<=\s*5\b[^]{0,80}<=\s*12\b/.test(src)) {
-      F(`13 · ${quien} reimplementa los cortes 5/12 en vez de llamar a la fuente`);
-    }
-    // NI CUARTA BANDA NI SU COLOR.
-    if (/estructural/i.test(src)) F(`13 · ${quien} nombra una banda «estructural»: son TRES, y el caso estructural no es una banda`);
-    if (/#C8323C/i.test(src)) F(`13 · ${quien} trae el rojo hardcodeado de la pill de /comunas`);
-  }
-  // LA TABLA DE PALANCAS SOLAS NO LLEVA BANDA: otro descuento, otro juicio.
-  if (POPUP) {
-    const tabla = POPUP.match(/paj-nod[^]*?<\/table>/)?.[0] ?? "";
-    if (tabla && /bandaEsfuerzoDescuento/.test(tabla)) {
-      F("13 · la tabla «Un cambio a la vez» lleva banda: es el precio como palanca sola y cae en otra banda en el 10,5% de las filas");
-    }
-  }
-  // LA CLASE SALE DE LA FUENTE, NUNCA DEL RENDER. Una de las dos superficies la pide al
-  // vuelo y la otra la recibe del builder, pero ninguna la deduce por su cuenta.
-  if (BUILDER && !/bandaEsfuerzoDescuento\(/.test(BUILDER)) {
-    F("13 · el builder de la card §5 no clasifica la banda: sin eso el render tendría que volver a parsear «−24,3%» a número para juzgarlo");
-  }
-  // Y CADA HUÉSPED CON SUS TOKENS. La card §5 es oscura en los DOS temas, así que su pill
-  // no puede usar los `--doc-*` del pop-up ni al revés.
-  if (CSS && !/\.paj-banda\{/.test(CSS)) F("13 · falta el CSS de la pill de banda en el pop-up");
-  if (PORTADA && !/\.rec-banda\{/.test(PORTADA)) F("13 · falta el CSS de la pill de banda en la card §5");
-  if (PORTADA && /\.rec-banda\{[^}]*--doc-/.test(PORTADA)) {
-    F("13 · la pill de la card §5 usa tokens `--doc-*`: esa card es oscura en los dos temas y ahí resolverían al tema de la página, dejándola invisible");
-  }
-}
-
-// ── 11 · EL PANEL DE DETALLE NO CONTRADICE A SU CELDA ──────────────────────
-//
-// Al tocar la celda del aro, el panel decía «Pides de descuento −24,2%» sobre la misma
-// celda que ahora dice «Ajustar». Las dos lecturas conviven, pero separadas y con su
-// rótulo cada una: la celda dice el hoy y el panel dice a dónde llega con descuento.
-{
-  if (POPUP && !/llegas a|Pidiendo/.test(POPUP)) {
-    F("11 · el panel de detalle no distingue la celda del aro: sigue rotulando «Pides de descuento» sobre una celda que habla del hoy");
-  }
-}
-
-// ── 12 · EL COLOR LEE DE LA MISMA FUENTE QUE LA PALABRA ────────────────────
-//
-// La primera versión de este arreglo cambió la palabra de la celda del aro y dejó el color
-// leyendo `c.veredicto`. Cazado en el navegador el 14-sep-2026 sobre el análisis demo: la
-// celda quedó con clase «cruza hoy», o sea fondo azul diciendo «llega a Comprar» con
-// «Ajustar score 67» escrito adentro. Es la misma contradicción que el arreglo de color del
-// 13-sep declaró prohibida —«acá manda la palabra»— reintroducida por la puerta de al lado,
-// y el mismo argumento por el que la corona pierde la tinta cuando cae sobre el aro.
-//
-// Por eso el invariante no es «que exista veredictoSinDescuento en el archivo» (eso ya lo
-// fija el 10) sino que el predicado del COLOR lea la misma función que la palabra.
-{
-  if (POPUP) {
-    if (!/function veredictoMostrado/.test(POPUP)) {
-      F("12 · no hay fuente única de lo que la celda escribe: sin `veredictoMostrado` la palabra y el color vuelven a separarse");
-    }
-    const cuerpo = POPUP.match(/function cruzaDeVerdad[^]*?\n\}/)?.[0] ?? "";
-    if (!cuerpo) {
-      F("12 · no se encontró `cruzaDeVerdad` para auditar de dónde saca el veredicto");
-    } else if (!/veredictoMostrado\(/.test(cuerpo)) {
-      F("12 · el color no lee `veredictoMostrado`: la celda del aro puede quedar pintada de «llega a Comprar» con «Ajustar» escrito adentro");
-    }
-    // Y EL PREDICADO RECIBE LA PALABRA, NO LA SACA. Mientras `cruzaDeVerdad` elegía por su
-    // cuenta, arreglar la matriz desincronizó la rama de celda única en silencio: esa rama
-    // siguió escribiendo `c.veredicto` y su color pasó a leer el hoy. La palabra decía
-    // «Comprar» y el color dejaba de pintarla — el mismo divorcio, del otro lado.
-    if (!/function cruzaSegun\(\s*veredictoEscrito/.test(POPUP)) {
-      F("12 · el predicado del color no recibe la palabra escrita: con una sola fuente interna, la rama que escribe otra lectura se desincroniza sin que nada falle");
-    }
-    // ── ENSANCHADO CON EL MENÚ (16-sep-2026): EL COLOR NO PREGUNTA POR NINGÚN TOPE ──
-    //
-    // El predicado llevaba un tercer conjunto, `c.alcanzable`, que no es sobre la palabra
-    // sino sobre el tope de la equilibrada. Con él, 57 de 1.912 celdas del parque decían
-    // «Comprar» pintadas en gris, y 43 de esas son las que el menú ofrece como «la que más
-    // alivia el mes». Quien manda es la leyenda: los DOS contratos rotulan el swatch azul
-    // «llega a Comprar», así que el azul afirma que LLEGA, no que quepa en un tope — y el
-    // contrato nuevo lo dibuja así, pintando `cruza` celdas sobre el tope que su propio menú
-    // no ofrece (popup-menu-respuestas.html:264-265).
-    //
-    // Sin esta aserción, devolver el tope al predicado no rompe nada y la contradicción
-    // vuelve sola. Vale para CUALQUIER tope: el de la equilibrada, el de flujo, o el de la
-    // respuesta que se esté viendo.
-    const cuerpoSegun = POPUP.match(/function cruzaSegun\([^]*?\n\}/)?.[0] ?? "";
-    if (!cuerpoSegun) {
-      F("12 · no se encontró el cuerpo de `cruzaSegun` para auditar por qué pregunta");
-    } else if (/alcanzable|dentroDeSuTope|topePtsPrecio|costoPtsPrecio/.test(cuerpoSegun)) {
-      F("12 · el predicado del color volvió a preguntar por un tope: el azul dice «llega a Comprar», y quién es una salida lo dice el menú");
-    }
-    const unaSola = POPUP.match(/if \(unaSola\) \{[^]*?\n  \}/)?.[0] ?? "";
-    if (!unaSola) {
-      F("12 · no se encontró la rama de celda única para auditar su color");
-    } else {
-      const palabraHoy = /veredictoMostrado\(c\)/.test(unaSola);
-      const colorHoy = /cruzaSegun\(\s*veredictoMostrado\(c\)/.test(unaSola) || /cruzaDeVerdad\(/.test(unaSola);
-      if (palabraHoy !== colorHoy) {
-        F("12 · la rama de celda única escribe una lectura y pinta con la otra: las 12 filas LTR que la usan quedan con la palabra y el color divorciados");
-      }
-    }
-  }
-}
-
-// ── 14 · EL PLAN QUE NO SE MUEVE A NINGUNA CELDA (16-sep-2026) ─────────────
-//
-// Cuando la respuesta elegida tiene las DOS deltas en cero, el plan es quedarse donde estás
-// y negociar precio. Apuntar ahí con el aro dejaba la marca sobre la única celda del grillado
-// que no dice «Comprar» —la de hoy muestra su lectura a precio de hoy— y con la tinta ya
-// retirada, o sea sin ninguna marca en pantalla. Medido: 143 filas LTR (37,1% de las que
-// tienen menú) y 7 STR abrían así. Y encima el mismo score salía escrito dos veces distinto:
-// 74 en el menú y 54 en la celda.
-//
-// TRES COSAS QUE TIENEN QUE MOVERSE JUNTAS, y por eso van en un invariante y no en tres:
-//  · la fila deja de mostrar coordenadas de celda y score de celda;
-//  · no se dibuja aro;
-//  · la cuarta entrada de la leyenda cuelga de que HAYA ARO, no de que haya menú — si no,
-//    nombraría una marca ausente, que es el único bug de esa clase que el barrido de
-//    coherencia buscó en 481 pop-ups y no encontró.
-{
-  if (POPUP) {
-    if (!/const planSinCelda\s*=/.test(POPUP)) {
-      F("14 · no existe `planSinCelda`: nada distingue el plan que no se mueve a ninguna celda");
-    }
-    // El predicado son LAS DOS DELTAS, no `redundanteConPalancaSola`: la bandera es un
-    // superconjunto y toca 19 filas LTR más, donde el mix SÍ mueve una dimensión y su fila
-    // no miente. Esas quedan fuera a propósito.
-    const decl = POPUP.match(/const planSinCelda[^;]*;/)?.[0] ?? "";
-    if (!/piePctDelta === 0[\s\S]*plazoAniosDelta === 0/.test(decl)) {
-      F("14 · `planSinCelda` no se escribe con las dos deltas en cero");
-    }
-    if (/redundanteConPalancaSola/.test(decl)) {
-      F("14 · `planSinCelda` se escribió con la bandera del motor: es un superconjunto y arrastra 19 filas que esta decisión no miró");
-    }
-    // El aro se apaga con ese predicado.
-    if (!/planSinCelda \? null :/.test(POPUP)) {
-      F("14 · el aro no se apaga con `planSinCelda`: volvería a pararse sobre la celda de hoy");
-    }
-    // Y la leyenda cuelga del aro, no del menú.
-    const leyenda = POPUP.match(/\{hayAro && \([\s\S]{0,220}?la que estás viendo/)?.[0] ?? "";
-    if (!leyenda) {
-      F("14 · la cuarta entrada de la leyenda no cuelga de `hayAro`: con el aro apagado nombraría una marca que no está en pantalla");
-    }
-    // La fila muestra el destino, no el score de la celda. No basta con que la función
-    // exista: tiene que ESTAR CABLEADA en la columna de la cifra, o la fila vuelve a escribir
-    // el score de la celda —54— al lado del que el plan alcanza —74—.
-    if (!/function destinoDe/.test(POPUP)) {
-      F("14 · no existe `destinoDe`: la fila sin celda necesita el score como DESTINO, no como score de la celda que señala");
-    }
-    if (!/sinCelda \? destinoDe\(/.test(POPUP)) {
-      F("14 · la columna de la cifra no usa `destinoDe` en la fila sin celda: vuelven los dos scores contradictorios en la misma pantalla");
-    }
-    if (!/sinCelda \?/.test(POPUP.match(/<span className="paj-opt-sub">[\s\S]{0,400}/)?.[0] ?? "")) {
-      F("14 · la línea de coordenadas no se bifurca: la fila sin celda seguiría diciendo «Pie 20% · Plazo 25 años», que es decir «hoy»");
-    }
-  }
-}
-
-// ── 15 · SIN FILA DE TARIFA, SIN NOTA (16-sep-2026) ───────────────────────────
-//
-// La nota «La tarifa la pone el mercado, no tú» colgaba de `modalidad === "str"`, o sea se
-// dibujaba SIEMPRE en renta corta. Medido sobre el parque recomputado: de los 91 pop-ups STR
-// con tabla, 31 (34,1%) no tienen fila de tarifa —así que la nota explicaba una fila que no
-// está— y en 22 de esos 31 la tabla sí tiene una fila del usuario, con una nota debajo
-// hablando del mercado sobre una fila que no habla del mercado.
-//
-// Es la doctrina «sin celda, sin oración» que la matriz ya aplica en su subtítulo: la segunda
-// mitad no se dice cuando no hay celda de hoy. Acá la oración entera cuelga de su fila.
-{
-  if (POPUP) {
-    if (/modalidad === "str" && <p/.test(POPUP)) {
-      F("15 · la nota de la tarifa sigue colgando de la modalidad: se dibuja en 31 pop-ups STR donde esa fila no existe");
-    }
-    if (!/const hayTarifa\s*=/.test(POPUP)) {
-      F("15 · no existe `hayTarifa`: nada condiciona la nota a que la fila de tarifa exista");
-    }
-    const decl = POPUP.match(/const hayTarifa[^;]*;/)?.[0] ?? "";
-    if (!/palanca === "adr"/.test(decl)) {
-      F("15 · `hayTarifa` no se escribe mirando la fila `adr`: la nota volvería a hablar de lo que no está en la tabla");
-    }
-    if (!/\{hayTarifa && <p/.test(POPUP)) {
-      F("15 · la nota no cuelga de `hayTarifa`");
-    }
-  }
-}
-
-// ── 16 · COMPRAR · LAS DOS SEGUNDAS LÍNEAS DE LA FILA (15-sep-2026) ──────────
-//
-// En COMPRAR el pop-up era la card palabra por palabra: los dos dibujan el MISMO array y
-// escriben `rotuloCorto` + `oracion`. Medido: de las 9 cadenas que escribe con tres filas,
-// 6 son literales de la card —83% por caracteres— y el botón que lo abre vive DENTRO de esa
-// card, veinte píxeles debajo de la última fila que repite.
-//
-// Margen y Precio ganan contenido propio: la BANDA en la primera columna y el VEREDICTO AL
-// QUE CAE en la segunda. Los dos ya los calculaba el motor y los tiraba.
-//
-// LA FORMA SALE DE LA TABLA DE ABAJO, que es la misma: `SeccionComprar` ya usa
-// `paj-sec paj-nod`, así que la regla `.paj-nod td:first-child em` —la que pone «lo pone el
-// vendedor» bajo el nombre— ya le aplica. La banda entra ahí sin CSS nuevo. El destino va
-// como `small` bajo la oración, con una regla calcada de las dos que esa tabla ya tiene.
-{
-  if (POPUP) {
-    const sec = POPUP.match(/function SeccionComprar\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
-    if (!sec) F("16 · no se encontró `SeccionComprar` para auditar sus filas");
-    else {
-      if (!/<em>\{[^}]*banda/.test(sec)) {
-        F("16 · la fila no dibuja la banda en un `<em>`: sin ella un margen de 0 puntos se lee igual que uno de 48, y son 44 filas del parque");
-      }
-      if (!/ETIQUETA_BANDA_MARGEN/.test(POPUP)) {
-        F("16 · el pop-up no usa `ETIQUETA_BANDA_MARGEN`: la etiqueta de la banda sale del motor, no del render");
-      }
-      if (!/<small>\{[^}]*caeA/.test(sec) && !/caeA[^]{0,120}<small>/.test(sec)) {
-        F("16 · la fila no dibuja a qué veredicto cae: el motor lo guarda y nadie lo leía");
-      }
-      if (!/etiquetaVeredicto\(/.test(sec)) {
-        F("16 · el destino no pasa por `etiquetaVeredicto`: es la fuente única de la escritura del veredicto");
-      }
-    }
-    // La regla del `small` de la oración, calcada de las dos que ya existen.
-    if (!/\.paj-nod \.paj-oracion small\{/.test(CSS)) {
-      F("16 · falta la regla `.paj-nod .paj-oracion small`: la segunda línea del destino no tendría forma");
-    }
-  }
-}
-
-// ── 17 · LA TABLA DE LAS SOLAS APUNTA ADONDE APUNTA EL CHIP (17-sep-2026) ──
-//
-// El chip de arriba dice «BUSCAR OTRO → ✓ COMPRAR» y la tabla de abajo se titula
-// «Llegas a». Hasta hoy esa tabla salía de `v.palancas`, que en BUSCAR OTRA apunta al
-// ESCALÓN INTERMEDIO —AJUSTA—, así que en 259 de 264 pop-ups sin grilla (98,1%, el 27,0%
-// del total) ninguna fila llegaba a Comprar y las tres decían «Ajustar» bajo un
-// encabezado que prometía Comprar.
-//
-// Es EL MISMO BUG que `mixAComprar` mató para la matriz, con su acta escrita arriba en
-// este mismo archivo: se arregló la grilla y no la tabla de al lado. Y la card de §5, con
-// el mismo dato, ya lo hacía bien desde el 10-sep (`lo-que-haria-yo.ts:343`). Dos
-// superficies, un dato, dos respuestas: exactamente lo que la fuente única vino a evitar.
-//
-// ⚠ AUSENTE ≠ VACÍO, y por eso el predicado pide `Array.isArray`. En una fila persistida
-// antes del salto de dos bandas `palancasHastaComprar` es `undefined`: nadie midió la vía
-// a COMPRAR. Leerla como lista vacía haría que el pop-up afirmara «ninguna llega» sobre
-// una medición que no existe. Las dos salidas dibujan lo mismo —nada— pero por razones
-// distintas, y la que se escribe en el código es la del acta.
-{
-  if (POPUP) {
-    const solas = POPUP.match(/const solas = [^;]+;/)?.[0] ?? "";
-    if (!solas) F("17 · no se encontró de dónde sale `solas` en el pop-up");
-    else if (!/palancasHastaComprar|solasAComprar/.test(solas)) {
-      F("17 · la tabla de las solas sigue leyendo `palancas` pelado: en BUSCAR OTRA eso apunta a AJUSTA y el chip promete COMPRAR");
-    }
-    // Desde el 21-sep-2026 `solasAComprar` (y `mixAComprar`) viven en `src/lib/mix-a-comprar.ts`,
-    // porque los lee también «Cómo lo pagas». El predicado sigue midiendo la regla —el
-    // `Array.isArray`— donde ahora vive, y que el pop-up la importe de ahí y no la reescriba.
-    const MIXLIB = leer("src/lib/mix-a-comprar.ts");
-    if (!/Array\.isArray\([^)]*palancasHastaComprar\)/.test(MIXLIB)) {
-      F("17 · `solasAComprar` no distingue AUSENTE de VACÍO en `palancasHastaComprar`: sin `Array.isArray` una fila vieja publica una medición que nadie hizo");
-    }
-    if (!/import \{ mixAComprar, solasAComprar \} from "@\/lib\/mix-a-comprar"/.test(POPUP) || /^function (mixAComprar|solasAComprar)\b/m.test(POPUP)) {
-      F("17 · el pop-up tiene que importar `mixAComprar`/`solasAComprar` de la lib, no definir los suyos");
-    }
-    // EL GATE DEL BOTÓN LEE LA MISMA FUENTE. Si no, el hero dibuja el botón de un pop-up
-    // que abriría vacío — el estado que el invariante 6 existe para impedir.
-    // ⚠ DOS TRAMPAS, LAS DOS PISADAS EN ESTE MISMO INVARIANTE.
-    //
-    // 1 · Hasta el CUERPO, no hasta el primer salto + llave: la firma lleva un tipo inline
-    //     cuyo cierre («}): boolean {») está en columna 0, así que el perezoso cortaba ahí y
-    //     el predicado medía la firma. Dio ROJO sobre el código ya arreglado.
-    //
-    // 2 · SIN COMENTARIOS. La versión siguiente buscaba el nombre de la función sobre el
-    //     bloque entero, y el acta que explica POR QUÉ el gate lee la misma fuente nombra a
-    //     las dos: el predicado se cumplía con la prosa. Verificado por mutación —volver el
-    //     gate a `v.palancas` dejaba el tier en VERDE—. Un guard que lee comentarios mide
-    //     que alguien escribió la palabra, no que el código la usa.
-    const gate = (POPUP.match(/export function hayAjustesQueMostrar[^]*?(?=export function PopupAjustes)/)?.[0] ?? "")
-      .replace(/\/\*[^]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
-    if (!gate) F("17 · no se encontró `hayAjustesQueMostrar`");
-    else if (!/solasAComprar\(/.test(gate)) {
-      F("17 · `hayAjustesQueMostrar` cuenta `palancas` y la tabla dibuja otra cosa: el botón abriría un pop-up vacío");
-    }
-  }
-  // LA REGLA ESPEJO: el precedente vive en la card y tiene que seguir ahí.
-  if (CARD && !/esBuscar \? dv\.palancasHastaComprar : dv\.palancas/.test(CARD)) {
-    F("17 · la card de §5 dejó de elegir la fuente por veredicto: era el precedente de esta regla");
-  }
-}
-
-// ── 18 · EL «AJUSTE» NO SE DIBUJA CUANDO NO AJUSTA (17-sep-2026) ───────────
-//
-// La línea `sinCelda` del menú se escribió para AJUSTAR, donde «el ajuste es solo de
-// precio» es verdad y el precio lo pone el vendedor. En COMPRAR miente dos veces: no hay
-// descuento que pedir —la bajada de la matriz acaba de decirlo— y al vendedor no se le
-// pide nada. Medido: 17 de 217 filas COMPRAR (7,8%) abren así, y en las 17 el bloque de abajo publica los siete
-// pares idénticos («$17.539.910 → $17.539.910», «Score 77 → 77») bajo el título «El
-// ajuste». Un bloque que se llama ajuste y no ajusta nada no tiene razón de existir.
-//
-// Misma doctrina que «sin celda, sin oración», que ya gobierna «hoy» en la leyenda, la
-// nota de la tarifa y la segunda mitad del subtítulo de la matriz: la pieza cuelga de lo
-// que describe.
-//
-// ⚠ LOS PREDICADOS SON LITERALES, Y ESO ES DELIBERADO. La primera versión de este
-// invariante preguntaba por `/mueveAlgo|hayAjuste/` y por la vecindad de `esComprar`, y
-// dio VERDE sobre el código roto: `hayAjuste` matchea `hayAjustesQueMostrar`, y en una
-// función de 120 líneas `esComprar` aparece a menos de 200 caracteres de casi todo. Un
-// predicado por vecindad no mide una rama, mide una coincidencia.
-{
-  if (POPUP) {
-    // 1 · el bloque del óptimo cuelga de que la respuesta elegida MUEVA algo.
-    if (!/ajustaAlgo/.test(POPUP)) {
-      F("18 · no existe el predicado `ajustaAlgo`: con las dos deltas en cero y sin descuento el bloque publica siete pares idénticos bajo el título «El ajuste»");
-    } else if (!/ajustaAlgo && <SeccionOptimo|ajustaAlgo &&\s*\(?\s*<SeccionOptimo/.test(POPUP)) {
-      F("18 · `ajustaAlgo` existe pero no condiciona `<SeccionOptimo`");
-    }
-    // 2 · LAS DOS RAMAS DE LA LÍNEA SIN CELDA tienen que existir, cada una con su texto.
-    //     Si queda una sola, es la de AJUSTAR y en COMPRAR miente.
-    const deAjustar = /Mover el pie o el plazo no ayuda: el ajuste es solo de precio\./.test(POPUP);
-    const deComprar = /Ninguna combinación de pie y plazo mejora lo que ya tienes\./.test(POPUP);
-    if (!deAjustar) F("18 · desapareció el trade-off de la línea sin celda en AJUSTAR: ahí sí es cierto que el ajuste es solo de precio");
-    if (!deComprar) {
-      F("18 · la línea sin celda dice «el ajuste es solo de precio» también en COMPRAR, donde la bajada de su propia sección acaba de decir que al vendedor no se le pide nada");
-    }
-    // 3 · y el dueño del movimiento tampoco puede ser el vendedor en COMPRAR.
-    if (!/es lo que ya tienes/.test(POPUP)) {
-      F("18 · la línea sin celda de COMPRAR no dice qué es: hoy escribe «Sin pedir descuento · lo pone el vendedor» en una pantalla sin vendedor");
-    }
-    // 4 · y el destino tampoco «llega»: se mantiene, igual que el swatch.
-    // ⚠ TERCERA TRAMPA DE ESTE ARCHIVO, y la cazó la evaluación por mutación: el
-    //   predicado era `/esComprar|sigue siendo/` sobre la captura ENTERA, y la captura
-    //   arranca en la firma —`function destinoDe(r: RespuestaMix, esComprar: boolean)`—
-    //   que contiene `esComprar`. Revertir el arreglo dejando «llegas a» en los tres
-    //   veredictos dejaba el tier VERDE. Ahora se mide el CUERPO, sin firma y sin
-    //   comentarios, y se pide el ternario, que es lo único que decide qué se escribe.
-    const cuerpoDestino = (POPUP.match(/function destinoDe\([^]*?\n\}/)?.[0] ?? "")
-      .replace(/^function destinoDe\([^)]*\)\s*\{/, "")
-      .replace(/\/\*[^]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
-    if (!cuerpoDestino) F("18 · no se encontró `destinoDe`");
-    else if (!/esComprar \?/.test(cuerpoDestino)) {
-      F("18 · `destinoDe` escribe «llegas a» en los tres veredictos: en COMPRAR no se llega, se mantiene — el mismo argumento del swatch");
-    }
-  }
-}
-
-// ── 19 · UNA MARCA, UNA ENTRADA DE LEYENDA (17-sep-2026) ───────────────────
-//
-// La leyenda de COMPRAR dibujaba UNA entrada por veredicto caído presente —«baja a
-// Ajustar», «baja a Buscar otro»— y las dos usan el MISMO swatch `.paj-sw.e`. Medido en
-// el navegador, en los dos temas: `rgb(244,244,246)` las dos en claro y `rgb(26,26,30)`
-// las dos en oscuro. La leyenda prometía dos marcas y dibujaba una.
-//
-// Es la misma regla con la que el chip «↓ Ajustar» se quedó fuera el 15-sep: UNA MARCA
-// POR HECHO. El color dice «esta celda se cae»; cuál es el veredicto lo escribe la celda,
-// con su palabra. Dos entradas para un color es la cara opuesta del mismo error.
-//
-// Y el swatch de «hoy» compartía el fondo con el de las caídas (`--doc-paper2`), así que
-// eran TRES entradas con el mismo gris. La marca de «hoy» en la matriz no es un fondo
-// gris: es un aro (`td.hoy{box-shadow:inset …}`) sobre la celda que sea. El swatch se
-// dibuja como su marca, igual que `.paj-sw.d` hace con el aro de tinta y su acta.
-{
-  if (POPUP) {
-    const mtz = POPUP.match(/function SeccionMatriz\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
-    if (!mtz) F("19 · no se encontró `SeccionMatriz` para auditar la leyenda");
-    else {
-      // ⚠ EL PREDICADO ERA PURAMENTE NEGATIVO Y ATABA UN NOMBRE DE VARIABLE. Prohibía la
-      //   grafía `.map((vd)` y no afirmaba en ningún lado que la entrada única existiera:
-      //   renombrar el parámetro devolvía la leyenda vieja con el tier en verde. Lo cazó la
-      //   evaluación. Ahora van las dos mitades, y ninguna depende de cómo se llame nada.
-      // (a) LA ENTRADA ÚNICA EXISTE, con su texto.
-      if (!/deja de ser \{etiquetaVeredicto\(destino/.test(mtz)) {
-        F("19 · la leyenda no dibuja la entrada única «deja de ser Comprar»: es el espejo de «sigue siendo Comprar» y el único texto que el swatch gris puede sostener");
-      }
-      // (b) Y NO SE ARMA UN CONJUNTO DE VEREDICTOS CAÍDOS, que es la forma que producía
-      //     una entrada por cada uno. Se mira `new Set(` junto a la comparación contra el
-      //     destino, no el nombre del parámetro.
-      if (/new Set\([^]{0,300}!== destino/.test(mtz)) {
-        F("19 · la leyenda vuelve a recoger los veredictos caídos en un conjunto: eso es una entrada por veredicto, y las dos usan el mismo swatch");
-      }
-    }
-  }
-  if (CSS) {
-    const c = CSS.match(/\.paj-sw\.c\{([^}]*)\}/)?.[1] ?? "";
-    const e = CSS.match(/\.paj-sw\.e\{([^}]*)\}/)?.[1] ?? "";
-    if (!c || !e) F("19 · faltan las reglas de `.paj-sw.c` o `.paj-sw.e`");
-    else {
-      const fondo = (x: string) => x.match(/background:([^;]+)/)?.[1]?.trim() ?? "";
-      if (fondo(c) && fondo(c) === fondo(e)) {
-        F(`19 · «hoy» y «la que cae» comparten el mismo fondo (${fondo(c)}): son dos entradas de leyenda con un solo color`);
-      }
-    }
-  }
-}
-
-// ── 20 · LA MATRIZ NO SE CORTA (17-sep-2026) ───────────────────────────────
-//
-// `.paj-mtxbox` tenía `max-height:326px` y `280px` bajo 460, con el comentario «tope
-// pensado para 7 filas». Medido en el navegador a 390: la cabecera mide 30,5 px y cada
-// fila 46,5, así que siete filas miden 356 y seis miden 310. El tope nunca dio para siete
-// ni para seis: cortaba en cinco.
-//
-// Medido sobre el parque: 46 de 681 matrices (6,8%) no caben, y en 5 la celda que la
-// leyenda llama «lo que Franco recomienda» abre FUERA DE VISTA, dentro de una caja con
-// scroll propio adentro de un modal que ya scrollea. El modal mide entre 1.200 y 1.950 px
-// al abrir: sacar el tope suma 76 px en el peor caso.
-{
-  if (CSS) {
-    const caja = [...CSS.matchAll(/\.paj-mtxbox\{([^}]*)\}/g)].map((m) => m[1]);
-    for (const regla of caja) {
-      const mh = regla.match(/max-height:\s*([^;]+)/)?.[1]?.trim();
-      if (mh && mh !== "none") {
-        F(`20 · la matriz sigue con tope de alto (${mh}): 46 matrices del parque se cortan y en 5 la recomendada abre fuera de vista`);
-      }
-    }
-  }
-}
-// ── 21 · LA TABLA DE COMUNAS TIENE SU PROPIA PUERTA (17-sep-2026) ─────────
-//
-// LO QUE PASÓ, y es la razón de que este invariante exista: `hayAjustesQueMostrar` dejó
-// de contar `palancas` y pasó a contar las que llegan a COMPRAR, así que en 237 pop-ups
-// el botón dejó de dibujarse — la decisión correcta, porque ahí no había nada que mostrar.
-// Pero el botón NO era solo del pop-up: `PosicionFranco` montaba el <Modal> con
-// `{footer && …}` y adentro, después del cuerpo, iba `{extraPopup}`, que es la tabla
-// «Dónde sí convendría» (comuna · costaría · rentaría · veredicto · n de avisos).
-//
-// Al apagar una se apagó la otra. Medido: 35 filas LTR quedaron con la línea «En Puente
-// Alto un departamento como este sí convendría» en la card —que va SIN cifras por
-// contrato, porque las cifras vivían en la tabla— y sin ninguna superficie donde verlas.
-// Verificado por mutación sobre `0209b8a1`: revirtiendo la línea del gate, la tabla
-// vuelve a aparecer.
-//
-// SON DOS PREGUNTAS DISTINTAS —«qué se probó acá» y «dónde sí convendría»— y compartían
-// puerta por accidente de implementación, no por decisión. Cada una con la suya.
-{
-  if (POSICION) {
-    // Ya no se cuelga del cuerpo del footer.
-    if (/\{extraPopup\}/.test(POSICION)) {
-      F("21 · la tabla de comunas sigue montándose dentro del modal del footer: apagar el pop-up la apaga");
-    }
-    if (!/puertaExtra/.test(POSICION)) {
-      F("21 · `PosicionFranco` no declara una puerta propia para la tabla de comunas");
-    }
-    // DOS modales, y el segundo condicionado a su propia puerta.
-    const modales = (POSICION.match(/<Modal\b/g) ?? []).length;
-    if (modales < 2) F(`21 · hay ${modales} modal(es) en PosicionFranco: la tabla de comunas necesita el suyo`);
-    if (!/puertaExtra && \(/.test(POSICION)) {
-      F("21 · el segundo modal no cuelga de `puertaExtra`");
-    }
-    // Y la caja no puede devolver null cuando lo único que hay es la puerta extra.
-    const guarda = POSICION.match(/if \(!cajaAccionable[^\n]*\) return null;/)?.[0] ?? "";
-    if (!guarda) F("21 · no se encontró la guarda de «no hay nada que dibujar»");
-    else if (!/puertaExtra/.test(guarda)) {
-      F("21 · la guarda de salida no cuenta la puerta extra: con la tabla de comunas como único contenido, la sección no se monta");
-    }
-  }
-  // Y EL CALLER DECIDE SI HAY CONTENIDO. `DetalleAlternativaComunas` se autoanula cuando
-  // no hay comunas (`alternativa.todas.length === 0`) y el padre no se enteraba, así que
-  // habría dibujado un botón hacia un modal vacío.
-  if (HERO_LTR) {
-    if (!/puertaExtra=/.test(HERO_LTR)) F("21 · HeroLTR no pasa `puertaExtra`");
-    else if (!/alternativa[^\n]{0,80}todas\.length/.test(HERO_LTR)) {
-      F("21 · HeroLTR no condiciona la puerta a que la tabla tenga filas: el botón abriría un modal vacío");
-    }
-  }
-}
-// ── 22 · EL PANEL NO PREGUNTA POR EL DESCUENTO EN COMPRAR (17-sep-2026) ───
-//
-// En modo «mejorar» el eje del precio no existe: `explorarCelda` devuelve `{pct: 0}` para
-// TODAS las celdas (mix-palancas.ts:613). La primera fila del panel escribía entonces
-// «Pides de descuento: nada» en las 2.220 celdas no-aro de COMPRAR — el 100%, medido — y
-// ocupaba la mitad del panel justo donde las 295 que caen no tenían dónde decirlo.
-//
-// ⚠ TODO ESTE BLOQUE MIDE EL CÓDIGO SIN COMENTARIOS: el acta del panel cita los mismos
-//   literales que acá se exigen y se prohíben, así que sobre el texto crudo estos
-//   predicados se cumplirían con la prosa. Verificado por mutación.
-const PANEL = sinComentarios(cuerpoDe(POPUP, "function PanelCelda"));
-const RAMA_SIN_COMPRAR = PANEL.match(/\{!esComprar && \([^]*?\n\s{4,}\)\}/)?.[0] ?? "";
-// ⛔ UN CERO DE MEDICIÓN QUE NO DISTINGUE «NO CORRIÓ». Si `PanelCelda` se renombra —un
-//   refactor legítimo— `cuerpoDe` devuelve "" y los invariantes 23, 24 y la primera mitad del
-//   25 se callan enteros: todos cuelgan de `if (PANEL)`. Hoy el 22 grita, pero eso es suerte,
-//   no diseño. La ausencia se declara UNA vez, acá, y por eso los demás pueden seguir
-//   colgando de la presencia sin mentir. (CLAUDE.md § Testing.)
-if (!PANEL) F("22-25 · no se encontró el cuerpo de `PanelCelda`: los cuatro invariantes del panel NO CORRIERON");
-{
-  if (PANEL && !RAMA_SIN_COMPRAR) F("22 · la primera fila del panel ya no cuelga de `!esComprar`");
-  else {
-    // (a) el rótulo del descuento vive ADENTRO de esa rama…
-    if (!/Pides de descuento/.test(RAMA_SIN_COMPRAR)) {
-      F("22 · «Pides de descuento» salió de la rama `!esComprar`: en COMPRAR vuelve a preguntar por un descuento que ese modo no tiene");
-    }
-    // (b) …y en ningún otro lado. Sin esta mitad, mover la fila fuera de la condición y
-    //     dejar la rama vacía pasaba: (a) solo prohíbe que el rótulo NO esté adentro.
-    if (/Pides de descuento|Pidiendo descuento llegas a/.test(PANEL.replace(RAMA_SIN_COMPRAR, ""))) {
-      F("22 · el rótulo del descuento aparece fuera de la rama `!esComprar`");
-    }
-  }
-}
-
-// ── 23 · LA CELDA QUE CAE LO DICE (17-sep-2026) ───────────────────────────
-//
-// 295 celdas en 71 de las 218 filas COMPRAR tienen una palabra que no es COMPRAR, y el
-// panel las despachaba con «nada». El cuadrito ya escribe la palabra y el score; lo que
-// faltaba es la consecuencia de tomarla.
-{
-  if (PANEL) {
-    // (a) el predicado compara la palabra MOSTRADA contra el destino — no `sel.veredicto`
-    //     crudo, que es lo que las dos frases del aro usan a propósito.
-    // Se mide la EXPRESIÓN, no el nombre: `const cae = …` era una grafía renombrable.
-    if (!/=\s*esComprar && caeDelDestino\(sel, destino\)/.test(PANEL)) {
-      F("23 · el predicado de la celda caída dejó de ser `esComprar && caeDelDestino(sel, destino)`");
-    }
-    // Y `caeDelDestino` es UNA sola definición para las dos superficies que predican el mismo
-    // hecho. Antes la leyenda hacía `!!vd && vd !== destino` y el panel omitía el `!!`: con el
-    // veredicto ausente el panel afirmaba «Te saca de Comprar» sobre una celda que la leyenda
-    // no contaba. Lo encontró la revisión adversaria del diff.
-    if (!/function caeDelDestino\(c: CeldaMix, destino: Veredicto\)[^]*?return !!vd && vd !== destino;/.test(sinComentarios(POPUP))) {
-      F("23 · `caeDelDestino` dejó de guardar el nulo: `undefined !== \"COMPRAR\"` es true y el panel afirmaría la caída de una celda sin veredicto");
-    }
-    const usosCae = (sinComentarios(POPUP).match(/caeDelDestino\(/g) ?? []).length;
-    if (usosCae < 3) F(`23 · \`caeDelDestino\` se usa ${usosCae} veces: la leyenda y el panel tienen que predicar el MISMO hecho con la misma función`);
-    // La indentación se mide laxa (`\s{4,}`) a propósito: fijar ocho espacios convierte
-    // cualquier envoltorio nuevo alrededor de la rejilla en un rojo por la razón equivocada.
-    const linea = PANEL.match(/\{cae && \([^]*?\n\s{4,}\)\}/)?.[0] ?? "";
-    if (!linea) F("23 · no hay línea colgada de `cae`: la celda que te saca del veredicto no lo dice");
-    else {
-      // El destino sale del módulo, no de un literal: con «Te saca de Comprar» escrito a
-      // mano, renombrar la etiqueta del veredicto dejaba la frase vieja en pantalla.
-      if (!/Te saca de \{etiquetaVeredicto\(destino/.test(linea)) {
-        F("23 · la línea de la celda caída no nombra el destino desde `etiquetaVeredicto`");
-      }
-      if (!/className="v mal"/.test(linea)) {
-        F("23 · la línea de la celda caída perdió el rojo: es el costo de la celda, como el pie que encarece");
-      }
-      // Y SU RÓTULO. La rejilla es de pares: sin él queda un valor huérfano en la columna
-      // derecha y nada que lo nombre en la izquierda.
-      if (!/className="l">Si la tomas</.test(linea)) {
-        F("23 · la línea de la celda caída perdió su rótulo «Si la tomas»: la rejilla queda con un valor sin etiqueta");
-      }
-    }
-  }
-}
-
-// ── 24 · EL RÓTULO DEL PIE LLEVA LA DIRECCIÓN, Y EL NÚMERO NO LA REPITE ───
-//
-// Era un rótulo solo, «Pie extra el día uno», con el número firmado. En las 1.318 celdas
-// que LIBERAN capital eso imprimía «Pie extra el día uno: −$13.944.700»: «extra» y «menos»
-// en la misma línea. Y el cero imprimía «—», que no es una respuesta — son 787 celdas, de
-// las cuales 361 de COMPRAR se quedarían sin ninguna fila.
-{
-  // ⛔ NO ALCANZA CON QUE LAS TRES FORMAS EXISTAN, y las dos primeras versiones de este
-  //   invariante lo hacían así. Cuatro `includes` son PRESENCIA: dejar un rótulo fijo y las
-  //   otras grafías en un `<span hidden>` muerto los satisface a los cuatro. Y pedir
-  //   `plata(Math.abs(…))` en cualquier parte del panel tampoco ata nada: invirtiendo el
-  //   ternario del VALOR —`: sel.costoDiaUnoUF < 0`— y dejando el del rótulo intacto, sale
-  //   «Pie que liberas el día uno: −$13.944.700», que es el bug entero, con el tier VERDE.
-  //   Las dos las encontró la revisión adversaria del diff.
-  //   Por eso acá se capturan los DOS ternarios completos y se exige que cada rama vaya con
-  //   su forma: es la relación, no la presencia.
-  const ternarioRotulo = PANEL.match(/costoDiaUnoUF === 0\s*\n?\s*\? "Pie el día uno"\s*\n?\s*: sel\.costoDiaUnoUF > 0\s*\n?\s*\? "Pie extra el día uno"\s*\n?\s*: "Pie que liberas el día uno"/);
-  if (!ternarioRotulo) {
-    F("24 · el rótulo del pie dejó de salir del signo: las tres formas tienen que colgar de `costoDiaUnoUF`, en ese orden");
-  }
-  const ternarioValor = PANEL.match(/costoDiaUnoUF === 0\s*\n?\s*\? "no cambia"\s*\n?\s*: sel\.costoDiaUnoUF > 0\s*\n?\s*\? plataFirmada\([^)]*\)\s*\n?\s*: plata\(Math\.abs\(sel\.costoDiaUnoUF\)/);
-  if (!ternarioValor) {
-    F("24 · el valor del pie no acompaña al rótulo: el cero va «no cambia», el positivo firmado y el negativo por `Math.abs` — cualquier otra combinación pone las dos direcciones en la misma línea");
-  }
-  // Y EL COLOR SIGUE COLGANDO DEL SIGNO. El acta razona sobre él («el color estaba bien») y
-  // hasta la revisión no lo guardaba nadie: fijarlo en `"v mal"` pintaba de rojo las 1.318
-  // que liberan capital y las 787 que no cambian nada.
-  if (!/className=\{`v\$\{sel\.costoDiaUnoUF > 0 \? " mal" : ""\}`\}/.test(PANEL)) {
-    F("24 · el rojo de la fila del pie dejó de colgar del signo: pintaría de rojo a las celdas que liberan capital");
-  }
-}
-
-// ── 25 · LA NOTA DEL TOPE NO SALE DONDE EL TOPE NO APLICA (17-sep-2026) ───
-//
-// `alcanzable` se mide contra `MIX_COSTO_TOPE_PTS_PRECIO` (15) y nada más, y ese tope está
-// DESACTIVADO en modo «mejorar»: `mix-palancas.ts:771` elige entre `combos` entero. La nota
-// le decía «más pie del que Franco recomienda poner» a 96 celdas de COMPRAR cuya
-// recomendación nunca miró ese número. Fuera de COMPRAR sigue, en 135 de las 231.
-{
-  // La condición se mide por sus DOS extremos y no por su grafía exacta: exigir la cadena
-  // literal `!esComprar && sel.descuentoPct !== null && !sel.alcanzable` mata en rojo a
-  // cualquiera que meta una condición legítima en el medio. Lo que importa es que `!esComprar`
-  // gobierne la misma condición que termina en `!sel.alcanzable`.
-  const nota = PANEL.match(/\{!esComprar &&[^\n]*!sel\.alcanzable && \(/);
-  if (PANEL && !nota) {
-    F("25 · la nota «más pie del que Franco recomienda poner» dejó de colgar de `!esComprar`: vuelve a juzgar COMPRAR con un tope que ese modo apagó");
-  }
-  // Y LA CELDA DEL ARO NO ABRE PANEL EN COMPRAR: sus dos filas quedan sin contenido, y lo
-  // que diría ya está tres veces en pantalla (el aro, la palabra de la celda, la leyenda).
-  const POPUP_SC = sinComentarios(POPUP);
-  if (!/function abrePanel\(\s*\w+: CeldaMix \| null,\s*esComprar: boolean\s*\)/.test(POPUP_SC)) {
-    F("25 · no existe `abrePanel`: el corte de quién abre panel volvió a estar disperso");
-  } else if (!/return !!(\w+) && !\(esComprar && \1\.esActual\);/.test(POPUP_SC)) {
-    F("25 · `abrePanel` dejó de excluir la celda del aro en COMPRAR");
-  }
-  // LOS DOS MONTAJES CUELGAN DE ÉL **SOLO**, y esa última palabra es el invariante.
-  // Contar ocurrencias no alcanzaba: `{(abrePanel(sel, esComprar) || sel?.esActual) && sel &&`
-  // sigue contando dos y devuelve el panel a la celda del aro. Se mide la condición ENTERA
-  // del montaje, que es lo único que dice quién abre.
-  const montajes = POPUP_SC.match(/\{[^{}\n]*&& sel && \(\s*\n\s*<PanelCelda/g) ?? [];
-  if (montajes.length !== 2) {
-    F(`25 · hay ${montajes.length} montajes de <PanelCelda> con la forma esperada, y son 2`);
-  }
-  for (const m of montajes) {
-    if (!/^\{abrePanel\(sel, esComprar\) && sel && \($/m.test(m.split("\n")[0] + "")) {
-      F(`25 · un montaje de <PanelCelda> no cuelga EXACTAMENTE de \`abrePanel(sel, esComprar)\`: «${m.split("\n")[0].trim()}»`);
-    }
-  }
-  if (!/setSel\(abrePanel\(c, esComprar\) \? c : null\)/.test(POPUP_SC)) {
-    F("25 · el handler de la matriz no pasa por `abrePanel`: la celda del aro quedaría seleccionada sin panel");
-  }
-  // ⛔ Y `esComprar` TIENE QUE LLEGAR AL COMPONENTE. Sin esto, los invariantes 22, 23 y 25
-  //   miran el cuerpo de `PanelCelda` y dan verde mientras los dos montajes le pasan
-  //   `esComprar={false}`: vuelve la fila del descuento a las 2.220, `cae` nunca es true y la
-  //   nota del tope vuelve a las 96. Es «presencia ≠ cableado» — el cuerpo está bien escrito
-  //   y no gobierna nada. Lo encontró la revisión adversaria del diff, no las mutaciones.
-  const pasan = (POPUP_SC.match(/<PanelCelda[^>]*esComprar=\{esComprar\}/g) ?? []).length;
-  if (pasan !== 2) {
-    F(`25 · <PanelCelda> recibe \`esComprar={esComprar}\` en ${pasan} de los 2 montajes: el cuerpo puede estar perfecto y no gobernar nada`);
-  }
-  // Y LA CELDA QUE NO ABRE PANEL TAMPOCO FINGE SER BOTÓN: en 184 de las 210 el clic no
-  // producía nada visible, y si había otro panel abierto se lo cerraba sin explicar por qué.
-  if (!/onClick=\{interactiva \? \(\) => onSel\(c\) : undefined\}/.test(POPUP_SC)) {
-    F("25 · la celda de la matriz volvió a ser clickeable sin condición: la del aro en COMPRAR promete un panel que no abre");
-  }
-  if (!/const interactiva = abrePanel\(c, esComprar\);/.test(POPUP_SC)) {
-    F("25 · la interactividad de la celda dejó de salir de `abrePanel`");
-  }
-}
-
-/** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
-  console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
-  if (fallas.length === 0) {
-    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón, el CTA va inerte, el color va por familia, la celda del aro habla del hoy, el panel no la contradice y el color lee la misma fuente que la palabra");
+  console.log("\n─── TIER POPUP-AJUSTES (el pop-up como mapa · matriz-popup.ts · 0 tokens) ───");
+  const fallas: string[] = [];
+  const F = (m: string) => fallas.push(m);
+  const fecha = new Date("2026-09-24T12:00:00Z");
+
+  // Las filas del golden, recomputadas con el motor vivo: grillas reales, no fixtures a mano.
+  const filas = AUDIT_FIXTURES.filter((f: any) => f.ltrInput).map((f: any) => {
+    const res: any = runAnalysis(f.ltrInput, AUDIT_UF, f.ltrMediana, fecha);
+    const dist = (res.hallazgos ?? []).find((h: any) => h?.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
+    return { id: f.id as string, input: f.ltrInput, res, v: res.veredicto as Veredicto, dist: dist ?? null };
+  });
+  const porVeredicto = (v: Veredicto) => filas.filter((r) => r.v === v);
+  if (porVeredicto("AJUSTA SUPUESTOS").length === 0 || porVeredicto("COMPRAR").length === 0 || porVeredicto("BUSCAR OTRA").length === 0) {
+    F("0 · el golden no trae filas LTR de los tres veredictos: los gates no tendrían sobre qué correr");
+  }
+  const html = (r: (typeof filas)[number]) =>
+    renderToStaticMarkup(
+      createElement(PopupAjustes, { veredicto: r.v, modalidad: "LTR", distancia: r.dist, mixComprar: r.res.mixComprar ?? null, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(r.input.precio) }),
+    );
+  const botones = (h: string) =>
+    (h.match(/<button[^>]*data-pie="[^"]*"[^>]*>/g) ?? []).map((tag) => ({
+      pie: Number(tag.match(/data-pie="([^"]*)"/)?.[1]),
+      plazo: Number(tag.match(/data-plazo="([^"]*)"/)?.[1]),
+      veredicto: tag.match(/data-veredicto="([^"]*)"/)?.[1] ?? "",
+      clase: tag.match(/class="([^"]*)"/)?.[1] ?? "",
+    }));
+
+  let conGrilla = 0;
+  let conFranco = 0;
+  let conCardMix = 0;
+  for (const r of filas) {
+    const grilla = grillaDelPopup({ veredicto: r.v, distancia: r.dist, mixComprar: r.res.mixComprar ?? null });
+    const celdas = grilla?.celdas ?? [];
+    const esComprar = r.v === "COMPRAR";
+
+    // ── G5 · Buscar otra no tiene pop-up ─────────────────────────────────────
+    if (r.v === "BUSCAR OTRA") {
+      if (grilla) F(`G5 · ${r.id}: Buscar otra devuelve grilla para el pop-up`);
+      if (hayAjustesQueMostrar({ veredicto: r.v, distancia: r.dist, mixComprar: r.res.mixComprar ?? null })) F(`G5 · ${r.id}: Buscar otra abre pop-up`);
+      if (html(r).trim()) F(`G5 · ${r.id}: el componente dibuja algo en Buscar otra`);
+      continue;
+    }
+    if (!celdas.length) continue;
+    conGrilla++;
+    const h = html(r);
+    const bs = botones(h);
+    if (bs.length !== celdas.length) F(`1 · ${r.id}: la matriz dibuja ${bs.length} celdas y la grilla del motor tiene ${celdas.length}`);
+
+    // ── G1 · la celda muestra el veredicto real de esa combinación ────────────
+    for (const c of celdas) {
+      const l = lecturaCelda(c, esComprar, r.dist?.valor.topePct ?? 30);
+      if (l.veredicto !== c.veredictoSinDescuento) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el modelo pinta ${l.veredicto} y la combinación al precio pedido es ${c.veredictoSinDescuento}`);
+      const b = bs.find((x) => x.pie === c.piePct && x.plazo === c.plazoAnios);
+      if (!b) { F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: la celda no aparece en el HTML`); continue; }
+      if (b.veredicto !== c.veredictoSinDescuento) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el HTML dice ${b.veredicto} y la combinación al precio pedido es ${c.veredictoSinDescuento}`);
+      if (!b.clase.split(/\s+/).includes(CLASE[c.veredictoSinDescuento])) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el color (${b.clase}) no es el del veredicto ${c.veredictoSinDescuento}`);
+    }
+
+    // ── G4 · Comprar no tiene celda de Franco ────────────────────────────────
+    const fr = celdaFranco({ veredicto: r.v, distancia: r.dist, grilla });
+    if (esComprar) {
+      if (fr) F(`G4 · ${r.id}: Comprar marca una celda de Franco`);
+      if (/pjx-tag fr/.test(h) || /\bfr\b/.test(bs.map((b) => b.clase).join(" "))) F(`G4 · ${r.id}: el HTML de Comprar lleva la marca «Franco»`);
+      if (/más descuento/.test(h)) F(`6 · ${r.id}: Comprar dibuja las flechas de descuento (no hay descuento que pedir)`);
+      if (/Analízalo a UF/.test(h)) F(`8 · ${r.id}: Comprar dibuja el botón de re-análisis`);
+      continue;
+    }
+
+    // ── G2 · Franco nunca más difícil que la más fácil disponible ─────────────
+    if (fr) {
+      conFranco++;
+      const facil = nivelMasFacilDisponible(celdas);
+      if (fr.descuentoPct === null) F(`G2 · ${r.id}: Franco marca una celda que no llega`);
+      else if (facil !== null && nivelDeDescuento(fr.descuentoPct) > facil) F(`G2 · ${r.id}: Franco marca −${fr.descuentoPct}% (nivel ${nivelDeDescuento(fr.descuentoPct)}) habiendo una celda de nivel ${facil} disponible`);
+      const marcadas = bs.filter((b) => /\bfr\b/.test(b.clase));
+      if (marcadas.length !== 1 || marcadas[0].pie !== fr.piePct || marcadas[0].plazo !== fr.plazoAnios) F(`G2 · ${r.id}: el HTML no marca exactamente la celda de Franco (${marcadas.length} marcadas)`);
+    }
+
+    // ── G3 · card, pop-up y capítulo leen la misma recomendación ─────────────
+    const dv = r.dist?.valor;
+    if (dv) {
+      const bloque = construirLoQueHariaYo({ veredicto: r.v, distancia: r.dist, currency: "CLP", valorUF: AUDIT_UF } as any);
+      const pagas = recomendacionPagas({ veredicto: r.v, precioUF: Number(r.input.precio), piePctActual: Number(r.input.piePct), plazoActual: Number(r.input.plazoCredito), distancia: dv });
+      const cardMix = bloque?.mix && bloque.mix.destino === "COMPRAR" ? bloque.mix : null;
+      if (fr) {
+        if (!cardMix) F(`G3 · ${r.id}: el pop-up marca a Franco en pie ${fr.piePct}% · ${fr.plazoAnios}a y la card no muestra esa combinación`);
+        else {
+          conCardMix++;
+          const pieCard = cardMix.movimiento.pie?.a ?? dv.piePctActual ?? Number(r.input.piePct);
+          const plazoCard = cardMix.movimiento.plazo?.a ?? Number(r.input.plazoCredito);
+          const dCard = cardMix.descuento ? Number(cardMix.descuento.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
+          if (pieCard !== fr.piePct || plazoCard !== fr.plazoAnios || Math.abs(dCard - (fr.descuentoPct ?? 0)) > 0.05) F(`G3 · ${r.id}: la card recomienda pie ${pieCard}% · ${plazoCard}a · −${dCard}% y el pop-up marca pie ${fr.piePct}% · ${fr.plazoAnios}a · −${fr.descuentoPct}%`);
+        }
+        if (!pagas) F(`G3 · ${r.id}: «A qué precio cerrar» no tiene recomendación y el pop-up sí`);
+        else if (pagas.pieA !== fr.piePct || pagas.plazoA !== fr.plazoAnios || Math.abs(pagas.descuentoPct - (fr.descuentoPct ?? 0)) > 0.05) F(`G3 · ${r.id}: «A qué precio cerrar» se ancla en pie ${pagas.pieA}% · ${pagas.plazoA}a · −${pagas.descuentoPct}% y el pop-up marca pie ${fr.piePct}% · ${fr.plazoAnios}a · −${fr.descuentoPct}%`);
+      }
+    }
+
+    // ── 6 · anatomía ────────────────────────────────────────────────────────
+    if (!/Toca una celda para ver qué pasa con esa combinación/.test(h)) F(`6 · ${r.id}: falta la línea «Toca una celda para ver qué pasa con esa combinación»`);
+    if ((h.match(/más descuento/g) ?? []).length !== 2 || !/más pie/.test(h) || !/más plazo/.test(h)) F(`6 · ${r.id}: los ejes no son los cuatro del contrato (más pie, más plazo, más descuento ×2)`);
+    if (!/Te queda al mes|Pones al mes/.test(h) || !/Pie el día uno/.test(h) || !/TIR a 10 años/.test(h) || !/Franco Score/.test(h)) {
+      // Sin celda seleccionable con cifras (la única llega «no llega») el panel no las dibuja: es legítimo.
+      const sel = fr ?? celdas.find((c) => c.esActual) ?? celdas[0];
+      if (sel && sel.descuentoPct !== null) F(`6 · ${r.id}: el panel no dibuja las cuatro cifras (te queda al mes, pie el día uno, TIR, Franco Score)`);
+    }
+  }
+  // ── FIXTURES SOBRE FILAS REALES para las dos ramas que el golden no ejercita ──
+  // (a) RECOMENDACIÓN REDUNDANTE CON LA PALANCA SOLA. Ninguna fila del golden la tiene, así que
+  //     sin esto la card podía volver a esconder la combinación «redundante» y G3 seguía verde
+  //     (se midió: la mutación no se puso roja). Se toma una fila con Franco y se marca su mix
+  //     como redundante: la card tiene que seguir mostrando la MISMA combinación.
+  // (b) BUSCAR OTRA CON GRILLA HACIA COMPRAR. LTR no la calcula desde Buscar otra, así que una
+  //     fila LTR en Buscar nunca tiene grilla y G5 no distinguía la regla de su ausencia. STR sí
+  //     la calcula (`mixPalancasHastaComprar`): se arma ese caso sobre una grilla real.
+  const base = filas.find((r) => r.v === "AJUSTA SUPUESTOS" && r.dist?.valor.mixPalancas?.dentroDelAlcance);
+  if (!base?.dist) F("0 · no hay fila Ajustar con mix para armar los fixtures de las ramas");
+  else {
+    const dist = base.dist;
+    const mixRed = { ...dist.valor.mixPalancas!, redundanteConPalancaSola: true };
+    const distRed = { ...dist, valor: { ...dist.valor, mixPalancas: mixRed } } as HallazgoDistanciaVeredicto;
+    const bloqueRed = construirLoQueHariaYo({ veredicto: "AJUSTA SUPUESTOS", distancia: distRed, currency: "CLP", valorUF: AUDIT_UF } as any);
+    const frRed = celdaFranco({ veredicto: "AJUSTA SUPUESTOS", distancia: distRed, grilla: mixRed });
+    if (!bloqueRed?.mix || bloqueRed.mix.destino !== "COMPRAR") F("G3 · con la combinación marcada redundante la card deja de mostrarla: la card y la celda Franco del pop-up dirían cosas distintas");
+    if (!frRed) F("G3 · con la combinación marcada redundante el pop-up deja de marcar a Franco");
+    const distBuscar = { ...dist, valor: { ...dist.valor, veredictoBase: "BUSCAR OTRA", mixPalancasHastaComprar: dist.valor.mixPalancas } } as unknown as HallazgoDistanciaVeredicto;
+    if (grillaDelPopup({ veredicto: "BUSCAR OTRA", distancia: distBuscar })) F("G5 · Buscar otra CON grilla hacia Comprar (el caso STR) devuelve grilla para el pop-up");
+    if (hayAjustesQueMostrar({ veredicto: "BUSCAR OTRA", distancia: distBuscar })) F("G5 · Buscar otra con grilla hacia Comprar abre pop-up");
+  }
+
+  if (conGrilla === 0) F("0 · ninguna fila del golden tiene grilla: el tier no midió nada");
+  if (conFranco === 0) F("0 · ninguna fila del golden tiene celda de Franco: G2 y G3 no midieron nada");
+  if (conCardMix === 0) F("0 · ninguna fila comparó la card con el pop-up: G3 no midió nada");
+
+  // ── Fuente: lo que salió no vuelve, y los heros no abren pop-up en Buscar otra ──
+  const pop = sinComentarios(leer("src/components/analysis/shared/PopupAjustes.tsx"));
+  if (!/grillaDelPopup\(/.test(pop) || !/lecturaCelda\(/.test(pop) || !/celdaFranco\(/.test(pop)) F("1 · el pop-up no lee la grilla, la lectura de la celda o la celda de Franco del modelo (`matriz-popup.ts`)");
+  if (/Hay más de un camino|Lo que Franco recomienda|La que más rinde|La que más alivia el mes/.test(pop)) F("6 · volvió el menú de tres respuestas");
+  if (/Cash on cash|Cuota mensual|El ajuste óptimo/.test(pop)) F("6 · volvieron los pares hoy → después");
+  if (/Un cambio a la vez/.test(pop)) F("6 · volvió «Un cambio a la vez»");
+  if (!/depende del mercado/.test(pop)) F("7 · falta la línea del arriendo o la tarifa «pero eso depende del mercado»");
+  if (!/aria-disabled="true"/.test(pop) || /href=|onClick=\{[^}]*router|<Link\b/.test(pop.slice(pop.indexOf("pjx-cta")))) F("8 · el botón de re-análisis dejó de ser inerte");
+  for (const hero of ["src/components/analysis/HeroLTR.tsx", "src/components/analysis/str/HeroStrDictamen.tsx"]) {
+    const src = sinComentarios(leer(hero));
+    if (!/esBuscar \? null :/.test(src)) F(`G5 · ${hero}: el footer (el botón del pop-up) no se apaga en Buscar otra`);
+    if (!/hayAjustesQueMostrar\(\{[^}]*mixComprar/.test(src)) F(`G5 · ${hero}: el botón no pregunta a \`hayAjustesQueMostrar\` con la grilla de Comprar`);
+  }
+
+  if (fallas.length) {
+    console.log(`  ✗ POPUP-AJUSTES · ${fallas.length} falla(s):`);
+    for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
+    if (fallas.length > 40) console.log(`     · … y ${fallas.length - 40} más`);
   } else {
-    for (const f of fallas) console.log(`  ✗ ${f}`);
+    console.log(`  ✓ VERDE — ${conGrilla} grillas del golden: cada celda pinta el veredicto real de su combinación, Franco nunca más difícil que la más fácil (${conFranco} filas), card, pop-up y capítulo con la misma recomendación (${conCardMix}), Comprar sin Franco, Buscar otra sin pop-up, la anatomía del contrato y el botón inerte`);
   }
   return { hard: fallas.length };
 }

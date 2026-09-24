@@ -26,8 +26,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, PosicionEnComuna, Veredicto } from "./types";
-import { mixAComprar, solasAComprar } from "./mix-a-comprar";
-import { bandaEsfuerzoDescuento, type BandaEsfuerzo } from "./distancia-veredicto-hallazgo";
+import { recomendacionFranco } from "./mix-a-comprar";
+import { bandaDeDescuento, type BandaDescuento } from "./banda-esfuerzo";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 /** Un tramo de texto; `b` = negrita. El componente los pinta, este módulo no. */
@@ -67,7 +67,7 @@ export interface RecomendacionPagas {
   destino: Veredicto;
   costoDiaUnoUF: number;
   descuentoSoloPrecioPct: number | null;
-  banda: BandaEsfuerzo;
+  banda: BandaDescuento;
 }
 
 export interface FranjaPagas {
@@ -159,8 +159,8 @@ export const POSICION_TEXTO: Record<PosicionEnComuna, string> = {
 };
 
 /** Cortes de la banda de esfuerzo, en palabras del lector (el pop-up tiene los suyos). */
-export const BANDA_PAGAS: Record<BandaEsfuerzo, string> = {
-  normal: "negociación normal — lo que se conversa en cualquier compraventa",
+export const BANDA_PAGAS: Record<BandaDescuento, string> = {
+  factible: "negociación factible — lo que se conversa en cualquier compraventa",
   con_argumentos: "alcanzable con argumentos — exigente, pero dentro de lo que se negocia cuando hay razones",
   dificil: "difícil — solo si el vendedor necesita vender",
 };
@@ -176,9 +176,12 @@ export const BANDA_PAGAS: Record<BandaEsfuerzo, string> = {
 export function recomendacionPagas(e: Pick<EntradaComoLoPagas, "veredicto" | "precioUF" | "piePctActual" | "plazoActual" | "distancia">): RecomendacionPagas | null {
   if (e.veredicto === "COMPRAR" || !e.distancia) return null;
   const dv = e.distancia;
-  const mix = mixAComprar(dv);
-  const dibujable = !!mix && mix.dentroDelAlcance && !mix.redundanteConPalancaSola;
-  if (mix && dibujable) {
+  // LA MISMA RECOMENDACIÓN QUE LA CARD Y QUE LA CELDA «FRANCO» DEL POP-UP (24-sep-2026):
+  // `recomendacionFranco` es la fuente única. Hasta hoy acá se saltaba el mix cuando era
+  // redundante con la palanca de precio; ya no, porque la card dejó de mostrar la palanca.
+  const rec = recomendacionFranco(dv);
+  if (rec?.via === "mix") {
+    const mix = rec.mix;
     const d = mix.sinDescuento ? 0 : Math.max(0, mix.descuentoPct);
     return {
       precioUF: e.precioUF * (1 - d / 100),
@@ -191,11 +194,11 @@ export function recomendacionPagas(e: Pick<EntradaComoLoPagas, "veredicto" | "pr
       destino: (mix.destino ?? dv.veredictoObjetivo) as Veredicto,
       costoDiaUnoUF: mix.costoDiaUnoUF,
       descuentoSoloPrecioPct: mix.descuentoSoloPrecioPct,
-      banda: bandaEsfuerzoDescuento(d).banda,
+      banda: bandaDeDescuento(d),
     };
   }
-  const solo = solasAComprar(dv).find((p) => p.palanca === "precio") ?? null;
-  if (solo && solo.deltaPct < 0) {
+  if (rec?.via === "precio_solo") {
+    const solo = rec.palanca;
     const d = Math.abs(solo.deltaPct);
     return {
       precioUF: solo.objetivo,
@@ -208,7 +211,7 @@ export function recomendacionPagas(e: Pick<EntradaComoLoPagas, "veredicto" | "pr
       destino: "COMPRAR",
       costoDiaUnoUF: 0,
       descuentoSoloPrecioPct: null,
-      banda: bandaEsfuerzoDescuento(d).banda,
+      banda: bandaDeDescuento(d),
     };
   }
   return null;
