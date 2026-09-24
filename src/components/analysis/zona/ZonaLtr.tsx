@@ -275,10 +275,14 @@ export function ZonaLtrSection({
    ───────────────────────────────────────────────────────────────────────────── */
 
 export interface ZonaLtrR2 {
-  /** Tu arriendo contra la mediana del radio. `null` = no hay con qué contrastar. */
+  /** TU arriendo, SIEMPRE que lo haya (24-sep-2026). Vivía dentro de `arriendo`, que es
+   *  `null` sin referencia de radio, y con él se perdía: 420 de 1.218 filas LTR (34%)
+   *  mostraban «Tu arriendo —» con el arriendo declarado. Lo tuyo no depende de que haya
+   *  con qué compararlo. */
+  arriendoTuyo: number;
+  /** La mediana del radio con que se contrasta. `null` = no hay con qué contrastar. */
   arriendo:
     | {
-        tuyo: number;
         mediana: number;
         n: number;
         radioMetros: number;
@@ -327,7 +331,6 @@ export function buildZonaLtrR2(p: {
   const arriendo =
     ref && r.estado !== "sin_referencia"
       ? {
-          tuyo,
           mediana: ref.valorCLP,
           n: ref.n,
           radioMetros: ref.radioMetros,
@@ -352,6 +355,7 @@ export function buildZonaLtrR2(p: {
       : null;
 
   return {
+    arriendoTuyo: tuyo,
     arriendo,
     m2,
     valorizacion: {
@@ -389,7 +393,7 @@ export function ZonaCeldasLtrR2({
   const fmtM2 = (uf: number) =>
     currency === "UF" ? `UF ${Math.round(uf).toLocaleString("es-CL")}` : fmtCLP(uf * (valorUF || 0));
   const fmtArr = (clp: number) => (currency === "UF" ? `UF ${pct1(valorUF > 0 ? clp / valorUF : 0)}` : fmtMil(clp));
-  const { arriendo: ar, m2, valorizacion: pl } = zona;
+  const { arriendoTuyo: tuyo, arriendo: ar, m2, valorizacion: pl } = zona;
 
   // El período de la serie de la comuna contra el del promedio: si no son el mismo, la
   // comparación cruza períodos y eso se dice, no se esconde.
@@ -402,7 +406,7 @@ export function ZonaCeldasLtrR2({
         {/* 1 · TU ARRIENDO — primero, por el contrato */}
         <div className="zc">
           <p className="zc-k">Tu arriendo</p>
-          <p className="zc-v">{ar && ar.tuyo > 0 ? fmtArr(ar.tuyo) : cargando ? "…" : "—"}</p>
+          <p className="zc-v">{tuyo > 0 ? fmtArr(tuyo) : cargando ? "…" : "—"}</p>
           {ar && ar.estado !== "orden_de_magnitud" ? (
             <p className="zc-r">mediana {fmtArr(ar.mediana)}</p>
           ) : (
