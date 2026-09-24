@@ -6,6 +6,7 @@
 //   · ?row=staRosaStr|grajalesStr&comp=pagina  → página STR completa (STRResultsClient)
 //   · ?row=providenciaLtr&comp=paginaLtr       → página LTR completa (PremiumResults)
 //   · ?row=providenciaLtrV20&comp=paginaLtr    → la misma fila con prosa de cuatro campos
+//   · ?comp=esqueleto                          → la carga de la página (loading.tsx), sin fila
 //   · &muestra=1 (con paginaLtr)               → la zona como la de una fila NUEVA: la referencia
 //     de arriendo y su muestra guardada (muestra-arriendo.json), para ver la lista del modal
 //   · ?row=<str>&comp=<pieza>                  → piezas compartidas (matriz, planilla, fila
@@ -28,6 +29,7 @@ import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import fixtures from "./fixtures.json";
 import muestraFix from "./muestra-arriendo.json";
+import { EsqueletoInforme } from "@/components/analysis/EsqueletoInforme";
 
 // Goal "material del informe" (06-sep-2026): tres casos más para los shots por veredicto sin
 // abrir las filas en prod (laFloridaLtr = c4ffe9a6 BUSCAR, nunoaLtr = 17b4e10d COMPRAR,
@@ -134,6 +136,7 @@ function Inner() {
   })();
   const valorUF: number = fix?.uf ?? 38800;
   const comp = sp.get("comp");
+  if (comp === "esqueleto") return <EsqueletoInforme />;
 
   // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
   // monta la página LTR completa con el recompute volcado de 7710a017.

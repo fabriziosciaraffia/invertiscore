@@ -27,6 +27,9 @@
 //   9 · TODO RESPETA CLP/UF: en UF ningún monto de la ficha lleva pesos (cuotas del pie,
 //       amoblamiento y tarifa incluidos); en CLP los mismos llevan pesos.
 //  10 · SIN MONO NI SERIF en la ficha: ni en el componente ni en su CSS ni en su HTML.
+//  11 · LA CARGA DE LA PÁGINA ES LA FORMA DEL INFORME: LTR, STR y AMBAS tienen `loading.tsx`, los
+//       tres montan `EsqueletoInforme` y ninguno `LoadingEditorial`; el esqueleto no tiene texto
+//       visible (ni pasos ni tiempo), ni logo, ni mono ni serif.
 // Verificado EN ROJO por mutación. Corre solo:
 //   node --import tsx scripts/eval/golden/ficha-comparables-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +43,8 @@ import { leerMuestraArriendo } from "../../../src/lib/arriendo-referencia";
 import { buildLtrPayload, type SubmitContext } from "../../../src/components/formulario-v4/wizardV4Submit";
 import { buildFichaLtr, buildFichaStr, type FichaDepto } from "../../../src/lib/ficha-depto";
 import { FichaCuerpo } from "../../../src/components/analysis/portada/FichaModal";
+import { EsqueletoInforme } from "../../../src/components/analysis/EsqueletoInforme";
+import { existsSync } from "node:fs";
 
 // El JSX de los componentes compila a React.createElement bajo tsx: el global lo resuelve.
 (globalThis as any).React = React;
@@ -249,11 +254,31 @@ export function runFichaComparablesTier(): { hard: number } {
     for (const regla of leer("src/components/analysis/portada/PortadaInforme.tsx").match(/\.fa[-\w]*[^{]*\{[^}]*\}/g) ?? []) if (MONO_SERIF.test(regla)) F(`10 · el CSS de la ficha usa mono o serif: ${regla.slice(0, 60)}`);
   }
 
+  // ── 11 · la carga de la página es la forma del informe, en las tres modalidades ──
+  for (const ruta of ["src/app/analisis/[id]/loading.tsx", "src/app/analisis/renta-corta/[id]/loading.tsx", "src/app/analisis/comparativa/loading.tsx"]) {
+    if (!existsSync(join(RAIZ, ruta))) { F(`11 · falta ${ruta}`); continue; }
+    const src = sinComentarios(leer(ruta));
+    if (!/<EsqueletoInforme\b/.test(src)) F(`11 · ${ruta} no monta EsqueletoInforme`);
+    if (/LoadingEditorial/.test(src)) F(`11 · ${ruta} sigue usando LoadingEditorial`);
+  }
+  {
+    const h = html(createElement(EsqueletoInforme));
+    // Solo el CSS PROPIO del esqueleto (el que define `.esq-`): el de `DocTokens` es el del
+    // informe entero y redefine `--font-mono` como Inter, así que nombrarlo no es usarlo.
+    const css = (h.match(/<style[^>]*>([^]*?)<\/style>/g) ?? []).filter((b) => b.includes(".esq-")).join(" ");
+    const visible = h.replace(/<style[^>]*>[^]*?<\/style>/g, "").replace(/<[^>]+>/g, "").replace(/&[a-z#0-9]+;/gi, "").trim();
+    if (visible) F(`11 · el esqueleto muestra texto: «${visible.slice(0, 80)}»`);
+    const esqSrc = sinComentarios(leer("src/components/analysis/EsqueletoInforme.tsx"));
+    if (/FrancoLogo|Wordmark|DocumentoFrame/.test(esqSrc)) F("11 · el esqueleto trae el logo (FrancoLogo, Wordmark o DocumentoFrame)");
+    if (MONO_SERIF.test(h.replace(/<style[^>]*>[^]*?<\/style>/g, "") + css) || MONO_SERIF.test(esqSrc)) F("11 · el esqueleto usa mono o serif");
+    if (!/aria-busy="true"/.test(h)) F("11 · el esqueleto no se declara ocupado (aria-busy) para lectores de pantalla");
+  }
+
   if (fallas.length) {
     console.log(`  ✗ FICHA-COMPARABLES · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card; la ficha abre en el Modal, de solo lectura, con su procedencia y en CLP/UF; y nada de las dos usa mono ni serif");
+    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card; la ficha abre en el Modal, de solo lectura, con su procedencia y en CLP/UF; y nada de las dos usa mono ni serif; y la carga de las tres modalidades es la forma del informe, sin texto");
   }
   return { hard: fallas.length };
 }
