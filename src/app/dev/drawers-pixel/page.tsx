@@ -6,6 +6,8 @@
 //   · ?row=staRosaStr|grajalesStr&comp=pagina  → página STR completa (STRResultsClient)
 //   · ?row=providenciaLtr&comp=paginaLtr       → página LTR completa (PremiumResults)
 //   · ?row=providenciaLtrV20&comp=paginaLtr    → la misma fila con prosa de cuatro campos
+//   · &muestra=1 (con paginaLtr)               → la zona como la de una fila NUEVA: la referencia
+//     de arriendo y su muestra guardada (muestra-arriendo.json), para ver la lista del modal
 //   · ?row=<str>&comp=<pieza>                  → piezas compartidas (matriz, planilla, fila
 //     de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado
 // T3 STR (05-sep-2026): murió la rama de los drawers STR viejos (DrawerSTR, DrawerContentSTR,
@@ -25,6 +27,7 @@ import { PiezasShared } from "./PiezasShared";
 import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import fixtures from "./fixtures.json";
+import muestraFix from "./muestra-arriendo.json";
 
 // Goal "material del informe" (06-sep-2026): tres casos más para los shots por veredicto sin
 // abrir las filas en prod (laFloridaLtr = c4ffe9a6 BUSCAR, nunoaLtr = 17b4e10d COMPRAR,
@@ -65,6 +68,32 @@ import fixtures from "./fixtures.json";
 // `santiagoStrUnaFila` (13-sep-2026): la grilla degenerada de UNA FILA (un solo pie), 63
 // filas LTR y 2 STR. Con una fila no hay matriz que dibujar: hay una línea de plazos.
 type FixKey = "santiagoStrUnaFila" | "providenciaStrSoloPalancas" | "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo" | "lasCondesLtrSinSalida";
+
+/**
+ * `&muestra=1` (24-sep-2026): ninguna fila del parque guarda todavía la muestra de su mediana de
+ * arriendo (se guarda desde este cambio), así que la lista de «Ver los comparables» no se puede
+ * ver con una fila real sin crear un análisis. Esto le pone a la fila la referencia de radio y la
+ * muestra de 00f9c0eb recalculada el 24-sep-2026 —41 avisos a 500 m—, con la mediana y el n que
+ * salen de esa misma muestra, que es lo que el wizard guarda. La cifra de la fila no calza con la
+ * tipología de la muestra: es un fixture de render, no un análisis.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function conMuestraArriendo(input: any): any {
+  const precios = muestraFix.avisos.map((a) => a.precio).sort((a, b) => a - b);
+  const m = Math.floor(precios.length / 2);
+  const mediana = precios.length % 2 ? precios[m] : (precios[m - 1] + precios[m]) / 2;
+  return {
+    ...input,
+    zonaRadio: {
+      ...(input?.zonaRadio ?? {}),
+      arriendoFuente: "radio",
+      arriendoPromedio: Math.round(mediana / 1000) * 1000,
+      sampleSizeArriendo: muestraFix.avisos.length,
+      radioMetros: muestraFix.radioMetros,
+      muestraArriendo: { modo: muestraFix.modo, avisos: muestraFix.avisos },
+    },
+  };
+}
 
 function Inner() {
   const sp = useSearchParams();
@@ -120,7 +149,7 @@ function Inner() {
         results={results as any}
         accessLevel="subscriber"
         analysisId={fix.id}
-        inputData={fix.input_data}
+        inputData={sp.get("muestra") === "1" ? conMuestraArriendo(fix.input_data) : fix.input_data}
         comuna={fix.comuna}
         score={fix.score ?? results?.score ?? 0}
         freeYieldBruto={results?.metrics?.rentabilidadBruta ?? 0}

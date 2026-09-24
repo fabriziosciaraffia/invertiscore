@@ -1,18 +1,22 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import type { HallazgoSobreprecio } from "@/lib/types";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_ESTIMADO_DEFAULT } from "@/lib/plusvalia-estimado.gen";
 import { procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
-import { VFuente, VProsa } from "@/components/analysis/hallazgos/vocabulario";
+import { Modal, VProsa, VViz, VFuente } from "@/components/analysis/hallazgos/vocabulario";
+import { FilaDato, FilasDato, Planilla, type FilaPlanilla } from "@/components/analysis/shared";
+import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import {
   fmtRadioArriendo,
+  leerMuestraArriendo,
   resolverArriendoReferencia,
   respaldoArriendo,
   type EstadoRespaldoArriendo,
+  type MuestraArriendo,
 } from "@/lib/arriendo-referencia";
 import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
 
@@ -179,49 +183,291 @@ export function fuenteZonaLtr(zona: ZonaLtr): ReactNode {
   return partes.join(" · ");
 }
 
+/**
+ * LA SECCIÓN DE ZONA LTR Y SU MODAL (24-sep-2026). «Ver los comparables →» abre el `Modal`
+ * del informe —el mismo de la zona STR—, no el `AnalysisDrawer`, y SIN esperar la prosa: el
+ * drawer se montaba solo con prosa (`&& prosa`) y en 528 de 1.218 filas el botón no abría nada,
+ * aunque no leía nada de la IA. Tampoco espera al zone-insight: la card, la síntesis y la lista
+ * salen del análisis; lo único que trae el zone-insight son el mapa y los lugares, que se
+ * suman cuando llegan.
+ *
+ * UNA SOLA REFERENCIA DE ARRIENDO: la del radio, con su n. La síntesis de la card y la del
+ * modal son la MISMA (`sintesisZonaLtrR2`) y las celdas son el MISMO componente con el MISMO
+ * objeto, así que la card y el modal no pueden decir dos cosas.
+ */
 export function ZonaLtrSection({
   data,
   loading,
-  error,
-  onClick,
   currency,
   valorUF,
-  zona,
   zonaR2,
+  inputData,
+  comuna,
+  direccion,
+  zoneCenter,
+  onAbiertoChange,
 }: {
   data: ZoneInsightData | null;
   loading: boolean;
-  error?: string | null;
-  onClick: () => void;
   currency: "CLP" | "UF";
   valorUF: number;
-  zona: ZonaLtr;
-  /** Contrato §8. Lo arma el caller con `buildZonaLtrR2`. Ausente ⇒ las celdas de
-   *  siempre (es un dato que falta, no un interruptor). */
-  zonaR2?: ZonaLtrR2;
+  /** Contrato §8. Lo arma el caller con `buildZonaLtrR2`. */
+  zonaR2: ZonaLtrR2;
+  /** El input del análisis: de acá sale la muestra guardada (`leerMuestraArriendo`). */
+  inputData: unknown;
+  comuna: string;
+  direccion?: string;
+  zoneCenter?: { lat: number; lng: number } | null;
+  /** Telemetría del caller: se entera cuando el modal abre y cierra. */
+  onAbiertoChange?: (abierto: boolean) => void;
 }) {
-  void data;
-  void error;
-  const sintesis = sintesisZonaLtr(zona);
-  const r2 = zonaR2 ?? null;
+  const [abierto, setAbierto] = useState(false);
+  const cambiar = (v: boolean) => {
+    setAbierto(v);
+    onAbiertoChange?.(v);
+  };
+  const sintesis = sintesisZonaLtrR2(zonaR2);
 
   return (
     <div>
       <VProsa>{sintesis}</VProsa>
-      {r2 ? (
-        <ZonaCeldasLtrR2 zona={r2} currency={currency} valorUF={valorUF} cargando={loading && !data} />
-      ) : (
-        <ZonaCeldasLtr zona={zona} currency={currency} valorUF={valorUF} cargando={loading && !data} />
-      )}
+      <ZonaCeldasLtrR2 zona={zonaR2} currency={currency} valorUF={valorUF} />
       <div className="zona-foot">
         {/* La procedencia de cada tarjeta ya está en su propia línea y el período de la
-            valorización en el pie común: repetirla acá sería decir lo mismo tres veces.
-            El enlace lo nombra el contrato §8. */}
-        {r2 ? <span /> : <VFuente>{fuenteZonaLtr(zona)}</VFuente>}
-        <button type="button" className="doc-lnk" onClick={onClick} disabled={loading && !data}>
-          {r2 ? "Ver los comparables →" : "Explorar →"}
+            valorización en el pie común. El enlace lo nombra el contrato §8. */}
+        <span />
+        <button type="button" className="doc-lnk" onClick={() => cambiar(true)}>
+          Ver los comparables →
         </button>
       </div>
+      <Modal abierto={abierto} onClose={() => cambiar(false)} titulo={`La zona · ${comuna}`} sub={direccion || undefined}>
+        <ComparablesLtr
+          zona={zonaR2}
+          sintesis={sintesis}
+          muestra={leerMuestraArriendo(inputData)}
+          superficie={Number((inputData as { superficie?: unknown } | null)?.superficie) || 0}
+          currency={currency}
+          valorUF={valorUF}
+          zoneInsight={data}
+          zoneCargando={loading && !data}
+          zoneCenter={zoneCenter ?? null}
+          comuna={comuna}
+        />
+      </Modal>
+    </div>
+  );
+}
+
+/**
+ * La síntesis de la zona desde las MISMAS cifras que las tres tarjetas del contrato §8: la
+ * mediana de arriendo del RADIO (no el rango P10–P90 de la comuna, que era la segunda
+ * referencia), tu m² contra la mediana comunal y la valorización propia de la comuna.
+ * Determinista; sin dato, sin oración. La usan la card y el modal.
+ */
+export function sintesisZonaLtrR2(z: ZonaLtrR2): string {
+  const partes: string[] = [];
+  const ar = z.arriendo;
+  if (ar && ar.brechaPct !== null && z.arriendoTuyo > 0) {
+    const donde = ar.esRadio ? ` publicados a menos de ${fmtRadioArriendo(ar.radioMetros)}` : " de la comuna";
+    const muestra = `${ar.n} ${ar.n === 1 ? "arriendo" : "arriendos"}${donde}`;
+    partes.push(
+      ar.brechaPct === 0
+        ? `tu arriendo está en la mediana de ${muestra}`
+        : `tu arriendo está ${Math.abs(ar.brechaPct)}% ${ar.brechaPct > 0 ? "sobre" : "bajo"} la mediana de ${muestra}`,
+    );
+  }
+  const m2 = z.m2;
+  if (m2 && m2.desviacionPct != null) {
+    partes.push(
+      Math.abs(m2.desviacionPct) < 0.5
+        ? "tu precio por m² está en la mediana de la comuna"
+        : `tu precio por m² está ${pct1(Math.abs(m2.desviacionPct))}% ${m2.desviacionPct > 0 ? "sobre" : "bajo"} la mediana de la comuna`,
+    );
+  }
+  const pl = z.valorizacion;
+  if (pl.propia) {
+    partes.push(pl.anualizada < 0 ? `la comuna perdió ${pct1(Math.abs(pl.anualizada))}% al año` : `la comuna se valorizó ${pct1(pl.anualizada)}% al año`);
+  }
+  if (!partes.length) return "Sin datos suficientes de la zona.";
+  const texto = partes.join(" · ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1) + ".";
+}
+
+/** Percentil lineal sobre una lista ya ordenada (mismo criterio que `comparables-radio`). */
+function percentilOrdenado(xs: number[], p: number): number {
+  const i = (p / 100) * (xs.length - 1);
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  return lo === hi ? xs[lo] : xs[lo] + (xs[hi] - xs[lo]) * (i - lo);
+}
+
+/** El cuerpo del modal de comparables. Exportado para el gate: se renderiza sin el Modal. */
+export function ComparablesLtr({
+  zona,
+  sintesis,
+  muestra,
+  superficie,
+  currency,
+  valorUF,
+  zoneInsight,
+  zoneCargando,
+  zoneCenter,
+  comuna,
+}: {
+  zona: ZonaLtrR2;
+  sintesis: string;
+  muestra: MuestraArriendo | null;
+  superficie: number;
+  currency: "CLP" | "UF";
+  valorUF: number;
+  zoneInsight: ZoneInsightData | null;
+  zoneCargando: boolean;
+  zoneCenter: { lat: number; lng: number } | null;
+  comuna: string;
+}) {
+  const money = (clp: number) => (currency === "UF" ? `UF ${pct1(valorUF > 0 ? clp / valorUF : 0)}` : fmtCLP(clp));
+  const ar = zona.arriendo;
+  const donde = ar ? (ar.esRadio ? `a menos de ${fmtRadioArriendo(ar.radioMetros)}` : "en la comuna") : "";
+
+  let lista: ReactNode;
+  if (!ar) {
+    lista = (
+      <VViz t="Arriendos cerca">
+        <p className="v-copy">Sin arriendos publicados cerca para comparar: este análisis no tiene referencia de arriendo de la zona.</p>
+      </VViz>
+    );
+  } else if (!muestra) {
+    lista = (
+      <VViz t={`Los ${ar.n} arriendos con los que se compara`}>
+        <p className="v-copy">Este análisis guardó la mediana y cuántos avisos la forman, no los avisos. Los análisis nuevos guardan la lista.</p>
+      </VViz>
+    );
+  } else {
+    const conDorms = muestra.modo === "conDorms";
+    const precios = muestra.avisos.map((a) => a.precio).sort((a, b) => a - b);
+    const pm2 = muestra.avisos
+      .filter((a) => a.m2 && a.m2 > 0)
+      .map((a) => a.precio / (a.m2 as number))
+      .sort((a, b) => a - b);
+    const mitad = conDorms
+      ? [percentilOrdenado(precios, 25), percentilOrdenado(precios, 75)]
+      : pm2.length && superficie > 0
+        ? [percentilOrdenado(pm2, 25) * superficie, percentilOrdenado(pm2, 75) * superficie]
+        : null;
+    const posicion =
+      ar.brechaPct === null || zona.arriendoTuyo <= 0
+        ? null
+        : ar.brechaPct === 0
+          ? "en la mediana"
+          : `${Math.abs(ar.brechaPct)}% ${ar.brechaPct > 0 ? "sobre" : "bajo"} la mediana`;
+    const filas: FilaPlanilla[] = muestra.avisos.map((a, i) => ({
+      th: String(i + 1),
+      celdas: [
+        { v: a.distanciaM != null ? `${a.distanciaM.toLocaleString("es-CL")} m` : "—" },
+        { v: money(a.precio) },
+        { v: a.m2 != null ? a.m2.toLocaleString("es-CL") : "—" },
+        { v: a.m2 ? money(a.precio / a.m2) : "—" },
+      ],
+    }));
+    lista = (
+      <VViz t={`Los ${ar.n} arriendos con los que se compara`}>
+        <FilasDato>
+          <FilaDato k="Dónde están" v={donde} />
+          {conDorms ? (
+            <FilaDato k="Mediana de sus arriendos" sub="la referencia de la card" v={money(ar.mediana)} unidad="/mes" tono="in" />
+          ) : (
+            <>
+              <FilaDato k="Mediana del precio por m²" v={pm2.length ? money(percentilOrdenado(pm2, 50)) : "—"} unidad="/m²" />
+              <FilaDato k={`× tus ${superficie.toLocaleString("es-CL")} m²`} sub="la referencia de la card" v={money(ar.mediana)} unidad="/mes" tono="in" />
+            </>
+          )}
+          {mitad && (
+            <FilaDato
+              k="La mitad de los avisos"
+              sub={conDorms ? undefined : `llevados a tus ${superficie.toLocaleString("es-CL")} m²`}
+              v={`${money(mitad[0])} – ${money(mitad[1])}`}
+            />
+          )}
+          {zona.arriendoTuyo > 0 && <FilaDato k="Tu arriendo" sub={posicion ?? undefined} v={money(zona.arriendoTuyo)} unidad="/mes" />}
+        </FilasDato>
+        <Planilla columnas={["#", "Distancia", "Arriendo", "m²", "Por m²"]} filas={filas} />
+      </VViz>
+    );
+  }
+
+  const m2 = zona.m2;
+  const universo = m2?.universo === "nuevo" ? " nuevos" : m2?.universo === "usado" ? " usados" : "";
+  const fuente = [
+    ar ? `arriendos publicados ${donde} · ${ar.n} ${ar.n === 1 ? "aviso" : "avisos"}` : null,
+    m2 && m2.mediana != null && m2.n > 0 ? `venta: ${m2.n} deptos${universo} de ${comuna}` : null,
+    `valorización: ${zona.valorizacion.fuente} ${zona.valorizacion.rango}`,
+    zoneInsight ? "lugares: Google Places" : null,
+  ].filter(Boolean) as string[];
+  const fuenteTxt = fuente.join(" · ");
+
+  return (
+    <div className="doc-tokens">
+      <VProsa>{sintesis}</VProsa>
+      <ZonaCeldasLtrR2 zona={zona} currency={currency} valorUF={valorUF} />
+      {lista}
+      {zoneCenter && zoneInsight && (
+        <VViz t="El depto y lo que hay alrededor">
+          <ZoneMap centerLat={zoneCenter.lat} centerLng={zoneCenter.lng} pois={zoneInsight.pois} />
+        </VViz>
+      )}
+      {zoneInsight ? (
+        <VViz t="Lugares a menos de 2,5 km">
+          <ZonaLugares pois={zoneInsight.pois} />
+        </VViz>
+      ) : zoneCargando ? (
+        <VViz t="Lugares a menos de 2,5 km">
+          <p className="v-copy">…</p>
+        </VViz>
+      ) : null}
+      <VFuente>{fuenteTxt.charAt(0).toUpperCase() + fuenteTxt.slice(1)}</VFuente>
+    </div>
+  );
+}
+
+const LUGAR_LABEL: Record<keyof ZoneInsightData["pois"], string> = {
+  metro: "Metro",
+  trenes: "Tren",
+  parques: "Parque",
+  clinicas: "Clínica",
+  universidades: "Universidad",
+  institutos: "Instituto",
+  colegios: "Colegio",
+  malls: "Centro comercial",
+  negocios: "Zona de negocios",
+};
+
+/** Los lugares como filas (nombre · tipo y comuna · distancia), los más cercanos primero, y
+ *  una línea con lo que NO hay en el radio. Vivía en `AnalysisDrawer`; se mudó con la zona. */
+function ZonaLugares({ pois }: { pois: ZoneInsightData["pois"] }) {
+  const cats = Object.keys(LUGAR_LABEL) as (keyof ZoneInsightData["pois"])[];
+  const filas = cats
+    .flatMap((k) => pois[k].map((p) => ({ ...p, tipo: LUGAR_LABEL[k] })))
+    .sort((a, b) => a.distancia - b.distancia)
+    .slice(0, 8);
+  const faltan = cats.filter((k) => pois[k].length === 0 && ["metro", "clinicas", "malls"].includes(k)).map((k) => LUGAR_LABEL[k].toLowerCase());
+  const dist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`);
+  if (filas.length === 0) {
+    return <p className="zona-sin">No detectamos transporte, comercio ni servicios a menos de 2,5 km. Zona residencial periférica.</p>;
+  }
+  return (
+    <div>
+      {filas.map((p, i) => (
+        <div key={`${p.nombre}-${i}`} className="lugar">
+          <span className="n">{p.nombre}</span>
+          <span className="d">{dist(p.distancia)}</span>
+          <span className="t">
+            {p.tipo}
+            {p.linea ? ` · ${p.linea}` : ""}
+            {p.comuna ? ` · ${p.comuna}` : ""}
+          </span>
+        </div>
+      ))}
+      {faltan.length > 0 && <p className="zona-sin">Sin {faltan.join(", ").replace(/, ([^,]*)$/, " ni $1")} en el radio</p>}
     </div>
   );
 }

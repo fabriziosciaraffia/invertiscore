@@ -4,7 +4,6 @@ import { TokensShared } from "./shared/TokensShared";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useState, useEffect, useRef } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
-import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZonaLtrSection, buildZonaLtr, buildZonaLtrR2 } from "./zona/ZonaLtr";
@@ -97,7 +96,8 @@ export function SubjectCardGrid({
    *  o ahora, si se resolvió viva. Viene de page.tsx. */
   medianaResolvedAt?: string;
 }) {
-  const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
+  // Solo telemetría: «zona» mientras el modal de comparables está abierto (lo abre la sección).
+  const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
   const [calculoAbierto, setCalculoAbierto] = useState(false);
   // T3: apertura de un capítulo pedida desde «↓ Ver detalle» o desde la portada.
   const [capituloAbrir, setCapituloAbrir] = useState<{ id: CapituloId; nonce: number } | null>(null);
@@ -113,18 +113,10 @@ export function SubjectCardGrid({
   // los capítulos (T3), así que el drawer ya no corresponde a una card de la pirámide.
   useDrawerAbierto(activeDrawer, "ltr", () => null, { veredicto, accessLevel });
 
-  // T5: la secuencia prev/next de los drawers murió con la pirámide. Antes se armaba
-  // desde HALLAZGO_DRAWER y dejaba llegar, con las flechas, a diez drawers que ninguna
-  // card abría ya. Queda solo la zona.
-  const drawerSequence: DrawerKey[] = ["zona"];
 
   // Preload zone-insight at dashboard mount (non-blocking).
   // Only fires if we have an analysisId and the analysis has coords (checked server-side).
-  const {
-    data: zoneInsight,
-    loading: zoneLoading,
-    error: zoneError,
-  } = useZoneInsight(analysisId, !!analysisId);
+  const { data: zoneInsight, loading: zoneLoading } = useZoneInsight(analysisId, !!analysisId);
 
   // Coords for the map — derived from input_data (same source the endpoint uses).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -314,7 +306,6 @@ export function SubjectCardGrid({
             </SeccionInforme>
           ) : undefined
         }
-        onOpenDrawer={setActiveDrawer}
         data={prosa}
         prosaError={!prosa && !loading ? (error ?? null) : null}
         onRetryProsa={onRetry}
@@ -427,11 +418,13 @@ export function SubjectCardGrid({
               <ZonaLtrSection
                 data={zoneInsight}
                 loading={zoneLoading}
-                error={zoneError}
-                onClick={() => setActiveDrawer("zona")}
                 currency={currency}
                 valorUF={valorUF}
-                zona={zonaLtr}
+                inputData={inputData}
+                comuna={comunaPortada || comuna || ""}
+                direccion={direccionPortada || undefined}
+                zoneCenter={zoneCenter}
+                onAbiertoChange={(a) => setActiveDrawer(a ? "zona" : null)}
                 zonaR2={buildZonaLtrR2({
                   base: zonaLtr,
                   inputData,
@@ -458,32 +451,6 @@ export function SubjectCardGrid({
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
         Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
       </p>
-
-      {/* Limitación deliberada (Goal C): AnalysisDrawer exige prosa no-null (lee
-          glosas IA por sección). Mientras la prosa está en vuelo, las cards se
-          ven pero el drawer no se monta — se habilita solo cuando llega. */}
-      {activeDrawer && results && inputData && prosa && (
-        <AnalysisDrawer
-          activeKey={activeDrawer}
-          aiAnalysis={prosa}
-          currency={currency}
-          results={results}
-          inputData={inputData}
-          valorUF={valorUF}
-          onClose={() => setActiveDrawer(null)}
-          onNavigate={(key) => setActiveDrawer(key)}
-          sequence={drawerSequence}
-          zoneInsight={zoneInsight}
-          zoneLoading={zoneLoading}
-          zoneError={zoneError}
-          zoneCenter={zoneCenter}
-          comuna={comuna ?? inputData.comuna}
-          arriendoUsuarioCLP={Number(inputData.arriendo) || 0}
-          createdAt={createdAt}
-          sobreprecio={sobreprecioPortada}
-          medianaResolvedAt={medianaResolvedAt}
-        />
-      )}
     </div>
   );
 }

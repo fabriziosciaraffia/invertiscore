@@ -1460,8 +1460,8 @@ export function DocTokens() {
       .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
       .lugar{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--doc-line)}
       .lugar .n{font-size:13px;font-weight:600;color:var(--doc-tx)}
-      .lugar .t{grid-column:1;font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
-      .lugar .d{grid-row:span 2;font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx2);align-self:center}
+      .lugar .t{grid-column:1;font-family:var(--font-ui);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--doc-tx4)}
+      .lugar .d{grid-row:span 2;font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;color:var(--doc-tx2);align-self:center}
       .zona-sin{font-size:13px;color:var(--doc-tx3);margin:10px 0 0;line-height:1.5}
       @media (max-width: 767px){
         .zona-cells{grid-template-columns:1fr 1fr} .zona-cells>div:last-child{grid-column:span 2}

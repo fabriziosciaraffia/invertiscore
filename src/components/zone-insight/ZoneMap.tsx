@@ -252,9 +252,9 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
         const extra = poi.linea ? ` · ${poi.linea}` : poi.comuna ? ` · ${poi.comuna}` : "";
         const infoWindow = new google.maps.InfoWindow({
           content:
-            `<div style="font-family:'IBM Plex Sans',system-ui,sans-serif;padding:4px 6px;max-width:220px;">` +
+            `<div style="font-family:var(--font-ui),system-ui,sans-serif;padding:4px 6px;max-width:220px;">` +
             `<div style="font-weight:600;font-size:13px;color:#0F0F0F;">${poi.nombre}</div>` +
-            `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;margin-top:2px;">${label} · ${distTxt}${extra}</div>` +
+            `<div style="font-size:11px;color:#71717A;margin-top:2px;">${label} · ${distTxt}${extra}</div>` +
             `</div>`,
         });
         marker.addListener("click", () => {
@@ -287,7 +287,7 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           border: "0.5px solid var(--franco-border)",
         }}
       >
-        <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
+        <p className="text-[13px] text-[var(--franco-text-secondary)] m-0" style={{ fontFamily: "var(--font-ui)" }}>
           No se pudo cargar el mapa. Revisa la lista de lugares abajo.
         </p>
       </div>
@@ -317,8 +317,8 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           style={{ background: "var(--franco-bar-track)", border: "0.5px solid var(--franco-border)" }}
         >
           <span
-            className="font-mono text-[10px] uppercase tracking-[2px]"
-            style={{ color: "var(--franco-text-secondary)" }}
+            className="text-[10px] uppercase tracking-[1px]"
+            style={{ color: "var(--franco-text-secondary)", fontFamily: "var(--font-ui)" }}
           >
             Cargando mapa…
           </span>
@@ -342,8 +342,8 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={markerDataUri(spec, 16)} width={14} height={14} alt="" aria-hidden="true" className="shrink-0" />
               <span
-                className="font-mono uppercase whitespace-nowrap"
-                style={{ fontSize: 9, letterSpacing: "1px", color: legendText }}
+                className="uppercase whitespace-nowrap"
+                style={{ fontSize: 9.5, letterSpacing: ".04em", color: legendText, fontFamily: "var(--font-ui)" }}
               >
                 {CATEGORY_LABELS[k]}
               </span>
@@ -359,8 +359,8 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
             style={{ background: "var(--signal-red)", border: "1.5px solid var(--ink-100)" }}
           />
           <span
-            className="font-mono uppercase whitespace-nowrap"
-            style={{ fontSize: 9, letterSpacing: "1px", color: legendText, fontWeight: 600 }}
+            className="uppercase whitespace-nowrap"
+            style={{ fontSize: 9.5, letterSpacing: ".04em", color: legendText, fontWeight: 600, fontFamily: "var(--font-ui)" }}
           >
             Tu depto
           </span>
