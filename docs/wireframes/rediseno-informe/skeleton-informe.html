@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skeleton del informe</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 24-sep-2026 · qué se ve mientras carga el informe LTR y mientras se escribe la
+     prosa. Nada implementado.
+     HOY: `loading.tsx` tapa la pantalla con `LoadingEditorial` (cinco pasos inventados sobre un
+     fetch, «hasta 60 segundos»); después el hero dice «¿Conviene o no conviene?» con un stepper
+     y «alrededor de dos minutos»; debajo, `BloqueEsperaInforme` dibuja la pirámide que ya no
+     existe y ESCONDE hallazgos, cifras, capítulos y zona, que no dependen de la IA. Al llegar
+     la prosa el hero desaparece entero y la página salta.
+     LO QUE DE VERDAD ESPERA A LA IA (v26, leído en el código): el TITULAR de la portada
+     (`ai_analysis.titular`). Nada más de lo que se ve: la recomendación es determinista
+     (`PosicionFranco` recibe `cajaAccionable`, `prosa` y `chip` y no los renderiza), los
+     capítulos no leen prosa desde el 21-sep, y hallazgos, cifras y zona salen del motor.
+     EL TIEMPO: medido en `pipeline_timing` (14 días al 24-sep-2026): LTR p50 29 s · p90 54 s ·
+     máx 88 s (n 98); STR p50 25 s · p90 36 s (n 23). «Dos minutos» y «entre dos y cuatro»
+     quedaron del 10-ago (p50 126 s). Un solo texto: «suele tardar menos de un minuto».
+     FILA REAL: el demo `6db7a9ac` (v26, AJUSTA SUPUESTOS), leído en localhost el 24-sep-2026.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"Inter",system-ui,sans-serif;--serif:"Source Serif 4",Georgia,serif;--signal:#C8323C;--up:#2B558F}
+  [data-theme="light"]{--page:#F6F6F7;--lienzo:#FFFFFF;--caja:#F4F4F6;--inset:#FFFFFF;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--bar:#E6E6EA;--bar2:#EFEFF2}
+  [data-theme="dark"]{--page:#0C0C0E;--lienzo:#0C0C0E;--caja:#1A1A1E;--inset:#232328;--line:#2C2C30;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--bar:#26262B;--bar2:#1F1F24;--up:#6C9BE0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);font-variant-numeric:tabular-nums;padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:90ch}
+  .panel{background:var(--caja);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:9px 14px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:34px auto 12px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:90ch;line-height:1.5}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto;width:100%}
+  table.t td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+
+  /* ── escenas: cuatro estados lado a lado en teléfono; uno a la vez en escritorio ── */
+  .tira{max-width:1700px;margin:0 auto;display:flex;gap:18px;overflow-x:auto;padding-bottom:10px}
+  .col{flex:none;width:390px}
+  .col-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--tx3);margin-bottom:8px}
+  .tel{width:390px;border-radius:28px;border:1px solid var(--line2);background:var(--lienzo);overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:16px 16px 28px}
+  .esc{width:1100px;margin:0 auto;border-radius:14px;border:1px solid var(--line2);background:var(--lienzo);padding:32px 0 40px}
+  .esc .doc{max-width:700px;margin:0 auto}
+
+  /* ═════════════ EL INFORME (réplica del de hoy, con los estados de carga) ═════════════ */
+  .sec{margin-top:40px}
+  .sec-t{font-size:25px;font-weight:700;letter-spacing:-.01em;margin-bottom:16px;line-height:1.2}
+  .esc .sec-t{font-size:30px;margin-bottom:22px}
+  .caja{background:var(--caja);border-radius:16px}
+  /* portada */
+  .hero{position:relative;border-radius:16px;overflow:hidden;color:#fff;padding:26px 20px 24px;background:linear-gradient(135deg,#0F2440 0%,#2E1C28 50%,#4E1119 100%)}
+  .esc .hero{padding:34px 36px 30px}
+  .h-dir{font-size:13px;color:rgba(255,255,255,.72)}
+  .h-mod{font-size:13px;font-weight:600;color:rgba(255,255,255,.72);margin-top:4px}
+  .pill{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:7px 14px;border-radius:99px;background:#6E4560;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em}
+  .score{font-family:var(--mono);font-size:12.5px;color:rgba(255,255,255,.8);margin-top:12px}
+  .tit{font-family:var(--serif);font-size:26px;font-weight:600;line-height:1.18;margin-top:18px}
+  .esc .tit{font-size:30px}
+  .tit mark{background:none;color:inherit;box-shadow:inset 0 -.42em 0 rgba(255,255,255,.22)}
+  .cifra{margin-top:14px;font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.55}
+  .cifra b{font-family:var(--mono);font-size:19px;font-weight:700;color:#fff}
+  .esc .cifra b{font-size:23px}
+  .util{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+  .flink{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75);border-bottom:1px dashed rgba(255,255,255,.35);padding-bottom:3px}
+  .tog{display:inline-flex;border:1px solid rgba(255,255,255,.3);border-radius:99px;overflow:hidden;font-family:var(--mono);font-size:11px;font-weight:700}
+  .tog span{padding:5px 11px;color:rgba(255,255,255,.6)} .tog span.on{background:rgba(255,255,255,.18);color:#fff}
+  /* el hueco del titular y su única línea de estado */
+  .hueco{margin-top:18px}
+  .hueco i{display:block;height:24px;border-radius:6px;background:rgba(255,255,255,.14);margin-bottom:9px;animation:sh 1.6s ease-in-out infinite}
+  .esc .hueco i{height:28px}
+  .hueco i:nth-child(2){width:62%}
+  .aviso{display:flex;align-items:center;gap:8px;margin-top:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:rgba(255,255,255,.72)}
+  .aviso::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--signal);flex:none;animation:pu 1.4s ease-in-out infinite}
+  @keyframes sh{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes pu{0%,100%{opacity:.35}50%{opacity:1}}
+  @media (prefers-reduced-motion: reduce){.hueco i,.aviso::before{animation:none}}
+  /* hallazgos */
+  .hz{display:grid;grid-template-columns:18px 1fr auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .hz .fl{font-family:var(--mono);font-size:13px;color:var(--tx3)} .hz .fl.dn{color:var(--signal)}
+  .hz .tx{font-size:14.5px;line-height:1.45;color:var(--tx)}
+  .hz .v{font-family:var(--mono);font-size:14px;font-weight:700;text-align:right;white-space:nowrap}
+  .hz .s{grid-column:3;font-family:var(--mono);font-size:11px;color:var(--tx3);text-align:right;white-space:nowrap}
+  /* recomendación: la caja oscura, determinista */
+  .rec{position:relative;border-radius:16px;color:#fff;padding:22px 20px 20px;background:linear-gradient(135deg,#442B3B 0%,#18181B 100%)}
+  .esc .rec{padding:28px 30px 26px}
+  .rec-t{font-size:19px;font-weight:700}
+  .rec-sub{font-size:13px;color:rgba(255,255,255,.75);margin-top:6px}
+  .rec-sub span{display:inline-block;margin-left:6px;border:1px solid rgba(255,255,255,.4);border-radius:99px;padding:2px 9px;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#fff}
+  .rec-box{margin-top:14px;border-radius:12px;background:rgba(255,255,255,.08);padding:14px}
+  .rec-box .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:rgba(255,255,255,.6)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chips span{background:rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+  .chips s{opacity:.5;font-weight:400;margin-right:4px}
+  .rec-sin{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-size:16px;font-weight:700}
+  .rec-p{font-size:13px;color:rgba(255,255,255,.8);margin-top:12px;line-height:1.5}
+  .rec-cta{display:inline-block;margin-top:14px;background:#fff;color:#18181B;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:600}
+  /* cifras */
+  .cf{display:grid;grid-template-columns:1fr;gap:0}
+  .esc .cf{grid-template-columns:1fr 1fr;column-gap:32px}
+  .cf div{padding:12px 0;border-bottom:1px solid var(--line)}
+  .cf .n{font-size:13px;color:var(--tx3)} .cf .v{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:2px}
+  .cf .v.rojo{color:var(--signal)}
+  .cf .d{font-size:12.5px;color:var(--tx2);margin-top:3px;line-height:1.45}
+  .lnk{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:var(--signal);border-bottom:1px solid var(--signal)}
+  /* capítulos */
+  .cap{display:grid;grid-template-columns:1fr auto 30px;gap:12px;align-items:center;background:var(--caja);border-radius:12px;padding:14px 14px 14px 16px;margin-bottom:8px}
+  .cap .n{font-size:14.5px;font-weight:600} .cap .v{font-size:12.5px;color:var(--tx3);text-align:right} .cap .v b{color:var(--tx)}
+  .cap .o{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--tx3)}
+  /* zona */
+  .zp-t{font-size:14.5px;line-height:1.6;color:var(--tx2);margin-bottom:14px}
+  .zc-grid{display:grid;grid-template-columns:1fr;gap:10px}
+  .esc .zc-grid{grid-template-columns:1fr 1fr 1fr}
+  .zc{background:var(--caja);border-radius:12px;padding:14px 16px}
+  .zc-k{font-size:12.5px;color:var(--tx3)} .zc-v{font-size:22px;font-weight:700;margin-top:2px} .zc-m{font-size:12.5px;color:var(--tx3)}
+  .zp{display:inline-block;margin-top:8px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600}
+  .zp-bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)} .zp-neu{color:var(--tx3);background:color-mix(in srgb,var(--tx3) 12%,transparent)}
+  .zc-s{font-size:12px;color:var(--tx3);margin-top:8px;line-height:1.45}
+  /* carga de la página: la forma del informe, sin texto */
+  .b{display:block;border-radius:6px;background:var(--bar)}
+  .hero .b{background:rgba(255,255,255,.13)}
+  .rec .b{background:rgba(255,255,255,.1)}
+  .sk-row{display:grid;grid-template-columns:18px 1fr 70px;gap:12px;padding:14px 0;min-height:70px;border-bottom:1px solid var(--line);align-items:center}
+  /* HOY: las piezas que salen */
+  .hoy-hero{padding:0}
+  .hoy-q{display:flex;gap:10px;align-items:center;font-size:21px;font-weight:700}
+  .hoy-q .f{width:30px;height:30px;border-radius:50%;background:var(--signal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;flex:none}
+  .step{display:flex;gap:6px;align-items:center;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--tx2)}
+  .step i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--tx4)} .step i.on{background:var(--signal);border-color:var(--signal)} .step i.ok{background:var(--tx4);border-color:var(--tx4)}
+  .barra{display:flex;gap:4px;margin-top:10px}.barra i{flex:1;height:4px;border-radius:2px;background:var(--bar)}.barra i.on{background:var(--signal);opacity:.6}
+  .hoy-copy{font-size:12.5px;color:var(--tx3);margin-top:10px}
+  .espera{border:1px solid var(--line2);border-radius:16px;padding:22px 18px;background:var(--lienzo)}
+  .espera .m{display:flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+  .espera .m::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--signal)}
+  .espera .s{font-size:12px;color:var(--tx3);margin:6px 0 16px 15px}
+  .pira{display:grid;gap:10px}
+  .pira .c{border:1px solid var(--line);border-radius:12px;height:96px}
+  .pira .r{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pira .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .pira .r .c{height:80px} .pira .r3 .c{height:48px}
+  .tacha{position:relative}
+  .tacha::after{content:attr(data-nota);position:absolute;top:-10px;right:-6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.02em;text-transform:uppercase;color:#fff;background:var(--signal);padding:3px 7px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Skeleton del informe · con la forma de hoy</h1>
+  <p class="subx">Mockup del 24-sep-2026 sobre el demo real. Cuatro momentos: lo que se ve hoy mientras se escribe la prosa, lo que se vería mientras carga la página, mientras se escribe la prosa y cuando termina. Teléfono (390) los cuatro lado a lado; escritorio (1100, columna de 700) uno a la vez.</p>
+  <div class="panel">
+    <span class="clab">Tema</span>
+    <span class="seg" id="seg-tema"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Escritorio muestra</span>
+    <span class="seg" id="seg-esc"><button data-e="hoy">Hoy</button><button data-e="carga">Carga</button><button class="on" data-e="prosa">Prosa en camino</button><button data-e="listo">Listo</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Qué espera:</b> solo el titular de la portada, que es el único texto de la IA que hoy se ve en un informe v26. Su hueco reserva dos líneas del mismo alto que el titular, y debajo va una línea: «Franco está escribiendo el titular · suele tardar menos de un minuto». Cuando llega, ocupa ese mismo lugar. Medido en este mockup: la página cambia 1 px en teléfono y 17 px en escritorio, donde el titular entra en dos líneas y el hueco más su aviso mide un poco más; hoy cambia la página entera.</li>
+    <li><b>Qué se ve desde el principio:</b> todo lo demás, con sus cifras. Hallazgos, recomendación, las seis cifras, los capítulos y la zona salen del motor. Hoy se esconden detrás de `BloqueEsperaInforme` mientras `!prosa &amp;&amp; loading` (`SubjectCardGrid.tsx:347`) y los hallazgos detrás de `!(!prosa &amp;&amp; loading)` (`:306`).</li>
+    <li><b>El título de los hallazgos</b> se decide por el veredicto desde el primer render (`lineaQueDeclara`). Hoy dice «Qué determina el veredicto» mientras carga y cambia al llegar la prosa, porque espera a `esProsaDosBloques(prosa)`. Una generación nueva siempre es de dos bloques.</li>
+    <li><b>Sin el hero fantasma:</b> la sección «¿Conviene o no conviene?» con su stepper no se monta mientras se espera. Con prosa v26 esa sección no existe (`heroTieneCuerpo` es falso), así que anunciarla era anunciar un bloque que al final desaparece.</li>
+    <li><b>Un solo tiempo, honesto:</b> «suele tardar menos de un minuto», para LTR y para STR (p90 54 s y 36 s en los últimos 14 días). Salen «hasta 60 segundos», «alrededor de dos minutos» y «entre dos y cuatro minutos». Y sale el stepper de etapas: con el titular como único hueco no hay etapas que mostrar.</li>
+    <li><b>La carga de la página</b> (`loading.tsx`, antes de que lleguen los datos): la forma del informe en barras, con los tokens del informe y sin texto. Sale el overlay de pantalla completa con el logo y los cinco pasos, que narraban «Generando análisis de zona y POIs» durante un fetch.</li>
+    <li><b>Si la prosa falla:</b> el hueco se cierra y la portada queda como queda una fila sin titular hoy (veredicto, score, cifra). El reintento va en la misma línea del aviso: «No pudimos escribir el titular · Reintentar».</li>
+    <li><b>STR</b> sigue el mismo contrato: su hero con `ProgresoGeneracion` sale igual, y el hueco es el titular de su portada. <b>AMBAS</b> no está migrada a `DocumentoFrame` y queda fuera de este cambio.</li>
+  </ul>
+</div>
+
+<div class="rot"><h2>Teléfono · 390</h2><p>Demo `6db7a9ac-f030-4ccf-b5a8-5232ae997fb1`, leído en `http://localhost:3007/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1`.</p></div>
+<div class="tira" id="tira"></div>
+
+<div class="rot"><h2>Escritorio · 1100</h2><p>El estado elegido arriba.</p></div>
+<div class="esc" data-esc="1100"><div class="doc" id="doc1100"></div></div>
+
+<div class="rot"><h2>Lo que sale del código</h2></div>
+<table class="t">
+  <tr><td>LoadingEditorial</td><td>De `app/analisis/[id]/loading.tsx`. Sigue vivo en el wizard legacy (`nuevo-v2/page.tsx:854`), que es otro cambio.</td></tr>
+  <tr><td>BloqueEsperaInforme</td><td>Entero (`ProsaSkeleton.tsx:274-353`), con sus mensajes rotativos y las siluetas de la pirámide, y la rama `!prosa &amp;&amp; loading` del grid.</td></tr>
+  <tr><td>ProgresoGeneracion</td><td>El stepper, la barra segmentada y los tres textos de tiempo (`ETAPAS_GENERACION_*`, `COPY_TIEMPO_*`). Lo reemplaza el hueco del titular.</td></tr>
+  <tr><td>Código muerto</td><td>`ProsaSkeleton()` (sin consumidores) y `ResultsSkeleton.tsx` (anuncia hero card, subject cards y drawer).</td></tr>
+  <tr><td>Hidratación</td><td>Los dos `&lt;style&gt;` con comillas (`ProsaSkeleton.tsx:230` y `:348`) salen con sus componentes. El `&lt;style&gt;` que quede para el hueco va por `dangerouslySetInnerHTML`, como `DocTokens`.</td></tr>
+  <tr><td>Props sin render</td><td>`cajaAccionable`, `prosa` y `chip` de `PosicionFranco` no se dibujan. Queda anotado: no es de este cambio, pero explica por qué la recomendación no espera.</td></tr>
+</table>
+
+<div class="rot"><h2>De paso, un bug de la card de zona</h2></div>
+<table class="t">
+  <tr><td>«Tu arriendo —»</td><td>En el demo el arriendo declarado es $750.000 y la card muestra «—» con «Sin arriendos publicados cerca para comparar: este número lo pusiste tú». Sin referencia, la card esconde el valor del usuario en vez de mostrarlo sin píldora. En este mockup va el valor.</td></tr>
+</table>
+
+<script>
+const X = {
+  dir: "Av Providencia 1234 · Providencia", mod: "Renta larga", score: 67,
+  titular: "Ajusta supuestos y <mark>el veredicto cambia por completo</mark>.",
+  cifra: "−$94.855", cifraS: "que salen de tu bolsillo todos los meses",
+  hzT: "Ajusta los números. Esto es lo que pesa:",
+  hz: [["↓", "Pones algo de tu bolsillo cada mes.", "−$94.855", "cuota $579.488", 1], ["↓", "Tu financiamiento tiene margen: la tasa está sobre el mercado.", "Pie 20%", "", 1], ["↑", "Rinde por sobre lo que el mercado paga.", "7,1%", "comuna 4,7% bruto", 0], ["↑", "Entras en el cuarto más barato de la comuna.", "−39%", "UF 58 · med 95", 0]],
+  cf: [["Cap rate bruto", "7,1%", "El arriendo de un año sobre el precio, antes de gastos. Los avisos de la comuna rinden 4,7%."], ["Cap rate neto", "4,6%", "Lo mismo, ya descontados los gastos, la vacancia y la gestión."], ["Cash on cash", "−3,6%", "Por cada $100 que pusiste, este año pones $3,63 más en vez de recibir.", 1], ["Flujo mensual", "−$94.855", "Lo que sale de tu bolsillo cada mes, después de todo: dividendo, gastos y vacancia.", 1], ["Cobertura de cuota", "1,29× · 129%", "El arriendo paga el dividendo y sobra un 29% — antes de gastos."], ["TIR a 10 años", "9,3%", "Lo que rinde tu plata al año, sumando arriendo, aportes y venta. Bajo 6%, conviene más otra inversión."]],
+  caps: [["Cuánto renta", "Cap rate bruto <b>7,1%</b>"], ["Tu flujo mensual", "Flujo <b>−$94.855</b>"], ["A qué precio cerrar", "Precio recomendado <b>UF 3.200</b>"], ["Plusvalía", "Plusvalía <b>2,9% anual</b>"], ["Tu resultado a 10 años", "Resultado <b>$93,2 MM</b>"]],
+};
+const portada = (modo) => {
+  let centro;
+  if (modo === "carga") centro = `<i class="b" style="height:12px;width:55%"></i><i class="b" style="height:12px;width:28%;margin-top:8px"></i><i class="b" style="height:32px;width:130px;border-radius:99px;margin-top:18px"></i><i class="b" style="height:12px;width:40%;margin-top:14px"></i><i class="b" style="height:26px;width:94%;margin-top:20px"></i><i class="b" style="height:26px;width:60%;margin-top:9px"></i><i class="b" style="height:18px;width:70%;margin-top:16px"></i><i class="b" style="height:12px;width:50%;margin-top:22px"></i>`;
+  else {
+    const tit = modo === "prosa" ? `<div class="hueco"><i></i><i></i><div class="aviso">Franco está escribiendo el titular · suele tardar menos de un minuto</div></div>`
+      : modo === "hoy" ? "" : `<h1 class="tit">${X.titular}</h1>`;
+    centro = `<div class="h-dir">${X.dir}</div><div class="h-mod">${X.mod}</div><span class="pill">− AJUSTAR</span><div class="score">Franco Score ${X.score} de 100 ⓘ</div>${tit}
+      <p class="cifra"><b>${X.cifra}</b> ${X.cifraS}</p><div class="util"><span class="flink">Ficha del depto →</span><span class="tog"><span class="on">CLP</span><span>UF</span></span></div>`;
+  }
+  return `<div class="caja"><div class="hero">${centro}</div></div>`;
+};
+const hallazgos = (modo) => modo === "carga"
+  ? `<div class="sec"><i class="b" style="height:24px;width:70%;margin-bottom:16px"></i>${[1, 2, 3, 4].map(() => `<div class="sk-row"><i class="b" style="height:12px"></i><i class="b" style="height:12px"></i><i class="b" style="height:12px"></i></div>`).join("")}</div>`
+  : `<div class="sec"><h2 class="sec-t">${X.hzT}</h2>${X.hz.map(([f, t, v, s, dn]) => `<div class="hz"><span class="fl ${dn ? "dn" : ""}">${f}</span><span class="tx">${t}</span><span class="v">${v}</span>${s ? `<span></span><span></span><span class="s">${s}</span>` : ""}</div>`).join("")}</div>`;
+const rec = (modo) => modo === "carga"
+  ? `<div class="sec"><div class="rec"><i class="b" style="height:18px;width:62%"></i><i class="b" style="height:12px;width:48%;margin-top:10px"></i><i class="b" style="height:120px;margin-top:16px;border-radius:12px"></i><i class="b" style="height:12px;width:80%;margin-top:16px"></i><i class="b" style="height:36px;width:130px;border-radius:99px;margin-top:16px"></i></div></div>`
+  : `<div class="sec"><div class="rec"><div class="rec-t">La recomendación de Franco</div><div class="rec-sub">Para que el veredicto pase a <span>✓ COMPRAR</span></div>
+      <div class="rec-box"><div class="k">MODIFICACIONES QUE DEPENDEN DE TI</div><div class="chips"><span>Pie <s>20%</s>30%</span><span>Plazo <s>25</s>30 años</span></div><div class="rec-sin">→ Sin pedirle un peso al vendedor</div></div>
+      <p class="rec-p"><b>Alternativamente:</b> +8,4% de arriendo o −10% de precio (c/u por separado). Pero eso no depende de ti: lo pone el mercado o el vendedor.</p>
+      <p class="rec-p">Poner ese pie cuesta $12.744.000 más el día uno.</p><span class="rec-cta">▶ Ver ajustes</span></div></div>`;
+const cifras = (modo) => modo === "carga"
+  ? `<div class="sec"><i class="b" style="height:24px;width:66%;margin-bottom:16px"></i><div class="cf">${X.cf.map(() => `<div style="min-height:104px"><i class="b" style="height:11px;width:40%"></i><i class="b" style="height:20px;width:30%;margin-top:8px"></i><i class="b" style="height:11px;width:85%;margin-top:8px"></i></div>`).join("")}</div></div>`
+  : `<div class="sec"><h2 class="sec-t">Las cifras que tienes que ver</h2><div class="cf">${X.cf.map(([n, v, d, r]) => `<div><div class="n">${n} ⓘ</div><div class="v ${r ? "rojo" : ""}">${v}</div><div class="d">${d}</div></div>`).join("")}</div><span class="lnk">Ver cómo se calcula →</span></div>`;
+const caps = (modo) => modo === "carga"
+  ? `<div class="sec"><i class="b" style="height:24px;width:55%;margin-bottom:16px"></i>${X.caps.map(() => `<div class="cap"><i class="b" style="height:13px;width:60%"></i><i class="b" style="height:11px;width:90px"></i><span class="o"></span></div>`).join("")}</div>`
+  : `<div class="sec"><h2 class="sec-t">Detalle de la inversión</h2>${X.caps.map(([n, v]) => `<div class="cap"><span class="n">${n}</span><span class="v">${v}</span><span class="o">›</span></div>`).join("")}</div>`;
+const zona = (modo) => modo === "carga"
+  ? `<div class="sec"><i class="b" style="height:24px;width:60%;margin-bottom:16px"></i><div class="zc-grid">${[1, 2, 3].map(() => `<div class="zc" style="min-height:118px"><i class="b" style="height:11px;width:45%"></i><i class="b" style="height:20px;width:55%;margin-top:8px"></i><i class="b" style="height:11px;width:70%;margin-top:8px"></i></div>`).join("")}</div></div>`
+  : `<div class="sec"><h2 class="sec-t">Ubicación · Providencia</h2><p class="zp-t">Tu precio por m² está 39,0% bajo la mediana de la comuna · la comuna se valorizó 2,9% al año.</p><div class="zc-grid">
+      <div class="zc"><div class="zc-k">Tu arriendo</div><div class="zc-v">$750 mil</div><div class="zc-s">Sin arriendos publicados cerca para comparar: este número lo pusiste tú.</div></div>
+      <div class="zc"><div class="zc-k">Tu precio por m²</div><div class="zc-v">$2.317.815</div><div class="zc-m">mediana $3.775.410</div><span class="zp zp-bien">39,0% bajo</span><div class="zc-s">135 publicaciones de venta de deptos usados · 23 sept 2026.</div></div>
+      <div class="zc"><div class="zc-k">Valorización en 10 años</div><div class="zc-v">30%</div><div class="zc-m">promedio Gran Santiago 35%</div><span class="zp zp-neu">5 pts bajo</span><div class="zc-s">2,9% al año · tu proyección usa 3%.</div></div></div><span class="lnk">Ver los comparables →</span></div>`;
+// HOY mientras se escribe la prosa: el hero fantasma y el bloque de espera
+const hoy = () => `${portada("hoy")}
+  <div class="sec tacha" data-nota="sale"><div class="hoy-q"><span class="f">f.</span>¿Conviene o no conviene?</div>
+    <div class="step"><i class="ok"></i><i class="on"></i><i></i> Contrastando la zona</div><div class="barra"><i class="on"></i><i class="on"></i><i></i></div>
+    <p class="hoy-copy">Franco está escribiendo este análisis — suele tomar alrededor de dos minutos.</p>
+    ${[70, 94, 85, 52].map((w) => `<i class="b" style="height:11px;width:${w}%;margin-top:10px"></i>`).join("")}</div>
+  ${rec("listo")}
+  <div class="sec tacha" data-nota="sale"><div class="espera"><div class="m">Contrastando precio y arriendo contra la zona…</div><div class="s">El análisis completo por hallazgo se habilita al terminar.</div>
+    <div class="pira"><div class="c"></div><div class="r"><div class="c"></div><div class="c"></div></div><div class="r3"><div class="c"></div><div class="c"></div><div class="c"></div></div><div class="c" style="height:64px"></div></div></div></div>`;
+const informe = (modo) => (modo === "hoy" ? hoy() : portada(modo) + hallazgos(modo) + rec(modo) + cifras(modo) + caps(modo) + zona(modo));
+const ESTADOS = [["hoy", "Hoy · prosa en camino"], ["carga", "Propuesta · carga de la página"], ["prosa", "Propuesta · prosa en camino"], ["listo", "Propuesta · listo"]];
+function render(esc) {
+  document.getElementById("tira").innerHTML = ESTADOS.map(([k, t]) => `<div class="col"><div class="col-t">${t}</div><div class="tel" data-esc="${k}-390">${informe(k)}</div></div>`).join("");
+  document.getElementById("doc1100").innerHTML = informe(esc);
+}
+let ESC = "prosa";
+const conSeg = (id, attr, fn) => document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener("click", () => { document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); }));
+conSeg("seg-tema", "t", (v) => { document.documentElement.dataset.theme = v; });
+conSeg("seg-esc", "e", (v) => { ESC = v; render(ESC); });
+render(ESC);
+</script>
+</body>
+</html>

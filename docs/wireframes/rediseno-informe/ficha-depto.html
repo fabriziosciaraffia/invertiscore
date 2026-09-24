@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha del depto · dos formas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 24-sep-2026 (v2) · la ficha del depto evaluado, al Modal nuevo, en DOS formas de app.
+     Nada implementado. Reemplaza a la v1 del mismo día, que Fabrizio devolvió por editorial
+     (títulos de bloque, frases): acá es lista de rótulo y valor, secciones cortas, sin prosa.
+     TIPOGRAFÍA: solo Inter (contrato §1: Source Serif queda para el titular del hero, que acá no
+     está; el mono se retiró). Cifras con `tabular-nums`. El título del Modal, en Inter como el
+     implementado (medido: `h3` «Cuánto renta» → Inter 22 px).
+     A · LISTA AGRUPADA — secciones con rótulo corto y filas rótulo | valor, como un ajuste de app.
+     B · RESUMEN + FICHA — cuatro cifras arriba y la ficha técnica en filas densas; lo del mercado
+         en una tablita tuyo | mediana | diferencia.
+     LA PROCEDENCIA va en una etiqueta de una palabra junto al valor (declarado · sugerido ·
+     estimada), no en frases. «Sugerido» = `input_data.arriendo === zonaRadio.arriendoPromedio`.
+     CIFRAS REALES (lectura, 24-sep-2026, `scripts/of-mockup-tres-superficies.ts` untracked +
+     la página en localhost):
+       · 00f9c0eb (LTR, Ñuñoa): nuevo en verde, arriendo sugerido (22 a menos de 500 m);
+       · 995e2bf8 (LTR, Providencia): usado 25 años, arriendo declarado $750 mil contra $980 mil;
+       · 143bc85b (STR, Providencia): administrador 25%, tarifa y ocupación estimadas.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--up:#2B558F}
+  [data-theme="light"]{--page:#F6F6F7;--card:#F4F4F6;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--hoja:#FFFFFF;--hoja-borde:transparent;--overlay:rgba(20,19,17,.55);--grupo:#F4F4F6;--tile:#F4F4F6}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--line:#2C2C30;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--hoja:#1A1A1E;--hoja-borde:#37373D;--overlay:rgba(12,12,14,.86);--grupo:#232328;--tile:#232328;--up:#6C9BE0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  button{font-family:inherit}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);font-variant-numeric:tabular-nums;padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:90ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:9px 14px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:34px auto 12px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:90ch;line-height:1.5}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto;width:100%}
+  table.t td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-size:10.5px;color:var(--tx3)}
+  .med-ok{color:var(--tx2)} .med-mal{color:var(--signal);font-weight:600}
+
+  /* ── escenas ── */
+  .fila-esc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:22px;align-items:center}
+  .tel{width:390px;height:844px;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line2);background:var(--page);box-shadow:0 12px 40px rgba(0,0,0,.18);flex:none}
+  body.alto-completo .tel{height:auto;padding-top:56px}
+  body.alto-completo .tel .hoja{position:relative;height:auto}
+  body.alto-completo .tel .hoja .cuerpo{overflow:visible}
+  .velo{position:absolute;inset:0;background:var(--overlay)}
+  .hoja{position:absolute;left:0;right:0;bottom:0;height:calc(100% - 56px);background:var(--hoja);border-top:1px solid var(--hoja-borde);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  .hoja .asa{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 0;flex:none}
+  .cab{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px 10px 20px;border-bottom:1px solid var(--line)}
+  .cab h3{font-size:18px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+  .cab .sub{font-size:12.5px;color:var(--tx3);margin-top:2px}
+  .x{width:32px;height:32px;border:1px solid var(--line2);border-radius:99px;background:none;color:var(--tx3);font-size:14px;flex:none}
+  .hoja .cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 16px 24px}
+  .esc{width:1100px;position:relative;border-radius:14px;border:1px solid var(--line2);overflow:hidden;background:var(--page);padding:40px 20px;display:flex;justify-content:center}
+  .esc .panel720{position:relative;width:100%;max-width:720px;background:var(--hoja);border:1px solid var(--line2);border-radius:16px;padding:24px 28px}
+  .esc .cab{padding:0 0 14px;align-items:flex-start}
+  .esc .cab h3{font-size:22px}
+  .esc .cab .sub{font-size:13px;margin-top:4px}
+  .esc .cuerpo{margin-top:16px}
+  .estado{position:absolute;top:10px;left:12px;z-index:3;font-size:10px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px}
+
+  /* ═════════════ COMÚN ═════════════ */
+  .tag{display:inline-block;font-size:11px;font-weight:500;color:var(--tx3);border:1px solid var(--line2);border-radius:99px;padding:0 7px;line-height:17px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+  .dif{font-size:12.5px;font-weight:600;white-space:nowrap}
+  .dif.mal{color:var(--signal)} .dif.bien{color:var(--up)} .dif.neu{color:var(--tx3)}
+  .btn{display:block;width:100%;margin-top:18px;border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;color:var(--tx);background:transparent;text-align:center;font-family:var(--sans)}
+  .esc .btn{width:auto;display:inline-block;padding:10px 18px}
+  .pie{font-size:11.5px;color:var(--tx3);margin-top:10px;text-align:center}
+  .esc .pie{text-align:left}
+
+  /* ═════════════ A · LISTA AGRUPADA ═════════════ */
+  .gA{margin-top:16px}
+  .gA:first-child{margin-top:0}
+  .gA-t{font-size:12.5px;font-weight:600;color:var(--tx3);margin:0 4px 6px}
+  .gA-c{background:var(--grupo);border-radius:12px;padding:0 14px}
+  .fA{display:grid;grid-template-columns:1fr auto;gap:1px 12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--line)}
+  .fA:last-child{border-bottom:none}
+  .fA .k{font-size:14px;color:var(--tx2)}
+  .fA .v{font-size:14px;font-weight:600;text-align:right;white-space:nowrap}
+  .fA .s{font-size:12px;color:var(--tx3)}
+  .fA .s2{font-size:12px;text-align:right}
+  .esc .colsA{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}
+  .esc .colsA .gA:first-child,.esc .colsA > div > .gA:first-child{margin-top:0}
+
+  /* ═════════════ B · RESUMEN + FICHA ═════════════ */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .esc .tiles{grid-template-columns:repeat(4,1fr);gap:10px}
+  .tile{background:var(--tile);border-radius:12px;padding:12px 14px}
+  .tile .k{font-size:12px;color:var(--tx3)}
+  .tile .v{font-size:19px;font-weight:700;letter-spacing:-.01em;margin-top:3px;white-space:nowrap}
+  .tile .s{font-size:12px;color:var(--tx3);margin-top:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+  .chips span{font-size:12.5px;font-weight:500;color:var(--tx2);border:1px solid var(--line2);border-radius:99px;padding:4px 10px;white-space:nowrap}
+  .secB{margin-top:18px}
+  .secB-t{font-size:12.5px;font-weight:600;color:var(--tx3);padding-bottom:6px;border-bottom:1px solid var(--line2)}
+  .fB{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .fB .k{color:var(--tx2)} .fB .v{font-weight:600;white-space:nowrap;text-align:right}
+  .esc .colsB{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
+  .mk{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  .mk th{font-size:11.5px;font-weight:600;color:var(--tx3);text-align:right;padding:8px 0 6px 8px;border-bottom:1px solid var(--line2)}
+  .mk th:first-child,.mk td:first-child{text-align:left;padding-left:0}
+  .mk td{padding:9px 0 9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-weight:600}
+  .mk td:first-child{font-weight:400;color:var(--tx2);white-space:normal}
+  .mk td small{display:block;font-size:11.5px;font-weight:400;color:var(--tx3);margin-top:1px}
+  .mk col.c1{width:34%}
+  .mk td:last-child,.mk td:last-child .dif{white-space:normal;line-height:1.3}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Ficha del depto · dos formas de app</h1>
+  <p class="subx">Mockup del 24-sep-2026, v2. Las mismas tres filas en la hoja de teléfono (390) y el panel de escritorio (1100, modal de 720). A es una lista agrupada de rótulo y valor. B pone cuatro cifras arriba y la ficha técnica debajo. En las dos la procedencia es una etiqueta de una palabra y no hay prosa.</p>
+  <div class="panel">
+    <span class="clab">Forma</span>
+    <span class="seg" id="seg-forma"><button class="on" data-f="A">A · Lista agrupada</button><button data-f="B">B · Resumen + ficha</button></span>
+    <span class="clab">Moneda</span>
+    <span class="seg" id="seg-mon"><button class="on" data-mon="clp">CLP</button><button data-mon="uf">UF</button></span>
+    <span class="clab">Tema</span>
+    <span class="seg" id="seg-tema"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Alto</span>
+    <span class="seg" id="seg-alto"><button class="on" data-a="tel">Pantalla</button><button data-a="full">Completo</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Lo común a las dos:</b> Modal nuevo; título = la dirección, bajada = la comuna; todo en Inter; montos con el toggle; la procedencia en una etiqueta (<i>declarado</i>, <i>sugerido</i>, <i>estimada</i>); la comparación con el mercado como cifra y diferencia, sin frase; un solo botón «Cambiar un dato».</li>
+    <li><b>A · Lista agrupada:</b> cinco secciones cortas (Depto · Precio · Arriendo · Crédito; en STR Operación y Estimado en vez de Arriendo). Cada fila es rótulo a la izquierda y valor a la derecha; la referencia del mercado es una fila más de la misma sección, con la diferencia debajo del valor. En escritorio, dos columnas.</li>
+    <li><b>B · Resumen + ficha:</b> arriba las cuatro cifras que definen la compra (precio, arriendo o tarifa, pie, crédito), después la identidad en chips y la ficha técnica en filas densas. Lo del mercado va aparte, en una tablita de tres columnas: tuyo · mediana · diferencia.</li>
+    <li><b>Qué no está en ninguna:</b> «Modalidad», los títulos de bloque en frase («Lo que ingresaste», «Contra qué se compara»), las bajadas explicativas y la nota del pie de la v1.</li>
+    <li><b>Color:</b> la diferencia usa el tono de la card de zona: rojo lo que juega en contra, azul lo que juega a favor, gris lo neutro. Nada más lleva color.</li>
+  </ul>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>Medido al vuelo en esta página</h2><p>Filas que desbordan su contenedor, en las dos formas y los dos anchos.</p></div>
+<table class="t" id="medidas"></table>
+
+<script>
+const D = {
+  ltrA: { url: "/analisis/00f9c0eb-bc91-419a-a4a2-c47871502a6b", tit: "LTR · nuevo en verde, arriendo sugerido", nota: "Ñuñoa · 1D1B · entrega agosto 2029 · 35 cuotas del pie",
+    uf: 40861, dir: "Av. Irarrázaval 401", comuna: "Ñuñoa",
+    depto: [["Tipología", "1D · 1B"], ["Superficie", "38 m²"], ["Estado", "Nuevo · en verde"], ["Entrega", "Ago 2029"]],
+    precioUF: 4205, sup: 38, arriendo: 498000, sugerido: true, ggcc: 68000,
+    piePct: 20, cuotas: 35, montoCuota: 981831, tasa: "3,4%", plazo: 30,
+    m2: { mediana: 107.5, n: 496, universo: "nuevos", dev: 3 }, arr: { mediana: 498000, n: 22, radio: "500 m" } },
+  ltrB: { url: "/analisis/995e2bf8-e136-470b-830d-1258a1679f27", tit: "LTR · usado, arriendo declarado", nota: "Providencia · 2D2B · 25 años · con estacionamiento y bodega",
+    uf: 40849, dir: "Av. Francisco Bilbao 3441", comuna: "Providencia",
+    depto: [["Tipología", "2D · 2B"], ["Superficie", "68 m²"], ["Estado", "Usado · 25 años"], ["Estacionamiento", "Sí"], ["Bodega", "Sí"]],
+    precioUF: 3800, sup: 68, arriendo: 750000, sugerido: false, ggcc: 150000,
+    piePct: 20, cuotas: 0, montoCuota: 0, tasa: "4%", plazo: 25,
+    m2: { mediana: 86.3, n: 143, universo: "usados", dev: -35 }, arr: { mediana: 980000, n: 47, radio: "1,5 km" } },
+  str: { url: "/analisis/renta-corta/143bc85b-62b8-4069-9f7d-3036c3e70c29", tit: "STR · con administrador", nota: "Providencia · 2D1B · 4 años · 2 huéspedes · tarifa y ocupación sin corregir",
+    uf: 38800, dir: "Av. Providencia 1500", comuna: "Providencia",
+    depto: [["Tipología", "2D · 1B"], ["Superficie", "50 m²"], ["Estado", "Usado · 4 años"], ["Huéspedes", "2"]],
+    precioUF: 5045, sup: 50, amob: 4550000, admin: "25%",
+    piePct: 20, tasa: "4,11%", plazo: 25, tarifa: 74713, occ: 0.4755 },
+};
+let MON = "clp", FORMA = "A";
+const ES = (n, d = 0) => n.toLocaleString("es-CL", { minimumFractionDigits: d, maximumFractionDigits: d });
+function m(clp, uf) {
+  if (MON === "uf") { const u = clp / uf; return u >= 100 ? `UF ${ES(Math.round(u))}` : `UF ${ES(u, 1)}`; }
+  if (clp < 1e6) return `$${ES(Math.round(clp / 1000))} mil`;
+  return `$${ES(clp / 1e6, 1)} MM`;
+}
+const ufm2 = (v) => `UF ${ES(v, 1)}`;
+const tag = (t) => `<span class="tag">${t}</span>`;
+const dif = (pct) => { const a = Math.abs(pct); if (a < 1) return `<span class="dif neu">en la mediana</span>`; return `<span class="dif ${pct > 0 ? "mal" : "bien"}">${a}% ${pct > 0 ? "sobre" : "bajo"}</span>`; };
+
+// ── A · lista agrupada ──
+const fA = (k, v, s = "", s2 = "") => `<div class="fA"><div class="k">${k}</div><div class="v">${v}</div>${s || s2 ? `<div class="s">${s}</div><div class="s2">${s2}</div>` : ""}</div>`;
+const gA = (t, filas) => `<div class="gA"><div class="gA-t">${t}</div><div class="gA-c">${filas.join("")}</div></div>`;
+function formaA(x, k) {
+  const precio = x.precioUF * x.uf, precioTxt = MON === "uf" ? `UF ${ES(x.precioUF)}` : m(precio, x.uf);
+  const credito = [fA("Pie", `${x.piePct}% · ${m(precio * x.piePct / 100, x.uf)}`), ...(x.cuotas > 0 ? [fA("Cuotas del pie", `${x.cuotas} × ${m(x.montoCuota, x.uf)}`)] : []), fA("Crédito", m(precio * (1 - x.piePct / 100), x.uf)), fA("Tasa", x.tasa), fA("Plazo", `${x.plazo} años`)];
+  const depto = gA("Depto", x.depto.map(([a, b]) => fA(a, b)));
+  const precioG = gA("Precio", [fA("Precio", precioTxt), fA("Precio por m²", ufm2(x.precioUF / x.sup)), ...(x.m2 ? [fA("Mediana de la comuna", ufm2(x.m2.mediana), `${x.m2.n} deptos ${x.m2.universo}`, dif(x.m2.dev))] : [])]);
+  let terceros;
+  if (k === "str") {
+    terceros = [gA("Operación", [fA("Gestión", `Administrador · ${x.admin}`), fA("Amoblamiento", m(x.amob, x.uf))]),
+      gA("Estimado para tu depto", [fA(`Tarifa por noche${tag("estimada")}`, m(x.tarifa, x.uf), "mediana de la zona", ""), fA(`Ocupación${tag("estimada")}`, `${ES(Math.round(x.occ * 100))}%`, `${Math.round(x.occ * 365)} noches al año`, "")])];
+  } else {
+    const devArr = Math.round((x.arriendo / x.arr.mediana - 1) * 100);
+    terceros = [gA("Arriendo", [fA(`Arriendo${tag(x.sugerido ? "sugerido" : "declarado")}`, `${m(x.arriendo, x.uf)}/mes`), ...(x.sugerido ? [] : [fA("Mediana de la zona", `${m(x.arr.mediana, x.uf)}/mes`, `${x.arr.n} a menos de ${x.arr.radio}`, dif(devArr))]), ...(x.sugerido ? [fA("Muestra", `${x.arr.n} avisos`, `a menos de ${x.arr.radio}`, "")] : []), fA("Gastos comunes", `${m(x.ggcc, x.uf)}/mes`)])];
+  }
+  const creditoG = gA("Crédito", credito);
+  return { tel: depto + precioG + terceros.join("") + creditoG + `<button class="btn">Cambiar un dato</button><p class="pie">UF ${ES(x.uf)} del día del análisis</p>`,
+    esc: `<div class="colsA"><div>${depto}${precioG}</div><div>${terceros.join("")}${creditoG}</div></div><button class="btn">Cambiar un dato</button><p class="pie">UF ${ES(x.uf)} del día del análisis</p>` };
+}
+
+// ── B · resumen + ficha ──
+const tile = (k, v, s = "") => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
+const fB = (k, v) => `<div class="fB"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+const secB = (t, filas) => `<div class="secB"><div class="secB-t">${t}</div>${filas.join("")}</div>`;
+function formaB(x, k) {
+  const precio = x.precioUF * x.uf, precioTxt = MON === "uf" ? `UF ${ES(x.precioUF)}` : m(precio, x.uf);
+  const esStr = k === "str";
+  const tiles = `<div class="tiles">
+    ${tile("Precio", precioTxt, `${ufm2(x.precioUF / x.sup)}/m²`)}
+    ${esStr ? tile(`Tarifa${tag("estimada")}`, m(x.tarifa, x.uf), `${ES(Math.round(x.occ * 100))}% de ocupación`) : tile(`Arriendo${tag(x.sugerido ? "sugerido" : "declarado")}`, m(x.arriendo, x.uf), "al mes")}
+    ${tile("Pie", `${x.piePct}%`, m(precio * x.piePct / 100, x.uf))}
+    ${tile("Crédito", m(precio * (1 - x.piePct / 100), x.uf), `${x.tasa} · ${x.plazo} años`)}
+  </div>`;
+  const chips = `<div class="chips">${x.depto.map(([a, b]) => `<span>${a === "Estacionamiento" ? "Estacionamiento" : a === "Bodega" ? "Bodega" : a === "Huéspedes" ? `${b} huéspedes` : a === "Entrega" ? `Entrega ${b.toLowerCase()}` : b}</span>`).join("")}</div>`;
+  const ficha = esStr
+    ? [secB("Operación", [fB("Gestión", `Administrador · ${x.admin}`), fB("Amoblamiento", m(x.amob, x.uf)), fB("Noches al año", `${Math.round(x.occ * 365)}`)]),
+       secB("Crédito", [fB("Pie", `${x.piePct}% · ${m(precio * x.piePct / 100, x.uf)}`), fB("Tasa", x.tasa), fB("Plazo", `${x.plazo} años`)])]
+    : [secB("Gastos", [fB("Gastos comunes", `${m(x.ggcc, x.uf)}/mes`)]),
+       secB("Crédito", [fB("Pie", `${x.piePct}% · ${m(precio * x.piePct / 100, x.uf)}`), ...(x.cuotas > 0 ? [fB("Cuotas del pie", `${x.cuotas} × ${m(x.montoCuota, x.uf)}`)] : []), fB("Tasa", x.tasa), fB("Plazo", `${x.plazo} años`)])];
+  let mercado = "";
+  if (!esStr) {
+    const devArr = Math.round((x.arriendo / x.arr.mediana - 1) * 100);
+    mercado = `<div class="secB"><div class="secB-t">Frente al mercado</div><table class="mk"><colgroup><col class="c1"><col><col><col></colgroup>
+      <thead><tr><th></th><th>Tuyo</th><th>Mediana</th><th>Diferencia</th></tr></thead><tbody>
+      <tr><td>Precio por m²<small>${x.m2.n} deptos ${x.m2.universo}</small></td><td>${ufm2(x.precioUF / x.sup)}</td><td>${ufm2(x.m2.mediana)}</td><td>${dif(x.m2.dev)}</td></tr>
+      <tr><td>Arriendo<small>${x.arr.n} a menos de ${x.arr.radio}</small></td><td>${m(x.arriendo, x.uf)}</td><td>${m(x.arr.mediana, x.uf)}</td><td>${dif(devArr)}</td></tr>
+      </tbody></table></div>`;
+  } else {
+    mercado = `<div class="secB"><div class="secB-t">Frente al mercado</div><table class="mk"><colgroup><col class="c1"><col><col><col></colgroup>
+      <thead><tr><th></th><th>Tuyo</th><th>Mediana</th><th>Diferencia</th></tr></thead><tbody>
+      <tr><td>Tarifa por noche<small>zona</small></td><td>${m(x.tarifa, x.uf)}</td><td>${m(x.tarifa, x.uf)}</td><td>${dif(0)}</td></tr>
+      </tbody></table></div>`;
+  }
+  const cuerpo = tiles + chips + mercado;
+  return { tel: cuerpo + ficha.join("") + `<button class="btn">Cambiar un dato</button><p class="pie">UF ${ES(x.uf)} del día del análisis</p>`,
+    esc: cuerpo + `<div class="colsB">${ficha.join("")}</div><button class="btn">Cambiar un dato</button><p class="pie">UF ${ES(x.uf)} del día del análisis</p>` };
+}
+function render() {
+  document.getElementById("escenas").innerHTML = Object.entries(D).map(([k, x]) => {
+    const c = FORMA === "A" ? formaA(x, k) : formaB(x, k);
+    const cab = `<div class="cab"><div><h3>${x.dir}</h3><div class="sub">${x.comuna}</div></div><button class="x">✕</button></div>`;
+    return `<div class="rot"><h2>${FORMA} · ${x.tit}</h2><p>${x.nota} · <span class="medida">${x.url}</span></p></div>
+    <div class="fila-esc">
+      <div class="tel" data-esc="${k}-390"><div class="velo"></div><span class="estado">teléfono · 390</span>
+        <div class="hoja"><div class="asa"></div>${cab}<div class="cuerpo">${c.tel}</div></div></div>
+      <div class="esc" data-esc="${k}-1100"><div class="velo"></div><span class="estado">escritorio · 1100</span>
+        <div class="panel720">${cab}<div class="cuerpo">${c.esc}</div></div></div>
+    </div>`;
+  }).join("");
+  medir();
+}
+function medir() {
+  document.getElementById("medidas").innerHTML = [...document.querySelectorAll("[data-esc]")].map((e) => {
+    const els = [...e.querySelectorAll(".fA,.fB,.tile,.mk td,.chips span")];
+    const mal = els.filter((f) => f.scrollWidth > f.clientWidth + 1).length;
+    return `<tr><td>${FORMA} · ${e.dataset.esc}</td><td class="medida ${mal ? "med-mal" : "med-ok"}">elementos que desbordan: ${mal} de ${els.length}</td></tr>`;
+  }).join("");
+}
+const conSeg = (id, attr, fn) => document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener("click", () => { document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); }));
+conSeg("seg-forma", "f", (v) => { FORMA = v; render(); });
+conSeg("seg-mon", "mon", (v) => { MON = v; render(); });
+conSeg("seg-tema", "t", (v) => { document.documentElement.dataset.theme = v; });
+conSeg("seg-alto", "a", (v) => { document.body.classList.toggle("alto-completo", v === "full"); medir(); });
+render();
+</script>
+</body>
+</html>

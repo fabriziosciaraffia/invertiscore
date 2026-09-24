@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparables LTR · al Modal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MOCKUP · 24-sep-2026 · «Ver los comparables →» de la zona LTR, al Modal nuevo. Nada implementado.
+     HOY: abre el `AnalysisDrawer` viejo (SubjectCardGrid.tsx:465), montado SOLO si hay prosa
+     (`activeDrawer && results && inputData && prosa`): en 528 de 1.218 filas LTR (43,3%) el botón
+     no abre nada, aunque el drawer no lee nada de la IA. Adentro, otra referencia de arriendo que
+     la card (rango P10–P90 de la comuna, «143 avisos activos», contra «mediana $498 mil · 22
+     publicaciones a menos de 500 m»), el eje al revés (la referencia grande, tu valor en letra
+     chica) y ninguna lista de comparables pese al nombre del botón.
+     PROPUESTA: el mismo `Modal` que ya usa la zona de STR (ZonaStrSection.tsx:133), sin gate de
+     prosa; UNA referencia de arriendo —la del radio, con su n—; las tres celdas con el eje de la
+     card; y la lista de los arriendos con los que se calculó esa mediana, en `Planilla`.
+     LA LISTA NO EXISTE PARA LAS FILAS DE HOY: el análisis guarda la mediana y el n
+     (`input_data.zonaRadio`), no los avisos. Recalcular hoy con el mismo filtro da otro conjunto
+     (00f9c0eb: 22 guardados → 41 hoy; 995e2bf8: 47 guardados → 14 hoy). Por eso dos escenas: la
+     fila NUEVA, que guarda su lista, y la fila VIEJA, que dice que no la tiene, igual que STR.
+     CIFRAS REALES (lectura, 24-sep-2026, `scripts/of-mockup-tres-superficies.ts` untracked):
+       · escena 1: 00f9c0eb recalculado HOY con la cadena del wizard (RPC `properties_within_radius`
+         a 500 m, 1 dormitorio → `filterOutliers` → `filterBySurface` ±30%): 45 filas, 41 quedan,
+         mediana $13.171/m² × 38 m² = $500 mil;
+       · escena 2: 995e2bf8 tal como está guardado: 47 a menos de 1,5 km, mediana $980 mil, sin prosa.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--mono:"Inter",system-ui,sans-serif;--signal:#C8323C}
+  [data-theme="light"]{--page:#F6F6F7;--card:#F4F4F6;--line:#E9E9EC;--line2:#D6D6DB;--tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--hoja:#FFFFFF;--hoja-borde:transparent;--overlay:rgba(20,19,17,.55);--inset:#F4F4F6;--up:#2B558F}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--line:#2C2C30;--line2:#37373D;--tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--hoja:#1A1A1E;--hoja-borde:#37373D;--overlay:rgba(12,12,14,.86);--inset:#232328;--up:#6C9BE0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);font-variant-numeric:tabular-nums;padding:20px 14px 90px;-webkit-font-smoothing:antialiased}
+  .ctrl{max-width:1100px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px;max-width:90ch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:9px 14px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+  .rot{max-width:1100px;margin:34px auto 12px}
+  .rot h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot p{font-size:12px;color:var(--tx3);margin-top:3px;max-width:90ch;line-height:1.5}
+  .decision{max-width:1100px;margin:0 auto 6px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  .decision li{margin:4px 0 4px 18px}
+  .decision b{color:var(--tx)}
+  table.t{font-size:12px;border-collapse:collapse;max-width:1100px;margin:8px auto;width:100%}
+  table.t td{padding:5px 14px 5px 0;vertical-align:top;color:var(--tx2);border-bottom:1px solid var(--line);line-height:1.5}
+  table.t td:first-child{color:var(--tx);font-weight:600;white-space:nowrap}
+  .medida{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+  .med-ok{color:var(--tx2)} .med-mal{color:var(--signal);font-weight:600}
+  .hoy{max-width:1100px;margin:0 auto;display:flex;gap:18px;flex-wrap:wrap}
+  .hoy figure{flex:1 1 260px;max-width:340px}
+  .hoy img{width:100%;border:1px solid var(--line2);border-radius:14px;display:block}
+  .hoy figcaption{font-size:11.5px;color:var(--tx3);margin-top:6px;line-height:1.45}
+
+  .fila-esc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:22px;align-items:center}
+  .tel{width:390px;height:844px;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line2);background:var(--page);box-shadow:0 12px 40px rgba(0,0,0,.18);flex:none}
+  body.alto-completo .tel{height:auto;padding-top:56px}
+  body.alto-completo .tel .hoja{position:relative;height:auto}
+  body.alto-completo .tel .hoja .cuerpo{overflow:visible}
+  .velo{position:absolute;inset:0;background:var(--overlay)}
+  .hoja{position:absolute;left:0;right:0;bottom:0;height:calc(100% - 56px);background:var(--hoja);border-top:1px solid var(--hoja-borde);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+  .hoja .asa{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 0;flex:none}
+  .cab{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px 10px 20px;border-bottom:1px solid var(--line)}
+  .cab h3{font-family:var(--sans);font-size:18px;font-weight:700;line-height:1.2}
+  .cab .sub{font-size:11.5px;color:var(--tx3);margin-top:2px;line-height:1.45}
+  .x{width:32px;height:32px;border:1px solid var(--line2);border-radius:99px;background:none;color:var(--tx3);font-family:var(--mono);font-size:14px;flex:none}
+  .hoja .cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 20px 24px}
+  .esc{width:1100px;position:relative;border-radius:14px;border:1px solid var(--line2);overflow:hidden;background:var(--page);padding:40px 20px;display:flex;justify-content:center}
+  .esc .panel720{position:relative;width:100%;max-width:720px;background:var(--hoja);border:1px solid var(--line2);border-radius:16px;padding:26px 28px 24px}
+  .esc .cab{padding:0;border-bottom:none;align-items:flex-start;margin-bottom:6px}
+  .esc .cab h3{font-size:22px}
+  .esc .cab .sub{font-size:13px;margin-top:6px}
+  .esc .cuerpo{margin-top:14px}
+  .estado{position:absolute;top:10px;left:12px;z-index:3;font-family:var(--mono);font-size:10px;letter-spacing:.02em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px}
+
+  /* ═════════════ EL MODAL (lo que se implementa) ═════════════ */
+  .prosa{font-size:14px;line-height:1.6;color:var(--tx2);margin-bottom:14px}
+  /* las tres celdas: MISMO eje y mismas cifras que la card de zona */
+  .zc-grid{display:grid;grid-template-columns:1fr;gap:10px}
+  .esc .zc-grid{grid-template-columns:1fr 1fr 1fr}
+  .zc{background:var(--inset);border-radius:12px;padding:14px 16px}
+  .zc-k{font-size:12.5px;color:var(--tx3)}
+  .zc-v{font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:2px;font-variant-numeric:tabular-nums}
+  .esc .zc-v{font-size:21px}
+  .zc-m{font-size:12.5px;color:var(--tx3);margin-top:1px}
+  .zp{display:inline-block;margin-top:8px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+  .zp-mal{color:var(--signal);background:color-mix(in srgb,var(--signal) 12%,transparent)}
+  .zp-bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)}
+  .zp-neu{color:var(--tx3);background:color-mix(in srgb,var(--tx3) 12%,transparent)}
+  .zc-s{font-size:12px;color:var(--tx3);line-height:1.45;margin-top:8px}
+  .viz{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+  .viz-t{font-size:14px;font-weight:600;color:var(--tx);margin-bottom:2px}
+  .viz-b{font-size:12.5px;line-height:1.5;color:var(--tx3);margin-bottom:10px}
+  .fd{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+  .fd .k{font-size:13px;color:var(--tx2)}
+  .fd .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+  .fd .s{grid-column:1 / -1;font-size:11.5px;color:var(--tx3)}
+  .fd.in .k,.fd.in .v{color:var(--tx);font-weight:700}
+  /* la planilla de avisos, como la de STR */
+  .pl{width:100%;border-collapse:collapse;font-family:var(--mono);font-variant-numeric:tabular-nums;table-layout:fixed;margin-top:12px}
+  .pl th,.pl td{padding:5px 0 5px 6px;text-align:right;white-space:nowrap;font-size:11px;line-height:1.3;color:var(--tx);border-bottom:1px solid var(--line);font-weight:400}
+  .pl thead th{font-family:var(--sans);font-size:10.5px;font-weight:600;color:var(--tx3);padding-bottom:7px;vertical-align:bottom;white-space:normal;line-height:1.2}
+  .pl th:first-child,.pl td:first-child{text-align:left;padding-left:0;color:var(--tx3)}
+  .pl col.c-n{width:12%}
+  .pl tr.med td{font-weight:700;border-top:1.5px solid var(--tx);border-bottom:none;padding-top:8px}
+  .esc .pl th,.esc .pl td{font-size:12px;padding:6px 0 6px 10px}
+  .mas{font-size:12px;font-weight:600;color:var(--tx);text-decoration:underline;text-underline-offset:3px;margin-top:8px;display:inline-block}
+  .sin{font-size:13px;line-height:1.55;color:var(--tx2);background:var(--inset);border-radius:12px;padding:12px 14px}
+  .mapa{height:200px;border-radius:12px;background:repeating-linear-gradient(45deg,var(--inset) 0 10px,transparent 10px 20px);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--tx3)}
+  .poi{display:grid;grid-template-columns:1fr auto;gap:0 12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .poi .d{font-family:var(--mono);font-size:12px;color:var(--tx2);text-align:right}
+  .poi .t{grid-column:1 / -1;font-family:var(--mono);font-size:10px;letter-spacing:.02em;text-transform:uppercase;color:var(--tx3)}
+  .esc .pois{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
+  .fuente{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--tx3);line-height:1.55}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">«Ver los comparables →» · la zona LTR al Modal nuevo</h1>
+  <p class="subx">Mockup del 24-sep-2026. Dos filas reales en la hoja de teléfono (390) y el panel de escritorio (1100, modal de 720). Se abre siempre, con prosa o sin ella; dice la misma referencia de arriendo que la card, con el mismo eje, y lista los avisos con los que se calculó cuando el análisis los guardó.</p>
+  <div class="panel">
+    <span class="clab">Moneda</span>
+    <span class="seg" id="seg-mon"><button class="on" data-mon="clp">CLP</button><button data-mon="uf">UF</button></span>
+    <span class="clab">Tema</span>
+    <span class="seg" id="seg-tema"><button class="on" data-t="light">Claro</button><button data-t="dark">Oscuro</button></span>
+    <span class="clab">Alto</span>
+    <span class="seg" id="seg-alto"><button class="on" data-a="tel">Pantalla</button><button data-a="full">Completo</button></span>
+  </div>
+  <ul class="decision">
+    <li><b>Contenedor:</b> `Modal`, el mismo de la zona STR, montado dentro de `ZonaLtrSection` y no en el grid. Sale el gate `&amp;&amp; prosa`: el contenido no lee nada de la IA (lo único era un fallback de `hallazgoSobreprecio`, que ya viene en `results.metrics`). Las 528 filas sin prosa pasan a abrir.</li>
+    <li><b>Una referencia:</b> la del radio (`resolverArriendoReferencia`), con su n y su distancia, en la celda, en la síntesis y en la lista. Sale el rango P10–P90 de la comuna («Arriendo típico de esta zona», `stats.ofertaComparable`) y su «143 avisos activos». La síntesis también se arma con la del radio: hoy sale del rango comunal y puede decir «dentro del rango» mientras la píldora dice otra cosa.</li>
+    <li><b>El eje:</b> las tres celdas son las de la card, en el mismo orden y con las mismas cifras: tu valor grande, la referencia debajo, la píldora. El m² se muestra como en la card (sin decimal en CLP), no con el decimal del drawer.</li>
+    <li><b>La lista:</b> los avisos con los que se calculó la mediana, en `Planilla` (# · distancia · arriendo · m² · $/m²), por distancia, y una fila final con la mediana. La cuenta queda a la vista: mediana del $/m² × tus m² = la referencia. En teléfono se muestran 12 y un «ver los 41»; en escritorio, todos.</li>
+    <li><b>Lo que la lista pide:</b> que el análisis la guarde. Hoy guarda la mediana y el n (`zonaRadio.arriendoPromedio`, `sampleSizeArriendo`), no los avisos, y recalcular después da otro conjunto. Propuesta: `zonaRadio.comparablesArriendo = [{distanciaM, precio, m2}]` al crear (unos 40 × 3 números). Las filas de antes dicen que no la tienen, con la misma frase que STR usa para el mismo caso.</li>
+    <li><b>Se quedan:</b> el mapa (`ZoneMap`, con sus hex crudos pasados a tokens) y los lugares a menos de 2,5 km. <b>Salen:</b> la fuente «Zone insight Franco», el pie de navegación prev/next sin vecinos y el «↑ Cerrar».</li>
+    <li><b>Color:</b> la píldora es la de la card (`--up` azul para lo que juega a favor, rojo para lo que juega en contra, gris neutro). El arriendo bajo la mediana va en azul, como en la card (`ZonaLtr.tsx`: brecha negativa = «bien»): el mismo eje también es el mismo tono.</li>
+  </ul>
+</div>
+
+<div class="rot"><h2>Hoy, a 390</h2><p>`http://localhost:3007/analisis/00f9c0eb-bc91-419a-a4a2-c47871502a6b`, como invitado, modo claro.</p></div>
+<div class="hoy">
+  <figure><img src="shots-comparables/hoy-390-card.png" alt=""><figcaption>La card: «$498 mil · mediana $498 mil · 22 publicaciones a menos de 500 m».</figcaption></figure>
+  <figure><img src="shots-comparables/hoy-390-drawer.png" alt=""><figcaption>El drawer que abre: «$390 mil–$600 mil · 143 avisos activos», la referencia grande, y ninguna lista.</figcaption></figure>
+</div>
+
+<div id="escenas"></div>
+
+<div class="rot"><h2>Medido al vuelo en esta página</h2><p>Ancho de la planilla contra su contenedor y celdas que desbordan.</p></div>
+<table class="t" id="medidas"></table>
+
+<div class="rot"><h2>Lo que sale del código</h2></div>
+<table class="t">
+  <tr><td>AnalysisDrawer</td><td>La montura `activeDrawer === "zona"` en `SubjectCardGrid.tsx:465-486` y `DrawerZona` (`AnalysisDrawer.tsx:342-396`). Si `zona` era la última sección viva del drawer en LTR, el drawer entero queda sin llamador (ver la regla de retirar un llamador).</td></tr>
+  <tr><td>ZonaCeldasLtr</td><td>Las celdas viejas (`ZonaLtr.tsx:101-142`) con el rango comunal. El modal usa `ZonaCeldasLtrR2`, las de la card.</td></tr>
+  <tr><td>CSS duplicado</td><td>`.zona-cells` en `TokensShared.tsx:293-334` y `PortadaInforme.tsx:1453-1468`.</td></tr>
+  <tr><td>Telemetría</td><td>`informe_drawer_abierto {drawer:"zona"}` se emitía también cuando el drawer no se montaba. Pasa a emitirse al abrir el modal.</td></tr>
+</table>
+
+<div class="rot"><h2>Decisión que abre</h2></div>
+<table class="t">
+  <tr><td>Filas viejas</td><td>Las 794 filas con referencia de radio que ya existen no tienen lista. Dos caminos: <b>(a)</b> decir que no la tienen (escena 2, como STR), o <b>(b)</b> mostrar los avisos de hoy con el mismo filtro, rotulados con su fecha. (b) vuelve a poner dos referencias en la misma pantalla —la guardada y la de hoy—, que es justo lo que este cambio saca. El mockup va con (a).</td></tr>
+</table>
+
+<script>
+const A = [[66,610000,34],[84,490000,40],[119,430000,34],[154,540000,32],[210,495000,33],[218,520000,36],[220,505000,43],[221,485000,36],[222,500000,36],[233,486000,33],[239,505000,43],[242,500000,30],[245,491803,38],[260,515000,35],[269,490000,41],[277,433196,34],[298,551229,40],[298,540000,41],[304,444522,38],[305,532787,33],[306,450000,40],[306,510000,34],[322,560000,37],[334,360000,38],[353,530000,43],[379,450000,34],[384,700000,40],[388,440000,40],[390,475000,34],[395,379000,37],[412,506000,35],[414,550000,44],[428,350000,32],[434,550000,42],[434,600000,42],[438,440000,45],[455,573000,38],[455,500000,42],[460,390000,28],[460,430000,35],[481,500000,39]];
+const E = {
+  nueva: { tit: "Escena 1 · análisis nuevo: guarda su lista", url: "/analisis/00f9c0eb-bc91-419a-a4a2-c47871502a6b (recalculado hoy)",
+    nota: "00f9c0eb con la referencia que daría HOY la cadena del wizard: 41 arriendos de 1 dormitorio a menos de 500 m. Guardado dice 22: por eso es una simulación de fila nueva, no la fila tal cual.",
+    uf: 40861, comuna: "Ñuñoa", dir: "Av. Irarrázaval 401", sup: 38, dorm: 1, arriendo: 498000, sugerido: true,
+    ref: { mediana: 500000, n: 41, radio: 500, ppm2: 13170.73, p25: 11951.22, p75: 14714.29, fecha: "24 sept 2026", supMin: 27, supMax: 49 },
+    m2: { tuyo: 4523313, mediana: 4392558, dev: 3, n: 496, universo: "nuevos", fecha: "22 ago 2026" },
+    val: { pct: 32, gs: 35, anual: "3,0", fuente: "GfK 2015-2025" }, lista: A, hayProsa: true,
+    lugares: [["Irarrázaval", "323 m", "Metro · L3"], ["Santa Isabel", "741 m", "Metro · L5"], ["Monseñor Eyzaguirre", "1,2 km", "Metro · L3"], ["Parque Bustamante", "1,2 km", "Metro · L5"], ["Parque Bustamante", "1,4 km", "Parque · Providencia"], ["Universidad de Chile · Casa Central", "1,5 km", "Universidad · Santiago"], ["Universidad de Chile · JGM", "1,5 km", "Universidad · Ñuñoa"], ["FALP (Oncológico)", "1,6 km", "Clínica · Providencia"]] },
+  vieja: { tit: "Escena 2 · análisis guardado antes: sin lista y sin prosa", url: "/analisis/995e2bf8-e136-470b-830d-1258a1679f27",
+    nota: "Tal como está guardado: 47 arriendos a menos de 1,5 km, mediana $980 mil; declaró $750 mil. Es una de las 528 filas sin prosa: hoy el botón no abre nada.",
+    uf: 40849, comuna: "Providencia", dir: "Av. Francisco Bilbao 3441", sup: 68, dorm: 2, arriendo: 750000, sugerido: false,
+    ref: { mediana: 980000, n: 47, radio: 1500, fecha: "12 ago 2026" },
+    m2: { tuyo: 2283459, mediana: 3525269, dev: -35, n: 143, universo: "usados", fecha: "12 ago 2026" },
+    val: { pct: 30, gs: 35, anual: "2,9", fuente: "GfK 2015-2025" }, lista: null, hayProsa: false, lugares: null },
+};
+let MON = "clp";
+const ES = (n, d = 0) => n.toLocaleString("es-CL", { minimumFractionDigits: d, maximumFractionDigits: d });
+const mil = (clp, uf) => (MON === "uf" ? `UF ${ES(clp / uf, 1)}` : `$${ES(Math.round(clp / 1000))} mil`);
+const ex = (clp, uf) => (MON === "uf" ? `UF ${ES(clp / uf, 1)}` : `$${ES(Math.round(clp))}`);
+const m2v = (clp, uf) => (MON === "uf" ? `UF ${ES(clp / uf, 1)}` : `$${ES(Math.round(clp))}`);
+const radio = (r) => (r >= 1000 ? `${ES(r / 1000, r % 1000 ? 1 : 0)} km` : `${r} m`);
+const fd = (k, v, s, cls = "") => `<div class="fd ${cls}"><div class="k">${k}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
+
+function cuerpo(x, tel) {
+  const devArr = Math.round((x.arriendo / x.ref.mediana - 1) * 100);
+  const posArr = Math.abs(devArr) < 2 ? "en la mediana" : `${Math.abs(devArr)}% ${devArr > 0 ? "sobre" : "bajo"}`;
+  const pilArr = Math.abs(devArr) < 2 ? "neu" : devArr > 0 ? "mal" : "bien"; // el tono de la card (ZonaLtr.tsx: brecha > 0 mal, < 0 bien)
+  const pilM2 = x.m2.dev > 0 ? "mal" : "bien";
+  const prosa = `Tu arriendo está ${posArr === "en la mediana" ? "en la mediana" : posArr + " la mediana"} de los ${x.ref.n} arriendos${x.lista ? ` de ${x.dorm} dormitorio${x.dorm > 1 ? "s" : ""}` : ""} publicados a menos de ${radio(x.ref.radio)}. Tu precio por m² está ${Math.abs(x.m2.dev)}% ${x.m2.dev > 0 ? "sobre" : "bajo"} la mediana de los deptos ${x.m2.universo} de ${x.comuna}, y la comuna se valorizó ${x.val.anual}% al año.`;
+  const celdas = `<div class="zc-grid">
+    <div class="zc"><div class="zc-k">Tu arriendo${x.sugerido ? " · sugerido" : ""}</div><div class="zc-v">${mil(x.arriendo, x.uf)}</div><div class="zc-m">mediana ${mil(x.ref.mediana, x.uf)}</div><span class="zp zp-${pilArr}">${posArr}</span><div class="zc-s">${x.ref.n} publicaciones a menos de ${radio(x.ref.radio)} · ${x.ref.fecha}.</div></div>
+    <div class="zc"><div class="zc-k">Tu precio por m²</div><div class="zc-v">${m2v(x.m2.tuyo, x.uf)}</div><div class="zc-m">mediana ${m2v(x.m2.mediana, x.uf)}</div><span class="zp zp-${pilM2}">${Math.abs(x.m2.dev)}% ${x.m2.dev > 0 ? "sobre" : "bajo"}</span><div class="zc-s">${x.m2.n} publicaciones de venta de deptos ${x.m2.universo} · ${x.m2.fecha}.</div></div>
+    <div class="zc"><div class="zc-k">Valorización en 10 años</div><div class="zc-v">${x.val.pct}%</div><div class="zc-m">promedio Gran Santiago ${x.val.gs}%</div><span class="zp zp-neu">${x.val.gs - x.val.pct} pts bajo</span><div class="zc-s">${x.val.anual}% al año · ${x.val.fuente} · tu proyección usa 3%.</div></div>
+  </div>`;
+  let lista;
+  if (x.lista) {
+    const r = x.ref, filas = tel ? x.lista.slice(0, 12) : x.lista;
+    lista = `<div class="viz"><div class="viz-t">Los ${r.n} arriendos con los que se compara</div>
+      <div class="viz-b">Publicados a menos de ${radio(r.radio)}, de ${x.dorm} dormitorio, entre ${r.supMin} y ${r.supMax} m², sin los extremos de precio por m². La referencia es la mediana de su precio por m² llevada a tus ${x.sup} m².</div>
+      ${fd("Mediana del precio por m²", `${ex(r.ppm2, x.uf)}/m²`)}
+      ${fd(`× tus ${x.sup} m²`, `${mil(r.mediana, x.uf)}/mes`, "la referencia de la card", "in")}
+      ${fd("La mitad de los avisos, a tus m²", `${mil(r.p25 * x.sup, x.uf)} – ${mil(r.p75 * x.sup, x.uf)}`)}
+      ${fd(`Tu arriendo${x.sugerido ? " (el sugerido)" : ""}`, `${mil(x.arriendo, x.uf)}/mes`, posArr)}
+      <table class="pl"><colgroup><col class="c-n"><col><col><col><col></colgroup>
+        <thead><tr><th>#</th><th>Distancia</th><th>Arriendo</th><th>m²</th><th>Por m²</th></tr></thead>
+        <tbody>${filas.map(([d, p, s], i) => `<tr><td>${i + 1}</td><td>${d} m</td><td>${ex(p, x.uf)}</td><td>${s}</td><td>${ex(p / s, x.uf)}</td></tr>`).join("")}
+        ${tel ? "" : `<tr class="med"><td></td><td>mediana</td><td></td><td></td><td>${ex(r.ppm2, x.uf)}</td></tr>`}</tbody></table>
+      ${tel ? `<a class="mas">Ver los ${r.n} →</a>` : ""}</div>`;
+  } else {
+    lista = `<div class="viz"><div class="viz-t">Los ${x.ref.n} arriendos con los que se compara</div>
+      <p class="sin">Este análisis guardó la mediana y cuántos avisos la forman, no los avisos. Los análisis nuevos guardan la lista.</p></div>`;
+  }
+  const lug = x.lugares ? `<div class="viz"><div class="viz-t">El depto y lo que hay alrededor</div><div class="mapa">mapa · el depto y los ${x.ref.n} avisos</div></div>
+    <div class="viz"><div class="viz-t">Lugares a menos de 2,5 km</div><div class="pois">${x.lugares.map(([n, d, t]) => `<div class="poi"><span>${n}</span><span class="d">${d}</span><span class="t">${t}</span></div>`).join("")}</div><p class="viz-b" style="margin-top:8px">Sin centro comercial en el radio.</p></div>`
+    : `<div class="viz"><div class="viz-t">El depto y lo que hay alrededor</div><div class="mapa">mapa · el depto</div></div>`;
+  const fuente = `<div class="fuente">Arriendos publicados a menos de ${radio(x.ref.radio)} · ${x.ref.fecha} · venta: ${x.m2.n} deptos ${x.m2.universo} de ${x.comuna} · valorización: ${x.val.fuente}${x.lugares ? " · lugares: Google Places" : ""}</div>`;
+  return `<p class="prosa">${prosa}</p>${celdas}${lista}${lug}${fuente}`;
+}
+function render() {
+  document.getElementById("escenas").innerHTML = Object.entries(E).map(([k, x]) => {
+    const cab = `<div class="cab"><div><h3>La zona · ${x.comuna}</h3><div class="sub">${x.dir}</div></div><button class="x">✕</button></div>`;
+    return `<div class="rot"><h2>${x.tit}</h2><p>${x.nota} · <span class="medida">${x.url}</span></p></div>
+    <div class="fila-esc">
+      <div class="tel" data-esc="${k}-390"><div class="velo"></div><span class="estado">teléfono · 390</span>
+        <div class="hoja"><div class="asa"></div>${cab}<div class="cuerpo">${cuerpo(x, true)}</div></div></div>
+      <div class="esc" data-esc="${k}-1100"><div class="velo"></div><span class="estado">escritorio · 1100</span>
+        <div class="panel720">${cab}<div class="cuerpo">${cuerpo(x, false)}</div></div></div>
+    </div>`;
+  }).join("");
+  medir();
+}
+function medir() {
+  document.getElementById("medidas").innerHTML = [...document.querySelectorAll("[data-esc]")].map((e) => {
+    const t = e.querySelector(".pl");
+    if (!t) return `<tr><td>${e.dataset.esc}</td><td class="medida med-ok">sin planilla (fila sin lista)</td></tr>`;
+    const mal = [...t.querySelectorAll("td,th")].filter((c) => c.scrollWidth > c.clientWidth + 1).length;
+    const ok = t.scrollWidth <= t.parentElement.clientWidth + 1 && mal === 0;
+    return `<tr><td>${e.dataset.esc}</td><td class="medida ${ok ? "med-ok" : "med-mal"}">planilla ${t.scrollWidth} px en ${t.parentElement.clientWidth} px · celdas que desbordan ${mal}</td></tr>`;
+  }).join("");
+}
+const conSeg = (id, attr, fn) => document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener("click", () => { document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); }));
+conSeg("seg-mon", "mon", (v) => { MON = v; render(); });
+conSeg("seg-tema", "t", (v) => { document.documentElement.dataset.theme = v; });
+conSeg("seg-alto", "a", (v) => { document.body.classList.toggle("alto-completo", v === "full"); medir(); });
+render();
+</script>
+</body>
+</html>
