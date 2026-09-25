@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, type ReactNode } from "react";
+import { CSS_CHIP_VEREDICTO } from "@/components/analysis/shared/ChipVeredicto";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { stripMarcas, normalizarMarcasTitular } from "@/lib/prosa-marcas";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
@@ -283,7 +284,7 @@ function Wordmark({ small = false }: { small?: boolean }) {
  *  clase que el style de zona2Aparece). Con innerHTML ambos lados son idénticos. */
 export function DocTokens() {
   return (
-    <style dangerouslySetInnerHTML={{ __html: `
+    <style dangerouslySetInnerHTML={{ __html: `${CSS_CHIP_VEREDICTO}
       /* AUDITORÍA fase42 (9) — los tokens también viven en .doc-tokens: los
          DRAWERS (vías, STR) montan FUERA de .doc-dictamen y todo estilo --doc-*
          de sus cuerpos (matriz de palancas incluida) resolvía a nada en silencio.
@@ -775,16 +776,14 @@ export function DocTokens() {
       .doc-dictamen .rec-card > *:not(.rec-bg):not(.rec-grain):not(.sr-only){position:relative;z-index:2}
 
       .doc-dictamen .rec-t{font-size:22px;font-weight:700;line-height:1.25;margin:0}
-      .doc-dictamen .rec-sub{font-size:14px;line-height:1.45;opacity:.62;margin:5px 0 20px}
+      /* La bajada se atenúa por COLOR, no por opacity: la opacity del párrafo apagaba también el chip
+         de veredicto que va adentro (25-sep-2026). Mismo blanco al 62%. */
+      .doc-dictamen .rec-sub{font-size:14px;line-height:1.45;color:rgba(255,255,255,.62);margin:5px 0 20px}
 
       /* — LA CARD (§5 revisado, 11-sep-2026): lo tuyo primero — */
       .doc-dictamen .rec-sub{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-      /* la píldora neutra de la bajada: SOLO con salida, sin color */
-      .doc-dictamen .rec-pill-neutra{
-        display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:var(--rad-pill);
-        background:rgba(255,255,255,.14);box-shadow:0 0 0 1.5px rgba(255,255,255,.55);
-        font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;
-        letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;opacity:1}
+      /* El chip de la bajada (SOLO con salida) es el del informe entero, en su variante sobre fondo
+         (ChipVeredicto.tsx, 25-sep-2026). La píldora neutra blanca que vivía acá se retiró. */
       .doc-dictamen .rec-eq{margin:0 0 20px}
       /* rótulos de grupo: «Modificaciones que dependen de ti» · «Resultado» */
       .doc-dictamen .rec-gt{font-family:var(--font-mono, ui-monospace);font-size:10.5px;font-weight:600;
@@ -826,8 +825,8 @@ export function DocTokens() {
          rgba que «.rec-tuyo», la caja que la contiene: translucido sobre translucido aclara
          apenas y la pill quedaba mas floja que cualquier vecina. Es el mismo error que la
          pill del pop-up tenia con «--doc-paper2», y se arregla igual: mirando al vecino.
-         SIN «border»: en esta card ninguna pieza lo usa —la unica con contorno,
-         «.rec-pill-neutra», lo hace con box-shadow— y encima suma 2 px de ancho justo
+         SIN «border»: en esta card ninguna pieza lo usa salvo el chip de veredicto, que es de
+         otra familia (ChipVeredicto.tsx) —, y encima suma 2 px de ancho justo
          donde la etiqueta larga ya venia apretada. Lo que la baja de jerarquia es el color
          del texto, coherente con el opacity .6 de «.rec-vs». */
       .doc-dictamen .rec-banda{display:inline-block;margin-top:7px;

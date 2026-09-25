@@ -1,6 +1,7 @@
 "use client";
 
 import type { AlternativaComunas } from "@/lib/alternativa-comunas";
+import { ChipVeredicto } from "./ChipVeredicto";
 
 /**
  * EL PORQUÉ DE LA ALTERNATIVA DE COMUNAS (contrato §5), en el pop-up.
@@ -57,7 +58,10 @@ export function DetalleAlternativaComunas({
               </td>
               <td>{precio(c.precioUF)}</td>
               <td>${miles(c.arriendoCLP)}</td>
-              <td>{c.veredicto}</td>
+              {/* El chip del informe, no el enum crudo («COMPRAR»), desde el 25-sep-2026. */}
+              <td>
+                <ChipVeredicto v={c.veredicto} />
+              </td>
             </tr>
           ))}
         </tbody>

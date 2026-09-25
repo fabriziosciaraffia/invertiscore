@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { ChipVeredicto } from "./ChipVeredicto";
 import { usePostHog } from "posthog-js/react";
 import { Modal } from "@/components/analysis/hallazgos/vocabulario";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 import { BAJADA_RECOMENDACION, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * "La posición de Franco" — la única caja del hero (contrato CONGELADO, T2), con la
@@ -150,11 +150,9 @@ export function PosicionFranco({
             {estado && (
               <p className="rec-sub">
                 {BAJADA_RECOMENDACION[estado]}
-                {estado === "con_salida" && (
-                  <span className="rec-pill-neutra">
-                    {signoVeredicto("COMPRAR")} {etiquetaVeredicto("COMPRAR", "corta")}
-                  </span>
-                )}
+                {/* EL CHIP DE VEREDICTO ÚNICO (25-sep-2026), en su variante sobre fondo: la card
+                    es oscura en los dos temas. Ver ChipVeredicto.tsx. */}
+                {estado === "con_salida" && <ChipVeredicto v="COMPRAR" variante="sobre-fondo" />}
               </p>
             )}
             {bloque}

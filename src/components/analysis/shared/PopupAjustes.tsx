@@ -50,6 +50,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useId, useState, type ReactNode } from "react";
+import { ChipVeredicto } from "./ChipVeredicto";
 import type { CeldaMix, MetricasCelda } from "@/lib/mix-palancas";
 import type { HallazgoDistanciaVeredicto, MixPalancas, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
@@ -100,13 +101,8 @@ export interface PopupAjustesProps {
   referenciaArriendo?: ArriendoReferencia | null;
 }
 
-function Pill({ v }: { v: Veredicto }) {
-  return (
-    <span className={`pjx-v ${CLASE[v]}`}>
-      {signoVeredicto(v)} {etiquetaVeredicto(v, "frase")}
-    </span>
-  );
-}
+/** El chip de veredicto del pop-up es el del informe entero (`ChipVeredicto`, 25-sep-2026). */
+const Pill = ({ v }: { v: Veredicto }) => <ChipVeredicto v={v} />;
 
 export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo }: PopupAjustesProps) {
   const grilla = grillaDelPopup({ veredicto, distancia, mixComprar });

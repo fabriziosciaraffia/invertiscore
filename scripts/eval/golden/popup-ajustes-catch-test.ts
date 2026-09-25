@@ -52,6 +52,8 @@
 // «Descuento que hay que negociar»); la tabla gana la fila de veredicto arriba, el ⓘ del informe
 // en cash on cash, cap rate, TIR y Franco Score, y el puntaje con el color de su veredicto; y la
 // línea del mercado pasa a bloque propio con lo supuesto contra lo que haría falta y su contexto.
+// (25-sep, tarde) Los chips del pop-up pasan a ser `ChipVeredicto` (clase `chip-v`); los chequeos
+// que leían la clase `pjx-v` la leen ahora del componente único.
 // El chequeo de filas se reescribe por `data-fila` (el rótulo ahora lleva el ⓘ adentro, y leerlo
 // por texto contaba el botón como parte del nombre).
 //   8 · El CTA inerte, solo con descuento, nunca en Comprar.
@@ -174,7 +176,7 @@ export function runPopupAjustesTier(): { hard: number } {
       const s0 = fr0(r) ;
       if (s0 && s0.descuentoPct !== 0) {
         const panel = h.slice(h.indexOf("pjx-panel"));
-        const primera = panel.match(/pjx-v (c|a|b)/)?.[1];
+        const primera = panel.match(/chip-v (c|a|b)/)?.[1];
         if (primera !== CLASE[s0.veredictoSinDescuento]) F(`G1 · ${r.id}: la frase de pie ${s0.piePct} · ${s0.plazoAnios}a nombra «${primera}» y la combinación al precio pedido es ${s0.veredictoSinDescuento}`);
       }
       // …y fuera de alcance dice el tope REAL de la modalidad.
@@ -254,7 +256,7 @@ export function runPopupAjustesTier(): { hard: number } {
       if (filasTab.join("|") !== FILAS_TABLA.join("|")) F(`6 · ${r.id}: la tabla Hoy / Así no tiene las diez filas del contrato, veredicto arriba: ${filasTab.join(" · ")}`);
       // El veredicto arriba, con los chips: hoy el del informe; así el de la celda con su descuento.
       const ver = filaTabla(h, "veredicto");
-      if (!ver || !ver.hoy.includes(`pjx-v ${CLASE[r.v]}`) || !ver.asi.includes(`pjx-v ${CLASE[sel0.veredicto]}`)) F(`6 · ${r.id}: la fila de veredicto no dice hoy ${r.v} y así ${sel0.veredicto} con los chips de la tríada`);
+      if (!ver || !ver.hoy.includes(`chip-v ${CLASE[r.v]}`) || !ver.asi.includes(`chip-v ${CLASE[sel0.veredicto]}`)) F(`6 · ${r.id}: la fila de veredicto no dice hoy ${r.v} y así ${sel0.veredicto} con los chips de la tríada`);
       // El ⓘ del informe en las cuatro filas de indicadores, y en ninguna otra.
       for (const k of FILAS_TABLA) {
         const f = filaTabla(h, k);
@@ -311,7 +313,7 @@ export function runPopupAjustesTier(): { hard: number } {
     const frC = (reglaC.match(/<b>(\d+)%<\/b>/g) ?? []).map((x) => x.replace(/<\/?b>/g, "")).join(",");
     if (frC !== "0%,5%,10%,25%") F(`6 · con el tope de renta corta la regla no termina en 25%: ${frC}`);
     const panelC = hC.slice(hC.indexOf("pjx-panel"));
-    if (panelC.match(/pjx-v (c|a|b)/)?.[1] !== "b") F("G1 · la frase de la celda Franco no nombra su veredicto real al precio pedido (Buscar otra): dice otro");
+    if (panelC.match(/chip-v (c|a|b)/)?.[1] !== "b") F("G1 · la frase de la celda Franco no nombra su veredicto real al precio pedido (Buscar otra): dice otro");
     if (!/pasa de/.test(panelC)) F("G1 · la frase de la celda con descuento no dice «pasa de … a Comprar»");
     if (!/Cap rate</.test(hC) || /Cap rate neto</.test(hC)) F("6 · en renta corta la tabla no rotula «Cap rate» (el neto es de renta larga)");
 

@@ -14,9 +14,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { CSSProperties, ReactNode } from "react";
+import { ChipVeredicto } from "./ChipVeredicto";
+import type { Veredicto } from "@/lib/types";
 import type { FranjaPagas, ModeloComoLoPagas, Seg } from "@/lib/como-lo-pagas";
 import { BANDA_PAGAS } from "@/lib/como-lo-pagas";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { Glosa } from "./Glosa";
 import { VProsa, VSub } from "@/components/analysis/hallazgos/vocabulario";
 
@@ -29,19 +30,6 @@ function Segs({ segs }: { segs: Seg[] }) {
     <>
       {segs.map((s, i) => (s.b ? <b key={i}>{s.t}</b> : <span key={i}>{s.t}</span>))}
     </>
-  );
-}
-
-/** Píldora que NOMBRA un veredicto: tríada tinta por `data-verdict` (globals.css). */
-function Pill({ v }: { v: string }) {
-  return (
-    <span
-      data-verdict={v}
-      className="font-mono"
-      style={{ display: "inline-block", padding: "1px 8px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, color: "#fff", background: "var(--verdict)", letterSpacing: "0.02em" }}
-    >
-      {etiquetaVeredicto(v, "frase", v)}
-    </span>
   );
 }
 
@@ -143,7 +131,7 @@ export function CapituloComoLoPagas({ modelo, valorUF }: { modelo: ModeloComoLoP
               <Chip>{r.plazoA !== r.plazoDe ? <>Plazo <s style={{ color: "var(--doc-tx4)" }}>{r.plazoDe}</s> {r.plazoA} años</> : <>Plazo {r.plazoDe} años</>}</Chip>
               <Chip fuerte>{r.descuentoPct > 0 ? `Negocias −${pct1(r.descuentoPct)}% de precio` : "Sin pedirle un peso al vendedor"}</Chip>
               <Chip>
-                → <Pill v={r.destino} />
+                → <ChipVeredicto v={r.destino as Veredicto} />
               </Chip>
             </div>
             {r.descuentoPct > 0 && (

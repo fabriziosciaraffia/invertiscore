@@ -6,7 +6,8 @@ import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { metaTrack } from "@/lib/meta/pixel";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
+import type { Veredicto } from "@/lib/types";
 
 const SIGNAL_RED = "#C8323C";
 
@@ -100,14 +101,8 @@ export function ResumenAnexoModal({
   // número antes de la 1ª coma). Fallback al nombre si no hay dirección.
   const tituloPrincipal = formatDireccionDisplay(direccion) || nombre || "";
 
-  // VerdictBadge — mismo tratamiento cromático que los heros (Capa 1).
+  // El veredicto del hijo, con el chip del informe entero (`ChipVeredicto`, 25-sep-2026).
   const v = data.veredicto;
-  const badgeStyle =
-    v === "COMPRAR"
-      ? { background: "var(--franco-text)", color: "var(--franco-bg)" }
-      : v === "AJUSTA SUPUESTOS"
-        ? { background: "transparent", color: SIGNAL_RED, border: `0.5px solid color-mix(in srgb, ${SIGNAL_RED} 40%, transparent)` }
-        : { background: SIGNAL_RED, color: "#fff" };
 
   return (
     <div
@@ -184,12 +179,7 @@ export function ResumenAnexoModal({
                   </span>
                   <span className="font-mono text-[12px] text-[var(--franco-text-muted)]">/100</span>
                 </div>
-                <span
-                  className="rounded font-mono text-[10px] font-bold uppercase tracking-[0.06em]"
-                  style={{ padding: "4px 10px", ...badgeStyle }}
-                >
-                  {etiquetaVeredicto(v, "banda", v)}
-                </span>
+                {v ? <ChipVeredicto v={v as Veredicto} /> : null}
               </div>
               {typeof data.score === "number" && (
                 <div className="mt-2">

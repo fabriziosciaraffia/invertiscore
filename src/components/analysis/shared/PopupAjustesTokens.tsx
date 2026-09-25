@@ -13,7 +13,8 @@
  *    casi fondo en oscuro), y `fx` rayado «fuera de alcance». Hexes del contrato final.
  *  · COMPRAR — la tríada de veredicto de la portada (azul, ciruela, rojo) en versión de fondo,
  *    sin cambios: cada celda con el color del veredicto al que cae.
- * El ciruela, en Ajustar, queda solo en las píldoras del veredicto.
+ * El ciruela, en Ajustar, queda solo en los chips del veredicto, que desde el 25-sep-2026 son
+ * los del informe entero (`ChipVeredicto`): este archivo ya no define su propia píldora.
  *
  * DOS MARCAS Y NINGUNA MÁS, FINAS: Franco con borde sólido de 2 px y hoy con borde punteado de
  * 1,5 px, cada una con su etiqueta chica en la esquina. La celda tocada lleva un borde de 2 px de
@@ -45,11 +46,6 @@ export function PopupAjustesTokens() {
         --pjx-e3-bg:#EAF0F7; --pjx-e3-tx:#4A6388; --pjx-e3-bd:#D5DFEC;
         --pjx-rojo:#C8323C;
       }
-      .pjx-v{display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:12px;border-radius:99px;
-        padding:1px 8px;white-space:nowrap;border:1px solid transparent;line-height:1.5}
-      .pjx-v.c{background:var(--pjx-e0-bg);color:var(--pjx-e0-tx);border-color:var(--pjx-e0-bd)}
-      .pjx-v.a{background:var(--pjx-a-bg);color:var(--pjx-a);border-color:var(--pjx-a-bd)}
-      .pjx-v.b{background:var(--pjx-b-bg);color:var(--pjx-b);border-color:var(--pjx-b-bd)}
       .pjx-hoy{font-size:13px;color:var(--doc-tx3);margin:-6px 0 14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
       .pjx-preg{font-size:14px;margin:0 0 12px;color:var(--doc-tx);line-height:1.5}
       .pjx-preg strong{font-weight:600}
@@ -146,7 +142,7 @@ export function PopupAjustesTokens() {
       .pjx-tab td.asi{font-weight:600;padding-left:10px}
       .pjx-tab td.hoy{color:var(--doc-tx3);padding-left:10px}
       .pjx-tab td.neg{color:var(--pjx-rojo)}
-      .pjx-tab td .pjx-v{font-size:11.5px}
+      .pjx-tab td .chip-v{font-size:11.5px}
       .pjx-tab td .v-i{margin-left:2px}
       /* El puntaje con el color de su veredicto. */
       .pjx-sc{font-weight:700}

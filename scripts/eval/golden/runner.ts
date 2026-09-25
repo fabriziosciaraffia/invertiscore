@@ -61,6 +61,7 @@ import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
 import { runGrillaPopupTier } from "./grilla-popup-catch-test";
 import { runPopupAjustesTier } from "./popup-ajustes-catch-test";
+import { runChipVeredictoTier } from "./chip-veredicto-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
 import { runMantencionUnaSolaTier } from "./mantencion-una-sola-catch-test";
@@ -368,6 +369,7 @@ async function printStrSemantic() {
   // standalone»— y el runner no lo importaba: veinte invariantes del pop-up vivían fuera del
   // gate, verdes solo si alguien los invocaba a mano. Un guard que no corre no es un guard.
   totalHard += runPopupAjustesTier().hard;
+  totalHard += runChipVeredictoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
   // sujeto por cuartiles — sin inventarla cuando el snapshot es anterior al campo.

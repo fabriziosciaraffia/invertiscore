@@ -266,7 +266,12 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // PosicionFranco dibuja la píldora «✓ COMPRAR» según el ESTADO, no un string con el
   // destino adentro: con salida lleva píldora; COMPRAR y sin salida, no.
   if (!/estado === "con_salida"/.test(POS)) F("15 · PosicionFranco no gatea la píldora de la bajada por el estado «con_salida»");
-  if (!/rec-pill-neutra/.test(POS) || !reglaDe(".doc-dictamen .rec-pill-neutra", REC)) F("15 · falta la píldora neutra de la bajada (rec-pill-neutra)");
+  // ⚠ ACTA (25-sep-2026) · la píldora neutra blanca se retiró: el chip de la bajada es el del
+  // informe entero (`ChipVeredicto`) en su variante sobre fondo. Lo fija el tier CHIP-VEREDICTO;
+  // acá queda que siga colgando del estado «con_salida» y que la bajada no apague al chip.
+  if (!/estado === "con_salida" && <ChipVeredicto v="COMPRAR" variante="sobre-fondo" \/>/.test(POS)) F("15 · la bajada con salida no lleva el chip de Comprar en su variante sobre fondo");
+  const sub = reglaDe(".doc-dictamen .rec-sub", REC) ?? "";
+  if (/opacity/.test(sub)) F("15 · la bajada volvió a atenuarse con opacity: apaga también al chip que va adentro (se atenúa por color)");
   if (/bajada=\{rediseno \? bajada/.test(HERO)) F("15 · HeroLTR sigue pasando la bajada como string con el destino adentro");
   if (!/estadoRecomendacion\(/.test(HERO)) F("15 · HeroLTR no calcula el estado de la recomendación para la bajada");
   // Las TRES acotaciones —paréntesis, «Pero eso no depende de ti», costo— al mismo

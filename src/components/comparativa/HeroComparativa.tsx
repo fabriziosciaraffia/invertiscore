@@ -14,7 +14,8 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent } from "lucide-react";
-import type { AIAnalysisComparativa } from "@/lib/types";
+import type { AIAnalysisComparativa, Veredicto } from "@/lib/types";
+import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtUF } from "@/components/analysis/utils";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -28,7 +29,6 @@ import {
   SEGMENT_POS,
 } from "@/lib/comparativa-hero-copy";
 
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -116,6 +116,8 @@ export function HeroComparativa(p: Props) {
           : undefined
       }
     >
+      {/* El CSS del chip de veredicto: AMBAS no monta DocTokens (25-sep-2026). */}
+      <ChipVeredictoTokens />
       {/* ═══ F1 · IDENTIDAD + toggle (G7) ═══ */}
       <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
         <div className="min-w-0">
@@ -568,20 +570,11 @@ function FindingTooltip({ term, tip }: { term: string; tip: string }) {
   );
 }
 
-// Badge de veredicto de la mini-card — espejo del VerdictBadge canon (HeroLTR/STR),
-// tamaño reducido. COMPRAR = Ink/blanco · AJUSTA = outline rojo · BUSCAR OTRA = rojo/blanco.
-function MiniVerdictBadge({ verdict }: { verdict: Verdict | null }) {
+// El veredicto de cada hijo, con el chip del informe entero (`ChipVeredicto`, 25-sep-2026). Antes era
+// `MiniVerdictBadge`, con la paleta vieja tinta/rojo en mono.
+function VeredictoHijo({ verdict }: { verdict: Verdict | null }) {
   if (!verdict) return <span className="font-mono text-[10px]" style={{ color: "var(--franco-text-muted)" }}>—</span>;
-  const isCompra = verdict === "COMPRAR";
-  const isAjusta = verdict === "AJUSTA SUPUESTOS";
-  const bg = isCompra ? "var(--franco-text)" : isAjusta ? "transparent" : "var(--signal-red)";
-  const color = isCompra ? "var(--franco-bg)" : isAjusta ? "var(--signal-red)" : "#fff";
-  const border = isAjusta ? "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)" : undefined;
-  return (
-    <span className="inline-block font-mono text-[9px] font-bold uppercase tracking-[0.05em] px-1.5 py-0.5 rounded" style={{ background: bg, color, border }}>
-      {etiquetaVeredicto(verdict, "banda")}
-    </span>
-  );
+  return <ChipVeredicto v={verdict as Veredicto} />;
 }
 
 function MiniScore({ href, label, score, verdict, distancia, onOpen }: { href: string; label: string; score: number; verdict: Verdict | null; distancia?: string | null; onOpen?: () => void }) {
@@ -595,7 +588,7 @@ function MiniScore({ href, label, score, verdict, distancia, onOpen }: { href: s
         <span className="font-mono font-bold text-[32px] leading-none tracking-[-0.02em]" style={{ color: "var(--franco-text)" }}>{score}</span>
         <div className="min-w-0 flex flex-col gap-1">
           <p className="font-mono text-[9px] uppercase tracking-[0.05em] m-0" style={{ color: "var(--franco-text-muted)" }}>{label}</p>
-          <MiniVerdictBadge verdict={verdict} />
+          <VeredictoHijo verdict={verdict} />
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[0.04em] ml-auto shrink-0" style={{ color: "var(--signal-red)" }}>
           {onOpen ? "Ver análisis →" : "Ver →"}
