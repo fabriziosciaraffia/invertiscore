@@ -16,7 +16,7 @@ import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { extractFacts, gatherHallazgos } from "./extract";
 import { checkClassA, checkClassB, type Baseline, type Check } from "./invariants";
 import { BE_UUID } from "./ids";
-import { goldenSeedSha, SELLO_KEYS } from "./sello";
+import { goldenSeedSha, selloCoincide, SELLO_KEYS } from "./sello";
 
 export interface SeedReport {
   key: string;
@@ -62,11 +62,12 @@ export async function runRecomputeTier(sb: SupabaseClient, opts: { seeds?: Set<s
     // no rojo: el remedio es `seed-db.ts`, no tocar el motor.
     const selloFila = (row.input_data as Record<string, unknown> | null)?.[SELLO_KEYS.sha];
     const selloRepo = goldenSeedSha();
+    const coincide = selloCoincide(selloFila);
     checks.push({
       rule: "~golden-sello",
-      pass: selloFila === selloRepo,
-      detail: selloFila === selloRepo ? `sello ${selloRepo}` : `base ${String(selloFila ?? "sin sello")} ≠ repo ${selloRepo} — corre seed-db.ts`,
-      rebaseline: selloFila !== selloRepo,
+      pass: coincide,
+      detail: coincide ? `sello ${String(selloFila)}` : `base ${String(selloFila ?? "sin sello")} ≠ repo ${selloRepo} — corre seed-db.ts`,
+      rebaseline: !coincide,
     });
 
     const input = row.input_data;
