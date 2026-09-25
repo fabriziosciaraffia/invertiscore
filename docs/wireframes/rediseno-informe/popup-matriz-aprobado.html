@@ -3,81 +3,91 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pop-up de ajustes · el color es el veredicto</title>
+<title>Pop-up de ajustes · qué tan cerca de Comprar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --page:#F4F4F2; --card:#FFFFFF; --sunk:#F1F0EE; --sunk2:#E4E3DF; --line:#E3E2DE;
-  --ink:#17171A; --ink2:#5F5E5A; --ink3:#8E8D88;
-  --comprar:#2B558F; --c-bg:#DCE5F1; --c-bd:#B7C8E1;
-  --ajusta:#6E4560;  --a-bg:#EFE3EB; --a-bd:#DCC6D4;
-  --buscar:#C8323C;  --b-bg:#F7DEDF; --b-bd:#EDBFC2;
-  --rojo:#C8323C;
+  --page:#F4F4F2; --card:#FFFFFF; --sunk:#F3F2F0; --sunk2:#E4E3DF; --line:#E3E2DE;
+  --ink:#17171A; --ink2:#5F5E5A; --ink3:#8E8D88; --rojo:#C8323C;
+  --comprar:#2B558F; --ajusta:#6E4560;
+  /* escala de cercanía a Comprar: 0 ya es · 1 fácil · 2 con argumentos · 3 difícil */
+  --e0-bg:#2B558F; --e0-tx:#FFFFFF; --e0-bd:#2B558F;
+  --e1-bg:#94AFD6; --e1-tx:#10284A; --e1-bd:#7F9ECB;
+  --e2-bg:#C5D4EA; --e2-tx:#1E3F6E; --e2-bd:#AEC2E0;
+  --e3-bg:#EAF0F7; --e3-tx:#4A6388; --e3-bd:#D5DFEC;
+  --a-bg:#F1E4EC; --a-tx:#6E4560;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328; --sunk2:#2C2C32; --line:#2C2C30;
-    --ink:#EDEDEA; --ink2:#A8A7A2; --ink3:#7C7B77;
-    --comprar:#9DBCE8; --c-bg:#1E2B3F; --c-bd:#2F4566;
-    --ajusta:#D2A9C4;  --a-bg:#34232E; --a-bd:#4E3545;
-    --buscar:#F0858C;  --b-bg:#3E1E21; --b-bd:#5C2B30;
-    --rojo:#EE6A72;
-  }
-}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#0C0C0E; --card:#1A1A1E; --sunk:#222227; --sunk2:#2C2C32; --line:#2C2C30;
+  --ink:#EDEDEA; --ink2:#A8A7A2; --ink3:#7C7B77; --rojo:#EE6A72; --comprar:#9DBCE8; --ajusta:#D2A9C4;
+  --e0-bg:#8DB0E3; --e0-tx:#0B1A2E; --e0-bd:#8DB0E3;
+  --e1-bg:#45679A; --e1-tx:#EEF3FB; --e1-bd:#5A7CAE;
+  --e2-bg:#2C4468; --e2-tx:#D2E0F4; --e2-bd:#3C5780;
+  --e3-bg:#1F2A3B; --e3-tx:#A3B6D2; --e3-bd:#2E3C52;
+  --a-bg:#35232F; --a-tx:#D8AECA;
+}}
 :root[data-theme="dark"]{
-  --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328; --sunk2:#2C2C32; --line:#2C2C30;
-  --ink:#EDEDEA; --ink2:#A8A7A2; --ink3:#7C7B77;
-  --comprar:#9DBCE8; --c-bg:#1E2B3F; --c-bd:#2F4566;
-  --ajusta:#D2A9C4;  --a-bg:#34232E; --a-bd:#4E3545;
-  --buscar:#F0858C;  --b-bg:#3E1E21; --b-bd:#5C2B30;
-  --rojo:#EE6A72;
+  --page:#0C0C0E; --card:#1A1A1E; --sunk:#222227; --sunk2:#2C2C32; --line:#2C2C30;
+  --ink:#EDEDEA; --ink2:#A8A7A2; --ink3:#7C7B77; --rojo:#EE6A72; --comprar:#9DBCE8; --ajusta:#D2A9C4;
+  --e0-bg:#8DB0E3; --e0-tx:#0B1A2E; --e0-bd:#8DB0E3;
+  --e1-bg:#45679A; --e1-tx:#EEF3FB; --e1-bd:#5A7CAE;
+  --e2-bg:#2C4468; --e2-tx:#D2E0F4; --e2-bd:#3C5780;
+  --e3-bg:#1F2A3B; --e3-tx:#A3B6D2; --e3-bd:#2E3C52;
+  --a-bg:#35232F; --a-tx:#D8AECA;
 }
 *,*::before,*::after{box-sizing:inherit}
 html,body{margin:0}
 body{background:var(--page);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-.wrap{max-width:1260px;margin:0 auto;padding:26px 16px 60px}
-.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:22px}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 14px 60px}
+.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap}
 .top h1{font-size:20px;font-weight:600;margin:0 0 6px}
-.top p{margin:0;color:var(--ink2);max-width:66ch}
-.tema{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+.top p{margin:0;color:var(--ink2);max-width:64ch}
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;font:inherit;font-size:13px;padding:8px 14px;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
 button:focus-visible{outline:2px solid var(--comprar);outline-offset:2px}
-.fila3{display:grid;grid-template-columns:repeat(3,minmax(0,390px));gap:22px;justify-content:start;align-items:start}
-@media (max-width:1240px){.fila3{grid-template-columns:repeat(2,minmax(0,390px))}}
-@media (max-width:840px){.fila3{grid-template-columns:1fr}}
+
+.par{display:grid;grid-template-columns:repeat(2,minmax(0,414px));gap:24px;align-items:start}
+@media (max-width:900px){.par{grid-template-columns:1fr}}
+body.esc .par{grid-template-columns:1fr;max-width:720px}
 .cap{font-size:13px;color:var(--ink2);margin:0 0 8px}
-
-.hoja{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
-.hoja-cab{padding:12px 16px 14px;border-bottom:1px solid var(--line)}
-.asa{width:40px;height:4px;border-radius:99px;background:var(--sunk2);margin:0 auto 12px}
-.hoja-cab .t{font-size:17px;font-weight:600;margin:0}
-.hoja-cab .s{font-size:13px;color:var(--ink2);margin:4px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.v{display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:12px;border-radius:99px;padding:1px 8px;white-space:nowrap;border:1px solid transparent}
-.v.c{background:var(--c-bg);color:var(--comprar);border-color:var(--c-bd)}
-.v.a{background:var(--a-bg);color:var(--ajusta);border-color:var(--a-bd)}
-.v.b{background:var(--b-bg);color:var(--buscar);border-color:var(--b-bd)}
-.hoja-cuerpo{padding:14px 12px 18px}
-.preg{font-size:14px;margin:0 4px 12px;color:var(--ink2)}
-.preg strong{color:var(--ink);font-weight:600}
-
-.mz{display:grid;grid-template-columns:24px 40px repeat(var(--cols),minmax(0,1fr)) 24px;gap:9px 8px}
-.vista{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:0 0 18px;background:var(--card)}
-.vista button{border:0;background:transparent;font:inherit;font-size:13px;padding:8px 14px;color:var(--ink2);cursor:pointer}
-.vista button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
-body.movil .fila3{grid-template-columns:repeat(3,minmax(0,414px))}
-@media (max-width:1300px){body.movil .fila3{grid-template-columns:repeat(2,minmax(0,414px))}}
-@media (max-width:880px){body.movil .fila3{grid-template-columns:1fr}}
 body.movil .tel{width:414px;max-width:100%;border:10px solid #1B1B1F;border-radius:42px;padding:34px 0 0;background:rgba(10,10,12,.55);overflow:hidden;position:relative}
 body.movil .tel::before{content:"";position:absolute;top:12px;left:50%;transform:translateX(-50%);width:90px;height:22px;border-radius:99px;background:#1B1B1F}
-body.movil .tel .hoja{border-radius:18px 18px 0 0;border-bottom:0}
-body.esc .fila3{grid-template-columns:1fr;max-width:720px}
-body.esc .tel{width:100%}
-body.esc .hoja{border-radius:18px}
+body.movil .hoja{border-radius:18px 18px 0 0;border-bottom:0}
 body.esc .asa{display:none}
-.tip{font-size:12.5px;color:var(--ink2);margin:-4px 4px 12px;display:flex;align-items:center;gap:6px}
-.tip svg{flex:none}
+
+.hoja{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.cab{padding:10px 16px 12px;border-bottom:1px solid var(--line)}
+.asa{width:40px;height:4px;border-radius:99px;background:var(--sunk2);margin:0 auto 10px}
+.cab .t{font-size:18px;font-weight:600;margin:0}
+.cab .s{font-size:13px;color:var(--ink2);margin:4px 0 0}
+.v{display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:12px;border-radius:99px;padding:1px 8px;white-space:nowrap}
+.v.c{background:var(--e0-bg);color:var(--e0-tx)}
+.v.a{background:var(--a-bg);color:var(--a-tx)}
+.cuerpo{padding:14px 12px 18px}
+.lead{font-size:14px;margin:0 4px 10px}
+.lead strong{font-weight:600}
+
+/* leyenda en escala */
+.escala{margin:0 4px 14px}
+.escala .tit{font-size:12.5px;color:var(--ink2);margin:0 0 6px}
+.escala .barra{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.escala .sw{height:10px;border-radius:3px;border:1px solid transparent}
+.escala .lab{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:4px}
+.escala .lab span{font-size:10.5px;color:var(--ink2);line-height:1.2}
+.escala .lab span:last-child{text-align:right}
+.escala .dir{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);margin-top:2px}
+.sw.e0{background:var(--e0-bg);border-color:var(--e0-bd)} .sw.e1{background:var(--e1-bg);border-color:var(--e1-bd)}
+.sw.e2{background:var(--e2-bg);border-color:var(--e2-bd)} .sw.e3{background:var(--e3-bg);border-color:var(--e3-bd)}
+.sw.fx{background:repeating-linear-gradient(135deg,var(--sunk2) 0 3px,var(--card) 3px 6px);border:1px dashed var(--ink3)}
+
+.tip{font-size:12.5px;color:var(--ink2);margin:0 4px 10px;display:flex;gap:6px;align-items:center}
+
+.mz{display:grid;grid-template-columns:22px 38px repeat(var(--cols),minmax(0,1fr)) 22px;gap:8px 7px}
 .ax{position:relative;display:flex;align-items:center;justify-content:center}
 .ax svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .ax span{position:relative;font-size:11px;font-weight:600;background:var(--card);padding:0 5px;white-space:nowrap}
@@ -85,204 +95,154 @@ body.esc .asa{display:none}
 .ax.up span{transform:rotate(180deg)}
 .ax.tu span{color:var(--ink)} .ax.ven span{color:var(--ink2)}
 .hcol{font-size:12px;color:var(--ink2);text-align:center;align-self:end}
-.hfil{grid-column:2;font-size:12px;color:var(--ink2);display:flex;align-items:center;justify-content:flex-end;text-align:right;line-height:1.15;padding-right:2px}
+.hfil{grid-column:2;font-size:12px;color:var(--ink2);display:flex;align-items:center;justify-content:flex-end;text-align:right;line-height:1.15}
 
-.celda{position:relative;border:1px solid var(--line);border-radius:10px;padding:8px 3px 7px;min-height:60px;text-align:center;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;gap:1px;
-  box-shadow:0 1px 0 rgba(0,0,0,.05),0 2px 4px rgba(0,0,0,.07);transition:transform .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
-.celda:hover{transform:translateY(-1px);box-shadow:0 2px 0 rgba(0,0,0,.04),0 6px 14px rgba(0,0,0,.12)}
-.celda:active{transform:translateY(0) scale(.97);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-:root[data-theme="dark"] .celda{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 2px 6px rgba(0,0,0,.45)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .celda{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 2px 6px rgba(0,0,0,.45)}}
+.celda{position:relative;border:1px solid var(--line);border-radius:10px;padding:10px 4px;min-height:54px;text-align:center;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;
+  box-shadow:0 1px 0 rgba(0,0,0,.04),0 2px 4px rgba(0,0,0,.06);transition:transform .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
+.celda:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(0,0,0,.10)}
+.celda:active{transform:scale(.97)}
 @media (prefers-reduced-motion:reduce){.celda{transition:none}.celda:hover,.celda:active{transform:none}}
-.celda .l1{font-size:10.5px;line-height:1.1;font-weight:600}
-.celda .l2{font-size:15px;font-weight:600;line-height:1.15}
-.celda .l3{font-size:10.5px;line-height:1.1;opacity:.85}
-.celda.c{background:var(--c-bg);border-color:var(--c-bd);color:var(--comprar)}
-.celda.a{background:var(--a-bg);border-color:var(--a-bd);color:var(--ajusta)}
-.celda.b{background:var(--b-bg);border-color:var(--b-bd);color:var(--buscar)}
-.celda .l2.tinta{color:var(--ink)}
-.celda .l2.neg{color:var(--rojo)}
-.celda .l3.tinta{color:var(--ink2)}
-.celda.sel{outline:2px solid currentColor;outline-offset:2px}
-.celda.fr{outline:3px solid var(--ink);outline-offset:3px}
-.celda.hoy{outline:3px dashed var(--ink2);outline-offset:3px}
-.tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:99px;white-space:nowrap;line-height:15px;z-index:1}
+.celda .n{font-size:15.5px;font-weight:650;font-weight:600;white-space:nowrap;letter-spacing:-.01em}
+.celda .n small{font-size:inherit;font-weight:600}
+.celda .sub{font-size:10.5px;margin-top:1px;opacity:.9;white-space:nowrap}
+.celda.e0{background:var(--e0-bg);border-color:var(--e0-bd);color:var(--e0-tx)}
+.celda.e1{background:var(--e1-bg);border-color:var(--e1-bd);color:var(--e1-tx)}
+.celda.e2{background:var(--e2-bg);border-color:var(--e2-bd);color:var(--e2-tx)}
+.celda.e3{background:var(--e3-bg);border-color:var(--e3-bd);color:var(--e3-tx)}
+.celda.fx{background:repeating-linear-gradient(135deg,var(--sunk) 0 6px,var(--card) 6px 12px);border:1px dashed var(--ink3);color:var(--ink2)}
+.celda.fx .n{font-size:13.5px}
+/* marcas finas */
+.celda.fr{border:2px solid var(--ink)}
+.celda.hoy{border:1.5px dashed var(--ink2)}
+.celda.sel:not(.fr){border:2px solid currentColor}
+.tag{position:absolute;top:-9px;left:8px;font-size:10px;font-weight:600;padding:0 6px;border-radius:99px;line-height:16px;white-space:nowrap}
 .tag.fr{background:var(--ink);color:var(--card)}
-.tag.hoy{background:var(--card);color:var(--ink);border:1.5px dashed var(--ink2)}
+.tag.hoy{background:var(--card);color:var(--ink2);border:1px solid var(--line)}
 
-.ley{display:flex;flex-wrap:wrap;gap:6px;margin:12px 4px 0}
-.panel{margin:14px 4px 0;border-top:1px solid var(--line);padding-top:12px}
-.frase{font-size:14.5px;margin:0 0 10px;line-height:1.5}
-.cifras{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.cifra{background:var(--sunk);border-radius:10px;padding:8px 10px}
-.cifra .r{font-size:11.5px;color:var(--ink2)}
-.cifra .n{font-size:17px;font-weight:600}
-.cifra .n.neg{color:var(--rojo)}
-.pie{margin-top:26px;font-size:12.5px;color:var(--ink3);max-width:86ch}
+/* detalle en tabla */
+.det{margin:18px 4px 0;border-top:1px solid var(--line);padding-top:12px}
+.det .frase{font-size:14px;margin:0 0 10px;line-height:1.5}
+.tab{width:100%;border-collapse:collapse;font-size:13.5px}
+.tab th{font-size:12px;font-weight:600;color:var(--ink2);text-align:right;padding:0 0 6px;border-bottom:1px solid var(--ink)}
+.tab th:first-child{text-align:left}
+.tab th.ahora{color:var(--ink)}
+.tab td{padding:7px 0;border-bottom:1px solid var(--line);text-align:right}
+.tab td:first-child{text-align:left;color:var(--ink2);padding-right:8px}
+.tab td.ahora{font-weight:600;padding-left:10px}
+.tab td.hoy{color:var(--ink2);padding-left:10px}
+.neg{color:var(--rojo)!important}
+.mercado{font-size:13px;color:var(--ink2);margin:12px 4px 0}
+.nota{margin-top:24px;font-size:12.5px;color:var(--ink3);max-width:86ch}
 </style>
 </head>
 <body class="movil">
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>El color de cada celda es el veredicto</h1>
-      <p>El mismo color que el usuario ya vio en la portada. Azul, ciruela o rojo dicen qué es hoy esa combinación de pie y plazo, al precio pedido. El número dice lo que falta: en Ajustar, el descuento para llegar a Comprar; en Comprar, cuánto te queda al mes.</p>
-    </div>
-    <button class="tema" id="tema" type="button">Cambiar tema</button>
-  </div>
-
-  <div class="vista" role="group" aria-label="Vista"><button type="button" id="vMov" aria-pressed="true">Teléfono</button><button type="button" id="vEsc" aria-pressed="false">Escritorio (panel de 720)</button></div>
-  <div class="fila3">
-    <div>
-      <p class="cap">Ajustar · Providencia, renta corta (aad691e4)</p>
-      <div class="tel"><div class="hoja"><div class="hoja-cab"><div class="asa"></div>
-        <p class="t">Ajustar supuestos</p>
-        <p class="s">Hoy <span class="v a">~ Ajustar</span> con pie 15% y crédito a 25 años</p></div>
-        <div class="hoja-cuerpo">
-          <p class="preg">El color es el veredicto de cada combinación. En las ciruela, el número es <strong>el descuento que falta para Comprar</strong>.</p>
-          <p class="tip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 10a2 2 0 1 1 4 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.3-2.3a1.6 1.6 0 0 1 2.8-1.6L9 14"/></svg>Toca una celda para ver qué pasa con esa combinación.</p>
-          <div class="mz" id="m1"></div>
-          <div class="ley"><span class="v c">✓ Comprar</span><span class="v a">~ Ajustar</span><span class="v b">✕ Buscar otro</span></div>
-          <div class="panel" id="p1"></div>
-        </div></div></div>
-    </div>
-
-    <div>
-      <p class="cap">Ajustar · Las Condes, arriendo tradicional (4df8449b)</p>
-      <div class="tel"><div class="hoja"><div class="hoja-cab"><div class="asa"></div>
-        <p class="t">Ajustar supuestos</p>
-        <p class="s">Hoy <span class="v a">~ Ajustar</span> con pie 10% y crédito a 25 años</p></div>
-        <div class="hoja-cuerpo">
-          <p class="preg">El color es el veredicto de cada combinación. En las ciruela, el número es <strong>el descuento que falta para Comprar</strong>.</p>
-          <p class="tip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 10a2 2 0 1 1 4 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.3-2.3a1.6 1.6 0 0 1 2.8-1.6L9 14"/></svg>Toca una celda para ver qué pasa con esa combinación.</p>
-          <div class="mz" id="m2"></div>
-          <div class="ley"><span class="v c">✓ Comprar</span><span class="v a">~ Ajustar</span><span class="v b">✕ Buscar otro</span></div>
-          <div class="panel" id="p2"></div>
-        </div></div></div>
-    </div>
-
-    <div>
-      <p class="cap">Comprar · Providencia, arriendo tradicional (bc1017b7)</p>
-      <div class="tel"><div class="hoja"><div class="hoja-cab"><div class="asa"></div>
-        <p class="t">Cómo queda con otro pie o plazo</p>
-        <p class="s">Hoy <span class="v c">✓ Comprar</span> con pie 10% y crédito a 30 años</p></div>
-        <div class="hoja-cuerpo">
-          <p class="preg">El color es el veredicto de cada combinación. El número es <strong>lo que te queda al mes</strong>.</p>
-          <p class="tip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 10a2 2 0 1 1 4 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.3-2.3a1.6 1.6 0 0 1 2.8-1.6L9 14"/></svg>Toca una celda para ver qué pasa con esa combinación.</p>
-          <div class="mz" id="m3"></div>
-          <div class="ley"><span class="v c">✓ Comprar</span><span class="v a">~ Ajustar</span><span class="v b">✕ Buscar otro</span></div>
-          <div class="panel" id="p3"></div>
-        </div></div></div>
+      <h1>El azul dice qué tan cerca está de Comprar</h1>
+      <p>Todas las celdas con número llegan a Comprar con ese descuento, así que la escala es toda azul: mientras más intenso, más cerca está. Azul pleno: ya es Comprar. Azul casi blanco: hay que negociar mucho. Rayado: ni con el descuento máximo llega. El ciruela queda solo para nombrar el veredicto de hoy.</p>
     </div>
   </div>
+  <div class="ctrl">
+    <div class="seg" role="group" aria-label="Vista"><button type="button" id="vM" aria-pressed="true">Teléfono</button><button type="button" id="vE" aria-pressed="false">Escritorio</button></div>
+    <div class="seg" role="group" aria-label="Tema"><button type="button" id="tC" aria-pressed="false">Claro</button><button type="button" id="tO" aria-pressed="false">Oscuro</button></div>
+  </div>
 
-  <p class="pie">Descuentos y montos por celda de las filas reales. El veredicto de cada celda al precio pedido es supuesto para el mockup: el agente tiene el dato real por celda. En Las Condes todas quedan ciruela: el color dice «todo esto es Ajustar» y el número dice cuánto falta. Las cifras del panel que no son de la celda de Franco son ilustrativas. Franco marca la banda más fácil disponible y, dentro de ella, el mejor puntaje. En Comprar no se marca celda de Franco.</p>
+  <div class="par">
+    <div><p class="cap">La fila que probaste en el teléfono: todo lejos de Comprar</p><div class="tel" id="h1"></div></div>
+    <div><p class="cap">Providencia, renta corta (aad691e4): la escala completa</p><div class="tel" id="h2"></div></div>
+  </div>
+
+  <p class="nota">Descuentos por celda de las filas reales. Las cifras de la tabla son ilustrativas, para ver la forma. Tope de descuento en renta corta: 25%.</p>
 </div>
 
 <script>
 (function(){
   var root=document.documentElement;
-  document.getElementById('tema').addEventListener('click',function(){
-    var cur=root.getAttribute('data-theme');
-    var dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme',dark?'light':'dark');
-  });
-  var bm=document.getElementById('vMov'),be=document.getElementById('vEsc');
-  function vista(m){document.body.classList.toggle('movil',m);document.body.classList.toggle('esc',!m);bm.setAttribute('aria-pressed',m);be.setAttribute('aria-pressed',!m);}
-  bm.addEventListener('click',function(){vista(true)});be.addEventListener('click',function(){vista(false)});
+  function tema(t){root.setAttribute('data-theme',t);document.getElementById('tC').setAttribute('aria-pressed',t==='light');document.getElementById('tO').setAttribute('aria-pressed',t==='dark');}
+  document.getElementById('tC').onclick=function(){tema('light')};document.getElementById('tO').onclick=function(){tema('dark')};
+  function vista(m){document.body.classList.toggle('movil',m);document.body.classList.toggle('esc',!m);document.getElementById('vM').setAttribute('aria-pressed',m);document.getElementById('vE').setAttribute('aria-pressed',!m);}
+  document.getElementById('vM').onclick=function(){vista(true)};document.getElementById('vE').onclick=function(){vista(false)};
+
   function pct(n){return n.toFixed(1).replace('.',',')+'%'}
-  function pesos(n){return (n<0?'−$':'$')+Math.abs(n).toLocaleString('es-CL')}
-  function banda(d){return d<=5?'factible':(d<=10?'con argumentos':'difícil')}
-  var V={c:'<span class="v c">✓ Comprar</span>',a:'<span class="v a">~ Ajustar</span>',b:'<span class="v b">✕ Buscar otro</span>'};
+  function pesos(n){return (n<0?'−$':'$')+Math.round(Math.abs(n)).toLocaleString('es-CL')}
+  function est(d){return d===null?'fx':d===0?'e0':d<=5?'e1':d<=10?'e2':'e3'}
+  function nombre(d){return d===0?'ya es Comprar':d<=5?'fácil de negociar':d<=10?'se negocia con argumentos':'difícil de negociar'}
 
-  function flechas(mz,cols,rows,desc){
-    var id=mz.id;
+  function flechas(mz,cols,rows,id){
     function el(cls,col,row,html,h){var d=document.createElement('div');d.className='ax '+cls;d.style.gridColumn=col;d.style.gridRow=row;if(h)d.style.height=h;d.innerHTML=html;mz.appendChild(d)}
-    el('tu','3 / '+(3+cols),'1','<svg viewBox="0 0 100 26" preserveAspectRatio="none"><defs><linearGradient id="'+id+'t"><stop offset="0" stop-color="var(--ink)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ink)"/></linearGradient></defs><rect x="0" y="11.5" width="97" height="3" rx="1.5" fill="url(#'+id+'t)"/></svg><svg viewBox="0 0 26 26" style="left:auto;right:-7px;width:26px"><path d="M12 6 L21 13 L12 20 Z" fill="var(--ink)"/></svg><span>más plazo</span>','26px');
-    el('vert tu','1','3 / '+(3+rows),'<svg viewBox="0 0 24 100" preserveAspectRatio="none"><defs><linearGradient id="'+id+'i" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--ink)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ink)"/></linearGradient></defs><rect x="10.5" y="0" width="3" height="97" rx="1.5" fill="url(#'+id+'i)"/></svg><svg viewBox="0 0 24 24" style="top:auto;bottom:-7px;height:24px"><path d="M5 11 L12 20 L19 11 Z" fill="var(--ink)"/></svg><span>más pie</span>');
-    if(!desc)return;
-    el('vert up ven',String(3+cols),'3 / '+(3+rows),'<svg viewBox="0 0 24 100" preserveAspectRatio="none"><defs><linearGradient id="'+id+'d" x1="0" x2="0" y1="1" y2="0"><stop offset="0" stop-color="var(--ink3)" stop-opacity=".1"/><stop offset="1" stop-color="var(--ink3)"/></linearGradient></defs><rect x="10.5" y="3" width="3" height="97" rx="1.5" fill="url(#'+id+'d)"/></svg><svg viewBox="0 0 24 24" style="bottom:auto;top:-7px;height:24px"><path d="M5 13 L12 4 L19 13 Z" fill="var(--ink3)"/></svg><span>más descuento</span>');
-    el('ven','3 / '+(3+cols),String(3+rows),'<svg viewBox="0 0 100 26" preserveAspectRatio="none"><defs><linearGradient id="'+id+'b" x1="1" x2="0"><stop offset="0" stop-color="var(--ink3)" stop-opacity=".1"/><stop offset="1" stop-color="var(--ink3)"/></linearGradient></defs><rect x="3" y="11.5" width="97" height="3" rx="1.5" fill="url(#'+id+'b)"/></svg><svg viewBox="0 0 26 26" style="right:auto;left:-7px;width:26px"><path d="M14 6 L5 13 L14 20 Z" fill="var(--ink3)"/></svg><span>más descuento</span>','26px');
-  }
-  function base(mz,pies,plazos,desc){
-    mz.style.setProperty('--cols',plazos.length);
-    mz.style.gridTemplateRows='26px 18px repeat('+pies.length+',auto)'+(desc?' 26px':'');
-    flechas(mz,plazos.length,pies.length,desc);
-    plazos.forEach(function(pl,i){var h=document.createElement('div');h.className='hcol';h.style.gridColumn=3+i;h.style.gridRow=2;h.textContent=pl+' años';mz.appendChild(h)});
-    pies.forEach(function(p,r){var h=document.createElement('div');h.className='hfil';h.style.gridRow=3+r;h.textContent='pie '+p+'%';mz.appendChild(h)});
+    el('tu','3 / '+(3+cols),'1','<svg viewBox="0 0 100 24" preserveAspectRatio="none"><defs><linearGradient id="'+id+'t"><stop offset="0" stop-color="var(--ink)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ink)"/></linearGradient></defs><rect x="0" y="10.5" width="97" height="3" rx="1.5" fill="url(#'+id+'t)"/></svg><svg viewBox="0 0 24 24" style="left:auto;right:-7px;width:24px"><path d="M11 5 L20 12 L11 19 Z" fill="var(--ink)"/></svg><span>más plazo</span>','24px');
+    el('vert tu','1','3 / '+(3+rows),'<svg viewBox="0 0 22 100" preserveAspectRatio="none"><defs><linearGradient id="'+id+'i" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--ink)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ink)"/></linearGradient></defs><rect x="9.5" y="0" width="3" height="97" rx="1.5" fill="url(#'+id+'i)"/></svg><svg viewBox="0 0 22 22" style="top:auto;bottom:-7px;height:22px"><path d="M4 10 L11 19 L18 10 Z" fill="var(--ink)"/></svg><span>más pie</span>');
+    el('vert up ven',String(3+cols),'3 / '+(3+rows),'<svg viewBox="0 0 22 100" preserveAspectRatio="none"><defs><linearGradient id="'+id+'d" x1="0" x2="0" y1="1" y2="0"><stop offset="0" stop-color="var(--ink3)" stop-opacity=".1"/><stop offset="1" stop-color="var(--ink3)"/></linearGradient></defs><rect x="9.5" y="3" width="3" height="97" rx="1.5" fill="url(#'+id+'d)"/></svg><svg viewBox="0 0 22 22" style="bottom:auto;top:-7px;height:22px"><path d="M4 12 L11 3 L18 12 Z" fill="var(--ink3)"/></svg><span>más descuento</span>');
+    el('ven','3 / '+(3+cols),String(3+rows),'<svg viewBox="0 0 100 24" preserveAspectRatio="none"><defs><linearGradient id="'+id+'b" x1="1" x2="0"><stop offset="0" stop-color="var(--ink3)" stop-opacity=".1"/><stop offset="1" stop-color="var(--ink3)"/></linearGradient></defs><rect x="3" y="10.5" width="97" height="3" rx="1.5" fill="url(#'+id+'b)"/></svg><svg viewBox="0 0 24 24" style="right:auto;left:-7px;width:24px"><path d="M13 5 L4 12 L13 19 Z" fill="var(--ink3)"/></svg><span>más descuento</span>','24px');
   }
 
-  // Ajustar: {v: veredicto de la celda al precio pedido, d: descuento para Comprar (0 ya es, null no llega)}
-  function ajustar(mzId,pnId,cfg){
-    var mz=document.getElementById(mzId),pn=document.getElementById(pnId);
-    base(mz,cfg.pies,cfg.plazos,true);
+  function hoja(host,cfg){
+    var H=document.getElementById(host);
+    H.innerHTML='<div class="hoja"><div class="cab"><div class="asa"></div><p class="t">Ajustar supuestos</p><p class="s">Hoy <span class="v a">~ Ajustar</span> con pie '+cfg.hoy[0]+'% y crédito a '+cfg.hoy[1]+' años</p></div>'+
+      '<div class="cuerpo"><p class="lead">Cuánto descuento hay que pedir para llegar a <span class="v c">✓ Comprar</span>, según tu pie y tu plazo.</p>'+
+      '<div class="escala"><p class="tit">Mientras más azul, más cerca de Comprar →</p><div class="barra"><span class="sw fx"></span><span class="sw e3"></span><span class="sw e2"></span><span class="sw e1"></span><span class="sw e0"></span></div>'+
+      '<div class="lab"><span>fuera de alcance</span><span>difícil de negociar (más de 10%)</span><span>con argumentos (5 a 10%)</span><span>fácil de negociar (hasta 5%)</span><span>ya es Comprar</span></div></div>'+
+      '<p class="tip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 10a2 2 0 1 1 4 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.3-2.3a1.6 1.6 0 0 1 2.8-1.6L9 14"/></svg>Toca una celda para ver cómo queda.</p>'+
+      '<div class="mz"></div><div class="det"></div>'+(cfg.mercado?'<p class="mercado">'+cfg.mercado+'</p>':'')+'</div></div>';
+    var mz=H.querySelector('.mz'),det=H.querySelector('.det');
+    mz.style.setProperty('--cols',cfg.plazos.length);
+    mz.style.gridTemplateRows='24px 16px repeat('+cfg.pies.length+',auto) 24px';
+    flechas(mz,cfg.plazos.length,cfg.pies.length,host);
+    cfg.plazos.forEach(function(pl,i){var h=document.createElement('div');h.className='hcol';h.style.gridColumn=3+i;h.style.gridRow=2;h.textContent=pl+' años';mz.appendChild(h)});
+    cfg.pies.forEach(function(p,r){var h=document.createElement('div');h.className='hfil';h.style.gridRow=3+r;h.textContent='pie '+p+'%';mz.appendChild(h)});
+    var kHoy=cfg.hoy.join('-');
     cfg.pies.forEach(function(p,r){cfg.plazos.forEach(function(pl,c){
-      var k=p+'-'+pl,x=cfg.g[k],b=document.createElement('button');b.type='button';b.dataset.k=k;
+      var k=p+'-'+pl,d=cfg.d[k],b=document.createElement('button');b.type='button';b.dataset.k=k;
       b.style.gridColumn=3+c;b.style.gridRow=3+r;
-      var h;
-      if(x.v==='c'){h='<span class="l1">✓ Comprar</span><span class="l2">sin descuento</span>';}
-      else if(x.d===null){h='<span class="l1">'+(x.v==='b'?'✕ Buscar otro':'~ Ajustar')+'</span><span class="l2" style="font-size:12.5px">no llega</span><span class="l3">ni con −30%</span>';}
-      else{h='<span class="l1">'+(x.v==='b'?'✕ Buscar otro':'~ Ajustar')+'</span><span class="l2">−'+pct(x.d)+' dcto.</span><span class="l3">'+banda(x.d)+'</span>';}
-      var cls='celda '+x.v;
+      var cls='celda '+est(d),h;
+      if(d===null)h='<span class="n">más de '+cfg.tope+'%</span><span class="sub">fuera de alcance</span>';
+      else if(d===0)h='<span class="n">sin descuento</span><span class="sub">ya es Comprar</span>';
+      else h='<span class="n">−'+pct(d)+' <small>dcto.</small></span><span class="sub">'+(d<=5?'fácil de negociar':d<=10?'con argumentos':'difícil de negociar')+'</span>';
       if(k===cfg.fr){cls+=' fr';h='<span class="tag fr">Franco</span>'+h;}
-      else if(k===cfg.hoy){cls+=' hoy';h='<span class="tag hoy">hoy</span>'+h;}
+      else if(k===kHoy){cls+=' hoy';h='<span class="tag hoy">hoy</span>'+h;}
       b.className=cls;b.innerHTML=h;
-      b.addEventListener('click',function(){sel(k,b)});
+      b.onclick=function(){sel(k,b)};
       mz.appendChild(b);
     })});
+    function cifras(k){ // ilustrativas: derivadas del descuento y el pie
+      var p=+k.split('-')[0],pl=+k.split('-')[1],d=cfg.d[k]||0;
+      var precio=cfg.precio*(1-d/100),pie=precio*p/100,cred=precio-pie;
+      var r=cfg.tasa/12,n=pl*12,cuota=cred*cfg.uf*r/(1-Math.pow(1+r,-n));
+      var flujo=cfg.neto-cuota;
+      return {d:d,precio:precio,pie:pie*cfg.uf,cuota:cuota,flujo:flujo,coc:flujo*12/(pie*cfg.uf)*100,cap:cfg.neto*12/(precio*cfg.uf)*100,tir:Math.max(2,4+(cfg.neto*12/(precio*cfg.uf)*100-2.5)*2.2+(p-15)*.02),score:Math.round(55+Math.min(20,flujo/4000))};
+    }
     function sel(k,btn){
       mz.querySelectorAll('.celda').forEach(function(z){z.classList.remove('sel')});
-      if(k!==cfg.fr&&k!==cfg.hoy)btn.classList.add('sel');
-      var p=k.split('-'),x=cfg.g[k],q=k===cfg.fr?'<strong>La recomendación de Franco.</strong> ':'';
-      var pre='Con pie '+p[0]+'% y crédito a '+p[1]+' años';
-      var f;
-      if(x.v==='c')f=q+pre+' ya es '+V.c+' al precio pedido, sin pedirle nada al vendedor.';
-      else if(x.d===null)f=q+pre+' es '+V[x.v]+', y no llega a '+V.c+' ni pidiéndole 30% al vendedor.';
-      else f=q+pre+' es '+V[x.v]+'. Si consigues <strong>−'+pct(x.d)+'</strong> ('+banda(x.d)+'), pasa a '+V.c+'.';
-      var fx=cfg.cif[k];
-      pn.innerHTML='<p class="frase">'+f+'</p>'+(fx&&x.d!==null?'<div class="cifras"><div class="cifra"><div class="r">'+(fx.f<0?'Pones al mes':'Te queda al mes')+'</div><div class="n'+(fx.f<0?' neg':'')+'">'+pesos(fx.f)+'</div></div><div class="cifra"><div class="r">Pie el día uno</div><div class="n">'+fx.p+'</div></div><div class="cifra"><div class="r">TIR a 10 años</div><div class="n">'+pct(fx.t)+'</div></div><div class="cifra"><div class="r">Franco Score</div><div class="n">'+fx.s+'</div></div></div>':'');
+      if(k!==cfg.fr&&k!==kHoy)btn.classList.add('sel');
+      var p=k.split('-'),d=cfg.d[k],pre='Con pie '+p[0]+'% y crédito a '+p[1]+' años';
+      var q=k===cfg.fr?'<strong>La recomendación de Franco.</strong> ':'';
+      if(d===null){det.innerHTML='<p class="frase">'+q+pre+' no llega a <span class="v c">✓ Comprar</span> ni pidiéndole '+cfg.tope+'% de descuento al vendedor. Prueba con más pie o más plazo.</p>';return;}
+      var f=d===0?pre+' ya es <span class="v c">✓ Comprar</span>, sin pedirle nada al vendedor.':pre+', si consigues <strong>'+pct(d)+' de descuento</strong> ('+nombre(d)+'), pasa de <span class="v a">~ Ajustar</span> a <span class="v c">✓ Comprar</span>.';
+      var a=cifras(k),h0=cifras(kHoy);h0.d=0;h0.precio=cfg.precio;
+      var hoyCalc=(function(){var p0=cfg.hoy[0],pl0=cfg.hoy[1],pie=cfg.precio*p0/100,cred=cfg.precio-pie,r=cfg.tasa/12,n=pl0*12,cuota=cred*cfg.uf*r/(1-Math.pow(1+r,-n)),flujo=cfg.neto-cuota;return {precio:cfg.precio,pie:pie*cfg.uf,cuota:cuota,flujo:flujo,coc:flujo*12/(pie*cfg.uf)*100,cap:cfg.neto*12/(cfg.precio*cfg.uf)*100,tir:Math.max(2,4+(cfg.neto*12/(cfg.precio*cfg.uf)*100-2.5)*2.2),score:cfg.scoreHoy}})();
+      function fila(r,x,y,fmt,esNeg){return '<tr><td>'+r+'</td><td class="hoy'+(esNeg&&x<0?' neg':'')+'">'+fmt(x)+'</td><td class="ahora'+(esNeg&&y<0?' neg':'')+'">'+fmt(y)+'</td></tr>'}
+      function u(n){return 'UF '+Math.round(n).toLocaleString('es-CL')}
+      det.innerHTML='<p class="frase">'+q+f+'</p><table class="tab"><thead><tr><th></th><th>Hoy</th><th class="ahora">Así</th></tr></thead><tbody>'+
+        '<tr><td>Descuento</td><td class="hoy">—</td><td class="ahora">'+(d===0?'ninguno':pct(d))+'</td></tr>'+
+        fila('Precio',hoyCalc.precio,a.precio,u)+
+        fila('Pie el día uno',hoyCalc.pie,a.pie,pesos)+
+        fila('Cuota del crédito',hoyCalc.cuota,a.cuota,pesos)+
+        fila('Te queda al mes',hoyCalc.flujo,a.flujo,pesos,true)+
+        fila('Cash on cash',hoyCalc.coc,a.coc,function(n){return (n<0?'−':'')+pct(Math.abs(n))},true)+
+        fila('Cap rate',hoyCalc.cap,a.cap,pct)+
+        fila('TIR a 10 años',hoyCalc.tir,a.tir,pct)+
+        fila('Franco Score',hoyCalc.score,a.score,function(n){return String(n)})+
+        '</tbody></table>';
     }
     sel(cfg.fr,mz.querySelector('[data-k="'+cfg.fr+'"]'));
   }
 
-  ajustar('m1','p1',{pies:[15,20,25,30],plazos:[25,30],hoy:'15-25',fr:'30-30',
-    g:{'15-25':{v:'a',d:11.2},'15-30':{v:'a',d:5},'20-25':{v:'a',d:11.8},'20-30':{v:'a',d:4.4},
-       '25-25':{v:'a',d:7.1},'25-30':{v:'c',d:0},'30-25':{v:'a',d:0.4},'30-30':{v:'c',d:0}},
-    cif:{'30-30':{f:44029,p:'$39.848.250',t:8.3,s:72},'20-30':{f:417,p:'$26.100.000',t:9.4,s:72},'25-30':{f:10378,p:'$33.200.000',t:8.9,s:72}}});
-
-  ajustar('m2','p2',{pies:[10,15,20,25,30],plazos:[25,30],hoy:'10-25',fr:'30-30',
-    g:{'10-25':{v:'a',d:null},'10-30':{v:'a',d:24.5},'15-25':{v:'a',d:27.6},'15-30':{v:'a',d:20},
-       '20-25':{v:'a',d:23.1},'20-30':{v:'a',d:15},'25-25':{v:'a',d:18},'25-30':{v:'a',d:9.4},
-       '30-25':{v:'a',d:12.2},'30-30':{v:'a',d:4.2}},
-    cif:{'15-30':{f:-36332,p:'$22.062.780',t:13.6,s:76},'30-30':{f:18400,p:'$52.800.000',t:9.1,s:73},'25-30':{f:2100,p:'$42.300.000',t:10.4,s:74}}});
-
-  // Comprar
-  (function(){
-    var mz=document.getElementById('m3'),pn=document.getElementById('p3');
-    var pies=[5,10,15,20,25,30],plazos=[20,25,30],hoy='10-30';
-    var g={'5-20':{v:'a'},'5-25':{v:'a'},'5-30':{v:'c',f:22640},'10-20':{v:'a'},'10-25':{v:'c',f:-21495},'10-30':{v:'c',f:68316},
-      '15-20':{v:'a'},'15-25':{v:'c',f:29171},'15-30':{v:'c',f:113993},'20-20':{v:'c',f:-43501},'20-25':{v:'c',f:79837},'20-30':{v:'c',f:159670},
-      '25-20':{v:'c',f:14874},'25-25':{v:'c',f:130504},'25-30':{v:'c',f:205347},'30-20':{v:'c',f:73249},'30-25':{v:'c',f:181170},'30-30':{v:'c',f:251024}};
-    base(mz,pies,plazos,false);
-    pies.forEach(function(p,r){plazos.forEach(function(pl,c){
-      var k=p+'-'+pl,x=g[k],b=document.createElement('button');b.type='button';b.dataset.k=k;
-      b.style.gridColumn=3+c;b.style.gridRow=3+r;
-      var h;
-      if(x.v==='c')h='<span class="l1">✓ Comprar</span><span class="l2 '+(x.f<0?'neg':'tinta')+'">'+pesos(x.f)+'</span><span class="l3 tinta">'+(x.f<0?'pones al mes':'te queda al mes')+'</span>';
-      else h='<span class="l1">'+(x.v==='b'?'✕ Buscar otro':'~ Ajustar')+'</span><span class="l2" style="font-size:12.5px">deja de ser</span><span class="l3">Comprar</span>';
-      var extra='';if(k===hoy){extra=' hoy';h='<span class="tag hoy">hoy</span>'+h;}
-      b.className='celda '+x.v+extra;b.innerHTML=h;
-      b.addEventListener('click',function(){sel(k,b)});
-      mz.appendChild(b);
-    })});
-    function sel(k,btn){
-      mz.querySelectorAll('.celda').forEach(function(z){z.classList.remove('sel')});
-      if(k!==hoy)btn.classList.add('sel');
-      var p=k.split('-'),x=g[k],pre='Con pie '+p[0]+'% y crédito a '+p[1]+' años';
-      pn.innerHTML='<p class="frase">'+(x.v==='c'?pre+' sigue siendo '+V.c+', y '+(x.f<0?'pones <strong style="color:var(--rojo)">'+pesos(x.f)+'</strong> de tu bolsillo cada mes.':'te quedan <strong>'+pesos(x.f)+'</strong> al mes después de pagar todo.'):pre+' la cuota sube tanto que pasa a '+V[x.v]+'.')+'</p>';
-    }
-    sel(hoy,mz.querySelector('[data-k="'+hoy+'"]'));
-  })();
+  hoja('h1',{pies:[20,25,30],plazos:[25,30],hoy:[20,25],fr:'30-30',tope:25,precio:4200,uf:39300,tasa:.045,neto:760000,scoreHoy:58,
+    d:{'20-25':null,'20-30':23.6,'25-25':null,'25-30':22.2,'30-25':23.7,'30-30':21.0}});
+  hoja('h2',{pies:[15,20,25,30],plazos:[25,30],hoy:[15,25],fr:'30-30',tope:25,precio:3250,uf:39300,tasa:.045,neto:690000,scoreHoy:62,
+    d:{'15-25':11.2,'15-30':5,'20-25':11.8,'20-30':4.4,'25-25':7.1,'25-30':0,'30-25':0.4,'30-30':0},
+    mercado:'Con la tarifa diaria 9,1% más alta también llega a Comprar, pero eso depende del mercado.'});
 })();
 </script>
 </body>
