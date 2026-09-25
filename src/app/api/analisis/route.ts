@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { conCandado } from "@/lib/candado-generacion";
 import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
@@ -9,8 +8,6 @@ import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
-import { generateAiAnalysis } from "@/lib/ai-generation";
-import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import {
@@ -32,10 +29,8 @@ import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
-// Goal C: techo explícito. El response sale en segundos, pero el waitUntil
-// (emails + generateAiAnalysis con retries) comparte esta invocación. 300s
-// acota la generación background — y es la premisa del criterio "generación
-// muerta a los 6 min" de ai-status: si subes esto, sube UMBRAL_MUERTA_MS.
+// Goal C: techo explícito. El response sale en segundos; el waitUntil (emails y timing) comparte
+// esta invocación. Hasta el 25-sep-2026 también corría ahí la prosa IA, retirada del informe.
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
@@ -318,25 +313,6 @@ export async function POST(request: Request) {
               analysisId,
             });
           }
-        }
-        // IA al final (no bloquea la notificación). APAGADA desde el 25-sep-2026 detrás de
-        // `prosaIaActiva()`: el informe ya no dibuja la prosa (retiro por partes).
-        if (prosaIaActiva()) try {
-          // Candado cross-instance (goal #3): si el dueño ya abrió y su ruta tomó el
-          // candado, esta background se salta en vez de generar por segunda vez.
-          const c = await conCandado(analysisId, "ltr", () => generateAiAnalysis(analysisId, dbClient, { trigger: "background" }));
-          if (!c.tomado) console.warn(`[CANDADO] ${analysisId}: IA background saltada — otro proceso la está generando`);
-        } catch (e) {
-          console.error("Background AI generation failed:", e);
-          // La fila existe y el usuario ya tiene su análisis; lo que falta es la
-          // prosa. El page la recupera por polling, así que no rompe nada — pero
-          // si esto falla seguido, la IA está caída y nadie se entera.
-          captureApiWarning(e, {
-            ruta: "POST /api/analisis",
-            operacion: "generacion-ia-background",
-            userId,
-            analysisId,
-          });
         }
       })());
     }

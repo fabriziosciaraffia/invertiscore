@@ -31,7 +31,6 @@ import { capRateNetoLtrPct, capRefNacional, capRefDesdeSnapshot, buildHallazgoCa
 import { brutoImplicitoBdo, type CapRefComunaSnapshot } from "../../../src/lib/capref-comuna";
 import { LosNumeros } from "../../../src/components/analysis/LosNumeros";
 import { buildResumenLTR } from "../../../src/lib/resumen-anexo";
-import { PROMPT_VERSION_LTR } from "../../../src/lib/ai-generation";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 
 // El JSX de los componentes compila a React.createElement bajo tsx: el global lo resuelve.
@@ -71,7 +70,7 @@ export function runCapRateNetoTier(): { hard: number } {
   const kpiCap = anexo.kpis.find((k: any) => /cap rate/i.test(k.label));
   if (!kpiCap || kpiCap.label !== "Cap rate neto" || kpiCap.value !== `${pct1(neto0)}%`) F(`1 · el anexo no dice «Cap rate neto» con la neta (${kpiCap?.label} ${kpiCap?.value})`);
   // Nadie lee `metrics.capRate` para mostrarlo. Se permite la normalización de filas viejas.
-  const PERMITIDOS = new Set(["src/components/analysis/utils.ts", "src/lib/ai-generation.ts"]);
+  const PERMITIDOS = new Set(["src/components/analysis/utils.ts"]);
   for (const p of archivos("src")) {
     const v = sinComentarios(leer(p));
     const lee = v.match(/\b(?:metrics|m|raw|mEnriched|baseMetrics)\??\.capRate\b|results\??\.metrics\??\.capRate\b/g);
@@ -82,16 +81,8 @@ export function runCapRateNetoTier(): { hard: number } {
       if (rot && !/base\.capRate|\.capRate \* 100/.test(linea) && !/str|renta-corta|ambas|comparativa/i.test(p)) F(`1 · ${p} rotula «${rot[0]}»`);
     }
   }
-  const A = sinComentarios(leer("src/lib/ai-generation.ts"));
-  if (!/- Cap rate neto \(descuenta gastos, vacancia y gestión\): \$\{pct\(capRateCard\)\}%/.test(A) || /- Rentabilidad neta:/.test(A)) F("1 · el prompt no cita una sola «Cap rate neto»");
-  if (!/\?\.capRatePct \?\? capRateNetoLtrPct\(m\) \?\? 0;/.test(A)) F("1 · el respaldo del prompt no es la neta");
-  // La prosa ya escrita citaba el `capRate` viejo: el bump a 26 la manda a regenerar al abrir.
-  if (PROMPT_VERSION_LTR !== 26) F(`1 · PROMPT_VERSION_LTR = ${PROMPT_VERSION_LTR}: el cambio de cifra del prompt va con el bump a 26`);
-  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 1: `api/analisis/ai/route.ts` se borró (no tenía
-  // llamador); la invalidación por versión que queda es la de la página.
-  for (const p of ["src/app/analisis/[id]/page.tsx"]) {
-    if (!/promptVersion === PROMPT_VERSION_LTR/.test(sinComentarios(leer(p)))) F(`1 · ${p} no invalida la prosa por versión`);
-  }
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron los chequeos del prompt («Cap rate neto» citado, su
+  // respaldo, el bump a 26 y la invalidación por versión): el generador ya no existe.
 
   // ── 2 · hero y pop-up leen la misma cifra ──
   let medidas = 0;
@@ -153,7 +144,6 @@ export function runCapRateNetoTier(): { hard: number } {
     if (x) F(`3 · ${p} conserva una rama neta del capítulo I (${x[0]})`);
   }
   if (!/base: "bruta";/.test(sinComentarios(leer("src/lib/cap-rate-hallazgo.ts")))) F("3 · el tipo de la referencia vuelve a admitir otra base");
-  if (!/case "cap_rate": \{[^]*?const base = `rentabilidad BRUTA[^`]*`;/.test(A)) F("3 · el prompt conserva la rama neta del hallazgo");
 
   if (fallas.length) {
     console.log(`  ✗ CAP-RATE-NETO · ${fallas.length} falla(s):`);

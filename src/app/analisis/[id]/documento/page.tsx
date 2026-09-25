@@ -17,14 +17,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
-import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { Analisis, AnalisisInput, FullAnalysisResult, AIAnalysisV2 } from "@/lib/types";
-import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { DocumentoLTR } from "./DocumentoLTR";
 import "./documento.css";
 
@@ -141,18 +139,8 @@ export default async function DocumentoLTRPage({
     redirect(`/analisis/${params.id}`);
   }
 
-  // AI persistido + freshness (espejo de page.tsx:280-283). ai_analysis vive en
-  // columna aparte; el recompute nunca lo toca.
-  const ltrAiPersisted = (data as Record<string, unknown>).ai_analysis;
-  const ltrAiFresh =
-    hasNewAiStructure(ltrAiPersisted) &&
-    (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR;
-  // stripMarcasDeep: la prosa v10 trae destacadores `**…**` para el informe web
-  // (FASE 2 dictamen); el PDF queda FUERA del rediseño y los pinta crudos si no
-  // se strippean. Mismo render tolerante que la raíz web.
-  const ai: AIAnalysisV2 | null = ltrAiFresh
-    ? stripMarcasDeep(ltrAiPersisted as unknown as AIAnalysisV2)
-    : null;
+  // La prosa IA salió del informe (25-sep-2026): el documento, cuando vuelva, se escribe sin ella.
+  const ai: AIAnalysisV2 | null = null;
 
   const veredicto = readVeredicto(results) ??
     (analisis.score >= 70 ? "COMPRAR" : analisis.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");

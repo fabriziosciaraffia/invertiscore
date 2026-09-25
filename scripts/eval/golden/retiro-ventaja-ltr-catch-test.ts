@@ -91,13 +91,8 @@ export function runRetiroVentajaLtrTier(): { hard: number } {
   const eng = sinComentarios(leer("src/lib/engines/short-term-engine.ts"));
   if (!/const ltr_noiMensual = /.test(eng) || !/recomendacionModalidad,/.test(eng) || !/veredictoComparativo,/.test(eng)) F("5 · el motor dejó de calcular la comparativa o la banda");
   // 6 · lo que salió no vuelve
-  const gen = sinComentarios(leer("src/lib/ai-generation-str.ts"));
-  if (/3\.bis Corto o largo|=== COMPARATIVA STR vs LTR ===|"vsLTR":|vsLTR\.estrategiaSugerida|STR-MODALIDAD\]",|byId\("ventaja_vs_ltr"\)|desglose\.ventaja/.test(gen)) F("6 · el prompt STR sigue con la comparación contra el largo");
-  if (!/"conviene\.estrategiaSugerida": 75/.test(gen) || !/"estrategiaSugerida": string/.test(gen)) F("6 · la acción no vive en conviene.estrategiaSugerida");
-  // La regla es que el retiro entró con la v22 y no retrocede, no que la versión sea 22: fijar
-  // la cifra pondría este tier en rojo cada vez que alguien suba la versión por otra razón.
-  const pvStr = Number((gen.match(/export const PROMPT_VERSION_STR = (\d+);/) ?? [])[1]);
-  if (!(pvStr >= 22)) F(`6 · el prompt STR está en v${pvStr}: el retiro de la comparación con el largo entró en la v22`);
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron los chequeos del prompt STR (la comparación con el largo, la acción
+  // en `conviene.estrategiaSugerida`, la v22); el generador ya no existe.
   const guards = sinComentarios(leer("src/lib/str-guards.ts"));
   if (/afirmacionesContraSigno|"modalidad"|sobreRenta/.test(guards)) F("6 · el guard de modalidad sigue en str-guards.ts");
   if (!/"conviene\.estrategiaSugerida"/.test(guards) || /vsLTR/.test(guards)) F("6 · los paths de prosa no migraron a conviene.estrategiaSugerida");

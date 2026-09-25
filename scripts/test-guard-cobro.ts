@@ -86,7 +86,6 @@ const MOD = {
   access: R("src/lib/access.ts"),
   creditsGrant: R("src/lib/credits-grant.ts"),
   uf: R("src/lib/uf.ts"),
-  aiGeneration: R("src/lib/ai-generation.ts"),
   email: R("src/lib/email.ts"),
   capi: R("src/lib/meta/capi.ts"),
   welcome: R("src/lib/welcome.ts"),
@@ -199,11 +198,9 @@ const fakes: Record<string, unknown> = {
   "@supabase/ssr": { createServerClient: () => fakeDb() },
   "@supabase/supabase-js": { createClient: () => fakeDb() },
   "@vercel/functions": { waitUntil: () => {} },
-  // Cola del happy path (IA, correo, píxel). Se doblan por dos razones: sin
-  // esto el test le pega de verdad a Anthropic y a Resend, y el ruido de sus
-  // errores tapa el output. Nada de esto corre antes del cobro, que es lo que
-  // se está probando.
-  [MOD.aiGeneration]: { generateAiAnalysis: async () => null },
+  // Cola del happy path (correo, píxel). Se doblan por dos razones: sin esto el
+  // test le pega de verdad a Resend y a Meta, y el ruido de sus errores tapa el
+  // output. Nada de esto corre antes del cobro, que es lo que se está probando.
   [MOD.email]: { sendAnalysisReadyEmail: async () => {}, sendBoletaEmail: async () => {} },
   [MOD.capi]: { sendMetaCapiEvent: async () => {} },
   [MOD.welcome]: { resolveDisplayName: async () => "Test", ensureWelcomeEmail: async () => {} },

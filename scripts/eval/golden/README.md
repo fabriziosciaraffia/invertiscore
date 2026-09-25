@@ -1,8 +1,14 @@
 # Golden Set LTR — eval de regresión
 
 Fase 2.0 obligatoria del sistema. 7 casos canónicos (GS-*) + 3 borde (BE-*)
-seedados como filas inmutables `GOLDEN::` (UF congelada 38800). Tres capas:
-recompute determinístico → generación fresca AUTO → checklist semántico (juez).
+seedados como filas inmutables `GOLDEN::` (UF congelada 38800). Recompute determinístico
+y catch-tests, todo de 0 tokens.
+
+> **25-sep-2026 · retiro de la IA, parte 2.** La IA salió del informe y la generación se
+> borró. Con ella se fueron las dos capas que gastaban tokens —la generación fresca AUTO
+> (`generate.ts`, `str-generate.ts`) y el checklist semántico con juez Opus (`semantic.ts`,
+> `str-semantic.ts`, `ambas-semantic.ts`, `../judge.ts`, `../editorial/`)—, el `timeout.ts`
+> de la FULL, y los tiers que solo fijaban el prompt. `--full` y sus flags ya no existen.
 
 Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 
@@ -40,10 +46,7 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `flujo-ltr-catch-test.ts` | el capítulo II de LTR como capítulo (21-sep-2026): rótulo «mes promedio del año 1», serie ÷ meses operativos a diez años (fixtures con año parcial y pre-entrega), pie del gráfico por datos, mes vacío como cierre con la fórmula a la vista, y que `DrawerCostoMensual` no vuelva. | 0 |
 | `mantencion-una-sola-catch-test.ts` | la provisión de mantención es UNA función (`provisionMantencionAnio`): el mes de la tabla y el año 1 del loop coinciden, la declarada se respeta en los dos, legacy sin «+1», v3 con reset por CapEx también en metrics (21-sep-2026). Fixtures sintéticos sobre `runAnalysis`. | 0 |
 | `como-lo-pagas-catch-test.ts` | «Cómo lo pagas» se ancla al precio recomendado leído de `mixAComprar` —sin caer al escalón—, los seis casos, la copia fijada, la frase del hallazgo por cuartil y el cableado en los dos capítulos (21-sep-2026). Tier puro en el QUICK; standalone agrega una fila STR real. | 0 |
-| `generate.ts` | tier FULL AUTO: `generateAiAnalysis(persist:false)` ×K, checks AUTO | sí |
-| `semantic.ts` | tier FULL semántico: juez Opus (reusa `../judge.ts`) | sí |
 | `catch-test.ts` | meta-validación: rompe invariantes y verifica que el runner CAZA | 0 |
-| `timeout.ts` | techo de 5 min por llamada al generador / juez en FULL: el seed cae como FALLA-TIMEOUT y la tanda sigue (una tanda quedó colgada 8 h el 06-sep) | — |
 | `runner.ts` | CLI orquestador | — |
 | `accept.ts` | re-baseline (regenera baseline.json) | 0 |
 | `str-v16-dump/` | corpus: las 12 salidas STR de la tanda FULL parcial del prompt v16 (6 seeds × 2), prosa persistida. Alimenta catch-tests de 0 tokens; no son cifras congeladas. | — |
@@ -60,8 +63,8 @@ por **dos decisiones deliberadas distintas**, ninguna suya:
   familia donde el test exige ≥ 20.
 
 O sea que el test no vigilaba los guards: vigilaba una foto de los guards contra una foto
-del corpus, y las dos se movieron por separado. Los dos guards siguen vivos y medidos sobre
-prosa fresca en el tier STR de la FULL, que es donde corresponde.
+del corpus, y las dos se movieron por separado. (Los dos guards se retiraron con la IA el
+25-sep-2026.)
 
 Estuvo en rojo semanas sin que nadie lo supiera: no estaba cableado al runner. Es el mismo
 caso que `zona-catch-test.ts` — ver la regla en `CLAUDE.md` § Testing.
@@ -72,12 +75,6 @@ caso que `zona-catch-test.ts` — ver la regla en `CLAUDE.md` § Testing.
 # QUICK (default) — recompute determinístico, 0 tokens, segundos
 node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --quick
 
-# FULL — QUICK + generación fresca AUTO + semántico (cuesta tokens)
-node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --full --k=2
-
-# FULL sin el juez Opus (solo AUTO, más barato)
-node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --full --no-semantic
-
 # Meta-test: ¿el runner caza bugs?
 node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --catch-test
 
@@ -87,27 +84,11 @@ node --env-file=.env.local --import tsx scripts/eval/golden/accept.ts    # re-ba
 ```
 
 Exit 0 solo si no hay fallas duras. Drift de cifra clase (a) → warning (candidato
-a re-baseline, no bloquea). Flags semánticos → reporte, no bloquean.
-
-### AUTO (generación fresca): duro vs soft
-
-- **Duros (bloquean)** — contratos ESTRUCTURALES que deben cumplirse en cada
-  generación: `A1` apertura == fraseCanonica del #1 por decisividad (≠ corona de
-  pirámide, que es adverso-first); `A2` fabricación de zona sobrevivió reintentos
-  (`_catchRootAFlag`, solo GS-5); `A5` §9 presente en cajaAccionable; `A6`
-  presupuesto Plan C (≤85 palabras); `A7·D2` no niega VM cuando VM es sólido;
-  `A8·D1` largoPlazo compara con instrumentos.
-- **Soft (reportan TASA, no bloquean)** — detectores de FRASEO estocásticos, igual
-  que el producto los trata (detección no-bloqueante): `~engine-ism` (~1/6 runs),
-  `~zona-drift` (el detector propio se confunde con el arriendo-en-UF),
-  `~planc-stripped` (los strippers auto-corrigen). Una REGRESIÓN de código dispara
-  la tasa (ej. 5/6) y se ve; una ocurrencia aislada no vuelve rojo el gate.
+a re-baseline, no bloquea).
 
 ## Política (cuándo corre)
 
 - **QUICK obligatorio** en todo goal que toque motor / builders / render de hallazgos.
-- **FULL obligatorio** si el diff toca generación / prompts / builders-que-alimentan-generación.
-  Opcional a pedido en el resto.
 - Cuando un cambio **legítimo** del motor mueve un esperado clase (a): el runner
   imprime el drift `viejo→nuevo`; **Fabrizio aprueba**; `accept.ts` re-baselinea en
   un commit dedicado. Falla clase (b) → siempre regresión hasta prueba en contra.

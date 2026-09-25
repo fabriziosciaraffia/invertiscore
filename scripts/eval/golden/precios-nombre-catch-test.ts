@@ -3,7 +3,7 @@
 //
 // Tres precios con nombre propio: umbral de veredicto ("donde cambia el veredicto"),
 // sugerido ("donde el aporte se vuelve sostenible") y límite TIR 6%. El motor ya no
-// colapsa el sugerido al umbral, y el bloque JERARQUÍA que lee el prompt nombra cada uno.
+// colapsa el sugerido al umbral. (El bloque JERARQUÍA del prompt se fue con la IA, 25-sep-2026.)
 // Sobre cinco casos reales recomputados por la cadena del informe:
 //   681c32e4 Ñuñoa      — sugerido BAJO el umbral (AJUSTA de destino)
 //   26f4a631 La Florida — sugerido bajo el umbral (COMPRAR de destino)
@@ -11,8 +11,7 @@
 //   27e8de38 Lo Barnechea — estructural coherente (sugerido sobre el mínimo)
 //   cb0e8f46 Huechuraba — el caso del contrato (umbral 3.945 · sugerido 3.827)
 // Invariantes: umbral ≡ palanca precio de distancia; sugerido nunca pisado por el umbral
-// (el motor ya no lo colapsa); estructural ⇒ umbral null; el bloque de
-// jerarquía no dice "techo", nombra cada precio y en el estructural no ofrece objetivo.
+// (el motor ya no lo colapsa); estructural ⇒ umbral null.
 //
 // Corre: node --env-file=.env.local --import tsx scripts/eval/golden/precios-nombre-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,8 +19,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
-import { construirJerarquiaPrecios } from "../../../src/lib/precio-jerarquia";
-import { lecturaPrecioFlujoNeutro, techoSinUmbralEnNegociacion } from "../../../src/lib/ai-generation";
 import type { AnalisisInput, FullAnalysisResult, HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 
 const CASOS: { pref: string; espera: "sugeridoBajoUmbral" | "estructuralBajoMinimo" | "estructuralCoherente" | "contrato" }[] = [
@@ -35,23 +32,12 @@ type Fila = { id: string; comuna: string | null; input_data: AnalisisInput | nul
 const dist = (r: FullAnalysisResult) =>
   (((r.hallazgos ?? []) as { id: string }[]).find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
 
-function testNegTecho(fallas: string[]) {
-  const F = (m: string) => fallas.push(`NEG-TECHO · ${m}`);
-  const ai = (s: string) => ({ negociacion: { contenido_uf: s, precios: { glosaWalkAway_uf: "Si no llega, busca otro." } } });
-  // "techo" pegado a la cifra del umbral: permitido
-  if (techoSinUmbralEnNegociacion(ai("Explica que UF 3.799 es tu techo — ahí cambia el veredicto."), 3799, 39000).length !== 0) F("techo con la cifra del umbral no debía marcar");
-  // "techo" sobre el sostenible (1f12b5bb): marca
-  if (techoSinUmbralEnNegociacion(ai("Abre en UF 3.143. El techo útil es UF 3.308, donde el aporte queda sostenible."), 3480, 39000).length !== 1) F("techo sobre el sostenible debía marcar 1");
-  // sin umbral en rango: cualquier "techo" marca; la oración limpia no
-  if (techoSinUmbralEnNegociacion(ai("Tu techo es UF 4.125. Abre en UF 3.919."), null, 39000).length !== 1) F("sin umbral debía marcar 1");
-  // otra sección no cuenta
-  if (techoSinUmbralEnNegociacion({ conviene: { contenido_uf: "techo optimista" }, negociacion: { contenido_uf: "Abre en UF 3.000." } }, null, 39000).length !== 0) F("techo fuera de negociacion no debía marcar");
-}
+// ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron NEG-TECHO (el guard de «techo» sobre la prosa de negociación) y el
+// bloque de jerarquía de precios que leía el prompt. Quedan las reglas del motor.
 
 async function main() {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", process.env.SUPABASE_SERVICE_ROLE_KEY ?? "");
   const fallas: string[] = [];
-  testNegTecho(fallas);
   const pendientes = new Map(CASOS.map((c) => [c.pref, c]));
   const filas: Fila[] = [];
   for (let from = 0; from < 3000 && pendientes.size; from += 500) {
@@ -98,34 +84,7 @@ async function main() {
     // entre dos salidas del motor, no fotos de una fila. Y abajo sigue el bloque de jerarquía,
     // que se mide sobre lo que el recompute devuelva.
     // (CLAUDE.md § Testing: «un catch-test fija la REGLA, no la cifra».)
-    // 4. el bloque de jerarquía: sin "techo", con nombres; estructural sin objetivo
-    const m = r.metrics;
-    const jer = construirJerarquiaPrecios({
-      precioPedidoUF: precio,
-      objetivoUF: umbral,
-      veredictoAlUmbral: neg.veredictoAlUmbral ?? null,
-      sostenibleUF: Math.round(sugerido),
-      modoSugerido: neg.modo ?? "alinear_mercado",
-      esEstructural: dv.valor.esEstructural,
-      minimoFueraDeRangoUF: dm?.palanca === "precio" ? Math.round(precio * (1 + dm.deltaPct / 100)) : null,
-      minimoFueraDeRangoPct: dm?.palanca === "precio" ? dm.deltaPct : null,
-      precioFlujoNeutroUF: m.precioFlujoNeutroUF ?? 0,
-      descuentoParaNeutro: m.descuentoParaNeutro ?? 0,
-      lecturaFlujoNeutro: lecturaPrecioFlujoNeutro(m.precioFlujoNeutroUF ?? 0, m.descuentoParaNeutro ?? 0),
-      limiteTirUF: neg.precioLimiteUF ?? null,
-      sinCapitalPropio: m.pieCLP === 0,
-    });
-    if (/techo/i.test(jer.bloque)) F("el bloque de jerarquía dice 'techo'");
-    if (dv.valor.esEstructural) {
-      if (jer.precios.some((x) => x.rol === "objetivo" || x.rol === "sostenible")) F("estructural con objetivo o sostenible en la jerarquía");
-      if (dm?.palanca === "precio" && !jer.precios.some((x) => x.rol === "minimo_fuera_rango")) F("estructural sin el mínimo fuera de rango");
-    } else {
-      if (!jer.precios.some((x) => x.rol === "objetivo")) F("sin objetivo en la jerarquía");
-      if (umbral !== null && !/donde cambia el veredicto/i.test(jer.bloque)) F("el objetivo no se llama 'donde cambia el veredicto'");
-      if (umbral !== null && Math.abs(sugerido - umbral) / umbral >= 0.02 && !jer.precios.some((x) => x.rol === "sostenible")) F("sugerido distinto del umbral y sin línea 'sostenible'");
-    }
     console.log(`\n── ${tag} · ${dv.valor.veredictoBase} · pedido UF ${Math.round(precio)} · umbral ${umbral ?? "—"} · sostenible ${Math.round(sugerido)} (${neg.modo}) · mínimo ${dm ? `${dm.palanca} ${dm.deltaPct}%` : "—"} · límite TIR ${neg.precioLimiteUF ?? "—"}`);
-    console.log(`   roles: ${jer.precios.map((x) => `${x.rol}=${Math.round(x.uf)}`).join(" · ")}`);
   }
   console.log("\nUN NOMBRE POR PRECIO · catch-test");
   for (const x of fallas) console.log(`  ✗ ${x}`);

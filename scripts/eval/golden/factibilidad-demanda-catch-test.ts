@@ -33,7 +33,6 @@ import { huellaFiltro } from "./huella-filtro-ocupacion";
 import { loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import { STR_GE_SEEDS } from "./str-seeds";
-import { PROMPT_VERSION_STR } from "../../../src/lib/ai-generation-str";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -121,9 +120,10 @@ export function runFactibilidadDemandaTier(): { hard: number } {
       if (!ok) F(`3 · ${p} recalcula un STR sin pasar los results por conOcupacionRealizadaDelCache (${a2.slice(0, 60)})`);
     }
   }
-  if (entradas < 8) F(`3 · PISO · solo ${entradas} entradas de recálculo STR encontradas: el barrido no está leyendo`);
-  const prosa = sinComentarios(leer("src/lib/str-prosa-persist.ts"));
-  if (!/simularStrDesdePersistido\(input, resultsOc /.test(prosa)) F("3 · la simulación de la prosa no usa los results con la demanda completada");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: el piso baja de 8 a 7 porque una de las
+  // entradas era la simulación de `str-prosa-persist.ts`, borrado con el generador STR.
+  if (entradas < 7) F(`3 · PISO · solo ${entradas} entradas de recálculo STR encontradas: el barrido no está leyendo`);
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-prosa-persist.ts` se borró; ya no hay simulación para la prosa.
 
   // ── 4 · el ancla y el filtro son el mismo ──
   const h = huellaFiltro(RAIZ);
@@ -143,15 +143,8 @@ export function runFactibilidadDemandaTier(): { hard: number } {
   if (!res || res.n !== 2 || Math.abs(res.p50 - 0.3) > 1e-9) F(`4 · el dato del caso no aplica el filtro (${JSON.stringify(res)})`);
   if (!(OCUPACION_REALIZADA_SANTIAGO.n >= 1000 && M > 0.1 && M < 0.6)) F("4 · el ancla generada no es plausible");
 
-  // ── 5 · la prosa STR se regenera (v23): el cambio de factibilidad movió veredictos, y la prosa
-  //    guardada no puede narrar el anterior. Se exige ≥ 23, no el número exacto: un bump posterior
-  //    por otra razón no tiene por qué poner este tier en rojo. ──
-  if (!(PROMPT_VERSION_STR >= 23)) F(`5 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}: el cambio de factibilidad va con el prompt STR en v23 o más`);
-  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 1: `api/analisis/short-term/ai/route.ts` se borró
-  // (no tenía llamador); la invalidación por versión que queda es la de la página.
-  for (const p of ["src/app/analisis/renta-corta/[id]/page.tsx"]) {
-    if (!/promptVersion === PROMPT_VERSION_STR/.test(sinComentarios(leer(p)))) F(`5 · ${p} no invalida la prosa STR por versión`);
-  }
+  // ── 5 · RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: fijaba el bump del prompt STR a v23 y la invalidación
+  //    por versión en la página; el generador ya no existe. ──
 
   if (fallas.length) {
     console.log(`  ✗ FACTIBILIDAD-DEMANDA · ${fallas.length} falla(s):`);

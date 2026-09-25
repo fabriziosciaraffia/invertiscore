@@ -43,10 +43,6 @@
     {
       "path": "/api/cron/expire-anon",
       "schedule": "30 8 * * *"
-    },
-    {
-      "path": "/api/cron/precalentar-prosa",
-      "schedule": "0 * * * *"
     }
   ]
 }

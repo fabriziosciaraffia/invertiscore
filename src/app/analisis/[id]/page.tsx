@@ -15,7 +15,6 @@ import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
@@ -315,52 +314,10 @@ export default async function AnalisisDetallePage({
   const resumenEjecutivo = results?.resumenEjecutivo ??
     `Inversión con score ${analisis.score}/100. Rentabilidad bruta ${yieldBruto.toFixed(1)}%.`;
 
-  // F6 — freshness version-aware de la prosa persistida (lazy-on-open). Si quedó con
-  // promptVersion vieja (o pre-F6 sin marcador), NO la pasamos como inicial y marcamos
-  // aiStale → el client regenera al abrir vía POST (el server NO cobra: hadPriorProse).
-  // hasNewAiStructure filtra shapes legacy; PROMPT_VERSION_LTR filtra versión.
+  // La prosa IA salió del informe (25-sep-2026) y ya no se genera. La guardada se lee solo por un
+  // dato del motor que viaja dentro de ella en filas viejas (`hallazgoSobreprecio`); ya no se
+  // juzga su versión porque ningún texto suyo se dibuja.
   const ltrAiPersisted = (data as Record<string, unknown>).ai_analysis;
-  // PINNEO DEL DEMO (27-ago-2026) — el demo NO caduca por versión de prompt.
-  //
-  // No es una excepción a la regla del versionado: el demo es contenido de
-  // demostración curado, no el análisis de un usuario que espera su lectura. La
-  // regla existe para que a NADIE se le muestre un texto redactado bajo un contrato
-  // viejo como si fuera su informe; acá el texto ES la pieza, fija a propósito.
-  //
-  // Lo que resuelve: el demo es la única superficie del informe que se ve SIN
-  // sesión, y el anónimo no puede regenerar (POST /api/analisis/ai → 401). Sin
-  // pinneo, cada bump de PROMPT_VERSION lo dejaba mudo hasta que alguien lo
-  // regenerara a mano — que fue exactamente el incidente del 27-ago.
-  //
-  // Cuando el demo necesite prosa nueva se regenera explícitamente (una vez), no
-  // por caducidad automática.
-  const ltrAiFresh = hasNewAiStructure(ltrAiPersisted)
-    && (isDemo
-      || (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR);
-  const ltrAiStale = !!ltrAiPersisted && typeof ltrAiPersisted === "object" && !ltrAiFresh;
-
-  // PROSA VIEJA ANTES QUE NADA (31-ago-2026) — cambio de regla editorial.
-  //
-  // La regla anterior decía que a nadie se le muestra un texto redactado bajo un
-  // contrato viejo. Vale para el DUEÑO, que al abrir dispara la regeneración y en
-  // dos minutos tiene el texto nuevo. No vale para quien NO puede regenerar:
-  // `POST /api/analisis/ai` exige sesión y dueño (401/403), así que para un
-  // anónimo o un link compartido la alternativa a la prosa vieja no es prosa
-  // nueva — es NADA. Eso es el informe mudo del 27-ago, y hoy alcanza a 353 filas
-  // anónimas con prosa stale: un incidente vivo, no un riesgo teórico.
-  //
-  // Lo que lo hace aceptable ahora y no antes: tras el rediseño Dictamen el
-  // informe se sostiene en sus cuerpos DETERMINISTAS (eje de veredicto, chip,
-  // plan, escalera, índice) y la prosa es la capa de interpretación. Un texto
-  // redactado con un contrato anterior sigue siendo verdadero sobre el caso;
-  // envejece en forma, no en hechos. El pinneo del demo ya era este precedente.
-  //
-  // Se muestra con su fecha —la portada ya la imprime vía `fechaProsa`— para que
-  // el lector sepa cuándo se escribió lo que está leyendo.
-  // T2.1: solo el DUEÑO regenera (la política UPDATE de `analisis` es auth.uid() = user_id;
-  // un no dueño, admin incluido, generaba y no guardaba).
-  const puedeRegenerarProsa = isOwner;
-  const mostrarProsaStale = ltrAiStale && !puedeRegenerarProsa;
   // Una fecha por informe (T3): la banda de invitado y la portada muestran la fecha de la
   // prosa vigente; created_at no se muestra.
   const fechaProsaLtr = fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined;
@@ -417,9 +374,6 @@ export default async function AnalisisDetallePage({
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufFrozen}
           aiAnalysisInitial={ltrAiPersisted ? (ltrAiPersisted as Record<string, unknown>) : undefined}
-          aiStale={ltrAiStale}
-          puedeRegenerarProsa={puedeRegenerarProsa}
-          prosaDesactualizada={mostrarProsaStale}
           nombre={analisis.nombre}
           ciudad={analisis.ciudad}
           createdAt={analisis.created_at}

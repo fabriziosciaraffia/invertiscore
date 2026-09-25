@@ -18,7 +18,6 @@ import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
-import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
@@ -272,31 +271,8 @@ export default async function STRResultPage({
     redirect(`${subordinatedHref}&ver=str`);
   }
 
-  // F6 — freshness version-aware (lazy-on-open). Prosa STR con promptVersion vieja (o
-  // pre-F6 sin marcador) NO se pasa como inicial → el client la regenera al abrir vía POST
-  // (route no cobra: hadPriorProse). Fresca ⇒ se sirve tal cual.
+  // La prosa IA salió del informe (25-sep-2026) y ya no se genera; no se juzga su versión.
   const strAiPersisted = data.ai_analysis;
-  const strAiFresh = !!strAiPersisted && typeof strAiPersisted === "object"
-    && (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
-
-  // PROSA STALE PARA QUIEN NO PUEDE REGENERARLA — port literal de la decisión que ya
-  // rige en LTR (`analisis/[id]/page.tsx`).
-  //
-  // Sin esto, un bump de PROMPT_VERSION_STR deja MUDO el informe de todo el que no sea
-  // dueño ni admin: el server no pasa la prosa vieja, el cliente intenta regenerar, el
-  // POST responde 401 desde un link compartido, y queda el hueco. Medido al bumpear a
-  // v10: las 159 filas del parque STR se quedaban sin prosa en vista de invitado.
-  //
-  // El criterio es el mismo de LTR: los números se recalculan en cada visita (motor),
-  // la prosa es la capa de interpretación. Un texto redactado con un contrato anterior
-  // sigue siendo verdadero sobre el caso: envejece en forma, no en hechos. Se muestra
-  // con su fecha para que el lector sepa cuándo se escribió lo que lee.
-  // T2.1: solo el DUEÑO regenera. El admin no dueño (y cualquier no dueño) conserva lo que
-  // hay: la política UPDATE de `analisis` es auth.uid() = user_id, así que una regen sobre
-  // una fila ajena o anónima genera y no guarda (cada visita pagaba una prosa que se botaba).
-  const strPuedeRegenerarProsa = isOwner;
-  const strAiStale = !!strAiPersisted && !strAiFresh;
-  const mostrarProsaStaleStr = strAiStale && !strPuedeRegenerarProsa;
 
   // CTA post-análisis welcome: espejo del gate LTR — columna charge_mode
   // escrita al crear (opción B; históricos NULL → false). Solo dueño.
@@ -360,14 +336,7 @@ export default async function STRResultPage({
     isSharedView,
     userCredits,
     welcomeAvailable,
-    // La prosa persistida viaja SIEMPRE (fresca o vieja): si la regen del dueño falla, el
-    // cliente conserva la vieja con su fecha en vez de quedar mudo.
     aiAnalysisInitial: strAiPersisted ? data.ai_analysis : null,
-    // Goal F: prosa persistida con versión vieja → el cliente NO pollea (el
-    // status la devolvería como ready) y regenera directo (stale-regen, gratis).
-    aiStaleInitial: strAiStale,
-    puedeRegenerarProsa: strPuedeRegenerarProsa,
-    prosaDesactualizada: mostrarProsaStaleStr,
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,

@@ -23,10 +23,14 @@
 //       que exigía prosa; el documento redirige al informe; ningún botón lo ofrece.
 //   5 · LA IMAGEN DEL CORREO no lee la prosa ni pinta la caja «LO QUE VERÍAS».
 //   6 · AMBAS no pide ni dibuja prosa, y su PDF no la exige.
+//   7 · (PARTE 2, 25-sep-2026) LO BORRADO NO VUELVE Y NADIE LO IMPORTA: cada archivo de
+//       `RETIRADOS` no existe, y ningún archivo trackeado de `src/` o `scripts/` lo importa ni
+//       lo lee por su ruta (import, import dinámico, require o `leer("…")`).
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/retiro-ia-catch-test.ts
 // ============================================================================
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { execSync } from "node:child_process";
+import { join, relative, posix } from "node:path";
 import { prosaIaActiva } from "../../../src/lib/prosa-ia-interruptor";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -64,16 +68,74 @@ function cierreDeBloque(s: string, desde: number): { abre: number; cierra: numbe
 const LLAMADA = /\b(generateAiAnalysis|generarYPersistirProsaStr|generateStrProse|generateComparativaAI)\(|\.messages\.create\(/g;
 /** Los módulos que DEFINEN la generación: adentro se llaman entre sí, y los gobierna quien los llama. */
 const MODULOS_GENERADORES = new Set([
-  "src/lib/ai-generation.ts",
-  "src/lib/ai-generation-str.ts",
-  "src/lib/str-prosa-persist.ts",
   "src/lib/ai-generation-ambas-generate.ts",
   "src/lib/retry-quirurgico.ts",
   "src/lib/titular-retry.ts",
 ]);
 
+/**
+ * Lo que el retiro de la IA BORRÓ, por parte. Crece con cada parte; nunca se achica: si algo de
+ * acá vuelve, vuelve a propósito y con este tier en rojo.
+ */
+export const RETIRADOS: Record<string, string[]> = {
+  "parte 2 · generadores LTR/STR y evals que gastan tokens": [
+    "src/lib/ai-generation.ts",
+    "src/lib/ai-generation-str.ts",
+    "src/lib/str-prosa-persist.ts",
+    "src/app/api/cron/precalentar-prosa/route.ts",
+    "scripts/eval/judge.ts",
+    "scripts/eval/golden/generate.ts",
+    "scripts/eval/golden/semantic.ts",
+    "scripts/eval/golden/str-generate.ts",
+    "scripts/eval/golden/str-semantic.ts",
+    "scripts/eval/golden/ambas-semantic.ts",
+    "scripts/eval/golden/magnitud-sample.ts",
+    "scripts/eval/editorial/juez.ts",
+    "scripts/eval/editorial/censo.ts",
+    "scripts/eval/editorial/censo-ambas.ts",
+    "scripts/eval/editorial/prosa-fresca.ts",
+    "scripts/eval/editorial/ensamblar.ts",
+    "scripts/eval/editorial/ensamblar-ambas.ts",
+    "scripts/eval/editorial/evaluar.ts",
+    "scripts/eval/editorial/agregar.ts",
+    "scripts/lib/audit-prompt-builder.ts",
+    "scripts/regen-corpus-str.ts",
+    "scripts/regenerate-ai-analysis.ts",
+    "scripts/regen-prosa-hallazgo.ts",
+    "scripts/eval/golden/prompt-v25-catch-test.ts",
+    "scripts/eval/golden/prompt-v20-str-catch-test.ts",
+    "scripts/eval/golden/vocabulario-prompt-str-catch-test.ts",
+    "scripts/eval/golden/niega-salida-str-catch-test.ts",
+    "scripts/eval/golden/guards-contables-catch-test.ts",
+    "scripts/eval/golden/timeout.ts",
+    "scripts/eval/golden/str-guards-baseline.ts",
+  ],
+};
+
+/**
+ * ¿El archivo `rel` (con fuente `src`) nombra a `ruta` como módulo —import, import dinámico o
+ * require— o la lee por su ruta del repo? Los especificadores se RESUELVEN: `@/x` es `src/x`, y
+ * uno relativo se resuelve contra la carpeta de `rel`; así `./generate` en `scripts/eval/golden`
+ * es `scripts/eval/golden/generate` y no calza con otro `generate` de otra carpeta, y
+ * `ai-generation` no calza con `ai-generation-ambas` porque se compara la ruta entera.
+ */
+export function nombraRuta(rel: string, src: string, ruta: string): boolean {
+  const sinExt = (x: string) => x.replace(/\.(tsx?|mjs|js)$/, "").replace(/\/index$/, "");
+  const objetivo = sinExt(ruta);
+  for (const m of src.matchAll(/(?:\bfrom|\bimport\(|\brequire\()\s*["']([^"']+)["']/g)) {
+    const spec = m[1];
+    let res: string | null = null;
+    if (spec.startsWith("@/")) res = "src/" + spec.slice(2);
+    else if (spec.startsWith(".")) res = posix.normalize(posix.join(posix.dirname(rel), spec));
+    if (res && sinExt(res) === objetivo) return true;
+  }
+  // Por su ruta: el texto literal de la ruta del repo, como la usa un `leer("src/lib/…")`.
+  const esc = ruta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`["'\`]${esc}["'\`]`).test(src);
+}
+
 export function runRetiroIaTier(): { hard: number } {
-  console.log("\n─── TIER RETIRO-IA (parte 1: endpoints cerrados · generación tras el interruptor · PDF STR 410 · 0 tokens) ───");
+  console.log("\n─── TIER RETIRO-IA (endpoints cerrados · lo borrado no vuelve ni se importa · PDF STR 410 · 0 tokens) ───");
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
 
@@ -105,11 +167,10 @@ export function runRetiroIaTier(): { hard: number } {
   // ── 3 · ninguna llamada a la generación queda fuera del interruptor ──
   // Por archivo, cómo se permite que llame: DENTRO del bloque que abre el guard, o DESPUÉS de un
   // guard de salida temprana (`if (!prosaIaActiva()) { … return … }`).
+  // ⚠ ACTA (25-sep-2026) · PARTE 2: los generadores LTR y STR se borraron, y con ellos sus cuatro
+  // disparadores (crear LTR, crear STR, post-pago y el cron). Queda la ruta de AMBAS. Cualquier
+  // llamada nueva a un generador desde `src/`, sin guard, sigue siendo falla.
   const GUARDADOS: Record<string, { dentro?: RegExp; salida?: RegExp }> = {
-    "src/app/api/analisis/route.ts": { dentro: /if \(prosaIaActiva\(\)\) try /g },
-    "src/app/api/analisis/short-term/route.ts": { dentro: /if \(prosaIaActiva\(\)\) /g },
-    "src/app/api/payments/confirm/route.ts": { dentro: /if \(prosaIaActiva\(\) && [^{]*\) /g },
-    "src/app/api/cron/precalentar-prosa/route.ts": { salida: /if \(!prosaIaActiva\(\)\) /g },
     "src/app/api/analisis/comparativa/ai/route.ts": { salida: /if \(!prosaIaActiva\(\)\) /g },
   };
   let llamadas = 0;
@@ -139,10 +200,25 @@ export function runRetiroIaTier(): { hard: number } {
       if (!ok) F(`3 · ${rel}: la llamada ${m[0]} (offset ${i}) corre con el interruptor apagado`);
     }
   }
-  // Piso de cobertura: los cinco disparadores tienen que seguir midiéndose. Si uno desaparece del
-  // recorrido, el tier dejaría de probarlo sin avisar.
+  // Piso de cobertura: los disparadores que quedan tienen que seguir midiéndose. Si uno desaparece
+  // del recorrido, el tier dejaría de probarlo sin avisar.
   for (const rel of Object.keys(GUARDADOS)) if (!vistos.has(rel)) F(`3 · ${rel} ya no llama a la generación: actualiza GUARDADOS (el tier dejó de medirlo)`);
-  if (llamadas < 6) F(`3 · el tier midió ${llamadas} llamadas a la generación: esperaba al menos 6`);
+  if (llamadas < Object.keys(GUARDADOS).length) F(`3 · el tier midió ${llamadas} llamadas a la generación: esperaba al menos ${Object.keys(GUARDADOS).length}`);
+
+  // ── 7 · lo borrado no vuelve y nadie lo importa ──
+  const ESTE = "scripts/eval/golden/retiro-ia-catch-test.ts";
+  const trackeados = execSync("git ls-files src scripts", { cwd: RAIZ, encoding: "utf8" })
+    .split("\n").filter((f) => /\.(ts|tsx|mjs|js)$/.test(f) && !f.startsWith("scripts/_archivo/") && f !== ESTE && existsSync(join(RAIZ, f)))
+    .map((f) => ({ rel: f, src: sinComentarios(readFileSync(join(RAIZ, f), "utf8").replace(/\r\n/g, "\n")) }));
+  let retirados = 0;
+  for (const [parte, rutas] of Object.entries(RETIRADOS)) {
+    for (const r of rutas) {
+      retirados++;
+      if (existsSync(join(RAIZ, r))) F(`7 · ${r} volvió a existir (${parte})`);
+      for (const { rel, src } of trackeados) if (nombraRuta(rel, src, r)) F(`7 · ${rel} importa o lee ${r}, borrado en la ${parte}`);
+    }
+  }
+  if (trackeados.length < 500) F(`7 · el barrido leyó ${trackeados.length} archivos: no está leyendo el repo`);
 
   // ── 4 · el PDF STR responde 410, como el LTR ──
   const PDF_STR = sinComentarios(leer("src/app/api/analisis/renta-corta/[id]/pdf/route.ts"));
@@ -193,7 +269,7 @@ export function runRetiroIaTier(): { hard: number } {
     console.log(`  ✗ RETIRO-IA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; ${llamadas} llamadas a la generación en ${vistos.size} archivos, todas detrás del interruptor; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
+    console.log(`  ✓ VERDE — ${retirados} archivos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; ${llamadas} llamadas a la generación en ${vistos.size} archivos, todas detrás del interruptor; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
   }
   return { hard: fallas.length };
 }

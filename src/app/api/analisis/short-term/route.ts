@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { conCandado } from "@/lib/candado-generacion";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
@@ -21,17 +20,9 @@ import {
 import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
-import Anthropic from "@anthropic-ai/sdk";
-import { generarYPersistirProsaStr } from "@/lib/str-prosa-persist";
-import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 
-const anthropic = new Anthropic();
-
-// Goal F: techo explícito 300s — desde este goal la generación de prosa STR
-// corre en el waitUntil de ESTA invocación (patrón LTR, Goal C), así que el
-// techo pasa de 120 (solo AirROI) a 300. ACOPLADO al criterio de "generación
-// muerta" del ai-status STR (UMBRAL_MUERTA_MS = 6 min > 300s): si subes esto,
-// sube el umbral allá.
+// Goal F: techo explícito 300s. Lo subió la prosa STR en el waitUntil (retirada del informe el
+// 25-sep-2026); AirROI solo pedía 120.
 export const maxDuration = 300;
 
 // ─── POST handler ──────────────────────────────────────
@@ -179,31 +170,6 @@ export async function POST(request: Request) {
         prepaidNeedClaim,
       });
       data.is_premium = true;
-
-      // Goal F — generación de prosa en BACKGROUND (patrón LTR, Goal C): corre
-      // en el waitUntil de esta invocación, el response no espera. Un fallo acá
-      // NUNCA rompe la creación (el helper captura y registra en pipeline_timing).
-      // APAGADA desde el 25-sep-2026 detrás de `prosaIaActiva()`: el informe ya no
-      // dibuja la prosa (retiro por partes).
-      if (prosaIaActiva()) {
-        const analysisRow = data as Record<string, unknown>;
-        const analysisIdBg = data.id as string;
-        // Candado cross-instance (goal #3): con el candado tomado por otro proceso, la
-        // background se salta en vez de generar por segunda vez.
-        waitUntil(
-          conCandado(analysisIdBg, "str", () =>
-            generarYPersistirProsaStr({
-              analysisId: analysisIdBg,
-              analysis: analysisRow,
-              supabase: dbClient,
-              anthropic,
-              trigger: "background",
-            }),
-          ).then((c) => {
-            if (!c.tomado) console.warn(`[CANDADO] ${analysisIdBg}: IA background STR saltada — otro proceso la está generando`);
-          }),
-        );
-      }
 
       // Calibración v1 — captura del operador del edificio (opcional).
       // Falla silenciosamente si `operadores_str_reportados` aún no existe.

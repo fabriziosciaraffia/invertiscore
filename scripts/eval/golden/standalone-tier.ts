@@ -95,7 +95,6 @@ const EXCLUIDOS: Record<string, string> = {
   "str-congelado": "recomputa el parque (~2,7 s)",
   "valor-mercado": "recomputa el parque (~2,5 s)",
   "vias": "recomputa el parque (~2,3 s)",
-  "guards-contables": "recomputa el parque (~1,6 s)",
   "gate-sobreprecio": "recomputa el parque (~0,9 s)",
   "mes-cierra-str": "recomputa el parque (~0,7 s)",
 };

@@ -15,12 +15,10 @@ import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
-import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2 } from "@/lib/types";
-import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { DocumentoSTR } from "./DocumentoSTR";
 import "./documento.css";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
@@ -118,16 +116,8 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
   );
   const results = (recomputed ?? persistedResults) as ShortTermResult & { francoScore?: FrancoScoreSTR; tipoAnalisis?: string };
 
-  // AI persistido, gated por versión de prompt (igual que la ruta de resultados).
-  const strAiPersisted = data.ai_analysis;
-  const strAiFresh =
-    !!strAiPersisted &&
-    typeof strAiPersisted === "object" &&
-    (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
-  // stripMarcasDeep: la prosa v7 trae destacadores `**…**` para el informe web
-  // (FASE 2 dictamen); el PDF queda FUERA del rediseño y los pinta crudos si no
-  // se strippean. Mismo render tolerante que la raíz web.
-  const ai = strAiFresh ? stripMarcasDeep(strAiPersisted as unknown as AIAnalysisSTRv2) : null;
+  // La prosa IA salió del informe (25-sep-2026): el documento, cuando vuelva, se escribe sin ella.
+  const ai: AIAnalysisSTRv2 | null = null;
 
   const direccionLabel = data.direccion
     ? formatDireccionDisplay(data.direccion as string, data.comuna as string | null)

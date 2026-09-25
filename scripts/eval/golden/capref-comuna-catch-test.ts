@@ -176,7 +176,8 @@ export function runCapRefComunaTier(): { hard: number } {
     if (!/capRefComuna: capRefSnapshot \?\? \(await prefetchCapRefComuna\(/.test(leer(p))) F(`6 · ${p} no lee el snapshot (ni resuelve vivo sin él)`);
   }
   if (!/return \{ \.\.\.mediana, capRefComuna \};/.test(leer("src/lib/api-helpers/analisis-pipeline.ts"))) F("6 · el prefetch de la mediana no trae la referencia");
-  if (!/capRefComuna: capRefGen/.test(leer("src/lib/ai-generation.ts")) || !/getCapRefComuna\(input\.comuna, capRefGen\)/.test(leer("src/lib/ai-generation.ts"))) F("6 · la generación no usa la misma referencia (decisividad y hallazgo)");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fue el chequeo de que la generación usara la misma referencia; el
+  // generador ya no existe.
   if (!/ADD COLUMN IF NOT EXISTS capref_comuna_snapshot JSONB/.test(leer("supabase/migrations/20260921_capref_comuna_snapshot.sql"))) F("6 · falta la migración de la columna");
   if (!/\{ nivel: "celda", ventana: 90 \}/.test(leer("src/lib/capref-comuna.ts")) || !/for \(const paso of CASCADA_CAPREF\)/.test(leer("src/lib/capref-comuna-query.ts"))) F("6 · la resolución viva no itera CASCADA_CAPREF");
   if (!/evaluarPeldanoCapRef\(paso, muestra, celda, resolvedAt\)/.test(leer("src/lib/capref-comuna-query.ts")) || !/capRefSinAvisos\(celda, resolvedAt/.test(leer("src/lib/capref-comuna-query.ts"))) F("6 · la resolución viva no decide con las mismas funciones puras");

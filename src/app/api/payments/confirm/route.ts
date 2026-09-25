@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { conCandado } from "@/lib/candado-generacion";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
@@ -7,8 +6,6 @@ import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { resolveDisplayName } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
-import { generateAiAnalysis } from "@/lib/ai-generation";
-import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
@@ -149,50 +146,15 @@ export async function POST(request: Request) {
         if (analysisId) {
           await consumeCredit(userId, analysisId);
 
-          // Flujo LTR bloqueado pre-pago: la fila se creó con pending_payment=
-          // true y SIN IA (ver /api/analisis/locked). Aquí la desbloqueamos y
-          // disparamos la narrativa diferida.
-          //
-          // El flip CONDICIONAL (.eq pending_payment, true) es la guarda de
-          // idempotencia: si Flow reenvía el webhook, la 2ª pasada ve
-          // pending_payment=false → `unlocked` es null → NO regeneramos IA (no
-          // gastamos Anthropic dos veces). Las filas del flujo viejo nacen con
-          // pending_payment=false (default), incluido STR y los single sobre
-          // análisis ya creados → caen fuera del gate y quedan intactas.
-          const { data: unlocked } = await supabase
+          // Flujo LTR bloqueado pre-pago: la fila se creó con pending_payment=true (ver
+          // /api/analisis/locked). Aquí la desbloqueamos. El flip CONDICIONAL (.eq
+          // pending_payment, true) es idempotente ante un reenvío del webhook. Hasta el 25-sep-2026
+          // este paso además disparaba la prosa IA diferida, retirada del informe.
+          await supabase
             .from("analisis")
             .update({ pending_payment: false })
             .eq("id", analysisId)
-            .eq("pending_payment", true)
-            .select("tipo_analisis")
-            .maybeSingle();
-
-          // LTR (single Y Ambas): generateAiAnalysis asume el shape del motor
-          // long-term (results.metrics/desglose). Se genera también en el flujo
-          // Ambas pre-pago para paridad con el Ambas PAGADO, donde /api/analisis
-          // genera la IA LTR inline al crear (route.ts) — así la vista LTR pelada
-          // (/analisis/<ltrId>) queda robusta. El STR companion NO se toca acá:
-          // usa su endpoint on-demand y la comparativa corre su propia narrativa.
-          //
-          // await (no IIFE fire-and-forget): en serverless un promise sin await
-          // puede morir cuando se envía el response. try/catch para no romper el
-          // 200 que Flow espera. No es critical path. APAGADA desde el 25-sep-2026
-          // detrás de `prosaIaActiva()`: el informe ya no dibuja la prosa.
-          if (prosaIaActiva() && unlocked && unlocked.tipo_analisis === "long-term") {
-            try {
-              // Candado cross-instance (goal #3): si la fila ya se está generando
-              // (background del submit, dueño abriendo), esta se salta.
-              const c = await conCandado(analysisId, "ltr", () => generateAiAnalysis(analysisId, supabase, { trigger: "post-pago" }));
-              if (!c.tomado) console.warn(`[CANDADO] ${analysisId}: IA post-pago saltada — otro proceso la está generando`);
-            } catch (e) {
-              console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
-              captureApiWarning(e, {
-                ruta: "POST /api/payments/confirm",
-                operacion: "ia-diferida-post-pago",
-                commerceOrder: flowData.commerceOrder,
-              });
-            }
-          }
+            .eq("pending_payment", true);
 
           // AMBAS pre-pago: la 2ª fila (STR companion) se premia DIRECTO, sin
           // consumir otro crédito (el único cobro ya cubrió ambas). El flip

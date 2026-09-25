@@ -195,12 +195,8 @@ function tierPuro() {
   if (/export function (DrawerNegociacion|PlanNegociacion)\b/.test(drawer)) F("6 · el drawer de negociación y el plan tienen que estar retirados");
   const strH = src("src/lib/str-hallazgos.ts");
   if (!/universo: ctx\.mediana\.universo/.test(strH)) F("6 · STR pasa el universo al sobreprecio");
-  // La GENERACIÓN también lleva los cuartiles (la FULL del 21-sep los perdía): del vivo o del
-  // snapshot hasta buildPrecioVsComuna, y la línea de datos del prompt nombra la posición.
-  const gen = src("src/lib/ai-generation.ts");
-  if (!/buildPrecioVsComuna\(\{[^}]*p25UfM2: precioM2ZonaConfiable \? p25Zona : null/.test(gen)) F("6 · la generación no pasa los cuartiles a buildPrecioVsComuna");
-  if (!/p25Zona = medianaSnapshot\.p25 \?\? null/.test(gen) || !/p25Zona = p25 \?\? null/.test(gen)) F("6 · la generación no lee los cuartiles del snapshot y del vivo");
-  if (!/case "sobreprecio": \{[^]*?posición en la comuna: \$\{donde\[v\.posicion\]\}[^]*?\$\{posicion\} · dirección/.test(gen)) F("6 · la línea de datos del prompt no nombra la posición del sobreprecio");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron los chequeos de los cuartiles en la generación y de la línea de
+  // datos del prompt; el generador ya no existe.
 }
 
 export function runComoLoPagasTier(): { hard: number } {

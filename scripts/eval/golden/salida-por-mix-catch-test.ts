@@ -289,26 +289,8 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   ], false));
   if (dosCeldas.total !== 2) F(`8 · dos coordenadas distintas son dos caminos: da ${dosCeldas.total}`);
 
-  // (d) Y EL BLOQUE DEL PROMPT NO VUELVE A COLGAR DE `esEstructural`. El gate se abrió el
-  //     17-sep porque 307 de las 331 filas con menú NO son estructurales; reponerlo las deja
-  //     otra vez sin bloque, y eso no lo caza ninguna prueba sobre la función pura.
-  for (const ruta of ["src/lib/ai-generation.ts", "src/lib/ai-generation-str.ts"]) {
-    let src = "";
-    try { src = readFileSync(join(__dirname, "..", "..", "..", ruta), "utf8"); } catch { /* falta */ }
-    if (!src) { F(`8 · no se pudo leer ${ruta}`); continue; }
-    const codigo = soloCodigo(src);
-    if (!/caminosQueAbren\s*\(/.test(codigo)) F(`8 · ${ruta} no arma el bloque con «caminosQueAbren»`);
-    // UN SOLO DENOMINADOR: el bloque de vías declara su número como PARTE del total, y no
-    // lleva regla anti-exclusividad propia — la suya licenciaba «el único» con una sola vía
-    // que cruza, que es la de abajo prohibiendo lo que la de arriba permitía.
-    if (!/Este número es una PARTE, no el total/.test(codigo)) {
-      F(`8 · ${ruta}: el bloque de vías dejó de declarar su número como PARTE del total`);
-    }
-    if (/Si dices "la única vía"|Solo con exactamente UNO puedes decir/.test(codigo)) {
-      F(`8 · ${ruta}: volvió la regla anti-exclusividad con denominador propio en el bloque de vías`);
-    }
-    if (/esEstructural\)\s*return ""/.test(codigo)) F(`8 · ${ruta} volvió a cerrar el bloque detrás de «esEstructural»`);
-  }
+  // (d) RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: fijaba el bloque de vías en los dos prompts; los
+  //     generadores ya no existen.
 }
 
 // ── 9 · EL CIERRE CONDICIONAL: cerrar sobre el vendedor habiendo otra puerta ──
@@ -367,21 +349,8 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
     F("9 · volvió a excluir el punto del hueco: se pierde todo cierre que cita una cifra con miles");
   }
 
-  // (f) Y LA DOCTRINA DEL PROMPT ENSEÑA LA FORMA CORRECTA, no solo prohíbe la mala.
-  for (const ruta of ["src/lib/ai-generation.ts", "src/lib/ai-generation-str.ts"]) {
-    let src = "";
-    try { src = readFileSync(join(__dirname, "..", "..", "..", ruta), "utf8"); } catch { /* falta */ }
-    const codigo = soloCodigo(src);
-    if (!/NO CIERRES EL CASO SOBRE EL VENDEDOR CUANDO HAY OTRA PUERTA/.test(codigo)) {
-      F(`9 · ${ruta}: falta la doctrina del cierre condicional`);
-    }
-    if (!/La condici\u00f3n va EN la oraci\u00f3n que cierra/.test(codigo)) {
-      F(`9 · ${ruta}: falta la mitad que dice que nombrarlo antes no alcanza`);
-    }
-    if (!/alcanza \*\*por s\u00ed solo\*\*/.test(codigo)) {
-      F(`9 · ${ruta}: la doctrina dejó de ENSEÑAR el calificador «por sí solo» — sin él, el ejemplo contra la exclusividad vuelve a pelear con el guard`);
-    }
-  }
+  // (f) RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: fijaba la doctrina del cierre condicional en los dos
+  //     prompts; los generadores ya no existen.
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
