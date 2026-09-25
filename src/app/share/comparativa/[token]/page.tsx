@@ -151,7 +151,6 @@ export default async function ShareComparativaPage({
       // "actualiza sola": se OCULTA y la página degrada a motor-only, que es el
       // diseño Plan C. Sin esto, el bump a v3 dejaba el hero nuevo conviviendo
       // con prosa v2 que celebra donde el hero ya dejó de hacerlo.
-      cachedAI={ltrResults?.comparativaAI ?? null}
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}

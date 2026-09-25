@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
-import { registrarInformeVisto, leerEsperaMs, type InformeAiEstado } from "@/lib/informe-visto";
+import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose } from "@/lib/analysis";
 import { resolverModeloCostos, provisionMantencionAnio } from "@/lib/modelo-costos";
@@ -164,13 +164,6 @@ export function PremiumResults({
   // (`hallazgoSobreprecio`); ningún texto de la IA se dibuja, y ya no se genera.
   const aiAnalysis = hasAiV2(aiAnalysisInitial) ? aiAnalysisInitial : null;
 
-  // Goal B (simplificado por Goal C) — estado de la prosa AL MOMENTO en que el
-  // veredicto queda visible (= mount del grid, ahora inmediato). Ya no registra
-  // "por qué vía llegó la prosa": el evento dispara antes de que llegue.
-  const aiEstadoAlMontar = useRef<InformeAiEstado>(
-    hasAiV2(aiAnalysisInitial) ? "cacheada" : "generando"
-  );
-
   // Goal B — el grid avisa cuando el veredicto queda visible (Goal C: al montar,
   // el overlay murió). Captura `informe_visto` + persiste `informe_visible_at`
   // (fail-soft, NULL-only en el SQL). El demo (sin analysisId) no registra.
@@ -180,7 +173,6 @@ export function PremiumResults({
       posthog,
       ids: [analysisId],
       modalidad: "ltr",
-      aiEstado: aiEstadoAlMontar.current,
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView && !isSharedLink,
     });

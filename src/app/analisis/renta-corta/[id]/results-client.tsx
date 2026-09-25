@@ -82,8 +82,6 @@ interface STRResultsProps {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable?: boolean;
-  /** La prosa guardada: solo marca si la fila la tenía, para `informe_visto`. */
-  aiAnalysisInitial?: unknown;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -116,7 +114,6 @@ export function STRResultsClient({
   isSharedView,
   userCredits,
   welcomeAvailable = true,
-  aiAnalysisInitial,
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -136,19 +133,12 @@ export function STRResultsClient({
   // y el resolver de telemetría (mismo array que renderiza).
   const hallazgosOrdenadosSTR = ordenarHallazgosPiramideSTR(results?.hallazgos);
 
-  // ─── AI state ─────────────────────────────────────
-  const initialAi =
-    aiAnalysisInitial && typeof aiAnalysisInitial === "object"
-      ? (aiAnalysisInitial as Record<string, unknown>)
-      : null;
   // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
   // prosa ni la pide —sin sondeo de /ai-status, sin regeneración al abrir, sin rescate— y no
   // dibuja ningún texto de la IA, y ya no se genera.
 
   // Goal B — `informe_visto` STR: el veredicto es visible desde el primer
-  // render (HeroSTR lo pinta con la prosa en skeleton inline), así que el
-  // momento es el mount. ai_estado registra si la prosa venía persistida o
-  // sigue en vuelo. Fail-soft entero (capture + RPC NULL-only vía helper).
+  // render, así que el momento es el mount. Fail-soft entero (capture + RPC NULL-only vía helper).
   const posthog = usePostHog();
   const informeVistoRef = useRef(false);
   useEffect(() => {
@@ -158,7 +148,6 @@ export function STRResultsClient({
       posthog,
       ids: [analysisId],
       modalidad: "str",
-      aiEstado: initialAi ? "cacheada" : "generando",
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView,
     });

@@ -238,7 +238,6 @@ export default async function ComparativaPage({
       // regenera y persiste (invalidación lazy-on-open). El share y el documento hacen
       // el MISMO chequeo, pero sin regenerar: allá una versión vieja degrada a
       // motor-only (son públicos, canGenerate=false).
-      cachedAI={ltrResults?.comparativaAI ?? null}
       createdAt={ltr.created_at ?? undefined}
       fechaProsa={fechaProsaVigente((ltr as unknown as Record<string, unknown>).pipeline_timing, "ambas") ?? undefined}
       costoAmoblamiento={costoAmoblamiento}

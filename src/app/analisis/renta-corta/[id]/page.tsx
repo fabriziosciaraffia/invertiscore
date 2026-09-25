@@ -271,9 +271,6 @@ export default async function STRResultPage({
     redirect(`${subordinatedHref}&ver=str`);
   }
 
-  // La prosa IA salió del informe (25-sep-2026) y ya no se genera; no se juzga su versión.
-  const strAiPersisted = data.ai_analysis;
-
   // CTA post-análisis welcome: espejo del gate LTR — columna charge_mode
   // escrita al crear (opción B; históricos NULL → false). Solo dueño.
   const showCtaWelcome =
@@ -336,7 +333,6 @@ export default async function STRResultPage({
     isSharedView,
     userCredits,
     welcomeAvailable,
-    aiAnalysisInitial: strAiPersisted ? data.ai_analysis : null,
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,

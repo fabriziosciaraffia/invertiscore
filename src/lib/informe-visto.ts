@@ -14,14 +14,8 @@
 import type { PostHog } from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 
-/** Estado de la prosa IA AL MOMENTO en que el veredicto queda visible.
- *  Goal C: el veredicto LTR se ve al montar (el overlay murió), así que los
- *  valores de "por qué vía llegó la prosa" (background/fallback/manual) dejaron
- *  de ser observables en este evento — quedaron solo los estados de mount. */
-export type InformeAiEstado =
-  | "cacheada"      // prosa persistida servida por el server component
-  | "generando"     // veredicto visible con la prosa aún en vuelo
-  | "stale-regen";  // LTR: prosa vieja invalidada, regen lazy-on-open en vuelo
+// `ai_estado` SALIÓ DEL EVENTO (25-sep-2026). Decía si la prosa IA venía guardada o «generando»;
+// desde el retiro de la IA nada genera, así que «generando» era falso en toda fila sin prosa.
 
 const SUBMIT_TS_KEY = "franco_submit_ts";
 // Un stamp más viejo que esto no es "la espera del submit" (pestaña olvidada).
@@ -56,7 +50,6 @@ export function registrarInformeVisto(args: {
   /** LTR/STR: [analysisId]. AMBAS: [ltrId, strId] — se marcan las dos filas. */
   ids: string[];
   modalidad: "ltr" | "str" | "ambas";
-  aiEstado: InformeAiEstado;
   esperaMs: number | null;
   esOwner?: boolean;
 }): void {
@@ -69,7 +62,6 @@ export function registrarInformeVisto(args: {
         ? { ltr_id: args.ids[0], str_id: args.ids[1] }
         : {}),
       modalidad: args.modalidad,
-      ai_estado: args.aiEstado,
       espera_ms: args.esperaMs,
       ...(args.esOwner !== undefined ? { es_owner: args.esOwner } : {}),
     });

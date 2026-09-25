@@ -10,10 +10,7 @@ import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
-import type {
-  FullAnalysisResult,
-  AIAnalysisComparativa,
-} from "@/lib/types";
+import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
@@ -43,7 +40,6 @@ interface Props {
   strScore: number;
   ltrResults: FullAnalysisResult | null;
   strResults: ShortTermResult | null;
-  cachedAI: AIAnalysisComparativa | null;
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;

@@ -23,10 +23,7 @@ import { PiramideComparativa } from "@/components/comparativa/PiramideComparativ
 import { ResumenAnexoModal } from "@/components/comparativa/ResumenAnexoModal";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
-import type {
-  FullAnalysisResult,
-  AIAnalysisComparativa,
-} from "@/lib/types";
+import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
   normalizeLegacyVerdict,
@@ -61,7 +58,6 @@ interface Props {
   // Resultados nested (refactor Step 1+2)
   ltrResults: FullAnalysisResult | null;
   strResults: ShortTermResult | null;
-  cachedAI: AIAnalysisComparativa | null;
   createdAt?: string;
   fechaProsa?: string;
   // Inputs específicos (necesarios para tabla + pirámide)
@@ -110,7 +106,7 @@ export function ComparativaClient(p: Props) {
   // la guardada. El hero se queda con la apertura del motor, sin espera ni aviso de error.
 
   // Goal B — `informe_visto` AMBAS: el veredicto comparativo viene server-rendered,
-  // visible desde el mount; la prosa puede seguir en vuelo (skeleton del hero).
+  // visible desde el mount.
   // Se marcan las DOS filas del par (quedaron visibles en el mismo instante).
   const posthog = usePostHog();
   const informeVistoRef = useRef(false);
@@ -121,7 +117,6 @@ export function ComparativaClient(p: Props) {
       posthog,
       ids: [p.ltrId, p.strId],
       modalidad: "ambas",
-      aiEstado: p.cachedAI ? "cacheada" : "generando",
       esperaMs: leerEsperaMs(),
       esOwner: p.isOwner,
     });

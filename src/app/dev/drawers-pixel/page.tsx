@@ -194,7 +194,6 @@ function Inner() {
         userId={null}
         isSharedView={false}
         userCredits={0}
-        aiAnalysisInitial={fix.ai_analysis ?? null}
         simulacionStr={(() => {
           // La simulación se recalcula sobre el recompute, como en la ruta real: el fixture
           // la trae congelada y sus fronteras quedaron en el volcado.
