@@ -91,8 +91,8 @@ export const puntajeTir = (pct: number): number => interpolarCurva(CURVA_TIR, pc
  * peso se reparte proporcionalmente entre las demás en vez de puntuarla con un neutro.
  *
  * Es la regla de PIE CERO para la TIR: sin capital propio el motor la declara
- * `no_aplica` (y también el CoC, pero ese se reemplaza por el rendimiento neto sobre el
- * precio, ver los motores). Un neutro de 45 se midió y castigaba lo que no se puede
+ * `no_aplica` (y también el CoC, pero ese toma el puntaje del flujo desde el 25-sep-2026: con
+ * pie cero manda el flujo, ver los motores). Un neutro de 45 se midió y castigaba lo que no se puede
  * medir: 3 COMPRAR LTR y 1 STR caían a AJUSTA solo por no tener pie.
  */
 export function combinarConReparto(partes: readonly { peso: number; puntaje: number | null }[]): number {

@@ -382,16 +382,25 @@ function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
 // RETORNO SOBRE LO PUESTO (12-sep-2026) — las dos dimensiones nuevas
 // ============================================================
 // Curvas y pesos en `score-retorno.ts`, compartidos con LTR. Con PIE CERO el cash-on-cash
-// del motor es `no_aplica` y la dimensión usa el rendimiento neto sobre el precio (el cap
-// rate, sin apalancar); la TIR sí queda sin aplicar y reparte su peso.
+// del motor es `no_aplica` y la dimensión toma el PUNTAJE DEL FLUJO —el mismo que entra a la
+// sostenibilidad—: manda el flujo (25-sep-2026). Antes usaba el cap rate, o sea el depto como si
+// se hubiera comprado al contado. La TIR sí queda sin aplicar y reparte su peso.
 
-function calcCashOnCashDim(cocDecimal: number | null, capRate: number): DimensionScore {
-  const sinPie = cocDecimal === null;
-  const pct = sinPie ? capRate * 100 : cocDecimal * 100;
+export function calcCashOnCashDim(cocDecimal: number | null, flujoCajaMensual: number): DimensionScore {
+  if (cocDecimal === null) {
+    const score = Math.round(interpolate(flujoCajaMensual, ESCALA_FLUJO));
+    const flujo = Math.round(flujoCajaMensual);
+    return {
+      score,
+      label: "Cash on cash",
+      detail: `Sin pie: manda el flujo — ${flujo >= 0 ? `+$${flujo.toLocaleString("es-CL")}` : `−$${Math.abs(flujo).toLocaleString("es-CL")}`} al mes`,
+      peso: PESOS_SCORE_STR.cashOnCash,
+    };
+  }
+  const pct = cocDecimal * 100;
   const score = Math.round(puntajeCashOnCash(pct));
-  const detail = sinPie
-    ? `Sin pie: rendimiento neto sobre el precio ${pct.toFixed(1)}%`
-    : pct >= 6 ? `Cash-on-cash ${pct.toFixed(1)}% anual sobre tu capital — alto`
+  const detail =
+    pct >= 6 ? `Cash-on-cash ${pct.toFixed(1)}% anual sobre tu capital — alto`
     : pct >= 0 ? `Cash-on-cash ${pct.toFixed(1)}% anual — el depto se paga solo`
     : pct >= -5 ? `Cash-on-cash ${pct.toFixed(1)}% anual — aporte moderado de tu bolsillo`
     : `Cash-on-cash ${pct.toFixed(1)}% anual — aporte fuerte de tu bolsillo`;
@@ -421,7 +430,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     inputs.ingresoMensualScore
   );
   const factibilidad = calcFactibilidad(inputs);
-  const cashOnCash = calcCashOnCashDim(metricaValorONull(base.cashOnCash), base.capRate);
+  const cashOnCash = calcCashOnCashDim(metricaValorONull(base.cashOnCash), base.flujoCajaMensual);
   const tirDim = calcTirDim(metricaValorONull(inputs.results.exitScenario?.tirAnual));
 
   // Una sola fórmula, pesos de `score-retorno.ts`; la TIR sin aplicar reparte su peso.

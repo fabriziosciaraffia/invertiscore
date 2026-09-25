@@ -179,7 +179,7 @@
     },
     "GS-PC1": {
       "veredicto": "BUSCAR OTRA",
-      "score": 58,
+      "score": 44,
       "N": 6,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -195,14 +195,11 @@
       "flujoNetoMensual": -391840,
       "tirPct": null,
       "patrimonioMult": 1.62,
-      "celdaRecomendada": {
-        "via": "precio_solo",
-        "descuentoPct": 21.5
-      }
+      "celdaRecomendada": null
     },
     "GS-PC2": {
       "veredicto": "COMPRAR",
-      "score": 80,
+      "score": 78,
       "N": 6,
       "corona": "cap_rate",
       "hallazgoIds": [

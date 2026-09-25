@@ -13,7 +13,7 @@ export interface Desglose {
   eficiencia: number;
   flujoCaja: number;
   /** Retorno sobre lo puesto (12-sep-2026, `score-retorno.ts`): la curva del cash-on-cash
-   *  anual, o del rendimiento neto sobre el precio cuando no hay pie. Ausente en filas
+   *  anual, o el puntaje del flujo cuando no hay pie (25-sep-2026). Ausente en filas
    *  persistidas antes de ese día. */
   cashOnCash?: number;
   /** La curva de la TIR a 10 años. `null` = no aplica (pie cero: la TIR es `no_aplica` en

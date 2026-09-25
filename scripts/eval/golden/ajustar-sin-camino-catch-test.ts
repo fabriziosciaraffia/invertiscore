@@ -37,6 +37,7 @@ import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { STR_GE_SEEDS } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
+import { SCORE_CORTE_AJUSTA } from "../../../src/lib/score-cortes";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -79,6 +80,17 @@ export function runAjustarSinCaminoTier(): { hard: number } {
 
   // ── 1 y 2 · las filas congeladas del parque ──
   const fixtures = JSON.parse(readFileSync(join(__dirname, "ajustar-sin-camino-fixtures.json"), "utf8")) as any[];
+  // ⚠ ACTA (25-sep-2026, «pie cero: manda el flujo»): estas filas llegaban a Buscar otro por el
+  // FILTRO del descuento. Con pie cero la dimensión de capital pasó a leer el flujo, y alguna ya
+  // llega a Buscar otro por el PUNTAJE, antes del filtro: el veredicto es el mismo y la marca
+  // `porDescuento` no corresponde, porque el filtro no actuó. Se eximen de los chequeos de la marca
+  // solo mientras su puntaje siga bajo el corte de Ajustar — si sube, la exención deja de valer y
+  // la fila vuelve a exigir la marca. No se re-vuelcan los fixtures: la fila sigue probando que el
+  // veredicto final es Buscar otro.
+  const POR_PUNTAJE: Record<string, string> = {
+    "str b4bb8a67": "bono pie, flujo −$116 mil: puntaje 40 con la dimensión de capital en el flujo (antes, el cap rate)",
+  };
+  let porPuntaje = 0;
   let cambiadas = 0;
   let grises = 0;
   const designados = new Set<string>();
@@ -107,6 +119,13 @@ export function runAjustarSinCaminoTier(): { hard: number } {
       if (dv?.valor.porDescuento) F(`3 · ${id}: una fila de la zona gris lleva la marca del filtro`);
       continue;
     }
+    if (POR_PUNTAJE[id]) {
+      const score = fx.modalidad === "ltr" ? r.score : r.francoScore?.score;
+      if (!(typeof score === "number" && score < SCORE_CORTE_AJUSTA)) F(`2 · ${id}: el acta la exime porque llega a Buscar otro por el puntaje, y su puntaje es ${score}: la exención ya no vale`);
+      else if (dv?.valor.porDescuento) F(`2 · ${id}: llega por el puntaje y aun así lleva la marca del filtro`);
+      porPuntaje++;
+      continue;
+    }
     cambiadas++;
     const pd = dv?.valor.porDescuento;
     if (!pd) { F(`2 · ${id}: pasó a Buscar otro sin la marca porDescuento: la card no puede citar la combinación`); continue; }
@@ -124,7 +143,7 @@ export function runAjustarSinCaminoTier(): { hard: number } {
     if (pd.descuentoPct != null && !capTexto.includes("La combinación más fácil")) F(`2 · ${id}: el capítulo no nombra la combinación que sí existe`);
     if (pd.descuentoPct != null && /no encontró una combinación/.test(capTexto)) F(`2 · ${id}: el capítulo dice «no encontró una combinación» donde la hay`);
   }
-  if (cambiadas !== 52) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro: la FASE 0 midió 52`);
+  if (cambiadas + porPuntaje !== 52 || porPuntaje !== Object.keys(POR_PUNTAJE).length) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro por el filtro y ${porPuntaje} por el puntaje: la FASE 0 midió 52, y el acta exime ${Object.keys(POR_PUNTAJE).length}`);
   if (grises < 2) F(`3 · PISO · ${grises} filas grises congeladas siguen en Ajustar: esperaba las 2`);
   for (const d of ["borde", "sin_camino", "gris"]) if (!designados.has(d)) F(`0 · falta el fixture «${d}»`);
 

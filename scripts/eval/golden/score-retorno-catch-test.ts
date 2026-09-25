@@ -19,9 +19,13 @@
 //      Las bandas 70/45 se sostienen con esta curva (medido: cortes equivalentes 67-69 / 42).
 //
 //   3. PIE CERO. Sin capital propio el cash-on-cash del motor es `no_aplica`; la dimensión
-//      usa el RENDIMIENTO NETO SOBRE EL PRECIO (LTR `rentabilidadNeta`, STR `capRate`), sin
-//      neutro. La TIR sí queda `no_aplica` y su peso se reparte entre las demás: un neutro
-//      de 45 castigaba lo que no se puede medir (3 COMPRAR LTR y 1 STR caían por eso).
+//      toma el PUNTAJE DEL FLUJO (LTR `desglose.flujoCaja`, STR la escala del flujo de la
+//      sostenibilidad). La TIR sí queda `no_aplica` y su peso se reparte entre las demás.
+//      ⚠ ACTA (25-sep-2026): hasta hoy la dimensión usaba el rendimiento neto sobre el precio
+//      —el depto como comprado al contado— y eso dejaba COMPRAR con −$371 mil al mes
+//      (a31c27b9). Decisión de Fabrizio: con pie cero manda el flujo, también en el puntaje.
+//      El chequeo de «rendimiento neto» se reemplaza por el de flujo; la regla vive además en
+//      el tier PIE-CERO (`pie-cero-catch-test.ts`), que la verifica por mutación.
 //
 //   4. EL DESGLOSE LLEVA LAS SEIS. `results.desglose` (LTR) y `francoScore.desglose` (STR)
 //      traen `cashOnCash` y `tir`; la fórmula del score y la del desglose son UNA (hasta hoy
@@ -45,6 +49,7 @@ import { metricaValorONull } from "../../../src/lib/types";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
+import { calcCashOnCashDim } from "../../../src/lib/engines/short-term-score";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -99,14 +104,13 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
     const esperado = Math.round((w.rentabilidad * d.rentabilidad + w.flujoCaja * d.flujoCaja + w.cashOnCash * d.cashOnCash + w.tir * d.tir + w.plusvalia * d.plusvalia + w.eficiencia * d.eficiencia) / 100);
     if (r.score !== esperado) F(`4 · el score de GS-1 (${r.score}) no es la media ponderada de su desglose (${esperado}): la fórmula del score y la del desglose divergen`);
   }
-  // pie cero: CoC = rendimiento neto sobre el precio, TIR no aplica y reparte
+  // pie cero: CoC = puntaje del flujo (manda el flujo), TIR no aplica y reparte
   const sinPie = GOLDEN_SEEDS.find((s) => s.key === "GS-PC1")!;
   const r0: any = runAnalysis(sinPie.input, GOLDEN_UF, sinPie.mediana, GOLDEN_ASOF);
   const d0 = r0.desglose;
   if (r0.metrics.cashOnCash?.tipo !== "no_aplica") F("4 · GS-PC1 dejó de ser pie cero en el motor (cashOnCash no es no_aplica): el caso de prueba ya no prueba nada");
   else {
-    const esperadoCoc = puntajeCashOnCash(r0.metrics.rentabilidadNeta);
-    if (!cerca(d0.cashOnCash, esperadoCoc, 0.01)) F(`4 · pie cero LTR: desglose.cashOnCash (${d0.cashOnCash}) no es la curva del rendimiento neto sobre el precio (${r0.metrics.rentabilidadNeta} → ${esperadoCoc})`);
+    if (!cerca(d0.cashOnCash, d0.flujoCaja, 0.01)) F(`4 · pie cero LTR: desglose.cashOnCash (${d0.cashOnCash}) no es el puntaje del flujo (${d0.flujoCaja}): con pie cero manda el flujo`);
     if (d0.tir !== null) F(`4 · pie cero LTR: desglose.tir tiene que ser null (no aplica), vino ${d0.tir}`);
     const w = PESOS_SCORE_LTR;
     const esperado = combinarConReparto([
@@ -142,8 +146,9 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
     const fs: any = sinPie.score; const d = fs.desglose; const base = sinPie.rec.escenarios.base;
     if (base.cashOnCash?.tipo !== "no_aplica") F("5 · GE-PC dejó de ser pie cero en el motor STR");
     else if (d.cashOnCash && d.tir) {
-      if (!cerca(d.cashOnCash.score, puntajeCashOnCash(base.capRate * 100), 0.51)) F(`5 · pie cero STR: cashOnCash.score (${d.cashOnCash.score}) no es la curva del cap rate (${(base.capRate * 100).toFixed(2)} → ${puntajeCashOnCash(base.capRate * 100)})`);
-      if (d.cashOnCash.aplica === false) F("5 · pie cero STR: la dimensión CoC tiene que aplicar (rendimiento neto sobre el precio), no repartirse");
+      const esperadoFlujo = calcCashOnCashDim(null, base.flujoCajaMensual).score;
+      if (d.cashOnCash.score !== esperadoFlujo) F(`5 · pie cero STR: cashOnCash.score (${d.cashOnCash.score}) no es el puntaje del flujo (${Math.round(base.flujoCajaMensual)} → ${esperadoFlujo})`);
+      if (d.cashOnCash.aplica === false) F("5 · pie cero STR: la dimensión CoC tiene que aplicar (el puntaje del flujo), no repartirse");
       if (d.tir.aplica !== false) F("5 · pie cero STR: la dimensión TIR tiene que declararse `aplica: false` y repartir su peso");
     }
   }
@@ -159,7 +164,12 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   // expresión. Verificado por mutación en los cinco brazos con decimal y en los tres gates.
   const A = leer("src/lib/analysis.ts");
   if (!/cocSevero: coc !== null && coc < -30,/.test(A)) F("6 · G1 cocSevero dejó de ser CoC < −30");
-  if (!/\(cocGate2 < -10 \|\| \(flujoMuyNegativoRatio < -0\.05 && cocGate2 < 0\)\)/.test(A)) F("6 · G2 LTR cambió sus umbrales (CoC < −10 / flujo < −5 % con CoC < 0)");
+  // ACTA (25-sep-2026): con pie cero el G2 ya no se salta —aplica su brazo de flujo solo—; los
+  // umbrales son los mismos y el ancla fija las dos ramas y que el gate las use.
+  if (
+    !/cocGate2 === null\s*\?\s*flujoMuyNegativoRatio < -0\.05\s*:\s*cocGate2 < -10 \|\| \(flujoMuyNegativoRatio < -0\.05 && cocGate2 < 0\);/.test(A) ||
+    !/veredicto === "COMPRAR" &&\s*gate2Brazos\s*\)/.test(A)
+  ) F("6 · G2 LTR cambió sus umbrales (CoC < −10 / flujo < −5 % con CoC < 0; sin pie, flujo < −5 %)");
   if (!/metrics\.flujoNetoMensual >= 0 &&\s*metrics\.rentabilidadNeta >= 4(?![\d.])/.test(A)) F("6 · G3 LTR cambió (flujo ≥ 0 y neta ≥ 4)");
   // ACTA 23-sep-2026: los cortes suben a constante (`score-cortes.ts`) porque el ⓘ del Franco
   // Score los cita. Se fija el VALOR de la constante y que las dos bandas la LEAN: un literal
@@ -218,7 +228,7 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
 export function runScoreRetornoTier(): { hard: number } {
   console.log("\n─── TIER SCORE-RETORNO (esquema A · curva calibrada · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — pesos A en las dos modalidades, curvas calibradas, pie cero con rendimiento neto sobre el precio y TIR repartida, desglose de seis, puertas intactas, la página y el PDF pintan el score recomputado y los PDF leen los pesos del motor");
+    console.log("  ✓ VERDE — pesos A en las dos modalidades, curvas calibradas, pie cero con el puntaje del flujo y TIR repartida, desglose de seis, puertas intactas, la página y el PDF pintan el score recomputado y los PDF leen los pesos del motor");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

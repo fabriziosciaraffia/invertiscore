@@ -1356,8 +1356,8 @@ function tirDe(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number, as
  *
  * RETORNO SOBRE LO PUESTO (decisión de producto, Fabrizio 12-sep-2026):
  *  · `cashOnCash`: la curva calibrada del CoC anual del motor. Con PIE CERO el CoC es
- *    `no_aplica` y la dimensión usa el RENDIMIENTO NETO SOBRE EL PRECIO (`rentabilidadNeta`,
- *    lo que rinde el activo sin apalancar), sin neutro.
+ *    `no_aplica` y la dimensión toma el PUNTAJE DEL FLUJO (25-sep-2026: manda el flujo; antes
+ *    usaba el rendimiento neto sobre el precio, como si se hubiera comprado al contado).
  *  · `tir`: la curva de la TIR a 10 años. `null` cuando no aplica (pie cero) o no es
  *    calculable, y entonces su peso se reparte entre las demás (`combinarConReparto`).
  * La penalización por entrega futura se aplica sobre el score, como siempre.
@@ -1418,8 +1418,14 @@ export function dimensionesScoreLtr(
   } : null;
   const eficiencia = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEficiencia);
 
+  // PIE CERO: MANDA EL FLUJO (25-sep-2026). Sin capital propio el CoC es `no_aplica` y la
+  // dimensión toma el puntaje del FLUJO, no el rendimiento neto sobre el precio: ese relleno
+  // (12-sep, cf5264d7) puntuaba el depto como comprado al contado y dejaba COMPRAR con −$371
+  // mil al mes (a31c27b9). Es la decisión del 3-ago —con pie cero el veredicto lo decide lo
+  // que sale o entra cada mes— llevada también al puntaje. Bono pie, otra fuente y sin
+  // declarar se tratan igual: los tres dan `no_aplica`.
   const coc = metricaValorONull(metrics.cashOnCash);
-  const cashOnCash = clamp(puntajeCashOnCash(coc ?? metrics.rentabilidadNeta), 0, 100);
+  const cashOnCash = coc === null ? flujoCaja : clamp(puntajeCashOnCash(coc), 0, 100);
   const tir = tirPct == null || !Number.isFinite(tirPct) ? null : clamp(puntajeTir(tirPct), 0, 100);
 
   const desglose: Desglose = {
@@ -1561,18 +1567,24 @@ function evalVeredicto(
   let gate2 = false;
   let gate3 = false;
 
-  // Pie cero: con CoC 'no_aplica' los dos brazos de GATE 2 dependen de CoC y el
-  // gate completo se OMITE (ni true ni false) — manda el brazo de flujo de GATE 1.
+  // PIE CERO (25-sep-2026): con CoC 'no_aplica' el gate 2 aplica su brazo de FLUJO —flujo
+  // bajo −5% del ingreso— en vez de saltarse entero. Antes se omitía y un COMPRAR sin pie
+  // podía perder $83 mil al mes sin que nada lo bajara (5044e019): el brazo de flujo severo
+  // del gate 1 recién dispara sobre el 50% de la cuota.
   const cocGate2 = metricaValorONull(metrics.cashOnCash);
+  const gate2Brazos =
+    cocGate2 === null
+      ? flujoMuyNegativoRatio < -0.05
+      : cocGate2 < -10 || (flujoMuyNegativoRatio < -0.05 && cocGate2 < 0);
 
   if (gate1) {
     veredicto = "BUSCAR OTRA";
   } else if (
     // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
-    // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
+    // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo; sin pie,
+    // solo el flujo.
     veredicto === "COMPRAR" &&
-    cocGate2 !== null &&
-    (cocGate2 < -10 || (flujoMuyNegativoRatio < -0.05 && cocGate2 < 0))
+    gate2Brazos
   ) {
     gate2 = true;
     veredicto = "AJUSTA SUPUESTOS";
