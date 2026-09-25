@@ -54,6 +54,7 @@ import { runRetiroIaTier } from "./retiro-ia-catch-test";
 import { runSelectorModalidadTier } from "./selector-modalidad-catch-test";
 import { runCopySinIaTier } from "./copy-sin-ia-catch-test";
 import { runCifraComparablesTier } from "./cifra-comparables-catch-test";
+import { runLecturaPaginadaTier } from "./lectura-paginada-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -292,6 +293,10 @@ function printSeed(r: SeedReport) {
   totalHard += runSelectorModalidadTier().hard;
   totalHard += runCopySinIaTier().hard;
   totalHard += runCifraComparablesTier().hard;
+  // Tier LECTURA-PAGINADA (25-sep-2026, 0 tokens, sin base): ninguna lectura de scraped_properties
+  // ni de properties_within_radius se corta en las 1.000 filas de PostgREST. Caza el patrón por la
+  // cadena de cada llamada, no los casos. Verificado en rojo con 13 mutaciones.
+  totalHard += runLecturaPaginadaTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
