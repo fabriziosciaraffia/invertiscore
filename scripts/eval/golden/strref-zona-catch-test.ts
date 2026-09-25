@@ -149,7 +149,7 @@ export function runStrRefZonaTier(): { hard: number } {
   if (!/umbralStrDesdeZona\(ctx\.mediana\.strRefZona, ctx\.comuna \|\| ""\)/.test(asm) || !/umbral: umbralStr,/.test(asm) || !/umbralPct: umbralStr\.pct/.test(asm)) F("6 · el ensamblador STR no deriva el umbral del snapshot de la zona para hallazgo y decisividad");
   if (!/\(extras\.umbralPct \?\? CAP_STR_UMBRAL_PCT\) \/ 100/.test(leer("src/lib/decisividades-str.ts"))) F("6 · la neutralización STR no usa el umbral resuelto");
   if (!/const umbralPct = hRenta\?\.valor\.umbralPct \?\? CAP_STR_UMBRAL_PCT;/.test(leer("src/lib/cierres-str-ensamblador.ts"))) F("6 · los cierres STR no usan el umbral del hallazgo");
-  if (!/div\(r\.capPct, r\.umbralPct \?\? CAP_STR_UMBRAL_PCT\)/.test(leer("src/lib/str-guards.ts"))) F("6 · el guard STR no usa el umbral del hallazgo");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-guards.ts` se borró; no queda guard que use el umbral.
   const pipe = leer("src/lib/api-helpers/analisis-pipeline.ts");
   if (!/strref_zona_snapshot: medianaComuna\?\.strRefZona \?\? null,/.test(pipe) || !/export async function prefetchMercadoStr\(/.test(pipe) || !/if \(snapshot\) return snapshot;/.test(pipe)) F("6 · el pipeline no persiste el snapshot STR ni prefiere el persistido");
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-prosa-persist.ts` salió de la lista (se borró).
@@ -157,7 +157,7 @@ export function runStrRefZonaTier(): { hard: number } {
     if (!/strref_zona_snapshot as StrRefZonaSnapshot/.test(leer(p)) || !/prefetchMercadoStr\(/.test(leer(p))) F(`6 · ${p} no pasa el snapshot persistido a prefetchMercadoStr`);
   }
   if (!/ADD COLUMN IF NOT EXISTS strref_zona_snapshot JSONB/.test(leer("supabase/migrations/20260921b_strref_zona_snapshot.sql"))) F("6 · falta la migración de la columna");
-  for (const p of ["src/lib/rentabilidad-str-hallazgo.ts", "src/lib/str-hallazgos.ts", "src/lib/decisividades-str.ts", "src/lib/cierres-str-ensamblador.ts", "src/lib/cierres-capitulos-str.ts", "src/lib/str-guards.ts", "src/lib/strref-zona.ts", "src/lib/strref-zona-query.ts", "src/components/analysis/str/CapitulosInversionStr.tsx"]) {
+  for (const p of ["src/lib/rentabilidad-str-hallazgo.ts", "src/lib/str-hallazgos.ts", "src/lib/decisividades-str.ts", "src/lib/cierres-str-ensamblador.ts", "src/lib/cierres-capitulos-str.ts", "src/lib/strref-zona.ts", "src/lib/strref-zona-query.ts", "src/components/analysis/str/CapitulosInversionStr.tsx"]) {
     const src = leer(p).replace(/\/\/[^\n]*/g, "").replace(/\/\*[^]*?\*\//g, "");
     if (/\bBDO\b|bdoNeto|capRefComuna|getCapRefComuna|umbralStrDesde\(|PRIMA_STR/.test(src)) F(`6 · ${p} sigue nombrando BDO o la referencia LTR (por símbolo)`);
   }

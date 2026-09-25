@@ -184,10 +184,10 @@ export function runCapRefComunaTier(): { hard: number } {
 
   // 7 · un solo mapa de alias
   if (normalizeComuna("Santiago Centro") !== "Santiago" || normalizeComuna("Santiago centro") !== "Santiago") F("7 · normalizeComuna no resuelve los dos alias");
-  if (/const ALIAS\s*:/.test(leer("src/lib/cifras-guard.ts"))) F("7 · cifras-guard conserva su propio mapa de alias");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `cifras-guard.ts` se borró, y con él su mapa de alias.
   if (/const COMUNA_ALIASES/.test(leer("src/lib/comunas-disponibles.ts"))) F("7 · comunas-disponibles conserva su propio mapa de alias");
   if (/ALIAS_COMUNA/.test(leer("src/lib/engines/str-universo-santiago.ts"))) F("7 · str-universo conserva su propio mapa de alias");
-  for (const p of ["src/lib/cifras-guard.ts", "src/lib/comunas-disponibles.ts", "src/lib/engines/str-universo-santiago.ts", "src/lib/data/bdo-caprate-comuna.ts"]) {
+  for (const p of ["src/lib/comunas-disponibles.ts", "src/lib/engines/str-universo-santiago.ts", "src/lib/data/bdo-caprate-comuna.ts"]) {
     if (!/\bnormalizeComuna\b/.test(leer(p))) F(`7 · ${p} no pasa por normalizeComuna`);
   }
   void capRefSinAvisos;

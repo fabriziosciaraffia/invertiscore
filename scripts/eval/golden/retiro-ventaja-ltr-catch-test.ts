@@ -93,9 +93,8 @@ export function runRetiroVentajaLtrTier(): { hard: number } {
   // 6 · lo que salió no vuelve
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron los chequeos del prompt STR (la comparación con el largo, la acción
   // en `conviene.estrategiaSugerida`, la v22); el generador ya no existe.
-  const guards = sinComentarios(leer("src/lib/str-guards.ts"));
-  if (/afirmacionesContraSigno|"modalidad"|sobreRenta/.test(guards)) F("6 · el guard de modalidad sigue en str-guards.ts");
-  if (!/"conviene\.estrategiaSugerida"/.test(guards) || /vsLTR/.test(guards)) F("6 · los paths de prosa no migraron a conviene.estrategiaSugerida");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-guards.ts` se borró entero, con el guard
+  // de modalidad y los paths de prosa adentro.
   const pdf = sinComentarios(leer("src/app/analisis/renta-corta/[id]/documento/DocumentoSTR.tsx"));
   if (/Ventaja vs arriendo largo|Sobre-renta vs LTR|ai\?\.vsLTR|bandaLabel|d\.ventaja/.test(pdf)) F("6 · el PDF STR sigue con la sección de la ventaja");
   const hero = sinComentarios(leer("src/components/analysis/str/HeroStrDictamen.tsx"));

@@ -57,17 +57,10 @@ const RAIZ = join(__dirname, "..", "..", "..");
  *    toca Supabase: corre sin `--env-file`.
  */
 const STANDALONE = [
-  "ambitos-zona",
   "dia1",
-  "engineism-str",
-  "estructural-str",
   "fecha-santiago",
-  "hero-claim-str",
-  "jerarquia",
   "marcas",
   "mediacion-cards",
-  "palabras-internas-str",
-  "referencias-zona",
   "voseo",
 ];
 

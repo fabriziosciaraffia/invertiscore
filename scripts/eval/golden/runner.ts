@@ -30,7 +30,6 @@ import { STR_GE_SEEDS } from "./str-seeds";
 import { runCatchTest } from "./catch-test";
 import { runStrTier } from "./str-recompute";
 import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
-import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runMesVacioTier } from "./mes-vacio-catch-test";
 import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
@@ -213,9 +212,8 @@ function printSeed(r: SeedReport) {
   // veredicto fuera de src/lib/veredicto-etiqueta.ts. Corre siempre con el QUICK. ──
   totalHard += runEtiquetaTier().hard;
 
-  // ── Tier TITULAR (goal #8 · 07-sep-2026, 0 tokens): el titular final de portada nunca
-  // queda vacío (titular-final.ts: reescrito → escalón → motor). Corre siempre con el QUICK. ──
-  totalHard += runTitularFinalTier().hard;
+  // ── Tier TITULAR retirado. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `titular-final.ts` (el titular de la
+  // IA con sus escalones) se borró; el de la portada lo fija TITULAR-MOTOR. ──
 
   // ── Tier INSTRUMENTOS (#11 · 07-sep-2026, 0 tokens): el matcher A8·D1 acepta los
   // wordings legítimos del instrumento y rechaza el género. Corre siempre con el QUICK. ──

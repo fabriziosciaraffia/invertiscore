@@ -43,7 +43,6 @@ import {
   pieDocumentoSalida,
 } from "../../../src/lib/salida-por-mix";
 import { distanciaFindingDisplay, lineaDistanciaMini } from "../../../src/lib/distancia-copy";
-import { cierraSobreElVendedor } from "../../../src/lib/cifras-guard";
 import { lineaFooterVias } from "../../../src/lib/palancas-en-palabras";
 import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
@@ -293,65 +292,8 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   //     generadores ya no existen.
 }
 
-// ── 9 · EL CIERRE CONDICIONAL: cerrar sobre el vendedor habiendo otra puerta ──
-//
-// LA FAMILIA SALIÓ DE LEER DIEZ FILAS v25, no de imaginar formas. La dominante —nueve de
-// diez— no era la exclusividad que buscábamos: es enumerar bien y después condicionar todo
-// el caso a que el vendedor ceda. Las frases de acá abajo son del parque, literales.
-//
-// EL GATE ES EL DATO DEL MOTOR (`- hayCaminoSinVendedor: sí`), no una palabra: es la lección
-// de la familia `estructural`, que miraba una grafía y marcaba elogios.
-{
-  const PROMPT_CON = "\n- hayCaminoSinVendedor: sí\n";
-  const PROMPT_SIN = "\n- hayCaminoSinVendedor: no\n";
-  const caja = (t: string) => ({ conviene: { cajaAccionable_clp: t } });
-
-  // (a) LAS FORMAS REALES, una por una. Si alguna deja de cazarse, la familia se achicó.
-  const REALES: [string, string][] = [
-    ["fe72d672 · la que define el invariante", "La vía que depende del vendedor es bajar a UF 5.212 (−25,4%); existe también una salida combinada que le pide menos. Si el vendedor no cede cerca de UF 5.212, la respuesta honesta es mirar otra propiedad."],
-    ["eb851457 · con la cifra citada", "Si el vendedor no cede a UF 1.712, la respuesta honesta es mirar otra propiedad."],
-    ["1920fd35 · sin sujeto explícito", "Un descuento del 28,5% que requiere un vendedor con urgencia real: si no cede hasta ahí, la posición honesta es esperar otra propiedad."],
-    ["89c43456 · la cesión nominalizada", "Sin esa cesión, la respuesta honesta es mirar otra propiedad."],
-    ["87bd0092 · con «buscar»", "Si no cede al objetivo, la respuesta honesta es buscar otra propiedad, no forzar esta."],
-  ];
-  for (const [donde, texto] of REALES) {
-    if (!cierraSobreElVendedor(PROMPT_CON, caja(texto)).length) F(`9 · dejó de cazar una forma real del parque — ${donde}`);
-  }
-
-  // (b) EL GATE. Sin la puerta declarada el guard NO corre: con una sola puerta, cerrar sobre
-  //     el vendedor es la verdad, no un defecto.
-  if (cierraSobreElVendedor(PROMPT_SIN, caja(REALES[1][1])).length) {
-    F("9 · el guard corrió sin la puerta declarada: ahí cerrar sobre el vendedor es CIERTO");
-  }
-  if (cierraSobreElVendedor("", caja(REALES[1][1])).length) F("9 · el guard corrió sin gate ninguno");
-
-  // (c) LA ABSOLUCIÓN, que es la mitad que evita el falso positivo de la familia `estructural`.
-  //     La MISMA oración deja la puerta abierta ⇒ no cierra, ofrece.
-  const ABSUELTAS = [
-    "Si el vendedor no cede a UF 5.212, queda mover el pie a 30%: son UF 261 tuyas el día uno.",
-    "Si el vendedor no cede, también cruza moviendo el pie y el plazo a la vez.",
-  ];
-  for (const t of ABSUELTAS) {
-    if (cierraSobreElVendedor(PROMPT_CON, caja(t)).length) F(`9 · marcó una oración que deja la puerta abierta: «${t.slice(0, 60)}…»`);
-  }
-
-  // (d) ⛔ NOMBRAR EL OTRO CAMINO EN LA ORACIÓN ANTERIOR NO ABSUELVE, y es el caso que define
-  //     el invariante: `fe72d672` lo nombra y cierra igual. Si esto deja de cazarse, el guard
-  //     volvió a mirar el texto entero en vez de la oración.
-  const conPrevia = "Existe también una salida combinada que le pide menos. Si el vendedor no cede cerca de UF 5.212, la respuesta honesta es mirar otra propiedad.";
-  if (!cierraSobreElVendedor(PROMPT_CON, caja(conPrevia)).length) {
-    F("9 · nombrar el otro camino ANTES dejó de contar como cierre: la absolución tiene que ser por ORACIÓN");
-  }
-
-  // (e) EL HUECO NO EXCLUYE EL PUNTO. Con [^.;] el guard daba CERO sobre todo cierre que cita
-  //     una cifra con separador de miles — la forma más frecuente. Lo encontró leer, no contar.
-  if (!cierraSobreElVendedor(PROMPT_CON, caja("Si el vendedor no cede cerca de UF 5.212, la respuesta honesta es mirar otra propiedad.")).length) {
-    F("9 · volvió a excluir el punto del hueco: se pierde todo cierre que cita una cifra con miles");
-  }
-
-  // (f) RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: fijaba la doctrina del cierre condicional en los dos
-  //     prompts; los generadores ya no existen.
-}
+// ── 9 · RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: fijaba `cierraSobreElVendedor`, el guard de la prosa
+// en `cifras-guard.ts`, que se borró con los generadores. ──
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runSalidaPorMixTier(): { hard: number } {

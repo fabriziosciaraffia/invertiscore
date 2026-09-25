@@ -102,8 +102,7 @@ export function runCuantoRentaTier(): { hard: number } {
   if (!/\(extras\.umbralPct \?\? CAP_STR_UMBRAL_PCT\) \/ 100/.test(dec)) F("3 · la neutralización STR no usa el umbral resuelto");
   const asm = leer("src/lib/str-hallazgos.ts");
   if (!/umbralStrDesdeZona\(ctx\.mediana\.strRefZona, ctx\.comuna \|\| ""\)/.test(asm) || !/umbral: umbralStr,/.test(asm) || !/umbralPct: umbralStr\.pct/.test(asm)) F("3 · el ensamblador STR no resuelve el umbral una vez para hallazgo y decisividad");
-  const guards = leer("src/lib/str-guards.ts");
-  if (!/div\(r\.capPct, r\.umbralPct \?\? CAP_STR_UMBRAL_PCT\)/.test(guards)) F("3 · el guard STR compara contra la constante, no contra el umbral del hallazgo");
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-guards.ts` se borró; no queda guard que comparar.
 
   // 4 · el render: nomenclatura, sin cap rate, sin UF en la fuente, sin BDO
   const capI = (src: string) => {

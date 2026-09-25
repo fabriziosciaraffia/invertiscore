@@ -76,7 +76,7 @@ export interface TitularTiming {
   /** Motivo de `validarTitular` sobre el original. */
   motivo: string;
   palabras: number;
-  /** Texto del retry dirigido (titular-retry.ts), o null si la API falló. */
+  /** Texto del retry dirigido del titular, o null si la API falló. */
   reescrito: string | null;
   /** Motivo de `validarTitular` sobre el reescrito; null si validó o no hubo. */
   reescrito_motivo: string | null;

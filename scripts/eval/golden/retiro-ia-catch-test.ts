@@ -69,8 +69,6 @@ const LLAMADA = /\b(generateAiAnalysis|generarYPersistirProsaStr|generateStrPros
 /** Los módulos que DEFINEN la generación: adentro se llaman entre sí, y los gobierna quien los llama. */
 const MODULOS_GENERADORES = new Set([
   "src/lib/ai-generation-ambas-generate.ts",
-  "src/lib/retry-quirurgico.ts",
-  "src/lib/titular-retry.ts",
 ]);
 
 /**
@@ -109,6 +107,28 @@ export const RETIRADOS: Record<string, string[]> = {
     "scripts/eval/golden/guards-contables-catch-test.ts",
     "scripts/eval/golden/timeout.ts",
     "scripts/eval/golden/str-guards-baseline.ts",
+  ],
+  "parte 2 · guards y helpers que solo usaban los generadores": [
+    "src/lib/str-guards.ts",
+    "src/lib/cifras-guard.ts",
+    "src/lib/prosa-presupuesto.ts",
+    "src/lib/retry-quirurgico.ts",
+    "src/lib/titular-retry.ts",
+    // Exportaba OTRO `titularMotor`, distinto del vivo (`titular-motor.ts`): el chequeo 7 cuida
+    // que nadie lo vuelva a importar por error.
+    "src/lib/titular-final.ts",
+    "src/lib/hero-claim-core.ts",
+    "src/lib/copia-frase.ts",
+    "src/lib/precio-jerarquia.ts",
+    "src/lib/referencias-zona.ts",
+    "scripts/eval/golden/engineism-str-catch-test.ts",
+    "scripts/eval/golden/estructural-str-catch-test.ts",
+    "scripts/eval/golden/hero-claim-str-catch-test.ts",
+    "scripts/eval/golden/palabras-internas-str-catch-test.ts",
+    "scripts/eval/golden/titular-final-catch-test.ts",
+    "scripts/eval/golden/jerarquia-catch-test.ts",
+    "scripts/eval/golden/ambitos-zona-catch-test.ts",
+    "scripts/eval/golden/referencias-zona-catch-test.ts",
   ],
 };
 
