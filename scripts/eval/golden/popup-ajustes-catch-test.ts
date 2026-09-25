@@ -45,7 +45,15 @@
 //       dos en Comprar), la leyenda (escala en Ajustar, tríada en Comprar), la tabla Hoy / Así en
 //       Ajustar y las cuatro cifras en Comprar, los bordes finos, y que no vuelvan el menú, los
 //       pares ni «Un cambio a la vez».
-//   7 · El arriendo o la tarifa, en su línea «pero eso depende del mercado».
+//   7 · El arriendo o la tarifa, en su bloque «Un camino que no depende de ti».
+//
+// ⛔ ACTA 25-sep-2026 (segunda versión del mockup) · la leyenda pasa de escala a REGLA de
+// descuento (ya es Comprar → fuera de alcance, fronteras 0 · 5 · 10 · tope abajo, título
+// «Descuento que hay que negociar»); la tabla gana la fila de veredicto arriba, el ⓘ del informe
+// en cash on cash, cap rate, TIR y Franco Score, y el puntaje con el color de su veredicto; y la
+// línea del mercado pasa a bloque propio con lo supuesto contra lo que haría falta y su contexto.
+// El chequeo de filas se reescribe por `data-fila` (el rótulo ahora lleva el ⓘ adentro, y leerlo
+// por texto contaba el botón como parte del nombre).
 //   8 · El CTA inerte, solo con descuento, nunca en Comprar.
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
 // ============================================================================
@@ -56,7 +64,7 @@ import { join } from "node:path";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { AUDIT_FIXTURES, AUDIT_UF } from "../fixtures";
 import { PopupAjustes } from "../../../src/components/analysis/shared/PopupAjustes";
-import { celdaFranco, grillaDelPopup, hayAjustesQueMostrar, lecturaCelda, nivelMasFacilDisponible } from "../../../src/lib/matriz-popup";
+import { celdaFranco, grillaDelPopup, hayAjustesQueMostrar, lecturaCelda, nivelMasFacilDisponible, pieDiaUnoUF } from "../../../src/lib/matriz-popup";
 import { nivelDeDescuento, BANDA_TOPE_FACTIBLE_PCT, BANDA_TOPE_ARGUMENTOS_PCT } from "../../../src/lib/banda-esfuerzo";
 import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
 import { recomendacionPagas } from "../../../src/lib/como-lo-pagas";
@@ -71,7 +79,16 @@ const CLASE: Record<Veredicto, string> = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a"
  *  llamara a la función que vigila, una escala rota se daría la razón a sí misma. */
 const ESCALA_ESPERADA = (d: number | null) =>
   d === null ? "fx" : d === 0 ? "e0" : d <= BANDA_TOPE_FACTIBLE_PCT ? "e1" : d <= BANDA_TOPE_ARGUMENTOS_PCT ? "e2" : "e3";
-const FILAS_TABLA = ["Descuento", "Precio", "Pie el día uno", "Cuota del crédito", "Te queda al mes", "Cash on cash", "Cap rate neto", "TIR a 10 años", "Franco Score"];
+const FILAS_TABLA = ["veredicto", "descuento", "precio", "pie", "cuota", "flujo", "coc", "cap", "tir", "score"];
+/** Las filas que llevan el ⓘ del informe. */
+const FILAS_CON_GLOSA = ["coc", "cap", "tir", "score"];
+/** Una fila de la tabla por su `data-fila`, con sus dos celdas de datos. */
+const filaTabla = (h: string, k: string) => {
+  const m = h.match(new RegExp(`<tr data-fila="${k}">([\\s\\S]*?)</tr>`));
+  if (!m) return null;
+  const tds = m[1].match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? [];
+  return { rotulo: tds[0] ?? "", hoy: tds[1] ?? "", asi: tds[2] ?? "" };
+};
 
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el pop-up como mapa · matriz-popup.ts · 0 tokens) ───");
@@ -194,7 +211,7 @@ export function runPopupAjustesTier(): { hard: number } {
     // ── G3 · card, pop-up y capítulo leen la misma recomendación ─────────────
     const dv = r.dist?.valor;
     if (dv) {
-      const bloque = construirLoQueHariaYo({ veredicto: r.v, distancia: r.dist, currency: "CLP", valorUF: AUDIT_UF } as any);
+      const bloque = construirLoQueHariaYo({ veredicto: r.v, distancia: r.dist, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(r.input.precio) } as any);
       const pagas = recomendacionPagas({ veredicto: r.v, precioUF: Number(r.input.precio), piePctActual: Number(r.input.piePct), plazoActual: Number(r.input.plazoCredito), distancia: dv });
       const cardMix = bloque?.mix && bloque.mix.destino === "COMPRAR" ? bloque.mix : null;
       if (fr) {
@@ -204,6 +221,15 @@ export function runPopupAjustesTier(): { hard: number } {
           const pieCard = cardMix.movimiento.pie?.a ?? dv.piePctActual ?? Number(r.input.piePct);
           const plazoCard = cardMix.movimiento.plazo?.a ?? Number(r.input.plazoCredito);
           const dCard = cardMix.descuento ? Number(cardMix.descuento.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
+          // «Poner ese pie cuesta X» = la diferencia de «Pie el día uno» de la tabla (25-sep-2026). El
+          // motor redondea `costoDiaUnoUF` a UF enteras y la card lo usaba: media UF eran $20 mil de
+          // diferencia en Providencia. Ahora las dos cuentas salen del mismo precio, exactas.
+          if (cardMix.costo) {
+            const precio = Number(r.input.precio);
+            const esperado = Math.round((pieDiaUnoUF(fr, precio) - (Number(r.input.piePct) / 100) * precio) * AUDIT_UF);
+            const enCard = Number(cardMix.costo.replace(/[^\d]/g, ""));
+            if (Math.abs(enCard - esperado) > 1) F(`G3 · ${r.id}: la card dice que poner ese pie cuesta $${enCard} y la tabla del pop-up da $${esperado}`);
+          }
           if (pieCard !== fr.piePct || plazoCard !== fr.plazoAnios || Math.abs(dCard - (fr.descuentoPct ?? 0)) > 0.05) F(`G3 · ${r.id}: la card recomienda pie ${pieCard}% · ${plazoCard}a · −${dCard}% y el pop-up marca pie ${fr.piePct}% · ${fr.plazoAnios}a · −${fr.descuentoPct}%`);
         }
         if (!pagas) F(`G3 · ${r.id}: «A qué precio cerrar» no tiene recomendación y el pop-up sí`);
@@ -213,16 +239,33 @@ export function runPopupAjustesTier(): { hard: number } {
 
     // ── 6 · anatomía (mockup final del 25-sep) ──────────────────────────────
     if (!/Toca una celda para ver cómo queda\./.test(h)) F(`6 · ${r.id}: falta la línea «Toca una celda para ver cómo queda.»`);
-    if ((h.match(/más descuento/g) ?? []).length !== 2 || !/más pie/.test(h) || !/más plazo/.test(h)) F(`6 · ${r.id}: los ejes no son los cuatro del contrato (más pie, más plazo, más descuento ×2)`);
+    if ((h.match(/<span>más descuento<\/span>/g) ?? []).length !== 2 || !/más pie/.test(h) || !/más plazo/.test(h)) F(`6 · ${r.id}: los ejes no son los cuatro del contrato (más pie, más plazo, más descuento ×2)`);
+    // LA REGLA: tramos de ya es Comprar a fuera de alcance, fronteras 0 · 5 · 10 · tope real abajo.
     const sws = (h.match(/class="sw (fx|e0|e1|e2|e3)"/g) ?? []).map((x) => x.replace(/class="sw |"/g, ""));
-    if (!/Mientras más azul, más cerca de Comprar/.test(h) || sws.join(",") !== "fx,e3,e2,e1,e0") F(`6 · ${r.id}: la leyenda no es la escala del contrato, de fuera de alcance a ya es Comprar (${sws.join(",")})`);
+    const regla = h.slice(h.indexOf("pjx-escala"), h.indexOf("pjx-tip"));
+    const fronteras = (regla.match(/<b>(\d+)%<\/b>/g) ?? []).map((x) => x.replace(/<\/?b>/g, ""));
+    if (!/Descuento que hay que negociar/.test(regla) || !/más descuento →/.test(regla) || sws.join(",") !== "e0,e1,e2,e3,fx") F(`6 · ${r.id}: la leyenda no es la regla del contrato, de ya es Comprar a fuera de alcance (${sws.join(",")})`);
+    if (fronteras.join(",") !== `0%,5%,10%,${tope}%`) F(`6 · ${r.id}: las fronteras de la regla no son 0 · 5 · 10 · ${tope} (el tope real): ${fronteras.join(" · ")}`);
+    if (/\(/.test(regla.replace(/<[^>]+>/g, ""))) F(`6 · ${r.id}: la regla volvió a los porcentajes entre paréntesis`);
     if (/pjx-ley/.test(h)) F(`6 · ${r.id}: Ajustar volvió a la leyenda de la tríada de veredictos`);
     const sel0 = fr0(r);
     if (sel0 && sel0.descuentoPct !== null) {
-      const filasTab = (h.match(/<tr><td>([^<]*)<\/td>/g) ?? []).map((x) => x.replace(/<tr><td>|<\/td>/g, ""));
-      if (filasTab.join("|") !== FILAS_TABLA.join("|")) F(`6 · ${r.id}: la tabla Hoy / Así no tiene las nueve filas del contrato: ${filasTab.join(" · ")}`);
-      const score = h.match(/<tr><td>Franco Score<\/td><td class="hoy[^"]*">([^<]*)<\/td><td class="asi[^"]*">([^<]*)<\/td>/);
-      if (!score || score[1] !== "7" || score[2] !== String(sel0.score ?? "—")) F(`6 · ${r.id}: la fila Franco Score no es «Hoy» del hero (7) y «Así» de la celda (${sel0.score}): ${score?.slice(1).join(" / ")}`);
+      const filasTab = (h.match(/<tr data-fila="([^"]+)">/g) ?? []).map((x) => x.replace(/<tr data-fila="|">/g, ""));
+      if (filasTab.join("|") !== FILAS_TABLA.join("|")) F(`6 · ${r.id}: la tabla Hoy / Así no tiene las diez filas del contrato, veredicto arriba: ${filasTab.join(" · ")}`);
+      // El veredicto arriba, con los chips: hoy el del informe; así el de la celda con su descuento.
+      const ver = filaTabla(h, "veredicto");
+      if (!ver || !ver.hoy.includes(`pjx-v ${CLASE[r.v]}`) || !ver.asi.includes(`pjx-v ${CLASE[sel0.veredicto]}`)) F(`6 · ${r.id}: la fila de veredicto no dice hoy ${r.v} y así ${sel0.veredicto} con los chips de la tríada`);
+      // El ⓘ del informe en las cuatro filas de indicadores, y en ninguna otra.
+      for (const k of FILAS_TABLA) {
+        const f = filaTabla(h, k);
+        const tiene = !!f && /class="v-i/.test(f.rotulo);
+        if (FILAS_CON_GLOSA.includes(k) !== tiene) F(`6 · ${r.id}: la fila «${k}» ${tiene ? "lleva" : "no lleva"} el ⓘ del informe`);
+      }
+      // El puntaje: «Hoy» el del hero (7), «Así» el de la celda, cada uno con el color de SU veredicto.
+      const sc = filaTabla(h, "score");
+      const num = (td: string) => td.replace(/<[^>]+>/g, "");
+      if (!sc || num(sc.hoy) !== "7" || num(sc.asi) !== String(sel0.score ?? "—")) F(`6 · ${r.id}: la fila Franco Score no es «Hoy» del hero (7) y «Así» de la celda (${sel0.score}): ${sc ? `${num(sc.hoy)} / ${num(sc.asi)}` : "sin fila"}`);
+      else if (!sc.hoy.includes(`pjx-sc ${CLASE[r.v]}`) || (sel0.score != null && !sc.asi.includes(`pjx-sc ${CLASE[sel0.veredicto]}`))) F(`6 · ${r.id}: el puntaje no lleva el color de su veredicto (hoy ${r.v}, así ${sel0.veredicto})`);
       if (/pjx-cifras/.test(h)) F(`6 · ${r.id}: Ajustar volvió a las cuatro cifras en tarjetas; es una tabla`);
     }
   }
@@ -264,10 +307,39 @@ export function runPopupAjustesTier(): { hard: number } {
     );
     const cuerpoOtra = (hC.match(/<button[^>]*data-pie="[^"]*"[^>]*>[\s\S]*?<\/button>/g) ?? []).find((x) => x.includes(`data-pie="${otra.piePct}"`) && x.includes(`data-plazo="${otra.plazoAnios}"`)) ?? "";
     if (!/class="pjx-celda fx/.test(cuerpoOtra) || !cuerpoOtra.includes("más de 25%") || !/fuera de alcance/.test(cuerpoOtra)) F("6 · una celda que no llega no se dibuja rayada con «más de 25%» / «fuera de alcance» (el tope real de renta corta)");
+    const reglaC = hC.slice(hC.indexOf("pjx-escala"), hC.indexOf("pjx-tip"));
+    const frC = (reglaC.match(/<b>(\d+)%<\/b>/g) ?? []).map((x) => x.replace(/<\/?b>/g, "")).join(",");
+    if (frC !== "0%,5%,10%,25%") F(`6 · con el tope de renta corta la regla no termina en 25%: ${frC}`);
     const panelC = hC.slice(hC.indexOf("pjx-panel"));
     if (panelC.match(/pjx-v (c|a|b)/)?.[1] !== "b") F("G1 · la frase de la celda Franco no nombra su veredicto real al precio pedido (Buscar otra): dice otro");
     if (!/pasa de/.test(panelC)) F("G1 · la frase de la celda con descuento no dice «pasa de … a Comprar»");
     if (!/Cap rate</.test(hC) || /Cap rate neto</.test(hC)) F("6 · en renta corta la tabla no rotula «Cap rate» (el neto es de renta larga)");
+
+    // (d) EL CAMINO DE MERCADO (25-sep-2026). Sobre la misma fila, con una palanca de arriendo que
+    //     cruza sola (actual 500.000 → objetivo 560.000, +12%): el bloque dice lo supuesto contra lo
+    //     que haría falta y el contexto. En LTR, con avisos que piden MENOS que lo que haría falta,
+    //     tiene que decir que queda sobre lo que piden; con avisos que piden MÁS, que está dentro.
+    //     En STR, que es una señal: no guardamos tarifas de comparables.
+    const arr = { palanca: "arriendo", actual: 500000, objetivo: 560000, deltaPct: 12 } as any;
+    const conArr = (modalidad: "LTR" | "STR", palanca: any, ref: any) =>
+      renderToStaticMarkup(
+        createElement(PopupAjustes, {
+          veredicto: "AJUSTA SUPUESTOS", modalidad, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(base.input.precio), referenciaArriendo: ref,
+          distancia: { ...dist, valor: { ...dist.valor, palancas: [palanca], palancasHastaComprar: [palanca] } } as HallazgoDistanciaVeredicto,
+        }),
+      );
+    const mkt = (x: string) => x.slice(x.indexOf("pjx-mkt"));
+    const bajo = mkt(conArr("LTR", arr, { valorCLP: 520000, n: 18, radioMetros: 800, fuente: "radio" }));
+    if (!/pjx-mkt/.test(bajo) || !/Un camino que no depende de ti/.test(bajo)) F("7 · con una palanca de arriendo que cruza, no aparece el bloque del camino de mercado");
+    else {
+      if (!/\$500\.000/.test(bajo) || !/\$560\.000/.test(bajo) || !/\+12,0%/.test(bajo)) F("7 · el bloque no compara lo supuesto ($500.000) contra lo que haría falta ($560.000, +12,0%)");
+      if (!/18 avisos parecidos en 800 m piden \$520\.000/.test(bajo)) F("7 · en LTR el bloque no dice cuánto piden los avisos parecidos del radio");
+      if (!/queda 7,7% sobre lo que piden/.test(bajo)) F("7 · en LTR, con la cifra que haría falta sobre lo que piden los avisos, el bloque no lo dice");
+    }
+    const alto = mkt(conArr("LTR", arr, { valorCLP: 600000, n: 18, radioMetros: 800, fuente: "radio" }));
+    if (/sobre lo que piden/.test(alto) || !/dentro de lo que piden/.test(alto)) F("7 · en LTR, con avisos que piden más que lo que haría falta, el bloque no dice que está dentro");
+    const str = mkt(conArr("STR", { ...arr, palanca: "adr", actual: 55000, objetivo: 60005, deltaPct: 9.1 }, { valorCLP: 70000, n: 18, radioMetros: 800, fuente: "radio" }));
+    if (!/Tómalo como señal, no como plan/.test(str) || !/Tarifa por noche que supusiste/.test(str) || /avisos parecidos en/.test(str)) F("7 · en STR el bloque no dice que es una señal (sin tarifas de comparables) o no habla de la tarifa");
   }
 
   if (conGrilla === 0) F("0 · ninguna fila del golden tiene grilla: el tier no midió nada");
@@ -284,7 +356,7 @@ export function runPopupAjustesTier(): { hard: number } {
   if (!/\.pjx-celda\.fr\{border:2px solid var\(--doc-tx\)\}/.test(tok) || !/\.pjx-celda\.hoy\{border:1\.5px dashed/.test(tok)) F("6 · los bordes de Franco (2 px sólido) y de hoy (1,5 px punteado) no son los del contrato");
   if (/\.pjx-celda\.(fr|hoy)\{outline:3px/.test(tok)) F("6 · volvieron los contornos gruesos de 3 px");
   if (/Un cambio a la vez/.test(pop)) F("6 · volvió «Un cambio a la vez»");
-  if (!/depende del mercado/.test(pop)) F("7 · falta la línea del arriendo o la tarifa «pero eso depende del mercado»");
+  if (!/Un camino que no depende de ti/.test(pop) || !/Si la zona paga más, también llega a/.test(pop)) F("7 · falta el bloque del camino de mercado («Un camino que no depende de ti»)");
   if (!/aria-disabled="true"/.test(pop) || /href=|onClick=\{[^}]*router|<Link\b/.test(pop.slice(pop.indexOf("pjx-cta")))) F("8 · el botón de re-análisis dejó de ser inerte");
   for (const hero of ["src/components/analysis/HeroLTR.tsx", "src/components/analysis/str/HeroStrDictamen.tsx"]) {
     const src = sinComentarios(leer(hero));

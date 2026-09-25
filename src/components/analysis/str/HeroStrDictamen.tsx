@@ -117,6 +117,8 @@ export function HeroStrDictamen({
   //     mediana de la zona no hay nada que verificar y la fila no va.
   const bloqueDeterminista = construirLoQueHariaYo({
         modalidad: "str",
+        // El mismo precio que el pop-up: «Poner ese pie cuesta» y «Pie el día uno» dicen lo mismo.
+        precioUF: Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0),
         veredicto: veredicto as Veredicto,
         distancia: distancia ?? null,
         currency,

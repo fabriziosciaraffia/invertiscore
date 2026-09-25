@@ -27,7 +27,7 @@
 
 import type { HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, PosicionEnComuna, Veredicto } from "./types";
 import { recomendacionFranco } from "./mix-a-comprar";
-import { bandaDeDescuento, type BandaDescuento } from "./banda-esfuerzo";
+import { bandaDeDescuento, ETIQUETA_BANDA, type BandaDescuento } from "./banda-esfuerzo";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 /** Un tramo de texto; `b` = negrita. El componente los pinta, este módulo no. */
@@ -160,9 +160,10 @@ export const POSICION_TEXTO: Record<PosicionEnComuna, string> = {
 
 /** Cortes de la banda de esfuerzo, en palabras del lector (el pop-up tiene los suyos). */
 export const BANDA_PAGAS: Record<BandaDescuento, string> = {
-  factible: "negociación factible — lo que se conversa en cualquier compraventa",
-  con_argumentos: "alcanzable con argumentos — exigente, pero dentro de lo que se negocia cuando hay razones",
-  dificil: "difícil — solo si el vendedor necesita vender",
+  // El nombre es el de `ETIQUETA_BANDA` (25-sep-2026: uno solo en card, pop-up y capítulo).
+  factible: `${ETIQUETA_BANDA.factible} — lo que se conversa en cualquier compraventa`,
+  con_argumentos: `${ETIQUETA_BANDA.con_argumentos} — exigente, pero dentro de lo que se negocia cuando hay razones`,
+  dificil: `${ETIQUETA_BANDA.dificil} — solo si el vendedor necesita vender`,
 };
 
 /**

@@ -223,6 +223,11 @@ export function construirLoQueHariaYo(p: {
    *  análisis, tuyo o del mercado—. Sin él la oración va solo con el porcentaje. En LTR
    *  cae a `arriendoDeclaradoCLP`. */
   montoMercadoCLP?: number;
+  /** EL PRECIO PEDIDO EN UF, el mismo que recibe el pop-up (25-sep-2026). Con él «Poner ese pie
+   *  cuesta X» se calcula EXACTO, igual que la fila «Pie el día uno» de la tabla del pop-up. Sin
+   *  él cae a `costoDiaUnoUF` del motor, que viene redondeado a UF enteras: media UF de redondeo
+   *  eran los $20 mil de diferencia entre la card y la tabla en Providencia (aad691e4). */
+  precioUF?: number;
 }): BloqueLoQueHariaYo | null {
   const modalidad = p.modalidad ?? "ltr";
   const mercado = LO_DEL_MERCADO[modalidad];
@@ -437,7 +442,13 @@ export function construirLoQueHariaYo(p: {
             : null,
         // §5 revisado (11-sep-2026): las tres acotaciones de la card hablan igual, y ésta
         // dice qué cuesta y cuándo: «Poner ese pie cuesta UF 230 más el día uno.»
-        costo: m.costoDiaUnoUF > 0 ? `Poner ese pie cuesta ${enUF(m.costoDiaUnoUF)} más el día uno.` : null,
+        costo: (() => {
+          const pieDe = dv.piePctActual ?? m.piePct - m.piePctDelta;
+          const exacto =
+            p.precioUF && p.precioUF > 0 ? (p.precioUF * ((1 - (m.sinDescuento ? 0 : Math.abs(m.descuentoPct)) / 100) * m.piePct - pieDe)) / 100 : null;
+          const uf = exacto ?? m.costoDiaUnoUF;
+          return uf > 0 ? `Poner ese pie cuesta ${enUF(uf)} más el día uno.` : null;
+        })(),
         descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
         // La MISMA banda que el pop-up, del mismo número y por la misma función.
         bandaEsfuerzo: m.sinDescuento ? null : bandaDeDescuento(Math.abs(m.descuentoPct)),

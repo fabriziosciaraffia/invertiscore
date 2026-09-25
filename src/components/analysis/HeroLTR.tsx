@@ -187,6 +187,8 @@ export function HeroLTR({
         distancia: distanciaRow ?? null,
         sensibilidad: sensibilidadRow ?? null,
         arriendoDeclaradoCLP: Number(inputData?.arriendo ?? 0),
+        // El mismo precio que el pop-up: «Poner ese pie cuesta» y «Pie el día uno» dicen lo mismo.
+        precioUF: Number(inputData?.precio ?? 0),
         // DE DÓNDE SALIÓ EL ARRIENDO (12-sep-2026): la MISMA derivación que usa el prompt.
         // Tuyo → «Declaraste»; aceptaste la estimación de Franco → «Usamos …, la mediana de
         // tu zona»; sin referencia no se sabe → «El análisis usa …».
@@ -242,6 +244,9 @@ export function HeroLTR({
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(inputData?.precio ?? 0)}
+        // EL CAMINO DE MERCADO (25-sep-2026): lo que piden los avisos parecidos, de la misma
+        // fuente que la referencia de la zona (`resolverArriendoReferencia`).
+        referenciaArriendo={resolverArriendoReferencia(inputData)}
         // LA COLUMNA «HOY» DE LA TABLA (25-sep-2026): las mismas cifras que el informe muestra
         // arriba, para que «Hoy» no diga otra cosa que el hero.
         antes={

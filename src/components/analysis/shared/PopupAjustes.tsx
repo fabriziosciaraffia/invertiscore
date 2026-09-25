@@ -32,8 +32,17 @@
 // tal como lo declaraste (`antes`, del hero); «Así» son las cifras que el motor midió para esa
 // celda en su descuento mínimo (`CeldaMix.metricas`).
 //
+// AJUSTES FINALES (25-sep, segunda versión del mockup): la leyenda es una REGLA de descuento —ya
+// es Comprar → fuera de alcance, nombres arriba y las fronteras 0 · 5 · 10 · tope abajo—; la tabla
+// gana la fila de veredicto con los chips, el ⓘ del informe (`GlosaIndicador`) en cash on cash,
+// cap rate, TIR y Franco Score, y el puntaje con el color de su veredicto; y el arriendo o la
+// tarifa dejan de ser una línea y pasan a un BLOQUE PROPIO bajo la matriz, «Un camino que no
+// depende de ti», con lo que supusiste contra lo que haría falta y el contexto: en LTR lo que
+// piden los avisos parecidos (`resolverArriendoReferencia`, la misma fuente que la zona); en STR
+// «tómalo como señal, no como plan», porque no guardamos tarifas de comparables.
+//
 // Lo que salió el 24-sep sigue fuera: el menú de tres respuestas, los siete pares y «Un cambio a
-// la vez», salvo el arriendo o la tarifa, que quedan en una línea «pero eso depende del mercado».
+// la vez».
 // El botón «Analízalo a UF X» sigue inerte: conectarlo pide decidir si un re-análisis consume
 // crédito.
 //
@@ -45,8 +54,11 @@ import type { CeldaMix, MetricasCelda } from "@/lib/mix-palancas";
 import type { HallazgoDistanciaVeredicto, MixPalancas, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { solasAComprar } from "@/lib/mix-a-comprar";
-import { ETIQUETA_BANDA_CELDA, ETIQUETA_BANDA_FRASE, ETIQUETA_BANDA_LEYENDA } from "@/lib/banda-esfuerzo";
-import { GLOSAS, rotuloCapRate } from "@/lib/glosas-indicadores";
+import { BANDA_TOPE_ARGUMENTOS_PCT, BANDA_TOPE_FACTIBLE_PCT, ETIQUETA_BANDA, ETIQUETA_BANDA_FRASE } from "@/lib/banda-esfuerzo";
+import { GLOSAS, glosaCapRate, rotuloCapRate, type GlosaId } from "@/lib/glosas-indicadores";
+import type { ArriendoReferencia } from "@/lib/arriendo-referencia";
+import type { PalancaDistancia } from "@/lib/types";
+import { GlosaIndicador } from "./Glosa";
 import { celdaFranco, escalaCelda, grillaDelPopup, lecturaCelda, pieDiaUnoUF, type LecturaCelda } from "@/lib/matriz-popup";
 
 export { hayAjustesQueMostrar } from "@/lib/matriz-popup";
@@ -83,6 +95,9 @@ export interface PopupAjustesProps {
   precioUF: number;
   /** La columna «Hoy» de la tabla. La arma el hero con las mismas cifras que muestra arriba. */
   antes?: AntesPopup | null;
+  /** LTR · lo que piden los avisos parecidos (`resolverArriendoReferencia`), para el bloque del
+   *  camino de mercado. STR no lo pasa: no guardamos tarifas de comparables. */
+  referenciaArriendo?: ArriendoReferencia | null;
 }
 
 function Pill({ v }: { v: Veredicto }) {
@@ -93,7 +108,7 @@ function Pill({ v }: { v: Veredicto }) {
   );
 }
 
-export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes }: PopupAjustesProps) {
+export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo }: PopupAjustesProps) {
   const grilla = grillaDelPopup({ veredicto, distancia, mixComprar });
   const celdas = grilla?.celdas ?? [];
   const esComprar = veredicto === "COMPRAR";
@@ -130,7 +145,7 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
           <p className="pjx-preg">
             Cuánto descuento hay que pedir para llegar a <Pill v="COMPRAR" />, según tu pie y tu plazo.
           </p>
-          <Escala />
+          <Regla tope={tope} />
         </>
       )}
       <p className="pjx-tip">
@@ -211,15 +226,13 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
             valorUF={valorUF}
             precioUF={precioUF}
             pieHoy={pieHoy}
+            veredictoHoy={veredicto}
             antes={antes ?? null}
           />
         ))}
 
       {mercado && (
-        <p className="pjx-mercado">
-          Con {mercado.palanca === "adr" || modalidad === "STR" ? "la tarifa" : "el arriendo"} {pct1(Math.abs(mercado.deltaPct))} más{" "}
-          {mercado.palanca === "adr" || modalidad === "STR" ? "alta" : "alto"} también llega a <Pill v="COMPRAR" />, pero eso depende del mercado.
-        </p>
+        <CaminoMercado palanca={mercado} modalidad={modalidad} referencia={modalidad === "LTR" ? referenciaArriendo ?? null : null} currency={currency} valorUF={valorUF} />
       )}
 
       {precioBoton !== null && (
@@ -236,24 +249,43 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
   );
 }
 
-/** La leyenda en escala, de izquierda a derecha: fuera de alcance → ya es Comprar. */
-function Escala() {
+/**
+ * LA LEYENDA COMO REGLA DE DESCUENTO (25-sep): de izquierda a derecha, de lo que ya es Comprar a
+ * lo que no llega. Los nombres arriba de cada tramo; abajo, en las FRONTERAS, los porcentajes —0,
+ * 5, 10 y el tope real de la modalidad—, sin paréntesis.
+ */
+function Regla({ tope }: { tope: number }) {
+  const tramos = [
+    { k: "e0", n: "ya es Comprar" },
+    { k: "e1", n: ETIQUETA_BANDA.factible },
+    { k: "e2", n: ETIQUETA_BANDA.con_argumentos },
+    { k: "e3", n: ETIQUETA_BANDA.dificil },
+    { k: "fx", n: "fuera de alcance" },
+  ];
+  const fronteras = [0, BANDA_TOPE_FACTIBLE_PCT, BANDA_TOPE_ARGUMENTOS_PCT, tope];
   return (
     <div className="pjx-escala">
-      <p className="tit">Mientras más azul, más cerca de Comprar →</p>
-      <div className="barra" aria-hidden="true">
-        <span className="sw fx" />
-        <span className="sw e3" />
-        <span className="sw e2" />
-        <span className="sw e1" />
-        <span className="sw e0" />
+      <p className="tit">
+        <b>Descuento que hay que negociar</b>
+        <span>más descuento →</span>
+      </p>
+      <div className="nom">
+        {tramos.map((t) => (
+          <span key={t.k}>{t.n}</span>
+        ))}
       </div>
-      <div className="lab">
-        <span>fuera de alcance</span>
-        <span>{ETIQUETA_BANDA_LEYENDA.dificil}</span>
-        <span>{ETIQUETA_BANDA_LEYENDA.con_argumentos}</span>
-        <span>{ETIQUETA_BANDA_LEYENDA.factible}</span>
-        <span>ya es Comprar</span>
+      <div className="barra" aria-hidden="true">
+        {tramos.map((t) => (
+          <span key={t.k} className={`sw ${t.k}`} />
+        ))}
+      </div>
+      <div className="reg">
+        {fronteras.map((f, i) => (
+          <span key={i} style={{ left: `${(i + 1) * 20}%` }}>
+            <i />
+            <b>{miles(f)}%</b>
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -268,7 +300,7 @@ function CeldaAjustar({ l }: { l: LecturaCelda }) {
         <span className="n">
           −{pct1(f.pct)} <small>dcto.</small>
         </span>
-        <span className="sub">{ETIQUETA_BANDA_CELDA[f.banda]}</span>
+        <span className="sub">{ETIQUETA_BANDA[f.banda]}</span>
       </>
     );
   if (f.tipo === "no_llega")
@@ -322,6 +354,7 @@ function PanelAjustar({
   valorUF,
   precioUF,
   pieHoy,
+  veredictoHoy,
   antes,
 }: {
   c: CeldaMix;
@@ -332,6 +365,7 @@ function PanelAjustar({
   valorUF: number;
   precioUF: number;
   pieHoy: number;
+  veredictoHoy: Veredicto;
   antes: AntesPopup | null;
 }) {
   const l = lecturaCelda(c, false, tope);
@@ -362,16 +396,27 @@ function PanelAjustar({
   const $ = (n: number | null | undefined) => (n == null ? "—" : plata(n, currency, valorUF));
   const pc = (n: number | null | undefined) => (n == null ? "—" : pct1(n));
   const neg = (n: number | null | undefined) => n != null && n < 0;
-  const filas: { r: string; hoy: string; asi: string; negHoy?: boolean; negAsi?: boolean }[] = [
-    { r: "Descuento", hoy: "—", asi: d === 0 ? "ninguno" : pct1(d) },
-    { r: "Precio", hoy: plata(precioUF * valorUF, currency, valorUF), asi: plata(precioUF * (1 - d / 100) * valorUF, currency, valorUF) },
-    { r: "Pie el día uno", hoy: plata((pieHoy / 100) * precioUF * valorUF, currency, valorUF), asi: plata(pieDiaUnoUF(c, precioUF) * valorUF, currency, valorUF) },
-    { r: "Cuota del crédito", hoy: $(antes?.cuotaMensual), asi: $(m?.cuotaMensual) },
-    { r: "Te queda al mes", hoy: $(antes?.flujoMensual), asi: $(m?.flujoMensual), negHoy: neg(antes?.flujoMensual), negAsi: neg(m?.flujoMensual) },
-    { r: GLOSAS.cashOnCash.nombre, hoy: pc(antes?.cocPct), asi: pc(m?.cocPct), negHoy: neg(antes?.cocPct), negAsi: neg(m?.cocPct) },
-    { r: rotuloCapRate(modalidad), hoy: pc(antes?.capRateNetoPct), asi: pc(m?.capRateNetoPct) },
-    { r: "TIR a 10 años", hoy: pc(antes?.tirPct), asi: pc(m?.tirPct), negHoy: neg(antes?.tirPct), negAsi: neg(m?.tirPct) },
-    { r: "Franco Score", hoy: antes?.score == null ? "—" : String(antes.score), asi: c.score == null ? "—" : String(c.score) },
+  // El ⓘ del informe, el mismo componente y el mismo texto que en las seis cifras de arriba.
+  const conGlosa = (r: string, g: GlosaId) => (
+    <>
+      {r}
+      <GlosaIndicador glosa={g} />
+    </>
+  );
+  const score = (n: number | null | undefined, v: Veredicto) => (n == null ? "—" : <span className={`pjx-sc ${CLASE[v]}`}>{n}</span>);
+  const filas: { k: string; r: ReactNode; hoy: ReactNode; asi: ReactNode; negHoy?: boolean; negAsi?: boolean }[] = [
+    // EL VEREDICTO ARRIBA, con los chips de la tríada: «Así» es lo que consigues con esa celda en
+    // su descuento mínimo (`CeldaMix.veredicto`), la misma lectura de la que salen sus cifras.
+    { k: "veredicto", r: "Veredicto", hoy: <Pill v={veredictoHoy} />, asi: <Pill v={c.veredicto} /> },
+    { k: "descuento", r: "Descuento", hoy: "—", asi: d === 0 ? "ninguno" : pct1(d) },
+    { k: "precio", r: "Precio", hoy: plata(precioUF * valorUF, currency, valorUF), asi: plata(precioUF * (1 - d / 100) * valorUF, currency, valorUF) },
+    { k: "pie", r: "Pie el día uno", hoy: plata((pieHoy / 100) * precioUF * valorUF, currency, valorUF), asi: plata(pieDiaUnoUF(c, precioUF) * valorUF, currency, valorUF) },
+    { k: "cuota", r: "Cuota del crédito", hoy: $(antes?.cuotaMensual), asi: $(m?.cuotaMensual) },
+    { k: "flujo", r: "Te queda al mes", hoy: $(antes?.flujoMensual), asi: $(m?.flujoMensual), negHoy: neg(antes?.flujoMensual), negAsi: neg(m?.flujoMensual) },
+    { k: "coc", r: conGlosa(GLOSAS.cashOnCash.nombre, "cashOnCash"), hoy: pc(antes?.cocPct), asi: pc(m?.cocPct), negHoy: neg(antes?.cocPct), negAsi: neg(m?.cocPct) },
+    { k: "cap", r: conGlosa(rotuloCapRate(modalidad), glosaCapRate(modalidad)), hoy: pc(antes?.capRateNetoPct), asi: pc(m?.capRateNetoPct) },
+    { k: "tir", r: conGlosa("TIR a 10 años", "tir"), hoy: pc(antes?.tirPct), asi: pc(m?.tirPct), negHoy: neg(antes?.tirPct), negAsi: neg(m?.tirPct) },
+    { k: "score", r: conGlosa("Franco Score", "francoScore"), hoy: score(antes?.score, veredictoHoy), asi: score(c.score, c.veredicto) },
   ];
   return (
     <div className="pjx-panel">
@@ -394,7 +439,7 @@ function PanelAjustar({
           </thead>
           <tbody>
             {filas.map((x) => (
-              <tr key={x.r}>
+              <tr key={x.k} data-fila={x.k}>
                 <td>{x.r}</td>
                 <td className={`hoy${x.negHoy ? " neg" : ""}`}>{x.hoy}</td>
                 <td className={`asi${x.negAsi ? " neg" : ""}`}>{x.asi}</td>
@@ -403,6 +448,85 @@ function PanelAjustar({
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+/**
+ * EL CAMINO QUE NO DEPENDE DE TI (25-sep). La matriz muestra lo que se negocia —tu pie, tu plazo y
+ * el precio con el vendedor—; el arriendo o la tarifa los pone el mercado, y si con ellos también
+ * llega a Comprar, se dice aparte, con lo que supusiste contra lo que haría falta. El contexto
+ * dice si esa cifra existe: en LTR, lo que piden los avisos parecidos (y si lo que haría falta
+ * queda sobre eso, lo dice); en STR no guardamos tarifas de comparables, así que es una señal.
+ */
+function CaminoMercado({
+  palanca,
+  modalidad,
+  referencia,
+  currency,
+  valorUF,
+}: {
+  palanca: PalancaDistancia;
+  modalidad: "LTR" | "STR";
+  referencia: ArriendoReferencia | null;
+  currency: Currency;
+  valorUF: number;
+}) {
+  const esTarifa = palanca.palanca === "adr" || modalidad === "STR";
+  const pct = pct1(Math.abs(palanca.deltaPct));
+  let ctx: ReactNode;
+  if (esTarifa) {
+    ctx = "Tómalo como señal, no como plan: no guardamos las tarifas de los avisos parecidos, así que no podemos decirte si la zona ya la paga.";
+  } else if (referencia && referencia.valorCLP > 0 && (referencia.fuente === "radio" || referencia.fuente === "comuna")) {
+    const donde =
+      referencia.fuente === "radio"
+        ? `${referencia.n > 0 ? `Los ${miles(referencia.n)} avisos` : "Los avisos"} parecidos en ${miles(referencia.radioMetros)} m`
+        : `${referencia.n > 0 ? `Los ${miles(referencia.n)} avisos` : "Los avisos"} parecidos de la comuna`;
+    const sobre = palanca.objetivo > referencia.valorCLP ? ((palanca.objetivo / referencia.valorCLP - 1) * 100) : null;
+    ctx = (
+      <>
+        {donde} piden {plata(referencia.valorCLP, currency, valorUF)} al mes (la mediana).{" "}
+        {sobre !== null ? (
+          <strong>Lo que haría falta queda {pct1(sobre)} sobre lo que piden: hoy la zona no lo paga.</strong>
+        ) : (
+          "Lo que haría falta está dentro de lo que piden."
+        )}
+      </>
+    );
+  } else {
+    ctx = "No tenemos avisos parecidos cerca para compararlo: tómalo como señal, no como plan.";
+  }
+  return (
+    <div className="pjx-mkt" data-camino={esTarifa ? "tarifa" : "arriendo"}>
+      <p className="k">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 17l6-6 4 4 8-8" />
+          <path d="M14 7h7v7" />
+        </svg>
+        Un camino que no depende de ti
+      </p>
+      <h4>
+        Si la zona paga más, también llega a <Pill v="COMPRAR" />
+      </h4>
+      <p>
+        La matriz muestra lo que se negocia: tu pie, tu plazo y el precio con el vendedor. {esTarifa ? "La tarifa por noche" : "El arriendo"} no lo decide
+        nadie en esa mesa: lo pone el mercado. Con tu pie y tu plazo de hoy, sin descuento, llega a Comprar si {esTarifa ? "la tarifa sube" : "el arriendo sube"} {pct}.
+      </p>
+      <div className="cmp">
+        <div>
+          <div className="r">{esTarifa ? "Tarifa por noche que supusiste" : "Arriendo que supusiste"}</div>
+          <div className="n">{plata(palanca.actual, currency, valorUF)}</div>
+        </div>
+        <div className="flecha">+{pct} →</div>
+        <div>
+          <div className="r">{esTarifa ? "La que haría falta" : "El que haría falta"}</div>
+          <div className="n">{plata(palanca.objetivo, currency, valorUF)}</div>
+        </div>
+      </div>
+      <p className="aviso">
+        <span aria-hidden="true">ⓘ</span>
+        <span>{ctx}</span>
+      </p>
     </div>
   );
 }

@@ -142,8 +142,9 @@ export function runInfoIndicadoresTier(): { hard: number } {
     if (/"Cap rate neto"/.test(P)) F("3 · el pop-up volvió a escribir «Cap rate neto» a mano (en STR es «Cap rate»)");
     // ⚠ ACTA (25-sep-2026) · el cap rate VUELVE al pop-up, como fila de la tabla Hoy / Así del
     // mockup final (el 24-sep había salido con los pares y este chequeo quedó condicional). Vuelve
-    // a ser obligatorio: la fila se rotula por modalidad, «Cap rate neto» en LTR y «Cap rate» en STR.
-    if (!/r: rotuloCapRate\(modalidad\)/.test(P)) F("3 · el pop-up no rotula el cap rate de la tabla por modalidad");
+    // a ser obligatorio: la fila se rotula por modalidad, «Cap rate neto» en LTR y «Cap rate» en STR, y
+    // su ⓘ es el de la misma modalidad (el rótulo va con `conGlosa` desde el 25-sep).
+    if (!/conGlosa\(rotuloCapRate\(modalidad\), glosaCapRate\(modalidad\)\)/.test(P)) F("3 · el pop-up no rotula el cap rate de la tabla por modalidad");
     if (!/modalidad="STR"/.test(visible(leer("src/components/analysis/str/HeroStrDictamen.tsx")))) F("3 · el hero STR no le dice al pop-up que es STR");
     if (!/modalidad="LTR"/.test(visible(leer("src/components/analysis/HeroLTR.tsx")))) F("3 · el hero LTR no le dice al pop-up que es LTR");
   }

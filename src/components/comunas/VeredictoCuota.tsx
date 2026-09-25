@@ -30,9 +30,10 @@ const NOMBRE_TIPOLOGIA: Record<number, string> = {
 };
 
 const ETIQUETA_BANDA: Record<BandaEsfuerzo, string> = {
-  normal: "Banda 1 · negociación factible",
-  "con-argumentos": "Banda 2 · alcanzable con argumentos",
-  dificil: "Banda 3 · difícil",
+  // Los nombres de `ETIQUETA_BANDA` (25-sep-2026): los mismos que la card y el pop-up.
+  normal: "Banda 1 · fácil de negociar",
+  "con-argumentos": "Banda 2 · con argumentos",
+  dificil: "Banda 3 · difícil de negociar",
   estructural: "Banda 4 · estructural",
 };
 
