@@ -15,7 +15,7 @@
 //  · Comprar graduado por el margen de la card, con los cortes de la banda de margen del motor
 //    (bajo 7%, «con cautela»; de 7 a 15%, «con margen acotado»; desde 15%, «el veredicto es
 //    fuerte»);
-//  · Buscar otro lleva la DISTANCIA de la card, no la causa («Llegar a Comprar pediría…»), y
+//  · Buscar otro lleva la DISTANCIA de la card, no la causa («llegar a Comprar pediría…»), y
 //    sobre el tope explorado, «ni con 70% menos de precio llega a Comprar».
 //
 // Formato del contrato (`validarTitular`): hasta 15 palabras, un solo plumón (`**…**`), sin
@@ -86,12 +86,12 @@ export function titularMotor(p: { veredicto: Veredicto; modalidad: "ltr" | "str"
       // «más de tarifa por noche» no cabe en 15 palabras con la dificultad: «más por noche».
       const que = m[2].startsWith("más de tarifa") ? "más por noche" : "más de arriendo";
       return {
-        titular: `No conviene: **Llegar a Comprar pediría ${pctCard(x)}% ${que}**, ${dificil ? "y eso es muy difícil" : "pero eso depende del mercado"}.`,
+        titular: `No conviene: **llegar a Comprar pediría ${pctCard(x)}% ${que}**, ${dificil ? "y eso es muy difícil" : "pero eso depende del mercado"}.`,
         rama: "buscar_distancia_mercado",
       };
     }
     return {
-      titular: `No conviene: **Llegar a Comprar pediría ${pctCard(x)}% menos de precio**, ${dificil ? "y eso es muy difícil" : ETIQUETA_BANDA[bandaDeDescuento(x)]}.`,
+      titular: `No conviene: **llegar a Comprar pediría ${pctCard(x)}% menos de precio**, ${dificil ? "y eso es muy difícil" : ETIQUETA_BANDA[bandaDeDescuento(x)]}.`,
       rama: "buscar_distancia",
     };
   }

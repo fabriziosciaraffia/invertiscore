@@ -67,6 +67,8 @@ export function chequearTitular(id: string, v: Veredicto, modalidad: "ltr" | "st
   const { titular, rama } = titularMotor({ veredicto: v, modalidad, card });
   const plano = stripMarcas(titular);
   if (!APERTURA[v].test(plano)) f.push(`1 · ${id}: el titular no abre con la fórmula de ${v}: «${plano}»`);
+  // Minúscula después de los dos puntos (25-sep-2026, Fabrizio): «No conviene: llegar a Comprar…».
+  if (/^No conviene: [A-ZÁÉÍÓÚÑ]/.test(plano)) f.push(`1 · ${id}: mayúscula después de «No conviene:»: «${plano}»`);
   const val = validarTitular(titular);
   if (!val.ok) f.push(`3 · ${id}: el titular no pasa el formato (${val.motivo}): «${plano}»`);
   const card_ = textoCard(v, card);
