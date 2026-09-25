@@ -55,6 +55,7 @@ import { runSelectorModalidadTier } from "./selector-modalidad-catch-test";
 import { runCopySinIaTier } from "./copy-sin-ia-catch-test";
 import { runCifraComparablesTier } from "./cifra-comparables-catch-test";
 import { runLecturaPaginadaTier } from "./lectura-paginada-catch-test";
+import { runPieCeroTier } from "./pie-cero-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -233,7 +234,7 @@ function printSeed(r: SeedReport) {
   // a la baseline. Verificado en rojo con la fila «no» del golden. Corre siempre con el QUICK. ──
   totalHard += runRegulacionNoPesaTier().hard;
   // ── Tier SCORE-RETORNO (12-sep-2026, 0 tokens, sin base): cash-on-cash y TIR como dimensiones
-  // ponderadas (esquema A, curva calibrada), pie cero con rendimiento neto sobre el precio,
+  // ponderadas (esquema A, curva calibrada), pie cero con el puntaje del flujo (25-sep),
   // puertas intactas. Corre siempre con el QUICK. ──
   totalHard += runScoreRetornoTier().hard;
   // ── Tier PROMPT-V25 (12-sep-2026, 0 tokens): las seis dimensiones al user prompt, el system las
@@ -297,6 +298,10 @@ function printSeed(r: SeedReport) {
   // ni de properties_within_radius se corta en las 1.000 filas de PostgREST. Caza el patrón por la
   // cadena de cada llamada, no los casos. Verificado en rojo con 13 mutaciones.
   totalHard += runLecturaPaginadaTier().hard;
+  // Tier PIE-CERO (25-sep-2026, 0 tokens, sin base): sin pie la dimensión de capital es el flujo
+  // y el gate 2 aplica su brazo de flujo; ningún Buscar otro llega a Comprar con pie y plazo sin
+  // descuento. Verificado en rojo con 13 mutaciones.
+  totalHard += runPieCeroTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
