@@ -147,7 +147,9 @@ export function runFactibilidadDemandaTier(): { hard: number } {
   //    guardada no puede narrar el anterior. Se exige ≥ 23, no el número exacto: un bump posterior
   //    por otra razón no tiene por qué poner este tier en rojo. ──
   if (!(PROMPT_VERSION_STR >= 23)) F(`5 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}: el cambio de factibilidad va con el prompt STR en v23 o más`);
-  for (const p of ["src/app/analisis/renta-corta/[id]/page.tsx", "src/app/api/analisis/short-term/ai/route.ts"]) {
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 1: `api/analisis/short-term/ai/route.ts` se borró
+  // (no tenía llamador); la invalidación por versión que queda es la de la página.
+  for (const p of ["src/app/analisis/renta-corta/[id]/page.tsx"]) {
     if (!/promptVersion === PROMPT_VERSION_STR/.test(sinComentarios(leer(p)))) F(`5 · ${p} no invalida la prosa STR por versión`);
   }
 

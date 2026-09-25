@@ -87,7 +87,9 @@ export function runCapRateNetoTier(): { hard: number } {
   if (!/\?\.capRatePct \?\? capRateNetoLtrPct\(m\) \?\? 0;/.test(A)) F("1 · el respaldo del prompt no es la neta");
   // La prosa ya escrita citaba el `capRate` viejo: el bump a 26 la manda a regenerar al abrir.
   if (PROMPT_VERSION_LTR !== 26) F(`1 · PROMPT_VERSION_LTR = ${PROMPT_VERSION_LTR}: el cambio de cifra del prompt va con el bump a 26`);
-  for (const p of ["src/app/analisis/[id]/page.tsx", "src/app/api/analisis/ai/route.ts"]) {
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 1: `api/analisis/ai/route.ts` se borró (no tenía
+  // llamador); la invalidación por versión que queda es la de la página.
+  for (const p of ["src/app/analisis/[id]/page.tsx"]) {
     if (!/promptVersion === PROMPT_VERSION_LTR/.test(sinComentarios(leer(p)))) F(`1 · ${p} no invalida la prosa por versión`);
   }
 
