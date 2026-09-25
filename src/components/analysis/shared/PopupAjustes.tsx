@@ -506,7 +506,7 @@ function CaminoMercado({
       </h4>
       <p>
         La matriz muestra lo que se negocia: tu pie, tu plazo y el precio con el vendedor. {esTarifa ? "La tarifa por noche" : "El arriendo"} no lo decide
-        nadie en esa mesa: lo pone el mercado. Con tu pie y tu plazo de hoy, sin descuento, llega a Comprar si {esTarifa ? "la tarifa sube" : "el arriendo sube"} {pct}.
+        nadie en esa mesa: lo pone el mercado. Con tu pie y tu plazo de hoy, sin descuento, llega a Comprar si {esTarifa ? "la tarifa por noche sube" : "el arriendo sube"} {pct}.
       </p>
       <div className="cmp">
         <div>

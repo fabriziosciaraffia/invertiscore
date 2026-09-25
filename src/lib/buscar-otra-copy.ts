@@ -84,7 +84,7 @@ export function distanciaBuscarOtra(v: HallazgoDistanciaVeredicto["valor"] | nul
     .sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
   const x = solas[0] ?? v.deltaMinimoComprarFueraDeTope ?? null;
   if (!x) return `Llegar a Comprar pediría más de un ${DISTANCIA_PRECIO_EXPLORADA_PCT}% menos de precio, y eso es muy difícil.`;
-  const que = x.palanca === "precio" ? "menos de precio" : `más de ${x.palanca === "adr" || modalidad === "str" ? "tarifa" : "arriendo"}`;
+  const que = x.palanca === "precio" ? "menos de precio" : `más de ${x.palanca === "adr" || modalidad === "str" ? "tarifa por noche" : "arriendo"}`;
   // «Y ESO ES MUY DIFÍCIL» SOLO SOBRE LA BANDA DIFÍCIL. Un Buscar otra que lo decidió un filtro
   // puede quedar a pocos puntos de Comprar, y ahí la coletilla sería falsa.
   const cola = Math.abs(x.deltaPct) > BANDA_TOPE_ARGUMENTOS_PCT ? ", y eso es muy difícil" : "";

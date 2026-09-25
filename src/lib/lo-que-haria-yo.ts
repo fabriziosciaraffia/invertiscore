@@ -168,6 +168,9 @@ const NOMBRE_LLANO: Record<string, string> = {
 };
 
 const pct1 = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
+/** El porcentaje como lo escribe la card: entero sin decimal, el resto con uno y coma. Lo usan
+ *  los chips de la card y el titular del motor, para que las dos piezas escriban la misma cifra. */
+export const pctCard = (n: number) => pct1(Math.round(n * 10) / 10);
 const signo = (n: number) => (n < 0 ? "−" : "+");
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 

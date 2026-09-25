@@ -18,6 +18,7 @@
 
 import type { BloqueLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import { bandaDeDescuento, ETIQUETA_BANDA } from "@/lib/banda-esfuerzo";
+import { pctCard } from "@/lib/lo-que-haria-yo";
 
 export function LoQueHariaYoBloque({
   bloque,
@@ -56,7 +57,7 @@ export function LoQueHariaYoBloque({
               {mix.movimiento.pie && (
                 <span className="rec-chip-g">
                   <span className="rec-chip">
-                    Pie <s>{mix.movimiento.pie.de}%</s> <b>{mix.movimiento.pie.a}%</b>
+                    Pie <s>{pctCard(mix.movimiento.pie.de)}%</s> <b>{pctCard(mix.movimiento.pie.a)}%</b>
                   </span>
                   {mix.movimiento.plazo && <i className="rec-mas">+</i>}
                 </span>
@@ -105,7 +106,7 @@ export function LoQueHariaYoBloque({
     return (
       <div className="rec-eq">
         <p className="rec-puente">
-          Con {deMercado.nombre === "tarifa" ? "la tarifa" : "el arriendo"} {deMercado.cifra.replace(/^\+/, "")} más{" "}
+          Con {deMercado.nombre === "tarifa" ? "la tarifa por noche" : "el arriendo"} {deMercado.cifra.replace(/^\+/, "")} más{" "}
           {deMercado.nombre === "tarifa" ? "alta" : "alto"} llega a Comprar, pero eso depende del mercado.
         </p>
       </div>
