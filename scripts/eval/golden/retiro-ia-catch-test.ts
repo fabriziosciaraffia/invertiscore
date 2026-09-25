@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
-// GOLDEN · RETIRO DE LA IA, PARTE 1 — catch-test (25-sep-2026)
+// GOLDEN · RETIRO DE LA IA — catch-test (25-sep-2026)
 // ============================================================================
 // Decisión de Fabrizio: la IA salió de lo que el usuario ve en el informe (el titular lo escribe
 // el motor) y la maquinaria que la genera se retira por partes. Esta es la primera:
@@ -12,13 +12,14 @@
 //     imagen del correo cae al texto del motor sin la caja de la prosa, y AMBAS deja de pedir y
 //     dibujar su prosa (web, share y PDF), sin exigirla para el PDF.
 //
+// ⚠ ACTA (25-sep-2026) · PARTE 2 (retiro del código, seis commits): se borraron los generadores,
+// los guards, las props de prosa, AMBAS, los símbolos de prompt y, al final, el interruptor
+// (`prosa-ia-interruptor.ts`) con la ruta de la narrativa de AMBAS. La regla dejó de ser «detrás
+// del interruptor»: es «no existe, y nadie lo importa».
+//
 // FIJA, verificado EN ROJO por mutación:
 //   1 · LOS ENDPOINTS NO EXISTEN y nada del código de producción los llama.
-//   2 · EL INTERRUPTOR prende SOLO con "true" exacto; sin la variable, apagado.
-//   3 · NADA EN PRODUCCIÓN LLAMA A LA GENERACIÓN CON EL INTERRUPTOR APAGADO: cada llamada a un
-//       generador desde `src/` está DENTRO del bloque que abre `prosaIaActiva()` (o después de un
-//       `if (!prosaIaActiva()) { return }` en el mismo handler), y un llamador nuevo sin guard es
-//       falla. Se mide por el bloque real (llaves balanceadas), no por vecindad.
+//   3 · NADA EN src/ LLAMA A UN GENERADOR: ni la generación LTR/STR/AMBAS ni `messages.create`.
 //   4 · EL PDF STR RESPONDE 410, como el LTR: el guard va antes del acceso y del render, sin el 425
 //       que exigía prosa; el documento redirige al informe; ningún botón lo ofrece.
 //   5 · LA IMAGEN DEL CORREO no lee la prosa ni pinta la caja «LO QUE VERÍAS».
@@ -31,7 +32,6 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join, relative, posix } from "node:path";
-import { prosaIaActiva } from "../../../src/lib/prosa-ia-interruptor";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -129,6 +129,9 @@ export const RETIRADOS: Record<string, string[]> = {
   "parte 2 · símbolos de prompt en módulos compartidos": [
     "src/lib/ai-usage.ts",
   ],
+  "parte 2 · el interruptor y el último disparador": [
+    "src/lib/prosa-ia-interruptor.ts",
+  ],
 };
 
 /**
@@ -136,6 +139,8 @@ export const RETIRADOS: Record<string, string[]> = {
  * archivo: el módulo existe. Se vigila el nombre: ninguno aparece en `src/` fuera de comentarios.
  */
 export const SIMBOLOS_RETIRADOS: Record<string, string> = {
+  prosaIaActiva: "src/lib/prosa-ia-interruptor.ts",
+  PROSA_IA_ENABLED: "src/lib/prosa-ia-interruptor.ts",
   MICRO_CHECK_MODEL: "src/lib/ai-config.ts",
   PATHS_SIN_RENDER_LTR: "src/lib/analysis.ts",
   NO_APLICA_PROMPT: "src/lib/no-aplica-copy.ts",
@@ -189,22 +194,15 @@ export function runRetiroIaTier(): { hard: number } {
     "src/app/api/analisis/short-term/[id]/ai-status/route.ts",
     "src/app/api/scraping/parse-listing/route.ts",
     "src/app/api/scraping/parse-quotation/route.ts",
+    // Parte 2 · 6: la narrativa de AMBAS (respondía 410 desde la parte 1).
+    "src/app/api/analisis/comparativa/ai/route.ts",
   ];
   for (const p of BORRADOS) if (existsSync(join(RAIZ, p))) F(`1 · ${p} volvió a existir: era una exposición sin llamador`);
   const SRC = archivos(join(RAIZ, "src")).map((a) => ({ rel: relative(RAIZ, a).replace(/\\/g, "/"), src: sinComentarios(readFileSync(a, "utf8").replace(/\r\n/g, "\n")) }));
-  const LLAMA_BORRADO = /["'`]\/api\/analisis\/(short-term\/)?ai["'`?]|\/ai-status["'`]|\/api\/scraping\//;
+  const LLAMA_BORRADO = /["'`]\/api\/analisis\/(short-term\/|comparativa\/)?ai["'`?]|\/ai-status["'`]|\/api\/scraping\//;
   for (const { rel, src } of SRC) if (LLAMA_BORRADO.test(src)) F(`1 · ${rel} llama a un endpoint retirado (${src.match(LLAMA_BORRADO)![0]})`);
 
-  // ── 2 · el interruptor prende solo con "true" exacto ──
-  const previo = process.env.PROSA_IA_ENABLED;
-  const casos: [string | undefined, boolean][] = [[undefined, false], ["", false], ["false", false], ["1", false], ["TRUE", false], [" true", false], ["true", true]];
-  for (const [v, esperado] of casos) {
-    if (v === undefined) delete process.env.PROSA_IA_ENABLED;
-    else process.env.PROSA_IA_ENABLED = v;
-    if (prosaIaActiva() !== esperado) F(`2 · con PROSA_IA_ENABLED=${JSON.stringify(v)} el interruptor da ${!esperado}: solo "true" exacto prende`);
-  }
-  if (previo === undefined) delete process.env.PROSA_IA_ENABLED;
-  else process.env.PROSA_IA_ENABLED = previo;
+  // ── 2 · RETIRADO (parte 2 · 6): el interruptor se borró; no queda generación que prender. ──
 
   // ── 3 · nada en src/ llama a un generador ──
   // ⚠ ACTA (25-sep-2026) · PARTE 2: hasta la parte 1 esto medía que cada llamada estuviera
@@ -285,14 +283,12 @@ export function runRetiroIaTier(): { hard: number } {
   if (/status: 425|comparativaAI/.test(PDF_AMBAS)) F("6 · el PDF de AMBAS vuelve a exigir la prosa");
   const DOC_AMBAS = sinComentarios(leer("src/app/share/comparativa/[token]/documento/DocumentoAmbas.tsx"));
   if (/\bai\??\.conviene|\bai:\s*AIAnalysisComparativa/.test(DOC_AMBAS)) F("6 · el documento de AMBAS vuelve a dibujar la prosa");
-  const RUTA_AMBAS = sinComentarios(leer("src/app/api/analisis/comparativa/ai/route.ts"));
-  if (!/status: 410/.test(RUTA_AMBAS) || /await|supabase|anthropic/i.test(RUTA_AMBAS)) F("6 · la ruta de la narrativa de AMBAS vuelve a hacer algo además de responder 410");
 
   if (fallas.length) {
     console.log(`  ✗ RETIRO-IA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${retirados} archivos y símbolos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
+    console.log(`  ✓ VERDE — ${retirados} archivos y símbolos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
   }
   return { hard: fallas.length };
 }
