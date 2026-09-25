@@ -32,7 +32,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** 25-sep-2026: el documento STR sale de la UI, igual que el LTR, al salir la IA del informe. */
+const PDF_STR_VISIBLE = false;
+
 export default async function DocumentoSTRPage({ params }: { params: { id: string } }) {
+  // 25-sep-2026: fuera de la UI, espejo del LTR — redirige al informe web ANTES de consultar nada.
+  // El resto de esta página y DocumentoSTR.tsx se quedan para la reescritura sobre el motor.
+  if (!PDF_STR_VISIBLE) {
+    redirect(`/analisis/renta-corta/${params.id}?desde=documento`);
+  }
+
   const supabase = createClient();
   const [{ data: { user } }, ufValue] = await Promise.all([
     supabase.auth.getUser(),

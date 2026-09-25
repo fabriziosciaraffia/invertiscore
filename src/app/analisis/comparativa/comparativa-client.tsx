@@ -19,7 +19,6 @@ import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
-import { useComparativaAI } from "@/components/comparativa/use-comparativa-ai";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
 import { ResumenAnexoModal } from "@/components/comparativa/ResumenAnexoModal";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
@@ -106,11 +105,9 @@ export function ComparativaClient(p: Props) {
   );
   const modalData = modalChild === "ltr" ? p.ltrResumen : modalChild === "str" ? p.strResumen : null;
 
-  // Prosa comparativa (Fase C) — integrada al hero. canGenerate=true: si el cache
-  // está vacío/viejo, el hook hace fetch → el endpoint regenera (lazy-on-open).
-  const { ai: comparativaAI, loading: aiLoading, error: aiError, reintentar: reintentarAi } = useComparativaAI(
-    p.ltrId, p.strId, p.cachedAI, true,
-  );
+  // LA IA SALIÓ DE LA COMPARATIVA (25-sep-2026, decisión de Fabrizio): la página no pide la
+  // prosa (antes `useComparativaAI` con canGenerate=true, que la regeneraba al abrir) ni dibuja
+  // la guardada. El hero se queda con la apertura del motor, sin espera ni aviso de error.
 
   // Goal B — `informe_visto` AMBAS: el veredicto comparativo viene server-rendered,
   // visible desde el mount; la prosa puede seguir en vuelo (skeleton del hero).
@@ -348,8 +345,8 @@ export function ComparativaClient(p: Props) {
             ltrVerdict={ltrVerdict}
             strScore={p.strScore}
             strVerdict={strVerdict}
-            ai={comparativaAI}
-            aiLoading={aiLoading}
+            ai={null}
+            aiLoading={false}
             aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
             fechaProsa={p.fechaProsa}
@@ -359,23 +356,6 @@ export function ComparativaClient(p: Props) {
             childrenBlocked={p.childrenBlocked}
             onOpenChild={p.childrenBlocked ? setModalChild : undefined}
           />
-
-          {/* Goal F3-c — último agujero sin salida: tras los 3 intentos del hook
-              (1 + 2 automáticos con backoff), el error dejaba la comparativa sin
-              prosa y sin acción. Ahora se declara y se puede reintentar. Fuera
-              del hero: el hero recién mergeado no se toca. */}
-          {aiError && !comparativaAI && (
-            <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 -mt-4 px-1">
-              ● Análisis comparativo no disponible · {aiError} ·{" "}
-              <button
-                type="button"
-                onClick={reintentarAi}
-                className="font-mono text-[11px] uppercase tracking-[0.04em] text-signal-red hover:underline"
-              >
-                Reintentar
-              </button>
-            </p>
-          )}
 
           {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}
           {/* id ancla del puente "Cómo pesa cada diferencia ↓" del hero (G8) */}

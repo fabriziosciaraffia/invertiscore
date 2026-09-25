@@ -265,7 +265,7 @@ function FilaAnalisis({
             recortaría el overlay a su propio ancho. aria-hidden porque el link
             accesible es el de la primera celda. */}
         <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
-        <RowActions id={row.id} groupId={row.ambas_group_id} hrefAbrir={abrir} hrefPdf={hrefPdf(row)} />
+        <RowActions id={row.id} groupId={row.ambas_group_id} hrefAbrir={abrir} hrefPdf={hrefPdf()} />
       </td>
     </tr>
   );
@@ -580,7 +580,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                         id={row.id}
                         groupId={row.ambas_group_id}
                         hrefAbrir={abrir}
-                        hrefPdf={hrefPdf(row)}
+                        hrefPdf={hrefPdf()}
                         variant="menu"
                       />
                     )}

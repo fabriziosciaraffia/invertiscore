@@ -23,7 +23,7 @@ interface Props {
   id: string;
   groupId: string | null;
   hrefAbrir: string;
-  hrefPdf: string;
+  hrefPdf: string | null;
   variant?: "inline" | "menu";
 }
 
@@ -91,9 +91,11 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
             <a href={hrefAbrir} className="flex items-center gap-2.5 px-3.5 py-2.5 font-body text-[13px] text-[var(--franco-text)] no-underline">
               <ArrowRight className="h-3.5 w-3.5" /> Abrir análisis
             </a>
-            <a href={hrefPdf} className="flex items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 font-body text-[13px] text-[var(--franco-text)] no-underline">
-              <FileText className="h-3.5 w-3.5" /> Descargar PDF
-            </a>
+            {hrefPdf && (
+              <a href={hrefPdf} className="flex items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 font-body text-[13px] text-[var(--franco-text)] no-underline">
+                <FileText className="h-3.5 w-3.5" /> Descargar PDF
+              </a>
+            )}
             {!esDemo && (
               <button
                 type="button"
@@ -123,14 +125,16 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
       >
         <ArrowRight className="h-3.5 w-3.5" />
       </a>
-      <a
-        href={hrefPdf}
-        title="Descargar PDF"
-        aria-label="Descargar PDF"
-        className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-[var(--franco-border-hover)] bg-[var(--franco-card)] text-[var(--franco-text-secondary)] no-underline"
-      >
-        <FileText className="h-3.5 w-3.5" />
-      </a>
+      {hrefPdf && (
+        <a
+          href={hrefPdf}
+          title="Descargar PDF"
+          aria-label="Descargar PDF"
+          className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-[var(--franco-border-hover)] bg-[var(--franco-card)] text-[var(--franco-text-secondary)] no-underline"
+        >
+          <FileText className="h-3.5 w-3.5" />
+        </a>
+      )}
       {!esDemo && (
         <button
           type="button"

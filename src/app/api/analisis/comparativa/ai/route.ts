@@ -9,6 +9,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { generateComparativaAI } from "@/lib/ai-generation-ambas-generate";
 import { createAnonPipelineClient, sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
+import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 
 // Goal C: techo explícito — hasta 3 llamadas Sonnet seriales + 2 recomputes de
 // motor; con prompt caching los retries bajan.
@@ -58,6 +59,11 @@ function cacheEstaFresca(ai: AIAnalysisComparativa | undefined | null): boolean 
 }
 
 export async function POST(request: Request) {
+  // APAGADA desde el 25-sep-2026 detrás de `prosaIaActiva()`: la comparativa ya no pide ni dibuja
+  // la prosa (retiro de la IA por partes). Sin el interruptor no se genera nada ni se lee la base.
+  if (!prosaIaActiva()) {
+    return NextResponse.json({ error: "La narrativa IA de la comparativa está apagada" }, { status: 410 });
+  }
   try {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();

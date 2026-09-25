@@ -8,6 +8,7 @@ import { resolveDisplayName } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
 import { generateAiAnalysis } from "@/lib/ai-generation";
+import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
@@ -175,9 +176,9 @@ export async function POST(request: Request) {
           //
           // await (no IIFE fire-and-forget): en serverless un promise sin await
           // puede morir cuando se envía el response. try/catch para no romper el
-          // 200 que Flow espera. Si falla o Flow corta por latencia, la vista
-          // recupera la IA on-demand vía polling /ai-status — no es critical path.
-          if (unlocked && unlocked.tipo_analisis === "long-term") {
+          // 200 que Flow espera. No es critical path. APAGADA desde el 25-sep-2026
+          // detrás de `prosaIaActiva()`: el informe ya no dibuja la prosa.
+          if (prosaIaActiva() && unlocked && unlocked.tipo_analisis === "long-term") {
             try {
               // Candado cross-instance (goal #3): si la fila ya se está generando
               // (background del submit, dueño abriendo), esta se salta.

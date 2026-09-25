@@ -25,6 +25,9 @@ import { renderPdf } from "@/lib/pdf/render-pdf";
 import { accesoPdf, logDenegacion } from "@/lib/pdf/documento-access";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 
+/** 25-sep-2026: el PDF STR sale de la UI, igual que el LTR, al salir la IA del informe. */
+const PDF_STR_VISIBLE = false;
+
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -40,11 +43,22 @@ export async function GET(
     const supabase = createClient();
     const { data: row } = await supabase
       .from("analisis")
-      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id, user_id, anon_claim_token_hash")
+      .select("id, comuna, direccion, ambas_role, ambas_group_id, user_id, anon_claim_token_hash")
       .eq("id", id)
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // 25-sep-2026: el PDF STR está fuera de la UI, igual que el LTR (mismo 410). El documento
+    // imprimía la prosa de la IA —su titular, el reencuadre y cuatro capítulos— y exigía que
+    // existiera (425); la IA salió del informe y ya no se genera. Vuelve cuando se reescriba sobre
+    // el informe del motor. 410: retirado, no roto.
+    if (!PDF_STR_VISIBLE) {
+      return NextResponse.json(
+        { error: "El PDF del informe de renta corta está fuera de la UI desde el 25-sep-2026; se reescribe sobre el informe del motor." },
+        { status: 410 },
+      );
     }
 
     // Gating dueño-only (D-1), espejo del LTR: el secreto del renderer NO abre
@@ -77,18 +91,8 @@ export async function GET(
       }
     }
 
-    // Guard: la narrativa IA debe estar cacheada (columna SQL `ai_analysis`)
-    // antes de generar PDF. Si no, la generación dispararía Anthropic dentro
-    // de Puppeteer y ese chain puede exceder maxDuration 60s. Forzamos al
-    // usuario a abrir el análisis en la web primero (donde la IA se persiste).
-    // HTTP 425 Too Early es semánticamente correcto: el prerequisito no está
-    // listo aún.
-    if (!(row as Record<string, unknown>).ai_analysis) {
-      return NextResponse.json(
-        { error: "Abre el análisis en la web antes de descargar el PDF" },
-        { status: 425 },
-      );
-    }
+    // Hasta el 25-sep-2026 acá había un 425 si faltaba la prosa IA. La IA salió del informe y ya no
+    // se genera: el PDF, cuando vuelva, no la puede exigir.
 
     const direccionLabel = row.direccion
       ? formatDireccionDisplay(row.direccion as string, row.comuna as string | null)

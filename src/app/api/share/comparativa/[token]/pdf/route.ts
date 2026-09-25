@@ -51,19 +51,8 @@ export async function GET(
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
     }
 
-    // Guard: la narrativa IA debe estar cacheada (Commit 3b) antes de generar
-    // PDF. Si no, la generación dispararía Anthropic dentro de Puppeteer y
-    // ese chain puede exceder maxDuration 60s. Forzamos al usuario a abrir
-    // el análisis en la web primero (donde la IA se persiste en jsonb).
-    // HTTP 425 Too Early es semánticamente correcto: el prerequisito no
-    // está listo aún.
-    const ltrResults = ltrRow.results as { comparativaAI?: unknown } | null;
-    if (!ltrResults?.comparativaAI) {
-      return NextResponse.json(
-        { error: "Abre el análisis en la web antes de descargar el PDF" },
-        { status: 425 },
-      );
-    }
+    // Hasta el 25-sep-2026 acá había un 425 si faltaba la narrativa IA cacheada. La IA salió de
+    // la comparativa (el documento ya no la dibuja y nada la genera), así que el PDF no la exige.
 
     const direccionLabel = ltrRow.direccion
       ? formatDireccionDisplay(ltrRow.direccion as string, ltrRow.comuna as string | null)

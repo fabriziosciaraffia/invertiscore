@@ -8,7 +8,6 @@ import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
-import { useComparativaAI } from "@/components/comparativa/use-comparativa-ai";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
@@ -67,11 +66,8 @@ export function SharedComparativaClient(p: Props) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const uf = p.ufValue;
 
-  // Prosa comparativa (Fase C) — integrada al hero. canGenerate=false: el share es
-  // público (sin auth), usa lo persistido tal cual y NUNCA regenera.
-  const { ai: comparativaAI, loading: aiLoading } = useComparativaAI(
-    p.ltrId, p.strId, p.cachedAI, false,
-  );
+  // LA IA SALIÓ DE LA COMPARATIVA (25-sep-2026): el share tampoco dibuja la prosa guardada;
+  // el hero se queda con la apertura del motor.
 
   // Pirámide diferencial (D3) — findings motor-templated, recomputados por moneda.
   const findings = useMemo(() => {
@@ -194,8 +190,8 @@ export function SharedComparativaClient(p: Props) {
             ltrVerdict={ltrVerdict}
             strScore={p.strScore}
             strVerdict={strVerdict}
-            ai={comparativaAI}
-            aiLoading={aiLoading}
+            ai={null}
+            aiLoading={false}
             aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
             fechaProsa={p.fechaProsa}

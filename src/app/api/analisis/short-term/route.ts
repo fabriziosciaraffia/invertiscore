@@ -23,6 +23,7 @@ import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 import Anthropic from "@anthropic-ai/sdk";
 import { generarYPersistirProsaStr } from "@/lib/str-prosa-persist";
+import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 
 const anthropic = new Anthropic();
 
@@ -180,11 +181,11 @@ export async function POST(request: Request) {
       data.is_premium = true;
 
       // Goal F — generación de prosa en BACKGROUND (patrón LTR, Goal C): corre
-      // en el waitUntil de esta invocación, el response no espera. El cliente
-      // la recupera por polling a /short-term/[id]/ai-status; si esto muere,
-      // el rescate con dictamen server regenera. Un fallo acá NUNCA rompe la
-      // creación (el helper captura y registra en pipeline_timing).
-      {
+      // en el waitUntil de esta invocación, el response no espera. Un fallo acá
+      // NUNCA rompe la creación (el helper captura y registra en pipeline_timing).
+      // APAGADA desde el 25-sep-2026 detrás de `prosaIaActiva()`: el informe ya no
+      // dibuja la prosa (retiro por partes).
+      if (prosaIaActiva()) {
         const analysisRow = data as Record<string, unknown>;
         const analysisIdBg = data.id as string;
         // Candado cross-instance (goal #3): con el candado tomado por otro proceso, la

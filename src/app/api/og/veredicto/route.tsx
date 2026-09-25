@@ -5,7 +5,6 @@ import { fmtPct, fmtMult } from "@/components/analysis/utils";
 import type {
   FullAnalysisResult,
   AnalisisInput,
-  AIAnalysisV2,
   Veredicto,
 } from "@/lib/types";
 
@@ -162,7 +161,7 @@ export async function GET(request: Request) {
     loadFonts(reqUrl.origin),
     supabase
       .from("analisis")
-      .select("nombre, comuna, score, superficie, precio, input_data, results, ai_analysis")
+      .select("nombre, comuna, score, superficie, precio, input_data, results")
       .eq("id", id)
       .single(),
   ]);
@@ -173,7 +172,6 @@ export async function GET(request: Request) {
 
   const results = (data.results as FullAnalysisResult | null) ?? null;
   const input = (data.input_data as AnalisisInput | null) ?? null;
-  const ai = (data.ai_analysis as AIAnalysisV2 | null) ?? null;
 
   const score = Math.max(0, Math.min(100, Math.round(data.score || 0)));
   const veredicto: Veredicto =
@@ -190,23 +188,11 @@ export async function GET(request: Request) {
   if (typeof piePct === "number") metaParts.push(`PIE ${Math.round(piePct)}%`);
   const meta = metaParts.join("  ·  ");
 
-  // Frase editorial del veredicto (italic serif) + caja "lo que verías".
-  const conviene = ai?.conviene;
-  const frase = clamp(
-    conviene?.veredictoFrase_uf ||
-      conviene?.veredictoFrase_clp ||
-      results?.resumenEjecutivo ||
-      defaultFrase(veredicto),
-    150,
-  );
-  const boxText = clamp(
-    conviene?.reencuadre_uf ||
-      conviene?.reencuadre_clp ||
-      conviene?.cajaAccionable_uf ||
-      conviene?.cajaAccionable_clp ||
-      "",
-    190,
-  );
+  // Frase editorial del veredicto (italic serif), escrita por el motor. Hasta el 25-sep-2026 la
+  // frase y la caja «LO QUE VERÍAS» salían de la prosa de la IA (`conviene.*` de `ai_analysis`),
+  // y la caja imprimía los `**` del plumón literales. La IA salió del informe: la frase cae al
+  // texto del motor y la caja se retira.
+  const frase = clamp(results?.resumenEjecutivo || defaultFrase(veredicto), 150);
 
   // KPI cards (igual lenguaje que el PNG welcome). Se toman las 4 primeras
   // métricas disponibles; el grid es 2×2.
@@ -461,54 +447,6 @@ export async function GET(request: Request) {
         >
           {frase}
         </div>
-
-        {/* ── Caja "lo que verías" ── */}
-        {boxText ? (
-          <div style={{ display: "flex", flexShrink: 0, marginTop: "16px" }}>
-            <div
-              style={{
-                display: "flex",
-                width: "3px",
-                borderRadius: "2px",
-                background: SIGNAL_RED,
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                paddingLeft: "16px",
-                flex: 1,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "11px",
-                  letterSpacing: "2px",
-                  color: SIGNAL_RED,
-                  marginBottom: "7px",
-                }}
-              >
-                LO QUE VERÍAS
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  width: "100%",
-                  fontStyle: "italic",
-                  fontSize: "15px",
-                  lineHeight: "22px",
-                  color: INK_400,
-                }}
-              >
-                {boxText}
-              </div>
-            </div>
-          </div>
-        ) : null}
 
         {/* ── Grid 2×2 de KPI cards ── */}
         {cards.length > 0 ? (

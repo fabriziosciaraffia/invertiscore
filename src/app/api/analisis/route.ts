@@ -10,6 +10,7 @@ import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
 import { generateAiAnalysis } from "@/lib/ai-generation";
+import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import {
@@ -318,9 +319,9 @@ export async function POST(request: Request) {
             });
           }
         }
-        // IA al final (no bloquea la notificación). El page la recupera vía
-        // polling /ai-status si acá falla. generateAiAnalysis intacto.
-        try {
+        // IA al final (no bloquea la notificación). APAGADA desde el 25-sep-2026 detrás de
+        // `prosaIaActiva()`: el informe ya no dibuja la prosa (retiro por partes).
+        if (prosaIaActiva()) try {
           // Candado cross-instance (goal #3): si el dueño ya abrió y su ruta tomó el
           // candado, esta background se salta en vez de generar por segunda vez.
           const c = await conCandado(analysisId, "ltr", () => generateAiAnalysis(analysisId, dbClient, { trigger: "background" }));

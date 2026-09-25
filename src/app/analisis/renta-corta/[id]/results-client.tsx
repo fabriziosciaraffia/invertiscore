@@ -294,7 +294,6 @@ export function STRResultsClient({
             subordinatedHref ? undefined : (
               <ShareButton
                 path={`/analisis/renta-corta/${analysisId}`}
-                pdfUrl={`/api/analisis/renta-corta/${analysisId}/pdf`}
                 analysisId={analysisId}
                 modalidad="STR"
                 title={`Análisis Franco: ${propiedadTitle}`}

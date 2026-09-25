@@ -8,6 +8,7 @@ import { generateAiAnalysis, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { generarYPersistirProsaStr } from "@/lib/str-prosa-persist";
 import { DEMO_ANALYSIS_ID } from "@/lib/demo";
+import { prosaIaActiva } from "@/lib/prosa-ia-interruptor";
 
 const RUTA = "GET /api/cron/precalentar-prosa";
 
@@ -116,6 +117,13 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+    // APAGADO desde el 25-sep-2026 detrás de `prosaIaActiva()`: el informe ya no dibuja la
+    // prosa, así que no hay nada que precalentar. Late igual —el cron corrió y no tuvo trabajo—
+    // para que el panel no lo lea como atrasado.
+    if (!prosaIaActiva()) {
+      await latirCron(supabase, "precalentar-prosa");
+      return NextResponse.json({ apagado: true, motivo: "PROSA_IA_ENABLED distinto de \"true\"" });
+    }
     const dry = new URL(request.url).searchParams.get("dry") === "1";
 
     const desde = new Date(Date.now() - DIAS_RECIENTES * 86400_000).toISOString();

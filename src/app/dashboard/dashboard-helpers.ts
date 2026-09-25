@@ -213,11 +213,14 @@ export function hrefAnalisis(row: AnalisisDashboardRow, strSiblingId?: string): 
     : `/analisis/${row.id}`;
 }
 
-/** Endpoint de PDF según modalidad (ambos ya existen). */
-export function hrefPdf(row: AnalisisDashboardRow): string {
-  return row.tipo_analisis === "short-term"
-    ? `/api/analisis/renta-corta/${row.id}/pdf`
-    : `/api/analisis/${row.id}/pdf`;
+/**
+ * Endpoint de PDF según modalidad, o null si esa modalidad no tiene PDF. Hoy ninguna: el LTR
+ * salió de la UI en T5 (03-sep-2026) y el STR el 25-sep-2026, al salir la IA del informe; los
+ * dos responden 410. Un par AMBAS entra por su fila LTR, así que tampoco. Con null la fila no
+ * ofrece «Descargar PDF».
+ */
+export function hrefPdf(): string | null {
+  return null;
 }
 
 /**
