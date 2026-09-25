@@ -56,7 +56,7 @@ export type PricingPlan = {
 export const BASE_FEATURES = [
   "Veredicto de inversión: claro y sin rodeos",
   "Arriendo largo, Airbnb o ambos en cada análisis",
-  "Análisis con IA + atractores de zona",
+  "Veredicto, recomendación y números completos, con los datos de tu zona",
   "Comparables reales de venta, arriendo y Airbnb por zona",
   "Comparativa entre análisis",
   "24 comunas del Gran Santiago",

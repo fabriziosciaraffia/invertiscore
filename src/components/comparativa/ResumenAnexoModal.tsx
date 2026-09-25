@@ -338,7 +338,7 @@ export function ResumenAnexoModal({
           )}
           </div>
           <p className="mt-3 text-center font-body text-[10.5px] leading-snug text-[var(--franco-text-muted)]">
-            Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
+            Verifica los datos antes de tomar decisiones financieras.
           </p>
         </div>
       </div>

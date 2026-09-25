@@ -177,7 +177,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
 // Lo que incluye CADA análisis (igual para todos los productos). El plan solo
 // cambia el volumen; el reporte por análisis es el mismo.
 const ANALYSIS_FEATURES = [
-  'Análisis IA personalizado de tu inversión',
+  'Análisis personalizado de tu inversión',
   'Proyección de patrimonio a 20 años',
   'Escenarios de salida (venta y refinanciamiento)',
 ];
@@ -635,7 +635,7 @@ export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, an
     : (firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo');
   const intro = isAmbas
     ? 'Franco ya corrió los dos escenarios sobre tu propiedad — arriendo de largo plazo y Airbnb — y tiene una posición sobre cuál conviene. Tu comparativa está lista.'
-    : 'Franco cruzó tu depto con datos reales de mercado. Acá está el veredicto. El análisis completo —con IA, proyección de patrimonio y escenarios de salida— te espera en tu cuenta.';
+    : 'Franco cruzó tu depto con datos reales de mercado. Acá está el veredicto. El análisis completo —proyección de patrimonio y escenarios de salida— te espera en tu cuenta.';
   const ctaText = isAmbas ? 'Ver mi comparativa &rarr;' : 'Ver análisis completo &rarr;';
   const subject = isAmbas ? 'Tu comparativa está lista' : `Tu análisis está listo — ${analysisTitle} (Score: ${score})`;
   const analysisUrl = isAmbas
@@ -685,7 +685,7 @@ export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, an
           <tr>
             <td align="center" style="padding: 0 4px 28px 4px;">
               <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1px; color: #71717A; margin: 0; text-transform: uppercase;">
-                Análisis IA · Proyección 20 años · Escenarios de salida
+                Análisis personalizado · Proyección a 10 años · Escenarios de salida
               </p>
             </td>
           </tr>

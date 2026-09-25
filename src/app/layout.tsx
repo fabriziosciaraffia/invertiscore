@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     template: "%s | Franco",
   },
   description:
-    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con IA. Datos reales de ${PROPERTIES_COUNT} propiedades.`,
+    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales. Datos reales de ${PROPERTIES_COUNT} propiedades.`,
   keywords: [
     "inversión inmobiliaria",
     "departamentos Santiago",
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "refranco.ai — Análisis de inversión inmobiliaria en Chile",
     description:
-      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con IA. Gratis, en 30 segundos.",
+      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con datos reales. Gratis, en 30 segundos.",
     type: "website",
     url: "https://refranco.ai",
     siteName: "Franco",
@@ -98,7 +98,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Franco — ¿Ese depto es buena inversión?",
     description:
-      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad y análisis con IA. Gratis.",
+      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad y análisis con datos reales. Gratis.",
   },
   robots: {
     index: true,

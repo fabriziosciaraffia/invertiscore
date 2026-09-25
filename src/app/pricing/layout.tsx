@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Planes y precios",
-  description: "Analiza departamentos gratis con Franco. Desbloquea el análisis con IA: veredicto, proyecciones a 20 años y escenarios de salida.",
+  description: "Analiza departamentos gratis con Franco. Desbloquea el análisis con datos reales: veredicto, proyecciones a 20 años y escenarios de salida.",
   alternates: { canonical: "/pricing" },
 };
 

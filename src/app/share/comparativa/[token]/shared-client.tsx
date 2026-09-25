@@ -251,7 +251,7 @@ export function SharedComparativaClient(p: Props) {
             className="font-body text-[11px] text-center mt-6"
             style={{ color: "color-mix(in srgb, var(--franco-text) 35%, transparent)" }}
           >
-            Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
+            Verifica los datos antes de tomar decisiones financieras.
             refranco.ai · análisis no constituye recomendación financiera.
           </p>
         </div>

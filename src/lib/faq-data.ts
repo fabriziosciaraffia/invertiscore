@@ -73,7 +73,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "que-incluye",
         q: "¿Qué incluye el análisis?",
-        a: "Un análisis con IA personalizado: veredicto y precio sugerido, proyecciones de patrimonio y flujo a 20 años, escenarios de salida (venta y refinanciamiento), panel para ajustar variables de financiamiento, y análisis de sensibilidad con 3 escenarios. Es un solo análisis que entrega toda la información, en la modalidad que elijas: arriendo largo plazo, Airbnb o ambas comparadas.",
+        a: "Un análisis personalizado de tu depto, con los datos de su zona: veredicto y precio sugerido, proyecciones de patrimonio y flujo a 20 años, escenarios de salida (venta y refinanciamiento), panel para ajustar variables de financiamiento, y análisis de sensibilidad con 3 escenarios. Es un solo análisis que entrega toda la información, en la modalidad que elijas: arriendo largo plazo, Airbnb o ambas comparadas.",
       },
       {
         id: "analizar-varios",

@@ -451,7 +451,7 @@ export function ComparativaClient(p: Props) {
             className="font-body text-[11px] text-center mt-8"
             style={{ color: "color-mix(in srgb, var(--franco-text) 35%, transparent)" }}
           >
-            Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
+            Verifica los datos antes de tomar decisiones financieras.
           </p>
         </div>
       </main>

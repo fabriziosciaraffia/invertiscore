@@ -159,7 +159,7 @@ export default function SectionWhatFrancoIs() {
       <div className="relative mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <SectionHeader
           eyebrow="Qué es Franco"
-          title={"No es una calculadora.\nEs un asesor con IA."}
+          title={"No es una calculadora.\nTe dice qué hacer."}
           subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
         />
 

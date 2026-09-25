@@ -303,10 +303,11 @@ export function HeroComparativa(p: Props) {
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
-      {/* ═══ PIE · FIRMA (G6) ═══ */}
+      {/* ═══ PIE (G6) · la fecha del análisis. La firma «Análisis generado por IA» salió el
+          25-sep-2026 con la IA del informe. ═══ */}
       <div className="flex items-center justify-between gap-3 px-6 md:px-8 py-2">
         <span className="font-body text-[11px] text-[var(--franco-text-muted)]">
-          Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
+          {fechaFirma}
         </span>
         <Wordmark />
       </div>
