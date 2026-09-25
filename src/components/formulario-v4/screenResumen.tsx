@@ -68,6 +68,7 @@ import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
 import { reportarValidacionRechazo } from "./stepTelemetry";
 import { estamparSubmit } from "@/lib/informe-visto";
+import { MODALIDADES_OFRECIDAS } from "./screenInforme";
 
 /**
  * Variante del gate de auth que ve el anónimo al llegar al resumen. Viaja como
@@ -950,7 +951,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
   const onModalidadChange = (nuevo: "ltr" | "str" | "both") => {
     setEditingMod(false);
-    if (nuevo === mod) return;
+    // Solo lo que la pantalla de modalidad ofrece (con AMBAS apagado, sin «Comparativo»).
+    if (nuevo === mod || !MODALIDADES_OFRECIDAS.includes(nuevo)) return;
     w.patchAnswers({ modalidad: nuevo });
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "mod", cascada: true });
   };
@@ -1144,7 +1146,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         </button>
         {editingMod && (
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {(["ltr", "str", "both"] as const).map((m) => (
+            {MODALIDADES_OFRECIDAS.map((m) => (
               <button
                 key={m}
                 type="button"

@@ -94,6 +94,13 @@ const OPCIONES: Array<{
  */
 const OPCIONES_VISIBLES = AMBAS_ENABLED ? OPCIONES : OPCIONES.filter((o) => o.value !== "both");
 
+/**
+ * Las modalidades que el wizard ofrece, en orden. FUENTE ÚNICA: la usa también el selector del
+ * resumen (chip «Informe»), que hasta el 25-sep-2026 pintaba las tres sin mirar el flag — un
+ * anónimo que elegía «Comparativo» ahí terminaba con un LTR suelto y sin su análisis gratis.
+ */
+export const MODALIDADES_OFRECIDAS: readonly Modalidad[] = OPCIONES_VISIBLES.map((o) => o.value);
+
 export function InformeScreen({ answers, answer }: ScreenProps) {
   // Sonda de `mod` (I-2). Nació cuando esta era la primera pantalla y la mayor
   // fuga del wizard; la pregunta que respondía era si el usuario llegaba a VER
