@@ -109,10 +109,10 @@ export function runCapRateNetoTier(): { hard: number } {
   }
   if (!medidas) F("2 · PISO · ninguna seed midió");
   const H = sinComentarios(leer("src/components/analysis/HeroLTR.tsx"));
-  // ⚠ ACTA (24-sep-2026) · el pop-up dejó de tener lado «hoy» con cap rate (salieron los pares;
-  // la celda dice flujo, pie, TIR y score). Se retira el chequeo del hero; la sonda sigue
-  // emitiendo la neta y se fija abajo. Lo que no puede volver es un «hoy» con otra cifra.
-  if (/capRateNetoPct:/.test(H) && !/capRateNetoPct: capRateNetoLtrPct\(results\.metrics\),/.test(H)) F("2 · el hero volvió a armar un cap rate neto que no sale de capRateNetoLtrPct");
+  // ⚠ ACTA (25-sep-2026) · el lado «hoy» VUELVE: la columna «Hoy» de la tabla del mockup final.
+  // El 24-sep este chequeo quedó condicional porque el pop-up no mostraba cap rate; vuelve a ser
+  // obligatorio, con la misma cifra que el hero.
+  if (!/capRateNetoPct: capRateNetoLtrPct\(results\.metrics\),/.test(H)) F("2 · el lado «hoy» del pop-up no se arma con capRateNetoLtrPct");
   const AN = sinComentarios(leer("src/lib/analysis.ts"));
   if (!/capRateNetoPct: capRateNetoLtrPct\(m\),/.test(AN)) F("2 · la sonda del pop-up no emite capRateNetoLtrPct");
   const LN = sinComentarios(leer("src/components/analysis/LosNumeros.tsx"));

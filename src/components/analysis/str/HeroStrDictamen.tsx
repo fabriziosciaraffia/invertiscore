@@ -22,6 +22,7 @@ import { LoQueHariaYoBloque, CardBuscarOtra } from "@/components/analysis/shared
 import { causaBuscarOtraStr, distanciaBuscarOtra } from "@/lib/buscar-otra-copy";
 import type { BrazoSTR } from "@/lib/engines/short-term-score";
 import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
+import { metricaValorONull } from "@/lib/types";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -175,6 +176,21 @@ export function HeroStrDictamen({
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0)}
+        // LA COLUMNA «HOY» DE LA TABLA (25-sep-2026): el escenario base del análisis, el mismo
+        // que leen las seis cifras de arriba.
+        antes={(() => {
+          const base = results.escenarios?.base;
+          if (!base) return null;
+          const coc = metricaValorONull(base.cashOnCash);
+          return {
+            cuotaMensual: results.metrics?.desgloseFall?.cuota ?? null,
+            flujoMensual: base.flujoCajaMensual ?? null,
+            cocPct: coc === null ? null : coc * 100,
+            capRateNetoPct: Number.isFinite(base.capRate) ? base.capRate * 100 : null,
+            tirPct: results.exitScenario ? metricaValorONull(results.exitScenario.tirAnual) : null,
+            score: (results as { francoScore?: { score?: number } }).francoScore?.score ?? null,
+          };
+        })()}
       />
     </>
   );

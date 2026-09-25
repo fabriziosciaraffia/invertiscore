@@ -2,15 +2,18 @@
 // LA MATRIZ DEL POP-UP DE AJUSTES — el modelo, sin React (24-sep-2026)
 //
 // Contrato visual: docs/wireframes/rediseno-informe/popup-matriz-aprobado.html (aprobado por
-// Fabrizio el 24-sep-2026). Cada celda es una combinación de pie y plazo:
+// Fabrizio el 24-sep-2026; versión final del 25-sep, tras probarlo en el teléfono). Cada celda
+// es una combinación de pie y plazo:
 //
-//  · EL COLOR ES EL VEREDICTO DE ESA COMBINACIÓN AL PRECIO PEDIDO —`veredictoSinDescuento`—,
-//    con la tríada de la portada: azul Comprar, ciruela Ajustar, rojo Buscar otra. No el
-//    veredicto al que llegaría con descuento: ese es el número.
+//  · EN AJUSTAR, EL COLOR ES LA CERCANÍA A COMPRAR (`escalaCelda`, 25-sep): escala toda azul,
+//    más intensa mientras menos descuento pide, rayada si no llega ni con el tope. El veredicto
+//    de la combinación al precio pedido —`veredictoSinDescuento`— ya no pinta la celda: lo dice
+//    la frase al tocarla («pasa de Ajustar a Comprar»).
+//  · EN COMPRAR, EL COLOR ES EL VEREDICTO AL QUE CAE cada combinación, como siempre.
 //  · EL NÚMERO ES LO QUE FALTA. En Ajustar, el descuento mínimo para llegar a Comprar con su
-//    banda (`banda-esfuerzo.ts`), «sin descuento» si ya es Comprar, o «no llega» ni con el tope.
-//    En Comprar no hay descuento que pedir: el número es cuánto te queda al mes, y la celda que
-//    cae dice «deja de ser Comprar».
+//    banda (`banda-esfuerzo.ts`), «sin descuento» si ya es Comprar, o «más de X%» si no llega ni
+//    con el tope. En Comprar no hay descuento que pedir: el número es cuánto te queda al mes, y la
+//    celda que cae dice «deja de ser Comprar».
 //
 // Vive acá y no en el componente para que los gates lo ejerciten sin montar React: la regla
 // que más importa —«la celda muestra el veredicto real de esa combinación»— es una función de
@@ -47,6 +50,22 @@ export function lecturaCelda(c: CeldaMix, esComprar: boolean, topePct: number): 
   if (c.descuentoPct === null) return { veredicto, cifra: { tipo: "no_llega", topePct } };
   if (c.descuentoPct === 0) return { veredicto, cifra: { tipo: "sin_descuento" } };
   return { veredicto, cifra: { tipo: "descuento", pct: c.descuentoPct, banda: bandaDeDescuento(c.descuentoPct) } };
+}
+
+/**
+ * LA ESCALA DE CERCANÍA A COMPRAR (mockup final del 25-sep-2026). EN AJUSTAR, EL COLOR DE LA
+ * CELDA YA NO ES EL VEREDICTO AL PRECIO PEDIDO: en filas donde todo es Ajustar la matriz quedaba
+ * entera ciruela y se leía «nunca llega», cuando cada celda con número SÍ llega a Comprar con ese
+ * descuento. Ahora es una escala toda azul —más intensa mientras más cerca—: `e0` ya es Comprar
+ * (sin descuento), `e1` fácil de negociar, `e2` con argumentos, `e3` difícil, y `fx` rayado cuando
+ * no llega ni con el tope. Sale del MISMO `nivelDeDescuento` con que el motor elige la celda
+ * Franco, así que el color y la recomendación no pueden discrepar sobre qué es fácil.
+ * En COMPRAR no aplica: esa grilla sigue coloreada por el veredicto al que cae cada celda.
+ */
+export type EscalaCelda = "e0" | "e1" | "e2" | "e3" | "fx";
+export function escalaCelda(c: CeldaMix): EscalaCelda {
+  if (c.descuentoPct === null) return "fx";
+  return (["e0", "e1", "e2", "e3"] as const)[nivelDeDescuento(c.descuentoPct)];
 }
 
 /**

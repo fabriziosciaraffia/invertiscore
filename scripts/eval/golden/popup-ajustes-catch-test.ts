@@ -20,16 +20,31 @@
 //    tabla de palancas solas salió); el menú, el aro de la respuesta y el panel separado (9, 11,
 //    12, 13: el mapa reemplaza al menú y el panel es uno solo).
 //
+// ⛔ ACTA 25-sep-2026 · MOCKUP FINAL, tras la prueba de Fabrizio en el teléfono. En AJUSTAR el
+// color de la celda deja de ser el veredicto al precio pedido: en las filas donde todo es Ajustar
+// la matriz quedaba entera ciruela y se leía «nunca llega». Ahora es la ESCALA DE CERCANÍA A
+// COMPRAR, toda azul (`escalaCelda`), sin la palabra del veredicto en la celda; el veredicto real
+// de la combinación lo dice la FRASE al tocarla («pasa de Ajustar a Comprar»). Por eso G1 se
+// reescribe: en Ajustar fija que el color sea la escala del descuento real de esa celda y que la
+// frase nombre su veredicto real; en Comprar sigue fijando el color del veredicto, sin cambios.
+// La anatomía (6) pasa a la del mockup final: leyenda en escala en vez de la tríada, «Toca una
+// celda para ver cómo queda.», la TABLA Hoy / Así de nueve filas en vez de las cuatro cifras (que
+// quedan en Comprar), bordes finos (Franco 2 px sólido, hoy 1,5 px punteado) y el tope real en
+// las celdas fuera de alcance. «Cash on cash» deja de estar prohibido: vuelve como fila de la tabla.
+//
 // FIJA, y los cinco primeros son los gates pedidos por Fabrizio, verificados EN ROJO por mutación:
-//   G1 · LA CELDA MUESTRA EL VEREDICTO REAL DE ESA COMBINACIÓN al precio pedido
-//        (`veredictoSinDescuento`), en el modelo y en el HTML renderizado.
+//   G1 · LA CELDA DICE LA VERDAD DE ESA COMBINACIÓN. En Ajustar, su color es la escala de su
+//        descuento real (fuera de alcance · difícil · con argumentos · fácil · ya es Comprar) y
+//        la frase al tocarla nombra su veredicto real al precio pedido (`veredictoSinDescuento`).
+//        En Comprar, el color es ese veredicto. En el modelo y en el HTML renderizado.
 //   G2 · FRANCO NUNCA MARCA UNA CELDA MÁS DIFÍCIL QUE LA MÁS FÁCIL DISPONIBLE.
 //   G3 · LA CARD, EL POP-UP Y «A QUÉ PRECIO CERRAR» LEEN LA MISMA RECOMENDACIÓN.
 //   G4 · COMPRAR NO TIENE CELDA DE FRANCO.
 //   G5 · BUSCAR OTRA NO TIENE POP-UP (ni grilla, ni botón en los dos heros).
 //   6 · La anatomía del contrato: la línea «Toca una celda…», las flechas (cuatro en Ajustar,
-//       dos en Comprar), la leyenda de la tríada, las cuatro cifras, y que no vuelvan el menú,
-//       los pares ni «Un cambio a la vez».
+//       dos en Comprar), la leyenda (escala en Ajustar, tríada en Comprar), la tabla Hoy / Así en
+//       Ajustar y las cuatro cifras en Comprar, los bordes finos, y que no vuelvan el menú, los
+//       pares ni «Un cambio a la vez».
 //   7 · El arriendo o la tarifa, en su línea «pero eso depende del mercado».
 //   8 · El CTA inerte, solo con descuento, nunca en Comprar.
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
@@ -42,7 +57,7 @@ import { runAnalysis } from "../../../src/lib/analysis";
 import { AUDIT_FIXTURES, AUDIT_UF } from "../fixtures";
 import { PopupAjustes } from "../../../src/components/analysis/shared/PopupAjustes";
 import { celdaFranco, grillaDelPopup, hayAjustesQueMostrar, lecturaCelda, nivelMasFacilDisponible } from "../../../src/lib/matriz-popup";
-import { nivelDeDescuento } from "../../../src/lib/banda-esfuerzo";
+import { nivelDeDescuento, BANDA_TOPE_FACTIBLE_PCT, BANDA_TOPE_ARGUMENTOS_PCT } from "../../../src/lib/banda-esfuerzo";
 import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
 import { recomendacionPagas } from "../../../src/lib/como-lo-pagas";
 import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
@@ -52,6 +67,11 @@ const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 const CLASE: Record<Veredicto, string> = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b" };
+/** La escala esperada, escrita ACÁ con los cortes crudos y no con `escalaCelda`: si el test
+ *  llamara a la función que vigila, una escala rota se daría la razón a sí misma. */
+const ESCALA_ESPERADA = (d: number | null) =>
+  d === null ? "fx" : d === 0 ? "e0" : d <= BANDA_TOPE_FACTIBLE_PCT ? "e1" : d <= BANDA_TOPE_ARGUMENTOS_PCT ? "e2" : "e3";
+const FILAS_TABLA = ["Descuento", "Precio", "Pie el día uno", "Cuota del crédito", "Te queda al mes", "Cash on cash", "Cap rate neto", "TIR a 10 años", "Franco Score"];
 
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el pop-up como mapa · matriz-popup.ts · 0 tokens) ───");
@@ -71,7 +91,11 @@ export function runPopupAjustesTier(): { hard: number } {
   }
   const html = (r: (typeof filas)[number]) =>
     renderToStaticMarkup(
-      createElement(PopupAjustes, { veredicto: r.v, modalidad: "LTR", distancia: r.dist, mixComprar: r.res.mixComprar ?? null, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(r.input.precio) }),
+      createElement(PopupAjustes, {
+        veredicto: r.v, modalidad: "LTR", distancia: r.dist, mixComprar: r.res.mixComprar ?? null, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(r.input.precio),
+        // «Hoy» con un score CENTINELA: la tabla tiene que imprimir el que le pasa el hero, no otro.
+        antes: { cuotaMensual: r.res.metrics?.dividendo ?? null, flujoMensual: r.res.metrics?.flujoNetoMensual ?? null, cocPct: null, capRateNetoPct: null, tirPct: null, score: 7 },
+      }),
     );
   const botones = (h: string) =>
     (h.match(/<button[^>]*data-pie="[^"]*"[^>]*>/g) ?? []).map((tag) => ({
@@ -81,6 +105,12 @@ export function runPopupAjustesTier(): { hard: number } {
       clase: tag.match(/class="([^"]*)"/)?.[1] ?? "",
     }));
 
+  /** La celda que el panel muestra al abrir: la de Franco, si no la tuya, si no la primera. */
+  const fr0 = (r: (typeof filas)[number]) => {
+    const g = grillaDelPopup({ veredicto: r.v, distancia: r.dist, mixComprar: r.res.mixComprar ?? null });
+    const cs = g?.celdas ?? [];
+    return celdaFranco({ veredicto: r.v, distancia: r.dist, grilla: g }) ?? cs.find((c) => c.esActual) ?? cs[0] ?? null;
+  };
   let conGrilla = 0;
   let conFranco = 0;
   let conCardMix = 0;
@@ -102,14 +132,39 @@ export function runPopupAjustesTier(): { hard: number } {
     const bs = botones(h);
     if (bs.length !== celdas.length) F(`1 · ${r.id}: la matriz dibuja ${bs.length} celdas y la grilla del motor tiene ${celdas.length}`);
 
-    // ── G1 · la celda muestra el veredicto real de esa combinación ────────────
+    // ── G1 · la celda dice la verdad de esa combinación ──────────────────────
+    const tope = r.dist?.valor.topePct ?? 30;
     for (const c of celdas) {
-      const l = lecturaCelda(c, esComprar, r.dist?.valor.topePct ?? 30);
-      if (l.veredicto !== c.veredictoSinDescuento) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el modelo pinta ${l.veredicto} y la combinación al precio pedido es ${c.veredictoSinDescuento}`);
+      const l = lecturaCelda(c, esComprar, tope);
+      if (l.veredicto !== c.veredictoSinDescuento) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el modelo lee ${l.veredicto} y la combinación al precio pedido es ${c.veredictoSinDescuento}`);
       const b = bs.find((x) => x.pie === c.piePct && x.plazo === c.plazoAnios);
       if (!b) { F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: la celda no aparece en el HTML`); continue; }
       if (b.veredicto !== c.veredictoSinDescuento) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el HTML dice ${b.veredicto} y la combinación al precio pedido es ${c.veredictoSinDescuento}`);
-      if (!b.clase.split(/\s+/).includes(CLASE[c.veredictoSinDescuento])) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: el color (${b.clase}) no es el del veredicto ${c.veredictoSinDescuento}`);
+      const clases = b.clase.split(/\s+/);
+      if (esComprar) {
+        if (!clases.includes(CLASE[c.veredictoSinDescuento])) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: en Comprar el color (${b.clase}) no es el del veredicto ${c.veredictoSinDescuento}`);
+      } else {
+        const esp = ESCALA_ESPERADA(c.descuentoPct);
+        if (!clases.includes(esp)) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: pide ${c.descuentoPct === null ? "más que el tope" : `−${c.descuentoPct}%`} y la escala (${b.clase}) no es «${esp}»`);
+        if (clases.some((k) => k === "a" || k === "b" || k === "c")) F(`G1 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: en Ajustar la celda volvió a pintarse por veredicto (${b.clase})`);
+      }
+    }
+    // Las celdas de Ajustar, SIN la palabra del veredicto: el veredicto lo dice la frase.
+    if (!esComprar) {
+      const cuerpos = h.match(/<button[^>]*data-pie="[^"]*"[^>]*>[\s\S]*?<\/button>/g) ?? [];
+      if (cuerpos.some((x) => /\bAjustar\b|Buscar otr/i.test(x.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")) || /class="l1"/.test(x))) F(`G1 · ${r.id}: una celda de Ajustar escribe la palabra del veredicto`);
+      // …y la frase de la celda seleccionada nombra su veredicto REAL al precio pedido.
+      const s0 = fr0(r) ;
+      if (s0 && s0.descuentoPct !== 0) {
+        const panel = h.slice(h.indexOf("pjx-panel"));
+        const primera = panel.match(/pjx-v (c|a|b)/)?.[1];
+        if (primera !== CLASE[s0.veredictoSinDescuento]) F(`G1 · ${r.id}: la frase de pie ${s0.piePct} · ${s0.plazoAnios}a nombra «${primera}» y la combinación al precio pedido es ${s0.veredictoSinDescuento}`);
+      }
+      // …y fuera de alcance dice el tope REAL de la modalidad.
+      for (const c of celdas.filter((x) => x.descuentoPct === null)) {
+        const cuerpo = cuerpos.find((x) => x.includes(`data-pie="${c.piePct}"`) && x.includes(`data-plazo="${c.plazoAnios}"`)) ?? "";
+        if (!cuerpo.includes(`más de ${tope}%`) || !/fuera de alcance/.test(cuerpo)) F(`6 · ${r.id} pie ${c.piePct} · ${c.plazoAnios}a: fuera de alcance no dice «más de ${tope}%» / «fuera de alcance»`);
+      }
     }
 
     // ── G4 · Comprar no tiene celda de Franco ────────────────────────────────
@@ -119,6 +174,10 @@ export function runPopupAjustesTier(): { hard: number } {
       if (/pjx-tag fr/.test(h) || /\bfr\b/.test(bs.map((b) => b.clase).join(" "))) F(`G4 · ${r.id}: el HTML de Comprar lleva la marca «Franco»`);
       if (/más descuento/.test(h)) F(`6 · ${r.id}: Comprar dibuja las flechas de descuento (no hay descuento que pedir)`);
       if (/Analízalo a UF/.test(h)) F(`8 · ${r.id}: Comprar dibuja el botón de re-análisis`);
+      // Comprar sigue como estaba: la tríada de leyenda y las cuatro cifras.
+      if (!/pjx-ley/.test(h) || !/Toca una celda para ver qué pasa con esa combinación/.test(h)) F(`6 · ${r.id}: Comprar perdió la leyenda de la tríada o su línea «Toca una celda…»`);
+      if (!/Pie el día uno/.test(h) || !/TIR a 10 años/.test(h) || !/Franco Score/.test(h) || !/pjx-cifras/.test(h)) F(`6 · ${r.id}: Comprar perdió sus cuatro cifras`);
+      if (/pjx-tab/.test(h)) F(`6 · ${r.id}: Comprar dibuja la tabla de Ajustar`);
       continue;
     }
 
@@ -152,13 +211,19 @@ export function runPopupAjustesTier(): { hard: number } {
       }
     }
 
-    // ── 6 · anatomía ────────────────────────────────────────────────────────
-    if (!/Toca una celda para ver qué pasa con esa combinación/.test(h)) F(`6 · ${r.id}: falta la línea «Toca una celda para ver qué pasa con esa combinación»`);
+    // ── 6 · anatomía (mockup final del 25-sep) ──────────────────────────────
+    if (!/Toca una celda para ver cómo queda\./.test(h)) F(`6 · ${r.id}: falta la línea «Toca una celda para ver cómo queda.»`);
     if ((h.match(/más descuento/g) ?? []).length !== 2 || !/más pie/.test(h) || !/más plazo/.test(h)) F(`6 · ${r.id}: los ejes no son los cuatro del contrato (más pie, más plazo, más descuento ×2)`);
-    if (!/Te queda al mes|Pones al mes/.test(h) || !/Pie el día uno/.test(h) || !/TIR a 10 años/.test(h) || !/Franco Score/.test(h)) {
-      // Sin celda seleccionable con cifras (la única llega «no llega») el panel no las dibuja: es legítimo.
-      const sel = fr ?? celdas.find((c) => c.esActual) ?? celdas[0];
-      if (sel && sel.descuentoPct !== null) F(`6 · ${r.id}: el panel no dibuja las cuatro cifras (te queda al mes, pie el día uno, TIR, Franco Score)`);
+    const sws = (h.match(/class="sw (fx|e0|e1|e2|e3)"/g) ?? []).map((x) => x.replace(/class="sw |"/g, ""));
+    if (!/Mientras más azul, más cerca de Comprar/.test(h) || sws.join(",") !== "fx,e3,e2,e1,e0") F(`6 · ${r.id}: la leyenda no es la escala del contrato, de fuera de alcance a ya es Comprar (${sws.join(",")})`);
+    if (/pjx-ley/.test(h)) F(`6 · ${r.id}: Ajustar volvió a la leyenda de la tríada de veredictos`);
+    const sel0 = fr0(r);
+    if (sel0 && sel0.descuentoPct !== null) {
+      const filasTab = (h.match(/<tr><td>([^<]*)<\/td>/g) ?? []).map((x) => x.replace(/<tr><td>|<\/td>/g, ""));
+      if (filasTab.join("|") !== FILAS_TABLA.join("|")) F(`6 · ${r.id}: la tabla Hoy / Así no tiene las nueve filas del contrato: ${filasTab.join(" · ")}`);
+      const score = h.match(/<tr><td>Franco Score<\/td><td class="hoy[^"]*">([^<]*)<\/td><td class="asi[^"]*">([^<]*)<\/td>/);
+      if (!score || score[1] !== "7" || score[2] !== String(sel0.score ?? "—")) F(`6 · ${r.id}: la fila Franco Score no es «Hoy» del hero (7) y «Así» de la celda (${sel0.score}): ${score?.slice(1).join(" / ")}`);
+      if (/pjx-cifras/.test(h)) F(`6 · ${r.id}: Ajustar volvió a las cuatro cifras en tarjetas; es una tabla`);
     }
   }
   // ── FIXTURES SOBRE FILAS REALES para las dos ramas que el golden no ejercita ──
@@ -182,6 +247,27 @@ export function runPopupAjustesTier(): { hard: number } {
     const distBuscar = { ...dist, valor: { ...dist.valor, veredictoBase: "BUSCAR OTRA", mixPalancasHastaComprar: dist.valor.mixPalancas } } as unknown as HallazgoDistanciaVeredicto;
     if (grillaDelPopup({ veredicto: "BUSCAR OTRA", distancia: distBuscar })) F("G5 · Buscar otra CON grilla hacia Comprar (el caso STR) devuelve grilla para el pop-up");
     if (hayAjustesQueMostrar({ veredicto: "BUSCAR OTRA", distancia: distBuscar })) F("G5 · Buscar otra con grilla hacia Comprar abre pop-up");
+
+    // (c) FUERA DE ALCANCE Y FRASE CON OTRO VEREDICTO (25-sep-2026). Medido: en las 8 filas Ajustar
+    //     del golden ninguna celda queda fuera de alcance, y la celda que abre el panel siempre es
+    //     Comprar sin descuento o Ajustar. Sin esto, «más de X%» con el tope real y la frase que
+    //     nombra el veredicto real no se ejercitaban nunca. Sobre la grilla real: una celda que no
+    //     llega, con el tope de renta corta (25), y la celda Franco en Buscar otra al precio pedido.
+    const g = dist.valor.mixPalancas!;
+    const otra = g.celdas!.find((c) => !c.esElegida)!;
+    const celdasC = g.celdas!.map((c) =>
+      c.esElegida ? { ...c, descuentoPct: 4.2, veredictoSinDescuento: "BUSCAR OTRA" as Veredicto } : c === otra ? { ...c, descuentoPct: null } : c,
+    );
+    const distC = { ...dist, valor: { ...dist.valor, topePct: 25, mixPalancas: { ...g, celdas: celdasC } } } as HallazgoDistanciaVeredicto;
+    const hC = renderToStaticMarkup(
+      createElement(PopupAjustes, { veredicto: "AJUSTA SUPUESTOS", modalidad: "STR", distancia: distC, mixComprar: null, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(base.input.precio) }),
+    );
+    const cuerpoOtra = (hC.match(/<button[^>]*data-pie="[^"]*"[^>]*>[\s\S]*?<\/button>/g) ?? []).find((x) => x.includes(`data-pie="${otra.piePct}"`) && x.includes(`data-plazo="${otra.plazoAnios}"`)) ?? "";
+    if (!/class="pjx-celda fx/.test(cuerpoOtra) || !cuerpoOtra.includes("más de 25%") || !/fuera de alcance/.test(cuerpoOtra)) F("6 · una celda que no llega no se dibuja rayada con «más de 25%» / «fuera de alcance» (el tope real de renta corta)");
+    const panelC = hC.slice(hC.indexOf("pjx-panel"));
+    if (panelC.match(/pjx-v (c|a|b)/)?.[1] !== "b") F("G1 · la frase de la celda Franco no nombra su veredicto real al precio pedido (Buscar otra): dice otro");
+    if (!/pasa de/.test(panelC)) F("G1 · la frase de la celda con descuento no dice «pasa de … a Comprar»");
+    if (!/Cap rate</.test(hC) || /Cap rate neto</.test(hC)) F("6 · en renta corta la tabla no rotula «Cap rate» (el neto es de renta larga)");
   }
 
   if (conGrilla === 0) F("0 · ninguna fila del golden tiene grilla: el tier no midió nada");
@@ -192,7 +278,11 @@ export function runPopupAjustesTier(): { hard: number } {
   const pop = sinComentarios(leer("src/components/analysis/shared/PopupAjustes.tsx"));
   if (!/grillaDelPopup\(/.test(pop) || !/lecturaCelda\(/.test(pop) || !/celdaFranco\(/.test(pop)) F("1 · el pop-up no lee la grilla, la lectura de la celda o la celda de Franco del modelo (`matriz-popup.ts`)");
   if (/Hay más de un camino|Lo que Franco recomienda|La que más rinde|La que más alivia el mes/.test(pop)) F("6 · volvió el menú de tres respuestas");
-  if (/Cash on cash|Cuota mensual|El ajuste óptimo/.test(pop)) F("6 · volvieron los pares hoy → después");
+  if (/Cuota mensual|El ajuste óptimo/.test(pop)) F("6 · volvieron los pares hoy → después");
+  // Los bordes finos del mockup final: Franco 2 px sólido, hoy 1,5 px punteado.
+  const tok = leer("src/components/analysis/shared/PopupAjustesTokens.tsx");
+  if (!/\.pjx-celda\.fr\{border:2px solid var\(--doc-tx\)\}/.test(tok) || !/\.pjx-celda\.hoy\{border:1\.5px dashed/.test(tok)) F("6 · los bordes de Franco (2 px sólido) y de hoy (1,5 px punteado) no son los del contrato");
+  if (/\.pjx-celda\.(fr|hoy)\{outline:3px/.test(tok)) F("6 · volvieron los contornos gruesos de 3 px");
   if (/Un cambio a la vez/.test(pop)) F("6 · volvió «Un cambio a la vez»");
   if (!/depende del mercado/.test(pop)) F("7 · falta la línea del arriendo o la tarifa «pero eso depende del mercado»");
   if (!/aria-disabled="true"/.test(pop) || /href=|onClick=\{[^}]*router|<Link\b/.test(pop.slice(pop.indexOf("pjx-cta")))) F("8 · el botón de re-análisis dejó de ser inerte");
@@ -207,7 +297,7 @@ export function runPopupAjustesTier(): { hard: number } {
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
     if (fallas.length > 40) console.log(`     · … y ${fallas.length - 40} más`);
   } else {
-    console.log(`  ✓ VERDE — ${conGrilla} grillas del golden: cada celda pinta el veredicto real de su combinación, Franco nunca más difícil que la más fácil (${conFranco} filas), card, pop-up y capítulo con la misma recomendación (${conCardMix}), Comprar sin Franco, Buscar otra sin pop-up, la anatomía del contrato y el botón inerte`);
+    console.log(`  ✓ VERDE — ${conGrilla} grillas del golden: cada celda dice la verdad de su combinación (escala del descuento en Ajustar, veredicto en Comprar, frase con el veredicto real), Franco nunca más difícil que la más fácil (${conFranco} filas), card, pop-up y capítulo con la misma recomendación (${conCardMix}), Comprar sin Franco, Buscar otra sin pop-up, la anatomía del contrato y el botón inerte`);
   }
   return { hard: fallas.length };
 }

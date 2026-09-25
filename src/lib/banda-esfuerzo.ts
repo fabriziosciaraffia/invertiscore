@@ -54,9 +54,27 @@ export const ETIQUETA_BANDA: Record<BandaDescuento, string> = {
   dificil: "difícil",
 };
 
-/** La etiqueta corta (la celda de la matriz, donde no cabe la larga). */
-export const ETIQUETA_BANDA_CORTA: Record<BandaDescuento, string> = {
-  factible: "factible",
+/**
+ * EL VOCABULARIO DEL POP-UP (mockup final del 25-sep-2026, tras la prueba de Fabrizio en el
+ * teléfono). Tres superficies, tres largos, las mismas bandas:
+ *  · la CELDA, donde cabe poco: «fácil de negociar», «con argumentos», «difícil de negociar»;
+ *  · la FRASE de la celda tocada: «se negocia con argumentos» en vez de «con argumentos», que
+ *    suelto dentro de un paréntesis no se entiende;
+ *  · la LEYENDA de la escala, con el rango en %.
+ * La card y el capítulo siguen con `ETIQUETA_BANDA`.
+ */
+export const ETIQUETA_BANDA_CELDA: Record<BandaDescuento, string> = {
+  factible: "fácil de negociar",
   con_argumentos: "con argumentos",
-  dificil: "difícil",
+  dificil: "difícil de negociar",
+};
+export const ETIQUETA_BANDA_FRASE: Record<BandaDescuento, string> = {
+  factible: "fácil de negociar",
+  con_argumentos: "se negocia con argumentos",
+  dificil: "difícil de negociar",
+};
+export const ETIQUETA_BANDA_LEYENDA: Record<BandaDescuento, string> = {
+  factible: `fácil de negociar (hasta ${BANDA_TOPE_FACTIBLE_PCT}%)`,
+  con_argumentos: `con argumentos (${BANDA_TOPE_FACTIBLE_PCT} a ${BANDA_TOPE_ARGUMENTOS_PCT}%)`,
+  dificil: `difícil de negociar (más de ${BANDA_TOPE_ARGUMENTOS_PCT}%)`,
 };

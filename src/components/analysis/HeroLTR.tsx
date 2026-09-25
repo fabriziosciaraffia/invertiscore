@@ -22,6 +22,8 @@ import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "./SeccionInforme";
 import { MarcaSeccion } from "./informeTelemetry";
 import type { ReactNode } from "react";
+import { metricaValorONull } from "@/lib/types";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -240,6 +242,21 @@ export function HeroLTR({
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(inputData?.precio ?? 0)}
+        // LA COLUMNA «HOY» DE LA TABLA (25-sep-2026): las mismas cifras que el informe muestra
+        // arriba, para que «Hoy» no diga otra cosa que el hero.
+        antes={
+          results?.metrics
+            ? {
+                cuotaMensual: results.metrics.dividendo ?? null,
+                flujoMensual: results.metrics.flujoNetoMensual ?? null,
+                cocPct: metricaValorONull(results.metrics.cashOnCash),
+                // La misma cifra que el hero (`capRateNetoLtrPct`): una sola «cap rate neto».
+                capRateNetoPct: capRateNetoLtrPct(results.metrics),
+                tirPct: metricaValorONull(results.exitScenario?.tir),
+                score: results.score ?? null,
+              }
+            : null
+        }
       />
     </>
   );
