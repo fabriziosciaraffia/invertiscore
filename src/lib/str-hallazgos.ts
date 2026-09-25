@@ -33,6 +33,7 @@ import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { classifyFinancingHealth } from "./financing-health";
 import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
 import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
+import { rescatarPorPieYPlazo } from "./rescate-pie-plazo";
 import { esCasoPrecioJustoStr } from "./distancia-veredicto-hallazgo";
 import { sondaStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
 import { calcDecisividadesSTR } from "./decisividades-str";
@@ -287,6 +288,21 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   // sin recursión con este assembler. Ausente en COMPRAR (no hay veredicto superior).
   {
     const vc = ctx.veredictoCtx;
+    // ── EL RESCATE POR PIE Y PLAZO (25-sep-2026) ── Un BUSCAR OTRA que llega a COMPRAR solo con
+    // más pie o más plazo, sin descuento, pasa a AJUSTA SUPUESTOS (`rescate-pie-plazo.ts`). Va
+    // antes del hallazgo de distancia para que éste se arme sobre el rescatado, y acá y no en
+    // `calcFrancoScoreSTR` porque cada combinación se sondea por ahí.
+    // Pie y plazo del MISMO input que produjo el veredicto (`vc.inputs`), no de `ctx.piePct`: en
+    // filas viejas el input guarda `piePercent` y `ctx.piePct` llega undefined.
+    const rescate = rescatarPorPieYPlazo(
+      fs.veredicto,
+      { piePct: Math.round(vc.inputs.piePercent * 1000) / 10, plazoAnios: vc.inputs.plazoCredito, razonSinPie: vc.inputs.razonSinPie },
+      (c) => sondaStrConPatch(vc, { piePercent: c.piePct / 100, plazoCredito: c.plazoAnios }).veredicto,
+    );
+    if (rescate.cambio && rescate.combinacion) {
+      fs.veredicto = rescate.veredicto;
+      fs.rescatePieYPlazo = rescate.combinacion;
+    }
     // CASO PRECIO-JUSTO STR (§1.12.4) — detección de fuente única
     // (esCasoPrecioJustoStr): el sobreprecio ya viene sembrado en la lista con la
     // mediana confiable; los overrides salen del MISMO input del closure.

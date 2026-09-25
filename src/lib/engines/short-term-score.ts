@@ -97,6 +97,10 @@ export interface FrancoScoreSTR {
    * motivo cuando puede haber varios — usá `gates.motivos`.
    */
   overrideApplied: string | null;
+  /** El puntaje daba BUSCAR OTRA y esta combinación de pie y plazo, sin descuento, llega a
+   *  COMPRAR: el ensamblador de hallazgos lo pasó a AJUSTA SUPUESTOS (`rescate-pie-plazo.ts`,
+   *  25-sep-2026). Ausente sin rescate. */
+  rescatePieYPlazo?: { piePct: number; plazoAnios: number };
   /** Brazos evaluados independientes + todos los motivos que sostienen el veredicto. */
   gates: {
     brazos: GatesBrazosSTR;

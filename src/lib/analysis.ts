@@ -21,6 +21,7 @@ import { REFI_LTV, ratioCuotaRefi } from "./refinanciamiento";
 import { sobreprecioDeHoy } from "./sobreprecio-venta";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
+import { rescatarPorPieYPlazo } from "./rescate-pie-plazo";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -2493,7 +2494,18 @@ export function runAnalysis(
   // necesita su grilla: un Ajustar cuyo camino más fácil a Comprar pide más de 20% pasa a Buscar
   // otro. Lo que se calcula entre acá y ese filtro usa éste, y lo que depende del final se
   // reaplica abajo.
-  const veredictoPorScore: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
+  //
+  // Y ANTES DE TODO, EL RESCATE POR PIE Y PLAZO (25-sep-2026): un BUSCAR OTRA que llega a
+  // COMPRAR solo con más pie o más plazo, sin descuento, pasa a AJUSTA SUPUESTOS
+  // (`rescate-pie-plazo.ts`). Corre acá y no en `deriveVeredicto` porque cada combinación se
+  // sondea por ahí; el hallazgo de distancia que viene abajo se arma ya sobre el rescatado.
+  const veredictoDelPuntaje: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
+  const rescatePieYPlazo = rescatarPorPieYPlazo(
+    veredictoDelPuntaje,
+    { piePct: input.piePct, plazoAnios: input.plazoCredito, razonSinPie: input.razonSinPie },
+    (c) => sondaConPatch(input, ufClp, medianaComunaVentaUF, asOf, { piePct: c.piePct, plazoCredito: c.plazoAnios }).veredicto,
+  );
+  const veredictoPorScore: Veredicto = rescatePieYPlazo.veredicto;
 
   // Familia 1 (censo editorial): con el veredicto YA derivado, la frase acotada del flujo
   // pierde el consuelo si el caso es BUSCAR OTRA. Se reemplaza el carrier de metrics para
@@ -2737,6 +2749,7 @@ export function runAnalysis(
     // `engineSignal` (motor) y `francoVerdict` (UI) con divergencia opcional;
     // la doctrina post-E.2 lo colapsa a un solo valor del motor.
     veredicto,
+    ...(rescatePieYPlazo.combinacion ? { rescatePieYPlazo: rescatePieYPlazo.combinacion } : {}),
     resumenEjecutivo,
     desglose,
     metrics,

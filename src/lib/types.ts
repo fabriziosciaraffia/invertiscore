@@ -1679,6 +1679,10 @@ export interface FullAnalysisResult {
   // visual (badge motor + frase IA contradictoria). Ahora una sola señal:
   // el motor emite, la IA narra, no contradice.
   veredicto: Veredicto;
+  /** El puntaje daba BUSCAR OTRA y esta combinación de pie y plazo, sin descuento, llega a
+   *  COMPRAR: el veredicto pasó a AJUSTA SUPUESTOS (`rescate-pie-plazo.ts`, 25-sep-2026).
+   *  Ausente cuando no hubo rescate y en filas persistidas antes de ese día. */
+  rescatePieYPlazo?: { piePct: number; plazoAnios: number };
   resumenEjecutivo: string;
   desglose: Desglose;
   metrics: AnalysisMetrics;
