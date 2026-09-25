@@ -11,13 +11,11 @@ import { BAJADA_RECOMENDACION, type EstadoRecomendacion } from "@/lib/lo-que-har
  * "La posición de Franco" — la única caja del hero (contrato CONGELADO, T2), con la
  * firma y el footer "Lo que te separa" / "Cuánto aguanta" que abre el modal de vías.
  *
- * En LTR v21 absorbe la prosa de negociación (que dejó de ser capítulo aparte) más el
- * chip con el precio objetivo. Los dos son props OPCIONALES: STR y la prosa vieja no
- * los pasan.
+ * Sin prosa desde el 25-sep-2026: la caja IA, la prosa de negociación y el chip del precio
+ * objetivo salieron con la IA del informe. El cuerpo es el bloque determinista.
  * Extraída de HeroLTR en T1 (04-sep-2026) para que STR la monte con el mismo DOM y la
  * misma telemetría (`informe_posicion_abierta` con `tipo` por prop, un disparo por
- * montaje). Presentacional: el caller trae la caja IA ya renderizada (plumón), la
- * fecha de la firma y el cuerpo del modal.
+ * montaje). Presentacional: el caller trae el bloque, la fecha de la firma y el cuerpo del modal.
  */
 export type FooterPosicion = {
   /** Destino que se reporta en telemetría ("distanciaVeredicto" · "sensibilidad"). */
@@ -64,9 +62,7 @@ export type PuertaExtra = {
 };
 
 export function PosicionFranco({
-  cajaAccionable,
   bloque,
-  prosa,
   puertaExtra,
   footer,
   tipo,
@@ -75,17 +71,12 @@ export function PosicionFranco({
   className = "pb-2 md:ml-9",
   estado,
 }: {
-  cajaAccionable: ReactNode | null;
   /**
    * Cuerpo DETERMINISTA (v22.1): las palancas con su chip, el mix y el descarte, que
    * el motor calcula y esta caja dibuja. Va ARRIBA de todo lo demás porque es la
-   * respuesta; la prosa que quede abajo es contexto, no la posición.
+   * respuesta.
    */
   bloque?: ReactNode;
-  /** Cuerpo que ENTRA ANTES de la caja (v21: el argumento de negociación). */
-  prosa?: ReactNode;
-  /** Chip mono a la derecha del título (v21: el precio objetivo del plan). */
-  chip?: ReactNode;
   /** LA SEGUNDA PUERTA, con su botón y su modal. La usa la alternativa de comunas (§5).
    *  Ver el acta de `PuertaExtra`: hasta el 17-sep esto era un ReactNode que viajaba
    *  dentro del modal del footer, y por eso apagar el pop-up apagaba la tabla. */
@@ -128,7 +119,7 @@ export function PosicionFranco({
       });
     }
   };
-  if (!cajaAccionable && !prosa && !bloque && !footer && !puertaExtra) return null;
+  if (!bloque && !footer && !puertaExtra) return null;
   return (
       <>
         {/* EL ANCHO ES EL DEL INFORME (contrato §2). El default «md:ml-9» cuelga la caja

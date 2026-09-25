@@ -20,7 +20,7 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.2: Advanced Section.
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
-import { hasAiV2 } from "@/components/analysis/AIInsightSection";
+import { hasAiV2 } from "@/lib/prosa-guardada";
 
 
 // El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
@@ -50,7 +50,6 @@ export function PremiumResults({
   resumenEjecutivo: _resumenEjecutivo,
   ufValue,
   aiAnalysisInitial,
-  aiStale = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", fechaProsa, superficie = 0, precioUF = 0,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -77,19 +76,14 @@ export function PremiumResults({
   freePrecioM2: number;
   resumenEjecutivo: string;
   ufValue: number;
+  /** La prosa guardada, solo por `hallazgoSobreprecio` de filas viejas (ver prosa-guardada.ts). */
   aiAnalysisInitial?: unknown;
-  aiStale?: boolean;
-  /** El POST de regeneración exige sesión Y dueño: sin eso no se intenta. */
-  puedeRegenerarProsa?: boolean;
-  /** Se está mostrando prosa de una versión anterior (el lector no puede regenerar). */
-  prosaDesactualizada?: boolean;
   nombre?: string;
   ciudad?: string;
   createdAt?: string;
   fechaProsa?: string;
   superficie?: number;
   precioUF?: number;
-  demoAiData?: import("@/lib/types").AIAnalysisV2;
   creatorName?: string;
   isSharedView?: boolean;
   isSharedLink?: boolean;
@@ -167,15 +161,14 @@ export function PremiumResults({
   // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
   // prosa ni la pide. Sin sondeo de /ai-status, sin regeneración al abrir, sin rescate. La
   // prosa guardada se lee UNA vez y solo por un dato que viaja dentro de ella en filas viejas
-  // (`hallazgoSobreprecio`); ningún texto de la IA se dibuja. La generación en segundo plano al
-  // crear el análisis sigue viva: la maquinaria se retira por partes, en el goal siguiente.
+  // (`hallazgoSobreprecio`); ningún texto de la IA se dibuja, y ya no se genera.
   const aiAnalysis = hasAiV2(aiAnalysisInitial) ? aiAnalysisInitial : null;
 
   // Goal B (simplificado por Goal C) — estado de la prosa AL MOMENTO en que el
   // veredicto queda visible (= mount del grid, ahora inmediato). Ya no registra
   // "por qué vía llegó la prosa": el evento dispara antes de que llegue.
   const aiEstadoAlMontar = useRef<InformeAiEstado>(
-    aiStale ? "stale-regen" : hasAiV2(aiAnalysisInitial) ? "cacheada" : "generando"
+    hasAiV2(aiAnalysisInitial) ? "cacheada" : "generando"
   );
 
   // Goal B — el grid avisa cuando el veredicto queda visible (Goal C: al montar,

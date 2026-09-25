@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
-import type { FullAnalysisResult, AnalisisInput, AIAnalysisV2 } from "@/lib/types";
+import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { metricaValor } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -216,79 +216,6 @@ const DEMO_RESULTS: FullAnalysisResult = {
   ],
 };
 
-// ─── Hardcoded AI Analysis (v2 structure) ────────────
-const DEMO_AI: AIAnalysisV2 = {
-  siendoFrancoHeadline_clp: "A UF 3.200 el depto no se paga solo. Bajando a UF 2.900 los números empiezan a cerrar y la plusvalía de Providencia acompaña.",
-  siendoFrancoHeadline_uf: "A UF 3.200 el depto no se paga solo. Bajando a UF 2.900 los números empiezan a cerrar y la plusvalía de Providencia acompaña.",
-  conviene: {
-    pregunta: "¿Conviene o no conviene?",
-    respuestaDirecta_clp: "Hoy no conviene al precio de lista. A UF 3.200 tendrías que poner $289.908 de tu bolsillo cada mes durante 25 años para sostener la inversión. Pero la zona es buena y hay margen para negociar: a UF 2.900 el flujo mejora significativamente y la inversión empieza a tener sentido.",
-    respuestaDirecta_uf: "Hoy no conviene al precio de lista. A UF 3.200 tendrías que poner UF 7,5 de tu bolsillo cada mes durante 25 años para sostener la inversión. Pero la zona es buena y hay margen para negociar: a UF 2.900 el flujo mejora significativamente y la inversión empieza a tener sentido.",
-    veredictoFrase_clp: "Los números piden una negociación antes de firmar.",
-    veredictoFrase_uf: "Los números piden una negociación antes de firmar.",
-    datosClave: [
-      {
-        label: "Aporte mensual",
-        valor_clp: "$289.908",
-        valor_uf: "UF 7,5",
-        subtexto: "de tu bolsillo",
-        color: "red",
-      },
-      {
-        label: "Precio sugerido",
-        valor_clp: "UF 2.900",
-        valor_uf: "UF 2.900",
-        subtexto: "-9% negociable",
-        color: "accent",
-      },
-      {
-        label: "Retorno 10 años",
-        valor_clp: "1,05x",
-        valor_uf: "1,05x",
-        subtexto: "sobre lo aportado",
-        color: "green",
-      },
-    ],
-    reencuadre_clp: "Con este precio y financiamiento, estás pagando principalmente por la plusvalía de Providencia — no por flujo. Si esa apuesta te calza, el margen de negociación es la palanca. Si no te calza, conviene buscar algo donde el arriendo cubra más del costo mensual.",
-    reencuadre_uf: "Con este precio y financiamiento, estás pagando principalmente por la plusvalía de Providencia — no por flujo. Si esa apuesta te calza, el margen de negociación es la palanca. Si no te calza, conviene buscar algo donde el arriendo cubra más del costo mensual.",
-    cajaAccionable_clp: "¿Puedes sostener $289.908/mes durante 10+ años sin que afecte tu estabilidad? Y si el vendedor no baja a UF 2.900, ¿qué precio máximo estás dispuesto a pagar?",
-    cajaAccionable_uf: "¿Puedes sostener UF 7,5/mes durante 10+ años sin que afecte tu estabilidad? Y si el vendedor no baja a UF 2.900, ¿qué precio máximo estás dispuesto a pagar?",
-    cajaLabel: "Antes de seguir, decide:",
-  },
-  costoMensual: {
-    pregunta: "¿Qué te cuesta mes a mes?",
-    contenido_clp: "Entra $420.000 de arriendo. Sale $530.341 de dividendo + $80.000 de gastos comunes + $83.667 de contribuciones + mantención. Total salida: $709.908. Flujo neto: -$289.908 cada mes.",
-    contenido_uf: "Entra UF 10,8 de arriendo. Sale UF 13,7 de dividendo + UF 2,1 de gastos comunes + UF 2,2 de contribuciones + mantención. Total salida: UF 18,3. Flujo neto: -UF 7,5 cada mes.",
-    cajaAccionable_clp: "Regla del 25%: si el aporte no supera el 25% de tu ingreso líquido, es sostenible. $289.908/mes implica un sueldo líquido sobre $1.160.000 para que no te apriete.",
-    cajaAccionable_uf: "Regla del 25%: si el aporte no supera el 25% de tu ingreso líquido, es sostenible. UF 7,5/mes implica un sueldo líquido sobre UF 30 para que no te apriete.",
-    cajaLabel: "Hazte esta pregunta:",
-  },
-  negociacion: {
-    pregunta: "¿Hay margen para negociar?",
-    contenido_clp: "A UF 2.900 (9% menos) el flujo mejora a -$220.000/mes y la TIR sube a 11,2%. Es un descuento alcanzable: el precio/m² ya está bajo el promedio de Providencia, y con las tasas actuales, pocos compradores pueden pagar precio lista.",
-    contenido_uf: "A UF 2.900 (9% menos) el flujo mejora a -UF 5,7/mes y la TIR sube a 11,2%. Es un descuento alcanzable: el precio/m² ya está bajo el promedio de Providencia, y con las tasas actuales, pocos compradores pueden pagar precio lista.",
-    cajaAccionable_clp: "Usa este guion: 'Con las tasas actuales el dividendo queda muy alto para el arriendo de mercado. A UF 2.900 puedo cerrar la semana que viene. Sobre eso no llego.'",
-    cajaAccionable_uf: "Usa este guion: 'Con las tasas actuales el dividendo queda muy alto para el arriendo de mercado. A UF 2.900 puedo cerrar la semana que viene. Sobre eso no llego.'",
-    cajaLabel: "Guión para la contraoferta:",
-    precioSugerido: "UF 2.900",
-  },
-  largoPlazo: {
-    pregunta: "¿Vale la pena a 10 años?",
-    contenido_clp: "En 10 años pones ~$57.678.000 en total (pie, cierre y los meses que el arriendo no cubre). La propiedad vale $166.860.000 (vs $124.160.000 hoy, con plusvalía 3% anual). Al vender, neto de deuda y comisión, tu parte queda en $90.796.000. Retorno 1,05x sobre lo aportado. TIR estimada: 6,1%.",
-    contenido_uf: "En 10 años pones ~UF 1.487 en total (pie, cierre y los meses que el arriendo no cubre). La propiedad vale UF 4.301 (vs UF 3.200 hoy, con plusvalía 3% anual). Al vender, neto de deuda y comisión, tu parte queda en UF 2.340. Retorno 1,05x sobre lo aportado. TIR estimada: 6,1%.",
-    cajaAccionable_clp: "La apuesta implícita: que Providencia mantenga una plusvalía de 3% anual durante 10 años. Históricamente (2014-2024) la comuna promedió 3,0% anual — la proyección está en línea con esa trayectoria, aunque nada la garantiza.",
-    cajaAccionable_uf: "La apuesta implícita: que Providencia mantenga una plusvalía de 3% anual durante 10 años. Históricamente (2014-2024) la comuna promedió 3,0% anual — la proyección está en línea con esa trayectoria, aunque nada la garantiza.",
-    cajaLabel: "La apuesta que estás haciendo:",
-  },
-  riesgos: {
-    pregunta: "¿Qué puede salir mal?",
-    contenido_clp: "**Subida de tasas.** Si la tasa sube 1,5%, el dividendo pasa a $585.000 y el flujo negativo crece a $345.000/mes. Tu capacidad de ahorro debe absorber ese escenario.\n\n**Vacancia prolongada.** Cada mes sin arrendatario pierdes $500.000 (arriendo + GGCC). Una vacancia de 2 meses al año suma $35.000/mes al déficit.\n\n**Plusvalía por debajo del supuesto.** Si la plusvalía cae a 2% anual (en vez de 3%), el retorno a 10 años baja de 1,05x a 0,78x — terminarías con menos de lo que aportaste. El margen de esta operación depende de que la plusvalía proyectada se cumpla.",
-    contenido_uf: "**Subida de tasas.** Si la tasa sube 1,5%, el dividendo pasa a UF 15,1 y el flujo negativo crece a UF 8,9/mes. Tu capacidad de ahorro debe absorber ese escenario.\n\n**Vacancia prolongada.** Cada mes sin arrendatario pierdes UF 12,9 (arriendo + GGCC). Una vacancia de 2 meses al año suma UF 0,9/mes al déficit.\n\n**Plusvalía por debajo del supuesto.** Si la plusvalía cae a 2% anual (en vez de 3%), el retorno a 10 años baja de 1,05x a 0,78x — terminarías con menos de lo que aportaste. El margen de esta operación depende de que la plusvalía proyectada se cumpla.",
-    cajaAccionable_clp: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~$4.260.000. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
-    cajaAccionable_uf: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~UF 110. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
-    cajaLabel: "Si decides avanzar, protege estos flancos:",
-  },
-};
 
 export default function DemoPage() {
   return (
@@ -332,7 +259,6 @@ export default function DemoPage() {
           freePrecioM2={PRECIO_UF / SUPERFICIE}
           resumenEjecutivo={DEMO_RESULTS.resumenEjecutivo}
           ufValue={UF_CLP}
-          demoAiData={DEMO_AI}
           nombre="Depto 2D1B Providencia"
           ciudad="Santiago"
           createdAt="2026-03-18T12:00:00Z"

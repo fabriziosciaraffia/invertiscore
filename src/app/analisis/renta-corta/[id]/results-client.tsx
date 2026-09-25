@@ -82,17 +82,8 @@ interface STRResultsProps {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable?: boolean;
+  /** La prosa guardada: solo marca si la fila la tenía, para `informe_visto`. */
   aiAnalysisInitial?: unknown;
-  /** Goal F (espejo LTR): la prosa persistida quedó con promptVersion vieja —
-   *  el server no la pasó como inicial; el cliente NO pollea (el status la
-   *  devolvería como ready) y regenera directo vía POST (stale-regen, gratis). */
-  aiStaleInitial?: boolean;
-  /** Solo el dueño con sesión (o admin) puede regenerar: el POST responde 401 sin
-   *  sesión y 403 sobre una fila ajena. Sin este guard, un link compartido dispara
-   *  un request que muere en 401 y deja el informe sin prosa Y con un error. */
-  puedeRegenerarProsa?: boolean;
-  /** La prosa mostrada viene de un contrato anterior: se rotula con su fecha. */
-  prosaDesactualizada?: boolean;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -126,7 +117,6 @@ export function STRResultsClient({
   userCredits,
   welcomeAvailable = true,
   aiAnalysisInitial,
-  aiStaleInitial = false,
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -153,8 +143,7 @@ export function STRResultsClient({
       : null;
   // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
   // prosa ni la pide —sin sondeo de /ai-status, sin regeneración al abrir, sin rescate— y no
-  // dibuja ningún texto de la IA. La generación en segundo plano del submit sigue viva: la
-  // maquinaria se retira por partes, en el goal siguiente.
+  // dibuja ningún texto de la IA, y ya no se genera.
 
   // Goal B — `informe_visto` STR: el veredicto es visible desde el primer
   // render (HeroSTR lo pinta con la prosa en skeleton inline), así que el
@@ -169,7 +158,7 @@ export function STRResultsClient({
       posthog,
       ids: [analysisId],
       modalidad: "str",
-      aiEstado: aiStaleInitial ? "stale-regen" : initialAi ? "cacheada" : "generando",
+      aiEstado: initialAi ? "cacheada" : "generando",
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView,
     });

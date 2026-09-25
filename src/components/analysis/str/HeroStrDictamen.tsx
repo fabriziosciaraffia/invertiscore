@@ -179,7 +179,6 @@ export function HeroStrDictamen({
 
   const recomendacion = (
     <PosicionFranco
-      cajaAccionable={null}
       bloque={
         cardBuscar ?? (bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined)
       }

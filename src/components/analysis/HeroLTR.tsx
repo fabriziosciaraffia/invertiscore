@@ -282,7 +282,6 @@ export function HeroLTR({
 
   const recomendacion = (
     <PosicionFranco
-      cajaAccionable={null}
       bloque={
           cardBuscar ?? (bloqueDeterminista ? (
             <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={lineaAlternativa} />

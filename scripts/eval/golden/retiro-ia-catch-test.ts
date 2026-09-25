@@ -130,6 +130,10 @@ export const RETIRADOS: Record<string, string[]> = {
     "scripts/eval/golden/ambitos-zona-catch-test.ts",
     "scripts/eval/golden/referencias-zona-catch-test.ts",
   ],
+  "parte 2 · componentes y props muertos": [
+    // Lo único vivo, `hasAiV2`, se mudó a `src/lib/prosa-guardada.ts`.
+    "src/components/analysis/AIInsightSection.tsx",
+  ],
 };
 
 /**

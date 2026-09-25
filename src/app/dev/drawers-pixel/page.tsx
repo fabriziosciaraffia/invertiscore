@@ -161,8 +161,6 @@ function Inner() {
         resumenEjecutivo=""
         ufValue={valorUF}
         aiAnalysisInitial={fix.ai_analysis ?? undefined}
-        aiStale={false}
-        puedeRegenerarProsa={false}
         nombre={fix.nombre ?? ""}
         ciudad={fix.ciudad ?? "Santiago"}
         createdAt={fix.created_at ?? ""}
@@ -197,7 +195,6 @@ function Inner() {
         isSharedView={false}
         userCredits={0}
         aiAnalysisInitial={fix.ai_analysis ?? null}
-        puedeRegenerarProsa={false}
         simulacionStr={(() => {
           // La simulación se recalcula sobre el recompute, como en la ruta real: el fixture
           // la trae congelada y sus fronteras quedaron en el volcado.

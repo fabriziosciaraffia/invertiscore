@@ -140,7 +140,7 @@ export function SubjectCardGrid({
   // Murió acá el acordeón de hallazgos con sus cuerpos de drawer inline, la
   // simulación con sus sliders y el análisis a 10 años de la IA. Los hallazgos
   // siguen siendo datos deterministas del motor; los capítulos los leen directo.
-  const ctxDrawer = results && inputData ? { results, inputData, prosa: null } : null;
+  const ctxDrawer = results && inputData ? { results, inputData } : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
   // Los datos se arman acá (motor + input). EL TITULAR LO ESCRIBE EL MOTOR (25-sep-2026): reproduce
@@ -331,7 +331,6 @@ export function SubjectCardGrid({
             <CapitulosInversion
               results={ctxDrawer.results}
               inputData={ctxDrawer.inputData}
-              prosa={ctxDrawer.prosa}
               currency={currency}
               valorUF={valorUF}
               comuna={comunaPortada || "la comuna"}

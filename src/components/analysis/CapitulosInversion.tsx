@@ -4,7 +4,6 @@ import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { useMemo, type ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import type {
-  AIAnalysisV2,
   AnalisisInput,
   FullAnalysisResult,
   HallazgoCapRate,
@@ -104,8 +103,6 @@ const Segs = SegsCierre;
 export function CapitulosInversion({
   results,
   inputData,
-  // `prosa` sigue en el tipo (lo pasa SubjectCardGrid) pero desde el 21-sep-2026 ningún
-  // capítulo la lee: el II era el último y pasó a ser determinista.
   currency,
   valorUF,
   comuna,
@@ -116,7 +113,6 @@ export function CapitulosInversion({
 }: {
   results: FullAnalysisResult;
   inputData: AnalisisInput;
-  prosa: AIAnalysisV2 | null;
   currency: "CLP" | "UF";
   valorUF: number;
   comuna: string;
