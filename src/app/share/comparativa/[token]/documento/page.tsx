@@ -135,9 +135,6 @@ export default async function DocumentoAmbasPage({
       token={params.token}
       ltrResults={ltrResults}
       strResults={strResults}
-      // LA IA SALIÓ DE LA COMPARATIVA (25-sep-2026): el documento no dibuja la prosa guardada,
-      // igual que la web; los 3 movimientos se omiten y queda el documento del motor completo.
-      ai={null}
       ltrInput={(ltr.input_data ?? null) as Record<string, unknown> | null}
       strInput={strInput}
       ltrScore={ltr.score ?? 0}

@@ -120,9 +120,10 @@ export function runFactibilidadDemandaTier(): { hard: number } {
       if (!ok) F(`3 · ${p} recalcula un STR sin pasar los results por conOcupacionRealizadaDelCache (${a2.slice(0, 60)})`);
     }
   }
-  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: el piso baja de 8 a 7 porque una de las
-  // entradas era la simulación de `str-prosa-persist.ts`, borrado con el generador STR.
-  if (entradas < 7) F(`3 · PISO · solo ${entradas} entradas de recálculo STR encontradas: el barrido no está leyendo`);
+  // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: el piso baja de 8 a 6 porque dos de las
+  // entradas eran de la generación: la simulación de `str-prosa-persist.ts` y el recálculo STR de
+  // `ai-generation-ambas-generate.ts`, los dos borrados con sus generadores.
+  if (entradas < 6) F(`3 · PISO · solo ${entradas} entradas de recálculo STR encontradas: el barrido no está leyendo`);
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-prosa-persist.ts` se borró; ya no hay simulación para la prosa.
 
   // ── 4 · el ancla y el filtro son el mismo ──

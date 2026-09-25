@@ -93,7 +93,6 @@ import { runSalidaStrCopyTier } from "./salida-str-copy-catch-test";
 import { runComprarDosMargenesTier } from "./comprar-dos-margenes-catch-test";
 import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
-import { runCandadoTier } from "./candado-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 
@@ -389,9 +388,8 @@ function printSeed(r: SeedReport) {
   totalHard += runBajadaNoMienteTier().hard;
   totalHard += runAlternativaComunasTier().hard;
 
-  // ── Tier CANDADO (goal #3 · 07-sep-2026, 0 tokens, sin base): generating_since solo
-  // se escribe en candado-generacion.ts; dos tomas → una gana; TTL vence. Siempre con el QUICK. ──
-  totalHard += (await runCandadoTier()).hard;
+  // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los
+  // generadores, en la parte 2 del retiro de la IA. ──
 
   // ── Tier INSTRUMENTO (07-sep-2026, 0 tokens): ningún call site del generador en scripts/
   // escribe en la base sin declararlo (persist:false o trigger). Corre siempre con el QUICK. ──

@@ -13,7 +13,7 @@
 // veredicto, posición y hallazgos).
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { FullAnalysisResult, AIAnalysisComparativa, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
+import type { FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict, metricaODefault, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_VALOR, NO_APLICA_FOOTNOTE_DOC_AMBAS } from "@/lib/no-aplica-copy";
@@ -46,7 +46,6 @@ export interface DocumentoAmbasProps {
   token: string;
   ltrResults: FullAnalysisResult | null;
   strResults: ShortTermResult | null;
-  ai: AIAnalysisComparativa | null;
   ltrInput: Record<string, unknown> | null;
   strInput: Record<string, unknown> | null;
   ltrScore: number;
@@ -60,7 +59,7 @@ export interface DocumentoAmbasProps {
 }
 
 export function DocumentoAmbas({
-  token, ltrResults, strResults, ai, ltrInput,
+  token, ltrResults, strResults, ltrInput,
   ltrScore, strScore, ufFrozen, comuna, direccionLabel,
   costoAmoblamiento, modoGestion, comisionAdministrador,
 }: DocumentoAmbasProps) {
@@ -235,9 +234,6 @@ export function DocumentoAmbas({
   const occPct = Math.round((strResults?.ejesAplicados?.ocupacionFinal ?? strBase?.ocupacionReferencia ?? 0) * 100);
 
   // ── Prosa IA (3 movimientos · degradan en silencio) ──
-  const mov1 = ai?.conviene?.quienDeberiasSer?.trim();
-  const mov2 = ai?.conviene?.switchPath?.trim();
-  const cierreCondicion = ai?.conviene?.cierre?.trim();
 
   return (
     <div className="franco-doc" data-doc-ready>
@@ -528,9 +524,6 @@ export function DocumentoAmbas({
       <section className="doc-section break-page">
         <div className="chapter crit"><span className="no">04</span><h2 className="subtitle">La decisión — dónde se cruzan</h2></div>
 
-        {/* Movimiento IA 1 — degrada en silencio */}
-        {mov1 && <p className="body">{mov1}</p>}
-
         {/* Variante F — qué CUESTA la comisión. Ya no emite juicio sobre delegar: el
             contrafáctico corría con el mismo ingreso y solo cambiaba la comisión, así que
             «delegar es peor» salía por construcción. Ver `FlipGestionSignal` (16-sep-2026). */}
@@ -597,18 +590,10 @@ export function DocumentoAmbas({
           </>
         )}
 
-        {/* Movimiento IA 2 — degrada en silencio */}
-        {mov2 && (
-          <div className="box">
-            <p className="bl">¿Y si migro después?</p>
-            <p className="bt">{mov2}</p>
-          </div>
-        )}
-
         {/* Variante E — posición de Franco por estado 3-ejes (motor · afirmable sin IA) */}
         <p className="eyebrow" style={{ marginTop: 6 }}>Siendo franco</p>
         <div className="cierre">
-          <p>{hero.posicion}{cierreCondicion ? ` ${cierreCondicion}` : ""}</p>
+          <p>{hero.posicion}</p>
         </div>
 
         <div className="doc-close">

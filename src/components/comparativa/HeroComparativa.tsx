@@ -14,12 +14,11 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent } from "lucide-react";
-import type { AIAnalysisComparativa, Veredicto } from "@/lib/types";
+import type { Veredicto } from "@/lib/types";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtUF } from "@/components/analysis/utils";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { ProgresoGeneracion, ETAPAS_GENERACION_AMBAS, COPY_TIEMPO_AMBAS, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 import {
   type GanadorMetodo,
   type HeroAmbas,
@@ -60,15 +59,10 @@ interface Props {
   // Línea "Lo que te separa" bajo cada mini-score (distancia-copy · contrato).
   ltrDistancia: string | null;
   strDistancia: string | null;
-  // Prosa comparativa (Fase C) — integrada al hero (G1)
-  ai: AIAnalysisComparativa | null;
-  aiLoading: boolean;
   /**
-   * Apertura escrita por el MOTOR (buildAperturaComparativa). Es la respuesta
-   * literal a "Cuál te conviene" y no depende de la IA: cuando no hay prosa
-   * (par sin generar, o versión vieja ocultada por el version-check) el bloque
-   * se monta igual con esto en vez del placeholder que prometía y no entregaba.
-   * Mismo patrón que el documento comparativo, que ya la afirma sin IA.
+   * Apertura escrita por el MOTOR (buildAperturaComparativa). Es la respuesta literal a «Cuál te
+   * conviene». Desde el 25-sep-2026 es lo único que carga ese bloque: la prosa IA de la
+   * comparativa salió con el retiro de la IA.
    */
   aperturaMotor: string;
   // Pie firma (G6)
@@ -96,7 +90,6 @@ export function HeroComparativa(p: Props) {
   const minisOrden: Array<"ltr" | "str"> = hero.ganador === "corta" ? ["str", "ltr"] : ["ltr", "str"];
 
   const precioM2UF = p.superficie > 0 ? p.precioUF / p.superficie : 0;
-  const cierreCondicion = p.ai?.conviene?.cierre?.trim() || "";
   const fechaFirma = formatFecha(p.fechaProsa ?? p.createdAt);
   // A1 · título canon "Dirección corta · Comuna" (formatDireccionDisplay = calle+número
   // antes de la 1ª coma, sin código postal/región). Fallback al nombre / "Depto NDNB".
@@ -255,35 +248,9 @@ export function HeroComparativa(p: Props) {
             Cuál te conviene
           </p>
 
-          {p.aiLoading && !p.ai ? (
-            /* Goal F3-c: la espera hereda ProgresoGeneracion (E.2) con etapas y
-               copy AMBAS propios. El segundo slot (cierre-condición, dentro de
-               "La posición de Franco") conserva su SkeletonLine: un solo
-               indicador de trabajo por hero — nada de avisos duplicados. */
-            <ProgresoGeneracion etapas={ETAPAS_GENERACION_AMBAS} copyTiempo={COPY_TIEMPO_AMBAS} />
-          ) : p.ai ? (
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-              {/* Apertura (motor) como lead — mismo formato de prosa que los
-                  movimientos de abajo (sin destacado bold/italic/serif). */}
-              {(p.ai.apertura ?? p.ai.headline) && (
-                <div className="mb-4">
-                  {renderProsaMono(p.ai.apertura ?? p.ai.headline ?? "")}
-                </div>
-              )}
-              {p.ai.conviene?.quienDeberiasSer && (
-                <Movimiento label="Quién tienes que ser" body={p.ai.conviene.quienDeberiasSer} />
-              )}
-              {p.ai.conviene?.switchPath && (
-                <Movimiento label="¿Y si migro después?" body={p.ai.conviene.switchPath} />
-              )}
-            </div>
-          ) : (
-            // Sin prosa IA: el bloque NO se vacía ni promete de más — lo carga la
-            // apertura del motor, que responde exactamente la pregunta del título.
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-              {renderProsaMono(p.aperturaMotor)}
-            </div>
-          )}
+          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
+            {renderProsaMono(p.aperturaMotor)}
+          </div>
         </div>
 
         {/* TOP-3 diferencial + puente al acto 2 (G8) */}
@@ -330,14 +297,6 @@ export function HeroComparativa(p: Props) {
             <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
               {hero.posicion}
             </p>
-            {/* Cierre-condición (mov. 3 de la prosa) — junto a la posición */}
-            {p.aiLoading && !p.ai ? (
-              <div className="mt-2.5"><SkeletonLine width="60%" /></div>
-            ) : cierreCondicion ? (
-              <div className="font-body text-[13px] leading-[1.55] text-[var(--franco-text-secondary)] mt-2.5 pt-2.5" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}>
-                {renderProsaMono(cierreCondicion)}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
@@ -439,17 +398,6 @@ function MargenBar({ margen }: { margen: NonNullable<HeroAmbas["margen"]> }) {
   );
 }
 
-// ── Movimiento de prosa con kicker mono ──────────────────────────────────────
-function Movimiento({ label, body }: { label: string; body: string }) {
-  return (
-    <div className="mt-4 first:mt-0">
-      <span className="font-heading font-bold text-[15px] text-[var(--franco-text)] block mb-1">
-        {label}
-      </span>
-      <div>{renderProsaMono(body)}</div>
-    </div>
-  );
-}
 
 // CLP abreviado en millones ("$139,7 MM"), miles bajo $1 MM. Espejo de HeroLTR/HeroSTR.
 function fmtMM(clp: number): string {

@@ -49,27 +49,8 @@ function archivos(dir: string): string[] {
   return out;
 }
 
-/** Índice de la llave que cierra la que abre en `abre` (la primera `{` desde ahí). */
-function cierreDeBloque(s: string, desde: number): { abre: number; cierra: number } | null {
-  const abre = s.indexOf("{", desde);
-  if (abre < 0) return null;
-  let prof = 0;
-  for (let i = abre; i < s.length; i++) {
-    if (s[i] === "{") prof++;
-    else if (s[i] === "}") {
-      prof--;
-      if (prof === 0) return { abre, cierra: i };
-    }
-  }
-  return null;
-}
-
 /** Las llamadas que generan prosa del informe o de la comparativa. */
 const LLAMADA = /\b(generateAiAnalysis|generarYPersistirProsaStr|generateStrProse|generateComparativaAI)\(|\.messages\.create\(/g;
-/** Los módulos que DEFINEN la generación: adentro se llaman entre sí, y los gobierna quien los llama. */
-const MODULOS_GENERADORES = new Set([
-  "src/lib/ai-generation-ambas-generate.ts",
-]);
 
 /**
  * Lo que el retiro de la IA BORRÓ, por parte. Crece con cada parte; nunca se achica: si algo de
@@ -134,6 +115,17 @@ export const RETIRADOS: Record<string, string[]> = {
     // Lo único vivo, `hasAiV2`, se mudó a `src/lib/prosa-guardada.ts`.
     "src/components/analysis/AIInsightSection.tsx",
   ],
+  "parte 2 · el generador de AMBAS y su prompt": [
+    "src/lib/ai-generation-ambas.ts",
+    "src/lib/ai-generation-ambas-generate.ts",
+    "src/lib/voz-chilena.ts",
+    "src/lib/candado-generacion.ts",
+    "src/components/comparativa/use-comparativa-ai.ts",
+    "src/components/analysis/ProsaSkeleton.tsx",
+    "scripts/eval/golden/voseo-catch-test.ts",
+    "scripts/eval/golden/candado-catch-test.ts",
+    "scripts/test-voz-chilena.ts",
+  ],
 };
 
 /**
@@ -188,46 +180,16 @@ export function runRetiroIaTier(): { hard: number } {
   if (previo === undefined) delete process.env.PROSA_IA_ENABLED;
   else process.env.PROSA_IA_ENABLED = previo;
 
-  // ── 3 · ninguna llamada a la generación queda fuera del interruptor ──
-  // Por archivo, cómo se permite que llame: DENTRO del bloque que abre el guard, o DESPUÉS de un
-  // guard de salida temprana (`if (!prosaIaActiva()) { … return … }`).
-  // ⚠ ACTA (25-sep-2026) · PARTE 2: los generadores LTR y STR se borraron, y con ellos sus cuatro
-  // disparadores (crear LTR, crear STR, post-pago y el cron). Queda la ruta de AMBAS. Cualquier
-  // llamada nueva a un generador desde `src/`, sin guard, sigue siendo falla.
-  const GUARDADOS: Record<string, { dentro?: RegExp; salida?: RegExp }> = {
-    "src/app/api/analisis/comparativa/ai/route.ts": { salida: /if \(!prosaIaActiva\(\)\) /g },
-  };
-  let llamadas = 0;
-  const vistos = new Set<string>();
+  // ── 3 · nada en src/ llama a un generador ──
+  // ⚠ ACTA (25-sep-2026) · PARTE 2: hasta la parte 1 esto medía que cada llamada estuviera
+  // DENTRO del interruptor. Los cuatro generadores (LTR, STR, persistencia STR y AMBAS) se
+  // borraron, así que la regla se vuelve absoluta: ninguna llamada, en ningún archivo.
   for (const { rel, src } of SRC) {
-    if (MODULOS_GENERADORES.has(rel)) continue;
-    const ms = [...src.matchAll(LLAMADA)];
-    if (!ms.length) continue;
-    vistos.add(rel);
-    const g = GUARDADOS[rel];
-    if (!g) {
-      F(`3 · ${rel} llama a la generación (${ms[0][0]}) y no está detrás del interruptor`);
-      continue;
-    }
-    const bloques: { abre: number; cierra: number }[] = [];
-    for (const m of src.matchAll(g.dentro ?? g.salida!)) {
-      const b = cierreDeBloque(src, m.index! + m[0].length);
-      if (b) bloques.push(b);
-    }
-    if (!bloques.length) F(`3 · ${rel}: no encuentro el guard del interruptor`);
-    for (const m of ms) {
-      llamadas++;
-      const i = m.index!;
-      const ok = g.dentro
-        ? bloques.some((b) => b.abre < i && i < b.cierra)
-        : bloques.some((b) => b.cierra < i && /\breturn\b/.test(src.slice(b.abre, b.cierra)));
-      if (!ok) F(`3 · ${rel}: la llamada ${m[0]} (offset ${i}) corre con el interruptor apagado`);
+    for (const m of src.matchAll(LLAMADA)) {
+      F(`3 · ${rel} llama a la generación (${m[0]}): los generadores se retiraron`);
     }
   }
-  // Piso de cobertura: los disparadores que quedan tienen que seguir midiéndose. Si uno desaparece
-  // del recorrido, el tier dejaría de probarlo sin avisar.
-  for (const rel of Object.keys(GUARDADOS)) if (!vistos.has(rel)) F(`3 · ${rel} ya no llama a la generación: actualiza GUARDADOS (el tier dejó de medirlo)`);
-  if (llamadas < Object.keys(GUARDADOS).length) F(`3 · el tier midió ${llamadas} llamadas a la generación: esperaba al menos ${Object.keys(GUARDADOS).length}`);
+  if (SRC.length < 400) F(`3 · el barrido leyó ${SRC.length} archivos de src/: no está leyendo el repo`);
 
   // ── 7 · lo borrado no vuelve y nadie lo importa ──
   const ESTE = "scripts/eval/golden/retiro-ia-catch-test.ts";
@@ -276,24 +238,30 @@ export function runRetiroIaTier(): { hard: number } {
   if (!/const frase = clamp\(results\?\.resumenEjecutivo \|\| defaultFrase\(veredicto\), 150\);/.test(OG)) F("5 · la frase de la imagen no es la del motor");
 
   // ── 6 · AMBAS no pide ni dibuja prosa, y su PDF no la exige ──
+  // ⚠ ACTA (25-sep-2026) · PARTE 2: el hero y el documento de AMBAS ya no TIENEN prop de prosa
+  // (antes se les pasaba `ai={null}`); la ruta de la narrativa responde 410 sin generar nada.
   for (const p of ["src/app/analisis/comparativa/comparativa-client.tsx", "src/app/share/comparativa/[token]/shared-client.tsx"]) {
     const s = sinComentarios(leer(p));
     if (/useComparativaAI|\/api\/analisis\/comparativa\/ai/.test(s)) F(`6 · ${p} vuelve a pedir la prosa de la comparativa`);
-    const heroes = (s.match(/<HeroComparativa\b/g) ?? []).length;
-    const sinProsa = (s.match(/<HeroComparativa\b[^>]*?\sai=\{null\}\s+aiLoading=\{false\}/g) ?? []).length;
-    if (!heroes || heroes !== sinProsa) F(`6 · ${p} le pasa prosa (o espera) al hero de la comparativa`);
+    if (!/<HeroComparativa\b/.test(s)) F(`6 · ${p} ya no monta el hero de la comparativa: el tier no lo mide`);
+    if (/<HeroComparativa\b[^>]*?\sai(Loading)?=/.test(s)) F(`6 · ${p} le pasa prosa (o espera) al hero de la comparativa`);
     if (/Análisis comparativo no disponible/.test(s)) F(`6 · ${p} vuelve a mostrar el error de la prosa`);
   }
+  const HERO_AMBAS = sinComentarios(leer("src/components/comparativa/HeroComparativa.tsx"));
+  if (/\bai(Loading)?\s*[:?]|p\.ai\b|ProgresoGeneracion|SkeletonLine/.test(HERO_AMBAS)) F("6 · HeroComparativa vuelve a recibir o esperar prosa");
+  if (!/renderProsaMono\(p\.aperturaMotor\)/.test(HERO_AMBAS)) F("6 · «Cuál te conviene» no lo carga la apertura del motor");
   const PDF_AMBAS = sinComentarios(leer("src/app/api/share/comparativa/[token]/pdf/route.ts"));
   if (/status: 425|comparativaAI/.test(PDF_AMBAS)) F("6 · el PDF de AMBAS vuelve a exigir la prosa");
-  const DOC_AMBAS = sinComentarios(leer("src/app/share/comparativa/[token]/documento/page.tsx"));
-  if (!/<DocumentoAmbas\b[^>]*?\sai=\{null\}/.test(DOC_AMBAS)) F("6 · el documento de AMBAS vuelve a dibujar la prosa");
+  const DOC_AMBAS = sinComentarios(leer("src/app/share/comparativa/[token]/documento/DocumentoAmbas.tsx"));
+  if (/\bai\??\.conviene|\bai:\s*AIAnalysisComparativa/.test(DOC_AMBAS)) F("6 · el documento de AMBAS vuelve a dibujar la prosa");
+  const RUTA_AMBAS = sinComentarios(leer("src/app/api/analisis/comparativa/ai/route.ts"));
+  if (!/status: 410/.test(RUTA_AMBAS) || /await|supabase|anthropic/i.test(RUTA_AMBAS)) F("6 · la ruta de la narrativa de AMBAS vuelve a hacer algo además de responder 410");
 
   if (fallas.length) {
     console.log(`  ✗ RETIRO-IA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${retirados} archivos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; ${llamadas} llamadas a la generación en ${vistos.size} archivos, todas detrás del interruptor; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
+    console.log(`  ✓ VERDE — ${retirados} archivos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
   }
   return { hard: fallas.length };
 }

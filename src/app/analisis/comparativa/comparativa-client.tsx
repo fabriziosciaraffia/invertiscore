@@ -345,8 +345,6 @@ export function ComparativaClient(p: Props) {
             ltrVerdict={ltrVerdict}
             strScore={p.strScore}
             strVerdict={strVerdict}
-            ai={null}
-            aiLoading={false}
             aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
             fechaProsa={p.fechaProsa}

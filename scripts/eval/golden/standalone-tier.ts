@@ -61,7 +61,6 @@ const STANDALONE = [
   "fecha-santiago",
   "marcas",
   "mediacion-cards",
-  "voseo",
 ];
 
 /**
