@@ -72,19 +72,23 @@ body.esc .asa{display:none}
 .lead{font-size:14px;margin:0 4px 10px}
 .lead strong{font-weight:600}
 
-/* leyenda en escala */
-.escala{margin:0 4px 14px}
-.escala .tit{font-size:12.5px;color:var(--ink2);margin:0 0 6px}
-.escala .barra{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
-.escala .sw{height:10px;border-radius:3px;border:1px solid transparent}
-.escala .lab{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:4px}
-.escala .lab span{font-size:10.5px;color:var(--ink2);line-height:1.2}
-.escala .lab span:last-child{text-align:right}
-.escala .dir{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);margin-top:2px}
-.sw.e0{background:var(--e0-bg);border-color:var(--e0-bd)} .sw.e1{background:var(--e1-bg);border-color:var(--e1-bd)}
-.sw.e2{background:var(--e2-bg);border-color:var(--e2-bd)} .sw.e3{background:var(--e3-bg);border-color:var(--e3-bd)}
-.sw.fx{background:repeating-linear-gradient(135deg,var(--sunk2) 0 3px,var(--card) 3px 6px);border:1px dashed var(--ink3)}
-
+/* leyenda como regla de descuento */
+.escala{margin:0 4px 16px}
+.escala .tit{font-size:12.5px;color:var(--ink2);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
+.escala .tit b{font-weight:600;color:var(--ink)}
+.escala .nom{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-bottom:4px}
+.escala .nom span{font-size:10.5px;line-height:1.15;color:var(--ink2);text-align:center;padding:0 2px}
+.escala .barra{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.escala .sw{height:14px}
+.sw.e0{background:var(--e0-bg)} .sw.e1{background:var(--e1-bg)} .sw.e2{background:var(--e2-bg)} .sw.e3{background:var(--e3-bg)}
+.sw.fx{background:repeating-linear-gradient(135deg,var(--sunk2) 0 3px,var(--card) 3px 6px)}
+.escala .reg{position:relative;height:22px}
+.escala .reg i{position:absolute;top:0;width:1px;height:6px;background:var(--ink2)}
+.escala .reg b{position:absolute;top:6px;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap}
+.info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--ink3);color:var(--ink2);font-size:9.5px;font-weight:600;font-style:italic;font-family:Georgia,serif;margin-left:4px;vertical-align:1px;cursor:pointer;background:transparent;padding:0}
+.sc{font-weight:700}
+.sc.c{color:var(--comprar)} .sc.a{color:var(--ajusta)} .sc.b{color:var(--rojo)}
+.tab td .v{font-size:11.5px}
 .tip{font-size:12.5px;color:var(--ink2);margin:0 4px 10px;display:flex;gap:6px;align-items:center}
 
 .mz{display:grid;grid-template-columns:22px 38px repeat(var(--cols),minmax(0,1fr)) 22px;gap:8px 7px}
@@ -131,7 +135,17 @@ body.esc .asa{display:none}
 .tab td.ahora{font-weight:600;padding-left:10px}
 .tab td.hoy{color:var(--ink2);padding-left:10px}
 .neg{color:var(--rojo)!important}
-.mercado{font-size:13px;color:var(--ink2);margin:12px 4px 0}
+.mkt{margin:20px 4px 0;border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;background:var(--sunk)}
+.mkt .k{font-size:11.5px;font-weight:600;color:var(--ink2);letter-spacing:.02em;margin:0 0 4px;display:flex;align-items:center;gap:6px}
+.mkt h4{font-size:15px;font-weight:600;margin:0 0 6px}
+.mkt p{font-size:13.5px;color:var(--ink2);margin:0 0 12px;line-height:1.45}
+.mkt p strong{color:var(--ink);font-weight:600}
+.mkt .cmp{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:8px;margin-bottom:10px}
+.mkt .cmp .r{font-size:11.5px;color:var(--ink2)}
+.mkt .cmp .n{font-size:17px;font-weight:600}
+.mkt .cmp .flecha{font-size:13px;font-weight:600;color:var(--comprar);text-align:center;padding-bottom:3px;white-space:nowrap}
+.mkt .cmp div:last-child{text-align:right}
+.mkt .aviso{font-size:12.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:8px;margin:0;display:flex;gap:6px}
 .nota{margin-top:24px;font-size:12.5px;color:var(--ink3);max-width:86ch}
 </style>
 </head>
@@ -139,7 +153,7 @@ body.esc .asa{display:none}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>El azul dice qué tan cerca está de Comprar</h1>
+      <h1>La leyenda como regla de descuento, y el detalle con veredicto</h1>
       <p>Todas las celdas con número llegan a Comprar con ese descuento, así que la escala es toda azul: mientras más intenso, más cerca está. Azul pleno: ya es Comprar. Azul casi blanco: hay que negociar mucho. Rayado: ni con el descuento máximo llega. El ciruela queda solo para nombrar el veredicto de hoy.</p>
     </div>
   </div>
@@ -181,10 +195,16 @@ body.esc .asa{display:none}
     var H=document.getElementById(host);
     H.innerHTML='<div class="hoja"><div class="cab"><div class="asa"></div><p class="t">Ajustar supuestos</p><p class="s">Hoy <span class="v a">~ Ajustar</span> con pie '+cfg.hoy[0]+'% y crédito a '+cfg.hoy[1]+' años</p></div>'+
       '<div class="cuerpo"><p class="lead">Cuánto descuento hay que pedir para llegar a <span class="v c">✓ Comprar</span>, según tu pie y tu plazo.</p>'+
-      '<div class="escala"><p class="tit">Mientras más azul, más cerca de Comprar →</p><div class="barra"><span class="sw fx"></span><span class="sw e3"></span><span class="sw e2"></span><span class="sw e1"></span><span class="sw e0"></span></div>'+
-      '<div class="lab"><span>fuera de alcance</span><span>difícil de negociar (más de 10%)</span><span>con argumentos (5 a 10%)</span><span>fácil de negociar (hasta 5%)</span><span>ya es Comprar</span></div></div>'+
+      '<div class="escala"><p class="tit"><b>Descuento que hay que negociar</b><span>más descuento →</span></p>'+
+      '<div class="nom"><span>ya es Comprar</span><span>fácil de negociar</span><span>con argumentos</span><span>difícil de negociar</span><span>fuera de alcance</span></div>'+
+      '<div class="barra"><span class="sw e0"></span><span class="sw e1"></span><span class="sw e2"></span><span class="sw e3"></span><span class="sw fx"></span></div>'+
+      '<div class="reg"><i style="left:20%"></i><b style="left:20%">0%</b><i style="left:40%"></i><b style="left:40%">5%</b><i style="left:60%"></i><b style="left:60%">10%</b><i style="left:80%"></i><b style="left:80%">'+cfg.tope+'%</b></div></div>'+
       '<p class="tip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V6a2 2 0 1 1 4 0v5"/><path d="M13 10a2 2 0 1 1 4 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.3-2.3a1.6 1.6 0 0 1 2.8-1.6L9 14"/></svg>Toca una celda para ver cómo queda.</p>'+
-      '<div class="mz"></div><div class="det"></div>'+(cfg.mercado?'<p class="mercado">'+cfg.mercado+'</p>':'')+'</div></div>';
+      '<div class="mz"></div><div class="det"></div>'+(cfg.mercado?'<div class="mkt"><p class="k"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>Un camino que no depende de ti</p>'+
+      '<h4>Si la zona paga más, también llega a <span class="v c">✓ Comprar</span></h4>'+
+      '<p>La matriz muestra lo que se negocia: tu pie, tu plazo y el precio con el vendedor. '+cfg.mercado.que+' no lo decide nadie en esa mesa: lo pone el mercado. Con tu pie y tu plazo de hoy, sin descuento, llega a Comprar si '+cfg.mercado.cond+'.</p>'+
+      '<div class="cmp"><div><div class="r">'+cfg.mercado.rot+' que supusiste</div><div class="n">'+cfg.mercado.hoy+'</div></div><div class="flecha">+'+cfg.mercado.pct+' →</div><div><div class="r">La que haría falta</div><div class="n">'+cfg.mercado.falta+'</div></div></div>'+
+      '<p class="aviso"><span aria-hidden="true">ⓘ</span><span>'+cfg.mercado.ctx+'</span></p></div>':'')+'</div></div>';
     var mz=H.querySelector('.mz'),det=H.querySelector('.det');
     mz.style.setProperty('--cols',cfg.plazos.length);
     mz.style.gridTemplateRows='24px 16px repeat('+cfg.pies.length+',auto) 24px';
@@ -210,7 +230,7 @@ body.esc .asa{display:none}
       var precio=cfg.precio*(1-d/100),pie=precio*p/100,cred=precio-pie;
       var r=cfg.tasa/12,n=pl*12,cuota=cred*cfg.uf*r/(1-Math.pow(1+r,-n));
       var flujo=cfg.neto-cuota;
-      return {d:d,precio:precio,pie:pie*cfg.uf,cuota:cuota,flujo:flujo,coc:flujo*12/(pie*cfg.uf)*100,cap:cfg.neto*12/(precio*cfg.uf)*100,tir:Math.max(2,4+(cfg.neto*12/(precio*cfg.uf)*100-2.5)*2.2+(p-15)*.02),score:Math.round(55+Math.min(20,flujo/4000))};
+      return {d:d,precio:precio,pie:pie*cfg.uf,cuota:cuota,flujo:flujo,coc:flujo*12/(pie*cfg.uf)*100,cap:cfg.neto*12/(precio*cfg.uf)*100,tir:Math.max(2,4+(cfg.neto*12/(precio*cfg.uf)*100-2.5)*2.2+(p-15)*.02),score:Math.max(70,Math.round(62+Math.min(14,flujo/5000)))};
     }
     function sel(k,btn){
       mz.querySelectorAll('.celda').forEach(function(z){z.classList.remove('sel')});
@@ -223,16 +243,18 @@ body.esc .asa{display:none}
       var hoyCalc=(function(){var p0=cfg.hoy[0],pl0=cfg.hoy[1],pie=cfg.precio*p0/100,cred=cfg.precio-pie,r=cfg.tasa/12,n=pl0*12,cuota=cred*cfg.uf*r/(1-Math.pow(1+r,-n)),flujo=cfg.neto-cuota;return {precio:cfg.precio,pie:pie*cfg.uf,cuota:cuota,flujo:flujo,coc:flujo*12/(pie*cfg.uf)*100,cap:cfg.neto*12/(cfg.precio*cfg.uf)*100,tir:Math.max(2,4+(cfg.neto*12/(cfg.precio*cfg.uf)*100-2.5)*2.2),score:cfg.scoreHoy}})();
       function fila(r,x,y,fmt,esNeg){return '<tr><td>'+r+'</td><td class="hoy'+(esNeg&&x<0?' neg':'')+'">'+fmt(x)+'</td><td class="ahora'+(esNeg&&y<0?' neg':'')+'">'+fmt(y)+'</td></tr>'}
       function u(n){return 'UF '+Math.round(n).toLocaleString('es-CL')}
+      function banda(n){return n>=70?'c':n>=45?'a':'b'}
       det.innerHTML='<p class="frase">'+q+f+'</p><table class="tab"><thead><tr><th></th><th>Hoy</th><th class="ahora">Así</th></tr></thead><tbody>'+
+        '<tr><td>Veredicto</td><td class="hoy"><span class="v a">~ Ajustar</span></td><td class="ahora"><span class="v c">✓ Comprar</span></td></tr>'+
         '<tr><td>Descuento</td><td class="hoy">—</td><td class="ahora">'+(d===0?'ninguno':pct(d))+'</td></tr>'+
         fila('Precio',hoyCalc.precio,a.precio,u)+
         fila('Pie el día uno',hoyCalc.pie,a.pie,pesos)+
         fila('Cuota del crédito',hoyCalc.cuota,a.cuota,pesos)+
         fila('Te queda al mes',hoyCalc.flujo,a.flujo,pesos,true)+
-        fila('Cash on cash',hoyCalc.coc,a.coc,function(n){return (n<0?'−':'')+pct(Math.abs(n))},true)+
-        fila('Cap rate',hoyCalc.cap,a.cap,pct)+
-        fila('TIR a 10 años',hoyCalc.tir,a.tir,pct)+
-        fila('Franco Score',hoyCalc.score,a.score,function(n){return String(n)})+
+        fila('Cash on cash<button type="button" class="info" aria-label="Qué es">i</button>',hoyCalc.coc,a.coc,function(n){return (n<0?'−':'')+pct(Math.abs(n))},true)+
+        fila('Cap rate<button type="button" class="info" aria-label="Qué es">i</button>',hoyCalc.cap,a.cap,pct)+
+        fila('TIR a 10 años<button type="button" class="info" aria-label="Qué es">i</button>',hoyCalc.tir,a.tir,pct)+
+        '<tr><td>Franco Score<button type="button" class="info" aria-label="Qué es">i</button></td><td class="hoy"><span class="sc '+banda(hoyCalc.score)+'">'+hoyCalc.score+'</span></td><td class="ahora"><span class="sc '+banda(a.score)+'">'+a.score+'</span></td></tr>'+
         '</tbody></table>';
     }
     sel(cfg.fr,mz.querySelector('[data-k="'+cfg.fr+'"]'));
@@ -242,7 +264,7 @@ body.esc .asa{display:none}
     d:{'20-25':null,'20-30':23.6,'25-25':null,'25-30':22.2,'30-25':23.7,'30-30':21.0}});
   hoja('h2',{pies:[15,20,25,30],plazos:[25,30],hoy:[15,25],fr:'30-30',tope:25,precio:3250,uf:39300,tasa:.045,neto:690000,scoreHoy:62,
     d:{'15-25':11.2,'15-30':5,'20-25':11.8,'20-30':4.4,'25-25':7.1,'25-30':0,'30-25':0.4,'30-30':0},
-    mercado:'Con la tarifa diaria 9,1% más alta también llega a Comprar, pero eso depende del mercado.'});
+    mercado:{que:'La tarifa diaria',cond:'la tarifa por noche sube 9,1%',rot:'Tarifa por noche',hoy:'$55.000',falta:'$60.005',pct:'9,1%',ctx:'Tómalo como señal, no como plan. En renta larga, acá va cuánto piden los avisos parecidos cerca, para ver si esa cifra existe en la zona.'}});
 })();
 </script>
 </body>
