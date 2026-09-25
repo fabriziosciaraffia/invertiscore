@@ -16,6 +16,7 @@ import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "@/lib/plusvalia-estimado.gen";
 import {
   getComunaMedianaVentaUF,
+  PAGINA_POSTGREST,
   resolverCondicionMercado,
   type CondicionMercado,
 } from "@/lib/comuna-stats";
@@ -324,27 +325,37 @@ async function runArriendoQuery(
   comuna: string,
   f: CascadeFilters
 ): Promise<ArriendoRow[]> {
-  let q = supabase
-    .from("scraped_properties")
-    .select("precio, moneda, superficie_m2, dormitorios")
-    .eq("comuna", comuna)
-    .eq("type", "arriendo")
-    .eq("is_active", true)
-    .gte("superficie_m2", f.supMin)
-    .lte("superficie_m2", f.supMax)
-    .limit(2000);
-  if (typeof f.dormMin === "number" && typeof f.dormMax === "number") {
-    if (f.dormMin === f.dormMax) q = q.eq("dormitorios", f.dormMin);
-    else q = q.gte("dormitorios", f.dormMin).lte("dormitorios", f.dormMax);
+  // Paginado: `.limit(2000)` devolvía 1.000 igual (el tope es del API). Hoy ningún
+  // peldaño de la cascada que llega a correr pasa de mil, pero Santiago 1D ya
+  // tiene 1.411 arriendos activos y el rango P10–P90 se cortaría sin aviso.
+  const out: ArriendoRow[] = [];
+  for (let off = 0; ; off += PAGINA_POSTGREST) {
+    let q = supabase
+      .from("scraped_properties")
+      .select("precio, moneda, superficie_m2, dormitorios")
+      .eq("comuna", comuna)
+      .eq("type", "arriendo")
+      .eq("is_active", true)
+      .gte("superficie_m2", f.supMin)
+      .lte("superficie_m2", f.supMax)
+      .order("id", { ascending: true })
+      .range(off, off + PAGINA_POSTGREST - 1);
+    if (typeof f.dormMin === "number" && typeof f.dormMax === "number") {
+      if (f.dormMin === f.dormMax) q = q.eq("dormitorios", f.dormMin);
+      else q = q.gte("dormitorios", f.dormMin).lte("dormitorios", f.dormMax);
+    }
+    const { data, error } = await q;
+    reportarFalloQuery(error, {
+      ruta: "lib/zone-insight",
+      operacion: "query-arriendos-zona",
+      tags: { tabla: "scraped_properties" },
+      extra: { comuna, supMin: f.supMin, supMax: f.supMax, dormMin: f.dormMin, dormMax: f.dormMax, offset: off },
+    });
+    if (!Array.isArray(data)) break;
+    out.push(...(data as ArriendoRow[]));
+    if (data.length < PAGINA_POSTGREST) break;
   }
-  const { data, error } = await q;
-  reportarFalloQuery(error, {
-    ruta: "lib/zone-insight",
-    operacion: "query-arriendos-zona",
-    tags: { tabla: "scraped_properties" },
-    extra: { comuna, supMin: f.supMin, supMax: f.supMax, dormMin: f.dormMin, dormMax: f.dormMax },
-  });
-  return Array.isArray(data) ? (data as ArriendoRow[]) : [];
+  return out;
 }
 
 function filterValidPrices(rows: ArriendoRow[], ufValue: number): number[] {

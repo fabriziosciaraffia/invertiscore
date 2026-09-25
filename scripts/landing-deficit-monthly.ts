@@ -86,6 +86,7 @@ function fmtCLP(n: number): string {
       .select('comuna, type, precio, moneda, superficie_m2, dormitorios')
       .eq('is_active', true)
       .gt('precio', 0)
+      .order('id', { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;

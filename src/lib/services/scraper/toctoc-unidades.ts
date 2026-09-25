@@ -193,11 +193,15 @@ export async function desactivarProyectosConUnidades(
   async function paginar(filtro: (q: unknown) => unknown): Promise<Array<Record<string, unknown>>> {
     const out: Array<Record<string, unknown>> = [];
     for (let off = 0; ; off += 1000) {
+      // Orden total por id: sin él las páginas no son estables y una fila puede
+      // repetirse o saltarse entre dos lecturas. El filtro se aplica después del
+      // rango sin problema: el builder acumula todo hasta el await.
       const q = filtro(
-        supabase.from("scraped_properties").select("source_id,url,is_active").eq("condicion", "nuevo"),
+        supabase.from("scraped_properties").select("source_id,url,is_active").eq("condicion", "nuevo")
+          .order("id", { ascending: true }).range(off, off + 999),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ) as any;
-      const { data, error } = await q.range(off, off + 999);
+      const { data, error } = await q;
       if (error) { errores.push(`select: ${error.message}`); break; }
       out.push(...((data ?? []) as Array<Record<string, unknown>>));
       if (!data || data.length < 1000) break;

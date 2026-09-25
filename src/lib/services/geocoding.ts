@@ -169,7 +169,10 @@ export async function geocodePendingProperties(batchSize: number = 50) {
     .eq("geocode_attempted", false)
     .eq("is_active", true)
     .not("direccion", "is", null)
-    .limit(batchSize);
+    // Lote acotado bajo el tope de PostgREST y en orden fijo: no es una lectura
+    // de «todo», es tomar los próximos N pendientes.
+    .order("id", { ascending: true })
+    .limit(Math.min(batchSize, 1000));
 
   if (!pending || pending.length === 0) return { geocoded: 0, total: 0, skipped: 0 };
 

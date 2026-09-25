@@ -75,6 +75,7 @@ async function tablaActiva(type: "arriendo" | "venta"): Promise<Fila[]> {
       .eq("type", type)
       .eq("is_active", true)
       .gt("precio", 0)
+      .order("id", { ascending: true })
       .range(off, off + 999);
     if (type === "venta") q = q.or("condicion.is.null,condicion.eq.usado").not("source_id", "like", "%#%");
     const { data, error } = await q;

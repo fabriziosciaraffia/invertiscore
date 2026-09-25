@@ -294,6 +294,9 @@ export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, typ
       .eq("type", type)
       .eq("is_active", true)
       .gt("precio", 0)
+      // Sin orden, cada página es un corte arbitrario del plan de Postgres: entre
+      // dos lecturas una fila puede salir dos veces o ninguna.
+      .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
     // Un error a mitad de la paginación cortaba el loop en silencio: las páginas SEO
     // computaban stats sobre datos PARCIALES sin que nada lo dijera.
