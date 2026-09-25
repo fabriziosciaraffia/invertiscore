@@ -432,18 +432,14 @@ for (const sel of [".doc-dictamen.doc-dictamen"]) {
   }
 }
 
-// ── 18 · una sección sin contenido no se monta ───────────────────────────
+// ── 18 · sin sección «hero» propia ───────────────────────────────────────
 {
-  // Al sacar la recomendación, la sección «hero» quedó VACÍA en las filas con prosa de
-  // dos bloques: el h2 no va (§10 se lo da a los hallazgos) y v22 mató
-  // `respuestaDirecta`, así que no queda nada que pintar. Medido antes del gate: 18 px
-  // de alto, texto de largo 0, y 56 px de aire con su margen. §2 pide «nada más».
-  if (!/const heroTieneCuerpo\s*=/.test(HERO)) {
-    F("18 · HeroLTR dejó de decidir si el hero tiene cuerpo propio. Con prosa v22 esa sección no tiene NADA que pintar —el h2 no va y no hay apertura—, y montarla deja una sección vacía con su margen.");
-  }
-  if (!/\{heroTieneCuerpo && \(/.test(HERO)) {
-    F("18 · la sección «hero» volvió a montarse sin condición: con prosa v22 queda vacía.");
-  }
+  // ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: la sección «hero» la poblaban el h2 «¿Conviene o no conviene?», la apertura de la
+  // prosa y el skeleton o el error de la generación. Sin prosa en la página no queda nada que
+  // pintar, así que la sección no se monta NUNCA (antes: `heroTieneCuerpo` decidía por la prosa).
+  if (/<SeccionInforme id="hero"/.test(HERO)) F("18 · HeroLTR volvió a montar una sección «hero»: sin la prosa no tiene nada que pintar");
+  if (/heroTieneCuerpo|ProgresoGeneracion|<h2/.test(HERO)) F("18 · HeroLTR volvió a decidir su cuerpo por la prosa (heroTieneCuerpo / ProgresoGeneracion / h2)");
+
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

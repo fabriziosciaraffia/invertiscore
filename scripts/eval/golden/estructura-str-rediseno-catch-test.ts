@@ -108,8 +108,9 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/hallazgos=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
     F("2 · la página STR no le pasa a HeroStrDictamen la sección de hallazgos con `hallazgosOrdenadosSTR.length > 0`. Es el gate de la prosa que ya dejó sin hallazgos a LTR tres veces: la sección va SIEMPRE, podada o vieja.");
   }
-  if (!/titulo=\{strPodada \? lineaQueDeclara\(veredicto\) : "Qué determina el veredicto"\}/.test(slot)) {
-    F("2 · el título de la sección de hallazgos STR (en el slot `hallazgos`) no es la línea que declara con prosa podada y el título viejo con prosa vieja (§10)");
+  // ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: sin prosa no hay «camino viejo»: la sección se titula SIEMPRE con la línea que declara.
+  if (!/titulo=\{lineaQueDeclara\(veredicto\)\}/.test(slot)) {
+    F("2 · el título de la sección de hallazgos STR (en el slot `hallazgos`) no es la línea que declara (§10)");
   }
   // INVERTIDO (12-sep-2026): la sección vieja ya no existe en la página; la única la monta
   // el hero. «principales-hallazgos» aparece exactamente una vez.
@@ -118,8 +119,8 @@ function enOrden(txt: string, agujas: string[]): string | null {
   }
   // Y el hero no repite la línea que declara cuando la sección ya la lleva.
   if (/useRediseno/.test(HSTR)) F("2 · HeroStrDictamen volvió a leer un interruptor que ya no existe");
-  if (!/\{!podada && \(\s*<h2/.test(HSTR)) {
-    F("2 · HeroStrDictamen sigue pintando su h2 con prosa podada: ese h2 ES la línea que declara, que titula la sección de hallazgos. Se leería dos veces seguidas.");
+  if (/<h2/.test(HSTR)) {
+    F("2 · HeroStrDictamen volvió a pintar un h2: la línea que declara titula la sección de hallazgos y se leería dos veces seguidas.");
   }
 }
 
@@ -208,8 +209,9 @@ function enOrden(txt: string, agujas: string[]): string | null {
     if (!/<MarcaSeccion seccion="recomendacion" tipo="str"/.test(HSTR)) F("7 · la sección «recomendacion» de STR no emite su marca de telemetría");
   }
   // 7b · el hero no se monta vacío, y el camino viejo sigue siendo UNA sección.
-  if (!/const heroTieneCuerpo\s*=/.test(HSTR)) F("7 · HeroStrDictamen no decide si el hero tiene cuerpo propio: con prosa podada y sin apertura quedaría una sección vacía con su margen");
-  if (!/\{heroTieneCuerpo && \(/.test(HSTR)) F("7 · la sección «hero» de STR se monta sin condición");
+  // ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: sin prosa la sección «hero» no tiene nada que pintar y no se monta nunca; su marca
+  // de telemetría queda sola, al inicio (la verifica el chequeo de abajo).
+  if (/<SeccionInforme id="hero"/.test(HSTR)) F("7 · HeroStrDictamen volvió a montar una sección «hero»: sin la prosa no tiene nada que pintar");
   // 7b' · RETIRADO CON ACTA (12-sep-2026): «apagado devuelve UNA sección» — ya no hay apagado.
   if (/if \(!rediseno\)/.test(HSTR)) F("7 · HeroStrDictamen volvió a tener un camino apagado");
   if (!/<MarcaSeccion seccion="hero" tipo="str"/.test(HSTR)) F("7 · la marca de telemetría del hero no viaja con la sección (se emitía en la página, que ya no la envuelve)");
@@ -239,27 +241,15 @@ function enOrden(txt: string, agujas: string[]): string | null {
 // llevó el provider y la constante: la ruta dev monta la página tal cual la sirve la real,
 // y lo que queda de ella lo fija el bloque 8 (el lienzo).
 
-// ── 9 · la apertura de la prosa podada NO se monta en el hero (12-sep-2026) ──
-// Igual que LTR: con prosa podada (v17+) el hero STR no pinta `respuestaDirecta` ni
-// `reencuadre`. El prompt los sigue generando (v19, quieto) y la base los conserva; lo
-// que cambia es que la página no los lee. El hero podado solo se monta con el error o
-// el skeleton de generación. El camino viejo (prosa v16 y anteriores, 94 filas anónimas
-// que no regeneran) conserva su apertura: su h2 es la pregunta de esa prosa y la
-// respuesta la contesta — sin ella quedaría una pregunta sin respuesta.
+// ── 9 · el hero STR no lee la prosa (invertido, acta del 25-sep-2026) ─────────
+// Hasta el 25-sep este invariante fijaba que la apertura de la prosa podada NO se montara y la
+// vieja sí. ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: el hero no lee ningún campo de la prosa, ni viejo ni podado.
 {
-  if (!/const heroTieneCuerpo = !podada \|\| Boolean\(prosaError\) \|\| Boolean\(aiLoading\);/.test(HSTR)) {
-    F("9 · `heroTieneCuerpo` en HeroStrDictamen no es exactamente `!podada || Boolean(prosaError) || Boolean(aiLoading)`: con prosa podada la apertura no cuenta como cuerpo, igual que en LTR");
+  const codigo = HSTR.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  if (/\bai\?\.|conviene\?\.|respuestaDirecta|reencuadre|veredictoFrase|estrategiaSugerida|renderPlumon|ProgresoGeneracion|esProsaStrPodada|cajaAccionable=\{(?!null\})/.test(codigo)) {
+    F("9 · HeroStrDictamen volvió a leer la prosa de la IA (apertura, reencuadre, cápsula, caja, estrategia o el skeleton)");
   }
-  if (!/\{!podada && respuesta \? \(/.test(HSTR)) {
-    F("9 · la apertura del hero STR no está detrás de `!podada && respuesta`: con prosa podada `respuestaDirecta` y `reencuadre` no se montan (igual que LTR)");
-  }
-  if (/\{respuesta \? \(/.test(HSTR)) F("9 · HeroStrDictamen volvió a montar la apertura con `{respuesta ? (` pelado, sin el gate de la prosa vieja");
-  // y el reencuadre no tiene un render propio fuera de esa rama
-  const ocurrencias = HSTR.match(/renderPlumon\(reencuadre\)/g)?.length ?? 0;
-  if (ocurrencias !== 1) F(`9 · \`renderPlumon(reencuadre)\` aparece ${ocurrencias} veces en HeroStrDictamen; va UNA, dentro de la rama de la prosa vieja`);
-  const iApertura = HSTR.indexOf("{!podada && respuesta ? (");
-  const iReenc = HSTR.indexOf("renderPlumon(reencuadre)");
-  if (iApertura !== -1 && iReenc !== -1 && iReenc < iApertura) F("9 · `renderPlumon(reencuadre)` quedó ANTES de la rama `!podada && respuesta`: se estaría montando con prosa podada");
+
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

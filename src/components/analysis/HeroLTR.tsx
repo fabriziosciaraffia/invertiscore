@@ -2,23 +2,19 @@
 
 import { useMemo } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { renderPlumon } from "./hallazgos/plumon";
 import { PosicionFranco } from "./shared/PosicionFranco";
-import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "@/lib/types";
+import type { AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { PopupAjustes, hayAjustesQueMostrar } from "./shared/PopupAjustes";
 import { PopupAjustesTokens } from "./shared/PopupAjustesTokens";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
 import { LoQueHariaYoBloque, CardBuscarOtra } from "./shared/LoQueHariaYoBloque";
-import { causaBuscarOtraLtr, distanciaBuscarOtra } from "@/lib/buscar-otra-copy";
-import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { construirCardLtr } from "@/lib/card-recomendacion";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
-import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "@/lib/arriendo-referencia";
+import { resolverArriendoReferencia } from "@/lib/arriendo-referencia";
 import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
-import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
-import { esProsaDosBloques } from "./AIInsightSection";
-import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "./SeccionInforme";
 import { MarcaSeccion } from "./informeTelemetry";
 import type { ReactNode } from "react";
@@ -37,7 +33,6 @@ import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
  * Construcción por etapas: E1 = F1 + F2.
  */
 export function HeroLTR({
-  data,
   currency,
   veredicto,
   valorUF,
@@ -45,8 +40,6 @@ export function HeroLTR({
   results,
   createdAt,
   fechaProsa,
-  prosaError,
-  onRetryProsa,
   hallazgos,
   accessLevel = "free",
 }: {
@@ -57,10 +50,6 @@ export function HeroLTR({
   hallazgos?: ReactNode;
   /** Para la marca de telemetría de la sección nueva. */
   accessLevel?: string;
-  /** Prosa IA. `null` mientras se genera (Goal C/E/E.2: veredicto inmediato) —
-   *  el hero renderiza todo lo que viene del motor y el slot de prosa muestra
-   *  ProgresoGeneracion (skeleton didáctico) hasta que llegue. */
-  data: AIAnalysisV2 | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   veredicto: string;
@@ -80,60 +69,15 @@ export function HeroLTR({
    *  de PROMPT_VERSION, la fila puede ser de abril y la prosa de agosto.
    *  Ausente en filas anteriores a la instrumentación → cae a `createdAt`. */
   fechaProsa?: string;
-  /** Fallo de la generación de prosa: se muestra inline en el slot (el resto del
-   *  hero sigue vivo) con CTA de reintento. */
-  prosaError?: string | null;
-  onRetryProsa?: () => void;
 }) {
   // FASE 3: F1/F2/F3 murieron — identidad, chips, score y mapa viven en la
   // PORTADA (PortadaInforme + useComparablesCercanos). Acá queda solo F4.
 
-  // ── Veredicto / findings (F4) ──
-  // Con prosa en vuelo (data null): el slot muestra ProgresoGeneracion (Goal
-  // E.2 — skeleton didáctico), o el error inline si la generación falló.
-  // ── EL DISCRIMINADOR ──────────────────────────────────────────────────────
-  // Prosa de DOS BLOQUES (v21) o de los cuatro campos viejos. Ver
-  // `esProsaDosBloques`: el camino viejo es transitorio para las filas con dueño y
-  // PERMANENTE para las anónimas, que nunca van a regenerar.
-  const dosBloques = esProsaDosBloques(data);
-  const conviene = data?.conviene;
-  const respuesta =
-    (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
-  // La señal de «la prosa llegó» es el campo que sobrevive a v22, no la apertura.
-  const hayProsa = typeof conviene?.cajaAccionable_clp === "string";
-  const cajaAccionable =
-    (currency === "CLP" ? conviene?.cajaAccionable_clp : conviene?.cajaAccionable_uf) ?? null;
-  // FNOTE por CURADURÍA (decisión b del PARÁ 0): la nota al margen no es un campo
-  // IA nuevo — es la primera oración de una cajaAccionable que la prosa YA trae, y
-  // se elige la de costoMensual (la más cercana al bolsillo). Si mide más de ~18
-  // palabras no se muestra: una nota larga deja de ser nota.
-  //
-  // SOLO EN EL CAMINO VIEJO. `costoMensual` murió del schema en v21, así que la nota
-  // no tiene de dónde salir. No se reapunta a `conviene.cajaAccionable`: ese texto ya
-  // se lee entero unos centímetros más abajo, en «Lo que haría yo», y la nota pasaría
-  // a repetir su primera oración.
-  const fnote = dosBloques ? null : (() => {
-    const fuente = (currency === "CLP" ? data?.costoMensual?.cajaAccionable_clp : data?.costoMensual?.cajaAccionable_uf) ?? "";
-    const primera = fuente.split(/(?<=[.?!])\s/)[0]?.trim() ?? "";
-    const palabras = (primera.match(/\S+/g) || []).length;
-    return primera && palabras <= 18 ? primera : null;
-  })();
-  // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
-  // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
-  //
-  // EL TÍTULO ES LA RESPUESTA, NO LA PREGUNTA (v21). «¿Conviene o no conviene?»
-  // preguntaba lo que la banda de la portada ya contestó tres centímetros más arriba;
-  // ahora el bloque se titula con la línea que declara —«Ajusta los números. Esto es
-  // lo que pesa:»— y debajo van las razones. La prosa vieja conserva su rótulo: su
-  // cuerpo fue escrito para contestar esa pregunta.
-  const pregunta = (dosBloques ? lineaQueDeclara(veredicto) : conviene?.pregunta) || "¿Conviene o no conviene?";
-  // ÍNDICE del informe: los primeros 3 del ORDEN ÚNICO — el MISMO array que renderiza
-  // la pirámide (fuente única: ordenarHallazgosPiramide). El hero los numera 01-03 y
-  // cada fila ancla a su card; la pirámide continúa la numeración.
-  // Goal E.2 — la apertura estática del 01 MURIÓ (confundía: parecía prosa
-  // cortada, no prosa creciendo — decisión post-deploy). El slot en carga es
-  // ProgresoGeneracion: skeleton didáctico con stepper + barra conservadora +
-  // rango honesto. Contrato: mockup-hero-skeleton-didactico.html.
+  // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio). Este componente ya no lee la
+  // prosa: sin el h2 «¿Conviene o no conviene?», sin la apertura, sin el skeleton de
+  // generación ni el error con Reintentar, y sin la negociación ni el chip de objetivo que
+  // colgaban de la card. Todo lo que dibuja sale del motor y está al primer render. La
+  // maquinaria de la IA (prompts, generación, crons, guards) sigue viva: se retira por partes.
 
   // CTA contextual de la posición de Franco — por VEREDICTO (contrato FASE 2 §4),
   // no por qué hallazgo exista: BUSCAR OTRA → "Por qué no cierra" · AJUSTA → "Ver
@@ -143,7 +87,6 @@ export function HeroLTR({
   // según el inventario de hallazgos.
   const hallazgosRow = (results?.hallazgos ?? []) as Hallazgo[];
   const distanciaRow = hallazgosRow.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
-  const sensibilidadRow = hallazgosRow.find((h): h is HallazgoSensibilidad => h.id === "sensibilidad");
   // FOOTER DE LA POSICIÓN — contrato CONGELADO 02-sep-2026 (T2). Por veredicto:
   // AJUSTA y BUSCAR OTRA abren "Lo que te separa" (la matriz de vías, en modal);
   // COMPRAR abre "Cuánto aguanta este veredicto" (la sensibilidad del arriendo).
@@ -157,14 +100,6 @@ export function HeroLTR({
   // brazo persistido y se deriva: score en banda COMPRAR (≥70) con veredicto
   // AJUSTA ⇒ el gate capó. Veredicto de banda pura → null y no se muestra nada:
   // inventar una causa sería peor que no darla (§1.9.3).
-  // ── «LO QUE HARÍA YO» (v21) ───────────────────────────────────────────────
-  // La negociación deja de ser capítulo aparte y entra como el ARGUMENTO que
-  // antecede a la posición: por qué el vendedor debería moverse, y después qué
-  // haría Franco. El campo es ÚNICO desde v21 (no lleva magnitudes, así que no
-  // cambia con la moneda); las filas viejas traen el par y no llegan hasta acá.
-  const negociacion = dosBloques ? (data?.negociacion?.contenido ?? null) : null;
-
-
   // ── EL CUERPO DETERMINISTA (v22.1) ────────────────────────────────────────
   // El motor calcula las cuatro vías, el salto de dos bandas y el mix desde fcfcbd98,
   // y hasta acá el bloque no leía nada: mostraba un párrafo. Ahora dibuja los datos.
@@ -181,44 +116,10 @@ export function HeroLTR({
   // El dato existe para todas: `results` se recomputa en cada visita con el motor vivo,
   // así que el mix y las palancas están ahí aunque la prosa sea de v3. Lo que faltaba
   // era dejar de esconderlo.
-  const bloqueDeterminista = results
-    ? construirLoQueHariaYo({
-        veredicto: veredicto as Veredicto,
-        distancia: distanciaRow ?? null,
-        sensibilidad: sensibilidadRow ?? null,
-        arriendoDeclaradoCLP: Number(inputData?.arriendo ?? 0),
-        // El mismo precio que el pop-up: «Poner ese pie cuesta» y «Pie el día uno» dicen lo mismo.
-        precioUF: Number(inputData?.precio ?? 0),
-        // DE DÓNDE SALIÓ EL ARRIENDO (12-sep-2026): la MISMA derivación que usa el prompt.
-        // Tuyo → «Declaraste»; aceptaste la estimación de Franco → «Usamos …, la mediana de
-        // tu zona»; sin referencia no se sabe → «El análisis usa …».
-        verifica: (() => {
-          const arriendo = Number(inputData?.arriendo ?? 0);
-          if (!(arriendo > 0)) return null;
-          const ref = resolverArriendoReferencia(inputData);
-          return { cifraCLP: arriendo, procedencia: resolverProcedenciaArriendo(arriendo, ref), fuente: ref?.fuente };
-        })(),
-        currency,
-        valorUF,
-        // El otro margen de COMPRAR (12-sep-2026): el último precio que sigue siendo
-        // Comprar, medido por el motor en el hallazgo de sensibilidad. Ausente en filas
-        // viejas ⇒ la fila no va.
-        precioMax: (() => {
-          const uf = sensibilidadRow?.valor.precioMaximoComprarUF;
-          const precio = Number(inputData?.precio ?? 0);
-          return uf != null && precio > 0
-            ? {
-                uf,
-                pct: Math.round((uf / precio - 1) * 1000) / 10,
-                // A DÓNDE CAE SI PAGAS MÁS (15-sep-2026). La misma bisección ya lo evaluaba
-                // y lo botaba adentro del predicado; ahora lo retiene. Ausente en filas
-                // persistidas antes del campo ⇒ la segunda línea no va.
-                caeA: sensibilidadRow?.valor.veredictoSobrePrecioMaximo ?? null,
-              }
-            : null;
-        })(),
-      })
-    : null;
+  // UNA SOLA CONSTRUCCIÓN (25-sep-2026): la misma card la lee la portada para escribir el
+  // titular del motor. Ver `card-recomendacion.ts`.
+  const card = construirCardLtr({ veredicto: veredicto as Veredicto, results, inputData, currency, valorUF });
+  const bloqueDeterminista = card.bloque;
 
   // ¿HAY ALGO QUE MOSTRAR? (13-sep-2026) Si el motor no encontró grilla NI palancas que
   // crucen, la card ya lo dice todo —«no hay forma», el número de lo que haría falta y la
@@ -309,41 +210,6 @@ export function HeroLTR({
             cuerpo: cuerpoAjustes,
           }
         : null;
-  // LA PROSA SE MANTIENE SOLO DONDE EL CONTRATO VISUAL LA TIENE: el lead de COMPRAR y
-  // la alternativa de comunas en BUSCAR OTRA, que es el único dato del bloque que NO
-  // sale del motor (no hay fuente determinista de comunas parecidas). En AJUSTA el
-  // cuerpo son las filas y el párrafo sobra.
-  //
-  // ⚠ TRANSITORIO: hasta el goal del prompt, `cajaAccionable` sigue trayendo el párrafo
-  // completo, así que en esos dos veredictos se lee más largo que el contrato. El
-  // prompt lo va a reducir a la alternativa; el render ya está en su sitio.
-  const prosaSobrevive = !bloqueDeterminista || veredicto === "COMPRAR" || veredicto === "BUSCAR OTRA";
-  // EL CHIP ES EL OBJETIVO DEL PLAN, y sale de las ANCLAS con las que se escribió
-  // esta prosa —no del motor recomputado— porque está pegado al párrafo que lo
-  // argumenta: si el chip y el texto de al lado nombraran precios distintos, el
-  // lector leería una contradicción. `objetivo_uf` es el nombre nuevo; las prosas
-  // anteriores traen `techo_uf` con el mismo rol. En el caso ESTRUCTURAL no hay
-  // plan ni anclas: no hay chip.
-  // SIEMPRE EN UF, no con el toggle. El objetivo del plan se nombra en UF en todo el
-  // informe —el ksub del capitulo III dice "cierra en Comprar bajo UF 4.175" sin mirar
-  // la moneda, y `negociacion.precioSugerido` es "UF X.XXX" por contrato del prompt—
-  // porque es un precio de cierre, no una cifra de caja. En pesos el mismo dato sale
-  // "$167.004.175": nueve digitos en un chip, imposible de leer de un vistazo.
-  const objetivoChip = (() => {
-    if (!dosBloques) return null;
-    const pr = data?.negociacion?.precios;
-    const uf = pr?.objetivo_uf ?? pr?.techo_uf;
-    if (typeof uf !== "number" || uf <= 0) return null;
-    // SOLO SI HAY ALGO QUE APUNTAR. Cuando el objetivo del plan coincide con el precio
-    // pedido —tipico en COMPRAR, donde el caso ya cierra al precio de lista— el chip
-    // repetia la cifra que el lector acaba de ver en la portada y la rotulaba
-    // "Objetivo", justo al lado de un parrafo que dice que no hay argumento para pedir
-    // rebaja. Un objetivo que es el precio actual no es un objetivo.
-    const pedido = Number(inputData?.precio) || 0;
-    if (pedido > 0 && uf >= pedido * 0.995) return null;
-    return `Objetivo UF ${Math.round(uf).toLocaleString("es-CL")}`;
-  })();
-
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
   // FASE 3 rediseño Dictamen: F1 (identidad+toggle), F2/F3 (chips, score 48px,
@@ -412,28 +278,16 @@ export function HeroLTR({
   // Sin combinación que ofrecer, la card dice por qué no conviene y a qué distancia queda
   // Comprar. Sin botón y sin pop-up. El texto sale de `buscar-otra-copy.ts`.
   const esBuscar = veredicto === "BUSCAR OTRA";
-  const cardBuscar = esBuscar ? (
-    <CardBuscarOtra
-      causa={causaBuscarOtraLtr({
-        brazosGate1Activos: distanciaRow?.valor.brazosGate1Activos ?? [],
-        arriendoCLP: Number(inputData?.arriendo ?? 0),
-        flujoMensualCLP: Number(results?.metrics?.flujoNetoMensual ?? 0),
-        desviacionPct: results?.metrics?.precioVsComuna?.confiable ? results.metrics.precioVsComuna.desviacionPct ?? null : null,
-      })}
-      distancia={Number(inputData?.arriendo ?? 0) > 0 ? distanciaBuscarOtra(distanciaRow?.valor, "ltr") : null}
-    />
-  ) : null;
+  const cardBuscar = card.buscar ? <CardBuscarOtra causa={card.buscar.causa} distancia={card.buscar.distancia} /> : null;
 
   const recomendacion = (
     <PosicionFranco
-      cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
+      cajaAccionable={null}
       bloque={
           cardBuscar ?? (bloqueDeterminista ? (
             <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={lineaAlternativa} />
           ) : undefined)
         }
-      prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
-      chip={dosBloques ? objetivoChip : undefined}
       puertaExtra={
         /* LA TABLA DE COMUNAS, POR SU PROPIA PUERTA (17-sep-2026). Hasta hoy viajaba como
            `extraPopup` dentro del modal del pop-up de ajustes, así que cuando ese botón dejó
@@ -468,104 +322,10 @@ export function HeroLTR({
     />
   );
 
-  /* ¿EL HERO TIENE CUERPO PROPIO? Con el rediseño y prosa de dos bloques el h2 no va
-     (§10: la línea que declara es el título de los hallazgos), y v22 mató
-     `respuestaDirecta`, así que en esas filas no queda NADA para pintar acá. Hasta hoy
-     no se notaba porque esta sección alojaba la recomendación; sacándola a su propia
-     sección, lo que queda es una sección vacía con su margen — 56 px de aire medidos en
-     el DOM. Una sección sin contenido no se monta: §2 pide «nada más».
-
-     Las tres cosas que sí la pueblan: el título del camino viejo, la apertura de la
-     prosa cuando existe (filas v21 y anteriores), y el skeleton o el error mientras la
-     redacción viene en camino. */
-  const heroTieneCuerpo =
-    !dosBloques || Boolean(respuesta) || !hayProsa || Boolean(prosaError);
-
-  const cuerpoHero = (
-    <div className="mb-3">
-      {/* SIN PADDING HORIZONTAL. El `px-6 md:px-8` era el padding INTERNO de la
-          card: al retirarla quedo empujando el texto 32px hacia adentro, y el
-          bloque dejo de alinear con el acordeon. Medido en prod: el contenedor
-          esta en x=216, el mismo que el acordeon, pero el contenido caia en 248.
-          El acordeon tiene padding 0; el bloque tambien, ahora. */}
-      <div className="py-[9px]">
-        <div>
-          {/* EL PÁRRAFO DE MOTIVOS SALIÓ DEL HERO (la glosa SIGUE yendo al prompt).
-              `no-cierra-copy.ts` nació el 06-ago-2026 para ALIMENTAR EL PROMPT —"si le
-              pasas el concepto-motor lo copia; si le pasas la consecuencia, la narra"—
-              y el render en el hero llegó ocho días después. El prompt sigue recibiendo
-              la glosa con la instrucción "úsala, no la re-derives ni la contradigas",
-              así que el mismo texto aparecía DOS VECES por diseño: narrado por la prosa
-              y literal encima.
-              Medido sobre 200 análisis: el 88,2% de los hechos que afirmaba el párrafo
-              ya estaban en la prosa o el titular, y en el 78,4% de los casos NO aportaba
-              ningún hecho nuevo. Encima se contradecía —abría con "No cierra por una
-              sola cosa" y enumeraba tres— y repetía el hecho del bolsillo dos veces.
-              Lo que decía no se pierde: la prosa lo narra, que es su trabajo. */}
-          {/* El chip `f.` entra al TITULO -- mismo isotipo que el sticky del margen, inline. */}
-          {/* CON PROSA DE DOS BLOQUES ESTE TÍTULO NO VA. En v21 el h2 es la línea que
-              declara el veredicto y debajo van las cuatro filas: son una unidad. El
-              contrato §2 y §4 saca las filas a su propia sección suelta y §10 le da a esa
-              sección la misma línea como título, así que repetirla acá dejaría el mismo
-              texto dos veces. La prosa vieja lo conserva — su título es la pregunta de la
-              prosa, que sí se contesta acá abajo. */}
-          {!dosBloques && (
-            <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
-              <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
-                f.
-              </span>
-              <span className="min-w-0">{pregunta}</span>
-            </h2>
-          )}
-          {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
-          {/* La prosa cuelga del TEXTO del titulo, no del borde del bloque: `ml-9` = 36px
-              = el ancho del chip `f.` (26px) mas el `gap-2.5` (10px) del h2. Asi el
-              unico elemento en el borde izquierdo es el isotipo, que queda de nota al
-              margen, y prosa y titulo comparten una sola linea vertical.
-              Antes arrancaba en x=138 con techo de 675px, o sea todo el aire sobrante
-              se apilaba a la derecha y el bloque se leia volcado al borde.
-              Solo desde `md`: bajo 768px no hay aire que repartir y 36px se comerian
-              el ancho de lectura. */}
-          {/* HAY PROSA ⇔ hay `cajaAccionable`, no ⇔ hay apertura. v22 mata
-              `respuestaDirecta` y este ternario colgaba de ella: sin el cambio, toda
-              prosa v22 caía al skeleton y el hero se quedaba en «generando» para
-              siempre. La apertura, cuando existe (filas v21 y viejas), se sigue
-              pintando; cuando no, el título queda pegado a las razones. */}
-          {hayProsa ? (
-            respuesta ? (
-              <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
-                {renderPlumon(respuesta)}
-                {fnote && <p className="doc-fnote">{fnote}</p>}
-              </div>
-            ) : null
-          ) : prosaError ? (
-            /* Error de generación inline: el hero (veredicto/score/índice) sigue
-               vivo; solo el slot de prosa reporta y ofrece reintentar. */
-            <div className="">
-              <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-2">
-                No pudimos completar la redacción del análisis.
-              </p>
-              {onRetryProsa && (
-                <button
-                  type="button"
-                  onClick={onRetryProsa}
-                  className="font-body text-sm font-medium text-signal-red hover:underline"
-                >
-                  Reintentar
-                </button>
-              )}
-            </div>
-          ) : (
-            /* Prosa en vuelo (Goal E.2): skeleton didáctico — inequívoco que se
-               está generando, en qué etapa va y cuánto suele tomar. */
-            <ProgresoGeneracion />
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-
+  /* SIN SECCIÓN «HERO» PROPIA (25-sep-2026). La poblaban el h2 «¿Conviene o no conviene?», la
+     apertura de la prosa y el skeleton o el error mientras la redacción venía en camino. Con la
+     IA fuera del informe no queda nada que pintar acá, y una sección sin contenido no se monta:
+     después de la portada van los hallazgos y la recomendación. */
   /* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Hasta hoy la
      recomendación vivía DENTRO del hero, así que el lector leía la conclusión antes
      que lo que la sostiene.
@@ -581,11 +341,6 @@ export function HeroLTR({
      que el contrato pide de verdad, y queda en cola: no es trabajo de este goal. */
   return (
     <>
-      {heroTieneCuerpo && (
-        <SeccionInforme id="hero" tono="paper2">
-          {cuerpoHero}
-        </SeccionInforme>
-      )}
       {hallazgos}
       {/* LA SEGUNDA CAJA de §2. La primera es «portada»; ésta es la otra, y hasta hoy
           no existía como sección: nace con este orden. */}

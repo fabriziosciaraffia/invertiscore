@@ -229,19 +229,21 @@ function reglaDe(sel: string): string | null {
   // lista y sus gates— pero se la pasa a `HeroLTR` por la prop `hallazgos`, que la monta
   // entre el hero y la recomendación. Lo que se fija es que exista y cómo se titula, no
   // dónde queda el JSX; el orden lo fija el invariante 17 del tier de estructura.
-  const slot = GRID.slice(GRID.indexOf("hallazgos={"), GRID.indexOf("prosaError="));
-  if (!/!\(!prosa && loading\) && hallazgosOrdenados\.length > 0/.test(slot)) {
+  // ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: la sección ya no espera a la prosa (antes: `!(!prosa && loading)`) y se titula
+  // SIEMPRE con la línea que declara, porque ya no hay h2 del hero que la repita.
+  const slot = GRID.slice(GRID.indexOf("hallazgos={"), GRID.indexOf("currency={currency}", GRID.indexOf("hallazgos={")));
+  if (!/hallazgosOrdenados\.length > 0 \? \(/.test(slot) || /prosa/.test(slot)) {
     F("6 · la sección suelta de hallazgos dejó de montarse (contrato §2 y §4)");
   }
   if (/rediseno &&/.test(slot)) F("6 · la sección de hallazgos volvió a colgar de un interruptor que ya no existe");
-  if (!/titulo=\{dosBloques \? lineaQueDeclara\(veredicto\)/.test(slot)) {
+  if (!/titulo=\{lineaQueDeclara\(veredicto\)\}/.test(slot)) {
     F("6 · la sección de hallazgos dejó de titularse con la línea que declara (§10)");
   }
   if (/razones=\{/.test(GRID) || /\{dosBloques && razones\}/.test(HERO)) {
     F("6 · el hero volvió a recibir las filas de hallazgo: van a su propia sección");
   }
-  if (!/\{!dosBloques && \(/.test(HERO)) {
-    F("6 · HeroLTR volvió a dibujar su h2 con prosa de dos bloques. La línea que declara se fue con las filas: acá quedaría repetida.");
+  if (/<h2/.test(HERO)) {
+    F("6 · HeroLTR volvió a dibujar un h2. La línea que declara titula la sección de hallazgos: acá quedaría repetida.");
   }
 }
 

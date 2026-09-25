@@ -51,11 +51,8 @@ export function PremiumResults({
   ufValue,
   aiAnalysisInitial,
   aiStale = false,
-  puedeRegenerarProsa = true,
-  prosaDesactualizada = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", fechaProsa, superficie = 0, precioUF = 0,
-  demoAiData,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   creatorName,
   isSharedView = false,
@@ -167,13 +164,12 @@ export function PremiumResults({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // AI Analysis state — new v2 structure. Polls /ai-status while the fire-and-forget
-  // generation from /api/analisis completes; falls back to POST /api/analisis/ai after timeout.
-  const [aiAnalysis, setAiAnalysis] = useState<import("@/lib/types").AIAnalysisV2 | null>(
-    hasAiV2(aiAnalysisInitial) ? aiAnalysisInitial : null
-  );
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
+  // prosa ni la pide. Sin sondeo de /ai-status, sin regeneración al abrir, sin rescate. La
+  // prosa guardada se lee UNA vez y solo por un dato que viaja dentro de ella en filas viejas
+  // (`hallazgoSobreprecio`); ningún texto de la IA se dibuja. La generación en segundo plano al
+  // crear el análisis sigue viva: la maquinaria se retira por partes, en el goal siguiente.
+  const aiAnalysis = hasAiV2(aiAnalysisInitial) ? aiAnalysisInitial : null;
 
   // Goal B (simplificado por Goal C) — estado de la prosa AL MOMENTO en que el
   // veredicto queda visible (= mount del grid, ahora inmediato). Ya no registra
@@ -181,41 +177,6 @@ export function PremiumResults({
   const aiEstadoAlMontar = useRef<InformeAiEstado>(
     aiStale ? "stale-regen" : hasAiV2(aiAnalysisInitial) ? "cacheada" : "generando"
   );
-
-  // `trigger` es telemetría de timing (Goal A): declara QUIÉN pidió la
-  // generación (botón manual / regen por versión stale / fallback de 60s).
-  // Viaja en el body y termina en pipeline_timing.generaciones[].trigger.
-  const generateAiManually = useCallback(async (trigger: "manual" | "stale-regen" = "manual") => {
-    if (!analysisId) return;
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      // Goal #3: 409 { generando: true } = otro proceso tiene el candado de esta fila.
-      // No es error: se vuelve a pedir cada 8 s (hasta ~4 min); cuando el otro termina,
-      // la ruta responde la cache fresca sin generar de nuevo.
-      let res!: Response;
-      let data: Record<string, unknown> | null = null;
-      for (let intento = 0; ; intento++) {
-        res = await fetch("/api/analisis/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ analysisId, trigger }),
-        });
-        data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
-        if (res.status !== 409 || intento >= 30) break;
-        await new Promise((r) => setTimeout(r, 8000));
-      }
-      if (res.ok && hasAiV2(data)) {
-        setAiAnalysis(data);
-      } else {
-        setAiError((data?.error as string | undefined) || "Error al generar análisis");
-      }
-    } catch {
-      setAiError("Error de conexión");
-    } finally {
-      setAiLoading(false);
-    }
-  }, [analysisId]);
 
   // Goal B — el grid avisa cuando el veredicto queda visible (Goal C: al montar,
   // el overlay murió). Captura `informe_visto` + persiste `informe_visible_at`
@@ -232,123 +193,6 @@ export function PremiumResults({
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisId, posthog, isSharedView, isSharedLink]);
-
-  // Goal C — polling PERSISTENTE de /ai-status. Ya no abandona a los 60s para
-  // regenerar (eso duplicaba la generación completa mientras la background
-  // seguía viva — medido en prod: el usuario pagaba 60s de polling + una
-  // generación entera). Ahora:
-  //   · 5s el primer minuto, 10s después (backoff), sin tope propio.
-  //   · El RESCATE (POST /api/analisis/ai, trigger "rescate") corre UNA vez y
-  //     SOLO cuando el server declara la generación muerta (`puedeRescate`:
-  //     entrada error en pipeline_timing, o >6 min sin prosa — imposible que
-  //     siga viva con maxDuration 300s en /api/analisis).
-  //   · Errores de red transitorios no matan el loop (10 consecutivos sí).
-  useEffect(() => {
-    // Demo path: no analysisId, use hardcoded demo data.
-    if (!analysisId && demoAiData) {
-      if (!hasAiV2(aiAnalysis) && hasAiV2(demoAiData)) {
-        setAiLoading(true);
-        const t = setTimeout(() => {
-          setAiAnalysis(demoAiData as unknown as import("@/lib/types").AIAnalysisV2);
-          setAiLoading(false);
-        }, 400);
-        return () => clearTimeout(t);
-      }
-      return;
-    }
-    if (!analysisId) return;
-    // T2.1: con prosa vieja en pantalla igual se intenta la regen (solo el dueño); si falla,
-    // la vieja se queda con su fecha. Sin prosa y con 500: error inline + Reintentar.
-    if (hasAiV2(aiAnalysis) && !aiStale) return;
-
-    // F6 lazy-on-open: la prosa persistida quedó STALE (versión vieja) → el server no la
-    // pasó como inicial y marcó aiStale. El poll a /ai-status devolvería la MISMA prosa
-    // vieja como "ready", así que NUNCA polleamos en este caso: regeneramos directo vía
-    // POST (route no cobra: hadPriorProse). Guard !aiError → un fallo no reintenta; el
-    // effect corre una vez ([analysisId]) → sin loop.
-    if (aiStale) {
-      // Solo el DUEÑO con sesión (o admin) puede regenerar: el POST responde 401
-      // sin sesión y 403 sobre una fila ajena. Antes se disparaba igual desde un
-      // link compartido y el request moría en 401, dejando el informe sin prosa y
-      // con un error a cuestas. Ahora al que no puede regenerar el server le mandó
-      // la prosa vieja con su fecha, y acá no se intenta nada.
-      if (!aiError && puedeRegenerarProsa && !isAnonOwner) generateAiManually("stale-regen");
-      return;
-    }
-
-    let cancelled = false;
-    setAiLoading(true);
-    setAiError(null);
-
-    const startTime = Date.now();
-    const POLL_INTERVAL_MS = 5000;
-    const POLL_INTERVAL_LARGO_MS = 10000;
-    const BACKOFF_DESDE_MS = 60000;
-    const MAX_ERRORES_CONSECUTIVOS = 10;
-    let erroresConsecutivos = 0;
-    let rescateDisparado = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const reagendar = () => {
-      if (cancelled) return;
-      const interval = Date.now() - startTime > BACKOFF_DESDE_MS ? POLL_INTERVAL_LARGO_MS : POLL_INTERVAL_MS;
-      timer = setTimeout(poll, interval);
-    };
-
-    const poll = async () => {
-      if (cancelled) return;
-      try {
-        const res = await fetch(`/api/analisis/${analysisId}/ai-status`);
-        const data = await res.json().catch(() => null);
-        if (cancelled) return;
-        erroresConsecutivos = 0;
-        if (data?.ready && hasAiV2(data.ai_analysis)) {
-          setAiAnalysis(data.ai_analysis);
-          setAiLoading(false);
-          return;
-        }
-        if (data?.puedeRescate && !rescateDisparado && !isAnonOwner) {
-          // La generación background está muerta (dictamen del server, no un
-          // timeout del cliente): una regeneración de verdad, una sola vez.
-          rescateDisparado = true;
-          const aiRes = await fetch("/api/analisis/ai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ analysisId, trigger: "rescate" }),
-          });
-          const aiData = await aiRes.json();
-          if (cancelled) return;
-          if (aiRes.ok && hasAiV2(aiData)) {
-            setAiAnalysis(aiData);
-            setAiLoading(false);
-          } else {
-            setAiError(aiData?.error || "Error generando análisis");
-            setAiLoading(false);
-          }
-          return;
-        }
-        reagendar();
-      } catch {
-        if (cancelled) return;
-        // Red transitoria (mobile, cambio de red): el polling sigue; recién
-        // tras una racha larga de fallos se declara el error.
-        erroresConsecutivos += 1;
-        if (erroresConsecutivos >= MAX_ERRORES_CONSECUTIVOS) {
-          setAiError("Error cargando análisis");
-          setAiLoading(false);
-          return;
-        }
-        reagendar();
-      }
-    };
-
-    poll();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysisId]);
 
   const m = normalizeMetrics(results?.metrics);
 
@@ -768,8 +612,6 @@ export function PremiumResults({
           {/* 1. AI Analysis — dashboard (hero + 2×2 + drawer) */}
           <SubjectCardGrid
             aiAnalysis={aiAnalysis}
-            loading={aiLoading}
-            error={aiError}
             accessLevel={accessLevel}
             currency={currency}
             onCurrencyChange={setCurrency}
@@ -778,7 +620,6 @@ export function PremiumResults({
             propiedadTitle={propiedadTitle}
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
-            onRetry={() => generateAiManually("manual")}
             onInformeVisible={onInformeVisible}
             results={results}
             inputData={inputData}
@@ -786,8 +627,6 @@ export function PremiumResults({
             analysisId={analysisId}
             comuna={comuna}
             createdAt={createdAt}
-            fechaProsa={fechaProsa}
-            prosaDesactualizada={prosaDesactualizada || (aiStale && hasAiV2(aiAnalysis) && aiAnalysis === aiAnalysisInitial)}
             medianaResolvedAt={medianaResolvedAt}
           />
         </>
@@ -840,13 +679,11 @@ export function PremiumResults({
         )}
         {mainContent}
 
-        {/* CTA post-análisis welcome — banda inline al cierre del informe +
-            popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
-            Gate aiAnalysis: no montar (banda NI observer) mientras el informe
-            está en skeleton de generación — el layout corto deja la banda en
-            viewport y el popup dispara sobre el skeleton, quemando el guard.
-            Render, no CSS (el observer no debe armarse). */}
-        {showCtaWelcome && analysisId && aiAnalysis != null && (
+        {/* CTA post-análisis welcome — banda inline al cierre del informe + popup (trigger
+            IntersectionObserver + dwell). Solo cobro welcome. Hasta el 25-sep esperaba a la prosa
+            (no montaba mientras el informe estaba en skeleton de generación); sin skeleton, el
+            informe está completo al primer render y la banda monta con él. */}
+        {showCtaWelcome && analysisId && (
           <div className="mt-8">
             <CtaWelcome analysisId={analysisId} />
           </div>

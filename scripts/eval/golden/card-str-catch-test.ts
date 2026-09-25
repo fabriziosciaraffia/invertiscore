@@ -44,6 +44,12 @@ const F = (m: string) => fallas.push(m);
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n"); } catch { return ""; } };
 const HSTR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
+// ⚠ ACTA (25-sep-2026) · la card se construye en UN solo lugar, `card-recomendacion.ts`, porque la
+// lee también la portada para el titular del motor. Los chequeos de los argumentos del constructor
+// leen ahí, cada modalidad en su tramo.
+const CR = leer("src/lib/card-recomendacion.ts");
+const CR_LTR = CR.slice(CR.indexOf("export function construirCardLtr"), CR.indexOf("export function construirCardStr"));
+const CR_STR = CR.slice(CR.indexOf("export function construirCardStr"));
 const CAPS_STR = leer("src/components/analysis/str/CapitulosInversionStr.tsx");
 const CAPS_LTR = leer("src/components/analysis/CapitulosInversion.tsx");
 const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
@@ -161,11 +167,11 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   const nada = bloqueStr("COMPRAR", null, { aguanta: null, verifica: null });
   if (nada !== null) F("3 · COMPRAR sin aguanta ni verifica devuelve null (sin filas no hay bloque)");
   // y el hero STR resuelve los dos así:
-  if (!/verifica:\s*results\.adrFuente === "override"/.test(HSTR)) F("3 · HeroStrDictamen no condiciona `verifica` a `results.adrFuente === \"override\"`");
-  if (!/fronterasIngreso/.test(HSTR) || !/aguanta:/.test(HSTR)) F("3 · HeroStrDictamen no resuelve `aguanta` desde `fronterasIngreso`");
-  if (!/modalidad: "str"/.test(HSTR)) F("3 · HeroStrDictamen no llama al constructor con `modalidad: \"str\"`");
+  if (!/verifica:\s*results\.adrFuente === "override"/.test(CR_STR)) F("3 · HeroStrDictamen no condiciona `verifica` a `results.adrFuente === \"override\"`");
+  if (!/fronterasIngreso/.test(CR_STR) || !/aguanta:/.test(CR_STR)) F("3 · HeroStrDictamen no resuelve `aguanta` desde `fronterasIngreso`");
+  if (!/modalidad: "str"/.test(CR_STR)) F("3 · HeroStrDictamen no llama al constructor con `modalidad: \"str\"`");
   // LTR no cambia de forma
-  if (!/arriendoDeclaradoCLP: Number\(inputData\?\.arriendo \?\? 0\)/.test(HERO_LTR)) F("3 · el call site LTR del constructor cambió: tenía que quedar como estaba");
+  if (!/const arriendo = Number\(inputData\?\.arriendo \?\? 0\)/.test(CR_LTR) || !/arriendoDeclaradoCLP: arriendo,/.test(CR_LTR)) F("3 · el call site LTR del constructor cambió: tenía que quedar como estaba");
   if (/modalidad:/.test(HERO_LTR)) F("3 · HeroLTR pasa `modalidad`: el default del constructor es LTR y el call site no debía tocarse");
 }
 

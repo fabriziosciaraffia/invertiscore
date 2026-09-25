@@ -1,27 +1,21 @@
 "use client";
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
+import { construirCardStr } from "@/lib/card-recomendacion";
+import type { Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
-import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
-import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
 import { PopupAjustes, hayAjustesQueMostrar } from "@/components/analysis/shared/PopupAjustes";
 import { PopupAjustesTokens } from "@/components/analysis/shared/PopupAjustesTokens";
 import { PosicionFranco, type FooterPosicion } from "@/components/analysis/shared";
-import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
-import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import type { ReactNode } from "react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
-import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { LoQueHariaYoBloque, CardBuscarOtra } from "@/components/analysis/shared/LoQueHariaYoBloque";
-import { causaBuscarOtraStr, distanciaBuscarOtra } from "@/lib/buscar-otra-copy";
-import type { BrazoSTR } from "@/lib/engines/short-term-score";
-import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
 import { metricaValorONull } from "@/lib/types";
 
 /**
@@ -42,7 +36,6 @@ import { metricaValorONull } from "@/lib/types";
 export function HeroStrDictamen({
   hallazgos,
   accessLevel,
-  ai,
   results,
   veredicto,
   simulacion,
@@ -50,16 +43,12 @@ export function HeroStrDictamen({
   valorUF,
   createdAt,
   fechaProsa,
-  aiLoading,
-  prosaError,
-  onRetryProsa,
 }: {
   /** Contrato §2 (bloque B): la sección de hallazgos YA ARMADA por la página, que este
    *  componente monta entre el hero y la recomendación. Solo con el rediseño. */
   hallazgos?: ReactNode;
   /** Para las marcas de telemetría de las secciones que emite. */
   accessLevel: string;
-  ai: AIAnalysisSTRv2 | null;
   results: ShortTermResult;
   veredicto: STRVerdict;
   simulacion: SimulacionStr | null;
@@ -67,39 +56,17 @@ export function HeroStrDictamen({
   valorUF: number;
   createdAt?: string;
   fechaProsa?: string;
-  aiLoading?: boolean;
-  prosaError?: string | null;
-  onRetryProsa?: () => void;
 }) {
-  // ── EL DISCRIMINADOR ──────────────────────────────────────────────────────
-  // Prosa podada (v17) o los siete bloques viejos. El camino viejo es permanente para
-  // las 94 filas anónimas del parque STR, que no pueden regenerar.
-  const podada = esProsaStrPodada(ai);
-  const conviene = ai?.conviene;
-  const respuesta = conviene?.respuestaDirecta?.trim() || null;
-  const reencuadre = conviene?.reencuadre?.trim() || null;
-  // LA CÁPSULA MURIÓ EN v17. Con el título del bloque siendo la línea que declara
-  // («Compra.» / «Ajusta los números.» / «Busca otro.»), esta línea en primera persona
-  // decía la conclusión por TERCERA vez: la banda de la portada, el título y ella. La
-  // prosa vieja la conserva porque su cuerpo fue escrito con ella en el medio.
-  const capsula = podada ? null : conviene?.veredictoFrase?.trim() || null;
-  const cajaAccionable = conviene?.cajaAccionable?.trim() || null;
-  // LA ACCIÓN, dentro de «Lo que haría yo» (v17): el único bloque de prosa que no tenía
-  // equivalente determinista. Antes no se renderizaba en ninguna parte de la página.
-  // v22: la acción vive en `conviene.estrategiaSugerida`; las filas ≤v21 la traen en `vsLTR`.
-  const estrategia = podada ? (ai?.conviene?.estrategiaSugerida ?? ai?.vsLTR?.estrategiaSugerida)?.trim() || null : null;
-  // EL TÍTULO ES LA RESPUESTA, NO LA PREGUNTA (v17) — mismo criterio y misma fuente que
-  // LTR: `lineaQueDeclara` sobre los tres veredictos, que STR persiste iguales. No hay
-  // una formulación propia de STR: la decisión que el lector toma es la misma, y tener
-  // dos redacciones por modalidad sería lo que la fuente única vino a evitar.
-  const pregunta = (podada ? lineaQueDeclara(veredicto) : conviene?.pregunta?.trim()) || "¿Conviene o no conviene?";
+  // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio). Este componente ya no lee la
+  // prosa: sin el h2 «¿Conviene o no conviene?», sin la apertura, la cápsula ni el reencuadre,
+  // sin el skeleton de generación ni el error con Reintentar, y sin la caja ni la estrategia
+  // que colgaban de la card. Todo lo que dibuja sale del motor y está al primer render. La
+  // maquinaria de la IA sigue viva y se retira por partes.
   const fechaFirma = fechaCortaCL(fechaProsa ?? createdAt);
 
   // `hallazgos` (prop) es la SECCIÓN que la página arma; los del motor van con apellido.
   const hallazgosMotor = (results.hallazgos ?? []) as Hallazgo[];
   const distancia = hallazgosMotor.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
-  const fr = simulacion?.fronterasIngreso ?? null;
-  const adr = results.metrics?.tarifaNoche ?? results.ejesAplicados?.adrFinal ?? results.escenarios.base.adrReferencia;
 
   // FOOTER DE LA POSICIÓN — por veredicto (contrato CONGELADO): AJUSTA y BUSCAR OTRA
   // abren "Lo que te separa" (la matriz de vías, en modal); COMPRAR abre "Cuánto
@@ -115,47 +82,10 @@ export function HeroStrDictamen({
   //     sin frontera dentro del rango explorado (−70%) aguanta «−70% o más».
   //   · VERIFICA solo si la tarifa la definiste tú (`adrFuente === "override"`): con la
   //     mediana de la zona no hay nada que verificar y la fila no va.
-  const bloqueDeterminista = construirLoQueHariaYo({
-        modalidad: "str",
-        // El mismo precio que el pop-up: «Poner ese pie cuesta» y «Pie el día uno» dicen lo mismo.
-        precioUF: Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0),
-        veredicto: veredicto as Veredicto,
-        distancia: distancia ?? null,
-        currency,
-        valorUF,
-        // ⚠ SE PUBLICA EL NÚMERO MEDIDO (15-sep-2026). Había una rama que, con la frontera
-        // en factor <= 0,5, escribía «−50% o más» IGNORANDO el número que el motor acababa
-        // de biseccionar. No era falta de precisión: era tirarla. Medido sobre las 57 filas
-        // COMPRAR de renta corta: 2 escondían −52,2% y −52,5% detrás del «o más».
-        // `firme` queda para el único caso donde «o más» es lo honesto: sin frontera dentro
-        // del rango explorado (−70%), que hoy dispara en 0 filas del parque pero es el borde
-        // que el tipo tiene que poder declarar.
-        aguanta: fr
-          ? fr.abajo
-            ? {
-                marginPct: Math.round((1 - fr.abajo.factor) * 1000) / 10,
-                firme: false,
-                caeA: fr.abajo.veredicto ?? null,
-              }
-            : { marginPct: 70, firme: true, caeA: null }
-          : null,
-        verifica: results.adrFuente === "override" ? { cifraCLP: adr } : null,
-        // El piso en pesos cuelga de la tarifa que USA el análisis, tuya o de la zona.
-        montoMercadoCLP: adr,
-        // El otro margen de COMPRAR: `fronteraPrecio.caeA` ya existía —el precio al que
-        // el veredicto cae subiendo el precio—; el máximo es un paso de precisión por
-        // debajo, para que lo que se imprime todavía sea Comprar.
-        precioMax: (() => {
-          const fp = simulacion?.fronteraPrecio ?? null;
-          if (!fp?.caeA || !(fp.precioUFActual > 0)) return null;
-          const uf = Math.floor(fp.precioUFActual * (fp.caeA.factor - DIST_PREC_PTS / 100));
-          // `caeA.veredicto` ya viajaba en la simulación y nadie lo leía: es a dónde cae si
-          // pagas por encima del máximo.
-          return uf > fp.precioUFActual
-            ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10, caeA: fp.caeA.veredicto ?? null }
-            : null;
-        })(),
-      });
+  // UNA SOLA CONSTRUCCIÓN (25-sep-2026): la misma card la lee la portada para escribir el
+  // titular del motor. Ver `card-recomendacion.ts`.
+  const card = construirCardStr({ veredicto: veredicto as Veredicto, results, simulacion, currency, valorUF });
+  const bloqueDeterminista = card.bloque;
 
   // ¿HAY ALGO QUE MOSTRAR? (13-sep-2026) Sin grilla NI palancas que crucen, la card ya lo
   // dice todo y el pop-up repetiría. Ahí no se dibuja el botón: 73 filas STR.
@@ -245,26 +175,11 @@ export function HeroStrDictamen({
   // Sin combinación que ofrecer, la card dice por qué no conviene y a qué distancia queda
   // Comprar. Sin botón y sin pop-up. El texto sale de `buscar-otra-copy.ts`.
   const esBuscar = veredicto === "BUSCAR OTRA";
-  const bePctMercado = (() => {
-    const be = Number((results as { breakEvenPctDelMercado?: number }).breakEvenPctDelMercado);
-    // El campo viaja como fracción (1,27) en unas filas y como porcentaje (127) en otras.
-    return Number.isFinite(be) && be > 0 ? (be <= 5 ? be * 100 : be) : null;
-  })();
-  const cardBuscar = esBuscar ? (
-    <CardBuscarOtra
-      causa={causaBuscarOtraStr({
-        motivos: (results as { francoScore?: { gates?: { motivos?: BrazoSTR[] } } }).francoScore?.gates?.motivos ?? [],
-        flujoMensualCLP: Number(results.escenarios?.base?.flujoCajaMensual ?? 0),
-        breakEvenPctDelMercado: bePctMercado,
-      })}
-      distancia={distanciaBuscarOtra(distancia?.valor, "str")}
-    />
-  ) : null;
+  const cardBuscar = card.buscar ? <CardBuscarOtra causa={card.buscar.causa} distancia={card.buscar.distancia} /> : null;
 
   const recomendacion = (
     <PosicionFranco
-      cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
-      prosa={estrategia ? renderPlumon(estrategia) : undefined}
+      cajaAccionable={null}
       bloque={
         cardBuscar ?? (bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined)
       }
@@ -281,60 +196,8 @@ export function HeroStrDictamen({
     />
   );
 
-  /* ¿EL HERO TIENE CUERPO PROPIO? Con prosa podada el h2 no va (§10 se lo da a la sección
-     de hallazgos) y la apertura TAMPOCO (12-sep-2026: `respuestaDirecta` y `reencuadre`
-     no se montan, igual que LTR, aunque el prompt v19 los siga generando y la base los
-     conserve), así que lo que queda es el error o el skeleton. Sin ninguno de los dos, la
-     sección no se monta: §2 pide «nada más». El camino viejo conserva su apertura: su h2
-     es la pregunta de esa prosa y la respuesta la contesta. */
-  const heroTieneCuerpo = !podada || Boolean(prosaError) || Boolean(aiLoading);
-
-  const cuerpoHero = (
-      <div className="py-[9px]">
-        <div>
-          {/* CON PROSA PODADA ESTE TÍTULO NO VA: es la línea que declara, y §10 se la da
-              como título a la sección de hallazgos, que vive suelta después del hero.
-              Repetirla acá dejaría el mismo texto dos veces seguidas. La prosa vieja lo
-              conserva: su título es la pregunta de su propia prosa. */}
-          {!podada && (
-            <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
-              <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
-                f.
-              </span>
-              <span className="min-w-0">{pregunta}</span>
-            </h2>
-          )}
-          {/* LA APERTURA SOLO CON PROSA VIEJA (12-sep-2026). Con prosa podada la línea que
-              declara ya titula los hallazgos y la recomendación lleva «Lo que haría yo»:
-              la respuesta y el reencuadre repetían en prosa lo que el motor ya muestra. */}
-          {!podada && respuesta ? (
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
-              {renderPlumon(respuesta)}
-              {capsula && (
-                <p className="font-body italic text-[13.5px] leading-[1.5] mt-3 mb-0 pl-3" style={{ borderLeft: "2px solid var(--signal-red)", color: "var(--signal-red)" }}>
-                  <span className="font-mono not-italic font-semibold mr-1">f.</span>— {capsula}
-                </p>
-              )}
-              {reencuadre && <div className="mt-3">{renderPlumon(reencuadre)}</div>}
-            </div>
-          ) : prosaError ? (
-            <div className="md:ml-9">
-              <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-2">No pudimos completar la redacción del análisis.</p>
-              {onRetryProsa && (
-                <button type="button" onClick={onRetryProsa} className="font-body text-sm font-medium text-signal-red hover:underline">
-                  Reintentar
-                </button>
-              )}
-            </div>
-          ) : aiLoading ? (
-            <div className="md:ml-9">
-              <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} />
-            </div>
-          ) : null}
-        </div>
-      </div>
-  );
-
+  /* SIN SECCIÓN «HERO» PROPIA (25-sep-2026): la poblaban el h2, la apertura y el skeleton o el
+     error de la prosa. La marca de telemetría «hero» queda, al inicio, como en LTR. */
   /* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Hasta hoy la
      recomendación vivía DENTRO del hero, así que el lector leía la conclusión antes que
      lo que la sostiene. Mismo reparto que en `HeroLTR`: las tres secciones las emite el
@@ -342,12 +205,7 @@ export function HeroStrDictamen({
      estado); la página decide QUÉ va en el medio y lo pasa por `hallazgos`. */
   return (
     <>
-      {heroTieneCuerpo && (
-        <SeccionInforme id="hero" tono="paper2">
-          <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
-          <div className="mb-3">{cuerpoHero}</div>
-        </SeccionInforme>
-      )}
+      <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
       {hallazgos}
       {/* LA SEGUNDA CAJA de §2. La primera es «portada»; ésta nace con este orden. */}
       <SeccionInforme id="recomendacion" tono="paper2" caja>

@@ -105,7 +105,9 @@ export function runRetiroVentajaLtrTier(): { hard: number } {
   if (/Ventaja vs arriendo largo|Sobre-renta vs LTR|ai\?\.vsLTR|bandaLabel|d\.ventaja/.test(pdf)) F("6 · el PDF STR sigue con la sección de la ventaja");
   const hero = sinComentarios(leer("src/components/analysis/str/HeroStrDictamen.tsx"));
   if (/Analízalo como renta larga|ventaja_vs_ltr|HallazgoVentajaVsLtr/.test(hero)) F("6 · el hero STR sigue con la salida a renta larga");
-  if (!/ai\?\.conviene\?\.estrategiaSugerida \?\? ai\?\.vsLTR\?\.estrategiaSugerida/.test(hero)) F("6 · el hero no lee la acción de conviene (con las filas viejas en vsLTR)");
+  // ⚠ ACTA (25-sep-2026) · LA IA SALIÓ DEL INFORME: el hero ya no lee la acción de la prosa (ni
+  // de `conviene` ni de `vsLTR`). Lo que queda es que no vuelva a leerla de `vsLTR`.
+  if (/vsLTR/.test(hero)) F("6 · el hero volvió a leer la prosa de `vsLTR`");
   const nc = sinComentarios(leer("src/lib/no-cierra-copy.ts"));
   if (/vsLargo|g2_ltrGana|g1_flujoSevero/.test(nc)) F("6 · no-cierra-copy.ts sigue con la familia del largo");
 

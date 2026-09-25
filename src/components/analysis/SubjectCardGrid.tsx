@@ -17,14 +17,15 @@ import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
-import { esProsaDosBloques, hasAiV2 } from "./AIInsightSection";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
 import { useComparablesCercanos } from "./portada/useComparablesCercanos";
 import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
-import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
+import { construirCardLtr } from "@/lib/card-recomendacion";
+import { titularMotor } from "@/lib/titular-motor";
+import type { Veredicto } from "@/lib/types";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -40,29 +41,24 @@ import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
  */
 export function SubjectCardGrid({
   aiAnalysis,
-  loading,
-  error,
   currency,
   onCurrencyChange,
   veredicto,
   score,
   propiedadTitle,
-  onRetry,
   results,
   inputData,
   valorUF,
   analysisId,
   comuna,
   createdAt,
-  fechaProsa,
-  prosaDesactualizada = false,
   onInformeVisible,
   accessLevel = "free",
   medianaResolvedAt,
 }: {
+  /** Solo por el sobreprecio guardado en filas viejas (`hallazgoSobreprecio`), que es un dato y
+   *  no prosa. La prosa de la IA no se lee: salió del informe el 25-sep-2026. */
   aiAnalysis: AIAnalysisV2 | null;
-  loading: boolean;
-  error: string | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   veredicto: string;
@@ -70,20 +66,12 @@ export function SubjectCardGrid({
   propiedadTitle: string;
   propiedadSubtitle: string;
   metadataItems: { label: string; value: string; tooltip?: string }[];
-  onRetry: () => void;
   results: FullAnalysisResult | null | undefined;
   inputData: AnalisisInput | null | undefined;
   valorUF: number;
   analysisId?: string;
   comuna?: string;
   createdAt?: string;
-  /** Fecha de la PROSA vigente; el pie la prefiere sobre `createdAt`. Ver
-   *  fechaProsaVigente() en pipeline-timing.ts. */
-  fechaProsa?: string;
-  /** La prosa que se muestra viene de una versión anterior del análisis y este
-   *  lector no puede regenerarla (sin sesión, o no es el dueño). Se declara al
-   *  pie del acordeón con su fecha: es preferible texto fechado a nada. */
-  prosaDesactualizada?: boolean;
   /** Goal B (anclaje Goal C) — dispara UNA vez al montar el grid: el veredicto
    *  es visible desde el primer render. El caller captura `informe_visto` y
    *  persiste `informe_visible_at`. */
@@ -128,36 +116,14 @@ export function SubjectCardGrid({
         ? { lat: inputAny.zonaRadio.lat as number, lng: inputAny.zonaRadio.lng as number }
         : null;
 
-  // Goal C/E — veredicto inmediato en DOS ZONAS (contrato:
-  // mockup-resultados-dos-zonas.html). Zona 1 = el hero, 100% motor, sin
-  // indicadores de carga (la apertura del 01 hace de prosa estática). Zona 2 =
-  // mientras no hay prosa, UN solo bloque de espera (BloqueEsperaInforme:
-  // mensajes progresivos + siluetas puras) — nada a medias, nada clickeable;
-  // cuando llega, se materializa el contenido real. Prosa válida solo si pasa
-  // hasAiV2 — un shape a medias no se renderiza como prosa.
-  const prosaLista = !!aiAnalysis && hasAiV2(aiAnalysis);
-  // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta de verdad
-  // en los puntos de render (renderPlumon). El strip sigue vivo SOLO donde el
-  // rediseño no llega: las dos vistas /documento (PDF).
-  const prosa = prosaLista ? aiAnalysis : null;
-  // ── DOS CAMINOS DE RENDER (v21 · 08-sep-2026) ─────────────────────────────
-  // Con prosa de dos bloques las razones se leen DENTRO del bloque de arriba y la
-  // sección «Qué determina el veredicto» deja de existir. Con prosa vieja —o sin
-  // prosa— la página es exactamente la de siempre. Ver `esProsaDosBloques`: el
-  // camino viejo es permanente para las filas anónimas.
-  const dosBloques = esProsaDosBloques(prosa);
-  // La alternancia de fondos es la forma de la página (contrato T2: seis cosas
-  // distintas al hacer scroll). Al fusionarse una sección, las tres siguientes
-  // invierten su tono para que dos consecutivas nunca compartan papel.
-  const tonoNumeros = dosBloques ? "paper" : "paper2";
-  const tonoInversion = dosBloques ? "paper2" : "paper";
-  const tonoZona = dosBloques ? "paper" : "paper2";
-
-  // Materialización (Goal E): la transición siluetas→cards corre SOLO cuando la
-  // prosa llegó DESPUÉS del mount (generación en vivo). Prosa cacheada
-  // (revisitas): el contenido real monta directo, sin flash ni animación.
-  const prosaAusenteAlMontar = useRef(!prosaLista);
-  const materializa = prosaLista && prosaAusenteAlMontar.current;
+  // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio). La página no espera a la
+  // prosa: sin bloque de espera, sin siluetas, sin «materializar» nada cuando llega. Todo lo
+  // que se ve sale del motor y está al primer render. Los fondos quedan en la alternancia del
+  // camino sin sección «hero» propia (portada → hallazgos → recomendación → números →
+  // inversión → zona), que es la que ya tenían las filas de dos bloques.
+  const tonoNumeros = "paper";
+  const tonoInversion = "paper2";
+  const tonoZona = "paper";
 
   // Goal B (anclaje movido por Goal C) — "veredicto visible" = mount del grid:
   // con el overlay muerto, el veredicto se ve desde el primer render. Ref y no
@@ -174,15 +140,19 @@ export function SubjectCardGrid({
   // Murió acá el acordeón de hallazgos con sus cuerpos de drawer inline, la
   // simulación con sus sliders y el análisis a 10 años de la IA. Los hallazgos
   // siguen siendo datos deterministas del motor; los capítulos los leen directo.
-  const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
+  const ctxDrawer = results && inputData ? { results, inputData, prosa: null } : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
-  // Los datos se arman acá (motor + input); la IA solo aporta el titular, que
-  // llega CRUDO (con `**…**`) desde aiAnalysis — el plumón se pinta en la
-  // portada, mientras el resto de la prosa sigue strippeada (stripMarcasDeep).
+  // Los datos se arman acá (motor + input). EL TITULAR LO ESCRIBE EL MOTOR (25-sep-2026): reproduce
+  // la card «La recomendación de Franco», construida con la MISMA función que usa `HeroLTR`, así
+  // que no pueden decir cosas distintas. Vale para todas las filas, viejas y anónimas incluidas.
   const direccionPortada = formatDireccionDisplay(inputData?.direccion);
   const comunaPortada = comuna || inputData?.comuna || "";
-  const titularCrudo = (aiAnalysis as { titular?: string | null } | null)?.titular ?? null;
+  const titularPortada = titularMotor({
+    veredicto: veredicto as Veredicto,
+    modalidad: "ltr",
+    card: construirCardLtr({ veredicto: veredicto as Veredicto, results, inputData, currency, valorUF }),
+  }).titular;
   const distanciaPortada =
     ((results?.hallazgos as { id: string }[] | undefined)?.find((h) => h.id === "distancia_veredicto") as
       | HallazgoDistanciaVeredicto
@@ -231,7 +201,7 @@ export function SubjectCardGrid({
     lng: zoneCenter?.lng ?? null,
   });
   const fechaCorta = (() => {
-    return fechaCortaCL(fechaProsa ?? createdAt);
+    return fechaCortaCL(createdAt);
   })();
   // Referencia BRUTA del cap rate: la del hallazgo (motor) o, sin hallazgo, la del último peldaño.
   const capRefInfo = (() => {
@@ -264,7 +234,7 @@ export function SubjectCardGrid({
           comuna={comunaPortada}
           modalidadLabel="Renta larga"
           fecha={fechaCorta}
-          titular={titularCrudo}
+          titular={titularPortada}
           cifra={cifraPortada}
           ficha={fichaPortada}
           currency={currency}
@@ -292,21 +262,17 @@ export function SubjectCardGrid({
       <HeroLTR
         accessLevel={accessLevel}
         hallazgos={
-          /* Durante la espera de prosa no se monta. */
-          !(!prosa && loading) && hallazgosOrdenados.length > 0 ? (
+          hallazgosOrdenados.length > 0 ? (
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
-              titulo={dosBloques ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+              titulo={lineaQueDeclara(veredicto)}
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
             </SeccionInforme>
           ) : undefined
         }
-        data={prosa}
-        prosaError={!prosa && !loading ? (error ?? null) : null}
-        onRetryProsa={onRetry}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
         veredicto={veredicto}
@@ -317,28 +283,10 @@ export function SubjectCardGrid({
         comuna={comuna}
         valorUF={valorUF}
         createdAt={createdAt}
-        fechaProsa={fechaProsa}
       />
-      {/* ═══ ZONA 2 (Goal E) ═══ Sin prosa: UN solo bloque de espera — mensajes
-          progresivos + siluetas puras (cero texto a medias, cero afordancia).
-          Con error de prosa el bloque queda estático (el error vive inline en el
-          hero, Goal C). Absorbe el strip "Franco está redactando el detalle…". */}
-      {/* MITIGACIÓN 27-ago-2026 — el bloque de espera solo se muestra MIENTRAS la
-          prosa viene en camino. Antes cubría todo el caso `!prosa`, así que un
-          informe cuya redacción NUNCA va a llegar —el anónimo no puede regenerar:
-          POST /api/analisis/ai → 401— quedaba con siluetas para siempre y el
-          lector no veía un solo hallazgo. Es lo que pasó en producción cuando
-          PROMPT_VERSION_LTR saltó a 12 y dejó al parque en stale, el demo de la
-          landing incluido.
-          Sin esperanza de prosa se muestran los hallazgos del motor, que son
-          deterministas y no dependen de que el modelo haya escrito. El aviso de
-          redacción sigue donde estaba (inline en el hero, Goal C). */}
-      {!prosa && loading ? (
-        <SeccionInforme id="espera" tono="paper">
-          <BloqueEsperaInforme estatico={false} />
-        </SeccionInforme>
-      ) : (
-        <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
+      {/* ZONA 2 AL PRIMER RENDER (25-sep-2026): ya no hay bloque de espera que la reemplace
+          mientras la prosa viene en camino. Los números, la inversión y la zona son del motor. */}
+      <>
           {/* ═══ 4 · LOS NÚMEROS (paper2) — seis cifras + modal de cálculo ═══ */}
           {results?.metrics && inputData && (
             <SeccionInforme
@@ -393,15 +341,6 @@ export function SubjectCardGrid({
               abrir={capituloAbrir}
             />
           )}
-          {prosaDesactualizada && fechaCorta && (
-            <p
-              className="font-mono m-0 mt-2"
-              style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}
-            >
-              Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada
-              visita; el texto es el de esa fecha.
-            </p>
-          )}
           </SeccionInforme>
           {/* ═══ 6 · LA ZONA (paper2) ═══ */}
           {analysisId && (
@@ -433,22 +372,9 @@ export function SubjectCardGrid({
               />
             </SeccionInforme>
           )}
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes zona2Aparece {
-              from { opacity: 0; transform: translateY(6px); }
-              to { opacity: 1; transform: translateY(0); }
-            }
-            @media (prefers-reduced-motion: reduce) {
-              [style*="zona2Aparece"] { animation: none !important; }
-            }
-          ` }} />
-        </div>
-      )}
+      </>
       </DocumentoFrame>
 
-      <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
-        Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
-      </p>
     </div>
   );
 }

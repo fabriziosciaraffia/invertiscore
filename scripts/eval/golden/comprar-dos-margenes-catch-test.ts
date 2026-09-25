@@ -59,6 +59,12 @@ const SENS = leer("src/lib/sensibilidad-hallazgo.ts");
 const BLO = leer("src/components/analysis/shared/LoQueHariaYoBloque.tsx");
 const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
 const HSTR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
+// ⚠ ACTA (25-sep-2026) · la card se construye en UN solo lugar, `card-recomendacion.ts`, porque la
+// lee también la portada para el titular del motor. Los chequeos de los argumentos del constructor
+// leen ahí, cada modalidad en su tramo.
+const CR = leer("src/lib/card-recomendacion.ts");
+const CR_LTR = CR.slice(CR.indexOf("export function construirCardLtr"), CR.indexOf("export function construirCardStr"));
+const CR_STR = CR.slice(CR.indexOf("export function construirCardStr"));
 const CSS = leer("src/components/analysis/portada/PortadaInforme.tsx");
 
 const PRECIO_UF = 3_000;
@@ -156,9 +162,9 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
   // sin procedencia (la llamada LTR de siempre y STR con override) sigue diciendo «Declaraste» / «Definiste»
   if (ver({ cifraCLP: 768_000 }) !== "Declaraste $768.000 de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.") F("5 · sin procedencia el copy tiene que seguir siendo «Declaraste…»");
   // y HeroLTR la resuelve con la función del motor, no con una igualdad propia
-  if (!/resolverProcedenciaArriendo\(/.test(HERO_LTR)) F("5 · HeroLTR no resuelve la procedencia del arriendo con `resolverProcedenciaArriendo`, la misma que usa el prompt");
-  if (!/procedencia:/.test(HERO_LTR)) F("5 · HeroLTR no le pasa `procedencia` al constructor en `verifica`");
-  if (/procedencia/.test(HSTR)) F("5 · STR no lleva procedencia: la tarifa tuya ya viene persistida en `adrFuente`");
+  if (!/resolverProcedenciaArriendo\(/.test(CR_LTR)) F("5 · HeroLTR no resuelve la procedencia del arriendo con `resolverProcedenciaArriendo`, la misma que usa el prompt");
+  if (!/procedencia:/.test(CR_LTR)) F("5 · HeroLTR no le pasa `procedencia` al constructor en `verifica`");
+  if (/procedencia/.test(CR_STR)) F("5 · STR no lleva procedencia: la tarifa tuya ya viene persistida en `adrFuente`");
 }
 
 // ── 3 · «(c/u por separado)» solo con dos, y la línea en singular ───────────
@@ -179,9 +185,9 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
 
 // ── 4 · los dos heros pasan el precio máximo ────────────────────────────────
 {
-  if (!/precioMax:[\s\S]{0,300}precioMaximoComprarUF/.test(HERO_LTR)) F("4 · HeroLTR no resuelve `precioMax` desde `precioMaximoComprarUF` del hallazgo de sensibilidad");
-  if (!/precioMax:[\s\S]{0,300}fronteraPrecio/.test(HSTR)) F("4 · HeroStrDictamen no resuelve `precioMax` desde `fronteraPrecio.caeA` de la simulación");
-  if (!/montoMercadoCLP:\s*adr/.test(HSTR)) F("4 · HeroStrDictamen no pasa la tarifa que usa el análisis como monto del piso (`montoMercadoCLP: adr`)");
+  if (!/precioMax:[\s\S]{0,300}precioMaximoComprarUF/.test(CR_LTR)) F("4 · HeroLTR no resuelve `precioMax` desde `precioMaximoComprarUF` del hallazgo de sensibilidad");
+  if (!/precioMax:[\s\S]{0,300}fronteraPrecio/.test(CR_STR)) F("4 · HeroStrDictamen no resuelve `precioMax` desde `fronteraPrecio.caeA` de la simulación");
+  if (!/montoMercadoCLP:\s*adr/.test(CR_STR)) F("4 · HeroStrDictamen no pasa la tarifa que usa el análisis como monto del piso (`montoMercadoCLP: adr`)");
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

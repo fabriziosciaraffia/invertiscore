@@ -15,7 +15,10 @@
  * ProCTABanner) gestionan el upgrade.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { Veredicto } from "@/lib/types";
+import { construirCardStr } from "@/lib/card-recomendacion";
+import { titularMotor } from "@/lib/titular-motor";
 import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
@@ -37,7 +40,6 @@ import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
-import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
@@ -46,7 +48,7 @@ import { ModalCalculoStr } from "@/components/analysis/str/ModalCalculoStr";
 import { CapitulosInversionStr, type CapituloStrId } from "@/components/analysis/str/CapitulosInversionStr";
 import { ZonaStrSection } from "@/components/analysis/str/ZonaStrSection";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
-import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
+import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import type { ZonaStr } from "@/lib/zona-str";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
@@ -125,8 +127,6 @@ export function STRResultsClient({
   welcomeAvailable = true,
   aiAnalysisInitial,
   aiStaleInitial = false,
-  puedeRegenerarProsa = true,
-  prosaDesactualizada = false,
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -151,124 +151,10 @@ export function STRResultsClient({
     aiAnalysisInitial && typeof aiAnalysisInitial === "object"
       ? (aiAnalysisInitial as Record<string, unknown>)
       : null;
-  const [aiAnalysis, setAiAnalysis] = useState<Record<string, unknown> | null>(initialAi);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  // Goal F — generación bajo demanda SOLO para rescate/stale/manual (la normal
-  // corre en el waitUntil del submit STR, patrón LTR). El trigger es telemetría
-  // de pipeline_timing, nunca lógica.
-  const generarProsa = useCallback(async (trigger: "rescate" | "stale-regen" | "manual") => {
-    if (!analysisId) return;
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      // Goal #3: 409 { generando: true } = otro proceso tiene el candado (espejo LTR):
-      // se vuelve a pedir cada 8 s, hasta ~4 min, sin mostrar error.
-      let res!: Response;
-      for (let intento = 0; ; intento++) {
-        res = await fetch("/api/analisis/short-term/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ analysisId, trigger }),
-        });
-        if (res.status !== 409 || intento >= 30) break;
-        await new Promise((r) => setTimeout(r, 8000));
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || "Error generando análisis IA");
-      }
-      const data = await res.json();
-      setAiAnalysis(data as Record<string, unknown>);
-    } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setAiLoading(false);
-    }
-  }, [analysisId]);
-
-  // Goal F — polling PERSISTENTE de /short-term/[id]/ai-status (espejo LTR,
-  // Goal C): la prosa se genera en background desde el submit; acá solo se
-  // espera. 5s el primer minuto, 10s después; errores de red transitorios no
-  // matan el loop (10 consecutivos sí). El RESCATE corre UNA vez y SOLO con
-  // dictamen del server (`puedeRescate`: error registrado en pipeline_timing,
-  // o >6 min sin prosa — imposible viva con maxDuration 300s del submit).
-  // Filas stale (versión vieja): sin polling, regen directa gratis.
-  useEffect(() => {
-    if (!analysisId) return;
-    // T2.1: con prosa VIEJA en pantalla igual se intenta la regen (solo el dueño); si el POST
-    // falla, la vieja se queda y se marca con su fecha. Sin prosa y con 500, el hero muestra
-    // "No pudimos completar la redacción" con Reintentar; nunca un "redactando" infinito.
-    if (aiAnalysis && !aiStaleInitial) return;
-    const isPaid = accessLevel === "premium" || accessLevel === "subscriber";
-    if (!isPaid) return;
-
-    if (aiStaleInitial) {
-      // Anónimo-dueño: el POST exige login → sin regen (espejo LTR).
-      // Y quien NO puede regenerar (link compartido, invitado) tampoco lo intenta: el
-      // server ya le mandó la prosa vieja con su fecha, así que no hay nada que pedir
-      // y el request moriría en 401 dejando el informe mudo. Port literal de LTR.
-      if (!aiError && puedeRegenerarProsa && !isAnonOwner) generarProsa("stale-regen");
-      return;
-    }
-
-    let cancelled = false;
-    setAiLoading(true);
-    setAiError(null);
-
-    const startTime = Date.now();
-    const POLL_INTERVAL_MS = 5000;
-    const POLL_INTERVAL_LARGO_MS = 10000;
-    const BACKOFF_DESDE_MS = 60000;
-    const MAX_ERRORES_CONSECUTIVOS = 10;
-    let erroresConsecutivos = 0;
-    let rescateDisparado = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const reagendar = () => {
-      if (cancelled) return;
-      const interval = Date.now() - startTime > BACKOFF_DESDE_MS ? POLL_INTERVAL_LARGO_MS : POLL_INTERVAL_MS;
-      timer = setTimeout(poll, interval);
-    };
-
-    const poll = async () => {
-      if (cancelled) return;
-      try {
-        const res = await fetch(`/api/analisis/short-term/${analysisId}/ai-status`);
-        const data = await res.json().catch(() => null);
-        if (cancelled) return;
-        erroresConsecutivos = 0;
-        if (data?.ready && data.ai_analysis && typeof data.ai_analysis === "object") {
-          setAiAnalysis(data.ai_analysis as Record<string, unknown>);
-          setAiLoading(false);
-          return;
-        }
-        if (data?.puedeRescate && !rescateDisparado && !isAnonOwner) {
-          rescateDisparado = true;
-          await generarProsa("rescate");
-          return;
-        }
-        reagendar();
-      } catch {
-        if (cancelled) return;
-        erroresConsecutivos += 1;
-        if (erroresConsecutivos >= MAX_ERRORES_CONSECUTIVOS) {
-          setAiError("Error cargando análisis");
-          setAiLoading(false);
-          return;
-        }
-        reagendar();
-      }
-    };
-
-    poll();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysisId]);
+  // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
+  // prosa ni la pide —sin sondeo de /ai-status, sin regeneración al abrir, sin rescate— y no
+  // dibuja ningún texto de la IA. La generación en segundo plano del submit sigue viva: la
+  // maquinaria se retira por partes, en el goal siguiente.
 
   // Goal B — `informe_visto` STR: el veredicto es visible desde el primer
   // render (HeroSTR lo pinta con la prosa en skeleton inline), así que el
@@ -290,23 +176,11 @@ export function STRResultsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta en los
-  // puntos de render. El strip sobrevive SOLO en /documento (el PDF no cambia).
-  const aiParaRender = aiAnalysis;
-  // ── DOS CAMINOS DE RENDER (v17) ───────────────────────────────────────────
-  // Con prosa podada las razones se leen DENTRO del bloque de arriba y la sección «Qué
-  // determina el veredicto» deja de existir. Con prosa vieja —o sin prosa— la página es
-  // la de siempre. El camino viejo es PERMANENTE para las 94 filas anónimas del parque.
-  const strPodada = esProsaStrPodada(aiParaRender);
-  // La alternancia de fondos es la forma de la página (contrato T2). Al fusionarse una
-  // sección, las tres siguientes invierten su tono para que dos consecutivas nunca
-  // compartan papel. Mismo ajuste que hizo LTR en v21.
-  const tonoNumerosStr = strPodada ? "paper" : "paper2";
-  const tonoInversionStr = strPodada ? "paper2" : "paper";
-  const tonoZonaStr = strPodada ? "paper" : "paper2";
-  // Prosa vieja en pantalla: la del server marcada como tal (no dueño) o la del dueño cuya
-  // regen falló o sigue en vuelo (la inicial era stale y no fue reemplazada).
-  const mostrandoProsaVieja = prosaDesactualizada || (aiStaleInitial && aiAnalysis != null && aiAnalysis === initialAi);
+  // Los fondos quedan en la alternancia del camino sin sección «hero» propia (portada →
+  // hallazgos → recomendación → números → inversión → zona), la que ya tenían las filas podadas.
+  const tonoNumerosStr = "paper";
+  const tonoInversionStr = "paper2";
+  const tonoZonaStr = "paper";
 
   // ─── Datos derivados ──────────────────────────────
   // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy
@@ -328,7 +202,13 @@ export function STRResultsClient({
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — espejo LTR) ═══
   const direccionPortada = formatDireccionDisplay((inputData?.direccion as string) ?? "");
-  const titularCrudo = (aiAnalysis as { titular?: string | null } | null)?.titular ?? null;
+  // EL TITULAR LO ESCRIBE EL MOTOR (25-sep-2026): reproduce la card «La recomendación de Franco»,
+  // construida con la MISMA función que usa `HeroStrDictamen`. Vale para todas las filas.
+  const titularPortada = titularMotor({
+    veredicto: veredicto as Veredicto,
+    modalidad: "str",
+    card: construirCardStr({ veredicto: veredicto as Veredicto, results, simulacion: simulacionStr, currency, valorUF: ufValue }),
+  }).titular;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rAny = results as any;
   const distanciaPortada =
@@ -471,7 +351,7 @@ export function STRResultsClient({
           comuna={comuna}
           modalidadLabel="Renta corta"
           fecha={fechaCorta}
-          titular={titularCrudo}
+          titular={titularPortada}
           cifra={cifraPortada}
           ficha={fichaPortada}
           currency={currency}
@@ -501,21 +381,18 @@ export function STRResultsClient({
           <HeroStrDictamen
             accessLevel={accessLevel}
             hallazgos={
-              /* Va SIEMPRE, podada o vieja, sin colgar del gate de la prosa: con prosa
-                 podada su título es la línea que declara (§10), que el hero deja de
-                 repetir; con prosa vieja conserva el suyo. */
+              /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */
               hallazgosOrdenadosSTR.length > 0 ? (
                 <SeccionInforme
                   id="principales-hallazgos"
                   tono="paper"
-                  titulo={strPodada ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+                  titulo={lineaQueDeclara(veredicto)}
                 >
                   <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
                   <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
                 </SeccionInforme>
               ) : undefined
             }
-            ai={aiParaRender as unknown as AIAnalysisSTRv2 | null}
             results={results}
             veredicto={veredicto}
             simulacion={simulacionStr}
@@ -523,9 +400,6 @@ export function STRResultsClient({
             valorUF={ufValue}
             createdAt={createdAt}
             fechaProsa={fechaProsa}
-            aiLoading={aiLoading && !aiAnalysis}
-            prosaError={aiError && !aiAnalysis ? aiError : null}
-            onRetryProsa={() => generarProsa("manual")}
           />
         <SeccionInforme
           id="los-numeros"
@@ -575,12 +449,6 @@ export function STRResultsClient({
               Este análisis no tiene Franco Score persistido: regenera el análisis para ver los capítulos.
             </p>
           )}
-          {/* Procedencia de la prosa vieja — texto y ubicación idénticos a LTR. */}
-          {mostrandoProsaVieja && fechaCorta && (
-            <p className="font-mono m-0 mt-2" style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}>
-              Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada visita; el texto es el de esa fecha.
-            </p>
-          )}
         </SeccionInforme>
         {/* La comuna vivía en el ksub; al morir el ksub sube al título. */}
         <SeccionInforme id="la-zona" tono={tonoZonaStr} titulo={`Ubicación · ${comuna}`}>
@@ -595,12 +463,9 @@ export function STRResultsClient({
         </SeccionInforme>
         </DocumentoFrame>
 
-        {/* CTA post-análisis welcome — banda inline al cierre del informe +
-            popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
-            Gate aiAnalysis: no montar (banda NI observer) mientras la prosa
-            genera — el skeleton deja la banda en viewport y el popup dispara
-            sobre el informe vacío, quemando el guard. Render, no CSS. */}
-        {showCtaWelcome && aiAnalysis != null && (
+        {/* CTA post-análisis welcome — banda inline al cierre del informe + popup. Hasta el
+            25-sep esperaba a la prosa; sin skeleton, el informe está completo al primer render. */}
+        {showCtaWelcome && (
           <>
             <div style={{ height: 24 }} />
             <CtaWelcome analysisId={analysisId} />
@@ -665,18 +530,6 @@ export function STRResultsClient({
             <ConversionCloser />
           </div>
         )}
-
-        {/* Disclaimer */}
-        <p
-          className="font-body text-center mt-6 mb-2 mx-auto"
-          style={{
-            fontSize: 11,
-            color: "color-mix(in srgb, var(--franco-text) 40%, transparent)",
-            maxWidth: 520,
-          }}
-        >
-          Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
-        </p>
 
       </main>
 
