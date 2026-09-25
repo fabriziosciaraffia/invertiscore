@@ -2,10 +2,18 @@
 // GOLDEN SET COMPARATIVO (AMBAS · D1+D2) — RECOMPUTE + BASELINE
 // ============================================================================
 // Capa 0 tokens: recompute determinístico de los 7 seeds (frozen airbnbRaw) → calcShortTerm
-// → `veredictoComparativo`. Congela/compara veredicto + banda + señales (flip, N/D) contra
-// ambas-baseline.json. Todo el veredicto es DURO: la banda, el flip y la ruta por absoluto
-// son decisiones tipadas — si cambian, el motor cambió de doctrina y debe ser deliberado.
+// → `veredictoComparativo`. Congela/compara veredicto + banda + señales (N/D) contra
+// ambas-baseline.json. Todo el veredicto es DURO: la banda y la ruta por absoluto son
+// decisiones tipadas — si cambian, el motor cambió de doctrina y debe ser deliberado.
 // Los drivers numéricos (break-even %, sobre-renta %) son drift (candidatos a re-baseline).
+//
+// ⚠ ACTA (25-sep-2026) · SALEN LOS TRES CHEQUEOS DEL FLIP DE GESTIÓN. `flipCambia`, `flipAuto` y
+// `flipAdmin` leían `veredictoComparativo.flipGestion.{cambiaVeredicto, recomendacionAuto,
+// recomendacionAdmin}`, que el motor dejó de emitir el 16-sep-2026 (`8661de0f`: «el contrafáctico
+// de gestión deja de ser una comparación» — delegar salía peor en 252 de 252 filas POR
+// CONSTRUCCIÓN, no por medición). Desde entonces leían siempre `false` / «?» y el tier quedó en
+// rojo con 19 fallas (5 + 7 + 7) que no medían nada vivo. Se retiran del chequeo y del baseline.
+// Lo demás —recomendación, banda, frágil, por absoluto, la pirámide y los dos drivers— sigue vivo.
 //
 // Uso: node --env-file=.env.local --import tsx scripts/eval/golden/ambas-recompute.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -37,9 +45,6 @@ export interface AmbasBaseline {
   porAbsoluto: boolean;
   bePct: number | null;      // breakEvenPctDelMercado × 100 (1 decimal)
   sobrePct: number | null;   // sobreRentaPct × 100 (1 decimal)
-  flipCambia: boolean;
-  flipAuto: string;
-  flipAdmin: string;
   // D3: composición + orden dinámico de la pirámide (ids en orden). STR-self-contained
   // (banda + amoblamiento + edificio); las cifras LTR-dependientes NO entran al baseline.
   findingsOrden: string;
@@ -98,9 +103,6 @@ export function ambasFactsFromSeed(rec: any, inputData?: any): AmbasBaseline {
     porAbsoluto: vc?.porAbsoluto ?? false,
     bePct: r1(vc?.breakEvenPctDelMercado),
     sobrePct: r1(vc?.sobreRentaPct),
-    flipCambia: vc?.flipGestion?.cambiaVeredicto ?? false,
-    flipAuto: vc?.flipGestion?.recomendacionAuto ?? "?",
-    flipAdmin: vc?.flipGestion?.recomendacionAdmin ?? "?",
     findingsOrden: findingsOrdenDe(rec, inputData ?? {}),
   };
 }
@@ -129,9 +131,6 @@ function checkSeed(f: AmbasBaseline, base: AmbasBaseline): { hard: number; drift
   H("banda", f.banda === base.banda, `${f.banda} vs ${base.banda}`);
   H("fragil", f.fragil === base.fragil, `${f.fragil} vs ${base.fragil}`);
   H("porAbsoluto", f.porAbsoluto === base.porAbsoluto, `${f.porAbsoluto} vs ${base.porAbsoluto}`);
-  H("flipCambia", f.flipCambia === base.flipCambia, `${f.flipCambia} vs ${base.flipCambia}`);
-  H("flipAuto", f.flipAuto === base.flipAuto, `${f.flipAuto} vs ${base.flipAuto}`);
-  H("flipAdmin", f.flipAdmin === base.flipAdmin, `${f.flipAdmin} vs ${base.flipAdmin}`);
   H("findingsOrden", f.findingsOrden === base.findingsOrden, `${f.findingsOrden} vs ${base.findingsOrden}`);
   N("bePct", f.bePct, base.bePct, 0.5);
   N("sobrePct", f.sobrePct, base.sobrePct, 0.5);
@@ -153,12 +152,12 @@ export function runAmbasTier(): { hard: number; drift: number } {
     else if (baseline) { console.log(`         (sin baseline para ${seed.key})`); }
     hard += a.hard; drift += a.drift;
     const status = a.hard > 0 ? "✗ FAIL" : a.drift > 0 ? "~ DRIFT" : "✓ PASS";
-    console.log(`  ${status}  ${seed.key}  ${f.banda} · reco=${f.recomendacion} · be=${f.bePct}% · flip=${f.flipCambia} · [${f.findingsOrden}]`);
+    console.log(`  ${status}  ${seed.key}  ${f.banda} · reco=${f.recomendacion} · be=${f.bePct}% · [${f.findingsOrden}]`);
     for (const l of a.lines) console.log(l);
     if (!baseline) console.log(`         (sin ambas-baseline.json — corré ambas-accept.ts para congelar)`);
   }
 
-  console.log(`\n  ${hard === 0 ? "✓ VERDE — GS-AMBAS sin regresiones de veredicto/banda/flip" : `✗ ${hard} fallas`}${drift ? ` · ${drift} drift (candidatos a re-baseline)` : ""}`);
+  console.log(`\n  ${hard === 0 ? "✓ VERDE — GS-AMBAS sin regresiones de veredicto/banda/pirámide" : `✗ ${hard} fallas`}${drift ? ` · ${drift} drift (candidatos a re-baseline)` : ""}`);
   return { hard, drift };
 }
 

@@ -1,5 +1,5 @@
 {
-  "note": "Baseline GOLDEN COMPARATIVO (AMBAS · D1+D2). Congela veredicto+banda+señales de 7 pares reales, uno por banda: STR_FRAGIL(be 90-110), conflictiva(>110, caso Moneda), N/D degenerado (break-even NO lo toca), LTR_PREFERIDO, INDIFERENTE(5-15). recomendacion/banda/fragil/porAbsoluto/flip son DUROS; break-even% y sobre-renta% son drift. Re-baseline SOLO con cambio legítimo del veredicto + OK de Fabrizio.",
+  "note": "Baseline GOLDEN COMPARATIVO (AMBAS · D1+D2). Congela veredicto+banda+señales de 7 pares reales, uno por banda: STR_FRAGIL(be 90-110), conflictiva(>110, caso Moneda), N/D degenerado (break-even NO lo toca), LTR_PREFERIDO, INDIFERENTE(5-15). recomendacion/banda/fragil/porAbsoluto son DUROS; break-even% y sobre-renta% son drift. Re-baseline SOLO con cambio legítimo del veredicto + OK de Fabrizio. El flip de gestión salió el 25-sep-2026 (el motor dejó de emitirlo el 16-sep, 8661de0f): ver el acta en ambas-recompute.ts.",
   "seeds": {
     "AG-1-fragil-flip": {
       "recomendacion": "INDIFERENTE",
@@ -8,9 +8,6 @@
       "porAbsoluto": false,
       "bePct": 99.8,
       "sobrePct": 20.4,
-      "flipCambia": true,
-      "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO",
       "findingsOrden": "breakeven,flujo,gestion,capital,patrimonio"
     },
     "AG-2-fragil-borde": {
@@ -20,9 +17,6 @@
       "porAbsoluto": false,
       "bePct": 91.6,
       "sobrePct": 47,
-      "flipCambia": true,
-      "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "INDIFERENTE",
       "findingsOrden": "breakeven,flujo,gestion,capital,patrimonio"
     },
     "AG-3-conflictiva-moneda": {
@@ -32,9 +26,6 @@
       "porAbsoluto": false,
       "bePct": 131.3,
       "sobrePct": 26.6,
-      "flipCambia": true,
-      "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO",
       "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-4-nd-degenerado-clara": {
@@ -44,9 +35,6 @@
       "porAbsoluto": true,
       "bePct": 113,
       "sobrePct": 321.5,
-      "flipCambia": true,
-      "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "INDIFERENTE",
       "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-5-nd-degenerado-4ea0": {
@@ -56,9 +44,6 @@
       "porAbsoluto": true,
       "bePct": 88,
       "sobrePct": -3483.4,
-      "flipCambia": false,
-      "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "STR_VENTAJA_CLARA",
       "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-6-ltr-preferido": {
@@ -68,9 +53,6 @@
       "porAbsoluto": false,
       "bePct": 197.2,
       "sobrePct": -53.2,
-      "flipCambia": false,
-      "flipAuto": "LTR_PREFERIDO",
-      "flipAdmin": "LTR_PREFERIDO",
       "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-7-indiferente-5-15": {
@@ -80,9 +62,6 @@
       "porAbsoluto": false,
       "bePct": 113.1,
       "sobrePct": 12.2,
-      "flipCambia": true,
-      "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO",
       "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     }
   }
