@@ -13,7 +13,7 @@ import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
-import { recomputeShortTermForLegacy, veredictoStrRecomputado } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
@@ -55,8 +55,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   //
   // La UF es la CONGELADA, igual que en el cuerpo (`precioCompra / precioCompraUF`), y la
   // fecha es `created_at`: si la metadata usara la UF viva daría otro veredicto que la página.
-  // `veredictoStrRecomputado` es la misma función que usa el recompute del cuerpo, así que no
-  // hay dos fórmulas. Desde el 22-sep-2026 (variante B) el exit descuenta el sobreprecio contra
+  // Desde el 25-sep-2026 usa `recomputeShortTermForLegacy`, EL MISMO recompute del cuerpo: el
+  // veredicto final sale del filtro del descuento (`ajustar-sin-camino.ts`), que necesita el
+  // hallazgo de distancia, y `veredictoStrRecomputado` no arma hallazgos — con él el título decía
+  // «Ajustar» en las filas que el cuerpo muestra como Buscar otro. Desde el 22-sep-2026 (variante B) el exit descuenta el sobreprecio contra
   // la mediana comunal, así que la mediana SÍ entra: la del snapshot persistido, sin segundo
   // viaje. Filas sin snapshot recomputan sin descuento acá y con él en el cuerpo (que la
   // prefetchea): en el parque del 22-sep ninguna cambia de veredicto por eso.
@@ -68,18 +70,18 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const precioCompraCLP = Number(inputStr?.precioCompra) || 0;
   const recomputado =
     precioCompraUF > 0 && precioCompraCLP > 0
-      ? veredictoStrRecomputado(
+      ? recomputeShortTermForLegacy(
           inputStr,
           results as { airbnbRaw?: unknown } | null,
           precioCompraCLP / precioCompraUF,
           new Date(data.created_at ?? new Date().toISOString()),
-          (() => { const snap = data.mediana_comuna_snapshot as { mediana?: number | null; n?: number } | null; return snap ? { mediana: snap.mediana ?? null, n: snap.n ?? 0 } : undefined; })(),
+          (() => { const snap = data.mediana_comuna_snapshot as { mediana?: number | null; n?: number } | null; return snap ? { mediana: snap.mediana ?? null, n: snap.n ?? 0 } : { mediana: null, n: 0 }; })(),
         )
       : null;
   // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
   // Goal 10a: en <title> y meta va la etiqueta (BUSCAR OTRO / AJUSTAR / COMPRAR), no el valor.
   const veredicto = etiquetaVeredicto(
-    normalizeLegacyVerdict(recomputado?.francoScore.veredicto ?? results?.veredicto),
+    normalizeLegacyVerdict(recomputado?.francoScore?.veredicto ?? results?.veredicto),
     "banda",
     "Análisis",
   );

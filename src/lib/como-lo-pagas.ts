@@ -27,8 +27,9 @@
 
 import type { HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, PosicionEnComuna, Veredicto } from "./types";
 import { recomendacionFranco } from "./mix-a-comprar";
-import { bandaDeDescuento, ETIQUETA_BANDA, type BandaDescuento } from "./banda-esfuerzo";
+import { bandaDeDescuento, ETIQUETA_BANDA, BANDA_TOPE_ARGUMENTOS_PCT, type BandaDescuento } from "./banda-esfuerzo";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
+import { caminoMasFacil, combinacionTexto, pctCamino, pieSeExploro } from "./ajustar-sin-camino";
 
 /** Un tramo de texto; `b` = negrita. El componente los pinta, este módulo no. */
 export interface Seg {
@@ -176,6 +177,9 @@ export const BANDA_PAGAS: Record<BandaDescuento, string> = {
  */
 export function recomendacionPagas(e: Pick<EntradaComoLoPagas, "veredicto" | "precioUF" | "piePctActual" | "plazoActual" | "distancia">): RecomendacionPagas | null {
   if (e.veredicto === "COMPRAR" || !e.distancia) return null;
+  // Un Buscar otro que decidió el filtro del descuento (25-sep-2026) no recomienda precio: su
+  // camino más fácil pide más de 20%, y ofrecerlo como plan sería desmentir el veredicto.
+  if (e.distancia.porDescuento) return null;
   const dv = e.distancia;
   // LA MISMA RECOMENDACIÓN QUE LA CARD Y QUE LA CELDA «FRANCO» DEL POP-UP (24-sep-2026):
   // `recomendacionFranco` es la fuente única. Hasta hoy acá se saltaba el mix cuando era
@@ -442,14 +446,38 @@ export function construirComoLoPagas(e: EntradaComoLoPagas): ModeloComoLoPagas {
     const fr = dv ? (dv.veredictoBase === "BUSCAR OTRA" ? dv.deltaMinimoComprarFueraDeTope ?? null : dv.deltaMinimoFueraDeTope ?? null) : null;
     const pasos: PasoPagas[] = [];
     const queHaria: Seg[] = [];
-    if (fr) {
-      const abs = Math.abs(fr.deltaPct);
-      const que = fr.palanca === "precio" ? `${pct1(abs)}% menos de precio` : fr.palanca === "arriendo" ? `${pct1(abs)}% más de arriendo` : `${pct1(abs)}% más por noche`;
-      queHaria.push({ t: "Llegar a Comprar pediría un " }, { t: que, b: true });
-      if (fr.palanca === "precio") queHaria.push({ t: ` (${UF(e.precioUF * (1 - abs / 100))})` });
-      queHaria.push({ t: ", fuera de todo rango. " });
+    // ¿HAY UNA COMBINACIÓN QUE LLEGUE? (25-sep-2026) «Franco no encontró una combinación» era falso
+    // donde la grilla SÍ encuentra una, solo que cara: la del filtro del descuento (sobre 20%) y la
+    // que una recomendación deja fuera por su tope de capital. Donde la hay, se dice cuál y cuánto
+    // pide. La grilla hacia Comprar es `mixPalancasHastaComprar` desde Buscar y `mixPalancas` desde
+    // Ajustar (donde el objetivo ya es Comprar).
+    const camino = dv
+      ? dv.porDescuento ?? caminoMasFacil(dv.veredictoBase === "BUSCAR OTRA" ? dv.mixPalancasHastaComprar : dv.mixPalancas, {
+          piePct: e.piePctActual,
+          plazoAnios: e.plazoActual,
+          pieSeExploro: pieSeExploro(dv),
+          topePct: dv.topePct,
+        })
+      : null;
+    if (camino && camino.descuentoPct != null) {
+      const d = camino.descuentoPct;
+      queHaria.push(
+        { t: "La combinación más fácil —" },
+        { t: combinacionTexto(camino), b: true },
+        { t: "— todavía pide un " },
+        { t: `${pctCamino(d)} menos de precio`, b: true },
+        { t: d > BANDA_TOPE_ARGUMENTOS_PCT ? ": un descuento muy difícil de conseguir." : `: un descuento ${ETIQUETA_BANDA[bandaDeDescuento(d)]}.` },
+      );
+    } else {
+      if (fr) {
+        const abs = Math.abs(fr.deltaPct);
+        const que = fr.palanca === "precio" ? `${pct1(abs)}% menos de precio` : fr.palanca === "arriendo" ? `${pct1(abs)}% más de arriendo` : `${pct1(abs)}% más por noche`;
+        queHaria.push({ t: "Llegar a Comprar pediría un " }, { t: que, b: true });
+        if (fr.palanca === "precio") queHaria.push({ t: ` (${UF(e.precioUF * (1 - abs / 100))})` });
+        queHaria.push({ t: ", fuera de todo rango. " });
+      }
+      queHaria.push({ t: "Franco no encontró una combinación de pie, plazo y descuento que lo haga convenir." });
     }
-    queHaria.push({ t: "Franco no encontró una combinación de pie, plazo y descuento que lo haga convenir." });
     pasos.push({ k: "Qué haría falta", segs: queHaria });
     if (franja) {
       const n = miles(franja.n);

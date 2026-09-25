@@ -1366,6 +1366,14 @@ export interface HallazgoDistanciaVeredicto {
      * de 15% de ajuste). Se nombra el gate que hay que apagar, no la distancia al umbral.
      */
     esPuroGate?: boolean;
+    /**
+     * EL FILTRO DEL DESCUENTO (25-sep-2026, `ajustar-sin-camino.ts`): presente SOLO cuando bajó
+     * un Ajustar a Buscar otro porque la combinación más fácil a Comprar pide más de 20%, o
+     * ninguna llega. Trae esa celda —o, sin camino, los máximos probados y el tope—, que es lo
+     * que citan la card, el titular y el capítulo «A qué precio cerrar». `veredictoBase` sigue
+     * siendo el del puntaje (Ajustar). AUSENTE = el filtro no actuó.
+     */
+    porDescuento?: { descuentoPct: number | null; piePct: number; plazoAnios: number; topePct: number };
     modalidad: "ltr" | "str" | "ambas";
   };
   // SIEMPRE "neutral". Este hallazgo NO es una señal sobre el deal — es un mapa de la

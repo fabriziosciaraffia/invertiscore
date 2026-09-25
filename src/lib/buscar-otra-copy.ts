@@ -23,6 +23,7 @@ import type { HallazgoDistanciaVeredicto } from "./types";
 import { describirMotivosLTR, describirMotivosSTR } from "./no-cierra-copy";
 import type { BrazoSTR } from "./engines/short-term-score";
 import { BANDA_TOPE_ARGUMENTOS_PCT } from "./banda-esfuerzo";
+import { distanciaPorDescuento } from "./ajustar-sin-camino";
 
 const pct = (n: number) => `${(Math.round(Math.abs(n) * 10) / 10).toString().replace(".", ",")}%`;
 const pctEntero = (n: number) => `${Math.round(Math.abs(n))}%`;
@@ -79,6 +80,11 @@ export const DISTANCIA_PRECIO_EXPLORADA_PCT = 70;
  */
 export function distanciaBuscarOtra(v: HallazgoDistanciaVeredicto["valor"] | null | undefined, modalidad: "ltr" | "str"): string | null {
   if (!v) return null;
+  // EL FILTRO DEL DESCUENTO (25-sep-2026): si el Buscar otro lo decidió que el camino más fácil a
+  // Comprar pide más de 20%, la distancia es ESA combinación —la que decidió el veredicto—, no la
+  // palanca sola. Decisión de Fabrizio: «Aun con pie de 30% y crédito a 30 años, llegar a Comprar
+  // pediría un 20,4% menos de precio, y eso es muy difícil.»
+  if (v.porDescuento) return distanciaPorDescuento(v.porDescuento);
   const solas = (Array.isArray(v.palancasHastaComprar) ? v.palancasHastaComprar : [])
     .filter((l) => l.palanca === "precio" || l.palanca === "arriendo" || l.palanca === "adr")
     .sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));

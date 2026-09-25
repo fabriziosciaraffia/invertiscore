@@ -56,7 +56,7 @@ export const GLOSAS: Record<GlosaId, Glosa> = {
   },
   francoScore: {
     nombre: "Franco Score",
-    texto: `Una nota de 1 a 100 que junta en una cifra lo que renta el depto, lo que te cuesta cada mes, lo que te devuelve la plata que pusiste y lo que puede ganar de valor. Desde ${SCORE_CORTE_COMPRAR} el veredicto es ${etiquetaVeredicto("COMPRAR")}; desde ${SCORE_CORTE_AJUSTA}, ${etiquetaVeredicto("AJUSTA SUPUESTOS")}; bajo ${SCORE_CORTE_AJUSTA}, ${etiquetaVeredicto("BUSCAR OTRA")}. Algunas señales graves, como un flujo mensual muy negativo, bajan el veredicto aunque la nota dé para más.`,
+    texto: `Una nota de 1 a 100 que junta en una cifra lo que renta el depto, lo que te cuesta cada mes, lo que te devuelve la plata que pusiste y lo que puede ganar de valor. Desde ${SCORE_CORTE_COMPRAR} el veredicto es ${etiquetaVeredicto("COMPRAR")}; desde ${SCORE_CORTE_AJUSTA}, ${etiquetaVeredicto("AJUSTA SUPUESTOS")}; bajo ${SCORE_CORTE_AJUSTA}, ${etiquetaVeredicto("BUSCAR OTRA")}. Algunas señales graves, como un flujo mensual muy negativo, o que llegar a Comprar pida un descuento muy difícil, bajan el veredicto aunque la nota dé para más.`,
   },
 };
 

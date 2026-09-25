@@ -20,6 +20,7 @@ import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } fr
 import { REFI_LTV, ratioCuotaRefi } from "./refinanciamiento";
 import { sobreprecioDeHoy } from "./sobreprecio-venta";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
+import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -2474,21 +2475,21 @@ export function runAnalysis(
   // recomputarla con métricas contrafactuales en calcDecisividades. Los gates
   // pueden hacer que el badge contradiga la banda del score — intencional (audit
   // §2.4): señales estructurales (CoC severo, break-even imposible) priman.
-  const veredicto: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
+  //
+  // ⚠ ES EL VEREDICTO DEL PUNTAJE, NO EL FINAL (25-sep-2026). El final sale del filtro del
+  // descuento (`ajustar-sin-camino.ts`), que corre DESPUÉS del hallazgo de distancia porque
+  // necesita su grilla: un Ajustar cuyo camino más fácil a Comprar pide más de 20% pasa a Buscar
+  // otro. Lo que se calcula entre acá y ese filtro usa éste, y lo que depende del final se
+  // reaplica abajo.
+  const veredictoPorScore: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
 
   // Familia 1 (censo editorial): con el veredicto YA derivado, la frase acotada del flujo
   // pierde el consuelo si el caso es BUSCAR OTRA. Se reemplaza el carrier de metrics para
   // que hero, pirámide y results.hallazgos lean la MISMA versión (no-op en COMPRAR/AJUSTA).
+  // Se reaplica con el veredicto final después del filtro del descuento.
   if (metrics.hallazgoFlujoMensual) {
-    metrics.hallazgoFlujoMensual = aplicarVeredictoAFlujo(metrics.hallazgoFlujoMensual, veredicto);
+    metrics.hallazgoFlujoMensual = aplicarVeredictoAFlujo(metrics.hallazgoFlujoMensual, veredictoPorScore);
   }
-
-  // Commit E.2 · clasificacion/clasificacionColor (legacy) derivan del veredicto
-  // final (post-gates), no del score crudo. Evita divergencia que antes ensuciaba
-  // la BD (p.ej. veredicto="BUSCAR OTRA" pero clasificacion="AJUSTA SUPUESTOS").
-  const clasificacion: string = veredicto;
-  const clasificacionColor: string =
-    veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
 
   // Rama flujo-copy-preentrega: "se paga sola" solo cuando la serie completa lo respalda.
   // Con años negativos adelante o entrega futura, la frase carga el hecho (mismo criterio
@@ -2567,8 +2568,8 @@ export function runAnalysis(
   const sondaAtPatch = (patch: Partial<AnalisisInput>): SondaMix =>
     sondaConPatch(input, ufClp, medianaComunaVentaUF, asOf, patch);
   const veredictoAtPatch = (patch: Partial<AnalisisInput>): Veredicto => sondaAtPatch(patch).veredicto;
-  const hallazgoSensibilidad = buildHallazgoSensibilidad({
-    veredictoBase: veredicto,
+  const hallazgoSensibilidadPorScore = buildHallazgoSensibilidad({
+    veredictoBase: veredictoPorScore,
     arriendo: input.arriendo,
     // Salida bit-idéntica al closure anterior: mismo clon { ...input, arriendo }.
     veredictoAt: (factor: number) =>
@@ -2613,11 +2614,11 @@ export function runAnalysis(
     arriendoRefCLP: arrRefPJ && esReferenciaContrastable(arrRefPJ) ? arrRefPJ.valorCLP : null,
     arriendoEsEstimacionFranco:
       resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco",
-    veredicto,
+    veredicto: veredictoPorScore,
   });
 
-  const hallazgoDistancia = buildHallazgoDistanciaVeredicto({
-    veredictoBase: veredicto,
+  const hallazgoDistanciaPorScore = buildHallazgoDistanciaVeredicto({
+    veredictoBase: veredictoPorScore,
     arriendo: input.arriendo,
     precioUF: input.precio,
     plazoCredito: input.plazoCredito,
@@ -2631,6 +2632,30 @@ export function runAnalysis(
     modalidad: "ltr",
     casoPrecioJusto,
   });
+
+  // ── EL FILTRO DEL DESCUENTO (25-sep-2026) ─────────────────────────────────
+  // Un Ajustar cuyo camino más fácil a Comprar pide más de 20% —o no tiene ninguno— pasa a
+  // Buscar otro. Regla, evidencia y zona gris en `ajustar-sin-camino.ts`. Corre acá, con la
+  // grilla ya hecha, y nunca dentro de `deriveVeredicto`: las sondas de la grilla pasan por ahí.
+  const filtroDescuento = filtroAjustarSinCamino(veredictoPorScore, hallazgoDistanciaPorScore, {
+    piePct: input.piePct,
+    plazoAnios: input.plazoCredito,
+  });
+  const veredicto: Veredicto = filtroDescuento.veredicto;
+  const hallazgoDistancia = filtroDescuento.hallazgo;
+  if (filtroDescuento.cambio && metrics.hallazgoFlujoMensual) {
+    metrics.hallazgoFlujoMensual = aplicarVeredictoAFlujo(metrics.hallazgoFlujoMensual, veredicto);
+  }
+  // La sensibilidad mide cuánto aguanta el veredicto antes de CAER; un Buscar otro no tiene a
+  // dónde caer (el builder devuelve null con base Buscar), así que tampoco la lleva acá.
+  const hallazgoSensibilidad = filtroDescuento.cambio ? null : hallazgoSensibilidadPorScore;
+
+  // Commit E.2 · clasificacion/clasificacionColor (legacy) derivan del veredicto
+  // final (post-gates y post-filtro), no del score crudo. Evita divergencia que antes ensuciaba
+  // la BD (p.ej. veredicto="BUSCAR OTRA" pero clasificacion="AJUSTA SUPUESTOS").
+  const clasificacion: string = veredicto;
+  const clasificacionColor: string =
+    veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
 
   // ── LA GRILLA DE COMPRAR (15-sep-2026) ────────────────────────────────────
   //

@@ -32,6 +32,7 @@ import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { classifyFinancingHealth } from "./financing-health";
 import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
+import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
 import { esCasoPrecioJustoStr } from "./distancia-veredicto-hallazgo";
 import { sondaStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
 import { calcDecisividadesSTR } from "./decisividades-str";
@@ -296,8 +297,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       occOverride: vc.inputs.occOverride,
       veredicto: fs.veredicto,
     });
-    out.push(
-      buildHallazgoDistanciaVeredictoStr({
+    const distanciaPorScore = buildHallazgoDistanciaVeredictoStr({
         veredictoBase: fs.veredicto,
         score: fs.score,
         precioUF: ctx.precioUF,
@@ -313,8 +313,17 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         motivosGate: fs.gates?.motivos ?? [],
         sondaAtPatch: (patch) => sondaStrConPatch(vc, patch),
         casoPrecioJusto,
-      }),
-    );
+      });
+    // ── EL FILTRO DEL DESCUENTO (25-sep-2026) ── Un Ajustar cuyo camino más fácil a Comprar
+    // pide más de 20% —o no tiene ninguno— pasa a Buscar otro (`ajustar-sin-camino.ts`). Corre
+    // acá, con la grilla ya hecha, y nunca dentro de `calcFrancoScoreSTR`: las sondas pasan por
+    // ahí. El veredicto STR vive en `francoScore`, y ESTE ensamblador es el único punto donde
+    // la grilla y el veredicto están juntos, así que el filtro lo escribe ahí: todo lo que se
+    // arma después (el hallazgo del gate, el encuadre, lo que persiste el pipeline, la página)
+    // lee el final.
+    const filtro = filtroAjustarSinCamino(fs.veredicto, distanciaPorScore, { piePct: ctx.piePct, plazoAnios: ctx.plazoAnios });
+    if (filtro.cambio) fs.veredicto = filtro.veredicto;
+    out.push(filtro.hallazgo);
   }
 
   // §1.12.8 — cuando un gate decide y NINGUNA card es adversa, la causa del
