@@ -76,7 +76,7 @@ const webApplication: WebApplicationNode = {
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
   description:
-    "Analiza departamentos como inversión en Santiago con datos reales. Franco Score, rentabilidad, flujo de caja y análisis con datos reales.",
+    "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con datos reales.",
   offers: {
     "@type": "Offer",
     price: "9990",

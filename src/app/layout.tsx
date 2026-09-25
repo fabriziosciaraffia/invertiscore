@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     template: "%s | Franco",
   },
   description:
-    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales. Datos reales de ${PROPERTIES_COUNT} propiedades.`,
+    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales de ${PROPERTIES_COUNT} propiedades.`,
   keywords: [
     "inversión inmobiliaria",
     "departamentos Santiago",

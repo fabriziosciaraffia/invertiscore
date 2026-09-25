@@ -70,7 +70,7 @@ export default function SectionWhatFrancoDoes() {
         <SectionHeader
           eyebrow="Cómo funciona"
           title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
-          subhead="Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Con más de 80 mil deptos comparables, en segundos."
+          subhead="Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Con más de 40 mil deptos comparables, en segundos."
         />
 
         <div className="mt-12 space-y-16 md:mt-16 md:space-y-20">
