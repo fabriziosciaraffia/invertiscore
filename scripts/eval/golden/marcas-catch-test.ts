@@ -15,7 +15,7 @@
 //   node --import tsx scripts/eval/golden/marcas-catch-test.ts
 // ============================================================================
 
-import { contarTokensMarca, marcasBalanceadas, stripMarcas, stripMarcasDeep, validarTitular, evaluarTitular, normalizarMarcasTitular } from "../../../src/lib/prosa-marcas";
+import { contarTokensMarca, marcasBalanceadas, stripMarcas, stripMarcasDeep, validarTitular, normalizarMarcasTitular } from "../../../src/lib/prosa-marcas";
 
 let fallas = 0;
 const check = (nombre: string, cond: boolean, detalle = "") => {
@@ -102,15 +102,8 @@ check("monto $ se caza", !validarTitular("No conviene: pierdes **$600.000 cada m
 check("monto UF se caza", !validarTitular("No conviene: pagas **UF 300 de más** por este depto.").ok);
 check("porcentaje SÍ pasa (decisión i)", validarTitular("No conviene: pagas **20% sobre el precio de mercado**.").ok);
 
-// ── (4b) evaluarTitular — el ESCALÓN (decisión PARÁ 3) ──
-console.log("── evaluarTitular (escalonado) ──");
-const T16 = "Este depto realmente no conviene para nada: pagas demasiado caro y además **el arriendo no cubre**."; // 16 palabras
-check("≤15 → valido", evaluarTitular("No conviene: **el arriendo no cubre la cuota**.").nivel === "valido");
-check("16-20 → largo_renderizable (se muestra)", evaluarTitular(T16).nivel === "largo_renderizable");
-check(">20 → invalido", evaluarTitular("Una frase larguísima que sigue y sigue con muchas palabras de relleno para superar con claridad el tope duro de veinte palabras contadas.").nivel === "invalido");
-check("monto $ → invalido SIEMPRE (aunque ≤15)", evaluarTitular("Pierdes **$600.000 cada mes** operando.").nivel === "invalido");
-check("marcas rotas NO invalidan (≤15 sin marca → valido)", evaluarTitular("Sin marca pero corto y sin montos.").nivel === "valido");
-check("ausente → invalido", evaluarTitular(null).nivel === "invalido");
+// ── (4b) RETIRADO. ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `evaluarTitular` escalonaba el titular de la IA; el de la
+// portada lo escribe el motor y lo fija TITULAR-MOTOR con `validarTitular`. ──
 
 // ── (4c) normalizarMarcasTitular ──
 console.log("── normalizarMarcasTitular ──");

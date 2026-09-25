@@ -83,8 +83,3 @@ export function buildAperturaComparativa(ctx: AperturaCtx): string {
   // Empate real (sobre-renta 5-15%): el eje decisional se corre al tiempo.
   return "Puestas las dos lado a lado, rinden casi lo mismo, así que la plata no es la que decide: lo hace cuánto tiempo estás dispuesto a ponerle a la operación. La pregunta deja de ser cuál conviene y pasa a ser cuál va contigo.";
 }
-
-// Word count de la apertura (para el presupuesto dinámico de la continuación, §PLAN C).
-export function aperturaWordCount(apertura: string): number {
-  return apertura.trim() ? apertura.trim().split(/\s+/).filter(Boolean).length : 0;
-}

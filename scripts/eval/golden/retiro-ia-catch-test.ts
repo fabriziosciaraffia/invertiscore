@@ -126,6 +126,32 @@ export const RETIRADOS: Record<string, string[]> = {
     "scripts/eval/golden/candado-catch-test.ts",
     "scripts/test-voz-chilena.ts",
   ],
+  "parte 2 · símbolos de prompt en módulos compartidos": [
+    "src/lib/ai-usage.ts",
+  ],
+};
+
+/**
+ * Los SÍMBOLOS de prompt que vivían dentro de módulos que siguen vivos. No se pueden vigilar por
+ * archivo: el módulo existe. Se vigila el nombre: ninguno aparece en `src/` fuera de comentarios.
+ */
+export const SIMBOLOS_RETIRADOS: Record<string, string> = {
+  MICRO_CHECK_MODEL: "src/lib/ai-config.ts",
+  PATHS_SIN_RENDER_LTR: "src/lib/analysis.ts",
+  NO_APLICA_PROMPT: "src/lib/no-aplica-copy.ts",
+  razonSinCapitalPrompt: "src/lib/no-aplica-copy.ts",
+  buildReestructuracionFinanciera: "src/lib/financing-health.ts",
+  ReestructuracionFinanciera: "src/lib/financing-health.ts",
+  aperturaWordCount: "src/lib/comparativa-apertura.ts",
+  evaluarTitular: "src/lib/prosa-marcas.ts",
+  NivelTitular: "src/lib/prosa-marcas.ts",
+  piramideLayout: "src/lib/orden-hallazgos.ts",
+  nuevoRegistroLlamadas: "src/lib/pipeline-timing.ts",
+  RegistroLlamadas: "src/lib/pipeline-timing.ts",
+  MetaLlamada: "src/lib/pipeline-timing.ts",
+  caminosQueAbren: "src/lib/salida-por-mix.ts",
+  CaminosQueAbren: "src/lib/salida-por-mix.ts",
+  movimientoDeRespuesta: "src/lib/salida-por-mix.ts",
 };
 
 /**
@@ -205,6 +231,11 @@ export function runRetiroIaTier(): { hard: number } {
     }
   }
   if (trackeados.length < 500) F(`7 · el barrido leyó ${trackeados.length} archivos: no está leyendo el repo`);
+  for (const [sym, dondeVivia] of Object.entries(SIMBOLOS_RETIRADOS)) {
+    retirados++;
+    const re = new RegExp(`\\b${sym}\\b`);
+    for (const { rel, src } of SRC) if (re.test(src)) F(`7 · ${rel} vuelve a nombrar «${sym}» (vivía en ${dondeVivia}, retirado en la parte 2)`);
+  }
 
   // ── 4 · el PDF STR responde 410, como el LTR ──
   const PDF_STR = sinComentarios(leer("src/app/api/analisis/renta-corta/[id]/pdf/route.ts"));
@@ -261,7 +292,7 @@ export function runRetiroIaTier(): { hard: number } {
     console.log(`  ✗ RETIRO-IA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${retirados} archivos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
+    console.log(`  ✓ VERDE — ${retirados} archivos y símbolos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; el interruptor prende solo con "true"; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
   }
   return { hard: fallas.length };
 }

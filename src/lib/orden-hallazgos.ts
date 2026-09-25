@@ -181,17 +181,3 @@ export function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: strin
   // 1, 3, 6, 9, >8 → grid de 3 (fallback): 3/6/9 = filas perfectas por wrap.
   return [{ items: resto, cols: "md:grid-cols-3" }];
 }
-
-/**
- * Reparto visual de la pirámide: 1 + 2 + resto. `ordenarHallazgosPiramide` ya excluye
- * `distancia_veredicto`, así que acá no hay nada que filtrar — se conserva el defensive
- * filter por si un caller pasa un array armado a mano.
- */
-export function piramideLayout(ordered: Hallazgo[]): {
-  nivel1: Hallazgo | undefined;
-  nivel2: Hallazgo[];
-  nivel3: Hallazgo[];
-} {
-  const rank = ordered.filter((h) => h.id !== "distancia_veredicto");
-  return { nivel1: rank[0], nivel2: rank.slice(1, 3), nivel3: rank.slice(3) };
-}

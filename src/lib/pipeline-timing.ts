@@ -45,12 +45,6 @@ export interface LlamadaTiming {
   campos?: string[];
 }
 
-/** Metadatos opcionales de una llamada (retry por campo). */
-export interface MetaLlamada {
-  guard?: string;
-  campos?: string[];
-}
-
 /** Bloque `submit` de pipeline_timing: fases del request de creación. */
 export interface SubmitTiming {
   recibido_at: string;
@@ -132,57 +126,6 @@ export function fechaProsaVigente(
     if (ultima === null || g.fin_at > ultima) ultima = g.fin_at;
   }
   return ultima;
-}
-
-interface ConUsage {
-  usage?: { input_tokens?: number | null; output_tokens?: number | null };
-}
-
-/** Colector de llamadas LLM de UNA generación. Se pasa por las capas que hacen
- *  messages.create y el caller persiste el total al final. */
-export interface RegistroLlamadas {
-  llamadas: LlamadaTiming[];
-  /** Cronometra una llamada que devuelve `usage` (messages.create). Si la
-   *  llamada lanza, la entrada queda registrada igual (sin tokens) y el error
-   *  se propaga intacto — los catch existentes del pipeline no cambian. */
-  medir<T extends ConUsage>(rol: string, modelo: string, fn: () => Promise<T>, meta?: MetaLlamada): Promise<T>;
-  /** Ídem para llamadas cuyo retorno no expone usage (micro-check haiku, cuyo
-   *  costo se decide no sumar — ver la nota de tarifas en ai-generation.ts). */
-  medirSinTokens<T>(rol: string, modelo: string, fn: () => Promise<T>): Promise<T>;
-}
-
-export function nuevoRegistroLlamadas(): RegistroLlamadas {
-  const llamadas: LlamadaTiming[] = [];
-  return {
-    llamadas,
-    async medir(rol, modelo, fn, meta) {
-      const t = Date.now();
-      const extra = meta ? { ...(meta.guard ? { guard: meta.guard } : {}), ...(meta.campos?.length ? { campos: meta.campos } : {}) } : {};
-      try {
-        const res = await fn();
-        llamadas.push({
-          rol,
-          modelo,
-          ms: Date.now() - t,
-          ...(typeof res.usage?.input_tokens === "number" ? { input_tokens: res.usage.input_tokens } : {}),
-          ...(typeof res.usage?.output_tokens === "number" ? { output_tokens: res.usage.output_tokens } : {}),
-          ...extra,
-        });
-        return res;
-      } catch (e) {
-        llamadas.push({ rol, modelo, ms: Date.now() - t, ...extra });
-        throw e;
-      }
-    },
-    async medirSinTokens(rol, modelo, fn) {
-      const t = Date.now();
-      try {
-        return await fn();
-      } finally {
-        llamadas.push({ rol, modelo, ms: Date.now() - t });
-      }
-    },
-  };
 }
 
 // La RPC puede no existir todavía (ventana deploy→migración) o fallar por RLS
