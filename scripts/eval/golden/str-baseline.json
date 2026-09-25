@@ -1,5 +1,5 @@
 {
-  "note": "RE-BASELINE 23-sep-2026 · la factibilidad mide la demanda de la zona (ver ACTAS-factibilidad-demanda.md): salen la constante de regulación, el ingreso del estimador y la tipología; entra la ocupación realizada de los comparables (congelada en str-seeds-frozen.json) con la curva anclada en la mediana de Santiago; GE-5 ejercita el respaldo por atractores. Ningún veredicto cambia; score ±2–3. Antes: RE-BASELINE 22-sep-2026 · retiro de la ventaja vs LTR (ver ACTAS-retiro-ventaja-ltr.md): score sin la dimensión, sin g1_flujoSevero/g2_ltrGana, N sin ventaja_vs_ltr; GE-4 pasa a COMPRAR. Antes: POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y equityCLP ya NO incluyen flujo acumulado (= valor − deuda [− comisión]); multiplicadorCapital = equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la pre-foto F2, veredicto/N preservados (gate re-derivado a 2,65); drift en tirPct (inflación) + equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A). Último re-baseline: 12-sep-2026, «rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como dimensiones, esquema A, curva calibrada); veredictos y N intactos, drift de score en GE-4/5/6/PC — acta por seed en ACTAS-score-retorno.md.",
+  "note": "RE-BASELINE 25-sep-2026 · entra celdaRecomendada, la recomendación de Franco (ver ACTAS-recomendacion-franco.md): cambian GE-2, GE-5 y GE-PJ por el criterio del 24-sep; ningún otro campo se mueve. Antes: RE-BASELINE 23-sep-2026 · la factibilidad mide la demanda de la zona (ver ACTAS-factibilidad-demanda.md): salen la constante de regulación, el ingreso del estimador y la tipología; entra la ocupación realizada de los comparables (congelada en str-seeds-frozen.json) con la curva anclada en la mediana de Santiago; GE-5 ejercita el respaldo por atractores. Ningún veredicto cambia; score ±2–3. Antes: RE-BASELINE 22-sep-2026 · retiro de la ventaja vs LTR (ver ACTAS-retiro-ventaja-ltr.md): score sin la dimensión, sin g1_flujoSevero/g2_ltrGana, N sin ventaja_vs_ltr; GE-4 pasa a COMPRAR. Antes: POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y equityCLP ya NO incluyen flujo acumulado (= valor − deuda [− comisión]); multiplicadorCapital = equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la pre-foto F2, veredicto/N preservados (gate re-derivado a 2,65); drift en tirPct (inflación) + equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A). Último re-baseline: 12-sep-2026, «rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como dimensiones, esquema A, curva calibrada); veredictos y N intactos, drift de score en GE-4/5/6/PC — acta por seed en ACTAS-score-retorno.md.",
   "seeds": {
     "GE-1": {
       "veredicto": "COMPRAR",
@@ -11,7 +11,8 @@
       "valorVenta": 213425210,
       "capitalInvertido": 38437848,
       "patrimonioCLP": 108693698,
-      "patrimonioMult": 2.73
+      "patrimonioMult": 2.73,
+      "celdaRecomendada": null
     },
     "GE-2": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -23,7 +24,13 @@
       "valorVenta": 166860658,
       "capitalInvertido": 35247200,
       "patrimonioCLP": 92356962,
-      "patrimonioMult": 1.92
+      "patrimonioMult": 1.92,
+      "celdaRecomendada": {
+        "via": "mix",
+        "piePct": 30,
+        "plazoAnios": 30,
+        "descuentoPct": 4.9
+      }
     },
     "GE-4": {
       "veredicto": "COMPRAR",
@@ -35,7 +42,8 @@
       "valorVenta": 182451700,
       "capitalInvertido": 33949464,
       "patrimonioCLP": 100986565,
-      "patrimonioMult": 2.97
+      "patrimonioMult": 2.97,
+      "celdaRecomendada": null
     },
     "GE-5": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -47,7 +55,13 @@
       "valorVenta": 171569741,
       "capitalInvertido": 31985030,
       "patrimonioCLP": 93358211,
-      "patrimonioMult": 2.07
+      "patrimonioMult": 2.07,
+      "celdaRecomendada": {
+        "via": "mix",
+        "piePct": 30,
+        "plazoAnios": 30,
+        "descuentoPct": 0
+      }
     },
     "GE-6": {
       "veredicto": "BUSCAR OTRA",
@@ -59,7 +73,8 @@
       "valorVenta": 213008058,
       "capitalInvertido": 40119560,
       "patrimonioCLP": 108851097,
-      "patrimonioMult": 1.38
+      "patrimonioMult": 1.38,
+      "celdaRecomendada": null
     },
     "GE-PC": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -71,7 +86,13 @@
       "valorVenta": 149397647,
       "capitalInvertido": 5723318,
       "patrimonioCLP": 58504562,
-      "patrimonioMult": 5.43
+      "patrimonioMult": 5.43,
+      "celdaRecomendada": {
+        "via": "mix",
+        "piePct": 0,
+        "plazoAnios": 30,
+        "descuentoPct": 8.2
+      }
     },
     "GE-PJ": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -83,7 +104,13 @@
       "valorVenta": 166860658,
       "capitalInvertido": 35247200,
       "patrimonioCLP": 92356962,
-      "patrimonioMult": 1.92
+      "patrimonioMult": 1.92,
+      "celdaRecomendada": {
+        "via": "mix",
+        "piePct": 30,
+        "plazoAnios": 30,
+        "descuentoPct": 4.9
+      }
     }
   }
 }

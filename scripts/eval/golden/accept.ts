@@ -37,7 +37,9 @@ for (const s of BORDE_SEEDS) {
 
 const payload = {
   uf: GOLDEN_UF,
-  note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 22-sep-2026, " +
+  note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 25-sep-2026, " +
+    "entra celdaRecomendada, la recomendación de Franco (ACTAS-recomendacion-franco.md; cambia GS-5 por el criterio del 24-sep, " +
+    "ningún otro campo se mueve). Anterior: 22-sep-2026, " +
     "«el sobreprecio de hoy se descuenta plano en la venta» (variante B; GS-2 pasa de COMPRAR a AJUSTA) — acta por seed " +
     "en ACTAS-sobreprecio-venta.md. Anteriores: 21-sep-2026 «la provisión de mantención es una» (ACTAS-mantencion-una-sola.md); " +
     "12-sep-2026 «rentabilidad sobre lo puesto en el score» (ACTAS-score-retorno.md).",

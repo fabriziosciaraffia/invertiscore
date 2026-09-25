@@ -13,6 +13,7 @@
 // Uso: node --env-file=.env.local --import tsx scripts/eval/golden/str-recompute.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
+import { celdaRecomendadaDe, fmtCelda, mismaCelda, type CeldaRecomendada } from "./celda-recomendada";
 import path from "path";
 import { simularStr, type SimulacionStr } from "../../../src/lib/analysis/simular-str";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
@@ -197,6 +198,8 @@ export interface StrBaseline {
   capitalInvertido: number | null;      // result.capitalInvertido (= aportado de la card)
   patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.equityCLP)
   patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
+  /** La recomendación de Franco (25-sep-2026). Opcional en el tipo para baselines viejos; ausente = falla. */
+  celdaRecomendada?: CeldaRecomendada;
 }
 
 export interface StrRecompute {
@@ -287,6 +290,7 @@ export function strFactsFromSeed(r: StrRecompute): StrBaseline {
     capitalInvertido: r.rec.capitalInvertido ?? null,
     patrimonioCLP: patr?.valor?.patrimonioCLP ?? null,
     patrimonioMult: patr?.valor?.multiplicador ?? null,
+    celdaRecomendada: celdaRecomendadaDe(r.hz),
   };
 }
 
@@ -312,6 +316,7 @@ function checkClassAStr(f: StrBaseline, base: StrBaseline): { hard: number; drif
   };
   hardChk("aStr.veredicto", f.veredicto === base.veredicto, `${f.veredicto} vs ${base.veredicto}`);
   hardChk("aStr.N", f.N === base.N, `N=${f.N} vs ${base.N}`);
+  hardChk("aStr.celdaRecomendada", mismaCelda(f.celdaRecomendada ?? null, base.celdaRecomendada), `${fmtCelda(f.celdaRecomendada)} vs ${fmtCelda(base.celdaRecomendada)}`);
   numChk("aStr.score", f.score, base.score, 0);
   numChk("aStr.tirPct", f.tirPct, base.tirPct, 0.1);
   numChk("aStr.multiplicadorCapital", f.multiplicadorCapital, base.multiplicadorCapital, 0.02);

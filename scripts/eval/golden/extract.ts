@@ -8,6 +8,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
+import { celdaRecomendadaDe, type CeldaRecomendada } from "./celda-recomendada";
 import { metricaValorONull } from "../../../src/lib/types";
 import { ordenarHallazgosUnico } from "../../../src/lib/orden-hallazgos";
 
@@ -174,6 +175,8 @@ export interface GoldenFacts {
   sobreprecioPresent: boolean;
   confiable: boolean;
   vmSolido: boolean;
+  /** La recomendación de Franco (celda del mix o precio solo). Ver celda-recomendada.ts. */
+  celdaRecomendada: CeldaRecomendada;
   facts: HallazgoFact[];
 }
 
@@ -214,6 +217,7 @@ export function extractFacts(results: FullAnalysisResult, precioUF: number): Gol
     sobreprecioPresent: !!sob,
     confiable: !!pvc?.confiable,
     vmSolido: Math.abs((vmFrancoUF - precioUF) * (m?.precioCLP / precioUF || 0)) > 1_000_000,
+    celdaRecomendada: celdaRecomendadaDe(gathered),
     facts: ordered.map((h: any) => ({
       id: h.id,
       direccion: h.direccion,

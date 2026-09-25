@@ -9,6 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
+import { fmtCelda, mismaCelda, type CeldaRecomendada } from "./celda-recomendada";
 import { esMetricaNoAplica } from "../../../src/lib/types";
 import { gatherHallazgos, displayUnit, type GoldenFacts } from "./extract";
 import { ordenarHallazgosUnico } from "../../../src/lib/orden-hallazgos";
@@ -32,6 +33,8 @@ export interface Baseline {
   flujoNetoMensual: number;
   tirPct: number | null;
   patrimonioMult: number | null;
+  /** Desde el 25-sep-2026. Opcional en el TIPO solo para leer baselines viejos; ausente = falla. */
+  celdaRecomendada?: CeldaRecomendada;
 }
 
 export function factsToBaseline(f: GoldenFacts): Baseline {
@@ -46,6 +49,7 @@ export function factsToBaseline(f: GoldenFacts): Baseline {
     flujoNetoMensual: f.flujoNetoMensual,
     tirPct: f.tirPct,
     patrimonioMult: f.patrimonioMult,
+    celdaRecomendada: f.celdaRecomendada,
   };
 }
 
@@ -66,6 +70,8 @@ export function checkClassA(f: GoldenFacts, base: Baseline): Check[] {
   const idsNow = [...f.hallazgoIds].sort().join(",");
   const idsBase = [...base.hallazgoIds].sort().join(",");
   out.push({ rule: "a.hallazgoIds", pass: idsNow === idsBase, detail: `[${idsNow}] vs [${idsBase}]` });
+  // DURO: qué recomienda Franco (25-sep-2026). Ausente en el baseline = falla, no pase.
+  out.push({ rule: "a.celdaRecomendada", pass: mismaCelda(f.celdaRecomendada, base.celdaRecomendada), detail: `${fmtCelda(f.celdaRecomendada)} vs ${fmtCelda(base.celdaRecomendada)}` });
   // Cifras (tolerancia ±1 último decimal → candidatas a re-baseline si driftan).
   const num = (rule: string, a: number | null, b: number | null, tol: number) => {
     const pass = near(a, b, tol);
