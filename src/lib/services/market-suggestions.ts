@@ -172,6 +172,45 @@ const SIN_DATO: Sugerencias = {
   sampleSize: 0,
 };
 
+type ArgsRadio = {
+  center_lat: number;
+  center_lng: number;
+  radius_meters: number;
+  prop_type: string;
+  prop_dorms: number | null;
+  prop_comuna: string | null;
+  prop_condicion: string | null;
+};
+
+/**
+ * Única lectura de `properties_within_radius`. PostgREST capa también la
+ * respuesta de una RPC en PAGINA_POSTGREST filas, sin aviso: a 2 km del centro
+ * hay ~3.600 ventas activas y la llamada cruda devolvía 1.000, así que el
+ * «N comparables cerca» del mapa se clavaba en mil. Se pagina con orden total
+ * (distancia, y el id para desempatar) para que ninguna fila se repita ni se
+ * pierda entre páginas. Un error corta y devuelve lo leído junto con el error.
+ */
+async function leerRadio(
+  supabase: ReturnType<typeof getSupabase>,
+  args: ArgsRadio,
+  // `any` como devolvía la RPC cruda: cada llamador tipa la fila a su manera.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<{ data: any[]; error: { message: string } | null }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filas: any[] = [];
+  for (let off = 0; ; off += PAGINA_POSTGREST) {
+    const { data, error } = await supabase
+      .rpc("properties_within_radius", args)
+      .order("distance_meters", { ascending: true })
+      .order("id", { ascending: true })
+      .range(off, off + PAGINA_POSTGREST - 1);
+    if (error) return { data: filas, error };
+    const pagina = data ?? [];
+    filas.push(...pagina);
+    if (pagina.length < PAGINA_POSTGREST) return { data: filas, error: null };
+  }
+}
+
 async function getNearbyPropertiesForMap(
   lat: number,
   lng: number,
@@ -184,7 +223,7 @@ async function getNearbyPropertiesForMap(
   const supabase = getSupabase();
 
   // Query ALL properties without dormitorios filter for map density
-  const { data: allProps, error: errAll } = await supabase.rpc("properties_within_radius", {
+  const { data: allProps, error: errAll } = await leerRadio(supabase, {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -212,7 +251,7 @@ async function getNearbyPropertiesForMap(
   // Count filtered by dormitorios via a second RPC call (reliable, doesn't depend on RPC returning dormitorios)
   let filteredCount = all.length;
   if (dormitorios) {
-    const { data: filteredProps, error: errFiltered } = await supabase.rpc("properties_within_radius", {
+    const { data: filteredProps, error: errFiltered } = await leerRadio(supabase, {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
@@ -251,7 +290,7 @@ async function getSugerenciasPorRadio(
     ? getFactorCierre(comuna) : 1;
 
   // Usar la función RPC de PostGIS
-  const { data: arriendos, error: errMuestra } = await supabase.rpc("properties_within_radius", {
+  const { data: arriendos, error: errMuestra } = await leerRadio(supabase, {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -280,7 +319,7 @@ async function getSugerenciasPorRadio(
   if (!conDorms) {
     // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
     if (dormitorios === null) return null;
-    const { data: arriendosGeneral, error: errGeneral } = await supabase.rpc("properties_within_radius", {
+    const { data: arriendosGeneral, error: errGeneral } = await leerRadio(supabase, {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
