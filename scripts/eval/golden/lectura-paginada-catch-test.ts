@@ -25,6 +25,7 @@
 // ============================================================================
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
+import { archivosTrackeados } from "./archivos-trackeados";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const TOPE = 1000;
@@ -102,15 +103,22 @@ export function clasificar(ch: string): { clase: Clase; porque?: string } {
 const NOMBRES = ["scraped_properties", "properties_within_radius"];
 const LLAMADA = /\.(from|rpc)\(\s*(["'`])(scraped_properties|properties_within_radius)\2/g;
 
+const EXT = /\.(ts|tsx|mjs|js)$/;
+
 function archivos(dir: string): string[] {
   const out: string[] = [];
   for (const n of readdirSync(dir)) {
     const p = join(dir, n);
-    if (statSync(p).isDirectory()) { if (n !== "node_modules" && n !== "_archivo") out.push(...archivos(p)); }
-    // `scripts/of-*` son diagnósticos untracked que no se commitean.
-    else if (/\.(ts|tsx|mjs|js)$/.test(n) && !/^of-/.test(n)) out.push(p);
+    if (statSync(p).isDirectory()) { if (n !== "node_modules") out.push(...archivos(p)); }
+    else if (EXT.test(n)) out.push(p);
   }
   return out;
+}
+
+/** `src/` se lee del disco; `scripts/`, solo lo que git trackea (ver archivos-trackeados.ts). */
+function archivosDe(dir: "src" | "scripts"): string[] {
+  if (dir === "src") return archivos(join(RAIZ, "src"));
+  return archivosTrackeados(RAIZ, "scripts").filter((a) => EXT.test(a) && !/[\\/]_archivo[\\/]/.test(a));
 }
 
 export function auditar(rel: string, crudo: string): { fallas: string[]; clases: Clase[] } {
@@ -144,8 +152,8 @@ export function runLecturaPaginadaTier(): { hard: number } {
   const cuenta: Record<Clase, number> = { escritura: 0, conteo: 0, paginada: 0, lote: 0, FALLA: 0 };
   let conLlamada = 0;
   const vistos = new Set<string>();
-  for (const dir of ["src", "scripts"]) {
-    for (const abs of archivos(join(RAIZ, dir))) {
+  for (const dir of ["src", "scripts"] as const) {
+    for (const abs of archivosDe(dir)) {
       const rel = relative(RAIZ, abs).replace(/\\/g, "/");
       if (rel === "scripts/eval/golden/lectura-paginada-catch-test.ts") continue;
       const crudo = readFileSync(abs, "utf8");

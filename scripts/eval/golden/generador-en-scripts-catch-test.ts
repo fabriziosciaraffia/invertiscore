@@ -15,11 +15,14 @@
 // Fuera de la regla a propósito: `generateStrProse`, que genera y devuelve sin tocar
 // la base — quien persiste es el caller (`generarYPersistirProsaStr`), y ese sí entra.
 //
+// Lee solo los archivos de scripts/ que git trackea (25-sep-2026): los sueltos no se publican.
+//
 // Corre dentro del QUICK del runner (tier "instrumento") y standalone:
 //   node --import tsx scripts/eval/golden/generador-en-scripts-catch-test.ts
 // ============================================================================
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { archivosTrackeados } from "./archivos-trackeados";
 
 const RAIZ = join(__dirname, "..", "..");                     // scripts/
 const BASE = join(RAIZ, "..");                                 // repo
@@ -28,12 +31,10 @@ const GENERADORES = ["generateAiAnalysis", "generarYPersistirProsaStr", "generat
 /** `_archivo` es código jubilado a propósito; este test no se mira a sí mismo. */
 const EXCLUIDOS = [/^scripts[\\/]_archivo[\\/]/, /generador-en-scripts-catch-test\.ts$/];
 
-function* archivos(dir: string): Generator<string> {
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    if (statSync(p).isDirectory()) yield* archivos(p);
-    else if (/\.ts$/.test(e)) yield p;
-  }
+/** Los `.ts` de scripts/ que git trackea: un script suelto en una carpeta no se publica ni corre
+ *  en otro árbol, y el tier protege lo publicado (25-sep-2026, ver archivos-trackeados.ts). */
+function archivos(): string[] {
+  return archivosTrackeados(BASE, "scripts").filter((a) => /\.ts$/.test(a));
 }
 
 /** Quita comentarios conservando las posiciones (una mención en un comentario no cuenta). */
@@ -61,7 +62,7 @@ export interface HitGenerador { archivo: string; linea: number; fn: string; text
 
 export function callSitesSinDeclarar(): HitGenerador[] {
   const hits: HitGenerador[] = [];
-  for (const abs of archivos(RAIZ)) {
+  for (const abs of archivos()) {
     const rel = relative(BASE, abs);
     if (EXCLUIDOS.some((re) => re.test(rel))) continue;
     const src = sinComentarios(readFileSync(abs, "utf-8"));
