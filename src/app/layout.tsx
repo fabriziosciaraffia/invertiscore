@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { PHProvider } from "./providers";
-import { PROPERTIES_COUNT } from "@/lib/stats";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 
 const sourceSerif = Source_Serif_4({
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     template: "%s | Franco",
   },
   description:
-    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales de ${PROPERTIES_COUNT} propiedades.`,
+    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales de ${COMPARABLES_TEXTO} propiedades.`,
   keywords: [
     "inversión inmobiliaria",
     "departamentos Santiago",

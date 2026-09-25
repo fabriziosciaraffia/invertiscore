@@ -1,4 +1,4 @@
-import { PROPERTIES_COUNT } from "@/lib/stats";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 export interface FAQItem {
@@ -43,7 +43,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "datos",
         q: "¿De dónde salen los datos?",
-        a: `Analizamos información de mercado de ${PROPERTIES_COUNT} propiedades en 24 comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
+        a: `Analizamos información de mercado de ${COMPARABLES_TEXTO} propiedades en 24 comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
       },
       {
         id: "confiabilidad",

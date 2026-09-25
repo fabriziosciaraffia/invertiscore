@@ -4,7 +4,7 @@ import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
 import { RevealOnScroll } from "./RevealOnScroll";
-import { PROPERTIES_COUNT } from "@/lib/stats";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
@@ -45,7 +45,7 @@ const STEPS: ReadonlyArray<Step> = [
     eyebrow: "Análisis en 30 segundos",
     title: "Calcula contribuciones, flujos y comparables.",
     description:
-      `Franco autocompleta el resto con datos del SII, ${PROPERTIES_COUNT} propiedades y precios Airbnb en tiempo real.`,
+      `Franco autocompleta el resto con datos del SII, ${COMPARABLES_TEXTO} propiedades y precios Airbnb en tiempo real.`,
     mockupLeft: true,
     mockup: <MockupStep02 />,
   },
@@ -70,7 +70,7 @@ export default function SectionWhatFrancoDoes() {
         <SectionHeader
           eyebrow="Cómo funciona"
           title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
-          subhead="Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Con más de 40 mil deptos comparables, en segundos."
+          subhead={`Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Con ${COMPARABLES_TEXTO} deptos comparables, en segundos.`}
         />
 
         <div className="mt-12 space-y-16 md:mt-16 md:space-y-20">

@@ -53,6 +53,7 @@ import { runTitularMotorTier } from "./titular-motor-catch-test";
 import { runRetiroIaTier } from "./retiro-ia-catch-test";
 import { runSelectorModalidadTier } from "./selector-modalidad-catch-test";
 import { runCopySinIaTier } from "./copy-sin-ia-catch-test";
+import { runCifraComparablesTier } from "./cifra-comparables-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
 import { runMantencionUnaSolaTier } from "./mantencion-una-sola-catch-test";
@@ -289,6 +290,7 @@ function printSeed(r: SeedReport) {
   totalHard += runRetiroIaTier().hard;
   totalHard += runSelectorModalidadTier().hard;
   totalHard += runCopySinIaTier().hard;
+  totalHard += runCifraComparablesTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
   // sujeto por cuartiles — sin inventarla cuando el snapshot es anterior al campo.

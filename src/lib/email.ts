@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
-import { PROPERTIES_COUNT } from './stats';
+import { COMPARABLES_TEXTO } from './stats';
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 let _resend: Resend | null = null;
@@ -130,7 +130,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
                 <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 2px; color: #888780; text-transform: uppercase; margin: 0 0 16px 0;">Cómo funciona</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${welcomeStep('01', 'Ingresas los datos del depto: dirección, precio, superficie.')}
-                  ${welcomeStep('02', `Franco cruza tu depto con ${PROPERTIES_COUNT} propiedades reales + datos Airbnb en línea.`)}
+                  ${welcomeStep('02', `Franco cruza tu depto con ${COMPARABLES_TEXTO} propiedades reales + datos Airbnb en línea.`)}
                   ${welcomeStep('03', `Recibes un veredicto —${etiquetaVeredicto("COMPRAR").toLowerCase()}, ${etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o ${etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}— con su explicación.`)}
                 </table>
               </div>
@@ -178,7 +178,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
 // cambia el volumen; el reporte por análisis es el mismo.
 const ANALYSIS_FEATURES = [
   'Análisis personalizado de tu inversión',
-  'Proyección de patrimonio a 20 años',
+  'Proyección de patrimonio a 10 años',
   'Escenarios de salida (venta y refinanciamiento)',
 ];
 

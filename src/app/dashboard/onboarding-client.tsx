@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS, productKeyFor, fmtCLP } from "@/lib/pricing";
-import { PROPERTIES_COUNT } from "@/lib/stats";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { etiquetaVeredicto, listaVeredictos } from "@/lib/veredicto-etiqueta";
 
 // Planes recurrentes que se siembran como información SECUNDARIA debajo del
@@ -74,7 +74,7 @@ export function OnboardingClient() {
         <div className="mx-auto mt-12 flex max-w-[480px] flex-col gap-[14px]">
           {[
             { n: "1", title: "Ingresa los datos del departamento", sub: "Precio, ubicación, superficie, dormitorios" },
-            { n: "2", title: "Franco analiza con datos reales", sub: `${PROPERTIES_COUNT} propiedades, 24 comunas, plusvalía histórica` },
+            { n: "2", title: "Franco analiza con datos reales", sub: `${COMPARABLES_TEXTO.charAt(0).toUpperCase()}${COMPARABLES_TEXTO.slice(1)} propiedades, 24 comunas, plusvalía histórica` },
             { n: "3", title: "Recibe un veredicto claro", sub: listaVeredictos("banda") },
           ].map((step) => (
             <div key={step.n} className="flex items-center gap-4">
