@@ -288,7 +288,10 @@ const LTR_IMPOSIBLE = {
   nombre: "Imposible", comuna: "Providencia", ciudad: "Santiago", direccion: "Suecia 750",
   tipo: "Departamento", dormitorios: 2, banos: 1, superficie: 45, antiguedad: 5,
   precio: 4_800_000, arriendo: 950_000, gastos: 80_000, contribuciones: 30_000,
-  pie: 20, tasa: 4.5, plazo: 25,
+  // Los nombres del body real (los manda `wizardV4Submit`). Hasta el 25-sep-2026 el fixture
+  // decía `pie`/`tasa`/`plazo`, que el body no lee: el pie nunca llegaba y la regla
+  // `pie_ausente` rechazaba el caso sano, así que tres tests fallaban por el fixture.
+  piePct: 20, tasaInteres: 4.5, plazoCredito: 25,
 };
 const LTR_SANO = {
   ...LTR_IMPOSIBLE, nombre: "Sano", superficie: 60, precio: 5_500, arriendo: 950_000,
