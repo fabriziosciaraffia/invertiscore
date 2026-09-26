@@ -39,7 +39,8 @@ import {
   PAGE_SIZE,
   type DashboardParams,
 } from "./dashboard-helpers";
-import { Chevron, ModChip, VerdictBadge, ZoneLabel, colorDelPuntaje } from "./dashboard-ui";
+import { Chevron, ModChip, ZoneLabel, colorDelPuntaje } from "./dashboard-ui";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { ArchiveSearch } from "./archive-search";
 import { RowActions } from "./row-actions";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -257,7 +258,7 @@ function FilaAnalisis({
         {row.comuna}
       </td>
       <td className="h-10 px-2.5 align-middle"><ModChip label={modalidadLabel(row)} /></td>
-      <td className="h-10 px-2.5 align-middle"><VerdictBadge verdict={veredictoDisplay(row)} mini /></td>
+      <td className="h-10 px-2.5 align-middle"><ChipVeredicto v={veredictoDisplay(row)} /></td>
       <CeldasNumericas row={row} />
       <td className="h-10 px-2.5 align-middle">
         {/* Capa que hace clickeable TODA la fila. Va acá y no como ::after del
@@ -538,7 +539,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                             </span>
                           )}
                           <ModChip label={modalidadLabel(row)} />
-                          <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                          <ChipVeredicto v={veredictoDisplay(row)} />
                         </div>
                       ) : (
                         <>
@@ -554,7 +555,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                             ) : (
                               <>
                                 <ModChip label={modalidadLabel(row)} />
-                                <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                                <ChipVeredicto v={veredictoDisplay(row)} />
                               </>
                             )}
                           </div>

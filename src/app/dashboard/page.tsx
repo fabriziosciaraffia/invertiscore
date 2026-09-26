@@ -17,6 +17,8 @@ import { StatsStrip } from "./stats-strip";
 import { Archive } from "./archive";
 import { EmptyState } from "./empty-state";
 import { parseParams, primeraFrase, PAGE_SIZE } from "./dashboard-helpers";
+// El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
+import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 
 /**
  * Dashboard v2 — contrato `assets-export/mockup-dashboard.html`.
@@ -62,7 +64,12 @@ export default async function DashboardPage({
   // Un usuario con ≥1 análisis está onboardeado de facto, aunque la flag no se
   // haya seteado (ej: entró por /analisis/nuevo-v4 sin pasar por el dashboard).
   if (!creditsRow?.onboarding_completed && (analisisCount ?? 0) === 0) {
-    return <OnboardingClient />;
+    return (
+      <>
+        <ChipVeredictoTokens />
+        <OnboardingClient />
+      </>
+    );
   }
 
   const params = parseParams(searchParams);
@@ -106,6 +113,7 @@ export default async function DashboardPage({
   if (stats.total === 0) {
     return (
       <div className="min-h-screen bg-[var(--franco-bg)]">
+        <ChipVeredictoTokens />
         <UnifiedNav variant="app" />
         <div className="mx-auto max-w-[1100px] px-6 py-5">
           <EmptyState />
@@ -142,6 +150,7 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
+      <ChipVeredictoTokens />
       <UnifiedNav variant="app" />
 
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5">

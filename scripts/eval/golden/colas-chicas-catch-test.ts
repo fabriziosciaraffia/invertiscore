@@ -69,11 +69,14 @@ export function runColasChicasTier(): { hard: number } {
   for (const f of precarga) if (!existsSync(join(RAIZ, "public", "fonts", f))) F(`1 · el layout precarga /fonts/${f} y no existe`);
 
   // ── 2 · el color del puntaje sigue al veredicto ──
-  if (!/signal-red/.test(colorDelPuntaje("BUSCAR OTRA"))) F("2 · un Buscar otro no pinta su puntaje en rojo");
-  if (colorDelPuntaje("COMPRAR") !== "var(--franco-text)") F("2 · un Comprar no pinta su puntaje en tinta");
-  if (colorDelPuntaje("AJUSTA SUPUESTOS") !== "var(--franco-text-secondary)") F("2 · un Ajustar no pinta su puntaje en gris");
+  // ⚠ ACTA (25-sep-2026): el dashboard pasó al chip del informe (azul, ciruela, rojo) y el puntaje
+  // toma ese color. Los chequeos de la paleta tinta/gris/rojo se reemplazan por los del chip; el
+  // tier CHIP-VEREDICTO fija el resto (bloque 7).
+  if (colorDelPuntaje("BUSCAR OTRA") !== "var(--chip-v-b)") F("2 · un Buscar otro no pinta su puntaje con el rojo del chip");
+  if (colorDelPuntaje("COMPRAR") !== "var(--chip-v-c)") F("2 · un Comprar no pinta su puntaje con el azul del chip");
+  if (colorDelPuntaje("AJUSTA SUPUESTOS") !== "var(--chip-v-a)") F("2 · un Ajustar no pinta su puntaje con el ciruela del chip");
   const ui = sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx"));
-  if (!/export function colorDelPuntaje\(veredicto: Veredicto\): string \{\s*return VERDICT_STYLE\[veredicto\]\.color;/.test(ui)) F("2 · el color del puntaje no es el del chip de veredicto");
+  if (!/export function colorDelPuntaje\(veredicto: Veredicto\): string \{\s*return colorDeVeredicto\(veredicto\);/.test(ui)) F("2 · el color del puntaje no es el del chip de veredicto");
   if (!/stroke=\{colorDelPuntaje\(veredicto\)\}/.test(ui)) F("2 · el anillo del puntaje no se pinta por el veredicto");
   for (const r of ["src/app/dashboard/archive.tsx", "src/app/dashboard/continuar.tsx", "src/app/dashboard/dashboard-ui.tsx"]) {
     const s = sinComentarios(leer(r));

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS, productKeyFor, fmtCLP } from "@/lib/pricing";
 import { COMPARABLES_TEXTO } from "@/lib/stats";
-import { etiquetaVeredicto, listaVeredictos } from "@/lib/veredicto-etiqueta";
+import { listaVeredictos } from "@/lib/veredicto-etiqueta";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 
 // Planes recurrentes que se siembran como información SECUNDARIA debajo del
 // héroe ("cuando quieras más"). NO son la decisión de entrada — el primer
@@ -103,24 +104,10 @@ export function OnboardingClient() {
 
         {/* Pills veredictos — vocabulario decorativo, no interactivo */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-          <span
-            className="font-mono font-semibold uppercase"
-            style={{ fontSize: 11, background: "var(--franco-v-buy-bg)", color: "var(--franco-v-buy)", padding: "4px 12px", borderRadius: 20 }}
-          >
-            COMPRAR
-          </span>
-          <span
-            className="font-mono font-semibold uppercase"
-            style={{ fontSize: 11, background: "var(--franco-v-adjust-bg)", color: "var(--franco-v-adjust)", padding: "4px 12px", borderRadius: 20 }}
-          >
-            {etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")}
-          </span>
-          <span
-            className="font-mono font-semibold uppercase"
-            style={{ fontSize: 11, background: "var(--franco-v-avoid-bg)", color: "var(--franco-v-avoid)", padding: "4px 12px", borderRadius: 20 }}
-          >
-            {etiquetaVeredicto("BUSCAR OTRA", "banda")}
-          </span>
+          {/* Los tres veredictos con el chip del informe (25-sep-2026), no una paleta propia. */}
+          <ChipVeredicto v="COMPRAR" />
+          <ChipVeredicto v="AJUSTA SUPUESTOS" />
+          <ChipVeredicto v="BUSCAR OTRA" />
         </div>
 
         {/* ── CTA HÉROE: acción default única y dominante ── */}

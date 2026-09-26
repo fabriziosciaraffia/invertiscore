@@ -9,46 +9,13 @@
  */
 
 import type { Veredicto } from "@/lib/types";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { colorDeVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 
-// ─── Badge de veredicto ─────────────────────────────────────────────────────
-// Capa 1 binaria: la jerarquía es Ink primario / Ink secundario / Signal Red.
-// BUSCAR OTRA es el único con rojo (criticidad, uso permitido #3).
-const VERDICT_STYLE: Record<Veredicto, { color: string; bg: string; border: string }> = {
-  COMPRAR: {
-    color: "var(--franco-text)",
-    bg: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
-    border: "color-mix(in srgb, var(--franco-text) 18%, transparent)",
-  },
-  "AJUSTA SUPUESTOS": {
-    color: "var(--franco-text-secondary)",
-    bg: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-    border: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
-  },
-  "BUSCAR OTRA": {
-    color: "var(--signal-red)",
-    bg: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
-    border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
-  },
-};
-
-export function VerdictBadge({ verdict, mini = false }: { verdict: Veredicto; mini?: boolean }) {
-  const s = VERDICT_STYLE[verdict];
-  return (
-    <span
-      className={`inline-flex shrink-0 font-mono font-bold tracking-wide ${mini ? "text-[8px]" : "text-[9px]"}`}
-      style={{
-        padding: mini ? "2px 6px" : "3px 9px",
-        borderRadius: 5,
-        background: s.bg,
-        border: `${mini ? 1 : 1.5}px solid ${s.border}`,
-        color: s.color,
-      }}
-    >
-      {etiquetaVeredicto(verdict, "banda")}
-    </span>
-  );
-}
+// ─── Veredicto ──────────────────────────────────────────────────────────────
+// EL CHIP DEL INFORME (25-sep-2026). Hasta hoy el dashboard tenía su paleta propia —tinta, gris y
+// rojo en mono— y un `VerdictBadge` suyo. Ahora el veredicto se dibuja con `ChipVeredicto`, el mismo
+// del informe (✓ Comprar azul, − Ajustar ciruela, ✕ Buscar otro rojo), y su CSS lo monta la página
+// (`ChipVeredictoTokens`). El tier CHIP-VEREDICTO cubre el dashboard.
 
 // ─── Chip de modalidad ──────────────────────────────────────────────────────
 export function ModChip({ label }: { label: "LARGA" | "CORTA" | "AMBAS" }) {
@@ -77,12 +44,11 @@ export function ModChip({ label }: { label: "LARGA" | "CORTA" | "AMBAS" }) {
 }
 
 // ─── Color del puntaje ───────────────────────────────────────────────────────
-// SIGUE AL VEREDICTO, NO A LA NOTA (25-sep-2026). Hasta hoy el número se coloreaba por su
-// valor (≥75 tinta · 40-74 gris · <40 rojo), y con los filtros que bajan el veredicto —gates,
-// brazos STR, el filtro del descuento— un Buscar otro con 50 salía gris al lado del chip rojo.
-// Ahora es el MISMO color del chip: tinta en Comprar, gris en Ajustar, rojo en Buscar otro.
+// SIGUE AL VEREDICTO, NO A LA NOTA, y es el color del CHIP DEL INFORME (25-sep-2026): azul en
+// Comprar, ciruela en Ajustar, rojo en Buscar otro (`colorDeVeredicto`). Antes era la paleta propia
+// del dashboard y, antes todavía, un color por la nota.
 export function colorDelPuntaje(veredicto: Veredicto): string {
-  return VERDICT_STYLE[veredicto].color;
+  return colorDeVeredicto(veredicto);
 }
 
 export function ScoreRing({ score, veredicto, size = 40 }: { score: number; veredicto: Veredicto; size?: number }) {

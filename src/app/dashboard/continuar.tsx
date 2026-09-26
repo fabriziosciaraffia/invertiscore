@@ -19,7 +19,8 @@ import {
   modalidadLabel,
   veredictoDisplay,
 } from "./dashboard-helpers";
-import { ModChip, ScoreRing, VerdictBadge, ZoneLabel } from "./dashboard-ui";
+import { ModChip, ScoreRing, ZoneLabel } from "./dashboard-ui";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 
 interface Props {
   rows: AnalisisDashboardRow[];
@@ -76,7 +77,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
             <span className="hidden text-[var(--franco-text-muted)] sm:inline" aria-hidden="true">·</span>
             <span className="font-body text-[13px] text-[var(--franco-text-secondary)]">{hero.comuna}</span>
             <ModChip label={modalidadLabel(hero)} />
-            <VerdictBadge verdict={veredictoDisplay(hero)} />
+            <ChipVeredicto v={veredictoDisplay(hero)} />
           </div>
           {heroResumen && (
             <p className="mt-1.5 border-t border-[var(--franco-border)] pt-1.5 font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
@@ -161,7 +162,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
                   </div>
                   {/* L2: veredicto | flujo */}
                   <div className="mt-1.5 flex min-w-0 items-center gap-2">
-                    <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                    <ChipVeredicto v={veredictoDisplay(row)} />
                     <Flujo value={flujo} className="ml-auto shrink-0" />
                   </div>
                 </div>

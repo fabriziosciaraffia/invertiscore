@@ -52,7 +52,17 @@ export const CSS_CHIP_VEREDICTO = `
       .chip-v.sobre.c,[data-theme="light"] .chip-v.sobre.c{background:#8DB0E3;color:#0B1A2E;border-color:#8DB0E3}
       .chip-v.sobre.a,[data-theme="light"] .chip-v.sobre.a{background:#D8AECA;color:#2A1622;border-color:#D8AECA}
       .chip-v.sobre.b,[data-theme="light"] .chip-v.sobre.b{background:#F0858C;color:#3A0D11;border-color:#F0858C}
+      /* EL COLOR DEL VEREDICTO, fuera del chip (25-sep-2026): el puntaje del dashboard se pinta con
+         él. Es el tono que identifica al chip en cada tema —azul, ciruela, rojo—: el fondo del chip
+         de Comprar en claro, la letra de los tintes en los demás. */
+      :root{--chip-v-c:#8DB0E3;--chip-v-a:#D8AECA;--chip-v-b:#F0858C}
+      [data-theme="light"]{--chip-v-c:#2B558F;--chip-v-a:#6E4560;--chip-v-b:#C8323C}
 `;
+
+/** El color del veredicto fuera del chip (el puntaje del dashboard): el mismo tono del chip. */
+export function colorDeVeredicto(v: Veredicto): string {
+  return `var(--chip-v-${CLASE[v] ?? "a"})`;
+}
 
 /** El CSS del chip para las páginas que no montan `DocTokens` (la comparativa AMBAS). */
 export function ChipVeredictoTokens() {
