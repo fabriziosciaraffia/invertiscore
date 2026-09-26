@@ -237,7 +237,7 @@ export function primeraFrase(texto: string | null | undefined): string | null {
   return (m ? m[0] : t).trim();
 }
 
-export const DEMO_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
+// El demo público vive en `src/lib/demo.ts` (dos filas, una por modalidad) desde el 25-sep-2026.
 
 /** Etiqueta corta de modalidad para el chip de la tabla. */
 export function modalidadLabel(row: AnalisisDashboardRow): "LARGA" | "CORTA" | "AMBAS" {

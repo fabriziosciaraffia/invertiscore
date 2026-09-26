@@ -189,7 +189,8 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   // const intermedia, o `score={analisis.score ?? 0}`. Ahora se exige la forma que manda —el
   // recomputado primero— y se cuentan los DOS sitios, porque arreglar uno y no el otro
   // dejaba media página mintiendo.
-  const P = leer("src/app/analisis/[id]/page.tsx");
+  // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.
+  const P = leer("src/app/analisis/[id]/informe-ltr.tsx");
   const recomputado = (P.match(/score=\{results\?\.score \?\? analisis\.score\}/g) ?? []).length;
   if (recomputado < 2) F(`6 · la página LTR pasa el score recomputado en ${recomputado} de los 2 sitios: el recompute tiene que ir primero en el \`??\``);
   if (/score=\{analisis\.score\}/.test(P)) F("6 · la página LTR sigue pasando la columna `analisis.score` persistida: con el score nuevo mostraría el número viejo junto a un veredicto recomputado");

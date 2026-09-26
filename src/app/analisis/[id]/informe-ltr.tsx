@@ -1,0 +1,360 @@
+import { fechaProsaVigente } from "@/lib/pipeline-timing";
+import { esDemo } from "@/lib/demo";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import { AnalysisNav } from "./analysis-nav";
+import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { PremiumResults } from "./results-client";
+import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
+import { getUserAccessLevel } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
+import { isAdminUser } from "@/lib/admin";
+import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
+import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
+
+// Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
+// "7 de junio 2026". Usado en el header público de la vista guest.
+function formatFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/**
+ * EL INFORME LTR, fuera de la ruta (25-sep-2026). Vivía como la página de `/analisis/[id]`; sale a
+ * su propio módulo para que el demo público (`/demo`) lo dibuje por el MISMO camino —recalculado
+ * por el motor— en vez de un resultado escrito a mano. `demo` solo cambia el cromo: sin la barra
+ * del informe, porque la ruta del demo pone la suya con el selector. El ACCESO del demo no depende
+ * de esta bandera sino del id (`esDemo`), así que la fila se ve completa también por su URL.
+ */
+export async function InformeLtr({ id, demo = false }: { id: string; demo?: boolean }) {
+  // El PDF LTR ya no se genera desde acá (?print=true retirado): vive en la
+  // vista dedicada /analisis/[id]/documento. Esta página es solo el informe web.
+
+  const supabase = createClient();
+
+  const [{ data: { user } }, ufValue] = await Promise.all([
+    supabase.auth.getUser(),
+    getUFValue(),
+  ]);
+
+  const { data } = await supabase
+    .from("analisis")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!data) {
+    redirect(user ? "/dashboard" : "/");
+  }
+
+  // Commit E.1.1 · 2026-05-13 — guard simétrico LTR↔STR con precedencia
+  // estricta. La columna SQL `tipo_analisis` es autoritativa; el flag jsonb
+  // `results.tipoAnalisis` se consulta SOLO cuando la columna es null
+  // (análisis pre-migration 20260510). Sin esta precedencia, los 44 análisis
+  // con metadata inconsistente (SQL=long-term, jsonb=short-term — restos de
+  // bugs anteriores) producían un redirect loop entre LTR y STR.
+  const rawTipo = (data as Record<string, unknown>).tipo_analisis;
+  const rawResultsForGuard = (data as { results?: { tipoAnalisis?: string } }).results;
+  if (
+    rawTipo === "short-term" ||
+    (rawTipo == null && rawResultsForGuard?.tipoAnalisis === "short-term")
+  ) {
+    redirect(`/analisis/renta-corta/${id}`);
+  }
+
+  const analisis = data as Analisis;
+
+  // Subordinación AMBAS (migración 20260715): si esta fila es hijo de un par,
+  // resolvemos el hermano por group_id para armar el link al comparativo y
+  // ocultar share/PDF/delete propios. Si el hermano no existe (grupo huérfano
+  // por fallo parcial de creación), degradamos a análisis suelto normal.
+  let subordinatedHref: string | null = null;
+  if (analisis.ambas_role === "ltr" && analisis.ambas_group_id) {
+    const { data: sibling } = await supabase
+      .from("analisis")
+      .select("id")
+      .eq("ambas_group_id", analisis.ambas_group_id)
+      .eq("ambas_role", "str")
+      .maybeSingle();
+    if (sibling?.id) {
+      subordinatedHref = `/analisis/comparativa?ltr=${analisis.id}&str=${sibling.id}`;
+    }
+  }
+  const isSubordinated = !!subordinatedHref;
+
+  const rawResults: FullAnalysisResult | null = analisis.results || null;
+  const inputDataRaw = analisis.input_data as AnalisisInput | undefined;
+  // Fix drift UF prosa↔KPI (Opción 3): el render recomputa con la UF CONGELADA al
+  // crear (reconstruida desde precioCLP/precio), NO con la UF viva. Así los KPI
+  // calzan con la prosa IA, que también usa la UF congelada (ai-generation.ts:716).
+  // `ufValue` (getUFValue) queda solo como fallback para filas legacy sin precioCLP
+  // reconstruible. Mismo patrón "snapshot congelado gana" que mediana_comuna_snapshot.
+  // Ver of-audit-drift-uf.md.
+  const ufFrozen = resolveUfForAnalysis(rawResults, inputDataRaw, ufValue, analisis.id);
+  // Recompute on-load (Opción A — idempotente). Garantiza coherencia entre
+  // snapshots persistidos pre-evolución del motor y runtime fresh:
+  // - TIR Card 04 (snapshot) vs Card 08 (runtime) — cierra B3 H3 inconsistency.
+  // - Precio sugerido header vs drawer — cierra Fase 3.6 v9 inconsistency.
+  // - Metrics legacy sin gastos/contribuciones — cierra B1 NaN cascade.
+  // Análisis nuevos (motor actual al guardar) son no-op funcional. AI
+  // (`ai_analysis`) vive en columna separada y se preserva por construcción.
+  // Si falta input_data (caso edge legacy), cae a enrichMetricsLegacy como
+  // patch mínimo. Ver audit/sesionB-bug-snapshot/diagnostico.md.
+  // Mediana comunal inyectada al recompute (sobreprecio-sync): permite que el
+  // motor siembre el hallazgo de sobreprecio sync en el primer render, en vez de
+  // depender del ai_analysis async.
+  // Fase B — fuente única: el snapshot PRESENTE gana siempre (foto fija del
+  // análisis). Si existe (mediana number O null), se usa tal cual — el null
+  // congelado al crear se respeta (el recompute lo trata como "sin sobreprecio",
+  // correcto) y NO se re-resuelve por render. FALLBACK a la resolución vieja
+  // (prefetch vivo) SOLO cuando no hay snapshot (análisis pre-Fase A) — exactamente
+  // el comportamiento previo (Fase 1). Mismo criterio "existe → usalo; ausente →
+  // fallback" en las 3 lecturas, para que traten el caso null idéntico (sin
+  // re-resolución no hay divergencia). El recompute recibe el mismo shape { mediana, n }.
+  const medianaSnapshot = (data as Record<string, unknown>).mediana_comuna_snapshot as
+    | MedianaComunaSnapshot
+    | null
+    | undefined;
+  // Referencia de cap rate de la comuna (21-sep-2026): misma regla, snapshot presente gana;
+  // las filas anteriores al campo la resuelven viva (y el prefetch de la mediana ya la trae).
+  const capRefSnapshot = (data as Record<string, unknown>).capref_comuna_snapshot as
+    | CapRefComunaSnapshot
+    | null
+    | undefined;
+  const medianaComuna = inputDataRaw
+    ? (medianaSnapshot != null
+        // Los cuartiles viajan con la mediana (21-sep-2026): `undefined` en snapshots
+        // anteriores al campo, y ahí el motor no emite posición.
+        ? {
+            mediana: medianaSnapshot.mediana,
+            n: medianaSnapshot.n ?? 0,
+            p25: medianaSnapshot.p25,
+            p75: medianaSnapshot.p75,
+            capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
+          }
+        : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
+    : undefined;
+  // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute
+  // usa la fecha de creación de la fila, no la viva, para que meses-hasta-entrega,
+  // plusvalía proyectada, penalty del score y prosa NO deriven entre recargas.
+  // Ver of-datedrift-design.md.
+  const asOfFrozen = new Date(analisis.created_at);
+  // Fecha de la mediana comunal para la celda de zona (goal "LTR hereda"): la del snapshot
+  // (congelada al crear) o ahora, cuando se resolvió viva (filas pre-Fase A).
+  const medianaResolvedAt = medianaSnapshot?.resolvedAt ?? new Date().toISOString();
+  const results: FullAnalysisResult | null = inputDataRaw
+    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen)
+    : (rawResults && rawResults.metrics
+      ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
+      : rawResults);
+
+  // Access level: "guest" | "free" | "premium" | "subscriber"
+
+  const isAdmin = isAdminUser(user?.email);
+  const isLoggedIn = !!user;
+  const isDemo = esDemo(analisis.id);
+  const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;
+  const isSharedView = isLoggedIn && !isOwner && !isAdmin;
+  const isSharedLink = !isLoggedIn && !!analisis.user_id;
+  // Anónimo-DUEÑO (cap anónimo F2-2): sin sesión, fila sin dueño, y el token de
+  // la cookie httpOnly de ESTE navegador calza con el hash de la fila. Ve SU
+  // análisis completo; cualquier otro anónimo sobre la misma URL sigue siendo
+  // guest capado (el hash no calza — la cookie es el secreto).
+  const anonToken = !isLoggedIn ? tokenAnonDelRequest() : null;
+  const anonHash = (data as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
+  const isAnonOwner =
+    !isLoggedIn && analisis.user_id === null && !!anonToken && !!anonHash &&
+    sha256Hex(anonToken) === anonHash;
+  const isPremium = isAdmin || isDemo || !!analisis.is_premium;
+
+  // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
+  // bienvenida — columna charge_mode escrita al crear (opción B; históricos
+  // NULL → false). Solo dueño: vistas compartidas no reciben el CTA.
+  const showCtaWelcome = isOwner && analisis.charge_mode === "welcome";
+
+  // Owner first name for personalization
+  const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+  const ownerFirstName = isOwner ? (ownerFullName.split(' ')[0] || '') : '';
+
+  // Check user-level subscription/credits status
+  const userTier = user ? await getUserAccessLevel(user.id) : "guest";
+
+  // Fetch user credits + welcome flag para "use credit" CTA y WalletStatusCTA.
+  let userCredits = 0;
+  let welcomeAvailable = true;
+  if (user) {
+    // welcome_credit_used sale del contador; el SALDO real sale del ledger
+    // (credit_grants + legacy) vía getAvailableCredits. Leer user_credits.credits
+    // crudo era el bug: =0 en el modelo ledger → el wallet decía "sin créditos" a
+    // quien sí tenía saldo comprado. RLS credit_grants_select_own permite leerlo
+    // con el server client. Mismo fix que /cuenta y /perfil.
+    const { data: creditsRow } = await supabase
+      .from("user_credits")
+      .select("welcome_credit_used")
+      .eq("user_id", user.id)
+      .single();
+    welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    userCredits = await getAvailableCredits(user.id, supabase);
+  }
+
+  // Pro CTA banner: total de analisis del user para threshold check.
+  let analysesCount = 0;
+  if (user) {
+    const { count } = await supabase
+      .from("analisis")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    analysesCount = count ?? 0;
+  }
+
+  let accessLevel: "guest" | "free" | "premium" | "subscriber";
+  if (isAdmin) {
+    accessLevel = "subscriber";
+  } else if (isDemo) {
+    accessLevel = "premium";
+  } else if (isAnonOwner) {
+    // Anónimo-dueño: informe completo (decisión F2 — el cap entrega el
+    // análisis entero; el registro es para GUARDARLO, no para verlo).
+    accessLevel = "premium";
+  } else if (!isLoggedIn) {
+    accessLevel = "guest";
+  } else if (userTier === "subscriber") {
+    accessLevel = "subscriber";
+  } else if (isSharedView) {
+    accessLevel = analisis.is_premium ? "premium" : "free";
+  } else {
+    accessLevel = isPremium ? "premium" : "free";
+  }
+
+  // Fase D — hijo BLOQUEADO de un par AMBAS: el resumen dejó de ser página; vive
+  // como MODAL sobre el comparativo. El acceso directo (URL / deep-link) a un
+  // hijo bloqueado redirige al comparativo con el modal abierto (?ver=ltr). El
+  // hijo ÍNTEGRO (unlocked o subscriber/admin) y el standalone siguen como
+  // página completa (son el informe real). is_premium NO gatea acá (está true por
+  // el companion-flip). Reglas de bloqueo:
+  //  - subscriber (FrancoMensual/admin) → íntegro (no redirige).
+  //  - owner → bloqueado hasta ambas_unlocked_at.
+  //  - tercero (no-owner) → bloqueado siempre (el unlock es del owner, no público).
+  const isUnlocked = !!(data as Record<string, unknown>).ambas_unlocked_at;
+  const childBlocked =
+    isSubordinated &&
+    accessLevel !== "subscriber" &&
+    (isOwner ? !isUnlocked : true);
+  if (childBlocked && subordinatedHref) {
+    redirect(`${subordinatedHref}&ver=ltr`);
+  }
+
+  const UF_CLP = ufFrozen;
+
+  // Basic metrics for free section (works with or without full results)
+  const precioCLP = analisis.precio * UF_CLP;
+  const yieldBruto = precioCLP > 0 ? ((analisis.arriendo * 12) / precioCLP * 100) : 0;
+  // Hero "$/M²": lee la cifra canónica del motor (sin estacionamiento, fuente
+  // única compartida con la narración IA y las anomalías). Fallback al cómputo
+  // local solo para filas legacy sin results.metrics.precioVsComuna.
+  const precioM2 = results?.metrics?.precioVsComuna?.sujetoUfM2
+    ?? (analisis.superficie > 0 ? analisis.precio / analisis.superficie : 0);
+  const flujoEstimado = results?.metrics?.flujoNetoMensual ?? (analisis.arriendo - Math.round((analisis.precio * 0.8 * UF_CLP * 0.0472 / 12) / (1 - Math.pow(1 + 0.0472 / 12, -300))) - analisis.gastos - Math.round(analisis.contribuciones / 3));
+
+  const resumenEjecutivo = results?.resumenEjecutivo ??
+    `Inversión con score ${analisis.score}/100. Rentabilidad bruta ${yieldBruto.toFixed(1)}%.`;
+
+  // La prosa IA salió del informe (25-sep-2026) y ya no se genera. La guardada se lee solo por un
+  // dato del motor que viaja dentro de ella en filas viejas (`hallazgoSobreprecio`); ya no se
+  // juzga su versión porque ningún texto suyo se dibuja.
+  const ltrAiPersisted = (data as Record<string, unknown>).ai_analysis;
+  // Una fecha por informe (T3): la banda de invitado y la portada muestran la fecha de la
+  // prosa vigente; created_at no se muestra.
+  const fechaProsaLtr = fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined;
+
+  return (
+    /* EL LIENZO DE LA PÁGINA (contrato §2). Con el rediseño (10-sep-2026), el fondo del
+       análisis LTR deja de ser el gris de la app y pasa a `--page`: blanco en claro,
+       #0C0C0E en oscuro. §2 pide «página blanca, dos cajas y nada más», y el gris alrededor
+       convertía el informe en un documento apoyado sobre un escritorio — la misma
+       metáfora que el marco, un nivel más afuera.
+
+       SOLO ESTA RUTA. STR tiene su propio wrapper en
+       `analisis/renta-corta/[id]/results-client.tsx` y no se toca; el resto de la app
+       conserva su fondo.
+
+       NO LLEVA `doc-dictamen`, Y ES EL PUNTO. Esa clase trae los doce tokens del informe, y
+       uno de ellos —`--card`— también es de shadcn: puesta acá le cambiaba el valor a
+       TODO el chrome de la página (header, nav, drawers, botones), de `40 20% 98%` en
+       HSL a un hex, o sea `hsl(#F4F4F6)`, que es inválido y lo consume `bg-card`.
+       Medido en el DOM antes de corregirlo. `doc-lienzo` declara `--page` y nada más. */
+    <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
+      {demo ? null : accessLevel === "guest" || isAnonOwner ? (
+        <PublicShareHeader
+          date={formatFechaCorta(fechaProsaLtr ?? analisis.created_at)}
+          anonOwner={isAnonOwner}
+          registerNext={`/analisis/${analisis.id}`}
+        />
+      ) : (
+        <AnalysisNav
+          userId={user?.id ?? null}
+          analysisId={analisis.id}
+          score={results?.score ?? analisis.score}
+          nombre={analisis.nombre}
+          comuna={analisis.comuna}
+          isSharedView={isSharedView}
+          subordinated={isSubordinated}
+        />
+      )}
+
+      <div className="container mx-auto max-w-6xl px-4 py-8">
+        {isSubordinated && (
+          <SubordinatedBanner href={subordinatedHref!} modalidad="LTR" />
+        )}
+        <PremiumResults
+          results={results}
+          accessLevel={accessLevel}
+          analysisId={analisis.id}
+          inputData={analisis.input_data as AnalisisInput | undefined}
+          comuna={analisis.comuna}
+          score={results?.score ?? analisis.score}
+          freeYieldBruto={results?.metrics?.rentabilidadBruta ?? yieldBruto}
+          freeFlujo={flujoEstimado}
+          freePrecioM2={precioM2}
+          resumenEjecutivo={resumenEjecutivo}
+          ufValue={ufFrozen}
+          aiAnalysisInitial={ltrAiPersisted ? (ltrAiPersisted as Record<string, unknown>) : undefined}
+          nombre={analisis.nombre}
+          ciudad={analisis.ciudad}
+          createdAt={analisis.created_at}
+          fechaProsa={fechaProsaLtr}
+          superficie={analisis.superficie}
+          precioUF={analisis.precio}
+          creatorName={(data as Record<string, unknown>).creator_name as string | undefined}
+          isSharedView={isSharedView}
+          isSharedLink={isSharedLink}
+          userCredits={userCredits}
+          welcomeAvailable={welcomeAvailable}
+          ownerFirstName={ownerFirstName}
+          analysesCount={analysesCount}
+          isLoggedIn={isLoggedIn}
+          showCtaWelcome={showCtaWelcome}
+          isAnonOwner={isAnonOwner}
+          medianaResolvedAt={medianaResolvedAt}
+        />
+
+        {/* Fallback for old analyses without full results */}
+        {!results && (
+          <div className="mb-8 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
+            <h3 className="mb-2 text-sm font-serif font-bold text-[var(--franco-text)]">Resumen</h3>
+            <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+              {analisis.resumen}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

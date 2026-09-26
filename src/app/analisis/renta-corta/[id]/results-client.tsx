@@ -99,6 +99,8 @@ interface STRResultsProps {
   simulacionStr?: SimulacionStr | null;
   /** LA ZONA (T2): tarifa, ocupación y comparables con procedencia, calculada en el server. */
   zonaStr?: ZonaStr | null;
+  /** Demo público (`/demo/renta-corta`): sin la barra del informe; la ruta del demo pone la suya. */
+  demo?: boolean;
 }
 
 export function STRResultsClient({
@@ -119,6 +121,7 @@ export function STRResultsClient({
   isAnonOwner = false,
   simulacionStr = null,
   zonaStr = null,
+  demo = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -257,7 +260,7 @@ export function STRResultsClient({
        NO lleva `doc-dictamen` (esa trae `--card`, que también es token de shadcn y rompe el chrome). */
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
-      {accessLevel === "guest" || isAnonOwner ? (
+      {demo ? null : accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader
           date={formatFechaCorta(fechaProsa ?? createdAt)}
           anonOwner={isAnonOwner}

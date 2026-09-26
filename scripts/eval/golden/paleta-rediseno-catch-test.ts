@@ -48,7 +48,8 @@ const CSS = (() => {
 const leerArchivo = (p: string) => {
   try { return readFileSync(join(RAIZ, p), "utf8"); } catch { return ""; }
 };
-const RUTA_LTR = leerArchivo("src/app/analisis/[id]/page.tsx");
+// (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.
+const RUTA_LTR = leerArchivo("src/app/analisis/[id]/informe-ltr.tsx");
 const HALLAZGOS = leerArchivo("src/components/analysis/PrincipalesHallazgos.tsx");
 const RUTA_STR = leerArchivo("src/app/analisis/renta-corta/[id]/results-client.tsx");
 

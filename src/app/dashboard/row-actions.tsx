@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, FileText, ArrowRight, MoreHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { DEMO_ID } from "./dashboard-helpers";
+import { esDemo as esFilaDemo } from "@/lib/demo";
 
 interface Props {
   id: string;
@@ -33,7 +33,7 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
   const [abierto, setAbierto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const esDemo = id === DEMO_ID;
+  const esDemo = esFilaDemo(id);
 
   useEffect(() => {
     if (!abierto) return;

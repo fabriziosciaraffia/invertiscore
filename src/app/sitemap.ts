@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://refranco.ai", lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
     { url: "https://refranco.ai/pricing", lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: "https://refranco.ai/demo", lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: "https://refranco.ai/demo/renta-corta", lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: "https://refranco.ai/faq", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: "https://refranco.ai/comunas", lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: "https://refranco.ai/cobertura", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },

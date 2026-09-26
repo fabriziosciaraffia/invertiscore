@@ -9,7 +9,6 @@
  */
 
 import Link from "next/link";
-import { DEMO_ID } from "./dashboard-helpers";
 import { listaVeredictos } from "@/lib/veredicto-etiqueta";
 
 const BLOQUES = [
@@ -56,7 +55,8 @@ export function EmptyState() {
       </Link>
 
       <Link
-        href={`/analisis/${DEMO_ID}`}
+        // El demo público, en su pestaña de renta larga (`src/lib/demo.ts`).
+        href="/demo"
         className="mt-3.5 block font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
       >
         O mira un análisis de ejemplo primero →

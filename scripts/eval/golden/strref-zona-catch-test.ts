@@ -153,7 +153,8 @@ export function runStrRefZonaTier(): { hard: number } {
   const pipe = leer("src/lib/api-helpers/analisis-pipeline.ts");
   if (!/strref_zona_snapshot: medianaComuna\?\.strRefZona \?\? null,/.test(pipe) || !/export async function prefetchMercadoStr\(/.test(pipe) || !/if \(snapshot\) return snapshot;/.test(pipe)) F("6 · el pipeline no persiste el snapshot STR ni prefiere el persistido");
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-prosa-persist.ts` salió de la lista (se borró).
-  for (const p of ["src/app/analisis/renta-corta/[id]/page.tsx", "src/app/analisis/renta-corta/[id]/documento/page.tsx"]) {
+  // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.
+  for (const p of ["src/app/analisis/renta-corta/[id]/informe-str.tsx", "src/app/analisis/renta-corta/[id]/documento/page.tsx"]) {
     if (!/strref_zona_snapshot as StrRefZonaSnapshot/.test(leer(p)) || !/prefetchMercadoStr\(/.test(leer(p))) F(`6 · ${p} no pasa el snapshot persistido a prefetchMercadoStr`);
   }
   if (!/ADD COLUMN IF NOT EXISTS strref_zona_snapshot JSONB/.test(leer("supabase/migrations/20260921b_strref_zona_snapshot.sql"))) F("6 · falta la migración de la columna");

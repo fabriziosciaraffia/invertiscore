@@ -97,8 +97,11 @@ export function runSobreprecioVentaTier(): { hard: number } {
   if (!/medianaComunaUfM2: medianaComuna\?\.mediana \?\? null,/.test(pipe) || !/medianaN: medianaComuna\?\.n \?\? 0,/.test(pipe)) F("4 · el pipeline no pasa la mediana al motor STR");
   const rec = leer("src/lib/analysis/recompute-short-term-for-legacy.ts");
   if (!/medianaComunaUfM2: mediana\?\.mediana \?\? null,/.test(rec) || !/buildStrRecomputeCtx\(inputData, persistedResults, ufClp, mediana\)/.test(rec) || !/veredictoStrRecomputado\(inputData, persistedResults, ufClp, asOf, mediana\)/.test(rec)) F("4 · el recompute no pasa la mediana al ctx o a veredictoStrRecomputado");
-  const pg = leer("src/app/analisis/renta-corta/[id]/page.tsx");
-  if (!/mediana_comuna_snapshot"\)/.test(pg) || !/new Date\(data\.created_at \?\? new Date\(\)\.toISOString\(\)\),\s*\(\(\) => \{ const snap = data\.mediana_comuna_snapshot/.test(pg)) F("4 · la metadata STR no pasa la mediana del snapshot");
+  // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje
+  // igual: la metadata sigue en la ruta y la simulación vive en el informe.
+  const meta = leer("src/app/analisis/renta-corta/[id]/page.tsx");
+  const pg = leer("src/app/analisis/renta-corta/[id]/informe-str.tsx");
+  if (!/mediana_comuna_snapshot"\)/.test(meta) || !/new Date\(data\.created_at \?\? new Date\(\)\.toISOString\(\)\),\s*\(\(\) => \{ const snap = data\.mediana_comuna_snapshot/.test(meta)) F("4 · la metadata STR no pasa la mediana del snapshot");
   if (!/simularStrDesdePersistido\(raw, results as unknown as \{ airbnbRaw\?: unknown \}, uf, new Date\(data\.created_at\), medianaStr\)/.test(pg)) F("4 · la simulación de la página no recibe la mediana");
   const sim = leer("src/lib/analysis/simular-str.ts");
   if (!/buildStrRecomputeCtx\(inputData, persistedResults, ufClp, mediana\)/.test(sim)) F("4 · simularStrDesdePersistido no pasa la mediana al ctx");
