@@ -57,6 +57,7 @@ import { runCifraComparablesTier } from "./cifra-comparables-catch-test";
 import { runLecturaPaginadaTier } from "./lectura-paginada-catch-test";
 import { runPieCeroTier } from "./pie-cero-catch-test";
 import { runMatrizExtremosTier } from "./matriz-extremos-catch-test";
+import { runDemoPublicoTier } from "./demo-publico-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -306,6 +307,9 @@ function printSeed(r: SeedReport) {
   // Tier MATRIZ-EXTREMOS (25-sep-2026, 0 tokens, sin base): una regla del pie en las cinco grillas,
   // el plazo declarado como columna, sin matriz al contado y «Aun sin pie». 13 mutaciones en rojo.
   totalHard += runMatrizExtremosTier().hard;
+  // Tier DEMO-PUBLICO (25-sep-2026, 0 tokens, sin base): /demo son dos filas reales del motor, sin
+  // resultados a mano, y las dos están protegidas. 13 mutaciones en rojo.
+  totalHard += runDemoPublicoTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
