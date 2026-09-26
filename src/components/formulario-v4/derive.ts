@@ -86,6 +86,41 @@ export function capacidadHuespedesDe(dormitorios: number): number {
   return Math.max(2, dormitorios * 2);
 }
 
+export interface CostosOperativos {
+  costoElectricidad: number;
+  costoAgua: number;
+  costoWifi: number;
+  costoInsumos: number;
+}
+
+/**
+ * El total de «Costos operativos» que se editó en el resumen, o undefined si no se tocó.
+ * `costoInsumos` es el campo donde el resumen lo guardaba antes del 26-sep-2026: un borrador de
+ * ese entonces lo trae ahí, y lo que trae es el TOTAL, no los insumos.
+ */
+export function costosOperativosEditados(a: WizardV4Answers): string | undefined {
+  return a.costosOperativos ?? a.costoInsumos;
+}
+
+/**
+ * Reparte un total de costos operativos entre luz, agua, wifi e insumos en la proporción de los
+ * defaults de la tipología. La suma es EXACTAMENTE el total (el resto del redondeo va a insumos).
+ *
+ * El resumen muestra y edita un solo número, el total. Antes se guardaba en `costoInsumos` y el
+ * submit le sumaba encima los defaults de luz, agua y wifi: editado, se contaba dos veces.
+ */
+export function repartirCostosOperativos(total: number, def: CostosOperativos): CostosOperativos {
+  const t = Math.max(0, Math.round(total));
+  const base = def.costoElectricidad + def.costoAgua + def.costoWifi + def.costoInsumos;
+  if (base <= 0) return { costoElectricidad: 0, costoAgua: 0, costoWifi: 0, costoInsumos: t };
+  // Piso y no redondeo: así las tres partes nunca suman más que el total y el resto es ≥ 0.
+  const parte = (v: number) => Math.floor((v * t) / base);
+  const costoElectricidad = parte(def.costoElectricidad);
+  const costoAgua = parte(def.costoAgua);
+  const costoWifi = parte(def.costoWifi);
+  return { costoElectricidad, costoAgua, costoWifi, costoInsumos: t - costoElectricidad - costoAgua - costoWifi };
+}
+
 /** Precio en UF (0 si vacío/ inválido). */
 export function precioUF(a: WizardV4Answers): number {
   return leerNum(a.precio, DEC.precioUF);

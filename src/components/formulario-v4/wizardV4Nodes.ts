@@ -182,9 +182,11 @@ export interface WizardV4Answers {
   // STR:
   modoGestion?: "auto" | "administrador";
   comisionStrPct?: string; // % operador STR
-  costoElectricidad?: string;
-  costoAgua?: string;
-  costoWifi?: string;
+  /** «Costos operativos» del resumen: el TOTAL de luz + agua + wifi + insumos. El submit lo
+   *  reparte entre los cuatro (`repartirCostosOperativos`). */
+  costosOperativos?: string;
+  /** @deprecated Hasta el 26-sep-2026 el resumen guardaba acá el TOTAL de costos operativos y
+   *  el submit le sumaba luz, agua y wifi encima. Solo se lee para un borrador de antes. */
   costoInsumos?: string;
   mantencionStr?: string;
   estaAmoblado?: boolean;

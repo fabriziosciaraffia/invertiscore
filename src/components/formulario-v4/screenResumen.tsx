@@ -60,7 +60,7 @@ import {
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { CAJA_COBERTURA } from "@/lib/comuna-bounds";
-import { dormLabel, dormitoriosNum, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
+import { costosOperativosEditados, dormLabel, dormitoriosNum, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -812,6 +812,11 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
   const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
+  // «Costos operativos» es UN número, el total de los cuatro, y se guarda como total
+  // (`costosOperativos`); el submit lo reparte. El id "costoInsumos" del commitEdit se
+  // conserva porque es la propiedad `field` de wizard4_edit_from_summary.
+  const totalOpsDef = costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos;
+  const totalOpsEditado = costosOperativosEditados(a);
 
   // Procedencia del arriendo. Son TRES situaciones, no dos: Franco lo estimó, el
   // usuario cambió esa estimación, o nunca hubo estimación que cambiar. La tercera
@@ -1327,7 +1332,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           )}
           {esStr && (
             <Nivel3 title="Operación renta corta" open={l3 === "gest"} onToggle={() => openL3("gest")}>
-              <NumField label="Costos operativos" raw={a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)} display={`${fmtCLP(leerNum(a.costoInsumos, DEC.costos) || costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: v })} />
+              <NumField label="Costos operativos" raw={totalOpsEditado ?? String(totalOpsDef)} display={`${fmtCLP(leerNum(totalOpsEditado, DEC.costos) || totalOpsDef)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={totalOpsEditado ? "corregido por ti" : undefined} fuente={`luz + agua + wifi + insumos, típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costosOperativos: v })} />
               <NumField label="Mantención" raw={a.mantencionStr ?? String(costos.mantencion)} display={`${fmtCLP(leerNum(a.mantencionStr, DEC.costos) || costos.mantencion)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
               <NumField label="Amoblamiento (capex)" raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={fmtCLP(leerNum(a.costoAmoblamiento, DEC.costos) || costos.costoAmoblamiento)} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$")} tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
             </Nivel3>

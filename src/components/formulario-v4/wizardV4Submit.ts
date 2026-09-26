@@ -27,8 +27,10 @@ import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
 import {
   capacidadHuespedesDe,
+  costosOperativosEditados,
   dormitoriosNum,
   leerNum,
+  repartirCostosOperativos,
   type FuenteArriendo,
 } from "./derive";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
@@ -210,6 +212,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
   const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
+  const totalOps = costosOperativosEditados(a);
   const corregido = a.adrModo === "corregir";
   // Entrega — MISMA derivación que buildLtrPayload (líneas ~74 y ~104), no una
   // paralela: el usuario contesta "¿cuándo lo entregan?" UNA vez, en el Acto 1,
@@ -260,10 +263,14 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // Overrides solo cuando el usuario corrigió; en estimación el motor deriva de AirROI.
     adrOverride: corregido ? leerNum(a.adrTarifa, DEC.tarifa) || null : null,
     occOverride: corregido ? leerNum(a.adrOcupacion, DEC.ocupacion) / 100 || null : null,
-    costoElectricidad: a.costoElectricidad ? leerNum(a.costoElectricidad, DEC.costos) : costos.costoElectricidad,
-    costoAgua: a.costoAgua ? leerNum(a.costoAgua, DEC.costos) : costos.costoAgua,
-    costoWifi: a.costoWifi ? leerNum(a.costoWifi, DEC.costos) : costos.costoWifi,
-    costoInsumos: a.costoInsumos ? leerNum(a.costoInsumos, DEC.costos) : costos.costoInsumos,
+    // El resumen edita UN número, el total; se reparte entre los cuatro para que la suma que
+    // llega al motor sea la que el usuario escribió (antes se contaba dos veces).
+    ...(totalOps ? repartirCostosOperativos(leerNum(totalOps, DEC.costos), costos) : {
+      costoElectricidad: costos.costoElectricidad,
+      costoAgua: costos.costoAgua,
+      costoWifi: costos.costoWifi,
+      costoInsumos: costos.costoInsumos,
+    }),
     gastosComunes: ggccCLP(a, ctx, supUtil),
     mantencion: a.mantencionStr ? leerNum(a.mantencionStr, DEC.costos) : costos.mantencion,
     contribuciones: contribCLP(a, precioCompraCLP),
