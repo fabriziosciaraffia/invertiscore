@@ -43,6 +43,8 @@ import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { slugify } from "@/lib/utils";
 import { MapaThumbnail } from "@/components/formulario-v3/MapaThumbnail";
+import { precisionDeComponentes, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { AvisoSinNumero, MapaPinAjustable } from "./MapaPinAjustable";
 import type { ScreenProps } from "./screensActo1";
 import { FieldLabel, PrimaryBtn } from "./ui";
 import { trackWizard } from "./track";
@@ -124,8 +126,10 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   const [query, setQuery] = useState("");
   /** Salida de emergencia del campo (ver `usarDireccionEscrita`). */
   const [fallback, setFallback] = useState<null | "buscando" | "fallo">(null);
+  /** Se eligió de la lista algo que no es una calle (una comuna, un barrio): no se confirma. */
+  const [noEsCalle, setNoEsCalle] = useState(false);
 
-  const { direccion, direccionConfirmada, comuna, ciudad, lat, lng } = answers;
+  const { direccion, direccionConfirmada, comuna, ciudad, lat, lng, ubicacionPrecision } = answers;
   const confirmada = !!direccionConfirmada && direccion === direccionConfirmada;
   const fueraDeZona = !!comuna && !isComunaDisponible(comuna);
   const puedeSeguir = confirmada && !!comuna && !fueraDeZona;
@@ -246,6 +250,10 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
           const cubierta = isComunaDisponible(comunaFinal);
           const regionRaw =
             comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name || "";
+          // NADA SE CONFIRMA SIN UNA CALLE REAL (26-sep-2026): sin `route` no es una dirección.
+          // Sin número se confirma, pero la pantalla lo dice y deja mover el pin.
+          const precision: PrecisionUbicacion | null = precisionDeComponentes(comps);
+          setNoEsCalle(!precision);
           sugerenciaSeleccionada.current = true;
           regionRef.current = regionRaw || null;
           if (!cubierta) {
@@ -267,9 +275,9 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
             direccion: addr,
             comuna: comunaFinal,
             ciudad: match?.ciudad || "Santiago",
-            ...(cubierta
-              ? { direccionConfirmada: addr, lat: plat, lng: plng }
-              : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
+            ...(cubierta && precision
+              ? { direccionConfirmada: addr, lat: plat, lng: plng, ubicacionPrecision: precision }
+              : { direccionConfirmada: undefined, lat: undefined, lng: undefined, ubicacionPrecision: undefined }),
           });
         });
         acRef.current = ac;
@@ -317,8 +325,10 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
       direccionConfirmada: undefined,
       lat: undefined,
       lng: undefined,
+      ubicacionPrecision: undefined,
     });
     setFallback(null);
+    setNoEsCalle(false);
   }
 
   /** Vuelve al estado 1 sin arrastrar la dirección de la comuna anterior. */
@@ -329,8 +339,10 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
       direccionConfirmada: undefined,
       lat: undefined,
       lng: undefined,
+      ubicacionPrecision: undefined,
     });
     setFallback(null);
+    setNoEsCalle(false);
   }
 
   // ── SALIDA SIN BLOQUEO ────────────────────────────────────────────────────
@@ -356,8 +368,9 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
     trackWizard(posthog, "wizard4_entrada_fallback_geocode", { comuna });
     try {
       const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&comuna=${encodeURIComponent(comuna)}`);
-      const j = (await r.json()) as { lat: number | null; lng: number | null; formattedAddress?: string };
-      if (!r.ok || j.lat == null || j.lng == null) {
+      const j = (await r.json()) as { lat: number | null; lng: number | null; formattedAddress?: string; precision?: PrecisionUbicacion };
+      // Sin calle real el endpoint devuelve lat null («asdf» ya no cae en el centroide).
+      if (!r.ok || j.lat == null || j.lng == null || !j.precision) {
         setFallback("fallo");
         return;
       }
@@ -375,8 +388,8 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
         comuna: d.comuna,
         ciudad: d.ciudad,
         ...(d.cubierta
-          ? { direccionConfirmada: fmt, lat: j.lat, lng: j.lng }
-          : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
+          ? { direccionConfirmada: fmt, lat: j.lat, lng: j.lng, ubicacionPrecision: j.precision }
+          : { direccionConfirmada: undefined, lat: undefined, lng: undefined, ubicacionPrecision: undefined }),
       });
     } catch {
       setFallback("fallo");
@@ -510,7 +523,7 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
               autoComplete="off"
               placeholder={`Ej: Av. Providencia 1234, ${comuna}`}
               defaultValue={direccion}
-              onChange={(e) => patchAnswers({ direccion: e.target.value })}
+              onChange={(e) => { setNoEsCalle(false); patchAnswers({ direccion: e.target.value }); }}
               className="w-full h-11 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[15px] font-body text-[var(--franco-text)] focus:border-signal-red focus:outline-none focus:ring-1 focus:ring-signal-red/20 transition-colors"
             />
             {/* Prioridad del mensaje: la cobertura manda (BUG-1). */}
@@ -525,7 +538,9 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
             ) : direccion && !confirmada ? (
               <div className="mt-1.5">
                 <p className="font-body text-[11px] text-signal-red m-0">
-                  No encuentro esa dirección en {comuna}.
+                  {noEsCalle
+                    ? "Esa opción no es una calle. Escribe la calle del depto y elígela de la lista."
+                    : `No encuentro esa dirección en ${comuna}.`}
                 </p>
                 {/* ── LA CONDICIÓN PARA PODER FILTRAR DURO ──
                     Ahora las sugerencias están acotadas a la comuna, así que la
@@ -578,7 +593,24 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
             )}
           </div>
 
-          {lat && lng && !fueraDeZona && (
+          {lat && lng && !fueraDeZona && (ubicacionPrecision === "calle" || ubicacionPrecision === "pin") && (
+            <div className="flex flex-col gap-2">
+              <AvisoSinNumero ajustada={ubicacionPrecision === "pin"} />
+              <MapaPinAjustable
+                lat={lat}
+                lng={lng}
+                comuna={comuna!}
+                onMover={(la, ln) => patchAnswers({ lat: la, lng: ln, ubicacionPrecision: "pin" })}
+              />
+              {data.comparablesCount > 0 && (
+                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] m-0">
+                  {data.comparablesCount} propiedades en el sector
+                </p>
+              )}
+            </div>
+          )}
+
+          {lat && lng && !fueraDeZona && ubicacionPrecision !== "calle" && ubicacionPrecision !== "pin" && (
             <div>
               <FieldLabel>Ubicación en el mapa</FieldLabel>
               <MapaThumbnail

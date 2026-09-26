@@ -33,6 +33,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Decimales } from "@/lib/numero-cl";
+import type { UbicacionPrecision } from "@/lib/geocoding-precision";
 
 export type NodeId =
   | "dir"
@@ -146,6 +147,8 @@ export interface WizardV4Answers {
   direccionConfirmada?: string;
   lat?: number | null;
   lng?: number | null;
+  /** "numero" · "calle" (sin número: el punto es aproximado) · "pin" (el usuario lo movió). */
+  ubicacionPrecision?: UbicacionPrecision;
   comuna?: string;
   ciudad?: string;
   superficieUtil?: string; // m², decimal-locale

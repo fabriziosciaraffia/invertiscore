@@ -1,40 +1,59 @@
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+import {
+  precisionDeResultadoGoogle,
+  precisionDeResultadoNominatim,
+  type PrecisionUbicacion,
+} from "@/lib/geocoding-precision";
 
-interface GeocodingResult {
+export interface GeocodingResult {
   lat: number;
   lng: number;
   formattedAddress: string;
+  /** "numero" = calle y número · "calle" = solo la calle (el punto es aproximado). */
+  precision: PrecisionUbicacion;
 }
 
+/**
+ * Geocodifica una dirección de una comuna. Devuelve null si lo que encontró NO es una calle:
+ * antes se tomaba `results[0]` sin mirar qué era, y un texto como «asdf» volvía como el
+ * centroide de la comuna (ver `geocoding-precision.ts`).
+ */
 export async function geocodeAddress(
   direccion: string,
   comuna: string
 ): Promise<GeocodingResult | null> {
-  // Try Google Maps first, fallback to Nominatim
-  if (GOOGLE_MAPS_API_KEY) {
-    return geocodeWithGoogle(direccion, comuna);
+  // La key se lee en cada llamada y no al cargar el módulo: así el tier WIZARD-DATOS puede
+  // ejercitar los dos caminos.
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (key) {
+    return geocodeWithGoogle(direccion, comuna, key);
   }
   return geocodeWithNominatim(direccion, comuna);
 }
 
 async function geocodeWithGoogle(
   direccion: string,
-  comuna: string
+  comuna: string,
+  key: string
 ): Promise<GeocodingResult | null> {
   const query = `${direccion}, ${comuna}, Santiago, Chile`;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}&region=cl`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${key}&region=cl`;
 
   try {
     const response = await fetch(url);
     const data = await response.json();
 
     if (data.status === "OK" && data.results.length > 0) {
-      const result = data.results[0];
-      return {
-        lat: result.geometry.location.lat,
-        lng: result.geometry.location.lng,
-        formattedAddress: result.formatted_address,
-      };
+      // El primer resultado que SEA una calle; uno de área (comuna, región) no cuenta.
+      for (const result of data.results) {
+        const precision = precisionDeResultadoGoogle(result);
+        if (!precision) continue;
+        return {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+          formattedAddress: result.formatted_address,
+          precision,
+        };
+      }
     }
     return null;
   } catch (error) {
@@ -48,7 +67,7 @@ async function geocodeWithNominatim(
   comuna: string
 ): Promise<GeocodingResult | null> {
   const query = `${direccion}, ${comuna}, Santiago, Chile`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=cl&limit=1`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5`;
 
   try {
     const response = await fetch(url, {
@@ -56,11 +75,14 @@ async function geocodeWithNominatim(
     });
     const data = await response.json();
 
-    if (data.length > 0) {
+    for (const r of Array.isArray(data) ? data : []) {
+      const precision = precisionDeResultadoNominatim(r);
+      if (!precision) continue;
       return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-        formattedAddress: data[0].display_name,
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+        formattedAddress: r.display_name,
+        precision,
       };
     }
     return null;
@@ -68,4 +90,3 @@ async function geocodeWithNominatim(
     return null;
   }
 }
-

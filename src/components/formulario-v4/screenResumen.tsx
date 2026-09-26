@@ -28,6 +28,8 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
+import { precisionDeComponentes, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { AvisoSinNumero, MapaPinAjustable } from "./MapaPinAjustable";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
@@ -568,13 +570,14 @@ function CascadeNote({ text }: { text: string }) {
  *  la nueva dirección al padre (que decide la invalidación + cascada). */
 function DireccionEdit({ initial, onConfirm, onCancel }: {
   initial: string;
-  onConfirm: (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number }) => void;
+  onConfirm: (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number; precision: PrecisionUbicacion }) => void;
   onCancel: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const acRef = useRef<any>(null);
   const [fuera, setFuera] = useState<string | null>(null);
+  const [noEsCalle, setNoEsCalle] = useState(false);
   const doneRef = useRef(false);
 
   useEffect(() => {
@@ -611,8 +614,12 @@ function DireccionEdit({ initial, onConfirm, onCancel }: {
         const comunaFinal = match?.comuna || comunaRaw;
         if (!isComunaDisponible(comunaFinal)) { setFuera(comunaFinal); return; }
         setFuera(null);
+        // Misma regla que la portada: sin calle real no se confirma.
+        const precision = precisionDeComponentes(comps);
+        if (!precision) { setNoEsCalle(true); return; }
+        setNoEsCalle(false);
         doneRef.current = true;
-        onConfirm({ direccion: addr, comuna: comunaFinal, ciudad: match?.ciudad || "Santiago", lat, lng });
+        onConfirm({ direccion: addr, comuna: comunaFinal, ciudad: match?.ciudad || "Santiago", lat, lng, precision });
       });
       acRef.current = ac;
       inputRef.current.focus();
@@ -634,6 +641,8 @@ function DireccionEdit({ initial, onConfirm, onCancel }: {
       />
       {fuera ? (
         <p className="font-body text-[11px] mt-1 text-signal-red leading-snug">{fuera} está fuera del Gran Santiago — Franco no tiene datos suficientes acá.</p>
+      ) : noEsCalle ? (
+        <p className="font-body text-[11px] mt-1 text-signal-red leading-snug">Esa opción no es una calle. Escribe la calle del depto y elígela de la lista.</p>
       ) : (
         <p className="font-body text-[10px] mt-1 text-[var(--franco-text-muted)]">Elige una opción de la lista. Cambiar de comuna re-estima la zona.</p>
       )}
@@ -917,10 +926,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // Confirmación de dirección nueva → invalidación + nota de cascada. Comuna
   // distinta descarta TODO (estimados y corregidos); misma comuna conserva
   // correcciones y solo refresca comparables.
-  const onDireccionConfirm = (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number }) => {
+  const onDireccionConfirm = (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number; precision: PrecisionUbicacion }) => {
     setEditingDir(false);
     const comunaCambio = d.comuna.toLowerCase() !== (a.comuna ?? "").toLowerCase();
-    const base = { direccion: d.direccion, direccionConfirmada: d.direccion, comuna: d.comuna, ciudad: d.ciudad, lat: d.lat, lng: d.lng };
+    const base = { direccion: d.direccion, direccionConfirmada: d.direccion, comuna: d.comuna, ciudad: d.ciudad, lat: d.lat, lng: d.lng, ubicacionPrecision: d.precision };
     if (comunaCambio) {
       const teniaCorrecciones = a.arrModo === "corregir" || a.adrModo === "corregir" || !!a.gastosComunes || !!a.contribuciones;
       w.patchAnswers({
@@ -1176,6 +1185,22 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               <DireccionEdit initial={a.direccion || ""} onConfirm={onDireccionConfirm} onCancel={() => setEditingDir(false)} />
             ) : (
               <EditableDisplay text={a.direccion || "—"} onStart={() => setEditingDir(true)} />
+            )}
+            {/* Sin número: la misma salida que en la portada — el aviso y el pin que se mueve. */}
+            {!editingDir && a.lat && a.lng && a.comuna && (a.ubicacionPrecision === "calle" || a.ubicacionPrecision === "pin") && (
+              <div className="mt-2 flex flex-col gap-2">
+                <AvisoSinNumero ajustada={a.ubicacionPrecision === "pin"} />
+                <MapaPinAjustable
+                  lat={a.lat}
+                  lng={a.lng}
+                  comuna={a.comuna}
+                  height={180}
+                  onMover={(la, ln) => {
+                    w.patchAnswers({ lat: la, lng: ln, ubicacionPrecision: "pin" });
+                    trackWizard(posthog, "wizard4_edit_from_summary", { field: "pin" });
+                  }}
+                />
+              </div>
             )}
           </FieldShell>
           <NumField

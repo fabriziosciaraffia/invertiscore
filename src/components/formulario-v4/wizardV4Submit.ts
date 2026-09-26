@@ -107,6 +107,8 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     comuna: a.comuna,
     ciudad: a.ciudad || "Santiago",
     direccion: a.direccionConfirmada || a.direccion || undefined,
+    // Cuán preciso es el punto: "calle" = sin número; "pin" = el usuario lo movió en el mapa.
+    ubicacionPrecision: a.ubicacionPrecision,
     tipo: "Departamento",
     dormitorios: dorm,
     esStudio: a.esStudio === true,
@@ -235,6 +237,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     antiguedad: antigNum,
     lat: a.lat,
     lng: a.lng,
+    ubicacionPrecision: a.ubicacionPrecision,
     dormitorios: dorm,
     banos: intSafe(a.banos, 1),
     superficieUtil: supUtil,
