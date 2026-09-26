@@ -256,7 +256,7 @@ export async function POST(request: Request) {
         // aunque los emails o la IA de abajo fallen.
         await persistSubmitTiming(dbClient, analysisId, timing);
         // Welcome email idempotente: garantiza que un usuario que llega directo
-        // a /analisis/nuevo-v2 (vía deep-link o el héroe del onboarding) sin
+        // al wizard (vía deep-link o el héroe del onboarding) sin
         // pasar por /dashboard igual lo reciba. ensureWelcomeEmail usa el claim
         // atómico de welcome_email_sent, así que es seguro dispararlo también
         // acá: envía a lo sumo una vez por usuario (no duplica con /dashboard).

@@ -50,8 +50,8 @@ export interface AirbnbData {
 }
 
 // 'mixto' se mantiene en el union para no romper análisis legacy persistidos
-// con ese valor. El wizard v3 (formulario-v3/BloqueOperacionSTR) ya no lo
-// expone — nuevos análisis solo serán 'residencial_puro' o 'dedicado'.
+// con ese valor. El wizard no lo expone (el v3 dejó de hacerlo antes de borrarse el 25-sep-2026)
+// — nuevos análisis solo serán 'residencial_puro' o 'dedicado'.
 //
 // Auditoría 2026-05-12 (Commit 3b cleanup): 3 análisis STR aún tienen
 // tipoEdificio='mixto' en DB (input_data + results.ejesAplicados). El formulario

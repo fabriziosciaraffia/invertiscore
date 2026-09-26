@@ -456,7 +456,7 @@ export interface ShortTermAnalysisBody {
   comuna?: string;
   ciudad?: string;
   tipoPropiedad?: string;
-  /** Antigüedad real en años (la manda nuevo-v2). Ausente en renta-corta legacy
+  /** Antigüedad real en años (la manda el wizard). Ausente en renta-corta legacy
    * → el pipeline deriva un fallback (usado=5) y marca confianza baja. */
   antiguedad?: number;
   dormitorios: number;
@@ -575,7 +575,7 @@ export async function buildShortTermAnalysisRow(
   const tMotor = Date.now();
   const airbnbData = buildAirbnbData(airbnbResult.data, ufValue);
 
-  // Antigüedad: real si el payload la trae (nuevo-v2); fallback derivado si no
+  // Antigüedad: real si el payload la trae (el wizard); fallback derivado si no
   // (renta-corta legacy). El flag de fallback viaja al motor para que el hallazgo
   // de puesta a punto declare confianza baja solo cuando la edad es estimada.
   const antiguedadEsFallback = body.antiguedad == null;

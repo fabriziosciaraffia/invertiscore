@@ -82,8 +82,8 @@ export async function POST(request: Request) {
     // solo agrega una consulta y hace el gate imposible de verificar sin una
     // sesión. No filtra nada: `NEXT_PUBLIC_AMBAS_ENABLED` ya viaja en el bundle.
     //
-    // Esto es lo que cierra la puerta al v3 de /analisis/nuevo-v2 —servido y sin
-    // enlaces, pero con su camino AMBAS completo— y a cualquier POST a mano.
+    // Esto cerraba la puerta al wizard v3 (/analisis/nuevo-v2, borrado el 25-sep-2026, hoy un
+    // redirect al v4) y sigue cerrándosela a cualquier POST a mano.
     if (intent === "both" && !AMBAS_ENABLED) {
       return NextResponse.json({ error: AMBAS_OFF_ERROR }, { status: 400 });
     }

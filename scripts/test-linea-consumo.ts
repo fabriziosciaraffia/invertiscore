@@ -13,7 +13,7 @@
 
 import assert from "node:assert/strict";
 import { lineaConsumo } from "../src/components/formulario-v4/screenResumen";
-import type { TierInfo } from "../src/components/formulario-v3/Paso3Modalidad";
+import type { TierInfo } from "../src/components/formulario-v4/tier";
 
 let pass = 0;
 let fail = 0;

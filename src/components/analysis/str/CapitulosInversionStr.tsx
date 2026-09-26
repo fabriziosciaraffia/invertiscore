@@ -290,7 +290,7 @@ export function CapitulosInversionStr({
     const reparto = m?.repartoIngreso ?? null;
     // ⛔ EL 20% SALÍA DE UN LITERAL EN EL RENDER (`Math.round(ingreso * 0.2)`), no del motor.
     // Hoy no mordía porque `state.adminPct` no lo escribe ningún componente del wizard
-    // —aparece solo en `nuevo-v2/page.tsx:492-493`— así que `comisionAdministrador` siempre
+    // —aparecía solo en el wizard v3, borrado el 25-sep-2026— así que `comisionAdministrador` siempre
     // cae al default. Pero era una SEGUNDA VERDAD sobre la misma cifra: el motor la calcula
     // con `input.comisionAdministrador` y acá se recalculaba con otra constante. El día que
     // el wizard pregunte la comisión (ver cola-wizard-comision-str-escondida), este capítulo

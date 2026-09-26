@@ -17,7 +17,7 @@
 import {
   antiguedadToNumber,
   mesesHastaEntrega,
-} from "@/components/formulario-v3/wizardV3State";
+} from "./helpers-wizard";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";

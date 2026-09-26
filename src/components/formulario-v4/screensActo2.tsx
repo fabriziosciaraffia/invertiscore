@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { trackWizard } from "./track";
-import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
+import { mesesHastaEntrega } from "./helpers-wizard";
 import type { ScreenProps } from "./screensActo1";
 import { escalaPie, escalaPrecio, escalaTasa } from "./avisoEscala";
 import type { PieUnidad } from "./wizardV4Nodes";

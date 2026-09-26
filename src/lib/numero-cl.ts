@@ -6,8 +6,8 @@
 //
 // INFRA SIN CONSUMIDORES TODAVÍA. Nace para reemplazar, en una fase posterior,
 // a las cuatro implementaciones que hoy conviven:
-//   · `parseNum`            (wizardV3State.ts) — el punto es SIEMPRE miles
-//   · `parseDecimalLocale`  (wizardV3State.ts) — el punto es SIEMPRE decimal
+//   · `parseNum`            (wizardV3State.ts, borrado el 25-sep-2026) — el punto es SIEMPRE miles
+//   · `parseDecimalLocale`  (wizardV3State.ts, borrado el 25-sep-2026) — el punto es SIEMPRE decimal
 //   · dos duplicados literales de `parseNum` en /analisis/nuevo y
 //     /analisis/renta-corta
 // Las dos primeras leen el MISMO carácter con significados opuestos, así que

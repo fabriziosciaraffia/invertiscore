@@ -50,6 +50,15 @@ const nextConfig = {
         destination: '/analisis/nuevo-v4',
         permanent: false,
       },
+      // 302: el wizard v3 (/analisis/nuevo-v2) se borró el 25-sep-2026. Estaba retirado desde el
+      // cutover ca3106f (27-jul-2026) y ya nadie lo enlazaba: en los 30 días previos, cero
+      // análisis creados con él (todos llevan la marca del v4). Quien tenga la URL vieja —o el
+      // ?resume=1 de su registro— cae en el wizard vivo.
+      {
+        source: '/analisis/nuevo-v2',
+        destination: '/analisis/nuevo-v4',
+        permanent: false,
+      },
       // 302: el wizard legacy de renta corta se borró junto con este redirect. Path
       // EXACTO a propósito: NO debe capturar /analisis/renta-corta/{id}, que es la
       // página de resultados STR y sigue viva —  la referencian el dashboard, la

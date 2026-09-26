@@ -5,7 +5,7 @@
 // el contrato de /api/me/tier y el helper canAnalyzeFromTier de v3.
 
 import { useEffect, useState } from "react";
-import { canAnalyzeFromTier, type TierInfo } from "@/components/formulario-v3/Paso3Modalidad";
+import { canAnalyzeFromTier, type TierInfo } from "./tier";
 
 export { canAnalyzeFromTier, type TierInfo };
 
