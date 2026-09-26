@@ -26,11 +26,12 @@
   --signal-red: #c8323c;
   --ink-400: #b4b2a9;
 
-  /* Las fuentes las carga next/font en layout.tsx como variables sobre <body>
-     (--font-heading = Source Serif 4, --font-body = IBM Plex Sans, --font-mono =
-     JetBrains Mono). Referenciarlas por nombre literal ("Source Serif 4") NO
-     matchea el family hasheado de next/font → caía al fallback (títulos en sans
-     en el PDF). Usar la variable garantiza la webfont real en el render Puppeteer. */
+  /* Las fuentes las define `src/app/fuentes.css` como variables sobre <body> (clase
+     `fuentes-franco`; hasta el 25-sep-2026 las cargaba next/font): --font-heading =
+     Source Serif 4, --font-body = IBM Plex Sans, --font-mono = JetBrains Mono.
+     Referenciarlas por nombre literal ("Source Serif 4") NO matchea la familia propia
+     del sitio → caía al fallback (títulos en sans en el PDF). Usar la variable
+     garantiza la webfont real en el render Puppeteer. */
   --serif: var(--font-heading), Georgia, serif;
   --sans: var(--font-body), system-ui, sans-serif;
   --mono: var(--font-mono), ui-monospace, monospace;

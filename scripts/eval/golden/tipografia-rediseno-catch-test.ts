@@ -45,6 +45,7 @@ const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8"); } catch { return ""; } };
 
 const LAYOUT = leer("src/app/layout.tsx");
+const FUENTES = leer("src/app/fuentes.css");
 const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 
 // ── 1 · EL INVARIANTE DEL INTERRUPTOR SE RETIRA CON ACTA (11-sep-2026) ─────
@@ -65,26 +66,30 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 // las dos constantes ya no existen— y su chequeo de Inter con preload vive acá (bloque 4).
 
 // ── 2 · las fuentes y sus pesos ────────────────────────────────────────────
+// ⚠ ACTA (25-sep-2026): las fuentes dejaron `next/font/google` y se sirven desde el sitio
+// (`src/app/fuentes.css` + `public/fonts/`), porque dos builds fallaron cuando Google no respondió.
+// Los chequeos son los mismos, leídos donde ahora viven las caras: los pesos del serif, Inter
+// variable con latin-ext y `--font-ui`. El tier FUENTES-LOCALES fija que no vuelva a Google.
 {
-  if (!/from "next\/font\/google"/.test(LAYOUT) || !/\bInter\b/.test(LAYOUT)) {
-    F("2 · Inter no está cargada en layout.tsx");
-  }
-  // Source Serif: el bloque de pesos, con el 600 que pide el titular del hero.
-  const serif = LAYOUT.slice(LAYOUT.indexOf("Source_Serif_4({"), LAYOUT.indexOf("});", LAYOUT.indexOf("Source_Serif_4({")));
+  const caras = (familia: string) =>
+    [...FUENTES.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]).filter((c) => c.includes(`font-family: '${familia}';`));
+  const inter = caras("Inter Franco");
+  if (!/import "\.\/fuentes\.css";/.test(LAYOUT) || inter.length === 0) F("2 · Inter no está cargada: el layout no importa fuentes.css o no tiene sus caras");
+  // Source Serif: los pesos, con el 600 que pide el titular del hero.
+  const serif = caras("Source Serif 4 Franco").filter((c) => /font-style: normal;/.test(c));
   for (const peso of ["400", "600", "700"]) {
-    if (!new RegExp(`"${peso}"`).test(serif)) {
+    if (!serif.some((c) => new RegExp(`font-weight: ${peso};`).test(c))) {
       F(`2 · Source Serif no carga el peso ${peso}: el navegador cae al más cercano por font-matching y el titular se rinde en otro peso`);
     }
   }
-  // Inter SIN weight ⇒ Next toma la variable, un archivo para todo el rango.
-  const inter = LAYOUT.slice(LAYOUT.indexOf("Inter({"), LAYOUT.indexOf("});", LAYOUT.indexOf("Inter({")));
-  if (/weight:/.test(inter)) {
-    F("2 · Inter declara `weight`: así Next baja estáticos en vez de la variable, que es un archivo para 400-700");
+  // Inter VARIABLE: un solo rango de pesos, un archivo para todo.
+  if (inter.length && !inter.every((c) => /font-weight: 100 900;/.test(c))) {
+    F("2 · Inter dejó de ser la variable (font-weight 100 900): se bajarían estáticos en vez de un archivo para 400-700");
   }
-  if (!/"latin-ext"/.test(inter)) {
+  if (!inter.some((c) => /unicode-range: U\+0100-02BA/.test(c))) {
     F("2 · Inter sin subset latin-ext: los nombres de comuna llevan tilde y ñ");
   }
-  if (!/--font-ui/.test(inter)) F("2 · Inter no expone --font-ui");
+  if (!/--font-ui: 'Inter Franco'/.test(FUENTES)) F("2 · Inter no expone --font-ui");
 }
 
 // ── 3 · tabular-nums en la columna de cifras ───────────────────────────────
@@ -104,10 +109,10 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 // Mientras el rediseño estuvo apagado iba en `preload: false`; encendido, sin preload la
 // fuente se descarga recién cuando la primera regla la usa —el primer render del informe—
 // y el lector ve el fallback y después el salto. Venía del tier interruptor-rediseno.
+// Desde el 25-sep-2026 la precarga es un <link rel="preload"> del layout (fuentes locales).
 {
-  const inter = LAYOUT.slice(LAYOUT.indexOf("Inter({"), LAYOUT.indexOf("});", LAYOUT.indexOf("Inter({")));
-  if (!inter) F("4 · no se encontró la declaración de Inter en el layout");
-  else if (!/preload:\s*true/.test(inter)) F("4 · Inter no declara `preload: true`: el lector vería el fallback y después el salto");
+  if (!/"inter-normal-latin\.woff2"/.test(LAYOUT) || !/"inter-normal-latin-ext\.woff2"/.test(LAYOUT)) F("4 · Inter no está en la lista de precarga del layout: el lector vería el fallback y después el salto");
+  if (!/<link key=\{f\} rel="preload" href=\{`\/fonts\/\$\{f\}`\} as="font" type="font\/woff2" crossOrigin="anonymous" \/>/.test(LAYOUT)) F("4 · el layout no dibuja los <link rel=\"preload\"> de las fuentes");
 }
 
 // ── 5 · la serif se captura en body, no en :root ───────────────────────────

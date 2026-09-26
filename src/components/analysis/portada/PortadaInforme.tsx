@@ -1206,7 +1206,7 @@ export function DocTokens() {
          la variable ya resolvería al valor nuevo — y el titular del hero perdería la
          serif que el contrato le reserva.
 
-         Y se captura en «body», NO en «:root»: next/font define «--font-heading» en la
+         Y se captura en «body», NO en «:root»: «fuentes.css» define «--font-heading» en la
          clase que va en «body», así que en «html» la variable no existe y la captura
          resolvía a nada — medido, el titular caía a Georgia. */
       body{--font-serif:var(--font-heading)}
