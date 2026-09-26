@@ -452,37 +452,6 @@ export function TokensHallazgos() {
       .hall-head .q .ksub{display:block;margin-top:3px;font-family:var(--font-mono, ui-monospace);font-size:10px;line-height:1.35;color:var(--doc-tx3);font-weight:400;letter-spacing:0.01em}
       .viz-pie b{color:var(--doc-tx2);font-weight:600}
 
-      /* ===== FASE 4.1 · MATRIZ DE PALANCAS ===== */
-      .pal{display:flex;flex-direction:column;gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);
-        border-radius:3px;overflow:hidden}
-      /* APILADO (08-sep-2026) — la fila destacada usaba --doc-paper2, que es el fondo
-         de las secciones .p2 (NO se usa acento grave: este CSS vive en un template
-         literal y un backtick lo corta). Mientras la matriz vivió dentro del modal
-         (--doc-paper)
-         no se notaba; al subirla al flujo, en una seccion .p2 la fila destacada calcula
-         EXACTAMENTE el mismo color que su contenedor (medido: rgb(27,27,27) en los dos)
-         y desaparece justo cuando es la que importa. Pasa a --doc-paper3, que por
-         contrato NO es fondo de sección: la pieza deja de depender de dónde se monte.
-         Mismo criterio que .bar-track, .esc-track y .cmp-track, que ya lo usan. */
-      .pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
-      .pal-row.si{background:var(--doc-paper3)}
-      .pal-glosa{flex-basis:100%;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:1px}
-      .pal-quien{/* el chip de quien pone la palanca (§5 revisado): salio de la card y va aca por fila */
-        font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:600;letter-spacing:.06em;
-        text-transform:uppercase;color:var(--doc-tx3);padding:1px 6px;border-radius:2px;
-        border:1px solid var(--doc-line2);white-space:nowrap}
-      .pal-row.off{opacity:.62}
-      .pal-row.off .pal-name{color:var(--doc-tx2)}
-      .pal-name{font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-      .pal-delta{font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;padding:1px 5px;border-radius:2px}
-      .pal-delta.no{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 8%,transparent)}
-      .pal-verdict{font-size:13px;text-align:right;line-height:1.4}
-      .pal-verdict.no{color:var(--doc-tx4)}
-      .pal-detail{grid-column:1/-1;font-family:var(--font-mono, ui-monospace);font-size:11px;color:var(--doc-tx3)}
-      .pal-arrow{margin:0 6px;color:var(--doc-tx4)}
-      .pal-why{color:var(--doc-tx4);font-style:italic}
-
-      .pal-pie{background:var(--doc-paper);padding:10px 13px;font-size:11.5px;line-height:1.6;color:var(--doc-tx4)}
 
       /* ===== DIAL DE VEREDICTO ===== */
       .dial{position:relative;padding:34px 0 2px}
@@ -714,7 +683,6 @@ export function TokensHallazgos() {
         .compo-k{font-size:12px}
         .compo-bracket{font-size:8px;letter-spacing:.04em}
         .par-top{flex-wrap:wrap;gap:2px}
-        .pal-name{font-size:12.5px}
       }
     `,
       }}

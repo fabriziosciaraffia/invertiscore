@@ -17,15 +17,6 @@ export function getScoreColor(value: number): string {
   return FRANCO_COLORS.negative;
 }
 
-// Commit 1 · 2026-05-11: vocabulario unificado COMPRAR/AJUSTA SUPUESTOS/BUSCAR OTRA.
-export function getVerdictColor(verdict: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA'): string {
-  switch (verdict) {
-    case 'COMPRAR': return FRANCO_COLORS.positive;
-    case 'AJUSTA SUPUESTOS': return FRANCO_COLORS.warning;
-    case 'BUSCAR OTRA': return FRANCO_COLORS.negative;
-  }
-}
-
 export function getVerdictLabel(score: number): 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA' {
   if (score >= 70) return 'COMPRAR';
   if (score >= 40) return 'AJUSTA SUPUESTOS';

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
-import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
+import type { DrawerKey } from "@/components/analysis/drawer-key";
 import { PopupAjustes, hayAjustesQueMostrar } from "./shared/PopupAjustes";
 import { PopupAjustesTokens } from "./shared/PopupAjustesTokens";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";

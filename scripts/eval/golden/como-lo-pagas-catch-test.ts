@@ -39,7 +39,7 @@
 // Standalone (agrega una fila STR real: el hallazgo de sobreprecio declara universo):
 //   node --env-file=.env.local --import tsx scripts/eval/golden/como-lo-pagas-catch-test.ts
 // ============================================================================
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { construirComoLoPagas, recomendacionPagas, casoPagas, pasoHastaDonde, fraseFranja, notaFranja, POSICION_TEXTO } from "../../../src/lib/como-lo-pagas";
 import type { EntradaComoLoPagas, RecomendacionPagas } from "../../../src/lib/como-lo-pagas";
@@ -191,8 +191,9 @@ function tierPuro() {
   // `mixAComprar` y `recomendacionFranco` de la lib. Lo invariante sigue: nadie lo redefine.
   const mz = src("src/lib/matriz-popup.ts");
   if (!/from "\.\/mix-a-comprar"/.test(mz) || /^(export )?function mixAComprar/m.test(popup + mz) || !/from "@\/lib\/matriz-popup"/.test(popup)) F("6 · el pop-up tiene que leer la grilla por matriz-popup.ts, que importa mixAComprar de la lib sin redefinirlo");
-  const drawer = src("src/components/ui/AnalysisDrawer.tsx");
-  if (/export function (DrawerNegociacion|PlanNegociacion)\b/.test(drawer)) F("6 · el drawer de negociación y el plan tienen que estar retirados");
+  // ⚠ ACTA (25-sep-2026) · `AnalysisDrawer.tsx` se borró entero (sin llamadores): el chequeo de que no
+  // exportara el drawer de negociación pasa a exigir que el archivo no exista.
+  if (existsSync(resolve(__dirname, "../../../", "src/components/ui/AnalysisDrawer.tsx"))) F("6 · el drawer de negociación y el plan tienen que estar retirados: volvió AnalysisDrawer.tsx");
   const strH = src("src/lib/str-hallazgos.ts");
   if (!/universo: ctx\.mediana\.universo/.test(strH)) F("6 · STR pasa el universo al sobreprecio");
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fueron los chequeos de los cuartiles en la generación y de la línea de

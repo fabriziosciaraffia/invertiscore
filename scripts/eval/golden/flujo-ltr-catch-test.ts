@@ -29,7 +29,7 @@
 // Corre dentro del QUICK y standalone:
 //   node --import tsx scripts/eval/golden/flujo-ltr-catch-test.ts
 // ============================================================================
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROTULO_MES_LTR, SUB_TOTAL_MES_LTR, rotuloMesLtr, HORIZONTE_CURVA_ANIOS, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr } from "../../../src/lib/flujo-mensual-ltr";
 import { calcMesVacio } from "../../../src/lib/analysis";
@@ -109,7 +109,9 @@ export function runFlujoLtrTier(): { hard: number } {
 
   // + cableado
   if (/DrawerCostoMensual/.test(cap.replace(/\/\*[^]*?\*\/|\/\/[^\n]*/g, ""))) F("+ · CapitulosInversion.tsx sigue montando DrawerCostoMensual");
-  if (/export function DrawerCostoMensual\b/.test(leer("src/components/ui/AnalysisDrawer.tsx"))) F("+ · AnalysisDrawer.tsx sigue exportando DrawerCostoMensual: el drawer está retirado");
+  // ⚠ ACTA (25-sep-2026) · `AnalysisDrawer.tsx` se borró entero (sin llamadores): el chequeo pasa a
+  // exigir que no vuelva.
+  if (existsSync(join(RAIZ, "src/components/ui/AnalysisDrawer.tsx"))) F("+ · volvió AnalysisDrawer.tsx: el drawer está retirado");
 
   if (fallas.length) {
     console.log(`   flujo-ltr ✗ ${fallas.length} falla(s):`);

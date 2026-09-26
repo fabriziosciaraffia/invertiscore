@@ -289,18 +289,18 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 
 // ── 16 · el chip «Lo pone …, no tú» sale de la card y entra al pop-up ────────
 {
-  const VOC = leer("src/components/analysis/hallazgos/vocabulario.tsx");
   const PAJ = leer("src/components/analysis/shared/PopupAjustes.tsx");
   if (/lqhy-chip|TEXTO_CHIP/.test(BLO.slice(BLO.indexOf("function EcuacionRecomendacion")))) F("16 · la ecuación volvió a dibujar el chip por fila");
-  if (!/quien\?:/.test(VOC) || !/pal-quien/.test(VOC)) F("16 · la primitiva Palancas no dibuja quién pone la palanca (pal-quien)");
-  if (!reglaDe(".pal-quien", ACO)) F("16 · falta el estilo .pal-quien del pop-up");
+  // ⚠ ACTA (25-sep-2026) · la primitiva `Palancas` se retiró (sin superficie desde el 17-sep:
+  // su único caller se borró con los drawers de distancia), y con ella `.pal-quien`, el chip «Lo
+  // pone …, no tú» por fila, y su texto. Salen los tres chequeos que la fijaban; queda que el chip
+  // no vuelva a la ecuación de la card.
   // ⚠ ACTA (24-sep-2026) · el pop-up dejó de tener la tabla «Un cambio a la vez» (decisión de
   // Fabrizio: sale con el menú y los pares; el arriendo queda como una línea «depende del
   // mercado»). Con la tabla se van los chequeos de `QUIEN_LA_PONE` en el pop-up. El mapa de
   // dueños sigue en el motor; lo que se conserva es que el pop-up no vuelva a declarar uno.
   if (/const QUIEN: Record<PalancaDistancia\["palanca"\]/.test(PAJ)) F("16 · el pop-up volvió a declarar su propio mapa de dueños: ya hubo dos y discreparon en el plazo");
   if (/lo pone el banco/.test(PAJ)) F("16 · el pop-up le atribuye el plazo al banco: el motor dice que es tuyo");
-  if (!/Lo pone el mercado, no tú/.test(VOC) || !/Lo pone el vendedor, no tú/.test(VOC)) F("16 · el chip no usa la forma «Lo pone el mercado, no tú» / «Lo pone el vendedor, no tú»");
 }
 
 // ── 14 · el puente del estado sin salida ─────────────────────────────────

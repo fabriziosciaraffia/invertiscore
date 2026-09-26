@@ -838,12 +838,6 @@ export function DocTokens() {
       /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
       .doc-dictamen .rec-res{margin:0 0 18px}
       .doc-dictamen .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-      .doc-dictamen .rec-pill{
-        padding:5px 11px;border-radius:var(--rad-pill);
-        font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;
-        letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-      .doc-dictamen .rec-pill.de{background:rgba(255,255,255,.10);opacity:.5}
-      .doc-dictamen .rec-pill.a{background:#fff;color:#18181B}
       .doc-dictamen .rec-fl{font-style:normal;opacity:.5}
 
       /* ALTERNATIVAMENTE: lo que no depende de ti, en una oración, después */
@@ -1075,7 +1069,6 @@ export function DocTokens() {
       .doc-dictamen .v-collapse,
       .doc-dictamen .lqhy-mix{border-radius:var(--rad-s)}
       /* chips */
-      .doc-dictamen .lqhy-chip,
       .doc-dictamen .pos-chip,
       .doc-dictamen .ba-mult{border-radius:var(--rad-xs)}
       /* píldoras y controles */
@@ -1308,11 +1301,6 @@ export function DocTokens() {
       .lqhy-q{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.3;color:var(--doc-tx)}
       .lqhy-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;text-align:right;color:var(--doc-tx)}
       .lqhy-n small{display:block;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;color:var(--doc-tx3);margin-top:3px;min-height:13px;white-space:normal}
-      /* El chip de quién la pone. El de la palanca TUYA va en el color del veredicto:
-         es la única que el lector puede mover hoy, y el color lo dice sin una palabra.
-         --verdict ya existe por veredicto (franco-design-system) y no es color nuevo. */
-      .lqhy-chip{display:inline-block;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--doc-paper3);color:var(--doc-tx3);margin-top:5px}
-      .lqhy-chip.tuyo{background:var(--verdict);color:var(--doc-paper)}
       /* La cifra IMPOSIBLE. Va en el cuerpo de la línea de descarte —mono chica y
          apagada— y no en el de una fila: es contexto, no acción. La jerarquía es el
          mensaje; con el mismo peso que el mix el lector no sabe cuál mirar. */

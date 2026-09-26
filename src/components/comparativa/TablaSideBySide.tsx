@@ -145,8 +145,7 @@ export function TablaSideBySide(p: Props) {
 
 type CellMoney = { kind: "money"; value: number };
 type CellText = { kind: "text"; value: string };
-type CellVerdict = { kind: "verdict"; value: string };
-type CellData = CellMoney | CellText | CellVerdict;
+type CellData = CellMoney | CellText;
 
 interface TableRow {
   label: string;
@@ -165,13 +164,6 @@ function CellRender({ data, currency, ufValue }: { data: CellData; currency: "CL
         style={{ color: data.value < 0 ? "var(--signal-red)" : "var(--franco-text)" }}
       >
         {fmtMoney(data.value, currency, ufValue)}
-      </span>
-    );
-  }
-  if (data.kind === "verdict") {
-    return (
-      <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-        {data.value}
       </span>
     );
   }

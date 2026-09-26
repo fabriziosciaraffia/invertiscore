@@ -6,21 +6,17 @@
 // `results.metrics`, `results.projections`, `results.flujoEstacional`, `results.exitScenario`
 // y `simulacion` del fixture.
 // ============================================================================
-import { useState } from "react";
 import { VViz } from "@/components/analysis/hallazgos/vocabulario";
-import { Matriz, Planilla, FilaDato, FilasDato, CurvaFlujoAnual, SeisCifras, PatrimonioBarras, BarraApiladaB } from "@/components/analysis/shared";
+import { Planilla, FilaDato, FilasDato, CurvaFlujoAnual, SeisCifras, PatrimonioBarras, BarraApiladaB } from "@/components/analysis/shared";
 
 const clp = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n)).toLocaleString("es-CL")}`;
-const k = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n) / 1000)}k`;
 const mm = (n: number) => `$${(n / 1_000_000).toFixed(1).replace(".", ",")} MM`;
 const pct1 = (n: number) => `${n.toFixed(1).replace(".", ",")}%`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
   const r = fix.results;
-  const sim = fix.simulacion;
   const m = r.metrics;
-  const [serie, setSerie] = useState<"flujo" | "tir">("flujo");
   const todo = comp === "all";
   const on = (c: string) => todo || comp === c;
 
@@ -62,46 +58,6 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
             <FilaDato tono={f.saleDeTuBolsillo < 0 ? "tot" : "tot"} k={f.saleDeTuBolsillo < 0 ? "Sale de tu bolsillo" : "Te queda"} tip="Ingreso − comisión − costos − cuota" v={<span style={{ color: f.saleDeTuBolsillo < 0 ? "var(--signal-red)" : undefined }}>{clp(f.saleDeTuBolsillo)}</span>} unidad="/mes" />
           </FilasDato>
         </VViz>
-      ),
-    });
-  }
-  if (on("matriz") && sim) {
-    const mto = sim.matrizTarifaOcupacion;
-    const mpp = sim.matrizPiePlazo;
-    bloques.push({
-      id: "matriz", titulo: "Matriz tarifa × ocupación (I) y pie × plazo (IV, con toggle)", node: (
-        <>
-          <VViz t="Lo que queda cada mes después de comisión, costos y cuota">
-            <Matriz
-              ejeX={{ label: "→ más tarifa", niveles: mto.tarifas.map((t: number) => ({ k: clp(t), sub: "por noche" })) }}
-              ejeY={{ label: "↓ más ocupación", niveles: mto.ocupaciones.map((o: number) => ({ k: `${Math.round(o * 100)}%`, sub: `${Math.round(o * 365 / 12)} noches` })) }}
-              celdas={mto.ocupaciones.map((o: number) => mto.tarifas.map((t: number) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const c = mto.celdas.find((x: any) => x.tarifaCLP === t && x.ocupacion === o);
-                return c ? { v: k(c.flujoMensual), neg: c.flujoMensual < 0, umbral: c.flujoMensual >= 0, veredicto: c.veredicto, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · ${c.veredicto}` } : { v: "—" };
-              }))}
-              veredictoBase={r?.francoScore?.veredicto ?? r?.veredicto}
-              leyenda={{ hoy: "hoy", umbral: "cierra el mes", umbralCorto: "cierra" }}
-            />
-          </VViz>
-          <VViz t="Tu flujo mensual según pie y plazo">
-            <Matriz
-              cabecera="Cuánto cambia el mes según pie y plazo"
-              toggle={{ opciones: [{ id: "flujo", label: "Flujo" }, { id: "tir", label: "TIR" }], activo: serie, onChange: (id) => setSerie(id as "flujo" | "tir") }}
-              ejeX={{ label: "→ más plazo", niveles: mpp.plazos.map((p: number) => ({ k: String(p), sub: "años" })) }}
-              ejeY={{ label: "↓ más pie", niveles: mpp.pies.map((p: number) => ({ k: `${p}%`, sub: mm((r.pie / (fix.input_data.piePct / 100)) * (p / 100)) })) }}
-              celdas={mpp.pies.map((p: number) => mpp.plazos.map((pl: number) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const c = mpp.celdas.find((x: any) => x.piePct === p && x.plazoAnios === pl);
-                if (!c) return { v: "—" };
-                const v = serie === "flujo" ? k(c.flujoMensual) : c.tirPct != null ? pct1(c.tirPct) : "—";
-                return { v, neg: serie === "flujo" ? c.flujoMensual < 0 : false, umbral: serie === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= 6, veredicto: c.veredicto, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? pct1(c.tirPct) : "—"} · ${c.veredicto}` };
-              }))}
-              veredictoBase={r?.francoScore?.veredicto ?? r?.veredicto}
-              leyenda={{ hoy: "hoy", umbral: serie === "flujo" ? "cierra el mes" : "sobre TIR 6%", umbralCorto: serie === "flujo" ? "cierra" : "TIR ≥ 6%" }}
-            />
-          </VViz>
-        </>
       ),
     });
   }

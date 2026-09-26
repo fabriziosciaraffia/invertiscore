@@ -15,7 +15,7 @@
 
 import { menos } from "./utils";
 import type { Hallazgo } from "@/lib/types";
-import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
+import type { DrawerKey } from "@/components/analysis/drawer-key";
 import { fuenteHistoricaPlusvalia, rangoDesdeFuente } from "@/lib/plusvalia-procedencia";
 import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
 import { distanciaFindingDisplay } from "@/lib/distancia-copy";
