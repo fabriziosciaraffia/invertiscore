@@ -39,7 +39,7 @@ import {
   PAGE_SIZE,
   type DashboardParams,
 } from "./dashboard-helpers";
-import { Chevron, ModChip, VerdictBadge, ZoneLabel, scoreColor } from "./dashboard-ui";
+import { Chevron, ModChip, VerdictBadge, ZoneLabel, colorDelPuntaje } from "./dashboard-ui";
 import { ArchiveSearch } from "./archive-search";
 import { RowActions } from "./row-actions";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -166,7 +166,7 @@ function CeldasNumericas({ row, atenuado = false }: { row: AnalisisDashboardRow;
   return (
     <>
       <td className="h-10 px-2.5 text-right align-middle">
-        <span className="font-mono text-[13px] font-bold" style={{ color: scoreColor(row.score_efectivo) }}>
+        <span className="font-mono text-[13px] font-bold" style={{ color: colorDelPuntaje(veredictoDisplay(row)) }}>
           {row.score_efectivo}
         </span>
       </td>

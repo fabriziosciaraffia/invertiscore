@@ -76,16 +76,16 @@ export function ModChip({ label }: { label: "LARGA" | "CORTA" | "AMBAS" }) {
   );
 }
 
-// ─── Anillo de score ────────────────────────────────────────────────────────
-// Mismo criterio cromático que el dashboard viejo: ≥75 Ink primario · 40-74 Ink
-// secundario · <40 Signal Red (criticidad).
-export function scoreColor(score: number): string {
-  if (score >= 75) return "var(--franco-text)";
-  if (score >= 40) return "var(--franco-text-secondary)";
-  return "var(--signal-red)";
+// ─── Color del puntaje ───────────────────────────────────────────────────────
+// SIGUE AL VEREDICTO, NO A LA NOTA (25-sep-2026). Hasta hoy el número se coloreaba por su
+// valor (≥75 tinta · 40-74 gris · <40 rojo), y con los filtros que bajan el veredicto —gates,
+// brazos STR, el filtro del descuento— un Buscar otro con 50 salía gris al lado del chip rojo.
+// Ahora es el MISMO color del chip: tinta en Comprar, gris en Ajustar, rojo en Buscar otro.
+export function colorDelPuntaje(veredicto: Veredicto): string {
+  return VERDICT_STYLE[veredicto].color;
 }
 
-export function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
+export function ScoreRing({ score, veredicto, size = 40 }: { score: number; veredicto: Veredicto; size?: number }) {
   const stroke = size >= 52 ? 3.5 : 3;
   const r = size / 2 - stroke - 1;
   const circ = 2 * Math.PI * r;
@@ -101,7 +101,7 @@ export function ScoreRing({ score, size = 40 }: { score: number; size?: number }
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={scoreColor(score)}
+          stroke={colorDelPuntaje(veredicto)}
           strokeWidth={stroke}
           strokeDasharray={`${dash} ${circ}`}
           strokeLinecap="round"

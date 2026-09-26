@@ -65,7 +65,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
         href={hrefAnalisis(hero, heroStr?.id)}
         className="franco-card-target group mb-2.5 flex items-center gap-5 rounded-2xl border border-[var(--franco-border-hover)] bg-[var(--franco-elevated)] p-4 px-5 no-underline"
       >
-        <ScoreRing score={hero.score_efectivo} size={56} />
+        <ScoreRing score={hero.score_efectivo} veredicto={veredictoDisplay(hero)} size={56} />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -145,7 +145,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
                 href={hrefAnalisis(row, str?.id)}
                 className="franco-card-target flex w-[86%] shrink-0 snap-start items-center gap-3 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-3 px-3.5 no-underline md:w-auto md:shrink"
               >
-                <ScoreRing score={row.score_efectivo} size={40} />
+                <ScoreRing score={row.score_efectivo} veredicto={veredictoDisplay(row)} size={40} />
                 <div className="min-w-0 flex-1">
                   {/* L1: dirección | modalidad · fecha — la dirección se lleva el ancho */}
                   <div className="flex min-w-0 items-center gap-2">
