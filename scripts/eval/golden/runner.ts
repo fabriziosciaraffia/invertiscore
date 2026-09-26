@@ -56,6 +56,7 @@ import { runCopySinIaTier } from "./copy-sin-ia-catch-test";
 import { runCifraComparablesTier } from "./cifra-comparables-catch-test";
 import { runLecturaPaginadaTier } from "./lectura-paginada-catch-test";
 import { runPieCeroTier } from "./pie-cero-catch-test";
+import { runMatrizExtremosTier } from "./matriz-extremos-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -302,6 +303,9 @@ function printSeed(r: SeedReport) {
   // y el gate 2 aplica su brazo de flujo; ningún Buscar otro llega a Comprar con pie y plazo sin
   // descuento. Verificado en rojo con 13 mutaciones.
   totalHard += runPieCeroTier().hard;
+  // Tier MATRIZ-EXTREMOS (25-sep-2026, 0 tokens, sin base): una regla del pie en las cinco grillas,
+  // el plazo declarado como columna, sin matriz al contado y «Aun sin pie». 13 mutaciones en rojo.
+  totalHard += runMatrizExtremosTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
