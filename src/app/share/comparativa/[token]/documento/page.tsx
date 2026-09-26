@@ -24,6 +24,7 @@ import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { DocumentoAmbas } from "./DocumentoAmbas";
 import "./documento.css";
+import { modoGestionAmbas } from "@/lib/modo-gestion";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,8 @@ export default async function DocumentoAmbasPage({
 
   const strInput = (str.input_data ?? null) as Record<string, unknown> | null;
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
-  const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
+  // Normalizado en un solo lugar (`modo-gestion.ts`): el input guarda «administrador».
+  const modoGestion = modoGestionAmbas(strInput?.modoGestion);
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
 
   // Homologación: el lado STR adopta la UF real reconstruida del lado LTR.

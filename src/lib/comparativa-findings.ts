@@ -16,6 +16,7 @@ import type { BandaComparativa } from "./engines/str-universo-santiago";
 import type { FullAnalysisResult } from "./types";
 import type { ShortTermResult, QuiebreGestionSTR } from "./engines/short-term-engine";
 import { hayAsimetriaDeEntrega } from "./comparativa-patrimonio";
+import { modoGestionAmbas } from "./modo-gestion";
 
 // `regulatorio` (F5, el reglamento del edificio) existió hasta el 11-sep-2026: se retiró con la regulación (V1).
 export type FindingId = "flujo" | "gestion" | "patrimonio" | "breakeven" | "capital";
@@ -136,7 +137,8 @@ export function ctxFromResults(
     strFlujoMensual: base?.flujoCajaMensual ?? 0,
     ltrNOIMensual: (ltr.metrics?.noi ?? 0) / 12,
     strNOIMensual: base?.noiMensual ?? 0,
-    modoGestion: (vc?.flipGestion?.modoActual ?? inputs.modoGestion) as "auto" | "admin",
+    // Normalizado (`modo-gestion.ts`): si llega crudo del input («administrador»), no se lee como auto.
+    modoGestion: modoGestionAmbas(inputs.modoGestion),
     comisionAdministrador: inputs.comisionAdministrador,
     strAutoNOIMensual: str.comparativa?.str_auto?.noiMensual ?? 0,
     strAdminNOIMensual: str.comparativa?.str_admin?.noiMensual ?? 0,

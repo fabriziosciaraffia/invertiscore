@@ -13,6 +13,7 @@ import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { SharedComparativaClient } from "./shared-client";
+import { modoGestionAmbas } from "@/lib/modo-gestion";
 
 export const metadata: Metadata = {
   title: "Franco — Análisis comparativo Renta Larga vs Renta Corta",
@@ -77,7 +78,8 @@ export default async function ShareComparativaPage({
   // Inputs específicos para tabla (amoblamiento, modo gestión)
   const strInput = (str.input_data ?? null) as Record<string, unknown> | null;
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
-  const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
+  // Normalizado en un solo lugar (`modo-gestion.ts`): el input guarda «administrador».
+  const modoGestion = modoGestionAmbas(strInput?.modoGestion);
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
 
   // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Igual que la

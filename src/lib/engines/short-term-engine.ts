@@ -18,9 +18,9 @@ import {
   type ZonaSTRScore,
   type RecomendacionModalidadSTR,
   type VeredictoComparativo,
-  type ModoGestionAmbas,
 } from "./str-universo-santiago";
 import { mesesHastaEntregaDesdeFecha } from "@/lib/pre-entrega-serie";
+import { modoGestionAmbas } from "../modo-gestion";
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
@@ -1569,7 +1569,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
       : null;
 
   const veredictoComparativo = calcVeredictoComparativo({
-    modoActual: (modoGestion === "auto" ? "auto" : "admin") as ModoGestionAmbas,
+    modoActual: modoGestionAmbas(modoGestion),
     tierZona: zonaSTR.tierZona,
     ltrNoiMensual: ltr_noiMensual,
     strNoiMensual: base.noiMensual,
