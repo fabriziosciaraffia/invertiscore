@@ -58,6 +58,7 @@ import { runLecturaPaginadaTier } from "./lectura-paginada-catch-test";
 import { runPieCeroTier } from "./pie-cero-catch-test";
 import { runMatrizExtremosTier } from "./matriz-extremos-catch-test";
 import { runDemoPublicoTier } from "./demo-publico-catch-test";
+import { runColasChicasTier } from "./colas-chicas-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -310,6 +311,9 @@ function printSeed(r: SeedReport) {
   // Tier DEMO-PUBLICO (25-sep-2026, 0 tokens, sin base): /demo son dos filas reales del motor, sin
   // resultados a mano, y las dos están protegidas. 13 mutaciones en rojo.
   totalHard += runDemoPublicoTier().hard;
+  // Tier COLAS-CHICAS (25-sep-2026, 0 tokens, sin base): fuentes servidas desde el sitio, el color
+  // del puntaje del dashboard por veredicto y el modo de gestión de AMBAS normalizado. 15 mutaciones.
+  totalHard += runColasChicasTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
