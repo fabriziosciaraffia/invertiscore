@@ -18,6 +18,7 @@ import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { bandaDeDescuento, type BandaDescuento } from "./banda-esfuerzo";
 import { bandaMargen, type BandaMargen } from "./sensibilidad-hallazgo";
+import { esGrillaAlContado } from "./mix-a-comprar";
 
 /** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
 export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
@@ -402,7 +403,10 @@ export function construirLoQueHariaYo(p: {
   // escalón por construcción y §5 nunca lo muestra; el motor STR emite aparte la misma
   // combinación medida hacia COMPRAR. LTR no la emite todavía (AUSENTE = no calculado),
   // así que cae al de siempre, que la card filtra por destino: nada cambia allá.
-  const m = esBuscar && dv.mixPalancasHastaComprar !== undefined ? dv.mixPalancasHastaComprar : dv.mixPalancas;
+  const mGrilla = esBuscar && dv.mixPalancasHastaComprar !== undefined ? dv.mixPalancasHastaComprar : dv.mixPalancas;
+  // Al contado no hay mix que ofrecer (25-sep-2026, `esGrillaAlContado`): la card muestra las
+  // palancas solas, y la recomendación cae al precio.
+  const m = esGrillaAlContado(mGrilla) ? null : mGrilla;
   // ⛔ LA REDUNDANCIA YA NO ESCONDE EL MIX (24-sep-2026). Cuando el mix repetía una palanca
   // sola, la card mostraba la palanca como línea principal. La card simplificada muestra SOLO
   // la recomendación de Franco, y la recomendación es la raíz del mix: la misma que marca la

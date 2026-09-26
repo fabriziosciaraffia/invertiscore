@@ -23,6 +23,7 @@ import { metricaValorONull, type MixPalancas, type Veredicto } from "@/lib/types
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 import { biseccionFactor, DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
 import { calcularMixPalancas } from "@/lib/mix-palancas";
+import { pieSeMueveEnLaGrilla } from "@/lib/pie-se-mueve";
 import { buildStrRecomputeCtx, type MedianaParaMotorStr } from "./recompute-short-term-for-legacy";
 import { recomputeStrConPatch, sondaStrConPatch, type VeredictoStrCtx } from "./veredicto-str-con-patch";
 
@@ -328,9 +329,9 @@ export function mixComprarStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto
     precioUF: base.precioUF,
     piePct,
     plazoCredito: plazo as number,
-    // La MISMA doctrina del pie que el hallazgo STR (`distancia-veredicto-str-hallazgo.ts`):
-    // con bono pie no se mueve, y en el techo no hay a dónde subir.
-    pieCalifica: !ctx.inputs.razonSinPie && piePct > 0 && piePct < DIST_PIE_TOPE_PCT,
+    // La MISMA regla que todas las grillas (`pie-se-mueve.ts`, 25-sep-2026). Hasta hoy acá
+    // congelaba el pie con cualquier razón declarada y además con pie 0%.
+    pieCalifica: pieSeMueveEnLaGrilla(piePct, ctx.inputs.razonSinPie),
     pieTopePct: DIST_PIE_TOPE_PCT,
     // Sin umbral no hay descuento que biseccionar; viaja porque la firma lo pide.
     topePct: DIST_PIE_TOPE_PCT,

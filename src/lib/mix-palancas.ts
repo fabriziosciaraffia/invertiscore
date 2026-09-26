@@ -586,8 +586,24 @@ export function calcularMixPalancas(p: {
   // EN «MEJORAR» NO SE FILTRA (15-sep-2026). Acortar el plazo sube la cuota, así que para
   // cruzar va al revés y por eso se recorta; sin umbral que cruzar es una opción como
   // cualquier otra —más cuota, menos interés total— y es la grilla que se midió.
-  const plazosArriba = mejorar ? [...MIX_PLAZOS_WIZARD] : MIX_PLAZOS_WIZARD.filter((a) => a >= p.plazoCredito);
-  const plazos: number[] = plazosArriba.length > 0 ? [...plazosArriba] : [p.plazoCredito];
+  //
+  // EL PLAZO DECLARADO ES SIEMPRE UNA COLUMNA (25-sep-2026). Con un plazo fuera del wizard
+  // (10, 15, 35) la grilla solo tenía 20/25/30 y faltaba la celda «hoy»: el pop-up no podía
+  // marcar dónde está el comprador. La columna declarada entra siempre, en su lugar.
+  //
+  // AL CONTADO NO HAY CRÉDITO (25-sep-2026): el plazo no mueve nada —tres columnas idénticas—
+  // y el pie ya está en el techo. La grilla queda en la celda declarada, la única que existe;
+  // el pop-up no la dibuja (`grillaDelPopup`) pero el filtro del descuento la sigue leyendo.
+  const alContado = p.piePct >= 100;
+  const plazosArriba: number[] = mejorar ? [...MIX_PLAZOS_WIZARD] : MIX_PLAZOS_WIZARD.filter((a) => a >= p.plazoCredito);
+  // Insertada en su lugar (la lista del wizard ya viene ordenada); sin `.sort`: la elección de
+  // celda es el único orden de este módulo.
+  const conDeclarado = plazosArriba.includes(p.plazoCredito)
+    ? [...plazosArriba]
+    : [...plazosArriba.filter((a) => a < p.plazoCredito), p.plazoCredito, ...plazosArriba.filter((a) => a > p.plazoCredito)];
+  const plazos: number[] = alContado || !Number.isFinite(p.plazoCredito)
+    ? plazosArriba.length > 0 && !alContado ? [...plazosArriba] : [p.plazoCredito]
+    : conDeclarado;
 
   const alcanza = (v: Veredicto) => RANK[v] >= RANK[p.meta];
   const sondar = (descuentoPct: number, piePct: number, plazoAnios: number) =>

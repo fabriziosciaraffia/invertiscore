@@ -23,7 +23,7 @@
 import type { CeldaMix } from "./mix-palancas";
 import type { HallazgoDistanciaVeredicto, MixPalancas, Veredicto } from "./types";
 import { bandaDeDescuento, nivelDeDescuento, type BandaDescuento } from "./banda-esfuerzo";
-import { mixAComprar, recomendacionFranco } from "./mix-a-comprar";
+import { esGrillaAlContado, mixAComprar, recomendacionFranco } from "./mix-a-comprar";
 
 export type CifraCelda =
   | { tipo: "sin_descuento" }
@@ -79,9 +79,13 @@ export function grillaDelPopup(p: {
   mixComprar?: MixPalancas | null;
 }): MixPalancas | null {
   if (p.veredicto === "BUSCAR OTRA") return null;
-  if (p.veredicto === "COMPRAR") return p.mixComprar ?? null;
   const v = p.distancia?.valor;
-  return v ? mixAComprar(v) : null;
+  const grilla = p.veredicto === "COMPRAR" ? p.mixComprar ?? null : v ? mixAComprar(v) : null;
+  // AL CONTADO NO HAY MATRIZ (25-sep-2026): sin crédito no hay pie ni plazo que mover, y las
+  // celdas no cambian nada. El motor deja la celda declarada (la lee el filtro del descuento),
+  // pero el pop-up no la dibuja.
+  if (esGrillaAlContado(grilla)) return null;
+  return grilla;
 }
 
 /** ¿Hay pop-up? Solo si hay grilla que dibujar. Buscar otra, nunca. */

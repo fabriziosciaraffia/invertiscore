@@ -29,12 +29,12 @@ import type {
 import { classifyPieLevel } from "./financing-health";
 import {
   biseccionFactor,
-  DIST_PIE_RAZON_EXCLUIDA,
   DIST_PIE_TOPE_PCT,
   DIST_PLAZO_TOPE_ANIOS,
   DIST_PLAZO_TRAMO_ANIOS,
 } from "./distancia-veredicto-hallazgo";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
+import { esPieDeBono, pieSeMueveEnLaGrilla } from "./pie-se-mueve";
 import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr } from "./salida-por-mix";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import type { StrPatch } from "./analysis/veredicto-str-con-patch";
@@ -183,8 +183,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   // ¿El pie califica como palanca? Mismas dos condiciones que LTR (nivel + origen), y la
   // clasificación se importa de financing-health para que este hallazgo y el de estructura
   // no puedan contradecirse dentro del mismo informe.
-  const razonPie: RazonSinCapital = p.razonSinPie ?? "sin_pie";
-  const esBonoPie = p.piePct === 0 && razonPie === DIST_PIE_RAZON_EXCLUIDA;
+  const esBonoPie = esPieDeBono(p.piePct, p.razonSinPie);
   const nivelPie = Number.isFinite(p.piePct) ? classifyPieLevel(p.piePct) : "optimo";
   const pieCalifica = !esBonoPie && (nivelPie === "mejorable" || nivelPie === "problematico");
 
@@ -303,7 +302,9 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // PLAZO — entero, redondeado hacia arriba al tramo comercial (los bancos ofrecen
     // 15/20/25/30, no años sueltos) y RE-VERIFICADO en ese tramo antes de emitirlo: si el
     // redondeo no cruzara, la palanca no se emite en vez de prometer algo falso.
-    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0) {
+    // Al contado (pie 100%) tampoco hay crédito: el plazo no mueve nada (25-sep-2026). Antes
+    // se probaba y la card decía «Plazo, por separado, no alcanza».
+    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0 || p.piePct >= 100) {
       viaPlazo = { estado: "noAplica", palanca: "plazo", actual: 0, razon: "sin crédito no hay plazo que estirar" };
     } else if (p.plazoCredito >= DIST_PLAZO_TOPE_ANIOS) {
       viaPlazo = {
@@ -465,7 +466,8 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   // EL TOPE ES EL DE LA PALANCA SOLA (25 desde AJUSTA · 15 desde BUSCAR): si el mix
   // pudiera pedir un descuento que el precio solo tiene prohibido, el informe se
   // contradiría consigo mismo.
-  const pieExplorado = !esBonoPie && Number.isFinite(p.piePct) && p.piePct < DIST_PIE_TOPE_PCT;
+  // La regla de si el pie se mueve es una sola para todas las grillas (`pie-se-mueve.ts`).
+  const pieExplorado = pieSeMueveEnLaGrilla(p.piePct, p.razonSinPie);
   const ufCongelada = p.precioCLP / p.precioUF;
   const mixPalancas = calcularMixPalancas({
     meta: veredictoObjetivo,

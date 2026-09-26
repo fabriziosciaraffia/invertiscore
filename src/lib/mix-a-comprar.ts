@@ -24,8 +24,23 @@ type ValorDistancia = HallazgoDistanciaVeredicto["valor"];
  *   (se midió, ninguna cruza) o `undefined` (LTR todavía no lo mide), la respuesta es
  *   «no hay mix», no el del escalón. Misma regla que la card (`lo-que-haria-yo.ts`).
  */
+/**
+ * ¿Es la grilla de una compra al contado? (25-sep-2026) Sin crédito no hay pie ni plazo que mover:
+ * el motor deja la celda declarada —la lee el filtro del descuento— pero ninguna superficie la
+ * ofrece como combinación. Fuente única para el pop-up, la card y la recomendación.
+ */
+export function esGrillaAlContado(mix: MixPalancas | null | undefined): boolean {
+  return !!mix?.celdas?.length && mix.celdas.every((c) => c.piePct >= 100);
+}
+
 export function mixAComprar(v: ValorDistancia) {
-  return v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
+  const mix = v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
+  // AL CONTADO NO HAY MIX (25-sep-2026): sin crédito no hay pie ni plazo que mover, y la grilla
+  // queda en la celda declarada. Ofrecerla como «si además mueves lo tuyo» sería vender un
+  // cambio que no existe: la recomendación cae a la palanca de precio. El filtro del descuento
+  // no pasa por acá: lee `mixPalancas` directo y sigue viendo esa celda.
+  if (esGrillaAlContado(mix)) return null;
+  return mix;
 }
 
 /**

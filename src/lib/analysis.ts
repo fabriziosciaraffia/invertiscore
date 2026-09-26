@@ -22,6 +22,7 @@ import { sobreprecioDeHoy } from "./sobreprecio-venta";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
 import { rescatarPorPieYPlazo } from "./rescate-pie-plazo";
+import { pieSeMueveEnLaGrilla } from "./pie-se-mueve";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -2704,9 +2705,10 @@ export function runAnalysis(
           precioUF: input.precio,
           piePct: input.piePct,
           plazoCredito: input.plazoCredito,
-          // La MISMA doctrina del pie que el hallazgo: con bono pie no se mueve, y en el
-          // techo no hay a dónde subir. Se resuelve acá porque el hallazgo no corre.
-          pieCalifica: !input.razonSinPie && Number.isFinite(input.piePct) && input.piePct < DIST_PIE_TOPE_PCT,
+          // La MISMA regla que todas las grillas (`pie-se-mueve.ts`, 25-sep-2026): con bono pie
+          // no se mueve, en el techo no hay a dónde subir, y con otra razón se mueve. Hasta hoy
+          // acá congelaba el pie con CUALQUIER razón declarada.
+          pieCalifica: pieSeMueveEnLaGrilla(input.piePct, input.razonSinPie),
           pieTopePct: DIST_PIE_TOPE_PCT,
           // Sin umbral no hay descuento que biseccionar; el tope viaja igual porque la firma
           // lo pide y el modo «mejorar» nunca lo usa.

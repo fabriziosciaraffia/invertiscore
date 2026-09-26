@@ -28,9 +28,10 @@
 
 import type { RazonSinCapital, Veredicto } from "./types";
 import { MIX_COSTO_TOPE_PTS_PRECIO, MIX_PIE_PASO_PCT, MIX_PLAZOS_WIZARD } from "./mix-palancas";
+import { PIE_TOPE_GRILLA_PCT, pieSeMueveEnLaGrilla } from "./pie-se-mueve";
 
-/** El pie máximo que prueba la grilla (el mismo `DIST_PIE_TOPE_PCT`). */
-export const RESCATE_PIE_TOPE_PCT = 30;
+/** El pie máximo que prueba la grilla (fuente única en `pie-se-mueve.ts`). */
+export const RESCATE_PIE_TOPE_PCT = PIE_TOPE_GRILLA_PCT;
 
 export type CombinacionPiePlazo = { piePct: number; plazoAnios: number };
 
@@ -50,8 +51,7 @@ export function combinacionesSinDescuento(p: {
   plazoAnios: number;
   razonSinPie?: RazonSinCapital | null;
 }): CombinacionPiePlazo[] {
-  const esBonoPie = p.piePct === 0 && p.razonSinPie === "bono_pie";
-  const pieSeMueve = !esBonoPie && Number.isFinite(p.piePct) && p.piePct < RESCATE_PIE_TOPE_PCT;
+  const pieSeMueve = pieSeMueveEnLaGrilla(p.piePct, p.razonSinPie);
   const pies = [p.piePct];
   const techo = Math.min(RESCATE_PIE_TOPE_PCT, p.piePct + MIX_COSTO_TOPE_PTS_PRECIO);
   if (pieSeMueve) for (let x = p.piePct + MIX_PIE_PASO_PCT; x <= techo; x += MIX_PIE_PASO_PCT) pies.push(x);

@@ -47,6 +47,7 @@ import type {
 } from "./types";
 import { classifyPieLevel } from "./financing-health";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
+import { esPieDeBono, pieSeMueveEnLaGrilla, PIE_TOPE_GRILLA_PCT } from "./pie-se-mueve";
 
 // ── Tope de honestidad (calibrado, no inventado) ──────────────────────────────
 // Sweep sobre 315 filas no-COMPRAR de prod (143 AJUSTA + 172 BUSCAR OTRA), midiendo el
@@ -215,7 +216,8 @@ export function esCasoPrecioJustoStr(p: {
 //
 // El techo es ABSOLUTO (nivel de pie), no relativo al declarado: el pie es un nivel, no un
 // cambio, y con pie 0 un tope relativo ni siquiera está definido.
-export const DIST_PIE_TOPE_PCT = 30;
+// Fuente única desde el 25-sep-2026: `pie-se-mueve.ts` (lo leen todas las grillas).
+export const DIST_PIE_TOPE_PCT = PIE_TOPE_GRILLA_PCT;
 
 /**
  * Excepción BONO PIE: con `razonSinPie === "bono_pie"` la palanca NO se emite. El pie 0 es
@@ -345,10 +347,10 @@ export function buildHallazgoDistanciaVeredicto(p: {
   // que ya está en el techo (≥ DIST_PIE_TOPE_PCT: no hay tramo que probar). Hasta este goal
   // solo se exploraba con pie < 20% (`classifyPieLevel` mejorable/problemático); el drift
   // del Golden por pies entre 20 y 29 que ahora cruzan es esperado y está documentado.
-  const razonPie: RazonSinCapital = p.razonSinPie ?? "sin_pie";
-  const esBonoPie = p.piePct === 0 && razonPie === DIST_PIE_RAZON_EXCLUIDA;
+  // La regla vive en `pie-se-mueve.ts` (25-sep-2026): la misma para todas las grillas.
+  const esBonoPie = esPieDeBono(p.piePct, p.razonSinPie);
   const pieEnTecho = !Number.isFinite(p.piePct) || p.piePct >= DIST_PIE_TOPE_PCT;
-  const pieCalifica = !esBonoPie && !pieEnTecho;
+  const pieCalifica = pieSeMueveEnLaGrilla(p.piePct, p.razonSinPie);
   // ¿El pie tiene PRIORIDAD sobre las otras palancas cuando cruza? Solo bajo el nivel
   // aceptable (misma clasificación que el hallazgo de estructura, fuente única).
   const nivelPie = Number.isFinite(p.piePct) ? classifyPieLevel(p.piePct) : "optimo";
@@ -499,7 +501,9 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // RE-VERIFICA el veredicto en ese plazo comercial antes de emitirlo: si por cualquier
     // no-monotonía el redondeo no cruzara, la palanca no se emite en vez de prometer algo
     // falso. Si ya estás en el tope (30), no hay tramo al que moverse ⇒ tampoco se emite.
-    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0) {
+    // Al contado (pie 100%) tampoco hay crédito: el plazo no mueve nada (25-sep-2026). Antes
+    // se probaba y la card decía «Plazo, por separado, no alcanza».
+    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0 || p.piePct >= 100) {
       viaPlazo = { estado: "noAplica", palanca: "plazo", actual: 0, razon: "sin crédito no hay plazo que estirar" };
     } else if (p.plazoCredito >= DIST_PLAZO_TOPE_ANIOS) {
       viaPlazo = {
