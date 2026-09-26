@@ -136,9 +136,14 @@ export function filtroAjustarSinCamino(
 
 const pctTexto = (n: number) => `${(Math.round(n * 10) / 10).toString().replace(".", ",")}%`;
 
-/** «Aun con pie de 30% y crédito a 30 años» — o «Aun pagando al contado» con pie de 100%. */
+/**
+ * «Aun con pie de 30% y crédito a 30 años» — «Aun pagando al contado» con pie de 100%, y «Aun sin
+ * pie y con crédito a 30 años» con pie 0% (25-sep-2026: «pie de 0%» se leía raro). Con pie 0% no
+ * nombra el bono pie: dice el porcentaje, sin asumir de dónde sale.
+ */
 function aunCon(c: CaminoMasFacil): string {
   if (c.piePct >= 100) return "Aun pagando al contado";
+  if (c.piePct === 0) return `Aun sin pie y con crédito a ${c.plazoAnios} años`;
   return `Aun con pie de ${Math.round(c.piePct)}% y crédito a ${c.plazoAnios} años`;
 }
 
@@ -151,6 +156,7 @@ export function distanciaPorDescuento(c: CaminoMasFacil): string {
 /** Pie y plazo de la combinación, para el capítulo «A qué precio cerrar». */
 export function combinacionTexto(c: CaminoMasFacil): string {
   if (c.piePct >= 100) return "pagando al contado";
+  if (c.piePct === 0) return `sin pie y con crédito a ${c.plazoAnios} años`;
   return `pie de ${Math.round(c.piePct)}% y crédito a ${c.plazoAnios} años`;
 }
 

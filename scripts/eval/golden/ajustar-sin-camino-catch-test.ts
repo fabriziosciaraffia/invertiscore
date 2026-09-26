@@ -136,7 +136,7 @@ export function runAjustarSinCaminoTier(): { hard: number } {
     for (const [donde, t] of [["la card", distancia], ["el titular", titular], ["el capítulo III", capTexto]] as const) {
       if (/70\s*%/.test(t)) F(`2 · ${id}: ${donde} dice «70%»: «${t.slice(0, 120)}»`);
     }
-    if (!/^Aun (con pie de \d+% y crédito a \d+ años|pagando al contado), llegar a Comprar pediría /.test(distancia)) F(`2 · ${id}: la card no cita la combinación: «${distancia}»`);
+    if (!/^Aun (con pie de [1-9]\d*% y crédito a \d+ años|sin pie y con crédito a \d+ años|pagando al contado), llegar a Comprar pediría /.test(distancia)) F(`2 · ${id}: la card no cita la combinación: «${distancia}»`);
     const t = chequearTitular(id, v, fx.modalidad, card);
     for (const x of t.fallas) F(`2 · ${x}`);
     if (cap.rec) F(`2 · ${id}: el capítulo «A qué precio cerrar» recomienda precio en un Buscar otro del filtro`);
