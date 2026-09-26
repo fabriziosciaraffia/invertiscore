@@ -25,7 +25,12 @@ import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
-import { leerNum, type FuenteArriendo } from "./derive";
+import {
+  capacidadHuespedesDe,
+  dormitoriosNum,
+  leerNum,
+  type FuenteArriendo,
+} from "./derive";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
@@ -91,7 +96,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     : a.tipoPropiedad === "nuevo" ? 1 : 0;
   const piePct = derivePiePctLocal(a, ctx.ufCLP);
   const pieUF = precioUF * (piePct / 100);
-  const dorm = a.esStudio ? 0 : intSafe(a.dormitorios, 2);
+  const dorm = dormitoriosNum(a);
   const comisionAdmin = leerNum(a.comisionAdminPct, DEC.comisionAdmin);
   const nombre = `Depto ${a.esStudio ? "studio" : dorm + "D"}${a.banos || "1"}B ${a.comuna ?? ""}`.trim();
 
@@ -203,7 +208,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const precioUF = leerNum(a.precio, DEC.precioUF);
   const precioCompraCLP = Math.round(precioUF * ctx.ufCLP);
   const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
-  const dorm = a.esStudio ? 0 : intSafe(a.dormitorios, 2);
+  const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
   const corregido = a.adrModo === "corregir";
   // Entrega — MISMA derivación que buildLtrPayload (líneas ~74 y ~104), no una
@@ -230,7 +235,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     dormitorios: dorm,
     banos: intSafe(a.banos, 1),
     superficieUtil: supUtil,
-    capacidadHuespedes: Math.max(2, dorm * 2),
+    capacidadHuespedes: capacidadHuespedesDe(dorm),
     precioCompra: precioCompraCLP,
     precioCompraUF: precioUF,
     // Forma canónica del motor: fecha absoluta, no meses relativos. El wizard

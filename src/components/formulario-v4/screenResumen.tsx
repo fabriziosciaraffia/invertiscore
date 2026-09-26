@@ -60,7 +60,7 @@ import {
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { CAJA_COBERTURA } from "@/lib/comuna-bounds";
-import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
+import { dormLabel, dormitoriosNum, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -810,7 +810,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // Supuestos (nivel 3 · card 03).
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
   const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
-  const dorm = Number(a.dormitorios) || 2;
+  const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
 
   // Procedencia del arriendo. Son TRES situaciones, no dos: Franco lo estimó, el

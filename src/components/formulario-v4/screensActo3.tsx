@@ -13,7 +13,7 @@ import { escalaArriendo, escalaOcupacion, escalaTarifa } from "./avisoEscala";
 import { DEC } from "./wizardV4Nodes";
 import { FuenteLine, GhostBtn, PrimaryBtn } from "./ui";
 import { NumericInput } from "./NumericInput";
-import { dormLabel, fmtCLP, fuenteArriendoLine, leerNum, precioUF, superficieM2 } from "./derive";
+import { dormLabel, dormitoriosNum, fmtCLP, fuenteArriendoLine, leerNum, precioUF, superficieM2 } from "./derive";
 
 // ── Supuestos plegados (details) ──────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ export function AdrScreen({ answers, data, answer, goDetour }: ScreenProps) {
     ? Math.round(airRoi.ingresoBrutoMensual / (DIAS_MES * occ))
     : 0;
   const listo = !airRoi.isLoading && tarifa > 0;
-  const dorm = Number(answers.dormitorios) || 2;
+  const dorm = dormitoriosNum(answers);
   const costos = getCostosDefault(dorm, "basico");
   const totalOps = costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos;
 

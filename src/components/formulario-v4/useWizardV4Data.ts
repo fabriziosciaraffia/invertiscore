@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { useAirRoiSuggestion, type AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import type { WizardV4Answers } from "./wizardV4Nodes";
-import type { FuenteArriendo } from "./derive";
+import { capacidadHuespedesDe, dormitoriosNum, type FuenteArriendo } from "./derive";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const UF_FALLBACK = 38800;
@@ -182,15 +182,16 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
 
   // Baseline AirROI — no-op salvo modalidad str/both (evita el costo del fetch
   // en LTR puro). capacidadHuespedes se aproxima desde dormitorios cuando no se
-  // pide explícito (2 por dorm, mínimo 2).
-  const dorm = Number(answers.dormitorios) || 2;
+  // pide explícito (2 por dorm, mínimo 2). El studio es 0, como en el submit: con
+  // `Number(dormitorios) || 2` se le pedía a AirROI un 2D con 4 huéspedes.
+  const dorm = dormitoriosNum(answers);
   const airRoi = useAirRoiSuggestion({
     enabled: answers.modalidad === "str" || answers.modalidad === "both",
     direccion: answers.direccion ?? "",
     comuna: answers.comuna ?? "",
     dormitorios: dorm,
     banos: Number(answers.banos) || 1,
-    capacidadHuespedes: Math.max(2, dorm * 2),
+    capacidadHuespedes: capacidadHuespedesDe(dorm),
     ufClp: ufCLP,
   });
 

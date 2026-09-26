@@ -61,9 +61,29 @@ export function esEdicionReal(
   return leerNum(nuevo, decimales) !== leerNum(previo, decimales);
 }
 
-/** Concordancia singular/plural de "dormitorio(s)". */
+/** Concordancia singular/plural de "dormitorio(s)"; el studio se nombra como studio. */
 export function dormLabel(n: number): string {
+  if (n === 0) return "un studio";
   return `${n} ${n === 1 ? "dormitorio" : "dormitorios"}`;
+}
+
+/**
+ * Dormitorios como número, con el studio en 0. FUENTE ÚNICA de la tipología en el wizard.
+ *
+ * La pantalla de tarifa, el resumen y la estimación de AirROI leían `Number(dormitorios) || 2`,
+ * y el studio guarda "0": `Number("0") || 2` da 2. Veían costos de un 2D y pedían a AirROI un
+ * 2D con 4 huéspedes, mientras el submit mandaba 0 (26-sep-2026: en los 23 studios de renta
+ * corta, lo que se mostró era entre 4% y 22% más ingreso que lo que se calculó).
+ */
+export function dormitoriosNum(a: WizardV4Answers): number {
+  if (a.esStudio) return 0;
+  const n = parseNumeroCL(a.dormitorios ?? "", 0);
+  return n !== null && n >= 0 ? n : 2;
+}
+
+/** Huéspedes que se le piden a AirROI: dos por dormitorio, mínimo dos (el studio, dos). */
+export function capacidadHuespedesDe(dormitorios: number): number {
+  return Math.max(2, dormitorios * 2);
 }
 
 /** Precio en UF (0 si vacío/ inválido). */
