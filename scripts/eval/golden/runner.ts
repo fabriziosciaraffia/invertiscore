@@ -109,6 +109,7 @@ import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
+import { runStrCongeladoTier } from "./str-congelado-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -339,6 +340,10 @@ function printSeed(r: SeedReport) {
   // Tier PRUEBAS-SUELTAS (27-sep-2026, 0 tokens): test-linea-consumo y test-draft-scope corren
   // acá como proceso aparte y tienen que salir con 0. Estaban en rojo en master sin que nadie los corriera.
   totalHard += runPruebasSueltasTier().hard;
+  // Tier STR-CONGELADO (27-sep-2026, lee tres filas; 0 tokens): las reglas del STR sobre filas
+  // reales —Fall, reparto, día 1, planilla, fronteras, matrices, palancas— y que toda sonda lea el
+  // veredicto como el informe. Estaba en rojo en master, fuera del runner, pineando cifras.
+  totalHard += (await runStrCongeladoTier()).hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del

@@ -1,15 +1,33 @@
 // ============================================================================
-// GOLDEN · CONGELADO STR (T0 · 04-sep-2026) — catch-test. 0 tokens, read-only.
+// GOLDEN · CONGELADO STR — catch-test. 0 tokens, read-only (lee tres filas; no persiste nada).
 // ============================================================================
-// Tres filas reales del parque, recomputadas EN MEMORIA con la UF congelada del corto:
-//   · eb7b3a66 (Sta. Rosa, AJUSTA): las cifras del mockup CONGELADO celda por celda —
-//     metrics, desglose del Fall y tramos, día 1, planilla, fronteras, las dos matrices,
-//     vias y los seis cierres deterministas.
-//   · 18f29784 (Providencia, BUSCAR OTRA): estructural — las cinco vías sin cruzar, la
-//     frase leída de `vias`, los cierres no prometen ajuste.
-//   · 2ff73320 (Santiago, COMPRAR con mes negativo): cruza aunque el mes quede en rojo;
-//     el cierre I no ofrece subir, el II pide el bolsillo, la matriz no marca "cruza".
-// Nada se persiste.
+// Tres filas reales del parque, recomputadas EN MEMORIA con la UF de su día:
+//   · eb7b3a66 (Sta. Rosa) · 18f29784 (Providencia, estructural) · 2ff73320 (Santiago, mes negativo).
+//
+// ACTA 27-sep-2026 — DE CIFRAS A REGLAS. Nació el 04-sep como el mockup «CONGELADO» del STR celda por
+// celda: las seis cifras, el desglose, el día 1, la planilla, las fronteras, las dos matrices, las
+// vías y seis cierres, todos PINEADOS a los valores de eb7b. Ese mockup dejó de ser el contrato hace
+// rato (los cierres II y IV se retiraron, el informe se mudó a pop-ups) y la fila quedó justo en la
+// frontera entre dos veredictos: cada decisión de producto que movía el motor la ponía en rojo, y el
+// 22-sep ya se había re-pineado con actas. El 27-sep estaba en rojo en master con 11 fallas, fuera del
+// runner, sin que nadie lo viera. Es el caso de CLAUDE.md § Testing: «un catch-test fija la REGLA,
+// no la cifra».
+//
+// Salen los pins (las cifras de eb7b, los textos exactos de los cierres). Quedan, para las TRES filas,
+// las reglas que esas cifras ilustraban —y que ningún otro tier mide sobre filas reales—:
+//   1 · el Fall cuadra (ingreso − comisiones − costos − cuotas = lo que sale de tu bolsillo);
+//   2 · el reparto del capítulo II sale del Fall (la cuota del reparto es la del Fall, con la del pie);
+//   3 · el día 1 cierra y el escenario de salida parte de la misma inversión;
+//   4 · la planilla de cada año cuadra con su flujo;
+//   5 · las fronteras van en la dirección que dicen (hacia arriba mejora, hacia abajo empeora; en
+//       COMPRAR no hay frontera hacia arriba ni en BUSCAR OTRA hacia abajo);
+//   6 · LAS MATRICES HABLAN DEL MISMO VEREDICTO QUE EL INFORME: la celda «hoy» es el caso (su flujo y
+//       su veredicto), y «cruza» / «cae» se leen contra ese veredicto;
+//   7 · las palancas son exactamente las vías que cruzan, en el orden de siempre;
+//   8 · los textos no traen palabras de motor;
+//   9 · TODA sonda lee el veredicto como el informe (27-sep-2026, la lectura prudente): las fronteras
+//       y las matrices salen de `lectorDeVeredicto`, la entrada de producción
+//       (`simularStrDesdePersistido`) recibe el veredicto del informe y el render se lo pasa.
 //
 //   node --env-file=.env.local --import tsx scripts/eval/golden/str-congelado-catch-test.ts
 // ============================================================================
@@ -19,18 +37,24 @@ import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
 import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../../../src/lib/comuna-stats";
-import { simularStr } from "../../../src/lib/analysis/simular-str";
+import { fronteraPrecioStr, fronterasIngresoStr, lectorDeVeredicto, simularStr, simularStrDesdePersistido } from "../../../src/lib/analysis/simular-str";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { cierresStr, textoCierre } from "../../../src/lib/cierres-str-ensamblador";
 import { avisoDia1 } from "../../../src/lib/plata-dia1";
 import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 
-const fallas: string[] = [];
-const F = (m: string) => fallas.push(m);
-const cerca = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 const PROHIBIDO = /\brevenue\b|\boverride\b|\bfallback\b|\bllen(a|as|ar|an)\b/i;
+const RANK: Record<string, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
+
+const FILAS = [
+  { id: "eb7b3a66-5769-4c57-92dc-a7c40229d6f9", tag: "eb7b" },
+  { id: "18f29784-7203-45eb-806b-326d2a4fe112", tag: "18f2" },
+  { id: "2ff73320-a4c9-4152-850e-5dc8b518f1c1", tag: "2ff7" },
+] as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function cargar(sb: any, id: string, modo: "auto" | "administrador") {
+async function cargar(sb: any, id: string) {
   const { data, error } = await sb.from("analisis").select("id, comuna, input_data, results, created_at").eq("id", id).single();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const row = data as any;
@@ -48,6 +72,8 @@ async function cargar(sb: any, id: string, modo: "auto" | "administrador") {
       resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad as number | undefined }));
   } catch { /* sin mediana */ }
   const veredictoCtx = { inputs: ctx.inputs, scoreExtras: ctx.scoreExtras, asOf };
+  // `buildStrHallazgos` escribe el veredicto FINAL en `francoScore.veredicto` (el filtro «Ajustar sin
+  // camino» corre ahí, después de la distancia). Todo lo que sigue se mide contra ESE veredicto.
   const hallazgos = mergeHallazgosStr(result.hallazgos, buildStrHallazgos({
     result, francoScore, comuna: row.comuna as string, precioUF: d.precioCompraUF as number, superficieM2: d.superficieUtil as number,
     piePct: d.piePct as number, tasaPct: d.tasaInteres as number, plazoAnios: d.plazoCredito as number, mediana, valorUF: uf, incluyeCorretaje: false, veredictoCtx,
@@ -57,148 +83,135 @@ async function cargar(sb: any, id: string, modo: "auto" | "administrador") {
     veredicto: francoScore.veredicto, adr: result.ejesAplicados?.adrFinal ?? result.escenarios.base.adrReferencia,
     ocupacion: result.ejesAplicados?.ocupacionFinal ?? result.escenarios.base.ocupacionReferencia, precioCLP: ctx.inputs.precioCompra, precioUF: d.precioCompraUF as number,
   }, { adr: { p25: pc.average_daily_rate.p25, p75: pc.average_daily_rate.p75, p90: pc.average_daily_rate.p90 }, ocupacion: { p25: pc.occupancy.p25, p75: pc.occupancy.p75, p90: pc.occupancy.p90 } });
-  const cierres = cierresStr({ result, francoScore, hallazgos, simulacion: sim, comuna: row.comuna as string, ufValue: uf, modoGestion: modo });
-  return { row, d, uf, result, francoScore, hallazgos, sim, cierres };
+  const cierres = cierresStr({ result, francoScore, hallazgos, simulacion: sim, comuna: row.comuna as string, ufValue: uf, modoGestion: "auto" });
+  return { d, result, francoScore, hallazgos, sim, cierres, row, uf, asOf, veredictoCtx };
 }
 
-function textoLimpio(tag: string, textos: string[]) {
-  for (const t of textos) { const m = PROHIBIDO.exec(t); if (m) F(`${tag} · palabra prohibida "${m[0]}" en: ${t.slice(0, 90)}`); }
-}
+export async function runStrCongeladoTier(): Promise<{ hard: number }> {
+  console.log("\n─── TIER STR-CONGELADO (tres filas reales: las reglas del STR, no sus cifras · lee la base) ───");
+  const fallas: string[] = [];
+  const F = (m: string) => fallas.push(m);
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    F("sin credenciales de Supabase en el entorno: el tier no midió (correr con --env-file=.env.local)");
+  } else {
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    for (const { id, tag } of FILAS) {
+      let c;
+      try { c = await cargar(sb, id); } catch (e) { F(`${tag} · ${(e as Error).message}`); continue; }
+      const { d: inp, result: r, francoScore, hallazgos, sim, cierres, row, uf, asOf, veredictoCtx } = c;
+      const m = r.metrics;
+      if (!m) { F(`${tag} · sin metrics`); continue; }
+      const veredicto = francoScore.veredicto;
+      const rank = RANK[veredicto];
 
-async function main() {
-  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", process.env.SUPABASE_SERVICE_ROLE_KEY ?? "");
+      // 1 · el Fall cuadra
+      const d = m.desgloseFall;
+      const salidas = d.comisionPlataforma + d.administrador + d.costosDirectos + d.gastosComunesMantencion + d.contribucionesMensuales + d.cuota + (d.cuotaCreditoPie ?? 0);
+      if (d.ingreso - salidas !== d.saleDeTuBolsillo) F(`${tag} · 1 · el Fall no cuadra: ${d.ingreso} − ${salidas} ≠ ${d.saleDeTuBolsillo}`);
+      if (d.saleDeTuBolsillo !== m.flujoMensual) F(`${tag} · 1 · lo que sale de tu bolsillo (${d.saleDeTuBolsillo}) no es el flujo del mes (${m.flujoMensual})`);
 
-  // ── 1 · Sta. Rosa: el CONGELADO celda por celda ──
-  {
-    const { result: r, francoScore, hallazgos, sim, cierres } = await cargar(sb, "eb7b3a66-5769-4c57-92dc-a7c40229d6f9", "auto");
-    const m = r.metrics!;
-    if (francoScore.veredicto !== "AJUSTA SUPUESTOS") F(`eb7b · veredicto ${francoScore.veredicto}`);
-    if (!m) F("eb7b · sin metrics");
-    // seis cifras
-    if (m.ingresoEstabilizadoMensual !== 592012) F(`eb7b · ingreso ${m.ingresoEstabilizadoMensual} ≠ 592.012`);
-    if (m.flujoMensual !== -84407) F(`eb7b · flujo ${m.flujoMensual} ≠ −84.407`);
-    if (!cerca(m.capRatePct, 4.15, 0.01)) F(`eb7b · cap ${m.capRatePct}`);
-    if (!cerca(m.tirPct ?? 0, 9.31, 0.01)) F(`eb7b · TIR ${m.tirPct}`);
-    if (m.tarifaNoche !== 45552) F(`eb7b · tarifa ${m.tarifaNoche}`);
-    if (!cerca(m.ocupacion, 0.4273, 0.0005)) F(`eb7b · ocupación ${m.ocupacion}`);
-    // Fall + tramos
-    const d = m.desgloseFall;
-    if (d.comisionPlataforma !== 17760 || d.administrador !== 0) F(`eb7b · comisión ${d.comisionPlataforma}/${d.administrador}`);
-    if (d.costosDirectos !== 85000 || d.gastosComunesMantencion !== 92000 || d.contribucionesMensuales !== 15734 || d.cuota !== 465925) F(`eb7b · desglose ${JSON.stringify(d)}`);
-    if (d.ingreso - d.comisionPlataforma - d.administrador - d.costosDirectos - d.gastosComunesMantencion - d.contribucionesMensuales - d.cuota !== d.saleDeTuBolsillo) F("eb7b · el Fall no cuadra");
-    // `tramosBarra` se retiró con la barra (16-sep-2026); los MISMOS tres campos viven ahora
-    // en `repartoIngreso`, que es lo que emite el motor para la línea que la reemplazó. El pin
-    // no se borra al retirar la pieza: las cifras que vigilaba siguen siendo las del Fall.
-    const rep = m.repartoIngreso!;
-    if (rep.exceso !== 84407 || rep.libre !== 0 || rep.costosOperar !== 210494) F(`eb7b · reparto ${JSON.stringify(rep)}`);
-    if (rep.cuotaPor100 !== Math.round((d.cuota / d.ingreso) * 100)) F(`eb7b · el % de la cuota (${rep.cuotaPor100}) no es la cuota sobre el ingreso`);
-    if (rep.forma !== (d.cuota <= d.ingreso ? "cabe" : "supera")) F(`eb7b · la forma (${rep.forma}) no sigue al corte «la cuota cabe»`);
-    // día 1
-    const d1 = m.dia1;
-    if (d1.pieCLP !== 22067640 || d1.gastosCompraCLP !== 2206764 || d1.amoblamientoCLP !== 2500000 || d1.capexCLP !== 0 || d1.inversionInicial !== 26774404) F(`eb7b · día 1 ${JSON.stringify(d1)}`);
-    if (avisoDia1(d1) !== null) F(`eb7b · día 1 no cierra: ${avisoDia1(d1)}`);
-    if (r.exitScenario?.inversionInicial !== 26774404) F(`eb7b · exit.inversionInicial ${r.exitScenario?.inversionInicial}`);
-    // planilla
-    const p1 = r.projections![0];
-    if (p1.ingresoAnual !== 7104142 || (p1.comisionAnual! + p1.costosAnual!) !== 2525932 || p1.ingresoNetoAnual !== 4578210 || p1.cuotaAnual !== 5591100 || p1.estabilizacionAnual !== 888018) F(`eb7b · planilla año 1 ${JSON.stringify(p1)}`);
-    for (const p of r.projections!) {
-      const fl = p.ingresoNetoAnual! - p.cuotaAnual! - p.estabilizacionAnual! - p.amoblamientoAnual!;
-      if (Math.abs(fl - p.flujoOperacionalAnual) > 2) F(`eb7b · planilla año ${p.year}: ${fl} ≠ ${p.flujoOperacionalAnual}`);
+      // 2 · el reparto sale del Fall
+      const rep = m.repartoIngreso;
+      if (!rep) F(`${tag} · 2 · sin reparto`);
+      else {
+        if (rep.cuota !== d.cuota + (d.cuotaCreditoPie ?? 0)) F(`${tag} · 2 · la cuota del reparto (${rep.cuota}) no es la del Fall`);
+        if (rep.exceso !== Math.max(0, -m.flujoMensual) || rep.libre !== Math.max(0, m.flujoMensual)) F(`${tag} · 2 · exceso/libre no salen del flujo`);
+        if (rep.cuotaPor100 !== Math.round((rep.cuota / d.ingreso) * 100)) F(`${tag} · 2 · el % de la cuota no es la cuota sobre el ingreso`);
+        if (rep.forma !== (rep.cuota <= d.ingreso ? "cabe" : "supera")) F(`${tag} · 2 · la forma no sigue al corte «la cuota cabe»`);
+      }
+
+      // 3 · el día 1 cierra
+      if (avisoDia1(m.dia1) !== null) F(`${tag} · 3 · el día 1 no cierra: ${avisoDia1(m.dia1)}`);
+      if (r.exitScenario && r.exitScenario.inversionInicial !== m.dia1.inversionInicial) F(`${tag} · 3 · la salida parte de ${r.exitScenario.inversionInicial} y el día 1 de ${m.dia1.inversionInicial}`);
+
+      // 4 · la planilla cuadra
+      if (!r.projections?.length) F(`${tag} · 4 · sin planilla`);
+      for (const p of r.projections ?? []) {
+        const fl = p.ingresoNetoAnual! - p.cuotaAnual! - p.estabilizacionAnual! - p.amoblamientoAnual!;
+        if (Math.abs(fl - p.flujoOperacionalAnual) > 2) { F(`${tag} · 4 · planilla año ${p.year}: ${fl} ≠ ${p.flujoOperacionalAnual}`); break; }
+      }
+
+      // 5 · las fronteras van en la dirección que dicen
+      const fi = sim.fronterasIngreso;
+      if (fi.arriba && (!(RANK[fi.arriba.veredicto] > rank) || !(fi.arriba.factor > 1) || !(fi.tarifa.arriba! > fi.tarifa.actual))) F(`${tag} · 5 · la frontera hacia arriba no mejora: ${JSON.stringify(fi.arriba)}`);
+      if (fi.abajo && (!(RANK[fi.abajo.veredicto] < rank) || !(fi.abajo.factor < 1) || !(fi.tarifa.abajo! < fi.tarifa.actual))) F(`${tag} · 5 · la frontera hacia abajo no empeora: ${JSON.stringify(fi.abajo)}`);
+      if (veredicto === "COMPRAR" && fi.arriba) F(`${tag} · 5 · en COMPRAR hay frontera hacia arriba`);
+      if (veredicto === "BUSCAR OTRA" && fi.abajo) F(`${tag} · 5 · en BUSCAR OTRA hay frontera hacia abajo`);
+      const fp = sim.fronteraPrecio;
+      if (fp.subeA && (!(RANK[fp.subeA.veredicto] > rank) || !(fp.subeA.precioUF < (inp.precioCompraUF as number)))) F(`${tag} · 5 · bajar el precio no mejora: ${JSON.stringify(fp.subeA)}`);
+      if (fp.caeA && (!(RANK[fp.caeA.veredicto] < rank) || !(fp.caeA.precioUF > (inp.precioCompraUF as number)))) F(`${tag} · 5 · subir el precio no empeora: ${JSON.stringify(fp.caeA)}`);
+
+      // 6 · las matrices hablan del mismo veredicto que el informe
+      const mt = sim.matrizTarifaOcupacion;
+      const hoyT = mt.celdas.filter((x) => x.esActual);
+      if (mt.celdas.length !== 16 || hoyT.length !== 1) F(`${tag} · 6 · tarifa × ocupación: ${mt.celdas.length} celdas, ${hoyT.length} «hoy»`);
+      else {
+        if (hoyT[0].flujoMensual !== m.flujoMensual) F(`${tag} · 6 · la celda «hoy» de tarifa × ocupación tiene flujo ${hoyT[0].flujoMensual}; el informe, ${m.flujoMensual}`);
+        if (hoyT[0].veredicto !== veredicto) F(`${tag} · 6 · la celda «hoy» de tarifa × ocupación dice ${hoyT[0].veredicto} y el informe ${veredicto}`);
+      }
+      for (const x of mt.celdas) {
+        if (x.cruza !== (RANK[x.veredicto] > rank) || x.cae !== (RANK[x.veredicto] < rank)) { F(`${tag} · 6 · una celda de tarifa × ocupación marca cruza/cae contra otro veredicto que el del informe`); break; }
+      }
+      const mp = sim.matrizPiePlazo;
+      const hoyP = mp.celdas.filter((x) => x.esActual);
+      if (mp.celdas.length !== 16 || hoyP.length !== 1) F(`${tag} · 6 · pie × plazo: ${mp.celdas.length} celdas, ${hoyP.length} «hoy»`);
+      else {
+        if (hoyP[0].piePct !== Number(inp.piePct) || hoyP[0].plazoAnios !== Number(inp.plazoCredito) || hoyP[0].flujoMensual !== m.flujoMensual) F(`${tag} · 6 · la celda «hoy» de pie × plazo no es el caso: ${JSON.stringify(hoyP[0])}`);
+        if (hoyP[0].veredicto !== veredicto) F(`${tag} · 6 · la celda «hoy» de pie × plazo dice ${hoyP[0].veredicto} y el informe ${veredicto}`);
+      }
+      if (mp.celdas.some((x) => x.cruza !== (RANK[x.veredicto] > rank))) F(`${tag} · 6 · una celda de pie × plazo marca «cruza» contra otro veredicto que el del informe`);
+
+      // 7 · las palancas son las vías que cruzan
+      const dv = hallazgos.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
+      const vias = dv?.valor.vias ?? [];
+      if (vias.map((v) => v.palanca).join() !== "precio,adr,plazo,pie,gestion") F(`${tag} · 7 · orden de las vías: ${vias.map((v) => v.palanca).join()}`);
+      const cruzan = vias.filter((v) => v.estado === "cruza").map((v) => v.palanca).sort().join();
+      const palancas = (dv?.valor.palancas ?? []).map((p) => p.palanca).sort().join();
+      if (cruzan !== palancas) F(`${tag} · 7 · palancas (${palancas}) ≠ vías que cruzan (${cruzan})`);
+      if (dv?.valor.esEstructural && cruzan) F(`${tag} · 7 · es estructural y hay vías que cruzan (${cruzan})`);
+
+      // 8 · los textos, limpios
+      const textos = [textoCierre(cierres.renta), textoCierre(cierres.noches), textoCierre(cierres.gestion), textoCierre(cierres.resultado)]
+        .concat(hallazgos.map((h) => h.fraseCanonica));
+      for (const t of textos) { const w = PROHIBIDO.exec(t ?? ""); if (w) { F(`${tag} · 8 · palabra de motor «${w[0]}» en: ${t.slice(0, 90)}`); break; } }
+
+      // 9 · toda sonda lee el veredicto como el informe
+      const leer = lectorDeVeredicto(veredictoCtx, veredicto);
+      const baseSim = { veredicto, adr: r.ejesAplicados?.adrFinal ?? r.escenarios.base.adrReferencia, ocupacion: r.ejesAplicados?.ocupacionFinal ?? r.escenarios.base.ocupacionReferencia, precioCLP: veredictoCtx.inputs.precioCompra, precioUF: inp.precioCompraUF as number };
+      if (JSON.stringify(sim.fronterasIngreso) !== JSON.stringify(fronterasIngresoStr(veredictoCtx, baseSim, leer))) F(`${tag} · 9 · la frontera del ingreso no lee el veredicto como el informe`);
+      if (JSON.stringify(sim.fronteraPrecio) !== JSON.stringify(fronteraPrecioStr(veredictoCtx, baseSim, leer))) F(`${tag} · 9 · la frontera del precio no lee el veredicto como el informe`);
+      const prod = simularStrDesdePersistido(row.input_data, row.results, uf, asOf, undefined, veredicto);
+      if (!prod) F(`${tag} · 9 · la entrada de producción no simuló: el tier no midió`);
+      else {
+        const hoyProd = [...prod.matrizTarifaOcupacion.celdas, ...prod.matrizPiePlazo.celdas].filter((x) => x.esActual);
+        if (hoyProd.length !== 2 || hoyProd.some((x) => x.veredicto !== veredicto)) F(`${tag} · 9 · en producción la celda «hoy» dice ${hoyProd.map((x) => x.veredicto).join(" / ")} y el informe ${veredicto}`);
+        if (JSON.stringify(prod.fronterasIngreso) !== JSON.stringify(sim.fronterasIngreso)) F(`${tag} · 9 · en producción las fronteras no son las del informe`);
+      }
+
+      console.log(`  ${tag} · ${veredicto} (${francoScore.score}) · flujo ${m.flujoMensual}`);
     }
-    // fronteras
-    const fi = sim.fronterasIngreso;
-    if (!fi.abajo || !cerca(fi.abajo.factor, 0.882, 0.003) || fi.abajo.veredicto !== "BUSCAR OTRA") F(`eb7b · frontera abajo ${JSON.stringify(fi.abajo)}`);
-    // ACTA 22-sep-2026 (retiro de la ventaja vs LTR): sin la dimensión ni el gate «el largo gana», la
-    // frontera hacia COMPRAR se aleja de 1,043 a 1,101 (tarifa $50.134, ocupación 47%), el precio que sube
-    // a COMPRAR baja de UF 2.536 a 2.345, el ADR deja de cruzar y la única palanca es el precio.
-    if (!fi.arriba || !cerca(fi.arriba.factor, 1.101, 0.003) || fi.arriba.veredicto !== "COMPRAR") F(`eb7b · frontera arriba ${JSON.stringify(fi.arriba)}`);
-    if (fi.tarifa.arriba == null || !cerca(fi.tarifa.arriba, 50134, 30) || fi.ocupacion.arriba == null || !cerca(fi.ocupacion.arriba, 0.470, 0.002)) F(`eb7b · fronteras en unidades ${JSON.stringify(fi.tarifa)} ${JSON.stringify(fi.ocupacion)}`);
-    const fp = sim.fronteraPrecio;
-    if (!fp.subeA || !cerca(fp.subeA.precioUF, 2345, 2) || !fp.caeA || !cerca(fp.caeA.precioUF, 3212, 4)) F(`eb7b · frontera precio ${JSON.stringify(fp)}`);
-    // matriz tarifa × ocupación
-    const mt = sim.matrizTarifaOcupacion;
-    if (mt.celdas.length !== 16) F(`eb7b · matriz T×O ${mt.celdas.length} celdas`);
-    if (mt.celdas.filter((c) => c.cruza).length !== 11) F(`eb7b · cruzan ${mt.celdas.filter((c) => c.cruza).length}, esperado 11`);
-    const hoy = mt.celdas.find((c) => c.esActual);
-    if (!hoy || hoy.flujoMensual !== -84407 || hoy.veredicto !== "AJUSTA SUPUESTOS") F(`eb7b · celda hoy ${JSON.stringify(hoy)}`);
-    const negCruza = mt.celdas.find((c) => c.cruza && c.flujoMensual < 0);
-    if (!negCruza || negCruza.tarifaCLP !== 75061 || Math.round(negCruza.ocupacion * 100) !== 30) F(`eb7b · cruza con mes negativo ${JSON.stringify(negCruza)}`);
-    // matriz pie × plazo
-    const mp = sim.matrizPiePlazo;
-    if (mp.celdas.length !== 16 || mp.pies.join() !== "15,20,25,30") F(`eb7b · matriz P×P ${mp.pies.join()} · ${mp.celdas.length}`);
-    const c3030 = mp.celdas.find((c) => c.piePct === 30 && c.plazoAnios === 30);
-    // ACTA 22-sep-2026: con pie 30 a 30 años el flujo sigue en +$12.778 pero ya no cruza a COMPRAR (sin la
-    // ventaja el score queda en AJUSTA): ninguna celda de pie × plazo cruza en esta fila.
-    if (!c3030 || c3030.flujoMensual !== 12778 || c3030.cruza || mp.celdas.some((c) => c.cruza)) F(`eb7b · 30×30 ${JSON.stringify(c3030)}`);
-    const cHoy = mp.celdas.find((c) => c.esActual);
-    if (!cHoy || cHoy.piePct !== 20 || cHoy.plazoAnios !== 25 || cHoy.flujoMensual !== -84407 || !cerca(cHoy.tirPct ?? 0, 9.31, 0.01)) F(`eb7b · P×P hoy ${JSON.stringify(cHoy)}`);
-    // vias
-    const dv = hallazgos.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
-    const vias = dv?.valor.vias ?? [];
-    const estado = (p: string) => vias.find((v) => v.palanca === p)?.estado;
-    if (vias.map((v) => v.palanca).join() !== "precio,adr,plazo,pie,gestion") F(`eb7b · orden de vias ${vias.map((v) => v.palanca).join()}`);
-    if (estado("precio") !== "cruza" || estado("adr") !== "noCruza" || estado("plazo") !== "noCruza" || estado("pie") !== "noCruza" || estado("gestion") !== "noCruza") F(`eb7b · estados ${vias.map((v) => `${v.palanca}:${v.estado}`).join(",")}`);
-    const vPie = vias.find((v) => v.palanca === "pie");
-    if (vPie?.estado === "noCruza" && vPie.topeExplorado !== 30) F("eb7b · el pie debía explorarse hasta 30%");
-    if ((dv?.valor.palancas ?? []).map((p) => p.palanca).join() !== "precio") F(`eb7b · palancas ${(dv?.valor.palancas ?? []).map((p) => p.palanca).join()}`);
-    if (dv?.valor.palancas.length !== vias.filter((v) => v.estado === "cruza").length) F("eb7b · palancas ≠ vias.filter(cruza)");
-    // flujo_str
-    const fs = hallazgos.find((h) => h.id === "flujo_str");
-    if (!fs || !/ocupación estimada para tu depto/.test(fs.fraseCanonica)) F(`eb7b · flujo_str: ${fs?.fraseCanonica.slice(0, 80)}`);
-    // cierres — el CIERRE IV se retiró el 21-sep-2026: «Cómo lo pagas» ya no cierra con prosa,
-    // se ancla al precio recomendado (como-lo-pagas.ts, tier como-lo-pagas). Sus cuatro pins
-    // («Bajo UF 2.536», la mediana de 181, «solo 30% de pie a 30 años», «$47.510 por noche»)
-    // vigilaban una superficie que ya no existe.
-    // cierres — el CIERRE II se retiró el 16-sep-2026 con el cierre en prosa del
-    // capítulo II. Las cuatro cifras que pineaba ($84.407, $888.018, «un tercio»,
-    // $185.049) vigilaban una superficie que ya no existe; lo que medían —el monto, la
-    // comparación contra el largo y el otro modo— vive ahora en la tabla y en el V.
-    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches), gestion: textoCierre(cierres.gestion), resultado: textoCierre(cierres.resultado) };
-    if (!/cruzaría a COMPRAR/.test(T.renta) || !/\$50\.1\d\d por noche/.test(T.renta) || !/cruza a COMPRAR aunque el mes quede en −\$919/.test(T.renta)) F(`eb7b · cierre I: ${T.renta}`);
-    // Cierre III desde el 22-sep-2026 («Ocupación en renta corta»): sin avisos parecidos guardados en esta fila, once meses en rojo.
-    if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches) || !/once meses en rojo/.test(T.noches)) F(`eb7b · cierre III: ${T.noches}`);
-    // Los pins del cierre II (antes «V») y del VI estaban ROJOS en master desde la fusión del 17-sep y el
-    // rediseño de «Tu resultado» del 22-sep; se re-pinean acá con el texto vivo (acta del retiro).
-    if (!/9,1 puntos de ocupación/.test(T.gestion) || !/42,7% a 51,8%/.test(T.gestion)) F(`eb7b · cierre II: ${T.gestion}`);
-    if (!/\$25,3 MM/.test(T.resultado) || !/\$35,0 MM/.test(T.resultado)) F(`eb7b · cierre VI: ${T.resultado}`);
-    textoLimpio("eb7b", Object.values(T).concat(hallazgos.map((h) => h.fraseCanonica)));
-    console.log("  eb7b3a66 · Sta. Rosa · " + francoScore.veredicto + "\n    I  " + T.renta + "\n    III " + T.noches + "\n    II " + T.gestion + "\n    VI " + T.resultado);
   }
+  // 9 · el render le pasa a la simulación el veredicto del informe
+  const informe = readFileSync(join(__dirname, "..", "..", "..", "src/app/analisis/renta-corta/[id]/informe-str.tsx"), "utf8").replace(/\r\n/g, "\n");
+  if (!/return simularStrDesdePersistido\([^\n]*, medianaStr, veredictoInforme\);/.test(informe)) F("9 · el informe STR simula sin el veredicto del informe");
 
-  // ── 2 · Estructural ──
-  {
-    const { francoScore, hallazgos, sim, cierres } = await cargar(sb, "18f29784-7203-45eb-806b-326d2a4fe112", "auto");
-    const dv = hallazgos.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
-    if (!dv?.valor.esEstructural) F("18f2 · debía ser estructural");
-    if ((dv?.valor.vias ?? []).some((v) => v.estado === "cruza")) F("18f2 · ninguna vía debía cruzar");
-    // Rojo en master desde antes del retiro (la frase perdió «ni con administrador» con la fusión del
-    // 17-sep); se re-pinea con el texto vivo.
-    if (!/Ni a 30 años ni con pie 30% cambia\./.test(dv?.fraseCanonica ?? "")) F(`18f2 · frase estructural: ${dv?.fraseCanonica}`);
-    if (sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("18f2 · la matriz pie × plazo no debía cruzar");
-    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
-    textoLimpio("18f2", Object.values(T));
-    console.log(`  18f29784 · estructural · ${francoScore.veredicto}\n    I  ${T.renta}`);
+  if (fallas.length) {
+    console.log(`  ✗ STR-CONGELADO · ${fallas.length} falla(s):`);
+    for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
+  } else {
+    console.log("  ✓ VERDE — en las tres filas: el Fall y la planilla cuadran, el reparto sale del Fall, el día 1 cierra, las fronteras van donde dicen, las matrices hablan del veredicto del informe, las palancas son las vías que cruzan y los textos están limpios");
   }
-
-  // ── 3 · AJUSTA con mes negativo (era COMPRAR hasta el 22-sep-2026) ──
-  // ACTA 22-sep-2026 (retiro de la ventaja vs LTR): esta fila era COMPRAR 71 con la ventaja en 91 y la
-  // sostenibilidad en 47 (flujo −$51.120): el COMPRAR lo sostenía «le gana mucho al largo declarado».
-  // Sin la dimensión queda en 66, AJUSTA, y aparecen la frontera hacia arriba y las celdas que cruzan.
-  {
-    const { result: r, francoScore, sim, cierres } = await cargar(sb, "2ff73320-a4c9-4152-850e-5dc8b518f1c1", "auto");
-    if (francoScore.veredicto !== "AJUSTA SUPUESTOS" || !(r.metrics!.flujoMensual < 0)) F(`2ff7 · ${francoScore.veredicto} / ${r.metrics?.flujoMensual}`);
-    if (sim.fronterasIngreso.arriba?.veredicto !== "COMPRAR" || sim.fronteraPrecio.subeA?.veredicto !== "COMPRAR") F("2ff7 · en AJUSTA la frontera hacia arriba debe existir y llevar a COMPRAR");
-    if (!sim.matrizTarifaOcupacion.celdas.some((c) => c.cruza)) F("2ff7 · en AJUSTA alguna celda de tarifa × ocupación cruza");
-    if (r.metrics!.repartoIngreso!.exceso <= 0 || r.metrics!.repartoIngreso!.libre !== 0) F(`2ff7 · reparto ${JSON.stringify(r.metrics!.repartoIngreso)}`);
-    const T = { renta: textoCierre(cierres.renta), noches: textoCierre(cierres.noches) };
-    if (!/sube a COMPRAR/.test(T.renta)) F(`2ff7 · cierre I en AJUSTA no ofrece subir: ${T.renta}`);
-    if (!/156 noches/.test(T.noches) || !/sin avisos parecidos/.test(T.noches)) F(`2ff7 · cierre III: ${T.noches}`);
-    textoLimpio("2ff7", Object.values(T));
-    console.log(`  2ff73320 · AJUSTA con mes negativo (${r.metrics!.flujoMensual})\n    I  ${T.renta}\n    III ${T.noches}`);
-  }
-
-  console.log("\nCONGELADO STR · catch-test\n");
-  if (fallas.length) { for (const x of fallas) console.log("  ✗ " + x); console.log(`\n✗ ROJO — ${fallas.length} falla(s)`); process.exit(1); }
-  console.log("✓ VERDE");
+  return { hard: fallas.length };
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+
+if (require.main === module) {
+  runStrCongeladoTier().then(({ hard }) => process.exit(hard ? 1 : 0));
+}
+
+// ACTAS DE MUTACIÓN (27-sep-2026) — cada una aplicada, corrida contra este tier y restaurada.
+// De las reglas (antes de la lectura prudente, sobre el motor): M6 las matrices marcan «cruza» con
+// empate · M7 la celda «hoy» se recomputa redondeada — las dos en ROJO con su propia falla.
+// De la lectura prudente, las 8 en ROJO; restauradas, VERDE: P1 el lector no baja nada · P2 tarifa ×
+// ocupación sin el lector · P3 pie × plazo sin el lector · P4 la frontera del ingreso sin el lector ·
+// P5 la del precio sin el lector · P6 producción ignora el veredicto del informe · P7 el render no lo
+// pasa · P8 el lector sube en vez de bajar.
