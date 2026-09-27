@@ -135,10 +135,13 @@ export function pieCurvaFlujoLtr(d: DescomposicionFlujoLtr, p: { mantencionPorBa
  * `calcMesVacio` (cuota completa + gastos comunes ENTEROS + contribuciones del mes); acá no
  * se recalcula, se nombra.
  */
-export function cierreMesVacioLtr(p: { mesVacio: number; cuota: number; gastosComunes: number; contribucionesMes: number; money: (n: number) => string }): SegFlujo[] {
+export function cierreMesVacioLtr(p: { mesVacio: number; cuota: number; gastosComunes: number; contribucionesMes: number; cuotaCreditoPie?: number; money: (n: number) => string }): SegFlujo[] {
+  // Con el pie cubierto por un crédito, su cuota también se nombra: si no, las partes no suman
+  // la cifra (27-sep-2026).
+  const pie = (p.cuotaCreditoPie ?? 0) > 0 ? `, la cuota del crédito del pie (${p.money(p.cuotaCreditoPie ?? 0)})` : "";
   return [
     { t: "Un mes sin arrendatario son " },
     { t: p.money(p.mesVacio), b: true },
-    { t: ` de tu bolsillo: la cuota completa (${p.money(p.cuota)}) más los gastos comunes enteros (${p.money(p.gastosComunes)}) y las contribuciones del mes (${p.money(p.contribucionesMes)}). No es el promedio: es el mes que sí vas a vivir.` },
+    { t: ` de tu bolsillo: la cuota completa (${p.money(p.cuota)})${pie} más los gastos comunes enteros (${p.money(p.gastosComunes)}) y las contribuciones del mes (${p.money(p.contribucionesMes)}). No es el promedio: es el mes que sí vas a vivir.` },
   ];
 }

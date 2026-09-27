@@ -99,6 +99,14 @@ export interface AnalisisInput {
   // métricas sobre capital. Ausente ⇒ 'sin_pie' (no se preguntó): análisis
   // previos, editor inline del resumen y API directa recomputan idéntico.
   razonSinPie?: RazonSinCapital;
+  // «OTRA FUENTE» CON CRÉDITO (27-sep-2026, entrega 2 del wizard). Cuando el pie lo cubre otra
+  // fuente, para el banco ESO ES PIE: el wizard manda su monto en `piePct` y el hipotecario se
+  // calcula sobre precio − monto. Si esa otra fuente es un crédito, su cuota mensual (CLP) se
+  // suma a los egresos del mes: baja el flujo. Ausente ⇒ 0 ⇒ ningún análisis previo cambia.
+  cuotaCreditoPie?: number;
+  // De dónde sale el pie, informativo (no lo lee el motor): «otra_fuente» cuando el wizard lo
+  // declaró así. Sirve para que el resumen y el informe lo digan.
+  pieOrigen?: "otra_fuente";
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

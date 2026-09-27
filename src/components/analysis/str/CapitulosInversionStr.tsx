@@ -378,6 +378,9 @@ export function CapitulosInversionStr({
                 <FilaDato k="Gastos comunes y mantención" tip="Declarados por ti" v={neg(-fl.gastosComunesMantencion)} unidad="/mes" />
                 <FilaDato k="Contribuciones" tip="Contribuciones ÷ 3" sub={`${money(fl.contribucionesMensuales * 3)} al trimestre`} v={neg(-fl.contribucionesMensuales)} unidad="/mes" />
                 <FilaDato k="Cuota del crédito" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? `${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} v={neg(-fl.cuota)} unidad="/mes" />
+                {(fl.cuotaCreditoPie ?? 0) > 0 && (
+                  <FilaDato k="Cuota del crédito del pie" tip="La cuota del crédito con que cubres el pie. Se descuenta cada mes." sub="declarada por ti" v={neg(-fl.cuotaCreditoPie)} unidad="/mes" />
+                )}
                 <FilaDato tono="tot" k={fl.saleDeTuBolsillo < 0 ? "Sale de tu bolsillo" : "Te queda"} tip="Ingreso − comisión − costos − cuota" v={<span style={{ color: fl.saleDeTuBolsillo < 0 ? "var(--signal-red)" : undefined }}>{neg(fl.saleDeTuBolsillo)}</span>} unidad="/mes" />
               </FilasDato>
             ) : (

@@ -170,6 +170,8 @@ export interface FlujoDesglose {
   corretajeProrrata: number;
   recambio: number;
   administracion: number;
+  /** La cuota del crédito con que se cubre el pie («otra fuente» con crédito). 0 sin crédito. */
+  cuotaCreditoPie: number;
   totalEgresos: number;
   flujoNeto: number;
 }
@@ -187,6 +189,8 @@ export function calcFlujoDesglose(datos: {
   vacanciaMeses: number;
   usaAdministrador?: boolean;
   comisionAdministrador?: number;
+  /** CLP al mes; ausente ⇒ 0 (análisis sin crédito para el pie: byte-idénticos). */
+  cuotaCreditoPie?: number;
 }): FlujoDesglose {
   const arriendo = datos.arriendo;
   const dividendo = datos.dividendo;
@@ -202,10 +206,14 @@ export function calcFlujoDesglose(datos: {
     ? Math.round((datos.arriendo * (datos.comisionAdministrador ?? 7) / 100) * (12 - datos.vacanciaMeses) / 12)
     : 0;
 
-  const totalEgresos = dividendo + ggccVacancia + contribucionesMes + mantencion + vacanciaProrrata + corretajeProrrata + recambio + administracion;
+  // La cuota del crédito del pie («otra fuente» con crédito, 27-sep-2026): una obligación más del
+  // mes, con o sin arrendatario.
+  const cuotaCreditoPie = Math.max(0, Math.round(datos.cuotaCreditoPie ?? 0));
+
+  const totalEgresos = dividendo + ggccVacancia + contribucionesMes + mantencion + vacanciaProrrata + corretajeProrrata + recambio + administracion + cuotaCreditoPie;
   const flujoNeto = arriendo - totalEgresos;
 
-  return { arriendo, dividendo, ggccVacancia, contribucionesMes, mantencion, vacanciaProrrata, corretajeProrrata, recambio, administracion, totalEgresos, flujoNeto };
+  return { arriendo, dividendo, ggccVacancia, contribucionesMes, mantencion, vacanciaProrrata, corretajeProrrata, recambio, administracion, cuotaCreditoPie, totalEgresos, flujoNeto };
 }
 
 /**
@@ -228,8 +236,9 @@ export function calcFlujoDesglose(datos: {
  * «Un mes de vacancia, en plata» del drawer de estructura. Estaban calculándola por
  * separado y una de las dos lo hacía mal.
  */
-export function calcMesVacio(datos: { dividendo: number; ggcc: number; contribuciones: number }): number {
-  return Math.round(datos.dividendo + datos.ggcc + Math.round(datos.contribuciones / 3));
+export function calcMesVacio(datos: { dividendo: number; ggcc: number; contribuciones: number; cuotaCreditoPie?: number }): number {
+  // La cuota del crédito del pie («otra fuente» con crédito, 27-sep-2026) también se paga ese mes.
+  return Math.round(datos.dividendo + datos.ggcc + Math.round(datos.contribuciones / 3) + Math.max(0, datos.cuotaCreditoPie ?? 0));
 }
 
 // =========================================
@@ -423,6 +432,7 @@ function calcMetrics(
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
     comisionAdministrador: input.comisionAdministrador,
+    cuotaCreditoPie: input.cuotaCreditoPie,
   });
 
   const egresosMensuales = flujo.totalEgresos;
@@ -720,6 +730,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics, asOf:
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
     comisionAdministrador: input.comisionAdministrador,
+    cuotaCreditoPie: input.cuotaCreditoPie,
   });
 
   if (input.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
@@ -875,6 +886,7 @@ export function calcProjections(args: {
       vacanciaMeses: input.vacanciaMeses,
       usaAdministrador: input.usaAdministrador,
       comisionAdministrador: input.comisionAdministrador,
+      cuotaCreditoPie: input.cuotaCreditoPie,
     });
 
     let flujoAnual = 0;
@@ -896,7 +908,10 @@ export function calcProjections(args: {
     const gastosOperativosAnual = (flujoMes.ggccVacancia + flujoMes.contribucionesMes + flujoMes.mantencion) * mesesOperativos;
     const vacanciaRotacionAnual =
       (flujoMes.vacanciaProrrata + flujoMes.corretajeProrrata + flujoMes.recambio + flujoMes.administracion) * mesesOperativos;
-    const dividendoAnual = dividendoAnio * mesesOperativos;
+    // Las cuotas del año: la del hipotecario y, si el pie lo cubre un crédito, la de ese crédito
+    // (27-sep-2026). Así la identidad `noiAnual − vacanciaRotacion − dividendo = flujoAnual` sigue
+    // exacta con la cuota del pie adentro.
+    const dividendoAnual = (dividendoAnio + flujoMes.cuotaCreditoPie) * mesesOperativos;
     const arriendoAnual = Math.round(arriendoActual * mesesOperativos);
 
     // Reloj de mercado CONTINUO desde el año 0 (P1-C: base = precioCLP, no vmFranco).
@@ -1113,6 +1128,7 @@ export function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMet
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
     comisionAdministrador: input.comisionAdministrador,
+    cuotaCreditoPie: input.cuotaCreditoPie,
   });
   const nuevoFlujoNeto = refi.flujoNeto;
 

@@ -100,7 +100,10 @@ export function runFlujoLtrTier(): { hard: number } {
   const c = texto(cierreMesVacioLtr({ mesVacio: mv, cuota: 470691, gastosComunes: 140000, contribucionesMes: 24761, money }));
   if (!c.startsWith(`Un mes sin arrendatario son ${money(mv)} de tu bolsillo`)) F(`3 · el cierre no abre con la cifra de calcMesVacio (dio «${c.slice(0, 60)}»)`);
   if (!/la cuota completa \(\$470\.691\) más los gastos comunes enteros \(\$140\.000\) y las contribuciones del mes \(\$24\.761\)/.test(c)) F(`3 · la fórmula no está a la vista (dio «${c}»)`);
-  if (!/calcMesVacio\(\{ dividendo: d\.dividendo, ggcc: gastosComunes, contribuciones: contribTrim \}\)/.test(cuerpo)) F("3 · el capítulo no calcula el mes vacío con calcMesVacio (gastos comunes ENTEROS, contribuciones trimestrales)");
+  // ACTA 27-sep-2026: la llamada suma la cuota del crédito del pie («otra fuente» con crédito).
+  if (!/calcMesVacio\(\{ dividendo: d\.dividendo, ggcc: gastosComunes, contribuciones: contribTrim, cuotaCreditoPie: d\.cuotaCreditoPie \}\)/.test(cuerpo)) F("3 · el capítulo no calcula el mes vacío con calcMesVacio (gastos comunes ENTEROS, contribuciones trimestrales)");
+  const cPie = texto(cierreMesVacioLtr({ mesVacio: 1155452, cuota: 470691, gastosComunes: 140000, contribucionesMes: 24761, cuotaCreditoPie: 520000, money }));
+  if (!/la cuota completa \(\$470\.691\), la cuota del crédito del pie \(\$520\.000\) más los gastos comunes enteros/.test(cPie)) F(`3 · con crédito para el pie, el cierre no nombra su cuota (dio «${cPie}»)`);
   if (!/cierreMesVacioLtr\(\{ mesVacio,/.test(cuerpo)) F("3 · el capítulo no pasa mesVacio al cierre");
   if (!/<VCierre titulo="Qué significa">\{pinta\(cierre\)\}<\/VCierre>/.test(cuerpo)) F("3 · el cierre del capítulo no es el mes vacío");
   // sobre el código, no sobre las actas: los comentarios nombran lo que salió

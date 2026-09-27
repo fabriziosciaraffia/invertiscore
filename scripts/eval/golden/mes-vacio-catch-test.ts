@@ -76,7 +76,9 @@ const cierreSrc = (() => {
 if (!cierreSrc) F("2 · no existe cierreMesVacioLtr en flujo-mensual-ltr.ts: el cierre del capítulo II no tiene función");
 if (!/Un mes sin arrendatario son /.test(cierreSrc)) F("2 · el cierre no nombra el mes sin arrendatario");
 if (!/\{ t: p\.money\(p\.mesVacio\), b: true \}/.test(cierreSrc)) F("2 · la cifra del cierre no es mesVacio (el bug del 14,9% era interpolar la cuota)");
-if (!/la cuota completa \(\$\{p\.money\(p\.cuota\)\}\) más los gastos comunes enteros \(\$\{p\.money\(p\.gastosComunes\)\}\) y las contribuciones del mes \(\$\{p\.money\(p\.contribucionesMes\)\}\)/.test(cierreSrc)) F("2 · la fórmula del mes vacío no está a la vista en el cierre");
+// ACTA 27-sep-2026: entre la cuota y los gastos va, si existe, la cuota del crédito del pie.
+if (!/la cuota completa \(\$\{p\.money\(p\.cuota\)\}\)\$\{pie\} más los gastos comunes enteros \(\$\{p\.money\(p\.gastosComunes\)\}\) y las contribuciones del mes \(\$\{p\.money\(p\.contribucionesMes\)\}\)/.test(cierreSrc)) F("2 · la fórmula del mes vacío no está a la vista en el cierre");
+if (calcMesVacio({ dividendo: 0, ggcc: 0, contribuciones: 0, cuotaCreditoPie: 520000 }) !== 520000) F("1 · el mes vacío no suma la cuota del crédito del pie");
 
 const CAP = join(__dirname, "..", "..", "..", "src", "components", "analysis", "CapitulosInversion.tsx");
 const src = readFileSync(CAP, "utf-8");
@@ -98,7 +100,8 @@ if (ini === -1 || fin === -1 || fin <= ini) {
   F("2 · no se pudo acotar el cuerpo del capítulo II en CapitulosInversion.tsx: el extractor no midió nada");
 } else {
   const cuerpo = src.slice(ini, fin);
-  if (!/calcMesVacio\(\{ dividendo: d\.dividendo, ggcc: gastosComunes, contribuciones: contribTrim \}\)/.test(cuerpo)) {
+  // ACTA 27-sep-2026: la llamada suma la cuota del crédito del pie («otra fuente» con crédito).
+  if (!/calcMesVacio\(\{ dividendo: d\.dividendo, ggcc: gastosComunes, contribuciones: contribTrim, cuotaCreditoPie: d\.cuotaCreditoPie \}\)/.test(cuerpo)) {
     F("2 · el capítulo II dejó de calcular el mes vacío con calcMesVacio (gastos comunes ENTEROS, contribuciones trimestrales)");
   }
   if (!/cierreMesVacioLtr\(\{ mesVacio,/.test(cuerpo)) {

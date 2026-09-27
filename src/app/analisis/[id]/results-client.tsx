@@ -237,6 +237,7 @@ export function PremiumResults({
       vacanciaMeses: inputData.vacanciaMeses ?? 1,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
+      cuotaCreditoPie: inputData.cuotaCreditoPie,
     });
   }, [m, inputData]);
 
@@ -268,6 +269,7 @@ export function PremiumResults({
       vacanciaMeses: inputData.vacanciaMeses,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
+      cuotaCreditoPie: inputData.cuotaCreditoPie,
     });
 
     const egresos = [
@@ -399,6 +401,7 @@ export function PremiumResults({
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
         usaAdministrador: inputData!.usaAdministrador,
         comisionAdministrador: inputData!.comisionAdministrador,
+        cuotaCreditoPie: inputData!.cuotaCreditoPie,
       });
       const flujoNeto = fd.flujoNeto;
       acumulado += flujoNeto;

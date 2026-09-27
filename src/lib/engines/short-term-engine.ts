@@ -96,6 +96,9 @@ export interface ShortTermInputs {
 
   // Financiamiento
   piePercent: number;       // decimal: 0.20 = 20%
+  /** «Otra fuente» con crédito (27-sep-2026): la cuota mensual (CLP) del crédito con que se cubre
+   *  el pie. Egreso financiero: baja el flujo, no el NOI. Ausente ⇒ 0 (análisis previos idénticos). */
+  cuotaCreditoPie?: number;
   tasaCredito: number;      // decimal: 0.045 = 4.5%
   // Tasa hipotecaria de mercado vigente (decimal, ej. 0.0472). OPCIONAL: solo la
   // envía el wizard v4. Alimenta subsidioTasa (tasa con subsidio = mercado − 0,6pp
@@ -255,6 +258,8 @@ export interface MetricsSTR {
     /** Contribuciones trimestrales mensualizadas (÷3). */
     contribucionesMensuales: number;
     cuota: number;
+    /** La cuota del crédito del pie («otra fuente» con crédito); 0 sin crédito. */
+    cuotaCreditoPie: number;
     /** = flujoMensual (negativo cuando sale de tu bolsillo). */
     saleDeTuBolsillo: number;
   };
@@ -1067,8 +1072,10 @@ function buildProjections(
     const amoblamientoDelAnio =
       mesesPreEntrega > 0 && year === primerAnioOperativo ? (input.costoAmoblamiento || 0) : 0;
 
+    // La cuota del crédito del pie (27-sep-2026) se paga cada mes del año, en pesos nominales.
+    const cuotaPieAnual = Math.max(0, Math.round(input.cuotaCreditoPie ?? 0)) * 12;
     const flujoOperacionalAnual =
-      (noiAnual - dividendoAnual) * proporcion - rampUpDelAnio - amoblamientoDelAnio;
+      (noiAnual - dividendoAnual - cuotaPieAnual) * proporcion - rampUpDelAnio - amoblamientoDelAnio;
 
     flujoAcumulado += flujoOperacionalAnual;
 
@@ -1232,6 +1239,11 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const razonSinPie: RazonSinCapital = input.razonSinPie ?? "sin_pie";
   const montoCredito = precioCompra - pie;
   const dividendoMensual = calcDividendo(montoCredito, input.tasaCredito, input.plazoCredito);
+  // «OTRA FUENTE» CON CRÉDITO (27-sep-2026): la cuota del crédito del pie es un egreso financiero
+  // más. Todo flujo del motor descuenta `egresoFinanciero`; `dividendoMensual` sigue siendo la
+  // cuota del hipotecario (lo que se muestra como «tu cuota» y lo que refinancia el refi).
+  const cuotaPie = Math.max(0, Math.round(input.cuotaCreditoPie ?? 0));
+  const egresoFinanciero = dividendoMensual + cuotaPie;
   const gastosCierre = Math.round(precioCompra * GASTOS_CIERRE_PCT);
   // CapEx puesta a punto (usados): ADICIONAL al amoblado, no lo reemplaza.
   const capexPuestaAPunto = calcCapexPuestaAPunto({
@@ -1283,7 +1295,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
 
   // Helper parcial
   const buildEscenario = (label: string, ingresoAnual: number, adr: number, ocu: number) =>
-    calcEscenario(label, ingresoAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
+    calcEscenario(label, ingresoAnual, adr, ocu, comisionRate, costosOperativosTotales, egresoFinanciero, precioCompra, capitalInvertido, pie, razonSinPie);
 
   // --- 2. Escenarios ---
   // Calibración v1: el escenario `base` se construye con los 3 ejes
@@ -1344,7 +1356,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
 
   // --- 3. Break-even ---
   const breakEvenIngresoMensual = (1 - comisionRate) > 0
-    ? (costosOperativosTotales + dividendoMensual) / (1 - comisionRate)
+    ? (costosOperativosTotales + egresoFinanciero) / (1 - comisionRate)
     : Infinity;
   const breakEvenIngresoAnual = Math.round(breakEvenIngresoMensual * 12);
   // El break-even se compara contra el ingreso del escenario base CALIBRADO
@@ -1359,13 +1371,13 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const ltr_comisionAdmin = Math.round(ltr_ingresoBruto * COMISION_LTR);
   const ltr_ingresoNeto = ltr_ingresoBruto - ltr_comisionAdmin;
   const ltr_noiMensual = ltr_ingresoNeto - input.gastosComunes - input.mantencion - contribucionesMensuales;
-  const ltr_flujoCaja = ltr_noiMensual - dividendoMensual;
+  const ltr_flujoCaja = ltr_noiMensual - egresoFinanciero;
 
   // STR auto y admin para la comparativa: ambos sobre el ingresoBase calibrado
   // (mismo ADR ajustado y misma ocupación target). Lo único que cambia entre
   // los dos es la comisión que se paga.
-  const str_auto = calcEscenario('Auto', ingresoBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
-  const str_admin = calcEscenario('Administrador', ingresoBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
+  const str_auto = calcEscenario('Auto', ingresoBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, egresoFinanciero, precioCompra, capitalInvertido, pie, razonSinPie);
+  const str_admin = calcEscenario('Administrador', ingresoBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, egresoFinanciero, precioCompra, capitalInvertido, pie, razonSinPie);
 
   // Sobre-renta del modo actualmente seleccionado (escenario base)
   const sobreRenta = base.noiMensual - ltr_noiMensual;
@@ -1391,7 +1403,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     const ingresoBruto = Math.round(base.ingresoAnual * factor);
     const comision = Math.round(ingresoBruto * comisionRate);
     const ingresoNeto = ingresoBruto - comision - costosOperativosTotales;
-    const flujo = ingresoNeto - dividendoMensual;
+    const flujo = ingresoNeto - egresoFinanciero;
     return {
       mes: MESES[i] ?? `Mes ${i + 1}`,
       ingresoBruto,
@@ -1543,7 +1555,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   // El break-even con la comisión del administrador usa la misma fórmula del motor
   // ((costos+dividendo)/(1−comisión), anualizado / ingresoBase) y viaja en `quiebreGestion`.
   const breakEvenAdminPct = ingresoBase > 0 && (1 - comisionAdministrador) > 0
-    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - comisionAdministrador)) * 12) / ingresoBase
+    ? Math.round(((costosOperativosTotales + egresoFinanciero) / (1 - comisionAdministrador)) * 12) / ingresoBase
     : Infinity;
 
   // Qué cuesta la comisión y cuánto tendría que compensarla. Ver `QuiebreGestionSTR`:
@@ -1617,10 +1629,11 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
           gastosComunesMantencion: input.gastosComunes + input.mantencion,
           contribucionesMensuales,
           cuota: dividendoMensual,
+          cuotaCreditoPie: cuotaPie,
           saleDeTuBolsillo: base.flujoCajaMensual,
         },
 
-        repartoIngreso: repartoIngreso({ ingreso, cuota: dividendoMensual, flujo: base.flujoCajaMensual }),
+        repartoIngreso: repartoIngreso({ ingreso, cuota: egresoFinanciero, flujo: base.flujoCajaMensual }),
         dia1: { pieCLP: pie, gastosCompraCLP: gastosCierre, amoblamientoCLP: amoblamientoDia1, capexCLP: capexPuestaAPunto.montoCLP, inversionInicial: capitalInvertido },
       };
     })(),
@@ -1691,7 +1704,7 @@ function calcSensibilidadPrecio(
     // Respeta la fórmula vigente de este companion (sin gastos de cierre); el
     // CapEx puesta a punto es el único delta nuevo (decisión sesión capex).
     const capitalInvertido = pieMonto + (input.costoAmoblamiento || 0) + capexPuestaAPuntoCLP;
-    const flujoCajaMensual = noiMensualConst - dividendoMensual;
+    const flujoCajaMensual = noiMensualConst - dividendoMensual - Math.max(0, Math.round(input.cuotaCreditoPie ?? 0));
     const capRate = precioCLP > 0 ? noiAnual / precioCLP : 0;
     // Pie cero (fase 1-2): este companion no suma gastos de cierre, así que con
     // pie 0 (y sin amoblamiento/CapEx) capitalInvertido daba exactamente 0 y el

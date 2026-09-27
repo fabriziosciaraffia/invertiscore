@@ -468,6 +468,8 @@ export interface ShortTermAnalysisBody {
   piePct: number;
   /** Fase 5b · origen del pie 0 declarado en el wizard (solo con piePct === 0). */
   razonSinPie?: RazonSinCapital;
+  /** «Otra fuente» con crédito (27-sep-2026): la cuota mensual del crédito del pie, CLP. */
+  cuotaCreditoPie?: number;
   /** Entrega futura declarada en el wizard. El motor todavía NO la usa (paso 3);
    *  viaja para persistirse en input_data y quedar disponible. */
   estadoVenta?: "inmediata" | "futura";
@@ -599,6 +601,7 @@ export async function buildShortTermAnalysisRow(
     piePercent: body.piePct / 100,
     // Fase 5b: origen del pie 0 (wizard → payload → motor → prompt).
     razonSinPie: body.razonSinPie,
+    cuotaCreditoPie: typeof body.cuotaCreditoPie === "number" && body.cuotaCreditoPie > 0 ? body.cuotaCreditoPie : undefined,
     tasaCredito: body.tasaInteres / 100,
     // Tasa de mercado real (v4, % → decimal). Ausente en legacy ⇒ motor cae al fallback.
     tasaMercado: typeof body.tasaMercado === "number" ? body.tasaMercado / 100 : undefined,

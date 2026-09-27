@@ -322,13 +322,14 @@ export function CapitulosInversion({
           vacanciaMeses: inputData.vacanciaMeses ?? 0,
           usaAdministrador: inputData.usaAdministrador,
           comisionAdministrador: inputData.comisionAdministrador,
+          cuotaCreditoPie: inputData.cuotaCreditoPie,
         });
         const reparto = m?.repartoIngreso ?? null;
         const gastosComunes = m?.gastos ?? 0;
         const contribTrim = m?.contribuciones ?? 0;
         // EL MES VACÍO lo pone el motor (`calcMesVacio`: cuota completa + gastos comunes ENTEROS +
         // contribuciones del mes); acá no se recalcula. Gate: mes-vacio-catch-test.
-        const mesVacio = calcMesVacio({ dividendo: d.dividendo, ggcc: gastosComunes, contribuciones: contribTrim });
+        const mesVacio = calcMesVacio({ dividendo: d.dividendo, ggcc: gastosComunes, contribuciones: contribTrim, cuotaCreditoPie: d.cuotaCreditoPie });
         const declarada = (inputData.provisionMantencion ?? 0) > 0;
         const reset = resolverModeloCostos(inputData.methodologyVersion) === "v3" && (m?.capexPuestaAPuntoCLP ?? 0) > 0 && !declarada;
         const vacTxt = String(inputData.vacanciaMeses ?? 0).replace(".", ",");
@@ -346,6 +347,7 @@ export function CapitulosInversion({
           { k: "Corretaje", v: d.corretajeProrrata, tip: "Comisión del corredor para captar arrendatario, prorrateada al mes." },
           { k: "Recambio", v: d.recambio, tip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores, prorrateado al mes." },
           { k: "Gestión del arriendo", v: d.administracion, tip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario)." },
+          { k: "Cuota del crédito del pie", v: d.cuotaCreditoPie, tip: "La cuota del crédito con que cubres el pie. Se descuenta cada mes, con o sin arrendatario.", sub: "declarada por ti" },
         ]
           .filter((r) => r.v > 0)
           .sort((a, b) => b.v - a.v);
@@ -358,7 +360,7 @@ export function CapitulosInversion({
         const rotulo = rotuloMesLtr((serie[0]?.anio ?? 1) > 1);
         const desc = descomposicionFlujoLtr(results.projections);
         const pie = desc ? pieCurvaFlujoLtr(desc, { mantencionPorBandas: !declarada, money }) : null;
-        const cierre = cierreMesVacioLtr({ mesVacio, cuota: d.dividendo, gastosComunes, contribucionesMes: d.contribucionesMes, money });
+        const cierre = cierreMesVacioLtr({ mesVacio, cuota: d.dividendo, gastosComunes, contribucionesMes: d.contribucionesMes, cuotaCreditoPie: d.cuotaCreditoPie, money });
         const pinta = (segs: SegFlujo[]) =>
           segs.map((s, i) => (s.b ? <b key={i} style={{ fontWeight: 600, color: s.rojo ? "var(--signal-red)" : "var(--doc-tx)" }}>{s.t}</b> : <span key={i}>{s.t}</span>));
         return (
