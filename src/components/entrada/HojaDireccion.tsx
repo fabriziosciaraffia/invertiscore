@@ -29,8 +29,11 @@ export default function HojaDireccion({
   children: ReactNode;
 }) {
   if (typeof document === "undefined") return null;
+  // Dentro de `.doc-dictamen`, como las hojas del informe: ahí vive la paleta actual (fría) y el
+  // título en Inter. `.doc-tokens` solo conserva la paleta cálida vieja de los drawers de afuera.
+  // El marco no dibuja nada (su borde, sombra y fondo se anulan): solo aporta los tokens.
   return createPortal(
-    <div className="doc-tokens he-hoja-tokens">
+    <div className="doc-dictamen he-hoja-marco" style={{ border: 0, boxShadow: "none", background: "none" }}>
       <DocTokens />
       <TokensHallazgos />
       <Modal abierto={abierto} onClose={onClose} titulo="La dirección del depto">

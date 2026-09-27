@@ -171,7 +171,9 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/\{Hoja && hoja && \(\s*\n\s*<Hoja abierto onClose=\{\(\) => setHoja\(false\)\}>\s*\n\s*<form className="he-hoja-campo"[^>]*>\s*\n\s*<input\s*\n\s*ref=\{inputRef\}/.test(hero)) F("8 · la hoja no lleva el campo arriba con el input vivo");
   const hojaSrc = sinComentarios(leer("src/components/entrada/HojaDireccion.tsx"));
   if (!/import \{ Modal \} from "@\/components\/analysis\/hallazgos\/vocabulario";/.test(hojaSrc) || !/<Modal abierto=\{abierto\} onClose=\{onClose\}/.test(hojaSrc)) F("8 · la hoja no es el Modal de los capítulos y los pop-ups");
-  if (!/<div className="doc-tokens[^"]*">\s*\n\s*<DocTokens \/>\s*\n\s*<TokensHallazgos \/>\s*\n\s*<Modal/.test(hojaSrc)) F("8 · la hoja no monta los tokens y el CSS del Modal (saldría sin asa ni velo)");
+  // Dentro de `.doc-dictamen`, como las hojas del informe: `.doc-tokens` solo trae la paleta cálida
+  // vieja y el título en serif (visto en el preview del 27-sep).
+  if (!/<div className="doc-dictamen[^"]*"[^>]*>\s*\n\s*<DocTokens \/>\s*\n\s*<TokensHallazgos \/>\s*\n\s*<Modal/.test(hojaSrc)) F("8 · la hoja no monta los tokens y el CSS del Modal dentro de .doc-dictamen (saldría sin asa ni velo, o con la paleta vieja)");
   if (!/createPortal\(/.test(hojaSrc)) F("8 · la hoja no va en portal: una transformación del wizard la dejaría fuera de lugar");
   const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
   if (!/\}, \[activo, clave\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
@@ -270,8 +272,9 @@ if (require.main === module) {
 //   8b el hook no re-ata · 8c la hoja se enfoca tarde · 8d las sugerencias no quedan fijas.
 //   Tras el preview, 8e (en ROJO): sin `max-width: none` la regla global de globals.css las dejaba
 //   32 px cortas; medido en el preview (358 de 390).
-// Sexta tanda (27-sep-2026, la hoja es el Modal de los capítulos), las 10 en ROJO: 8f la hoja deja de
+// Sexta tanda (27-sep-2026, la hoja es el Modal de los capítulos), las 11 en ROJO: 8f la hoja deja de
 //   ser el Modal · 8g sin los tokens del Modal · 8h sin portal · 8i sin precarga · 8j vuelve la hoja
 //   a pantalla completa · 8k las sugerencias sin la posición medida · 8l la medición con la
 //   animación · 8m cinco sugerencias no caben (padding 14) · 8n el campo sale de arriba de la hoja ·
-//   8o la medición no re-corre cuando llega el código de la hoja.
+//   8o la medición no re-corre cuando llega el código de la hoja · 8p la hoja fuera de
+//   `.doc-dictamen` (la paleta cálida vieja y el título en serif; visto en el preview).
