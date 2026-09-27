@@ -1,0 +1,224 @@
+"use client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HeroEntrada — la puerta de Franco. UNA PUERTA, DOS ACCESOS (26-sep-2026).
+//
+// El título, el campo de dirección y los dos caminos sin dirección («Estoy en el depto» y
+// «Marcarlo en el mapa»), con el material del hero de la landing v14. Es la primera pantalla del
+// wizard (nodo `dir`) y será el hero de la landing cuando ésta mergee: el MISMO componente, no una
+// copia. Lo único que cambia entre los dos accesos es qué hace quien lo monta con la respuesta —el
+// wizard la guarda y avanza; la landing navega al wizard con ella— y lo que va en la cabecera y el
+// pie.
+//
+// Elegir del desplegable ES enviar, igual en los dos: no hay un segundo botón que confirmar. Con el
+// botón o Enter sin haber elegido, se intenta el respaldo por texto; si tampoco resuelve, lo dice y
+// ofrece el mapa. Nunca un callejón sin salida.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useDireccionPlaces, type SeleccionDireccion } from "./useDireccionPlaces";
+import "./hero-entrada.css";
+
+/** Direcciones reales del catálogo (07-sep-2026, landing v14), las que caben a 19 px en el campo a
+ *  390 px sin cortarse: ≤26 caracteres con comuna. */
+export const DIRECCIONES_EJEMPLO = [
+  "Linares 1415, Providencia",
+  "Zañartu 980, Ñuñoa",
+  "Lazo 1365, San Miguel",
+  "Juan Mitjans 105, Macul",
+  "Lia Aguirre 95, La Florida",
+] as const;
+
+export type CaminoSinDireccion = "ubicacion" | "mapa";
+
+/** Lo que el campo le cuenta a quien lo monta, para su telemetría. */
+export type EventoCampo =
+  | { tipo: "foco" }
+  | { tipo: "texto"; largo: number }
+  | { tipo: "respaldo"; resuelto: boolean };
+
+export function HeroEntrada({
+  derecha,
+  pie,
+  antes,
+  despues,
+  valorInicial = "",
+  confirmada = null,
+  onContinuarConfirmada,
+  avisoExterno = null,
+  ocupado = null,
+  onDireccion,
+  onCamino,
+  onEvento,
+}: {
+  /** Esquina derecha de la cabecera («Entrar», «Mis análisis»). */
+  derecha?: ReactNode;
+  /** Enlace del pie («Ver un análisis de ejemplo»). */
+  pie?: ReactNode;
+  /** Sobre el título: el aviso de un análisis a medias. */
+  antes?: ReactNode;
+  /** Bajo el campo: el rechazo de cobertura y su lista de espera. */
+  despues?: ReactNode;
+  valorInicial?: string;
+  /** La dirección que ya quedó confirmada (volver a la portada desde la pregunta siguiente). Si el
+   *  texto no cambió, la flecha sigue sin volver a buscarla. */
+  confirmada?: string | null;
+  onContinuarConfirmada?: () => void;
+  /** Un aviso que decide quien monta (p. ej. la ubicación del teléfono no se pudo usar). */
+  avisoExterno?: string | null;
+  /** Un camino en curso: deshabilita los botones mientras tanto. */
+  ocupado?: CaminoSinDireccion | "escribir" | null;
+  /** Una dirección que ES una calle (con o sin número). La cobertura la decide quien monta. */
+  onDireccion: (sel: SeleccionDireccion) => void;
+  onCamino: (camino: CaminoSinDireccion) => void;
+  onEvento?: (e: EventoCampo) => void;
+}) {
+  const [texto, setTexto] = useState(valorInicial);
+  const [enfocado, setEnfocado] = useState(false);
+  const [buscando, setBuscando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const seleccionRef = useRef<SeleccionDireccion | null>(null);
+  const onEventoRef = useRef(onEvento);
+  onEventoRef.current = onEvento;
+  const focoMedido = useRef(false);
+
+  const entregar = (sel: SeleccionDireccion) => {
+    // Una opción que no es una calle (un barrio, una comuna) no se confirma: se dice acá.
+    if (!sel.precision) {
+      setAviso("Esa opción no es una calle. Escribe la calle del depto y elígela de la lista.");
+      return;
+    }
+    setAviso(null);
+    onDireccion(sel);
+  };
+
+  const { inputRef, geocodificarEscrita } = useDireccionPlaces({
+    activo: true,
+    comuna: null,
+    onSeleccion: (sel) => {
+      seleccionRef.current = sel;
+      setTexto(sel.direccion);
+      entregar(sel);
+    },
+  });
+
+  // ── Placeholder: escribe y borra direcciones reales; quieto con reduced-motion ──
+  const [ph, setPh] = useState<string>(DIRECCIONES_EJEMPLO[0]);
+  const animar = !enfocado && texto === "";
+  useEffect(() => {
+    if (!animar) return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPh(DIRECCIONES_EJEMPLO[0]);
+      return;
+    }
+    let k = 0, i = 0, borrando = false;
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const s = DIRECCIONES_EJEMPLO[k];
+      if (!borrando) {
+        i++;
+        setPh(s.slice(0, i));
+        if (i === s.length) { borrando = true; t = setTimeout(tick, 1600); return; }
+        t = setTimeout(tick, 60);
+        return;
+      }
+      i--;
+      setPh(s.slice(0, i));
+      if (i === 0) { borrando = false; k = (k + 1) % DIRECCIONES_EJEMPLO.length; t = setTimeout(tick, 500); return; }
+      t = setTimeout(tick, 26);
+    };
+    t = setTimeout(tick, 900);
+    return () => clearTimeout(t);
+  }, [animar]);
+
+  const enviar = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (buscando) return;
+    const sel = seleccionRef.current;
+    if (sel && sel.direccion === texto.trim()) { entregar(sel); return; }
+    if (confirmada && texto.trim() === confirmada && onContinuarConfirmada) { onContinuarConfirmada(); return; }
+    const q = texto.trim();
+    if (!q) { inputRef.current?.focus(); return; }
+    setBuscando(true);
+    const r = await geocodificarEscrita(q);
+    setBuscando(false);
+    onEventoRef.current?.({ tipo: "respaldo", resuelto: !!r });
+    if (!r) {
+      setAviso("No encuentro esa dirección. Elígela de la lista, o márcala en el mapa.");
+      return;
+    }
+    seleccionRef.current = r;
+    setTexto(r.direccion);
+    entregar(r);
+  };
+
+  const mostrado = aviso ?? avisoExterno;
+  const deshabilitado = buscando || !!ocupado;
+
+  return (
+    <section className="he-root" aria-label="Analiza un departamento">
+      {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
+      <picture className="he-fondo">
+        <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
+        <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP */}
+        <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
+      </picture>
+      <header className="he-col he-top">
+        <a href="/" className="he-wm" aria-label="refranco.ai, inicio">
+          <span className="re">re</span><span className="fr">franco</span><span className="ai">.ai</span>
+        </a>
+        {derecha}
+      </header>
+      <div className="he-col he-mid">
+        {antes}
+        <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
+        <div className="he-campo">
+          <form className="he-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
+            <span className="he-tx">
+              <input
+                ref={inputRef}
+                className="he-input"
+                type="text"
+                autoComplete="off"
+                inputMode="text"
+                aria-label="Escribe la dirección del departamento"
+                placeholder={DIRECCIONES_EJEMPLO[0]}
+                value={texto}
+                onChange={(e) => {
+                  setTexto(e.target.value);
+                  seleccionRef.current = null;
+                  setAviso(null);
+                  onEventoRef.current?.({ tipo: "texto", largo: e.target.value.trim().length });
+                }}
+                onFocus={() => {
+                  setEnfocado(true);
+                  if (!focoMedido.current) { focoMedido.current = true; onEventoRef.current?.({ tipo: "foco" }); }
+                }}
+                onBlur={() => setEnfocado(false)}
+              />
+              {animar && (
+                <span className="he-ph" aria-hidden="true">{ph}<span className="he-caret" /></span>
+              )}
+            </span>
+            <button type="submit" className="he-btn" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
+          </form>
+          {mostrado && <p className="he-aviso" role="status">{mostrado}</p>}
+          <div className="he-alt">
+            <span className="he-alt-q">¿No tienes la dirección?</span>
+            <span className="he-alt-acciones">
+              <button type="button" onClick={() => onCamino("ubicacion")} disabled={deshabilitado}>
+                {ocupado === "ubicacion" ? "Buscando tu ubicación…" : "Estoy en el depto"}<span aria-hidden="true">→</span>
+              </button>
+              <button type="button" onClick={() => onCamino("mapa")} disabled={deshabilitado}>
+                Marcarlo en el mapa<span aria-hidden="true">→</span>
+              </button>
+            </span>
+          </div>
+        </div>
+        {despues}
+      </div>
+      {pie && <div className="he-col he-foot">{pie}</div>}
+    </section>
+  );
+}

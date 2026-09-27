@@ -1,0 +1,117 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   EL HERO DE LA ENTRADA — la portada del wizard y, cuando mergee, el hero de la landing.
+   Material de la landing v14 (landing-v14/landing.css, 26-sep-2026): fondo de la escala de la
+   tríada (hero-*.webp, generado desde los tokens), grano por CSS, serif 700 con el plumón en
+   papel, el campo blanco con el botón en tinta y los caminos en papel. Es MATERIAL FIJO: se ve
+   igual en tema claro y oscuro, como la card de la recomendación del informe.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.he-root {
+  --he-papel: #FAFAF8;
+  --he-tinta: #0F0F0F;
+  --he-ghost: #A1A1AA;
+  position: relative; min-height: 100svh; display: flex; flex-direction: column; overflow: hidden;
+  color: var(--he-papel); background: #1F3D67;
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+}
+.he-fondo { position: absolute; inset: 0; z-index: 0; display: block; }
+.he-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.he-root::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light;
+}
+.he-col { position: relative; z-index: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
+.he-top { min-height: 64px; padding-top: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.he-wm { font-family: var(--font-heading), "Source Serif 4", Georgia, serif; font-size: 22px; line-height: 1; letter-spacing: -0.01em; color: var(--he-papel); text-decoration: none; }
+.he-wm .re { font-weight: 400; color: rgba(250, 250, 248, 0.55); }
+.he-wm .fr { font-weight: 700; }
+.he-wm .ai { font-family: var(--font-ui), system-ui, sans-serif; font-weight: 600; font-size: 12px; color: #C8323C; }
+.he-der { font-size: 14px; font-weight: 500; line-height: 22px; color: var(--he-papel); text-decoration: none; }
+.he-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 40px; padding-bottom: 28px; z-index: 2; }
+.he-h1 {
+  margin: 0 0 56px; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(38px, 10.3vw, 72px); line-height: 0.96; letter-spacing: -0.03em; color: var(--he-papel);
+}
+.he-h1 mark { background: linear-gradient(transparent 60%, rgba(250, 250, 248, 0.26) 60%); color: inherit; }
+
+/* el campo */
+.he-campo { position: relative; }
+.he-box {
+  position: relative; display: flex; align-items: center; height: 68px; background: #fff;
+  padding: 0 6px 0 20px; border-radius: 12px; box-shadow: 0 26px 60px -24px rgba(0, 0, 0, 0.55);
+}
+.he-tx { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; }
+.he-input {
+  width: 100%; border: 0; outline: 0; background: transparent; padding: 0;
+  font: inherit; font-size: 19px; color: var(--he-tinta); caret-color: var(--he-tinta);
+}
+/* 16 px mínimo en iOS para que no haga zoom; acá va a 19 y globals no lo pisa */
+html .he-input { font-size: 19px !important; }
+.he-input::placeholder { color: transparent; }
+.he-ph { position: absolute; left: 0; right: 0; pointer-events: none; font-size: 19px; white-space: nowrap; overflow: hidden; color: var(--he-ghost); }
+.he-caret { display: inline-block; width: 2px; height: 22px; background: var(--he-tinta); margin-left: 1px; vertical-align: -4px; animation: he-parpadeo 1s steps(1) infinite; }
+@keyframes he-parpadeo { 50% { opacity: 0; } }
+.he-btn {
+  width: 56px; height: 56px; flex: none; border: 0; border-radius: 10px; background: var(--he-tinta); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; cursor: pointer; transition: background 0.2s;
+}
+.he-box:hover .he-btn, .he-btn:focus-visible { background: #C8323C; }
+.he-btn:disabled { opacity: 0.6; cursor: progress; }
+.he-aviso { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: var(--he-papel); }
+.he-alt { margin-top: 10px; font-size: 14px; color: rgba(250, 250, 248, 0.82); display: flex; flex-direction: column; }
+.he-alt-q { padding: 4px 0; }
+.he-alt-acciones { display: flex; gap: 22px; flex-wrap: wrap; }
+.he-alt button {
+  display: inline-flex; align-items: center; min-height: 44px; gap: 8px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--he-papel); font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+.he-alt button span { display: inline-block; transition: transform 0.2s; }
+.he-alt button:hover span, .he-alt button:focus-visible span { transform: translateX(4px); }
+.he-alt button:focus-visible { outline: 1.5px solid var(--he-papel); outline-offset: 2px; }
+.he-alt button:disabled { opacity: 0.7; cursor: progress; }
+.he-foot { position: relative; z-index: 1; padding-bottom: 34px; text-align: center; }
+.he-foot a { font-family: var(--font-heading), "Source Serif 4", Georgia, serif; font-style: italic; font-size: 19px; color: var(--he-papel); text-decoration: none; }
+.he-foot a span { font-style: normal; margin-left: 8px; display: inline-block; }
+
+/* bloques en papel sobre el hero (borrador, fuera de cobertura) */
+.he-nota { background: rgba(250, 250, 248, 0.95); color: #18181B; border-radius: 12px; padding: 14px 15px; margin-bottom: 22px; }
+.he-nota-t { font-size: 12.5px; font-weight: 600; color: #71717A; margin: 0 0 4px; }
+.he-nota p { font-size: 14px; line-height: 1.5; margin: 0; }
+.he-nota-acc { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.he-nota-acc button { height: 44px; border-radius: 99px; border: 1px solid #D6D6DB; background: #fff; font: inherit; font-size: 14px; font-weight: 600; color: #18181B; cursor: pointer; padding: 0 14px; }
+.he-nota-acc button.pri { background: #18181B; border-color: #18181B; color: #fff; }
+
+/* fuera de cobertura: el aviso y la lista de espera, en papel sobre el hero */
+.he-rechazo { margin-top: 6px; }
+.he-wait { margin-top: 10px; }
+.he-wait p { font-size: 13px; line-height: 1.5; color: rgba(250, 250, 248, 0.82); margin: 0 0 8px; }
+.he-wait-fila { display: flex; gap: 8px; }
+.he-wait input {
+  flex: 1; min-width: 0; height: 44px; border-radius: 12px; padding: 0 12px; font: inherit; font-size: 16px;
+  background: rgba(250, 250, 248, 0.14); border: 1px solid rgba(250, 250, 248, 0.35); color: var(--he-papel); outline: 0;
+}
+.he-wait input::placeholder { color: rgba(250, 250, 248, 0.6); }
+.he-wait input:focus { border-color: var(--he-papel); }
+.he-wait button { height: 44px; border-radius: 99px; border: 0; padding: 0 16px; background: var(--he-papel); color: #18181B; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.he-wait button:disabled { opacity: 0.6; }
+
+/* el desplegable de Places al ancho del cuadro, como en la landing */
+.he-root ~ .pac-container, body:has(.he-root) .pac-container {
+  margin-top: 2px; border: 0; border-radius: 0 0 12px 12px; background: #fff; z-index: 3000;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35); font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+}
+body:has(.he-root) .pac-item { padding: 0 16px; line-height: 48px; font-size: 16px; color: #52525B; border-top: 1px solid #EFEFF1; cursor: pointer; }
+body:has(.he-root) .pac-item-query { font-size: 16px; color: #0F0F0F; font-weight: 600; }
+body:has(.he-root) .pac-icon { display: none; }
+body:has(.he-root) .pac-item:hover, body:has(.he-root) .pac-item-selected { background: #F6F6F7; }
+
+@media (min-width: 768px) {
+  .he-top { min-height: 88px; padding-top: 20px; }
+  .he-mid { padding-top: 60px; padding-bottom: 40px; }
+  .he-h1 { margin-bottom: 72px; }
+  .he-box { height: 74px; }
+  .he-alt { flex-direction: row; align-items: center; gap: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .he-caret { animation: none; }
+  .he-alt button span { transition: none; }
+}
