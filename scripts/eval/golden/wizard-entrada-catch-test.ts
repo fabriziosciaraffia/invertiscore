@@ -96,6 +96,11 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const r1 = reactionText("dir", a, { comparables: 26 });
   if (!r1 || !r1.startsWith("Av. Irarrázaval 2100, Ñuñoa · zona cubierta, 26 propiedades")) F(`2 · la reacción de la pregunta siguiente no nombra la dirección (${r1})`);
   if (reactionText("dirMapa", a, { comparables: 24 }) === null) F("2 · confirmar el mapa no lleva la reacción de la dirección");
+  // El conteo llega segundos después de confirmar: mientras tanto la frase va sin número (se leía
+  // «N propiedades» literal en el preview del 26-sep, en el camino del mapa).
+  const sinConteo = reactionText("dirMapa", a, {});
+  if (sinConteo !== "Av. Irarrázaval 2100, Ñuñoa · zona cubierta.") F(`2 · sin el conteo todavía, la reacción muestra un marcador (${sinConteo})`);
+  if (reactionText("dir", {}, undefined) !== "Zona cubierta.") F(`2 · sin dirección ni conteo, la reacción muestra un marcador (${reactionText("dir", {}, undefined)})`);
 
   // ── 3 · LA PORTADA VIEJA SALIÓ ─────────────────────────────────────────────
   const ent = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
@@ -118,6 +123,10 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/if \(esPortada\) \{\s*\n\s*return \(\s*\n\s*<div ref=\{screenRef\}>\s*\n\s*<EntradaScreen \{\.\.\.screenProps\} banner=\{bannerPortada\}/.test(shell)) F("4 · la portada no se dibuja a pantalla completa con su banner");
   if (!/case "dirMapa":\s*\n\s*return <MapaScreen \{\.\.\.screenProps\} onVolver=\{w\.goBack\} \/>;/.test(shell)) F("4 · el router no monta el mapa");
   if (!/const r = await pedirUbicacion\(\);/.test(ent)) F("4 · «Estoy en el depto» no pide la ubicación del teléfono");
+  // Y el sitio tiene que dejar que el navegador la dé: con `geolocation=()` la niega antes de
+  // preguntar (medido en el preview del 26-sep: «disabled in this document by permissions policy»).
+  const cfg = sinComentarios(leer("next.config.mjs"));
+  if (!/key: 'Permissions-Policy', value: '[^']*\bgeolocation=\(self\)[^']*'/.test(cfg)) F("4 · el Permissions-Policy niega la ubicación: «Estoy en el depto» nunca la recibe");
   if (!/if \(r\.estado !== "concedido"\) \{[\s\S]{0,120}?goDetour\("dirMapa", \{ \.\.\.limpio, lat: undefined, lng: undefined, mapaOrigen: "ubicacion", mapaAviso: "sin_ubicacion" \}\);/.test(ent)) F("4 · sin permiso, el mapa no abre sin pin");
   if (!/if \(camino === "mapa"\) \{\s*\n\s*goDetour\("dirMapa", \{ \.\.\.limpio, lat: undefined, lng: undefined, mapaOrigen: "mapa" \}\);/.test(ent)) F("4 · «Marcarlo en el mapa» no abre el mapa sin pin");
   if (!/const listo = !!punto && !!nombre && nombre\.cubierta && !nombrando;/.test(ent)) F("4 · el mapa deja confirmar un punto sin nombre o fuera de cobertura");
@@ -173,3 +182,6 @@ if (require.main === module) {
 //   entrada · 5c step_left sin las props de sesión · 5d sin hito · 5e una consulta vuelve a contar
 //   solo dir · 6a la inversa acepta una comuna · 6b la inversa no normaliza la comuna · 6c el texto
 //   vuelve a exigir comuna
+// Segunda tanda (26-sep-2026, tras el primer preview), las tres en ROJO: 2e la reacción vuelve a
+//   «?? "N"» · 2f sin dirección vuelve el marcador · 4f el Permissions-Policy vuelve a
+//   `geolocation=()`.

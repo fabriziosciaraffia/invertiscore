@@ -465,9 +465,14 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
       // Desde el 26-sep-2026 la reacción nombra la dirección: quien llega desde la
       // landing arranca en `tipo` sin haber visto la portada, y ésta es la única
       // pantalla donde ve qué dirección quedó.
+      //
+      // El conteo llega segundos después de confirmar (dos consultas al radio) y, hasta que
+      // llega, la frase va sin número: antes se leía «N propiedades» literal, y con los caminos
+      // que saltan directo a `tipo` (mapa, ubicación, llegada desde la landing) se veía siempre.
       const corta = (a.direccionConfirmada ?? a.direccion ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 2).join(", ");
-      const zona = `zona cubierta, ${live?.comparables ?? "N"} propiedades en el sector.`;
-      return corta ? `${corta} · ${zona}` : `Zona cubierta. ${live?.comparables ?? "N"} propiedades en el sector.`;
+      const n = live?.comparables;
+      const zona = n ? `zona cubierta, ${n} propiedades en el sector.` : "zona cubierta.";
+      return corta ? `${corta} · ${zona}` : n ? `Zona cubierta. ${n} propiedades en el sector.` : "Zona cubierta.";
     }
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;

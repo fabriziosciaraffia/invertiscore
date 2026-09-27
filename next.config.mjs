@@ -16,7 +16,11 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // geolocation=(self): «Estoy en el depto» (wizard, 26-sep-2026) pide la ubicación del
+          // teléfono. Con `geolocation=()` el navegador la niega antes de preguntar y el camino
+          // cae siempre en «Sin tu ubicación». `self` la permite en el sitio y la sigue negando
+          // a cualquier iframe de terceros.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
         ],
       },
