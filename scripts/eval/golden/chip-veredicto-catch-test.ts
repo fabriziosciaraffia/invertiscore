@@ -29,6 +29,10 @@
 //       agrupadas, «Continuar» y las muestras del onboarding—, con su CSS montado en las tres ramas
 //       de la página; su paleta propia (`VERDICT_STYLE`, `VerdictBadge`, `--franco-v-*`) no vuelve,
 //       y el color del puntaje es el del chip (`colorDeVeredicto`).
+//   8 · EL HEADER ÚNICO (27-sep-2026): entra al alcance (`src/components/chrome`). Al bajar en el
+//       informe nombra el veredicto, y lo hace con ChipVeredicto en su variante sobre fondo —la
+//       banda es de color—, con el CSS del chip montado por si la página no lo trae. Visto EN ROJO
+//       con dos mutaciones: el chip sin la variante sobre fondo · un chip propio junto al componente.
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/chip-veredicto-catch-test.ts
 // ============================================================================
 import React, { createElement } from "react";
@@ -49,7 +53,7 @@ const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g,
 const sinComentarios = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n]*$/gm, "$1");
 
 /** El informe web. El PDF (`/documento/`) y las páginas de desarrollo quedan fuera. */
-const RAICES = ["src/components/analysis", "src/components/comparativa", "src/app/analisis", "src/app/share/comparativa", "src/app/dashboard"];
+const RAICES = ["src/components/analysis", "src/components/comparativa", "src/app/analisis", "src/app/share/comparativa", "src/app/dashboard", "src/components/chrome"];
 function archivos(dir: string): string[] {
   const out: string[] = [];
   for (const n of readdirSync(join(RAIZ, dir))) {
@@ -177,6 +181,16 @@ export function runChipVeredictoTier(): { hard: number } {
     } as any),
   );
   if (!/class="chip-v c"/.test(hd) || />\s*COMPRAR\s*</.test(hd)) F("2 · la segunda puerta no dibuja el chip de Comprar (o vuelve a imprimir «COMPRAR» crudo)");
+
+  // ── 8 · el header único ──
+  {
+    const hdr = sinComentarios(leer("src/components/chrome/HeaderFranco.tsx"));
+    if (!ALCANCE.includes("src/components/chrome/HeaderFranco.tsx")) F("8 · el header único quedó fuera del alcance del guard");
+    if (!/import \{ ChipVeredicto, ChipVeredictoTokens \} from "@\/components\/analysis\/shared\/ChipVeredicto";/.test(hdr)) F("8 · el header no toma el chip del componente único");
+    if (!/<ChipVeredicto v=\{identidad\.veredicto\} variante="sobre-fondo" \/>/.test(hdr)) F("8 · el header no dibuja el veredicto con ChipVeredicto en su variante sobre fondo (la banda es de color)");
+    if (!/\{conIdentidad && <ChipVeredictoTokens \/>\}/.test(hdr)) F("8 · el header no monta el CSS del chip cuando lo dibuja");
+    if (/chip-v[ "]|className="[^"]*\b(pill|badge)\b/.test(hdr.replace(/<ChipVeredicto[^>]*\/>/g, ""))) F("8 · el header dibuja un chip propio además del componente");
+  }
 
   if (fallas.length) {
     console.log(`  ✗ CHIP-VEREDICTO · ${fallas.length} falla(s):`);

@@ -33,6 +33,10 @@
 //      identidad de marca (CLAUDE.md), y el reapunte de `--font-heading` se lo llevaba
 //      puesto. La excepción cuelga de una clase propia y no de una utilidad.
 //
+//   7. EL HEADER ÚNICO (27-sep-2026): sin mono en el componente ni en su CSS, texto en Inter
+//      (--font-ui) y el wordmark es el FrancoLogo de la marca, en su serif. Visto EN ROJO con
+//      dos mutaciones: mono en el contexto del informe · otro tamaño de wordmark.
+//
 // Corre dentro del QUICK (tier "tipografia-rediseno") y standalone:
 //   node --import tsx scripts/eval/golden/tipografia-rediseno-catch-test.ts
 // ============================================================================
@@ -133,6 +137,17 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   if (!/\.doc-dictamen \.doc-wordmark\{font-family:var\(--font-serif/.test(PORTADA)) {
     F("6 · el wordmark no está exceptuado del reapunte: «refranco.ai» es la marca, no tipografía del informe (CLAUDE.md)");
   }
+}
+
+// ── 7 · el header único, sin mono ──────────────────────────────────────────
+{
+  const hdr = leer("src/components/chrome/HeaderFranco.tsx").replace(/\r\n/g, "\n");
+  const hcss = leer("src/components/chrome/header-franco.css").replace(/\r\n/g, "\n");
+  if (!hdr || !hcss) F("7 · no encuentro el header único (el guard no midió nada)");
+  const codigo = (hdr.replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "") + hcss.replace(/\/\*[\s\S]*?\*\//g, ""));
+  if (/font-mono|--font-mono|JetBrains|monospace/.test(codigo)) F("7 · el header usa mono");
+  if (!/font-family: var\(--font-ui\), "Inter", system-ui, sans-serif;/.test(hcss)) F("7 · el header no va en Inter (--font-ui)");
+  if (!/<FrancoLogo size="banda"/.test(hdr)) F("7 · el wordmark del header no es el FrancoLogo de la marca");
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

@@ -61,6 +61,7 @@ import { runDemoPublicoTier } from "./demo-publico-catch-test";
 import { runColasChicasTier } from "./colas-chicas-catch-test";
 import { runWizardDatosTier } from "./wizard-datos-catch-test";
 import { runWizardEntradaTier } from "./wizard-entrada-catch-test";
+import { runHeaderUnicoTier } from "./header-unico-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -324,6 +325,10 @@ function printSeed(r: SeedReport) {
   // compartido con tres caminos, la llegada desde la landing reparte entre tipo, mapa y portada, el
   // mapa nombra el punto y los eventos de paso llevan su puerta. Verificado en rojo por mutación.
   totalHard += (await runWizardEntradaTier()).hard;
+  // Tier HEADER-ÚNICO (27-sep-2026, 0 tokens): un solo header en el sitio, la banda derivada de los
+  // tokens de la tríada, el botón en tinta, sin mono, las siete decisiones medidas en el HTML y la
+  // identidad del informe leída de la portada. Verificado en rojo por mutación.
+  totalHard += runHeaderUnicoTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
