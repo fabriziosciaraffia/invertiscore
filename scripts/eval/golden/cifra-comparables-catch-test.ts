@@ -38,8 +38,11 @@ const QUE = "(?:propiedades|deptos|departamentos|comparables|avisos)";
 export const CIFRA_A_MANO = new RegExp(`\\b\\d+\\s*mil\\s+${QUE}\\b|\\b\\d{1,3}(?:\\.\\d{3})+\\s*\\+?\\s*${QUE}\\b`, "i");
 
 const FUENTE = "src/lib/stats.ts";
+// ACTA (27-sep-2026): la landing v14 reemplazó a la vieja. `SectionWhatFrancoDoes.tsx` se borró con
+// ella; la cifra la dice ahora «Por qué creerle» (`Secciones.tsx`), y la página la sigue citando en
+// su metadescripción.
 const CONSUMIDORES = [
-  "src/components/landing/SectionWhatFrancoDoes.tsx",
+  "src/components/landing-v14/Secciones.tsx",
   "src/app/layout.tsx",
   "src/app/page.tsx",
   "src/lib/faq-data.ts",

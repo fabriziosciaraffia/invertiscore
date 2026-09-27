@@ -1034,6 +1034,14 @@ input[type="number"] {
    --doc-good verde) aunque NOMBRAN un veredicto, que es justo lo que la regla del 07-sep manda a
    la tríada. */
 :root{--verdict-buscar:#C8323C; --verdict-ajusta:#6E4560; --verdict-comprar:#2B558F}
+
+/* ─── Grano de papel — tile SVG de 300px por data-URI, NUNCA un filtro en vivo ───
+ * Lo usa la landing (grano de página multiply .10 y el de la miniatura). El informe conserva
+ * su copia inline en DocTokens (`--doc-grain`, PortadaInforme.tsx): es el mismo string; si
+ * cambia el grano, cambian los dos. */
+:root {
+  --franco-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
 [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
 [data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B; --verdict-band-0:var(--verdict)}
 [data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559; --verdict-band-0:var(--verdict)}

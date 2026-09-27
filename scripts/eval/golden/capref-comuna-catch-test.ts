@@ -173,7 +173,9 @@ export function runCapRefComunaTier(): { hard: number } {
   }
   if (!/capref_comuna_snapshot: medianaComuna\?\.capRefComuna \?\? null/.test(leer("src/app/api/analisis/locked/route.ts"))) F("6 · locked no persiste capref_comuna_snapshot");
   // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.
-  for (const p of ["src/app/analisis/[id]/informe-ltr.tsx", "src/app/analisis/[id]/documento/page.tsx"]) {
+  // (27-sep-2026) La landing lee sus tres ejemplos COMO EL INFORME (landing-vivo.ts): si se quedara sin
+  // la referencia, mostraría otro puntaje que el informe que promete.
+  for (const p of ["src/app/analisis/[id]/informe-ltr.tsx", "src/app/analisis/[id]/documento/page.tsx", "src/lib/landing-vivo.ts"]) {
     if (!/capRefComuna: capRefSnapshot \?\? \(await prefetchCapRefComuna\(/.test(leer(p))) F(`6 · ${p} no lee el snapshot (ni resuelve vivo sin él)`);
   }
   if (!/return \{ \.\.\.mediana, capRefComuna \};/.test(leer("src/lib/api-helpers/analisis-pipeline.ts"))) F("6 · el prefetch de la mediana no trae la referencia");

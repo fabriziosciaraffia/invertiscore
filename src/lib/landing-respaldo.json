@@ -1,0 +1,234 @@
+{
+  "ultimoScrape": "2026-09-27T06:30:58.19Z",
+  "ejemplos": [
+    {
+      "id": "43a1108b-7094-46b1-b4d9-d2ba92df2c2b",
+      "veredicto": "BUSCAR OTRA",
+      "titular": "No conviene: **llegar a Comprar pediría 59,7% menos de precio**, y eso es muy difícil.",
+      "cifra": {
+        "tipo": "monto",
+        "caso": "flujo_negativo_ltr",
+        "valorClp": 550450,
+        "valorUf": 13.46040984007434,
+        "signo": -1
+      },
+      "comuna": "Santiago",
+      "detalle": "2D1B 60 m²",
+      "score": 26,
+      "modalidad": "Renta larga",
+      "hallazgo": {
+        "id": "flujo_mensual",
+        "tipo": "aporte_mensual",
+        "valor": {
+          "flujoNetoMensualCLP": -550450,
+          "dividendoMensualCLP": 884372,
+          "ratioSobreDividendo": 0.62,
+          "modalidad": "ltr"
+        },
+        "direccion": "adverso",
+        "decisividad": 1,
+        "magnitudContinua": 1,
+        "procedencia": {
+          "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
+          "confianza": "alta"
+        },
+        "titular": "Pones plata de tu bolsillo todos los meses.",
+        "fraseCanonica": "Tienes que poner $550.450 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata que sale de tu bolsillo todos los meses, no del arriendo."
+      },
+      "valorUF": 40894,
+      "card": {
+        "bloque": {
+          "rotulo": "Franco probó cada cambio por separado · ninguno llega a Comprar",
+          "contexto": "Llegar a Comprar pediría un 59,7% menos de precio, fuera de todo rango.",
+          "filas": [],
+          "mix": null,
+          "descarte": "Precio, arriendo, plazo y pie, por separado, no alcanzan."
+        },
+        "buscar": {
+          "causa": "No conviene por varias cosas juntas: el arriendo no alcanza a cubrir la cuota ni con la tasa de interés en cero, y además cada mes pones de tu bolsillo más de la mitad de lo que pagas de cuota.",
+          "distancia": "Llegar a Comprar pediría un 59,7% menos de precio, y eso es muy difícil."
+        }
+      },
+      "estado": "sin_salida"
+    },
+    {
+      "id": "7710a017-8066-47a6-8b3e-8fc64143e256",
+      "veredicto": "AJUSTA SUPUESTOS",
+      "titular": "Para Comprar: pie de 30%, crédito a 30 años, **descuento de 4,9%, fácil de negociar**.",
+      "cifra": {
+        "tipo": "monto",
+        "caso": "flujo_negativo_ltr",
+        "valorClp": 283194,
+        "valorUf": 7.079673008174796,
+        "signo": -1
+      },
+      "comuna": "Providencia",
+      "detalle": "2D2B 60 m²",
+      "score": 62,
+      "modalidad": "Renta larga",
+      "hallazgo": {
+        "id": "flujo_mensual",
+        "tipo": "aporte_mensual",
+        "valor": {
+          "flujoNetoMensualCLP": -283194,
+          "dividendoMensualCLP": 978290,
+          "ratioSobreDividendo": 0.29,
+          "modalidad": "ltr",
+          "consuelo": "estable"
+        },
+        "direccion": "adverso",
+        "decisividad": 0.85,
+        "magnitudContinua": 0.4,
+        "procedencia": {
+          "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
+          "confianza": "alta"
+        },
+        "titular": "Pones algo de tu bolsillo cada mes.",
+        "fraseCanonica": "Tienes que poner $283.194 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo aguanta sin apuro; eso sí, la plusvalía histórica de la comuna no está para compensarlo."
+      },
+      "valorUF": 40001,
+      "card": {
+        "bloque": {
+          "rotulo": "Franco probó cada cambio por separado · dos llevan a Comprar",
+          "contexto": null,
+          "filas": [
+            {
+              "titulo": "Bajar el precio",
+              "nombre": "precio",
+              "rotuloCorto": "Solo el precio",
+              "quien": "vendedor",
+              "cifra": "−24,1%",
+              "objetivo": "$167.004.175"
+            },
+            {
+              "titulo": "Subir el arriendo",
+              "nombre": "arriendo",
+              "rotuloCorto": "Solo el arriendo",
+              "quien": "mercado",
+              "cifra": "+25,7%",
+              "objetivo": "$1.205.813"
+            }
+          ],
+          "mix": {
+            "destino": "COMPRAR",
+            "titulo": "Si además mueves lo tuyo, llegas a Comprar",
+            "movimiento": {
+              "pie": {
+                "de": 20,
+                "a": 30
+              },
+              "plazo": {
+                "de": 25,
+                "a": 30
+              }
+            },
+            "contraste": {
+              "de": "−24,1%",
+              "a": "−4,9%"
+            },
+            "costo": "Poner ese pie cuesta $18.766.469 más el día uno.",
+            "descuento": "−4,9%",
+            "bandaEsfuerzo": "factible",
+            "sinDescuento": null
+          },
+          "descarte": "Plazo y pie, por separado, no alcanzan."
+        },
+        "buscar": null
+      },
+      "estado": "con_salida"
+    },
+    {
+      "id": "17b4e10d-2afd-4554-b914-fe731ee2c9a0",
+      "veredicto": "COMPRAR",
+      "titular": "Conviene, con margen acotado: **el arriendo aguanta hasta 7,5% menos**.",
+      "cifra": {
+        "tipo": "monto",
+        "caso": "comprar_excedente",
+        "valorClp": 43810,
+        "valorUf": 1.071725622584275,
+        "signo": 1
+      },
+      "comuna": "Ñuñoa",
+      "detalle": "2D2B 80 m²",
+      "score": 74,
+      "modalidad": "Renta larga",
+      "hallazgo": {
+        "id": "cap_rate",
+        "tipo": "rentabilidad_operativa",
+        "valor": {
+          "capRatePct": 4.6,
+          "sujetoPct": 5.5,
+          "capRefPct": 3,
+          "base": "bruta",
+          "nivel": "celda",
+          "gapPts": 2.5,
+          "banda": 2,
+          "fuente": "avisos de arriendo (46) y de venta (61) de Ñuñoa, obra nueva, 2D, 64–96 m², últimos 90 días; arriendo de usado como proxy: precios y arriendos pedidos, no cerrados",
+          "scope": "comuna",
+          "modalidad": "ltr",
+          "bdoNeto": 3.4,
+          "nArriendo": 46,
+          "nVenta": 61,
+          "arriendoProxyUsado": true,
+          "celda": "Ñuñoa · obra nueva · 2D · 64–96 m²",
+          "comuna": "Ñuñoa",
+          "celdaDormitorios": 2,
+          "ventanaDias": 90
+        },
+        "direccion": "favorable",
+        "decisividad": 1,
+        "magnitudContinua": 1,
+        "procedencia": {
+          "base": "Rentabilidad bruta sobre tu arriendo y precio declarados, contra la bruta de la referencia; el cap rate neto descuenta gastos, vacancia y gestión",
+          "confianza": "alta"
+        },
+        "titular": "Rinde por sobre lo que el mercado paga.",
+        "fraseCanonica": "Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos— es 5,5% — +2,5 pts sobre lo que rinden los avisos de Ñuñoa · obra nueva · 2D · 64–96 m² (3,0%). Rinde por sobre lo que el mercado paga para este precio."
+      },
+      "valorUF": 40878,
+      "card": {
+        "bloque": {
+          "rotulo": "Antes de firmar",
+          "contexto": null,
+          "filas": [
+            {
+              "titulo": "Cuánto aguanta el veredicto",
+              "nombre": "arriendo",
+              "rotuloCorto": "Margen",
+              "quien": "mercado",
+              "cifra": "−7,5%",
+              "objetivo": null,
+              "oracion": "El arriendo puede caer hasta $693.750 (−7,5%) y sigue siendo Comprar.",
+              "banda": "acotado",
+              "caeA": "AJUSTA SUPUESTOS"
+            },
+            {
+              "titulo": "Hasta qué precio sigue siendo Comprar",
+              "nombre": "precio",
+              "rotuloCorto": "Precio",
+              "quien": "vendedor",
+              "cifra": "UF 4.343",
+              "objetivo": null,
+              "oracion": "Puedes pagar hasta UF 4.343 (+8,6%) y sigue siendo Comprar.",
+              "banda": null,
+              "caeA": "AJUSTA SUPUESTOS"
+            },
+            {
+              "titulo": "Verifica el arriendo",
+              "nombre": "arriendo",
+              "rotuloCorto": "Verifica",
+              "quien": "tuyo",
+              "cifra": "$750.000",
+              "objetivo": "lo declaraste tú",
+              "oracion": "Usamos $750.000 de arriendo, la mediana de tu zona. Confírmalo con avisos reales antes de firmar."
+            }
+          ],
+          "mix": null,
+          "descarte": null
+        },
+        "buscar": null
+      },
+      "estado": "comprar"
+    }
+  ]
+}

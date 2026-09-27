@@ -14,6 +14,7 @@ import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { CAJA_COBERTURA, dentroDeCaja } from "@/lib/comuna-bounds";
 import { precisionDeTexto, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { RUTA_WIZARD } from "@/lib/cta-analizar";
 
 export interface DireccionLlegada {
   direccion: string;
@@ -60,6 +61,26 @@ export function leerDireccionLlegada(p: {
 
 export function leerModoLlegada(modo: string | null | undefined): ModoLlegada | null {
   return modo === "ubicacion" || modo === "mapa" ? modo : null;
+}
+
+/** El enlace al wizard desde afuera (la landing): con la dirección elegida o con un camino sin
+ *  dirección. Es la otra mitad de `leerDireccionLlegada` / `leerModoLlegada`, en el mismo módulo:
+ *  lo que la landing escribe es exactamente lo que el wizard lee. `origen` es la superficie del CTA
+ *  (viaja en el pageview; el wizard no lo usa para nada más). */
+export function urlDeLlegada(
+  destino: { direccion: string; comuna: string; lat: number; lng: number; precision: PrecisionUbicacion | null } | { modo: ModoLlegada },
+  origen: string,
+): string {
+  const q = new URLSearchParams({ origen });
+  if ("modo" in destino) q.set("modo", destino.modo);
+  else {
+    q.set("direccion", destino.direccion);
+    q.set("comuna", destino.comuna);
+    q.set("lat", String(destino.lat));
+    q.set("lng", String(destino.lng));
+    if (destino.precision) q.set("precision", destino.precision);
+  }
+  return `${RUTA_WIZARD}?${q.toString()}`;
 }
 
 /** Dónde arranca el wizard con esa dirección. */

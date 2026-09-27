@@ -1,49 +1,61 @@
-import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import SmoothScroll from "@/components/landing/SmoothScroll";
-import { LandingThemeProvider } from "@/components/landing/LandingTheme";
-import SectionHero from "@/components/landing/SectionHero";
-import SectionProblem from "@/components/landing/SectionProblem";
-import SectionWhatFrancoIs from "@/components/landing/SectionWhatFrancoIs";
-import SectionWhatFrancoDoes from "@/components/landing/SectionWhatFrancoDoes";
-import SectionUseCases from "@/components/landing/SectionUseCases";
-import SectionCTAPrimary from "@/components/landing/SectionCTAPrimary";
-import SectionObjections from "@/components/landing/SectionObjections";
-import SectionCTASecondary from "@/components/landing/SectionCTASecondary";
-import SectionPricing from "@/components/landing/SectionPricing";
-import SectionFinalCTA from "@/components/landing/SectionFinalCTA";
-import LandingFooter from "@/components/landing/LandingFooter";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+// ─────────────────────────────────────────────────────────────────────────────
+// Landing v14 (07-sep-2026; sobre master el 27-sep-2026) — cinco pantallas, un solo
+// CTA (el campo de dirección) repetido al inicio y al final. La página vende una
+// respuesta, no un producto.
+//
+// Server component con ISR de 10 minutos: la hora del último scrape, el último
+// análisis emitido y los tres ejemplos se leen en cada revalidación
+// (`leerDatosLanding`). Las piezas con estado (hero, campo, rotación, telemetría) son
+// islas cliente que reciben los datos por props.
+//
+// EL HEADER ES EL ÚNICO DEL SITIO (`HeaderFranco`, sobre el material del hero, sin
+// botón: el principal de la pantalla es el campo, como en la portada del wizard). Lo
+// monta esta página y se lo pasa al hero, que es el de la entrada.
+// ─────────────────────────────────────────────────────────────────────────────
 
-export const metadata = {
-  title: "Franco — ¿Y si el depto no se paga solo?",
-  description: `Antes de invertir, ve si los números cierran. Análisis de inversión inmobiliaria con datos reales: ${COMPARABLES_TEXTO} deptos, arriendo largo y Airbnb, 24 comunas. Veredicto en 30 segundos.`,
+import type { Metadata } from "next";
+import "@/components/landing-v14/landing.css";
+import { leerDatosLanding } from "@/lib/landing-vivo";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
+import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
+import { LandingViewed } from "@/components/landing-v14/Telemetria";
+import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
+
+export const revalidate = 600;
+
+export const metadata: Metadata = {
+  title: { absolute: "¿Ese depto es buena inversión? — Franco" },
+  description: `Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro: un modelo financiero y un veredicto, contra ${COMPARABLES_TEXTO} deptos comparables de Santiago.`,
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "¿Ese depto es buena inversión? — Franco",
+    description: "Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro. Contra toda la oferta de Santiago.",
+    url: "https://refranco.ai",
+    siteName: "Franco",
+    locale: "es_CL",
+    type: "website",
+  },
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const datos = await leerDatosLanding();
+  const ahora = new Date();
   return (
-    <LandingThemeProvider>
-      <div
-        data-franco-root
-        className="min-h-screen"
-        style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
-      >
-        <SmoothScroll />
-        <HeaderFranco />
-        <main>
-          <SectionHero />
-          <SectionWhatFrancoIs />
-          <SectionProblem />
-          <SectionWhatFrancoDoes />
-          <SectionUseCases />
-          <SectionCTAPrimary />
-          <SectionObjections />
-          <SectionCTASecondary />
-          <SectionPricing />
-          <SectionFinalCTA />
-        </main>
-        <LandingFooter />
-      </div>
-    </LandingThemeProvider>
+    <div className="lv-root" data-franco-root data-landing="v14">
+      <LandingViewed />
+      <SuaveScroll />
+      <main>
+        <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} />
+        {/* las secciones 2 y 3 muestran el MISMO ejemplo: la rotación es una sola */}
+        <RotacionEjemplos ejemplos={datos.ejemplos}>
+          <LaRespuesta />
+          <LoQueHaria />
+        </RotacionEjemplos>
+        <PorQueCreerle datos={datos} ahora={ahora} />
+        <Cierre datos={datos} ahora={ahora} />
+      </main>
+    </div>
   );
 }
