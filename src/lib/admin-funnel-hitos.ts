@@ -77,6 +77,22 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
       "la primera pantalla dejó de ser la elección de modalidad y pasó a ser la portada del producto (comuna + dirección), y la modalidad se mudó al final; el wizard que empieza acá no es una versión mejorada del anterior sino otro flujo, así que su tasa de entrada mide otra cosa. El cambio empezó a servir tráfico el 20-ago a las 15:00 UTC: ese día mezcla las dos versiones y por eso queda fuera, y el primer día comparable es el 21",
     invalida: ["visitaWizard", "wizardAnalisis"],
   },
+  {
+    // UNA PUERTA, DOS ACCESOS (26-sep-2026). La primera pantalla del wizard pasó a ser el hero de
+    // la landing (dirección, «Estoy en el depto», «Marcarlo en el mapa»), y quien llega desde la
+    // landing con la dirección puesta arranca en `tipo` sin ver `dir`. «Entró al wizard» se cuenta
+    // desde entonces como `dir` O `entrada = 'landing'` (`INICIO_WIZARD`, posthog-admin.ts).
+    //
+    // ⚠ LA FECHA SE FIJA AL MERGEAR: es el primer día UTC íntegramente posterior al deploy de
+    // producción (misma regla que el rediseño: un día mixto no pertenece a ninguna serie). Mientras
+    // la rama espera, va el día siguiente al preview.
+    fecha: "2026-09-27",
+    etiqueta: "entrada nueva",
+    etiquetaCorta: "entrada",
+    motivo:
+      "la portada de comuna se reemplazó por el hero de la landing y la llegada desde la landing salta la portada; «entró al wizard» pasó a contar también a quien llega con la dirección puesta, así que la tasa de entrada mide otra cosa",
+    invalida: ["visitaWizard", "wizardAnalisis"],
+  },
 ];
 
 /** ¿Este tramo es comparable ese día, o cae antes del hito que lo habilita? */

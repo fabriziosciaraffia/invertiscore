@@ -40,6 +40,14 @@ const HOST = "https://us.posthog.com";
 const PROJECT_ID = "371128";
 const TIMEOUT_MS = 15_000;
 
+/**
+ * Quién «entró al wizard». Hasta el 26-sep-2026 era ver `dir`, la primera pantalla. Desde la entrada
+ * nueva (una puerta, dos accesos) quien llega desde el hero de la landing con la dirección puesta
+ * arranca en `tipo` —o en el mapa— y nunca ve `dir`: se lo cuenta por `entrada = 'landing'`, que viaja
+ * en todos los eventos de paso. El hito «entrada nueva» de `admin-funnel-hitos.ts` parte la serie.
+ */
+const INICIO_WIZARD = "(properties.node = 'dir' OR properties.entrada = 'landing')";
+
 export interface PasosPostHog {
   /** Sesiones únicas con pageview en el período. null = PostHog no respondió. */
   visitas: number | null;
@@ -180,7 +188,7 @@ async function pasosSinCache(
     // lo único que se dibuja son días donde `dir` es de verdad la primera
     // pantalla.
     queryHogqlNumero(
-      `SELECT uniq(person_id) FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'dir' AND ${where}`,
+      `SELECT uniq(person_id) FROM events WHERE event = 'wizard4_step_viewed' AND ${INICIO_WIZARD} AND ${where}`,
     ),
     // Origen por sesión: se clasifica por el utm_medium del PRIMER pageview
     // (argMin por timestamp), no por el de cada evento. `utm_medium` viaja solo
@@ -208,7 +216,7 @@ async function pasosSinCache(
     // modalidad por dispositivo", que es otra pregunta.
     queryHogqlFilas(
       `SELECT coalesce(nullIf(properties.$device_type, ''), 'sin dato') AS disp, uniq(person_id) AS personas ` +
-        `FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'dir' AND ${where} ` +
+        `FROM events WHERE event = 'wizard4_step_viewed' AND ${INICIO_WIZARD} AND ${where} ` +
         `GROUP BY disp ORDER BY personas DESC`,
     ),
   ]);
@@ -263,7 +271,7 @@ async function serieSinCache(desdeIso: string, includeTest: boolean): Promise<Di
       // `dir` = primera pantalla desde el rediseño del 20-ago-2026. Esta es la
       // que alimenta el gráfico de tasas: con `mod` los dos tramos se movían
       // en direcciones opuestas y ninguno decía la verdad.
-      `uniqIf(person_id, event = 'wizard4_step_viewed' AND properties.node = 'dir') AS wiz ` +
+      `uniqIf(person_id, event = 'wizard4_step_viewed' AND ${INICIO_WIZARD}) AS wiz ` +
       `FROM events WHERE ${where} AND event IN ('$pageview', 'wizard4_step_viewed') ` +
       `GROUP BY dia ORDER BY dia`,
   );
