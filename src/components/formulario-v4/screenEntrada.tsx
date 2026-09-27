@@ -9,16 +9,19 @@
 // buscador de comuna y «todavía no tengo uno elegido» con las cifras de la comuna): la comuna se
 // deduce de la dirección, que ya mandaba sobre el chip.
 //
-// Lo que sigue a la portada:
-//   · dirección con número y cubierta → `tipo`, con la dirección en la reacción;
+// EL MAPA ES SIEMPRE LA SEGUNDA PANTALLA (27-sep-2026, prueba de Fabrizio en el teléfono): es la
+// confirmación de que la dirección quedó bien y muestra que hay datos —los comparables alrededor y
+// el conteo—. Lo que sigue a la portada:
+//   · dirección con número            → el mapa, con el pin en la dirección;
 //   · dirección sin número            → el mapa, con el pin en la calle;
 //   · «Estoy en el depto»             → la ubicación del teléfono; con ella, el mapa con el pin ahí;
 //                                       sin permiso, el mapa sin pin y un aviso;
 //   · «Marcarlo en el mapa»           → el mapa sin pin;
 //   · fuera de cobertura              → se queda acá, con el aviso y la lista de espera.
+// Ninguna dirección se confirma en la portada: se confirma en el mapa, con «Continuar».
 //
 // El mapa nombra el punto con la geocodificación inversa de `/api/geocode` y de ahí saca la comuna,
-// así que los tres caminos terminan igual: una dirección con su comuna, confirmada por el usuario.
+// así que los caminos terminan igual: una dirección con su comuna, confirmada por el usuario.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -110,12 +113,10 @@ export function EntradaScreen({
     trackWizard(posthog, "wizard4_entrada_camino", { camino: "escribir", via: sel.via, precision: sel.precision, cubierta: sel.cubierta });
     if (!sel.cubierta) { rechazar(sel); return; }
     const base = { direccion: sel.direccion, comuna: sel.comuna, ciudad: sel.ciudad, lat: sel.lat, lng: sel.lng, mapaAviso: undefined };
-    if (sel.precision === "numero") {
-      answer("dir", { ...base, direccionConfirmada: sel.direccion, ubicacionPrecision: "numero", mapaOrigen: undefined });
-      return;
-    }
-    // Sin número: el punto es de la calle. El mapa lo dice y deja moverlo antes de confirmar.
-    goDetour("dirMapa", { ...base, direccionConfirmada: undefined, ubicacionPrecision: "calle", mapaOrigen: "sin_numero" });
+    // Con o sin número, al mapa: con número el pin parte en la dirección; sin número, en un punto de
+    // la calle, y el mapa lo dice. Se confirma allá.
+    const numero = sel.precision === "numero";
+    goDetour("dirMapa", { ...base, direccionConfirmada: undefined, ubicacionPrecision: numero ? "numero" : "calle", mapaOrigen: numero ? "numero" : "sin_numero" });
   };
 
   const onCamino = async (camino: CaminoSinDireccion) => {
@@ -190,6 +191,10 @@ export function EntradaScreen({
 // ── EL MAPA: «¿Dónde queda exactamente?» ─────────────────────────────────────
 
 const AVISO_MAPA: Record<string, { titulo: string; texto: string }> = {
+  numero: {
+    titulo: "Tu dirección",
+    texto: "Revisa que el pin quedó en el edificio. Si no, tócalo o arrástralo hasta ahí: los comparables se miden desde ese punto.",
+  },
   sin_numero: {
     titulo: "Dirección sin número",
     texto: "Sin número, el depto quedó en un punto cualquiera de la calle. Toca el mapa o arrastra el pin hasta el edificio: los comparables se miden desde ahí.",
@@ -208,21 +213,38 @@ const AVISO_MAPA: Record<string, { titulo: string; texto: string }> = {
   },
 };
 
-export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolver: () => void }) {
+export function MapaScreen({ answers, data, patchAnswers, answer, onVolver }: ScreenProps & { onVolver: () => void }) {
   const posthog = usePostHog();
   const origen = answers.mapaOrigen ?? "mapa";
   const tieneInicial = typeof answers.lat === "number" && typeof answers.lng === "number";
   const [punto, setPunto] = useState<{ lat: number; lng: number } | null>(
     tieneInicial ? { lat: answers.lat as number, lng: answers.lng as number } : null,
   );
-  const [nombre, setNombre] = useState<PuntoNombrado | null>(null);
+  // El punto que llega con nombre (la dirección elegida, la calle, la ubicación ya nombrada) lo
+  // conserva mientras nadie mueva el pin: la inversa de un punto con número daría «2098» por
+  // «2100», y la de una calle sin número inventaría uno.
+  const [nombreInicial] = useState<PuntoNombrado | null>(() =>
+    tieneInicial && answers.direccion && answers.comuna
+      ? {
+          direccion: answers.direccion,
+          comuna: answers.comuna,
+          ciudad: answers.ciudad ?? "Santiago",
+          cubierta: isComunaDisponible(answers.comuna),
+          precision: origen === "numero" ? "numero" : "calle",
+        }
+      : null,
+  );
+  const [nombre, setNombre] = useState<PuntoNombrado | null>(nombreInicial);
   const [nombrando, setNombrando] = useState(false);
   const [sinNombre, setSinNombre] = useState(false);
   const movido = useRef(false);
 
-  // Cada punto nuevo se nombra; si el usuario sigue moviendo, la respuesta vieja se descarta.
+  // Cada punto nuevo se nombra; si el usuario sigue moviendo, la respuesta vieja se descarta. Con el
+  // nombre, el punto pasa a las respuestas: de ahí salen los comparables y el conteo del mapa, los
+  // mismos que dirá la pregunta siguiente.
   useEffect(() => {
     if (!punto) return;
+    if (!movido.current && nombreInicial) return;
     const ctrl = new AbortController();
     setNombrando(true);
     setSinNombre(false);
@@ -232,9 +254,10 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
       setNombre(n);
       setSinNombre(!n);
       setNombrando(false);
+      if (n && n.cubierta) patchAnswers({ lat: punto.lat, lng: punto.lng, comuna: n.comuna, ciudad: n.ciudad });
     }, 300);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [punto]);
+  }, [punto, nombreInicial, patchAnswers]);
 
   const onMover = (lat: number, lng: number) => {
     if (!movido.current) {
@@ -246,14 +269,25 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
 
   const aviso = AVISO_MAPA[answers.mapaAviso === "sin_ubicacion" ? "sin_ubicacion" : origen];
   const listo = !!punto && !!nombre && nombre.cubierta && !nombrando;
+  // El conteo es del punto que está en las respuestas; mientras se busca, se dice.
+  const conteo = !punto
+    ? null
+    : data.suggestionsLoading || nombrando
+      ? "Buscando propiedades cerca…"
+      : data.comparablesCount > 0
+        ? `${data.comparablesCount} propiedades en el sector`
+        : null;
 
   const usar = () => {
     if (!punto || !nombre) return;
-    // Sin mover el pin, la calle sin número sigue siendo «calle»: el punto no lo eligió nadie.
-    const precision = !movido.current && origen === "sin_numero" ? "calle" : "pin";
+    // Sin mover el pin, la precisión es la de lo que se eligió: con número sigue «numero» y la calle
+    // sin número sigue «calle» —ese punto no lo eligió nadie—. Moverlo lo vuelve «pin».
+    const sinMover = !movido.current;
+    const precision = sinMover && origen === "numero" ? "numero" : sinMover && origen === "sin_numero" ? "calle" : "pin";
+    const direccion = sinMover && nombreInicial ? nombreInicial.direccion : nombre.direccion;
     answer("dirMapa", {
-      direccion: nombre.direccion,
-      direccionConfirmada: nombre.direccion,
+      direccion,
+      direccionConfirmada: direccion,
       comuna: nombre.comuna,
       ciudad: nombre.ciudad,
       lat: punto.lat,
@@ -261,6 +295,13 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
       ubicacionPrecision: precision,
     });
   };
+
+  const sinMover = !movido.current;
+  const pie = sinMover && origen === "numero"
+    ? "La dirección que elegiste"
+    : sinMover && origen === "sin_numero"
+      ? "Un punto de la calle: mueve el pin hasta el edificio"
+      : "Aproximada: la dirección más cercana al pin";
 
   return (
     <div className="flex flex-col gap-4">
@@ -272,14 +313,19 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
         <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0">{aviso.texto}</p>
       </div>
 
-      <MapaPinAjustable
-        lat={punto?.lat ?? null}
-        lng={punto?.lng ?? null}
-        comuna={origen === "sin_numero" ? answers.comuna ?? null : null}
-        limite="cobertura"
-        height={300}
-        onMover={onMover}
-      />
+      <div>
+        <FieldLabel>Ubicación en el mapa</FieldLabel>
+        <MapaPinAjustable
+          lat={punto?.lat ?? null}
+          lng={punto?.lng ?? null}
+          comuna={origen === "sin_numero" ? answers.comuna ?? null : null}
+          limite="cobertura"
+          height={300}
+          onMover={onMover}
+          puntos={data.comparables}
+          etiqueta={conteo}
+        />
+      </div>
 
       {punto && (
         <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3">
@@ -289,7 +335,7 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
           ) : nombre ? (
             <>
               <p className="font-body text-[15px] font-medium text-[var(--franco-text)] m-0">{nombre.direccion.split(",").slice(0, 2).join(",")}</p>
-              <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-0.5 mb-0">Aproximada: la dirección más cercana al pin</p>
+              <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-0.5 mb-0">{pie}</p>
               {!nombre.cubierta && (
                 <p className="font-body text-[13px] text-[var(--franco-text)] mt-2 mb-0">
                   {nombre.comuna} está fuera del Gran Santiago: por ahora Franco no tiene datos suficientes ahí.
@@ -303,7 +349,7 @@ export function MapaScreen({ answers, answer, onVolver }: ScreenProps & { onVolv
       )}
 
       <div className="mt-1 flex flex-col gap-2">
-        <PrimaryBtn onClick={usar} disabled={!listo}>Usar este punto →</PrimaryBtn>
+        <PrimaryBtn onClick={usar} disabled={!listo}>Continuar →</PrimaryBtn>
         <GhostBtn onClick={onVolver}>Escribir la dirección</GhostBtn>
       </div>
     </div>

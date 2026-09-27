@@ -1,11 +1,14 @@
 // ============================================================================
 // GOLDEN · LA ENTRADA DEL WIZARD: UNA PUERTA, DOS ACCESOS — catch-test (26-sep-2026)
 // ============================================================================
-//   1 · LA LLEGADA DESDE LA LANDING. Con número y cobertura arranca en `tipo`; sin número, en el
-//       mapa; fuera de cobertura, en la portada. La precisión manda si viene; si no, se lee del texto.
-//       Con un borrador de otra dirección, la portada pregunta antes de escribir nada.
+//   1 · LA LLEGADA DESDE LA LANDING. Con cobertura arranca en el mapa (con número o sin él); fuera
+//       de cobertura, en la portada. La precisión manda si viene; si no, se lee del texto. Con un
+//       borrador de otra dirección, la portada pregunta antes de escribir nada.
 //   2 · EL MAPA ES UN DESVÍO DE `dir`. `dir` conserva su nombre, el mapa no cuenta como progreso y
 //       sigue a `tipo`. La reacción de la pregunta siguiente nombra la dirección.
+//   7 · EL MAPA ES SIEMPRE LA SEGUNDA (27-sep-2026, prueba en el teléfono): con número también; el
+//       pin parte en la dirección elegida, que no se rebautiza si nadie lo mueve; el mapa lleva los
+//       comparables y el conteo del mismo hook que la reacción, y se sigue con «Continuar».
 //   3 · LA PORTADA VIEJA SALIÓ ENTERA: chips de comuna, buscador, «¿se paga solo?», «todavía no
 //       tengo uno», sus eventos y la ruta de cifras por comuna que solo ella leía.
 //   4 · UN SOLO COMPONENTE. La portada es `HeroEntrada` sobre el hook compartido, con los tres
@@ -64,7 +67,8 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
 
   // ── 1 · LA LLEGADA ─────────────────────────────────────────────────────────
   const conNumero = leerDireccionLlegada({ direccion: "Av. Irarrázaval 2100, Ñuñoa, Región Metropolitana, Chile", lat: "-33.4535", lng: "-70.6091", comuna: "Ñuñoa" });
-  if (!conNumero || !conNumero.cubierta || conNumero.precision !== "numero" || destinoDeLlegada(conNumero) !== "tipo") F("1 · una dirección con número y cubierta no arranca en «tipo»");
+  // ACTA 27-sep-2026: arrancaba en `tipo`; desde la prueba en el teléfono el mapa es siempre la segunda.
+  if (!conNumero || !conNumero.cubierta || conNumero.precision !== "numero" || destinoDeLlegada(conNumero) !== "mapa") F("1 · una dirección con número y cubierta no arranca en el mapa");
   const sinNumero = leerDireccionLlegada({ direccion: "Av. Irarrázaval, Ñuñoa, Región Metropolitana, Chile", lat: "-33.4539", lng: "-70.6016", comuna: "Ñuñoa" });
   if (!sinNumero || sinNumero.precision !== "calle" || destinoDeLlegada(sinNumero) !== "mapa") F("1 · una dirección sin número no arranca en el mapa");
   const declarada = leerDireccionLlegada({ direccion: "Av. Irarrázaval 2100, Ñuñoa", lat: "-33.4535", lng: "-70.6091", comuna: "Ñuñoa", precision: "calle" });
@@ -80,7 +84,9 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (borradorEsDeOtraDireccion("Av. Irarrazaval 2100, Ñuñoa, Chile", "Av. Irarrázaval 2100, Ñuñoa") || !borradorEsDeOtraDireccion("Linares 1415, Providencia", "Av. Irarrázaval 2100, Ñuñoa") || borradorEsDeOtraDireccion(null, "x")) F("1 · el borrador de otra dirección no se distingue del de la misma");
   const shell = sinComentarios(leer("src/components/formulario-v4/WizardV4.tsx"));
   if (!/if \(!hayLlegada \|\| llegadaAplicada\.current \|\| !w\.inicializado \|\| w\.draftPendiente\) return;/.test(shell)) F("1 · la llegada no espera a saber si hay un borrador pendiente");
-  if (!/const destino = destinoDeLlegada\(d\);[\s\S]{0,300}?if \(destino === "tipo"\) \{\s*\n\s*w\.answer\("dir",[\s\S]{0,200}?\} else if \(destino === "mapa"\) \{\s*\n\s*w\.goDetour\("dirMapa",/.test(shell)) F("1 · la llegada no reparte entre «tipo», el mapa y la portada");
+  // ACTA 27-sep-2026: la llegada ya no reparte a `tipo`; con cobertura va al mapa con la precisión que trae.
+  if (!/const destino = destinoDeLlegada\(d\);[\s\S]{0,300}?if \(destino === "mapa"\) \{\s*\n\s*const numero = d\.precision === "numero";\s*\n\s*w\.goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, lat: d\.lat, lng: d\.lng, ubicacionPrecision: numero \? "numero" : "calle", mapaOrigen: numero \? "numero" : "sin_numero" \}\);\s*\n\s*\} else \{/.test(shell)) F("1 · la llegada no reparte entre el mapa y la portada");
+  if (/w\.answer\("dir"/.test(shell)) F("1 · la llegada confirma una dirección sin pasar por el mapa");
   if (!/const retomarBorrador = \(\) => \{ llegadaAplicada\.current = true; w\.resumeDraft\(\); \};/.test(shell)) F("1 · retomar el borrador no descarta la llegada: se aplicaría encima");
   if (!/Seguir con \{calle\(direccionInicial\?\.direccion\)\}/.test(shell) || !/Retomar \{calle\(w\.draftPendiente\?\.answers\?\.direccion\)\}/.test(shell)) F("1 · con un borrador de otra dirección la portada no pregunta seguir o retomar");
   const pagina = sinComentarios(leer("src/app/analisis/nuevo-v4/page.tsx"));
@@ -131,7 +137,26 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/if \(r\.estado !== "concedido"\) \{[\s\S]{0,120}?goDetour\("dirMapa", \{ \.\.\.limpio, lat: undefined, lng: undefined, mapaOrigen: "ubicacion", mapaAviso: "sin_ubicacion" \}\);/.test(ent)) F("4 · sin permiso, el mapa no abre sin pin");
   if (!/if \(camino === "mapa"\) \{\s*\n\s*goDetour\("dirMapa", \{ \.\.\.limpio, lat: undefined, lng: undefined, mapaOrigen: "mapa" \}\);/.test(ent)) F("4 · «Marcarlo en el mapa» no abre el mapa sin pin");
   if (!/const listo = !!punto && !!nombre && nombre\.cubierta && !nombrando;/.test(ent)) F("4 · el mapa deja confirmar un punto sin nombre o fuera de cobertura");
-  if (!/const precision = !movido\.current && origen === "sin_numero" \? "calle" : "pin";/.test(ent)) F("4 · el mapa confirma como «pin» una calle que nadie movió");
+  // ACTA 27-sep-2026: se suma el origen «numero», que sin mover conserva su precisión.
+  if (!/const sinMover = !movido\.current;\s*\n\s*const precision = sinMover && origen === "numero" \? "numero" : sinMover && origen === "sin_numero" \? "calle" : "pin";/.test(ent)) F("4 · el mapa confirma como «pin» una dirección o una calle que nadie movió");
+
+  // ── 7 · EL MAPA ES SIEMPRE LA SEGUNDA ──────────────────────────────────────
+  const onDir = (ent.match(/const onDireccion = \(sel: SeleccionDireccion\) => \{([\s\S]*?)\n  \};/) ?? [])[1] ?? "";
+  if (!onDir) F("7 · no encuentro onDireccion en la portada (el extractor no corrió)");
+  if (/answer\(/.test(onDir)) F("7 · la portada confirma una dirección sin pasar por el mapa");
+  if (!/const numero = sel\.precision === "numero";\s*\n\s*goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, ubicacionPrecision: numero \? "numero" : "calle", mapaOrigen: numero \? "numero" : "sin_numero" \}\);/.test(onDir)) F("7 · con número, la portada no manda al mapa");
+  const mapaScr = (ent.match(/export function MapaScreen\(([\s\S]*)$/) ?? [])[1] ?? "";
+  if (!mapaScr) F("7 · no encuentro MapaScreen (el extractor no corrió)");
+  if (!/<MapaPinAjustable[\s\S]{0,400}?puntos=\{data\.comparables\}[\s\S]{0,80}?etiqueta=\{conteo\}/.test(mapaScr)) F("7 · el mapa no muestra los comparables y el conteo");
+  if (!/`\$\{data\.comparablesCount\} propiedades en el sector`/.test(mapaScr) || !/<FieldLabel>Ubicación en el mapa<\/FieldLabel>/.test(mapaScr)) F("7 · el mapa no dice «Ubicación en el mapa · N propiedades en el sector»");
+  if (!/if \(n && n\.cubierta\) patchAnswers\(\{ lat: punto\.lat, lng: punto\.lng, comuna: n\.comuna, ciudad: n\.ciudad \}\);/.test(mapaScr)) F("7 · el punto movido no llega a las respuestas: los comparables son del punto viejo");
+  if (!/if \(!movido\.current && nombreInicial\) return;/.test(mapaScr)) F("7 · el mapa rebautiza la dirección elegida sin que nadie mueva el pin");
+  if (!/const direccion = sinMover && nombreInicial \? nombreInicial\.direccion : nombre\.direccion;/.test(mapaScr)) F("7 · sin mover el pin, el mapa confirma otra dirección que la elegida");
+  if (!/<PrimaryBtn onClick=\{usar\} disabled=\{!listo\}>Continuar →<\/PrimaryBtn>/.test(mapaScr)) F("7 · el mapa no sigue con «Continuar»");
+  if (!/numero: \{\s*\n\s*titulo: "Tu dirección"/.test(ent)) F("7 · con número el mapa no dice qué revisar");
+  const pinSrc = sinComentarios(leer("src/components/formulario-v4/MapaPinAjustable.tsx"));
+  if (!/for \(const p of validos\) \{\s*\n\s*puntosRef\.current\.push\(new google\.maps\.Marker\(/.test(pinSrc) || !/\}, \[puntos, listo\]\);/.test(pinSrc)) F("7 · el mapa no dibuja los comparables ni los redibuja al cambiar");
+
 
   // ── 5 · EVENTOS Y EMBUDO ───────────────────────────────────────────────────
   if (!/"wizard4_entrada_camino", \{ camino: "escribir"/.test(ent) || !/trackWizard\(posthog, "wizard4_entrada_camino", \{ camino \}\);/.test(ent)) F("5 · falta el evento del camino elegido");
@@ -171,7 +196,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ WIZARD-ENTRADA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos; la llegada reparte entre tipo, mapa y portada, y pregunta ante un borrador ajeno; el mapa nombra el punto; los eventos llevan su puerta");
+    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos; el mapa es siempre la segunda, con los comparables y el conteo; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
   }
   return { hard: fallas.length };
 }
@@ -200,3 +225,9 @@ if (require.main === module) {
 // Tercera tanda (26-sep-2026), las cinco en ROJO: 6d el helper no quita el postal pegado · 6e no
 //   quita el tramo propio · 6f la inversa sin el helper · 6g la directa sin el helper · 6h Places
 //   sin el helper.
+// Cuarta tanda (27-sep-2026, el mapa siempre segundo), las 12 en ROJO: 1j la llegada con número
+//   vuelve a tipo · 1k la llegada confirma sin mapa · 4g sin mover, con número queda «pin» · 7a la
+//   portada confirma con número · 7b con número no va al mapa · 7c el mapa sin comparables · 7d sin
+//   «propiedades en el sector» · 7e el punto movido no llega a las respuestas · 7f la inversa
+//   rebautiza sin mover · 7g sin mover confirma el nombre de la inversa · 7h «Usar este punto» en
+//   vez de «Continuar» · 7i los puntos no se redibujan.

@@ -134,9 +134,10 @@ export function WizardV4({
   }, [comunaInicial]);
 
   // ── LA LLEGADA DESDE LA LANDING (una puerta, dos accesos, 26-sep-2026) ──────────
-  // Con la dirección ya elegida en el hero: con número y cobertura, arranca en `tipo`; sin número,
-  // en el mapa; fuera de cobertura, en la portada con el aviso. Con `?modo=mapa`, en el mapa; con
-  // `?modo=ubicacion`, la portada pide la ubicación al llegar.
+  // Con la dirección ya elegida en el hero: con cobertura, arranca en el mapa (siempre la segunda
+  // pantalla, 27-sep-2026), con el pin en la dirección o en la calle; fuera de cobertura, en la
+  // portada con el aviso. Con `?modo=mapa`, en el mapa; con `?modo=ubicacion`, la portada pide la
+  // ubicación al llegar.
   //
   // Espera a que el hook haya mirado el borrador: si hay uno a medias, la portada pregunta antes
   // (seguir con lo nuevo o retomar) y NO se escribe nada hasta que la persona elija —mientras hay
@@ -153,10 +154,9 @@ export function WizardV4({
       const destino = destinoDeLlegada(d);
       trackWizard(posthog, "wizard4_llegada_landing", { destino, precision: d.precision, cubierta: d.cubierta });
       const base = { direccion: d.direccion, comuna: d.comuna, ciudad: d.ciudad, mapaAviso: undefined };
-      if (destino === "tipo") {
-        w.answer("dir", { ...base, direccionConfirmada: d.direccion, lat: d.lat, lng: d.lng, ubicacionPrecision: "numero", mapaOrigen: undefined });
-      } else if (destino === "mapa") {
-        w.goDetour("dirMapa", { ...base, direccionConfirmada: undefined, lat: d.lat, lng: d.lng, ubicacionPrecision: "calle", mapaOrigen: "sin_numero" });
+      if (destino === "mapa") {
+        const numero = d.precision === "numero";
+        w.goDetour("dirMapa", { ...base, direccionConfirmada: undefined, lat: d.lat, lng: d.lng, ubicacionPrecision: numero ? "numero" : "calle", mapaOrigen: numero ? "numero" : "sin_numero" });
       } else {
         w.patchAnswers({ ...base, direccionConfirmada: undefined, lat: undefined, lng: undefined, ubicacionPrecision: undefined });
       }

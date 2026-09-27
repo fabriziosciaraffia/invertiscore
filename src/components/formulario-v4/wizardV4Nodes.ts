@@ -155,7 +155,7 @@ export interface WizardV4Answers {
   lat?: number | null;
   lng?: number | null;
   /** Por qué camino se llegó al mapa (`dirMapa`): define el aviso y dónde parte el pin. */
-  mapaOrigen?: "sin_numero" | "ubicacion" | "mapa";
+  mapaOrigen?: "numero" | "sin_numero" | "ubicacion" | "mapa";
   /** «Estoy en el depto» sin ubicación (permiso negado o error): el mapa abre sin pin y lo dice. */
   mapaAviso?: "sin_ubicacion";
   /** "numero" · "calle" (sin número: el punto es aproximado) · "pin" (el usuario lo movió). */
@@ -462,13 +462,11 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
       // filtrados. "Comparables" se reserva para `arr` (mediana con su propio N,
       // filtrado por superficie/dorm) para que ningún número cambie de nombre.
       //
-      // Desde el 26-sep-2026 la reacción nombra la dirección: quien llega desde la
-      // landing arranca en `tipo` sin haber visto la portada, y ésta es la única
-      // pantalla donde ve qué dirección quedó.
+      // Desde el 26-sep-2026 la reacción nombra la dirección que quedó confirmada en el
+      // mapa (siempre la segunda pantalla desde el 27-sep).
       //
-      // El conteo llega segundos después de confirmar (dos consultas al radio) y, hasta que
-      // llega, la frase va sin número: antes se leía «N propiedades» literal, y con los caminos
-      // que saltan directo a `tipo` (mapa, ubicación, llegada desde la landing) se veía siempre.
+      // El conteo puede llegar después (dos consultas al radio) y, hasta que llega, la
+      // frase va sin número: antes se leía «N propiedades» literal.
       const corta = (a.direccionConfirmada ?? a.direccion ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 2).join(", ");
       const n = live?.comparables;
       const zona = n ? `zona cubierta, ${n} propiedades en el sector.` : "zona cubierta.";

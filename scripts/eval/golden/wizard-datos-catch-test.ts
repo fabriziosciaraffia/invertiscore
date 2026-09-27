@@ -155,8 +155,11 @@ export async function runWizardDatosTier(): Promise<{ hard: number }> {
   const hero = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
   if (!/const entregar = \(sel: SeleccionDireccion\) => \{\s*\n\s*if \(!sel\.precision\) \{[\s\S]{0,160}?return;\s*\}[\s\S]{0,40}?onDireccion\(sel\);/.test(hero)) F("3 · el hero entrega una sugerencia de Places sin calle");
   const ent = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
-  if (!/if \(sel\.precision === "numero"\) \{\s*\n\s*answer\("dir", \{ \.\.\.base, direccionConfirmada: sel\.direccion, ubicacionPrecision: "numero"/.test(ent)) F("3 · la portada confirma una dirección sin número");
-  if (!/goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, ubicacionPrecision: "calle", mapaOrigen: "sin_numero" \}\)/.test(ent)) F("3 · sin número, la portada no manda al mapa");
+  // ACTA 27-sep-2026: la portada ya no confirma NINGUNA dirección —el mapa es siempre la segunda
+  // pantalla—, así que la regla se mide así: las dos van al mapa sin confirmar, cada una con su
+  // precisión (la calle sin número, «calle»; con número, «numero»).
+  if (!/const numero = sel\.precision === "numero";\s*\n\s*goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, ubicacionPrecision: numero \? "numero" : "calle", mapaOrigen: numero \? "numero" : "sin_numero" \}\);/.test(ent)) F("3 · la portada no manda la dirección al mapa con su precisión");
+  if (/answer\("dir", \{ \.\.\.base, direccionConfirmada: sel\.direccion/.test(ent)) F("3 · la portada confirma una dirección sin pasar por el mapa");
   if (!/<MapaPinAjustable[\s\S]{0,300}?onMover=\{onMover\}/.test(ent) || !/sin_numero: \{\s*\n\s*titulo: "Dirección sin número"/.test(ent)) F("3 · sin número, el mapa no avisa ni deja mover el pin");
   const res3 = sinComentarios(leer("src/components/formulario-v4/screenResumen.tsx"));
   if (!/const precision = precisionDeComponentes\(comps\);\s*\n\s*if \(!precision\) \{ setNoEsCalle\(true\); return; \}\s*\n\s*setNoEsCalle\(false\);\s*\n\s*doneRef\.current = true;\s*\n\s*onConfirm\(\{[^}]*precision \}\);/.test(res3)) F("3 · el editor de dirección del resumen confirma sin calle");
@@ -198,3 +201,7 @@ if (require.main === module) {
 // vive hoy la regla —el hook compartido, el hero, la portada y el mapa— y se volvieron a ver en ROJO
 // con cinco mutaciones: el hook deja de medir la precisión · el respaldo confirma sin precisión · el
 // hero entrega lo que no es calle · la portada confirma sin número · el pin sale de su límite.
+//
+// ACTA 27-sep-2026 (el mapa siempre segundo): la portada ya no confirma ninguna dirección; las dos
+// van al mapa con su precisión. Vistas en ROJO con dos mutaciones: la calle sin número va al mapa
+// como «numero» · la portada confirma con número.

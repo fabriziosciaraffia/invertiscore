@@ -5,9 +5,9 @@
 // el mismo componente. Desde la landing se llega con la dirección ya elegida
 // (`?direccion&lat&lng&comuna[&precision]`) o con un camino sin dirección (`?modo=ubicacion|mapa`),
 // y el wizard decide dónde arrancar:
-//   · con número y cobertura      → `tipo` (la pregunta siguiente);
-//   · sin número (y con cobertura) → el mapa, con el pin en la calle;
-//   · fuera de cobertura           → la portada, con el aviso y la lista de espera.
+//   · con cobertura       → el mapa, que es siempre la segunda pantalla (27-sep-2026): con número el
+//                           pin parte en la dirección; sin número, en la calle;
+//   · fuera de cobertura  → la portada, con el aviso y la lista de espera.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { COMUNAS } from "@/lib/comunas";
@@ -26,7 +26,7 @@ export interface DireccionLlegada {
 }
 
 export type ModoLlegada = "ubicacion" | "mapa";
-export type DestinoLlegada = "tipo" | "mapa" | "portada";
+export type DestinoLlegada = "mapa" | "portada";
 
 /** Lee la dirección que trae la URL. Null si falta algo o las coordenadas no son de Santiago. */
 export function leerDireccionLlegada(p: {
@@ -63,9 +63,8 @@ export function leerModoLlegada(modo: string | null | undefined): ModoLlegada | 
 }
 
 /** Dónde arranca el wizard con esa dirección. */
-export function destinoDeLlegada(d: Pick<DireccionLlegada, "cubierta" | "precision">): DestinoLlegada {
-  if (!d.cubierta) return "portada";
-  return d.precision === "numero" ? "tipo" : "mapa";
+export function destinoDeLlegada(d: Pick<DireccionLlegada, "cubierta">): DestinoLlegada {
+  return d.cubierta ? "mapa" : "portada";
 }
 
 /** «Av. Irarrázaval 2100, Ñuñoa, Región Metropolitana, Chile» → «Av. Irarrázaval 2100, Ñuñoa». */
