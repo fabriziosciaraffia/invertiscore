@@ -63,6 +63,7 @@ import { runWizardDatosTier } from "./wizard-datos-catch-test";
 import { runWizardEntradaTier } from "./wizard-entrada-catch-test";
 import { runHeaderUnicoTier } from "./header-unico-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
+import { runWizardInteriorTier } from "./wizard-interior-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -333,6 +334,7 @@ function printSeed(r: SeedReport) {
   // Tier OTRA-FUENTE (27-sep-2026, 0 tokens): la cuota del crédito del pie baja el flujo exactamente
   // su monto en LTR y STR, sin tocar el hipotecario ni el NOI, y sin ella nada cambia.
   totalHard += runOtraFuenteTier().hard;
+  totalHard += runWizardInteriorTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
