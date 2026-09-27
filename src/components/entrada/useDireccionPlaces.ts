@@ -20,7 +20,7 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { cajaParaComuna, type Caja } from "@/lib/comuna-bounds";
-import { comunaDeComponentes, precisionDeComponentes, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { comunaDeComponentes, precisionDeComponentes, sinCodigoPostal, type PrecisionUbicacion } from "@/lib/geocoding-precision";
 import { decidirEnganche, derivarComuna } from "@/components/formulario-v4/entradaPlaces";
 
 export interface SeleccionDireccion {
@@ -103,7 +103,7 @@ export function useDireccionPlaces({ activo, comuna, onSeleccion }: UseDireccion
         ac.addListener("place_changed", () => {
           const place = ac.getPlace();
           if (!place?.geometry?.location) return;
-          const addr = place.formatted_address || inputRef.current?.value || "";
+          const addr = sinCodigoPostal(place.formatted_address || inputRef.current?.value || "");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const comps = (place.address_components || []) as any[];
           const comunaRaw = comunaDeComponentes(comps);

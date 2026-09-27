@@ -38,6 +38,7 @@ import {
 } from "../../../src/components/formulario-v4/wizardV4Nodes";
 import { HITOS_FUNNEL } from "../../../src/lib/admin-funnel-hitos";
 import { GET as geocodeGET } from "../../../src/app/api/geocode/route";
+import { sinCodigoPostal } from "../../../src/lib/geocoding-precision";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -154,6 +155,17 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (invArea?.direccion !== null) F("6 · la inversa nombra un punto con una comuna en vez de una calle");
   const directa = await conFetch({ status: "OK", results: [calleConNumero] }, async () => geocodeGET(new Request("http://x/api/geocode?q=Irarrazaval%202098")));
   if (directa.status !== 200) F("6 · el respaldo por texto sin comuna da error (el hero no tiene comuna)");
+  // El código postal no llega a la pantalla: el preview del 26-sep mostraba «8330215 Santiago».
+  if (sinCodigoPostal("Av. Sta. Rosa 200, 8330215 Santiago, Región Metropolitana, Chile") !== "Av. Sta. Rosa 200, Santiago, Región Metropolitana, Chile") F("6 · el código postal pegado a la comuna (Google) se queda");
+  if (sinCodigoPostal("200, Avenida Santa Rosa, Santiago, Región Metropolitana de Santiago, 8330215, Chile") !== "200, Avenida Santa Rosa, Santiago, Región Metropolitana de Santiago, Chile") F("6 · el código postal como tramo propio (Nominatim) se queda");
+  if (sinCodigoPostal("Av. Apoquindo 3000, Las Condes") !== "Av. Apoquindo 3000, Las Condes") F("6 · quitar el código postal le toca el número a la calle");
+  const conPostal = { ...calleConNumero, formatted_address: "Av. Sta. Rosa 200, 8330215 Santiago, Región Metropolitana, Chile" };
+  const invPostal = await conFetch({ status: "OK", results: [conPostal] }, async () => (await geocodeGET(new Request("http://x/api/geocode?lat=-33.45&lng=-70.64"))).json());
+  if (invPostal?.direccion !== "Av. Sta. Rosa 200, Santiago, Región Metropolitana, Chile") F(`6 · la inversa nombra el punto con el código postal (${invPostal?.direccion})`);
+  const directaPostal = await conFetch({ status: "OK", results: [conPostal] }, async () => (await geocodeGET(new Request("http://x/api/geocode?q=Santa%20Rosa%20200"))).json());
+  if (directaPostal?.formattedAddress !== "Av. Sta. Rosa 200, Santiago, Región Metropolitana, Chile") F(`6 · el respaldo por texto confirma con el código postal (${directaPostal?.formattedAddress})`);
+  const places = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
+  if (!/const addr = sinCodigoPostal\(place\.formatted_address/.test(places)) F("6 · la selección de Places guarda la dirección con el código postal");
 
   if (fallas.length) {
     console.log(`  ✗ WIZARD-ENTRADA · ${fallas.length} falla(s):`);
@@ -185,3 +197,6 @@ if (require.main === module) {
 // Segunda tanda (26-sep-2026, tras el primer preview), las tres en ROJO: 2e la reacción vuelve a
 //   «?? "N"» · 2f sin dirección vuelve el marcador · 4f el Permissions-Policy vuelve a
 //   `geolocation=()`.
+// Tercera tanda (26-sep-2026), las cinco en ROJO: 6d el helper no quita el postal pegado · 6e no
+//   quita el tramo propio · 6f la inversa sin el helper · 6g la directa sin el helper · 6h Places
+//   sin el helper.

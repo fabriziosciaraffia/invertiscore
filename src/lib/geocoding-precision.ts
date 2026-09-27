@@ -75,6 +75,18 @@ export function precisionDeTexto(direccion: string): PrecisionUbicacion {
   return /\d/.test((direccion ?? "").split(",")[0] ?? "") ? "numero" : "calle";
 }
 
+/**
+ * La dirección sin el código postal. Google lo pega a la comuna («Av. Sta. Rosa 200, 8330215
+ * Santiago, …») y Nominatim lo pone como tramo propio («…, 8330215, Chile»); en la pantalla del mapa
+ * y en la reacción se leía «8330215 Santiago». Los códigos postales chilenos son de 7 dígitos, y
+ * solo se quitan al inicio de un tramo: el número de la calle está en el primero y nunca tiene 7.
+ */
+export function sinCodigoPostal(direccion: string): string {
+  return (direccion ?? "")
+    .replace(/,\s*\d{7}\s+(?=\S)/g, ", ")
+    .replace(/,\s*\d{7}\s*(?=,|$)/g, "");
+}
+
 /** Precisión de un resultado de Nominatim (con `addressdetails=1`). */
 export function precisionDeResultadoNominatim(r: { address?: Record<string, string> } | null | undefined): PrecisionUbicacion | null {
   const ad = r?.address;

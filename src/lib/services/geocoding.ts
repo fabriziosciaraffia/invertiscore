@@ -3,6 +3,7 @@ import {
   precisionDeResultadoGoogle,
   precisionDeResultadoNominatim,
   type PrecisionUbicacion,
+  sinCodigoPostal,
 } from "@/lib/geocoding-precision";
 
 export interface GeocodingResult {
@@ -70,7 +71,7 @@ async function geocodeWithGoogle(query: string, key: string): Promise<GeocodingR
         return {
           lat: result.geometry.location.lat,
           lng: result.geometry.location.lng,
-          formattedAddress: result.formatted_address,
+          formattedAddress: sinCodigoPostal(result.formatted_address),
           precision,
         };
       }
@@ -97,7 +98,7 @@ async function geocodeWithNominatim(query: string): Promise<GeocodingResult | nu
       return {
         lat: parseFloat(r.lat),
         lng: parseFloat(r.lon),
-        formattedAddress: r.display_name,
+        formattedAddress: sinCodigoPostal(r.display_name),
         precision,
       };
     }
@@ -116,7 +117,7 @@ async function reverseWithGoogle(lat: number, lng: number, key: string): Promise
     for (const result of data.results) {
       const precision = precisionDeResultadoGoogle(result);
       if (!precision) continue;
-      return { direccion: result.formatted_address, comunaRaw: comunaDeComponentes(result.address_components), precision };
+      return { direccion: sinCodigoPostal(result.formatted_address), comunaRaw: comunaDeComponentes(result.address_components), precision };
     }
     return null;
   } catch (error) {
@@ -134,7 +135,7 @@ async function reverseWithNominatim(lat: number, lng: number): Promise<ReverseGe
     if (!precision) return null;
     const ad = (r?.address ?? {}) as Record<string, string>;
     return {
-      direccion: r.display_name,
+      direccion: sinCodigoPostal(r.display_name),
       comunaRaw: ad.city || ad.town || ad.municipality || ad.suburb || "",
       precision,
     };
