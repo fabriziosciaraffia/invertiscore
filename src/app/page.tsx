@@ -1,4 +1,4 @@
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import { LandingThemeProvider } from "@/components/landing/LandingTheme";
 import SectionHero from "@/components/landing/SectionHero";
@@ -29,7 +29,7 @@ export default function LandingPage() {
         style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
       >
         <SmoothScroll />
-        <UnifiedNav variant="landing" />
+        <HeaderFranco />
         <main>
           <SectionHero />
           <SectionWhatFrancoIs />

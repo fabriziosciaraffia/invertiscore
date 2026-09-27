@@ -7,8 +7,7 @@ import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
-import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -259,45 +258,29 @@ export function ComparativaClient(p: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] flex flex-col">
-      {/* Anónimo-dueño (cap F2-2): el nav de app no le sirve (no tiene
-          dashboard) — chrome de guardado, espejo de la vista LTR/STR. */}
-      {p.isAnonOwner ? (
-        <PublicShareHeader
-          anonOwner
-          registerNext={`/analisis/comparativa?ltr=${p.ltrId}&str=${p.strId}`}
-        />
-      ) : (
-      <UnifiedNav
-        variant="app"
-        actionsSlot={
-          <div className="flex items-center gap-2">
-            <ShareButton
-              path={`/share/comparativa/${p.shareToken}`}
-              analysisId={p.shareToken}
-              modalidad="AMBAS"
-              pdfUrl={`/api/share/comparativa/${p.shareToken}/pdf`}
-              title={`Comparativa Franco: ${p.nombre || `Depto en ${p.comuna}`}`}
-              text="¿Arriendo tradicional o Airbnb? Franco comparó las dos modalidades de este depto con datos reales."
-              comuna={p.comuna}
-            />
-            {/* Delete group-aware — solo owner (subordinación: el comparativo es
-                el producto; borrarlo elimina ambos hijos). */}
-            {p.isOwner && (
-              <button
-                type="button"
-                onClick={handleDeleteGroup}
-                disabled={deleting}
-                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-body text-[13px] text-[var(--franco-text-secondary)] transition-colors hover:text-signal-red disabled:opacity-50"
-                title="Eliminar comparativa (borra ambos análisis)"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Eliminar</span>
-              </button>
-            )}
-          </div>
+      {/* EL HEADER ÚNICO (27-sep-2026). El dueño sin cuenta, con «Guardarlo»; con sesión, con
+          Compartir en la banda. Eliminar ya no va acá: va al pie de la página. */}
+      <HeaderFranco
+        informe={
+          p.isAnonOwner
+            ? { modo: "anonimo", registroNext: `/analisis/comparativa?ltr=${p.ltrId}&str=${p.strId}` }
+            : {
+                modo: "propio",
+                compartir: (
+                  <ShareButton
+                    variante="banda"
+                    path={`/share/comparativa/${p.shareToken}`}
+                    analysisId={p.shareToken}
+                    modalidad="AMBAS"
+                    pdfUrl={`/api/share/comparativa/${p.shareToken}/pdf`}
+                    title={`Comparativa Franco: ${p.nombre || `Depto en ${p.comuna}`}`}
+                    text="¿Arriendo tradicional o Airbnb? Franco comparó las dos modalidades de este depto con datos reales."
+                    comuna={p.comuna}
+                  />
+                ),
+              }
         }
       />
-      )}
 
       {/* Fase D — modal del resumen de un hijo bloqueado (contenido premium sobre
           el comparativo; diferenciado de los drawers laterales). */}
@@ -453,6 +436,23 @@ export function ComparativaClient(p: Props) {
           >
             Verifica los datos antes de tomar decisiones financieras.
           </p>
+
+          {/* Eliminar, al pie (salió del header el 27-sep-2026). Group-aware y solo del dueño: el
+              comparativo es el producto y borrarlo elimina los dos análisis. */}
+          {p.isOwner && (
+            <div className="mt-10 flex justify-center">
+              <button
+                type="button"
+                onClick={handleDeleteGroup}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-body text-[13px] text-[var(--franco-text-secondary)] transition-colors hover:text-signal-red disabled:opacity-50"
+                title="Eliminar comparativa (borra ambos análisis)"
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar comparativa
+              </button>
+            </div>
+          )}
         </div>
       </main>
 

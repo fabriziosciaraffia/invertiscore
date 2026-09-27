@@ -28,6 +28,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { pedirUbicacion } from "@/components/entrada/ubicacion";
 import type { PrecisionUbicacion } from "@/lib/geocoding-precision";
@@ -66,12 +67,10 @@ export function EntradaScreen({
   answer,
   goDetour,
   banner,
-  logueado,
   autoCamino = null,
 }: ScreenProps & {
   /** El aviso de un análisis a medias (o «seguir o retomar», si llega una dirección nueva). */
   banner?: ReactNode;
-  logueado: boolean;
   /** `?modo=ubicacion` desde la landing: el camino se ejecuta al llegar, una vez. */
   autoCamino?: CaminoSinDireccion | null;
 }) {
@@ -164,9 +163,7 @@ export function EntradaScreen({
 
   return (
     <HeroEntrada
-      derecha={logueado
-        ? <a href="/dashboard" className="he-der">Mis análisis</a>
-        : <a href="/login" className="he-der">Entrar</a>}
+      cabecera={<HeaderFranco contexto="wizard" sobreMaterial />}
       pie={<a href="/demo" onClick={() => trackWizard(posthog, "wizard4_entrada_ejemplo", {})}>Ver un análisis de ejemplo<span aria-hidden="true">→</span></a>}
       antes={banner}
       valorInicial={answers.direccion ?? ""}

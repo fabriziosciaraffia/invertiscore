@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { User, CreditCard, Clock, Sparkles } from "lucide-react";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ChangePasswordForm } from "./change-password-form";
 import { isAdminUser } from "@/lib/admin";
 
@@ -169,7 +169,7 @@ export default async function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="app" />
+      <HeaderFranco />
 
       <div className="container mx-auto max-w-2xl px-4 py-8">
         <h1 className="mb-8 text-3xl font-bold text-[var(--franco-text)]">Mi Perfil</h1>

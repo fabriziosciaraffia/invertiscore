@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AdminTabs } from "./admin-tabs";
 
 /**
@@ -10,31 +10,21 @@ import { AdminTabs } from "./admin-tabs";
  *
  * El layout NO recibe searchParams (limitación de Next), así que el toggle de
  * cuentas de prueba vive en cada página, no acá.
+ *
+ * Desde el 27-sep-2026 arriba va el header único (HeaderFranco): su wordmark ya lleva al
+ * dashboard, así que «← Volver al sitio» salió. Debajo queda la barra propia del panel —el rótulo
+ * y las pestañas—, que no es un header: es navegación interna.
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
-      <header className="border-b border-[var(--franco-border)] bg-[var(--franco-card)]">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-end justify-between gap-2 px-4 pt-4 sm:px-6">
-          <div className="flex items-baseline gap-3">
-            <span className="font-heading text-lg">
-              <span className="font-light italic opacity-30">re</span>
-              <span className="font-bold">franco</span>
-              <span className="font-body text-sm font-medium text-[var(--signal-red)]">.ai</span>
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
-              Panel de administración
-            </span>
-          </div>
-          <Link
-            href="/dashboard"
-            className="font-body text-sm text-[var(--franco-text-muted)] transition-colors hover:text-[var(--franco-text)]"
-          >
-            ← Volver al sitio
-          </Link>
+      <HeaderFranco />
+      <div className="border-b border-[var(--franco-border)] bg-[var(--franco-card)]">
+        <div className="mx-auto max-w-[1200px] px-4 pt-4 sm:px-6">
+          <p className="m-0 font-body text-[12.5px] font-medium text-[var(--franco-text-tertiary)]">Panel de administración</p>
         </div>
         <AdminTabs />
-      </header>
+      </div>
 
       <div className="mx-auto max-w-[1200px] px-4 py-7 sm:px-6 sm:py-8">{children}</div>
     </div>

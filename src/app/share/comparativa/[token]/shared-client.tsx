@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
-import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
@@ -154,15 +154,11 @@ export function SharedComparativaClient(p: Props) {
       style={{ background: "var(--franco-bg)" }}
     >
       {/* El PDF ya no usa esta página: vive en /share/comparativa/[token]/documento. */}
-      <PublicShareHeader date={fechaCorta} />
+      {/* El header único, como compartido (27-sep-2026): su botón reemplaza a la franja de arriba. */}
+      <HeaderFranco informe={{ modo: "compartido", fecha: fechaCorta }} />
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-6">
-          {/* CTA conversión — anzuelo (superficie Ink) */}
-          <div className="mb-5">
-            <ConversionHook />
-          </div>
-
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + toggle (F-C3b) ── */}
           <HeroComparativa
             hero={hero}

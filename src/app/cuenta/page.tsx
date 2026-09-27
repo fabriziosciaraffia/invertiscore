@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CancelSubscriptionButton } from "./cancel-dialog";
 import { DeleteAccountButton } from "./delete-account-button";
@@ -81,7 +81,7 @@ export default async function CuentaPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       {/* Navbar */}
-      <UnifiedNav variant="app" />
+      <HeaderFranco />
 
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}

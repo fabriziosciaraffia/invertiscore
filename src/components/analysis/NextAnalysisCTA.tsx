@@ -50,7 +50,7 @@ export function nextCtaState(p: NextAnalysisCTAProps): WalletState | null {
   // Vista compartida: el siguiente análisis no es una decisión del que mira.
   if (p.isSharedView) return null;
   if (p.isAnonOwner) return "anon_owner";
-  // Guest no-dueño (link compartido): ConversionHook/Closer ya cubren.
+  // Guest no-dueño (link compartido): el botón del header único y ConversionCloser ya cubren.
   if (!p.isLoggedIn) return null;
   if (p.isSubscriber) return "subscriber";
   if (p.credits > 0) return "credits";

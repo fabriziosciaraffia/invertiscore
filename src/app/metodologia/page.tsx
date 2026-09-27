@@ -9,7 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { METODOS_ESTIMADO, ANIO_ESTIMADO, GFK_SERIE } from "@/lib/plusvalia-estimado.gen";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -101,7 +101,7 @@ export default function MetodologiaPage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       <main className="mx-auto max-w-[820px] px-6 py-16">
         <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">

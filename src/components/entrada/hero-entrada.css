@@ -20,12 +20,7 @@
   background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light;
 }
 .he-col { position: relative; z-index: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
-.he-top { min-height: 64px; padding-top: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.he-wm { font-family: var(--font-heading), "Source Serif 4", Georgia, serif; font-size: 22px; line-height: 1; letter-spacing: -0.01em; color: var(--he-papel); text-decoration: none; }
-.he-wm .re { font-weight: 400; color: rgba(250, 250, 248, 0.55); }
-.he-wm .fr { font-weight: 700; }
-.he-wm .ai { font-family: var(--font-ui), system-ui, sans-serif; font-weight: 600; font-size: 12px; color: #C8323C; }
-.he-der { font-size: 14px; font-weight: 500; line-height: 22px; color: var(--he-papel); text-decoration: none; }
+/* la cabecera es el header único (HeaderFranco, «sobre material»): header-franco.css */
 .he-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 40px; padding-bottom: 28px; z-index: 2; }
 .he-h1 {
   margin: 0 0 56px; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
@@ -144,7 +139,6 @@ html.he-hoja-abierta:not([data-theme="light"]) .pac-item:hover,
 html.he-hoja-abierta:not([data-theme="light"]) .pac-item-selected { background: #1A1A1E; }
 
 @media (min-width: 768px) {
-  .he-top { min-height: 88px; padding-top: 20px; }
   .he-mid { padding-top: 60px; padding-bottom: 40px; }
   .he-h1 { margin-bottom: 72px; }
   .he-box { height: 74px; }

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ensureWelcomeEmail, resolveDisplayName } from "@/lib/welcome";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import {
   queryDashboardRows,
   fetchAllUnits,
@@ -114,7 +113,7 @@ export default async function DashboardPage({
     return (
       <div className="min-h-screen bg-[var(--franco-bg)]">
         <ChipVeredictoTokens />
-        <UnifiedNav variant="app" />
+        <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
         <div className="mx-auto max-w-[1100px] px-6 py-5">
           <EmptyState />
         </div>
@@ -151,10 +150,11 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <ChipVeredictoTokens />
-      <UnifiedNav variant="app" />
+      <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
 
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5">
-        {/* ── Header compacto: saludo + total + CTA en una línea ── */}
+        {/* ── Saludo + total. Sin botón propio: el principal es «Nuevo análisis» del header único
+             (27-sep-2026, un solo botón principal por pantalla). ── */}
         <div className="flex flex-wrap items-baseline justify-between gap-3 pb-3.5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h1 className="font-heading text-[22px] font-bold tracking-[-0.01em] text-[var(--franco-text)]">
@@ -164,12 +164,6 @@ export default async function DashboardPage({
               {stats.total} {stats.total === 1 ? "análisis" : "análisis"}
             </span>
           </div>
-          <Link
-            href="/analisis/nuevo-v4"
-            className="shrink-0 rounded-lg bg-signal-red px-[18px] py-2.5 font-body text-[13px] font-medium text-white no-underline"
-          >
-            Analizar inversión →
-          </Link>
         </div>
 
         <Continuar rows={recientes.rows} siblings={siblings} heroResumen={heroResumen} />

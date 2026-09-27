@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import type { Analisis, Desglose } from "@/lib/types";
 import { metricaValorONull, metricaODefault, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_VALOR } from "@/lib/no-aplica-copy";
@@ -432,7 +432,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <UnifiedNav variant="app" />
+      <HeaderFranco />
 
       <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6">
         {/* Header */}

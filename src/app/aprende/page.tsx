@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import LeverageSection from "@/components/leverage-section";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function AprendePage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       {/* Page title */}
       <div className="max-w-[640px] mx-auto px-6 pt-16 md:pt-24 pb-10">

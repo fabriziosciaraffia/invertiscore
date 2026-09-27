@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
 import { metaTrack } from "@/lib/meta/pixel";
@@ -159,7 +159,7 @@ function CheckoutContent() {
   if (!product) {
     return (
       <div className="min-h-screen bg-[var(--franco-bg)]">
-        <UnifiedNav variant="marketing" />
+        <HeaderFranco />
         <div className="max-w-[480px] mx-auto px-4 py-20 text-center">
           <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">
             Plan no encontrado
@@ -190,7 +190,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
         {/* Back link */}

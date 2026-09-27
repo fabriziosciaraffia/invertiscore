@@ -62,7 +62,7 @@ export type EventoCampo =
   | { tipo: "respaldo"; resuelto: boolean };
 
 export function HeroEntrada({
-  derecha,
+  cabecera,
   pie,
   antes,
   despues,
@@ -75,8 +75,9 @@ export function HeroEntrada({
   onCamino,
   onEvento,
 }: {
-  /** Esquina derecha de la cabecera («Entrar», «Mis análisis»). */
-  derecha?: ReactNode;
+  /** La cabecera: el header único (HeaderFranco) «sobre material», que pone quien monta el hero
+   *  (27-sep-2026; antes el hero dibujaba la suya, con su wordmark y su «Entrar»). */
+  cabecera?: ReactNode;
   /** Enlace del pie («Ver un análisis de ejemplo»). */
   pie?: ReactNode;
   /** Sobre el título: el aviso de un análisis a medias. */
@@ -262,12 +263,7 @@ export function HeroEntrada({
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP */}
         <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
       </picture>
-      <header className="he-col he-top">
-        <a href="/" className="he-wm" aria-label="refranco.ai, inicio">
-          <span className="re">re</span><span className="fr">franco</span><span className="ai">.ai</span>
-        </a>
-        {derecha}
-      </header>
+      {cabecera}
       <div className="he-col he-mid">
         {antes}
         <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>

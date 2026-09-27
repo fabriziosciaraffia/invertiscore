@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
+
+/** Los enlaces largos del sitio. Salieron del header único el 27-sep-2026 (decisión 1 del
+ *  mockup aprobado): viven en el pie, como en la landing v14. */
+const ENLACES_PIE = [
+  { href: "/metodologia", rotulo: "Cómo calcula" },
+  { href: "/comunas", rotulo: "Comunas" },
+  { href: "/pricing", rotulo: "Planes" },
+] as const;
 
 // Disclaimer canonico unificado — antes habia 2 variantes y ausencias.
 // Cambios materiales: agrega obligacion de verificar datos + clausula
@@ -45,6 +54,13 @@ export function AppFooter({
             </p>
           </div>
         )}
+        <nav aria-label="Franco" className="flex flex-wrap gap-x-5 gap-y-2">
+          {ENLACES_PIE.map((e) => (
+            <Link key={e.href} href={e.href} className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] no-underline transition-colors hover:text-[var(--franco-text)]">
+              {e.rotulo}
+            </Link>
+          ))}
+        </nav>
         {linksSlot}
         <p
           className="font-body text-[11px] m-0 leading-[1.6]"

@@ -3,9 +3,10 @@ import { esDemo } from "@/lib/demo";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { AnalysisNav } from "./analysis-nav";
+import { DeleteButton } from "./delete-button";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
-import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { ShareButton } from "@/components/chrome/ShareButton";
 import { PremiumResults } from "./results-client";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
@@ -291,21 +292,39 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
        HSL a un hex, o sea `hsl(#F4F4F6)`, que es inválido y lo consume `bg-card`.
        Medido en el DOM antes de corregirlo. `doc-lienzo` declara `--page` y nada más. */
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
-      {demo ? null : accessLevel === "guest" || isAnonOwner ? (
-        <PublicShareHeader
-          date={formatFechaCorta(fechaProsaLtr ?? analisis.created_at)}
-          anonOwner={isAnonOwner}
-          registerNext={`/analisis/${analisis.id}`}
-        />
-      ) : (
-        <AnalysisNav
-          userId={user?.id ?? null}
-          analysisId={analisis.id}
-          score={results?.score ?? analisis.score}
-          nombre={analisis.nombre}
-          comuna={analisis.comuna}
-          isSharedView={isSharedView}
-          subordinated={isSubordinated}
+      {/* EL HEADER ÚNICO (27-sep-2026). El demo abierto por su URL se ve como el sitio (es un
+          ejemplo, no algo que te mandaron); el invitado con el enlace, como compartido; el dueño sin
+          cuenta, con «Guardarlo»; con sesión, con Compartir en la banda. Eliminar ya no va acá: va al
+          pie del informe. En /demo la ruta pone su propio header con las pestañas. */}
+      {demo ? null : (
+        <HeaderFranco
+          sesion={user ? { email: user.email ?? "" } : null}
+          informe={
+            isDemo
+              ? { modo: "ejemplo" }
+              : accessLevel === "guest" || isAnonOwner
+                ? {
+                    modo: isAnonOwner ? "anonimo" : "compartido",
+                    fecha: formatFechaCorta(fechaProsaLtr ?? analisis.created_at),
+                    registroNext: `/analisis/${analisis.id}`,
+                  }
+                : {
+                    modo: "propio",
+                    compartir: isSubordinated ? undefined : (
+                      <ShareButton
+                        variante="banda"
+                        path={`/analisis/${analisis.id}`}
+                        analysisId={analisis.id}
+                        modalidad="LTR"
+                        title={`Análisis Franco: ${analisis.nombre}`}
+                        text={`Mira el análisis de este depto. Score: ${results?.score ?? analisis.score}/100`}
+                        score={results?.score ?? analisis.score}
+                        nombre={analisis.nombre}
+                        comuna={analisis.comuna}
+                      />
+                    ),
+                  }
+          }
         />
       )}
 
@@ -352,6 +371,15 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
             <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
               {analisis.resumen}
             </p>
+          </div>
+        )}
+
+        {/* Eliminar, al pie del informe (salió del header el 27-sep-2026: es destructivo). Mismas
+            condiciones que tenía arriba: con sesión, el dueño (o admin), no en un hijo de AMBAS. El
+            botón mismo excluye las filas del demo. */}
+        {!demo && isLoggedIn && !isSharedView && !isSubordinated && (
+          <div className="mt-12 flex justify-center">
+            <DeleteButton id={analisis.id} />
           </div>
         )}
       </div>

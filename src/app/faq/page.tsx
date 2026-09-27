@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { FAQ_SECTIONS, type FAQItem } from "@/lib/faq-data";
 
@@ -37,7 +37,7 @@ export default function FAQPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       {/* Header */}
       <section className="py-16 px-6">

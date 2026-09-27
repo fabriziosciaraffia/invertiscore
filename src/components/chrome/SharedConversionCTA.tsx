@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * SharedConversionCTA — superficies de conversión para la vista compartida
- * pública (AMBAS / análisis compartidos). Dos piezas presentacionales, sin
- * lógica: el padre decide cuándo mostrarlas (gate guest).
+ * SharedConversionCTA — la superficie de conversión de la vista compartida
+ * pública (AMBAS / análisis compartidos). Presentacional, sin lógica: el padre
+ * decide cuándo mostrarla (gate guest).
  *
- *   • ConversionHook   — franja compacta split (superficie Ink + botón rojo).
- *                        Va ARRIBA, como anzuelo después del header.
  *   • ConversionCloser — campo Signal Red pleno con heading Source Serif a
  *                        escala display + botón invertido. Va ABAJO, como cierre.
  *
+ * La franja de ARRIBA (`ConversionHook`) se retiró el 27-sep-2026: su botón pasó al
+ * header único («Analizar el mío»), que es el principal de la pantalla.
+ *
  * Doctrina (franco-design-system): paleta binaria Ink + Signal Red. La energía
  * del cierre nace de INVERTIR figura/fondo (rojo como campo, texto blanco) y de
- * subir la escala tipográfica, no de agregar color. El hook usa rojo solo en el
- * botón (uso #1) sobre superficie Ink.
+ * subir la escala tipográfica, no de agregar color.
  *
  * Tokens --franco-* → responde a claro/oscuro. El campo rojo del Closer es
  * invariante entre modos (Signal Red no cambia); sus tintes claros derivan del
@@ -24,64 +24,6 @@ import { CtaAnalizar } from "@/components/CtaAnalizar";
 import type { OrigenCTA } from "@/lib/cta-analizar";
 
 const RED_TINT = "#FFD9DC"; // tinte claro de Signal Red para texto sobre campo rojo
-
-export function ConversionHook({ origen = "resultado_hook" }: { origen?: OrigenCTA }) {
-  return (
-    <div
-      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      style={{
-        background: "var(--franco-card)",
-        border: "1px solid var(--franco-border)",
-        borderRadius: 12,
-        padding: "18px 22px",
-      }}
-    >
-      <div>
-        <p
-          className="font-mono uppercase"
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.16em",
-            color: "var(--signal-red)",
-            margin: "0 0 6px 0",
-          }}
-        >
-          Análisis de Franco
-        </p>
-        <p
-          className="font-heading"
-          style={{
-            fontSize: 21,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
-            lineHeight: 1.2,
-            color: "var(--franco-text)",
-            margin: 0,
-          }}
-        >
-          ¿Estás evaluando un depto para invertir?
-        </p>
-      </div>
-
-      <CtaAnalizar
-        origen={origen}
-        className="inline-flex shrink-0 items-center justify-center gap-2 font-mono uppercase transition-opacity hover:opacity-90"
-        style={{
-          background: "var(--signal-red)",
-          color: "#FFFFFF",
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-          padding: "13px 20px",
-          borderRadius: 6,
-        }}
-      >
-        Analizar el mío →
-      </CtaAnalizar>
-    </div>
-  );
-}
 
 export function ConversionCloser({ origen = "resultado_cierre" }: { origen?: OrigenCTA }) {
   return (

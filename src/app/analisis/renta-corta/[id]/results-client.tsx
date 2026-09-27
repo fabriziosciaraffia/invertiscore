@@ -4,7 +4,7 @@
  * Results client (Renta Corta).
  *
  * Render del módulo STR (Dictamen, T1–T3 sep-2026):
- *   • UnifiedNav variant="app"
+ *   • HeaderFranco (el header único; con Compartir en la banda)
  *   • Portada + HeroStrDictamen (veredicto + score + posición de Franco)
  *   • PrincipalesHallazgos + SeisCifrasStr (+ ModalCalculoStr)
  *   • CapitulosInversionStr — seis capítulos sobre piezas compartidas
@@ -23,10 +23,9 @@ import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { ArrowRight } from "lucide-react";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
-import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ShareButton } from "@/components/chrome/ShareButton";
-import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -260,30 +259,34 @@ export function STRResultsClient({
        NO lleva `doc-dictamen` (esa trae `--card`, que también es token de shadcn y rompe el chrome). */
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
-      {demo ? null : accessLevel === "guest" || isAnonOwner ? (
-        <PublicShareHeader
-          date={formatFechaCorta(fechaProsa ?? createdAt)}
-          anonOwner={isAnonOwner}
-          registerNext={`/analisis/renta-corta/${analysisId}`}
-        />
-      ) : (
-        <UnifiedNav
-          variant="app"
-          // Hijo subordinado de un AMBAS: sin Compartir propio (el share vive en
-          // el comparativo). Nav general se conserva.
-          actionsSlot={
-            subordinatedHref ? undefined : (
-              <ShareButton
-                path={`/analisis/renta-corta/${analysisId}`}
-                analysisId={analysisId}
-                modalidad="STR"
-                title={`Análisis Franco: ${propiedadTitle}`}
-                text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
-                score={score ?? undefined}
-                nombre={propiedadTitle}
-                comuna={comuna}
-              />
-            )
+      {/* EL HEADER ÚNICO (27-sep-2026): invitado con el enlace, compartido; dueño sin cuenta,
+          «Guardarlo»; con sesión, Compartir en la banda (un hijo de AMBAS no comparte solo: el
+          share vive en el comparativo). En /demo la ruta pone el suyo. */}
+      {demo ? null : (
+        <HeaderFranco
+          informe={
+            accessLevel === "guest" || isAnonOwner
+              ? {
+                  modo: isAnonOwner ? "anonimo" : "compartido",
+                  fecha: formatFechaCorta(fechaProsa ?? createdAt),
+                  registroNext: `/analisis/renta-corta/${analysisId}`,
+                }
+              : {
+                  modo: "propio",
+                  compartir: subordinatedHref ? undefined : (
+                    <ShareButton
+                      variante="banda"
+                      path={`/analisis/renta-corta/${analysisId}`}
+                      analysisId={analysisId}
+                      modalidad="STR"
+                      title={`Análisis Franco: ${propiedadTitle}`}
+                      text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
+                      score={score ?? undefined}
+                      nombre={propiedadTitle}
+                      comuna={comuna}
+                    />
+                  ),
+                }
           }
         />
       )}
@@ -294,12 +297,6 @@ export function STRResultsClient({
           <SubordinatedBanner href={subordinatedHref} modalidad="STR" />
         )}
 
-        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
-        {accessLevel === "guest" && (
-          <div className="mb-5">
-            <ConversionHook />
-          </div>
-        )}
 
         {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
             Análisis STR generados antes del FrancoScoreSTR (Commit 2) no tienen

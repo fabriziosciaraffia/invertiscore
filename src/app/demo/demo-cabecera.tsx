@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
-import FrancoLogo from "@/components/franco-logo";
-import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 
 /**
  * LA CABECERA DEL DEMO PÚBLICO (25-sep-2026). Dos pestañas, una por modalidad, cada una con su URL
@@ -15,6 +14,10 @@ import { CtaAnalizar } from "@/components/CtaAnalizar";
  * «cuál conviene», y no usa rojo: la pestaña activa se marca en tinta. La línea de abajo lo dice.
  *
  * Un evento de PostHog por pestaña vista (`demo_pestana_vista`, con la modalidad).
+ *
+ * DESDE EL 27-SEP-2026 LA CABECERA ES EL HEADER ÚNICO (HeaderFranco, en modo «ejemplo»: el demo se
+ * ve como sin sesión y, al bajar, lleva la identidad del informe) y debajo van las pestañas, que
+ * ya no son parte del header: su wordmark y su botón rojo propios salieron.
  */
 export type ModalidadDemo = "larga" | "corta";
 
@@ -30,17 +33,9 @@ export function DemoCabecera({ modalidad }: { modalidad: ModalidadDemo }) {
   }, [posthog, modalidad]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-      <div className="container mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-        <FrancoLogo size="header" href="/" />
-        <CtaAnalizar
-          origen="demo"
-          className="rounded-lg bg-[var(--signal-red)] px-4 py-2 font-body text-xs font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          Analiza tu depto gratis →
-        </CtaAnalizar>
-      </div>
-      <div className="container mx-auto max-w-6xl px-4 pb-3">
+    <>
+      <HeaderFranco informe={{ modo: "ejemplo" }} />
+      <div className="container mx-auto max-w-6xl px-4 pt-3 pb-3">
         <nav role="tablist" aria-label="Análisis de ejemplo" className="flex gap-6 border-b border-[var(--franco-border)]">
           {PESTANAS.map((p) => {
             const activa = p.modalidad === modalidad;
@@ -66,6 +61,6 @@ export function DemoCabecera({ modalidad }: { modalidad: ModalidadDemo }) {
           Dos departamentos distintos, uno por modalidad. Cada ejemplo es un análisis completo de Franco.
         </p>
       </div>
-    </header>
+    </>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllComunasStats, fmtCLP, tieneArriendoPropio, esComunaEstimada, rangoArriendoComuna } from "@/lib/data/comunas-seo";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { ChipEstimado } from "@/components/comunas/ChipEstimado";
@@ -62,7 +62,7 @@ export default async function ComunasIndexPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       <main className="mx-auto max-w-[1100px] px-6 py-16">
         {/* Hero */}

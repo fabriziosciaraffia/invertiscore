@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       {/* Content */}
       <main className="max-w-[640px] mx-auto px-6 py-16 md:py-24">

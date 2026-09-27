@@ -15,7 +15,7 @@ const Ctx = createContext<ThemeCtx | null>(null);
 // Ahora es un adapter fino sobre la fuente única (src/lib/theme): el tema real
 // lo aplica el script pre-paint (data-theme en <html>); acá solo lo reflejamos
 // en React y escribimos siempre al mismo lugar. Mantiene la API useLandingTheme
-// intacta para los consumers existentes (UnifiedNav).
+// intacta para los consumers existentes.
 export function LandingThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
 

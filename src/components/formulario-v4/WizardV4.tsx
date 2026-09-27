@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
 import { useStepTelemetry } from "./stepTelemetry";
@@ -378,14 +378,14 @@ export function WizardV4({
   if (esPortada) {
     return (
       <div ref={screenRef}>
-        <EntradaScreen {...screenProps} banner={bannerPortada} logueado={isLoggedIn} autoCamino={autoCamino} />
+        <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="app" />
+      <HeaderFranco contexto="wizard" />
 
       <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-1 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).

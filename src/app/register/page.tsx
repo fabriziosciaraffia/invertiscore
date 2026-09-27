@@ -5,7 +5,7 @@ import { usePostHog } from "posthog-js/react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
@@ -103,7 +103,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" minimal />
+      <HeaderFranco contexto="auth" />
       <div className="flex flex-1 items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">

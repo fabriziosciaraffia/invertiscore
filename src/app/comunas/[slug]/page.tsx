@@ -10,7 +10,7 @@ import { MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
 import { MIN_PER_TYPE, esComunaEstimada } from "@/lib/data/comunas-seo";
 import { COPY_DEPENDE } from "@/lib/veredicto-fila";
 import { ChipEstimado } from "@/components/comunas/ChipEstimado";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { PlusvaliaComunaSection } from "@/components/comunas/PlusvaliaComunaSection";
@@ -93,7 +93,7 @@ function rentColor(r: number) {
 function ComunaSinDatos({ nombre }: { nombre: string }) {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       <main className="mx-auto max-w-[1100px] px-6 py-12">
         <nav className="mb-6 font-body text-xs text-[var(--franco-text-muted)]">
@@ -363,7 +363,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* Navbar */}
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
 
       <main className="mx-auto max-w-[1100px] px-6 py-12">
         {/* Breadcrumb */}

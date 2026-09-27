@@ -5,7 +5,7 @@ import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { metaTrack } from "@/lib/meta/pixel";
 
 function PaymentReturnContent() {
@@ -153,7 +153,7 @@ function PaymentReturnContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco />
       <div className="flex flex-1 items-center justify-center px-4 py-8">
 <div className="w-full max-w-md text-center">
         {paymentStatus === "loading" && (

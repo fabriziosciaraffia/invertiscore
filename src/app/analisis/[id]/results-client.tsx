@@ -11,7 +11,7 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { findNearestStation } from "@/lib/metro-stations";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
-import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
@@ -629,12 +629,6 @@ export function PremiumResults({
   return (
     <>
       <div className="min-w-0">
-        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
-        {accessLevel === "guest" && (
-          <div className="mb-5">
-            <ConversionHook />
-          </div>
-        )}
         {bothPartial && (
           <div className="max-w-5xl mx-auto px-4 md:px-6 pt-4">
             <div className="flex items-start gap-3 rounded-r-lg p-4 relative"

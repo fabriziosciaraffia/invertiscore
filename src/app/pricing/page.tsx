@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import PricingPlans from "@/components/landing/PricingPlans";
 import SavingsCalculator from "@/components/landing/SavingsCalculator";
@@ -50,7 +50,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <UnifiedNav variant="marketing" />
+      <HeaderFranco activo="planes" />
 
       {/* Hero */}
       <section className="px-6 pt-16 pb-10 md:pt-20">
