@@ -14,20 +14,44 @@
 // menos a azul. Es dato, no decoración: la escala se explica antes de que
 // aparezca en el informe.
 //
-// Animación en loop (FASE 1.4): los puntos aparecen en orden ALEATORIO (barajado
-// determinista) hasta llenar en ~6 s, sostiene 5 s, se desvanece 1 s y vuelve a
-// empezar. Se pausa cuando el mapa sale de pantalla y retoma donde iba. Con
-// prefers-reduced-motion no hay loop: estado final fijo.
+// ANIMACIÓN: ESTALLIDOS POR TODO EL TERRITORIO (27-sep-2026, pedido de Fabrizio: «que la
+// animación de los comparables se note; hoy son puntos que laten»). El mapa entra con todos
+// los puntos en un fundido corto y sobre esa base aparecen estallidos, sin parar. El lugar de
+// cada estallido se sortea POR TERRITORIO, no por aviso: primero una celda ocupada del mapa
+// (todas igual de probables) y después un aviso dentro de ella. Sorteando por aviso, casi todos
+// caerían en el centro, que es donde está la mayoría de la oferta.
+// Dos variantes para elegir en el preview (`?mapa=a` / `?mapa=b`):
+//   · A · ANILLOS — un anillo que se abre desde el aviso y se apaga, con un destello al centro.
+//   · B · RACIMOS — el aviso se enciende y el encendido corre a los vecinos, del centro hacia
+//     afuera, como una chispa que prende la cuadra.
+// Se pausa cuando el mapa sale de pantalla. Con prefers-reduced-motion no hay estallidos: la
+// base fija.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
 import { decodificarPuntos } from "./mapa-puntos-codec";
 import proj from "./mapa-santiago.proj.json";
 
-const LLENAR_MS = 6000;
-const SOSTENER_MS = 5000;
-const FUNDIR_MS = 1000;
-const CICLO_MS = LLENAR_MS + SOSTENER_MS + FUNDIR_MS;
+/** Fundido de entrada de la base. */
+const ENTRADA_MS = 1200;
+/** La base va más tenue que el estallido, para que éste se note. */
+const ALPHA_BASE = 0.6;
+/** Celda del sorteo por territorio (unidades del viewBox de 900 × 1000). */
+const CELDA_SORTEO = 40;
+
+type Variante = "a" | "b";
+/** A · anillos: uno nuevo cada 90 ms, cada uno dura 1,6 s. B · racimos: uno cada 260 ms. */
+const RITMO: Record<Variante, { cada: number; dura: number }> = {
+  a: { cada: 90, dura: 1600 },
+  b: { cada: 260, dura: 1700 },
+};
+/** A · el radio final del anillo, en px de pantalla. */
+const ANILLO_RADIO = 30;
+/** B · el radio del racimo (viewBox), cuántos vecinos prende como mucho, y cuánto tarda en llegar al borde. */
+const RACIMO_RADIO = 60;
+const RACIMO_MAX = 140;
+const RACIMO_CORRE_MS = 560;
+const RACIMO_APAGA_MS = 900;
 /** Alpha por extremo. El rojo (zonas densas, los puntos se acumulan) conserva el
  *  0,28 elegido con screenshot en FASE 1.3; el azul (puntos sueltos sobre tinta)
  *  necesita más cuerpo o desaparece: a 0,4 no se veía (QA 08-sep). */
@@ -96,17 +120,34 @@ function cubosPorDensidad(puntos: Float32Array): Uint8Array {
   return out;
 }
 
-/** Barajado Fisher-Yates con semilla fija: mismo orden en cada carga. */
-function barajar(n: number): Uint32Array {
-  const o = new Uint32Array(n);
-  for (let i = 0; i < n; i++) o[i] = i;
-  let s = 0x9e3779b9;
-  const rnd = () => { s = (Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) >>> 0); s = (Math.imul(s ^ (s >>> 12), 0x297a2d39) >>> 0); return (s ^ (s >>> 15)) >>> 0; };
-  for (let i = n - 1; i > 0; i--) {
-    const j = rnd() % (i + 1);
-    const t = o[i]; o[i] = o[j]; o[j] = t;
+/** La grilla del sorteo: los avisos de cada celda ocupada. */
+function grillaSorteo(puntos: Float32Array): { celdas: Uint32Array[]; porCelda: Map<number, Uint32Array>; cols: number } {
+  const cols = Math.ceil(proj.VW / CELDA_SORTEO);
+  const listas = new Map<number, number[]>();
+  for (let k = 0; k < puntos.length / 2; k++) {
+    const c = Math.floor(puntos[k * 2 + 1] / CELDA_SORTEO) * cols + Math.floor(puntos[k * 2] / CELDA_SORTEO);
+    const l = listas.get(c);
+    if (l) l.push(k); else listas.set(c, [k]);
   }
-  return o;
+  const porCelda = new Map<number, Uint32Array>();
+  listas.forEach((l, c) => porCelda.set(c, Uint32Array.from(l)));
+  return { celdas: Array.from(porCelda.values()), porCelda, cols };
+}
+
+/** El color del cubo, opaco y aclarado un 35 % hacia el blanco: el estallido tiene que notarse
+ *  sobre la tinta, y el azul de las zonas con poca oferta, a color pleno, casi no se ve. */
+function fuerte(rgba: string): string {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgba);
+  if (!m) return rgba;
+  const c = (v: string) => Math.round(Number(v) + (255 - Number(v)) * 0.35);
+  return `rgb(${c(m[1])},${c(m[2])},${c(m[3])})`;
+}
+
+interface Estallido {
+  t0: number;
+  k: number;
+  /** B · los vecinos que prende, con el retardo de cada uno. */
+  vecinos?: { k: number; d: number }[];
 }
 
 export function MapaPuntos() {
@@ -115,20 +156,20 @@ export function MapaPuntos() {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
+    const variante: Variante = new URLSearchParams(window.location.search).get("mapa") === "b" ? "b" : "a";
     let cancelado = false;
     let raf = 0;
     let puntos: Float32Array | null = null;
-    let orden: Uint32Array | null = null;
-    /** Índices de cada cubo de densidad, en el orden barajado: el llenado sigue
-     *  siendo aleatorio y el canvas cambia de color solo CUBOS veces por cuadro. */
-    let porCubo: Uint32Array[] = [];
+    let cubo: Uint8Array | null = null;
     let colores: string[] = [];
-    /** Copia del estado final, para el sostenido y el fundido sin repintar 44k puntos. */
-    let lleno: HTMLCanvasElement | null = null;
+    let fuertes: string[] = [];
+    let grilla: ReturnType<typeof grillaSorteo> | null = null;
+    /** La base: todos los avisos, pintados una vez. */
+    let base: HTMLCanvasElement | null = null;
     let visible = false;
-    /** Tiempo dentro del ciclo al pausar, para retomar donde iba. */
-    let faseAlPausar = 0;
-    let t0 = 0;
+    let entrada0 = 0;
+    let ultimo = 0;
+    let estallidos: Estallido[] = [];
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const medir = () => {
@@ -139,89 +180,159 @@ export function MapaPuntos() {
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
-        lleno = null;
+        base = null;
       }
       return { w, h, dpr };
     };
 
     const tamPunto = (dpr: number) => (dpr >= 2 ? 3 : 2);
 
-    /** Pinta la fracción `frac` (0..1) de cada cubo, en su orden barajado. */
-    const pintarEn = (ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, frac: number) => {
-      if (!puntos || !orden) return;
-      ctx.clearRect(0, 0, w, h);
+    const pintarBase = (w: number, h: number, dpr: number) => {
+      if (base || !puntos || !cubo) return;
+      base = document.createElement("canvas");
+      base.width = w;
+      base.height = h;
+      const ctx = base.getContext("2d");
+      if (!ctx) return;
       const sx = w / proj.VW, sy = h / proj.VH;
       const px = tamPunto(dpr);
       const off = Math.floor(px / 2);
-      for (let b = 0; b < porCubo.length; b++) {
-        const idx = porCubo[b];
-        const hasta = Math.round(frac * idx.length);
+      for (let b = 0; b < colores.length; b++) {
         ctx.fillStyle = colores[b];
-        for (let i = 0; i < hasta; i++) {
-          const k = idx[i] * 2;
-          ctx.fillRect(Math.round(puntos[k] * sx) - off, Math.round(puntos[k + 1] * sy) - off, px, px);
+        for (let k = 0; k < cubo.length; k++) {
+          if (cubo[k] !== b) continue;
+          ctx.fillRect(Math.round(puntos[k * 2] * sx) - off, Math.round(puntos[k * 2 + 1] * sy) - off, px, px);
         }
       }
     };
 
-    const estadoFinal = () => {
-      const { w, h, dpr } = medir();
-      if (!lleno) {
-        lleno = document.createElement("canvas");
-        lleno.width = w;
-        lleno.height = h;
-        const c = lleno.getContext("2d");
-        if (c && orden) pintarEn(c, w, h, dpr, 1);
+    /** Un aviso sorteado por territorio: una celda ocupada al azar, y un aviso dentro de ella. */
+    const sortear = (): number => {
+      const celdas = grilla!.celdas;
+      const c = celdas[Math.floor(Math.random() * celdas.length)];
+      return c[Math.floor(Math.random() * c.length)];
+    };
+
+    /** B · los vecinos del aviso dentro del radio, con su retardo según la distancia. */
+    const vecinosDe = (k: number): { k: number; d: number }[] => {
+      if (!grilla || !puntos) return [];
+      const x = puntos[k * 2], y = puntos[k * 2 + 1];
+      const cx = Math.floor(x / CELDA_SORTEO), cy = Math.floor(y / CELDA_SORTEO);
+      const cerca: { k: number; d: number }[] = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const l = grilla.porCelda.get((cy + dy) * grilla.cols + (cx + dx));
+          if (!l) continue;
+          for (let i = 0; i < l.length; i++) {
+            const j = l[i];
+            const d = Math.hypot(puntos[j * 2] - x, puntos[j * 2 + 1] - y);
+            if (d <= RACIMO_RADIO) cerca.push({ k: j, d });
+          }
+        }
       }
-      return { w, h, dpr };
+      cerca.sort((a, b) => a.d - b.d);
+      return cerca.slice(0, RACIMO_MAX).map((v) => ({ k: v.k, d: (v.d / RACIMO_RADIO) * RACIMO_CORRE_MS }));
     };
 
     const cuadro = (t: number) => {
-      if (cancelado || !orden || !visible) return;
-      if (!t0) t0 = t - faseAlPausar;
-      const fase = (t - t0) % CICLO_MS;
-      const { w, h, dpr } = estadoFinal();
+      if (cancelado || !puntos || !cubo || !visible) return;
+      const { w, h, dpr } = medir();
+      pintarBase(w, h, dpr);
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      if (fase < LLENAR_MS) {
-        // llenado parejo con un leve ease-out al final
-        const p = fase / LLENAR_MS;
-        const frac = 1 - Math.pow(1 - p, 1.4);
-        pintarEn(ctx, w, h, dpr, frac);
-      } else if (fase < LLENAR_MS + SOSTENER_MS) {
-        ctx.clearRect(0, 0, w, h);
-        ctx.globalAlpha = 1;
-        if (lleno) ctx.drawImage(lleno, 0, 0);
-      } else {
-        const p = (fase - LLENAR_MS - SOSTENER_MS) / FUNDIR_MS;
-        ctx.clearRect(0, 0, w, h);
-        ctx.globalAlpha = 1 - p;
-        if (lleno) ctx.drawImage(lleno, 0, 0);
-        ctx.globalAlpha = 1;
+      if (!ctx || !base) return;
+      if (!entrada0) entrada0 = t;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalAlpha = ALPHA_BASE * Math.min(1, (t - entrada0) / ENTRADA_MS);
+      ctx.drawImage(base, 0, 0);
+      ctx.globalAlpha = 1;
+
+      // nuevos estallidos, a su ritmo, desde que la base va por la mitad de su entrada
+      const { cada, dura } = RITMO[variante];
+      if (t - entrada0 > ENTRADA_MS * 0.6) {
+        if (!ultimo) ultimo = t;
+        while (t - ultimo >= cada) {
+          ultimo += cada;
+          const k = sortear();
+          estallidos.push({ t0: ultimo, k, vecinos: variante === "b" ? vecinosDe(k) : undefined });
+        }
       }
+      estallidos = estallidos.filter((e) => t - e.t0 < dura);
+
+      const sx = w / proj.VW, sy = h / proj.VH;
+      ctx.globalCompositeOperation = "lighter";
+      for (const e of estallidos) {
+        const p = (t - e.t0) / dura;
+        const x = puntos[e.k * 2] * sx, y = puntos[e.k * 2 + 1] * sy;
+        const color = fuertes[cubo[e.k]];
+        if (variante === "a") {
+          // el anillo se abre con un ease-out y se apaga; el destello del centro, más rápido
+          const abre = 1 - Math.pow(1 - p, 3);
+          ctx.globalAlpha = Math.pow(1 - p, 1.1);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2 * dpr;
+          ctx.beginPath();
+          ctx.arc(x, y, (3 + (ANILLO_RADIO - 3) * abre) * dpr, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = Math.pow(1 - p, 2);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(x, y, 3.2 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // el halo del centro, y cada vecino se prende a su turno y se apaga
+          const edad = t - e.t0;
+          ctx.globalAlpha = Math.max(0, 1 - edad / (RACIMO_CORRE_MS + 300)) * 0.7;
+          const g = ctx.createRadialGradient(x, y, 0, x, y, 24 * dpr);
+          g.addColorStop(0, color);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, 24 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+          // los puntos del racimo, redondos y sin sumar luz: sumada, la chispa se quema a blanco
+          ctx.globalCompositeOperation = "source-over";
+          const radio = 1.9 * dpr;
+          for (const v of e.vecinos ?? []) {
+            const q = (edad - v.d) / RACIMO_APAGA_MS;
+            if (q < 0 || q > 1) continue;
+            ctx.globalAlpha = Math.pow(1 - q, 1.4);
+            ctx.fillStyle = fuertes[cubo[v.k]];
+            ctx.beginPath();
+            ctx.arc(puntos[v.k * 2] * sx, puntos[v.k * 2 + 1] * sy, radio * (1 + 0.6 * (1 - q)), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalCompositeOperation = "lighter";
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
       raf = requestAnimationFrame(cuadro);
     };
 
-    const pintarFinal = () => {
-      const { w, h } = estadoFinal();
+    const pintarQuieto = () => {
+      const { w, h, dpr } = medir();
+      pintarBase(w, h, dpr);
       const ctx = canvas.getContext("2d");
-      if (!ctx || !lleno) return;
+      if (!ctx || !base) return;
       ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(lleno, 0, 0);
+      ctx.globalAlpha = ALPHA_BASE;
+      ctx.drawImage(base, 0, 0);
+      ctx.globalAlpha = 1;
     };
 
     const reanudar = () => {
-      if (!orden || cancelado) return;
-      if (reduce) { pintarFinal(); return; }
+      if (!puntos || cancelado) return;
+      if (reduce) { pintarQuieto(); return; }
       if (raf) cancelAnimationFrame(raf);
-      t0 = 0;
+      // al volver a la pantalla los estallidos siguen desde ahora, sin ponerse al día
+      ultimo = 0;
+      estallidos = [];
       raf = requestAnimationFrame(cuadro);
     };
     const pausar = () => {
       if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
-        if (t0) faseAlPausar = (performance.now() - t0) % CICLO_MS;
       }
     };
 
@@ -231,20 +342,20 @@ export function MapaPuntos() {
         if (!r.ok) return;
         const bytes = new Uint8Array(await r.arrayBuffer());
         if (cancelado) return;
-        puntos = decodificarPuntos(bytes);
-        orden = barajar(puntos.length / 2);
+        const decodificados = decodificarPuntos(bytes);
+        if (decodificados.length === 0) return;
+        puntos = decodificados;
         colores = escalaDensidad();
-        const cubo = cubosPorDensidad(puntos);
-        const listas: number[][] = Array.from({ length: CUBOS }, () => []);
-        for (let i = 0; i < orden.length; i++) listas[cubo[orden[i]]].push(orden[i]);
-        porCubo = listas.map((l) => Uint32Array.from(l));
+        fuertes = colores.map(fuerte);
+        cubo = cubosPorDensidad(decodificados);
+        grilla = grillaSorteo(decodificados);
         if (visible) reanudar();
       } catch {
         /* sin puntos el mapa igual muestra calles y etiquetas */
       }
     };
 
-    // Datos: al acercarse. Loop: solo mientras el mapa está en pantalla.
+    // Datos: al acercarse. Estallidos: solo mientras el mapa está en pantalla.
     let cargado = false;
     const obs = new IntersectionObserver(
       (es) => {
@@ -258,7 +369,7 @@ export function MapaPuntos() {
     );
     obs.observe(canvas);
 
-    const ro = new ResizeObserver(() => { lleno = null; if (orden && (reduce || !visible)) pintarFinal(); });
+    const ro = new ResizeObserver(() => { base = null; if (puntos && (reduce || !visible)) pintarQuieto(); });
     ro.observe(canvas);
 
     return () => {
