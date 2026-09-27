@@ -80,13 +80,13 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
   {
     // UNA PUERTA, DOS ACCESOS (26-sep-2026). La primera pantalla del wizard pasó a ser el hero de
     // la landing (dirección, «Estoy en el depto», «Marcarlo en el mapa»), y quien llega desde la
-    // landing con la dirección puesta arranca en `tipo` sin ver `dir`. «Entró al wizard» se cuenta
+    // landing con la dirección puesta arranca en el mapa sin ver `dir`. «Entró al wizard» se cuenta
     // desde entonces como `dir` O `entrada = 'landing'` (`INICIO_WIZARD`, posthog-admin.ts).
     //
-    // ⚠ LA FECHA SE FIJA AL MERGEAR: es el primer día UTC íntegramente posterior al deploy de
-    // producción (misma regla que el rediseño: un día mixto no pertenece a ninguna serie). Mientras
-    // la rama espera, va el día siguiente al preview.
-    fecha: "2026-09-27",
+    // La fecha es el primer día UTC íntegramente posterior al deploy de producción (misma regla que
+    // el rediseño: un día mixto no pertenece a ninguna serie). El deploy quedó el 27-sep-2026 UTC,
+    // así que el primer día comparable es el 28.
+    fecha: "2026-09-28",
     etiqueta: "entrada nueva",
     etiquetaCorta: "entrada",
     motivo:
