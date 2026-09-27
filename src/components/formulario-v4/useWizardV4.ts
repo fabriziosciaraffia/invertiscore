@@ -86,6 +86,9 @@ export interface UseWizardV4 {
   bannerDraftVisible: boolean;
   /** ¿Se puede mostrar el chevron atrás? (oculto en primera pantalla y en edición). */
   canGoBack: boolean;
+  /** true cuando ya se resolvió el dueño y se miró si hay un borrador que ofrecer. La llegada
+   *  desde la landing espera esto: antes no se sabe si hay que preguntar «seguir o retomar». */
+  inicializado: boolean;
 }
 
 export function useWizardV4({
@@ -100,6 +103,7 @@ export function useWizardV4({
 }): UseWizardV4 {
   const [nav, setNav] = useState<WizardV4Nav>(DEFAULT_NAV);
   const [draftPendiente, setDraftPendiente] = useState<PersistedDraft | null>(null);
+  const [inicializado, setInicializado] = useState(false);
   const mounted = useRef(false);
   // Estado más reciente para leer en los callbacks de acción sin re-crearlos, y
   // callback de instrumentación en ref (para emitir con [] deps). Ambos se leen
@@ -140,6 +144,7 @@ export function useWizardV4({
     adoptarDraftInvitado(tabId.current, owner);
     cleanupOrphans(keyFor(owner, tabId.current));
     const candidate = mostRecentDraft(owner);
+    setInicializado(true);
     if (!candidate) return;
     offeredKey.current = candidate.key;
     const d = candidate.draft;
@@ -235,9 +240,11 @@ export function useWizardV4({
   }, [emit]);
 
   const goDetour = useCallback((fix: NodeId, patch?: Partial<WizardV4Answers>) => {
-    // goDetour solo entra a pantallas de corrección (tasaFix/arrFix/adrFix) → el
-    // campo corregido es la base sin el sufijo "Fix".
-    emit("wizard4_corrected", { field: fix.replace("Fix", "") });
+    // Las pantallas de corrección (tasaFix/arrFix/adrFix) cuentan como corrección: el
+    // campo corregido es la base sin el sufijo "Fix". El mapa (`dirMapa`) también se
+    // entra por acá, pero no corrige nada: es un camino de la entrada, y sus eventos
+    // los emite la pantalla.
+    if (fix.endsWith("Fix")) emit("wizard4_corrected", { field: fix.replace("Fix", "") });
     setNav((s) => ({
       ...s,
       answers: patch ? { ...s.answers, ...patch } : s.answers,
@@ -315,5 +322,6 @@ export function useWizardV4({
     discardDraft,
     bannerDraftVisible,
     canGoBack,
+    inicializado,
   };
 }

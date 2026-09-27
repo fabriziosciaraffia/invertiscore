@@ -1,15 +1,14 @@
 "use client";
 
-// Wizard v4 — el wizard de producción. Nació como ruta paralela al v3
-// (/analisis/nuevo-v2), pero el cutover ya ocurrió: ca3106f (27-jul-2026) dio
-// vuelta todos los links y `RUTA_WIZARD` (src/lib/cta-analizar.ts) apunta acá.
-// v3 sigue montado en su ruta, sin nadie que lo enlace.
+// Wizard v4 — el wizard de producción (`RUTA_WIZARD`, src/lib/cta-analizar.ts). El v3
+// (/analisis/nuevo-v2) se borró el 25-sep-2026 y su ruta redirige acá.
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { WizardV4 } from "@/components/formulario-v4/WizardV4";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { COMUNAS } from "@/lib/comunas";
+import { leerDireccionLlegada, leerModoLlegada } from "@/components/entrada/llegada";
 
 function NuevoAnalisisV4Inner() {
   const searchParams = useSearchParams();
@@ -29,12 +28,27 @@ function NuevoAnalisisV4Inner() {
   const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaParam.toLowerCase());
   const comunaInicial = match && isComunaDisponible(match.comuna) ? match : null;
 
+  // ?direccion=&lat=&lng=&comuna=[&precision=] — la dirección elegida en el hero de la landing (el
+  // mismo componente que la portada del wizard: una puerta, dos accesos). ?modo=ubicacion|mapa — un
+  // camino sin dirección elegido allá. Con cualquiera de los dos el wizard no arranca en la portada.
+  const direccionInicial = leerDireccionLlegada({
+    direccion: searchParams.get("direccion"),
+    lat: searchParams.get("lat"),
+    lng: searchParams.get("lng"),
+    comuna: searchParams.get("comuna"),
+    precision: searchParams.get("precision"),
+  });
+  const modoInicial = direccionInicial ? null : leerModoLlegada(searchParams.get("modo"));
+
   // ?origen= — superficie del CTA que trajo al usuario. Viaja para que quede en
   // el $current_url del pageview automático; el wizard no lo usa para nada más.
   return (
     <WizardV4
       resume={resume}
       comunaInicial={comunaInicial ? { comuna: comunaInicial.comuna, ciudad: comunaInicial.ciudad } : null}
+      direccionInicial={direccionInicial}
+      modoInicial={modoInicial}
+      entrada={direccionInicial || modoInicial ? "landing" : "wizard"}
     />
   );
 }

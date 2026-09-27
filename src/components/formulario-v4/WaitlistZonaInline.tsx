@@ -21,10 +21,13 @@ import { trackWizard } from "./track";
 export function WaitlistZonaInline({
   comuna,
   region,
+  sobreHero = false,
 }: {
   comuna: string;
   /** Región normalizada desde Places. Solo para el evento y el copy. */
   region: string | null;
+  /** Sobre el hero de la entrada (material oscuro fijo): en papel, con las clases `.he-wait`. */
+  sobreHero?: boolean;
 }) {
   const posthog = usePostHog();
   const [email, setEmail] = useState("");
@@ -55,6 +58,31 @@ export function WaitlistZonaInline({
       setEstado("error");
     }
   };
+
+  if (sobreHero) {
+    if (estado === "listo") return <div className="he-wait"><p>Listo: te escribimos apenas Franco tenga datos de {comuna}.</p></div>;
+    return (
+      <div className="he-wait">
+        <p>¿Te avisamos cuando Franco llegue a {region || comuna}?</p>
+        <div className="he-wait-fila">
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="tu@correo.cl"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (estado === "error") setEstado("idle"); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void enviar(); } }}
+            aria-label="Tu correo para avisarte cuando Franco llegue a tu zona"
+          />
+          <button type="button" onClick={() => void enviar()} disabled={estado === "enviando"}>
+            {estado === "enviando" ? "Enviando…" : "Avísame"}
+          </button>
+        </div>
+        {estado === "error" && <p>No pudimos guardarlo. Revisa el correo e intenta de nuevo.</p>}
+      </div>
+    );
+  }
 
   if (estado === "listo") {
     return (

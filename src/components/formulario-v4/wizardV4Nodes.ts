@@ -30,6 +30,12 @@
 //
 // tasaFix / arrFix / adrFix = detours de corrección inline (se entran con botón,
 // no por computeNext; su "siguiente" es el mismo que el de su pantalla padre).
+//
+// dirMapa = «¿Dónde queda exactamente?» (26-sep-2026). Desvío de `dir`, como los de
+// corrección: la entrada del wizard pasó a ser el hero de la landing (una puerta, dos
+// accesos) y el mapa es donde caen sus tres caminos sin número exacto —la calle sin
+// número, «Estoy en el depto» y «Marcarlo en el mapa»—. `dir` conserva su nombre (las
+// series de `wizard4_step_left` no se cortan) y el mapa no cuenta como progreso.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Decimales } from "@/lib/numero-cl";
@@ -37,6 +43,7 @@ import type { UbicacionPrecision } from "@/lib/geocoding-precision";
 
 export type NodeId =
   | "dir"
+  | "dirMapa"
   | "tipo"
   | "ent"
   | "ant"
@@ -147,6 +154,10 @@ export interface WizardV4Answers {
   direccionConfirmada?: string;
   lat?: number | null;
   lng?: number | null;
+  /** Por qué camino se llegó al mapa (`dirMapa`): define el aviso y dónde parte el pin. */
+  mapaOrigen?: "sin_numero" | "ubicacion" | "mapa";
+  /** «Estoy en el depto» sin ubicación (permiso negado o error): el mapa abre sin pin y lo dice. */
+  mapaAviso?: "sin_ubicacion";
   /** "numero" · "calle" (sin número: el punto es aproximado) · "pin" (el usuario lo movió). */
   ubicacionPrecision?: UbicacionPrecision;
   comuna?: string;
@@ -198,12 +209,12 @@ export interface WizardV4Answers {
 
 /** Todos los nodos válidos (para validar drafts al cargar). */
 export const ALL_NODES: ReadonlySet<NodeId> = new Set<NodeId>([
-  "dir", "tipo", "ent", "ant", "tam", "precio", "pie", "tasa", "tasaFix", "plazo",
+  "dir", "dirMapa", "tipo", "ent", "ant", "tam", "precio", "pie", "tasa", "tasaFix", "plazo",
   "mod", "arr", "arrFix", "adr", "adrFix", "resumen",
 ]);
 
 /** Pantallas de corrección inline (detours, no cuentan progreso). */
-export const FIX_NODES: ReadonlySet<NodeId> = new Set<NodeId>(["tasaFix", "arrFix", "adrFix"]);
+export const FIX_NODES: ReadonlySet<NodeId> = new Set<NodeId>(["dirMapa", "tasaFix", "arrFix", "adrFix"]);
 
 /** Nodos de la rama del Acto 3 (renta) — se invalidan al cambiar modalidad. */
 export const BRANCH_ACTO3: readonly NodeId[] = ["arr", "arrFix", "adr", "adrFix"];
@@ -218,6 +229,7 @@ export const ACTO_LABEL: Record<Acto, string> = {
 
 export const ACTO_BY_NODE: Record<NodeId, Acto> = {
   dir: "compra",
+  dirMapa: "compra",
   tipo: "compra",
   ent: "compra",
   ant: "compra",
@@ -240,7 +252,8 @@ export const ACTO_BY_NODE: Record<NodeId, Acto> = {
  * copy final (voz Franco) se afina al construir cada pantalla en Fases 2-3.
  */
 export const NODE_TITLE: Record<NodeId, string> = {
-  dir: "¿Dónde queda el departamento?", // la portada dibuja su propio título
+  dir: "¿Dónde queda el departamento?", // la portada (el hero) dibuja su propio título
+  dirMapa: "¿Dónde queda exactamente?",
   tipo: "¿Es usado o nuevo?",
   ent: "¿Cuándo lo entregan?",
   ant: "¿Qué antigüedad tiene?",
@@ -271,6 +284,8 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
       // primero); str va directo a la tarifa.
       return a.modalidad === "str" ? "adr" : "arr";
     case "dir":
+      return "tipo";
+    case "dirMapa":
       return "tipo";
     case "tipo":
       return a.tipoPropiedad === "nuevo" ? "ent" : "ant";
@@ -357,6 +372,8 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
 /** Mapea un detour/salida a su pantalla "de progreso" equivalente. */
 function progressAnchor(node: NodeId): NodeId {
   switch (node) {
+    case "dirMapa":
+      return "dir";
     case "tasaFix":
       return "tasa";
     case "arrFix":
@@ -420,6 +437,7 @@ export interface ReactionLive {
 export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
   switch (node) {
     case "dir":
+    case "dirMapa":
     case "precio":
     case "plazo":
       return true;
@@ -438,11 +456,19 @@ export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
 export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLive): string | null {
   switch (node) {
     case "dir":
+    case "dirMapa": {
       // Mismo número y mismo rótulo que el badge del mapa ("propiedades en el
       // sector") — es cobertura geográfica del sector, NO los comparables
       // filtrados. "Comparables" se reserva para `arr` (mediana con su propio N,
       // filtrado por superficie/dorm) para que ningún número cambie de nombre.
-      return `Zona cubierta. ${live?.comparables ?? "N"} propiedades en el sector.`;
+      //
+      // Desde el 26-sep-2026 la reacción nombra la dirección: quien llega desde la
+      // landing arranca en `tipo` sin haber visto la portada, y ésta es la única
+      // pantalla donde ve qué dirección quedó.
+      const corta = (a.direccionConfirmada ?? a.direccion ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 2).join(", ");
+      const zona = `zona cubierta, ${live?.comparables ?? "N"} propiedades en el sector.`;
+      return corta ? `${corta} · ${zona}` : `Zona cubierta. ${live?.comparables ?? "N"} propiedades en el sector.`;
+    }
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;
     case "plazo":

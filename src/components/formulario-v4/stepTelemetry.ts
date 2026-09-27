@@ -155,8 +155,14 @@ export function useStepTelemetry(opts: {
   contenedorRef: React.RefObject<HTMLElement>;
   /** true cuando el usuario disparó la acción terminal (generar / pagar). */
   terminadoRef: React.MutableRefObject<boolean>;
+  /** Propiedades fijas de la sesión que viajan en cada `wizard4_step_left` (26-sep-2026:
+   *  `entrada: "landing" | "wizard"`, para separar a quien llegó desde el hero de la landing
+   *  —que arranca en `tipo` sin ver `dir`— de quien entró por la portada del wizard). */
+  extra?: Record<string, unknown>;
 }): void {
   const { posthog, node, dir, answers, completed, contenedorRef, terminadoRef } = opts;
+  const extraRef = useRef(opts.extra);
+  extraRef.current = opts.extra;
 
   const pasoRef = useRef<PasoEnCurso | null>(null);
   // Espejos para leer lo último desde handlers que se registran una sola vez.
@@ -192,6 +198,7 @@ export function useStepTelemetry(opts: {
     // planificado → posicion null, que es la verdad: no son progreso.
     const idx = computePlannedPath(a).indexOf(paso.node);
     trackWizard(posthog, "wizard4_step_left", {
+      ...extraRef.current,
       node: paso.node,
       salida,
       // ── `rama` es "sin_definir" en TODO el wizard salvo el tramo final ──

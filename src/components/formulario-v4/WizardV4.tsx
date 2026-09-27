@@ -46,7 +46,15 @@ import {
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
 import { AdrFixScreen, AdrScreen, ArrFixScreen, ArrScreen } from "./screensActo3";
 import { InformeScreen } from "./screenInforme";
-import { EntradaScreen } from "./screenEntrada";
+import { EntradaScreen, MapaScreen } from "./screenEntrada";
+import type { CaminoSinDireccion } from "@/components/entrada/HeroEntrada";
+import {
+  borradorEsDeOtraDireccion,
+  destinoDeLlegada,
+  direccionCorta,
+  type DireccionLlegada,
+  type ModoLlegada,
+} from "@/components/entrada/llegada";
 import { ModalPlausibilidad } from "./ModalPlausibilidad";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
@@ -78,11 +86,21 @@ function PlaceholderBox({ node }: { node: NodeId }) {
 export function WizardV4({
   resume,
   comunaInicial = null,
+  direccionInicial = null,
+  modoInicial = null,
+  entrada = "wizard",
 }: {
   resume: boolean;
   /** Comuna precargada desde ?comuna= (páginas SEO). Solo contexto: la pantalla
-   *  de dirección igual exige una dirección confirmada de Places. */
+   *  de dirección igual exige una dirección confirmada. */
   comunaInicial?: { comuna: string; ciudad: string } | null;
+  /** La dirección que manda el hero de la landing (`?direccion&lat&lng&comuna[&precision]`). */
+  direccionInicial?: DireccionLlegada | null;
+  /** Un camino sin dirección elegido en la landing (`?modo=ubicacion|mapa`). */
+  modoInicial?: ModoLlegada | null;
+  /** Por qué puerta entró la sesión. Viaja en los eventos de paso: quien llega desde la landing
+   *  arranca en `tipo` sin ver `dir`, y el embudo tiene que poder separarlo. */
+  entrada?: "landing" | "wizard";
 }) {
   const posthog = usePostHog();
   const emitEvent = useCallback(
@@ -115,12 +133,82 @@ export function WizardV4({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comunaInicial]);
 
+  // ── LA LLEGADA DESDE LA LANDING (una puerta, dos accesos, 26-sep-2026) ──────────
+  // Con la dirección ya elegida en el hero: con número y cobertura, arranca en `tipo`; sin número,
+  // en el mapa; fuera de cobertura, en la portada con el aviso. Con `?modo=mapa`, en el mapa; con
+  // `?modo=ubicacion`, la portada pide la ubicación al llegar.
+  //
+  // Espera a que el hook haya mirado el borrador: si hay uno a medias, la portada pregunta antes
+  // (seguir con lo nuevo o retomar) y NO se escribe nada hasta que la persona elija —mientras hay
+  // un borrador pendiente el wizard no persiste—. «Retomar» descarta la llegada; «seguir» o
+  // «empezar de cero» descartan el borrador y aplican la llegada.
+  const hayLlegada = !!direccionInicial || !!modoInicial;
+  const llegadaAplicada = useRef(false);
+  const [autoCamino, setAutoCamino] = useState<CaminoSinDireccion | null>(null);
+  useEffect(() => {
+    if (!hayLlegada || llegadaAplicada.current || !w.inicializado || w.draftPendiente) return;
+    llegadaAplicada.current = true;
+    if (direccionInicial) {
+      const d = direccionInicial;
+      const destino = destinoDeLlegada(d);
+      trackWizard(posthog, "wizard4_llegada_landing", { destino, precision: d.precision, cubierta: d.cubierta });
+      const base = { direccion: d.direccion, comuna: d.comuna, ciudad: d.ciudad, mapaAviso: undefined };
+      if (destino === "tipo") {
+        w.answer("dir", { ...base, direccionConfirmada: d.direccion, lat: d.lat, lng: d.lng, ubicacionPrecision: "numero", mapaOrigen: undefined });
+      } else if (destino === "mapa") {
+        w.goDetour("dirMapa", { ...base, direccionConfirmada: undefined, lat: d.lat, lng: d.lng, ubicacionPrecision: "calle", mapaOrigen: "sin_numero" });
+      } else {
+        w.patchAnswers({ ...base, direccionConfirmada: undefined, lat: undefined, lng: undefined, ubicacionPrecision: undefined });
+      }
+      return;
+    }
+    trackWizard(posthog, "wizard4_llegada_landing", { destino: modoInicial === "mapa" ? "mapa" : "portada", modo: modoInicial });
+    if (modoInicial === "mapa") {
+      w.goDetour("dirMapa", { direccionConfirmada: undefined, lat: undefined, lng: undefined, ubicacionPrecision: undefined, mapaOrigen: "mapa", mapaAviso: undefined });
+    } else if (modoInicial === "ubicacion") {
+      setAutoCamino("ubicacion");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hayLlegada, w.inicializado, w.draftPendiente]);
+
+  const retomarBorrador = () => { llegadaAplicada.current = true; w.resumeDraft(); };
+  const conflictoBorrador =
+    !!direccionInicial && !llegadaAplicada.current &&
+    borradorEsDeOtraDireccion(w.draftPendiente?.answers?.direccion, direccionInicial.direccion);
+  const calle = (x: string | null | undefined) => direccionCorta(x).split(",")[0];
+  const bannerPortada = w.bannerDraftVisible ? (
+    <div className="he-nota" role="region" aria-label="Análisis a medias">
+      <p className="he-nota-t">Análisis a medias</p>
+      {conflictoBorrador ? (
+        <p>
+          Tienes a medias el de <b>{direccionCorta(w.draftPendiente?.answers?.direccion)}</b>. ¿Sigues con{" "}
+          <b>{calle(direccionInicial?.direccion)}</b> o retomas el otro?
+        </p>
+      ) : (
+        <p>Tienes un análisis a medias. ¿Lo retomas donde lo dejaste?</p>
+      )}
+      <div className="he-nota-acc">
+        {conflictoBorrador ? (
+          <>
+            <button type="button" className="pri" onClick={w.discardDraft}>Seguir con {calle(direccionInicial?.direccion)}</button>
+            <button type="button" onClick={retomarBorrador}>Retomar {calle(w.draftPendiente?.answers?.direccion)}</button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="pri" onClick={retomarBorrador}>Retomar</button>
+            <button type="button" onClick={w.discardDraft}>Empezar de cero</button>
+          </>
+        )}
+      </div>
+    </div>
+  ) : null;
+
   // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode).
   const lastStep = useRef<NodeId | null>(null);
   useEffect(() => {
     if (lastStep.current === nav.current) return;
     lastStep.current = nav.current;
-    trackWizard(posthog, "wizard4_step_viewed", { node: nav.current });
+    trackWizard(posthog, "wizard4_step_viewed", { node: nav.current, entrada });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.current, posthog]);
 
@@ -143,6 +231,7 @@ export function WizardV4({
     completed: nav.completed,
     contenedorRef: screenRef,
     terminadoRef: terminatedRef,
+    extra: { entrada },
   });
 
   // Meta Pixel · StartFreeAnalysis (custom, browser-only): "usuario elegible
@@ -284,6 +373,16 @@ export function WizardV4({
   // arriba desaparece la acción de la vista.
   const esPortada = nav.current === "dir";
 
+  // LA PORTADA ES EL HERO DE LA LANDING (26-sep-2026): a pantalla completa, con su propia cabecera y
+  // sin el contenedor del interior. El banner del borrador va adentro, en papel sobre el hero.
+  if (esPortada) {
+    return (
+      <div ref={screenRef}>
+        <EntradaScreen {...screenProps} banner={bannerPortada} logueado={isLoggedIn} autoCamino={autoCamino} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <UnifiedNav variant="app" />
@@ -408,8 +507,11 @@ function Screen({
 }) {
   switch (node) {
     // ── Acto 1 ──
+    // `dir` (la portada) se dibuja fuera de este router, a pantalla completa (ver `esPortada`).
     case "dir":
-      return <EntradaScreen {...screenProps} />;
+      return null;
+    case "dirMapa":
+      return <MapaScreen {...screenProps} onVolver={w.goBack} />;
     case "tipo":
       return <TipoScreen {...screenProps} />;
     case "ent":
