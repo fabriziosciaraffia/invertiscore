@@ -102,7 +102,9 @@ export function runSobreprecioVentaTier(): { hard: number } {
   const meta = leer("src/app/analisis/renta-corta/[id]/page.tsx");
   const pg = leer("src/app/analisis/renta-corta/[id]/informe-str.tsx");
   if (!/mediana_comuna_snapshot"\)/.test(meta) || !/new Date\(data\.created_at \?\? new Date\(\)\.toISOString\(\)\),\s*\(\(\) => \{ const snap = data\.mediana_comuna_snapshot/.test(meta)) F("4 · la metadata STR no pasa la mediana del snapshot");
-  if (!/simularStrDesdePersistido\(raw, results as unknown as \{ airbnbRaw\?: unknown \}, uf, new Date\(data\.created_at\), medianaStr\)/.test(pg)) F("4 · la simulación de la página no recibe la mediana");
+  // ACTA 27-sep-2026: la llamada suma un argumento DESPUÉS de la mediana —el veredicto del informe,
+  // la lectura prudente (tier STR-CONGELADO)—. Lo que se mide acá no cambia: la mediana llega.
+  if (!/simularStrDesdePersistido\(raw, results as unknown as \{ airbnbRaw\?: unknown \}, uf, new Date\(data\.created_at\), medianaStr, veredictoInforme\)/.test(pg)) F("4 · la simulación de la página no recibe la mediana");
   const sim = leer("src/lib/analysis/simular-str.ts");
   if (!/buildStrRecomputeCtx\(inputData, persistedResults, ufClp, mediana\)/.test(sim)) F("4 · simularStrDesdePersistido no pasa la mediana al ctx");
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: `str-prosa-persist.ts` se borró; ya no hay simulación para la prosa.

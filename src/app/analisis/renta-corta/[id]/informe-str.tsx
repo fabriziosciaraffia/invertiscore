@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
+import type { Veredicto } from "@/lib/types";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
@@ -201,7 +202,10 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     const uf = Number(raw?.ufCongelada) || ufFrozen;
     if (!raw || !data.created_at || !(uf > 0)) return null;
     try {
-      return simularStrDesdePersistido(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at), medianaStr);
+      // Con el veredicto que muestra el informe (el recompute aplica «Ajustar sin camino»): las
+      // matrices y las fronteras se leen contra ESE, no contra el del score (27-sep-2026).
+      const veredictoInforme = ((results as { francoScore?: { veredicto?: string } }).francoScore?.veredicto ?? results.veredicto) as Veredicto | undefined;
+      return simularStrDesdePersistido(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at), medianaStr, veredictoInforme);
     } catch {
       return null;
     }

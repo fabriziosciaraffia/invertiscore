@@ -134,10 +134,39 @@ export interface SimulacionStr {
 
 const uniqSorted = (xs: number[]) => Array.from(new Set(xs.filter((x) => Number.isFinite(x) && x > 0))).sort((a, b) => a - b);
 
+/** Cómo lee la simulación el veredicto de una sonda. Por defecto, tal cual. */
+export type LectorVeredicto = (v: Veredicto) => Veredicto;
+const TAL_CUAL: LectorVeredicto = (v) => v;
+
+/**
+ * LA LECTURA PRUDENTE (27-sep-2026) — las sondas hablan del mismo veredicto que el informe.
+ *
+ * La regla «Ajustar sin camino» (`ajustar-sin-camino.ts`, 25-sep) baja a BUSCAR OTRA un AJUSTA cuyo
+ * camino más fácil a COMPRAR pide más de 20% de descuento. Corre DESPUÉS del hallazgo de distancia
+ * y a propósito NO en el score: las sondas pasan por el score, y la regla necesita la distancia. Pero
+ * todo lo de este módulo —las dos matrices, las fronteras de ingreso y de precio, y con ellas el
+ * cierre I y la card— se calculaba con el veredicto CRUDO de las sondas. En las filas que la regla
+ * bajó, el informe decía BUSCAR OTRA y al lado la celda «hoy» decía AJUSTA, y el cierre I prometía
+ * «con +0,1% sube a AJUSTA», que con la misma regla seguiría siendo BUSCAR. Lo cazó `str-congelado`
+ * (eb7b3a66) al reescribirse de cifras a reglas.
+ *
+ * Aplicar la regla exacta en cada sonda pediría la grilla de descuento por celda: decenas de
+ * recómputos más por análisis. Decisión de Fabrizio (27-sep-2026): la LECTURA PRUDENTE. Cuando el
+ * informe es BUSCAR OTRA y el caso, sin la regla, sería AJUSTA —o sea, la regla lo bajó—, toda sonda
+ * lee AJUSTA como BUSCAR OTRA. La celda «hoy» dice lo mismo que el informe y las fronteras apuntan a
+ * COMPRAR, como las vías del hallazgo de distancia. Puede mostrar BUSCAR en alguna celda que con la
+ * regla exacta sería AJUSTA: se equivoca del lado de no prometer. Fuera de esas filas, nada cambia.
+ */
+export function lectorDeVeredicto(ctx: VeredictoStrCtx, veredictoInforme: Veredicto): LectorVeredicto {
+  if (veredictoInforme !== "BUSCAR OTRA") return TAL_CUAL;
+  if (recomputeStrConPatch(ctx, {}).francoScore.veredicto !== "AJUSTA SUPUESTOS") return TAL_CUAL;
+  return (v) => (v === "AJUSTA SUPUESTOS" ? "BUSCAR OTRA" : v);
+}
+
 /** Fronteras del ingreso: una sola bisección, dos diales. */
-export function fronterasIngresoStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto; adr: number; ocupacion: number }): FronterasIngresoStr {
+export function fronterasIngresoStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto; adr: number; ocupacion: number }, leer: LectorVeredicto = TAL_CUAL): FronterasIngresoStr {
   const rankBase = RANK[base.veredicto];
-  const veredictoA = (f: number) => recomputeStrConPatch(ctx, { adrOverride: Math.max(1, Math.round(base.adr * f)) }).francoScore.veredicto;
+  const veredictoA = (f: number) => leer(recomputeStrConPatch(ctx, { adrOverride: Math.max(1, Math.round(base.adr * f)) }).francoScore.veredicto);
   const fAbajo = biseccionFactor((f) => RANK[veredictoA(f)] < rankBase, SIM_INGRESO_MIN, false);
   const fArriba = base.veredicto === "COMPRAR" ? null : biseccionFactor((f) => RANK[veredictoA(f)] > rankBase, SIM_INGRESO_MAX, true);
   const abajo = fAbajo != null ? { factor: fAbajo, veredicto: veredictoA(fAbajo) } : null;
@@ -156,9 +185,9 @@ export function fronterasIngresoStr(ctx: VeredictoStrCtx, base: { veredicto: Ver
 }
 
 /** Frontera del precio: sube a … bajando, cae a … subiendo. */
-export function fronteraPrecioStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto; precioCLP: number; precioUF: number }): FronteraPrecioStr {
+export function fronteraPrecioStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto; precioCLP: number; precioUF: number }, leer: LectorVeredicto = TAL_CUAL): FronteraPrecioStr {
   const rankBase = RANK[base.veredicto];
-  const veredictoP = (f: number) => recomputeStrConPatch(ctx, { precioCompra: Math.round(base.precioCLP * f) }).francoScore.veredicto;
+  const veredictoP = (f: number) => leer(recomputeStrConPatch(ctx, { precioCompra: Math.round(base.precioCLP * f) }).francoScore.veredicto);
   const fSube = base.veredicto === "COMPRAR" ? null : biseccionFactor((f) => RANK[veredictoP(f)] > rankBase, SIM_PRECIO_MIN, false);
   const fCae = biseccionFactor((f) => RANK[veredictoP(f)] < rankBase, SIM_PRECIO_MAX, true);
   return {
@@ -226,6 +255,7 @@ export function simularTarifaYOcupacionStr(
   ctx: VeredictoStrCtx,
   base: { veredicto: Veredicto; adr: number; ocupacion: number },
   percentiles?: { adr: { p25: number; p75: number; p90: number }; ocupacion: { p25: number; p75: number; p90: number } } | null,
+  leer: LectorVeredicto = TAL_CUAL,
 ): MatrizTarifaOcupacion {
   const rankBase = RANK[base.veredicto];
   const tarifas = uniqSorted(
@@ -245,7 +275,7 @@ export function simularTarifaYOcupacionStr(
       // La celda "hoy" se recomputa con los valores EXACTOS del caso (la ocupación sin
       // redondear): así su flujo es el del informe, no uno a tres decimales.
       const r = recomputeStrConPatch(ctx, esActual ? {} : { adrOverride: tarifaCLP, occOverride: ocupacion });
-      const v = r.francoScore.veredicto;
+      const v = leer(r.francoScore.veredicto);
       celdas.push({
         tarifaCLP,
         ocupacion,
@@ -263,7 +293,7 @@ export function simularTarifaYOcupacionStr(
 /** Pie −5 / actual / +5 / +10 × plazos comerciales, con flujo, TIR y veredicto por celda.
  *  Era el espejo de `simularPieYPlazo` (LTR), retirada en 6ecd80c1 por no tener quién la
  *  montara; esta sí tiene consumidores vivos —el prompt, los guards y el capítulo—. */
-export function simularPieYPlazoStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto }): MatrizPiePlazoStr {
+export function simularPieYPlazoStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto }, leer: LectorVeredicto = TAL_CUAL): MatrizPiePlazoStr {
   const vacia: MatrizPiePlazoStr = { pies: [], plazos: [], celdas: [] };
   const rankBase = RANK[base.veredicto];
   const pieActual = Math.round(ctx.inputs.piePercent * 1000) / 10;
@@ -276,7 +306,7 @@ export function simularPieYPlazoStr(ctx: VeredictoStrCtx, base: { veredicto: Ver
   for (const piePct of pies) {
     for (const plazoAnios of plazos) {
       const r = recomputeStrConPatch(ctx, { piePercent: piePct / 100, plazoCredito: plazoAnios });
-      const v = r.francoScore.veredicto;
+      const v = leer(r.francoScore.veredicto);
       celdas.push({
         piePct,
         plazoAnios,
@@ -297,14 +327,16 @@ export function simularStr(
   base: { veredicto: Veredicto; adr: number; ocupacion: number; precioCLP: number; precioUF: number },
   percentiles?: Parameters<typeof simularTarifaYOcupacionStr>[2],
 ): SimulacionStr {
+  // Todas las sondas leen el veredicto como el informe (ver `lectorDeVeredicto`).
+  const leer = lectorDeVeredicto(ctx, base.veredicto);
   return {
     veredictoBase: base.veredicto,
-    fronterasIngreso: fronterasIngresoStr(ctx, base),
-    fronteraPrecio: fronteraPrecioStr(ctx, base),
+    fronterasIngreso: fronterasIngresoStr(ctx, base, leer),
+    fronteraPrecio: fronteraPrecioStr(ctx, base, leer),
     mesCierra: precioMesCierraStr(ctx, base),
     limiteTir: precioLimiteTirStr(ctx, base),
-    matrizTarifaOcupacion: simularTarifaYOcupacionStr(ctx, base, percentiles),
-    matrizPiePlazo: simularPieYPlazoStr(ctx, base),
+    matrizTarifaOcupacion: simularTarifaYOcupacionStr(ctx, base, percentiles, leer),
+    matrizPiePlazo: simularPieYPlazoStr(ctx, base, leer),
     mixComprar: mixComprarStr(ctx, base),
   };
 }
@@ -351,6 +383,13 @@ export function simularStrDesdePersistido(
   ufClp: number,
   asOf: Date,
   mediana?: MedianaParaMotorStr,
+  /**
+   * El veredicto que muestra el informe (27-sep-2026). El recompute de acá abajo da el del SCORE,
+   * sin la regla «Ajustar sin camino»; en las filas que la regla bajó, simular contra ese veredicto
+   * leía las matrices y las fronteras contra AJUSTA en un informe que dice BUSCAR OTRA. Ausente,
+   * el del score (lo de siempre).
+   */
+  veredictoInforme?: Veredicto,
 ): SimulacionStr | null {
   const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp, mediana);
   if (!ctx) return null;
@@ -365,5 +404,5 @@ export function simularStrDesdePersistido(
   const percentiles = pc?.average_daily_rate && pc?.occupancy
     ? { adr: { p25: pc.average_daily_rate.p25, p75: pc.average_daily_rate.p75, p90: pc.average_daily_rate.p90 }, ocupacion: { p25: pc.occupancy.p25, p75: pc.occupancy.p75, p90: pc.occupancy.p90 } }
     : null;
-  return simularStr(vctx, { veredicto: base.francoScore.veredicto, adr, ocupacion, precioCLP, precioUF }, percentiles);
+  return simularStr(vctx, { veredicto: veredictoInforme ?? base.francoScore.veredicto, adr, ocupacion, precioCLP, precioUF }, percentiles);
 }
