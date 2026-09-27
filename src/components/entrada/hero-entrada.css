@@ -134,12 +134,15 @@ html .he-hoja-input { font-size: 17px !important; }
 .he-hoja-alt > span { padding: 4px 0; }
 .he-hoja-alt button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 500; color: #18181B; cursor: pointer; }
 /* las sugerencias: fijas bajo la cabecera de la hoja, a todo el ancho, dos líneas por ítem */
+/* `max-width: none` anula el `calc(100vw - 2rem) !important` global de globals.css, que la dejaba
+   32 px corta. La coincidencia va en tinta: en la hoja no hay rojo decorativo. */
 html.he-hoja-abierta .pac-container {
-  position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important;
+  position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important; max-width: none !important;
   margin: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid #E9E9EC; z-index: 3100;
 }
 html.he-hoja-abierta .pac-item { line-height: 1.35; padding: 11px 16px; white-space: normal; font-size: 14px; color: #71717A; }
 html.he-hoja-abierta .pac-item-query { display: block; font-size: 16px; }
+html.he-hoja-abierta .pac-matched { color: inherit; }
 
 @media (min-width: 768px) {
   .he-top { min-height: 88px; padding-top: 20px; }

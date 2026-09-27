@@ -168,7 +168,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
   if (!/\}, \[activo, clave\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
   const css = leer("src/components/entrada/hero-entrada.css");
-  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important;/.test(css) || !/\.he-hoja-cab \{ height: 64px;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja");
+  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css) || !/\.he-hoja-cab \{ height: 64px;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja");
   if (!/html\.he-hoja-abierta, html\.he-hoja-abierta body \{ overflow: hidden; \}/.test(css)) F("8 · la página se desplaza detrás de la hoja");
 
   // ── 5 · EVENTOS Y EMBUDO ───────────────────────────────────────────────────
@@ -246,3 +246,5 @@ if (require.main === module) {
 //   vez de «Continuar» · 7i los puntos no se redibujan.
 // Quinta tanda (27-sep-2026, la hoja del teléfono), las 4 en ROJO: 8a sin distinguir el teléfono ·
 //   8b el hook no re-ata · 8c la hoja se enfoca tarde · 8d las sugerencias no quedan fijas.
+//   Tras el preview, 8e (en ROJO): sin `max-width: none` la regla global de globals.css las dejaba
+//   32 px cortas; medido en el preview (358 de 390).
