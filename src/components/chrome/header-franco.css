@@ -1,0 +1,133 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   EL HEADER ÚNICO (HeaderFranco.tsx) — estilo E, aprobado por Fabrizio el 27-sep-2026.
+   Mockup: docs/wireframes/rediseno-informe/header-unico-aprobado.html.
+
+   LA BANDA es el material del hero de la landing v14: el degradado en diagonal de la tríada
+   (azul → ciruela → rojo), con bloom en las luces y grano. SE DERIVA DE LOS TOKENS DE LA TRÍADA
+   (`--verdict-comprar`, `--verdict-ajusta`, `--verdict-buscar`, globals.css), nunca de hexes: los
+   tramos intermedios son mezclas de esos tres. Es material fijo: igual en claro y en oscuro.
+   Texto en papel. El botón principal va en TINTA: sobre el degradado, un botón rojo desaparece.
+   Sin mono.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.hf {
+  --hf-papel: rgb(250 250 248);
+  --hf-papel-2: rgb(250 250 248 / 0.88);
+  --hf-papel-3: rgb(250 250 248 / 0.72);
+  --hf-linea: rgb(255 255 255 / 0.25);
+  /* el wordmark canónico (FrancoLogo) lee estos dos: invertido sobre la banda */
+  --franco-wm-re: rgb(250 250 248 / 0.55);
+  --franco-wm-franco: rgb(255 255 255);
+  position: sticky; top: 0; z-index: 40; isolation: isolate;
+  height: 56px; color: var(--hf-papel);
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(55% 140% at 18% 120%, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0) 60%),
+    radial-gradient(40% 160% at 82% -20%, rgb(255 255 255 / 0.12) 0%, rgb(255 255 255 / 0) 60%),
+    linear-gradient(104deg,
+      color-mix(in srgb, var(--verdict-comprar), black 28%) 0%,
+      var(--verdict-comprar) 22%,
+      color-mix(in srgb, var(--verdict-comprar) 45%, var(--verdict-ajusta)) 46%,
+      var(--verdict-ajusta) 60%,
+      color-mix(in srgb, var(--verdict-ajusta) 45%, var(--verdict-buscar)) 80%,
+      var(--verdict-buscar) 100%);
+}
+/* el grano del hero, en su capa, debajo del contenido */
+.hf::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.22; mix-blend-mode: overlay;
+}
+/* sobre el hero (la portada del wizard y, cuando mergee, la landing v14): sin banda propia, el
+   material ya está debajo; en el flujo del hero (no fijo) y alineado a su columna */
+.hf--material { position: relative; background: none; }
+.hf--material::after { display: none; }
+
+.hf-col { height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 12px; box-sizing: border-box; }
+.hf--material .hf-col { max-width: 720px; padding: 0 24px; }
+.hf-izq { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; }
+.hf-der { flex: none; display: flex; align-items: center; gap: 12px; }
+.hf-wm { flex: none; display: inline-flex; line-height: 1; text-decoration: none; }
+
+.hf-txt, .hf-lnk { font-size: 14px; font-weight: 500; color: var(--hf-papel-2); text-decoration: none; white-space: nowrap; padding: 6px 0; position: relative; }
+.hf-txt:hover, .hf-lnk:hover { color: var(--hf-papel); }
+.hf-lnk.on { color: var(--hf-papel); }
+.hf-lnk.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 2px; background: var(--hf-papel); }
+
+/* el botón principal: tinta, con un filo de luz para separarse del degradado */
+.hf-btn {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 99px; border: 0;
+  background: var(--ink-900); color: var(--hf-papel); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(255 255 255 / 0.14);
+  transition: background 0.2s, transform 0.1s;
+}
+.hf-btn:hover, .hf-btn:focus-visible { background: color-mix(in srgb, var(--ink-900), white 12%); }
+.hf-btn:active { transform: translateY(1px); }
+.hf-btn:focus-visible, .hf-txt:focus-visible, .hf-lnk:focus-visible, .hf-ico:focus-visible, .hf-av:focus-visible, .hf-ghost:focus-visible { outline: 2px solid var(--hf-papel); outline-offset: 2px; }
+
+/* el secundario (Compartir) y los íconos */
+.hf-ghost {
+  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 99px;
+  border: 1px solid rgb(255 255 255 / 0.35); background: none; color: var(--hf-papel); font: inherit; font-size: 13.5px; font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.hf-ghost:hover { background: rgb(255 255 255 / 0.1); }
+.hf-ghost svg { width: 16px; height: 16px; }
+.hf-ico {
+  width: 32px; height: 32px; flex: none; border-radius: 99px; border: 0; background: none; color: var(--hf-papel-3);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.hf-ico:hover { background: rgb(255 255 255 / 0.1); color: var(--hf-papel); }
+.hf-av {
+  width: 32px; height: 32px; flex: none; border-radius: 99px; background: rgb(255 255 255 / 0.14); border: 1px solid rgb(255 255 255 / 0.3);
+  color: var(--hf-papel); font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.hf-av[aria-expanded="true"] { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.18); }
+
+/* contexto del informe (compartido / sin guardar), junto al wordmark */
+.hf-ctx { font-size: 12.5px; line-height: 1.35; color: rgb(250 250 248 / 0.65); border-left: 1px solid var(--hf-linea); padding-left: 14px; white-space: nowrap; }
+.hf-ctx b { display: block; color: var(--hf-papel); font-weight: 600; }
+
+/* al bajar en el informe: la identidad del análisis (el chip es ChipVeredicto, variante sobre fondo) */
+.hf-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hf-pts { font-size: 13.5px; font-weight: 600; color: rgb(250 250 248 / 0.9); white-space: nowrap; }
+.hf-pts span { color: rgb(250 250 248 / 0.65); font-weight: 500; }
+.hf-dir { font-size: 13.5px; font-weight: 600; color: var(--hf-papel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* el menú de cuenta: papel de la página, cuelga del avatar (a 390, a lo ancho) */
+.hf-cuenta { position: relative; flex: none; }
+.hf-menu {
+  position: absolute; right: 0; top: calc(100% + 10px); width: 280px; z-index: 5;
+  background: var(--franco-card); color: var(--franco-text); border: 1px solid var(--franco-border); border-radius: 16px;
+  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.08); padding: 8px; font-size: 14.5px;
+}
+.hf-menu-mail { font-size: 12.5px; color: var(--franco-text-muted); padding: 8px 12px 10px; border-bottom: 1px solid var(--franco-border); margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hf-menu a, .hf-menu .hf-salir { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 0; background: none; color: var(--franco-text); font: inherit; font-weight: 500; text-decoration: none; cursor: pointer; }
+.hf-menu a:hover, .hf-menu .hf-salir:hover { background: var(--franco-elevated); }
+.hf-menu .hf-salir { color: var(--franco-text-muted); }
+.hf-tema { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; margin: 6px 0; border-top: 1px solid var(--franco-border); border-bottom: 1px solid var(--franco-border); }
+.hf-tema span { color: var(--franco-text-secondary); font-weight: 500; }
+.hf-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--franco-elevated); }
+.hf-seg button { border: 0; background: none; padding: 5px 12px; border-radius: 99px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--franco-text-muted); cursor: pointer; }
+.hf-seg button[aria-pressed="true"] { background: var(--franco-card); color: var(--franco-text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.1); }
+
+/* a 390: rótulos cortos, lo que no cabe se va, y al bajar la identidad toma el lugar del wordmark */
+.hf-corto { display: none; }
+@media (max-width: 767px) {
+  .hf-largo { display: none; }
+  .hf-corto { display: inline; }
+  .hf-solo-ancho { display: none !important; }
+  .hf-ghost { width: 32px; height: 32px; padding: 0; justify-content: center; border-color: transparent; }
+  .hf--fijo .hf-wm, .hf--fijo .hf-oculta-fija { display: none !important; }
+  .hf-menu { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; }
+}
+@media (min-width: 768px) {
+  .hf { height: 64px; }
+  .hf-col { padding: 0 32px; gap: 16px; }
+  .hf-der { gap: 18px; }
+  .hf-btn { height: 38px; padding: 0 18px; font-size: 14px; }
+  .hf-ghost { height: 38px; padding: 0 15px; font-size: 14px; }
+  .hf-id { margin-left: 4px; padding-left: 18px; border-left: 1px solid var(--hf-linea); }
+  .hf-menu { top: calc(100% + 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hf-btn { transition: none; }
+}

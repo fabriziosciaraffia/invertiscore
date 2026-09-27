@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 interface FrancoLogoProps {
-  size?: "sm" | "header" | "md" | "lg" | "xl";
+  /** `banda`: el header único (HeaderFranco), 22 px en el teléfono y 26 desde 768. */
+  size?: "sm" | "header" | "banda" | "md" | "lg" | "xl";
   inverted?: boolean;
   showTagline?: boolean;
   className?: string;
@@ -11,6 +12,7 @@ interface FrancoLogoProps {
 const sizeConfig = {
   sm: { text: "text-[14px]", dot: "text-[11px]", taglinePx: 8, taglineMt: 4 },
   header: { text: "text-[26px]", dot: "text-[18px]", taglinePx: 9, taglineMt: 6 },
+  banda: { text: "text-[22px] md:text-[26px]", dot: "text-[18px]", taglinePx: 9, taglineMt: 6 },
   md: { text: "text-[28px]", dot: "text-[17px]", taglinePx: 8, taglineMt: 4 },
   lg: { text: "text-[36px]", dot: "text-[27px]", taglinePx: 10, taglineMt: 6 },
   xl: { text: "text-[56px]", dot: "text-[36px]", taglinePx: 11, taglineMt: 8 },

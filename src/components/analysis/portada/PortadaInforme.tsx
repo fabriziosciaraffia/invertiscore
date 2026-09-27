@@ -102,7 +102,9 @@ export function PortadaInforme({
   const bandaLabel = bandaLabelDe(veredicto);
 
   return (
-    <section className="doc-portada doc-hero" data-verdict={veredicto}>
+    // data-score y data-direccion: la identidad que el header único (HeaderFranco) muestra al bajar.
+    // La lee de acá para no poder contradecir a la portada.
+    <section className="doc-portada doc-hero" data-verdict={veredicto} data-score={score ?? ""} data-direccion={direccion || comuna}>
       {/* LA CAPA DE FONDO VA APARTE Y EL FILTRO VIVE EN ELLA (contrato §3): si el
           `filter` se aplicara a la sección, se lo comería también el texto. Y el
           espectro NO depende del veredicto — es el mismo siempre. El grano va en su

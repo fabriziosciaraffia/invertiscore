@@ -5,7 +5,7 @@
  *
  * Generalización del antiguo `app/analisis/[id]/share-button.tsx` (atado a
  * LTR) a un componente compartido por LTR / STR / AMBAS. Se inyecta en el
- * `actionsSlot` de UnifiedNav.
+ * header único (HeaderFranco, `informe.compartir`) con `variante="banda"`.
  *
  * Comportamiento (idéntico al original):
  *   - Móvil: usa `navigator.share` nativo si existe (con `title`/`text`).
@@ -43,6 +43,9 @@ export interface ShareButtonProps {
   pdfUrl?: string;
   /** Modalidad del análisis — se incluye en el evento de analytics. */
   modalidad: ShareModalidad;
+  /** «banda»: el disparador va sobre la banda del header único (HeaderFranco), como botón
+   *  secundario en papel; a 390, solo el ícono. El desplegable no cambia. */
+  variante?: "pagina" | "banda";
 }
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -71,6 +74,7 @@ export function ShareButton({
   comuna,
   pdfUrl,
   modalidad,
+  variante = "pagina",
 }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -157,9 +161,15 @@ export function ShareButton({
 
   return (
     <div className="relative" ref={ref}>
-      <Button variant="outline" size="sm" className="gap-2 border-[var(--franco-border)] bg-[var(--franco-card)] text-[var(--franco-text)] hover:bg-[var(--franco-elevated)] hover:text-[var(--franco-text)]" onClick={handleClick}>
-        <Share2 className="h-4 w-4 text-[var(--franco-text-secondary)]" /> Compartir
-      </Button>
+      {variante === "banda" ? (
+        <button type="button" className="hf-ghost" onClick={handleClick} aria-label="Compartir">
+          <Share2 aria-hidden="true" /><span className="hf-solo-ancho">Compartir</span>
+        </button>
+      ) : (
+        <Button variant="outline" size="sm" className="gap-2 border-[var(--franco-border)] bg-[var(--franco-card)] text-[var(--franco-text)] hover:bg-[var(--franco-elevated)] hover:text-[var(--franco-text)]" onClick={handleClick}>
+          <Share2 className="h-4 w-4 text-[var(--franco-text-secondary)]" /> Compartir
+        </Button>
+      )}
 
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-[var(--franco-border-strong)] bg-[var(--franco-card)] p-2 shadow-lg">
