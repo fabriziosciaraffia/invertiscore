@@ -22,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runAnalysis, calcMesVacio } from "../../../src/lib/analysis";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
+import { fraseReparto } from "../../../src/lib/reparto-ingreso";
 import { ltr, str, AUDIT_UF } from "../fixtures";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -91,6 +92,21 @@ export function runOtraFuenteTier(): { hard: number } {
   const pipe = sinComentarios(leer("src/lib/api-helpers/analisis-pipeline.ts"));
   if (!/cuotaCreditoPie: typeof body\.cuotaCreditoPie === "number" && body\.cuotaCreditoPie > 0 \? body\.cuotaCreditoPie : undefined,/.test(pipe)) F("4 · el pipeline STR no lee la cuota del pie del body");
 
+  // ── 5 · LA FRASE DEL REPARTO CUENTA LAS DOS CUOTAS (prueba de Fabrizio, 27-sep) ──
+  // «La cuota sola se lleva el X%» usaba el dividendo solo mientras el capítulo mostraba las dos
+  // cuotas como filas: la del pie quedaba escondida en «los gastos». Ahora la cuota del reparto es
+  // la misma del capítulo y la frase nombra a las dos.
+  const rL = conL.metrics.repartoIngreso, rL0 = sinL.metrics.repartoIngreso;
+  if (!rL || rL.cuota !== mC.dividendo + CUOTA || rL.cuotaPie !== CUOTA) F(`5 · LTR: la cuota del reparto es ${rL?.cuota}, no la del crédito + la del pie (${mC.dividendo + CUOTA})`);
+  if (!rL0 || rL0.cuota !== mS.dividendo || "cuotaPie" in rL0) F("5 · LTR: sin crédito del pie el reparto cambió");
+  if (rL && rL0 && rL.costosOperar !== rL0.costosOperar) F("5 · LTR: la cuota del pie sigue escondida en «los gastos»");
+  const money = (n: number) => `$${Math.round(n)}`;
+  if (rL && !/^Las dos cuotas( solas)? —la del crédito y la del pie— se llevan el \d+%/.test(fraseReparto(rL, "los gastos", money).antes)) F(`5 · LTR: la frase no nombra las dos cuotas: «${rL && fraseReparto(rL, "los gastos", money).antes}»`);
+  if (rL0 && !/^La cuota (sola )?se lleva el/.test(fraseReparto(rL0, "los gastos", money).antes)) F("5 · LTR: sin crédito del pie la frase cambió");
+  const rS = conS.metrics?.repartoIngreso, rS0 = sinS.metrics?.repartoIngreso;
+  if (!rS || rS.cuotaPie !== CUOTA || !/^Las dos cuotas/.test(fraseReparto(rS, "operar el depto", money).antes)) F("5 · STR: la frase del reparto no nombra las dos cuotas");
+  if (!rS0 || "cuotaPie" in rS0 || (rS && rS0 && rS.cuota - rS0.cuota !== CUOTA)) F("5 · STR: el reparto sin crédito del pie cambió, o la cuota no suma la del pie");
+
   if (fallas.length) {
     console.log(`  ✗ OTRA-FUENTE · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
@@ -110,3 +126,7 @@ if (require.main === module) {
 // sin la cuota · O6 STR el equilibrio sin la cuota · O7 STR el desglose sin la cuota · O8 STR la
 // proyección sin la cuota · O9 el pipeline no la lee · O10 STR sin la fila · O11 LTR sin la fila ·
 // O12 el recompute del informe no la pasa.
+//
+// ACTAS del punto 5 (27-sep-2026, prueba de Fabrizio) — las 4 en ROJO; restauradas, VERDE.
+// C1 el motor LTR no pasa la cuota del pie al reparto · C2 la frase no nombra las dos cuotas ·
+// C3 STR vuelve a la suma sin nombrar · C4 el reparto sin crédito del pie gana una clave.

@@ -654,7 +654,9 @@ function calcMetrics(
     // STR lo emitía desde el motor (`tramosBarra`) y acá lo derivaba el RENDER, en el call site
     // del capítulo II. La pieza que los consumía declaraba «lee del motor tal cual» y era cierto
     // en una sola de las dos. Ahora las dos leen `repartoIngreso`, que es una función pura.
-    repartoIngreso: repartoIngreso({ ingreso: ingresoMensual, cuota: dividendo, flujo: flujoNetoMensual }),
+    // La cuota del crédito del pie («otra fuente», 27-sep-2026) entra a la cuota del reparto: el
+    // capítulo la dibuja como fila propia y la frase la cuenta igual. Sin ella, nada cambia.
+    repartoIngreso: repartoIngreso({ ingreso: ingresoMensual, cuota: dividendo, cuotaPie: input.cuotaCreditoPie, flujo: flujoNetoMensual }),
     egresosMensuales,
     provisionMantencionAjustada,
     contribuciones: contribucionesValor,

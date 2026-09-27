@@ -1633,7 +1633,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
           saleDeTuBolsillo: base.flujoCajaMensual,
         },
 
-        repartoIngreso: repartoIngreso({ ingreso, cuota: egresoFinanciero, flujo: base.flujoCajaMensual }),
+        repartoIngreso: repartoIngreso({ ingreso, cuota: dividendoMensual, cuotaPie, flujo: base.flujoCajaMensual }),
         dia1: { pieCLP: pie, gastosCompraCLP: gastosCierre, amoblamientoCLP: amoblamientoDia1, capexCLP: capexPuestaAPunto.montoCLP, inversionInicial: capitalInvertido },
       };
     })(),

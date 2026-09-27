@@ -32,6 +32,12 @@ export interface TramosIngreso {
 }
 
 export interface RepartoIngreso extends TramosIngreso {
+  /**
+   * La cuota del crédito con que se cubre el pie («otra fuente» con crédito, 27-sep-2026), ya
+   * incluida en `cuota`. Solo existe cuando es > 0: sin ella el reparto es idéntico al de antes.
+   * La frase la usa para nombrar las dos cuotas, igual que las filas del capítulo.
+   */
+  cuotaPie?: number;
   /** Porcentaje del ingreso que se lleva la cuota. Puede pasar de 100: ahí la cuota sola no cabe. */
   cuotaPor100: number;
   /** Porcentaje del ingreso que se llevan los gastos. */
@@ -49,12 +55,17 @@ export interface RepartoIngreso extends TramosIngreso {
 
 /**
  * @param ingreso        lo que entra al mes (arriendo en LTR, ingreso de operación en STR)
- * @param cuota          el dividendo del crédito
+ * @param cuota          el dividendo del crédito hipotecario
+ * @param cuotaPie       la cuota del crédito del pie, si lo hay. Entra a la «cuota» del reparto:
+ *                       el capítulo la dibuja como salida propia y la frase tiene que contarla con
+ *                       la misma cuota que el resto del capítulo. Antes de esto quedaba escondida
+ *                       en «los gastos» (el residuo de la identidad).
  * @param flujo          el flujo neto mensual CON SIGNO, tal como lo emite el motor
  */
-export function repartoIngreso(p: { ingreso: number; cuota: number; flujo: number }): RepartoIngreso {
+export function repartoIngreso(p: { ingreso: number; cuota: number; cuotaPie?: number; flujo: number }): RepartoIngreso {
   const ingreso = Math.max(0, p.ingreso);
-  const cuota = Math.max(0, p.cuota);
+  const cuotaPie = Math.max(0, Math.round(p.cuotaPie ?? 0));
+  const cuota = Math.max(0, p.cuota) + cuotaPie;
   // Los gastos son el residuo de la identidad del motor (ingreso − cuota − gastos = flujo), no
   // una suma aparte: así el reparto no puede desviarse del flujo que el informe publica.
   const costosOperar = Math.max(0, ingreso - cuota - p.flujo);
@@ -63,6 +74,7 @@ export function repartoIngreso(p: { ingreso: number; cuota: number; flujo: numbe
     ingreso,
     costosOperar,
     cuota,
+    ...(cuotaPie > 0 ? { cuotaPie } : {}),
     exceso: Math.max(0, -p.flujo),
     libre: Math.max(0, p.flujo),
     cuotaPor100: por100(cuota),
@@ -92,13 +104,17 @@ export function fraseReparto(
 ): { antes: string; monto: string; despues: string; sale: boolean } {
   const sale = r.residuoCLP < 0;
   const monto = money(Math.abs(r.residuoCLP));
+  // Con crédito del pie hay DOS cuotas, y el capítulo las muestra como dos filas: la frase las
+  // nombra a las dos en vez de llamar «la cuota» a una suma que el lector no ve.
+  const dos = (r.cuotaPie ?? 0) > 0;
+  const sujeto = dos ? "Las dos cuotas —la del crédito y la del pie—" : "La cuota";
   // ⛔ EL REPARTO VA EN PORCENTAJE Y NO EN «$ POR CADA $100», aunque lo segundo se lea más
   // concreto: el informe tiene perilla CLP/UF, y «$75 por cada $100» al lado de un residuo en
   // UF mezcla dos monedas en la misma oración. El porcentaje es agnóstico a la perilla; el
   // residuo la respeta porque es un monto de verdad.
   if (r.forma === "cabe") {
     return {
-      antes: `La cuota se lleva el ${r.cuotaPor100}% de lo que entra y ${gastosLabel}, el ${r.gastosPor100}%. ${sale ? "De tu bolsillo pones" : "Quedan"} `,
+      antes: `${sujeto} ${dos ? "se llevan" : "se lleva"} el ${r.cuotaPor100}% de lo que entra y ${gastosLabel}, el ${r.gastosPor100}%. ${sale ? "De tu bolsillo pones" : "Quedan"} `,
       monto,
       despues: " al mes.",
       sale,
@@ -106,7 +122,7 @@ export function fraseReparto(
   }
   // «supera»: repartir 100 entre tres mentiría, porque la cuota sola ya se pasa.
   return {
-    antes: `La cuota sola se lleva el ${r.cuotaPor100}% de lo que entra. Con ${gastosLabel}, ${sale ? "de tu bolsillo pones" : "quedan"} `,
+    antes: `${dos ? "Las dos cuotas solas —la del crédito y la del pie— se llevan" : "La cuota sola se lleva"} el ${r.cuotaPor100}% de lo que entra. Con ${gastosLabel}, ${sale ? "de tu bolsillo pones" : "quedan"} `,
     monto,
     despues: " al mes.",
     sale,
