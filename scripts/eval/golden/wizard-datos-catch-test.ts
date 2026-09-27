@@ -145,18 +145,26 @@ export async function runWizardDatosTier(): Promise<{ hard: number }> {
   // La precisión viaja al análisis.
   if (buildLtrPayload({ ...BASE, dormitorios: "2", ubicacionPrecision: "calle" }, CTX).ubicacionPrecision !== "calle") F("3 · el payload LTR no lleva la precisión de la ubicación");
   if (buildStrPayload({ ...BASE, dormitorios: "2", ubicacionPrecision: "pin" }, CTX).ubicacionPrecision !== "pin") F("3 · el payload STR no lleva la precisión de la ubicación");
-  // Cableado en las pantallas.
+  // Cableado en la entrada. ACTA 26-sep-2026 (entrada nueva: una puerta, dos accesos): la portada de
+  // comuna salió y el campo es el hero compartido. La regla vive ahora en tres lugares y se lee de
+  // ahí: el hook compartido mide la precisión y su respaldo exige una; el hero no entrega lo que no
+  // es calle; la pantalla de entrada confirma solo con número y manda la calle sin número al mapa.
+  const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
+  if (!/precision: precisionDeComponentes\(comps\),/.test(hook)) F("3 · el campo compartido no mide la precisión de la sugerencia de Places");
+  if (!/if \(!r\.ok \|\| j\.lat == null \|\| j\.lng == null \|\| !j\.precision\) return null;/.test(hook)) F("3 · el respaldo del campo compartido confirma sin precisión");
+  const hero = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
+  if (!/const entregar = \(sel: SeleccionDireccion\) => \{\s*\n\s*if \(!sel\.precision\) \{[\s\S]{0,160}?return;\s*\}[\s\S]{0,40}?onDireccion\(sel\);/.test(hero)) F("3 · el hero entrega una sugerencia de Places sin calle");
   const ent = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
-  if (!/const precision: PrecisionUbicacion \| null = precisionDeComponentes\(comps\);/.test(ent)) F("3 · la portada no mide la precisión de la sugerencia de Places");
-  if (!/\.\.\.\(cubierta && precision\s*\n\s*\? \{ direccionConfirmada: addr, lat: plat, lng: plng, ubicacionPrecision: precision \}/.test(ent)) F("3 · la portada confirma una sugerencia de Places sin calle");
-  if (!/if \(!r\.ok \|\| j\.lat == null \|\| j\.lng == null \|\| !j\.precision\)/.test(ent)) F("3 · el respaldo de la portada confirma sin precisión");
-  if (!/ubicacionPrecision === "calle" \|\| ubicacionPrecision === "pin"\) && \(\s*<div className="flex flex-col gap-2">\s*<AvisoSinNumero ajustada=\{ubicacionPrecision === "pin"\} \/>\s*<MapaPinAjustable[\s\S]{0,160}?onMover=\{\(la, ln\) => patchAnswers\(\{ lat: la, lng: ln, ubicacionPrecision: "pin" \}\)\}/.test(ent)) F("3 · sin número, la portada no avisa ni deja mover el pin");
+  if (!/if \(sel\.precision === "numero"\) \{\s*\n\s*answer\("dir", \{ \.\.\.base, direccionConfirmada: sel\.direccion, ubicacionPrecision: "numero"/.test(ent)) F("3 · la portada confirma una dirección sin número");
+  if (!/goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, ubicacionPrecision: "calle", mapaOrigen: "sin_numero" \}\)/.test(ent)) F("3 · sin número, la portada no manda al mapa");
+  if (!/<MapaPinAjustable[\s\S]{0,300}?onMover=\{onMover\}/.test(ent) || !/sin_numero: \{\s*\n\s*titulo: "Dirección sin número"/.test(ent)) F("3 · sin número, el mapa no avisa ni deja mover el pin");
   const res3 = sinComentarios(leer("src/components/formulario-v4/screenResumen.tsx"));
   if (!/const precision = precisionDeComponentes\(comps\);\s*\n\s*if \(!precision\) \{ setNoEsCalle\(true\); return; \}\s*\n\s*setNoEsCalle\(false\);\s*\n\s*doneRef\.current = true;\s*\n\s*onConfirm\(\{[^}]*precision \}\);/.test(res3)) F("3 · el editor de dirección del resumen confirma sin calle");
   if (!/ubicacionPrecision: d\.precision \}/.test(res3)) F("3 · el resumen no guarda la precisión de la dirección editada");
   if (!/<AvisoSinNumero ajustada=\{a\.ubicacionPrecision === "pin"\} \/>\s*<MapaPinAjustable/.test(res3)) F("3 · sin número, el resumen no avisa ni deja mover el pin");
   const pin = sinComentarios(leer("src/components/formulario-v4/MapaPinAjustable.tsx"));
-  if (!/if \(!pinDentroDeComuna\(comuna, la, ln\)\) \{[\s\S]{0,160}?return;\s*\}[\s\S]{0,200}?onMoverRef\.current\(la, ln\);/.test(pin)) F("3 · el pin se puede mover fuera de la comuna");
+  // ACTA 26-sep-2026: el límite es la comuna (resumen) o toda la cobertura (pantalla del mapa).
+  if (!/const comunaLimite = limite === "comuna" \? comuna : null;/.test(pin) || !/if \(!pinDentroDeComuna\(comunaLimite, la, ln\)\) \{[\s\S]{0,240}?return;\s*\}[\s\S]{0,200}?onMoverRef\.current\(la, ln\);/.test(pin)) F("3 · el pin se puede mover fuera de su límite");
   if (!/draggable: true/.test(pin) || !/map\.addListener\("click"/.test(pin)) F("3 · el pin no se puede arrastrar ni poner con un toque");
 
   if (fallas.length) {
@@ -185,3 +193,8 @@ if (require.main === module) {
 //    3e · la portada confirma sin calle                  3i · el pin sale de la comuna
 //    3f · el respaldo confirma sin precisión             3j · la caja de la comuna se ignora
 //    3g · sin número la portada no muestra el pin        3k · el payload STR pierde la precisión
+//
+// ACTA 26-sep-2026 (entrada nueva): los chequeos de cableado de la sección 3 se re-apuntaron a donde
+// vive hoy la regla —el hook compartido, el hero, la portada y el mapa— y se volvieron a ver en ROJO
+// con cinco mutaciones: el hook deja de medir la precisión · el respaldo confirma sin precisión · el
+// hero entrega lo que no es calle · la portada confirma sin número · el pin sale de su límite.

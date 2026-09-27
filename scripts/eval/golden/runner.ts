@@ -60,6 +60,7 @@ import { runMatrizExtremosTier } from "./matriz-extremos-catch-test";
 import { runDemoPublicoTier } from "./demo-publico-catch-test";
 import { runColasChicasTier } from "./colas-chicas-catch-test";
 import { runWizardDatosTier } from "./wizard-datos-catch-test";
+import { runWizardEntradaTier } from "./wizard-entrada-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -319,6 +320,10 @@ function printSeed(r: SeedReport) {
   // «Costos operativos» llega una sola vez; nada se confirma sin una calle real y sin número el
   // pin se mueve. Verificado en rojo por mutación.
   totalHard += (await runWizardDatosTier()).hard;
+  // Tier WIZARD-ENTRADA (26-sep-2026, 0 tokens): una puerta, dos accesos — la portada es el hero
+  // compartido con tres caminos, la llegada desde la landing reparte entre tipo, mapa y portada, el
+  // mapa nombra el punto y los eventos de paso llevan su puerta. Verificado en rojo por mutación.
+  totalHard += (await runWizardEntradaTier()).hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
