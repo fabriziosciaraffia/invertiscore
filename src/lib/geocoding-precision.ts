@@ -58,6 +58,23 @@ export function precisionDeResultadoGoogle(r: { types?: string[]; address_compon
   return p;
 }
 
+/** La comuna cruda según los componentes: en la RM Google la pone en `locality` (respaldo
+ *  `administrative_area_level_3`). Sin normalizar contra el listado de comunas. */
+export function comunaDeComponentes(comps: ComponenteDireccion[] | undefined | null): string {
+  const de = (t: string) => comps?.find((c) => c.types?.includes(t))?.long_name ?? "";
+  return de("locality") || de("administrative_area_level_3");
+}
+
+/**
+ * Precisión a partir del TEXTO de una dirección canónica («Av. Irarrázaval 2100, Ñuñoa, …»): hay
+ * número si el primer tramo, antes de la primera coma, trae un dígito. Es el respaldo para una
+ * dirección que llega por enlace sin su `precision` (la landing de antes del componente
+ * compartido); cuando la precisión viene, manda ella.
+ */
+export function precisionDeTexto(direccion: string): PrecisionUbicacion {
+  return /\d/.test((direccion ?? "").split(",")[0] ?? "") ? "numero" : "calle";
+}
+
 /** Precisión de un resultado de Nominatim (con `addressdetails=1`). */
 export function precisionDeResultadoNominatim(r: { address?: Record<string, string> } | null | undefined): PrecisionUbicacion | null {
   const ad = r?.address;
