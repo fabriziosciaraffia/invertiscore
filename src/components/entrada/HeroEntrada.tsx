@@ -21,11 +21,20 @@
 // la hoja y las sugerencias pegadas debajo, así el teclado queda bajo ellas. La hoja se abre y se
 // enfoca en el mismo toque (`flushSync` + `focus`), que es lo que deja a iOS abrir el teclado; por
 // eso su código se precarga apenas se sabe que es un teléfono. En escritorio, el desplegable.
+//
+// LA COMPOSICIÓN ES LA DE LA LANDING (27-sep-2026, decisión de Fabrizio): la grilla de 1200 con el
+// contenido a la izquierda, el eslogan bajo el wordmark en escritorio, el título arriba y el campo al
+// pie de la columna. La usan las dos puertas. El eslogan vive acá y no en el header: el header único
+// va sin eslogan (decisión 7 de su mockup).
+//
+// EL CAMPO SE EXTRAE (`CampoEntrada`): el cierre de la landing repite el campo del hero, y es el
+// mismo —desplegable, hoja en el teléfono, respaldo por texto y los dos caminos—, no una réplica.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useDireccionPlaces, type SeleccionDireccion } from "./useDireccionPlaces";
+import { ESLOGAN } from "@/lib/eslogan";
 import "./hero-entrada.css";
 
 /** Direcciones reales del catálogo (07-sep-2026, landing v14), las que caben a 19 px en el campo a
@@ -61,29 +70,7 @@ export type EventoCampo =
   | { tipo: "texto"; largo: number }
   | { tipo: "respaldo"; resuelto: boolean };
 
-export function HeroEntrada({
-  cabecera,
-  pie,
-  antes,
-  despues,
-  valorInicial = "",
-  confirmada = null,
-  onContinuarConfirmada,
-  avisoExterno = null,
-  ocupado = null,
-  onDireccion,
-  onCamino,
-  onEvento,
-}: {
-  /** La cabecera: el header único (HeaderFranco) «sobre material», que pone quien monta el hero
-   *  (27-sep-2026; antes el hero dibujaba la suya, con su wordmark y su «Entrar»). */
-  cabecera?: ReactNode;
-  /** Enlace del pie («Ver un análisis de ejemplo»). */
-  pie?: ReactNode;
-  /** Sobre el título: el aviso de un análisis a medias. */
-  antes?: ReactNode;
-  /** Bajo el campo: el rechazo de cobertura y su lista de espera. */
-  despues?: ReactNode;
+export interface CampoEntradaProps {
   valorInicial?: string;
   /** La dirección que ya quedó confirmada (volver a la portada desde la pregunta siguiente). Si el
    *  texto no cambió, la flecha sigue sin volver a buscarla. */
@@ -97,7 +84,23 @@ export function HeroEntrada({
   onDireccion: (sel: SeleccionDireccion) => void;
   onCamino: (camino: CaminoSinDireccion) => void;
   onEvento?: (e: EventoCampo) => void;
-}) {
+  /** Desde qué dirección de ejemplo parte el placeholder: con dos campos en la misma página (el hero
+   *  y el cierre de la landing) no escriben la misma a la vez. */
+  placeholderDesde?: number;
+}
+
+/** El campo de dirección con sus dos caminos sin dirección, y en el teléfono la hoja. */
+export function CampoEntrada({
+  valorInicial = "",
+  confirmada = null,
+  onContinuarConfirmada,
+  avisoExterno = null,
+  ocupado = null,
+  onDireccion,
+  onCamino,
+  onEvento,
+  placeholderDesde = 0,
+}: CampoEntradaProps) {
   const [texto, setTexto] = useState(valorInicial);
   const [enfocado, setEnfocado] = useState(false);
   const [buscando, setBuscando] = useState(false);
@@ -143,15 +146,16 @@ export function HeroEntrada({
   });
 
   // ── Placeholder: escribe y borra direcciones reales; quieto con reduced-motion ──
-  const [ph, setPh] = useState<string>(DIRECCIONES_EJEMPLO[0]);
+  const desde = placeholderDesde % DIRECCIONES_EJEMPLO.length;
+  const [ph, setPh] = useState<string>(DIRECCIONES_EJEMPLO[desde]);
   const animar = !enfocado && !hoja && texto === "";
   useEffect(() => {
     if (!animar) return;
     if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setPh(DIRECCIONES_EJEMPLO[0]);
+      setPh(DIRECCIONES_EJEMPLO[desde]);
       return;
     }
-    let k = 0, i = 0, borrando = false;
+    let k = desde, i = 0, borrando = false;
     let t: ReturnType<typeof setTimeout>;
     const tick = () => {
       const s = DIRECCIONES_EJEMPLO[k];
@@ -167,9 +171,9 @@ export function HeroEntrada({
       if (i === 0) { borrando = false; k = (k + 1) % DIRECCIONES_EJEMPLO.length; t = setTimeout(tick, 500); return; }
       t = setTimeout(tick, 26);
     };
-    t = setTimeout(tick, 900);
+    t = setTimeout(tick, 900 + desde * 300);
     return () => clearTimeout(t);
-  }, [animar]);
+  }, [animar, desde]);
 
   const medirFoco = () => {
     if (!focoMedido.current) { focoMedido.current = true; onEventoRef.current?.({ tipo: "foco" }); }
@@ -255,18 +259,7 @@ export function HeroEntrada({
   const deshabilitado = buscando || !!ocupado;
 
   return (
-    <section className="he-root" aria-label="Analiza un departamento">
-      {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
-      <picture className="he-fondo">
-        <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
-        <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP */}
-        <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
-      </picture>
-      {cabecera}
-      <div className="he-col he-mid">
-        {antes}
-        <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
+    <>
         <div className="he-campo">
           <form className="he-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
             <span className="he-tx">
@@ -315,9 +308,6 @@ export function HeroEntrada({
             </span>
           </div>
         </div>
-        {despues}
-      </div>
-      {pie && <div className="he-col he-foot">{pie}</div>}
       {Hoja && hoja && (
         <Hoja abierto onClose={() => setHoja(false)}>
           <form className="he-hoja-campo" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
@@ -349,6 +339,48 @@ export function HeroEntrada({
           </div>
         </Hoja>
       )}
+    </>
+  );
+}
+
+/** El hero: el material, la cabecera que pone quien lo monta, el eslogan, el título y el campo. */
+export function HeroEntrada({
+  cabecera,
+  pie,
+  antes,
+  despues,
+  ...campo
+}: CampoEntradaProps & {
+  /** La cabecera: el header único (HeaderFranco) «sobre material», que pone quien monta el hero
+   *  (27-sep-2026; antes el hero dibujaba la suya, con su wordmark y su «Entrar»). */
+  cabecera?: ReactNode;
+  /** Enlace del pie («Ver un análisis de ejemplo» en el wizard, «Ver un análisis real» en la landing). */
+  pie?: ReactNode;
+  /** Sobre el título: el aviso de un análisis a medias. */
+  antes?: ReactNode;
+  /** Bajo el campo: el rechazo de cobertura y su lista de espera. */
+  despues?: ReactNode;
+}) {
+  return (
+    <section className="he-root" aria-label="Analiza un departamento">
+      {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
+      <picture className="he-fondo">
+        <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
+        <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP */}
+        <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
+      </picture>
+      {cabecera}
+      <div className="he-col">
+        <p className="he-eslogan">{ESLOGAN}</p>
+      </div>
+      <div className="he-col he-mid">
+        {antes}
+        <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
+        <CampoEntrada {...campo} />
+        {despues}
+      </div>
+      {pie && <div className="he-col he-foot">{pie}</div>}
     </section>
   );
 }

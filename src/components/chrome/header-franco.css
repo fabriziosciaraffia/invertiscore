@@ -43,7 +43,8 @@
 .hf--material::after { display: none; }
 
 .hf-col { height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 12px; box-sizing: border-box; }
-.hf--material .hf-col { max-width: 720px; padding: 0 24px; }
+/* alineado a la columna del hero (hero-entrada.css): 1200 con 24 · 40 · 48 px de margen */
+.hf--material .hf-col { max-width: 1200px; padding: 0 24px; }
 .hf-izq { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; }
 .hf-der { flex: none; display: flex; align-items: center; gap: 12px; }
 .hf-wm { flex: none; display: inline-flex; line-height: 1; text-decoration: none; }
@@ -122,11 +123,15 @@
 @media (min-width: 768px) {
   .hf { height: 64px; }
   .hf-col { padding: 0 32px; gap: 16px; }
+  .hf--material .hf-col { padding: 0 40px; }
   .hf-der { gap: 18px; }
   .hf-btn { height: 38px; padding: 0 18px; font-size: 14px; }
   .hf-ghost { height: 38px; padding: 0 15px; font-size: 14px; }
   .hf-id { margin-left: 4px; padding-left: 18px; border-left: 1px solid var(--hf-linea); }
   .hf-menu { top: calc(100% + 12px); }
+}
+@media (min-width: 1024px) {
+  .hf--material .hf-col { padding: 0 48px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hf-btn { transition: none; }
