@@ -10,8 +10,9 @@
 // FIJA, verificado EN ROJO por mutación:
 //   1 · FUENTE ÚNICA: la pantalla de modalidad pinta `OPCIONES_VISIBLES`, y `MODALIDADES_OFRECIDAS`
 //       sale de esa misma lista.
-//   2 · EL FLAG GOBIERNA LA LISTA, medido al importar el módulo en un proceso aparte: con
-//       NEXT_PUBLIC_AMBAS_ENABLED="false" no hay «both»; sin la variable, están las tres.
+//   2 · EL FLAG GOBIERNA LA LISTA, medido al importar el módulo en un proceso aparte: solo con
+//       NEXT_PUBLIC_AMBAS_ENABLED="true" exacto están las tres; con "false", con otro valor o SIN la
+//       variable no hay «both» (desde el 27-sep-2026: ausente = apagado).
 //   3 · EL RESUMEN ofrece exactamente `MODALIDADES_OFRECIDAS` (importada de la pantalla, sin una
 //       lista propia de modalidades) y su cambio de modalidad rechaza lo que no está en ella.
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/selector-modalidad-catch-test.ts
@@ -57,12 +58,22 @@ export function runSelectorModalidadTier(): { hard: number } {
   }
 
   // ── 2 · el flag gobierna la lista (medido, no leído) ──
+  // ACTA 27-sep-2026: el interruptor pasa al contrato de la prosa IA y de OpenFactura —prende solo
+  // con "true" exacto—. Antes «encendido» se medía con la variable AUSENTE; ahora ausente es
+  // apagado (el preview sin la variable ofrecía «Comparativo», un producto apagado en producción),
+  // y se mide además que un valor cualquiera no lo prenda.
   const apagado = ofrecidasCon("false");
-  const encendido = ofrecidasCon(undefined);
+  const ausente = ofrecidasCon(undefined);
+  const otroValor = ofrecidasCon("1");
+  const encendido = ofrecidasCon("true");
   if (!apagado) F("2 · no pude importar la pantalla con el flag apagado: el tier no midió");
   else if (apagado.includes("both") || apagado.join() !== "ltr,str") F(`2 · con AMBAS apagado se ofrece ${JSON.stringify(apagado)}; debería ser ["ltr","str"]`);
+  if (!ausente) F("2 · no pude importar la pantalla sin la variable: el tier no midió");
+  else if (ausente.join() !== "ltr,str") F(`2 · SIN la variable se ofrece ${JSON.stringify(ausente)}: un producto apagado revive por una variable que falta`);
+  if (!otroValor) F("2 · no pude importar la pantalla con un valor cualquiera: el tier no midió");
+  else if (otroValor.join() !== "ltr,str") F(`2 · con NEXT_PUBLIC_AMBAS_ENABLED="1" se ofrece ${JSON.stringify(otroValor)}; solo "true" exacto lo prende`);
   if (!encendido) F("2 · no pude importar la pantalla con el flag encendido: el tier no midió");
-  else if (encendido.join() !== "ltr,str,both") F(`2 · con AMBAS encendido se ofrece ${JSON.stringify(encendido)}; debería ser las tres`);
+  else if (encendido.join() !== "ltr,str,both") F(`2 · con AMBAS encendido ("true") se ofrece ${JSON.stringify(encendido)}; debería ser las tres`);
 
   // ── 3 · el resumen ofrece exactamente esa lista ──
   const RES = sinComentarios(leer("src/components/formulario-v4/screenResumen.tsx"));
