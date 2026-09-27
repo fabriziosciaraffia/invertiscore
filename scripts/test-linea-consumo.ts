@@ -115,12 +115,23 @@ test("sin saldo, modalidad simple y sin comuna", () => {
   );
 });
 
-test("guest → rama propia, coherente con 'Crear cuenta gratis'", () => {
-  // Antes decía "Después de esto, el informe es final." bajo ese botón.
-  assert.equal(
-    lineaConsumo(null, false, false, "ltr", "Providencia"),
-    "Creas tu cuenta y el primero va por cuenta de Franco.",
-  );
+// ACTA 27-sep-2026: el invitado tenía UN caso, «Creas tu cuenta y el primero va por cuenta de
+// Franco.», que era el copy de antes del cap anónimo (F2-2). Con el cap, la rama del invitado se
+// partió en dos —con su análisis gratis disponible genera sin cuenta; con el cap usado, el botón es
+// registro— y el test quedó en rojo en master sin que nadie lo corriera. Se miden las dos ramas por
+// su REGLA (qué promete y qué pide), no por el texto exacto.
+test("guest con su análisis gratis disponible → genera sin pedir cuenta", () => {
+  const linea = lineaConsumo({ ...base, tier: "guest", anonCapAvailable: true }, false, false, "ltr", "Providencia") ?? "";
+  assert.ok(/sin crear cuenta/i.test(linea), `debe decir que no pide cuenta: ${linea}`);
+  assert.ok(!/crea tu cuenta/i.test(linea), `con el cap disponible no se pide registro: ${linea}`);
+});
+
+test("guest con el cap ya usado → el botón es registro y la línea lo dice", () => {
+  for (const t of [{ ...base, tier: "guest" as const, anonCapAvailable: false }, null]) {
+    const linea = lineaConsumo(t, false, false, "ltr", "Providencia") ?? "";
+    assert.ok(/crea tu cuenta/i.test(linea), `debe invitar a crear la cuenta: ${linea}`);
+    assert.ok(!/sin crear cuenta/i.test(linea), `no puede prometer el gratis sin cuenta: ${linea}`);
+  }
 });
 
 test("ningún mensaje dice 'crédito' (vocabulario de usuario)", () => {
@@ -129,6 +140,7 @@ test("ningún mensaje dice 'crédito' (vocabulario de usuario)", () => {
     [{ ...base, welcomeAvailable: true }, true, true],
     [{ ...base, credits: 0 }, true, false],
     [null, false, false],
+    [{ ...base, tier: "guest", anonCapAvailable: true }, false, false],
   ];
   for (const [t, logged, can] of casos) {
     const linea = lineaConsumo(t, logged, can, "ltr", "Providencia");

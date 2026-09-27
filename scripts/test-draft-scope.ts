@@ -43,6 +43,7 @@ import {
   keyFor, mostRecentDraft, mostrarBannerDraft, removeDraft, writeDraft,
 } from "../src/components/formulario-v4/wizardV4Draft";
 import { purgarBorradores, purgarBorradoresYPestana, purgarDraftsLegacyUnaVez, OWNER_INVITADO } from "../src/lib/draft-keys";
+import { computePlannedPath } from "../src/components/formulario-v4/wizardV4Nodes";
 
 let pass = 0, fail = 0;
 const fallidos: string[] = [];
@@ -63,14 +64,39 @@ const B = "usuario-B-uuid";
 const TAB1 = "tab-uno";
 const TAB2 = "tab-dos";
 
-/** Escribe un draft coherente directo al storage. */
+/**
+ * Escribe un draft coherente con el MISMO `writeDraft` de producción, y lo envejece `hace` ms.
+ *
+ * ACTA 27-sep-2026: hasta acá armaba el JSON a mano con `v: 4`. El formato subió a v6 (19-ago-2026,
+ * la modalidad al final) y `isCoherent` descarta todo `v` distinto, así que cada borrador sembrado
+ * llegaba descartado y siete pruebas estaban en rojo en master sin medir nada del scope. Escribir con
+ * `writeDraft` hace que el fixture siga al formato: un próximo bump de versión no lo vuelve a pudrir.
+ * El borrador es de un recorrido v6 real (la modalidad ya elegida, parado en el arriendo).
+ */
 function sembrar(owner: string, tabId: string, precio: string, hace = 0) {
-  const d = {
-    v: 4, version: 1, savedAt: Date.now() - hace,
+  writeDraft(owner, tabId, {
     answers: { modalidad: "ltr", precio, direccion: "Suecia 750", comuna: "Providencia" },
-    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
-  };
-  g.localStorage.setItem(keyFor(owner, tabId), JSON.stringify(d));
+    completed: { mod: true }, current: "arr",
+    history: ["dir", "tipo", "ant", "tam", "precio", "pie", "tasa", "plazo", "mod"], mode: "flow",
+  } as never, 0);
+  if (hace > 0) {
+    const k = keyFor(owner, tabId);
+    const d = JSON.parse(g.localStorage.getItem(k)!);
+    d.savedAt = Date.now() - hace;
+    g.localStorage.setItem(k, JSON.stringify(d));
+  }
+}
+
+/** El mismo borrador, en crudo, para sembrarlo en una key de formato viejo (sin dueño). */
+function borradorVigenteCrudo(): string {
+  writeDraft("tmp-owner", "tmp-tab", {
+    answers: { modalidad: "ltr", precio: "6.400" },
+    completed: { mod: true }, current: "arr", history: ["dir", "mod"], mode: "flow",
+  } as never, 0);
+  const k = keyFor("tmp-owner", "tmp-tab");
+  const raw = g.localStorage.getItem(k)!;
+  g.localStorage.removeItem(k);
+  return raw;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,12 +126,9 @@ test("con varios drafts propios gana el más reciente", () => {
 });
 
 test("una key de FORMATO VIEJO (sin dueño) no se ofrece a nadie", () => {
-  // Es el formato que hoy está en los navegadores de producción.
-  g.localStorage.setItem("franco_wizard_v4_draft__TAB-VIEJA", JSON.stringify({
-    v: 4, version: 1, savedAt: Date.now(),
-    answers: { modalidad: "ltr", precio: "6.400" },
-    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
-  }));
+  // Es el formato de key que quedó en navegadores viejos. El CONTENIDO va vigente (versión del
+  // módulo) a propósito: así lo único que puede descartarlo es la key sin dueño, que es lo que mide.
+  g.localStorage.setItem("franco_wizard_v4_draft__TAB-VIEJA", borradorVigenteCrudo());
   assert.equal(mostRecentDraft(A), null);
   assert.equal(mostRecentDraft(OWNER_INVITADO), null);
 });
@@ -470,29 +493,35 @@ test("el banner se ofrece en la pantalla 1 y NO en la 2", () => {
   assert.ok(m.draft, "el montaje debía ofrecer el borrador");
   const ofrecido = mostRecentDraft(A)!.draft;
 
+  // ACTA 27-sep-2026: las pantallas salen del GRAFO, no de nombres escritos a mano. El test decía
+  // que la primera pantalla era `mod`, y lo fue hasta el 19-ago-2026, cuando la modalidad se mudó
+  // al final; desde ahí la primera es `dir` y el test estaba en rojo sin que nadie lo corriera.
+  const camino = computePlannedPath({ tipoPropiedad: "usado", modalidad: "ltr" });
+  const [p1, p2, p3, p4, p5] = camino;
+
   // Pantalla 1: recién montado, sin historial.
   assert.equal(
-    mostrarBannerDraft(ofrecido, { current: "mod", history: [] }),
+    mostrarBannerDraft(ofrecido, { current: p1, history: [] }),
     true,
     "el banner tiene que aparecer en la primera pantalla",
   );
 
-  // Pantalla 2: el usuario ya eligió informe y avanzó.
+  // Pantalla 2: el usuario ya avanzó una.
   assert.equal(
-    mostrarBannerDraft(ofrecido, { current: "dir", history: ["mod"] }),
+    mostrarBannerDraft(ofrecido, { current: p2, history: [p1] }),
     false,
     "el banner se está renderizando fuera de la primera pantalla",
   );
 
   // Y en una pantalla profunda tampoco.
   assert.equal(
-    mostrarBannerDraft(ofrecido, { current: "pie", history: ["mod", "dir", "tipo", "precio"] }),
+    mostrarBannerDraft(ofrecido, { current: p5, history: [p1, p2, p3, p4] }),
     false,
     "el banner sobrevive hasta el fondo del wizard",
   );
 
   // Sin borrador pendiente no hay banner ni en la primera.
-  assert.equal(mostrarBannerDraft(null, { current: "mod", history: [] }), false);
+  assert.equal(mostrarBannerDraft(null, { current: p1, history: [] }), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

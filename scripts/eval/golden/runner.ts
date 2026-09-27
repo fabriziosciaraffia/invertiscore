@@ -108,6 +108,7 @@ import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
+import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -335,6 +336,9 @@ function printSeed(r: SeedReport) {
   // su monto en LTR y STR, sin tocar el hipotecario ni el NOI, y sin ella nada cambia.
   totalHard += runOtraFuenteTier().hard;
   totalHard += runWizardInteriorTier().hard;
+  // Tier PRUEBAS-SUELTAS (27-sep-2026, 0 tokens): test-linea-consumo y test-draft-scope corren
+  // acá como proceso aparte y tienen que salir con 0. Estaban en rojo en master sin que nadie los corriera.
+  totalHard += runPruebasSueltasTier().hard;
   totalHard += runAjustarSinCaminoTier().hard;
   // Tier DISPERSIÓN-COMUNAL (21-sep-2026, 0 tokens, sin base): p25/p75 salen de las mismas
   // filas que la mediana, se persisten en el snapshot y el motor deriva la posición del
