@@ -3,6 +3,7 @@
 import type { Hallazgo } from "@/lib/types";
 import { findingDisplay } from "./GenericFindingCard";
 import { referenciaHallazgo } from "./referencia-hallazgo";
+import { filasPrincipales } from "@/lib/orden-hallazgos";
 
 /**
  * PRINCIPALES HALLAZGOS — la fila es UNA LÍNEA (08-sep-2026).
@@ -45,9 +46,6 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * La regla base `.hz-fl` sigue en tinta y la de `.doc-dictamen` la repunta; desde el
  * 12-sep-2026 (retiro del andamio) el rediseño es el único camino y no hay informe sin marco.
  */
-/** 0 = frena (va arriba), 1 = ayuda o no mueve la aguja. */
-const grupo = (h: Hallazgo): number => (h.direccion === "adverso" ? 0 : 1);
-
 export function PrincipalesHallazgos({
   hallazgos,
   currency,
@@ -70,9 +68,10 @@ export function PrincipalesHallazgos({
   //
   // `sort` es estable en V8, así que dentro de cada grupo sobrevive el orden por
   // decisividad que ya venía. `neutral` viaja con «a favor»: no frena nada.
-  const top = hallazgos.slice(0, 4);
-  const enOrden = [...top].sort((a, b) => grupo(a) - grupo(b));
-  if (top.length === 0) return null;
+  // La regla vive en `filasPrincipales` (orden-hallazgos.ts) desde el 27-sep-2026: la landing
+  // muestra la primera de estas filas y tiene que ser la misma.
+  const enOrden = filasPrincipales(hallazgos);
+  if (enOrden.length === 0) return null;
   return (
     <div className="hz-list">
       {enOrden.map((h) => {

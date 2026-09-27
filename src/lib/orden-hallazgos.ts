@@ -117,6 +117,24 @@ function gatherHallazgos(
   return dedupHallazgos(out);
 }
 
+/** 0 = frena (va arriba), 1 = ayuda o no mueve la aguja. `neutral` viaja con «a favor». */
+const grupoFila = (h: Hallazgo): number => (h.direccion === "adverso" ? 0 : 1);
+
+/**
+ * LAS FILAS DE «ESTO ES LO QUE PESA», en el orden en que el informe las muestra (27-sep-2026).
+ *
+ * Los cuatro primeros del orden único y, dentro de ellos, en contra antes que a favor. Vivía
+ * dentro de `PrincipalesHallazgos`; sale acá porque la landing muestra la PRIMERA de estas filas
+ * junto a su miniatura del informe, y tiene que ser la misma que ve quien abre el informe.
+ *
+ * SE AGRUPA DESPUÉS DE CORTAR, y sobre una COPIA: cortar primero deja intacto CUÁLES cuatro entran
+ * (eso lo decide la decisividad del motor), y el orden único no se toca porque lo leen el PDF y los
+ * catch-tests. `sort` es estable: dentro de cada grupo sobrevive el orden por decisividad.
+ */
+export function filasPrincipales(hallazgos: Hallazgo[]): Hallazgo[] {
+  return [...hallazgos.slice(0, 4)].sort((a, b) => grupoFila(a) - grupoFila(b));
+}
+
 // Orden EXACTO que renderiza la pirámide (orden único C-umbral). Exportado: el
 // índice del hero toma sus primeros 3 de ESTE mismo array, y la navegación
 // prev/next de los drawers también se deriva de acá — un solo orden de verdad.
