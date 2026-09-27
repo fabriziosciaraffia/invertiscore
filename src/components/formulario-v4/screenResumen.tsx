@@ -556,13 +556,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
 
   // Estimados de zona (fallback de display cuando el override queda vacío tras
   // invalidar en una cascada de dirección).
-  const sugArriendo = data.arriendoSugerido ?? 0;
-  const occRef = data.airRoi.ocupacionReferencia;
-  const sugTarifa = data.airRoi.ingresoBrutoMensual > 0 && occRef > 0 ? Math.round(data.airRoi.ingresoBrutoMensual / (DIAS_MES * occRef)) : 0;
-  const sugOcc = occRef > 0 ? Math.round(occRef * 100) : 0;
-  const arriendoVal = leerNum(a.arriendo, DEC.arriendo) || sugArriendo;
-  const tarifaVal = leerNum(a.adrTarifa, DEC.tarifa) || sugTarifa;
-  const occVal = leerNum(a.adrOcupacion, DEC.ocupacion) || sugOcc;
+  const { sugArriendo, sugTarifa, sugOcc, arriendoVal, tarifaVal, occVal } = valoresRenta(a, data);
 
   // Fix pie-cero: el pie tiene que estar DECLARADO para generar — monto escrito,
   // y si es exactamente 0, con su razón. Cubre el agujero del resumen: acá se
@@ -608,30 +602,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
     }
   }
 
-  // Los 4 DERIVADOS del estado limpio. Nunca repiten lo que el usuario tipeó:
-  // son los números que no vio en ninguna pantalla y que delatan un error de
-  // magnitud aunque no llegue al umbral del guard.
-  const ufM2 = pUF > 0 && sup > 0 ? pUF / sup : 0;
-  // En AMBAS el retorno mostrado es el de RENTA LARGA: es el único que sale de
-  // un valor que el usuario tipeó (el arriendo) contra el precio. El de renta
-  // corta se apoya en la estimación de AirROI, que no es input suyo — confirmarle
-  // un número que no puso sería confirmarle otra cosa.
-  const retornoBruto = pUF > 0 && data.ufCLP > 0 && arriendoVal > 0
-    ? (arriendoVal * 12) / (pUF * data.ufCLP)
-    : 0;
-  // Formateo con los helpers del MÓDULO, no propios: tener dos era el motivo de
-  // que el mismo valor saliera "106667" acá y "106.667" en el estado anomalía, y
-  // de que un retorno de 0,004% se mostrara como "0,0%" perdiendo la información.
-  const derivadosResumen = [
-    { label: "Precio", valor: ufM2 > 0 ? `${formatearNumero(ufM2)} UF/m²` : "—" },
-    { label: "Dividendo", valor: cuota > 0 ? `${fmtCLP(cuota)}/mes` : "—" },
-    // Fase 5b: pie 0 declarado muestra $0 (dato), no "—" (ausencia).
-    { label: "Pie", valor: pct > 0 ? fmtCLP(pieUF(a, data.ufCLP) * data.ufCLP) : pieDeclarado ? fmtCLP(0) : "—" },
-    {
-      label: esLtr ? "Retorno bruto" : "Retorno bruto LTR",
-      valor: retornoBruto > 0 ? `${formatearPct(retornoBruto)} anual` : "—",
-    },
-  ];
+  // Los DERIVADOS del estado limpio del modal: una función pura, testeable (ver abajo).
+  const derivadosResumen = derivadosConfirmacion(a, data);
   const consumo = lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna);
 
   // Confirmación de dirección nueva → invalidación + nota de cascada. Comuna
@@ -789,6 +761,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
       if (esAnonimo) {
         try { sessionStorage.setItem("meta_anon_created", "1"); } catch { /* sin marca, sin evento */ }
       }
+      // El análisis existe: el borrador se cierra y el wizard no vuelve a ofrecer «retomar».
+      w.cerrarBorrador();
       window.location.href = res.redirect;
       return;
     }
@@ -1164,6 +1138,74 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
       </BarraCta>
     </div>
   );
+}
+
+/**
+ * Los valores de renta del resumen (y del modal): lo escrito o, si no hay, la estimación de la
+ * zona. Una sola lectura para las filas de «Cómo lo rentabilizas» y para los derivados del modal.
+ */
+export function valoresRenta(a: WizardV4Answers, data: WizardV4Data) {
+  const sugArriendo = data.arriendoSugerido ?? 0;
+  const occRef = data.airRoi.ocupacionReferencia;
+  const sugTarifa = data.airRoi.ingresoBrutoMensual > 0 && occRef > 0 ? Math.round(data.airRoi.ingresoBrutoMensual / (DIAS_MES * occRef)) : 0;
+  const sugOcc = occRef > 0 ? Math.round(occRef * 100) : 0;
+  return {
+    sugArriendo,
+    sugTarifa,
+    sugOcc,
+    arriendoVal: leerNum(a.arriendo, DEC.arriendo) || sugArriendo,
+    tarifaVal: leerNum(a.adrTarifa, DEC.tarifa) || sugTarifa,
+    occVal: leerNum(a.adrOcupacion, DEC.ocupacion) || sugOcc,
+  };
+}
+
+/**
+ * Los DERIVADOS del estado limpio del modal de confirmación. Nunca repiten lo que el usuario
+ * tipeó: son los números que no vio en ninguna pantalla y que delatan un error de magnitud aunque
+ * no llegue al umbral del guard. Formateo con los helpers del MÓDULO de plausibilidad, no propios
+ * (tener dos hacía salir "106667" acá y "106.667" en el estado anomalía).
+ *
+ * · EL PIE ES EL QUE VE EL BANCO (27-sep-2026): con «otra fuente», el monto de esa fuente
+ *   (`pieEfectivoPct`), no el $0 del campo del pie. En la unidad en que se escribió: pesos si se
+ *   escribió en pesos; si no, UF.
+ * · EL RETORNO ES EL DE LA MODALIDAD. En renta larga y en AMBAS, el de renta larga (sale del
+ *   arriendo contra el precio). En renta corta, el de renta corta —tarifa × ocupación, escrita o
+ *   estimada, contra el precio— o nada si no hay con qué. Antes renta corta decía «Retorno bruto
+ *   LTR»: un número de una modalidad que el usuario no eligió.
+ */
+export function derivadosConfirmacion(a: WizardV4Answers, data: WizardV4Data): Array<{ label: string; valor: string }> {
+  const uf = data.ufCLP;
+  const pUF = precioUF(a);
+  const sup = superficieM2(a);
+  const cuota = cuotaCLP(a, uf);
+  const precioCLPTotal = pUF * uf;
+  const esLtr = a.modalidad === "ltr" || a.modalidad === "both";
+  const { arriendoVal, tarifaVal, occVal } = valoresRenta(a, data);
+
+  const pieDeclarado = (a.pieMonto ?? "").trim() !== "";
+  const pieBanco = pieEfectivoPct(a, uf);
+  const otra = otraFuentePctCrudo(a, uf) > 0;
+  const pieBancoUF = (pUF * pieBanco) / 100;
+  const enPesos = (a.pieUnidad ?? "pct") === "clp";
+  // Fase 5b: pie 0 declarado muestra 0 (dato), no "—" (ausencia).
+  const pieValor = pieBanco > 0 || pieDeclarado
+    ? enPesos ? fmtCLP(pieBancoUF * uf) : fmtUF(pieBancoUF)
+    : "—";
+
+  const ufM2 = pUF > 0 && sup > 0 ? pUF / sup : 0;
+  const out = [
+    { label: "Precio", valor: ufM2 > 0 ? `${formatearNumero(ufM2)} UF/m²` : "—" },
+    { label: "Dividendo", valor: cuota > 0 ? `${fmtCLP(cuota)}/mes` : "—" },
+    { label: otra ? "Pie (otra fuente)" : "Pie", valor: pieValor },
+  ];
+  if (esLtr) {
+    const r = precioCLPTotal > 0 && arriendoVal > 0 ? (arriendoVal * 12) / precioCLPTotal : 0;
+    out.push({ label: "Retorno bruto", valor: r > 0 ? `${formatearPct(r)} anual` : "—" });
+  } else {
+    const r = precioCLPTotal > 0 && tarifaVal > 0 && occVal > 0 ? (tarifaVal * DIAS_MES * (occVal / 100) * 12) / precioCLPTotal : 0;
+    if (r > 0) out.push({ label: "Retorno bruto", valor: `${formatearPct(r)} anual` });
+  }
+  return out;
 }
 
 /**

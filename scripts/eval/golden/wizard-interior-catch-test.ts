@@ -267,6 +267,61 @@ export function runWizardInteriorTier(): { hard: number } {
   const dry = sinComentarios(leer("src/components/formulario-v4/useWizardV4DryRun.ts"));
   if (!/answers\.otraFuenteMonto, answers\.otraFuenteCredito, answers\.otraFuenteCuota,\s*\n\s*answers\.capacidadHuespedes, answers\.estaAmoblado,/.test(dry)) F("11 · el dry-run no se recalcula con otra fuente, huéspedes o amoblado");
 
+  // ── 12 · EL MODAL DE CONFIRMACIÓN (prueba de Fabrizio, 27-sep) ─────────────
+  // El pie es el que ve el banco, en la unidad escrita; el retorno es el de la modalidad.
+  /* eslint-disable-next-line @typescript-eslint/no-var-requires */
+  const { derivadosConfirmacion } = require("../../../src/components/formulario-v4/screenResumen");
+  const der = (a: WizardV4Answers, data = dataMock()) => derivadosConfirmacion(a, data) as Array<{ label: string; valor: string }>;
+  const OTRA_UF: WizardV4Answers = { ...OTRA, pieUnidad: "uf", otraFuenteMonto: "760" };
+  const pieModal = der(OTRA_UF).find((d) => d.label.startsWith("Pie"));
+  if (pieModal?.valor !== "UF 760" || pieModal.label !== "Pie (otra fuente)") F(`12 · con otra fuente por UF 760 el modal dice «${pieModal?.label}: ${pieModal?.valor}»`);
+  if (der(BASE).find((d) => d.label === "Pie")?.valor !== "UF 840") F("12 · con pie del 20% el modal no dice UF 840");
+  const enPesos = der({ ...BASE, pieUnidad: "clp", pieMonto: String(840 * UF) }).find((d) => d.label === "Pie")?.valor;
+  if (enPesos !== D.fmtCLP(840 * UF)) F(`12 · el pie escrito en pesos sale como ${enPesos}`);
+  if (der({ ...BASE, pieMonto: "0", pieRazon: "bono_pie" }).find((d) => d.label === "Pie")?.valor !== "UF 0") F("12 · el pie 0 declarado deja de mostrarse como dato");
+  const derStr = der(STR_A);
+  if (derStr.some((d) => /LTR/.test(d.label))) F("12 · en renta corta el modal vuelve a decir «Retorno bruto LTR»");
+  const retStr = derStr.find((d) => d.label === "Retorno bruto")?.valor;
+  const retLtr = der(BASE).find((d) => d.label === "Retorno bruto")?.valor;
+  if (!retStr || retStr === retLtr) F(`12 · en renta corta el retorno (${retStr}) no es el de renta corta`);
+  const sinAirroi = dataMock({ airRoi: { ingresoBrutoMensual: 0, ocupacionReferencia: 0, sampleSize: 0, source: null, isLoading: false, error: null } });
+  if (der({ ...STR_A, adrTarifa: undefined, adrOcupacion: undefined }, sinAirroi).some((d) => d.label === "Retorno bruto")) F("12 · renta corta sin tarifa inventa un retorno");
+  const resSrc = sinComentarios(leer("src/components/formulario-v4/screenResumen.tsx"));
+  if (!/const derivadosResumen = derivadosConfirmacion\(a, data\);/.test(resSrc) || !/derivados: derivadosResumen,/.test(resSrc)) F("12 · el modal no recibe los derivados de derivadosConfirmacion");
+
+  // ── 13 · GENERAR CIERRA EL BORRADOR (prueba de Fabrizio, 27-sep) ───────────
+  // Con storage en memoria, el mismo código que corre en producción: la key de esta pestaña se va
+  // y la de otra pestaña (otro análisis a medias) se queda.
+  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
+  class MemStorage { private m = new Map<string, string>(); get length() { return this.m.size; } key(i: number) { return [...this.m.keys()][i] ?? null; } getItem(k: string) { return this.m.get(k) ?? null; } setItem(k: string, v: string) { this.m.set(k, String(v)); } removeItem(k: string) { this.m.delete(k); } clear() { this.m.clear(); } }
+  const g = globalThis as any;
+  const previo = { ls: g.localStorage, ss: g.sessionStorage };
+  g.localStorage = new MemStorage();
+  g.sessionStorage = new MemStorage();
+  try {
+    const Dr = require("../../../src/components/formulario-v4/wizardV4Draft");
+    const dueno = "user-123";
+    const borrador = { answers: { ...BASE, modalidad: "ltr" }, completed: {}, current: "resumen", history: ["dir", "tipo"], mode: "flow" };
+    Dr.writeDraft(dueno, "TAB-A", borrador, 0);
+    if (!Dr.mostRecentDraft(dueno)) F("13 · el borrador de prueba no se escribió: el tier no midió");
+    Dr.writeDraft(dueno, "TAB-B", borrador, 0);
+    Dr.cerrarBorradorGenerado(dueno, "TAB-A");
+    const queda = Dr.mostRecentDraft(dueno);
+    if (!queda || !/TAB-B$/.test(queda.key)) F("13 · al generar se borra el borrador de otra pestaña, o sobrevive el de esta");
+    Dr.cerrarBorradorGenerado(dueno, "TAB-B");
+    if (Dr.mostRecentDraft(dueno) !== null) F("13 · generado el análisis, el wizard sigue ofreciendo «retomar»");
+  } finally {
+    g.localStorage = previo.ls;
+    g.sessionStorage = previo.ss;
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
+  const hook = sinComentarios(leer("src/components/formulario-v4/useWizardV4.ts"));
+  if (!/const cerrarBorrador = useCallback\(\(\) => \{\s*\n\s*cerrado\.current = true;\s*\n\s*cerrarBorradorGenerado\(owner \?\? "", tabId\.current\);/.test(hook)) F("13 · el hook no cierra el borrador ni deja de persistir");
+  if (!/if \(cerrado\.current \|\| draftPendiente/.test(hook) || !/const t = setTimeout\(\(\) => \{\s*\n\s*if \(cerrado\.current\) return;/.test(hook)) F("13 · una escritura pendiente del debounce puede revivir el borrador");
+  const exito = resSrc.match(/if \(res\.ok && res\.redirect\) \{[\s\S]*?window\.location\.href = res\.redirect;/);
+  if (!exito || !/w\.cerrarBorrador\(\);\s*\n\s*window\.location\.href = res\.redirect;/.test(exito[0])) F("13 · el submit exitoso no cierra el borrador antes de irse");
+  if ((resSrc.match(/w\.cerrarBorrador\(\)/g) ?? []).length !== 1) F("13 · el borrador se cierra fuera del éxito del submit (el registro lo necesita para volver)");
+
   if (fallas.length) {
     console.log(`  ✗ WIZARD-INTERIOR · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
@@ -299,3 +354,11 @@ if (require.main === module) {
 //    I12 «Pie 0%» también con otra fuente          I26 el aviso del mapa vuelve a mono
 //    I13 otra fuente vuelve a decir «ahorro»       I27 el resumen deja la barra fija
 //    I14 los supuestos del arriendo bajo el botón
+//
+// ACTAS de la prueba de Fabrizio (27-sep-2026, puntos 12 y 13) — las 11 en ROJO; restauradas, VERDE.
+//    A1 el modal usa el pie escrito y no el que ve el banco    B1 cerrar no borra nada
+//    A2 el resumen no le pasa derivadosConfirmacion al modal   B2 cerrar borra las otras pestañas
+//    A3 el pie siempre en pesos                                B3 el hook no deja de persistir
+//    A4 renta corta vuelve al retorno de renta larga           B4 el debounce revive el borrador
+//    A5 renta corta rotula «LTR»                                B5 el submit no cierra el borrador
+//                                                              B6 el registro también lo cierra

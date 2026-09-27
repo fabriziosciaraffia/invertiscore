@@ -23,6 +23,7 @@ import {
   adoptarDraftInvitado,
   adoptarEnEstaPestana,
   cleanupOrphans,
+  cerrarBorradorGenerado,
   descartarBorradores,
   getTabId,
   keyFor,
@@ -80,6 +81,8 @@ export interface UseWizardV4 {
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
   /** Retoma el draft ofrecido. */
   resumeDraft: () => void;
+  /** El análisis se generó: retira el borrador de esta pestaña y deja de persistir. */
+  cerrarBorrador: () => void;
   /** Descarta el draft ofrecido y arranca limpio. */
   discardDraft: () => void;
   /** ¿Se muestra el banner de retomar? (solo en la primera pantalla). */
@@ -121,6 +124,10 @@ export function useWizardV4({
   const tabId = useRef<string>("");
   const draftVersion = useRef(0); // versión monotónica de la escritura de ESTA pestaña
   const offeredKey = useRef<string | null>(null); // key del draft ofrecido en el banner
+  // El análisis ya se generó (27-sep-2026): no se escribe más. Lo lee la persistencia en los dos
+  // momentos —al programar y al disparar el debounce—, porque una escritura pendiente de 500 ms
+  // reviviría el borrador recién borrado.
+  const cerrado = useRef(false);
 
   // ── Mount: limpiar huérfanas + ofrecer el draft más reciente entre pestañas.
   //    ?resume=1 (vuelta post-registro, misma pestaña) rehidrata directo al
@@ -177,8 +184,9 @@ export function useWizardV4({
   //    mientras hay un draft pendiente sin resolver (evita pisar con el form
   //    limpio). Versión monotónica por escritura. ──
   useEffect(() => {
-    if (draftPendiente || !tabId.current || !owner) return;
+    if (cerrado.current || draftPendiente || !tabId.current || !owner) return;
     const t = setTimeout(() => {
+      if (cerrado.current) return;
       // Solo vale la pena guardar si el usuario avanzó algo.
       if (nav.current === "mod" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
         return;
@@ -277,6 +285,11 @@ export function useWizardV4({
     setDraftPendiente(null);
   }, [draftPendiente, owner]);
 
+  const cerrarBorrador = useCallback(() => {
+    cerrado.current = true;
+    cerrarBorradorGenerado(owner ?? "", tabId.current);
+  }, [owner]);
+
   const discardDraft = useCallback(() => {
     // "Empezar de cero" = ningún borrador del dueño sobrevive, no solo dos.
     descartarBorradores(owner ?? "");
@@ -319,6 +332,7 @@ export function useWizardV4({
     goBack,
     goDetour,
     resumeDraft,
+    cerrarBorrador,
     discardDraft,
     bannerDraftVisible,
     canGoBack,

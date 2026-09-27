@@ -265,6 +265,26 @@ export function mostrarBannerDraft(
 }
 
 /**
+ * "Generar" — el análisis ya existe: el borrador de ESTA pestaña se retira (27-sep-2026).
+ *
+ * Hasta acá nada lo borraba, así que el wizard volvía a ofrecer «retomar» un análisis que ya
+ * estaba hecho. Se borra solo la key de esta pestaña: es la que tiene este análisis (al retomar,
+ * el borrador se muda a ella). Los borradores de OTRAS pestañas son otros análisis a medias y se
+ * quedan.
+ *
+ * Borrar no alcanza solo: la persistencia del hook tiene un debounce de 500 ms, y una escritura
+ * pendiente reviviría la key después del borrado. Por eso el hook, además de llamar a esto, deja de
+ * persistir (`cerrarBorrador` en useWizardV4).
+ *
+ * Solo se llama con el análisis CREADO (respuesta ok con destino). Si el submit falla, o si el
+ * camino es el registro —que vuelve con `?resume=1` y necesita el borrador—, no se toca.
+ */
+export function cerrarBorradorGenerado(owner: string, tabId: string): void {
+  if (!owner || !tabId) return;
+  removeDraft(owner, tabId);
+}
+
+/**
  * "Empezar de cero" — borra TODOS los borradores del dueño actual.
  *
  * No alcanza con borrar la de esta pestaña y la ofrecida: con tres o más keys
