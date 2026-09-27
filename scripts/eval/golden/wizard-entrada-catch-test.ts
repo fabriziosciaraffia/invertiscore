@@ -9,8 +9,9 @@
 //   7 · EL MAPA ES SIEMPRE LA SEGUNDA (27-sep-2026, prueba en el teléfono): con número también; el
 //       pin parte en la dirección elegida, que no se rebautiza si nadie lo mueve; el mapa lleva los
 //       comparables y el conteo del mismo hook que la reacción, y se sigue con «Continuar».
-//   8 · EN EL TELÉFONO, UNA HOJA: bajo 768 px el campo abre una hoja a pantalla completa, con el
-//       campo arriba y las sugerencias fijas debajo; el widget se vuelve a atar al input de la hoja.
+//   8 · EN EL TELÉFONO, UNA HOJA: bajo 768 px el campo abre la hoja de los capítulos —el mismo Modal,
+//       con asa, velo y cierre—, con el campo arriba y las sugerencias fijas justo debajo; el widget
+//       se vuelve a atar al input de la hoja y cinco sugerencias caben sobre el teclado.
 //   3 · LA PORTADA VIEJA SALIÓ ENTERA: chips de comuna, buscador, «¿se paga solo?», «todavía no
 //       tengo uno», sus eventos y la ruta de cifras por comuna que solo ella leía.
 //   4 · UN SOLO COMPONENTE. La portada es `HeroEntrada` sobre el hook compartido, con los tres
@@ -160,16 +161,37 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/for \(const p of validos\) \{\s*\n\s*puntosRef\.current\.push\(new google\.maps\.Marker\(/.test(pinSrc) || !/\}, \[puntos, listo\]\);/.test(pinSrc)) F("7 · el mapa no dibuja los comparables ni los redibuja al cambiar");
 
   // ── 8 · EN EL TELÉFONO, UNA HOJA ───────────────────────────────────────────
+  // ACTA 27-sep-2026 (segunda prueba de Fabrizio): la hoja a pantalla completa se sentía como salir
+  // de Franco a un formulario. Ahora es el Modal de los capítulos, y estas reglas fijan eso.
   if (!/export const MQ_HOJA = "\(max-width: 767px\)";/.test(hero) || !/window\.matchMedia\(MQ_HOJA\)/.test(hero)) F("8 · el hero no distingue el teléfono");
-  if (!/clave: !usaHoja \? "hero" : hoja \? "hoja" : "cerrada",/.test(hero)) F("8 · el widget no se vuelve a atar al input de la hoja");
+  if (!/clave: !usaHoja \? "hero" : hoja && Hoja \? "hoja" : "cerrada",/.test(hero)) F("8 · el widget no se vuelve a atar al input de la hoja");
   if (!/const abrirHoja = \(\) => \{\s*\n\s*flushSync\(\(\) => setHoja\(true\)\);\s*\n\s*inputRef\.current\?\.focus\(\);/.test(hero)) F("8 · la hoja no se enfoca en el mismo toque (iOS no abre el teclado)");
   if (!/\{usaHoja \? \(\s*\n\s*<button[^>]*onClick=\{abrirHoja\}/.test(hero)) F("8 · en el teléfono, tocar el campo no abre la hoja");
-  if (!/\{hoja && createPortal\(\s*\n\s*<div className="he-hoja" role="dialog"[\s\S]{0,600}?<input\s*\n\s*ref=\{inputRef\}/.test(hero)) F("8 · la hoja no lleva el campo arriba con el input vivo");
+  if (!/import\("\.\/HojaDireccion"\)\.then\(\(m\) => \{ if \(vivo\) setHojaComp\(\(\) => m\.default\); \}\);/.test(hero) || !/if \(!usaHoja \|\| Hoja\) return;/.test(hero)) F("8 · la hoja no se precarga en el teléfono: el primer toque no alcanzaría a enfocarla");
+  if (!/\{Hoja && hoja && \(\s*\n\s*<Hoja abierto onClose=\{\(\) => setHoja\(false\)\}>\s*\n\s*<form className="he-hoja-campo"[^>]*>\s*\n\s*<input\s*\n\s*ref=\{inputRef\}/.test(hero)) F("8 · la hoja no lleva el campo arriba con el input vivo");
+  const hojaSrc = sinComentarios(leer("src/components/entrada/HojaDireccion.tsx"));
+  if (!/import \{ Modal \} from "@\/components\/analysis\/hallazgos\/vocabulario";/.test(hojaSrc) || !/<Modal abierto=\{abierto\} onClose=\{onClose\}/.test(hojaSrc)) F("8 · la hoja no es el Modal de los capítulos y los pop-ups");
+  if (!/<div className="doc-tokens[^"]*">\s*\n\s*<DocTokens \/>\s*\n\s*<TokensHallazgos \/>\s*\n\s*<Modal/.test(hojaSrc)) F("8 · la hoja no monta los tokens y el CSS del Modal (saldría sin asa ni velo)");
+  if (!/createPortal\(/.test(hojaSrc)) F("8 · la hoja no va en portal: una transformación del wizard la dejaría fuera de lugar");
   const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
   if (!/\}, \[activo, clave\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
   const css = leer("src/components/entrada/hero-entrada.css");
-  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css) || !/\.he-hoja-cab \{ height: 64px;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja");
-  if (!/html\.he-hoja-abierta, html\.he-hoja-abierta body \{ overflow: hidden; \}/.test(css)) F("8 · la página se desplaza detrás de la hoja");
+  if (/\.he-hoja \{[^}]*inset: 0/.test(css) || /he-hoja-cancelar/.test(css + hero)) F("8 · vuelve la hoja a pantalla completa");
+  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: var\(--he-pac-top, [0-9]+px\) !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja, a lo ancho");
+  if (!/const dentro = inp\.getBoundingClientRect\(\)\.bottom - modal\.getBoundingClientRect\(\)\.top;\s*\n\s*html\.style\.setProperty\("--he-pac-top", `\$\{Math\.round\(window\.innerHeight - modal\.offsetHeight \+ dentro \+ 6\)\}px`\);/.test(hero)) F("8 · la posición de las sugerencias no se mide sin la animación de entrada");
+  // Si la hoja se toca antes de que llegue su código, la medición tiene que volver a correr cuando
+  // llega (visto en local: sin `Hoja` en las dependencias, las sugerencias quedaban en el valor por defecto).
+  if (!/html\.style\.removeProperty\("--he-pac-top"\);\s*\n\s*\};\s*\n\s*\}, \[hoja, Hoja, inputRef\]\);/.test(hero)) F("8 · la posición de las sugerencias no se vuelve a medir cuando llega la hoja");
+  // CINCO SUGERENCIAS SOBRE EL TECLADO. El presupuesto sale del CSS: con el teclado abierto a 390
+  // quedan unos 464 px visibles, y el campo de la hoja termina cerca de 190 (velo 56, asa, cabecera,
+  // campo): a las cinco les quedan ~270 px. Medido además en el navegador en cada preview.
+  const item = css.match(/html\.he-hoja-abierta \.pac-item \{ line-height: ([0-9.]+); padding: ([0-9]+)px [0-9]+px;[^}]*font-size: ([0-9]+)px;/);
+  const query = css.match(/html\.he-hoja-abierta \.pac-item-query \{ display: block; font-size: ([0-9]+)px;/);
+  if (!item || !query) F("8 · no encuentro el alto de las sugerencias en el CSS (el extractor no corrió)");
+  else {
+    const alto = 2 * Number(item[2]) + Number(item[1]) * (Number(query[1]) + Number(item[3]));
+    if (5 * alto > 270) F(`8 · cinco sugerencias miden ${Math.round(5 * alto)} px: no caben sobre el teclado (tope 270)`);
+  }
 
   // ── 5 · EVENTOS Y EMBUDO ───────────────────────────────────────────────────
   if (!/"wizard4_entrada_camino", \{ camino: "escribir"/.test(ent) || !/trackWizard\(posthog, "wizard4_entrada_camino", \{ camino \}\);/.test(ent)) F("5 · falta el evento del camino elegido");
@@ -248,3 +270,8 @@ if (require.main === module) {
 //   8b el hook no re-ata · 8c la hoja se enfoca tarde · 8d las sugerencias no quedan fijas.
 //   Tras el preview, 8e (en ROJO): sin `max-width: none` la regla global de globals.css las dejaba
 //   32 px cortas; medido en el preview (358 de 390).
+// Sexta tanda (27-sep-2026, la hoja es el Modal de los capítulos), las 10 en ROJO: 8f la hoja deja de
+//   ser el Modal · 8g sin los tokens del Modal · 8h sin portal · 8i sin precarga · 8j vuelve la hoja
+//   a pantalla completa · 8k las sugerencias sin la posición medida · 8l la medición con la
+//   animación · 8m cinco sugerencias no caben (padding 14) · 8n el campo sale de arriba de la hoja ·
+//   8o la medición no re-corre cuando llega el código de la hoja.

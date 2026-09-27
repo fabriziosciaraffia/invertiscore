@@ -14,15 +14,17 @@
 // botón o Enter sin haber elegido, se intenta el respaldo por texto; si tampoco resuelve, lo dice y
 // ofrece el mapa. Nunca un callejón sin salida.
 //
-// EN EL TELÉFONO, UNA HOJA (27-sep-2026, prueba de Fabrizio): el desplegable de Places colgaba bajo
-// el campo, a media pantalla, cortado y tapado por el teclado. Bajo 768 px, tocar el campo abre una
-// hoja a pantalla completa con el campo arriba y las sugerencias pegadas debajo, así el teclado queda
-// bajo ellas. La hoja se abre y se enfoca en el mismo toque (`flushSync` + `focus`), que es lo que
-// deja a iOS abrir el teclado. En escritorio, el desplegable como estaba.
+// EN EL TELÉFONO, UNA HOJA (27-sep-2026, pruebas de Fabrizio): el desplegable de Places colgaba bajo
+// el campo, a media pantalla, cortado y tapado por el teclado. Bajo 768 px, tocar el campo abre la
+// hoja de los capítulos y los pop-ups —el mismo `Modal`, con su asa, su velo y su cierre; ver
+// `HojaDireccion.tsx`—, que sube desde abajo y deja el hero a la vista arriba. El campo va arriba de
+// la hoja y las sugerencias pegadas debajo, así el teclado queda bajo ellas. La hoja se abre y se
+// enfoca en el mismo toque (`flushSync` + `focus`), que es lo que deja a iOS abrir el teclado; por
+// eso su código se precarga apenas se sabe que es un teléfono. En escritorio, el desplegable.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { useDireccionPlaces, type SeleccionDireccion } from "./useDireccionPlaces";
 import "./hero-entrada.css";
 
@@ -105,6 +107,15 @@ export function HeroEntrada({
   const focoMedido = useRef(false);
   const usaHoja = useUsaHoja();
   const [hoja, setHoja] = useState(false);
+  // El componente de la hoja, cargado aparte: se pide apenas se sabe que es un teléfono, para que al
+  // tocar el campo ya esté y la hoja se abra (y enfoque) en el mismo toque.
+  const [Hoja, setHojaComp] = useState<ComponentType<{ abierto: boolean; onClose: () => void; children: ReactNode }> | null>(null);
+  useEffect(() => {
+    if (!usaHoja || Hoja) return;
+    let vivo = true;
+    import("./HojaDireccion").then((m) => { if (vivo) setHojaComp(() => m.default); });
+    return () => { vivo = false; };
+  }, [usaHoja, Hoja]);
 
   const entregar = (sel: SeleccionDireccion) => {
     // Una opción que no es una calle (un barrio, una comuna) no se confirma: se dice acá.
@@ -122,7 +133,7 @@ export function HeroEntrada({
   const { inputRef, geocodificarEscrita } = useDireccionPlaces({
     activo: true,
     comuna: null,
-    clave: !usaHoja ? "hero" : hoja ? "hoja" : "cerrada",
+    clave: !usaHoja ? "hero" : hoja && Hoja ? "hoja" : "cerrada",
     onSeleccion: (sel) => {
       seleccionRef.current = sel;
       setTexto(sel.direccion);
@@ -175,15 +186,38 @@ export function HeroEntrada({
     if (!usaHoja) setHoja(false);
   }, [usaHoja]);
 
-  // Con la hoja abierta la página no se desplaza detrás, y Escape la cierra.
+  // Si la hoja se tocó antes de que su código llegara, se abre cuando llega y el campo se enfoca
+  // igual (en iOS, sin teclado hasta que se toque el campo: el foco ya no viene del toque).
+  useEffect(() => {
+    if (hoja && Hoja && document.activeElement !== inputRef.current) inputRef.current?.focus();
+  }, [hoja, Hoja, inputRef]);
+
+  // Con la hoja abierta, las sugerencias de Places se fijan justo bajo el campo de la hoja. El bloqueo
+  // del scroll, Escape y atrás los pone el Modal. La posición se mide sin la animación de entrada:
+  // la distancia del campo al borde de la hoja (las dos se transforman igual) más el borde final.
   useEffect(() => {
     if (!hoja) return;
     const html = document.documentElement;
     html.classList.add("he-hoja-abierta");
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setHoja(false); };
-    window.addEventListener("keydown", onKey);
-    return () => { html.classList.remove("he-hoja-abierta"); window.removeEventListener("keydown", onKey); };
-  }, [hoja]);
+    const colocar = () => {
+      const inp = inputRef.current;
+      const modal = inp?.closest(".v-modal") as HTMLElement | null;
+      if (!inp || !modal) return;
+      const dentro = inp.getBoundingClientRect().bottom - modal.getBoundingClientRect().top;
+      html.style.setProperty("--he-pac-top", `${Math.round(window.innerHeight - modal.offsetHeight + dentro + 6)}px`);
+    };
+    colocar();
+    const t = setTimeout(colocar, 260);
+    window.addEventListener("resize", colocar);
+    window.visualViewport?.addEventListener("resize", colocar);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", colocar);
+      window.visualViewport?.removeEventListener("resize", colocar);
+      html.classList.remove("he-hoja-abierta");
+      html.style.removeProperty("--he-pac-top");
+    };
+  }, [hoja, Hoja, inputRef]);
 
   const onCambio = (e: ChangeEvent<HTMLInputElement>) => {
     setTexto(e.target.value);
@@ -288,42 +322,36 @@ export function HeroEntrada({
         {despues}
       </div>
       {pie && <div className="he-col he-foot">{pie}</div>}
-      {hoja && createPortal(
-        <div className="he-hoja" role="dialog" aria-modal="true" aria-label="Dirección del departamento">
-          <div className="he-hoja-cab">
-            <form className="he-hoja-campo" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
-              <input
-                ref={inputRef}
-                className="he-hoja-input"
-                type="text"
-                autoComplete="off"
-                inputMode="text"
-                enterKeyHint="search"
-                aria-label="Escribe la dirección del departamento"
-                placeholder="Calle y número"
-                value={texto}
-                onChange={onCambio}
-              />
-              <button type="submit" className="he-hoja-ir" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
-            </form>
-            <button type="button" className="he-hoja-cancelar" onClick={() => setHoja(false)}>Cancelar</button>
+      {Hoja && hoja && (
+        <Hoja abierto onClose={() => setHoja(false)}>
+          <form className="he-hoja-campo" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
+            <input
+              ref={inputRef}
+              className="he-hoja-input"
+              type="text"
+              autoComplete="off"
+              inputMode="text"
+              enterKeyHint="search"
+              aria-label="Escribe la dirección del departamento"
+              placeholder="Calle y número"
+              value={texto}
+              onChange={onCambio}
+            />
+            <button type="submit" className="he-hoja-ir" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
+          </form>
+          {buscando ? (
+            <p className="he-hoja-ayuda">Buscando la dirección…</p>
+          ) : aviso ? (
+            <p className="he-hoja-aviso" role="status">{aviso}</p>
+          ) : (
+            <p className="he-hoja-ayuda">Escribe la calle y el número, y elige la dirección de la lista.</p>
+          )}
+          <div className="he-hoja-alt">
+            <span>¿No tienes la dirección?</span>
+            <button type="button" onClick={() => { setHoja(false); onCamino("ubicacion"); }}>Estoy en el depto<span aria-hidden="true">→</span></button>
+            <button type="button" onClick={() => { setHoja(false); onCamino("mapa"); }}>Marcarlo en el mapa<span aria-hidden="true">→</span></button>
           </div>
-          <div className="he-hoja-cuerpo">
-            {buscando ? (
-              <p className="he-hoja-ayuda">Buscando la dirección…</p>
-            ) : aviso ? (
-              <p className="he-hoja-aviso" role="status">{aviso}</p>
-            ) : (
-              <p className="he-hoja-ayuda">Escribe la calle y el número, y elige la dirección de la lista.</p>
-            )}
-            <div className="he-hoja-alt">
-              <span>¿No tienes la dirección?</span>
-              <button type="button" onClick={() => { setHoja(false); onCamino("ubicacion"); }}>Estoy en el depto<span aria-hidden="true">→</span></button>
-              <button type="button" onClick={() => { setHoja(false); onCamino("mapa"); }}>Marcarlo en el mapa<span aria-hidden="true">→</span></button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+        </Hoja>
       )}
     </section>
   );

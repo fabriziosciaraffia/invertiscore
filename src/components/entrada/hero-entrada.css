@@ -110,39 +110,38 @@ body:has(.he-root) .pac-item:hover, body:has(.he-root) .pac-item-selected { back
   cursor: text; -webkit-tap-highlight-color: transparent;
 }
 
-/* ── LA HOJA A PANTALLA COMPLETA (27-sep-2026) ──
-   Cuelga del <body> (portal), así que no hereda nada de .he-root: papel y tinta propios, iguales en
-   los dos temas, como el campo del hero. El campo arriba, las sugerencias pegadas debajo y a lo
-   ancho, y el teclado bajo ellas. */
-html.he-hoja-abierta, html.he-hoja-abierta body { overflow: hidden; }
-.he-hoja {
-  position: fixed; inset: 0; z-index: 3050; display: flex; flex-direction: column;
-  background: #FFFFFF; color: #18181B; font-family: var(--font-ui), "Inter", system-ui, sans-serif;
-}
-.he-hoja-cab { height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #E9E9EC; box-sizing: border-box; }
-.he-hoja-campo { flex: 1; min-width: 0; height: 46px; display: flex; align-items: center; gap: 6px; background: #F4F4F6; border-radius: 12px; padding: 0 4px 0 14px; }
-.he-hoja-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 0; font: inherit; color: #0F0F0F; caret-color: #0F0F0F; }
+/* ── LA HOJA (27-sep-2026) ──
+   El Modal de los capítulos (HojaDireccion.tsx) pone la hoja: asa, velo, cabecera y ✕, y sus
+   tokens --doc-*, así que sigue el tema como las hojas del informe. Acá va solo lo de adentro: el
+   campo arriba, la ayuda y los dos caminos sin dirección. */
+.he-hoja-campo { height: 48px; display: flex; align-items: center; gap: 6px; background: var(--doc-inset-1, #F4F4F6); border: 1px solid var(--doc-line2, #D6D6DB); border-radius: 12px; padding: 0 4px 0 14px; }
+.he-hoja-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 0; font: inherit; color: var(--doc-tx, #18181B); caret-color: var(--doc-tx, #18181B); }
 html .he-hoja-input { font-size: 17px !important; }
-.he-hoja-input::placeholder { color: #A1A1AA; }
-.he-hoja-ir { width: 38px; height: 38px; flex: none; border: 0; border-radius: 10px; background: #0F0F0F; color: #fff; font-size: 18px; font-weight: 700; cursor: pointer; }
+.he-hoja-input::placeholder { color: var(--doc-tx4, #A1A1AA); }
+.he-hoja-ir { width: 38px; height: 38px; flex: none; border: 0; border-radius: 10px; background: var(--doc-tx, #0F0F0F); color: var(--doc-inset-0, #fff); font-size: 18px; font-weight: 700; cursor: pointer; }
 .he-hoja-ir:disabled { opacity: 0.6; }
-.he-hoja-cancelar { flex: none; border: 0; background: none; padding: 8px 0; font: inherit; font-size: 15px; font-weight: 500; color: #3F3F46; cursor: pointer; }
-.he-hoja-cuerpo { padding: 16px; }
-.he-hoja-ayuda { margin: 0; font-size: 14px; line-height: 1.5; color: #71717A; }
-.he-hoja-aviso { margin: 0; font-size: 14px; line-height: 1.5; color: #18181B; }
-.he-hoja-alt { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; font-size: 14px; color: #71717A; }
+.he-hoja-ayuda { margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: var(--doc-tx3, #71717A); }
+.he-hoja-aviso { margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: var(--doc-tx, #18181B); }
+.he-hoja-alt { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; font-size: 14px; color: var(--doc-tx3, #71717A); }
 .he-hoja-alt > span { padding: 4px 0; }
-.he-hoja-alt button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 500; color: #18181B; cursor: pointer; }
-/* las sugerencias: fijas bajo la cabecera de la hoja, a todo el ancho, dos líneas por ítem */
-/* `max-width: none` anula el `calc(100vw - 2rem) !important` global de globals.css, que la dejaba
+.he-hoja-alt button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 500; color: var(--doc-tx, #18181B); cursor: pointer; }
+/* las sugerencias: fijas justo bajo el campo de la hoja (--he-pac-top lo mide HeroEntrada), a lo
+   ancho de la hoja y en dos líneas compactas, para que las cinco quepan sobre el teclado.
+   `max-width: none` anula el `calc(100vw - 2rem) !important` global de globals.css, que la dejaba
    32 px corta. La coincidencia va en tinta: en la hoja no hay rojo decorativo. */
 html.he-hoja-abierta .pac-container {
-  position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important; max-width: none !important;
-  margin: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid #E9E9EC; z-index: 3100;
+  position: fixed !important; top: var(--he-pac-top, 150px) !important; left: 0 !important; width: 100% !important; max-width: none !important;
+  margin: 0; border-radius: 0; border: 0; border-top: 1px solid #E9E9EC; border-bottom: 1px solid #E9E9EC; box-shadow: 0 16px 28px -18px rgba(0, 0, 0, 0.35); z-index: 3100;
 }
-html.he-hoja-abierta .pac-item { line-height: 1.35; padding: 11px 16px; white-space: normal; font-size: 14px; color: #71717A; }
-html.he-hoja-abierta .pac-item-query { display: block; font-size: 16px; }
+html.he-hoja-abierta .pac-item { line-height: 1.3; padding: 7px 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #71717A; }
+html.he-hoja-abierta .pac-item-query { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
 html.he-hoja-abierta .pac-matched { color: inherit; }
+/* en oscuro, las sugerencias con el papel oscuro de la hoja (--doc-paper / --doc-tx del informe) */
+html.he-hoja-abierta:not([data-theme="light"]) .pac-container { background: #0C0C0E; border-color: #232327; }
+html.he-hoja-abierta:not([data-theme="light"]) .pac-item { color: #A1A1AA; border-top-color: #232327; }
+html.he-hoja-abierta:not([data-theme="light"]) .pac-item-query { color: #FAFAFA; }
+html.he-hoja-abierta:not([data-theme="light"]) .pac-item:hover,
+html.he-hoja-abierta:not([data-theme="light"]) .pac-item-selected { background: #1A1A1E; }
 
 @media (min-width: 768px) {
   .he-top { min-height: 88px; padding-top: 20px; }
