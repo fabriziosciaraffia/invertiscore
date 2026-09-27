@@ -153,7 +153,9 @@ export async function runWizardDatosTier(): Promise<{ hard: number }> {
   if (!/precision: precisionDeComponentes\(comps\),/.test(hook)) F("3 · el campo compartido no mide la precisión de la sugerencia de Places");
   if (!/if \(!r\.ok \|\| j\.lat == null \|\| j\.lng == null \|\| !j\.precision\) return null;/.test(hook)) F("3 · el respaldo del campo compartido confirma sin precisión");
   const hero = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
-  if (!/const entregar = \(sel: SeleccionDireccion\) => \{\s*\n\s*if \(!sel\.precision\) \{[\s\S]{0,160}?return;\s*\}[\s\S]{0,40}?onDireccion\(sel\);/.test(hero)) F("3 · el hero entrega una sugerencia de Places sin calle");
+  // ACTA 27-sep-2026: la ventana tras el `return` pasa de 40 a 80 caracteres porque `entregar` cierra
+  // la hoja del teléfono (`setHoja(false)`) antes de entregar; el guard lo dio en rojo, no en silencio.
+  if (!/const entregar = \(sel: SeleccionDireccion\) => \{\s*\n\s*if \(!sel\.precision\) \{[\s\S]{0,160}?return;\s*\}[\s\S]{0,80}?onDireccion\(sel\);/.test(hero)) F("3 · el hero entrega una sugerencia de Places sin calle");
   const ent = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
   // ACTA 27-sep-2026: la portada ya no confirma NINGUNA dirección —el mapa es siempre la segunda
   // pantalla—, así que la regla se mide así: las dos van al mapa sin confirmar, cada una con su
@@ -204,4 +206,5 @@ if (require.main === module) {
 //
 // ACTA 27-sep-2026 (el mapa siempre segundo): la portada ya no confirma ninguna dirección; las dos
 // van al mapa con su precisión. Vistas en ROJO con dos mutaciones: la calle sin número va al mapa
-// como «numero» · la portada confirma con número.
+// como «numero» · la portada confirma con número. Con la hoja del teléfono, la ventana de
+// `entregar` pasa a 80 y se vio en ROJO con «el hero entrega lo que no es calle».

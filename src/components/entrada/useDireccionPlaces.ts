@@ -47,6 +47,9 @@ export interface UseDireccionPlacesOpts {
   comuna?: string | null;
   /** Se llama con la selección de Places, sea calle o no: el consumidor decide. */
   onSeleccion: (s: SeleccionDireccion) => void;
+  /** Cambia cuando el <input> vivo es otro (en el teléfono, el campo se muda a una hoja a pantalla
+   *  completa): el widget se vuelve a atar al nodo nuevo. */
+  clave?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +58,7 @@ function aLatLngBounds(google: any, caja: Caja) {
   return new google.maps.LatLngBounds(new google.maps.LatLng(sur, oeste), new google.maps.LatLng(norte, este));
 }
 
-export function useDireccionPlaces({ activo, comuna, onSeleccion }: UseDireccionPlacesOpts) {
+export function useDireccionPlaces({ activo, comuna, onSeleccion, clave }: UseDireccionPlacesOpts) {
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const acRef = useRef<any>(null);
@@ -131,7 +134,7 @@ export function useDireccionPlaces({ activo, comuna, onSeleccion }: UseDireccion
       })
       .catch(() => { /* sin Google no hay desplegable; el respaldo por texto sigue disponible */ });
     return () => { cancelado = true; };
-  }, [activo]);
+  }, [activo, clave]);
 
   // La comuna puede cambiar sin que el input se remonte: se le mueve la caja al widget vivo.
   useEffect(() => {

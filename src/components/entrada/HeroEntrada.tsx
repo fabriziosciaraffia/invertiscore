@@ -13,9 +13,16 @@
 // Elegir del desplegable ES enviar, igual en los dos: no hay un segundo botón que confirmar. Con el
 // botón o Enter sin haber elegido, se intenta el respaldo por texto; si tampoco resuelve, lo dice y
 // ofrece el mapa. Nunca un callejón sin salida.
+//
+// EN EL TELÉFONO, UNA HOJA (27-sep-2026, prueba de Fabrizio): el desplegable de Places colgaba bajo
+// el campo, a media pantalla, cortado y tapado por el teclado. Bajo 768 px, tocar el campo abre una
+// hoja a pantalla completa con el campo arriba y las sugerencias pegadas debajo, así el teclado queda
+// bajo ellas. La hoja se abre y se enfoca en el mismo toque (`flushSync` + `focus`), que es lo que
+// deja a iOS abrir el teclado. En escritorio, el desplegable como estaba.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { createPortal, flushSync } from "react-dom";
 import { useDireccionPlaces, type SeleccionDireccion } from "./useDireccionPlaces";
 import "./hero-entrada.css";
 
@@ -30,6 +37,21 @@ export const DIRECCIONES_EJEMPLO = [
 ] as const;
 
 export type CaminoSinDireccion = "ubicacion" | "mapa";
+
+/** Bajo este ancho el campo abre la hoja a pantalla completa. */
+export const MQ_HOJA = "(max-width: 767px)";
+
+function useUsaHoja(): boolean {
+  const [usa, setUsa] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(MQ_HOJA);
+    const leer = () => setUsa(mq.matches);
+    leer();
+    mq.addEventListener("change", leer);
+    return () => mq.removeEventListener("change", leer);
+  }, []);
+  return usa;
+}
 
 /** Lo que el campo le cuenta a quien lo monta, para su telemetría. */
 export type EventoCampo =
@@ -81,6 +103,8 @@ export function HeroEntrada({
   const onEventoRef = useRef(onEvento);
   onEventoRef.current = onEvento;
   const focoMedido = useRef(false);
+  const usaHoja = useUsaHoja();
+  const [hoja, setHoja] = useState(false);
 
   const entregar = (sel: SeleccionDireccion) => {
     // Una opción que no es una calle (un barrio, una comuna) no se confirma: se dice acá.
@@ -89,12 +113,16 @@ export function HeroEntrada({
       return;
     }
     setAviso(null);
+    setHoja(false);
     onDireccion(sel);
   };
 
+  // El <input> vivo es uno solo: el del hero (escritorio) o el de la hoja (teléfono, abierta). Con la
+  // hoja cerrada en el teléfono no hay input: el hero muestra un botón que la abre.
   const { inputRef, geocodificarEscrita } = useDireccionPlaces({
     activo: true,
     comuna: null,
+    clave: !usaHoja ? "hero" : hoja ? "hoja" : "cerrada",
     onSeleccion: (sel) => {
       seleccionRef.current = sel;
       setTexto(sel.direccion);
@@ -104,7 +132,7 @@ export function HeroEntrada({
 
   // ── Placeholder: escribe y borra direcciones reales; quieto con reduced-motion ──
   const [ph, setPh] = useState<string>(DIRECCIONES_EJEMPLO[0]);
-  const animar = !enfocado && texto === "";
+  const animar = !enfocado && !hoja && texto === "";
   useEffect(() => {
     if (!animar) return;
     if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -131,6 +159,39 @@ export function HeroEntrada({
     return () => clearTimeout(t);
   }, [animar]);
 
+  const medirFoco = () => {
+    if (!focoMedido.current) { focoMedido.current = true; onEventoRef.current?.({ tipo: "foco" }); }
+  };
+
+  // Abrir y enfocar en el MISMO toque: si el foco llega después de un render asíncrono, iOS no abre
+  // el teclado.
+  const abrirHoja = () => {
+    flushSync(() => setHoja(true));
+    inputRef.current?.focus();
+    medirFoco();
+  };
+
+  useEffect(() => {
+    if (!usaHoja) setHoja(false);
+  }, [usaHoja]);
+
+  // Con la hoja abierta la página no se desplaza detrás, y Escape la cierra.
+  useEffect(() => {
+    if (!hoja) return;
+    const html = document.documentElement;
+    html.classList.add("he-hoja-abierta");
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setHoja(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { html.classList.remove("he-hoja-abierta"); window.removeEventListener("keydown", onKey); };
+  }, [hoja]);
+
+  const onCambio = (e: ChangeEvent<HTMLInputElement>) => {
+    setTexto(e.target.value);
+    seleccionRef.current = null;
+    setAviso(null);
+    onEventoRef.current?.({ tipo: "texto", largo: e.target.value.trim().length });
+  };
+
   const enviar = async (e?: FormEvent) => {
     e?.preventDefault();
     if (buscando) return;
@@ -138,7 +199,10 @@ export function HeroEntrada({
     if (sel && sel.direccion === texto.trim()) { entregar(sel); return; }
     if (confirmada && texto.trim() === confirmada && onContinuarConfirmada) { onContinuarConfirmada(); return; }
     const q = texto.trim();
-    if (!q) { inputRef.current?.focus(); return; }
+    if (!q) {
+      if (usaHoja && !hoja) abrirHoja(); else inputRef.current?.focus();
+      return;
+    }
     setBuscando(true);
     const r = await geocodificarEscrita(q);
     setBuscando(false);
@@ -176,27 +240,32 @@ export function HeroEntrada({
         <div className="he-campo">
           <form className="he-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
             <span className="he-tx">
-              <input
-                ref={inputRef}
-                className="he-input"
-                type="text"
-                autoComplete="off"
-                inputMode="text"
-                aria-label="Escribe la dirección del departamento"
-                placeholder={DIRECCIONES_EJEMPLO[0]}
-                value={texto}
-                onChange={(e) => {
-                  setTexto(e.target.value);
-                  seleccionRef.current = null;
-                  setAviso(null);
-                  onEventoRef.current?.({ tipo: "texto", largo: e.target.value.trim().length });
-                }}
-                onFocus={() => {
-                  setEnfocado(true);
-                  if (!focoMedido.current) { focoMedido.current = true; onEventoRef.current?.({ tipo: "foco" }); }
-                }}
-                onBlur={() => setEnfocado(false)}
-              />
+              {usaHoja ? (
+                <button
+                  type="button"
+                  className="he-input he-input-boton"
+                  aria-haspopup="dialog"
+                  aria-label="Escribe la dirección del departamento"
+                  onClick={abrirHoja}
+                  disabled={deshabilitado}
+                >
+                  {texto}
+                </button>
+              ) : (
+                <input
+                  ref={inputRef}
+                  className="he-input"
+                  type="text"
+                  autoComplete="off"
+                  inputMode="text"
+                  aria-label="Escribe la dirección del departamento"
+                  placeholder={DIRECCIONES_EJEMPLO[0]}
+                  value={texto}
+                  onChange={onCambio}
+                  onFocus={() => { setEnfocado(true); medirFoco(); }}
+                  onBlur={() => setEnfocado(false)}
+                />
+              )}
               {animar && (
                 <span className="he-ph" aria-hidden="true">{ph}<span className="he-caret" /></span>
               )}
@@ -219,6 +288,43 @@ export function HeroEntrada({
         {despues}
       </div>
       {pie && <div className="he-col he-foot">{pie}</div>}
+      {hoja && createPortal(
+        <div className="he-hoja" role="dialog" aria-modal="true" aria-label="Dirección del departamento">
+          <div className="he-hoja-cab">
+            <form className="he-hoja-campo" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
+              <input
+                ref={inputRef}
+                className="he-hoja-input"
+                type="text"
+                autoComplete="off"
+                inputMode="text"
+                enterKeyHint="search"
+                aria-label="Escribe la dirección del departamento"
+                placeholder="Calle y número"
+                value={texto}
+                onChange={onCambio}
+              />
+              <button type="submit" className="he-hoja-ir" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
+            </form>
+            <button type="button" className="he-hoja-cancelar" onClick={() => setHoja(false)}>Cancelar</button>
+          </div>
+          <div className="he-hoja-cuerpo">
+            {buscando ? (
+              <p className="he-hoja-ayuda">Buscando la dirección…</p>
+            ) : aviso ? (
+              <p className="he-hoja-aviso" role="status">{aviso}</p>
+            ) : (
+              <p className="he-hoja-ayuda">Escribe la calle y el número, y elige la dirección de la lista.</p>
+            )}
+            <div className="he-hoja-alt">
+              <span>¿No tienes la dirección?</span>
+              <button type="button" onClick={() => { setHoja(false); onCamino("ubicacion"); }}>Estoy en el depto<span aria-hidden="true">→</span></button>
+              <button type="button" onClick={() => { setHoja(false); onCamino("mapa"); }}>Marcarlo en el mapa<span aria-hidden="true">→</span></button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }

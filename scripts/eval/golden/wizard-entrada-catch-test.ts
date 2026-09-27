@@ -9,6 +9,8 @@
 //   7 · EL MAPA ES SIEMPRE LA SEGUNDA (27-sep-2026, prueba en el teléfono): con número también; el
 //       pin parte en la dirección elegida, que no se rebautiza si nadie lo mueve; el mapa lleva los
 //       comparables y el conteo del mismo hook que la reacción, y se sigue con «Continuar».
+//   8 · EN EL TELÉFONO, UNA HOJA: bajo 768 px el campo abre una hoja a pantalla completa, con el
+//       campo arriba y las sugerencias fijas debajo; el widget se vuelve a atar al input de la hoja.
 //   3 · LA PORTADA VIEJA SALIÓ ENTERA: chips de comuna, buscador, «¿se paga solo?», «todavía no
 //       tengo uno», sus eventos y la ruta de cifras por comuna que solo ella leía.
 //   4 · UN SOLO COMPONENTE. La portada es `HeroEntrada` sobre el hook compartido, con los tres
@@ -157,6 +159,17 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const pinSrc = sinComentarios(leer("src/components/formulario-v4/MapaPinAjustable.tsx"));
   if (!/for \(const p of validos\) \{\s*\n\s*puntosRef\.current\.push\(new google\.maps\.Marker\(/.test(pinSrc) || !/\}, \[puntos, listo\]\);/.test(pinSrc)) F("7 · el mapa no dibuja los comparables ni los redibuja al cambiar");
 
+  // ── 8 · EN EL TELÉFONO, UNA HOJA ───────────────────────────────────────────
+  if (!/export const MQ_HOJA = "\(max-width: 767px\)";/.test(hero) || !/window\.matchMedia\(MQ_HOJA\)/.test(hero)) F("8 · el hero no distingue el teléfono");
+  if (!/clave: !usaHoja \? "hero" : hoja \? "hoja" : "cerrada",/.test(hero)) F("8 · el widget no se vuelve a atar al input de la hoja");
+  if (!/const abrirHoja = \(\) => \{\s*\n\s*flushSync\(\(\) => setHoja\(true\)\);\s*\n\s*inputRef\.current\?\.focus\(\);/.test(hero)) F("8 · la hoja no se enfoca en el mismo toque (iOS no abre el teclado)");
+  if (!/\{usaHoja \? \(\s*\n\s*<button[^>]*onClick=\{abrirHoja\}/.test(hero)) F("8 · en el teléfono, tocar el campo no abre la hoja");
+  if (!/\{hoja && createPortal\(\s*\n\s*<div className="he-hoja" role="dialog"[\s\S]{0,600}?<input\s*\n\s*ref=\{inputRef\}/.test(hero)) F("8 · la hoja no lleva el campo arriba con el input vivo");
+  const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
+  if (!/\}, \[activo, clave\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
+  const css = leer("src/components/entrada/hero-entrada.css");
+  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: 64px !important; left: 0 !important; width: 100% !important;/.test(css) || !/\.he-hoja-cab \{ height: 64px;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja");
+  if (!/html\.he-hoja-abierta, html\.he-hoja-abierta body \{ overflow: hidden; \}/.test(css)) F("8 · la página se desplaza detrás de la hoja");
 
   // ── 5 · EVENTOS Y EMBUDO ───────────────────────────────────────────────────
   if (!/"wizard4_entrada_camino", \{ camino: "escribir"/.test(ent) || !/trackWizard\(posthog, "wizard4_entrada_camino", \{ camino \}\);/.test(ent)) F("5 · falta el evento del camino elegido");
@@ -196,7 +209,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ WIZARD-ENTRADA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos; el mapa es siempre la segunda, con los comparables y el conteo; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
+    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos y, en el teléfono, una hoja; el mapa es siempre la segunda, con los comparables y el conteo; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
   }
   return { hard: fallas.length };
 }
@@ -231,3 +244,5 @@ if (require.main === module) {
 //   «propiedades en el sector» · 7e el punto movido no llega a las respuestas · 7f la inversa
 //   rebautiza sin mover · 7g sin mover confirma el nombre de la inversa · 7h «Usar este punto» en
 //   vez de «Continuar» · 7i los puntos no se redibujan.
+// Quinta tanda (27-sep-2026, la hoja del teléfono), las 4 en ROJO: 8a sin distinguir el teléfono ·
+//   8b el hook no re-ata · 8c la hoja se enfoca tarde · 8d las sugerencias no quedan fijas.
