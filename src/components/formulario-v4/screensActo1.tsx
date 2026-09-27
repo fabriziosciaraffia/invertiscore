@@ -3,11 +3,14 @@
 // Wizard v4 — Pantallas del Acto 1 (QUÉ COMPRAS).
 // tipo, entrega, antigüedad, tamaño. La dirección vive en `screenEntrada.tsx`
 // (es la pantalla de entrada, no un paso más del acto).
+//
+// Formato del informe desde el 27-sep-2026 (entrega 2): tarjetas grises, selección en tinta,
+// dormitorios en una fila y los años de entrega calculados desde el año en curso.
 
 import type { WizardV4Answers, NodeId, Antiguedad } from "./wizardV4Nodes";
 import { DEC } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
-import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented } from "./ui";
+import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented, TileTexto } from "./ui";
 import { NumericInput } from "./NumericInput";
 import { leerNum } from "./derive";
 import { escalaSuperficie } from "./avisoEscala";
@@ -28,26 +31,20 @@ export interface ScreenProps {
 
 export function TipoScreen({ answers, answer }: ScreenProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="wz-gap">
       <ChoiceTile
         selected={answers.tipoPropiedad === "usado"}
         onClick={() => answer("tipo", { tipoPropiedad: "usado" })}
-        ariaLabel="Usado. Ya tuvo dueño — se vende por particular o corredor."
+        ariaLabel="Usado. Ya tuvo dueño: se vende por particular o corredor."
       >
-        <span className="font-medium">Usado</span>
-        <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
-          Ya tuvo dueño — se vende por particular o corredor.
-        </span>
+        <TileTexto t="Usado" s="Ya tuvo dueño: se vende por particular o corredor." />
       </ChoiceTile>
       <ChoiceTile
         selected={answers.tipoPropiedad === "nuevo"}
         onClick={() => answer("tipo", { tipoPropiedad: "nuevo" })}
-        ariaLabel="Nuevo. Primera venta directa de la inmobiliaria, incluye entrega futura o en verde."
+        ariaLabel="Nuevo. Primera venta de la inmobiliaria, incluida la entrega futura o en verde."
       >
-        <span className="font-medium">Nuevo</span>
-        <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
-          Primera venta directa de la inmobiliaria (incluye entrega futura / en verde).
-        </span>
+        <TileTexto t="Nuevo" s="Primera venta de la inmobiliaria, incluida la entrega futura o en verde." />
       </ChoiceTile>
     </div>
   );
@@ -55,76 +52,75 @@ export function TipoScreen({ answers, answer }: ScreenProps) {
 
 // ── ent (solo nuevo) ──────────────────────────────────────────────────────────
 
-const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+/** Los cuatro años que se ofrecen para la entrega: el actual y los tres siguientes. Hasta el
+ *  27-sep-2026 partían de un 2026 escrito a mano, que en enero habría ofrecido un año pasado. */
+export function aniosEntrega(hoy: Date = new Date()): number[] {
+  const a = hoy.getFullYear();
+  return [a, a + 1, a + 2, a + 3];
+}
 
 export function EntregaScreen({ answers, patchAnswers, answer }: ScreenProps) {
   const estado = answers.estadoVenta;
   const futura = estado === "futura";
   const puedeSeguir = estado === "inmediata" || (futura && !!answers.fechaEntregaMes && !!answers.fechaEntregaAnio);
-  const anioActual = 2026;
-  const anios = [anioActual, anioActual + 1, anioActual + 2, anioActual + 3];
+  const anios = aniosEntrega();
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
+    <div>
+      <div className="wz-gap">
         <ChoiceTile
           selected={estado === "inmediata"}
           onClick={() => patchAnswers({ estadoVenta: "inmediata" })}
           ariaLabel="Entrega inmediata. Ya construido, listo para escriturar."
         >
-          <span className="font-medium">Entrega inmediata</span>
-          <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
-            Ya construido, listo para escriturar.
-          </span>
+          <TileTexto t="Entrega inmediata" s="Ya construido, listo para escriturar." />
         </ChoiceTile>
         <ChoiceTile
           selected={futura}
           onClick={() => patchAnswers({ estadoVenta: "futura" })}
-          ariaLabel="Entrega futura, en verde o en blanco. En construcción, se entrega más adelante."
+          ariaLabel="Entrega futura, en verde o en blanco. En construcción: se entrega más adelante."
         >
-          <span className="font-medium">Entrega futura (en verde / blanco)</span>
-          <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
-            En construcción — se entrega más adelante.
-          </span>
+          <TileTexto t="Entrega futura (en verde o en blanco)" s="En construcción: se entrega más adelante." />
         </ChoiceTile>
+
+        {futura && (
+          <>
+            <div className="wz-campo">
+              <FieldLabel htmlFor="wz-mes-entrega">Mes estimado</FieldLabel>
+              <div className="wz-input-caja">
+                <select
+                  id="wz-mes-entrega"
+                  value={answers.fechaEntregaMes ?? ""}
+                  onChange={(e) => patchAnswers({ fechaEntregaMes: e.target.value })}
+                  className="wz-input wz-select con-suf"
+                >
+                  <option value="">Elige el mes</option>
+                  {MESES.map((m, i) => (
+                    <option key={m} value={String(i + 1)}>{m}</option>
+                  ))}
+                </select>
+                <span className="wz-suf" aria-hidden>▾</span>
+              </div>
+            </div>
+            <div className="wz-campo">
+              <FieldLabel>Año</FieldLabel>
+              <Segmented
+                lleno
+                ariaLabel="Año de entrega"
+                options={anios.map((y) => ({ value: String(y), label: String(y) }))}
+                value={answers.fechaEntregaAnio}
+                onChange={(v) => patchAnswers({ fechaEntregaAnio: v })}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {futura && (
-        <div className="flex items-end gap-3">
-          <div>
-            <FieldLabel>Mes estimado</FieldLabel>
-            <select
-              value={answers.fechaEntregaMes ?? ""}
-              onChange={(e) => patchAnswers({ fechaEntregaMes: e.target.value })}
-              className="h-11 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[15px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:outline-none appearance-none"
-            >
-              <option value="">Mes…</option>
-              {MESES.map((m, i) => (
-                <option key={m} value={String(i + 1)}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <FieldLabel>Año</FieldLabel>
-            <select
-              value={answers.fechaEntregaAnio ?? ""}
-              onChange={(e) => patchAnswers({ fechaEntregaAnio: e.target.value })}
-              className="h-11 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[15px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:outline-none appearance-none"
-            >
-              <option value="">Año…</option>
-              {anios.map((y) => (
-                <option key={y} value={String(y)}>{y}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-1">
-        <PrimaryBtn onClick={() => answer("ent")} disabled={!puedeSeguir}>
-          Continuar →
-        </PrimaryBtn>
-      </div>
+      <PrimaryBtn onClick={() => answer("ent")} disabled={!puedeSeguir}>
+        Continuar →
+      </PrimaryBtn>
     </div>
   );
 }
@@ -139,12 +135,12 @@ const ANTIGUEDADES: Array<{ value: Antiguedad; label: string }> = [
   { value: "20+", label: "20+ años" },
 ];
 
-export function AntiguedadScreen({ answer }: ScreenProps) {
+export function AntiguedadScreen({ answers, answer }: ScreenProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="wz-gap">
       {ANTIGUEDADES.map((a) => (
-        <ChoiceTile key={a.value} onClick={() => answer("ant", { antiguedad: a.value })}>
-          {a.label}
+        <ChoiceTile key={a.value} selected={answers.antiguedad === a.value} onClick={() => answer("ant", { antiguedad: a.value })}>
+          <TileTexto t={a.label} />
         </ChoiceTile>
       ))}
     </div>
@@ -159,96 +155,83 @@ export function TamanoScreen({ answers, patchAnswers, answer }: ScreenProps) {
   const puedeSeguir = sup > 0 && !!dorm && !!answers.banos;
 
   return (
-    <div className="flex flex-col gap-5">
-      <NumericInput
-        label="Superficie útil"
-        tooltip="Metros cuadrados al interior del depto, sin terrazas ni espacios comunes."
-        value={answers.superficieUtil ?? ""}
-        onChange={(v) => patchAnswers({ superficieUtil: v })}
-        decimales={DEC.superficie}
-        placeholder="50"
-        sufijo="m²"
-        ecoSufijo=" m²"
-        escala={escalaSuperficie}
-      />
+    <div>
+      <div className="wz-gap">
+        <NumericInput
+          label="Superficie útil"
+          tooltip="Los metros cuadrados al interior del depto, sin terrazas ni espacios comunes. Es la que define los comparables: se buscan deptos de tamaño parecido."
+          value={answers.superficieUtil ?? ""}
+          onChange={(v) => patchAnswers({ superficieUtil: v })}
+          decimales={DEC.superficie}
+          placeholder="50"
+          sufijo="m²"
+          ecoSufijo=" m²"
+          escala={escalaSuperficie}
+        />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+        {/* Dormitorios en UNA fila (Studio, 1, 2, 3, 4+) y los baños debajo, a todo el ancho:
+            a 390 px el par lado a lado partía los dormitorios en dos renglones. */}
+        <div className="wz-campo">
           <FieldLabel>Dormitorios</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => patchAnswers({ esStudio: true, dormitorios: "0" })}
-              className={`font-mono text-[13px] px-3 h-10 rounded-lg border-[0.5px] transition-colors ${
-                answers.esStudio
-                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                  : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
-              }`}
-            >
+          <div className="wz-fila-dorm" role="group" aria-label="Dormitorios">
+            <button type="button" aria-pressed={!!answers.esStudio} onClick={() => patchAnswers({ esStudio: true, dormitorios: "0" })}>
               Studio
             </button>
-            {["1", "2", "3", "4"].map((d) => {
-              const active = !answers.esStudio && answers.dormitorios === d;
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => patchAnswers({ esStudio: false, dormitorios: d })}
-                  className={`font-mono text-[13px] w-10 h-10 rounded-lg border-[0.5px] transition-colors ${
-                    active
-                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                      : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
-                  }`}
-                >
-                  {d === "4" ? "4+" : d}
-                </button>
-              );
-            })}
+            {["1", "2", "3", "4"].map((d) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={!answers.esStudio && answers.dormitorios === d}
+                onClick={() => patchAnswers({ esStudio: false, dormitorios: d })}
+              >
+                {d === "4" ? "4+" : d}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div>
+        <div className="wz-campo">
           <FieldLabel>Baños</FieldLabel>
-          <Segmented
-            options={[
+          <div className="wz-fila-banos" role="group" aria-label="Baños">
+            {[
               { value: "1", label: "1" },
               { value: "2", label: "2" },
               { value: "3", label: "3+" },
-            ]}
-            value={answers.banos}
-            onChange={(v) => patchAnswers({ banos: v })}
+            ].map((b) => (
+              <button key={b.value} type="button" aria-pressed={answers.banos === b.value} onClick={() => patchAnswers({ banos: b.value })}>
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="wz-dos">
+          <NumericInput
+            label="Estacionamientos"
+            tooltip="Cuántos estacionamientos incluye. 0 si no tiene."
+            value={answers.estacionamientos ?? ""}
+            onChange={(v) => patchAnswers({ estacionamientos: v })}
+            decimales={DEC.estacionamientos}
+            placeholder="0"
+            formatEco={(v) => `${v} ${v === 1 ? "estacionamiento" : "estacionamientos"}`}
+          />
+          <NumericInput
+            label="Bodegas"
+            tooltip="Cuántas bodegas incluye. 0 si no tiene."
+            value={answers.bodegas ?? ""}
+            onChange={(v) => patchAnswers({ bodegas: v })}
+            decimales={DEC.bodegas}
+            placeholder="0"
+            formatEco={(v) => `${v} ${v === 1 ? "bodega" : "bodegas"}`}
           />
         </div>
+
+        <FuenteLine>Estacionamiento y bodega afectan el precio y el arriendo: déjalos en 0 si no vienen.</FuenteLine>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <NumericInput
-          label="Estacionamientos"
-          tooltip="Cuántos estacionamientos incluye. 0 si no tiene."
-          value={answers.estacionamientos ?? ""}
-          onChange={(v) => patchAnswers({ estacionamientos: v })}
-          decimales={DEC.estacionamientos}
-          placeholder="0"
-          formatEco={(v) => `${v} ${v === 1 ? "estacionamiento" : "estacionamientos"}`}
-        />
-        <NumericInput
-          label="Bodegas"
-          tooltip="Cuántas bodegas incluye. 0 si no tiene."
-          value={answers.bodegas ?? ""}
-          onChange={(v) => patchAnswers({ bodegas: v })}
-          decimales={DEC.bodegas}
-          placeholder="0"
-          formatEco={(v) => `${v} ${v === 1 ? "bodega" : "bodegas"}`}
-        />
-      </div>
-
-      <FuenteLine>Estac. y bodega afectan precio y arriendo — déjalos en 0 si no aplican.</FuenteLine>
-
-      <div className="mt-1">
-        <PrimaryBtn onClick={() => answer("tam")} disabled={!puedeSeguir}>
-          Continuar →
-        </PrimaryBtn>
-      </div>
+      <PrimaryBtn onClick={() => answer("tam")} disabled={!puedeSeguir}>
+        Continuar →
+      </PrimaryBtn>
     </div>
   );
 }

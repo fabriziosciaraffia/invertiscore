@@ -12,12 +12,14 @@
 // quién va a estar viviendo ahí. La etiqueta de producto (RENTA LARGA / RENTA
 // CORTA) baja al pie de cada opción, como consecuencia y no como pregunta.
 //
-// ⚠️ DISCIPLINA DEL ROJO: el wash rojo de selección es EXCLUSIVO de esta pantalla
-// (momento-producto / selección de informe). En el resto del wizard, la selección
-// se resuelve en Ink (tile invertido). No propagar este wash por imitación.
+// FORMATO DEL INFORME (27-sep-2026, entrega 2): sin los 01/02 ni el rótulo rojo, y sin el wash
+// rojo de selección que esta pantalla tenía como excepción. Las opciones son tarjetas como las
+// del resto del wizard; «La mayoría empieza acá» va en gris. El nombre de producto ya no va al
+// pie de la tarjeta: lo confirma el chip de la pantalla siguiente («Renta larga»).
 
 import { useEffect, useRef } from "react";
 import type { ScreenProps } from "./screensActo1";
+import { ChoiceTile } from "./ui";
 import type { Modalidad } from "./wizardV4Nodes";
 import { rangoViewportH, registrarSondaSalida } from "./stepTelemetry";
 import { AMBAS_ENABLED } from "@/lib/ambas-flag";
@@ -44,32 +46,25 @@ import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 
 const OPCIONES: Array<{
   value: Modalidad;
-  n: string;
   /** Titular: la persona que va a estar en el depto. */
   nombre: string;
   /** Nombre de producto, al pie. Es la consecuencia, no la pregunta. */
   etiqueta: string;
   beneficio: string;
-  accent?: boolean;
   eyebrow?: string;
 }> = [
   {
     value: "ltr",
-    n: "01",
     nombre: "A alguien que va a vivir ahí",
     etiqueta: "Renta larga",
     beneficio:
       "Contrato y pago todos los meses. Lo más común y lo más simple de proyectar.",
-    // El destacado es de quien lleva el rol de "empieza acá", y ese rol depende
-    // del interruptor: con AMBAS encendido lo tiene el Comparativo (conducta de
-    // hoy, intacta); apagado pasa a renta larga. Así encender el flag devuelve
-    // la pantalla exactamente a como estaba, sin tocar código.
-    accent: !AMBAS_ENABLED,
+    // El rótulo «empieza acá» depende del interruptor: con AMBAS encendido lo
+    // lleva el Comparativo; apagado pasa a renta larga.
     eyebrow: AMBAS_ENABLED ? undefined : "La mayoría empieza acá",
   },
   {
     value: "str",
-    n: "02",
     nombre: "A turistas, por noche",
     etiqueta: "Renta corta",
     beneficio:
@@ -77,11 +72,9 @@ const OPCIONES: Array<{
   },
   {
     value: "both",
-    n: "03",
     nombre: "Las dos, para comparar",
     etiqueta: "Comparativo",
     beneficio: "Franco calcula las dos y te da un solo veredicto: cuál gana para este depto, y por cuánto.",
-    accent: AMBAS_ENABLED,
     eyebrow: AMBAS_ENABLED ? "Si no sabes, empieza aquí" : undefined,
   },
 ];
@@ -144,65 +137,30 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
   }));
 
   return (
-    <div className="flex flex-col gap-3">
+    <div>
       {/* Bajada: cierra el arco del wizard. Dice que el trabajo ya está hecho y
-          que esto es lo último — el mismo mensaje que da el "ÚLTIMA PREGUNTA"
-          del header y el ~80% de la barra. Los tres tienen que ser ciertos a la
+          que esto es lo último — el mismo mensaje que da el «Última pregunta»
+          de la cabecera y el ~80% de la barra. Los tres tienen que ser ciertos a la
           vez o ninguno sirve. */}
-      <p className="font-body text-[14px] text-[var(--franco-text-secondary)] -mt-3 mb-1 leading-relaxed">
-        Ya tengo los números. Con esto te armo el análisis.
-      </p>
-      {OPCIONES_VISIBLES.map((o) => {
-        const selected = answers.modalidad === o.value;
-        const cls = selected
-          ? "border-[1.5px] border-signal-red"
-          : `franco-tile-target bg-[var(--franco-card)] ${
-              o.accent ? "border-[1px] border-signal-red/40" : "border-[0.5px] border-[var(--franco-border)]"
-            }`;
-        return (
-          <button
+      <p className="wz-bajada">Ya tengo los números. Con esto te armo el análisis.</p>
+      <div className="wz-gap">
+        {OPCIONES_VISIBLES.map((o) => (
+          <ChoiceTile
             key={o.value}
-            type="button"
+            selected={answers.modalidad === o.value}
             onClick={() => {
               clicks.current += 1;
               seleccionRef.current = o.value;
               answer("mod", { modalidad: o.value });
             }}
-            aria-label={`${o.eyebrow ? o.eyebrow + ". " : ""}${o.nombre}. ${o.beneficio} ${o.etiqueta}.`}
-            aria-pressed={selected}
-            className={`text-left rounded-2xl shadow-sm p-5 w-full transition-colors ${cls}`}
-            style={
-              selected ? { background: "color-mix(in srgb, var(--signal-red) 7%, var(--franco-card))" } : undefined
-            }
+            ariaLabel={`${o.eyebrow ? o.eyebrow + ". " : ""}${o.nombre}. ${o.beneficio} ${o.etiqueta}.`}
           >
-            <div
-              className={`font-mono text-[12px] mb-2 ${
-                selected || o.accent ? "text-signal-red" : "text-[var(--franco-text-muted)]"
-              }`}
-            >
-              {o.n}
-            </div>
-            {o.eyebrow && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red block mb-1">
-                {o.eyebrow}
-              </span>
-            )}
-            <h3 className="wizard4-informe-cardtitle font-heading text-[21px] font-bold text-[var(--franco-text)] m-0 leading-tight">
-              {o.nombre}
-            </h3>
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-1.5 mb-0 leading-relaxed">
-              {o.beneficio}
-            </p>
-            {/* Etiqueta de producto al pie: mono uppercase (Capa 2 — es un label,
-                no narrativa). Va abajo porque el usuario elige por quién vive en
-                el depto, no por cómo se llama el informe; pero el nombre tiene que
-                estar para que reconozca lo que recibe. */}
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] block mt-3">
-              {o.etiqueta}
-            </span>
-          </button>
-        );
-      })}
+            {o.eyebrow && <span className="wz-eb">{o.eyebrow}</span>}
+            <span className="wz-t wz-t-grande">{o.nombre}</span>
+            <span className="wz-s">{o.beneficio}</span>
+          </ChoiceTile>
+        ))}
+      </div>
     </div>
   );
 }

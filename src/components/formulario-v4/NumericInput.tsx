@@ -226,16 +226,13 @@ export interface NumericInputProps {
   formatEco?: (valor: number) => string;
   /** Aviso de magnitud. Los umbrales los pone el llamador. */
   escala?: (valor: number) => AvisoEscala | null;
-  /** Borde Ink 1.5px — el campo protagonista de la pantalla (precio). */
+  /** El campo protagonista de la pantalla (precio): más alto y la cifra más grande. */
   strong?: boolean;
   autoFocus?: boolean;
   inputMode?: "decimal" | "numeric";
   /** Arranca ya evaluado como si hubiera perdido el foco (edición inline). */
   iniciaEvaluado?: boolean;
 }
-
-const INPUT_BASE =
-  "w-full h-11 rounded-lg bg-[var(--franco-card)] px-3 text-[15px] text-[var(--franco-text)] font-mono focus:outline-none focus:ring-1 focus:ring-signal-red/20 transition-colors";
 
 export function NumericInput({
   value,
@@ -256,6 +253,7 @@ export function NumericInput({
 }: NumericInputProps) {
   const [blurred, setBlurred] = useState(iniciaEvaluado);
   const idEco = useId();
+  const idInput = useId();
   const posthog = usePostHog();
 
   const r = estadoNumericInput(value, {
@@ -281,18 +279,15 @@ export function NumericInput({
   // ofrecer la coma en el teclado móvil.
   const modo = inputMode ?? (decimales === 0 ? "numeric" : "decimal");
 
-  const borde = hayError
-    ? "border-[1.5px] border-signal-red focus:border-signal-red"
-    : strong
-      ? "border-[1.5px] border-[var(--franco-text)] focus:border-signal-red"
-      : "border-[0.5px] border-[var(--franco-border)] focus:border-signal-red";
-
+  // Formato del informe (27-sep-2026): el campo en --card, el foco en tinta, el error con borde
+  // rojo (`aria-invalid`, en wizard-v4.css). El eco en Inter, con la cifra en negrita.
   return (
-    <div>
-      {label && <FieldLabel tooltip={tooltip}>{label}</FieldLabel>}
+    <div className="wz-campo">
+      {label && <FieldLabel tooltip={tooltip} htmlFor={idInput}>{label}</FieldLabel>}
 
-      <div className="relative">
+      <div className="wz-input-caja">
         <input
+          id={idInput}
           type="text"
           inputMode={modo}
           placeholder={placeholder}
@@ -301,57 +296,31 @@ export function NumericInput({
           autoFocus={autoFocus}
           value={value}
           aria-invalid={hayError}
+          aria-label={label ? undefined : placeholder}
           aria-describedby={r.estado === "vacio" ? undefined : idEco}
-          // El tipeo devuelve el campo a "en curso": volver a escribir es la
-          // señal de que se está corrigiendo, y seguir en rojo mientras tanto
-          // sería castigar la corrección.
           onChange={(e) => { setBlurred(false); onChange(e.target.value); }}
           onFocus={() => setBlurred(false)}
           onBlur={() => setBlurred(true)}
-          className={`${INPUT_BASE} ${borde} ${sufijo ? "pr-12" : ""}`}
+          className={`wz-input${strong ? " wz-grande" : ""}${sufijo ? " con-suf" : ""}`}
         />
-        {sufijo && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
-            {sufijo}
-          </span>
-        )}
+        {sufijo && <span className="wz-suf">{sufijo}</span>}
       </div>
 
       {/* Eco / en curso / error — nunca dos a la vez, siempre en el mismo lugar. */}
-      <div id={idEco} className="min-h-[22px] mt-1.5" aria-live="polite">
-        {r.estado === "encurso" && (
-          <p className="font-body text-[12.5px] italic text-[var(--franco-text-muted)] m-0">
-            Sigue escribiendo — todavía no se puede leer.
-          </p>
-        )}
-        {r.estado === "error" && (
-          // Signal Red · uso #6 — indicador de error en formulario.
-          <p className="font-body text-[12.5px] text-signal-red m-0 leading-snug">
-            No se entiende ese número — {r.motivo}
-          </p>
-        )}
+      <div id={idEco} className="wz-eco-caja" aria-live="polite">
+        {r.estado === "encurso" && <p className="wz-eco">Sigue escribiendo — todavía no se puede leer.</p>}
+        {r.estado === "error" && <p className="wz-aviso fuerte">No se entiende ese número — {r.motivo}</p>}
         {(r.estado === "ok" || r.estado === "escala") && (
-          <p className="font-mono text-[13px] text-[var(--franco-text-secondary)] m-0">
-            = <span className="text-[var(--franco-text)] font-medium">{r.eco}</span>
+          <p className="wz-eco">
+            = <b>{r.eco}</b>
           </p>
         )}
       </div>
 
-      {/* Aviso de magnitud. Ink + label uppercase + borde lateral: el reemplazo
-          que el design system define para el ámbar de alerta. Nunca rojo. */}
-      {r.estado === "escala" && (
-        <div
-          className="mt-2 border-l-2 border-[var(--franco-border-strong)] rounded-r-lg px-3 py-2"
-          style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
-        >
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.13em] text-[var(--franco-text-tertiary)] m-0 mb-0.5">
-            Fuera de escala
-          </p>
-          <p className="font-body text-[12.5px] text-[var(--franco-text-secondary)] m-0 leading-snug">
-            {r.aviso}
-          </p>
-        </div>
-      )}
+      {/* Aviso de magnitud: una indicación bajo el campo, en gris. Sin el rótulo «Fuera de
+          escala» (27-sep-2026): el mismo aviso servía para cosas que no son de escala —el pie 0
+          sin razón— y el rótulo las nombraba mal. Nunca rojo: el rojo dice «no te entendí». */}
+      {r.estado === "escala" && <p className="wz-indic">{r.aviso}</p>}
     </div>
   );
 }

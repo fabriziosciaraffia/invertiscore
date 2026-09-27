@@ -195,7 +195,7 @@ export function MapaPinAjustable({
           ref={divRef}
           role="application"
           aria-label="Mapa: toca o arrastra el pin hasta el edificio"
-          className="w-full rounded-xl overflow-hidden border border-[var(--franco-border)] bg-[var(--franco-card)]"
+          className="wz-mapa w-full overflow-hidden"
           style={{ height }}
         />
         {etiqueta && (
@@ -209,7 +209,7 @@ export function MapaPinAjustable({
         )}
       </div>
       {fuera && (
-        <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-1.5 mb-0 leading-snug">
+        <p className="wz-indic wz-mapa-fuera">
           {limite === "comuna"
             ? `Ese punto queda fuera de ${comuna}. Si el depto está en otra comuna, cambia la dirección.`
             : "Ese punto queda fuera de la zona que Franco cubre."}
@@ -222,14 +222,9 @@ export function MapaPinAjustable({
 /** El aviso que acompaña al mapa del resumen: qué pasó con la ubicación y qué puedes hacer. */
 export function AvisoSinNumero({ ajustada }: { ajustada: boolean }) {
   return (
-    <div
-      className="rounded-r-lg border-l-2 border-[var(--franco-text-secondary)] pl-4 pr-4 py-3"
-      style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
-    >
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] m-0 mb-1">
-        {ajustada ? "Ubicación ajustada" : "Dirección sin número"}
-      </p>
-      <p className="font-body text-[13px] leading-[1.55] text-[var(--franco-text)] m-0">
+    <div className="wz-bloque wz-bloque-sunk">
+      <div className="wz-bt">{ajustada ? "Ubicación ajustada" : "Dirección sin número"}</div>
+      <p>
         {ajustada
           ? "Los comparables se miden desde el punto que marcaste."
           : "Sin número, el depto quedó en un punto cualquiera de la calle. Toca el mapa o arrastra el pin hasta el edificio: los comparables se miden desde ahí."}

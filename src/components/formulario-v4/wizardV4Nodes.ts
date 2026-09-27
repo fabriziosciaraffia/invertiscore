@@ -113,6 +113,8 @@ export const DEC = {
   vacancia: 1,
   comisionAdmin: 1,
   costos: 0,
+  cuotaCreditoPie: 0,
+  huespedes: 0,
 } as const satisfies Record<string, Decimales>;
 
 /** Decimales del monto del pie según la unidad en que lo esté escribiendo. */
@@ -128,9 +130,13 @@ export function decPie(unidad: PieUnidad | undefined): Decimales {
 export type PieRazon = "bono_pie" | "otra_fuente" | "no_declarada";
 
 /** Etiquetas del selector — fuente única para el wizard y el resumen. */
+//
+// «Otra fuente» dejó de decir «ahorro» (27-sep-2026, mockup aprobado del wizard): un ahorro ES pie
+// —se escribe en el campo del pie—; lo que cubre «otra fuente» es plata que no sale del bolsillo
+// del comprador: un crédito, un familiar, la venta de otra propiedad.
 export const PIE_RAZON_OPCIONES: ReadonlyArray<{ value: PieRazon; label: string; sub?: string }> = [
-  { value: "bono_pie", label: "Bono pie de la inmobiliaria", sub: "la inmobiliaria lo cubre como promoción" },
-  { value: "otra_fuente", label: "Lo cubro con otra fuente", sub: "ahorro, familia, otra propiedad" },
+  { value: "bono_pie", label: "Bono pie de la inmobiliaria", sub: "La inmobiliaria lo cubre como promoción." },
+  { value: "otra_fuente", label: "Lo cubro con otra fuente", sub: "Un crédito, un familiar, la venta de otra propiedad." },
   { value: "no_declarada", label: "Prefiero no decir" },
 ];
 
@@ -180,6 +186,13 @@ export interface WizardV4Answers {
   /** Fase 5b · "¿Por qué no pones pie?". Obligatoria SOLO con pie exactamente 0;
    *  se descarta en silencio si el pie vuelve a > 0 (decisión cerrada). */
   pieRazon?: PieRazon;
+  /** «Otra fuente» (27-sep-2026): cuánto cubre, en la misma unidad del pie (`pieUnidad`). Para el
+   *  banco ESO ES PIE: el submit lo manda en `piePct` y el hipotecario sale sobre precio − monto. */
+  otraFuenteMonto?: string;
+  /** ¿Esa otra fuente es un crédito? Si lo es, su cuota entra al flujo del mes. */
+  otraFuenteCredito?: boolean;
+  /** Cuota mensual (CLP) del crédito con que se cubre el pie → `cuotaCreditoPie` del payload. */
+  otraFuenteCuota?: string;
   plazoCredito?: string; // "20" | "25" | "30"
   tasaInteres?: string; // % anual, coma decimal
 
@@ -205,6 +218,9 @@ export interface WizardV4Answers {
   mantencionStr?: string;
   estaAmoblado?: boolean;
   costoAmoblamiento?: string;
+  /** Huéspedes que recibe (27-sep-2026, se pregunta en la tarifa). Vacío ⇒ la regla por
+   *  dormitorios (`capacidadHuespedesDe`), que es lo que el motor supuso siempre. */
+  capacidadHuespedes?: string;
 }
 
 /** Todos los nodos válidos (para validar drafts al cargar). */
@@ -219,12 +235,14 @@ export const FIX_NODES: ReadonlySet<NodeId> = new Set<NodeId>(["dirMapa", "tasaF
 /** Nodos de la rama del Acto 3 (renta) — se invalidan al cambiar modalidad. */
 export const BRANCH_ACTO3: readonly NodeId[] = ["arr", "arrFix", "adr", "adrFix"];
 
+/** Rótulo del acto en la cabecera del paso. En minúscula de oración desde el 27-sep-2026 (el
+ *  formato del informe no lleva mayúsculas corridas); a 390 px parte en dos líneas, no se corta. */
 export const ACTO_LABEL: Record<Acto, string> = {
-  compra: "ACTO 1 · QUÉ COMPRAS",
-  finanza: "ACTO 2 · CÓMO LO FINANCIAS",
-  informe: "ÚLTIMA PREGUNTA",
-  renta: "ACTO 3 · CÓMO LO RENTABILIZAS",
-  resumen: "RESUMEN",
+  compra: "Acto 1 · Qué compras",
+  finanza: "Acto 2 · Cómo lo financias",
+  informe: "Última pregunta",
+  renta: "Acto 3 · Cómo lo rentabilizas",
+  resumen: "Resumen",
 };
 
 export const ACTO_BY_NODE: Record<NodeId, Acto> = {
@@ -266,7 +284,7 @@ export const NODE_TITLE: Record<NodeId, string> = {
   mod: "¿A quién le vas a arrendar?",
   arr: "¿En cuánto lo arriendas al mes?",
   arrFix: "Corrige el arriendo mensual",
-  adr: "Tarifa por noche y ocupación",
+  adr: "¿Cuánto rinde por noche?",
   adrFix: "Corrige tarifa y ocupación",
   resumen: "Revisa antes de generar",
 };
@@ -422,8 +440,6 @@ export interface ReactionLive {
   comparables?: number | string;
   /** Precio en CLP al UF del día (reacción de `precio`). */
   precioCLP?: string;
-  /** Cuota mensual calculada (reacción de `plazo`). */
-  cuota?: string;
   /** ¿Aplica el aviso anticipado de subsidio? (reacción de `tam`). */
   subsidioAviso?: boolean;
 }
@@ -439,8 +455,9 @@ export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
     case "dir":
     case "dirMapa":
     case "precio":
-    case "plazo":
       return true;
+    // `plazo` ya no reacciona (27-sep-2026): la cuota se ve en vivo en su propia pantalla, al
+    // mover el plazo. Llegaba una pantalla tarde, en la de modalidad.
     case "tam":
       return a.tipoPropiedad === "nuevo"; // aviso de subsidio (se filtra por `live`)
     default:
@@ -474,8 +491,6 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
     }
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;
-    case "plazo":
-      return `Tu cuota queda en ${live?.cuota ?? "$X"} al mes. Ahora, lo que puede rendir.`;
     case "tam":
       // Aviso anticipado de subsidio: solo programa + rango, JAMÁS el valor
       // estimado del depto (regla de copy dura).

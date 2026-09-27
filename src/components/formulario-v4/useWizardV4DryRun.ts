@@ -37,6 +37,10 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
     answers.adrModo, answers.adrTarifa, answers.adrOcupacion, answers.modoGestion,
     answers.comisionStrPct,
     answers.dormitorios, answers.superficieUtil, answers.banos,
+    // Entrega 2 (27-sep-2026): «otra fuente» cambia el pie y el flujo; huéspedes y amoblado, la
+    // estimación y el capex de renta corta.
+    answers.pieRazon, answers.otraFuenteMonto, answers.otraFuenteCredito, answers.otraFuenteCuota,
+    answers.capacidadHuespedes, answers.estaAmoblado,
   ].join("|");
 
   useEffect(() => {

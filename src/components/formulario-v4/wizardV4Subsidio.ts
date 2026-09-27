@@ -5,6 +5,7 @@
 // número al usuario — regla de copy dura).
 
 import {
+  REBAJA_SUBSIDIO,
   TECHO_UF_SUBSIDIO,
   calcTasaConSubsidio,
   calificaSubsidio,
@@ -52,9 +53,18 @@ export function calificaSubsidioV4(a: WizardV4Answers): boolean {
   return calificaSubsidio(a.tipoPropiedad ?? "", leerNum(a.precio, DEC.precioUF));
 }
 
-/** Tasa con subsidio dada la tasa de mercado real (rebaja 0,6pp). */
+/**
+ * Tasa con subsidio que el wizard OFRECE, dada la tasa de mercado real: la rebaja mínima (0,6 pp)
+ * exacta, a dos decimales. 4,04 − 0,6 = 3,44, no 3,40.
+ *
+ * Hasta el 27-sep-2026 era `calcTasaConSubsidio`, que redondea a UN decimal y así prometía 0,64 pp
+ * de rebaja con una tasa de 4,04 —justo lo que el copy dice que Franco no hace: «esta es la
+ * mínima»—. El motor sigue usando `calcTasaConSubsidio` para su compuerta `aplicado` (tasa
+ * ingresada ≤ subsidiada + 0,2): cambiarla ahí movería esa compuerta en análisis ya hechos, y la
+ * tolerancia de 0,2 absorbe la diferencia (3,44 ≤ 3,4 + 0,2).
+ */
 export function tasaConSubsidioV4(tasaMercado: number): number {
-  return calcTasaConSubsidio(tasaMercado);
+  return Math.round((tasaMercado - REBAJA_SUBSIDIO) * 100) / 100;
 }
 
 /**

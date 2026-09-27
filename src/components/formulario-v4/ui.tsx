@@ -1,11 +1,15 @@
 "use client";
 
-// Primitivos de UI del wizard v4 (Patrón 5 — Form Step del design system).
-// Solo Ink + Signal Red; el CTA primario "avanzar" es el único rojo sólido.
+// Primitivos de UI del wizard v4, con el formato del informe (entrega 2, 27-sep-2026).
+// Mockup aprobado: docs/wireframes/rediseno-informe/wizard-v4-actualizado.html; las clases viven
+// en `wizard-v4.css`. Inter, tarjetas grises sobre la página, selección en tinta. EL ÚNICO ROJO
+// ES EL BOTÓN DE AVANZAR (`PrimaryBtn`), el mismo en todas las pantallas, a todo el ancho.
 
 import type { ReactNode } from "react";
-import { InfoTooltip } from "@/components/ui/tooltip";
+import { Glosa } from "@/components/analysis/shared/Glosa";
 
+/** El botón de avanzar: píldora roja a todo el ancho. Deshabilitado pasa a gris, no a rojo
+ *  fantasma: se lee «falta completar», no «roto». */
 export function PrimaryBtn({
   children,
   onClick,
@@ -15,53 +19,37 @@ export function PrimaryBtn({
   onClick: () => void;
   disabled?: boolean;
 }) {
-  // Deshabilitado NO va como rojo fantasma (se leía como "roto"): pasa a outline
-  // inactivo Ink → comunica "falta completar", no "acción apagada".
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] px-6 py-3.5 rounded-lg min-h-[44px] flex items-center justify-center gap-2 transition-colors text-white bg-signal-red hover:bg-signal-red/90 disabled:bg-transparent disabled:text-[var(--franco-text-muted)] disabled:border disabled:border-[var(--franco-border-strong)] disabled:cursor-not-allowed"
-    >
+    <button type="button" onClick={onClick} disabled={disabled} className="wz-cta">
       {children}
     </button>
   );
 }
 
-/** Reacción de Franco: Franco hablando entre preguntas. Fondo sutil, borde izq
- *  Signal Red, esquinas der redondeadas (0 X X 0), fade suave de entrada. */
+/** El mismo botón en la barra fija de abajo: para las pantallas más largas que el teléfono
+ *  (la tarifa, el pie con «otra fuente») y el resumen. Mismo ancho, mismo rojo. */
+export function BarraCta({ children }: { children: ReactNode }) {
+  return <div className="wz-barra-cta">{children}</div>;
+}
+
+/** La reacción de Franco: una tarjeta gris, sin rótulo rojo ni cursiva. */
 export function FrancoReaction({ children }: { children: ReactNode }) {
+  return <div className="wz-reac wizard4-reaction">{children}</div>;
+}
+
+/** La acción secundaria: texto en tinta con subrayado, centrado bajo el botón. */
+export function LinkBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <div
-      className="wizard4-reaction mb-7 rounded-r-lg border-l-2 border-signal-red pl-4 pr-4 py-3"
-      style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
-    >
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-red m-0 mb-1">
-        Franco
-      </p>
-      <p className="font-body text-[14px] italic text-[var(--franco-text-secondary)] m-0 leading-relaxed">
+    <div className="wz-lnk-fila">
+      <button type="button" onClick={onClick} className="wz-lnk">
         {children}
-      </p>
+      </button>
     </div>
   );
 }
 
-export function GhostBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="font-body font-medium text-[13px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-3 py-2 min-h-[44px]"
-    >
-      {children}
-    </button>
-  );
-}
-
-/** Tile seleccionable grande (una opción por fila). Hover-lift solo en no-elegidos.
- *  `ariaLabel`: nombre accesible explícito cuando el contenido es rico (título +
- *  descripción en spans anidados no siempre computa un nombre claro). */
+/** Tarjeta seleccionable (una opción por fila). Elegida = tinta invertida.
+ *  `ariaLabel`: nombre accesible explícito cuando el contenido es rico. */
 export function ChoiceTile({
   children,
   selected,
@@ -72,134 +60,75 @@ export function ChoiceTile({
   children: ReactNode;
   selected?: boolean;
   onClick: () => void;
-  /** Borde Signal Red 1.5px (destacado, NO preseleccionado). */
+  /** Borde de tinta (destacada, NO preseleccionada): el subsidio. Nunca rojo. */
   accent?: boolean;
   ariaLabel?: string;
 }) {
-  const base = "text-left rounded-xl px-5 py-4 font-body text-[15px] w-full transition-colors";
-  if (selected) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel}
-        aria-pressed={true}
-        className={`${base} bg-[var(--franco-text)] text-[var(--franco-bg)] border-[1.5px] border-[var(--franco-text)]`}
-      >
-        {children}
-      </button>
-    );
-  }
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`franco-tile-target ${base} bg-[var(--franco-card)] text-[var(--franco-text)] ${
-        accent ? "border-[1.5px] border-signal-red" : "border-[0.5px] border-[var(--franco-border)]"
-      }`}
+      aria-pressed={!!selected}
+      className={`wz-tile${accent ? " wz-acento" : ""}`}
     >
       {children}
     </button>
   );
 }
 
-/** Control segmentado horizontal (plazo 20/25/30, unidad de pie, etc.). */
+/** El contenido habitual de una tarjeta: rótulo chico opcional, título y bajada. */
+export function TileTexto({ t, s, eb }: { t: ReactNode; s?: ReactNode; eb?: ReactNode }) {
+  return (
+    <>
+      {eb && <span className="wz-eb">{eb}</span>}
+      <span className="wz-t">{t}</span>
+      {s && <span className="wz-s">{s}</span>}
+    </>
+  );
+}
+
+/** Control segmentado en píldora (unidad del pie, UF/$, sí/no). `lleno` = a todo el ancho. */
 export function Segmented<T extends string>({
   options,
   value,
   onChange,
+  lleno,
+  ariaLabel,
 }: {
   options: Array<{ value: T; label: string }>;
   value: T | undefined;
   onChange: (v: T) => void;
+  lleno?: boolean;
+  ariaLabel?: string;
 }) {
   return (
-    <div className="inline-flex rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-1 gap-1">
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            className={`font-mono text-[13px] px-4 py-2 rounded-md min-h-[40px] transition-colors ${
-              active
-                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                : "text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
+    <div className={`wz-seg${lleno ? " lleno" : ""}`} role="group" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-/** Label de campo (Sans medium) con tooltip opcional. */
-export function FieldLabel({ children, tooltip }: { children: ReactNode; tooltip?: string }) {
+/** Rótulo de campo con el ⓘ del informe (`Glosa`: hoja chica en el teléfono, popover arriba). */
+export function FieldLabel({ children, tooltip, htmlFor }: { children: ReactNode; tooltip?: string; htmlFor?: string }) {
   return (
-    <div className="flex items-center gap-1.5 mb-1.5">
-      <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">{children}</label>
-      {tooltip && <InfoTooltip content={tooltip} />}
+    <div className="wz-rot">
+      {htmlFor ? <label htmlFor={htmlFor}>{children}</label> : <span>{children}</span>}
+      {tooltip && <Glosa titulo={typeof children === "string" ? children : "Qué es"} texto={tooltip} />}
     </div>
   );
 }
 
-const INPUT_BASE =
-  "w-full h-11 rounded-lg bg-[var(--franco-card)] px-3 text-[15px] text-[var(--franco-text)] focus:outline-none focus:ring-1 focus:ring-signal-red/20 transition-colors";
-
-/** Input de texto/numérico con sufijo opcional. `strong` = borde ink 1.5px (precio). */
-export function TextInput({
-  value,
-  onChange,
-  placeholder,
-  inputMode = "text",
-  mono,
-  suffix,
-  strong,
-  autoFocus,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  inputMode?: "text" | "decimal" | "numeric";
-  mono?: boolean;
-  suffix?: string;
-  strong?: boolean;
-  autoFocus?: boolean;
-}) {
-  const border = strong
-    ? "border-[1.5px] border-[var(--franco-text)] focus:border-signal-red"
-    : "border-[0.5px] border-[var(--franco-border)] focus:border-signal-red";
-  return (
-    <div className="relative">
-      <input
-        type="text"
-        inputMode={inputMode}
-        placeholder={placeholder}
-        autoComplete="off"
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus={autoFocus}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${INPUT_BASE} ${border} ${mono ? "font-mono" : "font-body"} ${suffix ? "pr-12" : ""}`}
-      />
-      {suffix && (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
-          {suffix}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Línea de fuente/procedencia bajo una estimación (Mono, muted). */
+/** Línea de fuente/procedencia bajo una estimación. Como oración: mayúscula inicial y punto final
+ *  (varias procedencias, como la del arriendo, se arman en minúscula para ir dentro de otra frase). */
 export function FuenteLine({ children }: { children: ReactNode }) {
-  return (
-    <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-2 mb-0 leading-snug">
-      {children}
-    </p>
-  );
+  const texto =
+    typeof children === "string" && children.length > 0
+      ? children.charAt(0).toUpperCase() + children.slice(1) + (/[.!?…)]$/.test(children) ? "" : ".")
+      : children;
+  return <p className="wz-fuente">{texto}</p>;
 }

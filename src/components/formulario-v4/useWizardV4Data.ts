@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { useAirRoiSuggestion, type AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import type { WizardV4Answers } from "./wizardV4Nodes";
-import { capacidadHuespedesDe, dormitoriosNum, type FuenteArriendo } from "./derive";
+import { dormitoriosNum, huespedesNum, type FuenteArriendo } from "./derive";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const UF_FALLBACK = 38800;
@@ -191,7 +191,9 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     comuna: answers.comuna ?? "",
     dormitorios: dorm,
     banos: Number(answers.banos) || 1,
-    capacidadHuespedes: capacidadHuespedesDe(dorm),
+    // Los huéspedes que se declararon en la tarifa (o la regla por dormitorios): cambiarlos
+    // vuelve a pedir la estimación, y el informe la pide igual con el mismo número.
+    capacidadHuespedes: huespedesNum(answers),
     ufClp: ufCLP,
   });
 

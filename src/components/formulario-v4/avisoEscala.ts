@@ -78,6 +78,17 @@ export const escalaPrecio = avisoEscala("precio", (v) => ({ precioUF: v }));
 export const escalaSuperficie = avisoEscala("superficie", (v) => ({ superficieM2: v }));
 export const escalaTasa = avisoEscala("tasa", (v) => ({ tasaAnualPct: v }));
 export const escalaPie = avisoEscala("pie", (v) => ({ piePct: v }));
+
+/**
+ * El aviso del pie dado el % y la razón. CON PIE 0, SE VA AL ELEGIR LA RAZÓN (27-sep-2026):
+ * `escalaPie` evalúa la plausibilidad solo con el %, así que la regla «pie 0 sin indicar cómo se
+ * cubre» seguía disparando con la razón ya elegida —tres bloques apilados para una respuesta que el
+ * usuario ya había dado—. Lo usan la pantalla del pie y la fila del pie del resumen.
+ */
+export function avisoPie(p: number, razon: string | undefined): AvisoEscala | null {
+  if (p === 0 && razon) return null;
+  return escalaPie(p);
+}
 export const escalaArriendo = avisoEscala("arriendo", (v) => ({ arriendoMensualCLP: v }));
 export const escalaVacancia = avisoEscala("vacancia", (v) => ({ vacanciaPct: v }));
 export const escalaComision = avisoEscala("comisionAdmin", (v) => ({ comisionAdminPct: v }));

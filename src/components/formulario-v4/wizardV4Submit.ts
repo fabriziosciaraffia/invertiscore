@@ -22,14 +22,16 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
-import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
-import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
+import { DEC, type WizardV4Answers } from "./wizardV4Nodes";
 import {
-  capacidadHuespedesDe,
   costosOperativosEditados,
+  cuotaCreditoPieCLP,
   dormitoriosNum,
+  huespedesNum,
   leerNum,
+  otraFuentePctCrudo,
+  pieEfectivoPct,
   repartirCostosOperativos,
   type FuenteArriendo,
 } from "./derive";
@@ -96,7 +98,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const cuotasPie = esFutura
     ? mesesHastaEntrega(a.fechaEntregaMes ?? "", a.fechaEntregaAnio ?? "")
     : a.tipoPropiedad === "nuevo" ? 1 : 0;
-  const piePct = derivePiePctLocal(a, ctx.ufCLP);
+  const piePct = pieEfectivoPct(a, ctx.ufCLP);
   const pieUF = precioUF * (piePct / 100);
   const dorm = dormitoriosNum(a);
   const comisionAdmin = leerNum(a.comisionAdminPct, DEC.comisionAdmin);
@@ -142,6 +144,9 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // y de ahí al prompt. Solo tiene sentido con pie 0 — con pie > 0 el wizard
     // ya la descartó, y este guard lo hace explícito en el borde.
     razonSinPie: piePct === 0 ? a.pieRazon : undefined,
+    // «Otra fuente» (27-sep-2026): con su monto, `piePct` ya es ese monto (para el banco es pie);
+    // si es un crédito, su cuota entra al flujo del mes. Sin monto, nada de esto viaja.
+    ...camposOtraFuente(a, ctx.ufCLP),
     plazoCredito: Number(a.plazoCredito) || 25,
     tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
@@ -189,20 +194,16 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   };
 }
 
-// Pie % derivado (mismo criterio que derive.ts, inline para no crear ciclo).
-// Redondeo canónico incluido (fix pie-redondeo): ESTE es el valor que se
-// persiste en input_data.piePct — sin él, el % derivado de $ o UF viajaba con
-// el float crudo (19.999999875756398 en producción) aunque el display dijera
-// "20,0".
-function derivePiePctLocal(a: WizardV4Answers, ufCLP: number): number {
-  const unit = a.pieUnidad ?? "pct";
-  const monto = leerNum(a.pieMonto, decPie(unit));
-  const pUF = leerNum(a.precio, DEC.precioUF);
-  if (monto <= 0) return 0;
-  if (unit === "pct") return redondearPiePct(Math.min(monto, 100));
-  if (pUF <= 0 || ufCLP <= 0) return 0;
-  const pieEnUF = unit === "uf" ? monto : monto / ufCLP;
-  return redondearPiePct(Math.min((pieEnUF / pUF) * 100, 100));
+// El pie % del payload es `pieEfectivoPct` (derive.ts): el escrito, redondeado a la precisión
+// canónica (fix pie-redondeo: sin eso el % derivado de $ o UF viajaba con el float crudo), o el
+// monto de «otra fuente» cuando el pie es 0 y lo cubre otra fuente. Hasta el 27-sep-2026 era una
+// copia local de `piePct`; con «otra fuente» las dos habrían divergido.
+
+/** Los campos de «otra fuente» del payload, o ninguno. */
+function camposOtraFuente(a: WizardV4Answers, ufCLP: number): { pieOrigen?: "otra_fuente"; cuotaCreditoPie?: number } {
+  if (otraFuentePctCrudo(a, ufCLP) <= 0) return {};
+  const cuota = cuotaCreditoPieCLP(a, ufCLP);
+  return { pieOrigen: "otra_fuente", ...(cuota > 0 ? { cuotaCreditoPie: cuota } : {}) };
 }
 
 // ── STR ───────────────────────────────────────────────────────────────────────
@@ -241,7 +242,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     dormitorios: dorm,
     banos: intSafe(a.banos, 1),
     superficieUtil: supUtil,
-    capacidadHuespedes: capacidadHuespedesDe(dorm),
+    capacidadHuespedes: huespedesNum(a),
     precioCompra: precioCompraCLP,
     precioCompraUF: precioUF,
     // Forma canónica del motor: fecha absoluta, no meses relativos. El wizard
@@ -250,9 +251,10 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // `asOf` del análisis, igual que en el lado largo.
     estadoVenta: esFutura ? ("futura" as const) : ("inmediata" as const),
     fechaEntrega: esFutura ? `${a.fechaEntregaAnio}-${a.fechaEntregaMes}` : undefined,
-    piePct: derivePiePctLocal(a, ctx.ufCLP),
+    piePct: pieEfectivoPct(a, ctx.ufCLP),
     // Fase 5b: misma razón que el lado LTR — el usuario la declara una vez.
-    razonSinPie: derivePiePctLocal(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,
+    razonSinPie: pieEfectivoPct(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,
+    ...camposOtraFuente(a, ctx.ufCLP),
     tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
     plazoCredito: Number(a.plazoCredito) || 25,
@@ -400,7 +402,7 @@ async function postJson(url: string, body: unknown): Promise<{ id: string }> {
  */
 function guardPieDeclarado(a: WizardV4Answers, ctx: SubmitContext): SubmitResult | null {
   const montoVacio = (a.pieMonto ?? "").trim() === "";
-  const pct = derivePiePctLocal(a, ctx.ufCLP);
+  const pct = pieEfectivoPct(a, ctx.ufCLP);
   if (montoVacio || (pct === 0 && !a.pieRazon)) {
     return {
       ok: false,

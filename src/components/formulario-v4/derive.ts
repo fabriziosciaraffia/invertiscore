@@ -86,6 +86,19 @@ export function capacidadHuespedesDe(dormitorios: number): number {
   return Math.max(2, dormitorios * 2);
 }
 
+/** Tope del stepper de huéspedes de la tarifa. */
+export const HUESPEDES_MAX = 16;
+
+/**
+ * Los huéspedes que recibe el depto (27-sep-2026: se preguntan en la tarifa). UNA sola lectura
+ * para la pantalla, AirROI del wizard y el submit. Sin respuesta, la regla por dormitorios
+ * (`capacidadHuespedesDe`), que es lo que se supuso siempre: ningún análisis cambia si no se toca.
+ */
+export function huespedesNum(a: WizardV4Answers): number {
+  const n = parseNumeroCL(a.capacidadHuespedes ?? "", 0);
+  return n !== null && n >= 1 ? Math.min(n, HUESPEDES_MAX) : capacidadHuespedesDe(dormitoriosNum(a));
+}
+
 export interface CostosOperativos {
   costoElectricidad: number;
   costoAgua: number;
@@ -238,10 +251,47 @@ export function pieCLP(a: WizardV4Answers, ufCLP: number): number {
   return Math.round(pieUF(a, ufCLP) * ufCLP);
 }
 
-/** Cuota (dividendo) mensual estimada en CLP, o 0 si falta info. */
+// ── «OTRA FUENTE» (27-sep-2026, entrega 2 del wizard) ──────────────────────────
+//
+// Con pie 0 y la razón «Lo cubro con otra fuente», la pantalla pregunta cuánto cubre esa fuente
+// (en la misma unidad que el pie) y si es un crédito. Para el banco ESO ES PIE: el hipotecario se
+// calcula sobre precio − monto, y el submit manda el monto en `piePct`. Si es un crédito, su cuota
+// mensual viaja aparte (`cuotaCreditoPie`) y entra al flujo del mes.
+
+/** % del precio que cubre «otra fuente» (0 si no aplica o falta el dato). Sin tope: `> 100` lo
+ *  bloquea la pantalla, igual que el pie. */
+export function otraFuentePctCrudo(a: WizardV4Answers, ufCLP: number): number {
+  if (a.pieRazon !== "otra_fuente" || piePct(a, ufCLP) > 0) return 0;
+  const unit = a.pieUnidad ?? "pct";
+  const monto = leerNum(a.otraFuenteMonto, decPie(unit));
+  if (monto <= 0) return 0;
+  if (unit === "pct") return monto;
+  const pUF = precioUF(a);
+  if (pUF <= 0 || ufCLP <= 0) return 0;
+  return ((unit === "uf" ? monto : monto / ufCLP) / pUF) * 100;
+}
+
+/**
+ * El pie que ve el banco: el escrito, o —con pie 0 cubierto por «otra fuente»— el monto de esa
+ * fuente. Redondeado y con tope 100, igual que `piePct`. Es lo que va al payload y a la cuota.
+ */
+export function pieEfectivoPct(a: WizardV4Answers, ufCLP: number): number {
+  const pct = piePct(a, ufCLP);
+  if (pct > 0) return pct;
+  const otra = otraFuentePctCrudo(a, ufCLP);
+  return otra > 0 ? redondearPiePct(Math.min(otra, 100)) : 0;
+}
+
+/** La cuota mensual (CLP) del crédito con que se cubre el pie, o 0 si no hay crédito declarado. */
+export function cuotaCreditoPieCLP(a: WizardV4Answers, ufCLP: number): number {
+  if (!a.otraFuenteCredito || otraFuentePctCrudo(a, ufCLP) <= 0) return 0;
+  return Math.max(0, Math.round(leerNum(a.otraFuenteCuota, DEC.cuotaCreditoPie)));
+}
+
+/** Cuota (dividendo) mensual estimada en CLP, o 0 si falta info. Sobre el pie que ve el banco. */
 export function cuotaCLP(a: WizardV4Answers, ufCLP: number): number {
   const pUF = precioUF(a);
-  const pct = piePct(a, ufCLP);
+  const pct = pieEfectivoPct(a, ufCLP);
   if (pUF <= 0 || ufCLP <= 0) return 0;
   return calcDividendo(pUF, pct, plazoAnios(a), tasaPct(a), ufCLP);
 }

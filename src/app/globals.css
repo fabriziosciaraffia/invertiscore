@@ -832,11 +832,8 @@ input[type="number"] {
    Mobile (alto > 820) no se toca. */
 @media (max-height: 820px) {
   .wizard4-main       { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
-  .wizard4-headcard   { margin-bottom: 1rem !important; padding-top: 1rem !important; padding-bottom: 1rem !important; }
-  .wizard4-steptitle  { margin-bottom: 0.9rem !important; font-size: 26px !important; }
-  .wizard4-reaction   { margin-bottom: 0.9rem !important; }
-  /* El serif grande de la variante B baja un escalón bajo 820px de alto. */
-  .wizard4-informe-cardtitle { font-size: 20px !important; }
+  /* La cabecera, el título y la reacción del paso tienen desde el 27-sep-2026 el formato del
+     informe (wizard-v4.css): su ritmo ya es compacto y no se comprime acá. */
 }
 
 /* ═══ Fase 2 · FREEZE — Hero por elevación (flotante+luz) · PARIDAD DE TEMAS ═══

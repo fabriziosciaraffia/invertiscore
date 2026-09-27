@@ -54,7 +54,7 @@ function NuevoAnalisisV4Inner() {
 }
 
 export default function NuevoAnalisisV4Page() {
-  // useSearchParams exige límite de Suspense en App Router (igual que v3).
+  // useSearchParams exige límite de Suspense en App Router.
   return (
     <Suspense fallback={<div className="min-h-screen bg-[var(--franco-bg)]" />}>
       <NuevoAnalisisV4Inner />

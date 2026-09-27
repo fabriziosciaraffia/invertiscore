@@ -1,0 +1,298 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   EL INTERIOR DEL WIZARD v4 CON EL FORMATO DEL INFORME (entrega 2, 27-sep-2026).
+   Mockup aprobado: docs/wireframes/rediseno-informe/wizard-v4-actualizado.html. Contrato:
+   docs/wireframes/rediseno-informe/contrato-diseno-informe.md §1 y §9.
+
+   Inter en todo, cifras con tabular-nums, cero mono. Página --page blanca con tarjetas --card
+   grises, como el informe. Radios 16 (cajas) · 12 (tarjetas, campos, filas) · 10 (chips);
+   botones y segmentados en píldora. EL ÚNICO ROJO ES EL BOTÓN DE AVANZAR: salen el de la barra
+   de progreso, el rótulo «Franco», los 01/02/03, los eyebrows, el borde del chip y el slider.
+
+   La paleta es la del informe (DocTokens): el contenedor lleva además `.doc-dictamen`, así el ⓘ
+   (Glosa) y sus hojas usan los mismos tokens. Acá se declaran igual, por si la página los pinta
+   antes de que cargue el CSS del informe. Sin data-theme = oscuro (convención de la app).
+   ═════════════════════════════════════════════════════════════════════════════ */
+.wz4 {
+  --page: #0C0C0E; --card: #1A1A1E; --sunk: #232328;
+  --line: #232327; --line2: #37373D;
+  --tx: #FAFAFA; --tx2: #D4D4D8; --tx3: #A1A1AA; --tx4: #71717A;
+  --wz-rojo: var(--signal-red, #C8323C);
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--tx);
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="light"] .wz4 {
+  --page: #FFFFFF; --card: #F4F4F6; --sunk: #EBEBEE;
+  --line: #E9E9EC; --line2: #D6D6DB;
+  --tx: #18181B; --tx2: #3F3F46; --tx3: #71717A; --tx4: #A1A1AA;
+}
+/* `.doc-dictamen` trae su marco (borde, sombra, fondo): acá no hay documento, solo la página. */
+.wz4.doc-dictamen { border: 0; box-shadow: none; background: none; }
+/* EL LIENZO: la página entera del color del papel, como el informe (`.doc-lienzo`). Va en el
+   envoltorio que contiene al header, y NO declara `--card`: el header no debe heredar los tokens
+   del informe (`--card` también es un token de shadcn, en HSL). El body por `:has`, para el rebote
+   del scroll. */
+.wz4-lienzo, body:has(.wz4-lienzo) { background: #0C0C0E; }
+[data-theme="light"] .wz4-lienzo, [data-theme="light"] body:has(.wz4-lienzo) { background: #FFFFFF; }
+
+/* ── la cabecera del paso: atrás · acto · chip + barra en tinta ── */
+.wz-cab { padding-top: 4px; }
+.wz-cab-fila { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.wz-disco {
+  width: 32px; height: 32px; flex: none; border-radius: 99px; border: 1px solid var(--line2); background: var(--page);
+  display: inline-flex; align-items: center; justify-content: center; color: var(--tx3); cursor: pointer;
+}
+.wz-disco:hover { color: var(--tx); }
+.wz-acto { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--tx3); }
+.wz-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 12px; font-weight: 600; line-height: 1.5;
+  border-radius: 99px; padding: 1px 9px; border: 1px solid var(--line2); background: var(--card); color: var(--tx); white-space: nowrap;
+}
+.wz-barra { height: 3px; border-radius: 99px; background: var(--line); margin-top: 12px; overflow: hidden; }
+.wz-barra i { display: block; height: 100%; border-radius: 99px; background: var(--tx); transition: width 0.3s ease-out; }
+
+/* ── la reacción de Franco: una tarjeta gris, sin rótulo rojo ni cursiva ── */
+.wz-reac { margin-top: 20px; background: var(--card); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.5; color: var(--tx2); }
+.wz-reac b { color: var(--tx); font-weight: 600; }
+.wz-titulo { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin: 22px 0 6px; color: var(--tx); }
+.wz-bajada { font-size: 14px; line-height: 1.5; color: var(--tx3); margin: 0 0 6px; }
+.wz-gap { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+
+/* ── la tarjeta seleccionable ── */
+.wz-tile {
+  display: block; width: 100%; text-align: left; background: var(--card); border-radius: 12px; padding: 15px 17px;
+  border: 1.5px solid transparent; color: var(--tx); font: inherit; cursor: pointer; transition: background 0.15s;
+}
+.wz-tile:hover { background: var(--sunk); }
+.wz-tile .wz-t { display: block; font-size: 15.5px; font-weight: 600; }
+.wz-tile .wz-s { display: block; font-size: 13px; line-height: 1.45; color: var(--tx3); margin-top: 3px; }
+.wz-tile .wz-eb { display: block; font-size: 11.5px; font-weight: 600; color: var(--tx3); margin-bottom: 4px; }
+.wz-tile[aria-pressed="true"] { background: var(--tx); color: var(--page); border-color: var(--tx); }
+.wz-tile[aria-pressed="true"] .wz-s, .wz-tile[aria-pressed="true"] .wz-eb { color: var(--page); opacity: 0.72; }
+/* destacada (el subsidio): borde de tinta, no roja, y no preseleccionada */
+.wz-tile.wz-acento { border-color: var(--tx); }
+.wz-tile:focus-visible, .wz-seg button:focus-visible, .wz-cta:focus-visible, .wz-lnk:focus-visible, .wz-disco:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+
+/* ── los campos ── */
+.wz-campo { display: flex; flex-direction: column; gap: 6px; }
+.wz-rot { font-size: 13.5px; font-weight: 600; color: var(--tx); display: flex; align-items: center; gap: 6px; }
+.wz-input {
+  width: 100%; height: 48px; border-radius: 12px; background: var(--card); border: 1px solid transparent; padding: 0 14px;
+  font: inherit; font-size: 16px; font-weight: 500; color: var(--tx); outline: 0; box-sizing: border-box;
+}
+.wz-input:focus { border-color: var(--tx); background: var(--page); }
+.wz-input::placeholder { color: var(--tx4); font-weight: 400; }
+.wz-input.wz-grande { height: 56px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.wz-input-caja { position: relative; }
+.wz-suf { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 500; color: var(--tx3); pointer-events: none; }
+.wz-input.con-suf { padding-right: 52px; }
+.wz-select { appearance: none; -webkit-appearance: none; }
+.wz-eco { font-size: 12.5px; line-height: 1.45; color: var(--tx3); margin: 0; }
+.wz-eco b { color: var(--tx2); font-weight: 600; }
+.wz-indic { font-size: 12.5px; line-height: 1.45; color: var(--tx2); margin: 0; }
+.wz-indic b { color: var(--tx); font-weight: 600; }
+.wz-fuente { font-size: 12.5px; line-height: 1.45; color: var(--tx3); margin: 6px 0 0; }
+.wz-aviso { font-size: 12.5px; line-height: 1.45; color: var(--tx2); margin: 0; }
+.wz-aviso.fuerte { color: var(--wz-rojo); }
+
+/* ── el segmentado en píldora ── */
+.wz-seg { display: inline-flex; background: var(--card); border-radius: 99px; padding: 3px; gap: 2px; }
+.wz-seg button {
+  min-width: 44px; height: 36px; padding: 0 14px; border: 0; border-radius: 99px; background: none;
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--tx3); cursor: pointer;
+}
+.wz-seg button[aria-pressed="true"] { background: var(--tx); color: var(--page); }
+.wz-seg.lleno { display: flex; width: 100%; }
+.wz-seg.lleno button { flex: 1; padding: 0 4px; }
+
+/* ── el botón de avanzar: el mismo en todas las pantallas, el único rojo ── */
+.wz-cta {
+  margin-top: 22px; width: 100%; height: 52px; border-radius: 99px; border: 0; background: var(--wz-rojo); color: #fff;
+  font: inherit; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 10px 30px rgba(0, 0, 0, 0.07); cursor: pointer; transition: transform 0.1s;
+}
+.wz-cta:active { transform: translateY(1px); }
+.wz-cta:disabled { background: var(--card); color: var(--tx4); box-shadow: none; cursor: not-allowed; }
+.wz-lnk-fila { display: flex; justify-content: center; margin-top: 16px; }
+.wz-lnk {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--tx); background: none; border: 0;
+  border-bottom: 1.5px solid var(--line2); padding: 0 0 2px; cursor: pointer; min-height: 32px;
+}
+.wz-bajo-cta { font-size: 12px; line-height: 1.45; color: var(--tx3); text-align: center; margin: 10px 0 0; }
+/* la barra fija de abajo (pantallas más largas que el teléfono y el resumen) */
+.wz-barra-cta { position: sticky; bottom: 0; z-index: 5; padding: 10px 0 14px; background: linear-gradient(to bottom, transparent, var(--page) 28%); margin-top: 8px; }
+.wz-barra-cta .wz-cta { margin-top: 0; }
+
+/* ── bloques de información y cifras ── */
+.wz-bloque { background: var(--card); border-radius: 12px; padding: 14px 15px; }
+.wz-bloque .wz-bt { font-size: 12.5px; font-weight: 600; color: var(--tx3); margin-bottom: 4px; }
+.wz-bloque p { font-size: 13.5px; line-height: 1.55; color: var(--tx2); margin: 0; }
+.wz-bloque p b { color: var(--tx); }
+.wz-sunk { background: var(--sunk); border-radius: 12px; padding: 14px 15px; display: flex; flex-direction: column; gap: 12px; }
+.wz-cifra { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; color: var(--tx); }
+.wz-cifra small { font-size: 15px; font-weight: 600; color: var(--tx3); letter-spacing: 0; margin-left: 2px; }
+.wz-rot-cifra { font-size: 12.5px; font-weight: 600; color: var(--tx3); margin-bottom: 4px; }
+.wz-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── las filas editables (supuestos, costos): un solo formato para editar en todo el wizard ── */
+.wz-filas { background: var(--card); border-radius: 12px; padding: 4px 15px; }
+.wz-filas .wz-ft { font-size: 12.5px; font-weight: 600; color: var(--tx3); padding: 10px 0 2px; }
+.wz-fe { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.wz-filas .wz-ft + .wz-fe, .wz-fnav-cuerpo > .wz-fe:first-child { border-top: 0; }
+.wz-fe .wz-k { font-size: 14px; font-weight: 500; color: var(--tx); }
+.wz-fe .wz-f { grid-column: 1; font-size: 12px; line-height: 1.4; color: var(--tx3); }
+.wz-fe .wz-v {
+  grid-row: 1 / span 2; grid-column: 2; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px;
+  border-radius: 12px; background: var(--page); border: 1px solid var(--line2); font-size: 14.5px; font-weight: 600; color: var(--tx); white-space: nowrap;
+}
+.wz-fe .wz-v:focus-within { border-color: var(--tx); }
+.wz-fe .wz-v input { width: 92px; border: 0; outline: 0; background: none; font: inherit; color: inherit; text-align: right; padding: 0; }
+.wz-fe .wz-v .wz-u { font-size: 12px; font-weight: 500; color: var(--tx3); }
+.wz-fe.fija .wz-v { background: none; border-color: transparent; padding-right: 0; }
+.wz-fe .wz-tocado { grid-column: 1; font-size: 11.5px; font-weight: 600; color: var(--tx2); }
+
+/* ── el resumen: las tres tarjetas como las filas navegables del informe ── */
+.wz-fnav { background: var(--card); border-radius: 12px; }
+.wz-fnav-cab { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; width: 100%; padding: 14px 15px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.wz-fnav-cab .wz-ti { font-size: 15.5px; font-weight: 600; color: var(--tx); }
+.wz-fnav-cab .wz-re { font-size: 12.5px; line-height: 1.4; color: var(--tx3); margin-top: 2px; }
+.wz-fnav-cab .wz-ci { font-size: 15px; font-weight: 700; color: var(--tx); white-space: nowrap; }
+.wz-fnav-cuerpo { padding: 0 15px 8px; border-top: 1px solid var(--line); }
+.wz-sub-rot { font-size: 12.5px; font-weight: 600; color: var(--tx3); padding: 14px 0 2px; }
+
+/* ── el slider del plazo, en tinta ── */
+.wz-range { width: 100%; accent-color: var(--tx); height: 28px; }
+.wz-marcas { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--tx3); margin-top: 2px; }
+.wz-marcas span[aria-current="true"] { color: var(--tx); }
+
+/* ── el stepper de huéspedes ── */
+.wz-stepper button { font-size: 16px; }
+
+@media (min-width: 768px) {
+  .wz-titulo { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wz-barra i, .wz-tile, .wz-cta { transition: none; }
+}
+
+/* ═══ Piezas de las pantallas ═══ */
+.wz-rot label { cursor: default; }
+.wz-fila-der { display: flex; justify-content: flex-end; }
+.wz-gap.wz-gap-0 { margin-top: 0; }
+.wz-tile .wz-t.wz-t-grande { font-size: 17px; }
+.wz-tile .wz-grande { display: block; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin: 2px 0 2px; }
+.wz-eco-caja { min-height: 18px; }
+.wz-input[aria-invalid="true"] { border-color: var(--wz-rojo); }
+.wz-mt6 { margin-top: 6px; }
+
+/* dormitorios en una fila; baños debajo, a todo el ancho */
+.wz-fila-dorm { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 6px; }
+.wz-fila-banos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.wz-fila-dorm button, .wz-fila-banos button {
+  height: 44px; border-radius: 12px; border: 0; background: var(--card); font: inherit; font-size: 14.5px; font-weight: 600;
+  color: var(--tx2); cursor: pointer; padding: 0 4px;
+}
+.wz-fila-dorm button[aria-pressed="true"], .wz-fila-banos button[aria-pressed="true"] { background: var(--tx); color: var(--page); }
+.wz-fila-dorm button:focus-visible, .wz-fila-banos button:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+
+/* botón secundario en píldora (retomar, corregir, listo) */
+.wz-btn2 {
+  width: 100%; height: 48px; border-radius: 99px; border: 1px solid var(--line2); background: var(--page); color: var(--tx);
+  font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+}
+.wz-btn2.tinta { background: var(--tx); border-color: var(--tx); color: var(--page); }
+.wz-btn2:disabled { opacity: 0.6; cursor: not-allowed; }
+.wz-btn2:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+
+/* banner de retomar */
+.wz-retomar { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.wz-retomar .wz-lnk-fila { margin-top: 0; }
+
+/* bloques */
+.wz-bloque-sunk { background: var(--sunk); }
+.wz-bloque .wz-punto-dir { font-size: 15px; font-weight: 600; color: var(--tx); }
+.wz-bloque .wz-punto-pie { font-size: 12.5px; color: var(--tx3); margin-top: 2px; }
+.wz-bloque .wz-punto-fuera { margin-top: 8px; }
+.wz-mapa { border-radius: 12px; background: var(--card); }
+.wz-mapa-fuera { margin-top: 6px; }
+
+/* plazo */
+.wz-plazo-anos { text-align: center; }
+.wz-cifra.wz-cifra-xl { display: inline; font-size: 44px; }
+.wz-plazo-u { font-size: 16px; font-weight: 600; color: var(--tx3); }
+
+/* stepper de huéspedes */
+.wz-stepper { align-items: center; }
+.wz-stepper button { flex: 0 0 44px; min-width: 44px; padding: 0; font-size: 18px; color: var(--tx); }
+.wz-stepper button:disabled { color: var(--tx4); cursor: not-allowed; }
+.wz-stepper-n { flex: 1; text-align: center; font-size: 15px; font-weight: 700; color: var(--page); background: var(--tx); border-radius: 99px; height: 36px; line-height: 36px; }
+
+/* ═══ Filas editables (filas.tsx) ═══ */
+.wz-fe .wz-v-btn { cursor: pointer; font: inherit; font-size: 14.5px; font-weight: 600; }
+.wz-fe .wz-v-btn:hover { border-color: var(--tx3); }
+.wz-fe .wz-v-btn:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+.wz-fe .wz-lap { color: var(--tx4); flex: none; }
+.wz-fe .wz-v.wz-v-edita { border-color: var(--tx); }
+.wz-fe .wz-v-control { grid-row: 1 / span 2; grid-column: 2; }
+.wz-fe .wz-f { overflow-wrap: anywhere; }
+.wz-fe-nota { grid-column: 1 / -1; display: block; }
+.wz-fe-nota.wz-eco, .wz-fe-nota.wz-indic, .wz-fe-nota.wz-aviso { margin-top: 2px; }
+.wz-fe-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.wz-seg.wz-seg-fila { display: flex; flex-wrap: wrap; border-radius: 16px; margin-top: 8px; }
+.wz-seg.wz-seg-fila button { flex: 1 1 auto; }
+.wz-bloque-nota { display: block; margin-top: 6px; }
+.wz-sub-rot + .wz-fe, .wz-reac-cascada + .wz-fe { border-top: 0; }
+.wz-fe.wz-ilumina { box-shadow: 0 0 0 2px var(--wz-rojo); border-radius: 12px; border-top-color: transparent; padding-left: 8px; padding-right: 8px; margin: 0 -8px; transition: box-shadow 0.3s; }
+
+/* ═══ Resumen ═══ */
+.wz-mod-chip { margin: 2px 0 14px; }
+.wz-chip.wz-chip-btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 3px 11px; cursor: pointer; }
+.wz-fnav-cab .wz-fnav-txt { display: flex; flex-direction: column; min-width: 0; }
+.wz-fnav-cab .wz-disco { pointer-events: none; }
+.wz-fnav-cab:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; border-radius: 12px; }
+.wz-rot90 { transform: rotate(90deg); transition: transform 0.15s; }
+.wz-reac.wz-reac-cascada { margin: 12px 0 4px; }
+.wz-alfilo { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; border: 0; margin-top: 14px; font: inherit; cursor: pointer; color: var(--tx); }
+.wz-alfilo .wz-bt { color: var(--tx); font-size: 13.5px; }
+.wz-alfilo-t { font-size: 13px; line-height: 1.5; color: var(--tx2); }
+.wz-error { margin-top: 14px; box-shadow: inset 2px 0 0 var(--wz-rojo); }
+.wz-error p { color: var(--tx); }
+.wz-cta.wz-cta-final { text-decoration: none; }
+
+/* ═══ Modal de plausibilidad ═══ */
+.wz-modal-velo {
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start; justify-content: center;
+  padding: 52px 14px 20px; background: rgba(12, 12, 14, 0.72); backdrop-filter: blur(2px);
+}
+[data-theme="light"] .wz-modal-velo { background: rgba(24, 24, 27, 0.55); }
+.wz-modal {
+  width: 100%; max-width: 470px; max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--page); border-radius: 16px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+}
+.wz-modal-mc { flex: 1; overflow-y: auto; padding: 18px 18px 8px; }
+.wz-modal-mt { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: var(--tx3); }
+.wz-modal-grandote { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin-top: 10px; color: var(--tx); }
+.wz-modal-grandote small { font-size: 15px; font-weight: 600; color: var(--tx3); margin-left: 6px; letter-spacing: 0; }
+.wz-modal-gl { font-size: 12.5px; color: var(--tx3); margin-top: 6px; }
+.wz-modal-msg { font-size: 15px; line-height: 1.5; font-weight: 500; color: var(--tx); margin: 14px 0 0; }
+.wz-modal-resto { margin-top: 14px; }
+.wz-modal-resto ul { margin: 6px 0 0; padding: 0 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--tx2); }
+.wz-modal-orig { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.wz-modal-o {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; background: var(--card); border-radius: 12px;
+  padding: 12px 14px; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.wz-modal-o .ol, .wz-modal-der .ol { font-size: 12.5px; font-weight: 600; color: var(--tx3); }
+.wz-modal-o .ov, .wz-modal-der .ov { font-size: 15px; font-weight: 700; color: var(--tx); }
+.wz-modal-o .ov.sosp { color: var(--wz-rojo); }
+.wz-disco.wz-disco-chico { width: 28px; height: 28px; }
+.wz-modal-dir { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.3; margin: 12px 0 0; color: var(--tx); }
+.wz-modal-der { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.wz-modal-consumo { font-size: 13.5px; line-height: 1.5; color: var(--tx2); margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.wz-modal-mb { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 18px; border-top: 1px solid var(--line); margin-top: 14px; }
+.wz-cta.wz-cta-modal { margin-top: 0; height: 48px; }
+
+/* El foco de teclado en tinta (el del navegador salía ámbar sobre el slider). Los campos de texto
+   ya marcan el foco con su borde y quedan fuera. */
+.wz4 :where(button, a, select, input[type="range"]):focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }

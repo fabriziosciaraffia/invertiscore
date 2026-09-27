@@ -3,15 +3,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Wizard v4 — Shell + router de pantallas
 //
-// Header con rótulo de acto (mono uppercase) + barra de progreso Signal Red
-// (monotónica) + chevron atrás. Reacción de Franco (datos reales) sobre la
+// Cabecera del paso: disco de atrás + rótulo del acto + chip de modalidad + barra
+// de progreso en tinta (monotónica). Reacción de Franco (datos reales) sobre la
 // pregunta. Transición slide+fade. Draft con banner de retomar.
 //
-// Actos 1-2 (FASE 2): pantallas reales con inputs, Places, mapa, estimaciones.
-// Acto 3 + resumen: placeholders navegables (Fases 3-4).
+// EL INTERIOR TIENE EL FORMATO DEL INFORME (entrega 2, 27-sep-2026): va dentro de
+// `.wz4.doc-dictamen` —los tokens del informe, Inter en todo— y el header queda
+// afuera, sobre el lienzo (`.wz4-lienzo`). Mockup aprobado:
+// docs/wireframes/rediseno-informe/wizard-v4-actualizado.html.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { ChevronLeft } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
@@ -33,9 +36,10 @@ import {
   type ReactionLive,
   type WizardV4Answers,
 } from "./wizardV4Nodes";
-import { cuotaCLP, fmtCLP, leerNum } from "./derive";
+import { fmtCLP, leerNum } from "./derive";
 import { avisoSubsidioAplica } from "./wizardV4Subsidio";
-import { FrancoReaction, GhostBtn } from "./ui";
+import { FrancoReaction, LinkBtn } from "./ui";
+import "./wizard-v4.css";
 import {
   AntiguedadScreen,
   EntregaScreen,
@@ -59,29 +63,18 @@ import { ModalPlausibilidad } from "./ModalPlausibilidad";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
 
+/** Los tokens y el CSS del informe para el ⓘ y su hoja: se cargan aparte (ver TokensWizard). */
+const TokensWizard = dynamic(() => import("./TokensWizard"), { ssr: false });
+
 /** Guard de sesión del StartFreeAnalysis (1 disparo por pestaña/sesión). */
 const SFA_SESSION_KEY = "meta_sfa_fired";
 
-/** Rótulo corto de modalidad para el chip del header (uppercase por CSS). */
+/** Rótulo corto de modalidad para el chip de la cabecera del paso. */
 const MOD_CHIP: Record<string, string> = {
   ltr: "Renta larga",
   str: "Renta corta",
   both: "Comparativo",
 };
-
-/** Caja placeholder de contenido de pantalla (Acto 3 / resumen → Fases 3-4). */
-function PlaceholderBox({ node }: { node: NodeId }) {
-  return (
-    <div className="rounded-xl border border-dashed border-[var(--franco-border-strong)] bg-[var(--franco-card)] px-5 py-8 text-center">
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)] m-0">
-        Pantalla · {node}
-      </p>
-      <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-2 mb-0">
-        Contenido e inputs reales en Fases 3–4.
-      </p>
-    </div>
-  );
-}
 
 export function WizardV4({
   resume,
@@ -118,8 +111,9 @@ export function WizardV4({
   const actoLabel = ACTO_LABEL[acto];
   // Chip de modalidad: aparece recién en el tramo final (la modalidad se elige
   // después de `plazo`), y ahí sirve de confirmación de lo recién elegido en las
-  // pantallas de renta y el resumen. Ink (no Signal Red — no es atención).
-  const modLabel = nav.answers.modalidad ? MOD_CHIP[nav.answers.modalidad] : null;
+  // pantallas de renta. Píldora neutra (no Signal Red — no es atención). El
+  // resumen lleva el suyo, editable, así que acá no se repite.
+  const modLabel = nav.answers.modalidad && nav.current !== "resumen" ? MOD_CHIP[nav.answers.modalidad] : null;
   const progress = w.progress;
 
   // Precarga de comuna (?comuna=). Una sola vez y solo si el usuario todavía no
@@ -293,13 +287,11 @@ export function WizardV4({
     return () => window.removeEventListener("pagehide", onHide);
   }, [posthog]);
 
-  // Reacción de Franco con datos reales (comparables, UF del día, cuota, aviso subsidio).
+  // Reacción de Franco con datos reales (comparables, UF del día, aviso subsidio).
   const live: ReactionLive = {};
   if (data.comparablesCount > 0) live.comparables = data.comparablesCount;
   const puf = leerNum(nav.answers.precio, DEC.precioUF);
   if (puf > 0 && data.ufCLP > 0) live.precioCLP = fmtCLP(puf * data.ufCLP);
-  const cuota = cuotaCLP(nav.answers, data.ufCLP);
-  if (cuota > 0) live.cuota = fmtCLP(cuota);
   live.subsidioAviso = avisoSubsidioAplica(nav.answers, data.precioM2UF);
   const reaction = nav.reactionSource ? reactionText(nav.reactionSource, nav.answers, live) : null;
 
@@ -361,10 +353,6 @@ export function WizardV4({
     goDetour: w.goDetour,
   };
 
-  // El resumen (documento maestro) usa contenedor propio ancho (~1160px, deja
-  // ~100px de margen por lado en 1366) para que las 3 cards respiren y no hagan
-  // wrap agresivo. Las pantallas de pregunta siguen angostas (foco en 1 decisión).
-  const esResumen = nav.current === "resumen";
   // La PORTADA (nodo `dir`) se dibuja su propio encabezado: título grande con el
   // fragmento en Signal Red, bajada de dos líneas y chips. El headcard genérico
   // —rótulo de acto + barra en 0% + chevron sin historial— no aporta nada ahí y
@@ -384,77 +372,50 @@ export function WizardV4({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
+    <div className="wz4-lienzo min-h-screen">
       <HeaderFranco contexto="wizard" />
+      <TokensWizard />
 
-      <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-1 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
-        {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).
-            En el resumen (ancho, denso) se compacta el margen para caber en 1366x768.
+      {/* El resumen usa el mismo ancho que las preguntas: sus tres tarjetas son filas
+          navegables una bajo otra, como en el informe, no columnas. */}
+      <main className="wz4 doc-dictamen wizard4-main mx-auto max-w-[600px] px-4 pt-4 pb-10 md:pt-8">
+        {/* Cabecera del paso: disco de atrás · acto · chip, y la barra en tinta.
             En la portada no se dibuja (ver `esPortada`). */}
-        {!esPortada && (
-        <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-3" : "p-5 md:p-6 mb-8"}`}>
-          <div className="flex items-center gap-3 mb-4 min-w-0">
+        <div className="wz-cab">
+          <div className="wz-cab-fila">
             {w.canGoBack && (
-              <button
-                type="button"
-                onClick={w.goBack}
-                aria-label="Volver a la pregunta anterior"
-                className="shrink-0 -ml-1 flex items-center justify-center w-8 h-8 rounded-lg text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-border)] transition-colors"
-              >
-                <ChevronLeft size={18} />
+              <button type="button" onClick={w.goBack} aria-label="Volver a la pregunta anterior" className="wz-disco">
+                <ChevronLeft size={16} aria-hidden />
               </button>
             )}
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] truncate">
-              {actoLabel}
-            </span>
-            {modLabel && (
-              <span className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] px-2 py-0.5 rounded-md border-[0.5px] border-[var(--franco-border)] text-[var(--franco-text-secondary)]">
-                {modLabel}
-              </span>
-            )}
+            <span className="wz-acto">{actoLabel}</span>
+            {modLabel && <span className="wz-chip">{modLabel}</span>}
           </div>
-          <div className="h-[3px] w-full rounded-full bg-[var(--franco-border)] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-signal-red transition-[width] duration-300 ease-out"
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
+          <div className="wz-barra" aria-hidden>
+            <i style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
         </div>
-        )}
 
         {/* Banner de retomar draft. Vive en el layout del <main>, fuera del
             router de pantallas → sin el gate se renderiza en las 12 pantallas. */}
         {w.bannerDraftVisible && (
-          <div className="mb-6 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
-            <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1.5">
-              Análisis sin terminar
-            </p>
-            <p className="font-body text-sm text-[var(--franco-text)] m-0">
-              Tienes un análisis a medias. ¿Lo retomas donde lo dejaste?
-            </p>
-            <div className="mt-3 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={w.resumeDraft}
-                className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-[var(--franco-bg)] bg-[var(--franco-text)] px-4 py-2 rounded-lg hover:opacity-90 transition-opacity min-h-[44px]"
-              >
-                Retomar
-              </button>
-              <GhostBtn onClick={w.discardDraft}>Empezar de cero</GhostBtn>
-            </div>
+          <div className="wz-bloque wz-retomar" role="region" aria-label="Análisis sin terminar">
+            <div className="wz-bt">Análisis sin terminar</div>
+            <p>Tienes un análisis a medias. ¿Lo retomas donde lo dejaste?</p>
+            <button type="button" onClick={w.resumeDraft} className="wz-btn2 tinta">
+              Retomar
+            </button>
+            <LinkBtn onClick={w.discardDraft}>Empezar de cero</LinkBtn>
           </div>
         )}
 
-        {/* Contenido de pantalla con transición slide+fade */}
-        <div className="overflow-hidden">
+        {/* Contenido de pantalla con transición slide+fade. `clip` y no `hidden`: `hidden` crea un
+            contenedor de scroll y la barra fija del botón (sticky) dejaba de pegarse abajo. */}
+        <div className="overflow-x-clip">
           <div key={nav.current} ref={screenRef} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            {!esPortada && (
-              <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-2" : "mb-6"}`}>
-                {NODE_TITLE[nav.current]}
-              </h1>
-            )}
+            <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
 
             <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
           </div>
@@ -551,6 +512,6 @@ function Screen({
       return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={onTerminal} />;
 
     default:
-      return <PlaceholderBox node={node} />;
+      return null;
   }
 }

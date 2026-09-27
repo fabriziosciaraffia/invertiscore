@@ -1,40 +1,44 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wizard v4 — RESUMEN · DOCUMENTO MAESTRO (rediseño F6)
+// Wizard v4 — RESUMEN · DOCUMENTO MAESTRO
 //
-// El resumen es el documento maestro del deal: tres cards por acto (01/02/03),
-// cada una con nivel 2 (campos decisivos) y niveles 3 colapsables. TODA edición
-// ocurre EN el resumen, inline — no hay viaje lápiz→pantalla→volver.
+// El resumen es el documento maestro del deal: tres tarjetas por acto (Qué compras
+// · Cómo lo financias · Cómo lo rentabilizas). TODA edición ocurre EN el resumen,
+// inline — no hay viaje lápiz→pantalla→volver.
 //
-// R2: EDICIÓN INLINE de valores + gramática visual.
-//  · EDITABLE: valor con subrayado punteado + lápiz (hover desktop / fijo mobile)
-//    + tinte Signal Red en hover; tap → editor en el lugar.
-//  · CALCULADO: gris, sin affordance, sufijo "· calculada/o".
+// CON EL FORMATO DEL INFORME (entrega 2, 27-sep-2026, mockup aprobado
+// docs/wireframes/rediseno-informe/wizard-v4-actualizado.html):
+//  · Las tres tarjetas son las FILAS NAVEGABLES del informe: título, una línea de
+//    resumen, la cifra a la derecha y el disco del chevron. Una bajo otra, en todos
+//    los anchos; nacen cerradas y se abren al tocarlas.
+//  · Adentro, las MISMAS filas editables que en las pantallas (`filas.tsx`): un solo
+//    formato para editar en todo el wizard. Sin tercer nivel: los gastos comunes a
+//    un toque, no a tres. GGCC y contribuciones pasan a «Cómo lo rentabilizas».
+//  · La gestión, la comisión STR, los huéspedes y el amoblado, editables acá (antes
+//    no existían en ninguna parte), y «Cómo se cubre» con el monto de otra fuente.
 //  · COMMIT = blur o Enter (NO cada keystroke). El dry-run, los eventos y la
-//    línea-resumen mobile se actualizan al COMMIT. Escape cancela.
-//
-// Estructurales (dirección/tipo/modalidad + cascada) y card al-filo apunta-adentro
-// llegan en R3/R4. Se conserva: formato chileno, fuentes con caveat N<10, tags,
-// botón tri-estado con micro-ancla, draft, a11y.
+//    línea-resumen se actualizan al COMMIT. Escape cancela.
+//  · El botón queda fijo abajo (barra sticky), el mismo de todo el wizard.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
-import { ArrowRight, ChevronRight, Loader2, Pencil } from "lucide-react";
+import { ChevronRight, Loader2, Pencil } from "lucide-react";
 import { SINGLE_PRICE } from "@/lib/pricing";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
-import { precisionDeComponentes, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { precisionDeComponentes, sinCodigoPostal, type PrecisionUbicacion } from "@/lib/geocoding-precision";
+import { direccionCorta } from "@/components/entrada/llegada";
 import { AvisoSinNumero, MapaPinAjustable } from "./MapaPinAjustable";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
-import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
-import { DEC, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
+import type { WizardV4Answers, Antiguedad, PieRazon } from "./wizardV4Nodes";
+import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { buildLtrPayload, buildStrPayload, comprarLocked, submitAnonimo, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
@@ -49,6 +53,7 @@ import {
   type Regla,
 } from "@/lib/plausibilidad";
 import {
+  avisoPie,
   escalaArriendo,
   escalaComision,
   escalaOcupacion,
@@ -58,12 +63,13 @@ import {
   escalaTarifa,
   escalaTasa,
   escalaVacancia,
-  type AvisoEscala,
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { CAJA_COBERTURA } from "@/lib/comuna-bounds";
-import { costosOperativosEditados, dormLabel, dormitoriosNum, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
+import { costosOperativosEditados, cuotaCreditoPieCLP, dormLabel, dormitoriosNum, fmtCLP, fmtUF, fuenteArriendoLine, huespedesNum, leerNum, otraFuentePctCrudo, procedenciaArriendoCorta, superficieM2, cuotaCLP, pieEfectivoPct, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
+import { FilaFija, FilaNum, FilaOpciones } from "./filas";
+import { BarraCta } from "./ui";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
@@ -117,6 +123,13 @@ function tasaStr(t: number): string {
   return t.toFixed(2).replace(".", ",");
 }
 
+/** Texto guardado → cifra, con los decimales que el valor realmente tiene (sin unidad). */
+function cifra(raw: string | undefined, decimales: Decimales, def: number): string {
+  const v = parseNumeroCL(raw ?? "", decimales);
+  const x = v === null ? def : v;
+  return formatNumeroCL(x, decimalesUtiles(x));
+}
+
 function joinVars(vars: string[]): string {
   if (vars.length <= 1) return vars[0] ?? "";
   return `${vars.slice(0, -1).join(", ")} y ${vars[vars.length - 1]}`;
@@ -135,12 +148,16 @@ const FIELD_FOR_VAR: Record<string, string> = {
 };
 
 // Campo → card (para limpiar la nota de cascada al interactuar con esa card).
+// Gastos comunes y contribuciones viven en la 03 desde el 27-sep-2026 (se descuentan
+// del arriendo / se pagan al operar), igual que en las pantallas de renta.
 const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
-  precio: "01", gastosComunes: "01", contribuciones: "01",
+  precio: "01",
   entrega: "01", antiguedad: "01", tam: "01", estac: "01", bodega: "01",
-  pie: "02", plazo: "02", tasa: "02",
+  pie: "02", otraFuente: "02", plazo: "02", tasa: "02",
   gate: "03", arr: "03", adr: "03",
+  gastosComunes: "03", contribuciones: "03",
   vacanciaPct: "03", comisionAdminPct: "03",
+  modoGestion: "03", comisionStrPct: "03", huespedes: "03", amoblado: "03",
   costoInsumos: "03", mantencionStr: "03", costoAmoblamiento: "03",
 };
 
@@ -184,45 +201,27 @@ const LABEL_ORIGEN: Record<string, string> = {
   vacancia: "Vacancia", comisionAdmin: "Comisión administración",
 };
 
-// ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
-
-function FieldShell({ label, children, fuente, showFuente }: { label: string; children: ReactNode; fuente?: string; showFuente?: boolean }) {
-  return (
-    <div className="py-1 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
-      <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--franco-text-muted)] m-0 mb-0.5">{label}</p>
-      {children}
-      {/* R7: la fuente/procedencia aparece SOLO con el editor abierto, no en reposo.
-          Los tags (· estimado / · corregido) sí quedan siempre visibles. */}
-      {fuente && showFuente && <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-1 leading-snug">{fuente}</p>}
-    </div>
-  );
-}
-
-/** Valor derivado/calculado — gris, sin affordance. */
-function DerivedLine({ text }: { text: string }) {
-  return <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0 mt-0.5">{text}</p>;
-}
-
-/** Tag "· estimado" / "· corregido por ti" / "· con subsidio". */
-function Tag({ tag }: { tag?: string }) {
-  return tag ? <span className="text-[var(--franco-text-muted)] text-[11px]"> · {tag}</span> : null;
-}
-
-/** Subtítulo de agrupación por pertenencia dentro de una card (solo AMBAS). */
-function Subtitulo({ children }: { children: ReactNode }) {
-  return <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--franco-text-tertiary)] m-0 mt-2 mb-0.5 first:mt-0">{children}</p>;
-}
+// ── Piezas del resumen (los campos son las filas de `filas.tsx`) ─────────────
 
 const ANTIGUEDADES: Array<{ value: Antiguedad; label: string }> = [
   { value: "0-2", label: "0–2 años" }, { value: "3-5", label: "3–5 años" }, { value: "6-10", label: "6–10 años" }, { value: "11-20", label: "11–20 años" }, { value: "20+", label: "20+ años" },
 ];
 
-const chipCls = (active: boolean) =>
-  `font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${active ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"}`;
+/** La razón del pie 0 en la píldora de la fila: corta, para que el rótulo no parta en dos. */
+const RAZON_CORTA: Record<PieRazon, string> = {
+  bono_pie: "Bono pie",
+  otra_fuente: "Otra fuente",
+  no_declarada: "Prefiero no decir",
+};
 
-/** Editor compuesto de tamaño: superficie + dormitorios + baños. Los sub-campos
- *  patchean en vivo; "Listo" cierra y emite el commit. */
-function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Partial<WizardV4Answers>) => void; onCommit: () => void }) {
+/** Rótulo de agrupación dentro de una tarjeta («Lo que se descuenta», «Operación»). */
+function SubRot({ children }: { children: ReactNode }) {
+  return <div className="wz-sub-rot">{children}</div>;
+}
+
+/** Tamaño: superficie + dormitorios + baños en una fila; al tocarla, los tres editores. Los
+ *  sub-campos patchean en vivo; «Listo» cierra y emite el commit. */
+function TamanoFila({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Partial<WizardV4Answers>) => void; onCommit: () => void }) {
   const [editing, setEditing] = useState(false);
   const sup = superficieM2(a);
   const supEstado = estadoNumericInput(a.superficieUtil ?? "", {
@@ -234,335 +233,63 @@ function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Pa
   const supTxt = displayNum(a.superficieUtil, DEC.superficie, (t) => `${t} m²`);
   const display = sup > 0 ? `${supTxt} · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
   return (
-    <FieldShell label="Tamaño">
-      {editing ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            {/* Sin filtro: se acepta lo tipeado y el eco de abajo dice cómo se
-                entendió. Misma precisión que el Acto 1 (DEC.superficie). */}
-            <input autoFocus value={a.superficieUtil ?? ""} inputMode="decimal"
+    <div className="wz-fe">
+      <span className="wz-k">Tamaño</span>
+      <button type="button" className="wz-v wz-v-btn" onClick={() => setEditing((e) => !e)} aria-expanded={editing} aria-label={`Tamaño: ${display}. Toca para cambiarlo.`}>
+        <span>{display}</span>
+        <Pencil size={12} className="wz-lap" aria-hidden />
+      </button>
+      {editing && (
+        <div className="wz-fe-nota wz-fe-editor">
+          {/* Sin filtro: se acepta lo tipeado y el eco de abajo dice cómo se entendió. Misma
+              precisión que el Acto 1 (DEC.superficie). */}
+          <div className="wz-input-caja">
+            <input
+              autoFocus
+              value={a.superficieUtil ?? ""}
+              inputMode="decimal"
+              aria-label="Superficie útil"
               aria-invalid={supEstado.estado === "error"}
               onChange={(e) => patch({ superficieUtil: e.target.value })}
-              className="w-[90px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none" />
-            <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">m²</span>
+              className="wz-input con-suf"
+            />
+            <span className="wz-suf">m²</span>
           </div>
-          {supEstado.estado === "error" && (
-            <p className="font-body text-[11px] text-signal-red m-0 leading-snug">No se entiende — {supEstado.motivo}</p>
-          )}
+          {supEstado.estado === "error" && <span className="wz-aviso fuerte">No se entiende — {supEstado.motivo}</span>}
           {(supEstado.estado === "ok" || supEstado.estado === "escala") && (
-            <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0">= {supEstado.eco}</p>
+            <span className="wz-eco">
+              = <b>{supEstado.eco}</b>
+            </span>
           )}
-          {supEstado.estado === "escala" && <AvisoEscala texto={supEstado.aviso} />}
-          <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => patch({ esStudio: true, dormitorios: "0" })} className={chipCls(!!a.esStudio)}>Studio</button>
-            {["1", "2", "3", "4"].map((d) => <button key={d} type="button" onClick={() => patch({ esStudio: false, dormitorios: d })} className={chipCls(!a.esStudio && a.dormitorios === d)}>{d === "4" ? "4+" : d}D</button>)}
+          {supEstado.estado === "escala" && <span className="wz-indic">{supEstado.aviso}</span>}
+          <div className="wz-fila-dorm" role="group" aria-label="Dormitorios">
+            <button type="button" aria-pressed={!!a.esStudio} onClick={() => patch({ esStudio: true, dormitorios: "0" })}>Studio</button>
+            {["1", "2", "3", "4"].map((d) => (
+              <button key={d} type="button" aria-pressed={!a.esStudio && a.dormitorios === d} onClick={() => patch({ esStudio: false, dormitorios: d })}>
+                {d === "4" ? "4+" : d}D
+              </button>
+            ))}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["1", "2", "3"].map((b) => <button key={b} type="button" onClick={() => patch({ banos: b })} className={chipCls(a.banos === b)}>{b}B</button>)}
+          <div className="wz-fila-banos" role="group" aria-label="Baños">
+            {["1", "2", "3"].map((b) => (
+              <button key={b} type="button" aria-pressed={a.banos === b} onClick={() => patch({ banos: b })}>
+                {b === "3" ? "3+" : b}B
+              </button>
+            ))}
           </div>
-          <button type="button" onClick={() => { setEditing(false); onCommit(); }} className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-signal-red mt-1">✓ Listo</button>
+          <button type="button" onClick={() => { setEditing(false); onCommit(); }} className="wz-btn2 tinta">Listo</button>
         </div>
-      ) : (
-        <EditableDisplay text={display} onStart={() => setEditing(true)} />
       )}
-    </FieldShell>
-  );
-}
-
-/** Display editable: valor con punteado + lápiz + tinte rojo en hover. */
-function EditableDisplay({ text, tag, onStart }: { text: string; tag?: string; onStart: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onStart}
-      className="group/edit inline-flex items-center gap-1.5 text-left"
-    >
-      <span className="font-mono text-[14px] text-[var(--franco-text)] group-hover/edit:text-signal-red transition-colors border-b border-dashed border-[var(--franco-border-strong)] leading-snug break-words">
-        {text}
-        <Tag tag={tag} />
-      </span>
-      <Pencil size={12} className="shrink-0 text-[var(--franco-text-muted)] opacity-60 lg:opacity-0 lg:group-hover/edit:opacity-100 transition-opacity" />
-    </button>
-  );
-}
-
-/**
- * Input inline con commit en blur/Enter, cancel en Escape.
- *
- * El chrome es el compacto del resumen; la CONDUCTA es la misma de
- * `NumericInput` — mismas funciones puras, misma precisión por campo. Antes cada
- * campo traía su propio filtro y por eso la ocupación daba 625 en el Acto 3 y 62
- * acá; ahora los dos leen con el `decimales` que declara `DEC`.
- *
- * Lo escrito se commitea TAL CUAL, aunque no se pueda leer: borrárselo al salir
- * sería la misma desaparición silenciosa que el componente viene a matar. Si
- * queda ilegible, `NumField` lo marca en reposo.
- */
-function InlineInput({
-  initial,
-  decimales,
-  formatEco,
-  escala,
-  fuente,
-  suffix,
-  onCommit,
-  onCancel,
-}: {
-  initial: string;
-  decimales: Decimales;
-  formatEco: (valor: number) => string;
-  escala?: (valor: number) => AvisoEscala | null;
-  /**
-   * Microcopy de ayuda del campo. Se renderiza ACÁ y no en `FieldShell` porque
-   * el estado en vivo solo se conoce en este componente, y la ayuda tiene que
-   * desaparecer cuando hay error (ver abajo).
-   */
-  fuente?: string;
-  suffix?: string;
-  onCommit: (v: string) => void;
-  onCancel: () => void;
-}) {
-  const [v, setV] = useState(initial);
-  const ref = useRef<HTMLInputElement>(null);
-  // Guard anti doble-fire: Enter llama onCommit y luego el unmount podría gatillar
-  // blur → evento edit_from_summary duplicado. Solo el primero pasa.
-  const done = useRef(false);
-  const commit = (val: string) => { if (done.current) return; done.current = true; onCommit(val); };
-  const cancel = () => { if (done.current) return; done.current = true; onCancel(); };
-  useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
-
-  const r = estadoNumericInput(v, { decimales, blurred: false, formatEco, escala });
-  const hayError = r.estado === "error";
-
-  return (
-    <span className="inline-flex flex-col gap-1">
-      <span className="relative inline-flex items-center">
-        <input
-          ref={ref}
-          value={v}
-          inputMode={decimales === 0 ? "numeric" : "decimal"}
-          aria-invalid={hayError}
-          onChange={(e) => setV(e.target.value)}
-          onBlur={() => commit(v)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commit(v); }
-            else if (e.key === "Escape") { e.preventDefault(); cancel(); }
-          }}
-          className={`w-[130px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none ${suffix ? "pr-8" : ""}`}
-        />
-        {suffix && <span className="absolute right-2 font-mono text-[11px] text-[var(--franco-text-muted)] pointer-events-none">{suffix}</span>}
-      </span>
-      {/* Eco en vivo, igual que en las pantallas del wizard. */}
-      {r.estado === "encurso" && (
-        <span className="font-body text-[11px] italic text-[var(--franco-text-muted)]">Sigue escribiendo…</span>
-      )}
-      {r.estado === "error" && (
-        <span className="font-body text-[11px] text-signal-red leading-snug">No se entiende — {r.motivo}</span>
-      )}
-      {(r.estado === "ok" || r.estado === "escala") && (
-        <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">= {r.eco}</span>
-      )}
-      {r.estado === "escala" && <AvisoEscala texto={r.aviso} />}
-      {/* La ayuda del campo se apaga SOLO con error: ahí el mensaje rojo ya dice
-          qué pasa y qué hacer, y dejar debajo el microcopy normal obliga a leer
-          dos líneas para entender una sola situación.
-          Con "escala" SÍ se muestra: el número se entendió y la ayuda sigue
-          siendo pertinente — es un aviso de magnitud, no un error de lectura. */}
-      {fuente && r.estado !== "error" && (
-        <span className="font-mono text-[10px] text-[var(--franco-text-muted)] leading-snug">{fuente}</span>
-      )}
-    </span>
-  );
-}
-
-/**
- * Aviso de magnitud. Ink + label uppercase + borde lateral — el reemplazo que el
- * design system define para el ámbar de alerta. NUNCA rojo: el rojo dice "no te
- * entendí" y esto dice "te entendí y es imposible"; si los dos fueran rojos el
- * usuario no podría distinguir qué le toca hacer.
- */
-function AvisoEscala({ texto }: { texto: string }) {
-  return (
-    <span
-      className="block mt-1 border-l-2 border-[var(--franco-border-strong)] rounded-r-lg pl-2.5 pr-2 py-1.5"
-      style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
-    >
-      <span className="block font-mono text-[9px] uppercase tracking-[0.13em] text-[var(--franco-text-tertiary)] mb-0.5">
-        Fuera de escala
-      </span>
-      <span className="block font-body text-[11px] text-[var(--franco-text-secondary)] leading-snug">{texto}</span>
-    </span>
-  );
-}
-
-/**
- * Campo numérico editable (precio/arriendo/tarifa/occ/supuestos).
- *
- * `raw` es el texto TAL COMO está guardado; `decimales` sale de `DEC` y es el
- * mismo que usa la pantalla del acto. En reposo muestra `display`; si lo
- * guardado no se puede leer, lo dice ahí mismo en vez de mostrar un "—" mudo.
- */
-function NumField({
-  label,
-  raw,
-  display,
-  suffix,
-  decimales,
-  formatEco,
-  escala,
-  tag,
-  fuente,
-  procedencia,
-  derived,
-  highlight,
-  commitCeroDesdeVacio,
-  onCommit,
-}: {
-  label: string;
-  raw: string;
-  display: string;
-  suffix: string;
-  decimales: Decimales;
-  formatEco?: (valor: number) => string;
-  /** Aviso de magnitud. Los umbrales y el copy los pone el guard, no este campo. */
-  escala?: (valor: number) => AvisoEscala | null;
-  tag?: string;
-  fuente?: string;
-  /**
-   * Procedencia comprimida, visible EN REPOSO. Excepción acotada a R7 — hoy solo
-   * el arriendo la pasa. El criterio para sumar otro campo está en
-   * `procedenciaArriendoCorta`; no agregues uno sin leerlo.
-   */
-  procedencia?: string;
-  derived?: string;
-  /** Anillo Signal Red transitorio cuando la card al-filo apunta a este campo. */
-  highlight?: boolean;
-  /**
-   * Fix pie-cero: tratar lo escrito sobre un campo VACÍO como edición real
-   * aunque `esEdicionReal` lea el mismo valor ("" y "0" son ambos 0 vía
-   * `leerNum`). Para el pie, escribir "0" sobre el vacío ES la declaración —
-   * sin esto, un draft sin pie no podía declarar el 0 desde el resumen. Solo el
-   * pie lo pasa; el resto conserva el contrato "mirar no es editar".
-   */
-  commitCeroDesdeVacio?: boolean;
-  onCommit: (v: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const eco = formatEco ?? ecoPorDefecto();
-  const enReposo = estadoNumericInput(raw, { decimales, blurred: true, formatEco: eco, escala });
-
-  return (
-    <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
-    {/* `fuente` NO va a FieldShell: la baja `InlineInput`, que es quien sabe si
-        el texto en vivo se entiende. Sale igual que antes —solo con el editor
-        abierto—, menos cuando hay error. */}
-    <FieldShell label={label}>
-      {editing ? (
-        <InlineInput
-          initial={raw}
-          suffix={suffix}
-          decimales={decimales}
-          formatEco={eco}
-          escala={escala}
-          fuente={fuente}
-          onCommit={(v) => {
-            setEditing(false);
-            // Salir del campo no es corregirlo. Ver `esEdicionReal`: el commit
-            // solo se propaga si el valor cambió, y con eso quedan cubiertos de
-            // una sola vez el tag, el evento de PostHog, la nota de cascada y
-            // los patches que fuerzan modo "corregir" en el callsite.
-            //
-            // Ortogonal al aviso de escala: ese lo calcula `estadoNumericInput`
-            // a partir del VALOR —en vivo desde `v`, en reposo desde `raw`—, no
-            // del commit. Si el número no cambió, el aviso que corresponda ya se
-            // estaba mostrando y sigue mostrándose.
-            if (esEdicionReal(v, raw, decimales) || (commitCeroDesdeVacio && raw.trim() === "" && v.trim() !== "")) onCommit(v);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <>
-          <EditableDisplay text={display} tag={tag} onStart={() => setEditing(true)} />
-          {enReposo.estado === "error" && (
-            <p className="font-body text-[11px] text-signal-red m-0 mt-0.5 leading-snug">
-              No se entiende ese número — {enReposo.motivo}
-            </p>
-          )}
-          {/* En reposo el aviso también se ve: si el valor quedó fuera de escala,
-              esconderlo hasta que vuelvan a abrir el editor no ayuda a nadie. */}
-          {enReposo.estado === "escala" && <AvisoEscala texto={enReposo.aviso} />}
-          {/* Y debajo la procedencia, si el campo la declara. Primero la alerta,
-              después el contexto: el aviso de escala pide una acción, la
-              procedencia solo explica de dónde salió el número. */}
-          {procedencia && (
-            <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-0.5 leading-snug">
-              {procedencia}
-            </p>
-          )}
-        </>
-      )}
-      {derived && <DerivedLine text={derived} />}
-    </FieldShell>
     </div>
-  );
-}
-
-/** Campo de opciones discretas (plazo/gate) — chips. Commit al seleccionar. */
-function ChipsField<T extends string>({
-  label,
-  value,
-  options,
-  tag,
-  fuente,
-  onCommit,
-}: {
-  label: string;
-  value: string | undefined;
-  options: Array<{ value: T; label: string }>;
-  tag?: string;
-  fuente?: string;
-  onCommit: (v: T) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const current = options.find((o) => o.value === value)?.label ?? "—";
-  return (
-    <FieldShell label={label} fuente={fuente} showFuente={editing}>
-      {editing ? (
-        <div className="flex flex-wrap gap-1.5">
-          {options.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              // Reelegir el chip que ya estaba puesto tampoco es corregir.
-              onClick={() => { setEditing(false); if (o.value !== value) onCommit(o.value); }}
-              className={`font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${
-                o.value === value
-                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                  : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <EditableDisplay text={current} tag={tag} onStart={() => setEditing(true)} />
-      )}
-    </FieldShell>
   );
 }
 
 const DIAS_MES = 30.44;
 
-/** Nota de cascada (estilo reacción de Franco) dentro de una card afectada. Vive
- *  hasta la próxima interacción con esa card (R3). */
+/** Nota de cascada (la voz de Franco, en tarjeta gris) dentro de una tarjeta afectada. Vive
+ *  hasta la próxima interacción con esa tarjeta (R3). */
 function CascadeNote({ text }: { text: string }) {
-  return (
-    <div className="mb-2 rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-3 pr-3 py-2">
-      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-signal-red m-0 mb-0.5">Franco</p>
-      <p className="font-body text-[12px] italic text-[var(--franco-text-secondary)] m-0 leading-snug">{text}</p>
-    </div>
-  );
+  return <div className="wz-reac wz-reac-cascada">{text}</div>;
 }
 
 /** Editor inline de dirección: el mismo Places Autocomplete embebido en la card,
@@ -637,64 +364,50 @@ function DireccionEdit({ initial, onConfirm, onCancel }: {
         placeholder="Ej: Av. Providencia 1234, Providencia"
         onBlur={() => { if (!doneRef.current) setTimeout(() => { if (!doneRef.current) onCancel(); }, 150); }}
         onKeyDown={(e) => { if (e.key === "Escape") { doneRef.current = true; onCancel(); } }}
-        className="w-full h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-body text-[14px] text-[var(--franco-text)] focus:outline-none"
+        aria-label="Dirección del depto"
+        className="wz-input"
       />
       {fuera ? (
-        <p className="font-body text-[11px] mt-1 text-signal-red leading-snug">{fuera} está fuera del Gran Santiago — Franco no tiene datos suficientes acá.</p>
+        <p className="wz-aviso fuerte wz-mt6">{fuera} está fuera del Gran Santiago: Franco no tiene datos suficientes ahí.</p>
       ) : noEsCalle ? (
-        <p className="font-body text-[11px] mt-1 text-signal-red leading-snug">Esa opción no es una calle. Escribe la calle del depto y elígela de la lista.</p>
+        <p className="wz-aviso fuerte wz-mt6">Esa opción no es una calle. Escribe la calle del depto y elígela de la lista.</p>
       ) : (
-        <p className="font-body text-[10px] mt-1 text-[var(--franco-text-muted)]">Elige una opción de la lista. Cambiar de comuna re-estima la zona.</p>
+        <p className="wz-eco wz-mt6">Elige una opción de la lista. Cambiar de comuna vuelve a estimar la zona.</p>
       )}
     </div>
   );
 }
 
-// ── Estructura de cards ──────────────────────────────────────────────────────
+// ── Las tres tarjetas: las filas navegables del informe ──────────────────────
 
-function Nivel3({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: ReactNode }) {
+function FilaNav({ id, titulo, resumen, cifra: ci, abierta, onToggle, children }: { id: string; titulo: string; resumen: string; cifra: string; abierta: boolean; onToggle: () => void; children: ReactNode }) {
   return (
-    <div className="mt-2 rounded-lg overflow-hidden" style={{ background: "var(--franco-sunken, #161616)" }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-      >
-        {title}
-        <ChevronRight size={14} className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+    <section className={`wz-fnav${abierta ? " abierta" : ""}`}>
+      <button type="button" onClick={onToggle} aria-expanded={abierta} aria-controls={`wz-fnav-${id}`} className="wz-fnav-cab">
+        <span className="wz-fnav-txt">
+          <span className="wz-ti">{titulo}</span>
+          <span className="wz-re">{resumen}</span>
+        </span>
+        <span className="wz-ci">{ci}</span>
+        <span className="wz-disco" aria-hidden>
+          <ChevronRight size={16} className={abierta ? "wz-rot90" : undefined} />
+        </span>
       </button>
-      {open && <div className="px-3 pb-3 pt-0">{children}</div>}
-    </div>
-  );
-}
-
-function ActCard({ num, title, summaryLine, open, onToggle, children }: { num: string; title: string; summaryLine: string; open: boolean; onToggle: () => void; children: ReactNode }) {
-  return (
-    <section className="h-full rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm overflow-hidden">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="lg:pointer-events-none w-full text-left px-4 py-2.5 flex items-start justify-between gap-3"
-      >
-        <div className="min-w-0">
-          {/* Número mono Signal Red + título Source Serif 4 (14px/500, tinta) —
-              rima editorial con la pantalla del informe (mockup aprobado). */}
-          <p className="m-0 mb-0.5 flex items-baseline gap-1.5">
-            <span className="font-mono text-[11px] font-medium text-signal-red">{num}</span>
-            <span className="font-heading text-[14px] font-medium text-[var(--franco-text)] leading-tight">{title}</span>
-          </p>
-          {!open && <p className="lg:hidden font-mono text-[12px] text-[var(--franco-text-secondary)] m-0 truncate">{summaryLine}</p>}
+      {abierta && (
+        <div id={`wz-fnav-${id}`} className="wz-fnav-cuerpo">
+          {children}
         </div>
-        <ChevronRight size={16} className={`lg:hidden shrink-0 mt-0.5 text-[var(--franco-text-muted)] transition-transform ${open ? "rotate-90" : ""}`} />
-      </button>
-      <div className={`${open ? "block" : "hidden"} lg:block px-4 pb-2`}>{children}</div>
+      )}
     </section>
   );
 }
 
-export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wizard; data: WizardV4Data; tier: TierInfo | null; isLoggedIn: boolean; onTerminal: () => void }) {
+export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInicial = null }: {
+  w: Wizard; data: WizardV4Data; tier: TierInfo | null; isLoggedIn: boolean; onTerminal: () => void;
+  /** Tarjeta abierta al montar. El wizard no la pasa (nacen cerradas); la usa el tier
+   *  WIZARD-INTERIOR para dibujar el contenido de una tarjeta sin simular el toque. */
+  cardInicial?: "01" | "02" | "03" | null;
+}) {
   const posthog = usePostHog();
   const a = w.nav.answers;
   const mod = a.modalidad;
@@ -711,15 +424,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // → se rehabilita y el modal puede volver si sigue fuera de rango.
   const [huellaBloqueada, setHuellaBloqueada] = useState<string | null>(null);
 
-  // Acordeón mobile: las 3 cards nacen COLAPSADAS (la línea-resumen es la
-  // revisión de un vistazo). Desktop las muestra todas. null = ninguna abierta.
-  const [openCard, setOpenCard] = useState<"01" | "02" | "03" | null>(null);
-  const [l3c01, setL3c01] = useState<"detalle" | "gastos" | null>(null); // card 01 acordeón
-  const [l3, setL3] = useState<"sup" | "gest" | null>(null); // card 03 acordeón
+  // Las 3 tarjetas nacen CERRADAS (la línea-resumen es la revisión de un vistazo),
+  // en todos los anchos. null = ninguna abierta.
+  const [openCard, setOpenCard] = useState<"01" | "02" | "03" | null>(cardInicial);
   // R3: notas de cascada por card (viven hasta la próxima interacción con la card).
   const [cascade, setCascade] = useState<Record<string, string>>({});
   const [editingDir, setEditingDir] = useState(false);
-  const [editingTipo, setEditingTipo] = useState(false);
   const [editingMod, setEditingMod] = useState(false);
   // R4: campo iluminado transitoriamente cuando la card al-filo apunta-adentro.
   const [highlight, setHighlight] = useState<string | null>(null);
@@ -796,27 +506,28 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
   // ── Derivaciones de display ──
   const pUF = precioUF(a);
-  const precioCLP = pUF > 0 ? `≈ ${fmtCLP(pUF * data.ufCLP)} · calculada` : undefined;
+  const precioCLP = pUF > 0 ? `≈ ${fmtCLP(pUF * data.ufCLP)} al valor UF de hoy` : undefined;
   const pct = piePct(a, data.ufCLP);
   // Fase 5b (mockup 5f7c4f9): el 0 es un dato DECLARADO, no un vacío. "—" queda
   // solo para el pie realmente ausente (campo sin tocar).
   const pieDeclarado = (a.pieMonto ?? "").trim() !== "";
-  const pieStr = pct > 0
-    ? `${Math.round(pct)}% · ${fmtUF(pieUF(a, data.ufCLP))}`
+  // «Otra fuente» (27-sep-2026): con pie 0 cubierto por otra fuente, el banco ve su monto como pie.
+  const unidadPie = a.pieUnidad ?? "pct";
+  const otraPct = otraFuentePctCrudo(a, data.ufCLP);
+  const pieBanco = pieEfectivoPct(a, data.ufCLP);
+  const cuotaPie = cuotaCreditoPieCLP(a, data.ufCLP);
+  const pieSub = pct > 0
+    ? fmtUF(pieUF(a, data.ufCLP))
     : pieDeclarado
-      ? "0% · financias el 100%"
-      : "—";
+      ? otraPct > 0 ? `Lo cubre otra fuente: ${Math.round(pieBanco)}% del precio` : "Financias el 100% con crédito"
+      : "Falta el pie";
   const cuota = cuotaCLP(a, data.ufCLP);
-  const cuotaStr = cuota > 0 ? `Cuota ≈ ${fmtCLP(cuota)}/mes · calculada` : undefined;
   const sup = superficieM2(a);
 
   const conSubsidio = subsidioAplicadoV4(a, data.tasaMercado);
   const tasaTag = conSubsidio ? "con subsidio" : a.tasaModo === "preaprobada" ? "corregido por ti" : a.tasaModo === "estimada" ? "estimado" : undefined;
 
-  // Detalle del depto (nivel 3 · card 01).
-  const tipoStr = a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—";
-
-  // Supuestos (nivel 3 · card 03).
+  // Supuestos (card 03).
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
   const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
   const dorm = dormitoriosNum(a);
@@ -835,10 +546,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const arriendoSinDato = data.arriendoFuente === "sin-dato" || data.arriendoN <= 0;
   const arriendoCorregido = !arriendoSinDato && a.arrModo === "corregir";
   const arriendoTag = arriendoSinDato
-    ? "lo pusiste tú"
+    ? "Lo pusiste tú"
     : arriendoCorregido
-      ? "corregido por ti"
-      : "estimado";
+      ? "Corregido por ti"
+      : "Estimado por Franco";
 
   const esLtr = mod === "ltr" || mod === "both";
   const esStr = mod === "str" || mod === "both";
@@ -869,7 +580,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     pieIncompletoPrevio.current = pieIncompleto;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pieIncompleto]);
-  const lineaIncompleto = pieIncompleto ? "Falta el pie — complétalo en la card 02 para generar." : null;
+  const lineaIncompleto = pieIncompleto ? "Falta el pie: complétalo en «Cómo lo financias» para generar." : null;
 
   // ── Datos del modal de plausibilidad ──────────────────────────────────────
   const huellaActual = [a.precio, a.superficieUtil, a.arriendo, a.tasaInteres, a.adrTarifa, a.adrOcupacion].join("|");
@@ -951,13 +662,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   };
 
   const onTipoChange = (nuevo: "usado" | "nuevo") => {
-    setEditingTipo(false);
     if (nuevo === a.tipoPropiedad) return;
     const antesSub = calificaSubsidioV4(a);
     w.patchAnswers({ tipoPropiedad: nuevo });
     const despuesSub = calificaSubsidioV4({ ...a, tipoPropiedad: nuevo });
     if (antesSub !== despuesSub) {
-      setCascade((c) => ({ ...c, "02": despuesSub ? "Este tipo califica para el subsidio a la tasa — revisá la opción en la tasa." : "Este tipo ya no califica para el subsidio; volví la tasa a mercado." }));
+      setCascade((c) => ({ ...c, "02": despuesSub ? "Este tipo califica para el subsidio a la tasa: revisa la opción en la tasa." : "Este tipo ya no califica para el subsidio; volví la tasa a mercado." }));
       setOpenCard("02"); // en mobile, abre la card afectada para que la nota se vea
     }
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "tipo", cascada: true });
@@ -1101,35 +811,42 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     trackWizard(posthog, "wizard4_anomalia_origen_tap", { origen });
   }
 
-  // Líneas-resumen (mobile) — se recomputan de answers → se actualizan al commit.
-  // Card 01 colapsada (mobile): PRECIO primero. Antes abría con `a.direccion`,
-  // que es el formatted_address de Places ("Suecia 750, 7510297 Providencia,
-  // Región M…") y se comía la línea entera: la card del dato más decisivo era la
-  // única que no mostraba ningún número. La comuna sola ubica igual y deja
-  // espacio; la dirección completa está a un tap, dentro de la card.
+  // Líneas-resumen de las tres tarjetas — se recomputan de answers → se actualizan al commit.
+  // «Qué compras»: la dirección corta (sin código postal), el tamaño y la tipología; la cifra
+  // es el precio.
+  const dormTxt = a.esStudio ? "Studio" : a.dormitorios ? `${a.dormitorios}D` : null;
   const summary01 = [
-    pUF > 0 ? fmtUF(pUF) : null,
-    sup > 0 ? `${a.superficieUtil} m²` : null,
-    a.comuna || null,
+    direccionCorta(sinCodigoPostal(a.direccion ?? "")) || a.comuna || null,
+    sup > 0 ? displayNum(a.superficieUtil, DEC.superficie, (t) => `${t} m²`) : null,
+    dormTxt ? `${dormTxt}${a.banos ? ` ${a.banos}B` : ""}` : null,
   ].filter(Boolean).join(" · ") || "—";
+  const cifra01 = pUF > 0 ? displayNum(a.precio, DEC.precioUF, (t) => `UF ${t}`) : "—";
   // Fase 5b: con pie 0 la línea abre con "Sin pie" — antes el chip desaparecía
   // y el resumen se leía como si el pie no existiera.
-  const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : pieDeclarado ? "Sin pie" : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
-  const summary03 = esStr
-    ? [a.adrTarifa ? `${fmtCLP(leerNum(a.adrTarifa, DEC.tarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null].filter(Boolean).join(" · ") || "—"
-    : (a.arriendo ? `${fmtCLP(leerNum(a.arriendo, DEC.arriendo))}/mes` : "—");
+  const summary02 = [
+    pct > 0 ? `${Math.round(pct)}% de pie` : pieDeclarado ? (otraPct > 0 ? `Pie de otra fuente (${Math.round(pieBanco)}%)` : "Sin pie") : null,
+    a.plazoCredito ? `${a.plazoCredito} años` : null,
+    a.tasaInteres ? displayNum(a.tasaInteres, DEC.tasa, (t) => `${t}%`) : null,
+  ].filter(Boolean).join(" · ") || "—";
+  const cifra02 = cuota > 0 ? fmtCLP(cuota) : "—";
+  const opera = a.modoGestion === "administrador" ? "con administrador" : "lo opero yo";
+  const summary03 = esStr && !esLtr
+    ? [occVal > 0 ? `${cifra(String(occVal), DEC.ocupacion, occVal)}% de ocupación` : null, opera].filter(Boolean).join(" · ")
+    : [
+        arriendoSinDato ? "El arriendo lo pusiste tú" : arriendoCorregido ? "Arriendo corregido por ti" : "Arriendo estimado",
+        procedenciaArriendoCorta(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoSugerido, arriendoCorregido),
+      ].filter(Boolean).join(" · ");
+  const cifra03 = esStr && !esLtr
+    ? tarifaVal > 0 ? fmtCLP(tarifaVal) : "—"
+    : arriendoVal > 0 ? fmtCLP(arriendoVal) : "—";
 
   const toggleCard = (c: "01" | "02" | "03") => {
-    setOpenCard((prev) => (prev === c ? null : c));
+    setOpenCard((prev) => {
+      const next = prev === c ? null : c;
+      if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: next, nivel: 2 });
+      return next;
+    });
     setCascade((prev) => (prev[c] ? { ...prev, [c]: "" } : prev));
-  };
-
-  // Nivel 3: emite summary_level_opened solo al ABRIR (dato para futura poda).
-  const openL3c01 = (which: "detalle" | "gastos") => {
-    setL3c01((v) => { const next = v === which ? null : which; if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: "01", nivel: 3 }); return next; });
-  };
-  const openL3 = (which: "sup" | "gest") => {
-    setL3((v) => { const next = v === which ? null : which; if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: "03", nivel: 3 }); return next; });
   };
 
   // Card al-filo apunta-adentro (R4): abre la card de la 1ª variable sensible y
@@ -1143,32 +860,29 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     window.setTimeout(() => setHighlight(null), 1500);
   };
 
+  const amoblado = a.estaAmoblado === true;
+  const admin = a.modoGestion === "administrador";
+  const tipologia = dormLabel(dorm);
+  const lineaBajoCta = lineaIncompleto ?? consumo;
+
   return (
-    <div className="pb-44 lg:pb-1">
-      {/* Header: chip de informe editable — tap abre el selector de modalidad. */}
-      <div className="mb-2">
+    <div>
+      {/* El chip de modalidad, editable: tocarlo abre el selector (solo lo que la pantalla de
+          modalidad ofrece). Píldora neutra, sin borde rojo. */}
+      <div className="wz-mod-chip">
         <button
           type="button"
           onClick={() => setEditingMod((o) => !o)}
           aria-expanded={editingMod}
           aria-label={`Informe: ${mod ? LABEL_MOD[mod] : "—"}. Toca para cambiar.`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-signal-red px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--franco-text)]"
+          className="wz-chip wz-chip-btn"
         >
-          <span className="text-[var(--franco-text-muted)]">Informe:</span>
-          <span className="font-medium">{mod ? LABEL_MOD[mod] : "—"}</span>
-          <span className="text-signal-red">▾</span>
+          {mod ? LABEL_MOD[mod] : "—"} <span aria-hidden>▾</span>
         </button>
         {editingMod && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="wz-seg wz-seg-fila" role="group" aria-label="Modalidad del informe">
             {MODALIDADES_OFRECIDAS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => onModalidadChange(m)}
-                className={`font-mono text-[11px] uppercase tracking-[0.06em] px-3 h-9 rounded-lg border-[0.5px] transition-colors ${
-                  m === mod ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-                }`}
-              >
+              <button key={m} type="button" aria-pressed={m === mod} onClick={() => onModalidadChange(m)}>
                 {LABEL_MOD[m]}
               </button>
             ))}
@@ -1176,19 +890,27 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-        {/* 01 · Qué compras */}
-        <ActCard num="01" title="Qué compras" summaryLine={summary01} open={openCard === "01"} onToggle={() => toggleCard("01")}>
+      <div className="wz-gap wz-gap-0">
+        {/* ── Qué compras ── */}
+        <FilaNav id="01" titulo="Qué compras" resumen={summary01} cifra={cifra01} abierta={openCard === "01"} onToggle={() => toggleCard("01")}>
           {/* Dirección: editor inline = Places embebido con gate de cobertura. */}
-          <FieldShell label="Dirección">
-            {editingDir ? (
-              <DireccionEdit initial={a.direccion || ""} onConfirm={onDireccionConfirm} onCancel={() => setEditingDir(false)} />
-            ) : (
-              <EditableDisplay text={a.direccion || "—"} onStart={() => setEditingDir(true)} />
+          <div className="wz-fe">
+            <span className="wz-k">Dirección</span>
+            {!editingDir && <span className="wz-f">{sinCodigoPostal(a.direccion || "") || "—"}</span>}
+            {!editingDir && (
+              <button type="button" className="wz-v wz-v-btn" onClick={() => setEditingDir(true)} aria-label="Cambiar la dirección">
+                <span>Cambiar</span>
+                <Pencil size={12} className="wz-lap" aria-hidden />
+              </button>
+            )}
+            {editingDir && (
+              <div className="wz-fe-nota">
+                <DireccionEdit initial={a.direccion || ""} onConfirm={onDireccionConfirm} onCancel={() => setEditingDir(false)} />
+              </div>
             )}
             {/* Sin número: la misma salida que en la portada — el aviso y el pin que se mueve. */}
             {!editingDir && a.lat && a.lng && a.comuna && (a.ubicacionPrecision === "calle" || a.ubicacionPrecision === "pin") && (
-              <div className="mt-2 flex flex-col gap-2">
+              <div className="wz-fe-nota wz-fe-editor">
                 <AvisoSinNumero ajustada={a.ubicacionPrecision === "pin"} />
                 <MapaPinAjustable
                   lat={a.lat}
@@ -1202,210 +924,228 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                 />
               </div>
             )}
-          </FieldShell>
-          <NumField
-            // `fmtUF` redondea a entero (UF 3.200,5 salía "UF 3.201") y es
-            // compartido con v3, así que no se toca: el precio pasa por
-            // `displayNum` como el resto de los campos.
-            label="Precio" raw={a.precio ?? ""} display={displayNum(a.precio, DEC.precioUF, (t) => `UF ${t}`)} suffix="UF"
+          </div>
+          <FilaNum
+            // `fmtUF` redondea a entero (UF 3.200,5 salía "UF 3.201") y es compartido con v3,
+            // así que no se toca: el precio pasa por `cifra` como el resto de los campos.
+            label="Precio" sub={precioCLP} raw={a.precio ?? ""} display={`UF ${cifra(a.precio, DEC.precioUF, 0)}`}
             decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")} escala={escalaPrecio}
-            derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: v })}
+            highlight={highlight === "precio"}
+            onCommit={(v) => commitEdit("precio", { precio: v })}
           />
-          <Nivel3 title="Detalle del depto" open={l3c01 === "detalle"} onToggle={() => openL3c01("detalle")}>
-            {/* Tipo: estructural → chips inline (muta el detalle + recalcula subsidio). */}
-            <FieldShell label="Tipo">
-              {editingTipo ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {(["usado", "nuevo"] as const).map((t) => (
-                    <button key={t} type="button" onClick={() => onTipoChange(t)}
-                      className={`font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${t === a.tipoPropiedad ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"}`}>
-                      {t === "nuevo" ? "Nuevo" : "Usado"}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <EditableDisplay text={tipoStr} onStart={() => setEditingTipo(true)} />
-              )}
-            </FieldShell>
-            {a.tipoPropiedad === "nuevo" ? (
-              <ChipsField label="Entrega" value={a.estadoVenta}
-                options={[{ value: "inmediata" as const, label: "Inmediata" }, { value: "futura" as const, label: "Futura" }]}
-                onCommit={(v) => commitEdit("entrega", { estadoVenta: v })} />
-            ) : (
-              <ChipsField label="Antigüedad" value={a.antiguedad} options={ANTIGUEDADES}
-                onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
-            )}
-            <TamanoField a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
-            <NumField label="Estacionamientos" raw={a.estacionamientos ?? ""} display={displayNum(a.estacionamientos, DEC.estacionamientos, (t) => t, "0")} suffix="" decimales={DEC.estacionamientos} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
-            <NumField label="Bodegas" raw={a.bodegas ?? ""} display={displayNum(a.bodegas, DEC.bodegas, (t) => t, "0")} suffix="" decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
-          </Nivel3>
-          {/* Gastos del depto: GGCC + contribuciones son del inmueble, no de la
-              modalidad → viven acá en las 3 modalidades (taxonomía de v3 "Comunes"). */}
-          <Nivel3 title="Gastos del depto" open={l3c01 === "gastos"} onToggle={() => openL3c01("gastos")}>
-            <NumField label="Gastos comunes" raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`${fmtCLP(leerNum(a.gastosComunes, DEC.gastosComunes) || ggccDef)}/mes`} suffix="$" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", "/mes")} tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
-            <NumField label="Contribuciones (trim.)" raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={fmtCLP(leerNum(a.contribuciones, DEC.contribuciones) || contribDef)} suffix="$" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$")} tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
-          </Nivel3>
-        </ActCard>
+          {/* Tipo: estructural (muta el detalle + recalcula subsidio). */}
+          <FilaOpciones
+            label="Tipo" value={a.tipoPropiedad}
+            options={[{ value: "usado" as const, label: "Usado" }, { value: "nuevo" as const, label: "Nuevo" }]}
+            onCommit={onTipoChange}
+          />
+          {a.tipoPropiedad === "nuevo" ? (
+            <FilaOpciones label="Entrega" value={a.estadoVenta}
+              options={[{ value: "inmediata" as const, label: "Inmediata" }, { value: "futura" as const, label: "Futura" }]}
+              onCommit={(v) => commitEdit("entrega", { estadoVenta: v })} />
+          ) : (
+            <FilaOpciones label="Antigüedad" value={a.antiguedad} options={ANTIGUEDADES}
+              onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
+          )}
+          <TamanoFila a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
+          <FilaNum label="Estacionamientos" raw={a.estacionamientos ?? ""} display={cifra(a.estacionamientos, DEC.estacionamientos, 0)} decimales={DEC.estacionamientos} highlight={highlight === "tam"} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
+          <FilaNum label="Bodegas" raw={a.bodegas ?? ""} display={cifra(a.bodegas, DEC.bodegas, 0)} decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
+        </FilaNav>
 
-        {/* 02 · Cómo lo financias */}
-        <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
+        {/* ── Cómo lo financias ── */}
+        <FilaNav id="02" titulo="Cómo lo financias" resumen={summary02} cifra={cifra02} abierta={openCard === "02"} onToggle={() => toggleCard("02")}>
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
-          <NumField
-            label="Pie (% del precio)" raw={pct > 0 ? pieTexto(pct) : pieDeclarado ? "0" : ""} display={pieStr} suffix="%"
-            decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")} escala={escalaPie}
+          <FilaNum
+            label="Pie" sub={pieSub} raw={pct > 0 ? pieTexto(pct) : pieDeclarado ? "0" : ""}
+            display={pct > 0 ? pieTexto(pct) : pieDeclarado ? "0" : "—"} unidad="%"
+            decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")} escala={(v) => avisoPie(v, a.pieRazon)}
+            highlight={highlight === "pie"}
             commitCeroDesdeVacio
             onCommit={(v) => {
-              // Fix pie-cero: borrar el campo NO es declarar cero — el vacío se
-              // ignora y el valor anterior queda. El cero se declara escribiendo
-              // "0" (y eligiendo la razón abajo). Este era el agujero del
-              // resumen: un clear acá dejaba pieMonto vacío y el submit salía
-              // con pie 0 silencioso.
+              // Fix pie-cero: borrar el campo NO es declarar cero — el vacío se ignora y el valor
+              // anterior queda. El cero se declara escribiendo "0" (y eligiendo la razón abajo).
               if (v.trim() === "") return;
-              // Fase 5b: al subir el pie sobre 0, la razón se descarta en
-              // SILENCIO (misma regla que el wizard). Al bajarlo a 0 el selector
-              // aparece acá para que el usuario la declare sin volver atrás.
+              // Fase 5b: al subir el pie sobre 0, la razón se descarta en SILENCIO (misma regla
+              // que el wizard), y con ella «otra fuente». Al bajarlo a 0 el selector aparece acá.
               const nuevoPct = piePct({ ...a, pieUnidad: "pct", pieMonto: v }, data.ufCLP);
+              const monto = a.otraFuenteMonto && otraPct > 0 ? { otraFuenteMonto: pieTexto(Math.min(otraPct, 100)) } : {};
               commitEdit("pie", nuevoPct > 0 && a.pieRazon
-                ? { pieUnidad: "pct", pieMonto: v, pieRazon: undefined }
-                : { pieUnidad: "pct", pieMonto: v });
+                ? { pieUnidad: "pct", pieMonto: v, pieRazon: undefined, otraFuenteMonto: undefined, otraFuenteCredito: undefined, otraFuenteCuota: undefined }
+                : { pieUnidad: "pct", pieMonto: v, ...monto });
             }}
           />
-          {/* Fase 5b · la razón del pie 0 vive donde el usuario la declaró y se
-              edita como el resto de la card (mockup 5f7c4f9). Con pie > 0 la
-              fila no existe. */}
+          {/* Fase 5b · la razón del pie 0 vive donde el usuario la declaró y se edita como el
+              resto de la tarjeta. Con pie > 0 la fila no existe. */}
           {pct === 0 && pieDeclarado && (
-            <ChipsField
+            <FilaOpciones
               label="Cómo se cubre" value={a.pieRazon}
-              options={PIE_RAZON_OPCIONES.map((o) => ({ value: o.value, label: o.label }))}
-              tag={a.pieRazon ? "lo indicaste tú" : undefined}
-              onCommit={(v) => commitEdit("pie", { pieRazon: v })}
+              sub={a.pieRazon ? "Lo indicaste tú" : "Falta: elige cómo se cubre"}
+              options={PIE_RAZON_OPCIONES.map((o) => ({ value: o.value, label: RAZON_CORTA[o.value] }))}
+              onCommit={(v) => commitEdit("pie", v === "otra_fuente" ? { pieRazon: v } : { pieRazon: v, otraFuenteMonto: undefined, otraFuenteCredito: undefined, otraFuenteCuota: undefined })}
             />
           )}
-          <ChipsField
+          {/* «Otra fuente» (27-sep-2026): el monto —para el banco es pie— y, si es un crédito, su
+              cuota, que entra al flujo del mes. */}
+          {pct === 0 && pieDeclarado && a.pieRazon === "otra_fuente" && (
+            <>
+              <FilaNum
+                label="Cuánto cubre"
+                sub={otraPct > 0 ? `El banco financia el ${Math.round(100 - pieBanco)}%` : "Sin monto, se analiza como pie 0"}
+                raw={a.otraFuenteMonto ?? ""}
+                display={a.otraFuenteMonto ? cifra(a.otraFuenteMonto, decPie(unidadPie), 0) : "—"}
+                unidad={unidadPie === "pct" ? "%" : unidadPie === "uf" ? " UF" : " $"}
+                decimales={decPie(unidadPie)}
+                escala={() => (otraPct > 100 ? escalaPie(otraPct) : null)}
+                onCommit={(v) => commitEdit("otraFuente", { otraFuenteMonto: v })}
+              />
+              {otraPct > 0 && (
+                <FilaOpciones
+                  label="¿Es un crédito?" value={a.otraFuenteCredito ? "si" : "no"}
+                  options={[{ value: "no" as const, label: "No" }, { value: "si" as const, label: "Sí" }]}
+                  onCommit={(v) => commitEdit("otraFuente", v === "si" ? { otraFuenteCredito: true } : { otraFuenteCredito: false, otraFuenteCuota: undefined })}
+                />
+              )}
+              {otraPct > 0 && a.otraFuenteCredito && (
+                <FilaNum
+                  label="Cuota de ese crédito" sub="Se suma a tu flujo mensual"
+                  raw={a.otraFuenteCuota ?? ""} display={a.otraFuenteCuota ? `$${cifra(a.otraFuenteCuota, DEC.cuotaCreditoPie, 0)}` : "—"} unidad="/mes"
+                  decimales={DEC.cuotaCreditoPie} formatEco={ecoPorDefecto("$", " al mes")}
+                  onCommit={(v) => commitEdit("otraFuente", { otraFuenteCuota: v })}
+                />
+              )}
+            </>
+          )}
+          <FilaOpciones
             label="Plazo" value={a.plazoCredito}
-            options={[{ value: "15", label: "15" }, { value: "20", label: "20" }, { value: "25", label: "25" }, { value: "30", label: "30" }]}
+            options={[{ value: "15", label: "15 años" }, { value: "20", label: "20 años" }, { value: "25", label: "25 años" }, { value: "30", label: "30 años" }]}
             onCommit={(v) => commitEdit("plazo", { plazoCredito: v })}
           />
           {calificaSubsidioV4(a) ? (
-            <ChipsField
+            <FilaOpciones
               label="Tasa" value={conSubsidio ? "sub" : a.tasaModo === "estimada" ? "mer" : undefined}
-              tag={tasaTag}
+              sub={tasaTag ? tasaTag.charAt(0).toUpperCase() + tasaTag.slice(1) : undefined}
               options={[{ value: "sub", label: `Subsidio ${tasaStr(tasaConSubsidioV4(data.tasaMercado))}%` }, { value: "mer", label: `Mercado ${tasaStr(data.tasaMercado)}%` }]}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(v === "sub" ? tasaConSubsidioV4(data.tasaMercado) : data.tasaMercado) })}
-              fuente={conSubsidio ? "subsidio estatal a la tasa (Ley 21.748) — vivienda nueva en primera venta" : undefined}
+              fuente={conSubsidio ? "Subsidio estatal a la tasa (Ley 21.748): vivienda nueva en primera venta." : undefined}
             />
           ) : (
-            <NumField
-              label="Tasa" raw={a.tasaInteres ?? ""} display={displayNum(a.tasaInteres, DEC.tasa, (t) => `${t}%`)} suffix="%"
+            <FilaNum
+              label="Tasa" sub={tasaTag ? tasaTag.charAt(0).toUpperCase() + tasaTag.slice(1) : undefined}
+              raw={a.tasaInteres ?? ""} display={cifra(a.tasaInteres, DEC.tasa, 0)} unidad="% anual"
               decimales={DEC.tasa} formatEco={ecoPorDefecto("", "% anual")} escala={escalaTasa}
-              tag={tasaTag} derived={cuotaStr} highlight={highlight === "tasa"}
+              highlight={highlight === "tasa"}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
             />
           )}
-          {calificaSubsidioV4(a) && cuotaStr && <DerivedLine text={cuotaStr} />}
-        </ActCard>
+          {cuota > 0 && <FilaFija label="Tu cuota mensual" sub="Calculada con el pie, el plazo y la tasa" valor={fmtCLP(cuota)} />}
+          {cuotaPie > 0 && <FilaFija label="Cuota del crédito del pie" sub="Declarada por ti" valor={fmtCLP(cuotaPie)} />}
+        </FilaNav>
 
-        {/* 03 · Cómo lo rentabilizas */}
-        <ActCard num="03" title="Cómo lo rentabilizas" summaryLine={summary03} open={openCard === "03"} onToggle={() => toggleCard("03")}>
+        {/* ── Cómo lo rentabilizas ── */}
+        <FilaNav id="03" titulo="Cómo lo rentabilizas" resumen={summary03} cifra={cifra03} abierta={openCard === "03"} onToggle={() => toggleCard("03")}>
           {cascade["03"] && <CascadeNote text={cascade["03"]} />}
 
-          {/* ── Nivel 2 · RENTA LARGA: arriendo + vacancia (la vacancia subió acá) ── */}
           {esLtr && (
             <>
-              {esStr && <Subtitulo>Renta larga</Subtitulo>}
-              <NumField
-                label="Arriendo mensual" raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
-                decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")} escala={escalaArriendo}
-                tag={arriendoTag}
+              {esStr && <SubRot>Renta larga</SubRot>}
+              <FilaNum
+                label="Arriendo mensual" sub={arriendoTag}
+                raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? fmtCLP(arriendoVal) : "—"} unidad="/mes"
+                decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", " al mes")} escala={escalaArriendo}
                 fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}
-                procedencia={procedenciaArriendoCorta(
-                  data.arriendoFuente, data.arriendoN, data.radiusUsed,
-                  data.arriendoSugerido, arriendoCorregido,
-                ) ?? undefined}
                 highlight={highlight === "arr"}
                 onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />
-              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={displayNum(a.vacanciaPct ?? "5", DEC.vacancia, (t) => `${t}%`)} suffix="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+              <SubRot>Lo que se descuenta</SubRot>
+              <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
+              <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
+              <FilaNum label="Vacancia" sub={a.vacanciaPct ? "Corregido por ti" : "Meses sin arrendatario al año"} raw={a.vacanciaPct ?? "5"} display={cifra(a.vacanciaPct ?? "5", DEC.vacancia, 5)} unidad="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} highlight={highlight === "vacanciaPct"} onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+              <FilaNum label="Comisión de administración" sub="0 = lo administras tú; corredor típico 7-10%" raw={a.comisionAdminPct ?? "0"} display={cifra(a.comisionAdminPct ?? "0", DEC.comisionAdmin, 0)} unidad="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} escala={escalaComision} highlight={highlight === "comisionAdminPct"} onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </>
           )}
 
-          {/* ── Nivel 2 · RENTA CORTA: tarifa + ocupación (el gate bajó a Operación renta corta) ── */}
           {esStr && (
             <>
-              {esLtr && <Subtitulo>Renta corta</Subtitulo>}
-              <NumField
-                label="Tarifa por noche" raw={a.adrTarifa ?? String(sugTarifa || "")} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
-                decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", "/noche")} escala={escalaTarifa}
-                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
-                fuente="datos de mercado Airbnb de la zona, últimos 90 días" highlight={highlight === "adr"}
+              {esLtr && <SubRot>Renta corta</SubRot>}
+              <FilaNum
+                label="Tarifa por noche" sub={a.adrModo === "corregir" ? "Corregida por ti" : "Estimada por Franco"}
+                raw={a.adrTarifa ?? String(sugTarifa || "")} display={tarifaVal > 0 ? fmtCLP(tarifaVal) : "—"}
+                decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", " la noche")} escala={escalaTarifa}
+                fuente="Datos de mercado de Airbnb de la zona, últimos 90 días." highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrTarifa: v, adrModo: "corregir" })}
               />
-              <NumField
-                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={displayNum(String(a.adrOcupacion ?? (sugOcc || "")), DEC.ocupacion, (t) => `${t}%`)} suffix="%"
-                decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de ocupación")} escala={escalaOcupacion}
-                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"} highlight={highlight === "adr"}
+              <FilaNum
+                label="Ocupación" sub={a.adrModo === "corregir" ? "Corregida por ti" : "Estimada por Franco"}
+                raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={cifra(String(a.adrOcupacion ?? (sugOcc || "")), DEC.ocupacion, 0)} unidad="%"
+                decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de las noches")} escala={escalaOcupacion}
+                highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
+              <SubRot>Operación</SubRot>
+              <FilaOpciones
+                label="Quién lo opera" value={admin ? "administrador" : "auto"}
+                options={[{ value: "auto" as const, label: "Lo opero yo" }, { value: "administrador" as const, label: "Un administrador" }]}
+                onCommit={(v) => commitEdit("modoGestion", { modoGestion: v })}
+              />
+              {admin ? (
+                <FilaNum
+                  label="Comisión" sub="Del ingreso, en lugar del 3% de la plataforma"
+                  raw={a.comisionStrPct ?? "20"} display={cifra(a.comisionStrPct ?? "20", DEC.comisionAdmin, 20)} unidad="%"
+                  decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del ingreso")} escala={escalaComision}
+                  onCommit={(v) => commitEdit("comisionStrPct", { comisionStrPct: v })}
+                />
+              ) : (
+                <FilaFija label="Comisión" sub="La de la plataforma: fija con «lo opero yo»" valor="3%" />
+              )}
+              <FilaNum
+                label="Huéspedes" sub={a.capacidadHuespedes ? "Lo indicaste tú" : "Dos por dormitorio"}
+                raw={a.capacidadHuespedes ?? String(huespedesNum(a))} display={String(huespedesNum(a))}
+                decimales={DEC.huespedes} formatEco={(v) => `${v} ${v === 1 ? "huésped" : "huéspedes"}`}
+                onCommit={(v) => commitEdit("huespedes", { capacidadHuespedes: v })}
+              />
+              <FilaOpciones
+                label="Amoblado" value={amoblado ? "si" : "no"}
+                options={[{ value: "no" as const, label: "No" }, { value: "si" as const, label: "Sí" }]}
+                onCommit={(v) => commitEdit("amoblado", { estaAmoblado: v === "si" })}
+              />
+              <SubRot>Costos</SubRot>
+              <FilaNum label="Luz, agua, wifi e insumos" sub={totalOpsEditado ? "Corregido por ti" : `Típico para ${tipologia}`} raw={totalOpsEditado ?? String(totalOpsDef)} display={`$${cifra(totalOpsEditado, DEC.costos, totalOpsDef)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("costoInsumos", { costosOperativos: v })} />
+              <FilaNum label="Mantención" sub={a.mantencionStr ? "Corregido por ti" : `Provisión mensual para ${tipologia}`} raw={a.mantencionStr ?? String(costos.mantencion)} display={`$${cifra(a.mantencionStr, DEC.costos, costos.mantencion)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
+              {!esLtr && (
+                <>
+                  <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
+                  <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
+                </>
+              )}
+              {!amoblado && (
+                <FilaNum label="Amoblarlo" sub={a.costoAmoblamiento ? "Corregido por ti" : "Una vez"} raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={`$${cifra(a.costoAmoblamiento, DEC.costos, costos.costoAmoblamiento)}`} decimales={DEC.costos} formatEco={ecoPorDefecto("$", ", una vez")} onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
+              )}
             </>
           )}
-
-          {/* ── Nivel 3 · operación (título "Operación renta larga/corta" siempre) ── */}
-          {esLtr && (
-            <Nivel3 title="Operación renta larga" open={l3 === "sup"} onToggle={() => openL3("sup")}>
-              <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={displayNum(a.comisionAdminPct ?? "0", DEC.comisionAdmin, (t) => `${t}%`)} suffix="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} escala={escalaComision} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
-            </Nivel3>
-          )}
-          {esStr && (
-            <Nivel3 title="Operación renta corta" open={l3 === "gest"} onToggle={() => openL3("gest")}>
-              <NumField label="Costos operativos" raw={totalOpsEditado ?? String(totalOpsDef)} display={`${fmtCLP(leerNum(totalOpsEditado, DEC.costos) || totalOpsDef)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={totalOpsEditado ? "corregido por ti" : undefined} fuente={`luz + agua + wifi + insumos, típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costosOperativos: v })} />
-              <NumField label="Mantención" raw={a.mantencionStr ?? String(costos.mantencion)} display={`${fmtCLP(leerNum(a.mantencionStr, DEC.costos) || costos.mantencion)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
-              <NumField label="Amoblamiento (capex)" raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={fmtCLP(leerNum(a.costoAmoblamiento, DEC.costos) || costos.costoAmoblamiento)} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$")} tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
-            </Nivel3>
-          )}
-        </ActCard>
+        </FilaNav>
       </div>
 
       {alFilo && (
-        <button type="button" onClick={onAlfiloTap} className="mt-4 lg:hidden w-full text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
-          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
+        <button type="button" onClick={onAlfiloTap} className="wz-bloque wz-alfilo">
+          <span className="wz-bt">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</span>
+          <span className="wz-alfilo-t">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</span>
         </button>
       )}
 
       {(error || anomalias.length > 0) && (
-        <div className="mt-4 rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
-          {/* Con anomalías se muestra la de mayor prioridad (el server ya las
-              ordenó). El resto vive en `anomalias` para el modal de PIEZA B. */}
-          <p className="font-body text-[13px] text-[var(--franco-text)] m-0">
-            {anomalias.length > 0 ? anomalias[0].mensaje : error}
-          </p>
+        <div className="wz-bloque wz-error" role="alert">
+          {/* Con anomalías se muestra la de mayor prioridad (el server ya las ordenó). El resto
+              vive en `anomalias` para el modal. */}
+          <p>{anomalias.length > 0 ? anomalias[0].mensaje : error}</p>
         </div>
       )}
-
-      {/* Desktop: fila final. Al-filo (si hay) crece a la izquierda; el CTA va
-          capado (~360px) para no volverse gigante al ancho nuevo. Sin al-filo,
-          el CTA queda centrado. */}
-      <div className="hidden lg:flex items-stretch justify-center gap-4 mt-2">
-        {alFilo && (
-          <button type="button" onClick={onAlfiloTap} className="flex-1 max-w-[760px] text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
-          </button>
-        )}
-        <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} anonCap={anonCap} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
-          {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
-          )}
-        </div>
-      </div>
 
       <ModalPlausibilidad
         open={modalAbierto}
         anomalias={anomalias}
         origenes={origenes}
         resumen={{
-          direccion: a.direccion || a.comuna || "Tu análisis",
+          direccion: sinCodigoPostal(a.direccion || "") || a.comuna || "Tu análisis",
           modalidad: mod === "both" ? "Comparativo · renta larga y corta" : mod === "str" ? "Renta corta" : "Renta larga",
           derivados: derivadosResumen,
         }}
@@ -1417,15 +1157,11 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         onCerrar={() => setModalAbierto(false)}
       />
 
-      {/* Mobile: CTA sticky. */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
-        <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} anonCap={anonCap} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
-          {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
-          )}
-        </div>
-      </div>
+      {/* El botón, fijo abajo: el mismo de todo el wizard. */}
+      <BarraCta>
+        <FinalCTA mod={mod} isLoggedIn={isLoggedIn} anonCap={anonCap} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
+        {lineaBajoCta && <p className="wz-bajo-cta">{lineaBajoCta}</p>}
+      </BarraCta>
     </div>
   );
 }
@@ -1481,24 +1217,25 @@ export function lineaConsumo(
 }
 
 function FinalCTA({ mod, isLoggedIn, anonCap, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; anonCap: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {
-  const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed";
+  // El botón de avanzar del wizard (`.wz-cta`): píldora roja a todo el ancho.
+  const cls = "wz-cta wz-cta-final";
   if (isLoggedIn && canAnalyze) {
     // Sin "· 1 crédito": era falso para ilimitados y admins, y el consumo real
     // lo dice `lineaConsumo` según el tier. El botón solo nombra la acción.
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar el análisis</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar el análisis</>}</button>;
   }
   if (isLoggedIn) {
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
   }
   // Anónimo con cap disponible (F2-2): el CTA genera DE VERDAD — mismo camino
   // del modal de confirmación; el submit sale sin sesión y el server emite la
   // cookie del cap con el response.
   if (anonCap) {
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar mi análisis gratis</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar mi análisis gratis</>}</button>;
   }
   // Anónimo con cap consumido: muro de registro (baseline del funnel).
   if (incompleto) {
-    return <span className={`${cls} opacity-60 cursor-not-allowed`}>Regístrate para continuar <ArrowRight size={14} /></span>;
+    return <button type="button" disabled className={cls}>Regístrate para continuar →</button>;
   }
-  return <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>Regístrate para continuar <ArrowRight size={14} /></Link>;
+  return <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>Regístrate para continuar →</Link>;
 }

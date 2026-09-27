@@ -33,7 +33,7 @@ import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces
 import { pedirUbicacion } from "@/components/entrada/ubicacion";
 import type { PrecisionUbicacion } from "@/lib/geocoding-precision";
 import type { ScreenProps } from "./screensActo1";
-import { FieldLabel, GhostBtn, PrimaryBtn } from "./ui";
+import { FieldLabel, LinkBtn, PrimaryBtn } from "./ui";
 import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
@@ -301,16 +301,14 @@ export function MapaScreen({ answers, data, patchAnswers, answer, onVolver }: Sc
       : "Aproximada: la dirección más cercana al pin";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        className="rounded-r-lg border-l-2 border-[var(--franco-text-secondary)] pl-4 pr-4 py-3"
-        style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
-      >
-        <p className="font-body text-[12px] font-medium text-[var(--franco-text-tertiary)] m-0 mb-1">{aviso.titulo}</p>
-        <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0">{aviso.texto}</p>
+    <div>
+      <div className="wz-gap">
+      <div className="wz-bloque">
+        <div className="wz-bt">{aviso.titulo}</div>
+        <p>{aviso.texto}</p>
       </div>
 
-      <div>
+      <div className="wz-campo">
         <FieldLabel>Ubicación en el mapa</FieldLabel>
         <MapaPinAjustable
           lat={punto?.lat ?? null}
@@ -325,30 +323,29 @@ export function MapaScreen({ answers, data, patchAnswers, answer, onVolver }: Sc
       </div>
 
       {punto && (
-        <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3">
-          <FieldLabel>Dirección del punto</FieldLabel>
+        <div className="wz-bloque wz-punto" aria-live="polite">
+          <div className="wz-bt">Dirección del punto</div>
           {nombrando ? (
-            <p className="font-body text-[14px] text-[var(--franco-text-muted)] m-0">Buscando la dirección…</p>
+            <p>Buscando la dirección…</p>
           ) : nombre ? (
             <>
-              <p className="font-body text-[15px] font-medium text-[var(--franco-text)] m-0">{nombre.direccion.split(",").slice(0, 2).join(",")}</p>
-              <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-0.5 mb-0">{pie}</p>
+              <p className="wz-punto-dir">{nombre.direccion.split(",").slice(0, 2).join(",")}</p>
+              <p className="wz-punto-pie">{pie}</p>
               {!nombre.cubierta && (
-                <p className="font-body text-[13px] text-[var(--franco-text)] mt-2 mb-0">
+                <p className="wz-punto-fuera">
                   {nombre.comuna} está fuera del Gran Santiago: por ahora Franco no tiene datos suficientes ahí.
                 </p>
               )}
             </>
           ) : sinNombre ? (
-            <p className="font-body text-[13px] text-[var(--franco-text)] m-0">No encuentro una calle en ese punto. Mueve el pin un poco, sobre la calle o el edificio.</p>
+            <p>No encuentro una calle en ese punto. Mueve el pin un poco, sobre la calle o el edificio.</p>
           ) : null}
         </div>
       )}
-
-      <div className="mt-1 flex flex-col gap-2">
-        <PrimaryBtn onClick={usar} disabled={!listo}>Continuar →</PrimaryBtn>
-        <GhostBtn onClick={onVolver}>Escribir la dirección</GhostBtn>
       </div>
+
+      <PrimaryBtn onClick={usar} disabled={!listo}>Continuar →</PrimaryBtn>
+      <LinkBtn onClick={onVolver}>Escribir la dirección</LinkBtn>
     </div>
   );
 }

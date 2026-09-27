@@ -89,13 +89,17 @@ export async function runWizardDatosTier(): Promise<{ hard: number }> {
   // Un borrador con el studio marcado pero sin el "0" escrito: manda el esStudio, no el default.
   if (buildStrPayload({ ...BASE, esStudio: true, dormitorios: undefined }, CTX).dormitorios !== 0) F("1 · un studio sin dormitorios escritos cae al default de 2");
   // Las superficies que muestran o piden por tipología leen la MISMA función.
+  // ACTA 27-sep-2026 (entrega 2 del wizard): los huéspedes se preguntan en la tarifa, así que AirROI
+  // del wizard y el submit leen `huespedesNum`, que sin respuesta cae a `capacidadHuespedesDe` —la
+  // misma regla de siempre—. La regla sigue siendo UNA lectura para los dos; lo que cambió es cuál.
+  // El caso del studio de arriba (2 huéspedes sin respuesta) sigue midiendo la regla por defecto.
   const usos: Array<[string, RegExp]> = [
     ["src/components/formulario-v4/screensActo3.tsx", /const dorm = dormitoriosNum\(answers\);\s*\n\s*const costos = getCostosDefault\(dorm, "basico"\);/],
     ["src/components/formulario-v4/screenResumen.tsx", /const dorm = dormitoriosNum\(a\);\s*\n\s*const costos = getCostosDefault\(dorm, "basico"\);/],
-    ["src/components/formulario-v4/useWizardV4Data.ts", /const dorm = dormitoriosNum\(answers\);[\s\S]{0,400}?dormitorios: dorm,[\s\S]{0,120}?capacidadHuespedes: capacidadHuespedesDe\(dorm\),/],
-    ["src/components/formulario-v4/wizardV4Submit.ts", /capacidadHuespedes: capacidadHuespedesDe\(dorm\),/],
+    ["src/components/formulario-v4/useWizardV4Data.ts", /const dorm = dormitoriosNum\(answers\);[\s\S]{0,400}?dormitorios: dorm,[\s\S]{0,120}?capacidadHuespedes: huespedesNum\(answers\),/],
+    ["src/components/formulario-v4/wizardV4Submit.ts", /capacidadHuespedes: huespedesNum\(a\),/],
   ];
-  for (const [f, re] of usos) if (!re.test(sinComentarios(leer(f)))) F(`1 · ${f} no lee la tipología con dormitoriosNum / capacidadHuespedesDe`);
+  for (const [f, re] of usos) if (!re.test(sinComentarios(leer(f)))) F(`1 · ${f} no lee la tipología con dormitoriosNum / huespedesNum`);
   for (const f of ["screensActo3.tsx", "screenResumen.tsx", "useWizardV4Data.ts", "wizardV4Submit.ts", "screenInforme.tsx"]) {
     const s = sinComentarios(leer(`src/components/formulario-v4/${f}`));
     if (/Number\(\s*\w+\.dormitorios\s*\)\s*\|\|/.test(s)) F(`1 · ${f} vuelve a leer los dormitorios con Number(…) || default`);
