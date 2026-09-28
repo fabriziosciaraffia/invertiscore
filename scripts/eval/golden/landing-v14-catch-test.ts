@@ -163,8 +163,8 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/popup: PopupLanding \| null;/.test(vivo) || !/hayAjustesQueMostrar\(\{ veredicto, distancia, mixComprar \}\)/.test(vivo)) F("9 · los datos del pop-up no se arman como en el informe");
 
   // ── 10 · el QA del 28-sep ──
-  if (!/<LinkMedido href="\/demo" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>/.test(ent)) F("10 · «Ver un análisis real» del hero no lleva al demo");
-  if (!/pie=\{<a href="\/demo"/.test(wiz)) F("10 · «Ver un análisis de ejemplo» de la portada del wizard no lleva al demo");
+  if (!/<LinkMedido href="\/demo" className="he-pild" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>/.test(ent)) F("10 · «Ver un análisis real» del hero no lleva al demo (como píldora)");
+  if (!/pie=\{<EnlaceCarga href="\/demo" className="he-pild"/.test(wiz)) F("10 · «Ver un análisis de ejemplo» de la portada del wizard no lleva al demo (como píldora con carga)");
   if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");
   if (/BarraProgreso/.test(resp) || /BarraProgreso|lv-pausa/.test(reco)) F("10 · una sección arma su propio pie en vez de PieRotacion");
   // ── 11 · las hojas por portal; fondos, no líneas ──
@@ -178,7 +178,7 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/createPortal\([\s\S]{0,600}?document\.body,/.test(hojaDir)) F("11 · la hoja del campo de dirección no monta en portal al <body>");
   if (/\.lv-sreco > \.lv-col::before/.test(css) || !/\.lv-sreco \{ background: var\(--lv-gris-sec\); \}/.test(css)) F("11 · las secciones no se separan por fondo (vuelve la línea o falta el gris)");
   if (/\.lv-lista \{[^}]*border-top: 1px solid/.test(css)) F("11 · vuelve la línea sobre «Tres respuestas posibles», que topaba con el pie de la rotación");
-  if (!/className="hf-txt hf-pild">Entrar<\/Link>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
+  if (!/className="hf-txt hf-pild">Entrar<\/EnlaceCarga>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
   const heroCss = leer("src/components/entrada/hero-entrada.css");
   if (!/\.he-mid \{ flex: 1; display: flex; flex-direction: column; justify-content: center;/.test(heroCss)) F("10 · el bloque principal del hero no va centrado en altura");
   if (!/\{pie && <div className="he-pie">\{pie\}<\/div>\}\s*\n\s*<\/div>\s*\n\s*<\/section>/.test(sinComentarios(leer("src/components/entrada/HeroEntrada.tsx")))) F("10 · el pie del hero no acompaña al bloque (volvió al borde inferior)");
