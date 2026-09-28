@@ -10,8 +10,8 @@
 // ver `Entrada.tsx`. La cabecera es el header único, que monta la página.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { DatosLanding } from "@/lib/landing-vivo";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { COMPARABLES_CIFRA, COMPARABLES_PISO } from "@/lib/stats";
@@ -100,7 +100,7 @@ export function PorQueCreerle() {
               <li><span className="lv-n">03</span><p>Y te dice qué hacer: <b>a qué precio conviene, hasta dónde negociar</b> y cuándo buscar otro.</p></li>
             </ol>
             <p className="lv-sesgo"><span>Sin sesgo:</span> <mark>Te dice que no cuando es no.</mark></p>
-            <Link className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></Link>
+            <EnlaceCarga className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></EnlaceCarga>
           </div>
         </div>
         </PoblamientoMapa>

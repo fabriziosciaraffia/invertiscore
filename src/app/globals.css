@@ -1045,3 +1045,8 @@ input[type="number"] {
 [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
 [data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B; --verdict-band-0:var(--verdict)}
 [data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559; --verdict-band-0:var(--verdict)}
+
+/* LO TOCABLE SE VE TOCABLE, LO QUE TARDA SE VE CARGANDO (28-sep-2026): todo enlace o botón que
+   navega y puede tardar queda «presionado» en el mismo toque (EnlaceCarga lo marca) hasta que la
+   ruta cambia; la barra bajo el header hace el resto. */
+[data-presionado="1"] { opacity: 0.72; transform: translateY(1px); transition: opacity 0.12s, transform 0.12s; cursor: progress; }

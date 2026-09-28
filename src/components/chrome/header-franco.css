@@ -58,7 +58,21 @@
   border: 1.5px solid var(--hf-papel-2); color: var(--hf-papel); font-weight: 600;
   transition: background 0.2s, color 0.2s;
 }
-.hf-pild:hover, .hf-pild:focus-visible { background: var(--hf-papel); color: var(--ink-900); }
+.hf-pild:hover, .hf-pild:focus-visible, .hf-pild[data-presionado="1"] { background: var(--hf-papel); color: var(--ink-900); }
+
+/* LA BARRA DE CARGA (28-sep-2026): fina, bajo el header, la misma en todo el sitio. La enciende
+   EnlaceCarga al tocar algo que navega; la apaga BarraCarga cuando la ruta cambió. En rojo: es el
+   único caso en que el rojo dice «cargando» y no «atención» (design system, estados de sistema). */
+.hf-barra { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none; overflow: hidden; z-index: 2; }
+.hf-barra[data-activa="1"]::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
+  background: currentColor; animation: hf-barra 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes hf-barra { to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .hf-barra[data-activa="1"]::before { left: 0; width: 100%; animation: hf-barra-quieta 1.2s ease-in-out infinite alternate; }
+  @keyframes hf-barra-quieta { from { opacity: 0.45; } to { opacity: 1; } }
+}
 .hf-lnk.on { color: var(--hf-papel); }
 .hf-lnk.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 2px; background: var(--hf-papel); }
 

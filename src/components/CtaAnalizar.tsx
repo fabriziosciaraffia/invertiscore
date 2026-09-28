@@ -15,7 +15,7 @@
 // unifica es el DESTINO, el TEXTO y la MEDICIÓN.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -44,7 +44,7 @@ export function CtaAnalizar({
 }) {
   const posthog = usePostHog();
   return (
-    <Link
+    <EnlaceCarga
       href={hrefAnalizar(origen, { comuna })}
       aria-label={ariaLabel}
       className={className}
@@ -54,6 +54,6 @@ export function CtaAnalizar({
       }}
     >
       {children ?? LABEL_ANALIZAR}
-    </Link>
+    </EnlaceCarga>
   );
 }

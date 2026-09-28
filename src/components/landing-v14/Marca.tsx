@@ -8,7 +8,7 @@
 // (prefijo `lv-`), que la página importa una vez.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import FrancoLogo from "@/components/franco-logo";
 import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
 import { ESLOGAN } from "@/lib/eslogan";
@@ -81,10 +81,10 @@ export function PieLanding({ ultimo, ahora, conFondo = true }: { ultimo: DatosLa
         <div className="lv-footer-fila">
           <Wordmark />
           <nav aria-label="Franco">
-            <Link href="/metodologia">Cómo calcula</Link>
-            <Link href="/comunas">Comunas</Link>
-            <Link href="/pricing">Planes</Link>
-            <Link href="/login">Entrar</Link>
+            <EnlaceCarga href="/metodologia">Cómo calcula</EnlaceCarga>
+            <EnlaceCarga href="/comunas">Comunas</EnlaceCarga>
+            <EnlaceCarga href="/pricing">Planes</EnlaceCarga>
+            <EnlaceCarga href="/login">Entrar</EnlaceCarga>
           </nav>
         </div>
         {ultimo && (
@@ -95,8 +95,8 @@ export function PieLanding({ ultimo, ahora, conFondo = true }: { ultimo: DatosLa
         <div className="lv-legal">
           <p>{DISCLAIMER_CANONICO}</p>
           <nav aria-label="Legal">
-            <Link href="/terms">Términos</Link>
-            <Link href="/privacy">Privacidad</Link>
+            <EnlaceCarga href="/terms">Términos</EnlaceCarga>
+            <EnlaceCarga href="/privacy">Privacidad</EnlaceCarga>
           </nav>
         </div>
         <div className="lv-osm">

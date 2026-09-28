@@ -29,7 +29,8 @@
 // contradecir lo que la portada dice. Con un pop-up abierto, el header no cambia.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import Link from "next/link";
+import { EnlaceCarga } from "./EnlaceCarga";
+import { BarraCarga } from "./BarraCarga";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { Moon, Sun } from "lucide-react";
@@ -162,10 +163,10 @@ function MenuCuenta({ email }: { email: string }) {
       {abierto && (
         <div className="hf-menu" role="menu">
           <div className="hf-menu-mail">{email}</div>
-          <Link href="/dashboard" role="menuitem" onClick={() => setAbierto(false)}>Mis análisis</Link>
-          <Link href="/pricing" role="menuitem" onClick={() => setAbierto(false)}>Planes</Link>
-          <Link href="/cuenta" role="menuitem" onClick={() => setAbierto(false)}>Mi cuenta</Link>
-          <Link href="/perfil" role="menuitem" onClick={() => setAbierto(false)}>Perfil</Link>
+          <EnlaceCarga href="/dashboard" role="menuitem" onClick={() => setAbierto(false)}>Mis análisis</EnlaceCarga>
+          <EnlaceCarga href="/pricing" role="menuitem" onClick={() => setAbierto(false)}>Planes</EnlaceCarga>
+          <EnlaceCarga href="/cuenta" role="menuitem" onClick={() => setAbierto(false)}>Mi cuenta</EnlaceCarga>
+          <EnlaceCarga href="/perfil" role="menuitem" onClick={() => setAbierto(false)}>Perfil</EnlaceCarga>
           <div className="hf-tema">
             <span>Tema</span>
             <span className="hf-seg" role="group" aria-label="Tema">
@@ -205,7 +206,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   const conIdentidad = fijo && !!identidad;
 
   const wordmark = <FrancoLogo size="banda" href={logueado ? "/dashboard" : "/"} className="hf-wm" />;
-  const entrar = <Link href="/login" className="hf-txt hf-oculta-fija">Entrar</Link>;
+  const entrar = <EnlaceCarga href="/login" className="hf-txt hf-oculta-fija">Entrar</EnlaceCarga>;
 
   let contextoInforme: ReactNode = null;
   if (modo === "compartido") contextoInforme = <span className="hf-ctx hf-solo-ancho"><b>Compartido contigo</b>{informe?.fecha}</span>;
@@ -221,7 +222,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
     derecha = resuelta ? (
       <>
         <BotonTema />
-        {logueado ? <Link href="/dashboard" className="hf-txt hf-pild">Mis análisis</Link> : <Link href="/login" className="hf-txt hf-pild">Entrar</Link>}
+        {logueado ? <EnlaceCarga href="/dashboard" className="hf-txt hf-pild">Mis análisis</EnlaceCarga> : <EnlaceCarga href="/login" className="hf-txt hf-pild">Entrar</EnlaceCarga>}
       </>
     ) : null;
   } else if (modo === "compartido") {
@@ -236,7 +237,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
     derecha = (
       <>
         {entrar}
-        <Link href={`/register?next=${encodeURIComponent(informe?.registroNext || "/dashboard")}`} className="hf-btn">Guardarlo</Link>
+        <EnlaceCarga href={`/register?next=${encodeURIComponent(informe?.registroNext || "/dashboard")}`} className="hf-btn">Guardarlo</EnlaceCarga>
       </>
     );
   } else if (!resuelta) {
@@ -255,8 +256,8 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   } else {
     derecha = (
       <>
-        <Link href="/dashboard" className={`hf-lnk hf-solo-ancho${activo === "mis" ? " on" : ""}`}>Mis análisis</Link>
-        <Link href="/pricing" className={`hf-lnk hf-solo-ancho${activo === "planes" ? " on" : ""}`}>Planes</Link>
+        <EnlaceCarga href="/dashboard" className={`hf-lnk hf-solo-ancho${activo === "mis" ? " on" : ""}`}>Mis análisis</EnlaceCarga>
+        <EnlaceCarga href="/pricing" className={`hf-lnk hf-solo-ancho${activo === "planes" ? " on" : ""}`}>Planes</EnlaceCarga>
         {modo === "propio" && informe?.compartir ? <span className="hf-oculta-fija" style={{ display: "contents" }}>{informe.compartir}</span> : null}
         <CtaAnalizar origen="nav" className="hf-btn hf-oculta-fija">Nuevo análisis</CtaAnalizar>
         <MenuCuenta email={sesion?.email ?? ""} />
@@ -284,6 +285,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
         </div>
         {derecha && <div className="hf-der">{derecha}</div>}
       </div>
+          <BarraCarga />
     </header>
   );
 }

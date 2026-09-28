@@ -1,9 +1,10 @@
 "use client";
 
 // Enlace que emite un evento de PostHog al click. Para "Ver un análisis real →"
-// (ancla a la sección 2) y "Ver planes →". Con href interno usa <Link>.
+// y "Ver planes →". Con href interno usa EnlaceCarga (28-sep-2026): el toque se ve
+// presionado y la barra bajo el header arranca mientras la página llega.
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import type { ReactNode } from "react";
 
@@ -25,5 +26,5 @@ export function LinkMedido({
   if (href.startsWith("#")) {
     return <a href={href} className={className} onClick={medir}>{children}</a>;
   }
-  return <Link href={href} className={className} onClick={medir}>{children}</Link>;
+  return <EnlaceCarga href={href} className={className} onClick={medir}>{children}</EnlaceCarga>;
 }

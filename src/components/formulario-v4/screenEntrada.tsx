@@ -38,6 +38,7 @@ import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
 import { MapaPinAjustable } from "./MapaPinAjustable";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { rotuloComparables } from "./comparablesRotulo";
 
 /** Lo que `/api/geocode?lat&lng` devuelve de un punto. */
@@ -165,7 +166,7 @@ export function EntradaScreen({
   return (
     <HeroEntrada
       cabecera={<HeaderFranco contexto="wizard" sobreMaterial />}
-      pie={<a href="/demo" onClick={() => trackWizard(posthog, "wizard4_entrada_ejemplo", {})}>Ver un análisis de ejemplo<span aria-hidden="true">→</span></a>}
+      pie={<EnlaceCarga href="/demo" className="he-pild" onClick={() => trackWizard(posthog, "wizard4_entrada_ejemplo", {})}>Ver un análisis de ejemplo<span aria-hidden="true">→</span></EnlaceCarga>}
       antes={banner}
       valorInicial={answers.direccion ?? ""}
       confirmada={confirmada}
