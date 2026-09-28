@@ -44,6 +44,8 @@ import { buildLtrPayload, type SubmitContext } from "../../../src/components/for
 import { buildFichaLtr, buildFichaStr, type FichaDepto } from "../../../src/lib/ficha-depto";
 import { FichaCuerpo } from "../../../src/components/analysis/portada/FichaModal";
 import { EsqueletoInforme } from "../../../src/components/analysis/EsqueletoInforme";
+import { MapaThumbnail } from "../../../src/components/formulario-v3/MapaThumbnail";
+import { condicionDeInput } from "../../../src/components/analysis/portada/useComparablesCercanos";
 import { existsSync } from "node:fs";
 
 // El JSX de los componentes compila a React.createElement bajo tsx: el global lo resuelve.
@@ -274,11 +276,45 @@ export function runFichaComparablesTier(): { hard: number } {
     if (!/aria-busy="true"/.test(h)) F("11 · el esqueleto no se declara ocupado (aria-busy) para lectores de pantalla");
   }
 
+  // ── 12 · el mapa de la portada dibuja la muestra detrás del precio y la leyenda la cuenta (28-sep-2026) ──
+  // Hacía lo mismo que el del wizard: dibujaba y contaba `nearbyProperties` (toda la venta del radio).
+  // Ahora: `comparables` (la muestra del radio, en oscuro), `contexto` (el resto, tenue) y la leyenda
+  // cuenta la lista oscura que dibuja, con su radio. La consulta va en el universo del depto.
+  {
+    const hookSrc = sinComentarios(leer("src/components/analysis/portada/useComparablesCercanos.ts"));
+    if (!/setComparables\(radio && Array\.isArray\(d\.comparables\) \? d\.comparables\.map\(aPunto\) : \[\]\);/.test(hookSrc)) F("12 · el hook de la portada no dibuja los `comparables` del endpoint");
+    if (!/setContexto\(radio && Array\.isArray\(d\.restoRadio\) \? d\.restoRadio\.map\(aPunto\) : \[\]\);/.test(hookSrc)) F("12 · el hook de la portada no guarda el resto del radio como contexto");
+    if (!/setRadioM\(radio && typeof d\.radiusUsed === "number" \? d\.radiusUsed : null\);/.test(hookSrc)) F("12 · el hook de la portada no guarda el radio de la muestra");
+    if (/nearbyProperties|totalInRadius|filteredInRadius|count/.test(hookSrc)) F("12 · el hook de la portada vuelve a contar o dibujar todo el radio (nearbyProperties / totalInRadius / count)");
+    if (!/\.\.\.\(condicion \? \{ condicion \} : \{\}\),/.test(hookSrc)) F("12 · la consulta de la portada no va en el universo del depto (condicion)");
+    if (condicionDeInput({ esNuevo: true }) !== "nuevo" || condicionDeInput({ esNuevo: false }) !== "usado" || condicionDeInput({ tipoPropiedad: "nuevo" }) !== "nuevo" || condicionDeInput({ tipoPropiedad: "usado" }) !== "usado" || condicionDeInput({}) !== null || condicionDeInput(null) !== null) F("12 · condicionDeInput no lee esNuevo (LTR) y tipoPropiedad (STR)");
+    for (const ruta of ["src/components/analysis/SubjectCardGrid.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) {
+      const src = sinComentarios(leer(ruta));
+      if (!/condicion: condicionDeInput\(inputData as Record<string, unknown> \| null\),/.test(src)) F(`12 · ${ruta} consulta el mapa sin el universo del depto`);
+      if (!/comparables: compCercanos\.comparables,\s*\n\s*contexto: compCercanos\.contexto,\s*\n\s*radioM: compCercanos\.radioM,/.test(src)) F(`12 · ${ruta} no pasa las dos listas y el radio al mapa de la portada`);
+      if (/compCercanos\.count|comparablesCount/.test(src)) F(`12 · ${ruta} vuelve a pasar un conteo aparte de la lista`);
+    }
+    // El componente: la leyenda cuenta lo que dibuja en oscuro; lo sin coordenadas no se cuenta; el contexto se nombra aparte.
+    const comparables = [{ lat: -33.45, lng: -70.6 }, { lat: -33.451, lng: -70.601 }, { lat: -33.452, lng: -70.602 }, { lat: null, lng: null }];
+    const contexto = [{ lat: -33.46, lng: -70.61 }, { lat: -33.461, lng: -70.611 }, { lat: 0, lng: 0 }];
+    const conMapa = html(createElement(MapaThumbnail, { lat: -33.45, lng: -70.6, comparables, contexto, radioM: 750, locationLabel: "x" })).replace(/<[^>]+>/g, "");
+    if (!/3 comparables a 750 m · otros 2 en gris/.test(conMapa)) F(`12 · la leyenda de la portada no cuenta la lista oscura con su radio y el gris aparte («${conMapa.slice(0, 80)}»)`);
+    const sinContexto = html(createElement(MapaThumbnail, { lat: -33.45, lng: -70.6, comparables, contexto: [], radioM: 1500, locationLabel: "x" })).replace(/<[^>]+>/g, "");
+    if (!/3 comparables a 1,5 km/.test(sinContexto) || /en gris/.test(sinContexto)) F("12 · sin contexto la leyenda igual nombra el gris (o no dice el radio)");
+    const sinComparables = html(createElement(MapaThumbnail, { lat: -33.45, lng: -70.6, comparables: [], contexto, radioM: 500, locationLabel: "x" })).replace(/<[^>]+>/g, "");
+    if (/comparables?|en gris/.test(sinComparables)) F("12 · sin comparables dibujados el mapa igual pone una leyenda");
+    const mapaSrc = sinComentarios(leer("src/components/formulario-v3/MapaThumbnail.tsx"));
+    if (/comparablesCount|countLabel|displayCount/.test(mapaSrc)) F("12 · MapaThumbnail vuelve a tener un conteo aparte de la lista dibujada");
+    if (!/markers=color:\$\{COLOR_CONTEXTO\[theme\]\}\|size:tiny\|\$\{aCoords\(contextoRecortado\)\}/.test(mapaSrc) || !/markers=color:\$\{COLOR_COMPARABLES\[theme\]\}\|size:tiny\|\$\{aCoords\(validComparables\.slice\(0, MAX_MARKERS\)\)\}/.test(mapaSrc)) F("12 · el mapa estático no dibuja las dos capas (contexto primero, comparables encima)");
+    if (!/COLOR_COMPARABLES: Record<FrancoMapTheme, string> = \{ light: "0x71717A", dark: "0xB4B2A9" \};/.test(mapaSrc) || !/COLOR_CONTEXTO: Record<FrancoMapTheme, string> = \{ light: "0xC4C2BB", dark: "0x55544F" \};/.test(mapaSrc)) F("12 · el contexto no va en un gris más tenue que los comparables");
+    if (!/\{rotuloComparables\(nComparables, radioM\)\}/.test(mapaSrc)) F("12 · la leyenda de la portada no usa el mismo rótulo que el wizard");
+  }
+
   if (fallas.length) {
     console.log(`  ✗ FICHA-COMPARABLES · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card; la ficha abre en el Modal, de solo lectura, con su procedencia y en CLP/UF; y nada de las dos usa mono ni serif; y la carga de las tres modalidades es la forma del informe, sin texto");
+    console.log("  ✓ VERDE — tu arriendo aparece con y sin referencia de radio; la lista guardada es la muestra de la mediana y solo existe si calza con el n; comparables abre en el Modal sin prosa, con la misma referencia que la card; la ficha abre en el Modal, de solo lectura, con su procedencia y en CLP/UF; y nada de las dos usa mono ni serif; y la carga de las tres modalidades es la forma del informe, sin texto; y el mapa de la portada dibuja la muestra detrás del precio, cuenta esa lista con su radio y pone el resto del radio en gris");
   }
   return { hard: fallas.length };
 }

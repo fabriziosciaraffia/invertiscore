@@ -54,7 +54,7 @@ import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
-import { useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
+import { condicionDeInput, useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -231,6 +231,7 @@ export function STRResultsClient({
     dormitorios: (inputData?.dormitorios as number) ?? null,
     lat: latPortada,
     lng: lngPortada,
+    condicion: condicionDeInput(inputData as Record<string, unknown> | null),
   });
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
 
@@ -339,7 +340,8 @@ export function STRResultsClient({
                   lat: latPortada,
                   lng: lngPortada,
                   comparables: compCercanos.comparables,
-                  count: compCercanos.count,
+                  contexto: compCercanos.contexto,
+                  radioM: compCercanos.radioM,
                   label: direccionPortada || comuna,
                 }
               : null

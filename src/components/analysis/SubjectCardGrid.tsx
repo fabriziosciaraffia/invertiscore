@@ -21,7 +21,7 @@ import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
-import { useComparablesCercanos } from "./portada/useComparablesCercanos";
+import { condicionDeInput, useComparablesCercanos } from "./portada/useComparablesCercanos";
 import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import { construirCardLtr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
@@ -204,6 +204,7 @@ export function SubjectCardGrid({
     dormitorios: inputData?.dormitorios,
     lat: zoneCenter?.lat ?? null,
     lng: zoneCenter?.lng ?? null,
+    condicion: condicionDeInput(inputData as Record<string, unknown> | null),
   });
   const fechaCorta = (() => {
     return fechaCortaCL(createdAt);
@@ -250,7 +251,8 @@ export function SubjectCardGrid({
                   lat: zoneCenter.lat,
                   lng: zoneCenter.lng,
                   comparables: compCercanos.comparables,
-                  count: compCercanos.count,
+                  contexto: compCercanos.contexto,
+                  radioM: compCercanos.radioM,
                   label: direccionPortada || comunaPortada,
                 }
               : null

@@ -95,8 +95,9 @@ export function PortadaInforme({
   ficha: FichaDepto;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
-  /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza. */
-  mapa: { lat: number; lng: number; comparables: Comparable[]; count: number; label: string } | null;
+  /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza.
+   *  `comparables` es la muestra detrás del precio (la leyenda la cuenta); `contexto`, el resto del radio. */
+  mapa: { lat: number; lng: number; comparables: Comparable[]; contexto: Comparable[]; radioM: number | null; label: string } | null;
 }) {
   const [fichaOpen, setFichaOpen] = useState(false);
   const bandaLabel = bandaLabelDe(veredicto);
@@ -221,7 +222,8 @@ export function PortadaInforme({
               lat={mapa.lat}
               lng={mapa.lng}
               comparables={mapa.comparables}
-              comparablesCount={mapa.count}
+              contexto={mapa.contexto}
+              radioM={mapa.radioM}
               locationLabel={mapa.label}
               height={210}
             />

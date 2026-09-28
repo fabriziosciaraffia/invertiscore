@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapPin } from "lucide-react";
 import { francoMapStaticStyleParams, type FrancoMapTheme } from "@/lib/map-styles";
+import { rotuloComparables } from "@/components/formulario-v4/comparablesRotulo";
 
 /**
  * Input "crudo" — lat/lng pueden venir null cuando el backend no geolocalizó
@@ -47,9 +48,11 @@ function validCoord(rawLat: unknown, rawLng: unknown): { lat: number; lng: numbe
  *
  * Renderiza:
  *  - Pin Signal Red en el centro (la dirección del usuario).
- *  - Puntos Ink 400 (#B4B2A9) pequeños por cada comparable (tope 200 por límite
- *    de URL). El design system elimina el verde: comparables son neutros.
- *  - Label abajo-derecha con "N comparables cerca".
+ *  - Los comparables (`comparables`: la muestra detrás del precio de referencia) en gris
+ *    oscuro y, debajo, el resto del radio (`contexto`) en un gris más tenue. Tope 200 puntos
+ *    en total por el largo de la URL; los comparables van completos, el contexto se recorta.
+ *  - Leyenda abajo-derecha: «N comparables a R · otros M en gris». N es el largo de la lista
+ *    oscura que se dibuja (28-sep-2026: antes dibujaba y contaba todo el radio).
  *
  * Si la imagen falla (API key faltante, Static Maps no habilitada, referrer
  * bloqueado, quota excedida) cae a placeholder con pin + nombre de ubicación.
@@ -58,21 +61,21 @@ export function MapaThumbnail({
   lat,
   lng,
   comparables,
-  comparablesCount,
+  contexto,
+  radioM = null,
   locationLabel,
   height = 120,
-  countLabel = "comparables cerca",
 }: {
   lat: number | null;
   lng: number | null;
+  /** La muestra detrás del precio de referencia: la lista que la leyenda cuenta. */
   comparables?: Comparable[];
-  comparablesCount: number;
+  /** El resto de la oferta del radio, en gris más tenue; la leyenda lo distingue. */
+  contexto?: Comparable[];
+  /** El radio (m) al que se juntó la muestra, para la leyenda. */
+  radioM?: number | null;
   locationLabel?: string;
   height?: number;
-  /** Sufijo del badge de conteo. Default "comparables cerca" (v3 intacto). El
-   *  wizard v4 pasa "propiedades en el sector" para no competir con el número de
-   *  comparables (sampleSize) que muestra la reacción de Franco. */
-  countLabel?: string;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [imgFailed, setImgFailed] = useState(false);
@@ -112,15 +115,8 @@ export function MapaThumbnail({
   useEffect(() => { setImgFailed(false); }, [lat, lng]);
 
   // Filtro estricto: descarta coords nulas, NaN, (0,0), fuera de rango.
-  const validComparables = useMemo(() => {
-    if (!comparables || comparables.length === 0) return [];
-    const out: Array<{ lat: number; lng: number }> = [];
-    for (const c of comparables) {
-      const v = validCoord(c.lat, c.lng);
-      if (v) out.push(v);
-    }
-    return out;
-  }, [comparables]);
+  const validComparables = useMemo(() => coordsValidas(comparables), [comparables]);
+  const validContexto = useMemo(() => coordsValidas(contexto), [contexto]);
 
   // Log de diagnóstico: visibilidad de cuántos comparables vienen geolocalizados.
   useEffect(() => {
@@ -161,21 +157,18 @@ export function MapaThumbnail({
     // Marcador central (ubicación del usuario) — Signal Red, tamaño medio
     parts.push(`markers=color:0xC8323C|size:mid|${center}`);
 
-    // Marcadores de comparables: tope 200 para no exceder ~8KB de URL.
-    // Ink 400 (#B4B2A9) — el design system elimina el verde. Marcador de color
-    // nativo (mismo render en dev y prod, sin depender de un PNG hospedado).
-    if (hasComparables) {
-      const MAX_MARKERS = 200;
-      const coords = validComparables
-        .slice(0, MAX_MARKERS)
-        .map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`)
-        .join("|");
-      parts.push(`markers=color:0xB4B2A9|size:tiny|${coords}`);
-    }
+    // Dos capas de puntos, tope 200 en total para no exceder ~8KB de URL: el contexto va
+    // primero (queda debajo) y recortado; los comparables, completos y en el gris oscuro.
+    // Marcadores de color nativo (mismo render en dev y prod, sin depender de un PNG).
+    const MAX_MARKERS = 200;
+    const aCoords = (ps: Array<{ lat: number; lng: number }>) => ps.map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`).join("|");
+    const contextoRecortado = validContexto.slice(0, Math.max(0, MAX_MARKERS - Math.min(validComparables.length, MAX_MARKERS)));
+    if (contextoRecortado.length > 0) parts.push(`markers=color:${COLOR_CONTEXTO[theme]}|size:tiny|${aCoords(contextoRecortado)}`);
+    if (hasComparables) parts.push(`markers=color:${COLOR_COMPARABLES[theme]}|size:tiny|${aCoords(validComparables.slice(0, MAX_MARKERS))}`);
 
     parts.push(`key=${apiKey}`);
     return `https://maps.googleapis.com/maps/api/staticmap?${parts.join("&")}`;
-  }, [lat, lng, apiKey, theme, validComparables, origin]);
+  }, [lat, lng, apiKey, theme, validComparables, validContexto, origin]);
 
   // Sin coords ya NO devolvemos null (dejaba una columna en blanco en el hero).
   // Cae al Placeholder digno (pin + ubicación): url es null cuando faltan coords
@@ -184,11 +177,10 @@ export function MapaThumbnail({
   // así que este cambio afecta únicamente al hero.
   const showFallback = !url || imgFailed;
 
-  // El badge muestra la cantidad de pins reales (validComparables = los que se
-  // pintan en el mapa) para que el número coincida con lo visual. Solo cae al
-  // prop `comparablesCount` (el número del motor) cuando no hay coords y por
-  // ende no hay pins que mostrar.
-  const displayCount = validComparables.length > 0 ? validComparables.length : comparablesCount;
+  // La leyenda cuenta los puntos oscuros que se dibujan (validComparables): número, radio y,
+  // aparte, cuántos quedan en gris. Sin comparables dibujados no hay leyenda.
+  const nComparables = validComparables.length;
+  const nContexto = validContexto.length;
 
   return (
     <div
@@ -210,18 +202,33 @@ export function MapaThumbnail({
         />
       )}
 
-      {displayCount > 0 && (
+      {nComparables > 0 && (
         <div
           className="absolute bottom-2 right-2 px-2 py-1 rounded-md"
           style={{ background: "rgba(15,15,15,0.72)" }}
         >
           <span className="font-mono text-[10px] tracking-wide text-white">
-            {displayCount >= 1000 ? "1.000+" : displayCount} {countLabel}
+            {rotuloComparables(nComparables, radioM)}
+            {nContexto > 0 && <span style={{ color: "rgba(255,255,255,.62)" }}> · otros {nContexto} en gris</span>}
           </span>
         </div>
       )}
     </div>
   );
+}
+
+/** Colores de los puntos por tema: comparables en gris oscuro, contexto en gris tenue. */
+const COLOR_COMPARABLES: Record<FrancoMapTheme, string> = { light: "0x71717A", dark: "0xB4B2A9" };
+const COLOR_CONTEXTO: Record<FrancoMapTheme, string> = { light: "0xC4C2BB", dark: "0x55544F" };
+
+function coordsValidas(lista: Comparable[] | undefined): Array<{ lat: number; lng: number }> {
+  if (!lista || lista.length === 0) return [];
+  const out: Array<{ lat: number; lng: number }> = [];
+  for (const c of lista) {
+    const v = validCoord(c.lat, c.lng);
+    if (v) out.push(v);
+  }
+  return out;
 }
 
 function Placeholder({
