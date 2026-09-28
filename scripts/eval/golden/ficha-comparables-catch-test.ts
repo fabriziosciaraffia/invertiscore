@@ -280,6 +280,8 @@ export function runFichaComparablesTier(): { hard: number } {
   // Hacía lo mismo que el del wizard: dibujaba y contaba `nearbyProperties` (toda la venta del radio).
   // Ahora: `comparables` (la muestra del radio, en oscuro), `contexto` (el resto, tenue) y la leyenda
   // cuenta la lista oscura que dibuja, con su radio. La consulta va en el universo del depto.
+  // Acta 28-sep-2026, en rojo por mutación: la leyenda contando la lista cruda (2 fallas) · el hook de vuelta a
+  // `nearbyProperties` (2) · LTR sin `condicion` (1) · el contexto del mismo gris que los comparables (1). Restaurado: verde.
   {
     const hookSrc = sinComentarios(leer("src/components/analysis/portada/useComparablesCercanos.ts"));
     if (!/setComparables\(radio && Array\.isArray\(d\.comparables\) \? d\.comparables\.map\(aPunto\) : \[\]\);/.test(hookSrc)) F("12 · el hook de la portada no dibuja los `comparables` del endpoint");
