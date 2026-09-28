@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
+import { ofertaPackVigente, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
+import { capturarServidor } from "@/lib/posthog-servidor";
+import { readVeredicto } from "@/lib/results-helpers";
 import { randomUUID } from "crypto";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -16,7 +20,7 @@ const PRODUCTS: Record<string, { amount: number; subject: string }> = {
   unlock: { amount: FLOW_PRODUCTS.unlock.amount, subject: FLOW_PRODUCTS.unlock.subject },
   // Legacy (deprecados, se conservan por compatibilidad de órdenes en vuelo).
   pro: { amount: 4990, subject: "Franco Pro — Análisis Premium" },
-  pack3: { amount: 9990, subject: "Franco Pack 3× — 3 Análisis Premium" },
+  pack3: { amount: FLOW_PRODUCTS.pack3.amount, subject: FLOW_PRODUCTS.pack3.subject },
 };
 
 function createAdminClient() {
@@ -71,11 +75,16 @@ export async function POST(request: Request) {
   // Ownership check (+ comuna para personalizar el subject de Flow): si el pago
   // es por un análisis, verificar que el user lo posee.
   let analysisComuna: string | null = null;
+  // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado. Sin
+  // analysisId no hay pack; vencido, se rechaza con 410 y queda medido (`pack_vencido`).
+  if (product === PRODUCTO_PACK && !analysisId) {
+    return NextResponse.json({ error: "El pack va con tu informe" }, { status: 400 });
+  }
   if (analysisId) {
     const admin = createAdminClient();
     const { data: analysis } = await admin
       .from("analisis")
-      .select("user_id, comuna")
+      .select("user_id, comuna, created_at, results")
       .eq("id", analysisId)
       .single();
 
@@ -83,6 +92,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
     analysisComuna = (analysis?.comuna as string) ?? null;
+    if (product === PRODUCTO_PACK) {
+      if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
+      if (!ofertaPackVigente(analysis.created_at as string)) {
+        try {
+          await capturarServidor(eventoPackVencido({ userId: user.id, analysisId, veredicto: readVeredicto(analysis.results as never) ?? null }));
+        } catch (e) {
+          console.error("[payments/create] pack_vencido excepción:", e);
+        }
+        return NextResponse.json({ error: "pack_vencido" }, { status: 410 });
+      }
+    }
   }
 
   const { amount: unitAmount, subject: catalogSubject } = PRODUCTS[product];

@@ -11,6 +11,8 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
 import { metaTrack } from "@/lib/meta/pixel";
+import { PRODUCTO_PACK, diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
+import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
 
 /** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
 function resolveProduct(key: string) {
@@ -27,7 +29,9 @@ function resolveProduct(key: string) {
     ? "Análisis ilimitados cada mes"
     : p.capacity === 1
       ? "1 análisis"
-      : `${p.capacity} análisis al mes`;
+      : oneTime
+        ? `${p.capacity} análisis, sin caducidad`
+        : `${p.capacity} análisis al mes`;
 
   return {
     title: p.subject,
@@ -64,6 +68,20 @@ function CheckoutContent() {
   const companionStrId = searchParams.get("companionStrId");
 
   const product = resolveProduct(productKey);
+  // «Lo que sigue»: la vigencia del pack la dice el servidor. null = todavía no se sabe.
+  const esPack = productKey === PRODUCTO_PACK;
+  const [oferta, setOferta] = useState<{ vigente: boolean; venceAt: string } | null>(null);
+  useEffect(() => {
+    if (!esPack || !analysisId) return;
+    let alive = true;
+    fetch(`/api/lo-que-sigue/oferta?analysisId=${encodeURIComponent(analysisId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d && typeof d.vigente === "boolean") setOferta({ vigente: d.vigente, venceAt: d.venceAt }); })
+      .catch(() => { /* sin dato, el botón sigue: el servidor rechaza si venció */ });
+    return () => { alive = false; };
+  }, [esPack, analysisId]);
+  const packVencido = esPack && oferta !== null && !oferta.vigente;
+  const packCreadoAt = oferta ? new Date(new Date(oferta.venceAt).getTime() - VENTANA_PACK_MS) : null;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +168,7 @@ function CheckoutContent() {
         metaTrack('InitiateCheckout', { value: qty * product.amount, currency: 'CLP' });
         window.location.href = data.url;
       } else {
-        setError(data?.details || data?.error || "Error al procesar el pago");
+        setError(res.status === 410 ? CHECKOUT_PACK.vencido : data?.details || data?.error || "Error al procesar el pago");
         soltar();
         setLoading(false);
       }
@@ -214,7 +232,9 @@ function CheckoutContent() {
         <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
           <div className="mb-6">
             <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
-              {product.oneTime && !analysisId
+              {esPack
+                ? CHECKOUT_PACK.titulo
+                : product.oneTime && !analysisId
                 ? `Franco — ${qty} análisis`
                 : product.oneTime && analysisComuna
                 ? `Análisis en ${analysisComuna}`
@@ -234,6 +254,11 @@ function CheckoutContent() {
             </p>
           )}
           <p className="font-body text-xs text-[var(--franco-text-muted)] mb-6">{product.period}</p>
+          {esPack && packCreadoAt && (
+            <p className={`font-body text-sm mb-6 ${packVencido ? "text-[var(--signal-red)]" : "text-[var(--franco-text)]"}`} data-lqs="checkout-vence">
+              {packVencido ? CHECKOUT_PACK.vencido : CHECKOUT_PACK.vence(diaVencimiento(packCreadoAt), horaVencimiento(packCreadoAt))}
+            </p>
+          )}
 
           {/* Selector de cantidad — solo compra de crédito suelto (single sin
               analysisId). Ink/neutros: Signal Red está reservado al CTA. El número
@@ -301,7 +326,7 @@ function CheckoutContent() {
           <button
             type="button"
             onClick={handlePay}
-            disabled={loading}
+            disabled={loading || packVencido}
             data-presionado={loading ? "1" : undefined}
             className="w-full font-body text-sm font-bold py-3.5 rounded-lg bg-[#C8323C] text-white hover:bg-[#b02a33] transition-colors min-h-[44px] disabled:opacity-50"
             style={{ boxShadow: "0 4px 16px rgba(200,50,60,0.3)" }}

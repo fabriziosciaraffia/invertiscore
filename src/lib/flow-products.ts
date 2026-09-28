@@ -13,6 +13,7 @@
 export type FlowProductKey =
   | "single"
   | "unlock"
+  | "pack3"
   | "plan10_mensual" | "plan10_annual"
   | "plan50_mensual" | "plan50_annual"
   | "unlimited_mensual" | "unlimited_annual";
@@ -43,6 +44,14 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   unlock: {
     kind: "one_time", amount: 4990, subject: "Franco — Informe completo",
     plan: undefined, billing: null, capacity: null,
+  },
+  // «Lo que sigue» (28-sep-2026): 3 análisis por $5.000, solo tras el primer informe anónimo y con
+  // vencimiento a 24 h desde que se creó ese informe (lo valida payments/create con
+  // `ofertaPackVigente`). Otorga 3 créditos sin caducidad (payments/confirm). Reemplaza al `pack3`
+  // legacy de $9.990 que vivía hardcodeado en payments/create.
+  pack3: {
+    kind: "one_time", amount: 5000, subject: "Franco — 3 análisis",
+    plan: "single", billing: null, capacity: 3,
   },
   plan10_mensual: {
     kind: "recurring", amount: 39990, subject: "Franco Plan 10 — mensual",

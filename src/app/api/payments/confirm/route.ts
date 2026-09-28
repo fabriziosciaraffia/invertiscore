@@ -11,6 +11,9 @@ import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
+import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
+import { PACK_ANALISIS, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -171,6 +174,27 @@ export async function POST(request: Request) {
               .eq("pending_payment", true);
           }
         }
+      } else if (userId && product === PRODUCTO_PACK) {
+        // «Lo que sigue» (28-sep-2026): el pack son 3 créditos al ledger, sin caducidad, en UN
+        // grant (idempotente por dedup de grantCredits). No desbloquea nada: el primer informe ya
+        // era completo. `pack_pagado` sale acá, con el mismo id que el pago (commerce_order).
+        await grantCredits(userId, PRODUCTO_PACK, PACK_ANALISIS, { paymentId, noExpire: true });
+        try {
+          let veredictoPack: string | null = null;
+          if (analysisId) {
+            const { data: filaPack } = await supabase.from("analisis").select("results").eq("id", analysisId).single();
+            veredictoPack = readVeredicto(filaPack?.results as never) ?? null;
+          }
+          await capturarServidor(eventoPackPagado({
+            commerceOrder: payment.commerce_order,
+            userId,
+            amount: payment.amount,
+            analysisId: analysisId ?? null,
+            veredicto: veredictoPack,
+          }));
+        } catch (e) {
+          console.error("[payments/confirm] pack_pagado excepción:", e);
+        }
       } else if (userId && product === "unlock") {
         // Fase D — desbloqueo ADITIVO de los hijos de un par AMBAS. NO consume
         // crédito ni toca is_premium (el crédito ya compró el comparativo
@@ -308,7 +332,7 @@ export async function POST(request: Request) {
       // si no está "true") y nunca lanza; aun así envolvemos en try/catch como
       // cinturón de seguridad: una falla de boleta JAMÁS debe romper el 200 que
       // Flow espera ni afectar créditos/emails ya procesados arriba.
-      if (userId && product === "single" && process.env.OPENFACTURA_ENABLED === "true") {
+      if (userId && (product === "single" || product === PRODUCTO_PACK) && process.env.OPENFACTURA_ENABLED === "true") {
         try {
           const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
           const userEmail = dteUser?.user?.email;
@@ -333,10 +357,11 @@ export async function POST(request: Request) {
                 amount: payment.amount,
                 commerce_order: payment.commerce_order,
                 flow_order: payment.flow_order,
-                quantity: payment.quantity ?? 1,
+                quantity: product === PRODUCTO_PACK ? PACK_ANALISIS : (payment.quantity ?? 1),
               },
               userEmail,
-              comuna,
+              // El pack no es «análisis en {comuna}»: son tres, de cualquier comuna.
+              comuna: product === PRODUCTO_PACK ? undefined : comuna,
             });
             if (!result.ok && !result.skipped) {
               console.error("[payments/confirm] emisión boleta falló:", result.error);
