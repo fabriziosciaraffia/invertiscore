@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import FrancoLogo from "@/components/franco-logo";
 
 /**

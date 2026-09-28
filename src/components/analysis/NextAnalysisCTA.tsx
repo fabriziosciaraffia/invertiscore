@@ -27,7 +27,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 
 export interface NextAnalysisCTAProps {

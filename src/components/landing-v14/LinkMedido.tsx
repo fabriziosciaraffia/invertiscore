@@ -4,7 +4,7 @@
 // (ancla a la sección 2) y "Ver planes →". Con href interno usa <Link>.
 
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { ReactNode } from "react";
 
 export function LinkMedido({

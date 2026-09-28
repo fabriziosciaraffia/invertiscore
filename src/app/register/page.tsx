@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";

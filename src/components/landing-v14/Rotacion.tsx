@@ -19,7 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { EjemploLanding } from "@/lib/landing-vivo";
 import { EV } from "./eventos";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";

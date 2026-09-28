@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose } from "@/lib/analysis";

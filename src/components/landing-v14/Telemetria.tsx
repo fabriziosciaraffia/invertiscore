@@ -13,7 +13,7 @@
 // arrancar la animación del mapa recién cuando se ve.
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { EV, utmDeUrl } from "./eventos";
 
 export function LandingViewed() {

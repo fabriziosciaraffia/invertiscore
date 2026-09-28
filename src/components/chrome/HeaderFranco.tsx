@@ -31,7 +31,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import posthog from "posthog-js";
+import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { Moon, Sun } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { CtaAnalizar } from "@/components/CtaAnalizar";

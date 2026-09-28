@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   EVENTO_CTA_ANALIZAR,

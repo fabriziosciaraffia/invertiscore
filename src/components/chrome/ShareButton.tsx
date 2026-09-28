@@ -19,7 +19,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { Button } from "@/components/ui/button";
 import { Share2, Check, Link2, Mail, Download } from "lucide-react";
 

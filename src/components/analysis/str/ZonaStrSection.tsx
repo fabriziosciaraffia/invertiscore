@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { ZonaStr } from "@/lib/zona-str";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { Modal, VProsa, VViz, VSub, VCierre, VFuente } from "@/components/analysis/hallazgos/vocabulario";

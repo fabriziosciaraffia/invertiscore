@@ -36,7 +36,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 import { Modal } from "./vocabulario";
 

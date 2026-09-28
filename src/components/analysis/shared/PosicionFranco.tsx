@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { ChipVeredicto } from "./ChipVeredicto";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { Modal } from "@/components/analysis/hallazgos/vocabulario";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 import { BAJADA_RECOMENDACION, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";

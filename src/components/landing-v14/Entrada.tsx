@@ -13,7 +13,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { CampoEntrada, HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { urlDeLlegada } from "@/components/entrada/llegada";

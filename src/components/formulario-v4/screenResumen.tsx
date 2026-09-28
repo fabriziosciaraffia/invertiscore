@@ -24,7 +24,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { ChevronRight, Loader2, Pencil } from "lucide-react";
 import { SINGLE_PRICE } from "@/lib/pricing";
 import { getGgccFallback } from "@/lib/services/market-suggestions";

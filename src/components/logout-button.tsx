@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import posthog from "posthog-js";
+import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { purgarBorradoresYPestana } from "@/lib/draft-keys";

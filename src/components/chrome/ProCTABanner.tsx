@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 
 const STORAGE_KEY = "franco_pro_cta_dismissed_at";
 const DEFAULT_THRESHOLD = 1;

@@ -1,31 +1,16 @@
 'use client'
-import posthog from 'posthog-js'
-import { PostHogProvider } from 'posthog-js/react'
 import { Suspense, useEffect } from 'react'
+import { PostHogProvider } from '@/lib/posthog-react'
+import { cargarPostHog, posthogCliente } from '@/lib/posthog-cliente'
+import { cuandoLaPaginaEsteQuieta } from '@/lib/pagina-quieta'
 import { useUTMCapture } from '@/hooks/useUTMCapture'
 import { useAttributionSync } from '@/hooks/useAttributionSync'
 import { MetaPixel } from '@/components/analytics/MetaPixel'
 
 export function PHProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-        // 'history_change': con `true` solo se capturaba la carga completa de
-        // página — toda navegación client-side (Link/router.push) quedaba sin
-        // $pageview y los paths de sesión salían truncados.
-        capture_pageview: 'history_change',
-        capture_pageleave: true,
-        // Session Replay: el masking vive acá; la ACTIVACIÓN de la grabación es
-        // remote config (settings del proyecto PostHog, sampling 100%). Inputs
-        // enmascarados (precio, dirección, email); el texto de la página —el
-        // informe que el usuario lee— queda visible, que es lo que interesa.
-        session_recording: {
-          maskAllInputs: true,
-        },
-      })
-    }
-  }, [])
+  // PostHog (SDK + grabación) se carga cuando la página está quieta (28-sep-2026): las opciones
+  // viven en `posthog-cliente.ts`. Hasta entonces la fachada encola lo que se le pida.
+  useEffect(() => cuandoLaPaginaEsteQuieta(() => { void cargarPostHog() }), [])
 
   useUTMCapture();
   // Anota la primera visita, sincroniza la atribución cuando hay sesión y ata la
@@ -35,7 +20,7 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
   useAttributionSync();
 
   return (
-    <PostHogProvider client={posthog}>
+    <PostHogProvider client={posthogCliente}>
       <Suspense fallback={null}>
         <MetaPixel />
       </Suspense>

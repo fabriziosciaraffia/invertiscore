@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChevronLeft } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";

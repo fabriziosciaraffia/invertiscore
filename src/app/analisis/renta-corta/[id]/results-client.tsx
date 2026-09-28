@@ -20,7 +20,7 @@ import type { Veredicto } from "@/lib/types";
 import { construirCardStr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { ArrowRight } from "lucide-react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";

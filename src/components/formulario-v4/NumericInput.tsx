@@ -55,7 +55,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useId, useRef, useState } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { FieldLabel } from "./ui";
 import { reportarValidacionRechazo } from "./stepTelemetry";

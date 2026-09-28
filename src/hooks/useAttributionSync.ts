@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import posthog from "posthog-js";
+import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { createClient } from "@/lib/supabase/client";
 import { consumirOAuthPendiente } from "@/lib/auth-analytics";
 import {

@@ -12,9 +12,10 @@
  *
  * useSearchParams exige un Suspense boundary — se monta envuelto en providers.tsx.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { metaPixelOperativo, metaTrack, metaTrackCustom } from "@/lib/meta/pixel";
+import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
@@ -77,13 +78,17 @@ function guardarMarca(m: MarcaAnon): void {
 export function MetaPixel() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  /** El snippet ya corrió (con la página quieta): desde acá se puede disparar. */
+  const [listo, setListo] = useState(false);
 
-  // Init (una vez). Snippet estándar de fbevents SIN el track('PageView') final:
-  // el PageView lo maneja el effect de ruta de abajo.
+  // Init (una vez), CUANDO LA PÁGINA ESTÁ QUIETA (28-sep-2026): fbevents.js más su config pesan
+  // 197 kB y bloqueaban 470 ms antes del titular. Snippet estándar de fbevents SIN el
+  // track('PageView') final: el PageView lo maneja el effect de ruta de abajo, que espera a `listo`.
   useEffect(() => {
     if (!PIXEL_ID) return;
+    return cuandoLaPaginaEsteQuieta(() => {
     const w = window as unknown as { fbq?: unknown; _fbq?: unknown };
-    if (w.fbq) return; // ya inicializado
+    if (w.fbq) { setListo(true); return; } // ya inicializado
 
     /* eslint-disable */
     (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
@@ -108,13 +113,16 @@ export function MetaPixel() {
       "init",
       PIXEL_ID
     );
+    setListo(true);
+    });
   }, []);
 
-  // PageView en mount + cada cambio de ruta/query (navegación SPA cliente).
+  // PageView cuando el pixel quedó listo + cada cambio de ruta/query (navegación SPA cliente).
+  // Antes de `listo` no hay `fbq`: el PageView de la carga sale apenas el snippet corre.
   useEffect(() => {
-    if (!PIXEL_ID) return;
+    if (!PIXEL_ID || !listo) return;
     metaTrack("PageView");
-  }, [pathname, searchParams]);
+  }, [listo, pathname, searchParams]);
 
   // AnonAnalysisCreated (custom, medición post-F2): señal de optimización de
   // campaña mientras Lead escasea — el anónimo creó su análisis completo sin
@@ -160,7 +168,7 @@ export function MetaPixel() {
   // doble: MAX_INTENTOS navegaciones y VENTANA_MS de vida. Un evento perdido es
   // malo; uno duplicado en cada navegación, para siempre, es peor.
   useEffect(() => {
-    if (!PIXEL_ID) return;
+    if (!PIXEL_ID || !listo) return;
     const marca = leerMarca();
     if (!marca) return;
 
@@ -197,7 +205,7 @@ export function MetaPixel() {
       cancelado = true;
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [listo]);
 
   return null;
 }

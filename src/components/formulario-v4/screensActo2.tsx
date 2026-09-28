@@ -9,7 +9,7 @@
 // tasa, tasa-sub, plazo).
 
 import { useState } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import { trackWizard } from "./track";
 import { calcDividendo, mesesHastaEntrega } from "./helpers-wizard";
 import type { ScreenProps } from "./screensActo1";

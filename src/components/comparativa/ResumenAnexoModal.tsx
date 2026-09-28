@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";

@@ -27,7 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/lib/posthog-react";
 import type { PostHog } from "posthog-js";
 
 declare global {
