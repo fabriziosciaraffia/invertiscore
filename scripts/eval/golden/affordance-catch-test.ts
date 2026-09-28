@@ -15,7 +15,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hayCarga, iniciarCarga, suscribirCarga, terminarCarga, versionCarga } from "../../../src/lib/carga-global";
+import { hayCarga, iniciarCarga, rutaCarga, suscribirCarga, terminarCarga, versionCarga } from "../../../src/lib/carga-global";
 import { clicNavega } from "../../../src/components/chrome/EnlaceCarga";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -53,12 +53,13 @@ export function runAffordanceTier(): { hard: number } {
     const v0 = versionCarga();
     terminarCarga();
     if (hayCarga() || versionCarga() !== v0) F("2 · terminar sin nada en curso cambia el estado");
-    iniciarCarga(); iniciarCarga();
+    iniciarCarga("/"); iniciarCarga("/demo");
     if (!hayCarga() || cambios.join(",") !== "true") F(`2 · iniciar dos veces no es idempotente (${cambios.join(",")})`);
+    if (rutaCarga() !== "/") F(`2 · la carga no recuerda la ruta de origen (la primera manda): ${rutaCarga()}`);
     terminarCarga();
-    if (hayCarga() || cambios.join(",") !== "true,false") F(`2 · terminar no apaga la carga o avisa de más (${cambios.join(",")})`);
+    if (hayCarga() || cambios.join(",") !== "true,false" || rutaCarga() !== "") F(`2 · terminar no apaga la carga o avisa de más (${cambios.join(",")})`);
     soltar();
-    iniciarCarga(); terminarCarga();
+    iniciarCarga("/"); terminarCarga();
     if (cambios.length !== 2) F("2 · un oyente dado de baja sigue recibiendo cambios");
   }
   // (b) qué clics navegan
@@ -68,11 +69,14 @@ export function runAffordanceTier(): { hard: number } {
   if (clicNavega(clic, "/demo", "_blank") || clicNavega(clic, "https://x.y") || clicNavega(clic, "//x.y") || clicNavega({ button: 0, defaultPrevented: true }, "/demo")) F("2 · un destino externo, un target nuevo o un clic ya cancelado encienden la carga");
   // (c) el enlace: presionado + iniciarCarga en el mismo clic, y se suelta al cambiar la ruta
   const enlace = sinComentarios(leer("src/components/chrome/EnlaceCarga.tsx"));
-  if (!/if \(clicNavega\(e, hrefTexto, target\) && !\(hrefTexto === pathname\)\) \{\s*\n\s*setPresionado\(true\);\s*\n\s*iniciarCarga\(\);/.test(enlace)) F("2 · EnlaceCarga no marca presionado ni enciende la carga en el clic");
+  if (!/if \(clicNavega\(e, hrefTexto, target\) && !\(hrefTexto === pathname\)\) \{\s*\n\s*setPresionado\(true\);\s*\n\s*iniciarCarga\(pathname\);/.test(enlace)) F("2 · EnlaceCarga no marca presionado ni enciende la carga en el clic");
   if (!/data-presionado=\{presionado \? "1" : undefined\}/.test(enlace) || !/useEffect\(\(\) => \{ setPresionado\(false\); \}, \[pathname\]\);/.test(enlace)) F("2 · EnlaceCarga no expone data-presionado o no lo suelta al cambiar la ruta");
   // (d) la barra: en el header, se apaga al cambiar la ruta y al tope
   const barra = sinComentarios(leer("src/components/chrome/BarraCarga.tsx"));
-  if (!/if \(rutaVista\.current !== pathname\) \{\s*\n\s*rutaVista\.current = pathname;\s*\n\s*terminarCarga\(\);/.test(barra)) F("2 · la barra no se apaga cuando la ruta cambió");
+  // Compara con la ruta de ORIGEN, no con la anterior que vio: el header se remonta entre la landing
+  // y la app, y una barra recién montada en /demo nunca vio el cambio (medido en el preview: 15 s
+  // hasta el tope con el demo ya en pantalla desde los 4 s).
+  if (!/if \(activa && rutaCarga\(\) !== pathname\) terminarCarga\(\);\s*\n\s*\}, \[activa, pathname\]\);/.test(barra) || /useRef/.test(barra)) F("2 · la barra no se apaga cuando la ruta que ve no es la de origen");
   if (!/window\.setTimeout\(terminarCarga, TOPE_CARGA_MS\)/.test(barra) || !/export const TOPE_CARGA_MS = 15_000;/.test(barra)) F("2 · la barra no tiene tope");
   if (!/<div className="hf-barra" data-activa=\{activa \? "1" : "0"\} aria-hidden="true" \/>/.test(barra)) F("2 · la barra no es .hf-barra con data-activa");
   const header = sinComentarios(leer("src/components/chrome/HeaderFranco.tsx"));
@@ -103,12 +107,13 @@ export function runAffordanceTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
-// ── ACTA DE MUTACIONES (28-sep-2026, 11/11 en rojo, restauradas) ─────────────────────────────
-// M1 hero sin píldora (he-pild → he-suelto) · M2 EnlaceCarga sin iniciarCarga() · M3 el header sin
+// ── ACTA DE MUTACIONES (28-sep-2026, 13/13 en rojo, restauradas) ─────────────────────────────
+// M1 hero sin píldora (he-pild → he-suelto) · M2 EnlaceCarga sin iniciarCarga(pathname) · M3 el header sin
 // <BarraCarga /> · M4 pestañas del demo vuelven a <Link> · M5 la barra sin ::before · M6 la barra no
 // se apaga al cambiar la ruta · M7 iniciarCarga no enciende (if (!activa) return) · M8 clicNavega
 // ignora metaKey · M9 LinkMedido vuelve a <Link> · M10 portada del wizard sin píldora · M11 la barra
-// vuelve al rojo. Cada una cae en su fila; las once restauradas byte a byte.
+// vuelve al rojo · M12 la barra compara con la ruta anterior que vio (useRef) en vez del origen ·
+// M13 iniciarCarga no guarda la ruta. Cada una cae en su fila; las trece restauradas byte a byte.
 
 if (require.main === module) {
   const { hard } = runAffordanceTier();

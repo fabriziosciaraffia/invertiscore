@@ -2,14 +2,17 @@
 // LO QUE TARDA SE VE CARGANDO (regla de affordance, 28-sep-2026).
 //
 // Un solo estado para todo el sitio: «hay una navegación o una carga en curso». Lo enciende
-// quien toca (EnlaceCarga, al hacer clic en un enlace interno) y lo apaga la barra (BarraCarga)
-// cuando la ruta cambió, o un tope por si la navegación nunca llega. Sin React acá: se puede
-// probar en Node y lo consume `useCargaGlobal` con useSyncExternalStore.
+// quien toca (EnlaceCarga, al hacer clic en un enlace interno, diciendo desde qué ruta) y lo apaga
+// la barra (BarraCarga) cuando ve una ruta distinta de esa, o un tope por si la navegación nunca
+// llega. Guardar la ruta de origen importa: el header se remonta entre la landing y la app, y una
+// barra recién montada en la ruta nueva no vio ningún cambio; comparando con el origen sí sabe
+// que la carga ya llegó. Sin React acá: se prueba en Node y lo consume `useCargaGlobal`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useSyncExternalStore } from "react";
 
 let activa = false;
+let rutaOrigen = "";
 let version = 0;
 const oyentes = new Set<() => void>();
 
@@ -18,10 +21,11 @@ function avisar(): void {
   oyentes.forEach((cb) => cb());
 }
 
-/** Algo que puede tardar arrancó. Idempotente. */
-export function iniciarCarga(): void {
+/** Algo que puede tardar arrancó desde `ruta`. Idempotente: la primera ruta manda. */
+export function iniciarCarga(ruta: string): void {
   if (activa) return;
   activa = true;
+  rutaOrigen = ruta;
   avisar();
 }
 
@@ -34,6 +38,11 @@ export function terminarCarga(): void {
 
 export function hayCarga(): boolean {
   return activa;
+}
+
+/** Desde qué ruta arrancó la carga en curso ("" si no hay). */
+export function rutaCarga(): string {
+  return activa ? rutaOrigen : "";
 }
 
 export function suscribirCarga(cb: () => void): () => void {

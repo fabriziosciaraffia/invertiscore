@@ -43,7 +43,7 @@ export function EnlaceCarga({ href, onClick, target, children, ...resto }: Props
         onClick?.(e);
         if (clicNavega(e, hrefTexto, target) && !(hrefTexto === pathname)) {
           setPresionado(true);
-          iniciarCarga();
+          iniciarCarga(pathname);
         }
       }}
       {...resto}
