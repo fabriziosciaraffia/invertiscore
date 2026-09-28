@@ -106,6 +106,27 @@ export function runInfoIndicadoresTier(): { hard: number } {
     cerradas.length = 0;
     atras();
     if (cerradas.join() !== "capítulo" || pila.profundidad() !== 0) F("1 · atrás con solo el capítulo no lo cerró");
+    // f · si la página ya NAVEGÓ con la hoja abierta (la landing va al wizard con la hoja en espera,
+    //     28-sep-2026), la entrada de arriba ya no es la de la hoja: desmontarla NO consume nada —
+    //     un back() acá desharía esa navegación.
+    {
+      const hist2: string[] = [];
+      let pop2 = () => {};
+      let vueltas = 0;
+      const pila2 = crearPila({
+        pushState: () => hist2.push("hoja"),
+        back: () => { vueltas++; hist2.pop(); pop2(); },
+        escuchar: (p) => { pop2 = p; },
+        tieneEntradaPropia: () => hist2[hist2.length - 1] === "hoja",
+      });
+      const id = pila2.apilar(() => {}, { conHistorial: true });
+      hist2.push("wizard"); // la navegación de la página, encima de la entrada de la hoja
+      pila2.desapilar(id);
+      if (vueltas !== 0 || hist2.length !== 2) F("1 · desmontar la hoja tras navegar consumió la entrada de la página (back() de más)");
+      const id2 = pila2.apilar(() => {}, { conHistorial: true });
+      pila2.desapilar(id2);
+      if (vueltas !== 1) F("1 · con su entrada arriba, desmontar la hoja tiene que consumirla");
+    }
 
     // El cableado: el ⓘ abre la hoja chica por el Modal, y el popover entra a la pila.
     const G = visible(leer("src/components/analysis/shared/Glosa.tsx"));

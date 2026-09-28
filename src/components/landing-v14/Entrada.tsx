@@ -11,7 +11,7 @@
 // portada con el aviso y la lista de espera. La landing no duplica esa lógica.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { CampoEntrada, HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
@@ -26,15 +26,27 @@ const ORIGEN: Record<UbicacionCampo, string> = {
   metodologia: "metodologia_cta",
 };
 
-/** Lo que hace la landing con la respuesta del campo, esté donde esté. */
+/** Lo que hace la landing con la respuesta del campo, esté donde esté.
+ *
+ *  ELEGIR ES LA ACCIÓN (QA en el iPhone, 28-sep-2026): elegir una sugerencia —o tomar un camino
+ *  sin dirección— navega al wizard, a «¿Dónde queda exactamente?», sin volver al hero ni pedir la
+ *  flecha. Mientras la página cambia, el campo queda ocupado y la hoja abierta con su estado de
+ *  espera (`ocupado` + `mantenerHojaAlEntregar`), como en la portada del wizard. */
 function useAccionesCampo(ubicacion: UbicacionCampo) {
   const router = useRouter();
   const posthog = usePostHog();
   const origen = ORIGEN[ubicacion];
+  const [navegando, setNavegando] = useState<CaminoSinDireccion | "escribir" | null>(null);
   return {
-    onDireccion: (sel: SeleccionDireccion) => router.push(urlDeLlegada(sel, origen)),
+    ocupado: navegando,
+    mantenerHojaAlEntregar: true,
+    onDireccion: (sel: SeleccionDireccion) => {
+      setNavegando("escribir");
+      router.push(urlDeLlegada(sel, origen));
+    },
     onCamino: (modo: CaminoSinDireccion) => {
       posthog?.capture(EV.sinDireccion, { modo, ubicacion });
+      setNavegando(modo);
       router.push(urlDeLlegada({ modo }, origen));
     },
     onEvento: (e: EventoCampo) => {

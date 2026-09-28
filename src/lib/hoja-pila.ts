@@ -18,6 +18,10 @@
 export type EntornoPila = {
   pushState: () => void;
   back: () => void;
+  /** ¿La entrada de arriba del historial sigue siendo la de una hoja? Si la página ya navegó a
+   *  otro lado con la hoja abierta (la landing va al wizard con la hoja en espera, 28-sep-2026),
+   *  consumirla con `back()` desharía ESA navegación. Sin el método, se asume que sí. */
+  tieneEntradaPropia?: () => boolean;
   /** Registra UNA vez los listeners globales; recibe los dos manejadores de la pila. */
   escuchar: (onPop: () => void, onEsc: () => void) => void;
 };
@@ -80,7 +84,9 @@ export function crearPila(entorno: EntornoPila): Pila {
       const i = pila.findIndex((e) => e.id === id);
       if (i < 0) return; // ya salió por atrás
       const [e] = pila.splice(i, 1);
-      if (e.conHistorial) {
+      // Si la página ya navegó con la hoja abierta, la entrada de arriba no es la nuestra: no se
+      // consume nada (un `back()` acá volvería a la página anterior).
+      if (e.conHistorial && (entorno.tieneEntradaPropia?.() ?? true)) {
         saltos++;
         entorno.back();
       }
@@ -98,6 +104,7 @@ export function pilaHojas(): Pila {
     instancia = crearPila({
       pushState: () => window.history.pushState({ francoHoja: true }, ""),
       back: () => window.history.back(),
+      tieneEntradaPropia: () => !!(window.history.state as { francoHoja?: boolean } | null)?.francoHoja,
       escuchar: (onPop, onEsc) => {
         window.addEventListener("popstate", onPop);
         document.addEventListener("keydown", (e) => {

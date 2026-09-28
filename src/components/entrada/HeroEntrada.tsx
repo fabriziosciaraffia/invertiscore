@@ -87,6 +87,11 @@ export interface CampoEntradaProps {
   /** Desde qué dirección de ejemplo parte el placeholder: con dos campos en la misma página (el hero
    *  y el cierre de la landing) no escriben la misma a la vez. */
   placeholderDesde?: number;
+  /** ELEGIR ES LA ACCIÓN Y QUIEN MONTA NAVEGA (QA en el iPhone, 28-sep-2026): la hoja NO se cierra
+   *  al entregar la dirección ni al tomar un camino; se queda con su estado de espera («Abriendo el
+   *  mapa…») hasta que la página cambia. Lo pide la landing, que navega al wizard con la respuesta;
+   *  la portada del wizard cambia de pantalla en el acto y no lo necesita. */
+  mantenerHojaAlEntregar?: boolean;
 }
 
 /** El campo de dirección con sus dos caminos sin dirección, y en el teléfono la hoja. */
@@ -100,6 +105,7 @@ export function CampoEntrada({
   onCamino,
   onEvento,
   placeholderDesde = 0,
+  mantenerHojaAlEntregar = false,
 }: CampoEntradaProps) {
   const [texto, setTexto] = useState(valorInicial);
   const [enfocado, setEnfocado] = useState(false);
@@ -128,9 +134,16 @@ export function CampoEntrada({
       return;
     }
     setAviso(null);
-    setHoja(false);
+    if (!mantenerHojaAlEntregar) setHoja(false);
     onDireccion(sel);
   };
+  const tomarCamino = (camino: CaminoSinDireccion) => {
+    if (!mantenerHojaAlEntregar) setHoja(false);
+    onCamino(camino);
+  };
+  /** Lo que se dice mientras quien monta navega con la respuesta. */
+  const espera =
+    ocupado === "escribir" ? "Abriendo el mapa…" : ocupado === "mapa" ? "Abriendo el mapa…" : ocupado === "ubicacion" ? "Buscando tu ubicación…" : null;
 
   // El <input> vivo es uno solo: el del hero (escritorio) o el de la hoja (teléfono, abierta). Con la
   // hoja cerrada en el teléfono no hay input: el hero muestra un botón que la abre.
@@ -302,7 +315,11 @@ export function CampoEntrada({
             </span>
             <button type="submit" className="he-btn" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
           </form>
-          {mostrado && <p className="he-aviso" role="status">{mostrado}</p>}
+          {mostrado ? (
+            <p className="he-aviso" role="status">{mostrado}</p>
+          ) : espera && !hoja ? (
+            <p className="he-aviso" role="status">{espera}</p>
+          ) : null}
           <div className="he-alt">
             <span className="he-alt-q">¿No tienes la dirección?</span>
             <span className="he-alt-acciones">
@@ -310,7 +327,7 @@ export function CampoEntrada({
                 {ocupado === "ubicacion" ? "Buscando tu ubicación…" : "Estoy en el depto"}<span aria-hidden="true">→</span>
               </button>
               <button type="button" onClick={() => onCamino("mapa")} disabled={deshabilitado}>
-                Marcarlo en el mapa<span aria-hidden="true">→</span>
+                {ocupado === "mapa" ? "Abriendo el mapa…" : "Marcarlo en el mapa"}<span aria-hidden="true">→</span>
               </button>
             </span>
           </div>
@@ -334,6 +351,8 @@ export function CampoEntrada({
           </form>
           {buscando ? (
             <p className="he-hoja-ayuda">Buscando la dirección…</p>
+          ) : espera ? (
+            <p className="he-hoja-ayuda" role="status">{espera}</p>
           ) : aviso ? (
             <p className="he-hoja-aviso" role="status">{aviso}</p>
           ) : (
@@ -341,8 +360,8 @@ export function CampoEntrada({
           )}
           <div className="he-hoja-alt">
             <span>¿No tienes la dirección?</span>
-            <button type="button" onClick={() => { setHoja(false); onCamino("ubicacion"); }}>Estoy en el depto<span aria-hidden="true">→</span></button>
-            <button type="button" onClick={() => { setHoja(false); onCamino("mapa"); }}>Marcarlo en el mapa<span aria-hidden="true">→</span></button>
+            <button type="button" onClick={() => tomarCamino("ubicacion")} disabled={deshabilitado}>{ocupado === "ubicacion" ? "Buscando tu ubicación…" : "Estoy en el depto"}<span aria-hidden="true">→</span></button>
+            <button type="button" onClick={() => tomarCamino("mapa")} disabled={deshabilitado}>{ocupado === "mapa" ? "Abriendo el mapa…" : "Marcarlo en el mapa"}<span aria-hidden="true">→</span></button>
           </div>
         </Hoja>
       )}
