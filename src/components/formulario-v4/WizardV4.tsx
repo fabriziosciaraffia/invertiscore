@@ -317,7 +317,7 @@ export function WizardV4({
 
   // Reacción de Franco con datos reales (comparables, UF del día, aviso subsidio).
   const live: ReactionLive = {};
-  if (data.comparablesCount > 0) live.comparables = data.comparablesCount;
+  if (data.comparables.length > 0) { live.comparables = data.comparables.length; live.radioM = data.radiusUsed; }
   const puf = leerNum(nav.answers.precio, DEC.precioUF);
   if (puf > 0 && data.ufCLP > 0) live.precioCLP = fmtCLP(puf * data.ufCLP);
   live.subsidioAviso = avisoSubsidioAplica(nav.answers, data.precioM2UF);

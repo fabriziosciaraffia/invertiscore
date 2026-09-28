@@ -40,6 +40,7 @@
 
 import type { Decimales } from "@/lib/numero-cl";
 import type { UbicacionPrecision } from "@/lib/geocoding-precision";
+import { rotuloComparables } from "./comparablesRotulo";
 
 export type NodeId =
   | "dir"
@@ -436,8 +437,10 @@ export function isBranchNode(node: NodeId): boolean {
 // placeholders legibles.
 
 export interface ReactionLive {
-  /** N comparables reales del RPC (reacción de `dir`). */
+  /** N comparables reales: el largo de la lista que el mapa dibuja (reacción de `dir`). */
   comparables?: number | string;
+  /** El radio al que se juntaron (m), para el mismo rótulo que la leyenda del mapa. */
+  radioM?: number | null;
   /** Precio en CLP al UF del día (reacción de `precio`). */
   precioCLP?: string;
   /** ¿Aplica el aviso anticipado de subsidio? (reacción de `tam`). */
@@ -474,10 +477,9 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
   switch (node) {
     case "dir":
     case "dirMapa": {
-      // Mismo número y mismo rótulo que el badge del mapa ("propiedades en el
-      // sector") — es cobertura geográfica del sector, NO los comparables
-      // filtrados. "Comparables" se reserva para `arr` (mediana con su propio N,
-      // filtrado por superficie/dorm) para que ningún número cambie de nombre.
+      // Mismo número y mismo rótulo que la leyenda del mapa («22 comparables a 1,5 km»):
+      // los comparables detrás del arriendo de referencia, al radio que alcanzó la muestra.
+      // Hasta el 28-sep-2026 decía «N propiedades en el sector» con el n de la muestra.
       //
       // Desde el 26-sep-2026 la reacción nombra la dirección que quedó confirmada en el
       // mapa (siempre la segunda pantalla desde el 27-sep).
@@ -485,9 +487,10 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
       // El conteo puede llegar después (dos consultas al radio) y, hasta que llega, la
       // frase va sin número: antes se leía «N propiedades» literal.
       const corta = (a.direccionConfirmada ?? a.direccion ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 2).join(", ");
-      const n = live?.comparables;
-      const zona = n ? `zona cubierta, ${n} propiedades en el sector.` : "zona cubierta.";
-      return corta ? `${corta} · ${zona}` : n ? `Zona cubierta. ${n} propiedades en el sector.` : "Zona cubierta.";
+      const n = Number(live?.comparables) || 0;
+      const rotulo = n ? rotuloComparables(n, live?.radioM ?? null) : null;
+      const zona = rotulo ? `zona cubierta, ${rotulo}.` : "zona cubierta.";
+      return corta ? `${corta} · ${zona}` : rotulo ? `Zona cubierta. ${rotulo}.` : "Zona cubierta.";
     }
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;

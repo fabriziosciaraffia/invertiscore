@@ -5,6 +5,7 @@ import { estimarContribuciones } from "../contribuciones";
 import {
   filterOutliers,
   resumirComparablesRadio,
+  type PuntoComparable,
   type FilaRadio,
 } from "./comparables-radio";
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
@@ -22,6 +23,7 @@ function getSupabase() {
 }
 
 export interface NearbyPropertyPoint {
+  id?: string;
   lat: number;
   lng: number;
   precio: number;
@@ -64,6 +66,15 @@ export interface Sugerencias {
   precioM2?: number;
   /** Solo VENTA: universo de la muestra detrás de precioM2 (Tramo A). "mixto" = radio sin condición. */
   universoVenta?: "nuevo" | "usado" | "mixto";
+  /** Solo source="radio": los comparables detrás de `sampleSize`, con coordenadas y por distancia.
+   *  Son las MISMAS filas de `muestraArriendo`. El mapa del wizard dibuja esta lista y su leyenda
+   *  cuenta su largo; el motor lee el n de la misma lista (`zonaRadio.sampleSizeArriendo`). */
+  comparables?: PuntoComparable[];
+  /** Solo source="radio": el resto de la oferta del tipo dentro de `radiusUsed` —sin filtro de
+   *  tipología ni de superficie, solo sin extremos—, menos `comparables`. Contexto, en gris tenue. */
+  restoRadio?: NearbyPropertyPoint[];
+  /** Toda la oferta del tipo dentro de `radiusUsed` (sin filtro de tipología ni superficie). El mapa
+   *  de la portada del informe la dibuja; el wizard ya no (28-sep-2026): dibuja `comparables`. */
   nearbyProperties?: NearbyPropertyPoint[];
   totalInRadius?: number;
   filteredInRadius?: number;
@@ -123,10 +134,17 @@ export async function getSugerencias(
     }
 
     if (best && bestMap) {
-      const { muestra, ...resto } = best as Sugerencias & { muestra?: MuestraArriendo };
+      const { muestra, puntos, ...resto } = best as Sugerencias & { muestra?: MuestraArriendo; puntos?: PuntoComparable[] };
+      // Los comparables son las filas de la muestra —las que cuentan `sampleSize`—; el resto del
+      // radio es la oferta del tipo sin filtro de tipología ni superficie, menos esas filas.
+      const comparables = puntos ?? [];
+      const idsComparables = new Set(comparables.map((p) => p.id).filter((id): id is string => !!id));
+      const restoRadio = bestMap.all.filter((p) => !(p.id && idsComparables.has(p.id)));
       return {
         ...resto,
         ...(propType === "arriendo" && muestra ? { muestraArriendo: muestra } : {}),
+        comparables,
+        restoRadio,
         nearbyProperties: bestMap.all,
         totalInRadius: bestMap.all.length,
         filteredInRadius: dormFilter ? bestMap.filteredCount : bestMap.all.length,
@@ -239,7 +257,8 @@ async function getNearbyPropertiesForMap(
     extra: { comuna, radiusMeters, dormitorios: null },
   });
 
-  const raw = (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
+  const raw = (allProps || []).map((p: { id?: string; lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
+    ...(p.id ? { id: p.id } : {}),
     lat: p.lat,
     lng: p.lng,
     precio: p.precio,

@@ -8,8 +8,10 @@
 //     SIEMPRE la segunda, para todos los caminos: con número (el pin parte en la dirección), sin
 //     número (parte en la calle), «Estoy en el depto» (en la ubicación del teléfono) y «Marcarlo en
 //     el mapa» (parte SIN pin: el primer toque lo pone y acerca el mapa). Ahí el límite es toda la
-//     cobertura —la comuna la deduce el punto— y el mapa lleva los comparables alrededor (`puntos`)
-//     y el conteo encima (`etiqueta`), como la miniatura del wizard viejo, pero con el pin movible.
+//     cobertura —la comuna la deduce el punto— y el mapa lleva los comparables alrededor (`puntos`),
+//     el resto del radio en gris más tenue (`contexto`) y la leyenda encima (`etiqueta`), como la
+//     miniatura del wizard viejo, pero con el pin movible. Desde el 28-sep-2026 `puntos` es la
+//     lista que la leyenda cuenta —la muestra del arriendo de referencia—, no todo el radio.
 //   · El editor de dirección del resumen, sin número: el pin se mueve dentro de la comuna de la
 //     dirección, porque ahí corrige DÓNDE en la calle, no la comuna.
 //
@@ -26,7 +28,7 @@ import { cajaParaComuna } from "@/lib/comuna-bounds";
 /** Centro de Santiago, para abrir el mapa cuando no hay punto ni comuna. */
 const CENTRO_SANTIAGO = { lat: -33.4378, lng: -70.6205 };
 
-/** Un comparable del radio (`/api/data/suggestions` · nearbyProperties). Puede venir sin coordenadas. */
+/** Un aviso del radio (`/api/data/suggestions` · comparables / restoRadio). Puede venir sin coordenadas. */
 export interface PuntoCercano {
   lat: number | null;
   lng: number | null;
@@ -48,6 +50,7 @@ export function MapaPinAjustable({
   height = 220,
   limite = "comuna",
   puntos,
+  contexto,
   etiqueta,
 }: {
   lat?: number | null;
@@ -57,9 +60,11 @@ export function MapaPinAjustable({
   height?: number;
   /** "comuna" = el pin no sale de la caja de `comuna` · "cobertura" = de toda la cobertura. */
   limite?: "comuna" | "cobertura";
-  /** Los comparables alrededor del pin, en puntos grises. */
+  /** Los comparables alrededor del pin, en puntos grises: la lista que `etiqueta` cuenta. */
   puntos?: PuntoCercano[];
-  /** Sobre el mapa, arriba a la izquierda: el conteo de propiedades en el sector. */
+  /** El resto de la oferta del radio, en un gris más tenue y debajo; no entra en el encuadre. */
+  contexto?: PuntoCercano[];
+  /** Sobre el mapa, arriba a la izquierda: la leyenda («22 comparables a 1,5 km · otros 103 en gris»). */
   etiqueta?: ReactNode;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
@@ -69,6 +74,8 @@ export function MapaPinAjustable({
   const markerRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const puntosRef = useRef<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contextoRef = useRef<any[]>([]);
   const tienePunto = typeof lat === "number" && typeof lng === "number";
   const ultimo = useRef<{ lat: number; lng: number } | null>(tienePunto ? { lat: lat as number, lng: lng as number } : null);
   const onMoverRef = useRef(onMover);
@@ -185,6 +192,26 @@ export function MapaPinAjustable({
       });
     }
   }, [puntos, listo]);
+
+  // El resto del radio: gris más tenue, más chico y debajo de los comparables. No mueve el encuadre.
+  useEffect(() => {
+    const map = mapRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const google = (window as any).google;
+    if (!listo || !map || !google?.maps) return;
+    for (const m of contextoRef.current) m.setMap(null);
+    contextoRef.current = [];
+    const validos = (contexto ?? []).map(coordValida).filter((p): p is { lat: number; lng: number } => !!p);
+    for (const p of validos) {
+      contextoRef.current.push(new google.maps.Marker({
+        position: p,
+        map,
+        clickable: false,
+        zIndex: 0,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 3, fillColor: "#B4B2A9", fillOpacity: 0.55, strokeColor: "#FFFFFF", strokeWeight: 0.5 },
+      }));
+    }
+  }, [contexto, listo]);
 
   if (sinMapa) return null;
 

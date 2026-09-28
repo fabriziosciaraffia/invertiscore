@@ -16,6 +16,8 @@ import type { MuestraArriendo } from "../arriendo-referencia";
 
 /** Fila tal como la devuelve la RPC (migración 20260904). Los opcionales faltaban en la función vieja. */
 export interface FilaRadio {
+  /** id de scraped_properties (la RPC lo devuelve desde la migración 20260904). */
+  id?: string;
   precio: number;
   superficie_m2: number | null;
   gastos_comunes?: number | null;
@@ -42,18 +44,49 @@ export interface ResumenRadio {
   /** Los avisos limpios detrás de la mediana, por distancia. El wizard la guarda en
    *  `zonaRadio.muestraArriendo` para que «Ver los comparables» muestre ESTA muestra. */
   muestra: MuestraArriendo;
+  /** Las MISMAS filas de `muestra`, en el mismo orden, con coordenadas. El mapa del wizard dibuja
+   *  esta lista y su leyenda cuenta su largo: leyenda, puntos y `sampleSize` salen de una sola lista
+   *  (28-sep-2026: el mapa dibujaba los 125 arriendos del radio y la leyenda contaba los 22 de la muestra). */
+  puntos: PuntoComparable[];
 }
 
-/** La muestra en la forma que se guarda: enteros y por distancia, el más cercano primero. */
-function muestraDe(clean: FilaRadio[], modo: MuestraArriendo["modo"]): MuestraArriendo {
-  const avisos = clean
-    .map((a) => ({
-      distanciaM: typeof a.distance_meters === "number" && Number.isFinite(a.distance_meters) ? Math.round(a.distance_meters) : null,
+/** Un comparable de la muestra con su ubicación: la misma fila que cuenta el n, para dibujarla. */
+export interface PuntoComparable {
+  id?: string;
+  lat: number | null;
+  lng: number | null;
+  precio: number;
+  superficie_m2: number | null;
+  distance_meters: number | null;
+}
+
+const num = (v: unknown): number | null => {
+  const n = typeof v === "number" ? v : v == null ? NaN : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** La muestra en la forma que se guarda (enteros, por distancia, el más cercano primero) y los mismos
+ *  avisos con coordenadas para dibujarlos. Salen de UNA lista ordenada: largo, orden y filas coinciden. */
+function muestraYPuntos(clean: FilaRadio[], modo: MuestraArriendo["modo"]): { muestra: MuestraArriendo; puntos: PuntoComparable[] } {
+  const dist = (a: FilaRadio) => num(a.distance_meters);
+  const orden = [...clean].sort((x, y) => (dist(x) ?? 1e9) - (dist(y) ?? 1e9));
+  const avisos = orden.map((a) => {
+    const d = dist(a);
+    return {
+      distanciaM: d === null ? null : Math.round(d),
       precio: Math.round(Number(a.precio)),
       m2: a.superficie_m2 && a.superficie_m2 > 0 ? Math.round(Number(a.superficie_m2) * 10) / 10 : null,
-    }))
-    .sort((x, y) => (x.distanciaM ?? 1e9) - (y.distanciaM ?? 1e9));
-  return { modo, avisos };
+    };
+  });
+  const puntos = orden.map((a) => ({
+    ...(a.id ? { id: a.id } : {}),
+    lat: num(a.lat),
+    lng: num(a.lng),
+    precio: Number(a.precio),
+    superficie_m2: a.superficie_m2,
+    distance_meters: dist(a),
+  }));
+  return { muestra: { modo, avisos }, puntos };
 }
 
 export function median(arr: number[]): number {
@@ -152,7 +185,7 @@ export function resumirComparablesRadio(
       contribTrim: estimarContribuciones(Math.round(medianaM2 * superficie)),
       precioM2: Math.round(medianaM2 * opts.factorCierre),
       sampleSize: clean.length,
-      muestra: muestraDe(clean, "sinDorms"),
+      ...muestraYPuntos(clean, "sinDorms"),
     };
   }
 
@@ -165,6 +198,6 @@ export function resumirComparablesRadio(
       : estimarContribuciones(superficie * 2_000_000),
     precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2) * opts.factorCierre) : undefined,
     sampleSize: clean.length,
-    muestra: muestraDe(clean, "conDorms"),
+    ...muestraYPuntos(clean, "conDorms"),
   };
 }

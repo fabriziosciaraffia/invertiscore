@@ -17,8 +17,12 @@ const TASA_FALLBACK = 4.72;
 export interface WizardV4Data {
   ufCLP: number;
   tasaMercado: number;
-  comparablesCount: number;
+  /** Los comparables detrás de `arriendoSugerido` (las filas de la muestra), con coordenadas. El
+   *  mapa los dibuja y la leyenda cuenta `comparables.length`: un solo conjunto, el mismo que va al
+   *  motor como `zonaRadio.sampleSizeArriendo` / `muestraArriendo`. Vacío si la referencia no es de radio. */
   comparables: Comparable[];
+  /** El resto de los arriendos del radio, sin filtro de tipología ni superficie: contexto en gris tenue. */
+  restoRadio: Comparable[];
   suggestionsLoading: boolean;
   /** Arriendo mediana estimado (CLP/mes) de la zona, o null si no hay comparables. */
   arriendoSugerido: number | null;
@@ -53,8 +57,8 @@ export interface WizardV4Data {
 export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [ufCLP, setUfCLP] = useState(UF_FALLBACK);
   const [tasaMercado, setTasaMercado] = useState(TASA_FALLBACK);
-  const [comparablesCount, setComparablesCount] = useState(0);
   const [comparables, setComparables] = useState<Comparable[]>([]);
+  const [restoRadio, setRestoRadio] = useState<Comparable[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [arriendoSugerido, setArriendoSugerido] = useState<number | null>(null);
   const [arriendoN, setArriendoN] = useState(0);
@@ -100,8 +104,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
 
   useEffect(() => {
     if (!lat || !lng || !comuna) {
-      setComparablesCount(0);
       setComparables([]);
+      setRestoRadio([]);
       setMuestraArriendo(null);
       return;
     }
@@ -130,9 +134,10 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
       ])
         .then(([arr, venta]) => {
           if (seq !== reqSeq.current) return; // respuesta obsoleta
-          const count = arr?.sampleSize ?? arr?.totalInRadius ?? 0;
-          setComparablesCount(Number(count) || 0);
-          setComparables(Array.isArray(arr?.nearbyProperties) ? arr.nearbyProperties : []);
+          // La lista que el mapa dibuja es la de la muestra (28-sep-2026): antes se dibujaba
+          // `nearbyProperties` (todo el radio) y se contaba `sampleSize` (la muestra).
+          setComparables(arr?.source === "radio" && Array.isArray(arr?.comparables) ? arr.comparables : []);
+          setRestoRadio(arr?.source === "radio" && Array.isArray(arr?.restoRadio) ? arr.restoRadio : []);
           setArriendoSugerido(typeof arr?.arriendo === "number" ? arr.arriendo : null);
           setArriendoN(Number(arr?.sampleSize) || 0);
           // El endpoint declara su propio nivel; si no lo dice, asumimos que no hay dato
@@ -159,9 +164,9 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
-          setComparablesCount(0);
           setComparables([]);
-      setMuestraArriendo(null);
+          setRestoRadio([]);
+          setMuestraArriendo(null);
           setArriendoSugerido(null);
           setArriendoN(0);
           setArriendoFuente("sin-dato");
@@ -200,8 +205,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   return {
     ufCLP,
     tasaMercado,
-    comparablesCount,
     comparables,
+    restoRadio,
     suggestionsLoading,
     arriendoSugerido,
     arriendoN,

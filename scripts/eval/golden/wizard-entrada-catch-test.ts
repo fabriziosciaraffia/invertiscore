@@ -20,8 +20,16 @@
 //       a quien llega desde la landing y tiene su hito.
 //   6 · LA GEOCODIFICACIÓN INVERSA: `/api/geocode?lat&lng` nombra el punto con su comuna, y no
 //       devuelve nada que no sea una calle. El respaldo por texto ya no exige comuna.
+//  10 · LA LEYENDA Y LOS PUNTOS SON LA MISMA LISTA (28-sep-2026, foto de Fabrizio: el mapa dibujaba
+//       los 125 arriendos del radio y la leyenda decía «22 propiedades en el sector»). El resumen del
+//       radio entrega la muestra y sus puntos desde UNA lista ordenada; el endpoint los pasa como
+//       `comparables`; el hook los guarda tal cual; la leyenda cuenta `data.comparables.length` y
+//       dice a qué radio; el resto del radio va en gris más tenue y la leyenda lo distingue; y la
+//       reacción de la dirección usa el mismo rótulo.
 //
 // Verificado EN ROJO por mutación (actas al pie). Corre dentro del QUICK.
+//   Acta 28-sep-2026 (punto 10): la leyenda con `data.arriendoN` → 2 fallas; `orden.slice(1)` en los puntos → 6
+//   fallas; el hook de vuelta a `nearbyProperties` → 2 fallas; `restoRadio = bestMap.all` → 1 falla. Restaurado: verde.
 // Solo:  node --import tsx scripts/eval/golden/wizard-entrada-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -46,6 +54,8 @@ import {
 import { HITOS_FUNNEL } from "../../../src/lib/admin-funnel-hitos";
 import { GET as geocodeGET } from "../../../src/app/api/geocode/route";
 import { sinCodigoPostal } from "../../../src/lib/geocoding-precision";
+import { resumirComparablesRadio } from "../../../src/lib/services/comparables-radio";
+import { rotuloComparables } from "../../../src/components/formulario-v4/comparablesRotulo";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -104,9 +114,9 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (progressFor("dirMapa", {}) !== progressFor("dir", {})) F("2 · la barra se mueve en el mapa");
   if (NODE_TITLE.dirMapa !== "¿Dónde queda exactamente?") F("2 · el mapa no pregunta «¿Dónde queda exactamente?»");
   const a: WizardV4Answers = { direccionConfirmada: "Av. Irarrázaval 2100, Ñuñoa, Región Metropolitana, Chile" };
-  const r1 = reactionText("dir", a, { comparables: 26 });
-  if (!r1 || !r1.startsWith("Av. Irarrázaval 2100, Ñuñoa · zona cubierta, 26 propiedades")) F(`2 · la reacción de la pregunta siguiente no nombra la dirección (${r1})`);
-  if (reactionText("dirMapa", a, { comparables: 24 }) === null) F("2 · confirmar el mapa no lleva la reacción de la dirección");
+  const r1 = reactionText("dir", a, { comparables: 26, radioM: 1500 });
+  if (!r1 || !r1.startsWith("Av. Irarrázaval 2100, Ñuñoa · zona cubierta, 26 comparables a 1,5 km.")) F(`2 · la reacción de la pregunta siguiente no nombra la dirección con el rótulo de la leyenda (${r1})`);
+  if (reactionText("dirMapa", a, { comparables: 24, radioM: 500 }) === null) F("2 · confirmar el mapa no lleva la reacción de la dirección");
   // El conteo llega segundos después de confirmar: mientras tanto la frase va sin número (se leía
   // «N propiedades» literal en el preview del 26-sep, en el camino del mapa).
   const sinConteo = reactionText("dirMapa", a, {});
@@ -151,8 +161,8 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/const numero = sel\.precision === "numero";\s*\n\s*goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, ubicacionPrecision: numero \? "numero" : "calle", mapaOrigen: numero \? "numero" : "sin_numero" \}\);/.test(onDir)) F("7 · con número, la portada no manda al mapa");
   const mapaScr = (ent.match(/export function MapaScreen\(([\s\S]*)$/) ?? [])[1] ?? "";
   if (!mapaScr) F("7 · no encuentro MapaScreen (el extractor no corrió)");
-  if (!/<MapaPinAjustable[\s\S]{0,400}?puntos=\{data\.comparables\}[\s\S]{0,80}?etiqueta=\{conteo\}/.test(mapaScr)) F("7 · el mapa no muestra los comparables y el conteo");
-  if (!/`\$\{data\.comparablesCount\} propiedades en el sector`/.test(mapaScr) || !/<FieldLabel>Ubicación en el mapa<\/FieldLabel>/.test(mapaScr)) F("7 · el mapa no dice «Ubicación en el mapa · N propiedades en el sector»");
+  if (!/<MapaPinAjustable[\s\S]{0,400}?puntos=\{data\.comparables\}\s*\n\s*contexto=\{data\.restoRadio\}\s*\n\s*etiqueta=\{conteo\}/.test(mapaScr)) F("7 · el mapa no muestra los comparables, el resto del radio y la leyenda");
+  if (!/<FieldLabel>Ubicación en el mapa<\/FieldLabel>/.test(mapaScr)) F("7 · el mapa no dice «Ubicación en el mapa»");
   if (!/if \(n && n\.cubierta\) patchAnswers\(\{ lat: punto\.lat, lng: punto\.lng, comuna: n\.comuna, ciudad: n\.ciudad \}\);/.test(mapaScr)) F("7 · el punto movido no llega a las respuestas: los comparables son del punto viejo");
   if (!/if \(!movido\.current && nombreInicial\) return;/.test(mapaScr)) F("7 · el mapa rebautiza la dirección elegida sin que nadie mueva el pin");
   if (!/const direccion = sinMover && nombreInicial \? nombreInicial\.direccion : nombre\.direccion;/.test(mapaScr)) F("7 · sin mover el pin, el mapa confirma otra dirección que la elegida");
@@ -210,6 +220,52 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
     if (5 * alto > 270) F(`8 · cinco sugerencias miden ${Math.round(5 * alto)} px: no caben sobre el teclado (tope 270)`);
   }
 
+  // ── 10 · LA LEYENDA Y LOS PUNTOS SON LA MISMA LISTA (28-sep-2026) ──────────
+  // (a) El resumen del radio: la muestra que se guarda y los puntos que se dibujan salen de una lista.
+  const filas10 = [
+    { id: "a", precio: 610000, superficie_m2: 34, lat: -33.45, lng: -70.60, distance_meters: 66.4 },
+    { id: "b", precio: 490000, superficie_m2: 40, lat: -33.451, lng: -70.601, distance_meters: 84 },
+    { id: "c", precio: 430000, superficie_m2: 34, lat: -33.452, lng: -70.602, distance_meters: 119 },
+    { id: "d", precio: 540000, superficie_m2: 32, lat: -33.453, lng: -70.603, distance_meters: 154 },
+    { id: "e", precio: 495000, superficie_m2: 33, lat: -33.454, lng: -70.604, distance_meters: 210 },
+    { id: "f", precio: 520000, superficie_m2: 36, lat: -33.455, lng: -70.605, distance_meters: 218 },
+    { id: "x", precio: 5000000, superficie_m2: 36, lat: -33.456, lng: -70.606, distance_meters: 20 }, // extremo: la limpieza lo saca
+  ];
+  const res10 = resumirComparablesRadio(filas10, 38, { modo: "conDorms", factorCierre: 1 });
+  if (!res10) F("10 · el resumen del radio no dio muestra con seis avisos limpios (el extractor no corrió)");
+  else {
+    if (res10.puntos.length !== res10.sampleSize || res10.muestra.avisos.length !== res10.sampleSize) F(`10 · el n (${res10.sampleSize}), los puntos (${res10.puntos.length}) y la muestra (${res10.muestra.avisos.length}) no son la misma lista`);
+    if (res10.puntos.some((p) => p.id === "x")) F("10 · los puntos dibujan un aviso que la limpieza descartó");
+    res10.puntos.forEach((p, i) => {
+      const a = res10.muestra.avisos[i];
+      if (!a || Math.round(p.precio) !== a.precio || Math.round(p.distance_meters ?? -1) !== a.distanciaM) F(`10 · el punto ${i} (${p.precio} a ${p.distance_meters} m) no es el aviso ${i} de la muestra (${a?.precio} a ${a?.distanciaM} m)`);
+      if (typeof p.lat !== "number" || typeof p.lng !== "number") F(`10 · el punto ${i} va sin coordenadas: el mapa no podría dibujar lo que la leyenda cuenta`);
+    });
+  }
+  // (b) El endpoint pasa esa lista como `comparables` y el resto del radio sin esas filas.
+  const sug = sinComentarios(leer("src/lib/services/market-suggestions.ts"));
+  if (!/const \{ muestra, puntos, \.\.\.resto \} = best as Sugerencias & \{ muestra\?: MuestraArriendo; puntos\?: PuntoComparable\[\] \};/.test(sug) || !/const comparables = puntos \?\? \[\];/.test(sug)) F("10 · el endpoint no saca `comparables` de los puntos de la muestra");
+  if (!/const restoRadio = bestMap\.all\.filter\(\(p\) => !\(p\.id && idsComparables\.has\(p\.id\)\)\);/.test(sug) || !/comparables,\s*\n\s*restoRadio,\s*\n\s*nearbyProperties: bestMap\.all,/.test(sug)) F("10 · el resto del radio no excluye los comparables (se dibujarían dos veces)");
+  // (c) El hook guarda la lista tal cual: sin conteo aparte, sin `sampleSize` ni `totalInRadius` como número del mapa.
+  const hookDatos = sinComentarios(leer("src/components/formulario-v4/useWizardV4Data.ts"));
+  if (!/setComparables\(arr\?\.source === "radio" && Array\.isArray\(arr\?\.comparables\) \? arr\.comparables : \[\]\);/.test(hookDatos)) F("10 · el hook no dibuja los `comparables` del endpoint");
+  if (!/setRestoRadio\(arr\?\.source === "radio" && Array\.isArray\(arr\?\.restoRadio\) \? arr\.restoRadio : \[\]\);/.test(hookDatos)) F("10 · el hook no guarda el resto del radio");
+  if (/comparablesCount|totalInRadius|nearbyProperties/.test(hookDatos)) F("10 · el hook vuelve a tener un conteo aparte de la lista (comparablesCount / totalInRadius / nearbyProperties)");
+  // (d) La leyenda cuenta la lista dibujada, dice a qué radio y distingue el gris.
+  if (!/rotuloComparables\(data\.comparables\.length, data\.radiusUsed\)/.test(mapaScr)) F("10 · la leyenda no cuenta `data.comparables.length` con su radio");
+  if (!/\{data\.restoRadio\.length > 0 && <span className="[^"]*"> · otros \{data\.restoRadio\.length\} en gris<\/span>\}/.test(mapaScr)) F("10 · la leyenda no distingue el resto del radio («otros N en gris»)");
+  if (/comparablesCount|arriendoN|sampleSize|propiedades en el sector/.test(mapaScr)) F("10 · la leyenda del mapa usa otro número que la lista dibujada");
+  if (/comparablesCount/.test(shell) || !/live\.comparables = data\.comparables\.length; live\.radioM = data\.radiusUsed;/.test(shell)) F("10 · la reacción no recibe el largo de la lista dibujada y su radio");
+  // (e) El rótulo: número + radio legible.
+  const rot = [[22, 1500, "22 comparables a 1,5 km"], [5, 500, "5 comparables a 500 m"], [30, 1000, "30 comparables a 1 km"], [20, 2000, "20 comparables a 2 km"], [1, 750, "1 comparable a 750 m"], [9, null, "9 comparables cerca"]] as const;
+  for (const [n, r, esperado] of rot) if (rotuloComparables(n, r) !== esperado) F(`10 · rotuloComparables(${n}, ${r}) = «${rotuloComparables(n, r)}», no «${esperado}»`);
+  // (f) El mapa: el contexto en un gris más tenue, debajo y fuera del encuadre; el encuadre es de los comparables.
+  const efectoPuntos = (pinSrc.match(/useEffect\(\(\) => \{[\s\S]*?\}, \[puntos, listo\]\);/) ?? [])[0] ?? "";
+  if (!efectoPuntos || /contexto/.test(efectoPuntos)) F("10 · el encuadre del mapa mete el contexto (o el extractor no corrió)");
+  if (!/for \(const p of validos\) caja\.extend\(p\);/.test(efectoPuntos)) F("10 · el encuadre no sigue a los comparables");
+  if (!/contextoRef\.current\.push\(new google\.maps\.Marker\(\{[\s\S]{0,200}?zIndex: 0,[\s\S]{0,200}?fillColor: "#B4B2A9", fillOpacity: 0\.55,[\s\S]{0,120}?\}\)\);[\s\S]{0,40}?\}\s*\n\s*\}, \[contexto, listo\]\);/.test(pinSrc)) F("10 · el resto del radio no va en un gris más tenue, debajo de los comparables");
+  if (!/fillColor: "#71717A", fillOpacity: 0\.85/.test(efectoPuntos)) F("10 · los comparables perdieron su gris");
+
   // ── 5 · EVENTOS Y EMBUDO ───────────────────────────────────────────────────
   if (!/"wizard4_entrada_camino", \{ camino: "escribir"/.test(ent) || !/trackWizard\(posthog, "wizard4_entrada_camino", \{ camino \}\);/.test(ent)) F("5 · falta el evento del camino elegido");
   if (!/"wizard4_ubicacion_permiso", \{ resultado: r\.estado/.test(ent)) F("5 · falta el evento del permiso de ubicación");
@@ -248,7 +304,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ WIZARD-ENTRADA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos y, en el teléfono, una hoja; el mapa es siempre la segunda, con los comparables y el conteo; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
+    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos y, en el teléfono, una hoja; el mapa es siempre la segunda, dibuja los comparables que la leyenda cuenta (misma lista, con su radio) y el resto del radio en gris; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
   }
   return { hard: fallas.length };
 }

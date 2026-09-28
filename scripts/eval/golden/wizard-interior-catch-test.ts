@@ -65,7 +65,7 @@ const OTRA: WizardV4Answers = {
 
 function dataMock(over: Record<string, unknown> = {}) {
   return {
-    ufCLP: UF, tasaMercado: 4.04, comparablesCount: 26, comparables: [], suggestionsLoading: false,
+    ufCLP: UF, tasaMercado: 4.04, comparables: [], restoRadio: [], suggestionsLoading: false,
     arriendoSugerido: 757000, arriendoN: 20, arriendoFuente: "radio", arriendoRango: null, muestraArriendo: null,
     ggccSugerido: 99000, precioM2UF: 80, radiusUsed: 1000, ventaN: 30, ventaFuente: "radio", ventaUniverso: "usado", ventaRadio: 1000,
     airRoi: { ingresoBrutoMensual: 666000, ocupacionReferencia: 0.44, sampleSize: 40, source: "comparables", isLoading: false, error: null },
