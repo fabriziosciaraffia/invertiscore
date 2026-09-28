@@ -63,7 +63,7 @@ export interface HeaderFrancoProps {
     modo: ModoInforme;
     /** compartido: la fecha del análisis, junto a «Compartido contigo». */
     fecha?: string;
-    /** anonimo: adónde vuelve después de crear la cuenta. */
+    /** anonimo: adónde vuelve después de crear la cuenta (lo usa el banner del registro, no el header). */
     registroNext?: string;
     /** propio: el botón de compartir (ShareButton, variante banda). */
     compartir?: ReactNode;
@@ -234,12 +234,9 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
       </>
     );
   } else if (modo === "anonimo") {
-    derecha = (
-      <>
-        {entrar}
-        <EnlaceCarga href={`/register?next=${encodeURIComponent(informe?.registroNext || "/dashboard")}`} className="hf-btn">Guardarlo</EnlaceCarga>
-      </>
-    );
+    // «Lo que sigue» (28-sep-2026): el registro del primer informe anónimo vive en el banner después
+    // de la card y en su barra fija, no acá. El header queda con «Entrar».
+    derecha = <>{entrar}</>;
   } else if (!resuelta) {
     derecha = null;
   } else if (!logueado) {

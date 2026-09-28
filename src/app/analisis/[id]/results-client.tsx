@@ -15,6 +15,10 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
+import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { CierreRegistro } from "@/components/lo-que-sigue/CierreRegistro";
+import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
@@ -182,6 +186,11 @@ export function PremiumResults({
     registerNext: analysisId ? `/analisis/${analysisId}` : undefined,
   };
   const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
+
+  // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
+  // Quien tiene cuenta no ve nada de esto. Contexto de los eventos: análisis, veredicto, modalidad.
+  const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;
+  const nextLqs = analysisId ? `/analisis/${analysisId}` : "/dashboard";
 
   // Top-level pre-delivery months calculation
   const mesesPreEntregaTop = useMemo(() => {
@@ -553,6 +562,7 @@ export function PremiumResults({
     },
   ];
   const resolvedVeredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+  const ctxLqs = { analysisId: analysisId ?? "", veredicto: resolvedVeredicto, modalidad: "ltr" as const };
 
   const mainContent = (
     <>
@@ -596,6 +606,7 @@ export function PremiumResults({
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
             onInformeVisible={onInformeVisible}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} /> : undefined}
             results={results}
             inputData={inputData}
             valorUF={ufValue}
@@ -662,8 +673,16 @@ export function PremiumResults({
             lo comercial vive después, en el flujo de la página. */}
         <div className="mt-8">
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
-          <NextAnalysisCTA {...nextCtaProps} />
+          {loQueSigue ? (
+            <>
+              <TicketPack ctx={ctxLqs} createdAt={createdAt} />
+              <CierreRegistro veredicto={resolvedVeredicto} next={nextLqs} />
+            </>
+          ) : (
+            <NextAnalysisCTA {...nextCtaProps} />
+          )}
         </div>
+        <RegistroCompletadoSonda activa={isLoggedIn} />
 
         {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
             del user logueado. Excluye admin/sharedView/welcomeDisponible. */}

@@ -2,7 +2,7 @@
 
 import { TokensShared } from "./shared/TokensShared";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
@@ -55,7 +55,10 @@ export function SubjectCardGrid({
   onInformeVisible,
   accessLevel = "free",
   medianaResolvedAt,
+  despuesDeLaCard,
 }: {
+  /** «Lo que sigue»: lo que va después de la card de Franco (lo monta HeroLTR). */
+  despuesDeLaCard?: ReactNode;
   /** Solo por el sobreprecio guardado en filas viejas (`hallazgoSobreprecio`), que es un dato y
    *  no prosa. La prosa de la IA no se lee: salió del informe el 25-sep-2026. */
   aiAnalysis: AIAnalysisV2 | null;
@@ -268,6 +271,7 @@ export function SubjectCardGrid({
           armada. */}
       <HeroLTR
         accessLevel={accessLevel}
+        despuesDeLaCard={despuesDeLaCard}
         hallazgos={
           hallazgosOrdenados.length > 0 ? (
             <SeccionInforme

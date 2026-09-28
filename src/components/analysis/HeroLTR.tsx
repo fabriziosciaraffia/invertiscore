@@ -42,7 +42,11 @@ export function HeroLTR({
   fechaProsa,
   hallazgos,
   accessLevel = "free",
+  despuesDeLaCard,
 }: {
+  /** «Lo que sigue» (28-sep-2026): lo que va inmediatamente después de la card de Franco (el
+   *  banner del registro del primer informe anónimo). Lo decide la página; acá solo se ubica. */
+  despuesDeLaCard?: ReactNode;
   /** EL ORDEN (contrato §2): la sección de hallazgos, la que va ENTRE el hero y la
    *  recomendación. La arma el grid —es quien tiene la lista ordenada y sus gates— y
    *  la monta este componente, porque la recomendación que va después se calcula acá
@@ -347,6 +351,7 @@ export function HeroLTR({
         <MarcaSeccion seccion="recomendacion" tipo="ltr" accessLevel={accessLevel} />
         {recomendacion}
       </SeccionInforme>
+      {despuesDeLaCard}
     </>
   );
 }

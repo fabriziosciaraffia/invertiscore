@@ -75,14 +75,12 @@ function resolverAccion(state: WalletState, registerNext?: string): Accion {
     case "anon_owner":
       // El registro guarda ESTE análisis (claim). Cero promesa de otro gratis:
       // el welcome se consume en el claim — este análisis ERA el gratis.
+      // «Lo que sigue» (28-sep-2026): el primer informe anónimo ya no llega acá (LTR y STR montan
+      // el banner, el ticket y el cierre propios); queda para el comparativo. Sin «guardarlo».
       return {
-        label: "Crear cuenta para guardarlo",
-        href: `/register?next=${encodeURIComponent(registerNext || "/analisis/nuevo-v4")}`,
-        secundaria: (
-          <>
-            Este fue tu análisis gratis. Los siguientes: {fmtCLP(SINGLE_PRICE)} cada uno, o {linkPricing}.
-          </>
-        ),
+        label: "Registrarme",
+        href: `/registro?next=${encodeURIComponent(registerNext || "/analisis/nuevo-v4")}`,
+        secundaria: <>Sé de los primeros con los deptos que sí convienen.</>,
       };
     case "no_credits":
       return {

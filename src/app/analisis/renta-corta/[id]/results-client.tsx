@@ -30,6 +30,10 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
+import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { CierreRegistro } from "@/components/lo-que-sigue/CierreRegistro";
+import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
@@ -121,6 +125,7 @@ export function STRResultsClient({
   simulacionStr = null,
   zonaStr = null,
   demo = false,
+  userId = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -252,6 +257,11 @@ export function STRResultsClient({
   const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
   const isAdmin = false; // El page.tsx ya resuelve admin a "subscriber"
 
+  // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
+  const loQueSigue = isAnonOwner && !userId && !demo;
+  const ctxLqs = { analysisId, veredicto, modalidad: "str" as const };
+  const nextLqs = `/analisis/renta-corta/${analysisId}`;
+
   return (
     /* EL LIENZO DE §2 (fix del bloque A · 11-sep-2026, el mismo bug de 0b825fca en LTR): con
        el marco del documento retirado, lo que quedaba detrás del informe STR era el gris de
@@ -359,6 +369,7 @@ export function STRResultsClient({
             página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} /> : undefined}
             hallazgos={
               /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */
               hallazgosOrdenadosSTR.length > 0 ? (
@@ -468,7 +479,15 @@ export function STRResultsClient({
             {/* CTA contextual — FUERA del documento (FASE 4). */}
             <div style={{ height: 16 }} />
             <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
+            {loQueSigue ? (
+            <>
+              <TicketPack ctx={ctxLqs} createdAt={createdAt} />
+              <CierreRegistro veredicto={veredicto} next={nextLqs} />
+            </>
+          ) : (
             <NextAnalysisCTA {...nextCtaProps} />
+          )}
+          <RegistroCompletadoSonda activa={!!userId} />
 
             {/* Wallet status */}
             <div style={{ height: 16 }} />

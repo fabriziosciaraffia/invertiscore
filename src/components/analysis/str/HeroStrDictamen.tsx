@@ -43,7 +43,10 @@ export function HeroStrDictamen({
   valorUF,
   createdAt,
   fechaProsa,
+  despuesDeLaCard,
 }: {
+  /** «Lo que sigue» (28-sep-2026): lo que va inmediatamente después de la card de Franco. */
+  despuesDeLaCard?: ReactNode;
   /** Contrato §2 (bloque B): la sección de hallazgos YA ARMADA por la página, que este
    *  componente monta entre el hero y la recomendación. Solo con el rediseño. */
   hallazgos?: ReactNode;
@@ -211,6 +214,7 @@ export function HeroStrDictamen({
         <MarcaSeccion seccion="recomendacion" tipo="str" accessLevel={accessLevel} />
         {recomendacion}
       </SeccionInforme>
+      {despuesDeLaCard}
     </>
   );
 }
