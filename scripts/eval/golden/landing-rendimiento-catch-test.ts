@@ -24,7 +24,7 @@
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cuandoLaPaginaEsteQuieta } from "../../../src/lib/pagina-quieta";
+import { cuandoLaPaginaEsteQuieta, type OpcionesQuieta } from "../../../src/lib/pagina-quieta";
 import { pendientesPostHog, posthogCliente } from "../../../src/lib/posthog-cliente";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -137,7 +137,7 @@ export function runLandingRendimientoTier(): { hard: number } {
       cancelIdleCallback: () => { llamadas.push("cancelado"); },
     };
     const doc = { readyState: "loading" as DocumentReadyState };
-    const cancelar = cuandoLaPaginaEsteQuieta(() => llamadas.push("corrio"), { doc, win });
+    const cancelar = cuandoLaPaginaEsteQuieta(() => llamadas.push("corrio"), { doc, win: win as unknown as OpcionesQuieta["win"] });
     if (llamadas.length || idleCb) F("4 · la primitiva corre o pide ocio antes de `load`");
     (loadCb as (() => void) | null)?.();
     if (llamadas.length) F("4 · la primitiva corre en `load` sin esperar el ocio");
@@ -146,7 +146,7 @@ export function runLandingRendimientoTier(): { hard: number } {
     const llamadas2: string[] = [];
     let idle2: (() => void) | null = null;
     const win2 = { ...win, requestIdleCallback: (cb: () => void) => { idle2 = cb; return 2; }, cancelIdleCallback: () => llamadas2.push("cancelado") };
-    const cancelar2 = cuandoLaPaginaEsteQuieta(() => llamadas2.push("corrio"), { doc: { readyState: "complete" }, win: win2 });
+    const cancelar2 = cuandoLaPaginaEsteQuieta(() => llamadas2.push("corrio"), { doc: { readyState: "complete" }, win: win2 as unknown as OpcionesQuieta["win"] });
     cancelar2();
     (idle2 as (() => void) | null)?.();
     if (llamadas2.join(",") !== "cancelado") F(`4 · cancelar no cancela (${llamadas2.join(",")})`);
