@@ -42,7 +42,7 @@ import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { referenciaHallazgo } from "@/components/analysis/referencia-hallazgo";
 import { Glifo } from "./Marca";
 import { EXPLICACION_VEREDICTO } from "./explicaciones";
-import { BarraProgreso, useRotacion } from "./Rotacion";
+import { PieRotacion, useRotacion } from "./Rotacion";
 
 
 /** `**…**` → <mark>. Igual que la portada del informe, sin cifras en el titular. */
@@ -84,18 +84,21 @@ export function Respuesta() {
   return (
     <div ref={raiz} className="lv-s2-grid-inner">
       <div className="lv-idx">La respuesta, en fácil</div>
-      {/* la miniatura del informe; a su lado, en PC, las tres explicaciones */}
-      <article className="lv-ans lv-mini" aria-live="polite">
-        <div className="lv-mini-fondo" aria-hidden="true" />
-        <div className="lv-mini-cuerpo">
-          <div className="lv-pila">
-            {ejemplos.map((x, j) => (
-              <Miniatura key={x.id} x={x} activo={j === i} out={out} delay={delay} />
-            ))}
+      {/* la miniatura del informe; a su lado, en PC, las tres explicaciones. Debajo, el pie de
+          la rotación: el mismo de «Lo que haría Franco», en el mismo lugar (QA 28-sep-2026). */}
+      <div className="lv-mini-wrap">
+        <article className="lv-ans lv-mini" aria-live="polite">
+          <div className="lv-mini-fondo" aria-hidden="true" />
+          <div className="lv-mini-cuerpo">
+            <div className="lv-pila">
+              {ejemplos.map((x, j) => (
+                <Miniatura key={x.id} x={x} activo={j === i} out={out} delay={delay} />
+              ))}
+            </div>
           </div>
-          <BarraProgreso />
-        </div>
-      </article>
+        </article>
+        <PieRotacion />
+      </div>
       {/* las tres explicaciones son también el control: mobile al pie (los chips
           murieron el 08-sep, eran redundantes con estas filas), PC en la columna derecha */}
       <div className="lv-lista" role="tablist" aria-label="Qué significa cada veredicto">

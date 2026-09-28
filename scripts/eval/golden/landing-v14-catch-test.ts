@@ -9,20 +9,25 @@
 //   3 · LO QUE DICE EL INFORME: el titular del motor (`titularMotor`), la card de
 //       `construirCardLtr`, la primera fila de «Esto es lo que pesa» (`filasPrincipales`) y los
 //       ejemplos leídos como el informe. Nada de la prosa de la IA.
-//   4 · SIN SALTOS AL ROTAR: la miniatura, las cards y las matrices apilan los tres ejemplos en
-//       la misma celda y muestran uno.
+//   4 · SIN SALTOS NI HUECOS AL ROTAR: la miniatura y las cards apilan los tres ejemplos en la
+//       misma celda y muestran uno; cada card se estira a la altura de la celda.
 //   5 · LA CIFRA: la de la fuente única, con signo («+40.000»), que sube con el mapa; sin
 //       contador en vivo (ni conteo propio ni «actualizado hoy»).
-//   6 · EL MAPA SE PUEBLA en racimos y se queda: sin loop que vuelva a cero y sin la variante de
-//       anillos ni su parámetro.
+//   6 · EL MAPA SE PUEBLA con los puntos SUELTOS (QA 28-sep-2026: sin racimos) y se queda: sin
+//       loop que vuelva a cero y sin la variante de anillos ni su parámetro.
 //   7 · EL COPY del QA: sin IA, «los números», sin «mejores opciones en la misma zona», sin «te
 //       nombra dónde», «Te dice que no cuando es no»; el pie con el disclaimer canónico, términos
 //       y privacidad.
 //   8 · DESTACADO SÍ, ROJO NO: ningún bloque de la landing usa el rojo de marca como fondo —ni en
 //       el CSS ni en una textura—, salvo el botón de avanzar. El cierre y el pie van sobre el
 //       material del hero.
-//   9 · LAS COMBINACIONES, dos variantes a elegir: A la matriz quieta (`PopupAjustes estatico`),
-//       B el botón que abre el pop-up real, que pausa la rotación.
+//   9 · LAS COMBINACIONES SE ABREN AL TOCAR (QA 28-sep-2026: variante B; la A y `?combinaciones=`
+//       murieron): el botón de la card abre la MUESTRA (`PopupAjustes muestra`, la matriz
+//       enmarcada) y pausa la rotación.
+//  10 · EL QA DEL 28-sep: el hero de la landing y el de la portada del wizard llevan al demo; el
+//       mismo pie de rotación (barra + pausa) en las dos secciones que rotan; «+40.000 deptos» en
+//       una sola pieza con la frase «toda la oferta comparable»; «Entrar» como píldora sobre el
+//       material.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/landing-v14-catch-test.ts
 // ============================================================================
@@ -60,6 +65,9 @@ export function runLandingV14Tier(): { hard: number } {
   const vivo = sinComentarios(leer("src/lib/landing-vivo.ts"));
   const mapa = sinComentarios(leer(`${DIR}/MapaPuntos.tsx`));
   const css = leer(`${DIR}/landing.css`);
+  const rot = sinComentarios(leer(`${DIR}/Rotacion.tsx`));
+  const wiz = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
+  const hdr = sinComentarios(leer("src/components/chrome/HeaderFranco.tsx"));
   const tsxs = readdirSync(join(RAIZ, DIR)).filter((f) => /\.tsx?$/.test(f));
   if (tsxs.length < 10) F(`0 · leí ${tsxs.length} archivos de ${DIR}: no está leyendo la landing`);
 
@@ -88,15 +96,20 @@ export function runLandingV14Tier(): { hard: number } {
   // ── 4 · sin saltos al rotar ──
   if (!/\.lv-pila > \.lv-pila-item \{ grid-area: 1 \/ 1;/.test(css) || !/\.lv-pila > \.lv-pila-item:not\(\.on\) \{ visibility: hidden;/.test(css)) F("4 · la pila no apila los ejemplos en la misma celda");
   if (!/<div className="lv-pila">\s*\n\s*\{ejemplos\.map\(\(x, j\) => \(\s*\n\s*<Miniatura key=\{x\.id\}/.test(resp)) F("4 · la miniatura no apila los tres ejemplos");
-  if (!/<div className="lv-pila lv-cards">\s*\n\s*\{ejemplos\.map\(/.test(reco) || !/<div className="lv-pila lv-matrices">\s*\n\s*\{ejemplos\.map\(/.test(reco)) F("4 · las cards o las matrices no apilan los tres ejemplos");
+  if (!/<div className="lv-pila lv-cards">\s*\n\s*\{ejemplos\.map\(/.test(reco)) F("4 · las cards no apilan los tres ejemplos");
+  if (!/\.lv-cards \.rec-card \{ flex: 1; display: flex; flex-direction: column;/.test(css) || !/\.lv-cards \.rec-card > \.rec-cta \{ margin-top: auto;/.test(css)) F("4 · las cards no se estiran a la altura de la celda con el botón al pie");
 
   // ── 5 · la cifra ──
-  if (!/<ContadorComparables final=\{COMPARABLES_CIFRA\} piso=\{COMPARABLES_PISO\} \/>/.test(sec)) F("5 · la cifra grande no es COMPARABLES_CIFRA (con signo) de la fuente única");
+  if (!/<ContadorComparables final=\{COMPARABLES_CIFRA\} piso=\{COMPARABLES_PISO\} \/> deptos\s*\n\s*<\/div>/.test(sec)) F("5 · la cifra grande no es «COMPARABLES_CIFRA deptos» en una sola pieza");
+  if (/lv-base|Deptos comparables/.test(sec)) F("5 · vuelve la línea «Deptos comparables» bajo la cifra");
+  if (!/toda la oferta comparable en <mark>Santiago<\/mark>\./.test(sec)) F("5 · falta «contra toda la oferta comparable en Santiago.»");
+  if (/lv-mono-real/.test(css)) F("5 · la cifra vuelve a mono: va en la misma fuente que «deptos»");
   if (/count: "exact"|scraped_at|avisosActivos|ultimoScrape/.test(vivo + sec)) F("5 · vuelve el contador en vivo (conteo propio o «actualizado hoy»)");
   if (/actualizado \{|lv-base"><i/.test(sec)) F("5 · vuelve la línea «actualizado hoy» con su punto en vivo");
 
   // ── 6 · el mapa se puebla ──
-  if (!/function secuenciaDeRacimos\(/.test(mapa) || !/progreso\?\.set\(hasta \/ n\)/.test(mapa) || !/canvas\.classList\.add\("lleno"\)/.test(mapa)) F("6 · el mapa no se puebla en racimos con el contador");
+  if (!/function secuenciaSuelta\(n: number\): Uint32Array/.test(mapa) || !/orden = secuenciaSuelta\(decodificados\.length \/ 2\);/.test(mapa) || !/progreso\?\.set\(hasta \/ n\)/.test(mapa) || !/canvas\.classList\.add\("lleno"\)/.test(mapa)) F("6 · el mapa no se puebla con los puntos sueltos y el contador");
+  if (/secuenciaDeRacimos|RACIMO_|CELDA_SORTEO|createRadialGradient/.test(mapa)) F("6 · vuelven los racimos (o su halo)");
   if (/CICLO_MS|get\("mapa"\)|ANILLO_|Variante/.test(mapa)) F("6 · vuelve el loop que empieza de cero, la variante de anillos o su parámetro");
 
   // ── 7 · el copy ──
@@ -136,17 +149,31 @@ export function runLandingV14Tier(): { hard: number } {
   }
   if (!/<FondoMaterial \/>/.test(sec) || !/conFondo=\{false\}/.test(sec)) F("8 · el cierre y el pie no van sobre el material del hero");
 
-  // ── 9 · las combinaciones ──
-  if (!/<PopupAjustes\b[\s\S]{0,400}?estatico=\{estatico\}/.test(reco) || !/<Combinaciones popup=\{x\.popup\} veredicto=\{x\.veredicto\} valorUF=\{x\.valorUF\} estatico \/>/.test(reco)) F("9 · A · la matriz no es el PopupAjustes real, quieto");
-  if (!/btn: puerta\.btn,/.test(reco) || !/PUERTA_COMBINACIONES/.test(reco)) F("9 · B · el botón de la card no abre el pop-up con la puerta del informe");
-  if (!/\(e\.target as Element\)\.closest\("\.rec-cta"\) && !pausado\) pausar\(\);/.test(reco)) F("9 · B · abrir el pop-up no pausa la rotación");
+  // ── 9 · las combinaciones se abren al tocar: la muestra ──
+  if (!/<PopupAjustes\b[\s\S]{0,400}?\n\s*muestra\n\s*\/>/.test(reco) || !/cuerpo: <Muestra popup=\{popup\} veredicto=\{veredicto\} valorUF=\{ejemplo\.valorUF\} \/>,/.test(reco)) F("9 · el botón no abre la muestra (PopupAjustes muestra)");
+  if (!/btn: puerta\.btn,/.test(reco) || !/PUERTA_COMBINACIONES/.test(reco) || !/conBoton\s*\/>/.test(reco)) F("9 · el botón de la card no abre con la puerta del informe");
+  if (!/\(e\.target as Element\)\.closest\("\.rec-cta"\) && !pausado\) pausar\(\);/.test(reco)) F("9 · abrir la muestra no pausa la rotación");
+  if (/combinaciones=|useVariante|ItemMatriz|estatico|lv-matrices|data-combinaciones/.test(reco + css)) F("9 · vuelve la variante A o su parámetro");
+  const pj = sinComentarios(leer("src/components/analysis/shared/PopupAjustes.tsx"));
+  if (!/const estatico = estaticoProp \|\| muestra;/.test(pj) || !/\{!muestra && \(\s*\n\s*<p className="pjx-hoy">/.test(pj)) F("9 · la muestra del PopupAjustes no saca la cabecera");
   if (!/popup: PopupLanding \| null;/.test(vivo) || !/hayAjustesQueMostrar\(\{ veredicto, distancia, mixComprar \}\)/.test(vivo)) F("9 · los datos del pop-up no se arman como en el informe");
+
+  // ── 10 · el QA del 28-sep ──
+  if (!/<LinkMedido href="\/demo" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>/.test(ent)) F("10 · «Ver un análisis real» del hero no lleva al demo");
+  if (!/pie=\{<a href="\/demo"/.test(wiz)) F("10 · «Ver un análisis de ejemplo» de la portada del wizard no lleva al demo");
+  if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");
+  if (/BarraProgreso/.test(resp) || /BarraProgreso|lv-pausa/.test(reco)) F("10 · una sección arma su propio pie en vez de PieRotacion");
+  if (!/\.lv-sreco > \.lv-col::before \{ content: ""; display: block; height: 1px; background: var\(--lv-ink\);/.test(css)) F("10 · falta la línea que separa «Lo que haría Franco» de «La respuesta, en fácil»");
+  if (!/className="hf-txt hf-pild">Entrar<\/Link>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
+  const heroCss = leer("src/components/entrada/hero-entrada.css");
+  if (!/\.he-mid \{ flex: 1; display: flex; flex-direction: column; justify-content: center;/.test(heroCss)) F("10 · el bloque principal del hero no va centrado en altura");
+  if (!/\{pie && <div className="he-pie">\{pie\}<\/div>\}\s*\n\s*<\/div>\s*\n\s*<\/section>/.test(sinComentarios(leer("src/components/entrada/HeroEntrada.tsx")))) F("10 · el pie del hero no acompaña al bloque (volvió al borde inferior)");
 
   if (fallas.length) {
     console.log(`  ✗ LANDING-V14 · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — una puerta con el header único, la card y el titular del informe, la primera fila de lo que pesa, tres ejemplos apilados sin saltos, la cifra de la fuente única que sube con el mapa que se puebla, el copy del QA con su pie legal, ningún bloque rojo de fondo y las dos variantes de las combinaciones");
+    console.log("  ✓ VERDE — una puerta con el header único, la card y el titular del informe, la primera fila de lo que pesa, tres ejemplos apilados sin saltos ni huecos, la cifra de la fuente única que sube con el mapa que se puebla suelto, el copy del QA con su pie legal, ningún bloque rojo de fondo, la muestra de combinaciones que se abre al tocar y el QA del 28-sep");
   }
   return { hard: fallas.length };
 }
@@ -161,4 +188,7 @@ if (require.main === module) {
 // vez de HeroEntrada · card sin PosicionFranco · titular de la IA · otra fila de hallazgo · la
 // miniatura sin pila · la cifra en texto · vuelve «actualizado hoy» · el mapa con loop · «Nadie le
 // paga» · el cierre con fondo rojo · una textura roja · la matriz interactiva · abrir sin pausar.
+// 28-sep-2026 (QA): el hero de vuelta a «#respuesta» · el mapa con racimos · la muestra sin
+// `muestra` (el pop-up entero) · una sección con su propia barra · la cifra en mono · «Entrar»
+// como texto suelto.
 // ─────────────────────────────────────────────────────────────────────────────

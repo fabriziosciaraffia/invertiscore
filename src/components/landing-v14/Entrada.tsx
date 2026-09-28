@@ -43,14 +43,16 @@ function useAccionesCampo(ubicacion: UbicacionCampo) {
   };
 }
 
-/** El hero de la landing: el de la entrada, con el header único que le pasa la página. */
+/** El hero de la landing: el de la entrada, con el header único que le pasa la página. El pie
+ *  lleva al DEMO (QA 28-sep-2026): un informe real, el mismo al que va «Ver un análisis de
+ *  ejemplo» en la portada del wizard. */
 export function HeroLanding({ cabecera }: { cabecera: ReactNode }) {
   const acciones = useAccionesCampo("hero");
   return (
     <HeroEntrada
       cabecera={cabecera}
       pie={
-        <LinkMedido href="#respuesta" evento={EV.ejemplo} props={{ origen: "hero" }}>
+        <LinkMedido href="/demo" evento={EV.ejemplo} props={{ origen: "hero" }}>
           Ver un análisis real<span aria-hidden="true">→</span>
         </LinkMedido>
       }

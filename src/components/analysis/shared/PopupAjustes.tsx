@@ -99,16 +99,21 @@ export interface PopupAjustesProps {
   /** LTR · lo que piden los avisos parecidos (`resolverArriendoReferencia`), para el bloque del
    *  camino de mercado. STR no lo pasa: no guardamos tarifas de comparables. */
   referenciaArriendo?: ArriendoReferencia | null;
-  /** LA MATRIZ SOLA, SIN INTERACCIÓN (27-sep-2026): la landing la muestra al lado de la card. Lo
-   *  de arriba y la grilla con la celda de Franco marcada; sin «Toca una celda», sin el panel de
-   *  la celda, sin el camino de mercado y sin el botón. Las celdas no responden. */
+  /** LA MATRIZ SOLA, SIN INTERACCIÓN (27-sep-2026): lo de arriba y la grilla con la celda de
+   *  Franco marcada; sin «Toca una celda», sin el panel de la celda, sin el camino de mercado y
+   *  sin el botón. Las celdas no responden. */
   estatico?: boolean;
+  /** LA MUESTRA (QA 28-sep-2026, la landing): SOLO la matriz con la celda de Franco marcada y su
+   *  leyenda, sin la cabecera («Hoy … con pie …», la pregunta) ni el resto del pop-up. Implica
+   *  `estatico`. Es una muestra del informe, no el pop-up entero. */
+  muestra?: boolean;
 }
 
 /** El chip de veredicto del pop-up es el del informe entero (`ChipVeredicto`, 25-sep-2026). */
 const Pill = ({ v }: { v: Veredicto }) => <ChipVeredicto v={v} />;
 
-export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo, estatico = false }: PopupAjustesProps) {
+export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo, estatico: estaticoProp = false, muestra = false }: PopupAjustesProps) {
+  const estatico = estaticoProp || muestra;
   const grilla = grillaDelPopup({ veredicto, distancia, mixComprar });
   const celdas = grilla?.celdas ?? [];
   const esComprar = veredicto === "COMPRAR";
@@ -132,19 +137,25 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
   const precioBoton = franco && franco.descuentoPct && franco.descuentoPct > 0 ? precioUF * (1 - franco.descuentoPct / 100) : null;
 
   return (
-    <div className={`pjx${estatico ? " pjx-estatico" : ""}`}>
-      <p className="pjx-hoy">
-        Hoy <Pill v={veredicto} /> con pie {pieTxt(pieHoy)} y crédito a {plazoHoy} años
-      </p>
-      {esComprar ? (
-        <p className="pjx-preg">
-          El color es el veredicto de cada combinación al precio pedido. El número es <strong>lo que te queda al mes</strong>.
+    <div className={`pjx${estatico ? " pjx-estatico" : ""}${muestra ? " pjx-muestra" : ""}`}>
+      {!muestra && (
+        <p className="pjx-hoy">
+          Hoy <Pill v={veredicto} /> con pie {pieTxt(pieHoy)} y crédito a {plazoHoy} años
         </p>
+      )}
+      {esComprar ? (
+        !muestra && (
+          <p className="pjx-preg">
+            El color es el veredicto de cada combinación al precio pedido. El número es <strong>lo que te queda al mes</strong>.
+          </p>
+        )
       ) : (
         <>
-          <p className="pjx-preg">
-            Cuánto descuento hay que pedir para llegar a <Pill v="COMPRAR" />, según tu pie y tu plazo.
-          </p>
+          {!muestra && (
+            <p className="pjx-preg">
+              Cuánto descuento hay que pedir para llegar a <Pill v="COMPRAR" />, según tu pie y tu plazo.
+            </p>
+          )}
           <Regla tope={tope} />
         </>
       )}

@@ -160,6 +160,24 @@ export function RotacionEjemplos({ ejemplos, children }: { ejemplos: EjemploLand
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 
+/** EL PIE DE LA ROTACIÓN (QA 28-sep-2026): la barra y el botón de pausar, los MISMOS en las dos
+ *  secciones que rotan y en el mismo lugar —bajo la pieza, sobre el papel—. Con reduced-motion no
+ *  hay rotación, así que no hay botón. */
+export function PieRotacion() {
+  const { rota, pausado, pausar, seguir } = useRotacion();
+  return (
+    <div className="lv-reco-pie">
+      <BarraProgreso />
+      {rota && (
+        <button type="button" className="lv-pausa" aria-pressed={pausado} onClick={pausado ? seguir : pausar}>
+          <i aria-hidden="true">{pausado ? "▶" : "❚❚"}</i>
+          {pausado ? "Seguir" : "Pausar"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** La barra de progreso de la espera, compartida por las dos secciones: corre 6 s
  *  en linear, queda llena cuando el visitante detuvo la rotación y vacía cuando
  *  no hay rotación. */

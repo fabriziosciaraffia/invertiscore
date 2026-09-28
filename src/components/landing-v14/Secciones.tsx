@@ -80,11 +80,11 @@ export function PorQueCreerle() {
         <div className="lv-s3-grid">
           <div className="lv-s3-arriba">
             <div className="lv-idx">Por qué creerle</div>
+            {/* «+40.000 deptos», todo en el mismo tamaño y la misma fuente (QA 28-sep-2026) */}
             <div className="lv-big">
-              <ContadorComparables final={COMPARABLES_CIFRA} piso={COMPARABLES_PISO} />
+              <ContadorComparables final={COMPARABLES_CIFRA} piso={COMPARABLES_PISO} /> deptos
             </div>
-            <div className="lv-base">Deptos comparables</div>
-            <p className="lv-sabe">Franco evalúa tu depto<br />contra toda la oferta en <mark>Santiago</mark>.</p>
+            <p className="lv-sabe">Franco evalúa tu depto<br />contra toda la oferta comparable en <mark>Santiago</mark>.</p>
           </div>
           <div className="lv-s3-mapa">
             <MapaSantiago />
