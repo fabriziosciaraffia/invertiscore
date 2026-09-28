@@ -177,6 +177,7 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/className=""\s*\n\s*hojasEnPortal\s*\n\s*\/>/.test(reco)) F("11 · la card de la landing no pide las hojas en portal");
   if (!/createPortal\([\s\S]{0,600}?document\.body,/.test(hojaDir)) F("11 · la hoja del campo de dirección no monta en portal al <body>");
   if (/\.lv-sreco > \.lv-col::before/.test(css) || !/\.lv-sreco \{ background: var\(--lv-gris-sec\); \}/.test(css)) F("11 · las secciones no se separan por fondo (vuelve la línea o falta el gris)");
+  if (/\.lv-lista \{[^}]*border-top: 1px solid/.test(css)) F("11 · vuelve la línea sobre «Tres respuestas posibles», que topaba con el pie de la rotación");
   if (!/className="hf-txt hf-pild">Entrar<\/Link>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
   const heroCss = leer("src/components/entrada/hero-entrada.css");
   if (!/\.he-mid \{ flex: 1; display: flex; flex-direction: column; justify-content: center;/.test(heroCss)) F("10 · el bloque principal del hero no va centrado en altura");

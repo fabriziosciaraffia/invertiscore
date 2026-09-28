@@ -206,9 +206,10 @@
 .lv-prog { height: 2px; background: var(--lv-ll); margin-top: 14px; overflow: hidden; }
 .lv-prog i { display: block; height: 100%; background: var(--verdict); width: 0; }
 /* explicaciones: tres filas apiladas (banda mini + una o dos líneas), la activa
-   resaltada y sincronizada con la rotación, tocables; en mobile van al pie bajo
-   una línea, con su etiqueta */
-.lv-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 0; padding-top: 26px; border-top: 1px solid var(--lv-ink); }
+   resaltada y sincronizada con la rotación, tocables; en mobile van al pie con su
+   etiqueta y aire, SIN línea arriba (QA en el teléfono, 28-sep-2026): la línea topaba
+   con el pie de la rotación. */
+.lv-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 0; padding-top: 36px; }
 .lv-lista .lv-lbl {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-g);
@@ -650,7 +651,7 @@
      filas elásticas de arriba y abajo las centran en la pantalla */
   .lv-mini-wrap { grid-area: 3 / 1 / 5 / 2; margin: 0; }
   .lv-mini { padding: 28px 30px 26px; }
-  .lv-lista { grid-area: 3 / 2 / 5 / 3; align-self: center; display: grid; grid-template-rows: auto repeat(3, 1fr); gap: 10px; margin: 0; padding-top: 0; border-top: 0; }
+  .lv-lista { grid-area: 3 / 2 / 5 / 3; align-self: center; display: grid; grid-template-rows: auto repeat(3, 1fr); gap: 10px; margin: 0; padding-top: 0; }
   .lv-fila { align-items: center; }
   /* sección 3 (FASE 1.9): la card a la izquierda con el ancho de la miniatura, el
      texto a la derecha centrado en vertical */
