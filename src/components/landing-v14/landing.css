@@ -40,6 +40,9 @@
   --lv-l: #D6D6DB;
   --lv-ll: #E9E9EC;
   --lv-paper: #FAFAF8;
+  /* el gris claro de las secciones que alternan con el papel (QA 28-sep-2026): las secciones se
+     separan por FONDO, no por líneas, como las tarjetas del informe sobre su página */
+  --lv-gris-sec: #ECECEF;
   /* el plumón sobre el papel: tinta tenue. Era Signal Red (uso 11, 07-sep-2026) hasta que el
      destacado en rojo salió de la landing (27-sep-2026); sobre el material, el plumón es papel. */
   --lv-plumon: rgba(15, 15, 15, 0.12);
@@ -349,9 +352,10 @@
    centro y, en PC, el texto a la derecha. Misma distribución que la sección 2. */
 .lv-sreco { padding: var(--lv-sec) 0; min-height: 100svh; display: flex; flex-direction: column; }
 .lv-sreco > .lv-col { flex: 1; display: flex; flex-direction: column; }
-/* SEPARACIÓN CLARA con «La respuesta, en fácil» (QA 28-sep-2026): las dos secciones van sobre
-   papel y se leían como una sola. Una línea de tinta al ancho de la columna abre esta. */
-.lv-sreco > .lv-col::before { content: ""; display: block; height: 1px; background: var(--lv-ink); margin-bottom: 28px; }
+/* SEPARACIÓN POR FONDO (QA 28-sep-2026): las dos secciones que rotan van sobre papel y se leían
+   como una sola; la línea de tinta que las separaba chocaba con la barra de la rotación. Esta va
+   en gris claro: papel · gris · tinta · material. La barra de la rotación queda sola. */
+.lv-sreco { background: var(--lv-gris-sec); }
 .lv-sreco-grid-inner { flex: 1; display: flex; flex-direction: column; }
 .lv-sreco-grid-inner > .lv-idx { margin: 0 0 22px; }
 /* LA CARD ES LA DEL INFORME (27-sep-2026): `PosicionFranco` con su CSS (`DocTokens`, dentro de

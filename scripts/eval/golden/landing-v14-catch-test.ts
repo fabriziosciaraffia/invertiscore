@@ -28,6 +28,10 @@
 //       mismo pie de rotación (barra + pausa) en las dos secciones que rotan; «+40.000 deptos» en
 //       una sola pieza con la frase «toda la oferta comparable»; «Entrar» como píldora sobre el
 //       material.
+//  11 · LAS HOJAS MONTAN POR PORTAL (QA en el teléfono, 28-sep): la del campo de dirección y la de
+//       la muestra van al <body>, fuera de la sección, y el Modal mide la hoja contra el
+//       visualViewport. Las secciones se separan por FONDO (papel · gris), sin líneas: la barra de
+//       la rotación queda sola.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/landing-v14-catch-test.ts
 // ============================================================================
@@ -163,7 +167,16 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/pie=\{<a href="\/demo"/.test(wiz)) F("10 · «Ver un análisis de ejemplo» de la portada del wizard no lleva al demo");
   if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");
   if (/BarraProgreso/.test(resp) || /BarraProgreso|lv-pausa/.test(reco)) F("10 · una sección arma su propio pie en vez de PieRotacion");
-  if (!/\.lv-sreco > \.lv-col::before \{ content: ""; display: block; height: 1px; background: var\(--lv-ink\);/.test(css)) F("10 · falta la línea que separa «Lo que haría Franco» de «La respuesta, en fácil»");
+  // ── 11 · las hojas por portal; fondos, no líneas ──
+  const modal = sinComentarios(leer("src/components/analysis/hallazgos/vocabulario.tsx"));
+  const pf = sinComentarios(leer("src/components/analysis/shared/PosicionFranco.tsx"));
+  const hojaDir = sinComentarios(leer("src/components/entrada/HojaDireccion.tsx"));
+  if (!/portal\?: boolean;/.test(modal) || !/if \(portal && !esGlosa\) \{[\s\S]{0,400}?createPortal\([\s\S]{0,300}?document\.body,/.test(modal)) F("11 · el Modal no sabe montarse en portal al <body>");
+  if (!/vv\.addEventListener\("resize", colocar\)/.test(modal) || !/setProperty\("--v-hoja-h"/.test(modal)) F("11 · la hoja no se mide contra el visualViewport");
+  if ((pf.match(/portal=\{hojasEnPortal\}/g) ?? []).length !== 2) F("11 · PosicionFranco no pasa las dos hojas al portal");
+  if (!/className=""\s*\n\s*hojasEnPortal\s*\n\s*\/>/.test(reco)) F("11 · la card de la landing no pide las hojas en portal");
+  if (!/createPortal\([\s\S]{0,600}?document\.body,/.test(hojaDir)) F("11 · la hoja del campo de dirección no monta en portal al <body>");
+  if (/\.lv-sreco > \.lv-col::before/.test(css) || !/\.lv-sreco \{ background: var\(--lv-gris-sec\); \}/.test(css)) F("11 · las secciones no se separan por fondo (vuelve la línea o falta el gris)");
   if (!/className="hf-txt hf-pild">Entrar<\/Link>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
   const heroCss = leer("src/components/entrada/hero-entrada.css");
   if (!/\.he-mid \{ flex: 1; display: flex; flex-direction: column; justify-content: center;/.test(heroCss)) F("10 · el bloque principal del hero no va centrado en altura");
@@ -190,5 +203,6 @@ if (require.main === module) {
 // paga» · el cierre con fondo rojo · una textura roja · la matriz interactiva · abrir sin pausar.
 // 28-sep-2026 (QA): el hero de vuelta a «#respuesta» · el mapa con racimos · la muestra sin
 // `muestra` (el pop-up entero) · una sección con su propia barra · la cifra en mono · «Entrar»
-// como texto suelto.
+// como texto suelto. QA en el teléfono: la card sin `hojasEnPortal` · el Modal sin el listener del
+// visualViewport · vuelve la línea entre secciones.
 // ─────────────────────────────────────────────────────────────────────────────

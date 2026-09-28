@@ -23,6 +23,11 @@
 // quedaría en una card oculta. Los datos son los que le pasa `HeroLTR` (landing-vivo.ts,
 // `popup`). Buscar otro no tiene pop-up (`hayAjustesQueMostrar`), como en el informe.
 //
+// LAS HOJAS MONTAN POR PORTAL (QA 28-sep-2026): la muestra abre fuera de la sección, en el
+// <body>, como las hojas del informe y la del campo de dirección. Dentro de la sección, «fijo a
+// la pantalla» se volvía «fijo a la sección»: el velo no cubría el viewport y una franja de la
+// sección de tinta le tapaba el pie a la hoja.
+//
 // SIN SALTOS NI HUECOS AL ROTAR: las tres cards viven en la misma celda y se ve una; la celda
 // mide lo que la más alta y cada card se ESTIRA a esa altura (CSS), con el botón al pie: las tres
 // tienen la misma composición y la altura reservada no se lee como un hueco.
@@ -101,6 +106,7 @@ function Card({ ejemplo, conBoton = false }: { ejemplo: EjemploLanding; conBoton
       tipo="ltr"
       veredicto={veredicto}
       className=""
+      hojasEnPortal
     />
   );
 }
