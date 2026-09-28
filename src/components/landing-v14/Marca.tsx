@@ -57,18 +57,26 @@ export function haceCuanto(iso: string, ahora: Date): string {
   return `${d} ${d === 1 ? "día" : "días"}`;
 }
 
-/** Footer de la landing: fondo con las tonalidades del hero (receta v3 invertida
- *  y vertical), wordmark y links en papel, último análisis, el disclaimer canónico
- *  del sitio (el de `AppFooter`, importado, no copiado) con términos y privacidad,
- *  y la atribución del mapa (ODbL). */
-export function PieLanding({ ultimo, ahora }: { ultimo: DatosLanding["ultimoAnalisis"]; ahora: Date }) {
+/** El material del hero (la escala de la tríada con grano), para un bloque destacado. */
+export function FondoMaterial() {
   return (
-    <footer className="lv-footer">
-      <picture className="lv-fondo lv-fondo-footer">
-        <source media="(min-width: 768px)" srcSet="/landing/footer-d2x.webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/footer-m2x.webp" alt="" loading="lazy" decoding="async" />
-      </picture>
+    <picture className="lv-fondo lv-fondo-material">
+      <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
+      <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
+      {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+      <img src="/landing/hero-m2x.webp" alt="" loading="lazy" decoding="async" />
+    </picture>
+  );
+}
+
+/** Footer de la landing: sobre el material del hero, wordmark y links en papel, último
+ *  análisis, el disclaimer canónico del sitio (el de `AppFooter`, importado, no copiado) con
+ *  términos y privacidad, y la atribución del mapa (ODbL). En la landing el material lo pone
+ *  el envoltorio del cierre (`conFondo={false}`): cierre y pie son un solo bloque. */
+export function PieLanding({ ultimo, ahora, conFondo = true }: { ultimo: DatosLanding["ultimoAnalisis"]; ahora: Date; conFondo?: boolean }) {
+  return (
+    <footer className={`lv-footer${conFondo ? " lv-footer-solo" : ""}`}>
+      {conFondo && <FondoMaterial />}
       <div className="lv-col">
         <div className="lv-footer-fila">
           <Wordmark />

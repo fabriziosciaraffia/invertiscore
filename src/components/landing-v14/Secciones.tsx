@@ -24,7 +24,7 @@ import { LinkMedido } from "./LinkMedido";
 import { EV } from "./eventos";
 import { ContadorComparables, PoblamientoMapa } from "./Poblamiento";
 // Footer y glifo viven en `Marca.tsx`: los comparte /metodologia.
-import { PieLanding } from "./Marca";
+import { FondoMaterial, PieLanding } from "./Marca";
 
 // ===== 1 · HERO =====
 // El de la entrada, con la composición de la landing. La cabecera (el header único) la pasa
@@ -90,12 +90,12 @@ export function PorQueCreerle() {
             <MapaSantiago />
           </div>
           <div className="lv-s3-abajo">
-            {/* los tres numerales recorren la tríada (azul → ciruela → rojo) leyendo el
-                token por data-verdict: la misma escala del hero y del mapa */}
+            {/* los numerales en papel: recorrían la tríada, y el 03 quedaba destacado en rojo
+                sólido (27-sep-2026: el rojo queda para avanzar y para la plata que sale) */}
             <ol className="lv-proc">
-              <li><span className="lv-n" data-verdict="COMPRAR">01</span><p>Un modelo financiero <b>proyecta qué pasa con tu inversión</b> en el tiempo.</p></li>
-              <li><span className="lv-n" data-verdict="AJUSTA SUPUESTOS">02</span><p>Franco <b>lo traduce a fácil:</b> un veredicto, una posición y las cifras que tienes que ver.</p></li>
-              <li><span className="lv-n" data-verdict="BUSCAR OTRA">03</span><p>Y te dice qué hacer: <b>a qué precio conviene, hasta dónde negociar</b> y cuándo buscar otro.</p></li>
+              <li><span className="lv-n">01</span><p>Un modelo financiero <b>proyecta qué pasa con tu inversión</b> en el tiempo.</p></li>
+              <li><span className="lv-n">02</span><p>Franco <b>lo traduce a fácil:</b> un veredicto, una posición y las cifras que tienes que ver.</p></li>
+              <li><span className="lv-n">03</span><p>Y te dice qué hacer: <b>a qué precio conviene, hasta dónde negociar</b> y cuándo buscar otro.</p></li>
             </ol>
             <p className="lv-sesgo"><span>Sin sesgo:</span> <mark>Te dice que no cuando es no.</mark></p>
             <Link className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></Link>
@@ -111,17 +111,13 @@ export function PorQueCreerle() {
 export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
     <div className="lv-cierre-wrap">
-      {/* Banda inferior de la receta v2 (papel → rojo), anclada al FINAL de la página
-          y con máscara en el borde: el cierre arranca en papel para que el título caiga
-          sobre claro, y el rojo sigue hasta el footer sin franja de papel al final
-          (ritmo: hero oscuro · papel · tinta · papel → rojo). */}
-      <picture className="lv-fondo lv-fondo-cierre">
-        <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
-      </picture>
+      {/* DESTACADO SÍ, ROJO NO (27-sep-2026, decisión de Fabrizio): la banda roja del cierre
+          pasa al MATERIAL DEL HERO —el degradado de la tríada con grano, texto en papel, como el
+          header—, y cubre el cierre y el pie de una vez. El rojo queda para el botón de avanzar y
+          para la plata que sale. Ritmo: hero material · papel · papel · tinta · material. */}
+      <FondoMaterial />
       {/* Igual que el hero: título + precio + "Ver planes" arriba con su aire; el
-          bloque [campo + sin dirección] baja como unidad sobre la banda roja. */}
+          bloque [campo + sin dirección] baja como unidad. */}
       <SeccionVista n={5} className="lv-s4">
         <div className="lv-col lv-s4-col">
           <div className="lv-cierre-izq">
@@ -143,7 +139,7 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
           (--peso=0.15,0.85 --rango=0,0.95), arranca en el rojo pleno donde termina la
           banda del cierre y baja hasta el azul oscuro con que abrió la página. Vive en
           Marca.tsx porque /metodologia usa el mismo. */}
-      <PieLanding ultimo={datos.ultimoAnalisis} ahora={ahora} />
+      <PieLanding ultimo={datos.ultimoAnalisis} ahora={ahora} conFondo={false} />
     </div>
   );
 }
