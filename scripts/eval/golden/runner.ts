@@ -67,6 +67,7 @@ import { runLandingV14Tier } from "./landing-v14-catch-test";
 import { runLandingRendimientoTier } from "./landing-rendimiento-catch-test";
 import { runMedicionTier } from "./medicion-catch-test";
 import { runAffordanceTier } from "./affordance-catch-test";
+import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
@@ -345,6 +346,9 @@ function printSeed(r: SeedReport) {
   // Tier AFFORDANCE (28-sep-2026, 0 tokens): lo tocable se ve tocable (la píldora del hero, las
   // pestañas del demo) y lo que tarda se ve cargando (EnlaceCarga + BarraCarga). En rojo por mutación.
   totalHard += runAffordanceTier().hard;
+  // Tier LO-QUE-SIGUE (28-sep-2026, 0 tokens): las dos ofertas del primer informe anónimo. En rojo
+  // por mutación.
+  totalHard += runLoQueSigueTier().hard;
   // Tier HEADER-ÚNICO (27-sep-2026, 0 tokens): un solo header en el sitio, la banda derivada de los
   // tokens de la tríada, el botón en tinta, sin mono, las siete decisiones medidas en el HTML y la
   // identidad del informe leída de la portada. Verificado en rojo por mutación.

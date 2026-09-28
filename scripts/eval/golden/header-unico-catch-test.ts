@@ -152,12 +152,15 @@ export function runHeaderUnicoTier(): { hard: number } {
   const pie = leer("src/components/chrome/AppFooter.tsx");
   if (!/\{ href: "\/metodologia", rotulo: "Cómo calcula" \}/.test(pie) || !/\{ href: "\/comunas", rotulo: "Comunas" \}/.test(pie) || !/\{ href: "\/pricing", rotulo: "Planes" \}/.test(pie)) F("6.1 · el pie no lleva los enlaces largos");
   // 2 · un solo botón principal por pantalla; el wizard sin botón
-  for (const [h, n] of [[sinSesion, "sin sesión"], [conSesion, "con sesión"], [compartido, "compartido"], [anonimo, "dueño sin cuenta"]] as const) {
+  // «Lo que sigue» (28-sep-2026): el dueño sin cuenta ya no lleva botón principal en el header —el
+  // registro vive en el banner después de la card y en su barra fija—; queda «Entrar».
+  for (const [h, n] of [[sinSesion, "sin sesión"], [conSesion, "con sesión"], [compartido, "compartido"]] as const) {
     if (cuenta(h) !== 1) F(`6.2 · ${n}: el header no lleva exactamente un botón principal (${cuenta(h)})`);
   }
   if (cuenta(wizard) !== 0 || cuenta(wizardCon) !== 0) F("6.2 · el wizard lleva botón en el header: el principal de la pantalla es avanzar");
   if (/Analizar inversión/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("6.2 · vuelve «Analizar inversión →» al dashboard: dos botones principales");
-  if (!/>Analizar el mío</.test(compartido) || !/>Guardarlo</.test(anonimo) || !/href="\/register\?next=%2Fanalisis%2Fx"/.test(anonimo)) F("6.2 · el informe compartido o el del dueño sin cuenta perdió su botón");
+  if (!/>Analizar el mío</.test(compartido)) F("6.2 · el informe compartido perdió su botón");
+  if (cuenta(anonimo) !== 0 || /Guardarlo/.test(anonimo) || !/>Entrar</.test(anonimo)) F("6.2 · el dueño sin cuenta tiene que ver solo «Entrar» en el header: el registro vive en el banner de «Lo que sigue»");
   // 3 · con sesión el tema va al menú de cuenta
   if (/aria-label="Cambiar a modo/.test(conSesion)) F("6.3 · con sesión, el tema sigue en la barra (va al menú de cuenta)");
   if (!/aria-label="Cambiar a modo/.test(sinSesion)) F("6.3 · sin sesión, el tema no queda como ícono");
