@@ -27,10 +27,11 @@ const FUENTES_PRECARGA = [
   "jetbrains-mono-normal-latin.woff2",
 ] as const;
 
+// Sin `maximumScale` (28-sep-2026): el zoom con los dedos queda permitido en todo el sitio; con
+// `maximum-scale=1` Lighthouse lo marcaba como falla de accesibilidad y quien amplía para leer no podía.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export const metadata: Metadata = {
