@@ -52,6 +52,12 @@ export function registrarInformeVisto(args: {
   modalidad: "ltr" | "str" | "ambas";
   esperaMs: number | null;
   esOwner?: boolean;
+  /** Lo que traía `analysis_viewed` (retirado el 28-sep-2026): un informe, un evento. */
+  comuna?: string | null;
+  score?: number | null;
+  veredicto?: string | null;
+  accessLevel?: string;
+  esCompartido?: boolean;
 }): void {
   if (args.ids.length === 0) return; // demo sin analysisId: nada que registrar
 
@@ -64,6 +70,11 @@ export function registrarInformeVisto(args: {
       modalidad: args.modalidad,
       espera_ms: args.esperaMs,
       ...(args.esOwner !== undefined ? { es_owner: args.esOwner } : {}),
+      ...(args.comuna !== undefined ? { comuna: args.comuna } : {}),
+      ...(args.score !== undefined ? { score: args.score } : {}),
+      ...(args.veredicto !== undefined ? { veredicto: args.veredicto } : {}),
+      ...(args.accessLevel !== undefined ? { access_level: args.accessLevel } : {}),
+      ...(args.esCompartido !== undefined ? { es_compartido: args.esCompartido } : {}),
     });
   } catch {
     /* PostHog sin inicializar — no es un problema */

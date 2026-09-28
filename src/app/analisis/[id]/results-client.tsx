@@ -136,27 +136,8 @@ export function PremiumResults({
     } catch { /* ignore */ }
   }, []);
 
-  // PostHog: track analysis view
-  useEffect(() => {
-    const veredicto = readVeredicto(results);
-    posthog?.capture('analysis_viewed', {
-      analysis_id: analysisId,
-      comuna,
-      score,
-      veredicto,
-      // Commit E.2 · 2026-05-13 — flag deprecado, siempre false. Antes filtraba
-      // análisis donde `francoVerdict !== engineSignal`; tras colapsar a un
-      // solo `veredicto`, la divergencia ya no existe en producción. Se mantiene
-      // el campo en el event schema para continuidad de queries históricas;
-      // queries nuevas deben ignorarlo. Eliminar en una iteración posterior
-      // cuando PostHog haya rotado el período de retención.
-      francoOverridesEngine: false,
-      is_owner: !isSharedView && !isSharedLink,
-      is_shared_view: isSharedView || isSharedLink,
-      access_level: accessLevel,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // `analysis_viewed` se retiró el 28-sep-2026 (auditoría de la medición): duplicaba a
+  // `informe_visto`, que ahora lleva comuna, score, veredicto y access_level (abajo).
 
   // LA IA SALIÓ DEL INFORME (25-sep-2026, decisión de Fabrizio): la página no espera a la
   // prosa ni la pide. Sin sondeo de /ai-status, sin regeneración al abrir, sin rescate. La
@@ -175,6 +156,11 @@ export function PremiumResults({
       modalidad: "ltr",
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView && !isSharedLink,
+      comuna,
+      score,
+      veredicto: readVeredicto(results),
+      accessLevel,
+      esCompartido: isSharedView || isSharedLink,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisId, posthog, isSharedView, isSharedLink]);

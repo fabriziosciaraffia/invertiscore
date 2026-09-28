@@ -159,8 +159,11 @@ export function useStepTelemetry(opts: {
    *  `entrada: "landing" | "wizard"`, para separar a quien llegó desde el hero de la landing
    *  —que arranca en `tipo` sin ver `dir`— de quien entró por la portada del wizard). */
   extra?: Record<string, unknown>;
+  /** `false` mientras una llegada desde la landing está por aplicarse: el nodo inicial (`dir`) no
+   *  cuenta como paso —nadie lo vio— y no emite `wizard4_step_left` ni su sonda (28-sep-2026). */
+  activo?: boolean;
 }): void {
-  const { posthog, node, dir, answers, completed, contenedorRef, terminadoRef } = opts;
+  const { posthog, node, dir, answers, completed, contenedorRef, terminadoRef, activo = true } = opts;
   const extraRef = useRef(opts.extra);
   extraRef.current = opts.extra;
 
@@ -245,6 +248,7 @@ export function useStepTelemetry(opts: {
   // El guard por `node` cubre el doble render de StrictMode (la segunda pasada
   // ve el mismo nodo y no re-emite).
   useEffect(() => {
+    if (!activo) return;
     const prev = pasoRef.current;
     if (prev && prev.node === node) return;
     if (prev) emitir(prev, dirRef.current === "back" ? "retrocedio" : "avanzo");
@@ -256,7 +260,7 @@ export function useStepTelemetry(opts: {
     };
     rechazosPasoActual = 0;
     nodoVigente = node;
-  }, [node, emitir]);
+  }, [node, emitir, activo]);
 
   // ── Interacciones del paso ──
   // El contenedor lleva key={node}, así que se remonta por paso y este efecto

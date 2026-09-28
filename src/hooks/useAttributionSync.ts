@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { createClient } from "@/lib/supabase/client";
-import { consumirOAuthPendiente } from "@/lib/auth-analytics";
+import { emitirAuthCompletada, consumirOAuthPendiente } from "@/lib/auth-analytics";
 import {
   ATTRIBUTION_SYNCED_KEY,
   UTM_KEYS,
@@ -122,16 +122,7 @@ export function useAttributionSync(): void {
         // ── Auth por OAuth: el evento que la pantalla no pudo emitir ──
         // Va DESPUÉS del identify a propósito: así el evento cae en la persona
         // ya atada al user_id y no en la anónima que venía de antes.
-        if (oauthPendiente) {
-          try {
-            posthog?.capture(
-              oauthPendiente === "signup" ? "signup_completed" : "login_completed",
-              { method: "google" },
-            );
-          } catch {
-            /* mismo trato que el identify: sin PostHog no pasa nada */
-          }
-        }
+        if (oauthPendiente) emitirAuthCompletada(posthog, oauthPendiente, "google");
 
         // ── PostHog: marcar cuentas internas (Goal B) ──
         // El identify de arriba NO espera este check: primero se ata la

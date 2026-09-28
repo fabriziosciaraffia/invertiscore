@@ -46,7 +46,10 @@ const TIMEOUT_MS = 15_000;
  * arranca en `tipo` —o en el mapa— y nunca ve `dir`: se lo cuenta por `entrada = 'landing'`, que viaja
  * en todos los eventos de paso. El hito «entrada nueva» de `admin-funnel-hitos.ts` parte la serie.
  */
-const INICIO_WIZARD = "(properties.node = 'dir' OR properties.entrada = 'landing')";
+// 28-sep-2026: `dir` solo cuenta para quien entró por la portada del wizard; quien llega desde la
+// landing cuenta por el mapa. El `dir` fantasma que el wizard emitía en cada llegada (y que ya no
+// emite) queda fuera aunque siga en los datos viejos.
+const INICIO_WIZARD = "(properties.node = 'dirMapa' OR (properties.node = 'dir' AND coalesce(properties.entrada, '') != 'landing'))";
 
 export interface PasosPostHog {
   /** Sesiones únicas con pageview en el período. null = PostHog no respondió. */

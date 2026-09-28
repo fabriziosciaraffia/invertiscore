@@ -13,6 +13,9 @@ export const EV = {
   sinDireccion: "landing_sin_direccion",
   /** Pausar / seguir la rotación desde «Lo que haría Franco» (`accion`, `ejemplo`). */
   rotacion: "landing_rotacion",
+  /** Eligió una dirección en el campo (`ubicacion`, `via`, `precision`, `cubierta`): el paso del
+   *  hero que no tenía evento (auditoría 28-sep-2026); lo que sigue lo mide el wizard. */
+  direccionElegida: "landing_direccion_elegida",
 } as const;
 
 /** Dónde vive el campo de dirección. `metodologia` es el CTA del interior:

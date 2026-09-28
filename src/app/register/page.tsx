@@ -9,7 +9,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
-import { marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
+import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function RegisterPage() {
       return;
     }
 
-    posthog?.capture("signup_completed", { method: "email" });
+    emitirAuthCompletada(posthog, "signup", "email");
 
     // Con "Confirm email" activado, signUp NO crea sesión: data.session es
     // null hasta que el usuario confirme desde el correo. En ese caso NO

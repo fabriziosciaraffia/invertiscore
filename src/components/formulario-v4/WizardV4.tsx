@@ -140,10 +140,16 @@ export function WizardV4({
   // «empezar de cero» descartan el borrador y aplican la llegada.
   const hayLlegada = !!direccionInicial || !!modoInicial;
   const llegadaAplicada = useRef(false);
+  // EL `dir` FANTASMA (auditoría 28-sep-2026): con una llegada pendiente el wizard monta en `dir` y
+  // un instante después la llegada lo desvía al mapa. Hasta que la llegada se aplica, ni
+  // `wizard4_step_viewed` ni la telemetría de paso miran el nodo: el primer paso medido es el que
+  // el usuario ve. Sin llegada, listo desde el montaje.
+  const [llegadaLista, setLlegadaLista] = useState(!hayLlegada);
   const [autoCamino, setAutoCamino] = useState<CaminoSinDireccion | null>(null);
   useEffect(() => {
     if (!hayLlegada || llegadaAplicada.current || !w.inicializado || w.draftPendiente) return;
     llegadaAplicada.current = true;
+    setLlegadaLista(true);
     if (direccionInicial) {
       const d = direccionInicial;
       const destino = destinoDeLlegada(d);
@@ -166,7 +172,7 @@ export function WizardV4({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hayLlegada, w.inicializado, w.draftPendiente]);
 
-  const retomarBorrador = () => { llegadaAplicada.current = true; w.resumeDraft(); };
+  const retomarBorrador = () => { llegadaAplicada.current = true; setLlegadaLista(true); w.resumeDraft(); };
 
   // ── EL BORRADOR SOLO CUANDO VALE LA PENA (QA en el iPhone, 28-sep-2026) ──────────
   // Antes, cualquier borrador pendiente abría «Análisis a medias» apenas llegaba otra dirección.
@@ -215,14 +221,23 @@ export function WizardV4({
     </div>
   ) : null;
 
-  // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode).
+  // La puerta de entrada viaja en TODOS los eventos de la sesión (informe, registro, pago), no solo
+  // en los del wizard: súper propiedad de sesión (28-sep-2026).
+  useEffect(() => {
+    try { posthog?.register_for_session({ entrada }); } catch { /* sin PostHog no pasa nada */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posthog]);
+
+  // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode), y solo cuando la
+  // llegada ya se aplicó: el `dir` que nadie ve no cuenta.
   const lastStep = useRef<NodeId | null>(null);
   useEffect(() => {
+    if (!llegadaLista) return;
     if (lastStep.current === nav.current) return;
     lastStep.current = nav.current;
     trackWizard(posthog, "wizard4_step_viewed", { node: nav.current, entrada });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nav.current, posthog]);
+  }, [nav.current, posthog, llegadaLista]);
 
   // CADA PASO ARRANCA ARRIBA (QA en el iPhone, 28-sep-2026): al cambiar de paso, en los dos sentidos,
   // la página vuelve al inicio del contenido, justo bajo el header pegado. Sin esto el paso nuevo
@@ -254,6 +269,7 @@ export function WizardV4({
     contenedorRef: screenRef,
     terminadoRef: terminatedRef,
     extra: { entrada },
+    activo: llegadaLista,
   });
 
   // Meta Pixel · StartFreeAnalysis (custom, browser-only): "usuario elegible

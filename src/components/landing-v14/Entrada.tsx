@@ -41,6 +41,7 @@ function useAccionesCampo(ubicacion: UbicacionCampo) {
     ocupado: navegando,
     mantenerHojaAlEntregar: true,
     onDireccion: (sel: SeleccionDireccion) => {
+      posthog?.capture(EV.direccionElegida, { ubicacion, via: sel.via, precision: sel.precision, cubierta: sel.cubierta });
       setNavegando("escribir");
       router.push(urlDeLlegada(sel, origen));
     },

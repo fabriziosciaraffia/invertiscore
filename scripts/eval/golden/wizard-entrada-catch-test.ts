@@ -101,7 +101,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   // ACTA 27-sep-2026: la llegada ya no reparte a `tipo`; con cobertura va al mapa con la precisión que trae.
   if (!/const destino = destinoDeLlegada\(d\);[\s\S]{0,300}?if \(destino === "mapa"\) \{\s*\n\s*const numero = d\.precision === "numero";\s*\n\s*w\.goDetour\("dirMapa", \{ \.\.\.base, direccionConfirmada: undefined, lat: d\.lat, lng: d\.lng, ubicacionPrecision: numero \? "numero" : "calle", mapaOrigen: numero \? "numero" : "sin_numero" \}\);\s*\n\s*\} else \{/.test(shell)) F("1 · la llegada no reparte entre el mapa y la portada");
   if (/w\.answer\("dir"/.test(shell)) F("1 · la llegada confirma una dirección sin pasar por el mapa");
-  if (!/const retomarBorrador = \(\) => \{ llegadaAplicada\.current = true; w\.resumeDraft\(\); \};/.test(shell)) F("1 · retomar el borrador no descarta la llegada: se aplicaría encima");
+  if (!/const retomarBorrador = \(\) => \{ llegadaAplicada\.current = true; setLlegadaLista\(true\); w\.resumeDraft\(\); \};/.test(shell)) F("1 · retomar el borrador no descarta la llegada: se aplicaría encima");
   if (!/Seguir con \{calle\(direccionInicial\?\.direccion\)\}/.test(shell) || !/Retomar \{calle\(w\.draftPendiente\?\.answers\?\.direccion\)\}/.test(shell)) F("1 · con un borrador de otra dirección la portada no pregunta seguir o retomar");
   const pagina = sinComentarios(leer("src/app/analisis/nuevo-v4/page.tsx"));
   if (!/entrada=\{direccionInicial \|\| modoInicial \? "landing" : "wizard"\}/.test(pagina)) F("1 · la página no marca por qué puerta entró la sesión");
@@ -277,8 +277,9 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const hito = HITOS_FUNNEL.find((h) => h.etiqueta === "entrada nueva");
   if (!hito || !hito.invalida.includes("visitaWizard") || !hito.invalida.includes("wizardAnalisis")) F("5 · el embudo no tiene el hito de la entrada nueva");
   const ph = leer("src/lib/posthog-admin.ts");
-  if (!/const INICIO_WIZARD = "\(properties\.node = 'dir' OR properties\.entrada = 'landing'\)";/.test(ph) || (ph.match(/\$\{INICIO_WIZARD\}/g) ?? []).length !== 3) F("5 · el embudo no cuenta a quien llega desde la landing");
-  if (/properties\.node = 'dir' AND/.test(ph)) F("5 · queda una consulta del embudo que solo cuenta `dir`");
+  // 28-sep-2026: sin el `dir` fantasma; la landing cuenta por el mapa.
+  if (!/const INICIO_WIZARD = "\(properties\.node = 'dirMapa' OR \(properties\.node = 'dir' AND coalesce\(properties\.entrada, ''\) != 'landing'\)\)";/.test(ph) || (ph.match(/\$\{INICIO_WIZARD\}/g) ?? []).length !== 3) F("5 · el embudo no cuenta a quien llega desde la landing (o vuelve a contar el dir fantasma)");
+  if (/properties\.node = 'dir' AND/.test(ph.replace(/const INICIO_WIZARD = "[^"]*";/, ""))) F("5 · queda una consulta del embudo que solo cuenta `dir`");
 
   // ── 6 · LA GEOCODIFICACIÓN INVERSA ─────────────────────────────────────────
   const calleConNumero = { types: ["street_address"], formatted_address: "Av. Irarrázaval 2098, Ñuñoa, Región Metropolitana, Chile", address_components: [{ long_name: "2098", types: ["street_number"] }, { long_name: "Avenida Irarrázaval", types: ["route"] }, { long_name: "Ñuñoa", types: ["locality", "political"] }], geometry: { location: { lat: -33.4535, lng: -70.6091 } } };

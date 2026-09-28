@@ -5,7 +5,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
+import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 import FrancoLogo from "@/components/franco-logo";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -68,7 +68,7 @@ export default function LoginPage() {
     // Espejo de `signup_completed`: sin este evento, el usuario que ya tiene
     // cuenta y vuelve al gate del wizard a loguearse era invisible en el funnel
     // — se veía la salida (`wizard4_analysis_created`) sin la entrada.
-    posthog?.capture("login_completed", { method: "email" });
+    emitirAuthCompletada(posthog, "login", "email");
 
     // Claim de análisis anónimos (F2-2): ANTES del push — el destino (dashboard
     // o el análisis vía ?next=) debe nacer con la fila ya adoptada. Fail-soft:

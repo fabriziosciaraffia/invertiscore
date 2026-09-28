@@ -40,6 +40,19 @@ const OAUTH_PENDIENTE_KEY = "franco_oauth_pendiente";
 const VENTANA_MS = 10 * 60 * 1000;
 
 export type AuthTipo = "login" | "signup";
+export type AuthMetodo = "email" | "google";
+
+/**
+ * `signup_completed` / `login_completed` salen de ACÁ, vengan por email (las pantallas) o por Google
+ * (`useAttributionSync`, cuando vuelve del callback). Un solo nombre, una sola forma (28-sep-2026).
+ */
+export function emitirAuthCompletada(posthog: PostHog | null | undefined, tipo: AuthTipo, method: AuthMetodo): void {
+  try {
+    posthog?.capture(tipo === "signup" ? "signup_completed" : "login_completed", { method });
+  } catch {
+    /* sin PostHog no pasa nada */
+  }
+}
 
 interface MarcaOAuth {
   tipo: AuthTipo;
