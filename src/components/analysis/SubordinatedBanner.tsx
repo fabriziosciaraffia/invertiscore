@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { ArrowLeft } from "lucide-react";
 
 /**
@@ -28,13 +28,13 @@ export function SubordinatedBanner({
           Vívelo desde el comparativo — ahí decides qué modalidad conviene.
         </p>
       </div>
-      <Link
+      <EnlaceCarga
         href={href}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--franco-border)] px-3.5 py-2 font-body text-[13px] font-medium text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)]"
       >
         <ArrowLeft size={14} />
         Volver a la comparativa
-      </Link>
+      </EnlaceCarga>
     </div>
   );
 }

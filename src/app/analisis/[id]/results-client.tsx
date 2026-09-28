@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
@@ -559,9 +560,9 @@ export function PremiumResults({
       {isSharedView && (
         <div className="bg-[var(--franco-card)] text-[var(--franco-text)] rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-[var(--franco-border)]">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
-          <a href="/analisis/nuevo-v4" className="font-body text-sm font-medium text-signal-red hover:underline shrink-0">
+          <EnlaceCarga href="/analisis/nuevo-v4" className="font-body text-sm font-medium text-signal-red hover:underline shrink-0">
             Analizar mi propio depto →
-          </a>
+          </EnlaceCarga>
         </div>
       )}
       {/* Banner: comuna fuera del Gran Santiago */}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -132,12 +132,12 @@ export default async function CuentaPage() {
                   </p>
                 )}
                 <div className="mt-4">
-                  <Link
+                  <EnlaceCarga
                     href="/pricing"
                     className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Reactivar suscripción →
-                  </Link>
+                  </EnlaceCarga>
                 </div>
               </>
             )}
@@ -149,12 +149,12 @@ export default async function CuentaPage() {
                   Tu último cobro no se procesó. Mantienes acceso hasta el {fmtDate(graceEndsAt)}.
                 </p>
                 <div className="mt-4">
-                  <Link
+                  <EnlaceCarga
                     href="/pricing"
                     className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Actualiza tu método de pago →
-                  </Link>
+                  </EnlaceCarga>
                 </div>
               </>
             )}
@@ -169,12 +169,12 @@ export default async function CuentaPage() {
                   Cada análisis que generes usa 1 de tu saldo.
                 </p>
                 <div className="mt-4">
-                  <Link
+                  <EnlaceCarga
                     href="/pricing"
                     className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Comprar más análisis →
-                  </Link>
+                  </EnlaceCarga>
                 </div>
               </>
             )}
@@ -186,12 +186,12 @@ export default async function CuentaPage() {
                   No tienes análisis ni suscripción activa
                 </p>
                 <div className="mt-4">
-                  <Link
+                  <EnlaceCarga
                     href="/pricing"
                     className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Ver planes →
-                  </Link>
+                  </EnlaceCarga>
                 </div>
               </>
             )}
@@ -205,9 +205,9 @@ export default async function CuentaPage() {
             {payments.length === 0 ? (
               <p className="font-body text-sm text-[var(--franco-text-muted)] py-2">
                 Todavía no has comprado nada.{" "}
-                <Link href="/analisis/nuevo-v4" className="text-signal-red hover:underline">
+                <EnlaceCarga href="/analisis/nuevo-v4" className="text-signal-red hover:underline">
                   Analiza tu primer departamento →
-                </Link>
+                </EnlaceCarga>
               </p>
             ) : (
               <table className="w-full text-sm">

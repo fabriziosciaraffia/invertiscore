@@ -8,7 +8,7 @@
  * el botón. Vocabulario de UI: «el análisis», nunca «créditos».
  */
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { listaVeredictos } from "@/lib/veredicto-etiqueta";
 
 const BLOQUES = [
@@ -47,20 +47,20 @@ export function EmptyState() {
         Renta larga, renta corta o las dos comparadas.
       </p>
 
-      <Link
+      <EnlaceCarga
         href="/analisis/nuevo-v4"
         className="inline-block rounded-lg bg-signal-red px-7 py-3 font-body text-sm font-medium text-white no-underline shadow-[0_2px_12px_color-mix(in_srgb,var(--signal-red)_20%,transparent)]"
       >
         Analizar tu primera inversión →
-      </Link>
+      </EnlaceCarga>
 
-      <Link
+      <EnlaceCarga
         // El demo público, en su pestaña de renta larga (`src/lib/demo.ts`).
         href="/demo"
         className="mt-3.5 block font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
       >
         O mira un análisis de ejemplo primero →
-      </Link>
+      </EnlaceCarga>
 
       <div className="mx-auto mt-10 grid max-w-[700px] grid-cols-1 gap-2.5 text-left sm:grid-cols-3">
         {BLOQUES.map((b) => (

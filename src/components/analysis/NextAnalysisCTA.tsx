@@ -25,7 +25,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { ArrowRight } from "lucide-react";
 import { usePostHog } from "@/lib/posthog-react";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
@@ -67,9 +67,9 @@ interface Accion {
 
 function resolverAccion(state: WalletState, registerNext?: string): Accion {
   const linkPricing = (
-    <Link href="/pricing" className="underline underline-offset-2 hover:text-[var(--franco-text)] transition-colors">
+    <EnlaceCarga href="/pricing" className="underline underline-offset-2 hover:text-[var(--franco-text)] transition-colors">
       packs y plan mensual
-    </Link>
+    </EnlaceCarga>
   );
   switch (state) {
     case "anon_owner":
@@ -123,7 +123,7 @@ export function NextAnalysisCTA(p: NextAnalysisCTAProps) {
         mirando también se puede medir.
       </p>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
-        <Link
+        <EnlaceCarga
           href={accion.href}
           onClick={() =>
             posthog?.capture("next_cta_clicked", {
@@ -137,7 +137,7 @@ export function NextAnalysisCTA(p: NextAnalysisCTAProps) {
         >
           {accion.label}
           <ArrowRight size={14} />
-        </Link>
+        </EnlaceCarga>
         {accion.secundaria && (
           <p className="font-body text-[12.5px] text-[var(--franco-text-muted)] leading-snug m-0">
             {accion.secundaria}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { fechaCortaCL, TZ_CHILE } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -215,7 +215,7 @@ export default async function PerfilPage() {
                 <p className="text-sm text-[var(--franco-text-secondary)]">{planDescription}</p>
               </div>
               {planCtaText && (
-                <Link href={planCtaHref} className="shrink-0">
+                <EnlaceCarga href={planCtaHref} className="shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
@@ -223,7 +223,7 @@ export default async function PerfilPage() {
                   >
                     {planCtaText}
                   </Button>
-                </Link>
+                </EnlaceCarga>
               )}
             </div>
           </CardContent>
@@ -267,9 +267,9 @@ export default async function PerfilPage() {
                     <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--franco-border)] p-3">
                       <div className="min-w-0 flex-1">
                         {analysis ? (
-                          <Link href={`/analisis/${analysis.id}`} className="block truncate text-sm font-medium text-[var(--franco-text)] hover:underline">
+                          <EnlaceCarga href={`/analisis/${analysis.id}`} className="block truncate text-sm font-medium text-[var(--franco-text)] hover:underline">
                             {analysis.nombre}
-                          </Link>
+                          </EnlaceCarga>
                         ) : (
                           <div className="text-sm font-medium text-[var(--franco-text)]">{fmtProductName(p.product)}</div>
                         )}

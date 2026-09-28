@@ -6,14 +6,14 @@
  * propiedad opcional. Mobile: la misma información como lista compacta.
  *
  * Todo el estado vive en la URL (`?q=&mod=&v=&sort=&dir=&page=&group=&open=`).
- * Los chips, los headers de columna y los chevrons de grupo son <Link>, así que
+ * Los chips, los headers de columna y los chevrons de grupo son <EnlaceCarga>, así que
  * filtran, ordenan y expanden sin JavaScript; lo único que necesita cliente es
  * el input de búsqueda (debounce) y el borrado.
  *
  * Sin checkboxes ni barra flotante de comparar: murieron con el dashboard viejo.
  */
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { AnalisisDashboardRow, DashboardStats, DashboardSortKey } from "@/lib/dashboard-query";
 import type { Veredicto } from "@/lib/types";
 import type { ItemArchivo } from "./agrupar";
@@ -102,7 +102,7 @@ function Chip({ href, activo, children, rojo = false }: {
   const base = "whitespace-nowrap rounded-[7px] border px-2.5 py-1 font-body text-xs no-underline transition-colors";
   if (activo && rojo) {
     return (
-      <Link
+      <EnlaceCarga
         href={href}
         className={`${base} font-medium`}
         style={{
@@ -113,11 +113,11 @@ function Chip({ href, activo, children, rojo = false }: {
         }}
       >
         {children}
-      </Link>
+      </EnlaceCarga>
     );
   }
   return (
-    <Link
+    <EnlaceCarga
       href={href}
       className={`${base} ${
         activo
@@ -126,7 +126,7 @@ function Chip({ href, activo, children, rojo = false }: {
       }`}
     >
       {children}
-    </Link>
+    </EnlaceCarga>
   );
 }
 
@@ -149,12 +149,12 @@ function Th({
   if (!sortKey) return <th scope="col" className={cls}>{label}</th>;
   return (
     <th scope="col" className={cls} aria-sort={activo ? (params.dir === "asc" ? "ascending" : "descending") : "none"}>
-      <Link href={sortHref(params, sortKey)} className="whitespace-nowrap text-inherit no-underline hover:text-[var(--franco-text)]">
+      <EnlaceCarga href={sortHref(params, sortKey)} className="whitespace-nowrap text-inherit no-underline hover:text-[var(--franco-text)]">
         {label}
         <span className={`ml-1 text-[8px] ${activo ? "" : "opacity-0"}`} aria-hidden="true">
           {activo && params.dir === "asc" ? "↑" : "↓"}
         </span>
-      </Link>
+      </EnlaceCarga>
     </th>
   );
 }
@@ -224,12 +224,12 @@ function FilaAnalisis({
                   Lo único que se muestra es el precio, y solo cuando difiere
                   entre hermanas — ahí sí es lo que las distingue. */}
               {mostrarPrecio && (
-                <Link
+                <EnlaceCarga
                   href={abrir}
                   className="truncate font-mono text-xs text-[var(--franco-text-secondary)] no-underline"
                 >
                   {fmtUF(Number(row.precio))}
-                </Link>
+                </EnlaceCarga>
               )}
               {vigente && (
                 <span className="shrink-0 rounded border border-[var(--franco-border-hover)] px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.06em] text-[var(--franco-text-muted)]">
@@ -239,12 +239,12 @@ function FilaAnalisis({
             </>
           ) : (
             <>
-              <Link
+              <EnlaceCarga
                 href={abrir}
                 className="truncate font-heading text-[13.5px] font-bold tracking-[-0.01em] text-[var(--franco-text)] no-underline"
               >
                 {displayDireccion(row)}
-              </Link>
+              </EnlaceCarga>
               {sinDireccion(row) && (
                 <span className="shrink-0 font-mono text-[8px] tracking-[0.05em] text-[var(--franco-text-muted)]">
                   SIN DIRECCIÓN
@@ -265,7 +265,7 @@ function FilaAnalisis({
             link de la dirección: esa celda trunca (overflow hidden) y
             recortaría el overlay a su propio ancho. aria-hidden porque el link
             accesible es el de la primera celda. */}
-        <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
+        <EnlaceCarga href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
         <RowActions id={row.id} groupId={row.ambas_group_id} hrefAbrir={abrir} hrefPdf={hrefPdf()} />
       </td>
     </tr>
@@ -290,7 +290,7 @@ function FilaGrupo({
   return (
     <tr className="border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))]">
       <td colSpan={4} className="h-11 px-2.5 align-middle">
-        <Link
+        <EnlaceCarga
           href={toggleGrupoHref(params, grupo.key)}
           aria-expanded={abierto}
           className="flex min-w-0 items-center gap-2.5 no-underline"
@@ -309,7 +309,7 @@ function FilaGrupo({
             {v.comuna} · mejor {grupo.mejorScore}
             {grupo.tipologiasDistintas > 1 && ` · ${grupo.tipologiasDistintas} tipologías`}
           </span>
-        </Link>
+        </EnlaceCarga>
       </td>
       <CeldasNumericas row={resumen} atenuado />
       <td />
@@ -326,7 +326,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
   const agrupado = params.group && items !== undefined;
   const vacio = agrupado ? items.length === 0 : rows.length === 0;
 
-  // El `id` es real: los <Link> de chips y headers apuntan a #archivo para que
+  // El `id` es real: los <EnlaceCarga> de chips y headers apuntan a #archivo para que
   // filtrar u ordenar deje la tabla a la vista y no el tope de la página.
   return (
     <section id="archivo" aria-labelledby="archivo-label" className="scroll-mt-20">
@@ -368,9 +368,9 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
             ))}
           </div>
 
-          {/* Toggle de agrupación: <Link> con role de switch para que se anuncie
+          {/* Toggle de agrupación: <EnlaceCarga> con role de switch para que se anuncie
               como control de dos estados sin necesitar JavaScript. */}
-          <Link
+          <EnlaceCarga
             href={buildHref(params, { group: !params.group, open: [] })}
             role="switch"
             aria-checked={params.group}
@@ -391,7 +391,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               />
             </span>
             Agrupar por propiedad
-          </Link>
+          </EnlaceCarga>
         </div>
 
         {vacio ? (
@@ -400,12 +400,12 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               Ningún análisis coincide con este filtro.
             </p>
             {filtrando && (
-              <Link
+              <EnlaceCarga
                 href={buildHref(params, { q: "", mod: "todas", v: "todos" })}
                 className="mt-3 inline-block font-mono text-[10px] uppercase tracking-[0.08em] text-signal-red no-underline"
               >
                 Limpiar filtros →
-              </Link>
+              </EnlaceCarga>
             )}
           </div>
         ) : (
@@ -480,12 +480,12 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                             filas.push(
                               <tr key={`${grupo.key}-mas`} className="border-b border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]">
                                 <td colSpan={10} className="h-9 pl-9 align-middle">
-                                  <Link
+                                  <EnlaceCarga
                                     href={verTodosHref(params, grupo.key)}
                                     className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
                                   >
                                     Ver los {restantes} análisis restantes ↓
-                                  </Link>
+                                  </EnlaceCarga>
                                 </td>
                               </tr>,
                             );
@@ -523,9 +523,9 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                   >
                     {/* El padre no navega al análisis: expande. */}
                     {esGrupo ? (
-                      <Link href={toggleGrupoHref(params, grupo.grupo.key)} aria-expanded={abierto} className="absolute inset-0 z-0" aria-label={`${displayDireccion(row)}, ${n} análisis`} />
+                      <EnlaceCarga href={toggleGrupoHref(params, grupo.grupo.key)} aria-expanded={abierto} className="absolute inset-0 z-0" aria-label={`${displayDireccion(row)}, ${n} análisis`} />
                     ) : (
-                      <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
+                      <EnlaceCarga href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
                     )}
 
                     {esGrupo && <Chevron abierto={abierto} />}
@@ -599,12 +599,12 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                 {filtrando ? " que coinciden" : ""}
               </span>
               {hasMore && (
-                <Link
+                <EnlaceCarga
                   href={buildHref(params, { page: params.page + 1 })}
                   className="rounded-[7px] border border-[var(--franco-border-hover)] px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text)] no-underline hover:border-[var(--franco-border-strong)]"
                 >
                   Cargar {PAGE_SIZE} más ↓
-                </Link>
+                </EnlaceCarga>
               )}
             </div>
           </>

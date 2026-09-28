@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
@@ -244,15 +244,15 @@ export function ComparativaClient(p: Props) {
   // Chrome
   const footerLinks = (
     <div className="flex items-center gap-4">
-      <Link href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+      <EnlaceCarga href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
         Términos
-      </Link>
-      <Link href="/privacy" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+      </EnlaceCarga>
+      <EnlaceCarga href="/privacy" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
         Privacidad
-      </Link>
-      <Link href="/privacy#cookies" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+      </EnlaceCarga>
+      <EnlaceCarga href="/privacy#cookies" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
         Cookies
-      </Link>
+      </EnlaceCarga>
     </div>
   );
 
@@ -420,13 +420,13 @@ export function ComparativaClient(p: Props) {
 
           {/* Footer interno */}
           <div className="mb-4 flex justify-center">
-            <Link
+            <EnlaceCarga
               href="/analisis/nuevo-v4"
               className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em] text-signal-red hover:opacity-80 transition-opacity"
             >
               Comparar otra propiedad
               <span aria-hidden>→</span>
-            </Link>
+            </EnlaceCarga>
           </div>
 
           {/* Disclaimer */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import FrancoLogo from "@/components/franco-logo";
 
@@ -84,7 +84,7 @@ function CtaCopy({
       >
         Ya sabes lo que este depto da. La decisión se toma comparando.
       </p>
-      <Link
+      <EnlaceCarga
         href="/analisis/nuevo-v4"
         onClick={onCtaClick}
         className="inline-flex items-center justify-center rounded-lg px-6 py-3 mt-6 font-mono text-[12px] uppercase tracking-[0.06em] font-medium text-white transition-opacity hover:opacity-90"
@@ -92,7 +92,7 @@ function CtaCopy({
         data-source={source}
       >
         Analizar otra propiedad
-      </Link>
+      </EnlaceCarga>
       <p
         className="font-mono text-[10px] uppercase tracking-[0.08em] mt-3 mb-0"
         style={{ color: micro }}

@@ -19,7 +19,7 @@ import { useState, useEffect, useRef } from "react";
 import type { Veredicto } from "@/lib/types";
 import { construirCardStr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { ArrowRight } from "lucide-react";
@@ -489,7 +489,7 @@ export function STRResultsClient({
             está visible (mismo texto, destino distinto: evita el duplicado). */}
         {!showCtaWelcome && (
           <div className="mt-6 mb-4 flex items-center justify-center">
-            <Link
+            <EnlaceCarga
               // El wizard legacy de renta corta se retiró. El formulario vivo es
               // el v4 (RUTA_WIZARD en cta-analizar.ts): este link decía v2, que
               // quedó atrás en el cutover ca3106f y mandaba a la gente al wizard
@@ -499,7 +499,7 @@ export function STRResultsClient({
             >
               Analizar otra propiedad
               <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            </EnlaceCarga>
           </div>
         )}
 

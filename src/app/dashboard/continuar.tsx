@@ -9,7 +9,7 @@
  * archivo: es un atajo, no una vista de la consulta.
  */
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { AnalisisDashboardRow } from "@/lib/dashboard-query";
 import {
   displayDireccion,
@@ -62,7 +62,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
       <ZoneLabel id="continuar-label">Continuar</ZoneLabel>
 
       {/* ── Card hero: el último análisis, visualmente dominante ── */}
-      <Link
+      <EnlaceCarga
         href={hrefAnalisis(hero, heroStr?.id)}
         className="franco-card-target group mb-2.5 flex items-center gap-5 rounded-2xl border border-[var(--franco-border-hover)] bg-[var(--franco-elevated)] p-4 px-5 no-underline"
       >
@@ -129,7 +129,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
             </div>
           </div>
         </div>
-      </Link>
+      </EnlaceCarga>
 
       {/* ── 3 cards compactas ──
           Mobile: carrusel horizontal con snap — una card entera y el borde de
@@ -141,7 +141,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
             const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
             const flujo = str ? Math.max(Number(row.flujo), Number(str.flujo)) : Number(row.flujo);
             return (
-              <Link
+              <EnlaceCarga
                 key={row.id}
                 href={hrefAnalisis(row, str?.id)}
                 className="franco-card-target flex w-[86%] shrink-0 snap-start items-center gap-3 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-3 px-3.5 no-underline md:w-auto md:shrink"
@@ -166,7 +166,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
                     <Flujo value={flujo} className="ml-auto shrink-0" />
                   </div>
                 </div>
-              </Link>
+              </EnlaceCarga>
             );
           })}
         </div>

@@ -13,7 +13,7 @@
  * desviación consciente del contrato, anotada en el reporte.
  */
 
-import Link from "next/link";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { DashboardStats } from "@/lib/dashboard-query";
 import { buildHref, type DashboardParams } from "./dashboard-helpers";
 
@@ -29,7 +29,7 @@ function Stat({
   children: React.ReactNode;
 }) {
   return (
-    <Link
+    <EnlaceCarga
       href={href}
       className="group flex flex-col gap-1 border-b border-[var(--franco-border)] px-4 py-2.5 no-underline transition-colors last:border-b-0 hover:bg-[var(--franco-elevated)] sm:border-b-0 sm:border-r sm:last:border-r-0"
     >
@@ -40,7 +40,7 @@ function Stat({
       <span className="self-start border-b border-dotted border-[var(--franco-border-strong)] font-body text-[10px] text-[var(--franco-text-muted)] group-hover:border-signal-red group-hover:text-signal-red">
         {hint}
       </span>
-    </Link>
+    </EnlaceCarga>
   );
 }
 
