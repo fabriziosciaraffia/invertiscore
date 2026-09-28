@@ -23,6 +23,7 @@
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
 import { cuandoLaPaginaEsteQuieta, type OpcionesQuieta } from "../../../src/lib/pagina-quieta";
 import { pendientesPostHog, posthogCliente } from "../../../src/lib/posthog-cliente";
@@ -167,7 +168,6 @@ export function runLandingRendimientoTier(): { hard: number } {
   const providers = sinComentarios(leer("src/app/providers.tsx"));
   if (!/useEffect\(\(\) => cuandoLaPaginaEsteQuieta\(\(\) => \{ void cargarPostHog\(\) \}\), \[\]\)/.test(providers) || !/<PostHogProvider client=\{posthogCliente\}>/.test(providers)) F("4 · el provider no carga PostHog con la página quieta ni entrega la fachada");
   if (/from ['"]posthog-js['"]/.test(providers)) F("4 · el provider vuelve a importar posthog-js de forma estática");
-  const { execSync } = require("node:child_process") as typeof import("node:child_process");
   const estaticos = execSync("git grep -l -E \"from ['\\\"]posthog-js(/react)?['\\\"]\" -- src", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(Boolean)
     .filter((f) => !/^import type/.test("") && /(^|\n)import (?!type)[^\n]*from ['"]posthog-js(\/react)?['"]/.test(leer(f)));
   if (estaticos.length) F(`4 · quedan imports estáticos de posthog-js: ${estaticos.join(", ")}`);

@@ -65,6 +65,7 @@ import { runHeaderUnicoTier } from "./header-unico-catch-test";
 import { runMetodologiaTier } from "./metodologia-catch-test";
 import { runLandingV14Tier } from "./landing-v14-catch-test";
 import { runLandingRendimientoTier } from "./landing-rendimiento-catch-test";
+import { runMedicionTier } from "./medicion-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
@@ -336,6 +337,10 @@ function printSeed(r: SeedReport) {
   // del titular con la altura reservada y sin el motor en el paquete, sin latin-ext precargadas, la
   // analítica con la página quieta, el viewport con zoom. Verificado en rojo por mutación.
   totalHard += runLandingRendimientoTier().hard;
+  // Tier MEDICIÓN (28-sep-2026, 0 tokens): la dirección elegida en el hero, informe_visto único,
+  // pago_confirmado desde el servidor, correos con tags y webhook firmado, la entrada como súper
+  // propiedad, sin dir fantasma, auth desde un solo lugar, INICIO_WIZARD sin el dir de la landing.
+  totalHard += (await runMedicionTier()).hard;
   // Tier HEADER-ÚNICO (27-sep-2026, 0 tokens): un solo header en el sitio, la banda derivada de los
   // tokens de la tríada, el botón en tinta, sin mono, las siete decisiones medidas en el HTML y la
   // identidad del informe leída de la portada. Verificado en rojo por mutación.
