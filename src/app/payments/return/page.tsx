@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { usePostHog } from "@/lib/posthog-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,7 +10,6 @@ import { metaTrack } from "@/lib/meta/pixel";
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const posthog = usePostHog();
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const order = searchParams.get("order");
@@ -69,7 +67,8 @@ function PaymentReturnContent() {
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
           if (data.payment.status === "paid") {
-            posthog?.capture('pro_purchased', { product: data.payment.product, amount: data.payment.amount });
+            // `pro_purchased` se retiró (28-sep-2026): el pago se mide desde el servidor con
+            // `pago_confirmado` (medicion-pago.ts), que no depende de que esta página lo vea.
             // Meta Pixel: Purchase browser-side. event_id = commerce_order → dedup
             // con el Purchase server-side (payments/confirm). El pago está
             // confirmado en ambos lados (status paid), así que ambos llevan value.
