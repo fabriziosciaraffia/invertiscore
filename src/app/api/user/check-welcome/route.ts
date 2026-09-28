@@ -54,7 +54,7 @@ export async function POST() {
       });
 
       const name = user.user_metadata?.full_name || user.user_metadata?.name || "";
-      await sendWelcomeEmail(user.email, name);
+      await sendWelcomeEmail(user.email, name, { userId: user.id });
       // Welcome email sent
 
       return NextResponse.json({ sent: true, isNew: true });

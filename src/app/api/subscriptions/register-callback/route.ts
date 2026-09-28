@@ -220,6 +220,9 @@ export async function POST(request: Request) {
           resolveDisplayName(flowUser.user_metadata, flowUser.email),
           match.key,
           match.product.amount,
+          undefined,
+          undefined,
+          { userId: userCredit.user_id },
         );
       }
     } catch (e) {

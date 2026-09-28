@@ -250,7 +250,7 @@ export async function GET(request: Request) {
       }
 
       // Reclamada. Recién ahora sale el correo.
-      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind);
+      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind, { userId: u.id });
       if (!ok) {
         console.error(
           "[cron/abandoned-checkout] envío falló DESPUÉS de reclamar; payment:",

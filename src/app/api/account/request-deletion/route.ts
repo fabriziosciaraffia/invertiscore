@@ -51,6 +51,7 @@ export async function POST() {
     await sendAccountDeletionUserEmail(
       user.email!,
       resolveDisplayName(user.user_metadata, user.email),
+      { userId: user.id },
     );
 
     return NextResponse.json({ success: true });

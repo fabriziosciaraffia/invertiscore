@@ -488,6 +488,7 @@ export async function emitirBoletaDTE({
         concepto: conceptoBoleta(payment, { comuna }),
         pdfBase64: data.PDF ?? null,
         xmlBase64: data.XML ?? null,
+        userId: payment.user_id ?? null,
       });
     } catch (e) {
       console.error("[emitirBoletaDTE] envío correo boleta falló:", e);

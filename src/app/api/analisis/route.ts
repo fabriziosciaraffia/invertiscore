@@ -303,6 +303,7 @@ export async function POST(request: Request) {
               readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
               analysisId,
               ambas,
+              { userId: user.id },
             );
           } catch (e) {
             console.error("Analysis email error:", e);

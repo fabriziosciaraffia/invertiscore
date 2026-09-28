@@ -9,6 +9,8 @@ import { consumeCredit } from "@/lib/access";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { capturarServidor } from "@/lib/posthog-servidor";
+import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -287,7 +289,8 @@ export async function POST(request: Request) {
               product,
               amount,
               analysisId || undefined,
-              ambasIds
+              ambasIds,
+              { userId }
             );
           }
         } catch (e) {
@@ -424,6 +427,20 @@ export async function POST(request: Request) {
             operacion: "meta-capi-purchase",
             commerceOrder: flowData.commerceOrder,
           });
+        }
+        // PostHog: `pago_confirmado` desde el servidor, con el MISMO id que el Purchase de Meta
+        // (`commerce_order`) y uuid determinista: un pago, un evento, aunque Flow reintente.
+        // Mismo aislamiento que el CAPI: nunca toca el 200 a Flow.
+        try {
+          await capturarServidor(eventoPagoConfirmado({
+            commerceOrder: payment.commerce_order,
+            userId,
+            product: payment.product,
+            amount: payment.amount,
+            analysisId: payment.analysis_id ?? null,
+          }));
+        } catch (e) {
+          console.error("[payments/confirm] pago_confirmado excepción:", e);
         }
       }
 

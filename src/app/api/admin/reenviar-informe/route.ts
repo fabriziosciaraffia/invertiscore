@@ -177,7 +177,8 @@ export async function POST(request: Request) {
         score,
         veredicto,
         row.id,
-        ambas
+        ambas,
+        { userId: targetUser.id }
       );
     } catch (e) {
       throw new AdminActionError(

@@ -323,7 +323,7 @@ export async function POST(request: Request) {
             flowUser.user_metadata?.nombre ||
             flowUser.user_metadata?.full_name ||
             null;
-          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt);
+          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId });
         }
       } catch (e) {
         console.error("[subscriptions/payment-callback] aviso past_due email error:", e);

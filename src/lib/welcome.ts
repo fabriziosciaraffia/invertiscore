@@ -108,7 +108,7 @@ export async function ensureWelcomeEmail(
     // 3) Enviar SOLO la request ganadora (la que afectó 1 fila). Si afectó 0,
     //    otra request ya ganó el claim (o ya estaba enviado) → no-op.
     if (Array.isArray(claimed) && claimed.length === 1) {
-      await sendWelcomeEmail(email, name ?? "");
+      await sendWelcomeEmail(email, name ?? "", { userId });
     }
   } catch (error) {
     console.error(

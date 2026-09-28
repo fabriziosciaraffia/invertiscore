@@ -2,6 +2,13 @@ import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { COMPARABLES_TEXTO } from './stats';
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
+import { capturarServidor } from "./posthog-servidor";
+import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
+
+/** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
+export interface CorreoOpts {
+  userId?: string | null;
+}
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
@@ -10,6 +17,30 @@ function getResend(): Resend | null {
   return _resend;
 }
 const FROM_EMAIL = 'Franco <hola@refranco.ai>';
+
+type MensajeResend = Parameters<Resend["emails"]["send"]>[0];
+
+/**
+ * TODO CORREO SALE POR ACÁ (28-sep-2026, auditoría de la medición): manda con Resend, con los
+ * tags `tipo` y `pid`, y si salió emite `correo_enviado` a PostHog. Devuelve lo mismo que
+ * `resend.emails.send` (`{ data, error }`); sin RESEND_API_KEY devuelve `{ data: null, error: null }`
+ * como hacía el `getResend()?.` de antes.
+ */
+async function enviarCorreo(
+  tipo: TipoCorreo,
+  userId: string | null | undefined,
+  mensaje: MensajeResend,
+): Promise<{ data: { id: string } | null; error: { message?: string } | null }> {
+  const resend = getResend();
+  if (!resend) return { data: null, error: null };
+  const to = Array.isArray(mensaje.to) ? mensaje.to[0] : mensaje.to;
+  const distinctId = identidadCorreo(String(to ?? ""), userId);
+  const res = await resend.emails.send({ ...mensaje, tags: [...(mensaje.tags ?? []), ...tagsCorreo(tipo, distinctId)] } as MensajeResend);
+  if (!res.error) {
+    void capturarServidor(eventoCorreoEnviado({ tipo, distinctId, resendId: res.data?.id ?? null })).catch(() => {});
+  }
+  return { data: res.data ?? null, error: res.error ?? null };
+}
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://refranco.ai';
 
 // Shared email components.
@@ -74,7 +105,7 @@ function welcomeStep(num: string, text: string): string {
   </tr>`;
 }
 
-export async function sendWelcomeEmail(to: string, name: string) {
+export async function sendWelcomeEmail(to: string, name: string, opts: CorreoOpts = {}) {
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
@@ -163,7 +194,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
 </html>`;
 
   try {
-    await getResend()?.emails.send({
+    await enviarCorreo("bienvenida", opts.userId, {
       from: FROM_EMAIL,
       to,
       subject: 'Bienvenido a Franco — tu primer análisis es gratis',
@@ -263,7 +294,7 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   };
 }
 
-export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }) {
+export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts = {}) {
   const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
 
   // Bullets de "Qué incluye" derivados del producto. Última fila sin padding
@@ -312,7 +343,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 </div>`;
 
   try {
-    await getResend()?.emails.send({
+    await enviarCorreo("pago_confirmado", opts.userId, {
       from: FROM_EMAIL,
       to,
       subject: `Pago confirmado — ${productName}`,
@@ -455,8 +486,9 @@ export async function sendBoletaEmail(params: {
   concepto?: { label: string; frase: string };
   pdfBase64?: string | null;
   xmlBase64?: string | null;
+  userId?: string | null;
 }): Promise<void> {
-  const { to, folio, monto, fechaEmision, autoservicioUrl, concepto, pdfBase64, xmlBase64 } = params;
+  const { to, folio, monto, fechaEmision, autoservicioUrl, concepto, pdfBase64, xmlBase64, userId } = params;
 
   // Adjuntos: el PDF/XML vienen en base64 desde OpenFactura → Buffer para Resend.
   const attachments: Array<{ filename: string; content: Buffer }> = [];
@@ -472,7 +504,7 @@ export async function sendBoletaEmail(params: {
   }
   try {
     // Resend devuelve { data, error } — un error de API NO se lanza, viene in-band.
-    const { data: sent, error: sendError } = await resend.emails.send({
+    const { data: sent, error: sendError } = await enviarCorreo("boleta", userId, {
       from: FROM_EMAIL,
       to,
       subject: `Tu boleta electrónica N° ${folio} — refranco.ai`,
@@ -498,6 +530,7 @@ export async function sendPaymentFailedEmail(
   to: string,
   name: string | null,
   graceEndsAt: Date | string,
+  opts: CorreoOpts = {},
 ) {
   const firstName = (name ?? '').split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
@@ -509,7 +542,7 @@ export async function sendPaymentFailedEmail(
   const ctaUrl = `${SITE_URL}/pricing`;
 
   try {
-    await getResend()?.emails.send({
+    await enviarCorreo("pago_fallido", opts.userId, {
       from: FROM_EMAIL,
       to,
       subject: 'Tu pago no se procesó — tienes unos días para actualizarlo',
@@ -561,6 +594,7 @@ export async function sendCheckoutRecoveryEmail(
   // compat). 'plan' = suscripción (ruta B) → copy de plan. El cron lo deriva del
   // kind del catálogo.
   kind: 'single' | 'plan' = 'single',
+  opts: CorreoOpts = {},
 ): Promise<boolean> {
   const resend = getResend();
   if (!resend) {
@@ -581,7 +615,7 @@ export async function sendCheckoutRecoveryEmail(
        y no alcanzaste a terminar el pago. Sin apuro — tu análisis sigue ahí cuando quieras retomarlo.`;
 
   try {
-    await resend.emails.send({
+    await enviarCorreo("checkout_abandonado", opts.userId, {
       from: FROM_EMAIL,
       to,
       subject: '¿Quedó algo pendiente?',
@@ -624,7 +658,7 @@ export async function sendCheckoutRecoveryEmail(
  * sendAnalysisReadyEmail() envuelve a esta y mantiene el comportamiento
  * histórico (traga y loguea) para el caller de /api/analisis.
  */
-export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }): Promise<string | null> {
+export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }, opts: CorreoOpts = {}): Promise<string | null> {
   const firstName = name.split(' ')[0] || '';
   // Variante AMBAS: cuando el análisis pertenece a un par (ambas_group_id), el
   // correo anuncia la COMPARATIVA (no el análisis suelto) y su CTA lleva a la
@@ -721,7 +755,7 @@ export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, an
   }
 
   // Resend devuelve { data, error } — un error de API NO se lanza, viene in-band.
-  const { data: sent, error: sendError } = await resend.emails.send({
+  const { data: sent, error: sendError } = await enviarCorreo("informe_listo", opts.userId, {
     from: FROM_EMAIL,
     to,
     subject,
@@ -739,9 +773,9 @@ export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, an
  * análisis porque el correo no salió; la vista ya está creada y el usuario la ve
  * igual. Para el reenvío manual usar sendAnalysisReadyEmailOrThrow.
  */
-export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }) {
+export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }, opts: CorreoOpts = {}) {
   try {
-    await sendAnalysisReadyEmailOrThrow(to, name, analysisTitle, score, veredicto, analysisId, ambas);
+    await sendAnalysisReadyEmailOrThrow(to, name, analysisTitle, score, veredicto, analysisId, ambas, opts);
   } catch (error) {
     console.error('Error sending analysis ready email:', error);
   }
@@ -784,7 +818,7 @@ export async function sendAccountDeletionInternalEmail(params: {
   </p>
 </div>`;
 
-  await getResend()?.emails.send({
+  await enviarCorreo("eliminacion_interna", userId, {
     from: FROM_EMAIL,
     to: 'hola@refranco.ai',
     subject: 'Solicitud de eliminación de cuenta',
@@ -809,7 +843,7 @@ export async function sendAccountDeletionInternalEmail(params: {
   });
 }
 
-export async function sendAccountDeletionUserEmail(to: string, name: string): Promise<void> {
+export async function sendAccountDeletionUserEmail(to: string, name: string, opts: CorreoOpts = {}): Promise<void> {
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
@@ -822,7 +856,7 @@ export async function sendAccountDeletionUserEmail(to: string, name: string): Pr
   </p>
 </div>`;
 
-  await getResend()?.emails.send({
+  await enviarCorreo("eliminacion_usuario", opts.userId, {
     from: FROM_EMAIL,
     to,
     subject: 'Recibimos tu solicitud de eliminación de cuenta',
