@@ -713,7 +713,9 @@ export const STR_ADR_FACTOR = {
 // Ronda 4b — paridad estructural con LTR.
 // Tasa de proyección de plusvalía a futuro — fuente única en plusvalia-proyeccion.ts (3%).
 const PLUSVALIA_ANUAL_DEFAULT = PLUSVALIA_PROYECCION_ANUAL;   // 3% nominal anual (unificado LTR+STR).
-const HORIZONTE_DEFAULT = 10;           // años proyectados.
+/** Años proyectados y año de la venta en renta corta. Exportado (27-sep-2026) para que el tier
+ *  METODOLOGÍA exija que sea el mismo horizonte que el de renta larga. */
+export const HORIZONTE_DEFAULT = 10;
 const GASTOS_CIERRE_VENTA = 0.02;       // 2% comisión + costos al vender.
 // Inflación de flujos — homologación EXACTA con LTR (rama comparabilidad-motores). Antes STR
 // proyectaba flat nominal; ahora espeja analysis.ts: ingreso 3,5% (ARRIENDO_INFLACION),

@@ -1,0 +1,52 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   /metodologia — «Cómo decide Franco» (27-sep-2026). Una página corta con el lenguaje de la
+   landing (landing.css: papel, grano, tipografía, píldoras de veredicto) y el cierre sobre el
+   material del hero, como la landing.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.mtd { min-height: 100svh; }
+.mtd-col { padding-top: 48px; padding-bottom: 72px; max-width: 900px; }
+.mtd-h1 {
+  margin: 10px 0 0; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(34px, 8.6vw, 56px); line-height: 1.02; letter-spacing: -0.025em;
+}
+.mtd-bajada { margin: 16px 0 0; max-width: 56ch; font-size: 17px; line-height: 1.55; color: var(--lv-g2); }
+
+.mtd-sec { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--lv-ll); }
+.mtd-sec p { margin: 12px 0 0; max-width: 64ch; font-size: 15.5px; line-height: 1.6; color: var(--lv-g2); }
+.mtd-h2 {
+  margin: 0; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(24px, 5.6vw, 32px); line-height: 1.15; letter-spacing: -0.015em;
+}
+.mtd-h3 { margin: 32px 0 0; font-size: 16px; font-weight: 700; color: var(--lv-ink); }
+
+/* las tres respuestas: una tarjeta cada una, con la píldora de veredicto de la landing */
+.mtd-tres { display: grid; gap: 12px; margin-top: 20px; }
+.mtd-resp { border: 1px solid var(--lv-ll); border-radius: var(--lv-rad-s); padding: 16px 16px 14px; background: rgba(255, 255, 255, 0.55); }
+.mtd-pill { padding: 6px 12px; font-size: 11px; }
+.mtd-resp .mtd-resp-que { margin: 12px 0 0; font-size: 15.5px; color: var(--lv-ink); }
+.mtd-resp .mtd-resp-pesa { margin: 8px 0 0; font-size: 14px; }
+.mtd-resp-pesa b { color: var(--lv-ink); font-weight: 600; }
+
+.mtd-dos { display: grid; gap: 20px; margin-top: 12px; }
+.mtd-mod { margin: 0 !important; font-size: 12px !important; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lv-g) !important; }
+.mtd-lista { margin: 12px 0 0; padding: 0 0 0 18px; display: grid; gap: 8px; max-width: 64ch; }
+.mtd-lista li { font-size: 15px; line-height: 1.55; color: var(--lv-g2); }
+.mtd-lista li b { color: var(--lv-ink); font-weight: 600; }
+
+/* el cierre, sobre el material del hero */
+.mtd-cierre { position: relative; z-index: 1; padding-top: 64px; padding-bottom: 56px; color: var(--lv-paper); }
+.mtd-cierre-h {
+  margin: 0; max-width: 18ch; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(28px, 7vw, 44px); line-height: 1.08; letter-spacing: -0.02em;
+}
+.mtd-cierre p { margin: 16px 0 0; max-width: 56ch; font-size: 16px; line-height: 1.55; color: rgba(250, 250, 248, 0.86); }
+.mtd-link { color: var(--lv-paper); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; white-space: nowrap; }
+.mtd-link span { margin-left: 6px; }
+.mtd-campo { margin-top: 32px; }
+
+@media (min-width: 768px) {
+  .mtd-col { padding-top: 64px; padding-bottom: 88px; }
+  .mtd-tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mtd-dos { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
+  .mtd-cierre { padding-top: 88px; padding-bottom: 72px; }
+}

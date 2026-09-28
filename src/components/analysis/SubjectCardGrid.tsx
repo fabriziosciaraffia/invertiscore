@@ -87,6 +87,11 @@ export function SubjectCardGrid({
   // Solo telemetría: «zona» mientras el modal de comparables está abierto (lo abre la sección).
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
   const [calculoAbierto, setCalculoAbierto] = useState(false);
+  // «CÓMO SE CALCULA» POR ENLACE (27-sep-2026): /metodologia enlaza a `/demo?calculo=1`, que lo
+  // abre al llegar. Sin el parámetro, nada cambia.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("calculo") === "1") setCalculoAbierto(true);
+  }, []);
   // T3: apertura de un capítulo pedida desde «↓ Ver detalle» o desde la portada.
   const [capituloAbrir, setCapituloAbrir] = useState<{ id: CapituloId; nonce: number } | null>(null);
 

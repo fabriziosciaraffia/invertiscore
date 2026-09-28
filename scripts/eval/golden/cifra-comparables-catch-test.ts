@@ -44,6 +44,7 @@ const FUENTE = "src/lib/stats.ts";
 // su metadescripción.
 const CONSUMIDORES = [
   "src/components/landing-v14/Secciones.tsx",
+  "src/app/metodologia/page.tsx",
   "src/app/layout.tsx",
   "src/app/page.tsx",
   "src/lib/faq-data.ts",

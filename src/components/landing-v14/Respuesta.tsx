@@ -37,24 +37,13 @@
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
-import type { Veredicto } from "@/lib/types";
 import type { EjemploLanding } from "@/lib/landing-vivo";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { referenciaHallazgo } from "@/components/analysis/referencia-hallazgo";
 import { Glifo } from "./Marca";
+import { EXPLICACION_VEREDICTO } from "./explicaciones";
 import { BarraProgreso, useRotacion } from "./Rotacion";
 
-/** Qué significa obtener cada veredicto, explicado en simple (tres filas bajo la
- *  respuesta, en PC y en mobile). No habla de un informe en particular: es la
- *  explicación del veredicto, por eso no lleva cifra. Dos frases y este largo:
- *  el veredicto mira más que el flujo (rentabilidad, flujo, plusvalía,
- *  eficiencia). Copy propuesto en FASE 1.8; Fabrizio lo ajusta. */
-const EXPLICACION: Record<Veredicto, string> = {
-  "BUSCAR OTRA": "Ni el arriendo ni la plusvalía esperada justifican el precio.",
-  // «los números», no «los supuestos»: supuesto es palabra nuestra, del motor (veredicto-etiqueta.ts)
-  "AJUSTA SUPUESTOS": "El depto sirve, los números no. A otro precio, con más pie o a otro plazo, el negocio cierra.",
-  COMPRAR: "Rentabilidad, flujo y precio de entrada juegan a favor. Se paga solo y compite bien con la zona.",
-};
 
 /** `**…**` → <mark>. Igual que la portada del informe, sin cifras en el titular. */
 export function conPlumon(titular: string): ReactNode {
@@ -122,7 +111,7 @@ export function Respuesta() {
             onClick={() => elegir(j, "fila")}
           >
             <span className="lv-fila-banda"><Glifo veredicto={e.veredicto} />{e.etiqueta}</span>
-            <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>
+            <span className="lv-fila-razon">{EXPLICACION_VEREDICTO[e.veredicto]}</span>
           </button>
         ))}
       </div>

@@ -984,7 +984,14 @@ export function calcProjections(args: {
 // Exit Scenario
 // =========================================
 
-export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): ExitScenario {
+/**
+ * EL HORIZONTE DEL INFORME: la venta y la rentabilidad final (TIR) se miden a este año (la
+ * proyección corre más lejos, a 20). Constante exportada el 27-sep-2026 para que lo que la
+ * página de metodología dice del motor se lea del motor (tier METODOLOGÍA).
+ */
+export const HORIZONTE_SALIDA_ANIOS = 10;
+
+export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = HORIZONTE_SALIDA_ANIOS): ExitScenario {
   // Pie cero (fase 1-2): sin capital propio, multiplicador y TIR no aplican —
   // aunque inversionInicial > 0 por gastos de cierre/CapEx (no son capital propio).
   const sinPie = metrics.pieCLP === 0;
@@ -1365,7 +1372,7 @@ function calcEficienciaScore(precioM2: number, yieldBruto: number, zonaRadio: an
  */
 function tirDe(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number, asOf: Date): number | null {
   const proj = calcProjections({ input, metrics, ufClp, asOf });
-  return metricaValorONull(calcExitScenario(input, metrics, proj, 10).tir);
+  return metricaValorONull(calcExitScenario(input, metrics, proj, HORIZONTE_SALIDA_ANIOS).tir);
 }
 
 /**
@@ -2283,7 +2290,7 @@ export function tirForPrice(
   const clone: AnalisisInput = { ...input, precio: precioUF };
   const m = calcMetrics(clone, ufClp);
   const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp, asOf });
-  const ex = calcExitScenario(clone, m, projs, 10);
+  const ex = calcExitScenario(clone, m, projs, HORIZONTE_SALIDA_ANIOS);
   return metricaValorONull(ex.tir);
 }
 
@@ -2478,7 +2485,7 @@ export function runAnalysis(
   if (metrics.hallazgoFlujoMensual) {
     metrics.hallazgoFlujoMensual = aplicarHorizonteAFlujo(metrics.hallazgoFlujoMensual, projections, metrics);
   }
-  const exitScenario = calcExitScenario(input, metrics, projections, 10);
+  const exitScenario = calcExitScenario(input, metrics, projections, HORIZONTE_SALIDA_ANIOS);
   // Un solo patrimonio: tu parte si vendes ese año, con la MISMA fórmula del exit (sobreprecio de
   // hoy plano, comisión sobre lo que paga el mercado). En el año de salida ≡ equityCLP.
   for (const p of projections) {

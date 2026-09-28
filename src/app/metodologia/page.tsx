@@ -1,27 +1,38 @@
-// Página de metodología v2 (F2) — contraparte pública del campo `metodo` de la
-// tabla derivada plusvalia_estimado, más las fuentes de precio y el Franco Score.
+// ─────────────────────────────────────────────────────────────────────────────
+// /metodologia — «Cómo decide Franco» (27-sep-2026, estructura aprobada por Fabrizio).
 //
-// Diferida desde F1 a propósito: en /comunas quedó UNA línea de fuente y el
-// detalle metodológico vive acá, en un solo lugar. Los textos de método NO se
-// redactan en esta página: se leen tal cual del módulo generado
-// (METODOS_ESTIMADO), que los trae de la derivada. Si el método cambia, cambia
-// la tabla, se regenera el módulo y esta página lo refleja sola — cero copias.
+// Una página corta que responde tres cosas: qué mide Franco —las tres respuestas y qué pesa en
+// cada una—, de dónde salen los datos, y qué no hace. Sin fórmulas ni pesos: el detalle vive en
+// «Cómo se calcula», dentro del informe, y la página enlaza ahí (`/demo?calculo=1` lo abre al
+// llegar). Reemplaza a la metodología de siete secciones, que publicaba los pesos viejos del
+// puntaje, el horizonte a 20 años y la regla del reglamento de renta corta.
+//
+// LO QUE AFIRMA DEL MOTOR SE LEE DEL MOTOR (src/lib/metodologia.ts): las dimensiones del puntaje,
+// las reglas que pasan por encima de él, el filtro del descuento, el horizonte y la plusvalía
+// proyectada. Lo vigila el tier METODOLOGÍA. La cifra de comparables, de la fuente única.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/components/landing-v14/landing.css";
+import "@/components/metodologia/metodologia.css";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { AppFooter } from "@/components/chrome/AppFooter";
-import { METODOS_ESTIMADO, ANIO_ESTIMADO, GFK_SERIE } from "@/lib/plusvalia-estimado.gen";
+import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
+import { FondoMaterial, Glifo, PieLanding } from "@/components/landing-v14/Marca";
+import { CampoLanding } from "@/components/landing-v14/Entrada";
+import { EXPLICACION_VEREDICTO } from "@/components/landing-v14/explicaciones";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { DIMENSIONES_LTR, DIMENSIONES_STR, HORIZONTE, PLUSVALIA_PCT, REGLAS } from "@/lib/metodologia";
+import type { Veredicto } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: "Metodología — de dónde salen los números de Franco",
-  description:
-    "Qué fuentes usa Franco para los precios por comuna, cómo compone el estimado anual y cómo se calcula el Franco Score.",
+  title: "Cómo decide Franco",
+  description: "Qué mide Franco para decir comprar, ajustar o buscar otro, de dónde salen sus datos y qué no hace.",
   alternates: { canonical: "/metodologia" },
   openGraph: {
-    title: "Metodología — de dónde salen los números de Franco",
-    description: "Fuentes de precio por comuna, método del estimado anual y cálculo del Franco Score.",
+    title: "Cómo decide Franco",
+    description: "Qué mide, de dónde salen los datos y qué no hace.",
     url: "https://refranco.ai/metodologia",
     siteName: "Franco",
     locale: "es_CL",
@@ -31,221 +42,120 @@ export const metadata: Metadata = {
 
 export const revalidate = 86400;
 
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
-      {children}
-    </p>
-  );
-}
+/** Qué pesa en cada respuesta, en palabras: la banda del puntaje y las reglas que la mueven. */
+const QUE_PESA: Record<Veredicto, string> = {
+  COMPRAR: "El puntaje en su banda alta y ninguna regla en contra. También sube a Comprar cuando el arriendo cubre todo, la rentabilidad neta es buena y no pagas sobre el valor de la zona.",
+  "AJUSTA SUPUESTOS": "El puntaje en su banda del medio, o una regla que lo baja de Comprar. Y siempre con un camino a Comprar que se pueda recorrer.",
+  "BUSCAR OTRA": "El puntaje en su banda baja, o una de las reglas que bajan a Buscar otro sin importar el puntaje, o un camino a Comprar que pide demasiado.",
+};
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">{children}</div>
-  );
-}
-
-const FUENTES = [
-  {
-    nombre: "GfK / NielsenIQ",
-    que: "Precios de oferta de departamentos nuevos del Gran Santiago, por comuna y por trimestre. Es la serie más larga que usamos: cubre de 2015 en adelante.",
-  },
-  {
-    nombre: "Tinsa (informe INCOIN)",
-    que: "Precios trimestrales agrupados en tres zonas de la Región Metropolitana. La zona centro es 100% departamentos; oriente y periferia mezclan casas y departamentos, y por eso solo usamos su variación relativa, nunca su nivel.",
-  },
-  {
-    nombre: "Colliers",
-    que: "Precio pedido (asking price) trimestral de un grupo acotado de comunas y del promedio del Gran Santiago.",
-  },
-  {
-    nombre: "Arenas & Cayo (con Tinsa, Propital y Activo Más)",
-    que: "Estudio de precio promedio de departamentos vendidos que compara dos puntos: 2014 y 2024. Es la referencia histórica de las comunas que no tienen serie anual propia.",
-  },
-  {
-    nombre: "Base propia de Franco",
-    que: "Avisos reales de venta y arriendo publicados en cada comuna, actualizados cada semana. De acá salen los precios, arriendos y rentabilidades que ves en las páginas de comuna y en cada análisis.",
-  },
-];
-
-/**
- * Los textos de método son el mismo método con una sola frase distinta (el
- * caveat de la zona INCOIN de cada comuna). Mostrarlos completos tres veces
- * hace ilegible la página, así que se factorizan: prefijo y sufijo comunes van
- * una vez, y las frases que difieren van como variantes. Sigue siendo el texto
- * VERBATIM de la derivada — se parte, no se reescribe.
- */
-function factorizarMetodos(metodos: string[]): { comunPrefijo: string; variantes: string[]; comunSufijo: string } {
-  if (metodos.length <= 1) return { comunPrefijo: metodos[0] ?? "", variantes: [], comunSufijo: "" };
-  // Se compara por ORACIONES, no por caracteres: cortar a mitad de frase dejaba
-  // el texto partido en "…de esta comuna (" + "centro) es 100%…".
-  const oraciones = metodos.map((m) => m.split(/(?<=\.)\s+/).filter(Boolean));
-  const base = oraciones[0];
-  let p = 0;
-  while (p < base.length && oraciones.every((o) => o[p] === base[p])) p++;
-  let s = 0;
-  while (
-    s < base.length - p &&
-    oraciones.every((o) => o[o.length - 1 - s] === base[base.length - 1 - s])
-  ) s++;
-  return {
-    comunPrefijo: base.slice(0, p).join(" "),
-    variantes: oraciones.map((o) => o.slice(p, o.length - s).join(" ")).filter((v) => v.trim().length > 0),
-    comunSufijo: base.slice(base.length - s).join(" "),
-  };
-}
+const ORDEN: Veredicto[] = ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
 
 export default function MetodologiaPage() {
-  const comunasConSerie = Object.keys(GFK_SERIE).length;
-  const { comunPrefijo, variantes, comunSufijo } = factorizarMetodos(METODOS_ESTIMADO);
-
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
+    <>
       <HeaderFranco />
+      <div className="lv-root mtd" data-theme="light">
+        <main className="lv-col mtd-col">
+          <p className="lv-idx">Metodología</p>
+          <h1 className="mtd-h1">Cómo decide Franco</h1>
+          <p className="mtd-bajada">
+            Escribes la dirección y los datos del depto. Franco lo compara con los avisos de su zona, proyecta cómo le va a tu
+            plata a {HORIZONTE} años y te da una de tres respuestas.
+          </p>
 
-      <main className="mx-auto max-w-[820px] px-6 py-16">
-        <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">
-          De dónde salen los números
-        </h1>
-        <p className="mt-3 font-body text-base leading-relaxed text-[var(--franco-text-secondary)]">
-          Franco no te pide que le creas. Acá está qué fuente alimenta cada cifra, cómo se compone
-          el precio estimado de un año y cómo se calcula el Franco Score.
-        </p>
-
-        <section className="mt-14">
-          <Eyebrow>Fuentes de precio por comuna</Eyebrow>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
-            Cinco fuentes que miden cosas distintas
-          </h2>
-          <Card>
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              Cada fuente mide algo propio, con su canasta y su método. Eso significa que sus cifras{" "}
-              <b>no son empalmables entre sí</b>: el mismo trimestre puede diferir hasta 15% entre una y
-              otra. Por eso ninguna cifra de Franco mezcla dos fuentes, y cada una declara de dónde sale
-              y a qué período corresponde.
-            </p>
-            <dl className="mt-5 space-y-4">
-              {FUENTES.map((f) => (
-                <div key={f.nombre}>
-                  <dt className="font-body text-sm font-semibold text-[var(--franco-text)]">{f.nombre}</dt>
-                  <dd className="mt-1 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">{f.que}</dd>
-                </div>
+          <section className="mtd-sec" id="que-mide">
+            <h2 className="mtd-h2">Qué mide</h2>
+            <div className="mtd-tres">
+              {ORDEN.map((v) => (
+                <article key={v} className="mtd-resp" data-verdict={v}>
+                  <span className="lv-pill mtd-pill"><Glifo veredicto={v} />{etiquetaVeredicto(v, "banda")}</span>
+                  <p className="mtd-resp-que">{EXPLICACION_VEREDICTO[v]}</p>
+                  <p className="mtd-resp-pesa"><b>Qué pesa.</b> {QUE_PESA[v]}</p>
+                </article>
               ))}
-            </dl>
-          </Card>
-        </section>
+            </div>
 
-        <section className="mt-14">
-          <Eyebrow>El estimado de cierre de año</Eyebrow>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
-            Cómo se compone el {ANIO_ESTIMADO} estimado
-          </h2>
-          <Card>
-            {METODOS_ESTIMADO.length > 0 ? (
-              <>
-                <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  {ANIO_ESTIMADO} es un año terminado, pero su promedio anual por comuna todavía no se
-                  publica. Franco lo compone con los trimestres que sí se publicaron de ese mismo año —
-                  no lo proyecta. Este es el método exacto, tal como queda registrado junto a cada cifra:
-                </p>
-                <p className="mt-4 border-l-2 border-[var(--franco-border)] pl-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  {comunPrefijo} {comunSufijo}
-                </p>
-                {variantes.length > 0 && (
-                  <>
-                    <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                      Lo único que cambia entre comunas es la zona de la que sale esa trayectoria intra-año:
-                    </p>
-                    <ul className="mt-2 space-y-2">
-                      {variantes.map((v, i) => (
-                        <li key={i} className="border-l-2 border-[var(--franco-border)] pl-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                          {v}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  Las comunas que no pasan esas guardas <b>no llevan estimado</b>: se muestran con el
-                  último dato observado y nada más. Antes que rellenar con el promedio de otras comunas,
-                  Franco prefiere decir que no sabe.
-                </p>
-              </>
-            ) : (
-              <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                Hoy Franco publica solo cifras observadas por comuna: cuando exista un cierre estimado, su
-                método completo aparece acá, con las guardas que lo descartan cuando el dato no se sostiene.
-              </p>
-            )}
-          </Card>
-        </section>
+            <h3 className="mtd-h3">Qué entra al puntaje</h3>
+            <div className="mtd-dos">
+              <div>
+                <p className="mtd-mod">Renta larga</p>
+                <ul className="mtd-lista">
+                  {Object.values(DIMENSIONES_LTR).map((d) => <li key={d}>{d}</li>)}
+                </ul>
+              </div>
+              <div>
+                <p className="mtd-mod">Renta corta</p>
+                <ul className="mtd-lista">
+                  {Object.values(DIMENSIONES_STR).map((d) => <li key={d}>{d}</li>)}
+                </ul>
+              </div>
+            </div>
 
-        <section className="mt-14">
-          <Eyebrow>Historia de precios por comuna</Eyebrow>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
-            Qué tan atrás llega el dato
-          </h2>
-          <Card>
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              {comunasConSerie} comunas tienen serie anual propia desde 2015: para esas, la trayectoria que ves
-              es la de la comuna misma. El resto se apoya en el estudio 2014-2024, que compara dos puntos en
-              vez de una serie año a año, y algunas solo tienen precio actual sin ninguna historia propia. En
-              cada página de comuna decimos cuál de los tres casos es — nunca le atribuimos a una comuna la
-              historia de otra ni el promedio del Gran Santiago.
-            </p>
-            <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              Una advertencia que vale para todas: la valorización pasada no garantiza la futura. La década
-              2014-2024 cruza tramos muy distintos del mercado, así que sirve como contexto de riesgo, no
-              como pronóstico.
-            </p>
-          </Card>
-        </section>
+            <h3 className="mtd-h3">Lo que pasa por encima del puntaje</h3>
+            <p>El puntaje mide la calidad del depto; el veredicto responde si la operación se sostiene. Por eso hay reglas que mandan sobre él.</p>
+            <ul className="mtd-lista">
+              <li>
+                <b>Buscar otro, aunque el puntaje dé</b>, cuando {REGLAS.ltrABuscarOtra.join("; cuando ")}.
+              </li>
+              <li>
+                <b>De Comprar baja a Ajustar</b> cuando {REGLAS.ltrDeComprarAAjustar}.
+              </li>
+              <li>
+                <b>En renta corta</b>, Buscar otro cuando {REGLAS.strABuscarOtra.join(", o cuando ")}.
+              </li>
+              <li>{REGLAS.filtroDescuento}</li>
+            </ul>
+          </section>
 
-        <section className="mt-14">
-          <Eyebrow>Franco Score</Eyebrow>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
-            Cómo se calcula el puntaje
-          </h2>
-          <Card>
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              El Franco Score va de 1 a 100 y resume cuatro dimensiones del negocio: rentabilidad, flujo de
-              caja, plusvalía y riesgo. Sobre ese puntaje corren reglas duras que pueden bajar el veredicto
-              aunque el puntaje sea alto — por ejemplo, cuando el arriendo no alcanza a cubrir la cuota y ni
-              la valorización ni la amortización compensan ese esfuerzo. Por eso un score alto con veredicto
-              {etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} no es una contradicción: el puntaje mide la calidad del depto y el veredicto
-              incorpora si la operación se sostiene.
-            </p>
-            <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              Dentro de la dimensión de plusvalía, el peso mayor lo llevan la cercanía a metro y la
-              trayectoria histórica de la comuna. Las proyecciones a diez años del informe usan una tasa
-              pareja de 3% real anual para todas las comunas: es un supuesto declarado, no una predicción
-              por comuna.
-            </p>
-          </Card>
-        </section>
+          <section className="mtd-sec" id="datos">
+            <h2 className="mtd-h2">De dónde salen los datos</h2>
+            <ul className="mtd-lista">
+              <li>
+                <b>Los avisos de venta y arriendo</b> del Gran Santiago: {`${COMPARABLES_TEXTO} deptos comparables`}, que Franco
+                recolecta y actualiza todas las semanas. De ahí salen el precio por metro y el arriendo de cada zona.
+              </li>
+              <li><b>En renta corta</b>, los avisos cercanos: la tarifa por noche y la ocupación de lo que hay alrededor.</li>
+              <li><b>La historia de precios</b> de cada comuna, de estudios de mercado publicados.</li>
+              <li><b>La UF del día</b>, el valor del Banco Central, y la tasa hipotecaria de referencia del mercado, que puedes cambiar por la tuya.</li>
+              <li>
+                <b>Tus datos mandan.</b> Lo que declaras —precio, arriendo, pie, plazo— es lo que se calcula. Si no sabes el arriendo,
+                Franco usa el de la zona y lo dice.
+              </li>
+            </ul>
+          </section>
 
-        <section className="mt-14">
-          <Card>
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              ¿Quieres ver esto aplicado? Mira los{" "}
-              <Link href="/comunas" className="underline hover:text-[var(--franco-text)]">
-                datos por comuna
-              </Link>{" "}
-              o revisa las{" "}
-              <Link href="/faq" className="underline hover:text-[var(--franco-text)]">
-                preguntas frecuentes
-              </Link>
-              .
-            </p>
-            <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)]">
-              Análisis informativo, no constituye asesoría de inversión. Las cifras observadas corresponden a
-              los períodos declarados en cada página.
-            </p>
-          </Card>
-        </section>
-      </main>
+          <section className="mtd-sec" id="que-no-hace">
+            <h2 className="mtd-h2">Qué no hace</h2>
+            <ul className="mtd-lista">
+              <li><b>No es asesoría financiera.</b> {DISCLAIMER_CANONICO}</li>
+              <li><b>No tasa.</b> Compara con precios publicados, no con escrituras: por eso habla de negociar.</li>
+              <li>
+                <b>No adivina cuánto va a subir tu depto.</b> Proyecta con un {String(PLUSVALIA_PCT).replace(".", ",")}% anual parejo
+                para todas las comunas; la historia de la comuna entra en el puntaje, no en la proyección.
+              </li>
+              <li><b>No revisa el edificio ni los papeles:</b> ni sus normas internas, ni deudas, ni el estado legal del depto.</li>
+              <li><b>No modela los seguros del crédito</b> ni los impuestos a la renta o a la ganancia de capital.</li>
+            </ul>
+          </section>
+        </main>
 
-      <AppFooter variant="minimal" />
-    </div>
+        {/* el cierre: el detalle de cada cifra vive en el informe; y el campo, sobre el material */}
+        <div className="lv-cierre-wrap mtd-cierre-wrap">
+          <FondoMaterial />
+          <section className="lv-col mtd-cierre">
+            <h2 className="mtd-cierre-h">El detalle de cada cifra está en el informe.</h2>
+            <p>
+              Cada análisis trae «Cómo se calcula»: la cuenta de cada número, con los datos que usó.{" "}
+              <Link href="/demo?calculo=1" className="mtd-link">Verlo en un informe de ejemplo<span aria-hidden="true">→</span></Link>
+            </p>
+            <div className="mtd-campo">
+              <CampoLanding ubicacion="metodologia" />
+            </div>
+          </section>
+          <PieLanding ultimo={null} ahora={new Date()} conFondo={false} />
+        </div>
+      </div>
+    </>
   );
 }

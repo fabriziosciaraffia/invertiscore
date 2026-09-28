@@ -202,6 +202,20 @@ const FRASE_SOLA_LTR: Record<FamiliaMotivoLTR, string> = {
 };
 
 /**
+ * LAS REGLAS QUE PASAN POR ENCIMA DEL PUNTAJE, en palabras (27-sep-2026). Las cláusulas de las
+ * familias de cada gate, en su orden: las que bajan a Buscar otro sin importar el puntaje, y la
+ * que baja de Comprar a Ajustar. Las lee /metodologia: así la página dice lo que dice el
+ * informe, con las mismas palabras.
+ */
+export const REGLAS_LTR = {
+  aBuscarOtra: (["ingresoLTR", "bolsilloLTR", "capitalLTR", "caroConAporte"] as const).map((f) => CLAUSULA_LTR[f]),
+  deComprarAAjustar: CLAUSULA_LTR.aporteSobreCapital,
+};
+export const REGLAS_STR = {
+  aBuscarOtra: ORDEN_FAMILIA.map((f) => CLAUSULA[f]),
+};
+
+/**
  * Traduce los brazos LTR activos (+ la capa del Gate 2 derivada) a copy. Devuelve
  * null sin motivos — veredicto de banda pura, y el silencio es lo correcto (§1.9.3).
  */
