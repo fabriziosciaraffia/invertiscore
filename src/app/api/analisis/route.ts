@@ -24,6 +24,7 @@ import {
   createAnonPipelineClient,
   CHARGE_MODE_ANON,
 } from "@/lib/api-helpers/anon-cap";
+import { guardarPerfil, perfilDesdeLtr } from "@/lib/lo-que-sigue/perfil";
 import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
@@ -220,6 +221,17 @@ export async function POST(request: Request) {
       );
     }
     filaCreada = true;
+    // «Lo que sigue» (28-sep-2026): el perfil de inversión, guardado con el análisis. Un perfil
+    // perdido se reporta y no toca la creación.
+    try {
+      await guardarPerfil(createAnonPipelineClient(), perfilDesdeLtr(body, readVeredicto(result) ?? null, {
+        analysisId: data.id as string,
+        userId: user?.id ?? null,
+        anonClaimTokenHash: actor.tipo === "anon" || actor.tipo === "anon-hermano" ? actor.tokenHash : null,
+      }));
+    } catch (e) {
+      console.error("[analisis] perfil de inversión:", e);
+    }
     timing.insert_ms = Date.now() - tInsert;
     timing.total_ms = Date.now() - t0;
 

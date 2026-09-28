@@ -19,6 +19,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { sha256Hex } from "@/lib/api-helpers/anon-cap";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import { ligarPerfiles } from "@/lib/lo-que-sigue/perfil";
 
 export interface ClaimResult {
   claimed: number;
@@ -68,6 +69,9 @@ export async function claimAnalisisAnonimos(
   reportarFalloQuery(error, { ruta: "lib/anon-claim", operacion: "adoptar-filas", userId: user.id });
 
   if (!filas || filas.length === 0) return { claimed: 0, redirect: null };
+
+  // «Lo que sigue» (28-sep-2026): el perfil de inversión de cada fila adoptada pasa a la persona.
+  await ligarPerfiles(admin, user.id, filas.map((f) => f.id as string));
 
   // Decisión 1 (F2-1): el análisis anónimo CONSUME el welcome. Mismo patrón de
   // fila-asegurada + UPDATE condicional que chargeAnalysisCredit (lib/access) —

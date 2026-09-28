@@ -17,6 +17,7 @@ import {
   createAnonPipelineClient,
   CHARGE_MODE_ANON,
 } from "@/lib/api-helpers/anon-cap";
+import { guardarPerfil, perfilDesdeStr } from "@/lib/lo-que-sigue/perfil";
 import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
@@ -149,6 +150,16 @@ export async function POST(request: Request) {
         { error: "Error al guardar el análisis" },
         { status: 500 },
       );
+    }
+    // «Lo que sigue» (28-sep-2026): el perfil de inversión, guardado con el análisis (espejo LTR).
+    try {
+      await guardarPerfil(createAnonPipelineClient(), perfilDesdeStr(body, (built.row as { resumen?: string | null }).resumen ?? null, {
+        analysisId: data.id as string,
+        userId: user?.id ?? null,
+        anonClaimTokenHash: actor.tipo === "anon" || actor.tipo === "anon-hermano" ? actor.tokenHash : null,
+      }));
+    } catch (e) {
+      console.error("[short-term] perfil de inversión:", e);
     }
     timing.insert_ms = Date.now() - tInsert;
     timing.total_ms = Date.now() - t0;
