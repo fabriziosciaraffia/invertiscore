@@ -583,10 +583,15 @@ export function TokensHallazgos() {
            cuerpo como único scroll con overscroll contenido. El selector con [role] gana a
            .doc-dictamen .v-modal (border-radius) de la portada sin depender del orden. */
         .v-modal-overlay{padding:0;align-items:flex-end}
-        .v-modal-overlay[role="dialog"] .v-modal{max-width:none;max-height:none;height:calc(100vh - 56px);height:calc(100dvh - 56px);
+        /* el alto lo mide el Modal contra el visualViewport (--v-hoja-h, QA 28-sep-2026); sin
+           JS, el dvh de siempre */
+        .v-modal-overlay[role="dialog"] .v-modal{max-width:none;max-height:none;height:calc(100vh - 56px);height:calc(100dvh - 56px);height:var(--v-hoja-h,calc(100dvh - 56px));
           border-radius:18px 18px 0 0;border:none;padding:0;display:flex;flex-direction:column;overflow:hidden;
           transition:transform .18s ease-out;animation:v-hoja-sube .22s ease-out}
         .v-modal-asa{display:block;flex:none;width:40px;height:4px;border-radius:2px;background:var(--doc-line2);margin:8px auto 0}
+        /* con el teclado abierto la hoja ocupa toda el área visible: sin asa y sin radio */
+        .v-modal-overlay.v-teclado .v-modal-asa{display:none}
+        .v-modal-overlay.v-teclado[role="dialog"] .v-modal{border-radius:0;animation:none}
         .v-modal-head{flex:none;margin:0;padding:8px 16px 10px 20px;border-bottom:1px solid var(--doc-line);gap:12px;align-items:center}
         .v-modal-head h3{font-size:18px}
         .v-modal-sub{font-size:11.5px;margin:2px 0 0}

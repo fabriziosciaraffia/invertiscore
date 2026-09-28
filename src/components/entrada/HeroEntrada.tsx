@@ -198,19 +198,26 @@ export function CampoEntrada({
   }, [hoja, Hoja, inputRef]);
 
   // Con la hoja abierta, las sugerencias de Places se fijan justo bajo el campo de la hoja. El bloqueo
-  // del scroll, Escape y atrás los pone el Modal. La posición se mide sin la animación de entrada:
-  // la distancia del campo al borde de la hoja (las dos se transforman igual) más el borde final.
+  // del scroll, Escape y atrás los pone el Modal. La hoja se mide contra el área visible (el Modal
+  // la coloca con el visualViewport, QA 28-sep-2026), así que el campo se lee donde está de verdad;
+  // se vuelve a medir al terminar la animación de entrada y en cada cambio del área visible.
   useEffect(() => {
     if (!hoja) return;
     const html = document.documentElement;
     html.classList.add("he-hoja-abierta");
-    const colocar = () => {
+    // Se mide en el cuadro siguiente: el Modal recoloca la hoja en el mismo evento del
+    // visualViewport, y medir antes de que aplique daba la altura vieja de la hoja.
+    const colocar = () => requestAnimationFrame(() => {
       const inp = inputRef.current;
       const modal = inp?.closest(".v-modal") as HTMLElement | null;
       if (!inp || !modal) return;
+      // sin la animación de entrada: la distancia del campo al borde de la hoja (las dos se
+      // transforman igual) más el pie del ÁREA VISIBLE, donde la hoja termina
       const dentro = inp.getBoundingClientRect().bottom - modal.getBoundingClientRect().top;
-      html.style.setProperty("--he-pac-top", `${Math.round(window.innerHeight - modal.offsetHeight + dentro + 6)}px`);
-    };
+      const vv = window.visualViewport;
+      const fondo = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      html.style.setProperty("--he-pac-top", `${Math.round(fondo - modal.offsetHeight + dentro + 6)}px`);
+    });
     colocar();
     const t = setTimeout(colocar, 260);
     window.addEventListener("resize", colocar);

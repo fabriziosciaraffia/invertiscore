@@ -583,6 +583,7 @@ export function Modal({
   children,
   variante,
   ancla,
+  portal = false,
 }: {
   abierto: boolean;
   onClose: () => void;
@@ -594,6 +595,11 @@ export function Modal({
   variante?: "glosa";
   /** Para la glosa: un elemento de adentro del informe, para portalizar al `.doc-dictamen` que lo contiene. */
   ancla?: HTMLElement | null;
+  /** MONTAR EN PORTAL AL <body> (QA 28-sep-2026, la landing): fuera de la sección que lo abre. Las
+   *  secciones de la landing llevan grano, degradados y animaciones, y ahí «fijo a la pantalla»
+   *  se vuelve «fijo a la sección»: el velo no cubría el viewport y la hoja quedaba corta. El
+   *  envoltorio lleva los tokens del informe (`.doc-dictamen .doc-tokens`) sin dibujar nada. */
+  portal?: boolean;
 }) {
   // Los consumidores pasan `onClose` inline (identidad nueva en cada render); los efectos
   // con estado propio —historial, arrastre— leen la ref para no re-correr por eso.
@@ -601,8 +607,38 @@ export function Modal({
   onCloseRef.current = onClose;
   const hojaRef = useRef<HTMLDivElement>(null);
   const cuerpoRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const esHoja = useEsHoja();
   const esGlosa = variante === "glosa";
+
+  // LA HOJA SE MIDE CONTRA EL ÁREA VISIBLE (QA 28-sep-2026): el `visualViewport`, no la ventana.
+  // En iOS, con el teclado abierto, `100dvh` y `position: fixed; inset: 0` siguen midiendo la
+  // ventana entera, y la hoja —anclada abajo— se iba debajo del teclado: solo se veía su pie. El
+  // velo se coloca en el rectángulo visible (su `offsetTop` y su alto) y la hoja toma ese alto; con
+  // el teclado abierto (área visible bajo el 75 % de la ventana) la hoja ocupa TODO el área visible,
+  // sin los 56 px de velo, así el campo queda pegado al borde superior. El cuerpo ya está
+  // bloqueado (position: fixed en body, más abajo).
+  useEffect(() => {
+    if (!abierto || !esHoja || esGlosa) return;
+    const vv = window.visualViewport;
+    const ov = overlayRef.current;
+    if (!vv || !ov) return;
+    const colocar = () => {
+      const teclado = vv.height < window.innerHeight * 0.75;
+      ov.style.top = `${Math.round(vv.offsetTop)}px`;
+      ov.style.height = `${Math.round(vv.height)}px`;
+      ov.style.bottom = "auto";
+      ov.style.setProperty("--v-hoja-h", `${Math.round(teclado ? vv.height : vv.height - HOJA_VELO_PX)}px`);
+      ov.classList.toggle("v-teclado", teclado);
+    };
+    colocar();
+    vv.addEventListener("resize", colocar);
+    vv.addEventListener("scroll", colocar);
+    return () => {
+      vv.removeEventListener("resize", colocar);
+      vv.removeEventListener("scroll", colocar);
+    };
+  }, [abierto, esHoja, esGlosa]);
 
   // La pila: atrás y Esc cierran solo el nivel de arriba (hoja-pila.ts). El primer nivel,
   // además, bloquea el body y restaura el scroll al cerrar (position:fixed en body:
@@ -693,7 +729,7 @@ export function Modal({
 
   if (!abierto) return null;
   const nodo = (
-    <div className={`v-modal-overlay${esGlosa ? " v-glosa-overlay" : ""}`} role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div ref={overlayRef} className={`v-modal-overlay${esGlosa ? " v-glosa-overlay" : ""}`} role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`v-modal${esGlosa ? " v-glosa" : ""}`} ref={hojaRef}>
         <div className="v-modal-asa" aria-hidden="true" />
         <div className="v-modal-head">
@@ -712,6 +748,16 @@ export function Modal({
       </div>
     </div>
   );
+  if (portal && !esGlosa) {
+    if (typeof document === "undefined") return null;
+    // El marco no dibuja nada (borde, sombra y fondo anulados): solo aporta los tokens.
+    return createPortal(
+      <div className="doc-dictamen doc-tokens v-modal-portal" style={{ border: 0, boxShadow: "none", background: "none" }}>
+        {nodo}
+      </div>,
+      document.body,
+    );
+  }
   if (!esGlosa) return nodo;
   const destino = (ancla?.closest(".doc-dictamen") as HTMLElement | null) ?? (typeof document !== "undefined" ? document.body : null);
   return destino ? createPortal(<div className="doc-tokens">{nodo}</div>, destino) : nodo;

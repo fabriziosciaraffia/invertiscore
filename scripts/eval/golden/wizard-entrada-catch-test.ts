@@ -180,7 +180,8 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const css = leer("src/components/entrada/hero-entrada.css");
   if (/\.he-hoja \{[^}]*inset: 0/.test(css) || /he-hoja-cancelar/.test(css + hero)) F("8 · vuelve la hoja a pantalla completa");
   if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: var\(--he-pac-top, [0-9]+px\) !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja, a lo ancho");
-  if (!/const dentro = inp\.getBoundingClientRect\(\)\.bottom - modal\.getBoundingClientRect\(\)\.top;\s*\n\s*html\.style\.setProperty\("--he-pac-top", `\$\{Math\.round\(window\.innerHeight - modal\.offsetHeight \+ dentro \+ 6\)\}px`\);/.test(hero)) F("8 · la posición de las sugerencias no se mide sin la animación de entrada");
+  // desde el QA en el teléfono (28-sep-2026) la hoja termina en el pie del ÁREA VISIBLE (visualViewport), no de la ventana
+  if (!/const dentro = inp\.getBoundingClientRect\(\)\.bottom - modal\.getBoundingClientRect\(\)\.top;\s*\n\s*const vv = window\.visualViewport;\s*\n\s*const fondo = vv \? vv\.offsetTop \+ vv\.height : window\.innerHeight;\s*\n\s*html\.style\.setProperty\("--he-pac-top", `\$\{Math\.round\(fondo - modal\.offsetHeight \+ dentro \+ 6\)\}px`\);/.test(hero)) F("8 · la posición de las sugerencias no se mide sin la animación de entrada y contra el área visible");
   // Si la hoja se toca antes de que llegue su código, la medición tiene que volver a correr cuando
   // llega (visto en local: sin `Hoja` en las dependencias, las sugerencias quedaban en el valor por defecto).
   if (!/html\.style\.removeProperty\("--he-pac-top"\);\s*\n\s*\};\s*\n\s*\}, \[hoja, Hoja, inputRef\]\);/.test(hero)) F("8 · la posición de las sugerencias no se vuelve a medir cuando llega la hoja");

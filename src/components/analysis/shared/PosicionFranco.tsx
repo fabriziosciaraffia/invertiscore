@@ -70,6 +70,7 @@ export function PosicionFranco({
   titulo = "La posición de Franco",
   className = "pb-2 md:ml-9",
   estado,
+  hojasEnPortal = false,
 }: {
   /**
    * Cuerpo DETERMINISTA (v22.1): las palancas con su chip, el mix y el descarte, que
@@ -93,6 +94,9 @@ export function PosicionFranco({
    *  neutra «✓ COMPRAR»; COMPRAR y sin salida, solo el texto. El destino no viaja como
    *  string adentro de la bajada: esta pieza lo dibuja. */
   estado?: EstadoRecomendacion;
+  /** Las hojas (los dos modales) montadas en portal al <body>, fuera de la sección que las abre.
+   *  Lo pide la landing (QA 28-sep-2026): ahí la sección deja al overlay «fijo a la sección». */
+  hojasEnPortal?: boolean;
 }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalExtra, setModalExtra] = useState(false);
@@ -182,12 +186,12 @@ export function PosicionFranco({
           </div>
         </div>
         {footer && (
-          <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub}>
+          <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub} portal={hojasEnPortal}>
             <div className="doc-tokens">{footer.cuerpo}</div>
           </Modal>
         )}
         {puertaExtra && (
-          <Modal abierto={modalExtra} onClose={() => setModalExtra(false)} titulo={puertaExtra.k} sub={puertaExtra.sub}>
+          <Modal abierto={modalExtra} onClose={() => setModalExtra(false)} titulo={puertaExtra.k} sub={puertaExtra.sub} portal={hojasEnPortal}>
             <div className="doc-tokens">{puertaExtra.cuerpo}</div>
           </Modal>
         )}
