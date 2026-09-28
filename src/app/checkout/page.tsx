@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { usePostHog } from "@/lib/posthog-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -115,6 +116,9 @@ function CheckoutContent() {
     if (!product) return;
     setLoading(true);
     setError(null);
+    // Lo que tarda se ve cargando: botón presionado y barra del header hasta que Flow responde;
+    // si responde con la URL, la página se descarga con la barra encendida.
+    const soltar = iniciarCarga(claveActual());
     try {
       const body: Record<string, string> = { product: productKey };
       // analysisId solo aplica al pago único (single): desbloquea ese análisis.
@@ -147,10 +151,12 @@ function CheckoutContent() {
         window.location.href = data.url;
       } else {
         setError(data?.details || data?.error || "Error al procesar el pago");
+        soltar();
+        setLoading(false);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
-    } finally {
+      soltar();
       setLoading(false);
     }
   }
@@ -296,6 +302,7 @@ function CheckoutContent() {
             type="button"
             onClick={handlePay}
             disabled={loading}
+            data-presionado={loading ? "1" : undefined}
             className="w-full font-body text-sm font-bold py-3.5 rounded-lg bg-[#C8323C] text-white hover:bg-[#b02a33] transition-colors min-h-[44px] disabled:opacity-50"
             style={{ boxShadow: "0 4px 16px rgba(200,50,60,0.3)" }}
           >

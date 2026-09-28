@@ -121,6 +121,7 @@ export function FilaNum({
   fuente,
   derivado,
   highlight,
+  cargando,
   commitCeroDesdeVacio,
   onCommit,
 }: {
@@ -140,6 +141,8 @@ export function FilaNum({
   derivado?: string;
   /** Anillo transitorio cuando el modal o la card al filo apuntan a esta fila. */
   highlight?: boolean;
+  /** Recién corregida y el recálculo todavía no llega: presionada (affordance del sitio). */
+  cargando?: boolean;
   /**
    * Fix pie-cero: tratar lo escrito sobre un campo VACÍO como edición real aunque `esEdicionReal`
    * lea el mismo valor ("" y "0" son ambos 0). Para el pie, escribir "0" sobre el vacío ES la
@@ -153,7 +156,7 @@ export function FilaNum({
   const enReposo = estadoNumericInput(raw, { decimales, blurred: true, formatEco: eco, escala });
 
   return (
-    <div className={`wz-fe${highlight ? " wz-ilumina" : ""}`}>
+    <div className={`wz-fe${highlight ? " wz-ilumina" : ""}`} data-presionado={cargando ? "1" : undefined} aria-busy={cargando || undefined}>
       <span className="wz-k">{label}</span>
       {sub && <span className="wz-f">{sub}</span>}
       {editing ? (
@@ -193,6 +196,7 @@ export function FilaOpciones<T extends string>({
   value,
   options,
   fuente,
+  cargando,
   onCommit,
 }: {
   label: string;
@@ -200,12 +204,14 @@ export function FilaOpciones<T extends string>({
   value: string | undefined;
   options: Array<{ value: T; label: string }>;
   fuente?: ReactNode;
+  /** Recién elegida y el recálculo todavía no llega: presionada (affordance del sitio). */
+  cargando?: boolean;
   onCommit: (v: T) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const current = options.find((o) => o.value === value)?.label ?? "—";
   return (
-    <div className="wz-fe">
+    <div className="wz-fe" data-presionado={cargando ? "1" : undefined} aria-busy={cargando || undefined}>
       <span className="wz-k">{label}</span>
       {sub && <span className="wz-f">{sub}</span>}
       <Pildora texto={current} etiqueta={label} onClick={() => setEditing((e) => !e)} />

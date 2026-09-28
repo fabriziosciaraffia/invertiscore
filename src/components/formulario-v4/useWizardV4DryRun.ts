@@ -2,7 +2,8 @@
 
 // Dry-run del resumen (FASE 5). Llama a /api/analisis/dry-run EN SILENCIO al
 // llegar al resumen; re-dispara solo ante cambio de un input dominante. NO
-// bloquea el botón de generar; si falla o expira, no hay card (fallo silencioso).
+// bloquea el botón de generar; si falla o expira, no hay card (fallo silencioso). Mientras corre,
+// `pendiente` es true y la barra del header está encendida (lo que tarda se ve cargando).
 //
 // LTR / STR / BOTH. Reglas de perturbación (viven server-side):
 //  · LTR: arriendo ±Δ + tasa ±Δ (tasa solo si tasaModo === "estimada").
@@ -14,13 +15,16 @@ import { useEffect, useState } from "react";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { buildLtrPayload, buildStrPayload, type SubmitContext } from "./wizardV4Submit";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
 
 export interface DryRunResult {
   alFilo: boolean;
   variablesSensibles: string[];
+  /** Hay un recálculo en vuelo (desde el cambio hasta la respuesta). */
+  pendiente: boolean;
 }
 
-const EMPTY: DryRunResult = { alFilo: false, variablesSensibles: [] };
+const EMPTY: DryRunResult = { alFilo: false, variablesSensibles: [], pendiente: false };
 
 export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data): DryRunResult {
   const [res, setRes] = useState<DryRunResult>(EMPTY);
@@ -90,6 +94,9 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
               flags,
             };
     let alive = true;
+    // Desde el cambio (no desde el fetch): la espera que ve el usuario empieza al corregir.
+    setRes((r) => ({ ...r, pendiente: true }));
+    const soltar = iniciarCarga(claveActual());
     const t = setTimeout(() => {
       fetch("/api/analisis/dry-run", {
         method: "POST",
@@ -98,13 +105,17 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
       })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (alive && d) setRes({ alFilo: !!d.alFilo, variablesSensibles: Array.isArray(d.variablesSensibles) ? d.variablesSensibles : [] });
+          if (!alive) return;
+          if (d) setRes({ alFilo: !!d.alFilo, variablesSensibles: Array.isArray(d.variablesSensibles) ? d.variablesSensibles : [], pendiente: false });
+          else setRes((r) => ({ ...r, pendiente: false }));
         })
-        .catch(() => { /* fallo silencioso: sin card */ });
+        .catch(() => { if (alive) setRes((r) => ({ ...r, pendiente: false })); /* fallo silencioso: sin card */ })
+        .finally(soltar);
     }, 500);
     return () => {
       alive = false;
       clearTimeout(t);
+      soltar();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

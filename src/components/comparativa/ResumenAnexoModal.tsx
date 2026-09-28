@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { usePostHog } from "@/lib/posthog-react";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -71,6 +72,8 @@ export function ResumenAnexoModal({
     if (loading) return;
     setLoading(true);
     setError(null);
+    // Lo que tarda se ve cargando: presionado y barra hasta que Flow responde.
+    const soltar = iniciarCarga(claveActual());
     posthog?.capture("unlock_cta_click", { analysisId, modalidad: data?.modalidad });
     try {
       const res = await fetch("/api/payments/create", {
@@ -86,10 +89,12 @@ export function ResumenAnexoModal({
         window.location.href = json.url;
       } else {
         setError(json.error || "No se pudo iniciar el pago. Intenta de nuevo.");
+        soltar();
         setLoading(false);
       }
     } catch {
       setError("No se pudo iniciar el pago. Intenta de nuevo.");
+      soltar();
       setLoading(false);
     }
   }, [loading, posthog, analysisId, ambasGroupId, data]);
@@ -304,6 +309,7 @@ export function ResumenAnexoModal({
                 type="button"
                 onClick={handleUnlock}
                 disabled={loading}
+                data-presionado={loading ? "1" : undefined}
                 className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.03em] text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto sm:px-5 sm:text-[12px] sm:tracking-[0.06em]"
                 style={{ background: SIGNAL_RED }}
               >

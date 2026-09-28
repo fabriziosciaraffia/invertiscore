@@ -31,7 +31,7 @@
 
 import { EnlaceCarga } from "./EnlaceCarga";
 import { BarraCarga } from "./BarraCarga";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { posthogCliente as posthog } from "@/lib/posthog-cliente";
 import { Moon, Sun } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
@@ -285,7 +285,9 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
         </div>
         {derecha && <div className="hf-der">{derecha}</div>}
       </div>
-          <BarraCarga />
+      <Suspense fallback={null}>
+        <BarraCarga />
+      </Suspense>
     </header>
   );
 }

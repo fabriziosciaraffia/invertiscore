@@ -76,6 +76,7 @@ import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
 import { reportarValidacionRechazo } from "./stepTelemetry";
 import { estamparSubmit } from "@/lib/informe-visto";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { MODALIDADES_OFRECIDAS } from "./screenInforme";
 
 /**
@@ -412,6 +413,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
   const a = w.nav.answers;
   const mod = a.modalidad;
   const [submitting, setSubmitting] = useState(false);
+  // Lo que tarda se ve cargando: el POST de generar enciende la barra del header y el botón queda
+  // presionado; si falla, se suelta acá. Si llega, la página se descarga con la barra encendida.
+  const soltarCarga = useRef<() => void>(() => {});
   const [error, setError] = useState("");
   // Anomalías del guard de plausibilidad (422), COMPLETAS y ya ordenadas por
   // prioridad desde el server. Hoy la caja de error pinta la primera; PIEZA B
@@ -435,6 +439,11 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
   const [highlight, setHighlight] = useState<string | null>(null);
 
   const dryRun = useWizardV4DryRun(a, data);
+  // Aplicar una corrección también tarda (el dry-run recalcula): la fila corregida queda
+  // presionada, con la barra, hasta que llega la respuesta.
+  const [campoEnEspera, setCampoEnEspera] = useState<string | null>(null);
+  useEffect(() => { if (!dryRun.pendiente) setCampoEnEspera(null); }, [dryRun.pendiente]);
+  const enEspera = (field: string) => dryRun.pendiente && campoEnEspera === field;
   const alFilo = dryRun.alFilo && dryRun.variablesSensibles.length > 0;
   const alfiloKey = alFilo ? dryRun.variablesSensibles.join("|") : "";
 
@@ -494,6 +503,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
   // si la card nombró esa variable) y re-dispara el dry-run (vía cambio de answers).
   const commitEdit = (field: string, patch: Partial<WizardV4Answers>) => {
     w.patchAnswers(patch);
+    setCampoEnEspera(field);
     // Interacción con la card → limpia su nota de cascada.
     const card = FIELD_CARD[field];
     if (card) setCascade((c) => (c[card] ? { ...c, [card]: "" } : c));
@@ -671,6 +681,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
     // crudo. Con anomalías la caja usa el mensaje en tuteo; sin ellas, el fallback.
     setError(res.error && res.error !== "input_implausible" ? res.error : fallback);
     setSubmitting(false);
+    soltarCarga.current();
   }
 
   /** CTA del resumen: abre el modal de confirmación. NO dispara el POST todavía. */
@@ -727,6 +738,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
   /** Primario del modal: recién acá sale el POST. */
   async function confirmarYEnviar() {
     setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
+    soltarCarga.current = iniciarCarga(claveActual());
     // Tres caminos: anónimo con cap (F2-2) → genera gratis sin sesión;
     // logueado con saldo → crédito; logueado sin saldo → compra locked.
     const esAnonimo = !isLoggedIn;
@@ -905,7 +917,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
             label="Precio" sub={precioCLP} raw={a.precio ?? ""} display={`UF ${cifra(a.precio, DEC.precioUF, 0)}`}
             decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")} escala={escalaPrecio}
             highlight={highlight === "precio"}
-            onCommit={(v) => commitEdit("precio", { precio: v })}
+            cargando={enEspera("precio")} onCommit={(v) => commitEdit("precio", { precio: v })}
           />
           {/* Tipo: estructural (muta el detalle + recalcula subsidio). */}
           <FilaOpciones
@@ -916,14 +928,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
           {a.tipoPropiedad === "nuevo" ? (
             <FilaOpciones label="Entrega" value={a.estadoVenta}
               options={[{ value: "inmediata" as const, label: "Inmediata" }, { value: "futura" as const, label: "Futura" }]}
-              onCommit={(v) => commitEdit("entrega", { estadoVenta: v })} />
+              cargando={enEspera("entrega")} onCommit={(v) => commitEdit("entrega", { estadoVenta: v })} />
           ) : (
             <FilaOpciones label="Antigüedad" value={a.antiguedad} options={ANTIGUEDADES}
-              onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
+              cargando={enEspera("antiguedad")} onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
           )}
           <TamanoFila a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
-          <FilaNum label="Estacionamientos" raw={a.estacionamientos ?? ""} display={cifra(a.estacionamientos, DEC.estacionamientos, 0)} decimales={DEC.estacionamientos} highlight={highlight === "tam"} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
-          <FilaNum label="Bodegas" raw={a.bodegas ?? ""} display={cifra(a.bodegas, DEC.bodegas, 0)} decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
+          <FilaNum label="Estacionamientos" raw={a.estacionamientos ?? ""} display={cifra(a.estacionamientos, DEC.estacionamientos, 0)} decimales={DEC.estacionamientos} highlight={highlight === "tam"} cargando={enEspera("estac")} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
+          <FilaNum label="Bodegas" raw={a.bodegas ?? ""} display={cifra(a.bodegas, DEC.bodegas, 0)} decimales={DEC.bodegas} cargando={enEspera("bodega")} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
         </FilaNav>
 
         {/* ── Cómo lo financias ── */}
@@ -955,7 +967,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
               label="Cómo se cubre" value={a.pieRazon}
               sub={a.pieRazon ? "Lo indicaste tú" : "Falta: elige cómo se cubre"}
               options={PIE_RAZON_OPCIONES.map((o) => ({ value: o.value, label: RAZON_CORTA[o.value] }))}
-              onCommit={(v) => commitEdit("pie", v === "otra_fuente" ? { pieRazon: v } : { pieRazon: v, otraFuenteMonto: undefined, otraFuenteCredito: undefined, otraFuenteCuota: undefined })}
+              cargando={enEspera("pie")} onCommit={(v) => commitEdit("pie", v === "otra_fuente" ? { pieRazon: v } : { pieRazon: v, otraFuenteMonto: undefined, otraFuenteCredito: undefined, otraFuenteCuota: undefined })}
             />
           )}
           {/* «Otra fuente» (27-sep-2026): el monto —para el banco es pie— y, si es un crédito, su
@@ -970,13 +982,13 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 unidad={unidadPie === "pct" ? "%" : unidadPie === "uf" ? " UF" : " $"}
                 decimales={decPie(unidadPie)}
                 escala={() => (otraPct > 100 ? escalaPie(otraPct) : null)}
-                onCommit={(v) => commitEdit("otraFuente", { otraFuenteMonto: v })}
+                cargando={enEspera("otraFuente")} onCommit={(v) => commitEdit("otraFuente", { otraFuenteMonto: v })}
               />
               {otraPct > 0 && (
                 <FilaOpciones
                   label="¿Es un crédito?" value={a.otraFuenteCredito ? "si" : "no"}
                   options={[{ value: "no" as const, label: "No" }, { value: "si" as const, label: "Sí" }]}
-                  onCommit={(v) => commitEdit("otraFuente", v === "si" ? { otraFuenteCredito: true } : { otraFuenteCredito: false, otraFuenteCuota: undefined })}
+                  cargando={enEspera("otraFuente")} onCommit={(v) => commitEdit("otraFuente", v === "si" ? { otraFuenteCredito: true } : { otraFuenteCredito: false, otraFuenteCuota: undefined })}
                 />
               )}
               {otraPct > 0 && a.otraFuenteCredito && (
@@ -984,7 +996,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                   label="Cuota de ese crédito" sub="Se suma a tu flujo mensual"
                   raw={a.otraFuenteCuota ?? ""} display={a.otraFuenteCuota ? `$${cifra(a.otraFuenteCuota, DEC.cuotaCreditoPie, 0)}` : "—"} unidad="/mes"
                   decimales={DEC.cuotaCreditoPie} formatEco={ecoPorDefecto("$", " al mes")}
-                  onCommit={(v) => commitEdit("otraFuente", { otraFuenteCuota: v })}
+                  cargando={enEspera("otraFuente")} onCommit={(v) => commitEdit("otraFuente", { otraFuenteCuota: v })}
                 />
               )}
             </>
@@ -992,14 +1004,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
           <FilaOpciones
             label="Plazo" value={a.plazoCredito}
             options={[{ value: "15", label: "15 años" }, { value: "20", label: "20 años" }, { value: "25", label: "25 años" }, { value: "30", label: "30 años" }]}
-            onCommit={(v) => commitEdit("plazo", { plazoCredito: v })}
+            cargando={enEspera("plazo")} onCommit={(v) => commitEdit("plazo", { plazoCredito: v })}
           />
           {calificaSubsidioV4(a) ? (
             <FilaOpciones
               label="Tasa" value={conSubsidio ? "sub" : a.tasaModo === "estimada" ? "mer" : undefined}
               sub={tasaTag ? tasaTag.charAt(0).toUpperCase() + tasaTag.slice(1) : undefined}
               options={[{ value: "sub", label: `Subsidio ${tasaStr(tasaConSubsidioV4(data.tasaMercado))}%` }, { value: "mer", label: `Mercado ${tasaStr(data.tasaMercado)}%` }]}
-              onCommit={(v) => commitEdit("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(v === "sub" ? tasaConSubsidioV4(data.tasaMercado) : data.tasaMercado) })}
+              cargando={enEspera("tasa")} onCommit={(v) => commitEdit("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(v === "sub" ? tasaConSubsidioV4(data.tasaMercado) : data.tasaMercado) })}
               fuente={conSubsidio ? "Subsidio estatal a la tasa (Ley 21.748): vivienda nueva en primera venta." : undefined}
             />
           ) : (
@@ -1008,7 +1020,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
               raw={a.tasaInteres ?? ""} display={cifra(a.tasaInteres, DEC.tasa, 0)} unidad="% anual"
               decimales={DEC.tasa} formatEco={ecoPorDefecto("", "% anual")} escala={escalaTasa}
               highlight={highlight === "tasa"}
-              onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
+              cargando={enEspera("tasa")} onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
             />
           )}
           {cuota > 0 && <FilaFija label="Tu cuota mensual" sub="Calculada con el pie, el plazo y la tasa" valor={fmtCLP(cuota)} />}
@@ -1028,13 +1040,13 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", " al mes")} escala={escalaArriendo}
                 fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}
                 highlight={highlight === "arr"}
-                onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
+                cargando={enEspera("arr")} onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />
               <SubRot>Lo que se descuenta</SubRot>
-              <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
-              <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
-              <FilaNum label="Vacancia" sub={a.vacanciaPct ? "Corregido por ti" : "Meses sin arrendatario al año"} raw={a.vacanciaPct ?? "5"} display={cifra(a.vacanciaPct ?? "5", DEC.vacancia, 5)} unidad="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} highlight={highlight === "vacanciaPct"} onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
-              <FilaNum label="Comisión de administración" sub="0 = lo administras tú; corredor típico 7-10%" raw={a.comisionAdminPct ?? "0"} display={cifra(a.comisionAdminPct ?? "0", DEC.comisionAdmin, 0)} unidad="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} escala={escalaComision} highlight={highlight === "comisionAdminPct"} onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
+              <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} cargando={enEspera("gastosComunes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
+              <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} cargando={enEspera("contribuciones")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
+              <FilaNum label="Vacancia" sub={a.vacanciaPct ? "Corregido por ti" : "Meses sin arrendatario al año"} raw={a.vacanciaPct ?? "5"} display={cifra(a.vacanciaPct ?? "5", DEC.vacancia, 5)} unidad="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} highlight={highlight === "vacanciaPct"} cargando={enEspera("vacanciaPct")} onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+              <FilaNum label="Comisión de administración" sub="0 = lo administras tú; corredor típico 7-10%" raw={a.comisionAdminPct ?? "0"} display={cifra(a.comisionAdminPct ?? "0", DEC.comisionAdmin, 0)} unidad="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} escala={escalaComision} highlight={highlight === "comisionAdminPct"} cargando={enEspera("comisionAdminPct")} onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </>
           )}
 
@@ -1046,27 +1058,27 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 raw={a.adrTarifa ?? String(sugTarifa || "")} display={tarifaVal > 0 ? fmtCLP(tarifaVal) : "—"}
                 decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", " la noche")} escala={escalaTarifa}
                 fuente="Datos de mercado de Airbnb de la zona, últimos 90 días." highlight={highlight === "adr"}
-                onCommit={(v) => commitEdit("adr", { adrTarifa: v, adrModo: "corregir" })}
+                cargando={enEspera("adr")} onCommit={(v) => commitEdit("adr", { adrTarifa: v, adrModo: "corregir" })}
               />
               <FilaNum
                 label="Ocupación" sub={a.adrModo === "corregir" ? "Corregida por ti" : "Estimada por Franco"}
                 raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={cifra(String(a.adrOcupacion ?? (sugOcc || "")), DEC.ocupacion, 0)} unidad="%"
                 decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de las noches")} escala={escalaOcupacion}
                 highlight={highlight === "adr"}
-                onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
+                cargando={enEspera("adr")} onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
               <SubRot>Operación</SubRot>
               <FilaOpciones
                 label="Quién lo opera" value={admin ? "administrador" : "auto"}
                 options={[{ value: "auto" as const, label: "Lo opero yo" }, { value: "administrador" as const, label: "Un administrador" }]}
-                onCommit={(v) => commitEdit("modoGestion", { modoGestion: v })}
+                cargando={enEspera("modoGestion")} onCommit={(v) => commitEdit("modoGestion", { modoGestion: v })}
               />
               {admin ? (
                 <FilaNum
                   label="Comisión" sub="Del ingreso, en lugar del 3% de la plataforma"
                   raw={a.comisionStrPct ?? "20"} display={cifra(a.comisionStrPct ?? "20", DEC.comisionAdmin, 20)} unidad="%"
                   decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del ingreso")} escala={escalaComision}
-                  onCommit={(v) => commitEdit("comisionStrPct", { comisionStrPct: v })}
+                  cargando={enEspera("comisionStrPct")} onCommit={(v) => commitEdit("comisionStrPct", { comisionStrPct: v })}
                 />
               ) : (
                 <FilaFija label="Comisión" sub="La de la plataforma: fija con «lo opero yo»" valor="3%" />
@@ -1075,24 +1087,24 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 label="Huéspedes" sub={a.capacidadHuespedes ? "Lo indicaste tú" : "Dos por dormitorio"}
                 raw={a.capacidadHuespedes ?? String(huespedesNum(a))} display={String(huespedesNum(a))}
                 decimales={DEC.huespedes} formatEco={(v) => `${v} ${v === 1 ? "huésped" : "huéspedes"}`}
-                onCommit={(v) => commitEdit("huespedes", { capacidadHuespedes: v })}
+                cargando={enEspera("huespedes")} onCommit={(v) => commitEdit("huespedes", { capacidadHuespedes: v })}
               />
               <FilaOpciones
                 label="Amoblado" value={amoblado ? "si" : "no"}
                 options={[{ value: "no" as const, label: "No" }, { value: "si" as const, label: "Sí" }]}
-                onCommit={(v) => commitEdit("amoblado", { estaAmoblado: v === "si" })}
+                cargando={enEspera("amoblado")} onCommit={(v) => commitEdit("amoblado", { estaAmoblado: v === "si" })}
               />
               <SubRot>Costos</SubRot>
-              <FilaNum label="Luz, agua, wifi e insumos" sub={totalOpsEditado ? "Corregido por ti" : `Típico para ${tipologia}`} raw={totalOpsEditado ?? String(totalOpsDef)} display={`$${cifra(totalOpsEditado, DEC.costos, totalOpsDef)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("costoInsumos", { costosOperativos: v })} />
-              <FilaNum label="Mantención" sub={a.mantencionStr ? "Corregido por ti" : `Provisión mensual para ${tipologia}`} raw={a.mantencionStr ?? String(costos.mantencion)} display={`$${cifra(a.mantencionStr, DEC.costos, costos.mantencion)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
+              <FilaNum label="Luz, agua, wifi e insumos" sub={totalOpsEditado ? "Corregido por ti" : `Típico para ${tipologia}`} raw={totalOpsEditado ?? String(totalOpsDef)} display={`$${cifra(totalOpsEditado, DEC.costos, totalOpsDef)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} cargando={enEspera("costoInsumos")} onCommit={(v) => commitEdit("costoInsumos", { costosOperativos: v })} />
+              <FilaNum label="Mantención" sub={a.mantencionStr ? "Corregido por ti" : `Provisión mensual para ${tipologia}`} raw={a.mantencionStr ?? String(costos.mantencion)} display={`$${cifra(a.mantencionStr, DEC.costos, costos.mantencion)}`} unidad="/mes" decimales={DEC.costos} formatEco={ecoPorDefecto("$", " al mes")} cargando={enEspera("mantencionStr")} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
               {!esLtr && (
                 <>
-                  <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
-                  <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
+                  <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} cargando={enEspera("gastosComunes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
+                  <FilaNum label="Contribuciones" sub={a.contribuciones ? "Corregido por ti" : "Fórmula del SII"} raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={`$${cifra(a.contribuciones, DEC.contribuciones, Math.round(contribDef))}`} unidad="/trim" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$", " al trimestre")} cargando={enEspera("contribuciones")} onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
                 </>
               )}
               {!amoblado && (
-                <FilaNum label="Amoblarlo" sub={a.costoAmoblamiento ? "Corregido por ti" : "Una vez"} raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={`$${cifra(a.costoAmoblamiento, DEC.costos, costos.costoAmoblamiento)}`} decimales={DEC.costos} formatEco={ecoPorDefecto("$", ", una vez")} onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
+                <FilaNum label="Amoblarlo" sub={a.costoAmoblamiento ? "Corregido por ti" : "Una vez"} raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={`$${cifra(a.costoAmoblamiento, DEC.costos, costos.costoAmoblamiento)}`} decimales={DEC.costos} formatEco={ecoPorDefecto("$", ", una vez")} cargando={enEspera("costoAmoblamiento")} onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
               )}
             </>
           )}
@@ -1264,16 +1276,16 @@ function FinalCTA({ mod, isLoggedIn, anonCap, canAnalyze, submitting, incompleto
   if (isLoggedIn && canAnalyze) {
     // Sin "· 1 crédito": era falso para ilimitados y admins, y el consumo real
     // lo dice `lineaConsumo` según el tier. El botón solo nombra la acción.
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar el análisis</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} data-presionado={submitting ? "1" : undefined} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar el análisis</>}</button>;
   }
   if (isLoggedIn) {
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} data-presionado={submitting ? "1" : undefined} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
   }
   // Anónimo con cap disponible (F2-2): el CTA genera DE VERDAD — mismo camino
   // del modal de confirmación; el submit sale sin sesión y el server emite la
   // cookie del cap con el response.
   if (anonCap) {
-    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar mi análisis gratis</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} data-presionado={submitting ? "1" : undefined} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…</> : <>Generar mi análisis gratis</>}</button>;
   }
   // Anónimo con cap consumido: muro de registro (baseline del funnel).
   if (incompleto) {
