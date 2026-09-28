@@ -15,16 +15,15 @@ import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 //  · Inter → `--font-ui`: variable 100-900, la tipografía del rediseño del informe.
 //  · JetBrains Mono → `--font-mono`: 400, 500 y 700.
 // Las variables viven en la clase `fuentes-franco` de <body>, como la clase de next/font.
-// Se precargan los rangos latin y latin-ext, los mismos que next/font marcaba para precargar.
+// Se precarga solo el rango latin de cada cara (28-sep-2026, rendimiento de la landing): los cuatro
+// latin-ext (194 kB) se precargaban con prioridad alta antes del titular y el español no los usa
+// —«¿», «ñ» y las tildes viven en latin—; siguen declarados en `fuentes.css` y bajan solos si
+// alguna vez aparece un carácter de ese rango. Las cinco que quedan: 285 kB.
 const FUENTES_PRECARGA = [
   "source-serif-4-normal-latin.woff2",
-  "source-serif-4-normal-latin-ext.woff2",
   "source-serif-4-italic-latin.woff2",
-  "source-serif-4-italic-latin-ext.woff2",
   "ibm-plex-sans-normal-latin.woff2",
-  "ibm-plex-sans-normal-latin-ext.woff2",
   "inter-normal-latin.woff2",
-  "inter-normal-latin-ext.woff2",
   "jetbrains-mono-normal-latin.woff2",
 ] as const;
 
