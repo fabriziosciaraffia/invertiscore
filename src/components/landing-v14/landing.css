@@ -481,12 +481,14 @@
 }
 .lv-sesgo mark { background: linear-gradient(transparent 60%, rgba(250, 250, 248, 0.26) 60%); color: var(--lv-paper); }
 /* Affordance nivel 3 — ENLACE: subrayado al 35 % que se satura al pasar por encima. */
+/* LO TOCABLE SE VE TOCABLE (28-sep-2026): era un texto subrayado suelto; ahora es la píldora con
+   contorno del sitio, en papel sobre la tinta. */
 .lv-como {
-  display: inline-block; margin-top: 16px; font-size: 14px; color: #c4c2bc;
-  text-decoration: underline; text-underline-offset: 4px;
-  text-decoration-color: rgba(196, 194, 188, 0.35); transition: text-decoration-color 0.2s, color 0.2s;
+  display: inline-flex; align-items: center; margin-top: 18px; height: 38px; padding: 0 18px; border-radius: var(--lv-rad-pill);
+  border: 1.5px solid rgba(250, 250, 248, 0.7); font-size: 14px; font-weight: 600; color: var(--lv-paper);
+  text-decoration: none; transition: background 0.2s, color 0.2s;
 }
-.lv-como:hover, .lv-como:focus-visible { color: var(--lv-paper); text-decoration-color: var(--lv-paper); }
+.lv-como:hover, .lv-como:focus-visible, .lv-como[data-presionado="1"] { background: var(--lv-paper); color: var(--lv-ink); }
 .lv-como span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; margin-left: 6px; }
 
 /* mapa: calles como <img> (estático, cacheado aparte) + canvas con todos los

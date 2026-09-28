@@ -65,7 +65,7 @@ export function HeroLanding({ cabecera }: { cabecera: ReactNode }) {
     <HeroEntrada
       cabecera={cabecera}
       pie={
-        <LinkMedido href="/demo" evento={EV.ejemplo} props={{ origen: "hero" }}>
+        <LinkMedido href="/demo" className="he-pild" evento={EV.ejemplo} props={{ origen: "hero" }}>
           Ver un análisis real<span aria-hidden="true">→</span>
         </LinkMedido>
       }
