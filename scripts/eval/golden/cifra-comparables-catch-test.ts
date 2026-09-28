@@ -7,7 +7,8 @@
 //
 // FIJA, verificado EN ROJO por mutación:
 //   1 · EL TEXTO SALE DEL NÚMERO MEDIDO, redondeado HACIA ABAJO a decenas de miles, y nunca promete
-//       más de lo medido.
+//       más de lo medido. Dos formas del mismo piso (27-sep-2026): «+40.000» sola y grande
+//       (`COMPARABLES_CIFRA`) y «más de 40.000» dentro de una frase (`COMPARABLES_TEXTO`).
 //   2 · NINGUNA SUPERFICIE PÚBLICA ESCRIBE LA CIFRA A MANO: en el código de `src/` que llega al
 //       usuario (sin comentarios, sin `admin/`, `api/` ni `dev/`, fuera de `stats.ts`) no hay un
 //       «N mil / N.000(+) propiedades | deptos | departamentos | comparables | avisos».
@@ -17,7 +18,7 @@
 // ============================================================================
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { COMPARABLES_MEDIDOS, COMPARABLES_TEXTO } from "../../../src/lib/stats";
+import { COMPARABLES_CIFRA, COMPARABLES_MEDIDOS, COMPARABLES_PISO, COMPARABLES_TEXTO } from "../../../src/lib/stats";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const sinComentarios = (s: string) =>
@@ -56,12 +57,25 @@ export function runCifraComparablesTier(): { hard: number } {
   const F = (m: string) => fallas.push(m);
 
   // ── 1 · el texto sale del número, redondeado hacia abajo ──
-  const miles = Math.floor(COMPARABLES_MEDIDOS / 10_000) * 10;
-  if (COMPARABLES_TEXTO !== `más de ${miles} mil`) F(`1 · COMPARABLES_TEXTO dice «${COMPARABLES_TEXTO}» y el número medido (${COMPARABLES_MEDIDOS}) redondeado hacia abajo da «más de ${miles} mil»`);
-  const prometido = Number((COMPARABLES_TEXTO.match(/(\d+)\s*mil/) ?? [])[1]) * 1000;
-  if (!(prometido > 0) || prometido > COMPARABLES_MEDIDOS) F(`1 · el texto promete ${prometido} y se midieron ${COMPARABLES_MEDIDOS}`);
-  if (!/export const COMPARABLES_TEXTO = `más de \$\{Math\.floor\(COMPARABLES_MEDIDOS \/ 10_000\) \* 10\} mil`;/.test(readFileSync(join(RAIZ, FUENTE), "utf8"))) {
-    F("1 · COMPARABLES_TEXTO ya no se deriva de COMPARABLES_MEDIDOS: vuelve a ser una cifra escrita a mano");
+  // ACTA (27-sep-2026, decisión de Fabrizio): de «más de 40 mil» a dos formas del mismo piso,
+  // «+40.000» sola y grande y «más de 40.000» en una frase. La regla no cambia: se deriva del número
+  // medido, hacia abajo, y nunca promete más.
+  const piso = Math.floor(COMPARABLES_MEDIDOS / 10_000) * 10_000;
+  const puntos = piso.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (COMPARABLES_PISO !== piso) F(`1 · COMPARABLES_PISO vale ${COMPARABLES_PISO} y lo medido (${COMPARABLES_MEDIDOS}) redondeado hacia abajo da ${piso}`);
+  if (COMPARABLES_TEXTO !== `más de ${puntos}`) F(`1 · COMPARABLES_TEXTO dice «${COMPARABLES_TEXTO}» y tendría que decir «más de ${puntos}»`);
+  if (COMPARABLES_CIFRA !== `+${puntos}`) F(`1 · COMPARABLES_CIFRA dice «${COMPARABLES_CIFRA}» y tendría que decir «+${puntos}»`);
+  for (const [nombre, t] of [["TEXTO", COMPARABLES_TEXTO], ["CIFRA", COMPARABLES_CIFRA]] as const) {
+    const prometido = Number((t.match(/(\d{1,3}(?:\.\d{3})+)/) ?? [])[1]?.replace(/\./g, ""));
+    if (!(prometido > 0) || prometido > COMPARABLES_MEDIDOS) F(`1 · COMPARABLES_${nombre} promete ${prometido} y se midieron ${COMPARABLES_MEDIDOS}`);
+  }
+  const fuente = readFileSync(join(RAIZ, FUENTE), "utf8");
+  if (
+    !/export const COMPARABLES_PISO = Math\.floor\(COMPARABLES_MEDIDOS \/ 10_000\) \* 10_000;/.test(fuente) ||
+    !/export const COMPARABLES_CIFRA = `\+\$\{conPuntos\(COMPARABLES_PISO\)\}`;/.test(fuente) ||
+    !/export const COMPARABLES_TEXTO = `más de \$\{conPuntos\(COMPARABLES_PISO\)\}`;/.test(fuente)
+  ) {
+    F("1 · las dos formas ya no se derivan de COMPARABLES_MEDIDOS: vuelve a haber una cifra escrita a mano");
   }
 
   // ── 2 · nadie la escribe a mano ──
@@ -72,7 +86,7 @@ export function runCifraComparablesTier(): { hard: number } {
     const src = sinComentarios(readFileSync(join(RAIZ, rel), "utf8").replace(/\r\n/g, "\n"));
     for (const linea of src.split("\n")) {
       const m = linea.match(CIFRA_A_MANO);
-      if (m) F(`2 · ${rel} escribe la cifra a mano («${m[0]}»): tiene que leer COMPARABLES_TEXTO de ${FUENTE}`);
+      if (m) F(`2 · ${rel} escribe la cifra a mano («${m[0]}»): tiene que leerla de ${FUENTE}`);
     }
   }
   if (rutas.length < 300) F(`0 · el barrido leyó ${rutas.length} archivos de src/: no está leyendo el repo`);
@@ -80,8 +94,15 @@ export function runCifraComparablesTier(): { hard: number } {
   // ── 3 · las superficies que la citan la leen de la fuente ──
   for (const rel of CONSUMIDORES) {
     const src = sinComentarios(readFileSync(join(RAIZ, rel), "utf8"));
-    if (!/import \{ COMPARABLES_TEXTO \} from ["'](?:@\/lib|\.)\/stats["'];/.test(src) || !/\$\{COMPARABLES_TEXTO[\s\S]{0,60}?\}/.test(src)) {
-      F(`3 · ${rel} no interpola COMPARABLES_TEXTO de ${FUENTE}`);
+    // ACTA (27-sep-2026): con dos formas, la superficie importa la que usa. La cifra grande de la
+    // landing no se interpola en un texto: se pasa entera al contador que la escribe.
+    const imp = src.match(/import \{([^}]*)\} from ["'](?:@\/lib|\.)\/stats["'];/);
+    const usadas = imp ? (imp[1].match(/\bCOMPARABLES_(?:TEXTO|CIFRA)\b/g) ?? []) : [];
+    const sinImport = imp ? src.replace(imp[0], "") : src;
+    // la cita: interpolada en un texto («${COMPARABLES_TEXTO}») o pasada entera a un prop («={COMPARABLES_CIFRA}»)
+    const cita = (u: string) => sinImport.includes("${" + u) || sinImport.includes("={" + u + "}");
+    if (usadas.length === 0 || !usadas.some(cita)) {
+      F(`3 · ${rel} no cita la cifra desde ${FUENTE} (COMPARABLES_TEXTO o COMPARABLES_CIFRA)`);
     }
   }
 
@@ -89,7 +110,7 @@ export function runCifraComparablesTier(): { hard: number } {
     console.log(`  ✗ CIFRA-COMPARABLES · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — «${COMPARABLES_TEXTO}» sale de ${COMPARABLES_MEDIDOS} medidos; ${CONSUMIDORES.length} superficies la leen de ${FUENTE} y ninguna de ${rutas.length} archivos la escribe a mano`);
+    console.log(`  ✓ VERDE — «${COMPARABLES_CIFRA}» y «${COMPARABLES_TEXTO}» salen de ${COMPARABLES_MEDIDOS} medidos; ${CONSUMIDORES.length} superficies la leen de ${FUENTE} y ninguna de ${rutas.length} archivos la escribe a mano`);
   }
   return { hard: fallas.length };
 }
