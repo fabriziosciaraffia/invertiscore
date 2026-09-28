@@ -147,7 +147,7 @@ export function CampoEntrada({
 
   // El <input> vivo es uno solo: el del hero (escritorio) o el de la hoja (teléfono, abierta). Con la
   // hoja cerrada en el teléfono no hay input: el hero muestra un botón que la abre.
-  const { inputRef, geocodificarEscrita } = useDireccionPlaces({
+  const { inputRef, geocodificarEscrita, prepararPlaces } = useDireccionPlaces({
     activo: true,
     comuna: null,
     clave: !usaHoja ? "hero" : hoja && Hoja ? "hoja" : "cerrada",
@@ -193,8 +193,9 @@ export function CampoEntrada({
   };
 
   // Abrir y enfocar en el MISMO toque: si el foco llega después de un render asíncrono, iOS no abre
-  // el teclado.
+  // el teclado. Google Maps arranca en este mismo toque (28-sep-2026): antes se cargaba al montar.
   const abrirHoja = () => {
+    prepararPlaces();
     flushSync(() => setHoja(true));
     inputRef.current?.focus();
     medirFoco();
@@ -280,6 +281,9 @@ export function CampoEntrada({
 
   return (
     <>
+        {/* La conexión con Google se abre desde el montaje; el script, recién al primer toque. */}
+        <link rel="preconnect" href="https://maps.googleapis.com" />
+        <link rel="preconnect" href="https://maps.gstatic.com" crossOrigin="anonymous" />
         <div className="he-campo">
           <form className="he-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
             <span className="he-tx">
@@ -305,7 +309,7 @@ export function CampoEntrada({
                   placeholder={DIRECCIONES_EJEMPLO[0]}
                   value={texto}
                   onChange={onCambio}
-                  onFocus={() => { setEnfocado(true); medirFoco(); }}
+                  onFocus={() => { setEnfocado(true); medirFoco(); prepararPlaces(); }}
                   onBlur={() => setEnfocado(false)}
                 />
               )}

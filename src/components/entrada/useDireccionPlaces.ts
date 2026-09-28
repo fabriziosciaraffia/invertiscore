@@ -74,12 +74,20 @@ export function useDireccionPlaces({ activo, comuna, onSeleccion, clave }: UseDi
   // vuelve, React crea un nodo nuevo, y un guard `if (acRef.current) return` dejaba al Autocomplete
   // escuchando a un <input> fuera del DOM (medido: camino principal roto para el ~19%). Se recuerda a
   // QUÉ NODO se ató y, si cambió, se sueltan los listeners del instance viejo y se re-ata.
-  useEffect(() => {
+  //
+  // GOOGLE MAPS SE CARGA AL PRIMER TOQUE, NO AL MONTAR (28-sep-2026, rendimiento de la landing):
+  // el script pesa 381 kB y bloqueaba 350-600 ms del hilo principal antes del titular en la
+  // landing y en la portada del wizard. Ahora `prepararPlaces()` es lo que carga y ata; lo dispara
+  // el primer foco / toque / tecla sobre el campo (listeners de abajo) o quien monta, al abrir la
+  // hoja del teléfono. Hasta ese toque no hay ni script ni widget. Si el toque llega con texto ya
+  // escrito, al atar se le avisa al widget con un `input` sintético para que proponga igual.
+  const tocado = useRef(false);
+  const prepararPlaces = useCallback(() => {
     if (!activo) return;
-    let cancelado = false;
+    tocado.current = true;
     loadGoogleMaps()
       .then(() => {
-        if (cancelado) return;
+        if (!activo) return;
         const input = inputRef.current;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const google = (window as any).google;
@@ -131,10 +139,29 @@ export function useDireccionPlaces({ activo, comuna, onSeleccion, clave }: UseDi
         });
         acRef.current = ac;
         nodoAtado.current = input;
+        // El widget escucha teclas; lo ya escrito antes de que llegara no lo ve sin este aviso.
+        if (input && input.value && document.activeElement === input) {
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Unidentified" }));
+        }
       })
       .catch(() => { /* sin Google no hay desplegable; el respaldo por texto sigue disponible */ });
-    return () => { cancelado = true; };
-  }, [activo, clave]);
+  }, [activo]);
+
+  // Los listeners del primer toque sobre el <input> vivo. Cambia `clave` cuando el nodo es otro (la
+  // hoja del teléfono): se vuelven a atar. Si ya hubo un toque antes (por ejemplo la hoja se abrió
+  // con el campo enfocado desde quien monta), se ata de inmediato al nodo nuevo.
+  useEffect(() => {
+    if (!activo) return;
+    const input = inputRef.current;
+    if (!input) return;
+    if (tocado.current) { prepararPlaces(); return; }
+    const alPrimerToque = () => prepararPlaces();
+    const eventos = ["focus", "pointerdown", "touchstart", "keydown"] as const;
+    for (const e of eventos) input.addEventListener(e, alPrimerToque, { once: true, passive: true });
+    if (document.activeElement === input) prepararPlaces();
+    return () => { for (const e of eventos) input.removeEventListener(e, alPrimerToque); };
+  }, [activo, clave, prepararPlaces]);
 
   // La comuna puede cambiar sin que el input se remonte: se le mueve la caja al widget vivo.
   useEffect(() => {
@@ -177,5 +204,5 @@ export function useDireccionPlaces({ activo, comuna, onSeleccion, clave }: UseDi
     }
   }, []);
 
-  return { inputRef, geocodificarEscrita };
+  return { inputRef, geocodificarEscrita, prepararPlaces };
 }
