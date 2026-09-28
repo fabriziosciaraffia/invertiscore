@@ -32,6 +32,7 @@ import {
   leerDireccionLlegada,
   leerModoLlegada,
 } from "../../../src/components/entrada/llegada";
+import { decidirBorrador } from "../../../src/components/formulario-v4/wizardV4Draft";
 import {
   ALL_NODES,
   FIX_NODES,
@@ -182,6 +183,19 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: var\(--he-pac-top, [0-9]+px\) !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja, a lo ancho");
   // desde el QA en el teléfono (28-sep-2026) la hoja termina en el pie del ÁREA VISIBLE (visualViewport), no de la ventana
   if (!/const dentro = inp\.getBoundingClientRect\(\)\.bottom - modal\.getBoundingClientRect\(\)\.top;\s*\n\s*const vv = window\.visualViewport;\s*\n\s*const fondo = vv \? vv\.offsetTop \+ vv\.height : window\.innerHeight;\s*\n\s*html\.style\.setProperty\("--he-pac-top", `\$\{Math\.round\(fondo - modal\.offsetHeight \+ dentro \+ 6\)\}px`\);/.test(hero)) F("8 · la posición de las sugerencias no se mide sin la animación de entrada y contra el área visible");
+
+  // ── 9 · EL QA EN EL IPHONE (28-sep-2026): elegir navega, el borrador solo cuando vale, cada paso arranca arriba ──
+  const soloMapa = { current: "tipo", history: ["dir", "dirMapa"], answers: { direccion: "Linares 1415, Providencia" } } as never;
+  const avanzado = { current: "ent", history: ["dir", "dirMapa", "tipo"], answers: { direccion: "Linares 1415, Providencia" } } as never;
+  if (decidirBorrador(soloMapa, "Zañartu 980, Ñuñoa") !== "reemplazar") F("9 · un borrador con solo dirección y mapa no se reemplaza en silencio");
+  if (decidirBorrador(avanzado, "Linares 1415, Providencia, Chile") !== "retomar") F("9 · un borrador avanzado de la misma dirección no se retoma en silencio");
+  if (decidirBorrador(avanzado, "Zañartu 980, Ñuñoa") !== "ofrecer") F("9 · un borrador avanzado de otra dirección no se ofrece");
+  if (decidirBorrador(avanzado, null) !== "ofrecer" || decidirBorrador(null, "x") !== null) F("9 · sin dirección que llegue, un borrador avanzado no se ofrece (o sin borrador no devuelve null)");
+  if (!/const decision = decidirBorrador\(w\.draftPendiente, direccionInicial\?\.direccion \?\? null\);/.test(shell) || !/if \(decision === "reemplazar"\) w\.reemplazarBorrador\(\);\s*\n\s*else if \(decision === "retomar"\) retomarBorrador\(\);/.test(shell)) F("9 · el wizard no decide el borrador con decidirBorrador (reemplazar / retomar / ofrecer)");
+  if (!/window\.scrollTo\(\{ top: 0, left: 0, behavior: "instant" \}\);\s*\n\s*\}, \[nav\.current\]\);/.test(shell)) F("9 · el wizard no vuelve arriba al cambiar de paso");
+  const landingEnt = sinComentarios(leer("src/components/landing-v14/Entrada.tsx"));
+  if (!/mantenerHojaAlEntregar: true,/.test(landingEnt) || !/setNavegando\("escribir"\);\s*\n\s*router\.push\(urlDeLlegada\(sel, origen\)\);/.test(landingEnt) || !/setNavegando\(modo\);\s*\n\s*router\.push\(urlDeLlegada\(\{ modo \}, origen\)\);/.test(landingEnt)) F("9 · elegir en la landing no navega con la hoja abierta y el campo ocupado");
+  if (!/if \(!mantenerHojaAlEntregar\) setHoja\(false\);\s*\n\s*onDireccion\(sel\);/.test(hero) || !/onClick=\{\(\) => tomarCamino\("mapa"\)\}/.test(hero)) F("9 · la hoja se cierra al entregar aunque quien monta vaya a navegar");
   // Si la hoja se toca antes de que llegue su código, la medición tiene que volver a correr cuando
   // llega (visto en local: sin `Hoja` en las dependencias, las sugerencias quedaban en el valor por defecto).
   if (!/html\.style\.removeProperty\("--he-pac-top"\);\s*\n\s*\};\s*\n\s*\}, \[hoja, Hoja, inputRef\]\);/.test(hero)) F("8 · la posición de las sugerencias no se vuelve a medir cuando llega la hoja");

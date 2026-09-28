@@ -60,6 +60,7 @@ import {
   type ModoLlegada,
 } from "@/components/entrada/llegada";
 import { ModalPlausibilidad } from "./ModalPlausibilidad";
+import { decidirBorrador } from "./wizardV4Draft";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
 
@@ -166,6 +167,23 @@ export function WizardV4({
   }, [hayLlegada, w.inicializado, w.draftPendiente]);
 
   const retomarBorrador = () => { llegadaAplicada.current = true; w.resumeDraft(); };
+
+  // ── EL BORRADOR SOLO CUANDO VALE LA PENA (QA en el iPhone, 28-sep-2026) ──────────
+  // Antes, cualquier borrador pendiente abría «Análisis a medias» apenas llegaba otra dirección.
+  // Ahora se decide (`decidirBorrador`): sin avance más allá del mapa se reemplaza en silencio;
+  // con avance y la misma dirección se retoma en silencio; solo con avance y otra dirección se
+  // pregunta. Corre apenas el hook miró el borrador, antes de que la llegada escriba nada.
+  const decisionBorrador = useRef(false);
+  useEffect(() => {
+    if (!w.inicializado || !w.draftPendiente || decisionBorrador.current) return;
+    const decision = decidirBorrador(w.draftPendiente, direccionInicial?.direccion ?? null);
+    if (decision === "ofrecer") { decisionBorrador.current = true; return; }
+    decisionBorrador.current = true;
+    trackWizard(posthog, "wizard4_borrador_decision", { decision, llegada: !!direccionInicial });
+    if (decision === "reemplazar") w.reemplazarBorrador();
+    else if (decision === "retomar") retomarBorrador();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [w.inicializado, w.draftPendiente]);
   const conflictoBorrador =
     !!direccionInicial && !llegadaAplicada.current &&
     borradorEsDeOtraDireccion(w.draftPendiente?.answers?.direccion, direccionInicial.direccion);
@@ -205,6 +223,16 @@ export function WizardV4({
     trackWizard(posthog, "wizard4_step_viewed", { node: nav.current, entrada });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.current, posthog]);
+
+  // CADA PASO ARRANCA ARRIBA (QA en el iPhone, 28-sep-2026): al cambiar de paso, en los dos sentidos,
+  // la página vuelve al inicio del contenido, justo bajo el header pegado. Sin esto el paso nuevo
+  // aparecía con el scroll del anterior y la reacción de arriba cortada bajo el header. `instant`
+  // y no el scroll suave de html: el cambio de pantalla ya trae su transición.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.current]);
 
   // Terminal (generar / pagar / crear cuenta): lo marca la CTA final. Lo leen
   // el `wizard4_abandoned` de más abajo y la telemetría de paso (un submit no

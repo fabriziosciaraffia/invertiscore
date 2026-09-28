@@ -28,6 +28,7 @@
 
 import { OWNER_INVITADO, V4_DRAFT_PREFIX, V4_TAB_KEY } from "@/lib/draft-keys";
 import { ALL_NODES, type NodeId, type WizardV4Answers } from "./wizardV4Nodes";
+import { borradorEsDeOtraDireccion } from "@/components/entrada/llegada";
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // v5 — migración a `NumericInput`. Los borradores escritos por los filtros
@@ -256,6 +257,35 @@ export function removeDraft(owner: string, tabId: string, extraKey?: string): vo
  * del router de pantallas, así que sin esta condición se renderiza en las 12
  * pantallas del wizard — ofreciendo "retomar" a alguien que ya va por el pie.
  */
+/**
+ * ¿EL BORRADOR AVANZÓ MÁS ALLÁ DEL MAPA? (QA en el iPhone, 28-sep-2026). Vale la pena retomarlo
+ * solo si respondió al menos una pregunta del acto 1: `tipo` quedó atrás en el historial, o el
+ * borrador está más adelante. Un borrador con solo dirección y mapa no vale una pregunta.
+ */
+export function borradorAvanzoMasAllaDelMapa(d: Pick<PersistedDraft, "current" | "history">): boolean {
+  const historia = d.history ?? [];
+  if (historia.includes("tipo")) return true;
+  const c = d.current;
+  return !!c && c !== "dir" && c !== "dirMapa" && c !== "tipo";
+}
+
+export type DecisionBorrador = "ofrecer" | "reemplazar" | "retomar";
+
+/**
+ * QUÉ HACER CON UN BORRADOR PENDIENTE cuando llega una dirección (la landing) o se abre la portada:
+ *   · no avanzó más allá del mapa   → se REEMPLAZA en silencio (nada que perder);
+ *   · avanzó y es la MISMA dirección → se RETOMA en silencio;
+ *   · avanzó y es OTRA dirección     → se OFRECE (seguir con la nueva o retomar).
+ * Sin dirección que llegue no hay «misma»: un borrador que avanzó se ofrece.
+ */
+export function decidirBorrador(d: PersistedDraft | null, direccionQueLlega: string | null | undefined): DecisionBorrador | null {
+  if (!d) return null;
+  if (!borradorAvanzoMasAllaDelMapa(d)) return "reemplazar";
+  const propia = (d.answers as { direccion?: string } | undefined)?.direccion;
+  if (direccionQueLlega && propia && !borradorEsDeOtraDireccion(propia, direccionQueLlega)) return "retomar";
+  return "ofrecer";
+}
+
 export function mostrarBannerDraft(
   draftPendiente: PersistedDraft | null,
   nav: { current: NodeId; history: NodeId[] },

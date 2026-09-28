@@ -85,6 +85,9 @@ export interface UseWizardV4 {
   cerrarBorrador: () => void;
   /** Descarta el draft ofrecido y arranca limpio. */
   discardDraft: () => void;
+  /** Retira el borrador pendiente EN SILENCIO y sigue con el formulario como está: para un
+   *  borrador que no avanzó más allá del mapa (QA en el iPhone, 28-sep-2026). */
+  reemplazarBorrador: () => void;
   /** ¿Se muestra el banner de retomar? (solo en la primera pantalla). */
   bannerDraftVisible: boolean;
   /** ¿Se puede mostrar el chevron atrás? (oculto en primera pantalla y en edición). */
@@ -290,6 +293,13 @@ export function useWizardV4({
     cerrarBorradorGenerado(owner ?? "", tabId.current);
   }, [owner]);
 
+  const reemplazarBorrador = useCallback(() => {
+    descartarBorradores(owner ?? "");
+    offeredKey.current = null;
+    draftVersion.current = 0;
+    setDraftPendiente(null);
+  }, [owner]);
+
   const discardDraft = useCallback(() => {
     // "Empezar de cero" = ningún borrador del dueño sobrevive, no solo dos.
     descartarBorradores(owner ?? "");
@@ -334,6 +344,7 @@ export function useWizardV4({
     resumeDraft,
     cerrarBorrador,
     discardDraft,
+    reemplazarBorrador,
     bannerDraftVisible,
     canGoBack,
     inicializado,
