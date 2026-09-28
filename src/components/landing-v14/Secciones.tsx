@@ -2,9 +2,9 @@
 // Landing v14 — las cinco pantallas y el footer (server components).
 //
 // El copy es el del contrato `landing-v14-final.html`, con los cambios del QA del
-// 27-sep-2026 (sin IA, «Te dice que no cuando es no»). Los datos: la hora del último
-// scrape, los ejemplos y el último análisis vienen de `leerDatosLanding`; la cifra de
-// comparables, de `COMPARABLES_TEXTO` (src/lib/stats.ts), la fuente única del sitio.
+// 27-sep-2026 (sin IA, «Te dice que no cuando es no»). Los datos: los ejemplos y el último
+// análisis vienen de `leerDatosLanding`; la cifra de comparables, de la fuente única del sitio
+// (src/lib/stats.ts), sin contador en vivo: sube con el mapa y termina en «+40.000».
 //
 // El hero y el campo del cierre son los de la entrada (`HeroEntrada` / `CampoEntrada`):
 // ver `Entrada.tsx`. La cabecera es el header único, que monta la página.
@@ -14,7 +14,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { DatosLanding } from "@/lib/landing-vivo";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { COMPARABLES_CIFRA, COMPARABLES_PISO } from "@/lib/stats";
 import { CampoLanding, HeroLanding } from "./Entrada";
 import { Respuesta } from "./Respuesta";
 import { LoQueHariaFranco } from "./Recomendacion";
@@ -22,11 +22,9 @@ import { MapaSantiago } from "./MapaSantiago";
 import { SeccionVista } from "./Telemetria";
 import { LinkMedido } from "./LinkMedido";
 import { EV } from "./eventos";
+import { ContadorComparables, PoblamientoMapa } from "./Poblamiento";
 // Footer y glifo viven en `Marca.tsx`: los comparte /metodologia.
-import { actualizado, PieLanding } from "./Marca";
-
-/** La cifra grande de «Por qué creerle»: la fuente única, con mayúscula inicial. */
-const CIFRA_COMPARABLES = `${COMPARABLES_TEXTO.charAt(0).toUpperCase()}${COMPARABLES_TEXTO.slice(1)}`;
+import { PieLanding } from "./Marca";
 
 // ===== 1 · HERO =====
 // El de la entrada, con la composición de la landing. La cabecera (el header único) la pasa
@@ -67,7 +65,7 @@ export function LoQueHaria() {
 }
 
 // ===== 4 · POR QUÉ CREERLE =====
-export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
+export function PorQueCreerle() {
   return (
     <SeccionVista n={4} className="lv-s3">
       {/* resplandor muy tenue del azul del token en la esquina superior derecha, en
@@ -77,11 +75,15 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
         {/* Orden FASE 1.3 (mobile y desktop): etiqueta → cifra en una línea → base
             de datos → "Franco evalúa…" → MAPA → proceso → sin sesgo → link. En
             desktop el mapa ocupa la columna derecha a lo largo de los dos bloques. */}
+        {/* el mapa se puebla y la cifra sube con él (Poblamiento.tsx) */}
+        <PoblamientoMapa>
         <div className="lv-s3-grid">
           <div className="lv-s3-arriba">
             <div className="lv-idx">Por qué creerle</div>
-            <div className="lv-big">{CIFRA_COMPARABLES}</div>
-            <div className="lv-base"><i />Deptos comparables · actualizado {actualizado(datos.ultimoScrape, ahora)}</div>
+            <div className="lv-big">
+              <ContadorComparables final={COMPARABLES_CIFRA} piso={COMPARABLES_PISO} />
+            </div>
+            <div className="lv-base">Deptos comparables</div>
             <p className="lv-sabe">Franco evalúa tu depto<br />contra toda la oferta en <mark>Santiago</mark>.</p>
           </div>
           <div className="lv-s3-mapa">
@@ -99,6 +101,7 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
             <Link className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></Link>
           </div>
         </div>
+        </PoblamientoMapa>
       </div>
     </SeccionVista>
   );

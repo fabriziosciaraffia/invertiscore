@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Capa de puntos del mapa: TODOS los avisos activos con coordenadas (~44.000),
+// Capa de puntos del mapa: TODOS los avisos activos con coordenadas (~43.000),
 // en <canvas>. Cada punto es un depto, 2 px a 1x y 3 px en retina, alpha baja
 // para que la acumulación se lea como calor sin que el punto deje de ser un punto.
 // Los datos llegan del endpoint ISR /api/landing/mapa-puntos (binario propio,
@@ -9,49 +9,39 @@
 //
 // Color por DENSIDAD (FASE 1.8): cada punto toma un color de la escala del hero
 // (azul → ciruela → rojo, leída de los tokens [data-verdict] de globals.css)
-// según cuántos avisos hay en su celda (18 unidades del viewBox, ~12 px en
-// pantalla), en escala logarítmica: las zonas con más oferta tiran a rojo, las de
-// menos a azul. Es dato, no decoración: la escala se explica antes de que
-// aparezca en el informe.
+// según cuántos avisos hay en su celda, en escala logarítmica: las zonas con más
+// oferta tiran a rojo, las de menos a azul. Es dato, no decoración.
 //
-// ANIMACIÓN: ESTALLIDOS POR TODO EL TERRITORIO (27-sep-2026, pedido de Fabrizio: «que la
-// animación de los comparables se note; hoy son puntos que laten»). El mapa entra con todos
-// los puntos en un fundido corto y sobre esa base aparecen estallidos, sin parar. El lugar de
-// cada estallido se sortea POR TERRITORIO, no por aviso: primero una celda ocupada del mapa
-// (todas igual de probables) y después un aviso dentro de ella. Sorteando por aviso, casi todos
-// caerían en el centro, que es donde está la mayoría de la oferta.
-// Dos variantes para elegir en el preview (`?mapa=a` / `?mapa=b`):
-//   · A · ANILLOS — un anillo que se abre desde el aviso y se apaga, con un destello al centro.
-//   · B · RACIMOS — el aviso se enciende y el encendido corre a los vecinos, del centro hacia
-//     afuera, como una chispa que prende la cuadra.
-// Se pausa cuando el mapa sale de pantalla. Con prefers-reduced-motion no hay estallidos: la
-// base fija.
+// EL MAPA SE PUEBLA (27-sep-2026, decisión de Fabrizio). Los comparables aparecen en
+// RACIMOS, más o menos desordenados por todo el territorio, y SE QUEDAN, hasta que el mapa
+// queda lleno; el contador de «Por qué creerle» sube junto con el poblamiento y termina en
+// la cifra de la fuente única. Después el mapa respira apenas y no vuelve a empezar.
+//   · Cada racimo nace en un aviso que se sortea por TERRITORIO: una celda con avisos por
+//     aparecer, con probabilidad ∝ √(los que le quedan), y un aviso dentro de ella. Sorteando
+//     por aviso casi todo caería en el centro; parejo por celda, la periferia se llenaría
+//     primero y el centro al final. La raíz reparte.
+//   · El racimo prende los vecinos del aviso que todavía no aparecieron, del centro hacia
+//     afuera, con un destello que se asienta en el color de su densidad.
+//   · El ritmo va por AVISOS, no por racimos: el contador sube parejo con lo que se ve.
+// Se pausa cuando el mapa sale de pantalla y retoma donde iba. Con prefers-reduced-motion,
+// el mapa lleno y la cifra final desde el primer momento.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
 import { decodificarPuntos } from "./mapa-puntos-codec";
+import { useProgresoMapa } from "./Poblamiento";
 import proj from "./mapa-santiago.proj.json";
 
-/** Fundido de entrada de la base. */
-const ENTRADA_MS = 1200;
-/** La base va más tenue que el estallido, para que éste se note. */
-const ALPHA_BASE = 0.6;
+/** Cuánto tarda en poblarse el mapa entero. */
+const POBLAR_MS = 7200;
+/** El destello de cada racimo antes de asentarse. */
+const DESTELLO_MS = 650;
 /** Celda del sorteo por territorio (unidades del viewBox de 900 × 1000). */
 const CELDA_SORTEO = 40;
+/** Radio del racimo (viewBox) y cuántos avisos prende como mucho. */
+const RACIMO_RADIO = 46;
+const RACIMO_MAX = 180;
 
-type Variante = "a" | "b";
-/** A · anillos: uno nuevo cada 90 ms, cada uno dura 1,6 s. B · racimos: uno cada 260 ms. */
-const RITMO: Record<Variante, { cada: number; dura: number }> = {
-  a: { cada: 90, dura: 1600 },
-  b: { cada: 260, dura: 1700 },
-};
-/** A · el radio final del anillo, en px de pantalla. */
-const ANILLO_RADIO = 30;
-/** B · el radio del racimo (viewBox), cuántos vecinos prende como mucho, y cuánto tarda en llegar al borde. */
-const RACIMO_RADIO = 60;
-const RACIMO_MAX = 140;
-const RACIMO_CORRE_MS = 560;
-const RACIMO_APAGA_MS = 900;
 /** Alpha por extremo. El rojo (zonas densas, los puntos se acumulan) conserva el
  *  0,28 elegido con screenshot en FASE 1.3; el azul (puntos sueltos sobre tinta)
  *  necesita más cuerpo o desaparece: a 0,4 no se veía (QA 08-sep). */
@@ -75,26 +65,32 @@ function tokenVerdict(veredicto: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/** Escala azul → ciruela → rojo en CUBOS pasos, como rgba listos para el canvas. */
-function escalaDensidad(): string[] {
+/** Escala azul → ciruela → rojo en CUBOS pasos: el color asentado de cada cubo y el de su destello. */
+function escalaDensidad(): { asentado: string[]; destello: string[] } {
   const azul = tokenVerdict("COMPRAR");
   const ciruela = tokenVerdict("AJUSTA SUPUESTOS");
   const rojo = tokenVerdict("BUSCAR OTRA");
-  const out: string[] = [];
+  const asentado: string[] = [];
+  const destello: string[] = [];
   for (let b = 0; b < CUBOS; b++) {
     const t = b / (CUBOS - 1);
     const alpha = t < 0.5 ? ALPHA_AZUL + (ALPHA_CIRUELA - ALPHA_AZUL) * t * 2 : ALPHA_CIRUELA + (ALPHA_ROJO - ALPHA_CIRUELA) * (t - 0.5) * 2;
     if (!azul || !ciruela || !rojo) {
       // sin tokens (no debería pasar): Signal Red plano, como antes de FASE 1.8
-      out.push(`rgba(200,50,60,${ALPHA_ROJO})`);
+      asentado.push(`rgba(200,50,60,${ALPHA_ROJO})`);
+      destello.push("rgb(230,140,146)");
       continue;
     }
     const [a, c] = t < 0.5 ? [azul, ciruela] : [ciruela, rojo];
     const u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
     const mix = (i: number) => Math.round(a[i] + (c[i] - a[i]) * u);
-    out.push(`rgba(${mix(0)},${mix(1)},${mix(2)},${alpha.toFixed(3)})`);
+    // el destello: el mismo color, opaco y aclarado un 40 % hacia el blanco (sobre la tinta, el
+    // azul pleno de las zonas con poca oferta casi no se ve)
+    const claro = (i: number) => Math.round(mix(i) + (255 - mix(i)) * 0.4);
+    asentado.push(`rgba(${mix(0)},${mix(1)},${mix(2)},${alpha.toFixed(3)})`);
+    destello.push(`rgb(${claro(0)},${claro(1)},${claro(2)})`);
   }
-  return out;
+  return { asentado, destello };
 }
 
 /** Cubo de densidad (0 = azul … CUBOS-1 = rojo) de cada punto, por celda y en log. */
@@ -120,56 +116,96 @@ function cubosPorDensidad(puntos: Float32Array): Uint8Array {
   return out;
 }
 
-/** La grilla del sorteo: los avisos de cada celda ocupada. */
-function grillaSorteo(puntos: Float32Array): { celdas: Uint32Array[]; porCelda: Map<number, Uint32Array>; cols: number } {
+/** El orden en que se puebla el mapa: los avisos, racimo por racimo. `inicio[r]` es dónde
+ *  empieza el racimo r dentro de `orden`, y `semilla[r]` el aviso donde nace. */
+function secuenciaDeRacimos(puntos: Float32Array): { orden: Uint32Array; inicio: Uint32Array; semilla: Uint32Array } {
+  const n = puntos.length / 2;
   const cols = Math.ceil(proj.VW / CELDA_SORTEO);
   const listas = new Map<number, number[]>();
-  for (let k = 0; k < puntos.length / 2; k++) {
+  for (let k = 0; k < n; k++) {
     const c = Math.floor(puntos[k * 2 + 1] / CELDA_SORTEO) * cols + Math.floor(puntos[k * 2] / CELDA_SORTEO);
     const l = listas.get(c);
     if (l) l.push(k); else listas.set(c, [k]);
   }
-  const porCelda = new Map<number, Uint32Array>();
-  listas.forEach((l, c) => porCelda.set(c, Uint32Array.from(l)));
-  return { celdas: Array.from(porCelda.values()), porCelda, cols };
-}
-
-/** El color del cubo, opaco y aclarado un 35 % hacia el blanco: el estallido tiene que notarse
- *  sobre la tinta, y el azul de las zonas con poca oferta, a color pleno, casi no se ve. */
-function fuerte(rgba: string): string {
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgba);
-  if (!m) return rgba;
-  const c = (v: string) => Math.round(Number(v) + (255 - Number(v)) * 0.35);
-  return `rgb(${c(m[1])},${c(m[2])},${c(m[3])})`;
-}
-
-interface Estallido {
-  t0: number;
-  k: number;
-  /** B · los vecinos que prende, con el retardo de cada uno. */
-  vecinos?: { k: number; d: number }[];
+  const claves = Array.from(listas.keys());
+  const quedan = claves.map((c) => listas.get(c)!.length);
+  const pos = new Map<number, number>();
+  claves.forEach((c, i) => pos.set(c, i));
+  const visto = new Uint8Array(n);
+  const orden = new Uint32Array(n);
+  const inicio: number[] = [];
+  const semilla: number[] = [];
+  let hechos = 0;
+  while (hechos < n) {
+    // la celda: ∝ √(los que le quedan)
+    let total = 0;
+    for (let i = 0; i < quedan.length; i++) total += Math.sqrt(quedan[i]);
+    let r = Math.random() * total;
+    let ic = 0;
+    for (; ic < quedan.length - 1; ic++) {
+      r -= Math.sqrt(quedan[ic]);
+      if (r <= 0 && quedan[ic] > 0) break;
+    }
+    while (quedan[ic] === 0) ic = (ic + 1) % quedan.length;
+    const lista = listas.get(claves[ic])!;
+    let s = -1;
+    for (let tries = 0; tries < 8 && s < 0; tries++) {
+      const k = lista[Math.floor(Math.random() * lista.length)];
+      if (!visto[k]) s = k;
+    }
+    if (s < 0) s = lista.find((k) => !visto[k])!;
+    // el racimo: los vecinos que faltan, del centro hacia afuera
+    const x = puntos[s * 2], y = puntos[s * 2 + 1];
+    const cx = Math.floor(x / CELDA_SORTEO), cy = Math.floor(y / CELDA_SORTEO);
+    const cerca: { k: number; d: number }[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const l = listas.get((cy + dy) * cols + (cx + dx));
+        if (!l) continue;
+        for (let i = 0; i < l.length; i++) {
+          const j = l[i];
+          if (visto[j]) continue;
+          const d = Math.hypot(puntos[j * 2] - x, puntos[j * 2 + 1] - y);
+          if (d <= RACIMO_RADIO) cerca.push({ k: j, d });
+        }
+      }
+    }
+    cerca.sort((a, b) => a.d - b.d);
+    inicio.push(hechos);
+    semilla.push(s);
+    for (let i = 0; i < cerca.length && i < RACIMO_MAX; i++) {
+      const j = cerca[i].k;
+      visto[j] = 1;
+      orden[hechos++] = j;
+      const cj = Math.floor(puntos[j * 2 + 1] / CELDA_SORTEO) * cols + Math.floor(puntos[j * 2] / CELDA_SORTEO);
+      quedan[pos.get(cj)!]--;
+    }
+  }
+  return { orden, inicio: Uint32Array.from(inicio), semilla: Uint32Array.from(semilla) };
 }
 
 export function MapaPuntos() {
   const ref = useRef<HTMLCanvasElement>(null);
+  const progreso = useProgresoMapa();
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const variante: Variante = new URLSearchParams(window.location.search).get("mapa") === "b" ? "b" : "a";
     let cancelado = false;
     let raf = 0;
     let puntos: Float32Array | null = null;
     let cubo: Uint8Array | null = null;
-    let colores: string[] = [];
-    let fuertes: string[] = [];
-    let grilla: ReturnType<typeof grillaSorteo> | null = null;
-    /** La base: todos los avisos, pintados una vez. */
-    let base: HTMLCanvasElement | null = null;
+    let colores: { asentado: string[]; destello: string[] } = { asentado: [], destello: [] };
+    let seq: ReturnType<typeof secuenciaDeRacimos> | null = null;
+    /** Lo ya asentado, pintado una vez: cada cuadro solo suma lo nuevo. */
+    let acumulado: HTMLCanvasElement | null = null;
+    /** Cuántos avisos del `orden` están pintados en `acumulado`. */
+    let pintados = 0;
     let visible = false;
-    let entrada0 = 0;
-    let ultimo = 0;
-    let estallidos: Estallido[] = [];
+    let hecho = false;
+    /** Tiempo de poblamiento transcurrido (se congela al pausar). */
+    let transcurrido = 0;
+    let ultimoT = 0;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const medir = () => {
@@ -180,153 +216,131 @@ export function MapaPuntos() {
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
-        base = null;
+        acumulado = null;
       }
       return { w, h, dpr };
     };
 
     const tamPunto = (dpr: number) => (dpr >= 2 ? 3 : 2);
 
-    const pintarBase = (w: number, h: number, dpr: number) => {
-      if (base || !puntos || !cubo) return;
-      base = document.createElement("canvas");
-      base.width = w;
-      base.height = h;
-      const ctx = base.getContext("2d");
+    /** Suma al acumulado los avisos `orden[desde..hasta)`, en su color asentado. */
+    const asentar = (w: number, h: number, dpr: number, hasta: number) => {
+      if (!puntos || !cubo || !seq) return;
+      if (!acumulado) {
+        acumulado = document.createElement("canvas");
+        acumulado.width = w;
+        acumulado.height = h;
+        pintados = 0;
+      }
+      const ctx = acumulado.getContext("2d");
       if (!ctx) return;
       const sx = w / proj.VW, sy = h / proj.VH;
       const px = tamPunto(dpr);
       const off = Math.floor(px / 2);
-      for (let b = 0; b < colores.length; b++) {
-        ctx.fillStyle = colores[b];
-        for (let k = 0; k < cubo.length; k++) {
-          if (cubo[k] !== b) continue;
-          ctx.fillRect(Math.round(puntos[k * 2] * sx) - off, Math.round(puntos[k * 2 + 1] * sy) - off, px, px);
-        }
+      for (let i = pintados; i < hasta; i++) {
+        const k = seq.orden[i];
+        ctx.fillStyle = colores.asentado[cubo[k]];
+        ctx.fillRect(Math.round(puntos[k * 2] * sx) - off, Math.round(puntos[k * 2 + 1] * sy) - off, px, px);
       }
+      pintados = Math.max(pintados, hasta);
     };
 
-    /** Un aviso sorteado por territorio: una celda ocupada al azar, y un aviso dentro de ella. */
-    const sortear = (): number => {
-      const celdas = grilla!.celdas;
-      const c = celdas[Math.floor(Math.random() * celdas.length)];
-      return c[Math.floor(Math.random() * c.length)];
-    };
-
-    /** B · los vecinos del aviso dentro del radio, con su retardo según la distancia. */
-    const vecinosDe = (k: number): { k: number; d: number }[] => {
-      if (!grilla || !puntos) return [];
-      const x = puntos[k * 2], y = puntos[k * 2 + 1];
-      const cx = Math.floor(x / CELDA_SORTEO), cy = Math.floor(y / CELDA_SORTEO);
-      const cerca: { k: number; d: number }[] = [];
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const l = grilla.porCelda.get((cy + dy) * grilla.cols + (cx + dx));
-          if (!l) continue;
-          for (let i = 0; i < l.length; i++) {
-            const j = l[i];
-            const d = Math.hypot(puntos[j * 2] - x, puntos[j * 2 + 1] - y);
-            if (d <= RACIMO_RADIO) cerca.push({ k: j, d });
-          }
-        }
+    /** El índice del primer racimo que empieza en o después de `i` (búsqueda binaria). */
+    const racimoDe = (i: number) => {
+      const ini = seq!.inicio;
+      let lo = 0, hi = ini.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (ini[mid] <= i) lo = mid; else hi = mid - 1;
       }
-      cerca.sort((a, b) => a.d - b.d);
-      return cerca.slice(0, RACIMO_MAX).map((v) => ({ k: v.k, d: (v.d / RACIMO_RADIO) * RACIMO_CORRE_MS }));
+      return lo;
     };
 
     const cuadro = (t: number) => {
-      if (cancelado || !puntos || !cubo || !visible) return;
+      if (cancelado || !puntos || !cubo || !seq || !visible || hecho) return;
+      transcurrido += ultimoT ? Math.min(64, t - ultimoT) : 0;
+      ultimoT = t;
+      const n = seq.orden.length;
+      // el ritmo va por avisos, con un leve ease-out al final
+      const p = Math.min(1, transcurrido / POBLAR_MS);
+      const frac = 1 - Math.pow(1 - p, 1.5);
+      const hasta = Math.round(frac * n);
       const { w, h, dpr } = medir();
-      pintarBase(w, h, dpr);
+      asentar(w, h, dpr, hasta);
       const ctx = canvas.getContext("2d");
-      if (!ctx || !base) return;
-      if (!entrada0) entrada0 = t;
+      if (!ctx || !acumulado) return;
       ctx.clearRect(0, 0, w, h);
-      ctx.globalAlpha = ALPHA_BASE * Math.min(1, (t - entrada0) / ENTRADA_MS);
-      ctx.drawImage(base, 0, 0);
-      ctx.globalAlpha = 1;
+      ctx.drawImage(acumulado, 0, 0);
 
-      // nuevos estallidos, a su ritmo, desde que la base va por la mitad de su entrada
-      const { cada, dura } = RITMO[variante];
-      if (t - entrada0 > ENTRADA_MS * 0.6) {
-        if (!ultimo) ultimo = t;
-        while (t - ultimo >= cada) {
-          ultimo += cada;
-          const k = sortear();
-          estallidos.push({ t0: ultimo, k, vecinos: variante === "b" ? vecinosDe(k) : undefined });
-        }
-      }
-      estallidos = estallidos.filter((e) => t - e.t0 < dura);
-
-      const sx = w / proj.VW, sy = h / proj.VH;
-      ctx.globalCompositeOperation = "lighter";
-      for (const e of estallidos) {
-        const p = (t - e.t0) / dura;
-        const x = puntos[e.k * 2] * sx, y = puntos[e.k * 2 + 1] * sy;
-        const color = fuertes[cubo[e.k]];
-        if (variante === "a") {
-          // el anillo se abre con un ease-out y se apaga; el destello del centro, más rápido
-          const abre = 1 - Math.pow(1 - p, 3);
-          ctx.globalAlpha = Math.pow(1 - p, 1.1);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2 * dpr;
-          ctx.beginPath();
-          ctx.arc(x, y, (3 + (ANILLO_RADIO - 3) * abre) * dpr, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.globalAlpha = Math.pow(1 - p, 2);
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(x, y, 3.2 * dpr, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          // el halo del centro, y cada vecino se prende a su turno y se apaga
-          const edad = t - e.t0;
-          ctx.globalAlpha = Math.max(0, 1 - edad / (RACIMO_CORRE_MS + 300)) * 0.7;
-          const g = ctx.createRadialGradient(x, y, 0, x, y, 24 * dpr);
+      // los destellos: lo que apareció hace menos de DESTELLO_MS, con su halo en la semilla
+      const pDestello = Math.max(0, transcurrido - DESTELLO_MS) / POBLAR_MS;
+      const desde = Math.round((1 - Math.pow(1 - Math.min(1, pDestello), 1.5)) * n);
+      if (desde < hasta) {
+        const sx = w / proj.VW, sy = h / proj.VH;
+        const r0 = racimoDe(desde), r1 = racimoDe(Math.max(desde, hasta - 1));
+        for (let r = r0; r <= r1; r++) {
+          const a = seq.inicio[r];
+          const b = r + 1 < seq.inicio.length ? seq.inicio[r + 1] : n;
+          // la edad del racimo: cuánto hace que empezó a aparecer, en fracción del destello
+          const fr = a / n;
+          const tr = POBLAR_MS * (1 - Math.pow(1 - fr, 1 / 1.5));
+          const edad = Math.min(1, Math.max(0, (transcurrido - tr) / DESTELLO_MS));
+          const vive = 1 - edad;
+          if (vive <= 0) continue;
+          const s = seq.semilla[r];
+          const x = puntos[s * 2] * sx, y = puntos[s * 2 + 1] * sy;
+          const color = colores.destello[cubo[s]];
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = vive * 0.55;
+          const g = ctx.createRadialGradient(x, y, 0, x, y, 20 * dpr);
           g.addColorStop(0, color);
           g.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(x, y, 24 * dpr, 0, Math.PI * 2);
+          ctx.arc(x, y, 20 * dpr, 0, Math.PI * 2);
           ctx.fill();
-          // los puntos del racimo, redondos y sin sumar luz: sumada, la chispa se quema a blanco
           ctx.globalCompositeOperation = "source-over";
-          const radio = 1.9 * dpr;
-          for (const v of e.vecinos ?? []) {
-            const q = (edad - v.d) / RACIMO_APAGA_MS;
-            if (q < 0 || q > 1) continue;
-            ctx.globalAlpha = Math.pow(1 - q, 1.4);
-            ctx.fillStyle = fuertes[cubo[v.k]];
-            ctx.beginPath();
-            ctx.arc(puntos[v.k * 2] * sx, puntos[v.k * 2 + 1] * sy, radio * (1 + 0.6 * (1 - q)), 0, Math.PI * 2);
-            ctx.fill();
+          ctx.globalAlpha = Math.pow(vive, 1.3);
+          // cuadrados y no círculos: son miles por cuadro, y en el teléfono el arco pesa
+          const lado = Math.round(tamPunto(dpr) * (1 + 0.8 * vive));
+          const medio = lado / 2;
+          for (let i = a; i < Math.min(b, hasta); i++) {
+            const k = seq.orden[i];
+            ctx.fillStyle = colores.destello[cubo[k]];
+            ctx.fillRect(Math.round(puntos[k * 2] * sx - medio), Math.round(puntos[k * 2 + 1] * sy - medio), lado, lado);
           }
-          ctx.globalCompositeOperation = "lighter";
         }
+        ctx.globalAlpha = 1;
       }
-      ctx.globalCompositeOperation = "source-over";
-      ctx.globalAlpha = 1;
+
+      progreso?.set(hasta / n);
+      if (p >= 1 && transcurrido >= POBLAR_MS + DESTELLO_MS) {
+        terminar();
+        return;
+      }
       raf = requestAnimationFrame(cuadro);
     };
 
-    const pintarQuieto = () => {
+    /** El mapa lleno, quieto, y a respirar (CSS). No vuelve a empezar. */
+    const terminar = () => {
+      hecho = true;
       const { w, h, dpr } = medir();
-      pintarBase(w, h, dpr);
+      if (seq) asentar(w, h, dpr, seq.orden.length);
       const ctx = canvas.getContext("2d");
-      if (!ctx || !base) return;
-      ctx.clearRect(0, 0, w, h);
-      ctx.globalAlpha = ALPHA_BASE;
-      ctx.drawImage(base, 0, 0);
-      ctx.globalAlpha = 1;
+      if (ctx && acumulado) {
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(acumulado, 0, 0);
+      }
+      progreso?.set(1);
+      canvas.classList.add("lleno");
     };
 
     const reanudar = () => {
-      if (!puntos || cancelado) return;
-      if (reduce) { pintarQuieto(); return; }
+      if (!seq || cancelado) return;
+      if (hecho) { terminar(); return; }
+      if (reduce) { terminar(); return; }
       if (raf) cancelAnimationFrame(raf);
-      // al volver a la pantalla los estallidos siguen desde ahora, sin ponerse al día
-      ultimo = 0;
-      estallidos = [];
+      ultimoT = 0;
       raf = requestAnimationFrame(cuadro);
     };
     const pausar = () => {
@@ -339,23 +353,23 @@ export function MapaPuntos() {
     const cargar = async () => {
       try {
         const r = await fetch("/api/landing/mapa-puntos");
-        if (!r.ok) return;
+        if (!r.ok) throw new Error(String(r.status));
         const bytes = new Uint8Array(await r.arrayBuffer());
         if (cancelado) return;
         const decodificados = decodificarPuntos(bytes);
-        if (decodificados.length === 0) return;
+        if (decodificados.length === 0) throw new Error("sin puntos");
         puntos = decodificados;
         colores = escalaDensidad();
-        fuertes = colores.map(fuerte);
         cubo = cubosPorDensidad(decodificados);
-        grilla = grillaSorteo(decodificados);
+        seq = secuenciaDeRacimos(decodificados);
         if (visible) reanudar();
       } catch {
-        /* sin puntos el mapa igual muestra calles y etiquetas */
+        // sin puntos el mapa igual muestra calles y etiquetas, y el contador va a la cifra final
+        progreso?.set(1);
       }
     };
 
-    // Datos: al acercarse. Estallidos: solo mientras el mapa está en pantalla.
+    // Datos: al acercarse. Poblamiento: solo mientras el mapa está en pantalla.
     let cargado = false;
     const obs = new IntersectionObserver(
       (es) => {
@@ -365,11 +379,21 @@ export function MapaPuntos() {
         visible = e.isIntersecting;
         if (visible) reanudar(); else pausar();
       },
-      { rootMargin: "200px 0px", threshold: 0 },
+      { rootMargin: "0px", threshold: 0.35 },
     );
     obs.observe(canvas);
 
-    const ro = new ResizeObserver(() => { base = null; if (puntos && (reduce || !visible)) pintarQuieto(); });
+    // Al cambiar de tamaño se repinta lo que ya estaba asentado.
+    const ro = new ResizeObserver(() => {
+      acumulado = null;
+      if (!seq) return;
+      const { w, h, dpr } = medir();
+      const listos = hecho ? seq.orden.length : pintados;
+      pintados = 0;
+      asentar(w, h, dpr, listos);
+      const ctx = canvas.getContext("2d");
+      if (ctx && acumulado) { ctx.clearRect(0, 0, w, h); ctx.drawImage(acumulado, 0, 0); }
+    });
     ro.observe(canvas);
 
     return () => {
@@ -378,7 +402,7 @@ export function MapaPuntos() {
       ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [progreso]);
 
   return <canvas ref={ref} className="lv-map-puntos" aria-hidden="true" />;
 }

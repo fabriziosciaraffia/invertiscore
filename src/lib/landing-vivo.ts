@@ -2,8 +2,7 @@
 // Datos vivos de la landing (v14, 07-sep-2026; sobre master el 27-sep-2026).
 //
 // La página vende una respuesta, no un producto, y la respuesta tiene que ser
-// real: el último scrape, el último análisis emitido y los tres análisis de
-// ejemplo salen de la base en cada revalidación (ISR 10 min en `src/app/page.tsx`),
+// real: el último análisis emitido y los tres análisis de ejemplo salen de la base en cada revalidación (ISR 10 min en `src/app/page.tsx`),
 // no de constantes. La landing no importa nada de acá desde el cliente: todo se
 // lee en el servidor y baja por props.
 //
@@ -93,8 +92,6 @@ export interface EjemploLanding {
 }
 
 export interface DatosLanding {
-  /** ISO del último scrape (max `scraped_at`). */
-  ultimoScrape: string;
   /** Último análisis emitido por una cuenta no interna. */
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
@@ -111,15 +108,6 @@ interface FilaEjemplo {
   ai_analysis: AIAnalysisV2 | null;
   mediana_comuna_snapshot: MedianaComunaSnapshot | null;
   capref_comuna_snapshot: CapRefComunaSnapshot | null;
-}
-
-/** `scraped_at` es `timestamp` SIN zona y lo escribe `now()` de Postgres, que
- *  corre en UTC: el string llega sin designador ("2026-09-07T06:30:52.099") y
- *  `new Date` lo leería en la zona del proceso (Chile en local, UTC en Vercel).
- *  Se le fija la Z para que "hoy 03:30" sea 03:30 en todas partes. */
-function comoUtc(iso: string | null): string | null {
-  if (!iso) return null;
-  return /[zZ]$|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`;
 }
 
 /** "Estudio" / "2D2B" desde dormitorios y baños del input. */
@@ -216,9 +204,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
 
   const sb = createServiceClient();
 
-  const [scrape, ultimo, filas, ufLive] = await Promise.all([
-    sb.from("scraped_properties").select("scraped_at").order("scraped_at", { ascending: false }).limit(1).maybeSingle()
-      .then((r) => (r.error ? (aviso("ultimo_scrape", r.error), null) : comoUtc(r.data?.scraped_at as string | null))),
+  const [ultimo, filas, ufLive] = await Promise.all([
     (async () => {
       try {
         const noTest = filtroNoTest(await getTestAccountIds(sb));
@@ -277,7 +263,6 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
   }
 
   return {
-    ultimoScrape: scrape ?? RESPALDO.ultimoScrape,
     ultimoAnalisis: ultimo,
     ejemplos,
     degradado,

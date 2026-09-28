@@ -13,7 +13,6 @@ import FrancoLogo from "@/components/franco-logo";
 import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
 import { ESLOGAN } from "@/lib/eslogan";
 import type { DatosLanding } from "@/lib/landing-vivo";
-import { TZ_CHILE } from "@/lib/fecha-cl";
 import type { Veredicto } from "@/lib/types";
 
 /** Wordmark canónico (.ai en Signal Red) + el eslogan. */
@@ -42,19 +41,6 @@ export function Glifo({ veredicto }: { veredicto: Veredicto }) {
       <path d={GLIFO[veredicto]} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" />
     </svg>
   );
-}
-
-/** "hoy 03:30" (hora de Chile) si el último scrape fue hoy; si no, "el 6 sep 03:30".
- *  Decisión del goal: sin "hace N min" — el scrape corre una vez al día. Lo usan
- *  la sección 3 de la landing y la cabecera de documento de /metodologia. */
-export function actualizado(iso: string, ahora: Date): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const hora = new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ_CHILE }).format(d);
-  const dia = (x: Date) => new Intl.DateTimeFormat("es-CL", { timeZone: TZ_CHILE, year: "numeric", month: "2-digit", day: "2-digit" }).format(x);
-  if (dia(d) === dia(ahora)) return `hoy ${hora}`;
-  const fecha = new Intl.DateTimeFormat("es-CL", { timeZone: TZ_CHILE, day: "numeric", month: "short" }).format(d).replace(".", "");
-  return `el ${fecha} ${hora}`;
 }
 
 /** "15 h" / "4 min" / "2 días": sin "hace", para que la línea del footer quepa

@@ -423,19 +423,14 @@ body:has(.lv-root) { --lv-mono-real: var(--font-mono); }
   font-family: var(--lv-mono-real), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 700; font-size: clamp(38px, 11vw, 76px); line-height: 1; letter-spacing: -0.04em;
 }
-/* "Base de datos · actualizado hoy HH:MM": mono chico, punto latiendo (el único rojo) */
+/* la línea bajo la cifra: qué cuenta, en mono chico. Sin punto en vivo ni hora: la cifra es la de
+   la fuente única, no un conteo en vivo (27-sep-2026). */
 .lv-base {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 500; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #9a9a9a;
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 }
 .lv-base { margin-top: 10px; }
-.lv-base i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red); display: inline-block; flex: none; }
-.lv-base i::after {
-  content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 1.5px solid var(--lv-red);
-  animation: lv-live 2s ease-out infinite;
-}
-@keyframes lv-live { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
 .lv-sabe {
   margin: 18px 0 0;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
@@ -488,6 +483,9 @@ body:has(.lv-root) { --lv-mono-real: var(--font-mono); }
 }
 .lv-map-calles { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; animation: lv-fade 0.8s 0.1s ease-out forwards; }
 .lv-map-puntos { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* el mapa lleno respira apenas; no vuelve a empezar (27-sep-2026) */
+.lv-map-puntos.lleno { animation: lv-respira 5.5s ease-in-out infinite; }
+@keyframes lv-respira { 50% { opacity: 0.84; } }
 .lv-map-capa { position: absolute; inset: 0; width: 100%; height: 100%; }
 @keyframes lv-fade { to { opacity: 1; } }
 .lv-lb {

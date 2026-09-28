@@ -53,7 +53,7 @@ export default async function LandingPage() {
           <LaRespuesta />
           <LoQueHaria />
         </RotacionEjemplos>
-        <PorQueCreerle datos={datos} ahora={ahora} />
+        <PorQueCreerle />
         <Cierre datos={datos} ahora={ahora} />
       </main>
     </div>
