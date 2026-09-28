@@ -374,13 +374,16 @@ export function HeroEntrada({
       <div className="he-col">
         <p className="he-eslogan">{ESLOGAN}</p>
       </div>
+      {/* LA INFORMACIÓN PRINCIPAL, CENTRADA EN ALTURA (QA 28-sep-2026): el título y el campo
+          van al centro de la pantalla, y el pie («Ver un análisis…») acompaña debajo del bloque,
+          no pegado al borde inferior. */}
       <div className="he-col he-mid">
         {antes}
         <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
         <CampoEntrada {...campo} />
         {despues}
+        {pie && <div className="he-pie">{pie}</div>}
       </div>
-      {pie && <div className="he-col he-foot">{pie}</div>}
     </section>
   );
 }

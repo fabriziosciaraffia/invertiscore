@@ -51,6 +51,14 @@
 
 .hf-txt, .hf-lnk { font-size: 14px; font-weight: 500; color: var(--hf-papel-2); text-decoration: none; white-space: nowrap; padding: 6px 0; position: relative; }
 .hf-txt:hover, .hf-lnk:hover { color: var(--hf-papel); }
+/* la píldora con contorno en papel (sobre el material, QA 28-sep-2026): un botón visible que no
+   compite con el principal de la pantalla */
+.hf-pild {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 99px;
+  border: 1.5px solid var(--hf-papel-2); color: var(--hf-papel); font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+.hf-pild:hover, .hf-pild:focus-visible { background: var(--hf-papel); color: var(--ink-900); }
 .hf-lnk.on { color: var(--hf-papel); }
 .hf-lnk.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 2px; background: var(--hf-papel); }
 
@@ -126,6 +134,7 @@
   .hf--material .hf-col { padding: 0 40px; }
   .hf-der { gap: 18px; }
   .hf-btn { height: 38px; padding: 0 18px; font-size: 14px; }
+  .hf-pild { height: 38px; padding: 0 18px; }
   .hf-ghost { height: 38px; padding: 0 15px; font-size: 14px; }
   .hf-id { margin-left: 4px; padding-left: 18px; border-left: 1px solid var(--hf-linea); }
   .hf-menu { top: calc(100% + 12px); }

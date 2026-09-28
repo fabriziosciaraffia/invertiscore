@@ -215,11 +215,13 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   if (contexto === "auth") {
     derecha = null;
   } else if (contexto === "wizard") {
-    // El wizard no lleva botón: el principal de la pantalla es avanzar.
+    // El wizard no lleva botón principal: el principal de la pantalla es avanzar. «Entrar» va como
+    // píldora con contorno en papel (QA 28-sep-2026): visible sobre el material, sin competir con
+    // el campo.
     derecha = resuelta ? (
       <>
         <BotonTema />
-        {logueado ? <Link href="/dashboard" className="hf-txt">Mis análisis</Link> : <Link href="/login" className="hf-txt">Entrar</Link>}
+        {logueado ? <Link href="/dashboard" className="hf-txt hf-pild">Mis análisis</Link> : <Link href="/login" className="hf-txt hf-pild">Entrar</Link>}
       </>
     ) : null;
   } else if (modo === "compartido") {
