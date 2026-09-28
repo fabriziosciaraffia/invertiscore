@@ -11,7 +11,7 @@ import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
 import { LoQueHariaYoBloque, CardBuscarOtra } from "./shared/LoQueHariaYoBloque";
 import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import { construirCardLtr } from "@/lib/card-recomendacion";
+import { construirCardLtr, PUERTA_COMBINACIONES } from "@/lib/card-recomendacion";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { resolverArriendoReferencia } from "@/lib/arriendo-referencia";
 import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
@@ -172,7 +172,7 @@ export function HeroLTR({
       : distanciaRow && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto" as const,
-          k: "Ajustar supuestos",
+          k: PUERTA_COMBINACIONES.ajustar.k,
           // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
           // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
           // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
@@ -185,7 +185,7 @@ export function HeroLTR({
               salidaPorMix(distanciaRow.valor) !== null,
             );
           })(),
-          btn: "Ver todas las combinaciones",
+          btn: PUERTA_COMBINACIONES.ajustar.btn,
           // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo.
           // (Hasta el 17-sep-2026 ese cuerpo era `DrawerDistanciaLtr`, que se borró con el
           //  resto de lo que colgaba de `drawerSequence = ["zona"]`; hoy el cuerpo es
@@ -203,9 +203,9 @@ export function HeroLTR({
             key: "sensibilidad" as const,
             // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
             // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
-            k: "Cómo queda con otro pie o plazo",
+            k: PUERTA_COMBINACIONES.comprar.k,
             l: "Franco probó cada combinación de pie y plazo al precio pedido.",
-            btn: "Ver cómo queda con otro pie o plazo",
+            btn: PUERTA_COMBINACIONES.comprar.btn,
             sub: undefined,
             cuerpo: cuerpoAjustes,
           }

@@ -42,9 +42,12 @@ import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSna
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { filasPrincipales, ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
 import { construirCardLtr, type CardRecomendacion } from "@/lib/card-recomendacion";
+import { hayAjustesQueMostrar } from "@/lib/matriz-popup";
+import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
+import { resolverArriendoReferencia, type ArriendoReferencia } from "@/lib/arriendo-referencia";
 import { titularMotor } from "@/lib/titular-motor";
 import { estadoRecomendacion, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
+import { metricaValorONull, type AIAnalysisV2, type AnalisisInput, type FullAnalysisResult, type Hallazgo, type HallazgoDistanciaVeredicto, type MixPalancas, type Veredicto } from "@/lib/types";
 import RESPALDO from "./landing-respaldo.json";
 
 /** Los tres análisis reales que rotan en "La respuesta, en fácil" y en "Lo que
@@ -89,6 +92,25 @@ export interface EjemploLanding {
   card: CardRecomendacion;
   /** La bajada de la card, como la calcula `HeroLTR`: Buscar otro es siempre «sin salida». */
   estado: EstadoRecomendacion;
+  /** El pop-up de combinaciones, con los MISMOS datos que le pasa `HeroLTR`. Null en Buscar
+   *  otro, que no tiene pop-up (`hayAjustesQueMostrar`). */
+  popup: PopupLanding | null;
+}
+
+/** Lo que `PopupAjustes` recibe en el informe (HeroLTR, `cuerpoAjustes`). */
+export interface PopupLanding {
+  distancia: HallazgoDistanciaVeredicto | null;
+  mixComprar: MixPalancas | null;
+  precioUF: number;
+  referenciaArriendo: ArriendoReferencia | null;
+  antes: {
+    cuotaMensual: number | null;
+    flujoMensual: number | null;
+    cocPct: number | null;
+    capRateNetoPct: number | null;
+    tirPct: number | null;
+    score: number | null;
+  } | null;
 }
 
 export interface DatosLanding {
@@ -172,6 +194,27 @@ async function ejemploDe(sb: SupabaseClient, fila: FilaEjemplo, ufLive: number, 
   // La card y el titular, con las MISMAS funciones que la portada y `HeroLTR` (en pesos: la
   // landing no tiene toggle de moneda).
   const card = construirCardLtr({ veredicto, results, inputData: input, currency: "CLP", valorUF: uf });
+  // El pop-up, armado como en HeroLTR (`cuerpoAjustes`): la grilla del hallazgo de distancia (o la
+  // de Comprar), el precio, lo que piden los avisos parecidos y la columna «Hoy».
+  const mixComprar = (results as { mixComprar?: MixPalancas | null }).mixComprar ?? null;
+  const popup: PopupLanding | null = hayAjustesQueMostrar({ veredicto, distancia, mixComprar })
+    ? {
+        distancia,
+        mixComprar,
+        precioUF: Number(input?.precio ?? 0),
+        referenciaArriendo: resolverArriendoReferencia(input),
+        antes: results.metrics
+          ? {
+              cuotaMensual: results.metrics.dividendo ?? null,
+              flujoMensual: results.metrics.flujoNetoMensual ?? null,
+              cocPct: metricaValorONull(results.metrics.cashOnCash),
+              capRateNetoPct: capRateNetoLtrPct(results.metrics),
+              tirPct: metricaValorONull(results.exitScenario?.tir),
+              score: results.score ?? null,
+            }
+          : null,
+      }
+    : null;
   return {
     id: fila.id,
     veredicto,
@@ -188,6 +231,7 @@ async function ejemploDe(sb: SupabaseClient, fila: FilaEjemplo, ufLive: number, 
     valorUF: uf,
     card,
     estado: veredicto === "BUSCAR OTRA" ? "sin_salida" : estadoRecomendacion(veredicto, card.bloque),
+    popup,
   };
 }
 

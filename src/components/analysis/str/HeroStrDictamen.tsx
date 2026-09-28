@@ -1,7 +1,7 @@
 "use client";
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { construirCardStr } from "@/lib/card-recomendacion";
+import { construirCardStr, PUERTA_COMBINACIONES } from "@/lib/card-recomendacion";
 import type { Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
@@ -133,7 +133,7 @@ export function HeroStrDictamen({
       : distancia && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto",
-          k: "Ajustar supuestos",
+          k: PUERTA_COMBINACIONES.ajustar.k,
           l: (() => {
             const vias = distancia.valor.vias;
             if (!vias || vias.length === 0) return lineaFooterVias(null, 5);
@@ -148,7 +148,7 @@ export function HeroStrDictamen({
               salidaEscalon ? etiquetaVeredicto("AJUSTA SUPUESTOS") : null,
             );
           })(),
-          btn: "Ver todas las combinaciones",
+          btn: PUERTA_COMBINACIONES.ajustar.btn,
           cuerpo: cuerpoAjustes,
         }
       : veredicto === "COMPRAR"
@@ -158,9 +158,9 @@ export function HeroStrDictamen({
             key: "sensibilidad",
             // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
             // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
-            k: "Cómo queda con otro pie o plazo",
+            k: PUERTA_COMBINACIONES.comprar.k,
             l: "Franco probó cada combinación de pie y plazo al precio pedido.",
-            btn: "Ver cómo queda con otro pie o plazo",
+            btn: PUERTA_COMBINACIONES.comprar.btn,
             cuerpo: cuerpoAjustes,
           }
         : null;

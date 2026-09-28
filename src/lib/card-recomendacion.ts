@@ -19,6 +19,16 @@ import { causaBuscarOtraLtr, causaBuscarOtraStr, distanciaBuscarOtra } from "./b
 import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { DIST_PREC_PTS } from "./distancia-veredicto-hallazgo";
 
+/**
+ * LA PUERTA AL POP-UP DE COMBINACIONES, por veredicto (27-sep-2026): el título del modal y el
+ * texto del botón de la card. Vivían escritos en cada hero (LTR y STR); la landing abre el mismo
+ * pop-up y tiene que decir lo mismo. Buscar otro no tiene pop-up (`hayAjustesQueMostrar`).
+ */
+export const PUERTA_COMBINACIONES = {
+  ajustar: { k: "Ajustar supuestos", btn: "Ver todas las combinaciones" },
+  comprar: { k: "Cómo queda con otro pie o plazo", btn: "Ver cómo queda con otro pie o plazo" },
+} as const;
+
 export type CardRecomendacion = {
   /** El bloque de «Lo que haría yo». En Buscar otra se construye igual, pero la card no lo dibuja. */
   bloque: BloqueLoQueHariaYo | null;

@@ -94,6 +94,8 @@ export function PopupAjustesTokens() {
         transition:transform .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
       [data-theme="light"] .pjx-celda{box-shadow:0 1px 0 rgba(0,0,0,.04),0 2px 4px rgba(0,0,0,.06)}
       .pjx-celda:hover{transform:translateY(-1px)}
+      /* la matriz sola de la landing (estatico): las celdas no responden */
+      .pjx-estatico .pjx-celda{cursor:default;pointer-events:none}
       .pjx-celda:active{transform:scale(.97)}
       @media (prefers-reduced-motion:reduce){.pjx-celda{transition:none}.pjx-celda:hover,.pjx-celda:active{transform:none}}
       .pjx-celda:focus-visible{outline:2px solid var(--doc-tx);outline-offset:2px}

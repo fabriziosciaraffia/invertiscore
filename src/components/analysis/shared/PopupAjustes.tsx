@@ -99,12 +99,16 @@ export interface PopupAjustesProps {
   /** LTR · lo que piden los avisos parecidos (`resolverArriendoReferencia`), para el bloque del
    *  camino de mercado. STR no lo pasa: no guardamos tarifas de comparables. */
   referenciaArriendo?: ArriendoReferencia | null;
+  /** LA MATRIZ SOLA, SIN INTERACCIÓN (27-sep-2026): la landing la muestra al lado de la card. Lo
+   *  de arriba y la grilla con la celda de Franco marcada; sin «Toca una celda», sin el panel de
+   *  la celda, sin el camino de mercado y sin el botón. Las celdas no responden. */
+  estatico?: boolean;
 }
 
 /** El chip de veredicto del pop-up es el del informe entero (`ChipVeredicto`, 25-sep-2026). */
 const Pill = ({ v }: { v: Veredicto }) => <ChipVeredicto v={v} />;
 
-export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo }: PopupAjustesProps) {
+export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo, estatico = false }: PopupAjustesProps) {
   const grilla = grillaDelPopup({ veredicto, distancia, mixComprar });
   const celdas = grilla?.celdas ?? [];
   const esComprar = veredicto === "COMPRAR";
@@ -128,7 +132,7 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
   const precioBoton = franco && franco.descuentoPct && franco.descuentoPct > 0 ? precioUF * (1 - franco.descuentoPct / 100) : null;
 
   return (
-    <div className="pjx">
+    <div className={`pjx${estatico ? " pjx-estatico" : ""}`}>
       <p className="pjx-hoy">
         Hoy <Pill v={veredicto} /> con pie {pieTxt(pieHoy)} y crédito a {plazoHoy} años
       </p>
@@ -144,6 +148,7 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
           <Regla tope={tope} />
         </>
       )}
+      {!estatico && (
       <p className="pjx-tip">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M9 11V6a2 2 0 1 1 4 0v5" />
@@ -151,6 +156,7 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
         </svg>
         {esComprar ? "Toca una celda para ver qué pasa con esa combinación." : "Toca una celda para ver cómo queda."}
       </p>
+      )}
 
       <div
         className="pjx-mz"
@@ -190,8 +196,9 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
                 data-plazo={c.plazoAnios}
                 data-veredicto={l.veredicto}
                 data-escala={esComprar ? undefined : color}
-                aria-pressed={mismo(c, sel)}
-                onClick={() => setSel(c)}
+                aria-pressed={estatico ? undefined : mismo(c, sel)}
+                tabIndex={estatico ? -1 : undefined}
+                onClick={estatico ? undefined : () => setSel(c)}
               >
                 {esF && <span className="pjx-tag fr">Franco</span>}
                 {esH && <span className="pjx-tag hoy">hoy</span>}
@@ -209,7 +216,7 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
         </div>
       )}
 
-      {sel &&
+      {!estatico && sel &&
         (esComprar ? (
           <PanelComprar c={sel} currency={currency} valorUF={valorUF} precioUF={precioUF} tope={tope} />
         ) : (
@@ -227,11 +234,11 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
           />
         ))}
 
-      {mercado && (
+      {!estatico && mercado && (
         <CaminoMercado palanca={mercado} modalidad={modalidad} referencia={modalidad === "LTR" ? referenciaArriendo ?? null : null} currency={currency} valorUF={valorUF} />
       )}
 
-      {precioBoton !== null && (
+      {!estatico && precioBoton !== null && (
         <div className="pjx-cta">
           <p>Si consigues el precio de la recomendación, el informe cambia entero.</p>
           {/* INERTE A PROPÓSITO (13-sep-2026): conectarlo pide que el wizard acepte un precio por

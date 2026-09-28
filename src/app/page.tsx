@@ -43,7 +43,10 @@ export default async function LandingPage() {
   const datos = await leerDatosLanding();
   const ahora = new Date();
   return (
-    <div className="lv-root" data-franco-root data-landing="v14">
+    // `data-theme="light"` en la raíz: la landing es de material fijo, y las piezas del informe que
+    // monta (la matriz y el pop-up de combinaciones) leen sus tokens del tema. Sin esto, con el
+    // sitio en oscuro saldrían oscuras sobre el papel.
+    <div className="lv-root" data-theme="light" data-franco-root data-landing="v14">
       <LandingViewed />
       <SuaveScroll />
       <main>

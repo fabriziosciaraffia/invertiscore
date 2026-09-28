@@ -387,6 +387,16 @@ body:has(.lv-root) { --lv-mono-real: var(--font-mono); }
 .lv-pausa:active { transform: translateY(1px); }
 .lv-pausa:focus-visible { outline: 2px solid var(--lv-ink); outline-offset: 2px; }
 
+/* LAS COMBINACIONES (27-sep-2026, dos variantes a elegir). A: la matriz real del pop-up, quieta,
+   en su caja de papel, al lado de la card en escritorio y debajo en el teléfono. B: el botón de la
+   card abre el pop-up real (su CSS es el del informe). */
+.lv-matrices { margin-top: 16px; }
+.lv-matriz {
+  background: #fff; border: 1px solid var(--lv-ll); border-radius: var(--lv-rad); padding: 18px 16px 16px;
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--lv-ink);
+}
+.lv-matriz-nada { margin: 0; font-size: 14px; line-height: 1.5; color: var(--lv-g); }
+
 /* LA PILA (27-sep-2026): los tres ejemplos en la misma celda, se ve uno. La celda mide lo que el
    más alto, así que al rotar no se mueve nada — ni la pieza ni lo que viene debajo. */
 .lv-pila { display: grid; }
@@ -645,6 +655,18 @@ body:has(.lv-root) { --lv-mono-real: var(--font-mono); }
   }
   .lv-sreco-grid-inner > .lv-idx { grid-area: 1 / 1 / 2 / 3; margin: 0; }
   .lv-reco { grid-area: 3 / 1 / 4 / 2; margin: 0; }
+  /* A · la card y la matriz lado a lado, con el texto arriba en toda la línea */
+  .lv-sreco-grid-inner[data-combinaciones="a"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; row-gap: 32px; }
+  .lv-sreco-grid-inner[data-combinaciones="a"] > .lv-idx { grid-area: 1 / 1 / 2 / 2; }
+  .lv-sreco-grid-inner[data-combinaciones="a"] > .lv-reco-texto {
+    grid-area: 2 / 1 / 3 / 2; align-self: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 48px; align-items: end;
+  }
+  .lv-sreco-grid-inner[data-combinaciones="a"] > .lv-reco-texto .lv-reco-h2 { grid-row: 1 / 3; }
+  .lv-sreco-grid-inner[data-combinaciones="a"] > .lv-reco {
+    grid-area: 3 / 1 / 4 / 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-items: start;
+  }
+  .lv-sreco-grid-inner[data-combinaciones="a"] .lv-matrices { margin-top: 0; padding-top: 34px; }
+  .lv-sreco-grid-inner[data-combinaciones="a"] .lv-reco-pie { grid-column: 1 / -1; }
   .lv-reco-texto { grid-area: 3 / 2 / 4 / 3; align-self: center; margin: 0; }
   .lv-num { font-size: 88px; }
   .lv-why { font-size: 36px; max-width: 24ch; }
