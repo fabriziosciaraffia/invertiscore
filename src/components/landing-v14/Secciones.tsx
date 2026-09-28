@@ -17,7 +17,7 @@ import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { COMPARABLES_CIFRA, COMPARABLES_PISO } from "@/lib/stats";
 import { CampoLanding, HeroLanding } from "./Entrada";
 import { Respuesta } from "./Respuesta";
-import { LoQueHariaFranco } from "./Recomendacion";
+import { LoQueHariaFrancoDiferida } from "./RecomendacionDiferida";
 import { MapaSantiago } from "./MapaSantiago";
 import { SeccionVista } from "./Telemetria";
 import { LinkMedido } from "./LinkMedido";
@@ -54,11 +54,13 @@ export function LaRespuesta() {
 // La card §5 del informe para el mismo ejemplo que la sección 2 (FASE 1.9, plan B:
 // sección propia, 100 svh, papel). Ritmo: hero oscuro · respuesta papel ·
 // recomendación papel · por qué creerle tinta · cierre papel.
+// Se carga DESPUÉS del titular (28-sep-2026): la card real trae el motor y 135 kB de estilos que
+// la primera pantalla no necesita. La altura está reservada en el CSS (`--lv-sreco-reserva`).
 export function LoQueHaria() {
   return (
     <SeccionVista n={3} id="recomendacion" className="lv-sreco">
       <div className="lv-col lv-sreco-grid">
-        <LoQueHariaFranco />
+        <LoQueHariaFrancoDiferida />
       </div>
     </SeccionVista>
   );

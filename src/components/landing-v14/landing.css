@@ -351,8 +351,15 @@
 /* ===== 3 LO QUE HARÍA FRANCO (papel) ===== */
 /* pantalla propia (FASE 1.9, plan B): etiqueta arriba, la card §5 del informe al
    centro y, en PC, el texto a la derecha. Misma distribución que la sección 2. */
-.lv-sreco { padding: var(--lv-sec) 0; min-height: 100svh; display: flex; flex-direction: column; }
+/* La sección 3 llega después del titular (RecomendacionDiferida): su altura queda reservada desde
+   el primer render con `--lv-sreco-reserva`, medida por ancho en el preview del 28-sep-2026
+   (390: 1083 · 430: 996 · 768: 1062 · ≥1100: 900 = 100svh), así que al aparecer no salta nada. */
+.lv-sreco { --lv-sreco-reserva: 1083px; padding: var(--lv-sec) 0; min-height: max(100svh, var(--lv-sreco-reserva)); display: flex; flex-direction: column; }
+@media (min-width: 430px) { .lv-sreco { --lv-sreco-reserva: 996px; } }
+@media (min-width: 768px) { .lv-sreco { --lv-sreco-reserva: 1062px; } }
+@media (min-width: 1100px) { .lv-sreco { --lv-sreco-reserva: 900px; } }
 .lv-sreco > .lv-col { flex: 1; display: flex; flex-direction: column; }
+.lv-sreco-diferida { flex: 1; display: flex; flex-direction: column; }
 /* SEPARACIÓN POR FONDO (QA 28-sep-2026): las dos secciones que rotan van sobre papel y se leían
    como una sola; la línea de tinta que las separaba chocaba con la barra de la rotación. Esta va
    en gris claro: papel · gris · tinta · material. La barra de la rotación queda sola. */
