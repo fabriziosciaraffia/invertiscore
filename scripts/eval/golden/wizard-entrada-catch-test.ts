@@ -176,7 +176,8 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   // de Franco a un formulario. Ahora es el Modal de los capítulos, y estas reglas fijan eso.
   if (!/export const MQ_HOJA = "\(max-width: 767px\)";/.test(hero) || !/window\.matchMedia\(MQ_HOJA\)/.test(hero)) F("8 · el hero no distingue el teléfono");
   if (!/clave: !usaHoja \? "hero" : hoja && Hoja \? "hoja" : "cerrada",/.test(hero)) F("8 · el widget no se vuelve a atar al input de la hoja");
-  if (!/const abrirHoja = \(\) => \{\s*\n\s*flushSync\(\(\) => setHoja\(true\)\);\s*\n\s*inputRef\.current\?\.focus\(\);/.test(hero)) F("8 · la hoja no se enfoca en el mismo toque (iOS no abre el teclado)");
+  // desde el 28-sep-2026 el mismo toque arranca Google Maps (`prepararPlaces()`) antes de abrir
+  if (!/const abrirHoja = \(\) => \{\s*\n\s*prepararPlaces\(\);\s*\n\s*flushSync\(\(\) => setHoja\(true\)\);\s*\n\s*inputRef\.current\?\.focus\(\);/.test(hero)) F("8 · la hoja no se enfoca en el mismo toque (iOS no abre el teclado)");
   if (!/\{usaHoja \? \(\s*\n\s*<button[^>]*onClick=\{abrirHoja\}/.test(hero)) F("8 · en el teléfono, tocar el campo no abre la hoja");
   if (!/import\("\.\/HojaDireccion"\)\.then\(\(m\) => \{ if \(vivo\) setHojaComp\(\(\) => m\.default\); \}\);/.test(hero) || !/if \(!usaHoja \|\| Hoja\) return;/.test(hero)) F("8 · la hoja no se precarga en el teléfono: el primer toque no alcanzaría a enfocarla");
   if (!/\{Hoja && hoja && \(\s*\n\s*<Hoja abierto onClose=\{\(\) => setHoja\(false\)\}>\s*\n\s*<form className="he-hoja-campo"[^>]*>\s*\n\s*<input\s*\n\s*ref=\{inputRef\}/.test(hero)) F("8 · la hoja no lleva el campo arriba con el input vivo");
@@ -187,7 +188,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/<div className="doc-dictamen[^"]*"[^>]*>\s*\n\s*<DocTokens \/>\s*\n\s*<TokensHallazgos \/>\s*\n\s*<Modal/.test(hojaSrc)) F("8 · la hoja no monta los tokens y el CSS del Modal dentro de .doc-dictamen (saldría sin asa ni velo, o con la paleta vieja)");
   if (!/createPortal\(/.test(hojaSrc)) F("8 · la hoja no va en portal: una transformación del wizard la dejaría fuera de lugar");
   const hook = sinComentarios(leer("src/components/entrada/useDireccionPlaces.ts"));
-  if (!/\}, \[activo, clave\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
+  if (!/\}, \[activo, clave, prepararPlaces\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
   const css = leer("src/components/entrada/hero-entrada.css");
   if (/\.he-hoja \{[^}]*inset: 0/.test(css) || /he-hoja-cancelar/.test(css + hero)) F("8 · vuelve la hoja a pantalla completa");
   if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: var\(--he-pac-top, [0-9]+px\) !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja, a lo ancho");
