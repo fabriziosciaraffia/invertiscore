@@ -63,6 +63,7 @@ import { runWizardDatosTier } from "./wizard-datos-catch-test";
 import { runWizardEntradaTier } from "./wizard-entrada-catch-test";
 import { runHeaderUnicoTier } from "./header-unico-catch-test";
 import { runMetodologiaTier } from "./metodologia-catch-test";
+import { runLandingV14Tier } from "./landing-v14-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
@@ -338,6 +339,10 @@ function printSeed(r: SeedReport) {
   // sin pesos, el horizonte, las reglas del informe y el 20% del filtro— leído del motor, sin cifras
   // a mano ni reglamento, y enlaza a «Cómo se calcula», que el informe abre al llegar.
   totalHard += runMetodologiaTier().hard;
+  // Tier LANDING-V14 (27-sep-2026, 0 tokens): las decisiones del QA de la landing —una puerta, la
+  // card y el titular del informe, sin saltos al rotar, la cifra de la fuente única con el mapa que
+  // se puebla, el copy, ningún bloque rojo de fondo y las dos variantes de las combinaciones—.
+  totalHard += runLandingV14Tier().hard;
   // Tier OTRA-FUENTE (27-sep-2026, 0 tokens): la cuota del crédito del pie baja el flujo exactamente
   // su monto en LTR y STR, sin tocar el hipotecario ni el NOI, y sin ella nada cambia.
   totalHard += runOtraFuenteTier().hard;
