@@ -53,6 +53,7 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "monthly-grants", label: "Lotes mensuales", intervaloHoras: 24 },
   { nombre: "expire-grace", label: "Vencimiento de gracia", intervaloHoras: 24 },
   { nombre: "abandoned-checkout", label: "Carritos abandonados", intervaloHoras: 24 },
+  { nombre: "recordatorio-pack", label: "Recordatorio del pack", intervaloHoras: 24 },
   { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24 },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24 },

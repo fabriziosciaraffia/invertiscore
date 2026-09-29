@@ -4,6 +4,7 @@ import { COMPARABLES_TEXTO } from './stats';
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
+import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -883,4 +884,19 @@ export async function sendAccountDeletionUserEmail(to: string, name: string, opt
         </p>
       `, userFooter),
   });
+}
+
+/**
+ * «Lo que sigue» · el recordatorio del pack (30-sep-2026): «Te quedan 3 análisis, con tus números ya
+ * cargados.», en la plantilla clara. Devuelve si salió de verdad (el cron ya reclamó la fila antes).
+ */
+export async function sendRecordatorioPackEmail(to: string, analysisId: string | null, opts: CorreoOpts = {}): Promise<boolean> {
+  const { subject, html } = correoRecordatorioPack(SITE_URL, analysisId);
+  try {
+    const res = await enviarCorreo("recordatorio_pack", opts.userId, { from: FROM_EMAIL, to, subject, html });
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("Error sending pack reminder email:", error);
+    return false;
+  }
 }

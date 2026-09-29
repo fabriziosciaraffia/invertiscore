@@ -20,3 +20,13 @@ export function eventoPackVencido(p: { userId: string; analysisId: string; vered
     properties: { oferta: "lo_que_sigue", analysis_id: p.analysisId, veredicto: p.veredicto ?? null, donde: "servidor" },
   };
 }
+
+/** El recordatorio del pack salió (30-sep-2026). Uno por pago: el uuid lo ata al payment. */
+export function eventoRecordatorioPack(p: { userId: string; paymentId: string; analysisId: string | null }): EventoServidor {
+  return {
+    event: EVENTOS_LQS.recordatorioEnviado,
+    distinctId: p.userId,
+    uuid: uuidDeterminista(`recordatorio_pack:${p.paymentId}`),
+    properties: { oferta: "lo_que_sigue", payment_id: p.paymentId, analysis_id: p.analysisId, donde: "servidor" },
+  };
+}
