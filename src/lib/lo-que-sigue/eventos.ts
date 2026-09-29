@@ -15,6 +15,15 @@ export const EVENTOS_LQS = {
   packIniciado: "pack_iniciado",
   packVencido: "pack_vencido",
   packPagado: "pack_pagado",
+  // 30-sep-2026 · el copy nuevo y lo que pasa después de pagar
+  accesoClick: "acceso_click",
+  dentroVisto: "dentro_visto",
+  preferenciaEditada: "preferencia_editada",
+  horizonteElegido: "horizonte_elegido",
+  postPagoVisto: "post_pago_visto",
+  precargaAbierta: "precarga_abierta",
+  compararVisto: "comparar_visto",
+  recordatorioEnviado: "recordatorio_pack_enviado",
 } as const;
 
 export type EventoLqs = (typeof EVENTOS_LQS)[keyof typeof EVENTOS_LQS];

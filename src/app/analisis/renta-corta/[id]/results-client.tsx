@@ -32,6 +32,8 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
+import { precioQueCierraUF } from "@/lib/lo-que-sigue/precio-cierre";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
@@ -259,6 +261,9 @@ export function STRResultsClient({
   // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
   const loQueSigue = isAnonOwner && !userId && !demo;
   const ctxLqs = { analysisId, veredicto, modalidad: "str" as const };
+  // «Lo que sigue» (30-sep-2026): chips del perfil y precio al que cierra, del motor (espejo de LTR).
+  const perfilLqs = perfilChipsDe(inputData, "str");
+  const precioCierreLqs = precioQueCierraUF(veredicto, distanciaPortada, precioCompraUFIn);
   const nextLqs = `/analisis/renta-corta/${analysisId}`;
 
   return (
@@ -368,7 +373,7 @@ export function STRResultsClient({
             página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} /> : undefined}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} /> : undefined}
             hallazgos={
               /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */
               hallazgosOrdenadosSTR.length > 0 ? (
@@ -479,7 +484,7 @@ export function STRResultsClient({
             <div style={{ height: 16 }} />
             <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
             {loQueSigue ? (
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} />
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
           ) : (
             <NextAnalysisCTA {...nextCtaProps} />
           )}

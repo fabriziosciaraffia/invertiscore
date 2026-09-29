@@ -41,3 +41,27 @@ export function diaVencimiento(createdAt: string | Date, ahora: Date = new Date(
   if (vence === f.format(new Date(ahora.getTime() + 24 * 60 * 60 * 1000))) return "mañana";
   return "otro";
 }
+
+/** Lo que se ahorra en los tres análisis, redondeado al mil: 3 × $9.990 − $14.990 = $14.980 → «$15.000». */
+export const PACK_AHORRO_CLP = Math.round((PACK_ANALISIS * PACK_UNITARIO_REFERENCIA_CLP - PACK_PRECIO_CLP) / 1000) * 1000;
+
+/** El wizard con lo de la persona ya cargado desde el informe `analysisId` (30-sep-2026). */
+export const rutaPrecarga = (analysisId: string) => `/analisis/nuevo-v4?precarga=${encodeURIComponent(analysisId)}`;
+
+// El retorno de Flow después del pack lleva el informe de origen y su veredicto (30-sep-2026): el
+// ticket paga SIN sesión y /payments/return no puede leer el pago sin ella. El veredicto va en una
+// letra y el id del informe ya es de la persona (el claim lo adoptó al pagar).
+const COD_VEREDICTO = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b" } as const;
+
+export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined): string {
+  const v = COD_VEREDICTO[(veredicto ?? "") as keyof typeof COD_VEREDICTO] ?? "a";
+  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}`;
+}
+
+export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" } | null {
+  if (sp.get("lqs") !== "pack") return null;
+  const a = sp.get("a") ?? "";
+  if (!/^[0-9a-f-]{36}$/i.test(a)) return null;
+  const v = sp.get("v");
+  return { analysisId: a, veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS" };
+}

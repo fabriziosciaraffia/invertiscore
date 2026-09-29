@@ -127,3 +127,26 @@
   .lqs-velo::before { transition: opacity 160ms ease !important; transition-delay: 0s !important; }
   .lqs-tk .lqs-cara { transition: none !important; }
 }
+
+/* ── 30-sep-2026 · el copy nuevo: la primera línea como titular, el cuerpo, «Para ti:» con chips,
+   «Estás dentro» y la pantalla de después de pagar ── */
+.lqs-h3-lead { font-size: 25px; }
+@media (min-width: 768px) { .lqs-h3-lead { font-size: 34px; } }
+.lqs-cuerpo { font-size: 15px; line-height: 1.5; color: rgba(250, 250, 248, 0.86); margin: 0 0 16px; max-width: 620px; }
+.lqs-parati { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 20px; }
+.lqs-parati-t { font: 600 10.5px var(--font-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(250, 250, 248, 0.62); }
+.lqs-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid rgba(250, 250, 248, 0.35); background: rgba(250, 250, 248, 0.12); color: #FAFAF8; font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; }
+.lqs-chip-edit { padding: 0 8px 0 12px; }
+.lqs-chip-edit select { appearance: none; -webkit-appearance: none; background: transparent; border: 0; color: inherit; font: inherit; padding-right: 14px; cursor: pointer; outline: 0; background-image: linear-gradient(45deg, transparent 50%, #FAFAF8 50%), linear-gradient(135deg, #FAFAF8 50%, transparent 50%); background-position: calc(100% - 7px) 55%, calc(100% - 3px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
+.lqs-chip-edit select option { color: #0F0F0F; }
+.lqs-chip-edit:focus-within { border-color: #FAFAF8; }
+.lqs-toca { font-size: 12px; color: rgba(250, 250, 248, 0.6); }
+.lqs-aprende { margin-top: 4px; }
+.lqs-cuando-t { font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; margin: 6px 0 10px; }
+.lqs-cuando { display: flex; flex-wrap: wrap; gap: 8px; }
+.lqs-opcion { height: 40px; padding: 0 16px; border-radius: 99px; border: 1.5px solid rgba(250, 250, 248, 0.55); background: none; color: #FAFAF8; font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; }
+.lqs-opcion[data-activa="1"] { background: #FAFAF8; color: #0F0F0F; border-color: #FAFAF8; }
+.lqs-postpago { border-radius: 16px; padding: 32px 22px; text-align: left; }
+.lqs-postpago .lqs-lead { margin: 0 0 18px; }
+.lqs-tk .lqs-precio-t { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.1; margin: 14px 0 4px; color: var(--doc-tx); font-variant-numeric: tabular-nums; }
+.lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }

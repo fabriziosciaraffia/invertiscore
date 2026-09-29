@@ -16,18 +16,23 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { fmtCLP } from "@/lib/pricing";
-import { FRASE_PACK, TICKET_PACK, veredictoLqs } from "@/lib/lo-que-sigue/copy";
+import { leadTicket, TICKET_PACK, veredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { abrirTicket, cerrarTicket, entrarZonaCierre, salirZonaCierre, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
-import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
+import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
 
 type Cara = "ticket" | "despedida";
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: string }) {
+export function TicketPack({ ctx, createdAt, precioCierreUF = null }: {
+  ctx: ContextoLqs;
+  createdAt: string;
+  /** El precio al que CIERRA este depto, del motor, en UF (`precioQueCierraUF`). Null sin dato: el ticket va sin cifra. */
+  precioCierreUF?: number | null;
+}) {
   const posthog = usePostHog();
   const sentinel = useRef<HTMLDivElement>(null);
   const velo = useRef<HTMLDivElement>(null);
@@ -186,7 +191,7 @@ export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: st
         data-cara={cara}
         role={abierto ? "dialog" : undefined}
         aria-modal={abierto || undefined}
-        aria-label="3 análisis por $14.990"
+        aria-label={TICKET_PACK.titulo(fmtCLP(PACK_PRECIO_CLP))}
         onClick={(e) => { if (e.target !== e.currentTarget) return; if (cara === "ticket") despedirse(); else cerrarDelTodo(); }}
       >
         <div className="lqs-hoja">
@@ -198,9 +203,9 @@ export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: st
                 <span className="lqs-tk-ojo">{TICKET_PACK.ojo}</span>
                 <button type="button" className="lqs-x" onClick={despedirse} aria-label={TICKET_PACK.cerrar}>✕</button>
               </div>
-              <p className="lqs-tk-lead">{FRASE_PACK[v]}</p>
-              <div className="lqs-precio"><b>{fmtCLP(PACK_PRECIO_CLP)}</b><span>{TICKET_PACK.precioNota}</span></div>
-              <p className="lqs-ahorro"><b>{fmtCLP(PACK_UNITARIO_CLP)}</b> por análisis en vez de <b>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</b>.</p>
+              <p className="lqs-tk-lead" data-lqs="ticket-lead">{leadTicket(v, precioCierreUF, fmtCLP(PACK_UNITARIO_CLP))}</p>
+              <p className="lqs-precio-t">{TICKET_PACK.titulo(fmtCLP(PACK_PRECIO_CLP))}</p>
+              <p className="lqs-ahorro">{TICKET_PACK.ahorro(fmtCLP(PACK_UNITARIO_CLP), fmtCLP(PACK_UNITARIO_REFERENCIA_CLP))}</p>
               <div className="lqs-reloj">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                 <span>{TICKET_PACK.vence(dia, "")}<b>{hora}</b></span>
@@ -216,14 +221,14 @@ export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: st
                 onChange={(e) => setCorreo(e.target.value)}
               />
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
-              <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.pagar(fmtCLP(PACK_PRECIO_CLP))}</button>
+              <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton}</button>
               <p className="lqs-tk-pie">{TICKET_PACK.piePago}</p>
               <button type="button" className="lqs-seguir" onClick={despedirse}>{TICKET_PACK.seguir}</button>
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
               <div className="lqs-cab"><span className="lqs-tk-ojo">{TICKET_PACK.ojo}</span><span /></div>
               <p className="lqs-despedida-t">{TICKET_PACK.despedida(hora)}</p>
-              <div className="lqs-resumen"><span>{TICKET_PACK.despedidaResumen}</span><b>{fmtCLP(PACK_PRECIO_CLP)}</b></div>
+              <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>
               <button type="button" className="lqs-tinta" onClick={cerrarDelTodo}>{TICKET_PACK.siSeguir}</button>
             </div>

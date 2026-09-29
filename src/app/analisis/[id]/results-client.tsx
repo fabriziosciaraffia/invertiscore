@@ -17,6 +17,9 @@ import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
+import { precioQueCierraUF } from "@/lib/lo-que-sigue/precio-cierre";
+import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
@@ -562,6 +565,14 @@ export function PremiumResults({
   ];
   const resolvedVeredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
   const ctxLqs = { analysisId: analysisId ?? "", veredicto: resolvedVeredicto, modalidad: "ltr" as const };
+  // «Lo que sigue» (30-sep-2026): los chips del perfil («Para ti:») y el precio al que cierra este
+  // depto, del motor (la palanca precio del hallazgo de distancia), para la primera línea del ticket.
+  const perfilLqs = perfilChipsDe(inputData, "ltr");
+  const precioCierreLqs = precioQueCierraUF(
+    resolvedVeredicto,
+    ((results?.hallazgos as { id: string }[] | undefined)?.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null,
+    inputData?.precio,
+  );
 
   const mainContent = (
     <>
@@ -605,7 +616,7 @@ export function PremiumResults({
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
             onInformeVisible={onInformeVisible}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} /> : undefined}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} /> : undefined}
             results={results}
             inputData={inputData}
             valorUF={ufValue}
@@ -675,7 +686,7 @@ export function PremiumResults({
           {loQueSigue ? (
             // «Lo que sigue»: al cierre va el ticket del pack; el registro no se repite en texto —la
             // barra fija es la repetición (ajuste 1, 28-sep-2026).
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} />
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
           ) : (
             <NextAnalysisCTA {...nextCtaProps} />
           )}

@@ -1,32 +1,46 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// A · El banner del registro (28-sep-2026), después de la card de Franco: el material del hero de
-// borde a borde con la frase por veredicto; al tocarlo se convierte en el registro en un paso. En
-// teléfono, cuando el banner queda atrás, la barra fija lo repite (solo el registro) y se recoge
-// mientras el ticket del pack está arriba. Solo en el primer informe anónimo: el caller lo monta
-// únicamente con `isAnonOwner && !isLoggedIn`.
+// A · El banner del registro (28-sep-2026; copy nuevo del 30-sep-2026), después de la card de
+// Franco: el material del hero de borde a borde. La primera línea va por veredicto; después el
+// portafolio, «Para ti:» con los chips del perfil inferido (tipología, comuna, modalidad), «Quiero
+// acceso» y «Gratis. Solo tu correo.». Al tocarlo se convierte en el registro en un paso, y con el
+// código, EN EL MISMO LUGAR, en «Estás dentro» (chips editables y la pregunta del horizonte).
+// En teléfono, cuando el banner queda atrás, la barra fija lo repite y se recoge mientras el ticket
+// del pack está arriba. Solo en el primer informe anónimo: el caller lo monta únicamente con
+// `isAnonOwner && !isLoggedIn`.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
-import { FRASE_REGISTRO, OFERTA_REGISTRO, veredictoLqs } from "@/lib/lo-que-sigue/copy";
+import { ESTAS_DENTRO, FRASE_REGISTRO, OFERTA_REGISTRO, veredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { queVaAbajo, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
 import { useAnclaAbajo } from "@/lib/lo-que-sigue/area-visible";
+import type { PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
 import { RegistroUnPaso } from "./RegistroUnPaso";
+import { EstasDentro } from "./EstasDentro";
 import "./lo-que-sigue.css";
 
-export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }) {
+export type Paso = "oferta" | "registro" | "dentro";
+
+export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = "oferta" }: {
+  ctx: ContextoLqs;
+  next: string;
+  perfil: PerfilChips;
+  /** La demo de «Lo que sigue»: «Estás dentro» no escribe. */
+  demo?: boolean;
+  pasoInicial?: Paso;
+}) {
   const posthog = usePostHog();
   const ref = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
-  const [registro, setRegistro] = useState(false);
+  const [paso, setPaso] = useState<Paso>(pasoInicial);
   const [atras, setAtras] = useState(false);
   const { ticketAbierto, zonaCierre } = useEstadoBorde();
   const v = veredictoLqs(ctx.veredicto);
   // Una sola cosa abajo según la zona: la barra solo fuera del cierre y sin el ticket arriba
-  // (en la zona del cierre van el ticket o su pestaña, que viven en TicketPack).
-  const barra = queVaAbajo({ bannerAtras: atras, zonaCierre, ticketAbierto, ticketYaSubio: false, ofertaVigente: false }) === "barra";
+  // (en la zona del cierre van el ticket o su pestaña, que viven en TicketPack). Ya dentro, no hay barra.
+  const barra = paso !== "dentro" && queVaAbajo({ bannerAtras: atras, zonaCierre, ticketAbierto, ticketYaSubio: false, ofertaVigente: false }) === "barra";
   // Anclada al área visible real: en iOS la barra del navegador se esconde al hacer scroll.
   useAnclaAbajo(barraRef);
 
@@ -52,24 +66,36 @@ export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.analysisId]);
 
-  const abrirRegistro = () => {
-    setRegistro(true);
+  const abrirRegistro = (desde: "banner" | "barra") => {
+    capturarLqs(posthog, EVENTOS_LQS.accesoClick, ctx, { desde });
+    setPaso("registro");
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const chips = [perfil.tipologia, perfil.comuna, ESTAS_DENTRO.modalidad[perfil.modalidad]].filter((c): c is string => !!c);
+
   return (
     <>
-      <div ref={ref} className="lqs-mat lqs-banner" data-lqs="banner" data-registro={registro ? "1" : "0"}>
+      <div ref={ref} className="lqs-mat lqs-banner" data-lqs="banner" data-paso={paso}>
         <div className="lqs-fondo" aria-hidden="true" />
         <div className="lqs-col">
-          {registro ? (
-            <RegistroUnPaso next={next} ctx={ctx} />
+          {paso === "dentro" ? (
+            <EstasDentro ctx={ctx} perfil={perfil} demo={demo} />
+          ) : paso === "registro" ? (
+            <RegistroUnPaso next={next} ctx={ctx} alEntrar={() => setPaso("dentro")} />
           ) : (
             <>
               <p className="lqs-ojo">{OFERTA_REGISTRO.ojo}</p>
-              <p className="lqs-lead">{FRASE_REGISTRO[v]}</p>
-              <h3 className="lqs-h3">{OFERTA_REGISTRO.titular} <mark>{OFERTA_REGISTRO.plumon}</mark> {OFERTA_REGISTRO.cierre}</h3>
-              <button type="button" className="lqs-btn" onClick={abrirRegistro}>{OFERTA_REGISTRO.boton}</button>
+              <h3 className="lqs-h3 lqs-h3-lead">{FRASE_REGISTRO[v]}</h3>
+              <p className="lqs-cuerpo">{OFERTA_REGISTRO.cuerpo}</p>
+              {chips.length > 0 && (
+                <div className="lqs-parati">
+                  <span className="lqs-parati-t">{OFERTA_REGISTRO.paraTi}</span>
+                  {chips.map((c) => <span key={c} className="lqs-chip" data-lqs="chip">{c}</span>)}
+                </div>
+              )}
+              <button type="button" className="lqs-btn" onClick={() => abrirRegistro("banner")}>{OFERTA_REGISTRO.boton}</button>
+              <p className="lqs-legal">{OFERTA_REGISTRO.bajoBoton}</p>
             </>
           )}
         </div>
@@ -77,7 +103,7 @@ export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }
       <div ref={barraRef} className="lqs-mat lqs-barra" data-lqs="barra" data-visible={barra ? "1" : "0"} aria-hidden={!barra}>
         <div className="lqs-fondo" aria-hidden="true" />
         <div className="lqs-barra-t">{OFERTA_REGISTRO.barraTitulo}<small>{OFERTA_REGISTRO.barraSub}</small></div>
-        <button type="button" className="lqs-btn" onClick={abrirRegistro} tabIndex={barra ? 0 : -1}>{OFERTA_REGISTRO.barraBoton}</button>
+        <button type="button" className="lqs-btn" onClick={() => abrirRegistro("barra")} tabIndex={barra ? 0 : -1}>{OFERTA_REGISTRO.barraBoton}</button>
       </div>
     </>
   );
