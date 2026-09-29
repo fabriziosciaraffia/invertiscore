@@ -13,14 +13,16 @@
 //       cierre. Todo anclado al área visible real (iOS).
 //   5 · EL COPY EN TUTEO: sin voseo en copy.ts.
 //   Más: sale «Guardarlo» del header y «Crear cuenta para guardarlo» del cierre; el pack es
-//   producto real ($5.000, 3 créditos sin caducidad, pack_pagado desde el servidor); los eventos.
+//   producto real ($14.990 por 3 —$5.000 cada uno—, 3 créditos sin caducidad, pack_pagado desde el
+//   servidor); los eventos.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/lo-que-sigue-catch-test.ts
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
+import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
+import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
 import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
 import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo-que-sigue/perfil";
@@ -73,7 +75,10 @@ export function runLoQueSigueTier(): { hard: number } {
   if (venceEl(t0).toISOString() !== "2026-09-29T21:04:00.000Z") F("2 · venceEl no suma 24 h");
   if (horaVencimiento(t0) !== "18:04") F(`2 · la hora no se dice en hora de Chile (${horaVencimiento(t0)})`);
   if (diaVencimiento(t0, new Date("2026-09-29T12:00:00Z")) !== "hoy" || diaVencimiento(t0, new Date("2026-09-28T12:00:00Z")) !== "mañana") F("2 · «hoy»/«mañana» no salen del reloj de Chile");
-  if (FLOW_PRODUCTS.pack3.amount !== PACK_PRECIO_CLP || PACK_PRECIO_CLP !== 5000 || PACK_ANALISIS !== 3 || PACK_UNITARIO_CLP !== 1667 || FLOW_PRODUCTS.pack3.kind !== "one_time") F("2 · el pack no es 3 análisis por $5.000 en el catálogo de Flow");
+  if (FLOW_PRODUCTS.pack3.amount !== PACK_PRECIO_CLP || PACK_PRECIO_CLP !== 14990 || PACK_ANALISIS !== 3 || PACK_UNITARIO_CLP !== 5000 || FLOW_PRODUCTS.pack3.kind !== "one_time") F("2 · el pack no es 3 análisis por $14.990 ($5.000 cada uno) en el catálogo de Flow");
+  if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$5.000" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990» ni «$5.000 por análisis en vez de $9.990»");
+  if (!/<b>\{fmtCLP\(PACK_UNITARIO_CLP\)\}<\/b> por análisis en vez de <b>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/b>\./.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("2 · el ahorro no va en una línea: «$5.000 por análisis en vez de $9.990»");
+  if (!/<b>\{fmtCLP\(PACK_PRECIO_CLP\)\}<\/b>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"))) || !/TICKET_PACK\.pagar\(fmtCLP\(PACK_PRECIO_CLP\)\)/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"))) || !/<div className="lqs-resumen"><span>\{TICKET_PACK\.despedidaResumen\}<\/span><b>\{fmtCLP\(PACK_PRECIO_CLP\)\}<\/b><\/div>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("2 · el precio del ticket, del botón o de la despedida no sale de PACK_PRECIO_CLP");
   const create = sinComentarios(leer("src/app/api/payments/create/route.ts"));
   if (!/if \(product === PRODUCTO_PACK && !analysisId\)/.test(create)) F("2 · payments/create acepta el pack sin informe");
   if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido\([\s\S]*?status: 410/.test(create)) F("2 · payments/create no rechaza el pack vencido con 410 ni lo mide");

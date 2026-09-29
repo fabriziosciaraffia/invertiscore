@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// «Lo que sigue» · el pack (28-sep-2026): 3 análisis por $5.000, solo para quien acaba de leer su
+// «Lo que sigue» · el pack (28-sep-2026; precio del 29-sep): 3 análisis por $14.990 —$5.000 cada uno
+// en vez de $9.990—, solo para quien acaba de leer su
 // primer informe anónimo, con vencimiento a 24 horas desde que se creó ese informe. La hora la fija
 // el servidor (created_at del análisis) y vence de verdad: `payments/create` rechaza después.
 // Funciones puras: las prueba el tier sin red.
@@ -7,10 +8,11 @@
 
 export const PRODUCTO_PACK = "pack3" as const;
 export const PACK_ANALISIS = 3;
-export const PACK_PRECIO_CLP = 5000;
+export const PACK_PRECIO_CLP = 14990;
 /** Lo que cuesta un análisis suelto hoy (`FLOW_PRODUCTS.single.amount`), para decir el ahorro. */
 export const PACK_UNITARIO_REFERENCIA_CLP = 9990;
-export const PACK_UNITARIO_CLP = Math.round(PACK_PRECIO_CLP / PACK_ANALISIS);
+/** Lo que se dice por análisis: $14.990 / 3 = $4.997, y se dice «$5.000». Fijo, no derivado. */
+export const PACK_UNITARIO_CLP = 5000;
 export const VENTANA_PACK_MS = 24 * 60 * 60 * 1000;
 
 /** Cuándo vence la oferta del pack de un informe creado en `createdAt`. */

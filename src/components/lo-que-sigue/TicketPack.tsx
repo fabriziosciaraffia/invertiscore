@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // B · El ticket del pack (28-sep-2026, ajustes de Fabrizio tras probarlo en el teléfono):
 //   · Zona del cierre: desde el sentinel hasta el final de la página. Al entrar, el ticket sube
-//     UNA vez (solo, nunca más); cerrado, queda una pestaña chica —«3 análisis por $5.000 · hasta
+//     UNA vez (solo, nunca más); cerrado, queda una pestaña chica —«3 análisis por $14.990 · hasta
 //     las 21:04»— para volver a él mientras la oferta viva. Al subir de la zona, vuelve la barra.
 //     Regla: NO VUELVE SOLO, pero se puede volver desde la pestaña.
 //   · Cerrar o «Seguir leyendo» cambian a la despedida en el mismo lugar; «Sí, seguir leyendo»
@@ -186,7 +186,7 @@ export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: st
         data-cara={cara}
         role={abierto ? "dialog" : undefined}
         aria-modal={abierto || undefined}
-        aria-label="3 análisis por $5.000"
+        aria-label="3 análisis por $14.990"
         onClick={(e) => { if (e.target !== e.currentTarget) return; if (cara === "ticket") despedirse(); else cerrarDelTodo(); }}
       >
         <div className="lqs-hoja">
