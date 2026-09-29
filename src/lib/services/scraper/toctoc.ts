@@ -23,6 +23,8 @@ export interface ScrapedProperty {
   antiguedad?: string;
   url?: string;
   condicion?: string;
+  /** Solo obra nueva, por proyecto y cruda («Inmediata», «2° Semestre 2026»…): del GraphQL de la ficha. */
+  fechaEntrega?: string;
 }
 
 export interface ScraperResult {

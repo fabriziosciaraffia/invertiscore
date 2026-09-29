@@ -33,6 +33,8 @@ export function propertyToRow(prop: ScrapedProperty) {
     antiguedad: prop.antiguedad || null,
     url: prop.url || null,
     condicion: prop.condicion || "usado",
+    // La fecha de entrega de la obra nueva, cruda (30-sep-2026). Solo la trae el GraphQL de unidades.
+    fecha_entrega: prop.fechaEntrega || null,
     is_active: true,
     scraped_at: new Date().toISOString(),
     geocode_attempted: false,

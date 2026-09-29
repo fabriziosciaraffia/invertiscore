@@ -26,8 +26,8 @@ const HEADERS = {
 };
 
 // Query extraída del bundle de la ficha (app.js). `id_usuario: 0` = anónimo.
-// `plantas[].propiedades[]` son las unidades individuales; `fechaEntrega` se
-// reporta (no se persiste: scraped_properties no tiene columna — ver el route).
+// `plantas[].propiedades[]` son las unidades individuales; `fechaEntrega` va a
+// cada unidad (scraped_properties.fecha_entrega, desde el 30-sep-2026).
 const queryPropiedad = (idProyecto: number) => `query propiedad {
   propiedad(id_propiedad: ${idProyecto}, id_usuario: 0) {
     idPropiedad
@@ -137,6 +137,7 @@ export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<Unidade
           piso: Number(u.numeroPiso) > 0 ? Number(u.numeroPiso) : undefined,
           url: base.url,
           condicion: "nuevo",
+          fechaEntrega: (p.fechaEntrega ?? "").trim() || undefined,
         });
       }
     }

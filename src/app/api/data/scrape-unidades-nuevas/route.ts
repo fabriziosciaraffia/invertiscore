@@ -178,9 +178,8 @@ export async function POST(request: Request) {
   const t3 = Date.now();
 
   // fechaEntrega: la fuente la entrega por proyecto ("Inmediata", "2° Trimestre
-  // 2025"...) pero scraped_properties NO tiene dónde persistirla — se reporta el
-  // histograma para dimensionar la migración (columna text `fecha_entrega`), que
-  // es decisión aparte.
+  // 2025"...). Desde el 30-sep-2026 se persiste en cada unidad (fecha_entrega);
+  // el histograma sigue en la respuesta para ver qué formatos llegan.
   const fechasEntrega: Record<string, number> = {};
   for (const r of conUnidades) {
     const k = (r.fechaEntrega ?? "").trim() || "(vacía)";
