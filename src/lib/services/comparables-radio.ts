@@ -19,12 +19,31 @@ export interface FilaRadio {
   /** id de scraped_properties (la RPC lo devuelve desde la migración 20260904). */
   id?: string;
   precio: number;
+  /** "UF" o "CLP" (la RPC la devuelve desde la migración 20260904). Ver `aPesos`. */
+  moneda?: string | null;
   superficie_m2: number | null;
   gastos_comunes?: number | null;
   dormitorios?: number | null;
   lat?: number | null;
   lng?: number | null;
   distance_meters?: number;
+}
+
+/**
+ * Los precios del radio, todos en pesos (30-sep-2026). La obra nueva se publica en UF (9.112 de 9.213
+ * activas) y los usados en pesos; la mediana trataba `precio` como pesos sin mirar `moneda`, así que
+ * la venta nueva por radio salía en UF/m² —~180— y el consumidor, que espera pesos por m² y lo divide
+ * por la UF, recibía ~0,004 UF/m²: el valor de mercado del depto quedaba en 0 y el motor lo descartaba.
+ * En el radio sin condición ("mixto") mezclaba las dos monedas en la misma mediana. Sin UF válida, las
+ * filas en UF se descartan antes que contarse como pesos.
+ */
+export function aPesos<T extends { precio: number; moneda?: string | null }>(filas: T[], ufCLP: number): T[] {
+  const out: T[] = [];
+  for (const f of filas) {
+    if (f.moneda !== "UF") { out.push(f); continue; }
+    if (ufCLP > 0) out.push({ ...f, precio: Number(f.precio) * ufCLP, moneda: "CLP" });
+  }
+  return out;
 }
 
 /** Mínimo de comparables limpios para proponer una mediana por radio. */

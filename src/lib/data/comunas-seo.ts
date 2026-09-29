@@ -267,6 +267,7 @@ export interface RawRow {
   moneda?: string;
   superficie_m2: number;
   scraped_at?: string;
+  condicion?: string | null;
 }
 
 /** Un aviso entra al cálculo, o no entra por una razón que la página declara. */
@@ -277,8 +278,27 @@ export function dormsEnRango(r: RawRow): boolean {
   return r.dormitorios >= 1 && r.dormitorios <= 4;
 }
 
+/**
+ * Ventana de avisos de la página (30-sep-2026): la misma del motor (comuna-stats, 90 días). Sin ella,
+ * `/comunas/[slug]` sumaba todo aviso activo sin importar cuándo se vio: las unidades de obra nueva
+ * congeladas del 03-ago al 29-sep entraron como vigentes y la «fecha» de la página (el max de la comuna)
+ * lo tapaba.
+ */
+export const VENTANA_DIAS_COMUNA = 90;
+
+/**
+ * Qué venta entra a la página: solo usados (30-sep-2026). El arriendo publicado es todo usado, y la
+ * rentabilidad bruta que la página calcula (arriendo / venta) solo compara parejo con la venta usada;
+ * la obra nueva, que viene en UF y a otro precio por m², se mezclaba en la misma mediana. NULL cuenta
+ * como usado (el mismo COALESCE de la RPC y del motor). Mostrar la obra nueva aparte es cola.
+ */
+export function entraVentaComuna(r: { condicion?: string | null }): boolean {
+  return r.condicion !== "nuevo";
+}
+
 export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
   const allRows: RawRow[] = [];
+  const desde = new Date(Date.now() - VENTANA_DIAS_COMUNA * 864e5).toISOString();
   const pageSize = 1000;
   let offset = 0;
   let hasMore = true;
@@ -290,10 +310,11 @@ export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, typ
     // mismos de antes — el filtro no cambió, cambió dónde se aplica.
     const { data, error } = await supabase
       .from("scraped_properties")
-      .select("comuna, dormitorios, precio, moneda, superficie_m2, scraped_at")
+      .select("comuna, dormitorios, precio, moneda, superficie_m2, scraped_at, condicion")
       .eq("type", type)
       .eq("is_active", true)
       .gt("precio", 0)
+      .gte("scraped_at", desde)
       // Sin orden, cada página es un corte arbitrario del plan de Postgres: entre
       // dos lecturas una fila puede salir dos veces o ninguna.
       .order("id", { ascending: true })
@@ -370,7 +391,7 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
 
   // Fetch all active properties
   const arriendoRowsRaw = await fetchAllRows(supabase, "arriendo");
-  const ventaRowsRaw = await fetchAllRows(supabase, "venta");
+  const ventaRowsRaw = (await fetchAllRows(supabase, "venta")).filter(entraVentaComuna);
 
   // Normalize comuna names
   arriendoRowsRaw.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });

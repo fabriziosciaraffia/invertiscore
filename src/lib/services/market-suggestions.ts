@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
 import {
+  aPesos,
   filterOutliers,
   resumirComparablesRadio,
   type PuntoComparable,
@@ -216,16 +217,18 @@ async function leerRadio(
 ): Promise<{ data: any[]; error: { message: string } | null }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filas: any[] = [];
+  // Todo precio sale de acá en pesos: la obra nueva viene en UF (ver `aPesos`, 30-sep-2026).
+  const uf = await getUFValue();
   for (let off = 0; ; off += PAGINA_POSTGREST) {
     const { data, error } = await supabase
       .rpc("properties_within_radius", args)
       .order("distance_meters", { ascending: true })
       .order("id", { ascending: true })
       .range(off, off + PAGINA_POSTGREST - 1);
-    if (error) return { data: filas, error };
+    if (error) return { data: aPesos(filas, uf), error };
     const pagina = data ?? [];
     filas.push(...pagina);
-    if (pagina.length < PAGINA_POSTGREST) return { data: filas, error: null };
+    if (pagina.length < PAGINA_POSTGREST) return { data: aPesos(filas, uf), error: null };
   }
 }
 

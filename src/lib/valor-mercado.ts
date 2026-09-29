@@ -78,6 +78,9 @@ export function universoDeSugerenciaVenta(nivel: "radio" | "comuna", condicion: 
   return nivel === "comuna" ? "usado" : "mixto";
 }
 
+/** Precio por m² bajo el cual una sugerencia de venta es un error, no un mercado. */
+export const PISO_UF_M2 = 10;
+
 /**
  * Arma la procedencia desde lo que devuelve /api/data/suggestions?type=venta.
  * null cuando la sugerencia no trae precio/m², ni muestra, ni nivel con nombre.
@@ -94,6 +97,10 @@ export function valorMercadoRefDeSugerencia(p: {
   const n = Number(p.sampleSize) || 0;
   const u = p.universoVenta === "nuevo" || p.universoVenta === "usado" || p.universoVenta === "mixto" ? p.universoVenta : null;
   if (!nivel || n <= 0 || !u || !p.precioM2UF || !(p.precioM2UF > 0) || !(p.superficieUtilM2 > 0)) return null;
+  // Resguardo (30-sep-2026): ningún depto del Gran Santiago vale menos de UF 10/m². Una cifra así es un
+  // error de moneda (la venta nueva por radio salía en UF/m² dividido otra vez por la UF: ~0,004) y no
+  // puede viajar al motor como valor de mercado.
+  if (p.precioM2UF < PISO_UF_M2) return null;
   return {
     valorUF: Math.round(p.precioM2UF * p.superficieUtilM2),
     nivel,
