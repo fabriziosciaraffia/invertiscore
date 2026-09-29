@@ -55,7 +55,7 @@ export function getPlusvaliaRef(): PlusvaliaRef {
   return {
     pct: PLUSVALIA_REF_REAL,
     banda: PLUSVALIA_BANDA_DEFAULT,
-    fuente: "umbral de apreciación real de largo plazo sobre inflación en Chile (~3% anual)",
+    fuente: "proyección de apreciación real de largo plazo (3% al año, en UF)",
     scope: "absoluta",
   };
 }
@@ -183,15 +183,15 @@ export function buildHallazgoPlusvalia(p: {
   let fraseCanonica: string;
   let titular: string;
   if (gapAbs <= EN_LINEA_PTS) {
-    titular = "La comuna subió parejo con la inflación, histórico normal.";
+    titular = "La comuna subió en línea con la proyección real, histórico normal.";
     fraseCanonica =
-      `En la última década ${sujeto} se valorizaron ${apFmt}% anual, en línea con el umbral de apreciación real (${refFmt}%). ` +
+      `En la última década ${sujeto} se valorizaron ${apFmt}% real al año (en UF), en línea con la proyección de ${refFmt}% real. ` +
       `Plusvalía histórica normal: referencia, no garantía futura.`;
   } else if (direccion === "favorable") {
-    titular = "La comuna ganó valor real sobre la inflación, históricamente.";
+    titular = "La comuna subió sobre la proyección real, históricamente.";
     fraseCanonica =
-      `En la última década ${sujeto} se valorizaron ${apFmt}% anual, sobre el umbral de apreciación real (${refFmt}%). ` +
-      `Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita.`;
+      `En la última década ${sujeto} se valorizaron ${apFmt}% real al año (en UF), sobre la proyección de ${refFmt}% real. ` +
+      `Es respaldo histórico, no garantía de que se repita.`;
   } else if (anualizadaPct < 0) {
     titular = "La comuna perdió valor real en la última década.";
     // EL PUENTE (censos editoriales 2026-08: familia #1 en severidad, ~13 casos): sin esta
@@ -201,17 +201,17 @@ export function buildHallazgoPlusvalia(p: {
     // Rama negativa = copy más duro: proyectar 3% sobre una comuna que CAYÓ es una apuesta
     // a recuperación, y los números a 10 años del informe la llevan puesta.
     fraseCanonica =
-      `En la última década ${sujeto} cayeron ${fmt1(Math.abs(anualizadaPct))}% anual de valor, bajo el umbral de apreciación real (${refFmt}%). ` +
-      `La historia no respalda una apuesta a plusvalía acá. La proyección a 10 años del análisis igual usa ${proyFmt}% anual parejo: ` +
+      `En la última década ${sujeto} cayeron ${fmt1(Math.abs(anualizadaPct))}% real al año (en UF), bajo la proyección de ${refFmt}% real. ` +
+      `La historia no respalda una apuesta a plusvalía acá. La proyección a 10 años del análisis igual usa ${proyFmt}% real al año parejo: ` +
       `sobre esta comuna, eso es apostar a una recuperación que la década pasada no muestra — y el patrimonio y la TIR del informe llevan esa apuesta puesta.`;
   } else {
-    titular = "La comuna no le ganó a la inflación en la década.";
+    titular = "La comuna quedó bajo la proyección real en la década.";
     // Rama positiva-baja: mismo puente, tono de techo-no-piso (la comuna sube, pero menos
     // que lo proyectado). Silencio en las ramas favorable/en línea: sin tensión no hay nota.
     fraseCanonica =
-      `En la última década ${sujeto} se valorizaron ${apFmt}% anual, bajo el umbral de apreciación real (${refFmt}%). ` +
-      `No le ganaron a la inflación de largo plazo; la plusvalía histórica acá es débil, no garantía futura. ` +
-      `La proyección a 10 años del análisis usa ${proyFmt}% anual parejo — más que lo que esta comuna rindió: tómala como techo optimista, no como piso.`;
+      `En la última década ${sujeto} se valorizaron ${apFmt}% real al año (en UF), bajo la proyección de ${refFmt}% real. ` +
+      `La plusvalía histórica acá es débil, no garantía futura. ` +
+      `La proyección a 10 años del análisis usa ${proyFmt}% real al año parejo — más que lo que esta comuna rindió: tómala como techo optimista, no como piso.`;
   }
 
   // ── Procedencia POR COMUNA (F3) ─────────────────────────────────────────

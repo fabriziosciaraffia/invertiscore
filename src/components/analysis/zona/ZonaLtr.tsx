@@ -183,7 +183,7 @@ export function sintesisZonaLtrR2(z: ZonaLtrR2): string {
   }
   const pl = z.valorizacion;
   if (pl.propia) {
-    partes.push(pl.anualizada < 0 ? `la comuna perdió ${pct1(Math.abs(pl.anualizada))}% al año` : `la comuna se valorizó ${pct1(pl.anualizada)}% al año`);
+    partes.push(pl.anualizada < 0 ? `la comuna perdió ${pct1(Math.abs(pl.anualizada))}% real al año` : `la comuna se valorizó ${pct1(pl.anualizada)}% real al año`);
   }
   if (!partes.length) return "Sin datos suficientes de la zona.";
   const texto = partes.join(" · ");
@@ -593,7 +593,7 @@ export function ZonaCeldasLtrR2({
           <p className="zc-s">
             {pl.propia ? (
               <>
-                <b>{pct1(pl.anualizada)}%</b> al año · tu proyección usa {PROY_PCT}
+                <b>{pct1(pl.anualizada)}%</b> real al año · tu proyección usa {PROY_PCT}
               </>
             ) : (
               <>la comuna no tiene serie propia · tu proyección usa {PROY_PCT}</>

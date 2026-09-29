@@ -69,7 +69,7 @@ import { runMedicionTier } from "./medicion-catch-test";
 import { runAffordanceTier } from "./affordance-catch-test";
 import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
-import { runPlusvaliaNominalTier } from "./plusvalia-nominal-catch-test";
+import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
 import { runDfl2Tier } from "./dfl2-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
@@ -355,9 +355,9 @@ function printSeed(r: SeedReport) {
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;
   // se generan en el deploy y se regeneran al día. En rojo por mutación.
   totalHard += runEjemplosGuardadosTier().hard;
-  // Tier PLUSVALIA-NOMINAL (29-sep-2026, 0 tokens): valor y saldo en pesos de cada año, como el
-  // dividendo; la plusvalía real se compone con la inflación. En rojo por mutación.
-  totalHard += runPlusvaliaNominalTier().hard;
+  // Tier PESOS-DE-HOY (29-sep-2026, 0 tokens): toda la proyección en pesos de hoy y la TIR real;
+  // ninguna cifra resta montos de años distintos en monedas distintas. En rojo por mutación.
+  totalHard += runPesosDeHoyTier().hard;
   // Tier DFL2 (29-sep-2026, 0 tokens): la exención de contribuciones con la regla del SII. En rojo
   // por mutación.
   totalHard += runDfl2Tier().hard;

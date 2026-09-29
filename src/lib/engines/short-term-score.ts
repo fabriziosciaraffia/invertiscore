@@ -468,7 +468,9 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // negativo, COMPRAR solo se sostiene si el horizonte cierra favorablemente
   // (equity + plusvalía compensan el aporte mensual). Doctrina: "flujo negativo
   // != mala inversión; mala es cuando flujo neg + plusvalía + equity no cierran".
-  // tir en PORCENTAJE nominal a 10 años (9.16 = 9,16%); multCap ratio crudo.
+  // tir en PORCENTAJE real a 10 años desde el 29-sep-2026 (9.16 = 9,16%); multCap ratio crudo, en
+  // pesos de hoy. Los cortes se calibraron sobre la TIR anterior (~1 pp más baja): no se recalibran
+  // (decisión de Fabrizio, opcional).
   // Umbral RE-DERIVADO en la rama comparabilidad-motores. `multiplicadorCapital` pasó a la
   // semántica EXACTA de LTR — equity(SIN flujo) / totalAportado(inicial + Σ aportes<0),
   // matando el doble-conteo latente. Bajo la nueva aritmética el multiplicador baja; el
@@ -476,7 +478,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // rango cero-flips [2,52 · 4,0]; el brazo-mult está inactivo hoy — todo horizonte
   // favorable viene por TIR≥10 — así que 2,65 preserva 46/46 con headroom sobre el máximo
   // observado 2,514). Ver of-ambas-rama0-design §Deliverable 4.
-  const HORIZONTE_TIR_MINIMO = 10;        // TIR nominal % a 10 años.
+  const HORIZONTE_TIR_MINIMO = 10;        // TIR real % a 10 años.
   const HORIZONTE_MULT_MINIMO = 2.65;     // equity(sin flujo)/totalAportado (re-derivado).
   const exit = inputs.results.exitScenario;
   // RAMA B · pie cero (decisión cerrada, opción 1): sin capital propio el

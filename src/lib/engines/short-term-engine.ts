@@ -22,7 +22,7 @@ import {
 import { mesesHastaEntregaDesdeFecha } from "@/lib/pre-entrega-serie";
 import { modoGestionAmbas } from "../modo-gestion";
 import { calcInversionInicialCLP } from "../inversion-inicial";
-import { PLUSVALIA_PROYECCION_ANUAL, factorInflacion, factorValorNominal } from "../plusvalia-proyeccion";
+import { PLUSVALIA_PROYECCION_ANUAL, crecimientoReal } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
 import { resolverModeloCostos } from "../modelo-costos";
 import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital, RefinanceScenario } from "../types";
@@ -712,7 +712,7 @@ export const STR_ADR_FACTOR = {
 
 // Ronda 4b — paridad estructural con LTR.
 // Tasa de proyección de plusvalía a futuro — fuente única en plusvalia-proyeccion.ts (3%).
-const PLUSVALIA_ANUAL_DEFAULT = PLUSVALIA_PROYECCION_ANUAL;   // 3% nominal anual (unificado LTR+STR).
+const PLUSVALIA_ANUAL_DEFAULT = PLUSVALIA_PROYECCION_ANUAL;   // 3% real anual, en pesos de hoy (unificado LTR+STR).
 /** Años proyectados y año de la venta en renta corta. Exportado (27-sep-2026) para que el tier
  *  METODOLOGÍA exija que sea el mismo horizonte que el de renta larga. */
 export const HORIZONTE_DEFAULT = 10;
@@ -723,6 +723,10 @@ const GASTOS_CIERRE_VENTA = 0.02;       // 2% comisión + costos al vender.
 const REVENUE_INFLACION = 0.035;        // ingreso Airbnb — espejo arriendo LTR.
 const COSTOS_INFLACION = 0.03;          // costos operativos — espejo ggcc/contribuciones/mantención LTR.
 const DIVIDENDO_INFLACION = 0.03;       // dividendo en CLP — espejo INFLACION_UF LTR.
+// En PESOS DE HOY (29-sep-2026, espejo de LTR): cada término crece solo lo que supera a la inflación.
+const REVENUE_REAL = crecimientoReal(REVENUE_INFLACION);
+const COSTOS_REAL = crecimientoReal(COSTOS_INFLACION);
+const DIVIDENDO_REAL = crecimientoReal(DIVIDENDO_INFLACION);
 
 /** Costos mensuales por tipología: [electricidad, agua, wifi, insumos, mantencion] */
 export const COSTOS_DEFAULT: Record<string, [number, number, number, number, number]> = {
@@ -1039,26 +1043,25 @@ function buildProjections(
   let flujoAcumulado = 0;
 
   for (let year = 1; year <= horizonte; year++) {
-    // En pesos del año (29-sep-2026): plusvalía real compuesta con la inflación, como LTR.
-    const valorDepto = precioCompra * factorValorNominal(year, plusvaliaAnual);
+    // En pesos de hoy (29-sep-2026): crece solo con la plusvalía real, como LTR.
+    const valorDepto = precioCompra * Math.pow(1 + plusvaliaAnual, year);
 
     // Meses de crédito EFECTIVAMENTE corridos: el reloj parte en la escritura.
     const mesFin = year * 12;
     const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
-    // La deuda es en UF: se amortiza en pesos del día 0 y pasa a pesos del año con la UF de ese
-    // año, la misma moneda del valor y de los flujos (29-sep-2026, espejo de LTR).
+    // La deuda es en UF: se amortiza en pesos de hoy, la moneda del valor y de los flujos.
     const saldo = mesFin < mesesPreEntrega
       ? 0
-      : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12))) * factorInflacion(year);
+      : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12)));
 
     // Inflación homologada a LTR (antes flat). El NOI se recompone año a año: ingreso 3,5%,
     // costos 3%, dividendo 3%. La comisión escala con el ingreso inflado. En año 1 el NOI
     // recompuesto == noiAnualBase (ingresoBase - comisiónBase - costosBase), sin regresión.
-    const ingresoAnual = ingresoBaseAnual * Math.pow(1 + REVENUE_INFLACION, year - 1);
+    const ingresoAnual = ingresoBaseAnual * Math.pow(1 + REVENUE_REAL, year - 1);
     const comisionAnual = ingresoAnual * comisionRate;
-    const costosAnual = costosOperativosAnualBase * Math.pow(1 + COSTOS_INFLACION, year - 1);
+    const costosAnual = costosOperativosAnualBase * Math.pow(1 + COSTOS_REAL, year - 1);
     const noiAnual = ingresoAnual - comisionAnual - costosAnual;
-    const dividendoAnual = dividendoAnualBase * Math.pow(1 + DIVIDENDO_INFLACION, year - 1);
+    const dividendoAnual = dividendoAnualBase * Math.pow(1 + DIVIDENDO_REAL, year - 1);
 
     // Meses operativos del año: 12 salvo el que cruza la escritura, que opera
     // solo su cola. Antes de la entrega no hay ni ingreso ni dividendo.
@@ -1195,15 +1198,15 @@ function buildExitScenario(
 
   // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
   // T_n = flujoOperacional + (valorVenta - saldo - cierre).
-  // TIR REAL, EN UF (29-sep-2026): cada flujo del año pasa a pesos de hoy con la UF de su año,
-  // igual que LTR. La tasa es real, comparable con la del crédito.
+  // TIR REAL, EN UF (29-sep-2026): la proyección va en pesos de hoy, así que la TIR de estos flujos
+  // es real, igual que LTR, comparable con la tasa del crédito.
   const flujos: number[] = [-capitalInicial];
   for (let i = 0; i < yearVenta && i < projections.length; i++) {
     let flujo = projections[i].flujoOperacionalAnual;
     if (i === yearVenta - 1) {
       flujo += equityCLP;
     }
-    flujos.push(flujo / factorInflacion(i + 1));
+    flujos.push(flujo);
   }
   // El solver puede no encontrar raíz (flujo cuyo VPN nunca cruza cero). Ese
   // estado viaja tipado hasta el borde: NO se colapsa a 0 acá. Ver finance/irr.ts.

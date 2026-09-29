@@ -45,7 +45,7 @@ import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "./plusvalia-estimado.gen";
-import { PLUSVALIA_PROYECCION_ANUAL, INFLACION_PROYECCION_ANUAL, factorInflacion, factorValorNominal } from "./plusvalia-proyeccion";
+import { PLUSVALIA_PROYECCION_ANUAL, INFLACION_PROYECCION_ANUAL, crecimientoReal } from "./plusvalia-proyeccion";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -81,6 +81,12 @@ const PLUSVALIA_ANUAL = PLUSVALIA_PROYECCION_ANUAL;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
 const INFLACION_UF = INFLACION_PROYECCION_ANUAL; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
+// La proyección va en PESOS DE HOY (29-sep-2026, plusvalia-proyeccion.ts): cada término crece solo
+// lo que supera a la inflación. El arriendo 3,5% nominal es ≈0,49% real; gastos 3% nominal, 0% real;
+// la cuota, fija en UF, 0% real.
+const ARRIENDO_REAL = crecimientoReal(ARRIENDO_INFLACION);
+const GGCC_REAL = crecimientoReal(GGCC_INFLACION);
+const DIVIDENDO_REAL = crecimientoReal(INFLACION_UF);
 const COMISION_VENTA = 0.02;
 const GASTOS_CIERRE_PCT = 0.02; // ~2% of purchase price (notaría, CBR, timbres, tasación)
 const CORRETAJE_COMPRA_PCT = 0.02; // 2% corretaje del comprador — usual en usados (en nuevo va en el precio)
@@ -879,20 +885,21 @@ export function calcProjections(args: {
       tieneCapex,
       superficieUtilM2: input.superficie,
       precioCLP,
-      arriendoCLP: input.arriendo * Math.pow(1 + ARRIENDO_INFLACION, anio - 1),
+      arriendoCLP: input.arriendo * Math.pow(1 + ARRIENDO_REAL, anio - 1),
       ufClp,
-      factorInflacion: Math.pow(1 + GGCC_INFLACION, anio - 1),
+      factorInflacion: Math.pow(1 + GGCC_REAL, anio - 1),
     });
 
     // Dividendo in UF is constant, but in CLP it grows with UF (≈ inflation)
-    const dividendoAnio = Math.round(metrics.dividendo * Math.pow(1 + INFLACION_UF, anio - 1));
+    // Cuota fija en UF: en pesos de hoy no cambia (DIVIDENDO_REAL = 0).
+    const dividendoAnio = Math.round(metrics.dividendo * Math.pow(1 + DIVIDENDO_REAL, anio - 1));
 
     // Usar función centralizada para costos recurrentes del mes
     // El DFL2 vence (29-sep-2026): desde el año siguiente al último con beneficio la contribución
     // es la completa, reajustada igual. La obra nueva lo cuenta desde la recepción (la entrega).
     const dfl2 = metrics.contribucionesDfl2;
     const contribucionesAnio = dfl2 && anio > aniosEntrega + dfl2.aniosRestantes
-      ? dfl2.trimestralSinDfl2 * Math.pow(1 + GGCC_INFLACION, anio - 1)
+      ? dfl2.trimestralSinDfl2 * Math.pow(1 + GGCC_REAL, anio - 1)
       : contribucionesActual;
     const flujoMes = calcFlujoDesglose({
       arriendo: arriendoActual,
@@ -945,9 +952,9 @@ export function calcProjections(args: {
     // null) y la deuda sigue en 0 hasta que el banco cursa. Lo que cambia es que al
     // escriturar el activo entra valuado a mercado, no al precio pactado.
     //
-    // EN PESOS DEL AÑO (29-sep-2026): la plusvalía es real y se compone con la inflación, igual
-    // que el dividendo; antes `precioCLP × 1,03^año` era ~0% real (plusvalia-proyeccion.ts).
-    const valorPropiedad = precioCLP * factorValorNominal(anio, plusvaliaAnual);
+    // EN PESOS DE HOY (29-sep-2026): crece solo con la plusvalía real, como los flujos, que también
+    // van en pesos de hoy (plusvalia-proyeccion.ts).
+    const valorPropiedad = precioCLP * Math.pow(1 + plusvaliaAnual, anio);
 
     // Crédito: el banco no disbursa hasta escritura. Pre-entrega → deuda 0.
     // Año que termina exactamente en escritura → crédito recién entregado,
@@ -961,9 +968,9 @@ export function calcProjections(args: {
     } else {
       saldoHoy = Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito));
     }
-    // La deuda es en UF: `saldoCredito` la amortiza en pesos del día 0 y acá pasa a pesos del
-    // año con la UF de ese año, la misma moneda del valor y de los flujos (29-sep-2026).
-    const saldo = saldoHoy * factorInflacion(anio);
+    // La deuda es en UF: `saldoCredito` la amortiza en pesos de hoy, la misma moneda del valor y de
+    // los flujos (29-sep-2026).
+    const saldo = saldoHoy;
     const patrimonioNeto = valorPropiedad - saldo;
 
     projections.push({
@@ -993,9 +1000,9 @@ export function calcProjections(args: {
     // operativo y se sostenía los 80 meses de la ventana, empujando el flujo a 10 años
     // a negativo por construcción. Sesga SIEMPRE en contra, porque los dos términos
     // que se saltaban el gate eran los dos de costo.
-    arriendoActual *= (1 + ARRIENDO_INFLACION);
-    gastosActual *= (1 + GGCC_INFLACION);
-    contribucionesActual *= (1 + GGCC_INFLACION);
+    arriendoActual *= (1 + ARRIENDO_REAL);
+    gastosActual *= (1 + GGCC_REAL);
+    contribucionesActual *= (1 + GGCC_REAL);
   }
 
   return projections;
@@ -1098,16 +1105,15 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   // ya están contenidos en los flujos anuales negativos (T1..Tn). Inflar T0
   // con flujoMensualAcumuladoNegativo provocaría doble conteo.
   //
-  // TIR REAL, EN UF (29-sep-2026): los flujos están en pesos de cada año; cada uno se lleva a
-  // pesos de hoy con la UF de su año antes de la TIR, así la tasa es real, como habla el mercado
-  // («UF + 4%») y comparable con la tasa del crédito, que también es en UF.
+  // TIR REAL, EN UF (29-sep-2026): la proyección va en pesos de hoy, así que la TIR de estos
+  // flujos es real, como habla el mercado («UF + 4%») y comparable con la tasa del crédito.
   const flujos: number[] = [-inversionInicial];
   for (let i = 0; i < anios; i++) {
     let flujo = projections[i].flujoAnual;
     if (i === anios - 1) {
       flujo += equityCLP;
     }
-    flujos.push(flujo / factorInflacion(i + 1));
+    flujos.push(flujo);
   }
   // El solver devuelve un estado, no siempre un número: un flujo cuyo VPN no
   // cruza cero en [−99%, 1000%] no tiene TIR que reportar. Ese caso NO se colapsa

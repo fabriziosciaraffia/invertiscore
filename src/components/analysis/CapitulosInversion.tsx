@@ -637,7 +637,7 @@ export function CapitulosInversion({
                 </VViz>
                 <VViz t={`Si vendes el año ${anios}`}>
                   <FilasDato>
-                    <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% al año por ${anios} años`} sub={`${PROY_PCT}% al año desde la compra`} v={money(exit.valorVenta)} />
+                    <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% real al año por ${anios} años, en pesos de hoy`} sub={`${PROY_PCT}% real al año desde la compra`} v={money(exit.valorVenta)} />
                     {/* Variante B (22-sep-2026): el sobreprecio de hoy se descuenta plano, como línea visible. */}
                     {exit.sobreprecioVenta && (
                       <FilaDato k="Menos el sobreprecio de hoy" tip="Lo que pagaste sobre la mediana de la comuna, descontado plano al vender: la venta no lo capitaliza" sub={`pagaste ${exit.sobreprecioVenta.desviacionPct}% sobre la mediana de la comuna; se descuenta plano`} v={`−${money(exit.sobreprecioVenta.clp)}`} tono="neg" />

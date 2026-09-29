@@ -16,10 +16,10 @@
 //     que reproduce exacto el mes del año. Los años sin operación no entran (pre-entrega), y
 //     el motor emite 20 años: el gráfico dibuja 10.
 //   · EL PIE DEL GRÁFICO, CON LA HISTORIA INVERSA. En STR el año 1 es el peor y desde ahí
-//     sube. En LTR la serie BAJA en 913 de 1.213 filas (75%): el arriendo sube al 3,5%, pero
-//     la cuota crece con la UF (3%) sobre una base que suele ser mayor que el arriendo (p50
-//     110%) y los gastos operativos suben con la inflación y, sin provisión declarada, con las
-//     bandas de mantención por edad. El pie se ESCRIBE desde la descomposición del motor
+//     sube. En LTR, hasta el 29-sep-2026 (flujos en pesos de cada año), la serie BAJABA en 913 de
+//     1.213 filas (75%): la cuota crecía con la UF sobre una base mayor que el arriendo. Desde
+//     entonces la proyección va en pesos de hoy (cuota fija en UF, arriendo +0,5% real, gastos
+//     planos salvo las bandas de mantención por edad) y la dirección cambia en muchas filas. El pie se ESCRIBE desde la descomposición del motor
 //     (año 10 − año 1 por término), no desde una frase fija: si la serie sube, dice que sube.
 //   · EL MES VACÍO COMO CIERRE. No hay contrafáctico de gestión en LTR; en su lugar va la
 //     condición que ninguna fila muestra: cuota completa + gastos comunes enteros +

@@ -182,7 +182,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: "Cuánto se ha valorizado la comuna",
         kpi: `${pct1(v.anualizadaPct)}%`,
         kpiRed: false,
-        ksub: `anual${rangoDesdeFuente(v.fuente) ? ` · ${rangoDesdeFuente(v.fuente)}` : ""} · umbral real ${pct1(v.refPct)}%`,
+        ksub: `real anual${rangoDesdeFuente(v.fuente) ? ` · ${rangoDesdeFuente(v.fuente)}` : ""} · proyección ${pct1(v.refPct)}% real`,
         // F4 — lee v.fuente (procedencia histórica real, fuente única) con fallback defensivo al
         // literal para filas pre-regen (v.fuente con texto del umbral). Fallback GS → sin footer.
         procedencia: v.tieneData

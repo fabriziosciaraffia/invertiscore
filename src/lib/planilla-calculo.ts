@@ -68,14 +68,14 @@ export function bajadaFlujoLtr(p: { aniosSinArriendo: number; fechaEntrega?: str
     const n = p.aniosSinArriendo === 1 ? "el primer año no hay arriendo" : `los primeros ${p.aniosSinArriendo} años no hay arriendo`;
     return `El depto se entrega${f ? ` en ${f}` : " después"}: ${n}, y la tabla lo muestra en cero.`;
   }
-  return "Cada año con el arriendo, los gastos y la cuota reajustados.";
+  return "Cada año en pesos de hoy: el arriendo sube 0,5% real al año; los gastos y la cuota, fijos en UF.";
 }
 
 /** Lo que junta la columna «gastos» en LTR, con la vacancia del caso. */
 export function fuenteFlujoLtr(p: { vacanciaMeses: number; usaAdministrador?: boolean; comisionAdministradorPct?: number | null }): string {
   const vac = `vacancia de ${decimal(p.vacanciaMeses)} ${p.vacanciaMeses === 1 ? "mes" : "meses"} al año`;
   const adm = p.usaAdministrador ? ` + administración ${decimal(p.comisionAdministradorPct ?? 0)}% del arriendo` : "";
-  return `Arriendo reajustado 3,5% al año · gastos y cuota 3% al año · gastos = gastos comunes en vacancia + contribuciones + mantención + ${vac} + corretaje y recambio${adm}`;
+  return `En pesos de hoy · arriendo +0,5% real al año · gastos y cuota fijos en UF · gastos = gastos comunes en vacancia + contribuciones + mantención + ${vac} + corretaje y recambio${adm}`;
 }
 
 // ── STR ─────────────────────────────────────────────────────────────────────
@@ -93,5 +93,5 @@ export function bajadaFlujoStr(p: { primerAnioOperativo: number; mesesPrimerAnio
 /** Lo que junta la columna «gastos» en STR, con la comisión de quien opera. */
 export function fuenteFlujoStr(p: { comisionAdministradorPct: number | null; estabilizacion: string; amoblamiento: string | null }): string {
   const com = p.comisionAdministradorPct != null ? `administrador ${decimal(p.comisionAdministradorPct)}% del ingreso, en vez de la comisión de plataforma` : "comisión de plataforma 3% del ingreso";
-  return `Ingreso reajustado 3,5% al año · costos y cuota 3% al año · gastos = ${com} + luz, agua, internet, insumos, gastos comunes, mantención y contribuciones + estabilización inicial ${p.estabilizacion}${p.amoblamiento ? ` + amoblamiento ${p.amoblamiento} el año de la entrega` : ""}`;
+  return `En pesos de hoy · ingreso +0,5% real al año · costos y cuota fijos en UF · gastos = ${com} + luz, agua, internet, insumos, gastos comunes, mantención y contribuciones + estabilización inicial ${p.estabilizacion}${p.amoblamiento ? ` + amoblamiento ${p.amoblamiento} el año de la entrega` : ""}`;
 }
