@@ -5,6 +5,7 @@ import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
+import { correoAlertaPago, correoAlertaPagoFallido, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoPagoFallido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -533,45 +534,9 @@ export async function sendPaymentFailedEmail(
   graceEndsAt: Date | string,
   opts: CorreoOpts = {},
 ) {
-  const firstName = (name ?? '').split(' ')[0] || '';
-  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
-  const graceDate = new Date(graceEndsAt).toLocaleDateString('es-CL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const ctaUrl = `${SITE_URL}/pricing`;
-
+  const { subject, html } = correoPagoFallido({ nombre: name, graciaHasta: graceEndsAt, sitio: SITE_URL });
   try {
-    await enviarCorreo("pago_fallido", opts.userId, {
-      from: FROM_EMAIL,
-      to,
-      subject: 'Tu pago no se procesó — tienes unos días para actualizarlo',
-      html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
-          Tu pago no se procesó
-        </h1>
-
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
-          ${greeting} no pudimos procesar el cobro de tu suscripción. Puede ser
-          algo simple: una tarjeta vencida, sin cupo o un rechazo del banco.
-        </p>
-
-        <div style="background: #1A1A1A; border-radius: 12px; padding: 16px 24px; margin: 0 0 24px 0; border-left: 3px solid #C8323C;">
-          <p style="color: #FAFAF8; line-height: 1.6; font-size: 15px; margin: 0;">
-            Mantienes tu acceso hasta el <span style="font-weight: 600;">${graceDate}</span>.
-            Reactiva tu suscripción antes de esa fecha para no perderlo.
-          </p>
-        </div>
-
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          Si no haces nada, tu cuenta vuelve al plan gratis y conservas los
-          análisis que te queden.
-        </p>
-
-        ${ctaButton('Reactivar mi suscripción →', ctaUrl)}
-      `),
-    });
+    await enviarCorreo("pago_fallido", opts.userId, { from: FROM_EMAIL, to, subject, html });
   } catch (error) {
     console.error('Error sending payment failed email:', error);
   }
@@ -603,41 +568,10 @@ export async function sendCheckoutRecoveryEmail(
     return false;
   }
 
-  const firstName = (name ?? '').split(' ')[0] || '';
-  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
-  const ctaUrl = `${SITE_URL}/pricing`;
-
-  // Copy ramificado por tipo. Single: "tu análisis sigue ahí". Plan: "tu plan
-  // <nombre> sigue ahí". El resto (saludo, CTA a /pricing, cierre) es común.
-  const intro = kind === 'plan'
-    ? `${greeting} empezaste a suscribirte a <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
-       y no alcanzaste a terminar el pago. Sin apuro — tu plan sigue ahí cuando quieras retomarlo.`
-    : `${greeting} empezaste a comprar <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
-       y no alcanzaste a terminar el pago. Sin apuro — tu análisis sigue ahí cuando quieras retomarlo.`;
-
+  const { subject, html } = correoCheckoutAbandonado({ nombre: name, producto: productLabel, tipo: kind, sitio: SITE_URL });
   try {
-    await enviarCorreo("checkout_abandonado", opts.userId, {
-      from: FROM_EMAIL,
-      to,
-      subject: '¿Quedó algo pendiente?',
-      html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
-          ¿Quedó algo pendiente?
-        </h1>
-
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
-          ${intro}
-        </p>
-
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          Si tuviste algún problema con el pago o quieres preguntarnos algo antes de decidir,
-          respóndenos este correo. Franco es directo: no hay letra chica.
-        </p>
-
-        ${ctaButton('Retomar mi compra →', ctaUrl)}
-      `),
-    });
-    return true;
+    const res = await enviarCorreo("checkout_abandonado", opts.userId, { from: FROM_EMAIL, to, subject, html });
+    return !res.error;
   } catch (error) {
     console.error('Error sending checkout recovery email:', error);
     return false;
@@ -790,16 +724,6 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
 // propagan para que el route devuelva 500 si falla (la solicitud de baja es
 // crítica y no debe perderse en silencio).
 
-// Fila de la card de datos (label izq + valor der). `mono` para ids/números.
-function deletionRow(label: string, value: string, mono = false, last = false): string {
-  const border = last ? '' : 'border-bottom: 1px solid #2A2A2A;';
-  const monoStyle = mono ? "font-family: 'Courier New', monospace;" : '';
-  return `<div style="padding: 8px 0; ${border}">
-            <span style="color: #71717A; font-size: 13px;">${label}</span>
-            <span style="color: #FAFAF8; font-size: 14px; float: right; ${monoStyle}">${value}</span>
-          </div>`;
-}
-
 export async function sendAccountDeletionInternalEmail(params: {
   email: string;
   userId: string;
@@ -809,81 +733,27 @@ export async function sendAccountDeletionInternalEmail(params: {
   reason?: string;
 }): Promise<void> {
   const { email, userId, requestedAt, analysisCount, credits, reason } = params;
-
-  const internalFooter = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
-  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">
-    Correo interno de Franco. Procesar la baja y la eliminación de datos según la política de retención.
-  </p>
-  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #3F3F46; margin-top: 8px;">
-    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
-  </p>
-</div>`;
-
-  await enviarCorreo("eliminacion_interna", userId, {
-    from: FROM_EMAIL,
-    to: 'hola@refranco.ai',
-    subject: 'Solicitud de eliminación de cuenta',
-    html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #C8323C; margin: 0 0 16px 0;">
-          Solicitud de eliminación de cuenta
-        </h1>
-        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Un usuario solicitó eliminar su cuenta. Procesa la baja y la eliminación de sus datos.
-        </p>
-
-        <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0;">
-          <div style="color: #71717A; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'Courier New', monospace;">Datos del usuario</div>
-          ${deletionRow('Email', email)}
-          ${deletionRow('User ID', userId, true)}
-          ${deletionRow('Fecha solicitud', requestedAt)}
-          ${deletionRow('Motivo', reason && reason.trim() ? reason.trim() : 'No especificado')}
-          ${deletionRow('Análisis creados', String(analysisCount), true)}
-          ${deletionRow('Créditos restantes', String(credits), true, true)}
-        </div>
-      `, internalFooter),
-  });
+  const { subject, html } = correoEliminacionInterna({ email, userId, solicitadaEl: requestedAt, analisis: analysisCount, creditos: credits, motivo: reason });
+  await enviarCorreo("eliminacion_interna", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
 }
 
 export async function sendAccountDeletionUserEmail(to: string, name: string, opts: CorreoOpts = {}): Promise<void> {
-  const firstName = name.split(' ')[0] || '';
-  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+  const { subject, html } = correoEliminacionUsuario({ nombre: name });
+  await enviarCorreo("eliminacion_usuario", opts.userId, { from: FROM_EMAIL, to, subject, html });
+}
 
-  const userFooter = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
-  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">
-    Este es un correo sobre la seguridad de tu cuenta en Franco.
-  </p>
-  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #3F3F46; margin-top: 8px;">
-    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
-  </p>
-</div>`;
+/**
+ * Avisos internos de pago a hola@ (29-sep-2026): antes salían directo con `new Resend` desde
+ * payments/confirm, sin tags ni evento; ahora pasan por enviarCorreo como todos.
+ */
+export async function sendAlertaPagoInterna(p: Parameters<typeof correoAlertaPago>[0], userId: string | null): Promise<void> {
+  const { subject, html } = correoAlertaPago({ ...p, sitio: SITE_URL });
+  await enviarCorreo("alerta_pago", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+}
 
-  await enviarCorreo("eliminacion_usuario", opts.userId, {
-    from: FROM_EMAIL,
-    to,
-    subject: 'Recibimos tu solicitud de eliminación de cuenta',
-    html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 16px 0;">
-          ${greeting}
-        </h1>
-        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Recibimos tu solicitud para eliminar tu cuenta de Franco. Queremos que sepas exactamente qué va a pasar.
-        </p>
-
-        <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 10px 0;">
-          Qué pasa ahora
-        </p>
-        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: tus análisis, tu saldo disponible e información de perfil. Te confirmaremos a este mismo correo cuando el proceso esté completo.
-        </p>
-
-        <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 10px 0;">
-          ¿Fue un error?
-        </p>
-        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
-          Si no hiciste esta solicitud o cambiaste de opinión, escríbenos a <a href="mailto:hola@refranco.ai" style="color: #C8323C; text-decoration: none;">hola@refranco.ai</a> lo antes posible. Una vez eliminada, la información no se puede recuperar.
-        </p>
-      `, userFooter),
-  });
+export async function sendAlertaPagoFallidoInterna(p: Parameters<typeof correoAlertaPagoFallido>[0], userId: string | null): Promise<void> {
+  const { subject, html } = correoAlertaPagoFallido(p);
+  await enviarCorreo("alerta_pago_fallido", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
 }
 
 /**
