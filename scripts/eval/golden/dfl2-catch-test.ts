@@ -18,7 +18,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { aniosRestantesDfl2, duracionDfl2, esEstimacionAnterior, estimarContribuciones, PARAMETROS_CONTRIBUCIONES as P, resolverContribuciones } from "../../../src/lib/contribuciones";
+import { aniosRestantesDfl2, contribucionesDeEntradaStr, duracionDfl2, esEstimacionAnterior, estimarContribuciones, PARAMETROS_CONTRIBUCIONES as P, resolverContribuciones } from "../../../src/lib/contribuciones";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 
@@ -87,6 +87,9 @@ export function runDfl2Tier(): { hard: number } {
   if (!r4.estimada || r4.trimestral !== sii(alto, true)) F("3 · el origen «estimada» del wizard no re-estima");
   const r0 = resolverContribuciones({ declarada: 0, precioCLP: alto, superficieM2: 60, aniosDesdeRecepcion: 0 });
   if (!r0.estimada) F("3 · una contribución vacía no se estima");
+  // Renta corta usaba el cero guardado tal cual: se respeta (solo el origen «estimada» lo estima).
+  if (contribucionesDeEntradaStr({ contribuciones: 0, precioCompra: alto, superficieUtil: 60, tipoPropiedad: "nuevo" }) !== 0) F("3 · renta corta estima una contribución guardada en cero");
+  if (contribucionesDeEntradaStr({ contribuciones: legacy, precioCompra: alto, superficieUtil: 60, tipoPropiedad: "nuevo" }) !== sii(alto, true)) F("3 · renta corta no re-estima con DFL2 la estimación anterior");
 
   // ── 4 · El beneficio vence en la proyección ──────────────────────────────
   const seed: any = (GOLDEN_SEEDS as any[]).find((s) => s.input.estadoVenta !== "futura" && !s.input.fechaEntrega && s.input.piePct > 0 && s.input.piePct < 100);
@@ -124,6 +127,7 @@ export function runDfl2Tier(): { hard: number } {
 // califica · M6 un usado no conserva los años · M7 lo declarado se re-estima · M8 las filas
 // guardadas no se re-estiman · M9 el origen del wizard no manda · M10 el beneficio no vence en la
 // proyección · M11 vence un año tarde · M12 el motor cuenta un usado como nuevo.
+// M13 (29-sep, segunda pasada): renta corta estima una contribución guardada en cero · EN ROJO.
 
 if (require.main === module) {
   const { hard } = runDfl2Tier();

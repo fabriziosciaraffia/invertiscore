@@ -144,9 +144,14 @@ export function resolverContribuciones(p: {
 
 /** La contribución trimestral de una entrada de renta corta (input_data o body del wizard). */
 export function contribucionesDeEntradaStr(src: Record<string, unknown> | null | undefined): number {
+  const declarada = Number(src?.contribuciones) || 0;
+  const origen = src?.contribucionesOrigen === "estimada" || src?.contribucionesOrigen === "declarada" ? src.contribucionesOrigen : null;
+  // Renta corta usó siempre la contribución guardada tal cual, cero incluido (a diferencia de
+  // renta larga, que estimaba el cero). Un cero sin origen se respeta: no es una estimación.
+  if (declarada <= 0 && origen !== "estimada") return 0;
   return resolverContribuciones({
-    declarada: Number(src?.contribuciones) || 0,
-    origen: src?.contribucionesOrigen === "estimada" || src?.contribucionesOrigen === "declarada" ? src.contribucionesOrigen : null,
+    declarada,
+    origen,
     precioCLP: Number(src?.precioCompra) || 0,
     superficieM2: Number(src?.superficieUtil) || null,
     aniosDesdeRecepcion: src?.tipoPropiedad === "nuevo" ? 0 : Number(src?.antiguedad) || 0,
