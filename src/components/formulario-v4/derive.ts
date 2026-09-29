@@ -10,9 +10,8 @@
 // v3 y v1 siguen con los suyos: no se tocan en esta fase.
 
 import { calcDividendo, fmtCLP, fmtUF } from "./helpers-wizard";
-import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { decimalesUtiles, formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
-import { decimalesUtiles } from "./NumericInput";
 import { DEC, decPie, type PieUnidad, type WizardV4Answers } from "./wizardV4Nodes";
 
 export { fmtCLP, fmtUF };

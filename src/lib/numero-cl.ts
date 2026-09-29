@@ -165,3 +165,16 @@ export function formatNumeroCL(valor: number, decimales: Decimales): string {
   // "0", nunca "-0".
   return valor < 0 && Number(fijo) !== 0 ? `-${cuerpo}` : cuerpo;
 }
+
+/**
+ * Decimales con los que mostrar un valor SIN redondearlo nunca.
+ *
+ * El eco no puede mentir: si mostrara "3.200,3" para 3200,25 estaría cometiendo,
+ * justo en la línea de defensa, el mismo truncado silencioso que el componente
+ * viene a matar. (Vivía en NumericInput.tsx, que es "use client"; se movió acá el
+ * 30-sep-2026 para que derive.ts —y el armado del payload— se pueda usar en el servidor.)
+ */
+export function decimalesUtiles(valor: number): Decimales {
+  if (Number.isInteger(valor)) return 0;
+  return Math.round(valor * 10) / 10 === valor ? 1 : 2;
+}

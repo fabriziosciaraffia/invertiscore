@@ -56,7 +56,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
-import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { decimalesUtiles, formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { FieldLabel } from "./ui";
 import { reportarValidacionRechazo } from "./stepTelemetry";
 import type { AvisoEscala } from "./avisoEscala";
@@ -115,17 +115,8 @@ export function fraseError(texto: string, decimales: Decimales): string {
   return `No se entiende ese número — ${motivoError(texto, decimales)}`;
 }
 
-/**
- * Decimales con los que mostrar un valor SIN redondearlo nunca.
- *
- * El eco no puede mentir: si mostrara "3.200,3" para 3200,25 estaría cometiendo,
- * justo en la línea de defensa, el mismo truncado silencioso que el componente
- * viene a matar.
- */
-export function decimalesUtiles(valor: number): Decimales {
-  if (Number.isInteger(valor)) return 0;
-  return Math.round(valor * 10) / 10 === valor ? 1 : 2;
-}
+// decimalesUtiles vive en @/lib/numero-cl (puro); se reexporta para las pantallas que la importan de acá.
+export { decimalesUtiles };
 
 /**
  * Reexpresa el texto en otra unidad. Es lo que corre cuando el toggle UF/$
