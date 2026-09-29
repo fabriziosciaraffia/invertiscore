@@ -8,7 +8,9 @@
 //       en las plantillas de Supabase.
 //   3 · SIN «CON IA» NI «20 AÑOS», y en tuteo.
 //   4 · CADA UNO CON SUS ETIQUETAS: todo envío pasa por enviarCorreo (tags `tipo` y `pid`); ningún
-//       `new Resend` suelto; cada tipo tiene su entrada en el catálogo y al revés.
+//       `new Resend` suelto; cada tipo tiene su entrada en el catálogo y al revés. EXCEPCIÓN DECLARADA:
+//       los de Supabase Auth salen por el SMTP de Resend, que no acepta tags; para llevarlos habría que
+//       mandarlos desde la app con el «Send Email Hook» de Supabase.
 //   5 · EL WORDMARK ES EL PNG FIEL: 2× (264×86), ancho fijo 132, alt «refranco.ai», nunca SVG.
 //   6 · UN SOLO BOTÓN por correo.
 //   7 · LAS PLANTILLAS DE SUPABASE en docs/emails/ son exactamente lo que genera el componente.
@@ -28,14 +30,15 @@ const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g,
 const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /** Los correos que todavía no pasaron a la plantilla clara porque esperan una decisión. VACÍO al cerrar el goal. */
-const PENDIENTES = new Set(["bienvenida", "informe_listo", "pago_confirmado", "boleta"]);
+const PENDIENTES = new Set<string>();
 
 const OSCURO = /background(-color)?:\s*#(0F0F0F|151515|1A1A1A|111111|000000)\b|bgcolor="#(0F0F0F|151515|1A1A1A)"/i;
 /** El botón en tinta es lo único con fondo de tinta: se saca antes de buscar oscuro. */
 const sinBoton = (s: string) => s.replace(/border-radius: 999px; background: (#0F0F0F|\$\{TINTA\});/g, "");
 const oscuro = (s: string) => OSCURO.test(sinBoton(s));
 const MONO = /Courier|monospace|JetBrains/i;
-const PROHIBIDO = /con IA\b|inteligencia artificial|\b20 años\b/i;
+/** Lo que el producto de hoy ya no hace o no dice: la IA, los 20 años, los escenarios de salida del informe viejo. */
+const PROHIBIDO = /con IA\b|inteligencia artificial|\b20 años\b|escenarios de salida|refinanciamiento|buena oportunidad de inversión/i;
 const VOSEO = /(^|[^a-záéíóúñ])(dejás|tenés|querés|podés|sabés|mirá|tomá|entrá|seguí|registrate|guardá|revisá|poné|compará|elegí|tocá|pedí|escribí|fijate|hacé|decime|confirmá|respondé|escribinos|vos)(?![a-záéíóúñ])/i;
 const texto = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
 
@@ -57,26 +60,29 @@ export function runCorreosTier(): { hard: number } {
     if (!html.includes(`<body style="margin: 0; padding: 0; background: ${PAPEL};">`)) F(`1 · ${c.id} no sale de la plantilla clara (sin el papel en el body)`);
     if (!wordmark.test(html)) F(`5 · ${c.id} no lleva el wordmark PNG fiel (ancho fijo, alt refranco.ai)`);
     if (/<svg/i.test(html)) F(`5 · ${c.id} lleva SVG (Gmail no lo muestra)`);
+    if ((html.match(/<img /g) ?? []).length !== 1) F(`1 · ${c.id} lleva imágenes además del wordmark (con las imágenes bloqueadas no se lee; los heros del informe viejo salieron)`);
     if (oscuro(html)) F(`2 · ${c.id} tiene fondo oscuro`);
     if (MONO.test(html)) F(`2 · ${c.id} usa mono`);
-    if (PROHIBIDO.test(texto(html)) || PROHIBIDO.test(subject)) F(`3 · ${c.id} dice «con IA» o «20 años»`);
+    if (PROHIBIDO.test(texto(html)) || PROHIBIDO.test(subject)) F(`3 · ${c.id} dice lo que el producto de hoy no dice («con IA», «20 años», escenarios de salida, «buena oportunidad de inversión»)`);
     if (VOSEO.test(texto(html)) || VOSEO.test(subject)) F(`3 · ${c.id} tiene voseo`);
     const botones = (html.match(/border-radius: 999px; background: #0F0F0F;/g) ?? []).length;
     if (botones > 1) F(`6 · ${c.id} tiene ${botones} botones`);
     if (!/Franco analiza datos de mercado|correo sobre la seguridad|Correo interno de Franco|Aviso interno de Franco/.test(html)) F(`1 · ${c.id} no lleva el legal al pie`);
   }
-  if (renderizados < 8) F(`1 · el catálogo renderiza ${renderizados} correos (el instrumento no corrió)`);
+  if (renderizados < 14) F(`1 · el catálogo renderiza ${renderizados} correos (el instrumento no corrió)`);
 
   // ── 1 · 2 · email.ts: fuera de los pendientes, nada de HTML propio ──────────
   const email = sinComentarios(leer("src/lib/email.ts"));
   const funciones = email.split(/\nexport (?:async )?function /).slice(1).map((f) => ({ nombre: f.slice(0, f.indexOf("(")), cuerpo: f }));
-  const PEND_FN = new Set(["sendWelcomeEmail", "sendPaymentConfirmationEmail", "buildBoletaHtml", "sendBoletaEmail", "sendAnalysisReadyEmailOrThrow"]);
   if (funciones.length < 10) F(`1 · email.ts expone ${funciones.length} funciones (el extractor no corrió)`);
   for (const f of funciones) {
-    if (PEND_FN.has(f.nombre)) continue;
-    if (/emailWrapper\(|ctaButton\(|<!DOCTYPE/.test(f.cuerpo)) F(`1 · ${f.nombre} arma su propio HTML en vez de la plantilla clara`);
+    if (/emailWrapper\(|ctaButton\(|<!DOCTYPE|<table|<div style/.test(f.cuerpo)) F(`1 · ${f.nombre} arma su propio HTML en vez de la plantilla clara`);
     if (oscuro(f.cuerpo) || MONO.test(f.cuerpo)) F(`2 · ${f.nombre} tiene oscuro o mono`);
   }
+
+  // ── el pack se confirma con sus análisis, no como «1 análisis» ─────────────
+  if (!/const n = fp\.capacity \?\? 1;\s*return \{\s*productName: n === 1 \? '1 análisis' : `\$\{n\} análisis`,/.test(email)) F("1 · pago confirmado no toma los análisis de la capacidad del producto (el pack dice «1 análisis»)");
+  if (PROHIBIDO.test(email)) F("3 · email.ts todavía promete algo que el informe de hoy no tiene (escenarios de salida, refinanciamiento, IA)");
 
   // ── 4 · las etiquetas: todo pasa por enviarCorreo ───────────────────────────
   const archivos: string[] = [];
@@ -118,11 +124,16 @@ export function runCorreosTier(): { hard: number } {
     console.log(`  ✗ CORREOS · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${renderizados} correos en la plantilla clara (papel, wordmark PNG, un botón, legal), sin oscuro ni mono ni «con IA», todos por enviarCorreo con sus tags; ${PENDIENTES.size} pendientes de decisión declarados`);
+    console.log(`  ✓ VERDE — ${renderizados} correos en la plantilla clara (papel, wordmark PNG, un botón, legal), sin oscuro ni mono ni «con IA», todos por enviarCorreo con sus tags; los de Supabase sin tags por el SMTP (excepción declarada)`);
   }
   return { hard: fallas.length };
 }
 
+// ── ACTA DE MUTACIONES v2 (29-sep-2026, los cuatro que esperaban decisión: 5/5 en rojo) ──────────
+// C19 el pack vuelve a «1 análisis» · C20 vuelve «escenarios de salida (venta y refinanciamiento)» ·
+// C21 vuelve el hero /api/og/veredicto al informe listo · C22 la boleta vuelve a dos botones · C23
+// la bienvenida dice «buena oportunidad de inversión». La v1 corrida de nuevo: 17/18 (la que no
+// aplica es la primera versión de C10, la del ancla no única, ya reemplazada).
 // ── ACTA DE MUTACIONES v1 (29-sep-2026, 18/18 en rojo, restauradas byte a byte) ─────────────
 // C1 el body vuelve a oscuro · C2 un monto en mono · C3 «con IA» · C4 «20 años» · C5 voseo en la
 // plantilla de Supabase · C6 el alt deja de ser refranco.ai · C7 el wordmark sin ancho fijo · C8 un
