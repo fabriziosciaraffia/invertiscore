@@ -1195,13 +1195,15 @@ function buildExitScenario(
 
   // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
   // T_n = flujoOperacional + (valorVenta - saldo - cierre).
+  // TIR REAL, EN UF (29-sep-2026): cada flujo del año pasa a pesos de hoy con la UF de su año,
+  // igual que LTR. La tasa es real, comparable con la del crédito.
   const flujos: number[] = [-capitalInicial];
   for (let i = 0; i < yearVenta && i < projections.length; i++) {
     let flujo = projections[i].flujoOperacionalAnual;
     if (i === yearVenta - 1) {
       flujo += equityCLP;
     }
-    flujos.push(flujo);
+    flujos.push(flujo / factorInflacion(i + 1));
   }
   // El solver puede no encontrar raíz (flujo cuyo VPN nunca cruza cero). Ese
   // estado viaja tipado hasta el borde: NO se colapsa a 0 acá. Ver finance/irr.ts.

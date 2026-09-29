@@ -1097,13 +1097,17 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   // TIR: T0 = -inversionInicial. No se modifica aquí: los aportes mensuales
   // ya están contenidos en los flujos anuales negativos (T1..Tn). Inflar T0
   // con flujoMensualAcumuladoNegativo provocaría doble conteo.
+  //
+  // TIR REAL, EN UF (29-sep-2026): los flujos están en pesos de cada año; cada uno se lleva a
+  // pesos de hoy con la UF de su año antes de la TIR, así la tasa es real, como habla el mercado
+  // («UF + 4%») y comparable con la tasa del crédito, que también es en UF.
   const flujos: number[] = [-inversionInicial];
   for (let i = 0; i < anios; i++) {
     let flujo = projections[i].flujoAnual;
     if (i === anios - 1) {
       flujo += equityCLP;
     }
-    flujos.push(flujo);
+    flujos.push(flujo / factorInflacion(i + 1));
   }
   // El solver devuelve un estado, no siempre un número: un flujo cuyo VPN no
   // cruza cero en [−99%, 1000%] no tiene TIR que reportar. Ese caso NO se colapsa

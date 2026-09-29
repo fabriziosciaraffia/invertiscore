@@ -9,6 +9,9 @@
 //   2 · SALDO: la deuda es en UF. Con tasa 0 el saldo en UF baja lineal; en pesos del año es eso
 //       por 1,03^t. Antes quedaba en pesos del día 0.
 //   3 · LTR y STR con la misma regla, y ningún `Math.pow(1 + plusvalia…, año)` suelto.
+//   4 · LA TIR ES REAL, EN UF (29-sep-2026): cada flujo pasa a pesos de hoy antes de la TIR, así
+//       que (1 + TIR real) = (1 + TIR de los flujos nominales) / 1,03. Es la que ve el informe y la
+//       que puntúa.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/plusvalia-nominal-catch-test.ts
@@ -16,6 +19,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { calcMetrics, calcProjections, runAnalysis } from "../../../src/lib/analysis";
+import { calcIRR } from "../../../src/lib/finance/irr";
+import { metricaValorONull } from "../../../src/lib/types";
 import { calcShortTerm, type AirbnbData, type ShortTermInputs } from "../../../src/lib/engines/short-term-engine";
 import { INFLACION_PROYECCION_ANUAL, PLUSVALIA_PROYECCION_ANUAL, factorInflacion, factorValorNominal } from "../../../src/lib/plusvalia-proyeccion";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
@@ -102,6 +107,30 @@ export function runPlusvaliaNominalTier(): { hard: number } {
     }
   }
 
+  // ── 4 · La TIR real ──────────────────────────────────────────────────────
+  const tirNominal = (flujos0: number, anuales: number[], extra: number) => {
+    const v = [-flujos0, ...anuales.map((f, i) => (i === anuales.length - 1 ? f + extra : f))];
+    const r: any = calcIRR(v);
+    return r?.ok ? r.rate * 100 : null;
+  };
+  if (seed) {
+    const r: any = runAnalysis({ ...seed.input }, GOLDEN_UF, seed.mediana, GOLDEN_ASOF);
+    const ex = r.exitScenario;
+    const nom = tirNominal(ex.inversionInicial, r.projections.slice(0, 10).map((p: any) => p.flujoAnual), ex.equityCLP);
+    const real = metricaValorONull(ex.tir);
+    if (nom == null || real == null) F("4 · LTR: la seed no tiene TIR para medir");
+    else if (Math.abs((1 + real / 100) - (1 + nom / 100) / (1 + INFLACION_PROYECCION_ANUAL)) > 0.0006) F(`4 · LTR: la TIR del informe no es real (${real.toFixed(2)}% contra nominal ${nom.toFixed(2)}%: real esperada ${(((1 + nom / 100) / 1.03 - 1) * 100).toFixed(2)}%)`);
+    if (real != null && r.desglose && typeof r.desglose.tir !== "number" && typeof r.desglose.tir !== "object") F("4 · LTR: el puntaje no expone la dimensión TIR");
+  }
+  {
+    const s: any = calcShortTerm(strBase(), new Date("2026-01-01T00:00:00Z"));
+    const ex = s.exitScenario;
+    const nom = tirNominal(ex.inversionInicial, (s.projections ?? []).slice(0, ex.yearVenta).map((p: any) => p.flujoOperacionalAnual), ex.equityCLP);
+    const real = metricaValorONull(ex.tirAnual);
+    if (nom == null || real == null) F("4 · STR: sin TIR para medir");
+    else if (Math.abs((1 + real / 100) - (1 + nom / 100) / (1 + INFLACION_PROYECCION_ANUAL)) > 0.0006) F(`4 · STR: la TIR no es real (${real.toFixed(2)}% contra nominal ${nom.toFixed(2)}%)`);
+  }
+
   // ── 3 · Una sola regla ───────────────────────────────────────────────────
   const ltr = sinComentarios(leer("src/lib/analysis.ts"));
   const str = sinComentarios(leer("src/lib/engines/short-term-engine.ts"));
@@ -112,7 +141,7 @@ export function runPlusvaliaNominalTier(): { hard: number } {
     console.log(`  ✗ PLUSVALIA-NOMINAL · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — valor y saldo en pesos de cada año en LTR y STR: la plusvalía real se compone con la inflación del dividendo y la deuda en UF se convierte con la UF del año");
+    console.log("  ✓ VERDE — valor y saldo en pesos de cada año en LTR y STR, y la TIR real (en UF): la plusvalía real se compone con la inflación del dividendo, la deuda en UF se convierte con la UF del año y cada flujo vuelve a pesos de hoy antes de la TIR");
   }
   return { hard: fallas.length };
 }
@@ -122,6 +151,8 @@ export function runPlusvaliaNominalTier(): { hard: number } {
 // saldo en pesos del día 0 · M3 STR vuelve a 1,03^año · M4 STR saldo en pesos del día 0 · M5
 // factorValorNominal sin inflación · M6 inflación del valor distinta a la del dividendo · M7 el
 // dividendo con otra constante · M8 el saldo inflado un año de más.
+// TIR real (29-sep, segunda pasada), 3/3 en rojo: M9 LTR vuelve a la TIR nominal · M10 STR vuelve
+// a la TIR nominal · M11 LTR deflacta un año corto.
 
 if (require.main === module) {
   const { hard } = runPlusvaliaNominalTier();
