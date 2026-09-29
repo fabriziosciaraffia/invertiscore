@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
-import { ofertaPackVigente, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -75,6 +75,7 @@ export async function POST(request: Request) {
   // Ownership check (+ comuna para personalizar el subject de Flow): si el pago
   // es por un análisis, verificar que el user lo posee.
   let analysisComuna: string | null = null;
+  let veredictoPack: string | null = null;
   // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado. Sin
   // analysisId no hay pack; vencido, se rechaza con 410 y queda medido (`pack_vencido`).
   if (product === PRODUCTO_PACK && !analysisId) {
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
     analysisComuna = (analysis?.comuna as string) ?? null;
     if (product === PRODUCTO_PACK) {
       if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
+      veredictoPack = readVeredicto(analysis.results as never) ?? null;
       if (!ofertaPackVigente(analysis.created_at as string)) {
         try {
           await capturarServidor(eventoPackVencido({ userId: user.id, analysisId, veredicto: readVeredicto(analysis.results as never) ?? null }));
@@ -146,7 +148,9 @@ export async function POST(request: Request) {
       // Propagamos el commerceOrder al return para que /payments/return
       // identifique ESTA compra (no el "último pago del user"). El middleware
       // preserva el query string al convertir el POST de Flow en GET.
-      urlReturn: `${SITE_URL}/payments/return?order=${commerceOrder}`,
+      urlReturn: product === PRODUCTO_PACK && analysisId
+        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack)
+        : `${SITE_URL}/payments/return?order=${commerceOrder}`,
     });
 
     if (!flowResponse.url || !flowResponse.token) {

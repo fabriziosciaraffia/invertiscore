@@ -152,6 +152,9 @@ export interface WizardV4Answers {
   tipoPropiedad?: TipoPropiedad;
   tasaModo?: TasaModo;
   modalidad?: Modalidad;
+  /** Pie, tasa, plazo y modalidad vinieron del informe anterior (después de pagar el pack,
+   *  30-sep-2026): el wizard salta de `precio` a la renta. Editables en el resumen. */
+  financiamientoPrecargado?: boolean;
   arrModo?: EstimModo;
   adrModo?: EstimModo;
 
@@ -296,6 +299,11 @@ export const NODE_TITLE: Record<NodeId, string> = {
  * no por acá; su computeNext replica el de su pantalla padre.
  * Devuelve null solo en pantallas terminales.
  */
+/** El financiamiento vino precargado y completo: pie, tasa, plazo y modalidad (sin «ambas»). */
+export function financiamientoListo(a: WizardV4Answers): boolean {
+  return a.financiamientoPrecargado === true && !!a.pieMonto && !!a.tasaInteres && !!a.plazoCredito && (a.modalidad === "ltr" || a.modalidad === "str");
+}
+
 export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
@@ -315,7 +323,8 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tam":
       return "precio";
     case "precio":
-      return "pie";
+      // Con el financiamiento precargado (pack), salta pie, tasa, plazo y modalidad.
+      return financiamientoListo(a) ? (a.modalidad === "str" ? "adr" : "arr") : "pie";
     case "pie":
       return "tasa";
     case "tasa":
@@ -372,7 +381,7 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tam":
       return "precio";
     case "precio":
-      return "pie";
+      return financiamientoListo(a) ? (a.modalidad === "str" ? "adr" : "arr") : "pie";
     case "pie":
       return "tasa";
     case "tasa":

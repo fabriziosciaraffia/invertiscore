@@ -61,6 +61,8 @@ import {
 } from "@/components/entrada/llegada";
 import { ModalPlausibilidad } from "./ModalPlausibilidad";
 import { decidirBorrador } from "./wizardV4Draft";
+import { aplicarPrecarga, type Precarga } from "@/lib/lo-que-sigue/precarga";
+import { EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
 
@@ -83,6 +85,7 @@ export function WizardV4({
   direccionInicial = null,
   modoInicial = null,
   entrada = "wizard",
+  precargaId = null,
 }: {
   resume: boolean;
   /** Comuna precargada desde ?comuna= (páginas SEO). Solo contexto: la pantalla
@@ -95,6 +98,8 @@ export function WizardV4({
   /** Por qué puerta entró la sesión. Viaja en los eventos de paso: quien llega desde la landing
    *  arranca en `tipo` sin ver `dir`, y el embudo tiene que poder separarlo. */
   entrada?: "landing" | "wizard";
+  /** Después de pagar el pack: el informe desde el que se precarga lo de la persona (`?precarga=`). */
+  precargaId?: string | null;
 }) {
   const posthog = usePostHog();
   const emitEvent = useCallback(
@@ -116,6 +121,34 @@ export function WizardV4({
   // resumen lleva el suyo, editable, así que acá no se repite.
   const modLabel = nav.answers.modalidad && nav.current !== "resumen" ? MOD_CHIP[nav.answers.modalidad] : null;
   const progress = w.progress;
+
+  // ── EL WIZARD PRECARGADO (30-sep-2026) ───────────────────────────────────────
+  // Después de pagar el pack: pie, tasa, plazo y modalidad del informe de origen, y su comuna y
+  // tipología. Solo escribe lo que todavía no tiene respuesta y NUNCA lo del depto
+  // (`aplicarPrecarga`). Con el financiamiento completo, el wizard salta de `precio` a la renta
+  // (`financiamientoPrecargado`). Sin sesión, pide el código y vuelve al mismo lugar.
+  const precargaAplicada = useRef(false);
+  useEffect(() => {
+    if (!precargaId || precargaAplicada.current || !w.inicializado || w.draftPendiente) return;
+    precargaAplicada.current = true;
+    void (async () => {
+      const res = await fetch(`/api/lo-que-sigue/precarga?analysisId=${encodeURIComponent(precargaId)}`).catch(() => null);
+      if (res?.status === 401) {
+        window.location.href = `/registro?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      if (!res?.ok) return;
+      const { precarga } = (await res.json().catch(() => ({ precarga: {} }))) as { precarga: Precarga };
+      const patch = aplicarPrecarga(nav.answers, precarga ?? {});
+      if (Object.keys(patch).length > 0) w.patchAnswers(patch);
+      try {
+        posthog?.capture(EVENTOS_LQS.precargaAbierta, { oferta: "lo_que_sigue", analysis_id: precargaId, campos: Object.keys(patch).length, salta_financiamiento: patch.financiamientoPrecargado === true });
+      } catch {
+        /* la medición no rompe el wizard */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [precargaId, w.inicializado, w.draftPendiente]);
 
   // Precarga de comuna (?comuna=). Una sola vez y solo si el usuario todavía no
   // tiene una: nunca debe pisar lo que ya eligió, ni al retomar un draft.

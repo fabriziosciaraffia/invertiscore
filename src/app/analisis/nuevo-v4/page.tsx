@@ -40,6 +40,11 @@ function NuevoAnalisisV4Inner() {
   });
   const modoInicial = direccionInicial ? null : leerModoLlegada(searchParams.get("modo"));
 
+  // ?precarga=<analysisId> — después de pagar el pack (30-sep-2026): lo de la persona ya respondido
+  // desde ese informe (pie, tasa, plazo, modalidad, comuna y tipología). Solo pregunta lo del depto.
+  const precargaParam = searchParams.get("precarga") ?? "";
+  const precargaId = /^[0-9a-f-]{36}$/i.test(precargaParam) ? precargaParam : null;
+
   // ?origen= — superficie del CTA que trajo al usuario. Viaja para que quede en
   // el $current_url del pageview automático; el wizard no lo usa para nada más.
   return (
@@ -49,6 +54,7 @@ function NuevoAnalisisV4Inner() {
       direccionInicial={direccionInicial}
       modoInicial={modoInicial}
       entrada={direccionInicial || modoInicial ? "landing" : "wizard"}
+      precargaId={precargaId}
     />
   );
 }

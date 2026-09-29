@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
+import { leerRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,6 +17,8 @@ function PaymentReturnContent() {
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const order = searchParams.get("order");
+  // «Lo que sigue» (30-sep-2026): el pack vuelve con el informe de origen y su veredicto.
+  const retornoPack = leerRetornoPack(searchParams);
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   // Estado puente: tras detectar paid de un single con análisis, mostramos
@@ -187,7 +191,11 @@ function PaymentReturnContent() {
           </div>
         )}
 
-        {paymentStatus === "paid" && !redirecting && (
+        {retornoPack && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
+          <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} conSesion={paymentStatus === "paid"} />
+        )}
+
+        {!retornoPack && paymentStatus === "paid" && !redirecting && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 text-4xl">✓</div>
             <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">
@@ -218,7 +226,7 @@ function PaymentReturnContent() {
           </div>
         )}
 
-        {paymentStatus === "sin_sesion" && (
+        {!retornoPack && paymentStatus === "sin_sesion" && (
           <div className="text-center" data-lqs="retorno-sin-sesion">
             <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{RETORNO_SIN_SESION.titulo}</h1>
             <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{RETORNO_SIN_SESION.cuerpo}</p>

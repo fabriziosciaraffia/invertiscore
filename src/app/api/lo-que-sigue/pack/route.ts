@@ -12,7 +12,7 @@ import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { createServiceClient } from "@/lib/supabase/service";
 import { tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
-import { ofertaPackVigente, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor, distinctIdDeCorreo } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -81,7 +81,8 @@ export async function POST(request: Request) {
       email,
       paymentMethod: 9,
       urlConfirmation: `${SITE_URL}/api/payments/confirm`,
-      urlReturn: `${SITE_URL}/payments/return?order=${commerceOrder}`,
+      // Con el informe y su veredicto: /payments/return muestra «Tienes 3 análisis» sin sesión.
+      urlReturn: urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredicto),
     });
     if (!flowResponse.url || !flowResponse.token) {
       return NextResponse.json({ error: "Error al crear la orden de pago" }, { status: 500 });
