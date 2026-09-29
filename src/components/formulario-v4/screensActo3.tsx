@@ -14,6 +14,7 @@
 // si está amoblado (sin esa pregunta entraban siempre $3,5M de amoblamiento) y los huéspedes.
 
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { datosDfl2 } from "./wizardV4Submit";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { formatNumeroCL, parseNumeroCL } from "@/lib/numero-cl";
@@ -48,7 +49,7 @@ function num(raw: string | undefined, decimales: 0 | 1 | 2, def: number): string
 function supuestosInmueble(answers: WizardV4Answers, data: WizardV4Data) {
   const sup = superficieM2(answers);
   const ggcc = data.ggccSugerido ?? getGgccFallback(answers.comuna ?? "", sup) ?? 0;
-  const contrib = estimarContribuciones(precioUF(answers) * data.ufCLP, answers.tipoPropiedad === "nuevo");
+  const contrib = estimarContribuciones(precioUF(answers) * data.ufCLP, datosDfl2(answers));
   return { sup, ggcc: Math.round(ggcc), contrib: Math.round(contrib) };
 }
 

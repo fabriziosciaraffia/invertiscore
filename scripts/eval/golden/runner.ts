@@ -70,6 +70,7 @@ import { runAffordanceTier } from "./affordance-catch-test";
 import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPlusvaliaNominalTier } from "./plusvalia-nominal-catch-test";
+import { runDfl2Tier } from "./dfl2-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
@@ -357,6 +358,9 @@ function printSeed(r: SeedReport) {
   // Tier PLUSVALIA-NOMINAL (29-sep-2026, 0 tokens): valor y saldo en pesos de cada año, como el
   // dividendo; la plusvalía real se compone con la inflación. En rojo por mutación.
   totalHard += runPlusvaliaNominalTier().hard;
+  // Tier DFL2 (29-sep-2026, 0 tokens): la exención de contribuciones con la regla del SII. En rojo
+  // por mutación.
+  totalHard += runDfl2Tier().hard;
   // Tier HEADER-ÚNICO (27-sep-2026, 0 tokens): un solo header en el sitio, la banda derivada de los
   // tokens de la tríada, el botón en tinta, sin mono, las siete decisiones medidas en el HTML y la
   // identidad del informe leída de la portada. Verificado en rojo por mutación.

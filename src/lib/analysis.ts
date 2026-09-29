@@ -25,7 +25,7 @@ import { rescatarPorPieYPlazo } from "./rescate-pie-plazo";
 import { pieSeMueveEnLaGrilla } from "./pie-se-mueve";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
-import { estimarContribuciones } from "./contribuciones";
+import { resolverContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { resolverModeloCostos, provisionMantencionAnio, getMantencionRateLegacy } from "./modelo-costos";
@@ -410,8 +410,16 @@ function calcMetrics(
     arriendoCLP: input.arriendo,
     ufClp,
   });
-  const contribucionesValor = input.contribuciones
-    || estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
+  // Contribuciones (29-sep-2026): la declarada manda; la estimada se vuelve a estimar con la regla
+  // del SII, DFL2 incluido (contribuciones.ts). La obra nueva cuenta el beneficio desde la recepción.
+  const contribResueltas = resolverContribuciones({
+    declarada: input.contribuciones,
+    origen: input.contribucionesOrigen ?? null,
+    precioCLP,
+    superficieM2: input.superficie,
+    aniosDesdeRecepcion: input.esNuevo || input.enConstruccion ? 0 : input.antiguedad,
+  });
+  const contribucionesValor = contribResueltas.trimestral;
   const gastosValor = input.gastos || Math.round(input.superficie * 1200);
 
   const piePct = input.piePct / 100;
@@ -660,6 +668,7 @@ function calcMetrics(
     egresosMensuales,
     provisionMantencionAjustada,
     contribuciones: contribucionesValor,
+    contribucionesDfl2: contribResueltas.dfl2,
     gastos: gastosValor,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoRef: vmRef,
@@ -879,11 +888,17 @@ export function calcProjections(args: {
     const dividendoAnio = Math.round(metrics.dividendo * Math.pow(1 + INFLACION_UF, anio - 1));
 
     // Usar función centralizada para costos recurrentes del mes
+    // El DFL2 vence (29-sep-2026): desde el año siguiente al último con beneficio la contribución
+    // es la completa, reajustada igual. La obra nueva lo cuenta desde la recepción (la entrega).
+    const dfl2 = metrics.contribucionesDfl2;
+    const contribucionesAnio = dfl2 && anio > aniosEntrega + dfl2.aniosRestantes
+      ? dfl2.trimestralSinDfl2 * Math.pow(1 + GGCC_INFLACION, anio - 1)
+      : contribucionesActual;
     const flujoMes = calcFlujoDesglose({
       arriendo: arriendoActual,
       dividendo: dividendoAnio,
       ggcc: gastosActual,
-      contribuciones: contribucionesActual,
+      contribuciones: contribucionesAnio,
       mantencion: mantencionAnual,
       vacanciaMeses: input.vacanciaMeses,
       usaAdministrador: input.usaAdministrador,

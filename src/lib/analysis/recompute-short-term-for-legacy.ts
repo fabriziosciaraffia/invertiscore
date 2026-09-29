@@ -1,3 +1,4 @@
+import { contribucionesDeEntradaStr } from "@/lib/contribuciones";
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
@@ -110,7 +111,7 @@ export function buildStrRecomputeCtx(
     costoInsumos: inputData.costoInsumos,
     gastosComunes: inputData.gastosComunes,
     mantencion: inputData.mantencion,
-    contribuciones: inputData.contribuciones || 0,
+    contribuciones: contribucionesDeEntradaStr(inputData),
     costoAmoblamiento: inputData.estaAmoblado ? 0 : (inputData.costoAmoblamiento || 0),
     arriendoLargoMensual: inputData.arriendoLargoMensual,
     valorUF: ufClp,

@@ -13,6 +13,7 @@
 //   6. markPremiumAndClaimPrepaid()— post-insert: mark is_premium=true +
 //                                    claim del prepaid charge si aplica.
 
+import { contribucionesDeEntradaStr } from "@/lib/contribuciones";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
@@ -620,7 +621,7 @@ export async function buildShortTermAnalysisRow(
     costoInsumos: body.costoInsumos,
     gastosComunes: body.gastosComunes,
     mantencion: body.mantencion,
-    contribuciones: body.contribuciones || 0,
+    contribuciones: contribucionesDeEntradaStr(body as unknown as Record<string, unknown>),
     costoAmoblamiento: body.estaAmoblado ? 0 : (body.costoAmoblamiento || 0),
     arriendoLargoMensual: body.arriendoLargoMensual,
     valorUF: ufValue,

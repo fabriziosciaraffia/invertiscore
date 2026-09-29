@@ -41,7 +41,7 @@ import type { WizardV4Answers, Antiguedad, PieRazon } from "./wizardV4Nodes";
 import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
-import { buildLtrPayload, buildStrPayload, comprarLocked, submitAnonimo, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
+import { buildLtrPayload, buildStrPayload, comprarLocked, datosDfl2, submitAnonimo, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
 import { obtenerTokenTurnstile } from "./turnstile";
 import {
   evaluarPlausibilidad,
@@ -539,7 +539,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
 
   // Supuestos (card 03).
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
-  const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
+  const contribDef = estimarContribuciones(pUF * data.ufCLP, datosDfl2(a));
   const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
   // «Costos operativos» es UN número, el total de los cuatro, y se guarda como total

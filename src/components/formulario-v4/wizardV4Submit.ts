@@ -80,10 +80,23 @@ function ggccCLP(a: WizardV4Answers, ctx: SubmitContext, sup: number): number {
   return ctx.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
 }
 
-/** Contribuciones trimestrales efectivas (editado → fórmula SII). */
+/** Datos del DFL2 del depto (29-sep-2026): superficie y años desde la recepción (0 si es nuevo). */
+export function datosDfl2(a: WizardV4Answers): { superficieM2: number; aniosDesdeRecepcion: number } {
+  return {
+    superficieM2: leerNum(a.superficieUtil, DEC.superficie),
+    aniosDesdeRecepcion: a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0,
+  };
+}
+
+/** Contribuciones trimestrales efectivas (editado → fórmula SII, con DFL2). */
 function contribCLP(a: WizardV4Answers, precioCLP: number): number {
   if (a.contribuciones) return leerNum(a.contribuciones, DEC.contribuciones);
-  return estimarContribuciones(precioCLP, a.tipoPropiedad === "nuevo");
+  return estimarContribuciones(precioCLP, datosDfl2(a));
+}
+
+/** Origen de la contribución: la escribió el usuario o la estimó Franco. */
+function contribOrigen(a: WizardV4Answers): "estimada" | "declarada" {
+  return a.contribuciones ? "declarada" : "estimada";
 }
 
 // ── LTR ───────────────────────────────────────────────────────────────────────
@@ -153,6 +166,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     esNuevo: a.tipoPropiedad === "nuevo",
     gastos: ggccCLP(a, ctx, supUtil),
     contribuciones: contribCLP(a, Math.round(precioUF * ctx.ufCLP)),
+    contribucionesOrigen: contribOrigen(a),
     // Provisión de mantención: el wizard NO la calcula. 0 ⇒ el motor la deriva
     // con la fuente única (modelo-costos.ts, gateada por versión). Antes el
     // wizard mandaba el % del precio calculado acá y el motor lo trataba como
@@ -279,6 +293,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     gastosComunes: ggccCLP(a, ctx, supUtil),
     mantencion: a.mantencionStr ? leerNum(a.mantencionStr, DEC.costos) : costos.mantencion,
     contribuciones: contribCLP(a, precioCompraCLP),
+    contribucionesOrigen: contribOrigen(a),
     estaAmoblado: a.estaAmoblado === true,
     costoAmoblamiento: a.costoAmoblamiento ? leerNum(a.costoAmoblamiento, DEC.costos) : costos.costoAmoblamiento,
     arriendoLargoMensual: leerNum(a.arriendo, DEC.arriendo) || ctx.arriendoSugerido || 0,

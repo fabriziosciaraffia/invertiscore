@@ -34,7 +34,7 @@ export function enrichMetricsLegacy(
       metrics.contribuciones
       ?? (input.contribuciones > 0
         ? input.contribuciones
-        : estimarContribuciones(precioCLP, esNuevoOReciente)),
+        : estimarContribuciones(precioCLP, { superficieM2: input.superficie, aniosDesdeRecepcion: esNuevoOReciente ? 0 : input.antiguedad })),
     provisionMantencionAjustada:
       metrics.provisionMantencionAjustada
       // Misma fuente única que calcMetrics (`provisionMantencionAnio`, t = 0): declarada si

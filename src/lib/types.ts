@@ -69,6 +69,9 @@ export interface AnalisisInput {
   esNuevo?: boolean;
   gastos: number;
   contribuciones: number;
+  /** De dónde viene `contribuciones` (29-sep-2026): «estimada» por Franco o «declarada» por el
+   *  usuario. Filas anteriores no lo traen: el motor lo deduce (contribuciones.ts). */
+  contribucionesOrigen?: "estimada" | "declarada";
   provisionMantencion: number;
   tipoRenta: "larga";
   arriendo: number;
@@ -437,6 +440,9 @@ export interface AnalysisMetrics {
   // Si el usuario declaró el valor, manda lo declarado; si no, se infiere.
   provisionMantencionAjustada: number;
   contribuciones: number;     // trimestral (mismo formato que input.contribuciones)
+  /** DFL2 vigente sobre una contribución estimada: cuánto sería sin el beneficio y los años que le
+   *  quedan desde la recepción. La proyección cambia a la completa al vencer (29-sep-2026). */
+  contribucionesDfl2?: { aniosRestantes: number; trimestralSinDfl2: number } | null;
   gastos: number;             // mensual (mismo formato que input.gastos / GGCC)
   // Plusvalía inmediata
   valorMercadoFrancoUF?: number;       // vm resuelto (= precio cuando no hay valor de mercado con procedencia)
