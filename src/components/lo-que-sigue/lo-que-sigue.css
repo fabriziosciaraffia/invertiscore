@@ -56,6 +56,19 @@
 .lqs-barra .lqs-btn { height: 40px; padding: 0 16px; font-size: 14px; flex: none; }
 @media (min-width: 768px) { .lqs-barra { display: none; } }
 
+/* la pestaña chica para volver al ticket (zona del cierre, ticket cerrado, oferta viva) */
+.lqs-pestana { position: fixed; left: 50%; bottom: 0; z-index: 40; transform: translate(-50%, 120%); display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px 0 0; border: 1px solid var(--doc-line2); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--doc-paper); color: var(--doc-tx); font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-variant-numeric: tabular-nums; }
+.lqs-pestana[data-visible="1"] { transform: translate(-50%, 0); transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: 220ms; }
+.lqs-pestana .lqs-pestana-franja { display: block; width: 10px; height: 40px; flex: none; }
+.lqs-pestana:focus-visible { outline: 2px solid var(--doc-tx); outline-offset: 2px; }
+/* el correo adentro del ticket, y su código en el registro */
+.lqs-tk .lqs-tk-correo { width: 100%; height: 46px; margin-top: 14px; border-radius: 12px; padding: 0 16px; border: 1px solid var(--doc-line2); background: var(--page); color: var(--doc-tx); font: 15px var(--font-ui), "Inter", system-ui, sans-serif; outline: 0; }
+.lqs-tk .lqs-tk-correo::placeholder { color: var(--doc-tx4); }
+.lqs-tk .lqs-tk-correo:focus { border-color: var(--doc-tx); }
+.lqs-tk .lqs-tk-error { margin: 8px 0 0; font: 13px var(--font-ui), "Inter", system-ui, sans-serif; color: #C8323C; }
+.lqs-tk .lqs-tk-pie { margin: 10px 0 0; font: 12px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); }
+.lqs-reg .lqs-codigo { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; font-weight: 600; }
+
 /* ── B · el ticket del pack: el velo se funde aparte, la hoja sube opaca por el mismo borde ── */
 .lqs-velo { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
 .lqs-velo::before { content: ""; position: absolute; inset: 0; background: rgba(20, 19, 17, 0.6); opacity: 0; transition: opacity 260ms ease; }
@@ -103,4 +116,4 @@
 .lqs-cierre .lqs-cierre-t { font: 600 16px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); margin: 0; }
 .lqs-cierre .lqs-cierre-btn { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 99px; border: 1.5px solid var(--franco-text); color: var(--franco-text); font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; margin-top: 12px; }
 
-@media (prefers-reduced-motion: reduce) { .lqs-barra, .lqs-velo::before, .lqs-hoja, .lqs-tk .lqs-cara { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .lqs-barra, .lqs-pestana, .lqs-velo::before, .lqs-hoja, .lqs-tk .lqs-cara { transition: none !important; } }

@@ -17,7 +17,6 @@ import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
-import { CierreRegistro } from "@/components/lo-que-sigue/CierreRegistro";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
@@ -674,10 +673,9 @@ export function PremiumResults({
         <div className="mt-8">
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
           {loQueSigue ? (
-            <>
-              <TicketPack ctx={ctxLqs} createdAt={createdAt} />
-              <CierreRegistro veredicto={resolvedVeredicto} next={nextLqs} />
-            </>
+            // «Lo que sigue»: al cierre va el ticket del pack; el registro no se repite en texto —la
+            // barra fija es la repetición (ajuste 1, 28-sep-2026).
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} />
           ) : (
             <NextAnalysisCTA {...nextCtaProps} />
           )}

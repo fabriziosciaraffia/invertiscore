@@ -11,17 +11,24 @@ import { useEffect, useRef, useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { FRASE_REGISTRO, OFERTA_REGISTRO, veredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
-import { useTicketAbierto } from "@/lib/lo-que-sigue/estado-ui";
+import { queVaAbajo, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
+import { useAnclaAbajo } from "@/lib/lo-que-sigue/area-visible";
 import { RegistroUnPaso } from "./RegistroUnPaso";
 import "./lo-que-sigue.css";
 
 export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }) {
   const posthog = usePostHog();
   const ref = useRef<HTMLDivElement>(null);
+  const barraRef = useRef<HTMLDivElement>(null);
   const [registro, setRegistro] = useState(false);
   const [atras, setAtras] = useState(false);
-  const ticketAbierto = useTicketAbierto();
+  const { ticketAbierto, zonaCierre } = useEstadoBorde();
   const v = veredictoLqs(ctx.veredicto);
+  // Una sola cosa abajo según la zona: la barra solo fuera del cierre y sin el ticket arriba
+  // (en la zona del cierre van el ticket o su pestaña, que viven en TicketPack).
+  const barra = queVaAbajo({ bannerAtras: atras, zonaCierre, ticketAbierto, ticketYaSubio: false, ofertaVigente: false }) === "barra";
+  // Anclada al área visible real: en iOS la barra del navegador se esconde al hacer scroll.
+  useAnclaAbajo(barraRef, barra);
 
   // banner_visto una vez; la barra aparece cuando el banner quedó por encima del viewport.
   useEffect(() => {
@@ -67,10 +74,10 @@ export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }
           )}
         </div>
       </div>
-      <div className="lqs-mat lqs-barra" data-lqs="barra" data-visible={atras && !ticketAbierto ? "1" : "0"} aria-hidden={!(atras && !ticketAbierto)}>
+      <div ref={barraRef} className="lqs-mat lqs-barra" data-lqs="barra" data-visible={barra ? "1" : "0"} aria-hidden={!barra}>
         <div className="lqs-fondo" aria-hidden="true" />
         <div className="lqs-barra-t">{OFERTA_REGISTRO.barraTitulo}<small>{OFERTA_REGISTRO.barraSub}</small></div>
-        <button type="button" className="lqs-btn" onClick={abrirRegistro} tabIndex={atras && !ticketAbierto ? 0 : -1}>{OFERTA_REGISTRO.barraBoton}</button>
+        <button type="button" className="lqs-btn" onClick={abrirRegistro} tabIndex={barra ? 0 : -1}>{OFERTA_REGISTRO.barraBoton}</button>
       </div>
     </>
   );

@@ -32,7 +32,6 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
-import { CierreRegistro } from "@/components/lo-que-sigue/CierreRegistro";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
@@ -480,10 +479,7 @@ export function STRResultsClient({
             <div style={{ height: 16 }} />
             <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
             {loQueSigue ? (
-            <>
-              <TicketPack ctx={ctxLqs} createdAt={createdAt} />
-              <CierreRegistro veredicto={veredicto} next={nextLqs} />
-            </>
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} />
           ) : (
             <NextAnalysisCTA {...nextCtaProps} />
           )}
