@@ -45,8 +45,9 @@ export function TicketPack({ ctx, createdAt }: { ctx: ContextoLqs; createdAt: st
   const dia = diaVencimiento(createdAt);
   const pestana = zonaCierre && !abierto && yaSubio && vigente;
 
-  useAnclaAreaVisible(velo, abierto);
-  useAnclaAbajo(pestanaRef, pestana);
+  // Anclados desde el montaje, no al abrir: en iOS fijarlos al abrir movía el borde a mitad de la transición.
+  useAnclaAreaVisible(velo);
+  useAnclaAbajo(pestanaRef);
 
   // La zona del cierre: el sentinel está a la vista o quedó arriba (la página sigue por debajo).
   useEffect(() => {

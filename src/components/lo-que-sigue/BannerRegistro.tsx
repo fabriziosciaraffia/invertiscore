@@ -28,7 +28,7 @@ export function BannerRegistro({ ctx, next }: { ctx: ContextoLqs; next: string }
   // (en la zona del cierre van el ticket o su pestaña, que viven en TicketPack).
   const barra = queVaAbajo({ bannerAtras: atras, zonaCierre, ticketAbierto, ticketYaSubio: false, ofertaVigente: false }) === "barra";
   // Anclada al área visible real: en iOS la barra del navegador se esconde al hacer scroll.
-  useAnclaAbajo(barraRef, barra);
+  useAnclaAbajo(barraRef);
 
   // banner_visto una vez; la barra aparece cuando el banner quedó por encima del viewport.
   useEffect(() => {

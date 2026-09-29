@@ -117,4 +117,13 @@
 .lqs-cierre .lqs-cierre-t { font: 600 16px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); margin: 0; }
 .lqs-cierre .lqs-cierre-btn { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 99px; border: 1.5px solid var(--franco-text); color: var(--franco-text); font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; margin-top: 12px; }
 
-@media (prefers-reduced-motion: reduce) { .lqs-barra, .lqs-pestana, .lqs-velo::before, .lqs-hoja, .lqs-tk .lqs-cara { transition: none !important; } }
+/* «Reducir movimiento» (iOS y macOS lo traen activado a menudo): sin desplazamiento, pero con un
+   fundido corto. Sin transición el ticket aparecía de golpe y parecía un error (29-sep-2026). */
+@media (prefers-reduced-motion: reduce) {
+  .lqs-barra, .lqs-hoja { transform: none !important; }
+  .lqs-pestana { transform: translate(-50%, 0) !important; }
+  .lqs-barra, .lqs-pestana, .lqs-hoja { opacity: 0; pointer-events: none; transition: opacity 160ms ease !important; transition-delay: 0s !important; }
+  .lqs-barra[data-visible="1"], .lqs-pestana[data-visible="1"], .lqs-velo[data-abierto="1"] .lqs-hoja { opacity: 1; pointer-events: auto; }
+  .lqs-velo::before { transition: opacity 160ms ease !important; transition-delay: 0s !important; }
+  .lqs-tk .lqs-cara { transition: none !important; }
+}
