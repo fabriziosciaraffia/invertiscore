@@ -10,6 +10,7 @@ import {
   METRICA_SPEND_1D,
 } from "@/lib/meta-ads";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { CORRIDA_FALLIDA, CORRIDA_OK, cerrarCron } from "@/lib/cron-resultado";
 
 /**
  * Cron · Gasto diario de Meta Ads → metrics_daily.
@@ -130,7 +131,7 @@ export async function POST(request: Request) {
       ruta: RUTA,
       operacion: "config-meta-incompleta",
     });
-    return NextResponse.json({ ok: false, skipped: "config-incompleta", faltan });
+    return cerrarCron(createAdminClient(), "meta-ads", CORRIDA_FALLIDA, { skipped: "config-incompleta", faltan, error: `Faltan variables: ${faltan.join(", ")}` });
   }
 
   const fecha = ayerUTC();
@@ -208,16 +209,11 @@ export async function POST(request: Request) {
         operacion: "guardar-metrica",
         extra: { fecha, spend },
       });
-      // Escritura parcial: 207 deja la corrida distinguible sin pintarla en rojo
-      // (mismo criterio que cron-resultado.ts).
-      return NextResponse.json(
-        { ok: false, error: "escritura-parcial", fecha, escritas: 4 - fallidas },
-        { status: fallidas === 4 ? 500 : 207 },
-      );
+      // Escritura parcial o total: falla (cron-resultado.ts, 29-sep-2026).
+      return cerrarCron(db, "meta-ads", { procesados: 4, exitosos: 4 - fallidas, fallidos: fallidas }, { error: "escritura-parcial", fecha, escritas: 4 - fallidas });
     }
 
-    return NextResponse.json({
-      ok: true,
+    return cerrarCron(db, "meta-ads", CORRIDA_OK, {
       fecha,
       spend,
       impressions,
@@ -243,14 +239,14 @@ export async function POST(request: Request) {
         ),
         { ruta: RUTA, operacion: "token-meta-expirado", extra: { fecha } },
       );
-      return NextResponse.json({ ok: false, error: "token-expirado", fecha }, { status: 500 });
+      return cerrarCron(createAdminClient(), "meta-ads", CORRIDA_FALLIDA, { error: "token-expirado: hay que regenerar META_ADS_TOKEN", fecha });
     }
 
     // Cualquier otro fallo de la API: se reporta y NO se escribe. Sin fila, el
     // panel dice "sin dato" en vez de "gastamos cero".
     console.error("[cron/meta-ads] error consultando Meta:", e);
     captureApiWarning(e, { ruta: RUTA, operacion: "consultar-meta-ads", extra: { fecha } });
-    return NextResponse.json({ ok: false, error: "meta-no-disponible", fecha });
+    return cerrarCron(createAdminClient(), "meta-ads", CORRIDA_FALLIDA, { error: `meta-no-disponible: ${String(e).slice(0, 200)}`, fecha });
   }
 }
 

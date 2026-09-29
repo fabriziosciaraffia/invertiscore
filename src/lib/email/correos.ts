@@ -165,6 +165,29 @@ export function correoAlertaPagoFallido(p: { estado: "Rechazado" | "Anulado"; pr
   };
 }
 
+/**
+ * Alerta interna de un cron (29-sep-2026): a hola@ cuando una corrida falla en todo o en parte, o
+ * cuando la vigilancia ve que un cron dejó de correr o de escribir lo que escribía.
+ */
+export function correoAlertaCron(p: { cron: string; problema: string; detalle: string[] }): Correo {
+  const filas = [
+    { etiqueta: "Cron", valor: escaparHtml(p.cron) },
+    { etiqueta: "Qué pasó", valor: escaparHtml(p.problema) },
+    ...p.detalle.map((d, i) => ({ etiqueta: i === 0 ? "Detalle" : "", valor: escaparHtml(d) })),
+  ];
+  return {
+    subject: `🚨 Cron con problemas: ${p.cron}`,
+    html: plantillaClara({
+      titulo: "Cron con problemas",
+      preencabezado: `${p.cron} · ${p.problema}`,
+      titular: `El cron ${escaparHtml(p.cron)} necesita revisión`,
+      parrafos: [],
+      detalle: { filas },
+      legal: "Aviso interno de Franco.",
+    }),
+  };
+}
+
 // ── Bienvenida ───────────────────────────────────────────────────────────────
 // [REVISAR] sin la imagen del informe viejo (oscura, con prosa de IA y un gráfico de capital en
 // pesos futuros). Sin «tu primer análisis es gratis»: este correo sale cuando la persona crea su

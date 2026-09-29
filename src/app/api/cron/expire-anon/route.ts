@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiError } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { CORRIDA_FALLIDA, CORRIDA_OK, cerrarCron } from "@/lib/cron-resultado";
 
 const RUTA = "GET /api/cron/expire-anon";
 
@@ -105,9 +106,9 @@ export async function GET(request: Request) {
 
     const expiradas = data?.length ?? 0;
     console.log(`[cron/expire-anon] ventanas de claim expiradas: ${expiradas}`);
-    return NextResponse.json({ ok: true, expiradas });
+    return cerrarCron(supabase, "expire-anon", CORRIDA_OK, { expiradas });
   } catch (error) {
     captureApiError(error, { ruta: RUTA, operacion: "expirar-claim-anonimo" });
-    return NextResponse.json({ error: "Error expirando claims anónimos" }, { status: 500 });
+    return cerrarCron(supabase, "expire-anon", CORRIDA_FALLIDA, { error: `Error expirando claims anónimos: ${String((error as { message?: string })?.message ?? error).slice(0, 200)}` }, { registrar: !dry });
   }
 }

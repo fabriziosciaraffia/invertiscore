@@ -4,7 +4,7 @@ import { sendCheckoutRecoveryEmail } from "@/lib/email";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { productosRecuperables } from "@/lib/lo-que-sigue/oferta-pack";
 import { captureApiWarning } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/abandoned-checkout";
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     .is("recovery_email_sent_at", null);
   if (errCount) {
     console.error("[cron/abandoned-checkout] count error:", errCount);
-    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    return cerrarCron(supabase, "abandoned-checkout", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
   const { data: candidates, error } = await supabase
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[cron/abandoned-checkout] query error:", error);
-    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    return cerrarCron(supabase, "abandoned-checkout", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
   const colaTotal = candidatosTotales ?? candidates?.length ?? 0;
@@ -130,7 +130,7 @@ export async function GET(request: Request) {
       .eq("product", "single");
     if (paidErr) {
       console.error("[cron/abandoned-checkout] paid lookup error:", paidErr);
-      return NextResponse.json({ error: "Query failed" }, { status: 500 });
+      return cerrarCron(supabase, "abandoned-checkout", CORRIDA_FALLIDA, { error: "Query failed" });
     }
     paidUserIds = new Set((paidRows ?? []).map((r) => r.user_id));
   }
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
       .eq("subscription_status", "active");
     if (activeErr) {
       console.error("[cron/abandoned-checkout] active-sub lookup error:", activeErr);
-      return NextResponse.json({ error: "Query failed" }, { status: 500 });
+      return cerrarCron(supabase, "abandoned-checkout", CORRIDA_FALLIDA, { error: "Query failed" });
     }
     activeSubUserIds = new Set((activeRows ?? []).map((r) => r.user_id));
   }
@@ -299,8 +299,7 @@ export async function GET(request: Request) {
   console.error(
     `[cron/abandoned-checkout] processed=${processed} sent=${sent} fallidos=${fallidos}`
   );
-  return respuestaCron(
+  return cerrarCron(supabase, "abandoned-checkout",
     { procesados: processed, exitosos: sent, fallidos },
-    { sent, noReclamados, envioTrasReclamo, colaTotal, topePorCorrida: TOPE_POR_CORRIDA, topeAlcanzado },
-  );
+    { sent, noReclamados, envioTrasReclamo, colaTotal, topePorCorrida: TOPE_POR_CORRIDA, topeAlcanzado });
 }

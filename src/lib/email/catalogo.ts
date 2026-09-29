@@ -5,7 +5,7 @@
 // `pendiente`: todavía no pasó a la plantilla clara porque espera una decisión de Fabrizio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { TipoCorreo } from "@/lib/medicion-correo";
-import { correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
+import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 
@@ -35,6 +35,7 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "eliminacion_usuario", tipo: "eliminacion_usuario", nombre: "Eliminación de cuenta (a la persona)", cuando: "La persona pide eliminar su cuenta", render: () => correoEliminacionUsuario({ nombre: "Fabrizio" }) },
   { id: "eliminacion_interna", tipo: "eliminacion_interna", nombre: "Eliminación de cuenta (aviso interno)", cuando: "Misma solicitud, a hola@", render: () => correoEliminacionInterna({ email: "persona@correo.cl", userId: "00000000-0000-0000-0000-000000000000", solicitadaEl: "29 de septiembre de 2026", analisis: 4, creditos: 2, motivo: "Ya compré" }) },
   { id: "alerta_pago", tipo: "alerta_pago", nombre: "Nuevo pago (aviso interno)", cuando: "Flow confirma un pago, a hola@", render: () => correoAlertaPago({ producto: "3 análisis", monto: 14990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-PK-0001", analysisId: ID_MUESTRA, sitio: SITIO }) },
+  { id: "alerta_cron", tipo: "alerta_cron", nombre: "Cron con problemas (aviso interno)", cuando: "Un cron falla en todo o en parte, o deja de correr o de escribir, a hola@", render: () => correoAlertaCron({ cron: "scrape-unidades-nuevas", problema: "La corrida terminó con falla total: 155 de 155 fallaron.", detalle: ["proyecto 4347128: http 202 (desafío del WAF: sin proxy)"] }) },
   { id: "alerta_pago_fallido", tipo: "alerta_pago_fallido", nombre: "Pago fallido (aviso interno)", cuando: "Flow rechaza o anula un pago, a hola@", render: () => correoAlertaPagoFallido({ estado: "Rechazado", producto: "1 análisis", monto: 9990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-SG-0002" }) },
   ...PLANTILLAS_SUPABASE.map((p) => ({
     id: p.archivo.replace(/\.html$/, ""),

@@ -176,7 +176,9 @@ export default async function AdminOperacionPage({
   // Un cron que no corre no deja rastro: ni log, ni error, ni fila. El 10-ago-2026
   // el reconciliador de cobros no se ejecutó (los deploys a producción reemplazan
   // el registro de crons) y el hueco solo apareció en el post-mortem. Acá se ve.
-  const cronsAtrasados = latidos.filter((l) => l.atrasado);
+  // Desde el 29-sep-2026, rojo no es solo «no corrió»: también «falló en todo o en parte», «latió y no
+  // cerró» y «dejó de escribir lo que escribía» (cron-heartbeat.ts, leerLatidos).
+  const cronsAtrasados = latidos.filter((l) => l.enRojo);
   const latidoMasReciente = latidos.reduce<string | null>(
     (max, l) => (l.ultimaCorrida && (!max || l.ultimaCorrida > max) ? l.ultimaCorrida : max),
     null
@@ -263,7 +265,7 @@ export default async function AdminOperacionPage({
       value:
         cronsAtrasados.length === 0
           ? `al día · ${fmtRelative(latidoMasReciente)}`
-          : `${cronsAtrasados.length} sin correr`,
+          : `${cronsAtrasados.length} con problemas`,
       estado: cronsAtrasados.length === 0 ? "ok" : "error",
     },
     {
@@ -461,24 +463,22 @@ export default async function AdminOperacionPage({
         {cronsAtrasados.length > 0 && (
           <div className="mt-3 rounded-xl border p-4" style={{ borderColor: "rgba(200,50,60,.35)" }}>
             <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--signal-red)]">
-              Crons sin correr
+              Crons con problemas
             </div>
             <ul className="mb-2 space-y-1">
               {cronsAtrasados.map((c) => (
                 <li key={c.nombre} className="font-body text-[13px] text-[var(--franco-text-secondary)]">
                   <b className="font-medium text-[var(--franco-text)]">{c.label}</b>{" "}
                   <span className="font-mono text-xs">/api/cron/{c.nombre}</span> —{" "}
-                  {c.ultimaCorrida
-                    ? `última corrida ${fmtRelative(c.ultimaCorrida)} (se espera cada ${c.intervaloHoras}h)`
-                    : "sin ninguna corrida registrada"}
+                  {c.motivo}
                 </li>
               ))}
             </ul>
             <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
-              Un cron que no corre no deja rastro: ni log, ni error, ni fila. La causa más probable es un deploy a
-              producción dentro de su ventana de disparo — cada deploy reemplaza el registro de crons, y el 10-ago-2026
-              eso dejó al reconciliador de cobros sin ejecutarse en todo el día. Si recién se desplegó el latido, es
-              normal que figuren acá hasta que cada uno corra una vez.
+              Rojo es cualquiera de cuatro cosas: no corrió (un deploy dentro de su ventana reemplaza el registro de
+              crons: el 10-ago-2026 dejó al reconciliador sin ejecutarse), falló en todo o en parte, latió y no cerró,
+              o dejó de escribir lo que escribía (scrape-unidades-nuevas latió verde del 03-ago al 29-sep sin escribir
+              una unidad). Cada caso manda un correo a hola@ una vez al día.
             </p>
           </div>
         )}

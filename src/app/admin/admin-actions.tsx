@@ -4,8 +4,8 @@ import { useState } from "react";
 
 type ActionKey = "update-market";
 /**
- * Cuatro estados, no tres. "parcial" existe desde que los endpoints devuelven
- * 207 (ver cron-resultado.ts): la acción corrió e hizo parte del trabajo. Antes
+ * Cuatro estados, no tres. "parcial" existe desde que los endpoints distinguen
+ * el parcial (ver cron-resultado.ts): la acción corrió e hizo parte del trabajo. Antes
  * caía en "ok" porque el chequeo era `if (!res.ok)` y 207 es 2xx — el botón
  * "Actualizar UF/Tasa" mostraba el check aunque la UF no se hubiera escrito.
  *

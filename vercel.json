@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/evaluar-avisos",
       "schedule": "20 * * * 2"
+    },
+    {
+      "path": "/api/cron/vigilar-crons",
+      "schedule": "45 */6 * * *"
     }
   ]
 }

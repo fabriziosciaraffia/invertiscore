@@ -22,6 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { guardarMetrica } from "@/lib/metrics-daily";
+import { FUENTE_RESULTADO, type ResultadoCron } from "@/lib/cron-resultado";
 
 export const FUENTE_CRON = "cron";
 
@@ -46,6 +47,31 @@ export interface CronVigilado {
   label: string;
   /** Cada cuántas horas se espera una corrida (según vercel.json). */
   intervaloHoras: number;
+  /**
+   * Lo que el cron escribe SIEMPRE que anda bien, y cuánto puede pasar sin que aparezca (29-sep-2026).
+   * Es la pregunta que el latido no contesta: scrape-unidades-nuevas latió verde 57 días sin escribir una
+   * unidad. Solo los crons que escriben en cada corrida; los que escriben cuando hay trabajo (lotes,
+   * gracias, carritos) no tienen frescura fija y los cuida el resultado de la corrida.
+   */
+  frescura?: { que: string; maxHoras: number; leer: (sb: SupabaseClient) => Promise<string | null> };
+}
+
+/** La columna de fecha de la fila que devolvió una lectura de UNA fila. */
+function fechaDe(res: { data: unknown; error: { message: string } | null }, columna: string): string | null {
+  if (res.error) throw new Error(`${columna}: ${res.error.message}`);
+  return res.data ? String((res.data as Record<string, unknown>)[columna]) : null;
+}
+
+/** El instante más reciente de una columna, o null. Lectura de UNA fila (orden + limit 1). Las de
+ *  scraped_properties van escritas enteras abajo: el tier LECTURA-PAGINADA exige ver la cadena. */
+function ultimo(tabla: string, columna: string, filtro?: (q: any) => any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return async (sb: SupabaseClient): Promise<string | null> => {
+    let q = sb.from(tabla).select(columna);
+    if (filtro) q = filtro(q);
+    const { data, error } = await q.not(columna, "is", null).order(columna, { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new Error(`${tabla}.${columna}: ${error.message}`);
+    return data ? String((data as unknown as Record<string, unknown>)[columna]) : null;
+  };
 }
 
 export const CRONS_VIGILADOS: CronVigilado[] = [
@@ -54,17 +80,32 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "expire-grace", label: "Vencimiento de gracia", intervaloHoras: 24 },
   { nombre: "abandoned-checkout", label: "Carritos abandonados", intervaloHoras: 24 },
   { nombre: "recordatorio-pack", label: "Recordatorio del pack", intervaloHoras: 24 },
+  // Latían desde agosto pero no estaban acá: el panel no los veía (29-sep-2026).
+  { nombre: "expire-anon", label: "Vencimiento de reclamos anónimos", intervaloHoras: 24 },
+  { nombre: "meta-ads", label: "Métricas de Meta Ads", intervaloHoras: 24,
+    frescura: { que: "métricas de Meta Ads", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "meta_ads")) } },
   // Corre cada hora los martes: entre martes y martes pasan 7 días.
-  { nombre: "evaluar-avisos", label: "Avisos evaluados con el motor", intervaloHoras: 170 },
-  { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24 },
+  { nombre: "evaluar-avisos", label: "Avisos evaluados con el motor", intervaloHoras: 170,
+    frescura: { que: "avisos evaluados", maxHoras: 24 * 8, leer: ultimo("avisos_evaluados", "evaluado_at") } },
+  { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24,
+    frescura: { que: "errores de Sentry", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "sentry")) } },
+  // El que vigila a los demás (cada 6 horas). Si se cae, el panel lo muestra atrasado.
+  { nombre: "vigilar-crons", label: "Vigilancia de los crons", intervaloHoras: 6 },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
-  { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24 },
-  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva (diario)", intervaloHoras: 24 },
-  { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24 },
+  { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
+    frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
+  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva (diario)", intervaloHoras: 24,
+    frescura: { que: "unidades de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").like("source_id", "%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
+  { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
+    frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
   // El pase semanal además deja su checkpoint en `config` (admin-backfill-toctoc):
   // acá solo late, allá se lee QUÉ hizo. Los dos conviven.
-  { nombre: "backfill-toctoc", label: "Pase semanal TocToc", intervaloHoras: 24 * 7 },
+  { nombre: "backfill-toctoc", label: "Pase semanal TocToc", intervaloHoras: 24 * 7,
+    frescura: { que: "avisos usados", maxHoras: 24 * 8, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "usado").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
 ];
+
+/** Margen para dar por colgada una corrida que latió y no cerró: el maxDuration más largo es 800 s. */
+const MARGEN_CIERRE_MIN = 20;
 
 /**
  * Cuántos intervalos de atraso hacen falta para declarar atrasado un cron.
@@ -121,6 +162,17 @@ export interface LatidoCron extends CronVigilado {
   horasDesde: number | null;
   /** true si supera el umbral de atraso (o si nunca se registró una corrida). */
   atrasado: boolean;
+  /** Cómo cerró la última corrida (cerrarCron). null = aún no cierra ninguna con el cierre común. */
+  ultimoResultado: ResultadoCron | null;
+  /** Latió y no cerró: reventó antes de responder (o sigue colgada pasado el margen). */
+  sinCierre: boolean;
+  /** Lo último que escribió, si tiene frescura fija; y si ya pasó su plazo. */
+  ultimaEscritura: string | null;
+  sinEscribir: boolean;
+  /** Algo de lo anterior: el panel lo pinta en rojo y vigilar-crons avisa. */
+  enRojo: boolean;
+  /** Por qué, en una frase (null si está sano). */
+  motivo: string | null;
 }
 
 /**
@@ -159,16 +211,66 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
     }
   }
 
-  return CRONS_VIGILADOS.map((cron) => {
+  // El resultado de la última corrida de cada cron (cerrarCron, fuente cron-resultado).
+  const { data: resultados } = await sb
+    .from("metrics_daily")
+    .select("metrica, valor, medido_at")
+    .eq("fuente", FUENTE_RESULTADO)
+    .order("medido_at", { ascending: false });
+  const resultadoPorCron = new Map<string, { valor: number; at: string }>();
+  for (const f of resultados ?? []) {
+    const m = String((f as { metrica: string }).metrica);
+    if (!resultadoPorCron.has(m)) resultadoPorCron.set(m, { valor: Number((f as { valor: number }).valor), at: String((f as { medido_at: string }).medido_at) });
+  }
+
+  return Promise.all(CRONS_VIGILADOS.map(async (cron) => {
     const ultimaCorrida = ultimaPorCron.get(cron.nombre) ?? null;
     const horas = ultimaCorrida
       ? (Date.now() - new Date(ultimaCorrida).getTime()) / (1000 * 60 * 60)
       : null;
+    const atrasado = horas === null || horas > cron.intervaloHoras * FACTOR_ATRASO;
+
+    const r = resultadoPorCron.get(cron.nombre) ?? null;
+    const ultimoResultado: ResultadoCron | null = r === null ? null : r.valor === 0 ? "ok" : r.valor === 1 ? "parcial" : "fallo";
+    // Solo se juzga el cierre de un cron que ya cerró alguna vez con cerrarCron: el día del deploy
+    // ninguno tiene resultado y no por eso están colgados.
+    const margen = MARGEN_CIERRE_MIN * 60 * 1000;
+    const sinCierre = r !== null && ultimaCorrida !== null
+      && new Date(ultimaCorrida).getTime() > new Date(r.at).getTime() + 1000
+      && Date.now() - new Date(ultimaCorrida).getTime() > margen;
+
+    let ultimaEscritura: string | null = null;
+    let sinEscribir = false;
+    let errorFrescura: string | null = null;
+    if (cron.frescura) {
+      try {
+        ultimaEscritura = await cron.frescura.leer(sb);
+        sinEscribir = ultimaEscritura === null || Date.now() - new Date(ultimaEscritura).getTime() > cron.frescura.maxHoras * 3600 * 1000;
+      } catch (e) {
+        errorFrescura = String(e).slice(0, 120);
+      }
+    }
+
+    const motivo = atrasado
+      ? (ultimaCorrida ? `no corre desde hace ${Math.round(horas!)} h (se espera cada ${cron.intervaloHoras} h)` : "sin ninguna corrida registrada")
+      : sinCierre ? "la última corrida latió y no cerró: reventó antes de responder"
+      : ultimoResultado === "fallo" ? "la última corrida falló entera"
+      : ultimoResultado === "parcial" ? "la última corrida falló en parte"
+      : sinEscribir ? `no escribe ${cron.frescura!.que} desde ${ultimaEscritura ? ultimaEscritura.slice(0, 16).replace("T", " ") : "nunca"} (plazo ${cron.frescura!.maxHoras} h)`
+      : errorFrescura ? `no se pudo leer su frescura: ${errorFrescura}`
+      : null;
+
     return {
       ...cron,
       ultimaCorrida,
       horasDesde: horas,
-      atrasado: horas === null || horas > cron.intervaloHoras * FACTOR_ATRASO,
+      atrasado,
+      ultimoResultado,
+      sinCierre,
+      ultimaEscritura,
+      sinEscribir,
+      enRojo: motivo !== null,
+      motivo,
     };
-  });
+  }));
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { captureApiWarning } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     pendientes = avisosPendientes(avisosEvaluables(filas, cfg.uf), guardadas, METHODOLOGY_VERSION_ACTUAL);
   } catch (e) {
     captureApiWarning(e, { ruta: RUTA, operacion: "leer" });
-    return respuestaCron({ procesados: 0, exitosos: 0, fallidos: 1 });
+    return cerrarCron(sb, "evaluar-avisos", { procesados: 0, exitosos: 0, fallidos: 1 }, { error: `leer: ${String(e).slice(0, 200)}` }, { registrar: !dry });
   }
 
   const cola = dry ? pendientes.slice(0, TOPE_DRY) : pendientes;
@@ -105,8 +105,7 @@ export async function GET(request: Request) {
     }
   }));
 
-  return respuestaCron(
+  return cerrarCron(sb, "evaluar-avisos",
     { procesados: exitosos + fallidos, exitosos, fallidos },
-    { dry, pendientes: pendientes.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) },
-  );
+    { dry, pendientes: pendientes.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }

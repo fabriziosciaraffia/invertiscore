@@ -3,7 +3,7 @@ import { latirCron } from "@/lib/cron-heartbeat";
 import { createClient } from "@supabase/supabase-js";
 import { parseNumeroBCCH, esUFPlausible, esTasaPlausible } from "@/lib/uf";
 import { captureApiError } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron } from "@/lib/cron-resultado";
 
 const RUTA = "POST /api/data/update-market";
 
@@ -154,10 +154,9 @@ export async function POST(request: Request) {
   const tasaOk = results.tasa?.value != null && !results.tasa.error;
   const ufOk = results.uf?.value != null && !results.uf.error;
   const escritos = (tasaOk ? 1 : 0) + (ufOk ? 1 : 0);
-  return respuestaCron(
+  return cerrarCron(supabase, "update-market",
     { procesados: 2, exitosos: escritos, fallidos: 2 - escritos },
-    { success: escritos === 2, results },
-  );
+    { success: escritos === 2, results });
 }
 
 // Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer

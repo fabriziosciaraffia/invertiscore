@@ -7,7 +7,7 @@ import {
 } from "@/lib/credits-grant";
 import { captureApiError } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 
 const RUTA = "GET /api/cron/monthly-grants";
 
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
   if (error) {
     console.error("[cron/monthly-grants] query error:", error);
     captureApiError(error, { ruta: RUTA, operacion: "query-subs-anuales" });
-    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    return cerrarCron(supabase, "monthly-grants", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
   let processed = 0;
@@ -263,8 +263,7 @@ export async function GET(request: Request) {
   console.error(
     `[cron/monthly-grants] processed=${processed} granted=${granted} fallidos=${fallidos}`
   );
-  return respuestaCron(
+  return cerrarCron(supabase, "monthly-grants",
     { procesados: processed, exitosos: processed - fallidos, fallidos },
-    { granted, fechaNoReclamada, grantTrasReclamo },
-  );
+    { granted, fechaNoReclamada, grantTrasReclamo });
 }

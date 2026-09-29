@@ -6,6 +6,7 @@ import {
   ESTADO_OBRA_NUEVA,
 } from "@/lib/services/scraper/toctoc";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { cerrarCron } from "@/lib/cron-resultado";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
 import { desactivarProyectosConUnidades } from "@/lib/services/scraper/toctoc-unidades";
 
@@ -87,11 +88,12 @@ export async function POST(request: Request) {
 
   const errors = [...result.errors];
   let inserted = 0;
+  let upsertFallo = false;
   if (rows.length > 0) {
     const { error } = await supabase
       .from("scraped_properties")
       .upsert(rows, { onConflict: "source,source_id" });
-    if (error) errors.push(`Bulk upsert error: ${error.message}`);
+    if (error) { errors.push(`Bulk upsert error: ${error.message}`); upsertFallo = true; }
     else inserted = rows.length;
   }
 
@@ -109,8 +111,18 @@ export async function POST(request: Request) {
   const porComuna: Record<string, number> = {};
   for (const p of validProps) porComuna[p.comuna] = (porComuna[p.comuna] ?? 0) + 1;
 
-  return NextResponse.json({
-    success: true,
+  // El resultado, por comuna (29-sep-2026). Falla TOTAL si no se pudo escribir, si la sesión con la
+  // fuente no se abrió o si no llegó ni una fila: la fuente siempre tiene obra nueva, así que cero es
+  // una fuente que no respondió (el desafío del WAF sin proxy), no un día sin avisos. Si no, cada comuna
+  // con error (viewport, excepción) cuenta como fallida; una comuna sin proyectos no es falla.
+  const sinSesion = result.errors.some((e) => /Map session error|token vacio/.test(e));
+  const comunasConError = new Set(result.errors.map((e) => (e.match(/^(?:No viewport for |Map )([a-z0-9-]+)/) ?? [])[1]).filter(Boolean)).size;
+  const total = upsertFallo || sinSesion || rows.length === 0;
+  const conteo = total
+    ? { procesados: comunas.length, exitosos: 0, fallidos: comunas.length }
+    : { procesados: comunas.length, exitosos: comunas.length - comunasConError, fallidos: comunasConError + (recon.errores.length ? 1 : 0) };
+  return cerrarCron(supabase, "scrape-nuevos", conteo, {
+    success: !total,
     modo: "obra-nueva",
     comunasRecorridas: comunas.length,
     comunasConResultados: Object.keys(porComuna).length,

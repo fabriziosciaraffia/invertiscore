@@ -119,6 +119,7 @@ import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
+import { runCronsTier } from "./crons-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 import { runStrCongeladoTier } from "./str-congelado-catch-test";
@@ -493,6 +494,9 @@ function printSeed(r: SeedReport) {
   // Tier AVISOS (30-sep-2026, 0 tokens, sin base): la entrega de la obra nueva se guarda y se lee, el
   // arriendo del segmento, la evaluación con la entrada del wizard y el cron que solo escribe en avisos_evaluados. ──
   totalHard += runAvisosTier().hard;
+  // Tier CRONS (29-sep-2026, 0 tokens, sin red ni base): el scraper de unidades sale por el proxy y el
+  // 202 del WAF es error; ningún cron falla en silencio (500, rojo en el panel, alerta a hola@). ──
+  totalHard += (await runCronsTier()).hard;
 
   // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los
   // generadores, en la parte 2 del retiro de la IA. ──

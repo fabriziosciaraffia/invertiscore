@@ -4,7 +4,7 @@ import { flowGet } from "@/lib/flow";
 import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/reconcile-subscriptions";
@@ -464,8 +464,7 @@ export async function GET(request: Request) {
     "[cron/reconcile-subscriptions]",
     JSON.stringify({ ...summary, processed, fallidos })
   );
-  return respuestaCron(
+  return cerrarCron(supabase, "reconcile-subscriptions",
     { procesados: processed + fallidos, exitosos: processed, fallidos },
-    summary,
-  );
+    summary, { registrar: !dryRun });
 }

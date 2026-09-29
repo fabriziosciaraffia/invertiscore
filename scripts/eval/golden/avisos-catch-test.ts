@@ -118,7 +118,7 @@ export function runAvisosTier(): { hard: number } {
   const vj = JSON.parse(leer("vercel.json")) as { crons: { path: string; schedule: string }[] };
   const c = vj.crons.find((x) => x.path === "/api/cron/evaluar-avisos");
   if (!c || !/^\d+ \* \* \* 2$/.test(c.schedule)) F("6 · el cron no está en vercel.json corriendo cada hora los martes");
-  if (!/\{ nombre: "evaluar-avisos", label: "[^"]+", intervaloHoras: 1[67]\d \}/.test(leer("src/lib/cron-heartbeat.ts"))) F("6 · el cron no está vigilado en el heartbeat (semanal)");
+  if (!/\{ nombre: "evaluar-avisos", label: "[^"]+", intervaloHoras: 1[67]\d[ ,}]/.test(leer("src/lib/cron-heartbeat.ts"))) F("6 · el cron no está vigilado en el heartbeat (semanal)");
   if (!/create table if not exists public\.avisos_evaluados/.test(mig) || !/alter table public\.avisos_evaluados enable row level security;/.test(mig) || /create policy/i.test(mig)) F("6 · la tabla no existe en la migración, o no tiene RLS, o abre políticas");
 
   if (fallas.length) {

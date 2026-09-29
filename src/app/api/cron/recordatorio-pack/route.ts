@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendRecordatorioPackEmail } from "@/lib/email";
 import { captureApiWarning } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { debeRecordar, DIAS_RECORDATORIO } from "@/lib/lo-que-sigue/recordatorio";
@@ -49,10 +49,10 @@ export async function GET(request: Request) {
     .limit(500);
   if (errLotes) {
     captureApiWarning(errLotes, { ruta: RUTA, operacion: "leer-lotes" });
-    return respuestaCron({ procesados: 0, exitosos: 0, fallidos: 1 });
+    return cerrarCron(supabase, "recordatorio-pack", { procesados: 0, exitosos: 0, fallidos: 1 });
   }
   const restantesPorPago = new Map((lotes ?? []).map((l) => [l.payment_id as string, l.remaining as number]));
-  if (restantesPorPago.size === 0) return respuestaCron({ procesados: 0, exitosos: 0, fallidos: 0 }, { enviados: 0 });
+  if (restantesPorPago.size === 0) return cerrarCron(supabase, "recordatorio-pack", { procesados: 0, exitosos: 0, fallidos: 0 }, { enviados: 0 });
   const { data: pagos, error } = await supabase
     .from("payments")
     .select("id, user_id, analysis_id, status, product, updated_at, recordatorio_pack_enviado_at")
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     .limit(TOPE_POR_CORRIDA);
   if (error) {
     captureApiWarning(error, { ruta: RUTA, operacion: "leer-candidatos" });
-    return respuestaCron({ procesados: 0, exitosos: 0, fallidos: 1 });
+    return cerrarCron(supabase, "recordatorio-pack", { procesados: 0, exitosos: 0, fallidos: 1 });
   }
 
   let procesados = 0;
@@ -113,5 +113,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return respuestaCron({ procesados, exitosos: enviados, fallidos }, { enviados, noReclamados, yaUsaronAlguno: sinUsarNo, topePorCorrida: TOPE_POR_CORRIDA });
+  return cerrarCron(supabase, "recordatorio-pack", { procesados, exitosos: enviados, fallidos }, { enviados, noReclamados, yaUsaronAlguno: sinUsarNo, topePorCorrida: TOPE_POR_CORRIDA });
 }

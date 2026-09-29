@@ -8,6 +8,7 @@ import {
 import { propertyToRow } from "@/lib/services/scraper/property-row";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 
 // ─── Unidades de obra nueva (detalle por tipología), con cadencia propia ─────
 //
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       .order("id", { ascending: true })
       .range(off, off + PAGINA_POSTGREST - 1);
     if (errBases) {
-      return NextResponse.json({ error: `select proyectos: ${errBases.message}` }, { status: 500 });
+      return cerrarCron(supabase, "scrape-unidades-nuevas", CORRIDA_FALLIDA, { error: `select proyectos: ${errBases.message}` });
     }
     if (!data || data.length === 0) break;
     basesRaw.push(...(data as Array<Record<string, unknown>>));
@@ -160,12 +161,13 @@ export async function POST(request: Request) {
 
   const errors: string[] = conError.slice(0, 10).map((r) => `proyecto ${r.idProyecto}: ${r.error}`);
   let inserted = 0;
+  let upsertFallo = false;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
     const { error } = await supabase
       .from("scraped_properties")
       .upsert(chunk, { onConflict: "source,source_id" });
-    if (error) errors.push(`upsert unidades: ${error.message}`);
+    if (error) { errors.push(`upsert unidades: ${error.message}`); upsertFallo = true; }
     else inserted += chunk.length;
   }
   const t2 = Date.now();
@@ -193,8 +195,16 @@ export async function POST(request: Request) {
     for (const u of r.unidades) porComuna[u.comuna] = (porComuna[u.comuna] ?? 0) + 1;
   }
 
-  return NextResponse.json({
-    success: true,
+  // El resultado, por proyecto (29-sep-2026). Del 03-ago al 29-sep este route respondió 200 con todos
+  // los proyectos en error (la fuente le devolvía el desafío del WAF: el GraphQL iba sin proxy) y no
+  // escribió una unidad. Ahora un proyecto que falla es un fallido, un upsert que falla tumba la corrida,
+  // y un batch con proyectos que no trae UNA sola unidad también es falla: la fuente no respondió.
+  const sinNinguna = delBatch.length > 0 && conUnidades.length === 0;
+  const conteo = upsertFallo || sinNinguna
+    ? { procesados: delBatch.length, exitosos: 0, fallidos: delBatch.length }
+    : { procesados: delBatch.length, exitosos: conUnidades.length + sinUnidades.length, fallidos: conError.length + (recon.errores.length ? 1 : 0) };
+  return cerrarCron(supabase, "scrape-unidades-nuevas", conteo, {
+    success: !upsertFallo && !sinNinguna,
     modo: "unidades-obra-nueva",
     batch,
     cicloDias: CICLO_DIAS,

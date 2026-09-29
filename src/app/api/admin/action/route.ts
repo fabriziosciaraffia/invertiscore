@@ -40,18 +40,15 @@ export async function POST(request: Request) {
     });
 
     const text = await res.text();
-    if (!res.ok) {
+    // Parcial (ver cron-resultado.ts): la corrida hizo algo, pero no todo. Hasta el 29-sep-2026 venía
+    // como 207; desde entonces toda falla responde 500 y lo parcial viaja en el body (`resultado`).
+    // Se propaga como bandera y no como status propio: el cliente decide cómo mostrarlo.
+    let resultado: string | null = null;
+    try { resultado = (JSON.parse(text) as { resultado?: string }).resultado ?? null; } catch { /* body no JSON */ }
+    const parcial = resultado === "parcial";
+    if (!res.ok && !parcial) {
       return NextResponse.json({ error: `Error ${res.status}: ${text.slice(0, 200)}` }, { status: 500 });
     }
-
-    // 207 = parcial (ver el criterio en cron-resultado.ts): la corrida hizo
-    // algo, pero no todo. Colapsarlo en `ok: true` era el motivo por el que el
-    // botón "Actualizar UF/Tasa" mostraba el check verde aunque la UF no se
-    // hubiera escrito — el proxy solo miraba `res.ok`, y 207 es 2xx.
-    //
-    // Se propaga como bandera y no como status propio: el proxy respondió bien,
-    // lo parcial es el resultado de la acción. El cliente decide cómo mostrarlo.
-    const parcial = res.status === 207;
     return NextResponse.json({ ok: !parcial, parcial, result: text.slice(0, 500) });
   } catch (error) {
     return NextResponse.json(

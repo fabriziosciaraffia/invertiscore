@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { captureApiWarning } from "@/lib/observabilidad";
 import { FUENTE_SENTRY, METRICA_ERRORES_1D, guardarMetrica } from "@/lib/metrics-daily";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { CORRIDA_FALLIDA, CORRIDA_OK, cerrarCron } from "@/lib/cron-resultado";
 
 /**
  * Cron · Conteo diario de errores de Sentry → metrics_daily.
@@ -81,9 +82,9 @@ export async function POST(request: Request) {
   const org = process.env.SENTRY_ORG;
   const proyecto = process.env.SENTRY_PROJECT;
 
-  // Config incompleta: se avisa una vez por corrida y se sale sin escribir. No
-  // es un 500 — el cron no está roto, le falta configuración, y devolver error
-  // haría que Vercel lo marque como fallo todas las noches.
+  // Config incompleta: se sale sin escribir, y CUENTA COMO FALLA (29-sep-2026). Antes respondía 200
+  // «para no pintar rojo todas las noches»; pero un cron que no mide falla en su trabajo, y el rojo con
+  // alerta es justo lo que pide una variable que falta.
   if (!token || !org || !proyecto) {
     const faltan = [
       !token && "SENTRY_AUTH_TOKEN",
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
       ruta: "GET /api/cron/sentry-metrics",
       operacion: "config-sentry-incompleta",
     });
-    return NextResponse.json({ ok: false, skipped: "config-incompleta", faltan });
+    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { skipped: "config-incompleta", faltan, error: `Faltan variables: ${faltan.join(", ")}` });
   }
 
   try {
@@ -152,10 +153,10 @@ export async function POST(request: Request) {
         operacion: "guardar-metrica",
         extra: { fecha: hoy, valor: total },
       });
-      return NextResponse.json({ ok: false, error: "escritura-fallida", valor: total });
+      return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { error: "escritura-fallida", valor: total });
     }
 
-    return NextResponse.json({ ok: true, fecha: hoy, errores: total, ventana: VENTANA });
+    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_OK, { fecha: hoy, errores: total, ventana: VENTANA });
   } catch (e) {
     // La API de Sentry falló. Se reporta y NO se escribe: un día sin fila se lee
     // como "sin dato", que es la verdad. Escribir 0 haría creer que hubo cero
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
       ruta: "GET /api/cron/sentry-metrics",
       operacion: "consultar-sentry",
     });
-    return NextResponse.json({ ok: false, error: "sentry-no-disponible" });
+    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { error: `sentry-no-disponible: ${String(e).slice(0, 200)}` });
   }
 }
 

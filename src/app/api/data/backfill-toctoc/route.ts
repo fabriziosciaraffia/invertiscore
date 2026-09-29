@@ -25,7 +25,7 @@ import {
   type Tramo,
 } from "@/lib/services/scraper/backfill-plan";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { captureApiError } from "@/lib/observabilidad";
 
 // ─── Backfill y refresco del universo TocToc (venta usada + arriendo) ────────
@@ -287,7 +287,7 @@ export async function GET(request: Request) {
     checkpoint = await leerCheckpoint(sb);
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "leer-checkpoint" });
-    return NextResponse.json({ error: String(e instanceof Error ? e.message : e) }, { status: 500 });
+    return cerrarCron(sb, "backfill-toctoc", CORRIDA_FALLIDA, { error: String(e instanceof Error ? e.message : e) });
   }
   // Activas del universo ANTES del primer upsert de esta invocación. Un pase
   // nuevo lo guarda como denominador de la salvaguarda; al reanudar se conserva
@@ -438,8 +438,7 @@ export async function GET(request: Request) {
   };
   console.log(`[backfill-toctoc] ${JSON.stringify({ ...resumen, checkpoint: cp })}`);
 
-  return respuestaCron(
+  return cerrarCron(sb, "backfill-toctoc",
     { procesados: parseadas, exitosos: escritas, fallidos: Math.max(0, parseadas - escritas) + cp.errores.length },
-    { ...resumen, checkpoint: cp },
-  );
+    { ...resumen, checkpoint: cp }, { registrar: !dry });
 }

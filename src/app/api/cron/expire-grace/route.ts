@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiError } from "@/lib/observabilidad";
-import { respuestaCron } from "@/lib/cron-resultado";
+import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/expire-grace";
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
   if (pdError) {
     console.error("[cron/expire-grace] past_due query error:", pdError);
     captureApiError(pdError, { ruta: RUTA, operacion: "query-past-due" });
-    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    return cerrarCron(supabase, "expire-grace", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
   // ── 2 · cancelled con ciclo vencido que aún tiene free pass (is_unlimited) ──
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
   if (cError) {
     console.error("[cron/expire-grace] cancelled query error:", cError);
     captureApiError(cError, { ruta: RUTA, operacion: "query-cancelled" });
-    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    return cerrarCron(supabase, "expire-grace", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
   let processed = 0;
@@ -197,8 +197,7 @@ export async function GET(request: Request) {
   console.error(
     `[cron/expire-grace] processed=${processed} cancelled=${cancelled} unlimitedRevoked=${unlimitedRevoked} fallidos=${fallidos}`
   );
-  return respuestaCron(
+  return cerrarCron(supabase, "expire-grace",
     { procesados: processed, exitosos: processed - fallidos, fallidos },
-    { cancelled, unlimitedRevoked },
-  );
+    { cancelled, unlimitedRevoked });
 }
