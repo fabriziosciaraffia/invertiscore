@@ -38,16 +38,21 @@ export const REGISTRO_UN_PASO = {
   titular: "Un correo y listo.",
   plumon: "Sin contraseña.",
   placeholder: "tu@correo.cl",
+  placeholderCodigo: "Código de 6 dígitos",
+  mandarCodigo: "Mandar el código",
   entrar: "Entrar",
   o: "o",
   google: "Seguir con Google",
-  pie: "Te mandamos un enlace para entrar. Este informe queda en tu cuenta.",
+  pie: "Te mandamos un código para entrar. Este informe queda en tu cuenta.",
   enviadoTitular: "Revisa tu correo.",
-  enviadoPlumon: "El enlace ya salió.",
-  enviadoCuerpo: (correo: string) => `Lo mandamos a ${correo}. Al abrirlo entras, y este informe queda en tu cuenta. Mientras tanto, sigue leyendo.`,
+  enviadoPlumon: "El código ya salió.",
+  enviadoCuerpo: (correo: string) => `Lo mandamos a ${correo}. Escríbelo acá y este informe queda en tu cuenta, sin salir de la página.`,
+  enlaceAlternativa: "El correo también trae un enlace: si lo abres, vuelves a este mismo informe con tu cuenta.",
   seguir: "Seguir leyendo",
   errorCorreo: "Ese correo no se entiende. Revísalo.",
-  errorEnvio: "No pudimos mandar el enlace. Intenta de nuevo.",
+  errorEnvio: "No pudimos mandar el código. Intenta de nuevo.",
+  errorCodigo: "El código son 6 dígitos.",
+  errorCodigoMal: "Ese código no sirve o venció. Pide otro.",
 } as const;
 
 export const TICKET_PACK = {
@@ -56,6 +61,13 @@ export const TICKET_PACK = {
   ahorro: (unitario: string, referencia: string) => `${unitario} por análisis en vez de ${referencia}.`,
   vence: (dia: "hoy" | "mañana" | "otro", hora: string) => (dia === "otro" ? `Vence a las ${hora}` : `Vence ${dia} a las ${hora}`),
   boton: (precio: string) => `Tomar los 3 por ${precio}`,
+  placeholderCorreo: "tu@correo.cl",
+  pagar: (precio: string) => `Pagar ${precio} con Flow`,
+  piePago: "Con tu correo queda tu cuenta, sin contraseña, y este informe adentro. Boleta al mismo correo.",
+  pestana: (precio: string, hora: string) => `3 análisis por ${precio} · hasta las ${hora}`,
+  errorCorreo: "Ese correo no se entiende. Revísalo.",
+  errorPago: "No pudimos abrir el pago. Intenta de nuevo.",
+  vencido: "Ese precio venció y no vuelve.",
   seguir: "Seguir leyendo",
   despedida: (hora: string) => `Vence a las ${hora} y no vuelve. ¿La dejas pasar?`,
   despedidaResumen: "3 análisis, hoy",
@@ -69,6 +81,12 @@ export const CIERRE_REGISTRO: Record<VeredictoLqs, string> = {
   "AJUSTA SUPUESTOS": "Los que convienen tal como están, primero para registrados. Sé de los primeros.",
   "BUSCAR OTRA": "Los que sí convienen, primero para registrados. Sé de los primeros.",
 };
+
+export const RETORNO_SIN_SESION = {
+  titulo: "Pago recibido.",
+  cuerpo: "Tus 3 análisis ya están en tu cuenta. Para entrar, pide tu código con el mismo correo del pago.",
+  boton: "Entrar con mi correo",
+} as const;
 
 export const CHECKOUT_PACK = {
   titulo: "Franco — 3 análisis",

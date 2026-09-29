@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
+import { RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,7 +15,7 @@ function PaymentReturnContent() {
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const order = searchParams.get("order");
-  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
+  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   // Estado puente: tras detectar paid de un single con análisis, mostramos
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
@@ -63,6 +65,12 @@ function PaymentReturnContent() {
         // Con order → identifica la compra exacta. Sin order (fallback legacy o
         // compras viejas sin el param) → status cae al "último pago del user".
         const res = await fetch(order ? `/api/payments/status?order=${encodeURIComponent(order)}` : "/api/payments/status");
+        // «Lo que sigue» (28-sep-2026): el pack se paga desde el ticket SIN sesión (la cuenta se crea con
+        // el correo). Flow vuelve acá sin sesión: el pago ya está en su cuenta; se le dice cómo entrar.
+        if (res.status === 401) {
+          setPaymentStatus("sin_sesion");
+          return;
+        }
         const data = await res.json();
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
@@ -210,6 +218,15 @@ function PaymentReturnContent() {
           </div>
         )}
 
+        {paymentStatus === "sin_sesion" && (
+          <div className="text-center" data-lqs="retorno-sin-sesion">
+            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{RETORNO_SIN_SESION.titulo}</h1>
+            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{RETORNO_SIN_SESION.cuerpo}</p>
+            <EnlaceCarga href="/registro?next=%2Fdashboard" className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
+              {RETORNO_SIN_SESION.boton}
+            </EnlaceCarga>
+          </div>
+        )}
         {paymentStatus === "error" && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 text-4xl">✕</div>

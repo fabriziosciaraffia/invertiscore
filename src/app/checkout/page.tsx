@@ -123,7 +123,8 @@ function CheckoutContent() {
         // Auth-gate único: sin sesión → a registro, preservando el product key
         // (y analysisId si vino) en ?next= para retomar la compra al volver.
         const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}${companionStrId ? `&companionStrId=${companionStrId}` : ""}`;
-        window.location.href = `/register?next=${encodeURIComponent(returnUrl)}`;
+        // «Lo que sigue» (28-sep-2026): /registro es la única puerta (correo con código, o Google).
+        window.location.href = `/registro?next=${encodeURIComponent(returnUrl)}`;
       } else {
         setAuthenticated(true);
       }
