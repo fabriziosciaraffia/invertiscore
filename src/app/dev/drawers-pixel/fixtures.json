@@ -42309,6 +42309,7 @@
     "uf": 40851,
     "created_at": "2026-08-15T13:33:31.687464+00:00",
     "input_data": {
+      "contribucionesOrigen": "declarada",
       "lat": -33.434713,
       "lng": -70.632352,
       "banos": 2,

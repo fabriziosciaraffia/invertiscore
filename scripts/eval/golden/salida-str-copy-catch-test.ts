@@ -75,6 +75,10 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   // −15% con el score de retorno sobre lo puesto (cash-on-cash y TIR como dimensiones: con
   // más pie la celda cruza antes). Lo que fija este bloque es que el cierre diga el MISMO
   // número que `descuentoQueAdemásPide`, no cuál es ese número.
+  // ACTA 29-sep-2026 (ACTAS-pesos-de-hoy.md): el fixture lleva `contribucionesOrigen: "declarada"`.
+  // Su contribución calzaba con la estimación anterior; con el DFL2 se re-estimaba, bajaba, y el
+  // precio solo alcanzaba: dejaba de ser estructural. El caso existe para el copy del estructural con
+  // mix, no para la contribución, así que se fija la que tenía.
   const h = distanciaDe("estructuralMixStr");
   const salidaH = salidaPorMixStr(h.valor);
   if (!h.valor.esEstructural || !salidaH) F("1 · estructuralMixStr tenía que ser estructural con combinación a COMPRAR");

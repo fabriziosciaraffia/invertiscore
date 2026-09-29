@@ -143,8 +143,11 @@ export function runAjustarSinCaminoTier(): { hard: number } {
     if (pd.descuentoPct != null && !capTexto.includes("La combinación más fácil")) F(`2 · ${id}: el capítulo no nombra la combinación que sí existe`);
     if (pd.descuentoPct != null && /no encontró una combinación/.test(capTexto)) F(`2 · ${id}: el capítulo dice «no encontró una combinación» donde la hay`);
   }
-  if (cambiadas + porPuntaje !== 52 || porPuntaje !== Object.keys(POR_PUNTAJE).length) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro por el filtro y ${porPuntaje} por el puntaje: la FASE 0 midió 52, y el acta exime ${Object.keys(POR_PUNTAJE).length}`);
-  if (grises < 2) F(`3 · PISO · ${grises} filas grises congeladas siguen en Ajustar: esperaba las 2`);
+  // PISO (29-sep-2026, re-baseline «todo en pesos de hoy», ACTAS-pesos-de-hoy.md): la FASE 0 midió 52;
+  // con el motor nuevo tres filas que pedían apenas sobre 20% (5e686d96, adc56a80, ee622897) quedan bajo
+  // el corte y vuelven a Ajustar. Quedan 49 en Buscar otro y 5 grises.
+  if (cambiadas + porPuntaje !== 49 || porPuntaje !== Object.keys(POR_PUNTAJE).length) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro por el filtro y ${porPuntaje} por el puntaje: el re-baseline del 29-sep dejó 49, y el acta exime ${Object.keys(POR_PUNTAJE).length}`);
+  if (grises < 5) F(`3 · PISO · ${grises} filas grises congeladas siguen en Ajustar: esperaba las 5`);
   for (const d of ["borde", "sin_camino", "gris"]) if (!designados.has(d)) F(`0 · falta el fixture «${d}»`);
 
   // ── 3 · la zona gris sobre la función pura ──

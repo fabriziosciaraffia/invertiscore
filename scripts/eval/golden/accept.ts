@@ -37,7 +37,9 @@ for (const s of BORDE_SEEDS) {
 
 const payload = {
   uf: GOLDEN_UF,
-  note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 25-sep-2026, " +
+  note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 29-sep-2026, " +
+    "«todo en pesos de hoy» + DFL2 con la regla del SII + montos SII 2S-2026 (ACTAS-pesos-de-hoy.md; GS-2 pasa de AJUSTA a " +
+    "COMPRAR, 11 seeds con drift de cifra). Anterior: 25-sep-2026, " +
     "entra celdaRecomendada, la recomendación de Franco (ACTAS-recomendacion-franco.md; cambia GS-5 por el criterio del 24-sep, " +
     "ningún otro campo se mueve). Anterior: 22-sep-2026, " +
     "«el sobreprecio de hoy se descuenta plano en la venta» (variante B; GS-2 pasa de COMPRAR a AJUSTA) — acta por seed " +

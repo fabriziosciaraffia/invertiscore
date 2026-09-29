@@ -33,6 +33,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runAnalysis, calcFlujoDesglose } from "../../../src/lib/analysis";
 import { provisionMantencionAnio, calcMantencionMensual, getMantencionRateLegacy } from "../../../src/lib/modelo-costos";
+import { crecimientoReal } from "../../../src/lib/plusvalia-proyeccion";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import type { AnalisisInput } from "../../../src/lib/types";
 
@@ -64,8 +65,12 @@ export function runMantencionUnaSolaTier(): { hard: number } {
   const m1Decl = mantencionAnio1(rDecl, { ...base, provisionMantencion: 45000 });
   if (m1Decl !== 45000) F(`1 · el año 1 del loop ignora la provisión declarada (dio ${m1Decl}, esperaba 45.000)`);
   const p2 = (rDecl.projections ?? [])[1];
-  const d2 = calcFlujoDesglose({ arriendo: 0, dividendo: 0, ggcc: rDecl.metrics.gastos * 1.03, contribuciones: rDecl.metrics.contribuciones * 1.03, mantencion: 0, vacanciaMeses: base.vacanciaMeses });
-  if (p2 && Math.round(p2.gastosOperativosAnual! / 12) - d2.ggccVacancia - d2.contribucionesMes !== Math.round(45000 * 1.03)) F("1 · el año 2 no reajusta la declarada con la inflación de costos");
+  // Desde el 29-sep-2026 la proyección va en pesos de hoy (ACTAS-pesos-de-hoy.md): los costos crecen
+  // su tasa REAL, (1 + 3%) / (1 + 3%) − 1 = 0. La regla es la misma —la declarada se reajusta con el
+  // factor de los costos—; el factor pasa de 1,03 a 1 + crecimientoReal(3%).
+  const fCostos = 1 + crecimientoReal(0.03);
+  const d2 = calcFlujoDesglose({ arriendo: 0, dividendo: 0, ggcc: rDecl.metrics.gastos * fCostos, contribuciones: rDecl.metrics.contribuciones * fCostos, mantencion: 0, vacanciaMeses: base.vacanciaMeses });
+  if (p2 && Math.round(p2.gastosOperativosAnual! / 12) - d2.ggccVacancia - d2.contribucionesMes !== Math.round(45000 * fCostos)) F("1 · el año 2 no reajusta la declarada con el crecimiento real de los costos");
 
   // 2 · legacy sin el +1: borde de banda
   if (getMantencionRateLegacy(2) === getMantencionRateLegacy(3)) F("2 · PISO · el fixture ya no está en un borde de banda legacy (2 → 3)");

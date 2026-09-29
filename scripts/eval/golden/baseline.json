@@ -1,6 +1,6 @@
 {
   "uf": 38800,
-  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 25-sep-2026, entra celdaRecomendada, la recomendación de Franco (ACTAS-recomendacion-franco.md; cambia GS-5 por el criterio del 24-sep, ningún otro campo se mueve). Anterior: 22-sep-2026, «el sobreprecio de hoy se descuenta plano en la venta» (variante B; GS-2 pasa de COMPRAR a AJUSTA) — acta por seed en ACTAS-sobreprecio-venta.md. Anteriores: 21-sep-2026 «la provisión de mantención es una» (ACTAS-mantencion-una-sola.md); 12-sep-2026 «rentabilidad sobre lo puesto en el score» (ACTAS-score-retorno.md).",
+  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 29-sep-2026, «todo en pesos de hoy» + DFL2 con la regla del SII + montos SII 2S-2026 (ACTAS-pesos-de-hoy.md; GS-2 pasa de AJUSTA a COMPRAR, 11 seeds con drift de cifra). Anterior: 25-sep-2026, entra celdaRecomendada, la recomendación de Franco (ACTAS-recomendacion-franco.md; cambia GS-5 por el criterio del 24-sep, ningún otro campo se mueve). Anterior: 22-sep-2026, «el sobreprecio de hoy se descuenta plano en la venta» (variante B; GS-2 pasa de COMPRAR a AJUSTA) — acta por seed en ACTAS-sobreprecio-venta.md. Anteriores: 21-sep-2026 «la provisión de mantención es una» (ACTAS-mantencion-una-sola.md); 12-sep-2026 «rentabilidad sobre lo puesto en el score» (ACTAS-score-retorno.md).",
   "seeds": {
     "GS-1": {
       "veredicto": "COMPRAR",
@@ -17,21 +17,20 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 9,
+      "capRatePct": 9.04,
       "sobreprecioPct": -10,
-      "flujoNetoMensual": 210102,
-      "tirPct": 21.26,
+      "flujoNetoMensual": 214062,
+      "tirPct": 20.61,
       "patrimonioMult": 3.34,
       "celdaRecomendada": null
     },
     "GS-2": {
-      "veredicto": "AJUSTA SUPUESTOS",
-      "score": 69,
-      "N": 9,
-      "corona": "sobreprecio",
+      "veredicto": "COMPRAR",
+      "score": 70,
+      "N": 8,
+      "corona": "cap_rate",
       "hallazgoIds": [
         "cap_rate",
-        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -43,14 +42,9 @@
       "capRatePct": 4.58,
       "sobreprecioPct": 33,
       "flujoNetoMensual": -18161,
-      "tirPct": 7.09,
-      "patrimonioMult": 1.96,
-      "celdaRecomendada": {
-        "via": "mix",
-        "piePct": 30,
-        "plazoAnios": 30,
-        "descuentoPct": 0
-      }
+      "tirPct": 7.12,
+      "patrimonioMult": 1.97,
+      "celdaRecomendada": null
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -69,11 +63,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 6.39,
+      "capRatePct": 6.43,
       "sobreprecioPct": 70,
-      "flujoNetoMensual": -62932,
-      "tirPct": -0.01,
-      "patrimonioMult": 1,
+      "flujoNetoMensual": -58972,
+      "tirPct": 0.53,
+      "patrimonioMult": 1.05,
       "celdaRecomendada": {
         "via": "mix",
         "piePct": 30,
@@ -83,7 +77,7 @@
     },
     "GS-4": {
       "veredicto": "BUSCAR OTRA",
-      "score": 34,
+      "score": 35,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -97,16 +91,16 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 3.07,
+      "capRatePct": 3.11,
       "sobreprecioPct": 78,
-      "flujoNetoMensual": -349755,
-      "tirPct": -8.72,
-      "patrimonioMult": 0.57,
+      "flujoNetoMensual": -344528,
+      "tirPct": -6.91,
+      "patrimonioMult": 0.62,
       "celdaRecomendada": null
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 60,
+      "score": 61,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -120,11 +114,11 @@
         "sensibilidad",
         "tir"
       ],
-      "capRatePct": 5.02,
+      "capRatePct": 5.07,
       "sobreprecioPct": null,
-      "flujoNetoMensual": -95180,
-      "tirPct": 9.41,
-      "patrimonioMult": 2.17,
+      "flujoNetoMensual": -90858,
+      "tirPct": 9.81,
+      "patrimonioMult": 2.29,
       "celdaRecomendada": {
         "via": "mix",
         "piePct": 30,
@@ -134,7 +128,7 @@
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 26,
+      "score": 27,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -148,11 +142,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.98,
+      "capRatePct": 3.1,
       "sobreprecioPct": 90,
-      "flujoNetoMensual": -614713,
-      "tirPct": -19.68,
-      "patrimonioMult": 0.38,
+      "flujoNetoMensual": -593848,
+      "tirPct": -15.32,
+      "patrimonioMult": 0.43,
       "celdaRecomendada": null
     },
     "GS-7": {
@@ -170,11 +164,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.85,
+      "capRatePct": 2.89,
       "sobreprecioPct": 59,
-      "flujoNetoMensual": -329290,
-      "tirPct": -10.19,
-      "patrimonioMult": 0.61,
+      "flujoNetoMensual": -324799,
+      "tirPct": -7,
+      "patrimonioMult": 0.68,
       "celdaRecomendada": null
     },
     "GS-PC1": {
@@ -194,7 +188,7 @@
       "sobreprecioPct": null,
       "flujoNetoMensual": -391840,
       "tirPct": null,
-      "patrimonioMult": 1.62,
+      "patrimonioMult": 1.85,
       "celdaRecomendada": null
     },
     "GS-PC2": {
@@ -237,8 +231,8 @@
       "capRatePct": 5.8,
       "sobreprecioPct": 0,
       "flujoNetoMensual": -22624,
-      "tirPct": 11.24,
-      "patrimonioMult": 2.76,
+      "tirPct": 11.32,
+      "patrimonioMult": 2.8,
       "celdaRecomendada": {
         "via": "mix",
         "piePct": 30,
@@ -262,10 +256,10 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 9.97,
+      "capRatePct": 10.02,
       "sobreprecioPct": 11,
-      "flujoNetoMensual": 282091,
-      "tirPct": 22.87,
+      "flujoNetoMensual": 286051,
+      "tirPct": 21.92,
       "patrimonioMult": 2.83,
       "celdaRecomendada": null
     },
@@ -285,11 +279,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.67,
+      "capRatePct": 2.71,
       "sobreprecioPct": 91,
-      "flujoNetoMensual": -424515,
-      "tirPct": -12.54,
-      "patrimonioMult": 0.47,
+      "flujoNetoMensual": -419016,
+      "tirPct": -10.21,
+      "patrimonioMult": 0.51,
       "celdaRecomendada": null
     },
     "BE-sensibilidad": {
@@ -308,10 +302,10 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 6.59,
+      "capRatePct": 6.64,
       "sobreprecioPct": 67,
-      "flujoNetoMensual": 34716,
-      "tirPct": 6.4,
+      "flujoNetoMensual": 38766,
+      "tirPct": 6.32,
       "patrimonioMult": 1.53,
       "celdaRecomendada": null
     }
