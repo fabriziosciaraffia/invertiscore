@@ -1,0 +1,41 @@
+<!-- GENERADO por scripts/emails/generar-supabase-codigo.ts desde src/lib/email/plantilla-clara.ts.
+     No se edita a mano. Se pega en Supabase → Authentication → Email Templates, en «Confirm signup»
+     y en «Magic Link». Asunto sugerido: «Tu código para entrar a Franco: {{ .Token }}». -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Tu código para entrar a Franco</title>
+</head>
+<body style="margin: 0; padding: 0; background: #FAFAF8;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #FAFAF8;">
+    <tr>
+      <td align="center" style="padding: 28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
+          <tr><td style="padding: 0 0 28px 0;"><span style="font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 1; color: #0F0F0F;"><span style="color: #B4B2A9;">re</span><span style="font-weight: 700;">franco</span><span style="font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #C8323C;">.ai</span></span></td></tr>
+          <tr><td style="padding: 0 0 26px 0; font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-size: 24px; line-height: 1.2; font-weight: 700; color: #0F0F0F;">Tu código para entrar</td></tr>
+          <tr><td style="padding: 0 0 14px 0; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #3B3A36;">Escríbelo en el informe, donde lo pediste. Vale una hora.</td></tr>
+          <tr><td style="padding: 6px 0 22px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td align="center" style="padding: 22px 16px; border: 1px solid #DDDDE1; border-radius: 16px; background: #FFFFFF; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #0F0F0F;">{{ .Token }}</td>
+  </tr></table>
+</td></tr>
+          <tr><td style="padding: 8px 0 22px 0;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="border-radius: 999px; background: #0F0F0F;">
+      <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 26px; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #FAFAF8; text-decoration: none; border-radius: 999px;">Entrar con el enlace</a>
+    </td>
+  </tr></table>
+</td></tr>
+          <tr><td style="padding: 0 0 14px 0; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #3B3A36;">El enlace hace lo mismo que el código: te deja en el mismo informe, ya con tu cuenta.</td></tr>
+          <tr><td style="padding: 0 0 14px 0; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #3B3A36;">Si no pediste este código, no hagas nada: sin él nadie entra a tu cuenta.</td></tr>
+          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid #DDDDE1; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.6; color: #6B6B72;">Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.<br><a href="https://refranco.ai" style="color: #6B6B72; text-decoration: none;">refranco.ai</a></td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
