@@ -16,12 +16,16 @@
 //    reavalúo 2018» que circula es la exención general de ese año, no un tope.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Valores del cálculo. El avalúo fiscal se aproxima como 70% del valor comercial.
+// Valores del cálculo, vigentes desde el 1-jul-2026 (SII, reajuste semestral por IPC; tasas del
+// reavalúo habitacional 2022). Hasta el 29-sep-2026 el código traía las tasas y el tramo del
+// reavalúo 2018 (0,933% / 1,088%, cambio en $118,6M) y una exención general atrasada ($57M).
+// Se reajustan cada 1 de enero y 1 de julio: al actualizar, cambiar los dos montos juntos.
+// El avalúo fiscal se aproxima como 70% del valor comercial (supuesto de Franco, no del SII).
 const RATIO_AVALUO_COMERCIAL = 0.70;
-const EXENCION_GENERAL = 57_000_000;  // ~$57M primer semestre 2025
-const CAMBIO_TASA = 118_571_000;      // Monto donde cambia de tasa 1 a tasa 2
-const TASA_1 = 0.00933;               // 0,933% anual hasta monto cambio de tasa
-const TASA_2 = 0.01088;               // 1,088% anual sobre monto cambio de tasa
+const EXENCION_GENERAL = 61_711_570;  // exención habitacional, 2º semestre 2026
+const CAMBIO_TASA = 220_398_431;      // avalúo donde cambia de tasa, 2º semestre 2026
+const TASA_1 = 0.00893;               // 0,893% anual hasta el monto de cambio de tasa
+const TASA_2 = 0.01042;               // 1,042% anual sobre ese monto
 const SOBRETASA_TRAMO_2 = 0.00025;    // 0,025% sobre el tramo de la tasa mayor
 
 /** Los parámetros vigentes, para que el golden recalcule el caso a mano. */

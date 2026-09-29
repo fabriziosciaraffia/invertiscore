@@ -36,6 +36,17 @@ function sii(precioCLP: number, dfl2Vigente: boolean): number {
   return Math.round((t1 * P.TASA_1 + t2 * P.TASA_2 + (t2 > 0 ? t2 * P.SOBRETASA_TRAMO_2 : 0)) / 4);
 }
 
+/** La estimación de ANTES del 29-sep-2026 (constantes del reavalúo 2018, DFL2 anulado): así están
+ *  guardadas las filas viejas. Congelada acá igual que en contribuciones.ts. */
+function siiAnterior(precioCLP: number): number {
+  const avaluo = precioCLP * 0.7;
+  const afecto = Math.max(0, avaluo - 57_000_000);
+  if (afecto <= 0) return 0;
+  const t1 = Math.max(0, Math.min(afecto, 118_571_000 - 57_000_000));
+  const t2 = Math.max(0, afecto - t1);
+  return Math.round((t1 * 0.00933 + t2 * 0.01088 + (t2 > 0 ? t2 * 0.00025 : 0)) / 4);
+}
+
 export function runDfl2Tier(): { hard: number } {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
@@ -64,7 +75,7 @@ export function runDfl2Tier(): { hard: number } {
   if (estimarContribuciones(alto, { superficieM2: 150, aniosDesdeRecepcion: 0 }) !== estimarContribuciones(alto, null)) F("2 · un depto de más de 140 m² recibe el DFL2");
 
   // ── 3 · Las filas guardadas ──────────────────────────────────────────────
-  const legacy = sii(alto, false); // la estimación anterior (el Math.max anulaba el DFL2)
+  const legacy = siiAnterior(alto); // la estimación anterior (el Math.max anulaba el DFL2)
   if (!esEstimacionAnterior(legacy, alto)) F("3 · la estimación anterior no se reconoce como estimada");
   const r1 = resolverContribuciones({ declarada: legacy, precioCLP: alto, superficieM2: 60, aniosDesdeRecepcion: 0 });
   if (!r1.estimada || r1.trimestral !== sii(alto, true)) F("3 · una fila con la estimación anterior no se re-estima con DFL2");
