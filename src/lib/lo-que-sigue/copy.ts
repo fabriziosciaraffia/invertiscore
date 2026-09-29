@@ -38,7 +38,7 @@ export const REGISTRO_UN_PASO = {
   titular: "Un correo y listo.",
   plumon: "Sin contraseña.",
   placeholder: "tu@correo.cl",
-  placeholderCodigo: "Código de 6 dígitos",
+  placeholderCodigo: "Código",
   mandarCodigo: "Mandar el código",
   entrar: "Entrar",
   o: "o",

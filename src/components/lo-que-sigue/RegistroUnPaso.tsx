@@ -4,6 +4,10 @@
 // El registro en un paso (28-sep-2026, ajuste 4): un correo → Franco manda un CÓDIGO de 6 dígitos
 // (y el enlace, como alternativa) con `signInWithOtp`; el código se escribe en el mismo formulario,
 // sin salir del informe (`verifyOtp`), y al entrar el análisis anónimo se reclama y queda ligado.
+// SUPABASE MANDA DOS PLANTILLAS con el mismo llamado (confirmado 29-sep-2026): «Confirm signup» si el
+// correo es nuevo (shouldCreateUser lo crea) y «Magic Link» si ya existe. El código se verifica igual
+// en los dos casos: `verifyOtp({ type: "email" })` cubre signup y magiclink (los tipos 'signup' y
+// 'magiclink' quedaron obsoletos en auth-js). Las dos plantillas llevan el mismo HTML.
 // Si se usa el enlace, vuelve por /auth/callback al mismo informe con la cuenta ligada. Google va
 // por OAuth y vuelve igual. Eventos: registro_iniciado {via}; registro_completado {via} al entrar
 // (por código, acá mismo; por enlace o Google, la sonda al volver).

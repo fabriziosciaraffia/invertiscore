@@ -68,6 +68,7 @@
 .lqs-tk .lqs-tk-error { margin: 8px 0 0; font: 13px var(--font-ui), "Inter", system-ui, sans-serif; color: #C8323C; }
 .lqs-tk .lqs-tk-pie { margin: 10px 0 0; font: 12px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); }
 .lqs-reg .lqs-codigo { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; font-weight: 600; }
+.lqs-reg .lqs-codigo::placeholder { letter-spacing: 0; font-weight: 400; }
 
 /* ── B · el ticket del pack: el velo se funde aparte, la hoja sube opaca por el mismo borde ── */
 .lqs-velo { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
