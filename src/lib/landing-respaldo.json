@@ -7,32 +7,46 @@
       "cifra": {
         "tipo": "monto",
         "caso": "flujo_negativo_ltr",
-        "valorClp": 550450,
-        "valorUf": 13.46040984007434,
+        "valorClp": 541439,
+        "valorUf": 13.240059666454737,
         "signo": -1
       },
       "comuna": "Santiago",
       "detalle": "2D1B 60 m²",
-      "score": 26,
+      "score": 27,
       "modalidad": "Renta larga",
       "hallazgo": {
-        "id": "flujo_mensual",
-        "tipo": "aporte_mensual",
+        "id": "cap_rate",
+        "tipo": "rentabilidad_operativa",
         "valor": {
-          "flujoNetoMensualCLP": -550450,
-          "dividendoMensualCLP": 884372,
-          "ratioSobreDividendo": 0.62,
-          "modalidad": "ltr"
+          "capRatePct": 2.1,
+          "sujetoPct": 2.8,
+          "capRefPct": 4.8,
+          "base": "bruta",
+          "nivel": "celda",
+          "gapPts": -2,
+          "banda": 2,
+          "fuente": "avisos de arriendo (375) y de venta (1365) de Santiago, usado, 2D, 48–72 m², últimos 90 días: precios y arriendos pedidos, no cerrados",
+          "scope": "comuna",
+          "modalidad": "ltr",
+          "bdoNeto": 3,
+          "nArriendo": 375,
+          "nVenta": 1365,
+          "arriendoProxyUsado": false,
+          "celda": "Santiago · usado · 2D · 48–72 m²",
+          "comuna": "Santiago",
+          "celdaDormitorios": 2,
+          "ventanaDias": 90
         },
         "direccion": "adverso",
         "decisividad": 1,
         "magnitudContinua": 1,
         "procedencia": {
-          "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
+          "base": "Rentabilidad bruta sobre tu arriendo y precio declarados, contra la bruta de la referencia; el cap rate neto descuenta gastos, vacancia y gestión",
           "confianza": "alta"
         },
-        "titular": "Pones plata de tu bolsillo todos los meses.",
-        "fraseCanonica": "Tienes que poner $550.450 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata que sale de tu bolsillo todos los meses, no del arriendo."
+        "titular": "Rinde bajo lo que el mercado exige acá.",
+        "fraseCanonica": "Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos— es 2,8% — 2,0 pts bajo lo que rinden los avisos de Santiago · usado · 2D · 48–72 m² (4,8%). Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona."
       },
       "valorUF": 40894,
       "card": {
@@ -58,33 +72,33 @@
       "cifra": {
         "tipo": "monto",
         "caso": "flujo_negativo_ltr",
-        "valorClp": 283194,
-        "valorUf": 7.079673008174796,
+        "valorClp": 259761,
+        "valorUf": 6.4938626534336645,
         "signo": -1
       },
       "comuna": "Providencia",
       "detalle": "2D2B 60 m²",
-      "score": 62,
+      "score": 65,
       "modalidad": "Renta larga",
       "hallazgo": {
         "id": "flujo_mensual",
         "tipo": "aporte_mensual",
         "valor": {
-          "flujoNetoMensualCLP": -283194,
+          "flujoNetoMensualCLP": -259761,
           "dividendoMensualCLP": 978290,
-          "ratioSobreDividendo": 0.29,
+          "ratioSobreDividendo": 0.27,
           "modalidad": "ltr",
           "consuelo": "estable"
         },
         "direccion": "adverso",
         "decisividad": 0.85,
-        "magnitudContinua": 0.4,
+        "magnitudContinua": 0.36,
         "procedencia": {
           "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
           "confianza": "alta"
         },
         "titular": "Pones algo de tu bolsillo cada mes.",
-        "fraseCanonica": "Tienes que poner $283.194 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo aguanta sin apuro; eso sí, la plusvalía histórica de la comuna no está para compensarlo."
+        "fraseCanonica": "Tienes que poner $259.761 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo aguanta sin apuro; eso sí, la plusvalía histórica de la comuna no está para compensarlo."
       },
       "valorUF": 40001,
       "card": {
@@ -93,20 +107,20 @@
           "contexto": null,
           "filas": [
             {
+              "titulo": "Subir el arriendo",
+              "nombre": "arriendo",
+              "rotuloCorto": "Solo el arriendo",
+              "quien": "mercado",
+              "cifra": "+23,1%",
+              "objetivo": "$1.181.063"
+            },
+            {
               "titulo": "Bajar el precio",
               "nombre": "precio",
               "rotuloCorto": "Solo el precio",
               "quien": "vendedor",
               "cifra": "−24,1%",
               "objetivo": "$167.004.175"
-            },
-            {
-              "titulo": "Subir el arriendo",
-              "nombre": "arriendo",
-              "rotuloCorto": "Solo el arriendo",
-              "quien": "mercado",
-              "cifra": "+25,7%",
-              "objetivo": "$1.205.813"
             }
           ],
           "mix": {
@@ -145,22 +159,22 @@
             "veredictoObjetivo": "COMPRAR",
             "palancas": [
               {
+                "palanca": "arriendo",
+                "objetivo": 1181063,
+                "actual": 960000,
+                "deltaPct": 23.1,
+                "deltaAbs": 221063,
+                "destino": "COMPRAR",
+                "score": 78
+              },
+              {
                 "palanca": "precio",
                 "objetivo": 4175,
                 "actual": 5500,
                 "deltaPct": -24.1,
                 "deltaAbs": -1325,
                 "destino": "COMPRAR",
-                "score": 79
-              },
-              {
-                "palanca": "arriendo",
-                "objetivo": 1205813,
-                "actual": 960000,
-                "deltaPct": 25.7,
-                "deltaAbs": 245813,
-                "destino": "COMPRAR",
-                "score": 77
+                "score": 80
               }
             ],
             "vias": [
@@ -172,17 +186,17 @@
                 "deltaPct": -24.1,
                 "deltaAbs": -1325,
                 "destino": "COMPRAR",
-                "score": 79
+                "score": 80
               },
               {
                 "estado": "cruza",
                 "palanca": "arriendo",
-                "objetivo": 1205813,
+                "objetivo": 1181063,
                 "actual": 960000,
-                "deltaPct": 25.7,
-                "deltaAbs": 245813,
+                "deltaPct": 23.1,
+                "deltaAbs": 221063,
                 "destino": "COMPRAR",
-                "score": 77
+                "score": 78
               },
               {
                 "estado": "noCruza",
@@ -200,13 +214,13 @@
               }
             ],
             "palancaMasBarata": {
-              "palanca": "precio",
-              "objetivo": 4175,
-              "actual": 5500,
-              "deltaPct": -24.1,
-              "deltaAbs": -1325,
+              "palanca": "arriendo",
+              "objetivo": 1181063,
+              "actual": 960000,
+              "deltaPct": 23.1,
+              "deltaAbs": 221063,
               "destino": "COMPRAR",
-              "score": 79
+              "score": 78
             },
             "palancaHastaComprar": null,
             "palancasHastaComprar": null,
@@ -220,9 +234,9 @@
                   "esActual": true,
                   "esElegida": false,
                   "veredicto": "COMPRAR",
-                  "score": 79,
+                  "score": 80,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 62,
+                  "scoreSinDescuento": 65,
                   "descuentoPct": 24.1,
                   "costoDiaUnoUF": -265,
                   "costoPtsPrecio": -4.8,
@@ -232,7 +246,7 @@
                     "flujoMensual": -47426,
                     "cocPct": -1.41,
                     "capRateNetoPct": 5,
-                    "tirPct": 11.13
+                    "tirPct": 14.53
                   },
                   "coronaDe": [
                     "score",
@@ -245,9 +259,9 @@
                   "esActual": false,
                   "esElegida": false,
                   "veredicto": "COMPRAR",
-                  "score": 77,
+                  "score": 79,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 66,
+                  "scoreSinDescuento": 68,
                   "descuentoPct": 16.7,
                   "costoDiaUnoUF": -184,
                   "costoPtsPrecio": -3.3,
@@ -257,7 +271,7 @@
                     "flujoMensual": -47764,
                     "cocPct": -1.31,
                     "capRateNetoPct": 4.6,
-                    "tirPct": 10.32
+                    "tirPct": 13.69
                   },
                   "coronaDe": []
                 },
@@ -267,9 +281,9 @@
                   "esActual": false,
                   "esElegida": false,
                   "veredicto": "COMPRAR",
-                  "score": 78,
+                  "score": 79,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 65,
+                  "scoreSinDescuento": 68,
                   "descuentoPct": 19,
                   "costoDiaUnoUF": 14,
                   "costoPtsPrecio": 0.3,
@@ -279,7 +293,7 @@
                     "flujoMensual": -47793,
                     "cocPct": -1.11,
                     "capRateNetoPct": 4.7,
-                    "tirPct": 9.75
+                    "tirPct": 13.1
                   },
                   "coronaDe": []
                 },
@@ -289,9 +303,9 @@
                   "esActual": false,
                   "esElegida": false,
                   "veredicto": "COMPRAR",
-                  "score": 76,
+                  "score": 78,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 68,
+                  "scoreSinDescuento": 70,
                   "descuentoPct": 11.2,
                   "costoDiaUnoUF": 121,
                   "costoPtsPrecio": 2.2,
@@ -301,7 +315,7 @@
                     "flujoMensual": -47318,
                     "cocPct": -1.01,
                     "capRateNetoPct": 4.3,
-                    "tirPct": 9.03
+                    "tirPct": 12.36
                   },
                   "coronaDe": []
                 },
@@ -311,9 +325,9 @@
                   "esActual": false,
                   "esElegida": false,
                   "veredicto": "COMPRAR",
-                  "score": 77,
+                  "score": 78,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 67,
+                  "scoreSinDescuento": 70,
                   "descuentoPct": 13.3,
                   "costoDiaUnoUF": 331,
                   "costoPtsPrecio": 6,
@@ -323,7 +337,7 @@
                     "flujoMensual": -47059,
                     "cocPct": -0.87,
                     "capRateNetoPct": 4.4,
-                    "tirPct": 8.65
+                    "tirPct": 11.96
                   },
                   "coronaDe": []
                 },
@@ -333,9 +347,9 @@
                   "esActual": false,
                   "esElegida": true,
                   "veredicto": "COMPRAR",
-                  "score": 73,
+                  "score": 74,
                   "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-                  "scoreSinDescuento": 70,
+                  "scoreSinDescuento": 72,
                   "descuentoPct": 4.9,
                   "costoDiaUnoUF": 469,
                   "costoPtsPrecio": 8.5,
@@ -345,20 +359,20 @@
                     "flujoMensual": -46983,
                     "cocPct": -0.8,
                     "capRateNetoPct": 4,
-                    "tirPct": 8.01
+                    "tirPct": 11.3
                   },
                   "coronaDe": [
                     "flujo"
                   ]
                 }
               ],
-              "score": 73,
+              "score": 74,
               "despues": {
                 "cuotaMensual": 742079,
                 "flujoMensual": -46983,
                 "cocPct": -0.8,
                 "capRateNetoPct": 4,
-                "tirPct": 8.01
+                "tirPct": 11.3
               },
               "descuentoPct": 4.9,
               "sinDescuento": false,
@@ -397,13 +411,13 @@
                   "costoPtsPrecio": -4.8,
                   "topePtsPrecio": 15,
                   "dentroDeSuTope": true,
-                  "score": 79,
+                  "score": 80,
                   "metricas": {
                     "cuotaMensual": 742522,
                     "flujoMensual": -47426,
                     "cocPct": -1.41,
                     "capRateNetoPct": 5,
-                    "tirPct": 11.13
+                    "tirPct": 14.53
                   }
                 },
                 {
@@ -421,13 +435,13 @@
                   "costoPtsPrecio": -4.8,
                   "topePtsPrecio": 15,
                   "dentroDeSuTope": true,
-                  "score": 79,
+                  "score": 80,
                   "metricas": {
                     "cuotaMensual": 742522,
                     "flujoMensual": -47426,
                     "cocPct": -1.41,
                     "capRateNetoPct": 5,
-                    "tirPct": 11.13
+                    "tirPct": 14.53
                   }
                 },
                 {
@@ -443,13 +457,13 @@
                   "costoPtsPrecio": 8.5,
                   "topePtsPrecio": 25,
                   "dentroDeSuTope": true,
-                  "score": 73,
+                  "score": 74,
                   "metricas": {
                     "cuotaMensual": 742079,
                     "flujoMensual": -46983,
                     "cocPct": -0.8,
                     "capRateNetoPct": 4,
-                    "tirPct": 8.01
+                    "tirPct": 11.3
                   }
                 }
               ],
@@ -460,7 +474,7 @@
             "esEstructural": false,
             "deltaMinimoFueraDeTope": null,
             "topePct": 30,
-            "cercaniaUmbral": 0.19666666666666666,
+            "cercaniaUmbral": 0.22999999999999998,
             "brazosGate1Activos": [],
             "pieEsPalanca": true,
             "pieExcluidoPorBono": false,
@@ -474,8 +488,8 @@
             "base": "Reevaluación del veredicto subiendo el pie, subiendo el arriendo, bajando el precio y estirando el plazo, una palanca a la vez",
             "confianza": "alta"
           },
-          "titular": "Está cerca del veredicto de arriba por el lado del precio.",
-          "fraseCanonica": "Tu veredicto AJUSTA SUPUESTOS pasa a COMPRAR si cierras en UF 4.175 en vez de UF 5.500 —un 24,1% menos—. Es una diferencia de negociación, no de otro departamento. Hay otra vía que también cruza; la tabla las compara."
+          "titular": "Está cerca del veredicto de arriba por el lado del arriendo.",
+          "fraseCanonica": "Tu veredicto AJUSTA SUPUESTOS pasa a COMPRAR si el arriendo llega a $1.181.063 al mes —un 23,1% sobre los $960.000 que declaraste—. Antes de descartarlo, confirma ese techo de arriendo contra publicaciones reales de la zona. Hay otra vía que también cruza; la tabla las compara."
         },
         "mixComprar": null,
         "precioUF": 5500,
@@ -487,61 +501,61 @@
         },
         "antes": {
           "cuotaMensual": 978290,
-          "flujoMensual": -283194,
-          "cocPct": -6.54,
-          "capRateNetoPct": 3.8,
-          "tirPct": 7.82,
-          "score": 62
+          "flujoMensual": -259761,
+          "cocPct": -5.99,
+          "capRateNetoPct": 3.9,
+          "tirPct": 11.93,
+          "score": 65
         }
       }
     },
     {
-      "id": "515b7aed-da7d-4ea8-b94a-9769c3b20930",
+      "id": "91736841-0dfe-45d5-ad10-6c710be7fb8f",
       "veredicto": "COMPRAR",
-      "titular": "Conviene, y el veredicto es fuerte: **el arriendo aguanta 18,5% menos**.",
+      "titular": "Conviene, y el veredicto es fuerte: **el arriendo aguanta 15,5% menos**.",
       "cifra": {
         "tipo": "monto",
         "caso": "comprar_excedente",
-        "valorClp": 60750,
-        "valorUf": 1.4802270899831875,
+        "valorClp": 46239,
+        "valorUf": 1.1266538339709071,
         "signo": 1
       },
       "comuna": "San Miguel",
-      "detalle": "2D1B 41 m²",
-      "score": 81,
+      "detalle": "2D1B 43 m²",
+      "score": 80,
       "modalidad": "Renta larga",
       "hallazgo": {
         "id": "cap_rate",
         "tipo": "rentabilidad_operativa",
         "valor": {
-          "capRatePct": 5.4,
-          "sujetoPct": 6.1,
-          "capRefPct": 4.7,
+          "capRatePct": 5.2,
+          "sujetoPct": 5.8,
+          "capRefPct": 4.6,
           "base": "bruta",
           "nivel": "celda",
-          "gapPts": 1.4,
+          "gapPts": 1.2,
           "banda": 2,
-          "fuente": "avisos de arriendo (107) y de venta (254) de San Miguel, usado, 2D, 33–49 m², últimos 90 días: precios y arriendos pedidos, no cerrados",
+          "fuente": "avisos de arriendo (134) y de venta (311) de San Miguel, usado, 2D, 34–52 m², últimos 90 días: precios y arriendos pedidos, no cerrados",
           "scope": "comuna",
           "modalidad": "ltr",
           "bdoNeto": 3.5,
-          "nArriendo": 107,
-          "nVenta": 254,
+          "nArriendo": 134,
+          "nVenta": 311,
           "arriendoProxyUsado": false,
-          "celda": "San Miguel · usado · 2D · 33–49 m²",
+          "celda": "San Miguel · usado · 2D · 34–52 m²",
           "comuna": "San Miguel",
           "celdaDormitorios": 2,
           "ventanaDias": 90
         },
         "direccion": "favorable",
         "decisividad": 0.85,
-        "magnitudContinua": 0.6,
+        "magnitudContinua": 0.52,
         "procedencia": {
           "base": "Rentabilidad bruta sobre tu arriendo y precio declarados, contra la bruta de la referencia; el cap rate neto descuenta gastos, vacancia y gestión",
           "confianza": "alta"
         },
         "titular": "Rinde por sobre lo que el mercado paga.",
-        "fraseCanonica": "Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos— es 6,1% — +1,4 pts sobre lo que rinden los avisos de San Miguel · usado · 2D · 33–49 m² (4,7%). Rinde por sobre lo que el mercado paga para este precio."
+        "fraseCanonica": "Tu cap rate bruto —el arriendo de un año sobre el precio, antes de gastos— es 5,8% — +1,2 pts sobre lo que rinden los avisos de San Miguel · usado · 2D · 34–52 m² (4,6%). Rinde por sobre lo que el mercado paga para este precio."
       },
       "valorUF": 41041,
       "card": {
@@ -554,9 +568,9 @@
               "nombre": "arriendo",
               "rotuloCorto": "Margen",
               "quien": "mercado",
-              "cifra": "−18,5%",
+              "cifra": "−15,5%",
               "objetivo": null,
-              "oracion": "El arriendo puede caer hasta $366.750 (−18,5%) y sigue siendo Comprar.",
+              "oracion": "El arriendo puede caer hasta $380.250 (−15,5%) y sigue siendo Comprar.",
               "banda": "amplio",
               "caeA": "AJUSTA SUPUESTOS"
             },
@@ -565,9 +579,9 @@
               "nombre": "precio",
               "rotuloCorto": "Precio",
               "quien": "vendedor",
-              "cifra": "UF 2.546",
+              "cifra": "UF 2.632",
               "objetivo": null,
-              "oracion": "Puedes pagar hasta UF 2.546 (+18,4%) y sigue siendo Comprar.",
+              "oracion": "Puedes pagar hasta UF 2.632 (+17%) y sigue siendo Comprar.",
               "banda": null,
               "caeA": "AJUSTA SUPUESTOS"
             },
@@ -597,19 +611,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "AJUSTA SUPUESTOS",
-              "score": 72,
+              "score": 71,
               "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-              "scoreSinDescuento": 72,
+              "scoreSinDescuento": 71,
               "descuentoPct": 0,
-              "costoDiaUnoUF": -107,
+              "costoDiaUnoUF": -112,
               "costoPtsPrecio": -5,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 456082,
-                "flujoMensual": -56692,
-                "cocPct": -4.19,
-                "capRateNetoPct": 5.4,
-                "tirPct": 12.54
+                "cuotaMensual": 477295,
+                "flujoMensual": -76665,
+                "cocPct": -5.43,
+                "capRateNetoPct": 5.2,
+                "tirPct": 15.6
               },
               "coronaDe": []
             },
@@ -619,19 +633,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 78,
+              "score": 76,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 78,
+              "scoreSinDescuento": 76,
               "descuentoPct": 0,
-              "costoDiaUnoUF": -107,
+              "costoDiaUnoUF": -112,
               "costoPtsPrecio": -5,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 397549,
-                "flujoMensual": 1841,
-                "cocPct": 0.14,
-                "capRateNetoPct": 5.4,
-                "tirPct": 13.55
+                "cuotaMensual": 416039,
+                "flujoMensual": -15409,
+                "cocPct": -1.09,
+                "capRateNetoPct": 5.2,
+                "tirPct": 16.27
               },
               "coronaDe": []
             },
@@ -641,19 +655,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 81,
+              "score": 79,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 81,
+              "scoreSinDescuento": 79,
               "descuentoPct": 0,
-              "costoDiaUnoUF": -107,
+              "costoDiaUnoUF": -112,
               "costoPtsPrecio": -5,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 359805,
-                "flujoMensual": 39585,
-                "cocPct": 2.93,
-                "capRateNetoPct": 5.4,
-                "tirPct": 14.3
+                "cuotaMensual": 376540,
+                "flujoMensual": 24090,
+                "cocPct": 1.71,
+                "capRateNetoPct": 5.2,
+                "tirPct": 16.76
               },
               "coronaDe": [
                 "tir"
@@ -665,19 +679,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "AJUSTA SUPUESTOS",
-              "score": 75,
+              "score": 73,
               "veredictoSinDescuento": "AJUSTA SUPUESTOS",
-              "scoreSinDescuento": 75,
+              "scoreSinDescuento": 73,
               "descuentoPct": 0,
               "costoDiaUnoUF": 0,
               "costoPtsPrecio": 0,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 429254,
-                "flujoMensual": -29864,
-                "cocPct": -1.74,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.74
+                "cuotaMensual": 449219,
+                "flujoMensual": -48589,
+                "cocPct": -2.71,
+                "capRateNetoPct": 5.2,
+                "tirPct": 14.68
               },
               "coronaDe": []
             },
@@ -687,19 +701,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 79,
+              "score": 78,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 79,
+              "scoreSinDescuento": 78,
               "descuentoPct": 0,
               "costoDiaUnoUF": 0,
               "costoPtsPrecio": 0,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 374164,
-                "flujoMensual": 25226,
-                "cocPct": 1.47,
-                "capRateNetoPct": 5.4,
-                "tirPct": 12.52
+                "cuotaMensual": 391567,
+                "flujoMensual": 9063,
+                "cocPct": 0.5,
+                "capRateNetoPct": 5.2,
+                "tirPct": 15.17
               },
               "coronaDe": []
             },
@@ -709,19 +723,19 @@
               "esActual": true,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 81,
+              "score": 80,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 81,
+              "scoreSinDescuento": 80,
               "descuentoPct": 0,
               "costoDiaUnoUF": 0,
               "costoPtsPrecio": 0,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 338640,
-                "flujoMensual": 60750,
-                "cocPct": 3.53,
-                "capRateNetoPct": 5.4,
-                "tirPct": 13.08
+                "cuotaMensual": 354391,
+                "flujoMensual": 46239,
+                "cocPct": 2.58,
+                "capRateNetoPct": 5.2,
+                "tirPct": 15.52
               },
               "coronaDe": []
             },
@@ -731,19 +745,19 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 76,
+              "score": 75,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 76,
+              "scoreSinDescuento": 75,
               "descuentoPct": 0,
-              "costoDiaUnoUF": 108,
+              "costoDiaUnoUF": 113,
               "costoPtsPrecio": 5,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 402426,
-                "flujoMensual": -3036,
-                "cocPct": -0.15,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.1
+                "cuotaMensual": 421143,
+                "flujoMensual": -20513,
+                "cocPct": -0.94,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.95
               },
               "coronaDe": []
             },
@@ -753,24 +767,90 @@
               "esActual": false,
               "esElegida": false,
               "veredicto": "COMPRAR",
-              "score": 80,
+              "score": 79,
               "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 80,
+              "scoreSinDescuento": 79,
               "descuentoPct": 0,
-              "costoDiaUnoUF": 108,
+              "costoDiaUnoUF": 113,
               "costoPtsPrecio": 5,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 350778,
-                "flujoMensual": 48612,
-                "cocPct": 2.33,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.71
+                "cuotaMensual": 367094,
+                "flujoMensual": 33536,
+                "cocPct": 1.54,
+                "capRateNetoPct": 5.2,
+                "tirPct": 14.32
               },
               "coronaDe": []
             },
             {
               "piePct": 25,
+              "plazoAnios": 30,
+              "esActual": false,
+              "esElegida": false,
+              "veredicto": "COMPRAR",
+              "score": 81,
+              "veredictoSinDescuento": "COMPRAR",
+              "scoreSinDescuento": 81,
+              "descuentoPct": 0,
+              "costoDiaUnoUF": 113,
+              "costoPtsPrecio": 5,
+              "alcanzable": true,
+              "metricas": {
+                "cuotaMensual": 332241,
+                "flujoMensual": 68389,
+                "cocPct": 3.14,
+                "capRateNetoPct": 5.2,
+                "tirPct": 14.57
+              },
+              "coronaDe": []
+            },
+            {
+              "piePct": 30,
+              "plazoAnios": 20,
+              "esActual": false,
+              "esElegida": false,
+              "veredicto": "COMPRAR",
+              "score": 77,
+              "veredictoSinDescuento": "COMPRAR",
+              "scoreSinDescuento": 77,
+              "descuentoPct": 0,
+              "costoDiaUnoUF": 225,
+              "costoPtsPrecio": 10,
+              "alcanzable": true,
+              "metricas": {
+                "cuotaMensual": 393067,
+                "flujoMensual": 7563,
+                "cocPct": 0.29,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.35
+              },
+              "coronaDe": []
+            },
+            {
+              "piePct": 30,
+              "plazoAnios": 25,
+              "esActual": false,
+              "esElegida": false,
+              "veredicto": "COMPRAR",
+              "score": 80,
+              "veredictoSinDescuento": "COMPRAR",
+              "scoreSinDescuento": 80,
+              "descuentoPct": 0,
+              "costoDiaUnoUF": 225,
+              "costoPtsPrecio": 10,
+              "alcanzable": true,
+              "metricas": {
+                "cuotaMensual": 342621,
+                "flujoMensual": 58009,
+                "cocPct": 2.26,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.63
+              },
+              "coronaDe": []
+            },
+            {
+              "piePct": 30,
               "plazoAnios": 30,
               "esActual": false,
               "esElegida": true,
@@ -779,106 +859,39 @@
               "veredictoSinDescuento": "COMPRAR",
               "scoreSinDescuento": 82,
               "descuentoPct": 0,
-              "costoDiaUnoUF": 108,
-              "costoPtsPrecio": 5,
+              "costoDiaUnoUF": 225,
+              "costoPtsPrecio": 10,
               "alcanzable": true,
               "metricas": {
-                "cuotaMensual": 317475,
-                "flujoMensual": 81915,
-                "cocPct": 3.92,
-                "capRateNetoPct": 5.4,
-                "tirPct": 12.15
+                "cuotaMensual": 310092,
+                "flujoMensual": 90538,
+                "cocPct": 3.53,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.82
               },
               "coronaDe": [
-                "score"
-              ]
-            },
-            {
-              "piePct": 30,
-              "plazoAnios": 20,
-              "esActual": false,
-              "esElegida": false,
-              "veredicto": "COMPRAR",
-              "score": 78,
-              "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 78,
-              "descuentoPct": 0,
-              "costoDiaUnoUF": 215,
-              "costoPtsPrecio": 10,
-              "alcanzable": true,
-              "metricas": {
-                "cuotaMensual": 375597,
-                "flujoMensual": 23793,
-                "cocPct": 0.97,
-                "capRateNetoPct": 5.4,
-                "tirPct": 10.58
-              },
-              "coronaDe": []
-            },
-            {
-              "piePct": 30,
-              "plazoAnios": 25,
-              "esActual": false,
-              "esElegida": false,
-              "veredicto": "COMPRAR",
-              "score": 80,
-              "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 80,
-              "descuentoPct": 0,
-              "costoDiaUnoUF": 215,
-              "costoPtsPrecio": 10,
-              "alcanzable": true,
-              "metricas": {
-                "cuotaMensual": 327393,
-                "flujoMensual": 71997,
-                "cocPct": 2.93,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.07
-              },
-              "coronaDe": []
-            },
-            {
-              "piePct": 30,
-              "plazoAnios": 30,
-              "esActual": false,
-              "esElegida": false,
-              "veredicto": "COMPRAR",
-              "score": 82,
-              "veredictoSinDescuento": "COMPRAR",
-              "scoreSinDescuento": 82,
-              "descuentoPct": 0,
-              "costoDiaUnoUF": 215,
-              "costoPtsPrecio": 10,
-              "alcanzable": true,
-              "metricas": {
-                "cuotaMensual": 296310,
-                "flujoMensual": 103080,
-                "cocPct": 4.2,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.42
-              },
-              "coronaDe": [
+                "score",
                 "flujo"
               ]
             }
           ],
           "score": 82,
           "despues": {
-            "cuotaMensual": 317475,
-            "flujoMensual": 81915,
-            "cocPct": 3.92,
-            "capRateNetoPct": 5.4,
-            "tirPct": 12.15
+            "cuotaMensual": 310092,
+            "flujoMensual": 90538,
+            "cocPct": 3.53,
+            "capRateNetoPct": 5.2,
+            "tirPct": 13.82
           },
           "descuentoPct": 0,
           "sinDescuento": true,
-          "piePct": 25,
+          "piePct": 30,
           "plazoAnios": 30,
-          "piePctDelta": 5,
+          "piePctDelta": 10,
           "plazoAniosDelta": 0,
           "descuentoSoloPrecioPct": 0,
-          "costoDiaUnoUF": 108,
-          "costoPtsPrecio": 5,
+          "costoDiaUnoUF": 225,
+          "costoPtsPrecio": 10,
           "dentroDelAlcance": true,
           "costoDiaUnoBase": "pie_declarado",
           "combinacionesQueCruzan": 10,
@@ -886,32 +899,34 @@
           "segunda": {
             "descuentoPct": 0,
             "sinDescuento": true,
-            "piePct": 30,
+            "piePct": 25,
             "plazoAnios": 30,
-            "costoDiaUnoUF": 215,
-            "costoPtsPrecio": 10
+            "costoDiaUnoUF": 113,
+            "costoPtsPrecio": 5
           },
           "respuestas": [
             {
               "criterio": "score",
-              "fusionadaCon": [],
-              "piePct": 25,
+              "fusionadaCon": [
+                "flujo"
+              ],
+              "piePct": 30,
               "plazoAnios": 30,
               "descuentoPct": 0,
               "sinDescuento": true,
-              "piePctDelta": 5,
+              "piePctDelta": 10,
               "plazoAniosDelta": 0,
-              "costoDiaUnoUF": 108,
-              "costoPtsPrecio": 5,
+              "costoDiaUnoUF": 225,
+              "costoPtsPrecio": 10,
               "topePtsPrecio": 15,
               "dentroDeSuTope": true,
               "score": 82,
               "metricas": {
-                "cuotaMensual": 317475,
-                "flujoMensual": 81915,
-                "cocPct": 3.92,
-                "capRateNetoPct": 5.4,
-                "tirPct": 12.15
+                "cuotaMensual": 310092,
+                "flujoMensual": 90538,
+                "cocPct": 3.53,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.82
               }
             },
             {
@@ -923,59 +938,61 @@
               "sinDescuento": true,
               "piePctDelta": -5,
               "plazoAniosDelta": 0,
-              "costoDiaUnoUF": -107,
+              "costoDiaUnoUF": -112,
               "costoPtsPrecio": -5,
               "topePtsPrecio": 15,
               "dentroDeSuTope": true,
-              "score": 81,
+              "score": 79,
               "metricas": {
-                "cuotaMensual": 359805,
-                "flujoMensual": 39585,
-                "cocPct": 2.93,
-                "capRateNetoPct": 5.4,
-                "tirPct": 14.3
+                "cuotaMensual": 376540,
+                "flujoMensual": 24090,
+                "cocPct": 1.71,
+                "capRateNetoPct": 5.2,
+                "tirPct": 16.76
               }
             },
             {
               "criterio": "flujo",
-              "fusionadaCon": [],
+              "fusionadaCon": [
+                "score"
+              ],
               "piePct": 30,
               "plazoAnios": 30,
               "descuentoPct": 0,
               "sinDescuento": true,
               "piePctDelta": 10,
               "plazoAniosDelta": 0,
-              "costoDiaUnoUF": 215,
+              "costoDiaUnoUF": 225,
               "costoPtsPrecio": 10,
               "topePtsPrecio": 25,
               "dentroDeSuTope": true,
               "score": 82,
               "metricas": {
-                "cuotaMensual": 296310,
-                "flujoMensual": 103080,
-                "cocPct": 4.2,
-                "capRateNetoPct": 5.4,
-                "tirPct": 11.42
+                "cuotaMensual": 310092,
+                "flujoMensual": 90538,
+                "cocPct": 3.53,
+                "capRateNetoPct": 5.2,
+                "tirPct": 13.82
               }
             }
           ],
           "redundanteConPalancaSola": false,
           "destino": "COMPRAR"
         },
-        "precioUF": 2150,
+        "precioUF": 2250,
         "referenciaArriendo": {
           "valorCLP": 450000,
-          "n": 20,
+          "n": 21,
           "radioMetros": 500,
           "fuente": "radio"
         },
         "antes": {
-          "cuotaMensual": 338640,
-          "flujoMensual": 60750,
-          "cocPct": 3.53,
-          "capRateNetoPct": 5.4,
-          "tirPct": 13.08,
-          "score": 81
+          "cuotaMensual": 354391,
+          "flujoMensual": 46239,
+          "cocPct": 2.58,
+          "capRateNetoPct": 5.2,
+          "tirPct": 15.52,
+          "score": 80
         }
       }
     }

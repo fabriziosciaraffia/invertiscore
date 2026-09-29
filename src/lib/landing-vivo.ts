@@ -58,9 +58,11 @@ import RESPALDO from "./landing-respaldo.json";
 export const EJEMPLOS_LANDING: ReadonlyArray<{ id: string; veredictoEsperado: Veredicto }> = [
   { id: "43a1108b-7094-46b1-b4d9-d2ba92df2c2b", veredictoEsperado: "BUSCAR OTRA" }, // Santiago · 2D1B 60 m²
   { id: "7710a017-8066-47a6-8b3e-8fc64143e256", veredictoEsperado: "AJUSTA SUPUESTOS" }, // Providencia · 2D2B 60 m² (caso canónico)
-  // San Miguel · 2D1B 41 m², UF 2.150 a precio de mercado, pie 20% (29-sep-2026). Reemplaza al Ñuñoa
-  // 80 m² a UF 4.000, que estaba a la mitad de la mediana comunal: un Comprar que no existe.
-  { id: "515b7aed-da7d-4ea8-b94a-9769c3b20930", veredictoEsperado: "COMPRAR" },
+  // San Miguel · 2D1B 43 m², UF 2.250 a precio de mercado, pie 20% (29-sep-2026). Reemplaza al Ñuñoa
+  // 80 m² a UF 4.000, que estaba a la mitad de la mediana comunal, y al San Miguel de 41 m², cuyo
+  // aviso declaraba un arriendo vigente de $380.000 bajo los $450.000 de la zona. Este no declara
+  // arriendo: el informe usa el de la zona, como cualquier análisis.
+  { id: "91736841-0dfe-45d5-ad10-6c710be7fb8f", veredictoEsperado: "COMPRAR" },
 ];
 
 export interface EjemploLanding {
