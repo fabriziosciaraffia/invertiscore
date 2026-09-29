@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { arriendoSegmentado } from "../../../src/lib/avisos/arriendo-segmentado";
 import { ANIOS_ANTIGUEDAD_SUPUESTA, ANTIGUEDAD_SUPUESTA, PERFILES_ESTANDAR, PLAZO_ESTANDAR, respuestasDeAviso, type AvisoParaEvaluar } from "../../../src/lib/avisos/evaluar-aviso";
-import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, REEVALUAR_DIAS } from "../../../src/lib/avisos/depurar";
+import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
 import { propertyToRow } from "../../../src/lib/services/scraper/property-row";
 import { antiguedadToNumber } from "../../../src/components/formulario-v4/helpers-wizard";
 
@@ -96,10 +96,12 @@ export function runAvisosTier(): { hard: number } {
   const ev1 = avisosEvaluables([fila("a"), fila("b", { lat: -33.4501 }), fila("c", { lat: -33.47 }), fila("d", { precio: 1000 }), fila("e", { superficie_m2: null }), fila("f", { scraped_at: "2026-09-26T00:00:00Z", lat: -33.49 })], 40000);
   if (ev1.map((x) => x.id).join(",") !== "a,c,f") F(`5 · la depuración no saca duplicados, implausibles e incompletos (${ev1.map((x) => x.id).join(",")})`);
   const g = (id: string, precio: number, dias: number, v = "v3") => ({ aviso_id: id, precio_uf: precio, evaluado_at: new Date(ahora.getTime() - dias * 864e5).toISOString(), motor_version: v });
-  const ev2 = avisosEvaluables([fila("a"), fila("c", { lat: -33.47 }), fila("f", { scraped_at: "2026-09-26T00:00:00Z", lat: -33.49 }), fila("h", { lat: -33.5 }), fila("k", { lat: -33.51 }), fila("m", { lat: -33.52 })], 40000);
-  const pend = avisosPendientes(ev2, [g("a", 3000, 1), g("c", 2000, 1), g("h", 3000, 8), g("k", 3000, 1, "v2")], "v3", ahora).map((x) => x.id);
-  if (pend.join(",") !== "m,c,h,k") F(`5 · los pendientes no son los que tocan, en su orden (${pend.join(",")})`);
-  if (VENTANA_VISTOS_DIAS !== 3 || REEVALUAR_DIAS !== 7) F("5 · la ventana no es de 3 días vistos y 7 de reevaluación");
+  // 30-sep-2026: la carga inicial la hace un script; el cron solo sigue lo nunca evaluado y lo que cambió de
+  // precio, en una ventana de 7 días. h (evaluado hace 8 días) y k (otra versión del motor) ya no vuelven.
+  const ev2 = avisosEvaluables([fila("a"), fila("c", { lat: -33.47 }), fila("f", { scraped_at: "2026-09-20T00:00:00Z", lat: -33.49 }), fila("h", { lat: -33.5 }), fila("k", { lat: -33.51 }), fila("m", { lat: -33.52 }), fila("p", { scraped_at: "2026-09-25T00:00:00Z", lat: -33.53 })], 40000);
+  const pend = avisosPendientes(ev2, [g("a", 3000, 1), g("c", 2000, 1), g("h", 3000, 8), g("k", 3000, 1, "v2")], ahora).map((x) => x.id);
+  if (pend.join(",") !== "m,p,c") F(`5 · los pendientes no son los que tocan, en su orden (${pend.join(",")})`);
+  if (VENTANA_VISTOS_DIAS !== 7) F("5 · la ventana no es de 7 días vistos");
 
   // ── 6 · el cron ──
   const cron = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
@@ -154,6 +156,12 @@ export function runAvisosTier(): { hard: number } {
 //   M19 la migración sin RLS ................................. 6 · sin RLS
 //   M20 la obra nueva siempre inmediata ...................... 4 · sin su entrega real
 //   M21 el cron con segmentar: true .......................... 6 · el arriendo del segmento, descartado
+// 30-sep-2026: el cron solo sigue lo nuevo y lo que cambió de precio, en 7 días (M9 y M10 quedan
+// reemplazadas: ya no hay reevaluación por antigüedad ni por versión). 4/4 en rojo.
+//   A1 ventana de 3 días ..................................... 5 · los pendientes (m,c)
+//   A2 vuelve a reevaluar por antigüedad ..................... 5 · los pendientes (m,p,c,h)
+//   A3 vuelve a reevaluar por versión ........................ 5 · los pendientes (m,p,c,k)
+//   A4 no sigue el cambio de precio .......................... 5 · los pendientes (m,p)
 
 if (require.main === module) {
   const { hard } = runAvisosTier();

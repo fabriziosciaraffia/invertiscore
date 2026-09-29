@@ -3,13 +3,14 @@
 // censo, y lo prueba el tier AVISOS.
 //   · Evaluable: completo (precio, m², dormitorios, baños, coordenadas), plausible (UF 700–60.000 y
 //     UF 20–300 por m²) y sin duplicado exacto (misma comuna, m², dormitorios, baños, precio y punto).
-//   · Pendiente: evaluable y visto en los últimos 3 días, que no tiene evaluación, o cuyo precio cambió,
-//     o cuya evaluación tiene más de 7 días o es de otra versión del motor. Primero los nunca evaluados.
+//   · Pendiente: evaluable y visto en los últimos 7 días, que no tiene evaluación o cuyo precio cambió.
+//     Primero los nunca evaluados. (30-sep-2026, decisión de Fabrizio: la carga inicial la hace un script
+//     una vez; el cron solo sigue lo nuevo y lo que cambió de precio. Ya no se reevalúa por antigüedad ni
+//     por versión del motor: un cambio de motor se recarga corriendo el script de carga.)
 // ─────────────────────────────────────────────────────────────────────────────
 import type { AvisoParaEvaluar } from "./evaluar-aviso";
 
-export const VENTANA_VISTOS_DIAS = 3;
-export const REEVALUAR_DIAS = 7;
+export const VENTANA_VISTOS_DIAS = 7;
 
 export interface FilaAviso {
   id: string;
@@ -60,11 +61,9 @@ export interface EvaluacionGuardada {
 export function avisosPendientes<T extends AvisoParaEvaluar & { scrapedAt: string }>(
   evaluables: T[],
   guardadas: EvaluacionGuardada[],
-  motorVersion: string,
   ahora: Date = new Date(),
 ): T[] {
   const desde = ahora.getTime() - VENTANA_VISTOS_DIAS * 864e5;
-  const vieja = ahora.getTime() - REEVALUAR_DIAS * 864e5;
   const porId = new Map(guardadas.map((g) => [g.aviso_id, g]));
   const nunca: T[] = [];
   const otra: T[] = [];
@@ -72,8 +71,7 @@ export function avisosPendientes<T extends AvisoParaEvaluar & { scrapedAt: strin
     if (new Date(a.scrapedAt).getTime() < desde) continue;
     const g = porId.get(a.id);
     if (!g) { nunca.push(a); continue; }
-    const cambioPrecio = Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5;
-    if (cambioPrecio || new Date(g.evaluado_at).getTime() < vieja || g.motor_version !== motorVersion) otra.push(a);
+    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5) otra.push(a);
   }
   return [...nunca, ...otra];
 }

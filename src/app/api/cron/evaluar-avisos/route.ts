@@ -4,20 +4,19 @@ import { captureApiWarning } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
-import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { evaluarAviso } from "@/lib/avisos/evaluar-aviso";
 import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
-// últimos 3 días pasan por la MISMA entrada del wizard (evaluar-aviso.ts) con el perfil estándar —pie
+// últimos 7 días pasan por la MISMA entrada del wizard (evaluar-aviso.ts) con el perfil estándar —pie
 // 20% y 30%, 30 años, tasa de mercado— y quedan en `avisos_evaluados` con sus sugerencias (fuente y
 // muestra) y su resultado. Es la base de «Por dónde seguir buscando» (los tres
 // parecidos): una guía de búsqueda, NO el portafolio de Franco, que es otra cosa y no se mezcla.
 //
-// PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación, con precio
-// cambiado, con más de 7 días o de otra versión del motor), evalúa hasta cortar por presupuesto y
-// escribe fila por fila; la siguiente sigue donde quedó. Corre cada hora los martes (la tanda nueva de
+// PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación o con precio
+// cambiado: la carga inicial la hizo scripts/cargar-avisos-evaluados.ts), evalúa hasta cortar por
+// presupuesto y escribe fila por fila; la siguiente sigue donde quedó. Corre cada hora los martes (la tanda nueva de
 // la fuente entra los lunes): 24 corridas de ~11 minutos, holgadas para una pasada completa.
 // SOLO escribe en avisos_evaluados. `?dry=1` evalúa un puñado y no escribe nada.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,7 +75,7 @@ export async function GET(request: Request) {
     const guardadas = await paginar<EvaluacionGuardada>((a, b) =>
       sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version").order("aviso_id", { ascending: true }).range(a, b),
     );
-    pendientes = avisosPendientes(avisosEvaluables(filas, cfg.uf), guardadas, METHODOLOGY_VERSION_ACTUAL);
+    pendientes = avisosPendientes(avisosEvaluables(filas, cfg.uf), guardadas);
   } catch (e) {
     captureApiWarning(e, { ruta: RUTA, operacion: "leer" });
     return cerrarCron(sb, "evaluar-avisos", { procesados: 0, exitosos: 0, fallidos: 1 }, { error: `leer: ${String(e).slice(0, 200)}` }, { registrar: !dry });
