@@ -7,7 +7,10 @@
 //       `isAnonOwner && !isLoggedIn` (LTR) / `isAnonOwner && !userId && !demo` (STR).
 //   2 · EL PACK VENCE: 24 h desde created_at, lo valida payments/create (410) y lo dice el ticket.
 //   3 · EL PERFIL QUEDA LIGADO AL REGISTRARSE: se guarda al crear (LTR y STR) y el claim lo liga.
-//   4 · EL TICKET NO VUELVE DESPUÉS DE LA DESPEDIDA: estado por análisis, «despedida» es terminal.
+//   4 · EL TICKET NO VUELVE SOLO después de la despedida (estado por análisis, terminal para el
+//       auto-subir), pero se puede volver desde la pestaña mientras la oferta viva. Abajo va UNA
+//       sola cosa según la zona (`queVaAbajo`): barra fuera del cierre; ticket o pestaña en el
+//       cierre. Todo anclado al área visible real (iOS).
 //   5 · EL COPY EN TUTEO: sin voseo en copy.ts.
 //   Más: sale «Guardarlo» del header y «Crear cuenta para guardarlo» del cierre; el pack es
 //   producto real ($5.000, 3 créditos sin caducidad, pack_pagado desde el servidor); los eventos.
@@ -19,8 +22,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
+import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
 import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo-que-sigue/perfil";
-import { CHECKOUT_PACK, CIERRE_REGISTRO, FRASE_PACK, FRASE_REGISTRO, OFERTA_REGISTRO, REGISTRO_UN_PASO, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
+import { CHECKOUT_PACK, FRASE_PACK, FRASE_REGISTRO, OFERTA_REGISTRO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
 import { EVENTOS_LQS } from "../../../src/lib/lo-que-sigue/eventos";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
 
@@ -41,11 +45,14 @@ export function runLoQueSigueTier(): { hard: number } {
   const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión»");
   if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<>\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*<CierreRegistro veredicto=\{resolvedVeredicto\} next=\{nextLqs\} \/>\s*<\/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(ltr)) F("1 · el ticket y el cierre LTR no cuelgan del gate (o desplazaron el CTA de siempre)");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el CTA de siempre)");
+  if (/CierreRegistro|lqs-cierre/.test(ltr)) F("1 · vuelve el texto del registro al final del informe LTR: la barra fija es la repetición");
   const str = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !userId && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo»");
   if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<>\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*<CierreRegistro veredicto=\{veredicto\} next=\{nextLqs\} \/>\s*<\/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(str)) F("1 · el ticket y el cierre STR no cuelgan del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(str)) F("1 · el ticket STR no cuelga del gate");
+  if (/CierreRegistro|lqs-cierre/.test(str)) F("1 · vuelve el texto del registro al final del informe STR");
+  if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
     const s = sinComentarios(leer(f));
     if (!/\{recomendacion\}\s*<\/SeccionInforme>\s*\{despuesDeLaCard\}/.test(s)) F(`1 · ${que} no ubica «lo que sigue» justo después de la card de Franco`);
@@ -74,7 +81,13 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/product === PRODUCTO_PACK\) \{[\s\S]*?grantCredits\(userId, PRODUCTO_PACK, PACK_ANALISIS, \{ paymentId, noExpire: true \}\)/.test(confirm)) F("2 · payments/confirm no otorga los 3 créditos sin caducidad");
   if (!/capturarServidor\(eventoPackPagado\(/.test(confirm)) F("2 · pack_pagado no sale del servidor al confirmar");
   const ticket = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-  if (!/if \(!ofertaPackVigente\(createdAt\)\) \{[\s\S]*?EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);\s*return;/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
+  if (!/if \(!ofertaPackVigente\(createdAt\)\) \{\s*setVigente\(false\);[\s\S]*?EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);\s*continue;/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
+  const packApi = sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts"));
+  if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido[\s\S]*?status: 410/.test(packApi)) F("2 · el pago desde el ticket no rechaza el pack vencido con 410");
+  if (!/generateLink\(\{\s*type: "magiclink",\s*email,/.test(packApi) || !/claimAnalisisAnonimos\(admin, user, token\)/.test(packApi) || !/if \(analysis\.user_id && analysis\.user_id !== user\.id\)/.test(packApi)) F("2 · el pago desde el ticket no crea la cuenta por correo, no adopta el informe o no cuida al dueño");
+  if (!/product: PRODUCTO_PACK,\s*amount: producto\.amount,/.test(packApi) || !/urlConfirmation: `\$\{SITE_URL\}\/api\/payments\/confirm`/.test(packApi)) F("2 · el pago desde el ticket no abre la orden del pack en Flow");
+  if (!/fetch\("\/api\/lo-que-sigue\/pack", \{\s*method: "POST"/.test(ticket) || !/className="lqs-tk-correo"/.test(ticket) || /\/registro\?next=/.test(ticket)) F("2 · el ticket no lleva el correo adentro directo a Flow (o sigue mandando a /registro)");
+  if (!/if \(res\.status === 401\) \{\s*setPaymentStatus\("sin_sesion"\);/.test(sinComentarios(leer("src/app/payments/return/page.tsx")))) F("2 · /payments/return sin sesión no explica cómo entrar después de pagar el pack");
   const checkout = sinComentarios(leer("src/app/checkout/page.tsx"));
   if (!/\/api\/lo-que-sigue\/oferta\?analysisId=/.test(checkout) || !/disabled=\{loading \|\| packVencido\}/.test(checkout) || !/res\.status === 410 \? CHECKOUT_PACK\.vencido/.test(checkout)) F("2 · el checkout no pregunta la vigencia al servidor, no bloquea el pago vencido o no explica el 410");
 
@@ -106,22 +119,33 @@ export function runLoQueSigueTier(): { hard: number } {
     if (!debeSubirTicket(leerEstadoTicket(almacen, "otro"))) F("4 · el estado de un informe contamina a otro");
     if (!debeSubirTicket(leerEstadoTicket(null, "x"))) F("4 · sin storage el ticket no sube nunca");
   }
-  if (!/if \(!debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\)\) return;/.test(ticket)) F("4 · el ticket no consulta su estado antes de subir");
+  if (!/if \(!debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\)\) continue;\s*subioEnEstaCarga = true;/.test(ticket)) F("4 · el ticket no consulta su estado antes de subir solo");
+  if (!/onClick=\{\(\) => abrir\("pestaña"\)\}/.test(ticket) || !/const pestana = zonaCierre && !abierto && yaSubio && vigente;/.test(ticket)) F("4 · no hay pestaña para volver al ticket (zona del cierre, cerrado, oferta viva)");
+  if (!/const enZona = e\.isIntersecting \|\| e\.boundingClientRect\.top < 0;\s*if \(enZona\) entrarZonaCierre\(\);\s*else salirZonaCierre\(\);/.test(ticket)) F("4 · la zona del cierre no se mide (del sentinel al final de la página)");
+  if (queVaAbajo({ bannerAtras: true, zonaCierre: false, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "barra") F("4 · fuera del cierre no va la barra");
+  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: true, ticketYaSubio: true, ofertaVigente: true }) !== "ticket") F("4 · con el ticket arriba va otra cosa");
+  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: true, ofertaVigente: true }) !== "pestaña") F("4 · en el cierre, cerrado el ticket, no queda la pestaña");
+  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: true, ofertaVigente: false }) !== "nada") F("4 · vencida la oferta sigue la pestaña");
+  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "nada") F("4 · en la zona del cierre, antes de que el ticket suba, aparece la barra");
+  if (queVaAbajo({ bannerAtras: false, zonaCierre: false, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "nada") F("4 · la barra aparece antes de que el banner quede atrás");
+  if (!/useAnclaAbajo\(barraRef, barra\)/.test(sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"))) || !/useAnclaAreaVisible\(velo, abierto\)/.test(ticket) || !/useAnclaAbajo\(pestanaRef, pestana\)/.test(ticket)) F("4 · la barra, la pestaña o el velo no se anclan al área visible real (iOS)");
+  const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
+  if (!/vv\.offsetTop \+ vv\.height - el\.offsetHeight/.test(ancla) || !/vv\.addEventListener\("scroll", colocar\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
   if (!/function despedirse\(\) \{\s*if \(cara === "despedida"\) return;\s*setCara\("despedida"\);\s*capturarLqs\(posthog, EVENTOS_LQS\.despedidaVista/.test(ticket)) F("4 · cerrar o «Seguir leyendo» no cambian a la despedida en el mismo lugar");
   if (!/function cerrarDelTodo\(\) \{\s*marcarTicket\([^)]*, ctx\.analysisId, "despedida"\);\s*setAbierto\(false\);\s*cerrarTicket\(\);/.test(ticket)) F("4 · «Sí, seguir leyendo» no cierra ni deja el ticket como terminal");
   if (!/className="lqs-x" onClick=\{despedirse\}/.test(ticket) || !/className="lqs-seguir" onClick=\{despedirse\}/.test(ticket)) F("4 · la X o «Seguir leyendo» cierran de golpe en vez de despedirse");
   if ((ticket.match(/role=\{abierto \? "dialog" : undefined\}/g) ?? []).length !== 1) F("4 · el ticket no es UN solo diálogo");
   const banner = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
-  if (!/data-visible=\{atras && !ticketAbierto \? "1" : "0"\}/.test(banner)) F("4 · la barra fija no se recoge mientras el ticket está arriba (o no espera a que el banner quede atrás)");
+  if (!/const barra = queVaAbajo\(\{ bannerAtras: atras, zonaCierre, ticketAbierto,/.test(banner) || !/data-visible=\{barra \? "1" : "0"\}/.test(banner)) F("4 · la barra fija no sale de queVaAbajo (una sola cosa según la zona)");
   const css = leer("src/components/lo-que-sigue/lo-que-sigue.css");
   if (!/\.lqs-barra\[data-visible="1"\] \{ transform: translateY\(0\)/.test(css) || !/\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ transform: translateY\(0\)/.test(css) || !/\.lqs-franja/.test(css)) F("4 · la coreografía (barra ↔ hoja por el mismo borde) o la franja no están en el CSS");
   if (!/\.lqs-banner \{ margin: 0 calc\(50% - 50vw\)/.test(css)) F("4 · el banner no va de borde a borde");
 
   // ── 5 · EL COPY EN TUTEO ───────────────────────────────────────────────────
   const textos: string[] = [
-    ...Object.values(FRASE_REGISTRO), ...Object.values(FRASE_PACK), ...Object.values(CIERRE_REGISTRO),
+    ...Object.values(FRASE_REGISTRO), ...Object.values(FRASE_PACK), ...Object.values(RETORNO_SIN_SESION),
     ...Object.values(OFERTA_REGISTRO), ...Object.values(REGISTRO_UN_PASO).map((v) => (typeof v === "function" ? v("x@y.cl") : v)),
-    TICKET_PACK.ojo, TICKET_PACK.precioNota, TICKET_PACK.ahorro("a", "b"), TICKET_PACK.vence("hoy", "21:04"), TICKET_PACK.boton("$5.000"), TICKET_PACK.seguir, TICKET_PACK.despedida("21:04"), TICKET_PACK.comprar, TICKET_PACK.siSeguir,
+    TICKET_PACK.ojo, TICKET_PACK.precioNota, TICKET_PACK.ahorro("a", "b"), TICKET_PACK.vence("hoy", "21:04"), TICKET_PACK.boton("$5.000"), TICKET_PACK.seguir, TICKET_PACK.despedida("21:04"), TICKET_PACK.comprar, TICKET_PACK.siSeguir, TICKET_PACK.pagar("$5.000"), TICKET_PACK.piePago, TICKET_PACK.pestana("$5.000", "21:04"), TICKET_PACK.vencido, TICKET_PACK.errorPago,
     CHECKOUT_PACK.titulo, CHECKOUT_PACK.subtitulo, CHECKOUT_PACK.vence("hoy", "21:04"), CHECKOUT_PACK.vencido,
   ];
   for (const t of textos) {
@@ -141,7 +165,12 @@ export function runLoQueSigueTier(): { hard: number } {
   const reg = sinComentarios(leer("src/components/lo-que-sigue/RegistroUnPaso.tsx"));
   if (!/signInWithOtp\(\{\s*email: c,\s*options: \{ emailRedirectTo: callback\(\), shouldCreateUser: true \}/.test(reg)) F("registro · el correo no manda el enlace sin contraseña (signInWithOtp)");
   if (!/EVENTOS_LQS\.registroIniciado, ctx, \{ via: "correo" \}/.test(reg) || !/EVENTOS_LQS\.registroIniciado, ctx, \{ via: "google" \}/.test(reg)) F("registro · registro_iniciado no lleva la vía");
-  if (!/consumirRegistroPendiente\(\);\s*if \(m\) capturarLqs\(posthog, EVENTOS_LQS\.registroCompletado, m\.ctx, \{ via: m\.via \}\)/.test(reg)) F("registro · registro_completado no sale al volver con su vía");
+  if (!/consumirRegistroPendiente\(\);\s*if \(m\) capturarLqs\(posthog, EVENTOS_LQS\.registroCompletado, m\.ctx, \{ via: m\.via, como: "enlace" \}\)/.test(reg)) F("registro · registro_completado no sale al volver con su vía");
+  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg) || !/autoComplete="one-time-code"/.test(reg) || !/maxLength=\{6\}/.test(reg)) F("4 · el código de 6 dígitos no se escribe en el mismo formulario (verifyOtp)");
+  if (!/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
+  if (!/emailRedirectTo: callback\(\)/.test(reg)) F("4 · el enlace del correo no vuelve al mismo informe");
+  const plantilla = leer("docs/emails/supabase-magic-link.html").replace(/<!--[\s\S]*?-->/g, "");
+  if (!/\{\{ \.Token \}\}/.test(plantilla) || !/\{\{ \.ConfirmationURL \}\}/.test(plantilla)) F("4 · la plantilla del correo de Supabase no lleva el código y el enlace");
 
   if (fallas.length) {
     console.log(`  ✗ LO-QUE-SIGUE · ${fallas.length} falla(s):`);
@@ -152,7 +181,14 @@ export function runLoQueSigueTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
-// ── ACTA DE MUTACIONES (28-sep-2026, 24/24 en rojo, restauradas byte a byte) ────────────────
+// ── ACTA DE MUTACIONES v2 (28-sep-2026, ajustes 1, 2 y 4: 15/15 en rojo, restauradas) ────────
+// M25 vuelve el texto del registro al cierre · M26 el checkout a /register · M27 sin pestaña · M28
+// la zona del cierre no cuenta lo de arriba · M29 la barra en el cierre · M30 la pestaña vencida ·
+// M31 el ticket vuelve a subir solo · M32 la barra sin ancla · M33 el ancla mide la ventana · M34
+// verifyOtp con otro tipo · M35 sin claim al entrar con código · M36 el ticket manda a /registro ·
+// M37 el pago no adopta el informe · M38 /payments/return sin sesión cae en error · M39 la
+// plantilla sin el código.
+// ── ACTA DE MUTACIONES v1 (28-sep-2026, 24/24 en rojo, restauradas byte a byte) ─────────────
 // M1 banner LTR con sesión · M2 banner STR con sesión · M3 ticket LTR sin gate · M4 vuelve «Guardarlo»
 // al header · M5 vuelve «Crear cuenta para guardarlo» · M6 ventana de 48 h · M7 vence con <= · M8
 // payments/create no rechaza el vencido · M9 el pack a $9.990 · M10 créditos que caducan · M11 el
