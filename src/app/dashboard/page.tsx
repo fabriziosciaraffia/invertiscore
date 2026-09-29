@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureWelcomeEmail, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { COMPARAR } from "@/lib/lo-que-sigue/copy";
 import {
   queryDashboardRows,
   fetchAllUnits,
@@ -164,6 +166,13 @@ export default async function DashboardPage({
               {stats.total} {stats.total === 1 ? "análisis" : "análisis"}
             </span>
           </div>
+          {/* Comparar (30-sep-2026): con dos o más informes, lado a lado. Enlace, no botón: el
+              principal de la pantalla sigue siendo «Nuevo análisis» del header. */}
+          {stats.total >= 2 && (
+            <EnlaceCarga href="/comparar" className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text)] underline underline-offset-4" data-lqs="comparar-entrada">
+              {COMPARAR.boton}
+            </EnlaceCarga>
+          )}
         </div>
 
         <Continuar rows={recientes.rows} siblings={siblings} heroResumen={heroResumen} />

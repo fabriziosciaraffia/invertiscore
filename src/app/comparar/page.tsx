@@ -1,45 +1,37 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Analisis } from "@/lib/types";
-import { CompararClient } from "./comparar-client";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { columnasComparar, idsComparar, opcionesComparar, COMPARAR_MIN } from "@/lib/lo-que-sigue/comparar";
+import { CompararVista } from "./comparar-vista";
 
-// Herramienta con auth (redirige a /login sin sesión) sobre análisis del
-// usuario: nunca indexable. No lleva canonical — no es página de marketing.
+// ─────────────────────────────────────────────────────────────────────────────
+// /comparar (30-sep-2026): dos o más informes propios lado a lado —veredicto, precio, flujo y
+// resultado a 10 años—, recalculados con el motor de hoy. Sin ids (o con uno) muestra el selector;
+// con dos a cuatro, la tabla. Se entra desde el dashboard. Reemplaza la vista vieja, que leía los
+// resultados guardados y no tenía entrada desde ninguna parte.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const metadata: Metadata = {
   title: "Comparar análisis",
   robots: { index: false, follow: false },
 };
 
-export default async function CompararPage({
-  searchParams,
-}: {
-  searchParams: { ids?: string };
-}) {
+export default async function CompararPage({ searchParams }: { searchParams: { ids?: string } }) {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent("/comparar")}`);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const ids = idsComparar(searchParams.ids);
+  const [opciones, columnas] = await Promise.all([
+    opcionesComparar(supabase, user.id),
+    ids.length >= COMPARAR_MIN ? columnasComparar(supabase, user.id, ids) : Promise.resolve([]),
+  ]);
 
-  if (!user) redirect("/login");
-
-  const ids = searchParams.ids?.split(",").filter(Boolean) || [];
-  if (ids.length < 2 || ids.length > 3) redirect("/dashboard");
-
-  const { data } = await supabase
-    .from("analisis")
-    .select("*")
-    .in("id", ids)
-    .eq("user_id", user.id);
-
-  const analisis = (data || []) as Analisis[];
-  if (analisis.length < 2) redirect("/dashboard");
-
-  // Preserve the order from the URL
-  const ordered = ids
-    .map((id) => analisis.find((a) => a.id === id))
-    .filter(Boolean) as Analisis[];
-
-  return <CompararClient analisis={ordered} />;
+  return (
+    <div className="min-h-screen bg-[var(--franco-bg)]">
+      <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
+      <CompararVista opciones={opciones} columnas={columnas} seleccion={ids} />
+    </div>
+  );
 }

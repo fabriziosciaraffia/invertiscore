@@ -57,7 +57,7 @@ const PAGINAS = [
   "src/app/cobertura/page.tsx", "src/app/comunas/page.tsx", "src/app/comunas/[slug]/page.tsx", "src/app/contact/page.tsx",
   "src/app/faq/page.tsx", "src/app/metodologia/page.tsx", "src/app/payments/return/page.tsx", "src/app/pricing/page.tsx",
   "src/app/privacy/page.tsx", "src/app/terms/page.tsx", "src/app/cuenta/page.tsx", "src/app/perfil/page.tsx",
-  "src/app/comparar/comparar-client.tsx", "src/app/dashboard/page.tsx", "src/app/login/page.tsx", "src/app/register/page.tsx",
+  "src/app/comparar/page.tsx", "src/app/dashboard/page.tsx", "src/app/login/page.tsx", "src/app/register/page.tsx",
   "src/app/recuperar/page.tsx", "src/app/restablecer/page.tsx", "src/components/formulario-v4/WizardV4.tsx",
   "src/components/formulario-v4/screenEntrada.tsx", "src/app/analisis/[id]/informe-ltr.tsx",
   "src/app/analisis/renta-corta/[id]/results-client.tsx", "src/app/analisis/comparativa/comparativa-client.tsx",
