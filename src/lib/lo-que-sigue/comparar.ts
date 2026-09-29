@@ -15,28 +15,8 @@ import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { Veredicto } from "@/lib/types";
 
-export const COMPARAR_MIN = 2;
-export const COMPARAR_MAX = 4;
-
-export interface OpcionComparar {
-  id: string;
-  nombre: string;
-  comuna: string | null;
-  modalidad: "ltr" | "str";
-  createdAt: string;
-}
-
-export interface ColumnaComparar {
-  id: string;
-  nombre: string;
-  comuna: string | null;
-  modalidad: "ltr" | "str";
-  veredicto: Veredicto | null;
-  precioUF: number | null;
-  flujoMensualCLP: number | null;
-  resultado10CLP: number | null;
-  uf: number;
-}
+import { COMPARAR_MAX, COMPARAR_MIN, type ColumnaComparar, type OpcionComparar } from "./comparar-tipos";
+export { COMPARAR_MAX, COMPARAR_MIN, type ColumnaComparar, type OpcionComparar };
 
 /** Los ids que pide la URL, sin repetidos, en su orden, dentro del rango. */
 export function idsComparar(raw: string | null | undefined): string[] {

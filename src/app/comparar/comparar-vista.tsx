@@ -8,7 +8,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { COMPARAR } from "@/lib/lo-que-sigue/copy";
 import { EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMPARAR_MAX, COMPARAR_MIN, type ColumnaComparar, type OpcionComparar } from "@/lib/lo-que-sigue/comparar";
+import { COMPARAR_MAX, COMPARAR_MIN, type ColumnaComparar, type OpcionComparar } from "@/lib/lo-que-sigue/comparar-tipos";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
