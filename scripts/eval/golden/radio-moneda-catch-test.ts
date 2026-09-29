@@ -56,7 +56,7 @@ export function runRadioMonedaTier(): { hard: number } {
 
   // ── 3 · /comunas ──
   const cs = leer("src/lib/data/comunas-seo.ts");
-  if (VENTANA_DIAS_COMUNA !== 90 || !/\.gt\("precio", 0\)\s*\.gte\("scraped_at", desde\)/.test(cs) || !/const desde = new Date\(Date\.now\(\) - VENTANA_DIAS_COMUNA \* 864e5\)\.toISOString\(\);/.test(cs)) F("3 · /comunas no lee con la ventana de 90 días");
+  if (VENTANA_DIAS_COMUNA !== 90 || !/\.gt\("precio", 0\)\s*\.gte\("scraped_at", desde\)/.test(cs) || !/const desde = new Date\(Date\.now\(\) - VENTANA_DIAS_COMUNA \* 864e5\)\.toISOString\(\)\.slice\(0, 10\);/.test(cs)) F("3 · /comunas no lee con la ventana de 90 días");
   if (entraVentaComuna({ condicion: "nuevo" }) || !entraVentaComuna({ condicion: "usado" }) || !entraVentaComuna({ condicion: null })) F("3 · la venta de /comunas no es la usada (o deja fuera los sin condición)");
   if (!/const ventaRowsRaw = \(await fetchAllRows\(supabase, "venta"\)\)\.filter\(entraVentaComuna\);/.test(cs)) F("3 · la página no aplica el filtro de venta usada");
 

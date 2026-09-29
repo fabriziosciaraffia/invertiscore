@@ -298,7 +298,9 @@ export function entraVentaComuna(r: { condicion?: string | null }): boolean {
 
 export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
   const allRows: RawRow[] = [];
-  const desde = new Date(Date.now() - VENTANA_DIAS_COMUNA * 864e5).toISOString();
+  // Redondeada al día: con la hora exacta cada consulta tiene otra URL y el caché de fetch de Next no la
+  // reusa nunca (el build de /comunas pasó a bajar las 34.000 filas por página y a cortar por tiempo).
+  const desde = new Date(Date.now() - VENTANA_DIAS_COMUNA * 864e5).toISOString().slice(0, 10);
   const pageSize = 1000;
   let offset = 0;
   let hasMore = true;
