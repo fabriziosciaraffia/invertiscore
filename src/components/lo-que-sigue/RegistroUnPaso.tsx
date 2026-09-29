@@ -1,20 +1,24 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// El registro en un paso (28-sep-2026): un correo —Franco manda un enlace para entrar, sin
-// contraseña (`signInWithOtp`)— o Google. Vuelve por /auth/callback con `next` al informe (o al
-// checkout del pack), y ahí el claim adopta el análisis anónimo y liga su perfil. El evento de
-// completado lo emite `RegistroCompletadoSonda` al volver; acá solo sale «iniciado» con su vía.
+// El registro en un paso (28-sep-2026, ajuste 4): un correo → Franco manda un CÓDIGO de 6 dígitos
+// (y el enlace, como alternativa) con `signInWithOtp`; el código se escribe en el mismo formulario,
+// sin salir del informe (`verifyOtp`), y al entrar el análisis anónimo se reclama y queda ligado.
+// Si se usa el enlace, vuelve por /auth/callback al mismo informe con la cuenta ligada. Google va
+// por OAuth y vuelve igual. Eventos: registro_iniciado {via}; registro_completado {via} al entrar
+// (por código, acá mismo; por enlace o Google, la sonda al volver).
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { PostHog } from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { usePostHog } from "@/lib/posthog-react";
-import { marcarOAuthPendiente } from "@/lib/auth-analytics";
+import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPendiente, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const CODIGO_OK = /^\d{6}$/;
 
 function IconoGoogle() {
   return (
@@ -27,22 +31,30 @@ function IconoGoogle() {
   );
 }
 
-export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
-  /** Adónde vuelve al entrar (el informe, o el checkout del pack). */
+export function RegistroUnPaso({ next, ctx, alEntrar }: {
+  /** Adónde vuelve el enlace o Google (el informe, o el checkout). Con código no se sale de la página. */
   next: string;
   ctx: ContextoLqs;
-  /** «Seguir leyendo» tras el enlace enviado: vuelve al informe sin cerrar nada. Opcional. */
-  onSeguirLeyendo?: () => void;
+  /** Con código: qué hacer al entrar. Sin él, se refresca la página (el informe pasa a ser propio). */
+  alEntrar?: () => void;
 }) {
   const posthog = usePostHog();
+  const router = useRouter();
   const [correo, setCorreo] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [entrando, setEntrando] = useState(false);
+  const campoCodigo = useRef<HTMLInputElement>(null);
 
   const callback = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
-  async function enviarEnlace(e: FormEvent) {
+  useEffect(() => {
+    if (enviado) campoCodigo.current?.focus();
+  }, [enviado]);
+
+  async function enviarCodigo(e: FormEvent) {
     e.preventDefault();
     const c = correo.trim().toLowerCase();
     if (!CORREO_OK.test(c)) {
@@ -66,6 +78,31 @@ export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
     setEnviado(c);
   }
 
+  async function entrarConCodigo(e: FormEvent) {
+    e.preventDefault();
+    const t = codigo.replace(/\D/g, "");
+    if (!CODIGO_OK.test(t) || !enviado) {
+      setError(REGISTRO_UN_PASO.errorCodigo);
+      return;
+    }
+    setError(null);
+    setEntrando(true);
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.verifyOtp({ email: enviado, token: t, type: "email" });
+    if (err) {
+      setEntrando(false);
+      setError(REGISTRO_UN_PASO.errorCodigoMal);
+      return;
+    }
+    // Con sesión: el análisis anónimo pasa a la cuenta (claim) y queda ligado su perfil.
+    await reclamarAnalisisAnonimos(posthog, "register");
+    emitirAuthCompletada(posthog, "signup", "email");
+    consumirRegistroPendiente();
+    capturarLqs(posthog, EVENTOS_LQS.registroCompletado, ctx, { via: "correo", como: "codigo" });
+    if (alEntrar) alEntrar();
+    else router.refresh();
+  }
+
   async function conGoogle() {
     capturarLqs(posthog, EVENTOS_LQS.registroIniciado, ctx, { via: "google" });
     marcarRegistroPendiente("google", ctx);
@@ -76,14 +113,29 @@ export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
 
   if (enviado) {
     return (
-      <div>
+      <form className="lqs-reg" onSubmit={entrarConCodigo} noValidate data-lqs="registro-codigo">
         <p className="lqs-ojo">{REGISTRO_UN_PASO.ojo}</p>
         <h3 className="lqs-h3">{REGISTRO_UN_PASO.enviadoTitular} <mark>{REGISTRO_UN_PASO.enviadoPlumon}</mark></h3>
         <p className="lqs-enviado">{REGISTRO_UN_PASO.enviadoCuerpo(enviado)}</p>
-        {onSeguirLeyendo && (
-          <button type="button" className="lqs-btn lqs-ghost" onClick={onSeguirLeyendo}>{REGISTRO_UN_PASO.seguir}</button>
-        )}
-      </div>
+        <div className="lqs-campo">
+          <input
+            ref={campoCodigo}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={6}
+            placeholder={REGISTRO_UN_PASO.placeholderCodigo}
+            aria-label="Código de 6 dígitos"
+            className="lqs-codigo"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
+          <button type="submit" className="lqs-btn" disabled={entrando} data-presionado={entrando ? "1" : undefined}>{REGISTRO_UN_PASO.entrar}</button>
+        </div>
+        {error && <p className="lqs-error" role="alert">{error}</p>}
+        <p className="lqs-legal">{REGISTRO_UN_PASO.enlaceAlternativa}</p>
+      </form>
     );
   }
 
@@ -91,7 +143,7 @@ export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
     <div>
       <p className="lqs-ojo">{REGISTRO_UN_PASO.ojo}</p>
       <h3 className="lqs-h3">{REGISTRO_UN_PASO.titular} <mark>{REGISTRO_UN_PASO.plumon}</mark></h3>
-      <form className="lqs-reg" onSubmit={enviarEnlace} noValidate>
+      <form className="lqs-reg" onSubmit={enviarCodigo} noValidate data-lqs="registro-correo">
         <div className="lqs-campo">
           <input
             type="email"
@@ -102,7 +154,7 @@ export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
             value={correo}
             onChange={(e) => setCorreo(e.target.value)}
           />
-          <button type="submit" className="lqs-btn" disabled={enviando} data-presionado={enviando ? "1" : undefined}>{REGISTRO_UN_PASO.entrar}</button>
+          <button type="submit" className="lqs-btn" disabled={enviando} data-presionado={enviando ? "1" : undefined}>{REGISTRO_UN_PASO.mandarCodigo}</button>
         </div>
         {error && <p className="lqs-error" role="alert">{error}</p>}
         <div className="lqs-o">{REGISTRO_UN_PASO.o}</div>
@@ -113,7 +165,7 @@ export function RegistroUnPaso({ next, ctx, onSeguirLeyendo }: {
   );
 }
 
-/** Al volver con sesión: si había un registro en curso de «Lo que sigue», emite el completado con su vía. */
+/** Al volver con sesión (enlace o Google): si había un registro en curso, emite el completado con su vía. */
 export function RegistroCompletadoSonda({ activa }: { activa: boolean }) {
   const posthog = usePostHog();
   useSondaRegistro(activa, posthog);
@@ -124,7 +176,7 @@ function useSondaRegistro(activa: boolean, posthog: PostHog | null | undefined) 
   useEffect(() => {
     if (!activa) return;
     const m = consumirRegistroPendiente();
-    if (m) capturarLqs(posthog, EVENTOS_LQS.registroCompletado, m.ctx, { via: m.via });
+    if (m) capturarLqs(posthog, EVENTOS_LQS.registroCompletado, m.ctx, { via: m.via, como: "enlace" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activa]);
 }

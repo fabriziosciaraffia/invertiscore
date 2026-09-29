@@ -1,0 +1,29 @@
+<!-- Plantilla para Supabase → Authentication → Email Templates → «Magic Link» (28-sep-2026).
+     La manda Supabase Auth (no Resend): es el correo del registro en un paso de «Lo que sigue».
+     Lleva el CÓDIGO ({{ .Token }}) grande y el enlace ({{ .ConfirmationURL }}) como alternativa.
+     Asunto sugerido: «Tu código para entrar a Franco: {{ .Token }}».
+     Formato de los correos nuevos (src/lib/email.ts): fondo #0F0F0F, tarjeta #151515, wordmark,
+     Georgia en el título, Signal Red solo en el botón, pie con el descargo. -->
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: #0F0F0F; font-family: 'Helvetica Neue', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
+    <div style="background: #151515; border-radius: 16px; border: 1px solid #222; padding: 40px 32px;">
+      <p style="margin: 0 0 28px 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; color: #FAFAF8;"><span style="opacity: .28;">re</span><b>franco</b><span style="color: #C8323C; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600;">.ai</span></p>
+      <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">Tu código para entrar</h1>
+      <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">Escríbelo en el informe, donde lo pediste. Vale una hora.</p>
+      <div style="margin: 0 0 28px 0; padding: 22px 16px; background: #0F0F0F; border: 1px solid #2A2A2A; border-radius: 12px; text-align: center;">
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #FAFAF8;">{{ .Token }}</span>
+      </div>
+      <p style="color: #A1A1AA; line-height: 1.7; font-size: 14px; margin: 0 0 8px 0;">Si prefieres, entra con este enlace. Te deja en el mismo informe, ya con tu cuenta.</p>
+      <div style="margin: 20px 0 32px 0; text-align: center;">
+        <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: #C8323C; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">Entrar a Franco</a>
+      </div>
+      <p style="color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">Si no pediste este código, no hagas nada: sin él nadie entra a tu cuenta.</p>
+      <p style="color: #52525B; font-size: 12px; line-height: 1.6; margin: 16px 0 0 0;">Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.</p>
+      <p style="color: #3F3F46; font-size: 11px; margin-top: 8px;"><a href="https://refranco.ai" style="color: #52525B; text-decoration: none;">refranco.ai</a></p>
+    </div>
+  </div>
+</body>
+</html>

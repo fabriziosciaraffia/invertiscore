@@ -7,7 +7,7 @@
 // quien llega por otro lado.
 // ─────────────────────────────────────────────────────────────────────────────
 import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { esDestinoSeguro } from "@/lib/auth-next";
 import { RegistroUnPaso } from "@/components/lo-que-sigue/RegistroUnPaso";
@@ -23,6 +23,7 @@ export default function RegistroPage() {
 
 function RegistroContenido() {
   const sp = useSearchParams();
+  const router = useRouter();
   const nextRaw = sp.get("next");
   const next = esDestinoSeguro(nextRaw) ? nextRaw : "/dashboard";
   const analysisId = (() => {
@@ -38,7 +39,7 @@ function RegistroContenido() {
       <div className="lqs-mat lqs-pagina">
         <div className="lqs-fondo" aria-hidden="true" />
         <div className="lqs-col">
-          <RegistroUnPaso next={next} ctx={{ analysisId, veredicto: "", modalidad: "ltr" }} />
+          <RegistroUnPaso next={next} ctx={{ analysisId, veredicto: "", modalidad: "ltr" }} alEntrar={() => router.push(next)} />
         </div>
       </div>
     </div>
