@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { filtroNoTest, getTestAccountIds } from "@/lib/admin-rpc";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -241,40 +242,32 @@ function ejemplosRespaldo(): EjemploLanding[] {
   return (RESPALDO.ejemplos as unknown as EjemploLanding[]).map((e) => ({ ...e, etiqueta: etiquetaVeredicto(e.veredicto, "banda") }));
 }
 
-export async function leerDatosLanding(): Promise<DatosLanding> {
+// ─── LOS EJEMPLOS GUARDADOS (29-sep-2026) ────────────────────────────────────
+// Los tres ejemplos los calcula el motor UNA vez y se sirven guardados: la clave lleva la versión
+// del deploy, así cada deploy los recalcula, y vencen al día, para seguir la UF y los comparables.
+// La página sigue con su ISR de 10 minutos para el último análisis emitido; lo que ya no hace es
+// correr el motor tres veces en cada regeneración. Nada escrito a mano: es el mismo cálculo.
+//
+// Un resultado DEGRADADO no se guarda: se lanza adentro (unstable_cache no guarda errores) y afuera
+// se sirve igual, así el respaldo nunca queda fijado un día entero. Fuera del runtime de Next (los
+// scripts con tsx) unstable_cache no está disponible y se calcula directo.
+const VERSION_DEPLOY = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.VERCEL_DEPLOYMENT_ID ?? "local";
+export const EJEMPLOS_REVALIDATE_S = 86400;
+
+class EjemplosDegradados extends Error {
+  constructor(readonly ejemplos: EjemploLanding[]) {
+    super("ejemplos degradados: no se guardan");
+  }
+}
+
+async function calcularEjemplos(): Promise<{ ejemplos: EjemploLanding[]; degradado: boolean }> {
   let degradado = false;
   const aviso = (que: string, error: unknown) => {
     degradado = true;
     captureApiWarning(error, { ruta: "GET / (landing-vivo)", operacion: que });
   };
-
   const sb = createServiceClient();
-
-  const [ultimo, filas, ufLive] = await Promise.all([
-    (async () => {
-      try {
-        const noTest = filtroNoTest(await getTestAccountIds(sb));
-        let q = sb
-          .from("analisis")
-          .select("comuna, results, created_at")
-          .not("results", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(5);
-        if (noTest) q = q.or(noTest);
-        const { data, error } = await q;
-        if (error) throw error;
-        for (const row of data ?? []) {
-          const v = readVeredicto(row.results as Parameters<typeof readVeredicto>[0]);
-          if (v && row.comuna) {
-            return { etiqueta: etiquetaVeredicto(v, "banda"), veredicto: v, comuna: row.comuna as string, createdAt: row.created_at as string };
-          }
-        }
-        return null;
-      } catch (e) {
-        aviso("ultimo_analisis", e);
-        return null;
-      }
-    })(),
+  const [filas, ufLive] = await Promise.all([
     sb.from("analisis")
       .select("id, comuna, created_at, input_data, results, ai_analysis, mediana_comuna_snapshot, capref_comuna_snapshot")
       .in("id", EJEMPLOS_LANDING.map((e) => e.id))
@@ -303,14 +296,76 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
       }),
     );
     ejemplos = leidos.filter((e): e is EjemploLanding => e !== null);
-    if (ejemplos.length === 0) ejemplos = ejemplosRespaldo();
+    if (ejemplos.length === 0) {
+      degradado = true;
+      ejemplos = ejemplosRespaldo();
+    }
   } else {
+    degradado = true;
     ejemplos = ejemplosRespaldo();
   }
+  return { ejemplos, degradado };
+}
+
+const ejemplosGuardados = unstable_cache(
+  async (): Promise<EjemploLanding[]> => {
+    const r = await calcularEjemplos();
+    if (r.degradado) throw new EjemplosDegradados(r.ejemplos);
+    return r.ejemplos;
+  },
+  ["landing-ejemplos", VERSION_DEPLOY, ...EJEMPLOS_LANDING.map((e) => e.id)],
+  { revalidate: EJEMPLOS_REVALIDATE_S, tags: ["landing-ejemplos"] },
+);
+
+async function leerEjemplos(): Promise<{ ejemplos: EjemploLanding[]; degradado: boolean }> {
+  try {
+    return { ejemplos: await ejemplosGuardados(), degradado: false };
+  } catch (e) {
+    if (e instanceof EjemplosDegradados) return { ejemplos: e.ejemplos, degradado: true };
+    return calcularEjemplos();
+  }
+}
+
+export async function leerDatosLanding(): Promise<DatosLanding> {
+  let degradado = false;
+  const aviso = (que: string, error: unknown) => {
+    degradado = true;
+    captureApiWarning(error, { ruta: "GET / (landing-vivo)", operacion: que });
+  };
+
+  const sb = createServiceClient();
+
+  const [ultimo, guardados] = await Promise.all([
+    (async () => {
+      try {
+        const noTest = filtroNoTest(await getTestAccountIds(sb));
+        let q = sb
+          .from("analisis")
+          .select("comuna, results, created_at")
+          .not("results", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        if (noTest) q = q.or(noTest);
+        const { data, error } = await q;
+        if (error) throw error;
+        for (const row of data ?? []) {
+          const v = readVeredicto(row.results as Parameters<typeof readVeredicto>[0]);
+          if (v && row.comuna) {
+            return { etiqueta: etiquetaVeredicto(v, "banda"), veredicto: v, comuna: row.comuna as string, createdAt: row.created_at as string };
+          }
+        }
+        return null;
+      } catch (e) {
+        aviso("ultimo_analisis", e);
+        return null;
+      }
+    })(),
+    leerEjemplos(),
+  ]);
 
   return {
     ultimoAnalisis: ultimo,
-    ejemplos,
-    degradado,
+    ejemplos: guardados.ejemplos,
+    degradado: degradado || guardados.degradado,
   };
 }

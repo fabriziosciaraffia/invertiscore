@@ -2,9 +2,11 @@ import { InformeLtr } from "@/app/analisis/[id]/informe-ltr";
 import { DEMO_LTR_ID } from "@/lib/demo";
 import { DemoCabecera } from "./demo-cabecera";
 
-// El demo se recalcula con el motor en cada visita, igual que cualquier informe: sin caché
-// estática que congele un resultado viejo.
-export const dynamic = "force-dynamic";
+// EL DEMO GUARDADO (29-sep-2026). El motor lo calcula una vez y se sirve guardado: Next genera la
+// página en cada deploy y la regenera una vez al día, para seguir la UF y los comparables. Hasta
+// hoy corría por cada visita (force-dynamic, unos 4 segundos). El informe lo lee sin sesión en
+// modo demo (`InformeLtr`), así que nada de la página depende de quién la mira.
+export const revalidate = 86400;
 
 /**
  * EL DEMO PÚBLICO · RENTA LARGA (25-sep-2026). La pestaña que abre. Es la fila real

@@ -3,7 +3,8 @@ import { InformeStr } from "@/app/analisis/renta-corta/[id]/informe-str";
 import { DEMO_STR_ID } from "@/lib/demo";
 import { DemoCabecera } from "../demo-cabecera";
 
-export const dynamic = "force-dynamic";
+// EL DEMO GUARDADO (29-sep-2026): igual que /demo, generado en cada deploy y una vez al día.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "Demo — Ejemplo en renta corta",

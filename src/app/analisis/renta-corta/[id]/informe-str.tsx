@@ -5,6 +5,7 @@ import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import { esDemo } from "@/lib/demo";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
@@ -30,10 +31,16 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   // dedicada /analisis/renta-corta/[id]/documento (server-rendered). Esta ruta
   // es siempre la vista interactiva completa.
 
-  const supabase = createClient();
+  // EL DEMO GUARDADO (29-sep-2026). El demo no depende de quién lo mira: se lee con el cliente de
+  // servicio, sin cookies y sin sesión, y así la ruta del demo no es dinámica por visita. Next la
+  // genera en el build y la regenera una vez al día (`revalidate` de la página). Sigue siendo el
+  // motor, no un resultado escrito a mano: solo deja de correr por cada visitante. `esDemo` además
+  // de la prop: el cliente de servicio solo lee las dos filas públicas.
+  const modoDemo = demo && esDemo(id);
+  const supabase = modoDemo ? createServiceClient() : createClient();
 
-  const [{ data: { user } }, ufValue] = await Promise.all([
-    supabase.auth.getUser(),
+  const [user, ufValue] = await Promise.all([
+    modoDemo ? Promise.resolve(null) : supabase.auth.getUser().then((r) => r.data.user),
     getUFValue(),
   ]);
 
@@ -110,7 +117,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
   // Anónimo-DUEÑO (cap F2-2): espejo de /analisis/[id] — cookie httpOnly de
   // este navegador calza con el hash de la fila sin dueño.
-  const anonToken = !isLoggedIn ? tokenAnonDelRequest() : null;
+  const anonToken = !isLoggedIn && !modoDemo ? tokenAnonDelRequest() : null;
   const anonHash = (data as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
   const isAnonOwner =
     !isLoggedIn && data.user_id === null && !!anonToken && !!anonHash &&
