@@ -12,7 +12,8 @@ import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type Evaluacio
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
 // últimos 3 días pasan por la MISMA entrada del wizard (evaluar-aviso.ts) con el perfil estándar —pie
 // 20% y 30%, 30 años, tasa de mercado— y quedan en `avisos_evaluados` con sus sugerencias (fuente y
-// muestra) y su resultado. Es la base de «tres parecidos» y del portafolio.
+// muestra) y su resultado. Es la base de «Por dónde seguir buscando» (los tres
+// parecidos): una guía de búsqueda, NO el portafolio de Franco, que es otra cosa y no se mezcla.
 //
 // PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación, con precio
 // cambiado, con más de 7 días o de otra versión del motor), evalúa hasta cortar por presupuesto y
