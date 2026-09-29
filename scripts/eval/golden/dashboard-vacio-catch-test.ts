@@ -55,6 +55,12 @@ export function runDashboardVacioTier(): { hard: number } {
   // 6
   const hace = BIENVENIDA.hace.map((h) => `${h.titulo} ${h.texto}`).join(" ");
   if (!/Analiza tus deptos/.test(hace) || !/portafolio/.test(hace) || !/oportunidades/.test(hace)) F("6 · no dice lo que Franco hace por un registrado (analizar Y las oportunidades del portafolio)");
+  // Las frases aprobadas (29-sep-2026), literales: dicen lo mismo que el banner.
+  if (BIENVENIDA.hace[1]?.titulo !== "Te hace llegar oportunidades.") F("6 · el título del bloque de oportunidades no es el aprobado");
+  if (BIENVENIDA.hace[1]?.texto !== "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.") F("6 · el texto del bloque de oportunidades no es el aprobado");
+  if (BIENVENIDA.buscaParaTi !== "Franco busca para ti:") F("6 · «Franco busca para ti:» no es el aprobado");
+  if (BIENVENIDA.sinPerfil !== "Lo que Franco busca para ti se arma con tu primer análisis.") F("6 · la frase sin perfil no es la aprobada");
+  if (b.indexOf("{BIENVENIDA.hace.map") < 0 || b.indexOf("<BuscaParaTi") < b.indexOf("{BIENVENIDA.hace.map")) F("6 · «Franco busca para ti:» no va debajo del bloque de oportunidades");
   if (!/\.from\("perfiles_inversion"\)[\s\S]{0,200}\.eq\("user_id", user\.id\)/.test(pag) || !/pref_tipologia \?\? perfilRow\.tipologia/.test(pag)) F("6 · la página no lee el perfil (con lo editado primero)");
   if (!/\{BIENVENIDA\.buscaParaTi\}/.test(b) || !/\{BIENVENIDA\.sinPerfil\}/.test(b) || !/fetch\("\/api\/lo-que-sigue\/perfil"/.test(b) || (b.match(/<select aria-label=/g) ?? []).length !== 3) F("6 · falta «Franco busca para ti:» con los tres chips editables, o la frase sin perfil");
   if (!/if \(demo \|\| !perfil\) return;/.test(b)) F("6 · la demo escribe el perfil");
@@ -73,6 +79,8 @@ export function runDashboardVacioTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
+// ── ACTA v2 (29-sep-2026, las frases aprobadas, 5/5 en rojo): D15 el texto de oportunidades · D16 el
+// título · D17 la frase sin perfil · D18 «Franco busca para ti:» · D19 el perfil arriba del bloque.
 // ── ACTA DE MUTACIONES v1 (29-sep-2026, 14/14 en rojo, restauradas byte a byte) ─────────────
 // D1 vuelve el mono · D2 mayúsculas · D3 wordmark a mano · D4 rojo en «Ver plan» · D5 números en
 // círculo rosado · D6 falta un chip · D7 «gratis» sin crédito · D8 la regla ignora el crédito · D9 la

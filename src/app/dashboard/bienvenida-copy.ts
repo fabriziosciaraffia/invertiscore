@@ -2,7 +2,8 @@
 // El copy del dashboard vacío (29-sep-2026): lo primero que ve quien entra por /registro sin
 // informes. Dice lo que Franco hace por un usuario registrado —analizar sus deptos y hacerle llegar
 // oportunidades de su portafolio—, coherente con el banner de «Lo que sigue», y cómo es el primer
-// análisis. En tuteo, sin mono. TODO el texto es nuevo: [REVISAR] Fabrizio.
+// análisis. En tuteo, sin mono. Aprobado por Fabrizio el 29-sep-2026 (el bloque de oportunidades, con
+// sus palabras); el tier DASHBOARD-VACIO fija esas frases.
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMPARABLES_TEXTO } from "@/lib/stats";
 
@@ -16,12 +17,12 @@ export const BIENVENIDA = {
     },
     {
       titulo: "Te hace llegar oportunidades.",
-      texto: "Franco tiene un portafolio de deptos para invertir, y todos pasaron por este mismo análisis. Te escribimos cuando haya uno que calce con lo que buscas.",
+      texto: "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.",
     },
   ],
   buscaParaTi: "Franco busca para ti:",
   tocaCambiar: "toca para cambiar",
-  sinPerfil: "Lo que Franco busca para ti se arma con tu primer análisis: la comuna, la tipología y si es renta larga o renta corta.",
+  sinPerfil: "Lo que Franco busca para ti se arma con tu primer análisis.",
   pasosTitulo: "Cómo es tu primer análisis",
   pasos: [
     { titulo: "Ingresas el depto", texto: "Dirección, precio y superficie. El resto Franco lo estima con datos de mercado y lo puedes corregir." },
