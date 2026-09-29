@@ -128,7 +128,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "conviene-invertir",
         q: "¿Entonces conviene invertir o no?",
-        a: "Depende de cada caso. Un depto con flujo negativo de $50.000/mes puede ser excelente inversión si la plusvalía y amortización generan un retorno de 3-4x en 10 años. Franco te ayuda a ver ese panorama completo.",
+        a: "Depende de cada caso. Un depto con flujo negativo de $50.000/mes puede ser buena inversión si la plusvalía y la amortización hacen crecer lo que pusiste: en los análisis de Franco, lo habitual a 10 años es terminar con entre 1,2 y 2 veces lo puesto, en pesos de hoy. Franco te ayuda a ver ese panorama completo.",
       },
     ],
   },
