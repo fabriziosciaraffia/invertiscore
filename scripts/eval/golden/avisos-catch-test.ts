@@ -113,6 +113,7 @@ export function runAvisosTier(): { hard: number } {
     for (const w of escrituras) if (!/\.from\("avisos_evaluados"\)/.test(w)) F(`6 · ${f} escribe fuera de avisos_evaluados: ${w.slice(0, 60)}`);
   }
   if (!/if \(dry\) \{ muestraDry\.push\(fila\); exitosos\+\+; continue; \}\s*const \{ error \} = await sb\.from\("avisos_evaluados"\)\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(cron)) F("6 · el modo dry escribe (o el upsert no es idempotente por aviso)");
+  if (!/await evaluarAviso\(sb, a, cfg, \{ segmentar: false \}\)/.test(cron)) F("6 · el cron evalúa con el arriendo del segmento, que el censo del 29-sep descartó");
   if (!/\.gte\("scraped_at", desde\)/.test(cron) || !/VENTANA_VISTOS_DIAS \* 864e5/.test(cron)) F("6 · el cron no lee solo los avisos vistos en la ventana");
   const vj = JSON.parse(leer("vercel.json")) as { crons: { path: string; schedule: string }[] };
   const c = vj.crons.find((x) => x.path === "/api/cron/evaluar-avisos");
@@ -152,6 +153,7 @@ export function runAvisosTier(): { hard: number } {
 //   M18 heartbeat con otro nombre ............................ 6 · no está vigilado
 //   M19 la migración sin RLS ................................. 6 · sin RLS
 //   M20 la obra nueva siempre inmediata ...................... 4 · sin su entrega real
+//   M21 el cron con segmentar: true .......................... 6 · el arriendo del segmento, descartado
 
 if (require.main === module) {
   const { hard } = runAvisosTier();

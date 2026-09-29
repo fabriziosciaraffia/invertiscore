@@ -89,8 +89,11 @@ export async function GET(request: Request) {
     while (i < cola.length && Date.now() - t0 < PRESUPUESTO_MS) {
       const a = cola[i++];
       try {
+        // Arriendo de radio, sin segmento de precio: medido el 29-sep-2026 sobre 1.538 avisos, el segmento
+        // no desinfla los bloques baratos (bajo UF 30/m² lo usan 5 de 190; la mediana no se mueve) y sube
+        // los arriendos sospechosos de 861 a 1.280. Queda en arriendo-segmentado.ts, apagado.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { sug, ...fila } = await evaluarAviso(sb, a, cfg, { segmentar: true });
+        const { sug, ...fila } = await evaluarAviso(sb, a, cfg, { segmentar: false });
         if (!fila.arriendo) sinArriendo++;
         if (dry) { muestraDry.push(fila); exitosos++; continue; }
         const { error } = await sb.from("avisos_evaluados").upsert(fila, { onConflict: "aviso_id" });

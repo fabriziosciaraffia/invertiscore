@@ -9,8 +9,9 @@
 //     que aguanta 25 años es robusto; preferimos perder una oportunidad a mostrar una mala (Fabrizio,
 //     30-sep-2026). Con año (cuando la ficha lo traiga, FASE 2), el real.
 //   · Entrega (nuevos): de scraped_properties.fecha_entrega (GraphQL de la fuente). Sin dato, inmediata.
-//   · Arriendo: el sugerido por radio, o —si alcanza la muestra— el del mismo segmento de precio
-//     (arriendo-segmentado.ts), que no le da a un bloque barato el arriendo de los edificios mejores.
+//   · Arriendo: el sugerido por radio. El del mismo segmento de precio (arriendo-segmentado.ts) queda
+//     detrás de `segmentar` y el cron lo tiene apagado: el censo del 29-sep-2026 no lo vio desinflar
+//     los bloques baratos.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAnalysis } from "@/lib/analysis";
