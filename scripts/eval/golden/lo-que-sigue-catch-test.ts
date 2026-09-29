@@ -27,6 +27,7 @@ import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo
 import { CHECKOUT_PACK, FRASE_PACK, FRASE_REGISTRO, OFERTA_REGISTRO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
 import { EVENTOS_LQS } from "../../../src/lib/lo-que-sigue/eventos";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
+import { correoCodigoSupabase } from "../../../src/lib/email/plantilla-clara";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -169,8 +170,14 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg) || !/autoComplete="one-time-code"/.test(reg) || !/maxLength=\{6\}/.test(reg)) F("4 · el código de 6 dígitos no se escribe en el mismo formulario (verifyOtp)");
   if (!/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
   if (!/emailRedirectTo: callback\(\)/.test(reg)) F("4 · el enlace del correo no vuelve al mismo informe");
-  const plantilla = leer("docs/emails/supabase-magic-link.html").replace(/<!--[\s\S]*?-->/g, "");
+  const plantilla = leer("docs/emails/supabase-codigo.html").replace(/<!--[\s\S]*?-->/g, "");
   if (!/\{\{ \.Token \}\}/.test(plantilla) || !/\{\{ \.ConfirmationURL \}\}/.test(plantilla)) F("4 · la plantilla del correo de Supabase no lleva el código y el enlace");
+  if (plantilla.trim() !== correoCodigoSupabase().trim()) F("4 · docs/emails/supabase-codigo.html no es lo que genera la plantilla clara (regenerar con scripts/emails/generar-supabase-codigo.ts)");
+  if (/background: #151515|Courier|color-scheme" content="dark/.test(plantilla) || !/<body style="margin: 0; padding: 0; background: #FAFAF8;">/.test(plantilla) || !/Inter, 'Helvetica Neue'/.test(plantilla)) F("4 · la plantilla del código no es la clara (papel, Inter con fallback), o trae oscuro o mono");
+  if (!/<span style="color: #B4B2A9;">re<\/span><span style="font-weight: 700;">franco<\/span>/.test(plantilla) || !/color: #C8323C;">\.ai<\/span>/.test(plantilla)) F("4 · el wordmark del correo no es fiel");
+  if (!/background: #0F0F0F;">\s*<a href="\{\{ \.ConfirmationURL \}\}"/.test(plantilla)) F("4 · el botón del enlace no va en tinta");
+  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg)) F("2 · verifyOtp tiene que ir con type «email», que cubre Confirm signup y Magic Link");
+  if (!/\.lqs-reg \.lqs-codigo::placeholder \{ letter-spacing: 0;/.test(leer("src/components/lo-que-sigue/lo-que-sigue.css")) || REGISTRO_UN_PASO.placeholderCodigo !== "Código") F("3 · el placeholder del código no es corto y sin espaciado");
 
   if (fallas.length) {
     console.log(`  ✗ LO-QUE-SIGUE · ${fallas.length} falla(s):`);
