@@ -25,7 +25,8 @@ const PLANES = PRICING_PLANS.filter((p) => ["plan10", "plan50", "unlimited"].inc
   id: p.id,
   label: p.label,
   precio: p.monthly ? `${fmtCLP(p.monthly)}/mes` : "",
-  blurb: p.id === "unlimited" ? "Análisis ilimitados" : `${p.capacity} análisis al mes`,
+  // La etiqueta ya dice la cantidad («10 análisis / mes»); abajo va para quién es (pricing.ts).
+  blurb: p.title,
   href: `/checkout?product=${productKeyFor(p.id, "monthly")}`,
 }));
 const PRECIO_UNITARIO = fmtCLP(SINGLE_PRICE);
