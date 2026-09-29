@@ -251,3 +251,16 @@ export async function desactivarProyectosConUnidades(
   }
   return { desactivadas, errores };
 }
+
+/**
+ * Fracción de proyectos que puede seguir fallando DESPUÉS del reintento sin que la corrida cuente como
+ * falla (30-sep-2026, decisión de Fabrizio). El proxy suelta algún `fetch failed` suelto (4 de 140 en la
+ * primera corrida del 29-sep): cada proyecto fallido se reintenta una vez, y solo si pasa del 5% la
+ * corrida es falla y alerta. Los que fallan igual quedan en `errors` y se leen en la respuesta.
+ */
+export const TOLERANCIA_FALLA_PROYECTOS = 0.05;
+
+/** Qué cuenta como fallido tras el reintento: nada si no pasa de la tolerancia (ver arriba). */
+export function fallidosTolerados(fallidos: number, delBatch: number): number {
+  return delBatch > 0 && fallidos / delBatch > TOLERANCIA_FALLA_PROYECTOS ? fallidos : 0;
+}

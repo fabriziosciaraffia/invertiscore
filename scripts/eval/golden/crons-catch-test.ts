@@ -17,7 +17,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fetchUnidadesProyecto } from "../../../src/lib/services/scraper/toctoc-unidades";
+import { fallidosTolerados, fetchUnidadesProyecto, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
 import { CRONS_VIGILADOS, leerLatidos } from "../../../src/lib/cron-heartbeat";
 
@@ -76,6 +76,12 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   if (!/export const proxyDispatcher = process\.env\.PROXY_URL/.test(leer("src/lib/services/scraper/toctoc.ts"))) F("1 · el proxy no está exportado desde toctoc.ts");
   const uni = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
   if (!/const sinNinguna = delBatch\.length > 0 && conUnidades\.length === 0;/.test(uni) || !/upsertFallo \|\| sinNinguna\s*\? \{ procesados: delBatch\.length, exitosos: 0, fallidos: delBatch\.length \}/.test(uni)) F("1 · un batch de unidades sin una sola unidad (o con el upsert caído) no es falla total");
+
+  // ── 1 · el reintento y la tolerancia (30-sep-2026): cada proyecto fallido se reintenta una vez; la
+  // corrida es falla solo si después falla más del 5% ──
+  if (TOLERANCIA_FALLA_PROYECTOS !== 0.05 || fallidosTolerados(4, 140) !== 0 || fallidosTolerados(7, 140) !== 0 || fallidosTolerados(8, 140) !== 8 || fallidosTolerados(1, 0) !== 0) F(`1 · la tolerancia no es «más del 5% tras el reintento» (4/140→${fallidosTolerados(4, 140)}, 8/140→${fallidosTolerados(8, 140)})`);
+  if (!/for \(let k = 0; k < resultados\.length; k\+\+\) \{\s*if \(!resultados\[k\]\.error\) continue;\s*const base = delBatch\.find\(\(p\) => p\.idProyecto === resultados\[k\]\.idProyecto\);\s*if \(base\) resultados\[k\] = await fetchUnidadesProyecto\(base\);/.test(uni)) F("1 · los proyectos fallidos no se reintentan una vez");
+  if (!/fallidos: fallidosTolerados\(conError\.length, delBatch\.length\)/.test(uni)) F("1 · la corrida no cuenta los fallidos con la tolerancia");
 
   // ── 2 · el status ──
   const casos: Array<[number, number, number, string, number]> = [
@@ -174,8 +180,8 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 // 29-sep-2026, scratchpad mutar.py: 20/20 en rojo, restauradas byte a byte.
 //   M1  el GraphQL sin proxy (el bug del 03-ago) ............... 1 · fetch a la fuente sin el proxy
 //   M2  `!r.ok` en vez de `status !== 200` (el 202 pasa) ........ 1 · el desafío del WAF no sale como error
-//   M3  sin chequeo de cuerpo vacío ............................ 1 · no sale como error legible (al principio
-//       quedó VERDE: el JSON.parse revienta igual y cae como error; el tier pasó a exigir el mensaje)
+//   M3  sin chequeo de cuerpo vacío ............................ 1 · no sale como error legible (quedó VERDE
+//       al principio: el JSON.parse revienta igual; el tier pasó a exigir el mensaje)
 //   M4  proyecto despublicado como falla ....................... 1 · despublicado cuenta como falla
 //   M5  batch sin unidades no es falla ......................... 1 · no es falla total
 //   M6  el parcial vuelve a 2xx ................................ 2 · parcial/200
@@ -193,6 +199,11 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   M18 la alerta a otro correo ................................ 2 · no va a hola@
 //   M19 expire-grace responde 500 a mano ....................... 2 · responde sin pasar por cerrarCron
 //   M20 un fetch del listado sin proxy ......................... 1 · fetch a la fuente sin el proxy
+// 30-sep-2026 (reintento y tolerancia): 4/4 en rojo.
+//   C1 sin reintento ........................................... 1 · los fallidos no se reintentan
+//   C2 tolerancia 10% .......................................... 1 · la tolerancia no es «más del 5%»
+//   C3 toda falla cuenta (sin tolerancia) ...................... 1 · ídem
+//   C4 la corrida ignora la tolerancia ......................... 1 · no cuenta con la tolerancia
 
 if (require.main === module) {
   runCronsTier().then(({ hard }) => process.exit(hard ? 1 : 0));

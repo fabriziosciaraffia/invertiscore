@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import {
   fetchUnidadesProyecto,
   desactivarProyectosConUnidades,
+  fallidosTolerados,
+  TOLERANCIA_FALLA_PROYECTOS,
   type ProyectoBase,
 } from "@/lib/services/scraper/toctoc-unidades";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
@@ -44,6 +46,7 @@ const CICLO_DIAS = 3;
 const CONCURRENCIA = 8;
 /** Pausa de cortesía entre lotes de fichas (ms). */
 const PAUSA_LOTE_MS = 250;
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = ReturnType<typeof createClient<any>>;
@@ -130,13 +133,20 @@ export async function POST(request: Request) {
   const delBatch = Array.from(porId.values()).filter((p) => p.idProyecto % CICLO_DIAS === batch);
 
   // ── 2. GraphQL por proyecto, concurrencia acotada ──
-  const resultados = [];
+  const resultados: Awaited<ReturnType<typeof fetchUnidadesProyecto>>[] = [];
   for (let i = 0; i < delBatch.length; i += CONCURRENCIA) {
     const lote = delBatch.slice(i, i + CONCURRENCIA);
     resultados.push(...await Promise.all(lote.map((p) => fetchUnidadesProyecto(p))));
     if (PAUSA_LOTE_MS > 0 && i + CONCURRENCIA < delBatch.length) {
       await new Promise((r) => setTimeout(r, PAUSA_LOTE_MS));
     }
+  }
+  // Un reintento, uno por uno, para los que fallaron (el proxy suelta algún `fetch failed`).
+  const fallidosPrimera = resultados.filter((r) => r.error).length;
+  for (let k = 0; k < resultados.length; k++) {
+    if (!resultados[k].error) continue;
+    const base = delBatch.find((p) => p.idProyecto === resultados[k].idProyecto);
+    if (base) resultados[k] = await fetchUnidadesProyecto(base);
   }
   const t1 = Date.now();
 
@@ -202,10 +212,12 @@ export async function POST(request: Request) {
   const sinNinguna = delBatch.length > 0 && conUnidades.length === 0;
   const conteo = upsertFallo || sinNinguna
     ? { procesados: delBatch.length, exitosos: 0, fallidos: delBatch.length }
-    : { procesados: delBatch.length, exitosos: conUnidades.length + sinUnidades.length, fallidos: conError.length + (recon.errores.length ? 1 : 0) };
+    : { procesados: delBatch.length, exitosos: conUnidades.length + sinUnidades.length, fallidos: fallidosTolerados(conError.length, delBatch.length) + (recon.errores.length ? 1 : 0) };
   return cerrarCron(supabase, "scrape-unidades-nuevas", conteo, {
     success: !upsertFallo && !sinNinguna,
     modo: "unidades-obra-nueva",
+    fallidosAntesDelReintento: fallidosPrimera,
+    toleranciaFalla: TOLERANCIA_FALLA_PROYECTOS,
     batch,
     cicloDias: CICLO_DIAS,
     proyectosEnCiclo: porId.size,
