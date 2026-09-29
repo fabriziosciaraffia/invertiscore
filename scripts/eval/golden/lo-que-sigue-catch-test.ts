@@ -19,6 +19,8 @@
 //       usa en la primera línea. Sin precio, la frase va sin cifra: nunca se inventa.
 //   7 · EL WIZARD PRECARGADO NO PISA EL DEPTO: la precarga solo escribe lo de la persona, solo donde
 //       no hay respuesta; el grafo salta el financiamiento solo si vino completo.
+//   9 · LA MODALIDAD VUELVE CON EL PAGO (m=l|s) y post_pago_visto la registra de ahí.
+//  10 · EL CARRITO ABANDONADO NO ESCRIBE POR EL PACK (vence y no vuelve).
 //   8 · EL CORREO SALE UNA VEZ: `debeRecordar` y el reclamo con la condición en el WHERE antes de
 //       enviar.
 //   Más: sale «Guardarlo» del header y «Crear cuenta para guardarlo» del cierre; el pack es
@@ -30,7 +32,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { diaVencimiento, horaVencimiento, leerRetornoPack, ofertaPackVigente, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
+import { diaVencimiento, horaVencimiento, leerRetornoPack, modalidadDeTipo, ofertaPackVigente, productosRecuperables, urlRetornoPack, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
 import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
@@ -273,9 +275,28 @@ export function runLoQueSigueTier(): { hard: number } {
     const sp = (q: string) => new URLSearchParams(q);
     const r = leerRetornoPack(sp("order=x&lqs=pack&a=11111111-2222-3333-4444-555555555555&v=b"));
     if (!r || r.veredicto !== "BUSCAR OTRA") F("pago · el retorno del pack no trae el informe y el veredicto");
+    // 9 · LA MODALIDAD VUELVE CON EL PAGO y el evento la registra de ahí (29-sep-2026).
+    const ida = (m: "ltr" | "str") => leerRetornoPack(new URL(urlRetornoPack("https://refranco.ai", "o1", "11111111-2222-3333-4444-555555555555", "COMPRAR", m)).searchParams);
+    if (ida("str")?.modalidad !== "str" || ida("ltr")?.modalidad !== "ltr" || ida("str")?.veredicto !== "COMPRAR") F("9 · la vuelta del pago no trae la modalidad (ida y vuelta)");
+    if (modalidadDeTipo("short-term") !== "str" || modalidadDeTipo("long-term") !== "ltr") F("9 · la modalidad no sale de tipo_analisis");
+    for (const [f, re] of [
+      ["src/app/api/lo-que-sigue/pack/route.ts", /select\("user_id, created_at, results, tipo_analisis"\)[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo\(analysis\.tipo_analisis as string\)\)/],
+      ["src/app/api/payments/create/route.ts", /modalidadPack = modalidadDeTipo\(analysis\.tipo_analisis as string\);[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack\)/],
+      ["src/app/payments/return/page.tsx", /modalidad=\{retornoPack\.modalidad\}/],
+      ["src/components/lo-que-sigue/DespuesDePagar.tsx", /EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad \}/],
+    ] as const) if (!re.test(sinComentarios(leer(f)))) F(`9 · ${f} no lleva la modalidad del informe hasta el evento de después de pagar`);
     if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
     const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
     if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
+  }
+
+  // ── 10 · EL CARRITO ABANDONADO NO LE ESCRIBE A QUIEN DEJÓ EL PACK ──────────
+  {
+    const rec = productosRecuperables(Object.keys(FLOW_PRODUCTS) as (keyof typeof FLOW_PRODUCTS)[]);
+    if ((rec as string[]).includes("pack3")) F("10 · el carrito abandonado le escribe a quien dejó el pack (vence y no vuelve)");
+    if (!(rec as string[]).includes("single") || rec.length !== Object.keys(FLOW_PRODUCTS).length - 1) F("10 · el filtro del pack se lleva otros productos del recupero");
+    const ab = sinComentarios(leer("src/app/api/cron/abandoned-checkout/route.ts"));
+    if (!/const RECOVERABLE_PRODUCTS = productosRecuperables\(Object\.keys\(FLOW_PRODUCTS\) as FlowProductKey\[\]\);/.test(ab) || (ab.match(/\.in\("product", RECOVERABLE_PRODUCTS\)/g) ?? []).length !== 2) F("10 · el cron de carrito abandonado no filtra con productosRecuperables en sus dos lecturas");
   }
 
   // ── eventos: los ocho, y del lado del cliente con veredicto y modalidad ────
@@ -310,6 +331,10 @@ export function runLoQueSigueTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
+// ── ACTA DE MUTACIONES v4 (29-sep-2026, modalidad de vuelta y carrito abandonado: 9/9 en rojo) ──
+// M62 la vuelta sin `m` · M63 la lectura ignora `m` · M64 el evento supone ltr · M65 el ticket no lee
+// tipo_analisis · M66 el checkout no pasa la modalidad · M67 la página de vuelta no la pasa · M68 el
+// recupero incluye el pack · M69 el cron sin el filtro · M70 el filtro se lleva el single.
 // ── ACTA DE MUTACIONES v3 (30-sep-2026, copy y después de pagar: 23/23 en rojo, restauradas) ──
 // M40 voseo en el banner · M41 voseo en «Estás dentro» · M42 voseo en el correo · M43 voseo en
 // después de pagar (primero pasó VERDE: la lista no tenía «poné»/«comparalo»; se amplió y se fijaron

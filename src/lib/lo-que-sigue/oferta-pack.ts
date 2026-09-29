@@ -50,18 +50,30 @@ export const rutaPrecarga = (analysisId: string) => `/analisis/nuevo-v4?precarga
 
 // El retorno de Flow después del pack lleva el informe de origen y su veredicto (30-sep-2026): el
 // ticket paga SIN sesión y /payments/return no puede leer el pago sin ella. El veredicto va en una
-// letra y el id del informe ya es de la persona (el claim lo adoptó al pagar).
+// letra y el id del informe ya es de la persona (el claim lo adoptó al pagar). La modalidad también
+// (`m`: l = renta larga, s = renta corta), leída de `tipo_analisis` del informe: el evento de después
+// de pagar la registra de ahí, no la supone.
 const COD_VEREDICTO = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b" } as const;
 
-export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined): string {
+/** La modalidad del informe, de su `tipo_analisis`. */
+export const modalidadDeTipo = (tipo: string | null | undefined): "ltr" | "str" => (tipo === "short-term" ? "str" : "ltr");
+
+export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined, modalidad: "ltr" | "str"): string {
   const v = COD_VEREDICTO[(veredicto ?? "") as keyof typeof COD_VEREDICTO] ?? "a";
-  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}`;
+  const m = modalidad === "str" ? "s" : "l";
+  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}&m=${m}`;
 }
 
-export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" } | null {
+export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; modalidad: "ltr" | "str" } | null {
   if (sp.get("lqs") !== "pack") return null;
   const a = sp.get("a") ?? "";
   if (!/^[0-9a-f-]{36}$/i.test(a)) return null;
   const v = sp.get("v");
-  return { analysisId: a, veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS" };
+  return { analysisId: a, veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS", modalidad: sp.get("m") === "s" ? "str" : "ltr" };
+}
+
+/** Los productos a los que el cron de carrito abandonado les escribe: todos menos el pack. El pack
+ *  vence a las 24 horas y no vuelve; un «¿Quedó algo pendiente?» lo contradiría. */
+export function productosRecuperables<K extends string>(productos: readonly K[]): K[] {
+  return productos.filter((p) => p !== PRODUCTO_PACK);
 }

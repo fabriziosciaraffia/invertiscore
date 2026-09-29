@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
-import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -76,6 +76,7 @@ export async function POST(request: Request) {
   // es por un análisis, verificar que el user lo posee.
   let analysisComuna: string | null = null;
   let veredictoPack: string | null = null;
+  let modalidadPack: "ltr" | "str" = "ltr";
   // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado. Sin
   // analysisId no hay pack; vencido, se rechaza con 410 y queda medido (`pack_vencido`).
   if (product === PRODUCTO_PACK && !analysisId) {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const { data: analysis } = await admin
       .from("analisis")
-      .select("user_id, comuna, created_at, results")
+      .select("user_id, comuna, created_at, results, tipo_analisis")
       .eq("id", analysisId)
       .single();
 
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
     if (product === PRODUCTO_PACK) {
       if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
       veredictoPack = readVeredicto(analysis.results as never) ?? null;
+      modalidadPack = modalidadDeTipo(analysis.tipo_analisis as string);
       if (!ofertaPackVigente(analysis.created_at as string)) {
         try {
           await capturarServidor(eventoPackVencido({ userId: user.id, analysisId, veredicto: readVeredicto(analysis.results as never) ?? null }));
@@ -149,7 +151,7 @@ export async function POST(request: Request) {
       // identifique ESTA compra (no el "último pago del user"). El middleware
       // preserva el query string al convertir el POST de Flow en GET.
       urlReturn: product === PRODUCTO_PACK && analysisId
-        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack)
+        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack)
         : `${SITE_URL}/payments/return?order=${commerceOrder}`,
     });
 

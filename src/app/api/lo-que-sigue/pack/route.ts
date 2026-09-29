@@ -12,7 +12,7 @@ import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { createServiceClient } from "@/lib/supabase/service";
 import { tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
-import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor, distinctIdDeCorreo } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (!/^[0-9a-f-]{36}$/i.test(analysisId)) return NextResponse.json({ error: "El pack va con tu informe" }, { status: 400 });
 
   const admin = createServiceClient();
-  const { data: analysis } = await admin.from("analisis").select("user_id, created_at, results").eq("id", analysisId).single();
+  const { data: analysis } = await admin.from("analisis").select("user_id, created_at, results, tipo_analisis").eq("id", analysisId).single();
   if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
   const veredicto = readVeredicto(analysis.results as never) ?? null;
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       paymentMethod: 9,
       urlConfirmation: `${SITE_URL}/api/payments/confirm`,
       // Con el informe y su veredicto: /payments/return muestra «Tienes 3 análisis» sin sesión.
-      urlReturn: urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredicto),
+      urlReturn: urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo(analysis.tipo_analisis as string)),
     });
     if (!flowResponse.url || !flowResponse.token) {
       return NextResponse.json({ error: "Error al crear la orden de pago" }, { status: 500 });

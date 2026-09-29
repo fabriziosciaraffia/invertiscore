@@ -15,13 +15,13 @@ import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { rutaPrecarga } from "@/lib/lo-que-sigue/oferta-pack";
 import "./lo-que-sigue.css";
 
-export function DespuesDePagar({ analysisId, veredicto, conSesion }: { analysisId: string; veredicto: VeredictoLqs; conSesion: boolean }) {
+export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean }) {
   const posthog = usePostHog();
   const destino = rutaPrecarga(analysisId);
   const href = conSesion ? destino : `/registro?next=${encodeURIComponent(destino)}`;
 
   useEffect(() => {
-    capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad: "ltr" }, { con_sesion: conSesion });
+    capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad }, { con_sesion: conSesion });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisId]);
 

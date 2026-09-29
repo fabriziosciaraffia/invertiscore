@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendCheckoutRecoveryEmail } from "@/lib/email";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { productosRecuperables } from "@/lib/lo-que-sigue/oferta-pack";
 import { captureApiWarning } from "@/lib/observabilidad";
 import { respuestaCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
@@ -42,7 +43,8 @@ const ABANDON_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 
 // Productos recuperables: el single (ruta A) + los planes de suscripción
 // (ruta B, pending dejado por subscriptions/create). Todas las keys del catálogo.
-const RECOVERABLE_PRODUCTS = Object.keys(FLOW_PRODUCTS) as FlowProductKey[];
+// El pack («Lo que sigue») queda fuera: vence a las 24 horas y no vuelve, y este correo lo contradiría.
+const RECOVERABLE_PRODUCTS = productosRecuperables(Object.keys(FLOW_PRODUCTS) as FlowProductKey[]);
 
 // Tope de candidatos por corrida. El loop de abajo es serial (un getUserById y
 // un envío por fila); sin tope, una acumulación de pendings —un día de Flow

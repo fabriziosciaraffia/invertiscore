@@ -87,9 +87,9 @@ export function DemoCliente() {
         <BannerRegistro key={`d-${v}`} ctx={ctx} next="/dev/lo-que-sigue" perfil={PERFIL} demo pasoInicial="dentro" />
 
         {rotulo("Después de pagar · con sesión")}
-        <DespuesDePagar key={`p-${v}`} analysisId={ctx.analysisId} veredicto={v} conSesion />
+        <DespuesDePagar key={`p-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion />
         {rotulo("Después de pagar · sin sesión")}
-        <DespuesDePagar key={`s-${v}`} analysisId={ctx.analysisId} veredicto={v} conSesion={false} />
+        <DespuesDePagar key={`s-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion={false} />
 
         {rotulo("El correo del tercer día")}
         <iframe title="Correo del recordatorio" srcDoc={correo} style={{ width: "100%", height: 560, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} data-lqs="demo-correo" />

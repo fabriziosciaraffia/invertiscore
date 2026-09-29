@@ -192,7 +192,7 @@ function PaymentReturnContent() {
         )}
 
         {retornoPack && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
-          <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} conSesion={paymentStatus === "paid"} />
+          <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (
