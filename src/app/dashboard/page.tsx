@@ -12,11 +12,11 @@ import {
   type AnalisisDashboardRow,
 } from "@/lib/dashboard-query";
 import { agruparPorPropiedad, contarUnidades } from "./agrupar";
-import { OnboardingClient } from "./onboarding-client";
+import { Bienvenida, type PerfilBienvenida } from "./bienvenida";
+import { primerAnalisisGratis } from "./bienvenida-copy";
 import { Continuar } from "./continuar";
 import { StatsStrip } from "./stats-strip";
 import { Archive } from "./archive";
-import { EmptyState } from "./empty-state";
 import { parseParams, primeraFrase, PAGE_SIZE } from "./dashboard-helpers";
 // El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
@@ -53,14 +53,33 @@ export default async function DashboardPage({
   // Welcome email server-side e idempotente, antes del branch de onboarding.
   await ensureWelcomeEmail(user.id, user.email, fullName);
 
-  const [{ data: creditsRow }, { count: analisisCount }] = await Promise.all([
-    supabase.from("user_credits").select("onboarding_completed").eq("user_id", user.id).single(),
+  const [{ data: creditsRow }, { count: analisisCount }, { data: perfilRow }] = await Promise.all([
+    supabase.from("user_credits").select("onboarding_completed, welcome_credit_used").eq("user_id", user.id).single(),
     supabase
       .from("analisis")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("pending_payment", false),
+    // El perfil más reciente, para «Franco busca para ti:» del dashboard vacío (lo editado manda).
+    supabase
+      .from("perfiles_inversion")
+      .select("analysis_id, tipologia, comuna, modalidad, pref_tipologia, pref_comuna, pref_modalidad")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
+  const gratis = primerAnalisisGratis(creditsRow);
+  const perfil: PerfilBienvenida | null = perfilRow?.analysis_id
+    ? {
+        analysisId: perfilRow.analysis_id as string,
+        chips: {
+          tipologia: (perfilRow.pref_tipologia ?? perfilRow.tipologia ?? null) as string | null,
+          comuna: (perfilRow.pref_comuna ?? perfilRow.comuna ?? null) as string | null,
+          modalidad: (perfilRow.pref_modalidad ?? perfilRow.modalidad) === "str" ? "str" : "ltr",
+        },
+      }
+    : null;
 
   // Un usuario con ≥1 análisis está onboardeado de facto, aunque la flag no se
   // haya seteado (ej: entró por /analisis/nuevo-v4 sin pasar por el dashboard).
@@ -68,7 +87,7 @@ export default async function DashboardPage({
     return (
       <>
         <ChipVeredictoTokens />
-        <OnboardingClient />
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding />
       </>
     );
   }
@@ -116,9 +135,7 @@ export default async function DashboardPage({
       <div className="min-h-screen bg-[var(--franco-bg)]">
         <ChipVeredictoTokens />
         <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
-        <div className="mx-auto max-w-[1100px] px-6 py-5">
-          <EmptyState />
-        </div>
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={false} conPlanes={false} />
       </div>
     );
   }

@@ -49,7 +49,7 @@ const CONSUMIDORES = [
   "src/app/page.tsx",
   "src/lib/faq-data.ts",
   "src/lib/email/correos.ts", // la bienvenida vive acá desde el 29-sep-2026 (antes, src/lib/email.ts)
-  "src/app/dashboard/onboarding-client.tsx",
+  "src/app/dashboard/bienvenida-copy.ts", // antes onboarding-client.tsx (29-sep-2026)
 ];
 
 export function runCifraComparablesTier(): { hard: number } {

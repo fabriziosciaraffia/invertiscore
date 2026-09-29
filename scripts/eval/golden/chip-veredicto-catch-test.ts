@@ -146,7 +146,7 @@ export function runChipVeredictoTier(): { hard: number } {
     if ((arch.match(/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/g) ?? []).length < 3) F("7 · el archivo del dashboard no dibuja el veredicto de sus filas con ChipVeredicto (tabla y agrupadas)");
     const cont = sinComentarios(leer("src/app/dashboard/continuar.tsx"));
     if (!/<ChipVeredicto v=\{veredictoDisplay\(hero\)\} \/>/.test(cont) || !/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/.test(cont)) F("7 · «Continuar» no dibuja el veredicto con ChipVeredicto");
-    const onb = sinComentarios(leer("src/app/dashboard/onboarding-client.tsx"));
+    const onb = sinComentarios(leer("src/app/dashboard/bienvenida.tsx")); // la bienvenida reemplazó a onboarding-client el 29-sep-2026
     for (const v of ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"]) if (!onb.includes(`<ChipVeredicto v="${v}" />`)) F(`7 · el onboarding no muestra ${v} con ChipVeredicto`);
     const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
     if ((pag.match(/<ChipVeredictoTokens \/>/g) ?? []).length < 3) F("7 · la página del dashboard no monta el CSS del chip en sus tres ramas (onboarding, vacía, con análisis)");

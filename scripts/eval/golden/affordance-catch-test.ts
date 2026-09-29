@@ -34,7 +34,7 @@ const SUPERFICIES_SIN_LINK: Array<[string, string]> = [
   ["src/components/landing-v14/Marca.tsx", "el pie de la landing"],
   ["src/app/dashboard/archive.tsx", "el archivo del dashboard (chips, columnas, filas)"],
   ["src/app/dashboard/continuar.tsx", "«Continuar» del dashboard"],
-  ["src/app/dashboard/empty-state.tsx", "el dashboard vacío"],
+  ["src/app/dashboard/bienvenida.tsx", "el dashboard vacío (bienvenida y estado vacío, desde el 29-sep-2026)"],
   ["src/app/dashboard/stats-strip.tsx", "la tira de cifras del dashboard"],
   ["src/app/cuenta/page.tsx", "la cuenta"],
   ["src/app/perfil/page.tsx", "el perfil"],
