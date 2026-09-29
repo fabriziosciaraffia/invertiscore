@@ -1,0 +1,35 @@
+<!-- GENERADO por scripts/emails/generar-supabase-codigo.ts desde src/lib/email/. No se edita a mano.
+     Se pega en Supabase → Authentication → Email Templates, en «Change Email Address». Asunto: «Confirma tu correo nuevo en Franco». -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirma tu correo nuevo en Franco</title>
+</head>
+<body style="margin: 0; padding: 0; background: #FAFAF8;">
+  
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #FAFAF8;">
+    <tr>
+      <td align="center" style="padding: 28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
+          <tr><td style="padding: 0 0 28px 0;"><a href="https://refranco.ai" style="text-decoration: none;"><img src="https://refranco.ai/email/wordmark-claro-2x.png" width="132" height="43" alt="refranco.ai" style="display: block; width: 132px; height: 43px; border: 0; outline: none; font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-size: 20px; font-weight: 700; line-height: 1.2; color: #0F0F0F;"></a></td></tr>
+          <tr><td style="padding: 0 0 26px 0; font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-size: 24px; line-height: 1.2; font-weight: 700; color: #0F0F0F;">Confirma tu correo nuevo</td></tr>
+          <tr><td style="padding: 0 0 14px 0; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #3B3A36;">Pediste cambiar el correo de tu cuenta en Franco de {{ .Email }} a {{ .NewEmail }}. Confírmalo con el botón.</td></tr>
+          <tr><td style="padding: 8px 0 22px 0;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="border-radius: 999px; background: #0F0F0F;">
+      <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 26px; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #FAFAF8; text-decoration: none; border-radius: 999px;">Confirmar el cambio</a>
+    </td>
+  </tr></table>
+</td></tr>
+          <tr><td style="padding: 0 0 14px 0; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #3B3A36;">Si no lo pediste, no hagas nada y escríbenos a <a href="mailto:hola@refranco.ai" style="color: #0F0F0F; text-decoration: underline;">hola@refranco.ai</a>.</td></tr>
+          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid #DDDDE1; font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.6; color: #6B6B72;">Este es un correo sobre la seguridad de tu cuenta en Franco.<br><a href="https://refranco.ai" style="color: #6B6B72; text-decoration: none;">refranco.ai</a></td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
