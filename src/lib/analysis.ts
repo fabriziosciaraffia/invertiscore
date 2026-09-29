@@ -45,7 +45,7 @@ import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "./plusvalia-estimado.gen";
-import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
+import { PLUSVALIA_PROYECCION_ANUAL, INFLACION_PROYECCION_ANUAL, factorInflacion, factorValorNominal } from "./plusvalia-proyeccion";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -80,7 +80,7 @@ import { SCORE_CORTE_COMPRAR, SCORE_CORTE_AJUSTA } from "./score-cortes";
 const PLUSVALIA_ANUAL = PLUSVALIA_PROYECCION_ANUAL;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
-const INFLACION_UF = 0.03; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
+const INFLACION_UF = INFLACION_PROYECCION_ANUAL; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
 const COMISION_VENTA = 0.02;
 const GASTOS_CIERRE_PCT = 0.02; // ~2% of purchase price (notaría, CBR, timbres, tasación)
 const CORRETAJE_COMPRA_PCT = 0.02; // 2% corretaje del comprador — usual en usados (en nuevo va en el precio)
@@ -929,20 +929,26 @@ export function calcProjections(args: {
     // oculta el valor hasta la entrega (patrimonio-series: isPreEntrega ⇒ valorDepto
     // null) y la deuda sigue en 0 hasta que el banco cursa. Lo que cambia es que al
     // escriturar el activo entra valuado a mercado, no al precio pactado.
-    const valorPropiedad = precioCLP * Math.pow(1 + plusvaliaAnual, anio);
+    //
+    // EN PESOS DEL AÑO (29-sep-2026): la plusvalía es real y se compone con la inflación, igual
+    // que el dividendo; antes `precioCLP × 1,03^año` era ~0% real (plusvalia-proyeccion.ts).
+    const valorPropiedad = precioCLP * factorValorNominal(anio, plusvaliaAnual);
 
     // Crédito: el banco no disbursa hasta escritura. Pre-entrega → deuda 0.
     // Año que termina exactamente en escritura → crédito recién entregado,
     // sin pagos. Resto → amortizado por mesesCredito mes a mes.
     const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
-    let saldo: number;
+    let saldoHoy: number;
     if (mesFin < mesesPreEntrega) {
-      saldo = 0;
+      saldoHoy = 0;
     } else if (mesesCredito === 0) {
-      saldo = creditoCLP;
+      saldoHoy = creditoCLP;
     } else {
-      saldo = Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito));
+      saldoHoy = Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito));
     }
+    // La deuda es en UF: `saldoCredito` la amortiza en pesos del día 0 y acá pasa a pesos del
+    // año con la UF de ese año, la misma moneda del valor y de los flujos (29-sep-2026).
+    const saldo = saldoHoy * factorInflacion(anio);
     const patrimonioNeto = valorPropiedad - saldo;
 
     projections.push({

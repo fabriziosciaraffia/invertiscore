@@ -22,7 +22,7 @@ import {
 import { mesesHastaEntregaDesdeFecha } from "@/lib/pre-entrega-serie";
 import { modoGestionAmbas } from "../modo-gestion";
 import { calcInversionInicialCLP } from "../inversion-inicial";
-import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
+import { PLUSVALIA_PROYECCION_ANUAL, factorInflacion, factorValorNominal } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
 import { resolverModeloCostos } from "../modelo-costos";
 import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital, RefinanceScenario } from "../types";
@@ -1039,14 +1039,17 @@ function buildProjections(
   let flujoAcumulado = 0;
 
   for (let year = 1; year <= horizonte; year++) {
-    const valorDepto = precioCompra * Math.pow(1 + plusvaliaAnual, year);
+    // En pesos del año (29-sep-2026): plusvalía real compuesta con la inflación, como LTR.
+    const valorDepto = precioCompra * factorValorNominal(year, plusvaliaAnual);
 
     // Meses de crédito EFECTIVAMENTE corridos: el reloj parte en la escritura.
     const mesFin = year * 12;
     const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
+    // La deuda es en UF: se amortiza en pesos del día 0 y pasa a pesos del año con la UF de ese
+    // año, la misma moneda del valor y de los flujos (29-sep-2026, espejo de LTR).
     const saldo = mesFin < mesesPreEntrega
       ? 0
-      : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12)));
+      : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12))) * factorInflacion(year);
 
     // Inflación homologada a LTR (antes flat). El NOI se recompone año a año: ingreso 3,5%,
     // costos 3%, dividendo 3%. La comisión escala con el ingreso inflado. En año 1 el NOI
