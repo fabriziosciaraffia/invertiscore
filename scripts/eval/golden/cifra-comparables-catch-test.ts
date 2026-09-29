@@ -48,7 +48,7 @@ const CONSUMIDORES = [
   "src/app/layout.tsx",
   "src/app/page.tsx",
   "src/lib/faq-data.ts",
-  "src/lib/email.ts",
+  "src/lib/email/correos.ts", // la bienvenida vive acá desde el 29-sep-2026 (antes, src/lib/email.ts)
   "src/app/dashboard/onboarding-client.tsx",
 ];
 

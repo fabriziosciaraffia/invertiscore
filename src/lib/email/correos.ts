@@ -6,7 +6,9 @@
 // Copy en tuteo, voz de Franco. Lo que cambió respecto del correo oscuro va marcado «[REVISAR]» en
 // el comentario de cada uno, para que Fabrizio lo revise.
 // ─────────────────────────────────────────────────────────────────────────────
-import { escaparHtml, plantillaClara, TINTA } from "./plantilla-clara";
+import { escaparHtml, LEGAL, plantillaClara, TINTA } from "./plantilla-clara";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { COMPARABLES_TEXTO } from "@/lib/stats";
 
 export interface Correo {
   subject: string;
@@ -154,6 +156,135 @@ export function correoAlertaPagoFallido(p: { estado: "Rechazado" | "Anulado"; pr
         ],
       },
       legal: "Aviso interno de Franco.",
+    }),
+  };
+}
+
+// ── Bienvenida ───────────────────────────────────────────────────────────────
+// [REVISAR] sin la imagen del informe viejo (oscura, con prosa de IA y un gráfico de capital en
+// pesos futuros). Sin «tu primer análisis es gratis»: este correo sale cuando la persona crea su
+// primer análisis con sesión, y ese análisis ya usó el crédito de bienvenida. Los tres pasos van
+// como frases, sin numerales en mono. Asunto nuevo: «Bienvenido a Franco».
+export function correoBienvenida(p: { nombre: string | null; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  return {
+    subject: "Bienvenido a Franco",
+    html: plantillaClara({
+      titulo: "Bienvenido a Franco",
+      preencabezado: "Un veredicto claro para cada depto, con los números que tu cotización no muestra.",
+      titular: "Bienvenido a Franco",
+      parrafos: [
+        `${saludoDe(p.nombre)} ingresas un depto y recibes un veredicto claro —Comprar, Ajustar o Buscar otro— con los números que tu cotización no muestra.`,
+        `<b>Cómo funciona.</b> Pones la dirección, el precio y la superficie. Franco cruza tu depto con ${COMPARABLES_TEXTO} propiedades reales de la zona. Recibes el veredicto con su explicación: cuánto renta, cuánto pones cada mes y tu resultado a 10 años, en pesos de hoy.`,
+      ],
+      boton: { texto: "Analizar un depto", url: `${sitio}/analisis/nuevo-v4` },
+    }),
+  };
+}
+
+// ── Tu análisis está listo ───────────────────────────────────────────────────
+// [REVISAR] sin la imagen /api/og/veredicto (oscura, del informe viejo, imprimía el resumen del
+// motor «Es una buena oportunidad de inversión»): el veredicto y el score van en texto, que se lee
+// con las imágenes bloqueadas. Sin «escenarios de salida» ni el rótulo en mono.
+export function correoInformeListo(p: {
+  nombre: string | null;
+  titulo: string;
+  score: number;
+  veredicto: string;
+  analysisId: string;
+  ambas?: { ltrId: string; strId: string };
+  sitio?: string;
+}): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
+  if (p.ambas) {
+    return {
+      subject: "Tu comparativa está lista",
+      html: plantillaClara({
+        titulo: "Tu comparativa está lista",
+        titular: primero ? `${escaparHtml(primero)}, tu comparativa está lista` : "Tu comparativa está lista",
+        parrafos: ["Franco corrió los dos escenarios sobre tu propiedad, arriendo tradicional y renta corta, y tiene una posición sobre cuál conviene."],
+        boton: { texto: "Ver mi comparativa", url: `${sitio}/analisis/comparativa?ltr=${encodeURIComponent(p.ambas.ltrId)}&str=${encodeURIComponent(p.ambas.strId)}` },
+      }),
+    };
+  }
+  return {
+    subject: `Tu análisis está listo — ${p.titulo}`,
+    html: plantillaClara({
+      titulo: "Tu análisis está listo",
+      preencabezado: `${etiquetaVeredicto(p.veredicto, "frase", p.veredicto)} · Franco Score ${p.score}`,
+      titular: primero ? `${escaparHtml(primero)}, tu análisis está listo` : "Tu análisis está listo",
+      parrafos: ["Franco cruzó tu depto con datos reales de mercado. Este es el veredicto; el informe completo te espera en tu cuenta."],
+      detalle: {
+        filas: [
+          { etiqueta: "Depto", valor: escaparHtml(p.titulo) },
+          { etiqueta: "Veredicto", valor: etiquetaVeredicto(p.veredicto, "frase", p.veredicto) },
+          { etiqueta: "Franco Score", valor: String(Math.round(p.score)) },
+        ],
+      },
+      boton: { texto: "Ver mi análisis", url: `${sitio}/analisis/${encodeURIComponent(p.analysisId)}` },
+    }),
+  };
+}
+
+// ── Pago confirmado ──────────────────────────────────────────────────────────
+// [REVISAR] el pack decía «1 análisis» (caía en la compra única): ahora dice la capacidad del
+// producto (3). «Qué incluye» ya no promete «escenarios de salida (venta y refinanciamiento)»:
+// dice lo que trae el informe de hoy. El detalle sin mono; el botón sin flecha.
+export function correoPagoConfirmado(p: {
+  nombre: string | null;
+  producto: string;
+  desbloquea: string;
+  incluye: string[];
+  monto: number;
+  fecha: string;
+  boton: { texto: string; url: string };
+}): Correo {
+  return {
+    subject: `Pago confirmado — ${p.producto}`,
+    html: plantillaClara({
+      titulo: "Pago confirmado",
+      titular: "Pago confirmado",
+      parrafos: [`${saludoDe(p.nombre)} ${p.desbloquea}`, `<b>Qué incluye.</b> ${p.incluye.map(escaparHtml).join(". ")}.`],
+      detalle: {
+        filas: [
+          { etiqueta: "Producto", valor: escaparHtml(p.producto) },
+          { etiqueta: "Monto", valor: clp(p.monto) },
+          { etiqueta: "Fecha", valor: escaparHtml(p.fecha) },
+        ],
+      },
+      boton: p.boton,
+      legal: `Pago procesado de forma segura por Flow.cl. Este es un comprobante de tu compra.<br>${LEGAL}`,
+    }),
+  };
+}
+
+// ── Boleta electrónica ───────────────────────────────────────────────────────
+// [REVISAR] un solo botón («Ver boleta»): la regla nueva es un botón por correo. Antes eran dos
+// botones rojos iguales (excepción aprobada para replicar OpenFactura) que llevaban a la MISMA URL;
+// la factura queda como frase con su enlace, a esa misma página.
+export function correoBoleta(p: { para: string; folio: number | string; monto: number; fechaEmision: string; autoservicioUrl: string; concepto?: { label: string; frase: string }; sitio?: string }): Correo {
+  const url = p.autoservicioUrl || (p.sitio ?? SITIO);
+  const [y, m, d] = p.fechaEmision.split("-").map(Number);
+  const fecha = !Number.isNaN(y) ? new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }) : p.fechaEmision;
+  return {
+    subject: `Tu boleta electrónica N° ${p.folio} — refranco.ai`,
+    html: plantillaClara({
+      titulo: "Tu boleta electrónica",
+      titular: "Tu boleta electrónica",
+      parrafos: [`Acá está tu boleta por ${escaparHtml(p.concepto?.frase || "tu compra en Franco")}. La tienes adjunta en PDF y XML, y también puedes verla en línea.`],
+      detalle: {
+        filas: [
+          { etiqueta: "Documento", valor: `Boleta electrónica N° ${escaparHtml(String(p.folio))}` },
+          { etiqueta: "Concepto", valor: escaparHtml(p.concepto?.label || "Análisis") },
+          { etiqueta: "Emitida", valor: escaparHtml(fecha) },
+          { etiqueta: "Para", valor: escaparHtml(p.para) },
+          { etiqueta: "Total", valor: clp(p.monto) },
+        ],
+      },
+      boton: { texto: "Ver boleta", url },
+      despues: [`¿Necesitas factura? ${enlace(url, "Ingresa tus datos de facturación")} y la generas en línea; eso deja sin efecto esta boleta.`],
+      legal: `Documento tributario electrónico emitido ante el SII. Adjuntamos el PDF y el XML de tu boleta.<br>${LEGAL}`,
     }),
   };
 }

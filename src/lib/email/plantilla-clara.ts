@@ -49,7 +49,7 @@ export interface CorreoClaro {
   legal?: string;
 }
 
-const LEGAL = "Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.";
+export const LEGAL = "Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.";
 
 export function escaparHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

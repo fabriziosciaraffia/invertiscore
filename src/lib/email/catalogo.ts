@@ -5,7 +5,7 @@
 // `pendiente`: todavía no pasó a la plantilla clara porque espera una decisión de Fabrizio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { TipoCorreo } from "@/lib/medicion-correo";
-import { correoAlertaPago, correoAlertaPagoFallido, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoPagoFallido, type Correo } from "./correos";
+import { correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 
@@ -25,10 +25,10 @@ const ID_MUESTRA = "91736841-0dfe-45d5-ad10-6c710be7fb8f";
 const EN_SIETE_DIAS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
 export const CATALOGO_CORREOS: EntradaCatalogo[] = [
-  { id: "bienvenida", tipo: "bienvenida", nombre: "Bienvenida", cuando: "Primer análisis con sesión o primera visita al dashboard (una vez por persona)", render: null, pendiente: "Decisiones 1 y 3: la imagen del informe viejo y «tu primer análisis es gratis»." },
-  { id: "informe_listo", tipo: "informe_listo", nombre: "Tu análisis está listo", cuando: "Al crear un informe LTR con sesión", render: null, pendiente: "Decisión 1: la imagen /api/og/veredicto (oscura, con «Es una buena oportunidad de inversión»)." },
-  { id: "pago_confirmado", tipo: "pago_confirmado", nombre: "Pago confirmado", cuando: "Flow confirma un pago o se da de alta una suscripción", render: null, pendiente: "Decisión 4 (ramas AMBAS/unlock) y el arreglo del pack («1 análisis» → «3 análisis»)." },
-  { id: "boleta", tipo: "boleta", nombre: "Boleta electrónica", cuando: "Se emite la boleta en OpenFactura (single y pack)", render: null, pendiente: "Decisión 2: dos botones rojos iguales (excepción aprobada) vs un solo botón." },
+  { id: "bienvenida", tipo: "bienvenida", nombre: "Bienvenida", cuando: "Primer análisis con sesión o primera visita al dashboard (una vez por persona)", render: () => correoBienvenida({ nombre: "Fabrizio Sciaraffia", sitio: SITIO }) },
+  { id: "informe_listo", tipo: "informe_listo", nombre: "Tu análisis está listo", cuando: "Al crear un informe LTR con sesión", render: () => correoInformeListo({ nombre: "Fabrizio", titulo: "Depto 2D1B San Miguel", score: 79, veredicto: "COMPRAR", analysisId: ID_MUESTRA, sitio: SITIO }) },
+  { id: "pago_confirmado", tipo: "pago_confirmado", nombre: "Pago confirmado", cuando: "Flow confirma un pago o se da de alta una suscripción", render: () => correoPagoConfirmado({ nombre: "Fabrizio", producto: "3 análisis", desbloquea: "tienes 3 análisis disponibles, sin caducidad, para usar cuando quieras.", incluye: ["El veredicto con su explicación", "Cuánto renta y cuánto pones cada mes", "Tu resultado a 10 años, en pesos de hoy"], monto: 14990, fecha: "29 de septiembre de 2026", boton: { texto: "Analizar un depto", url: `${SITIO}/analisis/nuevo-v4` } }) },
+  { id: "boleta", tipo: "boleta", nombre: "Boleta electrónica", cuando: "Se emite la boleta en OpenFactura (single y pack)", render: () => correoBoleta({ para: "persona@correo.cl", folio: 22, monto: 9990, fechaEmision: "2026-09-29", autoservicioUrl: `${SITIO}/boleta-demo`, concepto: { label: "Análisis en San Miguel", frase: "tu análisis en San Miguel" }, sitio: SITIO }) },
   { id: "pago_fallido", tipo: "pago_fallido", nombre: "Cobro de suscripción rechazado", cuando: "Flow rechaza o anula el cobro de una suscripción", render: () => correoPagoFallido({ nombre: "Fabrizio Sciaraffia", graciaHasta: EN_SIETE_DIAS(), sitio: SITIO }) },
   { id: "checkout_abandonado", tipo: "checkout_abandonado", nombre: "Carrito abandonado", cuando: "Cron diario: un pago single o de plan quedó pendiente (el pack no)", render: () => correoCheckoutAbandonado({ nombre: "Fabrizio", producto: "Franco — 1 análisis", tipo: "single", sitio: SITIO }) },
   { id: "recordatorio_pack", tipo: "recordatorio_pack", nombre: "Recordatorio del pack", cuando: "Cron diario: pack pagado hace 3 días o más, sin usar", render: () => correoRecordatorioPack(SITIO, ID_MUESTRA) },
