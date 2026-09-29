@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/recordatorio-pack",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/evaluar-avisos",
+      "schedule": "20 * * * 2"
     }
   ]
 }
