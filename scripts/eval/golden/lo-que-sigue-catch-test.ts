@@ -317,7 +317,7 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/\{\{ \.Token \}\}/.test(plantilla) || !/\{\{ \.ConfirmationURL \}\}/.test(plantilla)) F("4 · la plantilla del correo de Supabase no lleva el código y el enlace");
   if (plantilla.trim() !== correoCodigoSupabase().trim()) F("4 · docs/emails/supabase-codigo.html no es lo que genera la plantilla clara (regenerar con scripts/emails/generar-supabase-codigo.ts)");
   if (/background: #151515|Courier|color-scheme" content="dark/.test(plantilla) || !/<body style="margin: 0; padding: 0; background: #FAFAF8;">/.test(plantilla) || !/Inter, 'Helvetica Neue'/.test(plantilla)) F("4 · la plantilla del código no es la clara (papel, Inter con fallback), o trae oscuro o mono");
-  if (!/<span style="color: #B4B2A9;">re<\/span><span style="font-weight: 700;">franco<\/span>/.test(plantilla) || !/color: #C8323C;">\.ai<\/span>/.test(plantilla)) F("4 · el wordmark del correo no es fiel");
+  if (!/<img src="https:\/\/refranco\.ai\/email\/wordmark-claro-2x\.png" width="132" height="43" alt="refranco\.ai"/.test(plantilla)) F("4 · el wordmark del correo no es el PNG fiel (ancho fijo, alt refranco.ai)");
   if (!/background: #0F0F0F;">\s*<a href="\{\{ \.ConfirmationURL \}\}"/.test(plantilla)) F("4 · el botón del enlace no va en tinta");
   if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg)) F("2 · verifyOtp tiene que ir con type «email», que cubre Confirm signup y Magic Link");
   if (!/\.lqs-reg \.lqs-codigo::placeholder \{ letter-spacing: 0;/.test(leer("src/components/lo-que-sigue/lo-que-sigue.css")) || REGISTRO_UN_PASO.placeholderCodigo !== "Código") F("3 · el placeholder del código no es corto y sin espaciado");
