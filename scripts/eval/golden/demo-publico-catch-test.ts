@@ -57,10 +57,12 @@ export function runDemoPublicoTier(): { hard: number } {
   }
   const larga = sinComentarios(leer("src/app/demo/page.tsx"));
   if (!/<InformeLtr id=\{DEMO_LTR_ID\} demo \/>/.test(larga)) F("1 · /demo no dibuja InformeLtr con DEMO_LTR_ID");
-  if (!/export const dynamic = "force-dynamic";/.test(larga)) F("1 · /demo puede quedar como página estática congelada");
+  // Desde el 29-sep-2026 el demo se guarda: se genera en el deploy y se regenera al día (tier
+  // EJEMPLOS-GUARDADOS). Congelado sería sin revalidate; por visita sería force-dynamic.
+  if (!/export const revalidate = 86400;/.test(larga)) F("1 · /demo no se regenera al día: quedaría congelado o volvería a correr por visita");
   const corta = sinComentarios(leer("src/app/demo/renta-corta/page.tsx"));
   if (!/<InformeStr id=\{DEMO_STR_ID\} demo \/>/.test(corta)) F("1 · /demo/renta-corta no dibuja InformeStr con DEMO_STR_ID");
-  if (!/export const dynamic = "force-dynamic";/.test(corta)) F("1 · /demo/renta-corta puede quedar como página estática congelada");
+  if (!/export const revalidate = 86400;/.test(corta)) F("1 · /demo/renta-corta no se regenera al día: quedaría congelado o volvería a correr por visita");
   // Las rutas del informe dibujan el MISMO componente: el demo no puede ir por otro camino.
   if (!/return <InformeLtr id=\{params\.id\} \/>;/.test(sinComentarios(leer("src/app/analisis/[id]/page.tsx")))) F("1 · /analisis/[id] no dibuja InformeLtr: el demo y el informe irían por caminos distintos");
   if (!/return <InformeStr id=\{params\.id\} \/>;/.test(sinComentarios(leer("src/app/analisis/renta-corta/[id]/page.tsx")))) F("1 · /analisis/renta-corta/[id] no dibuja InformeStr");
@@ -112,7 +114,7 @@ if (require.main === module) {
 // Las trece en ROJO; restauradas, VERDE.
 //    1 · /demo vuelve a dibujar un resultado escrito a mano (PremiumResults con datos propios)
 //    2 · /demo dibuja otra fila que la de DEMO_LTR_ID
-//    3 · /demo sin `force-dynamic`
+//    3 · /demo sin `force-dynamic`  → desde el 29-sep-2026: /demo con force-dynamic en vez de revalidate 86400, EN ROJO
 //    4 · /demo/renta-corta no dibuja InformeStr
 //    5 · el informe STR sin rama de demo
 //    6 · la rama de demo STR movida DESPUÉS de la de invitado      → «un invitado no la alcanza»
