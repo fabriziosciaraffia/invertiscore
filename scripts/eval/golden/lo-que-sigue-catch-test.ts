@@ -11,7 +11,16 @@
 //       auto-subir), pero se puede volver desde la pestaña mientras la oferta viva. Abajo va UNA
 //       sola cosa según la zona (`queVaAbajo`): barra fuera del cierre; ticket o pestaña en el
 //       cierre. Todo anclado al área visible real (iOS).
-//   5 · EL COPY EN TUTEO: sin voseo en copy.ts.
+//   5 · EL COPY EN TUTEO: sin voseo en copy.ts (todo: banner, barra, «Estás dentro», ticket,
+//       despedida, pestaña, después de pagar, comparar y el correo).
+//   Segunda entrega (30-sep-2026):
+//   6 · EL PRECIO DEL TICKET SALE DEL MOTOR: `precioQueCierraUF` lee la palanca precio del hallazgo
+//       de distancia (vías, palancas o el delta mínimo); los dos informes lo cablean y el ticket lo
+//       usa en la primera línea. Sin precio, la frase va sin cifra: nunca se inventa.
+//   7 · EL WIZARD PRECARGADO NO PISA EL DEPTO: la precarga solo escribe lo de la persona, solo donde
+//       no hay respuesta; el grafo salta el financiamiento solo si vino completo.
+//   8 · EL CORREO SALE UNA VEZ: `debeRecordar` y el reclamo con la condición en el WHERE antes de
+//       enviar.
 //   Más: sale «Guardarlo» del header y «Crear cuenta para guardarlo» del cierre; el pack es
 //   producto real ($14.990 por 3 —$5.000 cada uno—, 3 créditos sin caducidad, pack_pagado desde el
 //   servidor); los eventos.
@@ -21,12 +30,17 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
+import { diaVencimiento, horaVencimiento, leerRetornoPack, ofertaPackVigente, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
 import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
 import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo-que-sigue/perfil";
-import { CHECKOUT_PACK, FRASE_PACK, FRASE_REGISTRO, OFERTA_REGISTRO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
+import { CHECKOUT_PACK, COMPARAR, CORREO_RECORDATORIO, DESPUES_DE_PAGAR, ESTAS_DENTRO, FRASE_REGISTRO, leadTicket, OFERTA_REGISTRO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
+import { precioQueCierraUF } from "../../../src/lib/lo-que-sigue/precio-cierre";
+import { aplicarPrecarga, CAMPOS_DEPTO, CAMPOS_PRECARGA, precargaDesdeInforme } from "../../../src/lib/lo-que-sigue/precarga";
+import { correoRecordatorioPack, debeRecordar } from "../../../src/lib/lo-que-sigue/recordatorio";
+import { computeNext, computePlannedPath, type WizardV4Answers } from "../../../src/components/formulario-v4/wizardV4Nodes";
+import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { EVENTOS_LQS } from "../../../src/lib/lo-que-sigue/eventos";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
 import { correoCodigoSupabase } from "../../../src/lib/email/plantilla-clara";
@@ -37,7 +51,7 @@ const sinComentarios = (s: string) =>
   s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n]*$/gm, "$1");
 
 /** Voseo: las formas que se cuelan («dejás», «tenés», «mirá», «tomá», «vos», «tu informe guardalo»). */
-const VOSEO = /(^|[^a-záéíóúñ])(dejás|tenés|querés|podés|sabés|mirá|tomá|entrá|seguí|registrate|guardá|revisá|vos)(?![a-záéíóúñ])/i;
+const VOSEO = /(^|[^a-záéíóúñ])(dejás|tenés|querés|podés|sabés|mirá|tomá|entrá|seguí|registrate|guardá|revisá|vos|poné|compará|comparalo|negociá|analizá|elegí|tocá|pedí|escribí|fijate|hacé|decime|pensás|comprás|buscás|analizás|negociás|firmás|dejala|preguntá)(?![a-záéíóúñ])/i;
 
 export function runLoQueSigueTier(): { hard: number } {
   const fallas: string[] = [];
@@ -47,13 +61,13 @@ export function runLoQueSigueTier(): { hard: number } {
   // ── 1 · NADA CON SESIÓN ────────────────────────────────────────────────────
   const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión»");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el CTA de siempre)");
+  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el CTA de siempre)");
   if (/CierreRegistro|lqs-cierre/.test(ltr)) F("1 · vuelve el texto del registro al final del informe LTR: la barra fija es la repetición");
   const str = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !userId && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo»");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(str)) F("1 · el ticket STR no cuelga del gate");
+  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(str)) F("1 · el ticket STR no cuelga del gate");
   if (/CierreRegistro|lqs-cierre/.test(str)) F("1 · vuelve el texto del registro al final del informe STR");
   if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
@@ -77,8 +91,12 @@ export function runLoQueSigueTier(): { hard: number } {
   if (diaVencimiento(t0, new Date("2026-09-29T12:00:00Z")) !== "hoy" || diaVencimiento(t0, new Date("2026-09-28T12:00:00Z")) !== "mañana") F("2 · «hoy»/«mañana» no salen del reloj de Chile");
   if (FLOW_PRODUCTS.pack3.amount !== PACK_PRECIO_CLP || PACK_PRECIO_CLP !== 14990 || PACK_ANALISIS !== 3 || PACK_UNITARIO_CLP !== 5000 || FLOW_PRODUCTS.pack3.kind !== "one_time") F("2 · el pack no es 3 análisis por $14.990 ($5.000 cada uno) en el catálogo de Flow");
   if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$5.000" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990» ni «$5.000 por análisis en vez de $9.990»");
-  if (!/<b>\{fmtCLP\(PACK_UNITARIO_CLP\)\}<\/b> por análisis en vez de <b>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/b>\./.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("2 · el ahorro no va en una línea: «$5.000 por análisis en vez de $9.990»");
-  if (!/<b>\{fmtCLP\(PACK_PRECIO_CLP\)\}<\/b>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"))) || !/TICKET_PACK\.pagar\(fmtCLP\(PACK_PRECIO_CLP\)\)/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"))) || !/<div className="lqs-resumen"><span>\{TICKET_PACK\.despedidaResumen\}<\/span><b>\{fmtCLP\(PACK_PRECIO_CLP\)\}<\/b><\/div>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("2 · el precio del ticket, del botón o de la despedida no sale de PACK_PRECIO_CLP");
+  {
+    const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
+    if (!/\{TICKET_PACK\.ahorro\(fmtCLP\(PACK_UNITARIO_CLP\), fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\)\}/.test(tk) || TICKET_PACK.ahorro("$5.000", "$9.990") !== "$5.000 cada uno en vez de $9.990.") F("2 · el ahorro no dice «$5.000 cada uno en vez de $9.990.» con los montos del catálogo");
+    if (!/\{TICKET_PACK\.titulo\(fmtCLP\(PACK_PRECIO_CLP\)\)\}/.test(tk) || TICKET_PACK.titulo("$14.990") !== "3 análisis por $14.990" || !/\{TICKET_PACK\.pestana\(fmtCLP\(PACK_PRECIO_CLP\), hora\)\}/.test(tk)) F("2 · el precio del ticket o de la pestaña no sale de PACK_PRECIO_CLP");
+    if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
+  }
   const create = sinComentarios(leer("src/app/api/payments/create/route.ts"));
   if (!/if \(product === PRODUCTO_PACK && !analysisId\)/.test(create)) F("2 · payments/create acepta el pack sin informe");
   if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido\([\s\S]*?status: 410/.test(create)) F("2 · payments/create no rechaza el pack vencido con 410 ni lo mide");
@@ -144,16 +162,21 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/className="lqs-x" onClick=\{despedirse\}/.test(ticket) || !/className="lqs-seguir" onClick=\{despedirse\}/.test(ticket)) F("4 · la X o «Seguir leyendo» cierran de golpe en vez de despedirse");
   if ((ticket.match(/role=\{abierto \? "dialog" : undefined\}/g) ?? []).length !== 1) F("4 · el ticket no es UN solo diálogo");
   const banner = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
-  if (!/const barra = queVaAbajo\(\{ bannerAtras: atras, zonaCierre, ticketAbierto,/.test(banner) || !/data-visible=\{barra \? "1" : "0"\}/.test(banner)) F("4 · la barra fija no sale de queVaAbajo (una sola cosa según la zona)");
+  if (!/const barra = paso !== "dentro" && queVaAbajo\(\{ bannerAtras: atras, zonaCierre, ticketAbierto,/.test(banner) || !/data-visible=\{barra \? "1" : "0"\}/.test(banner)) F("4 · la barra fija no sale de queVaAbajo (una sola cosa según la zona) o sigue después de «Estás dentro»");
   const css = leer("src/components/lo-que-sigue/lo-que-sigue.css");
   if (!/\.lqs-barra\[data-visible="1"\] \{ transform: translateY\(0\)/.test(css) || !/\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ transform: translateY\(0\)/.test(css) || !/\.lqs-franja/.test(css)) F("4 · la coreografía (barra ↔ hoja por el mismo borde) o la franja no están en el CSS");
   if (!/\.lqs-banner \{ margin: 0 calc\(50% - 50vw\)/.test(css)) F("4 · el banner no va de borde a borde");
 
   // ── 5 · EL COPY EN TUTEO ───────────────────────────────────────────────────
   const textos: string[] = [
-    ...Object.values(FRASE_REGISTRO), ...Object.values(FRASE_PACK), ...Object.values(RETORNO_SIN_SESION),
+    ...Object.values(FRASE_REGISTRO), ...Object.values(RETORNO_SIN_SESION),
     ...Object.values(OFERTA_REGISTRO), ...Object.values(REGISTRO_UN_PASO).map((v) => (typeof v === "function" ? v("x@y.cl") : v)),
-    TICKET_PACK.ojo, TICKET_PACK.precioNota, TICKET_PACK.ahorro("a", "b"), TICKET_PACK.vence("hoy", "21:04"), TICKET_PACK.boton("$5.000"), TICKET_PACK.seguir, TICKET_PACK.despedida("21:04"), TICKET_PACK.comprar, TICKET_PACK.siSeguir, TICKET_PACK.pagar("$5.000"), TICKET_PACK.piePago, TICKET_PACK.pestana("$5.000", "21:04"), TICKET_PACK.vencido, TICKET_PACK.errorPago,
+    ...Object.values(TICKET_PACK).map((v) => (typeof v === "function" ? (v as (...a: string[]) => string)("hoy", "21:04") : v)),
+    ...(["BUSCAR OTRA", "AJUSTA SUPUESTOS", "COMPRAR"] as const).flatMap((v) => [leadTicket(v, 1934, "$5.000"), leadTicket(v, null, "$5.000"), DESPUES_DE_PAGAR.fraseVeredicto[v]]),
+    ESTAS_DENTRO.titular, ESTAS_DENTRO.cuerpo, ESTAS_DENTRO.tocaCambiar, ESTAS_DENTRO.aprende, ESTAS_DENTRO.cuando, ESTAS_DENTRO.errorGuardar, ...ESTAS_DENTRO.horizontes.map((h) => h.texto), ...Object.values(ESTAS_DENTRO.modalidad),
+    DESPUES_DE_PAGAR.titular, DESPUES_DE_PAGAR.cuerpo, DESPUES_DE_PAGAR.boton,
+    COMPARAR.titulo, COMPARAR.bajada, COMPARAR.boton, COMPARAR.notaPesos, COMPARAR.minimo, ...Object.values(COMPARAR.filas),
+    ...Object.values(CORREO_RECORDATORIO),
     CHECKOUT_PACK.titulo, CHECKOUT_PACK.subtitulo, CHECKOUT_PACK.vence("hoy", "21:04"), CHECKOUT_PACK.vencido,
   ];
   for (const t of textos) {
@@ -161,11 +184,103 @@ export function runLoQueSigueTier(): { hard: number } {
     if (/\bdesde\b/i.test(t)) F(`5 · «desde» en el copy: «${t}»`);
     if (/guard[aá]/i.test(t)) F(`5 · «guarda tu informe» en el copy: «${t}»`);
   }
-  if (TICKET_PACK.despedida("21:04") !== "Vence a las 21:04 y no vuelve. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada, en tuteo");
+  if (TICKET_PACK.despedida("21:04") !== "Vence a las 21:04 y no vuelve." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada, en tuteo");
+  // Las frases aprobadas, literales (30-sep-2026).
+  if (FRASE_REGISTRO["BUSCAR OTRA"] !== "Este depto no conviene. Franco ya tiene los que sí." || FRASE_REGISTRO["AJUSTA SUPUESTOS"] !== "Este depto conviene si lo negocias. Franco tiene los que convienen tal como están." || FRASE_REGISTRO.COMPRAR !== "Este depto conviene. Y Franco tiene más oportunidades como esta.") F("5 · la primera línea del banner no es la aprobada");
+  if (OFERTA_REGISTRO.boton !== "Quiero acceso" || OFERTA_REGISTRO.bajoBoton !== "Gratis. Solo tu correo." || `${OFERTA_REGISTRO.barraTitulo} ${OFERTA_REGISTRO.barraSub}` !== "Las oportunidades que otros no ven. Solo para usuarios de Franco.") F("5 · el botón, el «Gratis» o la barra no son los aprobados");
+  if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Ya|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
+  if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton !== "Quiero los 3 análisis") F("5 · la pestaña o el botón del ticket no son los aprobados");
+  if (DESPUES_DE_PAGAR.fraseVeredicto["BUSCAR OTRA"] !== "Mismo pie, mismo plazo. Solo falta el próximo depto." || DESPUES_DE_PAGAR.fraseVeredicto["AJUSTA SUPUESTOS"] !== "Pon uno de la zona y compáralo con este." || DESPUES_DE_PAGAR.fraseVeredicto.COMPRAR !== "Pon los dos parecidos y mira si este sigue siendo el mejor.") F("5 · la frase por veredicto de después de pagar no es la aprobada");
+  if (`${DESPUES_DE_PAGAR.titular} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 análisis. El próximo toma un minuto: tus números ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
+  if (CORREO_RECORDATORIO.asunto !== "Te quedan 3 análisis, con tus números ya cargados.") F("5 · el asunto del correo no es el aprobado");
+  for (const f of ["src/components/lo-que-sigue/BannerRegistro.tsx", "src/components/lo-que-sigue/EstasDentro.tsx", "src/components/lo-que-sigue/DespuesDePagar.tsx", "src/components/lo-que-sigue/TicketPack.tsx", "src/app/comparar/comparar-vista.tsx"]) {
+    // El texto visible sale de copy.ts: ni voseo ni literales sueltos en JSX.
+    const s = sinComentarios(leer(f));
+    const literales = (s.match(/>\s*[A-ZÁÉÍÓÚ¿][^<>{}]{3,}\s*</g) ?? []).map((x) => x.slice(1, -1).trim());
+    for (const l of literales) if (VOSEO.test(l)) F(`5 · voseo en ${f}: «${l}»`);
+  }
   if (!/\\u00bf|¿La dejas pasar\?/.test(leer("src/lib/lo-que-sigue/copy.ts"))) F("5 · la despedida no está en copy.ts");
 
+  // ── 6 · EL PRECIO DEL TICKET SALE DEL MOTOR ───────────────────────────────
+  {
+    const dv = (valor: Record<string, unknown>) => ({ id: "distancia_veredicto", tipo: "distancia_umbral", valor }) as unknown as HallazgoDistanciaVeredicto;
+    const viaPrecio = (uf: number) => [{ palanca: "precio", estado: "cruza", objetivo: uf }];
+    const ajusta = dv({ vias: viaPrecio(4175) });
+    const buscar = dv({ viasHastaComprar: viaPrecio(1934) });
+    if (precioQueCierraUF("AJUSTA SUPUESTOS", ajusta, 4500) !== 4175) F("6 · AJUSTA no lee el precio de la vía del motor");
+    if (precioQueCierraUF("BUSCAR OTRA", buscar, 2400) !== 1934) F("6 · BUSCAR no lee el precio de la vía hasta Comprar");
+    if (precioQueCierraUF("COMPRAR", ajusta, 4500) !== null) F("6 · COMPRAR recibe un precio que cierra: su frase no lleva cifra");
+    if (precioQueCierraUF("AJUSTA SUPUESTOS", null, 4500) !== null) F("6 · sin hallazgo se inventa un precio");
+    if (precioQueCierraUF("AJUSTA SUPUESTOS", dv({ vias: viaPrecio(4600) }), 4500) !== null) F("6 · un «precio que cierra» por encima del precio pedido pasa al ticket");
+    if (!/Para que este conviniera, tendría que costar UF 1\.934\. Equivocarte con un depto cuesta millones\. Saberlo antes, \$5\.000\./.test(leadTicket("BUSCAR OTRA", 1934, "$5.000"))) F("6 · la frase BUSCAR no lleva el precio en UF con punto de miles");
+    if (leadTicket("AJUSTA SUPUESTOS", 4175, "$5.000") !== "Este conviene si te lo dejan en UF 4.175. Mientras negocias, compáralo con otros de la zona: si hay uno que conviene sin negociar, tienes con qué presionar.") F("6 · la frase AJUSTA no es la aprobada con el precio");
+    if (/UF/.test(leadTicket("AJUSTA SUPUESTOS", null, "$5.000")) || /UF/.test(leadTicket("BUSCAR OTRA", null, "$5.000"))) F("6 · sin precio del motor la frase inventa una cifra");
+    const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
+    if (!/\{leadTicket\(v, precioCierreUF, fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("6 · la primera línea del ticket no es leadTicket con el precio que recibe");
+    if (!/const precioCierreLqs = precioQueCierraUF\(\s*resolvedVeredicto,\s*\(\(results\?\.hallazgos[\s\S]{0,120}\.find\(\(h\) => h\.id === "distancia_veredicto"\)[\s\S]{0,80}\?\? null,\s*inputData\?\.precio,\s*\);/.test(ltr)) F("6 · el informe LTR no saca el precio del hallazgo de distancia del motor");
+    if (!/const precioCierreLqs = precioQueCierraUF\(veredicto, distanciaPortada, precioCompraUFIn\);/.test(str)) F("6 · el informe STR no saca el precio de la distancia del motor");
+  }
+
+  // ── 7 · EL WIZARD PRECARGADO NO PISA EL DEPTO ─────────────────────────────
+  {
+    const origen = { piePct: 20, tasaInteres: 4.04, tasaMercado: 4.04, plazoCredito: 25, comuna: "San Miguel", ciudad: "Santiago", dormitorios: 2, banos: 1, precio: 2250, superficieUtil: 43, arriendo: 470000, direccion: "Gran Avenida 1", gastosComunes: 60000, contribuciones: 0, tipoPropiedad: "usado", antiguedad: 5 };
+    const pre = precargaDesdeInforme(origen, "long-term");
+    for (const k of CAMPOS_DEPTO) if (k in pre) F(`7 · la precarga trae «${k}», que es del depto`);
+    for (const k of Object.keys(pre)) if (!(CAMPOS_PRECARGA as readonly string[]).includes(k)) F(`7 · la precarga escribe «${k}», fuera de lo de la persona`);
+    if (pre.pieMonto !== "20" || pre.tasaInteres !== "4,04" || pre.plazoCredito !== "25" || pre.modalidad !== "ltr" || pre.comuna !== "San Miguel" || pre.dormitorios !== "2" || pre.financiamientoPrecargado !== true) F("7 · la precarga no arma pie, tasa, plazo, modalidad, comuna y tipología");
+    if (precargaDesdeInforme(origen, "short-term").modalidad !== "str") F("7 · la precarga de renta corta no queda en renta corta");
+    if (precargaDesdeInforme({ piePct: 20 }, "long-term").financiamientoPrecargado) F("7 · sin tasa ni plazo igual se salta el financiamiento");
+    const actual = { precio: "3100", superficieUtil: "55", direccion: "Otra 2", comuna: "Ñuñoa", pieMonto: "" } as WizardV4Answers;
+    const patch = aplicarPrecarga(actual, { ...pre, ...({ precio: "2250", superficieUtil: "43", direccion: "Gran Avenida 1" } as Record<string, string>) });
+    for (const k of CAMPOS_DEPTO) if (k in patch) F(`7 · aplicarPrecarga escribe «${k}», que es del depto`);
+    if ("comuna" in patch) F("7 · aplicarPrecarga pisa una comuna ya respondida");
+    if (patch.pieMonto !== "20") F("7 · aplicarPrecarga no llena un campo vacío de la persona");
+    const listo: WizardV4Answers = { financiamientoPrecargado: true, pieMonto: "20", tasaInteres: "4,04", plazoCredito: "25", modalidad: "ltr" } as WizardV4Answers;
+    if (computeNext("precio", listo) !== "arr" || (() => { const r = computePlannedPath(listo); return r.includes("pie") || r[r.indexOf("precio") + 1] !== "arr"; })()) F("7 · con el financiamiento precargado el wizard no salta de precio a la renta");
+    if (computeNext("precio", { ...listo, modalidad: "str" }) !== "adr") F("7 · en renta corta no salta a la tarifa");
+    if (computeNext("precio", { ...listo, financiamientoPrecargado: false }) !== "pie" || computeNext("precio", { ...listo, tasaInteres: "" }) !== "pie") F("7 · sin precarga completa el wizard se salta el pie");
+    const wz = sinComentarios(leer("src/components/formulario-v4/WizardV4.tsx"));
+    if (!/const patch = aplicarPrecarga\(nav\.answers, precarga \?\? \{\}\);\s*if \(Object\.keys\(patch\)\.length > 0\) w\.patchAnswers\(patch\);/.test(wz)) F("7 · el wizard no aplica la precarga con aplicarPrecarga (podría pisar el depto)");
+    if (!/if \(!precargaId \|\| precargaAplicada\.current \|\| !w\.inicializado \|\| w\.draftPendiente\) return;/.test(wz)) F("7 · la precarga corre antes de que el borrador se resuelva (lo pisaría)");
+    const api = sinComentarios(leer("src/app/api/lo-que-sigue/precarga/route.ts"));
+    if (!/\.eq\("id", analysisId\)\s*\.eq\("user_id", user\.id\)/.test(api) || !/status: 401/.test(api)) F("7 · la precarga lee un informe ajeno o sin sesión");
+  }
+
+  // ── 8 · EL CORREO SALE UNA VEZ ─────────────────────────────────────────────
+  {
+    const ahora = new Date("2026-10-04T13:00:00Z");
+    const base = { status: "paid", product: "pack3", pagadoEl: "2026-10-01T12:00:00Z", recordatorioEnviadoEl: null, restantes: 3 };
+    if (!debeRecordar(base, ahora)) F("8 · a los tres días sin usar el pack no toca el correo");
+    if (debeRecordar({ ...base, recordatorioEnviadoEl: "2026-10-04T12:00:00Z" }, ahora)) F("8 · el correo sale dos veces");
+    if (debeRecordar({ ...base, restantes: 2 }, ahora)) F("8 · el correo sale aunque ya usó uno");
+    if (debeRecordar({ ...base, pagadoEl: "2026-10-02T12:00:00Z" }, ahora)) F("8 · el correo sale antes de los tres días");
+    if (debeRecordar({ ...base, status: "pending" }, ahora) || debeRecordar({ ...base, product: "single" }, ahora)) F("8 · el correo sale sin pago o para otro producto");
+    const cron = sinComentarios(leer("src/app/api/cron/recordatorio-pack/route.ts"));
+    const reclamo = cron.search(/\.update\(\{ recordatorio_pack_enviado_at: [^}]+\}\)\s*\.eq\("id", [^)]+\)\s*\.is\("recordatorio_pack_enviado_at", null\)\s*\.select\(/);
+    const envio = cron.search(/sendRecordatorioPackEmail\(/);
+    if (reclamo < 0) F("8 · el cron no reclama la fila con la condición en el WHERE (de NULL a fecha)");
+    if (envio < 0 || (reclamo >= 0 && envio < reclamo)) F("8 · el cron manda el correo antes de reclamar la fila");
+    if (!/if \(casErr \|\| !reclamado\) \{/.test(cron)) F("8 · el cron manda aunque el reclamo no tuvo efecto");
+    const vj = JSON.parse(leer("vercel.json")) as { crons: { path: string }[] };
+    if (!vj.crons.some((c) => c.path === "/api/cron/recordatorio-pack")) F("8 · el cron del recordatorio no está en vercel.json");
+    if (!/recordatorio_pack_enviado_at timestamptz/.test(leer("supabase/migrations/20260930_lo_que_sigue_preferencias.sql"))) F("8 · falta la columna del reclamo en la migración");
+    const c = correoRecordatorioPack("https://refranco.ai", "11111111-2222-3333-4444-555555555555");
+    if (c.subject !== CORREO_RECORDATORIO.asunto || !c.html.includes("/analisis/nuevo-v4?precarga=11111111-2222-3333-4444-555555555555") || !/background: #FAFAF8/.test(c.html)) F("8 · el correo no va en la plantilla clara con el botón al wizard precargado");
+  }
+
+  // ── después de pagar: el retorno del pack ──────────────────────────────────
+  {
+    const sp = (q: string) => new URLSearchParams(q);
+    const r = leerRetornoPack(sp("order=x&lqs=pack&a=11111111-2222-3333-4444-555555555555&v=b"));
+    if (!r || r.veredicto !== "BUSCAR OTRA") F("pago · el retorno del pack no trae el informe y el veredicto");
+    if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
+    const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
+    if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
+  }
+
   // ── eventos: los ocho, y del lado del cliente con veredicto y modalidad ────
-  const esperados = ["banner_visto", "registro_iniciado", "registro_completado", "ticket_visto", "despedida_vista", "pack_iniciado", "pack_pagado", "pack_vencido"];
+  const esperados = ["banner_visto", "registro_iniciado", "registro_completado", "ticket_visto", "despedida_vista", "pack_iniciado", "pack_pagado", "pack_vencido",
+    "acceso_click", "dentro_visto", "preferencia_editada", "horizonte_elegido", "post_pago_visto", "precarga_abierta", "comparar_visto", "recordatorio_pack_enviado"];
   const tenemos = Object.values(EVENTOS_LQS);
   for (const e of esperados) if (!tenemos.includes(e as never)) F(`eventos · falta ${e}`);
   const eventos = sinComentarios(leer("src/lib/lo-que-sigue/eventos.ts"));
@@ -190,11 +305,22 @@ export function runLoQueSigueTier(): { hard: number } {
     console.log(`  ✗ LO-QUE-SIGUE · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — nada con sesión; el pack vence a las 24 h y lo rechaza el servidor; el perfil se guarda al crear y se liga al registrarse; el ticket no vuelve después de la despedida; el copy en tuteo; los ocho eventos con su vía, veredicto y modalidad");
+    console.log("  ✓ VERDE — el precio del ticket sale del motor; la precarga no pisa el depto; el correo sale una vez; nada con sesión; el pack vence a las 24 h y lo rechaza el servidor; el perfil se guarda al crear y se liga al registrarse; el ticket no vuelve después de la despedida; el copy en tuteo; los ocho eventos con su vía, veredicto y modalidad");
   }
   return { hard: fallas.length };
 }
 
+// ── ACTA DE MUTACIONES v3 (30-sep-2026, copy y después de pagar: 23/23 en rojo, restauradas) ──
+// M40 voseo en el banner · M41 voseo en «Estás dentro» · M42 voseo en el correo · M43 voseo en
+// después de pagar (primero pasó VERDE: la lista no tenía «poné»/«comparalo»; se amplió y se fijaron
+// las tres frases literales) · M43b «dejala» en el ticket · M44 precio inventado sin motor · M45 el
+// ticket ignora el precio · M46 LTR no pasa el precio · M47 STR deriva el precio · M48 BUSCAR sin las
+// vías del motor · M49 la precarga trae el precio del depto · M50 aplicarPrecarga pisa lo respondido
+// · M51 el wizard aplica la precarga cruda · M52 la precarga corre antes del borrador · M53 el grafo
+// salta sin precarga completa · M54 el correo sale dos veces · M55 sale aunque usó uno · M56 el
+// reclamo sin condición en el WHERE · M57 manda aunque no reclamó · M58 la barra sigue después de
+// entrar · M59 después de pagar vuelve el saldo · M60 falta precarga_abierta · M61 el ahorro sin
+// redondear ($14.980).
 // ── ACTA DE MUTACIONES v2 (28-sep-2026, ajustes 1, 2 y 4: 15/15 en rojo, restauradas) ────────
 // M25 vuelve el texto del registro al cierre · M26 el checkout a /register · M27 sin pestaña · M28
 // la zona del cierre no cuenta lo de arriba · M29 la barra en el cierre · M30 la pestaña vencida ·
