@@ -1,7 +1,9 @@
 import { ProxyAgent } from "undici";
 
-// Helper: dispatcher de proxy si PROXY_URL está seteada, sino undefined (fetch directo)
-const proxyDispatcher = process.env.PROXY_URL ? new ProxyAgent(process.env.PROXY_URL) : undefined;
+// Helper: dispatcher de proxy si PROXY_URL está seteada, sino undefined (fetch directo).
+// TODO fetch a la fuente lo usa: desde las IPs de Vercel, la fuente contesta 202 con cuerpo vacío
+// (desafío del WAF) a cualquier pedido directo. Exportado para toctoc-unidades.ts.
+export const proxyDispatcher = process.env.PROXY_URL ? new ProxyAgent(process.env.PROXY_URL) : undefined;
 
 export interface ScrapedProperty {
   source: string;

@@ -12,7 +12,7 @@
 // Origin devuelve 403. Latencia 7-9s por query del lado del server, tolera
 // paralelo sin rate-limit (concurrencia 8 → ~1,3s efectivo por ficha).
 
-import type { ScrapedProperty } from "./toctoc";
+import { proxyDispatcher, type ScrapedProperty } from "./toctoc";
 
 const GRAPHQL_ENDPOINT = "https://www.toctoc.com/new/nuevo/public/query";
 
@@ -85,19 +85,26 @@ export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<Unidade
   const vacio = (error: string): UnidadesProyecto =>
     ({ idProyecto: base.idProyecto, url: base.url, fechaEntrega: null, unidades: [], descartadas: 0, error });
   try {
+    // Por el proxy, como todo fetch a la fuente (29-sep-2026). Sin él, desde Vercel la fuente responde
+    // 202 con cuerpo vacío —el desafío del WAF—: `r.ok` es true, el r.json() revienta, el proyecto caía
+    // como error y el cron respondía 200. Así pasó del 03-ago al 29-sep sin escribir una unidad.
     const r = await fetch(GRAPHQL_ENDPOINT, {
       method: "POST",
       headers: HEADERS,
       body: JSON.stringify({ query: queryPropiedad(base.idProyecto) }),
-    });
-    if (!r.ok) return vacio(`http ${r.status}`);
-    const d = await r.json() as {
+      dispatcher: proxyDispatcher,
+    } as RequestInit & { dispatcher?: unknown });
+    if (r.status !== 200) return vacio(`http ${r.status}${r.status === 202 ? " (desafío del WAF: sin proxy)" : ""}`);
+    const texto = await r.text();
+    if (!texto.trim()) return vacio("http 200 sin cuerpo");
+    const d = JSON.parse(texto) as {
       data?: { propiedad?: { fechaEntrega?: string | null; plantas?: Array<{ propiedades?: UnidadRaw[] | null }> | null } | null };
       errors?: unknown[];
     };
     if (d.errors?.length) return vacio(`graphql: ${JSON.stringify(d.errors).slice(0, 120)}`);
     const p = d.data?.propiedad;
-    if (!p) return vacio("propiedad null");
+    // Sin propiedad = el proyecto dejó de publicarse. No es una falla: vuelve sin unidades.
+    if (!p) return { idProyecto: base.idProyecto, url: base.url, fechaEntrega: null, unidades: [], descartadas: 0 };
 
     const unidades: ScrapedProperty[] = [];
     let descartadas = 0;
