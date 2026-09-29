@@ -44,6 +44,7 @@ import { correoRecordatorioPack, debeRecordar } from "../../../src/lib/lo-que-si
 import { computeNext, computePlannedPath, type WizardV4Answers } from "../../../src/components/formulario-v4/wizardV4Nodes";
 import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { EVENTOS_LQS } from "../../../src/lib/lo-que-sigue/eventos";
+import { CODIGO_MAX, CODIGO_MIN, codigoValido, limpiarCodigo } from "../../../src/lib/lo-que-sigue/codigo";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
 import { correoCodigoSupabase } from "../../../src/lib/email/plantilla-clara";
 
@@ -310,7 +311,15 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/signInWithOtp\(\{\s*email: c,\s*options: \{ emailRedirectTo: callback\(\), shouldCreateUser: true \}/.test(reg)) F("registro · el correo no manda el enlace sin contraseña (signInWithOtp)");
   if (!/EVENTOS_LQS\.registroIniciado, ctx, \{ via: "correo" \}/.test(reg) || !/EVENTOS_LQS\.registroIniciado, ctx, \{ via: "google" \}/.test(reg)) F("registro · registro_iniciado no lleva la vía");
   if (!/consumirRegistroPendiente\(\);\s*if \(m\) capturarLqs\(posthog, EVENTOS_LQS\.registroCompletado, m\.ctx, \{ via: m\.via, como: "enlace" \}\)/.test(reg)) F("registro · registro_completado no sale al volver con su vía");
-  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg) || !/autoComplete="one-time-code"/.test(reg) || !/maxLength=\{6\}/.test(reg)) F("4 · el código de 6 dígitos no se escribe en el mismo formulario (verifyOtp)");
+  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(reg) || !/autoComplete="one-time-code"/.test(reg) || !/maxLength=\{CODIGO_MAX\}/.test(reg)) F("4 · el código no se escribe en el mismo formulario (verifyOtp)");
+  // 11 · EL CÓDIGO DE 6 A 8 DÍGITOS (29-sep-2026): Supabase manda el largo que diga su panel («Email OTP
+  //      Length»); estuvo en 8 con un formulario de 6 y nadie podía entrar con el código. El copy sigue en 6.
+  if (CODIGO_MIN !== 6 || CODIGO_MAX !== 8) F("11 · el formulario no acepta de 6 a 8 dígitos");
+  if (!codigoValido("482913") || !codigoValido("4829131") || !codigoValido("24017994")) F("11 · un código de 6, 7 u 8 dígitos no pasa");
+  if (codigoValido("48291") || codigoValido("240179941") || codigoValido("48 2913") || codigoValido("")) F("11 · pasa un código de menos de 6, de más de 8 o con otra cosa que dígitos");
+  if (limpiarCodigo("2401 7994") !== "24017994" || limpiarCodigo("240179941234") !== "24017994") F("11 · pegar un código de 8 dígitos lo corta o deja espacios");
+  if (!/onChange=\{\(e\) => setCodigo\(limpiarCodigo\(e\.target\.value\)\)\}/.test(reg) || !/if \(!codigoValido\(t\) \|\| !enviado\) \{/.test(reg) || /\\d\{6\}|slice\(0, 6\)/.test(reg)) F("11 · el formulario no usa limpiarCodigo y codigoValido (o vuelve a cortar en 6)");
+  if (REGISTRO_UN_PASO.errorCodigo !== "El código son 6 dígitos.") F("11 · el copy dejó de decir 6 dígitos");
   if (!/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
   if (!/emailRedirectTo: callback\(\)/.test(reg)) F("4 · el enlace del correo no vuelve al mismo informe");
   const plantilla = leer("docs/emails/supabase-codigo.html").replace(/<!--[\s\S]*?-->/g, "");
@@ -331,6 +340,10 @@ export function runLoQueSigueTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
+// ── ACTA DE MUTACIONES v5 (29-sep-2026, el código de 6 a 8 dígitos) ──────────────────────────
+// 8/8 en rojo, restauradas: M71 el máximo vuelve a 6 · M72 la validación exige 6 · M73 limpiar corta en 6
+// · M74 el campo corta en 6 · M75 maxLength 6 · M76 el envío valida con otra regla · M77 pasa cualquier
+// cosa · M78 el copy deja de decir 6.
 // ── ACTA DE MUTACIONES v4 (29-sep-2026, modalidad de vuelta y carrito abandonado: 9/9 en rojo) ──
 // M62 la vuelta sin `m` · M63 la lectura ignora `m` · M64 el evento supone ltr · M65 el ticket no lee
 // tipo_analisis · M66 el checkout no pasa la modalidad · M67 la página de vuelta no la pasa · M68 el

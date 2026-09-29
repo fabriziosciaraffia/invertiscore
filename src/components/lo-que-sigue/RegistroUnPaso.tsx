@@ -19,10 +19,10 @@ import { createClient } from "@/lib/supabase/client";
 import { usePostHog } from "@/lib/posthog-react";
 import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
+import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPendiente, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const CODIGO_OK = /^\d{6}$/;
 
 function IconoGoogle() {
   return (
@@ -85,7 +85,7 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
   async function entrarConCodigo(e: FormEvent) {
     e.preventDefault();
     const t = codigo.replace(/\D/g, "");
-    if (!CODIGO_OK.test(t) || !enviado) {
+    if (!codigoValido(t) || !enviado) {
       setError(REGISTRO_UN_PASO.errorCodigo);
       return;
     }
@@ -128,12 +128,12 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={6}
+            maxLength={CODIGO_MAX}
             placeholder={REGISTRO_UN_PASO.placeholderCodigo}
             aria-label="Código de 6 dígitos"
             className="lqs-codigo"
             value={codigo}
-            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) => setCodigo(limpiarCodigo(e.target.value))}
           />
           <button type="submit" className="lqs-btn" disabled={entrando} data-presionado={entrando ? "1" : undefined}>{REGISTRO_UN_PASO.entrar}</button>
         </div>
