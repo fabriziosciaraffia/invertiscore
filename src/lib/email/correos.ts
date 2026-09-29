@@ -61,6 +61,7 @@ export function correoCheckoutAbandonado(p: { nombre: string | null; producto: s
     subject: "¿Quedó algo pendiente?",
     html: plantillaClara({
       titulo: "¿Quedó algo pendiente?",
+      preencabezado: "Tu compra quedó a medio camino. Sin apuro: sigue ahí cuando quieras.",
       titular: "¿Quedó algo pendiente?",
       parrafos: [intro, "Si tuviste algún problema con el pago o quieres preguntarnos algo antes de decidir, responde este correo. Franco es directo: no hay letra chica."],
       boton: { texto: "Retomar mi compra", url: `${sitio}/pricing` },
@@ -77,6 +78,7 @@ export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
     subject: "Recibimos tu solicitud de eliminación de cuenta",
     html: plantillaClara({
       titulo: "Recibimos tu solicitud de eliminación de cuenta",
+      preencabezado: "Qué va a pasar con tu cuenta y tus datos.",
       titular: "Recibimos tu solicitud",
       parrafos: [
         `${saludoDe(p.nombre)} recibimos tu solicitud para eliminar tu cuenta de Franco. Queremos que sepas exactamente qué va a pasar.`,
@@ -95,6 +97,7 @@ export function correoEliminacionInterna(p: { email: string; userId: string; sol
     subject: "Solicitud de eliminación de cuenta",
     html: plantillaClara({
       titulo: "Solicitud de eliminación de cuenta",
+      preencabezado: `${p.email} pidió eliminar su cuenta.`,
       titular: "Solicitud de eliminación de cuenta",
       parrafos: ["Un usuario pidió eliminar su cuenta. Procesa la baja y la eliminación de sus datos."],
       detalle: {
@@ -130,6 +133,7 @@ export function correoAlertaPago(p: { producto: string; monto: number; email: st
     subject: `💰 Nuevo pago: ${p.producto} — ${clp(p.monto)}`,
     html: plantillaClara({
       titulo: "Nuevo pago confirmado",
+      preencabezado: `${p.producto} · ${clp(p.monto)}`,
       titular: "Nuevo pago confirmado",
       parrafos: [],
       detalle: { filas },
@@ -143,6 +147,7 @@ export function correoAlertaPagoFallido(p: { estado: "Rechazado" | "Anulado"; pr
     subject: `⚠️ Pago fallido: ${p.producto} — ${clp(p.monto)}`,
     html: plantillaClara({
       titulo: "Pago fallido",
+      preencabezado: `${p.estado} · ${p.producto} · ${clp(p.monto)}`,
       titular: "Pago fallido",
       parrafos: [],
       detalle: {
@@ -202,6 +207,7 @@ export function correoInformeListo(p: {
       subject: "Tu comparativa está lista",
       html: plantillaClara({
         titulo: "Tu comparativa está lista",
+        preencabezado: "Renta larga o renta corta: Franco ya tiene una posición.",
         titular: primero ? `${escaparHtml(primero)}, tu comparativa está lista` : "Tu comparativa está lista",
         parrafos: ["Franco corrió los dos escenarios sobre tu propiedad, arriendo tradicional y renta corta, y tiene una posición sobre cuál conviene."],
         boton: { texto: "Ver mi comparativa", url: `${sitio}/analisis/comparativa?ltr=${encodeURIComponent(p.ambas.ltrId)}&str=${encodeURIComponent(p.ambas.strId)}` },
@@ -244,6 +250,7 @@ export function correoPagoConfirmado(p: {
     subject: `Pago confirmado — ${p.producto}`,
     html: plantillaClara({
       titulo: "Pago confirmado",
+      preencabezado: `${p.producto} · ${clp(p.monto)}`,
       titular: "Pago confirmado",
       parrafos: [`${saludoDe(p.nombre)} ${p.desbloquea}`, `<b>Qué incluye.</b> ${p.incluye.map(escaparHtml).join(". ")}.`],
       detalle: {
@@ -271,6 +278,7 @@ export function correoBoleta(p: { para: string; folio: number | string; monto: n
     subject: `Tu boleta electrónica N° ${p.folio} — refranco.ai`,
     html: plantillaClara({
       titulo: "Tu boleta electrónica",
+      preencabezado: `Boleta N° ${p.folio} por ${clp(p.monto)}, en PDF y XML.`,
       titular: "Tu boleta electrónica",
       parrafos: [`Acá está tu boleta por ${escaparHtml(p.concepto?.frase || "tu compra en Franco")}. La tienes adjunta en PDF y XML, y también puedes verla en línea.`],
       detalle: {
@@ -296,6 +304,7 @@ export function correoBoleta(p: { para: string; folio: number | string; monto: n
 export function correoRestablecerSupabase(): string {
   return plantillaClara({
     titulo: "Restablece tu contraseña de Franco",
+    preencabezado: "El enlace para elegir una contraseña nueva. Vale una hora.",
     titular: "Restablece tu contraseña",
     parrafos: ["Pediste cambiar la contraseña de tu cuenta en Franco. El enlace vale una hora."],
     boton: { texto: "Elegir una contraseña nueva", url: "{{ .ConfirmationURL }}" },
@@ -307,6 +316,7 @@ export function correoRestablecerSupabase(): string {
 export function correoCambioCorreoSupabase(): string {
   return plantillaClara({
     titulo: "Confirma tu correo nuevo en Franco",
+    preencabezado: "Confirma el cambio de correo de tu cuenta en Franco.",
     titular: "Confirma tu correo nuevo",
     parrafos: ["Pediste cambiar el correo de tu cuenta en Franco de {{ .Email }} a {{ .NewEmail }}. Confírmalo con el botón."],
     boton: { texto: "Confirmar el cambio", url: "{{ .ConfirmationURL }}" },

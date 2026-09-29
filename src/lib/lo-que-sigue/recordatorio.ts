@@ -42,6 +42,7 @@ export function correoRecordatorioPack(sitio: string, analysisId: string | null)
     subject: CORREO_RECORDATORIO.asunto,
     html: plantillaClara({
       titulo: CORREO_RECORDATORIO.asunto,
+      preencabezado: CORREO_RECORDATORIO.cuerpo,
       titular: escaparHtml(CORREO_RECORDATORIO.asunto),
       parrafos: [escaparHtml(CORREO_RECORDATORIO.cuerpo)],
       boton: { texto: CORREO_RECORDATORIO.boton, url },

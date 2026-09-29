@@ -60,6 +60,7 @@ export function runCorreosTier(): { hard: number } {
     if (!html.includes(`<body style="margin: 0; padding: 0; background: ${PAPEL};">`)) F(`1 · ${c.id} no sale de la plantilla clara (sin el papel en el body)`);
     if (!wordmark.test(html)) F(`5 · ${c.id} no lleva el wordmark PNG fiel (ancho fijo, alt refranco.ai)`);
     if (/<svg/i.test(html)) F(`5 · ${c.id} lleva SVG (Gmail no lo muestra)`);
+    if (!/<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">[^<]{8,}<\/div>/.test(html)) F(`1 · ${c.id} no tiene texto de vista previa (la bandeja muestra «refranco.ai.», el alt del logo)`);
     if ((html.match(/<img /g) ?? []).length !== 1) F(`1 · ${c.id} lleva imágenes además del wordmark (con las imágenes bloqueadas no se lee; los heros del informe viejo salieron)`);
     if (oscuro(html)) F(`2 · ${c.id} tiene fondo oscuro`);
     if (MONO.test(html)) F(`2 · ${c.id} usa mono`);
@@ -129,6 +130,8 @@ export function runCorreosTier(): { hard: number } {
   return { hard: fallas.length };
 }
 
+// ── ACTA v3 (29-sep-2026): C24 un correo sin vista previa → rojo (1/1). La vista previa es además
+// obligatoria en el tipo CorreoClaro: omitirla no compila.
 // ── ACTA DE MUTACIONES v2 (29-sep-2026, los cuatro que esperaban decisión: 5/5 en rojo) ──────────
 // C19 el pack vuelve a «1 análisis» · C20 vuelve «escenarios de salida (venta y refinanciamiento)» ·
 // C21 vuelve el hero /api/og/veredicto al informe listo · C22 la boleta vuelve a dos botones · C23

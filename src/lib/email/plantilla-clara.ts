@@ -43,8 +43,9 @@ export interface CorreoClaro {
   nota?: string;
   /** Un detalle en filas etiqueta/valor (el comprobante, la boleta, los datos de una solicitud). */
   detalle?: { titulo?: string; filas: Array<{ etiqueta: string; valor: string }> };
-  /** Texto de vista previa en la bandeja (oculto en el cuerpo). */
-  preencabezado?: string;
+  /** Texto de vista previa en la bandeja (oculto en el cuerpo). Obligatorio: sin él, la bandeja
+   *  muestra el alt del wordmark («refranco.ai.») como primera línea. */
+  preencabezado: string;
   /** Línea legal del pie. Por defecto, la de Franco. */
   legal?: string;
 }
@@ -152,6 +153,7 @@ export function plantillaClara(c: CorreoClaro): string {
 export function correoCodigoSupabase(): string {
   return plantillaClara({
     titulo: "Tu código para entrar a Franco",
+    preencabezado: "Tu código: {{ .Token }}. Vale una hora.",
     titular: "Tu código para entrar",
     parrafos: ["Escríbelo en el informe, donde lo pediste. Vale una hora."],
     codigo: "{{ .Token }}",
