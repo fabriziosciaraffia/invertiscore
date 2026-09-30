@@ -100,6 +100,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const superficie = answers.superficieUtil ?? "";
   const dormitorios = answers.dormitorios ?? "";
   const tipoPropiedad = answers.tipoPropiedad;
+  const amoblado = answers.amoblado === "si";
   const reqSeq = useRef(0);
 
   useEffect(() => {
@@ -119,7 +120,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         lat: String(lat),
         lng: String(lng),
       };
-      const qArriendo = new URLSearchParams({ ...base, type: "arriendo" });
+      // El arriendo compara contra lo mismo que ofrece la persona: amoblado o no (30-sep-2026).
+      const qArriendo = new URLSearchParams({ ...base, type: "arriendo", ...(amoblado ? { amoblado: "1" } : {}) });
       // Tramo A: la venta se consulta en el universo del depto. Sin `condicion` el
       // radio mezclaba nuevos y usados y el nivel comunal caía a usados, y a un
       // nuevo le llegaba un valor de mercado de otro mercado (d3a6149a).
@@ -183,7 +185,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         });
     }, 400);
     return () => clearTimeout(t);
-  }, [lat, lng, comuna, superficie, dormitorios, tipoPropiedad]);
+  }, [lat, lng, comuna, superficie, dormitorios, tipoPropiedad, amoblado]);
 
   // Baseline AirROI — no-op salvo modalidad str/both (evita el costo del fetch
   // en LTR puro). capacidadHuespedes se aproxima desde dormitorios cuando no se

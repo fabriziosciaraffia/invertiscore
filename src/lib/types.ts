@@ -78,6 +78,9 @@ export interface AnalisisInput {
   arriendoEstacionamiento: number;
   arriendoBodega: number;
   vacanciaMeses: number;
+  /** El depto se arrienda amoblado (30-sep-2026): los comparables del arriendo sugerido fueron los
+   *  amoblados. Ausente o false = sin amoblar (los informes anteriores al campo). */
+  amoblado?: boolean;
   // Administración de arriendo (property management)
   usaAdministrador?: boolean;
   comisionAdministrador?: number;

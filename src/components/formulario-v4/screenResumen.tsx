@@ -69,6 +69,7 @@ import { CAJA_COBERTURA } from "@/lib/comuna-bounds";
 import { costosOperativosEditados, cuotaCreditoPieCLP, dormLabel, dormitoriosNum, fmtCLP, fmtUF, fuenteArriendoLine, huespedesNum, leerNum, otraFuentePctCrudo, procedenciaArriendoCorta, superficieM2, cuotaCLP, pieEfectivoPct, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { FilaFija, FilaNum, FilaOpciones } from "./filas";
+import { OPCIONES_AMOBLADO } from "./screensActo3";
 import { BarraCta } from "./ui";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -1041,6 +1042,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}
                 highlight={highlight === "arr"}
                 cargando={enEspera("arr")} onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
+              />
+              {/* 30-sep-2026: el arriendo compara contra lo mismo que ofrece la persona. Si tomó la
+                  estimación, el arriendo sigue a la sugerencia nueva; si lo corrigió, queda el suyo. */}
+              <FilaOpciones
+                label="Amoblado"
+                sub={a.amoblado === "si" ? "Se compara con arriendos amoblados de la zona" : "Se compara con arriendos sin amoblar de la zona"}
+                value={a.amoblado ?? "no"}
+                options={OPCIONES_AMOBLADO}
+                cargando={enEspera("amoblado")}
+                onCommit={(v) => commitEdit("amoblado", { amoblado: v, ...(a.arrModo === "corregir" ? {} : { arriendo: undefined }) })}
               />
               <SubRot>Lo que se descuenta</SubRot>
               <FilaNum label="Gastos comunes" sub={a.gastosComunes ? "Corregido por ti" : "Típicos de la comuna"} raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`$${cifra(a.gastosComunes, DEC.gastosComunes, Math.round(ggccDef))}`} unidad="/mes" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", " al mes")} cargando={enEspera("gastosComunes")} onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />

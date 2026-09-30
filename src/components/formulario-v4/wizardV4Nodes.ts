@@ -209,6 +209,9 @@ export interface WizardV4Answers {
   gastosComunes?: string; // CLP/mes
   contribuciones?: string; // CLP/trimestre
   vacanciaPct?: string; // % (LTR)
+  /** LTR (30-sep-2026): «Amoblado: No» por defecto. Con "si", los comparables del arriendo son los
+   *  amoblados; sin él, los arriendos corrientes (sin amoblados, temporada, corporativos ni piezas). */
+  amoblado?: "no" | "si";
   comisionAdminPct?: string; // % administración LTR
   // STR:
   modoGestion?: "auto" | "administrador";

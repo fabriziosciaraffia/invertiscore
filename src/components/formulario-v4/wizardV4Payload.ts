@@ -156,6 +156,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // El body viaja en MESES/año; el usuario la tipea en %. El 5 es el default
     // silencioso del wizard cuando nunca tocó el campo.
     vacanciaMeses: ((a.vacanciaPct ? leerNum(a.vacanciaPct, DEC.vacancia) : 5) * 12) / 100,
+    amoblado: a.amoblado === "si",
     usaAdministrador: comisionAdmin > 0,
     comisionAdministrador: comisionAdmin > 0 ? comisionAdmin : undefined,
     zonaRadio: {

@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   const radius = parseInt(searchParams.get("radius") || "800");
   const propType = searchParams.get("type") || "arriendo";
   const condicion = searchParams.get("condicion") || null;
+  // Solo arriendo (30-sep-2026): «Amoblado: Sí» en el wizard → los comparables son los amoblados.
+  const amoblado = searchParams.get("amoblado") === "1";
 
   if (!comuna) {
     return NextResponse.json({ error: "Missing comuna" }, { status: 400 });
@@ -21,7 +23,7 @@ export async function GET(request: Request) {
 
   try {
     const sugerencias = await getSugerencias(
-      comuna, superficie, dormitorios, precioUF, lat, lng, radius, propType, condicion
+      comuna, superficie, dormitorios, precioUF, lat, lng, radius, propType, condicion, { amoblado }
     );
     return NextResponse.json(sugerencias);
   } catch (error) {

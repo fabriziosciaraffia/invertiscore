@@ -23,7 +23,7 @@ import { escalaArriendo, escalaComision, escalaOcupacion, escalaTarifa, escalaVa
 import { DEC, type WizardV4Answers } from "./wizardV4Nodes";
 import { BarraCta, ChoiceTile, FieldLabel, FuenteLine, LinkBtn, PrimaryBtn, Segmented, TileTexto } from "./ui";
 import { NumericInput, decimalesUtiles, ecoPorDefecto } from "./NumericInput";
-import { FilaNum } from "./filas";
+import { FilaNum, FilaOpciones } from "./filas";
 import {
   HUESPEDES_MAX,
   costosOperativosEditados,
@@ -85,6 +85,12 @@ function FilasInmueble({ answers, data, patchAnswers, completas }: Pick<ScreenPr
 
 // ── arr (arriendo LTR) ────────────────────────────────────────────────────────
 
+/** «Amoblado» (30-sep-2026): el arriendo sugerido compara contra lo mismo que ofrece la persona. */
+export const OPCIONES_AMOBLADO: Array<{ value: "no" | "si"; label: string }> = [
+  { value: "no", label: "No" },
+  { value: "si", label: "Sí" },
+];
+
 export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: ScreenProps) {
   const sugerido = data.arriendoSugerido;
   const listo = sugerido != null && sugerido > 0;
@@ -96,6 +102,13 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
 
   const supuestos = (
     <div className="wz-filas">
+      <FilaOpciones
+        label="Amoblado"
+        sub={answers.amoblado === "si" ? "Se compara con arriendos amoblados de la zona" : "Se compara con arriendos sin amoblar de la zona"}
+        value={answers.amoblado ?? "no"}
+        options={OPCIONES_AMOBLADO}
+        onCommit={(v) => patchAnswers({ amoblado: v })}
+      />
       <div className="wz-ft">Lo que se descuenta del arriendo</div>
       <FilasInmueble answers={answers} data={data} patchAnswers={patchAnswers} completas />
       <FilaNum

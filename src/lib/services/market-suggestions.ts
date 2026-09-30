@@ -13,6 +13,7 @@ import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as m
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { reintentarConsulta } from "@/lib/reintento-transitorio";
+import { entraComoComparable } from "@/lib/arriendo-tipo";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const RUTA = "GET /api/data/suggestions";
@@ -116,15 +117,19 @@ export async function getSugerencias(
   lng?: number,
   _radiusMeters: number = 500,
   propType: string = "arriendo",
-  condicion: string | null = null
+  condicion: string | null = null,
+  /** Solo ARRIENDO (30-sep-2026): el depto se arrienda amoblado. Sin esto (o false) los comparables son
+   *  los arriendos corrientes, sin amoblados, temporada, corporativos ni piezas; con true, solo amoblados. */
+  opciones: { amoblado?: boolean } = {},
 ): Promise<Sugerencias> {
   const reg: RegistroRadio = { fallas: 0 };
-  const s = await sugerenciasConRegistro(reg, comuna, superficie, dormitorios, precioUF, lat, lng, _radiusMeters, propType, condicion);
+  const s = await sugerenciasConRegistro(reg, !!opciones.amoblado, comuna, superficie, dormitorios, precioUF, lat, lng, _radiusMeters, propType, condicion);
   return marcarRadio(s, reg);
 }
 
 async function sugerenciasConRegistro(
   reg: RegistroRadio,
+  amoblado: boolean,
   comuna: string,
   superficie: number,
   dormitorios: number,
@@ -147,10 +152,10 @@ async function sugerenciasConRegistro(
 
     for (const r of ADAPTIVE_RADII) {
       const mapData = await getNearbyPropertiesForMap(
-        lat, lng, r, dormFilter, comuna, propType, condicion, reg,
+        lat, lng, r, dormFilter, comuna, propType, condicion, reg, amoblado,
       );
       const result = await getSugerenciasPorRadio(
-        lat, lng, r, superficie, dormFilter, comuna, propType, condicion, reg,
+        lat, lng, r, superficie, dormFilter, comuna, propType, condicion, reg, amoblado,
       );
 
       if (!result) {
@@ -210,11 +215,40 @@ async function sugerenciasConRegistro(
   // (MIN_ARRIENDOS_TIPOLOGIA / MIN_ARRIENDOS_COMUNAL_ENTRA), y declara su fuente
   // con un `source` propio que el wizard, el payload y el informe arrastran.
   if (propType === "arriendo") {
-    const comunal = await getReferenciaComunalArriendo(comuna, superficie, dormFilter);
+    const comunal = await getReferenciaComunalArriendo(comuna, superficie, dormFilter, amoblado);
     if (comunal) return comunal;
   }
 
   return SIN_DATO;
+}
+
+/**
+ * Versión de las sugerencias (30-sep-2026). Sube cuando cambia QUÉ comparables entran —s2: fuera los
+ * arriendos amoblados, de temporada, corporativos y piezas—, aunque el motor no cambie. La fila evaluada
+ * guarda motor + sugerencias (VERSION_EVALUACION) y el cron reevalúa de a poco las de otra versión.
+ */
+export const SUGERENCIAS_VERSION = "s2";
+
+/** Radio de la ZONA del depto: el tope del loop adaptativo. */
+export const RADIO_ZONA_M = 2000;
+/** Muestra mínima para dar una mediana de zona. */
+export const MIN_ZONA = 10;
+
+/**
+ * La mediana del arriendo por m² de la ZONA del depto (30-sep-2026): los arriendos corrientes (o
+ * amoblados, si el depto lo es) de la misma tipología en RADIO_ZONA_M, sin extremos. Es la referencia de
+ * la marca de arriendo sospechoso, en lugar de la mediana de la comuna: en el oriente la zona es más cara
+ * que el promedio comunal y la marca vieja confundía ubicación con contaminación. null si no alcanza.
+ */
+export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false): Promise<number | null> {
+  const reg: RegistroRadio = { fallas: 0 };
+  const { data } = await leerRadio(getSupabase(), reg, {
+    center_lat: lat, center_lng: lng, radius_meters: RADIO_ZONA_M, prop_type: "arriendo",
+    prop_dorms: dormitorios && dormitorios > 0 ? dormitorios : null, prop_comuna: null, prop_condicion: null,
+  }, amoblado);
+  const limpios = filterOutliers((data ?? []) as FilaRadio[]).filter((f) => Number(f.superficie_m2) > 0);
+  if (limpios.length < MIN_ZONA) return null;
+  return Math.round(medianaDe(limpios.map((f) => Number(f.precio) / Number(f.superficie_m2))));
 }
 
 /** Respuesta canónica cuando no hay comparables. Ver `Sugerencias.arriendo`. */
@@ -248,6 +282,8 @@ async function leerRadio(
   supabase: ReturnType<typeof getSupabase>,
   reg: RegistroRadio,
   args: ArgsRadio,
+  // Solo arriendo: qué avisos entran como comparables (arriendo-tipo.ts). Venta: todos.
+  amoblado: boolean | null = null,
   // `any` como devolvía la RPC cruda: cada llamador tipa la fila a su manera.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<{ data: any[]; error: { message: string } | null }> {
@@ -262,11 +298,19 @@ async function leerRadio(
       .order("distance_meters", { ascending: true })
       .order("id", { ascending: true })
       .range(off, off + PAGINA_POSTGREST - 1));
-    if (error) { reg.fallas++; return { data: aPesos(filas, uf), error }; }
+    if (error) { reg.fallas++; return { data: filtrarArriendo(aPesos(filas, uf), args, amoblado), error }; }
     const pagina = data ?? [];
     filas.push(...pagina);
-    if (pagina.length < PAGINA_POSTGREST) return { data: aPesos(filas, uf), error: null };
+    if (pagina.length < PAGINA_POSTGREST) return { data: filtrarArriendo(aPesos(filas, uf), args, amoblado), error: null };
   }
+}
+
+/** Los comparables de arriendo sin los que no se parecen al depto (amoblados, temporada, corporativos,
+ *  piezas) — o solo los amoblados si el depto lo es. La venta pasa entera. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function filtrarArriendo(filas: any[], args: ArgsRadio, amoblado: boolean | null): any[] {
+  if (args.prop_type !== "arriendo" || amoblado === null) return filas;
+  return filas.filter((f) => entraComoComparable(f, amoblado));
 }
 
 async function getNearbyPropertiesForMap(
@@ -278,6 +322,7 @@ async function getNearbyPropertiesForMap(
   propType: string = "arriendo",
   condicion: string | null = null,
   reg: RegistroRadio = { fallas: 0 },
+  amoblado = false,
 ): Promise<{ all: NearbyPropertyPoint[]; filteredCount: number }> {
   const supabase = getSupabase();
 
@@ -290,7 +335,7 @@ async function getNearbyPropertiesForMap(
     prop_dorms: null,
     prop_comuna: comuna || null,
     prop_condicion: condicion,
-  });
+  }, amoblado);
   reportarFalloQuery(errAll, {
     ruta: RUTA,
     operacion: "rpc-radio-mapa",
@@ -319,7 +364,7 @@ async function getNearbyPropertiesForMap(
       prop_dorms: dormitorios,
       prop_comuna: comuna || null,
       prop_condicion: condicion,
-    });
+    }, amoblado);
     reportarFalloQuery(errFiltered, {
       ruta: RUTA,
       operacion: "rpc-radio-conteo-dorms",
@@ -342,6 +387,7 @@ async function getSugerenciasPorRadio(
   propType: string = "arriendo",
   condicion: string | null = null,
   reg: RegistroRadio = { fallas: 0 },
+  amoblado = false,
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
@@ -359,7 +405,7 @@ async function getSugerenciasPorRadio(
     prop_dorms: dormitorios,
     prop_comuna: comuna || null,
     prop_condicion: condicion,
-  });
+  }, amoblado);
   // El más caro de los cuatro: de acá sale la mediana que el wizard propone. Si
   // falla, el nivel 1 se declara sin comparables y el usuario ve "sin arriendos
   // publicados cerca" — un hueco de datos y una caída de la RPC se ven idénticos.
@@ -388,7 +434,7 @@ async function getSugerenciasPorRadio(
       prop_dorms: null,
       prop_comuna: comuna || null,
       prop_condicion: condicion,
-    });
+    }, amoblado);
     reportarFalloQuery(errGeneral, {
       ruta: RUTA,
       operacion: "rpc-radio-muestra-sin-dorms",
@@ -473,14 +519,15 @@ async function getReferenciaComunalArriendo(
   comuna: string,
   superficie: number,
   dormitorios: number | null,
+  amoblado = false,
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
   const variantes = variantesComuna(comuna);
-  const rows: Array<{ precio: number; superficie_m2: number | null; dormitorios: number | null }> = [];
+  const rows: Array<{ precio: number; superficie_m2: number | null; dormitorios: number | null; url: string | null; titulo: string | null }> = [];
   for (let off = 0; ; off += PAGINA_POSTGREST) {
     const { data, error } = await supabase
       .from("scraped_properties")
-      .select("precio, superficie_m2, dormitorios")
+      .select("precio, superficie_m2, dormitorios, url, titulo")
       .in("comuna", variantes)
       .eq("type", "arriendo")
       .eq("is_active", true)
@@ -499,7 +546,8 @@ async function getReferenciaComunalArriendo(
   }
   // Mismos cortes que superficieUtil/dormsEnRango de comunas-seo: la muestra
   // comunal del informe tiene que ser la que la página de comuna declara.
-  const entran = rows.filter((r) => {
+  // Mismo filtro de clase que el radio (arriendo-tipo.ts, 30-sep-2026).
+  const entran = rows.filter((r) => entraComoComparable(r, amoblado)).filter((r) => {
     const sup = Number(r.superficie_m2);
     const d = Number(r.dormitorios);
     return sup > 0 && sup <= 300 && d >= 1 && d <= 4;
