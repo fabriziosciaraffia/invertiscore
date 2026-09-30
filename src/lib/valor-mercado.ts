@@ -78,6 +78,37 @@ export function universoDeSugerenciaVenta(nivel: "radio" | "comuna", condicion: 
   return nivel === "comuna" ? "usado" : "mixto";
 }
 
+/**
+ * Repara un análisis que se armó con la venta nueva por radio en UF (30-sep-2026, ver `aPesos`).
+ *
+ * Con ese bug, `zonaRadio.precioM2VentaCLP` guardó la mediana del radio EN UF/m² (el consumidor la
+ * multiplicaba por la UF después de haberla dividido por la UF): es exactamente la mediana de los
+ * comparables del DÍA del análisis. La referencia (`valorMercadoRef.valorUF`) y `valorMercadoFranco`
+ * quedaron en 0, y el motor los descartó; la eficiencia del score leyó el radio a ~0 UF/m².
+ *
+ * Devuelve el input reparado —referencia y valor de mercado desde esa mediana × superficie útil, y
+ * `precioM2VentaCLP` en pesos de verdad— o null si el análisis no tiene la firma del bug (referencia
+ * de radio en 0 con un precio por m² del radio entre el piso y 1.000, que en pesos es imposible).
+ */
+export function repararVentaRadioEnUF<T extends { valorMercadoRef?: ValorMercadoRef | null; valorMercadoFranco?: number; superficie?: number; zonaRadio?: unknown }>(
+  input: T,
+  ufCLP: number,
+): T | null {
+  const ref = input.valorMercadoRef;
+  const zr = input.zonaRadio as { precioM2VentaCLP?: number } | undefined;
+  const ufM2 = Number(zr?.precioM2VentaCLP);
+  const sup = Number(input.superficie);
+  if (!ref || ref.nivel !== "radio" || ref.valorUF > 0) return null;
+  if (!(ufM2 >= PISO_UF_M2 && ufM2 < 1000) || !(sup > 0) || !(ufCLP > 0)) return null;
+  const valorUF = Math.round(ufM2 * sup);
+  return {
+    ...input,
+    valorMercadoRef: { ...ref, valorUF },
+    valorMercadoFranco: valorUF,
+    zonaRadio: { ...(zr as object), precioM2VentaCLP: Math.round(ufM2 * ufCLP) },
+  };
+}
+
 /** Precio por m² bajo el cual una sugerencia de venta es un error, no un mercado. */
 export const PISO_UF_M2 = 10;
 

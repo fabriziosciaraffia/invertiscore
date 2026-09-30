@@ -15,7 +15,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { aPesos, resumirComparablesRadio } from "../../../src/lib/services/comparables-radio";
-import { PISO_UF_M2, valorMercadoRefDeSugerencia } from "../../../src/lib/valor-mercado";
+import { PISO_UF_M2, repararVentaRadioEnUF, valorMercadoRefDeSugerencia } from "../../../src/lib/valor-mercado";
 import { entraVentaComuna, VENTANA_DIAS_COMUNA } from "../../../src/lib/data/comunas-seo";
 import { ESPERAS_REINTENTO, esErrorTransitorio, reintentarConsulta } from "../../../src/lib/reintento-transitorio";
 import { marcarRadio, type Sugerencias } from "../../../src/lib/services/market-suggestions";
@@ -56,6 +56,17 @@ export async function runRadioMonedaTier(): Promise<{ hard: number }> {
   const bueno = valorMercadoRefDeSugerencia({ ...base, precioM2UF: 178.4 });
   if (!bueno || bueno.valorUF !== Math.round(178.4 * 25.6)) F("2 · un precio sano no arma su referencia");
   if (PISO_UF_M2 !== 10) F(`2 · el piso no es UF 10/m² (${PISO_UF_M2})`);
+
+  // ── 2b · la reparación de los análisis con la venta nueva en UF (30-sep-2026): la mediana del día
+  // queda en precioM2VentaCLP; se rehace la referencia, el valor de mercado y el precio del radio en pesos ──
+  {
+    const roto = { superficie: 49, valorMercadoFranco: 0, valorMercadoRef: { valorUF: 0, nivel: "radio" as const, universo: "nuevo" as const, n: 26, radioMetros: 750 }, zonaRadio: { precioM2VentaCLP: 72, lat: -33.4 } };
+    const rep = repararVentaRadioEnUF(roto, 41000);
+    if (!rep || rep.valorMercadoRef?.valorUF !== 72 * 49 || rep.valorMercadoFranco !== 72 * 49 || (rep.zonaRadio as { precioM2VentaCLP: number }).precioM2VentaCLP !== 72 * 41000 || (rep.zonaRadio as { lat: number }).lat !== -33.4 || rep.valorMercadoRef?.n !== 26) F("2b · un análisis con la venta en UF no se repara con la mediana de su día");
+    if (repararVentaRadioEnUF({ ...roto, valorMercadoRef: { ...roto.valorMercadoRef, valorUF: 3500 } }, 41000) !== null) F("2b · repara un análisis sano (valor de mercado > 0)");
+    if (repararVentaRadioEnUF({ ...roto, zonaRadio: { precioM2VentaCLP: 3_000_000 } }, 41000) !== null) F("2b · repara un análisis con el precio del radio en pesos");
+    if (repararVentaRadioEnUF({ ...roto, valorMercadoRef: { ...roto.valorMercadoRef, nivel: "comuna" as const } }, 41000) !== null) F("2b · repara una referencia que no es de radio");
+  }
 
   // ── 3 · /comunas ──
   const cs = leer("src/lib/data/comunas-seo.ts");
@@ -126,6 +137,11 @@ export async function runRadioMonedaTier(): Promise<{ hard: number }> {
 //   T7 marca degradada aunque salga del radio ....................... 4 · marcada sin caída
 //   T8 la fila no guarda la degradación ............................. 4 · la fila no la guarda
 //   T9 el cierre no la cuenta ....................................... 4 · el cierre no la cuenta
+// 30-sep-2026 (reparación de los 9 informes de obra nueva): 4/4 en rojo.
+//   P1 repara también lo sano ....................................... 2b · repara un análisis sano
+//   P2 acepta el precio del radio en pesos .......................... 2b · repara con el precio en pesos
+//   P3 deja el precio del radio en UF ............................... 2b · no se repara con la mediana del día
+//   P4 no rehace valorMercadoFranco ................................. 2b · ídem
 
 if (require.main === module) {
   runRadioMonedaTier().then(({ hard }) => process.exit(hard ? 1 : 0));
