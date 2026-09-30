@@ -500,7 +500,7 @@ function printSeed(r: SeedReport) {
   totalHard += (await runCronsTier()).hard;
   // Tier RADIO-MONEDA (30-sep-2026, 0 tokens): todo precio del radio en pesos (la obra nueva viene en
   // UF), piso de UF 10/m² al valor de mercado, /comunas con ventana de 90 días y venta usada. ──
-  totalHard += runRadioMonedaTier().hard;
+  totalHard += (await runRadioMonedaTier()).hard;
 
   // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los
   // generadores, en la parte 2 del retiro de la IA. ──

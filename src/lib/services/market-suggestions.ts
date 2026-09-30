@@ -12,6 +12,7 @@ import {
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import { reintentarConsulta } from "@/lib/reintento-transitorio";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 
 const RUTA = "GET /api/data/suggestions";
@@ -82,6 +83,23 @@ export interface Sugerencias {
   /** Solo ARRIENDO con source="radio": los avisos detrás de la mediana (ver
    *  `MuestraArriendo`). El wizard la persiste en `zonaRadio.muestraArriendo`. */
   muestraArriendo?: MuestraArriendo;
+  /**
+   * Lecturas del radio que fallaron aun después de reintentar (30-sep-2026). Un corte de red dejaba ese
+   * radio como vacío en silencio. > 0 = la sugerencia se armó sin alguna lectura del radio.
+   */
+  lecturasRadioFallidas?: number;
+  /** true = hubo lecturas del radio fallidas Y la sugerencia no salió del radio: cayó a la comuna (o a
+   *  sin dato) por la falla, no por falta de comparables. Queda en la fila evaluada y el cron lo cuenta. */
+  degradada?: boolean;
+}
+
+/** Fallas de lectura del radio dentro de UNA sugerencia (ver `lecturasRadioFallidas`). */
+export interface RegistroRadio { fallas: number }
+
+/** Marca la sugerencia con las fallas del radio: la caída a la comuna por un corte no es silenciosa. */
+export function marcarRadio(s: Sugerencias, reg: RegistroRadio): Sugerencias {
+  if (reg.fallas === 0) return s;
+  return { ...s, lecturasRadioFallidas: reg.fallas, degradada: s.source !== "radio" };
 }
 
 // Radio adaptativo: objetivo 20 comparables, tope 2000m.
@@ -90,6 +108,23 @@ const ADAPTIVE_RADII = [500, 750, 1000, 1500, 2000] as const;
 const TARGET_SAMPLE = 20;
 
 export async function getSugerencias(
+  comuna: string,
+  superficie: number,
+  dormitorios: number,
+  precioUF?: number,
+  lat?: number,
+  lng?: number,
+  _radiusMeters: number = 500,
+  propType: string = "arriendo",
+  condicion: string | null = null
+): Promise<Sugerencias> {
+  const reg: RegistroRadio = { fallas: 0 };
+  const s = await sugerenciasConRegistro(reg, comuna, superficie, dormitorios, precioUF, lat, lng, _radiusMeters, propType, condicion);
+  return marcarRadio(s, reg);
+}
+
+async function sugerenciasConRegistro(
+  reg: RegistroRadio,
   comuna: string,
   superficie: number,
   dormitorios: number,
@@ -112,10 +147,10 @@ export async function getSugerencias(
 
     for (const r of ADAPTIVE_RADII) {
       const mapData = await getNearbyPropertiesForMap(
-        lat, lng, r, dormFilter, comuna, propType, condicion,
+        lat, lng, r, dormFilter, comuna, propType, condicion, reg,
       );
       const result = await getSugerenciasPorRadio(
-        lat, lng, r, superficie, dormFilter, comuna, propType, condicion,
+        lat, lng, r, superficie, dormFilter, comuna, propType, condicion, reg,
       );
 
       if (!result) {
@@ -211,6 +246,7 @@ type ArgsRadio = {
  */
 async function leerRadio(
   supabase: ReturnType<typeof getSupabase>,
+  reg: RegistroRadio,
   args: ArgsRadio,
   // `any` como devolvía la RPC cruda: cada llamador tipa la fila a su manera.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -220,12 +256,13 @@ async function leerRadio(
   // Todo precio sale de acá en pesos: la obra nueva viene en UF (ver `aPesos`, 30-sep-2026).
   const uf = await getUFValue();
   for (let off = 0; ; off += PAGINA_POSTGREST) {
-    const { data, error } = await supabase
+    // Un corte de red se reintenta (reintento-transitorio.ts); si igual falla, cuenta en el registro.
+    const { data, error } = await reintentarConsulta(() => supabase
       .rpc("properties_within_radius", args)
       .order("distance_meters", { ascending: true })
       .order("id", { ascending: true })
-      .range(off, off + PAGINA_POSTGREST - 1);
-    if (error) return { data: aPesos(filas, uf), error };
+      .range(off, off + PAGINA_POSTGREST - 1));
+    if (error) { reg.fallas++; return { data: aPesos(filas, uf), error }; }
     const pagina = data ?? [];
     filas.push(...pagina);
     if (pagina.length < PAGINA_POSTGREST) return { data: aPesos(filas, uf), error: null };
@@ -239,12 +276,13 @@ async function getNearbyPropertiesForMap(
   dormitorios: number | null,
   comuna?: string,
   propType: string = "arriendo",
-  condicion: string | null = null
+  condicion: string | null = null,
+  reg: RegistroRadio = { fallas: 0 },
 ): Promise<{ all: NearbyPropertyPoint[]; filteredCount: number }> {
   const supabase = getSupabase();
 
   // Query ALL properties without dormitorios filter for map density
-  const { data: allProps, error: errAll } = await leerRadio(supabase, {
+  const { data: allProps, error: errAll } = await leerRadio(supabase, reg, {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -273,7 +311,7 @@ async function getNearbyPropertiesForMap(
   // Count filtered by dormitorios via a second RPC call (reliable, doesn't depend on RPC returning dormitorios)
   let filteredCount = all.length;
   if (dormitorios) {
-    const { data: filteredProps, error: errFiltered } = await leerRadio(supabase, {
+    const { data: filteredProps, error: errFiltered } = await leerRadio(supabase, reg, {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
@@ -302,7 +340,8 @@ async function getSugerenciasPorRadio(
   dormitorios: number | null,
   comuna?: string,
   propType: string = "arriendo",
-  condicion: string | null = null
+  condicion: string | null = null,
+  reg: RegistroRadio = { fallas: 0 },
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
@@ -312,7 +351,7 @@ async function getSugerenciasPorRadio(
     ? getFactorCierre(comuna) : 1;
 
   // Usar la función RPC de PostGIS
-  const { data: arriendos, error: errMuestra } = await leerRadio(supabase, {
+  const { data: arriendos, error: errMuestra } = await leerRadio(supabase, reg, {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -341,7 +380,7 @@ async function getSugerenciasPorRadio(
   if (!conDorms) {
     // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
     if (dormitorios === null) return null;
-    const { data: arriendosGeneral, error: errGeneral } = await leerRadio(supabase, {
+    const { data: arriendosGeneral, error: errGeneral } = await leerRadio(supabase, reg, {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,

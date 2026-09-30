@@ -82,7 +82,7 @@ export async function GET(request: Request) {
   }
 
   const cola = dry ? pendientes.slice(0, TOPE_DRY) : pendientes;
-  let i = 0, exitosos = 0, fallidos = 0, sinArriendo = 0;
+  let i = 0, exitosos = 0, fallidos = 0, sinArriendo = 0, degradadas = 0;
   const muestraDry: unknown[] = [];
   await Promise.all(Array.from({ length: CONCURRENCIA }, async () => {
     while (i < cola.length && Date.now() - t0 < PRESUPUESTO_MS) {
@@ -94,6 +94,9 @@ export async function GET(request: Request) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { sug, ...fila } = await evaluarAviso(sb, a, cfg, { segmentar: false });
         if (!fila.arriendo) sinArriendo++;
+        // Sugerencia que cayó a la comuna porque el radio no respondió (aun reintentando): se escribe,
+        // pero la corrida la cuenta como falla parcial (30-sep-2026). Ver reintento-transitorio.ts.
+        if (fila.radio_degradado) degradadas++;
         if (dry) { muestraDry.push(fila); exitosos++; continue; }
         const { error } = await sb.from("avisos_evaluados").upsert(fila, { onConflict: "aviso_id" });
         if (error) { fallidos++; captureApiWarning(error, { ruta: RUTA, operacion: "upsert" }); } else exitosos++;
@@ -104,7 +107,8 @@ export async function GET(request: Request) {
     }
   }));
 
+  // Las degradadas se escribieron, pero cuentan como falla parcial: el cierre lo marca y alerta.
   return cerrarCron(sb, "evaluar-avisos",
-    { procesados: exitosos + fallidos, exitosos, fallidos },
-    { dry, pendientes: pendientes.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
+    { procesados: exitosos + fallidos, exitosos: exitosos - degradadas, fallidos: fallidos + degradadas },
+    { dry, pendientes: pendientes.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }

@@ -80,6 +80,10 @@ export interface FilaEvaluacion {
   score_30: number | null;
   flujo_30: number | null;
   motor_version: string;
+  /** Lecturas del radio que fallaron tras reintentar, en las dos sugerencias (30-sep-2026). */
+  lecturas_radio_fallidas: number;
+  /** Alguna de las dos sugerencias cayó fuera del radio POR esa falla (market-suggestions, `degradada`). */
+  radio_degradado: boolean;
 }
 
 /** Banda de antigüedad del wizard para unos años conocidos (la misma escala que antiguedadToNumber). */
@@ -174,6 +178,8 @@ export async function evaluarAviso(
       radio: typeof vta.radiusUsed === "number" ? vta.radiusUsed : null,
     },
     motor_version: METHODOLOGY_VERSION_ACTUAL,
+    lecturas_radio_fallidas: (arr.lecturasRadioFallidas ?? 0) + (vta.lecturasRadioFallidas ?? 0),
+    radio_degradado: !!arr.degradada || !!vta.degradada,
     sug,
   };
   const vacio = { veredicto_20: null, score_20: null, flujo_20: null, veredicto_30: null, score_30: null, flujo_30: null, gastos_comunes: null, contribuciones: null };

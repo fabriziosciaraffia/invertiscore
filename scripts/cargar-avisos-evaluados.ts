@@ -65,7 +65,7 @@ async function main() {
   const cola = avisosPendientes(evaluables, vigentes).slice(0, TOPE);
   console.log(`vistos en ${VENTANA_VISTOS_DIAS} días ${filas.length} · evaluables ${evaluables.length} · ya evaluados ${guardadas.length} · pendientes ${cola.length} · concurrencia ${CONC}`);
 
-  let i = 0, ok = 0, fallidos = 0, sinArriendo = 0;
+  let i = 0, ok = 0, fallidos = 0, sinArriendo = 0, degradadas = 0;
   await Promise.all(Array.from({ length: CONC }, async () => {
     while (i < cola.length) {
       const a = cola[i++];
@@ -73,6 +73,7 @@ async function main() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { sug, ...fila } = await evaluarAviso(sb, a, cfg, { segmentar: false });
         if (!fila.arriendo) sinArriendo++;
+        if (fila.radio_degradado) degradadas++;
         const { error } = await sb.from("avisos_evaluados").upsert(fila, { onConflict: "aviso_id" });
         if (error) { fallidos++; if (fallidos <= 5) console.error("upsert", a.id, error.message); } else ok++;
       } catch (e) {
@@ -87,7 +88,7 @@ async function main() {
       await new Promise((r) => setTimeout(r, PAUSA_MS));
     }
   }));
-  console.log(`listo · escritos ${ok} · fallidos ${fallidos} · sin arriendo ${sinArriendo} · ${Math.round((Date.now() - t0) / 60000)} min`);
+  console.log(`listo · escritos ${ok} · fallidos ${fallidos} · sin arriendo ${sinArriendo} · radio degradado ${degradadas} · ${Math.round((Date.now() - t0) / 60000)} min`);
   if (fallidos) process.exitCode = 1;
 }
 main().catch((e) => { console.error(e); process.exit(1); });
