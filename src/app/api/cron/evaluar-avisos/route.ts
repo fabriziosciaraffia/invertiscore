@@ -4,9 +4,8 @@ import { captureApiWarning } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
-import { evaluarAviso } from "@/lib/avisos/evaluar-aviso";
+import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
-import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
@@ -81,7 +80,7 @@ export async function GET(request: Request) {
     const evaluables = avisosEvaluables(filas, cfg.uf);
     pendientes = avisosPendientes(evaluables, guardadas);
     // Con lo que sobre del presupuesto, de a poco, los evaluados con otra versión del motor.
-    otraVersion = avisosDeOtraVersion(evaluables, guardadas, METHODOLOGY_VERSION_ACTUAL);
+    otraVersion = avisosDeOtraVersion(evaluables, guardadas, VERSION_EVALUACION);
   } catch (e) {
     captureApiWarning(e, { ruta: RUTA, operacion: "leer" });
     return cerrarCron(sb, "evaluar-avisos", { procesados: 0, exitosos: 0, fallidos: 1 }, { error: `leer: ${String(e).slice(0, 200)}` }, { registrar: !dry });

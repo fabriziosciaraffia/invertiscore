@@ -107,7 +107,7 @@ export function runAvisosTier(): { hard: number } {
   const viejos = avisosDeOtraVersion(ev2, [g("a", 3000, 1), g("c", 2000, 1, "v2"), g("h", 3000, 2, "v2"), g("k", 3000, 8, "v2"), g("f", 3000, 1, "v2")], "v3", ahora).map((x) => x.id);
   if (viejos.join(",") !== "k,h") F(`5 · los de otra versión del motor no son los que tocan, en su orden (${viejos.join(",")})`);
   const cronV = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
-  if (!/otraVersion = avisosDeOtraVersion\(evaluables, guardadas, METHODOLOGY_VERSION_ACTUAL\);/.test(cronV) || !/const cola = dry \? pendientes\.slice\(0, TOPE_DRY\) : \[\.\.\.pendientes, \.\.\.otraVersion\];/.test(cronV)) F("5 · el cron no reevalúa por versión después de los pendientes");
+  if (!/otraVersion = avisosDeOtraVersion\(evaluables, guardadas, VERSION_EVALUACION\);/.test(cronV) || !/const cola = dry \? pendientes\.slice\(0, TOPE_DRY\) : \[\.\.\.pendientes, \.\.\.otraVersion\];/.test(cronV)) F("5 · el cron no reevalúa por versión después de los pendientes");
 
   // ── 6 · el cron ──
   const cron = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));

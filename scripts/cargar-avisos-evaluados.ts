@@ -3,7 +3,7 @@
 // (evaluar-aviso.ts), todo aviso de venta visto en los últimos 7 días que no tenga evaluación o cuyo
 // precio cambió. Después el cron semanal solo sigue lo nuevo y lo que cambió de precio.
 //
-// Un cambio de motor (METHODOLOGY_VERSION_ACTUAL) lo absorbe el cron solo, de a poco (avisosDeOtraVersion).
+// Un cambio de motor o de sugerencias (VERSION_EVALUACION) lo absorbe el cron solo, de a poco (avisosDeOtraVersion).
 // Con MOTOR=1 este script lo hace de una vez, si no se quiere esperar. Con REEVALUAR_ANTES=<fecha ISO>
 // (y opcional CONDICION=nuevo|usado) vuelve a evaluar las filas evaluadas antes de esa fecha: así se
 // rehicieron el 30-sep las obras nuevas que el cron evaluó con la venta por radio en UF (aPesos).
@@ -15,9 +15,8 @@
 //   CONC=4 TOPE=500 …   (TOPE: cuántos como máximo en esta corrida)
 // ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from "@supabase/supabase-js";
-import { evaluarAviso } from "../src/lib/avisos/evaluar-aviso";
+import { evaluarAviso, VERSION_EVALUACION } from "../src/lib/avisos/evaluar-aviso";
 import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
-import { METHODOLOGY_VERSION_ACTUAL } from "../src/lib/modelo-costos";
 
 const CONC = Number(process.env.CONC ?? 6);
 const TOPE = Number(process.env.TOPE ?? Infinity);
@@ -58,7 +57,7 @@ async function main() {
   );
   const evaluables = avisosEvaluables(filas, cfg.uf);
   const vigentes = guardadas.filter((g) => {
-    if (MOTOR && g.motor_version !== METHODOLOGY_VERSION_ACTUAL) return false;
+    if (MOTOR && g.motor_version !== VERSION_EVALUACION) return false;
     if (REEVALUAR_ANTES !== null && new Date(g.evaluado_at).getTime() < REEVALUAR_ANTES && (!CONDICION || g.condicion === CONDICION)) return false;
     return true;
   });

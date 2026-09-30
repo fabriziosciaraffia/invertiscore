@@ -44,8 +44,8 @@ export async function runRadioMonedaTier(): Promise<{ hard: number }> {
   const ufM2 = r?.precioM2 ? r.precioM2 / uf : 0;
   if (!(ufM2 > 150 && ufM2 < 200)) F(`1 · la venta nueva por radio no sale a precio de mercado (UF ${ufM2.toFixed(3)}/m²)`);
   const ms = leer("src/lib/services/market-suggestions.ts");
-  const salidas = ms.match(/if \(error\) \{ reg\.fallas\+\+; return \{ data: aPesos\(filas, uf\), error \}; \}/g)?.length ?? 0;
-  const salidas2 = ms.match(/if \(pagina\.length < PAGINA_POSTGREST\) return \{ data: aPesos\(filas, uf\), error: null \};/g)?.length ?? 0;
+  const salidas = ms.match(/if \(error\) \{ reg\.fallas\+\+; return \{ data: filtrarArriendo\(aPesos\(filas, uf\), args, amoblado\), error \}; \}/g)?.length ?? 0;
+  const salidas2 = ms.match(/if \(pagina\.length < PAGINA_POSTGREST\) return \{ data: filtrarArriendo\(aPesos\(filas, uf\), args, amoblado\), error: null \};/g)?.length ?? 0;
   if (salidas !== 1 || salidas2 !== 1 || !/const uf = await getUFValue\(\);\n  for \(let off = 0; ; off \+= PAGINA_POSTGREST\)/.test(ms)) F("1 · leerRadio no pasa las dos salidas por aPesos");
   // Sin nombrar la RPC: el tier LECTURA-PAGINADA exige que su nombre solo aparezca en la llamada misma.
   if ((ms.match(/\.rpc\(/g)?.length ?? 0) !== 1) F("1 · hay otra lectura de la RPC fuera de leerRadio (se saltaría aPesos)");

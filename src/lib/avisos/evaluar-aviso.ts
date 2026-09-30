@@ -15,12 +15,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAnalysis } from "@/lib/analysis";
-import { getSugerencias, type Sugerencias } from "@/lib/services/market-suggestions";
+import { getSugerencias, medianaArriendoZonaM2, SUGERENCIAS_VERSION, type Sugerencias } from "@/lib/services/market-suggestions";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { buildLtrPayload, type SubmitContext } from "@/components/formulario-v4/wizardV4Payload";
 import type { Antiguedad, WizardV4Answers } from "@/components/formulario-v4/wizardV4Nodes";
 import { readVeredicto } from "@/lib/results-helpers";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
+
+/** La versión de una fila evaluada: la del motor y la de las sugerencias. Cambia una u otra → el cron la
+ *  reevalúa de a poco (avisosDeOtraVersion). */
+export const VERSION_EVALUACION = `${METHODOLOGY_VERSION_ACTUAL}+${SUGERENCIAS_VERSION}`;
+
+/** Cuánto sobre la mediana de la zona un arriendo sugerido deja de ser creíble sin más. */
+export const UMBRAL_SOSPECHOSO_ZONA = 1.25;
+
+/**
+ * ¿Arriendo sospechoso? (30-sep-2026) Contra la ZONA del depto, no contra la comuna: el arriendo sugerido
+ * por m² sobre UMBRAL_SOSPECHOSO_ZONA × la mediana de la zona (arriendos sin amoblar de la misma tipología
+ * en 2 km), o un arriendo que no sale de comparables sino del estimado comunal por m². Sin mediana de
+ * zona no hay contra qué comparar: no se marca.
+ */
+export function arriendoSospechoso(arriendoMensual: number | null, m2: number, zonaM2: number | null, fuente: string | null): boolean {
+  if (!arriendoMensual || !(m2 > 0)) return false;
+  if (fuente === "comuna-m2") return true;
+  if (!zonaM2 || !(zonaM2 > 0)) return false;
+  return arriendoMensual / m2 > UMBRAL_SOSPECHOSO_ZONA * zonaM2;
+}
 import { parsearFechaEntrega, type Entrega } from "./fecha-entrega";
 import { arriendoSegmentado } from "./arriendo-segmentado";
 
@@ -84,6 +104,10 @@ export interface FilaEvaluacion {
   lecturas_radio_fallidas: number;
   /** Alguna de las dos sugerencias cayó fuera del radio POR esa falla (market-suggestions, `degradada`). */
   radio_degradado: boolean;
+  /** Mediana del arriendo por m² de la zona (sin amoblar, misma tipología, 2 km), o null. */
+  arriendo_zona_m2: number | null;
+  /** El arriendo con que se evaluó, sospechoso contra la zona (`arriendoSospechoso`). */
+  arriendo_sospechoso: boolean;
 }
 
 /** Banda de antigüedad del wizard para unos años conocidos (la misma escala que antiguedadToNumber). */
@@ -160,6 +184,8 @@ export async function evaluarAviso(
   const sug = opts.sug ?? (await sugerenciasDeAviso(a));
   const { arr, vta } = sug;
   const arriendo = arriendoParaEvaluar(a, arr, vta, cfg.uf, opts.segmentar);
+  // La zona del depto, para la marca de sospechoso (los avisos de venta son sin amoblar).
+  const zonaM2 = await medianaArriendoZonaM2(a.lat, a.lng, a.dormitorios || null).catch(() => null);
   const base = {
     aviso_id: a.id,
     evaluado_at: new Date().toISOString(),
@@ -177,7 +203,9 @@ export async function evaluarAviso(
       universo: vta.universoVenta ?? null,
       radio: typeof vta.radiusUsed === "number" ? vta.radiusUsed : null,
     },
-    motor_version: METHODOLOGY_VERSION_ACTUAL,
+    motor_version: VERSION_EVALUACION,
+    arriendo_zona_m2: zonaM2,
+    arriendo_sospechoso: arriendoSospechoso(arriendo?.monto ?? null, a.m2, zonaM2, arriendo?.fuente ?? null),
     lecturas_radio_fallidas: (arr.lecturasRadioFallidas ?? 0) + (vta.lecturasRadioFallidas ?? 0),
     radio_degradado: !!arr.degradada || !!vta.degradada,
     sug,

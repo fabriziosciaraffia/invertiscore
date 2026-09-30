@@ -121,6 +121,7 @@ import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
+import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 import { runStrCongeladoTier } from "./str-congelado-catch-test";
@@ -501,6 +502,9 @@ function printSeed(r: SeedReport) {
   // Tier RADIO-MONEDA (30-sep-2026, 0 tokens): todo precio del radio en pesos (la obra nueva viene en
   // UF), piso de UF 10/m² al valor de mercado, /comunas con ventana de 90 días y venta usada. ──
   totalHard += (await runRadioMonedaTier()).hard;
+  // Tier ARRIENDO-AMOBLADO (30-sep-2026, 0 tokens): los comparables del arriendo se parecen al depto
+  // (sin amoblados salvo «Amoblado: Sí»), el título se guarda, la marca de sospechoso mira la zona. ──
+  totalHard += runArriendoAmobladoTier().hard;
 
   // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los
   // generadores, en la parte 2 del retiro de la IA. ──
