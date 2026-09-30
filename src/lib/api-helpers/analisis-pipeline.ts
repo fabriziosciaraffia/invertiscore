@@ -178,6 +178,64 @@ export function buildMedianaSnapshot(
   };
 }
 
+/**
+ * La fila de un análisis LTR nuevo (30-sep-2026): la escriben `POST /api/analisis` y «Analizar este»
+ * de la guía de búsqueda, así las dos creaciones guardan exactamente lo mismo. Lo propio de cada una
+ * (el hash del claim anónimo, el par AMBAS) se agrega encima.
+ */
+export function filaAnalisisLtr(p: {
+  body: AnalisisInput;
+  result: { score: number; desglose: unknown; resumen: unknown };
+  medianaComuna: MedianaComunaVenta & { capRefComuna?: CapRefComunaSnapshot | null };
+  userId: string | null;
+  creatorName: string | null;
+  chargeMode: string;
+}) {
+  const { body, result, medianaComuna } = p;
+  return {
+    user_id: p.userId,
+    nombre: body.nombre,
+    comuna: body.comuna,
+    ciudad: body.ciudad,
+    direccion: body.direccion || null,
+    tipo: body.tipo,
+    tipo_analisis: "long-term",
+    // Commit E.1 · 2026-05-13: análisis nuevos usan metodología v2
+    // (thresholds 70/45/0 unificados · slider 3 segmentos · sin fallback
+    // score 50). Análisis pre-Commit-E quedan como v1 (legacy preservation).
+    // Sep-2026: v3 = modelo de costos recalibrado (modelo-costos.ts). La
+    // columna espeja input_data.methodologyVersion, que es lo que lee el
+    // motor. Requiere la migración 20260903_methodology_version_v3.sql
+    // (CHECK con 'v3') aplicada ANTES del deploy, o el INSERT falla.
+    methodology_version: METHODOLOGY_VERSION_ACTUAL,
+    dormitorios: body.dormitorios,
+    banos: body.banos,
+    superficie: body.superficie,
+    antiguedad: body.antiguedad,
+    precio: body.precio,
+    arriendo: body.arriendo,
+    gastos: body.gastos,
+    contribuciones: body.contribuciones,
+    score: result.score,
+    desglose: result.desglose,
+    resumen: result.resumen,
+    results: result,
+    input_data: body,
+    // Vía de cobro (opción B, migración charge_mode): columna top-level,
+    // NO en input_data (input_data alimenta motor/prompts). En AMBAS el
+    // mode viene del payment_data del prepaid vía ensureCreditCharged,
+    // así que ambos hermanos lo escriben igual. Gatea el CTA welcome.
+    charge_mode: p.chargeMode,
+    // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
+    // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
+    mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
+    // Referencia de cap rate de la comuna, resuelta en el mismo prefetch (foto fija; la
+    // migración 20260921_capref_comuna_snapshot.sql va ANTES del deploy).
+    capref_comuna_snapshot: medianaComuna.capRefComuna ?? null,
+    creator_name: p.creatorName,
+  };
+}
+
 // ─── Clients ───────────────────────────────────────────
 
 export function createSupabaseServer() {

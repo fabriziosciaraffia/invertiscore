@@ -113,6 +113,10 @@ export interface AnalisisInput {
   // De dónde sale el pie, informativo (no lo lee el motor): «otra_fuente» cuando el wizard lo
   // declaró así. Sirve para que el resumen y el informe lo digan.
   pieOrigen?: "otra_fuente";
+  // El informe salió de un aviso de la guía de búsqueda («Analizar este», 30-sep-2026): el aviso, de
+  // dónde salió la antigüedad (la ficha, 25 años supuestos o obra nueva) y el informe de origen. Lo
+  // leen el bloque «Quiero verlo» y la nota de la antigüedad. No lo lee el motor.
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

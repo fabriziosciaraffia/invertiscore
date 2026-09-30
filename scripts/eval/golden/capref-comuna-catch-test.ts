@@ -168,8 +168,13 @@ export function runCapRefComunaTier(): { hard: number } {
   if (/CAP_RATE_REF_NACIONAL/.test(an)) F("6 · analysis.ts vuelve a neutralizar contra CAP_RATE_REF_NACIONAL a pelo");
   if (!/solveArriendoForCapRate\(input, ufClp, medianaComuna, refNeu\.pct\)/.test(an)) F("6 · la neutralización no usa la referencia resuelta");
   if (!/getCapRefComuna\(input\.comuna, medianaComunaVentaUF\?\.capRefComuna\)/.test(an)) F("6 · calcMetrics no pasa la referencia inyectada al builder");
-  for (const p of ["src/app/api/analisis/route.ts", "src/app/api/analisis/recalculate/route.ts"]) {
+  // (30-sep-2026) La fila de un LTR nuevo la arma `filaAnalisisLtr` (la usan POST /api/analisis y «Analizar este»
+  // de la guía de búsqueda): el snapshot se busca ahí, y las dos creaciones tienen que usarla.
+  for (const p of ["src/lib/api-helpers/analisis-pipeline.ts", "src/app/api/analisis/recalculate/route.ts"]) {
     if (!/capref_comuna_snapshot: medianaComuna\.capRefComuna \?\? null/.test(leer(p))) F(`6 · ${p} no persiste capref_comuna_snapshot`);
+  }
+  for (const p of ["src/app/api/analisis/route.ts", "src/app/api/lo-que-sigue/guia/analizar/route.ts"]) {
+    if (!/\.\.\.filaAnalisisLtr\(\{/.test(leer(p))) F(`6 · ${p} no arma la fila con filaAnalisisLtr (y su capref_comuna_snapshot)`);
   }
   if (!/capref_comuna_snapshot: medianaComuna\?\.capRefComuna \?\? null/.test(leer("src/app/api/analisis/locked/route.ts"))) F("6 · locked no persiste capref_comuna_snapshot");
   // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.

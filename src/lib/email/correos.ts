@@ -188,6 +188,52 @@ export function correoAlertaCron(p: { cron: string; problema: string; detalle: s
   };
 }
 
+/**
+ * «Quiero verlo» (30-sep-2026): alguien pidió ver un depto de la guía de búsqueda. Interno, a hola@, con
+ * todo para gestionarlo a mano: la persona, su perfil, el aviso (con su enlace: es el único lugar donde
+ * va) y el veredicto del informe.
+ */
+export function correoInteresAviso(p: {
+  persona: { nombre: string | null; email: string; userId: string };
+  perfil: { piePct: number | null; plazo: number | null; tasa: number | null; amoblado: boolean };
+  aviso: { comuna: string; tipologia: string | null; m2: number | null; precioUF: number | null; antiguedad: string; url: string | null; avisoId: string };
+  veredicto: { veredicto: string | null; score: number | null; flujo: number | null };
+  analysisId: string;
+  origenAnalysisId: string | null;
+  sitio?: string;
+}): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const pct = (n: number | null) => (n == null ? "—" : `${String(Math.round(n * 100) / 100).replace(".", ",")}%`);
+  const v = p.veredicto.veredicto ? etiquetaVeredicto(p.veredicto.veredicto, "banda") : "—";
+  const tip = [p.aviso.comuna, p.aviso.tipologia, p.aviso.m2 ? `${Math.round(p.aviso.m2)} m²` : null].filter(Boolean).join(" · ");
+  const filas = [
+    { etiqueta: "Persona", valor: escaparHtml(p.persona.nombre || "—") },
+    { etiqueta: "Correo", valor: escaparHtml(p.persona.email) },
+    { etiqueta: "Id", valor: escaparHtml(p.persona.userId) },
+    { etiqueta: "Pie · plazo · tasa", valor: `${pct(p.perfil.piePct)} · ${p.perfil.plazo ?? "—"} años · ${pct(p.perfil.tasa)}` },
+    { etiqueta: "Modalidad", valor: `Arriendo largo, ${p.perfil.amoblado ? "amoblado" : "sin amoblar"}` },
+    { etiqueta: "Aviso", valor: escaparHtml(tip) },
+    { etiqueta: "Precio publicado", valor: p.aviso.precioUF ? `UF ${Math.round(p.aviso.precioUF).toLocaleString("es-CL")}` : "—" },
+    { etiqueta: "Antigüedad", valor: escaparHtml(p.aviso.antiguedad) },
+    { etiqueta: "Enlace", valor: p.aviso.url ? enlace(escaparHtml(p.aviso.url), "Ver el aviso") : "—" },
+    { etiqueta: "Veredicto", valor: `${escaparHtml(v)}${p.veredicto.score != null ? ` · ${p.veredicto.score}` : ""}` },
+    { etiqueta: "Flujo mensual", valor: p.veredicto.flujo != null ? `${p.veredicto.flujo < 0 ? "−" : "+"}${clp(Math.abs(p.veredicto.flujo))}` : "—" },
+    { etiqueta: "Informe", valor: enlace(`${sitio}/analisis/${encodeURIComponent(p.analysisId)}`, "Ver") },
+  ];
+  if (p.origenAnalysisId) filas.push({ etiqueta: "Informe de origen", valor: enlace(`${sitio}/analisis/${encodeURIComponent(p.origenAnalysisId)}`, "Ver") });
+  return {
+    subject: `👀 Quiero verlo: ${tip} · ${v}`,
+    html: plantillaClara({
+      titulo: "Quiero verlo",
+      preencabezado: `${p.persona.email} · ${tip}`,
+      titular: "Alguien quiere ver un depto de la guía",
+      parrafos: ["Pidió que Franco le haga llegar el aviso. Se gestiona a mano: escríbele hoy o mañana hábil."],
+      detalle: { filas },
+      legal: "Aviso interno de Franco.",
+    }),
+  };
+}
+
 // ── Bienvenida ───────────────────────────────────────────────────────────────
 // [REVISAR] sin la imagen del informe viejo (oscura, con prosa de IA y un gráfico de capital en
 // pesos futuros). Sin «tu primer análisis es gratis»: este correo sale cuando la persona crea su

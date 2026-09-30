@@ -3,7 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
+import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoInteresAviso, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -389,6 +389,14 @@ export async function sendAlertaPagoInterna(p: Parameters<typeof correoAlertaPag
 export async function sendAlertaPagoFallidoInterna(p: Parameters<typeof correoAlertaPagoFallido>[0], userId: string | null): Promise<void> {
   const { subject, html } = correoAlertaPagoFallido(p);
   await enviarCorreo("alerta_pago_fallido", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+}
+
+/** «Quiero verlo» (30-sep-2026): el interés en un aviso de la guía, a hola@. Devuelve si salió. */
+export async function sendInteresAvisoInterno(p: Parameters<typeof correoInteresAviso>[0]): Promise<boolean> {
+  const { subject, html } = correoInteresAviso({ ...p, sitio: SITE_URL });
+  const res = await enviarCorreo("interes_aviso", p.persona.userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+  if (res.error) console.error("[interes_aviso] no salió:", res.error.message);
+  return !res.error;
 }
 
 /** Alerta interna de un cron que falló o dejó de escribir (29-sep-2026). Ver cron-resultado.ts. */

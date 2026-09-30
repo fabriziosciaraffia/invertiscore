@@ -16,7 +16,7 @@ import {
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   prefetchMedianaComunaVenta,
-  buildMedianaSnapshot,
+  filaAnalisisLtr,
 } from "@/lib/api-helpers/analisis-pipeline";
 import {
   resolveActor,
@@ -153,46 +153,14 @@ export async function POST(request: Request) {
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
-        user_id: user?.id ?? null,
-        nombre: body.nombre,
-        comuna: body.comuna,
-        ciudad: body.ciudad,
-        direccion: body.direccion || null,
-        tipo: body.tipo,
-        tipo_analisis: "long-term",
-        // Commit E.1 · 2026-05-13: análisis nuevos usan metodología v2
-        // (thresholds 70/45/0 unificados · slider 3 segmentos · sin fallback
-        // score 50). Análisis pre-Commit-E quedan como v1 (legacy preservation).
-        // Sep-2026: v3 = modelo de costos recalibrado (modelo-costos.ts). La
-        // columna espeja input_data.methodologyVersion, que es lo que lee el
-        // motor. Requiere la migración 20260903_methodology_version_v3.sql
-        // (CHECK con 'v3') aplicada ANTES del deploy, o el INSERT falla.
-        methodology_version: METHODOLOGY_VERSION_ACTUAL,
-        dormitorios: body.dormitorios,
-        banos: body.banos,
-        superficie: body.superficie,
-        antiguedad: body.antiguedad,
-        precio: body.precio,
-        arriendo: body.arriendo,
-        gastos: body.gastos,
-        contribuciones: body.contribuciones,
-        score: result.score,
-        desglose: result.desglose,
-        resumen: result.resumen,
-        results: result,
-        input_data: body,
-        // Vía de cobro (opción B, migración charge_mode): columna top-level,
-        // NO en input_data (input_data alimenta motor/prompts). En AMBAS el
-        // mode viene del payment_data del prepaid vía ensureCreditCharged,
-        // así que ambos hermanos lo escriben igual. Gatea el CTA welcome.
-        charge_mode: chargeMode,
-        // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
-        // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
-        mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
-        // Referencia de cap rate de la comuna, resuelta en el mismo prefetch (foto fija; la
-        // migración 20260921_capref_comuna_snapshot.sql va ANTES del deploy).
-        capref_comuna_snapshot: medianaComuna.capRefComuna ?? null,
-        creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
+        ...filaAnalisisLtr({
+          body,
+          result,
+          medianaComuna,
+          userId: user?.id ?? null,
+          creatorName: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
+          chargeMode,
+        }),
         // Cap anónimo: el hash del token de la cookie es la ventana de claim.
         // `charge_mode` (arriba) queda en 'anon_cap' como marca de origen
         // permanente; este hash lo limpia el claim o el cron a los 30 días.

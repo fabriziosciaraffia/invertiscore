@@ -139,8 +139,9 @@ export function arriendoParaEvaluar(a: AvisoParaEvaluar, arr: Sugerencias, vta: 
   };
 }
 
-/** La respuesta del wizard para este aviso y este perfil. */
-export function respuestasDeAviso(a: AvisoParaEvaluar, pie: number, tasa: number, arriendo: number): WizardV4Answers {
+/** La respuesta del wizard para este aviso y este perfil. `plazo` y `tasaMercado` los pone la guía de
+ *  búsqueda con los números de la persona; sin ellos, el perfil estándar (30 años, tasa estimada). */
+export function respuestasDeAviso(a: AvisoParaEvaluar, pie: number, tasa: number, arriendo: number, opts: { plazo?: number; tasaMercado?: number } = {}): WizardV4Answers {
   const nuevo = a.condicion === "nuevo";
   const entrega = nuevo ? parsearFechaEntrega(a.fechaEntrega) : null;
   const futura = !!entrega && !entrega.inmediata && entrega.anio != null && entrega.mes != null;
@@ -149,7 +150,7 @@ export function respuestasDeAviso(a: AvisoParaEvaluar, pie: number, tasa: number
     tipoPropiedad: nuevo ? "nuevo" : "usado",
     modalidad: "ltr",
     arrModo: "estimacion",
-    tasaModo: "estimada",
+    tasaModo: opts.tasaMercado != null && Math.abs(opts.tasaMercado - tasa) >= 0.005 ? "preaprobada" : "estimada",
     direccion: a.direccion ?? "",
     direccionConfirmada: a.direccion ?? "",
     lat: a.lat,
@@ -169,7 +170,7 @@ export function respuestasDeAviso(a: AvisoParaEvaluar, pie: number, tasa: number
     precio: coma(a.precioUF),
     pieUnidad: "pct",
     pieMonto: String(pie),
-    plazoCredito: String(PLAZO_ESTANDAR) as WizardV4Answers["plazoCredito"],
+    plazoCredito: String(opts.plazo ?? PLAZO_ESTANDAR) as WizardV4Answers["plazoCredito"],
     tasaInteres: coma(tasa),
     arriendo: String(Math.round(arriendo)),
   } as WizardV4Answers;
@@ -213,7 +214,24 @@ export async function evaluarAviso(
   const vacio = { veredicto_20: null, score_20: null, flujo_20: null, veredicto_30: null, score_30: null, flujo_30: null, gastos_comunes: null, contribuciones: null };
   if (!arriendo) return { ...base, ...vacio };
 
-  const ctx: SubmitContext = {
+  const ctx = contextoDeSugerencias(arriendo, arr, vta, cfg);
+  const out: Record<string, unknown> = {};
+  for (const pie of PERFILES_ESTANDAR) {
+    const body = buildLtrPayload(respuestasDeAviso(a, pie, cfg.tasa, arriendo.monto), ctx) as Record<string, unknown> & { gastos?: number; contribuciones?: number };
+    const mediana = await prefetchMedianaComunaVenta(sb as never, body as never, cfg.uf).catch(() => undefined);
+    const r = runAnalysis(body as never, cfg.uf, mediana as never, new Date()) as { score?: number; metrics?: { flujoNetoMensual?: number } };
+    out[`veredicto_${pie}`] = readVeredicto(r as never) ?? null;
+    out[`score_${pie}`] = typeof r.score === "number" ? Math.round(r.score) : null;
+    out[`flujo_${pie}`] = typeof r.metrics?.flujoNetoMensual === "number" ? Math.round(r.metrics.flujoNetoMensual) : null;
+    out.gastos_comunes = typeof body.gastos === "number" ? Math.round(body.gastos) : null;
+    out.contribuciones = typeof body.contribuciones === "number" ? Math.round(body.contribuciones) : null;
+  }
+  return { ...base, ...(out as typeof vacio) };
+}
+
+/** El contexto del wizard que arman las dos sugerencias del aviso (lo usa también «Analizar este»). */
+export function contextoDeSugerencias(arriendo: NonNullable<FilaEvaluacion["arriendo"]>, arr: Sugerencias, vta: Sugerencias, cfg: { uf: number; tasa: number }): SubmitContext {
+  return {
     ufCLP: cfg.uf,
     tasaMercado: cfg.tasa,
     arriendoSugerido: arriendo.monto,
@@ -230,16 +248,4 @@ export async function evaluarAviso(
     ventaUniverso: vta.universoVenta ?? null,
     ventaRadio: typeof vta.radiusUsed === "number" ? vta.radiusUsed : null,
   };
-  const out: Record<string, unknown> = {};
-  for (const pie of PERFILES_ESTANDAR) {
-    const body = buildLtrPayload(respuestasDeAviso(a, pie, cfg.tasa, arriendo.monto), ctx) as Record<string, unknown> & { gastos?: number; contribuciones?: number };
-    const mediana = await prefetchMedianaComunaVenta(sb as never, body as never, cfg.uf).catch(() => undefined);
-    const r = runAnalysis(body as never, cfg.uf, mediana as never, new Date()) as { score?: number; metrics?: { flujoNetoMensual?: number } };
-    out[`veredicto_${pie}`] = readVeredicto(r as never) ?? null;
-    out[`score_${pie}`] = typeof r.score === "number" ? Math.round(r.score) : null;
-    out[`flujo_${pie}`] = typeof r.metrics?.flujoNetoMensual === "number" ? Math.round(r.metrics.flujoNetoMensual) : null;
-    out.gastos_comunes = typeof body.gastos === "number" ? Math.round(body.gastos) : null;
-    out.contribuciones = typeof body.contribuciones === "number" ? Math.round(body.contribuciones) : null;
-  }
-  return { ...base, ...(out as typeof vacio) };
 }
