@@ -27,6 +27,9 @@ export interface ScrapedProperty {
   condicion?: string;
   /** Solo obra nueva, por proyecto y cruda («Inmediata», «2° Semestre 2026»…): del GraphQL de la ficha. */
   fechaEntrega?: string;
+  /** El título del aviso (30-sep-2026): la fila del GetProps lo trae completo en [39]. Lo lee
+   *  arriendo-tipo.ts para separar amoblados, temporada, corporativos y piezas. */
+  titulo?: string;
 }
 
 export interface ScraperResult {
@@ -433,6 +436,8 @@ export function parseMapProperty(
     }
 
     const sourceId = url || `toctoc-map-${idProperty}`;
+    // El título, completo (verificado el 30-sep-2026 sobre 583 arriendos): [39].
+    const titulo = typeof arr[39] === "string" && (arr[39] as string).trim() ? (arr[39] as string).trim() : undefined;
 
     return {
       source: "toctoc",
@@ -442,6 +447,7 @@ export function parseMapProperty(
       lat, lng,
       precio, moneda,
       superficieM2,
+      titulo,
       dormitorios: dormitorios > 0 ? dormitorios : undefined,
       banos: banos > 0 ? banos : undefined,
       url,

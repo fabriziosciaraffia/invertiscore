@@ -35,6 +35,8 @@ export function propertyToRow(prop: ScrapedProperty) {
     condicion: prop.condicion || "usado",
     // La fecha de entrega de la obra nueva, cruda (30-sep-2026). Solo la trae el GraphQL de unidades.
     fecha_entrega: prop.fechaEntrega || null,
+    // El título del aviso (30-sep-2026, GetProps [39]): lo lee arriendo-tipo.ts.
+    titulo: prop.titulo || null,
     is_active: true,
     scraped_at: new Date().toISOString(),
     geocode_attempted: false,
@@ -66,6 +68,8 @@ export function filaSinPisarCoords<T extends FilaUpsert>(row: T): T {
     delete out.lng;
   }
   if (out.direccion == null) delete out.direccion;
+  // Una fuente sin título (el GraphQL de unidades) no borra el que trajo el GetProps.
+  if (out.titulo == null) delete out.titulo;
   return out;
 }
 
