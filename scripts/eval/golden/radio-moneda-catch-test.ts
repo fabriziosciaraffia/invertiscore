@@ -45,7 +45,8 @@ export function runRadioMonedaTier(): { hard: number } {
   const salidas = ms.match(/if \(error\) return \{ data: aPesos\(filas, uf\), error \};/g)?.length ?? 0;
   const salidas2 = ms.match(/if \(pagina\.length < PAGINA_POSTGREST\) return \{ data: aPesos\(filas, uf\), error: null \};/g)?.length ?? 0;
   if (salidas !== 1 || salidas2 !== 1 || !/const uf = await getUFValue\(\);\n  for \(let off = 0; ; off \+= PAGINA_POSTGREST\)/.test(ms)) F("1 · leerRadio no pasa las dos salidas por aPesos");
-  if ((ms.match(/\.rpc\("properties_within_radius"/g)?.length ?? 0) !== 1) F("1 · hay otra lectura de la RPC fuera de leerRadio (se saltaría aPesos)");
+  // Sin nombrar la RPC: el tier LECTURA-PAGINADA exige que su nombre solo aparezca en la llamada misma.
+  if ((ms.match(/\.rpc\(/g)?.length ?? 0) !== 1) F("1 · hay otra lectura de la RPC fuera de leerRadio (se saltaría aPesos)");
 
   // ── 2 · el piso del valor de mercado ──
   const base = { superficieUtilM2: 25.6, source: "radio", sampleSize: 6, universoVenta: "nuevo", radiusUsed: 500 };
@@ -79,6 +80,9 @@ export function runRadioMonedaTier(): { hard: number } {
 //   R6 /comunas con obra nueva ..................................... 3 · la venta no es la usada
 //   R7 /comunas deja fuera los sin condición ....................... 3 · ídem
 //   R8 el filtro no se aplica ...................................... 3 · la página no aplica el filtro
+// 30-sep-2026: la cuenta de lecturas de la RPC ya no nombra la función (LECTURA-PAGINADA lo prohíbe fuera
+// de la llamada: el QUICK de master quedó en rojo con 67f7bff7). 1/1 en rojo.
+//   R9 otra lectura de la RPC fuera de leerRadio ................... 1 · hay otra lectura fuera de leerRadio
 
 if (require.main === module) {
   const { hard } = runRadioMonedaTier();
