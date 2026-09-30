@@ -10,6 +10,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { metaTrack } from "@/lib/meta/pixel";
+import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
+import { hayGuia } from "@/lib/guia/activa";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -166,7 +168,7 @@ function PaymentReturnContent() {
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
       <HeaderFranco />
       <div className="flex flex-1 items-center justify-center px-4 py-8">
-<div className="w-full max-w-md text-center">
+<div className={retornoPack ? "w-full max-w-5xl text-left" : "w-full max-w-md text-center"}>
         {paymentStatus === "loading" && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
@@ -193,6 +195,12 @@ function PaymentReturnContent() {
 
         {retornoPack && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
           <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />
+        )}
+
+        {/* «Por dónde seguir buscando» (30-sep-2026): solo donde hay guía (renta larga), igual que la
+            línea del ticket que la promete. */}
+        {retornoPack && hayGuia(retornoPack.modalidad) && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
+          <GuiaBusqueda analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} conSesion={paymentStatus === "paid"} />
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (

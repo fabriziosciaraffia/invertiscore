@@ -1,0 +1,61 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   «POR DÓNDE SEGUIR BUSCANDO» y «QUIERO VERLO» (30-sep-2026, mockup aprobado)
+   · La guía vive en /payments/return, con los tokens del chrome (--franco-*), claro y oscuro.
+   · Cada aviso es una tarjeta sin foto: comuna, tipología, m², precio, distancia, veredicto y flujo.
+     El veredicto va con el cuadradito de la tríada (Comprar = azul tinta); el flujo negativo en rojo
+     (la regla de la plata); el botón en tinta con contorno.
+   · El bloque del informe usa los tokens del documento (--doc-*), que pone .doc-tokens.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.guia { margin-top: 34px; text-align: left; font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; color: var(--franco-text); }
+.guia-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 10px; }
+@media (min-width: 768px) { .guia { margin-top: 48px; } .guia-titulo { font-size: 32px; } }
+.guia-txt { font-size: 15px; line-height: 1.5; color: var(--franco-text-secondary); margin: 0 0 6px; max-width: 640px; }
+.guia-ajustada, .guia-ninguno { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 17px; line-height: 1.3; margin: 6px 0 6px; padding-left: 12px; border-left: 3px solid var(--franco-text); max-width: 640px; }
+.guia-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 18px; }
+.guia-chips span { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 11px; border-radius: 99px; background: var(--franco-card); border: 1px solid var(--franco-border); font-size: 12.5px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
+.guia-chips span b { font-weight: 600; color: var(--franco-text); margin-left: 4px; }
+.guia-lista { display: grid; gap: 12px; }
+@media (min-width: 768px) { .guia-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+.guia-av { border: 1px solid var(--franco-border); background: var(--franco-card); border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; min-width: 0; }
+.guia-fantasma { min-height: 212px; opacity: 0.6; animation: guia-latido 1.4s ease-in-out infinite; }
+@keyframes guia-latido { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .guia-fantasma { animation: none; } }
+.guia-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.guia-ojo { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--franco-text-tertiary); min-width: 0; }
+.guia-dist { font-size: 12.5px; color: var(--franco-text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.guia-precio { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; font-size: 24px; line-height: 1.1; letter-spacing: -0.01em; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+.guia-dos { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--franco-border); border-bottom: 1px solid var(--franco-border); }
+.guia-dos > div { padding: 10px 0; min-width: 0; }
+.guia-dos > div + div { padding-left: 14px; border-left: 1px solid var(--franco-border); }
+.guia-k { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--franco-text-tertiary); margin-bottom: 4px; }
+.guia-ver { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; font-size: 15px; }
+.guia-ver::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--verdict-comprar); flex: none; }
+[data-theme="dark"] .guia-ver::before { background: #6C9BE0; }
+.guia-pt { font-family: var(--font-mono), ui-monospace, monospace; font-size: 13px; color: var(--franco-text-tertiary); }
+.guia-flujo { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; }
+.guia-flujo small { display: block; font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; color: var(--franco-text-tertiary); }
+.guia-neg { color: var(--signal-red); }
+.guia-acc { margin-top: auto; padding-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.guia-an { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 99px; border: 1.5px solid var(--franco-text); background: none; color: var(--franco-text); font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; font-weight: 500; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.guia-an:disabled { cursor: default; opacity: 0.55; }
+.guia-an[data-presionado="1"] { opacity: 0.72; }
+.guia-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.guia-cr { font-size: 12px; color: var(--franco-text-tertiary); text-align: right; }
+.guia-error { margin: 10px 0 0; font-size: 13px; color: var(--signal-red); }
+.guia-pie { margin: 16px 0 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-tertiary); max-width: 640px; }
+
+/* ── el informe que sale de un aviso ── (con respaldo en los tokens del chrome: fuera del documento, como
+   en /dev/lo-que-sigue, los --doc-* no existen) */
+.qv { font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx, var(--franco-text)); }
+.qv-origen { font-size: 13.5px; line-height: 1.45; color: var(--doc-tx2, var(--franco-text-secondary)); margin: 0; }
+.qv-nota { font-size: 13px; line-height: 1.45; color: var(--doc-tx3, var(--franco-text-tertiary)); margin: 4px 0 0; }
+.qv-caja { margin-top: 14px; border: 1px solid var(--doc-line, var(--franco-border)); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: var(--doc-paper2, var(--franco-card)); }
+.qv-caja[data-listo="1"] { border-color: var(--doc-tx, var(--franco-text)); align-items: flex-start; justify-content: flex-start; }
+.qv-t { font-weight: 600; font-size: 15px; }
+.qv-s { font-size: 13px; color: var(--doc-tx3, var(--franco-text-tertiary)); margin-top: 2px; }
+.qv-btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border-radius: 99px; background: var(--doc-tx, var(--franco-text)); color: var(--doc-paper, var(--franco-bg)); border: 0; font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; flex: none; cursor: pointer; }
+.qv-btn:disabled { opacity: 0.72; cursor: default; }
+.qv-btn:focus-visible { outline: 2px solid var(--doc-tx, var(--franco-text)); outline-offset: 2px; }
+.qv-ok { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--doc-tx, var(--franco-text)); color: var(--doc-paper, var(--franco-bg)); align-items: center; justify-content: center; font-size: 13px; margin-right: 10px; flex: none; }
+.qv-error { margin: 8px 0 0; font-size: 13px; color: var(--signal-red); }
+@media (max-width: 767px) { .qv-caja:not([data-listo="1"]) { flex-direction: column; align-items: stretch; } }

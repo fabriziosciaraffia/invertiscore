@@ -13,6 +13,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { DESPUES_DE_PAGAR, RETORNO_SIN_SESION, type VeredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { rutaPrecarga } from "@/lib/lo-que-sigue/oferta-pack";
+import { hayGuia } from "@/lib/guia/activa";
 import "./lo-que-sigue.css";
 
 export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean }) {
@@ -31,7 +32,7 @@ export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: 
       <div className="lqs-col">
         <h1 className="lqs-h3">{DESPUES_DE_PAGAR.titular}</h1>
         <p className="lqs-cuerpo">{DESPUES_DE_PAGAR.cuerpo}</p>
-        <p className="lqs-lead">{DESPUES_DE_PAGAR.fraseVeredicto[veredicto]}</p>
+        <p className="lqs-lead">{veredicto === "BUSCAR OTRA" && !hayGuia(modalidad) ? DESPUES_DE_PAGAR.buscarSinGuia : DESPUES_DE_PAGAR.fraseVeredicto[veredicto]}</p>
         <EnlaceCarga href={href} className="lqs-btn" data-lqs="precarga">
           {DESPUES_DE_PAGAR.boton}
         </EnlaceCarga>

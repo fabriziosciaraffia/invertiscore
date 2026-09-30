@@ -24,6 +24,11 @@ export const EVENTOS_LQS = {
   precargaAbierta: "precarga_abierta",
   compararVisto: "comparar_visto",
   recordatorioEnviado: "recordatorio_pack_enviado",
+  // 30-sep-2026 · «Por dónde seguir buscando» y «Quiero verlo»
+  guiaVista: "guia_vista",
+  guiaAnalizarClick: "guia_analizar_click",
+  guiaInformeCreado: "guia_informe_creado",
+  quieroVerloClick: "quiero_verlo_click",
 } as const;
 
 export type EventoLqs = (typeof EVENTOS_LQS)[keyof typeof EVENTOS_LQS];

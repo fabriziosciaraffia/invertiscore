@@ -14,6 +14,9 @@ import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
+import { GuiaBusqueda, type RespuestaGuia } from "@/components/guia/GuiaBusqueda";
+import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
+import { CATALOGO_CORREOS } from "@/lib/email/catalogo";
 import { claveTicket } from "@/lib/lo-que-sigue/estado-ticket";
 import type { VeredictoLqs } from "@/lib/lo-que-sigue/copy";
 import type { PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
@@ -24,6 +27,22 @@ const VEREDICTOS: { v: VeredictoLqs; rotulo: string; precio: number | null }[] =
   { v: "COMPRAR", rotulo: "Comprar", precio: null },
 ];
 const PERFIL: PerfilChips = { tipologia: "2D1B", comuna: "San Miguel", modalidad: "ltr" };
+// «Por dónde seguir buscando» (30-sep-2026): las tres formas con datos de muestra. Con `?a=<id de un informe
+// de renta larga>` se ve además la guía REAL de ese informe (solo lectura; «Analizar este» genera de verdad
+// y cobra un crédito si el informe es tuyo).
+const ORIGEN = { tipologia: "2D", m2: 60, precioUF: 4300 };
+const GUIA_MUESTRA: Record<"normal" | "ajustada" | "ninguno", RespuestaGuia> = {
+  normal: { disponible: true, estado: "normal", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 25 }, radioM: 1000, items: [
+    { avisoId: "m1", comuna: "Ñuñoa", tipologia: "2D2B", m2: 57, precioUF: 3980, distancia: "420 m", veredicto: "COMPRAR", score: 76, flujo: 12000 },
+    { avisoId: "m2", comuna: "Ñuñoa", tipologia: "2D1B", m2: 62, precioUF: 4120, distancia: "780 m", veredicto: "COMPRAR", score: 71, flujo: -64000 },
+    { avisoId: "m3", comuna: "Providencia", tipologia: "2D1B", m2: 55, precioUF: 4390, distancia: "950 m", veredicto: "COMPRAR", score: 70, flujo: -81000 },
+  ] },
+  ajustada: { disponible: true, estado: "ajustada", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 30 }, radioM: 2000, items: [
+    { avisoId: "m4", comuna: "Ñuñoa", tipologia: "2D1B", m2: 64, precioUF: 4480, distancia: "1,3 km", veredicto: "COMPRAR", score: 72, flujo: -52000 },
+    { avisoId: "m5", comuna: "Macul", tipologia: "2D2B", m2: 61, precioUF: 3890, distancia: "1,8 km", veredicto: "COMPRAR", score: 70, flujo: -58000 },
+  ] },
+  ninguno: { disponible: true, estado: "ninguno", origen: ORIGEN, combinacion: null, radioM: null, items: [] },
+};
 const idDemo = (v: VeredictoLqs) => `demo-lo-que-sigue-${v === "COMPRAR" ? "c" : v === "BUSCAR OTRA" ? "b" : "a"}`;
 
 export function DemoCliente() {
@@ -31,6 +50,12 @@ export function DemoCliente() {
   const [v, setV] = useState<VeredictoLqs>("AJUSTA SUPUESTOS");
   const [vuelta, setVuelta] = useState(0);
   const [correo, setCorreo] = useState("");
+  const [origenReal, setOrigenReal] = useState<string | null>(null);
+  useEffect(() => {
+    const a = new URLSearchParams(window.location.search).get("a");
+    if (a && /^[0-9a-f-]{36}$/i.test(a)) setOrigenReal(a);
+  }, []);
+  const correoInteres = CATALOGO_CORREOS.find((c) => c.id === "interes_aviso")?.render?.().html ?? "";
   const precio = VEREDICTOS.find((x) => x.v === v)?.precio ?? null;
   const ctx = { analysisId: idDemo(v), veredicto: v, modalidad: "ltr" as const };
 
@@ -62,7 +87,7 @@ export function DemoCliente() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
-      <div className="doc-tokens" style={{ maxWidth: 700, margin: "0 auto", padding: "22px 22px 40px", fontFamily: "var(--font-ui)" }}>
+      <div className="doc-tokens" style={{ maxWidth: 1040, margin: "0 auto", padding: "22px 22px 40px", fontFamily: "var(--font-ui)" }}>
         <p style={{ font: "600 12px var(--font-mono)", letterSpacing: ".1em", textTransform: "uppercase", opacity: .6 }}>Demostración · lo que sigue</p>
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 26, margin: "8px 0 14px" }}>Un informe de mentira para ver el borde inferior</h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 22 }} data-lqs="demo-veredicto">
@@ -90,6 +115,26 @@ export function DemoCliente() {
         <DespuesDePagar key={`p-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion />
         {rotulo("Después de pagar · sin sesión")}
         <DespuesDePagar key={`s-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion={false} />
+
+        {rotulo("Por dónde seguir buscando · tres que convienen")}
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.normal} />
+        {rotulo("Por dónde seguir buscando · con el plazo ajustado")}
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.ajustada} />
+        {rotulo("Por dónde seguir buscando · ninguno conviene")}
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.ninguno} />
+        {origenReal && (
+          <>
+            {rotulo("Por dónde seguir buscando · la real de ?a=")}
+            <GuiaBusqueda analysisId={origenReal} veredicto={v} conSesion />
+          </>
+        )}
+
+        {rotulo("El informe que sale de un aviso · antigüedad supuesta")}
+        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="supuesta" esDueno demo /></div>
+        {rotulo("El informe que sale de un aviso · con el año de la ficha")}
+        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="ficha" esDueno demo /></div>
+        {rotulo("El correo a hola@ · «Quiero verlo»")}
+        <iframe title="Correo de Quiero verlo" srcDoc={correoInteres} style={{ width: "100%", height: 760, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} />
 
         {rotulo("El correo del tercer día")}
         <iframe title="Correo del recordatorio" srcDoc={correo} style={{ width: "100%", height: 560, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} data-lqs="demo-correo" />

@@ -27,6 +27,7 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.2: Advanced Section.
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
+import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
 import { hasAiV2 } from "@/lib/prosa-guardada";
 
 
@@ -617,6 +618,9 @@ export function PremiumResults({
             metadataItems={metadataItems}
             onInformeVisible={onInformeVisible}
             despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} /> : undefined}
+            trasPortada={inputData?.origenAviso && analysisId ? (
+              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} antiguedad={inputData.origenAviso.antiguedad} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
+            ) : undefined}
             results={results}
             inputData={inputData}
             valorUF={ufValue}

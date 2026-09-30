@@ -56,9 +56,12 @@ export function SubjectCardGrid({
   accessLevel = "free",
   medianaResolvedAt,
   despuesDeLaCard,
+  trasPortada,
 }: {
   /** «Lo que sigue»: lo que va después de la card de Franco (lo monta HeroLTR). */
   despuesDeLaCard?: ReactNode;
+  /** Lo que va entre la portada y el hero: el origen del informe cuando salió de un aviso (30-sep-2026). */
+  trasPortada?: ReactNode;
   /** Solo por el sobreprecio guardado en filas viejas (`hallazgoSobreprecio`), que es un dato y
    *  no prosa. La prosa de la IA no se lee: salió del informe el 25-sep-2026. */
   aiAnalysis: AIAnalysisV2 | null;
@@ -263,6 +266,11 @@ export function SubjectCardGrid({
         />
       )}
       </SeccionInforme>
+      {trasPortada && (
+        <SeccionInforme id="origen-aviso" tono="paper">
+          {trasPortada}
+        </SeccionInforme>
+      )}
       {/* ═══ 2 · HERO · HALLAZGOS · RECOMENDACIÓN ═══ */}
       {/* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Las tres secciones
           las emite `HeroLTR`, no este grid: la recomendación se arma con nueve derivadas

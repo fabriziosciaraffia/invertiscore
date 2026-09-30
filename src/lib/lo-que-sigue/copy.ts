@@ -108,15 +108,18 @@ export const TICKET_PACK = {
 } as const;
 
 // ── 5 · Después de pagar ─────────────────────────────────────────────────────
+// 30-sep-2026: el copy nuevo, con la guía de búsqueda debajo. La frase de Buscar otro nombra la guía
+// («Abajo, deptos parecidos…»): donde no hay guía (renta corta) va la de antes.
 export const DESPUES_DE_PAGAR = {
   titular: "Tienes 3 análisis.",
-  cuerpo: "El próximo toma un minuto: tus números ya están cargados.",
+  cuerpo: "El próximo es más fácil: tus números del primer informe ya están cargados.",
   boton: "Analizar el próximo",
   fraseVeredicto: {
-    "BUSCAR OTRA": "Mismo pie, mismo plazo. Solo falta el próximo depto.",
-    "AJUSTA SUPUESTOS": "Pon uno de la zona y compáralo con este.",
-    COMPRAR: "Pon los dos parecidos y mira si este sigue siendo el mejor.",
+    "BUSCAR OTRA": "Mismo pie, mismo plazo. Abajo, deptos parecidos ya revisados con tus números.",
+    "AJUSTA SUPUESTOS": "Compara y mira si alguno conviene sin negociar, y así tienes con qué presionar.",
+    COMPRAR: "Compara y mira si este sigue siendo el mejor.",
   } as Record<VeredictoLqs, string>,
+  buscarSinGuia: "Mismo pie, mismo plazo. Solo falta el próximo depto.",
 } as const;
 
 export const RETORNO_SIN_SESION = {
