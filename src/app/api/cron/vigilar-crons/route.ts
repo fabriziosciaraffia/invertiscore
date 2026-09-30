@@ -16,6 +16,14 @@ import { alertarUnaVezAlDia, cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resu
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
+
+/** Qué motivo avisa la vigilancia; null = lo avisa otro (la falla de la corrida, desde cerrarCron). */
+function motivoDeAlerta(c: { atrasado: boolean; sinCierre: boolean; sinEscribir: boolean }): string | null {
+  if (c.atrasado) return "atrasado";
+  if (c.sinCierre) return "sin-cierre";
+  if (c.sinEscribir) return "sin-escribir";
+  return null;
+}
 const NOMBRE = "vigilar-crons";
 
 export async function GET(request: Request) {
@@ -32,7 +40,11 @@ export async function GET(request: Request) {
     const enRojo = estado.filter((c) => c.enRojo);
     let alertas = 0;
     for (const c of enRojo) {
-      const motivo = c.atrasado ? "atrasado" : c.sinCierre ? "sin-cierre" : c.sinEscribir ? "sin-escribir" : c.ultimoResultado && c.ultimoResultado !== "ok" ? "falla" : "frescura";
+      const motivo = motivoDeAlerta(c);
+      // La falla de una corrida ya avisó sola desde cerrarCron, el día que pasó. Repetirla acá al cambiar
+      // el día UTC mandaba el mismo aviso de ayer como si fuera nuevo (30-sep-2026, 00:45: la corrida
+      // parcial de unidades del 29 a las 22:40). El panel la sigue mostrando en rojo hasta la próxima corrida.
+      if (motivo === null) continue;
       if (await alertarUnaVezAlDia(sb, c.nombre, hoy, c.motivo ?? "en rojo", {}, motivo)) alertas++;
     }
     // La vigilancia misma sale bien aunque haya crons en rojo: su trabajo es verlos y avisar.

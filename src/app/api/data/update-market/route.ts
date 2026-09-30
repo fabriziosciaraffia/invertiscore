@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { parseNumeroBCCH, esUFPlausible, esTasaPlausible } from "@/lib/uf";
 import { captureApiError } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
+import { fetchBCCH } from "@/lib/bcch";
 
 const RUTA = "POST /api/data/update-market";
 
@@ -14,31 +15,7 @@ function getSupabase() {
   );
 }
 
-const BCCH_BASE_URL = "https://si3.bcentral.cl/SieteRestWS/SieteRestWS.ashx";
-
-async function fetchBCCH(seriesId: string, firstDate: string, lastDate: string) {
-  const user = process.env.BCCH_API_USER;
-  const pass = process.env.BCCH_API_PASS;
-  if (!user || !pass) return null;
-
-  const params = new URLSearchParams({
-    user,
-    pass,
-    function: "GetSeries",
-    timeseries: seriesId,
-    firstdate: firstDate,
-    lastdate: lastDate,
-  });
-
-  try {
-    const response = await fetch(`${BCCH_BASE_URL}?${params.toString()}`);
-    const data = await response.json();
-    if (data.Codigo !== 0) return null;
-    return data.Series.Obs.filter((o: { statusCode: string }) => o.statusCode === "OK");
-  } catch {
-    return null;
-  }
-}
+// La serie del BCCh, con reintento y motivo, vive en @/lib/bcch (30-sep-2026).
 
 export async function POST(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -66,7 +43,8 @@ export async function POST(request: Request) {
   // al fantasma /api/scraping/update-market-data, hoy borrado. Desde entonces el
   // cron diario de las 10:00 UTC llama ESTA ruta y la UF/tasa se refrescan solas;
   // el botón del admin queda como disparo manual de respaldo.)
-  const tasaObs = await fetchBCCH("F022.VIV.TIP.MA03.UF.Z.M", firstDate, today);
+  const tasaR = await fetchBCCH("F022.VIV.TIP.MA03.UF.Z.M", firstDate, today);
+  const tasaObs = tasaR.obs;
   if (tasaObs && tasaObs.length > 0) {
     const latest = tasaObs[tasaObs.length - 1];
     const value = parseNumeroBCCH(latest.value);
@@ -92,8 +70,8 @@ export async function POST(request: Request) {
       });
     }
   } else {
-    results.tasa = { error: "No data from BCCH (check BCCH_API_USER/BCCH_API_PASS)" };
-    captureApiError(new Error("BCCh no devolvió serie de tasa (revisar BCCH_API_USER/BCCH_API_PASS)"), {
+    results.tasa = { error: `tasa: ${tasaR.error}` };
+    captureApiError(new Error(`BCCh no devolvió serie de tasa: ${tasaR.error}`), {
       ruta: RUTA,
       operacion: "fetch-tasa-bcch",
     });
@@ -102,7 +80,9 @@ export async function POST(request: Request) {
   // 2. UF (serie diaria)
   let ufValue: number | null = null;
   let ufCrudo = "";
-  const ufObs = await fetchBCCH("F073.UFF.PRE.Z.D", today, today);
+  const ufR = await fetchBCCH("F073.UFF.PRE.Z.D", today, today);
+  const ufObs = ufR.obs;
+  let ufError = ufR.error ?? "";
   if (ufObs && ufObs.length > 0) {
     ufCrudo = String(ufObs[0].value);
     ufValue = parseNumeroBCCH(ufCrudo);
@@ -111,7 +91,9 @@ export async function POST(request: Request) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yDate = yesterday.toISOString().split("T")[0];
-    const ufObs2 = await fetchBCCH("F073.UFF.PRE.Z.D", yDate, yDate);
+    const ufR2 = await fetchBCCH("F073.UFF.PRE.Z.D", yDate, yDate);
+    const ufObs2 = ufR2.obs;
+    if (ufR2.error) ufError = `hoy: ${ufError} · ayer: ${ufR2.error}`;
     if (ufObs2 && ufObs2.length > 0) {
       ufCrudo = String(ufObs2[0].value);
       ufValue = parseNumeroBCCH(ufCrudo);
@@ -142,8 +124,8 @@ export async function POST(request: Request) {
       extra: { crudo: ufCrudo, parseado: ufValue },
     });
   } else if (!results.uf?.date) {
-    results.uf = { error: "No UF data from BCCH" };
-    captureApiError(new Error("BCCh no devolvió UF ni de hoy ni de ayer"), {
+    results.uf = { error: `uf: ${ufError}` };
+    captureApiError(new Error(`BCCh no devolvió UF ni de hoy ni de ayer: ${ufError}`), {
       ruta: RUTA,
       operacion: "fetch-uf-bcch",
     });
@@ -154,9 +136,11 @@ export async function POST(request: Request) {
   const tasaOk = results.tasa?.value != null && !results.tasa.error;
   const ufOk = results.uf?.value != null && !results.uf.error;
   const escritos = (tasaOk ? 1 : 0) + (ufOk ? 1 : 0);
+  // Los motivos viajan en `errors`: es lo que cerrarCron pone en el correo de la alerta.
+  const errors = [results.tasa?.error, results.uf?.error].filter((e): e is string => !!e);
   return cerrarCron(supabase, "update-market",
     { procesados: 2, exitosos: escritos, fallidos: 2 - escritos },
-    { success: escritos === 2, results });
+    { success: escritos === 2, results, errors });
 }
 
 // Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer

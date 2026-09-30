@@ -19,7 +19,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fallidosTolerados, fetchUnidadesProyecto, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
-import { CRONS_VIGILADOS, leerLatidos } from "../../../src/lib/cron-heartbeat";
+import { CRONS_VIGILADOS, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
+import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -165,6 +166,54 @@ export async function runCronsTier(): Promise<{ hard: number }> {
       if (!CRONS_VIGILADOS.find((c) => c.nombre === n)?.frescura) F(`2 · ${n} escribe en cada corrida y no tiene frescura vigilada`);
     }
   }
+  // ── 3 · update-market (30-sep-2026): el BCCh falla de a ratos; se reintenta y la razón llega al correo ──
+  {
+    const credReal = [process.env.BCCH_API_USER, process.env.BCCH_API_PASS];
+    process.env.BCCH_API_USER = "prueba"; process.env.BCCH_API_PASS = "prueba";
+    const respuestas = (lista: Array<[number, unknown]>) => {
+      let k = 0;
+      globalThis.fetch = (async () => { const [st, body] = lista[Math.min(k++, lista.length - 1)]; return new Response(JSON.stringify(body), { status: st }); }) as typeof fetch;
+      return () => k;
+    };
+    const ok = { Codigo: 0, Series: { Obs: [{ value: "41057.2", statusCode: "OK" }] } };
+    try {
+      let n = respuestas([[503, {}], [503, {}], [200, ok]]);
+      const r1 = await fetchBCCH("S", "a", "b", [0, 0, 0]);
+      if (!r1.obs || n() !== 3) F(`3 · el BCCh no se reintenta hasta ${INTENTOS_BCCH} veces (${n()} llamadas, ${r1.error ?? "ok"})`);
+      n = respuestas([[503, {}]]);
+      const r2 = await fetchBCCH("S", "a", "b", [0, 0, 0]);
+      if (r2.obs || !/http 503/.test(r2.error ?? "") || !/tras 3 intentos/.test(r2.error ?? "")) F(`3 · una falla del BCCh no dice por qué (${r2.error})`);
+      respuestas([[200, { Codigo: -5, Descripcion: "Invalid username or password" }]]);
+      const r3 = await fetchBCCH("S", "a", "b", [0, 0, 0]);
+      if (!/Codigo -5: Invalid username/.test(r3.error ?? "")) F(`3 · el Codigo del BCCh no llega al motivo (${r3.error})`);
+      delete process.env.BCCH_API_USER;
+      n = respuestas([[200, ok]]);
+      const r4 = await fetchBCCH("S", "a", "b", [0, 0, 0]);
+      if (r4.obs || n() !== 0 || !/sin credenciales/.test(r4.error ?? "") || /tras/.test(r4.error ?? "")) F(`3 · sin credenciales igual llama o reintenta (${r4.error})`);
+    } finally {
+      globalThis.fetch = fetchReal;
+      process.env.BCCH_API_USER = credReal[0]; process.env.BCCH_API_PASS = credReal[1];
+      if (credReal[0] === undefined) delete process.env.BCCH_API_USER;
+      if (credReal[1] === undefined) delete process.env.BCCH_API_PASS;
+    }
+    const um = sinComentarios(leer("src/app/api/data/update-market/route.ts"));
+    if (!/import \{ fetchBCCH \} from "@\/lib\/bcch";/.test(um) || /async function fetchBCCH/.test(um)) F("3 · update-market no usa el fetchBCCH con reintento");
+    if (!/\{ success: escritos === 2, results, errors \}\);/.test(um)) F("3 · el motivo de la falla no viaja al correo (errors)");
+  }
+
+  // ── 3 · la vigilancia: un cron nuevo no está atrasado antes de su primera corrida, y la falla de ayer
+  // no se re-avisa al cambiar el día (ya avisó cerrarCron) ──
+  {
+    const t0 = Date.parse("2026-09-29T13:00:00Z");
+    const nuevo = { intervaloHoras: 24, desde: "2026-09-29T13:00:00Z" };
+    if (estaAtrasado(nuevo, null, t0 + 20 * 3600e3)) F("3 · un cron nuevo figura atrasado antes de su primera corrida");
+    if (!estaAtrasado(nuevo, null, t0 + 49 * 3600e3)) F("3 · un cron nuevo que nunca corrió en 2 intervalos no figura atrasado");
+    if (!estaAtrasado({ intervaloHoras: 24 }, null) || !estaAtrasado(nuevo, 49) || estaAtrasado(nuevo, 30)) F("3 · la regla de atraso cambió para los crons que ya corrieron o sin fecha de alta");
+    const vg = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
+    const cuerpo = (vg.match(/function motivoDeAlerta[\s\S]*?\n\}/) ?? [""])[0];
+    if (!cuerpo || /falla|ultimoResultado/.test(cuerpo) || !/if \(motivo === null\) continue;/.test(vg)) F("3 · la vigilancia vuelve a avisar la falla de una corrida (ya avisó cerrarCron)");
+  }
+
   if (!/const cronsAtrasados = latidos\.filter\(\(l\) => l\.enRojo\);/.test(leer("src/app/admin/operacion/page.tsx"))) F("2 · el panel no pinta con enRojo (solo con «no corrió»)");
 
   if (fallas.length) {
@@ -204,6 +253,15 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   C2 tolerancia 10% .......................................... 1 · la tolerancia no es «más del 5%»
 //   C3 toda falla cuenta (sin tolerancia) ...................... 1 · ídem
 //   C4 la corrida ignora la tolerancia ......................... 1 · no cuenta con la tolerancia
+// 30-sep-2026 (update-market y vigilancia): 7/7 en rojo.
+//   U1 sin reintento del BCCh .................................. 3 · no se reintenta hasta 3 veces
+//   U2 la falla HTTP vuelve a ser muda ......................... 3 · no dice por qué
+//   U3 el Codigo del BCCh no llega ............................. 3 · el Codigo no llega al motivo
+//   U4 sin credenciales reintenta (quedó VERDE al principio: sin credenciales no hay fetch que contar;
+//      el tier pasó a exigir que el motivo no diga «tras N intentos»)
+//   U5 el motivo no viaja al correo ............................ 3 · errors no llega a cerrarCron
+//   U6 un cron nuevo atrasado de entrada ....................... 3 · figura atrasado antes de su 1ª corrida
+//   U7 la vigilancia re-avisa la falla de ayer ................. 3 · vuelve a avisar la falla de una corrida
 
 if (require.main === module) {
   runCronsTier().then(({ hard }) => process.exit(hard ? 1 : 0));
