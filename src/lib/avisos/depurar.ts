@@ -75,3 +75,28 @@ export function avisosPendientes<T extends AvisoParaEvaluar & { scrapedAt: strin
   }
   return [...nunca, ...otra];
 }
+
+/**
+ * Los evaluados con OTRA versión del motor (30-sep-2026, decisión de Fabrizio): el cron los reevalúa
+ * de a poco, DESPUÉS de los pendientes y con el presupuesto que le sobre, sin que haga falta correr la
+ * carga a mano. Solo los vistos en la ventana y con el mismo precio (los de precio cambiado ya van en
+ * `avisosPendientes`). Primero los evaluados hace más tiempo.
+ */
+export function avisosDeOtraVersion<T extends AvisoParaEvaluar & { scrapedAt: string }>(
+  evaluables: T[],
+  guardadas: EvaluacionGuardada[],
+  motorVersion: string,
+  ahora: Date = new Date(),
+): T[] {
+  const desde = ahora.getTime() - VENTANA_VISTOS_DIAS * 864e5;
+  const porId = new Map(guardadas.map((g) => [g.aviso_id, g]));
+  const out: Array<{ a: T; t: number }> = [];
+  for (const a of evaluables) {
+    if (new Date(a.scrapedAt).getTime() < desde) continue;
+    const g = porId.get(a.id);
+    if (!g || g.motor_version === motorVersion) continue;
+    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5) continue;
+    out.push({ a, t: new Date(g.evaluado_at).getTime() });
+  }
+  return out.sort((x, y) => x.t - y.t).map((x) => x.a);
+}

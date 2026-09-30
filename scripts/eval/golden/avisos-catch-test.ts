@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { arriendoSegmentado } from "../../../src/lib/avisos/arriendo-segmentado";
 import { ANIOS_ANTIGUEDAD_SUPUESTA, ANTIGUEDAD_SUPUESTA, PERFILES_ESTANDAR, PLAZO_ESTANDAR, respuestasDeAviso, type AvisoParaEvaluar } from "../../../src/lib/avisos/evaluar-aviso";
-import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
+import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
 import { propertyToRow } from "../../../src/lib/services/scraper/property-row";
 import { antiguedadToNumber } from "../../../src/components/formulario-v4/helpers-wizard";
 
@@ -102,6 +102,12 @@ export function runAvisosTier(): { hard: number } {
   const pend = avisosPendientes(ev2, [g("a", 3000, 1), g("c", 2000, 1), g("h", 3000, 8), g("k", 3000, 1, "v2")], ahora).map((x) => x.id);
   if (pend.join(",") !== "m,p,c") F(`5 · los pendientes no son los que tocan, en su orden (${pend.join(",")})`);
   if (VENTANA_VISTOS_DIAS !== 7) F("5 · la ventana no es de 7 días vistos");
+  // La versión del motor, de a poco (30-sep-2026): después de los pendientes, solo los de otra versión con
+  // el mismo precio y vistos en la ventana, los evaluados hace más tiempo primero.
+  const viejos = avisosDeOtraVersion(ev2, [g("a", 3000, 1), g("c", 2000, 1, "v2"), g("h", 3000, 2, "v2"), g("k", 3000, 8, "v2"), g("f", 3000, 1, "v2")], "v3", ahora).map((x) => x.id);
+  if (viejos.join(",") !== "k,h") F(`5 · los de otra versión del motor no son los que tocan, en su orden (${viejos.join(",")})`);
+  const cronV = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
+  if (!/otraVersion = avisosDeOtraVersion\(evaluables, guardadas, METHODOLOGY_VERSION_ACTUAL\);/.test(cronV) || !/const cola = dry \? pendientes\.slice\(0, TOPE_DRY\) : \[\.\.\.pendientes, \.\.\.otraVersion\];/.test(cronV)) F("5 · el cron no reevalúa por versión después de los pendientes");
 
   // ── 6 · el cron ──
   const cron = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
@@ -162,6 +168,12 @@ export function runAvisosTier(): { hard: number } {
 //   A2 vuelve a reevaluar por antigüedad ..................... 5 · los pendientes (m,p,c,h)
 //   A3 vuelve a reevaluar por versión ........................ 5 · los pendientes (m,p,c,k)
 //   A4 no sigue el cambio de precio .......................... 5 · los pendientes (m,p)
+// 30-sep-2026 (versión del motor, de a poco): 5/5 en rojo.
+//   V1 la misma versión también entra ........................ 5 · (k,h,a)
+//   V2 fuera de la ventana también entra ..................... 5 · (k,h,f)
+//   V3 sin orden por antigüedad (quedó VERDE: el orden de entrada coincidía; el test invirtió las edades)
+//   V4 el cron no los toma ................................... 5 · no reevalúa por versión
+//   V5 van antes que los pendientes .......................... 5 · ídem
 
 if (require.main === module) {
   const { hard } = runAvisosTier();

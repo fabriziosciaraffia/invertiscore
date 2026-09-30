@@ -3,8 +3,8 @@
 // (evaluar-aviso.ts), todo aviso de venta visto en los últimos 7 días que no tenga evaluación o cuyo
 // precio cambió. Después el cron semanal solo sigue lo nuevo y lo que cambió de precio.
 //
-// Se vuelve a correr cuando cambia el motor (METHODOLOGY_VERSION_ACTUAL): el cron ya no reevalúa por
-// versión. Con MOTOR=1 toma también las filas de otra versión del motor. Con REEVALUAR_ANTES=<fecha ISO>
+// Un cambio de motor (METHODOLOGY_VERSION_ACTUAL) lo absorbe el cron solo, de a poco (avisosDeOtraVersion).
+// Con MOTOR=1 este script lo hace de una vez, si no se quiere esperar. Con REEVALUAR_ANTES=<fecha ISO>
 // (y opcional CONDICION=nuevo|usado) vuelve a evaluar las filas evaluadas antes de esa fecha: así se
 // rehicieron el 30-sep las obras nuevas que el cron evaluó con la venta por radio en UF (aPesos).
 //

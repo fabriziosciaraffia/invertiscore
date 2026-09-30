@@ -5,7 +5,8 @@ import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { evaluarAviso } from "@/lib/avisos/evaluar-aviso";
-import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
+import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
+import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
@@ -15,7 +16,8 @@ import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type Evaluacio
 // parecidos): una guía de búsqueda, NO el portafolio de Franco, que es otra cosa y no se mezcla.
 //
 // PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación o con precio
-// cambiado: la carga inicial la hizo scripts/cargar-avisos-evaluados.ts), evalúa hasta cortar por
+// cambiado: la carga inicial la hizo scripts/cargar-avisos-evaluados.ts) y, con lo que sobre, los
+// evaluados con otra versión del motor, de a poco (avisosDeOtraVersion); evalúa hasta cortar por
 // presupuesto y escribe fila por fila; la siguiente sigue donde quedó. Corre cada hora los martes (la tanda nueva de
 // la fuente entra los lunes): 24 corridas de ~11 minutos, holgadas para una pasada completa.
 // SOLO escribe en avisos_evaluados. `?dry=1` evalúa un puñado y no escribe nada.
@@ -63,6 +65,7 @@ export async function GET(request: Request) {
 
   let cfg: { uf: number; tasa: number };
   let pendientes: ReturnType<typeof avisosEvaluables>;
+  let otraVersion: ReturnType<typeof avisosEvaluables> = [];
   try {
     cfg = await leerConfig(sb);
     const desde = new Date(Date.now() - VENTANA_VISTOS_DIAS * 864e5).toISOString();
@@ -75,13 +78,16 @@ export async function GET(request: Request) {
     const guardadas = await paginar<EvaluacionGuardada>((a, b) =>
       sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version").order("aviso_id", { ascending: true }).range(a, b),
     );
-    pendientes = avisosPendientes(avisosEvaluables(filas, cfg.uf), guardadas);
+    const evaluables = avisosEvaluables(filas, cfg.uf);
+    pendientes = avisosPendientes(evaluables, guardadas);
+    // Con lo que sobre del presupuesto, de a poco, los evaluados con otra versión del motor.
+    otraVersion = avisosDeOtraVersion(evaluables, guardadas, METHODOLOGY_VERSION_ACTUAL);
   } catch (e) {
     captureApiWarning(e, { ruta: RUTA, operacion: "leer" });
     return cerrarCron(sb, "evaluar-avisos", { procesados: 0, exitosos: 0, fallidos: 1 }, { error: `leer: ${String(e).slice(0, 200)}` }, { registrar: !dry });
   }
 
-  const cola = dry ? pendientes.slice(0, TOPE_DRY) : pendientes;
+  const cola = dry ? pendientes.slice(0, TOPE_DRY) : [...pendientes, ...otraVersion];
   let i = 0, exitosos = 0, fallidos = 0, sinArriendo = 0, degradadas = 0;
   const muestraDry: unknown[] = [];
   await Promise.all(Array.from({ length: CONCURRENCIA }, async () => {
@@ -110,5 +116,5 @@ export async function GET(request: Request) {
   // Las degradadas se escribieron, pero cuentan como falla parcial: el cierre lo marca y alerta.
   return cerrarCron(sb, "evaluar-avisos",
     { procesados: exitosos + fallidos, exitosos: exitosos - degradadas, fallidos: fallidos + degradadas },
-    { dry, pendientes: pendientes.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
+    { dry, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }
