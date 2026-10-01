@@ -28,6 +28,12 @@ export interface FilaAviso {
   scraped_at: string;
 }
 
+/** Los despublicados (su ficha redirige a una búsqueda, src/lib/guia/publicacion.ts) no se evalúan más:
+ *  salieron de `avisos_evaluados` y no vuelven, aunque el listado los siga trayendo unos días. */
+export function sinDespublicados<T extends { id: string }>(xs: T[], despublicados: Set<string>): T[] {
+  return xs.filter((a) => !despublicados.has(a.id));
+}
+
 export function avisosEvaluables(filas: FilaAviso[], uf: number): Array<AvisoParaEvaluar & { scrapedAt: string }> {
   const vistos = new Set<string>();
   const out: Array<AvisoParaEvaluar & { scrapedAt: string }> = [];

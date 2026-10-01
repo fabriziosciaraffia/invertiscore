@@ -8,7 +8,11 @@
 //     el reintento (pasado RECLAMO_VIGENTE_MS) retoma la fila y crea el informe SIN volver a cobrar;
 //   · si el cobro no pasa (sin análisis disponibles), la fila se suelta y no queda nada cobrado.
 // Puro: las piezas se inyectan (el tier lo prueba con dobles y cuenta los cobros).
+//
+// Y ANTES DE TODO, LA RED (01-oct-2026): la ficha se chequea de nuevo al tocar «Analizar este». Si el
+// aviso se despublicó, no se reclama, no se cobra ni se prepara nada (`analizarAvisoDeGuia`).
 // ─────────────────────────────────────────────────────────────────────────────
+import type { EstadoPublicacion } from "./publicacion";
 
 export const RECLAMO_VIGENTE_MS = 120_000;
 
@@ -31,6 +35,24 @@ export type ResultadoAnalizar =
   | { estado: "creado" | "ya-creado"; id: string }
   | { estado: "en-curso" }
   | { estado: "sin-cobro"; status: number; error: string };
+
+/**
+ * «Analizar este» de punta a punta: chequear la ficha → si se despublicó, avisar y parar (sin crédito)
+ * → preparar el informe (antigüedad, body, plausibilidad) → cobrar una vez y crear.
+ */
+export async function analizarAvisoDeGuia(p: {
+  chequear(): Promise<EstadoPublicacion>;
+  alDespublicar(): Promise<void>;
+  preparar(): Promise<{ ok: true; piezas: PiezasAnalizar } | { ok: false; status: number; error: string }>;
+}): Promise<ResultadoAnalizar | { estado: "despublicado" } | { estado: "sin-preparar"; status: number; error: string }> {
+  if ((await p.chequear()) === "despublicado") {
+    await p.alDespublicar();
+    return { estado: "despublicado" };
+  }
+  const prep = await p.preparar();
+  if (!prep.ok) return { estado: "sin-preparar", status: prep.status, error: prep.error };
+  return analizarUnaVez(prep.piezas);
+}
 
 export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnalizar> {
   const r = await p.reclamar();

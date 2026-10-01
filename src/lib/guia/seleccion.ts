@@ -13,10 +13,13 @@
 //     combinación con alguno que convenga es la que se muestra, con los chips.
 //   · Si ni así: ninguno, sin lista.
 //   · Orden: veredicto (todos Comprar), puntaje, y a igual puntaje el más cercano.
+//   · SOLO PUBLICADOS (01-oct-2026): en ese orden, de a uno, se chequea que la ficha siga publicada y se
+//     para al juntar tres. Lo que no se pudo chequear no se muestra (publicacion.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import { MIX_COSTO_TOPE_PTS_PRECIO, MIX_PIE_PASO_PCT, MIX_PLAZOS_WIZARD } from "@/lib/mix-palancas";
 import { PIE_TOPE_GRILLA_PCT, pieSeMueveEnLaGrilla } from "@/lib/pie-se-mueve";
 import type { RazonSinCapital } from "@/lib/types";
+import type { EstadoPublicacion } from "./publicacion";
 
 export const RADIOS_GUIA_M = [1000, 2000, 3000] as const;
 export const TOPE_GUIA = 3;
@@ -80,20 +83,29 @@ export function ordenarGuia<T extends CandidatoBase>(xs: Array<{ c: T; ev: Evalu
   return [...xs].sort((a, b) => rango(a.ev.veredicto) - rango(b.ev.veredicto) || (b.ev.score ?? -1) - (a.ev.score ?? -1) || a.c.distanciaM - b.c.distanciaM);
 }
 
-export type ResultadoGuia<T extends CandidatoBase> =
+export type ResultadoGuia<T extends CandidatoBase> = (
   | { estado: "normal" | "ajustada"; combinacion: Combinacion; radioM: number; items: Array<{ c: T; ev: Evaluado }> }
-  | { estado: "ninguno"; combinacion: null; radioM: null; items: [] };
+  | { estado: "ninguno"; combinacion: null; radioM: null; items: [] }
+) & { /** Los que convenían y no se pudieron chequear (sin cupo, error, bloqueo): no se muestran. */ sinChequeo: number };
 
 /**
  * Elige la guía. `candidatos` viene ordenado por distancia y ya filtrado (parecidos, 7 días, sin
  * sospechosos, a lo más el radio mayor). `evaluar` corre el motor para un candidato y una combinación;
- * se llama perezoso —radio por radio— y nunca dos veces para el mismo par.
+ * se llama perezoso —radio por radio— y nunca dos veces para el mismo par. `publicado` chequea la ficha:
+ * se llama de a uno, en el orden de la guía, solo hasta juntar tres publicados, y una vez por aviso.
  */
 export async function elegirGuia<T extends CandidatoBase>(
   candidatos: T[],
   combinaciones: Combinacion[],
   evaluar: (c: T, combo: Combinacion) => Promise<Evaluado | null>,
+  publicado: (c: T) => Promise<EstadoPublicacion>,
 ): Promise<ResultadoGuia<T>> {
+  const chequeos = new Map<string, EstadoPublicacion>();
+  const estaPublicado = async (c: T) => {
+    if (!chequeos.has(c.avisoId)) chequeos.set(c.avisoId, await publicado(c).catch((): EstadoPublicacion => "sin-chequeo"));
+    return chequeos.get(c.avisoId) === "publicado";
+  };
+  const sinChequeo = () => Array.from(chequeos.values()).filter((e) => e === "sin-chequeo").length;
   for (let i = 0; i < combinaciones.length; i++) {
     const combo = combinaciones[i];
     const hechos = new Map<string, Evaluado | null>();
@@ -106,13 +118,18 @@ export async function elegirGuia<T extends CandidatoBase>(
         const evs = await Promise.all(tanda.map((c) => evaluar(c, combo).catch(() => null)));
         tanda.forEach((c, j) => hechos.set(c.avisoId, evs[j]));
       }
-      const buenos = pool.filter((c) => conviene(hechos.get(c.avisoId))).map((c) => ({ c, ev: hechos.get(c.avisoId)! }));
-      if (buenos.length > 0) mejor = { radioM, items: buenos };
-      if (buenos.length >= TOPE_GUIA) break;
+      const buenos = ordenarGuia(pool.filter((c) => conviene(hechos.get(c.avisoId))).map((c) => ({ c, ev: hechos.get(c.avisoId)! })));
+      const publicados: typeof buenos = [];
+      for (const it of buenos) {
+        if (publicados.length >= TOPE_GUIA) break;
+        if (await estaPublicado(it.c)) publicados.push(it);
+      }
+      if (publicados.length > 0) mejor = { radioM, items: publicados };
+      if (publicados.length >= TOPE_GUIA) break;
     }
-    if (mejor) return { estado: i === 0 ? "normal" : "ajustada", combinacion: combo, radioM: mejor.radioM, items: ordenarGuia(mejor.items).slice(0, TOPE_GUIA) };
+    if (mejor) return { estado: i === 0 ? "normal" : "ajustada", combinacion: combo, radioM: mejor.radioM, items: mejor.items, sinChequeo: sinChequeo() };
   }
-  return { estado: "ninguno", combinacion: null, radioM: null, items: [] };
+  return { estado: "ninguno", combinacion: null, radioM: null, items: [], sinChequeo: sinChequeo() };
 }
 
 /** Distancia en metros entre dos puntos (haversine). */

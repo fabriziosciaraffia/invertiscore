@@ -12,6 +12,10 @@
 //
 // La guía se guarda por informe (`guias_calculadas`): se calcula al confirmarse el pago del pack y la
 // pantalla la lee hecha; si todavía no está, la calcula ella.
+//
+// SOLO PUBLICADOS (01-oct-2026): al armarla se chequea la ficha de los mejores, de a uno, hasta juntar tres
+// publicados (`MAX_LECTURAS_GUIA` GETs como mucho; un chequeo se recuerda 24 horas). Si ninguno se
+// pudo chequear, no hay guía: la pantalla cae a la de siempre y no se guarda nada.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sondaConPatch } from "@/lib/analysis";
@@ -24,6 +28,9 @@ import {
   MAX_CANDIDATOS_GUIA, RADIOS_GUIA_M, VENTANA_GUIA_DIAS, combinacionesGuia, elegirGuia, rangoParecido, textoDistancia,
   type CandidatoBase, type Combinacion, type Evaluado, type ResultadoGuia,
 } from "./seleccion";
+import { MAX_LECTURAS_GUIA, chequearPublicacion, type EstadoPublicacion } from "./publicacion";
+import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
+import { claveEdificio } from "./ficha-anio";
 
 export interface OrigenGuia {
   analysisId: string;
@@ -163,7 +170,7 @@ export function contextoDeFila(c: CandidatoGuia, cfg: { uf: number; tasa: number
 }
 
 /** La guía para un informe de origen. `enVivo` cuenta los candidatos sin mediana guardada (filas viejas). */
-export async function guiaPara(admin: SupabaseClient, o: OrigenGuia, cfg: { uf: number; tasa: number }): Promise<ResultadoGuia<CandidatoGuia> & { enVivo: number }> {
+export async function guiaPara(admin: SupabaseClient, o: OrigenGuia, cfg: { uf: number; tasa: number }): Promise<ResultadoGuia<CandidatoGuia> & { enVivo: number; lecturas: number }> {
   const candidatos = await candidatosGuia(admin, o);
   const asOf = new Date();
   const enVivo = new Map<string, Promise<unknown>>();
@@ -187,8 +194,20 @@ export async function guiaPara(admin: SupabaseClient, o: OrigenGuia, cfg: { uf: 
       flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null,
     };
   };
-  const g = await elegirGuia(candidatos, combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie }), evaluar);
-  return { ...g, enVivo: enVivo.size };
+  // La ficha, de a uno y solo para los que la guía mostraría; con presupuesto de lecturas por guía.
+  const almacen = almacenPublicacion(admin);
+  let lecturas = 0, bloqueada = false;
+  const publicado = async (c: CandidatoGuia): Promise<EstadoPublicacion> => {
+    const r = await chequearPublicacion(
+      { id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha,
+      { sinLeer: bloqueada || lecturas >= MAX_LECTURAS_GUIA },
+    );
+    lecturas += r.lectura?.gets ?? 0;
+    if (r.lectura?.leida && r.lectura.motivo === "bloqueo") bloqueada = true;
+    return r.estado;
+  };
+  const g = await elegirGuia(candidatos, combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie }), evaluar, publicado);
+  return { ...g, enVivo: enVivo.size, lecturas };
 }
 
 /** Lo que la pantalla muestra y nada más: sin enlace al aviso ni textos del aviso. */
@@ -225,6 +244,8 @@ export async function calcularYGuardarGuia(admin: SupabaseClient, analysisId: st
   if (!o) return { disponible: false };
   const cfg = await leerConfigGuia(admin);
   const g = await guiaPara(admin, o, cfg);
+  // Sin ningún publicado y con avisos que no se pudieron chequear, no se sabe: sin guía, y sin guardar.
+  if (g.estado === "ninguno" && g.sinChequeo > 0) return { disponible: false };
   const resultado = respuestaGuia(o, g);
   const { error } = await admin.from("guias_calculadas").upsert({ analysis_id: analysisId, resultado, calculada_at: new Date().toISOString(), ms: Date.now() - t0 }, { onConflict: "analysis_id" });
   if (error) console.error("[guia] no se guardó:", error.message);
@@ -235,7 +256,14 @@ export async function calcularYGuardarGuia(admin: SupabaseClient, analysisId: st
 export async function guiaGuardada(admin: SupabaseClient, analysisId: string): Promise<RespuestaGuiaServidor | null> {
   const { data } = await admin.from("guias_calculadas").select("resultado, calculada_at").eq("analysis_id", analysisId).maybeSingle();
   if (!data || Date.now() - new Date(data.calculada_at as string).getTime() > VIGENCIA_GUIA_MS) return null;
-  return data.resultado as RespuestaGuiaServidor;
+  const resultado = data.resultado as RespuestaGuiaServidor;
+  // Si uno de sus avisos se despublicó después (lo vio otra guía o un clic), se arma de nuevo.
+  const ids = resultado.disponible ? resultado.items.map((it) => it.avisoId) : [];
+  if (ids.length > 0) {
+    const { data: idas, error } = await admin.from("publicacion_avisos").select("aviso_id").in("aviso_id", ids).eq("estado", "despublicado");
+    if (error || (idas?.length ?? 0) > 0) return null;
+  }
+  return resultado;
 }
 
 /** La UF y la tasa de mercado del día (config). */

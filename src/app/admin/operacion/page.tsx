@@ -21,6 +21,7 @@ import { leerLatidos } from "@/lib/cron-heartbeat";
 import { leerCobertura, plegarCobertura } from "@/lib/admin-cobertura";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { DIAS_ATRASO_PASE, estadoPase, leerCheckpointBackfill } from "@/lib/admin-backfill-toctoc";
+import { leerLecturasFicha, pastillaFichas } from "@/lib/admin-fichas";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
@@ -100,6 +101,7 @@ export default async function AdminOperacionPage({
     latidos,
     cobertura,
     checkpointBackfill,
+    lecturasFicha,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -126,6 +128,7 @@ export default async function AdminOperacionPage({
     leerLatidos(sb),
     leerCobertura(sb),
     leerCheckpointBackfill(sb),
+    leerLecturasFicha(sb),
   ]);
 
   // ─── UF y tasa ───
@@ -272,6 +275,12 @@ export default async function AdminOperacionPage({
       label: "Errores (Sentry)",
       value: valorErrores,
       estado: estadoErrores,
+    },
+    {
+      // Las lecturas de ficha de la guía (01-oct-2026), por motivo. Un bloqueo es rojo y alerta por
+      // correo; un despublicado es lo esperable y no cambia el color.
+      label: "Fichas (24 h)",
+      ...pastillaFichas(lecturasFicha),
     },
   ];
 
@@ -454,6 +463,22 @@ export default async function AdminOperacionPage({
               )}{" "}
               Los análisis no usan este valor —toman la UF de mindicador.cl al momento de calcular—, así que no hay
               informes afectados.
+            </p>
+          </div>
+        )}
+
+        {lecturasFicha.ultimoBloqueo && (
+          <div className="mt-3 rounded-xl border p-4" style={{ borderColor: "rgba(200,50,60,.35)" }} data-admin="fichas-bloqueo">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--signal-red)]">
+              La fuente está bloqueando las fichas
+            </div>
+            <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              <b className="font-medium text-[var(--franco-text)]">
+                {lecturasFicha.porMotivo.bloqueo} lecturas bloqueadas en 24 horas, la última {fmtRelative(lecturasFicha.ultimoBloqueo.leidoAt)}
+                {lecturasFicha.ultimoBloqueo.codigo != null && ` (código ${lecturasFicha.ultimoBloqueo.codigo})`}.
+              </b>{" "}
+              Mientras dure, la guía muestra solo los avisos ya chequeados en las últimas 24 horas y «Analizar este»
+              sigue sin la segunda lectura. Se avisó por correo una vez al día.
             </p>
           </div>
         )}

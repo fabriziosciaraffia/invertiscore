@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from "@supabase/supabase-js";
 import { evaluarAviso, VERSION_EVALUACION } from "../src/lib/avisos/evaluar-aviso";
-import { avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
+import { avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
 
 const CONC = Number(process.env.CONC ?? 6);
 const TOPE = Number(process.env.TOPE ?? Infinity);
@@ -55,7 +55,10 @@ async function main() {
   const guardadas = await paginar<EvaluacionGuardada & { condicion: string }>((a, b) =>
     sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version, condicion").order("aviso_id", { ascending: true }).range(a, b),
   );
-  const evaluables = avisosEvaluables(filas, cfg.uf);
+  const despublicados = await paginar<{ aviso_id: string }>((a, b) =>
+    sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
+  );
+  const evaluables = sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id)));
   const vigentes = guardadas.filter((g) => {
     if (MOTOR && g.motor_version !== VERSION_EVALUACION) return false;
     if (REEVALUAR_ANTES !== null && new Date(g.evaluado_at).getTime() < REEVALUAR_ANTES && (!CONDICION || g.condicion === CONDICION)) return false;

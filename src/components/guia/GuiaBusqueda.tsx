@@ -64,6 +64,20 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
 
   if (fallo || (r && !r.disponible)) return <>{sinGuia}</>;
 
+  // Un aviso que se despublicó entre la guía y el clic: la tarjeta lo dice un momento y la guía se arma de
+  // nuevo sin él (el servidor ya borró la guardada). El crédito no se tocó.
+  async function reemplazar() {
+    try {
+      const [nueva] = await Promise.all([
+        fetch(`/api/lo-que-sigue/guia?a=${encodeURIComponent(analysisId)}`).then((x) => (x.ok ? (x.json() as Promise<Respuesta>) : null)),
+        new Promise((ok) => setTimeout(ok, 2500)),
+      ]);
+      if (nueva) { setR(nueva); setError(null); }
+    } catch {
+      /* queda la tarjeta con su aviso; el resto de la guía sigue */
+    }
+  }
+
   async function analizar(it: Item, sesion = conSesion) {
     if (generando || !r || !r.disponible || !r.combinacion) return;
     if (!muestra) capturarLqs(posthog, EVENTOS_LQS.guiaAnalizarClick, ctx, { aviso_id: it.avisoId, score: it.score, estado: r.estado, con_sesion: sesion });
@@ -90,6 +104,12 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           return;
         }
         if (res.status === 401) { setConSesion(false); setGenerando(null); setRegistrando(it.avisoId); return; }
+        if (res.status === 410 && d.error === "despublicado") {
+          setError({ avisoId: it.avisoId, texto: GUIA.despublicado });
+          setGenerando(null);
+          void reemplazar();
+          return;
+        }
         setError({ avisoId: it.avisoId, texto: d.error === "sin-creditos" ? GUIA.sinCreditos : d.error === "origen" ? GUIA.otraCuenta : GUIA.error });
         resuelto = true;
         break;

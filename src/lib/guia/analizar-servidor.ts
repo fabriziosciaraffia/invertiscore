@@ -1,15 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // El informe de un aviso de la guía (30-sep-2026): el MISMO body que armaría el wizard —sugerencias
 // del aviso, buildLtrPayload— con los datos del aviso y los números de la persona (su pie, su plazo, su
-// tasa; o la combinación ajustada que mostró la guía). La antigüedad: la del edificio si se conoce, si
-// no la ficha leída a demanda (ficha-anio.ts); sin ella, 25 años supuestos, y el informe lo dice
-// (`origenAviso.antiguedad = "supuesta"`).
+// tasa; o la combinación ajustada que mostró la guía). La antigüedad: la que dio la ficha en la lectura
+// que chequeó la publicación (publicacion.ts), o la del edificio si se conoce; sin ella, 25 años
+// supuestos, y el informe lo dice (`origenAviso.antiguedad = "supuesta"`).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { arriendoParaEvaluar, contextoDeSugerencias, payloadDeAviso, respuestasDeAviso, sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
 import type { AnalisisInput } from "@/lib/types";
-import { anioDeAviso, aniosDesde } from "./ficha-anio";
-import { almacenFichas, bajarFicha } from "./ficha-anio-servidor";
+import { aniosDesde, claveEdificio } from "./ficha-anio";
 import { avisoDeCandidato, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { distanciaM, type Combinacion } from "./seleccion";
 
@@ -48,12 +47,22 @@ export async function leerAvisoGuia(admin: SupabaseClient, avisoId: string, o: O
   };
 }
 
-/** Los años del edificio: conocidos, o de la ficha (una lectura como mucho), o null (25 supuestos). */
-export async function antiguedadDelAviso(admin: SupabaseClient, c: CandidatoGuia): Promise<{ anios: number | null; origen: OrigenAntiguedad }> {
+/** El aviso para chequear su ficha, aunque ya no tenga evaluación (un despublicado la pierde). */
+export async function fichaDelAviso(admin: SupabaseClient, avisoId: string): Promise<{ id: string; url: string | null; edificio: string } | null> {
+  const { data } = await admin.from("scraped_properties").select("id, url, comuna, lat, lng").eq("id", avisoId).order("id").limit(1);
+  const f = data?.[0];
+  if (!f || f.lat == null || f.lng == null) return null;
+  return { id: f.id as string, url: (f.url as string | null) ?? null, edificio: claveEdificio({ comuna: f.comuna as string, lat: Number(f.lat), lng: Number(f.lng) }) };
+}
+
+/** Los años del edificio: los de la ficha recién leída, o los del edificio si se conocen, o null (25 supuestos).
+ *  No sale a la fuente: la única lectura es la que chequeó la publicación. */
+export async function antiguedadDelAviso(admin: SupabaseClient, c: CandidatoGuia, anioLeido: number | null): Promise<{ anios: number | null; origen: OrigenAntiguedad }> {
   if (c.condicion === "nuevo") return { anios: 0, origen: "nuevo" };
   if (c.antiguedadAnios != null) return { anios: c.antiguedadAnios, origen: "ficha" };
-  const r = await anioDeAviso({ id: c.avisoId, url: c.url, comuna: c.comuna, lat: c.lat, lng: c.lng }, almacenFichas(admin), bajarFicha);
-  return r.anio != null ? { anios: aniosDesde(r.anio), origen: "ficha" } : { anios: null, origen: "supuesta" };
+  if (anioLeido != null) return { anios: aniosDesde(anioLeido), origen: "ficha" };
+  const { data } = await admin.from("anios_edificio").select("anio").eq("edificio", claveEdificio(c)).maybeSingle();
+  return typeof data?.anio === "number" ? { anios: aniosDesde(data.anio), origen: "ficha" } : { anios: null, origen: "supuesta" };
 }
 
 /** El body del informe, como el del wizard, más `origenAviso`. null si el aviso no tiene arriendo. */

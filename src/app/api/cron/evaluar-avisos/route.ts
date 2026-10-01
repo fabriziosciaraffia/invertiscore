@@ -5,7 +5,7 @@ import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
-import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
+import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
@@ -77,7 +77,10 @@ export async function GET(request: Request) {
     const guardadas = await paginar<EvaluacionGuardada>((a, b) =>
       sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version").order("aviso_id", { ascending: true }).range(a, b),
     );
-    const evaluables = avisosEvaluables(filas, cfg.uf);
+    const despublicados = await paginar<{ aviso_id: string }>((a, b) =>
+      sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
+    );
+    const evaluables = sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id)));
     pendientes = avisosPendientes(evaluables, guardadas);
     // Con lo que sobre del presupuesto, de a poco, los evaluados con otra versión del motor.
     otraVersion = avisosDeOtraVersion(evaluables, guardadas, VERSION_EVALUACION);
