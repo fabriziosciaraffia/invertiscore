@@ -7,9 +7,10 @@
 //   · SOLO LOS QUE CONVIENEN: Comprar con los números de la persona —su pie, su plazo, su tasa—.
 //   · EL RADIO MÁS CHICO que junte tres: 1 km, después 2 y 3. Si en el último hay menos de tres, van
 //     los que haya.
-//   · SI NINGUNO CONVIENE con su combinación, Franco prueba PRIMERO MÁS PLAZO —hasta 30 años— y
-//     DESPUÉS MÁS PIE —en pasos de 5, dentro del tope de la grilla (30% y a lo más 15 puntos sobre el
-//     suyo)—. La primera combinación con alguno que convenga es la que se muestra, con los chips.
+//   · SI NINGUNO CONVIENE con su combinación, Franco prueba PRIMERO MÁS PLAZO —30 años, de una— y
+//     DESPUÉS MÁS PIE —hasta tres escalones de 5, dentro del tope de la grilla (30% y a lo más 15
+//     puntos sobre el suyo)— (pocas combinaciones: 30-sep-2026, la guía no puede tardar). La primera
+//     combinación con alguno que convenga es la que se muestra, con los chips.
 //   · Si ni así: ninguno, sin lista.
 //   · Orden: veredicto (todos Comprar), puntaje, y a igual puntaje el más cercano.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +24,8 @@ export const MARGEN_PARECIDO = 0.2;
 export const VENTANA_GUIA_DIAS = 7;
 /** Cuántos candidatos (los más cercanos) se recalculan como máximo: acota el tiempo de la guía. */
 export const MAX_CANDIDATOS_GUIA = 60;
+/** Cuántos escalones de pie se prueban, a lo más, después del plazo largo. */
+export const ESCALONES_PIE_GUIA = 3;
 const CONCURRENCIA_GUIA = 8;
 
 export type Combinacion = { piePct: number; plazoAnios: number };
@@ -55,12 +58,16 @@ export function rangoParecido(o: { m2: number; precioUF: number }) {
  */
 export function combinacionesGuia(p: { piePct: number; plazoAnios: number; razonSinPie?: RazonSinCapital | null }): Combinacion[] {
   const out: Combinacion[] = [{ piePct: p.piePct, plazoAnios: p.plazoAnios }];
-  const plazos = MIX_PLAZOS_WIZARD.filter((a) => a > p.plazoAnios);
-  for (const plazoAnios of plazos) out.push({ piePct: p.piePct, plazoAnios });
+  const plazoMax = Math.max(...MIX_PLAZOS_WIZARD);
+  if (p.plazoAnios < plazoMax) out.push({ piePct: p.piePct, plazoAnios: plazoMax });
   const plazoFinal = out[out.length - 1].plazoAnios;
   if (pieSeMueveEnLaGrilla(p.piePct, p.razonSinPie)) {
     const techo = Math.min(PIE_TOPE_GRILLA_PCT, p.piePct + MIX_COSTO_TOPE_PTS_PRECIO);
-    for (let pie = p.piePct + MIX_PIE_PASO_PCT; pie <= techo + 1e-9; pie += MIX_PIE_PASO_PCT) out.push({ piePct: pie, plazoAnios: plazoFinal });
+    for (let k = 1; k <= ESCALONES_PIE_GUIA; k++) {
+      const pie = p.piePct + k * MIX_PIE_PASO_PCT;
+      if (pie > techo + 1e-9) break;
+      out.push({ piePct: pie, plazoAnios: plazoFinal });
+    }
   }
   return out;
 }

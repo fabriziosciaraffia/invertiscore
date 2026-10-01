@@ -22,7 +22,7 @@ export async function leerAvisoGuia(admin: SupabaseClient, avisoId: string, o: O
     admin.from("scraped_properties")
       .select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion, direccion, fecha_entrega, url, type, is_active")
       .eq("id", avisoId).order("id").limit(1),
-    admin.from("avisos_evaluados").select("precio_uf, antiguedad_anios, antiguedad_origen, arriendo, venta, gastos_comunes").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from("avisos_evaluados").select("precio_uf, antiguedad_anios, antiguedad_origen, arriendo, venta, gastos_comunes, mediana_comuna").eq("aviso_id", avisoId).maybeSingle(),
   ]);
   const f = sp?.[0];
   if (!f || !ae || f.type !== "venta" || !f.is_active || f.lat == null || f.lng == null) return null;
@@ -45,6 +45,7 @@ export async function leerAvisoGuia(admin: SupabaseClient, avisoId: string, o: O
     arriendo: ae.arriendo,
     venta: ae.venta,
     gastosComunes: (ae.gastos_comunes as number | null) ?? null,
+    medianaComuna: ae.mediana_comuna ?? null,
   };
 }
 

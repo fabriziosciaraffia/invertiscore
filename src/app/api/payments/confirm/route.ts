@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { sendAlertaPagoFallidoInterna, sendAlertaPagoInterna, sendPaymentConfirmationEmail } from "@/lib/email";
@@ -11,7 +12,9 @@ import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
-import { PACK_ANALISIS, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { hayGuia } from "@/lib/guia/activa";
+import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 
@@ -181,8 +184,14 @@ export async function POST(request: Request) {
         try {
           let veredictoPack: string | null = null;
           if (analysisId) {
-            const { data: filaPack } = await supabase.from("analisis").select("results").eq("id", analysisId).single();
+            const { data: filaPack } = await supabase.from("analisis").select("results, tipo_analisis").eq("id", analysisId).single();
             veredictoPack = readVeredicto(filaPack?.results as never) ?? null;
+            // «Por dónde seguir buscando» (30-sep-2026): la guía se calcula YA, después de responderle a
+            // Flow, y queda guardada por informe: cuando la persona llega a «Tienes 3 análisis» está lista.
+            if (hayGuia(modalidadDeTipo(filaPack?.tipo_analisis as string | null))) {
+              const idGuia = analysisId;
+              waitUntil(calcularYGuardarGuia(supabase, idGuia).then(() => undefined, (e) => console.error("[payments/confirm] guía:", e)));
+            }
           }
           await capturarServidor(eventoPackPagado({
             commerceOrder: payment.commerce_order,

@@ -41,6 +41,19 @@ create table if not exists public.guia_analisis (
 alter table public.guia_analisis enable row level security;
 
 -- «Quiero verlo»: el interés, uno por informe. Lo gestiona Franco a mano desde el correo a hola@.
+-- La mediana comunal con que se evaluó cada aviso: la guía recalcula sin consultas en vivo.
+alter table public.avisos_evaluados add column if not exists mediana_comuna jsonb null;
+
+-- La guía de cada informe, calculada al confirmarse el pago del pack (y guardada para la pantalla).
+create table if not exists public.guias_calculadas (
+  analysis_id uuid primary key,
+  resultado jsonb not null,
+  calculada_at timestamptz not null default now(),
+  ms integer null
+);
+alter table public.guias_calculadas enable row level security;
+revoke all on public.guias_calculadas from anon, authenticated;
+
 create table if not exists public.interes_avisos (
   analysis_id uuid primary key,
   user_id uuid not null,
@@ -58,7 +71,8 @@ revoke all on public.fichas_leidas, public.anios_edificio, public.guia_analisis,
 -- Los candidatos de la guía: avisos de venta activos, vistos desde `desde`, del mismo número de
 -- dormitorios, m² y precio en rango, con evaluación y arriendo no sospechoso, a lo más `radius_meters`,
 -- los más cercanos primero.
-create or replace function public.guia_candidatos(
+drop function if exists public.guia_candidatos(double precision, double precision, integer, integer, numeric, numeric, numeric, numeric, timestamp, integer);
+create function public.guia_candidatos(
   center_lat double precision, center_lng double precision, radius_meters integer, prop_dorms integer,
   m2_min numeric, m2_max numeric, uf_min numeric, uf_max numeric, desde timestamp, max_filas integer
 )
@@ -66,7 +80,7 @@ returns table (
   id uuid, comuna text, lat numeric, lng numeric, superficie_m2 numeric, dormitorios integer, banos integer,
   condicion text, direccion text, fecha_entrega text, url text, distance_meters double precision,
   precio_uf numeric, antiguedad_anios integer, antiguedad_origen text, arriendo jsonb, venta jsonb,
-  gastos_comunes integer, contribuciones integer
+  gastos_comunes integer, contribuciones integer, mediana_comuna jsonb
 )
 language sql
 stable
@@ -75,7 +89,8 @@ as $$
   select sp.id, sp.comuna, sp.lat, sp.lng, sp.superficie_m2, sp.dormitorios, sp.banos, coalesce(sp.condicion, 'usado'),
     sp.direccion, sp.fecha_entrega, sp.url,
     st_distance(sp.location, st_setsrid(st_makepoint(center_lng, center_lat), 4326)::geography) as distance_meters,
-    ae.precio_uf, ae.antiguedad_anios, ae.antiguedad_origen, ae.arriendo, ae.venta, ae.gastos_comunes, ae.contribuciones
+    ae.precio_uf, ae.antiguedad_anios, ae.antiguedad_origen, ae.arriendo, ae.venta, ae.gastos_comunes, ae.contribuciones,
+    ae.mediana_comuna
   from scraped_properties sp
   join avisos_evaluados ae on ae.aviso_id = sp.id
   where sp.is_active = true

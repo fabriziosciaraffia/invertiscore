@@ -9,8 +9,10 @@
 //   3 · LOS RESGUARDOS DE LA FICHA: una lectura por aviso, tope global por hora, sin reintentos, el año
 //       compartido por edificio, por el proxy; nadie más que «Analizar este» entra por esa puerta.
 //   4 · EL CRÉDITO SE DESCUENTA UNA SOLA VEZ por persona y aviso: doble clic, reintento o falla a mitad.
-//   5 · EL ORDEN: si ninguno conviene, primero MÁS PLAZO (hasta 30 años) y después MÁS PIE (dentro del
-//       tope); solo los que convienen, hasta tres, el radio más chico; los sospechosos no entran.
+//   5 · EL ORDEN: si ninguno conviene, primero MÁS PLAZO (30 años) y después MÁS PIE (hasta tres escalones
+//       dentro del tope); solo los que convienen, hasta tres, el radio más chico; los sospechosos no entran.
+//   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
+//       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. Sin red ni base.
 // Solo:  node --import tsx scripts/eval/golden/guia-busqueda-catch-test.ts
@@ -74,8 +76,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const gb = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/\{GUIA\.titulo\}/.test(gb) || !/\{GUIA\.ninguno\}/.test(gb) || !/r\.estado === "ajustada" \? <p className="guia-ajustada">\{GUIA\.ajustada\}<\/p> : <p className="guia-txt">\{GUIA\.cuerpo\}<\/p>/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
   if (/href=|<img|<a\s/.test(gb)) F("1 · la guía enlaza al aviso o muestra una imagen (sin enlace, sin fotos)");
-  const api = sinComentarios(leer("src/app/api/lo-que-sigue/guia/route.ts"));
-  if (/\bc\.url\b|\burl:|titulo/.test(api)) F("1 · la ruta de la guía devuelve el enlace o el título del aviso");
+  const srvGuia = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
+  const respuesta = (srvGuia.match(/export function respuestaGuia\([\s\S]*?\n\}/) ?? [""])[0];
+  if (!respuesta || /\bc\.url\b|\burl:|titulo/.test(respuesta)) F("1 · la respuesta de la guía devuelve el enlace o el título del aviso");
 
   // ── 2 · la línea del ticket, solo con la guía ───────────────────────────────
   if (hayGuia("str") || hayGuia("ltr") !== GUIA_ACTIVA) F("2 · hayGuia no es «guía activa y renta larga»");
@@ -196,8 +199,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const txt = (cs: Combinacion[]) => cs.map((c) => `${c.piePct}/${c.plazoAnios}`).join(" ");
   const casosCombo: Array<[number, number, string]> = [
     [15, 25, "15/25 15/30 20/30 25/30 30/30"],
-    [20, 20, "20/20 20/25 20/30 25/30 30/30"],
+    [20, 20, "20/20 20/30 25/30 30/30"],
     [10, 30, "10/30 15/30 20/30 25/30"],
+    [5, 20, "5/20 5/30 10/30 15/30 20/30"],
     [30, 25, "30/25 30/30"],
   ];
   for (const [pie, plazo, debe] of casosCombo) if (txt(combinacionesGuia({ piePct: pie, plazoAnios: plazo })) !== debe) F(`5 · con pie ${pie}% y ${plazo} años se prueba «${txt(combinacionesGuia({ piePct: pie, plazoAnios: plazo }))}», no «${debe}»`);
@@ -217,6 +221,17 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     const m = await elegirGuia(cand, [{ piePct: 20, plazoAnios: 30 }], async (c) => (c.avisoId === "c5" ? ev("COMPRAR", 70) : ev("AJUSTA SUPUESTOS", 90)));
     if (m.estado !== "normal" || m.items.length !== 1 || m.radioM !== 3000 || m.items[0].ev.veredicto !== "COMPRAR") F("5 · entran los que no convienen, o no se amplía el radio hasta encontrar");
   }
+  // ── 6 · sin espera ──────────────────────────────────────────────────────────
+  const evalGuia = (srvGuia.match(/const evaluar = async \(c: CandidatoGuia, combo: Combinacion\)[\s\S]*?\n  \};/) ?? [""])[0];
+  if (!/const s = sondaConPatch\(body as never, cfg\.uf, mediana as never, asOf, \{\}\);/.test(evalGuia) || /runAnalysis\(/.test(srvGuia)) F("6 · la guía corre el motor entero por candidato (debe ser la sonda)");
+  if (!/let mediana = c\.medianaComuna;\s*if \(mediana == null\) \{/.test(evalGuia)) F("6 · la guía pide la mediana en vivo aunque esté guardada en la fila evaluada");
+  const evalAviso = sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts"));
+  if (!/out\.mediana_comuna = mediana \?\? null;/.test(evalAviso) || !/ae\.mediana_comuna/.test(leer("supabase/migrations/20260930_guia_busqueda.sql"))) F("6 · la evaluación no guarda la mediana comunal (o la RPC no la devuelve)");
+  const apiGuia = sinComentarios(leer("src/app/api/lo-que-sigue/guia/route.ts"));
+  if (!/const guardada = await guiaGuardada\(admin, a\);\s*const r = guardada \?\? \(await calcularYGuardarGuia\(admin, a\)\);/.test(apiGuia)) F("6 · la pantalla no lee la guía guardada antes de calcularla");
+  const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
+  if (!/if \(hayGuia\(modalidadDeTipo\(filaPack\?\.tipo_analisis as string \| null\)\)\) \{\s*const idGuia = analysisId;\s*waitUntil\(calcularYGuardarGuia\(supabase, idGuia\)/.test(confirm)) F("6 · la guía no se calcula al confirmarse el pago del pack (o se calcula para renta corta)");
+
   const mig = leer("supabase/migrations/20260930_guia_busqueda.sql");
   if (!/and ae\.arriendo_sospechoso is not true/.test(mig) || !/and sp\.dormitorios = prop_dorms/.test(mig) || !/and sp\.scraped_at >= desde/.test(mig)) F("5 · los candidatos no excluyen los sospechosos, o no piden los mismos dormitorios y los 7 días");
 
@@ -244,6 +259,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 //   5 · O1 no prueba más plazo · O2 prueba primero más pie · O3 entran los que no convienen · O4 no se
 //       queda en el radio más chico · O5 entran los sospechosos · O6 el pie pasa el tope · O7 ordena por
 //       cercanía y no por puntaje.
+// Segunda vuelta (30-sep-2026, la guía sin espera): 41/41 en rojo. Cambian O1 (sin el plazo largo) y V5 (el
+// enlace en respuestaGuia, que salió de la ruta); nuevas O8 vuelve a probar 25 años · S1 motor entero por
+// candidato · S2 mediana siempre en vivo · S3 la evaluación no guarda la mediana · S4 la pantalla calcula
+// siempre · S5 la confirmación no precalcula · S6 precalcula también renta corta.
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 

@@ -108,6 +108,9 @@ export interface FilaEvaluacion {
   arriendo_zona_m2: number | null;
   /** El arriendo con que se evaluó, sospechoso contra la zona (`arriendoSospechoso`). */
   arriendo_sospechoso: boolean;
+  /** La mediana comunal de venta con que se evaluó (prefetchMedianaComunaVenta, con su capRef), guardada
+   *  para que la guía de búsqueda recalcule sin consultas en vivo (30-sep-2026). */
+  mediana_comuna: unknown | null;
 }
 
 /** Banda de antigüedad del wizard para unos años conocidos (la misma escala que antiguedadToNumber). */
@@ -211,14 +214,17 @@ export async function evaluarAviso(
     radio_degradado: !!arr.degradada || !!vta.degradada,
     sug,
   };
-  const vacio = { veredicto_20: null, score_20: null, flujo_20: null, veredicto_30: null, score_30: null, flujo_30: null, gastos_comunes: null, contribuciones: null };
+  const vacio = { veredicto_20: null, score_20: null, flujo_20: null, veredicto_30: null, score_30: null, flujo_30: null, gastos_comunes: null, contribuciones: null, mediana_comuna: null };
   if (!arriendo) return { ...base, ...vacio };
 
   const ctx = contextoDeSugerencias(arriendo, arr, vta, cfg);
   const out: Record<string, unknown> = {};
+  // La mediana comunal depende del depto (comuna, m², dormitorios, nuevo o usado), no del pie: una vez.
+  let mediana: Awaited<ReturnType<typeof prefetchMedianaComunaVenta>> | undefined;
   for (const pie of PERFILES_ESTANDAR) {
     const body = buildLtrPayload(respuestasDeAviso(a, pie, cfg.tasa, arriendo.monto), ctx) as Record<string, unknown> & { gastos?: number; contribuciones?: number };
-    const mediana = await prefetchMedianaComunaVenta(sb as never, body as never, cfg.uf).catch(() => undefined);
+    if (!mediana) mediana = await prefetchMedianaComunaVenta(sb as never, body as never, cfg.uf).catch(() => undefined);
+    out.mediana_comuna = mediana ?? null;
     const r = runAnalysis(body as never, cfg.uf, mediana as never, new Date()) as { score?: number; metrics?: { flujoNetoMensual?: number } };
     out[`veredicto_${pie}`] = readVeredicto(r as never) ?? null;
     out[`score_${pie}`] = typeof r.score === "number" ? Math.round(r.score) : null;
