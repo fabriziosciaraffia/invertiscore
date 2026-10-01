@@ -1,49 +1,57 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   «POR DÓNDE SEGUIR BUSCANDO» y «QUIERO VERLO» (30-sep-2026, mockup aprobado)
-   · La guía vive en /payments/return, con los tokens del chrome (--franco-*), claro y oscuro.
-   · Cada aviso es una tarjeta sin foto: comuna, tipología, m², precio, distancia, veredicto y flujo.
-     El veredicto va con el cuadradito de la tríada (Comprar = azul tinta); el flujo negativo en rojo
-     (la regla de la plata); el botón en tinta con contorno.
-   · El bloque del informe usa los tokens del documento (--doc-*), que pone .doc-tokens.
+   DESPUÉS DE PAGAR, UNA IDEA (01-oct-2026): «Tienes 3 análisis. Empieza por estos.», la frase, los
+   chips, las tarjetas y la línea del próximo depto, en una pantalla en escritorio; a 390 el título y la
+   primera tarjeta juntos. Todo en Inter (--font-ui), sin mono ni mayúsculas. Tokens del chrome
+   (--franco-*), claro y oscuro. El veredicto con el cuadradito de la tríada (Comprar = azul tinta); el
+   flujo negativo en rojo (la regla de la plata); el botón en tinta con contorno.
    ═════════════════════════════════════════════════════════════════════════════ */
-.guia { margin-top: 34px; text-align: left; font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; color: var(--franco-text); }
-.guia-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 10px; }
-@media (min-width: 768px) { .guia { margin-top: 48px; } .guia-titulo { font-size: 32px; } }
-.guia-txt { font-size: 15px; line-height: 1.5; color: var(--franco-text-secondary); margin: 0 0 6px; max-width: 640px; }
-.guia-ajustada, .guia-ninguno { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 17px; line-height: 1.3; margin: 6px 0 6px; padding-left: 12px; border-left: 3px solid var(--franco-text); max-width: 640px; }
-.guia-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 18px; }
+.guia { text-align: left; font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); }
+.guia-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 8px; }
+@media (min-width: 768px) { .guia-titulo { font-size: 34px; } }
+.guia-txt { font-size: 15px; line-height: 1.5; color: var(--franco-text-secondary); margin: 0; max-width: 680px; }
+.guia-ajustada { font-weight: 600; font-size: 15px; line-height: 1.45; margin: 0; padding-left: 12px; border-left: 3px solid var(--franco-text); max-width: 680px; }
+.guia-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
 .guia-chips span { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 11px; border-radius: 99px; background: var(--franco-card); border: 1px solid var(--franco-border); font-size: 12.5px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
 .guia-chips span b { font-weight: 600; color: var(--franco-text); margin-left: 4px; }
-.guia-lista { display: grid; gap: 12px; }
-@media (min-width: 768px) { .guia-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
-.guia-av { border: 1px solid var(--franco-border); background: var(--franco-card); border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; min-width: 0; }
-.guia-fantasma { min-height: 212px; opacity: 0.6; animation: guia-latido 1.4s ease-in-out infinite; }
+.guia-lista { display: grid; gap: 10px; }
+@media (min-width: 768px) { .guia-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+.guia-av { border: 1px solid var(--franco-border); background: var(--franco-card); border-radius: 16px; padding: 14px 16px 12px; display: flex; flex-direction: column; min-width: 0; }
+.guia-fantasma { min-height: 196px; opacity: 0.6; animation: guia-latido 1.4s ease-in-out infinite; }
 @keyframes guia-latido { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .guia-fantasma { animation: none; } }
 .guia-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.guia-ojo { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--franco-text-tertiary); min-width: 0; }
-.guia-dist { font-size: 12.5px; color: var(--franco-text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.guia-precio { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; font-size: 24px; line-height: 1.1; letter-spacing: -0.01em; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+.guia-ojo { font-size: 13px; font-weight: 500; color: var(--franco-text-secondary); min-width: 0; }
+.guia-dist { font-size: 13px; color: var(--franco-text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.guia-precio { font-weight: 700; font-size: 22px; line-height: 1.15; letter-spacing: -0.01em; margin: 6px 0 10px; font-variant-numeric: tabular-nums; }
 .guia-dos { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--franco-border); border-bottom: 1px solid var(--franco-border); }
-.guia-dos > div { padding: 10px 0; min-width: 0; }
+.guia-dos > div { padding: 9px 0; min-width: 0; }
 .guia-dos > div + div { padding-left: 14px; border-left: 1px solid var(--franco-border); }
-.guia-k { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--franco-text-tertiary); margin-bottom: 4px; }
-.guia-ver { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; font-size: 15px; }
+.guia-k { font-size: 12px; color: var(--franco-text-tertiary); margin-bottom: 3px; }
+.guia-ver { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 15px; }
 .guia-ver::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--verdict-comprar); flex: none; }
 [data-theme="dark"] .guia-ver::before { background: #6C9BE0; }
-.guia-pt { font-family: var(--font-mono), ui-monospace, monospace; font-size: 13px; color: var(--franco-text-tertiary); }
-.guia-flujo { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; }
-.guia-flujo small { display: block; font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; color: var(--franco-text-tertiary); }
+.guia-pt { font-weight: 500; font-size: 13px; color: var(--franco-text-tertiary); font-variant-numeric: tabular-nums; }
+.guia-flujo { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+.guia-flujo small { display: block; font-weight: 400; font-size: 12px; color: var(--franco-text-tertiary); }
 .guia-neg { color: var(--signal-red); }
-.guia-acc { margin-top: auto; padding-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.guia-an { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 99px; border: 1.5px solid var(--franco-text); background: none; color: var(--franco-text); font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif; font-weight: 500; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.guia-acc { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 8px; }
+.guia-an { display: inline-flex; align-items: center; height: 38px; padding: 0 16px; border-radius: 99px; border: 1.5px solid var(--franco-text); background: none; color: var(--franco-text); font: inherit; font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; }
 .guia-an:disabled { cursor: default; opacity: 0.55; }
 .guia-an[data-presionado="1"] { opacity: 0.72; }
 .guia-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
-.guia-cr { font-size: 12px; color: var(--franco-text-tertiary); text-align: right; }
+.guia-cr { font-size: 13px; color: var(--franco-text-tertiary); }
 .guia-error { margin: 10px 0 0; font-size: 13px; color: var(--signal-red); }
-.guia-pie-2 { margin-top: 4px !important; }
-.guia-pie { margin: 16px 0 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-tertiary); max-width: 640px; }
+.guia-otro { margin: 16px 0 0; font-size: 15px; color: var(--franco-text-secondary); }
+.guia-otro-enlace { color: var(--franco-text); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.guia-pie { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-tertiary); max-width: 760px; }
+/* el registro en un paso dentro de la tarjeta (quien pagó sin cuenta) */
+.guia-reg { margin-top: auto; padding-top: 12px; }
+.guia-reg-t { font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); margin: 0 0 8px; }
+.guia-reg-fila { display: flex; gap: 6px; }
+.guia-reg-fila input { flex: 1; min-width: 0; height: 40px; border-radius: 10px; padding: 0 12px; border: 1px solid var(--franco-border); background: var(--franco-bg); color: var(--franco-text); font: inherit; font-size: 16px; outline: 0; }
+.guia-reg-fila input:focus { border-color: var(--franco-text); }
+.guia-reg-fila button { height: 40px; border-radius: 99px; border: 0; padding: 0 14px; background: var(--franco-text); color: var(--franco-bg); font: inherit; font-weight: 600; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.guia-reg-fila button:disabled { opacity: 0.6; }
 
 /* ── el informe que sale de un aviso ── (con respaldo en los tokens del chrome: fuera del documento, como
    en /dev/lo-que-sigue, los --doc-* no existen) */

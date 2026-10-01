@@ -289,7 +289,8 @@ export function runLoQueSigueTier(): { hard: number } {
     ] as const) if (!re.test(sinComentarios(leer(f)))) F(`9 · ${f} no lleva la modalidad del informe hasta el evento de después de pagar`);
     if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
     const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-    if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
+    // (01-oct-2026) Con guía (renta larga) «Tienes 3 análisis. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
+    if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,400}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
   }
 
   // ── 10 · EL CARRITO ABANDONADO NO LE ESCRIBE A QUIEN DEJÓ EL PACK ──────────

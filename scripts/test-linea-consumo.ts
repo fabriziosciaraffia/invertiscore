@@ -122,7 +122,9 @@ test("sin saldo, modalidad simple y sin comuna", () => {
 // su REGLA (qué promete y qué pide), no por el texto exacto.
 test("guest con su análisis gratis disponible → genera sin pedir cuenta", () => {
   const linea = lineaConsumo({ ...base, tier: "guest", anonCapAvailable: true }, false, false, "ltr", "Providencia") ?? "";
-  assert.ok(/sin crear cuenta/i.test(linea), `debe decir que no pide cuenta: ${linea}`);
+  // (01-oct-2026) Fabrizio: «El primero va por cuenta de Franco.» —sin «sin crear cuenta»—. La regla sigue: promete el
+  // gratis y no pide cuenta.
+  assert.ok(/va por cuenta de Franco/i.test(linea) && !/sin crear cuenta/i.test(linea), `debe decir que el primero va por cuenta de Franco: ${linea}`);
   assert.ok(!/crea tu cuenta/i.test(linea), `con el cap disponible no se pide registro: ${linea}`);
 });
 

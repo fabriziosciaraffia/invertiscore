@@ -193,14 +193,20 @@ function PaymentReturnContent() {
           </div>
         )}
 
+        {/* Después de pagar el pack, UNA idea (01-oct-2026): donde hay guía (renta larga, el mismo predicado
+            que la línea del ticket que la promete), «Tienes 3 análisis. Empieza por estos.» con la guía; si
+            el informe no tiene guía, o en renta corta, «Tienes 3 análisis.» con el próximo análisis. */}
         {retornoPack && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
-          <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />
-        )}
-
-        {/* «Por dónde seguir buscando» (30-sep-2026): solo donde hay guía (renta larga), igual que la
-            línea del ticket que la promete. */}
-        {retornoPack && hayGuia(retornoPack.modalidad) && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
-          <GuiaBusqueda analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} conSesion={paymentStatus === "paid"} />
+          hayGuia(retornoPack.modalidad) ? (
+            <GuiaBusqueda
+              analysisId={retornoPack.analysisId}
+              veredicto={retornoPack.veredicto}
+              conSesion={paymentStatus === "paid"}
+              sinGuia={<DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />}
+            />
+          ) : (
+            <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />
+          )
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (

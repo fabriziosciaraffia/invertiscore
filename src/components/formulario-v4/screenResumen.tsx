@@ -1256,7 +1256,7 @@ export function lineaConsumo(
   // consumido, el CTA es registro y la línea no promete recuperar nada.
   if (!isLoggedIn) {
     return tier?.anonCapAvailable === true
-      ? "El primero va por cuenta de Franco — sin crear cuenta."
+      ? "El primero va por cuenta de Franco."
       : "Tu análisis gratis ya lo usaste. Crea tu cuenta para seguir.";
   }
 

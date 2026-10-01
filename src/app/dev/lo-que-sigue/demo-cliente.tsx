@@ -118,6 +118,8 @@ export function DemoCliente() {
 
         {rotulo("Por dónde seguir buscando · tres que convienen")}
         <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.normal} />
+        {rotulo("Después de pagar sin cuenta · «Analizar este» pide el código en la tarjeta (el correo es real)")}
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion={false} muestra={GUIA_MUESTRA.normal} />
         {rotulo("Por dónde seguir buscando · con el plazo ajustado")}
         <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.ajustada} />
         {rotulo("Por dónde seguir buscando · ninguno conviene")}

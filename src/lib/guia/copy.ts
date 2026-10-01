@@ -12,15 +12,22 @@ export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 export const TICKET_INCLUYE_GUIA =
   "Incluye una selección de deptos publicados parecidos a este, ya revisados con tu pie y tu plazo. Analizas el que quieras con un clic.";
 
+// 01-oct-2026: después de pagar, una sola idea —«compraste 3 análisis; empieza por estos»—. El título
+// y el cuerpo se funden; «ajustada» y «ninguno» van debajo del título en lugar del cuerpo.
 export const GUIA = {
-  titulo: "Por dónde seguir buscando",
-  bajada: "Deptos publicados hoy, parecidos y cercanos al que analizaste.",
-  cuerpo: "Franco los revisó con tu pie y tu plazo, y estos son los mejores.",
+  titulo: "Tienes 3 análisis. Empieza por estos.",
+  cuerpo: "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
   ajustada: "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores.",
   ninguno: "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona.",
   analizar: "Analizar este",
   analizando: "Generando…",
-  usaUno: "Usa 1 de tus análisis",
+  usaUno: "usa 1 de tus 3",
+  otroDepto: "¿Tienes otro depto en mente?",
+  otroDeptoEnlace: "Analízalo con tus números ya cargados",
+  registroTitulo: "Entra con el correo con que pagaste y lo analizamos.",
+  registroEnviado: (correo: string) => `Te mandamos un código a ${correo}.`,
+  entrarYAnalizar: "Entrar y analizar",
+  otraCuenta: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
   sinCreditos: "Ya usaste tus análisis.",
   error: "No pudimos generar el informe. Intenta de nuevo.",
   flujo: "Flujo mensual",

@@ -11,6 +11,11 @@
 //   4 · EL CRÉDITO SE DESCUENTA UNA SOLA VEZ por persona y aviso: doble clic, reintento o falla a mitad.
 //   5 · EL ORDEN: si ninguno conviene, primero MÁS PLAZO (30 años) y después MÁS PIE (hasta tres escalones
 //       dentro del tope); solo los que convienen, hasta tres, el radio más chico; los sospechosos no entran.
+//   7 · DESPUÉS DE PAGAR, UNA IDEA (01-oct-2026): «Tienes 3 análisis. Empieza por estos.», la frase de la
+//       guía, los chips, las tarjetas y una línea para analizar otro depto con los números cargados. Sin el
+//       bloque de color ni la frase por veredicto. Las tarjetas en Inter, sin mono ni mayúsculas.
+//   8 · QUIEN PAGÓ SIN CUENTA escribe el código en la misma tarjeta y el informe sale al entrar, sin salir
+//       de la pantalla (nada de mandarlo a /registro).
 //   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
 //       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
@@ -50,9 +55,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 
   // ── 1 · el vocabulario ──────────────────────────────────────────────────────
   const aprobado: Array<[string, string]> = [
-    [GUIA.titulo, "Por dónde seguir buscando"],
-    [GUIA.bajada, "Deptos publicados hoy, parecidos y cercanos al que analizaste."],
-    [GUIA.cuerpo, "Franco los revisó con tu pie y tu plazo, y estos son los mejores."],
+    [GUIA.titulo, "Tienes 3 análisis. Empieza por estos."],
+    [GUIA.cuerpo, "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
+    [GUIA.usaUno, "usa 1 de tus 3"],
+    [`${GUIA.otroDepto} ${GUIA.otroDeptoEnlace}`, "¿Tienes otro depto en mente? Analízalo con tus números ya cargados"],
     [GUIA.ajustada, "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores."],
     [GUIA.ninguno, "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona."],
     [GUIA.analizar, "Analizar este"],
@@ -75,9 +81,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (vedada.test(s)) F(`1 · ${f} usa una palabra vedada`);
   }
   const gb = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
-  if (!/\{GUIA\.titulo\}/.test(gb) || !/\{GUIA\.ninguno\}/.test(gb) || !/r\.estado === "ajustada" \? <p className="guia-ajustada">\{GUIA\.ajustada\}<\/p> : <p className="guia-txt">\{GUIA\.cuerpo\}<\/p>/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
-  if (/href=|<img|<a\s/.test(gb)) F("1 · la guía enlaza al aviso o muestra una imagen (sin enlace, sin fotos)");
-  if (!/<p className="guia-pie">\{GUIA\.antiguedad\}<\/p>/.test(gb)) F("1 · la guía no dice que calcula con 25 años y que el informe usa la real");
+  if (!/<h1 className="guia-titulo">\{GUIA\.titulo\}<\/h1>/.test(gb) || !/const frase = !r \? null : !r\.disponible \? null : r\.estado === "ninguno" \? GUIA\.ninguno : r\.estado === "ajustada" \? GUIA\.ajustada : GUIA\.cuerpo;/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
+  if (/<img|<a\s|\bc\.url\b|\bit\.url\b|href=\{?["'`]https?:/.test(gb)) F("1 · la guía enlaza al aviso o muestra una imagen (sin enlace, sin fotos)");
+  if (!/<p className="guia-pie">\{GUIA\.antiguedad\} \{GUIA\.pie\}<\/p>/.test(gb)) F("1 · la guía no dice que calcula con 25 años y que el informe usa la real");
   const srvGuia = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
   const respuesta = (srvGuia.match(/export function respuestaGuia\([\s\S]*?\n\}/) ?? [""])[0];
   if (!respuesta || /\bc\.url\b|\burl:|titulo/.test(respuesta)) F("1 · la respuesta de la guía devuelve el enlace o el título del aviso");
@@ -87,7 +93,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   if (!/\{hayGuia\(ctx\.modalidad\) && <p className="lqs-incluye" data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}/.test(tk)) F("2 · el ticket dice la línea de la guía sin preguntar si la guía existe (hayGuia)");
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/\{retornoPack && hayGuia\(retornoPack\.modalidad\) && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*<GuiaBusqueda /.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
+  if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
   if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(`\/api\/lo-que-sigue\/guia\?a=\$\{encodeURIComponent\(analysisId\)\}`\)/.test(gb)) F("2 · la guía no tiene ruta o el componente no la pide");
   for (const f of archivosSrc()) {
     if (f === "src/lib/guia/copy.ts" || f === "src/components/lo-que-sigue/TicketPack.tsx") continue;
@@ -241,6 +247,26 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   if (!/if \(hayGuia\(modalidadDeTipo\(filaPack\?\.tipo_analisis as string \| null\)\)\) \{\s*const idGuia = analysisId;\s*waitUntil\(calcularYGuardarGuia\(supabase, idGuia\)/.test(confirm)) F("6 · la guía no se calcula al confirmarse el pago del pack (o se calcula para renta corta)");
 
+  // ── 7 · después de pagar, una idea ──────────────────────────────────────────
+  if (/DESPUES_DE_PAGAR|fraseVeredicto|lqs-mat|lqs-btn|<DespuesDePagar\b/.test(gb)) F("7 · la guía vuelve a traer el bloque de color o la frase por veredicto");
+  if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,260}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
+  if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
+  if (!/<span className="guia-cr">· \{GUIA\.usaUno\}<\/span>/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus 3»");
+  if (!/capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad: "ltr" \}/.test(gb)) F("7 · la pantalla de después de pagar dejó de medir post_pago_visto");
+  const cssGuia = leer("src/components/guia/guia.css");
+  const cssTarjetas = cssGuia.slice(0, cssGuia.indexOf("/* ── el informe que sale de un aviso"));
+  if (!cssTarjetas || /font-mono|monospace|text-transform:\s*uppercase|letter-spacing:\s*0\.0[5-9]em/.test(cssTarjetas) || !/\.guia \{[^}]*font-family: var\(--font-ui\), "Inter"/.test(cssTarjetas)) F("7 · las tarjetas vuelven al mono o a las mayúsculas (deben ir en Inter)");
+  // El modal de confirmación del wizard (01-oct-2026): «El primero va por cuenta de Franco.», sin «sin crear cuenta».
+  const resumenW = sinComentarios(leer("src/components/formulario-v4/screenResumen.tsx"));
+  if (!/\? "El primero va por cuenta de Franco\."/.test(resumenW) || /sin crear cuenta/.test(resumenW)) F("7 · el modal de confirmación no dice «El primero va por cuenta de Franco.» (o vuelve «sin crear cuenta»)");
+  // ── 8 · el código en la tarjeta ─────────────────────────────────────────────
+  if (/router\.push\(`\/registro/.test(gb)) F("8 · quien pagó sin cuenta sale de la pantalla a registrarse");
+  if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
+  if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); void analizar\(it, true\); \}\} \/>/.test(gb)) F("8 · al entrar con el código no se genera el informe de esa tarjeta");
+  const regT = sinComentarios(leer("src/components/guia/RegistroEnTarjeta.tsx"));
+  if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
+  if (/router\.|window\.location\.(href|assign)/.test(regT)) F("8 · el registro de la tarjeta navega fuera de la pantalla");
+
   const mig = leer("supabase/migrations/20260930_guia_busqueda.sql");
   if (!/and ae\.arriendo_sospechoso is not true/.test(mig) || !/and sp\.dormitorios = prop_dorms/.test(mig) || !/and sp\.scraped_at >= desde/.test(mig)) F("5 · los candidatos no excluyen los sospechosos, o no piden los mismos dormitorios y los 7 días");
 
@@ -275,6 +301,11 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 // Tercera vuelta (01-oct-2026, Comprar 73 en la guía y 82 en el informe): 4/4 en rojo. A1 la guía no dice la
 // antigüedad · A2 el body del aviso sin methodologyVersion (modelo de costos viejo) · A3 la guía arma el body
 // pelado · A4 cambia la frase de la antigüedad.
+// Cuarta vuelta (01-oct-2026, después de pagar una idea + el código en la tarjeta): 14/14 en rojo. P1 vuelve
+// el bloque de color con la guía · P2 la frase por veredicto · P3 sin la línea del próximo depto · P4 la tarjeta
+// sin «usa 1 de tus 3» · P5 sin post_pago_visto · P6 tarjetas en mono · P7 en mayúsculas · P8 el título viejo ·
+// P9 vuelve «sin crear cuenta» · R1 sin cuenta sale a /registro · R2 el 401 no pide el código · R3 al entrar no
+// genera · R4 sin reclamar lo anónimo · R5 el registro navega afuera.
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 
