@@ -40,6 +40,8 @@ import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared
 import { createClient } from "@/lib/supabase/client";
 import { purgarBorradoresYPestana } from "@/lib/draft-keys";
 import { currentTheme, setTheme, type Theme } from "@/lib/theme";
+import { hrefEntrar } from "@/lib/entrar/entrada";
+import { usePathname } from "next/navigation";
 import type { Veredicto } from "@/lib/types";
 import "./header-franco.css";
 
@@ -113,6 +115,16 @@ function useSesion(inicial: SesionHeader | null | undefined): SesionHeader | nul
   return inicial !== undefined ? inicial : sesion;
 }
 
+/** La ruta actual para el `next` de «Entrar»: el path (también en el server) y, ya montado, su query. */
+function useRutaActual(): string {
+  const pathname = usePathname();
+  const [ruta, setRuta] = useState<string | null>(null);
+  useEffect(() => {
+    setRuta(window.location.pathname + window.location.search);
+  }, [pathname]);
+  return ruta ?? pathname ?? "/";
+}
+
 function BotonTema({ className = "" }: { className?: string }) {
   const [claro, setClaro] = useState(true);
   useEffect(() => setClaro(currentTheme() === "light"), []);
@@ -152,7 +164,7 @@ function MenuCuenta({ email }: { email: string }) {
     purgarBorradoresYPestana();
     try { await createClient().auth.signOut(); } catch { /* sin sesión: igual a login */ }
     try { posthog.reset(); } catch { /* PostHog sin inicializar */ }
-    window.location.assign("/login");
+    window.location.assign("/entrar");
   };
   const elegirTema = (t: Theme) => { setTemaActual(t); setTheme(t); };
   return (
@@ -206,7 +218,11 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   const conIdentidad = fijo && !!identidad;
 
   const wordmark = <FrancoLogo size="banda" href={logueado ? "/dashboard" : "/"} className="hf-wm" />;
-  const entrar = <EnlaceCarga href="/login" className="hf-txt hf-oculta-fija">Entrar</EnlaceCarga>;
+  // UNA SOLA ENTRADA (01-oct-2026): «Entrar» lleva a la entrada por código con la ruta actual como
+  // `next`, en todos los estados del header. Desde el informe anónimo, con el copy del informe.
+  const rutaActual = useRutaActual();
+  const hrefEntrada = hrefEntrar(rutaActual, modo === "anonimo" ? "informe" : "generico");
+  const entrar = <EnlaceCarga href={hrefEntrada} className="hf-txt hf-oculta-fija">Entrar</EnlaceCarga>;
 
   let contextoInforme: ReactNode = null;
   if (modo === "compartido") contextoInforme = <span className="hf-ctx hf-solo-ancho"><b>Compartido contigo</b>{informe?.fecha}</span>;
@@ -218,13 +234,16 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   } else if (contexto === "wizard") {
     // El wizard no lleva botón principal: el principal de la pantalla es avanzar. «Entrar» va como
     // píldora con contorno en papel (QA 28-sep-2026): visible sobre el material, sin competir con
-    // el campo.
-    derecha = resuelta ? (
+    // el campo. Con sesión (01-oct-2026), el avatar con su menú, como en el resto del sitio: Mis
+    // análisis, Planes, Mi cuenta, Perfil, tema y Cerrar sesión (el tema va al menú, no a la barra).
+    derecha = !resuelta ? null : logueado ? (
+      <MenuCuenta email={sesion?.email ?? ""} />
+    ) : (
       <>
         <BotonTema />
-        {logueado ? <EnlaceCarga href="/dashboard" className="hf-txt hf-pild">Mis análisis</EnlaceCarga> : <EnlaceCarga href="/login" className="hf-txt hf-pild">Entrar</EnlaceCarga>}
+        <EnlaceCarga href={hrefEntrada} className="hf-txt hf-pild">Entrar</EnlaceCarga>
       </>
-    ) : null;
+    );
   } else if (modo === "compartido") {
     derecha = (
       <>

@@ -12,6 +12,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import FrancoLogo from "@/components/franco-logo";
 import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
 import { ESLOGAN } from "@/lib/eslogan";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 import type { DatosLanding } from "@/lib/landing-vivo";
 import type { Veredicto } from "@/lib/types";
 
@@ -84,7 +85,7 @@ export function PieLanding({ ultimo, ahora, conFondo = true }: { ultimo: DatosLa
             <EnlaceCarga href="/metodologia">Cómo calcula</EnlaceCarga>
             <EnlaceCarga href="/comunas">Comunas</EnlaceCarga>
             <EnlaceCarga href="/pricing">Planes</EnlaceCarga>
-            <EnlaceCarga href="/login">Entrar</EnlaceCarga>
+            <EnlaceCarga href={hrefEntrar("/")}>Entrar</EnlaceCarga>
           </nav>
         </div>
         {ultimo && (
