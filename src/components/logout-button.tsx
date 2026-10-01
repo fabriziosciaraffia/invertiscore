@@ -23,7 +23,7 @@ export function LogoutButton() {
     } catch {
       /* PostHog sin inicializar — no es un problema */
     }
-    router.push("/login");
+    router.push("/entrar");
     router.refresh();
   };
 

@@ -321,7 +321,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
   if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); void analizar\(it, true\); \}\} \/>/.test(gb)) F("8 · al entrar con el código no se genera el informe de esa tarjeta");
   const regT = sinComentarios(leer("src/components/guia/RegistroEnTarjeta.tsx"));
-  if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
+  if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
   if (/router\.|window\.location\.(href|assign)/.test(regT)) F("8 · el registro de la tarjeta navega fuera de la pantalla");
 
 

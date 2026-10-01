@@ -68,6 +68,7 @@ import { runLandingRendimientoTier } from "./landing-rendimiento-catch-test";
 import { runMedicionTier } from "./medicion-catch-test";
 import { runAffordanceTier } from "./affordance-catch-test";
 import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
+import { runEntradaCodigoTier } from "./entrada-codigo-catch-test";
 import { runCorreosTier } from "./correos-catch-test";
 import { runDashboardVacioTier } from "./dashboard-vacio-catch-test";
 import { runCasaTier } from "./casa-catch-test";
@@ -362,6 +363,11 @@ function printSeed(r: SeedReport) {
   // Tier LO-QUE-SIGUE (28-sep-2026, 0 tokens): las dos ofertas del primer informe anónimo. En rojo
   // por mutación.
   totalHard += runLoQueSigueTier().hard;
+  // Tier ENTRADA-CÓDIGO (01-oct-2026, 0 tokens): una sola entrada, el código (/entrar con su copy por
+  // contexto); «Entrar» del header con next validado; el avatar con sesión en landing y wizard; el
+  // refresco tras el código con «Estás dentro» vivo; la bienvenida al registrarse; el saludo con el
+  // nombre real en todos los correos. En rojo por mutación.
+  totalHard += runEntradaCodigoTier().hard;
   totalHard += runCorreosTier().hard;
   totalHard += runDashboardVacioTier().hard;
   // Tier CASA (02-oct-2026, 0 tokens): el dashboard como casa —saldo real, el suelto y no el pack,

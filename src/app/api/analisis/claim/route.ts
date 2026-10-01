@@ -8,6 +8,11 @@
 //
 // El Lead de Meta va en waitUntil: este endpoint está en el camino del login
 // y no puede esperar el timeout de Meta (5s).
+//
+// BIENVENIDA AL REGISTRARSE POR CÓDIGO (01-oct-2026): con `{ porCodigo: true }` en el body —lo mandan
+// los formularios del código justo después de verifyOtp— también sale `ensureWelcomeEmail` (una sola
+// vez por persona, claim atómico), en waitUntil y ANTES del atajo sin cookie: quien entra por código
+// sin informe anónimo también recibe su bienvenida.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
@@ -16,6 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminServiceClient } from "@/lib/admin-auth";
 import { tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos, enviarLeadClaim } from "@/lib/anon-claim";
+import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { cookies } from "next/headers";
 
@@ -27,6 +33,11 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const cuerpo = (await request.json().catch(() => null)) as { porCodigo?: unknown } | null;
+    if (cuerpo?.porCodigo === true && user.email) {
+      waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
     }
 
     const token = tokenAnonDelRequest();

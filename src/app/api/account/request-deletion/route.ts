@@ -4,7 +4,7 @@ import {
   sendAccountDeletionInternalEmail,
   sendAccountDeletionUserEmail,
 } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 
 export async function POST() {
   const supabase = createClient();
@@ -46,11 +46,11 @@ export async function POST() {
       credits,
     });
 
-    // (2) Confirmación al usuario. Nombre vía resolveDisplayName (resuelto en
-    // el caller para evitar el ciclo de imports con welcome.ts).
+    // (2) Confirmación al usuario. Saluda con el nombre REAL (nombreReal; sin él, «Hola,»), resuelto
+    // en el caller para evitar el ciclo de imports con welcome.ts.
     await sendAccountDeletionUserEmail(
       user.email!,
-      resolveDisplayName(user.user_metadata, user.email),
+      nombreReal(user.user_metadata) ?? "",
       { userId: user.id },
     );
 

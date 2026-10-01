@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendCheckoutRecoveryEmail } from "@/lib/email";
+import { nombreReal } from "@/lib/welcome";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { productosRecuperables } from "@/lib/lo-que-sigue/oferta-pack";
 import { captureApiWarning } from "@/lib/observabilidad";
@@ -194,8 +195,7 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const name =
-        u.user_metadata?.nombre || u.user_metadata?.full_name || null;
+      const name = nombreReal(u.user_metadata);
       const productKey = row.product as FlowProductKey;
       const productLabel =
         FLOW_PRODUCTS[productKey]?.subject ?? "tu análisis";

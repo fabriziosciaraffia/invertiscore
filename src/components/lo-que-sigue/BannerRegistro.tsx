@@ -11,7 +11,9 @@
 // `isAnonOwner && !isLoggedIn`.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
+import { almacenSesion, marcarRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { ESTAS_DENTRO, FRASE_REGISTRO, OFERTA_REGISTRO, veredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { queVaAbajo, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
@@ -32,6 +34,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   pasoInicial?: Paso;
 }) {
   const posthog = usePostHog();
+  const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [paso, setPaso] = useState<Paso>(pasoInicial);
@@ -72,6 +75,16 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  // Con el código (01-oct-2026): «Estás dentro» en el mismo lugar Y la página se refresca, para que el
+  // header y el ticket dejen de tratar a la persona como anónima. La marca «recién dentro» (por
+  // análisis, en sessionStorage) se escribe ANTES del refresco: el informe la lee y mantiene este
+  // banner montado en «Estás dentro» aunque ya no sea un dueño anónimo.
+  const entrar = (correo: string) => {
+    if (!demo) marcarRecienDentro(almacenSesion(), ctx.analysisId, correo);
+    setPaso("dentro");
+    if (!demo) router.refresh();
+  };
+
   const chips = [perfil.tipologia, perfil.comuna, ESTAS_DENTRO.modalidad[perfil.modalidad]].filter((c): c is string => !!c);
 
   return (
@@ -82,7 +95,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
           {paso === "dentro" ? (
             <EstasDentro ctx={ctx} perfil={perfil} demo={demo} />
           ) : paso === "registro" ? (
-            <RegistroUnPaso next={next} ctx={ctx} alEntrar={() => setPaso("dentro")} />
+            <RegistroUnPaso next={next} ctx={ctx} alEntrar={entrar} />
           ) : (
             <>
               <p className="lqs-ojo">{OFERTA_REGISTRO.ojo}</p>

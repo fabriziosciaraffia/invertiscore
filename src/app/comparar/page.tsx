@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default async function CompararPage({ searchParams }: { searchParams: { ids?: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent("/comparar")}`);
+  if (!user) redirect(`/entrar?next=${encodeURIComponent("/comparar")}`);
 
   const ids = idsComparar(searchParams.ids);
   const [opciones, columnas] = await Promise.all([

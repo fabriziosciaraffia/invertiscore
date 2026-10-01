@@ -21,7 +21,7 @@ function fmtDate(d: string | null | undefined): string {
 export default async function CuentaPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(`/entrar?next=${encodeURIComponent("/cuenta")}`);
 
   const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
   const firstName = fullName.split(' ')[0] || '';

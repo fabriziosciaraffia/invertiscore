@@ -52,6 +52,7 @@ import type { ZonaStr } from "@/lib/zona-str";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
 import { condicionDeInput, useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
 
@@ -239,7 +240,10 @@ export function STRResultsClient({
 
 
   // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
-  const loQueSigue = isAnonOwner && !userId && !demo;
+  // RECIÉN DENTRO (01-oct-2026, espejo de LTR): tras el código y el refresco, «Estás dentro» y el
+  // ticket (sin pedir correo) siguen para quien acaba de entrar.
+  const recienDentro = useRecienDentro(analysisId);
+  const loQueSigue = ((isAnonOwner && !userId) || !!recienDentro) && !demo;
   const ctxLqs = { analysisId, veredicto, modalidad: "str" as const };
   // «Lo que sigue» (30-sep-2026): chips del perfil y precio al que cierra, del motor (espejo de LTR).
   const perfilLqs = perfilChipsDe(inputData, "str");
@@ -353,7 +357,7 @@ export function STRResultsClient({
             página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} /> : undefined}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             hallazgos={
               /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */
               hallazgosOrdenadosSTR.length > 0 ? (
@@ -452,7 +456,7 @@ export function STRResultsClient({
         <div style={{ height: 24 }} />
         <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
         {loQueSigue ? (
-          <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
+          <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} correoSesion={recienDentro} />
         ) : showCtaWelcome ? null : (
           <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} suscriptor={isSubscriber} />
         )}

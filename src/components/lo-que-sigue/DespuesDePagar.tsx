@@ -14,12 +14,14 @@ import { DESPUES_DE_PAGAR, RETORNO_SIN_SESION, type VeredictoLqs } from "@/lib/l
 import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { rutaPrecarga } from "@/lib/lo-que-sigue/oferta-pack";
 import { hayGuia } from "@/lib/guia/activa";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 import "./lo-que-sigue.css";
 
 export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean }) {
   const posthog = usePostHog();
   const destino = rutaPrecarga(analysisId);
-  const href = conSesion ? destino : `/registro?next=${encodeURIComponent(destino)}`;
+  // Sin sesión, la entrada por código con el copy del pack («Entra con el correo con que pagaste»).
+  const href = conSesion ? destino : hrefEntrar(destino, "pack");
 
   useEffect(() => {
     capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad }, { con_sesion: conSesion });

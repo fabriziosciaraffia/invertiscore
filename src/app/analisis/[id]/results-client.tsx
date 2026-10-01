@@ -25,6 +25,7 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
+import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { hasAiV2 } from "@/lib/prosa-guardada";
 
 
@@ -172,7 +173,11 @@ export function PremiumResults({
 
   // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
   // Quien tiene cuenta no ve nada de esto. Contexto de los eventos: análisis, veredicto, modalidad.
-  const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;
+  // RECIÉN DENTRO (01-oct-2026): tras el código en el banner, la página se refresca y el informe pasa a
+  // ser propio; la marca de la pestaña mantiene «Estás dentro» y el ticket (ya sin pedir correo) para
+  // quien acaba de entrar.
+  const recienDentro = useRecienDentro(analysisId);
+  const loQueSigue = ((isAnonOwner && !isLoggedIn) || (!!recienDentro && !isSharedView)) && !!analysisId;
   const nextLqs = analysisId ? `/analisis/${analysisId}` : "/dashboard";
 
   // Top-level pre-delivery months calculation
@@ -597,7 +602,7 @@ export function PremiumResults({
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
             onInformeVisible={onInformeVisible}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} /> : undefined}
+            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
               <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} antiguedad={inputData.origenAviso.antiguedad} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
             ) : undefined}
@@ -671,7 +676,7 @@ export function PremiumResults({
           {loQueSigue ? (
             // «Lo que sigue»: al cierre va el ticket del pack; el registro no se repite en texto —la
             // barra fija es la repetición (ajuste 1, 28-sep-2026).
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} correoSesion={recienDentro} />
           ) : showCtaWelcome ? null : (
             <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} suscriptor={accessLevel === "subscriber"} />
           )}

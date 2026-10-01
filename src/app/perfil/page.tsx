@@ -40,7 +40,7 @@ export default async function PerfilPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect(`/entrar?next=${encodeURIComponent("/perfil")}`);
   }
 
   const nombre = user.user_metadata?.nombre || user.user_metadata?.full_name || "Usuario";

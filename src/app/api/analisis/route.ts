@@ -7,7 +7,7 @@ import { runAnalysis } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
-import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
+import { nombreReal, ensureWelcomeEmail } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import {
@@ -243,11 +243,7 @@ export async function POST(request: Request) {
         // Rama anónima (`user` null): ambos bloques de correo se saltan solos —
         // no hay destinatario. La prosa IA de abajo SÍ corre igual.
         if (user?.email) {
-          await ensureWelcomeEmail(
-            user.id,
-            user.email,
-            resolveDisplayName(user.user_metadata, user.email),
-          );
+          await ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null);
         }
         if (user?.email) {
           try {
@@ -277,7 +273,7 @@ export async function POST(request: Request) {
             }
             await sendAnalysisReadyEmail(
               user.email,
-              resolveDisplayName(user.user_metadata, user.email),
+              nombreReal(user.user_metadata) ?? "",
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
               readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
