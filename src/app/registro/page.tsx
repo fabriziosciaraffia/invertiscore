@@ -1,47 +1,18 @@
-"use client";
-
 // ─────────────────────────────────────────────────────────────────────────────
-// /registro (28-sep-2026): el registro en un paso a pantalla completa, en el material del hero.
-// Lo usa el pack (el checkout necesita cuenta) y el cierre del primer informe anónimo. Correo con
-// enlace o Google; vuelve por /auth/callback al `next`. La página clásica /register sigue para
-// quien llega por otro lado.
+// /registro (28-sep-2026 → 01-oct-2026): la entrada por código vive ahora en /entrar, con su copy por
+// contexto (el de acá decía «este informe» aunque no hubiera informe). /registro sigue funcionando
+// para los enlaces que ya apuntan acá (checkout, wizard, guía, retorno del pago, correos): redirige a
+// /entrar con TODA su query (`next`, `ctx`), y /entrar valida el destino.
 // ─────────────────────────────────────────────────────────────────────────────
-import { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { esDestinoSeguro } from "@/lib/auth-next";
-import { RegistroUnPaso } from "@/components/lo-que-sigue/RegistroUnPaso";
-import "@/components/lo-que-sigue/lo-que-sigue.css";
+import { redirect } from "next/navigation";
+import { RUTA_ENTRAR } from "@/lib/entrar/entrada";
 
-export default function RegistroPage() {
-  return (
-    <Suspense fallback={null}>
-      <RegistroContenido />
-    </Suspense>
-  );
-}
-
-function RegistroContenido() {
-  const sp = useSearchParams();
-  const router = useRouter();
-  const nextRaw = sp.get("next");
-  const next = esDestinoSeguro(nextRaw) ? nextRaw : "/dashboard";
-  const analysisId = (() => {
-    try {
-      return new URL(next, "https://refranco.ai").searchParams.get("analysisId") ?? "";
-    } catch {
-      return "";
-    }
-  })();
-  return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
-      <HeaderFranco contexto="auth" />
-      <div className="lqs-mat lqs-pagina">
-        <div className="lqs-fondo" aria-hidden="true" />
-        <div className="lqs-col">
-          <RegistroUnPaso next={next} ctx={{ analysisId, veredicto: "", modalidad: "ltr" }} alEntrar={() => router.push(next)} />
-        </div>
-      </div>
-    </div>
-  );
+export default function RegistroPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (typeof v === "string") q.set(k, v);
+    else if (Array.isArray(v) && v[0] !== undefined) q.set(k, v[0]);
+  }
+  const s = q.toString();
+  redirect(s ? `${RUTA_ENTRAR}?${s}` : RUTA_ENTRAR);
 }

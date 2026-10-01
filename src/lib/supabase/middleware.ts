@@ -40,7 +40,8 @@ export async function updateSession(request: NextRequest) {
   // /analisis/nuevo is public (guest can do 1 analysis), /analisis/[id] is public (for sharing)
   if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/cuenta"))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // UNA SOLA ENTRADA (01-oct-2026): el código. /login (contraseña) queda para cuentas viejas.
+    url.pathname = "/entrar";
     // Decir a dónde iba: sin esto el login lo manda al dashboard por defecto y
     // pierde la ruta pedida (y su query, ej. /cuenta?tab=facturacion).
     url.search = "";
@@ -50,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages. Si traen intención de
   // compra (?plan= desde los CTAs de pricing, o ?next=), respetarla en vez de
   // mandar siempre al dashboard.
-  if (user && (pathname === "/login" || pathname === "/register")) {
+  if (user && (pathname === "/login" || pathname === "/register" || pathname === "/entrar")) {
     const url = request.nextUrl.clone();
     const plan = request.nextUrl.searchParams.get("plan");
     const next = request.nextUrl.searchParams.get("next");
