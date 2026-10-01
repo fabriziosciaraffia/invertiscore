@@ -9,19 +9,19 @@ function createAdminClient() {
 }
 
 /**
- * Resuelve el nombre a saludar desde el user de Supabase, con fallback en
- * cadena según el proveedor de auth:
+ * resolveDisplayName (más abajo) resuelve un nombre para MOSTRAR —el panel de admin—, con fallback
+ * en cadena según el proveedor de auth. NO es para saludar en un correo (eso es nombreReal):
  *   - Google OAuth → user_metadata.full_name / name
  *   - email+password → user_metadata.nombre (lo setea el signUp en /register)
  *   - sin nombre en metadata → se deriva del email (parte antes del @,
  *     normalizada: separadores → espacios, capitalizada)
- *   - si todo falla → "" (el saludo cae a "Hola," sin nombre)
- * sendWelcomeEmail aplica el split del primer nombre al resultado.
+ *   - si todo falla → ""
  */
 /**
  * El primer nombre REAL de la persona —el que dio al registrarse o el de su cuenta de Google—, o null.
  * Para saludar (01-oct-2026): nunca se deriva del correo, porque «Hola, Fabriziosciaraffia.» no es un
- * nombre. Los correos siguen con resolveDisplayName, que sí cae al correo.
+ * nombre. TODOS los correos a la persona saludan con esto (01-oct-2026): sin nombre real, «Hola,».
+ * resolveDisplayName queda para lo que no es saludo (el panel de admin), nunca para un correo.
  */
 export function nombreReal(metadata: Record<string, unknown> | null | undefined): string | null {
   const m = metadata ?? {};
@@ -77,13 +77,19 @@ export function resolveDisplayName(
  * fire-and-forget seguro: nunca tira. Cualquier error se loguea y se ignora
  * para no romper el render del dashboard/onboarding.
  *
- * @param name nombre completo del usuario (puede venir null); sendWelcomeEmail
- *             se encarga del split para el saludo con el primer nombre.
+ * Desde el 01-oct-2026 sale AL REGISTRARSE POR CÓDIGO (POST /api/analisis/claim con `porCodigo`)
+ * y en /auth/callback (enlace del correo o Google); el dashboard y la creación de un LTR quedan como
+ * red de seguridad. El claim atómico de abajo garantiza una sola por persona.
+ *
+ * @param metadata el `user_metadata` de la persona: el saludo usa SOLO su nombre real
+ *                 (nombreReal), nunca la parte del correo antes de la @. Si llega un string (llamador
+ *                 viejo que pasaba resolveDisplayName, que puede venir del correo) o nada, el nombre se
+ *                 lee de la cuenta (auth.admin.getUserById) recién cuando hay que mandar.
  */
 export async function ensureWelcomeEmail(
   userId: string,
   email: string | null | undefined,
-  name: string | null,
+  metadata?: Record<string, unknown> | string | null,
 ): Promise<void> {
   try {
     if (!userId || !email) return;
@@ -120,7 +126,12 @@ export async function ensureWelcomeEmail(
     // 3) Enviar SOLO la request ganadora (la que afectó 1 fila). Si afectó 0,
     //    otra request ya ganó el claim (o ya estaba enviado) → no-op.
     if (Array.isArray(claimed) && claimed.length === 1) {
-      await sendWelcomeEmail(email, name ?? "", { userId });
+      let meta: Record<string, unknown> | null = metadata && typeof metadata === "object" ? metadata : null;
+      if (!meta) {
+        const { data } = await admin.auth.admin.getUserById(userId);
+        meta = (data?.user?.user_metadata as Record<string, unknown> | undefined) ?? null;
+      }
+      await sendWelcomeEmail(email, nombreReal(meta) ?? "", { userId });
     }
   } catch (error) {
     console.error(

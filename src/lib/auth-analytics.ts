@@ -79,13 +79,21 @@ export function marcarOAuthPendiente(tipo: AuthTipo): void {
  * `via` alimenta el evento `anon_analysis_claimed` para saber qué capa lo
  * capturó (login / register / sync — el camino callback emite server-side el
  * Lead pero no este evento; la capa sync lo recupera).
+ *
+ * `porCodigo` (01-oct-2026): la cuenta acaba de entrar por CÓDIGO (verifyOtp). El endpoint aprovecha
+ * para mandar la bienvenida (`ensureWelcomeEmail`, una sola vez por persona): así sale al registrarse,
+ * no al abrir el dashboard. Lo pasan los tres formularios del código (la página /entrar, el banner del
+ * informe y la tarjeta de la guía). La capa sync no lo pasa: correría en cada carga.
  */
 export async function reclamarAnalisisAnonimos(
   posthog: PostHog | null | undefined,
   via: "login" | "register" | "sync",
+  opciones: { porCodigo?: boolean } = {},
 ): Promise<void> {
   try {
-    const res = await fetch("/api/analisis/claim", { method: "POST" });
+    const res = await fetch("/api/analisis/claim", opciones.porCodigo
+      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ porCodigo: true }) }
+      : { method: "POST" });
     if (!res.ok) return;
     const data = (await res.json()) as { claimed?: number };
     if (typeof data.claimed === "number" && data.claimed > 0) {

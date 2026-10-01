@@ -39,8 +39,9 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
   /** Adónde vuelve el enlace o Google (el informe, o el checkout). Con código no se sale de la página. */
   next: string;
   ctx: ContextoLqs;
-  /** Con código: qué hacer al entrar. Sin él, se refresca la página (el informe pasa a ser propio). */
-  alEntrar?: () => void;
+  /** Con código: qué hacer al entrar (recibe el correo con que entró). Sin él, se refresca la página
+   *  (el informe pasa a ser propio). */
+  alEntrar?: (correo: string) => void;
 }) {
   const posthog = usePostHog();
   const router = useRouter();
@@ -98,12 +99,13 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
       setError(REGISTRO_UN_PASO.errorCodigoMal);
       return;
     }
-    // Con sesión: el análisis anónimo pasa a la cuenta (claim) y queda ligado su perfil.
-    await reclamarAnalisisAnonimos(posthog, "register");
+    // Con sesión: el análisis anónimo pasa a la cuenta (claim) y queda ligado su perfil; sale la
+    // bienvenida (porCodigo: una sola vez por persona).
+    await reclamarAnalisisAnonimos(posthog, "register", { porCodigo: true });
     emitirAuthCompletada(posthog, "signup", "email");
     consumirRegistroPendiente();
     capturarLqs(posthog, EVENTOS_LQS.registroCompletado, ctx, { via: "correo", como: "codigo" });
-    if (alEntrar) alEntrar();
+    if (alEntrar) alEntrar(enviado);
     else router.refresh();
   }
 

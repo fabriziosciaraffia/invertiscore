@@ -7,6 +7,8 @@ import { guardarAtribucion } from "@/lib/attribution";
 import { createAdminServiceClient } from "@/lib/admin-auth";
 import { ANON_COOKIE } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos, enviarLeadClaim } from "@/lib/anon-claim";
+import { ensureWelcomeEmail } from "@/lib/welcome";
+import { waitUntil } from "@vercel/functions";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -141,6 +143,18 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error("[auth/callback] claim anónimo excepción:", e);
+    }
+
+    // La bienvenida AL REGISTRARSE (01-oct-2026), no al abrir el dashboard: quien entra por el enlace
+    // del correo del código o por Google vuelve por acá. Una sola vez por persona (claim atómico de
+    // ensureWelcomeEmail; si ya salió, no hace nada). En waitUntil: el correo no demora el redirect.
+    try {
+      const user = sessionData?.user;
+      if (user?.id && user.email) {
+        waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
+      }
+    } catch (e) {
+      console.error("[auth/callback] bienvenida excepción:", e);
     }
   }
 
