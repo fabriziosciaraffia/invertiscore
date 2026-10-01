@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { sendAnalysisReadyEmail } from "@/lib/email";
+import { resolveDisplayName } from "@/lib/welcome";
+import { readVeredicto } from "@/lib/results-helpers";
 import {
   createSupabaseServer,
   guardPlausibilidad,
@@ -240,6 +243,19 @@ export async function POST(request: Request) {
           captureApiWarning(e, { ruta: "POST /api/analisis/short-term", operacion: "meta-capi-lead" });
         }
       })());
+    }
+
+    // «Tu análisis está listo» también en renta corta (02-oct-2026): hasta acá solo lo mandaba
+    // /api/analisis y quien analizaba un depto para Airbnb no recibía nada. Solo con sesión (sin
+    // destinatario no hay correo; el anónimo lo recibe al guardar) y solo el STR suelto: en AMBAS lo
+    // manda el lado LTR, con la comparativa. En background: el correo nunca demora ni rompe la creación
+    // (sendAnalysisReadyEmail traga y loguea).
+    if (data?.id && user?.email && !ambasGroupId) {
+      const para = user.email;
+      const nombrePersona = resolveDisplayName(user.user_metadata, user.email);
+      const titulo = (data.nombre as string | null) || `${body.comuna} - ${body.superficieUtil}m²`;
+      const veredictoStr = readVeredicto(data.results as never) ?? ((data.resumen as string | null) || "AJUSTA SUPUESTOS");
+      waitUntil(sendAnalysisReadyEmail(para, nombrePersona, titulo, Number(data.score) || 0, veredictoStr, data.id as string, undefined, { userId: user.id }));
     }
 
     return NextResponse.json(data);

@@ -23,6 +23,12 @@
 //  10 · «QUIERO VERLO» AUTOMÁTICO (01-oct-2026): el aviso le llega a la persona al instante, una sola vez
 //       por interés, nunca si el aviso se despublicó o no se pudo chequear; nada sale a hola@; la vista del
 //       admin es solo lectura.
+//  11 · EL SALDO REAL (02-oct-2026): «Tienes N análisis. Empieza por estos.» y «usa 1 de tus N» con el saldo de
+//       la cuenta; en cero lo dice; sin saldo conocido no inventa un número; nada de eso sin el pago verificado.
+//  12 · LA GUÍA CON LLAVE (02-oct-2026): GET /api/lo-que-sigue/guia exige la sesión del dueño del informe o la
+//       firma de un pago PAGADO de ESE informe, antes de leer o calcular nada.
+//  13 · «¿CUÁNDO PIENSAS COMPRAR?» DESPUÉS DE PAGAR (02-oct-2026): los tres horizontes, discretos, debajo de la
+//       guía; se guardan en el perfil con sesión o con la firma del pago (y sin sesión, solo el horizonte).
 //   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
 //       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
@@ -31,8 +37,9 @@
 // ============================================================================
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { GUIA, INFORME_DE_AVISO, TICKET_INCLUYE_GUIA, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
-import { DESPUES_DE_PAGAR } from "../../../src/lib/lo-que-sigue/copy";
+import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, TICKET_INCLUYE_GUIA, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
+import { DESPUES_DE_PAGAR, ESTAS_DENTRO } from "../../../src/lib/lo-que-sigue/copy";
+import { pagoAbreElInforme, urlGuia } from "../../../src/lib/lo-que-sigue/retorno-pago";
 import { GUIA_ACTIVA, hayGuia } from "../../../src/lib/guia/activa";
 import { claveEdificio, parsearAnioFicha } from "../../../src/lib/guia/ficha-anio";
 import {
@@ -71,9 +78,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 
   // ── 1 · el vocabulario ──────────────────────────────────────────────────────
   const aprobado: Array<[string, string]> = [
-    [GUIA.titulo, "Tienes 3 análisis. Empieza por estos."],
+    // 02-oct-2026: el título y «usa 1 de tus N» con el saldo real (§11 fija los casos 0, 1 y sin saldo).
+    [GUIA_SALDO.titulo(3), "Tienes 3 análisis. Empieza por estos."],
     [GUIA.cuerpo, "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
-    [GUIA.usaUno, "usa 1 de tus 3"],
+    [GUIA_SALDO.usaUno(3) ?? "", "usa 1 de tus 3"],
     [`${GUIA.otroDepto} ${GUIA.otroDeptoEnlace}`, "¿Tienes otro depto en mente? Analízalo con tus números ya cargados"],
     [GUIA.ajustada, "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores."],
     [GUIA.ninguno, "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona."],
@@ -98,7 +106,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (vedada.test(s)) F(`1 · ${f} usa una palabra vedada`);
   }
   const gb = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
-  if (!/<h1 className="guia-titulo">\{GUIA\.titulo\}<\/h1>/.test(gb) || !/const frase = !r \? null : !r\.disponible \? null : r\.estado === "ninguno" \? GUIA\.ninguno : r\.estado === "ajustada" \? GUIA\.ajustada : GUIA\.cuerpo;/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
+  if (!/<h1 className="guia-titulo">\{GUIA_SALDO\.titulo\(saldo\)\}<\/h1>/.test(gb) || !/const frase = !r \? null : !r\.disponible \? null : r\.estado === "ninguno" \? GUIA\.ninguno : r\.estado === "ajustada" \? GUIA\.ajustada : GUIA\.cuerpo;/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
   if (/<img|<a\s|\bc\.url\b|\bit\.url\b|href=\{?["'`]https?:/.test(gb)) F("1 · la guía enlaza al aviso o muestra una imagen (sin enlace, sin fotos)");
   if (!/<p className="guia-pie">\{GUIA\.antiguedad\} \{GUIA\.pie\}<\/p>/.test(gb)) F("1 · la guía no dice que calcula con 25 años y que el informe usa la real");
   const srvGuia = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
@@ -110,8 +118,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   if (!/\{hayGuia\(ctx\.modalidad\) && <p className="lqs-incluye" data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}/.test(tk)) F("2 · el ticket dice la línea de la guía sin preguntar si la guía existe (hayGuia)");
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
-  if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(`\/api\/lo-que-sigue\/guia\?a=\$\{encodeURIComponent\(analysisId\)\}`\)/.test(gb)) F("2 · la guía no tiene ruta o el componente no la pide");
+  if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
+  if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(urlGuia\(analysisId, pago\)\)/.test(gb) || !urlGuia("x").startsWith("/api/lo-que-sigue/guia?a=")) F("2 · la guía no tiene ruta o el componente no la pide");
   for (const f of archivosSrc()) {
     if (f === "src/lib/guia/copy.ts" || f === "src/components/lo-que-sigue/TicketPack.tsx") continue;
     if (/TICKET_INCLUYE_GUIA/.test(sinComentarios(leer(f)))) F(`2 · ${f} usa la línea del ticket fuera del ticket`);
@@ -306,9 +314,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 
   // ── 7 · después de pagar, una idea ──────────────────────────────────────────
   if (/DESPUES_DE_PAGAR|fraseVeredicto|lqs-mat|lqs-btn|<DespuesDePagar\b/.test(gb)) F("7 · la guía vuelve a traer el bloque de color o la frase por veredicto");
-  if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,260}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
+  if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,320}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
   if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
-  if (!/<span className="guia-cr">· \{GUIA\.usaUno\}<\/span>/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus 3»");
+  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
   if (!/capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad: "ltr" \}/.test(gb)) F("7 · la pantalla de después de pagar dejó de medir post_pago_visto");
   const cssGuia = leer("src/components/guia/guia.css");
   const cssTarjetas = cssGuia.slice(0, cssGuia.indexOf("/* ── el informe que sale de un aviso"));
@@ -492,6 +500,74 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const mig = leer("supabase/migrations/20261001_guia_publicados.sql");
   if (!/and ae\.arriendo_sospechoso is not true/.test(mig) || !/and sp\.dormitorios = prop_dorms/.test(mig) || !/and sp\.scraped_at >= desde/.test(mig)) F("5 · los candidatos no excluyen los sospechosos, o no piden los mismos dormitorios y los 7 días");
 
+  // ── 11 · el saldo real, no «3» fijo (02-oct-2026) ───────────────────────────
+  {
+    const casos: Array<[number | null, string, string | null]> = [
+      [3, "Tienes 3 análisis. Empieza por estos.", "usa 1 de tus 3"],
+      [5, "Tienes 5 análisis. Empieza por estos.", "usa 1 de tus 5"],
+      [1, "Tienes 1 análisis. Empieza por estos.", "usa el último que te queda"],
+      [0, "Ya usaste tus análisis. Estos son los que mejor calzan contigo.", null],
+      [null, "Tus análisis ya están en tu cuenta. Empieza por estos.", "usa 1 de tus análisis"],
+    ];
+    for (const [n, titulo, usa] of casos) {
+      if (GUIA_SALDO.titulo(n) !== titulo) F(`11 · con saldo ${n} el título dice «${GUIA_SALDO.titulo(n)}», no «${titulo}»`);
+      if (GUIA_SALDO.usaUno(n) !== usa) F(`11 · con saldo ${n} la tarjeta dice «${GUIA_SALDO.usaUno(n)}», no «${usa}»`);
+    }
+    if (DESPUES_DE_PAGAR.titular(2) !== "Tienes 2 análisis." || DESPUES_DE_PAGAR.titular(0) !== "Ya usaste tus análisis." || /\d/.test(DESPUES_DE_PAGAR.titular(null))) F("11 · sin guía, el titular no dice el saldo real (o inventa un número sin saldo)");
+    if (!/saldo = null, pago = null \}: \{[^}]*saldo\?: number \| null; pago\?: LlavePago \| null \}/.test(gb)) F("11 · GuiaBusqueda no recibe el saldo y la llave como props opcionales (rompe a quien la usa con sesión)");
+    if (!/<GuiaBusqueda[\s\S]{0,200}?saldo=\{saldo\}[\s\S]{0,60}?pago=\{llavePago\}/.test(ret) || !/sinGuia=\{<DespuesDePagar [^>]*saldo=\{saldo\} \/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar [^>]*saldo=\{saldo\} \/>/.test(ret)) F("11 · la pantalla de después de pagar no pasa el saldo real a la guía o a «Tienes N análisis»");
+    if (!/setSaldo\(typeof data\.saldo === "number" && !data\.ilimitado \? data\.saldo : null\);/.test(ret)) F("11 · la pantalla no toma el saldo de /api/payments/status");
+    // Ningún «3» fijo dicho a quien pagó: ni en la guía, ni en después de pagar, ni en la vuelta sin sesión.
+    for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/lo-que-sigue/DespuesDePagar.tsx", "src/app/payments/return/page.tsx", "src/lib/guia/copy.ts"]) {
+      if (/[Tt]ienes 3 análisis|de tus 3\b|[Tt]us 3 análisis/.test(sinComentarios(leer(f)))) F(`11 · ${f} vuelve a decir «3» fijo en vez del saldo`);
+    }
+    {
+      const sinS = sinComentarios(leer("src/lib/lo-que-sigue/copy.ts")).match(/export const RETORNO_SIN_SESION = \{[\s\S]*?\} as const;/)?.[0] ?? "";
+      if (!sinS || /\d|[Pp]ago recibido/.test(sinS)) F("11 · sin sesión ni firma, la vuelta afirma «Pago recibido» o un número que no verificó");
+    }
+    if (!/\{retornoPack && paymentStatus === "paid" && \(/.test(ret) || /paymentStatus === "sin_sesion"\) && \(\s*hayGuia/.test(ret)) F("11 · la guía o «Tienes N análisis» salen sin el pago verificado");
+  }
+
+  // ── 12 · la guía no se lee sin la sesión del dueño ni la firma del pago ────
+  {
+    const api = sinComentarios(leer("src/app/api/lo-que-sigue/guia/route.ts"));
+    const get = (api.match(/export async function GET[\s\S]*?\n\}/) ?? [""])[0];
+    const iAcceso = get.search(/if \(!\(await puedeLeerLaGuia\(admin, a, sp\.get\("order"\), sp\.get\("t"\)\)\)\) \{\s*return NextResponse\.json\(\{ error: "sin-acceso" \}, \{ status: 401 \}\);/);
+    const iCalculo = get.search(/guiaGuardada\(admin, a\)/);
+    if (iAcceso < 0 || iCalculo < 0 || iAcceso > iCalculo) F("12 · GET /api/lo-que-sigue/guia lee o calcula la guía antes de mirar quién la pide");
+    const puede = (api.match(/async function puedeLeerLaGuia[\s\S]*?\n\}/) ?? [""])[0];
+    if (!/if \(fila\?\.user_id && fila\.user_id === user\.id\) return true;/.test(puede)) F("12 · la sesión que abre la guía no es la del dueño del informe");
+    if (!/const firmaValida = firmaPagoValida\(order, firma\);\s*if \(!firmaValida \|\| !order\) return false;/.test(puede) || !/return pagoAbreElInforme\(\{ firmaValida, pago: [\s\S]*?, analysisId \}\);/.test(puede)) F("12 · sin sesión, la guía no exige la firma de un pago de ESE informe");
+    const pago = { status: "paid", analysis_id: "A", user_id: "u1" };
+    const casos: Array<[Parameters<typeof pagoAbreElInforme>[0], boolean, string]> = [
+      [{ firmaValida: true, pago, analysisId: "A" }, true, "la firma de un pago pagado de este informe"],
+      [{ firmaValida: false, pago, analysisId: "A" }, false, "una firma falsa"],
+      [{ firmaValida: true, pago, analysisId: "B" }, false, "el pago de OTRO informe"],
+      [{ firmaValida: true, pago: { ...pago, status: "pending" }, analysisId: "A" }, false, "un pago pendiente"],
+      [{ firmaValida: true, pago: { ...pago, status: "rejected" }, analysisId: "A" }, false, "un pago rechazado"],
+      [{ firmaValida: true, pago: null, analysisId: "A" }, false, "un pago que no existe"],
+    ];
+    for (const [entrada, debe, que] of casos) if (pagoAbreElInforme(entrada) !== debe) F(`12 · ${que} ${debe ? "no abre" : "abre"} la guía`);
+    if (urlGuia("A", { order: "o 1", firma: "f" }) !== "/api/lo-que-sigue/guia?a=A&order=o%201&t=f" || urlGuia("A") !== "/api/lo-que-sigue/guia?a=A") F("12 · la URL de la guía no lleva la llave del pago (o la lleva sin tenerla)");
+    // Las dos lecturas —al montar y al reemplazar un despublicado— llevan la llave; ninguna va sin ella.
+    if ((gb.match(/fetch\(urlGuia\(analysisId, pago\)\)/g) ?? []).length !== 2 || /urlGuia\(analysisId\)|fetch\(`\/api\/lo-que-sigue\/guia/.test(gb)) F("12 · la guía se pide sin la llave del pago (al montar o al reemplazar un despublicado)");
+  }
+
+  // ── 13 · «¿Cuándo piensas comprar?» después de pagar ────────────────────────
+  {
+    const hz = sinComentarios(leer("src/components/lo-que-sigue/HorizontePostPago.tsx"));
+    if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Ya|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
+    if (!/fetch\("\/api\/lo-que-sigue\/perfil", \{[\s\S]*?body: JSON\.stringify\(\{ analysisId: ctx\.analysisId, horizonte: h, \.\.\.\(pago \? \{ order: pago\.order, t: pago\.firma \} : \{\}\) \}\)/.test(hz)) F("13 · el horizonte no se guarda en el perfil (o se manda sin la firma del pago)");
+    if (!/\{retornoPack && paymentStatus === "paid" && \(conSesion \|\| llavePago\) && \(\s*<HorizontePostPago /.test(ret)) F("13 · la pregunta no está en la pantalla de después de pagar, con el pago verificado");
+    if (ret.indexOf("<HorizontePostPago") < ret.indexOf("<GuiaBusqueda")) F("13 · la pregunta va antes de la guía (va debajo, discreta)");
+    const cssH = leer("src/components/guia/guia.css");
+    if (!/\.guia-opcion \{[^}]*border: 1px solid var\(--franco-border\)/.test(cssH) || /\.guia-opcion[^{]*\{[^}]*(signal-red|#C8323C|text-transform)/.test(cssH)) F("13 · las píldoras del horizonte dejan de ser discretas (contorno fino, sin rojo ni mayúsculas)");
+    const perfil = sinComentarios(leer("src/app/api/lo-que-sigue/perfil/route.ts"));
+    const ramaSin = (perfil.match(/if \(!user\) \{[\s\S]*?\n {2}\}/) ?? [""])[0];
+    if (!/const soloHorizonte = Object\.keys\(body\)\.every\(\(k\) => \["analysisId", "order", "t", "horizonte"\]\.includes\(k\)\);/.test(ramaSin) || !/if \(!firmaValida \|\| !order \|\| !soloHorizonte\) return NextResponse\.json\(\{ error: "Sin sesión" \}, \{ status: 401 \}\);/.test(ramaSin)) F("13 · sin sesión, el perfil acepta algo más que el horizonte, o sin la firma del pago");
+    if (!/if \(!pagoAbreElInforme\(\{ firmaValida, pago: p, analysisId \}\)\) return NextResponse\.json/.test(ramaSin) || !/duenoId = p!\.user_id;/.test(ramaSin) || !/\.eq\("user_id", duenoId!\)/.test(perfil)) F("13 · sin sesión, el horizonte se guarda en un perfil que no es el del dueño del pago de ESE informe");
+  }
+
   if (fallas.length) {
     console.log(`  ✗ GUIA-BUSQUEDA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
@@ -555,6 +631,15 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 // la advertencia · T3 ofrece ayuda con la visita · T4 saludo sin nombre · P1 la pantalla no dice despublicado ·
 // P2 vuelve «hoy o mañana hábil» · A1 semanas mal · A2 comunas sin orden · A3 el admin escribe · A4 sin pestaña.
 // Q1 (sin mirar si ya salió) quedó VERDE y es EQUIVALENTE: el reclamo atómico igual frena el segundo correo.
+// Séptima vuelta (02-oct-2026, el saldo real, la guía con llave y el horizonte después de pagar): 17/17 en rojo,
+// restauradas byte a byte. §11: G1 el título con «3» fijo · G2 en cero promete «usa 1 de tus 0» · G3 la guía
+// ignora el saldo · G4 la pantalla no pasa el saldo · G14 sin firma afirma «Pago recibido» · G15 «Tienes 3» fijo en
+// DespuesDePagar · G17 la guía sale con «sin_sesion» (sin el pago verificado). §12: G5 la guía se lee sin llave · G6
+// cualquier sesión la abre · G7 un pago pendiente la abre · G8 el pago de otro informe la abre · G9 se pide sin la
+// llave al montar (pasó VERDE la primera vez: el chequeo miraba solo la lectura de reemplazo; ahora cuenta las dos
+// y prohíbe la URL sin llave). §13: G10 sin sesión el perfil acepta más que el horizonte · G11 el horizonte va a un
+// perfil que no es del dueño del pago · G12 la pregunta no se monta · G13 se manda sin la firma · G16 las píldoras en
+// rojo. De paso se ajustaron §1, §2 y §7 al saldo real (GUIA_SALDO) y a la llave (urlGuia).
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 

@@ -90,6 +90,9 @@ interface STRResultsProps {
   /** Anónimo-DUEÑO (cap F2-2): informe completo sin sesión — se suprimen los
    * POST de regen IA (exigen login) y el header pasa a la variante de guardado. */
   isAnonOwner?: boolean;
+  /** El navegador de origen (02-oct-2026): el dueño con cuenta, sin sesión, en el navegador donde hizo
+   *  el informe. Lo ve completo y el header dice «Tu análisis», no «Compartido contigo». */
+  isOrigenNavegador?: boolean;
   /** Niveles de plazo precalculados en el server (`simularPlazoStr`): el reconstructor
    *  del input arrastra `next/headers` y no puede importarse desde el cliente, y de paso
    *  los 4 recomputes no corren en el teléfono del lector. Los consume `LineaPlazo`. */
@@ -118,6 +121,7 @@ export function STRResultsClient({
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
+  isOrigenNavegador = false,
   simulacionStr = null,
   zonaStr = null,
   demo = false,
@@ -264,7 +268,9 @@ export function STRResultsClient({
       {demo ? null : (
         <HeaderFranco
           informe={
-            accessLevel === "guest" || isAnonOwner
+            isOrigenNavegador
+              ? { modo: "suyo" }
+              : accessLevel === "guest" || isAnonOwner
               ? {
                   modo: isAnonOwner ? "anonimo" : "compartido",
                   fecha: formatFechaCorta(fechaProsa ?? createdAt),

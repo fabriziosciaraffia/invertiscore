@@ -204,7 +204,7 @@ export default async function DashboardPage({
         <SaldoCasa estado={saldo} informes={stats.total} />
         {guiaCasa && (
           <div className="mt-7" data-casa="guia">
-            <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion enCasa={{ titulo: CASA.guiaTitulo }} />
+            <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} enCasa={{ titulo: CASA.guiaTitulo }} />
           </div>
         )}
         <div className="mt-7">

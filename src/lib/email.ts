@@ -145,6 +145,9 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   };
 }
 
+/** La línea del correo de pago confirmado del pack: quien pagó sin cuenta entra con su correo. */
+export const LINEA_CODIGO_PACK = "Para entrar, pide tu código con este mismo correo.";
+
 export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts & { guiaPack?: string | null } = {}) {
   const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
 
@@ -156,6 +159,10 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
   // El pack con guía (01-oct-2026): el botón lleva a la pantalla de después de pagar, donde está la
   // guía, y la línea del código va debajo (quien pagó sin cuenta entra con su correo).
   const guia = opts.guiaPack ?? null;
+  // La línea del código va en TODO pago del pack, de renta larga o corta (02-oct-2026): el pack se paga
+  // desde el ticket sin cuenta, y quien lo pagó entra pidiendo su código. Antes salía solo con la guía y
+  // el pack de renta corta quedaba sin decir cómo entrar.
+  const lineaCodigo = product === 'pack3' ? [LINEA_CODIGO_PACK] : null;
   const ctaUrl = guia
     ? guia
     : product === "unlock" && ambasIds
@@ -179,7 +186,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     monto: amount,
     fecha: dateFormatted,
     boton: { texto: ctaText, url: ctaUrl },
-    ...(guia ? { despues: ["Para entrar, pide tu código con este mismo correo."] } : {}),
+    ...(lineaCodigo ? { despues: lineaCodigo } : {}),
   });
   try {
     await enviarCorreo("pago_confirmado", opts.userId, { from: FROM_EMAIL, to, subject, html });

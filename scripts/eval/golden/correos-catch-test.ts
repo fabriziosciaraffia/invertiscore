@@ -146,7 +146,9 @@ export function runCorreosTier(): { hard: number } {
     const pc = correoPagoConfirmado({ nombre: "Camila", producto: "3 análisis", desbloquea: "x", incluye: ["y"], monto: 14990, fecha: "1 de octubre de 2026", boton: { texto: "Ver los deptos que te recomendamos", url: "https://refranco.ai/payments/return?lqs=pack" }, despues: ["Para entrar, pide tu código con este mismo correo."] });
     if (!txt(pc.html).includes("Para entrar, pide tu código con este mismo correo.")) F("8 · el pago del pack no lleva la línea del código");
     const em = sinComentarios(leer("src/lib/email.ts"));
-    if (!/const ctaText = guia\s*\? 'Ver los deptos que te recomendamos'/.test(em) || !/\.\.\.\(guia \? \{ despues: \["Para entrar, pide tu código con este mismo correo\."\] \} : \{\}\)/.test(em)) F("8 · el pago del pack no lleva a la guía o pierde la línea del código");
+    // 02-oct-2026: la línea del código va en TODO pago del pack (renta larga y corta), no solo con la guía.
+    // Su regla fina vive en el tier PAGO-SIN-SESION §6; acá, que el botón de la guía y la línea sigan.
+    if (!/const ctaText = guia\s*\? 'Ver los deptos que te recomendamos'/.test(em) || !/\.\.\.\(lineaCodigo \? \{ despues: lineaCodigo \} : \{\}\)/.test(em) || !/export const LINEA_CODIGO_PACK = "Para entrar, pide tu código con este mismo correo\.";/.test(em)) F("8 · el pago del pack no lleva a la guía o pierde la línea del código");
     const cf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
     if (!/if \(product === PRODUCTO_PACK && analysisId\) \{[\s\S]{0,300}?if \(hayGuia\(modalidadDeTipo\(filaGuia\?\.tipo_analisis as string \| null\)\)\) \{\s*guiaPack = urlRetornoPack\(/.test(cf)) F("8 · el botón de la guía sale para otro producto que el pack con guía");
     const bo = txt(correoBoleta({ para: "x@y.cl", folio: 9, monto: 9990, fechaEmision: "2026-10-01", autoservicioUrl: "https://x", concepto: { label: "Análisis en Ñuñoa", frase: "tu análisis en Ñuñoa" }, producto: "1 análisis" }).html);

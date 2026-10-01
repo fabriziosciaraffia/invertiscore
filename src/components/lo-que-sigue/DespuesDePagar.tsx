@@ -6,6 +6,7 @@
 // originó la compra, y un botón que abre el wizard con lo de la persona ya respondido (pie, tasa,
 // plazo, modalidad, comuna y tipología de ese informe: `?precarga=`). Sin sesión —el ticket paga sin
 // ella— el botón pasa antes por el código, con el mismo destino.
+// 02-oct-2026: el titular dice el saldo real (`saldo`), no «3» fijo; sin saldo conocido, sin número.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect } from "react";
 import { usePostHog } from "@/lib/posthog-react";
@@ -17,7 +18,7 @@ import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import "./lo-que-sigue.css";
 
-export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean }) {
+export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion, saldo = null }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean; saldo?: number | null }) {
   const posthog = usePostHog();
   const destino = rutaPrecarga(analysisId);
   // Sin sesión, la entrada por código con el copy del pack («Entra con el correo con que pagaste»).
@@ -32,13 +33,13 @@ export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion }: 
     <div className="lqs-mat lqs-postpago" data-lqs="despues-de-pagar">
       <div className="lqs-fondo" aria-hidden="true" />
       <div className="lqs-col">
-        <h1 className="lqs-h3">{DESPUES_DE_PAGAR.titular}</h1>
+        <h1 className="lqs-h3">{DESPUES_DE_PAGAR.titular(saldo)}</h1>
         <p className="lqs-cuerpo">{DESPUES_DE_PAGAR.cuerpo}</p>
         <p className="lqs-lead">{veredicto === "BUSCAR OTRA" && !hayGuia(modalidad) ? DESPUES_DE_PAGAR.buscarSinGuia : DESPUES_DE_PAGAR.fraseVeredicto[veredicto]}</p>
         <EnlaceCarga href={href} className="lqs-btn" data-lqs="precarga">
           {DESPUES_DE_PAGAR.boton}
         </EnlaceCarga>
-        {!conSesion && <p className="lqs-legal">{RETORNO_SIN_SESION.cuerpo}</p>}
+        {!conSesion && <p className="lqs-legal">{RETORNO_SIN_SESION.paraEntrar}</p>}
       </div>
     </div>
   );

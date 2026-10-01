@@ -126,6 +126,7 @@ import { runCronsTier } from "./crons-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
 import { runGuiaBusquedaTier } from "./guia-busqueda-catch-test";
+import { runPagoSinSesionTier } from "./pago-sin-sesion-catch-test";
 import { runCierreInformeTier } from "./cierre-informe-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
@@ -523,6 +524,10 @@ function printSeed(r: SeedReport) {
   // Tier GUIA-BUSQUEDA (30-sep-2026, 0 tokens): «Por dónde seguir buscando» — el copy sin palabras vedadas,
   // la línea del ticket solo con la guía, los resguardos de la ficha, el crédito una vez, plazo antes que pie. ──
   totalHard += (await runGuiaBusquedaTier()).hard;
+  // Tier PAGO-SIN-SESION (02-oct-2026, 0 tokens): su informe completo en su navegador, el pago del pack verificado
+  // con la firma (y nada sin ella), el pago de otra cuenta lo dice, el STR avisa que está listo, y el precio del
+  // pack solo en el ticket (lista blanca). ──
+  totalHard += (await runPagoSinSesionTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;

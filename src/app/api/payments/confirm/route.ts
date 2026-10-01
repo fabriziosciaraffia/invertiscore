@@ -13,6 +13,7 @@ import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
 import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 
 const SITIO_CORREO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 import { hayGuia } from "@/lib/guia/activa";
@@ -324,7 +325,7 @@ export async function POST(request: Request) {
             if (product === PRODUCTO_PACK && analysisId) {
               const { data: filaGuia } = await supabase.from("analisis").select("results, tipo_analisis").eq("id", analysisId).maybeSingle();
               if (hayGuia(modalidadDeTipo(filaGuia?.tipo_analisis as string | null))) {
-                guiaPack = urlRetornoPack(SITIO_CORREO, payment.commerce_order, analysisId, readVeredicto(filaGuia?.results as never) ?? null, "ltr");
+                guiaPack = urlRetornoPack(SITIO_CORREO, payment.commerce_order, analysisId, readVeredicto(filaGuia?.results as never) ?? null, "ltr", firmarPago(payment.commerce_order));
               }
             }
             await sendPaymentConfirmationEmail(
