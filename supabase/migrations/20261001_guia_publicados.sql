@@ -1,5 +1,5 @@
 -- La guía solo muestra avisos PUBLICADOS (01-oct-2026). Aplicada el 01-oct-2026 por MCP en dos pasos
--- (`guia_publicados` y `lecturas_ficha_tipo`); este archivo es su registro.
+-- (`guia_publicados`, `lecturas_ficha_tipo` y `lecturas_ficha_redirige`); este archivo es su registro.
 --   · fichas_leidas: el código y el motivo de la última lectura de cada ficha.
 --   · lecturas_ficha: la bitácora de cada GET a una ficha (tope por hora y panel de operación).
 --   · publicacion_avisos: el último chequeo de cada aviso; un despublicado queda marcado para siempre.
@@ -12,7 +12,8 @@ create table if not exists public.lecturas_ficha (
   aviso_id uuid not null,
   tipo text not null check (tipo in ('guia', 'clic')),
   codigo integer null,
-  motivo text not null check (motivo in ('publicado', 'despublicado', 'bloqueo', 'error', 'tiempo')),
+  -- 'redirige': el primer salto, de la ficha vieja a la nueva (un chequeo son dos GETs).
+  motivo text not null check (motivo in ('redirige', 'publicado', 'despublicado', 'bloqueo', 'error', 'tiempo')),
   destino text null,
   leido_at timestamptz not null default now()
 );
