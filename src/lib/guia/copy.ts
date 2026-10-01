@@ -49,7 +49,8 @@ export const INFORME_DE_AVISO = {
   antiguedadSupuesta: "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente.",
   boton: "Quiero verlo",
   bajada: "Franco te hace llegar el aviso",
-  listo: "Listo. Franco te hará llegar el depto para que lo evalúes directamente.",
-  listoBajada: "A tu correo, hoy o mañana hábil.",
+  // 01-oct-2026: «Quiero verlo» es automático; el aviso llega al instante (sale «hoy o mañana hábil»).
+  listo: "Listo. Te mandamos el aviso a tu correo.",
+  despublicado: "Este aviso ya no está publicado.",
   error: "No pudimos registrarlo. Intenta de nuevo.",
 } as const;

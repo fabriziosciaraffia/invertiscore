@@ -188,48 +188,28 @@ export function correoAlertaCron(p: { cron: string; problema: string; detalle: s
   };
 }
 
-/**
- * «Quiero verlo» (30-sep-2026): alguien pidió ver un depto de la guía de búsqueda. Interno, a hola@, con
- * todo para gestionarlo a mano: la persona, su perfil, el aviso (con su enlace: es el único lugar donde
- * va) y el veredicto del informe.
- */
-export function correoInteresAviso(p: {
-  persona: { nombre: string | null; email: string; userId: string };
-  perfil: { piePct: number | null; plazo: number | null; tasa: number | null; amoblado: boolean };
-  aviso: { comuna: string; tipologia: string | null; m2: number | null; precioUF: number | null; antiguedad: string; url: string | null; avisoId: string };
-  veredicto: { veredicto: string | null; score: number | null; flujo: number | null };
-  analysisId: string;
-  origenAnalysisId: string | null;
-  sitio?: string;
-}): Correo {
-  const sitio = p.sitio ?? SITIO;
-  const pct = (n: number | null) => (n == null ? "—" : `${String(Math.round(n * 100) / 100).replace(".", ",")}%`);
-  const v = p.veredicto.veredicto ? etiquetaVeredicto(p.veredicto.veredicto, "banda") : "—";
-  const tip = [p.aviso.comuna, p.aviso.tipologia, p.aviso.m2 ? `${Math.round(p.aviso.m2)} m²` : null].filter(Boolean).join(" · ");
-  const filas = [
-    { etiqueta: "Persona", valor: escaparHtml(p.persona.nombre || "—") },
-    { etiqueta: "Correo", valor: escaparHtml(p.persona.email) },
-    { etiqueta: "Id", valor: escaparHtml(p.persona.userId) },
-    { etiqueta: "Pie · plazo · tasa", valor: `${pct(p.perfil.piePct)} · ${p.perfil.plazo ?? "—"} años · ${pct(p.perfil.tasa)}` },
-    { etiqueta: "Modalidad", valor: `Arriendo largo, ${p.perfil.amoblado ? "amoblado" : "sin amoblar"}` },
-    { etiqueta: "Aviso", valor: escaparHtml(tip) },
-    { etiqueta: "Precio publicado", valor: p.aviso.precioUF ? `UF ${Math.round(p.aviso.precioUF).toLocaleString("es-CL")}` : "—" },
-    { etiqueta: "Antigüedad", valor: escaparHtml(p.aviso.antiguedad) },
-    { etiqueta: "Enlace", valor: p.aviso.url ? enlace(escaparHtml(p.aviso.url), "Ver el aviso") : "—" },
-    { etiqueta: "Veredicto", valor: `${escaparHtml(v)}${p.veredicto.score != null ? ` · ${p.veredicto.score}` : ""}` },
-    { etiqueta: "Flujo mensual", valor: p.veredicto.flujo != null ? `${p.veredicto.flujo < 0 ? "−" : "+"}${clp(Math.abs(p.veredicto.flujo))}` : "—" },
-    { etiqueta: "Informe", valor: enlace(`${sitio}/analisis/${encodeURIComponent(p.analysisId)}`, "Ver") },
-  ];
-  if (p.origenAnalysisId) filas.push({ etiqueta: "Informe de origen", valor: enlace(`${sitio}/analisis/${encodeURIComponent(p.origenAnalysisId)}`, "Ver") });
+// ── «Quiero verlo» · el aviso a la persona (01-oct-2026) ──────────────────────
+// Copy fijado por Fabrizio. Sale al tocar «Quiero verlo», después de chequear que el aviso siga
+// publicado (src/lib/guia/quiero-verlo.ts). Sin titular: el saludo abre. Sin ofrecer ayuda con la
+// visita ni con la negociación.
+export function correoAvisoPedido(p: { nombre: string | null; comuna: string; url: string; veredicto: string | null; flujo: number | null }): Correo {
+  const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
+  const saludo = primero ? `Hola, ${escaparHtml(primero)}:` : "Hola:";
+  const v = p.veredicto ? etiquetaVeredicto(p.veredicto, "frase") : null;
+  const flujo = p.flujo != null ? `${p.flujo < 0 ? "−" : "+"}${clp(Math.abs(p.flujo))} al mes` : null;
+  const analisis = v ? `Franco lo analizó con tu pie y tu plazo: ${[v, flujo].filter(Boolean).join(", ")}.` : null;
   return {
-    subject: `👀 Quiero verlo: ${tip} · ${v}`,
+    subject: `El depto de ${p.comuna} que analizaste`,
     html: plantillaClara({
-      titulo: "Quiero verlo",
-      preencabezado: `${p.persona.email} · ${tip}`,
-      titular: "Alguien quiere ver un depto de la guía",
-      parrafos: ["Pidió que Franco le haga llegar el aviso. Se gestiona a mano: escríbele hoy o mañana hábil."],
-      detalle: { filas },
-      legal: "Aviso interno de Franco.",
+      titulo: `El depto de ${p.comuna} que analizaste`,
+      preencabezado: "Acá está el aviso del depto que pediste.",
+      parrafos: [saludo, "Acá está el aviso del depto que pediste."],
+      boton: { texto: "Ver el aviso", url: escaparHtml(p.url) },
+      despues: [
+        ...(analisis ? [analisis] : []),
+        "Antes de visitarlo, confirma con quien lo publica que sigue disponible y que el precio es el publicado.",
+        "Franco",
+      ],
     }),
   };
 }

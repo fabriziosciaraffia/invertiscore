@@ -20,6 +20,9 @@
 //       lo que no se pudo chequear no se muestra; un chequeo se recuerda 24 horas; un despublicado sale de la
 //       guía, de avisos_evaluados y del cron; al clic se relee y un despublicado NO descuenta crédito; cada
 //       lectura queda con su código y motivo, el panel la muestra y un bloqueo alerta.
+//  10 · «QUIERO VERLO» AUTOMÁTICO (01-oct-2026): el aviso le llega a la persona al instante, una sola vez
+//       por interés, nunca si el aviso se despublicó o no se pudo chequear; nada sale a hola@; la vista del
+//       admin es solo lectura.
 //   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
 //       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
@@ -38,6 +41,9 @@ import {
 } from "../../../src/lib/guia/publicacion";
 import { pastillaFichas, type LecturasFicha } from "../../../src/lib/admin-fichas";
 import { sinDespublicados } from "../../../src/lib/avisos/depurar";
+import { mandarAvisoUnaVez, type PiezasQuieroVerlo } from "../../../src/lib/guia/quiero-verlo";
+import { correoAvisoPedido } from "../../../src/lib/email/correos";
+import { resumirQuieroVerlo, semanaDe } from "../../../src/lib/admin-quiero-verlo";
 import { analizarAvisoDeGuia, analizarUnaVez, RECLAMO_VIGENTE_MS, type PiezasAnalizar, type Reclamo } from "../../../src/lib/guia/analizar-una-vez";
 import { combinacionesGuia, elegirGuia, TOPE_GUIA, type Combinacion, type Evaluado } from "../../../src/lib/guia/seleccion";
 import { sinComentarios } from "./lectura-paginada-catch-test";
@@ -78,8 +84,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
     [INFORME_DE_AVISO.boton, "Quiero verlo"],
     [INFORME_DE_AVISO.bajada, "Franco te hace llegar el aviso"],
-    [INFORME_DE_AVISO.listo, "Listo. Franco te hará llegar el depto para que lo evalúes directamente."],
-    [INFORME_DE_AVISO.listoBajada, "A tu correo, hoy o mañana hábil."],
+    [INFORME_DE_AVISO.listo, "Listo. Te mandamos el aviso a tu correo."],
+    [INFORME_DE_AVISO.despublicado, "Este aviso ya no está publicado."],
   ];
   for (const [tiene, debe] of aprobado) if (tiene !== debe) F(`1 · el copy «${debe}» cambió a «${tiene}»`);
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
@@ -202,7 +208,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   for (const f of archivosSrc()) {
     if (f.startsWith("src/lib/guia/")) continue;
     const s = sinComentarios(leer(f));
-    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && f !== "src/app/api/lo-que-sigue/guia/analizar/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía y de «Analizar este»`);
+    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && f !== "src/app/api/lo-que-sigue/guia/analizar/route.ts" && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este» y de «Quiero verlo»`);
     if (/antiguedadDelAviso\(/.test(s) && f !== "src/app/api/lo-que-sigue/guia/analizar/route.ts") F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
   }
   const claude = leer("CLAUDE.md");
@@ -418,6 +424,71 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/alertarUnaVezAlDia\([\s\S]{0,400}?"bloqueo",\s*\)/.test(sinComentarios(leer("src/lib/guia/ficha-servidor.ts")))) F("9 · el bloqueo no alerta una vez al día");
   }
 
+
+  // ── 10 · «Quiero verlo» automático (01-oct-2026) ───────────────────────────
+  {
+    // El correo sale UNA vez por interés, nunca para un aviso despublicado ni sin chequear.
+    type Fila = { enviado: boolean; despublicado: boolean };
+    let fila: Fila = { enviado: false, despublicado: false };
+    let correos = 0, fallar = false;
+    const piezas = (estado: EstadoPublicacion): PiezasQuieroVerlo => ({
+      async yaEnviado() { await Promise.resolve(); return fila.enviado; },
+      async chequear() { await Promise.resolve(); return estado; },
+      async marcarDespublicado() { fila.despublicado = true; },
+      async reclamar() { await Promise.resolve(); if (fila.enviado) return false; fila.enviado = true; return true; },
+      async enviar() { await Promise.resolve(); if (fallar) return false; correos++; return true; },
+      async soltar() { fila.enviado = false; },
+    });
+    const [a, b] = await Promise.all([mandarAvisoUnaVez(piezas("publicado")), mandarAvisoUnaVez(piezas("publicado"))]);
+    const c = await mandarAvisoUnaVez(piezas("publicado"));
+    if (correos !== 1 || ![a, b].includes("enviado") || c !== "ya-enviado") F(`10 · el correo del aviso sale más de una vez por interés (${correos} correos)`);
+    fila = { enviado: false, despublicado: false }; correos = 0;
+    const d = await mandarAvisoUnaVez(piezas("despublicado"));
+    if (d !== "despublicado" || correos !== 0 || !fila.despublicado || fila.enviado) F("10 · sale el correo de un aviso despublicado (o no queda anotado)");
+    const e = await mandarAvisoUnaVez(piezas("sin-chequeo"));
+    if (e !== "sin-chequeo" || correos !== 0) F("10 · sale el correo de un aviso que no se pudo chequear");
+    fila = { enviado: false, despublicado: false }; fallar = true;
+    const g1 = await mandarAvisoUnaVez(piezas("publicado"));
+    fallar = false;
+    const g2 = await mandarAvisoUnaVez(piezas("publicado"));
+    if (g1 !== "fallo-envio" || g2 !== "enviado" || correos !== 1) F("10 · un envío que falla deja la fila tomada (el siguiente toque no lo manda)");
+    const qv = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
+    if (!/const r = await mandarAvisoUnaVez\(\{/.test(qv) || (qv.match(/sendAvisoPedidoEmail\(/g) ?? []).length !== 1) F("10 · la ruta manda el correo por fuera de mandarAvisoUnaVez");
+    if (!/"clic", almacenPublicacion\(admin\), bajarFicha,\s*\);/.test(qv)) F("10 · la ruta no chequea la ficha con la memoria de 24 horas");
+    if (!/\.match\(fila\)\.is\("correo_enviado_at", null\)\.select\("analysis_id"\);\s*return \(data\?\.length \?\? 0\) === 1;/.test(qv)) F("10 · el reclamo del correo no es atómico (correo_enviado_at null → ahora)");
+    if (!/if \(r === "despublicado"\) return NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\);/.test(qv)) F("10 · un aviso despublicado no responde 410");
+    if (!/\.from\("interes_avisos"\)\.insert\(/.test(qv)) F("10 · el interés deja de guardarse en la base");
+    // Nada sale a hola@ por «Quiero verlo».
+    const em = sinComentarios(leer("src/lib/email.ts"));
+    const fnPedido = (em.match(/export async function sendAvisoPedidoEmail[\s\S]*?\n\}/) ?? [""])[0];
+    if (!fnPedido || /hola@refranco\.ai/.test(fnPedido) || /sendInteresAvisoInterno|interes_aviso/.test(em) || /hola@|sendInteres/.test(qv)) F("10 · «Quiero verlo» sigue mandando algo a hola@");
+    // El copy del correo, palabra por palabra.
+    const m = correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 });
+    const t = m.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    if (m.subject !== "El depto de Ñuñoa que analizaste") F(`10 · el asunto cambió: «${m.subject}»`);
+    for (const frase of ["Hola, Camila:", "Acá está el aviso del depto que pediste.", "Ver el aviso", "Franco lo analizó con tu pie y tu plazo: Comprar, +$12.000 al mes.", "Antes de visitarlo, confirma con quien lo publica que sigue disponible y que el precio es el publicado.", "Franco"]) {
+      if (!t.includes(frase)) F(`10 · el correo no dice «${frase}»`);
+    }
+    if (!/href="https:\/\/ejemplo\.cl\/aviso"/.test(m.html)) F("10 · el botón no lleva al aviso");
+    if (/visita|negociaci|te ayudamos|ayudarte/i.test(t.replace("Antes de visitarlo", ""))) F("10 · el correo ofrece ayuda con la visita o la negociación");
+    if (!correoAvisoPedido({ nombre: null, comuna: "Macul", url: "https://x", veredicto: "BUSCAR OTRA", flujo: -150000 }).html.replace(/<[^>]+>/g, " ").includes("Hola:")) F("10 · sin nombre el saludo no es «Hola:»");
+    // La pantalla.
+    const iav = sinComentarios(leer("src/components/guia/InformeDeAviso.tsx"));
+    if (!/setEstado\(r\.ok \? "listo" : r\.status === 410 \? "despublicado" : "error"\);/.test(iav) || !/\{INFORME_DE_AVISO\.despublicado\}/.test(iav) || /listoBajada|hoy o mañana/.test(iav)) F("10 · la pantalla no dice «Este aviso ya no está publicado.» o sigue con «hoy o mañana hábil»");
+    // El admin: los totales, y solo lectura.
+    const res = resumirQuieroVerlo([
+      { comuna: "Ñuñoa", veredicto: "COMPRAR", creadoAt: "2026-09-29T15:00:00Z" },
+      { comuna: "Ñuñoa", veredicto: "AJUSTA SUPUESTOS", creadoAt: "2026-10-01T15:00:00Z" },
+      { comuna: "Macul", veredicto: "COMPRAR", creadoAt: "2026-10-06T15:00:00Z" },
+    ]);
+    if (res.total !== 3 || res.porComuna[0].k !== "Ñuñoa" || res.porComuna[0].n !== 2 || res.porVeredicto[0].k !== "COMPRAR" || res.porVeredicto[0].n !== 2) F("10 · los totales por comuna o por veredicto no cuadran");
+    if (semanaDe("2026-10-01T15:00:00Z") !== "2026-09-28" || res.porSemana.map((x) => `${x.k}:${x.n}`).join() !== "2026-10-05:1,2026-09-28:2") F(`10 · los totales por semana no van de lunes a domingo (${res.porSemana.map((x) => `${x.k}:${x.n}`).join()})`);
+    for (const f of ["src/app/admin/quiero-verlo/page.tsx", "src/lib/admin-quiero-verlo.ts"]) {
+      if (/\.(insert|update|upsert|delete)\(|\.rpc\(|"use server"/.test(sinComentarios(leer(f)))) F(`10 · ${f} escribe (la vista es solo lectura)`);
+    }
+    if (!/\{ href: "\/admin\/quiero-verlo", label: "Quiero verlo" \}/.test(leer("src/app/admin/admin-tabs.tsx"))) F("10 · la vista no tiene pestaña en el panel");
+  }
+
   const mig = leer("supabase/migrations/20261001_guia_publicados.sql");
   if (!/and ae\.arriendo_sospechoso is not true/.test(mig) || !/and sp\.dormitorios = prop_dorms/.test(mig) || !/and sp\.scraped_at >= desde/.test(mig)) F("5 · los candidatos no excluyen los sospechosos, o no piden los mismos dormitorios y los 7 días");
 
@@ -476,6 +547,14 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 // no es rojo · P3 el panel sin la pastilla · P4 el bloqueo sin alerta diaria. U8 y C2 pasaron verdes la primera
 // vez (el chequeo de U8 miraba la consulta y no la condición; la mutación C2 dejaba el chequeo de arriba en su
 // lugar): se ajustaron y quedaron en rojo.
+// Sexta vuelta (01-oct-2026, «Quiero verlo» automático): 22/22 en rojo + 1 equivalente. Q2 sin reclamo (doble
+// toque = 2 correos) · Q3 manda al despublicado · Q4 manda sin chequear · Q5 no suelta si falla · Q6 no anota el
+// despublicado · R1 la ruta manda por fuera (la primera versión de la mutación no agregaba envío y pasó verde;
+// rehecha con un envío real) · R2 la ruta fuerza la lectura · R3 reclamo no atómico · R4 sin 410 · R5 deja de
+// guardar el interés · H1 el correo a hola@ · H2 la ruta vuelve a avisar a hola@ · T1 cambia el asunto · T2 sin
+// la advertencia · T3 ofrece ayuda con la visita · T4 saludo sin nombre · P1 la pantalla no dice despublicado ·
+// P2 vuelve «hoy o mañana hábil» · A1 semanas mal · A2 comunas sin orden · A3 el admin escribe · A4 sin pestaña.
+// Q1 (sin mirar si ya salió) quedó VERDE y es EQUIVALENTE: el reclamo atómico igual frena el segundo correo.
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 

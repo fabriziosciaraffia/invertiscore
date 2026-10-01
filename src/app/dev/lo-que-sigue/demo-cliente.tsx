@@ -55,7 +55,7 @@ export function DemoCliente() {
     const a = new URLSearchParams(window.location.search).get("a");
     if (a && /^[0-9a-f-]{36}$/i.test(a)) setOrigenReal(a);
   }, []);
-  const correoInteres = CATALOGO_CORREOS.find((c) => c.id === "interes_aviso")?.render?.().html ?? "";
+  const correoInteres = CATALOGO_CORREOS.find((c) => c.id === "aviso_pedido")?.render?.().html ?? "";
   const precio = VEREDICTOS.find((x) => x.v === v)?.precio ?? null;
   const ctx = { analysisId: idDemo(v), veredicto: v, modalidad: "ltr" as const };
 
@@ -135,7 +135,7 @@ export function DemoCliente() {
         <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="supuesta" esDueno demo /></div>
         {rotulo("El informe que sale de un aviso · con el año de la ficha")}
         <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="ficha" esDueno demo /></div>
-        {rotulo("El correo a hola@ · «Quiero verlo»")}
+        {rotulo("El correo a la persona · «Quiero verlo»")}
         <iframe title="Correo de Quiero verlo" srcDoc={correoInteres} style={{ width: "100%", height: 760, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} />
 
         {rotulo("El correo del tercer día")}

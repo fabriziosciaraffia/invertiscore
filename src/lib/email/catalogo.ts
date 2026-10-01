@@ -5,7 +5,7 @@
 // `pendiente`: todavía no pasó a la plantilla clara porque espera una decisión de Fabrizio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { TipoCorreo } from "@/lib/medicion-correo";
-import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoInteresAviso, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
+import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoAvisoPedido, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 
@@ -37,7 +37,7 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "alerta_pago", tipo: "alerta_pago", nombre: "Nuevo pago (aviso interno)", cuando: "Flow confirma un pago, a hola@", render: () => correoAlertaPago({ producto: "3 análisis", monto: 14990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-PK-0001", analysisId: ID_MUESTRA, sitio: SITIO }) },
   { id: "alerta_cron", tipo: "alerta_cron", nombre: "Cron con problemas (aviso interno)", cuando: "Un cron falla en todo o en parte, o deja de correr o de escribir, a hola@", render: () => correoAlertaCron({ cron: "scrape-unidades-nuevas", problema: "La corrida terminó con falla total: 155 de 155 fallaron.", detalle: ["proyecto 4347128: http 202 (desafío del WAF: sin proxy)"] }) },
   { id: "alerta_pago_fallido", tipo: "alerta_pago_fallido", nombre: "Pago fallido (aviso interno)", cuando: "Flow rechaza o anula un pago, a hola@", render: () => correoAlertaPagoFallido({ estado: "Rechazado", producto: "1 análisis", monto: 9990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-SG-0002" }) },
-  { id: "interes_aviso", tipo: "interes_aviso", nombre: "Quiero verlo (aviso interno)", cuando: "Alguien toca «Quiero verlo» en un informe que salió de la guía de búsqueda, a hola@", render: () => correoInteresAviso({ persona: { nombre: "Camila Rojas", email: "persona@correo.cl", userId: "00000000-0000-0000-0000-000000000000" }, perfil: { piePct: 20, plazo: 25, tasa: 4.2, amoblado: false }, aviso: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 57, precioUF: 3980, antiguedad: "2014 (ficha)", url: "https://ejemplo.cl/aviso", avisoId: "00000000-0000-0000-0000-000000000001" }, veredicto: { veredicto: "COMPRAR", score: 76, flujo: 12000 }, analysisId: ID_MUESTRA, origenAnalysisId: ID_MUESTRA, sitio: SITIO }) },
+  { id: "aviso_pedido", tipo: "aviso_pedido", nombre: "Quiero verlo: el aviso", cuando: "Alguien toca «Quiero verlo» en un informe que salió de la guía de búsqueda y el aviso sigue publicado", render: () => correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 }) },
   ...PLANTILLAS_SUPABASE.map((p) => ({
     id: p.archivo.replace(/\.html$/, ""),
     tipo: "supabase" as const,

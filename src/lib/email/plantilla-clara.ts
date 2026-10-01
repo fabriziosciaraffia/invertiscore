@@ -29,8 +29,8 @@ export interface BotonCorreo {
 export interface CorreoClaro {
   /** El <title> del HTML (los clientes lo ignoran; sirve al render). */
   titulo: string;
-  /** El titular, en serif. */
-  titular: string;
+  /** El titular, en serif. Opcional: sin él abre el primer párrafo (el aviso de «Quiero verlo»). */
+  titular?: string;
   /** Párrafos del cuerpo, en orden. HTML permitido (ya escapado por quien llama). */
   parrafos: string[];
   /** Un código grande y limpio (el de entrada). Va entre el primer párrafo y el resto. */
@@ -110,7 +110,7 @@ export function codigoGrande(codigo: string): string {
 /** El correo entero. Lo que devuelve va tal cual al cliente de correo (o a la plantilla de Supabase). */
 export function plantillaClara(c: CorreoClaro): string {
   const filas: string[] = [];
-  filas.push(`<tr><td style="padding: 0 0 26px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${c.titular}</td></tr>`);
+  if (c.titular) filas.push(`<tr><td style="padding: 0 0 26px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${c.titular}</td></tr>`);
   const [primero, ...resto] = c.parrafos;
   if (primero) filas.push(parrafo(primero));
   if (c.codigo) filas.push(codigoGrande(c.codigo));
