@@ -24,6 +24,8 @@ import { CATALOGO_CORREOS } from "../../../src/lib/email/catalogo";
 import { ALTO_WORDMARK, ANCHO_WORDMARK, PAPEL, URL_WORDMARK } from "../../../src/lib/email/plantilla-clara";
 import { PLANTILLAS_SUPABASE } from "../../../src/lib/email/supabase-plantillas";
 import { TIPOS_CORREO } from "../../../src/lib/medicion-correo";
+import { correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoPagoConfirmado } from "../../../src/lib/email/correos";
+import { BIENVENIDA } from "../../../src/app/dashboard/bienvenida-copy";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -120,6 +122,32 @@ export function runCorreosTier(): { hard: number } {
     if (oscuro(archivo) || MONO.test(archivo)) F(`7 · docs/emails/${p.archivo} tiene oscuro o mono`);
   }
   if (!/\{\{ \.Token \}\}/.test(PLANTILLAS_SUPABASE[0].html())) F("7 · la plantilla del código no lleva {{ .Token }}");
+
+  // ── 8 · el copy revisado (01-oct-2026, decisiones de Fabrizio) ───────────────
+  // Verificado en rojo (01-oct-2026), 8/8: K1 vuelve «Bienvenido a Franco» · K2 vuelve «Cómo funciona» · K3 el previo
+  // viejo · K4 el carrito viejo · K5 el pack sin la línea del código · K6 el botón de la guía para cualquier producto ·
+  // K7 la boleta vuelve a la frase · K8 vuelve una marca [REVISAR].
+  {
+    const txt = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+    const bv = correoBienvenida({ nombre: "Camila Rojas" });
+    const tb = txt(bv.html);
+    if (bv.subject !== "Ya estás en Franco" || !/<title>Ya estás en Franco<\/title>/.test(bv.html) || !bv.html.includes(">Ya estás en Franco<")) F("8 · la bienvenida no se llama «Ya estás en Franco» (asunto y título)");
+    if (!bv.html.includes(`mso-hide: all;">${BIENVENIDA.titular}</div>`)) F("8 · el texto previo de la bienvenida no es «Esto es lo que Franco hace por ti.»");
+    for (const b of BIENVENIDA.hace) if (!tb.includes(b.titulo) || !tb.includes(b.texto.slice(0, 40))) F(`8 · la bienvenida no lleva el bloque del dashboard «${b.titulo}»`);
+    if (/Cómo funciona/.test(tb)) F("8 · la bienvenida vuelve a «Cómo funciona»");
+    if (!/>Analizar un depto<\/a>/.test(bv.html)) F("8 · el botón de la bienvenida no es «Analizar un depto»");
+    const ca = txt(correoCheckoutAbandonado({ nombre: "Camila", producto: "1 análisis", tipo: "single" }).html);
+    if (!ca.includes("empezaste a comprar 1 análisis y no alcanzaste a terminar el pago. Sin apuro: tu compra sigue ahí cuando quieras retomarla.")) F("8 · el carrito abandonado no dice el copy aprobado");
+    const pc = correoPagoConfirmado({ nombre: "Camila", producto: "3 análisis", desbloquea: "x", incluye: ["y"], monto: 14990, fecha: "1 de octubre de 2026", boton: { texto: "Ver los deptos que te recomendamos", url: "https://refranco.ai/payments/return?lqs=pack" }, despues: ["Para entrar, pide tu código con este mismo correo."] });
+    if (!txt(pc.html).includes("Para entrar, pide tu código con este mismo correo.")) F("8 · el pago del pack no lleva la línea del código");
+    const em = sinComentarios(leer("src/lib/email.ts"));
+    if (!/const ctaText = guia\s*\? 'Ver los deptos que te recomendamos'/.test(em) || !/\.\.\.\(guia \? \{ despues: \["Para entrar, pide tu código con este mismo correo\."\] \} : \{\}\)/.test(em)) F("8 · el pago del pack no lleva a la guía o pierde la línea del código");
+    const cf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
+    if (!/if \(product === PRODUCTO_PACK && analysisId\) \{[\s\S]{0,300}?if \(hayGuia\(modalidadDeTipo\(filaGuia\?\.tipo_analisis as string \| null\)\)\) \{\s*guiaPack = urlRetornoPack\(/.test(cf)) F("8 · el botón de la guía sale para otro producto que el pack con guía");
+    const bo = txt(correoBoleta({ para: "x@y.cl", folio: 9, monto: 9990, fechaEmision: "2026-10-01", autoservicioUrl: "https://x", concepto: { label: "Análisis en Ñuñoa", frase: "tu análisis en Ñuñoa" }, producto: "1 análisis" }).html);
+    if (!bo.includes("Acá está tu boleta por 1 análisis. La tienes adjunta en PDF y XML, y también puedes verla en línea.")) F("8 · la boleta no dice «Acá está tu boleta por [producto].»");
+    if (/\[REVISAR\]/.test(leer("src/lib/email/correos.ts"))) F("8 · quedan marcas [REVISAR] en los correos");
+  }
 
   if (fallas.length) {
     console.log(`  ✗ CORREOS · ${fallas.length} falla(s):`);

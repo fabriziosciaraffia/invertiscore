@@ -3,12 +3,15 @@
 // la plantilla clara. `email.ts` solo los manda (con sus tags para el webhook de Resend); la página
 // de previews (/dev/correos) y el tier CORREOS los renderizan sin red. Todo lo que viene de la
 // persona (nombre, correo, motivo) pasa por escaparHtml.
-// Copy en tuteo, voz de Franco. Lo que cambió respecto del correo oscuro va marcado «[REVISAR]» en
-// el comentario de cada uno, para que Fabrizio lo revise.
+// Copy en tuteo, voz de Franco. Revisado y aprobado por Fabrizio el 01-oct-2026 (con cambios en el
+// carrito abandonado, la bienvenida, el pago del pack y la boleta).
 // ─────────────────────────────────────────────────────────────────────────────
 import { escaparHtml, LEGAL, plantillaClara, TINTA } from "./plantilla-clara";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { BIENVENIDA } from "@/app/dashboard/bienvenida-copy";
+
+/** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
+const TRIADA = "Comprar, Ajustar o Buscar otro";
 
 export interface Correo {
   subject: string;
@@ -30,7 +33,7 @@ const fechaLarga = (d: Date | string) =>
   new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Santiago" });
 
 // ── Cobro de suscripción rechazado ───────────────────────────────────────────
-// [REVISAR] mismo contenido; «no pudimos procesar el cobro» → «no pudimos cobrar»; el aviso de
+// mismo contenido; «no pudimos procesar el cobro» → «no pudimos cobrar»; el aviso de
 // la gracia va en la nota de tinta (antes, caja con filete rojo); el botón sin flecha.
 export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date | string; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
@@ -49,14 +52,14 @@ export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date 
 }
 
 // ── Carrito abandonado (single o plan; el pack no: vence y no vuelve) ────────
-// [REVISAR] mismo copy; el botón sin flecha.
+// mismo copy; el botón sin flecha.
 export function correoCheckoutAbandonado(p: { nombre: string | null; producto: string; tipo: "single" | "plan"; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
   const producto = `<b>${escaparHtml(p.producto)}</b>`;
   const intro =
     p.tipo === "plan"
       ? `${saludoDe(p.nombre)} empezaste a suscribirte a ${producto} y no alcanzaste a terminar el pago. Sin apuro: tu plan sigue ahí cuando quieras retomarlo.`
-      : `${saludoDe(p.nombre)} empezaste a comprar ${producto} y no alcanzaste a terminar el pago. Sin apuro: tu análisis sigue ahí cuando quieras retomarlo.`;
+      : `${saludoDe(p.nombre)} empezaste a comprar ${producto} y no alcanzaste a terminar el pago. Sin apuro: tu compra sigue ahí cuando quieras retomarla.`;
   return {
     subject: "¿Quedó algo pendiente?",
     html: plantillaClara({
@@ -70,7 +73,7 @@ export function correoCheckoutAbandonado(p: { nombre: string | null; producto: s
 }
 
 // ── Eliminación de cuenta, a la persona ──────────────────────────────────────
-// [REVISAR] el titular deja de ser el saludo («Hola X,») y pasa a «Recibimos tu solicitud»; el
+// el titular deja de ser el saludo («Hola X,») y pasa a «Recibimos tu solicitud»; el
 // saludo abre el primer párrafo. Los dos rótulos en mono («QUÉ PASA AHORA», «¿FUE UN ERROR?») se
 // vuelven frases en negrita. Sin botón: no hay una acción principal.
 export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
@@ -91,7 +94,7 @@ export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
 }
 
 // ── Eliminación de cuenta, aviso interno a hola@ ─────────────────────────────
-// [REVISAR] el titular pierde el rojo; los ids y montos pierden el mono.
+// el titular pierde el rojo; los ids y montos pierden el mono.
 export function correoEliminacionInterna(p: { email: string; userId: string; solicitadaEl: string; analisis: number; creditos: number; motivo?: string }): Correo {
   return {
     subject: "Solicitud de eliminación de cuenta",
@@ -117,7 +120,7 @@ export function correoEliminacionInterna(p: { email: string; userId: string; sol
 }
 
 // ── Avisos internos de pago (a hola@) ────────────────────────────────────────
-// [REVISAR] antes salían directo con `new Resend` (sin tags ni evento) y en oscuro; ahora pasan por
+// antes salían directo con `new Resend` (sin tags ni evento) y en oscuro; ahora pasan por
 // enviarCorreo. El estado del pago fallido pierde el rojo; los montos y la orden, el mono.
 export function correoAlertaPago(p: { producto: string; monto: number; email: string; fecha: string; orden: string; analysisId?: string | null; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
@@ -215,21 +218,21 @@ export function correoAvisoPedido(p: { nombre: string | null; comuna: string; ur
 }
 
 // ── Bienvenida ───────────────────────────────────────────────────────────────
-// [REVISAR] sin la imagen del informe viejo (oscura, con prosa de IA y un gráfico de capital en
-// pesos futuros). Sin «tu primer análisis es gratis»: este correo sale cuando la persona crea su
-// primer análisis con sesión, y ese análisis ya usó el crédito de bienvenida. Los tres pasos van
-// como frases, sin numerales en mono. Asunto nuevo: «Bienvenido a Franco».
+// «Ya estás en Franco» (01-oct-2026): el cuerpo son los dos bloques del dashboard vacío (los mismos
+// textos, de bienvenida-copy.ts), sin «Cómo funciona». Sin «tu primer análisis es gratis»: este
+// correo sale cuando la persona crea su primer análisis con sesión, y ese análisis ya usó el crédito.
 export function correoBienvenida(p: { nombre: string | null; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
+  const [analiza, oportunidades] = BIENVENIDA.hace;
   return {
-    subject: "Bienvenido a Franco",
+    subject: "Ya estás en Franco",
     html: plantillaClara({
-      titulo: "Bienvenido a Franco",
-      preencabezado: "Un veredicto claro para cada depto, con los números que tu cotización no muestra.",
-      titular: "Bienvenido a Franco",
+      titulo: "Ya estás en Franco",
+      preencabezado: BIENVENIDA.titular,
+      titular: "Ya estás en Franco",
       parrafos: [
-        `${saludoDe(p.nombre)} ingresas un depto y recibes un veredicto claro —Comprar, Ajustar o Buscar otro— con los números que tu cotización no muestra.`,
-        `<b>Cómo funciona.</b> Pones la dirección, el precio y la superficie. Franco cruza tu depto con ${COMPARABLES_TEXTO} propiedades reales de la zona. Recibes el veredicto con su explicación: cuánto renta, cuánto pones cada mes y tu resultado a 10 años, en pesos de hoy.`,
+        `<b>${escaparHtml(analiza.titulo)}</b> ${escaparHtml(analiza.texto)} ${TRIADA}.`,
+        `<b>${escaparHtml(oportunidades.titulo)}</b> ${escaparHtml(oportunidades.texto)}`,
       ],
       boton: { texto: "Analizar un depto", url: `${sitio}/analisis/nuevo-v4` },
     }),
@@ -237,7 +240,7 @@ export function correoBienvenida(p: { nombre: string | null; sitio?: string }): 
 }
 
 // ── Tu análisis está listo ───────────────────────────────────────────────────
-// [REVISAR] sin la imagen /api/og/veredicto (oscura, del informe viejo, imprimía el resumen del
+// sin la imagen /api/og/veredicto (oscura, del informe viejo, imprimía el resumen del
 // motor «Es una buena oportunidad de inversión»): el veredicto y el score van en texto, que se lee
 // con las imágenes bloqueadas. Sin «escenarios de salida» ni el rótulo en mono.
 export function correoInformeListo(p: {
@@ -283,7 +286,7 @@ export function correoInformeListo(p: {
 }
 
 // ── Pago confirmado ──────────────────────────────────────────────────────────
-// [REVISAR] el pack decía «1 análisis» (caía en la compra única): ahora dice la capacidad del
+// el pack decía «1 análisis» (caía en la compra única): ahora dice la capacidad del
 // producto (3). «Qué incluye» ya no promete «escenarios de salida (venta y refinanciamiento)»:
 // dice lo que trae el informe de hoy. El detalle sin mono; el botón sin flecha.
 export function correoPagoConfirmado(p: {
@@ -294,6 +297,7 @@ export function correoPagoConfirmado(p: {
   monto: number;
   fecha: string;
   boton: { texto: string; url: string };
+  despues?: string[];
 }): Correo {
   return {
     subject: `Pago confirmado — ${p.producto}`,
@@ -310,16 +314,17 @@ export function correoPagoConfirmado(p: {
         ],
       },
       boton: p.boton,
+      ...(p.despues ? { despues: p.despues.map(escaparHtml) } : {}),
       legal: `Pago procesado de forma segura por Flow.cl. Este es un comprobante de tu compra.<br>${LEGAL}`,
     }),
   };
 }
 
 // ── Boleta electrónica ───────────────────────────────────────────────────────
-// [REVISAR] un solo botón («Ver boleta»): la regla nueva es un botón por correo. Antes eran dos
+// un solo botón («Ver boleta»): la regla nueva es un botón por correo. Antes eran dos
 // botones rojos iguales (excepción aprobada para replicar OpenFactura) que llevaban a la MISMA URL;
 // la factura queda como frase con su enlace, a esa misma página.
-export function correoBoleta(p: { para: string; folio: number | string; monto: number; fechaEmision: string; autoservicioUrl: string; concepto?: { label: string; frase: string }; sitio?: string }): Correo {
+export function correoBoleta(p: { para: string; folio: number | string; monto: number; fechaEmision: string; autoservicioUrl: string; concepto?: { label: string; frase: string }; producto?: string; sitio?: string }): Correo {
   const url = p.autoservicioUrl || (p.sitio ?? SITIO);
   const [y, m, d] = p.fechaEmision.split("-").map(Number);
   const fecha = !Number.isNaN(y) ? new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }) : p.fechaEmision;
@@ -329,7 +334,7 @@ export function correoBoleta(p: { para: string; folio: number | string; monto: n
       titulo: "Tu boleta electrónica",
       preencabezado: `Boleta N° ${p.folio} por ${clp(p.monto)}, en PDF y XML.`,
       titular: "Tu boleta electrónica",
-      parrafos: [`Acá está tu boleta por ${escaparHtml(p.concepto?.frase || "tu compra en Franco")}. La tienes adjunta en PDF y XML, y también puedes verla en línea.`],
+      parrafos: [`Acá está tu boleta por ${escaparHtml(p.producto || p.concepto?.label || "tu compra en Franco")}. La tienes adjunta en PDF y XML, y también puedes verla en línea.`],
       detalle: {
         filas: [
           { etiqueta: "Documento", valor: `Boleta electrónica N° ${escaparHtml(String(p.folio))}` },
@@ -349,7 +354,7 @@ export function correoBoleta(p: { para: string; folio: number | string; monto: n
 // ── Supabase Auth: restablecer contraseña y cambio de correo ─────────────────
 // Se generan a docs/emails/ con scripts/emails/generar-supabase-codigo.ts y se pegan en el panel de
 // Supabase. Llevan los marcadores de Supabase tal cual.
-// [REVISAR] copy nuevo (hoy esas plantillas no se ven en el repo).
+// copy nuevo (hoy esas plantillas no se ven en el repo).
 export function correoRestablecerSupabase(): string {
   return plantillaClara({
     titulo: "Restablece tu contraseña de Franco",

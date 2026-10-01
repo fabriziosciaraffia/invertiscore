@@ -48,7 +48,8 @@ const CONSUMIDORES = [
   "src/app/layout.tsx",
   "src/app/page.tsx",
   "src/lib/faq-data.ts",
-  "src/lib/email/correos.ts", // la bienvenida vive acá desde el 29-sep-2026 (antes, src/lib/email.ts)
+  // src/lib/email/correos.ts salió el 01-oct-2026: la bienvenida usa los bloques del dashboard (BIENVENIDA de
+  // bienvenida-copy.ts, que cita la cifra), así que el correo y el dashboard dicen lo mismo por construcción.
   "src/app/dashboard/bienvenida-copy.ts", // antes onboarding-client.tsx (29-sep-2026)
 ];
 

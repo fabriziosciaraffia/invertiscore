@@ -16,7 +16,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { EMISOR } from "./emisor";
-import { sendBoletaEmail } from "@/lib/email";
+import { nombreProductoCorreo, sendBoletaEmail } from "@/lib/email";
 
 function createAdminClient() {
   return createClient(
@@ -486,6 +486,7 @@ export async function emitirBoletaDTE({
         fechaEmision: fecha,
         autoservicioUrl: autoservicioUrl ?? "",
         concepto: conceptoBoleta(payment, { comuna }),
+        producto: nombreProductoCorreo(payment.product, payment.quantity ?? null),
         pdfBase64: data.PDF ?? null,
         xmlBase64: data.XML ?? null,
         userId: payment.user_id ?? null,

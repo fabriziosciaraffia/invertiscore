@@ -144,7 +144,7 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   };
 }
 
-export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts = {}) {
+export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts & { guiaPack?: string | null } = {}) {
   const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
 
   const dateFormatted = new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Santiago' });
@@ -152,14 +152,19 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
   // CTA: unlock de AMBAS → a la comparativa (los DOS informes, que es lo que se
   // desbloqueó); si el pago desbloqueó un análisis puntual (+ analysisId), a ese
   // análisis; si compró créditos/suscripción, al form.
-  const ctaUrl =
-    product === "unlock" && ambasIds
+  // El pack con guía (01-oct-2026): el botón lleva a la pantalla de después de pagar, donde está la
+  // guía, y la línea del código va debajo (quien pagó sin cuenta entra con su correo).
+  const guia = opts.guiaPack ?? null;
+  const ctaUrl = guia
+    ? guia
+    : product === "unlock" && ambasIds
       ? `${SITE_URL}/analisis/comparativa?ltr=${ambasIds.ltrId}&str=${ambasIds.strId}`
       : analysisId
         ? `${SITE_URL}/analisis/${analysisId}`
         : `${SITE_URL}/analisis/nuevo-v4`;
-  const ctaText =
-    product === "unlock" && ambasIds
+  const ctaText = guia
+    ? 'Ver los deptos que te recomendamos'
+    : product === "unlock" && ambasIds
       ? 'Ver mi comparativa completa'
       : analysisId
         ? 'Ver mi análisis'
@@ -173,6 +178,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     monto: amount,
     fecha: dateFormatted,
     boton: { texto: ctaText, url: ctaUrl },
+    ...(guia ? { despues: ["Para entrar, pide tu código con este mismo correo."] } : {}),
   });
   try {
     await enviarCorreo("pago_confirmado", opts.userId, { from: FROM_EMAIL, to, subject, html });
@@ -193,8 +199,16 @@ export function buildBoletaHtml(p: {
   autoservicioUrl: string;
   /** Concepto del caso: label (fila "Concepto") + frase (párrafo intro). */
   concepto?: { label: string; frase: string };
+  /** «Acá está tu boleta por [producto].» (01-oct-2026): el nombre del producto, como en el pago confirmado. */
+  producto?: string;
 }): string {
-  return correoBoleta({ para: p.to, folio: p.folio, monto: p.monto, fechaEmision: p.fechaEmision, autoservicioUrl: p.autoservicioUrl, concepto: p.concepto, sitio: SITE_URL }).html;
+  return correoBoleta({ para: p.to, folio: p.folio, monto: p.monto, fechaEmision: p.fechaEmision, autoservicioUrl: p.autoservicioUrl, concepto: p.concepto, producto: p.producto, sitio: SITE_URL }).html;
+}
+
+/** El nombre del producto para los correos: «1 análisis», «3 análisis», «Plan 10 mensual»… */
+export function nombreProductoCorreo(product: string, cantidad?: number | null): string {
+  if (product === "single" && cantidad && cantidad > 1) return `${cantidad} análisis`;
+  return paymentPlanCopy(product).productName;
 }
 
 /**
@@ -209,18 +223,19 @@ export async function sendBoletaEmail(params: {
   fechaEmision: string; // YYYY-MM-DD
   autoservicioUrl: string;
   concepto?: { label: string; frase: string };
+  producto?: string;
   pdfBase64?: string | null;
   xmlBase64?: string | null;
   userId?: string | null;
 }): Promise<void> {
-  const { to, folio, monto, fechaEmision, autoservicioUrl, concepto, pdfBase64, xmlBase64, userId } = params;
+  const { to, folio, monto, fechaEmision, autoservicioUrl, concepto, producto, pdfBase64, xmlBase64, userId } = params;
 
   // Adjuntos: el PDF/XML vienen en base64 desde OpenFactura → Buffer para Resend.
   const attachments: Array<{ filename: string; content: Buffer }> = [];
   if (pdfBase64) attachments.push({ filename: `boleta-39-folio-${folio}.pdf`, content: Buffer.from(pdfBase64, 'base64') });
   if (xmlBase64) attachments.push({ filename: `boleta-39-folio-${folio}.xml`, content: Buffer.from(xmlBase64, 'base64') });
 
-  const html = buildBoletaHtml({ to, folio, monto, fechaEmision, autoservicioUrl, concepto });
+  const html = buildBoletaHtml({ to, folio, monto, fechaEmision, autoservicioUrl, concepto, producto });
 
   const resend = getResend();
   if (!resend) {

@@ -12,7 +12,9 @@ import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
-import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+
+const SITIO_CORREO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 import { hayGuia } from "@/lib/guia/activa";
 import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -315,6 +317,15 @@ export async function POST(request: Request) {
                 if (ltrId && strId) ambasIds = { ltrId, strId };
               }
             }
+            // El pack de renta larga (con guía): el botón del correo lleva a la pantalla de después de
+            // pagar, la misma URL de retorno de Flow (01-oct-2026).
+            let guiaPack: string | null = null;
+            if (product === PRODUCTO_PACK && analysisId) {
+              const { data: filaGuia } = await supabase.from("analisis").select("results, tipo_analisis").eq("id", analysisId).maybeSingle();
+              if (hayGuia(modalidadDeTipo(filaGuia?.tipo_analisis as string | null))) {
+                guiaPack = urlRetornoPack(SITIO_CORREO, payment.commerce_order, analysisId, readVeredicto(filaGuia?.results as never) ?? null, "ltr");
+              }
+            }
             await sendPaymentConfirmationEmail(
               userData.user.email,
               resolveDisplayName(userData.user.user_metadata, userData.user.email),
@@ -322,7 +333,7 @@ export async function POST(request: Request) {
               amount,
               analysisId || undefined,
               ambasIds,
-              { userId }
+              { userId, guiaPack }
             );
           }
         } catch (e) {
