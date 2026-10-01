@@ -9,7 +9,8 @@
 //       `RecomendacionDiferida` por `next/dynamic` sin SSR, cuando la página está quieta o la
 //       sección se acerca, con la altura reservada en `.lv-sreco`. Con un build a mano
 //       (`.next/app-build-manifest.json`), ningún chunk de `/` trae el motor ni DocTokens.
-//   3 · FUENTES: no se precarga ningún latin-ext; se precargan las cinco caras latin.
+//   3 · FUENTES: no se precarga ningún latin-ext; solo las caras de arriba del pliegue (Source Serif normal e
+//       itálica, Inter); todas las caras son swap con respaldo ajustado; el fondo del hero sin prioridad alta.
 //   4 · ANALÍTICA CUANDO LA PÁGINA ESTÁ QUIETA: PostHog por `import()` con fachada que encola;
 //       ningún `usePostHog` viene de `posthog-js/react`; el pixel corre su snippet en la ventana
 //       quieta y el PageView espera a `listo`; Sentry inicializa por `import()` y guarda lo de antes.
@@ -20,6 +21,9 @@
 //   Acta 28-sep-2026: A Maps al montar (prepararPlaces() pelado en el efecto) → 1 falla · B solo `focus`
 //   dispara → 1 · C Secciones importa la card real → 1 · D vuelve un latin-ext → 2 · E PostHog carga al
 //   montar → 1 · F vuelve maximumScale → 1 · G el PageView del pixel sin esperar → 1. Restaurado: verde.
+//   Acta 01-oct-2026 (LCP móvil): H vuelve JetBrains a la precarga → 1 · I una cara sin swap → 1 · J el titular sin
+//   respaldo ajustado → 1 · K el fondo con fetchPriority="high" → 1 · L el fondo precargado en el layout → 1 ·
+//   M falta Inter en la precarga → 1.
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -116,12 +120,22 @@ export function runLandingRendimientoTier(): { hard: number } {
   const precarga = (layout.match(/const FUENTES_PRECARGA = \[([\s\S]*?)\] as const;/) ?? [])[1] ?? "";
   if (!precarga) F("3 · no encuentro FUENTES_PRECARGA (el extractor no corrió)");
   if (/latin-ext/.test(precarga)) F("3 · vuelve a precargarse un latin-ext");
-  const caras = precarga.match(/"[a-z0-9-]+\.woff2"/g) ?? [];
-  if (caras.length !== 5) F(`3 · se precargan ${caras.length} caras, no las cinco latin`);
-  for (const c of ["source-serif-4-normal-latin", "source-serif-4-italic-latin", "ibm-plex-sans-normal-latin", "inter-normal-latin", "jetbrains-mono-normal-latin"]) {
-    if (!precarga.includes(`"${c}.woff2"`)) F(`3 · falta la precarga de ${c}`);
+  // (01-oct-2026) Solo lo de arriba del pliegue: el titular (Source Serif normal e itálica) y el campo (Inter).
+  const caras = (precarga.match(/"[a-z0-9-]+\.woff2"/g) ?? []).map((c) => c.slice(1, -1).replace(/\.woff2$/, "")).sort();
+  const ARRIBA = ["inter-normal-latin", "source-serif-4-italic-latin", "source-serif-4-normal-latin"];
+  if (caras.join() !== ARRIBA.join()) F(`3 · se precarga ${caras.join(", ")}: solo van las fuentes de arriba del pliegue (${ARRIBA.join(", ")})`);
+  // Ninguna cara bloquea el titular: TODAS las @font-face con archivo propio son swap.
+  const fuentes = leer("src/app/fuentes.css");
+  const caraConArchivo = Array.from(fuentes.matchAll(/@font-face \{([^}]*)\}/g)).map((m) => m[1]).filter((b) => /url\(\/fonts\//.test(b));
+  const sinSwap = caraConArchivo.filter((b) => !/font-display: swap;/.test(b));
+  if (caraConArchivo.length < 10 || sinSwap.length > 0) F(`3 · ${sinSwap.length} caras no son swap (o el extractor no corrió: ${caraConArchivo.length}): la fuente bloquearía el titular`);
+  // El titular y el campo pintan con un respaldo AJUSTADO en tamaño mientras llega la real (no salta).
+  for (const [variable, respaldo] of [["--font-heading", "Source Serif 4 Franco Fallback"], ["--font-ui", "Inter Franco Fallback"]]) {
+    if (!new RegExp(`${variable}: '[^']+ Franco', '${respaldo}';`).test(fuentes) || !new RegExp(`font-family: '${respaldo}';[^}]*size-adjust: \\d`).test(fuentes)) F(`3 · ${variable} no cae a un respaldo ajustado en tamaño (${respaldo})`);
   }
-  if (!/font-display: swap/.test(leer("src/app/fuentes.css"))) F("3 · las fuentes dejaron de ser swap");
+  // El fondo del hero no es el LCP: no compite con prioridad alta.
+  const heroFondo = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
+  if (/fetchPriority=["{]|fetchpriority=/i.test(heroFondo) || /<link[^>]+hero-[md]\dx\.webp/.test(layout)) F("3 · el fondo del hero vuelve a pedirse con prioridad alta (o se precarga)");
 
   // ── 4 · ANALÍTICA CUANDO LA PÁGINA ESTÁ QUIETA ─────────────────────────────
   // (a) la primitiva: espera `load` y el ocio, corre una vez, se cancela

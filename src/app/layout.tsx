@@ -18,13 +18,16 @@ import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 // Se precarga solo el rango latin de cada cara (28-sep-2026, rendimiento de la landing): los cuatro
 // latin-ext (194 kB) se precargaban con prioridad alta antes del titular y el español no los usa
 // —«¿», «ñ» y las tildes viven en latin—; siguen declarados en `fuentes.css` y bajan solos si
-// alguna vez aparece un carácter de ese rango. Las cinco que quedan: 285 kB.
+// alguna vez aparece un carácter de ese rango.
+// Solo lo de ARRIBA DEL PLIEGUE de la landing en el teléfono (01-oct-2026): el titular (Source Serif
+// normal e itálica) y el campo y el botón (Inter). IBM Plex Sans y JetBrains Mono no se usan en la
+// primera pantalla: precargadas competían con el CSS y con la fuente del titular (71 kB con prioridad
+// alta). Siguen declaradas con `swap` y bajan cuando una página las usa. Todas tienen respaldo ajustado
+// en tamaño (`fuentes.css`), así que el titular pinta sin esperarlas y no salta cuando llegan.
 const FUENTES_PRECARGA = [
   "source-serif-4-normal-latin.woff2",
   "source-serif-4-italic-latin.woff2",
-  "ibm-plex-sans-normal-latin.woff2",
   "inter-normal-latin.woff2",
-  "jetbrains-mono-normal-latin.woff2",
 ] as const;
 
 // Sin `maximumScale` (28-sep-2026): el zoom con los dedos queda permitido en todo el sitio; con

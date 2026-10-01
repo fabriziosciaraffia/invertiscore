@@ -65,7 +65,8 @@ export function runColasChicasTier(): { hard: number } {
     if (!css.includes(`font-family: '${familia} Fallback';`)) F(`1 · ${familia} sin su fuente de respaldo con métricas`);
   }
   const precarga = [...layout.matchAll(/"([a-z0-9-]+\.woff2)"/g)].map((m) => m[1]);
-  if (precarga.length < 4) F("1 · el layout no precarga las fuentes");
+  // Desde el 01-oct-2026 se precargan solo las tres de arriba del pliegue; la lista exacta la fija LANDING-RENDIMIENTO §3.
+  if (precarga.length < 3) F("1 · el layout no precarga las fuentes");
   for (const f of precarga) if (!existsSync(join(RAIZ, "public", "fonts", f))) F(`1 · el layout precarga /fonts/${f} y no existe`);
 
   // ── 2 · el color del puntaje sigue al veredicto ──

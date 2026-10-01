@@ -397,8 +397,10 @@ export function HeroEntrada({
       <picture className="he-fondo">
         <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
         <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP */}
-        <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
+        {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—, y con prioridad
+            alta sus 119 kB competían con el CSS y con la fuente del titular en el teléfono. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+        <img src="/landing/hero-m2x.webp" alt="" decoding="async" />
       </picture>
       {cabecera}
       <div className="he-col">
