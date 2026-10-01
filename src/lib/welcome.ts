@@ -18,6 +18,18 @@ function createAdminClient() {
  *   - si todo falla → "" (el saludo cae a "Hola," sin nombre)
  * sendWelcomeEmail aplica el split del primer nombre al resultado.
  */
+/**
+ * El primer nombre REAL de la persona —el que dio al registrarse o el de su cuenta de Google—, o null.
+ * Para saludar (01-oct-2026): nunca se deriva del correo, porque «Hola, Fabriziosciaraffia.» no es un
+ * nombre. Los correos siguen con resolveDisplayName, que sí cae al correo.
+ */
+export function nombreReal(metadata: Record<string, unknown> | null | undefined): string | null {
+  const m = metadata ?? {};
+  const v = [m.full_name, m.name, m.nombre].find((x) => typeof x === "string" && x.trim()) as string | undefined;
+  const primero = v?.trim().split(/\s+/)[0] ?? "";
+  return primero || null;
+}
+
 export function resolveDisplayName(
   metadata: Record<string, unknown> | null | undefined,
   email: string | null | undefined,

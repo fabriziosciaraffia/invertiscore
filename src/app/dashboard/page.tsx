@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ensureWelcomeEmail, resolveDisplayName } from "@/lib/welcome";
+import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { COMPARAR } from "@/lib/lo-que-sigue/copy";
@@ -48,7 +48,8 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
 
   const fullName = resolveDisplayName(user.user_metadata, user.email);
-  const firstName = fullName.split(" ")[0] || "";
+  // Para saludar, solo el nombre real: nunca la parte del correo antes de la @ (01-oct-2026).
+  const firstName = nombreReal(user.user_metadata) ?? "";
 
   // Welcome email server-side e idempotente, antes del branch de onboarding.
   await ensureWelcomeEmail(user.id, user.email, fullName);
@@ -135,7 +136,7 @@ export default async function DashboardPage({
       <div className="min-h-screen bg-[var(--franco-bg)]">
         <ChipVeredictoTokens />
         <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
-        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={false} conPlanes={false} />
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={false} />
       </div>
     );
   }
