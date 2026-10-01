@@ -11,6 +11,10 @@ import { fmtCLP, SINGLE_PRICE } from "@/lib/pricing";
 
 export const ENLACE_CIERRE = "Analizar otro depto";
 
+/** El ancho de la columna del informe (`.doc-dictamen .doc-page--secciones{max-width:700px}` en
+ *  PortadaInforme): la línea del final se alinea con ella, no con el borde de la página. */
+export const ANCHO_COLUMNA_INFORME = 700;
+
 export interface TextoCierre {
   /** «Te quedan 2 análisis.» · null cuando no hay saldo que decir. */
   saldo: string | null;

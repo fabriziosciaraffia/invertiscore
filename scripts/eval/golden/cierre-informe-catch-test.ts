@@ -15,7 +15,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { textoCierre, ENLACE_CIERRE } from "../../../src/lib/cierre-informe";
+import { textoCierre, ENLACE_CIERRE, ANCHO_COLUMNA_INFORME } from "../../../src/lib/cierre-informe";
 import { sinComentarios } from "./lectura-paginada-catch-test";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -48,6 +48,10 @@ export function runCierreInformeTier(): { hard: number } {
   const comp = sinComentarios(leer("src/components/analysis/CierreInforme.tsx"));
   if (/font-mono|uppercase|tracking-|signal-red|C8323C|franco-red|text-red/i.test(comp)) F("estilo · la línea del cierre usa mono, mayúsculas o rojo");
   if ((comp.match(/<EnlaceCarga\b/g) ?? []).length !== 1 || /<button\b/.test(comp)) F("estilo · la línea del cierre tiene más de una acción");
+  // (01-oct-2026) Alineada con la columna del informe, no con el borde de la página.
+  const portada = leer("src/components/analysis/portada/PortadaInforme.tsx");
+  const col = Number((portada.match(/\.doc-dictamen \.doc-page--secciones\{max-width:(\d+)px;margin:0 auto\}/) ?? [])[1]);
+  if (ANCHO_COLUMNA_INFORME !== col || !/className="[^"]*\bmx-auto\b[^"]*" style=\{\{ maxWidth: ANCHO_COLUMNA_INFORME \}\}/.test(comp)) F(`estilo · la línea del cierre no va en la columna del informe (${ANCHO_COLUMNA_INFORME} contra ${col} px)`);
 
   // ── el final de cada informe: una acción ──
   const RETIRADOS = /<NextAnalysisCTA\b|<WalletStatusCTA\b|<ProCTABanner\b|<ConversionCloser\b|Analizar otra propiedad|<ArrowRight\b/;
@@ -82,6 +86,8 @@ export function runCierreInformeTier(): { hard: number } {
 // el banner Pro · K4 vuelve «Analizar otra propiedad» · K5 la línea y la bienvenida juntas · K6 la línea
 // también en el anónimo · K7 la línea en mono y mayúsculas · K8 el enlace en rojo · K9 sin precio al quedar en
 // cero · K10 el saldo en plural siempre · K11 un segundo botón en la línea · K12 el saldo sin la bienvenida.
+// Segunda vuelta (01-oct-2026, la línea en la columna del informe, 2/2 en rojo): K13 la línea al borde de la página ·
+// K14 otro ancho que la columna.
 
 if (require.main === module) {
   const { hard } = runCierreInformeTier();
