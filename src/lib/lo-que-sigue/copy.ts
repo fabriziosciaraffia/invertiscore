@@ -110,8 +110,9 @@ export const TICKET_PACK = {
 // ── 5 · Después de pagar ─────────────────────────────────────────────────────
 // 30-sep-2026: el copy nuevo, con la guía de búsqueda debajo. La frase de Buscar otro nombra la guía
 // («Abajo, deptos parecidos…»): donde no hay guía (renta corta) va la de antes.
+// 02-oct-2026: el titular dice el SALDO REAL de la cuenta (no «3» fijo); `null` = no se pudo leer.
 export const DESPUES_DE_PAGAR = {
-  titular: "Tienes 3 análisis.",
+  titular: (n: number | null): string => (n == null ? "Tus análisis ya están en tu cuenta." : n <= 0 ? "Ya usaste tus análisis." : `Tienes ${n} análisis.`),
   cuerpo: "El próximo es más fácil: tus números del primer informe ya están cargados.",
   boton: "Analizar el próximo",
   fraseVeredicto: {
@@ -122,10 +123,28 @@ export const DESPUES_DE_PAGAR = {
   buscarSinGuia: "Mismo pie, mismo plazo. Solo falta el próximo depto.",
 } as const;
 
+// 02-oct-2026: sin sesión y sin la firma del pago, la pantalla NO sabe si el pago pasó: no dice «Pago
+// recibido» ni «Tus 3 análisis». Pide entrar. `paraEntrar` es la línea de después de pagar sin sesión,
+// cuando el pago sí se verificó con la firma.
 export const RETORNO_SIN_SESION = {
-  titulo: "Pago recibido.",
-  cuerpo: "Tus 3 análisis ya están en tu cuenta. Para entrar, pide tu código con el mismo correo del pago.",
+  titulo: "Entra para ver tu pago.",
+  cuerpo: "Pide tu código con el mismo correo con que pagaste y lo verás en tu cuenta.",
   boton: "Entrar con mi correo",
+  paraEntrar: "Para entrar, pide tu código con el mismo correo del pago.",
+} as const;
+
+/** El enlace de pago abierto con la sesión de OTRA cuenta (02-oct-2026): antes quedaba cargando. */
+export const PAGO_OTRA_CUENTA = {
+  titulo: "Este pago es de otra cuenta.",
+  cuerpo: "Entra con el correo con que pagaste.",
+  boton: "Entrar con otro correo",
+} as const;
+
+/** El pago del pack que no pasó, visto sin sesión con la firma: lo dice y vuelve al informe. */
+export const PAGO_PACK_NO_PASO = {
+  titulo: "El pago no pasó.",
+  cuerpo: "Flow lo rechazó o se canceló. No se hizo ningún cargo.",
+  volver: "Volver a mi informe",
 } as const;
 
 export const CHECKOUT_PACK = {

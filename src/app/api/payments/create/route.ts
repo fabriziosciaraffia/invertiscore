@@ -5,6 +5,7 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
       // identifique ESTA compra (no el "último pago del user"). El middleware
       // preserva el query string al convertir el POST de Flow en GET.
       urlReturn: product === PRODUCTO_PACK && analysisId
-        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack)
+        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack, firmarPago(commerceOrder))
         : `${SITE_URL}/payments/return?order=${commerceOrder}`,
     });
 

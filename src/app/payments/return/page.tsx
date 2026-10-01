@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
+import { PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
 import { leerRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { estadoDelPago, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
+import { HorizontePostPago } from "@/components/lo-que-sigue/HorizontePostPago";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,8 +23,14 @@ function PaymentReturnContent() {
   const order = searchParams.get("order");
   // «Lo que sigue» (30-sep-2026): el pack vuelve con el informe de origen y su veredicto.
   const retornoPack = leerRetornoPack(searchParams);
-  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion">("loading");
+  // La llave del pago (02-oct-2026): la firma que el servidor puso en la URL de retorno. Sin sesión deja
+  // leer el estado de ESTE pago, el saldo y la guía; sin ella, la pantalla no sabe nada y pide entrar.
+  const llavePago: LlavePago | null = retornoPack?.firma && order ? { order, firma: retornoPack.firma } : null;
+  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
+  const [saldo, setSaldo] = useState<number | null>(null);
+  const [conSesion, setConSesion] = useState(true);
   // Estado puente: tras detectar paid de un single con análisis, mostramos
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
   // genérica antes de la navegación).
@@ -70,17 +78,27 @@ function PaymentReturnContent() {
       try {
         // Con order → identifica la compra exacta. Sin order (fallback legacy o
         // compras viejas sin el param) → status cae al "último pago del user".
-        const res = await fetch(order ? `/api/payments/status?order=${encodeURIComponent(order)}` : "/api/payments/status");
+        const firma = llavePago ? `&t=${encodeURIComponent(llavePago.firma)}` : "";
+        const res = await fetch(order ? `/api/payments/status?order=${encodeURIComponent(order)}${firma}` : "/api/payments/status");
         // «Lo que sigue» (28-sep-2026): el pack se paga desde el ticket SIN sesión (la cuenta se crea con
-        // el correo). Flow vuelve acá sin sesión: el pago ya está en su cuenta; se le dice cómo entrar.
+        // el correo). Flow vuelve acá sin sesión. Con la firma del pago (02-oct-2026) el servidor responde
+        // igual; sin ella, 401: la pantalla no sabe si el pago pasó y pide entrar, sin afirmar nada.
         if (res.status === 401) {
           setPaymentStatus("sin_sesion");
           return;
         }
         const data = await res.json();
+        // Con la sesión de OTRA cuenta (02-oct-2026): se dice, en vez de quedarse cargando.
+        if (data.otraCuenta) {
+          setPaymentStatus("otra_cuenta");
+          return;
+        }
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
-          if (data.payment.status === "paid") {
+          setConSesion(!data.sinSesion);
+          setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
+          const estado = estadoDelPago(data.payment.status);
+          if (estado === "paid") {
             // `pro_purchased` se retiró (28-sep-2026): el pago se mide desde el servidor con
             // `pago_confirmado` (medicion-pago.ts), que no depende de que esta página lo vea.
             // Meta Pixel: Purchase browser-side. event_id = commerce_order → dedup
@@ -145,7 +163,7 @@ function PaymentReturnContent() {
                 router.push(`/analisis/${data.payment.analysis_id}`);
               }
             }
-          } else if (data.payment.status === "rejected" || data.payment.status === "cancelled") {
+          } else if (estado === "error") {
             setPaymentStatus("error");
           } else {
             setPaymentStatus("pending");
@@ -162,7 +180,17 @@ function PaymentReturnContent() {
     };
 
     checkStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, statusParam, order, router, searchParams]);
+
+  // Adónde vuelve quien entra con su correo: a esta misma pantalla si es el pack (verá su saldo y la guía);
+  // si no, al dashboard.
+  const volverAca = typeof window === "undefined" ? "/dashboard" : window.location.pathname + window.location.search;
+  const nextEntrar = `/registro?next=${encodeURIComponent(retornoPack ? volverAca : "/dashboard")}`;
+  async function entrarConOtroCorreo() {
+    try { await createClient().auth.signOut(); } catch { /* sin sesión: igual a entrar */ }
+    window.location.assign(`/registro?next=${encodeURIComponent(volverAca)}`);
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
@@ -196,17 +224,25 @@ function PaymentReturnContent() {
         {/* Después de pagar el pack, UNA idea (01-oct-2026): donde hay guía (renta larga, el mismo predicado
             que la línea del ticket que la promete), «Tienes 3 análisis. Empieza por estos.» con la guía; si
             el informe no tiene guía, o en renta corta, «Tienes 3 análisis.» con el próximo análisis. */}
-        {retornoPack && (paymentStatus === "paid" || paymentStatus === "sin_sesion") && (
+        {/* 02-oct-2026: solo con el pago VERIFICADO (con sesión, o sin ella con la firma), y con el saldo
+            real. Sin sesión ni firma, la pantalla de entrar (abajo), sin «Tienes 3 análisis». */}
+        {retornoPack && paymentStatus === "paid" && (
           hayGuia(retornoPack.modalidad) ? (
             <GuiaBusqueda
               analysisId={retornoPack.analysisId}
               veredicto={retornoPack.veredicto}
-              conSesion={paymentStatus === "paid"}
-              sinGuia={<DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />}
+              conSesion={conSesion}
+              saldo={saldo}
+              pago={llavePago}
+              sinGuia={<DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={conSesion} saldo={saldo} />}
             />
           ) : (
-            <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={paymentStatus === "paid"} />
+            <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={conSesion} saldo={saldo} />
           )
+        )}
+        {/* «¿Cuándo piensas comprar?», discreto, debajo (02-oct-2026): con sesión o con la firma del pago. */}
+        {retornoPack && paymentStatus === "paid" && (conSesion || llavePago) && (
+          <HorizontePostPago ctx={{ analysisId: retornoPack.analysisId, veredicto: retornoPack.veredicto, modalidad: retornoPack.modalidad }} pago={llavePago} />
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (
@@ -240,16 +276,34 @@ function PaymentReturnContent() {
           </div>
         )}
 
-        {!retornoPack && paymentStatus === "sin_sesion" && (
-          <div className="text-center" data-lqs="retorno-sin-sesion">
+        {paymentStatus === "sin_sesion" && (
+          <div className="mx-auto max-w-md text-center" data-lqs="retorno-sin-sesion">
             <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{RETORNO_SIN_SESION.titulo}</h1>
             <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{RETORNO_SIN_SESION.cuerpo}</p>
-            <EnlaceCarga href="/registro?next=%2Fdashboard" className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
+            <EnlaceCarga href={nextEntrar} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
               {RETORNO_SIN_SESION.boton}
             </EnlaceCarga>
           </div>
         )}
-        {paymentStatus === "error" && (
+        {paymentStatus === "otra_cuenta" && (
+          <div className="mx-auto max-w-md text-center" data-lqs="retorno-otra-cuenta">
+            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{PAGO_OTRA_CUENTA.titulo}</h1>
+            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{PAGO_OTRA_CUENTA.cuerpo}</p>
+            <button type="button" onClick={entrarConOtroCorreo} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)]">
+              {PAGO_OTRA_CUENTA.boton}
+            </button>
+          </div>
+        )}
+        {paymentStatus === "error" && retornoPack && (
+          <div className="mx-auto max-w-md text-center" data-lqs="retorno-pack-no-paso">
+            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{PAGO_PACK_NO_PASO.titulo}</h1>
+            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{PAGO_PACK_NO_PASO.cuerpo}</p>
+            <EnlaceCarga href={retornoPack.modalidad === "str" ? `/analisis/renta-corta/${retornoPack.analysisId}` : `/analisis/${retornoPack.analysisId}`} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
+              {PAGO_PACK_NO_PASO.volver}
+            </EnlaceCarga>
+          </div>
+        )}
+        {paymentStatus === "error" && !retornoPack && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 text-4xl">✕</div>
             <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Pago no procesado</h2>

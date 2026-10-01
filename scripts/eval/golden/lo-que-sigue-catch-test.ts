@@ -37,7 +37,7 @@ import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
 import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
 import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo-que-sigue/perfil";
-import { CHECKOUT_PACK, COMPARAR, CORREO_RECORDATORIO, DESPUES_DE_PAGAR, ESTAS_DENTRO, FRASE_REGISTRO, leadTicket, OFERTA_REGISTRO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
+import { CHECKOUT_PACK, COMPARAR, CORREO_RECORDATORIO, DESPUES_DE_PAGAR, ESTAS_DENTRO, FRASE_REGISTRO, leadTicket, OFERTA_REGISTRO, PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
 import { precioQueCierraUF } from "../../../src/lib/lo-que-sigue/precio-cierre";
 import { aplicarPrecarga, CAMPOS_DEPTO, CAMPOS_PRECARGA, precargaDesdeInforme } from "../../../src/lib/lo-que-sigue/precarga";
 import { correoRecordatorioPack, debeRecordar } from "../../../src/lib/lo-que-sigue/recordatorio";
@@ -172,12 +172,12 @@ export function runLoQueSigueTier(): { hard: number } {
 
   // ── 5 · EL COPY EN TUTEO ───────────────────────────────────────────────────
   const textos: string[] = [
-    ...Object.values(FRASE_REGISTRO), ...Object.values(RETORNO_SIN_SESION),
+    ...Object.values(FRASE_REGISTRO), ...Object.values(RETORNO_SIN_SESION), ...Object.values(PAGO_OTRA_CUENTA), ...Object.values(PAGO_PACK_NO_PASO),
     ...Object.values(OFERTA_REGISTRO), ...Object.values(REGISTRO_UN_PASO).map((v) => (typeof v === "function" ? v("x@y.cl") : v)),
     ...Object.values(TICKET_PACK).map((v) => (typeof v === "function" ? (v as (...a: string[]) => string)("hoy", "21:04") : v)),
     ...(["BUSCAR OTRA", "AJUSTA SUPUESTOS", "COMPRAR"] as const).flatMap((v) => [leadTicket(v, 1934, "$5.000"), leadTicket(v, null, "$5.000"), DESPUES_DE_PAGAR.fraseVeredicto[v]]),
     ESTAS_DENTRO.titular, ESTAS_DENTRO.cuerpo, ESTAS_DENTRO.tocaCambiar, ESTAS_DENTRO.aprende, ESTAS_DENTRO.cuando, ESTAS_DENTRO.errorGuardar, ...ESTAS_DENTRO.horizontes.map((h) => h.texto), ...Object.values(ESTAS_DENTRO.modalidad),
-    DESPUES_DE_PAGAR.titular, DESPUES_DE_PAGAR.cuerpo, DESPUES_DE_PAGAR.boton,
+    DESPUES_DE_PAGAR.titular(3), DESPUES_DE_PAGAR.titular(1), DESPUES_DE_PAGAR.titular(0), DESPUES_DE_PAGAR.titular(null), DESPUES_DE_PAGAR.cuerpo, DESPUES_DE_PAGAR.boton,
     COMPARAR.titulo, COMPARAR.bajada, COMPARAR.boton, COMPARAR.notaPesos, COMPARAR.minimo, ...Object.values(COMPARAR.filas),
     ...Object.values(CORREO_RECORDATORIO),
     CHECKOUT_PACK.titulo, CHECKOUT_PACK.subtitulo, CHECKOUT_PACK.vence("hoy", "21:04"), CHECKOUT_PACK.vencido,
@@ -195,7 +195,7 @@ export function runLoQueSigueTier(): { hard: number } {
   if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton !== "Quiero los 3 análisis") F("5 · la pestaña o el botón del ticket no son los aprobados");
   // (30-sep-2026) El copy nuevo de Fabrizio, con la guía de búsqueda debajo; sin guía, Buscar otro dice la de antes.
   if (DESPUES_DE_PAGAR.fraseVeredicto["BUSCAR OTRA"] !== "Mismo pie, mismo plazo. Abajo, deptos parecidos ya revisados con tus números." || DESPUES_DE_PAGAR.fraseVeredicto["AJUSTA SUPUESTOS"] !== "Compara y mira si alguno conviene sin negociar, y así tienes con qué presionar." || DESPUES_DE_PAGAR.fraseVeredicto.COMPRAR !== "Compara y mira si este sigue siendo el mejor." || DESPUES_DE_PAGAR.buscarSinGuia !== "Mismo pie, mismo plazo. Solo falta el próximo depto.") F("5 · la frase por veredicto de después de pagar no es la aprobada");
-  if (`${DESPUES_DE_PAGAR.titular} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 análisis. El próximo es más fácil: tus números del primer informe ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
+  if (`${DESPUES_DE_PAGAR.titular(3)} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 análisis. El próximo es más fácil: tus números del primer informe ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
   if (CORREO_RECORDATORIO.asunto !== "Te quedan 3 análisis, con tus números ya cargados.") F("5 · el asunto del correo no es el aprobado");
   for (const f of ["src/components/lo-que-sigue/BannerRegistro.tsx", "src/components/lo-que-sigue/EstasDentro.tsx", "src/components/lo-que-sigue/DespuesDePagar.tsx", "src/components/lo-que-sigue/TicketPack.tsx", "src/app/comparar/comparar-vista.tsx"]) {
     // El texto visible sale de copy.ts: ni voseo ni literales sueltos en JSX.
@@ -282,15 +282,16 @@ export function runLoQueSigueTier(): { hard: number } {
     if (ida("str")?.modalidad !== "str" || ida("ltr")?.modalidad !== "ltr" || ida("str")?.veredicto !== "COMPRAR") F("9 · la vuelta del pago no trae la modalidad (ida y vuelta)");
     if (modalidadDeTipo("short-term") !== "str" || modalidadDeTipo("long-term") !== "ltr") F("9 · la modalidad no sale de tipo_analisis");
     for (const [f, re] of [
-      ["src/app/api/lo-que-sigue/pack/route.ts", /select\("user_id, created_at, results, tipo_analisis"\)[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo\(analysis\.tipo_analisis as string\)\)/],
-      ["src/app/api/payments/create/route.ts", /modalidadPack = modalidadDeTipo\(analysis\.tipo_analisis as string\);[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack\)/],
+      ["src/app/api/lo-que-sigue/pack/route.ts", /select\("user_id, created_at, results, tipo_analisis"\)[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo\(analysis\.tipo_analisis as string\), firmarPago\(commerceOrder\)\)/],
+      ["src/app/api/payments/create/route.ts", /modalidadPack = modalidadDeTipo\(analysis\.tipo_analisis as string\);[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack, firmarPago\(commerceOrder\)\)/],
       ["src/app/payments/return/page.tsx", /modalidad=\{retornoPack\.modalidad\}/],
       ["src/components/lo-que-sigue/DespuesDePagar.tsx", /EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad \}/],
     ] as const) if (!re.test(sinComentarios(leer(f)))) F(`9 · ${f} no lleva la modalidad del informe hasta el evento de después de pagar`);
     if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
     const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-    // (01-oct-2026) Con guía (renta larga) «Tienes 3 análisis. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
-    if (!/\{retornoPack && \(paymentStatus === "paid" \|\| paymentStatus === "sin_sesion"\) && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,400}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
+    // (01-oct-2026) Con guía (renta larga) «Tienes N análisis. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
+    // (02-oct-2026) Solo con el pago verificado (`paid`): sin sesión ni firma, la pantalla de entrar.
+    if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,600}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
   }
 
   // ── 10 · EL CARRITO ABANDONADO NO LE ESCRIBE A QUIEN DEJÓ EL PACK ──────────

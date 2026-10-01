@@ -58,18 +58,28 @@ const COD_VEREDICTO = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b
 /** La modalidad del informe, de su `tipo_analisis`. */
 export const modalidadDeTipo = (tipo: string | null | undefined): "ltr" | "str" => (tipo === "short-term" ? "str" : "ltr");
 
-export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined, modalidad: "ltr" | "str"): string {
+// La firma del pago (02-oct-2026, `firma-pago.ts`): `t` deja leer el estado del pago, el saldo y la guía sin
+// sesión. La hace el servidor (`firmarPago`) y llega acá hecha; sin firma la URL sale como antes.
+export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined, modalidad: "ltr" | "str", firma?: string | null): string {
   const v = COD_VEREDICTO[(veredicto ?? "") as keyof typeof COD_VEREDICTO] ?? "a";
   const m = modalidad === "str" ? "s" : "l";
-  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}&m=${m}`;
+  const t = firma ? `&t=${encodeURIComponent(firma)}` : "";
+  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}&m=${m}${t}`;
 }
 
-export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; modalidad: "ltr" | "str" } | null {
+export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; modalidad: "ltr" | "str"; order: string | null; firma: string | null } | null {
   if (sp.get("lqs") !== "pack") return null;
   const a = sp.get("a") ?? "";
   if (!/^[0-9a-f-]{36}$/i.test(a)) return null;
   const v = sp.get("v");
-  return { analysisId: a, veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS", modalidad: sp.get("m") === "s" ? "str" : "ltr" };
+  const t = sp.get("t");
+  return {
+    analysisId: a,
+    veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS",
+    modalidad: sp.get("m") === "s" ? "str" : "ltr",
+    order: sp.get("order"),
+    firma: t && /^[A-Za-z0-9_-]{32}$/.test(t) ? t : null,
+  };
 }
 
 /** Los productos a los que el cron de carrito abandonado les escribe: todos menos el pack. El pack

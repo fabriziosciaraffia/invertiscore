@@ -112,18 +112,18 @@ export function DemoCliente() {
         <BannerRegistro key={`d-${v}`} ctx={ctx} next="/dev/lo-que-sigue" perfil={PERFIL} demo pasoInicial="dentro" />
 
         {rotulo("Después de pagar · con sesión")}
-        <DespuesDePagar key={`p-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion />
+        <DespuesDePagar key={`p-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion saldo={3} />
         {rotulo("Después de pagar · sin sesión")}
-        <DespuesDePagar key={`s-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion={false} />
+        <DespuesDePagar key={`s-${v}`} analysisId={ctx.analysisId} veredicto={v} modalidad="ltr" conSesion={false} saldo={3} />
 
         {rotulo("Por dónde seguir buscando · tres que convienen")}
-        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.normal} />
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion saldo={3} muestra={GUIA_MUESTRA.normal} />
         {rotulo("Después de pagar sin cuenta · «Analizar este» pide el código en la tarjeta (el correo es real)")}
-        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion={false} muestra={GUIA_MUESTRA.normal} />
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion={false} saldo={3} muestra={GUIA_MUESTRA.normal} />
         {rotulo("Por dónde seguir buscando · con el plazo ajustado")}
-        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.ajustada} />
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion saldo={3} muestra={GUIA_MUESTRA.ajustada} />
         {rotulo("Por dónde seguir buscando · ninguno conviene")}
-        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion muestra={GUIA_MUESTRA.ninguno} />
+        <GuiaBusqueda analysisId={ctx.analysisId} veredicto={v} conSesion saldo={3} muestra={GUIA_MUESTRA.ninguno} />
         {origenReal && (
           <>
             {rotulo("Por dónde seguir buscando · la real de ?a=")}

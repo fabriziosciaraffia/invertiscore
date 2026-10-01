@@ -10,6 +10,11 @@
 // «Analizar este» genera el informe con un crédito del pack, sin wizard. Quien pagó SIN cuenta escribe
 // el código en la misma tarjeta (RegistroEnTarjeta) y el informe sale al entrar, sin salir de acá.
 // Copy fijado en lib/guia/copy.ts.
+//
+// 02-oct-2026: el título y «usa 1 de tus N» dicen el saldo real (`saldo`, de /api/payments/status; sin
+// él, la frase no inventa un número). La guía ya no se lee sin más: el servidor pide la sesión del dueño
+// del informe o la firma del pago (`pago`, la de la vuelta de Flow). Las dos props son opcionales: con
+// sesión (p.ej. desde el dashboard) basta con `analysisId`.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -18,7 +23,8 @@ import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/e
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { rutaPrecarga } from "@/lib/lo-que-sigue/oferta-pack";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { GUIA } from "@/lib/guia/copy";
+import { GUIA, GUIA_SALDO } from "@/lib/guia/copy";
+import { urlGuia, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { RegistroEnTarjeta } from "./RegistroEnTarjeta";
 import "./guia.css";
 
@@ -32,8 +38,10 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
 /** `muestra`: la demo (/dev/lo-que-sigue) pasa la respuesta hecha; no pide nada y «Analizar este» no genera.
- *  `sinGuia`: lo que se muestra si el informe no tiene guía (sin coordenadas, o la guía falló). */
-export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode }) {
+ *  `sinGuia`: lo que se muestra si el informe no tiene guía (sin coordenadas, o la guía falló).
+ *  `saldo`: los análisis que le quedan a la cuenta (`null`/ausente = no se sabe; la frase no dice número).
+ *  `pago`: la llave del pago (order + firma) para leer la guía sin sesión. */
+export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null, saldo = null, pago = null }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode; saldo?: number | null; pago?: LlavePago | null }) {
   const posthog = usePostHog();
   const router = useRouter();
   const ctx: ContextoLqs = { analysisId, veredicto, modalidad: "ltr" };
@@ -50,7 +58,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     // La pantalla de después de pagar es esta: el evento de siempre, con la modalidad del informe.
     capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad: "ltr" }, { con_sesion: conSesionInicial });
     let vivo = true;
-    fetch(`/api/lo-que-sigue/guia?a=${encodeURIComponent(analysisId)}`)
+    fetch(urlGuia(analysisId, pago))
       .then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status)))))
       .then((d: Respuesta) => {
         if (!vivo) return;
@@ -69,7 +77,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   async function reemplazar() {
     try {
       const [nueva] = await Promise.all([
-        fetch(`/api/lo-que-sigue/guia?a=${encodeURIComponent(analysisId)}`).then((x) => (x.ok ? (x.json() as Promise<Respuesta>) : null)),
+        fetch(urlGuia(analysisId, pago)).then((x) => (x.ok ? (x.json() as Promise<Respuesta>) : null)),
         new Promise((ok) => setTimeout(ok, 2500)),
       ]);
       if (nueva) { setR(nueva); setError(null); }
@@ -122,11 +130,12 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     setGenerando(null);
   }
 
+  const usaUno = GUIA_SALDO.usaUno(saldo);
   const frase = !r ? null : !r.disponible ? null : r.estado === "ninguno" ? GUIA.ninguno : r.estado === "ajustada" ? GUIA.ajustada : GUIA.cuerpo;
 
   return (
     <section className="guia" data-guia={r ? (r.disponible ? r.estado : "no") : "cargando"} aria-busy={!r}>
-      <h1 className="guia-titulo">{GUIA.titulo}</h1>
+      <h1 className="guia-titulo">{GUIA_SALDO.titulo(saldo)}</h1>
       {frase && <p className={r && r.disponible && r.estado !== "normal" ? "guia-ajustada" : "guia-txt"}>{frase}</p>}
       {!r && (
         <div className="guia-lista" aria-hidden="true">
@@ -172,7 +181,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                       <button type="button" className="guia-an" onClick={() => analizar(it)} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
                         {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
                       </button>
-                      <span className="guia-cr">· {GUIA.usaUno}</span>
+                      {usaUno && <span className="guia-cr">· {usaUno}</span>}
                     </div>
                   )}
                   {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}

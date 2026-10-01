@@ -68,3 +68,13 @@
 .qv-ok { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--doc-tx, var(--franco-text)); color: var(--doc-paper, var(--franco-bg)); align-items: center; justify-content: center; font-size: 13px; margin-right: 10px; flex: none; }
 .qv-error { margin: 8px 0 0; font-size: 13px; color: var(--signal-red); }
 @media (max-width: 767px) { .qv-caja:not([data-listo="1"]) { flex-direction: column; align-items: stretch; } }
+
+/* ── «¿Cuándo piensas comprar?» después de pagar (02-oct-2026) ── discreto, debajo de la guía: una línea
+   chica y tres píldoras de contorno, en Inter, con los tokens del chrome (claro y oscuro). Elegida, la
+   píldora se rellena en tinta. Sin color de marca: no es una acción principal. */
+.guia-cuando { margin: 28px 0 0; padding-top: 18px; border-top: 1px solid var(--franco-border); font-family: var(--font-ui), "Inter", system-ui, sans-serif; text-align: left; }
+.guia-cuando-t { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--franco-text-secondary); }
+.guia-cuando-op { display: flex; flex-wrap: wrap; gap: 8px; }
+.guia-opcion { height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--franco-border); background: none; color: var(--franco-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.guia-opcion[data-activa="1"] { background: var(--franco-text); color: var(--franco-bg); border-color: var(--franco-text); }
+.guia-opcion:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }

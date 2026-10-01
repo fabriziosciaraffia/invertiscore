@@ -14,14 +14,14 @@ export const TICKET_INCLUYE_GUIA =
 
 // 01-oct-2026: después de pagar, una sola idea —«compraste 3 análisis; empieza por estos»—. El título
 // y el cuerpo se funden; «ajustada» y «ninguno» van debajo del título en lugar del cuerpo.
+// 02-oct-2026: el título y «usa 1 de tus N» dicen el SALDO REAL (GUIA_SALDO, abajo), no «3» fijo: quien
+// ya usó uno, o tenía saldo de antes, leía un número falso.
 export const GUIA = {
-  titulo: "Tienes 3 análisis. Empieza por estos.",
   cuerpo: "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
   ajustada: "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores.",
   ninguno: "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona.",
   analizar: "Analizar este",
   analizando: "Generando…",
-  usaUno: "usa 1 de tus 3",
   otroDepto: "¿Tienes otro depto en mente?",
   otroDeptoEnlace: "Analízalo con tus números ya cargados",
   registroTitulo: "Entra con el correo con que pagaste y lo analizamos.",
@@ -41,6 +41,15 @@ export const GUIA = {
   chipCombinacion: "Con pie",
   antiguedad: "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene.",
   pie: "Vistos en los últimos 7 días. Los precios son los publicados; el arriendo es el que Franco estima para cada uno en su zona.",
+} as const;
+
+/** Con el saldo real de la cuenta (`null` = no se pudo leer: la frase no inventa un número). En cero, lo
+ *  dice: la guía sigue, pero no promete análisis que no hay. */
+export const GUIA_SALDO = {
+  titulo: (n: number | null): string =>
+    n == null ? "Tus análisis ya están en tu cuenta. Empieza por estos." : n <= 0 ? "Ya usaste tus análisis. Estos son los que mejor calzan contigo." : `Tienes ${n} análisis. Empieza por estos.`,
+  /** Junto a «Analizar este». `null` en cero: no hay de dónde usar uno. */
+  usaUno: (n: number | null): string | null => (n == null ? "usa 1 de tus análisis" : n <= 0 ? null : n === 1 ? "usa el último que te queda" : `usa 1 de tus ${n}`),
 } as const;
 
 /** El informe que sale de un aviso publicado. */
