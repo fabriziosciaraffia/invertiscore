@@ -632,7 +632,7 @@ export default async function AdminOperacionPage({
       {/* ─── PASE SEMANAL TOCTOC ─── */}
       <section className="mb-8">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Último pase semanal TocToc</h2>
+          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Último pase diario TocToc</h2>
           <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
             lunes 03:00 UTC · /api/data/backfill-toctoc
           </span>

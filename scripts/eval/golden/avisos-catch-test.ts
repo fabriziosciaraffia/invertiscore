@@ -13,6 +13,8 @@
 //       evaluados; se reevalúa por precio, por antigüedad (7 días) o por versión del motor.
 //   6 · EL CRON: con CRON_SECRET, corta por presupuesto antes del maxDuration, escribe SOLO en
 //       avisos_evaluados (dry no escribe), registrado en vercel.json y en el heartbeat; la tabla con RLS.
+//   7 · LA FRESCURA (01-oct-2026): el pase completo de usados corre cada día; lo que desactiva sale de
+//       avisos_evaluados y de la guía guardada, anotado en bajas_avisos con su veredicto y sus fechas.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/avisos-catch-test.ts
@@ -125,8 +127,26 @@ export function runAvisosTier(): { hard: number } {
   if (!/\.gte\("scraped_at", desde\)/.test(cron) || !/VENTANA_VISTOS_DIAS \* 864e5/.test(cron)) F("6 · el cron no lee solo los avisos vistos en la ventana");
   const vj = JSON.parse(leer("vercel.json")) as { crons: { path: string; schedule: string }[] };
   const c = vj.crons.find((x) => x.path === "/api/cron/evaluar-avisos");
-  if (!c || !/^\d+ \* \* \* 2$/.test(c.schedule)) F("6 · el cron no está en vercel.json corriendo cada hora los martes");
-  if (!/\{ nombre: "evaluar-avisos", label: "[^"]+", intervaloHoras: 1[67]\d[ ,}]/.test(leer("src/lib/cron-heartbeat.ts"))) F("6 · el cron no está vigilado en el heartbeat (semanal)");
+  if (!c || c.schedule !== "20 4,8 * * *") F("6 · el cron no corre cada día después del pase de usados (03:00) y de la obra nueva (06:30)");
+  if (!/\{ nombre: "evaluar-avisos", label: "[^"]+", intervaloHoras: 24[ ,}]/.test(leer("src/lib/cron-heartbeat.ts"))) F("6 · el cron no está vigilado en el heartbeat (diario)");
+
+  // ── 7 · la frescura (01-oct-2026): el pase de usados es diario y lo que se da de baja sale ──
+  const b = vj.crons.find((x) => x.path === "/api/data/backfill-toctoc");
+  if (!b || b.schedule !== "0 3 * * *") F("7 · el pase completo de usados no corre cada día");
+  const hb = leer("src/lib/cron-heartbeat.ts");
+  if (!/\{ nombre: "backfill-toctoc", label: "[^"]+", intervaloHoras: 24,\s*frescura: \{ que: "avisos usados", maxHoras: 48,/.test(hb)) F("7 · el pase diario no está vigilado como diario (24 h, frescura 48 h)");
+  if (!/export const DIAS_ATRASO_PASE = 2;/.test(leer("src/lib/admin-backfill-toctoc.ts"))) F("7 · el panel da por atrasado el pase diario recién a los 8 días");
+  const bf = sinComentarios(leer("src/app/api/data/backfill-toctoc/route.ts"));
+  // cerrar_bajas va DESPUÉS de una desactivación hecha, dentro de su rama: nunca en un pase parcial.
+  if (!/const r = await desactivarNoVistas\(sb, plan\.pase\);[\s\S]{0,900}?cp\.desactivacion = \{[\s\S]{0,400}?await sb\.rpc\("cerrar_bajas"\)/.test(bf)) F("7 · el pase desactiva y no saca lo dado de baja de avisos_evaluados");
+  if ((bf.match(/sb\.rpc\("cerrar_bajas"\)/g) ?? []).length !== 1) F("7 · el pase llama cerrar_bajas fuera de la desactivación");
+  if (!/if \(!dry\) \{\s*const \{ data, error \} = await sb\.rpc\("cerrar_bajas"\);/.test(cron)) F("7 · el cron de evaluación no cierra las bajas (o las cierra en dry)");
+  const migB = leer("supabase/migrations/20261001_bajas_avisos.sql");
+  if (!/insert into bajas_avisos \(aviso_id,[\s\S]*?where sp\.is_active = false[\s\S]*?delete from avisos_evaluados ae\s*using scraped_properties sp\s*where sp\.id = ae\.aviso_id and sp\.is_active = false;/.test(migB)) F("7 · cerrar_bajas no anota antes de borrar, o borra lo que sigue activo");
+  if (!/sp\.created_at, sp\.scraped_at, now\(\), ae\.precio_uf, ae\.veredicto_20/.test(migB)) F("7 · la baja no guarda cuándo se vio primero ni su veredicto (sin eso no se mide cuánto dura un Comprar)");
+  if (!/alter table public\.bajas_avisos enable row level security;/.test(migB) || /create policy/i.test(migB) || !/grant execute on function public\.cerrar_bajas\(\) to service_role;/.test(migB) || !/revoke all on function public\.cerrar_bajas\(\) from public, anon, authenticated;/.test(migB)) F("7 · bajas_avisos sin RLS o cerrar_bajas abierta a anon");
+  const gs = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
+  if (!/from\("avisos_evaluados"\)\.select\("aviso_id"\)\.in\("aviso_id", ids\);\s*if \(e2 \|\| \(siguen\?\.length \?\? 0\) < ids\.length\) return null;/.test(gs)) F("7 · la guía guardada sigue mostrando un aviso que el listado dio de baja");
   if (!/create table if not exists public\.avisos_evaluados/.test(mig) || !/alter table public\.avisos_evaluados enable row level security;/.test(mig) || /create policy/i.test(mig)) F("6 · la tabla no existe en la migración, o no tiene RLS, o abre políticas");
 
   if (fallas.length) {
@@ -174,6 +194,13 @@ export function runAvisosTier(): { hard: number } {
 //   V3 sin orden por antigüedad (quedó VERDE: el orden de entrada coincidía; el test invirtió las edades)
 //   V4 el cron no los toma ................................... 5 · no reevalúa por versión
 //   V5 van antes que los pendientes .......................... 5 · ídem
+// 01-oct-2026 (la frescura: pase diario y bajas): 16/16 en rojo. R1 el pase vuelve a los lunes · R2 el
+// evaluador vuelve a los martes · R3 el evaluador antes del pase · R4 heartbeat del pase semanal · R5 frescura
+// de 8 días · R6 heartbeat del evaluador semanal · R7 panel atrasado a los 8 días · B1 el pase no cierra bajas ·
+// B2 cierra bajas en un pase parcial · B3 el evaluador no cierra bajas · B4 las cierra en dry · B5 borra sin
+// anotar (quedó VERDE la primera vez: la regex aceptaba otra tabla con el mismo prefijo; se ajustó) · B6 borra
+// lo activo · B7 la baja sin fecha de primera vista · B8 cerrar_bajas abierta a anon · G1 la guía guardada
+// muestra dados de baja.
 
 if (require.main === module) {
   const { hard } = runAvisosTier();

@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/data/backfill-toctoc",
-      "schedule": "0 3 * * 1"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/data/update-market",
@@ -50,7 +50,7 @@
     },
     {
       "path": "/api/cron/evaluar-avisos",
-      "schedule": "20 * * * 2"
+      "schedule": "20 4,8 * * *"
     },
     {
       "path": "/api/cron/vigilar-crons",

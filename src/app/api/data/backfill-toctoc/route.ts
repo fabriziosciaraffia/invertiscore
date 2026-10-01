@@ -38,6 +38,12 @@ import { captureApiError } from "@/lib/observabilidad";
 // del Gran Santiago, 600 por página, 44 + 16 páginas, ~21 MB— y marca cada fila
 // con el id del pase para que el refresco (Fase C) desactive lo que no vio.
 //
+// CADA DÍA (01-oct-2026, antes los lunes): los usados baratos se venden en días —en una guía real de
+// Las Condes, 4 de los 6 mejores Comprar ya no estaban—. El pase del 28-sep tardó 2 min 49 s, 58
+// páginas del GetProps y 0 errores; diario son 58 pedidos al listado por día, ninguno a la ficha.
+// Después de desactivar, `cerrar_bajas()` saca lo evaluado de avisos_evaluados y lo anota en
+// bajas_avisos.
+//
 // REGLAS DURAS (audit 02-sep-2026):
 //  · Nunca toca la ficha HTML: bloquea la IP a los ~36 GETs. Todo sale del
 //    listado, coordenadas incluidas.
@@ -380,6 +386,7 @@ export async function GET(request: Request) {
     | { filas: number; activasAntes: number | null; motivo: string; forzada: boolean }
     | { omitida: string }
     | null = null;
+  let bajasCerradas: number | null = null;
   if (!cortado && paseCompleto(cp) && !cp.desactivacion) {
     try {
       // Denominador: las activas AL INICIO del pase, no las de ahora.
@@ -402,6 +409,11 @@ export async function GET(request: Request) {
           cp.desactivacion = { en: new Date().toISOString(), pase: plan.pase, filas: r.filas, activasAntes, forzada: decision.forzada };
           cp.desactivacionOmitida = null;
           if (decision.forzada) console.warn(`[backfill-toctoc] desactivación FORZADA (pase ${plan.pase}): ${r.filas} filas · ${decision.motivo}`);
+          // Lo evaluado que se dio de baja sale de avisos_evaluados (y de la guía) y queda anotado en
+          // bajas_avisos, con su veredicto y sus fechas: la base para medir cuánto dura un Comprar (01-oct-2026).
+          const { data: bajas, error: eBajas } = await sb.rpc("cerrar_bajas");
+          if (eBajas) cp.errores.push(`bajas: ${eBajas.message}`);
+          else bajasCerradas = Number(bajas) || 0;
         }
       }
       await guardarCheckpoint(sb, cp);
@@ -430,6 +442,7 @@ export async function GET(request: Request) {
     paseCompleto: paseCompleto(cp) || !!cp.desactivacion,
     activasAlInicio: cp.activasAlInicio ?? null,
     desactivacion,
+    bajasCerradas,
     desactivacionOmitida: cp.desactivacionOmitida ?? null,
     forzarDesactivacion,
     reanudarCon: cortado && pendiente ? `?operacion=${pendiente}&reanudar=1` : null,

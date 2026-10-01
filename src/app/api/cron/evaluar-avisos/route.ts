@@ -17,8 +17,10 @@ import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicad
 // PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación o con precio
 // cambiado: la carga inicial la hizo scripts/cargar-avisos-evaluados.ts) y, con lo que sobre, los
 // evaluados con otra versión del motor, de a poco (avisosDeOtraVersion); evalúa hasta cortar por
-// presupuesto y escribe fila por fila; la siguiente sigue donde quedó. Corre cada hora los martes (la tanda nueva de
-// la fuente entra los lunes): 24 corridas de ~11 minutos, holgadas para una pasada completa.
+// presupuesto y escribe fila por fila; la siguiente sigue donde quedó. Corre cada día a las 04:20 UTC (después
+// del pase de usados de las 03:00) y a las 08:20 (después de la obra nueva de las 06:30): la tanda diaria
+// son unos cientos de avisos (01-oct-2026; antes corría cada hora los martes, con la tanda semanal).
+// Antes de evaluar, `cerrar_bajas()` saca lo que se dio de baja (lo anota en bajas_avisos).
 // SOLO escribe en avisos_evaluados. `?dry=1` evalúa un puñado y no escribe nada.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,13 @@ export async function GET(request: Request) {
 
   const sb = createAdminClient();
   if (!dry) await latirCron(sb, "evaluar-avisos");
+  // Lo que el pase desactivó sale primero (también lo hace el pase; esto cubre un pase que no llegó a hacerlo).
+  let bajas: number | null = null;
+  if (!dry) {
+    const { data, error } = await sb.rpc("cerrar_bajas");
+    if (error) captureApiWarning(error, { ruta: RUTA, operacion: "bajas" });
+    else bajas = Number(data) || 0;
+  }
 
   let cfg: { uf: number; tasa: number };
   let pendientes: ReturnType<typeof avisosEvaluables>;
@@ -118,5 +127,5 @@ export async function GET(request: Request) {
   // Las degradadas se escribieron, pero cuentan como falla parcial: el cierre lo marca y alerta.
   return cerrarCron(sb, "evaluar-avisos",
     { procesados: exitosos + fallidos, exitosos: exitosos - degradadas, fallidos: fallidos + degradadas },
-    { dry, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
+    { dry, bajas, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }

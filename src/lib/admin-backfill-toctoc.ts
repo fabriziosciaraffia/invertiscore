@@ -1,5 +1,5 @@
 /**
- * Estado del pase semanal de TocToc para /admin/operacion, leído del
+ * Estado del pase diario de TocToc para /admin/operacion, leído del
  * checkpoint que /api/data/backfill-toctoc deja en `config`.
  *
  * CONVIVE CON CRONS_VIGILADOS. Desde el 04-sep-2026 el backfill también late
@@ -21,13 +21,11 @@ import {
 } from "@/lib/services/scraper/backfill-plan";
 
 /**
- * El cron corre los lunes a las 03:00 UTC (vercel.json) y un pase completo
- * tarda 2-3 minutos. Umbral de atraso: 8 días, no 2× el intervalo como en
- * cron-heartbeat. Ahí el 2× absorbe el jitter de minutos de Vercel; acá el
- * jitter es el mismo, pero 2× serían 14 días — dos semanas ciegos por una
- * corrida que se perdió el lunes. Con 8 días, el martes siguiente ya se sabe.
+ * El cron corre cada día a las 03:00 UTC (vercel.json; hasta el 01-oct-2026,
+ * los lunes) y un pase completo tarda 2-3 minutos. Umbral de atraso: 2 días —
+ * una corrida perdida se ve al día siguiente; dos, ya es un problema—.
  */
-export const DIAS_ATRASO_PASE = 8;
+export const DIAS_ATRASO_PASE = 2;
 
 export interface EstadoPase {
   estado: "ok" | "warn" | "error";

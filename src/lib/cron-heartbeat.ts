@@ -32,7 +32,7 @@ export const FUENTE_CRON = "cron";
  * ALCANCE: los de `/api/cron/*` —los que mueven créditos, plata y facturación—
  * y, desde el 04-sep-2026, los pases de datos de `/api/data/*` que sostienen
  * las páginas de comuna y la referencia del informe (obra nueva diaria, unidades,
- * UF/tasa y el pase semanal). Un scraper que deja de correr no rompe nada a la
+ * UF/tasa y el pase diario de usados). Un scraper que deja de correr no rompe nada a la
  * vista: las medianas siguen saliendo de datos cada vez más viejos. El panel dice
  * cuántos vigila para que la ausencia de uno no se lea como "todo bien".
  *
@@ -90,9 +90,9 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "expire-anon", label: "Vencimiento de reclamos anónimos", intervaloHoras: 24 },
   { nombre: "meta-ads", label: "Métricas de Meta Ads", intervaloHoras: 24,
     frescura: { que: "métricas de Meta Ads", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "meta_ads")) } },
-  // Corre cada hora los martes: entre martes y martes pasan 7 días.
-  { nombre: "evaluar-avisos", label: "Avisos evaluados con el motor", intervaloHoras: 170, desde: "2026-09-29T22:00:00Z",
-    frescura: { que: "avisos evaluados", maxHoras: 24 * 8, leer: ultimo("avisos_evaluados", "evaluado_at") } },
+  // Corre a las 04:20 y 08:20 UTC cada día (01-oct-2026): el hueco más largo son 20 horas.
+  { nombre: "evaluar-avisos", label: "Avisos evaluados con el motor", intervaloHoras: 24, desde: "2026-09-29T22:00:00Z",
+    frescura: { que: "avisos evaluados", maxHoras: 48, leer: ultimo("avisos_evaluados", "evaluado_at") } },
   { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24,
     frescura: { que: "errores de Sentry", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "sentry")) } },
   // El que vigila a los demás (cada 6 horas). Si se cae, el panel lo muestra atrasado.
@@ -104,10 +104,10 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
     frescura: { que: "unidades de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").like("source_id", "%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
   { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
-  // El pase semanal además deja su checkpoint en `config` (admin-backfill-toctoc):
-  // acá solo late, allá se lee QUÉ hizo. Los dos conviven.
-  { nombre: "backfill-toctoc", label: "Pase semanal TocToc", intervaloHoras: 24 * 7,
-    frescura: { que: "avisos usados", maxHoras: 24 * 8, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "usado").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
+  // El pase diario (01-oct-2026; antes semanal) además deja su checkpoint en `config`
+  // (admin-backfill-toctoc): acá solo late, allá se lee QUÉ hizo. Los dos conviven.
+  { nombre: "backfill-toctoc", label: "Pase diario TocToc", intervaloHoras: 24,
+    frescura: { que: "avisos usados", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "usado").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
 ];
 
 /**

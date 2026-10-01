@@ -257,11 +257,14 @@ export async function guiaGuardada(admin: SupabaseClient, analysisId: string): P
   const { data } = await admin.from("guias_calculadas").select("resultado, calculada_at").eq("analysis_id", analysisId).maybeSingle();
   if (!data || Date.now() - new Date(data.calculada_at as string).getTime() > VIGENCIA_GUIA_MS) return null;
   const resultado = data.resultado as RespuestaGuiaServidor;
-  // Si uno de sus avisos se despublicó después (lo vio otra guía o un clic), se arma de nuevo.
+  // Si uno de sus avisos se despublicó después (lo vio otra guía o un clic), o salió del listado (el pase
+  // diario lo dio de baja y cerrar_bajas lo sacó de avisos_evaluados), se arma de nuevo.
   const ids = resultado.disponible ? resultado.items.map((it) => it.avisoId) : [];
   if (ids.length > 0) {
     const { data: idas, error } = await admin.from("publicacion_avisos").select("aviso_id").in("aviso_id", ids).eq("estado", "despublicado");
     if (error || (idas?.length ?? 0) > 0) return null;
+    const { data: siguen, error: e2 } = await admin.from("avisos_evaluados").select("aviso_id").in("aviso_id", ids);
+    if (e2 || (siguen?.length ?? 0) < ids.length) return null;
   }
   return resultado;
 }
