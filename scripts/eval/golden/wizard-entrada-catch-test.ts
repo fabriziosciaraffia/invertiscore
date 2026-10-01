@@ -14,8 +14,12 @@
 //       se vuelve a atar al input de la hoja y cinco sugerencias caben sobre el teclado.
 //   3 · LA PORTADA VIEJA SALIÓ ENTERA: chips de comuna, buscador, «¿se paga solo?», «todavía no
 //       tengo uno», sus eventos y la ruta de cifras por comuna que solo ella leía.
-//   4 · UN SOLO COMPONENTE. La portada es `HeroEntrada` sobre el hook compartido, con los tres
-//       caminos: escribir, «Estoy en el depto» y «Marcarlo en el mapa».
+//   4 · UN SOLO COMPONENTE. La portada usa el campo del hero (`CampoEntrada`) sobre el hook compartido,
+//       con los tres caminos: escribir, «Estoy en el depto» y «Marcarlo en el mapa».
+//  11 · LA DIRECCIÓN ES UN PASO DEL FORMULARIO (01-oct-2026, decisión de Fabrizio): en el wizard no se
+//       ve como la landing —ni el material, ni el título del hero, ni su pie—: papel, la cabecera
+//       «Acto 1 · Qué compras», el título «¿Dónde está el depto?», el campo y los dos caminos. Cambia el
+//       envoltorio, no el campo. La landing sigue con HeroEntrada, y quien llega desde ella salta al mapa.
 //   5 · LOS EVENTOS: camino, permiso y pin movido; `entrada` en los eventos de paso; el embudo cuenta
 //       a quien llega desde la landing y tiene su hito.
 //   6 · LA GEOCODIFICACIÓN INVERSA: `/api/geocode?lat&lng` nombra el punto con su comuna, y no
@@ -28,6 +32,9 @@
 //       reacción de la dirección usa el mismo rótulo.
 //
 // Verificado EN ROJO por mutación (actas al pie). Corre dentro del QUICK.
+//   Acta 01-oct-2026 (punto 11, 9/9 en rojo): W1 la dirección vuelve a pantalla completa · W2 dos avisos del
+//   borrador · W3 vuelve el hero al paso · W4 vuelve el pie de la landing · W5 el título del hero · W6 el campo
+//   fuera del papel · W7 el campo con los colores del material · W8 Places sin estilo · W9 el paso con su header.
 //   Acta 28-sep-2026 (punto 10): la leyenda con `data.arriendoN` → 2 fallas; `orden.slice(1)` en los puntos → 6
 //   fallas; el hook de vuelta a `nearbyProperties` → 2 fallas; `restoRadio = bestMap.all` → 1 falla. Restaurado: verde.
 // Solo:  node --import tsx scripts/eval/golden/wizard-entrada-catch-test.ts
@@ -42,6 +49,8 @@ import {
 } from "../../../src/components/entrada/llegada";
 import { decidirBorrador } from "../../../src/components/formulario-v4/wizardV4Draft";
 import {
+  ACTO_BY_NODE,
+  ACTO_LABEL,
   ALL_NODES,
   FIX_NODES,
   NODE_TITLE,
@@ -136,12 +145,22 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (existsSync(join(RAIZ, "src/components/formulario-v4/useDireccionPlaces.ts"))) F("3 · hay dos hooks de dirección: uno en formulario-v4 y otro compartido");
 
   // ── 4 · UN SOLO COMPONENTE, TRES CAMINOS ───────────────────────────────────
-  if (!/<HeroEntrada\b/.test(ent)) F("4 · la portada no es HeroEntrada");
+  if (!/<CampoEntrada\b/.test(ent)) F("4 · la portada no usa el campo del hero (CampoEntrada)");
   const hero = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
   if (!/import \{ useDireccionPlaces, type SeleccionDireccion \} from "\.\/useDireccionPlaces";/.test(hero)) F("4 · el hero no usa el hook compartido");
   if (!/onClick=\{\(\) => onCamino\("ubicacion"\)\}/.test(hero) || !/onClick=\{\(\) => onCamino\("mapa"\)\}/.test(hero)) F("4 · faltan los caminos sin dirección en el hero");
   if (!/¿Ese depto es<br \/><mark>buena inversión<\/mark>\?/.test(hero)) F("4 · el título del hero no es el de la landing");
-  if (!/if \(esPortada\) \{\s*\n\s*return \(\s*\n\s*<div ref=\{screenRef\}>\s*\n\s*<EntradaScreen \{\.\.\.screenProps\} banner=\{bannerPortada\}/.test(shell)) F("4 · la portada no se dibuja a pantalla completa con su banner");
+  // ── 11 · la dirección es un paso del formulario ──
+  if (/if \(esPortada\) \{\s*\n\s*return/.test(shell)) F("11 · la dirección vuelve a dibujarse a pantalla completa, fuera del armazón");
+  if (!/<h1 className="wz-titulo">\{NODE_TITLE\[nav\.current\]\}<\/h1>\s*\n\s*\{esPortada \? \(\s*\n\s*<EntradaScreen \{\.\.\.screenProps\} banner=\{bannerPortada\} autoCamino=\{autoCamino\} \/>\s*\n\s*\) : \(/.test(shell)) F("11 · la dirección no va dentro del armazón, bajo el título del paso y con el aviso del borrador");
+  if (!/\{w\.bannerDraftVisible && !esPortada && \(/.test(shell)) F("11 · en la dirección se ven dos avisos del borrador");
+  if (NODE_TITLE.dir !== "¿Dónde está el depto?") F("11 · el paso de la dirección no pregunta «¿Dónde está el depto?»");
+  if (ACTO_BY_NODE.dir !== "compra" || ACTO_LABEL.compra !== "Acto 1 · Qué compras") F("11 · la dirección no va en «Acto 1 · Qué compras»");
+  if (/<HeroEntrada\b|he-root|he-h1|hero-[dm][123]x|sobreMaterial|<HeaderFranco\b|he-pild|\/demo|buena inversión/.test(ent)) F("11 · el paso de la dirección vuelve a verse como la landing (hero, material, título, pie o su propio header)");
+  if (!/<div className="he-papel" data-entrada="paso">\s*\n\s*\{banner\}\s*\n\s*<CampoEntrada\b/.test(ent)) F("11 · el campo no va en papel con el aviso del borrador encima");
+  const cssHero = leer("src/components/entrada/hero-entrada.css");
+  if (!/\.he-papel, \.he-papel \.he-campo \{ --he-tinta: var\(--tx\); --he-papel: var\(--tx\); --he-ghost: var\(--tx4\); \}/.test(cssHero) || !/\.he-papel \.he-box \{[^}]*background: var\(--card\); border: 1px solid var\(--line2\); box-shadow: none;/.test(cssHero) || !/body:has\(\.he-papel\) \.pac-container/.test(cssHero)) F("11 · el campo en papel no toma los tokens del wizard (o Places pierde su estilo)");
+  if (!/<HeroEntrada\b/.test(sinComentarios(leer("src/components/landing-v14/Entrada.tsx")))) F("11 · la landing dejó el hero");
   if (!/case "dirMapa":\s*\n\s*return <MapaScreen \{\.\.\.screenProps\} onVolver=\{w\.goBack\} \/>;/.test(shell)) F("4 · el router no monta el mapa");
   if (!/const r = await pedirUbicacion\(\);/.test(ent)) F("4 · «Estoy en el depto» no pide la ubicación del teléfono");
   // Y el sitio tiene que dejar que el navegador la dé: con `geolocation=()` la niega antes de
@@ -306,7 +325,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ WIZARD-ENTRADA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la portada es el hero compartido con tres caminos y, en el teléfono, una hoja; el mapa es siempre la segunda, dibuja los comparables que la leyenda cuenta (misma lista, con su radio) y el resto del radio en gris; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
+    console.log("  ✓ VERDE — la dirección es un paso del formulario, en papel, con el campo del hero, sus tres caminos y, en el teléfono, una hoja; el mapa es siempre la segunda, dibuja los comparables que la leyenda cuenta (misma lista, con su radio) y el resto del radio en gris; la llegada va al mapa o a la portada y pregunta ante un borrador ajeno; los eventos llevan su puerta");
   }
   return { hard: fallas.length };
 }

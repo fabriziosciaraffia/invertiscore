@@ -108,15 +108,15 @@ html .he-input { font-size: 19px !important; }
 .he-wait button { height: 44px; border-radius: 99px; border: 0; padding: 0 16px; background: var(--he-papel); color: #18181B; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .he-wait button:disabled { opacity: 0.6; }
 
-/* el desplegable de Places al ancho del cuadro, como en la landing */
-.he-root ~ .pac-container, body:has(.he-root) .pac-container {
+/* el desplegable de Places al ancho del cuadro, como en la landing (y en el paso del wizard) */
+.he-root ~ .pac-container, body:has(.he-root) .pac-container, body:has(.he-papel) .pac-container {
   margin-top: 2px; border: 0; border-radius: 0 0 12px 12px; background: #fff; z-index: 3000;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35); font-family: var(--font-ui), "Inter", system-ui, sans-serif;
 }
-body:has(.he-root) .pac-item { padding: 0 16px; line-height: 48px; font-size: 16px; color: #52525B; border-top: 1px solid #EFEFF1; cursor: pointer; }
-body:has(.he-root) .pac-item-query { font-size: 16px; color: #0F0F0F; font-weight: 600; }
-body:has(.he-root) .pac-icon { display: none; }
-body:has(.he-root) .pac-item:hover, body:has(.he-root) .pac-item-selected { background: #F6F6F7; }
+body:has(.he-root) .pac-item, body:has(.he-papel) .pac-item { padding: 0 16px; line-height: 48px; font-size: 16px; color: #52525B; border-top: 1px solid #EFEFF1; cursor: pointer; }
+body:has(.he-root) .pac-item-query, body:has(.he-papel) .pac-item-query { font-size: 16px; color: #0F0F0F; font-weight: 600; }
+body:has(.he-root) .pac-icon, body:has(.he-papel) .pac-icon { display: none; }
+body:has(.he-root) .pac-item:hover, body:has(.he-root) .pac-item-selected, body:has(.he-papel) .pac-item:hover, body:has(.he-papel) .pac-item-selected { background: #F6F6F7; }
 
 /* ── EN EL TELÉFONO: el campo es un botón que abre la hoja ── */
 .he-input-boton {
@@ -197,3 +197,29 @@ html.he-hoja-abierta:not([data-theme="light"]) .pac-item-selected { background: 
   .he-caret { animation: none; }
   .he-alt button span { transition: none; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   EL CAMPO EN PAPEL (01-oct-2026): el paso «¿Dónde está el depto?» del wizard. El mismo CampoEntrada,
+   fuera del material: los tokens del armazón (`.wz4`: --page, --card, --line2, --tx…), en claro y en
+   oscuro. La caja con borde fino y sin sombra, el botón en tinta (rojo al pasar, como en el hero), los
+   caminos en tinta, el borrador y la lista de espera en tarjeta.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.he-papel, .he-papel .he-campo { --he-tinta: var(--tx); --he-papel: var(--tx); --he-ghost: var(--tx4); }
+.he-papel .he-box { height: 60px; background: var(--card); border: 1px solid var(--line2); box-shadow: none; padding: 0 6px 0 16px; }
+.he-papel .he-box:focus-within { border-color: var(--tx); }
+html .he-papel .he-input { font-size: 17px !important; }
+.he-papel .he-ph { font-size: 17px; }
+.he-papel .he-btn { width: 48px; height: 48px; color: var(--page); }
+.he-papel .he-aviso { color: var(--tx2); }
+.he-papel .he-alt { color: var(--tx3); }
+.he-papel .he-alt button { color: var(--tx); }
+.he-papel .he-alt button:focus-visible { outline-color: var(--tx); }
+.he-papel .he-nota { background: var(--card); color: var(--tx); border: 1px solid var(--line); }
+.he-papel .he-nota-t { color: var(--tx3); }
+.he-papel .he-nota-acc button { background: var(--page); border-color: var(--line2); color: var(--tx); }
+.he-papel .he-nota-acc button.pri { background: var(--tx); border-color: var(--tx); color: var(--page); }
+.he-papel .he-wait p { color: var(--tx2); }
+.he-papel .he-wait input { background: var(--card); border-color: var(--line2); color: var(--tx); }
+.he-papel .he-wait input::placeholder { color: var(--tx4); }
+.he-papel .he-wait input:focus { border-color: var(--tx); }
+.he-papel .he-wait button { background: var(--tx); color: var(--page); }

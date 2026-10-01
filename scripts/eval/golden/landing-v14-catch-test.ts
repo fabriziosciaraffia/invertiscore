@@ -164,7 +164,8 @@ export function runLandingV14Tier(): { hard: number } {
 
   // ── 10 · el QA del 28-sep ──
   if (!/<LinkMedido href="\/demo" className="he-pild" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>/.test(ent)) F("10 · «Ver un análisis real» del hero no lleva al demo (como píldora)");
-  if (!/pie=\{<EnlaceCarga href="\/demo" className="he-pild"/.test(wiz)) F("10 · «Ver un análisis de ejemplo» de la portada del wizard no lleva al demo (como píldora con carga)");
+  // (01-oct-2026) La dirección del wizard dejó de ser el hero: sin el pie de la landing (ver WIZARD-ENTRADA §11).
+  if (/he-pild|\/demo/.test(wiz)) F("10 · el paso de la dirección del wizard vuelve a llevar el pie de la landing");
   if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");
   if (/BarraProgreso/.test(resp) || /BarraProgreso|lv-pausa/.test(reco)) F("10 · una sección arma su propio pie en vez de PieRotacion");
   // ── 11 · las hojas por portal; fondos, no líneas ──

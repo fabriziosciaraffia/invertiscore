@@ -3,9 +3,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Wizard v4 — LA ENTRADA (nodo `dir`) y EL MAPA (desvío `dirMapa`)
 //
-// UNA PUERTA, DOS ACCESOS (26-sep-2026). La primera pantalla del wizard es el hero de la landing v14
-// —`HeroEntrada`, el mismo componente—: el título, el campo de dirección y dos caminos sin
-// dirección. Reemplaza a la portada de tres estados (comuna primero con chips, «¿se paga solo?»,
+// UNA PUERTA, DOS ACCESOS (26-sep-2026). La primera pantalla del wizard tiene el campo del hero de la
+// landing v14 —`CampoEntrada`, el mismo componente, con su hook y sus dos caminos sin dirección—.
+// DESDE EL 01-oct-2026 ES UN PASO DEL FORMULARIO, NO LA LANDING: quien entra desde el dashboard o
+// «Nuevo análisis» veía el hero con su material y su título y sentía que salía del recorrido. Ahora va
+// en papel, dentro del armazón del wizard (cabecera «Acto 1 · Qué compras», título «¿Dónde está el
+// depto?»); cambia el envoltorio, no el campo. La landing sigue con el hero, y quien llega desde ella
+// salta al mapa como antes. Reemplaza a la portada de tres estados (comuna primero con chips, «¿se paga solo?»,
 // buscador de comuna y «todavía no tengo uno elegido» con las cifras de la comuna): la comuna se
 // deduce de la dirección, que ya mandaba sobre el chip.
 //
@@ -27,8 +31,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
-import { HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
-import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { CampoEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { pedirUbicacion } from "@/components/entrada/ubicacion";
 import type { PrecisionUbicacion } from "@/lib/geocoding-precision";
@@ -38,7 +41,6 @@ import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
 import { MapaPinAjustable } from "./MapaPinAjustable";
-import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { rotuloComparables } from "./comparablesRotulo";
 
 /** Lo que `/api/geocode?lat&lng` devuelve de un punto. */
@@ -163,16 +165,21 @@ export function EntradaScreen({
   // Volver a la portada con la dirección ya confirmada y apretar la flecha sin tocar nada: sigue.
   const confirmada = answers.direccionConfirmada && answers.lat != null && answers.lng != null ? answers.direccionConfirmada : null;
 
+  // Un paso del formulario: el armazón del wizard pone la cabecera del acto y el título; acá van el
+  // aviso del borrador, el campo con sus caminos y, fuera de cobertura, la lista de espera. En papel.
   return (
-    <HeroEntrada
-      cabecera={<HeaderFranco contexto="wizard" sobreMaterial />}
-      pie={<EnlaceCarga href="/demo" className="he-pild" onClick={() => trackWizard(posthog, "wizard4_entrada_ejemplo", {})}>Ver un análisis de ejemplo<span aria-hidden="true">→</span></EnlaceCarga>}
-      antes={banner}
-      valorInicial={answers.direccion ?? ""}
-      confirmada={confirmada}
-      onContinuarConfirmada={() => answer("dir")}
-      ocupado={ocupado}
-      despues={fueraDeZona ? (
+    <div className="he-papel" data-entrada="paso">
+      {banner}
+      <CampoEntrada
+        valorInicial={answers.direccion ?? ""}
+        confirmada={confirmada}
+        onContinuarConfirmada={() => answer("dir")}
+        ocupado={ocupado}
+        onDireccion={onDireccion}
+        onCamino={(c) => void onCamino(c)}
+        onEvento={onEvento}
+      />
+      {fueraDeZona ? (
         <div className="he-rechazo">
           <p className="he-aviso">
             {answers.comuna} está fuera del Gran Santiago: por ahora Franco no tiene datos suficientes ahí.
@@ -180,10 +187,7 @@ export function EntradaScreen({
           <WaitlistZonaInline comuna={answers.comuna!} region={region} sobreHero />
         </div>
       ) : null}
-      onDireccion={onDireccion}
-      onCamino={(c) => void onCamino(c)}
-      onEvento={onEvento}
-    />
+    </div>
   );
 }
 

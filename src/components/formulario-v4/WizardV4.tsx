@@ -438,15 +438,10 @@ export function WizardV4({
   // arriba desaparece la acción de la vista.
   const esPortada = nav.current === "dir";
 
-  // LA PORTADA ES EL HERO DE LA LANDING (26-sep-2026): a pantalla completa, con su propia cabecera y
-  // sin el contenedor del interior. El banner del borrador va adentro, en papel sobre el hero.
-  if (esPortada) {
-    return (
-      <div ref={screenRef}>
-        <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
-      </div>
-    );
-  }
+  // LA DIRECCIÓN ES UN PASO (01-oct-2026): hasta acá la portada era el hero de la landing a pantalla
+  // completa, y quien entraba desde el dashboard sentía que salía del recorrido. Ahora va dentro del
+  // armazón, como cualquier pregunta: «Acto 1 · Qué compras» y «¿Dónde está el depto?». El aviso del
+  // borrador de la portada (con «¿sigues o retomas?») va adentro del paso, en vez del genérico.
 
   return (
     <div className="wz4-lienzo min-h-screen">
@@ -457,7 +452,7 @@ export function WizardV4({
           navegables una bajo otra, como en el informe, no columnas. */}
       <main className="wz4 doc-dictamen wizard4-main mx-auto max-w-[600px] px-4 pt-4 pb-10 md:pt-8">
         {/* Cabecera del paso: disco de atrás · acto · chip, y la barra en tinta.
-            En la portada no se dibuja (ver `esPortada`). */}
+            También en la dirección: es un paso del formulario (01-oct-2026). */}
         <div className="wz-cab">
           <div className="wz-cab-fila">
             {w.canGoBack && (
@@ -475,7 +470,7 @@ export function WizardV4({
 
         {/* Banner de retomar draft. Vive en el layout del <main>, fuera del
             router de pantallas → sin el gate se renderiza en las 12 pantallas. */}
-        {w.bannerDraftVisible && (
+        {w.bannerDraftVisible && !esPortada && (
           <div className="wz-bloque wz-retomar" role="region" aria-label="Análisis sin terminar">
             <div className="wz-bt">Análisis sin terminar</div>
             <p>Tienes un análisis a medias. ¿Lo retomas donde lo dejaste?</p>
@@ -494,7 +489,11 @@ export function WizardV4({
 
             <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
 
-            <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
+            {esPortada ? (
+              <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
+            ) : (
+              <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
+            )}
           </div>
         </div>
       </main>
@@ -545,7 +544,7 @@ function Screen({
 }) {
   switch (node) {
     // ── Acto 1 ──
-    // `dir` (la portada) se dibuja fuera de este router, a pantalla completa (ver `esPortada`).
+    // `dir` lo monta el armazón con su banner del borrador (ver `esPortada`).
     case "dir":
       return null;
     case "dirMapa":

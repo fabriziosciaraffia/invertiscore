@@ -277,7 +277,7 @@ export const ACTO_BY_NODE: Record<NodeId, Acto> = {
  * copy final (voz Franco) se afina al construir cada pantalla en Fases 2-3.
  */
 export const NODE_TITLE: Record<NodeId, string> = {
-  dir: "¿Dónde queda el departamento?", // la portada (el hero) dibuja su propio título
+  dir: "¿Dónde está el depto?", // un paso del formulario desde el 01-oct-2026 (antes, el hero dibujaba su título)
   dirMapa: "¿Dónde queda exactamente?",
   tipo: "¿Es usado o nuevo?",
   ent: "¿Cuándo lo entregan?",

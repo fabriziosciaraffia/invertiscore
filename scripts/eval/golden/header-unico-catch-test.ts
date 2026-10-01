@@ -59,7 +59,7 @@ const PAGINAS = [
   "src/app/privacy/page.tsx", "src/app/terms/page.tsx", "src/app/cuenta/page.tsx", "src/app/perfil/page.tsx",
   "src/app/comparar/page.tsx", "src/app/dashboard/page.tsx", "src/app/login/page.tsx", "src/app/register/page.tsx",
   "src/app/recuperar/page.tsx", "src/app/restablecer/page.tsx", "src/components/formulario-v4/WizardV4.tsx",
-  "src/components/formulario-v4/screenEntrada.tsx", "src/app/analisis/[id]/informe-ltr.tsx",
+  "src/app/analisis/[id]/informe-ltr.tsx",
   "src/app/analisis/renta-corta/[id]/results-client.tsx", "src/app/analisis/comparativa/comparativa-client.tsx",
   "src/app/share/comparativa/[token]/shared-client.tsx", "src/app/demo/demo-cabecera.tsx", "src/app/admin/layout.tsx",
 ];
@@ -100,7 +100,9 @@ export function runHeaderUnicoTier(): { hard: number } {
   }
   const heroEnt = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
   if (/he-top|he-wm|\bderecha\b/.test(heroEnt) || !/\{cabecera\}/.test(heroEnt)) F("1 · el hero de la entrada vuelve a dibujar su propia cabecera");
-  if (!/cabecera=\{<HeaderFranco contexto="wizard" sobreMaterial \/>\}/.test(sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx")))) F("1 · la portada del wizard no monta el header único sobre el material");
+  // (01-oct-2026) La dirección del wizard es un paso del formulario: el header único lo pone el armazón
+  // (WizardV4, en PAGINAS) y el paso no monta otro.
+  if (/<HeaderFranco\b/.test(sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx")))) F("1 · el paso de la dirección monta un segundo header (lo pone el armazón del wizard)");
   const demo = sinComentarios(leer("src/app/demo/demo-cabecera.tsx"));
   if (/FrancoLogo|CtaAnalizar|signal-red/.test(demo)) F("1 · el demo vuelve a tener wordmark o botón propios");
 

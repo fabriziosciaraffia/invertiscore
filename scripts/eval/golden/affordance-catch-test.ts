@@ -34,7 +34,7 @@ const SUPERFICIES_SIN_LINK: Array<[string, string]> = [
   ["src/components/landing-v14/Marca.tsx", "el pie de la landing"],
   ["src/app/dashboard/archive.tsx", "el archivo del dashboard (chips, columnas, filas)"],
   ["src/app/dashboard/continuar.tsx", "«Continuar» del dashboard"],
-  ["src/app/dashboard/bienvenida.tsx", "el dashboard vacío (bienvenida y estado vacío, desde el 29-sep-2026)"],
+  // (01-oct-2026) La bienvenida corta no tiene enlaces: su única acción es el botón, que navega con «Cargando…».
   ["src/app/dashboard/stats-strip.tsx", "la tira de cifras del dashboard"],
   ["src/app/cuenta/page.tsx", "la cuenta"],
   ["src/app/perfil/page.tsx", "el perfil"],
@@ -56,7 +56,8 @@ export function runAffordanceTier(): { hard: number } {
   const entrada = sinComentarios(leer("src/components/landing-v14/Entrada.tsx"));
   if (!/<LinkMedido href="\/demo" className="he-pild" evento=\{EV\.ejemplo\}/.test(entrada)) F("1 · «Ver un análisis real» del hero no es la píldora (he-pild)");
   const portada = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
-  if (!/pie=\{<EnlaceCarga href="\/demo" className="he-pild"/.test(portada)) F("1 · «Ver un análisis de ejemplo» de la portada del wizard no es la píldora con carga");
+  // (01-oct-2026) La dirección del wizard ya no lleva «Ver un análisis de ejemplo»: es un paso del formulario.
+  if (/href="\/demo"/.test(portada) && !/className="he-pild"/.test(portada)) F("1 · un enlace al demo en la dirección del wizard no es la píldora");
   const heroCss = leer("src/components/entrada/hero-entrada.css");
   const pild = (heroCss.match(/\.he-pild \{([^}]*)\}/) ?? [])[1] ?? "";
   if (!/border-radius: 99px/.test(pild) || !/border: 1\.5px solid/.test(pild) || !/height: 38px/.test(pild) || !/display: inline-flex/.test(pild)) F("1 · la píldora del hero no tiene el contorno, el radio y el alto de «Entrar»");
