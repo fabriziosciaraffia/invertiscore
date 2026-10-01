@@ -32,8 +32,11 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
 /** `muestra`: la demo (/dev/lo-que-sigue) pasa la respuesta hecha; no pide nada y «Analizar este» no genera.
- *  `sinGuia`: lo que se muestra si el informe no tiene guía (sin coordenadas, o la guía falló). */
-export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode }) {
+ *  `sinGuia`: lo que se muestra si el informe no tiene guía (sin coordenadas, o la guía falló).
+
+ *  `enCasa`: la guía dentro del dashboard (la casa, 02-oct-2026): otro título, un h2, y no cuenta como
+ *  la pantalla de después de pagar. */
+export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null, enCasa }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode; enCasa?: { titulo: string } }) {
   const posthog = usePostHog();
   const router = useRouter();
   const ctx: ContextoLqs = { analysisId, veredicto, modalidad: "ltr" };
@@ -48,14 +51,14 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   useEffect(() => {
     if (muestra) return;
     // La pantalla de después de pagar es esta: el evento de siempre, con la modalidad del informe.
-    capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad: "ltr" }, { con_sesion: conSesionInicial });
+    if (!enCasa) capturarLqs(posthog, EVENTOS_LQS.postPagoVisto, { analysisId, veredicto, modalidad: "ltr" }, { con_sesion: conSesionInicial });
     let vivo = true;
     fetch(`/api/lo-que-sigue/guia?a=${encodeURIComponent(analysisId)}`)
       .then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status)))))
       .then((d: Respuesta) => {
         if (!vivo) return;
         setR(d);
-        if (d.disponible) capturarLqs(posthog, EVENTOS_LQS.guiaVista, ctx, { estado: d.estado, n: d.items.length, radio_m: d.radioM, pie_pct: d.combinacion?.piePct ?? null, plazo: d.combinacion?.plazoAnios ?? null });
+        if (d.disponible) capturarLqs(posthog, EVENTOS_LQS.guiaVista, ctx, { estado: d.estado, n: d.items.length, radio_m: d.radioM, pie_pct: d.combinacion?.piePct ?? null, plazo: d.combinacion?.plazoAnios ?? null, en_casa: !!enCasa });
       })
       .catch(() => vivo && setFallo(true));
     return () => { vivo = false; };
@@ -126,7 +129,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
 
   return (
     <section className="guia" data-guia={r ? (r.disponible ? r.estado : "no") : "cargando"} aria-busy={!r}>
-      <h1 className="guia-titulo">{GUIA.titulo}</h1>
+      {enCasa ? <h2 className="guia-titulo">{enCasa.titulo}</h2> : <h1 className="guia-titulo">{GUIA.titulo}</h1>}
       {frase && <p className={r && r.disponible && r.estado !== "normal" ? "guia-ajustada" : "guia-txt"}>{frase}</p>}
       {!r && (
         <div className="guia-lista" aria-hidden="true">

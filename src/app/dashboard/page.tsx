@@ -1,5 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
+import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
+import { hayGuia } from "@/lib/guia/activa";
+import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
+import { CASA } from "./casa-copy";
+import { PerfilBusquedaCasa, SaldoCasa } from "./casa";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -167,19 +174,53 @@ export default async function DashboardPage({
 
   const heroResumen = primeraFrase(resumenRow?.data?.resumen);
 
+  // La casa (02-oct-2026): el saldo, la selección del pack (si compró y le quedan) y el perfil de búsqueda.
+  const admin = createServiceClient();
+  const [datosSaldo, perfilPersona, { data: pack }] = await Promise.all([
+    leerSaldo(admin, user.id),
+    leerPerfilBusqueda(admin, user.id),
+    admin.from("payments").select("analysis_id").eq("user_id", user.id).eq("product", "pack3").eq("status", "paid").not("analysis_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const saldo = estadoSaldo(datosSaldo);
+  const packOrigenId = (pack?.analysis_id as string | null | undefined) ?? null;
+  const { data: packPerfil } = packOrigenId && saldo.tipo === "con"
+    ? await admin.from("perfiles_inversion").select("modalidad, veredicto").eq("analysis_id", packOrigenId).eq("user_id", user.id).maybeSingle()
+    : { data: null };
+  const guiaCasa = packOrigenId && packPerfil && hayGuia(packPerfil.modalidad === "str" ? "str" : "ltr")
+    ? { analysisId: packOrigenId, veredicto: String(packPerfil.veredicto ?? "") }
+    : null;
+  const pb = perfilPersona.perfil;
+
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <ChipVeredictoTokens />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
 
       <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5">
-        {/* ── Saludo + total. Sin botón propio: el principal es «Nuevo análisis» del header único
+        {/* ── La casa (02-oct-2026): saludo, saldo, la selección del pack y el perfil de búsqueda; abajo, sus informes. ── */}
+        <h1 className="mb-3.5 font-heading text-[26px] font-bold leading-[1.12] tracking-[-0.015em] text-[var(--franco-text)] sm:mb-5 sm:text-[34px]">
+          {CASA.saludo(firstName || null)}
+        </h1>
+        <SaldoCasa estado={saldo} informes={stats.total} />
+        {guiaCasa && (
+          <div className="mt-7" data-casa="guia">
+            <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion enCasa={{ titulo: CASA.guiaTitulo }} />
+          </div>
+        )}
+        <div className="mt-7">
+          <PerfilBusquedaCasa
+            comprador={!!guiaCasa}
+            inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
+          />
+        </div>
+
+        {/* ── Tus informes + total. Sin botón propio: el principal es «Nuevo análisis» del header único
              (27-sep-2026, un solo botón principal por pantalla). ── */}
-        <div className="flex flex-wrap items-baseline justify-between gap-3 pb-3.5">
+        <div className="mt-9 flex flex-wrap items-baseline justify-between gap-3 pb-3.5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="font-heading text-[22px] font-bold tracking-[-0.01em] text-[var(--franco-text)]">
-              {firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}
-            </h1>
+            <h2 className="font-heading text-[21px] font-bold tracking-[-0.01em] text-[var(--franco-text)] sm:text-[24px]">
+              {CASA.informes}
+            </h2>
             <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)]">
               {stats.total} {stats.total === 1 ? "análisis" : "análisis"}
             </span>
