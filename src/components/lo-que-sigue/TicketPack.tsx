@@ -29,11 +29,14 @@ import "./lo-que-sigue.css";
 type Cara = "ticket" | "despedida";
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function TicketPack({ ctx, createdAt, precioCierreUF = null }: {
+export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion = null }: {
   ctx: ContextoLqs;
   createdAt: string;
   /** El precio al que CIERRA este depto, del motor, en UF (`precioQueCierraUF`). Null sin dato: el ticket va sin cifra. */
   precioCierreUF?: number | null;
+  /** Recién dentro (01-oct-2026): el correo con que la persona acaba de entrar por código. Con él, el
+   *  ticket ya no la trata como anónima: no pide el correo, paga con el de la sesión. */
+  correoSesion?: string | null;
 }) {
   const posthog = usePostHog();
   const sentinel = useRef<HTMLDivElement>(null);
@@ -136,7 +139,7 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null }: {
 
   async function pagar(e: FormEvent) {
     e.preventDefault();
-    const c = correo.trim().toLowerCase();
+    const c = (correoSesion ?? correo).trim().toLowerCase();
     if (!CORREO_OK.test(c)) {
       setError(TICKET_PACK.errorCorreo);
       return;
@@ -214,16 +217,18 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null }: {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                 <span>{TICKET_PACK.vence(dia, "")}<b>{hora}</b></span>
               </div>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                className="lqs-tk-correo"
-                placeholder={TICKET_PACK.placeholderCorreo}
-                aria-label="Tu correo"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-              />
+              {!correoSesion && (
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  className="lqs-tk-correo"
+                  placeholder={TICKET_PACK.placeholderCorreo}
+                  aria-label="Tu correo"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                />
+              )}
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
               <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton}</button>
               <p className="lqs-tk-pie">{TICKET_PACK.piePago}</p>
