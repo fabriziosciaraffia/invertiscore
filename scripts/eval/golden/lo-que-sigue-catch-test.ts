@@ -63,14 +63,17 @@ export function runLoQueSigueTier(): { hard: number } {
 
   // ── 1 · NADA CON SESIÓN ────────────────────────────────────────────────────
   const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
-  if (!/const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión»");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el cierre de siempre)"); // (01-oct-2026) el cierre de siempre es CierreInforme
+  // (01-oct-2026, ENTRADA-CÓDIGO) El gate suma a quien ACABA de entrar por el código del banner (la marca
+  // «recién dentro» de la pestaña): tras el refresco sigue viendo «Estás dentro» y el ticket, ya sin pedir
+  // correo. Con sesión de antes, nada de esto (la marca solo la escribe el banner).
+  if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !isLoggedIn\) \|\| \(!!recienDentro && !isSharedView\)\) && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión» (o recién dentro)");
+  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} correoSesion=\{recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el cierre de siempre)"); // (01-oct-2026) el cierre de siempre es CierreInforme
   if (/CierreRegistro|lqs-cierre/.test(ltr)) F("1 · vuelve el texto del registro al final del informe LTR: la barra fija es la repetición");
   const str = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
-  if (!/const loQueSigue = isAnonOwner && !userId && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo»");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(str)) F("1 · el ticket STR no cuelga del gate");
+  if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !userId\) \|\| !!recienDentro\) && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo» (o recién dentro)");
+  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} correoSesion=\{recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(str)) F("1 · el ticket STR no cuelga del gate");
   if (/CierreRegistro|lqs-cierre/.test(str)) F("1 · vuelve el texto del registro al final del informe STR");
   if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
@@ -322,7 +325,8 @@ export function runLoQueSigueTier(): { hard: number } {
   if (limpiarCodigo("2401 7994") !== "24017994" || limpiarCodigo("240179941234") !== "24017994") F("11 · pegar un código de 8 dígitos lo corta o deja espacios");
   if (!/onChange=\{\(e\) => setCodigo\(limpiarCodigo\(e\.target\.value\)\)\}/.test(reg) || !/if \(!codigoValido\(t\) \|\| !enviado\) \{/.test(reg) || /\\d\{6\}|slice\(0, 6\)/.test(reg)) F("11 · el formulario no usa limpiarCodigo y codigoValido (o vuelve a cortar en 6)");
   if (REGISTRO_UN_PASO.errorCodigo !== "El código son 6 dígitos.") F("11 · el copy dejó de decir 6 dígitos");
-  if (!/await reclamarAnalisisAnonimos\(posthog, "register"\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
+  // (01-oct-2026, ENTRADA-CÓDIGO) el reclamo lleva { porCodigo: true }: con él sale la bienvenida al registrarse.
+  if (!/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
   if (!/emailRedirectTo: callback\(\)/.test(reg)) F("4 · el enlace del correo no vuelve al mismo informe");
   const plantilla = leer("docs/emails/supabase-codigo.html").replace(/<!--[\s\S]*?-->/g, "");
   if (!/\{\{ \.Token \}\}/.test(plantilla) || !/\{\{ \.ConfirmationURL \}\}/.test(plantilla)) F("4 · la plantilla del correo de Supabase no lleva el código y el enlace");
