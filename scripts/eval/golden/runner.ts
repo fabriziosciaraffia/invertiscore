@@ -123,6 +123,7 @@ import { runCronsTier } from "./crons-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
 import { runGuiaBusquedaTier } from "./guia-busqueda-catch-test";
+import { runCierreInformeTier } from "./cierre-informe-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 import { runStrCongeladoTier } from "./str-congelado-catch-test";
@@ -509,6 +510,9 @@ function printSeed(r: SeedReport) {
   // Tier GUIA-BUSQUEDA (30-sep-2026, 0 tokens): «Por dónde seguir buscando» — el copy sin palabras vedadas,
   // la línea del ticket solo con la guía, los resguardos de la ficha, el crédito una vez, plazo antes que pie. ──
   totalHard += (await runGuiaBusquedaTier()).hard;
+  // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
+  // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
+  totalHard += runCierreInformeTier().hard;
 
   // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los
   // generadores, en la parte 2 del retiro de la IA. ──

@@ -39,7 +39,8 @@ const SUPERFICIES_SIN_LINK: Array<[string, string]> = [
   ["src/app/cuenta/page.tsx", "la cuenta"],
   ["src/app/perfil/page.tsx", "el perfil"],
   ["src/app/analisis/comparativa/comparativa-client.tsx", "el informe comparativo"],
-  ["src/app/analisis/renta-corta/[id]/results-client.tsx", "el informe STR"],
+  // (01-oct-2026) El final del informe STR ya no tiene enlaces propios: su única acción es CierreInforme.
+  ["src/components/analysis/CierreInforme.tsx", "el final del informe (CierreInforme)"],
   ["src/app/analisis/[id]/results-client.tsx", "el informe LTR"],
   ["src/components/analysis/CtaWelcome.tsx", "CtaWelcome del informe"],
   ["src/components/analysis/NextAnalysisCTA.tsx", "NextAnalysisCTA del informe"],

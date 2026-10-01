@@ -65,12 +65,12 @@ export function runLoQueSigueTier(): { hard: number } {
   const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !isLoggedIn && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión»");
   if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el CTA de siempre)");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el cierre de siempre)"); // (01-oct-2026) el cierre de siempre es CierreInforme
   if (/CierreRegistro|lqs-cierre/.test(ltr)) F("1 · vuelve el texto del registro al final del informe LTR: la barra fija es la repetición");
   const str = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
   if (!/const loQueSigue = isAnonOwner && !userId && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo»");
   if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : \(\s*<NextAnalysisCTA \{\.\.\.nextCtaProps\} \/>\s*\)\}/.test(str)) F("1 · el ticket STR no cuelga del gate");
+  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(str)) F("1 · el ticket STR no cuelga del gate");
   if (/CierreRegistro|lqs-cierre/.test(str)) F("1 · vuelve el texto del registro al final del informe STR");
   if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {

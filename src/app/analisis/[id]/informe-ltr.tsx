@@ -212,15 +212,6 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     userCredits = await getAvailableCredits(user.id, supabase);
   }
 
-  // Pro CTA banner: total de analisis del user para threshold check.
-  let analysesCount = 0;
-  if (user) {
-    const { count } = await supabase
-      .from("analisis")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
-    analysesCount = count ?? 0;
-  }
 
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
   if (isAdmin) {
@@ -364,7 +355,6 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           userCredits={userCredits}
           welcomeAvailable={welcomeAvailable}
           ownerFirstName={ownerFirstName}
-          analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}
           isAnonOwner={isAnonOwner}

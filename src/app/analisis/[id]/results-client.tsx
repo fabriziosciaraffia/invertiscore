@@ -10,11 +10,8 @@ import { resolverModeloCostos, provisionMantencionAnio } from "@/lib/modelo-cost
 import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
-import { ProCTABanner } from "@/components/chrome/ProCTABanner";
-import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
-import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
-import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
@@ -67,7 +64,6 @@ export function PremiumResults({
   userCredits = 0,
   welcomeAvailable = true,
   ownerFirstName = "",
-  analysesCount = 0,
   isLoggedIn = false,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -98,7 +94,6 @@ export function PremiumResults({
   userCredits?: number;
   welcomeAvailable?: boolean;
   ownerFirstName?: string;
-  analysesCount?: number;
   isLoggedIn?: boolean;
   /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
    * CTA post-análisis welcome (banda inline + popup). */
@@ -174,21 +169,6 @@ export function PremiumResults({
   }, [analysisId, posthog, isSharedView, isSharedLink]);
 
   const m = normalizeMetrics(results?.metrics);
-
-  // F2-2 — CTA contextual "siguiente análisis" (copy A). Una sola fuente de
-  // props: el mount (dentro del cuerpo, antes de la Advanced Section) y la
-  // regla de exclusión del pie (WalletStatusCTA no repite el estado rojo).
-  const nextCtaProps = {
-    isLoggedIn,
-    isAnonOwner,
-    isSubscriber: accessLevel === "subscriber",
-    credits: userCredits,
-    welcomeAvailable,
-    isSharedView: isSharedView || isSharedLink,
-    source: "ltr" as const,
-    registerNext: analysisId ? `/analisis/${analysisId}` : undefined,
-  };
-  const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
 
   // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
   // Quien tiene cuenta no ve nada de esto. Contexto de los eventos: análisis, veredicto, modalidad.
@@ -683,50 +663,21 @@ export function PremiumResults({
           </div>
         )}
 
-        {/* CTAs FUERA del documento (FASE 4): el informe termina en su footer;
-            lo comercial vive después, en el flujo de la página. */}
+        {/* EL FINAL DEL INFORME: UNA acción (01-oct-2026, lib/cierre-informe.ts). El ticket del pack en el
+            primer informe anónimo; la banda de bienvenida, arriba, cuando este informe usó el crédito de
+            bienvenida; si no, la línea «Te quedan N análisis.» con «Analizar otro depto». */}
         <div className="mt-8">
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
           {loQueSigue ? (
             // «Lo que sigue»: al cierre va el ticket del pack; el registro no se repite en texto —la
             // barra fija es la repetición (ajuste 1, 28-sep-2026).
             <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
-          ) : (
-            <NextAnalysisCTA {...nextCtaProps} />
+          ) : showCtaWelcome ? null : (
+            <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} suscriptor={accessLevel === "subscriber"} />
           )}
         </div>
         <RegistroCompletadoSonda activa={isLoggedIn} />
-
-        {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
-            del user logueado. Excluye admin/sharedView/welcomeDisponible. */}
-        <div className="mt-8">
-          <MarcaSeccion seccion="wallet_cta" tipo="ltr" accessLevel={accessLevel} />
-          <WalletStatusCTA
-            welcomeAvailable={welcomeAvailable}
-            credits={userCredits}
-            isSubscriber={accessLevel === "subscriber"}
-            isAdmin={false /* admin → accessLevel="subscriber" en este componente */}
-            isSharedView={isSharedView}
-            source="ltr"
-            suppressNoCredits={nextCtaEsCompra}
-          />
-        </div>
       </div>
-      <ProCTABanner
-        analysesCount={analysesCount}
-        isLoggedIn={isLoggedIn}
-        accessLevel={accessLevel}
-        welcomeAvailable={welcomeAvailable}
-        isSharedView={isSharedView}
-        source="results"
-      />
-      {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
-      {accessLevel === "guest" && (
-        <div className="mt-8 mb-4">
-          <ConversionCloser />
-        </div>
-      )}
     </>
   );
 }
-

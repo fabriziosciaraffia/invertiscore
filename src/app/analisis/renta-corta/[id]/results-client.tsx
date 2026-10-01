@@ -11,25 +11,19 @@
  *   • ZonaStrSection — La zona con procedencia y su modal Explorar
  *   (T3 borró los drawers, el hero, la pirámide y la advanced section viejos)
  *
- * Gating: el render completo se muestra siempre. Los CTAs (WalletStatusCTA +
- * ProCTABanner) gestionan el upgrade.
+ * Gating: el render completo se muestra siempre. El final lleva UNA acción (lib/cierre-informe.ts).
  */
 
 import { useState, useEffect, useRef } from "react";
 import type { Veredicto } from "@/lib/types";
 import { construirCardStr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
-import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
-import { ArrowRight } from "lucide-react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ShareButton } from "@/components/chrome/ShareButton";
-import { ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { AppFooter } from "@/components/chrome/AppFooter";
-import { ProCTABanner } from "@/components/chrome/ProCTABanner";
-import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
-import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
@@ -243,20 +237,6 @@ export function STRResultsClient({
 
   const isSubscriber = accessLevel === "subscriber";
 
-  // F2-2 — CTA contextual: una sola fuente de props para el mount y la regla
-  // de exclusión del pie (WalletStatusCTA no repite el estado rojo de compra).
-  const nextCtaProps = {
-    isLoggedIn: accessLevel !== "guest" && !isAnonOwner,
-    isAnonOwner,
-    isSubscriber,
-    credits: userCredits,
-    welcomeAvailable,
-    isSharedView,
-    source: "str" as const,
-    registerNext: `/analisis/renta-corta/${analysisId}`,
-  };
-  const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
-  const isAdmin = false; // El page.tsx ya resuelve admin a "subscriber"
 
   // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
   const loQueSigue = isAnonOwner && !userId && !demo;
@@ -466,69 +446,17 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* CTAs de dueño/wallet */}
-        {(
-          <>
-            {/* CTA banner (free) */}
-            <div style={{ height: 24 }} />
-            <ProCTABanner
-              analysesCount={1}
-              isLoggedIn={accessLevel !== "guest"}
-              accessLevel={accessLevel}
-              welcomeAvailable={welcomeAvailable}
-              isSharedView={isSharedView}
-              source="str_v2"
-            />
-
-            {/* CTA contextual — FUERA del documento (FASE 4). */}
-            <div style={{ height: 16 }} />
-            <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
-            {loQueSigue ? (
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
-          ) : (
-            <NextAnalysisCTA {...nextCtaProps} />
-          )}
-          <RegistroCompletadoSonda activa={!!userId} />
-
-            {/* Wallet status */}
-            <div style={{ height: 16 }} />
-            <MarcaSeccion seccion="wallet_cta" tipo="str" accessLevel={accessLevel} />
-            <WalletStatusCTA
-              welcomeAvailable={welcomeAvailable}
-              credits={userCredits}
-              isSubscriber={isSubscriber}
-              isAdmin={isAdmin}
-              isSharedView={isSharedView}
-              source="str"
-              suppressNoCredits={nextCtaEsCompra}
-            />
-          </>
+        {/* EL FINAL DEL INFORME: UNA acción (01-oct-2026, lib/cierre-informe.ts). El ticket del pack en el
+            primer informe anónimo; la banda de bienvenida, arriba, cuando este informe usó el crédito de
+            bienvenida; si no, la línea «Te quedan N análisis.» con «Analizar otro depto». */}
+        <div style={{ height: 24 }} />
+        <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
+        {loQueSigue ? (
+          <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} />
+        ) : showCtaWelcome ? null : (
+          <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} suscriptor={isSubscriber} />
         )}
-
-        {/* Link analizar otra propiedad — oculto cuando la banda CTA welcome
-            está visible (mismo texto, destino distinto: evita el duplicado). */}
-        {!showCtaWelcome && (
-          <div className="mt-6 mb-4 flex items-center justify-center">
-            <EnlaceCarga
-              // El wizard legacy de renta corta se retiró. El formulario vivo es
-              // el v4 (RUTA_WIZARD en cta-analizar.ts): este link decía v2, que
-              // quedó atrás en el cutover ca3106f y mandaba a la gente al wizard
-              // anterior. Apunta directo y no al redirect, para no gastar un salto.
-              href="/analisis/nuevo-v4"
-              className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-            >
-              Analizar otra propiedad
-              <ArrowRight className="h-3.5 w-3.5" />
-            </EnlaceCarga>
-          </div>
-        )}
-
-        {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
-        {accessLevel === "guest" && (
-          <div className="mt-8 mb-4">
-            <ConversionCloser />
-          </div>
-        )}
+        <RegistroCompletadoSonda activa={!!userId} />
 
       </main>
 
