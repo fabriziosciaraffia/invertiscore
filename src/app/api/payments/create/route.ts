@@ -39,7 +39,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId } = body as {
+  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId, origen: origenBody } = body as {
+    /** De dónde vino la compra; hoy solo «semanal» (el correo semanal). */
+    origen?: string;
     product: string;
     analysisId?: string;
     quantity?: number | string;
@@ -180,11 +182,12 @@ export async function POST(request: Request) {
       //  - ambas_group_id (unlock, Fase D): audit del grupo desbloqueado. El
       //    flip en confirm deriva el grupo del hijo (analysis_id), pero lo
       //    guardamos acá como fuente de verdad del cobro.
-      ...(companionStrId || ambasGroupId
+      ...(companionStrId || ambasGroupId || origenBody === "semanal"
         ? {
             payment_data: {
               ...(companionStrId ? { companion_str_id: companionStrId } : {}),
               ...(ambasGroupId ? { ambas_group_id: ambasGroupId } : {}),
+              ...(origenBody === "semanal" ? { origen: "semanal" } : {}),
             },
           }
         : {}),

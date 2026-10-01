@@ -20,6 +20,7 @@ import { analizarAvisoDeGuia } from "@/lib/guia/analizar-una-vez";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { combinacionesGuia } from "@/lib/guia/seleccion";
+import { combinacionSemanal } from "@/lib/guia/semanal-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -37,16 +38,19 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string; avisoId?: string; piePct?: number; plazoAnios?: number };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string };
   if (!b.origenId || !UUID.test(b.origenId) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
   try {
     const o = await leerOrigenGuia(admin, b.origenId);
     if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
-    // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada).
-    const combo = combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
-      .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
+    // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada); desde el
+    // correo semanal, la de esa selección, que tiene que ser de esta persona, de este origen y con este aviso.
+    const combo = typeof b.semanal === "string"
+      ? await combinacionSemanal(admin, b.semanal, user.id, o.analysisId, b.avisoId)
+      : combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
+        .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
     if (!combo) return NextResponse.json({ error: "combinacion" }, { status: 400 });
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
     let anioLeido: number | null = null;

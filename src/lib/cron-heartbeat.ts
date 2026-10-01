@@ -97,6 +97,9 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
     frescura: { que: "errores de Sentry", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "sentry")) } },
   // El que vigila a los demás (cada 6 horas). Si se cae, el panel lo muestra atrasado.
   { nombre: "vigilar-crons", label: "Vigilancia de los crons", intervaloHoras: 6, desde: "2026-09-29T22:40:00Z" },
+  // El correo semanal (02-oct-2026): se arma el domingo (cada hora, de 11 a 23 UTC) y sale el lunes.
+  { nombre: "semanal-armar", label: "Correo semanal: la selección (domingo)", intervaloHoras: 168, desde: "2026-10-04T11:00:00Z" },
+  { nombre: "semanal-enviar", label: "Correo semanal: el envío (lunes)", intervaloHoras: 168, desde: "2026-10-05T12:00:00Z" },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },

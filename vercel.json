@@ -55,6 +55,14 @@
     {
       "path": "/api/cron/vigilar-crons",
       "schedule": "45 */6 * * *"
+    },
+    {
+      "path": "/api/cron/semanal-armar",
+      "schedule": "5 11-23 * * 0"
+    },
+    {
+      "path": "/api/cron/semanal-enviar",
+      "schedule": "0 12 * * 1"
     }
   ]
 }

@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { capturarServidor } from "@/lib/posthog-servidor";
-import { eventoDeResend } from "@/lib/medicion-correo";
+import { eventoDeResend, eventoSemanalAbierto } from "@/lib/medicion-correo";
 import { verificarFirmaSvix } from "@/lib/resend-webhook";
 
 export const runtime = "nodejs";
@@ -33,5 +33,7 @@ export async function POST(req: Request) {
   const evento = eventoDeResend(carga, svixId);
   if (!evento) return NextResponse.json({ ok: true, ignorado: true });
   const enviado = await capturarServidor(evento);
+  const semanal = eventoSemanalAbierto(evento);
+  if (semanal) await capturarServidor(semanal);
   return NextResponse.json({ ok: true, evento: evento.event, enviado });
 }

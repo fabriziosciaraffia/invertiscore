@@ -12,6 +12,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { FLOW_PRODUCTS, type FlowProduct, type FlowProductKey } from "@/lib/flow-products";
+import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 
 function createAdminClient() {
   return createClient(
@@ -247,6 +248,9 @@ export async function applyPlanCredits(
  * is_unlimited → free pass sin tocar nada). false si no hay lote vivo.
  * No marca is_premium en analisis — eso es responsabilidad del caller.
  */
+/** Los créditos que regala el correo semanal (credit_grants.source). */
+export const FUENTE_REGALO_SEMANAL = "regalo_semanal";
+
 export async function consumeCredit(userId: string): Promise<boolean> {
   if (!userId) return false;
 
@@ -264,7 +268,7 @@ export async function consumeCredit(userId: string): Promise<boolean> {
   const nowIso = new Date().toISOString();
   const { data: grant } = await supabase
     .from("credit_grants")
-    .select("id, remaining")
+    .select("id, remaining, source")
     .eq("user_id", userId)
     .gt("remaining", 0)
     .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
@@ -287,6 +291,10 @@ export async function consumeCredit(userId: string): Promise<boolean> {
     .select()
     .maybeSingle();
 
+  // El regalo del correo semanal se usó: el último paso del embudo del correo (02-oct-2026).
+  if (updated && grant.source === FUENTE_REGALO_SEMANAL) {
+    void capturarServidor({ event: "semanal_regalo_usado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo_usado:${grant.id}`), properties: {} }).catch(() => {});
+  }
   return !!updated;
 }
 

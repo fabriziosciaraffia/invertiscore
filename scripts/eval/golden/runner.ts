@@ -71,6 +71,7 @@ import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runCorreosTier } from "./correos-catch-test";
 import { runDashboardVacioTier } from "./dashboard-vacio-catch-test";
 import { runCasaTier } from "./casa-catch-test";
+import { runSemanalTier } from "./semanal-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
 import { runDfl2Tier } from "./dfl2-catch-test";
@@ -366,6 +367,8 @@ function printSeed(r: SeedReport) {
   // Tier CASA (02-oct-2026, 0 tokens): el dashboard como casa —saldo real, el suelto y no el pack,
   // el perfil de búsqueda de todos los informes—. En rojo por mutación.
   totalHard += runCasaTier().hard;
+  // Tier SEMANAL (02-oct-2026, 0 tokens): el correo semanal y el regalo. En rojo por mutación.
+  totalHard += (await runSemanalTier()).hard;
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;
   // se generan en el deploy y se regeneran al día. En rojo por mutación.
   totalHard += runEjemplosGuardadosTier().hard;

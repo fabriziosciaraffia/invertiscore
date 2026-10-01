@@ -8,6 +8,7 @@ import type { TipoCorreo } from "@/lib/medicion-correo";
 import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoAvisoPedido, correoPagoConfirmado, correoPagoFallido, type Correo } from "./correos";
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
+import { correoSemanal, type DatosCorreoSemanal } from "./correo-semanal";
 
 export interface EntradaCatalogo {
   id: string;
@@ -22,6 +23,25 @@ export interface EntradaCatalogo {
 
 const SITIO = "https://refranco.ai";
 const ID_MUESTRA = "91736841-0dfe-45d5-ad10-6c710be7fb8f";
+// El correo semanal con datos de muestra: cuatro deptos, sin saldo (el botón compra el suelto).
+const SEMANAL_MUESTRA = (variante: DatosCorreoSemanal["variante"], o: { saldo: number | null; conRegalo: boolean }): DatosCorreoSemanal => ({
+  variante,
+  nombre: "Camila",
+  busca: "2 dormitorios, Ñuñoa y Macul, hasta UF 4.500",
+  piePct: 20,
+  plazoAnios: 30,
+  deptos: [
+    { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: 4290, veredicto: "COMPRAR", score: 82, flujo: 64000, url: `${SITIO}/semanal` },
+    { comuna: "Ñuñoa", tipologia: "2D1B", m2: 52, precioUF: 3980, veredicto: "COMPRAR", score: 79, flujo: 21000, url: `${SITIO}/semanal` },
+    { comuna: "Macul", tipologia: "2D2B", m2: 55, precioUF: 3650, veredicto: "COMPRAR", score: 77, flujo: -18000, url: `${SITIO}/semanal` },
+    { comuna: "Macul", tipologia: "2D1B", m2: 50, precioUF: 3420, veredicto: "COMPRAR", score: 76, flujo: 9000, url: `${SITIO}/semanal` },
+  ],
+  saldo: o.saldo,
+  conRegalo: o.conRegalo,
+  urlBoton: `${SITIO}/semanal`,
+  urlComprar: `${SITIO}/checkout?product=single&origen=semanal`,
+  urlBaja: `${SITIO}/semanal/baja`,
+});
 const EN_SIETE_DIAS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
 export const CATALOGO_CORREOS: EntradaCatalogo[] = [
@@ -37,6 +57,8 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "alerta_pago", tipo: "alerta_pago", nombre: "Nuevo pago (aviso interno)", cuando: "Flow confirma un pago, a hola@", render: () => correoAlertaPago({ producto: "3 análisis", monto: 14990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-PK-0001", analysisId: ID_MUESTRA, sitio: SITIO }) },
   { id: "alerta_cron", tipo: "alerta_cron", nombre: "Cron con problemas (aviso interno)", cuando: "Un cron falla en todo o en parte, o deja de correr o de escribir, a hola@", render: () => correoAlertaCron({ cron: "scrape-unidades-nuevas", problema: "La corrida terminó con falla total: 155 de 155 fallaron.", detalle: ["proyecto 4347128: http 202 (desafío del WAF: sin proxy)"] }) },
   { id: "alerta_pago_fallido", tipo: "alerta_pago_fallido", nombre: "Pago fallido (aviso interno)", cuando: "Flow rechaza o anula un pago, a hola@", render: () => correoAlertaPagoFallido({ estado: "Rechazado", producto: "1 análisis", monto: 9990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-SG-0002" }) },
+  { id: "semanal_banda", tipo: "semanal", nombre: "Correo semanal · variante banda", cuando: "Los lunes, a quien tiene cuenta, con 3 a 5 deptos publicados que resultan con su perfil (sin saldo: compra el suelto)", render: () => correoSemanal(SEMANAL_MUESTRA("banda", { saldo: 0, conRegalo: false })) },
+  { id: "semanal_tarjetas", tipo: "semanal", nombre: "Correo semanal · variante tarjetas", cuando: "Los lunes, la otra mitad: sin banda, el titular en serif (con el regalo del día 14)", render: () => correoSemanal(SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: true })) },
   { id: "aviso_pedido", tipo: "aviso_pedido", nombre: "Quiero verlo: el aviso", cuando: "Alguien toca «Quiero verlo» en un informe que salió de la guía de búsqueda y el aviso sigue publicado", render: () => correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 }) },
   ...PLANTILLAS_SUPABASE.map((p) => ({
     id: p.archivo.replace(/\.html$/, ""),

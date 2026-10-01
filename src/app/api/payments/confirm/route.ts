@@ -9,7 +9,7 @@ import { consumeCredit } from "@/lib/access";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
-import { capturarServidor } from "@/lib/posthog-servidor";
+import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
 import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       .eq("commerce_order", flowData.commerceOrder)
       .maybeSingle();
     const prePaymentData = prePayment?.payment_data as
-      | { companion_str_id?: string; ambas_group_id?: string }
+      | { companion_str_id?: string; ambas_group_id?: string; origen?: string }
       | null;
     const companionStrId = prePaymentData?.companion_str_id;
     // Claves de negocio/audit escritas en payments/create que hay que preservar: el
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     const preservedPaymentData = {
       ...(prePaymentData?.companion_str_id ? { companion_str_id: prePaymentData.companion_str_id } : {}),
       ...(prePaymentData?.ambas_group_id ? { ambas_group_id: prePaymentData.ambas_group_id } : {}),
+      ...(prePaymentData?.origen === "semanal" ? { origen: "semanal" } : {}),
     };
 
     // Update payment record. flowData define el payload fresco (no lo pisamos con el
@@ -485,6 +486,10 @@ export async function POST(request: Request) {
           }));
         } catch (e) {
           console.error("[payments/confirm] pago_confirmado excepción:", e);
+        }
+        // La compra que vino del correo semanal (02-oct-2026): mismo id que el pago, un evento por pago.
+        if ((payment.payment_data as { origen?: string } | null)?.origen === "semanal") {
+          await capturarServidor({ event: "semanal_compra", distinctId: userId, uuid: uuidDeterminista(`semanal_compra:${payment.commerce_order}`), properties: { product: payment.product, amount: payment.amount } }).catch(() => false);
         }
       }
 

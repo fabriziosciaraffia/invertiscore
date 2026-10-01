@@ -3,6 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
+import type { correoSemanal } from "./email/correo-semanal";
 import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
@@ -420,6 +421,22 @@ export async function sendAvisoPedidoEmail(to: string, p: Parameters<typeof corr
 }
 
 /** Alerta interna de un cron que falló o dejó de escribir (29-sep-2026). Ver cron-resultado.ts. */
+/** El correo semanal (02-oct-2026). Con «List-Unsubscribe» de un clic: Gmail e iPhone Mail muestran
+ *  «Cancelar suscripción» y llaman al POST de /api/semanal/baja. Devuelve el id de Resend. */
+export async function sendSemanalEmail(to: string, correo: ReturnType<typeof correoSemanal>, userId: string, urlBaja: string): Promise<{ ok: true; id: string | null } | { ok: false }> {
+  try {
+    const res = await enviarCorreo("semanal", userId, {
+      from: FROM_EMAIL, to, subject: correo.subject, html: correo.html,
+      headers: { "List-Unsubscribe": `<${urlBaja}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+    });
+    if (res.error) { console.error("[semanal] no salió:", res.error.message); return { ok: false }; }
+    return { ok: true, id: res.data?.id ?? null };
+  } catch (error) {
+    console.error("[semanal] no salió:", error);
+    return { ok: false };
+  }
+}
+
 export async function sendAlertaCronInterna(p: Parameters<typeof correoAlertaCron>[0]): Promise<void> {
   const { subject, html } = correoAlertaCron(p);
   const res = await enviarCorreo("alerta_cron", null, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });

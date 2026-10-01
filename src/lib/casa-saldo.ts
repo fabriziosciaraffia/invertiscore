@@ -8,9 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasSubscriptionAccess } from "@/lib/access";
-
-/** El origen de los créditos que regala el correo semanal (credit_grants.source). */
-export const FUENTE_REGALO = "regalo_semanal";
+import { FUENTE_REGALO_SEMANAL } from "@/lib/credits-grant";
 
 export interface DatosSaldo {
   disponibles: number;
@@ -44,7 +42,7 @@ export async function leerSaldo(admin: SupabaseClient, userId: string): Promise<
   return {
     disponibles: ledger + legacy,
     plan: !!uc && ((uc as { is_unlimited?: boolean }).is_unlimited === true || hasSubscriptionAccess(uc as never)),
-    regaloRestante: vivos.filter((g) => g.source === FUENTE_REGALO).reduce((a, g) => a + g.remaining, 0),
+    regaloRestante: vivos.filter((g) => g.source === FUENTE_REGALO_SEMANAL).reduce((a, g) => a + g.remaining, 0),
     todoSinCaducidad: vivos.length > 0 ? vivos.every((g) => g.expires_at == null) : legacy > 0,
   };
 }

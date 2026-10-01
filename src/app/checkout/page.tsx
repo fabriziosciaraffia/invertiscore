@@ -66,6 +66,8 @@ function CheckoutContent() {
   // Se reenvía a payments/create para que confirm desbloquee ambas filas y el
   // return rutee a la comparativa. Null en LTR/STR single.
   const companionStrId = searchParams.get("companionStrId");
+  // La compra que viene del correo semanal (02-oct-2026): viaja a payment_data para medirla.
+  const origen = searchParams.get("origen") === "semanal" ? "semanal" : null;
 
   const product = resolveProduct(productKey);
   // «Lo que sigue»: la vigencia del pack la dice el servidor. null = todavía no se sabe.
@@ -154,6 +156,7 @@ function CheckoutContent() {
       if (product.oneTime) {
         body.quantity = String(qty);
       }
+      if (origen) body.origen = origen;
 
       const res = await fetch(product.endpoint, {
         method: "POST",

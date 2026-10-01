@@ -26,6 +26,7 @@ import { PLANTILLAS_SUPABASE } from "../../../src/lib/email/supabase-plantillas"
 import { TIPOS_CORREO } from "../../../src/lib/medicion-correo";
 import { correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoPagoConfirmado } from "../../../src/lib/email/correos";
 import { BIENVENIDA } from "../../../src/app/dashboard/bienvenida-copy";
+import { SEMANAL, URL_BANDA_SEMANAL } from "../../../src/lib/email/correo-semanal";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -63,7 +64,11 @@ export function runCorreosTier(): { hard: number } {
     if (!wordmark.test(html)) F(`5 · ${c.id} no lleva el wordmark PNG fiel (ancho fijo, alt refranco.ai)`);
     if (/<svg/i.test(html)) F(`5 · ${c.id} lleva SVG (Gmail no lo muestra)`);
     if (!/<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">[^<]{8,}<\/div>/.test(html)) F(`1 · ${c.id} no tiene texto de vista previa (la bandeja muestra «refranco.ai.», el alt del logo)`);
-    if ((html.match(/<img /g) ?? []).length !== 1) F(`1 · ${c.id} lleva imágenes además del wordmark (con las imágenes bloqueadas no se lee; los heros del informe viejo salieron)`);
+    // Única excepción (02-oct-2026, decisión de Fabrizio): la banda del correo semanal, variante «banda», con
+    // el material del hero como imagen. Con las imágenes bloqueadas se lee igual: su alt es el titular.
+    const imgs = html.match(/<img [^>]*>/g) ?? [];
+    const banda = c.id === "semanal_banda" && imgs.length === 2 && imgs.some((i) => i.includes(`src="${URL_BANDA_SEMANAL}"`) && i.includes(`alt="${SEMANAL.titular}"`));
+    if (imgs.length !== 1 && !banda) F(`1 · ${c.id} lleva imágenes además del wordmark (con las imágenes bloqueadas no se lee; los heros del informe viejo salieron)`);
     if (oscuro(html)) F(`2 · ${c.id} tiene fondo oscuro`);
     if (MONO.test(html)) F(`2 · ${c.id} usa mono`);
     if (PROHIBIDO.test(texto(html)) || PROHIBIDO.test(subject)) F(`3 · ${c.id} dice lo que el producto de hoy no dice («con IA», «20 años», escenarios de salida, «buena oportunidad de inversión»)`);
