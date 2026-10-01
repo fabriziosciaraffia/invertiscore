@@ -19,6 +19,7 @@ import { prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
+import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 
 /**
  * EL INFORME STR, fuera de la ruta (25-sep-2026). Espejo de `InformeLtr`: lo dibujan
@@ -122,6 +123,14 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   const isAnonOwner =
     !isLoggedIn && data.user_id === null && !!anonToken && !!anonHash &&
     sha256Hex(anonToken) === anonHash;
+  // EL NAVEGADOR DE ORIGEN (02-oct-2026): espejo de /analisis/[id]. Fila con dueño, sin sesión, y la
+  // cookie de este navegador calza con `anon_origen_hash`: su informe, completo y como suyo.
+  const isOrigenNavegador = !modoDemo && esNavegadorDeOrigen({
+    conSesion: isLoggedIn,
+    duenoId: data.user_id,
+    origenHash: (data as Record<string, unknown>).anon_origen_hash as string | null | undefined,
+    tokenCookie: anonToken,
+  });
   const isPremium = isAdmin || esDemo(data.id) || !!data.is_premium;
 
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
@@ -148,6 +157,9 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     accessLevel = "premium";
   } else if (isAnonOwner) {
     // Anónimo-dueño: informe completo (el cap entrega el análisis entero).
+    accessLevel = "premium";
+  } else if (isOrigenNavegador) {
+    // Su informe, en su navegador: el mismo nivel que tenía antes del claim.
     accessLevel = "premium";
   } else if (!isLoggedIn) {
     accessLevel = "guest";
@@ -259,6 +271,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,
+    isOrigenNavegador,
     simulacionStr,
     zonaStr,
     demo,

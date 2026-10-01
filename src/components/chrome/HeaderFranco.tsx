@@ -45,8 +45,9 @@ import "./header-franco.css";
 
 export type ContextoHeader = "sitio" | "wizard" | "auth";
 /** propio = con sesión (dueño o invitado con cuenta) · compartido = invitado con el enlace ·
- *  anonimo = el dueño sin cuenta · ejemplo = el demo (se ve como el sitio, según la sesión). */
-export type ModoInforme = "propio" | "compartido" | "anonimo" | "ejemplo";
+ *  anonimo = el dueño sin cuenta · ejemplo = el demo (se ve como el sitio, según la sesión) ·
+ *  suyo = el dueño CON cuenta, sin sesión, en el navegador donde hizo el informe (02-oct-2026). */
+export type ModoInforme = "propio" | "compartido" | "anonimo" | "ejemplo" | "suyo";
 export interface SesionHeader {
   email: string;
 }
@@ -211,6 +212,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   let contextoInforme: ReactNode = null;
   if (modo === "compartido") contextoInforme = <span className="hf-ctx hf-solo-ancho"><b>Compartido contigo</b>{informe?.fecha}</span>;
   if (modo === "anonimo") contextoInforme = <span className="hf-ctx hf-solo-ancho"><b>Tu análisis, sin guardar</b>Crea una cuenta para no perderlo</span>;
+  if (modo === "suyo") contextoInforme = <span className="hf-ctx hf-solo-ancho"><b>Tu análisis</b>Entra para verlo en tu cuenta</span>;
 
   let derecha: ReactNode = null;
   if (contexto === "auth") {
@@ -233,6 +235,9 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
         <CtaAnalizar origen="resultado_hook" className="hf-btn">Analizar el mío</CtaAnalizar>
       </>
     );
+  } else if (modo === "suyo") {
+    // Su informe, sin sesión, en el navegador donde lo hizo (02-oct-2026): «Entrar» para ver su cuenta.
+    derecha = <>{entrar}</>;
   } else if (modo === "anonimo") {
     // «Lo que sigue» (28-sep-2026): el registro del primer informe anónimo vive en el banner después
     // de la card y en su barra fija, no acá. El header queda con «Entrar».

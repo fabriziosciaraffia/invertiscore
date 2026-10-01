@@ -18,6 +18,7 @@ import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-
 import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
+import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -170,7 +171,6 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   const isDemo = esDemo(analisis.id);
   const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
-  const isSharedLink = !isLoggedIn && !!analisis.user_id;
   // Anónimo-DUEÑO (cap anónimo F2-2): sin sesión, fila sin dueño, y el token de
   // la cookie httpOnly de ESTE navegador calza con el hash de la fila. Ve SU
   // análisis completo; cualquier otro anónimo sobre la misma URL sigue siendo
@@ -180,6 +180,16 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   const isAnonOwner =
     !isLoggedIn && analisis.user_id === null && !!anonToken && !!anonHash &&
     sha256Hex(anonToken) === anonHash;
+  // EL NAVEGADOR DE ORIGEN (02-oct-2026): la fila ya tiene dueño (se reclamó al registrarse o al pagar el
+  // pack), pero se abre SIN sesión en el mismo navegador donde se hizo: la cookie calza con
+  // `anon_origen_hash`. Es SU informe: completo, como lo veía antes del claim, y sin «Compartido contigo».
+  const isOrigenNavegador = !modoDemo && esNavegadorDeOrigen({
+    conSesion: isLoggedIn,
+    duenoId: analisis.user_id,
+    origenHash: (data as Record<string, unknown>).anon_origen_hash as string | null | undefined,
+    tokenCookie: anonToken,
+  });
+  const isSharedLink = !isLoggedIn && !!analisis.user_id && !isOrigenNavegador;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
   // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
@@ -221,6 +231,9 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   } else if (isAnonOwner) {
     // Anónimo-dueño: informe completo (decisión F2 — el cap entrega el
     // análisis entero; el registro es para GUARDARLO, no para verlo).
+    accessLevel = "premium";
+  } else if (isOrigenNavegador) {
+    // Su informe, en su navegador: el mismo nivel que tenía antes del claim.
     accessLevel = "premium";
   } else if (!isLoggedIn) {
     accessLevel = "guest";
@@ -300,6 +313,8 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           informe={
             isDemo
               ? { modo: "ejemplo" }
+              : isOrigenNavegador
+                ? { modo: "suyo" }
               : accessLevel === "guest" || isAnonOwner
                 ? {
                     modo: isAnonOwner ? "anonimo" : "compartido",

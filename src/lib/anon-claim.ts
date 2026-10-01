@@ -73,6 +73,20 @@ export async function claimAnalisisAnonimos(
   // «Lo que sigue» (28-sep-2026): el perfil de inversión de cada fila adoptada pasa a la persona.
   await ligarPerfiles(admin, user.id, filas.map((f) => f.id as string));
 
+  // EL NAVEGADOR DE ORIGEN (02-oct-2026): el hash del token se conserva en `anon_origen_hash` para que
+  // el informe, abierto SIN sesión desde el mismo navegador donde se hizo (la cookie `franco_anon`
+  // sigue ahí), se vea completo y como suyo, no como compartido. Va en un UPDATE aparte y fail-soft: si
+  // la columna todavía no existe (migración 20261002_analisis_anon_origen_hash sin aplicar), el claim
+  // ya quedó hecho y solo se pierde el reconocimiento, que cae al comportamiento de antes.
+  {
+    const { error: origenError } = await admin
+      .from("analisis")
+      .update({ anon_origen_hash: hash })
+      .in("id", filas.map((f) => f.id as string))
+      .eq("user_id", user.id);
+    reportarFalloQuery(origenError, { ruta: "lib/anon-claim", operacion: "guardar-navegador-de-origen", userId: user.id });
+  }
+
   // Decisión 1 (F2-1): el análisis anónimo CONSUME el welcome. Mismo patrón de
   // fila-asegurada + UPDATE condicional que chargeAnalysisCredit (lib/access) —
   // si el welcome ya estaba usado, el update encuentra 0 filas y no pasa nada.
