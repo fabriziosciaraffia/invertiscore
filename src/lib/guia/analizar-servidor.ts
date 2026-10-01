@@ -6,8 +6,7 @@
 // (`origenAviso.antiguedad = "supuesta"`).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildLtrPayload } from "@/components/formulario-v4/wizardV4Payload";
-import { arriendoParaEvaluar, contextoDeSugerencias, respuestasDeAviso, sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
+import { arriendoParaEvaluar, contextoDeSugerencias, payloadDeAviso, respuestasDeAviso, sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
 import type { AnalisisInput } from "@/lib/types";
 import { anioDeAviso, aniosDesde } from "./ficha-anio";
 import { almacenFichas, bajarFicha } from "./ficha-anio-servidor";
@@ -69,7 +68,7 @@ export async function cuerpoDelAviso(
   const { arr, vta } = await sugerenciasDeAviso(a);
   const arriendo = arriendoParaEvaluar(a, arr, vta, cfg.uf, false);
   if (!arriendo) return null;
-  const body = buildLtrPayload(
+  const body = payloadDeAviso(
     respuestasDeAviso(a, combo.piePct, o.tasa, arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }),
     contextoDeSugerencias(arriendo, arr, vta, cfg),
   ) as unknown as AnalisisInput;

@@ -30,6 +30,7 @@ export const GUIA = {
   chipComo: "Como el tuyo:",
   chipRadio: "A menos de",
   chipCombinacion: "Con pie",
+  antiguedad: "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene.",
   pie: "Vistos en los últimos 7 días. Los precios son los publicados; el arriendo es el que Franco estima para cada uno en su zona.",
 } as const;
 

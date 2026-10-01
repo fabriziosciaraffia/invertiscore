@@ -17,8 +17,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sondaConPatch } from "@/lib/analysis";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
-import { buildLtrPayload, type SubmitContext } from "@/components/formulario-v4/wizardV4Payload";
-import { respuestasDeAviso, type AvisoParaEvaluar, type FilaEvaluacion } from "@/lib/avisos/evaluar-aviso";
+import type { SubmitContext } from "@/components/formulario-v4/wizardV4Payload";
+import { payloadDeAviso, respuestasDeAviso, type AvisoParaEvaluar, type FilaEvaluacion } from "@/lib/avisos/evaluar-aviso";
 import type { RazonSinCapital } from "@/lib/types";
 import {
   MAX_CANDIDATOS_GUIA, RADIOS_GUIA_M, VENTANA_GUIA_DIAS, combinacionesGuia, elegirGuia, rangoParecido, textoDistancia,
@@ -170,10 +170,10 @@ export async function guiaPara(admin: SupabaseClient, o: OrigenGuia, cfg: { uf: 
   const evaluar = async (c: CandidatoGuia, combo: Combinacion): Promise<Evaluado | null> => {
     const ctx = contextoDeFila(c, cfg);
     if (!ctx || !c.arriendo) return null;
-    const body = buildLtrPayload(
+    const body = payloadDeAviso(
       respuestasDeAviso(avisoDeCandidato(c), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }),
       ctx,
-    ) as Record<string, unknown>;
+    );
     // La mediana guardada en la evaluación; solo una fila anterior a la columna la pide en vivo, una vez.
     let mediana = c.medianaComuna;
     if (mediana == null) {

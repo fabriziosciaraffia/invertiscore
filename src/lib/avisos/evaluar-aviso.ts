@@ -22,9 +22,26 @@ import type { Antiguedad, WizardV4Answers } from "@/components/formulario-v4/wiz
 import { readVeredicto } from "@/lib/results-helpers";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 
-/** La versión de una fila evaluada: la del motor y la de las sugerencias. Cambia una u otra → el cron la
- *  reevalúa de a poco (avisosDeOtraVersion). */
-export const VERSION_EVALUACION = `${METHODOLOGY_VERSION_ACTUAL}+${SUGERENCIAS_VERSION}`;
+/** La revisión de la evaluación misma (01-oct-2026): r2 = el body lleva `methodologyVersion`. Hasta r1 el
+ *  body salía de buildLtrPayload sin ella y el motor corría el modelo de costos VIEJO (`resolverModeloCostos`
+ *  cae a legacy sin versión), mientras los informes corren v3: La Reina daba Comprar 73 en la guía y 82 en
+ *  el informe. */
+export const REVISION_EVALUACION = "r2";
+
+/** La versión de una fila evaluada: la del motor, la de la evaluación y la de las sugerencias. Cambia una
+ *  → el cron la reevalúa de a poco (avisosDeOtraVersion). */
+export const VERSION_EVALUACION = `${METHODOLOGY_VERSION_ACTUAL}.${REVISION_EVALUACION}+${SUGERENCIAS_VERSION}`;
+
+/**
+ * El body del motor para un aviso: el de buildLtrPayload —el mismo del wizard— más `methodologyVersion`,
+ * que el wizard no pone porque la agrega `POST /api/analisis`. Sin ella el motor corre el modelo de costos
+ * viejo. Lo usan la evaluación, la guía y «Analizar este»: una sola puerta.
+ */
+export function payloadDeAviso(respuestas: WizardV4Answers, ctx: SubmitContext): Record<string, unknown> & { gastos?: number; contribuciones?: number } {
+  const body = buildLtrPayload(respuestas, ctx) as Record<string, unknown> & { gastos?: number; contribuciones?: number };
+  body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
+  return body;
+}
 
 /** Cuánto sobre la mediana de la zona un arriendo sugerido deja de ser creíble sin más. */
 export const UMBRAL_SOSPECHOSO_ZONA = 1.25;
@@ -222,7 +239,7 @@ export async function evaluarAviso(
   // La mediana comunal depende del depto (comuna, m², dormitorios, nuevo o usado), no del pie: una vez.
   let mediana: Awaited<ReturnType<typeof prefetchMedianaComunaVenta>> | undefined;
   for (const pie of PERFILES_ESTANDAR) {
-    const body = buildLtrPayload(respuestasDeAviso(a, pie, cfg.tasa, arriendo.monto), ctx) as Record<string, unknown> & { gastos?: number; contribuciones?: number };
+    const body = payloadDeAviso(respuestasDeAviso(a, pie, cfg.tasa, arriendo.monto), ctx);
     if (!mediana) mediana = await prefetchMedianaComunaVenta(sb as never, body as never, cfg.uf).catch(() => undefined);
     out.mediana_comuna = mediana ?? null;
     const r = runAnalysis(body as never, cfg.uf, mediana as never, new Date()) as { score?: number; metrics?: { flujoNetoMensual?: number } };

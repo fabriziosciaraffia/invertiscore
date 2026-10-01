@@ -56,6 +56,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [GUIA.ajustada, "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores."],
     [GUIA.ninguno, "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona."],
     [GUIA.analizar, "Analizar este"],
+    [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene."],
     [TICKET_INCLUYE_GUIA, "Incluye una selección de deptos publicados parecidos a este, ya revisados con tu pie y tu plazo. Analizas el que quieras con un clic."],
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
     [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
@@ -76,6 +77,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const gb = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/\{GUIA\.titulo\}/.test(gb) || !/\{GUIA\.ninguno\}/.test(gb) || !/r\.estado === "ajustada" \? <p className="guia-ajustada">\{GUIA\.ajustada\}<\/p> : <p className="guia-txt">\{GUIA\.cuerpo\}<\/p>/.test(gb)) F("1 · la guía no dice el título, el caso ajustado o el caso sin ninguno con el copy aprobado");
   if (/href=|<img|<a\s/.test(gb)) F("1 · la guía enlaza al aviso o muestra una imagen (sin enlace, sin fotos)");
+  if (!/<p className="guia-pie">\{GUIA\.antiguedad\}<\/p>/.test(gb)) F("1 · la guía no dice que calcula con 25 años y que el informe usa la real");
   const srvGuia = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
   const respuesta = (srvGuia.match(/export function respuestaGuia\([\s\S]*?\n\}/) ?? [""])[0];
   if (!respuesta || /\bc\.url\b|\burl:|titulo/.test(respuesta)) F("1 · la respuesta de la guía devuelve el enlace o el título del aviso");
@@ -226,6 +228,13 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/const s = sondaConPatch\(body as never, cfg\.uf, mediana as never, asOf, \{\}\);/.test(evalGuia) || /runAnalysis\(/.test(srvGuia)) F("6 · la guía corre el motor entero por candidato (debe ser la sonda)");
   if (!/let mediana = c\.medianaComuna;\s*if \(mediana == null\) \{/.test(evalGuia)) F("6 · la guía pide la mediana en vivo aunque esté guardada en la fila evaluada");
   const evalAviso = sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts"));
+  // 01-oct-2026: el body sin methodologyVersion corría el modelo de costos viejo (Comprar 73 en la guía, 82 en el
+  // informe). Una sola puerta, payloadDeAviso, y nadie de la guía ni de la evaluación llama buildLtrPayload pelado.
+  if (!/body\.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;/.test((evalAviso.match(/export function payloadDeAviso[\s\S]*?\n\}/) ?? [""])[0])) F("6 · el body del aviso no lleva methodologyVersion (el motor corre el modelo de costos viejo)");
+  for (const f of ["src/lib/avisos/evaluar-aviso.ts", "src/lib/guia/guia-servidor.ts", "src/lib/guia/analizar-servidor.ts"]) {
+    const s = sinComentarios(leer(f)).replace(/export function payloadDeAviso[\s\S]*?\n\}/, "");
+    if (/buildLtrPayload\(/.test(s)) F(`6 · ${f} arma el body del aviso sin payloadDeAviso (sin methodologyVersion)`);
+  }
   if (!/out\.mediana_comuna = mediana \?\? null;/.test(evalAviso) || !/ae\.mediana_comuna/.test(leer("supabase/migrations/20260930_guia_busqueda.sql"))) F("6 · la evaluación no guarda la mediana comunal (o la RPC no la devuelve)");
   const apiGuia = sinComentarios(leer("src/app/api/lo-que-sigue/guia/route.ts"));
   if (!/const guardada = await guiaGuardada\(admin, a\);\s*const r = guardada \?\? \(await calcularYGuardarGuia\(admin, a\)\);/.test(apiGuia)) F("6 · la pantalla no lee la guía guardada antes de calcularla");
@@ -263,6 +272,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 // enlace en respuestaGuia, que salió de la ruta); nuevas O8 vuelve a probar 25 años · S1 motor entero por
 // candidato · S2 mediana siempre en vivo · S3 la evaluación no guarda la mediana · S4 la pantalla calcula
 // siempre · S5 la confirmación no precalcula · S6 precalcula también renta corta.
+// Tercera vuelta (01-oct-2026, Comprar 73 en la guía y 82 en el informe): 4/4 en rojo. A1 la guía no dice la
+// antigüedad · A2 el body del aviso sin methodologyVersion (modelo de costos viejo) · A3 la guía arma el body
+// pelado · A4 cambia la frase de la antigüedad.
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 

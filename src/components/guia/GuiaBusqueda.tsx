@@ -141,7 +141,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion, muestra }: { an
               );
             })}
           </div>
-          <p className="guia-pie">{GUIA.pie}</p>
+          <p className="guia-pie">{GUIA.antiguedad}</p>
+          <p className="guia-pie guia-pie-2">{GUIA.pie}</p>
         </>
       )}
     </section>
