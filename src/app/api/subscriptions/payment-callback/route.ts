@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
+import { nombreReal } from "@/lib/welcome";
 import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 
@@ -319,10 +320,7 @@ export async function POST(request: Request) {
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
         const flowUser = userData?.user;
         if (flowUser?.email) {
-          const nombre =
-            flowUser.user_metadata?.nombre ||
-            flowUser.user_metadata?.full_name ||
-            null;
+          const nombre = nombreReal(flowUser.user_metadata);
           await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId });
         }
       } catch (e) {

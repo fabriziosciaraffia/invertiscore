@@ -5,7 +5,7 @@ import { flowPost, flowGet } from "@/lib/flow";
 import { recurringProductByPlan, setPlanFields, addOneMonth } from "@/lib/credits-grant";
 import { resolvePlanId } from "@/lib/flow-products";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -217,7 +217,7 @@ export async function POST(request: Request) {
       if (flowUser?.email) {
         await sendPaymentConfirmationEmail(
           flowUser.email,
-          resolveDisplayName(flowUser.user_metadata, flowUser.email),
+          nombreReal(flowUser.user_metadata) ?? "",
           match.key,
           match.product.amount,
           undefined,

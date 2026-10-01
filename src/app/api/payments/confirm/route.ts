@@ -3,7 +3,7 @@ import { waitUntil } from "@vercel/functions";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { sendAlertaPagoFallidoInterna, sendAlertaPagoInterna, sendPaymentConfirmationEmail } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
             }
             await sendPaymentConfirmationEmail(
               userData.user.email,
-              resolveDisplayName(userData.user.user_metadata, userData.user.email),
+              nombreReal(userData.user.user_metadata) ?? "",
               product,
               amount,
               analysisId || undefined,

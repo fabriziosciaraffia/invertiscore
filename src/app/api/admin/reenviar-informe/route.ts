@@ -17,7 +17,7 @@
 
 import { withAdminAction, AdminActionError } from "@/lib/admin-audit";
 import { sendAnalysisReadyEmailOrThrow } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { AdminAuditFields } from "@/lib/admin-audit";
 
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     const veredicto =
       readVeredicto(row.results) ||
       (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
-    const nombreUsuario = resolveDisplayName(targetUser.user_metadata, targetUser.email);
+    const nombreUsuario = nombreReal(targetUser.user_metadata) ?? "";
 
     // ── ENVÍO ─────────────────────────────────────────────────────────────────
     // La variante OrThrow propaga: sin API key, rechazo in-band de Resend o error
