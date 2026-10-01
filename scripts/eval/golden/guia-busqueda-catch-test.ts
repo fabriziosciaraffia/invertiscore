@@ -74,7 +74,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   for (const [tiene, debe] of aprobado) if (tiene !== debe) F(`1 · el copy «${debe}» cambió a «${tiene}»`);
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
-  const textos = [...Object.values(GUIA), ...Object.values(INFORME_DE_AVISO), TICKET_INCLUYE_GUIA, ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  // Las frases con dato (funciones) se barren con un ejemplo.
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), TICKET_INCLUYE_GUIA, ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));
