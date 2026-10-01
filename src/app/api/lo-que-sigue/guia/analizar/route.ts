@@ -5,7 +5,7 @@ import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
 import { sendAnalysisReadyEmail } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
             if (user.email) {
               const email = user.email;
               waitUntil(sendAnalysisReadyEmail(
-                email, resolveDisplayName(user.user_metadata, email), body.nombre || `${body.comuna} - ${body.superficie}m²`,
+                email, nombreReal(user.user_metadata) ?? "", body.nombre || `${body.comuna} - ${body.superficie}m²`,
                 result.score, readVeredicto(result) || "AJUSTA SUPUESTOS", id, undefined, { userId: user.id },
               ).catch((e) => console.error("[guia/analizar] correo listo:", e)));
             }

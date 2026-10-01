@@ -5,7 +5,7 @@ import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { sendAnalysisReadyEmail } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { nombreReal } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import {
   createSupabaseServer,
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
     // (sendAnalysisReadyEmail traga y loguea).
     if (data?.id && user?.email && !ambasGroupId) {
       const para = user.email;
-      const nombrePersona = resolveDisplayName(user.user_metadata, user.email);
+      const nombrePersona = nombreReal(user.user_metadata) ?? "";
       const titulo = (data.nombre as string | null) || `${body.comuna} - ${body.superficieUtil}m²`;
       const veredictoStr = readVeredicto(data.results as never) ?? ((data.resumen as string | null) || "AJUSTA SUPUESTOS");
       waitUntil(sendAnalysisReadyEmail(para, nombrePersona, titulo, Number(data.score) || 0, veredictoStr, data.id as string, undefined, { userId: user.id }));

@@ -5,6 +5,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
 import { itemsVigentes, type ItemSemanal } from "@/lib/guia/semanal-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 import { SemanalLista } from "./semanal-lista";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,7 +22,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const aqui = `/semanal?${new URLSearchParams(Object.entries(searchParams).filter((e): e is [string, string] => typeof e[1] === "string")).toString()}`;
-  if (!user) redirect(`/login?next=${encodeURIComponent(aqui)}`);
+  if (!user) redirect(hrefEntrar(aqui, "semanal"));
   if (!TOKEN.test(t)) redirect("/dashboard");
 
   const admin = createServiceClient();

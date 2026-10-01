@@ -14,6 +14,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { metaTrack } from "@/lib/meta/pixel";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { hayGuia } from "@/lib/guia/activa";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -186,10 +187,10 @@ function PaymentReturnContent() {
   // Adónde vuelve quien entra con su correo: a esta misma pantalla si es el pack (verá su saldo y la guía);
   // si no, al dashboard.
   const volverAca = typeof window === "undefined" ? "/dashboard" : window.location.pathname + window.location.search;
-  const nextEntrar = `/registro?next=${encodeURIComponent(retornoPack ? volverAca : "/dashboard")}`;
+  const nextEntrar = hrefEntrar(retornoPack ? volverAca : "/dashboard", "pack");
   async function entrarConOtroCorreo() {
     try { await createClient().auth.signOut(); } catch { /* sin sesión: igual a entrar */ }
-    window.location.assign(`/registro?next=${encodeURIComponent(volverAca)}`);
+    window.location.assign(hrefEntrar(volverAca, "pack"));
   }
 
   return (

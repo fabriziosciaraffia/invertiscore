@@ -71,9 +71,8 @@ function dibujarConRouter(el: React.ReactElement): string {
 const texto = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
 /** Excepciones declaradas al saludo: archivos que el goal no pudo tocar, con su razón. */
-const EXCEPCIONES_SALUDO: { archivo: string; razon: string }[] = [
-  { archivo: "src/app/api/lo-que-sigue/guia/analizar/route.ts", razon: "vedado en el goal ENTRADA-CÓDIGO (01-oct-2026): el informe de una tarjeta de la guía todavía saluda con resolveDisplayName; arreglo de una línea —nombreReal(user.user_metadata) ?? \"\"—, anotado en el reporte" },
-];
+// La del informe de una tarjeta de la guía se cerró en la integración (02-oct-2026): ya no queda ninguna.
+const EXCEPCIONES_SALUDO: { archivo: string; razon: string }[] = [];
 
 export function runEntradaCodigoTier(): { hard: number } {
   console.log("\n─── TIER ENTRADA-CÓDIGO (una sola entrada: el código · 0 tokens) ───");
