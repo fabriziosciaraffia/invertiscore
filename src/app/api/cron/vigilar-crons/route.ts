@@ -45,7 +45,10 @@ export async function GET(request: Request) {
       // el día UTC mandaba el mismo aviso de ayer como si fuera nuevo (30-sep-2026, 00:45: la corrida
       // parcial de unidades del 29 a las 22:40). El panel la sigue mostrando en rojo hasta la próxima corrida.
       if (motivo === null) continue;
-      if (await alertarUnaVezAlDia(sb, c.nombre, hoy, c.motivo ?? "en rojo", {}, motivo)) alertas++;
+      // El correo dice el motivo que DISPARÓ la alerta, no el de mayor prioridad del panel (02-oct-2026: una
+      // alerta por frescura salió diciendo «la última corrida falló entera», la falla ya avisada a las 14:00).
+      const texto = c.motivos[motivo as keyof typeof c.motivos] ?? c.motivo ?? "en rojo";
+      if (await alertarUnaVezAlDia(sb, c.nombre, hoy, texto, {}, motivo)) alertas++;
     }
     // La vigilancia misma sale bien aunque haya crons en rojo: su trabajo es verlos y avisar.
     return cerrarCron(sb, NOMBRE, { procesados: estado.length, exitosos: estado.length, fallidos: 0 }, {

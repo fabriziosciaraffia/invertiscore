@@ -62,6 +62,15 @@ export interface CronVigilado {
    */
   cadenciaDesde?: string;
   /**
+   * Cuándo entró a producción el código vigente del cron (ISO), para los que cambiaron de código (02-oct-2026).
+   * Lo anterior a este instante no alerta: ni la falla de una corrida que corrió con el código viejo (ya
+   * avisó desde cerrarCron), ni una corrida sin cierre de antes, y la frescura se cuenta desde acá. Se espera
+   * a la primera corrida con el código nuevo. El 02-oct a las 18:45 la vigilancia avisó «la última corrida
+   * falló entera» de scrape-unidades-nuevas: era la corrida de las 14:00 con el GraphQL ya retirado, y el
+   * disparo fue la frescura de una marca que el pase nuevo todavía no había tenido ocasión de escribir.
+   */
+  codigoDesde?: string;
+  /**
    * Lo que el cron escribe SIEMPRE que anda bien, y cuánto puede pasar sin que aparezca (29-sep-2026).
    * Es la pregunta que el latido no contesta: scrape-unidades-nuevas latió verde 57 días sin escribir una
    * unidad. Solo los crons que escriben en cada corrida; los que escriben cuando hay trabajo (lotes,
@@ -115,7 +124,7 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   // Unidades de obra nueva (02-oct-2026): cruza los deptos disponibles de la ficha nueva, sin precio. Lo que
   // escribe en cada corrida es la marca de vista (seen_pass_id «unidades@<instante>», el mismo prefijo que
   // PREFIJO_VISTA_UNIDADES), no scraped_at: ese queda como la fecha del precio.
-  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva: disponibles (diario)", intervaloHoras: 24,
+  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva: disponibles (diario)", intervaloHoras: 24, codigoDesde: "2026-10-02T18:26:40Z",
     frescura: { que: "unidades vistas", maxHoras: 48, leer: async (sb) => (fechaDe(await sb.from("scraped_properties").select("seen_pass_id").like("seen_pass_id", "unidades@%").order("seen_pass_id", { ascending: false }).limit(1).maybeSingle(), "seen_pass_id") ?? "").replace(/^unidades@/, "") || null } },
   { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
@@ -129,21 +138,30 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
  * ¿Atrasado? Pasó más de `FACTOR_ATRASO` intervalos desde la última corrida; o nunca corrió y ya tuvo
  * tiempo de hacerlo (un cron nuevo, con `desde`, no está atrasado antes de su primera corrida).
  */
-export function estaAtrasado(cron: Pick<CronVigilado, "intervaloHoras" | "desde" | "cadenciaDesde">, horasDesde: number | null, ahora: number = Date.now()): boolean {
+export function estaAtrasado(cron: Pick<CronVigilado, "intervaloHoras" | "desde" | "cadenciaDesde" | "codigoDesde">, horasDesde: number | null, ahora: number = Date.now()): boolean {
   if (horasDesde !== null) return horasDelRitmo(cron, horasDesde, ahora) > cron.intervaloHoras * FACTOR_ATRASO;
   if (!cron.desde) return true;
   return ahora - new Date(cron.desde).getTime() > cron.intervaloHoras * FACTOR_ATRASO * 3600e3;
 }
 
-/** Las horas que cuentan para el ritmo: desde la última vez, o desde el cambio de cadencia si es más reciente. */
-export function horasDelRitmo(cron: Pick<CronVigilado, "cadenciaDesde">, horas: number, ahora: number = Date.now()): number {
-  if (!cron.cadenciaDesde) return horas;
-  return Math.min(horas, (ahora - new Date(cron.cadenciaDesde).getTime()) / 3600e3);
+/** Las horas que cuentan para el ritmo: desde la última vez, o desde el cambio de cadencia o de código si es
+ *  más reciente. */
+export function horasDelRitmo(cron: Pick<CronVigilado, "cadenciaDesde" | "codigoDesde">, horas: number, ahora: number = Date.now()): number {
+  const desde = Math.max(cron.cadenciaDesde ? new Date(cron.cadenciaDesde).getTime() : -Infinity, cron.codigoDesde ? new Date(cron.codigoDesde).getTime() : -Infinity);
+  if (!Number.isFinite(desde)) return horas;
+  return Math.min(horas, (ahora - desde) / 3600e3);
+}
+
+/** ¿Este instante es anterior al código vigente del cron? Lo que pasó antes no alerta (ver `codigoDesde`). */
+export function anteriorAlCodigo(cron: Pick<CronVigilado, "codigoDesde">, instanteIso: string | null | undefined): boolean {
+  return !!cron.codigoDesde && !!instanteIso && new Date(instanteIso).getTime() < new Date(cron.codigoDesde).getTime();
 }
 
 /** ¿El dato que el cron escribe pasó su plazo? Con el mismo arranque que el atraso (`horasDelRitmo`). */
-export function escrituraVencida(cron: Pick<CronVigilado, "cadenciaDesde">, ultimaEscritura: string | null, maxHoras: number, ahora: number = Date.now()): boolean {
-  if (ultimaEscritura === null) return true;
+export function escrituraVencida(cron: Pick<CronVigilado, "cadenciaDesde" | "codigoDesde">, ultimaEscritura: string | null, maxHoras: number, ahora: number = Date.now()): boolean {
+  // Nunca escribió: vencida, salvo que el reloj haya partido hace poco (cambio de cadencia o de código).
+  // El 02-oct a las 18:45 la marca del pase nuevo de unidades no existía porque el pase todavía no corría.
+  if (ultimaEscritura === null) return horasDelRitmo(cron, Infinity, ahora) > maxHoras;
   return horasDelRitmo(cron, (ahora - new Date(ultimaEscritura).getTime()) / 3600e3, ahora) > maxHoras;
 }
 
@@ -216,6 +234,9 @@ export interface LatidoCron extends CronVigilado {
   enRojo: boolean;
   /** Por qué, en una frase (null si está sano). */
   motivo: string | null;
+  /** La frase de CADA motivo encendido, por la clave con que alerta vigilar-crons: el correo dice el motivo
+   *  que disparó la alerta, no el de mayor prioridad del panel. */
+  motivos: Partial<Record<"atrasado" | "sin-cierre" | "falla" | "sin-escribir" | "frescura", string>>;
 }
 
 /**
@@ -273,12 +294,14 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
       : null;
     const atrasado = estaAtrasado(cron, horas);
 
-    const r = resultadoPorCron.get(cron.nombre) ?? null;
+    // Un resultado de antes del código vigente no cuenta: corrió con el código viejo (ver `codigoDesde`).
+    const rLeido = resultadoPorCron.get(cron.nombre) ?? null;
+    const r = rLeido && anteriorAlCodigo(cron, rLeido.at) ? null : rLeido;
     const ultimoResultado: ResultadoCron | null = r === null ? null : r.valor === 0 ? "ok" : r.valor === 1 ? "parcial" : "fallo";
     // Solo se juzga el cierre de un cron que ya cerró alguna vez con cerrarCron: el día del deploy
     // ninguno tiene resultado y no por eso están colgados.
     const margen = MARGEN_CIERRE_MIN * 60 * 1000;
-    const sinCierre = r !== null && ultimaCorrida !== null
+    const sinCierre = r !== null && ultimaCorrida !== null && !anteriorAlCodigo(cron, ultimaCorrida)
       && new Date(ultimaCorrida).getTime() > new Date(r.at).getTime() + 1000
       && Date.now() - new Date(ultimaCorrida).getTime() > margen;
 
@@ -294,14 +317,13 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
       }
     }
 
-    const motivo = atrasado
-      ? (ultimaCorrida ? `no corre desde hace ${Math.round(horas!)} h (se espera cada ${cron.intervaloHoras} h)` : "sin ninguna corrida registrada")
-      : sinCierre ? "la última corrida latió y no cerró: reventó antes de responder"
-      : ultimoResultado === "fallo" ? "la última corrida falló entera"
-      : ultimoResultado === "parcial" ? "la última corrida falló en parte"
-      : sinEscribir ? `no escribe ${cron.frescura!.que} desde ${ultimaEscritura ? ultimaEscritura.slice(0, 16).replace("T", " ") : "nunca"} (plazo ${cron.frescura!.maxHoras} h)`
-      : errorFrescura ? `no se pudo leer su frescura: ${errorFrescura}`
-      : null;
+    const motivos: LatidoCron["motivos"] = {};
+    if (atrasado) motivos.atrasado = ultimaCorrida ? `no corre desde hace ${Math.round(horas!)} h (se espera cada ${cron.intervaloHoras} h)` : "sin ninguna corrida registrada";
+    if (sinCierre) motivos["sin-cierre"] = "la última corrida latió y no cerró: reventó antes de responder";
+    if (ultimoResultado === "fallo" || ultimoResultado === "parcial") motivos.falla = ultimoResultado === "fallo" ? "la última corrida falló entera" : "la última corrida falló en parte";
+    if (sinEscribir) motivos["sin-escribir"] = `no escribe ${cron.frescura!.que} desde ${ultimaEscritura ? ultimaEscritura.slice(0, 16).replace("T", " ") : "nunca"} (plazo ${cron.frescura!.maxHoras} h)`;
+    if (errorFrescura) motivos.frescura = `no se pudo leer su frescura: ${errorFrescura}`;
+    const motivo = motivos.atrasado ?? motivos["sin-cierre"] ?? motivos.falla ?? motivos["sin-escribir"] ?? motivos.frescura ?? null;
 
     return {
       ...cron,
@@ -314,6 +336,7 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
       sinEscribir,
       enRojo: motivo !== null,
       motivo,
+      motivos,
     };
   }));
 }

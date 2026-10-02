@@ -108,7 +108,7 @@ export async function cerrarCron(
       meta: { ...conteo, ...resumenError(extra) },
     });
     if (resultado !== "ok") {
-      await alertarUnaVezAlDia(sb, nombre, hoy, `La corrida terminó con ${resultado === "fallo" ? "falla total" : "falla parcial"}: ${conteo.fallidos} de ${conteo.procesados} fallaron.`, extra);
+      await alertarUnaVezAlDia(sb, nombre, hoy, `La corrida terminó con ${resultado === "fallo" ? "falla total" : "falla parcial"}: ${motivoDeFalla(conteo, extra)}.`, extra);
     }
   } catch (e) {
     console.error("[cron-resultado] no se pudo cerrar", nombre, e);
@@ -135,6 +135,37 @@ export async function alertarUnaVezAlDia(
   const { sendAlertaCronInterna } = await import("@/lib/email");
   await sendAlertaCronInterna({ cron: nombre, problema, detalle: detalleDe(extra) });
   return true;
+}
+
+/**
+ * El motivo concreto de una falla, para el correo (02-oct-2026): cuántos de cuántos y con qué error, por
+ * ejemplo «137 de 137 proyectos con http 403». El cron dice qué cuenta (`unidad`, por defecto
+ * «elementos») y, si puede, el desglose completo (`erroresPorTipo`); si no, se agrupa la lista de errores
+ * que trae, quitando el prefijo propio de cada uno («proyecto 723905: »), y se dice que es una muestra.
+ */
+export function motivoDeFalla(conteo: ConteoCron, extra: Record<string, unknown> = {}): string {
+  const unidad = typeof extra.unidad === "string" && extra.unidad ? extra.unidad : "elementos";
+  const base = `${conteo.fallidos} de ${conteo.procesados} ${unidad}`;
+  let tipos: Array<[string, number]> = [];
+  let muestra = false;
+  if (extra.erroresPorTipo && typeof extra.erroresPorTipo === "object") {
+    tipos = Object.entries(extra.erroresPorTipo as Record<string, number>).filter(([, n]) => Number(n) > 0).map(([k, n]) => [k, Number(n)]);
+  } else {
+    const e = extra.error ?? extra.errors ?? extra.errores;
+    const lista = (Array.isArray(e) ? e : e === undefined ? [] : [e]).map((x) => (typeof x === "string" ? x : JSON.stringify(x)));
+    const porTipo = new Map<string, number>();
+    for (const s of lista) {
+      const tipo = s.replace(/^[^:]{1,40}?\s[\w-]+:\s*/, "").slice(0, 80) || s.slice(0, 80);
+      porTipo.set(tipo, (porTipo.get(tipo) ?? 0) + 1);
+    }
+    tipos = Array.from(porTipo.entries());
+    muestra = lista.length > 0 && lista.length < conteo.fallidos;
+  }
+  if (tipos.length === 0) return `${base} fallaron`;
+  tipos.sort((a, b) => b[1] - a[1]);
+  if (!muestra && tipos.length === 1 && tipos[0][1] === conteo.fallidos) return `${base} con ${tipos[0][0]}`;
+  const detalle = tipos.slice(0, 3).map(([k, n]) => `${n} con ${k}`).join(" · ");
+  return `${base} fallaron (${muestra ? `en los primeros ${tipos.reduce((a, [, n]) => a + n, 0)}: ` : ""}${detalle})`;
 }
 
 function resumenError(extra: Record<string, unknown>): Record<string, unknown> {

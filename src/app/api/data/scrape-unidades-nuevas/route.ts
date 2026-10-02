@@ -315,8 +315,13 @@ export async function POST(request: Request) {
     porComuna[comuna] = (porComuna[comuna] ?? 0) + r.disponibles.length;
   }
 
+  // El motivo concreto de la alerta (cerrarCron › motivoDeFalla): «137 de 137 proyectos con http 403».
+  const erroresPorTipo: Record<string, number> = {};
+  for (const r of conError) erroresPorTipo[String(r.error)] = (erroresPorTipo[String(r.error)] ?? 0) + 1;
   const detalle = {
     modo: "unidades-disponibles",
+    unidad: "proyectos",
+    erroresPorTipo,
     dry,
     fallidosAntesDelReintento: fallidosPrimera,
     toleranciaFalla: TOLERANCIA_FALLA_PROYECTOS,

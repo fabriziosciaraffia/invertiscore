@@ -18,8 +18,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fallidosTolerados, fetchUnidadesProyecto, PREFIJO_VISTA_UNIDADES, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
-import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
-import { CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
+import { cerrarCron, motivoDeFalla, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
+import { anteriorAlCodigo, CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
 import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -248,6 +248,54 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     if (escrituraVencida(diario, "2026-09-28T03:00:00Z", 48, cambio + 4.3 * 3600e3) || !escrituraVencida(diario, "2026-10-02T03:00:00Z", 48, Date.parse("2026-10-04T04:00:00Z"))) F("3 · la frescura no cuenta desde el cambio de ritmo");
     for (const n of ["backfill-toctoc", "evaluar-avisos"]) if (CRONS_VIGILADOS.find((c) => c.nombre === n)?.cadenciaDesde !== "2026-10-01T14:27:00Z") F(`3 · ${n} no cuenta su ritmo desde el deploy que lo pasó a diario`);
     if (!/sinEscribir = escrituraVencida\(cron, ultimaEscritura, cron\.frescura\.maxHoras\);/.test(sinComentarios(leer("src/lib/cron-heartbeat.ts")))) F("3 · el panel mide la frescura sin el cambio de ritmo");
+    // Lo anterior al código vigente no alerta (02-oct-2026): la corrida de las 14:00 con el GraphQL retirado
+    // volvió a avisar a las 18:45, después del deploy del pase nuevo, por la frescura de una marca que el
+    // pase nuevo todavía no había podido escribir.
+    const codigo = "2026-10-02T18:26:40Z", tCodigo = Date.parse(codigo);
+    const nuevoCodigo = { codigoDesde: codigo };
+    if (!anteriorAlCodigo(nuevoCodigo, "2026-10-02T14:01:54Z") || anteriorAlCodigo(nuevoCodigo, "2026-10-03T14:05:00Z") || anteriorAlCodigo({}, "2026-10-02T14:01:54Z")) F("3 · una falla de antes del código vigente no se distingue de una de después");
+    if (escrituraVencida(nuevoCodigo, null, 48, tCodigo + 6 * 3600e3) || !escrituraVencida(nuevoCodigo, null, 48, tCodigo + 49 * 3600e3) || !escrituraVencida({}, null, 48, tCodigo)) F("3 · sin ninguna escritura, la frescura no espera la primera corrida con el código nuevo (o no alerta pasado su plazo)");
+    if (escrituraVencida(nuevoCodigo, "2026-09-29T22:40:00Z", 48, tCodigo + 6 * 3600e3) || !escrituraVencida(nuevoCodigo, "2026-09-29T22:40:00Z", 48, tCodigo + 49 * 3600e3)) F("3 · la frescura no cuenta desde el código nuevo (o no alerta pasado su plazo)");
+    if (CRONS_VIGILADOS.find((c) => c.nombre === "scrape-unidades-nuevas")?.codigoDesde !== codigo) F("3 · scrape-unidades-nuevas no cuenta desde el deploy del pase nuevo");
+    const hb = sinComentarios(leer("src/lib/cron-heartbeat.ts"));
+    if (!/const r = rLeido && anteriorAlCodigo\(cron, rLeido\.at\) \? null : rLeido;/.test(hb) || !/const sinCierre = r !== null && ultimaCorrida !== null && !anteriorAlCodigo\(cron, ultimaCorrida\)/.test(hb)) F("3 · el panel juzga la falla o el cierre de una corrida anterior al código vigente");
+    // El correo dice el motivo que disparó la alerta, no el de mayor prioridad del panel.
+    {
+      const ahora = Date.now();
+      const hace = (h: number) => new Date(ahora - h * 3600e3).toISOString();
+      const { sb } = supabaseDoble((tabla, f, unica) => {
+        if (tabla === "metrics_daily" && !unica) {
+          if (f["eq:fuente"] === "cron") return CRONS_VIGILADOS.map((c) => ({ metrica: c.nombre, medido_at: hace(0.5) }));
+          if (f["eq:fuente"] === FUENTE_RESULTADO) return CRONS_VIGILADOS.map((c) => ({ metrica: c.nombre, valor: c.nombre === "update-market" ? 2 : 0, medido_at: hace(0.49) }));
+          return [];
+        }
+        if (unica) return { [String(f.select)]: f["eq:key"] === "uf_value" ? hace(24 * 5) : hace(1) };
+        return [];
+      });
+      const um = (await leerLatidos(sb)).find((e) => e.nombre === "update-market")!;
+      if (!um.motivos.falla || !um.motivos["sin-escribir"] || um.motivo !== um.motivos.falla || !/^no escribe UF desde/.test(um.motivos["sin-escribir"] ?? "")) F(`3 · el estado no trae la frase de cada motivo (${JSON.stringify(um.motivos)})`);
+    }
+    const vgTexto = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
+    if (!/const texto = c\.motivos\[motivo as keyof typeof c\.motivos\] \?\? c\.motivo \?\? "en rojo";\s*if \(await alertarUnaVezAlDia\(sb, c\.nombre, hoy, texto, \{\}, motivo\)\)/.test(vgTexto)) F("3 · el correo de la vigilancia dice el motivo de mayor prioridad, no el que disparó la alerta");
+    // El motivo concreto de una falla: cuántos de cuántos y con qué error.
+    const mf = [
+      motivoDeFalla({ procesados: 137, exitosos: 0, fallidos: 137 }, { unidad: "proyectos", erroresPorTipo: { "http 403": 137 } }),
+      motivoDeFalla({ procesados: 137, exitosos: 0, fallidos: 137 }, { errors: ["proyecto 1: http 403", "proyecto 2: http 403"] }),
+      motivoDeFalla({ procesados: 140, exitosos: 136, fallidos: 4 }, { unidad: "proyectos", error: ["proyecto 1: TypeError: fetch failed", "proyecto 2: TypeError: fetch failed", "proyecto 3: TypeError: fetch failed", "proyecto 4: TypeError: fetch failed"] }),
+      motivoDeFalla({ procesados: 20, exitosos: 10, fallidos: 10 }, { unidad: "proyectos", erroresPorTipo: { "http 403": 7, "http 200 sin cuerpo": 3 } }),
+      motivoDeFalla({ procesados: 2, exitosos: 0, fallidos: 2 }),
+    ];
+    const esperado = [
+      "137 de 137 proyectos con http 403",
+      "137 de 137 elementos fallaron (en los primeros 2: 2 con http 403)",
+      "4 de 140 proyectos con TypeError: fetch failed",
+      "10 de 20 proyectos fallaron (7 con http 403 · 3 con http 200 sin cuerpo)",
+      "2 de 2 elementos fallaron",
+    ];
+    mf.forEach((m, i) => { if (m !== esperado[i]) F(`3 · el motivo de la falla no dice cuántos de cuántos y con qué («${m}» en vez de «${esperado[i]}»)`); });
+    if (!/terminó con \$\{resultado === "fallo" \? "falla total" : "falla parcial"\}: \$\{motivoDeFalla\(conteo, extra\)\}\./.test(sinComentarios(leer("src/lib/cron-resultado.ts")))) F("3 · la alerta de la corrida no usa el motivo concreto");
+    const un = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
+    if (!/unidad: "proyectos",\s*erroresPorTipo,/.test(un) || !/for \(const r of conError\) erroresPorTipo\[String\(r\.error\)\] = /.test(un)) F("3 · el pase de unidades no da el desglose de sus errores para el motivo");
     const vg = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
     const cuerpo = (vg.match(/function motivoDeAlerta[\s\S]*?\n\}/) ?? [""])[0];
     if (!cuerpo || /falla|ultimoResultado/.test(cuerpo) || !/if \(motivo === null\) continue;/.test(vg)) F("3 · la vigilancia vuelve a avisar la falla de una corrida (ya avisó cerrarCron)");
@@ -299,6 +347,22 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   F8 la entrega no se escribe (en AVISOS §1; re-corrida sobre la llamada de las vistas, con F9:
 //      la función ignora la entrega; 2/2) ........................... 1 · no pasa la fecha de entrega
 // 02-oct-2026 (el ritmo de la ficha nueva: 403 en 57 de 137 proyectos con 8 GETs en vuelo): 3/3 en rojo.
+// 02-oct-2026 (lo anterior al código no alerta; el correo dice su motivo concreto): 12/12 en rojo.
+//   V3 quedó VERDE al principio: el chequeo usaba una escritura que no alcanzaba a vencer, y además
+//   destapó el bug real del 02-oct (sin ninguna escritura, la frescura se daba por vencida sin mirar el
+//   cambio de código). Se arregló y se re-corrió.
+//   V1 la falla de antes del código cuenta ......................... 3 · el panel la juzga
+//   V2 el cierre de antes del código cuenta ........................ 3 · ídem
+//   V3 la frescura no espera el código nuevo ....................... 3 · no espera la primera corrida
+//   V4 unidades sin codigoDesde .................................... 3 · no cuenta desde el deploy
+//   V5 el correo con el motivo de mayor prioridad .................. 3 · no el que disparó
+//   V6 sin la frase de cada motivo ................................. 3 · el estado no la trae
+//   V7 el motivo sin el error ...................................... 3 · no dice con qué
+//   V8 la muestra presentada como total ............................ 3 · ídem
+//   V9 el prefijo «proyecto N:» queda en el tipo de error .......... 3 · ídem
+//   V10 la alerta de la corrida sin el motivo concreto ............. 3 · no lo usa
+//   V11 el pase de unidades sin desglose ........................... 3 · no da el desglose
+//   V12 sin escrituras, vencida aunque el código sea nuevo ......... 3 · no espera la primera corrida
 //   R1 el reintento sin pausa .................................... 1 · no se reintentan con pausa
 //   R2 sin reintento ............................................. 1 · ídem
 //   R3 de vuelta a 4 proyectos en vuelo .......................... 1 · más rápido de lo que tolera
