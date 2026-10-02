@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fallidosTolerados, fetchUnidadesProyecto, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
-import { CRONS_VIGILADOS, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
+import { CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
 import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -209,6 +209,15 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     if (estaAtrasado(nuevo, null, t0 + 20 * 3600e3)) F("3 · un cron nuevo figura atrasado antes de su primera corrida");
     if (!estaAtrasado(nuevo, null, t0 + 49 * 3600e3)) F("3 · un cron nuevo que nunca corrió en 2 intervalos no figura atrasado");
     if (!estaAtrasado({ intervaloHoras: 24 }, null) || !estaAtrasado(nuevo, 49) || estaAtrasado(nuevo, 30)) F("3 · la regla de atraso cambió para los crons que ya corrieron o sin fecha de alta");
+    // El ritmo se cuenta desde el deploy que lo cambió (02-oct-2026): el 01-oct a las 18:45 backfill-toctoc
+    // llevaba 88 h desde su última corrida semanal, 4 h después de pasar a diario. No estaba atrasado.
+    const cambio = Date.parse("2026-10-01T14:27:00Z");
+    const diario = { intervaloHoras: 24, cadenciaDesde: "2026-10-01T14:27:00Z" };
+    if (estaAtrasado(diario, 88, cambio + 4.3 * 3600e3)) F("3 · un cron que cambió de ritmo figura atrasado por la corrida que se esperó con el ritmo viejo");
+    if (!estaAtrasado(diario, 49, cambio + 61 * 3600e3)) F("3 · con el ritmo nuevo, saltarse dos corridas no figura atrasado");
+    if (escrituraVencida(diario, "2026-09-28T03:00:00Z", 48, cambio + 4.3 * 3600e3) || !escrituraVencida(diario, "2026-10-02T03:00:00Z", 48, Date.parse("2026-10-04T04:00:00Z"))) F("3 · la frescura no cuenta desde el cambio de ritmo");
+    for (const n of ["backfill-toctoc", "evaluar-avisos"]) if (CRONS_VIGILADOS.find((c) => c.nombre === n)?.cadenciaDesde !== "2026-10-01T14:27:00Z") F(`3 · ${n} no cuenta su ritmo desde el deploy que lo pasó a diario`);
+    if (!/sinEscribir = escrituraVencida\(cron, ultimaEscritura, cron\.frescura\.maxHoras\);/.test(sinComentarios(leer("src/lib/cron-heartbeat.ts")))) F("3 · el panel mide la frescura sin el cambio de ritmo");
     const vg = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
     const cuerpo = (vg.match(/function motivoDeAlerta[\s\S]*?\n\}/) ?? [""])[0];
     if (!cuerpo || /falla|ultimoResultado/.test(cuerpo) || !/if \(motivo === null\) continue;/.test(vg)) F("3 · la vigilancia vuelve a avisar la falla de una corrida (ya avisó cerrarCron)");
@@ -262,6 +271,12 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   U5 el motivo no viaja al correo ............................ 3 · errors no llega a cerrarCron
 //   U6 un cron nuevo atrasado de entrada ....................... 3 · figura atrasado antes de su 1ª corrida
 //   U7 la vigilancia re-avisa la falla de ayer ................. 3 · vuelve a avisar la falla de una corrida
+// 02-oct-2026 (el ritmo cuenta desde el deploy que lo cambió): 5/5 en rojo.
+//   K1 el atraso ignora el cambio de ritmo ...................... 3 · atrasado por la corrida del ritmo viejo
+//   K2 el ritmo nuevo nunca atrasa .............................. 3 · saltarse dos corridas no figura atrasado
+//   K3 la frescura ignora el cambio de ritmo .................... 3 · la frescura no cuenta desde el cambio
+//   K4 backfill-toctoc sin cadenciaDesde ........................ 3 · no cuenta desde el deploy
+//   K5 el panel vuelve a la cuenta vieja de la frescura ......... 3 · el panel mide sin el cambio de ritmo
 
 if (require.main === module) {
   runCronsTier().then(({ hard }) => process.exit(hard ? 1 : 0));

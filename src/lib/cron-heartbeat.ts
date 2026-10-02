@@ -54,6 +54,14 @@ export interface CronVigilado {
    */
   desde?: string;
   /**
+   * Cuándo entró a producción el ritmo vigente (ISO), para los crons que cambiaron de cadencia (02-oct-2026).
+   * El atraso y la frescura se cuentan desde la última corrida o desde acá, lo que sea más reciente: la
+   * corrida anterior al cambio se esperó con el ritmo viejo. El 01-oct backfill-toctoc pasó de semanal a
+   * diario y evaluar-avisos de los martes a diario; esa tarde vigilar-crons avisó «no corre desde hace 88 h»
+   * y «49 h» de dos crons que no se habían saltado ninguna corrida. Va la fecha del deploy, no la del commit.
+   */
+  cadenciaDesde?: string;
+  /**
    * Lo que el cron escribe SIEMPRE que anda bien, y cuánto puede pasar sin que aparezca (29-sep-2026).
    * Es la pregunta que el latido no contesta: scrape-unidades-nuevas latió verde 57 días sin escribir una
    * unidad. Solo los crons que escriben en cada corrida; los que escriben cuando hay trabajo (lotes,
@@ -92,6 +100,7 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
     frescura: { que: "métricas de Meta Ads", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "meta_ads")) } },
   // Corre a las 04:20 y 08:20 UTC cada día (01-oct-2026): el hueco más largo son 20 horas.
   { nombre: "evaluar-avisos", label: "Avisos evaluados con el motor", intervaloHoras: 24, desde: "2026-09-29T22:00:00Z",
+    cadenciaDesde: "2026-10-01T14:27:00Z",
     frescura: { que: "avisos evaluados", maxHoras: 48, leer: ultimo("avisos_evaluados", "evaluado_at") } },
   { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24,
     frescura: { que: "errores de Sentry", maxHoras: 48, leer: ultimo("metrics_daily", "medido_at", (q) => q.eq("fuente", "sentry")) } },
@@ -109,7 +118,7 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
   // El pase diario (01-oct-2026; antes semanal) además deja su checkpoint en `config`
   // (admin-backfill-toctoc): acá solo late, allá se lee QUÉ hizo. Los dos conviven.
-  { nombre: "backfill-toctoc", label: "Pase diario TocToc", intervaloHoras: 24,
+  { nombre: "backfill-toctoc", label: "Pase diario TocToc", intervaloHoras: 24, cadenciaDesde: "2026-10-01T14:27:00Z",
     frescura: { que: "avisos usados", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "usado").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
 ];
 
@@ -117,10 +126,22 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
  * ¿Atrasado? Pasó más de `FACTOR_ATRASO` intervalos desde la última corrida; o nunca corrió y ya tuvo
  * tiempo de hacerlo (un cron nuevo, con `desde`, no está atrasado antes de su primera corrida).
  */
-export function estaAtrasado(cron: Pick<CronVigilado, "intervaloHoras" | "desde">, horasDesde: number | null, ahora: number = Date.now()): boolean {
-  if (horasDesde !== null) return horasDesde > cron.intervaloHoras * FACTOR_ATRASO;
+export function estaAtrasado(cron: Pick<CronVigilado, "intervaloHoras" | "desde" | "cadenciaDesde">, horasDesde: number | null, ahora: number = Date.now()): boolean {
+  if (horasDesde !== null) return horasDelRitmo(cron, horasDesde, ahora) > cron.intervaloHoras * FACTOR_ATRASO;
   if (!cron.desde) return true;
   return ahora - new Date(cron.desde).getTime() > cron.intervaloHoras * FACTOR_ATRASO * 3600e3;
+}
+
+/** Las horas que cuentan para el ritmo: desde la última vez, o desde el cambio de cadencia si es más reciente. */
+export function horasDelRitmo(cron: Pick<CronVigilado, "cadenciaDesde">, horas: number, ahora: number = Date.now()): number {
+  if (!cron.cadenciaDesde) return horas;
+  return Math.min(horas, (ahora - new Date(cron.cadenciaDesde).getTime()) / 3600e3);
+}
+
+/** ¿El dato que el cron escribe pasó su plazo? Con el mismo arranque que el atraso (`horasDelRitmo`). */
+export function escrituraVencida(cron: Pick<CronVigilado, "cadenciaDesde">, ultimaEscritura: string | null, maxHoras: number, ahora: number = Date.now()): boolean {
+  if (ultimaEscritura === null) return true;
+  return horasDelRitmo(cron, (ahora - new Date(ultimaEscritura).getTime()) / 3600e3, ahora) > maxHoras;
 }
 
 /** Margen para dar por colgada una corrida que latió y no cerró: el maxDuration más largo es 800 s. */
@@ -264,7 +285,7 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
     if (cron.frescura) {
       try {
         ultimaEscritura = await cron.frescura.leer(sb);
-        sinEscribir = ultimaEscritura === null || Date.now() - new Date(ultimaEscritura).getTime() > cron.frescura.maxHoras * 3600 * 1000;
+        sinEscribir = escrituraVencida(cron, ultimaEscritura, cron.frescura.maxHoras);
       } catch (e) {
         errorFrescura = String(e).slice(0, 120);
       }

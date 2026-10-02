@@ -134,7 +134,7 @@ export function runAvisosTier(): { hard: number } {
   const b = vj.crons.find((x) => x.path === "/api/data/backfill-toctoc");
   if (!b || b.schedule !== "0 3 * * *") F("7 · el pase completo de usados no corre cada día");
   const hb = leer("src/lib/cron-heartbeat.ts");
-  if (!/\{ nombre: "backfill-toctoc", label: "[^"]+", intervaloHoras: 24,\s*frescura: \{ que: "avisos usados", maxHoras: 48,/.test(hb)) F("7 · el pase diario no está vigilado como diario (24 h, frescura 48 h)");
+  if (!/\{ nombre: "backfill-toctoc", label: "[^"]+", intervaloHoras: 24,(?: cadenciaDesde: "[^"]+",)?\s*frescura: \{ que: "avisos usados", maxHoras: 48,/.test(hb)) F("7 · el pase diario no está vigilado como diario (24 h, frescura 48 h)");
   if (!/export const DIAS_ATRASO_PASE = 2;/.test(leer("src/lib/admin-backfill-toctoc.ts"))) F("7 · el panel da por atrasado el pase diario recién a los 8 días");
   const bf = sinComentarios(leer("src/app/api/data/backfill-toctoc/route.ts"));
   // cerrar_bajas va DESPUÉS de una desactivación hecha, dentro de su rama: nunca en un pase parcial.
