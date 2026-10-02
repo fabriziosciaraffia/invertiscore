@@ -147,9 +147,10 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     const { sb } = supabaseDoble((tabla, f, unica) => {
       if (tabla === "metrics_daily" && !unica) return f["eq:fuente"] === "cron" ? latidos : f["eq:fuente"] === FUENTE_RESULTADO ? resultados : [];
       if (unica) {
-        // Frescura: todo fresco salvo las unidades de obra nueva (el caso del 03-ago).
+        // Frescura: todo fresco salvo las métricas de Meta Ads, que dejaron de escribirse hace 57 días (el
+        // caso del 03-ago, con las unidades de obra nueva; ese cron quedó congelado el 02-oct).
         const col = String(f.select);
-        return { [col]: f.like === undefined ? hace(1) : hace(24 * 57) };
+        return { [col]: f["eq:fuente"] === "meta_ads" ? hace(24 * 57) : hace(1) };
       }
       return [];
     });
@@ -158,13 +159,20 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     if (!de("monthly-grants").enRojo || de("monthly-grants").ultimoResultado !== "fallo") F("2 · una corrida fallida no se pinta en rojo");
     if (!de("expire-grace").enRojo || de("expire-grace").ultimoResultado !== "parcial") F("2 · una corrida con falla parcial no se pinta en rojo");
     if (!de("reconcile-subscriptions").sinCierre || !de("reconcile-subscriptions").enRojo) F("2 · una corrida que latió y no cerró no se pinta en rojo");
-    if (!de("scrape-unidades-nuevas").sinEscribir || !de("scrape-unidades-nuevas").enRojo) F("2 · un cron que dejó de escribir lo que escribía (57 días) no se pinta en rojo");
-    const sanos = estado.filter((e) => !["monthly-grants", "expire-grace", "reconcile-subscriptions", "scrape-unidades-nuevas"].includes(e.nombre));
+    if (!de("meta-ads").sinEscribir || !de("meta-ads").enRojo) F("2 · un cron que dejó de escribir lo que escribía (57 días) no se pinta en rojo");
+    const sanos = estado.filter((e) => !["monthly-grants", "expire-grace", "reconcile-subscriptions", "meta-ads"].includes(e.nombre));
     const falsos = sanos.filter((e) => e.enRojo).map((e) => `${e.nombre}: ${e.motivo}`);
     if (falsos.length) F(`2 · crons sanos en rojo: ${falsos.join(" · ")}`);
-    for (const n of ["scrape-nuevos", "scrape-unidades-nuevas", "backfill-toctoc", "update-market", "sentry-metrics", "meta-ads", "evaluar-avisos"]) {
+    for (const n of ["scrape-nuevos", "backfill-toctoc", "update-market", "sentry-metrics", "meta-ads", "evaluar-avisos"]) {
       if (!CRONS_VIGILADOS.find((c) => c.nombre === n)?.frescura) F(`2 · ${n} escribe en cada corrida y no tiene frescura vigilada`);
     }
+  }
+  // ── 2 · el pase de unidades, CONGELADO (02-oct-2026): la fuente retiró el GraphQL y el reemplazo no trae
+  // precio por unidad. Ni corre ni alerta; la ruta queda para lanzarla a mano. ──
+  {
+    if (vj.crons.some((c) => c.path === "/api/data/scrape-unidades-nuevas")) F("2 · el pase de unidades congelado sigue en el calendario de vercel.json");
+    if (CRONS_VIGILADOS.some((c) => c.nombre === "scrape-unidades-nuevas")) F("2 · el pase de unidades congelado sigue vigilado (alertaría todos los días)");
+    if (!/CONGELADO el 02-oct-2026/.test(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"))) F("2 · la ruta de unidades no dice que está congelada");
   }
   // ── 3 · update-market (30-sep-2026): el BCCh falla de a ratos; se reintenta y la razón llega al correo ──
   {
@@ -257,6 +265,11 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   M18 la alerta a otro correo ................................ 2 · no va a hola@
 //   M19 expire-grace responde 500 a mano ....................... 2 · responde sin pasar por cerrarCron
 //   M20 un fetch del listado sin proxy ......................... 1 · fetch a la fuente sin el proxy
+// 02-oct-2026 (unidades congeladas): 4/4 en rojo.
+//   Z1 vuelve al calendario de vercel.json .................... 2 · sigue en el calendario
+//   Z2 vuelve a la vigilancia .................................. 2 · alertaría todos los días
+//   Z3 la ruta no dice que está congelada ...................... 2 · no dice que está congelada
+//   Z4 el panel deja de ver lo que no escribe (el ejemplo pasó a meta-ads) . 2 · 57 días sin escribir no se pinta en rojo
 // 30-sep-2026 (reintento y tolerancia): 4/4 en rojo.
 //   C1 sin reintento ........................................... 1 · los fallidos no se reintentan
 //   C2 tolerancia 10% .......................................... 1 · la tolerancia no es «más del 5%»

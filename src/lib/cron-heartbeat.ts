@@ -112,8 +112,9 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
-  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva (diario)", intervaloHoras: 24,
-    frescura: { que: "unidades de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").like("source_id", "%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
+  // scrape-unidades-nuevas, CONGELADO el 02-oct-2026 (decisión de Fabrizio): la fuente retiró el GraphQL de
+  // unidades y el reemplazo no trae el precio por unidad. Salió de vercel.json y de acá: no corre ni alerta, y
+  // las unidades quedan con su fecha (29-sep a 01-oct). Si vuelve, vuelve con su frescura.
   { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
   // El pase diario (01-oct-2026; antes semanal) además deja su checkpoint en `config`

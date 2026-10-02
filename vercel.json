@@ -5,10 +5,6 @@
       "schedule": "30 6 * * *"
     },
     {
-      "path": "/api/data/scrape-unidades-nuevas",
-      "schedule": "0 14 * * *"
-    },
-    {
       "path": "/api/data/backfill-toctoc",
       "schedule": "0 3 * * *"
     },

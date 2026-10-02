@@ -14,6 +14,11 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 
 // ─── Unidades de obra nueva (detalle por tipología), con cadencia propia ─────
 //
+// CONGELADO el 02-oct-2026: fuera de vercel.json y de la vigilancia. La fuente retiró el GraphQL de abajo
+// (desde la IP local devuelve la app; por el proxy, 403) y el reemplazo de la ficha nueva
+// (api-ficha/property/<id>/floors-units) trae dormitorios, baños y m² por unidad, pero no el precio.
+// Las unidades escritas quedan con su fecha; scrape-nuevos sigue aplicando el invariante de las bases.
+//
 // POR QUÉ EXISTE. La fila que scrape-nuevos persiste por proyecto es el RANGO:
 // precio "desde", superficie y dormitorios mínimos. Con eso, 34 de 78 análisis
 // con sujeto nuevo no juntaban muestra (la mediana exige >= 15 comparables en
