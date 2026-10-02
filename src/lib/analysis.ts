@@ -2511,10 +2511,15 @@ export function runAnalysis(
   // El pie en cuotas (02-oct-2026): cuántas y de cuánto, y cuántas caen junto al dividendo (el flujo lo dice).
   const nCuotasPie = cuotasPieValidas(input.cuotasPie);
   if (nCuotasPie > 1 && metrics.pieCLP > 0) {
+    const mesesEntregaPie = calcMesesHastaEntrega(input, asOf);
     metrics.pieEnCuotas = {
       cuotas: nCuotasPie,
       montoCuotaCLP: Math.round(metrics.pieCLP / nCuotasPie),
-      mesesConDividendo: cuotasConDividendo(nCuotasPie, calcMesesHastaEntrega(input, asOf)),
+      mesesConDividendo: cuotasConDividendo(nCuotasPie, mesesEntregaPie),
+      // Los tramos del flujo desde hoy (02-oct-2026): las cuotas sin arriendo (la de la firma incluida) y lo que
+      // queda al mes con arriendo y sin cuotas, para que la portada, el gráfico y el cierre las muestren.
+      mesesAntesEntrega: mesesEntregaPie > 0 ? Math.min(nCuotasPie, mesesEntregaPie + 1) : 0,
+      flujoDespuesCLP: Math.round(metrics.flujoNetoMensual),
     };
   }
   const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);

@@ -255,6 +255,25 @@ export function TokensShared() {
         font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);
         background:var(--doc-paper);padding-right:3px}
       .ca-eje{position:relative;height:14px;margin-top:2px}
+      /* -- Los tramos del pie en cuotas (02-oct-2026): desde hoy, cada tramo con su nombre --
+         HTML, no SVG: el texto conserva su tamaño a 390. Rojo solo lo que queda bajo el cero. */
+      .tc-wrap{margin:8px 0 4px}
+      .tc-fila{display:flex;gap:6px;align-items:stretch}
+      .tc-col{flex-basis:0;flex-shrink:1;min-width:30%;display:flex;flex-direction:column;
+        border-left:1px solid var(--doc-line, var(--franco-border));padding-left:7px}
+      .tc-col:first-child{border-left:0;padding-left:0}
+      .tc-nom{font:600 12.5px/1.25 var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx);min-height:31px}
+      .tc-val{font:700 14px/1.2 var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx);
+        font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px;letter-spacing:-.01em}
+      @media (min-width: 768px){ .tc-val{font-size:16px} }
+      .tc-val.neg{color:var(--signal-red)}
+      .tc-val small{display:block;font-weight:500;font-size:11px;color:var(--doc-tx3)}
+      .tc-plot{position:relative;height:76px;margin-top:6px}
+      .tc-cero{position:absolute;left:0;right:0;height:1px;background:var(--doc-tx4)}
+      .tc-bar{position:absolute;left:0;right:0;background:var(--doc-tx);border-radius:2px;min-height:2px}
+      .tc-bar.neg{background:var(--signal-red)}
+      .tc-meses{font:500 12px/1.3 var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx3);margin-top:5px}
+      .tc-eje{font:500 11px var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx4);margin-top:3px}
       .ca-eje span{position:absolute;font-family:var(--font-mono, ui-monospace);
         font-size:9.5px;letter-spacing:.04em;color:var(--doc-tx4);white-space:nowrap}
       .chart{width:100%;height:170px;display:block}

@@ -66,7 +66,8 @@ export function runFlujoLtrTier(): { hard: number } {
   if (!/del primer año con arrendatario, a precios de hoy$/.test(r1.sub) || !/^en un mes promedio del primer año con arrendatario, a precios de hoy$/.test(r1.total) || /año 1/.test(r1.sub)) F(`1 · con pre-entrega el rótulo tiene que decir «del primer año con arrendatario» (dio «${r1.sub}»)`);
   if (!/const rotulo = rotuloMesLtr\(\(serie\[0\]\?\.anio \?\? 1\) > 1\)/.test(cuerpo)) F("1 · el capítulo no decide el rótulo con el primer año operativo de la serie");
   if (!/<VSub>\{rotulo\.sub\}<\/VSub>/.test(cuerpo)) F("1 · el capítulo no usa el rótulo del mes en el sub del bloque");
-  if (!/sub=\{rotulo\.total\}/.test(cuerpo)) F("1 · la fila del total no lleva el rótulo del mes");
+  // Con el pie en cuotas (02-oct-2026) el total suma «después de terminar las cuotas del pie»; el rótulo del mes sigue.
+  if (!/sub=\{(?:cuotasJuntas \? `\$\{rotulo\.total\} · \$\{TE_QUEDA_DESPUES_CUOTAS\}` : )?rotulo\.total\}/.test(cuerpo)) F("1 · la fila del total no lleva el rótulo del mes");
 
   // 2 · la serie ÷ meses operativos, diez años, sin años sin operación
   const veinte: YearProjection[] = [anio(1, 0, 0), anio(2, 8, -100000), ...Array.from({ length: 18 }, (_, i) => anio(i + 3, 12, -90000 + i * 1000))];
@@ -105,7 +106,8 @@ export function runFlujoLtrTier(): { hard: number } {
   const cPie = texto(cierreMesVacioLtr({ mesVacio: 1155452, cuota: 470691, gastosComunes: 140000, contribucionesMes: 24761, cuotaCreditoPie: 520000, money }));
   if (!/la cuota completa \(\$470\.691\), la cuota del crédito del pie \(\$520\.000\) más los gastos comunes enteros/.test(cPie)) F(`3 · con crédito para el pie, el cierre no nombra su cuota (dio «${cPie}»)`);
   if (!/cierreMesVacioLtr\(\{ mesVacio,/.test(cuerpo)) F("3 · el capítulo no pasa mesVacio al cierre");
-  if (!/<VCierre titulo="Qué significa">\{pinta\(cierre\)\}<\/VCierre>/.test(cuerpo)) F("3 · el cierre del capítulo no es el mes vacío");
+  // Con el pie en cuotas (02-oct-2026) el cierre suma antes las cuotas (tier OBRA-NUEVA §8); el mes vacío sigue.
+  if (!/<VCierre titulo="Qué significa">(?:\s*\{pieCuotas && <span data-obra-nueva="cierre-cuotas">[^\n]*\}\s*)?\{pinta\(cierre\)\}\s*<\/VCierre>/.test(cuerpo)) F("3 · el cierre del capítulo no es el mes vacío");
   // sobre el código, no sobre las actas: los comentarios nombran lo que salió
   const codigo = cuerpo.replace(/\/\*[^]*?\*\/|\/\/[^\n]*/g, "");
   if (/¿Tienes .* disponibles/.test(codigo) || /costoMensual/.test(codigo)) F("3 · volvió la pregunta que repetía el total o la caja IA de costoMensual");

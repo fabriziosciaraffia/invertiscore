@@ -5,31 +5,38 @@
 //   1 · SIN CASTIGO POR ESPERAR: la entrega futura no resta puntaje.
 //   2 · EL PIE EN CUOTAS EN LA TIR: anual, la primera al firmar, cada una en el año en que se paga; al contado
 //       el vector es el de siempre. Las cuotas: de 1 a 60.
-//   3 · LAS CUOTAS CON EL DIVIDENDO: el motor emite cuántas caen después de la entrega y el capítulo del flujo
-//       lo dice («Durante N meses pagas también $X de cuota.»), con entrega futura o inmediata.
+//   3 · LAS CUOTAS CON EL DIVIDENDO: el motor emite cuántas caen después de la entrega (entrega futura o inmediata).
 //   4 · EL WIZARD: las cuotas en el paso de la entrega, con entrega futura o inmediata; por defecto hasta la
 //       entrega (tope 60) o al contado; el payload las lleva.
 //   5 · EL ARRIENDO SUGERIDO DE LO NUEVO +3%: en el wizard y en los avisos; el que escribe la persona, no. Y la
 //       procedencia lo dice («…, más 3% por ser nuevo») en el wizard y en el informe (marca `premioNuevoPct`).
 //   6 · LA FRASE DEL RIESGO: con entrega futura, la línea aprobada después de la portada, sin cifras.
 //   7 · LA VERSIÓN DE EVALUACIÓN sube (r3): el cron reevalúa los avisos.
+//   8 · LAS CUOTAS SE VEN: si hay cuotas, la portada, el gráfico desde hoy con los tramos («Hasta la entrega»,
+//       «Cuota del pie + dividendo», «Después»), «Te queda», «Qué significa» y «Esto es lo que pesa» las muestran.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/obra-nueva-catch-test.ts
 // ============================================================================
 import { readFileSync } from "node:fs";
+import React, { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { TramosCuotas } from "../../../src/components/analysis/shared/TramosCuotas";
 import { join } from "node:path";
 import { dimensionesScoreLtr, runAnalysis } from "../../../src/lib/analysis";
 import { GOLDEN_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import {
   FRASE_RIESGO_ENTREGA, MAX_CUOTAS_PIE, PREMIO_ARRIENDO_NUEVO, arriendoSugeridoObraNueva, cuotasConDividendo, cuotasDelAnio,
-  cuotasPieValidas, cuotasPorDefecto, lineaCuotasConDividendo,
+  cuotasPieValidas, cuotasPorDefecto, cuotasSeVen, tramosCuotas, fraseCuotasPortada, cierreCuotas, filaPesaCuotas, TE_QUEDA_DESPUES_CUOTAS,
+  type PieEnCuotas, type SegCuotas,
 } from "../../../src/lib/obra-nueva";
 import { cuotasDelWizard } from "../../../src/components/formulario-v4/helpers-wizard";
 import { REVISION_EVALUACION } from "../../../src/lib/avisos/evaluar-aviso";
 import { fuenteArriendoLine } from "../../../src/components/formulario-v4/derive";
 import { respaldoArriendo } from "../../../src/lib/arriendo-referencia";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).React = React;
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) =>
@@ -100,9 +107,44 @@ export function runObraNuevaTier(): { hard: number } {
     const contado = correr({ ...nuevo, estadoVenta: "inmediata", fechaEntrega: undefined, cuotasPie: 1 });
     if (contado.metrics.pieEnCuotas) F("3 · al contado el motor dice que hay cuotas");
   }
-  if (lineaCuotasConDividendo(22, "$698.750") !== "Durante 22 meses pagas también $698.750 de cuota." || lineaCuotasConDividendo(1, "$1") !== "Durante 1 mes pagas también $1 de cuota.") F("3 · la línea del flujo no es la aprobada");
-  const cap = sinComentarios(leer("src/components/analysis/CapitulosInversion.tsx"));
-  if (!/\{m\.pieEnCuotas && m\.pieEnCuotas\.mesesConDividendo > 0 && \(\s*<p className="doc-reparto" data-obra-nueva="cuotas-con-dividendo">\s*\{lineaCuotasConDividendo\(m\.pieEnCuotas\.mesesConDividendo, money\(m\.pieEnCuotas\.montoCuotaCLP\)\)\}/.test(cap)) F("3 · el capítulo del flujo no dice las cuotas que corren con el dividendo (o no las lee del motor)");
+
+  // 8 · LAS CUOTAS SE VEN (02-oct-2026, Fabrizio tras mirar los dos informes): la portada, el gráfico desde hoy
+  //     con los tramos con nombre, «Te queda», «Qué significa» y «Esto es lo que pesa».
+  {
+    const fut = correr({ ...nuevo, estadoVenta: "futura", fechaEntrega: fecha, cuotasPie: 36 }).metrics.pieEnCuotas as PieEnCuotas;
+    const inm = correr({ ...nuevo, estadoVenta: "inmediata", fechaEntrega: undefined, cuotasPie: 12 }).metrics.pieEnCuotas as PieEnCuotas;
+    if (!fut || (fut.mesesAntesEntrega ?? 0) < 24 || (fut.mesesAntesEntrega ?? 0) > 26 || fut.flujoDespuesCLP == null || (fut.mesesAntesEntrega ?? 0) + fut.mesesConDividendo !== 36) F(`8 · el motor no emite los tramos (antes ${fut?.mesesAntesEntrega}, juntas ${fut?.mesesConDividendo})`);
+    if (!inm || inm.mesesAntesEntrega !== 0 || inm.mesesConDividendo !== 11) F("8 · con entrega inmediata hay tramo antes de la entrega");
+  }
+  const m$ = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
+  const texto = (s: SegCuotas[]) => s.map((x) => x.t).join("");
+  const nunoa: PieEnCuotas = { cuotas: 12, montoCuotaCLP: 2943637, mesesConDividendo: 11, mesesAntesEntrega: 0, flujoDespuesCLP: -97736 };
+  const condes: PieEnCuotas = { cuotas: 36, montoCuotaCLP: 1346314, mesesConDividendo: 9, mesesAntesEntrega: 27, flujoDespuesCLP: 262318 };
+  if (cuotasSeVen({ cuotas: 1, montoCuotaCLP: 0, mesesConDividendo: 0 }) || !cuotasSeVen(nunoa) || !cuotasSeVen(condes)) F("8 · cuotasSeVen no distingue al contado");
+  {
+    const tn = tramosCuotas(nunoa), tc = tramosCuotas(condes);
+    if (tn.map((x) => x.nombre).join("|") !== "Cuota del pie + dividendo|Después" || tn[0].valorCLP !== -97736 - 2943637 || tn[0].meses !== 11) F("8 · los tramos con entrega inmediata no son «Cuota del pie + dividendo» y «Después»");
+    if (tc.map((x) => x.nombre).join("|") !== "Hasta la entrega|Cuota del pie + dividendo|Después" || tc[0].valorCLP !== -1346314 || tc[0].meses !== 27 || tc[1].valorCLP !== 262318 - 1346314 || tc[2].meses !== null) F("8 · los tramos con entrega futura no son los tres con sus montos y meses");
+    const html = renderToStaticMarkup(createElement(TramosCuotas, { tramos: tc, money: m$ }));
+    for (const n of ["Hasta la entrega", "Cuota del pie + dividendo", "Después", "27 meses", "9 meses", "−$1.346.314", "+$262.318"]) if (!html.includes(n)) F(`8 · el gráfico no muestra «${n}»`);
+    for (const n of ["27 meses", "9 meses", "en adelante"]) if (!html.includes(`<div class="tc-meses">${n}</div>`)) F(`8 · el gráfico no rotula los meses del tramo («${n}»)`);
+    for (const n of ["Hasta la entrega", "Cuota del pie + dividendo", "Después"]) if (!html.includes(`<div class="tc-nom">${n}</div>`)) F(`8 · el gráfico no rotula el tramo «${n}»`);
+    if ((html.match(/tc-bar neg/g) ?? []).length !== 2 || (html.match(/tc-val neg/g) ?? []).length !== 2 || /<svg|<text/.test(html)) F("8 · el gráfico no pinta en rojo lo que queda bajo el cero (o pone texto en un SVG)");
+  }
+  if (texto(fraseCuotasPortada(nunoa, m$)) !== "Los primeros 11 meses pones $2.943.637 más; después, pones $97.736 de tu bolsillo al mes.") F(`8 · la portada con entrega inmediata no es la aprobada: «${texto(fraseCuotasPortada(nunoa, m$))}»`);
+  if (texto(fraseCuotasPortada(condes, m$)) !== "Hasta la entrega pagas $1.346.314 al mes, sin arriendo; después, 9 meses pones $1.083.996 de tu bolsillo, y luego te quedan $262.318 al mes.") F(`8 · la portada con entrega futura no es la aprobada: «${texto(fraseCuotasPortada(condes, m$))}»`);
+  if (texto(cierreCuotas(condes, m$)) !== "Hasta la entrega pagas $1.346.314 al mes, sin arriendo. Durante 9 meses, la cuota del pie se junta con el dividendo: pones $1.083.996 de tu bolsillo cada mes. ") F(`8 · «Qué significa» no suma las cuotas: «${texto(cierreCuotas(condes, m$))}»`);
+  if (!fraseCuotasPortada(condes, m$).some((s) => s.monto && s.rojo && s.t === "$1.083.996")) F("8 · lo que sale de tu bolsillo no va en rojo en la portada");
+  if (filaPesaCuotas(condes).frase !== "El pie en 36 cuotas: 27 sin arriendo y 9 junto al dividendo" || filaPesaCuotas(nunoa).frase !== "El pie en 12 cuotas: 11 junto al dividendo") F("8 · la fila de «Esto es lo que pesa» no dice los meses de las cuotas");
+  const capi = sinComentarios(leer("src/components/analysis/CapitulosInversion.tsx"));
+  if (!/const pieCuotas = cuotasSeVen\(m\.pieEnCuotas\) \? m\.pieEnCuotas : null;/.test(capi) || !/\{pieCuotas && \([\s\S]{0,200}<VSub>Lo que queda cada mes, desde hoy<\/VSub>\s*<TramosCuotas tramos=\{tramosCuotas\(pieCuotas\)\} money=\{money\} \/>/.test(capi)) F("8 · el gráfico «Lo que queda cada mes» no parte hoy con los tramos cuando hay cuotas");
+  if (!/sub=\{cuotasJuntas \? `\$\{rotulo\.total\} · \$\{TE_QUEDA_DESPUES_CUOTAS\}` : rotulo\.total\}/.test(capi) || TE_QUEDA_DESPUES_CUOTAS !== "después de terminar las cuotas del pie") F("8 · «Te queda» no dice que es después de terminar las cuotas del pie");
+  if (!/<VCierre titulo="Qué significa">\s*\{pieCuotas && <span data-obra-nueva="cierre-cuotas">\{pinta\(cierreCuotas\(pieCuotas, money\)/.test(capi)) F("8 · «Qué significa» no suma las cuotas del pie");
+  const port = sinComentarios(leer("src/components/analysis/portada/PortadaInforme.tsx"));
+  const grid8 = sinComentarios(leer("src/components/analysis/SubjectCardGrid.tsx"));
+  if (!/\{cuotas && cuotas\.length > 0 && \(\s*<p className="doc-keyfig doc-keyfig-cuotas" data-obra-nueva="portada-cuotas">/.test(port) || !/s\.monto \? "doc-keyfig-fig" : "doc-keyfig-cap"/.test(port)) F("8 · la portada no dice las cuotas con el mismo peso que el flujo");
+  if (!/const cuotasPortada = pieEnCuotas \? fraseCuotasPortada\(pieEnCuotas, moneyCuotas\) : null;/.test(grid8) || !/cuotas=\{cuotasPortada\}/.test(grid8) || !/cuotasSeVen\(results\?\.metrics\?\.pieEnCuotas\)/.test(grid8)) F("8 · la portada no recibe la frase de las cuotas del motor");
+  if (!/cuotas=\{filaCuotas\}/.test(grid8) || !/data-obra-nueva="pesa-cuotas"/.test(sinComentarios(leer("src/components/analysis/PrincipalesHallazgos.tsx")))) F("8 · «Esto es lo que pesa» no tiene la línea de las cuotas");
 
   // 4 · el wizard
   if (cuotasDelWizard({ estadoVenta: "inmediata" }) !== 1) F("4 · con entrega inmediata el defecto no es al contado");
@@ -167,3 +209,10 @@ if (require.main === module) {
 //   cifras · O19 el informe sin la frase · O20 la versión sin subir: 20/20 en rojo, restauradas byte a byte.
 //   Y la procedencia (5b): O21 la fuente del wizard sin el +3% · O22 el respaldo del informe sin el +3% · O23 el
 //   payload sin la marca · O24 el resolver la ignora: 4/4 en rojo. Total 24/24.
+//   §8 las cuotas se ven (02-oct-2026): T1/T2 el motor sin los tramos · T3 el tramo junto al dividendo sin la cuota ·
+//   T4 el gráfico sin rojo · T5 sin los meses del tramo (salió VERDE la primera vez: «27 meses» estaba también en el
+//   aria-label; el chequeo pasó a leer el rótulo visible y quedó ROJO) · T6 la curva vieja sin los tramos · T7 «Te
+//   queda» sin el aviso · T8 «Qué significa» sin las cuotas · T9/T10 la portada sin la frase o en chico · T11/T12 las
+//   frases sin el «después» o sin «hasta la entrega» · T13 sin la fila de «Esto es lo que pesa» · T14 se ven al
+//   contado · T15 lo de tu bolsillo sin rojo · T16 el gráfico sin el nombre del tramo: 16/16. La línea chica de §3
+//   (O10) se fue con su chequeo: la reemplazan los tramos y el cierre.

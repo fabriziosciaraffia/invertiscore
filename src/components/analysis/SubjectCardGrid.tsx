@@ -26,7 +26,7 @@ import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/type
 import { construirCardLtr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import type { Veredicto } from "@/lib/types";
-import { FRASE_RIESGO_ENTREGA } from "@/lib/obra-nueva";
+import { FRASE_RIESGO_ENTREGA, cuotasSeVen, filaPesaCuotas, fraseCuotasPortada } from "@/lib/obra-nueva";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -178,6 +178,12 @@ export function SubjectCardGrid({
           ufValue: valorUF,
         })
       : null;
+  // El pie en cuotas (02-oct-2026), con el mismo peso que el flujo en la portada y como fila de «Esto es lo que pesa».
+  const pieEnCuotas = cuotasSeVen(results?.metrics?.pieEnCuotas) ? results!.metrics!.pieEnCuotas! : null;
+  const moneyCuotas = (n: number) =>
+    currency === "UF" ? `UF ${Math.round(n / (valorUF || 1)).toLocaleString("es-CL")}` : `$${Math.round(n).toLocaleString("es-CL")}`;
+  const cuotasPortada = pieEnCuotas ? fraseCuotasPortada(pieEnCuotas, moneyCuotas) : null;
+  const filaCuotas = pieEnCuotas ? { ...filaPesaCuotas(pieEnCuotas), kpi: moneyCuotas(pieEnCuotas.montoCuotaCLP) } : null;
   const sobreprecioPortada =
     ((results?.metrics as { hallazgoSobreprecio?: HallazgoSobreprecio | null } | undefined)?.hallazgoSobreprecio ??
       aiAnalysis?.hallazgoSobreprecio) || null;
@@ -249,6 +255,7 @@ export function SubjectCardGrid({
           fecha={fechaCorta}
           titular={titularPortada}
           cifra={cifraPortada}
+          cuotas={cuotasPortada}
           ficha={fichaPortada}
           currency={currency}
           onCurrencyChange={onCurrencyChange}
@@ -298,7 +305,7 @@ export function SubjectCardGrid({
               titulo={lineaQueDeclara(veredicto)}
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
-              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} cuotas={filaCuotas} />
             </SeccionInforme>
           ) : undefined
         }

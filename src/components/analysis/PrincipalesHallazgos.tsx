@@ -50,7 +50,10 @@ export function PrincipalesHallazgos({
   hallazgos,
   currency,
   valorUF,
+  cuotas = null,
 }: {
+  /** El pie en cuotas (02-oct-2026): una fila con el monto y los meses, en contra, arriba. */
+  cuotas?: { frase: string; kpi: string; meses: string } | null;
   /** Ya ordenados por `ordenarHallazgosPiramide`; se muestran los primeros 4. */
   hallazgos: Hallazgo[];
   currency: "CLP" | "UF";
@@ -71,9 +74,19 @@ export function PrincipalesHallazgos({
   // La regla vive en `filasPrincipales` (orden-hallazgos.ts) desde el 27-sep-2026: la landing
   // muestra la primera de estas filas y tiene que ser la misma.
   const enOrden = filasPrincipales(hallazgos);
-  if (enOrden.length === 0) return null;
+  if (enOrden.length === 0 && !cuotas) return null;
   return (
     <div className="hz-list">
+      {cuotas && (
+        <div className="hz-lin" data-obra-nueva="pesa-cuotas">
+          <span className="hz-fl" data-dir="adverso" aria-hidden="true">↓</span>
+          <p>{cuotas.frase}</p>
+          <span className="hz-n neg">
+            {cuotas.kpi}
+            <small>{cuotas.meses}</small>
+          </span>
+        </div>
+      )}
       {enOrden.map((h) => {
         // De `findingDisplay` sobrevive SOLO el KPI: el título y el kicker murieron.
         const { kpi, kpiNegativo } = findingDisplay(h, currency, valorUF);

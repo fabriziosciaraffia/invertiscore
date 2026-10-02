@@ -43,7 +43,8 @@ import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia, GlosaIndicador } from "./shared";
-import { lineaCuotasConDividendo } from "@/lib/obra-nueva";
+import { TE_QUEDA_DESPUES_CUOTAS, cierreCuotas, cuotasSeVen, tramosCuotas } from "@/lib/obra-nueva";
+import { TramosCuotas } from "@/components/analysis/shared/TramosCuotas";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -353,6 +354,10 @@ export function CapitulosInversion({
           .filter((r) => r.v > 0)
           .sort((a, b) => b.v - a.v);
         const isNeg = d.flujoNeto < 0;
+        // El pie en cuotas (02-oct-2026): el dato lo emite el motor; si cambia lo que la persona vive mes a mes,
+        // el gráfico parte hoy y «Te queda» dice que es lo de después de terminar las cuotas.
+        const pieCuotas = cuotasSeVen(m.pieEnCuotas) ? m.pieEnCuotas : null;
+        const cuotasJuntas = (pieCuotas?.mesesConDividendo ?? 0) > 0;
         // LA SERIE Y SU DESCOMPOSICIÓN LAS HACE EL MOTOR (÷ meses operativos, diez años); acá
         // no se deriva nada, para que el gate lea lo mismo que el render.
         const serie = serieFlujoMensualPorAnioLtr(results.projections);
@@ -387,17 +392,28 @@ export function CapitulosInversion({
                   tono="tot"
                   k={isNeg ? "Sale de tu bolsillo" : "Te queda"}
                   tip="Arriendo − cuota − gastos"
-                  sub={rotulo.total}
+                  sub={cuotasJuntas ? `${rotulo.total} · ${TE_QUEDA_DESPUES_CUOTAS}` : rotulo.total}
                   v={<span style={{ color: isNeg ? "var(--signal-red)" : undefined }}>{`${isNeg ? "−" : "+"}${money(Math.abs(d.flujoNeto))}`}</span>}
                   unidad="/mes"
                 />
               </FilasDato>
             </VViz>
+            {/* Con el pie en cuotas (02-oct-2026) el gráfico parte HOY, con los tramos con su nombre; la curva
+                anual sigue como «Después, año por año». */}
+            {pieCuotas && (
+              <>
+                <VPuente>Mes a mes desde hoy, con las cuotas del pie.</VPuente>
+                <VViz>
+                  <VSub>Lo que queda cada mes, desde hoy</VSub>
+                  <TramosCuotas tramos={tramosCuotas(pieCuotas)} money={money} />
+                </VViz>
+              </>
+            )}
             {puntos.length >= 2 && (
               <>
-                <VPuente>Y lo mismo a diez años, que es donde se ve hacia dónde va.</VPuente>
+                {!pieCuotas && <VPuente>Y lo mismo a diez años, que es donde se ve hacia dónde va.</VPuente>}
                 <VViz>
-                  <VSub>Lo que queda cada mes, año por año</VSub>
+                  <VSub>{pieCuotas ? "Después, año por año" : "Lo que queda cada mes, año por año"}</VSub>
                   <CurvaAnios puntos={puntos} fmt={neg} />
                   {pie && (
                     <p className="doc-reparto" style={{ marginTop: 2 }}>
@@ -407,13 +423,11 @@ export function CapitulosInversion({
                 </VViz>
               </>
             )}
-            {/* El pie en cuotas que corre con el dividendo (02-oct-2026): el dato lo emite el motor. */}
-            {m.pieEnCuotas && m.pieEnCuotas.mesesConDividendo > 0 && (
-              <p className="doc-reparto" data-obra-nueva="cuotas-con-dividendo">
-                {lineaCuotasConDividendo(m.pieEnCuotas.mesesConDividendo, money(m.pieEnCuotas.montoCuotaCLP))}
-              </p>
-            )}
-            <VCierre titulo="Qué significa">{pinta(cierre)}</VCierre>
+            {/* «Qué significa» suma las cuotas del pie (02-oct-2026): hasta la entrega y los meses en que se juntan. */}
+            <VCierre titulo="Qué significa">
+              {pieCuotas && <span data-obra-nueva="cierre-cuotas">{pinta(cierreCuotas(pieCuotas, money).map((s) => ({ t: s.t, b: s.monto, rojo: s.rojo })))}</span>}
+              {pinta(cierre)}
+            </VCierre>
             <VFuente>Motor Franco · {ufFecha} · gastos y contribuciones declarados por ti · cada año a sus precios</VFuente>
           </>
         );

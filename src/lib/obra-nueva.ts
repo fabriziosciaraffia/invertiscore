@@ -50,7 +50,101 @@ export function cuotasDelAnio(i: number, cuotas: number, montoCuota: number): nu
   return k * montoCuota;
 }
 
-/** «Durante 22 meses pagas también $698.750 de cuota.» */
-export function lineaCuotasConDividendo(meses: number, monto: string): string {
-  return meses === 1 ? `Durante 1 mes pagas también ${monto} de cuota.` : `Durante ${meses} meses pagas también ${monto} de cuota.`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAS CUOTAS DEL PIE SE TIENEN QUE VER (02-oct-2026, Fabrizio tras mirar los dos informes): los tramos del
+// flujo desde hoy —«Hasta la entrega» (cuotas sin arriendo), «Cuota del pie + dividendo» (los meses en que
+// se juntan), «Después»— y las frases de la portada, de «Qué significa» y de «Esto es lo que pesa». El motor
+// emite los datos (`metrics.pieEnCuotas`); acá se redactan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Lo que el motor emite del pie en cuotas (`metrics.pieEnCuotas`). */
+export interface PieEnCuotas {
+  cuotas: number;
+  montoCuotaCLP: number;
+  mesesConDividendo: number;
+  /** Cuotas que se pagan antes de la entrega, sin arriendo (la de la firma incluida). 0 con entrega inmediata. */
+  mesesAntesEntrega?: number;
+  /** Lo que queda al mes con arriendo y sin cuotas (el flujo del primer año con arrendatario). */
+  flujoDespuesCLP?: number;
 }
+
+export interface TramoCuotas {
+  id: "antes" | "juntas" | "despues";
+  nombre: string;
+  /** Meses del tramo; «Después» no tiene fin (null). */
+  meses: number | null;
+  /** Lo que queda al mes en el tramo (negativo = sale de tu bolsillo). */
+  valorCLP: number;
+}
+
+/** ¿Las cuotas cambian lo que la persona vive mes a mes? (hay tramo sin arriendo o tramo junto al dividendo) */
+export function cuotasSeVen(p: PieEnCuotas | null | undefined): p is PieEnCuotas {
+  return !!p && p.cuotas > 1 && ((p.mesesAntesEntrega ?? 0) > 0 || p.mesesConDividendo > 0);
+}
+
+/** Los tramos del flujo desde hoy. */
+export function tramosCuotas(p: PieEnCuotas): TramoCuotas[] {
+  const despues = Math.round(p.flujoDespuesCLP ?? 0);
+  const out: TramoCuotas[] = [];
+  if ((p.mesesAntesEntrega ?? 0) > 0) out.push({ id: "antes", nombre: "Hasta la entrega", meses: p.mesesAntesEntrega!, valorCLP: -Math.round(p.montoCuotaCLP) });
+  if (p.mesesConDividendo > 0) out.push({ id: "juntas", nombre: "Cuota del pie + dividendo", meses: p.mesesConDividendo, valorCLP: despues - Math.round(p.montoCuotaCLP) });
+  out.push({ id: "despues", nombre: "Después", meses: null, valorCLP: despues });
+  return out;
+}
+
+/** Un trozo de frase: texto, o monto (que el render destaca; `rojo` si sale de tu bolsillo). */
+export interface SegCuotas { t: string; monto?: boolean; rojo?: boolean }
+
+const meses = (n: number) => (n === 1 ? "1 mes" : `${n} meses`);
+
+/** «… pones $X de tu bolsillo» o «… te quedan $X», según el signo. */
+function saldo(v: number, money: (n: number) => string, cierre: string): SegCuotas[] {
+  return v < 0
+    ? [{ t: "pones " }, { t: money(Math.abs(v)), monto: true, rojo: true }, { t: ` de tu bolsillo${cierre}` }]
+    : [{ t: "te quedan " }, { t: money(v), monto: true }, { t: cierre }];
+}
+
+/** La portada, con el mismo peso que el flujo: «Los primeros N meses pones $X más; después, te quedan $Y al mes.» o
+ *  la versión con entrega futura. */
+export function fraseCuotasPortada(p: PieEnCuotas, money: (n: number) => string): SegCuotas[] {
+  const cuota = Math.round(p.montoCuotaCLP);
+  const despues = Math.round(p.flujoDespuesCLP ?? 0);
+  const antes = p.mesesAntesEntrega ?? 0;
+  const juntas = p.mesesConDividendo;
+  if (antes > 0) {
+    const segs: SegCuotas[] = [{ t: "Hasta la entrega pagas " }, { t: money(cuota), monto: true, rojo: true }, { t: " al mes, sin arriendo; " }];
+    if (juntas > 0) segs.push({ t: `después, ${meses(juntas)} ` }, ...saldo(despues - cuota, money, ", y luego "));
+    else segs.push({ t: "después, " });
+    segs.push(...saldo(despues, money, " al mes."));
+    return segs;
+  }
+  return [{ t: `Los primeros ${meses(juntas)} pones ` }, { t: money(cuota), monto: true, rojo: true }, { t: " más; después, " }, ...saldo(despues, money, " al mes.")];
+}
+
+/** «Qué significa» suma una o dos frases. */
+export function cierreCuotas(p: PieEnCuotas, money: (n: number) => string): SegCuotas[] {
+  const cuota = Math.round(p.montoCuotaCLP);
+  const despues = Math.round(p.flujoDespuesCLP ?? 0);
+  const segs: SegCuotas[] = [];
+  if ((p.mesesAntesEntrega ?? 0) > 0) segs.push({ t: "Hasta la entrega pagas " }, { t: money(cuota), monto: true, rojo: true }, { t: " al mes, sin arriendo. " });
+  if (p.mesesConDividendo > 0) {
+    segs.push({ t: `Durante ${meses(p.mesesConDividendo)}, la cuota del pie se junta con el dividendo: ` }, ...saldo(despues - cuota, money, " cada mes. "));
+  }
+  return segs;
+}
+
+/** La línea de «Esto es lo que pesa»: el monto y los meses de las cuotas. */
+export function filaPesaCuotas(p: PieEnCuotas): { frase: string; meses: string } {
+  const antes = p.mesesAntesEntrega ?? 0;
+  const juntas = p.mesesConDividendo;
+  const frase = antes > 0 && juntas > 0
+    ? `El pie en ${p.cuotas} cuotas: ${antes} sin arriendo y ${juntas} junto al dividendo`
+    : antes > 0
+      ? `El pie en ${p.cuotas} cuotas, todas antes de la entrega, sin arriendo`
+      : `El pie en ${p.cuotas} cuotas: ${juntas} junto al dividendo`;
+  return { frase, meses: `al mes · ${meses(antes + juntas)}` };
+}
+
+/** «Te queda» dice qué incluye: el primer año con arrendatario tiene cuotas → es lo de después. */
+export const TE_QUEDA_DESPUES_CUOTAS = "después de terminar las cuotas del pie";

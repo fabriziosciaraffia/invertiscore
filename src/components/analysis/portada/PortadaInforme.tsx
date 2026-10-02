@@ -24,6 +24,7 @@ import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
+import type { SegCuotas } from "@/lib/obra-nueva";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
 // --verdict / --verdict-deep que DocTokens fija según `data-verdict` en la raíz del
@@ -74,6 +75,7 @@ export function PortadaInforme({
   modalidadLabel,
   titular,
   cifra,
+  cuotas,
   ficha,
   currency,
   onCurrencyChange,
@@ -92,6 +94,8 @@ export function PortadaInforme({
   titular?: string | null;
   /** Cifra clave del motor (derivación runtime); null = sin cifra. */
   cifra: CifraClave | null;
+  /** El pie en cuotas (02-oct-2026), con el mismo peso que el flujo: la frase de `fraseCuotasPortada`. */
+  cuotas?: SegCuotas[] | null;
   ficha: FichaDepto;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
@@ -180,6 +184,13 @@ export function PortadaInforme({
             <p className="doc-keyfig">
               <span className="doc-keyfig-fig">{fmtCifra(cifra, currency)}</span>{" "}
               <span className="doc-keyfig-cap">{captionDeCifraClave(cifra)}</span>
+            </p>
+          )}
+          {cuotas && cuotas.length > 0 && (
+            <p className="doc-keyfig doc-keyfig-cuotas" data-obra-nueva="portada-cuotas">
+              {cuotas.map((s, i) => (
+                <span key={i} className={s.monto ? "doc-keyfig-fig" : "doc-keyfig-cap"}>{s.t}</span>
+              ))}
             </p>
           )}
           {/* Línea de utilidades: link ficha + toggle CLP/UF (decisión e del PARÁ 0) */}

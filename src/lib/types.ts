@@ -475,7 +475,7 @@ export interface AnalysisMetrics {
   preEntrega?: PreEntregaGanancia;
   // El pie en cuotas (02-oct-2026): ausente al contado. `mesesConDividendo` = cuotas que se pagan junto al
   // dividendo (después de la entrega). Lo emite runAnalysis (necesita `asOf`).
-  pieEnCuotas?: { cuotas: number; montoCuotaCLP: number; mesesConDividendo: number };
+  pieEnCuotas?: { cuotas: number; montoCuotaCLP: number; mesesConDividendo: number; mesesAntesEntrega?: number; flujoDespuesCLP?: number };
   // Precios de equilibrio
   precioFlujoNeutroCLP?: number;
   precioFlujoNeutroUF?: number;
