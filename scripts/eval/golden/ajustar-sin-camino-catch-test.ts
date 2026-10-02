@@ -146,7 +146,11 @@ export function runAjustarSinCaminoTier(): { hard: number } {
   // PISO (29-sep-2026, re-baseline «todo en pesos de hoy», ACTAS-pesos-de-hoy.md): la FASE 0 midió 52;
   // con el motor nuevo tres filas que pedían apenas sobre 20% (5e686d96, adc56a80, ee622897) quedan bajo
   // el corte y vuelven a Ajustar. Quedan 49 en Buscar otro y 5 grises.
-  if (cambiadas + porPuntaje !== 49 || porPuntaje !== Object.keys(POR_PUNTAJE).length) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro por el filtro y ${porPuntaje} por el puntaje: el re-baseline del 29-sep dejó 49, y el acta exime ${Object.keys(POR_PUNTAJE).length}`);
+  // PISO (02-oct-2026, re-baseline «obra nueva en el motor», ACTAS-obra-nueva.md): seis filas LTR de obra
+  // nueva con entrega futura y pie en cuotas (0d058dc5, 5113f1c4, 8005e03d, a8bf8779, e65c0e6b, eb205e0c)
+  // pedían entre 20,4% y 24,1%; sin el castigo por esperar y con las cuotas en la TIR quedan bajo el corte y
+  // vuelven a Ajustar (`actaObraNueva` en el fixture). Quedan 43 en Buscar otro y 11 en Ajustar.
+  if (cambiadas + porPuntaje !== 43 || porPuntaje !== Object.keys(POR_PUNTAJE).length) F(`2 · PISO · ${cambiadas} filas congeladas pasaron a Buscar otro por el filtro y ${porPuntaje} por el puntaje: el re-baseline del 02-oct dejó 43, y el acta exime ${Object.keys(POR_PUNTAJE).length}`);
   if (grises < 5) F(`3 · PISO · ${grises} filas grises congeladas siguen en Ajustar: esperaba las 5`);
   for (const d of ["borde", "sin_camino", "gris"]) if (!designados.has(d)) F(`0 · falta el fixture «${d}»`);
 

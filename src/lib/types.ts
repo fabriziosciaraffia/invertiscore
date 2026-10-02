@@ -473,6 +473,9 @@ export interface AnalysisMetrics {
   // el consumidor distinga "no aplica" de "aplica y da 0".
   // NO alimenta score ni gates: es un valor citable para la narrativa.
   preEntrega?: PreEntregaGanancia;
+  // El pie en cuotas (02-oct-2026): ausente al contado. `mesesConDividendo` = cuotas que se pagan junto al
+  // dividendo (después de la entrega). Lo emite runAnalysis (necesita `asOf`).
+  pieEnCuotas?: { cuotas: number; montoCuotaCLP: number; mesesConDividendo: number };
   // Precios de equilibrio
   precioFlujoNeutroCLP?: number;
   precioFlujoNeutroUF?: number;

@@ -19,6 +19,7 @@ import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull }
 import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
 import { REFI_LTV, ratioCuotaRefi } from "./refinanciamiento";
 import { sobreprecioDeHoy } from "./sobreprecio-venta";
+import { cuotasConDividendo, cuotasDelAnio, cuotasPieValidas } from "./obra-nueva";
 import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { filtroAjustarSinCamino } from "./ajustar-sin-camino";
 import { rescatarPorPieYPlazo } from "./rescate-pie-plazo";
@@ -1107,9 +1108,14 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   //
   // TIR REAL, EN UF (29-sep-2026): la proyección va en pesos de hoy, así que la TIR de estos
   // flujos es real, como habla el mercado («UF + 4%») y comparable con la tasa del crédito.
-  const flujos: number[] = [-inversionInicial];
+  //
+  // EL PIE EN CUOTAS (02-oct-2026): la primera al firmar, con los gastos de cierre; las demás mes a mes, cada
+  // una en el año en que se paga. Sin cuotas (1, al contado) el vector es el de siempre.
+  const nCuotas = sinPie ? 1 : cuotasPieValidas(input.cuotasPie);
+  const montoCuota = nCuotas > 1 ? metrics.pieCLP / nCuotas : 0;
+  const flujos: number[] = [-(inversionInicial - (nCuotas > 1 ? metrics.pieCLP - montoCuota : 0))];
   for (let i = 0; i < anios; i++) {
-    let flujo = projections[i].flujoAnual;
+    let flujo = projections[i].flujoAnual - cuotasDelAnio(i, nCuotas, montoCuota);
     if (i === anios - 1) {
       flujo += equityCLP;
     }
@@ -1418,7 +1424,8 @@ function tirDe(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number, as
  *    usaba el rendimiento neto sobre el precio, como si se hubiera comprado al contado).
  *  · `tir`: la curva de la TIR a 10 años. `null` cuando no aplica (pie cero) o no es
  *    calculable, y entonces su peso se reparte entre las demás (`combinarConReparto`).
- * La penalización por entrega futura se aplica sobre el score, como siempre.
+ * SIN CASTIGO POR ESPERAR (02-oct-2026, decisión de Fabrizio): la entrega futura ya no resta puntaje (antes
+ * −1 cada 6 meses, tope 5). El riesgo de la espera lo dice el informe en una línea (obra-nueva.ts).
  */
 export function dimensionesScoreLtr(
   input: AnalisisInput,
@@ -1495,7 +1502,7 @@ export function dimensionesScoreLtr(
     tir,
   };
   const w = PESOS_SCORE_LTR;
-  let score = combinarConReparto([
+  const score = combinarConReparto([
     { peso: w.rentabilidad, puntaje: desglose.rentabilidad },
     { peso: w.flujoCaja, puntaje: desglose.flujoCaja },
     { peso: w.cashOnCash, puntaje: cashOnCash },
@@ -1503,13 +1510,6 @@ export function dimensionesScoreLtr(
     { peso: w.plusvalia, puntaje: desglose.plusvalia },
     { peso: w.eficiencia, puntaje: desglose.eficiencia },
   ]);
-
-  // Penalize entrega futura for months without return
-  const mesesEspera = calcMesesHastaEntrega(input, asOf);
-  if (mesesEspera > 0) {
-    const penalty = Math.min(5, Math.round(mesesEspera / 6));
-    score -= penalty;
-  }
 
   return { desglose, score: clamp(score, 0, 100) };
 }
@@ -2508,6 +2508,15 @@ export function runAnalysis(
   // equivalentes para todo lo que sí decide.
   const preEntrega = calcPreEntrega({ input, precioCLP: metrics.precioCLP, asOf });
   if (preEntrega) metrics.preEntrega = preEntrega;
+  // El pie en cuotas (02-oct-2026): cuántas y de cuánto, y cuántas caen junto al dividendo (el flujo lo dice).
+  const nCuotasPie = cuotasPieValidas(input.cuotasPie);
+  if (nCuotasPie > 1 && metrics.pieCLP > 0) {
+    metrics.pieEnCuotas = {
+      cuotas: nCuotasPie,
+      montoCuotaCLP: Math.round(metrics.pieCLP / nCuotasPie),
+      mesesConDividendo: cuotasConDividendo(nCuotasPie, calcMesesHastaEntrega(input, asOf)),
+    };
+  }
   const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp, asOf });
   // Rama flujo-copy-preentrega: con la serie ya computada, la frase favorable del flujo

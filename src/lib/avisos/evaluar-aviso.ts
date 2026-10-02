@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAnalysis } from "@/lib/analysis";
+import { arriendoSugeridoObraNueva } from "@/lib/obra-nueva";
 import { getSugerencias, medianaArriendoZonaM2, SUGERENCIAS_VERSION, type Sugerencias } from "@/lib/services/market-suggestions";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { buildLtrPayload, type SubmitContext } from "@/components/formulario-v4/wizardV4Payload";
@@ -26,7 +27,9 @@ import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
  *  body salía de buildLtrPayload sin ella y el motor corría el modelo de costos VIEJO (`resolverModeloCostos`
  *  cae a legacy sin versión), mientras los informes corren v3: La Reina daba Comprar 73 en la guía y 82 en
  *  el informe. */
-export const REVISION_EVALUACION = "r2";
+// r3 (02-oct-2026): obra nueva en el motor —sin castigo por esperar, el pie en cuotas en la TIR y el arriendo
+// sugerido de lo nuevo +3%—; cambia veredictos, así que el cron reevalúa la tabla de a poco.
+export const REVISION_EVALUACION = "r3";
 
 /** La versión de una fila evaluada: la del motor, la de la evaluación y la de las sugerencias. Cambia una
  *  → el cron la reevalúa de a poco (avisosDeOtraVersion). */
@@ -149,7 +152,8 @@ export function arriendoParaEvaluar(a: AvisoParaEvaluar, arr: Sugerencias, vta: 
   if (!arr.arriendo) return null;
   const seg = segmentar && arr.source === "radio" ? arriendoSegmentado(arr.comparables ?? [], vta.nearbyProperties ?? [], a.precioUF / a.m2, uf) : null;
   return {
-    monto: seg ? seg.monto : arr.arriendo,
+    // Obra nueva (02-oct-2026): el arriendo con que se evalúa es el sugerido, así que lleva el +3% de lo nuevo.
+    monto: arriendoSugeridoObraNueva(seg ? seg.monto : arr.arriendo, a.condicion) ?? 0,
     fuente: seg ? "segmento" : arr.source === "sin-dato" ? "radio" : arr.source,
     n: seg ? seg.n : Number(arr.sampleSize) || 0,
     radio: typeof arr.radiusUsed === "number" ? arr.radiusUsed : null,
