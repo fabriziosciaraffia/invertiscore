@@ -180,7 +180,9 @@ export function PortadaInforme({
               la misma linea de texto— y no hay que alinearla a mano.
               El catalogo de glosas es cerrado (6) y va de 321px a 503px en una sola
               linea; el ancho disponible manda cuantas lineas ocupa. */}
-          {cifra && (
+          {/* Con el pie en cuotas (02-oct-2026, Fabrizio) la frase de las cuotas ya dice lo que queda después:
+              la cifra suelta sobra. */}
+          {cifra && !(cuotas && cuotas.length > 0) && (
             <p className="doc-keyfig">
               <span className="doc-keyfig-fig">{fmtCifra(cifra, currency)}</span>{" "}
               <span className="doc-keyfig-cap">{captionDeCifraClave(cifra)}</span>

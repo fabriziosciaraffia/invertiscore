@@ -143,6 +143,7 @@ export function runObraNuevaTier(): { hard: number } {
   const port = sinComentarios(leer("src/components/analysis/portada/PortadaInforme.tsx"));
   const grid8 = sinComentarios(leer("src/components/analysis/SubjectCardGrid.tsx"));
   if (!/\{cuotas && cuotas\.length > 0 && \(\s*<p className="doc-keyfig doc-keyfig-cuotas" data-obra-nueva="portada-cuotas">/.test(port) || !/s\.monto \? "doc-keyfig-fig" : "doc-keyfig-cap"/.test(port)) F("8 · la portada no dice las cuotas con el mismo peso que el flujo");
+  if (!/\{cifra && !\(cuotas && cuotas\.length > 0\) && \(\s*<p className="doc-keyfig">/.test(port)) F("8 · con cuotas la portada repite la cifra suelta (la frase de las cuotas ya la dice)");
   if (!/const cuotasPortada = pieEnCuotas \? fraseCuotasPortada\(pieEnCuotas, moneyCuotas\) : null;/.test(grid8) || !/cuotas=\{cuotasPortada\}/.test(grid8) || !/cuotasSeVen\(results\?\.metrics\?\.pieEnCuotas\)/.test(grid8)) F("8 · la portada no recibe la frase de las cuotas del motor");
   if (!/cuotas=\{filaCuotas\}/.test(grid8) || !/data-obra-nueva="pesa-cuotas"/.test(sinComentarios(leer("src/components/analysis/PrincipalesHallazgos.tsx")))) F("8 · «Esto es lo que pesa» no tiene la línea de las cuotas");
 
@@ -215,4 +216,5 @@ if (require.main === module) {
 //   queda» sin el aviso · T8 «Qué significa» sin las cuotas · T9/T10 la portada sin la frase o en chico · T11/T12 las
 //   frases sin el «después» o sin «hasta la entrega» · T13 sin la fila de «Esto es lo que pesa» · T14 se ven al
 //   contado · T15 lo de tu bolsillo sin rojo · T16 el gráfico sin el nombre del tramo: 16/16. La línea chica de §3
-//   (O10) se fue con su chequeo: la reemplazan los tramos y el cierre.
+//   (O10) se fue con su chequeo: la reemplazan los tramos y el cierre. T17 (con cuotas, la portada vuelve a
+//   mostrar la cifra suelta): ROJO.
