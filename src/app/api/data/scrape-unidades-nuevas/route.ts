@@ -59,14 +59,17 @@ export const maxDuration = 800;
 
 /** Días del ciclo de rotación (ver nota de arriba). */
 const CICLO_DIAS = 3;
-/** Proyectos en vuelo a la vez (2 GETs cada uno: proyecto + disponibles). El ensayo del 02-oct por el
- *  proxy, con 4 (8 GETs en vuelo) y 250 ms entre lotes, dio 403 en 57 de 137 proyectos, y el reintento
- *  inmediato no recuperó ninguno: la ficha nueva frena por ritmo. Con 2 y 600 ms, ~2 min el tercio. */
+/** Proyectos en vuelo a la vez (2 GETs cada uno: proyecto + disponibles). Los ensayos del 02-oct por el
+ *  proxy: con 4 en vuelo y 250 ms entre lotes, 403 en 57 de 137 proyectos; con 2 y 600 ms, en 18. Los
+ *  mismos proyectos respondían 200 desde una IP sin proxy: la ficha nueva frena por ritmo. Cada proyecto
+ *  tarda ~4 s por el proxy: con 2 en vuelo y 1,5 s entre lotes el tercio va en ~6 min; uno a la vez
+ *  rozaría el techo de 800 s con los reintentos. */
 const CONCURRENCIA = 2;
 /** Pausa de cortesía entre lotes de fichas (ms). */
-const PAUSA_LOTE_MS = 600;
-/** Pausa antes de cada reintento: el reintento pegado al 403 vuelve a dar 403. */
-const PAUSA_REINTENTO_MS = 1500;
+const PAUSA_LOTE_MS = 1500;
+/** Pausa antes de cada reintento: el reintento pegado al 403 vuelve a dar 403. Hasta dos por proyecto. */
+const PAUSA_REINTENTO_MS = 4000;
+const REINTENTOS = 2;
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,7 +169,7 @@ export async function POST(request: Request) {
   }
   // Un reintento, uno por uno, para los que fallaron (el proxy suelta algún `fetch failed`).
   const fallidosPrimera = resultados.filter((r) => r.error).length;
-  for (let k = 0; k < resultados.length; k++) {
+  for (let intento = 0; intento < REINTENTOS; intento++) for (let k = 0; k < resultados.length; k++) {
     if (!resultados[k].error) continue;
     const base = delBatch.find((p) => p.idProyecto === resultados[k].idProyecto);
     if (!base) continue;
