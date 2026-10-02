@@ -48,7 +48,7 @@ async function main() {
   const desde = new Date(Date.now() - VENTANA_VISTOS_DIAS * 864e5).toISOString();
   const filas = await paginar<FilaAviso>((a, b) =>
     sb.from("scraped_properties")
-      .select("id, comuna, lat, lng, precio, moneda, superficie_m2, dormitorios, banos, condicion, direccion, fecha_entrega, scraped_at")
+      .select("id, comuna, lat, lng, precio, moneda, superficie_m2, dormitorios, banos, condicion, direccion, fecha_entrega, scraped_at, seen_pass_id")
       .eq("type", "venta").eq("is_active", true).gte("scraped_at", desde)
       .order("id", { ascending: true }).range(a, b),
   );

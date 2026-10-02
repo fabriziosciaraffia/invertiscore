@@ -4,7 +4,10 @@ import {
   fetchUnidadesProyecto,
   desactivarProyectosConUnidades,
   fallidosTolerados,
+  estimarPrecioUnidadUF,
+  etiquetaDeUnidad,
   idProyectoDeUrl,
+  marcaFueraDeLaFicha,
   marcaVistaUnidades,
   planDisponibilidad,
   PREFIJO_VISTA_UNIDADES,
@@ -171,17 +174,18 @@ export async function POST(request: Request) {
   //
   // Todas las unidades de obra nueva (activas o no: una vendida que reaparece vuelve a estar
   // disponible), paginadas por id. Se agrupan por proyecto con el número final de la URL.
-  const filasPorProyecto = new Map<number, Array<FilaUnidad & { comuna: string; created_at: string | null; scraped_at: string | null; seen_pass_id: string | null }>>();
+  type FilaCruce = FilaUnidad & { comuna: string; created_at: string | null; scraped_at: string | null; seen_pass_id: string | null; superficie_m2: number | string | null };
+  const filasPorProyecto = new Map<number, FilaCruce[]>();
   for (let off = 0; ; off += PAGINA_POSTGREST) {
     const { data, error } = await supabase
       .from("scraped_properties")
-      .select("id, source_id, is_active, comuna, created_at, scraped_at, seen_pass_id")
+      .select("id, source_id, is_active, comuna, created_at, scraped_at, seen_pass_id, superficie_m2")
       .eq("condicion", "nuevo")
       .like("source_id", "%#%")
       .order("id", { ascending: true })
       .range(off, off + PAGINA_POSTGREST - 1);
     if (error) return cerrarCron(supabase, "scrape-unidades-nuevas", CORRIDA_FALLIDA, { error: `select unidades: ${error.message}` }, { registrar: !dry });
-    for (const f of (data ?? []) as Array<FilaUnidad & { comuna: string; created_at: string | null; scraped_at: string | null; seen_pass_id: string | null }>) {
+    for (const f of (data ?? []) as FilaCruce[]) {
       const id = idProyectoDeUrl(f.source_id);
       if (id == null) continue;
       if (!filasPorProyecto.has(id)) filasPorProyecto.set(id, []);
@@ -193,9 +197,12 @@ export async function POST(request: Request) {
   const conDisponibles = resultados.filter((r) => !r.error && r.disponibles.length > 0);
   const sinDisponibles = resultados.filter((r) => !r.error && r.disponibles.length === 0);
   const conError = resultados.filter((r) => r.error);
-  const marca = marcaVistaUnidades(new Date());
+  const ahoraCorrida = new Date();
+  const marca = marcaVistaUnidades(ahoraCorrida);
   const vendidasFilas: Array<{ id: string; comuna: string; created_at: string | null; scraped_at: string | null; seen_pass_id: string | null }> = [];
-  const vistasPorProyecto: Array<{ ids: string[]; fechaEntrega: string | null }> = [];
+  // Cada vista con su estimado (rango del proyecto × sus m²) y la entrega: una sola llamada por lote.
+  const vistasFilas: Array<{ id: string; estimado_uf: number | null; fecha_entrega: string | null }> = [];
+  const fueraIds: string[] = [];
   let nuevasSinPrecio = 0;
   let fueraDeLaFicha = 0;
   const sinCruce: number[] = [];
@@ -204,14 +211,27 @@ export async function POST(request: Request) {
     const filas = filasPorProyecto.get(r.idProyecto) ?? [];
     const plan = planDisponibilidad(filas, r.disponibles);
     nuevasSinPrecio += plan.nuevas;
-    fueraDeLaFicha += plan.fuera;
+    fueraDeLaFicha += plan.fuera.length;
     if (plan.sinCruce) sinCruce.push(r.idProyecto);
-    if (plan.vistas.length) vistasPorProyecto.push({ ids: plan.vistas, fechaEntrega: r.fechaEntrega });
+    // Los extremos de m² salen de TODAS las unidades que conocemos del proyecto, no solo de las listadas:
+    // el «desde/hasta» de la ficha cubre también las que no lista. Con solo las listadas el error del
+    // estimado subía a p50 7,8% y p90 22% (5 proyectos, 205 unidades); con todas, 3,9% y 10,2%.
+    const m2s = [...r.disponibles.map((d) => d.m2Utiles), ...filas.map((f) => Number(f.superficie_m2))].filter((m): m is number => m != null && m > 0);
+    const m2Min = m2s.length ? Math.min(...m2s) : 0, m2Max = m2s.length ? Math.max(...m2s) : 0;
+    const porNumero = new Map(r.disponibles.map((d) => [d.numero, d]));
+    const vistasSet = new Set(plan.vistas);
+    for (const f of filas) {
+      if (!vistasSet.has(f.id)) continue;
+      const d = porNumero.get(etiquetaDeUnidad(f.source_id));
+      vistasFilas.push({ id: f.id, estimado_uf: estimarPrecioUnidadUF(r.rango, d?.m2Utiles ?? null, m2Min, m2Max), fecha_entrega: r.fechaEntrega });
+    }
+    fueraIds.push(...plan.fuera);
     const vendidas = new Set(plan.vendidas);
     for (const f of filas) if (vendidas.has(f.id)) vendidasFilas.push(f);
     if (r.rango && Object.keys(rangos).length < 10) rangos[r.idProyecto] = `UF ${r.rango.desdeUF}–${r.rango.hastaUF}`;
   }
-  const vistasTotal = vistasPorProyecto.reduce((a, v) => a + v.ids.length, 0);
+  const vistasTotal = vistasFilas.length;
+  const conEstimado = vistasFilas.filter((v) => v.estimado_uf != null).length;
   const disponiblesTotal = conDisponibles.reduce((a, r) => a + r.disponibles.length, 0);
 
   // ── 4. Escrituras: vistas, vendidas y sus bajas. Nunca precios ni filas nuevas. ──
@@ -219,16 +239,23 @@ export async function POST(request: Request) {
   let escrituraFallo = false;
   let bajasCerradas: number | null = null;
   let bajasSinEvaluar = 0;
+  let fueraSacadas = 0;
   if (!dry) {
-    // La que sigue disponible: vista hoy (y activa, si había salido), con la entrega que publica la ficha.
-    for (const v of vistasPorProyecto) {
-      for (let i = 0; i < v.ids.length; i += 200) {
-        const { error } = await supabase
-          .from("scraped_properties")
-          .update({ is_active: true, seen_pass_id: marca, ...(v.fechaEntrega ? { fecha_entrega: v.fechaEntrega } : {}) })
-          .in("id", v.ids.slice(i, i + 200));
-        if (error) { errors.push(`vistas: ${error.message}`); escrituraFallo = true; }
-      }
+    // La que sigue disponible: vista hoy (y activa, si había salido), con la entrega que publica la ficha
+    // y su precio ESTIMADO en columnas propias (precio_estimado_uf/_at): `precio` sigue siendo el real.
+    for (let i = 0; i < vistasFilas.length; i += 500) {
+      const { error } = await supabase.rpc("marcar_unidades_vistas", { p_filas: vistasFilas.slice(i, i + 500), p_marca: marca });
+      if (error) { errors.push(`vistas: ${error.message}`); escrituraFallo = true; }
+    }
+    // La que la ficha nueva nunca listó: queda en la base para la referencia de la zona, marcada, y sale
+    // de avisos_evaluados (con eso, de la guía y del correo). La guía muestra solo lo disponible.
+    for (let i = 0; i < fueraIds.length; i += 200) {
+      const ids = fueraIds.slice(i, i + 200);
+      const { error } = await supabase.from("scraped_properties").update({ seen_pass_id: marcaFueraDeLaFicha(ahoraCorrida) }).in("id", ids);
+      if (error) { errors.push(`fuera: ${error.message}`); escrituraFallo = true; continue; }
+      const { error: eFuera, count } = await supabase.from("avisos_evaluados").delete({ count: "exact" }).in("aviso_id", ids);
+      if (eFuera) { errors.push(`fuera de la guía: ${eFuera.message}`); escrituraFallo = true; }
+      else fueraSacadas += count ?? 0;
     }
     // La que dejó de aparecer: vendida.
     const idsVendidas = vendidasFilas.map((f) => f.id);
@@ -298,6 +325,8 @@ export async function POST(request: Request) {
     unidadesVendidas: vendidasFilas.length,
     nuevasSinPrecio,
     fueraDeLaFicha,
+    fueraSacadasDeLaGuia: fueraSacadas,
+    unidadesConEstimado: conEstimado,
     bajasCerradas,
     bajasSinEvaluar,
     basesDesactivadas: recon.desactivadas,

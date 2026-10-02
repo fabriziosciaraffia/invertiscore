@@ -10,6 +10,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { AvisoParaEvaluar } from "./evaluar-aviso";
 
+import { esFueraDeLaFicha } from "./marcas-unidades";
+
 export const VENTANA_VISTOS_DIAS = 7;
 
 export interface FilaAviso {
@@ -26,6 +28,8 @@ export interface FilaAviso {
   direccion: string | null;
   fecha_entrega?: string | null;
   scraped_at: string;
+  /** La marca del pase de unidades (02-oct-2026): «fuera@…» = la ficha nueva nunca la listó. */
+  seen_pass_id?: string | null;
 }
 
 /** Los despublicados (su ficha redirige a una búsqueda, src/lib/guia/publicacion.ts) no se evalúan más:
@@ -38,6 +42,9 @@ export function avisosEvaluables(filas: FilaAviso[], uf: number): Array<AvisoPar
   const vistos = new Set<string>();
   const out: Array<AvisoParaEvaluar & { scrapedAt: string }> = [];
   for (const a of filas) {
+    // La unidad de obra nueva que la ficha nueva nunca listó no se evalúa: la guía muestra solo lo
+    // disponible (02-oct-2026). Sigue en la base para la referencia de la zona.
+    if (esFueraDeLaFicha(a.seen_pass_id)) continue;
     const precio = Number(a.precio), m2 = Number(a.superficie_m2);
     if (!(precio > 0 && m2 >= 15 && m2 <= 400 && a.dormitorios != null && a.banos != null && a.lat != null && a.lng != null && a.comuna)) continue;
     const precioUF = a.moneda === "UF" ? precio : precio / uf;

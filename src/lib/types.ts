@@ -572,6 +572,8 @@ export interface PrecioVsComuna {
    *  OPCIONAL — ausente en análisis con snapshot anterior al fix de segmentación,
    *  cuya mediana es de universo mixto y por eso no se rotula. */
   universo?: CondicionMercado;
+  /** La mediana usó precios estimados de obra nueva (02-oct-2026): «referencia estimada». */
+  estimada?: boolean;
   /** Cuartiles UF/m² de la MISMA muestra que la mediana. null cuando no son confiables;
    *  ausentes cuando el snapshot es anterior al campo. Ver `PosicionEnComuna`. */
   p25UfM2?: number | null;
@@ -745,6 +747,8 @@ export interface HallazgoSobreprecio {
     // Universo de la muestra. Ausente ⇒ mediana de universo mixto (snapshot
     // pre-segmentación): la frase NO declara universo. Ver sobreprecio-hallazgo.ts.
     universo?: CondicionMercado;
+    // La mediana usó precios estimados de obra nueva (02-oct-2026): «referencia estimada».
+    estimada?: boolean;
     // Cuartiles de la misma muestra y posición del sujeto entre ellos (21-sep-2026).
     // Copiados tal cual de precioVsComuna: el hallazgo no recalcula nada. Ausentes en
     // filas cuyo snapshot es anterior al campo.

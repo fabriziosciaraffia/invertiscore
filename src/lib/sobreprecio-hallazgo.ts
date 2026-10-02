@@ -62,11 +62,16 @@ const fmtUF = (n: number) =>
  * tiene. Sin N (>0) tampoco se rotula — una frase que dijera "0 publicaciones"
  * sería peor que la genérica.
  */
-function refMediana(universo: CondicionMercado | undefined, n: number): string {
+function refMediana(universo: CondicionMercado | undefined, n: number, estimada?: boolean): string {
   if (!universo || !Number.isFinite(n) || n <= 0) return "la mediana de la comuna";
   const tipo = universo === "nuevo" ? "nuevos" : "usados";
-  return `la mediana de ${n.toLocaleString("es-CL")} publicaciones de departamentos ${tipo} de la comuna`;
+  // Obra nueva con precios estimados (02-oct-2026): la referencia lo declara.
+  return `la mediana de ${n.toLocaleString("es-CL")} publicaciones de departamentos ${tipo} de la comuna${estimada ? REFERENCIA_ESTIMADA_SUFIJO : ""}`;
 }
+
+/** Lo que dice el informe cuando la mediana usó precios estimados de obra nueva. */
+export const REFERENCIA_ESTIMADA = "referencia estimada";
+const REFERENCIA_ESTIMADA_SUFIJO = ` (${REFERENCIA_ESTIMADA})`;
 
 /**
  * Construye el proto-hallazgo de sobreprecio reusando metrics.precioVsComuna.
@@ -116,7 +121,7 @@ export function buildHallazgoSobreprecio(
 
   const sujetoFmt = fmtUF(sujetoUfM2);
   const medianaFmt = fmtUF(medianaComunaUfM2);
-  const ref = refMediana(pvc.universo, pvc.n);
+  const ref = refMediana(pvc.universo, pvc.n, pvc.estimada);
 
   let fraseCanonica: string;
   let titular: string;
@@ -169,6 +174,7 @@ export function buildHallazgoSobreprecio(
       n: pvc.n,
       comuna: comuna.trim(),
       ...(pvc.universo ? { universo: pvc.universo } : {}),
+      ...(pvc.estimada ? { estimada: true } : {}),
       // Cuartiles y posición, copiados de FASE A sin recalcular (round-una-vez, a 1
       // decimal como la mediana). Solo cuando el snapshot los trae.
       ...(pvc.p25UfM2 !== undefined ? { p25UfM2: pvc.p25UfM2 == null ? null : Math.round(pvc.p25UfM2 * 10) / 10 } : {}),

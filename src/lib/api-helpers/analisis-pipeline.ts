@@ -148,6 +148,8 @@ export interface MedianaComunaSnapshot {
   n: number;
   resolvedAt: string;
   nivel: string;
+  /** La muestra usó precios estimados de obra nueva (comuna-stats.ts › precioVentaNueva). */
+  estimada?: boolean;
   /** Universo de la muestra (nuevo|usado). OPCIONAL: los snapshots anteriores al
    *  fix de segmentación no lo tienen, y su mediana es de universo MIXTO. Ausente
    *  ⇒ la prosa no declara universo (no se le pone etiqueta a un número que no la
@@ -163,7 +165,7 @@ export interface MedianaComunaSnapshot {
 /** Envuelve el `{ mediana, n }` del prefetch con el timestamp y el nivel de
  * procedencia, en el shape único que persisten los flujos de creación. */
 export function buildMedianaSnapshot(
-  resuelta: { mediana: number | null; n: number; universo?: CondicionMercado; p25?: number | null; p75?: number | null }
+  resuelta: { mediana: number | null; n: number; universo?: CondicionMercado; p25?: number | null; p75?: number | null; estimada?: boolean }
 ): MedianaComunaSnapshot {
   return {
     mediana: resuelta.mediana,
@@ -175,6 +177,8 @@ export function buildMedianaSnapshot(
     // anterior al campo», que es ausencia.
     ...(resuelta.p25 !== undefined ? { p25: resuelta.p25 } : {}),
     ...(resuelta.p75 !== undefined ? { p75: resuelta.p75 } : {}),
+    // «Referencia estimada» (02-oct-2026): viaja con la foto para que el informe lo siga diciendo.
+    ...(resuelta.estimada ? { estimada: true } : {}),
   };
 }
 

@@ -180,6 +180,7 @@ async function ejemploDe(sb: SupabaseClient, fila: FilaEjemplo, ufLive: number, 
               n: snap.n ?? 0,
               p25: snap.p25,
               p75: snap.p75,
+              ...(snap.estimada ? { estimada: true } : {}),
               capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(sb, input, uf)),
             }
           : await prefetchMedianaComunaVenta(sb, input, uf);

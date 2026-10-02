@@ -19,6 +19,7 @@ import {
   type MuestraArriendo,
 } from "@/lib/arriendo-referencia";
 import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
+import { REFERENCIA_ESTIMADA } from "@/lib/sobreprecio-hallazgo";
 
 /**
  * LA ZONA · LTR (goal "LTR hereda piezas compartidas", 05-sep-2026).
@@ -40,7 +41,7 @@ import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
  */
 
 export interface ZonaLtr {
-  m2: { mediana: number; tuya: number; desviacionPct: number; n: number; universo?: "nuevo" | "usado"; comuna: string; fecha: string } | null;
+  m2: { mediana: number; tuya: number; desviacionPct: number; n: number; universo?: "nuevo" | "usado"; estimada?: boolean; comuna: string; fecha: string } | null;
   arriendo: { min: number; max: number; n: number; tuyo: number; posicion: "dentro" | "sobre" | "bajo" | null; fecha: string | null } | null;
   valorizacion: { valor10: number; anualizada: number; fuente: string; rango: string; propia: boolean };
 }
@@ -61,6 +62,7 @@ export function buildZonaLtr(p: {
           desviacionPct: v.desviacionPct,
           n: v.n,
           universo: v.universo,
+          ...(v.estimada ? { estimada: true } : {}),
           comuna: v.comuna || p.comuna,
           fecha: p.medianaResolvedAt || new Date().toISOString(),
         }
@@ -296,7 +298,7 @@ export function ComparablesLtr({
   const universo = m2?.universo === "nuevo" ? " nuevos" : m2?.universo === "usado" ? " usados" : "";
   const fuente = [
     ar ? `arriendos publicados ${donde} · ${ar.n} ${ar.n === 1 ? "aviso" : "avisos"}` : null,
-    m2 && m2.mediana != null && m2.n > 0 ? `venta: ${m2.n} deptos${universo} de ${comuna}` : null,
+    m2 && m2.mediana != null && m2.n > 0 ? `venta: ${m2.n} deptos${universo} de ${comuna}${m2.estimada ? ` · ${REFERENCIA_ESTIMADA}` : ""}` : null,
     `valorización: ${zona.valorizacion.fuente} ${zona.valorizacion.rango}`,
     zoneInsight ? "lugares: Google Places" : null,
   ].filter(Boolean) as string[];
@@ -446,6 +448,7 @@ export interface ZonaLtrR2 {
         desviacionPct: number | null;
         n: number;
         universo?: "nuevo" | "usado";
+        estimada?: boolean;
         fecha: string;
       }
     | null;
@@ -493,6 +496,7 @@ export function buildZonaLtrR2(p: {
           desviacionPct: p.base.m2 ? p.base.m2.desviacionPct : null,
           n: p.base.m2?.n ?? 0,
           universo: p.base.m2?.universo,
+          ...(p.base.m2?.estimada ? { estimada: true } : {}),
           fecha: p.base.m2?.fecha ?? "",
         }
       : null;
@@ -633,5 +637,5 @@ function glosaM2(m2: ZonaLtrR2["m2"]): ReactNode {
   if (!m2) return "Sin precio o superficie para calcularlo.";
   if (m2.mediana == null || m2.n <= 0) return "Sin mediana comunal de venta con que compararlo.";
   const universo = m2.universo === "nuevo" ? " nuevos" : m2.universo === "usado" ? " usados" : "";
-  return `${m2.n} publicaciones de venta de deptos${universo}${m2.fecha ? ` · ${fechaCortaCL(m2.fecha)}` : ""}.`;
+  return `${m2.n} publicaciones de venta de deptos${universo}${m2.fecha ? ` · ${fechaCortaCL(m2.fecha)}` : ""}${m2.estimada ? ` · ${REFERENCIA_ESTIMADA}` : ""}.`;
 }

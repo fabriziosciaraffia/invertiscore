@@ -16,6 +16,9 @@
 //
 // Sin JWT, pero con headers de navegador y por el proxy, como todo fetch a la fuente.
 import { proxyDispatcher } from "./toctoc";
+import { PREFIJO_FUERA_DE_LA_FICHA, PREFIJO_VISTA_UNIDADES } from "../../avisos/marcas-unidades";
+
+export { PREFIJO_FUERA_DE_LA_FICHA, PREFIJO_VISTA_UNIDADES };
 
 const API_FICHA = "https://www.toctoc.com/propiedades/1.0/api-ficha";
 
@@ -146,11 +149,32 @@ export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<Unidade
 
 // ─── Disponibilidad: qué unidad sigue, cuál se vendió ───────────────────────
 
-/** Marca de «vista por el pase de unidades» en `seen_pass_id`. El pase de usados (backfill-toctoc)
- *  usa la misma columna, pero solo en su universo (condicion usado o null): no se pisan. */
-export const PREFIJO_VISTA_UNIDADES = "unidades@";
+/** Marcas en `seen_pass_id` (ver avisos/marcas-unidades.ts): vista hoy, o nunca listada por la ficha. */
 export function marcaVistaUnidades(ahora: Date): string {
   return `${PREFIJO_VISTA_UNIDADES}${ahora.toISOString()}`;
+}
+export function marcaFueraDeLaFicha(ahora: Date): string {
+  return `${PREFIJO_FUERA_DE_LA_FICHA}${ahora.toISOString()}`;
+}
+
+/**
+ * El precio ESTIMADO de un depto disponible (02-oct-2026): interpolado entre el «desde» y el «hasta»
+ * del proyecto según sus m², entre el más chico y el más grande de los disponibles. Medido contra
+ * los precios reales del 29-sep al 01-oct (9.031 unidades, 466 proyectos): error mediano 4,4% y p90
+ * 14% por unidad; 3,4% en la mediana de la celda comuna × dormitorios, sin sesgo. Por eso entra SOLO
+ * a la mediana de venta nueva (comuna-stats.ts › precioVentaNueva) y nunca evalúa una unidad.
+ * null sin rango o sin m².
+ */
+export function estimarPrecioUnidadUF(
+  rango: UnidadesProyecto["rango"],
+  m2: number | null,
+  m2Min: number,
+  m2Max: number,
+): number | null {
+  if (!rango || !(m2 != null && m2 > 0) || !(m2Min > 0)) return null;
+  if (!(m2Max > m2Min)) return Math.round((rango.desdeUF + rango.hastaUF) / 2);
+  const t = Math.min(1, Math.max(0, (m2 - m2Min) / (m2Max - m2Min)));
+  return Math.round(rango.desdeUF + (rango.hastaUF - rango.desdeUF) * t);
 }
 
 /** La etiqueta de la unidad en su source_id (`url#801 B`). El `~` final era el desempate del scraper
@@ -178,20 +202,21 @@ export interface FilaUnidad { id: string; source_id: string; is_active: boolean 
  *     (numeración cambiada, otro proyecto): no se marca nada y se reporta.
  */
 export function planDisponibilidad(filas: FilaUnidad[], disponibles: UnidadDisponible[]): {
-  vistas: string[]; vendidas: string[]; nuevas: number; fuera: number; sinCruce: boolean;
+  vistas: string[]; vendidas: string[]; nuevas: number; fuera: string[]; sinCruce: boolean;
 } {
-  if (disponibles.length === 0) return { vistas: [], vendidas: [], nuevas: 0, fuera: 0, sinCruce: false };
+  if (disponibles.length === 0) return { vistas: [], vendidas: [], nuevas: 0, fuera: [], sinCruce: false };
   const enLista = new Set(disponibles.map((d) => d.numero.trim()));
   const nuestras = new Set(filas.map((f) => etiquetaDeUnidad(f.source_id)));
   const vistas = filas.filter((f) => enLista.has(etiquetaDeUnidad(f.source_id))).map((f) => f.id);
   const nuevas = Array.from(enLista).filter((n) => !nuestras.has(n)).length;
   const activas = filas.filter((f) => f.is_active !== false);
   if (activas.length > 0 && !activas.some((f) => enLista.has(etiquetaDeUnidad(f.source_id)))) {
-    return { vistas: [], vendidas: [], nuevas, fuera: 0, sinCruce: true };
+    return { vistas: [], vendidas: [], nuevas, fuera: [], sinCruce: true };
   }
   const faltan = activas.filter((f) => !enLista.has(etiquetaDeUnidad(f.source_id)));
   const vendidas = faltan.filter((f) => (f.seen_pass_id ?? "").startsWith(PREFIJO_VISTA_UNIDADES)).map((f) => f.id);
-  return { vistas, vendidas, nuevas, fuera: faltan.length - vendidas.length, sinCruce: false };
+  const yaVendidas = new Set(vendidas);
+  return { vistas, vendidas, nuevas, fuera: faltan.filter((f) => !yaVendidas.has(f.id)).map((f) => f.id), sinCruce: false };
 }
 
 /** Id numérico de proyecto desde una URL compranuevo (el número final del path).

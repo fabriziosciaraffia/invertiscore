@@ -138,6 +138,8 @@ export type MedianaComunaInyectada = {
   mediana: number | null;
   n: number;
   universo?: CondicionMercado;
+  /** La muestra usó precios ESTIMADOS de obra nueva (ver `precioVentaNueva`): el informe lo dice. */
+  estimada?: boolean;
   /** Cuartiles UF/m² de la MISMA muestra que la mediana. Opcionales: los snapshots
    *  anteriores al 21-sep-2026 no los traen, y sin ellos el motor no inventa posición. */
   p25?: number | null;
@@ -167,6 +169,53 @@ export interface MedianaComunaVenta {
    *  mediana es null: salen de las mismas filas, así que no existe uno sin la otra. */
   p25: number | null;
   p75: number | null;
+  /** Obra nueva (02-oct-2026): la muestra usó precios estimados desde el rango del proyecto, porque
+   *  el precio real de esas unidades pasó los 90 días. Ausente cuando no usó ninguno. */
+  estimada?: boolean;
+  nEstimados?: number;
+}
+
+/**
+ * Días que vale el precio REAL de una unidad de obra nueva antes de ceder al estimado.
+ *
+ * Desde el 02-oct-2026 la fuente ya no publica el precio por unidad (ver toctoc-unidades.ts); los
+ * reales que tenemos son del 29-sep al 01-oct. El pase de unidades guarda para cada depto disponible
+ * un precio ESTIMADO —interpolado entre el «desde» y el «hasta» del proyecto según sus m², error
+ * mediano 4,4% y p90 14% por unidad, 3,4% en la mediana de la celda— en `precio_estimado_uf`.
+ * Decisión de Fabrizio (02-oct-2026): el estimado entra SOLO en esta mediana, cuando el real pasa los
+ * 90 días, y el informe dice «referencia estimada». Nunca evalúa una unidad puntual: no vive en
+ * `precio`, y ningún lector fuera de esta función lo toca (tier UNIDADES).
+ */
+export const VIGENCIA_PRECIO_REAL_DIAS = 90;
+
+/** Instante de una columna `timestamp` sin zona (scraped_at viene sin «Z»): se lee como UTC. */
+function instante(v: unknown): number {
+  if (v == null || v === "") return NaN;
+  const s = String(v);
+  return Date.parse(/[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+}
+
+/**
+ * El precio con que una fila de VENTA NUEVA entra a la mediana, para una ventana que empieza en
+ * `desdeMs`: el real mientras tenga menos de VIGENCIA_PRECIO_REAL_DIAS; si no, el estimado de la
+ * unidad si es fresco; si no, el real si cae en la ventana. null = la fila no entra.
+ * Por unidad, no por celda: cada depto cuenta una vez, con su mejor precio, y no hay un día en que
+ * la mediana salte de una población a otra.
+ */
+export function precioVentaNueva(
+  r: Record<string, unknown>,
+  desdeMs: number,
+  ahoraMs: number = Date.now(),
+): { precio: number; moneda: string; estimado: boolean } | null {
+  const real = Number(r.precio) > 0 ? { precio: Number(r.precio), moneda: String(r.moneda ?? "UF"), estimado: false } : null;
+  const tReal = instante(r.scraped_at);
+  if (real && tReal >= desdeMs && tReal >= ahoraMs - VIGENCIA_PRECIO_REAL_DIAS * 864e5) return real;
+  const est = Number(r.precio_estimado_uf);
+  if (est > 0 && instante(r.precio_estimado_at) >= desdeMs && esUnidadDeObraNueva(r.source_id)) {
+    return { precio: est, moneda: "UF", estimado: true };
+  }
+  if (real && tReal >= desdeMs) return real;
+  return null;
 }
 
 // Alias de comuna (form/UI/prosa) -> forma canónica almacenada en scraped_properties.
@@ -260,11 +309,10 @@ export async function getComunaMedianaVentaUF(
     for (let off = 0; ; off += PAGINA_POSTGREST) {
       let q = supabase
         .from("scraped_properties")
-        .select("precio, moneda, superficie_m2, dormitorios, condicion, source_id")
+        .select("precio, moneda, superficie_m2, dormitorios, condicion, source_id, scraped_at, precio_estimado_uf, precio_estimado_at")
         .eq("comuna", comunaNorm)
         .eq("type", "venta")
         .eq("is_active", true)
-        .gte("scraped_at", desde)
         .gte("superficie_m2", supMinV)
         .lte("superficie_m2", supMaxV)
         .order("id", { ascending: true })
@@ -273,9 +321,12 @@ export async function getComunaMedianaVentaUF(
       // comparaciones con NULL devuelven NULL, y un .eq("condicion","usado") deja fuera
       // las filas sin valor. El insert defaultea a "usado" (scrape-properties/route.ts),
       // así que las filas pre-columna pertenecen a ese universo — el .or las recupera.
+      //
+      // Frescura: en usado, la del aviso. En obra nueva entra también la unidad cuyo precio ESTIMADO es
+      // fresco aunque el real no lo sea; cuál de los dos usa lo decide `precioVentaNueva`, abajo.
       q = condicion === "nuevo"
-        ? q.eq("condicion", "nuevo")
-        : q.or("condicion.is.null,condicion.eq.usado");
+        ? q.eq("condicion", "nuevo").or(`scraped_at.gte.${desde},precio_estimado_at.gte.${desde}`)
+        : q.or("condicion.is.null,condicion.eq.usado").gte("scraped_at", desde);
       // Dormitorios: filtro EXACTO en usado; en obra nueva depende del TIPO DE
       // FILA y por eso se resuelve abajo, en memoria (ver filtrarTipologiaObraNueva).
       //
@@ -322,7 +373,13 @@ export async function getComunaMedianaVentaUF(
     // PostgREST con NOT LIKE descartaría las filas sin valor en vez de dejarlas
     // pasar (la trampa del NULL). Se aplica ANTES de que la escalera de frescura
     // cuente, para que el peldaño se decida sobre las filas que van a la mediana.
-    return condicion === "nuevo" ? filtrarTipologiaObraNueva(out, dormitorios) : out;
+    if (condicion !== "nuevo") return out;
+    const desdeMs = Date.parse(desde);
+    const conPrecio = out.flatMap((r) => {
+      const p = precioVentaNueva(r, desdeMs);
+      return p ? [{ ...r, precio: p.precio, moneda: p.moneda, _estimado: p.estimado } as Record<string, unknown>] : [];
+    });
+    return filtrarTipologiaObraNueva(conPrecio, dormitorios);
   }
 
   // Escalera de frescura por universo: se sube un peldaño solo si el universo
@@ -340,6 +397,7 @@ export async function getComunaMedianaVentaUF(
   }
 
   const m2sUF: number[] = [];
+  let nEstimados = 0;
   for (const r of ventas) {
     const sup = Number(r.superficie_m2);
     const precio = Number(r.precio);
@@ -350,6 +408,7 @@ export async function getComunaMedianaVentaUF(
     const factor = r.condicion === "usado" ? getFactorCierre(comunaNorm) : 1;
     const precioUF = (r.moneda === "UF" ? precio : precio / (ufValue || 1)) * factor;
     m2sUF.push(precioUF / sup);
+    if (r._estimado === true) nEstimados++;
   }
   if (m2sUF.length < MIN_VENTAS_MEDIANA) {
     return { mediana: null, n: m2sUF.length, universo: condicion, ventanaDias: null, p25: null, p75: null };
@@ -363,5 +422,6 @@ export async function getComunaMedianaVentaUF(
     ventanaDias: ventanaUsada,
     p25: Math.round(percentil(m2sUF, 0.25) * 100) / 100,
     p75: Math.round(percentil(m2sUF, 0.75) * 100) / 100,
+    ...(nEstimados > 0 ? { estimada: true, nEstimados } : {}),
   };
 }

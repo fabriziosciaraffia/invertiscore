@@ -64,10 +64,12 @@ export function buildPrecioVsComuna(p: {
    *  emite nada); `null` = se midió y no alcanzó. */
   p25UfM2?: number | null;
   p75UfM2?: number | null;
+  /** La mediana usó precios estimados de obra nueva: el informe dice «referencia estimada». */
+  estimada?: boolean;
 }): PrecioVsComuna {
   const sujetoUfM2 = Math.round(p.sujetoUfM2 * 10) / 10;
   const mediana = p.medianaComunaUfM2;
-  const universo = p.universo ? { universo: p.universo } : {};
+  const universo = { ...(p.universo ? { universo: p.universo } : {}), ...(p.estimada ? { estimada: true as const } : {}) };
   // Los cuartiles viajan solo si el caller los trae (aunque sean null): ausencia ≠ null.
   const traeCuartiles = p.p25UfM2 !== undefined || p.p75UfM2 !== undefined;
   const cuartiles = traeCuartiles ? { p25UfM2: p.p25UfM2 ?? null, p75UfM2: p.p75UfM2 ?? null } : {};

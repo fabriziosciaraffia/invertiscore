@@ -74,7 +74,7 @@ export interface BuildStrHallazgosCtx {
   /** mediana comunal de venta UF/m² ya resuelta (sobreprecio-sync). Los cuartiles son
    *  opcionales: STR resuelve la mediana viva y los trae; una fila persistida sin ellos no. */
   mediana: {
-    mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null;
+    mediana: number | null; n: number; universo?: "nuevo" | "usado"; p25?: number | null; p75?: number | null; estimada?: boolean;
     /** Referencia STR contra STR de la zona (viaja con la mediana desde prefetchMercadoStr): de
      *  acá sale el umbral de rentabilidad_str, sin prima. Ausente ⇒ sin referencia (5%). */
     strRefZona?: import("./strref-zona").StrRefZonaSnapshot | null;
@@ -213,6 +213,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       universo: ctx.mediana.universo,
       p25UfM2: ctx.mediana.p25,
       p75UfM2: ctx.mediana.p75,
+      estimada: ctx.mediana.estimada,
     });
     if (pvc.confiable && pvc.desviacionPct != null) {
       out.push(

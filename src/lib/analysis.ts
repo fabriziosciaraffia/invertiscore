@@ -586,6 +586,8 @@ function calcMetrics(
     // fraseCanonica: es lo que evita volver a rotular "la mediana de la comuna"
     // a una mediana que es de un solo universo.
     universo: medianaComunaVentaUF?.universo,
+    // «Referencia estimada» (02-oct-2026): la mediana de obra nueva usó precios estimados.
+    estimada: medianaComunaVentaUF?.estimada,
     // Cuartiles de la misma muestra (21-sep-2026): viajan del snapshot o de la query,
     // igual que el universo. Ausentes en filas anteriores al campo.
     p25UfM2: medianaComunaVentaUF?.p25,

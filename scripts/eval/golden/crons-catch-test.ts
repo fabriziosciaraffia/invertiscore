@@ -293,7 +293,8 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   F5 el pase semanal ........................................... 2 · no corre cada día
 //   F6 la frescura por scraped_at (la fecha del precio) ........... 2 · no lee la marca de vista
 //   F7 fuera de la vigilancia .................................... 2 · no está vigilado
-//   F8 la entrega no se escribe (en AVISOS §1) ................... 1 · no pasa la fecha de entrega
+//   F8 la entrega no se escribe (en AVISOS §1; re-corrida sobre la llamada de las vistas, con F9:
+//      la función ignora la entrega; 2/2) ........................... 1 · no pasa la fecha de entrega
 //   Z1 vuelve al calendario de vercel.json .................... 2 · sigue en el calendario
 //   Z2 vuelve a la vigilancia .................................. 2 · alertaría todos los días
 //   Z3 la ruta no dice que está congelada ...................... 2 · no dice que está congelada

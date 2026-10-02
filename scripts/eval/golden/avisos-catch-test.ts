@@ -42,7 +42,7 @@ export function runAvisosTier(): { hard: number } {
   // Desde el 02-oct-2026 la entrega sale de la ficha nueva (/property/<id>) y el pase la escribe en cada
   // unidad que sigue disponible.
   const uni = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
-  if (!/\.update\(\{ is_active: true, seen_pass_id: marca, \.\.\.\(v\.fechaEntrega \? \{ fecha_entrega: v\.fechaEntrega \} : \{\}\) \}\)/.test(uni)) F("1 · el pase de unidades no pasa la fecha de entrega a cada unidad disponible");
+  if (!/vistasFilas\.push\(\{ id: f\.id, estimado_uf: [^\n]*, fecha_entrega: r\.fechaEntrega \}\)/.test(uni) || !/fecha_entrega = coalesce\(f\.fecha_entrega, s\.fecha_entrega\)/.test(leer("supabase/migrations/20261002_unidades_precio_estimado.sql"))) F("1 · el pase de unidades no pasa la fecha de entrega a cada unidad disponible");
   const ent = parsearProyecto({ data: { minimunPricesUF: 1, characteristics: [{ name: "Fecha de entrega: ", value: "2° Semestre 2026" }] } }).fechaEntrega;
   const inm = parsearProyecto({ data: { characteristics: [{ name: "Estado del proyecto: ", value: "Entrega inmediata" }] } }).fechaEntrega;
   if (ent !== "2° Semestre 2026" || inm !== "Inmediata") F(`1 · la ficha nueva no da la entrega (${ent} · ${inm})`);

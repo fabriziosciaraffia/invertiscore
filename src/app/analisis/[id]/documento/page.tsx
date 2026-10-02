@@ -122,6 +122,7 @@ export default async function DocumentoLTRPage({
             n: medianaSnapshot.n ?? 0,
             p25: medianaSnapshot.p25,
             p75: medianaSnapshot.p75,
+            ...(medianaSnapshot.estimada ? { estimada: true } : {}),
             capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
           }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))

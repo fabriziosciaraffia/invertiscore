@@ -51,7 +51,7 @@ type ResultadoLeido = {
 type FilaComparar = {
   id: string; nombre: string | null; comuna: string | null; tipo_analisis: string | null; created_at: string;
   input_data: Record<string, unknown> | null; results: unknown;
-  mediana_comuna_snapshot: { mediana: number; n?: number; p25?: number; p75?: number } | null;
+  mediana_comuna_snapshot: { mediana: number; n?: number; p25?: number; p75?: number; estimada?: boolean } | null;
   capref_comuna_snapshot: unknown; strref_zona_snapshot: unknown;
 };
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -78,7 +78,7 @@ export async function columnasComparar(sb: SupabaseClient, userId: string, ids: 
         const snap = f.mediana_comuna_snapshot;
         const med = inp
           ? snap != null
-            ? { mediana: snap.mediana, n: snap.n ?? 0, p25: snap.p25, p75: snap.p75, capRefComuna: f.capref_comuna_snapshot ?? (await prefetchCapRefComuna(sb, inp as never, uf)) }
+            ? { mediana: snap.mediana, n: snap.n ?? 0, p25: snap.p25, p75: snap.p75, ...(snap.estimada ? { estimada: true } : {}), capRefComuna: f.capref_comuna_snapshot ?? (await prefetchCapRefComuna(sb, inp as never, uf)) }
             : await prefetchMedianaComunaVenta(sb, inp as never, uf)
           : undefined;
         const r = (inp ? recomputeResultsForLegacy(inp as never, uf, med as never, asOf) : f.results) as ResultadoLeido;
