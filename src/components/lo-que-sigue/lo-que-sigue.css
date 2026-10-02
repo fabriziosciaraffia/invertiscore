@@ -150,4 +150,5 @@
 .lqs-postpago .lqs-lead { margin: 0 0 18px; }
 .lqs-tk .lqs-precio-t { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.1; margin: 14px 0 4px; color: var(--doc-tx); font-variant-numeric: tabular-nums; }
 .lqs-tk .lqs-incluye { margin: 12px 0 0; font: 14px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); }
+.lqs-tk .lqs-urgencia { margin: 6px 0 0; font: 600 14px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); }
 .lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }

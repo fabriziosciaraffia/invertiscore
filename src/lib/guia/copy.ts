@@ -12,6 +12,11 @@ export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 export const TICKET_INCLUYE_GUIA =
   "Incluye una selección de deptos publicados parecidos a este, ya revisados con tu pie y tu plazo. Analizas el que quieras con un clic.";
 
+// 02-oct-2026 (decisión de Fabrizio): debajo de la línea de la selección, la urgencia. Esta es la versión
+// GENÉRICA: sin cifras ni comunas. El 15-oct-2026 la medición de escasez la reemplaza por la versión con
+// datos solo donde la muestra alcance; donde no, queda esta. El tier GUIA-BUSQUEDA fija que no lleve números.
+export const TICKET_URGENCIA_GENERICA = "Los deptos que convienen se van rápido. Revísalos hoy.";
+
 // 01-oct-2026: después de pagar, una sola idea —«compraste 3 análisis; empieza por estos»—. El título
 // y el cuerpo se funden; «ajustada» y «ninguno» van debajo del título en lugar del cuerpo.
 // 02-oct-2026: el título y «usa 1 de tus N» dicen el SALDO REAL (GUIA_SALDO, abajo), no «3» fijo: quien

@@ -37,7 +37,8 @@
 // ============================================================================
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, TICKET_INCLUYE_GUIA, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
+import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
+import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
 import { DESPUES_DE_PAGAR, ESTAS_DENTRO } from "../../../src/lib/lo-que-sigue/copy";
 import { pagoAbreElInforme, urlGuia } from "../../../src/lib/lo-que-sigue/retorno-pago";
 import { GUIA_ACTIVA, hayGuia } from "../../../src/lib/guia/activa";
@@ -99,7 +100,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
   // Las frases con dato (funciones) se barren con un ejemplo.
-  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), TICKET_INCLUYE_GUIA, ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA, ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));
@@ -117,6 +118,13 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (hayGuia("str") || hayGuia("ltr") !== GUIA_ACTIVA) F("2 · hayGuia no es «guía activa y renta larga»");
   const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   if (!/\{hayGuia\(ctx\.modalidad\) && <p className="lqs-incluye" data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}/.test(tk)) F("2 · el ticket dice la línea de la guía sin preguntar si la guía existe (hayGuia)");
+  // 2b · la urgencia genérica (02-oct-2026): la frase aprobada, sin números ni comunas, debajo de la línea
+  // de la selección y con el mismo predicado. La versión con datos (15-oct) la reemplaza donde la muestra alcance.
+  // Acta (02-oct-2026), en rojo: T1 con cifra · T2 con comuna · T3 sin hayGuia · T4 sin la línea: 4/4.
+  if (TICKET_URGENCIA_GENERICA !== "Los deptos que convienen se van rápido. Revísalos hoy.") F("2 · la urgencia del ticket no es la frase aprobada");
+  if (/\d/.test(TICKET_URGENCIA_GENERICA)) F("2 · la urgencia genérica lleva números");
+  if ((COMUNAS_DISPONIBLES as readonly string[]).some((c) => TICKET_URGENCIA_GENERICA.includes(c))) F("2 · la urgencia genérica nombra una comuna");
+  if (!/data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}\s*(?:\{\s*\}\s*)?\{hayGuia\(ctx\.modalidad\) && <p className="lqs-urgencia" data-lqs="ticket-urgencia">\{TICKET_URGENCIA_GENERICA\}<\/p>\}/.test(tk)) F("2 · la urgencia no va debajo de la línea de la selección, con el mismo predicado");
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
   if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
   if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(urlGuia\(analysisId, pago\)\)/.test(gb) || !urlGuia("x").startsWith("/api/lo-que-sigue/guia?a=")) F("2 · la guía no tiene ruta o el componente no la pide");

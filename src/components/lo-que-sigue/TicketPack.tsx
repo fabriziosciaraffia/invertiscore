@@ -18,7 +18,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { fmtCLP } from "@/lib/pricing";
 import { leadTicket, TICKET_PACK, veredictoLqs } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
-import { TICKET_INCLUYE_GUIA } from "@/lib/guia/copy";
+import { TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA } from "@/lib/guia/copy";
 import { hayGuia } from "@/lib/guia/activa";
 import { abrirTicket, cerrarTicket, entrarZonaCierre, salirZonaCierre, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
@@ -213,6 +213,8 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
               <p className="lqs-ahorro">{TICKET_PACK.ahorro(fmtCLP(PACK_UNITARIO_CLP), fmtCLP(PACK_UNITARIO_REFERENCIA_CLP))}</p>
               {/* La guía que viene con el pack: solo donde existe (renta larga), el mismo predicado que la monta. */}
               {hayGuia(ctx.modalidad) && <p className="lqs-incluye" data-lqs="ticket-incluye">{TICKET_INCLUYE_GUIA}</p>}
+              {/* La urgencia, genérica hasta la medición del 15-oct (sin cifras ni comunas), bajo la línea de la selección. */}
+              {hayGuia(ctx.modalidad) && <p className="lqs-urgencia" data-lqs="ticket-urgencia">{TICKET_URGENCIA_GENERICA}</p>}
               <div className="lqs-reloj">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                 <span>{TICKET_PACK.vence(dia, "")}<b>{hora}</b></span>
