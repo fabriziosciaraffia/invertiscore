@@ -15,6 +15,7 @@
 //   6 · EL CLIC relee la ficha; «Analizar este» desde el correo usa la combinación de SU selección.
 //   7 · LOS EVENTOS: enviado, abierto, clic, compra que vino del correo, regalo usado.
 //   8 · LA BAJA de un clic (GET del pie y POST del List-Unsubscribe) y las tablas cerradas al cliente.
+//   9 · LA PRUEBA A/B (02-oct-2026): abierto, clic y compra llevan la variante; el regalo dice «Vence el [fecha].».
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
@@ -22,7 +23,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DIAS_VIGENCIA_REGALO, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  DIAS_VIGENCIA_REGALO, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COLOR_VEREDICTO, SEMANAL, URL_BANDA_SEMANAL, correoSemanal, textoBusca, type DatosCorreoSemanal } from "../../../src/lib/email/correo-semanal";
 import { eventoSemanalAbierto } from "../../../src/lib/medicion-correo";
@@ -133,7 +134,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   // 6 · el clic y el análisis
   const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
   if (!/await chequearAlClic\(admin, avisoId\)/.test(clic) || !/&d=1/.test(clic)) F("6 · el clic no relee la ficha");
-  if (!/if \(ir === "comprar"\) return volver\(RUTA_SUELTO_SEMANAL\);/.test(clic)) F("6 · «Analizar uno · $9.990» no va a comprar el suelto");
+  if (!/if \(ir === "comprar"\) return volver\(rutaSueltoSemanal\(sel\.variante as "banda" \| "tarjetas" \| null\)\);/.test(clic)) F("6 · «Analizar uno · $9.990» no va a comprar el suelto");
   if (!/"clic", almacenPublicacion\(admin\), bajarFicha/.test(srv)) F("6 · el chequeo del clic no usa la memoria y el tope de siempre");
   const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
   if (!/typeof b\.semanal === "string"\s*\? await combinacionSemanal\(admin, b\.semanal, user\.id, o\.analysisId, b\.avisoId\)/.test(ruta)) F("6 · «Analizar este» desde el correo no usa la combinación de su selección");
@@ -143,10 +144,10 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/event: "semanal_enviado"/.test(srv)) F("7 · falta semanal_enviado");
   const ab = eventoSemanalAbierto({ event: "correo_abierto", distinctId: "u", uuid: "x", properties: { tipo: "semanal" } });
   if (ab?.event !== "semanal_abierto" || ab.uuid === "x" || eventoSemanalAbierto({ event: "correo_abierto", distinctId: "u", properties: { tipo: "bienvenida" } }) !== null || eventoSemanalAbierto({ event: "correo_clic", distinctId: "u", properties: { tipo: "semanal" } }) !== null) F("7 · la apertura del semanal no da semanal_abierto (o lo da de más)");
-  if (!/const semanal = eventoSemanalAbierto\(evento\);\s*if \(semanal\) await capturarServidor\(semanal\);/.test(sinComentarios(leer("src/app/api/webhooks/resend/route.ts")))) F("7 · el webhook no emite semanal_abierto");
+  if (!/const semanal = eventoSemanalAbierto\(evento, carga\);\s*if \(semanal\) await capturarServidor\(semanal\);/.test(sinComentarios(leer("src/app/api/webhooks/resend/route.ts")))) F("7 · el webhook no emite semanal_abierto");
   if (!/event: "semanal_clic"/.test(clic)) F("7 · falta semanal_clic");
   const conf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  if (!/origen === "semanal"\) \{\s*await capturarServidor\(\{ event: "semanal_compra"/.test(conf) || !/\.\.\.\(prePaymentData\?\.origen === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(conf)) F("7 · la compra que vino del correo no se mide (o se pierde el origen al confirmar)");
+  if (!/deCorreo\?\.origen === "semanal"\) \{\s*await capturarServidor\(\{ event: "semanal_compra"/.test(conf) || !/\.\.\.\(prePaymentData\?\.origen === "semanal" \? \{ origen: "semanal",/.test(conf)) F("7 · la compra que vino del correo no se mide (o se pierde el origen al confirmar)");
   if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/searchParams\.get\("origen"\) === "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
   const cg = sinComentarios(leer("src/lib/credits-grant.ts"));
   if (!/if \(updated && grant\.source === FUENTE_REGALO_SEMANAL\) \{\s*void capturarServidor\(\{ event: "semanal_regalo_usado"/.test(cg) || !/\.select\("id, remaining, source"\)/.test(cg)) F("7 · el regalo usado no se mide");
@@ -157,6 +158,20 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/"List-Unsubscribe": `<\$\{urlBaja\}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"/.test(leer("src/lib/email.ts"))) F("8 · el correo no lleva List-Unsubscribe de un clic");
   const mig = leer("supabase/migrations/20261002_correo_semanal.sql");
   if (!/revoke all on public\.semanal_selecciones from anon, authenticated;/.test(mig) || !/from public, anon, authenticated;/.test(mig) || !/unique \(user_id, semana\)/.test(mig)) F("8 · la selección o su RPC quedan abiertas al cliente, o se puede armar dos veces por semana");
+
+  // 9 · la prueba A/B y el vencimiento
+  if (rutaSueltoSemanal("banda") !== "/checkout?product=single&origen=semanal&variante=banda" || rutaSueltoSemanal(null) !== RUTA_SUELTO_SEMANAL) F("9 · la compra del correo no lleva la variante");
+  const abV = eventoSemanalAbierto({ event: "correo_abierto", distinctId: "u", uuid: "x", properties: { tipo: "semanal" } }, { data: { tags: [{ name: "variante", value: "tarjetas" }] } });
+  if (abV?.properties?.variante !== "tarjetas") F("9 · semanal_abierto no dice la variante");
+  if (!/tags: \[\{ name: "variante", value: variante \}\]/.test(leer("src/lib/email.ts")) || !/sendSemanalEmail\(user\.email, correo, fila\.user_id, enlaces\.baja, variante\)/.test(srv)) F("9 · el correo no sale con el tag de su variante");
+  if (!/eventoSemanalAbierto\(evento, carga\)/.test(leer("src/app/api/webhooks/resend/route.ts"))) F("9 · el webhook no le pasa la carga (sin variante)");
+  if (!/properties: \{ semana: sel\.semana, variante: sel\.variante,/.test(clic)) F("9 · semanal_clic no dice la variante");
+  if (!/properties: \{ product: payment\.product, amount: payment\.amount, variante: deCorreo\.variante \?\? null \}/.test(conf) || !/origen: "semanal", \.\.\.\(prePaymentData\.variante \? \{ variante: prePaymentData\.variante \} : \{\}\)/.test(conf)) F("9 · semanal_compra no dice la variante (o el confirm la pierde)");
+  if (!/varianteBody === "banda" \|\| varianteBody === "tarjetas"\) \? \{ variante: varianteBody \}/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/if \(varianteCorreo\) body\.variante = varianteCorreo;/.test(leer("src/app/checkout/page.tsx"))) F("9 · el checkout no lleva la variante al pago");
+  if (textoVence("2026-12-01T15:00:00Z") !== "Vence el 1 de diciembre.") F(`9 · el vencimiento no se lee: «${textoVence("2026-12-01T15:00:00Z")}»`);
+  const conFecha = correoSemanal({ ...base, variante: "tarjetas", saldo: 1, conRegalo: true, regaloVence: "2026-12-01T15:00:00Z" }).html;
+  if (!conFecha.includes(`${SEMANAL.regaloBajada} Vence el 1 de diciembre.</td>`)) F("9 · el correo no dice cuándo vence el regalo");
+  if (!/const regaloVence = correspondeRegalo\([\s\S]{0,260}\? await otorgarRegalo\(admin, fila\.user_id\)/.test(srv) || !/    regaloVence,\n/.test(srv) || !/return vence;/.test(srv)) F("9 · el envío no le pasa al correo el vencimiento del regalo que otorgó");
 
   if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic");
   for (const f of fallas) console.log(`  ✗ ${f}`);
@@ -198,5 +213,8 @@ if (require.main === module) {
 //   S28 la RPC abierta al público .......................................... ROJO (8)
 //   S29 el envío un martes ................................................. ROJO (2)
 //   S30 «Analizar uno · $9.990» compra el pack ............................. ROJO (4)
-//   30/30 en rojo; cada archivo restaurado byte a byte. Y la excepción de la banda en CORREOS: la banda
+//   30/30 en rojo; cada archivo restaurado byte a byte.
+//   §9 (02-oct-2026, la prueba A/B y el vencimiento): V1 compra sin variante · V2 abierto sin variante · V3 correo
+//   sin tag · V4 webhook sin carga · V5/V6 compra sin variante (evento o confirm) · V7/V8 create o checkout sin
+//   variante · V9 fecha en otro formato · V10/V11 correo o envío sin la fecha · V12 clic sin variante: 12/12 ROJO. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).

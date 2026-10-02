@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       .eq("commerce_order", flowData.commerceOrder)
       .maybeSingle();
     const prePaymentData = prePayment?.payment_data as
-      | { companion_str_id?: string; ambas_group_id?: string; origen?: string }
+      | { companion_str_id?: string; ambas_group_id?: string; origen?: string; variante?: string }
       | null;
     const companionStrId = prePaymentData?.companion_str_id;
     // Claves de negocio/audit escritas en payments/create que hay que preservar: el
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     const preservedPaymentData = {
       ...(prePaymentData?.companion_str_id ? { companion_str_id: prePaymentData.companion_str_id } : {}),
       ...(prePaymentData?.ambas_group_id ? { ambas_group_id: prePaymentData.ambas_group_id } : {}),
-      ...(prePaymentData?.origen === "semanal" ? { origen: "semanal" } : {}),
+      ...(prePaymentData?.origen === "semanal" ? { origen: "semanal", ...(prePaymentData.variante ? { variante: prePaymentData.variante } : {}) } : {}),
     };
 
     // Update payment record. flowData define el payload fresco (no lo pisamos con el
@@ -489,8 +489,9 @@ export async function POST(request: Request) {
           console.error("[payments/confirm] pago_confirmado excepción:", e);
         }
         // La compra que vino del correo semanal (02-oct-2026): mismo id que el pago, un evento por pago.
-        if ((payment.payment_data as { origen?: string } | null)?.origen === "semanal") {
-          await capturarServidor({ event: "semanal_compra", distinctId: userId, uuid: uuidDeterminista(`semanal_compra:${payment.commerce_order}`), properties: { product: payment.product, amount: payment.amount } }).catch(() => false);
+        const deCorreo = payment.payment_data as { origen?: string; variante?: string } | null;
+        if (deCorreo?.origen === "semanal") {
+          await capturarServidor({ event: "semanal_compra", distinctId: userId, uuid: uuidDeterminista(`semanal_compra:${payment.commerce_order}`), properties: { product: payment.product, amount: payment.amount, variante: deCorreo.variante ?? null } }).catch(() => false);
         }
       }
 

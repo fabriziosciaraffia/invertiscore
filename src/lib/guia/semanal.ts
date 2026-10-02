@@ -107,6 +107,17 @@ export function varianteDe(userId: string): Variante {
 /** Sin saldo, «Analizar uno · $9.990» compra el SUELTO, marcado como venido del correo (el pack no). */
 export const RUTA_SUELTO_SEMANAL = "/checkout?product=single&origen=semanal";
 
+/** La compra del suelto con la variante del correo (la prueba A/B se lee hasta la compra). */
+export function rutaSueltoSemanal(variante: Variante | null | undefined): string {
+  return variante === "banda" || variante === "tarjetas" ? `${RUTA_SUELTO_SEMANAL}&variante=${variante}` : RUTA_SUELTO_SEMANAL;
+}
+
+/** «Vence el 1 de diciembre.»: la fecha del regalo, en hora de Chile (02-oct-2026, decisión de Fabrizio). */
+export function textoVence(iso: string): string {
+  const fecha = new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" });
+  return `Vence el ${fecha}.`;
+}
+
 /** La página adonde lleva el correo (/semanal). */
 export const SEMANAL_PAGINA = {
   titulo: "Deptos publicados que Franco revisó para ti",

@@ -35,6 +35,8 @@ const fila = (o: Partial<FilaPerfilInforme>): FilaPerfilInforme => ({
   prefTipologia: null, prefComuna: null, prefModalidad: null, horizonte: null, ...o,
 });
 
+const saldoFuente = () => sinComentarios(leer("src/lib/casa-saldo.ts"));
+
 export function runCasaTier(): { hard: number } {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
@@ -62,12 +64,16 @@ export function runCasaTier(): { hard: number } {
 
   // 2 · el saldo
   const e = (d: Parameters<typeof estadoSaldo>[0]) => estadoSaldo(d);
-  if (e({ disponibles: 5, plan: true, regaloRestante: 0, todoSinCaducidad: true }).tipo !== "plan") F("2 · con plan no es «plan»");
-  if (e({ disponibles: 0, plan: false, regaloRestante: 0, todoSinCaducidad: false }).tipo !== "sin") F("2 · sin saldo no es «sin»");
-  if (e({ disponibles: 1, plan: false, regaloRestante: 1, todoSinCaducidad: false }).tipo !== "regalo") F("2 · con solo el regalo no es «regalo»");
-  const con = e({ disponibles: 3, plan: false, regaloRestante: 1, todoSinCaducidad: true });
+  if (e({ disponibles: 5, plan: true, regaloRestante: 0, regaloVence: null, todoSinCaducidad: true }).tipo !== "plan") F("2 · con plan no es «plan»");
+  if (e({ disponibles: 0, plan: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false }).tipo !== "sin") F("2 · sin saldo no es «sin»");
+  if (e({ disponibles: 1, plan: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: false }).tipo !== "regalo") F("2 · con solo el regalo no es «regalo»");
+  const reg = e({ disponibles: 1, plan: false, regaloRestante: 1, regaloVence: "2026-12-01T15:00:00Z", todoSinCaducidad: false });
+  if (reg.tipo !== "regalo" || reg.vence !== "2026-12-01T15:00:00Z") F("2 · el regalo no trae su vencimiento");
+  if (!/regaloVence: vivos\.filter\(\(g\) => g\.source === FUENTE_REGALO_SEMANAL && g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
+  if (!/estado\.tipo === "regalo" && estado\.vence \? textoVence\(estado\.vence\)/.test(sinComentarios(leer("src/app/dashboard/casa.tsx")))) F("2 · el dashboard no dice cuándo vence el regalo");
+  const con = e({ disponibles: 3, plan: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
   if (con.tipo !== "con" || con.n !== 3 || !con.noVencen) F("2 · con 3 (uno regalado) no es «con 3, no vencen»");
-  const vence = e({ disponibles: 2, plan: false, regaloRestante: 0, todoSinCaducidad: false });
+  const vence = e({ disponibles: 2, plan: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false });
   if (vence.tipo !== "con" || vence.noVencen) F("2 · dice «No vencen.» con créditos que vencen");
   const saldo = sinComentarios(leer("src/lib/casa-saldo.ts"));
   if (!/from\("credit_grants"\)[\s\S]{0,200}\.gt\("remaining", 0\)[\s\S]{0,80}expires_at\.is\.null,expires_at\.gt\./.test(saldo) || !/disponibles: ledger \+ legacy/.test(saldo)) F("2 · el saldo no se lee del ledger vigente más el legacy");
@@ -156,3 +162,4 @@ if (require.main === module) {
 //   K17 la guía de la casa dispara el evento de post-pago ...................... ROJO (5)
 //   K18 la tabla sin el revoke de escrituras ................................... ROJO (6)
 //   18/18 en rojo; cada archivo restaurado byte a byte.
+//   K19 el regalo sin su vencimiento · K20 el dashboard sin la fecha (02-oct-2026): 2/2 ROJO.

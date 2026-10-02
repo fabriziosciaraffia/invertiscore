@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const evento = eventoDeResend(carga, svixId);
   if (!evento) return NextResponse.json({ ok: true, ignorado: true });
   const enviado = await capturarServidor(evento);
-  const semanal = eventoSemanalAbierto(evento);
+  const semanal = eventoSemanalAbierto(evento, carga);
   if (semanal) await capturarServidor(semanal);
   return NextResponse.json({ ok: true, evento: evento.event, enviado });
 }

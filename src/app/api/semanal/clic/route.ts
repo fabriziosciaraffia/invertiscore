@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { chequearAlClic } from "@/lib/guia/semanal-servidor";
-import { RUTA_SUELTO_SEMANAL } from "@/lib/guia/semanal";
+import { rutaSueltoSemanal } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/semanal/clic (02-oct-2026): todo enlace del correo semanal pasa por acá. Mide el clic
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     properties: { semana: sel.semana, variante: sel.variante, aviso_id: avisoId, destino: ir === "comprar" ? "comprar" : avisoId ? "depto" : "seleccion" },
   }).catch(() => {});
 
-  if (ir === "comprar") return volver(RUTA_SUELTO_SEMANAL);
+  if (ir === "comprar") return volver(rutaSueltoSemanal(sel.variante as "banda" | "tarjetas" | null));
   if (!avisoId) return volver(`/semanal?t=${t}`);
   const estado = await chequearAlClic(admin, avisoId).catch(() => "sin-chequeo" as const);
   return volver(`/semanal?t=${t}&a=${avisoId}${estado === "despublicado" ? "&d=1" : ""}`);

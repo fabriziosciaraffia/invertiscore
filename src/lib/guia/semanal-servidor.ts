@@ -169,25 +169,26 @@ export async function chequearAlClic(admin: SupabaseClient, avisoId: string): Pr
  * El regalo, una vez por persona: se marca `regalo_otorgado_at` con un UPDATE condicional (dos corridas
  * no regalan dos veces) y recién entonces se carga el crédito, que vence a los 60 días.
  */
-export async function otorgarRegalo(admin: SupabaseClient, userId: string): Promise<boolean> {
+export async function otorgarRegalo(admin: SupabaseClient, userId: string): Promise<string | null> {
   await admin.from("perfil_busqueda").upsert({ user_id: userId }, { onConflict: "user_id", ignoreDuplicates: true });
   const ahora = new Date();
   const { data: ganado, error } = await admin.from("perfil_busqueda").update({ regalo_otorgado_at: ahora.toISOString() })
     .eq("user_id", userId).is("regalo_otorgado_at", null).select("user_id");
   reportarFalloQuery(error, { ruta: RUTA, operacion: "marcar-regalo", userId });
-  if ((ganado?.length ?? 0) !== 1) return false;
+  if ((ganado?.length ?? 0) !== 1) return null;
+  const vence = new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO * 864e5).toISOString();
   const { error: e2 } = await admin.from("credit_grants").insert({
     user_id: userId, amount: 1, remaining: 1, source: FUENTE_REGALO_SEMANAL, granted_at: ahora.toISOString(),
-    expires_at: new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO * 864e5).toISOString(),
+    expires_at: vence,
   });
   if (e2) {
     // Sin el crédito no hay regalo: se suelta la marca para que la semana siguiente lo intente de nuevo.
     reportarFalloQuery(e2, { ruta: RUTA, operacion: "cargar-regalo", userId });
     await admin.from("perfil_busqueda").update({ regalo_otorgado_at: null }).eq("user_id", userId);
-    return false;
+    return null;
   }
-  void capturarServidor({ event: "semanal_regalo_otorgado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo:${userId}`), properties: {} }).catch(() => {});
-  return true;
+  void capturarServidor({ event: "semanal_regalo_otorgado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo:${userId}`), properties: { vence } }).catch(() => {});
+  return vence;
 }
 
 /** Quienes reciben el correo: toda persona con cuenta y al menos un informe. */
@@ -248,8 +249,10 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   if ((tomada?.length ?? 0) !== 1) return "ya";
 
   let saldo = await leerSaldo(admin, fila.user_id);
-  const conRegalo = correspondeRegalo({ registradoAt: new Date(user.created_at), compras: compras ?? 0, regaloOtorgadoAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.plan })
-    && (await otorgarRegalo(admin, fila.user_id));
+  const regaloVence = correspondeRegalo({ registradoAt: new Date(user.created_at), compras: compras ?? 0, regaloOtorgadoAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.plan })
+    ? await otorgarRegalo(admin, fila.user_id)
+    : null;
+  const conRegalo = regaloVence != null;
   if (conRegalo) saldo = await leerSaldo(admin, fila.user_id);
 
   const variante = fila.variante ?? varianteDe(fila.user_id);
@@ -263,11 +266,12 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     deptos: deptos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
     saldo: saldo.plan ? null : saldo.disponibles,
     conRegalo,
+    regaloVence,
     urlBoton: enlaces.boton,
     urlComprar: enlaces.comprar,
     urlBaja: enlaces.baja,
   });
-  const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja);
+  const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, variante);
   if (!r.ok) {
     await admin.from("semanal_selecciones").update({ estado: "armada", enviada_at: null }).eq("id", fila.id);
     return "fallida";

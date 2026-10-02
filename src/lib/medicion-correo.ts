@@ -111,7 +111,9 @@ export function eventoDeResend(carga: unknown, svixId: string): EventoServidor |
 
 /** La apertura del correo semanal también como `semanal_abierto` (02-oct-2026): el embudo del correo se
  *  lee con sus propios eventos (enviado → abierto → clic → compra / regalo usado). */
-export function eventoSemanalAbierto(ev: EventoServidor): EventoServidor | null {
+export function eventoSemanalAbierto(ev: EventoServidor, carga?: unknown): EventoServidor | null {
   if (ev.event !== "correo_abierto" || ev.properties?.tipo !== "semanal") return null;
-  return { ...ev, event: "semanal_abierto", uuid: ev.uuid ? uuidDeterminista(`semanal_abierto:${ev.uuid}`) : undefined };
+  // La variante del correo (prueba A/B) viene en el tag `variante` del envío.
+  const variante = tag((carga as CargaResend | undefined)?.data?.tags, "variante");
+  return { ...ev, event: "semanal_abierto", uuid: ev.uuid ? uuidDeterminista(`semanal_abierto:${ev.uuid}`) : undefined, properties: { ...ev.properties, variante } };
 }

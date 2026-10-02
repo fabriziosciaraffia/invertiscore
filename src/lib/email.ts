@@ -430,11 +430,13 @@ export async function sendAvisoPedidoEmail(to: string, p: Parameters<typeof corr
 /** Alerta interna de un cron que falló o dejó de escribir (29-sep-2026). Ver cron-resultado.ts. */
 /** El correo semanal (02-oct-2026). Con «List-Unsubscribe» de un clic: Gmail e iPhone Mail muestran
  *  «Cancelar suscripción» y llaman al POST de /api/semanal/baja. Devuelve el id de Resend. */
-export async function sendSemanalEmail(to: string, correo: ReturnType<typeof correoSemanal>, userId: string, urlBaja: string): Promise<{ ok: true; id: string | null } | { ok: false }> {
+export async function sendSemanalEmail(to: string, correo: ReturnType<typeof correoSemanal>, userId: string, urlBaja: string, variante: "banda" | "tarjetas"): Promise<{ ok: true; id: string | null } | { ok: false }> {
   try {
     const res = await enviarCorreo("semanal", userId, {
       from: FROM_EMAIL, to, subject: correo.subject, html: correo.html,
       headers: { "List-Unsubscribe": `<${urlBaja}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+      // La variante (prueba A/B) vuelve en el webhook: así `semanal_abierto` dice cuál se abrió.
+      tags: [{ name: "variante", value: variante }],
     });
     if (res.error) { console.error("[semanal] no salió:", res.error.message); return { ok: false }; }
     return { ok: true, id: res.data?.id ?? null };

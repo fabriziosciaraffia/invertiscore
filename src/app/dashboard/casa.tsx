@@ -12,6 +12,7 @@ import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { ESTAS_DENTRO } from "@/lib/lo-que-sigue/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
+import { textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
@@ -36,6 +37,7 @@ export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes:
     estado.tipo === "sin" ? CASA.sin.bajada
     : estado.tipo === "con" && estado.noVencen ? CASA.con.noVencen
     : estado.tipo === "plan" ? CASA.plan.bajada
+    : estado.tipo === "regalo" && estado.vence ? textoVence(estado.vence)
     : null;
 
   return (

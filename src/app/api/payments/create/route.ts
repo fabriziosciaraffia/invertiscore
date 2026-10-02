@@ -40,9 +40,11 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId, origen: origenBody } = body as {
+  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId, origen: origenBody, variante: varianteBody } = body as {
     /** De dónde vino la compra; hoy solo «semanal» (el correo semanal). */
     origen?: string;
+    /** La variante del correo semanal (prueba A/B). */
+    variante?: string;
     product: string;
     analysisId?: string;
     quantity?: number | string;
@@ -189,6 +191,7 @@ export async function POST(request: Request) {
               ...(companionStrId ? { companion_str_id: companionStrId } : {}),
               ...(ambasGroupId ? { ambas_group_id: ambasGroupId } : {}),
               ...(origenBody === "semanal" ? { origen: "semanal" } : {}),
+              ...(origenBody === "semanal" && (varianteBody === "banda" || varianteBody === "tarjetas") ? { variante: varianteBody } : {}),
             },
           }
         : {}),

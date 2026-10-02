@@ -14,19 +14,21 @@ export interface DatosSaldo {
   disponibles: number;
   plan: boolean;
   regaloRestante: number;
+  /** Cuándo vence el regalo (el lote más próximo), si queda. */
+  regaloVence: string | null;
   todoSinCaducidad: boolean;
 }
 
 export type EstadoSaldo =
   | { tipo: "plan" }
-  | { tipo: "regalo" }
+  | { tipo: "regalo"; vence: string | null }
   | { tipo: "con"; n: number; noVencen: boolean }
   | { tipo: "sin" };
 
 export function estadoSaldo(d: DatosSaldo): EstadoSaldo {
   if (d.plan) return { tipo: "plan" };
   if (d.disponibles <= 0) return { tipo: "sin" };
-  if (d.regaloRestante > 0 && d.disponibles === d.regaloRestante) return { tipo: "regalo" };
+  if (d.regaloRestante > 0 && d.disponibles === d.regaloRestante) return { tipo: "regalo", vence: d.regaloVence };
   return { tipo: "con", n: d.disponibles, noVencen: d.todoSinCaducidad };
 }
 
@@ -43,6 +45,7 @@ export async function leerSaldo(admin: SupabaseClient, userId: string): Promise<
     disponibles: ledger + legacy,
     plan: !!uc && ((uc as { is_unlimited?: boolean }).is_unlimited === true || hasSubscriptionAccess(uc as never)),
     regaloRestante: vivos.filter((g) => g.source === FUENTE_REGALO_SEMANAL).reduce((a, g) => a + g.remaining, 0),
+    regaloVence: vivos.filter((g) => g.source === FUENTE_REGALO_SEMANAL && g.expires_at).map((g) => g.expires_at as string).sort()[0] ?? null,
     todoSinCaducidad: vivos.length > 0 ? vivos.every((g) => g.expires_at == null) : legacy > 0,
   };
 }

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { RUTA_SUELTO_SEMANAL, SEMANAL_PAGINA } from "@/lib/guia/semanal";
+import { SEMANAL_PAGINA, rutaSueltoSemanal, textoVence } from "@/lib/guia/semanal";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
@@ -19,7 +19,7 @@ import "@/components/guia/guia.css";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 
-export function SemanalLista({ token, origenId, combinacion, items, destacado, despublicado, saldo }: {
+export function SemanalLista({ token, origenId, combinacion, items, destacado, despublicado, saldo, variante }: {
   token: string;
   origenId: string | null;
   combinacion: { piePct: number; plazoAnios: number } | null;
@@ -27,6 +27,7 @@ export function SemanalLista({ token, origenId, combinacion, items, destacado, d
   destacado: string | null;
   despublicado: boolean;
   saldo: EstadoSaldo;
+  variante: "banda" | "tarjetas" | null;
 }) {
   const router = useRouter();
   const [generando, setGenerando] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function SemanalLista({ token, origenId, combinacion, items, destacado, d
     <section className="guia" data-semanal="lista">
       <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>
       {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
-      {saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b></p>}
+      {saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
       {despublicado && destacado && <p className="guia-error" role="alert" data-semanal="despublicado">{GUIA.despublicado}</p>}
       {vivos.length === 0 ? (
         <p className="guia-txt" data-semanal="vacia">{SEMANAL_PAGINA.vacia}</p>
@@ -110,7 +111,7 @@ export function SemanalLista({ token, origenId, combinacion, items, destacado, d
       )}
       {!conSaldo && vivos.length > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">
-          <EnlaceCarga href={RUTA_SUELTO_SEMANAL} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
+          <EnlaceCarga href={rutaSueltoSemanal(variante)} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
             {SEMANAL_PAGINA.comprar}
           </EnlaceCarga>
           <p className="text-[13px] text-[var(--franco-text-secondary)]">{SEMANAL_PAGINA.comprarBajada}</p>

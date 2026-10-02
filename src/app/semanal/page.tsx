@@ -26,7 +26,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   if (!TOKEN.test(t)) redirect("/dashboard");
 
   const admin = createServiceClient();
-  const { data: sel } = await admin.from("semanal_selecciones").select("user_id, items, combinacion, origen_analysis_id").eq("token", t).maybeSingle();
+  const { data: sel } = await admin.from("semanal_selecciones").select("user_id, items, combinacion, origen_analysis_id, variante").eq("token", t).maybeSingle();
   if (!sel) redirect("/dashboard");
 
   const otraCuenta = sel.user_id !== user.id;
@@ -51,6 +51,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
             destacado={a}
             despublicado={searchParams.d === "1" && !!a}
             saldo={saldo}
+            variante={(sel.variante as "banda" | "tarjetas" | null) ?? null}
           />
         )}
       </main>

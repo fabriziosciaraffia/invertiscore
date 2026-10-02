@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { textoVence } from "@/lib/guia/semanal";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -68,6 +69,8 @@ export interface DatosCorreoSemanal {
   /** Análisis disponibles; null con plan (analizar no descuenta). */
   saldo: number | null;
   conRegalo: boolean;
+  /** Cuándo vence el regalo (ISO); el correo dice «Vence el [fecha].». */
+  regaloVence?: string | null;
   urlBoton: string;
   urlComprar: string;
   urlBaja: string;
@@ -127,7 +130,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   if (d.conRegalo) {
     filas.push(`<tr><td style="padding: 2px 0 18px 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td style="padding: 14px 18px; border-left: 3px solid ${TINTA}; background: #FFFFFF; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.55; color: ${TINTA};"><b>${SEMANAL.regalo}</b> ${SEMANAL.regaloBajada}</td>
+    <td style="padding: 14px 18px; border-left: 3px solid ${TINTA}; background: #FFFFFF; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.55; color: ${TINTA};"><b>${SEMANAL.regalo}</b> ${SEMANAL.regaloBajada}${d.regaloVence ? ` ${textoVence(d.regaloVence)}` : ""}</td>
   </tr></table>
 </td></tr>`);
   }
