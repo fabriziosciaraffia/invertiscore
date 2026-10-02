@@ -150,7 +150,7 @@ export async function sugerenciasDeAviso(a: AvisoParaEvaluar): Promise<{ arr: Su
 /** El arriendo con que se evalúa: el del segmento si alcanza la muestra, si no el sugerido. */
 export function arriendoParaEvaluar(a: AvisoParaEvaluar, arr: Sugerencias, vta: Sugerencias, uf: number, segmentar: boolean): FilaEvaluacion["arriendo"] {
   if (!arr.arriendo) return null;
-  const seg = segmentar && arr.source === "radio" ? arriendoSegmentado(arr.comparables ?? [], vta.nearbyProperties ?? [], a.precioUF / a.m2, uf) : null;
+  const seg = segmentar && arr.source === "radio" ? arriendoSegmentado(arr.comparables ?? [], vta.nearbyProperties ?? [], a.precioUF / a.m2, uf, a.m2) : null;
   return {
     // Obra nueva (02-oct-2026): el arriendo con que se evalúa es el sugerido, así que lleva el +3% de lo nuevo.
     monto: arriendoSugeridoObraNueva(seg ? seg.monto : arr.arriendo, a.condicion) ?? 0,
@@ -210,7 +210,8 @@ export async function evaluarAviso(
   const { arr, vta } = sug;
   const arriendo = arriendoParaEvaluar(a, arr, vta, cfg.uf, opts.segmentar);
   // La zona del depto, para la marca de sospechoso (los avisos de venta son sin amoblar).
-  const zonaM2 = await medianaArriendoZonaM2(a.lat, a.lng, a.dormitorios || null).catch(() => null);
+  // Contra deptos de tamaño parecido (03-oct-2026): referenciaZonaPorTamano.
+  const zonaM2 = await medianaArriendoZonaM2(a.lat, a.lng, a.dormitorios || null, false, a.m2).catch(() => null);
   const base = {
     aviso_id: a.id,
     evaluado_at: new Date().toISOString(),

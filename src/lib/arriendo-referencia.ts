@@ -102,6 +102,10 @@ export interface AvisoMuestraArriendo {
 export interface MuestraArriendo {
   modo: "conDorms" | "sinDorms";
   avisos: AvisoMuestraArriendo[];
+  /** Con dormitorios, desde el 03-oct-2026: la mediana mensual de los avisos y sus m² medianos. La
+   *  referencia es esa mediana llevada a tus m² (comparables-radio.ts › escalarPorTamano). Ausente en
+   *  las muestras de antes, cuya referencia era la mediana sin llevar. */
+  ajuste?: { medianaMensual: number; m2Mediano: number };
 }
 
 /**
@@ -126,7 +130,9 @@ export function leerMuestraArriendo(input: unknown): MuestraArriendo | null {
     avisos.push({ distanciaM: Number.isFinite(d) ? d : null, precio, m2: Number.isFinite(s) && s > 0 ? s : null });
   }
   if (avisos.length === 0 || avisos.length !== ref.n) return null;
-  return { modo: m.modo, avisos };
+  const aj = (m as { ajuste?: { medianaMensual?: unknown; m2Mediano?: unknown } }).ajuste;
+  const ajuste = aj && Number(aj.medianaMensual) > 0 && Number(aj.m2Mediano) > 0 ? { medianaMensual: Number(aj.medianaMensual), m2Mediano: Number(aj.m2Mediano) } : null;
+  return { modo: m.modo, avisos, ...(ajuste ? { ajuste } : {}) };
 }
 
 type ConZonaRadio = {

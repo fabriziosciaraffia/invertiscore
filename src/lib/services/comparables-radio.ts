@@ -182,6 +182,37 @@ function ggccDe(filas: FilaRadio[]): number | null {
  * `null` = no hay muestra suficiente (menos de MIN_COMPARABLES_RADIO tras
  * limpiar; en "sinDorms", además, menos de 3 con superficie).
  */
+/**
+ * Cuánto crece el arriendo con el tamaño (03-oct-2026, decisión de Fabrizio): el arriendo mensual de un
+ * depto escala como (m²)^0,8 frente a comparables de la misma tipología. Medido el 02-oct dentro de Ñuñoa
+ * (arriendos corrientes de 90 días): 0,58 en 1D y 0,82 en 2D. Sin esta escala, la mediana del arriendo
+ * MENSUAL de la banda le daba a un 2D de 35 m² el arriendo de sus comparables, ~10% más grandes: en Ñuñoa,
+ * 284 Comprar/Ajustar quedaban marcados sobre su zona. Por m² (elasticidad 1) se pasa en los dos sentidos.
+ */
+export const ELASTICIDAD_ARRIENDO_M2 = 0.8;
+
+/** Un arriendo mensual llevado al tamaño del depto: × (m² del depto / m² mediano de los comparables)^0,8.
+ *  Sin superficie del depto o sin m² en los comparables, queda como está. */
+export function escalarPorTamano(monto: number, superficie: number, m2Comparables: number[]): number {
+  const m2s = m2Comparables.filter((m) => Number.isFinite(m) && m > 0);
+  if (!(superficie > 0) || m2s.length === 0) return monto;
+  return monto * Math.pow(superficie / median(m2s), ELASTICIDAD_ARRIENDO_M2);
+}
+
+/**
+ * La referencia de la ZONA para la marca de arriendo sospechoso, en $/m² del depto (03-oct-2026): los
+ * comparables de tamaño parecido (±30% de m²), cada uno llevado al tamaño del depto con la misma
+ * elasticidad, y su mediana dividida por los m² del depto. Antes era la mediana del $/m² de TODOS los
+ * tamaños × m²: castigaba a los chicos, que arriendan más caro por m². null si la banda no junta `min`.
+ */
+export function referenciaZonaPorTamano<T extends { precio: number; superficie_m2: number | null }>(filas: T[], superficie: number, min: number): number | null {
+  if (!(superficie > 0)) return null;
+  const banda = filas.filter((f) => f.superficie_m2 && f.superficie_m2 >= superficie * 0.7 && f.superficie_m2 <= superficie * 1.3);
+  if (banda.length < min) return null;
+  const llevados = banda.map((f) => f.precio * Math.pow(superficie / Number(f.superficie_m2), ELASTICIDAD_ARRIENDO_M2));
+  return Math.round(median(llevados) / superficie);
+}
+
 export function resumirComparablesRadio(
   filas: FilaRadio[],
   superficie: number,
@@ -209,14 +240,21 @@ export function resumirComparablesRadio(
   }
 
   const precios = clean.map((a) => a.precio);
+  // La mediana mensual, llevada al tamaño del depto (ELASTICIDAD_ARRIENDO_M2, 03-oct-2026). La muestra
+  // guarda las dos cifras del ajuste para que la ficha de comparables lo cuente.
+  const m2s = clean.map((a) => Number(a.superficie_m2)).filter((m) => m > 0);
+  const medianaMensual = median(precios);
+  const mp = muestraYPuntos(clean, "conDorms");
+  const ajuste = superficie > 0 && m2s.length > 0 ? { medianaMensual: Math.round(medianaMensual), m2Mediano: Math.round(median(m2s) * 10) / 10 } : null;
   return {
-    arriendo: Math.round(median(precios) / 1000) * 1000,
+    arriendo: Math.round(escalarPorTamano(medianaMensual, superficie, m2s) / 1000) * 1000,
     ggcc: ggccDe(clean),
     contribTrim: preciosM2.length > 0
       ? estimarContribuciones(Math.round(median(preciosM2) * superficie))
       : estimarContribuciones(superficie * 2_000_000),
     precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2) * opts.factorCierre) : undefined,
     sampleSize: clean.length,
-    ...muestraYPuntos(clean, "conDorms"),
+    ...mp,
+    muestra: ajuste ? { ...mp.muestra, ajuste } : mp.muestra,
   };
 }

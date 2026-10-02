@@ -20,6 +20,7 @@ import {
   MIN_GGCC_RADIO,
   filterOutliers,
   resumirComparablesRadio,
+  ELASTICIDAD_ARRIENDO_M2,
   type FilaRadio,
 } from "../src/lib/services/comparables-radio";
 
@@ -76,14 +77,26 @@ test("EL BUG: la misma muestra sin la columna da ggcc null — por eso nunca se 
   const r = resumirComparablesRadio(SIN_COLUMNA, 50, { modo: "conDorms", factorCierre: 1 })!;
   assert.ok(r, "la mediana de arriendo sí salía");
   assert.equal(r.ggcc, null);
-  assert.equal(r.arriendo, 580000);
+  // 580.000 hasta el 02-oct-2026; desde el 03-oct la mediana mensual se lleva a los 50 m² del depto
+  // (comparables de 51 m² de mediana): 580.000 × (50/51)^0,8 = 571.000.
+  assert.equal(r.arriendo, 571000);
 });
 
 console.log("\n── modo conDorms ──");
-test("arriendo = mediana de precios a miles; sampleSize = filas limpias", () => {
+test("arriendo = mediana de precios llevada a los m² del depto, a miles; sampleSize = filas limpias", () => {
   const r = resumirComparablesRadio(CON_GGCC, 50, { modo: "conDorms", factorCierre: 1 })!;
-  assert.equal(r.arriendo, 580000); // mediana(450,520,560,600,640,680)=580.000
+  // mediana(450,520,560,600,640,680) = 580.000 sobre 51 m² de mediana; × (50/51)^0,8 = 571.000.
+  assert.equal(r.arriendo, 571000);
   assert.equal(r.sampleSize, 6);
+  assert.deepEqual(r.muestra.ajuste, { medianaMensual: 580000, m2Mediano: 51 });
+});
+test("un depto más chico que sus comparables recibe menos, y uno más grande más, pero menos que por m²", () => {
+  // 03-oct-2026: un 2D de 35 m² recibía los 580.000 de comparables de 51 m² (Ñuñoa, 284 marcados).
+  const chico = resumirComparablesRadio(CON_GGCC, 35, { modo: "conDorms", factorCierre: 1 })!;
+  const grande = resumirComparablesRadio(CON_GGCC, 60, { modo: "conDorms", factorCierre: 1 })!;
+  assert.equal(chico.arriendo, 429000);  // 580.000 × (35/51)^0,8
+  assert.equal(grande.arriendo, 661000); // 580.000 × (60/51)^0,8 (por m² serían 682.000)
+  assert.equal(ELASTICIDAD_ARRIENDO_M2, 0.8);
 });
 test("precioM2 lleva el factor de cierre", () => {
   // Se compara contra la mediana cruda, no contra el precioM2 ya redondeado:

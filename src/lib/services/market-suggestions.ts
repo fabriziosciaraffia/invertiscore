@@ -8,6 +8,7 @@ import {
   resumirComparablesRadio,
   type PuntoComparable,
   type FilaRadio,
+  referenciaZonaPorTamano,
 } from "./comparables-radio";
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
@@ -227,7 +228,7 @@ async function sugerenciasConRegistro(
  * arriendos amoblados, de temporada, corporativos y piezas—, aunque el motor no cambie. La fila evaluada
  * guarda motor + sugerencias (VERSION_EVALUACION) y el cron reevalúa de a poco las de otra versión.
  */
-export const SUGERENCIAS_VERSION = "s2";
+export const SUGERENCIAS_VERSION = "s3";
 
 /** Radio de la ZONA del depto: el tope del loop adaptativo. */
 export const RADIO_ZONA_M = 2000;
@@ -240,13 +241,15 @@ export const MIN_ZONA = 10;
  * la marca de arriendo sospechoso, en lugar de la mediana de la comuna: en el oriente la zona es más cara
  * que el promedio comunal y la marca vieja confundía ubicación con contaminación. null si no alcanza.
  */
-export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false): Promise<number | null> {
+export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false, superficie?: number): Promise<number | null> {
   const reg: RegistroRadio = { fallas: 0 };
   const { data } = await leerRadio(getSupabase(), reg, {
     center_lat: lat, center_lng: lng, radius_meters: RADIO_ZONA_M, prop_type: "arriendo",
     prop_dorms: dormitorios && dormitorios > 0 ? dormitorios : null, prop_comuna: null, prop_condicion: null,
   }, amoblado);
   const limpios = filterOutliers((data ?? []) as FilaRadio[]).filter((f) => Number(f.superficie_m2) > 0);
+  // Con la superficie del depto, contra los de tamaño parecido llevados a su tamaño (03-oct-2026).
+  if (superficie && superficie > 0) return referenciaZonaPorTamano(limpios, superficie, MIN_ZONA);
   if (limpios.length < MIN_ZONA) return null;
   return Math.round(medianaDe(limpios.map((f) => Number(f.precio) / Number(f.superficie_m2))));
 }

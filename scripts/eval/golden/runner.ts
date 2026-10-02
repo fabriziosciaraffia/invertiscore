@@ -124,6 +124,7 @@ import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
+import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runUnidadesTier } from "./unidades-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
@@ -520,6 +521,9 @@ function printSeed(r: SeedReport) {
   // Tier CRONS (29-sep-2026, 0 tokens, sin red ni base): el scraper de unidades sale por el proxy y el
   // 202 del WAF es error; ningún cron falla en silencio (500, rojo en el panel, alerta a hola@). ──
   totalHard += (await runCronsTier()).hard;
+  // Tier ARRIENDO-TAMAÑO (03-oct-2026, 0 tokens): la mediana mensual del radio y la del segmento se llevan a
+  // los m² del depto (elasticidad 0,8); la marca compara contra deptos de su tamaño; sugerencias s3. ──
+  totalHard += (await runArriendoTamanoTier()).hard;
   // Tier UNIDADES (02-oct-2026, 0 tokens, sin red ni base): el pase de unidades cruza los disponibles de la
   // ficha nueva; vista la que sigue, vendida la que falta (fuera de la guía, medida en bajas_avisos); sin precios. ──
   totalHard += (await runUnidadesTier()).hard;

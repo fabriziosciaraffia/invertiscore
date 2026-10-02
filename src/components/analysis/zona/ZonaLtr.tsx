@@ -19,6 +19,7 @@ import {
   type MuestraArriendo,
 } from "@/lib/arriendo-referencia";
 import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
+import { ELASTICIDAD_ARRIENDO_M2 } from "@/lib/services/comparables-radio";
 import { REFERENCIA_ESTIMADA } from "@/lib/sobreprecio-hallazgo";
 
 /**
@@ -248,8 +249,12 @@ export function ComparablesLtr({
       .filter((a) => a.m2 && a.m2 > 0)
       .map((a) => a.precio / (a.m2 as number))
       .sort((a, b) => a - b);
+    // Con dormitorios, la referencia es la mediana mensual llevada a tus m² (03-oct-2026): el mismo
+    // factor lleva la mitad de los avisos. Las muestras de antes no traen el ajuste y se leen como antes.
+    const aj = conDorms && muestra.ajuste && superficie > 0 ? muestra.ajuste : null;
+    const fAj = aj ? Math.pow(superficie / aj.m2Mediano, ELASTICIDAD_ARRIENDO_M2) : 1;
     const mitad = conDorms
-      ? [percentilOrdenado(precios, 25), percentilOrdenado(precios, 75)]
+      ? [percentilOrdenado(precios, 25) * fAj, percentilOrdenado(precios, 75) * fAj]
       : pm2.length && superficie > 0
         ? [percentilOrdenado(pm2, 25) * superficie, percentilOrdenado(pm2, 75) * superficie]
         : null;
@@ -272,7 +277,12 @@ export function ComparablesLtr({
       <VViz t={`Los ${ar.n} arriendos con los que se compara`}>
         <FilasDato>
           <FilaDato k="Dónde están" v={donde} />
-          {conDorms ? (
+          {conDorms && aj ? (
+            <>
+              <FilaDato k="Mediana de sus arriendos" sub={`sus m²: ${aj.m2Mediano.toLocaleString("es-CL")} de mediana`} v={money(aj.medianaMensual)} unidad="/mes" />
+              <FilaDato k={`Llevada a tus ${superficie.toLocaleString("es-CL")} m²`} sub="la referencia de la card" v={money(ar.mediana)} unidad="/mes" tono="in" />
+            </>
+          ) : conDorms ? (
             <FilaDato k="Mediana de sus arriendos" sub="la referencia de la card" v={money(ar.mediana)} unidad="/mes" tono="in" />
           ) : (
             <>
@@ -283,7 +293,7 @@ export function ComparablesLtr({
           {mitad && (
             <FilaDato
               k="La mitad de los avisos"
-              sub={conDorms ? undefined : `llevados a tus ${superficie.toLocaleString("es-CL")} m²`}
+              sub={conDorms && !aj ? undefined : `llevados a tus ${superficie.toLocaleString("es-CL")} m²`}
               v={`${money(mitad[0])} – ${money(mitad[1])}`}
             />
           )}
