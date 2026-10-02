@@ -196,7 +196,8 @@ export default async function DashboardPage({
       <ChipVeredictoTokens />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
 
-      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5">
+      {/* Todo el dashboard en Inter (02-oct-2026): «Tus informes» pasó al sistema nuevo, como la casa y la guía. */}
+      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5" data-casa="pagina" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
         {/* ── La casa (02-oct-2026): saludo, saldo, la selección del pack y el perfil de búsqueda; abajo, sus informes. ── */}
         <h1 className="mb-3.5 font-heading text-[26px] font-bold leading-[1.12] tracking-[-0.015em] text-[var(--franco-text)] sm:mb-5 sm:text-[34px]">
           {CASA.saludo(firstName || null)}
@@ -221,14 +222,14 @@ export default async function DashboardPage({
             <h2 className="font-heading text-[21px] font-bold tracking-[-0.01em] text-[var(--franco-text)] sm:text-[24px]">
               {CASA.informes}
             </h2>
-            <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)]">
+            <span className="text-[14px] text-[var(--franco-text-secondary)]">
               {stats.total} {stats.total === 1 ? "análisis" : "análisis"}
             </span>
           </div>
           {/* Comparar (30-sep-2026): con dos o más informes, lado a lado. Enlace, no botón: el
               principal de la pantalla sigue siendo «Nuevo análisis» del header. */}
           {stats.total >= 2 && (
-            <EnlaceCarga href="/comparar" className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text)] underline underline-offset-4" data-lqs="comparar-entrada">
+            <EnlaceCarga href="/comparar" className="text-[14px] font-semibold text-[var(--franco-text)] underline underline-offset-4" data-lqs="comparar-entrada">
               {COMPARAR.boton}
             </EnlaceCarga>
           )}

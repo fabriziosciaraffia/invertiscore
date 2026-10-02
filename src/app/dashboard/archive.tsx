@@ -131,7 +131,7 @@ function Chip({ href, activo, children, rojo = false }: {
 }
 
 function Conteo({ n }: { n: number }) {
-  return <span className="ml-1.5 font-mono text-[10px] opacity-65">{n}</span>;
+  return <span className="ml-1.5 text-[12.5px] opacity-65">{n}</span>;
 }
 
 // ─── Header de columna ordenable ────────────────────────────────────────────
@@ -142,7 +142,7 @@ function Th({
   params: DashboardParams; sortKey?: DashboardSortKey; label: string; num?: boolean;
 }) {
   const activo = sortKey !== undefined && params.sort === sortKey;
-  const cls = `border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))] px-2.5 py-2 font-mono text-[9px] font-medium uppercase tracking-[0.09em] ${
+  const cls = `border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))] px-2.5 py-2 text-[12px] font-medium ${
     num ? "text-right" : "text-left"
   } ${activo ? "text-[var(--franco-text)]" : "text-[var(--franco-text-muted)]"}`;
 
@@ -151,7 +151,7 @@ function Th({
     <th scope="col" className={cls} aria-sort={activo ? (params.dir === "asc" ? "ascending" : "descending") : "none"}>
       <EnlaceCarga href={sortHref(params, sortKey)} className="whitespace-nowrap text-inherit no-underline hover:text-[var(--franco-text)]">
         {label}
-        <span className={`ml-1 text-[8px] ${activo ? "" : "opacity-0"}`} aria-hidden="true">
+        <span className={`ml-1 text-[11px] ${activo ? "" : "opacity-0"}`} aria-hidden="true">
           {activo && params.dir === "asc" ? "↑" : "↓"}
         </span>
       </EnlaceCarga>
@@ -167,23 +167,23 @@ function CeldasNumericas({ row, atenuado = false }: { row: AnalisisDashboardRow;
   return (
     <>
       <td className="h-10 px-2.5 text-right align-middle">
-        <span className="font-mono text-[13px] font-bold" style={{ color: colorDelPuntaje(veredictoDisplay(row)) }}>
+        <span className="text-[13px] font-bold" style={{ color: colorDelPuntaje(veredictoDisplay(row)) }}>
           {row.score_efectivo}
         </span>
       </td>
       <td
-        className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs font-medium"
+        className="h-10 whitespace-nowrap px-2.5 text-right align-middle text-[13px] font-medium"
         style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}
       >
         {fmtCLPSigned(flujo)}
       </td>
-      <td className={`h-10 px-2.5 text-right align-middle font-mono text-xs font-medium ${dim}`}>
+      <td className={`h-10 px-2.5 text-right align-middle text-[13px] font-medium ${dim}`}>
         {fmtCap(row.cap_rate === null ? null : Number(row.cap_rate))}
       </td>
-      <td className={`h-10 px-2.5 text-right align-middle font-mono text-xs font-medium ${dim}`}>
+      <td className={`h-10 px-2.5 text-right align-middle text-[13px] font-medium ${dim}`}>
         {fmtMultiplicador(row.multiplicador === null ? null : Number(row.multiplicador))}
       </td>
-      <td className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs text-[var(--franco-text-muted)]">
+      <td className="h-10 whitespace-nowrap px-2.5 text-right align-middle text-[13px] text-[var(--franco-text-muted)]">
         {fmtFechaCorta(row.created_at)}
       </td>
     </>
@@ -226,13 +226,13 @@ function FilaAnalisis({
               {mostrarPrecio && (
                 <EnlaceCarga
                   href={abrir}
-                  className="truncate font-mono text-xs text-[var(--franco-text-secondary)] no-underline"
+                  className="truncate text-[13px] text-[var(--franco-text-secondary)] no-underline"
                 >
                   {fmtUF(Number(row.precio))}
                 </EnlaceCarga>
               )}
               {vigente && (
-                <span className="shrink-0 rounded border border-[var(--franco-border-hover)] px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.06em] text-[var(--franco-text-muted)]">
+                <span className="shrink-0 rounded border border-[var(--franco-border-hover)] px-1.5 py-px text-[11px] font-bold text-[var(--franco-text-muted)]">
                   VIGENTE
                 </span>
               )}
@@ -246,7 +246,7 @@ function FilaAnalisis({
                 {displayDireccion(row)}
               </EnlaceCarga>
               {sinDireccion(row) && (
-                <span className="shrink-0 font-mono text-[8px] tracking-[0.05em] text-[var(--franco-text-muted)]">
+                <span className="shrink-0 text-[11px] text-[var(--franco-text-muted)]">
                   SIN DIRECCIÓN
                 </span>
               )}
@@ -299,13 +299,13 @@ function FilaGrupo({
           <span className="truncate font-heading text-[13.5px] font-bold tracking-[-0.01em] text-[var(--franco-text)]">
             {displayDireccion(v)}
           </span>
-          <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-[0.05em] text-[var(--franco-text)]">
+          <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 text-[12px] font-bold text-[var(--franco-text)]">
             {grupo.hijos.length} análisis
           </span>
           {/* Comuna + mejor score (que es por lo que el grupo entra al orden) y,
               si las hijas no son la misma unidad, cuántas tipologías hay: el
               aviso de sobre-agrupación no se esconde, se ve antes de abrir. */}
-          <span className="truncate font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
+          <span className="truncate text-[12.5px] text-[var(--franco-text-muted)]">
             {v.comuna} · mejor {grupo.mejorScore}
             {grupo.tipologiasDistintas > 1 && ` · ${grupo.tipologiasDistintas} tipologías`}
           </span>
@@ -374,7 +374,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
             href={buildHref(params, { group: !params.group, open: [] })}
             role="switch"
             aria-checked={params.group}
-            className="ml-auto flex shrink-0 items-center gap-2 font-body text-xs text-[var(--franco-text-secondary)] no-underline"
+            className="ml-auto flex shrink-0 items-center gap-2 font-body text-[13px] text-[var(--franco-text-secondary)] no-underline"
           >
             <span
               className="relative h-[17px] w-[30px] shrink-0 rounded-full transition-colors"
@@ -402,7 +402,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
             {filtrando && (
               <EnlaceCarga
                 href={buildHref(params, { q: "", mod: "todas", v: "todos" })}
-                className="mt-3 inline-block font-mono text-[10px] uppercase tracking-[0.08em] text-signal-red no-underline"
+                className="mt-3 inline-block text-[12.5px] text-signal-red no-underline"
               >
                 Limpiar filtros →
               </EnlaceCarga>
@@ -482,7 +482,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                                 <td colSpan={10} className="h-9 pl-9 align-middle">
                                   <EnlaceCarga
                                     href={verTodosHref(params, grupo.key)}
-                                    className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
+                                    className="text-[12.5px] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
                                   >
                                     Ver los {restantes} análisis restantes ↓
                                   </EnlaceCarga>
@@ -534,7 +534,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                       {esHija ? (
                         <div className="flex items-center gap-2">
                           {mostrarPrecio && (
-                            <span className="font-mono text-xs text-[var(--franco-text-secondary)]">
+                            <span className="text-[13px] text-[var(--franco-text-secondary)]">
                               {fmtUF(Number(row.precio))}
                             </span>
                           )}
@@ -549,7 +549,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{row.comuna}</span>
                             {esGrupo ? (
-                              <span className="rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[var(--franco-text)]">
+                              <span className="rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--franco-text)]">
                                 {n} ANÁLISIS
                               </span>
                             ) : (
@@ -565,12 +565,12 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
 
                     <div className="shrink-0 text-right">
                       <div
-                        className="font-mono text-[13px] font-medium"
+                        className="text-[13px] font-medium"
                         style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}
                       >
                         {fmtCLPSigned(flujo)}
                       </div>
-                      <div className="mt-0.5 font-mono text-[9px] uppercase text-[var(--franco-text-muted)]">
+                      <div className="mt-0.5 text-[12px] text-[var(--franco-text-muted)]">
                         {row.score_efectivo} · {fmtFechaCorta(row.created_at)}
                       </div>
                     </div>
@@ -592,7 +592,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
 
             {/* ── Pie ── */}
             <div className="flex items-center justify-between gap-3 border-t border-[var(--franco-border)] px-3.5 py-2.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
+              <span className="text-[12.5px] text-[var(--franco-text-muted)]">
                 {agrupado
                   ? `Mostrando ${items.length} propiedades · ${unidadesVisibles} de ${total}`
                   : `Mostrando ${rows.length} de ${total}`}
@@ -601,7 +601,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               {hasMore && (
                 <EnlaceCarga
                   href={buildHref(params, { page: params.page + 1 })}
-                  className="rounded-[7px] border border-[var(--franco-border-hover)] px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text)] no-underline hover:border-[var(--franco-border-strong)]"
+                  className="rounded-[7px] border border-[var(--franco-border-hover)] px-3.5 py-1.5 text-[12.5px] text-[var(--franco-text)] no-underline hover:border-[var(--franco-border-strong)]"
                 >
                   Cargar {PAGE_SIZE} más ↓
                 </EnlaceCarga>

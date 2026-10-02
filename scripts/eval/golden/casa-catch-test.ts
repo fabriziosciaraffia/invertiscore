@@ -14,6 +14,8 @@
 //       escrituras de anon/authenticated.
 //   7 · SIN «Te escribimos los lunes», sin las vedadas, en tuteo; el rojo solo en el botón de compra y
 //       en el error.
+//   8 · «TUS INFORMES» EN EL SISTEMA NUEVO (02-oct-2026): Inter, sin mono ni mayúsculas espaciadas, como
+//       las tarjetas de la guía (continuar, la tira de cifras, el archivo y sus piezas).
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/casa-catch-test.ts
@@ -132,6 +134,15 @@ export function runCasaTier(): { hard: number } {
   if (rojos.length !== 2 || !/style=\{\{ background: "var\(--signal-red\)" \}\} data-casa="comprar-suelto"/.test(casa) || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del botón de compra y del error (${rojos.length})`);
   if (/font-mono|uppercase/.test(casa)) F("7 · la casa usa mono o mayúsculas");
 
+  // 8 · «Tus informes» en el sistema nuevo
+  for (const f of ["src/app/dashboard/continuar.tsx", "src/app/dashboard/stats-strip.tsx", "src/app/dashboard/archive.tsx", "src/app/dashboard/dashboard-ui.tsx", "src/app/dashboard/page.tsx"]) {
+    const s = sinComentarios(leer(f));
+    if (/font-mono|\buppercase\b|tracking-\[0\.\d+em\]|JetBrains/.test(s)) F(`8 · ${f} vuelve al mono o a las mayúsculas espaciadas`);
+    if (/>\s*(LARGA|CORTA|AMBAS|RETOMAR|FLUJO|ANÁLISIS)\s*</.test(s)) F(`8 · ${f} escribe un rótulo en mayúsculas`);
+  }
+  if (!/data-casa="pagina" style=\{\{ fontFamily: "var\(--font-ui\), Inter/.test(pag)) F("8 · el dashboard no va en Inter");
+  if (!/TEXTO_MODALIDAD\[label\]/.test(sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx")))) F("8 · el chip de modalidad no dice «Larga/Corta/Ambas»");
+
   if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, suelto y no pack, orden, escritura del servidor");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
@@ -163,3 +174,5 @@ if (require.main === module) {
 //   K18 la tabla sin el revoke de escrituras ................................... ROJO (6)
 //   18/18 en rojo; cada archivo restaurado byte a byte.
 //   K19 el regalo sin su vencimiento · K20 el dashboard sin la fecha (02-oct-2026): 2/2 ROJO.
+//   §8 «Tus informes»: K21 vuelve font-mono al archivo · K22 vuelve uppercase a la tira · K23 «LARGA» en mayúsculas
+//   · K24 la página sin Inter · K25 el chip escribe la etiqueta cruda: 5/5 ROJO.

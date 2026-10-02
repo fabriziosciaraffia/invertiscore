@@ -18,6 +18,9 @@ import { colorDeVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 // (`ChipVeredictoTokens`). El tier CHIP-VEREDICTO cubre el dashboard.
 
 // ─── Chip de modalidad ──────────────────────────────────────────────────────
+// En el sistema nuevo (02-oct-2026): Inter, en minúscula de frase, sin mayúsculas espaciadas.
+const TEXTO_MODALIDAD = { LARGA: "Larga", CORTA: "Corta", AMBAS: "Ambas" } as const;
+
 export function ModChip({ label }: { label: "LARGA" | "CORTA" | "AMBAS" }) {
   const style: React.CSSProperties =
     label === "AMBAS"
@@ -35,10 +38,10 @@ export function ModChip({ label }: { label: "LARGA" | "CORTA" | "AMBAS" }) {
 
   return (
     <span
-      className="inline-flex shrink-0 whitespace-nowrap rounded font-mono text-[8px] font-bold tracking-[0.08em]"
-      style={{ padding: "2px 6px", border: "1px solid", ...style }}
+      className="inline-flex shrink-0 whitespace-nowrap rounded-full text-[12px] font-medium"
+      style={{ padding: "1px 8px", border: "1px solid", ...style }}
     >
-      {label}
+      {TEXTO_MODALIDAD[label]}
     </span>
   );
 }
@@ -75,7 +78,7 @@ export function ScoreRing({ score, veredicto, size = 40 }: { score: number; vere
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-heading font-bold leading-none text-[var(--franco-text)]" style={{ fontSize: font }}>
+        <span className="font-bold leading-none tabular-nums text-[var(--franco-text)]" style={{ fontSize: font }}>
           {score}
         </span>
       </div>
@@ -116,7 +119,7 @@ export function ZoneLabel({ children, id }: { children: React.ReactNode; id?: st
   return (
     <div
       id={id}
-      className="mb-2.5 mt-1.5 flex items-center gap-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.10em] text-[var(--franco-text-tertiary)]"
+      className="mb-2.5 mt-1.5 flex items-center gap-2.5 text-[12.5px] font-medium text-[var(--franco-text-tertiary)]"
     >
       {children}
       <span className="h-px flex-1 bg-[var(--franco-border)]" aria-hidden="true" />

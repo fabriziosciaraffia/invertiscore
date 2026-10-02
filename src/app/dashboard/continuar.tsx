@@ -37,11 +37,11 @@ function Flujo({ value, className = "" }: { value: number; className?: string })
   const neg = value < 0;
   return (
     <span className={`text-right ${className}`}>
-      <span className="mb-0.5 block font-mono text-[8px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
+      <span className="mb-0.5 block text-[11px] font-medium text-[var(--franco-text-muted)]">
         Flujo
       </span>
       <span
-        className="font-mono text-sm font-medium"
+        className="text-sm font-medium"
         style={{ color: neg ? "var(--signal-red)" : "var(--franco-text)" }}
       >
         {fmtCLPSigned(value)}
@@ -80,7 +80,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
             <ChipVeredicto v={veredictoDisplay(hero)} />
           </div>
           {heroResumen && (
-            <p className="mt-1.5 border-t border-[var(--franco-border)] pt-1.5 font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
+            <p className="mt-1.5 border-t border-[var(--franco-border)] pt-1.5 font-body text-[13px] leading-snug text-[var(--franco-text-secondary)]">
               <span className="font-medium text-[var(--franco-text)]">Siendo franco:</span> {heroResumen}
             </p>
           )}
@@ -91,10 +91,10 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
           <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-[var(--franco-border)] pt-2.5 md:hidden">
             <Flujo value={heroFlujo} className="min-w-0" />
             <span className="flex items-center gap-3">
-              <span className="font-mono text-[10px] tracking-[0.05em] text-[var(--franco-text-muted)]">
+              <span className="text-[12.5px] text-[var(--franco-text-muted)]">
                 {fmtFechaRelativa(hero.created_at)}
               </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.10em] text-signal-red">
+              <span className="text-[12.5px] font-medium text-signal-red">
                 Retomar →
               </span>
             </span>
@@ -105,25 +105,25 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
           {heroStr && (
             <>
               <div className="min-w-[72px] text-right">
-                <div className="mb-0.5 font-mono text-[8px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
+                <div className="mb-0.5 text-[11px] font-medium text-[var(--franco-text-muted)]">
                   Renta larga
                 </div>
-                <div className="font-mono text-sm font-medium text-[var(--franco-text)]">{hero.score_efectivo}</div>
+                <div className="text-sm font-medium text-[var(--franco-text)]">{hero.score_efectivo}</div>
               </div>
               <div className="min-w-[72px] text-right">
-                <div className="mb-0.5 font-mono text-[8px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
+                <div className="mb-0.5 text-[11px] font-medium text-[var(--franco-text-muted)]">
                   Renta corta
                 </div>
-                <div className="font-mono text-sm font-medium text-[var(--franco-text)]">{heroStr.score_efectivo}</div>
+                <div className="text-sm font-medium text-[var(--franco-text)]">{heroStr.score_efectivo}</div>
               </div>
             </>
           )}
           <Flujo value={heroFlujo} className="min-w-[92px]" />
           <div className="text-right">
-            <div className="mb-1.5 font-mono text-[10px] tracking-[0.05em] text-[var(--franco-text-muted)]">
+            <div className="mb-1.5 text-[12.5px] text-[var(--franco-text-muted)]">
               {fmtFechaRelativa(hero.created_at)}
             </div>
-            <div className="font-mono text-[10px] font-medium uppercase tracking-[0.10em] text-signal-red">
+            <div className="text-[12.5px] font-medium text-signal-red">
               Retomar{" "}
               <span className="franco-card-arrow inline-block" aria-hidden="true">→</span>
             </div>
@@ -155,7 +155,7 @@ export function Continuar({ rows, siblings, heroResumen }: Props) {
                     </span>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
                       <ModChip label={modalidadLabel(row)} />
-                      <span className="font-mono text-[10px] tracking-[0.05em] text-[var(--franco-text-muted)]">
+                      <span className="text-[12.5px] text-[var(--franco-text-muted)]">
                         {fmtFechaRelativa(row.created_at)}
                       </span>
                     </span>
