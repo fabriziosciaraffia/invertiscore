@@ -13,6 +13,7 @@ import { calcDividendo, fmtCLP, fmtUF } from "./helpers-wizard";
 import { decimalesUtiles, formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { DEC, decPie, type PieUnidad, type WizardV4Answers } from "./wizardV4Nodes";
+import { PREMIO_ARRIENDO_NUEVO } from "@/lib/obra-nueva";
 
 export { fmtCLP, fmtUF };
 
@@ -319,7 +320,10 @@ export function fuenteArriendoLine(
   radio: number | null,
   /** Solo comuna-m2: el rango del estimado, que la frase publica. */
   rango: { min: number; max: number } | null = null,
+  /** Obra nueva (02-oct-2026): el sugerido lleva el +3% de lo nuevo, y la fuente lo dice. */
+  nuevo = false,
 ): string {
+  const premio = nuevo ? `, más ${Math.round(PREMIO_ARRIENDO_NUEVO * 100)}% por ser nuevo` : "";
   if (fuente === "sin-dato" || n <= 0) {
     return "sin arriendos publicados cerca para comparar — el valor lo pones tú";
   }
@@ -330,12 +334,12 @@ export function fuenteArriendoLine(
     return `estimado desde el m² de ${n} arriendos publicados en la comuna — no hay arriendos comparables cerca ni de esta tipología${rangoTxt}. Ajústalo si conoces el arriendo real`;
   }
   if (fuente === "comuna") {
-    return `mediana de ${n} arriendos de esta tipología en la comuna completa — no de la zona del depto`;
+    return `mediana de ${n} arriendos de esta tipología en la comuna completa${premio} — no de la zona del depto`;
   }
   const donde = radio ? `a menos de ${fmtRadio(radio)} de la dirección` : "en la zona";
   return n >= 10
-    ? `mediana de ${n} arriendos publicados ${donde}`
-    : `mediana de solo ${n} ${n === 1 ? "arriendo publicado" : "arriendos publicados"} ${donde} — muestra chica, ajústalo si conoces el arriendo real`;
+    ? `mediana de ${n} arriendos publicados ${donde}${premio}`
+    : `mediana de solo ${n} ${n === 1 ? "arriendo publicado" : "arriendos publicados"} ${donde}${premio} — muestra chica, ajústalo si conoces el arriendo real`;
 }
 
 /**

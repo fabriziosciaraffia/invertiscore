@@ -9,7 +9,8 @@
 //       lo dice («Durante N meses pagas también $X de cuota.»), con entrega futura o inmediata.
 //   4 · EL WIZARD: las cuotas en el paso de la entrega, con entrega futura o inmediata; por defecto hasta la
 //       entrega (tope 60) o al contado; el payload las lleva.
-//   5 · EL ARRIENDO SUGERIDO DE LO NUEVO +3%: en el wizard y en los avisos; el que escribe la persona, no.
+//   5 · EL ARRIENDO SUGERIDO DE LO NUEVO +3%: en el wizard y en los avisos; el que escribe la persona, no. Y la
+//       procedencia lo dice («…, más 3% por ser nuevo») en el wizard y en el informe (marca `premioNuevoPct`).
 //   6 · LA FRASE DEL RIESGO: con entrega futura, la línea aprobada después de la portada, sin cifras.
 //   7 · LA VERSIÓN DE EVALUACIÓN sube (r3): el cron reevalúa los avisos.
 //
@@ -26,6 +27,8 @@ import {
 } from "../../../src/lib/obra-nueva";
 import { cuotasDelWizard } from "../../../src/components/formulario-v4/helpers-wizard";
 import { REVISION_EVALUACION } from "../../../src/lib/avisos/evaluar-aviso";
+import { fuenteArriendoLine } from "../../../src/components/formulario-v4/derive";
+import { respaldoArriendo } from "../../../src/lib/arriendo-referencia";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -122,6 +125,15 @@ export function runObraNuevaTier(): { hard: number } {
   if (/arriendoSugeridoObraNueva/.test(pay) || !/arriendo: leerNum\(a\.arriendo, DEC\.arriendo\) \|\| ctx\.arriendoSugerido \|\| 0,/.test(pay)) F("5 · el +3% toca el arriendo que escribe la persona");
   if (!/monto: arriendoSugeridoObraNueva\(seg \? seg\.monto : arr\.arriendo, a\.condicion\) \?\? 0,/.test(sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts")))) F("5 · los avisos nuevos no se evalúan con el +3%");
 
+  // 5b · la procedencia lo dice: «mediana de N arriendos …, más 3% por ser nuevo», en el wizard y en el informe
+  if (!/más 3% por ser nuevo/.test(fuenteArriendoLine("radio", 38, 1500, null, true)) || /por ser nuevo/.test(fuenteArriendoLine("radio", 38, 1500, null, false))) F("5 · la línea de fuente del wizard no dice el +3% de lo nuevo (o lo dice en un usado)");
+  {
+    const conMarca = respaldoArriendo({ zonaRadio: { arriendoPromedio: 1501740, sampleSizeArriendo: 38, radioMetros: 1500, arriendoFuente: "radio", premioNuevoPct: 3 } }, 1501740);
+    const sinMarca = respaldoArriendo({ zonaRadio: { arriendoPromedio: 1458000, sampleSizeArriendo: 38, radioMetros: 1500, arriendoFuente: "radio" } }, 1458000);
+    if (!/más 3% por ser nuevo/.test(conMarca.texto) || /por ser nuevo/.test(sinMarca.texto)) F(`5 · el informe no dice que la referencia trae el +3% (${conMarca.texto})`);
+  }
+  if (!/premioNuevoPct: a\.tipoPropiedad === "nuevo" \? Math\.round\(PREMIO_ARRIENDO_NUEVO \* 100\) : undefined,/.test(pay)) F("5 · el payload no marca que la referencia de lo nuevo trae el +3%");
+
   // 6 · la frase del riesgo
   if (FRASE_RIESGO_ENTREGA !== "Tu crédito se firma en la entrega: si la tasa sube en la espera, estos números cambian.") F("6 · la frase del riesgo no es la aprobada");
   if (/\d/.test(FRASE_RIESGO_ENTREGA)) F("6 · la frase del riesgo lleva cifras");
@@ -153,3 +165,5 @@ if (require.main === module) {
 //   cuotas solo con entrega futura · O12 el payload ignora la respuesta · O13 premio 5% · O14 premio a usados ·
 //   O15 premio al arriendo escrito · O16 el wizard sin premio · O17 los avisos sin premio · O18 la frase con
 //   cifras · O19 el informe sin la frase · O20 la versión sin subir: 20/20 en rojo, restauradas byte a byte.
+//   Y la procedencia (5b): O21 la fuente del wizard sin el +3% · O22 el respaldo del informe sin el +3% · O23 el
+//   payload sin la marca · O24 el resolver la ignora: 4/4 en rojo. Total 24/24.

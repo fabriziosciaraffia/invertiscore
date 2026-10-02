@@ -14,6 +14,7 @@ import { DEC, type WizardV4Answers } from "./wizardV4Nodes";
 import { cuotaCreditoPieCLP, dormitoriosNum, leerNum, otraFuentePctCrudo, pieEfectivoPct, type FuenteArriendo } from "./derive";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
+import { PREMIO_ARRIENDO_NUEVO } from "@/lib/obra-nueva";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -162,6 +163,8 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     zonaRadio: {
       precioM2VentaCLP: ctx.precioM2UF ? Math.round(ctx.precioM2UF * ctx.ufCLP) : null,
       arriendoPromedio: ctx.arriendoSugerido,
+      // Obra nueva (02-oct-2026): el sugerido ya trae el +3% de lo nuevo; el informe lo dice al citar la mediana.
+      premioNuevoPct: a.tipoPropiedad === "nuevo" ? Math.round(PREMIO_ARRIENDO_NUEVO * 100) : undefined,
       arriendoPrecioM2: null,
       sampleSizeArriendo: ctx.arriendoN,
       // Fuente y rango de la sugerencia (arriendo-referencia.ts los lee; filas

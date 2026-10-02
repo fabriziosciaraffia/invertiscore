@@ -162,7 +162,7 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
             {listo ? fmtCLP(sugerido ?? 0) : "Estimando…"}
             {listo && <small>/mes</small>}
           </div>
-          {listo && <FuenteLine>{fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}</FuenteLine>}
+          {listo && <FuenteLine>{fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango, answers.tipoPropiedad === "nuevo")}</FuenteLine>}
         </div>
         {supuestos}
       </div>

@@ -1039,7 +1039,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
                 label="Arriendo mensual" sub={arriendoTag}
                 raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? fmtCLP(arriendoVal) : "—"} unidad="/mes"
                 decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", " al mes")} escala={escalaArriendo}
-                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}
+                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango, a.tipoPropiedad === "nuevo")}
                 highlight={highlight === "arr"}
                 cargando={enEspera("arr")} onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />

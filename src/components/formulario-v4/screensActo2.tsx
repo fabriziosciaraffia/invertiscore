@@ -271,7 +271,12 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         formatEco={(v) => [ecoMonto(v, unidad), ...equivalencias(pct, unidad, answers, data.ufCLP)].join(" · ")}
       />
 
-      {enCuotas && <p className="wz-eco">{enCuotas}</p>}
+      {enCuotas && (
+        <>
+          <p className="wz-indic" data-wz="pie-en-cuotas">{enCuotas}</p>
+          <p className="wz-eco">Lo cambias en el paso de la entrega.</p>
+        </>
+      )}
 
       {/* Fase 5b · pie 0. D2: permiso informado que nombra la consecuencia (el dividendo queda
           en su punto más alto). Con «otra fuente» no va: ahí el banco NO financia el 100%, y lo

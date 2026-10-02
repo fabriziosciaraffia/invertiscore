@@ -57,6 +57,8 @@ export interface ArriendoReferencia {
   fuente: FuenteArriendoReferencia;
   /** Solo "comuna-m2": el rango publicado del estimado (estimado ∓ error residual). */
   rangoCLP?: { min: number; max: number };
+  /** Obra nueva (02-oct-2026): la referencia es la mediana más este porcentaje. Ausente en filas anteriores. */
+  premioNuevoPct?: number;
 }
 
 /**
@@ -135,6 +137,7 @@ type ConZonaRadio = {
     arriendoFuente?: string | null;
     arriendoRangoMin?: number | null;
     arriendoRangoMax?: number | null;
+    premioNuevoPct?: number | null;
   } | null;
 };
 
@@ -157,6 +160,7 @@ export function resolverArriendoReferencia(input: unknown): ArriendoReferencia |
   // Filas viejas no traen el campo: eran radio, se leen como radio.
   const fuente: FuenteArriendoReferencia = esFuente(zonaRadio?.arriendoFuente) ? zonaRadio.arriendoFuente : "radio";
   const ref: ArriendoReferencia = { valorCLP: Math.round(valor), n, radioMetros, fuente };
+  if (typeof zonaRadio?.premioNuevoPct === "number" && zonaRadio.premioNuevoPct > 0) ref.premioNuevoPct = zonaRadio.premioNuevoPct;
   if (fuente === "comuna-m2") {
     const min = zonaRadio?.arriendoRangoMin;
     const max = zonaRadio?.arriendoRangoMax;
@@ -288,7 +292,8 @@ export function respaldoArriendo(input: unknown, arriendoCLP: number): RespaldoA
     };
   }
 
-  const donde = ref.fuente === "comuna" ? "de la comuna" : `a menos de ${fmtRadio(ref.radioMetros)}`;
+  const donde = (ref.fuente === "comuna" ? "de la comuna" : `a menos de ${fmtRadio(ref.radioMetros)}`)
+    + (ref.premioNuevoPct ? `, más ${ref.premioNuevoPct}% por ser nuevo` : "");
 
   if (!esReferenciaContrastable(ref)) {
     return {
