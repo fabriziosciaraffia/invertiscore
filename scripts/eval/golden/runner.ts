@@ -124,6 +124,7 @@ import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
+import { runUnidadesTier } from "./unidades-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
 import { runGuiaBusquedaTier } from "./guia-busqueda-catch-test";
@@ -519,6 +520,9 @@ function printSeed(r: SeedReport) {
   // Tier CRONS (29-sep-2026, 0 tokens, sin red ni base): el scraper de unidades sale por el proxy y el
   // 202 del WAF es error; ningún cron falla en silencio (500, rojo en el panel, alerta a hola@). ──
   totalHard += (await runCronsTier()).hard;
+  // Tier UNIDADES (02-oct-2026, 0 tokens, sin red ni base): el pase de unidades cruza los disponibles de la
+  // ficha nueva; vista la que sigue, vendida la que falta (fuera de la guía, medida en bajas_avisos); sin precios. ──
+  totalHard += (await runUnidadesTier()).hard;
   // Tier RADIO-MONEDA (30-sep-2026, 0 tokens): todo precio del radio en pesos (la obra nueva viene en
   // UF), piso de UF 10/m² al valor de mercado, /comunas con ventana de 90 días y venta usada. ──
   totalHard += (await runRadioMonedaTier()).hard;

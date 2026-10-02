@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/data/scrape-unidades-nuevas",
+      "schedule": "0 14 * * *"
+    },
+    {
       "path": "/api/data/scrape-nuevos",
       "schedule": "30 6 * * *"
     },

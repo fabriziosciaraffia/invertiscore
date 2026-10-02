@@ -17,7 +17,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fallidosTolerados, fetchUnidadesProyecto, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
+import { fallidosTolerados, fetchUnidadesProyecto, PREFIJO_VISTA_UNIDADES, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
 import { CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
 import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
@@ -55,18 +55,26 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   // ── 1 · el scraper de unidades ──
   const base = { idProyecto: 4347128, url: "https://x/propiedades/compranuevo/departamento/macul/edificio/4347128", comuna: "Macul", lat: null, lng: null, direccion: null };
   const fetchReal = globalThis.fetch;
-  const conFetch = async (status: number, cuerpo: string) => {
-    globalThis.fetch = (async () => new Response(cuerpo || null, { status })) as typeof fetch;
+  // La ficha nueva (02-oct-2026): dos GETs por proyecto, el proyecto y sus disponibles. El doble contesta
+  // según la dirección: `/floors-units` lleva los disponibles, la otra el proyecto.
+  const conFetch = async (proyecto: [number, string], disponibles: [number, string] = [200, "{}"]) => {
+    globalThis.fetch = (async (u: string) => {
+      const [status, cuerpo] = String(u).endsWith("/floors-units") ? disponibles : proyecto;
+      return new Response(cuerpo || null, { status });
+    }) as typeof fetch;
     try { return await fetchUnidadesProyecto(base); } finally { globalThis.fetch = fetchReal; }
   };
-  const waf = await conFetch(202, "");
+  const proyectoSano = JSON.stringify({ status: "ok", data: { minimunPricesUF: 3000, maximunPricesUF: 4200, characteristics: [{ name: "Fecha de entrega: ", value: "2° Semestre 2027" }] } });
+  const waf = await conFetch([202, ""]);
   if (!waf.error || !/202/.test(waf.error)) F(`1 · el desafío del WAF (202 sin cuerpo) no sale como error explícito (${waf.error ?? "sin error"})`);
-  const vacio = await conFetch(200, "");
+  const vacio = await conFetch([200, ""]);
   if (!vacio.error || !/sin cuerpo/.test(vacio.error)) F(`1 · un 200 sin cuerpo no sale como error legible para la alerta (${vacio.error ?? "sin error"})`);
-  const despub = await conFetch(200, JSON.stringify({ data: { propiedad: null } }));
-  if (despub.error || despub.unidades.length !== 0) F(`1 · un proyecto despublicado cuenta como falla (${despub.error})`);
-  const bien = await conFetch(200, JSON.stringify({ data: { propiedad: { fechaEntrega: "Inmediata", plantas: [{ propiedades: [{ numeroPropiedad: "101", precio: 3000, metrosUtiles: 50, dormitorios: 2, banos: 1, estaPublicado: true }] }] } } }));
-  if (bien.error || bien.unidades.length !== 1) F("1 · una respuesta sana no trae su unidad");
+  const app = await conFetch([200, proyectoSano], [200, "<!DOCTYPE html><html>la app</html>"]);
+  if (!app.error || !/no JSON/.test(app.error)) F(`1 · la app en vez del JSON (la dirección cambió, como el 02-oct) no sale como error (${app.error ?? "sin error"})`);
+  const despub = await conFetch([404, ""]);
+  if (despub.error || despub.disponibles.length !== 0) F(`1 · un proyecto que la ficha ya no tiene cuenta como falla (${despub.error})`);
+  const bien = await conFetch([200, proyectoSano], [200, JSON.stringify({ status: "ok", data: { floors: [{ model: [{ units: [{ number: "101", characteristics: [{ name: "Dormitorios: ", value: 2 }, { name: "Baños: ", value: 1 }, { name: "Piso: ", value: 1 }, { name: "M2 útiles: ", value: "50.5 m2" }] }] }] }] } })]);
+  if (bien.error || bien.disponibles.length !== 1 || bien.disponibles[0].m2Utiles !== 50.5 || bien.rango?.desdeUF !== 3000 || bien.rango?.hastaUF !== 4200 || bien.fechaEntrega !== "2° Semestre 2027") F("1 · una respuesta sana no trae su depto disponible, el rango y la entrega");
 
   for (const p of ["src/lib/services/scraper/toctoc.ts", "src/lib/services/scraper/toctoc-unidades.ts"]) {
     const s = sinComentarios(leer(p));
@@ -76,7 +84,7 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   }
   if (!/export const proxyDispatcher = process\.env\.PROXY_URL/.test(leer("src/lib/services/scraper/toctoc.ts"))) F("1 · el proxy no está exportado desde toctoc.ts");
   const uni = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
-  if (!/const sinNinguna = delBatch\.length > 0 && conUnidades\.length === 0;/.test(uni) || !/upsertFallo \|\| sinNinguna\s*\? \{ procesados: delBatch\.length, exitosos: 0, fallidos: delBatch\.length \}/.test(uni)) F("1 · un batch de unidades sin una sola unidad (o con el upsert caído) no es falla total");
+  if (!/const sinNinguna = delBatch\.length > 0 && conDisponibles\.length === 0;/.test(uni) || !/escrituraFallo \|\| sinNinguna\s*\? \{ procesados: delBatch\.length, exitosos: 0, fallidos: delBatch\.length \}/.test(uni)) F("1 · un batch sin un solo depto disponible (o con una escritura caída) no es falla total");
 
   // ── 1 · el reintento y la tolerancia (30-sep-2026): cada proyecto fallido se reintenta una vez; la
   // corrida es falla solo si después falla más del 5% ──
@@ -163,16 +171,27 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     const sanos = estado.filter((e) => !["monthly-grants", "expire-grace", "reconcile-subscriptions", "meta-ads"].includes(e.nombre));
     const falsos = sanos.filter((e) => e.enRojo).map((e) => `${e.nombre}: ${e.motivo}`);
     if (falsos.length) F(`2 · crons sanos en rojo: ${falsos.join(" · ")}`);
-    for (const n of ["scrape-nuevos", "backfill-toctoc", "update-market", "sentry-metrics", "meta-ads", "evaluar-avisos"]) {
+    for (const n of ["scrape-nuevos", "scrape-unidades-nuevas", "backfill-toctoc", "update-market", "sentry-metrics", "meta-ads", "evaluar-avisos"]) {
       if (!CRONS_VIGILADOS.find((c) => c.nombre === n)?.frescura) F(`2 · ${n} escribe en cada corrida y no tiene frescura vigilada`);
     }
   }
-  // ── 2 · el pase de unidades, CONGELADO (02-oct-2026): la fuente retiró el GraphQL y el reemplazo no trae
-  // precio por unidad. Ni corre ni alerta; la ruta queda para lanzarla a mano. ──
+  // ── 2 · el pase de unidades vuelve (02-oct-2026, congelado ese mismo día): diario, vigilado, y su
+  // frescura mide la marca de vista —lo que escribe en cada corrida—, no scraped_at, que es la fecha del precio. ──
   {
-    if (vj.crons.some((c) => c.path === "/api/data/scrape-unidades-nuevas")) F("2 · el pase de unidades congelado sigue en el calendario de vercel.json");
-    if (CRONS_VIGILADOS.some((c) => c.nombre === "scrape-unidades-nuevas")) F("2 · el pase de unidades congelado sigue vigilado (alertaría todos los días)");
-    if (!/CONGELADO el 02-oct-2026/.test(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"))) F("2 · la ruta de unidades no dice que está congelada");
+    if (vj.crons.find((c) => c.path === "/api/data/scrape-unidades-nuevas")?.schedule !== "0 14 * * *") F("2 · el pase de unidades no corre cada día");
+    const vu = CRONS_VIGILADOS.find((c) => c.nombre === "scrape-unidades-nuevas");
+    if (!vu || vu.intervaloHoras !== 24 || vu.frescura?.maxHoras !== 48) F("2 · el pase de unidades no está vigilado como diario (24 h, frescura 48 h)");
+    const lectura = { sel: "", like: "" };
+    const visto = await vu?.frescura?.leer({ from: () => {
+      const q: Record<string, unknown> = {};
+      q.select = (c: string) => { lectura.sel = c; return q; };
+      q.like = (_: string, v: string) => { lectura.like = v; return q; };
+      q.order = () => q; q.limit = () => q;
+      q.maybeSingle = () => Promise.resolve({ data: { seen_pass_id: "unidades@2026-10-03T14:01:00.000Z" }, error: null });
+      return q;
+    } } as never);
+    if (lectura.sel !== "seen_pass_id" || lectura.like !== "unidades@%" || visto !== "2026-10-03T14:01:00.000Z") F(`2 · la frescura de unidades no lee la marca de vista (${lectura.sel} · ${visto})`);
+    if (PREFIJO_VISTA_UNIDADES !== "unidades@") F("2 · el prefijo de la marca de vista no es el que lee la vigilancia");
   }
   // ── 3 · update-market (30-sep-2026): el BCCh falla de a ratos; se reintenta y la razón llega al correo ──
   {
@@ -265,7 +284,16 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   M18 la alerta a otro correo ................................ 2 · no va a hola@
 //   M19 expire-grace responde 500 a mano ....................... 2 · responde sin pasar por cerrarCron
 //   M20 un fetch del listado sin proxy ......................... 1 · fetch a la fuente sin el proxy
-// 02-oct-2026 (unidades congeladas): 4/4 en rojo.
+// 02-oct-2026 (unidades congeladas; el chequeo se dio vuelta el mismo día al volver el pase): 4/4 en rojo.
+// 02-oct-2026 (la ficha nueva: disponibles, sin precio): 8/8 en rojo.
+//   F1 la app (HTML) pasa como JSON vacío ........................ 1 · no sale como error
+//   F2 el 202 no es error ........................................ 1 · el desafío del WAF no sale como error
+//   F3 el 404 es falla ........................................... 1 · un proyecto que la ficha ya no tiene cuenta como falla
+//   F4 la ficha sin proxy ........................................ 1 · fetch a la fuente sin el proxy
+//   F5 el pase semanal ........................................... 2 · no corre cada día
+//   F6 la frescura por scraped_at (la fecha del precio) ........... 2 · no lee la marca de vista
+//   F7 fuera de la vigilancia .................................... 2 · no está vigilado
+//   F8 la entrega no se escribe (en AVISOS §1) ................... 1 · no pasa la fecha de entrega
 //   Z1 vuelve al calendario de vercel.json .................... 2 · sigue en el calendario
 //   Z2 vuelve a la vigilancia .................................. 2 · alertaría todos los días
 //   Z3 la ruta no dice que está congelada ...................... 2 · no dice que está congelada

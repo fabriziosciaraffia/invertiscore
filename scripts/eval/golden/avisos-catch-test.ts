@@ -25,6 +25,7 @@ import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { arriendoSegmentado } from "../../../src/lib/avisos/arriendo-segmentado";
 import { ANIOS_ANTIGUEDAD_SUPUESTA, ANTIGUEDAD_SUPUESTA, PERFILES_ESTANDAR, PLAZO_ESTANDAR, respuestasDeAviso, type AvisoParaEvaluar } from "../../../src/lib/avisos/evaluar-aviso";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
+import { parsearProyecto } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { propertyToRow } from "../../../src/lib/services/scraper/property-row";
 import { antiguedadToNumber } from "../../../src/components/formulario-v4/helpers-wizard";
 
@@ -38,8 +39,13 @@ export function runAvisosTier(): { hard: number } {
   console.log("\n─── TIER AVISOS (avisos evaluados con el motor · 0 tokens) ───");
 
   // ── 1 · el scraper ──
-  const uni = sinComentarios(leer("src/lib/services/scraper/toctoc-unidades.ts"));
-  if (!/condicion: "nuevo",\s*fechaEntrega: \(p\.fechaEntrega \?\? ""\)\.trim\(\) \|\| undefined,/.test(uni)) F("1 · el GraphQL de obra nueva no pasa la fecha de entrega a cada unidad");
+  // Desde el 02-oct-2026 la entrega sale de la ficha nueva (/property/<id>) y el pase la escribe en cada
+  // unidad que sigue disponible.
+  const uni = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
+  if (!/\.update\(\{ is_active: true, seen_pass_id: marca, \.\.\.\(v\.fechaEntrega \? \{ fecha_entrega: v\.fechaEntrega \} : \{\}\) \}\)/.test(uni)) F("1 · el pase de unidades no pasa la fecha de entrega a cada unidad disponible");
+  const ent = parsearProyecto({ data: { minimunPricesUF: 1, characteristics: [{ name: "Fecha de entrega: ", value: "2° Semestre 2026" }] } }).fechaEntrega;
+  const inm = parsearProyecto({ data: { characteristics: [{ name: "Estado del proyecto: ", value: "Entrega inmediata" }] } }).fechaEntrega;
+  if (ent !== "2° Semestre 2026" || inm !== "Inmediata") F(`1 · la ficha nueva no da la entrega (${ent} · ${inm})`);
   const base = { source: "toctoc", sourceId: "x#1", type: "venta" as const, comuna: "Ñuñoa", precio: 3000, moneda: "UF" as const };
   if (propertyToRow({ ...base, fechaEntrega: "2° Semestre 2026" }).fecha_entrega !== "2° Semestre 2026" || propertyToRow(base).fecha_entrega !== null) F("1 · propertyToRow no escribe fecha_entrega (o inventa una)");
   const mig = leer("supabase/migrations/20260930_avisos_evaluados.sql");

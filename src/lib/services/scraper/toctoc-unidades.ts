@@ -1,49 +1,33 @@
-// ─── Unidades de obra nueva vía GraphQL ──────────────────────────────────────
+// ─── Unidades de obra nueva: los deptos disponibles de cada proyecto ────────
 //
-// La fila que el GetProps entrega para un proyecto de obra nueva es del PROYECTO:
-// precio "desde", superficie y dormitorios mínimos del rango. Detrás de la ficha
-// hay un GraphQL público que expone el detalle real: cada unidad en venta con su
-// precio y superficie exactos. Este módulo lo consulta y expande las unidades a
-// filas de `scraped_properties`, para que getComunaMedianaVentaUF las vea sin
-// tocar el motor.
+// HASTA EL 02-OCT-2026 este módulo leía un GraphQL público de la ficha que traía cada unidad con su
+// precio, y las expandía a filas de `scraped_properties`. La fuente lo retiró (desde la IP local
+// devuelve la app; por el proxy, 403) y movió la ficha de obra nueva a una app nueva, cuyo backend
+// público es `api-ficha`:
+//   · /property/<id>               el proyecto: rango «desde/hasta» en UF y la fecha de entrega.
+//   · /property/<id>/floors-units  los deptos DISPONIBLES: número, dormitorios, baños, piso y m².
+//                                  Sin precio (verificado en 6 proyectos y con parámetros: el precio
+//                                  por unidad solo aparece tras la precotización, que pide lead).
 //
-// Sondeado en vivo (231/231 proyectos, 0 errores): el endpoint no exige JWT
-// (a diferencia del GetProps) pero SÍ headers de navegador — sin User-Agent y
-// Origin devuelve 403. Latencia 7-9s por query del lado del server, tolera
-// paralelo sin rate-limit (concurrencia 8 → ~1,3s efectivo por ficha).
+// Lo que hace ahora: lee los disponibles y los cruza con las unidades que ya tenemos (mismo número:
+// verificado 96 de 96 en el proyecto 3976789). La que sigue disponible queda vista; la que dejó de
+// aparecer se marca vendida (is_active = false). NO escribe precios ni filas nuevas: una unidad sin
+// precio no entra a la base hasta que Fabrizio decida entre precio real, de tipología o estimado.
+//
+// Sin JWT, pero con headers de navegador y por el proxy, como todo fetch a la fuente.
+import { proxyDispatcher } from "./toctoc";
 
-import { proxyDispatcher, type ScrapedProperty } from "./toctoc";
-
-const GRAPHQL_ENDPOINT = "https://www.toctoc.com/new/nuevo/public/query";
+const API_FICHA = "https://www.toctoc.com/propiedades/1.0/api-ficha";
 
 const HEADERS = {
-  "Content-Type": "application/json",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "es-CL,es;q=0.9",
-  Origin: "https://www.toctoc.com",
-  Referer: "https://www.toctoc.com/propiedades/compranuevo/",
+  Referer: "https://www.toctoc.com/",
 };
 
-// Query extraída del bundle de la ficha (app.js). `id_usuario: 0` = anónimo.
-// `plantas[].propiedades[]` son las unidades individuales; `fechaEntrega` va a
-// cada unidad (scraped_properties.fecha_entrega, desde el 30-sep-2026).
-const queryPropiedad = (idProyecto: number) => `query propiedad {
-  propiedad(id_propiedad: ${idProyecto}, id_usuario: 0) {
-    idPropiedad
-    fechaEntrega
-    plantas {
-      nombre dormitorios banos precioDesde superficieUtil
-      propiedades {
-        nombre numeroPropiedad numeroPiso dormitorios banos
-        precio metrosUtiles metrosTotales estaPublicado
-      }
-    }
-  }
-}`;
-
 /** Proyecto a consultar: la fila-proyecto ya persistida aporta la identidad
- *  (id de la URL compranuevo) y los datos que el GraphQL no trae confiable
+ *  (id de la URL compranuevo) y los datos que la fuente no trae confiable
  *  (comuna, coordenadas). */
 export interface ProyectoBase {
   idProyecto: number;
@@ -54,104 +38,160 @@ export interface ProyectoBase {
   direccion: string | null;
 }
 
+/** Un depto disponible según la ficha nueva. */
+export interface UnidadDisponible {
+  numero: string;
+  dormitorios: number | null;
+  banos: number | null;
+  piso: number | null;
+  m2Utiles: number | null;
+  m2Totales: number | null;
+}
+
 export interface UnidadesProyecto {
   idProyecto: number;
   url: string;
+  disponibles: UnidadDisponible[];
+  /** El rango del proyecto en UF («desde/hasta»), o null si la ficha no lo trae. */
+  rango: { desdeUF: number; hastaUF: number } | null;
+  /** Cruda, como la publica la fuente («Inmediata», «2° Semestre 2026»…). */
   fechaEntrega: string | null;
-  unidades: ScrapedProperty[];
-  /** Unidades que la fuente trae pero no pasan el filtro (no publicadas, sin
-   *  precio, superficie fuera de rango). Reportadas, no escritas. */
-  descartadas: number;
   error?: string;
 }
 
-type UnidadRaw = {
-  nombre?: string | null;
-  numeroPropiedad?: string | null;
-  numeroPiso?: number | null;
-  dormitorios?: number | null;
-  banos?: number | null;
-  precio?: number | null;
-  metrosUtiles?: number | null;
-  metrosTotales?: number | null;
-  estaPublicado?: boolean | null;
-};
+type Caracteristica = { name?: string | null; value?: unknown };
 
-/**
- * Consulta las unidades de UN proyecto. Nunca lanza: los errores vuelven en el
- * campo `error` para que el route los cuente sin abortar el lote.
- */
-export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<UnidadesProyecto> {
-  const vacio = (error: string): UnidadesProyecto =>
-    ({ idProyecto: base.idProyecto, url: base.url, fechaEntrega: null, unidades: [], descartadas: 0, error });
-  try {
-    // Por el proxy, como todo fetch a la fuente (29-sep-2026). Sin él, desde Vercel la fuente responde
-    // 202 con cuerpo vacío —el desafío del WAF—: `r.ok` es true, el r.json() revienta, el proyecto caía
-    // como error y el cron respondía 200. Así pasó del 03-ago al 29-sep sin escribir una unidad.
-    const r = await fetch(GRAPHQL_ENDPOINT, {
-      method: "POST",
-      headers: HEADERS,
-      body: JSON.stringify({ query: queryPropiedad(base.idProyecto) }),
-      dispatcher: proxyDispatcher,
-    } as RequestInit & { dispatcher?: unknown });
-    if (r.status !== 200) return vacio(`http ${r.status}${r.status === 202 ? " (desafío del WAF: sin proxy)" : ""}`);
-    const texto = await r.text();
-    if (!texto.trim()) return vacio("http 200 sin cuerpo");
-    const d = JSON.parse(texto) as {
-      data?: { propiedad?: { fechaEntrega?: string | null; plantas?: Array<{ propiedades?: UnidadRaw[] | null }> | null } | null };
-      errors?: unknown[];
-    };
-    if (d.errors?.length) return vacio(`graphql: ${JSON.stringify(d.errors).slice(0, 120)}`);
-    const p = d.data?.propiedad;
-    // Sin propiedad = el proyecto dejó de publicarse. No es una falla: vuelve sin unidades.
-    if (!p) return { idProyecto: base.idProyecto, url: base.url, fechaEntrega: null, unidades: [], descartadas: 0 };
+/** «119.65 m2», 8, "3" → número; lo demás, null. */
+function numero(v: unknown): number | null {
+  const n = parseFloat(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 
-    const unidades: ScrapedProperty[] = [];
-    let descartadas = 0;
-    const vistos = new Set<string>();
-    for (const planta of p.plantas ?? []) {
-      for (const u of planta.propiedades ?? []) {
-        const precio = Number(u.precio);
-        // Útil primero; total como fallback (mismo criterio que el resto del scraper).
-        const sup = Number(u.metrosUtiles) > 0 ? Number(u.metrosUtiles) : Number(u.metrosTotales);
-        // Solo publicadas y con tripleta sana. 15-500 m² = mismo rango de cordura
-        // del parser del mapa.
-        if (u.estaPublicado !== true || !(precio > 0) || !(sup > 15 && sup < 500)) {
-          descartadas++;
-          continue;
-        }
-        // sourceId estable por unidad: url#numeroUnidad. Si la fuente repite el
-        // identificador dentro del proyecto, se sufija para no perder unidades
-        // en silencio en el dedup del upsert.
-        let etiqueta = String(u.numeroPropiedad ?? u.nombre ?? `u${unidades.length}`).trim() || `u${unidades.length}`;
-        while (vistos.has(etiqueta)) etiqueta = `${etiqueta}~`;
-        vistos.add(etiqueta);
-        unidades.push({
-          source: "toctoc",
-          sourceId: `${base.url}#${etiqueta}`,
-          type: "venta",
-          comuna: base.comuna,
-          direccion: base.direccion ?? undefined,
-          lat: base.lat ?? undefined,
-          lng: base.lng ?? undefined,
-          // El GraphQL entrega UF (verificado); el umbral 50.000 cubre el caso de
-          // que algún proyecto venga en CLP — misma heurística del parser del mapa.
-          precio,
-          moneda: precio > 50000 ? "CLP" : "UF",
-          superficieM2: sup,
-          dormitorios: Number(u.dormitorios) >= 0 ? Number(u.dormitorios) : undefined,
-          banos: Number(u.banos) > 0 ? Number(u.banos) : undefined,
-          piso: Number(u.numeroPiso) > 0 ? Number(u.numeroPiso) : undefined,
-          url: base.url,
-          condicion: "nuevo",
-          fechaEntrega: (p.fechaEntrega ?? "").trim() || undefined,
+function caracteristica(cs: Caracteristica[] | null | undefined, nombre: string): unknown {
+  return (cs ?? []).find((c) => String(c.name ?? "").trim().replace(/:$/, "").toLowerCase() === nombre.toLowerCase())?.value;
+}
+
+/** Los deptos disponibles de la respuesta de floors-units. */
+export function parsearDisponibles(json: unknown): UnidadDisponible[] {
+  const floors = (json as { data?: { floors?: Array<{ model?: Array<{ units?: Array<{ number?: unknown; characteristics?: Caracteristica[] }> }> }> } })?.data?.floors ?? [];
+  const out: UnidadDisponible[] = [];
+  for (const f of floors) {
+    for (const m of f.model ?? []) {
+      for (const u of m.units ?? []) {
+        const n = String(u.number ?? "").trim();
+        if (!n) continue;
+        const cs = u.characteristics;
+        out.push({
+          numero: n,
+          dormitorios: numero(caracteristica(cs, "Dormitorios")),
+          banos: numero(caracteristica(cs, "Baños")),
+          piso: numero(caracteristica(cs, "Piso")),
+          m2Utiles: numero(caracteristica(cs, "M2 útiles")),
+          m2Totales: numero(caracteristica(cs, "M2 totales")),
         });
       }
     }
-    return { idProyecto: base.idProyecto, url: base.url, fechaEntrega: p.fechaEntrega ?? null, unidades, descartadas };
+  }
+  return out;
+}
+
+/** El rango y la entrega de la respuesta de /property/<id>. */
+export function parsearProyecto(json: unknown): { rango: UnidadesProyecto["rango"]; fechaEntrega: string | null } {
+  const d = (json as { data?: { minimunPricesUF?: unknown; maximunPricesUF?: unknown; characteristics?: Caracteristica[] } })?.data;
+  const desde = numero(d?.minimunPricesUF);
+  const hasta = numero(d?.maximunPricesUF);
+  const fecha = String(caracteristica(d?.characteristics, "Fecha de entrega") ?? "").trim();
+  const estado = String(caracteristica(d?.characteristics, "Estado del proyecto") ?? "");
+  return {
+    rango: desde && desde > 0 ? { desdeUF: desde, hastaUF: hasta && hasta >= desde ? hasta : desde } : null,
+    fechaEntrega: fecha || (/inmediata/i.test(estado) ? "Inmediata" : null),
+  };
+}
+
+/** GET a la fuente por el proxy. Un 202 es el desafío del WAF; un cuerpo que no es JSON es la app
+ *  (la dirección cambió): los dos salen como error explícito, nunca como «sin unidades». */
+async function leerJson(url: string): Promise<{ status: number; json: unknown; error?: string }> {
+  const r = await fetch(url, { headers: HEADERS, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown });
+  if (r.status === 404) return { status: 404, json: null };
+  if (r.status !== 200) return { status: r.status, json: null, error: `http ${r.status}${r.status === 202 ? " (desafío del WAF: sin proxy)" : ""}` };
+  const texto = await r.text();
+  if (!texto.trim()) return { status: 200, json: null, error: "http 200 sin cuerpo" };
+  try {
+    return { status: 200, json: JSON.parse(texto) };
+  } catch {
+    return { status: 200, json: null, error: "respuesta no JSON: la fuente cambió la dirección" };
+  }
+}
+
+/**
+ * Los deptos disponibles de UN proyecto, con su rango y su entrega. Nunca lanza: los errores vuelven
+ * en `error` para que el route los cuente sin abortar el lote. Un proyecto que la ficha ya no tiene
+ * (404) no es falla: vuelve sin disponibles y el route no marca nada.
+ */
+export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<UnidadesProyecto> {
+  const vacio = (error?: string): UnidadesProyecto =>
+    ({ idProyecto: base.idProyecto, url: base.url, disponibles: [], rango: null, fechaEntrega: null, ...(error ? { error } : {}) });
+  try {
+    const p = await leerJson(`${API_FICHA}/property/${base.idProyecto}`);
+    if (p.error) return vacio(p.error);
+    if (p.status === 404 || !(p.json as { data?: unknown })?.data) return vacio();
+    const { rango, fechaEntrega } = parsearProyecto(p.json);
+    const u = await leerJson(`${API_FICHA}/property/${base.idProyecto}/floors-units`);
+    if (u.error) return vacio(u.error);
+    return { idProyecto: base.idProyecto, url: base.url, disponibles: u.status === 404 ? [] : parsearDisponibles(u.json), rango, fechaEntrega };
   } catch (e) {
     return vacio(String(e).slice(0, 120));
   }
+}
+
+// ─── Disponibilidad: qué unidad sigue, cuál se vendió ───────────────────────
+
+/** Marca de «vista por el pase de unidades» en `seen_pass_id`. El pase de usados (backfill-toctoc)
+ *  usa la misma columna, pero solo en su universo (condicion usado o null): no se pisan. */
+export const PREFIJO_VISTA_UNIDADES = "unidades@";
+export function marcaVistaUnidades(ahora: Date): string {
+  return `${PREFIJO_VISTA_UNIDADES}${ahora.toISOString()}`;
+}
+
+/** La etiqueta de la unidad en su source_id (`url#801 B`). El `~` final era el desempate del scraper
+ *  viejo cuando la fuente repetía un número dentro del proyecto. */
+export function etiquetaDeUnidad(sourceId: string): string {
+  const i = sourceId.indexOf("#");
+  return i < 0 ? "" : sourceId.slice(i + 1).replace(/~+$/, "").trim();
+}
+
+export interface FilaUnidad { id: string; source_id: string; is_active: boolean | null; seen_pass_id?: string | null }
+
+/**
+ * El cruce de un proyecto: las filas que siguen disponibles (vistas), las ACTIVAS que dejaron de
+ * aparecer (vendidas) y cuántos disponibles no tenemos (nuevos, sin precio: no se escriben).
+ *
+ * SOLO SE VENDE LO QUE LA FICHA NUEVA YA VIO. La lista nueva es un subconjunto de lo que publicaba el
+ * GraphQL viejo: en el ensayo del 02-oct, 78 de 233 unidades de 3 proyectos, vistas publicadas el
+ * 30-sep o el 01-oct, no estaban (entre 24% y 46% por proyecto: no son ventas de 48 horas). Una fila
+ * que nunca apareció en la ficha nueva queda como está (`fuera`), con su precio y su fecha; la vendida
+ * es la que la ficha nueva listó alguna vez (seen_pass_id con PREFIJO_VISTA_UNIDADES) y ya no lista.
+ *
+ * Dos resguardos antes de marcar una venta:
+ *   · una lista vacía no vende nada (un proyecto agotado y una respuesta incompleta se ven igual);
+ *   · si ninguna de nuestras unidades activas aparece en la lista, el cruce no es confiable
+ *     (numeración cambiada, otro proyecto): no se marca nada y se reporta.
+ */
+export function planDisponibilidad(filas: FilaUnidad[], disponibles: UnidadDisponible[]): {
+  vistas: string[]; vendidas: string[]; nuevas: number; fuera: number; sinCruce: boolean;
+} {
+  if (disponibles.length === 0) return { vistas: [], vendidas: [], nuevas: 0, fuera: 0, sinCruce: false };
+  const enLista = new Set(disponibles.map((d) => d.numero.trim()));
+  const nuestras = new Set(filas.map((f) => etiquetaDeUnidad(f.source_id)));
+  const vistas = filas.filter((f) => enLista.has(etiquetaDeUnidad(f.source_id))).map((f) => f.id);
+  const nuevas = Array.from(enLista).filter((n) => !nuestras.has(n)).length;
+  const activas = filas.filter((f) => f.is_active !== false);
+  if (activas.length > 0 && !activas.some((f) => enLista.has(etiquetaDeUnidad(f.source_id)))) {
+    return { vistas: [], vendidas: [], nuevas, fuera: 0, sinCruce: true };
+  }
+  const faltan = activas.filter((f) => !enLista.has(etiquetaDeUnidad(f.source_id)));
+  const vendidas = faltan.filter((f) => (f.seen_pass_id ?? "").startsWith(PREFIJO_VISTA_UNIDADES)).map((f) => f.id);
+  return { vistas, vendidas, nuevas, fuera: faltan.length - vendidas.length, sinCruce: false };
 }
 
 /** Id numérico de proyecto desde una URL compranuevo (el número final del path).
@@ -181,7 +221,7 @@ export function idProyectoDeUrl(url: string | null | undefined): number | null {
  * tocó cada una:
  *   · scrape-nuevos (diario) RESUCITA bases con su upsert (is_active: true) y
  *     las re-desactiva acá mismo.
- *   · scrape-unidades-nuevas (rotación semanal) lo llama tras insertar unidades.
+ *   · scrape-unidades-nuevas (diario, por tercios) lo llama tras cruzar los disponibles.
  *
  * "Fresca" = scraped_at dentro de 365 días — la ventana MÁS ANCHA que usa la
  * mediana del universo nuevo (VENTANAS_DIAS). Ese corte hace el sistema

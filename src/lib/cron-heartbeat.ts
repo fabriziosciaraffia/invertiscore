@@ -112,9 +112,11 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },
-  // scrape-unidades-nuevas, CONGELADO el 02-oct-2026 (decisión de Fabrizio): la fuente retiró el GraphQL de
-  // unidades y el reemplazo no trae el precio por unidad. Salió de vercel.json y de acá: no corre ni alerta, y
-  // las unidades quedan con su fecha (29-sep a 01-oct). Si vuelve, vuelve con su frescura.
+  // Unidades de obra nueva (02-oct-2026): cruza los deptos disponibles de la ficha nueva, sin precio. Lo que
+  // escribe en cada corrida es la marca de vista (seen_pass_id «unidades@<instante>», el mismo prefijo que
+  // PREFIJO_VISTA_UNIDADES), no scraped_at: ese queda como la fecha del precio.
+  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva: disponibles (diario)", intervaloHoras: 24,
+    frescura: { que: "unidades vistas", maxHoras: 48, leer: async (sb) => (fechaDe(await sb.from("scraped_properties").select("seen_pass_id").like("seen_pass_id", "unidades@%").order("seen_pass_id", { ascending: false }).limit(1).maybeSingle(), "seen_pass_id") ?? "").replace(/^unidades@/, "") || null } },
   { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },
   // El pase diario (01-oct-2026; antes semanal) además deja su checkpoint en `config`
