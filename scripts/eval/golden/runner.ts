@@ -71,6 +71,7 @@ import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runEntradaCodigoTier } from "./entrada-codigo-catch-test";
 import { runCorreosTier } from "./correos-catch-test";
 import { runDashboardVacioTier } from "./dashboard-vacio-catch-test";
+import { runObraNuevaTier } from "./obra-nueva-catch-test";
 import { runCasaTier } from "./casa-catch-test";
 import { runSemanalTier } from "./semanal-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
@@ -371,6 +372,9 @@ function printSeed(r: SeedReport) {
   totalHard += runEntradaCodigoTier().hard;
   totalHard += runCorreosTier().hard;
   totalHard += runDashboardVacioTier().hard;
+  // Tier OBRA-NUEVA (02-oct-2026, 0 tokens): sin castigo por esperar, el pie en cuotas en la TIR y en el flujo,
+  // el +3% del arriendo sugerido de lo nuevo y la frase del riesgo. En rojo por mutación.
+  totalHard += runObraNuevaTier().hard;
   // Tier CASA (02-oct-2026, 0 tokens): el dashboard como casa —saldo real, el suelto y no el pack,
   // el perfil de búsqueda de todos los informes—. En rojo por mutación.
   totalHard += runCasaTier().hard;

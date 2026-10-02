@@ -26,6 +26,7 @@ import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/type
 import { construirCardLtr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import type { Veredicto } from "@/lib/types";
+import { FRASE_RIESGO_ENTREGA } from "@/lib/obra-nueva";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -266,6 +267,15 @@ export function SubjectCardGrid({
         />
       )}
       </SeccionInforme>
+      {/* Obra nueva con entrega futura (02-oct-2026): la espera ya no resta puntaje; el informe lo dice en una
+          línea, sin escenarios. La condición la emite el motor (`metrics.preEntrega`). */}
+      {results?.metrics?.preEntrega && (
+        <SeccionInforme id="riesgo-entrega" tono="paper">
+          <p data-obra-nueva="riesgo-entrega" style={{ margin: 0, font: "500 15px/1.5 var(--font-ui), Inter, system-ui, sans-serif", color: "var(--doc-tx)" }}>
+            {FRASE_RIESGO_ENTREGA}
+          </p>
+        </SeccionInforme>
+      )}
       {trasPortada && (
         <SeccionInforme id="origen-aviso" tono="paper">
           {trasPortada}

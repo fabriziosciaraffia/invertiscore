@@ -43,6 +43,7 @@ import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia, GlosaIndicador } from "./shared";
+import { lineaCuotasConDividendo } from "@/lib/obra-nueva";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -405,6 +406,12 @@ export function CapitulosInversion({
                   )}
                 </VViz>
               </>
+            )}
+            {/* El pie en cuotas que corre con el dividendo (02-oct-2026): el dato lo emite el motor. */}
+            {m.pieEnCuotas && m.pieEnCuotas.mesesConDividendo > 0 && (
+              <p className="doc-reparto" data-obra-nueva="cuotas-con-dividendo">
+                {lineaCuotasConDividendo(m.pieEnCuotas.mesesConDividendo, money(m.pieEnCuotas.montoCuotaCLP))}
+              </p>
             )}
             <VCierre titulo="Qué significa">{pinta(cierre)}</VCierre>
             <VFuente>Motor Franco · {ufFecha} · gastos y contribuciones declarados por ti · cada año a sus precios</VFuente>
