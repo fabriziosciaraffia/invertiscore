@@ -11,7 +11,8 @@
 import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { trackWizard } from "./track";
-import { calcDividendo, mesesHastaEntrega } from "./helpers-wizard";
+import { calcDividendo, cuotasDelWizard, mesesHastaEntrega } from "./helpers-wizard";
+import { cuotasConDividendo } from "@/lib/obra-nueva";
 import type { ScreenProps } from "./screensActo1";
 import { avisoPie, escalaPie, escalaPrecio, escalaTasa } from "./avisoEscala";
 import type { PieUnidad, WizardV4Answers } from "./wizardV4Nodes";
@@ -34,7 +35,6 @@ import {
 } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
-const MES_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 /** Número exacto, sin redondear: el eco nunca miente sobre lo que se leyó. */
 const exacto = (v: number) => formatNumeroCL(v, decimalesUtiles(v));
@@ -193,14 +193,21 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   const cuotaPie = cuotaCreditoPieCLP(answers, data.ufCLP);
   const faltaCuota = conOtraFuente && otraPct > 0 && esCredito && cuotaPie <= 0;
 
-  // F6: pie en cuotas — solo nuevo + entrega futura. Informativa (NO editable):
-  // pie total repartido parejo por los meses hasta la entrega.
+  // El pie en cuotas (02-oct-2026): las que la persona eligió en el paso de la entrega (o el defecto), con
+  // entrega futura o inmediata. Las que caen después de la entrega van junto al dividendo, y se dice.
   let enCuotas: string | null = null;
-  if (answers.tipoPropiedad === "nuevo" && answers.estadoVenta === "futura" && clp > 0) {
-    const meses = mesesHastaEntrega(answers.fechaEntregaMes ?? "", answers.fechaEntregaAnio ?? "");
-    if (meses > 0) {
-      const mesLbl = MES_ABBR[Number(answers.fechaEntregaMes) - 1] ?? "";
-      enCuotas = `≈ ${fmtCLP(Math.round(clp / meses))} al mes si lo pagas parejo hasta la entrega (${mesLbl} ${answers.fechaEntregaAnio}).`;
+  if (answers.tipoPropiedad === "nuevo" && clp > 0) {
+    const futura = answers.estadoVenta === "futura";
+    const cuotas = cuotasDelWizard(answers);
+    if (cuotas > 1) {
+      const meses = futura ? mesesHastaEntrega(answers.fechaEntregaMes ?? "", answers.fechaEntregaAnio ?? "") : 0;
+      const conDiv = cuotasConDividendo(cuotas, meses);
+      const cuota = fmtCLP(Math.round(clp / cuotas));
+      enCuotas = conDiv === 0
+        ? `En ${cuotas} cuotas de ≈ ${cuota}, hasta la entrega.`
+        : conDiv === cuotas - 1
+          ? `En ${cuotas} cuotas de ≈ ${cuota}: la primera al firmar y ${conDiv} junto al dividendo.`
+          : `En ${cuotas} cuotas de ≈ ${cuota}: ${cuotas - conDiv} antes de la entrega y ${conDiv} junto al dividendo.`;
     }
   }
 

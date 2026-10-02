@@ -296,3 +296,12 @@
 /* El foco de teclado en tinta (el del navegador salía ámbar sobre el slider). Los campos de texto
    ya marcan el foco con su borde y quedan fuera. */
 .wz4 :where(button, a, select, input[type="range"]):focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+
+/* ── el paso de la entrega (02-oct-2026): mes y año en una fila, y las cuotas del pie ── */
+.wz-dos-campos { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; }
+.wz-sep { height: 1px; background: var(--line); margin: 4px 0 6px; }
+.wz-step { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; height: 48px; border-radius: 12px; background: var(--card); }
+.wz-step button { height: 48px; border: 0; background: none; font: inherit; font-size: 22px; color: var(--tx2); cursor: pointer; }
+.wz-step button:disabled { color: var(--tx4); cursor: default; }
+.wz-step-valor { width: 100%; min-width: 0; height: 46px; border: 0; background: none; text-align: center; font: inherit; font-size: 17px; font-weight: 700; color: var(--tx); outline: 0; }
+.wz-step:focus-within { box-shadow: 0 0 0 1px var(--tx); background: var(--page); }

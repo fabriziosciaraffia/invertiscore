@@ -182,6 +182,9 @@ export interface WizardV4Answers {
   estadoVenta?: EstadoVenta; // solo nuevo
   fechaEntregaMes?: string;
   fechaEntregaAnio?: string;
+  /** Las cuotas del pie (02-oct-2026), solo obra nueva: «1» = al contado. Sin respuesta, el defecto
+   *  (hasta la entrega si es futura, al contado si es inmediata). */
+  cuotasPie?: string;
 
   // ── Acto 2 · cómo lo financias ──
   precio?: string; // UF — SIN prefill (Franco no lo sugiere, lo evalúa)

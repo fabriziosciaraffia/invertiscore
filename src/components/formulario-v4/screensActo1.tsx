@@ -10,7 +10,9 @@
 import type { WizardV4Answers, NodeId, Antiguedad } from "./wizardV4Nodes";
 import { DEC } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
-import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented, TileTexto } from "./ui";
+import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, TileTexto } from "./ui";
+import { cuotasDelWizard, mesesHastaEntrega } from "./helpers-wizard";
+import { MAX_CUOTAS_PIE, cuotasConDividendo, cuotasPieValidas } from "@/lib/obra-nueva";
 import { NumericInput } from "./NumericInput";
 import { leerNum } from "./derive";
 import { escalaSuperficie } from "./avisoEscala";
@@ -66,6 +68,12 @@ export function EntregaScreen({ answers, patchAnswers, answer }: ScreenProps) {
   const futura = estado === "futura";
   const puedeSeguir = estado === "inmediata" || (futura && !!answers.fechaEntregaMes && !!answers.fechaEntregaAnio);
   const anios = aniosEntrega();
+  // Las cuotas del pie (02-oct-2026): en la misma pantalla, con entrega futura o inmediata. Sin respuesta,
+  // el defecto: hasta la entrega (tope 60) o al contado.
+  const meses = futura ? mesesHastaEntrega(answers.fechaEntregaMes ?? "", answers.fechaEntregaAnio ?? "") : 0;
+  const cuotas = cuotasDelWizard(answers);
+  const conDividendo = cuotasConDividendo(cuotas, meses);
+  const mover = (n: number) => patchAnswers({ cuotasPie: String(cuotasPieValidas(n)) });
 
   return (
     <div>
@@ -87,34 +95,78 @@ export function EntregaScreen({ answers, patchAnswers, answer }: ScreenProps) {
 
         {futura && (
           <>
-            <div className="wz-campo">
-              <FieldLabel htmlFor="wz-mes-entrega">Mes estimado</FieldLabel>
-              <div className="wz-input-caja">
-                <select
-                  id="wz-mes-entrega"
-                  value={answers.fechaEntregaMes ?? ""}
-                  onChange={(e) => patchAnswers({ fechaEntregaMes: e.target.value })}
-                  className="wz-input wz-select con-suf"
-                >
-                  <option value="">Elige el mes</option>
-                  {MESES.map((m, i) => (
-                    <option key={m} value={String(i + 1)}>{m}</option>
-                  ))}
-                </select>
-                <span className="wz-suf" aria-hidden>▾</span>
+            <div className="wz-dos-campos">
+              <div className="wz-campo">
+                <FieldLabel htmlFor="wz-mes-entrega">Mes estimado</FieldLabel>
+                <div className="wz-input-caja">
+                  <select
+                    id="wz-mes-entrega"
+                    value={answers.fechaEntregaMes ?? ""}
+                    onChange={(e) => patchAnswers({ fechaEntregaMes: e.target.value })}
+                    className="wz-input wz-select con-suf"
+                  >
+                    <option value="">Elige el mes</option>
+                    {MESES.map((m, i) => (
+                      <option key={m} value={String(i + 1)}>{m}</option>
+                    ))}
+                  </select>
+                  <span className="wz-suf" aria-hidden>▾</span>
+                </div>
+              </div>
+              <div className="wz-campo">
+                <FieldLabel htmlFor="wz-anio-entrega">Año</FieldLabel>
+                <div className="wz-input-caja">
+                  <select
+                    id="wz-anio-entrega"
+                    aria-label="Año de entrega"
+                    value={answers.fechaEntregaAnio ?? ""}
+                    onChange={(e) => patchAnswers({ fechaEntregaAnio: e.target.value })}
+                    className="wz-input wz-select con-suf"
+                  >
+                    <option value="">Año</option>
+                    {anios.map((y) => (
+                      <option key={y} value={String(y)}>{y}</option>
+                    ))}
+                  </select>
+                  <span className="wz-suf" aria-hidden>▾</span>
+                </div>
               </div>
             </div>
-            <div className="wz-campo">
-              <FieldLabel>Año</FieldLabel>
-              <Segmented
-                lleno
-                ariaLabel="Año de entrega"
-                options={anios.map((y) => ({ value: String(y), label: String(y) }))}
-                value={answers.fechaEntregaAnio}
-                onChange={(v) => patchAnswers({ fechaEntregaAnio: v })}
-              />
-            </div>
+            {meses > 0 && (
+              <p className="wz-indic" data-wz="meses-entrega">Faltan <b>{meses} {meses === 1 ? "mes" : "meses"}</b> para la entrega.</p>
+            )}
           </>
+        )}
+
+        {(futura || estado === "inmediata") && (
+          <div className="wz-campo wz-cuotas" data-wz="cuotas-pie">
+            <div className="wz-sep" aria-hidden />
+            <FieldLabel htmlFor="wz-cuotas-pie">¿En cuántas cuotas pagas el pie?</FieldLabel>
+            <div className="wz-step">
+              <button type="button" aria-label="Una cuota menos" onClick={() => mover(cuotas - 1)} disabled={cuotas <= 1}>−</button>
+              <input
+                id="wz-cuotas-pie"
+                inputMode="numeric"
+                className="wz-step-valor"
+                value={cuotas <= 1 ? "Al contado" : `${cuotas} cuotas`}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                  if (Number.isFinite(n)) mover(n);
+                }}
+              />
+              <button type="button" aria-label="Una cuota más" onClick={() => mover(cuotas + 1)} disabled={cuotas >= MAX_CUOTAS_PIE}>+</button>
+            </div>
+            {conDividendo > 0 ? (
+              <p className="wz-indic" data-wz="cuotas-con-dividendo">
+                <b>{conDividendo} {conDividendo === 1 ? "cuota cae" : "cuotas caen"}</b> {futura ? "después de la entrega" : "después de escriturar"}: esos meses pagas la cuota del pie y el dividendo a la vez. Franco lo suma a tu flujo.
+              </p>
+            ) : (
+              <p className="wz-eco">
+                {futura ? "Lo común es pagarlo hasta la entrega." : "Lo común es pagarlo al escriturar."} Hay inmobiliarias que dan más plazo, <b>hasta {MAX_CUOTAS_PIE} cuotas</b>.
+              </p>
+            )}
+          </div>
         )}
       </div>
 

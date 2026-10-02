@@ -6,7 +6,7 @@
 // cliente que no se pueden llamar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { antiguedadToNumber, mesesHastaEntrega } from "./helpers-wizard";
+import { antiguedadToNumber, cuotasDelWizard } from "./helpers-wizard";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { parseNumeroCL } from "@/lib/numero-cl";
@@ -85,9 +85,9 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const nBodega = intSafe(a.bodegas, 0);
   const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
   const esFutura = a.tipoPropiedad === "nuevo" && a.estadoVenta === "futura";
-  const cuotasPie = esFutura
-    ? mesesHastaEntrega(a.fechaEntregaMes ?? "", a.fechaEntregaAnio ?? "")
-    : a.tipoPropiedad === "nuevo" ? 1 : 0;
+  // Las cuotas del pie (02-oct-2026): las que dijo la persona en el paso de la entrega (o el defecto), con
+  // entrega futura o inmediata. Usado: sin cuotas.
+  const cuotasPie = a.tipoPropiedad === "nuevo" ? cuotasDelWizard(a) : 0;
   const piePct = pieEfectivoPct(a, ctx.ufCLP);
   const pieUF = precioUF * (piePct / 100);
   const dorm = dormitoriosNum(a);

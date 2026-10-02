@@ -10,6 +10,7 @@ import { useAirRoiSuggestion, type AirRoiSuggestion } from "@/hooks/useAirRoiSug
 import type { WizardV4Answers } from "./wizardV4Nodes";
 import { dormitoriosNum, huespedesNum, type FuenteArriendo } from "./derive";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
+import { arriendoSugeridoObraNueva } from "@/lib/obra-nueva";
 
 const UF_FALLBACK = 38800;
 const TASA_FALLBACK = 4.72;
@@ -140,7 +141,9 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           // `nearbyProperties` (todo el radio) y se contaba `sampleSize` (la muestra).
           setComparables(arr?.source === "radio" && Array.isArray(arr?.comparables) ? arr.comparables : []);
           setRestoRadio(arr?.source === "radio" && Array.isArray(arr?.restoRadio) ? arr.restoRadio : []);
-          setArriendoSugerido(typeof arr?.arriendo === "number" ? arr.arriendo : null);
+          // Obra nueva (02-oct-2026): el SUGERIDO sube 3% sobre los comparables de la zona (obra-nueva.ts). El que
+          // escribe la persona no se toca.
+          setArriendoSugerido(typeof arr?.arriendo === "number" ? arriendoSugeridoObraNueva(arr.arriendo, tipoPropiedad) : null);
           setArriendoN(Number(arr?.sampleSize) || 0);
           // El endpoint declara su propio nivel; si no lo dice, asumimos que no hay dato
           // (nunca al revés: inventar procedencia es peor que admitir el hueco).
@@ -149,7 +152,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           );
           setArriendoRango(
             arr?.source === "comuna-m2" && arr?.rangoArriendo && arr.rangoArriendo.min > 0
-              ? { min: Number(arr.rangoArriendo.min), max: Number(arr.rangoArriendo.max) }
+              ? { min: arriendoSugeridoObraNueva(Number(arr.rangoArriendo.min), tipoPropiedad) ?? 0, max: arriendoSugeridoObraNueva(Number(arr.rangoArriendo.max), tipoPropiedad) ?? 0 }
               : null,
           );
           setGgccSugerido(typeof arr?.ggcc === "number" ? arr.ggcc : null);

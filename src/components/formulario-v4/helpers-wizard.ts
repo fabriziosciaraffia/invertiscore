@@ -1,3 +1,4 @@
+import { cuotasPieValidas, cuotasPorDefecto } from "@/lib/obra-nueva";
 // Utilidades del wizard que sobrevivieron al v3 (25-sep-2026). Vivían en
 // `formulario-v3/wizardV3State.ts`, junto con el estado del wizard v3 (`/analisis/nuevo-v2`), que se
 // borró con su ruta. El v4 usa estas cinco: formato de montos, antigüedad por tramo, dividendo y
@@ -41,4 +42,12 @@ export function mesesHastaEntrega(mes: string, anio: string): number {
   const now = new Date();
   const entrega = new Date(Number(anio), Number(mes) - 1);
   return Math.max(1, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+}
+
+/** Las cuotas del pie del wizard (02-oct-2026): la respuesta, o el defecto —hasta la entrega (tope 60) con
+ *  entrega futura, al contado con entrega inmediata—. Solo tiene sentido en obra nueva. */
+export function cuotasDelWizard(a: { estadoVenta?: string; fechaEntregaMes?: string; fechaEntregaAnio?: string; cuotasPie?: string }): number {
+  if (a.cuotasPie) return cuotasPieValidas(a.cuotasPie);
+  const futura = a.estadoVenta === "futura";
+  return cuotasPorDefecto(futura, futura ? mesesHastaEntrega(a.fechaEntregaMes ?? "", a.fechaEntregaAnio ?? "") : 0);
 }
