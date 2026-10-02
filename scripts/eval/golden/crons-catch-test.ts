@@ -89,7 +89,10 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   // ── 1 · el reintento y la tolerancia (30-sep-2026): cada proyecto fallido se reintenta una vez; la
   // corrida es falla solo si después falla más del 5% ──
   if (TOLERANCIA_FALLA_PROYECTOS !== 0.05 || fallidosTolerados(4, 140) !== 0 || fallidosTolerados(7, 140) !== 0 || fallidosTolerados(8, 140) !== 8 || fallidosTolerados(1, 0) !== 0) F(`1 · la tolerancia no es «más del 5% tras el reintento» (4/140→${fallidosTolerados(4, 140)}, 8/140→${fallidosTolerados(8, 140)})`);
-  if (!/for \(let k = 0; k < resultados\.length; k\+\+\) \{\s*if \(!resultados\[k\]\.error\) continue;\s*const base = delBatch\.find\(\(p\) => p\.idProyecto === resultados\[k\]\.idProyecto\);\s*if \(base\) resultados\[k\] = await fetchUnidadesProyecto\(base\);/.test(uni)) F("1 · los proyectos fallidos no se reintentan una vez");
+  if (!/for \(let k = 0; k < resultados\.length; k\+\+\) \{\s*if \(!resultados\[k\]\.error\) continue;\s*const base = delBatch\.find\(\(p\) => p\.idProyecto === resultados\[k\]\.idProyecto\);\s*if \(!base\) continue;\s*await new Promise\(\(r\) => setTimeout\(r, PAUSA_REINTENTO_MS\)\);\s*resultados\[k\] = await fetchUnidadesProyecto\(base\);/.test(uni)) F("1 · los proyectos fallidos no se reintentan una vez, con pausa");
+  // El ritmo de la ficha nueva (02-oct-2026): con 8 GETs en vuelo dio 403 en 42% de los proyectos.
+  const ritmo = { conc: Number((uni.match(/const CONCURRENCIA = (\d+);/) ?? [])[1]), pausa: Number((uni.match(/const PAUSA_LOTE_MS = (\d+);/) ?? [])[1]), re: Number((uni.match(/const PAUSA_REINTENTO_MS = (\d+);/) ?? [])[1]) };
+  if (!(ritmo.conc <= 2 && ritmo.pausa >= 600 && ritmo.re >= 1500)) F(`1 · el pase de unidades va más rápido que lo que la ficha nueva tolera (${JSON.stringify(ritmo)})`);
   if (!/fallidos: fallidosTolerados\(conError\.length, delBatch\.length\)/.test(uni)) F("1 · la corrida no cuenta los fallidos con la tolerancia");
 
   // ── 2 · el status ──
@@ -295,6 +298,10 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   F7 fuera de la vigilancia .................................... 2 · no está vigilado
 //   F8 la entrega no se escribe (en AVISOS §1; re-corrida sobre la llamada de las vistas, con F9:
 //      la función ignora la entrega; 2/2) ........................... 1 · no pasa la fecha de entrega
+// 02-oct-2026 (el ritmo de la ficha nueva: 403 en 57 de 137 proyectos con 8 GETs en vuelo): 3/3 en rojo.
+//   R1 el reintento sin pausa .................................... 1 · no se reintentan con pausa
+//   R2 sin reintento ............................................. 1 · ídem
+//   R3 de vuelta a 4 proyectos en vuelo .......................... 1 · más rápido de lo que tolera
 //   Z1 vuelve al calendario de vercel.json .................... 2 · sigue en el calendario
 //   Z2 vuelve a la vigilancia .................................. 2 · alertaría todos los días
 //   Z3 la ruta no dice que está congelada ...................... 2 · no dice que está congelada

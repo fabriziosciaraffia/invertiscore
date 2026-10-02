@@ -59,11 +59,14 @@ export const maxDuration = 800;
 
 /** Días del ciclo de rotación (ver nota de arriba). */
 const CICLO_DIAS = 3;
-/** Proyectos en vuelo a la vez. Cada uno son 2 GETs (proyecto + disponibles): 4 deja 8 en vuelo,
- *  lo mismo que el GraphQL viejo sondeado sin rate-limit. */
-const CONCURRENCIA = 4;
+/** Proyectos en vuelo a la vez (2 GETs cada uno: proyecto + disponibles). El ensayo del 02-oct por el
+ *  proxy, con 4 (8 GETs en vuelo) y 250 ms entre lotes, dio 403 en 57 de 137 proyectos, y el reintento
+ *  inmediato no recuperó ninguno: la ficha nueva frena por ritmo. Con 2 y 600 ms, ~2 min el tercio. */
+const CONCURRENCIA = 2;
 /** Pausa de cortesía entre lotes de fichas (ms). */
-const PAUSA_LOTE_MS = 250;
+const PAUSA_LOTE_MS = 600;
+/** Pausa antes de cada reintento: el reintento pegado al 403 vuelve a dar 403. */
+const PAUSA_REINTENTO_MS = 1500;
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,7 +169,9 @@ export async function POST(request: Request) {
   for (let k = 0; k < resultados.length; k++) {
     if (!resultados[k].error) continue;
     const base = delBatch.find((p) => p.idProyecto === resultados[k].idProyecto);
-    if (base) resultados[k] = await fetchUnidadesProyecto(base);
+    if (!base) continue;
+    await new Promise((r) => setTimeout(r, PAUSA_REINTENTO_MS));
+    resultados[k] = await fetchUnidadesProyecto(base);
   }
   const t1 = Date.now();
 
