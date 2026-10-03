@@ -150,7 +150,7 @@ export async function sugerenciasDeAviso(a: AvisoParaEvaluar): Promise<{ arr: Su
 /** El arriendo con que se evalúa: el del segmento si alcanza la muestra, si no el sugerido. */
 export function arriendoParaEvaluar(a: AvisoParaEvaluar, arr: Sugerencias, vta: Sugerencias, uf: number, segmentar: boolean): FilaEvaluacion["arriendo"] {
   if (!arr.arriendo) return null;
-  const seg = segmentar && arr.source === "radio" ? arriendoSegmentado(arr.comparables ?? [], vta.nearbyProperties ?? [], a.precioUF / a.m2, uf, a.m2) : null;
+  const seg = segmentar && arr.source === "radio" ? arriendoSegmentado(arr.comparables ?? [], vta.nearbyProperties ?? [], a.precioUF / a.m2, uf, a.m2, a.dormitorios) : null;
   return {
     // Obra nueva (02-oct-2026): el arriendo con que se evalúa es el sugerido, así que lleva el +3% de lo nuevo.
     monto: arriendoSugeridoObraNueva(seg ? seg.monto : arr.arriendo, a.condicion) ?? 0,

@@ -6,7 +6,7 @@
 // arriendo por m² está en [p − banda, p + banda] de la muestra. Sin ventas o arriendos suficientes
 // devuelve null y se usa el arriendo de siempre. Puro: lo prueba el tier AVISOS.
 // ─────────────────────────────────────────────────────────────────────────────
-import { escalarPorTamano } from "../services/comparables-radio";
+import { elasticidadArriendo, escalarPorTamano } from "../services/comparables-radio";
 
 export interface PuntoPrecio {
   precio: number;
@@ -42,6 +42,8 @@ export function arriendoSegmentado(
   uf: number,
   /** Los m² del depto: la mediana del tramo se lleva a su tamaño (escalarPorTamano, 03-oct-2026). */
   sujetoM2?: number,
+  /** Su tipología: decide la elasticidad (comparables-radio.ts › elasticidadArriendo). */
+  dormitorios?: number | null,
 ): { monto: number; n: number; percentil: number } | null {
   const p = percentilVenta(ventas, sujetoUFm2, uf);
   if (p == null) return null;
@@ -57,5 +59,5 @@ export function arriendoSegmentado(
   });
   if (tramo.length < MIN_ARRIENDOS_SEGMENTO) return null;
   const monto = mediana(tramo.map((a) => a.precio));
-  return { monto: Math.round(sujetoM2 ? escalarPorTamano(monto, sujetoM2, tramo.map((a) => a.m2)) : monto), n: tramo.length, percentil: Math.round(p * 100) / 100 };
+  return { monto: Math.round(sujetoM2 ? escalarPorTamano(monto, sujetoM2, tramo.map((a) => a.m2), elasticidadArriendo(dormitorios)) : monto), n: tramo.length, percentil: Math.round(p * 100) / 100 };
 }

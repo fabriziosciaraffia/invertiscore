@@ -105,7 +105,7 @@ export interface MuestraArriendo {
   /** Con dormitorios, desde el 03-oct-2026: la mediana mensual de los avisos y sus m² medianos. La
    *  referencia es esa mediana llevada a tus m² (comparables-radio.ts › escalarPorTamano). Ausente en
    *  las muestras de antes, cuya referencia era la mediana sin llevar. */
-  ajuste?: { medianaMensual: number; m2Mediano: number };
+  ajuste?: { medianaMensual: number; m2Mediano: number; elasticidad: number };
 }
 
 /**
@@ -130,8 +130,9 @@ export function leerMuestraArriendo(input: unknown): MuestraArriendo | null {
     avisos.push({ distanciaM: Number.isFinite(d) ? d : null, precio, m2: Number.isFinite(s) && s > 0 ? s : null });
   }
   if (avisos.length === 0 || avisos.length !== ref.n) return null;
-  const aj = (m as { ajuste?: { medianaMensual?: unknown; m2Mediano?: unknown } }).ajuste;
-  const ajuste = aj && Number(aj.medianaMensual) > 0 && Number(aj.m2Mediano) > 0 ? { medianaMensual: Number(aj.medianaMensual), m2Mediano: Number(aj.m2Mediano) } : null;
+  const aj = (m as { ajuste?: { medianaMensual?: unknown; m2Mediano?: unknown; elasticidad?: unknown } }).ajuste;
+  const ajuste = aj && Number(aj.medianaMensual) > 0 && Number(aj.m2Mediano) > 0 && Number(aj.elasticidad) >= 0
+    ? { medianaMensual: Number(aj.medianaMensual), m2Mediano: Number(aj.m2Mediano), elasticidad: Number(aj.elasticidad) } : null;
   return { modo: m.modo, avisos, ...(ajuste ? { ajuste } : {}) };
 }
 

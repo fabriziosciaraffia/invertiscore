@@ -9,6 +9,7 @@ import {
   type PuntoComparable,
   type FilaRadio,
   referenciaZonaPorTamano,
+  elasticidadArriendo,
 } from "./comparables-radio";
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
@@ -249,7 +250,7 @@ export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorio
   }, amoblado);
   const limpios = filterOutliers((data ?? []) as FilaRadio[]).filter((f) => Number(f.superficie_m2) > 0);
   // Con la superficie del depto, contra los de tamaño parecido llevados a su tamaño (03-oct-2026).
-  if (superficie && superficie > 0) return referenciaZonaPorTamano(limpios, superficie, MIN_ZONA);
+  if (superficie && superficie > 0) return referenciaZonaPorTamano(limpios, superficie, MIN_ZONA, elasticidadArriendo(dormitorios));
   if (limpios.length < MIN_ZONA) return null;
   return Math.round(medianaDe(limpios.map((f) => Number(f.precio) / Number(f.superficie_m2))));
 }
@@ -424,6 +425,7 @@ async function getSugerenciasPorRadio(
   // la función viva no lo devolvía y el gasto común por radio nunca se estimó.
   const conDorms = resumirComparablesRadio((arriendos || []) as FilaRadio[], superficie, {
     modo: "conDorms",
+    dormitorios,
     factorCierre,
   });
   if (!conDorms) {

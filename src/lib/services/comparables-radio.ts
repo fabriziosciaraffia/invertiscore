@@ -183,20 +183,31 @@ function ggccDe(filas: FilaRadio[]): number | null {
  * limpiar; en "sinDorms", además, menos de 3 con superficie).
  */
 /**
- * Cuánto crece el arriendo con el tamaño (03-oct-2026, decisión de Fabrizio): el arriendo mensual de un
- * depto escala como (m²)^0,8 frente a comparables de la misma tipología. Medido el 02-oct dentro de Ñuñoa
- * (arriendos corrientes de 90 días): 0,58 en 1D y 0,82 en 2D. Sin esta escala, la mediana del arriendo
- * MENSUAL de la banda le daba a un 2D de 35 m² el arriendo de sus comparables, ~10% más grandes: en Ñuñoa,
- * 284 Comprar/Ajustar quedaban marcados sobre su zona. Por m² (elasticidad 1) se pasa en los dos sentidos.
+ * Cuánto crece el arriendo con el tamaño, por tipología (03-oct-2026, decisión de Fabrizio): el arriendo
+ * mensual de un depto escala como (m²)^e frente a comparables de su misma tipología, en su radio.
+ * Sin esta escala, la mediana del arriendo MENSUAL de la banda le daba a un 2D de 35 m² el arriendo de sus
+ * comparables, ~10% más grandes (Ñuñoa: 284 Comprar/Ajustar marcados sobre su zona).
+ *
+ * Los valores salen de un backtest con 1.371 arriendos reales de Gran Santiago, cada uno predicho con sus
+ * vecinos a 1 km (misma comuna y dormitorios, sin él): son los que minimizan el error dentro del radio.
+ * Un 0,8 fijo (medido en Ñuñoa 2D) no mejoraba nada (8,7% contra 8,6% de hoy) porque subía 12,5% a los 1D
+ * grandes; dentro de comuna se mide 0,43 / 0,55 / 0,83, pero dentro del radio pesa todavía menos el tamaño.
+ * Un estudio (0 dormitorios) usa el valor del 1D.
  */
-export const ELASTICIDAD_ARRIENDO_M2 = 0.8;
+export const ELASTICIDADES_ARRIENDO: Readonly<Record<number, number>> = { 1: 0.2, 2: 0.4, 3: 0.8 };
+export const ELASTICIDAD_ARRIENDO_4D_O_MAS = 0.8;
+export function elasticidadArriendo(dormitorios: number | null | undefined): number {
+  const d = Number(dormitorios);
+  if (!(d >= 1)) return ELASTICIDADES_ARRIENDO[1];
+  return d >= 4 ? ELASTICIDAD_ARRIENDO_4D_O_MAS : ELASTICIDADES_ARRIENDO[Math.round(d)];
+}
 
-/** Un arriendo mensual llevado al tamaño del depto: × (m² del depto / m² mediano de los comparables)^0,8.
+/** Un arriendo mensual llevado al tamaño del depto: × (m² del depto / m² mediano de los comparables)^e.
  *  Sin superficie del depto o sin m² en los comparables, queda como está. */
-export function escalarPorTamano(monto: number, superficie: number, m2Comparables: number[]): number {
+export function escalarPorTamano(monto: number, superficie: number, m2Comparables: number[], elasticidad: number): number {
   const m2s = m2Comparables.filter((m) => Number.isFinite(m) && m > 0);
   if (!(superficie > 0) || m2s.length === 0) return monto;
-  return monto * Math.pow(superficie / median(m2s), ELASTICIDAD_ARRIENDO_M2);
+  return monto * Math.pow(superficie / median(m2s), elasticidad);
 }
 
 /**
@@ -205,18 +216,18 @@ export function escalarPorTamano(monto: number, superficie: number, m2Comparable
  * elasticidad, y su mediana dividida por los m² del depto. Antes era la mediana del $/m² de TODOS los
  * tamaños × m²: castigaba a los chicos, que arriendan más caro por m². null si la banda no junta `min`.
  */
-export function referenciaZonaPorTamano<T extends { precio: number; superficie_m2: number | null }>(filas: T[], superficie: number, min: number): number | null {
+export function referenciaZonaPorTamano<T extends { precio: number; superficie_m2: number | null }>(filas: T[], superficie: number, min: number, elasticidad: number): number | null {
   if (!(superficie > 0)) return null;
   const banda = filas.filter((f) => f.superficie_m2 && f.superficie_m2 >= superficie * 0.7 && f.superficie_m2 <= superficie * 1.3);
   if (banda.length < min) return null;
-  const llevados = banda.map((f) => f.precio * Math.pow(superficie / Number(f.superficie_m2), ELASTICIDAD_ARRIENDO_M2));
+  const llevados = banda.map((f) => f.precio * Math.pow(superficie / Number(f.superficie_m2), elasticidad));
   return Math.round(median(llevados) / superficie);
 }
 
 export function resumirComparablesRadio(
   filas: FilaRadio[],
   superficie: number,
-  opts: { modo: "conDorms" | "sinDorms"; factorCierre: number },
+  opts: { modo: "conDorms" | "sinDorms"; factorCierre: number; dormitorios?: number | null },
 ): ResumenRadio | null {
   const clean = filterBySurface(filterOutliers(filas), superficie);
   if (clean.length < MIN_COMPARABLES_RADIO) return null;
@@ -240,14 +251,17 @@ export function resumirComparablesRadio(
   }
 
   const precios = clean.map((a) => a.precio);
-  // La mediana mensual, llevada al tamaño del depto (ELASTICIDAD_ARRIENDO_M2, 03-oct-2026). La muestra
-  // guarda las dos cifras del ajuste para que la ficha de comparables lo cuente.
+  // La mediana mensual, llevada al tamaño del depto con la elasticidad de su tipología (03-oct-2026). Sin
+  // dormitorios declarados, la tipología de la muestra (con el filtro de dormitorios es una sola). La
+  // muestra guarda las cifras del ajuste —también la elasticidad— para que la ficha lo cuente igual.
   const m2s = clean.map((a) => Number(a.superficie_m2)).filter((m) => m > 0);
   const medianaMensual = median(precios);
+  const dorms = opts.dormitorios ?? median(clean.map((a) => Number(a.dormitorios)).filter((d) => Number.isFinite(d)));
+  const elasticidad = elasticidadArriendo(dorms);
   const mp = muestraYPuntos(clean, "conDorms");
-  const ajuste = superficie > 0 && m2s.length > 0 ? { medianaMensual: Math.round(medianaMensual), m2Mediano: Math.round(median(m2s) * 10) / 10 } : null;
+  const ajuste = superficie > 0 && m2s.length > 0 ? { medianaMensual: Math.round(medianaMensual), m2Mediano: Math.round(median(m2s) * 10) / 10, elasticidad } : null;
   return {
-    arriendo: Math.round(escalarPorTamano(medianaMensual, superficie, m2s) / 1000) * 1000,
+    arriendo: Math.round(escalarPorTamano(medianaMensual, superficie, m2s, elasticidad) / 1000) * 1000,
     ggcc: ggccDe(clean),
     contribTrim: preciosM2.length > 0
       ? estimarContribuciones(Math.round(median(preciosM2) * superficie))

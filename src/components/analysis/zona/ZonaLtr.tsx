@@ -19,7 +19,6 @@ import {
   type MuestraArriendo,
 } from "@/lib/arriendo-referencia";
 import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
-import { ELASTICIDAD_ARRIENDO_M2 } from "@/lib/services/comparables-radio";
 import { REFERENCIA_ESTIMADA } from "@/lib/sobreprecio-hallazgo";
 
 /**
@@ -252,7 +251,7 @@ export function ComparablesLtr({
     // Con dormitorios, la referencia es la mediana mensual llevada a tus m² (03-oct-2026): el mismo
     // factor lleva la mitad de los avisos. Las muestras de antes no traen el ajuste y se leen como antes.
     const aj = conDorms && muestra.ajuste && superficie > 0 ? muestra.ajuste : null;
-    const fAj = aj ? Math.pow(superficie / aj.m2Mediano, ELASTICIDAD_ARRIENDO_M2) : 1;
+    const fAj = aj ? Math.pow(superficie / aj.m2Mediano, aj.elasticidad) : 1;
     const mitad = conDorms
       ? [percentilOrdenado(precios, 25) * fAj, percentilOrdenado(precios, 75) * fAj]
       : pm2.length && superficie > 0

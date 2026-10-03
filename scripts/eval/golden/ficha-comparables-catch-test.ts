@@ -38,7 +38,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { buildZonaLtr, buildZonaLtrR2, ZonaCeldasLtrR2, ComparablesLtr, sintesisZonaLtrR2 } from "../../../src/components/analysis/zona/ZonaLtr";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ELASTICIDAD_ARRIENDO_M2, resumirComparablesRadio, median } from "../../../src/lib/services/comparables-radio";
+import { resumirComparablesRadio, median } from "../../../src/lib/services/comparables-radio";
 import { leerMuestraArriendo } from "../../../src/lib/arriendo-referencia";
 import { buildLtrPayload, type SubmitContext } from "../../../src/components/formulario-v4/wizardV4Submit";
 import { buildFichaLtr, buildFichaStr, type FichaDepto } from "../../../src/lib/ficha-depto";
@@ -118,7 +118,7 @@ export function runFichaComparablesTier(): { hard: number } {
     const aj = con.muestra.ajuste;
     const medLista = Math.round(median(con.muestra.avisos.map((a) => a.precio)));
     const m2Lista = Math.round(median(con.muestra.avisos.map((a) => a.m2 ?? 0).filter((m) => m > 0)) * 10) / 10;
-    const llevada = aj ? Math.round((aj.medianaMensual * Math.pow(38 / aj.m2Mediano, ELASTICIDAD_ARRIENDO_M2)) / 1000) * 1000 : NaN;
+    const llevada = aj ? Math.round((aj.medianaMensual * Math.pow(38 / aj.m2Mediano, aj.elasticidad)) / 1000) * 1000 : NaN;
     if (con.muestra.modo !== "conDorms" || !aj || aj.medianaMensual !== medLista || aj.m2Mediano !== m2Lista || Math.abs(llevada - con.arriendo) > 1000)
       F(`2 · con dormitorios la mediana de la muestra llevada a los 38 m² (${llevada}, de ${aj?.medianaMensual} en ${aj?.m2Mediano} m²) no es la referencia (${con.arriendo})`);
     const d = con.muestra.avisos.map((a) => a.distanciaM ?? 0);
