@@ -268,6 +268,15 @@ export function filasDePagina<I extends { avisoId: string; reemplazaA?: string }
   });
 }
 
+/**
+ * ¿Es la última corrida del armado (05-oct-2026)? El domingo corre cada hora de 11 a 23 UTC (vercel.json):
+ * una persona cuya selección falla en una corrida intermedia se reintenta en la siguiente y no cuenta como
+ * falla —no alerta—; solo en la de las 23 UTC, que ya no tiene reintento, la falla queda como tal.
+ */
+export function esUltimaCorridaArmar(ahora: Date = new Date()): boolean {
+  return ahora.getUTCHours() >= 23;
+}
+
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
 export function esPrimerSemanal(enviadasAntes: number | null | undefined): boolean {
   return (enviadasAntes ?? 0) === 0;

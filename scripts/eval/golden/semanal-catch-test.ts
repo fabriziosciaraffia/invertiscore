@@ -29,6 +29,8 @@
 //       chequear los avisos de las selecciones armadas, los chequeados hace más tiempo primero; la que
 //       pierde uno se arma de nuevo. Y /semanal está viva: el que ya no está publicado lo dice —«Este ya no
 //       está publicado»— y en su lugar va el siguiente mejor del perfil, chequeado y guardado.
+//  14 · EL REINTENTO NO ALERTA (05-oct-2026): una selección que falla en una corrida intermedia del domingo se
+//       reintenta en la siguiente y no cuenta como fallida; solo en la de las 23 UTC es una falla.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
@@ -37,7 +39,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, repartirChequeos, siguienteAChequear,
-  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -364,7 +366,17 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);
   }
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo");
+  // 14 · el reintento no alerta
+  {
+    if (esUltimaCorridaArmar(new Date("2026-10-04T22:05:00Z")) || !esUltimaCorridaArmar(new Date("2026-10-04T23:05:00Z")) || esUltimaCorridaArmar(new Date("2026-10-04T11:05:00Z"))) F("14 · la última corrida del armado no es la de las 23 UTC");
+    const ar = sinComentarios(leer("src/app/api/cron/semanal-armar/route.ts"));
+    const catches = ar.match(/\} catch \(e\) \{\s*(?:\/\/[^\n]*\s*)?if \(ultima\) cuenta\.fallidas\+\+;\s*else cuenta\.reintentar\+\+;/g) ?? [];
+    if (catches.length !== 2 || !/const ultima = esUltimaCorridaArmar\(new Date\(t0\)\);/.test(ar)) F(`14 · una falla de una corrida intermedia cuenta como fallida (y alerta) aunque la siguiente la reintente (${catches.length} de 2)`);
+    if (/cuenta\.fallidas\+\+;\s*capturar/.test(ar)) F("14 · queda un catch que cuenta fallida sin mirar si hay reintento");
+    if (!/"5 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
+  }
+
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -424,5 +436,7 @@ if (require.main === module) {
 //   y se agregaron el rechequeo sin tope y el reemplazo «sin-chequeo»; V7 no aplicaba por la sangría). V1 los recientes primero ·
 //   V2 vuelve a leer lo de hoy · V3 pasa el tope · V4 rechequea con la memoria de la semana · V5 no se rearma · V6 el cron no
 //   rechequea · V7 el reemplazo puede ser Ajustar · V8 repite uno de la selección · V9 sin chequear · V10 no se guarda · V11
-//   toma un reemplazo caído · V12 esconde el caído sin decirlo · V13 la página no está viva. Y la excepción de la banda en CORREOS: la banda
+//   toma un reemplazo caído · V12 esconde el caído sin decirlo · V13 la página no está viva.
+//   §14 (05-oct-2026, el reintento no alerta): 3/3 ROJO. R1 la última corrida es la de las 22 · R2 la falla intermedia
+//   cuenta como fallida · R3 el rearmado intermedio cuenta como fallido. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).

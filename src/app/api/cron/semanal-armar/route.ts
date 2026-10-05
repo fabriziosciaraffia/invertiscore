@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { armarSeleccion, personasSemanal, rechequearArmadas, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
-import { semanaDelEnvio } from "@/lib/guia/semanal";
+import { esUltimaCorridaArmar, semanaDelEnvio } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El domingo se arma la selección del lunes (02-oct-2026). Corre cada hora del domingo: cada corrida
@@ -34,14 +34,18 @@ export async function GET(request: Request) {
     const cfg = await leerConfigGuia(admin);
     const personas = await personasSemanal(admin);
     const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
-    const cuenta = { armada: 0, sin_match: 0, pendiente: 0, ya: 0, fallidas: 0 };
+    // Una falla en una corrida intermedia se reintenta en la siguiente (la persona sigue sin selección):
+    // cuenta como «reintentar», no como fallida, y no alerta (05-oct-2026). En la última, ya no hay después.
+    const ultima = esUltimaCorridaArmar(new Date(t0));
+    const cuenta = { armada: 0, sin_match: 0, pendiente: 0, ya: 0, fallidas: 0, reintentar: 0 };
     for (const p of personas) {
       if (Date.now() - t0 > PRESUPUESTO_MS || presupuesto.bloqueada) break;
       try {
         cuenta[await armarSeleccion(admin, p.userId, semana, cfg, presupuesto)]++;
       } catch (e) {
-        cuenta.fallidas++;
-        captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "armar-seleccion", userId: p.userId });
+        if (ultima) cuenta.fallidas++;
+        else cuenta.reintentar++;
+        capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "armar-seleccion", userId: p.userId, tags: { reintento: ultima ? "no" : "si" } });
       }
     }
     // Los chequeos de la semana sirven para descartar, no para dar por vigente: se vuelven a chequear.
@@ -56,7 +60,10 @@ export async function GET(request: Request) {
           await armarSeleccion(admin, userId, semana, cfg, presupuesto);
           rechequeo.rearmadas++;
         } catch (e) {
-          captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "rearmar-seleccion", userId });
+          // Quedó «pendiente»: la corrida siguiente la vuelve a armar. Solo en la última es una falla.
+          if (ultima) cuenta.fallidas++;
+          else cuenta.reintentar++;
+          capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "rearmar-seleccion", userId, tags: { reintento: ultima ? "no" : "si" } });
         }
       }
     }
@@ -67,7 +74,7 @@ export async function GET(request: Request) {
       semana, personas: personas.length, ...cuenta, rechequeo, lecturas: presupuesto.lecturas, bloqueada: presupuesto.bloqueada,
     });
   } catch (e) {
-    captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
+    capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
     return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { semana, error: e instanceof Error ? e.message : String(e) });
   }
 }
