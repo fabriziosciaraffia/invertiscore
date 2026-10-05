@@ -4,13 +4,15 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { captureApiError } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { armarSeleccion, personasSemanal, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
+import { armarSeleccion, personasSemanal, rechequearArmadas, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 import { semanaDelEnvio } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El domingo se arma la selección del lunes (02-oct-2026). Corre cada hora del domingo: cada corrida
 // toma a quien todavía no tiene selección (o la tiene «pendiente» porque faltó cupo de fichas), dentro
 // del tope de fichas por hora que comparte con la guía. Lo que no alcanza, lo toma la corrida siguiente.
+// Después (05-oct-2026), con el presupuesto que quede, vuelve a chequear los avisos de las selecciones
+// armadas (los chequeados hace más tiempo primero): la que perdió uno se arma de nuevo en la misma corrida.
 // Auth: Vercel Cron, `Authorization: Bearer ${CRON_SECRET}`.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -42,11 +44,27 @@ export async function GET(request: Request) {
         captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "armar-seleccion", userId: p.userId });
       }
     }
+    // Los chequeos de la semana sirven para descartar, no para dar por vigente: se vuelven a chequear.
+    const rechequeo = { chequeados: 0, caidos: 0, rearmadas: 0 };
+    if (Date.now() - t0 <= PRESUPUESTO_MS && !presupuesto.bloqueada) {
+      const re = await rechequearArmadas(admin, semana, presupuesto);
+      rechequeo.chequeados = re.chequeados;
+      rechequeo.caidos = re.caidos;
+      for (const userId of re.usuarios) {
+        if (Date.now() - t0 > PRESUPUESTO_MS) break;
+        try {
+          await armarSeleccion(admin, userId, semana, cfg, presupuesto);
+          rechequeo.rearmadas++;
+        } catch (e) {
+          captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "rearmar-seleccion", userId });
+        }
+      }
+    }
     const procesadas = cuenta.armada + cuenta.sin_match + cuenta.pendiente + cuenta.fallidas;
     // Una corrida sin nadie que armar terminó bien: cuenta como una corrida exitosa.
     const conteo = procesadas === 0 ? { procesados: 1, exitosos: 1, fallidos: 0 } : { procesados: procesadas, exitosos: procesadas - cuenta.fallidas, fallidos: cuenta.fallidas };
     return cerrarCron(admin, NOMBRE, conteo, {
-      semana, personas: personas.length, ...cuenta, lecturas: presupuesto.lecturas, bloqueada: presupuesto.bloqueada,
+      semana, personas: personas.length, ...cuenta, rechequeo, lecturas: presupuesto.lecturas, bloqueada: presupuesto.bloqueada,
     });
   } catch (e) {
     captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });

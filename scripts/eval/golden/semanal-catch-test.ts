@@ -25,6 +25,10 @@
 //  12 · EL PRECHEQUEO (05-oct-2026): de lunes a sábado, cada hora de la noche, se chequean por turnos los
 //       avisos que cada selección va a necesitar (el siguiente que le pediría la regla del domingo); un
 //       publicado chequeado vale la semana para el armado; el domingo solo completa lo que falte.
+//  13 · DESCARTAR, NO DAR POR VIGENTE (05-oct-2026): el domingo, con el tope que quede, se vuelven a
+//       chequear los avisos de las selecciones armadas, los chequeados hace más tiempo primero; la que
+//       pierde uno se arma de nuevo. Y /semanal está viva: el que ya no está publicado lo dice —«Este ya no
+//       está publicado»— y en su lugar va el siguiente mejor del perfil, chequeado y guardado.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
@@ -32,7 +36,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, repartirChequeos, siguienteAChequear, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, repartirChequeos, siguienteAChequear,
+  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -309,7 +314,57 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/nombre: "semanal-prechequeo"[^}]*intervaloHoras: 24/.test(hb)) F("12 · el prechequeo no está vigilado");
   }
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches, que vale la semana");
+  // 13 · descartar, no dar por vigente
+  {
+    const ahora = Date.parse("2026-10-11T20:00:00Z");
+    const h = (horas: number) => ahora - horas * 3600_000;
+    const pedidos: string[] = [];
+    let cupo = 3;
+    const r = await rechequearAvisos(
+      [{ avisoId: "a", chequeadoAt: h(30) }, { avisoId: "b", chequeadoAt: h(120) }, { avisoId: "c", chequeadoAt: null }, { avisoId: "d", chequeadoAt: h(2) }, { avisoId: "b", chequeadoAt: h(120) }, { avisoId: "e", chequeadoAt: h(60) }],
+      async (id) => { pedidos.push(id); cupo--; return id === "b" ? "despublicado" : "publicado"; },
+      () => cupo > 0, ahora,
+    );
+    if (pedidos.join() !== "c,b,e") F(`13 · el domingo no rechequea primero los chequeados hace más tiempo (sin fecha primero, sin repetir, sin los de hoy) dentro del tope (${pedidos.join()})`);
+    if (!r.caidos.has("b") || r.caidos.size !== 1 || r.chequeados !== 3) F("13 · el rechequeo no devuelve los que ya no están");
+    const todos: string[] = [];
+    await rechequearAvisos([{ avisoId: "a", chequeadoAt: h(30) }, { avisoId: "d", chequeadoAt: h(2) }, { avisoId: "c", chequeadoAt: null }], async (id) => { todos.push(id); return "publicado"; }, () => true, ahora);
+    if (FRESCO_DOMINGO_MS !== 24 * 3600_000 || todos.join() !== "c,a") F(`13 · lo chequeado hoy se vuelve a leer (o lo de ayer no) (${todos.join()})`);
+    // el reemplazo
+    type Rc = { avisoId: string; scoreCron: number | null };
+    const rcs: Rc[] = ["r1", "r2", "r3", "r4", "r5", "r6"].map((id, i) => ({ avisoId: id, scoreCron: 10 - i }));
+    const tablaR: Record<string, [string, number]> = { r1: ["COMPRAR", 90], r2: ["AJUSTA SUPUESTOS", 99], r3: ["COMPRAR", 85], r4: ["COMPRAR", 80], r5: ["COMPRAR", 75], r6: ["COMPRAR", 70] };
+    const evR2 = async (c: Rc) => ({ veredicto: tablaR[c.avisoId][0], score: tablaR[c.avisoId][1], flujo: 1 });
+    const vistosR: string[] = [];
+    const rr = await siguienteReemplazo(rcs, new Set(["r1"]), evR2, async (c) => { vistosR.push(c.avisoId); return c.avisoId === "r5" ? "publicado" : "despublicado"; });
+    if (rr?.c.avisoId !== "r5" || vistosR.join() !== "r3,r4,r5") F(`13 · el reemplazo no es el siguiente Comprar publicado por puntaje, sin los de la selección (${rr?.c.avisoId} · ${vistosR.join()})`);
+    const sinCh = await siguienteReemplazo(rcs, new Set(["r1"]), evR2, async (c) => (c.avisoId === "r3" ? "sin-chequeo" : "publicado"));
+    if (sinCh?.c.avisoId !== "r4") F(`13 · un reemplazo sin chequear entra a la página (${sinCh?.c.avisoId})`);
+    const nada = await siguienteReemplazo(rcs, new Set(), evR2, async () => "despublicado");
+    if (nada !== null || MAX_CHEQUEOS_REEMPLAZO !== 3) F("13 · el reemplazo chequea sin tope o inventa uno");
+    // las filas de la página
+    const its = [{ avisoId: "x1" }, { avisoId: "x2" }, { avisoId: "y1", reemplazaA: "x2" }, { avisoId: "y2", reemplazaA: "x2" }, { avisoId: "x3" }];
+    const fp = filasDePagina(its, new Set(["x2", "y2", "x3"]));
+    const desc = fp.map((f) => `${f.item.avisoId}:${f.caido ? "caido" : "ok"}:${f.reemplazo?.avisoId ?? "-"}`).join(",");
+    if (desc !== "x1:ok:-,x2:caido:y1,x3:caido:-") F(`13 · las filas de la página no dicen el caído con su reemplazo vigente (${desc})`);
+    if (SEMANAL_PAGINA.caido !== "Este ya no está publicado") F("13 · el aviso de caído no es «Este ya no está publicado»");
+    // el servidor, la página y el cron
+    const sv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
+    if (!/items = \[\.\.\.items, \{ \.\.\.itemDe\(r\.c, r\.ev\), reemplazaA: f\.item\.avisoId \}\];/.test(sv) || !/await admin\.from\(sel\.tabla\)\.update\(\{ items \}\)\.eq\("id", sel\.id\);/.test(sv)) F("13 · el reemplazo no se guarda en la selección");
+    if (!/\(await chequearPublicacion\(\{ id: c\.avisoId, url: c\.url, edificio: claveEdificio\(c\) \}, "clic", almacen, bajarFicha\)\)\.estado/.test(sv) || !/const pool = \[\.\.\.prep\.p\.candidatos, \.\.\.\(await prep\.p\.respaldo\.vecinas\(\)/.test(sv)) F("13 · el reemplazo no se chequea en el momento (o no mira las vecinas)");
+    if (!/const x = await chequearPublicacion\(\{ id: avisoId, url: f\.url, edificio: claveEdificio\(f\) \}, "guia", almacen, bajarFicha\);/.test(sv)) F("13 · el rechequeo del domingo da por vigente lo chequeado en la semana");
+    if (!/\.update\(\{ estado: "pendiente" \}\)\.in\("id", caidas\.map\(\(s\) => s\.id\)\)\.eq\("estado", "armada"\)\.is\("enviada_at", null\)/.test(sv)) F("13 · la selección que perdió un aviso no se vuelve a armar");
+    const ar = sinComentarios(leer("src/app/api/cron/semanal-armar/route.ts"));
+    if (!/const re = await rechequearArmadas\(admin, semana, presupuesto\);/.test(ar) || !/for \(const userId of re\.usuarios\) \{[\s\S]{0,120}await armarSeleccion\(admin, userId, semana, cfg, presupuesto\);/.test(ar)) F("13 · el domingo no rechequea las armadas ni rearma en la misma corrida");
+    const pg = sinComentarios(leer("src/app/semanal/page.tsx"));
+    if (!/await seleccionViva\(admin, \{ tabla: "semanal_selecciones"/.test(pg)) F("13 · /semanal no está viva");
+    const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
+    if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
+    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
+    for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);
+  }
+
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -364,5 +419,10 @@ if (require.main === module) {
 //   memoria pedida · P3 el armado sin la memoria de la semana · P4 el siguiente es el último que falta · P5 se sigue
 //   chequeando con la selección completa · P6 sin turnos · P7 se pasa del presupuesto · P8 sale a la fuente para saber qué
 //   falta · P9 el cron también el domingo · P10 sin vigilancia · P11 el armado sin la preparación compartida · R7 de nuevo
-//   sobre la preparación compartida. Y la excepción de la banda en CORREOS: la banda
+//   sobre la preparación compartida.
+//   §13 (05-oct-2026, descartar y la página viva): 13/13 ROJO (V2, V7 y V9 al segundo intento: V2 y V9 quedaron VERDES
+//   y se agregaron el rechequeo sin tope y el reemplazo «sin-chequeo»; V7 no aplicaba por la sangría). V1 los recientes primero ·
+//   V2 vuelve a leer lo de hoy · V3 pasa el tope · V4 rechequea con la memoria de la semana · V5 no se rearma · V6 el cron no
+//   rechequea · V7 el reemplazo puede ser Ajustar · V8 repite uno de la selección · V9 sin chequear · V10 no se guarda · V11
+//   toma un reemplazo caído · V12 esconde el caído sin decirlo · V13 la página no está viva. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).

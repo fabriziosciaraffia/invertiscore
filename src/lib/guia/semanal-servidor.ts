@@ -27,7 +27,7 @@ import { claveEdificio } from "./ficha-anio";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, repartirChequeos, siguienteAChequear, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, repartirChequeos, siguienteAChequear, varianteDe,
   type CandidatoSemanal, type RespaldoSemanal,
 } from "./semanal";
 
@@ -45,6 +45,8 @@ export interface ItemSemanal {
   flujo: number | null;
   /** De dónde salió (05-oct-2026): ausente = sus comunas; «vecina»; «negociar» (Ajustar con descuento). */
   tramo?: "vecina" | "negociar";
+  /** Puesto en /semanal en lugar de un depto que ya no está publicado (05-oct-2026): el id de ese depto. */
+  reemplazaA?: string;
 }
 
 /** «Santiago Centro» (el nombre del dataset viejo) es «Santiago» en los avisos. */
@@ -182,10 +184,7 @@ export async function armarSeleccion(
   }
   const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prep.p;
   const g = await elegirSemanal(candidatos, evaluar, publicadoConPresupuesto(admin, presupuesto), respaldo);
-  const items: ItemSemanal[] = g.items.map(({ c, ev, tramo }) => ({
-    avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
-    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo, ...(tramo !== "propia" ? { tramo } : {}),
-  }));
+  const items: ItemSemanal[] = g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo !== "propia" ? { tramo } : {}) }));
   await guardar({ estado: g.estado, items, combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   return g.estado;
 }
@@ -249,6 +248,104 @@ function candidatoDeFila(f: FilaRpc): Candidato {
     precioUF: Number(f.precio_uf), antiguedadAnios: f.antiguedad_origen === "ficha" ? f.antiguedad_anios : null,
     antiguedadOrigen: f.antiguedad_origen, arriendo: f.arriendo, venta: f.venta, gastosComunes: f.gastos_comunes, medianaComuna: f.mediana_comuna ?? null,
   };
+}
+
+/** Un candidato elegido, como lo guarda la selección y lo muestra el correo. */
+function itemDe(c: Candidato, ev: Evaluado): ItemSemanal {
+  return {
+    avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
+    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
+  };
+}
+
+/** Los avisos que ya no están: despublicados, o que salieron de la evaluación. */
+async function avisosCaidos(admin: SupabaseClient, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const [{ data: idas }, { data: siguen }] = await Promise.all([
+    admin.from("publicacion_avisos").select("aviso_id").in("aviso_id", ids).eq("estado", "despublicado"),
+    admin.from("avisos_evaluados").select("aviso_id").in("aviso_id", ids),
+  ]);
+  const vivos = new Set((siguen ?? []).map((r) => r.aviso_id as string));
+  return new Set([...(idas ?? []).map((r) => r.aviso_id as string), ...ids.filter((id) => !vivos.has(id))]);
+}
+
+/**
+ * La página /semanal VIVA (05-oct-2026, decisión de Fabrizio): cada depto del correo que ya no está
+ * publicado se dice, y en su lugar va el siguiente mejor del perfil —Comprar de sus comunas y de las
+ * vecinas, por puntaje— con la ficha chequeada en el momento. El reemplazo se GUARDA en la selección
+ * (`reemplazaA`): así «Analizar este» lo reconoce y la próxima visita no vuelve a buscar.
+ */
+export async function seleccionViva(
+  admin: SupabaseClient,
+  sel: { tabla: "semanal_selecciones" | "avisos_inmediatos"; id: string; userId: string; items: ItemSemanal[] },
+  cfg: { uf: number; tasa: number },
+): Promise<Array<FilaPaginaSemanal<ItemSemanal>>> {
+  let items = sel.items;
+  const caidos = await avisosCaidos(admin, items.map((i) => i.avisoId));
+  const faltan = filasDePagina(items, caidos).filter((f) => f.caido && !f.reemplazo);
+  if (faltan.length > 0) {
+    const prep = await prepararSeleccion(admin, sel.userId, cfg).catch(() => null);
+    if (prep?.tipo === "lista") {
+      const almacen = almacenPublicacion(admin);
+      const publicado = async (c: Candidato) => (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "clic", almacen, bajarFicha)).estado;
+      const pool = [...prep.p.candidatos, ...(await prep.p.respaldo.vecinas().catch(() => [] as Candidato[]))];
+      const excluir = new Set([...items.map((i) => i.avisoId), ...Array.from(caidos)]);
+      const antes = items.length;
+      for (const f of faltan) {
+        const r = await siguienteReemplazo(pool, excluir, prep.p.evaluar, publicado);
+        if (!r) break;
+        excluir.add(r.c.avisoId);
+        items = [...items, { ...itemDe(r.c, r.ev), reemplazaA: f.item.avisoId }];
+      }
+      if (items.length > antes) {
+        const { error } = await admin.from(sel.tabla).update({ items }).eq("id", sel.id);
+        reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-reemplazo", userId: sel.userId });
+      }
+    }
+  }
+  return filasDePagina(items, caidos);
+}
+
+/**
+ * El domingo, después de armar (05-oct-2026): con el presupuesto que quede, se vuelven a chequear los
+ * avisos de las selecciones armadas, los chequeados hace más tiempo primero. Una selección con un aviso
+ * que ya no está vuelve a «pendiente» para armarse de nuevo; devuelve de quién son.
+ */
+export async function rechequearArmadas(admin: SupabaseClient, semana: string, presupuesto: PresupuestoFichas): Promise<{ chequeados: number; caidos: number; usuarios: string[] }> {
+  const { data: sels, error } = await admin.from("semanal_selecciones").select("id, user_id, items").eq("semana", semana).eq("estado", "armada").is("enviada_at", null).order("armada_at").limit(1000);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-armadas" });
+  const filas = (sels ?? []) as Array<{ id: string; user_id: string; items: ItemSemanal[] }>;
+  const ids = Array.from(new Set(filas.flatMap((s) => (s.items ?? []).map((i) => i.avisoId))));
+  const fechas = new Map<string, number>();
+  const fichas = new Map<string, { url: string | null; comuna: string; lat: number; lng: number }>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const lote = ids.slice(i, i + 100);
+    const [{ data: pub }, { data: sp }] = await Promise.all([
+      admin.from("publicacion_avisos").select("aviso_id, chequeado_at").in("aviso_id", lote),
+      admin.from("scraped_properties").select("id, url, comuna, lat, lng").in("id", lote).order("id").limit(100),
+    ]);
+    for (const r of pub ?? []) fechas.set(r.aviso_id as string, Date.parse(r.chequeado_at as string));
+    for (const r of sp ?? []) fichas.set(r.id as string, { url: (r.url as string | null) ?? null, comuna: r.comuna as string, lat: Number(r.lat), lng: Number(r.lng) });
+  }
+  const almacen = almacenPublicacion(admin);
+  const r = await rechequearAvisos(
+    ids.map((avisoId) => ({ avisoId, chequeadoAt: fechas.get(avisoId) ?? null })),
+    async (avisoId) => {
+      const f = fichas.get(avisoId);
+      if (!f) return "sin-chequeo";
+      const x = await chequearPublicacion({ id: avisoId, url: f.url, edificio: claveEdificio(f) }, "guia", almacen, bajarFicha);
+      presupuesto.lecturas += x.lectura?.gets ?? 0;
+      if (x.lectura?.leida && x.lectura.motivo === "bloqueo") presupuesto.bloqueada = true;
+      return x.estado;
+    },
+    () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,
+  );
+  const caidas = filas.filter((s) => (s.items ?? []).some((i) => r.caidos.has(i.avisoId)));
+  if (caidas.length > 0) {
+    const { error: e2 } = await admin.from("semanal_selecciones").update({ estado: "pendiente" }).in("id", caidas.map((s) => s.id)).eq("estado", "armada").is("enviada_at", null);
+    reportarFalloQuery(e2, { ruta: RUTA, operacion: "rearmar" });
+  }
+  return { chequeados: r.chequeados, caidos: r.caidos.size, usuarios: caidas.map((s) => s.user_id) };
 }
 
 /** Los deptos de una selección que siguen en pie: sin despublicados y todavía evaluados. */

@@ -31,9 +31,11 @@ export const DIAS_REGALO = 14;
 /** GETs a fichas que una corrida del domingo se permite (dentro del tope por hora compartido, 30). */
 export const LECTURAS_POR_CORRIDA_SEMANAL = 24;
 /**
- * Cuánto vale, para el correo, un publicado ya chequeado (05-oct-2026, decisión de Fabrizio): la semana.
- * Los chequeos se reparten en las noches de lunes a sábado (cron semanal-prechequeo) y el domingo solo
- * completa lo que falte; el clic del correo vuelve a chequear igual.
+ * Cuánto vale, para ARMAR la selección, un publicado ya chequeado (05-oct-2026, decisión de Fabrizio): la
+ * semana. Los chequeos de las noches sirven para descartar lo que ya no está publicado, no para darlo por
+ * vigente: el domingo, con el tope disponible, se vuelven a chequear los avisos que quedaron en las
+ * selecciones, los chequeados hace más tiempo primero (`rechequearAvisos`). Y la página /semanal está viva:
+ * si uno ya no está publicado lo dice y muestra el siguiente mejor, chequeado (`siguienteReemplazo`).
  */
 export const MEMORIA_SEMANAL_MS = VENTANA_SEMANAL_DIAS * 864e5;
 /** El crédito regalado vence a los 60 días: así se gasta primero (el FIFO va por vencimiento). */
@@ -186,6 +188,86 @@ export async function repartirChequeos<P, T>(
   return chequeos;
 }
 
+/** Un aviso chequeado hace menos que esto no se vuelve a leer el domingo: se chequeó hoy. */
+export const FRESCO_DOMINGO_MS = 24 * 3600_000;
+
+/**
+ * El domingo (05-oct-2026): vuelve a chequear los avisos de las selecciones armadas, los chequeados hace
+ * más tiempo primero (sin fecha, primero que todos), mientras quede presupuesto. Los de hoy no se leen.
+ * Devuelve los que resultaron despublicados: sus selecciones se vuelven a armar.
+ */
+export async function rechequearAvisos(
+  avisos: Array<{ avisoId: string; chequeadoAt: number | null }>,
+  rechequear: (avisoId: string) => Promise<EstadoPublicacion>,
+  quedaPresupuesto: () => boolean,
+  ahora: number = Date.now(),
+): Promise<{ chequeados: number; caidos: Set<string> }> {
+  const vistos = new Set<string>();
+  const cola = avisos
+    .filter((a) => (vistos.has(a.avisoId) ? false : (vistos.add(a.avisoId), true)))
+    .filter((a) => a.chequeadoAt == null || ahora - a.chequeadoAt >= FRESCO_DOMINGO_MS)
+    .sort((a, b) => (a.chequeadoAt ?? -Infinity) - (b.chequeadoAt ?? -Infinity));
+  const caidos = new Set<string>();
+  let chequeados = 0;
+  for (const a of cola) {
+    if (!quedaPresupuesto()) break;
+    const e = await rechequear(a.avisoId).catch((): EstadoPublicacion => "sin-chequeo");
+    chequeados++;
+    if (e === "despublicado") caidos.add(a.avisoId);
+  }
+  return { chequeados, caidos };
+}
+
+/** Cuántos avisos chequea, como mucho, una visita a /semanal para encontrar el reemplazo de uno caído. */
+export const MAX_CHEQUEOS_REEMPLAZO = 3;
+
+/**
+ * El siguiente mejor del perfil para el lugar de un depto que ya no está publicado (05-oct-2026): los Comprar
+ * por puntaje, sin los que ya están en la selección, chequeando la ficha de a uno —como mucho
+ * `MAX_CHEQUEOS_REEMPLAZO` sin publicado conocido—. null si no hay.
+ */
+export async function siguienteReemplazo<T extends CandidatoSemanal>(
+  candidatos: T[],
+  excluir: ReadonlySet<string>,
+  evaluar: (c: T) => Promise<Evaluado | null>,
+  publicado: (c: T) => Promise<EstadoPublicacion>,
+): Promise<{ c: T; ev: Evaluado } | null> {
+  const pool = candidatos.filter((c) => !excluir.has(c.avisoId))
+    .sort((a, b) => (b.scoreCron ?? -1) - (a.scoreCron ?? -1)).slice(0, MAX_CANDIDATOS_SEMANAL);
+  const evs = await Promise.all(pool.map((c) => evaluar(c).catch(() => null)));
+  const comprar = pool.map((c, i) => ({ c, ev: evs[i] }))
+    .filter((x): x is { c: T; ev: Evaluado } => x.ev?.veredicto === "COMPRAR")
+    .sort((a, b) => (b.ev.score ?? -1) - (a.ev.score ?? -1));
+  let intentos = 0;
+  for (const it of comprar) {
+    if (intentos >= MAX_CHEQUEOS_REEMPLAZO) break;
+    const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
+    if (e === "publicado") return it;
+    intentos++;
+  }
+  return null;
+}
+
+/** Lo que muestra la página: cada depto del correo, si ya no está publicado, y el que va en su lugar. */
+export interface FilaPaginaSemanal<I> {
+  item: I;
+  caido: boolean;
+  reemplazo: I | null;
+}
+
+/**
+ * Las filas de /semanal a partir de los items guardados (los del correo y los reemplazos, que llevan
+ * `reemplazaA`) y de los avisos que ya no están publicados. El reemplazo vigente de un depto caído es el
+ * último que lo reemplaza y no se cayó.
+ */
+export function filasDePagina<I extends { avisoId: string; reemplazaA?: string }>(items: I[], caidos: ReadonlySet<string>): Array<FilaPaginaSemanal<I>> {
+  return items.filter((i) => !i.reemplazaA).map((item) => {
+    const caido = caidos.has(item.avisoId);
+    const reemplazos = caido ? items.filter((r) => r.reemplazaA === item.avisoId && !caidos.has(r.avisoId)) : [];
+    return { item, caido, reemplazo: reemplazos[reemplazos.length - 1] ?? null };
+  });
+}
+
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
 export function esPrimerSemanal(enviadasAntes: number | null | undefined): boolean {
   return (enviadasAntes ?? 0) === 0;
@@ -231,6 +313,8 @@ export const SEMANAL_PAGINA = {
   comprar: `Analizar uno · ${fmtCLP(SINGLE_PRICE)}`,
   comprarBajada: "O con un plan, si vas a analizar varios.",
   vacia: "Los deptos de este correo ya no están publicados. El próximo correo trae los de la semana.",
+  caido: "Este ya no está publicado",
+  enSuLugar: "En su lugar, el siguiente que mejor resulta con tus números:",
   otraCuenta: "Este correo es de otra cuenta. Entra con el correo donde lo recibiste.",
   pie: "Franco los revisó con tus números y seguían publicados. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
   bajaLista: "Listo. Ya no te enviamos los deptos de la semana.",

@@ -3,15 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
-import { itemsVigentes, type ItemSemanal } from "@/lib/guia/semanal-servidor";
+import { seleccionViva, type ItemSemanal } from "@/lib/guia/semanal-servidor";
+import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { SemanalLista } from "./semanal-lista";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /semanal (02-oct-2026): adonde lleva el correo semanal. Con sesión; la selección es la del token del
-// correo y tiene que ser de quien entró. Muestra los deptos que siguen publicados (el clicado primero)
-// y, con saldo, «Analizar este» genera el informe con sus números; sin saldo, el botón compra el suelto.
+// correo y tiene que ser de quien entró. Muestra los deptos del correo (el clicado primero) y, con saldo,
+// «Analizar este» genera el informe con sus números; sin saldo, el botón compra el suelto. Viva
+// (05-oct-2026): el que ya no está publicado lo dice y trae en su lugar el siguiente mejor, chequeado.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
@@ -26,13 +28,13 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   if (!TOKEN.test(t)) redirect("/dashboard");
 
   const admin = createServiceClient();
-  const { data: sel } = await admin.from("semanal_selecciones").select("user_id, items, combinacion, origen_analysis_id, variante").eq("token", t).maybeSingle();
+  const { data: sel } = await admin.from("semanal_selecciones").select("id, user_id, items, combinacion, origen_analysis_id, variante").eq("token", t).maybeSingle();
   if (!sel) redirect("/dashboard");
 
   const otraCuenta = sel.user_id !== user.id;
-  const items = otraCuenta ? [] : await itemsVigentes(admin, (sel.items ?? []) as ItemSemanal[]);
+  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: "semanal_selecciones", id: sel.id as string, userId: user.id, items: (sel.items ?? []) as ItemSemanal[] }, await leerConfigGuia(admin));
   const a = searchParams.a ?? null;
-  const ordenados = a ? [...items.filter((i) => i.avisoId === a), ...items.filter((i) => i.avisoId !== a)] : items;
+  const ordenados = a ? [...filas.filter((f) => f.item.avisoId === a), ...filas.filter((f) => f.item.avisoId !== a)] : filas;
   const saldo = estadoSaldo(await leerSaldo(admin, user.id));
   const combo = (sel.combinacion ?? null) as { piePct: number; plazoAnios: number } | null;
 
@@ -47,9 +49,8 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
             token={t}
             origenId={(sel.origen_analysis_id as string | null) ?? null}
             combinacion={combo}
-            items={ordenados}
+            filas={ordenados}
             destacado={a}
-            despublicado={searchParams.d === "1" && !!a}
             saldo={saldo}
             variante={(sel.variante as "banda" | "tarjetas" | null) ?? null}
           />
