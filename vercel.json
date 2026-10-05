@@ -57,6 +57,10 @@
       "schedule": "45 */6 * * *"
     },
     {
+      "path": "/api/cron/semanal-prechequeo",
+      "schedule": "35 3-8 * * 1-6"
+    },
+    {
       "path": "/api/cron/semanal-armar",
       "schedule": "5 11-23 * * 0"
     },

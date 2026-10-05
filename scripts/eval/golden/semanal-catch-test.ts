@@ -22,6 +22,9 @@
 //       simétricas y toda comuna cubierta tiene alguna.
 //  11 · A QUIÉN (05-oct-2026): toda persona con un informe de renta larga (y quien tenga perfil), con el
 //       perfil armado desde sus informes; el primer correo se presenta con la baja a la vista.
+//  12 · EL PRECHEQUEO (05-oct-2026): de lunes a sábado, cada hora de la noche, se chequean por turnos los
+//       avisos que cada selección va a necesitar (el siguiente que le pediría la regla del domingo); un
+//       publicado chequeado vale la semana para el armado; el domingo solo completa lo que falte.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
@@ -29,12 +32,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, repartirChequeos, siguienteAChequear, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
 import { filaDesdeInforme } from "../../../src/lib/perfil-busqueda-servidor";
 import { perfilDeBusqueda } from "../../../src/lib/perfil-busqueda";
+import { chequearPublicacion, type AlmacenPublicacion } from "../../../src/lib/guia/publicacion";
 import { COLOR_VEREDICTO, SEMANAL, URL_BANDA_SEMANAL, correoSemanal, textoBusca, type DatosCorreoSemanal } from "../../../src/lib/email/correo-semanal";
 import { eventoSemanalAbierto } from "../../../src/lib/medicion-correo";
 import { ROJO } from "../../../src/lib/email/plantilla-clara";
@@ -222,7 +226,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     // e · sin respaldo (como antes) no cambia nada.
     const e = await elegirSemanal([mk("p1", 9), mk("p2", 8)], evR, async () => "publicado" as const);
     if (e.estado !== "sin_match") F("10 · sin respaldo un solo Comprar arma correo");
-    if (DESCUENTO_NEGOCIABLE !== 0.1 || !/evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\)/.test(srv) || !/vecinas: \(\) => leerCandidatos\(comunasVecinas\(propias\)\)/.test(srv)) F("10 · el servidor no arma el respaldo con las vecinas y el 10% de descuento");
+    if (DESCUENTO_NEGOCIABLE !== 0.1 || !/evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\)/.test(srv) || !/vecinas: \(\) => \(vecinas \?\?= leerCandidatos\(comunasVecinas\(propias\)\)\)/.test(srv)) F("10 · el servidor no arma el respaldo con las vecinas y el 10% de descuento");
     if (!/const cc = factorPrecio === 1 \? c : \{ \.\.\.c, precioUF: c\.precioUF \* factorPrecio \};/.test(srv)) F("10 · la evaluación con descuento no baja el precio");
     if (!/\.\.\.\(tramo !== "propia" \? \{ tramo \} : \{\}\)/.test(srv)) F("10 · la selección no guarda de dónde salió cada depto");
     // las vecinas
@@ -264,7 +268,48 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     for (const t of [SEMANAL.presentacion, `${SEMANAL.presentacionBaja} ${SEMANAL.presentacionBajaEnlace}.`]) if (VOSEO.test(t)) F(`11 · voseo: «${t}»`);
   }
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez");
+  // 12 · el prechequeo
+  {
+    if (MEMORIA_SEMANAL_MS !== 7 * 864e5) F("12 · un chequeo no vale la semana del armado");
+    const ahora = new Date("2026-10-11T15:00:00Z");
+    const almacen = (diasAtras: number) => ({ publicacion: async () => ({ estado: "publicado" as const, chequeadoAt: new Date(ahora.getTime() - diasAtras * 864e5) }) }) as unknown as AlmacenPublicacion;
+    const aviso = { id: "x", url: "https://x/y", edificio: "e" };
+    const nada = async () => { throw new Error("no se lee"); };
+    const martes = await chequearPublicacion(aviso, "guia", almacen(5), nada, { sinLeer: true, ahora, memoriaMs: MEMORIA_SEMANAL_MS });
+    const deDia = await chequearPublicacion(aviso, "guia", almacen(5), nada, { sinLeer: true, ahora });
+    const viejo = await chequearPublicacion(aviso, "guia", almacen(8), nada, { sinLeer: true, ahora, memoriaMs: MEMORIA_SEMANAL_MS });
+    if (martes.estado !== "publicado" || deDia.estado !== "sin-chequeo" || viejo.estado !== "sin-chequeo") F(`12 · la memoria de la semana no vale para el armado o vale de más (${martes.estado} · ${deDia.estado} · ${viejo.estado})`);
+    // el siguiente: el que pediría la regla del domingo, sin salir a la fuente
+    type Q = { avisoId: string; scoreCron: number | null };
+    const qs: Q[] = ["q1", "q2", "q3", "q4", "q5"].map((id, i) => ({ avisoId: id, scoreCron: 10 - i }));
+    const evQ = async (c: Q) => ({ veredicto: "COMPRAR", score: 100 - Number(c.avisoId.slice(1)), flujo: 1 });
+    const mem = (m: Record<string, "publicado" | "despublicado">) => async (c: Q) => m[c.avisoId] ?? ("sin-chequeo" as const);
+    const s1 = await siguienteAChequear(qs, evQ, mem({ q1: "publicado", q2: "despublicado" }));
+    const s2 = await siguienteAChequear(qs, evQ, mem({ q1: "publicado", q2: "publicado", q3: "publicado" }));
+    const s3 = await siguienteAChequear(qs.slice(0, 2), evQ, mem({ q1: "despublicado", q2: "despublicado" }));
+    if (s1?.avisoId !== "q3") F(`12 · el siguiente a chequear no es el que pediría el domingo (${s1?.avisoId})`);
+    if (s2 !== null) F("12 · con tres publicados de la semana igual se sigue chequeando");
+    if (s3 !== null) F("12 · sin nada por chequear igual se pide uno");
+    // por turnos
+    const necesita: Record<string, number> = { a: 2, b: 2, c: 1 };
+    const hechos: string[] = [];
+    let cupo = 4;
+    const n = await repartirChequeos(["a", "b", "c"], async (p) => (necesita[p] > 0 ? p : null), async (p) => { necesita[p]--; hechos.push(p); cupo--; }, () => cupo > 0);
+    if (hechos.join("") !== "abca" || n !== 4) F(`12 · los chequeos no van por turnos dentro del presupuesto (${hechos.join("")}, ${n})`);
+    const hechos2: string[] = [];
+    await repartirChequeos(["a", "b"], async (p) => (hechos2.filter((h) => h === p).length < (p === "a" ? 3 : 1) ? p : null), async (p) => { hechos2.push(p); }, () => true);
+    if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
+    // el servidor, el cron y la vigilancia
+    if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
+    if (!/const g = await elegirSemanal\(candidatos, evaluar, publicadoConPresupuesto\(admin, presupuesto\), respaldo\);/.test(srv)) F("12 · el armado no elige con la preparación compartida");
+    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/return p \? siguienteAChequear\(p\.candidatos, p\.evaluar, enMemoria, p\.respaldo\) : null;/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
+    const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
+    if (!/await prechequearSemana\(admin, personas, cfg, presupuesto, \{ turno, hastaMs: t0 \+ PRESUPUESTO_MS \}\)/.test(rp) || !/latirCron\(admin, "semanal-prechequeo"\)/.test(rp)) F("12 · el cron no prechequea");
+    if (!/"path": "\/api\/cron\/semanal-prechequeo",\s*"schedule": "35 3-8 \* \* 1-6"/.test(vj)) F("12 · el prechequeo no corre de noche de lunes a sábado");
+    if (!/nombre: "semanal-prechequeo"[^}]*intervaloHoras: 24/.test(hb)) F("12 · el prechequeo no está vigilado");
+  }
+
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches, que vale la semana");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -314,5 +359,10 @@ if (require.main === module) {
 //   R10 vecinas en un solo sentido · R11 las vecinas incluyen las propias · R12 solo a quien tiene perfil · R13 el perfil sin los
 //   informes sin fila · R14 se presenta siempre · R15 el primero mal contado · R16 la presentación sin la baja a la vista ·
 //   R17 el conteo cuenta la fila que se manda · R18 la frase sin «si lo negocias» · R19 sin la frase de las vecinas · R20 el
-//   informe pierde el pie · R21 la selección no guarda el tramo. Y la excepción de la banda en CORREOS: la banda
+//   informe pierde el pie · R21 la selección no guarda el tramo.
+//   §12 (05-oct-2026, el prechequeo): 12/12 ROJO. P1 la memoria de un día · P2 chequearPublicacion ignora la
+//   memoria pedida · P3 el armado sin la memoria de la semana · P4 el siguiente es el último que falta · P5 se sigue
+//   chequeando con la selección completa · P6 sin turnos · P7 se pasa del presupuesto · P8 sale a la fuente para saber qué
+//   falta · P9 el cron también el domingo · P10 sin vigilancia · P11 el armado sin la preparación compartida · R7 de nuevo
+//   sobre la preparación compartida. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).

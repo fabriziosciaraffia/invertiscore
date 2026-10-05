@@ -162,12 +162,13 @@ export async function chequearPublicacion(
   tipo: TipoLectura,
   almacen: AlmacenPublicacion,
   bajar: (url: string) => Promise<RespuestaFicha>,
-  opts: { forzar?: boolean; sinLeer?: boolean; ahora?: Date } = {},
+  // `memoriaMs`: cuánto vale un publicado ya chequeado (24 horas; el correo semanal, la semana del armado).
+  opts: { forzar?: boolean; sinLeer?: boolean; ahora?: Date; memoriaMs?: number } = {},
 ): Promise<{ estado: EstadoPublicacion; lectura: ResultadoLectura | null }> {
   const ahora = opts.ahora ?? new Date();
   const mem = await almacen.publicacion(aviso.id);
   if (mem?.estado === "despublicado") return { estado: "despublicado", lectura: null };
-  const fresco = mem?.estado === "publicado" && ahora.getTime() - mem.chequeadoAt.getTime() < MEMORIA_PUBLICACION_MS;
+  const fresco = mem?.estado === "publicado" && ahora.getTime() - mem.chequeadoAt.getTime() < (opts.memoriaMs ?? MEMORIA_PUBLICACION_MS);
   if (fresco && !opts.forzar) return { estado: "publicado", lectura: null };
   // Sin presupuesto de lecturas (la guía ya leyó las suyas, o la fuente bloqueó): queda lo que se sabe.
   if (opts.sinLeer) return { estado: fresco ? "publicado" : "sin-chequeo", lectura: null };

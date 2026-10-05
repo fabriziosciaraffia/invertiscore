@@ -27,8 +27,8 @@ import { claveEdificio } from "./ficha-anio";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, MAX_CANDIDATOS_SEMANAL, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, varianteDe,
-  type CandidatoSemanal,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, repartirChequeos, siguienteAChequear, varianteDe,
+  type CandidatoSemanal, type RespaldoSemanal,
 } from "./semanal";
 
 const RUTA = "lib/guia/semanal";
@@ -75,6 +75,89 @@ export interface PresupuestoFichas {
   bloqueada: boolean;
 }
 
+/** Todo lo que hace falta para elegir la selección de una persona: sus candidatos, cómo se evalúan y el respaldo. */
+export interface PreparacionSemanal {
+  perfil: PerfilBusqueda;
+  origen: OrigenGuia;
+  combo: Combinacion;
+  candidatos: Candidato[];
+  evaluar: (c: Candidato) => Promise<Evaluado | null>;
+  respaldo: RespaldoSemanal<Candidato>;
+}
+
+export type Preparada = { tipo: "baja" } | { tipo: "sin-perfil"; perfil: PerfilBusqueda } | { tipo: "lista"; p: PreparacionSemanal };
+
+/**
+ * Prepara la selección de una persona sin chequear ninguna ficha. La usan el armado del domingo y el
+ * prechequeo de las noches: los dos eligen con la MISMA regla. Las evaluaciones y las vecinas se leen una vez.
+ */
+export async function prepararSeleccion(admin: SupabaseClient, userId: string, cfg: { uf: number; tasa: number }): Promise<Preparada> {
+  const { perfil, semanalBajaAt } = await leerPerfilBusqueda(admin, userId);
+  if (semanalBajaAt) return { tipo: "baja" };
+  // Los avisos se evalúan como arriendo largo: un perfil de renta corta no tiene con qué compararse.
+  const rango = rangoSemanal(perfil);
+  const o = perfil.completo && perfil.modalidad === "ltr" && rango ? await origenDePersona(admin, userId) : null;
+  if (!o || !rango) return { tipo: "sin-perfil", perfil };
+  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
+
+  const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
+  const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
+    if (comunas.length === 0) return [];
+    const { data, error } = await admin.rpc("semanal_candidatos", {
+      comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
+    });
+    if (error) throw new Error(`semanal_candidatos: ${error.message}`);
+    return ((data ?? []) as FilaRpc[]).map(candidatoDeFila);
+  };
+  const propias = perfil.comunas.map(comunaDeAviso);
+  const candidatos = await leerCandidatos(propias);
+
+  const asOf = new Date();
+  const memo = new Map<string, Promise<Evaluado | null>>();
+  const evaluarA = (c: Candidato, factorPrecio: number): Promise<Evaluado | null> => {
+    const clave = `${c.avisoId}:${factorPrecio}`;
+    const ya = memo.get(clave);
+    if (ya) return ya;
+    const r = (async () => {
+      const cc = factorPrecio === 1 ? c : { ...c, precioUF: c.precioUF * factorPrecio };
+      const ctx = contextoDeFila(cc, cfg);
+      // Sin la mediana guardada no se recalcula acá (sería una consulta en vivo por candidato): queda fuera.
+      if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
+      const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(cc), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
+      const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
+      return { veredicto: s.veredicto, score: s.score != null ? Math.round(s.score) : null, flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null };
+    })();
+    memo.set(clave, r);
+    return r;
+  };
+  let vecinas: Promise<Candidato[]> | null = null;
+  return {
+    tipo: "lista",
+    p: {
+      perfil, origen: o, combo, candidatos,
+      evaluar: (c) => evaluarA(c, 1),
+      respaldo: {
+        vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),
+        evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
+      },
+    },
+  };
+}
+
+/** El chequeo de un candidato con la memoria de la semana, dentro del presupuesto de la corrida. */
+function publicadoConPresupuesto(admin: SupabaseClient, presupuesto: PresupuestoFichas) {
+  const almacen = almacenPublicacion(admin);
+  return async (c: Candidato): Promise<EstadoPublicacion> => {
+    const r = await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, {
+      sinLeer: presupuesto.bloqueada || presupuesto.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,
+      memoriaMs: MEMORIA_SEMANAL_MS,
+    });
+    presupuesto.lecturas += r.lectura?.gets ?? 0;
+    if (r.lectura?.leida && r.lectura.motivo === "bloqueo") presupuesto.bloqueada = true;
+    return r.estado;
+  };
+}
+
 /** Arma (o deja como está) la selección de una persona para el lunes `semana`. Devuelve el estado. */
 export async function armarSeleccion(
   admin: SupabaseClient,
@@ -91,60 +174,71 @@ export async function armarSeleccion(
     reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-seleccion", userId });
   };
 
-  const { perfil, semanalBajaAt } = await leerPerfilBusqueda(admin, userId);
-  if (semanalBajaAt) return "ya";
-  // Los avisos se evalúan como arriendo largo: un perfil de renta corta no tiene con qué compararse.
-  const rango = rangoSemanal(perfil);
-  const o = perfil.completo && perfil.modalidad === "ltr" && rango ? await origenDePersona(admin, userId) : null;
-  if (!o || !rango) {
-    await guardar({ estado: "sin_match", items: [], perfil });
+  const prep = await prepararSeleccion(admin, userId, cfg);
+  if (prep.tipo === "baja") return "ya";
+  if (prep.tipo === "sin-perfil") {
+    await guardar({ estado: "sin_match", items: [], perfil: prep.perfil });
     return "sin_match";
   }
-  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
-
-  const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
-  const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
-    if (comunas.length === 0) return [];
-    const { data, error } = await admin.rpc("semanal_candidatos", {
-      comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
-    });
-    if (error) throw new Error(`semanal_candidatos: ${error.message}`);
-    return ((data ?? []) as FilaRpc[]).map(candidatoDeFila);
-  };
-  const propias = perfil.comunas.map(comunaDeAviso);
-  const candidatos = await leerCandidatos(propias);
-
-  const asOf = new Date();
-  const evaluarA = async (c: Candidato, factorPrecio: number): Promise<Evaluado | null> => {
-    const cc = factorPrecio === 1 ? c : { ...c, precioUF: c.precioUF * factorPrecio };
-    const ctx = contextoDeFila(cc, cfg);
-    // Sin la mediana guardada no se recalcula acá (sería una consulta en vivo por candidato): queda fuera.
-    if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-    const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(cc), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
-    const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
-    return { veredicto: s.veredicto, score: s.score != null ? Math.round(s.score) : null, flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null };
-  };
-  const evaluar = (c: Candidato) => evaluarA(c, 1);
-  const almacen = almacenPublicacion(admin);
-  const publicado = async (c: Candidato): Promise<EstadoPublicacion> => {
-    const r = await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, {
-      sinLeer: presupuesto.bloqueada || presupuesto.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,
-    });
-    presupuesto.lecturas += r.lectura?.gets ?? 0;
-    if (r.lectura?.leida && r.lectura.motivo === "bloqueo") presupuesto.bloqueada = true;
-    return r.estado;
-  };
-
-  const g = await elegirSemanal(candidatos, evaluar, publicado, {
-    vecinas: () => leerCandidatos(comunasVecinas(propias)),
-    evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
-  });
+  const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prep.p;
+  const g = await elegirSemanal(candidatos, evaluar, publicadoConPresupuesto(admin, presupuesto), respaldo);
   const items: ItemSemanal[] = g.items.map(({ c, ev, tramo }) => ({
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo, ...(tramo !== "propia" ? { tramo } : {}),
   }));
   await guardar({ estado: g.estado, items, combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   return g.estado;
+}
+
+/**
+ * El prechequeo de una noche (05-oct-2026, decisión de Fabrizio): chequea, dentro del presupuesto de la
+ * corrida, los avisos que las selecciones del domingo van a necesitar. Por turnos: en cada vuelta, cada
+ * persona cuya selección todavía no se puede armar con lo ya chequeado esta semana chequea UN aviso, el
+ * siguiente que le pediría la selección (sus Comprar, después las vecinas, después los negociables). Así
+ * el presupuesto se reparte entre todos y un mismo aviso sirve a todos los que lo necesitan.
+ * `turno` corre el punto de partida de una corrida a otra.
+ */
+export async function prechequearSemana(
+  admin: SupabaseClient,
+  personas: Array<{ userId: string }>,
+  cfg: { uf: number; tasa: number },
+  presupuesto: PresupuestoFichas,
+  opts: { turno: number; hastaMs: number },
+): Promise<{ personas: number; completas: number; sinCandidatos: number; chequeos: number }> {
+  const almacen = almacenPublicacion(admin);
+  const enMemoria = async (c: Candidato): Promise<EstadoPublicacion> =>
+    (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, { sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS })).estado;
+  const n = personas.length;
+  const orden = personas.map((_, i) => personas[(i + (opts.turno % Math.max(1, n))) % n].userId);
+  const preps = new Map<string, PreparacionSemanal | null>();
+  const preparar = async (userId: string) => {
+    if (!preps.has(userId)) {
+      const pr = await prepararSeleccion(admin, userId, cfg).catch(() => null);
+      preps.set(userId, pr?.tipo === "lista" ? pr.p : null);
+    }
+    return preps.get(userId) ?? null;
+  };
+  const chequeos = await repartirChequeos(
+    orden,
+    async (userId) => {
+      const p = await preparar(userId);
+      return p ? siguienteAChequear(p.candidatos, p.evaluar, enMemoria, p.respaldo) : null;
+    },
+    publicadoConPresupuesto(admin, presupuesto),
+    () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL && Date.now() < opts.hastaMs,
+  );
+
+  // El estado al cierre, con lo chequeado en la semana (de las personas que alcanzó a mirar).
+  let completas = 0, sinCandidatos = 0;
+  for (const [, p] of Array.from(preps)) {
+    if (!p) continue;
+    const sig = await siguienteAChequear(p.candidatos, p.evaluar, enMemoria, p.respaldo);
+    if (sig != null) continue;
+    const g = await elegirSemanal(p.candidatos, p.evaluar, enMemoria, p.respaldo);
+    if (g.estado === "armada") completas++;
+    else sinCandidatos++;
+  }
+  return { personas: preps.size, completas, sinCandidatos, chequeos };
 }
 
 function candidatoDeFila(f: FilaRpc): Candidato {

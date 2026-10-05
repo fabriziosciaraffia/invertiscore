@@ -30,6 +30,12 @@ export const VENTANA_SEMANAL_DIAS = 7;
 export const DIAS_REGALO = 14;
 /** GETs a fichas que una corrida del domingo se permite (dentro del tope por hora compartido, 30). */
 export const LECTURAS_POR_CORRIDA_SEMANAL = 24;
+/**
+ * Cuánto vale, para el correo, un publicado ya chequeado (05-oct-2026, decisión de Fabrizio): la semana.
+ * Los chequeos se reparten en las noches de lunes a sábado (cron semanal-prechequeo) y el domingo solo
+ * completa lo que falte; el clic del correo vuelve a chequear igual.
+ */
+export const MEMORIA_SEMANAL_MS = VENTANA_SEMANAL_DIAS * 864e5;
 /** El crédito regalado vence a los 60 días: así se gasta primero (el FIFO va por vencimiento). */
 export const DIAS_VIGENCIA_REGALO = 60;
 /** La holgura del rango de precio: el piso baja 10% bajo lo más barato que analizó; el tope no se pasa. */
@@ -133,6 +139,51 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
   // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente.
   if (sinChequeo > 0) return { estado: "pendiente", items };
   return { estado: "sin_match", items: [] };
+}
+
+/**
+ * El siguiente aviso que la selección de una persona necesita chequear (05-oct-2026): se elige con la regla
+ * del domingo, pero sin salir a la fuente —`enMemoria` dice lo ya chequeado en la semana y «sin-chequeo» lo
+ * demás—. null si la selección ya se puede armar o no queda nada que chequear.
+ */
+export async function siguienteAChequear<T extends CandidatoSemanal>(
+  candidatos: T[],
+  evaluar: (c: T) => Promise<Evaluado | null>,
+  enMemoria: (c: T) => Promise<EstadoPublicacion>,
+  respaldo?: RespaldoSemanal<T>,
+): Promise<T | null> {
+  const faltan: T[] = [];
+  const g = await elegirSemanal(candidatos, evaluar, async (c) => {
+    const e = await enMemoria(c);
+    if (e === "sin-chequeo") faltan.push(c);
+    return e;
+  }, respaldo);
+  return g.estado === "armada" ? null : faltan[0] ?? null;
+}
+
+/**
+ * Los chequeos de una noche, POR TURNOS (05-oct-2026): en cada vuelta, cada persona que todavía necesita
+ * chequea UN aviso; la que ya no necesita sale de la fila. Se para sin presupuesto o cuando nadie necesita.
+ * Devuelve cuántos chequeos se hicieron.
+ */
+export async function repartirChequeos<P, T>(
+  personas: P[],
+  siguiente: (p: P) => Promise<T | null>,
+  chequear: (aviso: T) => Promise<unknown>,
+  quedaPresupuesto: () => boolean,
+): Promise<number> {
+  const enFila = [...personas];
+  let chequeos = 0;
+  while (enFila.length > 0 && quedaPresupuesto()) {
+    for (let i = 0; i < enFila.length && quedaPresupuesto(); ) {
+      const aviso = await siguiente(enFila[i]);
+      if (aviso == null) { enFila.splice(i, 1); continue; }
+      await chequear(aviso);
+      chequeos++;
+      i++;
+    }
+  }
+  return chequeos;
 }
 
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
