@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { personasSemanal, prechequearSemana, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     const conteo = presupuesto.bloqueada ? { procesados: 1, exitosos: 0, fallidos: 1 } : { procesados: 1, exitosos: 1, fallidos: 0 };
     return cerrarCron(admin, NOMBRE, conteo, { ...r, lecturas: presupuesto.lecturas, bloqueada: presupuesto.bloqueada });
   } catch (e) {
-    captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
+    capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
     return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e) });
   }
 }

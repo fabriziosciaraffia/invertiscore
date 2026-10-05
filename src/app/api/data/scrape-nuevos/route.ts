@@ -34,7 +34,11 @@ import { desactivarProyectosConUnidades } from "@/lib/services/scraper/toctoc-un
 // distinto schedule). Un query string ignorado habría disparado el pase general
 // dos veces al día, en silencio, y este pase no habría corrido nunca.
 
-export const maxDuration = 60;
+// 300 s (05-oct-2026): con 60, las corridas cerraban en 56 s y el 5-oct a las 06:30 se cortó (504, «Task timed
+// out after 60 seconds»): el upsert alcanzó a escribir los 408 proyectos, pero no la reconciliación con las
+// unidades, que dejó 404 proyectos-base activos —contados dos veces en la mediana— hasta el pase de unidades
+// de las 14:00. La vigilancia avisó «latió y no cerró».
+export const maxDuration = 300;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = ReturnType<typeof createClient<any>>;

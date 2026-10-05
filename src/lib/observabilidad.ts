@@ -186,6 +186,16 @@ export function captureApiWarning(error: unknown, ctx: ContextoError): void {
   reportar(error, ctx, "warning");
 }
 
+/**
+ * Una falla que un CRON ya maneja (05-oct-2026): la cuenta en su cierre (`cerrarCron`), que la deja en el panel
+ * y alerta a hola@ una vez al día si la corrida falla en todo o en parte —o la reintenta la corrida siguiente—.
+ * Va a Sentry como `warning` con la marca `manejado: cron`: queda el rastro con su stack, sin una segunda
+ * alerta por lo mismo. Las rutas de cron no usan `captureApiError` (lo cuida el tier CRONS).
+ */
+export function capturarFallaDeCron(error: unknown, ctx: ContextoError): void {
+  reportar(error, { ...ctx, tags: { ...ctx.tags, manejado: "cron" } }, "warning");
+}
+
 function reportar(error: unknown, ctx: ContextoError, nivel: "error" | "warning"): void {
   // NUNCA propaga: si el reporte falla, el caller no se entera. Un catch que se
   // rompe reportando su propio error sería peor que el error original.

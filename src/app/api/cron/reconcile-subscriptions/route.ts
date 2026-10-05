@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
-import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
+import { capturarFallaDeCron, captureApiWarning } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 
@@ -220,7 +220,7 @@ export async function GET(request: Request) {
           ":",
           e instanceof Error ? e.message : String(e)
         );
-        captureApiError(e, {
+        capturarFallaDeCron(e, {
           ruta: RUTA,
           operacion: "flow-get-payments",
           extra: { date, start },
@@ -345,7 +345,7 @@ export async function GET(request: Request) {
             ":",
             e instanceof Error ? e.message : String(e)
           );
-          captureApiError(e, {
+          capturarFallaDeCron(e, {
             ruta: RUTA,
             operacion: "procesar-cargo",
             commerceOrder: commerceOrderRow,

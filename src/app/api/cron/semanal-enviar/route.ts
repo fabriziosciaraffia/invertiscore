@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { enviarSeleccion, type FilaSeleccion } from "@/lib/guia/semanal-servidor";
 import { semanaDelEnvio } from "@/lib/guia/semanal";
 
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         cuenta[await enviarSeleccion(admin, fila, SITIO)]++;
       } catch (e) {
         cuenta.fallida++;
-        captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "enviar-seleccion", userId: fila.user_id });
+        capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "enviar-seleccion", userId: fila.user_id });
       }
     }
     const procesadas = cuenta.enviada + cuenta.descartada + cuenta.fallida;
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     const conteo = procesadas === 0 ? { procesados: 1, exitosos: 1, fallidos: 0 } : { procesados: procesadas, exitosos: procesadas - cuenta.fallida, fallidos: cuenta.fallida };
     return cerrarCron(admin, NOMBRE, conteo, { semana, ...cuenta });
   } catch (e) {
-    captureApiError(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
+    capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
     return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { semana, error: e instanceof Error ? e.message : String(e) });
   }
 }

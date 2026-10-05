@@ -26,7 +26,7 @@ import {
 } from "@/lib/services/scraper/backfill-plan";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 
 // ─── Backfill y refresco del universo TocToc (venta usada + arriendo) ────────
 //
@@ -292,7 +292,7 @@ export async function GET(request: Request) {
   try {
     checkpoint = await leerCheckpoint(sb);
   } catch (e) {
-    captureApiError(e, { ruta: RUTA, operacion: "leer-checkpoint" });
+    capturarFallaDeCron(e, { ruta: RUTA, operacion: "leer-checkpoint" });
     return cerrarCron(sb, "backfill-toctoc", CORRIDA_FALLIDA, { error: String(e instanceof Error ? e.message : e) });
   }
   // Activas del universo ANTES del primer upsert de esta invocación. Un pase
@@ -303,7 +303,7 @@ export async function GET(request: Request) {
   try {
     activasAlInicio = await contarActivas(sb);
   } catch (e) {
-    captureApiError(e, { ruta: RUTA, operacion: "contar-activas-inicio" });
+    capturarFallaDeCron(e, { ruta: RUTA, operacion: "contar-activas-inicio" });
   }
   const plan = planificar({ operaciones, desde, reanudar, checkpoint, ahora: new Date(), activasAlInicio });
   if ("error" in plan) return NextResponse.json({ error: plan.error }, { status: 400 });
@@ -374,7 +374,7 @@ export async function GET(request: Request) {
     motivoCorte = e instanceof Error ? e.message : String(e);
     if (!(e instanceof CorteTiempo) && !(e instanceof FalloUpsert)) {
       cp.errores.push(`excepción: ${motivoCorte}`);
-      captureApiError(e, { ruta: RUTA, operacion: "backfill", extra: { pase: plan.pase } });
+      capturarFallaDeCron(e, { ruta: RUTA, operacion: "backfill", extra: { pase: plan.pase } });
       await guardarCheckpoint(sb, cp).catch(() => undefined);
     }
   }
@@ -421,7 +421,7 @@ export async function GET(request: Request) {
       const msg = e instanceof Error ? e.message : String(e);
       desactivacion = { omitida: msg };
       cp.errores.push(`desactivación: ${msg}`);
-      captureApiError(e, { ruta: RUTA, operacion: "desactivar", extra: { pase: plan.pase } });
+      capturarFallaDeCron(e, { ruta: RUTA, operacion: "desactivar", extra: { pase: plan.pase } });
       await guardarCheckpoint(sb, cp).catch(() => undefined);
     }
   }

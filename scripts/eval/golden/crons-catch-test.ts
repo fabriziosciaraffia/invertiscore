@@ -127,6 +127,19 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   const vigilar = vj.crons.find((c) => c.path === "/api/cron/vigilar-crons");
   if (!vigilar || !/^\d+ \*\/6 \* \* \*$/.test(vigilar.schedule)) F("2 · vigilar-crons no corre cada 6 horas");
 
+  // ── 4 · lo que el cron ya maneja no alerta dos veces (05-oct-2026): ninguna ruta de cron reporta con
+  //       captureApiError; lo hace con capturarFallaDeCron, que va a Sentry como warning marcado `manejado: cron`
+  //       (la alerta es la de cerrarCron). Y scrape-nuevos con 300 s: con 60 cerraba en 54–59 s y el 5-oct se cortó.
+  for (const c of vj.crons) {
+    const ruta = c.path.split("?")[0];
+    const s = sinComentarios(leer(`src/app${ruta}/route.ts`));
+    if (/captureApiError\(/.test(s)) F(`4 · ${ruta} reporta con captureApiError: Sentry alerta por una falla que el cron ya cuenta y alerta`);
+  }
+  const obs = sinComentarios(leer("src/lib/observabilidad.ts"));
+  if (!/export function capturarFallaDeCron\(error: unknown, ctx: ContextoError\): void \{\s*reportar\(error, \{ \.\.\.ctx, tags: \{ \.\.\.ctx\.tags, manejado: "cron" \} \}, "warning"\);/.test(obs)) F("4 · la falla de un cron no va como warning marcado «manejado: cron»");
+  const md = Number((sinComentarios(leer("src/app/api/data/scrape-nuevos/route.ts")).match(/export const maxDuration = (\d+);/) ?? [])[1]);
+  if (!(md >= 300)) F(`4 · scrape-nuevos con ${md} s: sus corridas cierran en ~55 s y se corta (el 5-oct dejó la reconciliación sin hacer)`);
+
   // ── 2 · cerrarCron deja el resultado y alerta una vez al día ──
   {
     const { sb, escrituras } = supabaseDoble((tabla, f) => (tabla === "metrics_daily" && f["eq:fuente"] === FUENTE_ALERTA ? { valor: 1 } : null));
@@ -369,6 +382,8 @@ export async function runCronsTier(): Promise<{ hard: number }> {
 //   (segundo ensayo: 403 en 18 de 137 con 2 en vuelo y 600 ms → 1,5 s entre lotes y dos reintentos a 4 s;
 //   R4 un solo reintento, R5 la pausa de 600 ms: 2/2 en rojo)
 //   Z1 vuelve al calendario de vercel.json .................... 2 · sigue en el calendario
+//   §4 (05-oct-2026): C1 un cron vuelve a captureApiError · C2 la falla de cron como error · C3 scrape-nuevos
+//   vuelve a 60 s → 3/3 ROJO.
 //   Z2 vuelve a la vigilancia .................................. 2 · alertaría todos los días
 //   Z3 la ruta no dice que está congelada ...................... 2 · no dice que está congelada
 //   Z4 el panel deja de ver lo que no escribe (el ejemplo pasó a meta-ads) . 2 · 57 días sin escribir no se pinta en rojo

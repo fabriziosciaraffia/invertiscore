@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { createClient } from "@supabase/supabase-js";
 import { parseNumeroBCCH, esUFPlausible, esTasaPlausible } from "@/lib/uf";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { fetchBCCH } from "@/lib/bcch";
 
@@ -57,12 +57,12 @@ export async function POST(request: Request) {
         .upsert({ key: "tasa_hipotecaria", value: String(value), updated_at: new Date().toISOString() }, { onConflict: "key" });
       results.tasa = { value, source: "banco_central", error: error?.message };
       if (error) {
-        captureApiError(error, { ruta: RUTA, operacion: "upsert-tasa", extra: { value } });
+        capturarFallaDeCron(error, { ruta: RUTA, operacion: "upsert-tasa", extra: { value } });
       }
     } else {
       console.error("[update-market] tasa implausible, no se escribe:", latest.value, "→", value);
       results.tasa = { error: `Valor implausible del BCCh: ${String(latest.value)}` };
-      captureApiError(new Error("Tasa fuera de banda de plausibilidad — no se escribe"), {
+      capturarFallaDeCron(new Error("Tasa fuera de banda de plausibilidad — no se escribe"), {
         ruta: RUTA,
         operacion: "validar-tasa",
         tags: { guard: "plausibilidad" },
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
   } else {
     results.tasa = { error: `tasa: ${tasaR.error}` };
-    captureApiError(new Error(`BCCh no devolvió serie de tasa: ${tasaR.error}`), {
+    capturarFallaDeCron(new Error(`BCCh no devolvió serie de tasa: ${tasaR.error}`), {
       ruta: RUTA,
       operacion: "fetch-tasa-bcch",
     });
@@ -110,14 +110,14 @@ export async function POST(request: Request) {
       .upsert({ key: "uf_value", value: String(Math.round(ufValue)), updated_at: new Date().toISOString() }, { onConflict: "key" });
     results.uf = { ...results.uf, value: Math.round(ufValue), source: "banco_central", error: error?.message };
     if (error) {
-      captureApiError(error, { ruta: RUTA, operacion: "upsert-uf", extra: { value: Math.round(ufValue) } });
+      capturarFallaDeCron(error, { ruta: RUTA, operacion: "upsert-uf", extra: { value: Math.round(ufValue) } });
     }
   } else if (ufValue != null) {
     console.error("[update-market] UF implausible, no se escribe:", ufCrudo, "→", ufValue);
     results.uf = { ...results.uf, error: `Valor implausible del BCCh: ${ufCrudo}` };
     // Esta guarda existe porque el valor quedó ×100 en config desde el 2026-03-16
     // y nadie lo notó. Que frene la escritura ya no alcanza: tiene que avisar.
-    captureApiError(new Error("UF fuera de banda de plausibilidad — no se escribe"), {
+    capturarFallaDeCron(new Error("UF fuera de banda de plausibilidad — no se escribe"), {
       ruta: RUTA,
       operacion: "validar-uf",
       tags: { guard: "plausibilidad" },
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     });
   } else if (!results.uf?.date) {
     results.uf = { error: `uf: ${ufError}` };
-    captureApiError(new Error(`BCCh no devolvió UF ni de hoy ni de ayer: ${ufError}`), {
+    capturarFallaDeCron(new Error(`BCCh no devolvió UF ni de hoy ni de ayer: ${ufError}`), {
       ruta: RUTA,
       operacion: "fetch-uf-bcch",
     });

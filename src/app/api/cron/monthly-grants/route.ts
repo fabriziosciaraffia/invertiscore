@@ -5,7 +5,7 @@ import {
   recurringProductByPlan,
   addOneMonth,
 } from "@/lib/credits-grant";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[cron/monthly-grants] query error:", error);
-    captureApiError(error, { ruta: RUTA, operacion: "query-subs-anuales" });
+    capturarFallaDeCron(error, { ruta: RUTA, operacion: "query-subs-anuales" });
     return cerrarCron(supabase, "monthly-grants", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
           row.user_id
         );
         fallidos++;
-        captureApiError(
+        capturarFallaDeCron(
           new Error(`Sin producto/capacity para active_plan="${row.active_plan}"`),
           {
             ruta: RUTA,
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
           row.user_id
         );
         fallidos++;
-        captureApiError(
+        capturarFallaDeCron(
           new Error("subscription_ends_at nulo en sub anual activa"),
           { ruta: RUTA, operacion: "validar-fin-ciclo", userId: row.user_id },
         );
@@ -192,7 +192,7 @@ export async function GET(request: Request) {
           );
           fallidos++;
           fechaNoReclamada++;
-          captureApiError(
+          capturarFallaDeCron(
             casErr ?? new Error("CAS sin efecto — next_monthly_grant_at cambió bajo el cron"),
             {
               ruta: RUTA,
@@ -220,7 +220,7 @@ export async function GET(request: Request) {
           );
           fallidos++;
           grantTrasReclamo++;
-          captureApiError(new Error("grantCredits devolvió null tras reclamar el mes"), {
+          capturarFallaDeCron(new Error("grantCredits devolvió null tras reclamar el mes"), {
             ruta: RUTA,
             operacion: "otorgar-lote-mensual",
             userId: row.user_id,
@@ -252,7 +252,7 @@ export async function GET(request: Request) {
         e instanceof Error ? e.message : String(e)
       );
       fallidos++;
-      captureApiError(e, {
+      capturarFallaDeCron(e, {
         ruta: RUTA,
         operacion: "procesar-fila",
         userId: row?.user_id,

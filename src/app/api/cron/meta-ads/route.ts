@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
+import { capturarFallaDeCron, captureApiWarning } from "@/lib/observabilidad";
 import { guardarMetrica } from "@/lib/metrics-daily";
 import {
   FUENTE_META_ADS,
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
       // cuando la verdad es "dejamos de medir". Va como error (no warning)
       // porque pide una acción humana y no se arregla con el reintento de mañana.
       console.error("[cron/meta-ads] TOKEN EXPIRADO:", e);
-      captureApiError(
+      capturarFallaDeCron(
         new Error(
           `META_ADS_TOKEN expiró o fue revocado — el gasto de Meta dejó de medirse. ` +
             `Hay que regenerar el token en el Graph API Explorer ` +

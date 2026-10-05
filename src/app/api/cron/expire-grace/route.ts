@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { captureApiError } from "@/lib/observabilidad";
+import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
   if (pdError) {
     console.error("[cron/expire-grace] past_due query error:", pdError);
-    captureApiError(pdError, { ruta: RUTA, operacion: "query-past-due" });
+    capturarFallaDeCron(pdError, { ruta: RUTA, operacion: "query-past-due" });
     return cerrarCron(supabase, "expire-grace", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
 
   if (cError) {
     console.error("[cron/expire-grace] cancelled query error:", cError);
-    captureApiError(cError, { ruta: RUTA, operacion: "query-cancelled" });
+    capturarFallaDeCron(cError, { ruta: RUTA, operacion: "query-cancelled" });
     return cerrarCron(supabase, "expire-grace", CORRIDA_FALLIDA, { error: "Query failed" });
   }
 
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
       if (updErr) {
         console.error("[cron/expire-grace] past_due update falló para user:", row.user_id, updErr);
         fallidos++;
-        captureApiError(updErr, {
+        capturarFallaDeCron(updErr, {
           ruta: RUTA,
           operacion: "cerrar-past-due",
           userId: row.user_id,
@@ -151,7 +151,7 @@ export async function GET(request: Request) {
         e instanceof Error ? e.message : String(e)
       );
       fallidos++;
-      captureApiError(e, { ruta: RUTA, operacion: "procesar-past-due", userId: row?.user_id });
+      capturarFallaDeCron(e, { ruta: RUTA, operacion: "procesar-past-due", userId: row?.user_id });
     }
   }
 
@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       if (updErr) {
         console.error("[cron/expire-grace] cancelled update falló para user:", row.user_id, updErr);
         fallidos++;
-        captureApiError(updErr, {
+        capturarFallaDeCron(updErr, {
           ruta: RUTA,
           operacion: "revocar-ilimitado",
           userId: row.user_id,
@@ -190,7 +190,7 @@ export async function GET(request: Request) {
         e instanceof Error ? e.message : String(e)
       );
       fallidos++;
-      captureApiError(e, { ruta: RUTA, operacion: "procesar-cancelled", userId: row?.user_id });
+      capturarFallaDeCron(e, { ruta: RUTA, operacion: "procesar-cancelled", userId: row?.user_id });
     }
   }
 
