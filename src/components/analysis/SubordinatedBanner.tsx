@@ -20,7 +20,7 @@ export function SubordinatedBanner({
   return (
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wide" style={{ padding: "3px 8px", background: "color-mix(in srgb, var(--franco-text) 10%, transparent)", color: "var(--franco-text)" }}>
+        <span className="mt-0.5 rounded font-body text-[12px] font-bold" style={{ padding: "3px 8px", background: "color-mix(in srgb, var(--franco-text) 10%, transparent)", color: "var(--franco-text)" }}>
           AMBAS
         </span>
         <p className="font-body text-[13px] leading-snug text-[var(--franco-text-secondary)]">

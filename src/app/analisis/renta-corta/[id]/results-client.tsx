@@ -429,7 +429,7 @@ export function STRResultsClient({
               abrir={capituloAbrir}
             />
           ) : (
-            <p className="font-mono m-0" style={{ fontSize: 11.5, color: "var(--franco-text-muted)" }}>
+            <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--franco-text-muted)" }}>
               Este análisis no tiene Franco Score persistido: regenera el análisis para ver los capítulos.
             </p>
           )}

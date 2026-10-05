@@ -33,7 +33,7 @@ function Segs({ segs }: { segs: Seg[] }) {
   );
 }
 
-const K: CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--doc-tx4)", paddingTop: 2 };
+const K: CSSProperties = { fontSize: 12, fontWeight: 600, color: "var(--doc-tx4)", paddingTop: 2 };
 
 /** Franja de cuartiles con los dos pines. Toda la geometría sale de los datos. */
 export function FranjaCuartiles({ f }: { f: FranjaPagas }) {
@@ -109,7 +109,7 @@ export function CapituloComoLoPagas({ modelo, valorUF }: { modelo: ModeloComoLoP
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 10, padding: "14px 14px", background: "var(--doc-inset, color-mix(in srgb, var(--franco-text) 4%, transparent))", borderRadius: 10 }}>
               <div>
                 <div style={K}>Hoy</div>
-                <div className="font-mono" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1, color: "var(--doc-tx3)", textDecoration: r.descuentoPct > 0 ? "line-through" : "none", textDecorationThickness: 1.5, fontVariantNumeric: "tabular-nums" }}>
+                <div className="font-body" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1, color: "var(--doc-tx3)", textDecoration: r.descuentoPct > 0 ? "line-through" : "none", textDecorationThickness: 1.5, fontVariantNumeric: "tabular-nums" }}>
                   UF {miles(m.precioUF)}
                   <small style={{ display: "block", fontSize: 11, fontWeight: 500, marginTop: 3 }}>${miles(m.precioUF * valorUF)}</small>
                 </div>
@@ -117,7 +117,7 @@ export function CapituloComoLoPagas({ modelo, valorUF }: { modelo: ModeloComoLoP
               <div style={{ fontSize: 18, color: "var(--doc-tx3)" }}>→</div>
               <div>
                 <div style={K}>Lo que Franco recomienda</div>
-                <div className="font-mono" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1, color: "var(--doc-tx)", fontVariantNumeric: "tabular-nums" }}>
+                <div className="font-body" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1, color: "var(--doc-tx)", fontVariantNumeric: "tabular-nums" }}>
                   UF {miles(r.precioUF)}
                   <small style={{ display: "block", fontSize: 11, fontWeight: 500, color: "var(--doc-tx3)", marginTop: 3 }}>
                     ${miles(r.precioUF * valorUF)}
@@ -190,8 +190,8 @@ function Chip({ children, fuerte }: { children: ReactNode; fuerte?: boolean }) {
 function Kpi({ k, v }: { k: string; v: ReactNode }) {
   return (
     <div>
-      <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>{k}</p>
-      <p className="font-mono font-bold m-0" style={{ fontSize: 18, lineHeight: 1.05, color: "var(--doc-tx)", fontVariantNumeric: "tabular-nums" }}>{v}</p>
+      <p className="font-body m-0" style={{ fontSize: 12, color: "var(--doc-tx4)", marginBottom: 4 }}>{k}</p>
+      <p className="font-body font-bold m-0" style={{ fontSize: 18, lineHeight: 1.05, color: "var(--doc-tx)", fontVariantNumeric: "tabular-nums" }}>{v}</p>
     </div>
   );
 }

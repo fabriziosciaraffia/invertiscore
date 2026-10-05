@@ -22,7 +22,7 @@ export function MetricRow({
         {label}
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
-      <span className={`font-mono text-sm font-medium ${color || "text-[var(--franco-text)]"}`}>{value}</span>
+      <span className={`font-body text-sm font-medium ${color || "text-[var(--franco-text)]"}`}>{value}</span>
     </div>
   );
 }

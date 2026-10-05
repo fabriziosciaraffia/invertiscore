@@ -41,7 +41,7 @@ export function TokensShared() {
       .pb-sw-plus{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--doc-tx3) 2px,var(--doc-tx3) 3px)}
       .pb-sw-parte{height:3px;vertical-align:middle;background:var(--doc-tx)}
       /* barra apilada firme/proyectado, forma B (BarraApiladaB) */
-      .bb-fp{display:flex;justify-content:space-between;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);margin:12px 0 5px}
+      .bb-fp{display:flex;justify-content:space-between;font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx3);margin:12px 0 5px;font-variant-numeric:tabular-nums}
       .bb-rojo{color:var(--signal-red)}
       .bb-bar{display:flex;height:44px;border-radius:3px;overflow:hidden}
       .bb-s{height:100%;position:relative}
@@ -62,8 +62,8 @@ export function TokensShared() {
       .oc-dos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 2px}
       @media (max-width:520px){.oc-dos{grid-template-columns:1fr}}
       .oc-c{background:var(--doc-inset-1);border-radius:12px;padding:12px 14px}
-      .oc-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
-      .oc-n{font-family:var(--font-mono, ui-monospace);font-size:24px;font-weight:700;color:var(--doc-tx);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
+      .oc-k{font-family:var(--font-body, system-ui);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--doc-tx4);font-variant-numeric:tabular-nums}
+      .oc-n{font-family:var(--font-body, system-ui);font-size:24px;font-weight:700;color:var(--doc-tx);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
       .oc-n small{font-family:var(--font-body, system-ui);font-size:11.5px;font-weight:500;color:var(--doc-tx3);margin-left:6px}
       .oc-s{font-size:11.5px;color:var(--doc-tx3);margin-top:5px;line-height:1.45}
       .oc-c.tenue .oc-n{color:var(--doc-ink1)}
@@ -71,17 +71,17 @@ export function TokensShared() {
       .oc-eje{position:relative;height:6px;border-radius:3px;background:var(--doc-line2);margin:24px 10px 42px}
       .oc-tk{position:absolute;top:6px;width:1px;height:4px;background:var(--doc-line2);transform:translateX(-50%)}
       .oc-tk.may{height:7px;background:var(--doc-tx4)}
-      .oc-t{position:absolute;top:15px;font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);transform:translateX(-50%)}
+      .oc-t{position:absolute;top:15px;font-family:var(--font-body, system-ui);font-size:9.5px;color:var(--doc-tx4);transform:translateX(-50%);font-variant-numeric:tabular-nums}
       .oc-m{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;transform:translateX(-50%)}
       .oc-m.est{background:var(--doc-tx)}
       .oc-m.real{background:var(--doc-ink1)}
-      .oc-l{position:absolute;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:700;transform:translateX(-50%);white-space:nowrap}
+      .oc-l{position:absolute;font-family:var(--font-body, system-ui);font-size:10px;font-weight:700;transform:translateX(-50%);white-space:nowrap;font-variant-numeric:tabular-nums}
       .oc-l.est{top:-20px;color:var(--doc-tx)}
       .oc-l.real{top:26px;color:var(--doc-ink1)}
       .cf-svg{width:100%;height:170px;display:block}
       .cf-grid{stroke:var(--doc-line);stroke-dasharray:3 3}
-      .cf-tick{font-size:9px;fill:var(--doc-tx4);font-family:var(--font-mono, ui-monospace)}
-      .cf-mes{font-size:11px;fill:var(--doc-tx4);font-family:var(--font-mono, ui-monospace)}
+      .cf-tick{font-size:9px;fill:var(--doc-tx4);font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums}
+      .cf-mes{font-size:11px;fill:var(--doc-tx4);font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums}
       .cf-cero{stroke:var(--doc-tx3);stroke-width:1}
       .cf-prom{stroke:var(--doc-ink1);stroke-width:1;stroke-dasharray:4 4}
       .cf-linea{stroke:var(--doc-tx);stroke-width:2.5}
@@ -135,7 +135,7 @@ export function TokensShared() {
       }
       .v-glosa-txt{font-size:14px;line-height:1.6;color:var(--doc-tx2);margin:0}
       .v-glosa-aca{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:14px;padding-top:10px;border-top:1px solid var(--doc-line);font-size:12.5px;color:var(--doc-tx3)}
-      .v-glosa-aca b{font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx);text-align:right}
+      .v-glosa-aca b{font-family:var(--font-body, system-ui);font-size:13px;font-weight:700;color:var(--doc-tx);text-align:right;font-variant-numeric:tabular-nums}
       /* El popover de escritorio: 300 px anclado al ⓘ, fijo a la ventana, arriba si cabe. */
       .v-pop{position:fixed;z-index:80;width:300px;background:var(--doc-paper);border:1px solid var(--doc-line2);border-radius:12px;
         box-shadow:0 10px 30px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);padding:14px 16px;color:var(--doc-tx);text-align:left;
@@ -177,15 +177,15 @@ export function TokensShared() {
       html:not([data-theme="light"]) .v-pop::before{background:var(--line-sunk);border-color:var(--line2)}
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}
-      .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}
+      .mx-toggle button{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer;font-variant-numeric:tabular-nums}
       .mx-toggle button+button{border-left:1px solid var(--doc-line2)}
       .mx-toggle button.on{background:var(--doc-tx);color:var(--doc-paper);font-weight:700}
 
       /* ── planilla (mockup-tablas) ── */
       .pl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-      .pl{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums}
+      .pl{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums}
       .pl th,.pl td{padding:5px 6px;border-bottom:1px solid var(--doc-line);text-align:right;white-space:nowrap;font-size:10.5px;line-height:1.3;color:var(--doc-tx2);font-weight:400}
-      .pl thead th{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4);padding-bottom:7px;vertical-align:bottom}
+      .pl thead th{font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4);padding-bottom:7px;vertical-align:bottom}
       .pl th:first-child,.pl td:first-child{text-align:left}
       .pl tbody th{color:var(--doc-tx3);font-weight:400}
       .pl tr.tot th,.pl tr.tot td{font-weight:700;color:var(--doc-tx);border-top:2px solid var(--doc-tx);border-bottom:none;padding-top:7px}
@@ -201,8 +201,8 @@ export function TokensShared() {
       .drow .dk{font-size:12.5px;color:var(--doc-tx2);line-height:1.35}
       .drow .dk .v-i{margin-left:1px}
       .drow .dk small{display:block;font-size:10.5px;color:var(--doc-tx4);margin-top:1px;line-height:1.35}
-      .drow .dv{font-family:var(--font-mono, ui-monospace);font-size:12.5px;color:var(--doc-tx);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
-      .drow .dv em{font-style:normal;font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);display:inline-block;width:30px;text-align:left;margin-left:5px}
+      .drow .dv{font-family:var(--font-body, system-ui);font-size:12.5px;color:var(--doc-tx);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+      .drow .dv em{font-style:normal;font-family:var(--font-body, system-ui);font-size:9.5px;color:var(--doc-tx4);display:inline-block;width:30px;text-align:left;margin-left:5px;font-variant-numeric:tabular-nums}
       .drow.in .dk{color:var(--doc-tx);font-weight:600}
       .drow.in .dv{font-weight:700}
       .drow.neg .dv{color:var(--signal-red)}
@@ -230,7 +230,7 @@ export function TokensShared() {
       /* ── colchón (CONGELADO · V) ── */
       .colchon{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:3px;margin-top:2px}
       .colchon .k{font-size:12.5px;color:var(--doc-tx3);flex:1}
-      .colchon .v{font-family:var(--font-mono, ui-monospace);font-size:14px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
+      .colchon .v{font-family:var(--font-body, system-ui);font-size:14px;font-weight:700;color:var(--doc-tx);white-space:nowrap;font-variant-numeric:tabular-nums}
       .colchon .v small{font-size:10px;color:var(--doc-tx4);font-weight:400}
       .colchon .v.neg{color:var(--signal-red)}
       .v-copy{font-size:13.5px;line-height:1.65;color:var(--doc-tx2);max-width:60ch;margin-bottom:12px}
@@ -249,11 +249,11 @@ export function TokensShared() {
       .ca-pt.ext{width:9px;height:9px}
       .ca-pt.neg{background:var(--signal-red)}
       .ca-pt.pos{background:var(--doc-tx)}
-      .ca-val{position:absolute;font-family:var(--font-mono, ui-monospace);font-size:10.5px;
+      .ca-val{position:absolute;font-family:var(--font-body, system-ui);font-size:10.5px;
         color:var(--doc-tx3);white-space:nowrap;font-variant-numeric:tabular-nums}
       .ca-cero-lbl{position:absolute;left:0;transform:translateY(-50%);
-        font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);
-        background:var(--doc-paper);padding-right:3px}
+        font-family:var(--font-body, system-ui);font-size:9.5px;color:var(--doc-tx4);
+        background:var(--doc-paper);padding-right:3px;font-variant-numeric:tabular-nums}
       .ca-eje{position:relative;height:14px;margin-top:2px}
       /* -- Los tramos del pie en cuotas (02-oct-2026): desde hoy, cada tramo con su nombre --
          HTML, no SVG: el texto conserva su tamaño a 390. Rojo solo lo que queda bajo el cero. */
@@ -274,10 +274,10 @@ export function TokensShared() {
       .tc-bar.neg{background:var(--signal-red)}
       .tc-meses{font:500 12px/1.3 var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx3);margin-top:5px}
       .tc-eje{font:500 11px var(--font-ui), Inter, system-ui, sans-serif;color:var(--doc-tx4);margin-top:3px}
-      .ca-eje span{position:absolute;font-family:var(--font-mono, ui-monospace);
-        font-size:9.5px;letter-spacing:.04em;color:var(--doc-tx4);white-space:nowrap}
+      .ca-eje span{position:absolute;font-family:var(--font-body, system-ui);
+        font-size:9.5px;letter-spacing:0;color:var(--doc-tx4);white-space:nowrap;font-variant-numeric:tabular-nums}
       .chart{width:100%;height:170px;display:block}
-      .chart-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx3)}
+      .chart-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--font-body, system-ui);font-size:9.5px;letter-spacing:0;color:var(--doc-tx3);font-variant-numeric:tabular-nums}
       .chart-leg span::before{content:'';display:inline-block;width:12px;height:8px;background:var(--c);margin-right:6px}
       .chart-leg span.ln::before{height:3px;position:relative;top:-3px}
 
@@ -286,23 +286,23 @@ export function TokensShared() {
       .zona-cells div{background:var(--doc-paper);padding:12px 14px}
       .zona-cells p{margin:0}
       .zona-cells .k{font-size:11.5px;color:var(--doc-tx3);margin-bottom:6px;line-height:1.35}
-      .zona-cells .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-tx)}
+      .zona-cells .v{font-family:var(--font-body, system-ui);font-size:17px;font-weight:700;color:var(--doc-tx);font-variant-numeric:tabular-nums}
       .zona-cells .s{font-size:11.5px;color:var(--doc-tx3);margin-top:6px;line-height:1.4}
-      .zona-cells .s b{font-family:var(--font-mono, ui-monospace);font-weight:700;color:var(--doc-tx2)}
+      .zona-cells .s b{font-family:var(--font-body, system-ui);font-weight:700;color:var(--doc-tx2);font-variant-numeric:tabular-nums}
       .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
       .zona-foot .v-fuente{margin-top:0;flex:1;min-width:0}
       .tipo-line{font-size:12.5px;color:var(--doc-tx2);line-height:1.55;margin:12px 0 0;padding-top:12px;border-top:1px dotted var(--doc-line)}
-      .tipo-line b{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx4);margin-right:8px}
+      .tipo-line b{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4);margin-right:8px;font-variant-numeric:tabular-nums}
       .poi{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--doc-line)}
       .poi .n{font-size:13px;font-weight:600;color:var(--doc-tx)}
-      .poi .t{grid-column:1;font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
-      .poi .d{grid-row:span 2;font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx2);align-self:center}
+      .poi .t{grid-column:1;font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4);font-variant-numeric:tabular-nums}
+      .poi .d{grid-row:span 2;font-family:var(--font-body, system-ui);font-size:12px;font-weight:700;color:var(--doc-tx2);align-self:center;font-variant-numeric:tabular-nums}
       .perfil-row{padding:10px 0;border-bottom:1px solid var(--doc-line)}
       .perfil-row p{margin:0}
       .perfil-row .pn{font-size:13.5px;font-weight:600;color:var(--doc-tx2)}
       .perfil-row .pd{font-size:12px;color:var(--doc-tx3);margin-top:2px;line-height:1.45}
       .perfil-row.dom .pn{color:var(--doc-tx)}
-      .perfil-row.dom .pn::before{content:'Dominante · ';font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red)}
+      .perfil-row.dom .pn::before{content:'Dominante · ';font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--signal-red);font-variant-numeric:tabular-nums}
 
       /* ── el día 1 (CONGELADO · VI) ── */
       /* cuarto tono en la barra apilada de "de dónde sale tu parte" (LTR pasa 0 y no lo dibuja) */

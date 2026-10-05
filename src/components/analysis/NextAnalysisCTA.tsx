@@ -112,7 +112,7 @@ export function NextAnalysisCTA(p: NextAnalysisCTAProps) {
       aria-label="Siguiente paso"
       className="rounded-2xl border border-[var(--franco-border-strong)] bg-[color-mix(in_srgb,var(--signal-red)_3.5%,var(--franco-card))] shadow-sm px-5 py-5 sm:px-7 sm:py-6"
     >
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] font-medium text-signal-red m-0 mb-2">
+      <p className="font-body text-[12px] font-medium text-signal-red m-0 mb-2">
         Un análisis no decide — compara
       </p>
       <p className="font-body text-[14px] text-[var(--franco-text)] leading-relaxed m-0 mb-4 max-w-[62ch]">
@@ -131,7 +131,7 @@ export function NextAnalysisCTA(p: NextAnalysisCTAProps) {
               destination: accion.href,
             })
           }
-          className="inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg bg-signal-red px-6 py-3.5 font-mono text-[12px] font-medium uppercase tracking-[0.06em] text-white transition-colors hover:bg-signal-red/90 min-h-[48px] sm:whitespace-nowrap"
+          className="inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg bg-signal-red px-6 py-3.5 font-body text-[12px] font-medium text-white transition-colors hover:bg-signal-red/90 min-h-[48px] sm:whitespace-nowrap"
         >
           {accion.label}
           <ArrowRight size={14} />

@@ -6,10 +6,9 @@
 export function SimulationTag() {
   return (
     <span
-      className="font-mono uppercase whitespace-nowrap"
+      className="font-body whitespace-nowrap"
       style={{
-        fontSize: 9,
-        letterSpacing: "1.2px",
+        fontSize: 12,
         padding: "3px 8px",
         borderRadius: 3,
         background: "color-mix(in srgb, var(--franco-text) 12%, transparent)",

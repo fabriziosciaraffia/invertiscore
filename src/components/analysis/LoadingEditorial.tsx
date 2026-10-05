@@ -76,7 +76,8 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
                 key={i}
                 className="flex items-center gap-3"
                 style={{
-                  fontFamily: "var(--font-mono), monospace",
+                  fontFamily: "var(--font-body), system-ui",
+                  fontVariantNumeric: "tabular-nums",
                   fontSize: 12,
                   color: "var(--franco-text)",
                   opacity: textOpacity,
@@ -97,10 +98,9 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
         {/* Footer disclaimer */}
         <div className="mt-7 pt-4" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
           <p
-            className="text-center m-0 font-mono uppercase"
+            className="text-center m-0 font-body"
             style={{
-              fontSize: 9,
-              letterSpacing: "0.06em",
+              fontSize: 12,
               color: "var(--franco-text-tertiary)",
             }}
           >

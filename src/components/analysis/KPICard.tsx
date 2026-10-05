@@ -35,10 +35,9 @@ export default function KPICard({ label, value, sub, tone, size, tooltip }: KPIC
       }}
     >
       <span
-        className="inline-flex items-center gap-1 font-mono uppercase"
+        className="inline-flex items-center gap-1 font-body"
         style={{
-          fontSize: 10,
-          letterSpacing: "1.2px",
+          fontSize: 12,
           color: "color-mix(in srgb, var(--franco-text) 55%, transparent)",
           fontWeight: 500,
         }}
@@ -47,7 +46,7 @@ export default function KPICard({ label, value, sub, tone, size, tooltip }: KPIC
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
       <span
-        className="font-mono font-bold whitespace-nowrap"
+        className="font-body font-bold whitespace-nowrap"
         style={{
           color,
           lineHeight: 1,

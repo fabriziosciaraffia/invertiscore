@@ -217,7 +217,7 @@ export function PortadaInforme({
                     type="button"
                     onClick={() => onCurrencyChange(c)}
                     aria-pressed={on}
-                    className="font-mono text-[10px] font-medium tracking-[0.06em] px-2.5 py-1 transition-colors"
+                    className="font-body text-[10px] font-medium px-2.5 py-1 transition-colors"
                     style={{ background: on ? "rgba(255,255,255,.18)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,.6)" }}
                   >
                     {c}
@@ -272,7 +272,7 @@ export function DocumentoFrame({ children, secciones = false, veredicto }: { chi
       <div className="doc-head">
         <Wordmark />
         {/* Sin fecha acá: vive en el eyebrow (decisión d del PARÁ 0 — folio sin №). */}
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.12em]" style={{ color: "var(--doc-tx4)" }}>
+        <span className="font-body text-[12px]" style={{ color: "var(--doc-tx4)" }}>
           Análisis
         </span>
       </div>
@@ -604,9 +604,9 @@ export function DocTokens() {
         display:inline-flex;align-items:center;gap:9px;
         padding:8px 13px 8px 16px;border-radius:var(--rad-pill);
         background:var(--verdict);color:#fff;
-        font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;
-        letter-spacing:.14em;text-transform:uppercase;
-        box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+        font-family:var(--font-body, system-ui);font-size:12.5px;font-weight:700;
+        letter-spacing:0;text-transform:none;
+        box-shadow:0 0 0 2px rgba(255,255,255,.3);font-variant-numeric:tabular-nums}
       /* EL PUNTO QUE LATE — CALIBRE «DOBLE ANILLO» (11-sep-2026).
          El punto en sí es opaco y quieto; lo que late son sus DOS anillos.
 
@@ -652,8 +652,8 @@ export function DocTokens() {
 
       /* — EL SCORE EN TEXTO PLANO — */
       .doc-dictamen .doc-hero-score{
-        font-family:var(--font-mono, ui-monospace);font-size:12.5px;letter-spacing:.06em;
-        opacity:.75;margin:0 0 20px}
+        font-family:var(--font-body, system-ui);font-size:12.5px;letter-spacing:0;
+        opacity:.75;margin:0 0 20px;font-variant-numeric:tabular-nums}
 
       /* — EL TITULAR — 30 px, peso 600, y el plumón BLANCO al 26%.
            NO se repunta «--doc-hl»: ese token lo usan también las marcas de prosa de
@@ -732,7 +732,7 @@ export function DocTokens() {
          borra del JSX: la pieza la monta tambien STR, que lo conserva. */
       .doc-dictamen .hall.cap .ksub{display:none}
       .doc-dictamen .hall.cap .val{
-        font-family:var(--font-mono, ui-monospace);font-size:14px;font-weight:700;
+        font-family:var(--font-body, system-ui);font-size:14px;font-weight:700;
         color:var(--tx);font-variant-numeric:tabular-nums;white-space:nowrap}
       /* EL APELLIDO es contexto, no cifra: va mas liviano y sin el mono, para que el
          numero siga siendo lo que el ojo agarra primero. */
@@ -803,8 +803,8 @@ export function DocTokens() {
          (ChipVeredicto.tsx, 25-sep-2026). La píldora neutra blanca que vivía acá se retiró. */
       .doc-dictamen .rec-eq{margin:0 0 20px}
       /* rótulos de grupo: «Modificaciones que dependen de ti» · «Resultado» */
-      .doc-dictamen .rec-gt{font-family:var(--font-mono, ui-monospace);font-size:10.5px;font-weight:600;
-        letter-spacing:.09em;text-transform:uppercase;opacity:.55;margin:0 0 10px}
+      .doc-dictamen .rec-gt{font-family:var(--font-body, system-ui);font-size:12px;font-weight:600;
+        letter-spacing:0;text-transform:none;opacity:.55;margin:0 0 10px;font-variant-numeric:tabular-nums}
 
       /* LA CAJA DE LO TUYO: los chips del mix y, bajo una línea, lo que resulta. */
       .doc-dictamen .rec-tuyo{background:rgba(255,255,255,.10);padding:14px;border-radius:var(--rad-s);margin:0 0 16px}
@@ -847,10 +847,10 @@ export function DocTokens() {
          donde la etiqueta larga ya venia apretada. Lo que la baja de jerarquia es el color
          del texto, coherente con el opacity .6 de «.rec-vs». */
       .doc-dictamen .rec-banda{display:inline-block;margin-top:7px;
-        font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;
-        letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:99px;
+        font-family:var(--font-body, system-ui);font-size:12px;font-weight:500;
+        letter-spacing:0;text-transform:none;padding:2px 8px;border-radius:99px;
         background:rgba(255,255,255,.14);
-        color:rgba(255,255,255,.72)}
+        color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums}
 
       /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
       .doc-dictamen .rec-res{margin:0 0 18px}
@@ -874,8 +874,8 @@ export function DocTokens() {
         padding:13px 0;border-top:1px solid rgba(255,255,255,.14)}
       .doc-dictamen .rec-row:first-child{border-top:none;padding-top:0}
       .doc-dictamen .rec-k{
-        font-family:var(--font-mono, ui-monospace);font-size:11.5px;letter-spacing:.1em;
-        text-transform:uppercase;opacity:.5;line-height:1.5}
+        font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;
+        text-transform:none;opacity:.5;line-height:1.5;font-variant-numeric:tabular-nums}
       .doc-dictamen .rec-v{display:block;font-size:15px;line-height:1.45}
       .doc-dictamen .rec-v > b{font-weight:700}
       .doc-dictamen .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
@@ -894,13 +894,13 @@ export function DocTokens() {
       /* — EL DETALLE DE LA ALTERNATIVA, en el pop-up — la línea de la card nombra
            dos comunas; acá se rinde cuentas de todas las que cruzan, con su muestra. */
       .doc-dictamen .alt-com{margin:22px 0 0;padding:18px 0 0;border-top:1px solid var(--doc-line)}
-      .doc-dictamen .alt-com-t{font-family:var(--font-mono, ui-monospace);font-size:10px;
-        letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);margin:0 0 8px}
+      .doc-dictamen .alt-com-t{font-family:var(--font-body, system-ui);font-size:12px;
+        letter-spacing:0;text-transform:none;color:var(--doc-tx3);margin:0 0 8px;font-variant-numeric:tabular-nums}
       .doc-dictamen .alt-com-l{font-size:13.5px;line-height:1.5;color:var(--doc-tx2);margin:0 0 14px}
       .doc-dictamen .alt-com-tabla{width:100%;border-collapse:collapse;font-size:13px}
-      .doc-dictamen .alt-com-tabla th{font-family:var(--font-mono, ui-monospace);font-size:10px;
-        letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx3);font-weight:500;
-        text-align:right;padding:0 0 8px}
+      .doc-dictamen .alt-com-tabla th{font-family:var(--font-body, system-ui);font-size:12px;
+        letter-spacing:0;text-transform:none;color:var(--doc-tx3);font-weight:500;
+        text-align:right;padding:0 0 8px;font-variant-numeric:tabular-nums}
       .doc-dictamen .alt-com-tabla th:first-child{text-align:left}
       .doc-dictamen .alt-com-tabla td{padding:9px 0;border-top:1px solid var(--doc-line);
         text-align:right;color:var(--doc-tx);white-space:nowrap}
@@ -954,7 +954,7 @@ export function DocTokens() {
         display:flex;flex-direction:column;align-items:flex-start;gap:0}
       .doc-dictamen .zc-k{font-size:13px;line-height:1.35;color:var(--tx3);margin:0 0 9px}
       .doc-dictamen .zc-v{
-        font-family:var(--font-mono, ui-monospace);font-size:26px;font-weight:700;
+        font-family:var(--font-body, system-ui);font-size:26px;font-weight:700;
         line-height:1;letter-spacing:-.02em;color:var(--tx);margin:0;
         font-variant-numeric:tabular-nums}
       .doc-dictamen .zc-r{font-size:13px;line-height:1.4;color:var(--tx3);margin:7px 0 0;min-height:18px}
@@ -1282,11 +1282,11 @@ export function DocTokens() {
          título quedaba a 10px del contenido. */
       .doc-sec-t{font-family:var(--font-heading, Georgia, serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin:0 0 22px;color:var(--doc-tx)}
       .doc-sec mark{background:linear-gradient(transparent 60%,var(--doc-hl) 60%);color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
-      .doc-lnk{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap}
+      .doc-lnk{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--signal-red);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;font-variant-numeric:tabular-nums}
       .doc-lnk:hover{text-decoration:underline;text-underline-offset:3px}
       /* el único botón del informe hasta que exista el CTA */
-      .doc-btn{display:inline-flex;align-items:center;gap:8px;background:var(--signal-red);color:#fff;font-family:var(--font-mono, ui-monospace);font-size:11px;
-        letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:10px 16px;border-radius:4px;border:none;cursor:pointer;white-space:nowrap}
+      .doc-btn{display:inline-flex;align-items:center;gap:8px;background:var(--signal-red);color:#fff;font-family:var(--font-body, system-ui);font-size:12px;
+        letter-spacing:0;text-transform:none;font-weight:700;padding:10px 16px;border-radius:4px;border:none;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
       .doc-btn:hover{filter:brightness(.92)}
       /* la posición de Franco: card con footer propio (la línea roja termina antes del footer) */
       .pos-card{margin-top:20px;background:var(--doc-paper);border:1px solid var(--doc-line);border-radius:3px;overflow:hidden}
@@ -1295,16 +1295,16 @@ export function DocTokens() {
          a la derecha (nada de backticks acá dentro: esto vive en un template
          literal). Con un solo hijo de texto —STR y la prosa vieja— el resultado
          es el mismo renglón que daba display:block. */
-      .pos-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal-red);font-weight:700;display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+      .pos-t{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--signal-red);font-weight:700;display:flex;align-items:baseline;gap:12px;margin-bottom:8px;font-variant-numeric:tabular-nums}
       /* El objetivo del plan: dato, no rótulo — mono, sin versalitas, sobre paper3
          (que por contrato no es fondo de sección, y por eso lo usan las piezas). */
-      .pos-chip{margin-left:auto;font-style:normal;font-size:11px;letter-spacing:.06em;text-transform:none;color:var(--doc-tx2);background:var(--doc-paper3);border:1px solid var(--doc-line);border-radius:3px;padding:3px 8px;white-space:nowrap}
+      .pos-chip{margin-left:auto;font-style:normal;font-size:11px;letter-spacing:0;text-transform:none;color:var(--doc-tx2);background:var(--doc-paper3);border:1px solid var(--doc-line);border-radius:3px;padding:3px 8px;white-space:nowrap}
       .pos-p{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--doc-tx2);max-width:70ch}
       .pos-p + .pos-p{margin-top:13px}
       .pos-firma{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;font-weight:600;color:var(--doc-tx)}
-      .pos-firma small{display:block;font-family:var(--font-mono, ui-monospace);font-size:9.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx3)}
+      .pos-firma small{display:block;font-family:var(--font-body, system-ui);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--doc-tx3);font-variant-numeric:tabular-nums}
       .pos-foot{background:var(--doc-paper2);border-top:1px solid var(--doc-line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
-      .pos-foot .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;display:block;margin-bottom:4px}
+      .pos-foot .k{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx3);font-weight:700;display:block;margin-bottom:4px;font-variant-numeric:tabular-nums}
       .pos-foot .l{font-size:13px;color:var(--doc-tx2);line-height:1.5}
       /* «LO QUE HARÍA YO» determinista (10-sep-2026) — el bloque deja de ser prosa.
          Contrato: docs/wireframes/rediseno-informe/lo-que-haria-yo-apretado.html
@@ -1312,32 +1312,32 @@ export function DocTokens() {
          izquierda, cifra mono a la derecha y su referencia debajo, en small. Nada de
          backticks acá dentro: esto vive en un template literal. */
       .lqhy{margin-top:2px}
-      .lqhy-kick{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;margin-bottom:9px}
+      .lqhy-kick{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx3);font-weight:700;margin-bottom:9px;font-variant-numeric:tabular-nums}
       .lqhy-row{display:grid;grid-template-columns:1fr auto;gap:0 12px;padding:12px 0;border-bottom:1px solid var(--doc-line);align-items:start}
       .lqhy-row:last-of-type{border-bottom:none}
       .lqhy-q{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.3;color:var(--doc-tx)}
-      .lqhy-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;text-align:right;color:var(--doc-tx)}
-      .lqhy-n small{display:block;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;color:var(--doc-tx3);margin-top:3px;min-height:13px;white-space:normal}
+      .lqhy-n{font-family:var(--font-body, system-ui);font-size:15px;font-weight:700;white-space:nowrap;text-align:right;color:var(--doc-tx);font-variant-numeric:tabular-nums}
+      .lqhy-n small{display:block;font-family:var(--font-body, system-ui);font-size:10px;font-weight:500;color:var(--doc-tx3);margin-top:3px;min-height:13px;white-space:normal;font-variant-numeric:tabular-nums}
       /* La cifra IMPOSIBLE. Va en el cuerpo de la línea de descarte —mono chica y
          apagada— y no en el de una fila: es contexto, no acción. La jerarquía es el
          mensaje; con el mismo peso que el mix el lector no sabe cuál mirar. */
-      .lqhy-ctx{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx3);line-height:1.55;margin:11px 0 0}
+      .lqhy-ctx{font-family:var(--font-body, system-ui);font-size:10.5px;color:var(--doc-tx3);line-height:1.55;margin:11px 0 0;font-variant-numeric:tabular-nums}
       .lqhy-mix{background:var(--doc-paper3);margin:14px -18px 0;padding:14px 18px 15px;border-left:3px solid var(--verdict)}
       /* El rótulo del mix pesa como el del bloque (700): es el encabezado de LA ACCIÓN,
          y tiene que ganarle a la línea de contexto que va justo encima. */
-      .lqhy-mix-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx2);font-weight:700;margin-bottom:9px}
-      .lqhy-mix-mov{font-family:var(--font-mono, ui-monospace);font-size:12.5px;color:var(--doc-tx2);margin-bottom:11px;line-height:1.5}
+      .lqhy-mix-k{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx2);font-weight:700;margin-bottom:9px;font-variant-numeric:tabular-nums}
+      .lqhy-mix-mov{font-family:var(--font-body, system-ui);font-size:12.5px;color:var(--doc-tx2);margin-bottom:11px;line-height:1.5;font-variant-numeric:tabular-nums}
       .lqhy-mix-mov .de{color:var(--doc-tx3)}
       .lqhy-mix-mov .fl{color:var(--doc-tx4);margin:0 4px}
-      .lqhy-mix-res{font-family:var(--font-mono, ui-monospace);font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;flex-wrap:wrap;gap:0 4px}
+      .lqhy-mix-res{font-family:var(--font-body, system-ui);font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;flex-wrap:wrap;gap:0 4px;font-variant-numeric:tabular-nums}
       .lqhy-mix-res .a{text-decoration:line-through;color:var(--doc-tx3);font-weight:500}
       .lqhy-mix-res .b{font-weight:700}
       .lqhy-mix-res .fl{color:var(--doc-tx4)}
       .lqhy-mix-res .u{font-size:10.5px;color:var(--doc-tx3);letter-spacing:.02em;margin-left:4px}
       /* El costo del día uno en Signal Red: es lo que el mix COBRA, y el rojo acá es
          info que pide atención, no decoración (regla del rojo, CLAUDE.md). */
-      .lqhy-mix-cost{font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--signal-red);margin-top:8px}
-      .lqhy-desc{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx3);line-height:1.5;padding-top:11px;border-top:1px solid var(--doc-line);margin:13px 0 0}
+      .lqhy-mix-cost{font-family:var(--font-body, system-ui);font-size:12px;font-weight:700;color:var(--signal-red);margin-top:8px;font-variant-numeric:tabular-nums}
+      .lqhy-desc{font-family:var(--font-body, system-ui);font-size:10.5px;color:var(--doc-tx3);line-height:1.5;padding-top:11px;border-top:1px solid var(--doc-line);margin:13px 0 0;font-variant-numeric:tabular-nums}
       @media (max-width:640px){
         .lqhy-q{font-size:14.5px} .lqhy-n{font-size:14px}
         .lqhy-mix{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
@@ -1358,7 +1358,7 @@ export function DocTokens() {
       /* La flecha en el informe de siempre: Ink, una sola tinta para las dos
          direcciones. Ancho fijo para que la fila neutral, que no lleva flecha, no corra
          la frase hacia la izquierda. El color de §4 la repunta más abajo, en «.doc-dictamen». */
-      .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center}
+      .hz-fl{font-family:var(--font-body, system-ui);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center;font-variant-numeric:tabular-nums}
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
       /* Sin :hover ni :focus-visible: la fila dejó de ser un control. Un hover sobre algo
          que no responde promete una puerta que no existe. */
@@ -1366,7 +1366,7 @@ export function DocTokens() {
          con la cifra a la izquierda y la referencia a la derecha, el par se leía torcido —
          se notaba en las cifras cortas (3,3%), donde quedaba un hueco que la referencia
          cruzaba por debajo. A la derecha las unidades quedan una bajo otra y comparan. */
-      .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx);text-align:right}
+      .hz-n{font-family:var(--font-body, system-ui);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx);text-align:right;font-variant-numeric:tabular-nums}
       /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
          (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */
       .hz-n.neg{color:var(--signal-red)}
@@ -1392,8 +1392,8 @@ export function DocTokens() {
       /* los números */
       .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line)}
       .num-cell{background:var(--doc-paper);padding:14px 16px 13px}
-      .num-cell .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx4);margin-bottom:8px}
-      .num-cell .v{font-family:var(--font-mono, ui-monospace);font-size:23px;font-weight:700;line-height:1;color:var(--doc-tx);letter-spacing:-.01em}
+      .num-cell .k{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4);margin-bottom:8px;font-variant-numeric:tabular-nums}
+      .num-cell .v{font-family:var(--font-body, system-ui);font-size:23px;font-weight:700;line-height:1;color:var(--doc-tx);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
       .num-cell .v.neg{color:var(--signal-red)}
       .num-cell .v small{font-size:11px;font-weight:400;color:var(--doc-tx4);letter-spacing:0;margin-left:1px}
       .num-cell .tr{font-size:12px;line-height:1.5;color:var(--doc-tx3);margin-top:8px}
@@ -1407,7 +1407,7 @@ export function DocTokens() {
       .m-block .bt{font-family:var(--font-body, system-ui);font-size:14px;font-weight:600;color:var(--doc-tx);margin-bottom:3px}
       .m-block .bq{font-family:var(--font-body, system-ui);font-size:13px;line-height:1.5;color:var(--doc-tx3);margin-bottom:12px}
       .pc-u{font-size:11px;color:var(--doc-tx3);margin:0 0 6px}
-      .pc-flujo{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums}
+      .pc-flujo{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums}
       .pc-flujo col.c-anio{width:18%}
       .pc-flujo th,.pc-flujo td{padding:7px 0 7px 10px;text-align:right;white-space:nowrap;font-size:12px;line-height:1.3;color:var(--doc-tx);border-bottom:1px solid var(--doc-line);font-weight:400}
       .pc-flujo thead th{font-family:var(--font-body, system-ui);font-size:11px;font-weight:600;color:var(--doc-tx3);padding-bottom:7px;vertical-align:bottom;white-space:normal;line-height:1.2}
@@ -1425,13 +1425,13 @@ export function DocTokens() {
       .pc-ind-n{grid-column:1;font-size:13px;font-weight:600;color:var(--doc-tx);display:flex;align-items:center;gap:2px}
       .pc-ind-f{grid-column:1;font-size:12px;line-height:1.45;color:var(--doc-tx3)}
       .pc-ind-der{grid-column:2;grid-row:1 / span 2;min-width:0}
-      .pc-ind-c{font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums;font-size:11.5px;line-height:1.55;color:var(--doc-tx2);overflow-wrap:anywhere}
+      .pc-ind-c{font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums;font-size:11.5px;line-height:1.55;color:var(--doc-tx2);overflow-wrap:anywhere}
       .pc-ind-c span{display:block}
-      .pc-ind-r{font-family:var(--font-mono, ui-monospace);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--doc-tx);margin-top:3px}
+      .pc-ind-r{font-family:var(--font-body, system-ui);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--doc-tx);margin-top:3px}
       .pc-ind-r.neg{color:var(--signal-red)}
       .pc-remite{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:baseline;padding-top:12px;margin-top:4px}
       .pc-remite .k{font-size:13px;font-weight:600;color:var(--doc-tx)}
-      .pc-remite .v{grid-column:2;grid-row:1;font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
+      .pc-remite .v{grid-column:2;grid-row:1;font-family:var(--font-body, system-ui);font-size:13px;font-weight:700;color:var(--doc-tx);white-space:nowrap;font-variant-numeric:tabular-nums}
       .pc-remite .s{grid-column:1;font-size:11.5px;line-height:1.45;color:var(--doc-tx3)}
       .pc-remite .lnk{grid-column:1 / -1;justify-self:start;margin-top:6px;padding:4px 0;background:none;border:none;font:inherit;font-size:12px;font-weight:600;color:var(--doc-tx);text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
       @media (max-width: 767px){
@@ -1454,14 +1454,14 @@ export function DocTokens() {
       .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);margin-top:18px}
       .zona-cells>div{background:var(--doc-paper);padding:12px 14px}
       .zona-cells .k{font-size:11.5px;color:var(--doc-tx3);margin-bottom:6px;line-height:1.35}
-      .zona-cells .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-tx)}
+      .zona-cells .v{font-family:var(--font-body, system-ui);font-size:17px;font-weight:700;color:var(--doc-tx);font-variant-numeric:tabular-nums}
       .zona-cells .s{font-size:11.5px;color:var(--doc-tx3);margin-top:6px;line-height:1.4}
-      .zona-cells .s b{font-family:var(--font-mono, ui-monospace);font-weight:700;color:var(--doc-tx2)}
+      .zona-cells .s b{font-family:var(--font-body, system-ui);font-weight:700;color:var(--doc-tx2);font-variant-numeric:tabular-nums}
       .zona-cells + .v-viz{margin-top:24px}
       .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
       .lugar{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--doc-line)}
       .lugar .n{font-size:13px;font-weight:600;color:var(--doc-tx)}
-      .lugar .t{grid-column:1;font-family:var(--font-ui);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--doc-tx4)}
+      .lugar .t{grid-column:1;font-family:var(--font-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4)}
       .lugar .d{grid-row:span 2;font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;color:var(--doc-tx2);align-self:center}
       .zona-sin{font-size:13px;color:var(--doc-tx3);margin:10px 0 0;line-height:1.5}
       @media (max-width: 767px){
@@ -1470,8 +1470,8 @@ export function DocTokens() {
       .doc-toprule{height:5px;background:var(--signal-red)}
       .doc-head{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--doc-line)}
       .doc-page{padding:36px 64px 44px}
-      .doc-foot{display:flex;justify-content:space-between;gap:12px;padding:14px 64px 20px;font-family:var(--font-mono, ui-monospace);
-        font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx4)}
+      .doc-foot{display:flex;justify-content:space-between;gap:12px;padding:14px 64px 20px;font-family:var(--font-body, system-ui);
+        font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx4);font-variant-numeric:tabular-nums}
       @media (max-width: 767px){
         .doc-head{padding:14px 20px}
         .doc-page{padding:24px 22px 32px}
@@ -1482,15 +1482,15 @@ export function DocTokens() {
       .doc-banda{position:relative;left:-64px;width:calc(100% + 128px);margin-bottom:18px}
       /* banda con cuerpo: degradado 100° color → 80/20 → deep (0 / 70 / 100%) + grano .35
          multiply. Texto blanco. Mismo material en claro y oscuro (contrato). */
-      .doc-banda-band{display:block;position:relative;overflow:hidden;color:#fff;font-family:var(--font-mono, ui-monospace);
-        font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+      .doc-banda-band{display:block;position:relative;overflow:hidden;color:#fff;font-family:var(--font-body, system-ui);
+        font-size:12.5px;font-weight:700;letter-spacing:0;text-transform:none;
         padding:10px 20px 10px 64px;
-        background:linear-gradient(100deg,var(--verdict-band-0) 0%,color-mix(in srgb,var(--verdict) 80%,var(--verdict-deep)) 70%,var(--verdict-deep) 100%)}
+        background:linear-gradient(100deg,var(--verdict-band-0) 0%,color-mix(in srgb,var(--verdict) 80%,var(--verdict-deep)) 70%,var(--verdict-deep) 100%);font-variant-numeric:tabular-nums}
       .doc-banda-band::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:multiply;
         background-image:var(--doc-grain);background-size:220px}
       @media (max-width: 767px){
         .doc-banda{left:-22px;width:calc(100% + 44px)}
-        .doc-banda-band{padding-left:22px;font-size:11.5px;letter-spacing:.16em}
+        .doc-banda-band{padding-left:22px;font-size:11.5px;letter-spacing:0}
       }
       /* EL MAPA CEDE PRIMERO. La columna del mapa era 236px FIJOS a cualquier
          ancho >=768, asi que el contenido absorbia toda la compresion: a 820px de
@@ -1530,12 +1530,12 @@ export function DocTokens() {
          estilo inyectado del componente gana por orden, y un margin cero aca se
          comia el mb-[18px] de la clase, dejando la ficha pegada al parrafo. */
       .doc-keyfig{margin:0 0 18px;line-height:1.55}
-      .doc-keyfig-fig{font-family:var(--font-mono, ui-monospace);font-size:23px;font-weight:700;color:var(--signal-red)}
+      .doc-keyfig-fig{font-family:var(--font-body, system-ui);font-size:23px;font-weight:700;color:var(--signal-red);font-variant-numeric:tabular-nums}
       .doc-keyfig-cap{font-size:13.5px;color:var(--doc-tx3)}
       @media (max-width: 767px){ .doc-keyfig-fig{font-size:19px} }
       .doc-props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;
-        font-family:var(--font-mono, ui-monospace);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx2);
-        border-bottom:1px dashed var(--doc-line2);padding:0 0 3px;transition:color .15s,border-color .15s}
+        font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx2);
+        border-bottom:1px dashed var(--doc-line2);padding:0 0 3px;transition:color .15s,border-color .15s;font-variant-numeric:tabular-nums}
       .doc-props-link:hover{color:var(--signal-red);border-color:var(--signal-red)}
       /* LA FICHA DEL DEPTO (forma A, 24-sep-2026): grupos de filas rótulo | valor dentro del Modal
          del informe. Sin mono ni serif: Inter con cifras tabulares (contrato §1). La diferencia
@@ -1579,10 +1579,10 @@ export function DocTokens() {
       .doc-fnote::before{content:'f. — ';font-style:normal;font-weight:700;letter-spacing:.02em}
       /* Capítulos de cierre (La simulación · La zona) */
       .doc-capitulo{margin-top:34px;padding-top:18px;border-top:1px solid var(--doc-line)}
-      .doc-cap-eyebrow{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
-        color:var(--doc-tx3);margin-bottom:14px}
-      .doc-cap-sub{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-        color:var(--doc-tx4);margin-bottom:10px}
+      .doc-cap-eyebrow{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;
+        color:var(--doc-tx3);margin-bottom:14px;font-variant-numeric:tabular-nums}
+      .doc-cap-sub{font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;
+        color:var(--doc-tx4);margin-bottom:10px;font-variant-numeric:tabular-nums}
       /* Plumón de la prosa FUERA del acordeón (hero): mismo gesto, weight 500. */
       .doc-portada + div mark,.doc-cuerpo mark{
         background:linear-gradient(transparent 60%,var(--doc-hl) 60%);

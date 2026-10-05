@@ -482,7 +482,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div
-            className="font-mono uppercase tracking-[0.07em]"
+            className="font-body"
             style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
           >
             {kick}
@@ -502,7 +502,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
           <span className="inline-flex items-center gap-1.5 shrink-0 pt-1">
             <span className="h-[7px] w-[7px] rounded-full" style={{ background: dir.color }} aria-hidden />
             <span
-              className="font-mono uppercase tracking-[0.06em]"
+              className="font-body"
               style={{ fontSize: 9, color: "var(--franco-text-tertiary)" }}
             >
               {dir.label}
@@ -512,13 +512,13 @@ export function GenericFindingCard<K extends string = DrawerKey>({
       </div>
 
       {/* KPI dominante + sub-label */}
-      <div className={`font-mono font-bold leading-none mt-3.5 ${kpiSize} ${kpiColor}`}
+      <div className={`font-body font-bold leading-none mt-3.5 ${kpiSize} ${kpiColor}`}
         style={kpiColor ? undefined : { color: nivel === 3 ? "var(--franco-text-secondary)" : "var(--franco-text)" }}
       >
         {d.kpi}
       </div>
       <div
-        className="font-mono uppercase tracking-[0.05em] mt-2"
+        className="font-body mt-2"
         style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
       >
         {d.ksub}
@@ -561,7 +561,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
           {hasDetalle ? (
             <span
               aria-hidden
-              className="franco-card-arrow font-mono uppercase tracking-[0.06em] shrink-0"
+              className="franco-card-arrow font-body shrink-0"
               style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
             >
               Ver detalle →

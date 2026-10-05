@@ -638,7 +638,7 @@ export function PremiumResults({
               }}
             >
               <div className="flex-1 min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold m-0 mb-1" style={{ color: "#C8323C" }}>
+                <p className="font-body text-[12px] font-semibold m-0 mb-1" style={{ color: "#C8323C" }}>
                   Análisis Airbnb no se generó
                 </p>
                 <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
