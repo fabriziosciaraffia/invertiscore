@@ -16,6 +16,12 @@
 //   7 · LOS EVENTOS: enviado, abierto, clic, compra que vino del correo, regalo usado.
 //   8 · LA BAJA de un clic (GET del pie y POST del List-Unsubscribe) y las tablas cerradas al cliente.
 //   9 · LA PRUEBA A/B (02-oct-2026): abierto, clic y compra llevan la variante; el regalo dice «Vence el [fecha].».
+//  10 · EL RESPALDO (05-oct-2026): con menos de tres Comprar publicados en sus comunas, completa HASTA TRES
+//       con Comprar de comunas vecinas y después con Ajustar que dan Comprar con 10% de descuento, marcados
+//       «Conviene si lo negocias» en el correo y en /semanal; si ni así hay tres, no sale. Las vecinas son
+//       simétricas y toda comuna cubierta tiene alguna.
+//  11 · A QUIÉN (05-oct-2026): toda persona con un informe de renta larga (y quien tenga perfil), con el
+//       perfil armado desde sus informes; el primer correo se presenta con la baja a la vista.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
@@ -23,8 +29,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DIAS_VIGENCIA_REGALO, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
+import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
+import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
+import { filaDesdeInforme } from "../../../src/lib/perfil-busqueda-servidor";
+import { perfilDeBusqueda } from "../../../src/lib/perfil-busqueda";
 import { COLOR_VEREDICTO, SEMANAL, URL_BANDA_SEMANAL, correoSemanal, textoBusca, type DatosCorreoSemanal } from "../../../src/lib/email/correo-semanal";
 import { eventoSemanalAbierto } from "../../../src/lib/medicion-correo";
 import { ROJO } from "../../../src/lib/email/plantilla-clara";
@@ -173,7 +183,88 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!conFecha.includes(`${SEMANAL.regaloBajada} Vence el 1 de diciembre.</td>`)) F("9 · el correo no dice cuándo vence el regalo");
   if (!/const regaloVence = correspondeRegalo\([\s\S]{0,260}\? await otorgarRegalo\(admin, fila\.user_id\)/.test(srv) || !/    regaloVence,\n/.test(srv) || !/return vence;/.test(srv)) F("9 · el envío no le pasa al correo el vencimiento del regalo que otorgó");
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic");
+  // 10 · el respaldo
+  {
+    type R = { avisoId: string; scoreCron: number | null };
+    const mk = (id: string, s: number): R => ({ avisoId: id, scoreCron: s });
+    const tabla: Record<string, { v: string; s: number; d?: string }> = {
+      p1: { v: "COMPRAR", s: 80 }, p2: { v: "AJUSTA SUPUESTOS", s: 70, d: "COMPRAR" }, p3: { v: "AJUSTA SUPUESTOS", s: 75, d: "AJUSTA SUPUESTOS" }, p4: { v: "BUSCAR OTRA", s: 90, d: "COMPRAR" },
+      v1: { v: "COMPRAR", s: 60 }, v2: { v: "COMPRAR", s: 85 }, v3: { v: "COMPRAR", s: 50 }, v4: { v: "AJUSTA SUPUESTOS", s: 72, d: "COMPRAR" },
+    };
+    const evR = async (c: R) => ({ veredicto: tabla[c.avisoId].v, score: tabla[c.avisoId].s, flujo: 1 });
+    const evD = async (c: R) => ({ veredicto: tabla[c.avisoId].d ?? tabla[c.avisoId].v, score: 0, flujo: 1 });
+    const correrR = async (propias: R[], vecinas: R[], estado: (id: string) => "publicado" | "despublicado" = () => "publicado") => {
+      const pedidos: string[] = [];
+      let pidioVecinas = 0;
+      const r = await elegirSemanal(propias, evR, async (c) => { pedidos.push(c.avisoId); return estado(c.avisoId); }, {
+        vecinas: async () => { pidioVecinas++; return vecinas; }, evaluarConDescuento: evD,
+      });
+      return { r, pedidos, pidioVecinas, lista: r.items.map((x) => `${x.c.avisoId}:${x.tramo}`).join(",") };
+    };
+    // a · con tres Comprar en sus comunas no se mira el respaldo.
+    const pidio = { n: 0 };
+    const evA = (c: R) => Promise.resolve({ veredicto: "COMPRAR", score: 100 - Number(c.avisoId.slice(1)), flujo: 1 });
+    const tresB = await elegirSemanal(["a2", "a3", "a5"].map((id, i) => mk(id, 90 - i)), evA, async () => "publicado" as const, {
+      vecinas: async () => { pidio.n++; return [mk("v2", 1)]; }, evaluarConDescuento: async () => { pidio.n++; return null; },
+    });
+    if (tresB.estado !== "armada" || tresB.items.some((x) => x.tramo !== "propia") || pidio.n !== 0) F(`10 · con tres Comprar propios igual entra el respaldo (${tresB.items.map((x) => x.tramo).join(",")}, ${pidio.n} llamadas)`);
+    // b · un Comprar propio: completa con vecinas por puntaje, hasta tres.
+    const b = await correrR([mk("p1", 9), mk("p2", 8), mk("p3", 7), mk("p4", 6)], [mk("v1", 9), mk("v2", 8), mk("v3", 7), mk("v4", 6)]);
+    if (b.r.estado !== "armada" || b.lista !== "p1:propia,v2:vecina,v1:vecina") F(`10 · no completa con Comprar vecinos por puntaje hasta tres (${b.r.estado}: ${b.lista})`);
+    if (b.pedidos.join(",") !== "p1,v2,v1") F(`10 · el respaldo chequea más fichas que las que necesita (${b.pedidos.join(",")})`);
+    // c · sin vecinos que alcancen: Ajustar que con descuento dan Comprar, por puntaje (de sus comunas y vecinas).
+    const c = await correrR([mk("p1", 9), mk("p2", 8), mk("p3", 7), mk("p4", 6)], [mk("v4", 6)]);
+    if (c.r.estado !== "armada" || c.lista !== "p1:propia,v4:negociar,p2:negociar") F(`10 · no completa con los Ajustar negociables por puntaje (${c.r.estado}: ${c.lista})`);
+    if (c.r.items.some((x) => x.tramo === "negociar" && x.ev.veredicto !== "AJUSTA SUPUESTOS")) F("10 · entra como negociable algo que no es Ajustar (un Buscar otro con descuento)");
+    // d · ni así tres: no sale.
+    const d = await correrR([mk("p1", 9), mk("p3", 7)], [mk("v4", 6)], (id) => (id === "v4" ? "despublicado" : "publicado"));
+    if (d.r.estado !== "sin_match" || d.r.items.length !== 0) F(`10 · sin tres ni con el respaldo, igual hay correo (${d.r.estado})`);
+    // e · sin respaldo (como antes) no cambia nada.
+    const e = await elegirSemanal([mk("p1", 9), mk("p2", 8)], evR, async () => "publicado" as const);
+    if (e.estado !== "sin_match") F("10 · sin respaldo un solo Comprar arma correo");
+    if (DESCUENTO_NEGOCIABLE !== 0.1 || !/evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\)/.test(srv) || !/vecinas: \(\) => leerCandidatos\(comunasVecinas\(propias\)\)/.test(srv)) F("10 · el servidor no arma el respaldo con las vecinas y el 10% de descuento");
+    if (!/const cc = factorPrecio === 1 \? c : \{ \.\.\.c, precioUF: c\.precioUF \* factorPrecio \};/.test(srv)) F("10 · la evaluación con descuento no baja el precio");
+    if (!/\.\.\.\(tramo !== "propia" \? \{ tramo \} : \{\}\)/.test(srv)) F("10 · la selección no guarda de dónde salió cada depto");
+    // las vecinas
+    const asim = (COMUNAS_DISPONIBLES as readonly string[]).flatMap((x) => vecinasDe(x).filter((y) => !vecinasDe(y).includes(x)).map((y) => `${x}→${y}`));
+    if (asim.length || COMUNAS_SIN_VECINAS.length) F(`10 · las vecinas no son simétricas o hay comunas sin vecinas (${[...asim, ...COMUNAS_SIN_VECINAS].join(", ")})`);
+    const nm = comunasVecinas(["Ñuñoa", "Macul"]);
+    if (nm.includes("Ñuñoa") || nm.includes("Macul") || !nm.includes("Providencia") || !nm.includes("La Florida") || new Set(nm).size !== nm.length) F(`10 · las vecinas de Ñuñoa y Macul no son las de su límite, sin ellas mismas (${nm.join(", ")})`);
+    if (vecinasDe("Santiago").includes("Vitacura") || !vecinasDe("Las Condes").includes("Vitacura")) F("10 · las vecinas no siguen los límites comunales");
+    // el correo y la página
+    const conNeg: DatosCorreoSemanal = { ...base, variante: "tarjetas", deptos: [base.deptos[0], { ...base.deptos[1], comuna: "Macul", tramo: "vecina" }, { ...base.deptos[2], veredicto: "AJUSTA SUPUESTOS", tramo: "negociar" }] };
+    const hNeg = correoSemanal(conNeg).html;
+    const hProp = correoSemanal({ ...base, variante: "tarjetas" }).html;
+    if (MARCA_NEGOCIAR !== "Conviene si lo negocias" || (hNeg.match(new RegExp(`>${MARCA_NEGOCIAR}</td>`, "g")) ?? []).length !== 1 || hProp.includes(MARCA_NEGOCIAR)) F("10 · el Ajustar negociable no lleva «Conviene si lo negocias» (o lo lleva otro)");
+    if (!hNeg.includes(", uno de ellos si lo negocias.") || hProp.includes("si lo negocias.")) F("10 · la frase de arriba no dice que uno resulta si lo negocias");
+    if (!hNeg.includes(SEMANAL.vecinas) || hProp.includes(SEMANAL.vecinas)) F("10 · no se dice que se sumaron comunas vecinas (o se dice sin que las haya)");
+    const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
+    if (!/\{it\.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">\{MARCA_NEGOCIAR\}<\/p>\}/.test(lista)) F("10 · /semanal no marca el Ajustar negociable");
+    for (const t of [SEMANAL.vecinas, MARCA_NEGOCIAR, SEMANAL.intro(3, base.busca, "20", 30, 2)]) if (VOSEO.test(t) || /oportunidad|portafolio|exclusiv/i.test(t)) F(`10 · voseo o palabra vedada: «${t}»`);
+  }
+
+  // 11 · a quién y la presentación
+  {
+    if (!/let q = admin\.from\(tabla\)\.select\("user_id"\)\.not\("user_id", "is", null\);\s*if \(tabla === "analisis"\) q = q\.eq\("tipo_analisis", "long-term"\);/.test(srv) || !/await juntar\("perfiles_inversion"\);\s*await juntar\("analisis"\);/.test(srv)) F("11 · el correo no se le arma a toda persona con un informe de renta larga");
+    const fi = filaDesdeInforme({ created_at: "2026-08-01T00:00:00Z", comuna: "Ñuñoa", input_data: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, precio: 4320, piePct: 20, plazoCredito: 25 } });
+    if (fi.tipologia !== "2D2B" || fi.comuna !== "Ñuñoa" || fi.presupuestoUf !== 4320 || fi.piePct !== 20 || fi.plazoAnios !== 25 || fi.modalidad !== "ltr") F(`11 · el informe no se lee como fila de perfil (${JSON.stringify(fi)})`);
+    const pf = perfilDeBusqueda([fi]);
+    if (!pf.completo || pf.modalidad !== "ltr" || pf.precioMaxUf !== 4400 || pf.dormitorios.join() !== "2") F(`11 · un informe solo no arma un perfil completo (${JSON.stringify(pf)})`);
+    const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
+    if (!/\.eq\("user_id", userId\)\.eq\("tipo_analisis", "long-term"\)/.test(pbs) || !/if \(conFila\.has\(a\.id as string\)\) continue;\s*informes\.push\(filaDesdeInforme\(/.test(pbs)) F("11 · el perfil no suma los informes de renta larga sin fila de perfil");
+    const pres = correoSemanal({ ...base, variante: "tarjetas", presentacion: true }).html;
+    const hProp = correoSemanal({ ...base, variante: "tarjetas" }).html;
+    const frase = "Desde ahora, cada semana te mandamos los deptos publicados que mejor resultan con lo que buscas.";
+    const iFrase = pres.indexOf(frase), iBaja = pres.indexOf(`<a href="https://x/baja" style="color: `), iTarjeta = pres.indexOf("UF 4.291");
+    if (SEMANAL.presentacion !== frase || iFrase < 0 || hProp.includes(frase)) F("11 · el primer correo no se presenta con la frase aprobada (o se presenta siempre)");
+    if (iBaja < 0 || iBaja > iTarjeta || !pres.includes(`${SEMANAL.presentacionBaja} <a href="https://x/baja"`)) F("11 · la presentación no deja la baja a la vista, arriba de los deptos");
+    if (!esPrimerSemanal(0) || !esPrimerSemanal(null) || esPrimerSemanal(1)) F("11 · el primero no es el que no tiene envíos anteriores");
+    if (!/\.from\("semanal_selecciones"\)\.select\("id", \{ count: "exact", head: true \}\)\.eq\("user_id", fila\.user_id\)\.not\("enviada_at", "is", null\)\.neq\("id", fila\.id\)/.test(srv)
+      || !/const presentacion = !eAntes && esPrimerSemanal\(enviadasAntes\);/.test(srv) || !/    presentacion,\n    urlBoton: enlaces\.boton,/.test(srv)) F("11 · el envío no cuenta los correos anteriores para presentarse (o no se lo pasa al correo)");
+    for (const t of [SEMANAL.presentacion, `${SEMANAL.presentacionBaja} ${SEMANAL.presentacionBajaEnlace}.`]) if (VOSEO.test(t)) F(`11 · voseo: «${t}»`);
+  }
+
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -216,5 +307,12 @@ if (require.main === module) {
 //   30/30 en rojo; cada archivo restaurado byte a byte.
 //   §9 (02-oct-2026, la prueba A/B y el vencimiento): V1 compra sin variante · V2 abierto sin variante · V3 correo
 //   sin tag · V4 webhook sin carga · V5/V6 compra sin variante (evento o confirm) · V7/V8 create o checkout sin
-//   variante · V9 fecha en otro formato · V10/V11 correo o envío sin la fecha · V12 clic sin variante: 12/12 ROJO. Y la excepción de la banda en CORREOS: la banda
+//   variante · V9 fecha en otro formato · V10/V11 correo o envío sin la fecha · V12 clic sin variante: 12/12 ROJO.
+//   §10–§11 (05-oct-2026, respaldo y a quién): 21/21 ROJO. R1 el respaldo entra con tres propios · R2 las vecinas
+//   llenan hasta cinco · R3 entra todo Ajustar sin el descuento · R4 sin vecinas, directo a Ajustar · R5 negociables solo de sus
+//   comunas · R6 descuento de 20% · R7 la evaluación con descuento no baja el precio · R8/R9 correo o /semanal sin la marca ·
+//   R10 vecinas en un solo sentido · R11 las vecinas incluyen las propias · R12 solo a quien tiene perfil · R13 el perfil sin los
+//   informes sin fila · R14 se presenta siempre · R15 el primero mal contado · R16 la presentación sin la baja a la vista ·
+//   R17 el conteo cuenta la fila que se manda · R18 la frase sin «si lo negocias» · R19 sin la frase de las vecinas · R20 el
+//   informe pierde el pie · R21 la selección no guarda el tramo. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).

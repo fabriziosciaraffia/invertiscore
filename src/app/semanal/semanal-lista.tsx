@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { SEMANAL_PAGINA, rutaSueltoSemanal, textoVence } from "@/lib/guia/semanal";
+import { MARCA_NEGOCIAR, SEMANAL_PAGINA, rutaSueltoSemanal, textoVence } from "@/lib/guia/semanal";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
@@ -80,6 +80,7 @@ export function SemanalLista({ token, origenId, combinacion, items, destacado, d
                   <span className="guia-ojo">{[it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ")}</span>
                 </div>
                 <div className="guia-precio">UF {miles(it.precioUF)}</div>
+                {it.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
                 <div className="guia-dos">
                   <div>
                     <div className="guia-k">{GUIA.veredicto}</div>

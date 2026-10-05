@@ -9,6 +9,11 @@
 //   · SOLO PUBLICADOS: de a uno, en ese orden, se chequea la ficha (con la memoria de 24 horas y el tope
 //     por hora COMPARTIDOS con la guía) hasta juntar CINCO. Con menos de TRES publicados no hay correo.
 //     Si faltó cupo para chequear, la selección queda pendiente y la toma la corrida siguiente.
+//   · EL RESPALDO (05-oct-2026): si en sus comunas no hay TRES Comprar publicados, completa hasta tres
+//     con Comprar de las comunas VECINAS (comunas-vecinas.ts), y después con Ajustar que llegan a Comprar
+//     con hasta 10% de descuento, marcados «Conviene si lo negocias». Si ni así hay tres, no sale.
+//   · A QUIÉN (05-oct-2026): a toda persona con un informe de renta larga (y a quien tenga perfil), con el
+//     perfil armado desde sus informes. El primer correo de cada una se presenta.
 //   · EL REGALO: a los 14 días de registrarse sin haber comprado, el correo de esa semana suma «El
 //     próximo que analices va por cuenta de Franco.» con el crédito cargado. Una vez por persona.
 //     Registrarse no regala nada.
@@ -29,6 +34,13 @@ export const LECTURAS_POR_CORRIDA_SEMANAL = 24;
 export const DIAS_VIGENCIA_REGALO = 60;
 /** La holgura del rango de precio: el piso baja 10% bajo lo más barato que analizó; el tope no se pasa. */
 export const HOLGURA_PISO = 0.1;
+/** El descuento con que un Ajustar puede entrar al correo: si a este precio da Comprar, conviene negociarlo. */
+export const DESCUENTO_NEGOCIABLE = 0.1;
+/** La marca de un depto que entra por el respaldo de Ajustar. */
+export const MARCA_NEGOCIAR = "Conviene si lo negocias";
+
+/** De dónde sale un depto de la selección: sus comunas (sin marca), una vecina o un Ajustar negociable. */
+export type TramoSemanal = "propia" | "vecina" | "negociar";
 
 export type Variante = "banda" | "tarjetas";
 
@@ -54,39 +66,78 @@ export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: numbe
   return { ufMin: Math.max(0, Math.floor(piso)), ufMax: p.precioMaxUf };
 }
 
+export type ElegidoSemanal<T> = { c: T; ev: Evaluado; tramo: TramoSemanal };
+
 export type ResultadoSemanal<T> =
-  | { estado: "armada"; items: Array<{ c: T; ev: Evaluado }> }
+  | { estado: "armada"; items: Array<ElegidoSemanal<T>> }
   | { estado: "sin_match"; items: [] }
-  | { estado: "pendiente"; items: Array<{ c: T; ev: Evaluado }> };
+  | { estado: "pendiente"; items: Array<ElegidoSemanal<T>> };
+
+/** El respaldo: los candidatos de las comunas vecinas y la evaluación con el descuento negociable. */
+export interface RespaldoSemanal<T> {
+  vecinas: () => Promise<T[]>;
+  evaluarConDescuento: (c: T) => Promise<Evaluado | null>;
+}
+
+type Evaluados<T> = Array<{ c: T; ev: Evaluado }>;
+
+/** Los de mejor puntaje del cron, recalculados con los números de la persona. */
+async function evaluarPool<T extends CandidatoSemanal>(candidatos: T[], evaluar: (c: T) => Promise<Evaluado | null>): Promise<Evaluados<T>> {
+  const pool = [...candidatos].sort((a, b) => (b.scoreCron ?? -1) - (a.scoreCron ?? -1)).slice(0, MAX_CANDIDATOS_SEMANAL);
+  const evs = await Promise.all(pool.map((c) => evaluar(c).catch(() => null)));
+  return pool.map((c, i) => ({ c, ev: evs[i] })).filter((x): x is { c: T; ev: Evaluado } => x.ev != null);
+}
+
+const porPuntaje = <T>(xs: Evaluados<T>, veredicto: string) =>
+  xs.filter((x) => x.ev.veredicto === veredicto).sort((a, b) => (b.ev.score ?? -1) - (a.ev.score ?? -1));
 
 /**
  * Elige los deptos de la semana. `candidatos` viene de la RPC, ya filtrado por el perfil. Se recalculan
  * los de mejor puntaje del cron con los números de la persona; se quedan los Comprar, por puntaje; y se
- * chequea la ficha de a uno hasta juntar `TOPE_SEMANAL` publicados.
+ * chequea la ficha de a uno hasta juntar `TOPE_SEMANAL` publicados. Con menos de `MINIMO_SEMANAL`, el
+ * respaldo completa HASTA TRES: primero Comprar de las comunas vecinas; después Ajustar (de sus comunas
+ * y de las vecinas, por puntaje) que con `DESCUENTO_NEGOCIABLE` dan Comprar.
  */
 export async function elegirSemanal<T extends CandidatoSemanal>(
   candidatos: T[],
   evaluar: (c: T) => Promise<Evaluado | null>,
   publicado: (c: T) => Promise<EstadoPublicacion>,
+  respaldo?: RespaldoSemanal<T>,
 ): Promise<ResultadoSemanal<T>> {
-  const pool = [...candidatos].sort((a, b) => (b.scoreCron ?? -1) - (a.scoreCron ?? -1)).slice(0, MAX_CANDIDATOS_SEMANAL);
-  const evs = await Promise.all(pool.map((c) => evaluar(c).catch(() => null)));
-  const buenos = pool
-    .map((c, i) => ({ c, ev: evs[i] }))
-    .filter((x): x is { c: T; ev: Evaluado } => x.ev?.veredicto === "COMPRAR")
-    .sort((a, b) => (b.ev.score ?? -1) - (a.ev.score ?? -1));
-  const items: Array<{ c: T; ev: Evaluado }> = [];
+  const items: Array<ElegidoSemanal<T>> = [];
   let sinChequeo = 0;
-  for (const it of buenos) {
-    if (items.length >= TOPE_SEMANAL) break;
-    const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
-    if (e === "publicado") items.push(it);
-    else if (e === "sin-chequeo") sinChequeo++;
+  const tomar = async (lista: Evaluados<T>, tramo: TramoSemanal, hasta: number) => {
+    for (const it of lista) {
+      if (items.length >= hasta) return;
+      if (items.some((x) => x.c.avisoId === it.c.avisoId)) continue;
+      const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
+      if (e === "publicado") items.push({ ...it, tramo });
+      else if (e === "sin-chequeo") sinChequeo++;
+    }
+  };
+
+  const propios = await evaluarPool(candidatos, evaluar);
+  await tomar(porPuntaje(propios, "COMPRAR"), "propia", TOPE_SEMANAL);
+
+  if (items.length < MINIMO_SEMANAL && respaldo) {
+    const vecinos = await evaluarPool(await respaldo.vecinas().catch(() => [] as T[]), evaluar);
+    await tomar(porPuntaje(vecinos, "COMPRAR"), "vecina", MINIMO_SEMANAL);
+    if (items.length < MINIMO_SEMANAL) {
+      const ajustar = porPuntaje([...propios, ...vecinos], "AJUSTA SUPUESTOS");
+      const conDescuento = await Promise.all(ajustar.map((x) => respaldo.evaluarConDescuento(x.c).catch(() => null)));
+      await tomar(ajustar.filter((_, i) => conDescuento[i]?.veredicto === "COMPRAR"), "negociar", MINIMO_SEMANAL);
+    }
   }
+
   if (items.length >= MINIMO_SEMANAL) return { estado: "armada", items };
   // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente.
   if (sinChequeo > 0) return { estado: "pendiente", items };
   return { estado: "sin_match", items: [] };
+}
+
+/** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
+export function esPrimerSemanal(enviadasAntes: number | null | undefined): boolean {
+  return (enviadasAntes ?? 0) === 0;
 }
 
 /** ¿Le toca el regalo esta semana? 14 días desde el registro, sin compras, nunca antes. */

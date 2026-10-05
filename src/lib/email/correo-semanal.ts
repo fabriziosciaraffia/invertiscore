@@ -9,12 +9,15 @@
 // botón principal en rojo. Con análisis disponibles el botón dice «Analizar uno»; sin, «Analizar uno ·
 // $9.990» y lleva a comprar el SUELTO (el pack vive solo en el ticket). Nunca «oportunidades»,
 // «portafolio» ni «exclusivo».
+// El respaldo (05-oct-2026): un depto de una comuna vecina lo dice la frase de arriba; uno que entra
+// como Ajustar negociable lleva «Conviene si lo negocias» bajo el precio. El PRIMER correo de cada
+// persona se presenta, con el enlace para dejar de recibirlos a la vista (no solo en el pie).
 // HTML de correo de verdad: tablas, estilos en línea, ancho 600, botón con fondo en la celda (Gmail e
 // iPhone Mail), sin CSS de fondo ni SVG, esquema de color claro.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { textoVence } from "@/lib/guia/semanal";
+import { MARCA_NEGOCIAR, textoVence } from "@/lib/guia/semanal";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -33,8 +36,14 @@ export const SEMANAL = {
   titular: "Deptos publicados que Franco revisó para ti",
   preencabezado: (n: number, pie: string, plazo: number) => `${n} deptos publicados esta semana que resultan con tu pie de ${pie}% y ${plazo} años.`,
   saludo: (nombre: string | null) => (nombre ? `Hola, ${nombre}:` : "Hola:"),
-  intro: (n: number, busca: string, pie: string, plazo: number) =>
-    `Esta semana, ${n} deptos publicados como los que buscas —${busca}— resultan con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
+  intro: (n: number, busca: string, pie: string, plazo: number, negociar = 0) =>
+    `Esta semana, ${n} deptos publicados como los que buscas —${busca}— resultan con tu pie de ${pie}% y tu plazo de ${plazo} años${
+      negociar === 0 ? "" : negociar === 1 ? ", uno de ellos si lo negocias" : `, ${negociar} de ellos si los negocias`}.`,
+  vecinas: "En tus comunas había menos de tres, así que sumamos de comunas vecinas.",
+  presentacion: "Desde ahora, cada semana te mandamos los deptos publicados que mejor resultan con lo que buscas.",
+  presentacionBaja: "Si no los quieres,",
+  presentacionBajaEnlace: "deja de recibirlos",
+  negociar: MARCA_NEGOCIAR,
   regalo: "El próximo que analices va por cuenta de Franco.",
   regaloBajada: "Ya está cargado en tu cuenta.",
   saldo: (n: number) => (n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`),
@@ -56,6 +65,8 @@ export interface DeptoCorreo {
   score: number | null;
   flujo: number | null;
   url: string;
+  /** De dónde salió: ausente = sus comunas; «vecina»; «negociar» (lleva la marca). */
+  tramo?: "vecina" | "negociar";
 }
 
 export interface DatosCorreoSemanal {
@@ -71,6 +82,8 @@ export interface DatosCorreoSemanal {
   conRegalo: boolean;
   /** Cuándo vence el regalo (ISO); el correo dice «Vence el [fecha].». */
   regaloVence?: string | null;
+  /** El primer correo de la persona: se presenta y deja la baja a la vista. */
+  presentacion?: boolean;
   urlBoton: string;
   urlComprar: string;
   urlBaja: string;
@@ -92,6 +105,7 @@ function tarjeta(d: DeptoCorreo): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #FFFFFF; border: 1px solid ${LINEA}; border-radius: 14px;">
     <tr><td style="padding: 16px 18px 6px 18px; font-family: ${FUENTE_UI}; font-size: 13px; color: ${TINTA_3};">${ojo}</td></tr>
     <tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 28px; line-height: 1.1; font-weight: 700; color: ${TINTA};"><a href="${d.url}" style="color: ${TINTA}; text-decoration: none;">UF ${miles(d.precioUF)}</a></td></tr>
+    ${d.tramo === "negociar" ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 14px; font-weight: 600; color: ${TINTA};">${escaparHtml(SEMANAL.negociar)}</td></tr>` : ""}
     <tr><td style="padding: 0 18px 14px 18px; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.5;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td valign="middle" style="padding: 0 8px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="10" height="10" bgcolor="${color}" style="width: 10px; height: 10px; background: ${color}; border-radius: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table></td>
@@ -126,7 +140,12 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 26px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(SEMANAL.titular)}</td></tr>`);
   }
   filas.push(parrafo(escaparHtml(SEMANAL.saludo(d.nombre))));
-  filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios))));
+  if (d.presentacion) {
+    filas.push(parrafo(`${escaparHtml(SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
+  }
+  const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
+  filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
+  if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
   if (d.conRegalo) {
     filas.push(`<tr><td style="padding: 2px 0 18px 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>

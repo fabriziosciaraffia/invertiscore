@@ -24,9 +24,10 @@ import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, t
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
+import { comunasVecinas } from "@/lib/comunas-vecinas";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, MAX_CANDIDATOS_SEMANAL, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, rangoSemanal, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, MAX_CANDIDATOS_SEMANAL, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, varianteDe,
   type CandidatoSemanal,
 } from "./semanal";
 
@@ -42,6 +43,8 @@ export interface ItemSemanal {
   veredicto: string | null;
   score: number | null;
   flujo: number | null;
+  /** De dónde salió (05-oct-2026): ausente = sus comunas; «vecina»; «negociar» (Ajustar con descuento). */
+  tramo?: "vecina" | "negociar";
 }
 
 /** «Santiago Centro» (el nombre del dataset viejo) es «Santiago» en los avisos. */
@@ -100,27 +103,28 @@ export async function armarSeleccion(
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
 
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
-  const { data, error } = await admin.rpc("semanal_candidatos", {
-    comunas: perfil.comunas.map(comunaDeAviso), dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
-  });
-  if (error) throw new Error(`semanal_candidatos: ${error.message}`);
-  const candidatos: Candidato[] = ((data ?? []) as FilaRpc[]).map((f) => ({
-    avisoId: f.id, distanciaM: 0, scoreCron: f.score_cron, comuna: f.comuna, lat: Number(f.lat), lng: Number(f.lng),
-    m2: Number(f.superficie_m2), dormitorios: Number(f.dormitorios), banos: Number(f.banos) || 1,
-    condicion: f.condicion === "nuevo" ? "nuevo" : "usado", direccion: f.direccion, fechaEntrega: f.fecha_entrega, url: f.url,
-    precioUF: Number(f.precio_uf), antiguedadAnios: f.antiguedad_origen === "ficha" ? f.antiguedad_anios : null,
-    antiguedadOrigen: f.antiguedad_origen, arriendo: f.arriendo, venta: f.venta, gastosComunes: f.gastos_comunes, medianaComuna: f.mediana_comuna ?? null,
-  }));
+  const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
+    if (comunas.length === 0) return [];
+    const { data, error } = await admin.rpc("semanal_candidatos", {
+      comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
+    });
+    if (error) throw new Error(`semanal_candidatos: ${error.message}`);
+    return ((data ?? []) as FilaRpc[]).map(candidatoDeFila);
+  };
+  const propias = perfil.comunas.map(comunaDeAviso);
+  const candidatos = await leerCandidatos(propias);
 
   const asOf = new Date();
-  const evaluar = async (c: Candidato): Promise<Evaluado | null> => {
-    const ctx = contextoDeFila(c, cfg);
+  const evaluarA = async (c: Candidato, factorPrecio: number): Promise<Evaluado | null> => {
+    const cc = factorPrecio === 1 ? c : { ...c, precioUF: c.precioUF * factorPrecio };
+    const ctx = contextoDeFila(cc, cfg);
     // Sin la mediana guardada no se recalcula acá (sería una consulta en vivo por candidato): queda fuera.
     if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-    const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
+    const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(cc), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
     const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
     return { veredicto: s.veredicto, score: s.score != null ? Math.round(s.score) : null, flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null };
   };
+  const evaluar = (c: Candidato) => evaluarA(c, 1);
   const almacen = almacenPublicacion(admin);
   const publicado = async (c: Candidato): Promise<EstadoPublicacion> => {
     const r = await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, {
@@ -131,13 +135,26 @@ export async function armarSeleccion(
     return r.estado;
   };
 
-  const g = await elegirSemanal(candidatos, evaluar, publicado);
-  const items: ItemSemanal[] = g.items.map(({ c, ev }) => ({
+  const g = await elegirSemanal(candidatos, evaluar, publicado, {
+    vecinas: () => leerCandidatos(comunasVecinas(propias)),
+    evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
+  });
+  const items: ItemSemanal[] = g.items.map(({ c, ev, tramo }) => ({
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
-    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
+    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo, ...(tramo !== "propia" ? { tramo } : {}),
   }));
   await guardar({ estado: g.estado, items, combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   return g.estado;
+}
+
+function candidatoDeFila(f: FilaRpc): Candidato {
+  return {
+    avisoId: f.id, distanciaM: 0, scoreCron: f.score_cron, comuna: f.comuna, lat: Number(f.lat), lng: Number(f.lng),
+    m2: Number(f.superficie_m2), dormitorios: Number(f.dormitorios), banos: Number(f.banos) || 1,
+    condicion: f.condicion === "nuevo" ? "nuevo" : "usado", direccion: f.direccion, fechaEntrega: f.fecha_entrega, url: f.url,
+    precioUF: Number(f.precio_uf), antiguedadAnios: f.antiguedad_origen === "ficha" ? f.antiguedad_anios : null,
+    antiguedadOrigen: f.antiguedad_origen, arriendo: f.arriendo, venta: f.venta, gastosComunes: f.gastos_comunes, medianaComuna: f.mediana_comuna ?? null,
+  };
 }
 
 /** Los deptos de una selección que siguen en pie: sin despublicados y todavía evaluados. */
@@ -191,15 +208,25 @@ export async function otorgarRegalo(admin: SupabaseClient, userId: string): Prom
   return vence;
 }
 
-/** Quienes reciben el correo: toda persona con cuenta y al menos un informe. */
+/**
+ * Quienes reciben el correo (05-oct-2026): toda persona con cuenta y un informe de renta larga, más
+ * quien tenga perfil (`perfiles_inversion`). Antes eran solo los segundos: la tabla nació el 28-sep y
+ * dejaba fuera a casi todos los que tienen informes.
+ */
 export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ userId: string }>> {
   const ids = new Set<string>();
-  for (let desde = 0; ; desde += 1000) {
-    const { data, error } = await admin.from("perfiles_inversion").select("user_id").not("user_id", "is", null).order("id").range(desde, desde + 999);
-    if (error) throw new Error(`personas: ${error.message}`);
-    for (const r of data ?? []) ids.add(r.user_id as string);
-    if ((data?.length ?? 0) < 1000) break;
-  }
+  const juntar = async (tabla: "perfiles_inversion" | "analisis") => {
+    for (let desde = 0; ; desde += 1000) {
+      let q = admin.from(tabla).select("user_id").not("user_id", "is", null);
+      if (tabla === "analisis") q = q.eq("tipo_analisis", "long-term");
+      const { data, error } = await q.order("id").range(desde, desde + 999);
+      if (error) throw new Error(`personas (${tabla}): ${error.message}`);
+      for (const r of data ?? []) ids.add(r.user_id as string);
+      if ((data?.length ?? 0) < 1000) break;
+    }
+  };
+  await juntar("perfiles_inversion");
+  await juntar("analisis");
   return Array.from(ids).map((userId) => ({ userId }));
 }
 
@@ -236,11 +263,15 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   };
   const deptos = await itemsVigentes(admin, fila.items ?? []);
   if (deptos.length < MINIMO_SEMANAL || !fila.combinacion || !fila.perfil) return descartar();
-  const [{ data: u }, { data: pb }, { count: compras }] = await Promise.all([
+  const [{ data: u }, { data: pb }, { count: compras }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
     admin.auth.admin.getUserById(fila.user_id),
     admin.from("perfil_busqueda").select("semanal_baja_at, regalo_otorgado_at").eq("user_id", fila.user_id).maybeSingle(),
     admin.from("payments").select("id", { count: "exact", head: true }).eq("user_id", fila.user_id).eq("status", "paid"),
+    admin.from("semanal_selecciones").select("id", { count: "exact", head: true }).eq("user_id", fila.user_id).not("enviada_at", "is", null).neq("id", fila.id),
   ]);
+  // Sin poder contar los envíos anteriores no se presenta: mejor perder la presentación que repetirla.
+  reportarFalloQuery(eAntes, { ruta: RUTA, operacion: "contar-enviadas", userId: fila.user_id });
+  const presentacion = !eAntes && esPrimerSemanal(enviadasAntes);
   const user = u?.user;
   if (!user?.email || pb?.semanal_baja_at) return descartar();
 
@@ -267,6 +298,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     saldo: saldo.plan ? null : saldo.disponibles,
     conRegalo,
     regaloVence,
+    presentacion,
     urlBoton: enlaces.boton,
     urlComprar: enlaces.comprar,
     urlBaja: enlaces.baja,
@@ -279,7 +311,10 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   await admin.from("semanal_selecciones").update({ resend_id: r.id, con_regalo: conRegalo, variante, items: deptos }).eq("id", fila.id);
   void capturarServidor({
     event: "semanal_enviado", distinctId: fila.user_id, uuid: uuidDeterminista(`semanal_enviado:${fila.id}`),
-    properties: { semana: fila.semana, variante, n: deptos.length, con_regalo: conRegalo, saldo: saldo.plan ? "plan" : saldo.disponibles },
+    properties: {
+      semana: fila.semana, variante, n: deptos.length, con_regalo: conRegalo, saldo: saldo.plan ? "plan" : saldo.disponibles, presentacion,
+      vecinas: deptos.filter((d) => d.tramo === "vecina").length, negociar: deptos.filter((d) => d.tramo === "negociar").length,
+    },
   }).catch(() => {});
   return "enviada";
 }

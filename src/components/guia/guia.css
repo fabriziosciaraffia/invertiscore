@@ -40,6 +40,7 @@
 .guia-an[data-presionado="1"] { opacity: 0.72; }
 .guia-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .guia-cr { font-size: 13px; color: var(--franco-text-tertiary); }
+.guia-negociar { margin: 2px 0 10px; font-size: 14px; font-weight: 500; color: var(--franco-text); }
 .guia-error { margin: 10px 0 0; font-size: 13px; color: var(--signal-red); }
 .guia-otro { margin: 16px 0 0; font-size: 15px; color: var(--franco-text-secondary); }
 .guia-otro-enlace { color: var(--franco-text); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
