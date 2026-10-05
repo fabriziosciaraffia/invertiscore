@@ -211,7 +211,8 @@ export async function evaluarAviso(
   const arriendo = arriendoParaEvaluar(a, arr, vta, cfg.uf, opts.segmentar);
   // La zona del depto, para la marca de sospechoso (los avisos de venta son sin amoblar).
   // Contra deptos de tamaño parecido (03-oct-2026): referenciaZonaPorTamano.
-  const zonaM2 = await medianaArriendoZonaM2(a.lat, a.lng, a.dormitorios || null, false, a.m2).catch(() => null);
+  // Con la comuna del radio de la sugerencia (05-oct-2026): la marca compara las dos con la misma vara.
+  const zonaM2 = await medianaArriendoZonaM2(a.lat, a.lng, a.dormitorios || null, false, a.m2, a.comuna).catch(() => null);
   const base = {
     aviso_id: a.id,
     evaluado_at: new Date().toISOString(),

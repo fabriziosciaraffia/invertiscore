@@ -56,7 +56,7 @@ export function runArriendoAmobladoTier(): { hard: number } {
   // ── 1c · la sugerencia filtra, con la opción del wizard ──
   const ms = leer("src/lib/services/market-suggestions.ts");
   if (!/return filas\.filter\(\(f\) => entraComoComparable\(f, amoblado\)\);/.test(ms) || !/if \(args\.prop_type !== "arriendo" \|\| amoblado === null\) return filas;/.test(ms)) F("1 · el radio no filtra los comparables de arriendo por clase");
-  if ((ms.match(/\}, amoblado\);/g)?.length ?? 0) < 5) F("1 · alguna lectura del radio no pasa la opción amoblado");
+  if ((ms.match(/(\}|argsRadioZona\([^)]*\)), amoblado\);/g)?.length ?? 0) < 5) F("1 · alguna lectura del radio no pasa la opción amoblado");
   if (!/const entran = rows\.filter\(\(r\) => entraComoComparable\(r, amoblado\)\)/.test(ms) || !/\.select\("precio, superficie_m2, dormitorios, url, titulo"\)/.test(ms)) F("1 · la referencia comunal del arriendo no filtra por clase");
   const ruta = leer("src/app/api/data/suggestions/route.ts");
   if (!/const amoblado = searchParams\.get\("amoblado"\) === "1";/.test(ruta) || !/propType, condicion, \{ amoblado \}/.test(ruta)) F("1 · la ruta de sugerencias no recibe «amoblado»");
@@ -83,11 +83,11 @@ export function runArriendoAmobladoTier(): { hard: number } {
   if (!arriendoSospechoso(800000, 60, null, "comuna-m2")) F("3 · el estimado comunal por m² no se marca");
   if (arriendoSospechoso(800000, 60, null, "radio")) F("3 · sin zona se marca igual (no hay contra qué comparar)");
   const ev = leer("src/lib/avisos/evaluar-aviso.ts");
-  if (!/arriendo_sospechoso: arriendoSospechoso\(arriendo\?\.monto \?\? null, a\.m2, zonaM2, arriendo\?\.fuente \?\? null\),/.test(ev) || !/const zonaM2 = await medianaArriendoZonaM2\(a\.lat, a\.lng, a\.dormitorios \|\| null(, false, a\.m2)?\)/.test(ev)) F("3 · la fila evaluada no guarda la marca contra la zona");
+  if (!/arriendo_sospechoso: arriendoSospechoso\(arriendo\?\.monto \?\? null, a\.m2, zonaM2, arriendo\?\.fuente \?\? null\),/.test(ev) || !/const zonaM2 = await medianaArriendoZonaM2\(a\.lat, a\.lng, a\.dormitorios \|\| null(, false, a\.m2(, a\.comuna)?)?\)/.test(ev)) F("3 · la fila evaluada no guarda la marca contra la zona");
 
   // ── la versión ──
   // s2 (30-sep, amoblados) → s3 (03-oct, el arriendo sigue al tamaño: ARRIENDO-TAMAÑO). Sube, no baja.
-  if (!["s2", "s3"].includes(SUGERENCIAS_VERSION) || SUGERENCIAS_VERSION < "s2" || !VERSION_EVALUACION.endsWith(`+${SUGERENCIAS_VERSION}`) || !/motor_version: VERSION_EVALUACION,/.test(ev)) F("la versión de las sugerencias no sube o no va en la fila evaluada");
+  if (!["s2", "s3", "s4"].includes(SUGERENCIAS_VERSION) || SUGERENCIAS_VERSION < "s2" || !VERSION_EVALUACION.endsWith(`+${SUGERENCIAS_VERSION}`) || !/motor_version: VERSION_EVALUACION,/.test(ev)) F("la versión de las sugerencias no sube o no va en la fila evaluada");
 
   if (fallas.length) {
     console.log(`  ✗ ARRIENDO-AMOBLADO · ${fallas.length} falla(s):`);

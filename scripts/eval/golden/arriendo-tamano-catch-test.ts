@@ -69,7 +69,7 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
     if (referenciaZonaPorTamano(zona, 52, 5, 0.4) !== null) F("2 · sin 5 deptos de tamaño parecido la referencia no es null (se inventa con otros tamaños)");
     const ms = sinComentarios(leer("src/lib/services/market-suggestions.ts"));
     if (!/if \(superficie && superficie > 0\) return referenciaZonaPorTamano\(limpios, superficie, MIN_ZONA, elasticidadArriendo\(dormitorios\)\);/.test(ms)) F("2 · la mediana de la zona no usa la referencia por tamaño con la elasticidad de su tipología");
-    if (!/const zonaM2 = await medianaArriendoZonaM2\(a\.lat, a\.lng, a\.dormitorios \|\| null, false, a\.m2\)/.test(sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts")))) F("2 · la marca del aviso no le pasa sus m² a la zona");
+    if (!/const zonaM2 = await medianaArriendoZonaM2\(a\.lat, a\.lng, a\.dormitorios \|\| null, false, a\.m2(, a\.comuna)?\)/.test(sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts")))) F("2 · la marca del aviso no le pasa sus m² a la zona");
   }
 
   // ── 3 · la ficha de comparables ──
@@ -88,7 +88,7 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
   }
 
   // ── 4 · la versión ──
-  if (SUGERENCIAS_VERSION !== "s3" || !VERSION_EVALUACION.endsWith("+s3")) F(`4 · la versión de las sugerencias no sube a s3 (${SUGERENCIAS_VERSION}, ${VERSION_EVALUACION})`);
+  if (SUGERENCIAS_VERSION < "s3" || !VERSION_EVALUACION.endsWith(`+${SUGERENCIAS_VERSION}`)) F(`4 · la versión de las sugerencias no sube a s3 (${SUGERENCIAS_VERSION}, ${VERSION_EVALUACION})`);
 
   if (fallas.length) {
     console.log(`  ✗ ARRIENDO-TAMAÑO · ${fallas.length} falla(s):`);

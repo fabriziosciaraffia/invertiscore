@@ -226,10 +226,11 @@ async function sugerenciasConRegistro(
 
 /**
  * Versión de las sugerencias (30-sep-2026). Sube cuando cambia QUÉ comparables entran —s2: fuera los
- * arriendos amoblados, de temporada, corporativos y piezas—, aunque el motor no cambie. La fila evaluada
+ * arriendos amoblados, de temporada, corporativos y piezas; s3: el arriendo llevado al tamaño; s4: la zona
+ * de la marca con el filtro de comuna del radio—, aunque el motor no cambie. La fila evaluada
  * guarda motor + sugerencias (VERSION_EVALUACION) y el cron reevalúa de a poco las de otra versión.
  */
-export const SUGERENCIAS_VERSION = "s3";
+export const SUGERENCIAS_VERSION = "s4";
 
 /** Radio de la ZONA del depto: el tope del loop adaptativo. */
 export const RADIO_ZONA_M = 2000;
@@ -241,18 +242,29 @@ export const MIN_ZONA = 10;
  * amoblados, si el depto lo es) de la misma tipología en RADIO_ZONA_M, sin extremos. Es la referencia de
  * la marca de arriendo sospechoso, en lugar de la mediana de la comuna: en el oriente la zona es más cara
  * que el promedio comunal y la marca vieja confundía ubicación con contaminación. null si no alcanza.
+ *
+ * Con el MISMO filtro de comuna que el radio de la sugerencia (05-oct-2026, decisión de Fabrizio): sin él,
+ * un depto del borde poniente de Ñuñoa se comparaba con una zona que dominaba Santiago (7.587 de ~11.900
+ * comparables, a $10.119/m² contra $12.174/m² de Ñuñoa) y la marca acusaba de inflado a un arriendo que
+ * salía de sus propios vecinos ñuñoínos. La marca compara la sugerencia contra su zona: las dos con la
+ * misma vara.
  */
-export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false, superficie?: number): Promise<number | null> {
+export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false, superficie?: number, comuna?: string | null): Promise<number | null> {
   const reg: RegistroRadio = { fallas: 0 };
-  const { data } = await leerRadio(getSupabase(), reg, {
-    center_lat: lat, center_lng: lng, radius_meters: RADIO_ZONA_M, prop_type: "arriendo",
-    prop_dorms: dormitorios && dormitorios > 0 ? dormitorios : null, prop_comuna: null, prop_condicion: null,
-  }, amoblado);
+  const { data } = await leerRadio(getSupabase(), reg, argsRadioZona(lat, lng, dormitorios, comuna), amoblado);
   const limpios = filterOutliers((data ?? []) as FilaRadio[]).filter((f) => Number(f.superficie_m2) > 0);
   // Con la superficie del depto, contra los de tamaño parecido llevados a su tamaño (03-oct-2026).
   if (superficie && superficie > 0) return referenciaZonaPorTamano(limpios, superficie, MIN_ZONA, elasticidadArriendo(dormitorios));
   if (limpios.length < MIN_ZONA) return null;
   return Math.round(medianaDe(limpios.map((f) => Number(f.precio) / Number(f.superficie_m2))));
+}
+
+/** La consulta de la zona: 2 km, la tipología del depto y la comuna del radio de la sugerencia. */
+export function argsRadioZona(lat: number, lng: number, dormitorios: number | null, comuna?: string | null): ArgsRadio {
+  return {
+    center_lat: lat, center_lng: lng, radius_meters: RADIO_ZONA_M, prop_type: "arriendo",
+    prop_dorms: dormitorios && dormitorios > 0 ? dormitorios : null, prop_comuna: comuna || null, prop_condicion: null,
+  };
 }
 
 /** Respuesta canónica cuando no hay comparables. Ver `Sugerencias.arriendo`. */
@@ -264,7 +276,7 @@ const SIN_DATO: Sugerencias = {
   sampleSize: 0,
 };
 
-type ArgsRadio = {
+export type ArgsRadio = {
   center_lat: number;
   center_lng: number;
   radius_meters: number;

@@ -125,6 +125,7 @@ import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
+import { runZonaComunaTier } from "./zona-comuna-catch-test";
 import { runUnidadesTier } from "./unidades-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
@@ -524,6 +525,9 @@ function printSeed(r: SeedReport) {
   // Tier ARRIENDO-TAMAÑO (03-oct-2026, 0 tokens): la mediana mensual del radio y la del segmento se llevan a
   // los m² del depto (elasticidad 0,8); la marca compara contra deptos de su tamaño; sugerencias s3. ──
   totalHard += (await runArriendoTamanoTier()).hard;
+  // Tier ZONA-COMUNA (05-oct-2026, 0 tokens): la zona de la marca de sospechoso usa la misma comuna que
+  // el radio de la sugerencia; sugerencias s4. ──
+  totalHard += runZonaComunaTier().hard;
   // Tier UNIDADES (02-oct-2026, 0 tokens, sin red ni base): el pase de unidades cruza los disponibles de la
   // ficha nueva; vista la que sigue, vendida la que falta (fuera de la guía, medida en bajas_avisos); sin precios. ──
   totalHard += (await runUnidadesTier()).hard;
