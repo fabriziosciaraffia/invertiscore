@@ -119,6 +119,8 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "semanal-armar", label: "Correo semanal: la selección (domingo)", intervaloHoras: 168, desde: "2026-10-04T11:00:00Z" },
   // El prechequeo (05-oct-2026): de lunes a sábado, cada hora de 03:35 a 08:35 UTC. El hueco más largo es del
   // sábado 08:35 al lunes 03:35 (43 horas), dentro de dos intervalos de 24.
+  // El aviso inmediato (05-oct-2026): cada día a las 09:40 UTC, después de la evaluación de las 08:20.
+  { nombre: "aviso-inmediato", label: "Aviso inmediato a quien piensa comprar ya", intervaloHoras: 24, desde: "2026-10-06T09:40:00Z" },
   { nombre: "semanal-prechequeo", label: "Correo semanal: el prechequeo de las fichas (noches)", intervaloHoras: 24, desde: "2026-10-06T03:35:00Z" },
   { nombre: "semanal-enviar", label: "Correo semanal: el envío (lunes)", intervaloHoras: 168, desde: "2026-10-05T12:00:00Z" },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.

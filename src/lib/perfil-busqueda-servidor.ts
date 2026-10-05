@@ -22,6 +22,10 @@ export interface PerfilDeLaPersona {
   manual: PerfilManual;
   semanalBajaAt: string | null;
   regaloOtorgadoAt: string | null;
+  /** Desde cuándo vale su respuesta a «¿Cuándo piensas comprar?» (05-oct-2026, el «Ya» vence a los 60 días). */
+  horizonteDesde: string | null;
+  inmediatoBajaAt: string | null;
+  yaPreguntaAt: string | null;
 }
 
 /** Un informe de renta larga como fila de perfil, desde lo que la persona puso en el wizard. */
@@ -45,7 +49,7 @@ export function filaDesdeInforme(a: { created_at: string; comuna: string | null;
 export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string): Promise<PerfilDeLaPersona> {
   const [{ data: filas, error: e1 }, { data: man, error: e2 }, { data: ltr, error: e3 }] = await Promise.all([
     admin.from("perfiles_inversion")
-      .select("analysis_id, created_at, tipologia, comuna, modalidad, presupuesto_uf, pie_pct, pref_tipologia, pref_comuna, pref_modalidad, horizonte_compra")
+      .select("analysis_id, created_at, tipologia, comuna, modalidad, presupuesto_uf, pie_pct, pref_tipologia, pref_comuna, pref_modalidad, horizonte_compra, pref_actualizado_at")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
     admin.from("perfil_busqueda").select("*").eq("user_id", userId).maybeSingle(),
     admin.from("analisis").select("id, created_at, comuna, input_data").eq("user_id", userId).eq("tipo_analisis", "long-term")
@@ -90,10 +94,18 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
         horizonte: horiz(m.horizonte_compra),
       }
     : MANUAL_VACIO;
+  // La respuesta vigente sale de lo editado a mano o del informe más reciente que la tiene (perfilDeBusqueda).
+  const conHorizonte = (filas ?? []).find((f) => horiz(f.horizonte_compra) != null);
+  const horizonteDesde = manual.horizonte
+    ? ((m?.actualizado_at as string | null) ?? null)
+    : conHorizonte ? ((conHorizonte.pref_actualizado_at as string | null) ?? (conHorizonte.created_at as string)) : null;
   return {
     perfil: perfilDeBusqueda(informes, manual),
     manual,
     semanalBajaAt: (m?.semanal_baja_at as string | null) ?? null,
     regaloOtorgadoAt: (m?.regalo_otorgado_at as string | null) ?? null,
+    horizonteDesde,
+    inmediatoBajaAt: (m?.inmediato_baja_at as string | null) ?? null,
+    yaPreguntaAt: (m?.ya_pregunta_at as string | null) ?? null,
   };
 }

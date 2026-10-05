@@ -100,6 +100,7 @@ export async function POST(request: Request) {
       ...(prePaymentData?.companion_str_id ? { companion_str_id: prePaymentData.companion_str_id } : {}),
       ...(prePaymentData?.ambas_group_id ? { ambas_group_id: prePaymentData.ambas_group_id } : {}),
       ...(prePaymentData?.origen === "semanal" ? { origen: "semanal", ...(prePaymentData.variante ? { variante: prePaymentData.variante } : {}) } : {}),
+      ...(prePaymentData?.origen === "inmediato" ? { origen: "inmediato" } : {}),
     };
 
     // Update payment record. flowData define el payload fresco (no lo pisamos con el
@@ -492,6 +493,10 @@ export async function POST(request: Request) {
         const deCorreo = payment.payment_data as { origen?: string; variante?: string } | null;
         if (deCorreo?.origen === "semanal") {
           await capturarServidor({ event: "semanal_compra", distinctId: userId, uuid: uuidDeterminista(`semanal_compra:${payment.commerce_order}`), properties: { product: payment.product, amount: payment.amount, variante: deCorreo.variante ?? null } }).catch(() => false);
+        }
+        // Y la que vino del aviso inmediato (05-oct-2026).
+        if (deCorreo?.origen === "inmediato") {
+          await capturarServidor({ event: "aviso_inmediato_compra", distinctId: userId, uuid: uuidDeterminista(`aviso_inmediato_compra:${payment.commerce_order}`), properties: { product: payment.product, amount: payment.amount } }).catch(() => false);
         }
       }
 

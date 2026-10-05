@@ -187,6 +187,11 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   return { subject: SEMANAL.asunto, html };
 }
 
+/** Las piezas de la plantilla, para el aviso inmediato (correo-inmediato.ts): la misma tarjeta y el mismo botón. */
+export const tarjetaSemanal = tarjeta;
+export const botonRojoSemanal = botonRojo;
+export const parrafoSemanal = parrafo;
+
 /** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. */
 export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precioMaxUf: number | null }): string {
   const dorm = p.dormitorios.map((x) => (x === 0 ? "studio" : String(x)));

@@ -15,6 +15,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, SEMANAL_PAGINA, rutaSueltoSemanal, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
@@ -23,7 +24,7 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
 
-export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante }: {
+export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false }: {
   token: string;
   origenId: string | null;
   combinacion: { piePct: number; plazoAnios: number } | null;
@@ -31,6 +32,8 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
   destacado: string | null;
   saldo: EstadoSaldo;
   variante: "banda" | "tarjetas" | null;
+  /** Vino de un aviso inmediato (05-oct-2026): la compra se marca como venida del aviso. */
+  inmediato?: boolean;
 }) {
   const router = useRouter();
   const [generando, setGenerando] = useState<string | null>(null);
@@ -122,7 +125,7 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
       {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{SEMANAL_PAGINA.vacia}</p>}
       {!conSaldo && visibles > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">
-          <EnlaceCarga href={rutaSueltoSemanal(variante)} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
+          <EnlaceCarga href={inmediato ? RUTA_SUELTO_INMEDIATO : rutaSueltoSemanal(variante)} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
             {SEMANAL_PAGINA.comprar}
           </EnlaceCarga>
           <p className="text-[13px] text-[var(--franco-text-secondary)]">{SEMANAL_PAGINA.comprarBajada}</p>

@@ -25,6 +25,7 @@ import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
+import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, repartirChequeos, siguienteAChequear, varianteDe,
@@ -59,10 +60,10 @@ type FilaRpc = {
   gastos_comunes: number | null; mediana_comuna: unknown | null; score_cron: number | null;
 };
 
-type Candidato = CandidatoGuia & CandidatoSemanal;
+export type Candidato = CandidatoGuia & CandidatoSemanal;
 
 /** El informe de renta larga más reciente de la persona que trae con qué buscar (su tasa, su pie). */
-async function origenDePersona(admin: SupabaseClient, userId: string): Promise<OrigenGuia | null> {
+export async function origenDePersona(admin: SupabaseClient, userId: string): Promise<OrigenGuia | null> {
   const { data } = await admin.from("analisis").select("id").eq("user_id", userId).eq("tipo_analisis", "long-term")
     .order("created_at", { ascending: false }).limit(5);
   for (const f of data ?? []) {
@@ -93,9 +94,15 @@ export type Preparada = { tipo: "baja" } | { tipo: "sin-perfil"; perfil: PerfilB
  * Prepara la selección de una persona sin chequear ninguna ficha. La usan el armado del domingo y el
  * prechequeo de las noches: los dos eligen con la MISMA regla. Las evaluaciones y las vecinas se leen una vez.
  */
-export async function prepararSeleccion(admin: SupabaseClient, userId: string, cfg: { uf: number; tasa: number }): Promise<Preparada> {
+export async function prepararSeleccion(
+  admin: SupabaseClient,
+  userId: string,
+  cfg: { uf: number; tasa: number },
+  // El aviso inmediato (05-oct-2026) prepara con los avisos NUEVOS y no mira la baja del semanal.
+  opts: { nuevosDesde?: string } = {},
+): Promise<Preparada> {
   const { perfil, semanalBajaAt } = await leerPerfilBusqueda(admin, userId);
-  if (semanalBajaAt) return { tipo: "baja" };
+  if (semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
   // Los avisos se evalúan como arriendo largo: un perfil de renta corta no tiene con qué compararse.
   const rango = rangoSemanal(perfil);
   const o = perfil.completo && perfil.modalidad === "ltr" && rango ? await origenDePersona(admin, userId) : null;
@@ -103,13 +110,19 @@ export async function prepararSeleccion(admin: SupabaseClient, userId: string, c
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
 
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
+  // Lo que ya se le avisó al momento no se repite en el semanal (05-oct-2026).
+  const avisados = opts.nuevosDesde ? new Set<string>() : await avisadosAlMomento(admin, userId);
   const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
     if (comunas.length === 0) return [];
-    const { data, error } = await admin.rpc("semanal_candidatos", {
-      comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
-    });
-    if (error) throw new Error(`semanal_candidatos: ${error.message}`);
-    return ((data ?? []) as FilaRpc[]).map(candidatoDeFila);
+    const { data, error } = opts.nuevosDesde
+      ? await admin.rpc("inmediato_candidatos", {
+          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, nuevos_desde: opts.nuevosDesde, max_filas: MAX_CANDIDATOS_SEMANAL,
+        })
+      : await admin.rpc("semanal_candidatos", {
+          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
+        });
+    if (error) throw new Error(`${opts.nuevosDesde ? "inmediato" : "semanal"}_candidatos: ${error.message}`);
+    return ((data ?? []) as FilaRpc[]).map(candidatoDeFila).filter((c) => !avisados.has(c.avisoId));
   };
   const propias = perfil.comunas.map(comunaDeAviso);
   const candidatos = await leerCandidatos(propias);
@@ -146,8 +159,16 @@ export async function prepararSeleccion(admin: SupabaseClient, userId: string, c
   };
 }
 
+/** Los deptos que se le avisaron al momento en los últimos DIAS_NO_REPETIR días. */
+export async function avisadosAlMomento(admin: SupabaseClient, userId: string): Promise<Set<string>> {
+  const desde = new Date(Date.now() - DIAS_NO_REPETIR * 864e5).toISOString().slice(0, 10);
+  const { data, error } = await admin.from("avisos_inmediatos").select("aviso_ids").eq("user_id", userId).not("enviado_at", "is", null).gte("dia", desde);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-avisados", userId });
+  return new Set((data ?? []).flatMap((r) => (r.aviso_ids ?? []) as string[]));
+}
+
 /** El chequeo de un candidato con la memoria de la semana, dentro del presupuesto de la corrida. */
-function publicadoConPresupuesto(admin: SupabaseClient, presupuesto: PresupuestoFichas) {
+export function publicadoConPresupuesto(admin: SupabaseClient, presupuesto: PresupuestoFichas) {
   const almacen = almacenPublicacion(admin);
   return async (c: Candidato): Promise<EstadoPublicacion> => {
     const r = await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, {
@@ -348,6 +369,40 @@ export async function rechequearArmadas(admin: SupabaseClient, semana: string, p
   return { chequeados: r.chequeados, caidos: r.caidos.size, usuarios: caidas.map((s) => s.user_id) };
 }
 
+/**
+ * La selección detrás del token de un correo (05-oct-2026): la del semanal o la de un aviso inmediato
+ * (ya enviado). Los dos correos llevan a la misma página y al mismo clic; `fuente` dice cuál fue.
+ * `semana` es el lunes del semanal o el día del aviso.
+ */
+export interface SeleccionPorToken {
+  fuente: "semanal" | "inmediato";
+  id: string;
+  user_id: string;
+  semana: string;
+  items: ItemSemanal[];
+  combinacion: Combinacion | null;
+  origen_analysis_id: string | null;
+  variante: "banda" | "tarjetas" | null;
+}
+
+export async function seleccionPorToken(admin: SupabaseClient, token: string): Promise<SeleccionPorToken | null> {
+  if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
+  const { data: s } = await admin.from("semanal_selecciones").select("id, user_id, semana, items, combinacion, origen_analysis_id, variante").eq("token", token).maybeSingle();
+  if (s) {
+    return {
+      fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items: (s.items ?? []) as ItemSemanal[],
+      combinacion: (s.combinacion ?? null) as Combinacion | null, origen_analysis_id: (s.origen_analysis_id as string | null) ?? null,
+      variante: (s.variante as "banda" | "tarjetas" | null) ?? null,
+    };
+  }
+  const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id").eq("token", token).not("enviado_at", "is", null).maybeSingle();
+  if (!a) return null;
+  return {
+    fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: (a.items ?? []) as ItemSemanal[],
+    combinacion: (a.combinacion ?? null) as Combinacion | null, origen_analysis_id: (a.origen_analysis_id as string | null) ?? null, variante: null,
+  };
+}
+
 /** Los deptos de una selección que siguen en pie: sin despublicados y todavía evaluados. */
 export async function itemsVigentes(admin: SupabaseClient, items: ItemSemanal[]): Promise<ItemSemanal[]> {
   const ids = items.map((i) => i.avisoId);
@@ -514,7 +569,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
  *  persona, sale de este informe de origen y trae este aviso. null si no. */
 export async function combinacionSemanal(admin: SupabaseClient, token: string, userId: string, origenId: string, avisoId: string): Promise<Combinacion | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
-  const { data } = await admin.from("semanal_selecciones").select("user_id, origen_analysis_id, combinacion, items").eq("token", token).maybeSingle();
+  const data = await seleccionPorToken(admin, token);
   if (!data || data.user_id !== userId || data.origen_analysis_id !== origenId) return null;
   if (!((data.items ?? []) as ItemSemanal[]).some((i) => i.avisoId === avisoId)) return null;
   const c = data.combinacion as Combinacion | null;

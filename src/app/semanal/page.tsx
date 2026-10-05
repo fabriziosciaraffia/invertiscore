@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
-import { seleccionViva, type ItemSemanal } from "@/lib/guia/semanal-servidor";
+import { seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { hrefEntrar } from "@/lib/entrar/entrada";
@@ -28,15 +28,16 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   if (!TOKEN.test(t)) redirect("/dashboard");
 
   const admin = createServiceClient();
-  const { data: sel } = await admin.from("semanal_selecciones").select("id, user_id, items, combinacion, origen_analysis_id, variante").eq("token", t).maybeSingle();
+  // El semanal o un aviso inmediato (05-oct-2026): la misma página, viva.
+  const sel = await seleccionPorToken(admin, t);
   if (!sel) redirect("/dashboard");
 
   const otraCuenta = sel.user_id !== user.id;
-  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: "semanal_selecciones", id: sel.id as string, userId: user.id, items: (sel.items ?? []) as ItemSemanal[] }, await leerConfigGuia(admin));
+  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones", id: sel.id, userId: user.id, items: sel.items }, await leerConfigGuia(admin));
   const a = searchParams.a ?? null;
   const ordenados = a ? [...filas.filter((f) => f.item.avisoId === a), ...filas.filter((f) => f.item.avisoId !== a)] : filas;
   const saldo = estadoSaldo(await leerSaldo(admin, user.id));
-  const combo = (sel.combinacion ?? null) as { piePct: number; plazoAnios: number } | null;
+  const combo = sel.combinacion;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
@@ -47,12 +48,13 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
         ) : (
           <SemanalLista
             token={t}
-            origenId={(sel.origen_analysis_id as string | null) ?? null}
+            origenId={sel.origen_analysis_id}
             combinacion={combo}
             filas={ordenados}
             destacado={a}
             saldo={saldo}
-            variante={(sel.variante as "banda" | "tarjetas" | null) ?? null}
+            variante={sel.variante}
+            inmediato={sel.fuente === "inmediato"}
           />
         )}
       </main>

@@ -19,10 +19,12 @@ export type TipoCorreo =
   | "alerta_pago_fallido"
   | "alerta_cron"
   | "aviso_pedido"
-  | "semanal";
+  | "semanal"
+  | "aviso_inmediato"
+  | "pregunta_horizonte";
 
 export const TIPOS_CORREO: readonly TipoCorreo[] = [
-  "bienvenida", "pago_confirmado", "boleta", "pago_fallido", "checkout_abandonado", "informe_listo", "eliminacion_interna", "eliminacion_usuario", "recordatorio_pack", "alerta_pago", "alerta_pago_fallido", "alerta_cron", "aviso_pedido", "semanal",
+  "bienvenida", "pago_confirmado", "boleta", "pago_fallido", "checkout_abandonado", "informe_listo", "eliminacion_interna", "eliminacion_usuario", "recordatorio_pack", "alerta_pago", "alerta_pago_fallido", "alerta_cron", "aviso_pedido", "semanal", "aviso_inmediato", "pregunta_horizonte",
 ];
 
 /** La identidad que viaja en el tag `pid`: el user id si se sabe, si no la derivada del correo. */
@@ -107,6 +109,13 @@ export function eventoDeResend(carga: unknown, svixId: string): EventoServidor |
       ...(c.type === "email.bounced" ? { rebote: c.data.bounce?.type ?? null } : {}),
     },
   };
+}
+
+/** La apertura del aviso inmediato como `aviso_inmediato_abierto` (05-oct-2026): su embudo propio
+ *  (enviado → abierto → clic → compra). */
+export function eventoInmediatoAbierto(ev: EventoServidor): EventoServidor | null {
+  if (ev.event !== "correo_abierto" || ev.properties?.tipo !== "aviso_inmediato") return null;
+  return { ...ev, event: "aviso_inmediato_abierto", uuid: ev.uuid ? uuidDeterminista(`aviso_inmediato_abierto:${ev.uuid}`) : undefined };
 }
 
 /** La apertura del correo semanal también como `semanal_abierto` (02-oct-2026): el embudo del correo se

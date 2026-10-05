@@ -57,6 +57,10 @@
       "schedule": "45 */6 * * *"
     },
     {
+      "path": "/api/cron/aviso-inmediato",
+      "schedule": "40 9 * * *"
+    },
+    {
       "path": "/api/cron/semanal-prechequeo",
       "schedule": "35 3-8 * * 1-6"
     },

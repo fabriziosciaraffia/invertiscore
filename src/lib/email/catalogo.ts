@@ -9,6 +9,7 @@ import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBien
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 import { correoSemanal, type DatosCorreoSemanal } from "./correo-semanal";
+import { correoInmediato, correoPreguntaYa } from "./correo-inmediato";
 
 export interface EntradaCatalogo {
   id: string;
@@ -59,6 +60,8 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "alerta_pago_fallido", tipo: "alerta_pago_fallido", nombre: "Pago fallido (aviso interno)", cuando: "Flow rechaza o anula un pago, a hola@", render: () => correoAlertaPagoFallido({ estado: "Rechazado", producto: "1 análisis", monto: 9990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-SG-0002" }) },
   { id: "semanal_banda", tipo: "semanal", nombre: "Correo semanal · variante banda", cuando: "Los lunes, a quien tiene cuenta, con 3 a 5 deptos publicados que resultan con su perfil (sin saldo: compra el suelto)", render: () => correoSemanal(SEMANAL_MUESTRA("banda", { saldo: 0, conRegalo: false })) },
   { id: "semanal_tarjetas", tipo: "semanal", nombre: "Correo semanal · variante tarjetas", cuando: "Los lunes, la otra mitad: sin banda, el titular en serif (con el regalo del día 14)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: true }), regaloVence: "2026-12-01T15:00:00Z" }) },
+  { id: "aviso_inmediato", tipo: "aviso_inmediato", nombre: "Aviso inmediato", cuando: "El día que aparece un aviso nuevo que da Comprar con el perfil de quien dijo que piensa comprar «Ya» y sigue publicado (uno por día; sin saldo: compra el suelto)", render: () => correoInmediato({ nombre: "Camila", busca: "2 dormitorios, Ñuñoa, hasta UF 4.500", piePct: 20, plazoAnios: 30, deptos: [SEMANAL_MUESTRA("tarjetas", { saldo: 0, conRegalo: false }).deptos[0]], saldo: 0, urlBoton: `${SITIO}/semanal`, urlComprar: `${SITIO}/checkout?product=single&origen=inmediato`, urlBaja: `${SITIO}/semanal/baja?tipo=inmediato` }) },
+  { id: "pregunta_horizonte", tipo: "pregunta_horizonte", nombre: "¿Cuándo piensas comprar? (a los 60 días del «Ya»)", cuando: "A los 60 días de responder «Ya» sin comprar; sin respuesta, quedan solo el semanal", render: () => correoPreguntaYa({ nombre: "Camila", urlRespuesta: (h) => `${SITIO}/api/inmediato/horizonte?t=muestra&h=${h}` }) },
   { id: "aviso_pedido", tipo: "aviso_pedido", nombre: "Quiero verlo: el aviso", cuando: "Alguien toca «Quiero verlo» en un informe que salió de la guía de búsqueda y el aviso sigue publicado", render: () => correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 }) },
   ...PLANTILLAS_SUPABASE.map((p) => ({
     id: p.archivo.replace(/\.html$/, ""),

@@ -446,6 +446,32 @@ export async function sendSemanalEmail(to: string, correo: ReturnType<typeof cor
   }
 }
 
+/** El aviso inmediato (05-oct-2026): con su propia baja de un clic en List-Unsubscribe (no toca el semanal). */
+export async function sendInmediatoEmail(to: string, correo: { subject: string; html: string }, userId: string, urlBaja: string): Promise<{ ok: true; id: string | null } | { ok: false }> {
+  try {
+    const res = await enviarCorreo("aviso_inmediato", userId, {
+      from: FROM_EMAIL, to, subject: correo.subject, html: correo.html,
+      headers: { "List-Unsubscribe": `<${urlBaja}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+    });
+    if (res.error) { console.error("[aviso_inmediato] no salió:", res.error.message); return { ok: false }; }
+    return { ok: true, id: res.data?.id ?? null };
+  } catch (error) {
+    console.error("[aviso_inmediato] no salió:", error);
+    return { ok: false };
+  }
+}
+
+/** «¿Cuándo piensas comprar?» a los 60 días del «Ya» sin compra (05-oct-2026). */
+export async function sendPreguntaYaEmail(to: string, correo: { subject: string; html: string }, userId: string): Promise<boolean> {
+  try {
+    const res = await enviarCorreo("pregunta_horizonte", userId, { from: FROM_EMAIL, to, subject: correo.subject, html: correo.html });
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[pregunta_horizonte] no salió:", error);
+    return false;
+  }
+}
+
 export async function sendAlertaCronInterna(p: Parameters<typeof correoAlertaCron>[0]): Promise<void> {
   const { subject, html } = correoAlertaCron(p);
   const res = await enviarCorreo("alerta_cron", null, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });

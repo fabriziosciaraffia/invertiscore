@@ -67,8 +67,9 @@ function CheckoutContent() {
   // return rutee a la comparativa. Null en LTR/STR single.
   const companionStrId = searchParams.get("companionStrId");
   // La compra que viene del correo semanal (02-oct-2026): viaja a payment_data para medirla.
-  const origen = searchParams.get("origen") === "semanal" ? "semanal" : null;
-  const varianteCorreo = origen && (searchParams.get("variante") === "banda" || searchParams.get("variante") === "tarjetas") ? searchParams.get("variante") : null;
+  // Y la que viene del aviso inmediato (05-oct-2026).
+  const origen = searchParams.get("origen") === "semanal" ? "semanal" : searchParams.get("origen") === "inmediato" ? "inmediato" : null;
+  const varianteCorreo = origen === "semanal" && (searchParams.get("variante") === "banda" || searchParams.get("variante") === "tarjetas") ? searchParams.get("variante") : null;
 
   const product = resolveProduct(productKey);
   // «Lo que sigue»: la vigencia del pack la dice el servidor. null = todavía no se sabe.

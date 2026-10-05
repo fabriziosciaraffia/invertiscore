@@ -357,7 +357,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const ar = sinComentarios(leer("src/app/api/cron/semanal-armar/route.ts"));
     if (!/const re = await rechequearArmadas\(admin, semana, presupuesto\);/.test(ar) || !/for \(const userId of re\.usuarios\) \{[\s\S]{0,120}await armarSeleccion\(admin, userId, semana, cfg, presupuesto\);/.test(ar)) F("13 · el domingo no rechequea las armadas ni rearma en la misma corrida");
     const pg = sinComentarios(leer("src/app/semanal/page.tsx"));
-    if (!/await seleccionViva\(admin, \{ tabla: "semanal_selecciones"/.test(pg)) F("13 · /semanal no está viva");
+    if (!/await seleccionViva\(admin, \{ tabla: (sel\.fuente === "inmediato" \? "avisos_inmediatos" : )?"semanal_selecciones"/.test(pg)) F("13 · /semanal no está viva");
     const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
     if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
