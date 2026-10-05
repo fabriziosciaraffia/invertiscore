@@ -526,8 +526,8 @@ function printSeed(r: SeedReport) {
   // los m² del depto (elasticidad 0,8); la marca compara contra deptos de su tamaño; sugerencias s3. ──
   totalHard += (await runArriendoTamanoTier()).hard;
   // Tier ZONA-COMUNA (05-oct-2026, 0 tokens): la zona de la marca de sospechoso usa la misma comuna que
-  // el radio de la sugerencia; sugerencias s4. ──
-  totalHard += runZonaComunaTier().hard;
+  // el radio de la sugerencia (con la zona sin filtro de respaldo); sugerencias s4. ──
+  totalHard += (await runZonaComunaTier()).hard;
   // Tier UNIDADES (02-oct-2026, 0 tokens, sin red ni base): el pase de unidades cruza los disponibles de la
   // ficha nueva; vista la que sigue, vendida la que falta (fuera de la guía, medida en bajas_avisos); sin precios. ──
   totalHard += (await runUnidadesTier()).hard;

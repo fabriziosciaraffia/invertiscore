@@ -9,6 +9,8 @@
 //   1 · LA CONSULTA de la zona lleva la comuna que se le pasa (2 km, arriendo, la tipología del depto).
 //   2 · LA MEDIANA de la zona arma su consulta con esa comuna.
 //   3 · LA MARCA del aviso le pasa a la zona la MISMA comuna con que se piden sus sugerencias.
+//   5 · EL RESPALDO: si la zona de la comuna no junta MIN_ZONA deptos de tamaño parecido (null), se usa la
+//       zona sin filtro; con mediana de la comuna, no se lee la otra.
 //   4 · LA VERSIÓN de las sugerencias sube (s4): los avisos se reevalúan.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. Sin red y sin base.
@@ -16,14 +18,14 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { argsRadioZona, RADIO_ZONA_M, SUGERENCIAS_VERSION } from "../../../src/lib/services/market-suggestions";
+import { argsRadioZona, RADIO_ZONA_M, SUGERENCIAS_VERSION, zonaConRespaldo } from "../../../src/lib/services/market-suggestions";
 import { VERSION_EVALUACION } from "../../../src/lib/avisos/evaluar-aviso";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) => s.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "");
 
-export function runZonaComunaTier(): { hard: number } {
+export async function runZonaComunaTier(): Promise<{ hard: number }> {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
   console.log("\n─── TIER ZONA-COMUNA (la zona de la marca con la comuna del radio · 0 tokens) ───");
@@ -42,8 +44,10 @@ export function runZonaComunaTier(): { hard: number } {
   {
     const ms = sinComentarios(leer("src/lib/services/market-suggestions.ts"));
     const cuerpo = ms.match(/export async function medianaArriendoZonaM2\(([^)]*)\)[^{]*\{([\s\S]*?)\n\}/);
-    if (!cuerpo || !/comuna\?: string \| null/.test(cuerpo[1]) || !/leerRadio\(getSupabase\(\), reg, argsRadioZona\(lat, lng, dormitorios, comuna\), amoblado\)/.test(cuerpo[2]))
-      F("2 · la mediana de la zona no arma su consulta con la comuna que recibe");
+    const unaVez = ms.match(/async function medianaZonaUnaVez\(([^)]*)\)[^{]*\{([\s\S]*?)\n\}/);
+    if (!cuerpo || !/comuna\?: string \| null/.test(cuerpo[1]) || !/return zonaConRespaldo\(\(c\) => medianaZonaUnaVez\(lat, lng, dormitorios, amoblado, superficie, c\), comuna\);/.test(cuerpo[2])
+      || !unaVez || !/leerRadio\(getSupabase\(\), reg, argsRadioZona\(lat, lng, dormitorios, comuna\), amoblado\)/.test(unaVez[2]))
+      F("2 · la mediana de la zona no arma su consulta con la comuna que recibe (con su respaldo)");
   }
 
   // ── 3 · la marca le pasa la misma comuna que el radio ──
@@ -55,6 +59,23 @@ export function runZonaComunaTier(): { hard: number } {
     else if (!radio || zona[1].trim() !== radio[1].trim()) F(`3 · la zona y el radio no usan la misma comuna (zona ${zona[1]}, radio ${radio?.[1] ?? "?"})`);
   }
 
+  // ── 5 · el respaldo ──
+  {
+    const lecturas: Array<string | null> = [];
+    const leer = (tabla: Record<string, number | null>) => async (c: string | null) => { lecturas.push(c); return tabla[c ?? "*"] ?? null; };
+    const conMediana = await zonaConRespaldo(leer({ Ñuñoa: 12174, "*": 10119 }), "Ñuñoa");
+    const l1 = lecturas.splice(0);
+    const sinMediana = await zonaConRespaldo(leer({ Ñuñoa: null, "*": 10119 }), "Ñuñoa");
+    const l2 = lecturas.splice(0);
+    const sinComuna = await zonaConRespaldo(leer({ "*": 10119 }), null);
+    const l3 = lecturas.splice(0);
+    const ninguna = await zonaConRespaldo(leer({ Ñuñoa: null, "*": null }), "Ñuñoa");
+    if (conMediana !== 12174 || l1.join() !== "Ñuñoa") F(`5 · con mediana en la comuna no se usa esa (o se lee también la otra): ${conMediana} · lecturas ${l1.join("|")}`);
+    if (sinMediana !== 10119 || l2.join() !== "Ñuñoa,") F(`5 · sin mediana en la comuna no se usa la zona sin filtro: ${sinMediana} · lecturas ${l2.join("|")}`);
+    if (sinComuna !== 10119 || l3.length !== 1) F(`5 · sin comuna no es una sola lectura sin filtro: ${sinComuna} · ${l3.length} lecturas`);
+    if (ninguna !== null) F(`5 · sin mediana en ninguna zona se inventa una (${ninguna})`);
+  }
+
   // ── 4 · la versión ──
   if (SUGERENCIAS_VERSION !== "s4" || !VERSION_EVALUACION.endsWith("+s4")) F(`4 · la versión de las sugerencias no sube a s4 (${SUGERENCIAS_VERSION}, ${VERSION_EVALUACION})`);
 
@@ -62,14 +83,13 @@ export function runZonaComunaTier(): { hard: number } {
     console.log(`  ✗ ZONA-COMUNA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la zona de la marca de sospechoso consulta 2 km con la misma comuna que el radio de la sugerencia; sugerencias s4");
+    console.log("  ✓ VERDE — la zona de la marca de sospechoso consulta 2 km con la misma comuna que el radio de la sugerencia, con la zona sin filtro de respaldo; sugerencias s4");
   }
   return { hard: fallas.length };
 }
 
 if (require.main === module) {
-  const r = runZonaComunaTier();
-  process.exit(r.hard ? 1 : 0);
+  runZonaComunaTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
 
 // ACTA · verificado EN ROJO (scratchpad mutar-zona.py, restauradas byte a byte), 05-oct-2026: 7/7.
@@ -80,3 +100,9 @@ if (require.main === module) {
 //   Z5 la marca no le pasa comuna a la zona ...................... 3
 //   Z6 la marca con otra comuna que la del radio ................. 3
 //   Z7 la versión no sube ........................................ 4
+// 05-oct-2026, con el respaldo: 8/8 (Z1, Z3 y Z5 de nuevo sobre el código con respaldo, más:
+//   Z8  sin respaldo: la zona de la comuna o nada ............... 5
+//   Z9  el respaldo siempre, aunque la comuna alcance ........... 5
+//   Z10 se leen las dos zonas siempre ........................... 5
+//   Z11 la mediana no usa el respaldo ........................... 2
+//   Z12 el respaldo inventa una mediana cuando ninguna alcanza .. 5)

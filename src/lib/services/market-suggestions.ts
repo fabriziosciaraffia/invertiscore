@@ -247,9 +247,21 @@ export const MIN_ZONA = 10;
  * un depto del borde poniente de Ñuñoa se comparaba con una zona que dominaba Santiago (7.587 de ~11.900
  * comparables, a $10.119/m² contra $12.174/m² de Ñuñoa) y la marca acusaba de inflado a un arriendo que
  * salía de sus propios vecinos ñuñoínos. La marca compara la sugerencia contra su zona: las dos con la
- * misma vara.
+ * misma vara. Con RESPALDO: si la zona de la comuna no junta MIN_ZONA deptos de tamaño parecido, se usa
+ * la zona sin filtro (`zonaConRespaldo`); sin él, 6,5% de los Comprar/Ajustar quedaba sin marca posible.
  */
 export async function medianaArriendoZonaM2(lat: number, lng: number, dormitorios: number | null, amoblado = false, superficie?: number, comuna?: string | null): Promise<number | null> {
+  return zonaConRespaldo((c) => medianaZonaUnaVez(lat, lng, dormitorios, amoblado, superficie, c), comuna);
+}
+
+/** La zona de la comuna; si no alcanza (null), la zona sin filtro. Sin comuna, una sola lectura. */
+export async function zonaConRespaldo(leer: (comuna: string | null) => Promise<number | null>, comuna?: string | null): Promise<number | null> {
+  const conComuna = await leer(comuna || null);
+  if (conComuna != null || !comuna) return conComuna;
+  return leer(null);
+}
+
+async function medianaZonaUnaVez(lat: number, lng: number, dormitorios: number | null, amoblado: boolean, superficie: number | undefined, comuna: string | null): Promise<number | null> {
   const reg: RegistroRadio = { fallas: 0 };
   const { data } = await leerRadio(getSupabase(), reg, argsRadioZona(lat, lng, dormitorios, comuna), amoblado);
   const limpios = filterOutliers((data ?? []) as FilaRadio[]).filter((f) => Number(f.superficie_m2) > 0);
