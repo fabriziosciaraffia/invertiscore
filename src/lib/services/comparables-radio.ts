@@ -188,14 +188,17 @@ function ggccDe(filas: FilaRadio[]): number | null {
  * Sin esta escala, la mediana del arriendo MENSUAL de la banda le daba a un 2D de 35 m² el arriendo de sus
  * comparables, ~10% más grandes (Ñuñoa: 284 Comprar/Ajustar marcados sobre su zona).
  *
- * Los valores salen de un backtest con 1.371 arriendos reales de Gran Santiago, cada uno predicho con sus
- * vecinos a 1 km (misma comuna y dormitorios, sin él): son los que minimizan el error dentro del radio.
- * Un 0,8 fijo (medido en Ñuñoa 2D) no mejoraba nada (8,7% contra 8,6% de hoy) porque subía 12,5% a los 1D
- * grandes; dentro de comuna se mide 0,43 / 0,55 / 0,83, pero dentro del radio pesa todavía menos el tamaño.
+ * La regla (Fabrizio, 05-oct-2026): cada tipología usa el valor que mejor acierta en el backtest de
+ * VALIDACIÓN —1.397 arriendos reales de Gran Santiago, distintos de la muestra donde se exploró, cada uno
+ * predicho con sus vecinos a 1 km (misma comuna y dormitorios, sin él)—, y si ninguno le gana a la mediana
+ * de hoy (elasticidad 0), queda sin ajuste. Error mediano, hoy → elegido:
+ *   1D 8,11% → 7,38% con 0,3 · 2D 9,09% → 7,75% con 0,5 · 3D 8,82% → 8,65% con 0,2 (n 125: le gana por poco)
+ *   · 4D o más 12,64% → 11,33% con 0,3 (n 32: casi ruido; 0,8 daba 14,6%).
+ * Un 0,8 fijo (medido en Ñuñoa 2D) no mejoraba nada (8,6% contra 8,5% de hoy): subía de más a los 1D grandes.
  * Un estudio (0 dormitorios) usa el valor del 1D.
  */
-export const ELASTICIDADES_ARRIENDO: Readonly<Record<number, number>> = { 1: 0.2, 2: 0.4, 3: 0.8 };
-export const ELASTICIDAD_ARRIENDO_4D_O_MAS = 0.8;
+export const ELASTICIDADES_ARRIENDO: Readonly<Record<number, number>> = { 1: 0.3, 2: 0.5, 3: 0.2 };
+export const ELASTICIDAD_ARRIENDO_4D_O_MAS = 0.3;
 export function elasticidadArriendo(dormitorios: number | null | undefined): number {
   const d = Number(dormitorios);
   if (!(d >= 1)) return ELASTICIDADES_ARRIENDO[1];

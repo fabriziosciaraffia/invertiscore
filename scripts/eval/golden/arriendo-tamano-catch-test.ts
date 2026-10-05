@@ -5,8 +5,8 @@
 //   nuevos ni amoblados: eran deptos chicos (180 bajo 45 m²) que recibían la mediana del arriendo
 //   MENSUAL de comparables ~10% más grandes. Decisión de Fabrizio (03-oct-2026):
 //   1 · LA ESCALA: la mediana mensual del radio se lleva a los m² del depto con (m² / m² mediano)^e, con
-//       e por tipología —1D 0,2, 2D 0,4, 3D y más 0,8: las que minimizan el error en un backtest con
-//       1.371 arriendos reales—, y el arriendo del segmento igual. (Un 0,8 fijo no mejoraba nada.)
+//       e por tipología —1D 0,3, 2D 0,5, 3D 0,2, 4D o más 0,3: el que mejor acierta en el backtest de
+//       validación, regla de Fabrizio del 05-oct—, y el arriendo del segmento igual. (0,8 fijo no mejoraba.)
 //   2 · LA MARCA de «arriendo sospechoso» compara contra deptos de tamaño parecido (±30% de m²), cada uno
 //       llevado al tamaño del depto, no contra el $/m² de todos los tamaños.
 //   3 · LA FICHA de comparables dice la mediana de los avisos y la llevada a tus m², y las dos salen de
@@ -38,21 +38,21 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
   const radio = [fila(450000, 45), fila(520000, 48), fila(560000, 52), fila(600000, 50), fila(640000, 55), fila(680000, 56)];
   {
     const es = [0, 1, 2, 3, 4, 6, null].map((d) => elasticidadArriendo(d));
-    if (es.join() !== "0.2,0.2,0.4,0.8,0.8,0.8,0.2") F(`1 · la elasticidad por tipología no es 1D 0,2 · 2D 0,4 · 3D y más 0,8 (estudio como 1D): ${es.join(" · ")}`);
-    if (Math.round(escalarPorTamano(580000, 51, [45, 48, 52, 50, 55, 56], 0.4)) !== 580000 || escalarPorTamano(580000, 0, [50], 0.4) !== 580000 || escalarPorTamano(580000, 40, [], 0.4) !== 580000) F("1 · la escala mueve un depto del tamaño de sus comparables (o uno sin m²)");
+    if (es.join() !== "0.3,0.3,0.5,0.2,0.3,0.3,0.3") F(`1 · la elasticidad por tipología no es la del backtest de validación (1D 0,3 · 2D 0,5 · 3D 0,2 · 4D+ 0,3; estudio como 1D): ${es.join(" · ")}`);
+    if (Math.round(escalarPorTamano(580000, 51, [45, 48, 52, 50, 55, 56], 0.5)) !== 580000 || escalarPorTamano(580000, 0, [50], 0.5) !== 580000 || escalarPorTamano(580000, 40, [], 0.5) !== 580000) F("1 · la escala mueve un depto del tamaño de sus comparables (o uno sin m²)");
     const chico = resumirComparablesRadio(radio, 35, { modo: "conDorms", factorCierre: 1 })?.arriendo;
     const igual = resumirComparablesRadio(radio, 51, { modo: "conDorms", factorCierre: 1 })?.arriendo;
     const grande = resumirComparablesRadio(radio, 60, { modo: "conDorms", factorCierre: 1 })?.arriendo;
-    if (chico !== 499000 || igual !== 580000 || grande !== 619000) F(`1 · con dormitorios el radio no lleva la mediana mensual a los m² del depto con la elasticidad del 2D (35 m² ${chico}, 51 ${igual}, 60 ${grande}; se esperaba 499.000, 580.000 y 619.000)`);
+    if (chico !== 480000 || igual !== 580000 || grande !== 629000) F(`1 · con dormitorios el radio no lleva la mediana mensual a los m² del depto con la elasticidad del 2D (35 m² ${chico}, 51 ${igual}, 60 ${grande}; se esperaba 480.000, 580.000 y 629.000)`);
     const unD = resumirComparablesRadio(radio.map((f) => ({ ...f, dormitorios: 1 })), 35, { modo: "conDorms", factorCierre: 1, dormitorios: 1 })?.arriendo;
-    if (unD !== Math.round((580000 * Math.pow(35 / 51, 0.2)) / 1000) * 1000) F(`1 · un 1D no usa la elasticidad del 1D (${unD})`);
+    if (unD !== Math.round((580000 * Math.pow(35 / 51, 0.3)) / 1000) * 1000) F(`1 · un 1D no usa la elasticidad del 1D (${unD})`);
     // Segmento: 12 arriendos de 45 a 56 m² y 12 ventas de 60 a 82 UF/m²; el aviso cae al medio.
     const arriendosSeg = Array.from({ length: 12 }, (_, i) => ({ precio: 480000 + i * 15000, superficie_m2: 45 + i }));
     const ventasSeg = Array.from({ length: 12 }, (_, i) => ({ precio: (60 + i * 2) * 50, superficie_m2: 50 }));
     const seg = (sujetoM2?: number, d?: number) => arriendoSegmentado(arriendosSeg as never, ventasSeg as never, 71, 39000, sujetoM2, d);
     const sSin = seg(), s35 = seg(35, 2);
     const m2Tramo = sSin ? 50.5 : NaN; // los 6 del medio: 48 a 53 m²
-    if (!sSin || !s35 || Math.abs(s35.monto - sSin.monto * Math.pow(35 / m2Tramo, 0.4)) > 2000 || !(s35.monto < sSin.monto * 0.9)) F(`1 · el arriendo del segmento no se lleva a los m² del depto con la elasticidad de su tipología (sin m² ${sSin?.monto}, 35 m² ${s35?.monto})`);
+    if (!sSin || !s35 || Math.abs(s35.monto - sSin.monto * Math.pow(35 / m2Tramo, 0.5)) > 2000 || !(s35.monto < sSin.monto * 0.9)) F(`1 · el arriendo del segmento no se lleva a los m² del depto con la elasticidad de su tipología (sin m² ${sSin?.monto}, 35 m² ${s35?.monto})`);
     const ev = sinComentarios(leer("src/lib/avisos/evaluar-aviso.ts"));
     if (!/arriendoSegmentado\(arr\.comparables \?\? \[\], vta\.nearbyProperties \?\? \[\], a\.precioUF \/ a\.m2, uf, a\.m2, a\.dormitorios\)/.test(ev)) F("1 · la evaluación no le pasa los m² y la tipología del aviso al segmento");
     const ms1 = sinComentarios(leer("src/lib/services/market-suggestions.ts"));
@@ -75,10 +75,10 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
   // ── 3 · la ficha de comparables ──
   {
     const r = resumirComparablesRadio(radio, 35, { modo: "conDorms", factorCierre: 1 })!;
-    if (!r?.muestra.ajuste || r.muestra.ajuste.medianaMensual !== 580000 || r.muestra.ajuste.m2Mediano !== 51 || r.muestra.ajuste.elasticidad !== 0.4) F(`3 · la muestra no guarda la mediana mensual y los m² medianos (${JSON.stringify(r?.muestra.ajuste)})`);
+    if (!r?.muestra.ajuste || r.muestra.ajuste.medianaMensual !== 580000 || r.muestra.ajuste.m2Mediano !== 51 || r.muestra.ajuste.elasticidad !== 0.5) F(`3 · la muestra no guarda la mediana mensual y los m² medianos (${JSON.stringify(r?.muestra.ajuste)})`);
     const input = (ajuste: unknown) => ({ arriendo: 429000, zonaRadio: { arriendoPromedio: 429000, sampleSizeArriendo: 6, radioMetros: 750, arriendoFuente: "radio", muestraArriendo: { modo: "conDorms", avisos: r.muestra.avisos, ...(ajuste ? { ajuste } : {}) } } });
     const con = leerMuestraArriendo(input(r.muestra.ajuste)), sin = leerMuestraArriendo(input(null));
-    if (!con?.ajuste || con.ajuste.medianaMensual !== 580000 || con.ajuste.elasticidad !== 0.4 || !sin || "ajuste" in sin) F("3 · leer la muestra guardada pierde el ajuste (o se lo inventa a una muestra de antes)");
+    if (!con?.ajuste || con.ajuste.medianaMensual !== 580000 || con.ajuste.elasticidad !== 0.5 || !sin || "ajuste" in sin) F("3 · leer la muestra guardada pierde el ajuste (o se lo inventa a una muestra de antes)");
     const z = sinComentarios(leer("src/components/analysis/zona/ZonaLtr.tsx"));
     if (!/const aj = conDorms && muestra\.ajuste && superficie > 0 \? muestra\.ajuste : null;/.test(z) || !/\{conDorms && aj \? \(/.test(z)
       || !/<FilaDato k="Mediana de sus arriendos" sub=\{`sus m²: \$\{aj\.m2Mediano\.toLocaleString\("es-CL"\)\} de mediana`\} v=\{money\(aj\.medianaMensual\)\} unidad="\/mes" \/>/.test(z)
@@ -94,7 +94,7 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ ARRIENDO-TAMAÑO · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la mediana mensual del radio y la del segmento se llevan a los m² del depto con la elasticidad de su tipología (1D 0,2 · 2D 0,4 · 3D+ 0,8); la marca compara contra deptos de su tamaño; la ficha cuenta el ajuste con la lista guardada; sugerencias s3");
+    console.log("  ✓ VERDE — la mediana mensual del radio y la del segmento se llevan a los m² del depto con la elasticidad de su tipología (1D 0,3 · 2D 0,5 · 3D 0,2 · 4D+ 0,3); la marca compara contra deptos de su tamaño; la ficha cuenta el ajuste con la lista guardada; sugerencias s3");
   }
   return { hard: fallas.length };
 }
@@ -102,6 +102,10 @@ export async function runArriendoTamanoTier(): Promise<{ hard: number }> {
 // ACTA · verificado EN ROJO (scratchpad mutar-congelar.py, restauradas byte a byte)
 // 03-oct-2026, con 0,8 fijo: 14/14 (A12 quedó VERDE al principio y se endureció).
 // 03-oct-2026, por tipología (1D 0,2 · 2D 0,4 · 3D+ 0,8): 20/20.
+// 05-oct-2026, con los valores de la validación (1D 0,3 · 2D 0,5 · 3D 0,2 · 4D+ 0,3): 23/23 (A1 y A18–A19 sobre los valores nuevos, más:
+//   A21 el 3D con 0,8, el valor anterior ....................... 1
+//   A22 el 4D o más con 0,8 .................................... 1
+//   A23 el 1D con 0,2, el de la exploración ..................... 1)
 //   A1  el 2D con 0,8 ....................................... 1 · 3
 //   A2  el radio sin escala ................................. 1
 //   A3  la escala con otra cifra que la mediana de m² ....... 1 · 3
