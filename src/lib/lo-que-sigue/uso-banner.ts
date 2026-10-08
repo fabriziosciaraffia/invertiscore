@@ -1,9 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// EL BANNER EN USO (08-oct-2026, segunda pasada). Mientras la persona usa el banner del registro, el
-// ticket del pack no sube encima: con el correo con foco, con el paso del código abierto, o con
-// actividad en el banner (toque, tecla, foco, escritura) en los últimos 60 segundos. Los disparadores
-// del ticket siguen contando y el ticket sale apenas el banner pasa un minuto quieto
+// EL BANNER EN USO (08-oct-2026). Mientras la persona usa el banner del registro, el ticket del pack no
+// sube encima. La regla es una sola (tercera pasada): el banner está en uso durante 60 segundos desde la
+// última actividad en él —escribir, tocar, el foco en el correo, abrir el paso del código—. Ningún estado
+// lo retiene: hasta la tercera pasada el correo con foco y el paso del código abierto contaban como uso
+// sin límite, y con el código pedido y sin completar el ticket no salía nunca, ni al final ni al salir
+// por arriba. Los disparadores del ticket siguen contando y sale apenas pasa el minuto
 // (`disparo-ticket.ts`, `enEspera`).
+// Los componentes avisan cambios de estado (`correoConFoco`, `codigoAbierto`); acá solo cuenta como
+// actividad el que se TOMA (foco, código abierto). Soltarlos no es actividad en el banner.
 // Estado de módulo compartido entre BannerRegistro/RegistroUnPaso y TicketPack, sin React adentro; el
 // reloj entra por parámetro para que el tier lo pruebe.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,27 +15,23 @@
 export const QUIETUD_BANNER_MS = 60_000;
 
 export function crearUsoBanner(ahora: () => number = () => Date.now()) {
-  let foco = false;
-  let codigo = false;
   let ultima = Number.NEGATIVE_INFINITY;
+  const marcar = () => {
+    ultima = ahora();
+  };
   return {
     /** Un toque, una tecla, un foco o algo escrito dentro del banner. */
-    actividad() {
-      ultima = ahora();
-    },
-    // Dejar el correo o cerrar el paso del código es el último momento de uso: el minuto se cuenta desde
-    // ahí, no desde la última tecla. Solo al soltar algo que estaba tomado (el desmontaje los suelta
-    // siempre, y eso no alarga la espera).
+    actividad: marcar,
+    /** El correo tomó (true) o soltó (false) el foco: tomarlo es actividad. */
     correoConFoco(si: boolean) {
-      if (foco && !si) ultima = ahora();
-      foco = si;
+      if (si) marcar();
     },
+    /** Se abrió (true) o se cerró (false) el paso del código: abrirlo es actividad. */
     codigoAbierto(si: boolean) {
-      if (codigo && !si) ultima = ahora();
-      codigo = si;
+      if (si) marcar();
     },
     enUso(): boolean {
-      return foco || codigo || ahora() - ultima < QUIETUD_BANNER_MS;
+      return ahora() - ultima < QUIETUD_BANNER_MS;
     },
   };
 }

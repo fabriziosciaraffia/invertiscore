@@ -60,8 +60,8 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
     if (enviado) campoCodigo.current?.focus();
   }, [enviado]);
 
-  // El ticket del pack espera mientras el paso del código está abierto (08-oct-2026, `uso-banner.ts`).
-  // Al cambiar de paso o al salir, nada queda marcado: el campo del correo se desmonta sin blur.
+  // Abrir el paso del código cuenta como actividad en el banner: el ticket del pack espera un minuto desde
+  // ahí y después sale aunque el paso siga abierto (08-oct-2026, tercera pasada, `uso-banner.ts`).
   useEffect(() => {
     usoBanner.codigoAbierto(!!enviado);
     return () => {
