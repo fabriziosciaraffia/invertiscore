@@ -90,8 +90,8 @@ export const TICKET_PACK = {
   linea: (precio: string) => `Pack · 3 análisis por ${precio}`,
   cadaUno: (unitario: string) => ` ${unitario} cada uno`,
   cuerpo: "El mismo informe que acabas de leer, para tres deptos más.",
-  /** El cuerpo son tres líneas en un solo tamaño y sin negrita: `cuerpo`, `cuerpoFuerte` y `negrita`
-   *  (los nombres vienen de la segunda pasada, cuando las dos últimas iban en negrita). */
+  /** El cuerpo son tres líneas en un solo tamaño: `cuerpo` normal, y `cuerpoFuerte` y `negrita` enteras en
+   *  negrita (corrección de Fabrizio, 08-oct-2026). */
   cuerpoFuerte: "La mitad del precio, solo para usuarios nuevos.",
   negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
   boton: (precio: string) => `Comprar por ${precio}`,
