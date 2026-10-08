@@ -322,11 +322,12 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     const t = texto(html);
     // ⚠ ACTA (08-oct-2026, tercera pasada) · el titular en UNA línea, «Pack · 3 análisis por $14.990»; debajo,
     // más chico, «$9.990 $4.997 cada uno» con la referencia tachada; el cuerpo en un solo tamaño, tres
-    // líneas con salto entre ellas, en negrita la segunda y la tercera (las de la segunda pasada). Se
-    // deroga la línea única «<b>Pack…</b> · <s>$9.990</s> $4.997 cada uno».
+    // líneas con salto entre ellas y negrita «únicamente donde se marca»: el texto del goal no marca
+    // ninguna, así que el cuerpo va SIN negrita (se derogan las negritas de la segunda pasada). Se deroga
+    // también la línea única «<b>Pack…</b> · <s>$9.990</s> $4.997 cada uno».
     if (!/<p class="lqs-tk-titular" data-lqs="ticket-linea">Pack · 3 análisis por \$14\.990<\/p>/.test(html)) F("4 · el titular del ticket no es «Pack · 3 análisis por $14.990» solo");
     if (!/<p class="lqs-tk-precio"><s>\$9\.990<\/s> \$4\.997 cada uno<\/p>/.test(html)) F("4 · debajo del titular no va «$9.990 $4.997 cada uno», con el $9.990 tachado");
-    if (!/<p class="lqs-tk-cuerpo">El mismo informe que acabas de leer, para tres deptos más\.<br\/><b>La mitad del precio, solo para usuarios nuevos\.<\/b><br\/><b>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/b><\/p>/.test(html)) F("4 · el cuerpo del ticket no son las tres líneas con salto entre ellas (negrita en la segunda y la tercera)");
+    if (!/<p class="lqs-tk-cuerpo">El mismo informe que acabas de leer, para tres deptos más\.<br\/>La mitad del precio, solo para usuarios nuevos\.<br\/>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/p>/.test(html)) F("4 · el cuerpo del ticket no son las tres líneas con salto entre ellas, sin negrita (el goal no marca ninguna)");
     if (/lqs-tk-negrita/.test(html)) F("4 · el ticket conserva un segundo tamaño de cuerpo (lqs-tk-negrita)");
     if (!/>Comprar por \$14\.990</.test(html)) F("4 · el botón no dice «Comprar por $14.990»");
     const vence = `Solo para usuarios nuevos, en este informe · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
@@ -613,3 +614,6 @@ if (require.main === module) {
 //    T8  el cuerpo sin saltos                             T18 renta corta con el pie del sitio
 //    T9  la segunda línea sin negrita                     T19 el pie del sitio pierde los enlaces
 //    T10 vuelve el segundo tamaño del cuerpo
+// Corrección del mismo día: «negrita únicamente donde se marca» y el texto del goal no marca ninguna, así
+// que el cuerpo va sin negrita. T9 se invierte: vuelve la negrita en la 1.ª, 2.ª o 3.ª línea (T9b–T9d), las
+// tres en ROJO.

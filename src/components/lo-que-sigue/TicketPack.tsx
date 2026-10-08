@@ -236,7 +236,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
           <div className="lqs-tk">
             <form className="lqs-cara" data-activa={cara === "ticket" ? "1" : "0"} onSubmit={pagar} noValidate>
               {/* Tercera pasada (08-oct-2026): el titular en una línea; debajo, más chico, el precio por
-                  análisis; el cuerpo en un solo tamaño, tres líneas. */}
+                  análisis; el cuerpo en un solo tamaño, tres líneas, sin negrita (el goal no marca ninguna). */}
               <div className="lqs-cab">
                 <div>
                   <p className="lqs-tk-titular" data-lqs="ticket-linea">{TICKET_PACK.linea(precio)}</p>
@@ -247,9 +247,9 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
               <p className="lqs-tk-cuerpo">
                 {TICKET_PACK.cuerpo}
                 <br />
-                <b>{TICKET_PACK.cuerpoFuerte}</b>
+                {TICKET_PACK.cuerpoFuerte}
                 <br />
-                <b>{TICKET_PACK.negrita}</b>
+                {TICKET_PACK.negrita}
               </p>
               {!correoSesion && (
                 <input
