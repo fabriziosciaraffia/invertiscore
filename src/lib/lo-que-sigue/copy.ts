@@ -102,8 +102,8 @@ export const TICKET_PACK = {
   errorPago: "No pudimos abrir el pago. Intenta de nuevo.",
   vencido: "Ese precio venció y no vuelve.",
   seguir: "Seguir leyendo",
-  /** «Vence a las 19:04 del 09-oct-2026.» (08-oct-2026: sale «y no vuelve», entra la fecha). */
-  despedida: (hora: string, fecha: string) => `Vence a las ${hora} del ${fecha}.`,
+  /** 08-oct-2026, pedido de Fabrizio: sin la hora y sin «y no vuelve». */
+  despedida: "Vence en 24 horas.",
   despedidaAhorro: (ahorro: string) => `Son ${ahorro} menos en tus próximos tres análisis. ¿La dejas pasar?`,
   comprar: "Quiero los 3 análisis",
   siSeguir: "Sí, seguir leyendo",

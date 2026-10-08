@@ -190,24 +190,12 @@ export function runLoQueSigueTier(): { hard: number } {
     // vencimiento nuevo dice «si te vas, guarda el enlace» —la oferta persiste en el informe— a propósito.
     if (/guard[aá] (tu|el|este) informe/i.test(t)) F(`5 · «guarda tu informe» en el copy: «${t}»`);
   }
-  // ⚠ ACTA (08-oct-2026, pedido de Fabrizio) · la despedida sin «y no vuelve»: «Vence a las 19:04 del
-  // 09-oct-2026.». La fecha sale del mismo instante que la hora, en la hora de Chile (`fechaVencimiento`).
-  // En ROJO antes del arreglo y con cuatro mutaciones: la frase vieja, la fecha en UTC, «sept», el ticket
-  // sin la fecha.
-  const despedidaFn = TICKET_PACK.despedida as unknown as (hora: string, fecha: string) => string;
-  if (despedidaFn("19:04", "09-oct-2026") !== "Vence a las 19:04 del 09-oct-2026." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada («Vence a las 19:04 del 09-oct-2026.»), en tuteo");
-  {
-    const fechaVenc = (OfertaPack as unknown as { fechaVencimiento?: (c: string) => string }).fechaVencimiento;
-    if (typeof fechaVenc !== "function") F("5 · no existe `fechaVencimiento`: la despedida no puede decir la fecha");
-    else {
-      // Vence 2026-10-09T22:04Z = 19:04 del 09-oct en Chile; y a las 23:30 de Chile ya es 10-oct en UTC: la
-      // fecha tiene que ser la de Chile, la misma de la hora.
-      if (fechaVenc("2026-10-08T22:04:00Z") !== "09-oct-2026" || horaVencimiento("2026-10-08T22:04:00Z") !== "19:04") F(`5 · la fecha del vencimiento no es «09-oct-2026» (${fechaVenc("2026-10-08T22:04:00Z")})`);
-      if (fechaVenc("2026-10-09T02:30:00Z") !== "09-oct-2026") F(`5 · la fecha del vencimiento no sale en la hora de Chile (${fechaVenc("2026-10-09T02:30:00Z")})`);
-      if (fechaVenc("2026-09-03T15:00:00Z") !== "04-sep-2026") F(`5 · el mes del vencimiento no va abreviado como «sep» (${fechaVenc("2026-09-03T15:00:00Z")})`);
-    }
-    if (!/\{TICKET_PACK\.despedida\(hora, fechaVencimiento\(createdAt\)\)\}/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("5 · el ticket no le pasa a la despedida la fecha del vencimiento");
-  }
+  // ⚠ ACTA (08-oct-2026, pedido de Fabrizio) · la despedida dice «Vence en 24 horas.», sin la hora y sin
+  // «y no vuelve». Reemplaza a «Vence a las 19:04 del 09-oct-2026.», que duró un commit sin llegar a master.
+  // En ROJO antes del cambio; mutaciones en ROJO: la frase vieja, el ticket diciendo otra cosa.
+  if ((TICKET_PACK.despedida as unknown) !== "Vence en 24 horas." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada («Vence en 24 horas.»), en tuteo");
+  if (!/<p className="lqs-despedida-t">\{TICKET_PACK\.despedida\}<\/p>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("5 · el ticket no dice la despedida aprobada");
+  if ("fechaVencimiento" in OfertaPack) F("5 · queda `fechaVencimiento`, que ya no lee nadie");
   // Las frases aprobadas, literales (30-sep-2026; el banner y el ticket, del 08-oct-2026).
   // ⚠ ACTA (08-oct-2026, segunda pasada) · el banner a la mitad de alto: «Accede gratis» (en negrita) · solo
   // con tu correo; el titular solo con la urgencia; lo que recibe, aparte y en negrita.
