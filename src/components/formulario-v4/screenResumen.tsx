@@ -72,7 +72,7 @@ import { FilaFija, FilaNum, FilaOpciones } from "./filas";
 import { OPCIONES_AMOBLADO } from "./screensActo3";
 import { BarraCta } from "./ui";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
-import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
+import { calificaSubsidioV4, cambioConSubsidio, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { CONDICION_SUBSIDIO, LEY_SUBSIDIO } from "@/lib/constants/subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
@@ -645,16 +645,27 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "dir", cascada: true });
   };
 
+  // El tipo y el precio pueden sacar al depto del subsidio (08-oct-2026): el parche entero —con la
+  // tasa de vuelta a mercado si era la del subsidio— y la nota salen de `cambioConSubsidio`. Hasta
+  // esa fecha la nota decía «volví la tasa a mercado» y la tasa seguía siendo la del subsidio.
   const onTipoChange = (nuevo: "usado" | "nuevo") => {
     if (nuevo === a.tipoPropiedad) return;
-    const antesSub = calificaSubsidioV4(a);
-    w.patchAnswers({ tipoPropiedad: nuevo });
-    const despuesSub = calificaSubsidioV4({ ...a, tipoPropiedad: nuevo });
-    if (antesSub !== despuesSub) {
-      setCascade((c) => ({ ...c, "02": despuesSub ? "Este tipo califica para el subsidio a la tasa: revisa la opción en la tasa." : "Este tipo ya no califica para el subsidio; volví la tasa a mercado." }));
+    const r = cambioConSubsidio(a, { tipoPropiedad: nuevo }, data.tasaMercado, "tipo");
+    w.patchAnswers(r.patch);
+    if (r.nota) {
+      setCascade((c) => ({ ...c, "02": r.nota ?? "" }));
       setOpenCard("02"); // en mobile, abre la card afectada para que la nota se vea
     }
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "tipo", cascada: true });
+  };
+
+  const commitPrecio = (v: string) => {
+    const r = cambioConSubsidio(a, { precio: v }, data.tasaMercado, "precio");
+    commitEdit("precio", r.patch);
+    if (r.nota) {
+      setCascade((c) => ({ ...c, "02": r.nota ?? "" }));
+      setOpenCard("02");
+    }
   };
 
   const onModalidadChange = (nuevo: "ltr" | "str" | "both") => {
@@ -919,7 +930,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
             label="Precio" sub={precioCLP} raw={a.precio ?? ""} display={`UF ${cifra(a.precio, DEC.precioUF, 0)}`}
             decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")} escala={escalaPrecio}
             highlight={highlight === "precio"}
-            cargando={enEspera("precio")} onCommit={(v) => commitEdit("precio", { precio: v })}
+            cargando={enEspera("precio")} onCommit={(v) => commitPrecio(v)}
           />
           {/* Tipo: estructural (muta el detalle + recalcula subsidio). */}
           <FilaOpciones

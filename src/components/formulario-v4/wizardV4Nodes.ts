@@ -311,6 +311,18 @@ export function financiamientoListo(a: WizardV4Answers): boolean {
   return a.financiamientoPrecargado === true && !!a.pieMonto && !!a.tasaInteres && !!a.plazoCredito && (a.modalidad === "ltr" || a.modalidad === "str");
 }
 
+/**
+ * Precargado SIN la tasa (08-oct-2026): el informe de origen se hizo con la tasa del subsidio y la
+ * precarga no la copia —el depto siguiente puede no calificar—. El wizard pregunta la tasa, y nada
+ * más: pie, plazo y modalidad siguen precargados.
+ */
+export function precargadoSinTasa(a: WizardV4Answers): boolean {
+  return a.financiamientoPrecargado === true && !!a.pieMonto && !a.tasaInteres && !!a.plazoCredito && (a.modalidad === "ltr" || a.modalidad === "str");
+}
+
+/** La primera pantalla de la renta, según la modalidad. */
+const pantallaRenta = (a: WizardV4Answers): NodeId => (a.modalidad === "str" ? "adr" : "arr");
+
 export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
@@ -330,14 +342,16 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tam":
       return "precio";
     case "precio":
-      // Con el financiamiento precargado (pack), salta pie, tasa, plazo y modalidad.
-      return financiamientoListo(a) ? (a.modalidad === "str" ? "adr" : "arr") : "pie";
+      // Con el financiamiento precargado (pack), salta pie, tasa, plazo y modalidad. Si la tasa no
+      // vino (era la del subsidio), pasa solo por la tasa.
+      return financiamientoListo(a) ? pantallaRenta(a) : precargadoSinTasa(a) ? "tasa" : "pie";
     case "pie":
       return "tasa";
     case "tasa":
-      return "plazo"; // ruta "usar estimación"; el detour tasaFix se entra con botón
     case "tasaFix":
-      return "plazo";
+      // Ruta "usar estimación"; el detour tasaFix se entra con botón. Con lo demás precargado,
+      // respondida la tasa el financiamiento está completo y sigue la renta.
+      return financiamientoListo(a) ? pantallaRenta(a) : "plazo";
     case "plazo":
       return "mod"; // última pregunta: recién acá la modalidad bifurca algo
     case "arr":
@@ -388,11 +402,12 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tam":
       return "precio";
     case "precio":
-      return financiamientoListo(a) ? (a.modalidad === "str" ? "adr" : "arr") : "pie";
+      return financiamientoListo(a) ? pantallaRenta(a) : precargadoSinTasa(a) ? "tasa" : "pie";
     case "pie":
       return "tasa";
     case "tasa":
-      return "plazo";
+      // Planificando, la tasa todavía puede no estar respondida: precargado sin tasa también sigue a la renta.
+      return financiamientoListo(a) || precargadoSinTasa(a) ? pantallaRenta(a) : "plazo";
     case "plazo":
       return "mod";
     case "arr":

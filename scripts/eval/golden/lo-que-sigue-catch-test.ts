@@ -245,7 +245,9 @@ export function runLoQueSigueTier(): { hard: number } {
     const listo: WizardV4Answers = { financiamientoPrecargado: true, pieMonto: "20", tasaInteres: "4,04", plazoCredito: "25", modalidad: "ltr" } as WizardV4Answers;
     if (computeNext("precio", listo) !== "arr" || (() => { const r = computePlannedPath(listo); return r.includes("pie") || r[r.indexOf("precio") + 1] !== "arr"; })()) F("7 · con el financiamiento precargado el wizard no salta de precio a la renta");
     if (computeNext("precio", { ...listo, modalidad: "str" }) !== "adr") F("7 · en renta corta no salta a la tarifa");
-    if (computeNext("precio", { ...listo, financiamientoPrecargado: false }) !== "pie" || computeNext("precio", { ...listo, tasaInteres: "" }) !== "pie") F("7 · sin precarga completa el wizard se salta el pie");
+    if (computeNext("precio", { ...listo, financiamientoPrecargado: false }) !== "pie" || computeNext("precio", { ...listo, pieMonto: "" }) !== "pie" || computeNext("precio", { ...listo, plazoCredito: "" }) !== "pie") F("7 · sin precarga completa el wizard se salta el pie");
+    // Sin la tasa (la del origen era con subsidio, 08-oct-2026) pregunta solo la tasa: lo fija el tier SUBSIDIO-TASA.
+    if (computeNext("precio", { ...listo, tasaInteres: "" }) !== "tasa") F("7 · precargado sin tasa, el wizard no pregunta la tasa");
     const wz = sinComentarios(leer("src/components/formulario-v4/WizardV4.tsx"));
     if (!/const patch = aplicarPrecarga\(nav\.answers, precarga \?\? \{\}\);\s*if \(Object\.keys\(patch\)\.length > 0\) w\.patchAnswers\(patch\);/.test(wz)) F("7 · el wizard no aplica la precarga con aplicarPrecarga (podría pisar el depto)");
     if (!/if \(!precargaId \|\| precargaAplicada\.current \|\| !w\.inicializado \|\| w\.draftPendiente\) return;/.test(wz)) F("7 · la precarga corre antes de que el borrador se resuelva (lo pisaría)");

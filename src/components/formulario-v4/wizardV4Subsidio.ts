@@ -1,12 +1,14 @@
-// Subsidio a la Tasa (Ley 21.748 + ampliación 11-ago-2026) — helpers v4. Reusa
+// Subsidio a la Tasa (Ley 21.748, ampliada por la Ley 21.836) — helpers v4. Reusa
 // la fuente de verdad (lib/constants/subsidio): vivienda nueva en primera venta
-// dentro del techo vigente, rebaja desde 0,6 pp. El aviso anticipado usa un
+// dentro del techo vigente, 0,6 pp de referencia. El aviso anticipado usa un
 // margen calibrable sobre la estimación interna de valor (NUNCA se muestra el
 // número al usuario — regla de copy dura).
 
 import {
   REBAJA_SUBSIDIO,
   TECHO_UF_SUBSIDIO,
+  CONDICION_SUBSIDIO,
+  LEY_SUBSIDIO,
   calcTasaConSubsidio,
   calificaSubsidio,
   aplicaSubsidio,
@@ -77,4 +79,58 @@ export function subsidioAplicadoV4(a: WizardV4Answers, tasaMercado: number): boo
   const tasa = leerNum(a.tasaInteres, DEC.tasa);
   if (tasa <= 0) return false;
   return aplicaSubsidio(tasa, calcTasaConSubsidio(tasaMercado));
+}
+
+// ── UN USADO NUNCA QUEDA CON LA TASA DEL SUBSIDIO (08-oct-2026) ─────────────────────────────────
+// Hasta acá el resumen cambiaba el tipo o el precio y dejaba la tasa como estaba: un nuevo de UF
+// 5.500 con la opción «Con subsidio» (3,44%) pasado a usado se iba al motor con 3,44%, mientras la
+// nota decía «volví la tasa a mercado». Ahora el cambio sale de acá con su parche entero.
+
+/** El texto de la tasa como lo escribe el wizard (dos decimales, coma). */
+const tasaTexto = (t: number) => t.toFixed(2).replace(".", ",");
+
+/**
+ * ¿La tasa de estas respuestas es la que el wizard dio por el subsidio? Es la de la opción «Con
+ * subsidio» —o una estimada que la compuerta del motor reconoce como tal—; una pre-aprobada es un
+ * dato de la persona y no se toca. No mira si el depto califica: sirve justo cuando deja de hacerlo.
+ */
+export function tasaEsDelSubsidio(a: WizardV4Answers, tasaMercado: number): boolean {
+  if (a.tasaModo === "preaprobada" || !(tasaMercado > 0)) return false;
+  const tasa = leerNum(a.tasaInteres, DEC.tasa);
+  return tasa > 0 && aplicaSubsidio(tasa, calcTasaConSubsidio(tasaMercado));
+}
+
+export type CambioConSubsidio = {
+  /** El parche COMPLETO: el cambio pedido y, si el depto sale del subsidio con su tasa, la de mercado. */
+  patch: Partial<WizardV4Answers>;
+  /** Lo que se le dice en «Cómo lo financias», o null si la calificación no cambió. */
+  nota: string | null;
+};
+
+/**
+ * Un cambio del resumen que puede sacar o meter al depto en el subsidio: el tipo o el precio. Si
+ * sale y la tasa era la del subsidio, la tasa vuelve a la de mercado (estimada) y la nota lo dice
+ * con la cifra; si entra, la nota ofrece revisar la tasa y no la toca.
+ */
+export function cambioConSubsidio(
+  a: WizardV4Answers,
+  cambio: Partial<WizardV4Answers>,
+  tasaMercado: number,
+  motivo: "tipo" | "precio",
+): CambioConSubsidio {
+  const despues = { ...a, ...cambio };
+  const antes = calificaSubsidioV4(a);
+  const ahora = calificaSubsidioV4(despues);
+  if (ahora) {
+    if (antes) return { patch: cambio, nota: null };
+    const quien = motivo === "tipo" ? "Este tipo" : "Con ese precio";
+    return { patch: cambio, nota: `${quien} puede entrar al subsidio a la tasa (${LEY_SUBSIDIO}), que es para ${CONDICION_SUBSIDIO}. Revisa la opción en la tasa.` };
+  }
+  const vuelve = tasaEsDelSubsidio(a, tasaMercado);
+  if (!antes && !vuelve) return { patch: cambio, nota: null };
+  const quien = motivo === "tipo" ? "Un usado no entra" : "Con ese precio ya no entra";
+  const sale = `${quien} al subsidio a la tasa (${LEY_SUBSIDIO}), que es para ${CONDICION_SUBSIDIO}`;
+  return vuelve
+    ? { patch: { ...cambio, tasaModo: "estimada", tasaInteres: tasaTexto(tasaMercado) }, nota: `${sale}: volví la tasa a mercado, ${tasaTexto(tasaMercado)}%.` }
+    : { patch: cambio, nota: `${sale}. Tu tasa no cambia.` };
 }

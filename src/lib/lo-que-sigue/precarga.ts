@@ -9,6 +9,7 @@
 // arriendo y los supuestos del depto no los toca jamás (`CAMPOS_DEPTO`). El tier lo vigila.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { WizardV4Answers } from "@/components/formulario-v4/wizardV4Nodes";
+import { TASA_MERCADO_FALLBACK, aplicaSubsidio, calcTasaConSubsidio, calificaSubsidio } from "@/lib/constants/subsidio";
 
 /** Lo de la persona y el contexto: lo único que la precarga puede escribir. */
 export const CAMPOS_PRECARGA = [
@@ -32,6 +33,23 @@ const num = (v: unknown): number | null => {
 };
 const coma = (n: number) => String(n).replace(".", ",");
 
+/**
+ * ¿El informe de origen se hizo con la tasa del subsidio? La MISMA compuerta que el motor
+ * (`subsidioTasa.aplicado`: el depto califica y la tasa es la subsidiada, con su tolerancia), leída
+ * del input guardado como la leen los dos motores: LTR por `esNuevo` —legacy, `tipo`— y `precio` en
+ * UF; STR por `tipoPropiedad` y `precioCompraUF`. Sin tasa de mercado guardada, el mismo respaldo.
+ */
+export function origenConTasaSubsidio(input: Record<string, unknown>, tipo: "long-term" | "short-term" | null | undefined): boolean {
+  const tasa = num(input.tasaInteres);
+  if (tasa === null || !(tasa > 0)) return false;
+  const tipoDepto = tipo === "short-term"
+    ? String(input.tipoPropiedad ?? "")
+    : typeof input.esNuevo === "boolean" ? (input.esNuevo ? "nuevo" : "usado") : String(input.tipo ?? "");
+  const precioUF = (tipo === "short-term" ? num(input.precioCompraUF) : num(input.precio)) ?? 0;
+  const mercado = num(input.tasaMercado);
+  return calificaSubsidio(tipoDepto, precioUF) && aplicaSubsidio(tasa, calcTasaConSubsidio(mercado !== null && mercado > 0 ? mercado : TASA_MERCADO_FALLBACK));
+}
+
 /** Del input guardado del informe de origen (`analisis.input_data`) a respuestas del wizard. */
 export function precargaDesdeInforme(input: Record<string, unknown> | null | undefined, tipo: "long-term" | "short-term" | null | undefined): Precarga {
   if (!input) return {};
@@ -39,7 +57,11 @@ export function precargaDesdeInforme(input: Record<string, unknown> | null | und
   const pie = num(input.piePct);
   if (pie !== null && pie > 0) { p.pieUnidad = "pct"; p.pieMonto = coma(pie); }
   const tasa = num(input.tasaInteres);
-  if (tasa !== null && tasa > 0) {
+  // UNA TASA CON SUBSIDIO NO SE COPIA (08-oct-2026): es del depto de origen —nuevo, hasta UF
+  // 6.000—, no de la persona. Copiada, el depto siguiente se analizaba con ella aunque fuera usado,
+  // rotulada «corregido por ti» y sin pasar por la pantalla de tasa. Ahora el wizard la pregunta.
+  const conSubsidio = origenConTasaSubsidio(input, tipo);
+  if (tasa !== null && tasa > 0 && !conSubsidio) {
     p.tasaInteres = coma(tasa);
     const mercado = num(input.tasaMercado);
     p.tasaModo = mercado !== null && Math.abs(mercado - tasa) < 0.005 ? "estimada" : "preaprobada";
@@ -53,8 +75,9 @@ export function precargaDesdeInforme(input: Record<string, unknown> | null | und
   if (d !== null) { p.dormitorios = String(d); p.esStudio = d === 0; }
   const b = num(input.banos);
   if (b !== null) p.banos = String(b);
-  // Solo se salta el financiamiento si quedó completo: pie, tasa, plazo y modalidad.
-  if (p.pieMonto && p.tasaInteres && p.plazoCredito && p.modalidad) p.financiamientoPrecargado = true;
+  // Solo se salta el financiamiento si quedó completo: pie, tasa, plazo y modalidad. Sin la tasa
+  // porque era la del subsidio, también: el wizard pregunta solo la tasa (`precargadoSinTasa`).
+  if (p.pieMonto && (p.tasaInteres || conSubsidio) && p.plazoCredito && p.modalidad) p.financiamientoPrecargado = true;
   return p;
 }
 
