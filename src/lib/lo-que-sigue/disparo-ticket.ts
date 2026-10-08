@@ -34,6 +34,25 @@ export const EVENTOS_ACTIVIDAD = ["scroll", "pointermove", "keydown", "touchstar
 
 export type MotivoSubida = "final" | "lectura" | "salida";
 
+/** ¿La persona llegó a la marca? En pantalla o ya por ENCIMA de ella: quien salta de golpe más allá (la
+ *  tecla Fin, un ancla) la pasó aunque nunca la haya visto cruzar (08-oct-2026). */
+export function marcaAlcanzada(top: number, altoVentana: number): boolean {
+  return top < altoVentana;
+}
+
+/** La zona desde la marca hacia abajo, compartida por el observer y el scroll: avisa solo cuando cambia.
+ *  El observer no se entera de un salto (de no visible a no visible no hay cruce); el scroll sí. */
+export function crearVigiaZona(alCambiar: (enZona: boolean) => void) {
+  let previa: boolean | null = null;
+  return {
+    revisar(enZona: boolean) {
+      if (enZona === previa) return;
+      previa = enZona;
+      alCambiar(enZona);
+    },
+  };
+}
+
 export interface RelojDisparo {
   ahora(): number;
   programar(fn: () => void, ms: number): unknown;

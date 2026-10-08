@@ -22,7 +22,7 @@ import { fmtCLP } from "@/lib/pricing";
 import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
-import { crearDisparador, EVENTOS_ACTIVIDAD, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
+import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, marcaAlcanzada, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
@@ -89,26 +89,29 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       },
     });
     let vencidoMedido = false;
+    const vigia = crearVigiaZona((enZona) => {
+      setZonaCierre(enZona);
+      if (!enZona) return;
+      d.llegoAlFinal();
+      // Vencido al llegar al final: no sube, no hay pestaña, y se mide una vez.
+      if (!vencidoMedido && !ofertaPackVigente(createdAt) && debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId))) {
+        vencidoMedido = true;
+        setVigente(false);
+        capturarLqs(posthog, EVENTOS_LQS.packVencido, ctx, { donde: "cliente", vence: hora });
+        marcarTicket(almacen, ctx.analysisId, "despedida");
+      }
+    });
     const io = new IntersectionObserver(
       (entradas) => {
-        for (const e of entradas) {
-          const enZona = e.isIntersecting || e.boundingClientRect.top < 0;
-          setZonaCierre(enZona);
-          if (enZona) {
-            d.llegoAlFinal();
-          }
-          // Vencido al llegar al final: no sube, no hay pestaña, y se mide una vez.
-          if (enZona && !vencidoMedido && !ofertaPackVigente(createdAt) && debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId))) {
-            vencidoMedido = true;
-            setVigente(false);
-            capturarLqs(posthog, EVENTOS_LQS.packVencido, ctx, { donde: "cliente", vence: hora });
-            marcarTicket(almacen, ctx.analysisId, "despedida");
-          }
-        }
+        for (const e of entradas) vigia.revisar(e.isIntersecting || e.boundingClientRect.top < 0);
       },
       { threshold: 0 },
     );
     io.observe(marca);
+    // Un salto de golpe más allá de la marca (la tecla Fin, un ancla) la deja por encima de la pantalla sin
+    // cruzarla, y el observer no avisa: al desplazarse se mira dónde quedó (08-oct-2026).
+    const alDesplazar = () => vigia.revisar(marcaAlcanzada(marca.getBoundingClientRect().top, window.innerHeight));
+    window.addEventListener("scroll", alDesplazar, { passive: true });
     // Pasó la recomendación de Franco: desde ahí cuenta la salida por arriba (08-oct-2026).
     const finReco = document.querySelector(SELECTOR_FIN_RECOMENDACION);
     const ioReco = finReco
@@ -125,6 +128,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     return () => {
       d.detener();
       io.disconnect();
+      window.removeEventListener("scroll", alDesplazar);
       ioReco?.disconnect();
       for (const ev of EVENTOS_ACTIVIDAD) window.removeEventListener(ev, actividad);
       window.clearInterval(lectura);

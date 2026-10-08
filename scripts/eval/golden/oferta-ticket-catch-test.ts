@@ -215,6 +215,33 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       reloj.avanzar(300000);
       if (subidas.length !== 1) F("3 · sube dos veces");
     }
+    // EL SALTO (08-oct-2026): la persona salta de golpe más allá de «Tu resultado a 10 años» (la tecla Fin,
+    // un ancla) y la marca queda POR ENCIMA de la pantalla sin haberla cruzado; el observer no avisa (de no
+    // visible a no visible no hay cruce). Reproducido en /dev/lo-que-sigue: marca a −1.500 px, ticket
+    // cerrado a los 12 s. Cuenta como que la pasó y corren los 8 s: al desplazarse se mira dónde quedó.
+    if (typeof D.marcaAlcanzada !== "function" || typeof D.crearVigiaZona !== "function") F("3 · saltar más allá de la marca del final no cuenta como haberla pasado (no existe `marcaAlcanzada`/`crearVigiaZona`)");
+    else {
+      if (D.marcaAlcanzada(1733, 900)) F("3 · la marca todavía bajo la pantalla cuenta como alcanzada");
+      if (!D.marcaAlcanzada(400, 900)) F("3 · la marca en pantalla no cuenta como alcanzada");
+      if (!D.marcaAlcanzada(-1500, 900)) F("3 · la marca por encima de la pantalla (saltó más allá) no cuenta como pasada");
+      const { reloj, subidas, d } = nuevo();
+      const cambios: boolean[] = [];
+      const vigia = D.crearVigiaZona((enZona: boolean) => { cambios.push(enZona); if (enZona) d.llegoAlFinal(); });
+      vigia.revisar(false); // el observer al montar: la marca está abajo
+      vigia.revisar(D.marcaAlcanzada(-1500, 900)); // el salto: el observer calla; el scroll mira dónde quedó
+      vigia.revisar(D.marcaAlcanzada(-1600, 900)); // más scroll en la zona: no vuelve a avisar
+      reloj.avanzar(7999);
+      if (subidas.length) F("3 · después del salto sube antes de los 8 s");
+      reloj.avanzar(1);
+      if (subidas.join() !== "final") F(`3 · después de saltar más allá de la marca, el ticket no sube a los 8 s (${subidas.join() || "nunca"})`);
+      if (cambios.join() !== "false,true") F(`3 · la vigía de la zona avisa de más o de menos (${cambios.join()})`);
+    }
+    {
+      const tkSalto = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
+      if (!/window\.addEventListener\("scroll", alDesplazar, \{ passive: true \}\)/.test(tkSalto) || !/vigia\.revisar\(marcaAlcanzada\(marca\.getBoundingClientRect\(\)\.top, window\.innerHeight\)\)/.test(tkSalto)) F("3 · el ticket no mira dónde quedó la marca al desplazarse (un salto no cuenta)");
+      if (!/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(tkSalto)) F("3 · el observer de la marca no pasa por la misma vigía que el scroll");
+      if (!/window\.removeEventListener\("scroll", alDesplazar\)/.test(tkSalto)) F("3 · el scroll de la marca no se suelta al desmontar");
+    }
     {
       const { reloj, subidas, d } = nuevo();
       d.actividad();
@@ -278,7 +305,9 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   if (!/crearDisparador\(\{/.test(tk)) F("3 · el ticket no usa el disparador");
   if (!/document\.querySelector\(SELECTOR_FIN_CAPITULOS\)/.test(tk)) F("3 · el ticket no mira la marca del final de los capítulos");
-  if (!/if \(enZona\) \{[^}]*d\.llegoAlFinal\(\);/.test(tk)) F("3 · llegar al final no arranca los 8 s");
+  // ⚠ ACTA (08-oct-2026, el salto) · la zona la decide una vigía que comparten el observer y el scroll; la
+  // regla es la misma: entrar a la zona arranca los 8 s.
+  if (!/const vigia = crearVigiaZona\(\(enZona\) => \{\s*setZonaCierre\(enZona\);\s*if \(!enZona\) return;\s*d\.llegoAlFinal\(\);/.test(tk)) F("3 · llegar al final no arranca los 8 s");
   if (!/setInterval\(\(\) => d\.tick\(document\.visibilityState === "visible"\), 1000\)/.test(tk)) F("3 · la lectura activa no se cuenta cada segundo con la pestaña visible");
   // La actividad: la lista del módulo, enganchada al disparador. (La primera versión de este chequeo
   // buscaba las palabras sueltas en el ticket y «keydown» pasó en verde por el Escape: presencia no es
@@ -653,3 +682,12 @@ if (require.main === module) {
 //    V1 chips y botón en una fila en PC     V4 el padding horizontal fijo (PC)
 //    V2 el botón centrado                    V5 un paso pisa el padding con un corto
 //    V3 el padding horizontal fijo (tel.)   V6 la columna otra vez a 880 px
+//
+// ACTAS DE MUTACIÓN · EL SALTO (08-oct-2026) — saltar de golpe más allá de «Tu resultado a 10 años» cuenta
+// como haberla pasado. Reproducido antes en /dev/lo-que-sigue (marca a −1.500 px, ticket cerrado a los
+// 12 s); gate en ROJO antes del arreglo (4 fallas); arreglado, subió a los 8,1 s en PC y teléfono. Tres
+// chequeos que fijaban el código del observer viejo se reescribieron sobre la vigía, con acta. Las seis
+// en ROJO; restauradas, VERDE:
+//    X1 por encima de la pantalla no cuenta (el bug)   X4 el scroll no se suelta al desmontar
+//    X2 la vigía avisa en cada scroll                  X5 el observer se salta la vigía
+//    X3 sin mirar al desplazarse                       X6 la vigía no arranca los 8 s

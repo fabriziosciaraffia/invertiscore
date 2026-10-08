@@ -114,7 +114,7 @@ export function runLoQueSigueTier(): { hard: number } {
   const ticket = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   // (08-oct-2026) sube por el disparador, que no sube con la oferta vencida (`puedeSubir`); el vencido
   // se mide al llegar al final.
-  if (!/puedeSubir: \(\) => debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\) && ofertaPackVigente\(createdAt\)/.test(ticket) || !/if \(enZona && !vencidoMedido && !ofertaPackVigente\(createdAt\)[^{]*\) \{\s*vencidoMedido = true;\s*setVigente\(false\);\s*capturarLqs\(posthog, EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
+  if (!/puedeSubir: \(\) => debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\) && ofertaPackVigente\(createdAt\)/.test(ticket) || !/crearVigiaZona\(\(enZona\) => \{[\s\S]*?if \(!enZona\) return;[\s\S]*?if \(!vencidoMedido && !ofertaPackVigente\(createdAt\)[^{]*\) \{\s*vencidoMedido = true;\s*setVigente\(false\);\s*capturarLqs\(posthog, EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
   const packApi = sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts"));
   if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido[\s\S]*?status: 410/.test(packApi)) F("2 · el pago desde el ticket no rechaza el pack vencido con 410");
   if (!/generateLink\(\{\s*type: "magiclink",\s*email,/.test(packApi) || !/claimAnalisisAnonimos\(admin, user, token\)/.test(packApi) || !/if \(analysis\.user_id && analysis\.user_id !== user\.id\)/.test(packApi)) F("2 · el pago desde el ticket no crea la cuenta por correo, no adopta el informe o no cuida al dueño");
@@ -157,7 +157,9 @@ export function runLoQueSigueTier(): { hard: number } {
   // `queVaAbajo`. La pestaña sigue: desde la marca del final, cerrado el ticket, con la oferta viva.
   if (!/puedeSubir: \(\) => debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\)/.test(ticket)) F("4 · el ticket no consulta su estado antes de subir solo");
   if (!/onClick=\{\(\) => abrir\("pestaña"\)\}/.test(ticket) || !/const pestana = zonaCierre && !abierto && yaSubio && vigente;/.test(ticket)) F("4 · no hay pestaña para volver al ticket (zona del cierre, cerrado, oferta viva)");
-  if (!/const enZona = e\.isIntersecting \|\| e\.boundingClientRect\.top < 0;\s*setZonaCierre\(enZona\);/.test(ticket)) F("4 · la zona del cierre no se mide (de la marca del final hacia abajo)");
+  // ⚠ ACTA (08-oct-2026, el salto) · la zona la decide una vigía que comparten el observer y el scroll
+  // (un salto más allá de la marca cuenta: tier OFERTA-TICKET §3). El vencido se mide dentro de ella.
+  if (!/crearVigiaZona\(\(enZona\) => \{\s*setZonaCierre\(enZona\);/.test(ticket) || !/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(ticket)) F("4 · la zona del cierre no se mide (de la marca del final hacia abajo)");
   if (!/useAnclaAreaVisible\(velo\);/.test(ticket) || !/useAnclaAbajo\(pestanaRef\);/.test(ticket)) F("4 · la pestaña o el velo no se anclan al área visible real desde el montaje (iOS: anclar al abrir mueve el borde a mitad de la transición)");
   const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
   if (!/vv\.offsetTop \+ vv\.height - el\.offsetHeight/.test(ancla) || !/vv\.addEventListener\("scroll", colocar\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
