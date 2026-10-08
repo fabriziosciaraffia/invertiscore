@@ -238,7 +238,9 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     }
     {
       const tkSalto = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-      if (!/window\.addEventListener\("scroll", alDesplazar, \{ passive: true \}\)/.test(tkSalto) || !/vigia\.revisar\(marcaAlcanzada\(marca\.getBoundingClientRect\(\)\.top, window\.innerHeight\)\)/.test(tkSalto)) F("3 · el ticket no mira dónde quedó la marca al desplazarse (un salto no cuenta)");
+      // ⚠ ACTA (08-oct-2026, la recomendación) · el scroll mira las DOS marcas con `revisarMarcas` (la regla de
+      // la del final se prueba sobre esa función más abajo, en §7); el cableado pasa las dos.
+      if (!/window\.addEventListener\("scroll", alDesplazar, \{ passive: true \}\)/.test(tkSalto) || !/const alDesplazar = \(\) =>\s*revisarMarcas\(\{ finTop: marca\.getBoundingClientRect\(\)\.top, recoTop: finReco \? finReco\.getBoundingClientRect\(\)\.top : null, alto: window\.innerHeight \}, vigia, d\);/.test(tkSalto)) F("3 · el ticket no mira dónde quedaron las marcas al desplazarse (un salto no cuenta)");
       if (!/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(tkSalto)) F("3 · el observer de la marca no pasa por la misma vigía que el scroll");
       if (!/window\.removeEventListener\("scroll", alDesplazar\)/.test(tkSalto)) F("3 · el scroll de la marca no se suelta al desmontar");
     }
@@ -501,6 +503,33 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       if (subidas.join() !== "salida") F("7 · con 60 s de lectura la salida no sube el ticket");
     }
     if (D.SELECTOR_FIN_RECOMENDACION !== '[data-lqs="fin-recomendacion"]') F("7 · la marca del final de la recomendación no es data-lqs=fin-recomendacion");
+    // EL SALTO SOBRE LA RECOMENDACIÓN (08-oct-2026): la marca de la recomendación queda por encima de la
+    // pantalla sin cruzarla y el observer no avisa. Reproducido en /dev/lo-que-sigue (ventana de 240 px: la
+    // marca abajo al cargar, a −400 después del salto, el final todavía abajo): la salida por arriba no
+    // abría el ticket. Cuenta como pasada: al desplazarse se miran las dos marcas (`revisarMarcas`).
+    if (typeof D.revisarMarcas !== "function") F("7 · saltar más allá de la recomendación no cuenta como haberla pasado (no existe `revisarMarcas`)");
+    else {
+      {
+        const { subidas, d } = conEspera({ v: false });
+        const vigia = D.crearVigiaZona(() => {});
+        vigia.revisar(false);
+        D.revisarMarcas({ finTop: 1046, recoTop: 287, alto: 240 }, vigia, d); // al cargar: las dos abajo
+        d.salida(pc);
+        if (subidas.length) F("7 · la recomendación todavía bajo la pantalla cuenta como pasada");
+        D.revisarMarcas({ finTop: 1046, recoTop: -400, alto: 240 }, vigia, d); // el salto: la recomendación arriba, el final abajo
+        d.salida(pc);
+        if (subidas.join() !== "salida") F(`7 · después de saltar más allá de la recomendación, la salida por arriba no sube el ticket (${subidas.join() || "nunca"})`);
+      }
+      {
+        // La misma función cubre el salto sobre el final (§3): sin recomendación en la página, también.
+        const { reloj, subidas, d } = conEspera({ v: false });
+        const vigia = D.crearVigiaZona((en: boolean) => { if (en) d.llegoAlFinal(); });
+        vigia.revisar(false);
+        D.revisarMarcas({ finTop: -1500, recoTop: null, alto: 900 }, vigia, d);
+        reloj.avanzar(8000);
+        if (subidas.join() !== "final") F(`7 · \`revisarMarcas\` no cuenta el salto sobre el final (${subidas.join() || "nunca"})`);
+      }
+    }
   }
   if (!/enEspera: \(\) => usoBanner\.enUso\(\)/.test(tk)) F("6 · el ticket no espera al banner");
   if (!/document\.querySelector\(SELECTOR_FIN_RECOMENDACION\)/.test(tk) || !/d\.pasoLaRecomendacion\(\)/.test(tk)) F("7 · el ticket no mira si ya se pasó la recomendación");
@@ -691,3 +720,11 @@ if (require.main === module) {
 //    X1 por encima de la pantalla no cuenta (el bug)   X4 el scroll no se suelta al desmontar
 //    X2 la vigía avisa en cada scroll                  X5 el observer se salta la vigía
 //    X3 sin mirar al desplazarse                       X6 la vigía no arranca los 8 s
+//
+// ACTAS DE MUTACIÓN · EL SALTO SOBRE LA RECOMENDACIÓN (08-oct-2026) — misma regla para la marca que habilita
+// la salida por arriba. Reproducido antes (ventana de 240 px: la marca a −400 tras el salto, el final abajo,
+// la salida no abría el ticket); gate en ROJO antes del arreglo (2 fallas); arreglado, la salida lo abre.
+// El chequeo de cableado de §3 se reescribió sobre `revisarMarcas`, con acta. Las cinco en ROJO:
+//    Y1 el salto sobre la recomendación no cuenta (el bug)   Y4 el ticket no pasa la marca de la recomendación
+//    Y2 `revisarMarcas` olvida el final                      Y5 el ticket cruza las marcas
+//    Y3 la recomendación todavía abajo cuenta

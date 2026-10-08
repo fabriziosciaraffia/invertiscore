@@ -22,7 +22,7 @@ import { fmtCLP } from "@/lib/pricing";
 import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
-import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, marcaAlcanzada, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
+import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, revisarMarcas, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
@@ -108,10 +108,6 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       { threshold: 0 },
     );
     io.observe(marca);
-    // Un salto de golpe más allá de la marca (la tecla Fin, un ancla) la deja por encima de la pantalla sin
-    // cruzarla, y el observer no avisa: al desplazarse se mira dónde quedó (08-oct-2026).
-    const alDesplazar = () => vigia.revisar(marcaAlcanzada(marca.getBoundingClientRect().top, window.innerHeight));
-    window.addEventListener("scroll", alDesplazar, { passive: true });
     // Pasó la recomendación de Franco: desde ahí cuenta la salida por arriba (08-oct-2026).
     const finReco = document.querySelector(SELECTOR_FIN_RECOMENDACION);
     const ioReco = finReco
@@ -120,6 +116,11 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
         }, { threshold: 0 })
       : null;
     if (finReco && ioReco) ioReco.observe(finReco);
+    // Un salto de golpe (la tecla Fin, un ancla) deja una marca por encima de la pantalla sin cruzarla, y su
+    // observer no avisa: al desplazarse se mira dónde quedaron las dos (08-oct-2026).
+    const alDesplazar = () =>
+      revisarMarcas({ finTop: marca.getBoundingClientRect().top, recoTop: finReco ? finReco.getBoundingClientRect().top : null, alto: window.innerHeight }, vigia, d);
+    window.addEventListener("scroll", alDesplazar, { passive: true });
     const actividad = () => d.actividad();
     for (const ev of EVENTOS_ACTIVIDAD) window.addEventListener(ev, actividad, { passive: true });
     const lectura = window.setInterval(() => d.tick(document.visibilityState === "visible"), 1000);

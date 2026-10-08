@@ -40,6 +40,18 @@ export function marcaAlcanzada(top: number, altoVentana: number): boolean {
   return top < altoVentana;
 }
 
+/** Al desplazarse se miran las DOS marcas, porque un salto puede dejar cualquiera por encima de la pantalla
+ *  sin que su observer avise: la del final (`finTop`) va a la vigía de la zona; la de la recomendación de
+ *  Franco (`recoTop`, null si la página no la tiene) cuenta como pasada para la salida por arriba. */
+export function revisarMarcas(
+  m: { finTop: number; recoTop: number | null; alto: number },
+  vigia: { revisar(enZona: boolean): void },
+  d: { pasoLaRecomendacion(): void },
+): void {
+  vigia.revisar(marcaAlcanzada(m.finTop, m.alto));
+  if (m.recoTop !== null && marcaAlcanzada(m.recoTop, m.alto)) d.pasoLaRecomendacion();
+}
+
 /** La zona desde la marca hacia abajo, compartida por el observer y el scroll: avisa solo cuando cambia.
  *  El observer no se entera de un salto (de no visible a no visible no hay cruce); el scroll sí. */
 export function crearVigiaZona(alCambiar: (enZona: boolean) => void) {
