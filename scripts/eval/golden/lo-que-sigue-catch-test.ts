@@ -97,7 +97,9 @@ export function runLoQueSigueTier(): { hard: number } {
   if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$4.997" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990», «$4.997» ni «$9.990»");
   {
     const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-    if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/<b>\{TICKET_PACK\.linea\(precio\)\}<\/b>\{" · "\}<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
+    // ⚠ ACTA (08-oct-2026, tercera pasada) · la línea única se partió en el titular y, debajo, el precio
+    // por análisis (tier OFERTA-TICKET §4). La regla no cambia: los dos salen de los montos del catálogo.
+    if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/data-lqs="ticket-linea">\{TICKET_PACK\.linea\(precio\)\}<\/p>/.test(tk) || !/<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
     if (!/\{TICKET_PACK\.boton\(precio\)\}/.test(tk) || !/\{TICKET_PACK\.pestana\(precio, hora\)\}/.test(tk)) F("2 · el precio del botón o de la pestaña no sale de PACK_PRECIO_CLP");
     if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
   }

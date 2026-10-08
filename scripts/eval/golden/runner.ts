@@ -377,6 +377,9 @@ function printSeed(r: SeedReport) {
   // los 8 s del final, a los 4 min de lectura o al salir por arriba en PC, una vez; copy y sin barra.
   // Segunda pasada (mismo día): el ticket espera mientras se usa el banner, la salida exige haber pasado
   // la recomendación o un minuto de lectura, la cinta compacta y el «cuándo» con estado. 29 mutaciones.
+  // Tercera pasada: el banner en uso solo 60 s desde la última actividad (con el código pedido el ticket
+  // no salía nunca), todos los pasos con el alto del primero, el ticket en tres líneas y el pie limpio
+  // de los informes. 19 mutaciones más.
   totalHard += (await runOfertaTicketTier()).hard;
   // Tier ENTRADA-CÓDIGO (01-oct-2026, 0 tokens): una sola entrada, el código (/entrar con su copy por
   // contexto); «Entrar» del header con next validado; el avatar con sesión en landing y wizard; el

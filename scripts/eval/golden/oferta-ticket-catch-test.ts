@@ -320,12 +320,14 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     const creado = new Date().toISOString();
     const html = dibujarConRouter(createElement(TicketPack, { ctx: { analysisId: "a1", veredicto: "COMPRAR", modalidad: "ltr" }, createdAt: creado }));
     const t = texto(html);
-    // (08-oct-2026, segunda pasada) «Pack · 3 análisis por $14.990» en negrita y el resto de la línea normal;
-    // «La mitad del precio, solo para usuarios nuevos.» en negrita.
-    if (!/<b>Pack · 3 análisis por \$14\.990<\/b> · <s>\$9\.990<\/s> \$4\.997 cada uno/.test(html)) F("4 · la primera línea del ticket no es «Pack · 3 análisis por $14.990» en negrita y «· $9.990 $4.997 cada uno» normal, con el $9.990 tachado");
-    if (!t.includes("El mismo informe que acabas de leer, para tres deptos más. La mitad del precio, solo para usuarios nuevos.")) F("4 · el ticket no dice qué es el pack");
-    if (!/<b>La mitad del precio, solo para usuarios nuevos\.<\/b>/.test(html)) F("4 · «La mitad del precio, solo para usuarios nuevos.» no va en negrita");
-    if (!/<b[^>]*>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/b>/.test(html)) F("4 · la línea del registro no va en negrita");
+    // ⚠ ACTA (08-oct-2026, tercera pasada) · el titular en UNA línea, «Pack · 3 análisis por $14.990»; debajo,
+    // más chico, «$9.990 $4.997 cada uno» con la referencia tachada; el cuerpo en un solo tamaño, tres
+    // líneas con salto entre ellas, en negrita la segunda y la tercera (las de la segunda pasada). Se
+    // deroga la línea única «<b>Pack…</b> · <s>$9.990</s> $4.997 cada uno».
+    if (!/<p class="lqs-tk-titular" data-lqs="ticket-linea">Pack · 3 análisis por \$14\.990<\/p>/.test(html)) F("4 · el titular del ticket no es «Pack · 3 análisis por $14.990» solo");
+    if (!/<p class="lqs-tk-precio"><s>\$9\.990<\/s> \$4\.997 cada uno<\/p>/.test(html)) F("4 · debajo del titular no va «$9.990 $4.997 cada uno», con el $9.990 tachado");
+    if (!/<p class="lqs-tk-cuerpo">El mismo informe que acabas de leer, para tres deptos más\.<br\/><b>La mitad del precio, solo para usuarios nuevos\.<\/b><br\/><b>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/b><\/p>/.test(html)) F("4 · el cuerpo del ticket no son las tres líneas con salto entre ellas (negrita en la segunda y la tercera)");
+    if (/lqs-tk-negrita/.test(html)) F("4 · el ticket conserva un segundo tamaño de cuerpo (lqs-tk-negrita)");
     if (!/>Comprar por \$14\.990</.test(html)) F("4 · el botón no dice «Comprar por $14.990»");
     const vence = `Solo para usuarios nuevos, en este informe · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
     if (!t.includes(vence)) F(`4 · el vencimiento no dice «${vence}»`);
@@ -341,9 +343,13 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   const est = sinComentarios(leer("src/lib/lo-que-sigue/estado-ui.ts"));
   if (/queVaAbajo/.test(est)) F("5 · queda `queVaAbajo`, que solo decidía la barra");
 
-  // ── 6 · EL TICKET ESPERA MIENTRAS EL BANNER ESTÁ EN USO (08-oct-2026, segunda pasada) ──────
-  // Con el correo con foco, el paso del código abierto o actividad en el banner en los últimos 60 s, el
-  // ticket no sube; los disparadores siguen contando y sale apenas pasa un minuto sin uso.
+  // ── 6 · EL TICKET ESPERA MIENTRAS EL BANNER ESTÁ EN USO (08-oct-2026) ──────────────────────
+  // ⚠ ACTA (08-oct-2026, tercera pasada) · la regla es UNA: el banner está en uso durante 60 s desde la
+  // última actividad en él —escribir, foco, abrir el paso del código—, y ningún ESTADO lo retiene. Hasta
+  // la segunda pasada el correo con foco y el paso del código abierto contaban como uso SIN LÍMITE: con
+  // el código pedido y sin completar, el ticket no salía nunca (reproducido en /dev/lo-que-sigue: cerrado
+  // 75 s después del final y al salir por arriba). Dejar el correo o cerrar el código no es actividad:
+  // los chequeos de la segunda pasada que contaban el minuto desde el blur se derogan con esto.
   const U = req("../../../src/lib/lo-que-sigue/uso-banner");
   if (!U) F("6 · no existe `uso-banner`: el ticket puede taparle el registro a quien está escribiendo su correo");
   else {
@@ -356,25 +362,20 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (!u.enUso()) F("6 · a los 59 s de la última actividad el banner ya no figura en uso");
     t = 60000;
     if (u.enUso()) F("6 · a los 60 s sin actividad el banner sigue en uso");
-    u.correoConFoco(false);
-    if (u.enUso()) F("6 · soltar un foco que no estaba cuenta como actividad (el desmontaje alargaría la espera)");
     u.correoConFoco(true);
-    t = 200000;
-    if (!u.enUso()) F("6 · con el correo con foco el banner no figura en uso");
-    // El minuto se cuenta desde que la persona DEJA el campo, no desde su última tecla (QA del 08-oct:
-    // contado desde la tecla, el ticket subía a los 46 s del abandono).
+    t = 119999;
+    if (!u.enUso()) F("6 · el foco en el correo no cuenta como actividad");
+    t = 120000;
+    if (u.enUso()) F("6 · el correo con foco retiene el banner más de 60 s sin actividad");
     u.correoConFoco(false);
-    t = 259999;
-    if (!u.enUso()) F("6 · el minuto no se cuenta desde que se deja el correo");
-    t = 260000;
-    if (u.enUso()) F("6 · un minuto después de dejar el correo el banner sigue en uso");
+    if (u.enUso()) F("6 · dejar el correo cuenta como actividad (la regla: escribir, foco o abrir el código)");
     u.codigoAbierto(true);
-    t = 999999;
-    if (!u.enUso()) F("6 · con el paso del código abierto el banner no figura en uso");
+    t = 179999;
+    if (!u.enUso()) F("6 · abrir el paso del código no cuenta como actividad");
+    t = 180000;
+    if (u.enUso()) F("6 · el paso del código abierto retiene el banner más de 60 s sin actividad: el ticket no sale nunca");
     u.codigoAbierto(false);
-    if (!u.enUso()) F("6 · el minuto no se cuenta desde que se cierra el paso del código");
-    t = 999999 + 60000;
-    if (u.enUso()) F("6 · cerrado el código hace un minuto, el banner sigue en uso");
+    if (u.enUso()) F("6 · cerrar el paso del código cuenta como actividad");
   }
   if (D) {
     const conEspera = (ocupado: { v: boolean }) => {
@@ -406,6 +407,38 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       d.actividad();
       d.tick(true);
       if (subidas.join() !== "lectura") F(`6 · la lectura no siguió contando mientras el banner estaba en uso (${subidas.join()})`);
+    }
+    // EL CASO EXACTO (tercera pasada), con el banner de verdad y no un `ocupado` de mentira: escribe el
+    // correo, pide el código y deja el paso del código abierto sin completar; llega al final y espera, o
+    // sale por arriba. Las llamadas son las de los componentes, en su orden.
+    if (U) {
+      const caso = () => {
+        const reloj = relojFalso();
+        const u = U.crearUsoBanner(() => reloj.ahora());
+        const subidas: string[] = [];
+        const d = D.crearDisparador({ reloj, puedeSubir: () => true, subir: (m: string) => subidas.push(m), enEspera: () => u.enUso() });
+        u.correoConFoco(true); // RegistroUnPaso: onFocus del correo
+        u.actividad(); // BannerRegistro: las teclas del correo (captura)
+        u.codigoAbierto(false); // RegistroUnPaso: al mandar, el efecto anterior se limpia…
+        u.correoConFoco(false);
+        u.codigoAbierto(true); // …y se abre el paso del código
+        return { reloj, subidas, d };
+      };
+      {
+        const { reloj, subidas, d } = caso();
+        d.llegoAlFinal();
+        for (let s = 1; s <= 59; s++) { reloj.avanzar(1000); d.tick(true); }
+        if (subidas.length) F("6 · con el código recién pedido, el ticket sube antes del minuto");
+        for (let s = 60; s <= 61; s++) { reloj.avanzar(1000); d.tick(true); }
+        if (subidas.join() !== "final") F(`6 · código pedido y paso abierto sin completar: un minuto sin actividad y el ticket no sale al final (${subidas.join() || "nunca"})`);
+      }
+      {
+        const { reloj, subidas, d } = caso();
+        d.pasoLaRecomendacion();
+        for (let s = 1; s <= 61; s++) { reloj.avanzar(1000); d.tick(true); }
+        d.salida({ clientY: 0, haciaFuera: true, pc: true });
+        if (subidas.join() !== "salida") F(`6 · código pedido y paso abierto sin completar: un minuto sin actividad y la salida por arriba no sube el ticket (${subidas.join() || "nunca"})`);
+      }
     }
     // ── 7 · LA SALIDA POR ARRIBA, SOLO DESPUÉS DE LA RECOMENDACIÓN O DE 60 S DE LECTURA ───────
     if (D.LECTURA_PARA_SALIDA_MS !== 60000) F("7 · la lectura que habilita la salida no es de 60 s");
@@ -474,6 +507,41 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   // El alto (≤ 360 px en PC) se mide en el navegador; acá queda la fila de PC, que es lo que más lo baja.
   if (!/@media \(min-width: 768px\) \{[^@]*\.lqs-fila-accion \{ flex-direction: row/.test(cssDentro)) F("4 · en PC los chips «Para ti» y el botón no van en una fila");
 
+  // ── 9 · TODOS LOS PASOS DEL BANNER CON EL ALTO DEL PRIMERO (08-oct-2026, tercera pasada) ─────
+  // El banner mide la oferta y se la pone de alto mínimo a los pasos siguientes; el CSS compacto hace que
+  // ninguno la pase (eso se mide en el navegador: PC 213 px, teléfono 311). Acá: el cableado, que la
+  // medida no la tome un paso que no es la oferta, y la columna a lo ancho (sin ella se encogía al
+  // contenido y en teléfono el paso del correo se desbordaba).
+  {
+    const br = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
+    if (!/style=\{paso !== "oferta" && altoOferta \? \{ minHeight: altoOferta \} : undefined\}/.test(br)) F("9 · los pasos siguientes no toman el alto de la oferta");
+    if (!/if \(el\.dataset\.paso === "oferta"\) setAltoOferta\(el\.offsetHeight\);/.test(br)) F("9 · el alto puede medirse en un paso que no es la oferta (crece paso a paso)");
+    if (!/\.lqs-banner \{ display: flex; flex-direction: column; justify-content: center; \}/.test(cssDentro) || !/\.lqs-banner \.lqs-col \{ width: 100%; \}/.test(cssDentro)) F("9 · el banner no centra el paso en su alto o la columna no va a lo ancho");
+    if (!/\.lqs-banner\[data-paso="registro"\] \.lqs-h3 \{[^}]*font-size: 22px/.test(cssDentro)) F("9 · el registro conserva el titular grande del banner viejo");
+  }
+
+  // ── 10 · EL PIE DE LOS DOS INFORMES, LIMPIO (08-oct-2026, tercera pasada) ──────────────────
+  // Solo el wordmark y el aviso. Sin la frase de marca (mono, mayúsculas espaciadas) ni los enlaces Cómo
+  // calcula, Comunas y Planes. Renta larga no tenía pie (ni el aviso); renta corta usaba el del sitio.
+  {
+    const { AppFooter, DISCLAIMER_CANONICO } = req("../../../src/components/chrome/AppFooter") ?? {};
+    if (!AppFooter) F("10 · no carga AppFooter");
+    else {
+      const pie = dibujarConRouter(createElement(AppFooter, { variant: "informe" }));
+      if (!pie.includes(DISCLAIMER_CANONICO)) F("10 · el pie del informe no lleva el aviso");
+      if (!/franco/.test(texto(pie))) F("10 · el pie del informe no lleva el wordmark");
+      if (/Cómo calcula|>Comunas<|>Planes<|estado más franco/.test(pie)) F("10 · el pie del informe conserva los enlaces o la frase bajo el wordmark");
+      if (/font-mono|uppercase/.test(pie)) F("10 · el pie del informe lleva mono o mayúsculas");
+      const sitio = dibujarConRouter(createElement(AppFooter, { variant: "minimal" }));
+      if (!/Cómo calcula/.test(sitio)) F("10 · el pie del sitio perdió sus enlaces (el cambio es solo del informe)");
+    }
+    for (const [nombre, f] of [["renta larga", "src/app/analisis/[id]/informe-ltr.tsx"], ["renta corta", "src/app/analisis/renta-corta/[id]/results-client.tsx"]] as const) {
+      const s = sinComentarios(leer(f));
+      if (!/<AppFooter variant="informe" \/>/.test(s)) F(`10 · el informe de ${nombre} no lleva el pie del informe`);
+      if (/<AppFooter variant="(minimal|rich)"/.test(s)) F(`10 · el informe de ${nombre} conserva el pie del sitio`);
+    }
+  }
+
   if (fallas.length) {
     console.log(`  ✗ OFERTA-TICKET · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 50)) console.log(`     · ${f}`);
@@ -527,3 +595,21 @@ if (require.main === module) {
 //    S13 disparar ignora la espera                        S28 «Ya» dice lo mismo que las otras
 //    S14 el pendiente no se suelta                        S29 EstasDentro no compila (el piso)
 //    S15 el ticket no espera al banner
+//
+// ACTAS DE MUTACIÓN · TERCERA PASADA (08-oct-2026) — mismo método. Primero el caso exacto, en ROJO
+// sobre el código de la segunda pasada (6 fallas, dos de ellas «el ticket no sale… (nunca)»), reproducido
+// antes en /dev/lo-que-sigue con el pedido del código interceptado (sin correo ni usuario): con el paso
+// del código abierto, el ticket seguía cerrado 75 s después del final y al salir por arriba. Causa:
+// `enUso()` devolvía `foco || codigo || …`, sin límite de tiempo. Arreglado, subió a los 60,8 s.
+// S10–S12 de la segunda pasada (el minuto contado desde el blur) quedan derogadas por la regla nueva.
+// Las 19 en ROJO; restauradas, VERDE.
+//    T1  el código abierto retiene el banner (el bug)     T11 los pasos no toman el alto
+//    T2  el foco retiene el banner                        T12 la medida sin la guarda
+//    T3  abrir el código no cuenta                        T13 la columna sin ancho
+//    T4  el foco no cuenta                                T14 el registro con el titular grande
+//    T5  dejar el correo cuenta                           T15 el pie del informe con la frase
+//    T6  el titular vuelve a la línea única               T16 el pie del informe con los enlaces
+//    T7  el precio sin tachar                             T17 renta larga sin pie
+//    T8  el cuerpo sin saltos                             T18 renta corta con el pie del sitio
+//    T9  la segunda línea sin negrita                     T19 el pie del sitio pierde los enlaces
+//    T10 vuelve el segundo tamaño del cuerpo
