@@ -110,7 +110,11 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
     const ltr = sc("src/app/analisis/[id]/informe-ltr.tsx");
     if (!/const isSharedLink = !isLoggedIn && !!analisis\.user_id && !isOrigenNavegador;/.test(ltr)) F("1 · LTR: su navegador sigue contando como enlace compartido");
     if (!/: isOrigenNavegador\s*\? \{ modo: "suyo" \}\s*: accessLevel === "guest" \|\| isAnonOwner/.test(ltr)) F("1 · LTR: el header de su navegador no es «Tu análisis» (o se decide después de «compartido»)");
-    if (!/isAnonOwner=\{isAnonOwner\}/.test(ltr)) F("1 · LTR: el informe deja de pasar isAnonOwner tal cual (el ticket del pack volvería a quien ya reclamó)");
+    // ⚠ ACTA (08-oct-2026) · «el ticket del pack no vuelve a quien ya reclamó» se derogó: la oferta es del
+    // INFORME y sigue para su dueño de vuelta sin sesión (registrado o tras un pago fallido) hasta que
+    // venza o se compre (goal «banner y ticket», tier OFERTA-TICKET). El cliente ya no recibe
+    // `isAnonOwner`: recibe la oferta que calcula el servidor.
+    if (!/ofertaPack=\{ofertaLqs\.oferta\}/.test(ltr) || /isAnonOwner=\{isAnonOwner\}/.test(ltr)) F("1 · LTR: el ticket no sale de la oferta del informe que calcula el servidor");
     const strC = sc("src/app/analisis/renta-corta/[id]/results-client.tsx");
     if (!/isOrigenNavegador\s*\? \{ modo: "suyo" \}\s*: accessLevel === "guest" \|\| isAnonOwner/.test(strC) || !/isOrigenNavegador,\s*simulacionStr,/.test(sc("src/app/analisis/renta-corta/[id]/informe-str.tsx"))) F("1 · STR: el header de su navegador no es «Tu análisis»");
     const hf = sc("src/components/chrome/HeaderFranco.tsx");

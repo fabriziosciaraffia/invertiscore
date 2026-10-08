@@ -3,20 +3,19 @@
 // ============================================================================
 //   Las dos ofertas después del veredicto del PRIMER informe anónimo (mockup v3 aprobado, variante
 //   con franja):
-//   1 · NADA DE ESTO APARECE CON SESIÓN: banner, barra, ticket y cierre se montan solo con
-//       `isAnonOwner && !isLoggedIn` (LTR) / `isAnonOwner && !userId && !demo` (STR).
+//   1 · DÓNDE APARECE: hasta el 08-oct-2026, «nada con sesión» (`isAnonOwner && !isLoggedIn`). Desde
+//       el goal «banner y ticket» la oferta es del INFORME (tier OFERTA-TICKET): acá queda que banner
+//       y ticket cuelguen de `bannerLqs` / `ticketLqs`, y lo que salió del header y del cierre.
 //   2 · EL PACK VENCE: 24 h desde created_at, lo valida payments/create (410) y lo dice el ticket.
 //   3 · EL PERFIL QUEDA LIGADO AL REGISTRARSE: se guarda al crear (LTR y STR) y el claim lo liga.
 //   4 · EL TICKET NO VUELVE SOLO después de la despedida (estado por análisis, terminal para el
-//       auto-subir), pero se puede volver desde la pestaña mientras la oferta viva. Abajo va UNA
-//       sola cosa según la zona (`queVaAbajo`): barra fuera del cierre; ticket o pestaña en el
-//       cierre. Todo anclado al área visible real (iOS).
-//   5 · EL COPY EN TUTEO: sin voseo en copy.ts (todo: banner, barra, «Estás dentro», ticket,
+//       auto-subir), pero se puede volver desde la pestaña mientras la oferta viva. La barra fija
+//       salió el 08-oct-2026 (y con ella `queVaAbajo`). Anclado al área visible real (iOS).
+//   5 · EL COPY EN TUTEO: sin voseo en copy.ts (todo: banner, «Estás dentro», ticket,
 //       despedida, pestaña, después de pagar, comparar y el correo).
 //   Segunda entrega (30-sep-2026):
-//   6 · EL PRECIO DEL TICKET SALE DEL MOTOR: `precioQueCierraUF` lee la palanca precio del hallazgo
-//       de distancia (vías, palancas o el delta mínimo); los dos informes lo cablean y el ticket lo
-//       usa en la primera línea. Sin precio, la frase va sin cifra: nunca se inventa.
+//   6 · (RETIRADO el 08-oct-2026) el precio que cierra en la primera línea del ticket: el copy nuevo
+//       dice qué es el pack y no cambia con el veredicto; `precio-cierre.ts` se fue sin llamadores.
 //   7 · EL WIZARD PRECARGADO NO PISA EL DEPTO: la precarga solo escribe lo de la persona, solo donde
 //       no hay respuesta; el grafo salta el financiamiento solo si vino completo.
 //   9 · LA MODALIDAD VUELVE CON EL PAGO (m=l|s) y post_pago_visto la registra de ahí.
@@ -24,7 +23,7 @@
 //   8 · EL CORREO SALE UNA VEZ: `debeRecordar` y el reclamo con la condición en el WHERE antes de
 //       enviar.
 //   Más: sale «Guardarlo» del header y «Crear cuenta para guardarlo» del cierre; el pack es
-//   producto real ($14.990 por 3 —$5.000 cada uno—, 3 créditos sin caducidad, pack_pagado desde el
+//   producto real ($14.990 por 3 —$4.997 cada uno desde el 08-oct-2026—, 3 créditos sin caducidad, pack_pagado desde el
 //   servidor); los eventos.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
@@ -35,14 +34,11 @@ import { join } from "node:path";
 import { diaVencimiento, horaVencimiento, leerRetornoPack, modalidadDeTipo, ofertaPackVigente, productosRecuperables, urlRetornoPack, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
-import { queVaAbajo } from "../../../src/lib/lo-que-sigue/estado-ui";
 import { perfilDesdeLtr, perfilDesdeStr, tipologiaDe } from "../../../src/lib/lo-que-sigue/perfil";
-import { CHECKOUT_PACK, COMPARAR, CORREO_RECORDATORIO, DESPUES_DE_PAGAR, ESTAS_DENTRO, FRASE_REGISTRO, leadTicket, OFERTA_REGISTRO, PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
-import { precioQueCierraUF } from "../../../src/lib/lo-que-sigue/precio-cierre";
+import { CHECKOUT_PACK, COMPARAR, CORREO_RECORDATORIO, DESPUES_DE_PAGAR, ESTAS_DENTRO, OFERTA_REGISTRO, PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, REGISTRO_UN_PASO, RETORNO_SIN_SESION, TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
 import { aplicarPrecarga, CAMPOS_DEPTO, CAMPOS_PRECARGA, precargaDesdeInforme } from "../../../src/lib/lo-que-sigue/precarga";
 import { correoRecordatorioPack, debeRecordar } from "../../../src/lib/lo-que-sigue/recordatorio";
 import { computeNext, computePlannedPath, type WizardV4Answers } from "../../../src/components/formulario-v4/wizardV4Nodes";
-import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { EVENTOS_LQS } from "../../../src/lib/lo-que-sigue/eventos";
 import { CODIGO_MAX, CODIGO_MIN, codigoValido, limpiarCodigo } from "../../../src/lib/lo-que-sigue/codigo";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
@@ -63,18 +59,14 @@ export function runLoQueSigueTier(): { hard: number } {
 
   // ── 1 · NADA CON SESIÓN ────────────────────────────────────────────────────
   const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
-  // (01-oct-2026, ENTRADA-CÓDIGO) El gate suma a quien ACABA de entrar por el código del banner (la marca
-  // «recién dentro» de la pestaña): tras el refresco sigue viendo «Estás dentro» y el ticket, ya sin pedir
-  // correo. Con sesión de antes, nada de esto (la marca solo la escribe el banner).
-  if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !isLoggedIn\) \|\| \(!!recienDentro && !isSharedView\)\) && !!analysisId;/.test(ltr)) F("1 · el gate LTR no es «dueño anónimo sin sesión» (o recién dentro)");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(ltr)) F("1 · el banner LTR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} correoSesion=\{recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(ltr)) F("1 · el ticket LTR no cuelga del gate (o desplazó el cierre de siempre)"); // (01-oct-2026) el cierre de siempre es CierreInforme
-  if (/CierreRegistro|lqs-cierre/.test(ltr)) F("1 · vuelve el texto del registro al final del informe LTR: la barra fija es la repetición");
-  const str = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
-  if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !userId\) \|\| !!recienDentro\) && !demo;/.test(str)) F("1 · el gate STR no es «dueño anónimo sin sesión, fuera del demo» (o recién dentro)");
-  if (!/despuesDeLaCard=\{loQueSigue \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(str)) F("1 · el banner STR no cuelga del gate");
-  if (!/\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} correoSesion=\{recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(str)) F("1 · el ticket STR no cuelga del gate");
-  if (/CierreRegistro|lqs-cierre/.test(str)) F("1 · vuelve el texto del registro al final del informe STR");
+  // ⚠ ACTA (08-oct-2026) · «nada con sesión» se derogó: la oferta es del INFORME (goal «banner y ticket»).
+  // Quién la ve lo fija el tier OFERTA-TICKET con las funciones puras y el pago fallido; acá queda que
+  // banner y ticket cuelguen de esos gates y que el cierre de siempre siga siendo CierreInforme.
+  for (const [nombre, s] of [["LTR", ltr], ["STR", sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"))]] as const) {
+    if (!/despuesDeLaCard=\{bannerLqs \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(s)) F(`1 · el banner ${nombre} no cuelga de su gate`);
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
+    if (/CierreRegistro|lqs-cierre/.test(s)) F(`1 · vuelve el texto del registro al final del informe ${nombre}`);
+  }
   if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
     const s = sinComentarios(leer(f));
@@ -95,12 +87,13 @@ export function runLoQueSigueTier(): { hard: number } {
   if (venceEl(t0).toISOString() !== "2026-09-29T21:04:00.000Z") F("2 · venceEl no suma 24 h");
   if (horaVencimiento(t0) !== "18:04") F(`2 · la hora no se dice en hora de Chile (${horaVencimiento(t0)})`);
   if (diaVencimiento(t0, new Date("2026-09-29T12:00:00Z")) !== "hoy" || diaVencimiento(t0, new Date("2026-09-28T12:00:00Z")) !== "mañana") F("2 · «hoy»/«mañana» no salen del reloj de Chile");
-  if (FLOW_PRODUCTS.pack3.amount !== PACK_PRECIO_CLP || PACK_PRECIO_CLP !== 14990 || PACK_ANALISIS !== 3 || PACK_UNITARIO_CLP !== 5000 || FLOW_PRODUCTS.pack3.kind !== "one_time") F("2 · el pack no es 3 análisis por $14.990 ($5.000 cada uno) en el catálogo de Flow");
-  if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$5.000" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990» ni «$5.000 por análisis en vez de $9.990»");
+  // (08-oct-2026) el pack dice «$4.997 cada uno», como lo escribió Fabrizio: $14.990 / 3, derivado.
+  if (FLOW_PRODUCTS.pack3.amount !== PACK_PRECIO_CLP || PACK_PRECIO_CLP !== 14990 || PACK_ANALISIS !== 3 || PACK_UNITARIO_CLP !== 4997 || FLOW_PRODUCTS.pack3.kind !== "one_time") F("2 · el pack no es 3 análisis por $14.990 ($4.997 cada uno) en el catálogo de Flow");
+  if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$4.997" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990», «$4.997» ni «$9.990»");
   {
     const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-    if (!/\{TICKET_PACK\.ahorro\(fmtCLP\(PACK_UNITARIO_CLP\), fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\)\}/.test(tk) || TICKET_PACK.ahorro("$5.000", "$9.990") !== "$5.000 cada uno en vez de $9.990.") F("2 · el ahorro no dice «$5.000 cada uno en vez de $9.990.» con los montos del catálogo");
-    if (!/\{TICKET_PACK\.titulo\(fmtCLP\(PACK_PRECIO_CLP\)\)\}/.test(tk) || TICKET_PACK.titulo("$14.990") !== "3 análisis por $14.990" || !/\{TICKET_PACK\.pestana\(fmtCLP\(PACK_PRECIO_CLP\), hora\)\}/.test(tk)) F("2 · el precio del ticket o de la pestaña no sale de PACK_PRECIO_CLP");
+    if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/\{TICKET_PACK\.linea\(precio\)\}<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
+    if (!/\{TICKET_PACK\.boton\(precio\)\}/.test(tk) || !/\{TICKET_PACK\.pestana\(precio, hora\)\}/.test(tk)) F("2 · el precio del botón o de la pestaña no sale de PACK_PRECIO_CLP");
     if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
   }
   const create = sinComentarios(leer("src/app/api/payments/create/route.ts"));
@@ -111,7 +104,9 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/product === PRODUCTO_PACK\) \{[\s\S]*?grantCredits\(userId, PRODUCTO_PACK, PACK_ANALISIS, \{ paymentId, noExpire: true \}\)/.test(confirm)) F("2 · payments/confirm no otorga los 3 créditos sin caducidad");
   if (!/capturarServidor\(eventoPackPagado\(/.test(confirm)) F("2 · pack_pagado no sale del servidor al confirmar");
   const ticket = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-  if (!/if \(!ofertaPackVigente\(createdAt\)\) \{\s*setVigente\(false\);[\s\S]*?EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);\s*continue;/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
+  // (08-oct-2026) sube por el disparador, que no sube con la oferta vencida (`puedeSubir`); el vencido
+  // se mide al llegar al final.
+  if (!/puedeSubir: \(\) => debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\) && ofertaPackVigente\(createdAt\)/.test(ticket) || !/if \(enZona && !vencidoMedido && !ofertaPackVigente\(createdAt\)[^{]*\) \{\s*vencidoMedido = true;\s*setVigente\(false\);\s*capturarLqs\(posthog, EVENTOS_LQS\.packVencido[\s\S]*?marcarTicket\(almacen, ctx\.analysisId, "despedida"\);/.test(ticket)) F("2 · el ticket sube aunque el pack haya vencido (o no mide pack_vencido)");
   const packApi = sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts"));
   if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido[\s\S]*?status: 410/.test(packApi)) F("2 · el pago desde el ticket no rechaza el pack vencido con 410");
   if (!/generateLink\(\{\s*type: "magiclink",\s*email,/.test(packApi) || !/claimAnalisisAnonimos\(admin, user, token\)/.test(packApi) || !/if \(analysis\.user_id && analysis\.user_id !== user\.id\)/.test(packApi)) F("2 · el pago desde el ticket no crea la cuenta por correo, no adopta el informe o no cuida al dueño");
@@ -149,36 +144,31 @@ export function runLoQueSigueTier(): { hard: number } {
     if (!debeSubirTicket(leerEstadoTicket(almacen, "otro"))) F("4 · el estado de un informe contamina a otro");
     if (!debeSubirTicket(leerEstadoTicket(null, "x"))) F("4 · sin storage el ticket no sube nunca");
   }
-  if (!/if \(!debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\)\) continue;\s*subioEnEstaCarga = true;/.test(ticket)) F("4 · el ticket no consulta su estado antes de subir solo");
+  // ⚠ ACTA (08-oct-2026) · el ticket sube por el disparador (tier OFERTA-TICKET: 8 s del final, 4 min de
+  // lectura o la salida en PC), que consulta el estado antes de subir; la barra fija salió y con ella
+  // `queVaAbajo`. La pestaña sigue: desde la marca del final, cerrado el ticket, con la oferta viva.
+  if (!/puedeSubir: \(\) => debeSubirTicket\(leerEstadoTicket\(almacen, ctx\.analysisId\)\)/.test(ticket)) F("4 · el ticket no consulta su estado antes de subir solo");
   if (!/onClick=\{\(\) => abrir\("pestaña"\)\}/.test(ticket) || !/const pestana = zonaCierre && !abierto && yaSubio && vigente;/.test(ticket)) F("4 · no hay pestaña para volver al ticket (zona del cierre, cerrado, oferta viva)");
-  if (!/const enZona = e\.isIntersecting \|\| e\.boundingClientRect\.top < 0;\s*if \(enZona\) entrarZonaCierre\(\);\s*else salirZonaCierre\(\);/.test(ticket)) F("4 · la zona del cierre no se mide (del sentinel al final de la página)");
-  if (queVaAbajo({ bannerAtras: true, zonaCierre: false, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "barra") F("4 · fuera del cierre no va la barra");
-  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: true, ticketYaSubio: true, ofertaVigente: true }) !== "ticket") F("4 · con el ticket arriba va otra cosa");
-  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: true, ofertaVigente: true }) !== "pestaña") F("4 · en el cierre, cerrado el ticket, no queda la pestaña");
-  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: true, ofertaVigente: false }) !== "nada") F("4 · vencida la oferta sigue la pestaña");
-  if (queVaAbajo({ bannerAtras: true, zonaCierre: true, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "nada") F("4 · en la zona del cierre, antes de que el ticket suba, aparece la barra");
-  if (queVaAbajo({ bannerAtras: false, zonaCierre: false, ticketAbierto: false, ticketYaSubio: false, ofertaVigente: true }) !== "nada") F("4 · la barra aparece antes de que el banner quede atrás");
-  if (!/useAnclaAbajo\(barraRef\);/.test(sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"))) || !/useAnclaAreaVisible\(velo\);/.test(ticket) || !/useAnclaAbajo\(pestanaRef\);/.test(ticket)) F("4 · la barra, la pestaña o el velo no se anclan al área visible real desde el montaje (iOS: anclar al abrir mueve el borde a mitad de la transición)");
+  if (!/const enZona = e\.isIntersecting \|\| e\.boundingClientRect\.top < 0;\s*setZonaCierre\(enZona\);/.test(ticket)) F("4 · la zona del cierre no se mide (de la marca del final hacia abajo)");
+  if (!/useAnclaAreaVisible\(velo\);/.test(ticket) || !/useAnclaAbajo\(pestanaRef\);/.test(ticket)) F("4 · la pestaña o el velo no se anclan al área visible real desde el montaje (iOS: anclar al abrir mueve el borde a mitad de la transición)");
   const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
   if (!/vv\.offsetTop \+ vv\.height - el\.offsetHeight/.test(ancla) || !/vv\.addEventListener\("scroll", colocar\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
   if (!/const useAntesDePintar = typeof window !== "undefined" \? useLayoutEffect : useEffect;/.test(ancla) || (ancla.match(/useAntesDePintar\(\(\) => \{/g) ?? []).length !== 2) F("4 · el ancla no se fija antes de pintar (useLayoutEffect)");
   if (!/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?transition: opacity 160ms ease !important;[\s\S]*?\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ opacity: 1;/.test(leer("src/components/lo-que-sigue/lo-que-sigue.css"))) F("4 · con «Reducir movimiento» el borde inferior aparece de golpe en vez de fundirse");
   if (!/function despedirse\(\) \{\s*if \(cara === "despedida"\) return;\s*setCara\("despedida"\);\s*capturarLqs\(posthog, EVENTOS_LQS\.despedidaVista/.test(ticket)) F("4 · cerrar o «Seguir leyendo» no cambian a la despedida en el mismo lugar");
-  if (!/function cerrarDelTodo\(\) \{\s*marcarTicket\([^)]*, ctx\.analysisId, "despedida"\);\s*setAbierto\(false\);\s*cerrarTicket\(\);/.test(ticket)) F("4 · «Sí, seguir leyendo» no cierra ni deja el ticket como terminal");
+  if (!/function cerrarDelTodo\(\) \{\s*marcarTicket\([^)]*, ctx\.analysisId, "despedida"\);\s*setAbierto\(false\);\s*\}/.test(ticket)) F("4 · «Sí, seguir leyendo» no cierra ni deja el ticket como terminal");
   if (!/className="lqs-x" onClick=\{despedirse\}/.test(ticket) || !/className="lqs-seguir" onClick=\{despedirse\}/.test(ticket)) F("4 · la X o «Seguir leyendo» cierran de golpe en vez de despedirse");
   if ((ticket.match(/role=\{abierto \? "dialog" : undefined\}/g) ?? []).length !== 1) F("4 · el ticket no es UN solo diálogo");
-  const banner = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
-  if (!/const barra = paso !== "dentro" && queVaAbajo\(\{ bannerAtras: atras, zonaCierre, ticketAbierto,/.test(banner) || !/data-visible=\{barra \? "1" : "0"\}/.test(banner)) F("4 · la barra fija no sale de queVaAbajo (una sola cosa según la zona) o sigue después de «Estás dentro»");
   const css = leer("src/components/lo-que-sigue/lo-que-sigue.css");
-  if (!/\.lqs-barra\[data-visible="1"\] \{ transform: translateY\(0\)/.test(css) || !/\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ transform: translateY\(0\)/.test(css) || !/\.lqs-franja/.test(css)) F("4 · la coreografía (barra ↔ hoja por el mismo borde) o la franja no están en el CSS");
+  if (!/\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ transform: translateY\(0\)/.test(css) || !/\.lqs-franja/.test(css)) F("4 · la hoja no sube por el borde inferior o la franja no está en el CSS");
   if (!/\.lqs-banner \{ margin: 0 calc\(50% - 50vw\)/.test(css)) F("4 · el banner no va de borde a borde");
 
   // ── 5 · EL COPY EN TUTEO ───────────────────────────────────────────────────
   const textos: string[] = [
-    ...Object.values(FRASE_REGISTRO), ...Object.values(RETORNO_SIN_SESION), ...Object.values(PAGO_OTRA_CUENTA), ...Object.values(PAGO_PACK_NO_PASO),
+    ...Object.values(RETORNO_SIN_SESION), ...Object.values(PAGO_OTRA_CUENTA), ...Object.values(PAGO_PACK_NO_PASO),
     ...Object.values(OFERTA_REGISTRO), ...Object.values(REGISTRO_UN_PASO).map((v) => (typeof v === "function" ? v("x@y.cl") : v)),
     ...Object.values(TICKET_PACK).map((v) => (typeof v === "function" ? (v as (...a: string[]) => string)("hoy", "21:04") : v)),
-    ...(["BUSCAR OTRA", "AJUSTA SUPUESTOS", "COMPRAR"] as const).flatMap((v) => [leadTicket(v, 1934, "$5.000"), leadTicket(v, null, "$5.000"), DESPUES_DE_PAGAR.fraseVeredicto[v]]),
+    ...(["BUSCAR OTRA", "AJUSTA SUPUESTOS", "COMPRAR"] as const).map((v) => DESPUES_DE_PAGAR.fraseVeredicto[v]),
     ESTAS_DENTRO.titular, ESTAS_DENTRO.cuerpo, ESTAS_DENTRO.tocaCambiar, ESTAS_DENTRO.aprende, ESTAS_DENTRO.cuando, ESTAS_DENTRO.errorGuardar, ...ESTAS_DENTRO.horizontes.map((h) => h.texto), ...Object.values(ESTAS_DENTRO.modalidad),
     DESPUES_DE_PAGAR.titular(3), DESPUES_DE_PAGAR.titular(1), DESPUES_DE_PAGAR.titular(0), DESPUES_DE_PAGAR.titular(null), DESPUES_DE_PAGAR.cuerpo, DESPUES_DE_PAGAR.boton,
     COMPARAR.titulo, COMPARAR.bajada, COMPARAR.boton, COMPARAR.notaPesos, COMPARAR.minimo, ...Object.values(COMPARAR.filas),
@@ -188,14 +178,16 @@ export function runLoQueSigueTier(): { hard: number } {
   for (const t of textos) {
     if (VOSEO.test(t)) F(`5 · voseo en el copy: «${t}»`);
     if (/\bdesde\b/i.test(t)) F(`5 · «desde» en el copy: «${t}»`);
-    if (/guard[aá]/i.test(t)) F(`5 · «guarda tu informe» en el copy: «${t}»`);
+    // ⚠ ACTA (08-oct-2026) · la regla es «sin "guarda tu informe"» (el informe ya queda en la cuenta). El
+    // vencimiento nuevo dice «si te vas, guarda el enlace» —la oferta persiste en el informe— a propósito.
+    if (/guard[aá] (tu|el|este) informe/i.test(t)) F(`5 · «guarda tu informe» en el copy: «${t}»`);
   }
   if (TICKET_PACK.despedida("21:04") !== "Vence a las 21:04 y no vuelve." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada, en tuteo");
-  // Las frases aprobadas, literales (30-sep-2026).
-  if (FRASE_REGISTRO["BUSCAR OTRA"] !== "Este depto no conviene. Franco ya tiene los que sí." || FRASE_REGISTRO["AJUSTA SUPUESTOS"] !== "Este depto conviene si lo negocias. Franco tiene los que convienen tal como están." || FRASE_REGISTRO.COMPRAR !== "Este depto conviene. Y Franco tiene más oportunidades como esta.") F("5 · la primera línea del banner no es la aprobada");
-  if (OFERTA_REGISTRO.boton !== "Quiero acceso" || OFERTA_REGISTRO.bajoBoton !== "Gratis. Solo tu correo." || `${OFERTA_REGISTRO.barraTitulo} ${OFERTA_REGISTRO.barraSub}` !== "Las oportunidades que otros no ven. Solo para usuarios de Franco.") F("5 · el botón, el «Gratis» o la barra no son los aprobados");
+  // Las frases aprobadas, literales (30-sep-2026; el banner y el ticket, del 08-oct-2026).
+  if (OFERTA_REGISTRO.ojo !== "Gratis · solo con tu correo" || OFERTA_REGISTRO.titular !== "Los deptos que convienen como inversión se van rápido. Regístrate y Franco te manda cada semana una selección según tu perfil." || OFERTA_REGISTRO.bajada !== "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día." || OFERTA_REGISTRO.boton !== "Quiero recibirlos") F("5 · el banner no es el aprobado");
   if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Ya|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
-  if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton !== "Quiero los 3 análisis") F("5 · la pestaña o el botón del ticket no son los aprobados");
+  if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton("$14.990") !== "Comprar por $14.990") F("5 · la pestaña o el botón del ticket no son los aprobados");
+  if (TICKET_PACK.vencimiento("hoy a las 21:04") !== "Solo para usuarios nuevos, en este informe · hasta hoy a las 21:04 · si te vas, guarda el enlace") F("5 · el vencimiento del ticket no es el aprobado");
   // (30-sep-2026) El copy nuevo de Fabrizio, con la guía de búsqueda debajo; sin guía, Buscar otro dice la de antes.
   if (DESPUES_DE_PAGAR.fraseVeredicto["BUSCAR OTRA"] !== "Mismo pie, mismo plazo. Abajo, deptos parecidos ya revisados con tus números." || DESPUES_DE_PAGAR.fraseVeredicto["AJUSTA SUPUESTOS"] !== "Compara y mira si alguno conviene sin negociar, y así tienes con qué presionar." || DESPUES_DE_PAGAR.fraseVeredicto.COMPRAR !== "Compara y mira si este sigue siendo el mejor." || DESPUES_DE_PAGAR.buscarSinGuia !== "Mismo pie, mismo plazo. Solo falta el próximo depto.") F("5 · la frase por veredicto de después de pagar no es la aprobada");
   if (`${DESPUES_DE_PAGAR.titular(3)} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 análisis. El próximo es más fácil: tus números del primer informe ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
@@ -208,25 +200,10 @@ export function runLoQueSigueTier(): { hard: number } {
   }
   if (!/\\u00bf|¿La dejas pasar\?/.test(leer("src/lib/lo-que-sigue/copy.ts"))) F("5 · la despedida no está en copy.ts");
 
-  // ── 6 · EL PRECIO DEL TICKET SALE DEL MOTOR ───────────────────────────────
-  {
-    const dv = (valor: Record<string, unknown>) => ({ id: "distancia_veredicto", tipo: "distancia_umbral", valor }) as unknown as HallazgoDistanciaVeredicto;
-    const viaPrecio = (uf: number) => [{ palanca: "precio", estado: "cruza", objetivo: uf }];
-    const ajusta = dv({ vias: viaPrecio(4175) });
-    const buscar = dv({ viasHastaComprar: viaPrecio(1934) });
-    if (precioQueCierraUF("AJUSTA SUPUESTOS", ajusta, 4500) !== 4175) F("6 · AJUSTA no lee el precio de la vía del motor");
-    if (precioQueCierraUF("BUSCAR OTRA", buscar, 2400) !== 1934) F("6 · BUSCAR no lee el precio de la vía hasta Comprar");
-    if (precioQueCierraUF("COMPRAR", ajusta, 4500) !== null) F("6 · COMPRAR recibe un precio que cierra: su frase no lleva cifra");
-    if (precioQueCierraUF("AJUSTA SUPUESTOS", null, 4500) !== null) F("6 · sin hallazgo se inventa un precio");
-    if (precioQueCierraUF("AJUSTA SUPUESTOS", dv({ vias: viaPrecio(4600) }), 4500) !== null) F("6 · un «precio que cierra» por encima del precio pedido pasa al ticket");
-    if (!/Para que este conviniera, tendría que costar UF 1\.934\. Equivocarte con un depto cuesta millones\. Saberlo antes, \$5\.000\./.test(leadTicket("BUSCAR OTRA", 1934, "$5.000"))) F("6 · la frase BUSCAR no lleva el precio en UF con punto de miles");
-    if (leadTicket("AJUSTA SUPUESTOS", 4175, "$5.000") !== "Este conviene si te lo dejan en UF 4.175. Mientras negocias, compáralo con otros de la zona: si hay uno que conviene sin negociar, tienes con qué presionar.") F("6 · la frase AJUSTA no es la aprobada con el precio");
-    if (/UF/.test(leadTicket("AJUSTA SUPUESTOS", null, "$5.000")) || /UF/.test(leadTicket("BUSCAR OTRA", null, "$5.000"))) F("6 · sin precio del motor la frase inventa una cifra");
-    const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-    if (!/\{leadTicket\(v, precioCierreUF, fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("6 · la primera línea del ticket no es leadTicket con el precio que recibe");
-    if (!/const precioCierreLqs = precioQueCierraUF\(\s*resolvedVeredicto,\s*\(\(results\?\.hallazgos[\s\S]{0,120}\.find\(\(h\) => h\.id === "distancia_veredicto"\)[\s\S]{0,80}\?\? null,\s*inputData\?\.precio,\s*\);/.test(ltr)) F("6 · el informe LTR no saca el precio del hallazgo de distancia del motor");
-    if (!/const precioCierreLqs = precioQueCierraUF\(veredicto, distanciaPortada, precioCompraUFIn\);/.test(str)) F("6 · el informe STR no saca el precio de la distancia del motor");
-  }
+  // ── 6 · (RETIRADO el 08-oct-2026) EL PRECIO DEL TICKET SALÍA DEL MOTOR ─────────────────
+  // El copy nuevo del ticket (goal «banner y ticket») dice qué es el pack y no cambia con el veredicto:
+  // `leadTicket` y `precio-cierre.ts` quedaron sin llamadores y se fueron. Sus mutaciones (M44–M48, v3)
+  // vigilaban algo que ya no existe.
 
   // ── 7 · EL WIZARD PRECARGADO NO PISA EL DEPTO ─────────────────────────────
   {
@@ -344,7 +321,7 @@ export function runLoQueSigueTier(): { hard: number } {
     console.log(`  ✗ LO-QUE-SIGUE · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el precio del ticket sale del motor; la precarga no pisa el depto; el correo sale una vez; nada con sesión; el pack vence a las 24 h y lo rechaza el servidor; el perfil se guarda al crear y se liga al registrarse; el ticket no vuelve después de la despedida; el copy en tuteo; los ocho eventos con su vía, veredicto y modalidad");
+    console.log("  ✓ VERDE — la precarga no pisa el depto; el correo sale una vez; banner y ticket cuelgan de la oferta del informe; el pack vence a las 24 h y lo rechaza el servidor; el perfil se guarda al crear y se liga al registrarse; el ticket no vuelve después de la despedida; el copy en tuteo; los ocho eventos con su vía, veredicto y modalidad");
   }
   return { hard: fallas.length };
 }

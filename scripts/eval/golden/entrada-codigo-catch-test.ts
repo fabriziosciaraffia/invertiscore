@@ -212,14 +212,15 @@ export function runEntradaCodigoTier(): { hard: number } {
     if (leerRecienDentro(s, "a1", t0) !== null) F("4 · una marca rota no se descarta");
     if (leerRecienDentro(null, "a1", t0) !== null) F("4 · sin almacén la marca no da null");
   }
-  for (const [f, gate] of [
-    ["src/app/analisis/[id]/results-client.tsx", /const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !isLoggedIn\) \|\| \(!!recienDentro && !isSharedView\)\) && !!analysisId;/],
-    ["src/app/analisis/renta-corta/[id]/results-client.tsx", /const recienDentro = useRecienDentro\(analysisId\);\s*const loQueSigue = \(\(isAnonOwner && !userId\) \|\| !!recienDentro\) && !demo;/],
-  ] as const) {
+  // ⚠ ACTA (08-oct-2026) · LA OFERTA ES DEL INFORME (tier OFERTA-TICKET): el gate «loQueSigue» se
+  // partió en el banner (`bannerRegistroVisible`, que suma a quien acaba de entrar) y el ticket (la
+  // oferta del servidor, con `correoDelTicket`, que antepone el correo de quien acaba de entrar). Lo que
+  // fija este punto no cambia: tras el refresco, «Estás dentro» sigue y el ticket no pide el correo.
+  for (const f of ["src/app/analisis/[id]/results-client.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) {
     const s = sinComentarios(leer(f));
-    if (!gate.test(s)) F(`4 · ${f}: el gate de «Lo que sigue» no suma a quien acaba de entrar (Estás dentro no sobrevive al refresco)`);
+    if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const bannerLqs = !!analysisId && bannerRegistroVisible\(\{[^}]*recienDentro: !!recienDentro[^}]*\}\);/.test(s)) F(`4 · ${f}: el banner no suma a quien acaba de entrar (Estás dentro no sobrevive al refresco)`);
     if (!/<BannerRegistro [^>]*pasoInicial=\{recienDentro \? "dentro" : "oferta"\}/.test(s)) F(`4 · ${f}: tras el refresco el banner no vuelve en «Estás dentro»`);
-    if (!/<TicketPack [^>]*correoSesion=\{recienDentro\}/.test(s)) F(`4 · ${f}: tras el refresco el ticket sigue pidiendo el correo`);
+    if (!/<TicketPack [^>]*correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\}/.test(s)) F(`4 · ${f}: tras el refresco el ticket sigue pidiendo el correo`);
   }
   // Lo que se DIBUJA: «Estás dentro» desde el paso inicial, y el ticket sin el campo del correo con sesión.
   {
@@ -230,8 +231,8 @@ export function runEntradaCodigoTier(): { hard: number } {
     const dentro = dibujarConRouter(createElement(BannerRegistro, { ctx, next: "/analisis/a1", perfil, pasoInicial: "dentro" }));
     if (!/data-lqs="dentro"/.test(dentro) || !texto(dentro).includes("¿Cuándo piensas comprar?")) F("4 · el banner en «dentro» no dibuja «Estás dentro» con su pregunta");
     const creado = new Date().toISOString();
-    const anon = dibujarConRouter(createElement(TicketPack, { ctx, createdAt: creado, precioCierreUF: null }));
-    const conCorreo = dibujarConRouter(createElement(TicketPack, { ctx, createdAt: creado, precioCierreUF: null, correoSesion: "ana@correo.cl" }));
+    const anon = dibujarConRouter(createElement(TicketPack, { ctx, createdAt: creado }));
+    const conCorreo = dibujarConRouter(createElement(TicketPack, { ctx, createdAt: creado, correoSesion: "ana@correo.cl" }));
     if (!/lqs-tk-correo/.test(anon)) F("4 · el ticket anónimo perdió el campo del correo (el extractor no corrió)");
     if (/lqs-tk-correo/.test(conCorreo)) F("4 · con sesión recién creada el ticket sigue pidiendo el correo");
     const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));

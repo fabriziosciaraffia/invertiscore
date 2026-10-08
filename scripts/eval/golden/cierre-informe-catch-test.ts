@@ -66,7 +66,9 @@ export function runCierreInformeTier(): { hard: number } {
     // La única acción, en orden: ticket (anónimo) · banda de bienvenida · la línea. Nunca dos.
     // (01-oct-2026, ENTRADA-CÓDIGO) el ticket lleva `correoSesion`: quien acaba de entrar por código lo
     // sigue viendo tras el refresco, sin que le pida el correo.
-    const tern = new RegExp(String.raw`\{loQueSigue \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} precioCierreUF=\{precioCierreLqs\} correoSesion=\{recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} suscriptor=\{`);
+    // ⚠ ACTA (08-oct-2026) · el ticket cuelga de la oferta del informe (`ticketLqs`, tier OFERTA-TICKET)
+    // y no de «loQueSigue»; sin la primera línea vieja, ya no lleva el precio que cierra.
+    const tern = new RegExp(String.raw`\{ticketLqs \? \(\s*(?:\s*)?<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} suscriptor=\{`);
     if (!tern.test(fin)) F(`${tipo} · el final no elige UNA acción (ticket · bienvenida · línea)`);
     if ((fin.match(/<CierreInforme\b/g) ?? []).length !== 1 || (fin.match(/<TicketPack\b/g) ?? []).length !== 1 || (fin.match(/<CtaWelcome\b/g) ?? []).length !== 1) F(`${tipo} · el final monta dos veces una acción`);
     const acciones = (fin.match(/<(CierreInforme|TicketPack|CtaWelcome|EnlaceCarga|button|a)\b/g) ?? []).length;

@@ -37,8 +37,7 @@
 // ============================================================================
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
-import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
+import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
 import { DESPUES_DE_PAGAR, ESTAS_DENTRO } from "../../../src/lib/lo-que-sigue/copy";
 import { pagoAbreElInforme, urlGuia } from "../../../src/lib/lo-que-sigue/retorno-pago";
 import { GUIA_ACTIVA, hayGuia } from "../../../src/lib/guia/activa";
@@ -88,7 +87,6 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [GUIA.ninguno, "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona."],
     [GUIA.analizar, "Analizar este"],
     [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene."],
-    [TICKET_INCLUYE_GUIA, "Incluye una selección de deptos publicados parecidos a este, ya revisados con tu pie y tu plazo. Analizas el que quieras con un clic."],
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
     [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
     [INFORME_DE_AVISO.boton, "Quiero verlo"],
@@ -100,7 +98,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
   // Las frases con dato (funciones) se barren con un ejemplo.
-  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA, ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));
@@ -116,22 +114,12 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 
   // ── 2 · la línea del ticket, solo con la guía ───────────────────────────────
   if (hayGuia("str") || hayGuia("ltr") !== GUIA_ACTIVA) F("2 · hayGuia no es «guía activa y renta larga»");
-  const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-  if (!/\{hayGuia\(ctx\.modalidad\) && <p className="lqs-incluye" data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}/.test(tk)) F("2 · el ticket dice la línea de la guía sin preguntar si la guía existe (hayGuia)");
-  // 2b · la urgencia genérica (02-oct-2026): la frase aprobada, sin números ni comunas, debajo de la línea
-  // de la selección y con el mismo predicado. La versión con datos (15-oct) la reemplaza donde la muestra alcance.
-  // Acta (02-oct-2026), en rojo: T1 con cifra · T2 con comuna · T3 sin hayGuia · T4 sin la línea: 4/4.
-  if (TICKET_URGENCIA_GENERICA !== "Los deptos que convienen se van rápido. Revísalos hoy.") F("2 · la urgencia del ticket no es la frase aprobada");
-  if (/\d/.test(TICKET_URGENCIA_GENERICA)) F("2 · la urgencia genérica lleva números");
-  if ((COMUNAS_DISPONIBLES as readonly string[]).some((c) => TICKET_URGENCIA_GENERICA.includes(c))) F("2 · la urgencia genérica nombra una comuna");
-  if (!/data-lqs="ticket-incluye">\{TICKET_INCLUYE_GUIA\}<\/p>\}\s*(?:\{\s*\}\s*)?\{hayGuia\(ctx\.modalidad\) && <p className="lqs-urgencia" data-lqs="ticket-urgencia">\{TICKET_URGENCIA_GENERICA\}<\/p>\}/.test(tk)) F("2 · la urgencia no va debajo de la línea de la selección, con el mismo predicado");
+  // ⚠ ACTA (08-oct-2026) · el copy nuevo del ticket (goal «banner y ticket», tier OFERTA-TICKET) sacó la
+  // línea de la selección y la urgencia: lo que se recibe cada semana lo dice el ticket y la urgencia el
+  // titular del banner. Se fueron sus chequeos (2 y 2b); queda que la guía después de pagar use `hayGuia`.
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
   if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
   if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(urlGuia\(analysisId, pago\)\)/.test(gb) || !urlGuia("x").startsWith("/api/lo-que-sigue/guia?a=")) F("2 · la guía no tiene ruta o el componente no la pide");
-  for (const f of archivosSrc()) {
-    if (f === "src/lib/guia/copy.ts" || f === "src/components/lo-que-sigue/TicketPack.tsx") continue;
-    if (/TICKET_INCLUYE_GUIA/.test(sinComentarios(leer(f)))) F(`2 · ${f} usa la línea del ticket fuera del ticket`);
-  }
 
   // ── 3 · los resguardos de la ficha ──────────────────────────────────────────
   const ahora = new Date("2026-09-30T12:00:00Z");
@@ -580,7 +568,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ GUIA-BUSQUEDA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el copy aprobado sin palabras vedadas; la línea del ticket solo con la guía; la ficha con tope por hora y sin reintentos; el crédito una sola vez; primero plazo, después pie, y solo los que convienen; solo publicados, y un despublicado no cobra");
+    console.log("  ✓ VERDE — el copy aprobado sin palabras vedadas; la guía después de pagar solo donde existe; la ficha con tope por hora y sin reintentos; el crédito una sola vez; primero plazo, después pie, y solo los que convienen; solo publicados, y un despublicado no cobra");
   }
   return { hard: fallas.length };
 }
