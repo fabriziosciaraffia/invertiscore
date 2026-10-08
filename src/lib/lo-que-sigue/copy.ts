@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // El copy de «Lo que sigue» (28-sep-2026, mockup v3; copy nuevo del 30-sep-2026). Voz de Franco:
-// directo, en tuteo, sin urgencia inventada, sin «desde», sin «guarda tu informe». Lo que cambia con
-// el veredicto es la frase que presenta cada oferta, no la oferta. Todo el texto de las ofertas, del
-// «Estás dentro», del después de pagar y del correo vive acá: el tier vigila el tuteo en este módulo.
+// directo, en tuteo, sin urgencia inventada, sin «desde», sin «guarda tu informe». Desde el 08-oct-2026
+// el banner y el ticket dicen qué es cada uno y ya no cambian con el veredicto. Todo el texto de las
+// ofertas, del «Estás dentro», del después de pagar y del correo vive acá: el tier vigila el tuteo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type VeredictoLqs = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -11,30 +11,20 @@ export function veredictoLqs(v: string | null | undefined): VeredictoLqs {
   return v === "COMPRAR" || v === "BUSCAR OTRA" ? v : "AJUSTA SUPUESTOS";
 }
 
-/** «UF 4.175»: el precio del motor como lo lee el ticket. */
-export const ufTexto = (uf: number) => `UF ${Math.round(uf).toLocaleString("es-CL")}`;
 
 // ── 1 · El banner del registro ───────────────────────────────────────────────
-export const FRASE_REGISTRO: Record<VeredictoLqs, string> = {
-  "BUSCAR OTRA": "Este depto no conviene. Franco ya tiene los que sí.",
-  "AJUSTA SUPUESTOS": "Este depto conviene si lo negocias. Franco tiene los que convienen tal como están.",
-  COMPRAR: "Este depto conviene. Y Franco tiene más oportunidades como esta.",
-};
-
+// 08-oct-2026: que se entienda qué es. Una cinta en la página (la barra fija salió) con lo que recibe
+// quien se registra: la selección semanal. Ya no cambia con el veredicto.
 export const OFERTA_REGISTRO = {
-  ojo: "Lo que sigue",
-  cuerpo: "Franco tiene un portafolio de deptos para invertir, y todos pasaron por este mismo análisis. Estamos abriendo el acceso: quien entra ahora, lo recibe antes.",
+  ojo: "Gratis · solo con tu correo",
+  titular: "Los deptos que convienen como inversión se van rápido. Regístrate y Franco te manda cada semana una selección según tu perfil.",
+  bajada: "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día.",
   paraTi: "Para ti:",
-  boton: "Quiero acceso",
-  bajoBoton: "Gratis. Solo tu correo.",
-  // 2 · La barra fija
-  barraTitulo: "Las oportunidades que otros no ven.",
-  barraSub: "Solo para usuarios de Franco.",
-  barraBoton: "Quiero acceso",
+  boton: "Quiero recibirlos",
 } as const;
 
 export const REGISTRO_UN_PASO = {
-  ojo: "Quiero acceso",
+  ojo: "Quiero recibirlos",
   titular: "Un correo y listo.",
   plumon: "Sin contraseña.",
   placeholder: "tu@correo.cl",
@@ -73,28 +63,18 @@ export const ESTAS_DENTRO = {
 } as const;
 
 // ── 4 · El ticket del pack ───────────────────────────────────────────────────
-/** La primera línea del ticket: con el precio al que CIERRA este depto, del motor, en UF. Sin él, la
- *  misma frase sin la cifra (nunca se inventa un número). `unitario` es «$5.000». */
-export function leadTicket(v: VeredictoLqs, precioCierreUF: number | null, unitario: string): string {
-  if (v === "BUSCAR OTRA") {
-    const cola = `Equivocarte con un depto cuesta millones. Saberlo antes, ${unitario}.`;
-    return precioCierreUF ? `Para que este conviniera, tendría que costar ${ufTexto(precioCierreUF)}. ${cola}` : `Este no conviene. ${cola}`;
-  }
-  if (v === "AJUSTA SUPUESTOS") {
-    const cola = "Mientras negocias, compáralo con otros de la zona: si hay uno que conviene sin negociar, tienes con qué presionar.";
-    return precioCierreUF ? `Este conviene si te lo dejan en ${ufTexto(precioCierreUF)}. ${cola}` : `Este conviene si lo negocias. ${cola}`;
-  }
-  return "Este conviene. Antes de firmar, compáralo con dos parecidos. Si es el mejor, firmas tranquilo.";
-}
-
+// 08-oct-2026: que se entienda qué es. La primera línea dice el pack y el precio (el de referencia,
+// tachado); después qué es, que comprar registra, el botón y hasta cuándo. El veredicto ya no cambia
+// el ticket. La oferta persiste en el informe (mismo navegador o con sesión): por eso «guarda el enlace».
 export const TICKET_PACK = {
-  ojo: "Lo que sigue",
-  titulo: (precio: string) => `3 análisis por ${precio}`,
-  ahorro: (unitario: string, referencia: string) => `${unitario} cada uno en vez de ${referencia}.`,
-  vence: (dia: "hoy" | "mañana" | "otro", hora: string) => (dia === "otro" ? `Vence a las ${hora}` : `Vence ${dia} a las ${hora}`),
-  boton: "Quiero los 3 análisis",
+  /** «Pack · 3 análisis por $14.990 · » + referencia tachada + « $4.997 cada uno». */
+  linea: (precio: string) => `Pack · 3 análisis por ${precio} · `,
+  cadaUno: (unitario: string) => ` ${unitario} cada uno`,
+  cuerpo: "El mismo informe que acabas de leer, para tres deptos más. La mitad del precio, solo para usuarios nuevos.",
+  negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
+  boton: (precio: string) => `Comprar por ${precio}`,
+  vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este informe · hasta ${cuando} · si te vas, guarda el enlace`,
   placeholderCorreo: "tu@correo.cl",
-  piePago: "Con tu correo queda tu cuenta, sin contraseña, y este informe adentro. Boleta al mismo correo.",
   pestana: (precio: string, hora: string) => `3 análisis por ${precio} · hasta las ${hora}`,
   errorCorreo: "Ese correo no se entiende. Revísalo.",
   errorPago: "No pudimos abrir el pago. Intenta de nuevo.",

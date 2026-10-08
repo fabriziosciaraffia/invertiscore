@@ -16,6 +16,7 @@ import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
+import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
@@ -377,6 +378,7 @@ export function SubjectCardGrid({
             />
           )}
           </SeccionInforme>
+          <FinCapitulos />
           {/* ═══ 6 · LA ZONA (paper2) ═══ */}
           {analysisId && (
             <SeccionInforme

@@ -18,6 +18,9 @@ import { GuiaBusqueda, type RespuestaGuia } from "@/components/guia/GuiaBusqueda
 import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
 import { CATALOGO_CORREOS } from "@/lib/email/catalogo";
 import { claveTicket } from "@/lib/lo-que-sigue/estado-ticket";
+import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
+import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
+import { bannerRegistroVisible, correoDelTicket, ofertaPackDelInforme, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
 import type { VeredictoLqs } from "@/lib/lo-que-sigue/copy";
 import type { PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
 
@@ -51,10 +54,20 @@ export function DemoCliente() {
   const [vuelta, setVuelta] = useState(0);
   const [correo, setCorreo] = useState("");
   const [origenReal, setOrigenReal] = useState<string | null>(null);
+  // La oferta es del informe (08-oct-2026): `?quien=anonimo|origen|sesion|ajeno`, `?pagado=1` y
+  // `?correo=` simulan lo que el servidor decide (quién mira, si hay pack pagado y el correo conocido)
+  // con las mismas funciones que usa el informe. Sin parámetros: el anónimo dueño, sin correo.
+  const [sim, setSim] = useState<{ quien: QuienMira; pagado: boolean; correo: string | null }>({ quien: "anonimo", pagado: false, correo: null });
   useEffect(() => {
-    const a = new URLSearchParams(window.location.search).get("a");
+    const sp = new URLSearchParams(window.location.search);
+    const a = sp.get("a");
     if (a && /^[0-9a-f-]{36}$/i.test(a)) setOrigenReal(a);
+    const q = sp.get("quien");
+    const quien: QuienMira = q === "origen" || q === "sesion" || q === "anonimo" ? q : q === "ajeno" ? null : "anonimo";
+    setSim({ quien, pagado: sp.get("pagado") === "1", correo: sp.get("correo") });
   }, []);
+  const ofertaSim = ofertaPackDelInforme({ nacioAnonimo: true, quienMira: sim.quien, packPagado: sim.pagado, esDemo: false });
+  const bannerSim = bannerRegistroVisible({ quienMira: sim.quien, conSesion: sim.quien === "sesion", recienDentro: false, compartido: false });
   const correoInteres = CATALOGO_CORREOS.find((c) => c.id === "aviso_pedido")?.render?.().html ?? "";
   const precio = VEREDICTOS.find((x) => x.v === v)?.precio ?? null;
   const ctx = { analysisId: idDemo(v), veredicto: v, modalidad: "ltr" as const };
@@ -87,6 +100,9 @@ export function DemoCliente() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
+      {/* Los tokens del documento, como en el informe (los pone la portada): sin ellos la hoja del ticket
+          y la pestaña quedaban sin fondo en esta demo (08-oct-2026). */}
+      <DocTokens />
       <div className="doc-tokens" style={{ maxWidth: 1040, margin: "0 auto", padding: "22px 22px 40px", fontFamily: "var(--font-ui)" }}>
         <p style={{ font: "600 12px var(--font-mono)", letterSpacing: ".1em", textTransform: "uppercase", opacity: .6 }}>Demostración · lo que sigue</p>
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 26, margin: "8px 0 14px" }}>Un informe de mentira para ver el borde inferior</h1>
@@ -100,11 +116,13 @@ export function DemoCliente() {
           <p style={{ fontWeight: 700, fontSize: 19 }}>Lo que haría Franco</p>
           <p style={{ opacity: .62, fontSize: 14, margin: "5px 0 0" }}>{precio ? `El precio que cierra: UF ${precio.toLocaleString("es-CL")}` : "Este conviene tal como está"}</p>
         </div>
-        <BannerRegistro key={`b-${v}`} ctx={ctx} next="/dev/lo-que-sigue" perfil={PERFIL} demo />
+        {bannerSim && <BannerRegistro key={`b-${v}`} ctx={ctx} next="/dev/lo-que-sigue" perfil={PERFIL} demo />}
         {["Cuánto renta", "Cómo lo pagas", "Plusvalía", "Tu resultado a 10 años", "La zona", "Qué pesa"].map((t) => (
           <section key={t} style={{ marginBottom: 34 }}>
             {rotulo(t)}
             {fila("Cap rate neto", "4,1 %")}{fila("Arriendo de referencia", "$850.000")}{fila("Cuota", "$555.686")}{fila("Plazo", "25 años")}{fila("Vacancia", "5 %")}
+            {/* Como en el informe: la marca del final va justo después de «Tu resultado a 10 años». */}
+            {t === "Tu resultado a 10 años" && <FinCapitulos />}
           </section>
         ))}
 
@@ -141,8 +159,8 @@ export function DemoCliente() {
         {rotulo("El correo del tercer día")}
         <iframe title="Correo del recordatorio" srcDoc={correo} style={{ width: "100%", height: 560, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} data-lqs="demo-correo" />
 
-        <p style={{ fontSize: 13, opacity: .6, marginTop: 40 }}>Acá empieza la zona del cierre: el ticket sube una vez; cerrado, queda la pestaña.</p>
-        <TicketPack key={`t-${v}-${vuelta}`} ctx={ctx} createdAt={createdAt} precioCierreUF={precio} />
+        <p style={{ fontSize: 13, opacity: .6, marginTop: 40 }}>El final de la página. El ticket sube 8 s después de pasar «Tu resultado a 10 años», a los 4 minutos de lectura o al sacar el cursor por arriba en PC; cerrado, queda la pestaña.</p>
+        {ofertaSim && <TicketPack key={`t-${v}-${vuelta}`} ctx={ctx} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro: null, correoConocido: sim.correo })} />}
         <div style={{ height: 320 }} />
       </div>
     </div>

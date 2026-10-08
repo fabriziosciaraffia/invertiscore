@@ -20,6 +20,8 @@ import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-
 import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
+import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
+import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 
 /**
  * EL INFORME STR, fuera de la ruta (25-sep-2026). Espejo de `InformeLtr`: lo dibujan
@@ -132,6 +134,17 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     tokenCookie: anonToken,
   });
   const isPremium = isAdmin || esDemo(data.id) || !!data.is_premium;
+
+  // «LO QUE SIGUE» · LA OFERTA ES DEL INFORME (08-oct-2026): espejo de /analisis/[id].
+  const quienMira = esDemo(data.id) || modoDemo ? null : quienMiraElInforme({ isAnonOwner, isOrigenNavegador, isOwner });
+  const ofertaLqs = await leerOfertaPack(createServiceClient(), {
+    analysisId: data.id,
+    fila: data as { anon_claim_token_hash?: string | null; anon_origen_hash?: string | null },
+    quienMira,
+    esDemo: esDemo(data.id) || modoDemo,
+    correoSesion: user?.email ?? null,
+    duenoId: data.user_id ?? null,
+  });
 
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
 
@@ -274,6 +287,9 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     isOrigenNavegador,
     simulacionStr,
     zonaStr,
+    quienMiraLqs: quienMira,
+    ofertaPack: ofertaLqs.oferta,
+    correoOferta: ofertaLqs.correo,
     demo,
   };
 

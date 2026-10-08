@@ -8,14 +8,11 @@
 /** Palabras que no describen a los parecidos: quedan para el portafolio, que es otra cosa. */
 export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 
-/** La línea del ticket del pack. Sale SOLO donde la guía existe (`GUIA_ACTIVA` + renta larga). */
-export const TICKET_INCLUYE_GUIA =
-  "Incluye una selección de deptos publicados parecidos a este, ya revisados con tu pie y tu plazo. Analizas el que quieras con un clic.";
-
-// 02-oct-2026 (decisión de Fabrizio): debajo de la línea de la selección, la urgencia. Esta es la versión
-// GENÉRICA: sin cifras ni comunas. El 15-oct-2026 la medición de escasez la reemplaza por la versión con
-// datos solo donde la muestra alcance; donde no, queda esta. El tier GUIA-BUSQUEDA fija que no lleve números.
-export const TICKET_URGENCIA_GENERICA = "Los deptos que convienen se van rápido. Revísalos hoy.";
+// La línea de la selección y la urgencia que iban en el ticket del pack (02-oct-2026) salieron el
+// 08-oct-2026 con el copy nuevo del ticket: lo que se recibe cada semana lo dice ahora el ticket
+// («recibes cada semana oportunidades…») y la urgencia el titular del banner («Los deptos que convienen
+// como inversión se van rápido…», `OFERTA_REGISTRO.titular`). La medición de escasez del 15-oct, si da
+// cifras, va a ese titular.
 
 // 01-oct-2026: después de pagar, una sola idea —«compraste 3 análisis; empieza por estos»—. El título
 // y el cuerpo se funden; «ajustada» y «ninguno» van debajo del título en lugar del cuerpo.

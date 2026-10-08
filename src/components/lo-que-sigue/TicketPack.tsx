@@ -1,41 +1,49 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B · El ticket del pack (28-sep-2026, ajustes de Fabrizio tras probarlo en el teléfono):
-//   · Zona del cierre: desde el sentinel hasta el final de la página. Al entrar, el ticket sube
-//     UNA vez (solo, nunca más); cerrado, queda una pestaña chica —«3 análisis por $14.990 · hasta
-//     las 21:04»— para volver a él mientras la oferta viva. Al subir de la zona, vuelve la barra.
-//     Regla: NO VUELVE SOLO, pero se puede volver desde la pestaña.
+// B · El ticket del pack (28-sep-2026; reglas del 08-oct-2026):
+//   · La oferta es del INFORME: el caller lo monta mientras el informe que nació anónimo no tenga un
+//     pack pagado y quien mira sea su dueño (`oferta-informe.ts`); la vigencia (24 h) la mira acá.
+//   · Sube UNA vez por informe en cada navegador, con lo primero que pase (`disparo-ticket.ts`): 8 s
+//     después de pasar «Tu resultado a 10 años», 4 minutos de lectura activa, o en PC el cursor que
+//     sale de la página por arriba. Desde la marca del final hacia abajo, cerrado, queda la pestaña
+//     para volver a él mientras la oferta viva.
 //   · Cerrar o «Seguir leyendo» cambian a la despedida en el mismo lugar; «Sí, seguir leyendo»
 //     cierra (y deja la pestaña). Nunca un segundo modal.
 //   · El correo va adentro del ticket y el botón rojo va directo a Flow: POST /api/lo-que-sigue/pack
-//     crea la cuenta si no existe, adopta este informe y abre la orden; sin salir del informe.
+//     crea la cuenta si no existe, adopta este informe y abre la orden; sin salir del informe. Con el
+//     correo conocido (recién dentro, la sesión o la cuenta de su navegador) no lo pide.
 //   · El velo se ancla al área visible real (iOS esconde su barra al hacer scroll).
 //   Vencido: no sube, no hay pestaña, y queda medido `pack_vencido`. Solo en el primer informe anónimo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { fmtCLP } from "@/lib/pricing";
-import { leadTicket, TICKET_PACK, veredictoLqs } from "@/lib/lo-que-sigue/copy";
+import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
-import { TICKET_INCLUYE_GUIA, TICKET_URGENCIA_GENERICA } from "@/lib/guia/copy";
-import { hayGuia } from "@/lib/guia/activa";
-import { abrirTicket, cerrarTicket, entrarZonaCierre, salirZonaCierre, useEstadoBorde } from "@/lib/lo-que-sigue/estado-ui";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
-import { diaVencimiento, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
+import { crearDisparador, EVENTOS_ACTIVIDAD, SELECTOR_FIN_CAPITULOS } from "@/lib/lo-que-sigue/disparo-ticket";
+import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
 
 type Cara = "ticket" | "despedida";
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion = null }: {
+/** PC con mouse: lo único donde se detecta la salida por arriba. */
+function esPc(): boolean {
+  try {
+    return window.matchMedia("(pointer: fine)").matches && window.innerWidth >= 768;
+  } catch {
+    return false;
+  }
+}
+
+export function TicketPack({ ctx, createdAt, correoSesion = null }: {
   ctx: ContextoLqs;
   createdAt: string;
-  /** El precio al que CIERRA este depto, del motor, en UF (`precioQueCierraUF`). Null sin dato: el ticket va sin cifra. */
-  precioCierreUF?: number | null;
-  /** Recién dentro (01-oct-2026): el correo con que la persona acaba de entrar por código. Con él, el
-   *  ticket ya no la trata como anónima: no pide el correo, paga con el de la sesión. */
+  /** El correo con que paga, si ya se sabe (`correoDelTicket`): recién dentro, la sesión o la cuenta de
+   *  su navegador de origen. Con él, el ticket no lo pide. */
   correoSesion?: string | null;
 }) {
   const posthog = usePostHog();
@@ -49,52 +57,66 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
   const [correo, setCorreo] = useState("");
   const [pagando, setPagando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { zonaCierre } = useEstadoBorde();
-  const v = veredictoLqs(ctx.veredicto);
+  // Desde la marca del final hacia abajo: ahí vive la pestaña (sin la barra fija, ya no hay nada más
+  // abajo con qué turnarse; hasta el 08-oct-2026 era un estado compartido con la barra).
+  const [zonaCierre, setZonaCierre] = useState(false);
   const hora = horaVencimiento(createdAt);
-  const dia = diaVencimiento(createdAt);
+  const precio = fmtCLP(PACK_PRECIO_CLP);
   const pestana = zonaCierre && !abierto && yaSubio && vigente;
 
   // Anclados desde el montaje, no al abrir: en iOS fijarlos al abrir movía el borde a mitad de la transición.
   useAnclaAreaVisible(velo);
   useAnclaAbajo(pestanaRef);
 
-  // La zona del cierre: el sentinel está a la vista o quedó arriba (la página sigue por debajo).
+  // Cuándo sube (`disparo-ticket.ts`) y la zona de la pestaña: desde la marca del final de los capítulos
+  // hacia abajo (sin la marca, el sentinel de acá, al final de la página).
   useEffect(() => {
-    const el = sentinel.current;
-    if (!el) return;
+    const marca = document.querySelector(SELECTOR_FIN_CAPITULOS) ?? sentinel.current;
+    if (!marca) return;
     const almacen = typeof window !== "undefined" ? window.localStorage : null;
-    const estado0 = leerEstadoTicket(almacen, ctx.analysisId);
-    if (estado0 !== "nunca") setYaSubio(true);
-    let subioEnEstaCarga = false;
+    if (leerEstadoTicket(almacen, ctx.analysisId) !== "nunca") setYaSubio(true);
+    const d = crearDisparador({
+      reloj: { ahora: () => Date.now(), programar: (fn, ms) => window.setTimeout(fn, ms), cancelar: (h) => window.clearTimeout(h as number) },
+      // Una vez por informe en este navegador, y solo con la oferta viva.
+      puedeSubir: () => debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId)) && ofertaPackVigente(createdAt),
+      subir: (motivo) => {
+        marcarTicket(almacen, ctx.analysisId, "visto");
+        setYaSubio(true);
+        abrir("solo", motivo);
+      },
+    });
+    let vencidoMedido = false;
     const io = new IntersectionObserver(
       (entradas) => {
         for (const e of entradas) {
           const enZona = e.isIntersecting || e.boundingClientRect.top < 0;
-          if (enZona) entrarZonaCierre();
-          else salirZonaCierre();
-          if (!enZona || subioEnEstaCarga) continue;
-          // Sube UNA vez, solo. Después, solo desde la pestaña.
-          if (!debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId))) continue;
-          subioEnEstaCarga = true;
-          if (!ofertaPackVigente(createdAt)) {
+          setZonaCierre(enZona);
+          if (enZona) {
+            d.llegoAlFinal();
+          }
+          // Vencido al llegar al final: no sube, no hay pestaña, y se mide una vez.
+          if (enZona && !vencidoMedido && !ofertaPackVigente(createdAt) && debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId))) {
+            vencidoMedido = true;
             setVigente(false);
             capturarLqs(posthog, EVENTOS_LQS.packVencido, ctx, { donde: "cliente", vence: hora });
             marcarTicket(almacen, ctx.analysisId, "despedida");
-            continue;
           }
-          marcarTicket(almacen, ctx.analysisId, "visto");
-          setYaSubio(true);
-          abrir("solo");
         }
       },
       { threshold: 0 },
     );
-    io.observe(el);
+    io.observe(marca);
+    const actividad = () => d.actividad();
+    for (const ev of EVENTOS_ACTIVIDAD) window.addEventListener(ev, actividad, { passive: true });
+    const lectura = window.setInterval(() => d.tick(document.visibilityState === "visible"), 1000);
+    const alSalir = (e: MouseEvent) => d.salida({ clientY: e.clientY, haciaFuera: !e.relatedTarget, pc: esPc() });
+    document.addEventListener("mouseout", alSalir);
     return () => {
+      d.detener();
       io.disconnect();
-      salirZonaCierre();
-      cerrarTicket();
+      for (const ev of EVENTOS_ACTIVIDAD) window.removeEventListener(ev, actividad);
+      window.clearInterval(lectura);
+      document.removeEventListener("mouseout", alSalir);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.analysisId, createdAt]);
@@ -113,7 +135,7 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto, cara]);
 
-  function abrir(desde: "solo" | "pestaña") {
+  function abrir(desde: "solo" | "pestaña", motivo?: string) {
     if (!ofertaPackVigente(createdAt)) {
       setVigente(false);
       return;
@@ -121,8 +143,7 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
     setCara("ticket");
     setError(null);
     setAbierto(true);
-    abrirTicket();
-    capturarLqs(posthog, EVENTOS_LQS.ticketVisto, ctx, { vence: hora, desde });
+    capturarLqs(posthog, EVENTOS_LQS.ticketVisto, ctx, { vence: hora, desde, ...(motivo ? { motivo } : {}) });
   }
 
   function despedirse() {
@@ -134,7 +155,6 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
   function cerrarDelTodo() {
     marcarTicket(typeof window !== "undefined" ? window.localStorage : null, ctx.analysisId, "despedida");
     setAbierto(false);
-    cerrarTicket();
   }
 
   async function pagar(e: FormEvent) {
@@ -185,8 +205,7 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
         tabIndex={pestana ? 0 : -1}
         onClick={() => abrir("pestaña")}
       >
-        <span className="lqs-franja lqs-pestana-franja" aria-hidden="true" />
-        <span>{TICKET_PACK.pestana(fmtCLP(PACK_PRECIO_CLP), hora)}</span>
+        {TICKET_PACK.pestana(precio, hora)}
       </button>
       <div
         ref={velo}
@@ -196,7 +215,7 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
         data-cara={cara}
         role={abierto ? "dialog" : undefined}
         aria-modal={abierto || undefined}
-        aria-label={TICKET_PACK.titulo(fmtCLP(PACK_PRECIO_CLP))}
+        aria-label={TICKET_PACK.linea(precio).replace(/ · $/, "")}
         onClick={(e) => { if (e.target !== e.currentTarget) return; if (cara === "ticket") despedirse(); else cerrarDelTodo(); }}
       >
         <div className="lqs-hoja">
@@ -205,20 +224,13 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
           <div className="lqs-tk">
             <form className="lqs-cara" data-activa={cara === "ticket" ? "1" : "0"} onSubmit={pagar} noValidate>
               <div className="lqs-cab">
-                <span className="lqs-tk-ojo">{TICKET_PACK.ojo}</span>
+                <p className="lqs-tk-ojo" data-lqs="ticket-linea">
+                  {TICKET_PACK.linea(precio)}<s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}
+                </p>
                 <button type="button" className="lqs-x" onClick={despedirse} aria-label={TICKET_PACK.cerrar}>✕</button>
               </div>
-              <p className="lqs-tk-lead" data-lqs="ticket-lead">{leadTicket(v, precioCierreUF, fmtCLP(PACK_UNITARIO_CLP))}</p>
-              <p className="lqs-precio-t">{TICKET_PACK.titulo(fmtCLP(PACK_PRECIO_CLP))}</p>
-              <p className="lqs-ahorro">{TICKET_PACK.ahorro(fmtCLP(PACK_UNITARIO_CLP), fmtCLP(PACK_UNITARIO_REFERENCIA_CLP))}</p>
-              {/* La guía que viene con el pack: solo donde existe (renta larga), el mismo predicado que la monta. */}
-              {hayGuia(ctx.modalidad) && <p className="lqs-incluye" data-lqs="ticket-incluye">{TICKET_INCLUYE_GUIA}</p>}
-              {/* La urgencia, genérica hasta la medición del 15-oct (sin cifras ni comunas), bajo la línea de la selección. */}
-              {hayGuia(ctx.modalidad) && <p className="lqs-urgencia" data-lqs="ticket-urgencia">{TICKET_URGENCIA_GENERICA}</p>}
-              <div className="lqs-reloj">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                <span>{TICKET_PACK.vence(dia, "")}<b>{hora}</b></span>
-              </div>
+              <p className="lqs-tk-cuerpo">{TICKET_PACK.cuerpo}</p>
+              <p className="lqs-tk-negrita"><b>{TICKET_PACK.negrita}</b></p>
               {!correoSesion && (
                 <input
                   type="email"
@@ -232,12 +244,12 @@ export function TicketPack({ ctx, createdAt, precioCierreUF = null, correoSesion
                 />
               )}
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
-              <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton}</button>
-              <p className="lqs-tk-pie">{TICKET_PACK.piePago}</p>
+              <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton(precio)}</button>
+              <p className="lqs-tk-vence" data-lqs="ticket-vence">{TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
               <button type="button" className="lqs-seguir" onClick={despedirse}>{TICKET_PACK.seguir}</button>
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
-              <div className="lqs-cab"><span className="lqs-tk-ojo">{TICKET_PACK.ojo}</span><span /></div>
+              <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio).replace(/ · $/, "")}</p><span /></div>
               <p className="lqs-despedida-t">{TICKET_PACK.despedida(hora)}</p>
               <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>

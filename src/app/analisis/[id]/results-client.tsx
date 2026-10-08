@@ -15,8 +15,7 @@ import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
-import { precioQueCierraUF } from "@/lib/lo-que-sigue/precio-cierre";
-import type { HallazgoDistanciaVeredicto } from "@/lib/types";
+import { bannerRegistroVisible, correoDelTicket, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
@@ -67,7 +66,9 @@ export function PremiumResults({
   ownerFirstName = "",
   isLoggedIn = false,
   showCtaWelcome = false,
-  isAnonOwner = false,
+  quienMiraLqs = null,
+  ofertaPack = false,
+  correoOferta = null,
   medianaResolvedAt,
 }: {
   results?: FullAnalysisResult | null;
@@ -99,11 +100,12 @@ export function PremiumResults({
   /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
    * CTA post-análisis welcome (banda inline + popup). */
   showCtaWelcome?: boolean;
-  /** Anónimo-DUEÑO (cap F2-2): ve el informe completo pero SIN sesión — los
-   * POST de regeneración IA (stale-regen / rescate) exigen login y saldrían
-   * 401, así que se suprimen; el polling público a /ai-status queda. Si la
-   * generación de creación murió, su recovery es registrarse (claim → regen). */
-  isAnonOwner?: boolean;
+  /** «Lo que sigue» (08-oct-2026, `oferta-informe.ts`): quién mira, si es el dueño; si el pack va en
+   *  este informe; y el correo con que pagaría, si ya se sabe. Los calcula el servidor. (Reemplazan a
+   *  `isAnonOwner`, que solo leía el gate viejo de «Lo que sigue».) */
+  quienMiraLqs?: QuienMira;
+  ofertaPack?: boolean;
+  correoOferta?: string | null;
   /** Fecha de la mediana comunal (snapshot o ahora): la celda de zona la declara. */
   medianaResolvedAt?: string;
 }) {
@@ -171,13 +173,13 @@ export function PremiumResults({
 
   const m = normalizeMetrics(results?.metrics);
 
-  // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
-  // Quien tiene cuenta no ve nada de esto. Contexto de los eventos: análisis, veredicto, modalidad.
-  // RECIÉN DENTRO (01-oct-2026): tras el código en el banner, la página se refresca y el informe pasa a
-  // ser propio; la marca de la pestaña mantiene «Estás dentro» y el ticket (ya sin pedir correo) para
-  // quien acaba de entrar.
+  // «Lo que sigue» (28-sep-2026; reglas del 08-oct-2026, `oferta-informe.ts`): LA OFERTA ES DEL
+  // INFORME. El ticket va mientras el servidor diga que hay oferta (informe que nació anónimo, sin
+  // pack pagado, mirado por su dueño); el banner del registro, al dueño sin sesión o a quien acaba de
+  // entrar con el código (la marca de la pestaña lo deja en «Estás dentro» tras el refresco).
   const recienDentro = useRecienDentro(analysisId);
-  const loQueSigue = ((isAnonOwner && !isLoggedIn) || (!!recienDentro && !isSharedView)) && !!analysisId;
+  const bannerLqs = !!analysisId && bannerRegistroVisible({ quienMira: quienMiraLqs, conSesion: isLoggedIn, recienDentro: !!recienDentro, compartido: isSharedView });
+  const ticketLqs = !!analysisId && ofertaPack;
   const nextLqs = analysisId ? `/analisis/${analysisId}` : "/dashboard";
 
   // Top-level pre-delivery months calculation
@@ -551,14 +553,8 @@ export function PremiumResults({
   ];
   const resolvedVeredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
   const ctxLqs = { analysisId: analysisId ?? "", veredicto: resolvedVeredicto, modalidad: "ltr" as const };
-  // «Lo que sigue» (30-sep-2026): los chips del perfil («Para ti:») y el precio al que cierra este
-  // depto, del motor (la palanca precio del hallazgo de distancia), para la primera línea del ticket.
+  // «Lo que sigue» (30-sep-2026): los chips del perfil («Para ti:»).
   const perfilLqs = perfilChipsDe(inputData, "ltr");
-  const precioCierreLqs = precioQueCierraUF(
-    resolvedVeredicto,
-    ((results?.hallazgos as { id: string }[] | undefined)?.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null,
-    inputData?.precio,
-  );
 
   const mainContent = (
     <>
@@ -602,7 +598,7 @@ export function PremiumResults({
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
             onInformeVisible={onInformeVisible}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
+            despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
               <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} antiguedad={inputData.origenAviso.antiguedad} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
             ) : undefined}
@@ -673,10 +669,9 @@ export function PremiumResults({
             bienvenida; si no, la línea «Te quedan N análisis.» con «Analizar otro depto». */}
         <div className="mt-8">
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
-          {loQueSigue ? (
-            // «Lo que sigue»: al cierre va el ticket del pack; el registro no se repite en texto —la
-            // barra fija es la repetición (ajuste 1, 28-sep-2026).
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} correoSesion={recienDentro} />
+          {ticketLqs ? (
+            // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe.
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} />
           ) : showCtaWelcome ? null : (
             <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} suscriptor={accessLevel === "subscriber"} />
           )}

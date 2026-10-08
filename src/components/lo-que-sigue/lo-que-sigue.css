@@ -1,11 +1,10 @@
 /* ═════════════════════════════════════════════════════════════════════════════
    «LO QUE SIGUE» (28-sep-2026, mockup v3 aprobado, variante con franja)
    · El banner del registro: el material del hero (hero-*.webp + grano, texto en papel, fijo en
-     claro y oscuro) de borde a borde, después de la card de Franco. Solo el registro.
-   · La barra fija del teléfono: el mismo material, solo el registro; aparece cuando el banner
-     quedó atrás y se recoge mientras el ticket está arriba.
-   · El ticket del pack: papel del informe, Inter, radios 16/12, franja del material arriba, precio
-     tabular, reloj, botón rojo. Sube por el mismo borde que la barra; la despedida es la misma cara.
+     claro y oscuro) de borde a borde, después de la card de Franco. Una cinta en la página: la barra
+     fija que lo repetía salió el 08-oct-2026.
+   · El ticket del pack: papel del informe, Inter, radios 16/12, franja del material arriba, botón
+     rojo. Sube por el borde inferior; la despedida es la misma cara. Cerrado, queda la pestaña.
    Los tokens --doc-* los pone .doc-tokens (PortadaInforme): el ticket monta con esa clase.
    ═════════════════════════════════════════════════════════════════════════════ */
 .doc-lienzo { overflow-x: clip; }
@@ -20,7 +19,9 @@
 .lqs-banner { margin: 0 calc(50% - 50vw) 34px; padding: 32px 22px 30px; }
 .lqs-banner .lqs-col { max-width: 700px; margin: 0 auto; }
 @media (min-width: 768px) { .lqs-banner { padding: 52px 24px 48px; } }
-.lqs-ojo { font: 600 10.5px var(--font-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(250, 250, 248, 0.62); margin: 0; }
+/* La primera línea va como está escrita (08-oct-2026: «Gratis · solo con tu correo»), sin mono ni
+   mayúsculas, como el resto del interior del informe desde el 05-oct. */
+.lqs-ojo { font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; color: rgba(250, 250, 248, 0.72); margin: 0 0 10px; }
 .lqs-lead { font-family: var(--font-heading), Georgia, serif; font-weight: 600; font-size: 17px; line-height: 1.3; color: rgba(250, 250, 248, 0.88); margin: 8px 0 4px; }
 .lqs-h3 { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 27px; line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 18px; color: #FAFAF8; }
 .lqs-h3 mark { background: linear-gradient(transparent 60%, rgba(250, 250, 248, 0.28) 60%); color: inherit; }
@@ -48,25 +49,16 @@
 .lqs-pagina { min-height: calc(100svh - 56px); display: flex; align-items: center; padding: 32px 22px; }
 .lqs-pagina .lqs-col { width: 100%; max-width: 560px; margin: 0 auto; }
 
-/* ── la barra fija (teléfono): solo el registro; se recoge cuando el ticket sube ── */
-.lqs-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.25); transform: translateY(110%); transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); }
-.lqs-barra[data-visible="1"] { transform: translateY(0); transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: 220ms; }
-.lqs-barra .lqs-barra-t { font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; line-height: 1.25; min-width: 0; }
-.lqs-barra .lqs-barra-t small { display: block; font: 400 12px var(--font-ui), "Inter", system-ui, sans-serif; color: rgba(250, 250, 248, 0.7); }
-.lqs-barra .lqs-btn { height: 40px; padding: 0 16px; font-size: 14px; flex: none; }
-@media (min-width: 768px) { .lqs-barra { display: none; } }
-
-/* la pestaña chica para volver al ticket (zona del cierre, ticket cerrado, oferta viva) */
-.lqs-pestana { position: fixed; left: 50%; bottom: 0; z-index: 40; transform: translate(-50%, 120%); display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px 0 0; border: 1px solid var(--doc-line2); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--doc-paper); color: var(--doc-tx); font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-variant-numeric: tabular-nums; }
+/* la pestaña chica para volver al ticket (zona del cierre, ticket cerrado, oferta viva). Sin la
+   franja del material desde el 08-oct-2026: papel y texto, nada más. */
+.lqs-pestana { position: fixed; left: 50%; bottom: 0; z-index: 40; transform: translate(-50%, 120%); display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px; border: 1px solid var(--doc-line2); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--doc-paper); color: var(--doc-tx); font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-variant-numeric: tabular-nums; }
 .lqs-pestana[data-visible="1"] { transform: translate(-50%, 0); transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: 220ms; }
-.lqs-pestana .lqs-pestana-franja { display: block; width: 10px; height: 40px; flex: none; }
 .lqs-pestana:focus-visible { outline: 2px solid var(--doc-tx); outline-offset: 2px; }
 /* el correo adentro del ticket, y su código en el registro */
 .lqs-tk .lqs-tk-correo { width: 100%; height: 46px; margin-top: 14px; border-radius: 12px; padding: 0 16px; border: 1px solid var(--doc-line2); background: var(--page); color: var(--doc-tx); font: 15px var(--font-ui), "Inter", system-ui, sans-serif; outline: 0; }
 .lqs-tk .lqs-tk-correo::placeholder { color: var(--doc-tx4); }
 .lqs-tk .lqs-tk-correo:focus { border-color: var(--doc-tx); }
 .lqs-tk .lqs-tk-error { margin: 8px 0 0; font: 13px var(--font-ui), "Inter", system-ui, sans-serif; color: #C8323C; }
-.lqs-tk .lqs-tk-pie { margin: 10px 0 0; font: 12px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); }
 .lqs-reg .lqs-codigo { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; font-weight: 600; }
 .lqs-reg .lqs-codigo::placeholder { letter-spacing: 0; font-weight: 400; }
 
@@ -76,8 +68,12 @@
 [data-theme="dark"] .lqs-velo::before, .lqs-velo.lqs-oscuro::before { background: rgba(0, 0, 0, 0.72); }
 .lqs-velo[data-abierto="1"] { pointer-events: auto; }
 .lqs-velo[data-abierto="1"]::before { opacity: 1; transition-delay: 160ms; }
-.lqs-hoja { position: relative; z-index: 1; width: 100%; max-height: calc(100dvh - 56px); overflow-y: auto; border-radius: 16px 16px 0 0; background: var(--doc-paper); color: var(--doc-tx); box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18); transform: translateY(105%); transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
-.lqs-velo[data-abierto="1"] .lqs-hoja { transform: translateY(0); transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: 160ms; }
+/* Cerrada NO ASOMA (08-oct-2026). Bajaba el 105 % de su alto, y en PC el velo tiene 24 px de margen
+   abajo: en una hoja de menos de ~480 px quedaban unos píxeles del degradado y de la barra de scroll a
+   la vista sobre la pestaña. Ahora baja su alto más el margen, y al terminar se esconde. */
+.lqs-hoja { position: relative; z-index: 1; width: 100%; max-height: calc(100dvh - 56px); overflow-y: auto; border-radius: 16px 16px 0 0; background: var(--doc-paper); color: var(--doc-tx); box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18); transform: translateY(calc(100% + 40px)); transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4), visibility 0s linear 220ms; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
+.lqs-velo:not([data-abierto="1"]) .lqs-hoja { visibility: hidden; }
+.lqs-velo[data-abierto="1"] .lqs-hoja { transform: translateY(0); visibility: visible; transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0s; transition-delay: 160ms; }
 @media (min-width: 768px) { .lqs-velo { padding: 0 20px 24px; } .lqs-hoja { max-width: 440px; border-radius: 16px; } }
 .lqs-franja { height: 10px; position: relative; overflow: hidden; background: #1F3D67; }
 .lqs-franja::before { content: ""; position: absolute; inset: 0; background: url("/landing/hero-d1x.webp") center 40% / cover no-repeat; }
@@ -88,42 +84,34 @@
 
 .lqs-tk { position: relative; padding: 14px 20px 22px; }
 @media (min-width: 768px) { .lqs-tk { padding: 22px 24px 24px; } }
-.lqs-tk .lqs-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.lqs-tk .lqs-tk-ojo { font: 600 12px var(--font-ui), "Inter", system-ui, sans-serif; letter-spacing: 0.02em; color: var(--doc-tx3); }
-.lqs-tk .lqs-x { width: 32px; height: 32px; border: 1px solid var(--doc-line2); border-radius: 12px; background: none; color: var(--doc-tx3); font: 16px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; line-height: 1; }
-.lqs-tk .lqs-tk-lead { font: 600 17px/1.3 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); margin: 0 0 14px; letter-spacing: -0.01em; }
-.lqs-tk .lqs-precio { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.lqs-tk .lqs-precio b { font: 700 46px/1 var(--font-ui), "Inter", system-ui, sans-serif; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--doc-tx); }
-.lqs-tk .lqs-precio span { font: 500 15px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); }
-.lqs-tk .lqs-ahorro { margin: 8px 0 0; font: 14px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); font-variant-numeric: tabular-nums; }
-.lqs-tk .lqs-ahorro b { font-weight: 600; color: var(--doc-tx); }
-.lqs-tk .lqs-reloj { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--page); border: 1px solid var(--doc-line); font: 14px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); font-variant-numeric: tabular-nums; }
-.lqs-tk .lqs-reloj svg { width: 18px; height: 18px; flex: none; color: var(--doc-tx3); }
-.lqs-tk .lqs-reloj b { font-weight: 600; color: var(--doc-tx); }
+.lqs-tk .lqs-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+/* La primera línea dice el pack y el precio (08-oct-2026), con la referencia tachada. */
+.lqs-tk .lqs-tk-ojo { margin: 6px 0 0; font: 600 13px/1.4 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); font-variant-numeric: tabular-nums; }
+.lqs-tk .lqs-tk-ojo s { font-weight: 500; color: var(--doc-tx3); }
+.lqs-tk .lqs-x { flex: none; width: 32px; height: 32px; border: 1px solid var(--doc-line2); border-radius: 12px; background: none; color: var(--doc-tx3); font: 16px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; line-height: 1; }
+.lqs-tk .lqs-tk-cuerpo { margin: 0; font: 17px/1.4 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); letter-spacing: -0.01em; }
+.lqs-tk .lqs-tk-negrita { margin: 12px 0 0; font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); }
+.lqs-tk .lqs-tk-negrita b { font-weight: 600; }
+.lqs-tk .lqs-tk-vence { margin: 10px 0 0; font: 12.5px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); text-align: center; font-variant-numeric: tabular-nums; }
 .lqs-tk .lqs-rojo { display: flex; align-items: center; justify-content: center; height: 50px; margin-top: 16px; border-radius: 99px; background: #C8323C; color: #fff; font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; border: 0; width: 100%; cursor: pointer; }
 .lqs-tk .lqs-rojo:hover { background: #B02A33; }
 .lqs-tk .lqs-rojo[data-presionado="1"] { opacity: 0.72; }
 .lqs-tk .lqs-tinta { display: flex; align-items: center; justify-content: center; height: 46px; margin-top: 10px; border-radius: 99px; border: 1.5px solid var(--doc-tx); background: none; color: var(--doc-tx); font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; width: 100%; cursor: pointer; }
 .lqs-tk .lqs-seguir { display: block; text-align: center; font: 500 14px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); margin-top: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; width: 100%; cursor: pointer; }
 .lqs-tk .lqs-cara { transition: opacity 180ms ease; }
-.lqs-tk .lqs-cara[data-activa="0"] { position: absolute; inset: 0; padding: inherit; opacity: 0; pointer-events: none; }
+/* La cara escondida queda encima, del alto de la que se ve, y RECORTADA (08-oct-2026): la del ticket
+   es más alta que la despedida y, sin recorte, la despedida daba scroll en PC. */
+.lqs-tk .lqs-cara[data-activa="0"] { position: absolute; inset: 0; padding: inherit; overflow: hidden; opacity: 0; pointer-events: none; }
 .lqs-tk .lqs-despedida-t { font: 600 20px/1.25 var(--font-ui), "Inter", system-ui, sans-serif; margin: 0 0 16px; color: var(--doc-tx); }
 .lqs-tk .lqs-despedida-t b { font-variant-numeric: tabular-nums; }
-.lqs-tk .lqs-resumen { display: flex; justify-content: space-between; gap: 10px; font: 14px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); padding: 12px 14px; border-radius: 12px; background: var(--page); border: 1px solid var(--doc-line); font-variant-numeric: tabular-nums; }
-.lqs-tk .lqs-resumen b { font-weight: 600; color: var(--doc-tx); }
-
-/* el cierre: el registro en el papel, sin material */
-.lqs-cierre { font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
-.lqs-cierre .lqs-cierre-t { font: 600 16px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); margin: 0; }
-.lqs-cierre .lqs-cierre-btn { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 99px; border: 1.5px solid var(--franco-text); color: var(--franco-text); font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; margin-top: 12px; }
 
 /* «Reducir movimiento» (iOS y macOS lo traen activado a menudo): sin desplazamiento, pero con un
    fundido corto. Sin transición el ticket aparecía de golpe y parecía un error (29-sep-2026). */
 @media (prefers-reduced-motion: reduce) {
-  .lqs-barra, .lqs-hoja { transform: none !important; }
+  .lqs-hoja { transform: none !important; }
   .lqs-pestana { transform: translate(-50%, 0) !important; }
-  .lqs-barra, .lqs-pestana, .lqs-hoja { opacity: 0; pointer-events: none; transition: opacity 160ms ease !important; transition-delay: 0s !important; }
-  .lqs-barra[data-visible="1"], .lqs-pestana[data-visible="1"], .lqs-velo[data-abierto="1"] .lqs-hoja { opacity: 1; pointer-events: auto; }
+  .lqs-pestana, .lqs-hoja { opacity: 0; pointer-events: none; transition: opacity 160ms ease !important; transition-delay: 0s !important; }
+  .lqs-pestana[data-visible="1"], .lqs-velo[data-abierto="1"] .lqs-hoja { opacity: 1; pointer-events: auto; }
   .lqs-velo::before { transition: opacity 160ms ease !important; transition-delay: 0s !important; }
   .lqs-tk .lqs-cara { transition: none !important; }
 }
@@ -134,7 +122,7 @@
 @media (min-width: 768px) { .lqs-h3-lead { font-size: 34px; } }
 .lqs-cuerpo { font-size: 15px; line-height: 1.5; color: rgba(250, 250, 248, 0.86); margin: 0 0 16px; max-width: 620px; }
 .lqs-parati { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 20px; }
-.lqs-parati-t { font: 600 10.5px var(--font-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(250, 250, 248, 0.62); }
+.lqs-parati-t { font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; color: rgba(250, 250, 248, 0.72); }
 .lqs-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid rgba(250, 250, 248, 0.35); background: rgba(250, 250, 248, 0.12); color: #FAFAF8; font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; }
 .lqs-chip-edit { padding: 0 8px 0 12px; }
 .lqs-chip-edit select { appearance: none; -webkit-appearance: none; background: transparent; border: 0; color: inherit; font: inherit; padding-right: 14px; cursor: pointer; outline: 0; background-image: linear-gradient(45deg, transparent 50%, #FAFAF8 50%), linear-gradient(135deg, #FAFAF8 50%, transparent 50%); background-position: calc(100% - 7px) 55%, calc(100% - 3px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
@@ -148,7 +136,4 @@
 .lqs-opcion[data-activa="1"] { background: #FAFAF8; color: #0F0F0F; border-color: #FAFAF8; }
 .lqs-postpago { border-radius: 16px; padding: 32px 22px; text-align: left; }
 .lqs-postpago .lqs-lead { margin: 0 0 18px; }
-.lqs-tk .lqs-precio-t { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.1; margin: 14px 0 4px; color: var(--doc-tx); font-variant-numeric: tabular-nums; }
-.lqs-tk .lqs-incluye { margin: 12px 0 0; font: 14px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); }
-.lqs-tk .lqs-urgencia { margin: 6px 0 0; font: 600 14px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); }
 .lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }

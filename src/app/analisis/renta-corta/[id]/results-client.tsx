@@ -27,7 +27,8 @@ import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
-import { precioQueCierraUF } from "@/lib/lo-que-sigue/precio-cierre";
+import { bannerRegistroVisible, correoDelTicket, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
+import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
@@ -93,6 +94,11 @@ interface STRResultsProps {
   /** El navegador de origen (02-oct-2026): el dueño con cuenta, sin sesión, en el navegador donde hizo
    *  el informe. Lo ve completo y el header dice «Tu análisis», no «Compartido contigo». */
   isOrigenNavegador?: boolean;
+  /** «Lo que sigue» (08-oct-2026, `oferta-informe.ts`): quién mira, si es el dueño; si el pack va en
+   *  este informe; y el correo con que pagaría, si ya se sabe. Los calcula el servidor. */
+  quienMiraLqs?: QuienMira;
+  ofertaPack?: boolean;
+  correoOferta?: string | null;
   /** Niveles de plazo precalculados en el server (`simularPlazoStr`): el reconstructor
    *  del input arrastra `next/headers` y no puede importarse desde el cliente, y de paso
    *  los 4 recomputes no corren en el teléfono del lector. Los consume `LineaPlazo`. */
@@ -122,6 +128,9 @@ export function STRResultsClient({
   showCtaWelcome = false,
   isAnonOwner = false,
   isOrigenNavegador = false,
+  quienMiraLqs = null,
+  ofertaPack = false,
+  correoOferta = null,
   simulacionStr = null,
   zonaStr = null,
   demo = false,
@@ -243,15 +252,15 @@ export function STRResultsClient({
   const isSubscriber = accessLevel === "subscriber";
 
 
-  // «Lo que sigue» (28-sep-2026): SOLO el primer informe anónimo (dueño por cookie, sin sesión).
-  // RECIÉN DENTRO (01-oct-2026, espejo de LTR): tras el código y el refresco, «Estás dentro» y el
-  // ticket (sin pedir correo) siguen para quien acaba de entrar.
+  // «Lo que sigue» (28-sep-2026; reglas del 08-oct-2026, espejo de LTR): LA OFERTA ES DEL INFORME.
+  // El ticket, mientras el servidor diga que hay oferta; el banner, al dueño sin sesión o recién dentro.
+  // El demo no la tiene: el servidor no le reconoce dueño.
   const recienDentro = useRecienDentro(analysisId);
-  const loQueSigue = ((isAnonOwner && !userId) || !!recienDentro) && !demo;
+  const bannerLqs = !!analysisId && bannerRegistroVisible({ quienMira: quienMiraLqs, conSesion: !!userId, recienDentro: !!recienDentro, compartido: isSharedView });
+  const ticketLqs = !!analysisId && ofertaPack;
   const ctxLqs = { analysisId, veredicto, modalidad: "str" as const };
-  // «Lo que sigue» (30-sep-2026): chips del perfil y precio al que cierra, del motor (espejo de LTR).
+  // «Lo que sigue» (30-sep-2026): los chips del perfil (espejo de LTR).
   const perfilLqs = perfilChipsDe(inputData, "str");
-  const precioCierreLqs = precioQueCierraUF(veredicto, distanciaPortada, precioCompraUFIn);
   const nextLqs = `/analisis/renta-corta/${analysisId}`;
 
   return (
@@ -363,7 +372,7 @@ export function STRResultsClient({
             página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
-            despuesDeLaCard={loQueSigue ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
+            despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             hallazgos={
               /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */
               hallazgosOrdenadosSTR.length > 0 ? (
@@ -434,6 +443,7 @@ export function STRResultsClient({
             </p>
           )}
         </SeccionInforme>
+        <FinCapitulos />
         {/* La comuna vivía en el ksub; al morir el ksub sube al título. */}
         <SeccionInforme id="la-zona" tono={tonoZonaStr} titulo={`Ubicación · ${comuna}`}>
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
@@ -461,8 +471,8 @@ export function STRResultsClient({
             bienvenida; si no, la línea «Te quedan N análisis.» con «Analizar otro depto». */}
         <div style={{ height: 24 }} />
         <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
-        {loQueSigue ? (
-          <TicketPack ctx={ctxLqs} createdAt={createdAt} precioCierreUF={precioCierreLqs} correoSesion={recienDentro} />
+        {ticketLqs ? (
+          <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} />
         ) : showCtaWelcome ? null : (
           <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} suscriptor={isSubscriber} />
         )}

@@ -19,6 +19,8 @@ import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSna
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
+import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
+import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -192,6 +194,19 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   });
   const isSharedLink = !isLoggedIn && !!analisis.user_id && !isOrigenNavegador;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
+
+  // «LO QUE SIGUE» · LA OFERTA ES DEL INFORME (08-oct-2026, `oferta-informe.ts`): el pack queda en el
+  // informe que nació anónimo hasta que venza o se compre, para su dueño —con la cookie, de vuelta sin
+  // sesión en su navegador (tras registrarse o un pago fallido) o con su cuenta—. Con su correo, si se sabe.
+  const quienMira = isDemo || modoDemo ? null : quienMiraElInforme({ isAnonOwner, isOrigenNavegador, isOwner });
+  const ofertaLqs = await leerOfertaPack(createServiceClient(), {
+    analysisId: analisis.id,
+    fila: data as { anon_claim_token_hash?: string | null; anon_origen_hash?: string | null },
+    quienMira,
+    esDemo: isDemo || modoDemo,
+    correoSesion: user?.email ?? null,
+    duenoId: analisis.user_id ?? null,
+  });
 
   // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
   // bienvenida — columna charge_mode escrita al crear (opción B; históricos
@@ -373,7 +388,9 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           ownerFirstName={ownerFirstName}
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}
-          isAnonOwner={isAnonOwner}
+          quienMiraLqs={quienMira}
+          ofertaPack={ofertaLqs.oferta}
+          correoOferta={ofertaLqs.correo}
           medianaResolvedAt={medianaResolvedAt}
         />
 

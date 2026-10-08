@@ -11,8 +11,8 @@ export const PACK_ANALISIS = 3;
 export const PACK_PRECIO_CLP = 14990;
 /** Lo que cuesta un análisis suelto hoy (`FLOW_PRODUCTS.single.amount`), para decir el ahorro. */
 export const PACK_UNITARIO_REFERENCIA_CLP = 9990;
-/** Lo que se dice por análisis: $14.990 / 3 = $4.997, y se dice «$5.000». Fijo, no derivado. */
-export const PACK_UNITARIO_CLP = 5000;
+/** Lo que se dice por análisis: $14.990 / 3 = $4.997 (08-oct-2026; hasta esa fecha se decía «$5.000»). */
+export const PACK_UNITARIO_CLP = Math.round(PACK_PRECIO_CLP / PACK_ANALISIS);
 export const VENTANA_PACK_MS = 24 * 60 * 60 * 1000;
 
 /** Cuándo vence la oferta del pack de un informe creado en `createdAt`. */
@@ -40,6 +40,15 @@ export function diaVencimiento(createdAt: string | Date, ahora: Date = new Date(
   if (vence === f.format(ahora)) return "hoy";
   if (vence === f.format(new Date(ahora.getTime() + 24 * 60 * 60 * 1000))) return "mañana";
   return "otro";
+}
+
+/** «hoy a las 21:04», «mañana a las 21:04» o «el 9 de octubre a las 21:04», en la hora de Chile. */
+export function cuandoVence(createdAt: string | Date, ahora: Date = new Date(), zona = "America/Santiago"): string {
+  const hora = horaVencimiento(createdAt, zona);
+  const dia = diaVencimiento(createdAt, ahora, zona);
+  if (dia !== "otro") return `${dia} a las ${hora}`;
+  const fecha = new Intl.DateTimeFormat("es-CL", { timeZone: zona, day: "numeric", month: "long" }).format(venceEl(createdAt));
+  return `el ${fecha} a las ${hora}`;
 }
 
 /** Lo que se ahorra en los tres análisis, redondeado al mil: 3 × $9.990 − $14.990 = $14.980 → «$15.000». */
