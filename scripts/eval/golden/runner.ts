@@ -80,6 +80,7 @@ import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
 import { runDfl2Tier } from "./dfl2-catch-test";
 import { runOtraFuenteTier } from "./otra-fuente-catch-test";
 import { runWizardInteriorTier } from "./wizard-interior-catch-test";
+import { runSubsidioTasaTier } from "./subsidio-tasa-catch-test";
 import { runAjustarSinCaminoTier } from "./ajustar-sin-camino-catch-test";
 import { runDispersionComunalTier } from "./dispersion-comunal-catch-test";
 import { runComoLoPagasTier } from "./como-lo-pagas-catch-test";
@@ -412,6 +413,10 @@ function printSeed(r: SeedReport) {
   // su monto en LTR y STR, sin tocar el hipotecario ni el NOI, y sin ella nada cambia.
   totalHard += runOtraFuenteTier().hard;
   totalHard += runWizardInteriorTier().hard;
+  // Tier SUBSIDIO-TASA (08-oct-2026, 0 tokens): un usado nunca queda con la tasa del subsidio —el
+  // tipo y el precio del resumen la devuelven a mercado y la precarga del pack no la copia—, el
+  // wizard dice la condición, mayo de 2028 y la Ley 21.836, y el informe lo dice junto a la tasa.
+  totalHard += runSubsidioTasaTier().hard;
   // Tier PRUEBAS-SUELTAS (27-sep-2026, 0 tokens): test-linea-consumo y test-draft-scope corren
   // acá como proceso aparte y tienen que salir con 0. Estaban en rojo en master sin que nadie los corriera.
   totalHard += runPruebasSueltasTier().hard;
