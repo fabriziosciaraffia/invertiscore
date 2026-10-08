@@ -375,6 +375,8 @@ function printSeed(r: SeedReport) {
   // Tier OFERTA-TICKET (08-oct-2026, 0 tokens): la oferta del pack es del informe (anónimo, de vuelta
   // sin sesión, con sesión; sigue tras un pago fallido con el correo de la cuenta), el ticket sube a
   // los 8 s del final, a los 4 min de lectura o al salir por arriba en PC, una vez; copy y sin barra.
+  // Segunda pasada (mismo día): el ticket espera mientras se usa el banner, la salida exige haber pasado
+  // la recomendación o un minuto de lectura, la cinta compacta y el «cuándo» con estado. 29 mutaciones.
   totalHard += (await runOfertaTicketTier()).hard;
   // Tier ENTRADA-CÓDIGO (01-oct-2026, 0 tokens): una sola entrada, el código (/entrar con su copy por
   // contexto); «Entrar» del header con next validado; el avatar con sesión en landing y wizard; el

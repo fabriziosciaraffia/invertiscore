@@ -116,6 +116,14 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   const C = req("../../../src/lib/lo-que-sigue/copy");
   const { BannerRegistro } = req("../../../src/components/lo-que-sigue/BannerRegistro") ?? {};
   const { TicketPack } = req("../../../src/components/lo-que-sigue/TicketPack") ?? {};
+  const { EstasDentro } = req("../../../src/components/lo-que-sigue/EstasDentro") ?? {};
+  // PISO DE COBERTURA (08-oct-2026, segunda pasada): `req` es tolerante para que el tier corriera antes de
+  // que existieran los módulos, y eso hacía que un módulo que no carga —un JSX roto— SALTARA en verde todas
+  // las secciones que lo usan (la mutación S24 lo mostró: sin el visto, el componente no compilaba y la
+  // sección 8 no corrió). Ahora que existen, que no cargue es una falla.
+  for (const [nombre, m] of [["oferta-informe", O], ["oferta-informe-servidor", OS], ["disparo-ticket", D], ["oferta-pack", P], ["copy", C], ["BannerRegistro", BannerRegistro], ["TicketPack", TicketPack], ["EstasDentro", EstasDentro]] as const) {
+    if (!m) F(`0 · no carga ${nombre}: las secciones que lo usan no corrieron`);
+  }
 
   // ── 1 · LA OFERTA ES DEL INFORME ───────────────────────────────────────────
   if (!O) F("1 · no existe `oferta-informe`: la oferta cuelga de la sesión y no del informe");
@@ -240,6 +248,8 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       ];
       for (const [nombre, ev, sube] of casos) {
         const { subidas, d } = nuevo();
+        // Desde la segunda pasada la salida exige haber pasado la recomendación (§7): acá se da por pasada.
+        d.pasoLaRecomendacion();
         d.salida(ev);
         if ((subidas.join() === "salida") !== sube) F(`3 · salida (${nombre}): ${sube ? "no sube" : "sube"}`);
       }
@@ -248,6 +258,7 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       const { reloj, subidas, d } = nuevo(false);
       d.llegoAlFinal();
       reloj.avanzar(9000);
+      d.pasoLaRecomendacion();
       d.salida({ clientY: 0, haciaFuera: true, pc: true });
       if (subidas.length) F("3 · sube aunque ya subió en este navegador (o la oferta venció)");
     }
@@ -288,21 +299,32 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     const perfil = { tipologia: "2D1B", comuna: "San Miguel", modalidad: "ltr" };
     const html = dibujarConRouter(createElement(BannerRegistro, { ctx: { analysisId: "a1", veredicto: "BUSCAR OTRA", modalidad: "ltr" }, next: "/analisis/a1", perfil }));
     const t = texto(html);
+    // (08-oct-2026, segunda pasada) la jerarquía nueva: «Accede gratis» en negrita en la línea de arriba; el
+    // titular solo con la urgencia; el registro en negrita debajo; la bajada en gris; chips y botón.
     for (const frase of [
-      "Gratis · solo con tu correo",
-      "Los deptos que convienen como inversión se van rápido. Regístrate y Franco te manda cada semana una selección según tu perfil.",
+      "Accede gratis · solo con tu correo",
+      "Los deptos que convienen como inversión se van rápido.",
+      "Regístrate y Franco te manda cada semana una selección según tu perfil.",
       "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día.",
       "Quiero recibirlos",
     ]) if (!t.includes(frase)) F(`4 · el banner no dice «${frase}»`);
     if (/Quiero acceso|Lo que sigue/.test(t)) F("4 · el banner conserva el copy viejo");
+    if (!/<p class="lqs-ojo"><b>Accede gratis<\/b> · solo con tu correo<\/p>/.test(html)) F("4 · la línea de arriba no lleva «Accede gratis» en negrita y el resto normal");
+    if (!/<h3 class="lqs-h3 lqs-h3-lead">Los deptos que convienen como inversión se van rápido\.<\/h3>/.test(html)) F("4 · el titular no es solo «Los deptos que convienen como inversión se van rápido.»");
+    if (!/<p class="lqs-banner-registro"><b>Regístrate y Franco te manda cada semana una selección según tu perfil\.<\/b><\/p>/.test(html)) F("4 · «Regístrate y Franco te manda…» no va debajo del titular en negrita");
+    if (!/<p class="lqs-cuerpo lqs-gris">Deptos publicados/.test(html)) F("4 · la bajada no va en gris");
+    if (!/<div class="lqs-fila-accion">\s*<div class="lqs-parati"[\s\S]*?<\/div>\s*<button type="button" class="lqs-btn"/.test(html)) F("4 · los chips «Para ti» y el botón no van en la misma fila");
     if (/data-lqs="barra"/.test(html)) F("5 · el banner sigue con la barra fija");
   }
   if (TicketPack && P?.cuandoVence) {
     const creado = new Date().toISOString();
     const html = dibujarConRouter(createElement(TicketPack, { ctx: { analysisId: "a1", veredicto: "COMPRAR", modalidad: "ltr" }, createdAt: creado }));
     const t = texto(html);
-    if (!/Pack · 3 análisis por \$14\.990 · <s>\$9\.990<\/s> \$4\.997 cada uno/.test(html)) F("4 · la primera línea del ticket no es «Pack · 3 análisis por $14.990 · $9.990 $4.997 cada uno» con el $9.990 tachado");
+    // (08-oct-2026, segunda pasada) «Pack · 3 análisis por $14.990» en negrita y el resto de la línea normal;
+    // «La mitad del precio, solo para usuarios nuevos.» en negrita.
+    if (!/<b>Pack · 3 análisis por \$14\.990<\/b> · <s>\$9\.990<\/s> \$4\.997 cada uno/.test(html)) F("4 · la primera línea del ticket no es «Pack · 3 análisis por $14.990» en negrita y «· $9.990 $4.997 cada uno» normal, con el $9.990 tachado");
     if (!t.includes("El mismo informe que acabas de leer, para tres deptos más. La mitad del precio, solo para usuarios nuevos.")) F("4 · el ticket no dice qué es el pack");
+    if (!/<b>La mitad del precio, solo para usuarios nuevos\.<\/b>/.test(html)) F("4 · «La mitad del precio, solo para usuarios nuevos.» no va en negrita");
     if (!/<b[^>]*>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/b>/.test(html)) F("4 · la línea del registro no va en negrita");
     if (!/>Comprar por \$14\.990</.test(html)) F("4 · el botón no dice «Comprar por $14.990»");
     const vence = `Solo para usuarios nuevos, en este informe · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
@@ -319,11 +341,144 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   const est = sinComentarios(leer("src/lib/lo-que-sigue/estado-ui.ts"));
   if (/queVaAbajo/.test(est)) F("5 · queda `queVaAbajo`, que solo decidía la barra");
 
+  // ── 6 · EL TICKET ESPERA MIENTRAS EL BANNER ESTÁ EN USO (08-oct-2026, segunda pasada) ──────
+  // Con el correo con foco, el paso del código abierto o actividad en el banner en los últimos 60 s, el
+  // ticket no sube; los disparadores siguen contando y sale apenas pasa un minuto sin uso.
+  const U = req("../../../src/lib/lo-que-sigue/uso-banner");
+  if (!U) F("6 · no existe `uso-banner`: el ticket puede taparle el registro a quien está escribiendo su correo");
+  else {
+    if (U.QUIETUD_BANNER_MS !== 60000) F("6 · la quietud del banner no es de 60 s");
+    let t = 0;
+    const u = U.crearUsoBanner(() => t);
+    if (u.enUso()) F("6 · sin tocarlo, el banner figura en uso");
+    u.actividad();
+    t = 59999;
+    if (!u.enUso()) F("6 · a los 59 s de la última actividad el banner ya no figura en uso");
+    t = 60000;
+    if (u.enUso()) F("6 · a los 60 s sin actividad el banner sigue en uso");
+    u.correoConFoco(false);
+    if (u.enUso()) F("6 · soltar un foco que no estaba cuenta como actividad (el desmontaje alargaría la espera)");
+    u.correoConFoco(true);
+    t = 200000;
+    if (!u.enUso()) F("6 · con el correo con foco el banner no figura en uso");
+    // El minuto se cuenta desde que la persona DEJA el campo, no desde su última tecla (QA del 08-oct:
+    // contado desde la tecla, el ticket subía a los 46 s del abandono).
+    u.correoConFoco(false);
+    t = 259999;
+    if (!u.enUso()) F("6 · el minuto no se cuenta desde que se deja el correo");
+    t = 260000;
+    if (u.enUso()) F("6 · un minuto después de dejar el correo el banner sigue en uso");
+    u.codigoAbierto(true);
+    t = 999999;
+    if (!u.enUso()) F("6 · con el paso del código abierto el banner no figura en uso");
+    u.codigoAbierto(false);
+    if (!u.enUso()) F("6 · el minuto no se cuenta desde que se cierra el paso del código");
+    t = 999999 + 60000;
+    if (u.enUso()) F("6 · cerrado el código hace un minuto, el banner sigue en uso");
+  }
+  if (D) {
+    const conEspera = (ocupado: { v: boolean }) => {
+      const reloj = relojFalso();
+      const subidas: string[] = [];
+      const d = D.crearDisparador({ reloj, puedeSubir: () => true, subir: (m: string) => subidas.push(m), enEspera: () => ocupado.v });
+      return { reloj, subidas, d };
+    };
+    {
+      const ocupado = { v: true };
+      const { reloj, subidas, d } = conEspera(ocupado);
+      d.llegoAlFinal();
+      reloj.avanzar(9000);
+      d.tick(true);
+      if (subidas.length) F("6 · el ticket sube con el banner en uso");
+      ocupado.v = false;
+      reloj.avanzar(1000);
+      d.tick(true);
+      if (subidas.join() !== "final") F(`6 · liberado el banner, el ticket no sale (${subidas.join()})`);
+    }
+    {
+      const ocupado = { v: true };
+      const { reloj, subidas, d } = conEspera(ocupado);
+      d.actividad();
+      for (let s = 1; s <= 250; s++) { reloj.avanzar(1000); if (s % 10 === 0) d.actividad(); d.tick(true); }
+      if (subidas.length) F("6 · la lectura sube el ticket con el banner en uso");
+      ocupado.v = false;
+      reloj.avanzar(1000);
+      d.actividad();
+      d.tick(true);
+      if (subidas.join() !== "lectura") F(`6 · la lectura no siguió contando mientras el banner estaba en uso (${subidas.join()})`);
+    }
+    // ── 7 · LA SALIDA POR ARRIBA, SOLO DESPUÉS DE LA RECOMENDACIÓN O DE 60 S DE LECTURA ───────
+    if (D.LECTURA_PARA_SALIDA_MS !== 60000) F("7 · la lectura que habilita la salida no es de 60 s");
+    const pc = { clientY: 0, haciaFuera: true, pc: true };
+    {
+      const { subidas, d } = conEspera({ v: false });
+      d.salida(pc);
+      if (subidas.length) F("7 · la salida sube el ticket sin haber pasado la recomendación ni leído 60 s");
+      if (typeof d.pasoLaRecomendacion === "function") d.pasoLaRecomendacion();
+      else F("7 · el disparador no sabe si se pasó la recomendación");
+      d.salida(pc);
+      if (subidas.join() !== "salida") F("7 · pasada la recomendación, la salida no sube el ticket");
+    }
+    {
+      const { reloj, subidas, d } = conEspera({ v: false });
+      d.actividad();
+      for (let s = 1; s <= 59; s++) { reloj.avanzar(1000); d.actividad(); d.tick(true); }
+      d.salida(pc);
+      if (subidas.length) F("7 · con 59 s de lectura la salida ya sube el ticket");
+      reloj.avanzar(1000); d.actividad(); d.tick(true);
+      d.salida(pc);
+      if (subidas.join() !== "salida") F("7 · con 60 s de lectura la salida no sube el ticket");
+    }
+    if (D.SELECTOR_FIN_RECOMENDACION !== '[data-lqs="fin-recomendacion"]') F("7 · la marca del final de la recomendación no es data-lqs=fin-recomendacion");
+  }
+  if (!/enEspera: \(\) => usoBanner\.enUso\(\)/.test(tk)) F("6 · el ticket no espera al banner");
+  if (!/document\.querySelector\(SELECTOR_FIN_RECOMENDACION\)/.test(tk) || !/d\.pasoLaRecomendacion\(\)/.test(tk)) F("7 · el ticket no mira si ya se pasó la recomendación");
+  {
+    const bannerSrc = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
+    for (const ev of ["onPointerDownCapture", "onKeyDownCapture", "onInputCapture", "onFocusCapture"]) {
+      if (!new RegExp(`${ev}=\\{marcarUso\\}`).test(bannerSrc)) F(`6 · la actividad en el banner no se marca (${ev})`);
+    }
+    if (!/const marcarUso = \(\) => usoBanner\.actividad\(\);/.test(bannerSrc)) F("6 · el banner no marca su uso en usoBanner");
+    const reg = sinComentarios(leer("src/components/lo-que-sigue/RegistroUnPaso.tsx"));
+    if (!/onFocus=\{\(\) => usoBanner\.correoConFoco\(true\)\}/.test(reg) || !/onBlur=\{\(\) => usoBanner\.correoConFoco\(false\)\}/.test(reg)) F("6 · el foco del correo no se avisa al ticket");
+    if (!/usoBanner\.codigoAbierto\(!!enviado\);/.test(reg) || !/return \(\) => \{\s*usoBanner\.codigoAbierto\(false\);\s*usoBanner\.correoConFoco\(false\);/.test(reg)) F("6 · el paso del código abierto no se avisa al ticket (o queda marcado al desmontar)");
+  }
+  for (const [nombre, f] of [["LTR", "src/components/analysis/HeroLTR.tsx"], ["STR", "src/components/analysis/str/HeroStrDictamen.tsx"]] as const) {
+    if (!/\{recomendacion\}\s*<\/SeccionInforme>\s*<FinRecomendacion \/>\s*\{despuesDeLaCard\}/.test(sinComentarios(leer(f)))) F(`7 · ${nombre}: la marca del final de la recomendación no va justo después de la card`);
+  }
+
+  // ── 8 · «ESTÁS DENTRO» Y EL «CUÁNDO» CON ESTADO (08-oct-2026, segunda pasada) ─────────────
+  if (C) {
+    const E = C.ESTAS_DENTRO;
+    if (E.anotado !== "Anotado · toca para cambiar" || E.avisoYa !== "Te avisamos el mismo día que aparezca uno") F("8 · «Anotado · toca para cambiar» o el aviso de «Ya» no son los aprobados");
+    if (typeof C.notaCuando !== "function" || C.notaCuando(null) !== null || C.notaCuando("ya") !== E.avisoYa || C.notaCuando("meses") !== E.anotado || C.notaCuando("mirando") !== E.anotado) F("8 · la nota del «cuándo» no es nada antes de elegir, el aviso con «Ya» y «Anotado…» con las otras");
+    if (typeof C.notaChips !== "function" || C.notaChips(false) !== E.tocaCambiar || C.notaChips(true) !== E.anotado) F("8 · los chips no pasan de «toca para cambiar» a «Anotado · toca para cambiar» al cambiarse");
+  }
+  if (EstasDentro) {
+    const ctx = { analysisId: "a1", veredicto: "COMPRAR", modalidad: "ltr" };
+    const perfil = { tipologia: "2D1B", comuna: "San Miguel", modalidad: "ltr" };
+    const sin = dibujarConRouter(createElement(EstasDentro, { ctx, perfil, demo: true }));
+    if (/Anotado|Te avisamos/.test(sin) || /lqs-visto/.test(sin)) F("8 · antes de elegir ya dice «Anotado» o marca una opción");
+    if ((sin.match(/class="lqs-opcion"/g) ?? []).length !== 3) F("8 · las tres opciones no van con su estilo (borde)");
+    const ya = dibujarConRouter(createElement(EstasDentro, { ctx, perfil, demo: true, horizonteInicial: "ya" }));
+    if (!/data-activa="1"[^>]*><span class="lqs-visto" aria-hidden="true">✓<\/span>Ya</.test(ya)) F("8 · la opción elegida no lleva el visto");
+    if (!/<span class="lqs-toca lqs-anotado"[^>]*>Te avisamos el mismo día que aparezca uno<\/span>/.test(ya)) F("8 · con «Ya» no dice «Te avisamos el mismo día que aparezca uno»");
+    const meses = dibujarConRouter(createElement(EstasDentro, { ctx, perfil, demo: true, horizonteInicial: "meses" }));
+    if (!/<span class="lqs-toca lqs-anotado"[^>]*>Anotado · toca para cambiar<\/span>/.test(meses)) F("8 · al elegir no dice «Anotado · toca para cambiar»");
+    if ((meses.match(/lqs-visto/g) ?? []).length !== 1) F("8 · más de una opción marcada");
+    const ed = sinComentarios(leer("src/components/lo-que-sigue/EstasDentro.tsx"));
+    if (!/\{notaChips\(chipsCambiados\)\}/.test(ed) || !/setChipsCambiados\(true\)/.test(ed)) F("8 · los chips no dicen «Anotado» después de cambiarse");
+  }
+  const cssDentro = sinComentarios(leer("src/components/lo-que-sigue/lo-que-sigue.css"));
+  if (!/\.lqs-opcion\[data-activa="1"\] \{[^}]*background: #FAFAF8/.test(cssDentro) || !/\.lqs-opcion \{[^}]*background: none/.test(cssDentro)) F("8 · la opción elegida no va con relleno y las otras solo con borde");
+  // El alto (≤ 360 px en PC) se mide en el navegador; acá queda la fila de PC, que es lo que más lo baja.
+  if (!/@media \(min-width: 768px\) \{[^@]*\.lqs-fila-accion \{ flex-direction: row/.test(cssDentro)) F("4 · en PC los chips «Para ti» y el botón no van en una fila");
+
   if (fallas.length) {
     console.log(`  ✗ OFERTA-TICKET · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 50)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la oferta es del informe (anónimo, de vuelta sin sesión, con sesión; no el enlace ajeno ni el comprado), sigue después de un pago fallido con el correo de la cuenta, sube a los 8 s del final, a los 4 min de lectura o al salir por arriba en PC, una vez; el copy del goal; sin barra fija");
+    console.log("  ✓ VERDE — la oferta es del informe (anónimo, de vuelta sin sesión, con sesión; no el enlace ajeno ni el comprado), sigue después de un pago fallido con el correo de la cuenta, sube a los 8 s del final, a los 4 min de lectura o al salir por arriba en PC (pasada la recomendación o un minuto de lectura), una vez, y espera mientras se usa el banner; el copy del goal; el «cuándo» se ve elegido; sin barra fija");
   }
   return { hard: fallas.length };
 }
@@ -348,3 +503,27 @@ if (require.main === module) {
 //    N9  la salida también en teléfono                    N20 el vencimiento sin «guarda el enlace»
 //    N10 sube dos veces                                   N21 el ticket sin la negrita
 //    N11 sube apenas se ve el final                       N22 la pestaña vuelve con el degradado
+//
+// ACTAS DE MUTACIÓN · SEGUNDA PASADA (08-oct-2026) — mismo método. Antes de implementar el tier dio 35
+// fallas. Las 29 en ROJO; restauradas, VERDE. Dos debilidades del propio tier, corregidas en el camino:
+//  · S24 salió VERDE la primera vez: borrar el visto dejaba `{cond && }`, el componente no compilaba, el
+//    `req` tolerante devolvía null y la sección 8 SE SALTABA. De ahí el piso de cobertura (§0): un módulo
+//    que no carga es una falla. Repetida con una mutación que compila (S24) y con una que no (S29): rojas.
+//  · la QA en el navegador mostró que el minuto contaba desde la última TECLA, no desde que la persona
+//    deja el correo (subía a los 46 s del abandono): S10–S12 vigilan que dejar el campo o el paso del
+//    código marque, y que el desmontaje —que suelta todo siempre— no alargue la espera.
+//    S1  la línea de arriba sin negrita                   S16 el banner no marca el toque
+//    S2  el registro sin negrita                          S17 el foco del correo no se avisa
+//    S3  la bajada sin gris                               S18 el desmontaje deja el código marcado
+//    S4  chips y botón fuera de la fila                   S19 la salida sin la puerta de la recomendación
+//    S5  la fila no es fila en PC                         S20 el ticket no avisa la recomendación
+//    S6  el pack sin negrita                              S21 la marca falta en LTR
+//    S7  «La mitad del precio» sin negrita                S22 la marca falta en STR
+//    S8  el foco del correo no cuenta                     S23 el «Anotado» con otro texto
+//    S9  la quietud a 30 s                                S24 la elegida sin visto
+//    S10 dejar el correo no marca                         S25 sin la nota del «cuándo»
+//    S11 dejar el código no marca                         S26 los chips no dicen «Anotado»
+//    S12 el desmontaje alarga la espera                   S27 la elegida sin relleno
+//    S13 disparar ignora la espera                        S28 «Ya» dice lo mismo que las otras
+//    S14 el pendiente no se suelta                        S29 EstasDentro no compila (el piso)
+//    S15 el ticket no espera al banner

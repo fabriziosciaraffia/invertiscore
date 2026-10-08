@@ -70,7 +70,12 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
     const s = sinComentarios(leer(f));
-    if (!/\{recomendacion\}\s*<\/SeccionInforme>\s*\{despuesDeLaCard\}/.test(s)) F(`1 · ${que} no ubica «lo que sigue» justo después de la card de Franco`);
+    // ⚠ ACTA (08-oct-2026, segunda pasada) · entre la card y el hueco va <FinRecomendacion />, la marca de 1 px
+    // que le dice al ticket que ya se pasó la recomendación (la salida por arriba la exige). Sigue sin
+    // caber nada visible: la marca es aria-hidden y la fija el tier OFERTA-TICKET §7. En rojo por mutación
+    // los cuatro chequeos tocados en esta pasada: algo visible entre la card y el hueco; la línea vieja
+    // del ticket (§2); el titular de dos frases (§5); voseo en el aviso de «Ya» (§5).
+    if (!/\{recomendacion\}\s*<\/SeccionInforme>\s*(?:<FinRecomendacion \/>\s*)?\{despuesDeLaCard\}/.test(s)) F(`1 · ${que} no ubica «lo que sigue» justo después de la card de Franco`);
   }
   if (!/despuesDeLaCard=\{despuesDeLaCard\}/.test(sinComentarios(leer("src/components/analysis/SubjectCardGrid.tsx")))) F("1 · el grid no pasa el hueco al hero");
   const header = sinComentarios(leer("src/components/chrome/HeaderFranco.tsx"));
@@ -92,7 +97,7 @@ export function runLoQueSigueTier(): { hard: number } {
   if (fmtCLP(PACK_PRECIO_CLP) !== "$14.990" || fmtCLP(PACK_UNITARIO_CLP) !== "$4.997" || fmtCLP(PACK_UNITARIO_REFERENCIA_CLP) !== "$9.990") F("2 · el ticket no dice «$14.990», «$4.997» ni «$9.990»");
   {
     const tk = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
-    if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/\{TICKET_PACK\.linea\(precio\)\}<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
+    if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/<b>\{TICKET_PACK\.linea\(precio\)\}<\/b>\{" · "\}<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
     if (!/\{TICKET_PACK\.boton\(precio\)\}/.test(tk) || !/\{TICKET_PACK\.pestana\(precio, hora\)\}/.test(tk)) F("2 · el precio del botón o de la pestaña no sale de PACK_PRECIO_CLP");
     if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
   }
@@ -169,7 +174,7 @@ export function runLoQueSigueTier(): { hard: number } {
     ...Object.values(OFERTA_REGISTRO), ...Object.values(REGISTRO_UN_PASO).map((v) => (typeof v === "function" ? v("x@y.cl") : v)),
     ...Object.values(TICKET_PACK).map((v) => (typeof v === "function" ? (v as (...a: string[]) => string)("hoy", "21:04") : v)),
     ...(["BUSCAR OTRA", "AJUSTA SUPUESTOS", "COMPRAR"] as const).map((v) => DESPUES_DE_PAGAR.fraseVeredicto[v]),
-    ESTAS_DENTRO.titular, ESTAS_DENTRO.cuerpo, ESTAS_DENTRO.tocaCambiar, ESTAS_DENTRO.aprende, ESTAS_DENTRO.cuando, ESTAS_DENTRO.errorGuardar, ...ESTAS_DENTRO.horizontes.map((h) => h.texto), ...Object.values(ESTAS_DENTRO.modalidad),
+    ESTAS_DENTRO.titular, ESTAS_DENTRO.cuerpo, ESTAS_DENTRO.tocaCambiar, ESTAS_DENTRO.anotado, ESTAS_DENTRO.avisoYa, ESTAS_DENTRO.aprende, ESTAS_DENTRO.cuando, ESTAS_DENTRO.errorGuardar, ...ESTAS_DENTRO.horizontes.map((h) => h.texto), ...Object.values(ESTAS_DENTRO.modalidad),
     DESPUES_DE_PAGAR.titular(3), DESPUES_DE_PAGAR.titular(1), DESPUES_DE_PAGAR.titular(0), DESPUES_DE_PAGAR.titular(null), DESPUES_DE_PAGAR.cuerpo, DESPUES_DE_PAGAR.boton,
     COMPARAR.titulo, COMPARAR.bajada, COMPARAR.boton, COMPARAR.notaPesos, COMPARAR.minimo, ...Object.values(COMPARAR.filas),
     ...Object.values(CORREO_RECORDATORIO),
@@ -184,7 +189,9 @@ export function runLoQueSigueTier(): { hard: number } {
   }
   if (TICKET_PACK.despedida("21:04") !== "Vence a las 21:04 y no vuelve." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada, en tuteo");
   // Las frases aprobadas, literales (30-sep-2026; el banner y el ticket, del 08-oct-2026).
-  if (OFERTA_REGISTRO.ojo !== "Gratis · solo con tu correo" || OFERTA_REGISTRO.titular !== "Los deptos que convienen como inversión se van rápido. Regístrate y Franco te manda cada semana una selección según tu perfil." || OFERTA_REGISTRO.bajada !== "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día." || OFERTA_REGISTRO.boton !== "Quiero recibirlos") F("5 · el banner no es el aprobado");
+  // ⚠ ACTA (08-oct-2026, segunda pasada) · el banner a la mitad de alto: «Accede gratis» (en negrita) · solo
+  // con tu correo; el titular solo con la urgencia; lo que recibe, aparte y en negrita.
+  if (`${OFERTA_REGISTRO.ojoFuerte}${OFERTA_REGISTRO.ojoResto}` !== "Accede gratis · solo con tu correo" || OFERTA_REGISTRO.titular !== "Los deptos que convienen como inversión se van rápido." || OFERTA_REGISTRO.registro !== "Regístrate y Franco te manda cada semana una selección según tu perfil." || OFERTA_REGISTRO.bajada !== "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día." || OFERTA_REGISTRO.boton !== "Quiero recibirlos") F("5 · el banner no es el aprobado");
   if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Ya|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
   if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton("$14.990") !== "Comprar por $14.990") F("5 · la pestaña o el botón del ticket no son los aprobados");
   if (TICKET_PACK.vencimiento("hoy a las 21:04") !== "Solo para usuarios nuevos, en este informe · hasta hoy a las 21:04 · si te vas, guarda el enlace") F("5 · el vencimiento del ticket no es el aprobado");
