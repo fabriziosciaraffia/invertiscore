@@ -20,6 +20,7 @@ import { MarcaSeccion } from "./informeTelemetry";
 import type { ReactNode } from "react";
 import { metricaValorONull } from "@/lib/types";
 import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
+import { FinRecomendacion } from "@/components/lo-que-sigue/FinRecomendacion";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -351,6 +352,7 @@ export function HeroLTR({
         <MarcaSeccion seccion="recomendacion" tipo="ltr" accessLevel={accessLevel} />
         {recomendacion}
       </SeccionInforme>
+      <FinRecomendacion />
       {despuesDeLaCard}
     </>
   );

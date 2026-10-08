@@ -19,6 +19,7 @@ import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
 import { CATALOGO_CORREOS } from "@/lib/email/catalogo";
 import { claveTicket } from "@/lib/lo-que-sigue/estado-ticket";
 import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
+import { FinRecomendacion } from "@/components/lo-que-sigue/FinRecomendacion";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import { bannerRegistroVisible, correoDelTicket, ofertaPackDelInforme, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
 import type { VeredictoLqs } from "@/lib/lo-que-sigue/copy";
@@ -116,6 +117,8 @@ export function DemoCliente() {
           <p style={{ fontWeight: 700, fontSize: 19 }}>Lo que haría Franco</p>
           <p style={{ opacity: .62, fontSize: 14, margin: "5px 0 0" }}>{precio ? `El precio que cierra: UF ${precio.toLocaleString("es-CL")}` : "Este conviene tal como está"}</p>
         </div>
+        {/* Como en el informe: la marca de que ya se pasó la recomendación (la salida por arriba la exige). */}
+        <FinRecomendacion />
         {bannerSim && <BannerRegistro key={`b-${v}`} ctx={ctx} next="/dev/lo-que-sigue" perfil={PERFIL} demo />}
         {["Cuánto renta", "Cómo lo pagas", "Plusvalía", "Tu resultado a 10 años", "La zona", "Qué pesa"].map((t) => (
           <section key={t} style={{ marginBottom: 34 }}>
@@ -159,7 +162,7 @@ export function DemoCliente() {
         {rotulo("El correo del tercer día")}
         <iframe title="Correo del recordatorio" srcDoc={correo} style={{ width: "100%", height: 560, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} data-lqs="demo-correo" />
 
-        <p style={{ fontSize: 13, opacity: .6, marginTop: 40 }}>El final de la página. El ticket sube 8 s después de pasar «Tu resultado a 10 años», a los 4 minutos de lectura o al sacar el cursor por arriba en PC; cerrado, queda la pestaña.</p>
+        <p style={{ fontSize: 13, opacity: .6, marginTop: 40 }}>El final de la página. El ticket sube 8 s después de pasar «Tu resultado a 10 años», a los 4 minutos de lectura o al sacar el cursor por arriba en PC (pasada la card de Franco o con un minuto de lectura); mientras se usa el banner, espera. Cerrado, queda la pestaña.</p>
         {ofertaSim && <TicketPack key={`t-${v}-${vuelta}`} ctx={ctx} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro: null, correoConocido: sim.correo })} />}
         <div style={{ height: 320 }} />
       </div>

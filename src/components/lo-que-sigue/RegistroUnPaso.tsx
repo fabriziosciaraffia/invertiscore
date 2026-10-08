@@ -21,6 +21,7 @@ import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } 
 import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPendiente, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
+import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -57,6 +58,16 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
 
   useEffect(() => {
     if (enviado) campoCodigo.current?.focus();
+  }, [enviado]);
+
+  // El ticket del pack espera mientras el paso del código está abierto (08-oct-2026, `uso-banner.ts`).
+  // Al cambiar de paso o al salir, nada queda marcado: el campo del correo se desmonta sin blur.
+  useEffect(() => {
+    usoBanner.codigoAbierto(!!enviado);
+    return () => {
+      usoBanner.codigoAbierto(false);
+      usoBanner.correoConFoco(false);
+    };
   }, [enviado]);
 
   async function enviarCodigo(e: FormEvent) {
@@ -159,6 +170,8 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
             aria-label="Tu correo"
             value={correo}
             onChange={(e) => setCorreo(e.target.value)}
+            onFocus={() => usoBanner.correoConFoco(true)}
+            onBlur={() => usoBanner.correoConFoco(false)}
           />
           <button type="submit" className="lqs-btn" disabled={enviando} data-presionado={enviando ? "1" : undefined}>{REGISTRO_UN_PASO.mandarCodigo}</button>
         </div>

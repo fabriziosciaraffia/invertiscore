@@ -16,6 +16,7 @@ import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { LoQueHariaYoBloque, CardBuscarOtra } from "@/components/analysis/shared/LoQueHariaYoBloque";
+import { FinRecomendacion } from "@/components/lo-que-sigue/FinRecomendacion";
 import { metricaValorONull } from "@/lib/types";
 
 /**
@@ -214,6 +215,7 @@ export function HeroStrDictamen({
         <MarcaSeccion seccion="recomendacion" tipo="str" accessLevel={accessLevel} />
         {recomendacion}
       </SeccionInforme>
+      <FinRecomendacion />
       {despuesDeLaCard}
     </>
   );

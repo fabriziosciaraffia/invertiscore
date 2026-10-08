@@ -19,6 +19,13 @@
 .lqs-banner { margin: 0 calc(50% - 50vw) 34px; padding: 32px 22px 30px; }
 .lqs-banner .lqs-col { max-width: 700px; margin: 0 auto; }
 @media (min-width: 768px) { .lqs-banner { padding: 52px 24px 48px; } }
+/* Segunda pasada (08-oct-2026): la oferta y «Estás dentro» a la mitad de alto. Columna más ancha en PC
+   para que el titular quepa en una línea; el paso del código conserva el aire de antes. */
+.lqs-banner[data-paso="oferta"], .lqs-banner[data-paso="dentro"] { padding: 22px 22px 22px; }
+@media (min-width: 768px) {
+  .lqs-banner[data-paso="oferta"], .lqs-banner[data-paso="dentro"] { padding: 26px 24px 26px; }
+  .lqs-banner[data-paso="oferta"] .lqs-col, .lqs-banner[data-paso="dentro"] .lqs-col { max-width: 880px; }
+}
 /* La primera línea va como está escrita (08-oct-2026: «Gratis · solo con tu correo»), sin mono ni
    mayúsculas, como el resto del interior del informe desde el 05-oct. */
 .lqs-ojo { font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; color: rgba(250, 250, 248, 0.72); margin: 0 0 10px; }
@@ -134,6 +141,32 @@
 .lqs-cuando { display: flex; flex-wrap: wrap; gap: 8px; }
 .lqs-opcion { height: 40px; padding: 0 16px; border-radius: 99px; border: 1.5px solid rgba(250, 250, 248, 0.55); background: none; color: #FAFAF8; font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; }
 .lqs-opcion[data-activa="1"] { background: #FAFAF8; color: #0F0F0F; border-color: #FAFAF8; }
+/* ── 08-oct-2026, segunda pasada · la cinta compacta ── */
+.lqs-ojo b { color: #FAFAF8; font-weight: 700; }
+.lqs-gris { color: rgba(250, 250, 248, 0.7); }
+.lqs-banner .lqs-ojo { margin: 0 0 6px; }
+.lqs-banner[data-paso="oferta"] .lqs-ojo { font-weight: 400; }
+.lqs-banner .lqs-h3-lead { font-size: 22px; line-height: 1.12; margin: 0 0 8px; max-width: none; }
+.lqs-banner-registro { font-size: 15px; line-height: 1.45; color: #FAFAF8; margin: 0 0 2px; }
+.lqs-banner-registro b { font-weight: 600; }
+.lqs-banner .lqs-cuerpo { margin: 0 0 14px; max-width: none; }
+.lqs-fila-accion { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.lqs-fila-accion .lqs-parati { margin: 0; }
+.lqs-fila-accion .lqs-btn { height: 42px; }
+@media (min-width: 768px) {
+  .lqs-banner .lqs-h3-lead { font-size: 26px; }
+  .lqs-fila-accion { flex-direction: row; align-items: center; gap: 20px; }
+}
+/* «Estás dentro»: el título de una línea, los chips y la pregunta juntos; lo elegido, con relleno y visto. */
+.lqs-banner .lqs-h3-dentro { font-size: 22px; line-height: 1.12; margin: 0 0 4px; }
+@media (min-width: 768px) { .lqs-banner .lqs-h3-dentro { font-size: 26px; } }
+.lqs-dentro .lqs-cuerpo { margin: 0 0 10px; }
+.lqs-dentro .lqs-parati { margin: 0 0 10px; }
+.lqs-cuando-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.lqs-cuando-fila .lqs-cuando-t { font-size: 14px; margin: 0; }
+.lqs-cuando-fila .lqs-opcion { height: 34px; padding: 0 14px; font-size: 13px; }
+.lqs-visto { margin-right: 6px; }
+.lqs-dentro .lqs-aprende { margin: 10px 0 0; }
 .lqs-postpago { border-radius: 16px; padding: 32px 22px; text-align: left; }
 .lqs-postpago .lqs-lead { margin: 0 0 18px; }
 .lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }

@@ -16,6 +16,7 @@ import { almacenSesion, marcarRecienDentro } from "@/lib/lo-que-sigue/recien-den
 import { ESTAS_DENTRO, OFERTA_REGISTRO } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import type { PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
+import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { RegistroUnPaso } from "./RegistroUnPaso";
 import { EstasDentro } from "./EstasDentro";
 import "./lo-que-sigue.css";
@@ -73,8 +74,21 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
 
   const chips = [perfil.tipologia, perfil.comuna, ESTAS_DENTRO.modalidad[perfil.modalidad]].filter((c): c is string => !!c);
 
+  // Cualquier toque, tecla, foco o escritura dentro del banner lo marca en uso: el ticket del pack no le
+  // sube encima mientras tanto (08-oct-2026, `uso-banner.ts`).
+  const marcarUso = () => usoBanner.actividad();
+
   return (
-    <div ref={ref} className="lqs-mat lqs-banner" data-lqs="banner" data-paso={paso}>
+    <div
+      ref={ref}
+      className="lqs-mat lqs-banner"
+      data-lqs="banner"
+      data-paso={paso}
+      onPointerDownCapture={marcarUso}
+      onKeyDownCapture={marcarUso}
+      onInputCapture={marcarUso}
+      onFocusCapture={marcarUso}
+    >
       <div className="lqs-fondo" aria-hidden="true" />
       <div className="lqs-col">
         {paso === "dentro" ? (
@@ -83,16 +97,18 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
           <RegistroUnPaso next={next} ctx={ctx} alEntrar={entrar} />
         ) : (
           <>
-            <p className="lqs-ojo">{OFERTA_REGISTRO.ojo}</p>
+            <p className="lqs-ojo"><b>{OFERTA_REGISTRO.ojoFuerte}</b>{OFERTA_REGISTRO.ojoResto}</p>
             <h3 className="lqs-h3 lqs-h3-lead">{OFERTA_REGISTRO.titular}</h3>
-            <p className="lqs-cuerpo">{OFERTA_REGISTRO.bajada}</p>
-            {chips.length > 0 && (
+            <p className="lqs-banner-registro"><b>{OFERTA_REGISTRO.registro}</b></p>
+            <p className="lqs-cuerpo lqs-gris">{OFERTA_REGISTRO.bajada}</p>
+            {/* En PC, los chips y el botón en una misma fila (segunda pasada). */}
+            <div className="lqs-fila-accion">
               <div className="lqs-parati">
-                <span className="lqs-parati-t">{OFERTA_REGISTRO.paraTi}</span>
+                {chips.length > 0 && <span className="lqs-parati-t">{OFERTA_REGISTRO.paraTi}</span>}
                 {chips.map((c) => <span key={c} className="lqs-chip" data-lqs="chip">{c}</span>)}
               </div>
-            )}
-            <button type="button" className="lqs-btn" onClick={abrirRegistro}>{OFERTA_REGISTRO.boton}</button>
+              <button type="button" className="lqs-btn" onClick={abrirRegistro}>{OFERTA_REGISTRO.boton}</button>
+            </div>
           </>
         )}
       </div>

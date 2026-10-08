@@ -22,7 +22,8 @@ import { fmtCLP } from "@/lib/pricing";
 import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
-import { crearDisparador, EVENTOS_ACTIVIDAD, SELECTOR_FIN_CAPITULOS } from "@/lib/lo-que-sigue/disparo-ticket";
+import { crearDisparador, EVENTOS_ACTIVIDAD, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
+import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
@@ -79,6 +80,8 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       reloj: { ahora: () => Date.now(), programar: (fn, ms) => window.setTimeout(fn, ms), cancelar: (h) => window.clearTimeout(h as number) },
       // Una vez por informe en este navegador, y solo con la oferta viva.
       puedeSubir: () => debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId)) && ofertaPackVigente(createdAt),
+      // Mientras la persona usa el banner del registro, el ticket no le sube encima (08-oct-2026).
+      enEspera: () => usoBanner.enUso(),
       subir: (motivo) => {
         marcarTicket(almacen, ctx.analysisId, "visto");
         setYaSubio(true);
@@ -106,6 +109,14 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       { threshold: 0 },
     );
     io.observe(marca);
+    // Pasó la recomendación de Franco: desde ahí cuenta la salida por arriba (08-oct-2026).
+    const finReco = document.querySelector(SELECTOR_FIN_RECOMENDACION);
+    const ioReco = finReco
+      ? new IntersectionObserver((entradas) => {
+          for (const e of entradas) if (e.isIntersecting || e.boundingClientRect.top < 0) d.pasoLaRecomendacion();
+        }, { threshold: 0 })
+      : null;
+    if (finReco && ioReco) ioReco.observe(finReco);
     const actividad = () => d.actividad();
     for (const ev of EVENTOS_ACTIVIDAD) window.addEventListener(ev, actividad, { passive: true });
     const lectura = window.setInterval(() => d.tick(document.visibilityState === "visible"), 1000);
@@ -114,6 +125,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     return () => {
       d.detener();
       io.disconnect();
+      ioReco?.disconnect();
       for (const ev of EVENTOS_ACTIVIDAD) window.removeEventListener(ev, actividad);
       window.clearInterval(lectura);
       document.removeEventListener("mouseout", alSalir);
@@ -215,7 +227,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
         data-cara={cara}
         role={abierto ? "dialog" : undefined}
         aria-modal={abierto || undefined}
-        aria-label={TICKET_PACK.linea(precio).replace(/ · $/, "")}
+        aria-label={TICKET_PACK.linea(precio)}
         onClick={(e) => { if (e.target !== e.currentTarget) return; if (cara === "ticket") despedirse(); else cerrarDelTodo(); }}
       >
         <div className="lqs-hoja">
@@ -225,11 +237,11 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
             <form className="lqs-cara" data-activa={cara === "ticket" ? "1" : "0"} onSubmit={pagar} noValidate>
               <div className="lqs-cab">
                 <p className="lqs-tk-ojo" data-lqs="ticket-linea">
-                  {TICKET_PACK.linea(precio)}<s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}
+                  <b>{TICKET_PACK.linea(precio)}</b>{" · "}<s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}
                 </p>
                 <button type="button" className="lqs-x" onClick={despedirse} aria-label={TICKET_PACK.cerrar}>✕</button>
               </div>
-              <p className="lqs-tk-cuerpo">{TICKET_PACK.cuerpo}</p>
+              <p className="lqs-tk-cuerpo">{TICKET_PACK.cuerpo}{" "}<b>{TICKET_PACK.cuerpoFuerte}</b></p>
               <p className="lqs-tk-negrita"><b>{TICKET_PACK.negrita}</b></p>
               {!correoSesion && (
                 <input
@@ -249,7 +261,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
               <button type="button" className="lqs-seguir" onClick={despedirse}>{TICKET_PACK.seguir}</button>
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
-              <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio).replace(/ · $/, "")}</p><span /></div>
+              <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio)}</p><span /></div>
               <p className="lqs-despedida-t">{TICKET_PACK.despedida(hora)}</p>
               <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>

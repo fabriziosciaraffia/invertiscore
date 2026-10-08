@@ -15,9 +15,13 @@ export function veredictoLqs(v: string | null | undefined): VeredictoLqs {
 // ── 1 · El banner del registro ───────────────────────────────────────────────
 // 08-oct-2026: que se entienda qué es. Una cinta en la página (la barra fija salió) con lo que recibe
 // quien se registra: la selección semanal. Ya no cambia con el veredicto.
+// Segunda pasada (mismo día): a la mitad de alto. La línea de arriba con «Accede gratis» en negrita; el
+// titular, una línea con la urgencia; debajo, en negrita, lo que recibe; la bajada en gris.
 export const OFERTA_REGISTRO = {
-  ojo: "Gratis · solo con tu correo",
-  titular: "Los deptos que convienen como inversión se van rápido. Regístrate y Franco te manda cada semana una selección según tu perfil.",
+  ojoFuerte: "Accede gratis",
+  ojoResto: " · solo con tu correo",
+  titular: "Los deptos que convienen como inversión se van rápido.",
+  registro: "Regístrate y Franco te manda cada semana una selección según tu perfil.",
   bajada: "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día.",
   paraTi: "Para ti:",
   boton: "Quiero recibirlos",
@@ -60,17 +64,33 @@ export const ESTAS_DENTRO = {
   ] as ReadonlyArray<{ id: HorizonteCompra; texto: string }>,
   modalidad: { ltr: "Renta larga", str: "Renta corta" } as Record<"ltr" | "str", string>,
   errorGuardar: "No pudimos anotarlo. Intenta de nuevo.",
+  // 08-oct-2026, segunda pasada: lo elegido se ve elegido, y se dice que quedó anotado.
+  anotado: "Anotado · toca para cambiar",
+  avisoYa: "Te avisamos el mismo día que aparezca uno",
 } as const;
+
+/** Lo que va a la derecha del «¿Cuándo piensas comprar?»: nada antes de elegir; con «Ya», el aviso. */
+export function notaCuando(h: HorizonteCompra | null): string | null {
+  if (!h) return null;
+  return h === "ya" ? ESTAS_DENTRO.avisoYa : ESTAS_DENTRO.anotado;
+}
+
+/** Lo que va junto a los chips del perfil: «toca para cambiar», y «Anotado…» después de cambiar uno. */
+export function notaChips(cambiados: boolean): string {
+  return cambiados ? ESTAS_DENTRO.anotado : ESTAS_DENTRO.tocaCambiar;
+}
 
 // ── 4 · El ticket del pack ───────────────────────────────────────────────────
 // 08-oct-2026: que se entienda qué es. La primera línea dice el pack y el precio (el de referencia,
 // tachado); después qué es, que comprar registra, el botón y hasta cuándo. El veredicto ya no cambia
 // el ticket. La oferta persiste en el informe (mismo navegador o con sesión): por eso «guarda el enlace».
 export const TICKET_PACK = {
-  /** «Pack · 3 análisis por $14.990 · » + referencia tachada + « $4.997 cada uno». */
-  linea: (precio: string) => `Pack · 3 análisis por ${precio} · `,
+  /** «Pack · 3 análisis por $14.990» (en negrita) + « · » + referencia tachada + « $4.997 cada uno». */
+  linea: (precio: string) => `Pack · 3 análisis por ${precio}`,
   cadaUno: (unitario: string) => ` ${unitario} cada uno`,
-  cuerpo: "El mismo informe que acabas de leer, para tres deptos más. La mitad del precio, solo para usuarios nuevos.",
+  cuerpo: "El mismo informe que acabas de leer, para tres deptos más.",
+  /** Va en negrita después del cuerpo (08-oct-2026, segunda pasada). */
+  cuerpoFuerte: "La mitad del precio, solo para usuarios nuevos.",
   negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
   boton: (precio: string) => `Comprar por ${precio}`,
   vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este informe · hasta ${cuando} · si te vas, guarda el enlace`,

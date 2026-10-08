@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
-import { ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
+import { ESTAS_DENTRO, notaChips, notaCuando, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { TIPOLOGIAS_CHIP, type PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
@@ -29,10 +29,18 @@ async function guardar(analysisId: string, cambios: Record<string, string>): Pro
   }
 }
 
-export function EstasDentro({ ctx, perfil, demo = false }: { ctx: ContextoLqs; perfil: PerfilChips; demo?: boolean }) {
+export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null }: {
+  ctx: ContextoLqs;
+  perfil: PerfilChips;
+  demo?: boolean;
+  /** Si ya se sabe (la demo y el tier lo usan para dibujar el estado elegido). */
+  horizonteInicial?: HorizonteCompra | null;
+}) {
   const posthog = usePostHog();
   const [pref, setPref] = useState<PerfilChips>(perfil);
-  const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(null);
+  const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(horizonteInicial);
+  // Tocados los chips, junto a ellos dice «Anotado · toca para cambiar» (08-oct-2026, segunda pasada).
+  const [chipsCambiados, setChipsCambiados] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -43,6 +51,7 @@ export function EstasDentro({ ctx, perfil, demo = false }: { ctx: ContextoLqs; p
   async function cambiar(campo: Campo, valor: string) {
     const siguiente = { ...pref, [campo]: valor } as PerfilChips;
     setPref(siguiente);
+    setChipsCambiados(true);
     capturarLqs(posthog, EVENTOS_LQS.preferenciaEditada, ctx, { campo, valor });
     if (demo) return;
     const ok = await guardar(ctx.analysisId, { [campo]: valor });
@@ -60,10 +69,14 @@ export function EstasDentro({ ctx, perfil, demo = false }: { ctx: ContextoLqs; p
   const comunas = pref.comuna && !(COMUNAS_DISPONIBLES as readonly string[]).includes(pref.comuna) ? [pref.comuna, ...COMUNAS_DISPONIBLES] : [...COMUNAS_DISPONIBLES];
   const tipologias = pref.tipologia && !(TIPOLOGIAS_CHIP as readonly string[]).includes(pref.tipologia) ? [pref.tipologia, ...TIPOLOGIAS_CHIP] : [...TIPOLOGIAS_CHIP];
 
+  const nota = notaCuando(horizonte);
+
+  // Compacto (08-oct-2026, segunda pasada): título de una línea, los chips y la pregunta juntos, y lo
+  // elegido se ve elegido —relleno y visto— con «Anotado · toca para cambiar» al lado.
   return (
     <div className="lqs-dentro" data-lqs="dentro">
-      <h3 className="lqs-h3">{ESTAS_DENTRO.titular}</h3>
-      <p className="lqs-cuerpo">{ESTAS_DENTRO.cuerpo}</p>
+      <h3 className="lqs-h3 lqs-h3-dentro">{ESTAS_DENTRO.titular}</h3>
+      <p className="lqs-cuerpo lqs-gris">{ESTAS_DENTRO.cuerpo}</p>
       <div className="lqs-parati" data-lqs="chips-editables">
         <label className="lqs-chip lqs-chip-edit">
           <select aria-label="Tipología" value={pref.tipologia ?? ""} onChange={(e) => cambiar("tipologia", e.target.value)}>
@@ -83,25 +96,29 @@ export function EstasDentro({ ctx, perfil, demo = false }: { ctx: ContextoLqs; p
             <option value="str">{ESTAS_DENTRO.modalidad.str}</option>
           </select>
         </label>
-        <span className="lqs-toca">{ESTAS_DENTRO.tocaCambiar}</span>
+        <span className={chipsCambiados ? "lqs-toca lqs-anotado" : "lqs-toca"}>{notaChips(chipsCambiados)}</span>
       </div>
-      <p className="lqs-cuerpo lqs-aprende">{ESTAS_DENTRO.aprende}</p>
-      <p className="lqs-cuando-t">{ESTAS_DENTRO.cuando}</p>
-      <div className="lqs-cuando" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
-        {ESTAS_DENTRO.horizontes.map((h) => (
-          <button
-            key={h.id}
-            type="button"
-            role="radio"
-            aria-checked={horizonte === h.id}
-            className="lqs-opcion"
-            data-activa={horizonte === h.id ? "1" : "0"}
-            onClick={() => elegir(h.id)}
-          >
-            {h.texto}
-          </button>
-        ))}
+      <div className="lqs-cuando-fila">
+        <p className="lqs-cuando-t">{ESTAS_DENTRO.cuando}</p>
+        <div className="lqs-cuando" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
+          {ESTAS_DENTRO.horizontes.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              role="radio"
+              aria-checked={horizonte === h.id}
+              className="lqs-opcion"
+              data-activa={horizonte === h.id ? "1" : "0"}
+              onClick={() => elegir(h.id)}
+            >
+              {horizonte === h.id && <span className="lqs-visto" aria-hidden="true">✓</span>}
+              {h.texto}
+            </button>
+          ))}
+        </div>
+        {nota && <span className="lqs-toca lqs-anotado" role="status">{nota}</span>}
       </div>
+      <p className="lqs-legal lqs-aprende">{ESTAS_DENTRO.aprende}</p>
       {error && <p className="lqs-legal" role="alert">{ESTAS_DENTRO.errorGuardar}</p>}
     </div>
   );
