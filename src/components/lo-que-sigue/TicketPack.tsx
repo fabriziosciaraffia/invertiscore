@@ -24,7 +24,7 @@ import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/e
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
 import { crearDisparador, EVENTOS_ACTIVIDAD, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
-import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
+import { cuandoVence, fechaVencimiento, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
 
@@ -270,7 +270,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
               <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio)}</p><span /></div>
-              <p className="lqs-despedida-t">{TICKET_PACK.despedida(hora)}</p>
+              <p className="lqs-despedida-t">{TICKET_PACK.despedida(hora, fechaVencimiento(createdAt))}</p>
               <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>
               <button type="button" className="lqs-tinta" onClick={cerrarDelTodo}>{TICKET_PACK.siSeguir}</button>

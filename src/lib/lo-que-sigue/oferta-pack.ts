@@ -33,6 +33,16 @@ export function horaVencimiento(createdAt: string | Date, zona = "America/Santia
   return new Intl.DateTimeFormat("es-CL", { timeZone: zona, hour: "2-digit", minute: "2-digit", hour12: false }).format(venceEl(createdAt));
 }
 
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"] as const;
+
+/** «09-oct-2026»: el día del vencimiento, en la hora de Chile (el mismo instante que `horaVencimiento`).
+ *  Lo dice la despedida del ticket desde el 08-oct-2026. */
+export function fechaVencimiento(createdAt: string | Date, zona = "America/Santiago"): string {
+  const partes = new Intl.DateTimeFormat("en-US", { timeZone: zona, year: "numeric", month: "numeric", day: "2-digit" }).formatToParts(venceEl(createdAt));
+  const de = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
+  return `${de("day")}-${MESES_CORTOS[Number(de("month")) - 1]}-${de("year")}`;
+}
+
 /** «hoy» o «mañana» según el día de vencimiento contra `ahora`, en la hora de Chile. */
 export function diaVencimiento(createdAt: string | Date, ahora: Date = new Date(), zona = "America/Santiago"): "hoy" | "mañana" | "otro" {
   const f = new Intl.DateTimeFormat("es-CL", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" });
