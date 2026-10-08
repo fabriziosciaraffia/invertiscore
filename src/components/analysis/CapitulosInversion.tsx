@@ -1,6 +1,7 @@
 "use client";
 import { SegsCierre } from "./shared/SegsCierre";
 import { FilaDato, FilasDato } from "./shared/FilaDato";
+import { conLineaSubsidio } from "./shared/LineaSubsidio";
 import { useMemo, type ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import type {
@@ -340,8 +341,9 @@ export function CapitulosInversion({
         const tasaCred = Number(inputData.tasaInteres) || 0;
         const neg = (n: number) => `${n < 0 ? "−" : ""}${money(n)}`;
         // Las filas que salen: las de $0 no se dibujan (gestión del arriendo es 2,7% del parque).
-        const salidas: Array<{ k: string; v: number; tip: string; sub?: string }> = [
-          { k: "Cuota del crédito", v: d.dividendo, tip: "Cuota mensual del crédito hipotecario (capital + interés).", sub: credito > 0 ? `${compact(credito)} a ${plazoCred} años al ${pct1(tasaCred)}%` : "sin crédito" },
+        // Con la tasa del subsidio, la fila de la cuota lo dice junto a la tasa (08-oct-2026).
+        const salidas: Array<{ k: string; v: number; tip: string; sub?: ReactNode }> = [
+          { k: "Cuota del crédito", v: d.dividendo, tip: "Cuota mensual del crédito hipotecario (capital + interés).", sub: credito > 0 ? conLineaSubsidio(`${compact(credito)} a ${plazoCred} años al ${pct1(tasaCred)}%`, m?.subsidioTasa) : "sin crédito" },
           { k: "Gastos comunes", v: d.ggccVacancia, tip: "Los paga el arrendatario; los asumes tú los meses sin arrendar.", sub: `${money(gastosComunes)} completos; acá solo la vacancia` },
           { k: "Contribuciones", v: d.contribucionesMes, tip: "Impuesto territorial trimestral del SII, prorrateado a mensual. Lo paga el propietario.", sub: `${money(contribTrim)} al trimestre` },
           { k: "Vacancia", v: d.vacanciaProrrata, tip: "Ingreso perdido por meses sin arrendatario, prorrateado al mes.", sub: `${vacTxt} meses al año, prorrateados` },

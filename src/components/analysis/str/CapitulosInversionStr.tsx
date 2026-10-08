@@ -17,6 +17,7 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "@/components/analysis/shared/CapituloComoLoPagas";
+import { conLineaSubsidio } from "@/components/analysis/shared/LineaSubsidio";
 import { nombreVeredicto, FilaDato, FilasDato, CurvaFlujoAnual, OcupacionComparables, ramaOcupacion, CurvaAnios, PatrimonioBarras, BarraApiladaB, SeriePlusvalia, SegsCierre, GlosaIndicador, type PuntoAnio } from "@/components/analysis/shared";
 import { cierrePlusvalia } from "@/lib/cierres-capitulos";
 import { fuentePlusvaliaLinea, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
@@ -377,7 +378,7 @@ export function CapitulosInversionStr({
                 <FilaDato k="Luz, agua, internet e insumos" tip="Costos directos declarados por ti" sub="limpieza y reposición incluidas en insumos" v={neg(-fl.costosDirectos)} unidad="/mes" />
                 <FilaDato k="Gastos comunes y mantención" tip="Declarados por ti" v={neg(-fl.gastosComunesMantencion)} unidad="/mes" />
                 <FilaDato k="Contribuciones" tip="Contribuciones ÷ 3" sub={`${money(fl.contribucionesMensuales * 3)} al trimestre`} v={neg(-fl.contribucionesMensuales)} unidad="/mes" />
-                <FilaDato k="Cuota del crédito" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? `${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} v={neg(-fl.cuota)} unidad="/mes" />
+                <FilaDato k="Cuota del crédito" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? conLineaSubsidio(`${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%`, results.subsidioTasa) : "sin crédito"} v={neg(-fl.cuota)} unidad="/mes" />
                 {(fl.cuotaCreditoPie ?? 0) > 0 && (
                   <FilaDato k="Cuota del crédito del pie" tip="La cuota del crédito con que cubres el pie. Se descuenta cada mes." sub="declarada por ti" v={neg(-fl.cuotaCreditoPie)} unidad="/mes" />
                 )}
