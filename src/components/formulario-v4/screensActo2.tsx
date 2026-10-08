@@ -34,6 +34,7 @@ import {
   precioUF,
 } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
+import { CONDICION_SUBSIDIO, LEY_SUBSIDIO, REBAJA_REFERENCIA } from "@/lib/constants/subsidio";
 
 
 /** Número exacto, sin redondear: el eco nunca miente sobre lo que se leyó. */
@@ -420,10 +421,10 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
   // explícita (destacada con borde de tinta, NO preseleccionada). El delta fluye
   // por tasaInteres, idéntico a v3.
   //
-  // El copy dice "esta es la mínima" y no "aplica solo a primera vivienda": la
-  // ley no exige primera vivienda (ver lib/constants/subsidio.ts) y la rebaja
-  // real va de 0,61% a 1,16% según el banco, así que 0,6 es un piso —y por eso la
-  // tasa ofrecida no redondea a favor (`tasaConSubsidioV4`)—.
+  // El copy dice la rebaja como referencia y no "aplica solo a primera vivienda": la
+  // ley no exige primera vivienda (ver lib/constants/subsidio.ts) y fija la rebaja
+  // «hasta 60 pb», que el banco aplica a su modo —por eso tampoco se dice «la
+  // mínima» (08-oct-2026), y la tasa ofrecida no redondea a favor (`tasaConSubsidioV4`)—.
   if (calificaSubsidioV4(answers)) {
     const tSub = tasaConSubsidioV4(t);
     return (
@@ -435,12 +436,12 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
               trackWizard(posthog, "wizard4_subsidio_aplicado", { comuna: answers.comuna });
               answer("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(tSub) });
             }}
-            ariaLabel={`Con subsidio, ${tasaStr(tSub)}% anual. La rebaja exacta la fija tu banco: esta es la mínima.`}
+            ariaLabel={`Con subsidio, ${tasaStr(tSub)}% anual. ${REBAJA_REFERENCIA}`}
           >
             <span className="wz-eb">Con subsidio</span>
             <span className="wz-grande">{tasaStr(tSub)}%</span>
             <span className="wz-s">
-              La rebaja exacta la fija tu banco: esta es la mínima. Subsidio a la tasa para vivienda nueva en primera venta hasta UF 6.000 (Ley 21.748).
+              {REBAJA_REFERENCIA} Subsidio a la tasa para {CONDICION_SUBSIDIO} ({LEY_SUBSIDIO}).
             </span>
           </ChoiceTile>
           <ChoiceTile

@@ -73,6 +73,7 @@ import { OPCIONES_AMOBLADO } from "./screensActo3";
 import { BarraCta } from "./ui";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
+import { CONDICION_SUBSIDIO, LEY_SUBSIDIO } from "@/lib/constants/subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
 import { reportarValidacionRechazo } from "./stepTelemetry";
@@ -1013,7 +1014,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
               sub={tasaTag ? tasaTag.charAt(0).toUpperCase() + tasaTag.slice(1) : undefined}
               options={[{ value: "sub", label: `Subsidio ${tasaStr(tasaConSubsidioV4(data.tasaMercado))}%` }, { value: "mer", label: `Mercado ${tasaStr(data.tasaMercado)}%` }]}
               cargando={enEspera("tasa")} onCommit={(v) => commitEdit("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(v === "sub" ? tasaConSubsidioV4(data.tasaMercado) : data.tasaMercado) })}
-              fuente={conSubsidio ? "Subsidio estatal a la tasa (Ley 21.748): vivienda nueva en primera venta." : undefined}
+              fuente={conSubsidio ? `Subsidio estatal a la tasa (${LEY_SUBSIDIO}): ${CONDICION_SUBSIDIO}.` : undefined}
             />
           ) : (
             <FilaNum

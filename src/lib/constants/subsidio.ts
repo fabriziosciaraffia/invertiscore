@@ -1,12 +1,14 @@
 /**
- * Subsidio a la Tasa Hipotecaria — Ley 21.748 y su ampliación
+ * Subsidio a la Tasa Hipotecaria — Ley 21.748, ampliada por la Ley 21.836
  *
  * Aplica a viviendas NUEVAS EN PRIMERA VENTA hasta 6.000 UF, con promesa de
  * compraventa desde 2025. Rebaja la tasa hipotecaria respecto del mercado.
  *
- * AMPLIACIÓN DESPACHADA POR EL CONGRESO EL 11-AGO-2026 (ya incorporada acá):
- *   tope 4.000 → 6.000 UF · cupos 50.000 → 80.000 · vigencia para solicitar
- *   hasta el 31-may-2028. La rebaja de tasa no cambió.
+ * LEY 21.836 (Diario Oficial, 17-ago-2026; el Congreso la despachó el 11-ago):
+ *   tope 4.000 → 6.000 UF (también el de la garantía FOGAES) · cupos 50.000 →
+ *   80.000 · vigencia para solicitar hasta el 31-may-2028. La rebaja de tasa no
+ *   cambió. Es la ley que cita el copy (`LEY_SUBSIDIO`): la 21.748 es la
+ *   original, con el tope y la vigencia viejos.
  *
  * DOS PRECISIONES QUE EL COPY VIEJO TENÍA MAL
  * ───────────────────────────────────────────
@@ -17,9 +19,10 @@
  *    califica.
  * 2. La rebaja NO es 0,6 exacto. La ley fija "hasta 60 pb" y MINVU publica que
  *    la rebaja efectiva va de 0,61% a 1,16% según la institución. Acá se modela
- *    0,6 a propósito: es el PISO, así que subestima el beneficio en vez de
- *    inflarlo. El copy debe decirlo como piso ("desde ~0,6 puntos"), nunca como
- *    la cifra exacta.
+ *    0,6 y el copy lo dice como REFERENCIA («la rebaja exacta la fija tu banco;
+ *    usamos 0,6 puntos como referencia», 08-oct-2026), nunca como la cifra
+ *    exacta ni como «la mínima»: con una ley que dice «hasta», llamarla mínima
+ *    afirmaba lo que la ley no dice.
  *
  * EL PIE DEL 10% NO SE MODELA, Y ES DELIBERADO. Circula como parte del
  * programa, pero NO es requisito de la ley: es el efecto que habilita la
@@ -33,11 +36,36 @@
  * y form. Si MINVU actualiza la rebaja o el techo UF, modificar acá.
  */
 
-/** Piso de la rebaja, en puntos porcentuales. Ver la nota 2 de arriba. */
+/** La rebaja que se modela, en puntos porcentuales: una referencia. Ver la nota 2 de arriba. */
 export const REBAJA_SUBSIDIO = 0.6;
 export const TECHO_UF_SUBSIDIO = 6000;
 /** Fallback cuando no hay valor de mercado disponible (engine standalone). */
 export const TASA_MERCADO_FALLBACK = 4.1;
+
+// ── EL COPY DE LA LEY (08-oct-2026) ─────────────────────────────────────────
+// Una sola redacción para el wizard y el informe. Las cifras salen de las constantes de arriba: si
+// el techo o la rebaja cambian, el texto cambia con ellos. La vigencia y la ley se escriben a mano
+// porque no las usa ningún cálculo; si una ley nueva las mueve, se cambian acá y en ningún otro lado.
+const miles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/** La ley vigente que se cita. */
+export const LEY_SUBSIDIO = "Ley 21.836";
+/** Hasta cuándo se puede solicitar (31-may-2028), dicho como lo dice el copy. */
+export const VIGENCIA_SUBSIDIO = "mayo de 2028";
+/** A quién le aplica y hasta cuándo: lo que dice todo texto del wizard que nombra el subsidio. */
+export const CONDICION_SUBSIDIO = `vivienda nueva en primera venta hasta UF ${miles(TECHO_UF_SUBSIDIO)}, hasta ${VIGENCIA_SUBSIDIO}`;
+/** La rebaja como referencia y no como promesa (nota 2). */
+export const REBAJA_REFERENCIA = `La rebaja exacta la fija tu banco; usamos ${String(REBAJA_SUBSIDIO).replace(".", ",")} puntos como referencia.`;
+/** La línea del informe junto a la tasa, cuando el análisis se hizo con la del subsidio. */
+export const LINEA_INFORME_SUBSIDIO = `Tasa con subsidio estatal: vivienda nueva hasta UF ${miles(TECHO_UF_SUBSIDIO)}, rige hasta ${VIGENCIA_SUBSIDIO}. Tú ves si calificas.`;
+
+/**
+ * La línea del informe para este análisis, o null. Se dice solo si el motor reconoce la tasa como
+ * la del subsidio (`subsidioTasa.aplicado`, que ya exige que el depto califique): la misma
+ * compuerta que rotula «con subsidio» la tasa en el resumen del wizard.
+ */
+export function lineaInformeSubsidio(st: { califica?: boolean; aplicado?: boolean } | null | undefined): string | null {
+  return st?.califica === true && st.aplicado === true ? LINEA_INFORME_SUBSIDIO : null;
+}
 
 export function calcTasaConSubsidio(tasaMercado: number): number {
   return Math.round((tasaMercado - REBAJA_SUBSIDIO) * 10) / 10;
