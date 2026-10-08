@@ -21,6 +21,7 @@ import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -413,6 +414,9 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           </div>
         )}
       </div>
+      {/* El pie del informe (08-oct-2026): el wordmark y el aviso, igual que en renta corta. Hasta acá
+          renta larga terminaba sin pie y sin el aviso de que el análisis es informativo. */}
+      <AppFooter variant="informe" />
     </div>
   );
 }

@@ -17,7 +17,9 @@ export const DISCLAIMER_CANONICO =
   "Análisis informativo, no constituye asesoría financiera. Verifica los datos antes de tomar decisiones. Refranco no garantiza resultados ni reemplaza la opinión de un profesional.";
 
 interface AppFooterProps {
-  variant: "minimal" | "rich";
+  /** `informe` (08-oct-2026): el pie de los informes de renta larga y renta corta, limpio — el wordmark
+   *  y el aviso, sin la frase de marca (mono, mayúsculas espaciadas) ni los enlaces del sitio. */
+  variant: "minimal" | "rich" | "informe";
   showLogo?: boolean;
   linksSlot?: ReactNode;
 }
@@ -28,7 +30,8 @@ export function AppFooter({
   linksSlot,
 }: AppFooterProps) {
   // rich tiene mas aire vertical (3-col grids, varios bloques de links).
-  const gapClass = variant === "rich" ? "gap-8" : "gap-5";
+  const gapClass = variant === "rich" ? "gap-8" : variant === "informe" ? "gap-3" : "gap-5";
+  const informe = variant === "informe";
 
   return (
     <footer
@@ -42,25 +45,29 @@ export function AppFooter({
             style={{ opacity: 0.6 }}
           >
             <FrancoLogo inverted size="sm" href="/" />
-            <p
-              className="font-mono uppercase m-0"
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.06em",
-                color: "var(--franco-text-secondary)",
-              }}
-            >
-              Real estate en su estado más franco
-            </p>
+            {!informe && (
+              <p
+                className="font-mono uppercase m-0"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.06em",
+                  color: "var(--franco-text-secondary)",
+                }}
+              >
+                Real estate en su estado más franco
+              </p>
+            )}
           </div>
         )}
-        <nav aria-label="Franco" className="flex flex-wrap gap-x-5 gap-y-2">
-          {ENLACES_PIE.map((e) => (
-            <Link key={e.href} href={e.href} className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] no-underline transition-colors hover:text-[var(--franco-text)]">
-              {e.rotulo}
-            </Link>
-          ))}
-        </nav>
+        {!informe && (
+          <nav aria-label="Franco" className="flex flex-wrap gap-x-5 gap-y-2">
+            {ENLACES_PIE.map((e) => (
+              <Link key={e.href} href={e.href} className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] no-underline transition-colors hover:text-[var(--franco-text)]">
+                {e.rotulo}
+              </Link>
+            ))}
+          </nav>
+        )}
         {linksSlot}
         <p
           className="font-body text-[11px] m-0 leading-[1.6]"

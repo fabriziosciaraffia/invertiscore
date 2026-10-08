@@ -480,8 +480,8 @@ export function STRResultsClient({
 
       </main>
 
-      {/* Footer del sitio */}
-      <AppFooter variant="minimal" />
+      {/* El pie del informe (08-oct-2026): el wordmark y el aviso, igual que en renta larga. */}
+      <AppFooter variant="informe" />
     </div>
   );
 }
