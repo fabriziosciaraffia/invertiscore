@@ -514,7 +514,21 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   const cssDentro = sinComentarios(leer("src/components/lo-que-sigue/lo-que-sigue.css"));
   if (!/\.lqs-opcion\[data-activa="1"\] \{[^}]*background: #FAFAF8/.test(cssDentro) || !/\.lqs-opcion \{[^}]*background: none/.test(cssDentro)) F("8 · la opción elegida no va con relleno y las otras solo con borde");
   // El alto (≤ 360 px en PC) se mide en el navegador; acá queda la fila de PC, que es lo que más lo baja.
-  if (!/@media \(min-width: 768px\) \{[^@]*\.lqs-fila-accion \{ flex-direction: row/.test(cssDentro)) F("4 · en PC los chips «Para ti» y el botón no van en una fila");
+  // ⚠ ACTA (08-oct-2026, cuarta pasada) · «Quiero recibirlos» va SOLO, en la fila siguiente a los chips y
+  // alineado a la izquierda, en PC y en teléfono. Deroga la fila única de chips y botón en PC (segunda pasada).
+  if (!/\.lqs-fila-accion \{ display: flex; flex-direction: column; align-items: flex-start;/.test(cssDentro) || /\.lqs-fila-accion \{[^}]*flex-direction: row/.test(cssDentro)) F("4 · «Quiero recibirlos» no va solo en la fila siguiente a los chips, a la izquierda (PC o teléfono)");
+  // ⚠ ACTA (cuarta pasada) · la columna del banner es la del informe: el padding horizontal es el ESPEJO del
+  // margen que lo lleva de borde a borde (`calc(50vw - 50%)`, con el % del contenedor del informe), así el
+  // contenido empieza y termina donde el `.doc-page` en cualquier ancho. Ningún paso pisa ese padding con
+  // un `padding:` corto, y la columna no se ensancha (sale el 880 px de la segunda pasada).
+  {
+    if (!/\.lqs-banner \{ margin: 0 calc\(50% - 50vw\) 34px; padding: 32px calc\(50vw - 50%\) 30px; \}/.test(cssDentro) || !/\.lqs-banner \{ padding: 52px calc\(50vw - 50%\) 48px; \}/.test(cssDentro)) F("4 · el padding horizontal del banner no es el espejo de su margen (la columna no es la del informe)");
+    // Solo las reglas cuyo selector ES el banner (uno o varios pasos), no las de sus hijos.
+    const reglasPaso = cssDentro.match(/(?:^|[}\n])\s*\.lqs-banner\[data-paso="[a-z]+"\](?:\s*,\s*\.lqs-banner\[data-paso="[a-z]+"\])*\s*\{[^}]*\}/g) ?? [];
+    if (reglasPaso.length < 2) F("4 · no encuentro las reglas de padding de los pasos del banner (el chequeo no corrió)");
+    if (reglasPaso.some((r) => /[{;]\s*padding:/.test(r))) F("4 · un paso del banner pisa el padding horizontal con un `padding:` corto");
+    if (/\.lqs-banner \.lqs-col \{[^}]*max-width: 880px/.test(cssDentro)) F("4 · la columna del banner sigue ensanchada a 880 px");
+  }
 
   // ── 9 · TODOS LOS PASOS DEL BANNER CON EL ALTO DEL PRIMERO (08-oct-2026, tercera pasada) ─────
   // El banner mide la oferta y se la pone de alto mínimo a los pasos siguientes; el CSS compacto hace que
@@ -631,3 +645,11 @@ if (require.main === module) {
 //    U2 la línea 2 sin negrita             U6 la negrita con otro tamaño
 //    U3 la línea 3 sin negrita             U7 la negrita sin peso (400)
 //    U4 la línea 2 en negrita a medias
+//
+// ACTAS DE MUTACIÓN · CUARTA PASADA (08-oct-2026) — el botón en su fila y la columna del informe. Gate en
+// ROJO antes del arreglo (4 fallas). Un chequeo nuevo salió rojo sobre código sano: atrapaba el `padding`
+// del botón de Google (un hijo del banner), no solo el del banner; se acotó a las reglas cuyo selector ES
+// el banner, con piso de presencia. Las seis en ROJO; restauradas, VERDE:
+//    V1 chips y botón en una fila en PC     V4 el padding horizontal fijo (PC)
+//    V2 el botón centrado                    V5 un paso pisa el padding con un corto
+//    V3 el padding horizontal fijo (tel.)   V6 la columna otra vez a 880 px
