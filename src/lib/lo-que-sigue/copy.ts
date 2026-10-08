@@ -85,11 +85,12 @@ export function notaChips(cambiados: boolean): string {
 // tachado); después qué es, que comprar registra, el botón y hasta cuándo. El veredicto ya no cambia
 // el ticket. La oferta persiste en el informe (mismo navegador o con sesión): por eso «guarda el enlace».
 export const TICKET_PACK = {
-  /** «Pack · 3 análisis por $14.990» (en negrita) + « · » + referencia tachada + « $4.997 cada uno». */
+  /** El titular, en una línea: «Pack · 3 análisis por $14.990». Debajo, más chico, la referencia tachada
+   *  + « $4.997 cada uno» (`cadaUno`). Tercera pasada, 08-oct-2026. */
   linea: (precio: string) => `Pack · 3 análisis por ${precio}`,
   cadaUno: (unitario: string) => ` ${unitario} cada uno`,
   cuerpo: "El mismo informe que acabas de leer, para tres deptos más.",
-  /** Va en negrita después del cuerpo (08-oct-2026, segunda pasada). */
+  /** El cuerpo son tres líneas en un solo tamaño: `cuerpo`, y en negrita `cuerpoFuerte` y `negrita`. */
   cuerpoFuerte: "La mitad del precio, solo para usuarios nuevos.",
   negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
   boton: (precio: string) => `Comprar por ${precio}`,

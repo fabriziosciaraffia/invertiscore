@@ -235,14 +235,22 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
           <div className="lqs-asa" aria-hidden="true" />
           <div className="lqs-tk">
             <form className="lqs-cara" data-activa={cara === "ticket" ? "1" : "0"} onSubmit={pagar} noValidate>
+              {/* Tercera pasada (08-oct-2026): el titular en una línea; debajo, más chico, el precio por
+                  análisis; el cuerpo en un solo tamaño, tres líneas. */}
               <div className="lqs-cab">
-                <p className="lqs-tk-ojo" data-lqs="ticket-linea">
-                  <b>{TICKET_PACK.linea(precio)}</b>{" · "}<s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}
-                </p>
+                <div>
+                  <p className="lqs-tk-titular" data-lqs="ticket-linea">{TICKET_PACK.linea(precio)}</p>
+                  <p className="lqs-tk-precio"><s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}</p>
+                </div>
                 <button type="button" className="lqs-x" onClick={despedirse} aria-label={TICKET_PACK.cerrar}>✕</button>
               </div>
-              <p className="lqs-tk-cuerpo">{TICKET_PACK.cuerpo}{" "}<b>{TICKET_PACK.cuerpoFuerte}</b></p>
-              <p className="lqs-tk-negrita"><b>{TICKET_PACK.negrita}</b></p>
+              <p className="lqs-tk-cuerpo">
+                {TICKET_PACK.cuerpo}
+                <br />
+                <b>{TICKET_PACK.cuerpoFuerte}</b>
+                <br />
+                <b>{TICKET_PACK.negrita}</b>
+              </p>
               {!correoSesion && (
                 <input
                   type="email"

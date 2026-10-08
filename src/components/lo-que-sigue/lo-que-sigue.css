@@ -19,12 +19,20 @@
 .lqs-banner { margin: 0 calc(50% - 50vw) 34px; padding: 32px 22px 30px; }
 .lqs-banner .lqs-col { max-width: 700px; margin: 0 auto; }
 @media (min-width: 768px) { .lqs-banner { padding: 52px 24px 48px; } }
-/* Segunda pasada (08-oct-2026): la oferta y «Estás dentro» a la mitad de alto. Columna más ancha en PC
-   para que el titular quepa en una línea; el paso del código conserva el aire de antes. */
-.lqs-banner[data-paso="oferta"], .lqs-banner[data-paso="dentro"] { padding: 22px 22px 22px; }
+/* Segunda pasada (08-oct-2026): la oferta a la mitad de alto, columna más ancha en PC para que el
+   titular quepa en una línea. Tercera pasada (mismo día): TODOS los pasos con el alto de la oferta
+   —el banner la mide y se lo pone de alto mínimo a los siguientes, centrados—, así que el registro, el
+   código y «Estás dentro» van compactos para no pasarlo nunca. */
+.lqs-banner { display: flex; flex-direction: column; justify-content: center; }
+/* Con los márgenes automáticos un hijo flex no se estira: sin el ancho, la columna se encogía al
+   contenido (corrida en PC, desbordada en teléfono). */
+.lqs-banner .lqs-col { width: 100%; }
+.lqs-banner[data-paso="oferta"] { padding: 22px; }
+.lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding: 20px 22px; }
 @media (min-width: 768px) {
-  .lqs-banner[data-paso="oferta"], .lqs-banner[data-paso="dentro"] { padding: 26px 24px 26px; }
-  .lqs-banner[data-paso="oferta"] .lqs-col, .lqs-banner[data-paso="dentro"] .lqs-col { max-width: 880px; }
+  .lqs-banner[data-paso="oferta"] { padding: 26px 24px; }
+  .lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding: 22px 24px; }
+  .lqs-banner .lqs-col { max-width: 880px; }
 }
 /* La primera línea va como está escrita (08-oct-2026: «Gratis · solo con tu correo»), sin mono ni
    mayúsculas, como el resto del interior del informe desde el 05-oct. */
@@ -81,7 +89,7 @@
 .lqs-hoja { position: relative; z-index: 1; width: 100%; max-height: calc(100dvh - 56px); overflow-y: auto; border-radius: 16px 16px 0 0; background: var(--doc-paper); color: var(--doc-tx); box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18); transform: translateY(calc(100% + 40px)); transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4), visibility 0s linear 220ms; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
 .lqs-velo:not([data-abierto="1"]) .lqs-hoja { visibility: hidden; }
 .lqs-velo[data-abierto="1"] .lqs-hoja { transform: translateY(0); visibility: visible; transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0s; transition-delay: 160ms; }
-@media (min-width: 768px) { .lqs-velo { padding: 0 20px 24px; } .lqs-hoja { max-width: 440px; border-radius: 16px; } }
+@media (min-width: 768px) { .lqs-velo { padding: 0 20px 24px; } .lqs-hoja { max-width: 480px; border-radius: 16px; } }
 .lqs-franja { height: 10px; position: relative; overflow: hidden; background: #1F3D67; }
 .lqs-franja::before { content: ""; position: absolute; inset: 0; background: url("/landing/hero-d1x.webp") center 40% / cover no-repeat; }
 .lqs-franja::after { content: ""; position: absolute; inset: 0; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
@@ -96,9 +104,14 @@
 .lqs-tk .lqs-tk-ojo { margin: 6px 0 0; font: 600 13px/1.4 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); font-variant-numeric: tabular-nums; }
 .lqs-tk .lqs-tk-ojo s { font-weight: 500; color: var(--doc-tx3); }
 .lqs-tk .lqs-x { flex: none; width: 32px; height: 32px; border: 1px solid var(--doc-line2); border-radius: 12px; background: none; color: var(--doc-tx3); font: 16px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; line-height: 1; }
-.lqs-tk .lqs-tk-cuerpo { margin: 0; font: 17px/1.4 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); letter-spacing: -0.01em; }
-.lqs-tk .lqs-tk-negrita { margin: 12px 0 0; font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); }
-.lqs-tk .lqs-tk-negrita b { font-weight: 600; }
+/* Tercera pasada (08-oct-2026): el titular en UNA línea («Pack · 3 análisis por $14.990»); debajo, más
+   chico, «$9.990 $4.997 cada uno»; el cuerpo en un solo tamaño, tres líneas con salto entre ellas. */
+.lqs-tk .lqs-tk-titular { margin: 2px 0 0; font: 700 clamp(16px, 5vw, 19px)/1.2 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); letter-spacing: -0.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lqs-tk .lqs-tk-precio { margin: 4px 0 0; font: 500 14px/1.35 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); font-variant-numeric: tabular-nums; }
+.lqs-tk .lqs-tk-precio s { color: var(--doc-tx3); }
+@media (min-width: 768px) { .lqs-tk .lqs-tk-titular { font-size: 22px; } }
+.lqs-tk .lqs-tk-cuerpo { margin: 0; font: 15px/1.5 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx); }
+.lqs-tk .lqs-tk-cuerpo b { font-weight: 600; }
 .lqs-tk .lqs-tk-vence { margin: 10px 0 0; font: 12.5px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx3); text-align: center; font-variant-numeric: tabular-nums; }
 .lqs-tk .lqs-rojo { display: flex; align-items: center; justify-content: center; height: 50px; margin-top: 16px; border-radius: 99px; background: #C8323C; color: #fff; font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; border: 0; width: 100%; cursor: pointer; }
 .lqs-tk .lqs-rojo:hover { background: #B02A33; }
@@ -160,13 +173,53 @@
 /* «Estás dentro»: el título de una línea, los chips y la pregunta juntos; lo elegido, con relleno y visto. */
 .lqs-banner .lqs-h3-dentro { font-size: 22px; line-height: 1.12; margin: 0 0 4px; }
 @media (min-width: 768px) { .lqs-banner .lqs-h3-dentro { font-size: 26px; } }
-.lqs-dentro .lqs-cuerpo { margin: 0 0 10px; }
-.lqs-dentro .lqs-parati { margin: 0 0 10px; }
 .lqs-cuando-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .lqs-cuando-fila .lqs-cuando-t { font-size: 14px; margin: 0; }
 .lqs-cuando-fila .lqs-opcion { height: 34px; padding: 0 14px; font-size: 13px; }
 .lqs-visto { margin-right: 6px; }
-.lqs-dentro .lqs-aprende { margin: 10px 0 0; }
+/* ── 08-oct-2026, tercera pasada · los pasos siguientes caben en el alto de la oferta ── */
+.lqs-banner[data-paso="registro"] .lqs-ojo { margin: 0 0 6px; }
+.lqs-banner[data-paso="registro"] .lqs-h3 { font-size: 22px; line-height: 1.12; margin: 0 0 8px; max-width: none; }
+.lqs-banner[data-paso="registro"] .lqs-reg { gap: 8px; margin-top: 0; max-width: none; }
+.lqs-banner[data-paso="registro"] .lqs-reg input, .lqs-banner[data-paso="registro"] .lqs-btn { height: 42px; }
+.lqs-banner[data-paso="registro"] .lqs-legal { margin: 0; }
+.lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] { gap: 0; }
+.lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] .lqs-enviado { font-size: 14px; line-height: 1.4; margin: 0 0 10px; }
+.lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] .lqs-legal, .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] .lqs-error { margin-top: 8px; }
+@media (min-width: 768px) {
+  .lqs-banner[data-paso="registro"] .lqs-h3 { font-size: 26px; }
+  /* El correo: el campo, la «o» y Google en una fila; la línea del código, debajo. */
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 14px; row-gap: 8px; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] > .lqs-campo { grid-column: 1; grid-row: 1; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] > .lqs-o { grid-column: 2; grid-row: 1; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] > .lqs-google { grid-column: 3; grid-row: 1; padding: 0 18px; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] > .lqs-error { grid-column: 1 / -1; grid-row: 2; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-correo"] > .lqs-legal { grid-column: 1 / -1; grid-row: 3; }
+  /* El código: el campo y la línea del enlace, lado a lado. */
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); align-items: center; column-gap: 18px; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-ojo { grid-column: 1 / -1; grid-row: 1; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-h3 { grid-column: 1 / -1; grid-row: 2; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-enviado { grid-column: 1 / -1; grid-row: 3; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-campo { grid-column: 1; grid-row: 4; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-legal { grid-column: 2; grid-row: 4; margin: 0; }
+  .lqs-banner[data-paso="registro"] [data-lqs="registro-codigo"] > .lqs-error { grid-column: 1 / -1; grid-row: 5; }
+}
+/* «Estás dentro», más justo: en PC cabe en el alto de la oferta; en teléfono, los chips en una fila y las
+   tres respuestas también. El select de la comuna se ajusta a lo elegido donde el navegador sabe. */
+.lqs-dentro .lqs-cuerpo { line-height: 1.4; margin: 0 0 8px; }
+.lqs-dentro .lqs-parati { margin: 0 0 8px; }
+.lqs-dentro .lqs-aprende { margin: 8px 0 0; }
+.lqs-chip-edit select { max-width: 9.5em; field-sizing: content; }
+@media (max-width: 767px) {
+  .lqs-dentro .lqs-cuerpo { font-size: 14px; }
+  .lqs-dentro .lqs-parati { gap: 6px; }
+  .lqs-cuando-fila { gap: 6px; }
+  .lqs-cuando-fila .lqs-cuando-t { flex-basis: 100%; }
+  /* Las tres respuestas en una fila de 346 px, también con el visto (medido: 342 px). */
+  .lqs-cuando-fila .lqs-cuando { gap: 5px; }
+  .lqs-cuando-fila .lqs-opcion { height: 32px; padding: 0 8px; font-size: 12px; }
+  .lqs-visto { margin-right: 4px; }
+}
 .lqs-postpago { border-radius: 16px; padding: 32px 22px; text-align: left; }
 .lqs-postpago .lqs-lead { margin: 0 0 18px; }
 .lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }

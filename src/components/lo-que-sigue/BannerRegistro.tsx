@@ -35,6 +35,32 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [paso, setPaso] = useState<Paso>(pasoInicial);
+  // Todos los pasos con el alto del primero (08-oct-2026, tercera pasada): se mide la oferta y los pasos
+  // siguientes lo toman como alto mínimo; el CSS compacto hace que ninguno lo pase. Al cambiar el ancho
+  // de la ventana la medida deja de valer y se suelta.
+  const [altoOferta, setAltoOferta] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || paso !== "oferta") return;
+    // El observer puede avisar después de que el DOM ya pasó al paso siguiente: solo mide la oferta.
+    const medir = () => {
+      if (el.dataset.paso === "oferta") setAltoOferta(el.offsetHeight);
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [paso]);
+  useEffect(() => {
+    let ancho = window.innerWidth;
+    const alCambiar = () => {
+      if (window.innerWidth === ancho) return;
+      ancho = window.innerWidth;
+      setAltoOferta(null);
+    };
+    window.addEventListener("resize", alCambiar);
+    return () => window.removeEventListener("resize", alCambiar);
+  }, []);
 
   // banner_visto una vez.
   useEffect(() => {
@@ -84,6 +110,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
       className="lqs-mat lqs-banner"
       data-lqs="banner"
       data-paso={paso}
+      style={paso !== "oferta" && altoOferta ? { minHeight: altoOferta } : undefined}
       onPointerDownCapture={marcarUso}
       onKeyDownCapture={marcarUso}
       onInputCapture={marcarUso}
