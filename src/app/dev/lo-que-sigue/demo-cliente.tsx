@@ -104,7 +104,10 @@ export function DemoCliente() {
       {/* Los tokens del documento, como en el informe (los pone la portada): sin ellos la hoja del ticket
           y la pestaña quedaban sin fondo en esta demo (08-oct-2026). */}
       <DocTokens />
-      <div className="doc-tokens" style={{ maxWidth: 1040, margin: "0 auto", padding: "22px 22px 40px", fontFamily: "var(--font-ui)" }}>
+      {/* La columna del informe (el `.doc-page`): 700 px en PC y 16 px de margen en teléfono. El banner toma
+          su columna del contenedor, así que la demo usa la misma para que se vea y mida como en el informe
+          (08-oct-2026, cuarta pasada; antes eran 1040 px y el banner arrancaba en otro lado). */}
+      <div className="doc-tokens" style={{ maxWidth: 732, margin: "0 auto", padding: "22px 16px 40px", fontFamily: "var(--font-ui)" }}>
         <p style={{ font: "600 12px var(--font-mono)", letterSpacing: ".1em", textTransform: "uppercase", opacity: .6 }}>Demostración · lo que sigue</p>
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 26, margin: "8px 0 14px" }}>Un informe de mentira para ver el borde inferior</h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 22 }} data-lqs="demo-veredicto">

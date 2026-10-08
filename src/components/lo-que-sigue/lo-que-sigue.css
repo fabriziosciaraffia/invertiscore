@@ -16,23 +16,26 @@
 @media (min-width: 768px) { .lqs-mat .lqs-fondo { background-image: url("/landing/hero-d1x.webp"); } }
 
 /* ── A · el banner, de borde a borde ── */
-.lqs-banner { margin: 0 calc(50% - 50vw) 34px; padding: 32px 22px 30px; }
+/* Cuarta pasada (08-oct-2026): la columna del banner es la del informe. El padding horizontal es el
+   espejo del margen que lo lleva de borde a borde: los dos usan el % del contenedor (el `.doc-page`),
+   así que el contenido empieza y termina donde el texto del informe, en cualquier ancho y con o sin
+   barra de scroll. Los pasos solo ajustan el padding vertical. */
+.lqs-banner { margin: 0 calc(50% - 50vw) 34px; padding: 32px calc(50vw - 50%) 30px; }
 .lqs-banner .lqs-col { max-width: 700px; margin: 0 auto; }
-@media (min-width: 768px) { .lqs-banner { padding: 52px 24px 48px; } }
-/* Segunda pasada (08-oct-2026): la oferta a la mitad de alto, columna más ancha en PC para que el
-   titular quepa en una línea. Tercera pasada (mismo día): TODOS los pasos con el alto de la oferta
-   —el banner la mide y se lo pone de alto mínimo a los siguientes, centrados—, así que el registro, el
-   código y «Estás dentro» van compactos para no pasarlo nunca. */
+@media (min-width: 768px) { .lqs-banner { padding: 52px calc(50vw - 50%) 48px; } }
+/* Segunda pasada (08-oct-2026): la oferta a la mitad de alto. Tercera pasada (mismo día): TODOS los
+   pasos con el alto de la oferta —el banner la mide y se lo pone de alto mínimo a los siguientes,
+   centrados—, así que el registro, el código y «Estás dentro» van compactos para no pasarlo nunca.
+   Cuarta pasada: la columna es la del informe (arriba); la de 880 px de la segunda pasada salió. */
 .lqs-banner { display: flex; flex-direction: column; justify-content: center; }
 /* Con los márgenes automáticos un hijo flex no se estira: sin el ancho, la columna se encogía al
    contenido (corrida en PC, desbordada en teléfono). */
 .lqs-banner .lqs-col { width: 100%; }
-.lqs-banner[data-paso="oferta"] { padding: 22px; }
-.lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding: 20px 22px; }
+.lqs-banner[data-paso="oferta"] { padding-block: 22px; }
+.lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding-block: 20px; }
 @media (min-width: 768px) {
-  .lqs-banner[data-paso="oferta"] { padding: 26px 24px; }
-  .lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding: 22px 24px; }
-  .lqs-banner .lqs-col { max-width: 880px; }
+  .lqs-banner[data-paso="oferta"] { padding-block: 26px; }
+  .lqs-banner[data-paso="registro"], .lqs-banner[data-paso="dentro"] { padding-block: 22px; }
 }
 /* La primera línea va como está escrita (08-oct-2026: «Gratis · solo con tu correo»), sin mono ni
    mayúsculas, como el resto del interior del informe desde el 05-oct. */
@@ -163,12 +166,13 @@
 .lqs-banner-registro { font-size: 15px; line-height: 1.45; color: #FAFAF8; margin: 0 0 2px; }
 .lqs-banner-registro b { font-weight: 600; }
 .lqs-banner .lqs-cuerpo { margin: 0 0 14px; max-width: none; }
+/* Cuarta pasada (08-oct-2026): «Quiero recibirlos» va solo, en la fila siguiente a los chips y a la
+   izquierda, en PC y en teléfono. */
 .lqs-fila-accion { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
 .lqs-fila-accion .lqs-parati { margin: 0; }
 .lqs-fila-accion .lqs-btn { height: 42px; }
 @media (min-width: 768px) {
   .lqs-banner .lqs-h3-lead { font-size: 26px; }
-  .lqs-fila-accion { flex-direction: row; align-items: center; gap: 20px; }
 }
 /* «Estás dentro»: el título de una línea, los chips y la pregunta juntos; lo elegido, con relleno y visto. */
 .lqs-banner .lqs-h3-dentro { font-size: 22px; line-height: 1.12; margin: 0 0 4px; }
