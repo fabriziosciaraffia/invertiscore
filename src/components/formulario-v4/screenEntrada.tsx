@@ -42,6 +42,8 @@ import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./s
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
 import { MapaPinAjustable } from "./MapaPinAjustable";
 import { rotuloComparables } from "./comparablesRotulo";
+import { ChipComparables } from "./ChipComparables";
+import { estadoChipComparables } from "./pedirSugerencias";
 
 /** Lo que `/api/geocode?lat&lng` devuelve de un punto. */
 interface PuntoNombrado {
@@ -274,19 +276,17 @@ export function MapaScreen({ answers, data, patchAnswers, answer, onVolver }: Sc
   const listo = !!punto && !!nombre && nombre.cubierta && !nombrando;
   // La leyenda cuenta la lista que el mapa dibuja: los comparables detrás del arriendo de referencia
   // (misma tipología, superficie ±30%, activos, al radio que alcanzó la muestra), la misma que el
-  // motor usa. El resto del radio va en gris más tenue y la leyenda lo distingue. Mientras se busca, se dice.
-  const conteo = !punto
+  // motor usa. El resto del radio va en gris más tenue y la leyenda lo distingue. Mientras se busca, se dice,
+  // con un indicador que gira; si el pedido falla o pasa de 10 s, se dice y se ofrece reintentar (09-oct-2026).
+  const estadoChip = estadoChipComparables({ cargando: data.suggestionsLoading, error: data.suggestionsError, nombrando });
+  const conteo = !punto || (estadoChip === "listo" && data.comparables.length === 0)
     ? null
-    : data.suggestionsLoading || nombrando
-      ? "Buscando comparables cerca…"
-      : data.comparables.length > 0
-        ? (
-          <>
-            {rotuloComparables(data.comparables.length, data.radiusUsed)}
-            {data.restoRadio.length > 0 && <span className="text-[#6B6B72]"> · otros {data.restoRadio.length} en gris</span>}
-          </>
-        )
-        : null;
+    : (
+      <ChipComparables estado={estadoChip} onReintentar={data.reintentarSugerencias}>
+        {rotuloComparables(data.comparables.length, data.radiusUsed)}
+        {data.restoRadio.length > 0 && <span className="text-[#6B6B72]"> · otros {data.restoRadio.length} en gris</span>}
+      </ChipComparables>
+    );
 
   const usar = () => {
     if (!punto || !nombre) return;

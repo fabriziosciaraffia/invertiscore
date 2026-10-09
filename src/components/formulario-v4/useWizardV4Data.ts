@@ -11,6 +11,7 @@ import type { WizardV4Answers } from "./wizardV4Nodes";
 import { dormitoriosNum, huespedesNum, type FuenteArriendo } from "./derive";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 import { arriendoSugeridoObraNueva } from "@/lib/obra-nueva";
+import { pedirJsonConTiempo } from "./pedirSugerencias";
 
 const UF_FALLBACK = 38800;
 const TASA_FALLBACK = 4.72;
@@ -25,6 +26,10 @@ export interface WizardV4Data {
   /** El resto de los arriendos del radio, sin filtro de tipología ni superficie: contexto en gris tenue. */
   restoRadio: Comparable[];
   suggestionsLoading: boolean;
+  /** El pedido de comparables falló o pasó de 10 s (09-oct-2026): el chip lo dice con «Reintentar». */
+  suggestionsError: boolean;
+  /** Vuelve a pedir los comparables. */
+  reintentarSugerencias: () => void;
   /** Arriendo mediana estimado (CLP/mes) de la zona, o null si no hay comparables. */
   arriendoSugerido: number | null;
   /** N de arriendos comparables usados en la mediana. */
@@ -61,6 +66,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [comparables, setComparables] = useState<Comparable[]>([]);
   const [restoRadio, setRestoRadio] = useState<Comparable[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState(false);
+  const [intento, setIntento] = useState(0);
   const [arriendoSugerido, setArriendoSugerido] = useState<number | null>(null);
   const [arriendoN, setArriendoN] = useState(0);
   const [arriendoFuente, setArriendoFuente] = useState<WizardV4Data["arriendoFuente"]>("sin-dato");
@@ -106,6 +113,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
 
   useEffect(() => {
     if (!lat || !lng || !comuna) {
+      setSuggestionsError(false);
       setComparables([]);
       setRestoRadio([]);
       setMuestraArriendo(null);
@@ -113,6 +121,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     }
     const seq = ++reqSeq.current;
     setSuggestionsLoading(true);
+    setSuggestionsError(false);
     const t = setTimeout(() => {
       const base = {
         comuna,
@@ -131,11 +140,14 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
       // Dos fetches (como v3): arriendo (comparables/arriendo/ggcc) + venta
       // (precioM2 → valorMercadoFranco y aviso de subsidio). El endpoint solo
       // devuelve precioM2 en la rama venta.
+      // Con tiempo máximo de 10 s (09-oct-2026): un pedido colgado, un 500 o un corte de red pasan al
+      // estado de error del chip, en vez de dejarlo «buscando» para siempre.
       Promise.all([
-        fetch(`/api/data/suggestions?${qArriendo}`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`/api/data/suggestions?${qVenta}`).then((r) => (r.ok ? r.json() : null)),
+        pedirJsonConTiempo(`/api/data/suggestions?${qArriendo}`),
+        pedirJsonConTiempo(`/api/data/suggestions?${qVenta}`),
       ])
-        .then(([arr, venta]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then(([arr, venta]: any[]) => {
           if (seq !== reqSeq.current) return; // respuesta obsoleta
           // La lista que el mapa dibuja es la de la muestra (28-sep-2026): antes se dibujaba
           // `nearbyProperties` (todo el radio) y se contaba `sampleSize` (la muestra).
@@ -169,6 +181,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
+          setSuggestionsError(true);
           setComparables([]);
           setRestoRadio([]);
           setMuestraArriendo(null);
@@ -188,7 +201,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         });
     }, 400);
     return () => clearTimeout(t);
-  }, [lat, lng, comuna, superficie, dormitorios, tipoPropiedad, amoblado]);
+  }, [lat, lng, comuna, superficie, dormitorios, tipoPropiedad, amoblado, intento]);
 
   // Baseline AirROI — no-op salvo modalidad str/both (evita el costo del fetch
   // en LTR puro). capacidadHuespedes se aproxima desde dormitorios cuando no se
@@ -213,6 +226,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     comparables,
     restoRadio,
     suggestionsLoading,
+    suggestionsError,
+    reintentarSugerencias: () => setIntento((n) => n + 1),
     arriendoSugerido,
     arriendoN,
     arriendoFuente,

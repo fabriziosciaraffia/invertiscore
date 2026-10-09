@@ -216,6 +216,16 @@
 .wz-bloque .wz-punto-fuera { margin-top: 8px; }
 .wz-mapa { border-radius: 12px; background: var(--card); }
 .wz-mapa-fuera { margin-top: 6px; }
+/* El chip del mapa (09-oct-2026): mientras busca comparables, un indicador que gira a la izquierda del
+   texto; si el pedido falla o pasa de 10 s, el error y «Reintentar». */
+.wz-chip-fila { display: inline-flex; align-items: center; gap: 7px; }
+.wz-girando { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(24, 24, 27, 0.2); border-top-color: #18181B; animation: wz-girar 0.8s linear infinite; }
+@keyframes wz-girar { to { transform: rotate(360deg); } }
+.wz-reintentar { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: #18181B; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.wz-reintentar:focus-visible { outline: 2px solid #18181B; outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .wz-girando { animation-duration: 2.4s; }
+}
 
 /* plazo */
 .wz-plazo-anos { text-align: center; }
