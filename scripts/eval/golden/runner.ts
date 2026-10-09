@@ -69,6 +69,7 @@ import { runMedicionTier } from "./medicion-catch-test";
 import { runAffordanceTier } from "./affordance-catch-test";
 import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runOfertaTicketTier } from "./oferta-ticket-catch-test";
+import { runUfTiempoTier } from "./uf-tiempo-catch-test";
 import { runEntradaCodigoTier } from "./entrada-codigo-catch-test";
 import { runCorreosTier } from "./correos-catch-test";
 import { runDashboardVacioTier } from "./dashboard-vacio-catch-test";
@@ -381,6 +382,10 @@ function printSeed(r: SeedReport) {
   // no salía nunca), todos los pasos con el alto del primero, el ticket en tres líneas y el pie limpio
   // de los informes. 19 mutaciones más.
   totalHard += (await runOfertaTicketTier()).hard;
+  // Tier UF-TIEMPO (09-oct-2026, 0 tokens): la UF nunca cuelga un pedido. Con mindicador.cl caído,
+  // `/api/data/suggestions` llegaba al corte de 300 s y el wizard se quedaba buscando comparables.
+  // 3 s por intento, espera tras la falla, pedido compartido, respaldo de la base. 8 mutaciones.
+  totalHard += (await runUfTiempoTier()).hard;
   // Tier ENTRADA-CÓDIGO (01-oct-2026, 0 tokens): una sola entrada, el código (/entrar con su copy por
   // contexto); «Entrar» del header con next validado; el avatar con sesión en landing y wizard; el
   // refresco tras el código con «Estás dentro» vivo; la bienvenida al registrarse; el saludo con el

@@ -1,34 +1,97 @@
 const UF_FALLBACK = 38800;
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-let cachedUF: { value: number; fetchedAt: number } | null = null;
+// ─────────────────────────────────────────────────────────────────────────────
+// LA UF NUNCA CUELGA UN PEDIDO (09-oct-2026). A las 9:26–9:28 de Chile mindicador.cl respondía 500/502
+// después de ~2 minutos; se le pedía sin tiempo máximo y sin recordar la falla, así que cada llamada volvía
+// a esperar y `/api/data/suggestions` llegaba al corte de 300 s de Vercel: el wizard se quedaba en
+// «Buscando comparables cerca…». Ahora: 3 s por intento (aunque el pedido ignore la señal), 5 minutos sin
+// reintentar tras una falla, un solo pedido para las llamadas simultáneas, y de respaldo la última UF buena
+// o la del día en la base (`config.uf_value`, del Banco Central) antes que el número fijo, que estaba 5,7%
+// bajo la de ese día. Tier UF-TIEMPO.
+// ─────────────────────────────────────────────────────────────────────────────
+export const UF_TIEMPO_MAX_MS = 3000;
+export const UF_ESPERA_TRAS_FALLA_MS = 5 * 60 * 1000;
 
-export async function getUFValue(): Promise<number> {
-  // Return cached value if still fresh
-  if (cachedUF && Date.now() - cachedUF.fetchedAt < CACHE_DURATION_MS) {
-    return cachedUF.value;
-  }
-
-  try {
-    const res = await fetch("https://mindicador.cl/api/uf", {
-      next: { revalidate: 86400 }, // Next.js cache: 24h
-    });
-
-    if (!res.ok) throw new Error(`mindicador.cl responded ${res.status}`);
-
-    const data = await res.json();
-    const serie = data?.serie;
-    if (!Array.isArray(serie) || serie.length === 0) throw new Error("Empty serie");
-
-    const valor = Math.round(serie[0].valor);
-    cachedUF = { value: valor, fetchedAt: Date.now() };
-    return valor;
-  } catch (err) {
-    console.error("[UF-FALLBACK] Error fetching UF value, using cached/frozen fallback:", err);
-    // Return cached even if expired, otherwise fallback
-    return cachedUF?.value ?? UF_FALLBACK;
-  }
+/** Resuelve con el valor, o con null si `ms` pasa primero (el que cuelga no cuelga a quien espera). */
+function conTiempoMax<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      () => { clearTimeout(t); resolve(null); },
+    );
+  });
 }
+
+/** La UF del día que guarda el cron del Banco Central (`update-market`). Solo en el servidor. */
+async function ufDeLaBase(): Promise<number | null> {
+  if (typeof window !== "undefined") return null;
+  const { createServiceClient } = await import("./supabase/service");
+  const { data } = await createServiceClient().from("config").select("value").eq("key", "uf_value").maybeSingle();
+  return parseNumeroBCCH(data?.value);
+}
+
+export function crearLectorUF(o: {
+  pedir?: (signal: AbortSignal) => Promise<Response>;
+  respaldo?: () => Promise<number | null>;
+  ahora?: () => number;
+  tiempoMaxMs?: number;
+  esperaTrasFallaMs?: number;
+} = {}): () => Promise<number> {
+  const ahora = o.ahora ?? (() => Date.now());
+  const tiempoMax = o.tiempoMaxMs ?? UF_TIEMPO_MAX_MS;
+  const espera = o.esperaTrasFallaMs ?? UF_ESPERA_TRAS_FALLA_MS;
+  const pedir = o.pedir ?? ((signal: AbortSignal) => fetch("https://mindicador.cl/api/uf", { next: { revalidate: 86400 }, signal }));
+  const respaldo = o.respaldo ?? ufDeLaBase;
+  let cachedUF: { value: number; fetchedAt: number } | null = null;
+  let fallaHasta = 0;
+  let enCurso: Promise<number> | null = null;
+  // La de la base se lee una vez por espera: el endpoint de sugerencias pide la UF varias veces por pedido.
+  let deLaBaseMem: { value: number; hasta: number } | null = null;
+
+  async function deRespaldo(): Promise<number> {
+    if (cachedUF) return cachedUF.value; // la última buena, aunque tenga más de 24 h
+    if (deLaBaseMem && ahora() < deLaBaseMem.hasta) return deLaBaseMem.value;
+    const deLaBase = await conTiempoMax(respaldo(), tiempoMax);
+    const valor = esUFPlausible(deLaBase) ? deLaBase : UF_FALLBACK;
+    deLaBaseMem = { value: valor, hasta: Math.max(fallaHasta, ahora() + espera) };
+    return valor;
+  }
+
+  async function pedirUna(): Promise<number> {
+    try {
+      const control = new AbortController();
+      const valor = await conTiempoMax((async () => {
+        const res = await pedir(control.signal);
+        if (!res.ok) throw new Error(`mindicador.cl responded ${res.status}`);
+        const data = await res.json();
+        const serie = data?.serie;
+        if (!Array.isArray(serie) || serie.length === 0) throw new Error("Empty serie");
+        return Math.round(serie[0].valor);
+      })(), tiempoMax);
+      if (valor == null) {
+        control.abort();
+        throw new Error(`mindicador.cl no respondió en ${tiempoMax} ms (o respondió con error)`);
+      }
+      cachedUF = { value: valor, fetchedAt: ahora() };
+      return valor;
+    } catch (err) {
+      fallaHasta = ahora() + espera;
+      console.error("[UF-FALLBACK] Error fetching UF value, using cached/frozen fallback:", err);
+      return deRespaldo();
+    }
+  }
+
+  return function leerUF(): Promise<number> {
+    if (cachedUF && ahora() - cachedUF.fetchedAt < CACHE_DURATION_MS) return Promise.resolve(cachedUF.value);
+    if (ahora() < fallaHasta) return deRespaldo();
+    if (!enCurso) enCurso = pedirUna().finally(() => { enCurso = null; });
+    return enCurso;
+  };
+}
+
+export const getUFValue: () => Promise<number> = crearLectorUF();
 
 // Synchronous fallback for client-side code that can't await
 export const UF_CLP_FALLBACK = UF_FALLBACK;
