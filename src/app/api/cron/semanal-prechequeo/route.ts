@@ -37,13 +37,21 @@ export async function GET(request: Request) {
     const personas = (await personasSemanal(admin)).sort((a, b) => (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
     const anterior = await leerAvancePrechequeo(admin);
     const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
+    const desde = desdeDondeQuedo(personas, anterior?.siguiente ?? null);
     const r = await prechequearSemana(admin, personas, cfg, presupuesto, {
-      desde: desdeDondeQuedo(personas, anterior?.siguiente ?? null),
+      desde,
       hastaMs: t0 + PRESUPUESTO_PRECHEQUEO_MS,
     });
     // Hasta dónde llegó: la corrida siguiente sigue desde ahí.
     const avance = { siguiente: r.siguiente, revisadas: r.revisadas, total: personas.length, chequeos: r.chequeos, porTiempo: r.porTiempo, porCupo: r.porCupo, ms: Date.now() - t0 };
     await guardarAvancePrechequeo(admin, avance);
+    // El cierre, en los logs de la función: cuánto duró, cuánto tardó cada aviso y dónde empezó y quedó (como
+    // posición en la lista, no el id de la persona). Sin esta línea, la duración real solo se ve en la base.
+    const posicion = (u: string | null) => (u ? personas.findIndex((p) => p.userId === u) : null);
+    console.log(`[semanal-prechequeo] cierre ${JSON.stringify({
+      ms: Date.now() - t0, empezoEn: posicion(desde), sigueEn: posicion(r.siguiente), total: personas.length, revisadas: r.revisadas,
+      chequeos: r.chequeos, msChequeos: r.msChequeos, msPasoMax: r.msPasoMax, lecturas: presupuesto.lecturas, porTiempo: r.porTiempo, porCupo: r.porCupo,
+    })}`);
     // Un bloqueo de la fuente es una corrida fallida: lo ve el panel y alerta.
     const conteo = presupuesto.bloqueada ? { procesados: 1, exitosos: 0, fallidos: 1 } : { procesados: 1, exitosos: 1, fallidos: 0 };
     return cerrarCron(admin, NOMBRE, conteo, { ...r, lecturas: presupuesto.lecturas, bloqueada: presupuesto.bloqueada, avance });

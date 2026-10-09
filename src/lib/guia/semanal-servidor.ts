@@ -226,7 +226,7 @@ export async function prechequearSemana(
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
   opts: { desde: string | null; hastaMs: number },
-): Promise<{ personas: number; revisadas: number; completas: number; sinCandidatos: number; chequeos: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean }> {
+): Promise<{ personas: number; revisadas: number; completas: number; sinCandidatos: number; chequeos: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean; msChequeos: number[]; msPasoMax: number }> {
   const almacen = almacenPublicacion(admin);
   const enMemoria = async (c: Candidato): Promise<EstadoPublicacion> =>
     (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, { sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS })).estado;
@@ -259,6 +259,7 @@ export async function prechequearSemana(
   return {
     personas: preps.size, revisadas: avance.revisadas, completas: cuantas("armada"), sinCandidatos: cuantas("sin-candidatos"),
     chequeos: avance.chequeos, siguiente: avance.siguiente, porTiempo: avance.porTiempo, porCupo: avance.porCupo,
+    msChequeos: avance.msChequeos, msPasoMax: avance.msPasoMax,
   };
 }
 

@@ -317,7 +317,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
     if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/const r = await siguienteYEstado\(p\.candidatos, p\.evaluar, enMemoria, p\.respaldo\);/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
     const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
-    if (!/await prechequearSemana\(admin, personas, cfg, presupuesto, \{\s*desde: desdeDondeQuedo\(personas, anterior\?\.siguiente \?\? null\),\s*hastaMs: t0 \+ PRESUPUESTO_PRECHEQUEO_MS,\s*\}\)/.test(rp) || !/latirCron\(admin, "semanal-prechequeo"\)/.test(rp)) F("12 · el cron no prechequea");
+    // (09-oct-2026, segunda pasada: «desde» se calcula una vez, porque también va al log del cierre.)
+    if (!/const desde = desdeDondeQuedo\(personas, anterior\?\.siguiente \?\? null\);/.test(rp) || !/await prechequearSemana\(admin, personas, cfg, presupuesto, \{\s*desde,\s*hastaMs: t0 \+ PRESUPUESTO_PRECHEQUEO_MS,\s*\}\)/.test(rp) || !/latirCron\(admin, "semanal-prechequeo"\)/.test(rp)) F("12 · el cron no prechequea");
     if (!/"path": "\/api\/cron\/semanal-prechequeo",\s*"schedule": "35 3-8 \* \* 1-6"/.test(vj)) F("12 · el prechequeo no corre de noche de lunes a sábado");
     if (!/nombre: "semanal-prechequeo"[^}]*intervaloHoras: 24/.test(hb)) F("12 · el prechequeo no está vigilado");
   }

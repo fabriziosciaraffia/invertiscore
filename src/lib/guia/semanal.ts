@@ -178,6 +178,10 @@ export interface AvancePrechequeo<P> {
   siguiente: P | null;
   porTiempo: boolean;
   porCupo: boolean;
+  /** Cuánto tardó cada chequeo (ms, reloj real): lo que cuesta un aviso medido donde corre el cron. */
+  msChequeos: number[];
+  /** El paso de preparar/elegir más largo (ms, reloj real): lo que se puede pasar del presupuesto. */
+  msPasoMax: number;
 }
 
 /** Por quién empieza la corrida: la persona donde quedó la anterior o, si esa ya no está en la lista, la que
@@ -208,18 +212,23 @@ export async function prechequearConPresupuesto<P, T>(
   const terminadas = new Set<P>();
   const visitadas = new Set<P>();
   let enFila = [...orden];
-  let chequeos = 0, porTiempo = false, porCupo = false;
+  let chequeos = 0, porTiempo = false, porCupo = false, msPasoMax = 0;
+  const msChequeos: number[] = [];
   vueltas: while (enFila.length > 0) {
     const siguen: P[] = [];
     for (const p of enFila) {
       if (!quedaTiempo()) { porTiempo = true; break vueltas; }
       if (!quedaCupo()) { porCupo = true; break vueltas; }
       visitadas.add(p);
+      const tp = Date.now();
       const aviso = await siguiente(p);
+      msPasoMax = Math.max(msPasoMax, Date.now() - tp);
       if (aviso == null) { terminadas.add(p); continue; }
       siguen.push(p);
       if (!quedaTiempo()) { porTiempo = true; break vueltas; }
+      const tc = Date.now();
       await chequear(aviso);
+      msChequeos.push(Date.now() - tc);
       chequeos++;
     }
     enFila = siguen;
@@ -228,7 +237,7 @@ export async function prechequearConPresupuesto<P, T>(
   // necesita. Volver a la primera «no terminada» —una que ya chequeó su aviso pero no alcanzó a confirmarse—
   // haría que cada corrida re-preparara a las mismas y nunca avanzara.
   const siguientePersona = orden.find((p) => !visitadas.has(p)) ?? orden.find((p) => !terminadas.has(p)) ?? null;
-  return { chequeos, revisadas: terminadas.size, siguiente: siguientePersona, porTiempo, porCupo };
+  return { chequeos, revisadas: terminadas.size, siguiente: siguientePersona, porTiempo, porCupo, msChequeos, msPasoMax };
 }
 
 /** Un aviso chequeado hace menos que esto no se vuelve a leer el domingo: se chequeó hoy. */

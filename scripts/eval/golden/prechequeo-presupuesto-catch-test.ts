@@ -26,6 +26,10 @@
 //   de ahí el chequeo de los argumentos en orden.
 //   Y antes de las mutaciones, este tier cazó un error de diseño de la primera versión: devolvía como cursor «la
 //   primera no terminada», que ya había chequeado, y cada corrida habría vuelto a preparar a las mismas.
+//   Segunda pasada (el mismo día): el cierre queda en los logs de la función —duración, cuánto tardó cada aviso,
+//   dónde empezó y quedó como posición—, porque la verificación en producción no tenía otra ventana que la base.
+//   24/24 en ROJO con L1 no mide cada chequeo · L2 el log sin lo de cada aviso · L3 el log con el id de la persona ·
+//   L4 sin log de cierre (R2 y R4, reapuntadas a `const desde = …`).
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/prechequeo-presupuesto-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
@@ -36,7 +40,7 @@ const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
 
-type Avance = { chequeos: number; revisadas: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean };
+type Avance = { chequeos: number; revisadas: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean; msChequeos?: number[]; msPasoMax?: number };
 type Prechequear = (
   personas: string[],
   desde: string | null,
@@ -93,6 +97,8 @@ export async function runPrechequeoPresupuestoTier(): Promise<{ hard: number }> 
       if (tarde.length) F(`${tag} con más trabajo del que cabe, ${tarde.length} paso(s) EMPEZARON pasado el presupuesto (el primero: ${tarde[0].que} a los ${tarde[0].t / 1000} s)`);
       if (e.r.t > 240_000 + 3000) F(`${tag} la corrida terminó a los ${e.r.t / 1000} s (el presupuesto es 240 s y el paso más largo, 3 s)`);
       if (!a1.porTiempo) F(`${tag} con más trabajo del que cabe, la corrida no dice que cortó por tiempo`);
+      // Cuánto tardó cada aviso: una medida por chequeo hecho (va al log del cierre).
+      if (!Array.isArray(a1.msChequeos) || a1.msChequeos.length !== a1.chequeos || typeof a1.msPasoMax !== "number") F(`${tag} la corrida no mide cuánto tardó cada chequeo (${a1.msChequeos?.length} medidas para ${a1.chequeos} chequeos)`);
       // Por quién seguir: la primera a la que la corrida NO LLEGÓ (si llegó a todas, la primera que todavía
       // necesita). No una que ya chequeó y no alcanzó a confirmarse: con eso cada corrida re-prepararía a las
       // mismas y nunca avanzaría (la primera versión devolvía p003 con 110 personas ya revisadas).
@@ -156,6 +162,10 @@ export async function runPrechequeoPresupuestoTier(): Promise<{ hard: number }> 
     if (!/leerAvancePrechequeo\(admin\)/.test(ruta) || !/guardarAvancePrechequeo\(admin, /.test(ruta)) F("5 · el cron no lee ni guarda dónde quedó la corrida anterior");
     if (/Math\.floor\(t0 \/ 3_600_000\) \* 13/.test(ruta)) F("5 · el punto de partida sigue rotando por hora en vez de seguir donde quedó");
     if (!/\.sort\(/.test(ruta)) F("5 · las personas no van en un orden estable (el «dónde quedó» no sirve si el orden cambia)");
+    // El cierre queda en los logs de la función con la duración, lo de cada aviso y dónde empezó y quedó, como
+    // posición y no como id: la base no es el único lugar donde se puede ver si la corrida terminó a tiempo.
+    const log = ruta.slice(ruta.indexOf("console.log(`[semanal-prechequeo] cierre"));
+    if (!/^console\.log\(`\[semanal-prechequeo\] cierre \$\{JSON\.stringify\(\{[^}]*ms: Date\.now\(\) - t0,[^}]*empezoEn: posicion\(desde\), sigueEn: posicion\(r\.siguiente\)[^}]*msChequeos: r\.msChequeos, msPasoMax: r\.msPasoMax/.test(log) || /userId|siguiente: r\.siguiente/.test(log.slice(0, log.indexOf("})}`)")))) F("5 · el cierre no deja en los logs la duración, lo de cada aviso y dónde empezó y quedó (o deja el id de la persona)");
     // Dónde quedó lleva un id de usuario: va a `metrics_daily` (solo el servidor), nunca a `config`, que
     // `/api/config?key=` devuelve al público.
     const avanceSrv = srv.slice(srv.indexOf("export async function leerAvancePrechequeo"), srv.indexOf("function candidatoDeFila"));
