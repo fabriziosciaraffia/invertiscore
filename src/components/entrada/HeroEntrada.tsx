@@ -115,6 +115,7 @@ export function CampoEntrada({
   const onEventoRef = useRef(onEvento);
   onEventoRef.current = onEvento;
   const focoMedido = useRef(false);
+  const sugerenciasRef = useRef<HTMLDivElement>(null);
   const usaHoja = useUsaHoja();
   const [hoja, setHoja] = useState(false);
   // El componente de la hoja, cargado aparte: se pide apenas se sabe que es un teléfono, para que al
@@ -211,39 +212,31 @@ export function CampoEntrada({
     if (hoja && Hoja && document.activeElement !== inputRef.current) inputRef.current?.focus();
   }, [hoja, Hoja, inputRef]);
 
-  // Con la hoja abierta, las sugerencias de Places se fijan justo bajo el campo de la hoja. El bloqueo
-  // del scroll, Escape y atrás los pone el Modal. La hoja se mide contra el área visible (el Modal
-  // la coloca con el visualViewport, QA 28-sep-2026), así que el campo se lee donde está de verdad;
-  // se vuelve a medir al terminar la animación de entrada y en cada cambio del área visible.
+  // Con la hoja abierta, las sugerencias de Places van DENTRO de la hoja, justo bajo el campo (09-oct-2026).
+  // Hasta hoy quedaban fijas (`position: fixed`) a una altura calculada con el visualViewport, y en iPhone
+  // con iOS 26 —donde lo fijo y el área visible no cuadran con el teclado abierto— solo se veía la primera.
+  // En el flujo de la hoja no hay nada que calcular: van donde va el campo, y la hoja termina sobre el
+  // teclado (el Modal la mide contra el área visible). Google cuelga su lista del <body>: apenas aparece se
+  // muda a la hoja, y al cerrarla vuelve al <body>. El bloqueo del scroll, Escape y atrás los pone el Modal.
+  // `Hoja` en las dependencias: si la hoja se toca antes de que llegue su código, el lugar aparece después.
   useEffect(() => {
     if (!hoja) return;
     const html = document.documentElement;
     html.classList.add("he-hoja-abierta");
-    // Se mide en el cuadro siguiente: el Modal recoloca la hoja en el mismo evento del
-    // visualViewport, y medir antes de que aplique daba la altura vieja de la hoja.
-    const colocar = () => requestAnimationFrame(() => {
-      const inp = inputRef.current;
-      const modal = inp?.closest(".v-modal") as HTMLElement | null;
-      if (!inp || !modal) return;
-      // sin la animación de entrada: la distancia del campo al borde de la hoja (las dos se
-      // transforman igual) más el pie del ÁREA VISIBLE, donde la hoja termina
-      const dentro = inp.getBoundingClientRect().bottom - modal.getBoundingClientRect().top;
-      const vv = window.visualViewport;
-      const fondo = vv ? vv.offsetTop + vv.height : window.innerHeight;
-      html.style.setProperty("--he-pac-top", `${Math.round(fondo - modal.offsetHeight + dentro + 6)}px`);
-    });
-    colocar();
-    const t = setTimeout(colocar, 260);
-    window.addEventListener("resize", colocar);
-    window.visualViewport?.addEventListener("resize", colocar);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", colocar);
-      window.visualViewport?.removeEventListener("resize", colocar);
-      html.classList.remove("he-hoja-abierta");
-      html.style.removeProperty("--he-pac-top");
+    const lugar = sugerenciasRef.current;
+    if (!lugar) return () => html.classList.remove("he-hoja-abierta");
+    const traer = () => {
+      document.querySelectorAll<HTMLElement>("body > .pac-container").forEach((c) => lugar.appendChild(c));
     };
-  }, [hoja, Hoja, inputRef]);
+    traer();
+    const mo = new MutationObserver(traer);
+    mo.observe(document.body, { childList: true });
+    return () => {
+      mo.disconnect();
+      lugar.querySelectorAll(".pac-container").forEach((c) => document.body.appendChild(c));
+      html.classList.remove("he-hoja-abierta");
+    };
+  }, [hoja, Hoja]);
 
   const onCambio = (e: ChangeEvent<HTMLInputElement>) => {
     setTexto(e.target.value);
@@ -353,6 +346,7 @@ export function CampoEntrada({
             />
             <button type="submit" className="he-hoja-ir" aria-label="Analizar esta dirección" disabled={deshabilitado}>→</button>
           </form>
+          <div ref={sugerenciasRef} className="he-hoja-sugerencias" />
           {buscando ? (
             <p className="he-hoja-ayuda">Buscando la dirección…</p>
           ) : espera ? (

@@ -210,9 +210,16 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/\}, \[activo, clave, prepararPlaces\]\);/.test(hook)) F("8 · el hook no vuelve a atar el widget cuando cambia el input");
   const css = leer("src/components/entrada/hero-entrada.css");
   if (/\.he-hoja \{[^}]*inset: 0/.test(css) || /he-hoja-cancelar/.test(css + hero)) F("8 · vuelve la hoja a pantalla completa");
-  if (!/html\.he-hoja-abierta \.pac-container \{\s*\n\s*position: fixed !important; top: var\(--he-pac-top, [0-9]+px\) !important; left: 0 !important; width: 100% !important; max-width: none !important;/.test(css)) F("8 · las sugerencias no quedan fijas bajo el campo de la hoja, a lo ancho");
-  // desde el QA en el teléfono (28-sep-2026) la hoja termina en el pie del ÁREA VISIBLE (visualViewport), no de la ventana
-  if (!/const dentro = inp\.getBoundingClientRect\(\)\.bottom - modal\.getBoundingClientRect\(\)\.top;\s*\n\s*const vv = window\.visualViewport;\s*\n\s*const fondo = vv \? vv\.offsetTop \+ vv\.height : window\.innerHeight;\s*\n\s*html\.style\.setProperty\("--he-pac-top", `\$\{Math\.round\(fondo - modal\.offsetHeight \+ dentro \+ 6\)\}px`\);/.test(hero)) F("8 · la posición de las sugerencias no se mide sin la animación de entrada y contra el área visible");
+  // ⚠ ACTA (09-oct-2026, Safari en iPhone) · las sugerencias ya no van FIJAS a una altura calculada con el
+  // visualViewport (`--he-pac-top`): en iOS 26, con el teclado abierto, solo se veía la primera. Van DENTRO de la
+  // hoja, en su flujo, bajo el campo: HeroEntrada muda ahí la lista que Google cuelga del <body> y la devuelve al
+  // cerrar. Los tres chequeos de la posición fija se reemplazan por estos.
+  if (!/html\.he-hoja-abierta \.he-hoja-sugerencias \.pac-container \{\s*\n\s*position: static !important; top: auto !important; left: auto !important; width: auto !important; max-width: none !important;/.test(css) || /html\.he-hoja-abierta \.pac-container \{[^}]*position: fixed/.test(css))
+    F("8 · las sugerencias no van dentro de la hoja, en su flujo, bajo el campo (fijas con el área visible, en iOS 26 solo se ve la primera)");
+  if (!/<\/form>\s*\n\s*<div ref=\{sugerenciasRef\} className="he-hoja-sugerencias" \/>/.test(hero)) F("8 · el lugar de las sugerencias no está justo bajo el campo de la hoja");
+  if (!/document\.querySelectorAll<HTMLElement>\("body > \.pac-container"\)\.forEach\(\(c\) => lugar\.appendChild\(c\)\);/.test(hero) || !/mo\.observe\(document\.body, \{ childList: true \}\);/.test(hero) || !/lugar\.querySelectorAll\("\.pac-container"\)\.forEach\(\(c\) => document\.body\.appendChild\(c\)\);/.test(hero))
+    F("8 · la lista de Google no se muda a la hoja cuando aparece, o no vuelve al <body> al cerrar");
+  if (/--he-pac-top/.test(hero + css)) F("8 · vuelve la posición calculada con el área visible (--he-pac-top)");
 
   // ── 9 · EL QA EN EL IPHONE (28-sep-2026): elegir navega, el borrador solo cuando vale, cada paso arranca arriba ──
   const soloMapa = { current: "tipo", history: ["dir", "dirMapa"], answers: { direccion: "Linares 1415, Providencia" } } as never;
@@ -228,7 +235,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (!/if \(!mantenerHojaAlEntregar\) setHoja\(false\);\s*\n\s*onDireccion\(sel\);/.test(hero) || !/onClick=\{\(\) => tomarCamino\("mapa"\)\}/.test(hero)) F("9 · la hoja se cierra al entregar aunque quien monta vaya a navegar");
   // Si la hoja se toca antes de que llegue su código, la medición tiene que volver a correr cuando
   // llega (visto en local: sin `Hoja` en las dependencias, las sugerencias quedaban en el valor por defecto).
-  if (!/html\.style\.removeProperty\("--he-pac-top"\);\s*\n\s*\};\s*\n\s*\}, \[hoja, Hoja, inputRef\]\);/.test(hero)) F("8 · la posición de las sugerencias no se vuelve a medir cuando llega la hoja");
+  if (!/html\.classList\.remove\("he-hoja-abierta"\);\s*\n\s*\};\s*\n\s*\}, \[hoja, Hoja\]\);/.test(hero)) F("8 · la lista no se vuelve a buscar cuando llega el código de la hoja");
   // CINCO SUGERENCIAS SOBRE EL TECLADO. El presupuesto sale del CSS: con el teclado abierto a 390
   // quedan unos 464 px visibles, y el campo de la hoja termina cerca de 190 (velo 56, asa, cabecera,
   // campo): a las cinco les quedan ~270 px. Medido además en el navegador en cada preview.

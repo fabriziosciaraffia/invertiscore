@@ -139,13 +139,15 @@ html .he-hoja-input { font-size: 17px !important; }
 .he-hoja-alt { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; font-size: 14px; color: var(--doc-tx3, #71717A); }
 .he-hoja-alt > span { padding: 4px 0; }
 .he-hoja-alt button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 500; color: var(--doc-tx, #18181B); cursor: pointer; }
-/* las sugerencias: fijas justo bajo el campo de la hoja (--he-pac-top lo mide HeroEntrada), a lo
-   ancho de la hoja y en dos líneas compactas, para que las cinco quepan sobre el teclado.
-   `max-width: none` anula el `calc(100vw - 2rem) !important` global de globals.css, que la dejaba
-   32 px corta. La coincidencia va en tinta: en la hoja no hay rojo decorativo. */
-html.he-hoja-abierta .pac-container {
-  position: fixed !important; top: var(--he-pac-top, 150px) !important; left: 0 !important; width: 100% !important; max-width: none !important;
-  margin: 0; border-radius: 0; border: 0; border-top: 1px solid #E9E9EC; border-bottom: 1px solid #E9E9EC; box-shadow: 0 16px 28px -18px rgba(0, 0, 0, 0.35); z-index: 3100;
+/* las sugerencias: DENTRO de la hoja, en su flujo, justo bajo el campo (09-oct-2026; HeroEntrada muda
+   ahí la lista que Google cuelga del <body>), en dos líneas compactas para que las cinco quepan sobre el
+   teclado. Hasta hoy iban fijas a una altura calculada con el visualViewport, y en iPhone con iOS 26 solo
+   se veía la primera. El `!important` anula la posición, el ancho y el `top`/`left` que Google escribe
+   en línea, y el `calc(100vw - 2rem)` global de globals.css. La coincidencia va en tinta: en la hoja no
+   hay rojo decorativo. */
+html.he-hoja-abierta .he-hoja-sugerencias .pac-container {
+  position: static !important; top: auto !important; left: auto !important; width: auto !important; max-width: none !important;
+  margin: 8px 0 0; border-radius: 12px; border: 1px solid #E9E9EC; box-shadow: none; overflow: hidden;
 }
 html.he-hoja-abierta .pac-item { line-height: 1.3; padding: 7px 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #71717A; }
 html.he-hoja-abierta .pac-item-query { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
