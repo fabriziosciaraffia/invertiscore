@@ -162,7 +162,9 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/crearVigiaZona\(\(enZona\) => \{\s*setZonaCierre\(enZona\);/.test(ticket) || !/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(ticket)) F("4 · la zona del cierre no se mide (de la marca del final hacia abajo)");
   if (!/useAnclaAreaVisible\(velo\);/.test(ticket) || !/useAnclaAbajo\(pestanaRef\);/.test(ticket)) F("4 · la pestaña o el velo no se anclan al área visible real desde el montaje (iOS: anclar al abrir mueve el borde a mitad de la transición)");
   const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
-  if (!/vv\.offsetTop \+ vv\.height - el\.offsetHeight/.test(ancla) || !/vv\.addEventListener\("scroll", colocar\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
+  // ⚠ ACTA (09-oct-2026, tareas largas) · el ancla coloca una vez por cuadro (`enCuadro`) y el alto de la pestaña
+  // se lee cuando cambia, no en cada aviso del área visible: la regla es la misma, la mecánica la fija TAREAS-LARGAS §3.
+  if (!/vv\.offsetTop \+ vv\.height - alto/.test(ancla) || !/vv\.addEventListener\("scroll", enCuadro\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
   if (!/const useAntesDePintar = typeof window !== "undefined" \? useLayoutEffect : useEffect;/.test(ancla) || (ancla.match(/useAntesDePintar\(\(\) => \{/g) ?? []).length !== 2) F("4 · el ancla no se fija antes de pintar (useLayoutEffect)");
   if (!/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?transition: opacity 160ms ease !important;[\s\S]*?\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ opacity: 1;/.test(leer("src/components/lo-que-sigue/lo-que-sigue.css"))) F("4 · con «Reducir movimiento» el borde inferior aparece de golpe en vez de fundirse");
   if (!/function despedirse\(\) \{\s*if \(cara === "despedida"\) return;\s*setCara\("despedida"\);\s*capturarLqs\(posthog, EVENTOS_LQS\.despedidaVista/.test(ticket)) F("4 · cerrar o «Seguir leyendo» no cambian a la despedida en el mismo lugar");

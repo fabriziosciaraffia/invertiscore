@@ -11,6 +11,10 @@
 // cuando el elemento se muestra. Fijarla al abrir (useEffect, después de pintar) cambiaba la
 // geometría del velo y de la barra EN MEDIO de su transición: en iOS, donde el área visible y la
 // ventana difieren por la barra del navegador, el borde saltaba y el ticket parecía aparecer de golpe.
+//
+// UNA VEZ POR CUADRO Y SIN MEDIR EN CADA EVENTO (09-oct-2026): el área visible avisa muchas veces por cuadro
+// mientras se baja en iOS. Los avisos piden un cuadro y se coloca una vez en él; el alto de la pestaña se
+// lee cuando cambia (ResizeObserver), no en cada aviso —leerlo ahí forzaba un layout por evento—.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useLayoutEffect, type RefObject } from "react";
 
@@ -23,18 +27,28 @@ export function useAnclaAbajo(ref: RefObject<HTMLElement | null>, activo = true)
     const el = ref.current;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!el || !vv || !activo) return;
+    let alto = el.offsetHeight;
+    let cuadro = 0;
     const colocar = () => {
-      el.style.top = `${Math.round(vv.offsetTop + vv.height - el.offsetHeight)}px`;
+      cuadro = 0;
+      el.style.top = `${Math.round(vv.offsetTop + vv.height - alto)}px`;
       el.style.bottom = "auto";
     };
+    const enCuadro = () => {
+      if (!cuadro) cuadro = window.requestAnimationFrame(colocar);
+    };
     colocar();
-    vv.addEventListener("resize", colocar);
-    vv.addEventListener("scroll", colocar);
-    window.addEventListener("resize", colocar);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { alto = el.offsetHeight; enCuadro(); }) : null;
+    ro?.observe(el);
+    vv.addEventListener("resize", enCuadro);
+    vv.addEventListener("scroll", enCuadro);
+    window.addEventListener("resize", enCuadro);
     return () => {
-      vv.removeEventListener("resize", colocar);
-      vv.removeEventListener("scroll", colocar);
-      window.removeEventListener("resize", colocar);
+      if (cuadro) window.cancelAnimationFrame(cuadro);
+      ro?.disconnect();
+      vv.removeEventListener("resize", enCuadro);
+      vv.removeEventListener("scroll", enCuadro);
+      window.removeEventListener("resize", enCuadro);
       el.style.top = "";
       el.style.bottom = "";
     };
@@ -47,17 +61,23 @@ export function useAnclaAreaVisible(ref: RefObject<HTMLElement | null>, activo =
     const el = ref.current;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!el || !vv || !activo) return;
+    let cuadro = 0;
     const colocar = () => {
+      cuadro = 0;
       el.style.top = `${Math.round(vv.offsetTop)}px`;
       el.style.height = `${Math.round(vv.height)}px`;
       el.style.bottom = "auto";
     };
+    const enCuadro = () => {
+      if (!cuadro) cuadro = window.requestAnimationFrame(colocar);
+    };
     colocar();
-    vv.addEventListener("resize", colocar);
-    vv.addEventListener("scroll", colocar);
+    vv.addEventListener("resize", enCuadro);
+    vv.addEventListener("scroll", enCuadro);
     return () => {
-      vv.removeEventListener("resize", colocar);
-      vv.removeEventListener("scroll", colocar);
+      if (cuadro) window.cancelAnimationFrame(cuadro);
+      vv.removeEventListener("resize", enCuadro);
+      vv.removeEventListener("scroll", enCuadro);
       el.style.top = "";
       el.style.height = "";
       el.style.bottom = "";

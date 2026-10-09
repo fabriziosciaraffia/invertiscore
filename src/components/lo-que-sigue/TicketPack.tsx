@@ -118,8 +118,27 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     if (finReco && ioReco) ioReco.observe(finReco);
     // Un salto de golpe (la tecla Fin, un ancla) deja una marca por encima de la pantalla sin cruzarla, y su
     // observer no avisa: al desplazarse se mira dónde quedaron las dos (08-oct-2026).
-    const alDesplazar = () =>
-      revisarMarcas({ finTop: marca.getBoundingClientRect().top, recoTop: finReco ? finReco.getBoundingClientRect().top : null, alto: window.innerHeight }, vigia, d);
+    // SIN MEDIR EN CADA SCROLL Y UNA VEZ POR CUADRO (09-oct-2026): dónde están las marcas EN LA PÁGINA se mide al
+    // montar y cuando cambia el alto del documento; al desplazarse solo se lee `scrollY`, en el cuadro siguiente.
+    // Medirlas en cada evento forzaba un layout del informe entero por evento mientras se baja.
+    let finEnPagina = 0;
+    let recoEnPagina: number | null = null;
+    const medirMarcas = () => {
+      finEnPagina = marca.getBoundingClientRect().top + window.scrollY;
+      recoEnPagina = finReco ? finReco.getBoundingClientRect().top + window.scrollY : null;
+    };
+    medirMarcas();
+    const roPagina = typeof ResizeObserver !== "undefined" ? new ResizeObserver(medirMarcas) : null;
+    roPagina?.observe(document.body);
+    let cuadro = 0;
+    const revisarEnCuadro = () => {
+      cuadro = 0;
+      const y = window.scrollY;
+      revisarMarcas({ finTop: finEnPagina - y, recoTop: recoEnPagina === null ? null : recoEnPagina - y, alto: window.innerHeight }, vigia, d);
+    };
+    const alDesplazar = () => {
+      if (!cuadro) cuadro = window.requestAnimationFrame(revisarEnCuadro);
+    };
     window.addEventListener("scroll", alDesplazar, { passive: true });
     const actividad = () => d.actividad();
     for (const ev of EVENTOS_ACTIVIDAD) window.addEventListener(ev, actividad, { passive: true });
@@ -130,6 +149,8 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       d.detener();
       io.disconnect();
       window.removeEventListener("scroll", alDesplazar);
+      if (cuadro) window.cancelAnimationFrame(cuadro);
+      roPagina?.disconnect();
       ioReco?.disconnect();
       for (const ev of EVENTOS_ACTIVIDAD) window.removeEventListener(ev, actividad);
       window.clearInterval(lectura);

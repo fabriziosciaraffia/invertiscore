@@ -27,6 +27,7 @@ import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/type
 import { construirCardLtr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import type { Veredicto } from "@/lib/types";
+import type { AlternativaComunas } from "@/lib/alternativa-comunas";
 import { FRASE_RIESGO_ENTREGA, cuotasSeVen, filaPesaCuotas, fraseCuotasPortada } from "@/lib/obra-nueva";
 
 /**
@@ -59,6 +60,7 @@ export function SubjectCardGrid({
   medianaResolvedAt,
   despuesDeLaCard,
   trasPortada,
+  alternativaComunas = null,
 }: {
   /** «Lo que sigue»: lo que va después de la card de Franco (lo monta HeroLTR). */
   despuesDeLaCard?: ReactNode;
@@ -91,6 +93,8 @@ export function SubjectCardGrid({
   /** Fecha (ISO) de la mediana comunal que muestra la zona: el `resolvedAt` del snapshot
    *  o ahora, si se resolvió viva. Viene de page.tsx. */
   medianaResolvedAt?: string;
+  /** Calculada una vez en el servidor (`informe-ltr.tsx`); la usan la recomendación y «Cómo lo pagas». */
+  alternativaComunas?: AlternativaComunas | null;
 }) {
   // Solo telemetría: «zona» mientras el modal de comparables está abierto (lo abre la sección).
   const [activeDrawer, setActiveDrawer] = useState<string | null>(null);
@@ -320,6 +324,7 @@ export function SubjectCardGrid({
         comuna={comuna}
         valorUF={valorUF}
         createdAt={createdAt}
+        alternativaComunas={alternativaComunas}
       />
       {/* ZONA 2 AL PRIMER RENDER (25-sep-2026): ya no hay bloque de espera que la reemplace
           mientras la prosa viene en camino. Los números, la inversión y la zona son del motor. */}
@@ -375,6 +380,7 @@ export function SubjectCardGrid({
               veredicto={veredicto}
               accessLevel={accessLevel}
               abrir={capituloAbrir}
+              alternativaComunas={alternativaComunas}
             />
           )}
           </SeccionInforme>

@@ -240,7 +240,10 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
       const tkSalto = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
       // ⚠ ACTA (08-oct-2026, la recomendación) · el scroll mira las DOS marcas con `revisarMarcas` (la regla de
       // la del final se prueba sobre esa función más abajo, en §7); el cableado pasa las dos.
-      if (!/window\.addEventListener\("scroll", alDesplazar, \{ passive: true \}\)/.test(tkSalto) || !/const alDesplazar = \(\) =>\s*revisarMarcas\(\{ finTop: marca\.getBoundingClientRect\(\)\.top, recoTop: finReco \? finReco\.getBoundingClientRect\(\)\.top : null, alto: window\.innerHeight \}, vigia, d\);/.test(tkSalto)) F("3 · el ticket no mira dónde quedaron las marcas al desplazarse (un salto no cuenta)");
+      // ⚠ ACTA (09-oct-2026, tareas largas) · las marcas se miden en la PÁGINA al montar y cuando cambia su alto, y
+      // el scroll las mira una vez por cuadro restando `scrollY`: la regla es la misma (un salto cuenta), la mecánica
+      // la fija TAREAS-LARGAS §2.
+      if (!/window\.addEventListener\("scroll", alDesplazar, \{ passive: true \}\)/.test(tkSalto) || !/revisarMarcas\(\{ finTop: finEnPagina - y, recoTop: recoEnPagina === null \? null : recoEnPagina - y, alto: window\.innerHeight \}, vigia, d\);/.test(tkSalto)) F("3 · el ticket no mira dónde quedaron las marcas al desplazarse (un salto no cuenta)");
       if (!/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(tkSalto)) F("3 · el observer de la marca no pasa por la misma vigía que el scroll");
       if (!/window\.removeEventListener\("scroll", alDesplazar\)/.test(tkSalto)) F("3 · el scroll de la marca no se suelta al desmontar");
     }

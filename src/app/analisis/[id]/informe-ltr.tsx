@@ -21,6 +21,8 @@ import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
+import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
+import { readVeredicto } from "@/lib/results-helpers";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -209,6 +211,17 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     duenoId: analisis.user_id ?? null,
   });
 
+  // LA ALTERNATIVA DE COMUNAS (§5), UNA VEZ Y EN EL SERVIDOR (09-oct-2026). Son 23 corridas de `runAnalysis`;
+  // hasta hoy las hacían HeroLTR y CapitulosInversion, cada uno en un useMemo del CLIENTE, así que el navegador
+  // corría el motor 46 veces al cargar y al bajar: ~4 s de hilo ocupado en un PC y más de un minuto en un iPhone,
+  // con la página en blanco desde la recomendación. Mismo input, misma UF congelada, misma fecha y el mismo
+  // veredicto que lee el cliente (`resolvedVeredicto`): un solo resultado, que baja por props.
+  const scoreInforme = results?.score ?? analisis.score;
+  const veredictoInforme = readVeredicto(results) || (scoreInforme >= 70 ? "COMPRAR" : scoreInforme >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+  const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
+    ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
+    : null;
+
   // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
   // bienvenida — columna charge_mode escrita al crear (opción B; históricos
   // NULL → false). Solo dueño: vistas compartidas no reciben el CTA.
@@ -393,6 +406,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           ofertaPack={ofertaLqs.oferta}
           correoOferta={ofertaLqs.correo}
           medianaResolvedAt={medianaResolvedAt}
+          alternativaComunas={alternativaComunas}
         />
 
         {/* Fallback for old analyses without full results */}

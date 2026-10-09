@@ -2,7 +2,7 @@
 import { SegsCierre } from "./shared/SegsCierre";
 import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { conLineaSubsidio } from "./shared/LineaSubsidio";
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import type {
   AnalisisInput,
@@ -41,7 +41,7 @@ import { resolverModeloCostos } from "@/lib/modelo-costos";
 import { rotuloMesLtr, serieFlujoMensualPorAnioLtr, descomposicionFlujoLtr, pieCurvaFlujoLtr, cierreMesVacioLtr, type SegFlujo } from "@/lib/flujo-mensual-ltr";
 import { construirComoLoPagas } from "@/lib/como-lo-pagas";
 import { CapituloComoLoPagas } from "./shared/CapituloComoLoPagas";
-import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
+import { lineaAlternativaComunas, type AlternativaComunas } from "@/lib/alternativa-comunas";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia, GlosaIndicador } from "./shared";
 import { TE_QUEDA_DESPUES_CUOTAS, cierreCuotas, cuotasSeVen, tramosCuotas } from "@/lib/obra-nueva";
@@ -113,6 +113,7 @@ export function CapitulosInversion({
   veredicto,
   accessLevel,
   abrir,
+  alternativaComunas = null,
 }: {
   results: FullAnalysisResult;
   inputData: AnalisisInput;
@@ -124,6 +125,8 @@ export function CapitulosInversion({
   accessLevel: string;
   /** Apertura pedida desde afuera («↓ Ver detalle» de Principales hallazgos). */
   abrir?: { id: string; nonce: number } | null;
+  /** Calculada UNA vez en el servidor (`informe-ltr.tsx`, 09-oct-2026): este capítulo no corre el motor. */
+  alternativaComunas?: AlternativaComunas | null;
 }) {
   const m = results.metrics;
   const exit = results.exitScenario;
@@ -173,12 +176,10 @@ export function CapitulosInversion({
   const preEntrega = pe && pe.aniosEspera > 0 ? pe : null;
   const anios = exit?.anios ?? 10;
   const tir = metricaValorONull(exit?.tir);
-  // LA ALTERNATIVA DE COMUNAS para «Cómo lo pagas» (plan B del bloque 2). Son 23 corridas
-  // del motor: solo cuando el veredicto no es COMPRAR, y memoizadas por input.
-  const lineaAlternativa = useMemo(
-    () => (veredicto !== "COMPRAR" ? lineaAlternativaComunas(construirAlternativaComunas({ input: inputData, ufClp: valorUF, asOf: new Date(createdAt ?? Date.now()) })) : null),
-    [veredicto, inputData, valorUF, createdAt],
-  );
+  // LA ALTERNATIVA DE COMUNAS para «Cómo lo pagas» (plan B del bloque 2): solo cuando el veredicto no es
+  // COMPRAR. Llega hecha del servidor (09-oct-2026): este capítulo se monta al bajar, y con las 23 corridas
+  // del motor en un useMemo el scroll se congelaba en el iPhone.
+  const lineaAlternativa = veredicto !== "COMPRAR" ? lineaAlternativaComunas(alternativaComunas) : null;
   if (!m) return null;
   // ═══════════════ I · CUÁNTO RENTA ═══════════════
   // Habla AL USUARIO, no del cálculo (21-sep-2026): un solo número —la rentabilidad bruta, que

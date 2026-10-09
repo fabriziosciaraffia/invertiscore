@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, Veredicto } from "@/lib/types";
@@ -12,7 +11,7 @@ import { salidaPorMix } from "@/lib/salida-por-mix";
 import { LoQueHariaYoBloque, CardBuscarOtra } from "./shared/LoQueHariaYoBloque";
 import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirCardLtr, PUERTA_COMBINACIONES } from "@/lib/card-recomendacion";
-import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
+import { lineaAlternativaComunas, type AlternativaComunas } from "@/lib/alternativa-comunas";
 import { resolverArriendoReferencia } from "@/lib/arriendo-referencia";
 import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
 import { SeccionInforme } from "./SeccionInforme";
@@ -41,6 +40,7 @@ export function HeroLTR({
   results,
   createdAt,
   fechaProsa,
+  alternativaComunas = null,
   hallazgos,
   accessLevel = "free",
   despuesDeLaCard,
@@ -74,6 +74,8 @@ export function HeroLTR({
    *  de PROMPT_VERSION, la fila puede ser de abril y la prosa de agosto.
    *  Ausente en filas anteriores a la instrumentación → cae a `createdAt`. */
   fechaProsa?: string;
+  /** La alternativa de comunas, calculada UNA vez en el servidor (`informe-ltr.tsx`, 09-oct-2026). */
+  alternativaComunas?: AlternativaComunas | null;
 }) {
   // FASE 3: F1/F2/F3 murieron — identidad, chips, score y mapa viven en la
   // PORTADA (PortadaInforme + useComparablesCercanos). Acá queda solo F4.
@@ -262,16 +264,10 @@ export function HeroLTR({
   // aparecer. Ahora lo calcula el motor: el MISMO depto corrido en las otras
   // comunas del roster, con el presupuesto del comprador como techo.
   //
-  // SOLO EN EL ESTADO SIN SALIDA, y es deliberado: son 23 corridas del motor,
-  // baratas pero no gratis, y en cualquier otro estado la card ya tiene qué decir.
-  // `useMemo` para que no se repitan en cada render de la moneda.
-  const alternativa = useMemo(
-    () =>
-      sinSalidaRecomendacion && inputData
-        ? construirAlternativaComunas({ input: inputData, ufClp: valorUF, asOf: new Date(fechaProsa ?? createdAt ?? Date.now()) })
-        : null,
-    [sinSalidaRecomendacion, inputData, valorUF, fechaProsa, createdAt],
-  );
+  // SOLO EN EL ESTADO SIN SALIDA: en cualquier otro estado la card ya tiene qué decir.
+  // NO SE CALCULA ACÁ (09-oct-2026): son 23 corridas del motor, y en un useMemo del cliente el navegador
+  // las hacía al hidratar —el hilo ocupado más de un minuto en un iPhone—. Llega hecha del servidor.
+  const alternativa = sinSalidaRecomendacion && inputData ? alternativaComunas : null;
   const lineaAlternativa = lineaAlternativaComunas(alternativa);
 
   /* LA RECOMENDACIÓN. Se calcula acá —nueve derivadas de este componente— y se

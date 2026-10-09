@@ -5,6 +5,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import type { AlternativaComunas } from "@/lib/alternativa-comunas";
 import { calcFlujoDesglose } from "@/lib/analysis";
 import { resolverModeloCostos, provisionMantencionAnio } from "@/lib/modelo-costos";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -70,6 +71,7 @@ export function PremiumResults({
   ofertaPack = false,
   correoOferta = null,
   medianaResolvedAt,
+  alternativaComunas = null,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -108,6 +110,8 @@ export function PremiumResults({
   correoOferta?: string | null;
   /** Fecha de la mediana comunal (snapshot o ahora): la celda de zona la declara. */
   medianaResolvedAt?: string;
+  /** La alternativa de comunas, calculada UNA vez en el servidor (`informe-ltr.tsx`): el cliente no corre el motor. */
+  alternativaComunas?: AlternativaComunas | null;
 }) {
   const posthog = usePostHog();
   // T3: sin sliders el horizonte y la plusvalía quedan fijos (los del motor).
@@ -609,6 +613,7 @@ export function PremiumResults({
             comuna={comuna}
             createdAt={createdAt}
             medianaResolvedAt={medianaResolvedAt}
+            alternativaComunas={alternativaComunas}
           />
         </>
       )}
