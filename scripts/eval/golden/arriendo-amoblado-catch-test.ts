@@ -61,7 +61,9 @@ export function runArriendoAmobladoTier(): { hard: number } {
   const ruta = leer("src/app/api/data/suggestions/route.ts");
   if (!/const amoblado = searchParams\.get\("amoblado"\) === "1";/.test(ruta) || !/propType, condicion, \{ amoblado \}/.test(ruta)) F("1 · la ruta de sugerencias no recibe «amoblado»");
   const dat = leer("src/components/formulario-v4/useWizardV4Data.ts");
-  if (!/type: "arriendo", \.\.\.\(amoblado \? \{ amoblado: "1" \} : \{\}\)/.test(dat) || !/tipoPropiedad, amoblado\]\);/.test(dat)) F("1 · el wizard no pide la sugerencia con «amoblado» ni la rehace al cambiarlo");
+  // ⚠ ACTA (09-oct-2026) · las dependencias del efecto suman `intento` («Reintentar» del chip de comparables,
+  // tier CHIP-COMPARABLES); la regla es la misma: cambiar «amoblado» rehace la sugerencia.
+  if (!/type: "arriendo", \.\.\.\(amoblado \? \{ amoblado: "1" \} : \{\}\)/.test(dat) || !/tipoPropiedad, amoblado(, intento)?\]\);/.test(dat)) F("1 · el wizard no pide la sugerencia con «amoblado» ni la rehace al cambiarlo");
 
   // ── 1d · la fila «Amoblado: No», en los dos lugares, sin pantalla nueva ──
   const a3 = leer("src/components/formulario-v4/screensActo3.tsx");

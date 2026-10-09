@@ -70,6 +70,7 @@ import { runAffordanceTier } from "./affordance-catch-test";
 import { runLoQueSigueTier } from "./lo-que-sigue-catch-test";
 import { runOfertaTicketTier } from "./oferta-ticket-catch-test";
 import { runUfTiempoTier } from "./uf-tiempo-catch-test";
+import { runChipComparablesTier } from "./chip-comparables-catch-test";
 import { runEntradaCodigoTier } from "./entrada-codigo-catch-test";
 import { runCorreosTier } from "./correos-catch-test";
 import { runDashboardVacioTier } from "./dashboard-vacio-catch-test";
@@ -386,6 +387,9 @@ function printSeed(r: SeedReport) {
   // `/api/data/suggestions` llegaba al corte de 300 s y el wizard se quedaba buscando comparables.
   // 3 s por intento, espera tras la falla, pedido compartido, respaldo de la base. 8 mutaciones.
   totalHard += (await runUfTiempoTier()).hard;
+  // Tier CHIP-COMPARABLES (09-oct-2026, 0 tokens): el chip del mapa del wizard nunca se queda buscando.
+  // 10 s de tiempo máximo, el error con «Reintentar», el indicador giratorio mientras carga. 10 mutaciones.
+  totalHard += (await runChipComparablesTier()).hard;
   // Tier ENTRADA-CÓDIGO (01-oct-2026, 0 tokens): una sola entrada, el código (/entrar con su copy por
   // contexto); «Entrar» del header con next validado; el avatar con sesión en landing y wizard; el
   // refresco tras el código con «Estás dentro» vivo; la bienvenida al registrarse; el saludo con el
