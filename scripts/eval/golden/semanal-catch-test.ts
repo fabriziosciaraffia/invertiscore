@@ -38,7 +38,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, repartirChequeos, siguienteAChequear,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, prechequearConPresupuesto, siguienteYEstado,
   FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
@@ -291,27 +291,33 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const qs: Q[] = ["q1", "q2", "q3", "q4", "q5"].map((id, i) => ({ avisoId: id, scoreCron: 10 - i }));
     const evQ = async (c: Q) => ({ veredicto: "COMPRAR", score: 100 - Number(c.avisoId.slice(1)), flujo: 1 });
     const mem = (m: Record<string, "publicado" | "despublicado">) => async (c: Q) => m[c.avisoId] ?? ("sin-chequeo" as const);
-    const s1 = await siguienteAChequear(qs, evQ, mem({ q1: "publicado", q2: "despublicado" }));
-    const s2 = await siguienteAChequear(qs, evQ, mem({ q1: "publicado", q2: "publicado", q3: "publicado" }));
-    const s3 = await siguienteAChequear(qs.slice(0, 2), evQ, mem({ q1: "despublicado", q2: "despublicado" }));
+    const s1 = (await siguienteYEstado(qs, evQ, mem({ q1: "publicado", q2: "despublicado" }))).aviso;
+    const y2 = await siguienteYEstado(qs, evQ, mem({ q1: "publicado", q2: "publicado", q3: "publicado" }));
+    const s2 = y2.aviso;
+    const y3 = await siguienteYEstado(qs.slice(0, 2), evQ, mem({ q1: "despublicado", q2: "despublicado" }));
+    const s3 = y3.aviso;
     if (s1?.avisoId !== "q3") F(`12 · el siguiente a chequear no es el que pediría el domingo (${s1?.avisoId})`);
-    if (s2 !== null) F("12 · con tres publicados de la semana igual se sigue chequeando");
-    if (s3 !== null) F("12 · sin nada por chequear igual se pide uno");
-    // por turnos
+    if (s2 !== null || !y2.armada) F("12 · con tres publicados de la semana igual se sigue chequeando (o no dice que se arma)");
+    if (s3 !== null || y3.armada) F("12 · sin nada por chequear igual se pide uno (o dice que se arma sin tres)");
+    // por turnos. ⚠ ACTA (09-oct-2026): `repartirChequeos` y `siguienteAChequear` se retiraron —sin llamador desde
+    // que el prechequeo usa `prechequearConPresupuesto` y `siguienteYEstado`—; los mismos casos, sobre esas dos.
     const necesita: Record<string, number> = { a: 2, b: 2, c: 1 };
     const hechos: string[] = [];
     let cupo = 4;
-    const n = await repartirChequeos(["a", "b", "c"], async (p) => (necesita[p] > 0 ? p : null), async (p) => { necesita[p]--; hechos.push(p); cupo--; }, () => cupo > 0);
+    const n = (await prechequearConPresupuesto(["a", "b", "c"], null, async (p) => (necesita[p] > 0 ? p : null), async (p) => { necesita[p]--; hechos.push(p); cupo--; }, () => cupo > 0, () => true)).chequeos;
     if (hechos.join("") !== "abca" || n !== 4) F(`12 · los chequeos no van por turnos dentro del presupuesto (${hechos.join("")}, ${n})`);
     const hechos2: string[] = [];
-    await repartirChequeos(["a", "b"], async (p) => (hechos2.filter((h) => h === p).length < (p === "a" ? 3 : 1) ? p : null), async (p) => { hechos2.push(p); }, () => true);
+    await prechequearConPresupuesto(["a", "b"], null, async (p) => (hechos2.filter((h) => h === p).length < (p === "a" ? 3 : 1) ? p : null), async (p) => { hechos2.push(p); }, () => true, () => true);
     if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
     // el servidor, el cron y la vigilancia
     if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
     if (!/const g = await elegirSemanal\(candidatos, evaluar, publicadoConPresupuesto\(admin, presupuesto\), respaldo\);/.test(srv)) F("12 · el armado no elige con la preparación compartida");
-    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/return p \? siguienteAChequear\(p\.candidatos, p\.evaluar, enMemoria, p\.respaldo\) : null;/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
+    // ⚠ ACTA (09-oct-2026) · el prechequeo elige con `siguienteYEstado` (lo mismo que el `siguienteAChequear` retirado, y
+    // además si la selección se arma: el cierre ya no vuelve a recorrer a nadie) y el cron le pasa DÓNDE QUEDÓ
+    // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
+    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/const r = await siguienteYEstado\(p\.candidatos, p\.evaluar, enMemoria, p\.respaldo\);/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
     const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
-    if (!/await prechequearSemana\(admin, personas, cfg, presupuesto, \{ turno, hastaMs: t0 \+ PRESUPUESTO_MS \}\)/.test(rp) || !/latirCron\(admin, "semanal-prechequeo"\)/.test(rp)) F("12 · el cron no prechequea");
+    if (!/await prechequearSemana\(admin, personas, cfg, presupuesto, \{\s*desde: desdeDondeQuedo\(personas, anterior\?\.siguiente \?\? null\),\s*hastaMs: t0 \+ PRESUPUESTO_PRECHEQUEO_MS,\s*\}\)/.test(rp) || !/latirCron\(admin, "semanal-prechequeo"\)/.test(rp)) F("12 · el cron no prechequea");
     if (!/"path": "\/api\/cron\/semanal-prechequeo",\s*"schedule": "35 3-8 \* \* 1-6"/.test(vj)) F("12 · el prechequeo no corre de noche de lunes a sábado");
     if (!/nombre: "semanal-prechequeo"[^}]*intervaloHoras: 24/.test(hb)) F("12 · el prechequeo no está vigilado");
   }

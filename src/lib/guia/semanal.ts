@@ -146,46 +146,89 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
 /**
  * El siguiente aviso que la selección de una persona necesita chequear (05-oct-2026): se elige con la regla
  * del domingo, pero sin salir a la fuente —`enMemoria` dice lo ya chequeado en la semana y «sin-chequeo» lo
- * demás—. null si la selección ya se puede armar o no queda nada que chequear.
+ * demás—. `aviso` es null si la selección ya se puede armar o si no queda nada que chequear; `armada` dice
+ * cuál de las dos, y con eso el prechequeo cuenta al cierre sin volver a recorrer a nadie (09-oct-2026).
  */
-export async function siguienteAChequear<T extends CandidatoSemanal>(
+export async function siguienteYEstado<T extends CandidatoSemanal>(
   candidatos: T[],
   evaluar: (c: T) => Promise<Evaluado | null>,
   enMemoria: (c: T) => Promise<EstadoPublicacion>,
   respaldo?: RespaldoSemanal<T>,
-): Promise<T | null> {
+): Promise<{ aviso: T | null; armada: boolean }> {
   const faltan: T[] = [];
   const g = await elegirSemanal(candidatos, evaluar, async (c) => {
     const e = await enMemoria(c);
     if (e === "sin-chequeo") faltan.push(c);
     return e;
   }, respaldo);
-  return g.estado === "armada" ? null : faltan[0] ?? null;
+  return g.estado === "armada" ? { aviso: null, armada: true } : { aviso: faltan[0] ?? null, armada: false };
+}
+
+/** Cuánto trabaja una corrida del prechequeo, como mucho: cierra antes del corte de 300 s de la función
+ *  (09-oct-2026). Un paso que empieza antes de esto termina igual —el más largo, un chequeo de ficha, tiene su
+ *  tope—; ninguno empieza después. */
+export const PRESUPUESTO_PRECHEQUEO_MS = 240_000;
+
+export interface AvancePrechequeo<P> {
+  chequeos: number;
+  /** Las personas que terminaron en esta corrida: su selección ya no necesita chequeos. */
+  revisadas: number;
+  /** Por quién empieza la corrida siguiente: la primera a la que esta no llegó; si llegó a todas, la primera
+   *  que todavía necesita. null: dio la vuelta y nadie necesita. */
+  siguiente: P | null;
+  porTiempo: boolean;
+  porCupo: boolean;
+}
+
+/** Por quién empieza la corrida: la persona donde quedó la anterior o, si esa ya no está en la lista, la que
+ *  le sigue en el orden estable (por `userId`). null: desde el principio (no hay dónde quedó, o quedó después
+ *  de la última). */
+export function desdeDondeQuedo(personas: Array<{ userId: string }>, siguiente: string | null): string | null {
+  if (!siguiente) return null;
+  return personas.find((p) => p.userId >= siguiente)?.userId ?? null;
 }
 
 /**
- * Los chequeos de una noche, POR TURNOS (05-oct-2026): en cada vuelta, cada persona que todavía necesita
- * chequea UN aviso; la que ya no necesita sale de la fila. Se para sin presupuesto o cuando nadie necesita.
- * Devuelve cuántos chequeos se hicieron.
+ * Los chequeos de una corrida, CON RELOJ Y SIGUIENDO DONDE QUEDÓ LA ANTERIOR (09-oct-2026). Hasta acá la
+ * corrida empezaba en un punto que rotaba por hora y, al llegar al presupuesto, recorría de nuevo a todas las
+ * personas preparadas sin reloj: llegó al corte de 300 s en 22 de 24 corridas. Ahora empieza por `desde`; en
+ * cada vuelta cada persona que todavía necesita chequea UN aviso (por turnos, como desde el 05-oct); el
+ * reloj y el cupo se miran antes de CADA paso —preparar a una persona es lo caro—; y devuelve por quién seguir.
  */
-export async function repartirChequeos<P, T>(
+export async function prechequearConPresupuesto<P, T>(
   personas: P[],
+  desde: P | null,
   siguiente: (p: P) => Promise<T | null>,
   chequear: (aviso: T) => Promise<unknown>,
-  quedaPresupuesto: () => boolean,
-): Promise<number> {
-  const enFila = [...personas];
-  let chequeos = 0;
-  while (enFila.length > 0 && quedaPresupuesto()) {
-    for (let i = 0; i < enFila.length && quedaPresupuesto(); ) {
-      const aviso = await siguiente(enFila[i]);
-      if (aviso == null) { enFila.splice(i, 1); continue; }
+  quedaCupo: () => boolean,
+  quedaTiempo: () => boolean,
+): Promise<AvancePrechequeo<P>> {
+  const i0 = desde != null ? Math.max(0, personas.indexOf(desde)) : 0;
+  const orden = [...personas.slice(i0), ...personas.slice(0, i0)];
+  const terminadas = new Set<P>();
+  const visitadas = new Set<P>();
+  let enFila = [...orden];
+  let chequeos = 0, porTiempo = false, porCupo = false;
+  vueltas: while (enFila.length > 0) {
+    const siguen: P[] = [];
+    for (const p of enFila) {
+      if (!quedaTiempo()) { porTiempo = true; break vueltas; }
+      if (!quedaCupo()) { porCupo = true; break vueltas; }
+      visitadas.add(p);
+      const aviso = await siguiente(p);
+      if (aviso == null) { terminadas.add(p); continue; }
+      siguen.push(p);
+      if (!quedaTiempo()) { porTiempo = true; break vueltas; }
       await chequear(aviso);
       chequeos++;
-      i++;
     }
+    enFila = siguen;
   }
-  return chequeos;
+  // Por quién seguir: la primera a la que esta corrida NO LLEGÓ; si llegó a todas, la primera que todavía
+  // necesita. Volver a la primera «no terminada» —una que ya chequeó su aviso pero no alcanzó a confirmarse—
+  // haría que cada corrida re-preparara a las mismas y nunca avanzara.
+  const siguientePersona = orden.find((p) => !visitadas.has(p)) ?? orden.find((p) => !terminadas.has(p)) ?? null;
+  return { chequeos, revisadas: terminadas.size, siguiente: siguientePersona, porTiempo, porCupo };
 }
 
 /** Un aviso chequeado hace menos que esto no se vuelve a leer el domingo: se chequeó hoy. */

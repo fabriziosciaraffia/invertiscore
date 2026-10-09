@@ -15,6 +15,7 @@ import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { FUENTE_REGALO_SEMANAL } from "@/lib/credits-grant";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import { guardarMetrica } from "@/lib/metrics-daily";
 import { leerSaldo } from "@/lib/casa-saldo";
 import { nombreReal } from "@/lib/welcome";
 import { sendSemanalEmail } from "@/lib/email";
@@ -28,7 +29,7 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, repartirChequeos, siguienteAChequear, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
   type CandidatoSemanal, type RespaldoSemanal,
 } from "./semanal";
 
@@ -216,20 +217,19 @@ export async function armarSeleccion(
  * persona cuya selección todavía no se puede armar con lo ya chequeado esta semana chequea UN aviso, el
  * siguiente que le pediría la selección (sus Comprar, después las vecinas, después los negociables). Así
  * el presupuesto se reparte entre todos y un mismo aviso sirve a todos los que lo necesitan.
- * `turno` corre el punto de partida de una corrida a otra.
+ * Desde el 09-oct-2026, con reloj (`opts.hastaMs`) y empezando por `opts.desde` —donde quedó la corrida
+ * anterior—; devuelve por quién seguir.
  */
 export async function prechequearSemana(
   admin: SupabaseClient,
   personas: Array<{ userId: string }>,
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
-  opts: { turno: number; hastaMs: number },
-): Promise<{ personas: number; completas: number; sinCandidatos: number; chequeos: number }> {
+  opts: { desde: string | null; hastaMs: number },
+): Promise<{ personas: number; revisadas: number; completas: number; sinCandidatos: number; chequeos: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean }> {
   const almacen = almacenPublicacion(admin);
   const enMemoria = async (c: Candidato): Promise<EstadoPublicacion> =>
     (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, { sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS })).estado;
-  const n = personas.length;
-  const orden = personas.map((_, i) => personas[(i + (opts.turno % Math.max(1, n))) % n].userId);
   const preps = new Map<string, PreparacionSemanal | null>();
   const preparar = async (userId: string) => {
     if (!preps.has(userId)) {
@@ -238,27 +238,52 @@ export async function prechequearSemana(
     }
     return preps.get(userId) ?? null;
   };
-  const chequeos = await repartirChequeos(
-    orden,
+  // Lo que se sabe de cada persona al pedirle su siguiente aviso. El cierre cuenta con esto: hasta el
+  // 09-oct-2026 volvía a recorrer a TODAS las preparadas sin reloj, y eso llevaba la corrida al corte de 300 s.
+  const estado = new Map<string, "armada" | "sin-candidatos" | "pendiente">();
+  const avance = await prechequearConPresupuesto(
+    personas.map((x) => x.userId),
+    opts.desde,
     async (userId) => {
       const p = await preparar(userId);
-      return p ? siguienteAChequear(p.candidatos, p.evaluar, enMemoria, p.respaldo) : null;
+      if (!p) return null;
+      const r = await siguienteYEstado(p.candidatos, p.evaluar, enMemoria, p.respaldo);
+      estado.set(userId, r.armada ? "armada" : r.aviso ? "pendiente" : "sin-candidatos");
+      return r.aviso;
     },
     publicadoConPresupuesto(admin, presupuesto),
-    () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL && Date.now() < opts.hastaMs,
+    () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,
+    () => Date.now() < opts.hastaMs,
   );
+  const cuantas = (e: string) => Array.from(estado.values()).filter((x) => x === e).length;
+  return {
+    personas: preps.size, revisadas: avance.revisadas, completas: cuantas("armada"), sinCandidatos: cuantas("sin-candidatos"),
+    chequeos: avance.chequeos, siguiente: avance.siguiente, porTiempo: avance.porTiempo, porCupo: avance.porCupo,
+  };
+}
 
-  // El estado al cierre, con lo chequeado en la semana (de las personas que alcanzó a mirar).
-  let completas = 0, sinCandidatos = 0;
-  for (const [, p] of Array.from(preps)) {
-    if (!p) continue;
-    const sig = await siguienteAChequear(p.candidatos, p.evaluar, enMemoria, p.respaldo);
-    if (sig != null) continue;
-    const g = await elegirSemanal(p.candidatos, p.evaluar, enMemoria, p.respaldo);
-    if (g.estado === "armada") completas++;
-    else sinCandidatos++;
-  }
-  return { personas: preps.size, completas, sinCandidatos, chequeos };
+// ── Dónde quedó el prechequeo (09-oct-2026) ─────────────────────────────────────
+// En `metrics_daily` (RLS sin políticas: solo el servidor), NO en `config`: `/api/config?key=` devuelve
+// cualquier clave al público, y esto lleva un id de usuario.
+const FUENTE_AVANCE = "cron-avance";
+const METRICA_AVANCE = "semanal-prechequeo";
+
+export async function leerAvancePrechequeo(admin: SupabaseClient): Promise<{ siguiente: string | null } | null> {
+  const { data, error } = await admin.from("metrics_daily").select("meta").eq("fuente", FUENTE_AVANCE).eq("metrica", METRICA_AVANCE)
+    .order("fecha", { ascending: false }).limit(1).maybeSingle();
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-avance-prechequeo" });
+  const meta = (data?.meta ?? null) as { siguiente?: unknown } | null;
+  return meta ? { siguiente: typeof meta.siguiente === "string" ? meta.siguiente : null } : null;
+}
+
+export async function guardarAvancePrechequeo(
+  admin: SupabaseClient,
+  avance: { siguiente: string | null; revisadas: number; total: number; chequeos: number; porTiempo: boolean; porCupo: boolean; ms: number },
+): Promise<void> {
+  await guardarMetrica(admin, {
+    fecha: new Date().toISOString().slice(0, 10), fuente: FUENTE_AVANCE, metrica: METRICA_AVANCE, valor: avance.revisadas,
+    meta: { ...avance, at: new Date().toISOString() },
+  });
 }
 
 function candidatoDeFila(f: FilaRpc): Candidato {
