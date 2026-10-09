@@ -20,8 +20,11 @@ const BASE = arg("--base") ?? "http://localhost:3000";
 const ID = arg("--id") ?? "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
 const FRENO = Number(arg("--freno") ?? 6);
 const CHROME = process.env.CHROME_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
-/** Topes con la CPU frenada 6×. Con el arreglo se midió 1,3–1,7 s al cargar y ≤ 0,11 s al bajar; antes, 27–32 s y 22–24 s. */
-export const TOPE_CARGA_MS = 4000;
+/** Topes con la CPU frenada 6×. Con el arreglo, al cargar: 1,1–1,5 s en local, 0,9–1,1 s en el preview y 3,3–3,4 s
+ *  en producción (ahí sí carga el mapa de Google: la clave solo acepta refranco.ai); al bajar, ≤ 0,13 s. Antes:
+ *  37–123 s al cargar y 56–103 s al bajar en producción. El tope de carga deja margen sobre producción (4 s quedaba
+ *  a un 15 %: un gate que roza su tope termina fallando por ruido) y sigue a 6× o más del código viejo. */
+export const TOPE_CARGA_MS = 6000;
 export const TOPE_BAJADA_MS = 1000;
 
 async function main() {

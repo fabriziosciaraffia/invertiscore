@@ -14,7 +14,7 @@
 // página—; (3) el ancla del área visible, igual; (4) el ticket sigue subiendo a los 8 s.
 // La medida en vivo es la sonda `tareas-largas-informe-sonda.ts` (navegador, con tope): ROJO contra producción con
 // el código viejo (demo: 122.831 ms al cargar, 102.587 ms al bajar; el informe del reporte: 37.206 / 56.187) y
-// VERDE con el arreglo (1.513 / 0 y 1.081 / 95).
+// VERDE con el arreglo (local 1.513 / 0 y 1.081 / 95; producción, ccc263ea: 3.330 / 0 y 3.424 / 127).
 //
 // ACTA (09-oct-2026). Contra los archivos de origin/master (V0): ROJO. 21/21 mutaciones en ROJO, cada archivo
 // restaurado byte a byte: A1/A2 la recomendación o «Cómo lo pagas» calculan en el cliente · A3–A6 la alternativa
