@@ -80,6 +80,7 @@ import { runSemanalTier } from "./semanal-catch-test";
 import { runPrechequeoPresupuestoTier } from "./prechequeo-presupuesto-catch-test";
 import { runTareasLargasTier } from "./tareas-largas-catch-test";
 import { runTicketRegresoTier } from "./ticket-regreso-catch-test";
+import { runTicketIosTier } from "./ticket-ios-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
@@ -417,6 +418,10 @@ function printSeed(r: SeedReport) {
   // Tier TICKET-REGRESO (12-oct-2026, 0 tokens): el ticket a los 8 s, el que vuelve encuentra la pestaña, el
   // recuadro de ?lqs=1 y la hoja de la dirección a pantalla. En rojo por mutación.
   totalHard += (await runTicketRegresoTier()).hard;
+  // Tier TICKET-IOS (12-oct-2026, 0 tokens): en iPhone, la hoja de la dirección deja la página en cero y va arriba;
+  // el ticket va fijo a la pantalla, el velo tiene un segundo de gracia, «ya se mostró» solo si se vio, la bitácora
+  // en ?lqs=1, y el banner no cuenta como en uso por un dedo de paso. En rojo por mutación.
+  totalHard += runTicketIosTier().hard;
   // Tier INMEDIATO (05-oct-2026, 0 tokens): el aviso a quien piensa comprar ya. En rojo por mutación.
   totalHard += (await runInmediatoTier()).hard;
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;
