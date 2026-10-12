@@ -584,6 +584,7 @@ export function Modal({
   variante,
   ancla,
   portal = false,
+  alto = "area-visible",
 }: {
   abierto: boolean;
   onClose: () => void;
@@ -600,6 +601,10 @@ export function Modal({
    *  se vuelve «fijo a la sección»: el velo no cubría el viewport y la hoja quedaba corta. El
    *  envoltorio lleva los tokens del informe (`.doc-dictamen .doc-tokens`) sin dibujar nada. */
   portal?: boolean;
+  /** «pantalla» (12-oct-2026, la hoja de la dirección): NO se mide contra el área visible —ocupa la pantalla bajo
+   *  el velo y el cuerpo hace scroll—. En iPhone con iOS 26 el área visible llega mal con el teclado abierto y la
+   *  hoja terminaba después de la primera sugerencia, con media pantalla vacía hasta el teclado. */
+  alto?: "area-visible" | "pantalla";
 }) {
   // Los consumidores pasan `onClose` inline (identidad nueva en cada render); los efectos
   // con estado propio —historial, arrastre— leen la ref para no re-correr por eso.
@@ -619,7 +624,7 @@ export function Modal({
   // sin los 56 px de velo, así el campo queda pegado al borde superior. El cuerpo ya está
   // bloqueado (position: fixed en body, más abajo).
   useEffect(() => {
-    if (!abierto || !esHoja || esGlosa) return;
+    if (!abierto || !esHoja || esGlosa || alto === "pantalla") return;
     const vv = window.visualViewport;
     const ov = overlayRef.current;
     if (!vv || !ov) return;
@@ -638,7 +643,7 @@ export function Modal({
       vv.removeEventListener("resize", colocar);
       vv.removeEventListener("scroll", colocar);
     };
-  }, [abierto, esHoja, esGlosa]);
+  }, [abierto, esHoja, esGlosa, alto]);
 
   // La pila: atrás y Esc cierran solo el nivel de arriba (hoja-pila.ts). El primer nivel,
   // además, bloquea el body y restaura el scroll al cerrar (position:fixed en body:
@@ -729,7 +734,7 @@ export function Modal({
 
   if (!abierto) return null;
   const nodo = (
-    <div ref={overlayRef} className={`v-modal-overlay${esGlosa ? " v-glosa-overlay" : ""}`} role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div ref={overlayRef} className={`v-modal-overlay${esGlosa ? " v-glosa-overlay" : ""}${alto === "pantalla" ? " v-pantalla" : ""}`} role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`v-modal${esGlosa ? " v-glosa" : ""}`} ref={hojaRef}>
         <div className="v-modal-asa" aria-hidden="true" />
         <div className="v-modal-head">

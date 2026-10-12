@@ -36,7 +36,7 @@ export default function HojaDireccion({
     <div className="doc-dictamen he-hoja-marco" style={{ border: 0, boxShadow: "none", background: "none" }}>
       <DocTokens />
       <TokensHallazgos />
-      <Modal abierto={abierto} onClose={onClose} titulo="La dirección del depto">
+      <Modal abierto={abierto} onClose={onClose} titulo="La dirección del depto" alto="pantalla">
         {children}
       </Modal>
     </div>,
