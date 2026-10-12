@@ -69,6 +69,10 @@ const AREA_VISIBLE_MITAD = "try { Object.defineProperty(VisualViewport.prototype
 const HOJA_AFUERA = "document.addEventListener('DOMContentLoaded', function () { var s = document.createElement('style'); s.textContent = '.lqs-velo[data-abierto=\"1\"] .lqs-hoja { transform: translateY(120vh) !important; transition: none !important; }'; document.head.appendChild(s); });";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** Cerrar con tope: contra producción (refranco.ai) el cierre del contexto se quedó colgado después de medir
+ *  (12-oct-2026) y la sonda nunca daba su veredicto. */
+const cerrar = (x: any) => Promise.race([Promise.resolve().then(() => x.close()).catch(() => {}), new Promise((r) => setTimeout(r, 10_000))]);
+
 async function main() {
   let pw: any;
   try {
@@ -265,7 +269,7 @@ async function main() {
         ];
         for (const [re, q] of esperados) if (!re.test(texto)) F(`2A · el recuadro de ?lqs=1 no muestra ${q}`);
       }
-      await ctx.close();
+      await cerrar(ctx);
 
       // ── 2D · con la hoja fuera de la pantalla, «ya se mostró» no se guarda ──
       const ctx3 = await nuevo(true, [VIGILAR, HOJA_AFUERA]);
@@ -287,7 +291,7 @@ async function main() {
         if (e === "visto") F("2D · con la hoja fuera de la pantalla, «ya se mostró» se guarda igual (el ticket no vuelve y nadie lo vio)");
         if (!/"tipo":"medido","dentro":false/.test(bit ?? "")) F("2D · la bitácora no anota que la hoja estaba fuera de la pantalla");
       }
-      await ctx3.close();
+      await cerrar(ctx3);
     }
 
     // ── 1 · la hoja de la dirección: foco, iOS desplaza 300 px, el área visible a la mitad ──
@@ -366,9 +370,9 @@ async function main() {
       if (h.listaScroll !== "auto" && h.listaScroll !== "scroll") F(`1 · la lista no tiene scroll propio (overflow-y ${h.listaScroll})`);
       if (h.alcanzables.some((a: boolean) => !a)) F(`1 · ${h.alcanzables.filter((a: boolean) => !a).length} sugerencias no se alcanzan dentro de la lista, sobre el teclado`);
     }
-    await ctx2.close();
+    await cerrar(ctx2);
   } finally {
-    await browser.close().catch(() => {});
+    await cerrar(browser);
   }
   console.log(`─── SONDA TICKET-Y-HOJA (WebKit 390) · ${BASE} · ${ID} ───`);
   if (fallas.length) {
