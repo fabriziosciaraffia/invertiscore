@@ -119,8 +119,12 @@ export async function runTicketRegresoTier(): Promise<{ hard: number }> {
 
   // ── 5 · el interruptor de QA solo con `next dev` ──────────────────────────────
   const inf = sinComentarios(leer("src/app/analisis/[id]/informe-ltr.tsx"));
-  if (!/const qaDueno = process\.env\.NODE_ENV === "development" && !isLoggedIn && cookies\(\)\.get\("franco_qa_dueno"\)\?\.value === analisis\.id;/.test(inf)) F("5 · la cookie de QA que hace de dueño no está atada a `next dev` (en un build sería una puerta abierta)");
-  if ((inf.match(/franco_qa_dueno/g) ?? []).length !== 1) F("5 · la cookie de QA se lee en más de un lugar");
+  const anon = sinComentarios(leer("src/lib/api-helpers/anon-cap.ts"));
+  if (!/const qaDueno = process\.env\.NODE_ENV === "development" && !isLoggedIn && !modoDemo && duenoQaDelRequest\(analisis\.id\);/.test(inf) || !/const isAnonOwner = anonDuenoPorCookie \|\| qaDueno;/.test(inf))
+    F("5 · la cookie de QA que hace de dueño no está atada a `next dev` y fuera del demo (en un build sería una puerta abierta)");
+  if (!/export function duenoQaDelRequest\(analysisId: string\): boolean \{\s*if \(process\.env\.NODE_ENV !== "development"\) return false;\s*return cookies\(\)\.get\("franco_qa_dueno"\)\?\.value === analysisId;/.test(anon))
+    F("5 · el ayudante de la cookie de QA la lee fuera de `next dev`");
+  if (/franco_qa_dueno|\bcookies\(\)/.test(inf)) F("5 · el informe lee la cookie de QA directo (vuelve dinámica la ruta, el demo incluido)");
 
   if (fallas.length) {
     console.log(`  ✗ TICKET-REGRESO · ${fallas.length} falla(s):`);

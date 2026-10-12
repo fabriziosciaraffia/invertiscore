@@ -210,3 +210,11 @@ export function anonCapDisponible(): boolean {
 export function tokenAnonDelRequest(): string | null {
   return cookies().get(ANON_COOKIE)?.value ?? null;
 }
+
+/** QA LOCAL (12-oct-2026): SOLO con `next dev`, la cookie `franco_qa_dueno` con el id de ESTE informe hace de
+ *  dueño anónimo —para probar el banner y el ticket en un navegador sin crear un informe anónimo—. En un build
+ *  (NODE_ENV=production: el preview y producción de Vercel) no lee nada y devuelve false. Tier TICKET-REGRESO §5. */
+export function duenoQaDelRequest(analysisId: string): boolean {
+  if (process.env.NODE_ENV !== "development") return false;
+  return cookies().get("franco_qa_dueno")?.value === analysisId;
+}

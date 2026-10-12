@@ -17,8 +17,7 @@ import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
-import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
-import { cookies } from "next/headers";
+import { duenoQaDelRequest, sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
@@ -184,14 +183,15 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // guest capado (el hash no calza — la cookie es el secreto).
   const anonToken = !isLoggedIn && !modoDemo ? tokenAnonDelRequest() : null;
   const anonHash = (data as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
-  // QA LOCAL (12-oct-2026): SOLO con `next dev` —un build de Vercel, preview o producción, corre con
-  // NODE_ENV=production y acá no entra—, la cookie `franco_qa_dueno` con el id de ESTE informe hace de dueño
-  // anónimo. Así se prueban el banner y el ticket en un navegador sin crear un informe anónimo (las pruebas que
-  // generan análisis van con cuenta de prueba). El guardián lo fija el tier TICKET-REGRESO.
-  const qaDueno = process.env.NODE_ENV === "development" && !isLoggedIn && cookies().get("franco_qa_dueno")?.value === analisis.id;
-  const isAnonOwner = qaDueno || (
+  const anonDuenoPorCookie =
     !isLoggedIn && analisis.user_id === null && !!anonToken && !!anonHash &&
-    sha256Hex(anonToken) === anonHash);
+    sha256Hex(anonToken) === anonHash;
+  // QA LOCAL (12-oct-2026): SOLO con `next dev` —un build de Vercel, preview o producción, corre con
+  // NODE_ENV=production y acá no entra— y nunca en el demo (que se genera estático): la cookie
+  // `franco_qa_dueno` con el id de ESTE informe hace de dueño anónimo, para probar el banner y el ticket sin crear
+  // un informe anónimo (las pruebas que generan análisis van con cuenta de prueba). Tier TICKET-REGRESO §5.
+  const qaDueno = process.env.NODE_ENV === "development" && !isLoggedIn && !modoDemo && duenoQaDelRequest(analisis.id);
+  const isAnonOwner = anonDuenoPorCookie || qaDueno;
   // EL NAVEGADOR DE ORIGEN (02-oct-2026): la fila ya tiene dueño (se reclamó al registrarse o al pagar el
   // pack), pero se abre SIN sesión en el mismo navegador donde se hizo: la cookie calza con
   // `anon_origen_hash`. Es SU informe: completo, como lo veía antes del claim, y sin «Compartido contigo».
