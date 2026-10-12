@@ -664,13 +664,31 @@ export function Modal({
     };
     const barra = window.innerWidth - html.clientWidth;
     if (barra > 0) body.style.paddingRight = `${barra}px`;
+    // A PANTALLA (12-oct-2026, la hoja de la dirección): la página queda en CERO mientras la hoja está abierta, y si
+    // algo la desplaza —iOS lo hace al enfocar un campo de un panel fijo— vuelve a cero en el acto. Con el
+    // desplazamiento la hoja fija se iba de la pantalla: quedaba la página en blanco o «Marcarlo en el mapa».
+    const enCero = alto === "pantalla";
     body.style.position = "fixed";
-    body.style.top = `-${y}px`;
+    body.style.top = enCero ? "0px" : `-${y}px`;
     body.style.left = "0";
     body.style.right = "0";
     html.style.overflow = "hidden";
+    const aCero = () => {
+      if (window.scrollY !== 0 || (window.visualViewport?.offsetTop ?? 0) !== 0) window.scrollTo(0, 0);
+    };
+    if (enCero) {
+      window.scrollTo(0, 0);
+      window.addEventListener("scroll", aCero, { passive: true });
+      window.visualViewport?.addEventListener("scroll", aCero);
+      window.visualViewport?.addEventListener("resize", aCero);
+    }
     return () => {
       pila.desapilar(id);
+      if (enCero) {
+        window.removeEventListener("scroll", aCero);
+        window.visualViewport?.removeEventListener("scroll", aCero);
+        window.visualViewport?.removeEventListener("resize", aCero);
+      }
       body.style.position = previo.position;
       body.style.top = previo.top;
       body.style.left = previo.left;
@@ -682,7 +700,7 @@ export function Modal({
       window.scrollTo({ top: y, left: 0, behavior: "instant" });
       html.style.scrollBehavior = suave;
     };
-  }, [abierto, esHoja]);
+  }, [abierto, esHoja, alto]);
 
   // Arrastrar hacia abajo (solo hoja). Listeners nativos: React registra touchmove como
   // passive y no deja frenar el scroll del cuerpo mientras la hoja sigue al dedo.

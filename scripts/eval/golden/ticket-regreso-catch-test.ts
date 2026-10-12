@@ -115,7 +115,10 @@ export async function runTicketRegresoTier(): Promise<{ hard: number }> {
   const voc = sinComentarios(leer("src/components/analysis/hallazgos/vocabulario.tsx"));
   if (!/if \(!abierto \|\| !esHoja \|\| esGlosa \|\| alto === "pantalla"\) return;/.test(voc) || !/\$\{alto === "pantalla" \? " v-pantalla" : ""\}/.test(voc)) F("4 · el Modal no tiene la hoja a pantalla (sin medir el área visible)");
   const acc = leer("src/components/analysis/hallazgos/HallazgosAcordeon.tsx");
-  if (!/\.v-modal-overlay\.v-pantalla\[role="dialog"\] \.v-modal\{height:calc\(100% - 56px\)\}/.test(acc) || !/\.v-modal-overlay\.v-pantalla \.v-modal-cuerpo\{padding-bottom:50vh\}/.test(acc)) F("4 · la hoja a pantalla no ocupa la pantalla o su lista no se puede subir sobre el teclado");
+  // ⚠ ACTA (12-oct-2026, segunda pasada) · la hoja ya no va abajo con 56 px de velo y aire de 50vh: en iOS 26 el
+  // foco desplazaba la página y la hoja se iba. Ahora va ANCLADA ARRIBA y de alto completo, la página en cero y la
+  // lista con scroll propio; la regla fina la fija TICKET-IOS §1. Acá, que siga ocupando la pantalla entera.
+  if (!/\.v-modal-overlay\.v-pantalla\[role="dialog"\] \.v-modal\{height:100%;/.test(acc)) F("4 · la hoja a pantalla no ocupa la pantalla");
 
   // ── 5 · el interruptor de QA solo con `next dev` ──────────────────────────────
   const inf = sinComentarios(leer("src/app/analisis/[id]/informe-ltr.tsx"));

@@ -145,6 +145,10 @@ html .he-hoja-input { font-size: 17px !important; }
    se veía la primera. El `!important` anula la posición, el ancho y el `top`/`left` que Google escribe
    en línea, y el `calc(100vw - 2rem)` global de globals.css. La coincidencia va en tinta: en la hoja no
    hay rojo decorativo. */
+/* La lista con SCROLL PROPIO bajo el campo (12-oct-2026, segunda pasada): a lo más la mitad de la pantalla menos el
+   campo, para que quede sobre el teclado sin medir el área visible; si Google trae más de las que caben, se
+   bajan adentro de la lista. */
+html.he-hoja-abierta .he-hoja-sugerencias { max-height: max(150px, calc(50svh - 140px)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 html.he-hoja-abierta .he-hoja-sugerencias .pac-container {
   position: static !important; top: auto !important; left: auto !important; width: auto !important; max-width: none !important;
   margin: 8px 0 0; border-radius: 12px; border: 1px solid #E9E9EC; box-shadow: none; overflow: hidden;

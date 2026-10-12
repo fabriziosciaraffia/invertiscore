@@ -120,7 +120,9 @@ export function runHojaModalTier(): { hard: number } {
 
   // ── 2 · body bloqueado y scroll restaurado ──
   if (!/body\.style\.position = "fixed"/.test(modal)) F("2 · el body no queda fijo con el modal abierto");
-  if (!/body\.style\.top = `-\$\{y\}px`/.test(modal)) F("2 · el body fijo no compensa el scroll (top:-y)");
+  // ⚠ ACTA (12-oct-2026) · la hoja a pantalla (la dirección) deja la página en CERO y no en -y: en iOS 26 el foco
+  // la desplazaba y la hoja se iba (TICKET-IOS §1). Las demás hojas y los modales siguen compensando el scroll.
+  if (!/body\.style\.top = enCero \? "0px" : `-\$\{y\}px`;/.test(modal)) F("2 · el body fijo no compensa el scroll (top:-y)");
   if (!/return \(\) => \{[^]*?body\.style\.position = previo\.position/.test(modal)) F("2 · el cleanup no restaura el body");
   if (!/return \(\) => \{[^]*?window\.scrollTo\(\{ top: y, left: 0, behavior: "instant" \}\)/.test(modal)) F("2 · el cleanup no devuelve el scroll a la posición de apertura, instantáneo");
   if (!/html\.style\.scrollBehavior = "auto"[^]*?window\.scrollTo/.test(modal)) F("2 · el scrollTo de vuelta corre con el smooth de html puesto");

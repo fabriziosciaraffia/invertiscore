@@ -597,11 +597,13 @@ export function TokensHallazgos() {
         .v-modal-sub{font-size:11.5px;margin:2px 0 0}
         .v-modal-x{width:32px;height:32px}
         .v-modal-cuerpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px 20px 24px}
-        /* LA HOJA A PANTALLA (12-oct-2026, la dirección): del velo al borde de la pantalla, sin el área visible —en
-           iOS 26 llega mal con el teclado—. El cuerpo hace scroll y lleva aire abajo: la lista se puede subir
-           por encima del teclado, y todas las sugerencias quedan alcanzables. */
-        .v-modal-overlay.v-pantalla[role="dialog"] .v-modal{height:calc(100% - 56px)}
-        .v-modal-overlay.v-pantalla .v-modal-cuerpo{padding-bottom:50vh}
+        /* LA HOJA A PANTALLA (12-oct-2026, la dirección), segunda pasada: ANCLADA ARRIBA y de alto completo —sin
+           velo, asa ni radio—, así el campo queda al tope; la lista de sugerencias tiene su propio scroll
+           (hero-entrada.css) y la página detrás queda en cero (el Modal). Nada se mide contra el área visible:
+           en iOS 26 llega mal con el teclado abierto. */
+        .v-modal-overlay.v-pantalla{align-items:flex-start}
+        .v-modal-overlay.v-pantalla[role="dialog"] .v-modal{height:100%;border-radius:0;animation:none}
+        .v-modal-overlay.v-pantalla .v-modal-asa{display:none}
       }
       @keyframes v-hoja-sube{from{transform:translateY(100%)}to{transform:translateY(0)}}
       @media (prefers-reduced-motion:reduce){.v-modal-overlay[role="dialog"] .v-modal{animation:none;transition:none}}
