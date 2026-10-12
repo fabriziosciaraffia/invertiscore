@@ -11,7 +11,8 @@
 // Fija: (1) la alternativa se calcula UNA vez en el servidor (`informe-ltr.tsx`) con la UF y la fecha congeladas
 // y baja por props; ningún componente cliente del informe la calcula; (2) el scroll del ticket trabaja una vez
 // por cuadro y no mide el DOM en cada evento —las marcas se miden al montar y cuando cambia el alto de la
-// página—; (3) el ancla del área visible, igual; (4) el ticket sigue subiendo a los 8 s.
+// página—; (3) el ticket no sigue el área visible (el ancla se retiró el 12-oct-2026: va fijo a la pantalla);
+// (4) el ticket sigue subiendo a los 8 s.
 // La medida en vivo es la sonda `tareas-largas-informe-sonda.ts` (navegador, con tope): ROJO contra producción con
 // el código viejo (demo: 122.831 ms al cargar, 102.587 ms al bajar; el informe del reporte: 37.206 / 56.187) y
 // VERDE con el arreglo (local 1.513 / 0 y 1.081 / 95; producción, ccc263ea: 3.330 / 0 y 3.424 / 127).
@@ -112,18 +113,11 @@ export function runTareasLargasTier(): { hard: number } {
   if (!/if \(cuadro\) window\.cancelAnimationFrame\(cuadro\);\s*roPagina\?\.disconnect\(\);/.test(tk)) F("2 · el cuadro pedido o el observer de la página no se sueltan al desmontar");
 
   // ── 3 · el ancla del área visible: una vez por cuadro, el alto leído cuando cambia ─
-  const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
-  const hooks = ancla.split(/export function /).slice(1);
-  if (hooks.length !== 2) F(`3 · el ancla no tiene sus dos hooks (${hooks.length})`);
-  for (const h of hooks) {
-    const nombre = h.slice(0, h.indexOf("("));
-    const colocar = cuerpo(h, "const colocar = () => {");
-    if (!colocar || /offsetHeight|getBoundingClientRect|getComputedStyle/.test(colocar)) F(`3 · ${nombre} mide el DOM cada vez que coloca`);
-    if (!/const enCuadro = \(\) => \{\s*if \(!cuadro\) cuadro = window\.requestAnimationFrame\(colocar\);\s*\};/.test(h)) F(`3 · ${nombre} no coloca una vez por cuadro`);
-    if (!/vv\.addEventListener\("scroll", enCuadro\);/.test(h) || !/vv\.addEventListener\("resize", enCuadro\);/.test(h) || /addEventListener\("(scroll|resize)", colocar\)/.test(h)) F(`3 · ${nombre} coloca en cada aviso del área visible`);
-    if (!/colocar\(\);/.test(h)) F(`3 · ${nombre} no se coloca al montar, antes de pintar (iOS: el borde salta a mitad de la transición)`);
-  }
-  if (!/new ResizeObserver\(\(\) => \{ alto = el\.offsetHeight; enCuadro\(\); \}\)/.test(ancla)) F("3 · el alto de la pestaña no se lee cuando cambia (sin él, se lee en cada aviso)");
+  // ⚠ ACTA (12-oct-2026, iOS 26) · el ancla SE RETIRÓ: el velo y la pestaña van fijos a la pantalla con los
+  // márgenes seguros (TICKET-IOS §2b). La regla de este punto se cumple de la forma más barata —nada se coloca
+  // con el área visible, ni una vez por cuadro ni en cada aviso—, y lo que se fija acá es que no vuelva a medirse.
+  if (/visualViewport/.test(tk)) F("3 · el ticket vuelve a seguir el área visible (cada aviso del teclado o la barra de iOS lo haría trabajar)");
+  if (/addEventListener\("resize"/.test(tk)) F("3 · el ticket escucha el resize de la ventana");
 
   // ── 4 · el ticket sigue a los 8 s ───────────────────────────────────────────
   if (ESPERA_FINAL_MS !== 8_000) F(`4 · el ticket ya no sube a los 8 s de llegar al final (${ESPERA_FINAL_MS} ms)`);
@@ -132,7 +126,7 @@ export function runTareasLargasTier(): { hard: number } {
     console.log(`  ✗ TAREAS-LARGAS · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la alternativa de comunas se calcula una vez en el servidor y ningún componente cliente la corre; el scroll del ticket y el ancla trabajan una vez por cuadro sin medir el DOM; el ticket sube a los 8 s");
+    console.log("  ✓ VERDE — la alternativa de comunas se calcula una vez en el servidor y ningún componente cliente la corre; el scroll del ticket trabaja una vez por cuadro sin medir el DOM y no sigue el área visible; el ticket sube a los 8 s");
   }
   return { hard: fallas.length };
 }

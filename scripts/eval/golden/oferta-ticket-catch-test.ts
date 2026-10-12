@@ -541,9 +541,11 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   if (!/document\.querySelector\(SELECTOR_FIN_RECOMENDACION\)/.test(tk) || !/d\.pasoLaRecomendacion\(\)/.test(tk)) F("7 · el ticket no mira si ya se pasó la recomendación");
   {
     const bannerSrc = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
-    for (const ev of ["onPointerDownCapture", "onKeyDownCapture", "onInputCapture", "onFocusCapture"]) {
-      if (!new RegExp(`${ev}=\\{marcarUso\\}`).test(bannerSrc)) F(`6 · la actividad en el banner no se marca (${ev})`);
-    }
+    // ⚠ ACTA (12-oct-2026, iOS) · ya no cuenta CUALQUIER toque: el dedo que bajaba la página por encima del banner lo
+    // marcaba en uso y el ticket esperaba un minuto más. Cuentan la escritura, el foco o una tecla en un campo, y el
+    // clic en un botón o un chip; la regla fina la fija TICKET-IOS §3. Acá, que la escritura y el clic sigan contando.
+    if (!/onInputCapture=\{marcarUso\}/.test(bannerSrc) || !/onFocusCapture=\{\(e\) => \{ if \(esCampo\(e\.target\)\) marcarUso\(\); \}\}/.test(bannerSrc) || !/onClickCapture=\{\(e\) => \{ if \(esBotonOChip\(e\.target\)\) marcarUso\(\); \}\}/.test(bannerSrc))
+      F("6 · la actividad en el banner no se marca (escribir, el foco en un campo, un botón o un chip)");
     if (!/const marcarUso = \(\) => usoBanner\.actividad\(\);/.test(bannerSrc)) F("6 · el banner no marca su uso en usoBanner");
     const reg = sinComentarios(leer("src/components/lo-que-sigue/RegistroUnPaso.tsx"));
     if (!/onFocus=\{\(\) => usoBanner\.correoConFoco\(true\)\}/.test(reg) || !/onBlur=\{\(\) => usoBanner\.correoConFoco\(false\)\}/.test(reg)) F("6 · el foco del correo no se avisa al ticket");

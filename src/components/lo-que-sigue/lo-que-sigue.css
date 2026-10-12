@@ -69,7 +69,9 @@
 
 /* la pestaña chica para volver al ticket (zona del cierre, ticket cerrado, oferta viva). Sin la
    franja del material desde el 08-oct-2026: papel y texto, nada más. */
-.lqs-pestana { position: fixed; left: 50%; bottom: 0; z-index: 40; transform: translate(-50%, 120%); display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px; border: 1px solid var(--doc-line2); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--doc-paper); color: var(--doc-tx); font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-variant-numeric: tabular-nums; }
+/* Fija abajo con el margen seguro (12-oct-2026): el fondo de la pestaña llega al borde y el texto queda sobre el
+   indicador de inicio del iPhone. Sin medir el área visible. */
+.lqs-pestana { position: fixed; left: 50%; bottom: 0; z-index: 40; transform: translate(-50%, 120%); display: inline-flex; align-items: center; gap: 10px; box-sizing: content-box; height: 40px; padding: 0 16px env(safe-area-inset-bottom, 0px); border: 1px solid var(--doc-line2); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--doc-paper); color: var(--doc-tx); font: 600 13px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 220ms cubic-bezier(0.5, 0, 0.8, 0.4); font-variant-numeric: tabular-nums; }
 .lqs-pestana[data-visible="1"] { transform: translate(-50%, 0); transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: 220ms; }
 .lqs-pestana:focus-visible { outline: 2px solid var(--doc-tx); outline-offset: 2px; }
 /* el correo adentro del ticket, y su código en el registro */
@@ -100,7 +102,7 @@
 .lqs-asa { width: 40px; height: 4px; border-radius: 2px; background: var(--doc-line2); margin: 8px auto 0; }
 @media (min-width: 768px) { .lqs-asa { display: none; } }
 
-.lqs-tk { position: relative; padding: 14px 20px 22px; }
+.lqs-tk { position: relative; padding: 14px 20px calc(22px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 768px) { .lqs-tk { padding: 22px 24px 24px; } }
 .lqs-tk .lqs-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
 /* La primera línea dice el pack y el precio (08-oct-2026), con la referencia tachada. */

@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoTicket } from "./estado-ticket";
 import type { MotivoSubida } from "./disparo-ticket";
+import { lineaEvento, type EventoTicket } from "./bitacora-ticket";
 
 /** Por qué hay o no hay oferta, según el servidor (`leerOfertaPack`). La vigencia (24 h) la mira el cliente. */
 export type MotivoOferta = "ofrecida" | "no-dueno" | "no-nacio-anonimo" | "pack-pagado" | "demo";
@@ -66,6 +67,8 @@ export function lineasDiagnostico(p: {
   bannerMontado: boolean;
   bannerLibreEnMs: number;
   vivo: EstadoTicketVivo | null;
+  /** La bitácora del ticket en este navegador (12-oct-2026). */
+  eventos?: EventoTicket[];
 }): string[] {
   if (p.motivo === "no-dueno") return ["Ticket: no te reconoce como dueño de este informe (sin la cookie de tu navegador o sin tu sesión)."];
   const l: string[] = [];
@@ -73,13 +76,17 @@ export function lineasDiagnostico(p: {
   else if (p.motivo === "no-nacio-anonimo") l.push("Oferta: no, este informe no nació anónimo.");
   else if (p.motivo === "pack-pagado") l.push("Oferta: no, el pack de este informe ya está pagado.");
   else l.push(p.vigente ? `Oferta: vigente hasta las ${p.venceHora}.` : `Oferta: vencida a las ${p.venceHora}.`);
-  if (p.motivo !== "ofrecida" || !p.vigente) return l;
+  // Los últimos eventos, del más nuevo al más viejo (12-oct-2026): con eso se ve si se abrió, si estuvo en pantalla y
+  // por dónde se cerró, aunque la oferta ya no esté.
+  const historia = (p.eventos ?? []).slice(-6).reverse().map((e) => `  ${lineaEvento(e)}`);
+  const conHistoria = () => (historia.length ? [...l, "Últimos eventos:", ...historia] : l);
+  if (p.motivo !== "ofrecida" || !p.vigente) return conHistoria();
   l.push(`En este navegador: ${p.estadoLocal === "nunca" ? "nunca se mostró" : p.estadoLocal === "visto" ? "ya se mostró" : "se mostró y se cerró"}${p.regreso ? " · vuelve: no se abre solo" : ""}.`);
   l.push(p.bannerMontado ? (p.bannerLibreEnMs > 0 ? `Banner: en uso, se libera en ${seg(p.bannerLibreEnMs)}.` : "Banner: libre.") : "Banner: no está en este informe.");
   const v = p.vivo;
   if (!v) {
     l.push("Ticket: no está montado.");
-    return l;
+    return conHistoria();
   }
   l.push(`Ticket: ${v.abierto ? "abierto" : "cerrado"} · pestaña ${v.pestana ? "visible" : "oculta"}.`);
   const d = v.disparo;
@@ -92,5 +99,5 @@ export function lineasDiagnostico(p: {
     l.push(`Lectura: ${minSeg(d.lecturaMs)} de 4:00${d.lecturaActiva ? "" : " (en pausa: sin actividad en 30 s)"}.`);
     l.push(`Salida por arriba (solo PC): ${d.pasoLaRecomendacion || d.lecturaMs >= 60_000 ? "habilitada" : "todavía no"}.`);
   }
-  return l;
+  return conHistoria();
 }

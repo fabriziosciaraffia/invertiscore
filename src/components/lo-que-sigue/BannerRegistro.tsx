@@ -100,9 +100,12 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
 
   const chips = [perfil.tipologia, perfil.comuna, ESTAS_DENTRO.modalidad[perfil.modalidad]].filter((c): c is string => !!c);
 
-  // Cualquier toque, tecla, foco o escritura dentro del banner lo marca en uso: el ticket del pack no le
-  // sube encima mientras tanto (08-oct-2026, `uso-banner.ts`).
+  // EN USO (12-oct-2026): solo el foco o la escritura en un campo, abrir el paso del código (`RegistroUnPaso`) y
+  // tocar un botón o un chip del banner. El scroll y el toque de paso por encima, no: hasta hoy cualquier dedo que
+  // bajaba la página por encima del banner lo marcaba en uso, y el ticket esperaba 60 s más.
   const marcarUso = () => usoBanner.actividad();
+  const esCampo = (t: EventTarget | null) => t instanceof HTMLElement && t.matches("input, textarea, select");
+  const esBotonOChip = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('button, a, [data-lqs="chip"]');
 
   return (
     <div
@@ -111,10 +114,10 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
       data-lqs="banner"
       data-paso={paso}
       style={paso !== "oferta" && altoOferta ? { minHeight: altoOferta } : undefined}
-      onPointerDownCapture={marcarUso}
-      onKeyDownCapture={marcarUso}
       onInputCapture={marcarUso}
-      onFocusCapture={marcarUso}
+      onKeyDownCapture={(e) => { if (esCampo(e.target)) marcarUso(); }}
+      onFocusCapture={(e) => { if (esCampo(e.target)) marcarUso(); }}
+      onClickCapture={(e) => { if (esBotonOChip(e.target)) marcarUso(); }}
     >
       <div className="lqs-fondo" aria-hidden="true" />
       <div className="lqs-col">

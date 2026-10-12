@@ -10,6 +10,7 @@ import { diagnosticoTicket, lineasDiagnostico, pideDiagnostico, type MotivoOfert
 import { esRegreso, leerEstadoTicket } from "@/lib/lo-que-sigue/estado-ticket";
 import { horaVencimiento, ofertaPackVigente } from "@/lib/lo-que-sigue/oferta-pack";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
+import { leerBitacora } from "@/lib/lo-que-sigue/bitacora-ticket";
 
 export function DiagnosticoTicket({ motivo, analysisId, createdAt, conSesion, recienDentro, bannerMontado }: {
   motivo: MotivoOferta;
@@ -35,6 +36,7 @@ export function DiagnosticoTicket({ motivo, analysisId, createdAt, conSesion, re
         bannerMontado,
         bannerLibreEnMs: usoBanner.libreEnMs(),
         vivo: diagnosticoTicket.leer(),
+        eventos: leerBitacora(almacen, analysisId),
       }));
     };
     leer();
@@ -53,7 +55,7 @@ export function DiagnosticoTicket({ motivo, analysisId, createdAt, conSesion, re
         pointerEvents: "none",
       }}
     >
-      {lineas.map((l) => <div key={l}>{l}</div>)}
+      {lineas.map((l, i) => <div key={i}>{l}</div>)}
     </div>
   );
 }

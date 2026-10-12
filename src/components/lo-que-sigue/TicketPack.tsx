@@ -13,7 +13,8 @@
 //   · El correo va adentro del ticket y el botón rojo va directo a Flow: POST /api/lo-que-sigue/pack
 //     crea la cuenta si no existe, adopta este informe y abre la orden; sin salir del informe. Con el
 //     correo conocido (recién dentro, la sesión o la cuenta de su navegador) no lo pide.
-//   · El velo se ancla al área visible real (iOS esconde su barra al hacer scroll).
+//   · El velo y la pestaña van FIJOS a la pantalla con los márgenes seguros, sin medir el área visible (12-oct-2026:
+//     con `visualViewport`, en iOS 26, la hoja podía quedar fuera de la pantalla).
 //   Vencido: no sube, no hay pestaña, y queda medido `pack_vencido`. Solo en el primer informe anónimo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -21,12 +22,12 @@ import { usePostHog } from "@/lib/posthog-react";
 import { fmtCLP } from "@/lib/pricing";
 import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
-import { debeSubirTicket, esRegreso, leerEstadoTicket, marcarTicket, pestanaVisible } from "@/lib/lo-que-sigue/estado-ticket";
+import { debeSubirTicket, esRegreso, leerEstadoTicket, marcarTicket, pestanaVisible, veloCierra, VISTO_TRAS_MS } from "@/lib/lo-que-sigue/estado-ticket";
+import { anotarEvento, hojaDentro, type EventoTicket, type PorDondeTicket } from "@/lib/lo-que-sigue/bitacora-ticket";
 import { diagnosticoTicket } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, revisarMarcas, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, venceEl, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
-import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
 
 type Cara = "ticket" | "despedida";
@@ -55,7 +56,6 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
   const posthog = usePostHog();
   const sentinel = useRef<HTMLDivElement>(null);
   const velo = useRef<HTMLDivElement>(null);
-  const pestanaRef = useRef<HTMLButtonElement>(null);
   const [abierto, setAbierto] = useState(false);
   const [cara, setCara] = useState<Cara>("ticket");
   const [yaSubio, setYaSubio] = useState(false);
@@ -84,9 +84,49 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
     return () => window.clearTimeout(t);
   }, [createdAt, vigente]);
 
-  // Anclados desde el montaje, no al abrir: en iOS fijarlos al abrir movía el borde a mitad de la transición.
-  useAnclaAreaVisible(velo);
-  useAnclaAbajo(pestanaRef);
+  // FIJOS A LA PANTALLA (12-oct-2026): el velo y la pestaña van con `position: fixed` y los márgenes seguros
+  // (lo-que-sigue.css), sin medir el área visible. Hasta hoy se anclaban al `visualViewport` —el mismo mecanismo que
+  // fallaba en la lista de direcciones— y en iOS 26 la hoja podía abrirse fuera de la pantalla.
+  // Para el velo: cuándo se abrió y cuándo empezó el último toque en la página (`veloCierra`).
+  const abiertoEn = useRef(0);
+  const ultimoToque = useRef(0);
+  useEffect(() => {
+    const toque = () => {
+      ultimoToque.current = performance.now();
+    };
+    window.addEventListener("pointerdown", toque, { capture: true, passive: true });
+    window.addEventListener("touchstart", toque, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", toque, { capture: true });
+      window.removeEventListener("touchstart", toque, { capture: true });
+    };
+  }, []);
+  const almacenLocal = () => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  };
+  // La bitácora del recuadro de `?lqs=1`: en el navegador, nunca en PostHog.
+  const anotar = (ev: Omit<EventoTicket, "t">) => anotarEvento(almacenLocal(), ctx.analysisId, { t: Date.now(), ...ev });
+
+  // «YA SE MOSTRÓ» SOLO SI SE VIO (12-oct-2026): al segundo de abrirse se mide la hoja; si está dentro de la pantalla,
+  // recién ahí se guarda. Si se cerró antes, o quedó fuera, no: la próxima vez vuelve a subir.
+  useEffect(() => {
+    if (!abierto) return;
+    const t = window.setTimeout(() => {
+      const hoja = velo.current?.querySelector(".lqs-hoja");
+      if (!hoja) return;
+      const r = hoja.getBoundingClientRect();
+      // Dentro de la pantalla y con la pestaña del navegador a la vista: una hoja abierta en segundo plano no se vio.
+      const dentro = hojaDentro(r, window.innerHeight) && document.visibilityState === "visible";
+      anotar({ tipo: "medido", dentro, top: Math.round(r.top), alto: Math.round(r.height), pantalla: window.innerHeight });
+      if (dentro && leerEstadoTicket(almacenLocal(), ctx.analysisId) === "nunca") marcarTicket(almacenLocal(), ctx.analysisId, "visto");
+    }, VISTO_TRAS_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto]);
 
   // Cuándo sube (`disparo-ticket.ts`) y la zona de la pestaña: desde la marca del final de los capítulos
   // hacia abajo (sin la marca, el sentinel de acá, al final de la página).
@@ -105,7 +145,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
       // Mientras la persona usa el banner del registro, el ticket no le sube encima (08-oct-2026).
       enEspera: () => usoBanner.enUso(),
       subir: (motivo) => {
-        marcarTicket(almacen, ctx.analysisId, "visto");
+        // «Ya se mostró» NO se guarda acá (12-oct-2026): se guarda si la hoja estuvo un segundo dentro de la pantalla.
         setYaSubio(true);
         abrir("solo", motivo);
       },
@@ -188,8 +228,8 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
-      if (cara === "ticket") despedirse();
-      else cerrarDelTodo();
+      if (cara === "ticket") despedirse("escape");
+      else cerrarDelTodo("escape");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -204,18 +244,22 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
     setCara("ticket");
     setError(null);
     setAbierto(true);
+    abiertoEn.current = performance.now();
+    anotar({ tipo: "abierto", motivo: desde === "pestaña" ? "pestaña" : motivo ?? "?" });
     capturarLqs(posthog, EVENTOS_LQS.ticketVisto, ctx, { vence: hora, desde, ...(motivo ? { motivo } : {}) });
   }
 
-  function despedirse() {
+  function despedirse(por: PorDondeTicket) {
     if (cara === "despedida") return;
     setCara("despedida");
+    anotar({ tipo: "despedida", por });
     capturarLqs(posthog, EVENTOS_LQS.despedidaVista, ctx, { vence: hora });
   }
 
-  function cerrarDelTodo() {
+  function cerrarDelTodo(por: PorDondeTicket) {
     marcarTicket(typeof window !== "undefined" ? window.localStorage : null, ctx.analysisId, "despedida");
     setAbierto(false);
+    anotar({ tipo: "cerrado", por });
   }
 
   async function pagar(e: FormEvent) {
@@ -257,7 +301,6 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
     <>
       <div ref={sentinel} data-lqs="cierre-sentinel" aria-hidden="true" style={{ height: 1 }} />
       <button
-        ref={pestanaRef}
         type="button"
         className="lqs-pestana doc-tokens"
         data-lqs="pestana"
@@ -277,7 +320,16 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
         role={abierto ? "dialog" : undefined}
         aria-modal={abierto || undefined}
         aria-label={TICKET_PACK.linea(precio)}
-        onClick={(e) => { if (e.target !== e.currentTarget) return; if (cara === "ticket") despedirse(); else cerrarDelTodo(); }}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return;
+          // Un toque en el velo en el primer segundo, o el final de un gesto que empezó antes de abrirse, no cierra.
+          if (!veloCierra({ ahora: performance.now(), abiertoEn: abiertoEn.current, ultimoToque: ultimoToque.current })) {
+            anotar({ tipo: "ignorado", por: "velo" });
+            return;
+          }
+          if (cara === "ticket") despedirse("velo");
+          else cerrarDelTodo("velo");
+        }}
       >
         <div className="lqs-hoja">
           <div className="lqs-franja" aria-hidden="true" />
@@ -291,7 +343,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
                   <p className="lqs-tk-titular" data-lqs="ticket-linea">{TICKET_PACK.linea(precio)}</p>
                   <p className="lqs-tk-precio"><s>{fmtCLP(PACK_UNITARIO_REFERENCIA_CLP)}</s>{TICKET_PACK.cadaUno(fmtCLP(PACK_UNITARIO_CLP))}</p>
                 </div>
-                <button type="button" className="lqs-x" onClick={despedirse} aria-label={TICKET_PACK.cerrar}>✕</button>
+                <button type="button" className="lqs-x" onClick={() => despedirse("x")} aria-label={TICKET_PACK.cerrar}>✕</button>
               </div>
               <p className="lqs-tk-cuerpo">
                 {TICKET_PACK.cuerpo}
@@ -315,14 +367,14 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
               <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton(precio)}</button>
               <p className="lqs-tk-vence" data-lqs="ticket-vence">{TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
-              <button type="button" className="lqs-seguir" onClick={despedirse}>{TICKET_PACK.seguir}</button>
+              <button type="button" className="lqs-seguir" onClick={() => despedirse("seguir")}>{TICKET_PACK.seguir}</button>
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
               <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio)}</p><span /></div>
               <p className="lqs-despedida-t">{TICKET_PACK.despedida}</p>
               <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>
-              <button type="button" className="lqs-tinta" onClick={cerrarDelTodo}>{TICKET_PACK.siSeguir}</button>
+              <button type="button" className="lqs-tinta" onClick={() => cerrarDelTodo("si-seguir")}>{TICKET_PACK.siSeguir}</button>
             </div>
           </div>
         </div>

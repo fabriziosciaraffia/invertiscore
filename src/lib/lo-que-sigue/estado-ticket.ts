@@ -44,6 +44,20 @@ export function esRegreso(p: { estadoLocal: EstadoTicket; conSesion: boolean; re
   return p.estadoLocal !== "nunca" || (p.conSesion && !p.recienDentro);
 }
 
+/** «Ya se mostró» se guarda cuando la hoja estuvo dentro de la pantalla este tiempo (12-oct-2026), no cuando el
+ *  disparador decide abrirla: en iOS 26 la hoja podía abrirse fuera de la pantalla y el ticket quedaba «mostrado»
+ *  sin que nadie lo viera. */
+export const VISTO_TRAS_MS = 1_000;
+
+/** El velo no cierra en este tiempo desde que se abrió (12-oct-2026). */
+export const GRACIA_VELO_MS = 1_000;
+
+/** ¿Un toque en el velo cierra? No en el primer segundo, ni cuando es el final de un gesto —un scroll— que empezó
+ *  antes de que se abriera: el dedo que venía bajando la página no cuenta como «cerrar». */
+export function veloCierra(p: { ahora: number; abiertoEn: number; ultimoToque: number }): boolean {
+  return p.ahora - p.abiertoEn >= GRACIA_VELO_MS && p.ultimoToque >= p.abiertoEn;
+}
+
 /** La pestaña del ticket cerrado (12-oct-2026): desde que se abre el informe, en toda la página, mientras la
  *  oferta viva, si el ticket ya subió —en esta visita o antes— y no está abierto. Hasta hoy solo se veía desde
  *  la marca del final hacia abajo, y quien volvía no la encontraba. */

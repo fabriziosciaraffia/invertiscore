@@ -165,16 +165,15 @@ export function runLoQueSigueTier(): { hard: number } {
   // ⚠ ACTA (08-oct-2026, el salto) · la zona la decide una vigía que comparten el observer y el scroll
   // (un salto más allá de la marca cuenta: tier OFERTA-TICKET §3). El vencido se mide dentro de ella.
   if (!/crearVigiaZona\(\(enZona\) => \{\s*if \(!enZona\) return;\s*d\.llegoAlFinal\(\);/.test(ticket) || !/vigia\.revisar\(e\.isIntersecting \|\| e\.boundingClientRect\.top < 0\)/.test(ticket)) F("4 · la llegada al final no se mide (de la marca del final hacia abajo)");
-  if (!/useAnclaAreaVisible\(velo\);/.test(ticket) || !/useAnclaAbajo\(pestanaRef\);/.test(ticket)) F("4 · la pestaña o el velo no se anclan al área visible real desde el montaje (iOS: anclar al abrir mueve el borde a mitad de la transición)");
-  const ancla = sinComentarios(leer("src/lib/lo-que-sigue/area-visible.ts"));
-  // ⚠ ACTA (09-oct-2026, tareas largas) · el ancla coloca una vez por cuadro (`enCuadro`) y el alto de la pestaña
-  // se lee cuando cambia, no en cada aviso del área visible: la regla es la misma, la mecánica la fija TAREAS-LARGAS §3.
-  if (!/vv\.offsetTop \+ vv\.height - alto/.test(ancla) || !/vv\.addEventListener\("scroll", enCuadro\)/.test(ancla)) F("4 · el ancla no lee visualViewport (offsetTop + height) ni sigue su scroll");
-  if (!/const useAntesDePintar = typeof window !== "undefined" \? useLayoutEffect : useEffect;/.test(ancla) || (ancla.match(/useAntesDePintar\(\(\) => \{/g) ?? []).length !== 2) F("4 · el ancla no se fija antes de pintar (useLayoutEffect)");
+  // ⚠ ACTA (12-oct-2026, iOS 26) · el ancla al área visible SE RETIRÓ: el velo y la pestaña van fijos a la pantalla
+  // con los márgenes seguros, sin medir el `visualViewport` — con él, en iOS 26 la hoja podía abrirse fuera de la
+  // pantalla y el ticket quedaba «ya se mostró» sin verse. Lo fija TICKET-IOS §2b; acá, que no vuelva.
+  if (/useAncla|visualViewport/.test(ticket)) F("4 · el ticket vuelve a anclarse al área visible (en iOS 26 la hoja podía quedar fuera de la pantalla)");
   if (!/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?transition: opacity 160ms ease !important;[\s\S]*?\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ opacity: 1;/.test(leer("src/components/lo-que-sigue/lo-que-sigue.css"))) F("4 · con «Reducir movimiento» el borde inferior aparece de golpe en vez de fundirse");
-  if (!/function despedirse\(\) \{\s*if \(cara === "despedida"\) return;\s*setCara\("despedida"\);\s*capturarLqs\(posthog, EVENTOS_LQS\.despedidaVista/.test(ticket)) F("4 · cerrar o «Seguir leyendo» no cambian a la despedida en el mismo lugar");
-  if (!/function cerrarDelTodo\(\) \{\s*marcarTicket\([^)]*, ctx\.analysisId, "despedida"\);\s*setAbierto\(false\);\s*\}/.test(ticket)) F("4 · «Sí, seguir leyendo» no cierra ni deja el ticket como terminal");
-  if (!/className="lqs-x" onClick=\{despedirse\}/.test(ticket) || !/className="lqs-seguir" onClick=\{despedirse\}/.test(ticket)) F("4 · la X o «Seguir leyendo» cierran de golpe en vez de despedirse");
+  // ⚠ ACTA (12-oct-2026, la bitácora) · despedirse y cerrar reciben POR DÓNDE y lo anotan (TICKET-IOS §2a).
+  if (!/function despedirse\(por: PorDondeTicket\) \{\s*if \(cara === "despedida"\) return;\s*setCara\("despedida"\);\s*anotar\(\{ tipo: "despedida", por \}\);\s*capturarLqs\(posthog, EVENTOS_LQS\.despedidaVista/.test(ticket)) F("4 · cerrar o «Seguir leyendo» no cambian a la despedida en el mismo lugar");
+  if (!/function cerrarDelTodo\(por: PorDondeTicket\) \{\s*marcarTicket\([^)]*, ctx\.analysisId, "despedida"\);\s*setAbierto\(false\);\s*anotar\(\{ tipo: "cerrado", por \}\);\s*\}/.test(ticket)) F("4 · «Sí, seguir leyendo» no cierra ni deja el ticket como terminal");
+  if (!/className="lqs-x" onClick=\{\(\) => despedirse\("x"\)\}/.test(ticket) || !/className="lqs-seguir" onClick=\{\(\) => despedirse\("seguir"\)\}/.test(ticket)) F("4 · la X o «Seguir leyendo» cierran de golpe en vez de despedirse");
   if ((ticket.match(/role=\{abierto \? "dialog" : undefined\}/g) ?? []).length !== 1) F("4 · el ticket no es UN solo diálogo");
   const css = leer("src/components/lo-que-sigue/lo-que-sigue.css");
   if (!/\.lqs-velo\[data-abierto="1"\] \.lqs-hoja \{ transform: translateY\(0\)/.test(css) || !/\.lqs-franja/.test(css)) F("4 · la hoja no sube por el borde inferior o la franja no está en el CSS");
