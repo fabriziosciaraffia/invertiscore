@@ -26,6 +26,8 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { DiagnosticoTicket } from "@/components/lo-que-sigue/DiagnosticoTicket";
+import type { MotivoOferta } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
 import { bannerRegistroVisible, correoDelTicket, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
 import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
@@ -99,6 +101,8 @@ interface STRResultsProps {
   quienMiraLqs?: QuienMira;
   ofertaPack?: boolean;
   correoOferta?: string | null;
+  /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
+  motivoOferta?: MotivoOferta;
   /** Niveles de plazo precalculados en el server (`simularPlazoStr`): el reconstructor
    *  del input arrastra `next/headers` y no puede importarse desde el cliente, y de paso
    *  los 4 recomputes no corren en el teléfono del lector. Los consume `LineaPlazo`. */
@@ -131,6 +135,7 @@ export function STRResultsClient({
   quienMiraLqs = null,
   ofertaPack = false,
   correoOferta = null,
+  motivoOferta = "no-dueno",
   simulacionStr = null,
   zonaStr = null,
   demo = false,
@@ -472,11 +477,15 @@ export function STRResultsClient({
         <div style={{ height: 24 }} />
         <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
         {ticketLqs ? (
-          <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} />
+          <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId} recienDentro={!!recienDentro} />
         ) : showCtaWelcome ? null : (
           <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} suscriptor={isSubscriber} />
         )}
         <RegistroCompletadoSonda activa={!!userId} />
+        {/* «Por qué no sale» (12-oct-2026): solo con `?lqs=1`; no se mide. */}
+        {analysisId && createdAt && (
+          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={createdAt} conSesion={!!userId} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
+        )}
 
       </main>
 

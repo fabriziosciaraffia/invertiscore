@@ -6,8 +6,8 @@
 //     pack pagado y quien mira sea su dueño (`oferta-informe.ts`); la vigencia (24 h) la mira acá.
 //   · Sube UNA vez por informe en cada navegador, con lo primero que pase (`disparo-ticket.ts`): 8 s
 //     después de pasar «Tu resultado a 10 años», 4 minutos de lectura activa, o en PC el cursor que
-//     sale de la página por arriba. Desde la marca del final hacia abajo, cerrado, queda la pestaña
-//     para volver a él mientras la oferta viva.
+//     sale de la página por arriba. Cerrado, queda la pestaña para volver a él mientras la oferta viva —desde
+//     el 12-oct-2026 en toda la página y desde que se abre el informe, para quien vuelve (`esRegreso`)—.
 //   · Cerrar o «Seguir leyendo» cambian a la despedida en el mismo lugar; «Sí, seguir leyendo»
 //     cierra (y deja la pestaña). Nunca un segundo modal.
 //   · El correo va adentro del ticket y el botón rojo va directo a Flow: POST /api/lo-que-sigue/pack
@@ -21,10 +21,11 @@ import { usePostHog } from "@/lib/posthog-react";
 import { fmtCLP } from "@/lib/pricing";
 import { TICKET_PACK } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
-import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "@/lib/lo-que-sigue/estado-ticket";
+import { debeSubirTicket, esRegreso, leerEstadoTicket, marcarTicket, pestanaVisible } from "@/lib/lo-que-sigue/estado-ticket";
+import { diagnosticoTicket } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, revisarMarcas, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
-import { cuandoVence, horaVencimiento, ofertaPackVigente, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
+import { cuandoVence, horaVencimiento, ofertaPackVigente, venceEl, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { useAnclaAbajo, useAnclaAreaVisible } from "@/lib/lo-que-sigue/area-visible";
 import "./lo-que-sigue.css";
 
@@ -40,9 +41,13 @@ function esPc(): boolean {
   }
 }
 
-export function TicketPack({ ctx, createdAt, correoSesion = null }: {
+export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = false, recienDentro = false }: {
   ctx: ContextoLqs;
   createdAt: string;
+  /** Entra con su sesión (12-oct-2026): a un informe que nació anónimo, eso dice que ya estuvo acá (`esRegreso`). */
+  conSesion?: boolean;
+  /** La misma visita en que se registró: no cuenta como volver. */
+  recienDentro?: boolean;
   /** El correo con que paga, si ya se sabe (`correoDelTicket`): recién dentro, la sesión o la cuenta de
    *  su navegador de origen. Con él, el ticket no lo pide. */
   correoSesion?: string | null;
@@ -58,12 +63,26 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
   const [correo, setCorreo] = useState("");
   const [pagando, setPagando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Desde la marca del final hacia abajo: ahí vive la pestaña (sin la barra fija, ya no hay nada más
-  // abajo con qué turnarse; hasta el 08-oct-2026 era un estado compartido con la barra).
-  const [zonaCierre, setZonaCierre] = useState(false);
   const hora = horaVencimiento(createdAt);
   const precio = fmtCLP(PACK_PRECIO_CLP);
-  const pestana = zonaCierre && !abierto && yaSubio && vigente;
+  // La pestaña, en toda la página y desde que se abre el informe si el ticket ya subió (12-oct-2026): hasta hoy
+  // vivía de la marca del final hacia abajo, y quien volvía no la encontraba.
+  const pestana = pestanaVisible({ abierto, yaSubio, vigente });
+  // Para el diagnóstico de `?lqs=1`: lo que se ve ahora, sin volver a montar el efecto del disparo.
+  const vista = useRef({ abierto, pestana });
+  vista.current = { abierto, pestana };
+
+  // Vence en el segundo exacto, con la página abierta: la pestaña se va sola.
+  useEffect(() => {
+    if (!vigente) return;
+    const ms = venceEl(createdAt).getTime() - Date.now();
+    if (ms <= 0) {
+      setVigente(false);
+      return;
+    }
+    const t = window.setTimeout(() => setVigente(false), Math.min(ms, 2_147_483_647));
+    return () => window.clearTimeout(t);
+  }, [createdAt, vigente]);
 
   // Anclados desde el montaje, no al abrir: en iOS fijarlos al abrir movía el borde a mitad de la transición.
   useAnclaAreaVisible(velo);
@@ -75,11 +94,14 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     const marca = document.querySelector(SELECTOR_FIN_CAPITULOS) ?? sentinel.current;
     if (!marca) return;
     const almacen = typeof window !== "undefined" ? window.localStorage : null;
-    if (leerEstadoTicket(almacen, ctx.analysisId) !== "nunca") setYaSubio(true);
+    // El que vuelve (12-oct-2026): ya se mostró en este navegador, o entra con su sesión y no es la visita en que
+    // se registró. No se abre solo; la pestaña lo espera desde ya.
+    const vuelve = () => esRegreso({ estadoLocal: leerEstadoTicket(almacen, ctx.analysisId), conSesion, recienDentro });
+    if (vuelve()) setYaSubio(true);
     const d = crearDisparador({
       reloj: { ahora: () => Date.now(), programar: (fn, ms) => window.setTimeout(fn, ms), cancelar: (h) => window.clearTimeout(h as number) },
       // Una vez por informe en este navegador, y solo con la oferta viva.
-      puedeSubir: () => debeSubirTicket(leerEstadoTicket(almacen, ctx.analysisId)) && ofertaPackVigente(createdAt),
+      puedeSubir: () => !vuelve() && ofertaPackVigente(createdAt),
       // Mientras la persona usa el banner del registro, el ticket no le sube encima (08-oct-2026).
       enEspera: () => usoBanner.enUso(),
       subir: (motivo) => {
@@ -90,7 +112,6 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     });
     let vencidoMedido = false;
     const vigia = crearVigiaZona((enZona) => {
-      setZonaCierre(enZona);
       if (!enZona) return;
       d.llegoAlFinal();
       // Vencido al llegar al final: no sube, no hay pestaña, y se mide una vez.
@@ -140,6 +161,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       if (!cuadro) cuadro = window.requestAnimationFrame(revisarEnCuadro);
     };
     window.addEventListener("scroll", alDesplazar, { passive: true });
+    const soltarDiagnostico = diagnosticoTicket.registrar(() => ({ ...vista.current, disparo: d.estado() }));
     const actividad = () => d.actividad();
     for (const ev of EVENTOS_ACTIVIDAD) window.addEventListener(ev, actividad, { passive: true });
     const lectura = window.setInterval(() => d.tick(document.visibilityState === "visible"), 1000);
@@ -147,6 +169,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
     document.addEventListener("mouseout", alSalir);
     return () => {
       d.detener();
+      soltarDiagnostico();
       io.disconnect();
       window.removeEventListener("scroll", alDesplazar);
       if (cuadro) window.cancelAnimationFrame(cuadro);
@@ -157,7 +180,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null }: {
       document.removeEventListener("mouseout", alSalir);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.analysisId, createdAt]);
+  }, [ctx.analysisId, createdAt, conSesion, recienDentro]);
 
   // Atrás y Esc: la misma coreografía que la X (nunca cierran de golpe).
   useEffect(() => {

@@ -290,6 +290,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     quienMiraLqs: quienMira,
     ofertaPack: ofertaLqs.oferta,
     correoOferta: ofertaLqs.correo,
+    motivoOferta: ofertaLqs.motivo,
     demo,
   };
 

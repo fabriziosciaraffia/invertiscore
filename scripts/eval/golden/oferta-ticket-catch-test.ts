@@ -164,7 +164,8 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (!banner.test(c)) F(`1 · ${nombre}: el banner no sale de bannerRegistroVisible`);
     if (!/const ticketLqs = !!analysisId && ofertaPack;/.test(c)) F(`1 · ${nombre}: el ticket no sale de la oferta del informe`);
     if (!/despuesDeLaCard=\{bannerLqs \? <BannerRegistro /.test(c)) F(`1 · ${nombre}: el banner no cuelga de bannerLqs`);
-    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
+    // ⚠ ACTA (12-oct-2026, el que vuelve) · con `conSesion` y `recienDentro` (TICKET-REGRESO §2).
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
     if (/loQueSigue/.test(c)) F(`1 · ${nombre}: queda el gate viejo «loQueSigue»`);
   }
 
@@ -312,7 +313,9 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
   if (!/document\.querySelector\(SELECTOR_FIN_CAPITULOS\)/.test(tk)) F("3 · el ticket no mira la marca del final de los capítulos");
   // ⚠ ACTA (08-oct-2026, el salto) · la zona la decide una vigía que comparten el observer y el scroll; la
   // regla es la misma: entrar a la zona arranca los 8 s.
-  if (!/const vigia = crearVigiaZona\(\(enZona\) => \{\s*setZonaCierre\(enZona\);\s*if \(!enZona\) return;\s*d\.llegoAlFinal\(\);/.test(tk)) F("3 · llegar al final no arranca los 8 s");
+  // ⚠ ACTA (12-oct-2026) · la vigía ya no lleva la zona de la pestaña (la pestaña está en toda la página): solo
+  // arranca los 8 s al llegar al final.
+  if (!/const vigia = crearVigiaZona\(\(enZona\) => \{\s*if \(!enZona\) return;\s*d\.llegoAlFinal\(\);/.test(tk)) F("3 · llegar al final no arranca los 8 s");
   if (!/setInterval\(\(\) => d\.tick\(document\.visibilityState === "visible"\), 1000\)/.test(tk)) F("3 · la lectura activa no se cuenta cada segundo con la pestaña visible");
   // La actividad: la lista del módulo, enganchada al disparador. (La primera versión de este chequeo
   // buscaba las palabras sueltas en el ticket y «keydown» pasó en verde por el Escape: presencia no es

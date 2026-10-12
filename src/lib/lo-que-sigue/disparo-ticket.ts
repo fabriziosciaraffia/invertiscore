@@ -86,6 +86,8 @@ export function crearDisparador(o: {
   let ultimoTick = reloj.ahora();
   let pasoRecomendacion = false;
   let pendiente: MotivoSubida | null = null;
+  let finalEn: number | null = null;
+  let motivoHecho: MotivoSubida | null = null;
 
   function disparar(motivo: MotivoSubida) {
     if (hecho) return;
@@ -95,6 +97,7 @@ export function crearDisparador(o: {
       return;
     }
     hecho = true;
+    motivoHecho = motivo;
     if (timerFinal) reloj.cancelar(timerFinal);
     timerFinal = null;
     if (o.puedeSubir()) o.subir(motivo);
@@ -104,6 +107,7 @@ export function crearDisparador(o: {
     /** La marca del final entró en pantalla: en 8 s sube. Una vez. */
     llegoAlFinal() {
       if (hecho || timerFinal) return;
+      finalEn = reloj.ahora() + ESPERA_FINAL_MS;
       timerFinal = reloj.programar(() => disparar("final"), ESPERA_FINAL_MS);
     },
     actividad() {
@@ -133,6 +137,19 @@ export function crearDisparador(o: {
     salida(e: { clientY: number; haciaFuera: boolean; pc: boolean }) {
       if (!(pasoRecomendacion || acumulado >= LECTURA_PARA_SALIDA_MS)) return;
       if (e.pc && e.haciaFuera && e.clientY <= 0) disparar("salida");
+    },
+    /** Qué está contando y cuánto le falta (12-oct-2026, el diagnóstico de `?lqs=1`). Solo lee. */
+    estado() {
+      const t = reloj.ahora();
+      return {
+        hecho,
+        motivo: motivoHecho,
+        pendiente,
+        finalFaltaMs: !hecho && finalEn !== null ? Math.max(0, finalEn - t) : null,
+        lecturaMs: acumulado,
+        lecturaActiva: t - ultimaActividad <= INACTIVIDAD_MS,
+        pasoLaRecomendacion: pasoRecomendacion,
+      };
     },
     detener() {
       hecho = true;

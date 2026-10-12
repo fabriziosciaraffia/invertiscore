@@ -33,6 +33,10 @@ export function crearUsoBanner(ahora: () => number = () => Date.now()) {
     enUso(): boolean {
       return ahora() - ultima < QUIETUD_BANNER_MS;
     },
+    /** Cuánto le falta para liberarse (0 si está libre): para el diagnóstico de `?lqs=1`. */
+    libreEnMs(): number {
+      return Math.max(0, ultima + QUIETUD_BANNER_MS - ahora());
+    },
   };
 }
 

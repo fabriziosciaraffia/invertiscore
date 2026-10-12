@@ -15,6 +15,8 @@ import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
+import { DiagnosticoTicket } from "@/components/lo-que-sigue/DiagnosticoTicket";
+import type { MotivoOferta } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { perfilChipsDe } from "@/lib/lo-que-sigue/perfil-chips";
 import { bannerRegistroVisible, correoDelTicket, type QuienMira } from "@/lib/lo-que-sigue/oferta-informe";
 import { RegistroCompletadoSonda } from "@/components/lo-que-sigue/RegistroUnPaso";
@@ -70,6 +72,7 @@ export function PremiumResults({
   quienMiraLqs = null,
   ofertaPack = false,
   correoOferta = null,
+  motivoOferta = "no-dueno",
   medianaResolvedAt,
   alternativaComunas = null,
 }: {
@@ -108,6 +111,8 @@ export function PremiumResults({
   quienMiraLqs?: QuienMira;
   ofertaPack?: boolean;
   correoOferta?: string | null;
+  /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
+  motivoOferta?: MotivoOferta;
   /** Fecha de la mediana comunal (snapshot o ahora): la celda de zona la declara. */
   medianaResolvedAt?: string;
   /** La alternativa de comunas, calculada UNA vez en el servidor (`informe-ltr.tsx`): el cliente no corre el motor. */
@@ -676,12 +681,16 @@ export function PremiumResults({
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
           {ticketLqs ? (
             // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe.
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} />
+            <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn} recienDentro={!!recienDentro} />
           ) : showCtaWelcome ? null : (
             <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} suscriptor={accessLevel === "subscriber"} />
           )}
         </div>
         <RegistroCompletadoSonda activa={isLoggedIn} />
+        {/* «Por qué no sale» (12-oct-2026): solo con `?lqs=1`; no se mide. */}
+        {analysisId && createdAt && (
+          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={createdAt} conSesion={isLoggedIn} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
+        )}
       </div>
     </>
   );
