@@ -30,7 +30,7 @@ import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
-  type CandidatoSemanal, type RespaldoSemanal,
+  type CandidatoSemanal, type ProgresoPrechequeo, type RespaldoSemanal,
 } from "./semanal";
 
 const RUTA = "lib/guia/semanal";
@@ -225,7 +225,7 @@ export async function prechequearSemana(
   personas: Array<{ userId: string }>,
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
-  opts: { desde: string | null; hastaMs: number },
+  opts: { desde: string | null; hastaMs: number; progreso?: ProgresoPrechequeo<string> },
 ): Promise<{ personas: number; revisadas: number; completas: number; sinCandidatos: number; chequeos: number; siguiente: string | null; porTiempo: boolean; porCupo: boolean; msChequeos: number[]; msPasoMax: number }> {
   const almacen = almacenPublicacion(admin);
   const enMemoria = async (c: Candidato): Promise<EstadoPublicacion> =>
@@ -254,6 +254,7 @@ export async function prechequearSemana(
     publicadoConPresupuesto(admin, presupuesto),
     () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,
     () => Date.now() < opts.hastaMs,
+    opts.progreso,
   );
   const cuantas = (e: string) => Array.from(estado.values()).filter((x) => x === e).length;
   return {

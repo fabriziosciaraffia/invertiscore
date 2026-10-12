@@ -30,6 +30,15 @@
 //   dónde empezó y quedó como posición—, porque la verificación en producción no tenía otra ventana que la base.
 //   24/24 en ROJO con L1 no mide cada chequeo · L2 el log sin lo de cada aviso · L3 el log con el id de la persona ·
 //   L4 sin log de cierre (R2 y R4, reapuntadas a `const desde = …`).
+//
+// ACTA (12-oct-2026, el techo, §6). El presupuesto decide si EMPIEZA el paso siguiente pero no le pone límite a uno
+// que ya empezó: con una consulta colgada la corrida llegaba igual al corte. Ahora todo el trabajo va bajo un techo
+// de 280 s (`conTope`); cortada por él, guarda la persona DESPUÉS de la trabada y queda como fallida; el cierre
+// también tiene techo. Las 12 corridas programadas del 10 y el 12-oct cerraron en 240,2–246,3 s (paso más largo,
+// 17,7 s), así que el techo no cambia nada mientras nada se cuelgue. Contra master sin el techo: ROJO. 9/9
+// mutaciones en ROJO: H1 techo a 300 s · H2 sigue por la trabada · H3 no anota lo revisado · H4 conTope dice
+// listo sin estarlo · H5 pisa dónde quedó sin haberlo leído · H6 la cortada cuenta como exitosa · H7 cierre sin
+// techo · H8 el servidor no pasa el progreso.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/prechequeo-presupuesto-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
@@ -48,6 +57,7 @@ type Prechequear = (
   chequear: (aviso: string) => Promise<unknown>,
   quedaCupo: () => boolean,
   quedaTiempo: () => boolean,
+  progreso?: { siguiente: string | null; chequeos: number; revisadas: number },
 ) => Promise<Avance>;
 
 /** Un reloj de mentira: cada paso avanza lo que cuesta, y se anota a qué hora EMPEZÓ cada paso. */
@@ -153,7 +163,7 @@ export async function runPrechequeoPresupuestoTier(): Promise<{ hard: number }> 
     // Lo que el servidor le pasa, en orden: desde dónde, el chequeo que cuenta lecturas y se para con un bloqueo,
     // el cupo de lecturas por corrida, y el reloj. Sin el cupo, una persona sin lectura posible pediría el mismo
     // aviso vuelta tras vuelta hasta gastar el presupuesto entero.
-    const args = /prechequearConPresupuesto\(\s*personas\.map\(\(x\) => x\.userId\),\s*opts\.desde,\s*async \(userId\) => \{[\s\S]*?\},\s*publicadoConPresupuesto\(admin, presupuesto\),\s*\(\) => !presupuesto\.bloqueada && presupuesto\.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,\s*\(\) => Date\.now\(\) < opts\.hastaMs,\s*\)/;
+    const args = /prechequearConPresupuesto\(\s*personas\.map\(\(x\) => x\.userId\),\s*opts\.desde,\s*async \(userId\) => \{[\s\S]*?\},\s*publicadoConPresupuesto\(admin, presupuesto\),\s*\(\) => !presupuesto\.bloqueada && presupuesto\.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,\s*\(\) => Date\.now\(\) < opts\.hastaMs,\s*opts\.progreso,\s*\)/;
     if (!args.test(cuerpo)) F("5 · `prechequearSemana` no le pasa al prechequeo dónde quedó, el chequeo con presupuesto de fichas, el cupo de lecturas y el reloj, en ese orden");
     if (/elegirSemanal\(|for \(const \[, p\] of Array\.from\(preps\)\)/.test(cuerpo)) F("5 · el cierre vuelve a recorrer a todas las personas preparadas (sin reloj)");
     if (!/Date\.now\(\) < opts\.hastaMs/.test(cuerpo)) F("5 · el prechequeo no mira el reloj del presupuesto");
@@ -170,6 +180,49 @@ export async function runPrechequeoPresupuestoTier(): Promise<{ hard: number }> 
     // `/api/config?key=` devuelve al público.
     const avanceSrv = srv.slice(srv.indexOf("export async function leerAvancePrechequeo"), srv.indexOf("function candidatoDeFila"));
     if (!/from\("metrics_daily"\)/.test(avanceSrv) || !/guardarMetrica\(admin, /.test(avanceSrv) || /from\("config"\)/.test(avanceSrv)) F("5 · dónde quedó no se guarda en `metrics_daily` (o se guarda en `config`, que es pública)");
+  }
+
+  // ── 6 · EL TECHO (12-oct-2026): un paso que no vuelve no lleva la corrida al corte de 300 s ──────────
+  // El presupuesto decide si EMPIEZA el paso siguiente; no le pone límite a uno que ya empezó. Con una consulta
+  // colgada la corrida llegaba igual al corte. A los 280 s cierra pase lo que pase y dice por quién seguir.
+  {
+    const Sx = S as unknown as { TOPE_DURO_PRECHEQUEO_MS?: number; conTope?: <T>(p: Promise<T>, ms: number) => Promise<{ listo: boolean; valor?: T }> };
+    const techo = Sx.TOPE_DURO_PRECHEQUEO_MS;
+    if (typeof techo !== "number" || techo <= 240_000 || techo > 285_000) F(`6 · el techo de la corrida no queda entre el presupuesto y 285 s (le deja 15 s para guardar y responder antes de los 300): ${techo}`);
+    if (typeof Sx.conTope !== "function" || typeof pre !== "function") {
+      F("6 · no existe `conTope`: un paso colgado lleva la corrida al corte de 300 s");
+    } else {
+      const nunca = new Promise<never>(() => {});
+      const t = Date.now();
+      const a = await Sx.conTope(nunca, 40);
+      const b = await Sx.conTope(Promise.resolve(7), 1000);
+      if (a.listo || Date.now() - t > 1000) F("6 · `conTope` no deja de esperar un trabajo que no termina");
+      if (!b.listo || b.valor !== 7) F("6 · `conTope` no devuelve lo que terminó a tiempo");
+      // Un paso colgado: la corrida la corta el techo y dice por quién seguir —la persona DESPUÉS de la trabada,
+      // para no volver a trabarse en ella—, con lo revisado hasta ahí. A mitad, dando la vuelta y en la última.
+      const lista = Array.from({ length: 10 }, (_, i) => `p${String(i).padStart(3, "0")}`);
+      const casos: Array<[string | null, string, string, number]> = [[null, "p004", "p005", 4], ["p007", "p001", "p002", 4], [null, "p009", "p000", 9]];
+      for (const [desde, trabada, sigue, revisadas] of casos) {
+        const progreso = { siguiente: null as string | null, chequeos: 0, revisadas: 0 };
+        const c = await Sx.conTope(pre(lista, desde, async (p) => (p === trabada ? nunca : null), async () => undefined, () => true, () => true, progreso), 40);
+        if (c.listo || progreso.siguiente !== sigue || progreso.revisadas !== revisadas)
+          F(`6 · con un paso colgado en ${trabada} (desde ${desde ?? "el principio"}), la corrida no dice por quién seguir (${progreso.siguiente}, ${progreso.revisadas} revisadas; debía ser ${sigue}, ${revisadas})`);
+      }
+    }
+    const ruta = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
+    // Todo el trabajo —la config, las personas, dónde quedó y el prechequeo— va bajo el techo.
+    const bajoTecho = /const corrida = await conTope\(\(async \(\) => \{([\s\S]*?)\}\)\(\), t0 \+ TOPE_DURO_PRECHEQUEO_MS - Date\.now\(\)\);/.exec(ruta);
+    if (!bajoTecho || !/leerConfigGuia\(admin\)/.test(bajoTecho[1]) || !/personasSemanal\(admin\)/.test(bajoTecho[1]) || !/leerAvancePrechequeo\(admin\)/.test(bajoTecho[1]) || !/prechequearSemana\(admin, personas, cfg, presupuesto, \{[^}]*progreso,/.test(bajoTecho[1]))
+      F("6 · el trabajo de la corrida no va entero bajo el techo (una lectura o el prechequeo colgados llegarían al corte)");
+    const cortada = ruta.slice(ruta.indexOf("if (!corrida.listo) {"), ruta.indexOf("const { r, personas, desde } = corrida.valor;"));
+    if (!/const avance = \{ siguiente: progreso\.siguiente,/.test(cortada) || !/if \(leyoDondeQuedo\) await conTope\(guardarAvancePrechequeo\(admin, avance\), 5_000\);/.test(cortada))
+      F("6 · cortada por el techo, la corrida no guarda por quién seguir (o pisa dónde quedó sin haberlo leído)");
+    if (!/return cerrarConTope\(admin, \{ procesados: 1, exitosos: 0, fallidos: 1 \}/.test(cortada)) F("6 · cortada por el techo, la corrida no queda como fallida (nadie se entera de que un paso se colgó)");
+    if (/return cerrarCron\(/.test(ruta) || !/conTope\(cerrarCron\(admin, NOMBRE, conteo, extra\), Math\.max\(1_000, t0 \+ 295_000 - Date\.now\(\)\)\)/.test(ruta))
+      F("6 · el cierre no tiene techo (si la base no responde, la respuesta llega pasado el corte)");
+    if (!/export const maxDuration = 300;/.test(ruta)) F("6 · la función ya no tiene 300 s: el techo se mide contra eso");
+    const sem = sinComentarios(leer("src/lib/guia/semanal.ts"));
+    if (!/if \(progreso\) progreso\.siguiente = orden\[\(\(lugar\.get\(p\) \?\? 0\) \+ 1\) % orden\.length\] \?\? null;/.test(sem)) F("6 · el prechequeo no anota por quién seguir mientras corre");
   }
 
   if (fallas.length) {

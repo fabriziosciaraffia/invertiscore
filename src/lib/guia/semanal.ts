@@ -169,6 +169,35 @@ export async function siguienteYEstado<T extends CandidatoSemanal>(
  *  tope—; ninguno empieza después. */
 export const PRESUPUESTO_PRECHEQUEO_MS = 240_000;
 
+/** El TECHO de una corrida, pase lo que pase (12-oct-2026). El presupuesto decide si EMPIEZA el paso siguiente,
+ *  pero no le pone límite a uno que ya empezó: una consulta que no vuelve llevaría la corrida al corte de 300 s.
+ *  A los 280 s cierra igual, guardando por quién seguir (la persona después de la trabada), y le quedan 20 s para
+ *  guardar y responder. */
+export const TOPE_DURO_PRECHEQUEO_MS = 280_000;
+
+/** Lo que se sabe de una corrida MIENTRAS corre: si la corta el techo, de acá sale por quién seguir. */
+export interface ProgresoPrechequeo<P> {
+  /** La persona después de la que se está mirando: si el paso de esta se cuelga, la siguiente corrida no
+   *  vuelve a trabarse en ella (le toca en la vuelta siguiente). */
+  siguiente: P | null;
+  chequeos: number;
+  revisadas: number;
+}
+
+/** Espera `trabajo` como mucho `ms`: si no termina, sigue sin él (`listo: false`). El trabajo no se cancela —una
+ *  promesa no se puede cortar—, pero quien espera ya no depende de él. */
+export async function conTope<T>(trabajo: Promise<T>, ms: number): Promise<{ listo: true; valor: T } | { listo: false }> {
+  let reloj: ReturnType<typeof setTimeout> | undefined;
+  const tope = new Promise<{ listo: false }>((res) => {
+    reloj = setTimeout(() => res({ listo: false }), Math.max(0, ms));
+  });
+  try {
+    return await Promise.race([trabajo.then((valor) => ({ listo: true as const, valor })), tope]);
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
 export interface AvancePrechequeo<P> {
   chequeos: number;
   /** Las personas que terminaron en esta corrida: su selección ya no necesita chequeos. */
@@ -206,9 +235,11 @@ export async function prechequearConPresupuesto<P, T>(
   chequear: (aviso: T) => Promise<unknown>,
   quedaCupo: () => boolean,
   quedaTiempo: () => boolean,
+  progreso?: ProgresoPrechequeo<P>,
 ): Promise<AvancePrechequeo<P>> {
   const i0 = desde != null ? Math.max(0, personas.indexOf(desde)) : 0;
   const orden = [...personas.slice(i0), ...personas.slice(0, i0)];
+  const lugar = new Map(orden.map((p, i) => [p, i]));
   const terminadas = new Set<P>();
   const visitadas = new Set<P>();
   let enFila = [...orden];
@@ -220,16 +251,22 @@ export async function prechequearConPresupuesto<P, T>(
       if (!quedaTiempo()) { porTiempo = true; break vueltas; }
       if (!quedaCupo()) { porCupo = true; break vueltas; }
       visitadas.add(p);
+      if (progreso) progreso.siguiente = orden[((lugar.get(p) ?? 0) + 1) % orden.length] ?? null;
       const tp = Date.now();
       const aviso = await siguiente(p);
       msPasoMax = Math.max(msPasoMax, Date.now() - tp);
-      if (aviso == null) { terminadas.add(p); continue; }
+      if (aviso == null) {
+        terminadas.add(p);
+        if (progreso) progreso.revisadas = terminadas.size;
+        continue;
+      }
       siguen.push(p);
       if (!quedaTiempo()) { porTiempo = true; break vueltas; }
       const tc = Date.now();
       await chequear(aviso);
       msChequeos.push(Date.now() - tc);
       chequeos++;
+      if (progreso) progreso.chequeos = chequeos;
     }
     enFila = siguen;
   }
