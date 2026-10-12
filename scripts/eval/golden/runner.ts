@@ -79,6 +79,7 @@ import { runCasaTier } from "./casa-catch-test";
 import { runSemanalTier } from "./semanal-catch-test";
 import { runPrechequeoPresupuestoTier } from "./prechequeo-presupuesto-catch-test";
 import { runTareasLargasTier } from "./tareas-largas-catch-test";
+import { runTicketRegresoTier } from "./ticket-regreso-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
@@ -413,6 +414,9 @@ function printSeed(r: SeedReport) {
   // Tier TAREAS-LARGAS (09-oct-2026, 0 tokens): el informe no congela el hilo principal del teléfono — la
   // alternativa de comunas se calcula en el servidor y el scroll trabaja una vez por cuadro. En rojo por mutación.
   totalHard += runTareasLargasTier().hard;
+  // Tier TICKET-REGRESO (12-oct-2026, 0 tokens): el ticket a los 8 s, el que vuelve encuentra la pestaña, el
+  // recuadro de ?lqs=1 y la hoja de la dirección a pantalla. En rojo por mutación.
+  totalHard += (await runTicketRegresoTier()).hard;
   // Tier INMEDIATO (05-oct-2026, 0 tokens): el aviso a quien piensa comprar ya. En rojo por mutación.
   totalHard += (await runInmediatoTier()).hard;
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;
