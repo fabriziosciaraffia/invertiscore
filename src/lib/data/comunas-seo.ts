@@ -14,10 +14,13 @@ import {
 import { getTodasLasProsas, publicabaDorms } from "@/lib/data/comuna-prosa";
 import { resolverVeredictoFila, type VeredictoFila } from "@/lib/veredicto-fila";
 
+// Solo el service role (13-oct-2026). Caía a la anon key si faltaba la del service role, y con la anon key la
+// tabla `config` muestra solo `tasa_hipotecaria`: la UF salía vacía y la página caía en silencio a un respaldo
+// fijo. La variable está en Production, Preview y Development; si faltara, que falle a la vista.
 function getSupabase() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
