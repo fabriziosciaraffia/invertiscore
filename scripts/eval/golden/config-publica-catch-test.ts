@@ -10,6 +10,11 @@
 //       sale). Una clave armada en tiempo de ejecución no se puede auditar: ROJO.
 //   3 · LA RUTA DELEGA: el GET pasa por `respuestaConfig` con `getConfig` y no lee la tabla por su cuenta.
 //   4 · EL RESPALDO de la tasa es la referencia del motor (`MARKET_AVG_TASA_UF`).
+//   5 · LA BASE (13-oct-2026): la última migración que toca la política «Public read config» la restringe a las
+//       MISMAS claves de la lista, y anon y authenticated quedan con SELECT y nada más (TRUNCATE no pasa por RLS).
+//   6 · NINGÚN LECTOR DE CLAVES INTERNAS usa la anon key ni el cliente de la sesión: ni el archivo que lee la tabla
+//       ni —si lee con un cliente recibido— el argumento que le pasan quienes lo llaman, transitivamente.
+//   La medida en vivo de la base es `config-rls-sonda.ts` (con la anon key, directo a Supabase).
 // La medida en vivo es `config-publica-sonda.ts` (contra un servidor: refranco.ai o `next dev`).
 //
 // ACTA (13-oct-2026). En la tabla hay tres claves —`backfill_toctoc_checkpoint` (estado interno del backfill, un
@@ -19,6 +24,15 @@
 // sin mayúsculas ni espacios · M7 el navegador pide otra clave · M8 una clave armada en ejecución · M9 el respaldo de
 // la tasa separado del motor · M10 la ruta lee la tabla aparte. La sonda contra `next dev`: VERDE con la ruta nueva,
 // ROJO con la vieja (200 para las internas y para una que no existe, 400 sin clave: cinco cuerpos distintos).
+//
+// ACTA §5–§6 (13-oct-2026, la política RLS). Antes de migrar, el rol anon veía las tres claves y tenía TODOS los
+// permisos (con TRUNCATE y MAINTAIN). Ningún lector de las claves internas usaba la anon key: todos con service
+// role; `comunas-seo` caía a la anon key si faltaba la del service role (está en Production, Preview y
+// Development: nunca pasó), y se le sacó la caída. Ninguna función, vista ni regla de la base lee `config`. 10/10
+// mutaciones de §5–§6 en ROJO: K1 la política vuelve a `using (true)` · K2 lee otra clave · K3 sin quitar los
+// permisos · K4 una migración posterior devuelve INSERT · K5 comunas-seo cae a la anon key · K6 /semanal le pasa la
+// sesión a `leerConfigGuia` · K7 `createAnonPipelineClient` con la anon key · K8 `getConfig` fuera de /api/config ·
+// K9 transitivo: el pago le pasa la sesión a `calcularYGuardarGuia` · K10 uf.ts con el cliente de la sesión.
 // Solo:  node --import tsx scripts/eval/golden/config-publica-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -97,11 +111,105 @@ export async function runConfigPublicaTier(): Promise<{ hard: number }> {
   // ── 4 · el respaldo de la tasa es la referencia del motor ────────────────────
   if (Number(CP.DEFAULTS_CONFIG_PUBLICA.tasa_hipotecaria) !== MARKET_AVG_TASA_UF) F(`4 · el respaldo de la tasa (${CP.DEFAULTS_CONFIG_PUBLICA.tasa_hipotecaria}) no es la referencia del motor (${MARKET_AVG_TASA_UF}): el wizard prellenaría una tasa y el motor juzgaría contra otra`);
 
+  // ── 5 · la base: la política de lectura pública es la misma lista; anon y authenticated, solo SELECT ─────────
+  // (13-oct-2026) La política «Public read config» era `using (true)`: la anon key leía la tabla entera directo de
+  // Supabase. La ÚLTIMA migración que la toca fija sus claves, y tienen que ser exactamente las de la lista: si la
+  // lista crece sin migración, `/api/config` serviría el respaldo; si la política se abre, vuelve el agujero.
+  const migraciones = readdirSync(join(RAIZ, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const sql = (n: string) => leer(`supabase/migrations/${n}`).replace(/--.*$/gm, "");
+  const conPolitica = migraciones.filter((n) => /"Public read config"/.test(sql(n)));
+  const ultima = conPolitica[conPolitica.length - 1];
+  const politica = ultima ? /"Public read config"\s+on\s+public\.config\s+using\s*\(\s*key\s*(=\s*'([a-z_]+)'|in\s*\(([^)]*)\))\s*\)/i.exec(sql(ultima)) : null;
+  const enPolitica = new Set(politica ? (politica[2] ? [politica[2]] : (politica[3] ?? "").split(",").map((s) => s.trim().replace(/^'|'$/g, ""))) : []);
+  if (!politica) F(`5 · la última migración que toca «Public read config» (${ultima ?? "ninguna"}) no la restringe por clave: la anon key lee la tabla entera`);
+  else if ([...lista].sort().join() !== [...enPolitica].sort().join()) F(`5 · la política RLS deja leer ${[...enPolitica].join(", ")} y la lista sirve ${[...lista].join(", ")}: tienen que ser las mismas`);
+  const conPermisos = migraciones.filter((n) => /revoke\s+all\s+on\s+table\s+public\.config\s+from\s+anon,\s*authenticated\s*;/i.test(sql(n)));
+  const revoca = conPermisos[conPermisos.length - 1];
+  if (!revoca || !/revoke\s+all\s+on\s+table\s+public\.config\s+from\s+anon,\s*authenticated\s*;\s*grant\s+select\s+on\s+table\s+public\.config\s+to\s+anon,\s*authenticated\s*;/i.test(sql(revoca)))
+    F("5 · ninguna migración les quita a anon y authenticated los permisos que no usan sobre `config` (TRUNCATE no pasa por RLS)");
+  for (const n of migraciones.filter((m) => revoca && m > revoca)) {
+    if (/grant\s+(?!select\s+on)[^;]*\bon\s+(table\s+)?public\.config\b[^;]*\bto\b[^;]*\b(anon|authenticated|public)\b/i.test(sql(n))) F(`5 · ${n} les devuelve a anon o authenticated un permiso que no es SELECT sobre \`config\``);
+  }
+
+  // ── 6 · ningún lector de las claves internas usa la anon key ni el cliente de la sesión ─────────────────────
+  // Con la política del §5, la anon key —y el cliente de la sesión, que corre como anon o authenticated— solo ve
+  // la lista: un lector de `uf_value` o del checkpoint con ese cliente recibiría vacío y caería a su respaldo sin
+  // avisar. El único que lee con la sesión es `getConfig`, detrás de `/api/config` (§3). Se mira el archivo que
+  // lee la tabla y, si lee con un cliente que recibe por parámetro, también a quienes lo llaman.
+  const fuentesTodas = [...archivos("src"), ...archivos("scripts").filter((p) => !p.startsWith("scripts/_archivo/") && !p.startsWith("scripts/eval/golden/"))];
+  const usaSesionOAnon = (s: string) => /NEXT_PUBLIC_SUPABASE_ANON_KEY|@\/lib\/supabase\/(server|client)["']|supabase\/(server|client)["']/.test(s);
+  const lectores = fuentesTodas.filter((p) => /\.from\(["']config["']\)/.test(sinComentarios(leer(p))));
+  if (lectores.length < 5) F(`6 · el censo de lectores de \`config\` no corrió (${lectores.length} archivos)`);
+  // Un AYUDANTE es una función que recibe el cliente por parámetro y con él lee `config` (o se lo pasa a otro
+  // ayudante: se sigue de forma transitiva más abajo). Su cuerpo es el tramo hasta la siguiente definición de
+  // primer nivel.
+  const tramo = (s: string, i: number) => {
+    const r = /\n(?:export |async function |function |const |let |type |interface )/g;
+    r.lastIndex = i + 1;
+    const m = r.exec(s);
+    return s.slice(i, m ? m.index : s.length);
+  };
+  const ayudantes: string[] = [];
+  for (const p of lectores) {
+    const s = sinComentarios(leer(p));
+    if (p === "src/lib/config-store.ts") continue;
+    if (usaSesionOAnon(s)) F(`6 · ${p} lee \`config\` y usa la anon key o el cliente de la sesión: con la política nueva vería solo la lista`);
+    for (const m of s.matchAll(/(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(\s*(\w+)\s*:\s*SupabaseClient/g)) {
+      if (new RegExp(`\\b${m[2]}\\.from\\(["']config["']\\)`).test(tramo(s, m.index!))) ayudantes.push(m[1]);
+    }
+  }
+  // A quien llama a un ayudante se le mira el ARGUMENTO, no el archivo: muchas rutas usan el cliente de la sesión
+  // para saber quién es la persona y le pasan al ayudante otro, de service role. El argumento tiene que venir de un
+  // constructor con la clave de service role (los de la biblioteca se verifican en su fuente; los locales, en el
+  // archivo) o de `requireAdminPage`.
+  const DE_SERVICIO: Record<string, string> = {
+    createServiceClient: "src/lib/supabase/service.ts",
+    createAnonPipelineClient: "src/lib/api-helpers/anon-cap.ts",
+    createAdminServiceClient: "src/lib/admin-auth.ts",
+  };
+  for (const [fn, p] of Object.entries(DE_SERVICIO)) {
+    const def = new RegExp(`export function ${fn}\\(\\)[^{]*\\{([^}]*)\\}`).exec(sinComentarios(leer(p)));
+    if (!def || !/SUPABASE_SERVICE_ROLE_KEY!/.test(def[1]) || /ANON_KEY/.test(def[1])) F(`6 · \`${fn}\` (${p}) no construye un cliente con la clave de service role`);
+  }
+  const conServicio = (s: string, arg: string) => {
+    if (new RegExp(`const\\s*\\{[^}]*\\b${arg}\\b[^}]*\\}\\s*=\\s*await\\s+requireAdminPage\\(`).test(s)) return true;
+    const ligado = new RegExp(`const\\s+${arg}\\s*=\\s*(\\w+)\\(\\)`).exec(s);
+    if (!ligado) return false;
+    if (DE_SERVICIO[ligado[1]]) return true;
+    const local = new RegExp(`function ${ligado[1]}\\(\\)[^{]*\\{([^}]*)\\}`).exec(s);
+    return !!local && /SUPABASE_SERVICE_ROLE_KEY!/.test(local[1]) && !/ANON_KEY/.test(local[1]);
+  };
+  // Si el argumento es a su vez el parámetro de la función que llama, esa función pasa a ser ayudante y se miran
+  // SUS llamadas (transitivo, con una cola).
+  const textos = new Map(fuentesTodas.map((p) => [p, sinComentarios(leer(p))]));
+  const cola = [...ayudantes];
+  let llamadas = 0;
+  while (cola.length) {
+    const fn = cola.shift()!;
+    for (const [p, s] of textos) {
+      for (const m of s.matchAll(new RegExp(`(?<!function\\s)\\b${fn}\\(\\s*(\\w+)`, "g"))) {
+        llamadas++;
+        const arg = m[1];
+        if (conServicio(s, arg)) continue;
+        const antes = [...s.slice(0, m.index).matchAll(/(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g)].pop();
+        if (antes && new RegExp(`\\b${arg}\\s*:\\s*SupabaseClient\\b`).test(antes[2])) {
+          if (!ayudantes.includes(antes[1])) { ayudantes.push(antes[1]); cola.push(antes[1]); }
+          continue;
+        }
+        F(`6 · ${p} le pasa a \`${fn}\` (lee \`config\`) el cliente \`${arg}\`, que no sale de un constructor de service role`);
+      }
+    }
+  }
+  if (llamadas < 5) F(`6 · el censo de llamadas a los ayudantes que leen \`config\` no corrió (${llamadas})`);
+  for (const esperado of ["leerConfigGuia", "leerCheckpointBackfill", "calcularYGuardarGuia"]) if (!ayudantes.includes(esperado)) F(`6 · el censo no encontró a \`${esperado}\` entre los que leen \`config\` con un cliente recibido (¿corrió?)`);
+  const usanGetConfig = fuentesTodas.filter((p) => p !== "src/lib/config-store.ts" && /\bgetConfig\b/.test(sinComentarios(leer(p))));
+  if (usanGetConfig.join() !== "src/app/api/config/route.ts") F(`6 · \`getConfig\` (lee con el cliente de la sesión) se usa fuera de /api/config: ${usanGetConfig.join(", ")}`);
+
   if (fallas.length) {
     console.log(`  ✗ CONFIG-PUBLICA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — /api/config sirve solo ${[...lista].join(", ")} (lo que pide el navegador); toda otra clave, exista o no, recibe el mismo 404 sin consultar la base; el respaldo de la tasa es la referencia del motor`);
+    console.log(`  ✓ VERDE — /api/config sirve solo ${[...lista].join(", ")} (lo que pide el navegador); toda otra clave, exista o no, recibe el mismo 404 sin consultar la base; el respaldo de la tasa es la referencia del motor; la política RLS lee la misma lista y anon/authenticated solo SELECT; ningún lector de claves internas usa la anon key ni la sesión (censo: ${lectores.length} lectores, ayudantes ${ayudantes.join(", ")}, ${llamadas} llamadas)`);
   }
   return { hard: fallas.length };
 }
