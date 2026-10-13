@@ -82,6 +82,7 @@ import { runTareasLargasTier } from "./tareas-largas-catch-test";
 import { runTicketRegresoTier } from "./ticket-regreso-catch-test";
 import { runTicketIosTier } from "./ticket-ios-catch-test";
 import { runConfigPublicaTier } from "./config-publica-catch-test";
+import { runMetaAdsSinCampanaTier } from "./meta-ads-sin-campana-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
@@ -426,6 +427,9 @@ function printSeed(r: SeedReport) {
   // Tier CONFIG-PUBLICA (13-oct-2026, 0 tokens): /api/config sirve solo la lista cerrada de claves que lee el
   // navegador; toda otra clave, exista o no, recibe el mismo 404 sin consultar la base. En rojo por mutación.
   totalHard += (await runConfigPublicaTier()).hard;
+  // Tier META-ADS-SIN-CAMPANA (13-oct-2026, 0 tokens): sin un token válido el cron de Meta Ads sale bien en silencio
+  // con «sin campaña activa» y el vigilante no lo cuenta; con token, normal. En rojo por mutación.
+  totalHard += (await runMetaAdsSinCampanaTier()).hard;
   // Tier INMEDIATO (05-oct-2026, 0 tokens): el aviso a quien piensa comprar ya. En rojo por mutación.
   totalHard += (await runInmediatoTier()).hard;
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;
