@@ -177,7 +177,7 @@ export async function runPrechequeoPresupuestoTier(): Promise<{ hard: number }> 
     const log = ruta.slice(ruta.indexOf("console.log(`[semanal-prechequeo] cierre"));
     if (!/^console\.log\(`\[semanal-prechequeo\] cierre \$\{JSON\.stringify\(\{[^}]*ms: Date\.now\(\) - t0,[^}]*empezoEn: posicion\(desde\), sigueEn: posicion\(r\.siguiente\)[^}]*msChequeos: r\.msChequeos, msPasoMax: r\.msPasoMax/.test(log) || /userId|siguiente: r\.siguiente/.test(log.slice(0, log.indexOf("})}`)")))) F("5 · el cierre no deja en los logs la duración, lo de cada aviso y dónde empezó y quedó (o deja el id de la persona)");
     // Dónde quedó lleva un id de usuario: va a `metrics_daily` (solo el servidor), nunca a `config`, que
-    // `/api/config?key=` devuelve al público.
+    // cualquiera lee con la anon key (política «Public read config»).
     const avanceSrv = srv.slice(srv.indexOf("export async function leerAvancePrechequeo"), srv.indexOf("function candidatoDeFila"));
     if (!/from\("metrics_daily"\)/.test(avanceSrv) || !/guardarMetrica\(admin, /.test(avanceSrv) || /from\("config"\)/.test(avanceSrv)) F("5 · dónde quedó no se guarda en `metrics_daily` (o se guarda en `config`, que es pública)");
   }
