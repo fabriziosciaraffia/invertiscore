@@ -53,11 +53,12 @@ export function eventoCorreoEnviado(args: { tipo: TipoCorreo; distinctId: string
   };
 }
 
-/** Los eventos del webhook de Resend que se miden, y su nombre en PostHog. */
+/** Los eventos del webhook de Resend que se miden, y su nombre en PostHog. Sin `email.clicked` (13-oct-2026, decisión
+ *  de Fabrizio): los clics los medimos nosotros (`semanal_clic`, `aviso_inmediato_clic`, con destino), y el seguimiento
+ *  de clics de Resend reescribe los enlaces. Las aperturas sí, como `correo_abierto`. */
 export const EVENTOS_RESEND: Record<string, string> = {
   "email.delivered": "correo_entregado",
   "email.opened": "correo_abierto",
-  "email.clicked": "correo_clic",
   "email.bounced": "correo_rebotado",
   "email.complained": "correo_spam",
 };
@@ -105,7 +106,6 @@ export function eventoDeResend(carga: unknown, svixId: string): EventoServidor |
       tipo: tag(c.data.tags, "tipo"),
       email_id: c.data.email_id ?? null,
       asunto: c.data.subject ?? null,
-      ...(c.type === "email.clicked" ? { link: c.data.click?.link ?? null } : {}),
       ...(c.type === "email.bounced" ? { rebote: c.data.bounce?.type ?? null } : {}),
     },
   };

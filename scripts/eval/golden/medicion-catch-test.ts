@@ -121,8 +121,12 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     if (!verificarFirmaSvix({ ...base, svixSignature: `v1,otra ${`v1,${firma}`}` })) F("4 · varias firmas separadas por espacio no se aceptan");
     const ev = eventoDeResend(JSON.parse(cuerpo), "msg_1");
     if (ev?.event !== "correo_abierto" || ev.distinctId !== "u-1" || ev.properties?.tipo !== "informe_listo" || ev.uuid !== uuidDeterminista("resend:msg_1") || ev.timestamp !== "2026-09-28T20:00:00.000Z") F(`4 · eventoDeResend no mapea la apertura con la persona del tag (${JSON.stringify(ev)})`);
+    // ⚠ ACTA (13-oct-2026, decisión de Fabrizio): el clic de Resend ya NO se mide —los clics los medimos nosotros, con
+    // destino—; la apertura sí. La identidad sin pid se prueba con la apertura.
     const clic = eventoDeResend({ type: "email.clicked", data: { email_id: "re_1", to: "x@y.cl", tags: [{ name: "tipo", value: "boleta" }], click: { link: "https://refranco.ai/a" } } }, "msg_2");
-    if (clic?.event !== "correo_clic" || clic.properties?.link !== "https://refranco.ai/a" || clic.distinctId !== distinctIdDeCorreo("x@y.cl") || clic.properties?.tipo !== "boleta") F("4 · el clic no lleva el link ni cae a la identidad derivada del correo sin pid");
+    if (clic !== null) F("4 · el clic de Resend se sigue midiendo (los clics los medimos nosotros)");
+    const abre = eventoDeResend({ type: "email.opened", data: { email_id: "re_1", to: "x@y.cl", tags: [{ name: "tipo", value: "boleta" }] } }, "msg_3");
+    if (abre?.event !== "correo_abierto" || abre.distinctId !== distinctIdDeCorreo("x@y.cl") || abre.properties?.tipo !== "boleta") F("4 · la apertura no llega como correo_abierto ni cae a la identidad derivada del correo sin pid");
     if (eventoDeResend({ type: "email.sent", data: { to: "x@y.cl" } }, "m") !== null) F("4 · un evento de Resend que no se mide igual se manda");
     for (const [tipo, nombre] of Object.entries(EVENTOS_RESEND)) if (!/^correo_[a-z]+$/.test(nombre) || !/^email\./.test(tipo)) F(`4 · el mapa de eventos de Resend tiene un nombre raro: ${tipo} → ${nombre}`);
     const ruta = sinComentarios(leer("src/app/api/webhooks/resend/route.ts"));
