@@ -106,7 +106,7 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
   if (COMO_ENTRAR !== "Para entrar: tu correo y un código. Sin contraseña.") F("8 · la frase de cómo entrar no es la aprobada");
   if (!correoBienvenida({ nombre: "Ana" }).html.includes(COMO_ENTRAR)) F("8 · la bienvenida no dice cómo se entra");
   if (ESTAS_DENTRO.comoEntrar !== COMO_ENTRAR || !/\{ESTAS_DENTRO\.comoEntrar\}/.test(leer("src/components/lo-que-sigue/EstasDentro.tsx"))) F("8 · «Estás dentro» no dice cómo se entra");
-  const conDeptos = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "1 dormitorio", piePct: 20, plazoAnios: 25, deptos: [], saldo: 1, conRegalo: false, presentacion: true, urlBoton: "u", urlComprar: "c", urlBaja: "b" });
+  const conDeptos = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "1 dormitorio", piePct: 20, plazoAnios: 25, deptos: [], saldo: 1, conRegalo: false, presentacion: true, urlBoton: "u", urlTres: "c", urlBaja: "b" });
   if (!conDeptos.html.includes(COMO_ENTRAR)) F("8 · el primer semanal no dice cómo se entra");
 
   // ── 9 · aperturas sí, clics de Resend no ────────────────────────────────────

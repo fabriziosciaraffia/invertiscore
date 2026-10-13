@@ -43,7 +43,9 @@ export async function POST(request: Request) {
 
   const admin = createAnonPipelineClient();
   try {
-    const o = await leerOrigenGuia(admin, b.origenId);
+    // Desde el semanal, el origen puede ser un informe de renta corta (13-oct-2026: quien solo analizó renta corta
+    // recibe los deptos de renta larga de sus comunas); la selección se valida abajo contra ese origen.
+    const o = await leerOrigenGuia(admin, b.origenId, { rentaCorta: typeof b.semanal === "string" });
     if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
     // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada); desde el
     // correo semanal, la de esa selección, que tiene que ser de esta persona, de este origen y con este aviso.

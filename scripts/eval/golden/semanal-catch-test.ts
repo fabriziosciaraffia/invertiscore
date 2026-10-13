@@ -121,7 +121,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   const base: DatosCorreoSemanal = {
     variante: "banda", nombre: "Camila", busca: textoBusca({ dormitorios: [2], comunas: ["Ñuñoa", "Macul"], precioMaxUf: 4500 }), piePct: 20, plazoAnios: 30,
     deptos: [1, 2, 3].map((i) => ({ comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: 4290 + i, veredicto: "COMPRAR", score: 80, flujo: i === 3 ? -18000 : 64000, url: `https://x/clic?a=${i}` })),
-    saldo: 0, conRegalo: false, urlBoton: "https://x/semanal", urlComprar: "https://x/comprar", urlBaja: "https://x/baja",
+    saldo: 0, conRegalo: false, urlBoton: "https://x/semanal", urlTres: "https://x/tres", urlBaja: "https://x/baja",
   };
   if (base.busca !== "2 dormitorios, Ñuñoa y Macul, hasta UF 4.500") F(`4 · lo que busca no se lee: «${base.busca}»`);
   const banda = correoSemanal(base).html;
@@ -135,14 +135,17 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!h.includes(`color: ${COLOR_VEREDICTO.COMPRAR};">Comprar`) || COLOR_VEREDICTO.COMPRAR !== "#2B558F") F(`4 · ${n}: el veredicto no va en su color`);
     if ((h.match(new RegExp(`<td bgcolor="${ROJO}" style="border-radius: 999px; background: ${ROJO};">`, "g")) ?? []).length !== 1) F(`4 · ${n}: el botón principal no es uno y rojo`);
     if (/oportunidad|portafolio|exclusiv/i.test(h)) F(`4 · ${n}: aparece una palabra vedada`);
-    if (/14\.990|14990|pack/i.test(h)) F(`4 · ${n}: el correo ofrece el pack`);
+    if (/14\.990|14990|pack/i.test(h)) F(`4 · ${n}: el correo ofrece el ticket de $14.990`);
     if (!h.includes('href="https://x/baja"') || !h.includes(SEMANAL.baja)) F(`4 · ${n}: sin el enlace para dejar de recibirlo`);
   }
-  if (!banda.includes(`<a href="https://x/comprar" style="display: inline-block; padding: 15px 30px;`) || !banda.includes(">Analizar uno · $9.990</a>")) F("4 · sin saldo el botón no es «Analizar uno · $9.990» a comprar");
+  // Sin saldo (13-oct-2026, decisión de Fabrizio): el mismo «Analizar uno» a la selección y, debajo, la línea del pack de
+  // tres (lo fija CORREOS-RECORRIDO). Hasta entonces era «Analizar uno · $9.990» a comprar el suelto.
+  if (!banda.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !banda.includes(">Analizar uno</a>") || !banda.includes(`<a href="https://x/tres"`) || /\$9\.990/.test(banda)) F("4 · sin saldo el botón no es «Analizar uno» a la selección con la línea del pack debajo");
   if (!tarjetas.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !tarjetas.includes(">Analizar uno</a>")) F("4 · con saldo el botón no es «Analizar uno» a la selección");
   if (!regalo.includes(`<b>${SEMANAL.regalo}</b>`) || banda.includes(SEMANAL.regalo)) F("4 · el regalo no sale solo cuando corresponde");
   if (!banda.includes("−$18.000") || !banda.includes(`color: ${ROJO};">−$18.000`)) F("4 · el flujo negativo no va en rojo");
-  if (RUTA_SUELTO_SEMANAL !== "/checkout?product=single&origen=semanal") F("4 · el «Analizar uno · $9.990» no compra el suelto marcado como del correo");
+  // `ir=comprar` sigue llevando al suelto: es lo que ofrecían los correos que ya salieron con «Analizar uno · $9.990».
+  if (RUTA_SUELTO_SEMANAL !== "/checkout?product=single&origen=semanal") F("4 · el «Analizar uno · $9.990» de los correos ya enviados no compra el suelto marcado como del correo");
   for (const t of [SEMANAL.titular, SEMANAL.intro(3, base.busca, "20", 30), SEMANAL.regaloBajada, SEMANAL.revisados, SEMANAL.porQue]) if (VOSEO.test(t)) F(`4 · voseo: «${t}»`);
   if (varianteDe("a") === varianteDe("b") && varianteDe("b") === varianteDe("c") && varianteDe("c") === varianteDe("d")) F("4 · las variantes no se reparten");
 
@@ -174,7 +177,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/event: "semanal_clic"/.test(clic)) F("7 · falta semanal_clic");
   const conf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   if (!/deCorreo\?\.origen === "semanal"\) \{\s*await capturarServidor\(\{ event: "semanal_compra"/.test(conf) || !/\.\.\.\(prePaymentData\?\.origen === "semanal" \? \{ origen: "semanal",/.test(conf)) F("7 · la compra que vino del correo no se mide (o se pierde el origen al confirmar)");
-  if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/searchParams\.get\("origen"\) === "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
+  if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/const origenParam = searchParams\.get\("origen"\);\s*const origen = origenParam === "semanal" \? "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
   const cg = sinComentarios(leer("src/lib/credits-grant.ts"));
   if (!/if \(updated && grant\.source === FUENTE_REGALO_SEMANAL\) \{\s*void capturarServidor\(\{ event: "semanal_regalo_usado"/.test(cg) || !/\.select\("id, remaining, source"\)/.test(cg)) F("7 · el regalo usado no se mide");
 
@@ -261,7 +264,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
 
   // 11 · a quién y la presentación
   {
-    if (!/let q = admin\.from\(tabla\)\.select\("user_id"\)\.not\("user_id", "is", null\);\s*if \(tabla === "analisis"\) q = q\.eq\("tipo_analisis", "long-term"\);/.test(srv) || !/await juntar\("perfiles_inversion"\);\s*await juntar\("analisis"\);/.test(srv)) F("11 · el correo no se le arma a toda persona con un informe de renta larga");
+    // Desde el 13-oct-2026 también a quien solo tiene informes de renta corta (decisión de Fabrizio; CORREOS-RECORRIDO).
+    if (!/let q = admin\.from\(tabla\)\.select\("user_id"\)\.not\("user_id", "is", null\);\s*if \(tabla === "analisis"\) q = q\.in\("tipo_analisis", \["long-term", "short-term"\]\);/.test(srv) || !/await juntar\("perfiles_inversion"\);\s*await juntar\("analisis"\);/.test(srv)) F("11 · el correo no se le arma a toda persona con un informe");
     const fi = filaDesdeInforme({ created_at: "2026-08-01T00:00:00Z", comuna: "Ñuñoa", input_data: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, precio: 4320, piePct: 20, plazoCredito: 25 } });
     if (fi.tipologia !== "2D2B" || fi.comuna !== "Ñuñoa" || fi.presupuestoUf !== 4320 || fi.piePct !== 20 || fi.plazoAnios !== 25 || fi.modalidad !== "ltr") F(`11 · el informe no se lee como fila de perfil (${JSON.stringify(fi)})`);
     const pf = perfilDeBusqueda([fi]);
@@ -390,7 +394,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/"5 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
   }
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo al suelto, una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe de renta larga, presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -454,3 +458,7 @@ if (require.main === module) {
 //   §14 (05-oct-2026, el reintento no alerta): 3/3 ROJO. R1 la última corrida es la de las 22 · R2 la falla intermedia
 //   cuenta como fallida · R3 el rearmado intermedio cuenta como fallido. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).
+//   13-oct-2026 (decisión de Fabrizio: el registrado sin análisis compra el pack de tres; renta corta recibe el semanal):
+//   §4 sin saldo es «Analizar uno» a la selección con la línea del pack debajo (ya no «Analizar uno · $9.990»), §7 el
+//   checkout lee el origen por origenParam, §11 la lista incluye a quien solo tiene informes de renta corta. 3/3 ROJO:
+//   S-a el correo sin la línea del pack · S-b el checkout pierde el origen · S-c solo renta larga en la lista.

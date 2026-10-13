@@ -1,10 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // La casa (02-oct-2026, mockup aprobado por Fabrizio): el copy del dashboard de quien ya tiene informes.
 // Arriba el saldo; si compró el pack, la selección; después «Tu perfil de búsqueda»; abajo sus informes.
-// Quien no tiene análisis compra el SUELTO, no el pack: el pack de 3 vive solo en el ticket (lo fija el
-// tier CASA). El tier también fija cada frase.
+// Quien no tiene análisis compra el pack de tres por $19.990 (13-oct-2026, decisión de Fabrizio; lib/tres-analisis.ts),
+// con el suelto debajo. El ticket de $14.990 (pack3) sigue solo en el ticket, para el usuario nuevo en sus 24 horas
+// (lo fija el tier CASA). El tier también fija cada frase.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
+import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 
 const SUELTO = fmtCLP(SINGLE_PRICE);
 
@@ -12,8 +14,9 @@ export const CASA = {
   saludo: (nombre: string | null) => (nombre ? `Hola, ${nombre}.` : "Hola."),
   sin: {
     titulo: (informes: number) => (informes <= 1 ? "Tu primer informe ya está en tu cuenta." : `Tus ${informes} informes están en tu cuenta.`),
-    bajada: `Para analizar otro: ${SUELTO}, o con un plan.`,
-    boton: `Analizar otro depto · ${SUELTO}`,
+    bajada: `Para analizar otros: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
+    boton: TRES_COPY.boton,
+    suelto: `O uno solo · ${SUELTO}`,
     planes: "Ver planes",
   },
   regalo: {

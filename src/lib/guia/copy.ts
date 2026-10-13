@@ -30,7 +30,6 @@ export const GUIA = {
   registroEnviado: (correo: string) => `Te mandamos un código a ${correo}.`,
   entrarYAnalizar: "Entrar y analizar",
   otraCuenta: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
-  sinCreditos: "Ya usaste tus análisis.",
   error: "No pudimos generar el informe. Intenta de nuevo.",
   // 01-oct-2026: el aviso se despublicó entre la guía y el clic. No se descuenta nada y la guía lo reemplaza.
   despublicado: "Este aviso ya no está publicado.",

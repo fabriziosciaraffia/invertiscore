@@ -75,12 +75,19 @@ const num = (v: unknown): number | null => {
 };
 
 /** El informe de origen, si es de renta larga y trae con qué buscar. */
-export async function leerOrigenGuia(admin: SupabaseClient, analysisId: string): Promise<OrigenGuia | null> {
+/**
+ * `rentaCorta` (13-oct-2026): también un informe de renta corta sirve de origen, con su pie, su plazo y su tasa. Solo
+ * para el semanal de quien solo analizó renta corta (semanal-servidor.ts › origenDePersona, y «Analizar este» con el
+ * token de esa selección); la guía después del pack sigue siendo solo de renta larga.
+ */
+export async function leerOrigenGuia(admin: SupabaseClient, analysisId: string, opts: { rentaCorta?: boolean } = {}): Promise<OrigenGuia | null> {
   const { data } = await admin.from("analisis").select("id, user_id, tipo_analisis, comuna, input_data").eq("id", analysisId).maybeSingle();
-  if (!data || data.tipo_analisis !== "long-term") return null;
+  const corta = data?.tipo_analisis === "short-term" && !!opts.rentaCorta;
+  if (!data || (data.tipo_analisis !== "long-term" && !corta)) return null;
   const i = (data.input_data ?? {}) as Record<string, unknown> & { zonaRadio?: { lat?: unknown; lng?: unknown } };
-  const lat = num(i.zonaRadio?.lat), lng = num(i.zonaRadio?.lng);
-  const m2 = num(i.superficie), precioUF = num(i.precio), dormitorios = num(i.dormitorios);
+  // El wizard de renta corta guarda las coordenadas, la superficie y el precio con otros nombres.
+  const lat = corta ? num(i.lat) : num(i.zonaRadio?.lat), lng = corta ? num(i.lng) : num(i.zonaRadio?.lng);
+  const m2 = corta ? num(i.superficieUtil) : num(i.superficie), precioUF = corta ? num(i.precioCompraUF) : num(i.precio), dormitorios = num(i.dormitorios);
   const piePct = num(i.piePct), plazo = num(i.plazoCredito), tasa = num(i.tasaInteres);
   if (lat == null || lng == null || !m2 || !precioUF || dormitorios == null || piePct == null || !plazo || !tasa) return null;
   return {

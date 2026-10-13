@@ -140,11 +140,13 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (13-oct-2026) · con `await`, no `void`: la función respondía antes de que saliera el evento.
     if (!/if \(sel\.fuente === "inmediato"\) \{\s*await capturarServidor\(\{ event: "aviso_inmediato_clic"/.test(clic)) F("5 · falta aviso_inmediato_clic");
     if (!/if \(ir === "comprar" && sel\.fuente === "inmediato"\) return volver\(RUTA_SUELTO_INMEDIATO\);/.test(clic) || RUTA_SUELTO_INMEDIATO !== "/checkout?product=single&origen=inmediato") F("5 · «Analizar uno · $9.990» del aviso no compra el suelto marcado como del aviso");
-    if (!/searchParams\.get\("origen"\) === "inmediato" \? "inmediato"/.test(leer("src/app/checkout/page.tsx"))) F("5 · el checkout no lleva el origen del aviso");
+    if (!/origenParam === "inmediato" \? "inmediato"/.test(leer("src/app/checkout/page.tsx"))) F("5 · el checkout no lleva el origen del aviso");
     if (!/\.\.\.\(origenBody === "inmediato" \? \{ origen: "inmediato" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts")))) F("5 · el pago no guarda que vino del aviso");
     const conf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
     if (!/\.\.\.\(prePaymentData\?\.origen === "inmediato" \? \{ origen: "inmediato" \} : \{\}\)/.test(conf) || !/if \(deCorreo\?\.origen === "inmediato"\) \{\s*await capturarServidor\(\{ event: "aviso_inmediato_compra"/.test(conf)) F("5 · la compra que vino del aviso no se mide (o el confirm pierde el origen)");
-    if (!/inmediato \? RUTA_SUELTO_INMEDIATO : rutaSueltoSemanal\(variante\)/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("5 · la compra desde la página del aviso no va marcada como del aviso");
+    // ⚠ ACTA (13-oct-2026, decisión de Fabrizio) · la página compra el pack de tres, no el suelto; sigue marcada como del
+    // aviso cuando vino del aviso (CORREOS-RECORRIDO §6). El correo del aviso todavía ofrece el suelto (línea de arriba).
+    if (!/rutaTres\(inmediato \? "inmediato" : "semanal", \{ variante: inmediato \? null : variante,/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("5 · la compra desde la página del aviso no va marcada como del aviso");
     // La página del aviso también está viva (05-oct-2026): el caído se dice y trae el siguiente, guardado en su tabla.
     if (!/await seleccionViva\(admin, \{ tabla: sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones", id: sel\.id,/.test(sinComentarios(leer("src/app/semanal/page.tsx"))) || !/seleccionViva\(\s*admin: SupabaseClient,\s*sel: \{ tabla: "semanal_selecciones" \| "avisos_inmediatos";/.test(sem)) F("3 · la página del aviso no está viva (o guarda el reemplazo en otra tabla)");
   }
@@ -168,3 +170,5 @@ if (require.main === module) {
 //      el «Ya» · I19 la respuesta no se anota · I20 la pregunta sin marcar antes
 //   §5 I21 sin abierto del aviso · I22 la compra del aviso sin medir
 //   Después, con la página viva (05-oct-2026): I23 la página del aviso guarda el reemplazo en la tabla del semanal → ROJO (§3).
+//   13-oct-2026 (la página compra el pack de tres, no el suelto): 2/2 ROJO. I-a el checkout pierde el origen del aviso ·
+//   I-b la página del aviso compra como del semanal. El correo del aviso sigue ofreciendo el suelto (I12 intacta).

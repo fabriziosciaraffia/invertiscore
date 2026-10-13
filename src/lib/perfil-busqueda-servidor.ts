@@ -46,15 +46,32 @@ export function filaDesdeInforme(a: { created_at: string; comuna: string | null;
   };
 }
 
+/**
+ * Un informe de renta corta como fila de perfil (13-oct-2026): SOLO para quien no tiene ningún informe de renta larga
+ * (leerPerfilBusqueda). Así quien solo analizó renta corta tiene comunas, dormitorios y precio, y recibe el semanal con
+ * los deptos de renta larga de sus comunas (semanal-servidor.ts › prepararSeleccion).
+ */
+export function filaDesdeInformeStr(a: { created_at: string; comuna: string | null; input_data: unknown }): FilaPerfilInforme {
+  const i = (a.input_data ?? {}) as Record<string, unknown>;
+  return {
+    ...filaDesdeInforme(a),
+    modalidad: "str",
+    presupuestoUf: num(i.precioCompraUF),
+  };
+}
+
 export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string): Promise<PerfilDeLaPersona> {
-  const [{ data: filas, error: e1 }, { data: man, error: e2 }, { data: ltr, error: e3 }] = await Promise.all([
+  const [{ data: filas, error: e1 }, { data: man, error: e2 }, { data: ltr, error: e3 }, { data: str, error: e4 }] = await Promise.all([
     admin.from("perfiles_inversion")
       .select("analysis_id, created_at, tipologia, comuna, modalidad, presupuesto_uf, pie_pct, pref_tipologia, pref_comuna, pref_modalidad, horizonte_compra, pref_actualizado_at")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
     admin.from("perfil_busqueda").select("*").eq("user_id", userId).maybeSingle(),
     admin.from("analisis").select("id, created_at, comuna, input_data").eq("user_id", userId).eq("tipo_analisis", "long-term")
       .order("created_at", { ascending: false }).limit(200),
+    admin.from("analisis").select("id, created_at, comuna, input_data").eq("user_id", userId).eq("tipo_analisis", "short-term")
+      .order("created_at", { ascending: false }).limit(200),
   ]);
+  reportarFalloQuery(e4, { ruta: RUTA, operacion: "leer-informes-str", userId });
   reportarFalloQuery(e3, { ruta: RUTA, operacion: "leer-informes", userId });
   reportarFalloQuery(e1, { ruta: RUTA, operacion: "leer-perfiles", userId });
   reportarFalloQuery(e2, { ruta: RUTA, operacion: "leer-manual", userId });
@@ -81,6 +98,14 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
   for (const a of ltr ?? []) {
     if (conFila.has(a.id as string)) continue;
     informes.push(filaDesdeInforme({ created_at: a.created_at as string, comuna: (a.comuna as string | null) ?? null, input_data: a.input_data }));
+  }
+  // Quien solo tiene informes de renta corta (13-oct-2026): sus informes cuentan para el perfil. Con uno solo de renta
+  // larga, nada cambia.
+  if ((ltr ?? []).length === 0 && !informes.some((f) => f.modalidad === "ltr")) {
+    for (const a of str ?? []) {
+      if (conFila.has(a.id as string)) continue;
+      informes.push(filaDesdeInformeStr({ created_at: a.created_at as string, comuna: (a.comuna as string | null) ?? null, input_data: a.input_data }));
+    }
   }
   const m = man as Record<string, unknown> | null;
   const manual: PerfilManual = m

@@ -8,12 +8,15 @@ import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { SemanalLista } from "./semanal-lista";
+import { PreguntaCuando } from "./pregunta-cuando";
+import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /semanal (02-oct-2026): adonde lleva el correo semanal. Con sesión; la selección es la del token del
 // correo y tiene que ser de quien entró. Muestra los deptos del correo (el clicado primero) y, con saldo,
 // «Analizar este» genera el informe con sus números; sin saldo, el botón compra el suelto. Viva
 // (05-oct-2026): el que ya no está publicado lo dice y trae en su lugar el siguiente mejor, chequeado.
+// Arriba, a quien nunca contestó «¿Cuándo piensas comprar?», la pregunta una vez (13-oct-2026; pregunta-cuando.tsx).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
@@ -36,7 +39,9 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones", id: sel.id, userId: user.id, items: sel.items }, await leerConfigGuia(admin));
   const a = searchParams.a ?? null;
   const ordenados = a ? [...filas.filter((f) => f.item.avisoId === a), ...filas.filter((f) => f.item.avisoId !== a)] : filas;
-  const saldo = estadoSaldo(await leerSaldo(admin, user.id));
+  const [datosSaldo, perfilPersona] = await Promise.all([leerSaldo(admin, user.id), otraCuenta ? null : leerPerfilBusqueda(admin, user.id)]);
+  const saldo = estadoSaldo(datosSaldo);
+  const preguntarCuando = perfilPersona != null && perfilPersona.perfil.horizonte == null;
   const combo = sel.combinacion;
 
   return (
@@ -46,6 +51,8 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
         {otraCuenta ? (
           <p className="text-[15px]" role="alert" data-semanal="otra-cuenta">{SEMANAL_PAGINA.otraCuenta}</p>
         ) : (
+          <>
+          {preguntarCuando && <PreguntaCuando />}
           <SemanalLista
             token={t}
             origenId={sel.origen_analysis_id}
@@ -55,7 +62,9 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
             saldo={saldo}
             variante={sel.variante}
             inmediato={sel.fuente === "inmediato"}
+            rentaCorta={sel.rentaCorta}
           />
+          </>
         )}
       </main>
     </div>

@@ -4,7 +4,9 @@
 // Los deptos del correo semanal en Franco (02-oct-2026). Las tarjetas son las de la guía (guia.css): el
 // precio, el veredicto con su puntaje y el flujo con el pie y el plazo de la persona. «Analizar este»
 // genera el informe por la misma ruta que la guía (un crédito, una vez por persona y aviso, la ficha
-// releída antes de cobrar). Sin saldo, el único botón es el rojo: comprar el suelto.
+// releída antes de cobrar). Desde el 13-oct-2026 «Analizar este» abre primero el aviso (AvisoAntesDeAnalizar:
+// el depto y «Usa 1 de tus N análisis.»); sin saldo, el aviso ofrece el pack de tres, y abajo el botón rojo
+// compra el pack en lugar del suelto. Después de pagar, vuelve a esta página.
 // La página está VIVA (05-oct-2026): un depto que ya no está publicado lo dice —«Este ya no está
 // publicado»— y en su lugar va el siguiente mejor del perfil, chequeado (lo arma el servidor:
 // seleccionViva). Si «Analizar este» descubre que se dio de baja, la página se vuelve a pedir.
@@ -14,8 +16,9 @@ import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { MARCA_NEGOCIAR, SEMANAL_PAGINA, rutaSueltoSemanal, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
-import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
+import { LINEA_RENTA_CORTA, MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { rutaTres } from "@/lib/tres-analisis";
+import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
@@ -24,7 +27,7 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
 
-export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false }: {
+export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, rentaCorta = false }: {
   token: string;
   origenId: string | null;
   combinacion: { piePct: number; plazoAnios: number } | null;
@@ -34,11 +37,18 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
   variante: "banda" | "tarjetas" | null;
   /** Vino de un aviso inmediato (05-oct-2026): la compra se marca como venida del aviso. */
   inmediato?: boolean;
+  /** El perfil es de renta corta (13-oct-2026): los deptos son de renta larga y se dice. */
+  rentaCorta?: boolean;
 }) {
   const router = useRouter();
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
+  // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
+  const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean } | null>(null);
   const conSaldo = saldo.tipo !== "sin";
+  // El pack de tres, con el origen del correo y la vuelta a esta selección (con el depto, si se compró desde uno).
+  const rutaCompra = (avisoId?: string) =>
+    rutaTres(inmediato ? "inmediato" : "semanal", { variante: inmediato ? null : variante, volver: `/semanal?t=${token}${avisoId ? `&a=${avisoId}` : ""}` });
   const usa = saldo.tipo === "con" ? SEMANAL_PAGINA.usaUno(saldo.n) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
 
   async function analizar(it: ItemSemanal) {
@@ -57,7 +67,9 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
         if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { router.refresh(); break; }
-        setError({ avisoId: it.avisoId, texto: d.error === "sin-creditos" ? SEMANAL_PAGINA.sinCreditos : GUIA.error });
+        // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»).
+        if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); break; }
+        setError({ avisoId: it.avisoId, texto: GUIA.error });
         break;
       }
     } catch {
@@ -90,14 +102,12 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
             )}
           </div>
         </div>
-        {conSaldo && (
-          <div className="guia-acc">
-            <button type="button" className="guia-an" onClick={() => analizar(it)} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
-              {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
-            </button>
-            {usa && <span className="guia-cr">· {usa}</span>}
-          </div>
-        )}
+        <div className="guia-acc">
+          <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
+            {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
+          </button>
+          {usa && <span className="guia-cr">· {usa}</span>}
+        </div>
         {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
       </article>
     );
@@ -109,6 +119,7 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
     <section className="guia" data-semanal="lista">
       <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>
       {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
+      {rentaCorta && <p className="guia-txt" data-semanal="renta-corta"><b>{LINEA_RENTA_CORTA}</b></p>}
       {saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
       <div className="guia-lista">
         {filas.map((f) => (f.caido ? (
@@ -125,13 +136,22 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
       {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{SEMANAL_PAGINA.vacia}</p>}
       {!conSaldo && visibles > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">
-          <EnlaceCarga href={inmediato ? RUTA_SUELTO_INMEDIATO : rutaSueltoSemanal(variante)} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
+          <EnlaceCarga href={rutaCompra()} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
             {SEMANAL_PAGINA.comprar}
           </EnlaceCarga>
           <p className="text-[13px] text-[var(--franco-text-secondary)]">{SEMANAL_PAGINA.comprarBajada}</p>
         </div>
       )}
       <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>
+      {confirmar && (
+        <AvisoAntesDeAnalizar
+          depto={confirmar.it}
+          uso={confirmar.sin ? { tipo: "sin" } : saldo}
+          rutaCompra={rutaCompra(confirmar.it.avisoId)}
+          alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it); }}
+          alCancelar={() => setConfirmar(null)}
+        />
+      )}
     </section>
   );
 }

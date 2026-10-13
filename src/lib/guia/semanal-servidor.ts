@@ -63,13 +63,16 @@ type FilaRpc = {
 
 export type Candidato = CandidatoGuia & CandidatoSemanal;
 
-/** El informe de renta larga más reciente de la persona que trae con qué buscar (su tasa, su pie). */
-export async function origenDePersona(admin: SupabaseClient, userId: string): Promise<OrigenGuia | null> {
-  const { data } = await admin.from("analisis").select("id").eq("user_id", userId).eq("tipo_analisis", "long-term")
-    .order("created_at", { ascending: false }).limit(5);
-  for (const f of data ?? []) {
-    const o = await leerOrigenGuia(admin, f.id as string);
-    if (o) return o;
+/** El informe de renta larga más reciente de la persona que trae con qué buscar (su tasa, su pie). Con `rentaCorta`
+ *  (13-oct-2026), si no hay ninguno de renta larga, el de renta corta más reciente. */
+export async function origenDePersona(admin: SupabaseClient, userId: string, opts: { rentaCorta?: boolean } = {}): Promise<OrigenGuia | null> {
+  for (const tipo of opts.rentaCorta ? ["long-term", "short-term"] : ["long-term"]) {
+    const { data } = await admin.from("analisis").select("id").eq("user_id", userId).eq("tipo_analisis", tipo)
+      .order("created_at", { ascending: false }).limit(5);
+    for (const f of data ?? []) {
+      const o = await leerOrigenGuia(admin, f.id as string, { rentaCorta: tipo === "short-term" });
+      if (o) return o;
+    }
   }
   return null;
 }
@@ -104,9 +107,12 @@ export async function prepararSeleccion(
 ): Promise<Preparada> {
   const { perfil, semanalBajaAt } = await leerPerfilBusqueda(admin, userId);
   if (semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
-  // Los avisos se evalúan como arriendo largo: un perfil de renta corta no tiene con qué compararse.
+  // Los avisos se evalúan como arriendo largo. Un perfil de renta corta recibe igual el semanal (13-oct-2026, decisión de
+  // Fabrizio): los deptos de renta larga de sus comunas, con su pie y su plazo, y el correo dice que convienen para
+  // arriendo tradicional (`rentaCorta` en el correo y en la página). El aviso inmediato sigue solo para renta larga.
   const rango = rangoSemanal(perfil);
-  const o = perfil.completo && perfil.modalidad === "ltr" && rango ? await origenDePersona(admin, userId) : null;
+  const rentaCorta = perfil.modalidad === "str";
+  const o = perfil.completo && rango && (!rentaCorta || !opts.nuevosDesde) ? await origenDePersona(admin, userId, { rentaCorta }) : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
 
@@ -411,23 +417,29 @@ export interface SeleccionPorToken {
   combinacion: Combinacion | null;
   origen_analysis_id: string | null;
   variante: "banda" | "tarjetas" | null;
+  /** Cuándo salió el correo (13-oct-2026): el enlace inicia la sesión hasta 7 días después (semanal.ts › puedeEntrarPorCorreo). */
+  enviadaAt: string | null;
+  /** El perfil con que se armó era de renta corta (13-oct-2026): la página dice que los deptos son de renta larga. */
+  rentaCorta: boolean;
 }
 
 export async function seleccionPorToken(admin: SupabaseClient, token: string): Promise<SeleccionPorToken | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
-  const { data: s } = await admin.from("semanal_selecciones").select("id, user_id, semana, items, combinacion, origen_analysis_id, variante").eq("token", token).maybeSingle();
+  const { data: s } = await admin.from("semanal_selecciones").select("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil").eq("token", token).maybeSingle();
   if (s) {
     return {
       fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items: (s.items ?? []) as ItemSemanal[],
       combinacion: (s.combinacion ?? null) as Combinacion | null, origen_analysis_id: (s.origen_analysis_id as string | null) ?? null,
-      variante: (s.variante as "banda" | "tarjetas" | null) ?? null,
+      variante: (s.variante as "banda" | "tarjetas" | null) ?? null, enviadaAt: (s.enviada_at as string | null) ?? null,
+      rentaCorta: (s.perfil as { modalidad?: string } | null)?.modalidad === "str",
     };
   }
-  const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id").eq("token", token).not("enviado_at", "is", null).maybeSingle();
+  const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id, enviado_at").eq("token", token).not("enviado_at", "is", null).maybeSingle();
   if (!a) return null;
   return {
     fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: (a.items ?? []) as ItemSemanal[],
     combinacion: (a.combinacion ?? null) as Combinacion | null, origen_analysis_id: (a.origen_analysis_id as string | null) ?? null, variante: null,
+    enviadaAt: (a.enviado_at as string | null) ?? null, rentaCorta: false,
   };
 }
 
@@ -492,7 +504,8 @@ export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ us
   const juntar = async (tabla: "perfiles_inversion" | "analisis") => {
     for (let desde = 0; ; desde += 1000) {
       let q = admin.from(tabla).select("user_id").not("user_id", "is", null);
-      if (tabla === "analisis") q = q.eq("tipo_analisis", "long-term");
+      // También quien solo tiene informes de renta corta (13-oct-2026).
+      if (tabla === "analisis") q = q.in("tipo_analisis", ["long-term", "short-term"]);
       const { data, error } = await q.order("id").range(desde, desde + 999);
       if (error) throw new Error(`personas (${tabla}): ${error.message}`);
       for (const r of data ?? []) ids.add(r.user_id as string);
@@ -537,6 +550,8 @@ export function enlacesSemanal(sitio: string, token: string) {
     depto: (avisoId: string) => `${base}/clic?t=${token}&a=${avisoId}`,
     boton: `${base}/clic?t=${token}`,
     comprar: `${base}/clic?t=${token}&ir=comprar`,
+    /** El pack de tres (13-oct-2026): la línea del correo a quien no tiene análisis. */
+    tres: `${base}/clic?t=${token}&ir=tres`,
     baja: `${base}/baja?t=${token}`,
     /** Al perfil de búsqueda (13-oct-2026): el correo corto, para cambiar comunas. */
     perfil: `${base}/clic?t=${token}&ir=perfil`,
@@ -586,6 +601,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     variante,
     nombre: nombreReal(user.user_metadata),
     busca: textoBusca(fila.perfil),
+    rentaCorta: fila.perfil.modalidad === "str",
     piePct: fila.combinacion.piePct,
     plazoAnios: fila.combinacion.plazoAnios,
     deptos: deptos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
@@ -594,7 +610,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     regaloVence,
     presentacion,
     urlBoton: enlaces.boton,
-    urlComprar: enlaces.comprar,
+    urlTres: enlaces.tres,
     urlBaja: enlaces.baja,
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, variante);

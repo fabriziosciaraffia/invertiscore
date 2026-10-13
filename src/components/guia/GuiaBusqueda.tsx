@@ -15,6 +15,9 @@
 // él, la frase no inventa un número). La guía ya no se lee sin más: el servidor pide la sesión del dueño
 // del informe o la firma del pago (`pago`, la de la vuelta de Flow). Las dos props son opcionales: con
 // sesión (p.ej. desde el dashboard) basta con `analysisId`.
+// 13-oct-2026: «Analizar este» abre primero el aviso (AvisoAntesDeAnalizar: el depto y «Usa 1 de tus N
+// análisis.»), y sin análisis el mismo aviso ofrece el pack de tres y vuelve acá después de pagar. Se acabó el
+// callejón «Ya usaste tus análisis.»: si el servidor dice que no quedan, sale el aviso con el pack.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +29,10 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { GUIA, GUIA_SALDO } from "@/lib/guia/copy";
 import { urlGuia, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { RegistroEnTarjeta } from "./RegistroEnTarjeta";
+import { AvisoAntesDeAnalizar } from "./AvisoAntesDeAnalizar";
+import { usoDesdeSaldo } from "@/lib/guia/aviso-analizar";
+import { rutaTres } from "@/lib/tres-analisis";
+import type { EstadoSaldo } from "@/lib/casa-saldo";
 import "./guia.css";
 
 type Item = { avisoId: string; comuna: string; tipologia: string | null; m2: number; precioUF: number; distancia: string; veredicto: string | null; score: number | null; flujo: number | null };
@@ -42,8 +49,10 @@ const pct = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
  *  `saldo`: los análisis que le quedan a la cuenta (`null`/ausente = no se sabe; la frase no dice número).
  *  `pago`: la llave del pago (order + firma) para leer la guía sin sesión.
  *  `enCasa`: la guía dentro del dashboard (la casa, 02-oct-2026): otro título, un h2, y no cuenta como
- *  la pantalla de después de pagar. */
-export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null, saldo = null, pago = null, enCasa }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode; saldo?: number | null; pago?: LlavePago | null; enCasa?: { titulo: string } }) {
+ *  la pantalla de después de pagar.
+ *  `estado`: el saldo de la casa entero (13-oct-2026), para que el aviso antes de analizar distinga el regalo, el
+ *  plan y el cero; sin él, el aviso sale del número de `saldo`. */
+export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null, saldo = null, pago = null, enCasa, estado }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode; saldo?: number | null; pago?: LlavePago | null; enCasa?: { titulo: string }; estado?: EstadoSaldo }) {
   const posthog = usePostHog();
   const router = useRouter();
   const ctx: ContextoLqs = { analysisId, veredicto, modalidad: "ltr" };
@@ -53,6 +62,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   const [generando, setGenerando] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
+  // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan.
+  const [confirmar, setConfirmar] = useState<{ it: Item; sin: boolean } | null>(null);
   const precarga = rutaPrecarga(analysisId);
 
   useEffect(() => {
@@ -91,7 +102,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   async function analizar(it: Item, sesion = conSesion) {
     if (generando || !r || !r.disponible || !r.combinacion) return;
     if (!muestra) capturarLqs(posthog, EVENTOS_LQS.guiaAnalizarClick, ctx, { aviso_id: it.avisoId, score: it.score, estado: r.estado, con_sesion: sesion });
-    // Sin cuenta: el código se pide en la misma tarjeta; al entrar, el informe sale sin salir de acá.
+    // Sin cuenta: el código se pide en la misma tarjeta; al entrar, sale el aviso antes de analizar.
     if (!sesion) { setError(null); setRegistrando(it.avisoId); return; }
     // La demo muestra el registro de la tarjeta, pero no genera informes.
     if (muestra) return;
@@ -120,7 +131,9 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           void reemplazar();
           return;
         }
-        setError({ avisoId: it.avisoId, texto: d.error === "sin-creditos" ? GUIA.sinCreditos : d.error === "origen" ? GUIA.otraCuenta : GUIA.error });
+        // Sin análisis: el aviso con el pack, no el callejón (13-oct-2026).
+        if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); setGenerando(null); return; }
+        setError({ avisoId: it.avisoId, texto: d.error === "origen" ? GUIA.otraCuenta : GUIA.error });
         resuelto = true;
         break;
       }
@@ -132,7 +145,16 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     setGenerando(null);
   }
 
-  const usaUno = GUIA_SALDO.usaUno(saldo);
+  const usaUno = estado ? (estado.tipo === "con" ? GUIA_SALDO.usaUno(estado.n) : estado.tipo === "regalo" ? "va por cuenta de Franco" : null) : GUIA_SALDO.usaUno(saldo);
+  const uso = estado ?? usoDesdeSaldo(saldo);
+  // Con sesión, «Analizar este» abre el aviso; sin sesión, primero el código en la tarjeta.
+  const abrir = (it: Item) => {
+    if (!conSesion) { void analizar(it); return; }
+    setError(null);
+    setConfirmar({ it, sin: false });
+  };
+  // El pack de tres desde la guía, con la vuelta a esta misma pantalla.
+  const rutaCompra = () => rutaTres(enCasa ? "dashboard" : "guia", { volver: typeof window === "undefined" ? null : window.location.pathname + window.location.search });
   const frase = !r ? null : !r.disponible ? null : r.estado === "ninguno" ? GUIA.ninguno : r.estado === "ajustada" ? GUIA.ajustada : GUIA.cuerpo;
 
   return (
@@ -177,10 +199,10 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                     </div>
                   </div>
                   {registrando === it.avisoId ? (
-                    <RegistroEnTarjeta ctx={ctx} next={typeof window === "undefined" ? "/" : window.location.pathname + window.location.search} alEntrar={() => { setConSesion(true); void analizar(it, true); }} />
+                    <RegistroEnTarjeta ctx={ctx} next={typeof window === "undefined" ? "/" : window.location.pathname + window.location.search} alEntrar={() => { setConSesion(true); setRegistrando(null); setConfirmar({ it, sin: false }); }} />
                   ) : (
                     <div className="guia-acc">
-                      <button type="button" className="guia-an" onClick={() => analizar(it)} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
+                      <button type="button" className="guia-an" onClick={() => abrir(it)} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
                         {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
                       </button>
                       {usaUno && <span className="guia-cr">· {usaUno}</span>}
@@ -203,6 +225,15 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
       )}
       {r && r.disponible && r.estado !== "ninguno" && (
         <p className="guia-pie">{GUIA.antiguedad} {GUIA.pie}</p>
+      )}
+      {confirmar && (
+        <AvisoAntesDeAnalizar
+          depto={confirmar.it}
+          uso={confirmar.sin ? { tipo: "sin" } : uso}
+          rutaCompra={rutaCompra()}
+          alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it, true); }}
+          alCancelar={() => setConfirmar(null)}
+        />
       )}
     </section>
   );

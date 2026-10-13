@@ -83,3 +83,22 @@
 .guia-opcion { height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--franco-border); background: none; color: var(--franco-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .guia-opcion[data-activa="1"] { background: var(--franco-text); color: var(--franco-bg); border-color: var(--franco-text); }
 .guia-opcion:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* arriba de la página semanal (13-oct-2026): la misma pregunta, en una tarjeta antes de los deptos */
+.guia-cuando-arriba { margin: 0 0 20px; padding: 14px 16px; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card); }
+.guia-cuando-arriba .guia-cuando-t { color: var(--franco-text); }
+
+/* ── el aviso antes de gastar un análisis (13-oct-2026) ── el depto, lo que usa, Analizar / Cancelar. En tinta; el
+   único rojo es comprar el pack (sin análisis). En escritorio al centro; en teléfono abajo, botones a lo ancho. */
+.guia-aviso-fondo { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; padding: 16px; background: rgba(15, 15, 15, 0.48); }
+@media (min-width: 768px) { .guia-aviso-fondo { align-items: center; } }
+.guia-aviso { width: 100%; max-width: 420px; padding: 20px; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card); color: var(--franco-text); font-family: var(--font-ui), "Inter", system-ui, sans-serif; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); outline: 0; }
+.guia-aviso-t { margin: 0 0 10px; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 20px; line-height: 1.2; }
+.guia-aviso-depto { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.guia-aviso-uso { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary); }
+.guia-aviso-acc { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.guia-aviso-si, .guia-aviso-no { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 18px; border-radius: 99px; font: inherit; font-weight: 600; font-size: 15px; white-space: nowrap; cursor: pointer; text-decoration: none; }
+.guia-aviso-si { border: 0; background: var(--franco-text); color: var(--franco-bg); }
+.guia-aviso-compra { background: var(--signal-red); color: #FFFFFF; }
+.guia-aviso-no { border: 1.5px solid var(--franco-border); background: none; color: var(--franco-text); }
+.guia-aviso-si:focus-visible, .guia-aviso-no:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+@media (max-width: 767px) { .guia-aviso-acc { flex-direction: column-reverse; } .guia-aviso-si, .guia-aviso-no { width: 100%; } }

@@ -312,7 +312,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (/DESPUES_DE_PAGAR|fraseVeredicto|lqs-mat|lqs-btn|<DespuesDePagar\b/.test(gb)) F("7 · la guía vuelve a traer el bloque de color o la frase por veredicto");
   if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,320}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
   if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
-  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
+  // ⚠ ACTA (13-oct-2026) · con el estado de la casa entero (`estado`, para el aviso antes de gastar), la frase sale de él;
+  // sin él, del número de siempre.
+  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = estado \? \(estado\.tipo === "con" \? GUIA_SALDO\.usaUno\(estado\.n\) : estado\.tipo === "regalo" \? "va por cuenta de Franco" : null\) : GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
   if (!/capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad: "ltr" \}/.test(gb)) F("7 · la pantalla de después de pagar dejó de medir post_pago_visto");
   const cssGuia = leer("src/components/guia/guia.css");
   const cssTarjetas = cssGuia.slice(0, cssGuia.indexOf("/* ── el informe que sale de un aviso"));
@@ -323,7 +325,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // ── 8 · el código en la tarjeta ─────────────────────────────────────────────
   if (/router\.push\(`\/registro/.test(gb)) F("8 · quien pagó sin cuenta sale de la pantalla a registrarse");
   if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
-  if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); void analizar\(it, true\); \}\} \/>/.test(gb)) F("8 · al entrar con el código no se genera el informe de esa tarjeta");
+  // ⚠ ACTA (13-oct-2026, decisión de Fabrizio) · al entrar con el código sale el aviso antes de gastar de ESA tarjeta, y
+  // su «Analizar» genera el informe (CORREOS-RECORRIDO §5). Antes generaba de una.
+  if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\} \/>/.test(gb)
+    || !/alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it, true\); \}\}/.test(gb)) F("8 · al entrar con el código no se ofrece analizar esa tarjeta");
   const regT = sinComentarios(leer("src/components/guia/RegistroEnTarjeta.tsx"));
   if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
   if (/router\.|window\.location\.(href|assign)/.test(regT)) F("8 · el registro de la tarjeta navega fuera de la pantalla");
@@ -510,7 +515,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
       if (GUIA_SALDO.usaUno(n) !== usa) F(`11 · con saldo ${n} la tarjeta dice «${GUIA_SALDO.usaUno(n)}», no «${usa}»`);
     }
     if (DESPUES_DE_PAGAR.titular(2) !== "Tienes 2 análisis." || DESPUES_DE_PAGAR.titular(0) !== "Ya usaste tus análisis." || /\d/.test(DESPUES_DE_PAGAR.titular(null))) F("11 · sin guía, el titular no dice el saldo real (o inventa un número sin saldo)");
-    if (!/saldo = null, pago = null(?:, enCasa)? \}: \{[^}]*saldo\?: number \| null; pago\?: LlavePago \| null(?:; enCasa\?: \{ titulo: string \})? \}/.test(gb)) F("11 · GuiaBusqueda no recibe el saldo y la llave como props opcionales (rompe a quien la usa con sesión)");
+    if (!/saldo = null, pago = null(?:, enCasa)?(?:, estado)? \}: \{[^}]*saldo\?: number \| null; pago\?: LlavePago \| null(?:; enCasa\?: \{ titulo: string \})?(?:; estado\?: EstadoSaldo)? \}/.test(gb)) F("11 · GuiaBusqueda no recibe el saldo y la llave como props opcionales (rompe a quien la usa con sesión)");
     if (!/<GuiaBusqueda[\s\S]{0,200}?saldo=\{saldo\}[\s\S]{0,60}?pago=\{llavePago\}/.test(ret) || !/sinGuia=\{<DespuesDePagar [^>]*saldo=\{saldo\} \/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar [^>]*saldo=\{saldo\} \/>/.test(ret)) F("11 · la pantalla de después de pagar no pasa el saldo real a la guía o a «Tienes N análisis»");
     if (!/setSaldo\(typeof data\.saldo === "number" && !data\.ilimitado \? data\.saldo : null\);/.test(ret)) F("11 · la pantalla no toma el saldo de /api/payments/status");
     // Ningún «3» fijo dicho a quien pagó: ni en la guía, ni en después de pagar, ni en la vuelta sin sesión.
@@ -642,3 +647,5 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runGuiaBusquedaTier().then(({ hard }) => process.exit(hard ? 1 : 0));
 }
+// Cuarta vuelta (13-oct-2026, el aviso antes de gastar; CORREOS-RECORRIDO §5): 2/2 en rojo. G-a la tarjeta sin la
+// frase del regalo (el saldo entero de la casa) · G-b al entrar con el código se genera de una, sin el aviso.

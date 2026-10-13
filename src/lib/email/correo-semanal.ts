@@ -6,18 +6,19 @@
 //                  dentro y el mismo texto en el alt); debajo, las tarjetas.
 //   · «tarjetas» — el titular en serif, sin banda; las mismas tarjetas.
 // Las dos: cada depto es una tarjeta con el precio grande y el veredicto en su color (la tríada), y el
-// botón principal en rojo. Con análisis disponibles el botón dice «Analizar uno»; sin, «Analizar uno ·
-// $9.990» y lleva a comprar el SUELTO (el pack vive solo en el ticket). Nunca «oportunidades»,
-// «portafolio» ni «exclusivo».
+// botón principal en rojo, «Analizar uno», que lleva a la selección. Sin análisis disponibles, debajo, UNA línea con
+// el pack de tres por $19.990 (13-oct-2026, decisión de Fabrizio; lib/tres-analisis.ts): «Para analizarlos: 3 análisis
+// por $19.990, sin caducidad.», con el enlace en el pack. Hasta el 13-oct el botón sin saldo era «Analizar uno ·
+// $9.990» y compraba el suelto. Nunca «oportunidades», «portafolio» ni «exclusivo».
 // El respaldo (05-oct-2026): un depto de una comuna vecina lo dice la frase de arriba; uno que entra
 // como Ajustar negociable lleva «Conviene si lo negocias» bajo el precio. El PRIMER correo de cada
 // persona se presenta, con el enlace para dejar de recibirlos a la vista (no solo en el pie).
 // HTML de correo de verdad: tablas, estilos en línea, ancho 600, botón con fondo en la celda (Gmail e
 // iPhone Mail), sin CSS de fondo ni SVG, esquema de color claro.
 // ─────────────────────────────────────────────────────────────────────────────
-import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
+import { COMO_ENTRAR, LINEA_RENTA_CORTA, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
+import { TRES_COPY } from "@/lib/tres-analisis";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -47,8 +48,9 @@ export const SEMANAL = {
   regalo: "El próximo que analices va por cuenta de Franco.",
   regaloBajada: "Ya está cargado en tu cuenta.",
   saldo: (n: number) => (n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`),
-  botonConSaldo: "Analizar uno",
-  botonSinSaldo: `Analizar uno · ${fmtCLP(SINGLE_PRICE)}`,
+  boton: "Analizar uno",
+  /** Sin análisis, bajo el botón: el pack de tres (13-oct-2026). */
+  lineaTres: TRES_COPY.lineaCorreo,
   verDepto: "Ver este depto",
   alMes: "al mes",
   revisados: "Franco los revisó hace unas horas y seguían publicados. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
@@ -84,8 +86,11 @@ export interface DatosCorreoSemanal {
   regaloVence?: string | null;
   /** El primer correo de la persona: se presenta y deja la baja a la vista. */
   presentacion?: boolean;
+  /** Su perfil es de renta corta (13-oct-2026): los deptos son de renta larga y el correo lo dice. */
+  rentaCorta?: boolean;
   urlBoton: string;
-  urlComprar: string;
+  /** El pack de tres (13-oct-2026), por el clic: `ir=tres`. */
+  urlTres: string;
   urlBaja: string;
   urlBanda?: string;
 }
@@ -148,6 +153,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
   filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
   if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
+  if (d.rentaCorta) filas.push(parrafo(escaparHtml(LINEA_RENTA_CORTA), ` color: ${TINTA}; font-weight: 600;`));
   if (d.conRegalo) {
     filas.push(`<tr><td style="padding: 2px 0 18px 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -158,7 +164,11 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   for (const dep of d.deptos) filas.push(tarjeta(dep));
   const conSaldo = d.saldo == null || d.saldo > 0;
   if (d.saldo != null && d.saldo > 0 && !d.conRegalo) filas.push(parrafo(escaparHtml(SEMANAL.saldo(d.saldo)), " padding-top: 6px;"));
-  filas.push(botonRojo(conSaldo ? SEMANAL.botonConSaldo : SEMANAL.botonSinSaldo, conSaldo ? d.urlBoton : d.urlComprar));
+  filas.push(botonRojo(SEMANAL.boton, d.urlBoton));
+  if (!conSaldo) {
+    const l = SEMANAL.lineaTres;
+    filas.push(parrafo(`${escaparHtml(l.antes)}<a href="${d.urlTres}" style="color: ${TINTA}; font-weight: 600; text-decoration: underline;">${escaparHtml(l.enlace)}</a>${escaparHtml(l.despues)}`));
+  }
   filas.push(parrafo(escaparHtml(SEMANAL.revisados), ` font-size: 13px; color: ${TINTA_3};`));
 
   const html = `<!DOCTYPE html>

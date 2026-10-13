@@ -85,6 +85,7 @@ import { runConfigPublicaTier } from "./config-publica-catch-test";
 import { runMetaAdsSinCampanaTier } from "./meta-ads-sin-campana-catch-test";
 import { runEstudiosTier } from "./estudios-catch-test";
 import { runSemanalSinSilencioTier } from "./semanal-sin-silencio-catch-test";
+import { runCorreosRecorridoTier } from "./correos-recorrido-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
 import { runPesosDeHoyTier } from "./pesos-de-hoy-catch-test";
@@ -437,6 +438,9 @@ function printSeed(r: SeedReport) {
   // Tier SEMANAL-SIN-SILENCIO (13-oct-2026, 0 tokens): la pendiente no pierde la semana, sin deptos sale el correo corto,
   // las cuentas de prueba fuera y la baja llega a PostHog. En rojo por mutación.
   totalHard += (await runSemanalSinSilencioTier()).hard;
+  // Tier CORREOS-RECORRIDO (13-oct-2026, 0 tokens): el enlace del correo entra solo, el aviso antes de gastar un análisis,
+  // el pack de tres por $19.990, el «cuándo» arriba de la semana y renta corta con su línea. En rojo por mutación.
+  totalHard += (await runCorreosRecorridoTier()).hard;
   // Tier INMEDIATO (05-oct-2026, 0 tokens): el aviso a quien piensa comprar ya. En rojo por mutación.
   totalHard += (await runInmediatoTier()).hard;
   // Tier EJEMPLOS-GUARDADOS (29-sep-2026, 0 tokens): la landing y el demo no corren el motor por visita;

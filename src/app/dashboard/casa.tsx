@@ -14,12 +14,15 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
+import { rutaTres } from "@/lib/tres-analisis";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 
 export const RUTA_SUELTO = "/checkout?product=single";
+/** Sin análisis, el dashboard ofrece el pack de tres (13-oct-2026) y vuelve al dashboard después de pagar. */
+export const RUTA_TRES_CASA = rutaTres("dashboard", { volver: "/dashboard" });
 export const RUTA_NUEVO = "/analisis/nuevo-v4";
 
 const tarjeta = "rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)]";
@@ -53,12 +56,17 @@ export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes:
       </div>
       {estado.tipo === "sin" ? (
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <EnlaceCarga href={RUTA_SUELTO} className={botonLleno} style={{ background: "var(--signal-red)" }} data-casa="comprar-suelto">
+          <EnlaceCarga href={RUTA_TRES_CASA} className={botonLleno} style={{ background: "var(--signal-red)" }} data-casa="comprar-tres">
             {CASA.sin.boton}
           </EnlaceCarga>
-          <EnlaceCarga href="/pricing" className="text-center text-[13px] text-[var(--franco-text-secondary)] underline underline-offset-4" data-casa="planes">
-            {CASA.sin.planes}
-          </EnlaceCarga>
+          <div className="flex items-center justify-center gap-3 sm:justify-end">
+            <EnlaceCarga href={RUTA_SUELTO} className="text-center text-[13px] text-[var(--franco-text-secondary)] underline underline-offset-4" data-casa="comprar-suelto">
+              {CASA.sin.suelto}
+            </EnlaceCarga>
+            <EnlaceCarga href="/pricing" className="text-center text-[13px] text-[var(--franco-text-secondary)] underline underline-offset-4" data-casa="planes">
+              {CASA.sin.planes}
+            </EnlaceCarga>
+          </div>
         </div>
       ) : (
         <EnlaceCarga href={RUTA_NUEVO} className={botonBorde} data-casa="analizar-otro">

@@ -7,8 +7,9 @@
 //       modalidad, pie y plazo del más reciente; lo editado a mano MANDA, campo por campo.
 //   2 · EL SALDO REAL: plan / regalo / con N / sin, leído del ledger y del contador legacy.
 //   3 · EL COPY APROBADO, frase por frase.
-//   4 · EL REGISTRADO COMPRA EL SUELTO: el botón del saldo vacío va a /checkout?product=single con
-//       «Analizar otro depto · $9.990»; el pack no aparece en la casa.
+//   4 · EL REGISTRADO COMPRA EL PACK DE TRES (13-oct-2026, decisión de Fabrizio; antes, el suelto): el botón del
+//       saldo vacío va al checkout del pack de tres con «3 análisis · $19.990» y vuelve al dashboard; debajo, el
+//       suelto «O uno solo · $9.990». El ticket de $14.990 (pack3) no aparece en la casa.
 //   5 · EL ORDEN: saludo → saldo → (comprador) la selección → el perfil → sus informes.
 //   6 · LO EDITADO SE VALIDA Y SOLO LO ESCRIBE EL SERVIDOR: el PUT pide sesión; la tabla no acepta
 //       escrituras de anon/authenticated.
@@ -83,8 +84,9 @@ export function runCasaTier(): { hard: number } {
   // 3 · el copy
   const exactos: Array<[string, string]> = [
     [CASA.sin.titulo(1), "Tu primer informe ya está en tu cuenta."],
-    [CASA.sin.bajada, "Para analizar otro: $9.990, o con un plan."],
-    [CASA.sin.boton, "Analizar otro depto · $9.990"],
+    [CASA.sin.bajada, "Para analizar otros: 3 análisis por $19.990, sin caducidad."],
+    [CASA.sin.boton, "3 análisis · $19.990"],
+    [CASA.sin.suelto, "O uno solo · $9.990"],
     [CASA.regalo.titulo, "Tienes 1 análisis. Va por cuenta de Franco."],
     [CASA.con.titulo(3), "Te quedan 3 análisis"],
     [CASA.con.noVencen, "No vencen."],
@@ -95,13 +97,14 @@ export function runCasaTier(): { hard: number } {
   ];
   for (const [real, esperado] of exactos) if (real !== esperado) F(`3 · «${real}» debía ser «${esperado}»`);
 
-  // 4 · el suelto, no el pack
+  // 4 · el pack de tres; el suelto debajo; el ticket no
   const casa = sinComentarios(leer("src/app/dashboard/casa.tsx"));
   const copy = sinComentarios(leer("src/app/dashboard/casa-copy.ts"));
   const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
-  if (!/export const RUTA_SUELTO = "\/checkout\?product=single";/.test(casa) || !/<EnlaceCarga href=\{RUTA_SUELTO\}[^>]*data-casa="comprar-suelto">\s*\{CASA\.sin\.boton\}/.test(casa)) F("4 · el botón del saldo vacío no compra el análisis suelto");
+  if (!/export const RUTA_TRES_CASA = rutaTres\("dashboard", \{ volver: "\/dashboard" \}\);/.test(casa) || !/<EnlaceCarga href=\{RUTA_TRES_CASA\}[^>]*data-casa="comprar-tres">\s*\{CASA\.sin\.boton\}/.test(casa)) F("4 · el botón del saldo vacío no compra el pack de tres");
+  if (!/export const RUTA_SUELTO = "\/checkout\?product=single";/.test(casa) || !/<EnlaceCarga href=\{RUTA_SUELTO\}[^>]*data-casa="comprar-suelto">\s*\{CASA\.sin\.suelto\}/.test(casa)) F("4 · debajo del pack no está el suelto");
   for (const [n, s] of [["casa.tsx", casa], ["casa-copy.ts", copy], ["page.tsx", pag.replace(/\.eq\("product", "pack3"\)/, "")]] as const) {
-    if (/pack3|14\.990|14990|PACK_|3 análisis ·|Comprar 3/i.test(s)) F(`4 · el pack aparece en la casa (${n})`);
+    if (/pack3|14\.990|14990|PACK_/i.test(s)) F(`4 · el ticket de $14.990 aparece en la casa (${n})`);
   }
   if (!/fmtCLP\(SINGLE_PRICE\)/.test(copy)) F("4 · el precio del suelto no sale de SINGLE_PRICE");
 
@@ -131,7 +134,7 @@ export function runCasaTier(): { hard: number } {
   const frases = [...exactos.map((x) => x[0]), CASA.sin.titulo(4), CASA.plan.titulo, CASA.plan.bajada, CASA.perfil.cuando, ...Object.values(CASA.perfil.horizonte), ...Object.values(CASA.perfil.respondido), CASA.perfil.error];
   for (const t of frases) if (VOSEO.test(t)) F(`7 · voseo: «${t}»`);
   const rojos = casa.match(/signal-red/g) ?? [];
-  if (rojos.length !== 2 || !/style=\{\{ background: "var\(--signal-red\)" \}\} data-casa="comprar-suelto"/.test(casa) || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del botón de compra y del error (${rojos.length})`);
+  if (rojos.length !== 2 || !/style=\{\{ background: "var\(--signal-red\)" \}\} data-casa="comprar-tres"/.test(casa) || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del botón de compra y del error (${rojos.length})`);
   if (/font-mono|uppercase/.test(casa)) F("7 · la casa usa mono o mayúsculas");
 
   // 8 · «Tus informes» en el sistema nuevo
@@ -143,7 +146,7 @@ export function runCasaTier(): { hard: number } {
   if (!/data-casa="pagina" style=\{\{ fontFamily: "var\(--font-ui\), Inter/.test(pag)) F("8 · el dashboard no va en Inter");
   if (!/TEXTO_MODALIDAD\[label\]/.test(sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx")))) F("8 · el chip de modalidad no dice «Larga/Corta/Ambas»");
 
-  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, suelto y no pack, orden, escritura del servidor");
+  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, el pack de tres con el suelto debajo y sin el ticket, orden, escritura del servidor");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -176,3 +179,7 @@ if (require.main === module) {
 //   K19 el regalo sin su vencimiento · K20 el dashboard sin la fecha (02-oct-2026): 2/2 ROJO.
 //   §8 «Tus informes»: K21 vuelve font-mono al archivo · K22 vuelve uppercase a la tira · K23 «LARGA» en mayúsculas
 //   · K24 la página sin Inter · K25 el chip escribe la etiqueta cruda: 5/5 ROJO.
+//   13-oct-2026 (decisión de Fabrizio: el registrado sin análisis compra el pack de tres por $19.990): §3 y §4 pasan
+//   del suelto al pack, con el suelto debajo; el ticket de $14.990 sigue fuera de la casa. K10 se invierte: K26 el botón
+//   vuelve al suelto · K27 sin el suelto debajo · K28 el ticket pack3 en la casa · K29 el rojo deja el botón del pack.
+//   4/4 ROJO; cada archivo restaurado byte a byte.

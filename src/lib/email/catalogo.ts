@@ -40,7 +40,7 @@ const SEMANAL_MUESTRA = (variante: DatosCorreoSemanal["variante"], o: { saldo: n
   saldo: o.saldo,
   conRegalo: o.conRegalo,
   urlBoton: `${SITIO}/semanal`,
-  urlComprar: `${SITIO}/checkout?product=single&origen=semanal`,
+  urlTres: `${SITIO}/checkout?product=tres_analisis&origen=semanal`,
   urlBaja: `${SITIO}/semanal/baja`,
 });
 const EN_SIETE_DIAS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

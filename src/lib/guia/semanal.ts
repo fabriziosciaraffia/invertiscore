@@ -18,7 +18,7 @@
 //     próximo que analices va por cuenta de Franco.» con el crédito cargado. Una vez por persona.
 //     Registrarse no regala nada.
 // ─────────────────────────────────────────────────────────────────────────────
-import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
+import { TRES_COPY } from "@/lib/tres-analisis";
 import type { EstadoPublicacion } from "./publicacion";
 import type { Evaluado } from "./seleccion";
 
@@ -382,6 +382,25 @@ export function queEnviarSemanal(deptosVigentes: number): "seleccion" | "vacio" 
  *  armar a las 08, 09, 10 y 11 UTC, antes del envío de las 12. */
 export const HORAS_REINTENTO_LUNES = [8, 9, 10, 11] as const;
 
+/**
+ * EL ENLACE DEL CORREO ENTRA SOLO (13-oct-2026, decisión de Fabrizio): quien abre un enlace del semanal o del aviso
+ * inmediato en un aparato SIN sesión queda adentro como el dueño de esa selección, hasta 7 días después de que salió el
+ * correo. Con una sesión abierta —la suya o la de otra persona— no se toca nada. Después de los 7 días, «Entrar».
+ * Ojo: dentro de esa ventana el enlace vale como credencial; quien reciba el correo reenviado entra.
+ */
+export const DIAS_ENTRADA_POR_CORREO = 7;
+export function puedeEntrarPorCorreo(p: { conSesion: boolean; enviadaAt: string | null; ahora?: Date }): boolean {
+  if (p.conSesion || !p.enviadaAt) return false;
+  const t = Date.parse(p.enviadaAt);
+  if (!Number.isFinite(t)) return false;
+  const desde = (p.ahora ?? new Date()).getTime() - t;
+  return desde >= -5 * 60_000 && desde <= DIAS_ENTRADA_POR_CORREO * 864e5;
+}
+
+/** Quien solo analizó renta corta (13-oct-2026, decisión de Fabrizio): recibe los deptos de renta larga de sus comunas
+ *  con esta línea, en el correo y en la página. Mientras no haya selección de renta corta. */
+export const LINEA_RENTA_CORTA = "Estos convienen para arriendo tradicional. Para renta corta, analízalos con tu pack.";
+
 /** Cómo se entra (13-oct-2026): en «Estás dentro», en la bienvenida y en la presentación del primer semanal. */
 export const COMO_ENTRAR = "Para entrar: tu correo y un código. Sin contraseña.";
 
@@ -434,9 +453,9 @@ export const SEMANAL_PAGINA = {
   regalo: "El próximo que analices va por cuenta de Franco.",
   usaUno: (n: number) => (n === 1 ? "usa tu último análisis" : `usa 1 de tus ${n}`),
   usaRegalo: "va por cuenta de Franco",
-  sinCreditos: "Ya usaste tus análisis.",
-  comprar: `Analizar uno · ${fmtCLP(SINGLE_PRICE)}`,
-  comprarBajada: "O con un plan, si vas a analizar varios.",
+  /** Sin análisis, abajo (13-oct-2026): el pack de tres en lugar de «Analizar uno · $9.990». */
+  comprar: TRES_COPY.boton,
+  comprarBajada: "Sin caducidad: para estos o para cualquier otro depto.",
   vacia: "Los deptos de este correo ya no están publicados. El próximo correo trae los de la semana.",
   caido: "Este ya no está publicado",
   enSuLugar: "En su lugar, el siguiente que mejor resulta con tus números:",
