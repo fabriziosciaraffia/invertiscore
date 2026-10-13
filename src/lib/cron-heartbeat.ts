@@ -123,6 +123,8 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "aviso-inmediato", label: "Aviso inmediato a quien piensa comprar ya", intervaloHoras: 24, desde: "2026-10-06T09:40:00Z" },
   { nombre: "semanal-prechequeo", label: "Correo semanal: el prechequeo de las fichas (noches)", intervaloHoras: 24, desde: "2026-10-06T03:35:00Z" },
   { nombre: "semanal-enviar", label: "Correo semanal: el envío (lunes)", intervaloHoras: 168, desde: "2026-10-05T12:00:00Z" },
+  // El reintento de las pendientes, el lunes de 08 a 11 UTC antes del envío (13-oct-2026).
+  { nombre: "semanal-reintento", label: "Correo semanal: el reintento de las pendientes (lunes)", intervaloHoras: 168, desde: "2026-10-19T08:05:00Z" },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },

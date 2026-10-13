@@ -19,7 +19,8 @@ async function darDeBaja(t: string): Promise<boolean> {
   const { error } = await admin.from("perfil_busqueda").upsert({ user_id: userId, inmediato_baja_at: new Date().toISOString() }, { onConflict: "user_id" });
   reportarFalloQuery(error, { ruta: "api/inmediato/baja", operacion: "baja", userId });
   if (error) return false;
-  void capturarServidor({ event: "aviso_inmediato_baja", distinctId: userId, properties: {} }).catch(() => {});
+  // Con `await` (13-oct-2026): con `void` el evento se perdía si la función respondía antes.
+  await capturarServidor({ event: "aviso_inmediato_baja", distinctId: userId, properties: {} }).catch(() => {});
   return true;
 }
 

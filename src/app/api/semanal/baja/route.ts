@@ -19,7 +19,9 @@ async function darDeBaja(t: string): Promise<boolean> {
   const { error } = await admin.from("perfil_busqueda").upsert({ user_id: userId, semanal_baja_at: new Date().toISOString() }, { onConflict: "user_id" });
   reportarFalloQuery(error, { ruta: "api/semanal/baja", operacion: "baja", userId });
   if (error) return false;
-  void capturarServidor({ event: "semanal_baja", distinctId: userId, properties: {} }).catch(() => {});
+  // Con `await` (13-oct-2026): con `void`, la función respondía antes de que el evento saliera, y la baja del
+  // 12-oct de una persona no llegó a PostHog (la base tenía 4, PostHog 3). El servidor registra; el navegador no.
+  await capturarServidor({ event: "semanal_baja", distinctId: userId, properties: {} }).catch(() => {});
   return true;
 }
 

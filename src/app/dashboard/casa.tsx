@@ -136,7 +136,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
   const preguntar = p.horizonte == null || cambiandoHorizonte;
 
   return (
-    <div style={{ fontFamily: UI }} data-casa="perfil">
+    <div id="perfil" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="perfil">
       <h2 className="font-heading text-[21px] font-bold leading-[1.15] tracking-[-0.01em] sm:text-[24px]">{CASA.perfil.titulo}</h2>
       <p className="mb-3 mt-1.5 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{comprador ? CASA.perfil.bajadaComprador : CASA.perfil.bajada}</p>
       <div className={`${tarjeta} p-4`}>

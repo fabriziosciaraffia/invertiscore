@@ -119,6 +119,7 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
         {nota && <span className="lqs-toca lqs-anotado" role="status">{nota}</span>}
       </div>
       <p className="lqs-legal lqs-aprende">{ESTAS_DENTRO.aprende}</p>
+      <p className="lqs-legal" data-lqs="como-entrar">{ESTAS_DENTRO.comoEntrar}</p>
       {error && <p className="lqs-legal" role="alert">{ESTAS_DENTRO.errorGuardar}</p>}
     </div>
   );

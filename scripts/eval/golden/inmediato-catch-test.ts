@@ -137,7 +137,8 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     if (ab?.event !== "aviso_inmediato_abierto" || ab.uuid === "x" || eventoInmediatoAbierto({ event: "correo_abierto", distinctId: "u", properties: { tipo: "semanal" } }) !== null || eventoInmediatoAbierto({ event: "correo_clic", distinctId: "u", properties: { tipo: "aviso_inmediato" } }) !== null) F("5 · la apertura del aviso no da aviso_inmediato_abierto (o lo da de más)");
     if (!/const inmediato = eventoInmediatoAbierto\(evento\);\s*if \(inmediato\) await capturarServidor\(inmediato\);/.test(sinComentarios(leer("src/app/api/webhooks/resend/route.ts")))) F("5 · el webhook no emite aviso_inmediato_abierto");
     const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
-    if (!/if \(sel\.fuente === "inmediato"\) \{\s*void capturarServidor\(\{ event: "aviso_inmediato_clic"/.test(clic)) F("5 · falta aviso_inmediato_clic");
+    // ⚠ ACTA (13-oct-2026) · con `await`, no `void`: la función respondía antes de que saliera el evento.
+    if (!/if \(sel\.fuente === "inmediato"\) \{\s*await capturarServidor\(\{ event: "aviso_inmediato_clic"/.test(clic)) F("5 · falta aviso_inmediato_clic");
     if (!/if \(ir === "comprar" && sel\.fuente === "inmediato"\) return volver\(RUTA_SUELTO_INMEDIATO\);/.test(clic) || RUTA_SUELTO_INMEDIATO !== "/checkout?product=single&origen=inmediato") F("5 · «Analizar uno · $9.990» del aviso no compra el suelto marcado como del aviso");
     if (!/searchParams\.get\("origen"\) === "inmediato" \? "inmediato"/.test(leer("src/app/checkout/page.tsx"))) F("5 · el checkout no lleva el origen del aviso");
     if (!/\.\.\.\(origenBody === "inmediato" \? \{ origen: "inmediato" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts")))) F("5 · el pago no guarda que vino del aviso");

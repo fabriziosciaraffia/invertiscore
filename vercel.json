@@ -69,8 +69,12 @@
       "schedule": "5 11-23 * * 0"
     },
     {
+      "path": "/api/cron/semanal-reintento",
+      "schedule": "5 8-11 * * 1"
+    },
+    {
       "path": "/api/cron/semanal-enviar",
-      "schedule": "0 12 * * 1"
+      "schedule": "0,30 12 * * 1"
     }
   ]
 }

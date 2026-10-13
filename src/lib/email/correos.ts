@@ -9,6 +9,7 @@
 import { escaparHtml, LEGAL, plantillaClara, TINTA } from "./plantilla-clara";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { BIENVENIDA } from "@/app/dashboard/bienvenida-copy";
+import { COMO_ENTRAR } from "@/lib/guia/semanal";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -233,6 +234,8 @@ export function correoBienvenida(p: { nombre: string | null; sitio?: string }): 
       parrafos: [
         `<b>${escaparHtml(analiza.titulo)}</b> ${escaparHtml(analiza.texto)} ${TRIADA}.`,
         `<b>${escaparHtml(oportunidades.titulo)}</b> ${escaparHtml(oportunidades.texto)}`,
+        // Cómo se vuelve a entrar (13-oct-2026): la cuenta no tiene contraseña.
+        escaparHtml(COMO_ENTRAR),
       ],
       boton: { texto: "Analizar un depto", url: `${sitio}/analisis/nuevo-v4` },
     }),

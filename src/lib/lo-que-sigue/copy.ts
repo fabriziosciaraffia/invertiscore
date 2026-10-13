@@ -56,6 +56,8 @@ export const ESTAS_DENTRO = {
   cuerpo: "Te escribimos apenas tengamos una oportunidad que calce con lo que buscas:",
   tocaCambiar: "toca para cambiar",
   aprende: "Cada depto que analices le enseña a Franco qué buscarte.",
+  /** Cómo se vuelve a entrar (13-oct-2026): la misma frase en la bienvenida y en el primer semanal (COMO_ENTRAR). */
+  comoEntrar: "Para entrar: tu correo y un código. Sin contraseña.",
   cuando: "¿Cuándo piensas comprar?",
   horizontes: [
     { id: "ya", texto: "Ya" },

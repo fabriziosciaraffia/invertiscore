@@ -19,7 +19,7 @@ import { guardarMetrica } from "@/lib/metrics-daily";
 import { leerSaldo } from "@/lib/casa-saldo";
 import { nombreReal } from "@/lib/welcome";
 import { sendSemanalEmail } from "@/lib/email";
-import { correoSemanal, textoBusca } from "@/lib/email/correo-semanal";
+import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
@@ -29,7 +29,7 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, MINIMO_SEMANAL, correspondeRegalo, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeRegalo, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
   type CandidatoSemanal, type ProgresoPrechequeo, type RespaldoSemanal,
 } from "./semanal";
 
@@ -501,13 +501,28 @@ export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ us
   };
   await juntar("perfiles_inversion");
   await juntar("analisis");
-  return Array.from(ids).map((userId) => ({ userId }));
+  // Sin las cuentas de prueba, salvo las marcadas (13-oct-2026, decisión de Fabrizio).
+  const fuera = await cuentasPruebaSinCorreo(admin);
+  return Array.from(ids).filter((userId) => !fuera.has(userId)).map((userId) => ({ userId }));
+}
+
+/**
+ * Las cuentas de prueba que NO reciben los correos (semanal y aviso inmediato, 13-oct-2026): todas las de
+ * `test_accounts`, salvo las que Fabrizio marque con `recibe_correos`. Si no se puede leer, el envío no corre: mejor
+ * un cron en rojo que mandarle a quien no corresponde.
+ */
+export async function cuentasPruebaSinCorreo(admin: SupabaseClient): Promise<Set<string>> {
+  const { data, error } = await admin.from("test_accounts").select("user_id, recibe_correos");
+  if (error) throw new Error(`cuentas de prueba: ${error.message}`);
+  return new Set((data ?? []).filter((r) => r.recibe_correos !== true).map((r) => r.user_id as string));
 }
 
 export interface FilaSeleccion {
   id: string;
   user_id: string;
   semana: string;
+  /** Con qué estado quedó el domingo (o el reintento del lunes): a ese vuelve si Resend falla. */
+  estado: "armada" | "pendiente" | "sin_match";
   items: ItemSemanal[];
   combinacion: Combinacion | null;
   perfil: PerfilBusqueda | null;
@@ -523,6 +538,8 @@ export function enlacesSemanal(sitio: string, token: string) {
     boton: `${base}/clic?t=${token}`,
     comprar: `${base}/clic?t=${token}&ir=comprar`,
     baja: `${base}/baja?t=${token}`,
+    /** Al perfil de búsqueda (13-oct-2026): el correo corto, para cambiar comunas. */
+    perfil: `${base}/clic?t=${token}&ir=perfil`,
   };
 }
 
@@ -530,13 +547,16 @@ export function enlacesSemanal(sitio: string, token: string) {
  * El lunes: relee la selección (sin los que se despublicaron desde el domingo), decide el regalo, manda
  * el correo una sola vez (la fila se marca enviada ANTES de mandar; si Resend falla, se suelta) y mide.
  */
+export async function descartarSeleccion(admin: SupabaseClient, id: string): Promise<"descartada"> {
+  await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", id).is("enviada_at", null);
+  return "descartada";
+}
+
 export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida"> {
-  const descartar = async () => {
-    await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);
-    return "descartada" as const;
-  };
+  const descartar = () => descartarSeleccion(admin, fila.id);
   const deptos = await itemsVigentes(admin, fila.items ?? []);
-  if (deptos.length < MINIMO_SEMANAL || !fila.combinacion || !fila.perfil) return descartar();
+  // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`).
+  if (queEnviarSemanal(deptos.length) === "vacio" || !fila.combinacion || !fila.perfil) return enviarSinSeleccion(admin, fila, sitio);
   const [{ data: u }, { data: pb }, { count: compras }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
     admin.auth.admin.getUserById(fila.user_id),
     admin.from("perfil_busqueda").select("semanal_baja_at, regalo_otorgado_at").eq("user_id", fila.user_id).maybeSingle(),
@@ -579,7 +599,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, variante);
   if (!r.ok) {
-    await admin.from("semanal_selecciones").update({ estado: "armada", enviada_at: null }).eq("id", fila.id);
+    await admin.from("semanal_selecciones").update({ estado: fila.estado, enviada_at: null }).eq("id", fila.id);
     return "fallida";
   }
   await admin.from("semanal_selecciones").update({ resend_id: r.id, con_regalo: conRegalo, variante, items: deptos }).eq("id", fila.id);
@@ -589,6 +609,39 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
       semana: fila.semana, variante, n: deptos.length, con_regalo: conRegalo, saldo: saldo.plan ? "plan" : saldo.disponibles, presentacion,
       vecinas: deptos.filter((d) => d.tramo === "vecina").length, negociar: deptos.filter((d) => d.tramo === "negociar").length,
     },
+  }).catch(() => {});
+  return "enviada";
+}
+
+/**
+ * El correo corto de la semana sin deptos (13-oct-2026): a quien no le quedó ninguno confirmado —sin
+ * coincidencias, pendiente vacía, o todos despublicados desde el domingo—. Mismas reglas que la selección: una vez
+ * (la fila se toma antes de mandar; si Resend falla, se suelta), no a quien se dio de baja, y el primero se presenta.
+ */
+export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida"> {
+  const [{ data: u }, { data: pb }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
+    admin.auth.admin.getUserById(fila.user_id),
+    admin.from("perfil_busqueda").select("semanal_baja_at").eq("user_id", fila.user_id).maybeSingle(),
+    admin.from("semanal_selecciones").select("id", { count: "exact", head: true }).eq("user_id", fila.user_id).not("enviada_at", "is", null).neq("id", fila.id),
+  ]);
+  reportarFalloQuery(eAntes, { ruta: RUTA, operacion: "contar-enviadas", userId: fila.user_id });
+  const user = u?.user;
+  if (!user?.email || pb?.semanal_baja_at) return descartarSeleccion(admin, fila.id);
+  const { data: tomada } = await admin.from("semanal_selecciones").update({ estado: "enviada", enviada_at: new Date().toISOString() })
+    .eq("id", fila.id).is("enviada_at", null).select("id");
+  if ((tomada?.length ?? 0) !== 1) return "ya";
+  const presentacion = !eAntes && esPrimerSemanal(enviadasAntes);
+  const enlaces = enlacesSemanal(sitio, fila.token);
+  const correo = correoSemanalVacio({ nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja });
+  const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, "vacio");
+  if (!r.ok) {
+    await admin.from("semanal_selecciones").update({ estado: fila.estado, enviada_at: null }).eq("id", fila.id);
+    return "fallida";
+  }
+  await admin.from("semanal_selecciones").update({ resend_id: r.id, items: [] }).eq("id", fila.id);
+  await capturarServidor({
+    event: "semanal_enviado", distinctId: fila.user_id, uuid: uuidDeterminista(`semanal_enviado:${fila.id}`),
+    properties: { semana: fila.semana, variante: "vacio", n: 0, vacio: true, presentacion, estado_domingo: fila.estado },
   }).catch(() => {});
   return "enviada";
 }

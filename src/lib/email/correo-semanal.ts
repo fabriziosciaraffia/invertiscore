@@ -17,7 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { MARCA_NEGOCIAR, textoVence } from "@/lib/guia/semanal";
+import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -142,6 +142,8 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   filas.push(parrafo(escaparHtml(SEMANAL.saludo(d.nombre))));
   if (d.presentacion) {
     filas.push(parrafo(`${escaparHtml(SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
+    // Cómo se entra (13-oct-2026): el primer correo lo dice, para quien abra un enlace en otro aparato.
+    filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
   const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
   filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
@@ -202,4 +204,48 @@ export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precio
   const cTexto = cs.length === 0 ? null : cs.length === 1 ? cs[0] : `${cs.slice(0, -1).join(", ")} y ${cs[cs.length - 1]}`;
   const uf = p.precioMaxUf != null ? `hasta UF ${miles(p.precioMaxUf)}` : null;
   return [dTexto, cTexto, uf].filter(Boolean).join(", ");
+}
+
+/**
+ * El correo corto de la semana sin deptos (13-oct-2026, decisión de Fabrizio): «Esta semana no apareció ninguno que
+ * te convenga con tu pie y tu plazo. Seguimos buscando.», con el enlace a su perfil por si quiere cambiar comunas.
+ * Sin regalo, sin tarjetas y sin botón de compra. El primero de la persona se presenta igual que el otro.
+ */
+export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string }): { subject: string; html: string } {
+  const filas: string[] = [];
+  filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(SEMANAL_VACIO.asunto)}</td></tr>`);
+  filas.push(parrafo(escaparHtml(SEMANAL.saludo(d.nombre))));
+  if (d.presentacion) {
+    filas.push(parrafo(`${escaparHtml(SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
+    filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
+  }
+  filas.push(parrafo(escaparHtml(SEMANAL_VACIO.cuerpo)));
+  filas.push(parrafo(escaparHtml(SEMANAL_VACIO.perfil)));
+  filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<meta name="x-apple-disable-message-reformatting">
+<title>${escaparHtml(SEMANAL_VACIO.asunto)}</title>
+</head>
+<body style="margin: 0; padding: 0; background: ${PAPEL};">
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(SEMANAL_VACIO.cuerpo)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAPEL}" style="background: ${PAPEL};">
+    <tr>
+      <td align="center" style="padding: 28px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
+          <tr><td style="padding: 0 0 24px 0;">${wordmarkClaro()}</td></tr>
+          ${filas.join("\n          ")}
+          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid ${LINEA}; font-family: ${FUENTE_UI}; font-size: 12px; line-height: 1.6; color: ${TINTA_3};">${SEMANAL.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${SEMANAL.baja}</a><br>${LEGAL}<br><a href="https://refranco.ai" style="color: ${TINTA_3}; text-decoration: none;">refranco.ai</a></td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  return { subject: SEMANAL_VACIO.asunto, html };
 }

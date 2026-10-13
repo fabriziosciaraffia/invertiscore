@@ -366,6 +366,33 @@ export function esUltimaCorridaArmar(ahora: Date = new Date()): boolean {
   return ahora.getUTCHours() >= 23;
 }
 
+/**
+ * QUÉ SE LE MANDA EL LUNES (13-oct-2026, decisión de Fabrizio: que nadie reciba silencio por un error nuestro).
+ *   · con al menos UN depto confirmado publicado → la selección, aunque sean menos de tres (la armada que perdió
+ *     uno desde el domingo, o la pendiente a la que no le alcanzaron los chequeos);
+ *   · sin ninguno (sin coincidencias, pendiente vacía, o todos se despublicaron) → el correo corto «Esta semana no
+ *     apareció ninguno…», con el enlace a su perfil.
+ * Hasta hoy, con menos de tres no había correo, y la pendiente del domingo nunca salía.
+ */
+export function queEnviarSemanal(deptosVigentes: number): "seleccion" | "vacio" {
+  return deptosVigentes >= 1 ? "seleccion" : "vacio";
+}
+
+/** El reintento del lunes temprano (13-oct-2026): las selecciones que el domingo quedaron pendientes se vuelven a
+ *  armar a las 08, 09, 10 y 11 UTC, antes del envío de las 12. */
+export const HORAS_REINTENTO_LUNES = [8, 9, 10, 11] as const;
+
+/** Cómo se entra (13-oct-2026): en «Estás dentro», en la bienvenida y en la presentación del primer semanal. */
+export const COMO_ENTRAR = "Para entrar: tu correo y un código. Sin contraseña.";
+
+/** El correo corto de la semana sin deptos (13-oct-2026). */
+export const SEMANAL_VACIO = {
+  asunto: "Esta semana no apareció ninguno que te convenga",
+  cuerpo: "Esta semana no apareció ninguno que te convenga con tu pie y tu plazo. Seguimos buscando.",
+  perfil: "Si quieres buscar en otras comunas, cámbialas en tu perfil:",
+  boton: "Ver mi perfil de búsqueda",
+} as const;
+
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
 export function esPrimerSemanal(enviadasAntes: number | null | undefined): boolean {
   return (enviadasAntes ?? 0) === 0;

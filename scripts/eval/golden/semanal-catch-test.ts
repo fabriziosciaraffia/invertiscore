@@ -94,7 +94,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (semanaDelEnvio(new Date("2026-10-04T15:00:00Z")) !== "2026-10-05" || semanaDelEnvio(new Date("2026-10-05T12:00:00Z")) !== "2026-10-05" || semanaDelEnvio(new Date("2026-10-07T12:00:00Z")) !== "2026-10-12")
     F("2 · la semana no es el lunes del envío");
   const vj = leer("vercel.json");
-  if (!/"path": "\/api\/cron\/semanal-armar",\s*"schedule": "5 11-23 \* \* 0"/.test(vj) || !/"path": "\/api\/cron\/semanal-enviar",\s*"schedule": "0 12 \* \* 1"/.test(vj)) F("2 · los crons no arman el domingo y mandan el lunes");
+  // ⚠ ACTA (13-oct-2026) · el envío corre a las 12:00 y a las 12:30 del lunes (presupuesto de 240 s; lo que no
+  // alcanza lo toma la segunda), y el lunes de 08 a 11 UTC se reintentan las pendientes (SEMANAL-SIN-SILENCIO §2).
+  if (!/"path": "\/api\/cron\/semanal-armar",\s*"schedule": "5 11-23 \* \* 0"/.test(vj) || !/"path": "\/api\/cron\/semanal-enviar",\s*"schedule": "0,30 12 \* \* 1"/.test(vj)) F("2 · los crons no arman el domingo y mandan el lunes");
   const hb = leer("src/lib/cron-heartbeat.ts");
   if (!/nombre: "semanal-armar"[^}]*intervaloHoras: 168/.test(hb) || !/nombre: "semanal-enviar"[^}]*intervaloHoras: 168/.test(hb)) F("2 · los crons del semanal no están vigilados con su cadencia semanal");
 
@@ -148,8 +150,11 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   const iTomar = srv.indexOf('update({ estado: "enviada", enviada_at:');
   const iMandar = srv.indexOf("await sendSemanalEmail(");
   if (iTomar < 0 || iMandar < 0 || iTomar > iMandar || !/\.is\("enviada_at", null\)\.select\("id"\);\s*if \(\(tomada\?\.length \?\? 0\) !== 1\) return "ya";/.test(srv)) F("5 · el correo se manda sin tomar la fila antes");
-  if (!/if \(!r\.ok\) \{\s*await admin\.from\("semanal_selecciones"\)\.update\(\{ estado: "armada", enviada_at: null \}\)/.test(srv)) F("5 · si Resend falla, la fila no se suelta");
-  if (!/if \(deptos\.length < MINIMO_SEMANAL \|\| !fila\.combinacion \|\| !fila\.perfil\) return descartar\(\);/.test(srv)) F("5 · se manda con menos de tres vigentes");
+  // ⚠ ACTA (13-oct-2026, decisión de Fabrizio: que nadie reciba silencio por un error nuestro) · la fila vuelve a SU
+  // estado (la pendiente no pasa a armada), y con menos de tres sale lo confirmado; sin ninguno, el correo corto. La
+  // regla fina vive en SEMANAL-SIN-SILENCIO §2–§3; acá, que la fila se suelte y que el envío pase por la regla.
+  if (!/if \(!r\.ok\) \{\s*await admin\.from\("semanal_selecciones"\)\.update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(srv)) F("5 · si Resend falla, la fila no se suelta");
+  if (!/if \(queEnviarSemanal\(deptos\.length\) === "vacio" \|\| !fila\.combinacion \|\| !fila\.perfil\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
   if (!/pb\?\.semanal_baja_at\) return descartar\(\);/.test(srv)) F("5 · se le manda a quien se dio de baja");
 
   // 6 · el clic y el análisis

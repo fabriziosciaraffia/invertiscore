@@ -28,18 +28,21 @@ export async function GET(request: Request) {
   const sel = await seleccionPorToken(admin, t);
   if (!sel) return volver("/dashboard");
   const avisoId = a && UUID.test(a) && sel.items.some((i) => i.avisoId === a) ? a : null;
-  const destino = ir === "comprar" ? "comprar" : avisoId ? "depto" : "seleccion";
+  const destino = ir === "comprar" ? "comprar" : ir === "perfil" ? "perfil" : avisoId ? "depto" : "seleccion";
 
   if (sel.fuente === "inmediato") {
-    void capturarServidor({ event: "aviso_inmediato_clic", distinctId: sel.user_id, properties: { dia: sel.semana, aviso_id: avisoId, destino } }).catch(() => {});
+    // Con `await` (13-oct-2026): con `void` la respuesta salía antes que el evento y se podía perder.
+    await capturarServidor({ event: "aviso_inmediato_clic", distinctId: sel.user_id, properties: { dia: sel.semana, aviso_id: avisoId, destino } }).catch(() => {});
   } else {
-    void capturarServidor({
+    await capturarServidor({
       event: "semanal_clic",
       distinctId: sel.user_id as string,
       properties: { semana: sel.semana, variante: sel.variante, aviso_id: avisoId, destino },
     }).catch(() => {});
   }
 
+  // El correo corto de la semana sin deptos (13-oct-2026) lleva a cambiar las comunas del perfil.
+  if (ir === "perfil") return volver("/dashboard#perfil");
   if (ir === "comprar" && sel.fuente === "inmediato") return volver(RUTA_SUELTO_INMEDIATO);
   if (ir === "comprar") return volver(rutaSueltoSemanal(sel.variante as "banda" | "tarjetas" | null));
   if (!avisoId) return volver(`/semanal?t=${t}`);
