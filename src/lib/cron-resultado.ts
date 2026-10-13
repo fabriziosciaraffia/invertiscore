@@ -170,8 +170,18 @@ export function motivoDeFalla(conteo: ConteoCron, extra: Record<string, unknown>
 
 function resumenError(extra: Record<string, unknown>): Record<string, unknown> {
   const e = extra.error ?? extra.errors ?? extra.errores;
-  return e === undefined ? {} : { error: JSON.stringify(e).slice(0, 500) };
+  const pausa = typeof extra.pausa === "string" && extra.pausa ? { pausa: extra.pausa.slice(0, 120) } : {};
+  return e === undefined ? pausa : { error: JSON.stringify(e).slice(0, 500), ...pausa };
 }
+
+/**
+ * EN PAUSA (13-oct-2026): el cron corrió y salió bien, pero no tiene qué medir por una condición externa conocida
+ * —meta-ads sin un token válido: «sin campaña activa»—. Se pasa en `extra.pausa` con la frase; queda en el
+ * resultado de la corrida, y mientras la última corrida esté en pausa la vigilancia no le cuenta la frescura
+ * (`leerLatidos`): no escribir es lo esperado. Cuando la condición se va, la corrida siguiente sale sin pausa y
+ * todo vuelve a contar.
+ */
+export const CLAVE_PAUSA = "pausa";
 
 function detalleDe(extra: Record<string, unknown>): string[] {
   const e = extra.error ?? extra.errors ?? extra.errores;

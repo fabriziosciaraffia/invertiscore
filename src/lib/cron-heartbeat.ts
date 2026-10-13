@@ -22,7 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { guardarMetrica } from "@/lib/metrics-daily";
-import { FUENTE_RESULTADO, type ResultadoCron } from "@/lib/cron-resultado";
+import { CLAVE_PAUSA, FUENTE_RESULTADO, type ResultadoCron } from "@/lib/cron-resultado";
 
 export const FUENTE_CRON = "cron";
 
@@ -235,6 +235,8 @@ export interface LatidoCron extends CronVigilado {
   /** Lo último que escribió, si tiene frescura fija; y si ya pasó su plazo. */
   ultimaEscritura: string | null;
   sinEscribir: boolean;
+  /** La última corrida salió en pausa (cerrarCron, `extra.pausa`): la frase, y la frescura no cuenta. */
+  pausa: string | null;
   /** Algo de lo anterior: el panel lo pinta en rojo y vigilar-crons avisa. */
   enRojo: boolean;
   /** Por qué, en una frase (null si está sano). */
@@ -283,13 +285,14 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
   // El resultado de la última corrida de cada cron (cerrarCron, fuente cron-resultado).
   const { data: resultados } = await sb
     .from("metrics_daily")
-    .select("metrica, valor, medido_at")
+    .select("metrica, valor, medido_at, meta")
     .eq("fuente", FUENTE_RESULTADO)
     .order("medido_at", { ascending: false });
-  const resultadoPorCron = new Map<string, { valor: number; at: string }>();
+  const resultadoPorCron = new Map<string, { valor: number; at: string; pausa: string | null }>();
   for (const f of resultados ?? []) {
     const m = String((f as { metrica: string }).metrica);
-    if (!resultadoPorCron.has(m)) resultadoPorCron.set(m, { valor: Number((f as { valor: number }).valor), at: String((f as { medido_at: string }).medido_at) });
+    const pausa = ((f as { meta?: Record<string, unknown> | null }).meta ?? {})[CLAVE_PAUSA];
+    if (!resultadoPorCron.has(m)) resultadoPorCron.set(m, { valor: Number((f as { valor: number }).valor), at: String((f as { medido_at: string }).medido_at), pausa: typeof pausa === "string" && pausa ? pausa : null });
   }
 
   return Promise.all(CRONS_VIGILADOS.map(async (cron) => {
@@ -313,7 +316,11 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
     let ultimaEscritura: string | null = null;
     let sinEscribir = false;
     let errorFrescura: string | null = null;
-    if (cron.frescura) {
+    // En pausa (13-oct-2026): la última corrida salió bien sin nada que medir (meta-ads sin un token válido:
+    // «sin campaña activa»). No escribir es lo esperado, y la frescura no cuenta mientras dure; la primera
+    // corrida sin pausa vuelve a contarla. Solo la de una corrida que salió bien.
+    const pausa = r !== null && r.valor === 0 ? r.pausa : null;
+    if (cron.frescura && pausa === null) {
       try {
         ultimaEscritura = await cron.frescura.leer(sb);
         sinEscribir = escrituraVencida(cron, ultimaEscritura, cron.frescura.maxHoras);
@@ -339,6 +346,7 @@ export async function leerLatidos(sb: SupabaseClient): Promise<LatidoCron[]> {
       sinCierre,
       ultimaEscritura,
       sinEscribir,
+      pausa,
       enRojo: motivo !== null,
       motivo,
       motivos,
