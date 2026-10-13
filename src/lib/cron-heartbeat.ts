@@ -131,7 +131,8 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   // Unidades de obra nueva (02-oct-2026): cruza los deptos disponibles de la ficha nueva, sin precio. Lo que
   // escribe en cada corrida es la marca de vista (seen_pass_id «unidades@<instante>», el mismo prefijo que
   // PREFIJO_VISTA_UNIDADES), no scraped_at: ese queda como la fecha del precio.
-  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva: disponibles (diario)", intervaloHoras: 24, codigoDesde: "2026-10-02T18:26:40Z",
+  // Desde el 13-oct-2026 corre cada 6 horas con presupuesto de 240 s (CORRIDAS_POR_DIA en unidades-presupuesto.ts).
+  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva: disponibles (cada 6 horas)", intervaloHoras: 6, codigoDesde: "2026-10-02T18:26:40Z",
     frescura: { que: "unidades vistas", maxHoras: 48, leer: async (sb) => (fechaDe(await sb.from("scraped_properties").select("seen_pass_id").like("seen_pass_id", "unidades@%").order("seen_pass_id", { ascending: false }).limit(1).maybeSingle(), "seen_pass_id") ?? "").replace(/^unidades@/, "") || null } },
   { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24,
     frescura: { que: "UF", maxHoras: 48, leer: ultimo("config", "updated_at", (q) => q.eq("key", "uf_value")) } },

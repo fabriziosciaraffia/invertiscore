@@ -18,6 +18,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fallidosTolerados, fetchUnidadesProyecto, PREFIJO_VISTA_UNIDADES, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
+import { conteoUnidades, CORRIDAS_POR_DIA } from "../../../src/lib/services/scraper/unidades-presupuesto";
 import { cerrarCron, motivoDeFalla, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
 import { anteriorAlCodigo, CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
 import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
@@ -84,16 +85,31 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   }
   if (!/export const proxyDispatcher = process\.env\.PROXY_URL/.test(leer("src/lib/services/scraper/toctoc.ts"))) F("1 · el proxy no está exportado desde toctoc.ts");
   const uni = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
-  if (!/const sinNinguna = delBatch\.length > 0 && conDisponibles\.length === 0;/.test(uni) || !/escrituraFallo \|\| sinNinguna\s*\? \{ procesados: delBatch\.length, exitosos: 0, fallidos: delBatch\.length \}/.test(uni)) F("1 · un batch sin un solo depto disponible (o con una escritura caída) no es falla total");
+  // Desde el 13-oct-2026 el conteo vive en `conteoUnidades` (unidades-presupuesto.ts): se prueba la función y que
+  // la ruta cierre con ella. Una corrida con proyectos y sin un solo disponible, o con una escritura caída, es
+  // falla total.
+  {
+    const c = { intentados: [1, 2, 3], conError: [] as number[], conDisponibles: 0, escrituraFallo: false, reconFallo: false, vencidos: [] as number[] };
+    const sinNinguna = conteoUnidades(c), caida = conteoUnidades({ ...c, conDisponibles: 3, escrituraFallo: true }), sana = conteoUnidades({ ...c, conDisponibles: 3 });
+    if (resultadoCron(sinNinguna) !== "fallo" || resultadoCron(caida) !== "fallo" || resultadoCron(sana) !== "ok" || !/const conteo = conteoUnidades\(\{/.test(uni))
+      F("1 · un batch sin un solo depto disponible (o con una escritura caída) no es falla total");
+  }
 
   // ── 1 · el reintento y la tolerancia (30-sep-2026): cada proyecto fallido se reintenta una vez; la
   // corrida es falla solo si después falla más del 5% ──
   if (TOLERANCIA_FALLA_PROYECTOS !== 0.05 || fallidosTolerados(4, 140) !== 0 || fallidosTolerados(7, 140) !== 0 || fallidosTolerados(8, 140) !== 8 || fallidosTolerados(1, 0) !== 0) F(`1 · la tolerancia no es «más del 5% tras el reintento» (4/140→${fallidosTolerados(4, 140)}, 8/140→${fallidosTolerados(8, 140)})`);
-  if (!/for \(let intento = 0; intento < REINTENTOS; intento\+\+\) for \(let k = 0; k < resultados\.length; k\+\+\) \{\s*if \(!resultados\[k\]\.error\) continue;\s*const base = delBatch\.find\(\(p\) => p\.idProyecto === resultados\[k\]\.idProyecto\);\s*if \(!base\) continue;\s*await new Promise\(\(r\) => setTimeout\(r, PAUSA_REINTENTO_MS\)\);\s*resultados\[k\] = await fetchUnidadesProyecto\(base\);/.test(uni)) F("1 · los proyectos fallidos no se reintentan una vez, con pausa");
+  // El reintento, con su pausa y con reloj, vive en `leerConPresupuesto` (lo prueba el tier UNIDADES-PRESUPUESTO
+  // con un reloj de mentira); acá, que la ruta le pase el ritmo y los reintentos.
+  if (!/leerConPresupuesto\(cola, \(p\) => fetchUnidadesProyecto\(p\), \{\s*concurrencia: CONCURRENCIA, pausaLoteMs: PAUSA_LOTE_MS, pausaReintentoMs: PAUSA_REINTENTO_MS, reintentos: REINTENTOS,\s*\}/.test(uni)) F("1 · los proyectos fallidos no se reintentan una vez, con pausa");
   // El ritmo de la ficha nueva (02-oct-2026): con 8 GETs en vuelo dio 403 en 42% de los proyectos.
   const ritmo = { conc: Number((uni.match(/const CONCURRENCIA = (\d+);/) ?? [])[1]), pausa: Number((uni.match(/const PAUSA_LOTE_MS = (\d+);/) ?? [])[1]), re: Number((uni.match(/const PAUSA_REINTENTO_MS = (\d+);/) ?? [])[1]) };
   if (!(ritmo.conc <= 2 && ritmo.pausa >= 1500 && ritmo.re >= 4000 && Number((uni.match(/const REINTENTOS = (\d+);/) ?? [])[1]) >= 2)) F(`1 · el pase de unidades va más rápido que lo que la ficha nueva tolera (${JSON.stringify(ritmo)})`);
-  if (!/fallidos: fallidosTolerados\(conError\.length, delBatch\.length\)/.test(uni)) F("1 · la corrida no cuenta los fallidos con la tolerancia");
+  {
+    // La tolerancia, aplicada por la corrida: 4 de 140 con error no tumban nada; 8 de 140, sí.
+    const ids = (n: number, desde = 0) => Array.from({ length: n }, (_, i) => desde + i);
+    const c = (errores: number) => conteoUnidades({ intentados: ids(140), conError: ids(errores), conDisponibles: 100, escrituraFallo: false, reconFallo: false, vencidos: [] });
+    if (resultadoCron(c(4)) !== "ok" || resultadoCron(c(8)) !== "parcial" || c(8).fallidos !== 8) F("1 · la corrida no cuenta los fallidos con la tolerancia");
+  }
 
   // ── 2 · el status ──
   const casos: Array<[number, number, number, string, number]> = [
@@ -191,12 +207,17 @@ export async function runCronsTier(): Promise<{ hard: number }> {
       if (!CRONS_VIGILADOS.find((c) => c.nombre === n)?.frescura) F(`2 · ${n} escribe en cada corrida y no tiene frescura vigilada`);
     }
   }
-  // ── 2 · el pase de unidades vuelve (02-oct-2026, congelado ese mismo día): diario, vigilado, y su
-  // frescura mide la marca de vista —lo que escribe en cada corrida—, no scraped_at, que es la fecha del precio. ──
+  // ── 2 · el pase de unidades vuelve (02-oct-2026, congelado ese mismo día): vigilado, y su frescura mide la
+  // marca de vista —lo que escribe en cada corrida—, no scraped_at, que es la fecha del precio. Desde el
+  // 13-oct-2026 corre CORRIDAS_POR_DIA veces al día, parejas, y la vigilancia lo espera con ese intervalo. ──
   {
-    if (vj.crons.find((c) => c.path === "/api/data/scrape-unidades-nuevas")?.schedule !== "0 14 * * *") F("2 · el pase de unidades no corre cada día");
+    const sched = vj.crons.find((c) => c.path === "/api/data/scrape-unidades-nuevas")?.schedule ?? "";
+    const m = /^0 ([\d,]+) \* \* \*$/.exec(sched);
+    const horas = m ? m[1].split(",").map(Number) : [];
+    const parejas = horas.length === CORRIDAS_POR_DIA && horas.every((h, i) => i === 0 || h - horas[i - 1] === 24 / CORRIDAS_POR_DIA);
+    if (!parejas) F(`2 · el pase de unidades no corre ${CORRIDAS_POR_DIA} veces al día, parejas (${sched})`);
     const vu = CRONS_VIGILADOS.find((c) => c.nombre === "scrape-unidades-nuevas");
-    if (!vu || vu.intervaloHoras !== 24 || vu.frescura?.maxHoras !== 48) F("2 · el pase de unidades no está vigilado como diario (24 h, frescura 48 h)");
+    if (!vu || vu.intervaloHoras !== 24 / CORRIDAS_POR_DIA || vu.frescura?.maxHoras !== 48) F(`2 · el pase de unidades no está vigilado cada ${24 / CORRIDAS_POR_DIA} h (frescura 48 h)`);
     const lectura = { sel: "", like: "" };
     const visto = await vu?.frescura?.leer({ from: () => {
       const q: Record<string, unknown> = {};

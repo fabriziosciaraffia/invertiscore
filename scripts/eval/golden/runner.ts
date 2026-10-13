@@ -78,6 +78,7 @@ import { runObraNuevaTier } from "./obra-nueva-catch-test";
 import { runCasaTier } from "./casa-catch-test";
 import { runSemanalTier } from "./semanal-catch-test";
 import { runPrechequeoPresupuestoTier } from "./prechequeo-presupuesto-catch-test";
+import { runUnidadesPresupuestoTier } from "./unidades-presupuesto-catch-test";
 import { runTareasLargasTier } from "./tareas-largas-catch-test";
 import { runTicketRegresoTier } from "./ticket-regreso-catch-test";
 import { runTicketIosTier } from "./ticket-ios-catch-test";
@@ -417,6 +418,9 @@ function printSeed(r: SeedReport) {
   // Tier PRECHEQUEO-PRESUPUESTO (09-oct-2026, 0 tokens): el prechequeo semanal cierra a los 240 s y la corrida
   // siguiente sigue donde quedó. En rojo por mutación.
   totalHard += (await runPrechequeoPresupuestoTier()).hard;
+  // Tier UNIDADES-PRESUPUESTO (13-oct-2026, 0 tokens): el pase de unidades cierra a los 240 s, sigue por los que
+  // no leyó y ningún proyecto pasa 4 días sin leer; con más proyectos de los que caben, rojo. En rojo por mutación.
+  totalHard += (await runUnidadesPresupuestoTier()).hard;
   // Tier TAREAS-LARGAS (09-oct-2026, 0 tokens): el informe no congela el hilo principal del teléfono — la
   // alternativa de comunas se calcula en el servidor y el scroll trabaja una vez por cuadro. En rojo por mutación.
   totalHard += runTareasLargasTier().hard;

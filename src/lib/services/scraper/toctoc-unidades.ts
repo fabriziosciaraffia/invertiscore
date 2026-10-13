@@ -111,10 +111,14 @@ export function parsearProyecto(json: unknown): { rango: UnidadesProyecto["rango
   };
 }
 
+/** Lo que puede tardar UN pedido a la fuente, cuerpo incluido (13-oct-2026). Uno sano tarda 0,4–2,5 s; sin este
+ *  tope, un pedido colgado se lleva la corrida entera al techo. */
+export const TIEMPO_MAX_GET_MS = 10_000;
+
 /** GET a la fuente por el proxy. Un 202 es el desafío del WAF; un cuerpo que no es JSON es la app
  *  (la dirección cambió): los dos salen como error explícito, nunca como «sin unidades». */
 async function leerJson(url: string): Promise<{ status: number; json: unknown; error?: string }> {
-  const r = await fetch(url, { headers: HEADERS, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown });
+  const r = await fetch(url, { headers: HEADERS, dispatcher: proxyDispatcher, signal: AbortSignal.timeout(TIEMPO_MAX_GET_MS) } as RequestInit & { dispatcher?: unknown });
   if (r.status === 404) return { status: 404, json: null };
   if (r.status !== 200) return { status: r.status, json: null, error: `http ${r.status}${r.status === 202 ? " (desafío del WAF: sin proxy)" : ""}` };
   const texto = await r.text();
@@ -143,6 +147,8 @@ export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<Unidade
     if (u.error) return vacio(u.error);
     return { idProyecto: base.idProyecto, url: base.url, disponibles: u.status === 404 ? [] : parsearDisponibles(u.json), rango, fechaEntrega };
   } catch (e) {
+    // El tope de un pedido sale con su nombre: «TimeoutError: The operation was aborted…» no dice cuál fue.
+    if ((e as { name?: string })?.name === "TimeoutError") return vacio(`sin respuesta en ${TIEMPO_MAX_GET_MS / 1000} s`);
     return vacio(String(e).slice(0, 120));
   }
 }
@@ -246,7 +252,7 @@ export function idProyectoDeUrl(url: string | null | undefined): number | null {
  * tocó cada una:
  *   · scrape-nuevos (diario) RESUCITA bases con su upsert (is_active: true) y
  *     las re-desactiva acá mismo.
- *   · scrape-unidades-nuevas (diario, por tercios) lo llama tras cruzar los disponibles.
+ *   · scrape-unidades-nuevas (cada 6 horas, con presupuesto) lo llama tras cruzar los disponibles.
  *
  * "Fresca" = scraped_at dentro de 365 días — la ventana MÁS ANCHA que usa la
  * mediana del universo nuevo (VENTANAS_DIAS). Ese corte hace el sistema

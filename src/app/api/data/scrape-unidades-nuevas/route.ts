@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   fetchUnidadesProyecto,
   desactivarProyectosConUnidades,
-  fallidosTolerados,
   estimarPrecioUnidadUF,
   etiquetaDeUnidad,
   idProyectoDeUrl,
@@ -13,13 +12,39 @@ import {
   PREFIJO_VISTA_UNIDADES,
   TOLERANCIA_FALLA_PROYECTOS,
   type FilaUnidad,
-  type ProyectoBase,
 } from "@/lib/services/scraper/toctoc-unidades";
+import {
+  completarAvance,
+  conteoUnidades,
+  guardarAvanceUnidades,
+  leerAvanceUnidades,
+  leerConPresupuesto,
+  leerProyectosDelCiclo,
+  marcarLeidos,
+  ordenDeLectura,
+  sinLeerHace,
+  CORRIDAS_POR_DIA,
+  MAX_DIAS_SIN_LEER,
+  PRESUPUESTO_UNIDADES_MS,
+  RESERVA_ESCRITURA_MS,
+  TOPE_DURO_UNIDADES_MS,
+  type ProgresoUnidades,
+} from "@/lib/services/scraper/unidades-presupuesto";
+import { conTope } from "@/lib/con-tope";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { latirCron } from "@/lib/cron-heartbeat";
-import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
+import { cerrarCron, CORRIDA_FALLIDA, type ConteoCron } from "@/lib/cron-resultado";
 
-// ─── Unidades de obra nueva (detalle por tipología), con cadencia propia ─────
+// ─── Unidades de obra nueva: los disponibles, cuatro veces al día, con presupuesto ─────
+//
+// DESDE EL 13-OCT-2026: PRESUPUESTO, CIERRE LIMPIO Y TECHO (ver unidades-presupuesto.ts). La corrida de ese día
+// murió a los 800 s sin escribir nada: el portal dejó sin respuesta 235 de 334 pedidos, el reintento sin reloj
+// se comió el techo y, como se escribía recién al final, se perdieron también los 31 proyectos leídos. Ahora la
+// corrida dura como mucho 240 s (ninguna lectura empieza pasados los 210 s y el resto es para escribir), lee
+// primero los proyectos que hace más tiempo que no se leen, guarda cuándo leyó cada uno y la siguiente sigue
+// desde ahí; a los 280 s cierra pase lo que pase. Corre cuatro veces al día (vercel.json): caben 50 proyectos
+// por corrida, 800 en cuatro días, y la corrida que encuentra uno con más de cuatro días sin leer cierra en rojo.
+// Reemplaza la rotación por tercios (id % 3, un tercio por día), que no tenía reloj ni memoria de lo leído.
 //
 // DESDE EL 02-OCT-2026: LOS DISPONIBLES, SIN PRECIO. La fuente retiró el GraphQL que traía cada unidad
 // con su precio. La ficha nueva (api-ficha, ver toctoc-unidades.ts) da los deptos disponibles —número,
@@ -28,42 +53,23 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 // de aparecer se marca vendida (sale de avisos_evaluados y de la guía por cerrar_bajas, y queda en
 // bajas_avisos para medir cuánto dura un aviso). No escribe precios ni unidades nuevas: los precios
 // reales del 29-sep al 01-oct siguen como están hasta que se decida de dónde sale el precio.
-// `?dry=1` cruza y responde sin escribir nada.
+// `?dry=1` cruza y responde sin escribir nada (ni late, ni guarda dónde quedó).
 //
 // LO QUE HACÍA ANTES (03-ago al 01-oct-2026), y por qué existe:
-// POR QUÉ EXISTE. La fila que scrape-nuevos persiste por proyecto es el RANGO:
-// precio "desde", superficie y dormitorios mínimos. Con eso, 34 de 78 análisis
-// con sujeto nuevo no juntaban muestra (la mediana exige >= 15 comparables en
-// ±20% de superficie) y los que sí, comparaban contra la unidad de entrada de
-// cada proyecto. El GraphQL público de la ficha expone CADA unidad en venta con
-// precio y superficie exactos; este pase las expande a filas de
-// scraped_properties (source_id = url#unidad) para que getComunaMedianaVentaUF
-// las vea sin tocar el motor. Medido en el diagnóstico: cobertura 44/78 → ~72/78.
-//
-// ROTACIÓN POR TERCIOS (antes séptimos). El sondeo real midió 1,32s efectivos
-// por ficha a concurrencia 8 (231 fichas en 306s). Con el techo de Hobby (300s)
-// un tercio de los proyectos (~172 fichas ≈ 240s) ocupaba el 80% del techo y la
-// varianza de 7-9s de la fuente botaba fichas; por eso se partió en séptimos
-// (~74 fichas ≈ 100s, 33%). Con el techo de Pro (800s) la misma regla —no
-// pasar del tercio del techo, para absorber la varianza— admite 522 / 3 ≈ 174
-// fichas ≈ 230s (29%). Cada proyecto se refresca cada 3 días en vez de cada 7,
-// y sigue sobrando para precios de lista que se mueven por trimestre. La
-// partición es por id de proyecto (id % CICLO_DIAS), no por índice: estable
-// aunque la lista crezca o se reordene. Si los proyectos superan ~600, volver a
-// subir el ciclo antes que acercarse al techo.
+// La fila que scrape-nuevos persiste por proyecto es el RANGO: precio "desde", superficie y dormitorios
+// mínimos. Con eso, 34 de 78 análisis con sujeto nuevo no juntaban muestra (la mediana exige >= 15
+// comparables en ±20% de superficie) y los que sí, comparaban contra la unidad de entrada de cada proyecto.
+// El GraphQL público de la ficha exponía CADA unidad en venta con precio y superficie exactos; este pase las
+// expandió a filas de scraped_properties (source_id = url#unidad) para que getComunaMedianaVentaUF las vea
+// sin tocar el motor. Medido en el diagnóstico: cobertura 44/78 → ~72/78.
 
-// Techo del plan Pro con Fluid Compute. Era el único límite real de Hobby:
-// 300s botaban un tercio de las fichas del batch cuando la fuente se ponía
-// lenta. Mismo valor que backfill-toctoc.
-export const maxDuration = 800;
+/** El techo se mide contra esto: 300 s, como el prechequeo. Hasta el 13-oct-2026 eran 800 s sin reloj. */
+export const maxDuration = 300;
+const NOMBRE = "scrape-unidades-nuevas";
 
-/** Días del ciclo de rotación (ver nota de arriba). */
-const CICLO_DIAS = 3;
 /** Proyectos en vuelo a la vez (2 GETs cada uno: proyecto + disponibles). Los ensayos del 02-oct por el
  *  proxy: con 4 en vuelo y 250 ms entre lotes, 403 en 57 de 137 proyectos; con 2 y 600 ms, en 18. Los
- *  mismos proyectos respondían 200 desde una IP sin proxy: la ficha nueva frena por ritmo. Cada proyecto
- *  tarda ~4 s por el proxy: con 2 en vuelo y 1,5 s entre lotes el tercio va en ~6 min; uno a la vez
- *  rozaría el techo de 800 s con los reintentos. */
+ *  mismos proyectos respondían 200 desde una IP sin proxy: la ficha nueva frena por ritmo. */
 const CONCURRENCIA = 2;
 /** Pausa de cortesía entre lotes de fichas (ms). */
 const PAUSA_LOTE_MS = 1500;
@@ -82,7 +88,14 @@ function getSupabase(): AnySupabase {
   );
 }
 
+/** El cierre también con techo: si la base no responde, se contesta igual antes del corte de 300 s. */
+async function cerrarConTope(sb: AnySupabase, conteo: ConteoCron, extra: Record<string, unknown>, t0: number, opts: { registrar: boolean }) {
+  const c = await conTope(cerrarCron(sb, NOMBRE, conteo, extra, opts), Math.max(1_000, t0 + 295_000 - Date.now()));
+  return c.listo ? c.valor : NextResponse.json({ ...conteo, ...extra, cierreSinRegistrar: true }, { status: 500 });
+}
+
 export async function POST(request: Request) {
+  const t0 = Date.now();
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
   if (!cronSecret) {
@@ -93,95 +106,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(request.url);
-  const batch = url.searchParams.has("batch")
-    ? parseInt(url.searchParams.get("batch")!) % CICLO_DIAS
-    : new Date().getDate() % CICLO_DIAS;
-
-  const dry = url.searchParams.get("dry") === "1";
+  const dry = new URL(request.url).searchParams.get("dry") === "1";
 
   const supabase = getSupabase();
   // Latido ANTES del trabajo (doctrina cron-heartbeat): registra "corrió". El ensayo no late.
   if (!dry) await latirCron(supabase, "scrape-unidades-nuevas");
-  const t0 = Date.now();
-
-  // ── 1. Proyectos a consultar: las filas-proyecto ya persistidas ──
-  //
-  // SIN filtrar is_active: este mismo pase las desactiva cuando tienen unidades,
-  // y si las filtrara, un proyecto dejaría de refrescarse justo después de su
-  // primera pasada. El corte de frescura (30d) descarta proyectos que
-  // scrape-nuevos —que corre diario— ya no ve publicados.
-  const desde30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  // Paginado con .range: PostgREST capa cada respuesta en PAGINA_POSTGREST filas
-  // sin avisar, así que un `.limit(2000)` devolvía como máximo 1.000. Hoy las
-  // filas-proyecto de 30 días son ~470 (1.006 contando variantes históricas de
-  // URL), bajo el tope, pero la regla del repo es paginar toda lectura de
-  // scraped_properties que pueda crecer: la próxima vez que supere 1.000, los
-  // proyectos que queden fuera no entrarían a ningún batch y nada lo diría.
-  const basesRaw: Array<Record<string, unknown>> = [];
-  for (let off = 0; ; off += PAGINA_POSTGREST) {
-    const { data, error: errBases } = await supabase
-      .from("scraped_properties")
-      .select("source_id, url, comuna, lat, lng, direccion, scraped_at")
-      .eq("type", "venta")
-      .eq("condicion", "nuevo")
-      .not("source_id", "like", "%#%")
-      .gte("scraped_at", desde30d)
-      .order("id", { ascending: true })
-      .range(off, off + PAGINA_POSTGREST - 1);
-    if (errBases) {
-      return cerrarCron(supabase, "scrape-unidades-nuevas", CORRIDA_FALLIDA, { error: `select proyectos: ${errBases.message}` });
+  // Lo que se sabe MIENTRAS corre: si el techo la corta, el log dice hasta dónde llegó.
+  const progreso: ProgresoUnidades = { intentados: 0, leidos: 0 };
+  try {
+    const corrida = await conTope(correr(supabase, dry, t0, progreso), t0 + TOPE_DURO_UNIDADES_MS - Date.now());
+    if (!corrida.listo) {
+      // EL TECHO: algo se colgó (cada pedido al portal tiene su tiempo máximo, así que es la base). No se guarda
+      // dónde quedó: no se sabe si lo leído alcanzó a escribirse, y la siguiente vuelve a empezar por los mismos.
+      // Es una corrida fallida: el panel lo ve y alerta.
+      console.log(`[${NOMBRE}] techo ${JSON.stringify({ ms: Date.now() - t0, ...progreso, dry })}`);
+      return cerrarConTope(supabase, CORRIDA_FALLIDA, { cortadoPorTecho: true, ...progreso, dry }, t0, { registrar: !dry });
     }
-    if (!data || data.length === 0) break;
-    basesRaw.push(...(data as Array<Record<string, unknown>>));
-    if (data.length < PAGINA_POSTGREST) break;
+    return cerrarConTope(supabase, corrida.valor.conteo, corrida.valor.detalle, t0, { registrar: !dry });
+  } catch (e) {
+    return cerrarConTope(supabase, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e), dry }, t0, { registrar: !dry });
   }
+}
 
-  // Dedup por id de proyecto (el número final de la URL compranuevo): un mismo
-  // proyecto puede tener variantes de URL históricas; gana la fila más fresca.
-  const porId = new Map<number, ProyectoBase & { scrapedAt: string }>();
-  for (const r of basesRaw) {
-    const m = String(r.url ?? "").match(/compranuevo\/departamento\/[^/]+\/[^/]+\/(\d+)/);
-    if (!m) continue;
-    const id = Number(m[1]);
-    const prev = porId.get(id);
-    if (prev && prev.scrapedAt >= String(r.scraped_at)) continue;
-    porId.set(id, {
-      idProyecto: id,
-      url: String(r.url),
-      comuna: String(r.comuna),
-      lat: typeof r.lat === "number" ? r.lat : null,
-      lng: typeof r.lng === "number" ? r.lng : null,
-      direccion: r.direccion ? String(r.direccion) : null,
-      scrapedAt: String(r.scraped_at),
-    });
-  }
-  const delBatch = Array.from(porId.values()).filter((p) => p.idProyecto % CICLO_DIAS === batch);
+async function correr(supabase: AnySupabase, dry: boolean, t0: number, progreso: ProgresoUnidades): Promise<{ conteo: ConteoCron; detalle: Record<string, unknown> }> {
+  // ── 1. Proyectos a leer y dónde quedó la corrida anterior ──
+  const { proyectos, error: errProyectos } = await leerProyectosDelCiclo(supabase);
+  if (errProyectos) return { conteo: CORRIDA_FALLIDA, detalle: { error: errProyectos, dry } };
+  const anterior = await leerAvanceUnidades(supabase);
+  if (!anterior.ok) return { conteo: CORRIDA_FALLIDA, detalle: { error: `dónde quedó: ${anterior.error}`, dry } };
 
-  // ── 2. La ficha nueva por proyecto (proyecto + disponibles), concurrencia acotada ──
-  const resultados: Awaited<ReturnType<typeof fetchUnidadesProyecto>>[] = [];
-  for (let i = 0; i < delBatch.length; i += CONCURRENCIA) {
-    const lote = delBatch.slice(i, i + CONCURRENCIA);
-    resultados.push(...await Promise.all(lote.map((p) => fetchUnidadesProyecto(p))));
-    if (PAUSA_LOTE_MS > 0 && i + CONCURRENCIA < delBatch.length) {
-      await new Promise((r) => setTimeout(r, PAUSA_LOTE_MS));
-    }
-  }
-  // Un reintento, uno por uno, para los que fallaron (el proxy suelta algún `fetch failed`).
-  const fallidosPrimera = resultados.filter((r) => r.error).length;
-  for (let intento = 0; intento < REINTENTOS; intento++) for (let k = 0; k < resultados.length; k++) {
-    if (!resultados[k].error) continue;
-    const base = delBatch.find((p) => p.idProyecto === resultados[k].idProyecto);
-    if (!base) continue;
-    await new Promise((r) => setTimeout(r, PAUSA_REINTENTO_MS));
-    resultados[k] = await fetchUnidadesProyecto(base);
-  }
-  const t1 = Date.now();
-
-  // ── 3. El cruce con las unidades que ya tenemos ──
+  // ── 2. Las unidades que ya tenemos, para el cruce ──
   //
   // Todas las unidades de obra nueva (activas o no: una vendida que reaparece vuelve a estar
-  // disponible), paginadas por id. Se agrupan por proyecto con el número final de la URL.
+  // disponible), paginadas por id. Se agrupan por proyecto con el número final de la URL. Se leen antes que
+  // el portal: su última marca de vista ordena a los proyectos que todavía no tienen avance.
   type FilaCruce = FilaUnidad & { comuna: string; created_at: string | null; scraped_at: string | null; seen_pass_id: string | null; superficie_m2: number | string | null };
   const filasPorProyecto = new Map<number, FilaCruce[]>();
   for (let off = 0; ; off += PAGINA_POSTGREST) {
@@ -192,7 +150,7 @@ export async function POST(request: Request) {
       .like("source_id", "%#%")
       .order("id", { ascending: true })
       .range(off, off + PAGINA_POSTGREST - 1);
-    if (error) return cerrarCron(supabase, "scrape-unidades-nuevas", CORRIDA_FALLIDA, { error: `select unidades: ${error.message}` }, { registrar: !dry });
+    if (error) return { conteo: CORRIDA_FALLIDA, detalle: { error: `select unidades: ${error.message}`, dry } };
     for (const f of (data ?? []) as FilaCruce[]) {
       const id = idProyectoDeUrl(f.source_id);
       if (id == null) continue;
@@ -201,7 +159,30 @@ export async function POST(request: Request) {
     }
     if (!data || data.length < PAGINA_POSTGREST) break;
   }
+  const ultimaMarca = new Map<number, string>();
+  for (const [id, filas] of Array.from(filasPorProyecto)) {
+    for (const f of filas) {
+      if (!f.seen_pass_id?.startsWith(PREFIJO_VISTA_UNIDADES)) continue;
+      const t = f.seen_pass_id.slice(PREFIJO_VISTA_UNIDADES.length);
+      if (!ultimaMarca.has(id) || t > ultimaMarca.get(id)!) ultimaMarca.set(id, t);
+    }
+  }
 
+  // ── 3. La ficha nueva por proyecto, los más atrasados primero, con reloj ──
+  const avance = completarAvance(anterior.avance, proyectos.map((p) => p.idProyecto), ultimaMarca, new Date());
+  const cola = ordenDeLectura(proyectos, avance);
+  const tArranque = Date.now();
+  const lectura = await leerConPresupuesto(cola, (p) => fetchUnidadesProyecto(p), {
+    concurrencia: CONCURRENCIA, pausaLoteMs: PAUSA_LOTE_MS, pausaReintentoMs: PAUSA_REINTENTO_MS, reintentos: REINTENTOS,
+  }, {
+    ahora: () => Date.now(),
+    dormir: (ms) => new Promise((r) => setTimeout(r, ms)),
+    hastaMs: t0 + PRESUPUESTO_UNIDADES_MS - RESERVA_ESCRITURA_MS,
+  }, progreso);
+  const resultados = lectura.resultados;
+  const t1 = Date.now();
+
+  // ── 4. El cruce con las unidades que ya tenemos ──
   const conDisponibles = resultados.filter((r) => !r.error && r.disponibles.length > 0);
   const sinDisponibles = resultados.filter((r) => !r.error && r.disponibles.length === 0);
   const conError = resultados.filter((r) => r.error);
@@ -242,7 +223,7 @@ export async function POST(request: Request) {
   const conEstimado = vistasFilas.filter((v) => v.estimado_uf != null).length;
   const disponiblesTotal = conDisponibles.reduce((a, r) => a + r.disponibles.length, 0);
 
-  // ── 4. Escrituras: vistas, vendidas y sus bajas. Nunca precios ni filas nuevas. ──
+  // ── 5. Escrituras: vistas, vendidas y sus bajas. Nunca precios ni filas nuevas. ──
   const errors: string[] = conError.slice(0, 10).map((r) => `proyecto ${r.idProyecto}: ${r.error}`);
   let escrituraFallo = false;
   let bajasCerradas: number | null = null;
@@ -299,39 +280,64 @@ export async function POST(request: Request) {
   }
   const t2 = Date.now();
 
-  // ── 5. Convivencia: desactivar las filas-proyecto que ya tienen detalle ──
+  // ── 6. Convivencia: desactivar las filas-proyecto que ya tienen detalle ──
   // (global e idempotente; ver toctoc-unidades.ts). Las unidades no cambian acá, pero se re-aplica
   // igual: si el invariante se rompió por otro lado, este pase lo repara.
   const recon = dry ? { desactivadas: 0, errores: [] as string[] } : await desactivarProyectosConUnidades(supabase);
   errors.push(...recon.errores);
   const t3 = Date.now();
 
+  // ── 7. Hasta dónde llegó: los leídos con todo escrito pasan a leídos ahora; la siguiente sigue por el resto ──
+  // Con una escritura caída no se sabe cuáles quedaron: ninguno cuenta como leído y la siguiente los vuelve a leer.
+  const ahora = new Date();
+  const leidos = escrituraFallo ? [] : resultados.filter((r) => !r.error).map((r) => r.idProyecto);
+  const avanceNuevo = marcarLeidos(avance, leidos, ahora);
+  const { vencidos, horasMax } = sinLeerHace(avanceNuevo, ahora);
+  const intentados = resultados.map((r) => r.idProyecto);
+  const vueltaDias = Math.round((proyectos.length / Math.max(1, intentados.length) / CORRIDAS_POR_DIA) * 10) / 10;
+  if (!dry) {
+    const guardado = await guardarAvanceUnidades(supabase, avanceNuevo, {
+      leidos: leidos.length, intentados: intentados.length, noAlcanzados: lectura.noAlcanzados, total: proyectos.length,
+      vencidos: vencidos.length, horasMax, porTiempo: lectura.porTiempo, ms: Date.now() - t0,
+    });
+    if (!guardado) { errors.push("no se guardó dónde quedó: la siguiente corrida empezaría por los mismos"); escrituraFallo = true; }
+  }
+
   const fechasEntrega: Record<string, number> = {};
   const porComuna: Record<string, number> = {};
+  const comunaDe = new Map(proyectos.map((p) => [p.idProyecto, p.comuna]));
   for (const r of conDisponibles) {
     const k = (r.fechaEntrega ?? "").trim() || "(vacía)";
     fechasEntrega[k] = (fechasEntrega[k] ?? 0) + 1;
-    const comuna = delBatch.find((p) => p.idProyecto === r.idProyecto)?.comuna ?? "?";
+    const comuna = comunaDe.get(r.idProyecto) ?? "?";
     porComuna[comuna] = (porComuna[comuna] ?? 0) + r.disponibles.length;
   }
 
-  // El motivo concreto de la alerta (cerrarCron › motivoDeFalla): «137 de 137 proyectos con http 403».
+  // El motivo concreto de la alerta (cerrarCron › motivoDeFalla): «8 de 52 proyectos fallaron (5 con http 403 ·
+  // 3 con más de 4 días sin leer)».
   const erroresPorTipo: Record<string, number> = {};
   for (const r of conError) erroresPorTipo[String(r.error)] = (erroresPorTipo[String(r.error)] ?? 0) + 1;
+  if (vencidos.length) erroresPorTipo[`más de ${MAX_DIAS_SIN_LEER} días sin leer`] = vencidos.length;
+  const timing = { arranque_ms: tArranque - t0, ficha_ms: t1 - tArranque, escritura_ms: t2 - t1, recon_ms: t3 - t2, total_ms: Date.now() - t0 };
   const detalle = {
     modo: "unidades-disponibles",
     unidad: "proyectos",
     erroresPorTipo,
     dry,
-    fallidosAntesDelReintento: fallidosPrimera,
+    fallidosAntesDelReintento: lectura.fallidosPrimera,
+    reintentos: lectura.reintentos,
     toleranciaFalla: TOLERANCIA_FALLA_PROYECTOS,
-    batch,
-    cicloDias: CICLO_DIAS,
-    proyectosEnCiclo: porId.size,
-    proyectosDelBatch: delBatch.length,
+    presupuestoMs: PRESUPUESTO_UNIDADES_MS,
+    porTiempo: lectura.porTiempo,
+    proyectosEnCiclo: proyectos.length,
+    proyectosIntentados: intentados.length,
+    proyectosNoAlcanzados: lectura.noAlcanzados,
     proyectosConDisponibles: conDisponibles.length,
     proyectosSinDisponibles: sinDisponibles.length,
     proyectosConError: conError.length,
+    proyectosVencidos: vencidos.slice(0, 20),
+    horasSinLeerMax: horasMax,
+    vueltaDias,
     proyectosSinCruce: sinCruce,
     disponibles: disponiblesTotal,
     unidadesVistas: vistasTotal,
@@ -347,17 +353,28 @@ export async function POST(request: Request) {
     porComuna,
     fechasEntrega,
     errors: errors.slice(0, 20),
-    timing: { ficha_ms: t1 - t0, escritura_ms: t2 - t1, recon_ms: t3 - t2, total_ms: t3 - t0 },
+    timing,
   };
-  // El resultado, por proyecto (29-sep-2026). Un proyecto que falla es un fallido, una escritura que
-  // falla tumba la corrida, y un batch con proyectos que no trae UN solo disponible también es falla:
-  // la fuente no respondió (o cambió la dirección, como el 02-oct).
-  const sinNinguna = delBatch.length > 0 && conDisponibles.length === 0;
-  const conteo = escrituraFallo || sinNinguna
-    ? { procesados: delBatch.length, exitosos: 0, fallidos: delBatch.length }
-    : { procesados: delBatch.length, exitosos: conDisponibles.length + sinDisponibles.length, fallidos: fallidosTolerados(conError.length, delBatch.length) + (recon.errores.length ? 1 : 0) };
-  // El ensayo responde igual, sin dejar resultado ni alerta.
-  return cerrarCron(supabase, "scrape-unidades-nuevas", conteo, { success: !escrituraFallo && !sinNinguna, ...detalle }, { registrar: !dry });
+  // El cierre, en los logs de la función: cuánto duró, cuántos leyó y cuántos quedaron, el paso más largo y el
+  // más atrasado. Sin esta línea, la duración real solo se ve en la base (y una corrida que revienta no deja nada).
+  console.log(`[${NOMBRE}] cierre ${JSON.stringify({
+    ms: timing.total_ms, total: proyectos.length, intentados: intentados.length, leidos: leidos.length, conError: conError.length,
+    noAlcanzados: lectura.noAlcanzados, reintentos: lectura.reintentos, msPasoMax: lectura.msPasoMax,
+    msPorProyecto: Math.round(lectura.msLectura / Math.max(1, intentados.length)), porTiempo: lectura.porTiempo,
+    vencidos: vencidos.length, horasSinLeerMax: horasMax, vueltaDias, timing, dry,
+  })}`);
+  // El resultado, por proyecto (29-sep-2026). Un proyecto que falla es un fallido, una escritura que falla tumba
+  // la corrida, una corrida con proyectos que no trae UN solo disponible también es falla (la fuente no respondió,
+  // o cambió la dirección, como el 02-oct), y un proyecto con más de cuatro días sin leer es un fallido.
+  const conteo = conteoUnidades({
+    intentados,
+    conError: conError.map((r) => r.idProyecto),
+    conDisponibles: conDisponibles.length,
+    escrituraFallo,
+    reconFallo: recon.errores.length > 0,
+    vencidos,
+  });
+  return { conteo, detalle: { success: conteo.fallidos === 0, ...detalle } };
 }
 
 // Vercel Cron dispara GET. Mismo handler, misma auth.
