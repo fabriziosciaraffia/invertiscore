@@ -11,8 +11,8 @@
 // EL ESQUEMA, el mismo del prechequeo semanal (09 y 12-oct-2026):
 //   · PRESUPUESTO de 240 s para la corrida entera: ninguna lectura empieza después de los 210 s
 //     (`PRESUPUESTO_UNIDADES_MS` − `RESERVA_ESCRITURA_MS`), y los 30 s que quedan son para escribir lo leído
-//     (medido: ~25 consultas, 15 s desde Vercel). Un lote empieza solo si además caben los reintentos de los
-//     que ya fallaron, así que un portal caído corta las lecturas antes, no los reintentos.
+//     (medido: ~25 consultas, 15 s desde Vercel). Un lote empieza solo si, aunque falle entero, caben él y un
+//     reintento para cada fallido, así que un portal caído corta las lecturas antes, no los reintentos.
 //   · CIERRE LIMPIO registrando hasta dónde llegó: cada proyecto lleva cuándo se leyó por última vez
 //     (`metrics_daily`, fuente `cron-avance`), y la corrida siguiente sigue por los que hace más tiempo que
 //     no se leen. Un proyecto que falló sigue primero en la cola: lo toma la corrida siguiente, no la vuelta
@@ -233,6 +233,7 @@ export async function leerConPresupuesto<P extends { idProyecto: number }, R ext
   const inicio = reloj.ahora();
   const queda = (ms: number) => reloj.ahora() + ms < reloj.hastaMs;
   const costoReintento = ritmo.pausaReintentoMs + MS_LECTURA_PROYECTO;
+  const costoLote = MS_LECTURA_PROYECTO + ritmo.pausaLoteMs;
   const resultados: R[] = [];
   const bases: P[] = [];
   let i = 0;
@@ -241,8 +242,11 @@ export async function leerConPresupuesto<P extends { idProyecto: number }, R ext
   let reintentos = 0;
   while (i < cola.length) {
     const fallidos = resultados.filter((r) => r.error).length;
-    if (!queda(fallidos * costoReintento)) { porTiempo = true; break; }
     const lote = cola.slice(i, i + ritmo.concurrencia);
+    // Un lote empieza solo si, AUNQUE FALLE ENTERO, caben él y un reintento para cada fallido. Contando solo los
+    // fallidos de antes, una ráfaga de 403 en los últimos lotes dejó dos sin reintento en la primera corrida real
+    // (13-oct-2026, 22:16 UTC: 14 fallidos, 12 reintentos, 5 en 403 al cierre).
+    if (!queda(costoLote + (fallidos + lote.length) * costoReintento)) { porTiempo = true; break; }
     i += lote.length;
     const t = reloj.ahora();
     const rs = await Promise.all(lote.map((p) => leer(p)));

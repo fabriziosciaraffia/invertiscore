@@ -14,7 +14,7 @@
 // base: los proyectos de hoy caben en 4 días; (6) el cableado de la ruta; (7) el techo con un paso colgado.
 //
 // ACTA (13-oct-2026). Contra la ruta de antes del arreglo (con este módulo presente): ROJO con 13 fallas. Sobre el
-// arreglo, 34/34 mutaciones en ROJO (este tier, CRONS o PRECHEQUEO-PRESUPUESTO), cada archivo restaurado byte a byte
+// arreglo, 34/34 mutaciones en ROJO (este tier, CRONS o PRECHEQUEO-PRESUPUESTO; 35/35 en la segunda pasada, abajo), cada archivo restaurado byte a byte
 // y verificado por hash: M1 presupuesto 300 s · M2 lotes sin reloj · M3 lotes sin reservar los reintentos · M4
 // reintentos sin reloj · M5 reintento sin pausa · M6 orden solo por id · M7 no marca los leídos · M8 los vencidos
 // no cuentan · M9 plazo de 40 días · M10 dos corridas al día · M11 cada proyecto cuesta 8 s · M12 MÁS PROYECTOS DE
@@ -28,6 +28,13 @@
 // La primera tanda dio 33/34: M5 quedó VERDE porque el chequeo medía el hueco desde el primer intento del MISMO
 // proyecto —siempre largo, la primera pasada queda muy atrás— y no la pausa antes de cada reintento, que es lo
 // que pide la regla del 02-oct. Ahora mide el hueco con el pedido anterior al portal.
+// SEGUNDA PASADA, la que encontró la primera corrida real (13-oct, 22:16 UTC, disparada a mano tras el deploy):
+// cerró a los 222 s sin corte, pero con 14 fallidos hubo 12 reintentos y 5 quedaron en 403 (5,4%: parcial y
+// alerta). La reserva contaba solo los fallidos de ANTES del lote; una ráfaga de 403 en los últimos lotes no cabía.
+// Ningún caso del tier la veía: con 30% de fallas repartidas sobraba holgura. El caso de la ráfaga (desde el
+// proyecto 60, 80 o 100, reintento en su p95) dio ROJO contra ese código y VERDE con la reserva nueva —el lote
+// empieza solo si, aunque falle entero, caben él y un reintento para cada fallido—; con la ráfaga desde el 40
+// salía verde igual, por eso barre cuatro posiciones. 35/35 en ROJO con M3b, que vuelve a la reserva vieja.
 //
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/unidades-presupuesto-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,6 +83,11 @@ const sano = (id: number) => ({ ms: 1000 + ((id * 37) % 1300) });
 const diaNormal = (id: number, intento: number) => (intento === 0 && id % 10 < 3 ? { ms: 800, error: "http 403" } : sano(id));
 /** El 13-oct: el 77% de los pedidos sin respuesta (fetch failed, 0,2 s), también al reintentar. */
 const portalCaido = (id: number) => (id % 100 < 77 ? { ms: 200, error: "TypeError: fetch failed" } : sano(id));
+/** La primera corrida real (13-oct, 22:16 UTC): los 403 llegaron en ráfaga en los últimos lotes y dos fallidos
+ *  quedaron sin reintento. Acá, desde el proyecto `desde` todos dan 403 en la primera pasada, y cada reintento
+ *  tarda lo que la reserva supone (un proyecto en su p95): ni un segundo de holgura. Con la ráfaga desde el 40
+ *  había holgura y el caso salía verde con el código que fallaba; desde el 60, 80 o 100, no. */
+const rafagaFinal = (desde: number) => (id: number, intento: number): { ms: number; error?: string } => (intento === 0 && id >= desde ? { ms: 800, error: "http 403" } : intento > 0 ? { ms: 2500 } : sano(id));
 
 /** Una corrida como la arma la ruta: completar el avance → ordenar → leer con reloj → marcar los leídos → los
  *  vencidos → el conteo. El cableado de la ruta lo fija el §6. */
@@ -159,6 +171,19 @@ export async function runUnidadesPresupuestoTier(): Promise<{ hard: number }> {
       if (c.l.reintentos === 0) F(`2 · (${nombre}) ningún fallido alcanzó su reintento: las lecturas se comieron todo el tiempo`);
       if (resultadoCron(c.conteo) === "ok") F(`2 · (${nombre}) con el portal caído la corrida no queda en rojo`);
     }
+  }
+
+  // La ráfaga al final: todo fallido de la primera pasada alcanza al menos un reintento, aunque los 403 lleguen
+  // juntos en los últimos lotes. Un lote empieza solo si, aunque falle entero, caben él y los reintentos de todos.
+  for (const desde of [1040, 1060, 1080, 1100]) {
+    const ids = Array.from({ length: 434 }, (_, i) => 1000 + i);
+    const resultado = rafagaFinal(desde);
+    const c = await corrida({ ids, avance: null, inicio: 0, resultado });
+    const fallidosPrimera = c.p.inicios.filter((x) => x.n === 0 && resultado(x.id, 0).error).map((x) => x.id);
+    const sinReintento = fallidosPrimera.filter((id) => (c.p.intentos.get(id) ?? 0) < 2);
+    if (fallidosPrimera.length === 0 || sinReintento.length) F(`2 · (la ráfaga de 403 desde el proyecto ${desde - 1000}) ${sinReintento.length} de ${fallidosPrimera.length} fallidos se quedaron sin reintento: el último lote empezó sin lugar para reintentar lo suyo`);
+    const tarde = c.p.inicios.filter((x) => x.t >= c.hastaMs);
+    if (tarde.length) F(`2 · (la ráfaga de 403 desde el proyecto ${desde - 1000}) ${tarde.length} pedido(s) EMPEZARON pasados los ${c.hastaMs / 1000} s`);
   }
 
   // ── 3 · la corrida siguiente sigue por los que esta no leyó ─────────────────────────────────────────
