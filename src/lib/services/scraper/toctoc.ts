@@ -448,7 +448,8 @@ export function parseMapProperty(
       precio, moneda,
       superficieM2,
       titulo,
-      dormitorios: dormitorios > 0 ? dormitorios : undefined,
+      // El 0 es un ESTUDIO (13-oct-2026): hasta hoy se descartaba y el estudio quedaba sin dormitorios (avisos/estudio.ts).
+      dormitorios: Number.isFinite(dormitorios) && dormitorios >= 0 ? dormitorios : undefined,
       banos: banos > 0 ? banos : undefined,
       url,
       condicion: esObraNueva ? "nuevo" : "usado",
@@ -581,7 +582,8 @@ export function parsePropertyFromResult(
     }
 
     let dormitorios: number | undefined;
-    if (item.dormitorios && Array.isArray(item.dormitorios) && item.dormitorios[0]) {
+    // El 0 es un estudio (13-oct-2026): `item.dormitorios[0]` en 0 era falso y se perdía.
+    if (item.dormitorios && Array.isArray(item.dormitorios) && item.dormitorios[0] != null && String(item.dormitorios[0]).trim() !== "") {
       dormitorios = parseInt(String(item.dormitorios[0]));
       if (isNaN(dormitorios)) dormitorios = undefined;
     }

@@ -139,7 +139,8 @@ export function bandaDeAnios(anios: number): Antiguedad {
 }
 
 export async function sugerenciasDeAviso(a: AvisoParaEvaluar): Promise<{ arr: Sugerencias; vta: Sugerencias }> {
-  const dorms = a.dormitorios || 2;
+  // `??` y no `||` (13-oct-2026): un estudio (0) buscaba comparables de 2D; con 0, sin filtro de dormitorios.
+  const dorms = a.dormitorios ?? 2;
   const [arr, vta] = await Promise.all([
     getSugerencias(a.comuna, a.m2, dorms, a.precioUF, a.lat, a.lng, 800, "arriendo", null),
     getSugerencias(a.comuna, a.m2, dorms, a.precioUF, a.lat, a.lng, 800, "venta", a.condicion),

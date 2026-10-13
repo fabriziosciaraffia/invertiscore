@@ -17,7 +17,8 @@ export function propertyToRow(prop: ScrapedProperty) {
     precio: prop.precio,
     moneda: prop.moneda,
     superficie_m2: prop.superficieM2 || null,
-    dormitorios: prop.dormitorios || null,
+    // `??` y no `||`: el 0 es un estudio (13-oct-2026, avisos/estudio.ts).
+    dormitorios: prop.dormitorios ?? null,
     banos: prop.banos || null,
     gastos_comunes: prop.gastosComunes || null,
     estacionamientos: prop.estacionamientos || null,
