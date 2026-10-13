@@ -35,11 +35,11 @@ import { rutaTres } from "@/lib/tres-analisis";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import "./guia.css";
 
-type Item = { avisoId: string; comuna: string; tipologia: string | null; m2: number; precioUF: number; distancia: string; veredicto: string | null; score: number | null; flujo: number | null };
+type Item = { avisoId: string; comuna: string; tipologia: string | null; m2: number; precioUF: number; distancia: string; veredicto: string | null; score: number | null; flujo: number | null; arriendo?: number | null };
 export type RespuestaGuia = Respuesta;
 type Respuesta =
   | { disponible: false }
-  | { disponible: true; estado: "normal" | "ajustada" | "ninguno"; origen: { tipologia: string | null; m2: number; precioUF: number }; combinacion: { piePct: number; plazoAnios: number } | null; radioM: number | null; items: Item[] };
+  | { disponible: true; estado: "normal" | "ajustada" | "ninguno"; origen: { tipologia: string | null; m2: number; precioUF: number }; combinacion: { piePct: number; plazoAnios: number } | null; radioM: number | null; items: Item[]; tasa?: number | null; uf?: number | null };
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
@@ -226,9 +226,11 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
       {r && r.disponible && r.estado !== "ninguno" && (
         <p className="guia-pie">{GUIA.antiguedad} {GUIA.pie}</p>
       )}
-      {confirmar && (
+      {confirmar && r && r.disponible && r.combinacion && (
         <AvisoAntesDeAnalizar
           depto={confirmar.it}
+          combinacion={r.combinacion}
+          finanzas={{ tasa: r.tasa ?? null, uf: r.uf ?? null, arriendo: confirmar.it.arriendo ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : uso}
           rutaCompra={rutaCompra()}
           alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it, true); }}

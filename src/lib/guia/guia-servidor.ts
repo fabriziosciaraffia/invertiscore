@@ -217,11 +217,14 @@ export async function guiaPara(admin: SupabaseClient, o: OrigenGuia, cfg: { uf: 
   return { ...g, enVivo: enVivo.size, lecturas };
 }
 
-/** Lo que la pantalla muestra y nada más: sin enlace al aviso ni textos del aviso. */
-export function respuestaGuia(o: OrigenGuia, g: ResultadoGuia<CandidatoGuia>) {
+/** Lo que la pantalla muestra y nada más: sin enlace al aviso ni textos del aviso. La tasa, la UF y el arriendo
+ *  evaluado de cada depto (13-oct-2026) son para el aviso antes de gastar, que se muestra como el pop-up del wizard. */
+export function respuestaGuia(o: OrigenGuia, g: ResultadoGuia<CandidatoGuia>, uf: number | null = null) {
   return {
     disponible: true as const,
     estado: g.estado,
+    tasa: o.tasa,
+    uf,
     origen: { tipologia: tipologiaDe(o.dormitorios, null), m2: Math.round(o.m2), precioUF: Math.round(o.precioUF) },
     combinacion: g.combinacion,
     radioM: g.radioM,
@@ -235,6 +238,7 @@ export function respuestaGuia(o: OrigenGuia, g: ResultadoGuia<CandidatoGuia>) {
       veredicto: ev.veredicto,
       score: ev.score,
       flujo: ev.flujo,
+      arriendo: c.arriendo?.monto ?? null,
     })),
   };
 }
@@ -253,7 +257,7 @@ export async function calcularYGuardarGuia(admin: SupabaseClient, analysisId: st
   const g = await guiaPara(admin, o, cfg);
   // Sin ningún publicado y con avisos que no se pudieron chequear, no se sabe: sin guía, y sin guardar.
   if (g.estado === "ninguno" && g.sinChequeo > 0) return { disponible: false };
-  const resultado = respuestaGuia(o, g);
+  const resultado = respuestaGuia(o, g, cfg.uf);
   const { error } = await admin.from("guias_calculadas").upsert({ analysis_id: analysisId, resultado, calculada_at: new Date().toISOString(), ms: Date.now() - t0 }, { onConflict: "analysis_id" });
   if (error) console.error("[guia] no se guardó:", error.message);
   return resultado;

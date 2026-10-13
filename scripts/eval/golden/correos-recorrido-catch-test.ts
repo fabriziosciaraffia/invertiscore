@@ -28,12 +28,16 @@
 // selector · M23 la vuelta acepta //sitio · M24 después de pagar no vuelve · M25 sin la pregunta arriba · M26 contestar no
 // la quita · M27 renta corta no arma perfil · M28 el semanal se le niega a renta corta · M29 el correo sin la línea ·
 // M30 «Analizar este» rechaza el origen corto · M31 la fila corta se lee como larga.
+// Segunda vuelta (13-oct-2026, pedido de Fabrizio: el aviso es el pop-up del wizard, con «Con el pie de 20% y el plazo
+// de 25 años de tu perfil» destacado): M10, M11 rehechas sobre el modal, y 8 nuevas — M32 el dividendo sin el pie ·
+// M33 sin la superficie · M34 la frase no dice «de tu perfil» · M35 el aviso sin el destacado · M36 la página semanal
+// sin las finanzas · M37 la guía sin la tasa · M38 el wizard cambia de título · M39 el aviso dice «de esta guía». 39/39 ROJO.
 // Solo:  node --import tsx scripts/eval/golden/correos-recorrido-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DIAS_ENTRADA_POR_CORREO, LINEA_RENTA_CORTA, SEMANAL_PAGINA, puedeEntrarPorCorreo } from "../../../src/lib/guia/semanal";
-import { AVISO_ANALIZAR, lineaDepto, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
+import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
 import { PRODUCTO_TRES, TRES_CANTIDAD, TRES_COPY, TRES_PRECIO_CLP, rutaTres, volverSeguro } from "../../../src/lib/tres-analisis";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
 import { CASA } from "../../../src/app/dashboard/casa-copy";
@@ -85,24 +89,38 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (textoUso({ tipo: "con", n: 3, noVencen: true }) !== "Usa 1 de tus 3 análisis." || textoUso({ tipo: "con", n: 1, noVencen: true }) !== "Usa tu último análisis.") F("5 · el aviso no dice «Usa 1 de tus N análisis.»");
   if (textoUso({ tipo: "regalo", vence: null }) !== "Usa el análisis que va por cuenta de Franco." || !/no descuenta/.test(textoUso({ tipo: "plan" }))) F("5 · el aviso no distingue el regalo o el plan");
   if (textoUso({ tipo: "sin" }) !== `Para analizar este depto: 3 análisis por $19.990, sin caducidad.` || AVISO_ANALIZAR.comprar !== TRES_COPY.boton) F("5 · sin análisis, el aviso no ofrece el pack");
-  if (lineaDepto(DEPTO) !== "Ñuñoa · 2D1B · UF 3.980") F(`5 · el aviso no dice comuna, tipología y precio (${lineaDepto(DEPTO)})`);
   if (usoDesdeSaldo(0).tipo !== "sin" || usoDesdeSaldo(null).tipo !== "desconocido" || usoDesdeSaldo(2).tipo !== "con") F("5 · el saldo de la guía no se traduce al aviso (cero sigue ofreciendo analizar)");
+  // Los datos del pop-up del wizard (13-oct-2026, pedido de Fabrizio): precio por m², pie, dividendo, retorno bruto, más
+  // el precio y la superficie; con el mismo dividendo del wizard (UF 3.184 a 4,2% en 25 años) y «—» sin con qué.
+  const der = derivadosAviso({ precioUF: 3980, m2: 57 }, { piePct: 20, plazoAnios: 25 }, { tasa: 4.2, uf: 39500, arriendo: 620000 }).map((x) => `${x.label}: ${x.valor}`).join(" · ");
+  if (der !== "Precio: UF 3.980 · Precio por m²: 70 UF/m² · Superficie: 57 m² · Pie: UF 796 · Dividendo: $677.817/mes · Retorno bruto: 4,7% anual") F(`5 · el aviso no muestra los datos del wizard (${der})`);
+  const sinCon = derivadosAviso({ precioUF: 3980, m2: 57 }, { piePct: 20, plazoAnios: 25 }, { tasa: null, uf: 39500, arriendo: null });
+  if (sinCon.find((x) => x.label === "Dividendo")?.valor !== "—" || sinCon.find((x) => x.label === "Retorno bruto")?.valor !== "—") F("5 · sin la tasa o el arriendo, el aviso inventa el dividendo o el retorno");
+  if (destacadoCombinacion({ piePct: 20, plazoAnios: 25 }).texto !== "Con el pie de 20% y el plazo de 25 años de tu perfil") F("5 · el aviso no destaca que va con el pie y el plazo del perfil");
   const aviso = sinComentarios(leer("src/components/guia/AvisoAntesDeAnalizar.tsx"));
-  if (!/\{sin \? \(\s*<EnlaceCarga href=\{rutaCompra\}[^>]*data-aviso="comprar">\{AVISO_ANALIZAR\.comprar\}<\/EnlaceCarga>\s*\) : \(\s*<button type="button" className="guia-aviso-si" onClick=\{alAnalizar\} data-aviso="analizar">\{AVISO_ANALIZAR\.analizar\}<\/button>/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
-  if (!/onClick=\{alCancelar\} data-aviso="cancelar">\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/\{lineaDepto\(depto\)\}/.test(aviso) || !/\{textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar, el depto o lo que usa");
+  if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/derivados: derivadosAviso\(depto, combinacion, finanzas\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
+  if (!/destacado=\{<>Con el pie de <b>\{d\.pie\}<\/b> y el plazo de <b>\{d\.plazo\}<\/b> de tu perfil<\/>\}/.test(aviso)) F("5 · el aviso no destaca el pie y el plazo de su perfil");
+  if (!/labelConfirmar=\{sin \? AVISO_ANALIZAR\.comprar : AVISO_ANALIZAR\.analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => router\.push\(rutaCompra\) : alAnalizar\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
+  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa");
+  const modal = sinComentarios(leer("src/components/formulario-v4/ModalPlausibilidad.tsx"));
+  if (!/titulo = "Confirma antes de generar",/.test(modal) || !/labelRevisar = "Revisar",/.test(modal) || !/\{destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>\{destacado\}<\/p>\}/.test(modal) || !/\{labelRevisar\}\s*<\/button>/.test(modal)) F("5 · el modal del wizard no acepta el destacado y el secundario del aviso (o le cambia el texto al wizard)");
   // La página semanal: el botón abre el aviso (no genera), está también sin saldo, y «sin créditos» abre el aviso con el pack.
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
   const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal) => {", "\n  };\n");
   if (!tarjetaSemanal || !/className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(tarjetaSemanal) || /analizar\(it\)/.test(tarjetaSemanal)) F("5 · en la página semanal «Analizar este» genera sin el aviso");
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
   if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); break; \}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
-  if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con su saldo y su compra");
+  if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
+  const paginaSem = sinComentarios(leer("src/app/semanal/page.tsx"));
+  if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf\)/.test(paginaSem) || !/finanzas=\{finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
   // La guía: lo mismo, y el registro en la tarjeta termina en el aviso, no en un informe.
   const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/className="guia-an" onClick=\{\(\) => abrir\(it\)\}/.test(guia) || !/if \(!conSesion\) \{ void analizar\(it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: false \}\);/.test(guia)) F("5 · en la guía «Analizar este» genera sin el aviso");
   if (!/alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(guia)) F("5 · en la guía, al entrar con el código se genera sin el aviso");
   if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); setGenerando\(null\); return; \}/.test(guia) || /GUIA\.sinCreditos/.test(guia)) F("5 · en la guía sigue el callejón «Ya usaste tus análisis.»");
-  if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : uso\}\s+rutaCompra=\{rutaCompra\(\)\}/.test(guia) || !/const uso = estado \?\? usoDesdeSaldo\(saldo\);/.test(guia)) F("5 · la guía no monta el aviso con su saldo y su compra");
+  if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+combinacion=\{r\.combinacion\}\s+finanzas=\{\{ tasa: r\.tasa \?\? null, uf: r\.uf \?\? null, arriendo: confirmar\.it\.arriendo \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : uso\}\s+rutaCompra=\{rutaCompra\(\)\}/.test(guia) || !/const uso = estado \?\? usoDesdeSaldo\(saldo\);/.test(guia)) F("5 · la guía no monta el aviso con su pie y su plazo, sus datos, su saldo y su compra");
+  const guiaSrv = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
+  if (!/tasa: o\.tasa,\s*uf,/.test(guiaSrv) || !/arriendo: c\.arriendo\?\.monto \?\? null,/.test(guiaSrv) || !/const resultado = respuestaGuia\(o, g, cfg\.uf\);/.test(guiaSrv)) F("5 · la guía no trae la tasa, la UF y el arriendo para el aviso");
   if (!/<GuiaBusqueda [^>]*\bestado=\{saldo\}/.test(leer("src/app/dashboard/page.tsx"))) F("5 · la guía del dashboard no le pasa el saldo al aviso (con cero diría «Usa 1 de tus análisis.»)");
 
   // ── 6 · tres análisis por $19.990 ───────────────────────────────────────────

@@ -36,14 +36,15 @@ const PERFIL: PerfilChips = { tipologia: "2D1B", comuna: "San Miguel", modalidad
 // y cobra un crédito si el informe es tuyo).
 const ORIGEN = { tipologia: "2D", m2: 60, precioUF: 4300 };
 const GUIA_MUESTRA: Record<"normal" | "ajustada" | "ninguno", RespuestaGuia> = {
-  normal: { disponible: true, estado: "normal", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 25 }, radioM: 1000, items: [
-    { avisoId: "m1", comuna: "Ñuñoa", tipologia: "2D2B", m2: 57, precioUF: 3980, distancia: "420 m", veredicto: "COMPRAR", score: 76, flujo: 12000 },
-    { avisoId: "m2", comuna: "Ñuñoa", tipologia: "2D1B", m2: 62, precioUF: 4120, distancia: "780 m", veredicto: "COMPRAR", score: 71, flujo: -64000 },
-    { avisoId: "m3", comuna: "Providencia", tipologia: "2D1B", m2: 55, precioUF: 4390, distancia: "950 m", veredicto: "COMPRAR", score: 70, flujo: -81000 },
+  // tasa, uf y arriendo: para el aviso antes de gastar, que se muestra como el pop-up del wizard (13-oct-2026).
+  normal: { disponible: true, estado: "normal", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 25 }, radioM: 1000, tasa: 4.2, uf: 39500, items: [
+    { avisoId: "m1", comuna: "Ñuñoa", tipologia: "2D2B", m2: 57, precioUF: 3980, distancia: "420 m", veredicto: "COMPRAR", score: 76, flujo: 12000, arriendo: 620000 },
+    { avisoId: "m2", comuna: "Ñuñoa", tipologia: "2D1B", m2: 62, precioUF: 4120, distancia: "780 m", veredicto: "COMPRAR", score: 71, flujo: -64000, arriendo: 560000 },
+    { avisoId: "m3", comuna: "Providencia", tipologia: "2D1B", m2: 55, precioUF: 4390, distancia: "950 m", veredicto: "COMPRAR", score: 70, flujo: -81000, arriendo: 570000 },
   ] },
-  ajustada: { disponible: true, estado: "ajustada", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 30 }, radioM: 2000, items: [
-    { avisoId: "m4", comuna: "Ñuñoa", tipologia: "2D1B", m2: 64, precioUF: 4480, distancia: "1,3 km", veredicto: "COMPRAR", score: 72, flujo: -52000 },
-    { avisoId: "m5", comuna: "Macul", tipologia: "2D2B", m2: 61, precioUF: 3890, distancia: "1,8 km", veredicto: "COMPRAR", score: 70, flujo: -58000 },
+  ajustada: { disponible: true, estado: "ajustada", origen: ORIGEN, combinacion: { piePct: 20, plazoAnios: 30 }, radioM: 2000, tasa: 4.2, uf: 39500, items: [
+    { avisoId: "m4", comuna: "Ñuñoa", tipologia: "2D1B", m2: 64, precioUF: 4480, distancia: "1,3 km", veredicto: "COMPRAR", score: 72, flujo: -52000, arriendo: 600000 },
+    { avisoId: "m5", comuna: "Macul", tipologia: "2D2B", m2: 61, precioUF: 3890, distancia: "1,8 km", veredicto: "COMPRAR", score: 70, flujo: -58000, arriendo: 530000 },
   ] },
   ninguno: { disponible: true, estado: "ninguno", origen: ORIGEN, combinacion: null, radioM: null, items: [] },
 };

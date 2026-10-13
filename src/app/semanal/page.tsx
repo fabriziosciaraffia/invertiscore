@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
-import { seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
+import { finanzasDeSeleccion, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { hrefEntrar } from "@/lib/entrar/entrada";
@@ -36,10 +36,18 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   if (!sel) redirect("/dashboard");
 
   const otraCuenta = sel.user_id !== user.id;
-  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones", id: sel.id, userId: user.id, items: sel.items }, await leerConfigGuia(admin));
+  const cfg = await leerConfigGuia(admin);
+  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones", id: sel.id, userId: user.id, items: sel.items }, cfg);
   const a = searchParams.a ?? null;
   const ordenados = a ? [...filas.filter((f) => f.item.avisoId === a), ...filas.filter((f) => f.item.avisoId !== a)] : filas;
-  const [datosSaldo, perfilPersona] = await Promise.all([leerSaldo(admin, user.id), otraCuenta ? null : leerPerfilBusqueda(admin, user.id)]);
+  // Lo que el aviso antes de gastar muestra como el pop-up del wizard (13-oct-2026): la tasa de la persona, la UF del día
+  // y el arriendo con que se evaluó cada depto.
+  const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
+  const [datosSaldo, perfilPersona, finanzas] = await Promise.all([
+    leerSaldo(admin, user.id),
+    otraCuenta ? null : leerPerfilBusqueda(admin, user.id),
+    finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf),
+  ]);
   const saldo = estadoSaldo(datosSaldo);
   const preguntarCuando = perfilPersona != null && perfilPersona.perfil.horizonte == null;
   const combo = sel.combinacion;
@@ -63,6 +71,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
             variante={sel.variante}
             inmediato={sel.fuente === "inmediato"}
             rentaCorta={sel.rentaCorta}
+            finanzas={finanzas}
           />
           </>
         )}

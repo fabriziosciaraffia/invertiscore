@@ -286,6 +286,9 @@
 .wz-modal-grandote small { font-size: 15px; font-weight: 600; color: var(--tx3); margin-left: 6px; letter-spacing: 0; }
 .wz-modal-gl { font-size: 12.5px; color: var(--tx3); margin-top: 6px; }
 .wz-modal-msg { font-size: 15px; line-height: 1.5; font-weight: 500; color: var(--tx); margin: 14px 0 0; }
+/* el aviso antes de gastar un análisis (13-oct-2026): el pie y el plazo con que se analiza, con un filete en tinta */
+.wz-modal-destacado { padding-left: 10px; border-left: 3px solid var(--tx); }
+.wz-modal-destacado b { font-weight: 700; }
 .wz-modal-resto { margin-top: 14px; }
 .wz-modal-resto ul { margin: 6px 0 0; padding: 0 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--tx2); }
 .wz-modal-orig { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }

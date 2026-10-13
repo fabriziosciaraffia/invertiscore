@@ -5,7 +5,7 @@
 // precio, el veredicto con su puntaje y el flujo con el pie y el plazo de la persona. «Analizar este»
 // genera el informe por la misma ruta que la guía (un crédito, una vez por persona y aviso, la ficha
 // releída antes de cobrar). Desde el 13-oct-2026 «Analizar este» abre primero el aviso (AvisoAntesDeAnalizar:
-// el depto y «Usa 1 de tus N análisis.»); sin saldo, el aviso ofrece el pack de tres, y abajo el botón rojo
+// el pop-up del wizard con los datos del depto, el pie y el plazo del perfil y «Usa 1 de tus N análisis.»); sin saldo, el aviso ofrece el pack de tres, y abajo el botón rojo
 // compra el pack en lugar del suelto. Después de pagar, vuelve a esta página.
 // La página está VIVA (05-oct-2026): un depto que ya no está publicado lo dice —«Este ya no está
 // publicado»— y en su lugar va el siguiente mejor del perfil, chequeado (lo arma el servidor:
@@ -27,7 +27,7 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
 
-export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, rentaCorta = false }: {
+export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, rentaCorta = false, finanzas = { tasa: null, uf: null, arriendos: {} } }: {
   token: string;
   origenId: string | null;
   combinacion: { piePct: number; plazoAnios: number } | null;
@@ -39,6 +39,8 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
   inmediato?: boolean;
   /** El perfil es de renta corta (13-oct-2026): los deptos son de renta larga y se dice. */
   rentaCorta?: boolean;
+  /** Para el aviso antes de gastar (13-oct-2026): la tasa, la UF y el arriendo evaluado de cada depto. */
+  finanzas?: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
 }) {
   const router = useRouter();
   const [generando, setGenerando] = useState<string | null>(null);
@@ -143,9 +145,11 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
         </div>
       )}
       <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>
-      {confirmar && (
+      {confirmar && combinacion && (
         <AvisoAntesDeAnalizar
           depto={confirmar.it}
+          combinacion={combinacion}
+          finanzas={{ tasa: finanzas.tasa, uf: finanzas.uf, arriendo: finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : saldo}
           rutaCompra={rutaCompra(confirmar.it.avisoId)}
           alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it); }}

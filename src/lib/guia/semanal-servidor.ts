@@ -423,6 +423,25 @@ export interface SeleccionPorToken {
   rentaCorta: boolean;
 }
 
+/**
+ * Lo que el aviso antes de gastar necesita para mostrarse como el pop-up del wizard (13-oct-2026): la tasa de la
+ * persona (la de su origen, la misma con que se evaluó), la UF y el arriendo con que Franco evaluó cada depto. Lo que no
+ * se pueda leer queda en null y el aviso dice «—».
+ */
+export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: string | null, avisoIds: string[], uf: number): Promise<{ tasa: number | null; uf: number; arriendos: Record<string, number> }> {
+  const [o, { data, error }] = await Promise.all([
+    origenId ? leerOrigenGuia(admin, origenId, { rentaCorta: true }) : Promise.resolve(null),
+    avisoIds.length ? admin.from("avisos_evaluados").select("aviso_id, arriendo").in("aviso_id", avisoIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-arriendos-aviso" });
+  const arriendos: Record<string, number> = {};
+  for (const f of (data ?? []) as Array<{ aviso_id: string; arriendo: { monto?: unknown } | null }>) {
+    const m = Number(f.arriendo?.monto);
+    if (Number.isFinite(m) && m > 0) arriendos[f.aviso_id] = m;
+  }
+  return { tasa: o?.tasa ?? null, uf, arriendos };
+}
+
 export async function seleccionPorToken(admin: SupabaseClient, token: string): Promise<SeleccionPorToken | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
   const { data: s } = await admin.from("semanal_selecciones").select("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil").eq("token", token).maybeSingle();

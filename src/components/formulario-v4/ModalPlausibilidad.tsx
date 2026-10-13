@@ -24,7 +24,7 @@
 // el panel lleva `.wz4` porque se monta en el body, fuera del interior.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, X } from "lucide-react";
 import { valorParaMostrar, type Anomalia } from "@/lib/plausibilidad";
@@ -61,6 +61,15 @@ export interface ModalPlausibilidadProps {
   /** Copy del primario en estado limpio (cambia en el camino de compra). */
   labelConfirmar?: string;
   /**
+   * El aviso antes de gastar un análisis (13-oct-2026, components/guia/AvisoAntesDeAnalizar.tsx) monta este mismo
+   * modal fuera del wizard: el rótulo de arriba, una línea destacada bajo la modalidad (el pie y el plazo con que se
+   * analiza), el copy del secundario y una marca para encontrarlo. Sin ellas, el wizard se ve como siempre.
+   */
+  titulo?: string;
+  destacado?: ReactNode;
+  labelRevisar?: string;
+  marca?: string;
+  /**
    * Qué hace el modal cuando hay anomalías.
    *
    *  · "bloqueo" (default) — el del RESUMEN. Un solo botón, sin salida: el
@@ -87,6 +96,10 @@ export function ModalPlausibilidad({
   resumen,
   consumo,
   labelConfirmar = "Generar el análisis",
+  titulo = "Confirma antes de generar",
+  destacado,
+  labelRevisar = "Revisar",
+  marca,
   modo = "bloqueo",
   onSeguir,
   submitting = false,
@@ -165,6 +178,7 @@ export function ModalPlausibilidad({
       role={esAnomalia ? "alertdialog" : "dialog"}
       aria-modal="true"
       aria-labelledby="modal-plausibilidad-titulo"
+      data-modal={marca}
     >
       <div ref={panelRef} className="wz-modal modal-plausibilidad-panel">
         {/* Cuerpo scrolleable: los botones quedan fijos abajo. Nunca un modal
@@ -176,7 +190,7 @@ export function ModalPlausibilidad({
                 ? anomalias.length > 1
                   ? "Revisa estos datos"
                   : "Revisa este dato"
-                : "Confirma antes de generar"}
+                : titulo}
             </span>
             <button type="button" onClick={cerrar} aria-label="Cerrar" className="wz-disco">
               <X className="w-4 h-4" aria-hidden />
@@ -236,6 +250,7 @@ export function ModalPlausibilidad({
                 {resumen?.direccion ?? "Tu análisis"}
               </h2>
               {resumen?.modalidad && <div className="wz-modal-gl">{resumen.modalidad}</div>}
+              {destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>{destacado}</p>}
 
               {resumen && resumen.derivados.length > 0 && (
                 <div className="wz-modal-der">
@@ -283,7 +298,7 @@ export function ModalPlausibilidad({
                 )}
               </button>
               <button type="button" onClick={cerrar} disabled={submitting} className="wz-btn2">
-                Revisar
+                {labelRevisar}
               </button>
             </>
           )}
