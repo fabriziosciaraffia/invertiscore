@@ -13,6 +13,7 @@ import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
 import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { esOrigenTres, PRODUCTO_TRES, TRES_CANTIDAD, volverSeguro } from "@/lib/tres-analisis";
 import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 
 const SITIO_CORREO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       .eq("commerce_order", flowData.commerceOrder)
       .maybeSingle();
     const prePaymentData = prePayment?.payment_data as
-      | { companion_str_id?: string; ambas_group_id?: string; origen?: string; variante?: string }
+      | { companion_str_id?: string; ambas_group_id?: string; origen?: string; variante?: string; volver?: string }
       | null;
     const companionStrId = prePaymentData?.companion_str_id;
     // Claves de negocio/audit escritas en payments/create que hay que preservar: el
@@ -101,6 +102,10 @@ export async function POST(request: Request) {
       ...(prePaymentData?.ambas_group_id ? { ambas_group_id: prePaymentData.ambas_group_id } : {}),
       ...(prePaymentData?.origen === "semanal" ? { origen: "semanal", ...(prePaymentData.variante ? { variante: prePaymentData.variante } : {}) } : {}),
       ...(prePaymentData?.origen === "inmediato" ? { origen: "inmediato" } : {}),
+      // Tres análisis (13-oct-2026): de dónde se compró (el dashboard, el aviso antes de gastar, la guía) y adónde
+      // vuelve. Solo payments/create los escribe, y solo para ese producto.
+      ...(esOrigenTres(prePaymentData?.origen) && prePaymentData?.origen !== "semanal" && prePaymentData?.origen !== "inmediato" ? { origen: prePaymentData.origen } : {}),
+      ...(volverSeguro(prePaymentData?.volver) ? { volver: prePaymentData?.volver } : {}),
     };
 
     // Update payment record. flowData define el payload fresco (no lo pisamos con el
@@ -208,6 +213,12 @@ export async function POST(request: Request) {
         } catch (e) {
           console.error("[payments/confirm] pack_pagado excepción:", e);
         }
+      } else if (userId && product === PRODUCTO_TRES) {
+        // Tres análisis por $19.990 para quien tiene cuenta (13-oct-2026, lib/tres-analisis.ts): 3 créditos al ledger,
+        // sin caducidad, en UN grant (idempotente por dedup de grantCredits). No desbloquea nada.
+        await grantCredits(userId, PRODUCTO_TRES, TRES_CANTIDAD, { paymentId, noExpire: true });
+        const deDonde = payment.payment_data as { origen?: string } | null;
+        await capturarServidor({ event: "tres_analisis_pagado", distinctId: userId, uuid: uuidDeterminista(`tres_analisis_pagado:${payment.commerce_order}`), properties: { amount: payment.amount, origen: deDonde?.origen ?? null } }).catch(() => false);
       } else if (userId && product === "unlock") {
         // Fase D — desbloqueo ADITIVO de los hijos de un par AMBAS. NO consume
         // crédito ni toca is_premium (el crédito ya compró el comparativo
@@ -354,7 +365,7 @@ export async function POST(request: Request) {
       // si no está "true") y nunca lanza; aun así envolvemos en try/catch como
       // cinturón de seguridad: una falla de boleta JAMÁS debe romper el 200 que
       // Flow espera ni afectar créditos/emails ya procesados arriba.
-      if (userId && (product === "single" || product === PRODUCTO_PACK) && process.env.OPENFACTURA_ENABLED === "true") {
+      if (userId && (product === "single" || product === PRODUCTO_PACK || product === PRODUCTO_TRES) && process.env.OPENFACTURA_ENABLED === "true") {
         try {
           const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
           const userEmail = dteUser?.user?.email;
@@ -379,11 +390,11 @@ export async function POST(request: Request) {
                 amount: payment.amount,
                 commerce_order: payment.commerce_order,
                 flow_order: payment.flow_order,
-                quantity: product === PRODUCTO_PACK ? PACK_ANALISIS : (payment.quantity ?? 1),
+                quantity: product === PRODUCTO_PACK ? PACK_ANALISIS : product === PRODUCTO_TRES ? TRES_CANTIDAD : (payment.quantity ?? 1),
               },
               userEmail,
-              // El pack no es «análisis en {comuna}»: son tres, de cualquier comuna.
-              comuna: product === PRODUCTO_PACK ? undefined : comuna,
+              // Los packs no son «análisis en {comuna}»: son tres, de cualquier comuna.
+              comuna: product === PRODUCTO_PACK || product === PRODUCTO_TRES ? undefined : comuna,
             });
             if (!result.ok && !result.skipped) {
               console.error("[payments/confirm] emisión boleta falló:", result.error);

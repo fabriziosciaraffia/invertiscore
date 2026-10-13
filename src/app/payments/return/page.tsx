@@ -15,6 +15,7 @@ import { metaTrack } from "@/lib/meta/pixel";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
+import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -29,6 +30,9 @@ function PaymentReturnContent() {
   const llavePago: LlavePago | null = retornoPack?.firma && order ? { order, firma: retornoPack.firma } : null;
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  // El pack de tres (13-oct-2026): dice lo que compró y vuelve adonde estaba (el aviso, la semana, la guía).
+  const [producto, setProducto] = useState<string | null>(null);
+  const volver = volverSeguro(searchParams.get("volver"));
   // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
   const [saldo, setSaldo] = useState<number | null>(null);
   const [conSesion, setConSesion] = useState(true);
@@ -96,6 +100,7 @@ function PaymentReturnContent() {
         }
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
+          setProducto(typeof data.payment.product === "string" ? data.payment.product : null);
           setConSesion(!data.sinSesion);
           setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
           const estado = estadoDelPago(data.payment.status);
@@ -255,11 +260,22 @@ function PaymentReturnContent() {
             <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
               {type === "subscription"
                 ? "Tu suscripción Franco está activa. Análisis ilimitados."
+                : producto === PRODUCTO_TRES
+                ? TRES_COPY.listo
                 : "Tu análisis está desbloqueado."
               }
             </p>
             <div className="mt-6 flex flex-col gap-2">
-              {analysisId && (
+              {producto === PRODUCTO_TRES && volver && (
+                <Link
+                  href={volver}
+                  data-tres="seguir"
+                  className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"
+                >
+                  {TRES_COPY.seguir} →
+                </Link>
+              )}
+              {analysisId && producto !== PRODUCTO_TRES && (
                 <Link
                   href={`/analisis/${analysisId}`}
                   className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"

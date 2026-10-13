@@ -14,6 +14,7 @@ export type FlowProductKey =
   | "single"
   | "unlock"
   | "pack3"
+  | "tres_analisis"
   | "plan10_mensual" | "plan10_annual"
   | "plan50_mensual" | "plan50_annual"
   | "unlimited_mensual" | "unlimited_annual";
@@ -52,6 +53,12 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   // legacy de $9.990 que vivía hardcodeado en payments/create.
   pack3: {
     kind: "one_time", amount: 14990, subject: "Franco — 3 análisis",
+    plan: "single", billing: null, capacity: 3,
+  },
+  // Tres análisis por $19.990 para quien tiene cuenta (13-oct-2026, lib/tres-analisis.ts). 3 créditos sin caducidad.
+  // No es el ticket de $14.990 (`pack3`), que sigue solo para el usuario nuevo en sus 24 horas.
+  tres_analisis: {
+    kind: "one_time", amount: 19990, subject: "Franco — 3 análisis",
     plan: "single", billing: null, capacity: 3,
   },
   plan10_mensual: {

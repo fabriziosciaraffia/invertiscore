@@ -10,6 +10,7 @@ import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { randomUUID } from "crypto";
+import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -22,6 +23,8 @@ const PRODUCTS: Record<string, { amount: number; subject: string }> = {
   // Legacy (deprecados, se conservan por compatibilidad de órdenes en vuelo).
   pro: { amount: 4990, subject: "Franco Pro — Análisis Premium" },
   pack3: { amount: FLOW_PRODUCTS.pack3.amount, subject: FLOW_PRODUCTS.pack3.subject },
+  // Tres análisis para quien tiene cuenta (13-oct-2026, lib/tres-analisis.ts): solo con sesión, como todo acá.
+  [PRODUCTO_TRES]: { amount: FLOW_PRODUCTS.tres_analisis.amount, subject: FLOW_PRODUCTS.tres_analisis.subject },
 };
 
 function createAdminClient() {
@@ -40,7 +43,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId, origen: origenBody, variante: varianteBody } = body as {
+  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId, origen: origenBody, variante: varianteBody, volver: volverBody } = body as {
+    /** Adónde vuelve después de pagar el pack de tres (13-oct-2026): solo un camino del sitio (volverSeguro). */
+    volver?: string;
     /** De dónde vino la compra: «semanal» (el correo semanal) o «inmediato» (el aviso inmediato). */
     origen?: string;
     /** La variante del correo semanal (prueba A/B). */
@@ -132,6 +137,10 @@ export async function POST(request: Request) {
     subject = `Franco — Informe completo ${analysisComuna}`;
   }
   const commerceOrder = `franco-${randomUUID()}`;
+  // El pack de tres (13-oct-2026): de dónde se compró y adónde vuelve.
+  const esTres = product === PRODUCTO_TRES;
+  const volverTres = esTres ? volverSeguro(volverBody) : null;
+  const origenTres = esTres && esOrigenTres(origenBody) && origenBody !== "semanal" && origenBody !== "inmediato" ? origenBody : null;
 
   try {
     // Validate env vars early
@@ -157,7 +166,7 @@ export async function POST(request: Request) {
       // preserva el query string al convertir el POST de Flow en GET.
       urlReturn: product === PRODUCTO_PACK && analysisId
         ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack, firmarPago(commerceOrder))
-        : `${SITE_URL}/payments/return?order=${commerceOrder}`,
+        : `${SITE_URL}/payments/return?order=${commerceOrder}${volverTres ? `&volver=${encodeURIComponent(volverTres)}` : ""}`,
     });
 
     if (!flowResponse.url || !flowResponse.token) {
@@ -185,7 +194,7 @@ export async function POST(request: Request) {
       //  - ambas_group_id (unlock, Fase D): audit del grupo desbloqueado. El
       //    flip en confirm deriva el grupo del hijo (analysis_id), pero lo
       //    guardamos acá como fuente de verdad del cobro.
-      ...(companionStrId || ambasGroupId || origenBody === "semanal" || origenBody === "inmediato"
+      ...(companionStrId || ambasGroupId || origenBody === "semanal" || origenBody === "inmediato" || origenTres || volverTres
         ? {
             payment_data: {
               ...(companionStrId ? { companion_str_id: companionStrId } : {}),
@@ -193,6 +202,8 @@ export async function POST(request: Request) {
               ...(origenBody === "semanal" ? { origen: "semanal" } : {}),
               ...(origenBody === "inmediato" ? { origen: "inmediato" } : {}),
               ...(origenBody === "semanal" && (varianteBody === "banda" || varianteBody === "tarjetas") ? { variante: varianteBody } : {}),
+              ...(origenTres ? { origen: origenTres } : {}),
+              ...(volverTres ? { volver: volverTres } : {}),
             },
           }
         : {}),

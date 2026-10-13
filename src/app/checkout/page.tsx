@@ -13,6 +13,7 @@ import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
 import { metaTrack } from "@/lib/meta/pixel";
 import { PRODUCTO_PACK, diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
 import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
+import { PRODUCTO_TRES, TRES_COPY, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
 
 /** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
 function resolveProduct(key: string) {
@@ -68,7 +69,11 @@ function CheckoutContent() {
   const companionStrId = searchParams.get("companionStrId");
   // La compra que viene del correo semanal (02-oct-2026): viaja a payment_data para medirla.
   // Y la que viene del aviso inmediato (05-oct-2026).
-  const origen = searchParams.get("origen") === "semanal" ? "semanal" : searchParams.get("origen") === "inmediato" ? "inmediato" : null;
+  // Y el pack de tres (13-oct-2026): desde el dashboard, el aviso antes de gastar o la guía, con adónde volver.
+  const esTres = productKey === PRODUCTO_TRES;
+  const origenParam = searchParams.get("origen");
+  const origen = origenParam === "semanal" ? "semanal" : origenParam === "inmediato" ? "inmediato" : esTres && esOrigenTres(origenParam) ? origenParam : null;
+  const volver = esTres ? volverSeguro(searchParams.get("volver")) : null;
   const varianteCorreo = origen === "semanal" && (searchParams.get("variante") === "banda" || searchParams.get("variante") === "tarjetas") ? searchParams.get("variante") : null;
 
   const product = resolveProduct(productKey);
@@ -126,14 +131,14 @@ function CheckoutContent() {
       if (!data.user) {
         // Auth-gate único: sin sesión → a registro, preservando el product key
         // (y analysisId si vino) en ?next= para retomar la compra al volver.
-        const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}${companionStrId ? `&companionStrId=${companionStrId}` : ""}`;
+        const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}${companionStrId ? `&companionStrId=${companionStrId}` : ""}${origen ? `&origen=${origen}` : ""}${varianteCorreo ? `&variante=${varianteCorreo}` : ""}${volver ? `&volver=${encodeURIComponent(volver)}` : ""}`;
         // «Lo que sigue» (28-sep-2026): /registro es la única puerta (correo con código, o Google).
         window.location.href = `/registro?next=${encodeURIComponent(returnUrl)}`;
       } else {
         setAuthenticated(true);
       }
     });
-  }, [productKey, analysisId, companionStrId]);
+  }, [productKey, analysisId, companionStrId, origen, varianteCorreo, volver]);
 
   async function handlePay() {
     if (!product) return;
@@ -145,7 +150,7 @@ function CheckoutContent() {
     try {
       const body: Record<string, string> = { product: productKey };
       // analysisId solo aplica al pago único (single): desbloquea ese análisis.
-      if (analysisId && product.oneTime) {
+      if (analysisId && product.oneTime && !esTres) {
         body.analysisId = analysisId;
         // AMBAS: el STR companion viaja junto. payments/create lo stashea en
         // payment_data; confirm desbloquea ambas filas con un solo crédito.
@@ -160,6 +165,7 @@ function CheckoutContent() {
       }
       if (origen) body.origen = origen;
       if (varianteCorreo) body.variante = varianteCorreo;
+      if (volver) body.volver = volver;
 
       const res = await fetch(product.endpoint, {
         method: "POST",
@@ -225,9 +231,9 @@ function CheckoutContent() {
 
       <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
         {/* Back link */}
-        <Link href="/pricing" className="inline-flex items-center gap-1.5 font-body text-sm text-[var(--franco-text-muted)] hover:text-white/70 transition-colors mb-8">
+        <Link href={esTres ? volver ?? "/dashboard" : "/pricing"} className="inline-flex items-center gap-1.5 font-body text-sm text-[var(--franco-text-muted)] hover:text-white/70 transition-colors mb-8">
           <ArrowLeft className="h-4 w-4" />
-          Volver a planes
+          {esTres ? "Volver" : "Volver a planes"}
         </Link>
 
         {/* Title */}
@@ -241,6 +247,8 @@ function CheckoutContent() {
             <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
               {esPack
                 ? CHECKOUT_PACK.titulo
+                : esTres
+                ? TRES_COPY.titulo
                 : product.oneTime && !analysisId
                 ? `Franco — ${qty} análisis`
                 : product.oneTime && analysisComuna
@@ -248,14 +256,14 @@ function CheckoutContent() {
                 : product.title}
             </p>
             <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">
-              {product.oneTime && !analysisId ? `${qty} análisis` : product.subtitle}
+              {esTres ? TRES_COPY.subtitulo : product.oneTime && !analysisId ? `${qty} análisis` : product.subtitle}
             </p>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
             <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{fmtCLP(qty * product.amount)}</span>
           </div>
-          {product.oneTime && !analysisId && (
+          {product.oneTime && !analysisId && !esTres && (
             <p className="font-mono text-xs text-[var(--franco-text-muted)] mb-1">
               {qty} × {fmtCLP(product.amount)}
             </p>
@@ -270,7 +278,7 @@ function CheckoutContent() {
           {/* Selector de cantidad — solo compra de crédito suelto (single sin
               analysisId). Ink/neutros: Signal Red está reservado al CTA. El número
               va en el font de datos (mono). */}
-          {product.oneTime && !analysisId && (
+          {product.oneTime && !analysisId && !esTres && (
             <div className="mb-6">
               <p className="font-body text-sm text-[var(--franco-text)] mb-3">¿Cuántos análisis?</p>
               <div className="flex items-center gap-3">
