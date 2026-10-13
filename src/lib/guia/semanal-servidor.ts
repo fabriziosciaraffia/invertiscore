@@ -265,8 +265,9 @@ export async function prechequearSemana(
 }
 
 // ── Dónde quedó el prechequeo (09-oct-2026) ─────────────────────────────────────
-// En `metrics_daily` (RLS sin políticas: solo el servidor), NO en `config`: `/api/config?key=` devuelve
-// cualquier clave al público, y esto lleva un id de usuario.
+// En `metrics_daily` (RLS sin políticas: solo el servidor), NO en `config`: la tabla `config` la lee cualquiera
+// con la anon key (política «Public read config»), y esto lleva un id de usuario. (`/api/config` ya no la sirve
+// entera: desde el 13-oct-2026 solo la lista cerrada de `config-publica.ts`.)
 const FUENTE_AVANCE = "cron-avance";
 const METRICA_AVANCE = "semanal-prechequeo";
 
