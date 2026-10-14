@@ -25,7 +25,7 @@ import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type OrigenGuia } fro
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
-import { deEstaSemana, esDesdeSemanal } from "./seleccion-casa";
+import { deEstaSemana, origenDeInforme, type OrigenInforme } from "./seleccion-casa";
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
@@ -537,10 +537,11 @@ export async function seleccionDeEstaSemana(admin: SupabaseClient, userId: strin
   return fila ? seleccionDeFila(fila) : null;
 }
 
-/** De sus informes sin dirección, los que salieron de su selección semanal (o de un aviso inmediato): el archivo del
- *  dashboard dice «Desde tu selección semanal» (14-oct-2026; seleccion-casa.ts › esDesdeSemanal). */
-export async function informesDesdeSemanal(admin: SupabaseClient, userId: string, ids: string[]): Promise<string[]> {
-  if (ids.length === 0) return [];
+/** De sus informes sin dirección, los que salieron de un aviso, con su origen: la selección semanal (o un aviso
+ *  inmediato) o la guía del pack. El archivo del dashboard lo dice en vez de «SIN DIRECCIÓN» (14-oct-2026;
+ *  seleccion-casa.ts › origenDeInforme). */
+export async function origenDeInformes(admin: SupabaseClient, userId: string, ids: string[]): Promise<Record<string, OrigenInforme>> {
+  if (ids.length === 0) return {};
   const [{ data: an, error }, { data: sels }, { data: inm }] = await Promise.all([
     admin.from("analisis").select("id, origen:input_data->origenAviso").eq("user_id", userId).in("id", ids.slice(0, 200)),
     admin.from("semanal_selecciones").select("items, items_str").eq("user_id", userId).order("semana", { ascending: false }).limit(100),
@@ -551,7 +552,12 @@ export async function informesDesdeSemanal(admin: SupabaseClient, userId: string
   for (const r of [...(sels ?? []), ...(inm ?? [])] as Array<{ items?: ItemSemanal[] | null; items_str?: ItemSemanal[] | null }>) {
     for (const i of [...(r.items ?? []), ...(r.items_str ?? [])]) avisos.add(i.avisoId);
   }
-  return ((an ?? []) as Array<{ id: string; origen: unknown }>).filter((a) => esDesdeSemanal(a.origen, avisos)).map((a) => a.id);
+  const out: Record<string, OrigenInforme> = {};
+  for (const a of (an ?? []) as Array<{ id: string; origen: unknown }>) {
+    const o = origenDeInforme(a.origen, avisos);
+    if (o) out[a.id] = o;
+  }
+  return out;
 }
 
 /** Los deptos de renta corta de esta persona que ya se midieron fino y no dieron (no se cobraron): la tarjeta queda

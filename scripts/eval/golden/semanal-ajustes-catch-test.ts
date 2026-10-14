@@ -28,7 +28,8 @@ import { MINIMO_SEMANAL, REGLA_CORTA, REGLA_LARGA, correspondeRegalo, elegirSema
 import { datosSaldoDe, estadoSaldo } from "../../../src/lib/casa-saldo";
 import { textoUso } from "../../../src/lib/guia/aviso-analizar";
 import { CASA, lineaSaldo } from "../../../src/app/dashboard/casa-copy";
-import { SELECCION_CASA, deEstaSemana, esDesdeSemanal, resumenSeleccion } from "../../../src/lib/guia/seleccion-casa";
+import { SELECCION_CASA, deEstaSemana, esDesdeSemanal, origenDeInforme, resumenSeleccion, textoOrigenArchivo } from "../../../src/lib/guia/seleccion-casa";
+import { textoCierre } from "../../../src/lib/cierre-informe";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -129,6 +130,28 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (iSaldo < 0 || iSin < iSaldo || iGeo < iSin || iMide < iSin) F("4 · la ruta de renta corta consulta (dirección o proveedor) antes de saber que no quedan análisis");
     // El dashboard y la bienvenida: el saldo arriba.
     if (!/<SaldoCasa estado=\{saldo\} informes=\{stats\.total\} \/>/.test(dash) || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está arriba en el dashboard (con informes y vacío)");
+    // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
+    if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
+      F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");
+    for (const [f, credito] of [["src/app/analisis/[id]/informe-ltr.tsx", "creditsRow"], ["src/app/analisis/renta-corta/[id]/informe-str.tsx", "credits"], ["src/app/analisis/comparativa/page.tsx", "creditsRow"]] as const) {
+      const s = sinComentarios(leer(f));
+      if (!/let ilimitado = isAdmin;/.test(s) || !/\.select\("welcome_credit_used, is_unlimited"\)/.test(s) || !new RegExp(String.raw`ilimitado = ilimitado \|\| ${credito}\?\.is_unlimited === true;`).test(s) || !/ilimitado(=\{ilimitado\}|,)/.test(s))
+        F(`4 · ${f} no sabe si la cuenta es Ilimitado (o no se lo pasa al pie)`);
+    }
+    for (const f of ["src/app/analisis/[id]/results-client.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) {
+      const s = sinComentarios(leer(f));
+      if (!/<CierreInforme analisis=\{[^}]+\} conSesion=\{[^}]+\} ilimitado=\{ilimitado\} \/>/.test(s) || /suscriptor=|isSubscriber/.test(s)) F(`4 · el cierre de ${f} no mira si es Ilimitado`);
+    }
+    const wallet = sinComentarios(leer("src/components/chrome/WalletStatusCTA.tsx"));
+    const comp = sinComentarios(leer("src/app/analisis/comparativa/comparativa-client.tsx"));
+    if (!/if \(args\.ilimitado\) \{\s*return \{\s*state: "subscriber",\s*message: "Análisis ilimitados con tu plan Ilimitado\.",/.test(wallet) || /isSubscriber|FrancoMensual|FRANCOMENSUAL/.test(wallet)
+      || !/ilimitado=\{p\.ilimitado\}/.test(comp) || !/ilimitado: p\.ilimitado,/.test(comp) || /isSubscriber/.test(comp)
+      || !/if \(p\.ilimitado\) return "subscriber";/.test(sinComentarios(leer("src/components/analysis/NextAnalysisCTA.tsx"))))
+      F("4 · el pie del comparativo le dice «Análisis ilimitados» a cualquier suscriptor");
+    const estadoPago = sinComentarios(leer("src/app/api/payments/status/route.ts")), retorno = sinComentarios(leer("src/app/payments/return/page.tsx"));
+    if (!/if \(uc\?\.is_unlimited === true\) return \{ saldo: 0, ilimitado: true \};/.test(estadoPago) || /getUserAccessLevel/.test(estadoPago)
+      || !/\? ilimitado \? "Tu suscripción Franco está activa\. Análisis ilimitados\." : "Tu suscripción Franco está activa\."/.test(retorno))
+      F("4 · al activar la suscripción, el plan 10 lee «Análisis ilimitados»");
   }
 
   // ── 5 · MIENTRAS MIDE ──────────────────────────────────────────────────────────
@@ -187,7 +210,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!url || !key) F("7 · NO CORRIÓ: faltan las variables de Supabase");
     else {
       const sb = createClient(url, key);
-      const { seleccionDeEstaSemana, informesDesdeSemanal } = await import("../../../src/lib/guia/semanal-servidor");
+      const { seleccionDeEstaSemana, origenDeInformes } = await import("../../../src/lib/guia/semanal-servidor");
       const { semanaDelEnvio } = await import("../../../src/lib/guia/semanal");
       const desde = new Date(new Date(`${semanaDelEnvio()}T12:00:00Z`).getTime() - 7 * 864e5).toISOString().slice(0, 10);
       const { data: filas } = await sb.from("semanal_selecciones").select("id, user_id, token, semana, items, items_str").gte("semana", desde).order("semana", { ascending: false }).limit(50);
@@ -199,17 +222,22 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
         const suya = conDeptos.filter((x) => x.user_id === f.user_id).sort((a, b) => String(b.semana).localeCompare(String(a.semana)))[0];
         if (!s || s.id !== suya.id || s.token !== suya.token || s.user_id !== f.user_id) F(`7 · la selección de esta semana por sesión no es la suya más reciente (${s?.id} vs ${suya.id})`);
         if (await seleccionDeEstaSemana(sb, "00000000-0000-0000-0000-000000000000")) F("7 · alguien sin selección recibe una por sesión");
-        // El archivo (8): de sus informes que salieron de un aviso, los de la selección.
+        // El archivo (8): cada informe que salió de un aviso dice de dónde: su selección semanal o la guía del pack.
         const { data: an } = await sb.from("analisis").select("id, user_id, origen:input_data->origenAviso").not("input_data->origenAviso", "is", null).limit(30);
         let probados = 0;
+        const vistos = { semanal: 0, guia: 0 };
         for (const a of an ?? []) {
-          const ids = await informesDesdeSemanal(sb, a.user_id as string, [a.id as string]);
+          const origenes = await origenDeInformes(sb, a.user_id as string, [a.id as string]);
           const { data: sels } = await sb.from("semanal_selecciones").select("items, items_str").eq("user_id", a.user_id as string);
           const enSel = (sels ?? []).some((x) => [...((x.items as Array<{ avisoId: string }>) ?? []), ...((x.items_str as Array<{ avisoId: string }>) ?? [])].some((i) => i.avisoId === (a.origen as { avisoId?: string } | null)?.avisoId));
-          if ((a.origen as { desde?: string } | null)?.desde == null && enSel !== ids.includes(a.id as string)) F(`8 · el informe ${String(a.id).slice(0, 8)} ${enSel ? "salió de la selección y no lo dice" : "no salió de la selección y lo dice"}`);
+          const dice = (a.origen as { desde?: string } | null)?.desde;
+          const esperado = dice === "semanal" || dice === "guia" ? dice : enSel ? "semanal" : "guia";
+          if (origenes[a.id as string] !== esperado) F(`8 · el informe ${String(a.id).slice(0, 8)} dice «${origenes[a.id as string] ?? "SIN DIRECCIÓN"}» y salió de ${esperado}`);
+          vistos[esperado]++;
           probados++;
         }
         if (probados === 0) F("8 · NO CORRIÓ: ningún informe salió de un aviso");
+        console.log(`  · archivo: ${probados} informes desde un aviso (${vistos.semanal} de la selección, ${vistos.guia} de la guía)`);
       }
     }
   }
@@ -219,8 +247,18 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const sels = new Set(["a1"]);
     if (!esDesdeSemanal({ avisoId: "x", desde: "semanal" }, sels) || esDesdeSemanal({ avisoId: "a1", desde: "guia" }, sels) || !esDesdeSemanal({ avisoId: "a1" }, sels) || esDesdeSemanal({ avisoId: "a2" }, sels) || esDesdeSemanal(null, sels))
       F("8 · «desde tu selección semanal» no sale de `desde` (o, en los anteriores, de estar en una selección)");
-    if (SELECCION_CASA.archivo !== "Desde tu selección semanal" || !/\{desdeSemanal \? SELECCION_CASA\.archivo : "SIN DIRECCIÓN"\}/.test(archivo) || !/informesDesdeSemanal\(admin, user\.id, sinDirIds\),/.test(dash))
-      F("8 · el archivo sigue diciendo «SIN DIRECCIÓN» a los informes de la selección");
+    // LA GUÍA TAMBIÉN (14-oct-2026): todo informe hecho desde un aviso dice de dónde salió; solo el del wizard sin
+    // dirección dice «SIN DIRECCIÓN».
+    const casosOrigen: Array<[unknown, string | null]> = [
+      [{ avisoId: "x", desde: "semanal" }, "semanal"], [{ avisoId: "a1", desde: "guia" }, "guia"],
+      [{ avisoId: "a1" }, "semanal"], [{ avisoId: "a2" }, "guia"], [null, null], [{ desde: "guia" }, null],
+    ];
+    const malos = casosOrigen.filter(([o, esp]) => origenDeInforme(o, sels) !== esp);
+    if (malos.length) F(`8 · el origen de un informe no es «semanal» o «guía» según \`desde\` o su selección (${JSON.stringify(malos.map(([o]) => o))})`);
+    if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía»");
+    if (!/\{origen \? textoOrigenArchivo\(origen\) : "SIN DIRECCIÓN"\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, sinDirIds\),/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 3)
+      F("8 · el archivo sigue diciendo «SIN DIRECCIÓN» a los informes de la selección o de la guía");
+    if (!/if \(o\) out\[a\.id\] = o;/.test(cuerpo(srv, "export async function origenDeInformes("))) F("8 · los informes de la guía no traen su origen al archivo");
     if (!/if \(body\?\.origenAviso\) body\.origenAviso\.desde = typeof b\.semanal === "string" \? "semanal" : "guia";/.test(sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts")))) F("8 · los informes nuevos no anotan de dónde salieron");
   }
 

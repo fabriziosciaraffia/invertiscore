@@ -7,7 +7,7 @@ import { hayGuia } from "@/lib/guia/activa";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { CASA, lineaSaldo } from "./casa-copy";
 import { PerfilBusquedaCasa, SaldoCasa, SeleccionCasa } from "./casa";
-import { informesDesdeSemanal, seleccionDeEstaSemana } from "@/lib/guia/semanal-servidor";
+import { origenDeInformes, seleccionDeEstaSemana } from "@/lib/guia/semanal-servidor";
 import { resumenSeleccion } from "@/lib/guia/seleccion-casa";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
@@ -183,11 +183,11 @@ export default async function DashboardPage({
   // La casa (02-oct-2026): el saldo, la selección del pack (si compró y le quedan) y el perfil de búsqueda. Desde el
   // 14-oct-2026 también «Tu selección de esta semana» y, en el archivo, los informes que salieron de ella.
   const sinDirIds = [...(todas ?? filasPagina)].filter(sinDireccion).map((r) => r.id);
-  const [perfilPersona, { data: pack }, seleccion, desdeSemanal] = await Promise.all([
+  const [perfilPersona, { data: pack }, seleccion, origenes] = await Promise.all([
     leerPerfilBusqueda(admin, user.id),
     admin.from("payments").select("analysis_id").eq("user_id", user.id).eq("product", "pack3").eq("status", "paid").not("analysis_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     seleccionDeEstaSemana(admin, user.id),
-    informesDesdeSemanal(admin, user.id, sinDirIds),
+    origenDeInformes(admin, user.id, sinDirIds),
   ]);
   const resumen = seleccion ? resumenSeleccion(seleccion) : [];
   const packOrigenId = (pack?.analysis_id as string | null | undefined) ?? null;
@@ -261,7 +261,7 @@ export default async function DashboardPage({
           params={params}
           stats={stats}
           unidadesVisibles={unidadesVisibles}
-          desdeSemanal={desdeSemanal}
+          origenes={origenes}
         />
       </div>
     </div>

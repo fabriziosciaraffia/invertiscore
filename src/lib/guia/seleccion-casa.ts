@@ -2,8 +2,9 @@
 // LA SELECCIÓN EN EL DASHBOARD (14-oct-2026, decisión de Fabrizio), la parte pura. El dashboard muestra «Tu selección
 // de esta semana» con sus dos bloques resumidos —cuántos deptos y de qué veredicto; el de renta corta, estimado por
 // zona— y el enlace a la página semanal, que con sesión abre SIN token (semanal-servidor.ts › seleccionDeEstaSemana).
-// Y en el archivo, un informe que salió de un aviso de la selección dice «Desde tu selección semanal» en vez de
-// «SIN DIRECCIÓN» (esDesdeSemanal). Lo fija el tier SEMANAL-AJUSTES.
+// Y en el archivo, un informe que salió de un aviso dice de dónde salió en vez de «SIN DIRECCIÓN»: «Desde tu selección
+// semanal» o, desde el 14-oct-2026 también, «Desde tu guía» (la del pack) — origenDeInforme. Lo fija el tier
+// SEMANAL-AJUSTES.
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import type { Veredicto } from "@/lib/types";
@@ -18,6 +19,7 @@ export const SELECCION_CASA = {
   ninguno: "Esta semana, ninguno",
   /** El archivo del dashboard, en lugar de «SIN DIRECCIÓN». */
   archivo: "Desde tu selección semanal",
+  archivoGuia: "Desde tu guía",
 } as const;
 
 export interface ResumenBloque {
@@ -57,15 +59,27 @@ export function deEstaSemana<F extends { semana: string; items?: unknown[] | nul
   return [...filas].sort((a, b) => b.semana.localeCompare(a.semana)).find((s) => (s.items ?? []).length > 0 || (s.items_str ?? []).length > 0) ?? null;
 }
 
+export type OrigenInforme = "semanal" | "guia";
+
 /**
- * ¿Este informe salió de la selección semanal? Sí si lo dice (`origenAviso.desde`, desde el 14-oct-2026); en los
- * anteriores, si su aviso está en alguna de sus selecciones (o avisos inmediatos, la misma página). Uno de la guía del
- * pack no.
+ * ¿De dónde salió este informe? Un informe hecho desde un aviso (`origenAviso`) salió de la selección semanal (o de un
+ * aviso inmediato, la misma página) o de la guía del pack: no hay otra puerta que arme `origenAviso`. Lo dice
+ * `origenAviso.desde` desde el 14-oct-2026; en los anteriores, «semanal» si su aviso está en alguna de sus selecciones
+ * y, si no, «guia». null: no salió de un aviso (el wizard).
  */
-export function esDesdeSemanal(origen: unknown, avisosDeSusSelecciones: ReadonlySet<string>): boolean {
+export function origenDeInforme(origen: unknown, avisosDeSusSelecciones: ReadonlySet<string>): OrigenInforme | null {
   const o = (origen ?? null) as { avisoId?: unknown; desde?: unknown } | null;
-  if (!o || typeof o.avisoId !== "string") return false;
-  if (o.desde === "semanal") return true;
-  if (o.desde != null) return false;
-  return avisosDeSusSelecciones.has(o.avisoId);
+  if (!o || typeof o.avisoId !== "string") return null;
+  if (o.desde === "semanal" || o.desde === "guia") return o.desde;
+  return avisosDeSusSelecciones.has(o.avisoId) ? "semanal" : "guia";
+}
+
+/** ¿Salió de la selección semanal? */
+export function esDesdeSemanal(origen: unknown, avisosDeSusSelecciones: ReadonlySet<string>): boolean {
+  return origenDeInforme(origen, avisosDeSusSelecciones) === "semanal";
+}
+
+/** Lo que dice el archivo en lugar de «SIN DIRECCIÓN». */
+export function textoOrigenArchivo(o: OrigenInforme): string {
+  return o === "semanal" ? SELECCION_CASA.archivo : SELECCION_CASA.archivoGuia;
 }
