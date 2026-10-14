@@ -56,13 +56,13 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
     if (data.length < PAGINA_POSTGREST) break;
   }
   // Candidatas del caché: la dirección nombra la comuna (o el alias), o es una conocida.
-  type Fila = { address: string; bedrooms: number; created_at: string; percentiles: { occupancy?: { p50?: number }; average_daily_rate?: { p50?: number } } | null };
+  type Fila = { id: string; address: string; bedrooms: number; created_at: string; percentiles: { occupancy?: { p50?: number }; average_daily_rate?: { p50?: number } } | null };
   const filas: Fila[] = [];
   const patrones = comuna === "Santiago" ? ["%Santiago%"] : [`%${comuna}%`];
   for (const patron of patrones) {
     for (let off = 0; ; off += PAGINA_POSTGREST) {
       const { data, error } = await supabase
-        .from("airbnb_estimates").select("address, bedrooms, created_at, percentiles:raw_response->percentiles")
+        .from("airbnb_estimates").select("id, address, bedrooms, created_at, percentiles:raw_response->percentiles")
         .ilike("address", patron).order("id").range(off, off + PAGINA_POSTGREST - 1);
       reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion: "estimaciones-comuna", tags: { tabla: "airbnb_estimates" }, extra: { comuna, offset: off } });
       if (!Array.isArray(data) || data.length === 0) break;
@@ -74,7 +74,7 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
     const lista = Array.from(conocidas);
     for (let i = 0; i < lista.length; i += 200) {
       const { data, error } = await supabase
-        .from("airbnb_estimates").select("address, bedrooms, created_at, percentiles:raw_response->percentiles")
+        .from("airbnb_estimates").select("id, address, bedrooms, created_at, percentiles:raw_response->percentiles")
         .in("address", lista.slice(i, i + 200));
       reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion: "estimaciones-direcciones", tags: { tabla: "airbnb_estimates" }, extra: { comuna, lote: i } });
       if (Array.isArray(data)) filas.push(...(data as Fila[]));
@@ -93,7 +93,7 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
   for (const f of Array.from(ultima.values())) {
     const adr = f.percentiles?.average_daily_rate?.p50, occ = f.percentiles?.occupancy?.p50;
     if (typeof adr !== "number" || typeof occ !== "number" || !(adr > 0) || !(occ > 0) || occ > 1) continue;
-    out.push({ comuna, dormitorios: Math.min(Math.max(Number(f.bedrooms) || 0, 0), 3), ingresoAnual: adr * occ * 365 });
+    out.push({ comuna, dormitorios: Math.min(Math.max(Number(f.bedrooms) || 0, 0), 3), ingresoAnual: adr * occ * 365, estimateId: f.id });
   }
   return out;
 }

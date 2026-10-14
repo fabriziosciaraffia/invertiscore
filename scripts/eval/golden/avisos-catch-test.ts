@@ -86,7 +86,7 @@ export function runAvisosTier(): { hard: number } {
   if (!/import \{ buildLtrPayload, type SubmitContext \} from "@\/components\/formulario-v4\/wizardV4Payload";/.test(ev)) F("4 · la evaluación no arma el payload con el módulo puro del wizard");
   const payload = leer("src/components/formulario-v4/wizardV4Payload.ts");
   if (/^"use client"/m.test(payload) || /from "\.\/NumericInput"/.test(leer("src/components/formulario-v4/derive.ts"))) F("4 · el armado del payload vuelve a depender de un módulo \"use client\" (no se puede llamar desde el cron)");
-  if (!/export \{ buildLtrPayload, datosDfl2, type SubmitContext \} from "\.\/wizardV4Payload";/.test(leer("src/components/formulario-v4/wizardV4Submit.ts"))) F("4 · el wizard ya no usa el mismo buildLtrPayload que el cron");
+  if (!/export \{ buildLtrPayload, buildStrPayload, datosDfl2, type SubmitContext \} from "\.\/wizardV4Payload";/.test(leer("src/components/formulario-v4/wizardV4Submit.ts"))) F("4 · el wizard ya no usa el mismo buildLtrPayload que el cron");
   if (ANTIGUEDAD_SUPUESTA !== "20+" || antiguedadToNumber(ANTIGUEDAD_SUPUESTA) !== ANIOS_ANTIGUEDAD_SUPUESTA || ANIOS_ANTIGUEDAD_SUPUESTA !== 25) F("4 · la antigüedad supuesta no es 25 años");
   if (JSON.stringify(PERFILES_ESTANDAR) !== "[20,30]" || PLAZO_ESTANDAR !== 30) F("4 · el perfil estándar no es pie 20% y 30%, 30 años");
   const aviso: AvisoParaEvaluar = { id: "a", comuna: "Ñuñoa", lat: -33.45, lng: -70.6, precioUF: 3000, m2: 50, dormitorios: 2, banos: 1, condicion: "usado", direccion: null, fechaEntrega: null, antiguedadAnios: null };

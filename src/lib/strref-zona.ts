@@ -51,6 +51,8 @@ export interface DireccionEstimada {
   dormitorios: number;
   /** adr p50 × occ p50 × 365 de la misma respuesta. */
   ingresoAnual: number;
+  /** La fila de `airbnb_estimates` (14-oct-2026): el semanal de renta corta toma la respuesta típica de la celda. */
+  estimateId?: string;
 }
 
 /** La venta usada de la tipología del sujeto (en los dos peldaños). */

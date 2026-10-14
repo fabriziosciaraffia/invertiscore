@@ -11,7 +11,11 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { parseNumeroCL } from "@/lib/numero-cl";
 import { DEC, type WizardV4Answers } from "./wizardV4Nodes";
-import { cuotaCreditoPieCLP, dormitoriosNum, leerNum, otraFuentePctCrudo, pieEfectivoPct, type FuenteArriendo } from "./derive";
+import {
+  costosOperativosEditados, cuotaCreditoPieCLP, dormitoriosNum, huespedesNum, leerNum, otraFuentePctCrudo, pieEfectivoPct, repartirCostosOperativos,
+  type FuenteArriendo,
+} from "./derive";
+import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 import { PREMIO_ARRIENDO_NUEVO } from "@/lib/obra-nueva";
@@ -196,3 +200,85 @@ export function camposOtraFuente(a: WizardV4Answers, ufCLP: number): { pieOrigen
   return { pieOrigen: "otra_fuente", ...(cuota > 0 ? { cuotaCreditoPie: cuota } : {}) };
 }
 
+
+// ── STR ───────────────────────────────────────────────────────────────────────
+// Movido desde wizardV4Submit.ts el 14-oct-2026, sin cambios: el semanal de renta corta arma en el servidor el MISMO
+// cuerpo que el wizard (guia/semanal-str-servidor.ts).
+
+export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
+  const supUtil = leerNum(a.superficieUtil, DEC.superficie);
+  const precioUF = leerNum(a.precio, DEC.precioUF);
+  const precioCompraCLP = Math.round(precioUF * ctx.ufCLP);
+  const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
+  const dorm = dormitoriosNum(a);
+  const costos = getCostosDefault(dorm, "basico");
+  const totalOps = costosOperativosEditados(a);
+  const corregido = a.adrModo === "corregir";
+  // Entrega — MISMA derivación que buildLtrPayload (líneas ~74 y ~104), no una
+  // paralela: el usuario contesta "¿cuándo lo entregan?" UNA vez, en el Acto 1,
+  // antes de que el wizard se bifurque por modalidad. Hasta acá ese dato llegaba
+  // solo al lado largo y el corto lo perdía en silencio; en AMBAS eso dejaba a
+  // los dos análisis del mismo depto partiendo de supuestos distintos.
+  //
+  // El motor STR TODAVÍA NO lo usa (`buildProjections` sigue con su `void asOf`
+  // y compone desde el mes 1). Este payload es plumbing: el dato viaja, se
+  // persiste en `input_data` y queda disponible para cuando la pre-entrega se
+  // modele en renta corta. Verificado por barrido: cero cambios de output.
+  const esFutura = a.tipoPropiedad === "nuevo" && a.estadoVenta === "futura";
+
+  return {
+    tipoAnalisis: "short-term" as const,
+    direccion: a.direccionConfirmada || a.direccion || "",
+    comuna: a.comuna,
+    ciudad: a.ciudad || "Santiago",
+    tipoPropiedad: a.tipoPropiedad,
+    antiguedad: antigNum,
+    lat: a.lat,
+    lng: a.lng,
+    ubicacionPrecision: a.ubicacionPrecision,
+    dormitorios: dorm,
+    banos: intSafe(a.banos, 1),
+    superficieUtil: supUtil,
+    capacidadHuespedes: huespedesNum(a),
+    precioCompra: precioCompraCLP,
+    precioCompraUF: precioUF,
+    // Forma canónica del motor: fecha absoluta, no meses relativos. El wizard
+    // legacy de renta corta manda `mesesEntrega`, que deriva del momento de
+    // creación y por lo tanto driftea; `fechaEntrega` se congela contra el
+    // `asOf` del análisis, igual que en el lado largo.
+    estadoVenta: esFutura ? ("futura" as const) : ("inmediata" as const),
+    fechaEntrega: esFutura ? `${a.fechaEntregaAnio}-${a.fechaEntregaMes}` : undefined,
+    piePct: pieEfectivoPct(a, ctx.ufCLP),
+    // Fase 5b: misma razón que el lado LTR — el usuario la declara una vez.
+    razonSinPie: pieEfectivoPct(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,
+    ...camposOtraFuente(a, ctx.ufCLP),
+    tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
+    tasaMercado: ctx.tasaMercado,
+    plazoCredito: Number(a.plazoCredito) || 25,
+    modoGestion: a.modoGestion ?? "auto",
+    comisionAdministrador:
+      a.modoGestion === "administrador" ? leerNum(a.comisionStrPct, DEC.comisionAdmin) / 100 || 0.2 : 0.2,
+    tipoEdificio: "residencial_puro",
+    adminPro: a.modoGestion === "administrador",
+    habilitacion: "basico",
+    operadorNombre: null,
+    // Overrides solo cuando el usuario corrigió; en estimación el motor deriva de AirROI.
+    adrOverride: corregido ? leerNum(a.adrTarifa, DEC.tarifa) || null : null,
+    occOverride: corregido ? leerNum(a.adrOcupacion, DEC.ocupacion) / 100 || null : null,
+    // El resumen edita UN número, el total; se reparte entre los cuatro para que la suma que
+    // llega al motor sea la que el usuario escribió (antes se contaba dos veces).
+    ...(totalOps ? repartirCostosOperativos(leerNum(totalOps, DEC.costos), costos) : {
+      costoElectricidad: costos.costoElectricidad,
+      costoAgua: costos.costoAgua,
+      costoWifi: costos.costoWifi,
+      costoInsumos: costos.costoInsumos,
+    }),
+    gastosComunes: ggccCLP(a, ctx, supUtil),
+    mantencion: a.mantencionStr ? leerNum(a.mantencionStr, DEC.costos) : costos.mantencion,
+    contribuciones: contribCLP(a, precioCompraCLP),
+    contribucionesOrigen: contribOrigen(a),
+    estaAmoblado: a.estaAmoblado === true,
+    costoAmoblamiento: a.costoAmoblamiento ? leerNum(a.costoAmoblamiento, DEC.costos) : costos.costoAmoblamiento,
+    arriendoLargoMensual: leerNum(a.arriendo, DEC.arriendo) || ctx.arriendoSugerido || 0,
+  };
+}

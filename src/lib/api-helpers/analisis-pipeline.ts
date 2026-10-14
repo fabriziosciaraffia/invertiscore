@@ -44,6 +44,7 @@ import {
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
+import type { OrigenAirroi } from "@/lib/airbnb/contador-airroi";
 
 // ─── Pre-fetch de mediana comunal (para inyectar al motor) ───
 
@@ -583,6 +584,9 @@ export async function buildShortTermAnalysisRow(
   /** Colector de timing (Goal A): objeto mutable del caller. Solo medición —
    *  esta función escribe airroi_ms/airroi_cache/motor_ms y nada más. */
   timing?: { airroi_ms?: number; airroi_cache?: "hit" | "miss"; motor_ms?: number },
+  /** Quién paga la consulta en el conteo de AirROI (14-oct-2026): «semanal» para «Analizar este» de la selección de
+   *  renta corta, que la asume Franco. Por defecto, el informe. */
+  opts: { origen?: OrigenAirroi } = {},
 ): Promise<BuildShortTermRowResult> {
   // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad): este
   // body alimenta el motor (piePercent) y se persiste crudo en input_data. El
@@ -599,7 +603,7 @@ export async function buildShortTermAnalysisRow(
       body.dormitorios,
       body.banos,
       body.capacidadHuespedes || 2,
-      { origen: "informe" },
+      { origen: opts.origen ?? "informe" },
     );
     if (timing) {
       timing.airroi_ms = Date.now() - tAirroi;
@@ -638,88 +642,11 @@ export async function buildShortTermAnalysisRow(
   }
 
   const tMotor = Date.now();
-  const airbnbData = buildAirbnbData(airbnbResult.data, ufValue);
-
-  // Antigüedad: real si el payload la trae (el wizard); fallback derivado si no
-  // (renta-corta legacy). El flag de fallback viaja al motor para que el hallazgo
-  // de puesta a punto declare confianza baja solo cuando la edad es estimada.
-  const antiguedadEsFallback = body.antiguedad == null;
-  const antiguedadResuelta = body.antiguedad ?? (body.tipoPropiedad === "nuevo" ? 0 : 5);
-
-  const inputs: ShortTermInputs = {
-    // Gate del modelo de costos (curva de CapEx). Mismo valor que se persiste en
-    // input_data abajo, para que el recompute-on-load reconstruya idéntico.
-    methodologyVersion: METHODOLOGY_VERSION_ACTUAL,
-    precioCompra: body.precioCompra,
-    superficie: body.superficieUtil,
-    // Variante B (22-sep-2026): la mediana comunal entra al motor para el sobreprecio en la venta.
-    medianaComunaUfM2: medianaComuna?.mediana ?? null,
-    medianaN: medianaComuna?.n ?? 0,
-    dormitorios: body.dormitorios,
-    banos: body.banos,
-    tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
-    antiguedad: antiguedadResuelta,
-    antiguedadEsFallback,
-    comuna: typeof body.comuna === "string" ? body.comuna : undefined,
-    piePercent: body.piePct / 100,
-    // Fase 5b: origen del pie 0 (wizard → payload → motor → prompt).
-    razonSinPie: body.razonSinPie,
-    cuotaCreditoPie: typeof body.cuotaCreditoPie === "number" && body.cuotaCreditoPie > 0 ? body.cuotaCreditoPie : undefined,
-    tasaCredito: body.tasaInteres / 100,
-    // Tasa de mercado real (v4, % → decimal). Ausente en legacy ⇒ motor cae al fallback.
-    tasaMercado: typeof body.tasaMercado === "number" ? body.tasaMercado / 100 : undefined,
-    plazoCredito: body.plazoCredito,
-    airbnbData,
-    modoGestion: body.modoGestion,
-    comisionAdministrador: body.comisionAdministrador,
-    tipoEdificio: body.tipoEdificio,
-    habilitacion: body.habilitacion,
-    adminPro: body.adminPro === true,
-    adrOverride: typeof body.adrOverride === "number" ? body.adrOverride : null,
-    occOverride: typeof body.occOverride === "number" ? body.occOverride : null,
-    costoElectricidad: body.costoElectricidad,
-    costoAgua: body.costoAgua,
-    costoWifi: body.costoWifi,
-    costoInsumos: body.costoInsumos,
-    gastosComunes: body.gastosComunes,
-    mantencion: body.mantencion,
-    contribuciones: contribucionesDeEntradaStr(body as unknown as Record<string, unknown>),
-    costoAmoblamiento: body.estaAmoblado ? 0 : (body.costoAmoblamiento || 0),
-    arriendoLargoMensual: body.arriendoLargoMensual,
-    valorUF: ufValue,
-    // Entrega: declarada, no modelada. `calcShortTerm` no la lee todavía —
-    // ver la nota de ShortTermInputs. Se mapea acá para que el contrato quede
-    // completo desde el borde y el paso 3 no tenga que volver a tocarlo.
-    estadoVenta: body.estadoVenta,
-    fechaEntrega: body.fechaEntrega,
-  };
-
   // asOf congelada y COMPARTIDA con el closure de distancia al veredicto: si cada uno
   // llamara a `new Date()` por su cuenta, en un borde de fecha de entrega la distancia se
   // mediría contra un asOf distinto del que produjo el resultado.
   const asOfPipeline = new Date();
-  const result = calcShortTerm(inputs, asOfPipeline);
-
-  // Default lat/lng a Santiago centro si no vienen (distancias a atractores).
-  const lat = typeof body.lat === "number" ? body.lat : -33.4378;
-  const lng = typeof body.lng === "number" ? body.lng : -70.6504;
-
-  const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
-
-  const scoreInputs: ScoreSTRInputs = {
-    results: result,
-    precioCompra: body.precioCompra,
-    dormitorios: body.dormitorios,
-    superficie: body.superficieUtil,
-    lat,
-    lng,
-    ingresoMensualScore,
-    // La demanda de la zona (factibilidad): la ocupación realizada de los comparables que AirROI
-    // devolvió para esta estimación, la misma que se guarda en `ocupacionRealizadaComparables`.
-    ocupacionRealizadaP50: airbnbResult.realizedOccupancy && airbnbResult.realizedOccupancy.n > 0 ? airbnbResult.realizedOccupancy.p50 : null,
-  };
-
-  const francoScore = calcFrancoScoreSTR(scoreInputs);
+  const { inputs, result, scoreInputs, francoScore, antiguedadResuelta } = evaluarCuerpoStr(body, ufValue, medianaComuna, airbnbResult, asOfPipeline);
 
   // Pirámide STR (E.1b): ensambla los hallazgos con decisividad de las 4 dims del score y los
   // concatena con el capex ya sembrado por calcShortTerm (result.hallazgos). Persistido en
@@ -808,4 +735,100 @@ export async function buildShortTermAnalysisRow(
       input_data: { ...body, tipoAnalisis: "short-term", ufCongelada: ufValue, methodologyVersion: METHODOLOGY_VERSION_ACTUAL },
     },
   };
+}
+
+/**
+ * El cálculo de un análisis de renta corta a partir del cuerpo del wizard y una estimación de mercado: el mapeo
+ * cuerpo → entradas del motor, el motor y el puntaje (14-oct-2026: extraído de buildShortTermAnalysisRow, sin cambios).
+ * Una sola regla para dos usos: el informe (con la estimación de la dirección) y el semanal de renta corta (con la
+ * estimación TÍPICA DE LA ZONA, guia/semanal-str-servidor.ts), así la zona y la medición fina corren lo mismo y lo
+ * único que cambia entre las dos es lo que mide el proveedor.
+ */
+export function evaluarCuerpoStr(
+  body: ShortTermAnalysisBody,
+  ufValue: number,
+  medianaComuna: MedianaComunaInyectada | undefined,
+  airbnbResult: { data: Parameters<typeof buildAirbnbData>[0]; realizedOccupancy?: { n: number; p50: number } | null },
+  asOf: Date,
+): { inputs: ShortTermInputs; result: ReturnType<typeof calcShortTerm>; scoreInputs: ScoreSTRInputs; francoScore: ReturnType<typeof calcFrancoScoreSTR>; antiguedadResuelta: number; airbnbData: ReturnType<typeof buildAirbnbData> } {
+  const airbnbData = buildAirbnbData(airbnbResult.data, ufValue);
+
+  // Antigüedad: real si el payload la trae (el wizard); fallback derivado si no
+  // (renta-corta legacy). El flag de fallback viaja al motor para que el hallazgo
+  // de puesta a punto declare confianza baja solo cuando la edad es estimada.
+  const antiguedadEsFallback = body.antiguedad == null;
+  const antiguedadResuelta = body.antiguedad ?? (body.tipoPropiedad === "nuevo" ? 0 : 5);
+
+  const inputs: ShortTermInputs = {
+    // Gate del modelo de costos (curva de CapEx). Mismo valor que se persiste en
+    // input_data abajo, para que el recompute-on-load reconstruya idéntico.
+    methodologyVersion: METHODOLOGY_VERSION_ACTUAL,
+    precioCompra: body.precioCompra,
+    superficie: body.superficieUtil,
+    // Variante B (22-sep-2026): la mediana comunal entra al motor para el sobreprecio en la venta.
+    medianaComunaUfM2: medianaComuna?.mediana ?? null,
+    medianaN: medianaComuna?.n ?? 0,
+    dormitorios: body.dormitorios,
+    banos: body.banos,
+    tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
+    antiguedad: antiguedadResuelta,
+    antiguedadEsFallback,
+    comuna: typeof body.comuna === "string" ? body.comuna : undefined,
+    piePercent: body.piePct / 100,
+    // Fase 5b: origen del pie 0 (wizard → payload → motor → prompt).
+    razonSinPie: body.razonSinPie,
+    cuotaCreditoPie: typeof body.cuotaCreditoPie === "number" && body.cuotaCreditoPie > 0 ? body.cuotaCreditoPie : undefined,
+    tasaCredito: body.tasaInteres / 100,
+    // Tasa de mercado real (v4, % → decimal). Ausente en legacy ⇒ motor cae al fallback.
+    tasaMercado: typeof body.tasaMercado === "number" ? body.tasaMercado / 100 : undefined,
+    plazoCredito: body.plazoCredito,
+    airbnbData,
+    modoGestion: body.modoGestion,
+    comisionAdministrador: body.comisionAdministrador,
+    tipoEdificio: body.tipoEdificio,
+    habilitacion: body.habilitacion,
+    adminPro: body.adminPro === true,
+    adrOverride: typeof body.adrOverride === "number" ? body.adrOverride : null,
+    occOverride: typeof body.occOverride === "number" ? body.occOverride : null,
+    costoElectricidad: body.costoElectricidad,
+    costoAgua: body.costoAgua,
+    costoWifi: body.costoWifi,
+    costoInsumos: body.costoInsumos,
+    gastosComunes: body.gastosComunes,
+    mantencion: body.mantencion,
+    contribuciones: contribucionesDeEntradaStr(body as unknown as Record<string, unknown>),
+    costoAmoblamiento: body.estaAmoblado ? 0 : (body.costoAmoblamiento || 0),
+    arriendoLargoMensual: body.arriendoLargoMensual,
+    valorUF: ufValue,
+    // Entrega: declarada, no modelada. `calcShortTerm` no la lee todavía —
+    // ver la nota de ShortTermInputs. Se mapea acá para que el contrato quede
+    // completo desde el borde y el paso 3 no tenga que volver a tocarlo.
+    estadoVenta: body.estadoVenta,
+    fechaEntrega: body.fechaEntrega,
+  };
+
+  const result = calcShortTerm(inputs, asOf);
+
+  // Default lat/lng a Santiago centro si no vienen (distancias a atractores).
+  const lat = typeof body.lat === "number" ? body.lat : -33.4378;
+  const lng = typeof body.lng === "number" ? body.lng : -70.6504;
+
+  const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
+
+  const scoreInputs: ScoreSTRInputs = {
+    results: result,
+    precioCompra: body.precioCompra,
+    dormitorios: body.dormitorios,
+    superficie: body.superficieUtil,
+    lat,
+    lng,
+    ingresoMensualScore,
+    // La demanda de la zona (factibilidad): la ocupación realizada de los comparables que AirROI
+    // devolvió para esta estimación, la misma que se guarda en `ocupacionRealizadaComparables`.
+    ocupacionRealizadaP50: airbnbResult.realizedOccupancy && airbnbResult.realizedOccupancy.n > 0 ? airbnbResult.realizedOccupancy.p50 : null,
+  };
+
+  const francoScore = calcFrancoScoreSTR(scoreInputs);
+
+  return { inputs, result, scoreInputs, francoScore, antiguedadResuelta, airbnbData };
 }

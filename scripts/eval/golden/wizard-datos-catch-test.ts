@@ -97,7 +97,8 @@ export async function runWizardDatosTier(): Promise<{ hard: number }> {
     ["src/components/formulario-v4/screensActo3.tsx", /const dorm = dormitoriosNum\(answers\);\s*\n\s*const costos = getCostosDefault\(dorm, "basico"\);/],
     ["src/components/formulario-v4/screenResumen.tsx", /const dorm = dormitoriosNum\(a\);\s*\n\s*const costos = getCostosDefault\(dorm, "basico"\);/],
     ["src/components/formulario-v4/useWizardV4Data.ts", /const dorm = dormitoriosNum\(answers\);[\s\S]{0,400}?dormitorios: dorm,[\s\S]{0,120}?capacidadHuespedes: huespedesNum\(answers\),/],
-    ["src/components/formulario-v4/wizardV4Submit.ts", /capacidadHuespedes: huespedesNum\(a\),/],
+    // buildStrPayload vive en wizardV4Payload.ts desde el 14-oct-2026 (lo usa también el semanal de renta corta).
+    ["src/components/formulario-v4/wizardV4Payload.ts", /capacidadHuespedes: huespedesNum\(a\),/],
   ];
   for (const [f, re] of usos) if (!re.test(sinComentarios(leer(f)))) F(`1 · ${f} no lee la tipología con dormitoriosNum / huespedesNum`);
   for (const f of ["screensActo3.tsx", "screenResumen.tsx", "useWizardV4Data.ts", "wizardV4Submit.ts", "screenInforme.tsx"]) {

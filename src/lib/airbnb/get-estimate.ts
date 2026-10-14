@@ -57,6 +57,82 @@ export function makeCacheKey(
   return createHash("sha256").update(raw).digest("hex");
 }
 
+/**
+ * Una fila de `airbnb_estimates` como la estimación que devuelve el caché (14-oct-2026: extraída de la rama del
+ * hit de `getAirbnbEstimate`, sin cambios). Pura, sin consultas ni conteo: el semanal de renta corta la usa para la
+ * estimación POR ZONA —la respuesta típica guardada de la celda— sin pasar por la llave ni por el vencimiento, así
+ * que nunca dispara una consulta pagada.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function estimacionDesdeCache(cached: any): Extract<AirbnbEstimateResponse, { success: true }> {
+  const isDirectSource = cached.comparables_count === 0 && cached.tier_premium_count === 0;
+  const rawResponse = cached.raw_response as Record<string, unknown>;
+
+  // Display-only (transparencia 2026-06): occ realizada desde la pool cruda.
+  // Lee `comparable_listings` APARTE — NO toca isDirectSource ni el scoring.
+  const realizedOccupancy = summarizeRealizedOccupancy(rawResponse?.comparable_listings);
+
+  if (isDirectSource) {
+    return {
+      success: true,
+      cached: true,
+      source: "calculator_direct",
+      realizedOccupancy,
+      data: {
+        address: cached.address,
+        bedrooms: cached.bedrooms,
+        baths: cached.baths,
+        guests: cached.guests,
+        estimated_adr: cached.median_adr,
+        estimated_occupancy: cached.median_occupancy,
+        estimated_annual_revenue: cached.median_annual_revenue,
+        percentiles: (rawResponse?.percentiles as Record<string, unknown>) ?? {},
+        monthly_revenue: (rawResponse?.monthly_revenue_distributions as unknown[]) ?? [],
+        currency: (rawResponse?.currency as string) ?? "USD",
+        comparables_count: 0,
+        expires_at: cached.expires_at,
+      },
+    };
+  }
+
+  // Cached comparables response
+  return {
+    success: true,
+    cached: true,
+    source: "comparables",
+    realizedOccupancy,
+    data: {
+      address: cached.address,
+      bedrooms: cached.bedrooms,
+      baths: cached.baths,
+      guests: cached.guests,
+      comparables_count: cached.comparables_count,
+      median_adr: cached.median_adr,
+      median_occupancy: cached.median_occupancy,
+      median_annual_revenue: cached.median_annual_revenue,
+      premium: {
+        count: cached.tier_premium_count,
+        median_adr: cached.tier_premium_adr,
+        median_occupancy: cached.tier_premium_occupancy,
+        median_annual_revenue: cached.tier_premium_revenue,
+      },
+      standard: {
+        count: cached.tier_standard_count,
+        median_adr: cached.tier_standard_adr,
+        median_occupancy: cached.tier_standard_occupancy,
+        median_annual_revenue: cached.tier_standard_revenue,
+      },
+      top_comparables: (rawResponse as unknown as AirROIResponse)?.comparables
+        ? getTopComparables(filterComparables((rawResponse as unknown as AirROIResponse).comparables))
+        : [],
+      // La moneda viaja para que buildAirbnbData no tenga que adivinarla (ver
+      // el bug de conversión anotado en AirbnbEstimateData.currency).
+      currency: (rawResponse?.currency as string) ?? "USD",
+      expires_at: cached.expires_at,
+    },
+  };
+}
+
 interface DirectFieldRich {
   mean?: number;
   median?: number;
@@ -133,75 +209,9 @@ export async function getAirbnbEstimate(
     .maybeSingle();
 
   if (cached) {
-    const isDirectSource = cached.comparables_count === 0 && cached.tier_premium_count === 0;
-    const rawResponse = cached.raw_response as Record<string, unknown>;
-
-    // Display-only (transparencia 2026-06): occ realizada desde la pool cruda.
-    // Lee `comparable_listings` APARTE — NO toca isDirectSource ni el scoring.
-    const realizedOccupancy = summarizeRealizedOccupancy(rawResponse?.comparable_listings);
-
     // El hit no cuesta plata, pero sin contarlo no se sabe si el cache sirve.
     void contarLlamadaAirroi(db, options?.origen ?? "informe", true);
-
-    if (isDirectSource) {
-      return {
-        success: true,
-        cached: true,
-        source: "calculator_direct",
-        realizedOccupancy,
-        data: {
-          address: cached.address,
-          bedrooms: cached.bedrooms,
-          baths: cached.baths,
-          guests: cached.guests,
-          estimated_adr: cached.median_adr,
-          estimated_occupancy: cached.median_occupancy,
-          estimated_annual_revenue: cached.median_annual_revenue,
-          percentiles: (rawResponse?.percentiles as Record<string, unknown>) ?? {},
-          monthly_revenue: (rawResponse?.monthly_revenue_distributions as unknown[]) ?? [],
-          currency: (rawResponse?.currency as string) ?? "USD",
-          comparables_count: 0,
-          expires_at: cached.expires_at,
-        },
-      };
-    }
-
-    // Cached comparables response
-    return {
-      success: true,
-      cached: true,
-      source: "comparables",
-      realizedOccupancy,
-      data: {
-        address: cached.address,
-        bedrooms: cached.bedrooms,
-        baths: cached.baths,
-        guests: cached.guests,
-        comparables_count: cached.comparables_count,
-        median_adr: cached.median_adr,
-        median_occupancy: cached.median_occupancy,
-        median_annual_revenue: cached.median_annual_revenue,
-        premium: {
-          count: cached.tier_premium_count,
-          median_adr: cached.tier_premium_adr,
-          median_occupancy: cached.tier_premium_occupancy,
-          median_annual_revenue: cached.tier_premium_revenue,
-        },
-        standard: {
-          count: cached.tier_standard_count,
-          median_adr: cached.tier_standard_adr,
-          median_occupancy: cached.tier_standard_occupancy,
-          median_annual_revenue: cached.tier_standard_revenue,
-        },
-        top_comparables: (rawResponse as unknown as AirROIResponse)?.comparables
-          ? getTopComparables(filterComparables((rawResponse as unknown as AirROIResponse).comparables))
-          : [],
-        // La moneda viaja para que buildAirbnbData no tenga que adivinarla (ver
-        // el bug de conversión anotado en AirbnbEstimateData.currency).
-        currency: (rawResponse?.currency as string) ?? "USD",
-        expires_at: cached.expires_at,
-      },
-    };
+    return estimacionDesdeCache(cached);
   }
 
   // ── Call AirROI API ──────────────────────────────
