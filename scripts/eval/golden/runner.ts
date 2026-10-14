@@ -87,6 +87,7 @@ import { runMetaAdsSinCampanaTier } from "./meta-ads-sin-campana-catch-test";
 import { runEstudiosTier } from "./estudios-catch-test";
 import { runSemanalSinSilencioTier } from "./semanal-sin-silencio-catch-test";
 import { runSemanalStrTier } from "./semanal-str-catch-test";
+import { runSemanalAjustesTier } from "./semanal-ajustes-catch-test";
 import { runCorreosRecorridoTier } from "./correos-recorrido-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
@@ -447,6 +448,8 @@ function printSeed(r: SeedReport) {
   // correo con dos bloques, «Analizar este» que no cobra si la medición fina cambia el veredicto, y el registro de cada
   // comparación. En rojo por mutación.
   totalHard += (await runSemanalStrTier()).hard;
+  // SEMANAL-AJUSTES (14-oct-2026): solo Comprar en renta corta, el plan veraz, el pop-up, la selección en el dashboard.
+  totalHard += (await runSemanalAjustesTier()).hard;
   // Tier CORREOS-RECORRIDO (13-oct-2026, 0 tokens): el enlace del correo entra solo, el aviso antes de gastar un análisis,
   // el pack de tres por $19.990, el «cuándo» arriba de la semana y renta corta con su línea. En rojo por mutación.
   totalHard += (await runCorreosRecorridoTier()).hard;
