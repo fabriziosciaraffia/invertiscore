@@ -160,7 +160,9 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
     const ramaFirma = (get.match(/if \(acceso === "firma"\) \{[\s\S]*?\n {2}\}/) ?? [""])[0];
     if (!/const payment = \{ commerce_order: fila\.commerce_order, product: fila\.product, amount: fila\.amount, status: fila\.status, analysis_id: fila\.analysis_id \};/.test(ramaFirma) || /payment_data|user_id|email/.test(ramaFirma.replace(/const dueno[^\n]*/, ""))) F("2 · con la firma, el estado del pago trae más que lo justo (payment_data, el dueño o el correo)");
     if (!/sinSesion: true, \.\.\.\(fila\.status === "paid" \? await saldoDe\(admin, dueno\) : \{\}\)/.test(ramaFirma)) F("2 · con la firma, el saldo sale aunque el pago no esté pagado (o no sale)");
-    if (!/if \(nivel === "subscriber"\) return \{ saldo: 0, ilimitado: true \};\s*return \{ saldo: await getAvailableCredits\(userId, admin\), ilimitado: false \};/.test(st)) F("2 · el saldo no es el real (ledger + legacy, ilimitado para la suscripción)");
+    // ⚠ ACTA (14-oct-2026) · «ilimitado» es solo el plan Ilimitado (`is_unlimited`): el plan 10 y el plan 50 tienen saldo,
+    // como cualquiera (lo fija también SEMANAL-AJUSTES §4).
+    if (!/if \(uc\?\.is_unlimited === true\) return \{ saldo: 0, ilimitado: true \};\s*return \{ saldo: await getAvailableCredits\(userId, admin\), ilimitado: false \};/.test(st)) F("2 · el saldo no es el real (ledger + legacy, ilimitado solo para el plan Ilimitado)");
 
     const accesos: Array<[Parameters<typeof accesoAlPago>[0], string]> = [
       [{ sesionUserId: null, duenoPago: "u1", firmaValida: true }, "firma"],
