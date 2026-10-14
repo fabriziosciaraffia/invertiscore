@@ -19,16 +19,19 @@ import { antiguedadDelAviso, fichaDelAviso, leerAvisoGuia } from "@/lib/guia/ana
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
-import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
-import { alternativasNoDa, analizarStrDeSemanal, type ComparacionStr } from "@/lib/guia/semanal-str";
+import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
+import { analizarStrDeSemanal, parecidosQueSobreviven, type ComparacionStr } from "@/lib/guia/semanal-str";
+import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» en un depto de la selección de RENTA CORTA (14-oct-2026, decisión de Fabrizio). El bloque de renta
 // corta del semanal se estimó por zona, sin consultas; acá se mide fino, como en el wizard: la dirección del depto (sus
 // coordenadas, por la misma geocodificación inversa que usa el wizard) y la consulta al proveedor, con el costo a cargo
-// de Franco (contador «semanal»). Si la medición fina cambia el veredicto que vio la persona, NO SE COBRA y no hay
-// informe: la respuesta es «no-da» con los siguientes de su selección (semanal-str.ts › NO_DA). Si se sostiene, un
-// crédito, una vez por persona y aviso (`semanal_str_analisis`), y el informe de renta corta. Cada comparación queda en
+// de Franco (contador «semanal»). Sin análisis disponibles NO se mide (ni se paga la consulta): el plan 10 y el plan 50
+// con saldo cero llegan acá como «sin» (casa-saldo.ts, 14-oct-2026). Si la medición fina no da Comprar, NO SE COBRA y no
+// hay informe: la respuesta es «no-da» con los parecidos que sobreviven —reevaluados con la tarifa y la ocupación recién
+// medidas, sin volver a consultar— (semanal-str.ts › parecidosQueSobreviven). Si da Comprar, un crédito, una vez por
+// persona y aviso (`semanal_str_analisis`), y el informe de renta corta. Cada comparación queda en
 // `comparaciones_zona_str`. Solo con sesión y solo sobre la selección de esa persona.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -61,6 +64,8 @@ export async function POST(request: Request) {
     const clave = { user_id: user.id, aviso_id: avisoId };
 
     let anioLeido: number | null = null;
+    // La medición fina y la config con que se hizo: con ellas se reevalúan los parecidos si no da.
+    let medida: { estimacion: Extract<AirbnbEstimateResponse, { success: true }>; cfg: { uf: number; tasa: number } } | null = null;
     let plausibleFallo: Response | null = null;
     const r = await analizarStrDeSemanal({
       async yaCreado() {
@@ -102,6 +107,7 @@ export async function POST(request: Request) {
         const zonaEv = zona ? evaluarStrCon(body, zona.estimacion, { uf: ufValue }, mercado, new Date()) : null;
         const built = await buildShortTermAnalysisRow(body, ufValue, mercado, undefined, { origen: "semanal" });
         if (!built.ok) return { ok: false, status: built.response.status, error: "medicion" };
+        medida = { estimacion: built.estimacion, cfg };
         const fila = built.row as Record<string, unknown> & { results: Record<string, unknown> };
         const res = fila.results as { veredicto?: string; francoScore?: { score?: number }; escenarios?: { base?: { adrReferencia?: number; ocupacionReferencia?: number } } };
         const base = res.escenarios?.base;
@@ -191,13 +197,17 @@ export async function POST(request: Request) {
         if (error) captureApiError(new Error(`comparación: ${error.message}`), { ruta: RUTA, operacion: "registrar-comparacion", userId: user.id });
       },
       async alternativas() {
-        // Los siguientes de su selección, vigentes, sin los que ya se sabe que no dan.
+        // Los siguientes de su selección, vigentes, sin los que ya se sabe que no dan, y solo los que SIGUEN dando
+        // Comprar con la tarifa y la ocupación recién medidas (el mismo cuerpo que su estimación por zona, con la
+        // medición fina en lugar de la zona; sin consultar al proveedor).
         const [vigentes, { data: noDan }] = await Promise.all([
           itemsVigentes(admin, sel.corto!.items),
-          admin.from("comparaciones_zona_str").select("aviso_id").eq("user_id", user.id).eq("cambio", true),
+          admin.from("comparaciones_zona_str").select("aviso_id").eq("user_id", user.id).neq("fino_veredicto", "COMPRAR"),
         ]);
         const excluir = new Set((noDan ?? []).map((x) => x.aviso_id as string));
-        return alternativasNoDa(vigentes, avisoId, excluir).map((i) => i.avisoId);
+        if (!medida) return [];
+        const sobreviven = await parecidosQueSobreviven(vigentes, avisoId, excluir, reevaluadorConMedicion(admin, o, combo, medida));
+        return sobreviven.map((i) => i.avisoId);
       },
     });
 

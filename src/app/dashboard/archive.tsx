@@ -44,6 +44,7 @@ import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { ArchiveSearch } from "./archive-search";
 import { RowActions } from "./row-actions";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
 
 /** Hijos que se muestran al expandir un grupo antes de ofrecer «ver el resto». */
 const HIJOS_VISIBLES = 8;
@@ -92,6 +93,8 @@ interface Props {
   stats: DashboardStats;
   /** Unidades representadas en pantalla (en agrupado ≠ cantidad de ítems). */
   unidadesVisibles: number;
+  /** Los informes sin dirección que salieron de la selección semanal (14-oct-2026): dicen «Desde tu selección semanal». */
+  desdeSemanal?: string[];
 }
 
 // ─── Chips ──────────────────────────────────────────────────────────────────
@@ -193,7 +196,7 @@ function CeldasNumericas({ row, atenuado = false }: { row: AnalisisDashboardRow;
 // ─── Fila de análisis (suelta o hija de un grupo) ───────────────────────────
 
 function FilaAnalisis({
-  row, siblings, hijo = false, mostrarPrecio = false, vigente = false,
+  row, siblings, hijo = false, mostrarPrecio = false, vigente = false, desdeSemanal = false,
 }: {
   row: AnalisisDashboardRow;
   siblings: Map<string, AnalisisDashboardRow>;
@@ -201,6 +204,8 @@ function FilaAnalisis({
   /** Solo true cuando el precio DIFIERE entre hermanas: ahí sí distingue. */
   mostrarPrecio?: boolean;
   vigente?: boolean;
+  /** Salió de la selección semanal: en vez de «SIN DIRECCIÓN», de dónde salió. */
+  desdeSemanal?: boolean;
 }) {
   const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
   const abrir = hrefAnalisis(row, str?.id);
@@ -246,8 +251,8 @@ function FilaAnalisis({
                 {displayDireccion(row)}
               </EnlaceCarga>
               {sinDireccion(row) && (
-                <span className="shrink-0 text-[11px] text-[var(--franco-text-muted)]">
-                  SIN DIRECCIÓN
+                <span className="shrink-0 text-[11px] text-[var(--franco-text-muted)]" data-archivo={desdeSemanal ? "desde-semanal" : "sin-direccion"}>
+                  {desdeSemanal ? SELECCION_CASA.archivo : "SIN DIRECCIÓN"}
                 </span>
               )}
             </>
@@ -319,7 +324,8 @@ function FilaGrupo({
 
 // ─── Archivo ────────────────────────────────────────────────────────────────
 
-export function Archive({ rows, items, siblings, total, hasMore, params, stats, unidadesVisibles }: Props) {
+export function Archive({ rows, items, siblings, total, hasMore, params, stats, unidadesVisibles, desdeSemanal = [] }: Props) {
+  const deSemanal = new Set(desdeSemanal);
   const { por_modalidad: mod, por_veredicto: ver } = stats;
   const filtrando = params.q !== "" || params.mod !== "todas" || params.v !== "todos";
   const veredictos: Veredicto[] = ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
@@ -449,7 +455,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                   {agrupado
                     ? items.flatMap((item) => {
                         if (item.kind === "fila") {
-                          return [<FilaAnalisis key={item.row.id} row={item.row} siblings={siblings} />];
+                          return [<FilaAnalisis key={item.row.id} row={item.row} siblings={siblings} desdeSemanal={deSemanal.has(item.row.id)} />];
                         }
                         const { grupo } = item;
                         const abierto = grupoAbierto(params, grupo.key);
@@ -469,6 +475,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                                 key={hijo.id}
                                 row={hijo}
                                 siblings={siblings}
+                                desdeSemanal={deSemanal.has(hijo.id)}
                                 hijo
                                 mostrarPrecio={grupo.preciosDistintos}
                                 vigente={hijo.id === grupo.vigente.id}
@@ -493,7 +500,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                         }
                         return filas;
                       })
-                    : rows.map((row) => <FilaAnalisis key={row.id} row={row} siblings={siblings} />)}
+                    : rows.map((row) => <FilaAnalisis key={row.id} row={row} siblings={siblings} desdeSemanal={deSemanal.has(row.id)} />)}
                 </tbody>
               </table>
             </div>

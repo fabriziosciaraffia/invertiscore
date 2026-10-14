@@ -45,6 +45,7 @@ import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-ter
 import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
 import type { OrigenAirroi } from "@/lib/airbnb/contador-airroi";
+import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 
 // ─── Pre-fetch de mediana comunal (para inyectar al motor) ───
 
@@ -565,7 +566,9 @@ export interface ShortTermAnalysisBody {
 }
 
 export type BuildShortTermRowResult =
-  | { ok: true; row: Record<string, unknown> }
+  // `estimacion` (14-oct-2026): la respuesta del proveedor con que se midió, para que «Analizar este» del semanal
+  // reevalúe los parecidos con la tarifa y la ocupación recién medidas sin volver a consultar.
+  | { ok: true; row: Record<string, unknown>; estimacion: Extract<AirbnbEstimateResponse, { success: true }> }
   | { ok: false; response: NextResponse };
 
 /**
@@ -685,6 +688,7 @@ export async function buildShortTermAnalysisRow(
 
   return {
     ok: true,
+    estimacion: airbnbResult,
     row: {
       nombre,
       comuna: body.comuna,

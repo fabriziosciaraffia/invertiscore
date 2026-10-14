@@ -25,6 +25,7 @@ import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type OrigenGuia } fro
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
+import { deEstaSemana, esDesdeSemanal } from "./seleccion-casa";
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
@@ -32,7 +33,7 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeRegalo, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeRegalo, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, semanaDelEnvio,
   type ProgresoPrechequeo, type RespaldoSemanal,
 } from "./semanal";
 
@@ -228,7 +229,7 @@ export async function armarSeleccion(
   let corto: EstadoBloque | null = null;
   if (prepStr?.tipo === "lista") {
     const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prepStr.p;
-    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo);
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_CORTA);
     corto = g.estado;
     Object.assign(fila, {
       items_str: aItems(g), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
@@ -291,7 +292,7 @@ export async function prechequearSemana(
       // Su siguiente aviso, del bloque que lo necesite (primero el de renta larga); armada cuando los dos lo están.
       const rs = [
         p.ltr ? await siguienteYEstado(p.ltr.candidatos, p.ltr.evaluar, enMemoria, p.ltr.respaldo) : null,
-        p.str ? await siguienteYEstado(p.str.candidatos, p.str.evaluar, enMemoria, p.str.respaldo) : null,
+        p.str ? await siguienteYEstado(p.str.candidatos, p.str.evaluar, enMemoria, p.str.respaldo, REGLA_CORTA) : null,
       ].filter((r): r is { aviso: Candidato | null; armada: boolean } => r != null);
       const aviso = rs.find((r) => r.aviso)?.aviso ?? null;
       estado.set(userId, rs.every((r) => r.armada) ? "armada" : aviso ? "pendiente" : "sin-candidatos");
@@ -462,6 +463,8 @@ export interface SeleccionPorToken {
   conLargo: boolean;
   /** El bloque de renta corta (14-oct-2026), estimado por zona; null si no tiene perfil de renta corta. */
   corto: { items: ItemSemanal[]; combinacion: Combinacion | null; origenId: string | null } | null;
+  /** El token de la fila: la página abierta por sesión, sin token en la URL, lo necesita para «Analizar este». */
+  token: string;
 }
 
 /**
@@ -483,33 +486,82 @@ export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: strin
   return { tasa: o?.tasa ?? null, uf, arriendos };
 }
 
+const COLUMNAS_PAGINA = "id, user_id, semana, token, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id";
+
+/** Una fila de `semanal_selecciones` como la lee la página (por token o por sesión). */
+function seleccionDeFila(s: Record<string, unknown>): SeleccionPorToken {
+  const items = (s.items ?? []) as ItemSemanal[];
+  return {
+    fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items, token: s.token as string,
+    combinacion: (s.combinacion ?? null) as Combinacion | null, origen_analysis_id: (s.origen_analysis_id as string | null) ?? null,
+    variante: (s.variante as "banda" | "tarjetas" | null) ?? null, enviadaAt: (s.enviada_at as string | null) ?? null,
+    // Desde el 14-oct-2026 el perfil de la fila es el de renta larga (null si no lo tiene); antes, siempre había bloque.
+    conLargo: s.perfil != null || items.length > 0,
+    corto: s.estado_str == null ? null : {
+      items: (s.items_str ?? []) as ItemSemanal[],
+      combinacion: (s.combinacion_str ?? null) as Combinacion | null,
+      origenId: (s.origen_str_analysis_id as string | null) ?? null,
+    },
+  };
+}
+
 export async function seleccionPorToken(admin: SupabaseClient, token: string): Promise<SeleccionPorToken | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
-  const { data: s } = await admin.from("semanal_selecciones")
-    .select("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id")
-    .eq("token", token).maybeSingle();
-  if (s) {
-    const items = (s.items ?? []) as ItemSemanal[];
-    return {
-      fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items,
-      combinacion: (s.combinacion ?? null) as Combinacion | null, origen_analysis_id: (s.origen_analysis_id as string | null) ?? null,
-      variante: (s.variante as "banda" | "tarjetas" | null) ?? null, enviadaAt: (s.enviada_at as string | null) ?? null,
-      // Desde el 14-oct-2026 el perfil de la fila es el de renta larga (null si no lo tiene); antes, siempre había bloque.
-      conLargo: s.perfil != null || items.length > 0,
-      corto: s.estado_str == null ? null : {
-        items: (s.items_str ?? []) as ItemSemanal[],
-        combinacion: (s.combinacion_str ?? null) as Combinacion | null,
-        origenId: (s.origen_str_analysis_id as string | null) ?? null,
-      },
-    };
-  }
+  const { data: s } = await admin.from("semanal_selecciones").select(COLUMNAS_PAGINA).eq("token", token).maybeSingle();
+  if (s) return seleccionDeFila(s as Record<string, unknown>);
   const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id, enviado_at").eq("token", token).not("enviado_at", "is", null).maybeSingle();
   if (!a) return null;
   return {
     fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: (a.items ?? []) as ItemSemanal[],
     combinacion: (a.combinacion ?? null) as Combinacion | null, origen_analysis_id: (a.origen_analysis_id as string | null) ?? null, variante: null,
-    enviadaAt: (a.enviado_at as string | null) ?? null, conLargo: true, corto: null,
+    enviadaAt: (a.enviado_at as string | null) ?? null, conLargo: true, corto: null, token,
   };
+}
+
+/** Cuántas semanas atrás sigue siendo «la de esta semana» para el dashboard y /semanal sin token: la del lunes de
+ *  este envío o la anterior (la del domingo se arma para el lunes siguiente). */
+export const SEMANAS_SELECCION_VIGENTE = 1;
+
+/**
+ * LA SELECCIÓN DE ESTA SEMANA, POR SESIÓN (14-oct-2026, decisión de Fabrizio): el dashboard la resume y /semanal la
+ * abre sin token. La más reciente de la persona, del lunes de este envío o de la semana anterior, que tenga algún
+ * depto en alguno de sus dos bloques. null: no tiene.
+ */
+export async function seleccionDeEstaSemana(admin: SupabaseClient, userId: string, ahora: Date = new Date()): Promise<SeleccionPorToken | null> {
+  const lunes = new Date(`${semanaDelEnvio(ahora)}T12:00:00Z`);
+  const desde = new Date(lunes.getTime() - SEMANAS_SELECCION_VIGENTE * 7 * 864e5).toISOString().slice(0, 10);
+  const { data, error } = await admin.from("semanal_selecciones").select(COLUMNAS_PAGINA)
+    .eq("user_id", userId).gte("semana", desde).limit(10);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "seleccion-de-esta-semana", userId });
+  const fila = deEstaSemana((data ?? []) as Array<Record<string, unknown> & { semana: string; items?: unknown[] | null; items_str?: unknown[] | null }>);
+  return fila ? seleccionDeFila(fila) : null;
+}
+
+/** De sus informes sin dirección, los que salieron de su selección semanal (o de un aviso inmediato): el archivo del
+ *  dashboard dice «Desde tu selección semanal» (14-oct-2026; seleccion-casa.ts › esDesdeSemanal). */
+export async function informesDesdeSemanal(admin: SupabaseClient, userId: string, ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const [{ data: an, error }, { data: sels }, { data: inm }] = await Promise.all([
+    admin.from("analisis").select("id, origen:input_data->origenAviso").eq("user_id", userId).in("id", ids.slice(0, 200)),
+    admin.from("semanal_selecciones").select("items, items_str").eq("user_id", userId).order("semana", { ascending: false }).limit(100),
+    admin.from("avisos_inmediatos").select("items").eq("user_id", userId).order("dia", { ascending: false }).limit(100),
+  ]);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-origen-informes", userId });
+  const avisos = new Set<string>();
+  for (const r of [...(sels ?? []), ...(inm ?? [])] as Array<{ items?: ItemSemanal[] | null; items_str?: ItemSemanal[] | null }>) {
+    for (const i of [...(r.items ?? []), ...(r.items_str ?? [])]) avisos.add(i.avisoId);
+  }
+  return ((an ?? []) as Array<{ id: string; origen: unknown }>).filter((a) => esDesdeSemanal(a.origen, avisos)).map((a) => a.id);
+}
+
+/** Los deptos de renta corta de esta persona que ya se midieron fino y no dieron (no se cobraron): la tarjeta queda
+ *  marcada «No da para renta corta · no cobrado», sin botón, también al volver a la página. */
+export async function noDanEnRentaCorta(admin: SupabaseClient, userId: string, avisoIds: string[]): Promise<string[]> {
+  if (avisoIds.length === 0) return [];
+  const { data, error } = await admin.from("comparaciones_zona_str").select("aviso_id")
+    .eq("user_id", userId).in("aviso_id", avisoIds).neq("fino_veredicto", "COMPRAR").eq("cobrado", false);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-no-dan", userId });
+  return (data ?? []).map((r) => r.aviso_id as string);
 }
 
 /** Los deptos de una selección que siguen en pie: sin despublicados y todavía evaluados. */

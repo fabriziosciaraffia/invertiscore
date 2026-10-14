@@ -320,11 +320,11 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
     // el servidor, el cron y la vigilancia
     if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
-    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
+    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo(, REGLA_CORTA)?\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
     // ⚠ ACTA (09-oct-2026) · el prechequeo elige con `siguienteYEstado` (lo mismo que el `siguienteAChequear` retirado, y
     // además si la selección se arma: el cierre ya no vuelve a recorrer a nadie) y el cron le pasa DÓNDE QUEDÓ
     // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
-    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/p\.ltr \? await siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo\) : null,\s*p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo\) : null,/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
+    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/p\.ltr \? await siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo\) : null,\s*p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA\) : null,/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
     const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
     // (09-oct-2026, segunda pasada: «desde» se calcula una vez, porque también va al log del cierre.)
     // ⚠ ACTA (12-oct-2026, el techo) · la llamada lleva además `progreso`, lo que se sabe mientras corre: si el techo

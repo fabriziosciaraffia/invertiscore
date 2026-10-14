@@ -25,9 +25,10 @@ import type { PerfilDeLaPersona } from "@/lib/perfil-busqueda-servidor";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
+import { leerAvisoGuia } from "./analizar-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { MIN_RESPUESTAS_ZONA, respuestaTipica, type LadoMedicion } from "./semanal-str";
-import { DESCUENTO_NEGOCIABLE, VENTANA_SEMANAL_DIAS, rangoSemanal, type RespaldoSemanal } from "./semanal";
+import { VENTANA_SEMANAL_DIAS, rangoSemanal, type RespaldoSemanal } from "./semanal";
 import type { Combinacion, Evaluado } from "./seleccion";
 
 /** Cuántos de cada celda (los más baratos) trae la RPC: en una celda la tarifa típica es una, y el más barato rinde más. */
@@ -175,6 +176,27 @@ export function evaluarStrCon(
   };
 }
 
+/**
+ * LOS PARECIDOS, REEVALUADOS CON LA MEDICIÓN FINA (14-oct-2026, decisión de Fabrizio): cuando «Analizar este» mide fino
+ * y no da, los parecidos se reevalúan con la tarifa y la ocupación recién medidas —la respuesta del proveedor de ese
+ * análisis— en lugar de la zona, con el MISMO cuerpo que su estimación por zona y sin consultar al proveedor. Devuelve
+ * el veredicto de cada uno (null si no se puede armar); la ruta se queda con los que siguen dando Comprar
+ * (semanal-str.ts › parecidosQueSobreviven).
+ */
+export function reevaluadorConMedicion(
+  admin: SupabaseClient,
+  o: OrigenStr,
+  combo: Combinacion,
+  medida: { estimacion: Extract<AirbnbEstimateResponse, { success: true }>; cfg: { uf: number; tasa: number } },
+  asOf: Date = new Date(),
+): (it: { avisoId: string }) => Promise<string | null> {
+  return async (it) => {
+    const c = await leerAvisoGuia(admin, it.avisoId, o);
+    const body = c ? cuerpoStrDeAviso(c, o, combo, medida.cfg) : null;
+    return c && body ? evaluarStrCon(body, medida.estimacion, medida.cfg, c.medianaComuna, asOf).veredicto : null;
+  };
+}
+
 // ── La selección ───────────────────────────────────────────────────────────────
 
 /** Todo lo que hace falta para elegir el bloque de renta corta de una persona (la forma de la de renta larga). */
@@ -227,19 +249,17 @@ export async function prepararSeleccionStr(
 
   const asOf = new Date();
   const memo = new Map<string, Promise<EvaluadoStr | null>>();
-  const evaluarA = (c: Candidato, factorPrecio: number): Promise<EvaluadoStr | null> => {
-    const clave = `${c.avisoId}:${factorPrecio}`;
-    const ya = memo.get(clave);
+  const evaluar = (c: Candidato): Promise<EvaluadoStr | null> => {
+    const ya = memo.get(c.avisoId);
     if (ya) return ya;
     const r = (async () => {
       const zona = (await zonasDeComuna(admin, c.comuna)).get(celdaDormitorios(c.dormitorios));
       if (!zona) return null;
-      const cc = factorPrecio === 1 ? c : { ...c, precioUF: c.precioUF * factorPrecio };
-      const body = cuerpoStrDeAviso(cc, o, combo, cfg);
+      const body = cuerpoStrDeAviso(c, o, combo, cfg);
       if (!body) return null;
       return evaluarStrCon(body, zona.estimacion, cfg, c.medianaComuna, asOf);
     })();
-    memo.set(clave, r);
+    memo.set(c.avisoId, r);
     return r;
   };
   let vecinas: Promise<Candidato[]> | null = null;
@@ -247,10 +267,10 @@ export async function prepararSeleccionStr(
     tipo: "lista",
     p: {
       perfil, origen: o, combo, candidatos,
-      evaluar: (c) => evaluarA(c, 1),
+      evaluar,
       respaldo: {
+        // Solo Comprar (14-oct-2026): las vecinas sí; el negociable no (REGLA_CORTA, sin evaluarConDescuento).
         vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),
-        evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
       },
     },
   };

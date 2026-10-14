@@ -75,6 +75,8 @@ export async function POST(request: Request) {
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
         const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
         const body = await cuerpoDelAviso(aviso, o, combo, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+        // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN».
+        if (body?.origenAviso) body.origenAviso.desde = typeof b.semanal === "string" ? "semanal" : "guia";
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;

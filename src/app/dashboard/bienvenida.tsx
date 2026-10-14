@@ -31,6 +31,7 @@ export function Bienvenida({
   perfil,
   onboarding,
   demo = false,
+  saldo = null,
 }: {
   /** El nombre REAL (nombreReal en lib/welcome): sin él, «Hola.». */
   nombre: string | null;
@@ -39,6 +40,8 @@ export function Bienvenida({
   /** Quien todavía no pasó el onboarding: al tocar el botón se marca completo. */
   onboarding: boolean;
   demo?: boolean;
+  /** El saldo o el plan en una línea (casa-copy.ts › lineaSaldo), si la cuenta tiene (14-oct-2026). */
+  saldo?: string | null;
 }) {
   const router = useRouter();
   const [yendo, setYendo] = useState(false);
@@ -65,6 +68,7 @@ export function Bienvenida({
 
         <p className="mt-8 text-[15px] text-[var(--franco-text-secondary)]">{BIENVENIDA.saludo(nombre)}</p>
         <h1 className="mt-1 font-heading text-[26px] font-bold leading-[1.2] sm:text-[32px]">{BIENVENIDA.titular}</h1>
+        {saldo && <p className="mt-3 text-[15px] font-semibold" data-bienvenida="saldo">{saldo}</p>}
 
         <div className="mt-7 flex flex-col gap-6">
           {BIENVENIDA.hace.map((h, i) => (

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
-import { finanzasDeSeleccion, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
+import { finanzasDeSeleccion, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { SEMANAL_STR } from "@/lib/guia/semanal-str";
@@ -18,6 +18,8 @@ import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 // «Analizar este» genera el informe con sus números; sin saldo, el botón compra el suelto. Viva
 // (05-oct-2026): el que ya no está publicado lo dice y trae en su lugar el siguiente mejor, chequeado.
 // Arriba, a quien nunca contestó «¿Cuándo piensas comprar?», la pregunta una vez (13-oct-2026; pregunta-cuando.tsx).
+// SIN TOKEN, CON SESIÓN (14-oct-2026): abre la selección de esta semana de quien entró (seleccionDeEstaSemana); así la
+// enlaza el dashboard. Con token, la de ese correo, como siempre.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
@@ -29,11 +31,11 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   const { data: { user } } = await supabase.auth.getUser();
   const aqui = `/semanal?${new URLSearchParams(Object.entries(searchParams).filter((e): e is [string, string] => typeof e[1] === "string")).toString()}`;
   if (!user) redirect(hrefEntrar(aqui, "semanal"));
-  if (!TOKEN.test(t)) redirect("/dashboard");
+  if (t && !TOKEN.test(t)) redirect("/dashboard");
 
   const admin = createServiceClient();
-  // El semanal o un aviso inmediato (05-oct-2026): la misma página, viva.
-  const sel = await seleccionPorToken(admin, t);
+  // El semanal o un aviso inmediato (05-oct-2026): la misma página, viva. Sin token, la de esta semana de quien entró.
+  const sel = t ? await seleccionPorToken(admin, t) : await seleccionDeEstaSemana(admin, user.id);
   if (!sel) redirect("/dashboard");
 
   const otraCuenta = sel.user_id !== user.id;
@@ -51,11 +53,14 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   // Lo que el aviso antes de gastar muestra como el pop-up del wizard (13-oct-2026): la tasa de la persona, la UF del día
   // y el arriendo con que se evaluó cada depto (en renta corta, el ingreso estimado por zona).
   const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
-  const [datosSaldo, perfilPersona, finanzas, finanzasCorto] = await Promise.all([
+  const idsCortos = filasCortas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
+  const [datosSaldo, perfilPersona, finanzas, finanzasCorto, noDan] = await Promise.all([
     leerSaldo(admin, user.id),
     otraCuenta ? null : leerPerfilBusqueda(admin, user.id),
     finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf),
     sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf) : Promise.resolve(null),
+    // Los que ya se midieron fino y no dieron: su tarjeta queda marcada, sin botón (14-oct-2026).
+    otraCuenta || !sel.corto ? Promise.resolve([] as string[]) : noDanEnRentaCorta(admin, user.id, idsCortos),
   ]);
   const ingresosCortos: Record<string, number> = {};
   for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
@@ -75,7 +80,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
           {preguntarCuando && <PreguntaCuando />}
           {sel.conLargo && (
             <SemanalLista
-              token={t}
+              token={sel.token}
               origenId={sel.origen_analysis_id}
               combinacion={combo}
               filas={ordenados}
@@ -90,7 +95,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
           )}
           {sel.corto && (
             <SemanalLista
-              token={t}
+              token={sel.token}
               origenId={sel.corto.origenId}
               combinacion={sel.corto.combinacion}
               filas={ordenadosCortos}
@@ -101,6 +106,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
               finanzas={{ tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }}
               bloque={dosBloques ? SEMANAL_STR.bloqueCorto : null}
               conTitulo={!sel.conLargo}
+              noDan={noDan}
             />
           )}
           </>

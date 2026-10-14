@@ -10,16 +10,26 @@
 // La página está VIVA (05-oct-2026): un depto que ya no está publicado lo dice —«Este ya no está
 // publicado»— y en su lugar va el siguiente mejor del perfil, chequeado (lo arma el servidor:
 // seleccionViva). Si «Analizar este» descubre que se dio de baja, la página se vuelve a pedir.
+// RENTA CORTA, DESPUÉS DE LA PRUEBA CON fsm@ (14-oct-2026, decisiones de Fabrizio):
+//   · el título de cada bloque es un subtítulo de sección (`guia-bloque`), no otro título de página;
+//   · el cuadradito del veredicto lleva su color de la tríada (`data-veredicto`), no siempre el azul de Comprar;
+//   · al confirmar, el botón pasa a un indicador giratorio con `MIDIENDO`; pasados `MIDIENDO_TOPE_MS`, el error con
+//     «Reintentar» (reintentar no cobra dos veces);
+//   · si la medición fina no da, el resultado va en un POP-UP (PopupNoDa) con los parecidos que sobreviven, y la
+//     tarjeta queda marcada `MARCA_NO_DA`, sin botón. Nada se inserta en la lista. La marca vuelve al recargar
+//     (`noDan`, de las comparaciones guardadas).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
-import { MARCA_ZONA, NO_DA, SEMANAL_STR } from "@/lib/guia/semanal-str";
+import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { rutaTres } from "@/lib/tres-analisis";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
@@ -27,10 +37,11 @@ import "@/components/guia/guia.css";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
+const ESPERA_EN_CURSO_MS = 4000;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [],
 }: {
   token: string;
   origenId: string | null;
@@ -44,23 +55,29 @@ export function SemanalLista({
   /** Para el aviso antes de gastar (13-oct-2026): la tasa, la UF y el arriendo evaluado de cada depto (en renta corta, el
    *  ingreso estimado por zona). */
   finanzas?: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
-  /** LOS DOS BLOQUES (14-oct-2026): el de renta corta va estimado por zona, se analiza por /api/semanal/analizar-str y,
-   *  si la medición fina no da, muestra NO_DA con los siguientes. `bloque`: su título cuando la página trae los dos;
-   *  `conTitulo` y `cierre`: el título de la página y el cierre (comprar, pie) van una sola vez. */
+  /** LOS DOS BLOQUES (14-oct-2026): el de renta corta va estimado por zona y se analiza por /api/semanal/analizar-str.
+   *  `bloque`: su subtítulo cuando la página trae los dos; `conTitulo` y `cierre`: el título de la página y el cierre
+   *  (comprar, pie) van una sola vez. */
   modalidad?: "ltr" | "str";
   bloque?: string | null;
   conTitulo?: boolean;
   cierre?: boolean;
+  /** Renta corta: los que ya se midieron fino y no dieron (marcados, sin botón). */
+  noDan?: string[];
 }) {
   const router = useRouter();
   const corta = modalidad === "str";
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
-  // Renta corta: la medición fina cambió el veredicto. No se cobró; se muestran los siguientes de la selección.
-  const [noDa, setNoDa] = useState<{ avisoId: string; alternativas: string[] } | null>(null);
+  // Renta corta: la medición pasó de MIDIENDO_TOPE_MS (error con «Reintentar»).
+  const [tardo, setTardo] = useState<string | null>(null);
+  // Renta corta: los que no dieron en esta visita, y el pop-up con sus parecidos.
+  const [noDanAhora, setNoDanAhora] = useState<string[]>([]);
+  const [popup, setPopup] = useState<{ avisoId: string; parecidos: string[] } | null>(null);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean } | null>(null);
   const conSaldo = saldo.tipo !== "sin";
+  const noDa = new Set([...noDan, ...noDanAhora]);
   // El pack de tres, con el origen del correo y la vuelta a esta selección (con el depto, si se compró desde uno).
   const rutaCompra = (avisoId?: string) =>
     rutaTres(inmediato ? "inmediato" : "semanal", { variante: inmediato ? null : variante, volver: `/semanal?t=${token}${avisoId ? `&a=${avisoId}` : ""}` });
@@ -69,8 +86,13 @@ export function SemanalLista({
   async function analizar(it: ItemSemanal) {
     if (generando || !origenId || !combinacion) return;
     setError(null);
-    setNoDa(null);
+    setTardo(null);
+    setPopup(null);
     setGenerando(it.avisoId);
+    // Renta corta: la medición tiene tope. Pasado, se corta la espera y se ofrece reintentar.
+    const t0 = Date.now();
+    const control = new AbortController();
+    const reloj = corta ? window.setTimeout(() => control.abort(), MIDIENDO_TOPE_MS) : null;
     try {
       for (let intento = 0; intento < 8; intento++) {
         const res = corta
@@ -78,17 +100,27 @@ export function SemanalLista({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ token, avisoId: it.avisoId }),
+              signal: control.signal,
             })
           : await fetch("/api/lo-que-sigue/guia/analizar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, semanal: token }),
             });
-        if (res.status === 409) { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
+        if (res.status === 409) {
+          if (corta && Date.now() - t0 + ESPERA_EN_CURSO_MS >= MIDIENDO_TOPE_MS) { setTardo(it.avisoId); break; }
+          await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
+          continue;
+        }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[] };
         if (res.ok && d.id) { router.push(corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`); return; }
-        // Renta corta: con los datos de su dirección no da. No se cobró.
-        if (res.ok && d.estado === "no-da") { setNoDa({ avisoId: it.avisoId, alternativas: d.alternativas ?? [] }); break; }
+        // Renta corta: con los datos de su dirección no da Comprar. No se cobró: la tarjeta queda marcada y el
+        // resultado va en el pop-up, con los parecidos que sobreviven.
+        if (res.ok && d.estado === "no-da") {
+          setNoDanAhora((xs) => [...xs, it.avisoId]);
+          setPopup({ avisoId: it.avisoId, parecidos: d.alternativas ?? [] });
+          break;
+        }
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { router.refresh(); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»).
@@ -97,18 +129,53 @@ export function SemanalLista({
         break;
       }
     } catch {
-      setError({ avisoId: it.avisoId, texto: GUIA.error });
+      if (corta && control.signal.aborted) setTardo(it.avisoId);
+      else setError({ avisoId: it.avisoId, texto: GUIA.error });
+    } finally {
+      if (reloj != null) window.clearTimeout(reloj);
     }
     setGenerando(null);
   }
 
   const porId = new Map(filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).map((i) => [i.avisoId, i]));
-  // Los siguientes de su selección que se ofrecen cuando uno no da (los elige el servidor, en orden).
-  const alternativas = noDa ? noDa.alternativas.map((id) => porId.get(id)).filter((i): i is ItemSemanal => !!i) : [];
+  // Los parecidos que ofrece el pop-up (los elige el servidor, en orden, ya reevaluados con la medición nueva).
+  const parecidos = popup ? popup.parecidos.map((id) => porId.get(id)).filter((i): i is ItemSemanal => !!i && !noDa.has(i.avisoId)) : [];
+
+  const acciones = (it: ItemSemanal): JSX.Element => {
+    // Renta corta: medido fino y no dio. Queda dicho, sin botón.
+    if (corta && noDa.has(it.avisoId)) return <p className="guia-no-da" data-semanal="no-da">{MARCA_NO_DA}</p>;
+    if (corta && generando === it.avisoId) {
+      return (
+        <div className="guia-acc guia-midiendo" role="status" aria-live="polite" data-semanal="midiendo">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+          <span>{MIDIENDO}</span>
+        </div>
+      );
+    }
+    if (corta && tardo === it.avisoId) {
+      return (
+        <div className="guia-tardo" data-semanal="tardo">
+          <p className="guia-error" role="alert">{MIDIENDO_TARDO}</p>
+          <div className="guia-acc">
+            <button type="button" className="guia-an" onClick={() => void analizar(it)} disabled={!!generando}>{REINTENTAR}</button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="guia-acc">
+        <button type="button" className="guia-an" onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
+          {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
+        </button>
+        {usa && <span className="guia-cr">· {usa}</span>}
+      </div>
+    );
+  };
+
   const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {
     const neg = (it.flujo ?? 0) < 0;
-    const card = (
-      <article key={clave} className="guia-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined}>
+    return (
+      <article key={clave} className="guia-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined} data-no-da={corta && noDa.has(it.avisoId) ? "1" : undefined}>
         <div className="guia-top">
           <span className="guia-ojo">{ojoDe(it)}</span>
         </div>
@@ -118,7 +185,7 @@ export function SemanalLista({
         <div className="guia-dos">
           <div>
             <div className="guia-k">{GUIA.veredicto}</div>
-            <span className="guia-ver">{it.veredicto ? etiquetaVeredicto(it.veredicto, "frase") : "—"} <span className="guia-pt">{it.score ?? ""}</span></span>
+            <span className="guia-ver" data-veredicto={it.veredicto ?? undefined}>{it.veredicto ? etiquetaVeredicto(it.veredicto, "frase") : "—"} <span className="guia-pt">{it.score ?? ""}</span></span>
           </div>
           <div>
             <div className="guia-k">{GUIA.flujo}</div>
@@ -130,25 +197,9 @@ export function SemanalLista({
             )}
           </div>
         </div>
-        <div className="guia-acc">
-          <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
-            {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
-          </button>
-          {usa && <span className="guia-cr">· {usa}</span>}
-        </div>
+        {acciones(it)}
         {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
       </article>
-    );
-    // Renta corta, cuando la medición fina no da: el aviso y los siguientes de su selección, debajo del depto.
-    if (noDa?.avisoId !== it.avisoId || clave !== it.avisoId) return card;
-    return (
-      <div key={clave} className="guia-caido-grupo" data-semanal="no-da">
-        {card}
-        <div className="guia-caido" role="alert">
-          <p className="guia-caido-txt">{NO_DA}</p>
-        </div>
-        {alternativas.map((a) => tarjeta(a, `alt-${a.avisoId}`))}
-      </div>
     );
   };
 
@@ -157,7 +208,7 @@ export function SemanalLista({
   return (
     <section className="guia" data-semanal="lista" data-modalidad={modalidad}>
       {conTitulo && <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>}
-      {bloque && <h2 className="guia-titulo" data-semanal="bloque">{bloque}</h2>}
+      {bloque && <h2 className="guia-bloque" data-semanal="bloque">{bloque}</h2>}
       {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
       {corta && <p className="guia-txt" data-semanal="zona">{SEMANAL_STR.zona}</p>}
       {conTitulo && saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
@@ -183,6 +234,11 @@ export function SemanalLista({
         </div>
       )}
       {cierre && <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>}
+      {popup && (
+        <PopupNoDa parecidos={parecidos.length} alCerrar={() => setPopup(null)}>
+          {parecidos.map((p) => tarjeta(p, `pop-${p.avisoId}`))}
+        </PopupNoDa>
+      )}
       {confirmar && combinacion && (
         <AvisoAntesDeAnalizar
           modalidad={modalidad}

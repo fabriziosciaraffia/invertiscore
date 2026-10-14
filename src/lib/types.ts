@@ -116,7 +116,9 @@ export interface AnalisisInput {
   // El informe salió de un aviso de la guía de búsqueda («Analizar este», 30-sep-2026): el aviso, de
   // dónde salió la antigüedad (la ficha, 25 años supuestos o obra nueva) y el informe de origen. Lo
   // leen el bloque «Quiero verlo» y la nota de la antigüedad. No lo lee el motor.
-  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string };
+  /** `desde` (14-oct-2026): de dónde se analizó el aviso —la selección semanal (o un aviso inmediato, la misma página) o
+   *  la guía del pack—. El dashboard dice «Desde tu selección semanal» en vez de «SIN DIRECCIÓN». Sin él, filas anteriores. */
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

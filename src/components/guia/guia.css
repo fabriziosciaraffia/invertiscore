@@ -8,6 +8,12 @@
 .guia { text-align: left; font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); }
 .guia-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 8px; }
 @media (min-width: 768px) { .guia-titulo { font-size: 34px; } }
+/* el subtítulo de cada bloque de la página semanal (14-oct-2026): una sección, no otro título de página — Inter, más
+   chico que el título en Source Serif; el segundo bloque, separado por un filete */
+.guia-bloque { font-family: var(--font-ui), "Inter", system-ui, sans-serif; font-weight: 600; font-size: 18px; line-height: 1.3; letter-spacing: -0.005em; margin: 0 0 6px; color: var(--franco-text); }
+@media (min-width: 768px) { .guia-bloque { font-size: 20px; } }
+.guia-titulo + .guia-bloque { margin-top: 18px; }
+.guia[data-semanal="lista"] + .guia[data-semanal="lista"] { margin-top: 36px; padding-top: 26px; border-top: 1px solid var(--franco-border); }
 .guia-txt { font-size: 15px; line-height: 1.5; color: var(--franco-text-secondary); margin: 0; max-width: 680px; }
 .guia-ajustada { font-weight: 600; font-size: 15px; line-height: 1.45; margin: 0; padding-left: 12px; border-left: 3px solid var(--franco-text); max-width: 680px; }
 .guia-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
@@ -30,6 +36,12 @@
 .guia-ver { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 15px; }
 .guia-ver::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--verdict-comprar); flex: none; }
 [data-theme="dark"] .guia-ver::before { background: #6C9BE0; }
+/* Ajustar y Buscar otro con SU color (14-oct-2026; la página semanal trae los tres): el de la tríada en claro y el tono
+   del chip del dashboard en oscuro (ChipVeredicto › --chip-v-a / --chip-v-b), los mismos del informe. */
+.guia-ver[data-veredicto="AJUSTA SUPUESTOS"]::before { background: var(--verdict-ajusta); }
+.guia-ver[data-veredicto="BUSCAR OTRA"]::before { background: var(--verdict-buscar); }
+[data-theme="dark"] .guia-ver[data-veredicto="AJUSTA SUPUESTOS"]::before { background: #D8AECA; }
+[data-theme="dark"] .guia-ver[data-veredicto="BUSCAR OTRA"]::before { background: #F0858C; }
 .guia-pt { font-weight: 500; font-size: 13px; color: var(--franco-text-tertiary); font-variant-numeric: tabular-nums; }
 .guia-flujo { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
 .guia-flujo small { display: block; font-weight: 400; font-size: 12px; color: var(--franco-text-tertiary); }
@@ -40,6 +52,11 @@
 .guia-an[data-presionado="1"] { opacity: 0.72; }
 .guia-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .guia-cr { font-size: 13px; color: var(--franco-text-tertiary); }
+/* renta corta (14-oct-2026): midiendo, la medición que tardó, el que no dio y los parecidos del pop-up */
+.guia-midiendo { font-size: 13.5px; line-height: 1.35; color: var(--franco-text-secondary); }
+.guia-tardo { margin-top: auto; }
+.guia-no-da { margin: auto 0 0; padding-top: 12px; font-size: 14px; font-weight: 500; color: var(--franco-text-secondary); }
+.guia-pop-lista { display: grid; gap: 10px; margin-top: 14px; }
 .guia-caido-grupo { display: flex; flex-direction: column; gap: 10px; }
 .guia-caido { padding: 12px 16px; border: 1px dashed var(--franco-border); border-radius: 16px; }
 .guia-caido-txt { margin: 4px 0 0; font-size: 15px; font-weight: 500; color: var(--franco-text); }

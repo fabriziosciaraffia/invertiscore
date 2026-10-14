@@ -81,11 +81,24 @@ export type ResultadoSemanal<T> =
   | { estado: "sin_match"; items: [] }
   | { estado: "pendiente"; items: Array<ElegidoSemanal<T>> };
 
-/** El respaldo: los candidatos de las comunas vecinas y la evaluación con el descuento negociable. */
+/** El respaldo: los candidatos de las comunas vecinas y la evaluación con el descuento negociable (sin ella, no hay
+   *  tramo «negociar»: el bloque de renta corta). */
 export interface RespaldoSemanal<T> {
   vecinas: () => Promise<T[]>;
-  evaluarConDescuento: (c: T) => Promise<Evaluado | null>;
+  evaluarConDescuento?: (c: T) => Promise<Evaluado | null>;
 }
+
+/**
+ * La regla de cada bloque. Renta larga, la de siempre: con menos de tres, el respaldo completa con vecinas y con
+ * negociables, y si aun así no llega a tres, no hay selección. RENTA CORTA (14-oct-2026, decisión de Fabrizio): solo
+ * Comprar —las vecinas sí, porque dan Comprar; los negociables no— y, con menos de tres, se mandan los que haya.
+ */
+export interface ReglaSemanal {
+  conNegociables: boolean;
+  aceptarMenos: boolean;
+}
+export const REGLA_LARGA: ReglaSemanal = { conNegociables: true, aceptarMenos: false };
+export const REGLA_CORTA: ReglaSemanal = { conNegociables: false, aceptarMenos: true };
 
 type Evaluados<T> = Array<{ c: T; ev: Evaluado }>;
 
@@ -104,13 +117,15 @@ const porPuntaje = <T>(xs: Evaluados<T>, veredicto: string) =>
  * los de mejor puntaje del cron con los números de la persona; se quedan los Comprar, por puntaje; y se
  * chequea la ficha de a uno hasta juntar `TOPE_SEMANAL` publicados. Con menos de `MINIMO_SEMANAL`, el
  * respaldo completa HASTA TRES: primero Comprar de las comunas vecinas; después Ajustar (de sus comunas
- * y de las vecinas, por puntaje) que con `DESCUENTO_NEGOCIABLE` dan Comprar.
+ * y de las vecinas, por puntaje) que con `DESCUENTO_NEGOCIABLE` dan Comprar. Con `REGLA_CORTA`, sin negociables y,
+ * con menos de tres y nada más por chequear, los que haya.
  */
 export async function elegirSemanal<T extends CandidatoSemanal>(
   candidatos: T[],
   evaluar: (c: T) => Promise<Evaluado | null>,
   publicado: (c: T) => Promise<EstadoPublicacion>,
   respaldo?: RespaldoSemanal<T>,
+  regla: ReglaSemanal = REGLA_LARGA,
 ): Promise<ResultadoSemanal<T>> {
   const items: Array<ElegidoSemanal<T>> = [];
   let sinChequeo = 0;
@@ -130,16 +145,19 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
   if (items.length < MINIMO_SEMANAL && respaldo) {
     const vecinos = await evaluarPool(await respaldo.vecinas().catch(() => [] as T[]), evaluar);
     await tomar(porPuntaje(vecinos, "COMPRAR"), "vecina", MINIMO_SEMANAL);
-    if (items.length < MINIMO_SEMANAL) {
+    const conDescuento = respaldo.evaluarConDescuento;
+    if (items.length < MINIMO_SEMANAL && regla.conNegociables && conDescuento) {
       const ajustar = porPuntaje([...propios, ...vecinos], "AJUSTA SUPUESTOS");
-      const conDescuento = await Promise.all(ajustar.map((x) => respaldo.evaluarConDescuento(x.c).catch(() => null)));
-      await tomar(ajustar.filter((_, i) => conDescuento[i]?.veredicto === "COMPRAR"), "negociar", MINIMO_SEMANAL);
+      const descontados = await Promise.all(ajustar.map((x) => conDescuento(x.c).catch(() => null)));
+      await tomar(ajustar.filter((_, i) => descontados[i]?.veredicto === "COMPRAR"), "negociar", MINIMO_SEMANAL);
     }
   }
 
   if (items.length >= MINIMO_SEMANAL) return { estado: "armada", items };
   // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente.
   if (sinChequeo > 0) return { estado: "pendiente", items };
+  // Renta corta: con menos de tres y nada más por chequear, los que haya.
+  if (regla.aceptarMenos && items.length > 0) return { estado: "armada", items };
   return { estado: "sin_match", items: [] };
 }
 
@@ -154,13 +172,14 @@ export async function siguienteYEstado<T extends CandidatoSemanal>(
   evaluar: (c: T) => Promise<Evaluado | null>,
   enMemoria: (c: T) => Promise<EstadoPublicacion>,
   respaldo?: RespaldoSemanal<T>,
+  regla: ReglaSemanal = REGLA_LARGA,
 ): Promise<{ aviso: T | null; armada: boolean }> {
   const faltan: T[] = [];
   const g = await elegirSemanal(candidatos, evaluar, async (c) => {
     const e = await enMemoria(c);
     if (e === "sin-chequeo") faltan.push(c);
     return e;
-  }, respaldo);
+  }, respaldo, regla);
   return g.estado === "armada" ? { aviso: null, armada: true } : { aviso: faltan[0] ?? null, armada: false };
 }
 

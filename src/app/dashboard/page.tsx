@@ -5,8 +5,10 @@ import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { hayGuia } from "@/lib/guia/activa";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
-import { CASA } from "./casa-copy";
-import { PerfilBusquedaCasa, SaldoCasa } from "./casa";
+import { CASA, lineaSaldo } from "./casa-copy";
+import { PerfilBusquedaCasa, SaldoCasa, SeleccionCasa } from "./casa";
+import { informesDesdeSemanal, seleccionDeEstaSemana } from "@/lib/guia/semanal-servidor";
+import { resumenSeleccion } from "@/lib/guia/seleccion-casa";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -24,7 +26,7 @@ import { primerAnalisisGratis } from "./bienvenida-copy";
 import { Continuar } from "./continuar";
 import { StatsStrip } from "./stats-strip";
 import { Archive } from "./archive";
-import { parseParams, primeraFrase, PAGE_SIZE } from "./dashboard-helpers";
+import { parseParams, primeraFrase, PAGE_SIZE, sinDireccion } from "./dashboard-helpers";
 // El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 
@@ -78,6 +80,10 @@ export default async function DashboardPage({
       .maybeSingle(),
   ]);
   const gratis = primerAnalisisGratis(creditsRow);
+  // El saldo o el plan, visible arriba para cualquier cuenta (14-oct-2026): también en el dashboard vacío.
+  const admin = createServiceClient();
+  const datosSaldo = await leerSaldo(admin, user.id);
+  const saldo = estadoSaldo(datosSaldo);
   const perfil: PerfilBienvenida | null = perfilRow?.analysis_id
     ? {
         analysisId: perfilRow.analysis_id as string,
@@ -95,7 +101,7 @@ export default async function DashboardPage({
     return (
       <>
         <ChipVeredictoTokens />
-        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding />
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding saldo={lineaSaldo(saldo)} />
       </>
     );
   }
@@ -143,7 +149,7 @@ export default async function DashboardPage({
       <div className="min-h-screen bg-[var(--franco-bg)]">
         <ChipVeredictoTokens />
         <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
-        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={false} />
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={false} saldo={lineaSaldo(saldo)} />
       </div>
     );
   }
@@ -174,14 +180,16 @@ export default async function DashboardPage({
 
   const heroResumen = primeraFrase(resumenRow?.data?.resumen);
 
-  // La casa (02-oct-2026): el saldo, la selección del pack (si compró y le quedan) y el perfil de búsqueda.
-  const admin = createServiceClient();
-  const [datosSaldo, perfilPersona, { data: pack }] = await Promise.all([
-    leerSaldo(admin, user.id),
+  // La casa (02-oct-2026): el saldo, la selección del pack (si compró y le quedan) y el perfil de búsqueda. Desde el
+  // 14-oct-2026 también «Tu selección de esta semana» y, en el archivo, los informes que salieron de ella.
+  const sinDirIds = [...(todas ?? filasPagina)].filter(sinDireccion).map((r) => r.id);
+  const [perfilPersona, { data: pack }, seleccion, desdeSemanal] = await Promise.all([
     leerPerfilBusqueda(admin, user.id),
     admin.from("payments").select("analysis_id").eq("user_id", user.id).eq("product", "pack3").eq("status", "paid").not("analysis_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    seleccionDeEstaSemana(admin, user.id),
+    informesDesdeSemanal(admin, user.id, sinDirIds),
   ]);
-  const saldo = estadoSaldo(datosSaldo);
+  const resumen = seleccion ? resumenSeleccion(seleccion) : [];
   const packOrigenId = (pack?.analysis_id as string | null | undefined) ?? null;
   const { data: packPerfil } = packOrigenId && saldo.tipo === "con"
     ? await admin.from("perfiles_inversion").select("modalidad, veredicto").eq("analysis_id", packOrigenId).eq("user_id", user.id).maybeSingle()
@@ -203,6 +211,11 @@ export default async function DashboardPage({
           {CASA.saludo(firstName || null)}
         </h1>
         <SaldoCasa estado={saldo} informes={stats.total} />
+        {resumen.length > 0 && (
+          <div className="mt-7">
+            <SeleccionCasa bloques={resumen} />
+          </div>
+        )}
         {guiaCasa && (
           <div className="mt-7" data-casa="guia">
             <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} estado={saldo} enCasa={{ titulo: CASA.guiaTitulo }} />
@@ -248,6 +261,7 @@ export default async function DashboardPage({
           params={params}
           stats={stats}
           unidadesVisibles={unidadesVisibles}
+          desdeSemanal={desdeSemanal}
         />
       </div>
     </div>

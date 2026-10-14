@@ -5,12 +5,15 @@
 //     La línea provisoria («Estos convienen para arriendo tradicional…», 13-oct) salió.
 //   · ESTIMADO POR ZONA, SIN CONSULTAS: el motor de renta corta corre sobre los avisos de sus comunas (y las vecinas
 //     como respaldo) con la tarifa y la ocupación típicas de la zona —la respuesta de mercado típica guardada de la
-//     celda comuna × dormitorios—, con las MISMAS reglas que renta larga: hasta cinco que den Comprar, chequeados,
-//     respaldo con vecinas y con los negociables. El correo y la página lo dicen con la marca `MARCA_ZONA`.
+//     celda comuna × dormitorios—: hasta cinco que den Comprar, chequeados, con las vecinas de respaldo. SOLO COMPRAR
+//     (14-oct-2026, segunda decisión): sin el respaldo de Ajustar negociable, y con menos de tres se mandan los que haya
+//     (semanal.ts › REGLA_CORTA). El correo y la página lo dicen con la marca `MARCA_ZONA`.
 //   · LA MEDICIÓN FINA, SOLO EN «ANALIZAR ESTE»: ahí se consulta al proveedor por la dirección del depto, como en el
-//     wizard (el costo lo asume Franco). Si esa medición CAMBIA EL VEREDICTO respecto del que vio la persona, el
-//     análisis no se cobra ni se descuenta nunca, y en lugar del informe se muestra `NO_DA` con los siguientes de su
-//     selección. Cada comparación queda registrada (`comparaciones_zona_str`) para saber cuántas veces cambia.
+//     wizard (el costo lo asume Franco). LA REGLA DE COBRO ES SIMPLE (14-oct-2026): si la medición fina no da Comprar,
+//     no se cobra ni se descuenta nunca, y en lugar del informe se abre un pop-up con `NO_DA` y los parecidos de su
+//     selección que SOBREVIVEN: reevaluados con la tarifa y la ocupación recién medidas, sin consultar de nuevo, se
+//     ofrecen solo los que siguen dando Comprar; si no queda ninguno, `NINGUNO_DA`. Cada comparación queda registrada
+//     (`comparaciones_zona_str`, con `cambio` = el veredicto cambió respecto del que vio) para revisarla en un mes.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
 import { analizarUnaVez, type PiezasAnalizar, type ResultadoAnalizar } from "./analizar-una-vez";
@@ -30,23 +33,72 @@ export const SEMANAL_STR = {
   sinCorto: "Para renta corta, esta semana no apareció ninguno que te convenga.",
 } as const;
 
-/** «Analizar este» cuando la medición fina cambia el veredicto (texto de Fabrizio, 14-oct-2026). */
+/** «Analizar este» cuando la medición fina no da Comprar (texto de Fabrizio, 14-oct-2026). */
 export const NO_DA = "Con los datos de hoy, este depto no da para renta corta. No te cobramos el análisis. Prueba con estos, que son parecidos.";
+
+/** Lo mismo cuando ninguno de los parecidos sigue dando Comprar con la medición nueva (texto de Fabrizio, 14-oct-2026). */
+export const NINGUNO_DA = "Con los datos de hoy, ninguno de tu selección da para renta corta esta semana. No te cobramos el análisis.";
+
+/** El mensaje del pop-up: con parecidos que sobreviven, `NO_DA`; sin ninguno, `NINGUNO_DA`. */
+export function mensajeNoDa(parecidos: number): string {
+  return parecidos > 0 ? NO_DA : NINGUNO_DA;
+}
+
+/** La tarjeta del depto que no dio: queda marcada, sin botón (no se inserta nada en la lista). */
+export const MARCA_NO_DA = "No da para renta corta · no cobrado";
+
+/** Mientras mide (14-oct-2026): el botón pasa a un indicador giratorio con este texto. */
+export const MIDIENDO = "Midiendo con los datos de su dirección, unos 30 segundos";
+/** Pasado este tiempo, la medición se da por caída: error con «Reintentar» (la ruta corta a los 60 s). */
+export const MIDIENDO_TOPE_MS = 60_000;
+/** El error con reintentar. Reintentar no cobra dos veces: el cobro es una vez por persona y aviso (analizarUnaVez). */
+export const MIDIENDO_TARDO = "La medición tardó más de lo esperado. Si reintentas, no se cobra dos veces.";
+export const REINTENTAR = "Reintentar";
 
 /** Cuántos de los siguientes de su selección se ofrecen cuando uno no da («los dos o tres siguientes»). */
 export const ALTERNATIVAS_NO_DA = 3;
 
-/** ¿La medición fina cambió el veredicto que vio la persona? Cualquier diferencia cuenta: el informe diría otra cosa
- *  que lo prometido, y eso no se cobra. */
+/** ¿La medición fina cambió el veredicto que vio la persona? Se REGISTRA (la revisión de un mes); lo que decide el cobro
+ *  es `daComprar`. */
 export function cambiaVeredicto(mostrado: string | null | undefined, fino: string | null | undefined): boolean {
   return !mostrado || !fino || mostrado !== fino;
 }
 
+/** LA REGLA DE COBRO (14-oct-2026): se cobra solo si la medición fina da Comprar. Cualquier otra cosa —Ajustar, Buscar
+ *  otro, o sin veredicto— no da, y no se cobra. */
+export function daComprar(fino: string | null | undefined): boolean {
+  return fino === "COMPRAR";
+}
+
 /** Los siguientes de su selección, en orden: sin el que no dio, sin los caídos y sin los que ya se sabe que no dan. */
-export function alternativasNoDa<I extends { avisoId: string }>(items: I[], avisoId: string, excluir: ReadonlySet<string>): I[] {
+function siguientesDe<I extends { avisoId: string }>(items: I[], avisoId: string, excluir: ReadonlySet<string>): I[] {
   const i = items.findIndex((x) => x.avisoId === avisoId);
   const orden = i < 0 ? items : [...items.slice(i + 1), ...items.slice(0, i)];
-  return orden.filter((x) => x.avisoId !== avisoId && !excluir.has(x.avisoId)).slice(0, ALTERNATIVAS_NO_DA);
+  return orden.filter((x) => x.avisoId !== avisoId && !excluir.has(x.avisoId));
+}
+
+export function alternativasNoDa<I extends { avisoId: string }>(items: I[], avisoId: string, excluir: ReadonlySet<string>): I[] {
+  return siguientesDe(items, avisoId, excluir).slice(0, ALTERNATIVAS_NO_DA);
+}
+
+/**
+ * LOS PARECIDOS QUE SOBREVIVEN (14-oct-2026, decisión de Fabrizio): antes de ofrecerlos, cada uno se reevalúa con la
+ * tarifa y la ocupación recién medidas —`reevaluar` devuelve su veredicto, sin consultar al proveedor— y se ofrecen
+ * solo los que siguen dando Comprar, en el orden de su selección y hasta `ALTERNATIVAS_NO_DA`. Vacío: ninguno da
+ * (`NINGUNO_DA`). Uno que no se pudo reevaluar no se ofrece.
+ */
+export async function parecidosQueSobreviven<I extends { avisoId: string }>(
+  items: I[],
+  avisoId: string,
+  excluir: ReadonlySet<string>,
+  reevaluar: (i: I) => Promise<string | null>,
+): Promise<I[]> {
+  const out: I[] = [];
+  for (const x of siguientesDe(items, avisoId, excluir)) {
+    if (out.length >= ALTERNATIVAS_NO_DA) break;
+    if (daComprar(await reevaluar(x).catch(() => null))) out.push(x);
+  }
+  return out;
 }
 
 /** Lo que se mide de un lado (zona o fino): el veredicto, su puntaje y la tarifa y ocupación con que se calculó. */
@@ -87,7 +139,8 @@ export type ResultadoAnalizarStr =
 /**
  * «Analizar este» en un depto de la selección de renta corta, de punta a punta:
  *   chequear la ficha (despublicado: avisa y para, sin crédito) → preparar y MEDIR FINO (antes de reclamar nada) →
- *   registrar la comparación → si el veredicto cambió: NO_DA con los siguientes, sin reclamar, sin cobrar →
+ *   registrar la comparación → si la medición fina no da Comprar: NO_DA con los parecidos que sobreviven, sin reclamar,
+ *   sin cobrar →
  *   si se sostiene: cobrar una vez y crear el informe (analizarUnaVez), y anotar en la comparación que se cobró.
  * Puro: las piezas se inyectan (el tier lo prueba con dobles y cuenta cobros y registros).
  */
@@ -114,7 +167,7 @@ export async function analizarStrDeSemanal(p: {
     cambio: cambiaVeredicto(m.mostrado.veredicto, m.fino.veredicto), cobrado: false, analysisId: null,
   };
   await p.registrar(base);
-  if (base.cambio) return { estado: "no-da", alternativas: await p.alternativas() };
+  if (!daComprar(m.fino.veredicto)) return { estado: "no-da", alternativas: await p.alternativas() };
   const r = await analizarUnaVez(m.piezas);
   if (r.estado === "creado" || r.estado === "ya-creado") await p.registrar({ ...base, cobrado: true, analysisId: r.id });
   return r;

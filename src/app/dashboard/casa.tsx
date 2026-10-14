@@ -15,6 +15,7 @@ import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
 import { rutaTres } from "@/lib/tres-analisis";
+import { SELECCION_CASA, type ResumenBloque } from "@/lib/guia/seleccion-casa";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -73,6 +74,28 @@ export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes:
           {estado.tipo === "regalo" ? CASA.regalo.boton : estado.tipo === "con" ? CASA.con.boton : CASA.plan.boton}
         </EnlaceCarga>
       )}
+    </div>
+  );
+}
+
+/** «Tu selección de esta semana» (14-oct-2026): sus dos bloques resumidos y el enlace a la página semanal, sin token. */
+export function SeleccionCasa({ bloques }: { bloques: ResumenBloque[] }) {
+  return (
+    <div style={{ fontFamily: UI }} data-casa="seleccion">
+      <h2 className="font-heading text-[21px] font-bold leading-[1.15] tracking-[-0.01em] sm:text-[24px]">{SELECCION_CASA.titulo}</h2>
+      <div className={`${tarjeta} mt-3 flex flex-col items-stretch gap-3.5 p-4 sm:flex-row sm:items-center sm:justify-between`}>
+        <ul className="flex min-w-0 flex-col gap-1.5">
+          {bloques.map((b) => (
+            <li key={b.modalidad} className="text-[14.5px] leading-snug" data-bloque={b.modalidad}>
+              <span className="font-semibold">{b.titulo}</span>
+              <span className="text-[var(--franco-text-secondary)]"> · {b.texto}</span>
+            </li>
+          ))}
+        </ul>
+        <EnlaceCarga href={SELECCION_CASA.href} className={botonBorde} data-casa="ver-seleccion">
+          {SELECCION_CASA.boton}
+        </EnlaceCarga>
+      </div>
     </div>
   );
 }

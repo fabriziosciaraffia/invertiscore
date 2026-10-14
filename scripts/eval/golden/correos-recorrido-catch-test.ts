@@ -83,7 +83,7 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/generateLink\(\{ type: "magiclink", email \}\)/.test(entrada) || !/sesion\.auth\.verifyOtp\(\{ token_hash: hash, type: tipo \}\)/.test(entrada) || /action_link/.test(entrada)) F("4 · la entrada no verifica el enlace mágico en el servidor (o sigue el action_link)");
   if (!/if \(eV \|\| v\?\.user\?\.id !== userId\) \{\s*if \(v\?\.user && v\.user\.id !== userId\) await sesion\.auth\.signOut\(\);/.test(entrada)) F("4 · si la sesión que quedó no es la del dueño, no se cierra");
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-  if (!/select\("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id"\)/.test(srv) || !/enviadaAt: \(s\.enviada_at as string \| null\) \?\? null/.test(srv) || !/enviadaAt: \(a\.enviado_at as string \| null\) \?\? null/.test(srv)) F("4 · la selección no trae cuándo salió el correo (el enlace no sabría si vence)");
+  if (!/const COLUMNAS_PAGINA = "id, user_id, semana, token, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id";/.test(srv) || !/\.select\(COLUMNAS_PAGINA\)\.eq\("token", token\)/.test(srv) || !/enviadaAt: \(s\.enviada_at as string \| null\) \?\? null/.test(srv) || !/enviadaAt: \(a\.enviado_at as string \| null\) \?\? null/.test(srv)) F("4 · la selección no trae cuándo salió el correo (el enlace no sabría si vence)");
 
   // ── 5 · el aviso antes de gastar un análisis ────────────────────────────────
   if (textoUso({ tipo: "con", n: 3, noVencen: true }) !== "Usa 1 de tus 3 análisis." || textoUso({ tipo: "con", n: 1, noVencen: true }) !== "Usa tu último análisis.") F("5 · el aviso no dice «Usa 1 de tus N análisis.»");
@@ -107,7 +107,14 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   // La página semanal: el botón abre el aviso (no genera), está también sin saldo, y «sin créditos» abre el aviso con el pack.
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
   const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {", "\n  };\n");
-  if (!tarjetaSemanal || !/className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(tarjetaSemanal) || /analizar\(it\)/.test(tarjetaSemanal)) F("5 · en la página semanal «Analizar este» genera sin el aviso");
+  // Desde el 14-oct-2026 los botones de la tarjeta viven en «acciones»: «Analizar este» abre el aviso; el único que
+  // analiza directo es «Reintentar», después de una medición que pasó del tope (el aviso ya se aceptó).
+  const accionesSemanal = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
+  const botonAnalizar = accionesSemanal ? accionesSemanal.slice(accionesSemanal.lastIndexOf('<div className="guia-acc">')) : "";
+  if (!tarjetaSemanal || !/\{acciones\(it\)\}/.test(tarjetaSemanal) || /analizar\(it\)/.test(tarjetaSemanal)
+    || !/className="guia-an" onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(botonAnalizar) || /analizar\(it\)/.test(botonAnalizar)
+    || ((accionesSemanal ?? "").match(/analizar\(it\)/g) ?? []).length !== 1 || !/onClick=\{\(\) => void analizar\(it\)\} disabled=\{!!generando\}>\{REINTENTAR\}/.test(accionesSemanal ?? ""))
+    F("5 · en la página semanal «Analizar este» genera sin el aviso");
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
   if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); break; \}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
   if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");

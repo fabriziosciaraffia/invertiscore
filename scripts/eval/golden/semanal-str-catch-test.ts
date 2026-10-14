@@ -3,17 +3,19 @@
 //
 // Decisiones de Fabrizio del 14-oct-2026: quien tiene perfil de renta corta recibe en el semanal un bloque de renta corta
 // ESTIMADO POR ZONA —el motor de renta corta sobre los avisos de sus comunas con la tarifa y la ocupación típicas de la
-// zona que ya están en caché, sin consultar al proveedor—, con las mismas reglas que renta larga; quien tiene los dos
+// zona que ya están en caché, sin consultar al proveedor—; quien tiene los dos
 // perfiles recibe UN correo con DOS bloques y quien solo tiene renta corta, solo ese; la línea provisoria del 13-oct
-// salió. Las consultas al proveedor quedan para «Analizar este»: mide fino y, si eso CAMBIA EL VEREDICTO, no se cobra
-// nunca y se muestran los siguientes de su selección. Cada comparación queda registrada.
+// salió. Las consultas al proveedor quedan para «Analizar este»: mide fino y, si eso NO DA COMPRAR, no se cobra nunca
+// y se muestran los parecidos que sobreviven. Cada comparación queda registrada. Segunda tanda del 14-oct-2026: el
+// bloque es SOLO COMPRAR (sin negociables; con menos de tres, los que haya) y la regla de cobro es «lo fino da Comprar»
+// (lo de la página —pop-up, marca, medición con tope— y los parecidos que sobreviven, en el tier SEMANAL-AJUSTES).
 //
 // Fija: (1) LA SELECCIÓN POR ZONA: la respuesta típica de la celda es la de ingreso mediano (con piso de respuestas),
 // los candidatos van por rendimiento de zona, el bloque se elige con elegirSemanal y el mismo presupuesto de fichas, y
 // preparar y evaluar el bloque NO consulta al proveedor (con la base real y un fetch que cuenta); (2) LOS DOS BLOQUES:
 // el correo con los dos, con uno solo, la marca «Estimado por zona» solo en los de renta corta, el estado de la fila y
-// el cableado del armado, el envío y la página; (3) EL ANÁLISIS QUE NO SE COBRA: si la medición fina cambia el
-// veredicto que vio la persona, no se reclama ni se cobra y vuelven los siguientes; si se sostiene, un cobro; (4) EL
+// el cableado del armado, el envío y la página; (3) EL ANÁLISIS QUE NO SE COBRA: si la medición fina no da Comprar
+// —aunque repita el Ajustar que vio la persona—, no se reclama ni se cobra y vuelven los parecidos; si da, un cobro; (4) EL
 // REGISTRO: cada medición queda con la zona, lo fino, si cambió y si se cobró; (5) EL PRESUPUESTO: el prechequeo y el
 // armado preparan los dos bloques dentro de los mismos 240 s.
 //
@@ -89,14 +91,16 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (/getAirbnbEstimate|buildShortTermAnalysisRow|api\.airroi\.com/.test(strSrv)) F("1 · el semanal de renta corta puede consultar al proveedor (getAirbnbEstimate / buildShortTermAnalysisRow en semanal-str-servidor.ts)");
     if (!/const ev = evaluarCuerpoStr\(body, cfg\.uf,/.test(strSrv) || !/= evaluarCuerpoStr\(body, ufValue, medianaComuna, airbnbResult, asOfPipeline\);/.test(pipeline))
       F("1 · la zona y el informe no corren el mismo cálculo (evaluarCuerpoStr)");
-    if (!/const body = cuerpoStrDeAviso\(cc, o, combo, cfg\);/.test(strSrv) || !/return buildStrPayload\(answers, ctx\)/.test(strSrv) || !/modalidad: "str", modoGestion: o\.modoGestion/.test(strSrv))
+    if (!/const body = cuerpoStrDeAviso\(c, o, combo, cfg\);/.test(strSrv) || !/return buildStrPayload\(answers, ctx\)/.test(strSrv) || !/modalidad: "str", modoGestion: o\.modoGestion/.test(strSrv))
       F("1 · el cuerpo del depto no es el del wizard (buildStrPayload sobre las respuestas del aviso, con la gestión de la persona)");
     // Los candidatos: de las comunas del perfil de renta corta, por rendimiento de zona; sin zona, fuera.
     if (!/admin\.rpc\("semanal_candidatos_str", \{\s*comunas, dorms: perfil\.dormitorios, uf_min: rango\.ufMin, uf_max: rango\.ufMax, desde, por_celda: POR_CELDA_STR,/.test(strSrv)
       || !/if \(!zona \|\| !\(c\.precioUF > 0\)\) continue;\s*out\.push\(\{ \.\.\.c, scoreCron: Math\.round\(\(zona\.ingresoAnual \/ \(c\.precioUF \* cfg\.uf\)\) \* 10_000\) \}\);/.test(strSrv))
       F("1 · los candidatos de renta corta no van por rendimiento de zona (o entran sin zona)");
-    if (!/const perfil = pp\.perfilStr;\s*if \(!perfil\) return null;/.test(strSrv) || !/vecinas: \(\) => \(vecinas \?\?= leerCandidatos\(comunasVecinas\(propias\)\)\),\s*evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\),/.test(strSrv))
-      F("1 · el bloque no sale del perfil de renta corta o no tiene el respaldo de renta larga (vecinas y negociables)");
+    // SOLO COMPRAR (14-oct-2026): el respaldo de renta corta son las vecinas (dan Comprar) y nada más; sin negociables.
+    const prepStrFn = strSrv.slice(strSrv.indexOf("export async function prepararSeleccionStr"));
+    if (!/const perfil = pp\.perfilStr;\s*if \(!perfil\) return null;/.test(strSrv) || !/respaldo: \{\s*vecinas: \(\) => \(vecinas \?\?= leerCandidatos\(comunasVecinas\(propias\)\)\),\s*\},/.test(prepStrFn) || /evaluarConDescuento|DESCUENTO_NEGOCIABLE/.test(prepStrFn))
+      F("1 · el bloque no sale del perfil de renta corta, o su respaldo no es solo las vecinas (trae negociables)");
     const mig = leer("supabase/migrations/20261014_semanal_renta_corta.sql");
     if (!/partition by sp\.comuna, case when public\.es_estudio\(sp\.dormitorios, sp\.titulo\) then 0 else sp\.dormitorios end\s*order by ae\.precio_uf asc, sp\.id/.test(mig) || !/and ae\.arriendo_sospechoso is not true/.test(mig))
       F("1 · la RPC de renta corta no trae los más baratos de cada celda con los filtros del semanal");
@@ -170,10 +174,14 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (tabla.some(([x, y]) => x !== y)) F(`2 · el estado de la fila con dos bloques no es «pendiente si alguno, armada si alguno» (${tabla.map(([x]) => x).join(",")})`);
     // El armado: los dos bloques, cada uno de su perfil, con el mismo presupuesto de fichas.
     const armar = srv.slice(srv.indexOf("export async function armarSeleccion"), srv.indexOf("export async function prechequearSemana"));
-    if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp\);/.test(armar) || (armar.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo\);/g) ?? []).length !== 2
+    const ramaLarga = armar.slice(armar.indexOf('if (prep.tipo === "lista") {'), armar.indexOf("let corto: EstadoBloque"));
+    const ramaCorta = armar.slice(armar.indexOf('if (prepStr?.tipo === "lista") {'), armar.indexOf("} else if (prepStr) {"));
+    if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp\);/.test(armar)
+      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo\);/.test(ramaLarga)
+      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA\);/.test(ramaCorta)
       || !/items_str: aItems\(g\), estado_str: g\.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o\.analysisId,/.test(armar)
       || !/const estado = estadoDeFila\(largo, corto\);/.test(armar))
-      F("2 · el armado no arma el bloque de renta corta con las mismas reglas y el mismo presupuesto (o no lo guarda)");
+      F("2 · el armado no arma el bloque de renta corta con su regla (solo Comprar) y el mismo presupuesto (o no lo guarda)");
     if (!/const perfil = opts\.nuevosDesde \? pp\.perfil : pp\.perfilLtr;/.test(srv)) F("2 · el bloque de renta larga no sale del perfil de renta larga (quien solo tiene renta corta lo recibiría)");
     const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
     if (!/perfilLtr: filasLtr\.length > 0 \? perfilDeBusqueda\(filasLtr, manual\) : null,/.test(pbs) || !/perfilStr: filasStr\.length > 0 \? perfilDeBusqueda\(filasStr, manual\)/.test(pbs)) F("2 · los dos perfiles no salen de sus informes (renta larga y renta corta por separado)");
@@ -198,9 +206,19 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const b = dobles({ fino: "COMPRAR" });
     const rb = await b.correr();
     if (rb.estado !== "creado" || b.n.cobrar !== 1 || b.n.crear !== 1 || b.n.reclamar !== 1) F(`3 · con el veredicto sostenido no se cobra una vez y se crea el informe (${JSON.stringify({ estado: rb.estado, ...b.n, registrar: b.n.registrar.length })})`);
-    // Un negociable se muestra como Ajustar: si lo fino también da Ajustar, se sostiene.
+    // LA REGLA DE COBRO ES SIMPLE (14-oct-2026): si lo fino no da Comprar, no se cobra, aunque repita el Ajustar que vio
+    // la persona (los negociables de las selecciones anteriores); si da Comprar, se cobra aunque ella hubiera visto Ajustar.
     const c = dobles({ fino: "AJUSTA SUPUESTOS", mostrado: "AJUSTA SUPUESTOS" });
-    if ((await c.correr()).estado !== "creado" || c.n.cobrar !== 1) F("3 · un negociable (Ajustar) que lo fino confirma no se analiza");
+    const rc = await c.correr();
+    if (rc.estado !== "no-da" || c.n.cobrar !== 0 || c.n.reclamar !== 0 || c.n.crear !== 0) F(`3 · un Ajustar que lo fino confirma como Ajustar se cobra (no da Comprar) (${JSON.stringify({ estado: rc.estado, cobrar: c.n.cobrar })})`);
+    if (c.n.registrar.length !== 1 || c.n.registrar[0].cambio || c.n.registrar[0].cobrado) F("3·4 · el Ajustar que se repite no queda registrado como «no cambió, no se cobró»");
+    const c2 = dobles({ fino: "COMPRAR", mostrado: "AJUSTA SUPUESTOS" });
+    if ((await c2.correr()).estado !== "creado" || c2.n.cobrar !== 1) F("3 · uno que se vio como Ajustar y lo fino da Comprar no se analiza");
+    for (const v of ["BUSCAR OTRA", null] as const) {
+      const x = dobles({ fino: v });
+      if ((await x.correr()).estado !== "no-da" || x.n.cobrar !== 0) F(`3 · lo fino da ${v ?? "sin veredicto"} y se cobra`);
+    }
+    if (STR.daComprar("AJUSTA SUPUESTOS") || STR.daComprar(null) || !STR.daComprar("COMPRAR")) F("3 · «da Comprar» no es exactamente COMPRAR");
     // Despublicado, ya creado o sin poder medir: ni medición ni cobro.
     const d = dobles({ fino: "COMPRAR", publicado: false });
     const e = dobles({ fino: "COMPRAR", ya: "informe-viejo" });
@@ -221,8 +239,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const iSaldo = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };'), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iSaldo < 0 || iMide < 0 || iSaldo > iMide) F("3 · sin análisis disponibles igual se consulta al proveedor");
     if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) return NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas \}\);/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
-    if (!/if \(res\.ok && d\.estado === "no-da"\) \{ setNoDa\(\{ avisoId: it\.avisoId, alternativas: d\.alternativas \?\? \[\] \}\); break; \}/.test(lista) || !/<p className="guia-caido-txt">\{NO_DA\}<\/p>/.test(lista))
-      F("3 · la página no muestra «no da» con los siguientes");
+    if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*setPopup\(\{ avisoId: it\.avisoId, parecidos: d\.alternativas \?\? \[\] \}\);\s*break;\s*\}/.test(lista))
+      F("3 · la página no abre el pop-up con los parecidos cuando no da (o no marca la tarjeta)");
   }
 
   // ── 4 · EL REGISTRO DE LA COMPARACIÓN ────────────────────────────────────────────
@@ -252,7 +270,7 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
   {
     const pre = srv.slice(srv.indexOf("export async function prechequearSemana"), srv.indexOf("const FUENTE_AVANCE"));
     if (!/const \[l, s\] = await Promise\.all\(\[prepararSeleccion\(admin, userId, cfg, \{ perfilLeido: pp \}\), prepararSeleccionStr\(admin, userId, cfg, pp\)\]\);/.test(pre)
-      || !/p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo\) : null,/.test(pre)
+      || !/p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA\) : null,/.test(pre)
       || !/estado\.set\(userId, rs\.every\(\(r\) => r\.armada\) \? "armada" : aviso \? "pendiente" : "sin-candidatos"\);/.test(pre))
       F("5 · el prechequeo no cuenta la selección de renta corta (o la da por armada sin chequear)");
     if (!/if \(pp\.semanalBajaAt\) return null;/.test(pre)) F("5 · el prechequeo prepara la renta corta de quien se dio de baja");
@@ -268,7 +286,7 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     console.log(`  ✗ SEMANAL-STR · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el bloque de renta corta se estima por zona sin consultar al proveedor, con las reglas de renta larga; un correo con los dos bloques (o solo el suyo) y la marca de zona; si la medición fina cambia el veredicto no se cobra y vuelven los siguientes; cada comparación queda registrada; los dos bloques dentro de los 240 s");
+    console.log("  ✓ VERDE — el bloque de renta corta se estima por zona sin consultar al proveedor, solo con Comprar (vecinas sí, negociables no); un correo con los dos bloques (o solo el suyo) y la marca de zona; si la medición fina no da Comprar no se cobra y vuelven los parecidos; cada comparación queda registrada; los dos bloques dentro de los 240 s");
   }
   return { hard: fallas.length };
 }
