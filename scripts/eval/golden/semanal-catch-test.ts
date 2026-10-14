@@ -157,7 +157,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   // estado (la pendiente no pasa a armada), y con menos de tres sale lo confirmado; sin ninguno, el correo corto. La
   // regla fina vive en SEMANAL-SIN-SILENCIO §2–§3; acá, que la fila se suelte y que el envío pase por la regla.
   if (!/if \(!r\.ok\) \{\s*await admin\.from\("semanal_selecciones"\)\.update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(srv)) F("5 · si Resend falla, la fila no se suelta");
-  if (!/if \(queEnviarSemanal\(deptos\.length\) === "vacio" \|\| !fila\.combinacion \|\| !fila\.perfil\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
+  if (!/if \(queEnviarSemanal\(deptos\.length \+ deptosCortos\.length\) === "vacio" \|\| \(!conLargo && !conCorto\)\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
   if (!/pb\?\.semanal_baja_at\) return descartar\(\);/.test(srv)) F("5 · se le manda a quien se dio de baja");
 
   // 6 · el clic y el análisis
@@ -243,7 +243,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (e.estado !== "sin_match") F("10 · sin respaldo un solo Comprar arma correo");
     if (DESCUENTO_NEGOCIABLE !== 0.1 || !/evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\)/.test(srv) || !/vecinas: \(\) => \(vecinas \?\?= leerCandidatos\(comunasVecinas\(propias\)\)\)/.test(srv)) F("10 · el servidor no arma el respaldo con las vecinas y el 10% de descuento");
     if (!/const cc = factorPrecio === 1 \? c : \{ \.\.\.c, precioUF: c\.precioUF \* factorPrecio \};/.test(srv)) F("10 · la evaluación con descuento no baja el precio");
-    if (!/\.\.\.\(tramo !== "propia" \? \{ tramo \} : \{\}\)/.test(srv)) F("10 · la selección no guarda de dónde salió cada depto");
+    if (!/\.\.\.\(tramo === "vecina" \|\| tramo === "negociar" \? \{ tramo \} : \{\}\)/.test(srv)) F("10 · la selección no guarda de dónde salió cada depto");
     // las vecinas
     const asim = (COMUNAS_DISPONIBLES as readonly string[]).flatMap((x) => vecinasDe(x).filter((y) => !vecinasDe(y).includes(x)).map((y) => `${x}→${y}`));
     if (asim.length || COMUNAS_SIN_VECINAS.length) F(`10 · las vecinas no son simétricas o hay comunas sin vecinas (${[...asim, ...COMUNAS_SIN_VECINAS].join(", ")})`);
@@ -271,7 +271,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const pf = perfilDeBusqueda([fi]);
     if (!pf.completo || pf.modalidad !== "ltr" || pf.precioMaxUf !== 4400 || pf.dormitorios.join() !== "2") F(`11 · un informe solo no arma un perfil completo (${JSON.stringify(pf)})`);
     const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
-    if (!/\.eq\("user_id", userId\)\.eq\("tipo_analisis", "long-term"\)/.test(pbs) || !/if \(conFila\.has\(a\.id as string\)\) continue;\s*informes\.push\(filaDesdeInforme\(/.test(pbs)) F("11 · el perfil no suma los informes de renta larga sin fila de perfil");
+    if (!/\.eq\("user_id", userId\)\.eq\("tipo_analisis", "long-term"\)/.test(pbs) || !/if \(conFila\.has\(a\.id as string\)\) continue;\s*const fila = filaDesdeInforme\([^;]*\);\s*informes\.push\(fila\);/.test(pbs)) F("11 · el perfil no suma los informes de renta larga sin fila de perfil");
     const pres = correoSemanal({ ...base, variante: "tarjetas", presentacion: true }).html;
     const hProp = correoSemanal({ ...base, variante: "tarjetas" }).html;
     const frase = "Desde ahora, cada semana te mandamos los deptos publicados que mejor resultan con lo que buscas.";
@@ -320,11 +320,11 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
     // el servidor, el cron y la vigilancia
     if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
-    if (!/const g = await elegirSemanal\(candidatos, evaluar, publicadoConPresupuesto\(admin, presupuesto\), respaldo\);/.test(srv)) F("12 · el armado no elige con la preparación compartida");
+    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
     // ⚠ ACTA (09-oct-2026) · el prechequeo elige con `siguienteYEstado` (lo mismo que el `siguienteAChequear` retirado, y
     // además si la selección se arma: el cierre ya no vuelve a recorrer a nadie) y el cron le pasa DÓNDE QUEDÓ
     // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
-    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/const r = await siguienteYEstado\(p\.candidatos, p\.evaluar, enMemoria, p\.respaldo\);/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
+    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/p\.ltr \? await siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo\) : null,\s*p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo\) : null,/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
     const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
     // (09-oct-2026, segunda pasada: «desde» se calcula una vez, porque también va al log del cierre.)
     // ⚠ ACTA (12-oct-2026, el techo) · la llamada lleva además `progreso`, lo que se sabe mientras corre: si el techo
@@ -370,14 +370,14 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (SEMANAL_PAGINA.caido !== "Este ya no está publicado") F("13 · el aviso de caído no es «Este ya no está publicado»");
     // el servidor, la página y el cron
     const sv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-    if (!/items = \[\.\.\.items, \{ \.\.\.itemDe\(r\.c, r\.ev\), reemplazaA: f\.item\.avisoId \}\];/.test(sv) || !/await admin\.from\(sel\.tabla\)\.update\(\{ items \}\)\.eq\("id", sel\.id\);/.test(sv)) F("13 · el reemplazo no se guarda en la selección");
+    if (!/items = \[\.\.\.items, \{ \.\.\.itemDe\(r\.c, r\.ev\), reemplazaA: f\.item\.avisoId \}\];/.test(sv) || !/await admin\.from\(sel\.tabla\)\.update\(corta \? \{ items_str: items \} : \{ items \}\)\.eq\("id", sel\.id\);/.test(sv)) F("13 · el reemplazo no se guarda en la selección");
     if (!/\(await chequearPublicacion\(\{ id: c\.avisoId, url: c\.url, edificio: claveEdificio\(c\) \}, "clic", almacen, bajarFicha\)\)\.estado/.test(sv) || !/const pool = \[\.\.\.prep\.p\.candidatos, \.\.\.\(await prep\.p\.respaldo\.vecinas\(\)/.test(sv)) F("13 · el reemplazo no se chequea en el momento (o no mira las vecinas)");
     if (!/const x = await chequearPublicacion\(\{ id: avisoId, url: f\.url, edificio: claveEdificio\(f\) \}, "guia", almacen, bajarFicha\);/.test(sv)) F("13 · el rechequeo del domingo da por vigente lo chequeado en la semana");
     if (!/\.update\(\{ estado: "pendiente" \}\)\.in\("id", caidas\.map\(\(s\) => s\.id\)\)\.eq\("estado", "armada"\)\.is\("enviada_at", null\)/.test(sv)) F("13 · la selección que perdió un aviso no se vuelve a armar");
     const ar = sinComentarios(leer("src/app/api/cron/semanal-armar/route.ts"));
     if (!/const re = await rechequearArmadas\(admin, semana, presupuesto\);/.test(ar) || !/for \(const userId of re\.usuarios\) \{[\s\S]{0,120}await armarSeleccion\(admin, userId, semana, cfg, presupuesto\);/.test(ar)) F("13 · el domingo no rechequea las armadas ni rearma en la misma corrida");
     const pg = sinComentarios(leer("src/app/semanal/page.tsx"));
-    if (!/await seleccionViva\(admin, \{ tabla: (sel\.fuente === "inmediato" \? "avisos_inmediatos" : )?"semanal_selecciones"/.test(pg)) F("13 · /semanal no está viva");
+    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id, userId: user\.id, items: sel\.items \}, cfg\)/.test(pg)) F("13 · /semanal no está viva");
     const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
     if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");

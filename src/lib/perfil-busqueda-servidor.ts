@@ -19,6 +19,14 @@ const modal = (v: unknown): Modalidad | null => (v === "ltr" || v === "str" ? v 
 
 export interface PerfilDeLaPersona {
   perfil: PerfilBusqueda;
+  /**
+   * LOS DOS PERFILES (14-oct-2026, el semanal de renta corta): el de renta larga, armado solo con sus informes de renta
+   * larga, y el de renta corta, solo con los de renta corta (o, si eligió renta corta a mano y no tiene ninguno, con
+   * todos). null = no tiene ese perfil. Lo editado a mano (comunas, dormitorios, precio, pie, plazo) vale para los dos.
+   * `perfil` sigue siendo el de siempre, para quienes ya lo leían.
+   */
+  perfilLtr: PerfilBusqueda | null;
+  perfilStr: PerfilBusqueda | null;
   manual: PerfilManual;
   semanalBajaAt: string | null;
   regaloOtorgadoAt: string | null;
@@ -95,9 +103,18 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
     horizonte: horiz(f.horizonte_compra),
   }));
   const conFila = new Set(ids);
+  const efectiva = (f: FilaPerfilInforme): Modalidad => f.prefModalidad ?? f.modalidad;
+  const filasLtr = informes.filter((f) => efectiva(f) === "ltr");
+  const filasStr = informes.filter((f) => efectiva(f) === "str");
   for (const a of ltr ?? []) {
     if (conFila.has(a.id as string)) continue;
-    informes.push(filaDesdeInforme({ created_at: a.created_at as string, comuna: (a.comuna as string | null) ?? null, input_data: a.input_data }));
+    const fila = filaDesdeInforme({ created_at: a.created_at as string, comuna: (a.comuna as string | null) ?? null, input_data: a.input_data });
+    informes.push(fila);
+    filasLtr.push(fila);
+  }
+  for (const a of str ?? []) {
+    if (conFila.has(a.id as string)) continue;
+    filasStr.push(filaDesdeInformeStr({ created_at: a.created_at as string, comuna: (a.comuna as string | null) ?? null, input_data: a.input_data }));
   }
   // Quien solo tiene informes de renta corta (13-oct-2026): sus informes cuentan para el perfil. Con uno solo de renta
   // larga, nada cambia.
@@ -126,6 +143,8 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
     : conHorizonte ? ((conHorizonte.pref_actualizado_at as string | null) ?? (conHorizonte.created_at as string)) : null;
   return {
     perfil: perfilDeBusqueda(informes, manual),
+    perfilLtr: filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual) : null,
+    perfilStr: filasStr.length > 0 ? perfilDeBusqueda(filasStr, manual) : manual.modalidad === "str" && filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual) : null,
     manual,
     semanalBajaAt: (m?.semanal_baja_at as string | null) ?? null,
     regaloOtorgadoAt: (m?.regalo_otorgado_at as string | null) ?? null,

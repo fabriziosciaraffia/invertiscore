@@ -13,8 +13,11 @@ import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilida
 import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
 import "@/components/formulario-v4/wizard-v4.css";
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar }: {
+export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr" }: {
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
+  /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo` y el aviso dice que, si la
+   *  medición fina no da, no se cobra. */
+  modalidad?: "ltr" | "str";
   /** El pie y el plazo con que se analiza. */
   combinacion: { piePct: number; plazoAnios: number };
   finanzas: FinanzasAviso;
@@ -35,11 +38,11 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       titulo={sin ? AVISO_ANALIZAR.tituloSin : AVISO_ANALIZAR.titulo}
       resumen={{
         direccion: [depto.comuna, depto.tipologia].filter(Boolean).join(" · "),
-        modalidad: AVISO_ANALIZAR.modalidad,
+        modalidad: modalidad === "str" ? AVISO_ANALIZAR.modalidadCorta : AVISO_ANALIZAR.modalidad,
         derivados: derivadosAviso(depto, combinacion, finanzas),
       }}
       destacado={<>Con el pie de <b>{d.pie}</b> y el plazo de <b>{d.plazo}</b> de tu perfil</>}
-      consumo={textoUso(uso)}
+      consumo={modalidad === "str" && !sin ? `${textoUso(uso)} ${AVISO_ANALIZAR.notaCorta}` : textoUso(uso)}
       labelConfirmar={sin ? AVISO_ANALIZAR.comprar : AVISO_ANALIZAR.analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}
       onConfirmar={sin ? () => router.push(rutaCompra) : alAnalizar}

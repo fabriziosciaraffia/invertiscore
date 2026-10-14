@@ -24,8 +24,10 @@ export function usoDesdeSaldo(n: number | null | undefined): UsoAnalisis {
 export const AVISO_ANALIZAR = {
   titulo: "¿Analizar este depto?",
   tituloSin: "No te quedan análisis",
-  /** Los avisos se evalúan como renta larga (también para quien busca renta corta: LINEA_RENTA_CORTA). */
   modalidad: "Renta larga",
+  /** El bloque de renta corta del semanal (14-oct-2026): se mide fino al analizar y, si no da, no se cobra. */
+  modalidadCorta: "Renta corta",
+  notaCorta: "Franco lo mide con los datos de su dirección: si así no da para renta corta, no se cobra.",
   analizar: "Analizar",
   cancelar: "Cancelar",
   sin: `Para analizar este depto: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,

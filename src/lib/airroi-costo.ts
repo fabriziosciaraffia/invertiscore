@@ -34,6 +34,7 @@ export const METRICAS_AIRROI = [
   { metrica: "calls_wizard_1d", label: "Wizard", detalle: "sugerencias mientras el usuario arma el análisis" },
   { metrica: "calls_dryrun_1d", label: "Dry-run", detalle: "previsualización sin persistir" },
   { metrica: "calls_informe_1d", label: "Informe", detalle: "la llamada que arma el análisis vendido" },
+  { metrica: "calls_semanal_1d", label: "Semanal · renta corta", detalle: "la medición fina de «Analizar este» en la selección de renta corta (la asume Franco)" },
 ] as const;
 
 /** Hits de caché: llamadas que NO se pagaron. Se cuentan aparte, no suman costo. */

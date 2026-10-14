@@ -6,6 +6,7 @@ import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
 import { finanzasDeSeleccion, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
+import { SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { SemanalLista } from "./semanal-lista";
 import { PreguntaCuando } from "./pregunta-cuando";
@@ -37,20 +38,31 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
 
   const otraCuenta = sel.user_id !== user.id;
   const cfg = await leerConfigGuia(admin);
-  const filas = otraCuenta ? [] : await seleccionViva(admin, { tabla: sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones", id: sel.id, userId: user.id, items: sel.items }, cfg);
+  // LOS DOS BLOQUES (14-oct-2026): el de renta larga y el de renta corta (estimado por zona), cada uno vivo por su lado.
+  const tabla = sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones";
+  const [filas, filasCortas] = otraCuenta ? [[], []] : await Promise.all([
+    sel.conLargo ? seleccionViva(admin, { tabla, id: sel.id, userId: user.id, items: sel.items }, cfg) : Promise.resolve([]),
+    sel.corto ? seleccionViva(admin, { tabla, id: sel.id, userId: user.id, items: sel.corto.items, modalidad: "str" }, cfg) : Promise.resolve([]),
+  ]);
   const a = searchParams.a ?? null;
-  const ordenados = a ? [...filas.filter((f) => f.item.avisoId === a), ...filas.filter((f) => f.item.avisoId !== a)] : filas;
+  const primero = <F extends { item: { avisoId: string } }>(fs: F[]) => (a ? [...fs.filter((f) => f.item.avisoId === a), ...fs.filter((f) => f.item.avisoId !== a)] : fs);
+  const ordenados = primero(filas);
+  const ordenadosCortos = primero(filasCortas);
   // Lo que el aviso antes de gastar muestra como el pop-up del wizard (13-oct-2026): la tasa de la persona, la UF del día
-  // y el arriendo con que se evaluó cada depto.
+  // y el arriendo con que se evaluó cada depto (en renta corta, el ingreso estimado por zona).
   const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
-  const [datosSaldo, perfilPersona, finanzas] = await Promise.all([
+  const [datosSaldo, perfilPersona, finanzas, finanzasCorto] = await Promise.all([
     leerSaldo(admin, user.id),
     otraCuenta ? null : leerPerfilBusqueda(admin, user.id),
     finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf),
+    sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf) : Promise.resolve(null),
   ]);
+  const ingresosCortos: Record<string, number> = {};
+  for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
   const saldo = estadoSaldo(datosSaldo);
   const preguntarCuando = perfilPersona != null && perfilPersona.perfil.horizonte == null;
   const combo = sel.combinacion;
+  const dosBloques = sel.conLargo && sel.corto != null;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
@@ -61,18 +73,36 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
         ) : (
           <>
           {preguntarCuando && <PreguntaCuando />}
-          <SemanalLista
-            token={t}
-            origenId={sel.origen_analysis_id}
-            combinacion={combo}
-            filas={ordenados}
-            destacado={a}
-            saldo={saldo}
-            variante={sel.variante}
-            inmediato={sel.fuente === "inmediato"}
-            rentaCorta={sel.rentaCorta}
-            finanzas={finanzas}
-          />
+          {sel.conLargo && (
+            <SemanalLista
+              token={t}
+              origenId={sel.origen_analysis_id}
+              combinacion={combo}
+              filas={ordenados}
+              destacado={a}
+              saldo={saldo}
+              variante={sel.variante}
+              inmediato={sel.fuente === "inmediato"}
+              finanzas={finanzas}
+              bloque={dosBloques ? SEMANAL_STR.bloqueLargo : null}
+              cierre={!sel.corto}
+            />
+          )}
+          {sel.corto && (
+            <SemanalLista
+              token={t}
+              origenId={sel.corto.origenId}
+              combinacion={sel.corto.combinacion}
+              filas={ordenadosCortos}
+              destacado={a}
+              saldo={saldo}
+              variante={sel.variante}
+              modalidad="str"
+              finanzas={{ tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }}
+              bloque={dosBloques ? SEMANAL_STR.bloqueCorto : null}
+              conTitulo={!sel.conLargo}
+            />
+          )}
           </>
         )}
       </main>

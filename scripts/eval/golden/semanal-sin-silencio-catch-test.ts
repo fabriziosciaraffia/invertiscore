@@ -56,7 +56,7 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
   if (queEnviarSemanal(0) !== "vacio") F("2 · sin ningún depto no sale el correo corto");
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
   const enviar = srv.slice(srv.indexOf("export async function enviarSeleccion"), srv.indexOf("export async function enviarSinSeleccion"));
-  if (!/if \(queEnviarSemanal\(deptos\.length\) === "vacio" \|\| !fila\.combinacion \|\| !fila\.perfil\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(enviar) || /MINIMO_SEMANAL/.test(enviar))
+  if (!/if \(queEnviarSemanal\(deptos\.length \+ deptosCortos\.length\) === "vacio" \|\| \(!conLargo && !conCorto\)\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(enviar) || /MINIMO_SEMANAL/.test(enviar))
     F("2 · el envío exige tres deptos o descarta sin mandar nada");
   if (!/update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(enviar)) F("2 · si Resend falla, la fila no vuelve a su estado (la pendiente pasaría a armada)");
   const rutaEnviar = sinComentarios(leer("src/app/api/cron/semanal-enviar/route.ts"));

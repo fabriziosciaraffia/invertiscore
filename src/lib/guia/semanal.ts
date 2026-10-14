@@ -386,9 +386,9 @@ export function puedeEntrarPorCorreo(p: { conSesion: boolean; enviadaAt: string 
   return desde >= -5 * 60_000 && desde <= DIAS_ENTRADA_POR_CORREO * 864e5;
 }
 
-/** Quien solo analizó renta corta (13-oct-2026, decisión de Fabrizio): recibe los deptos de renta larga de sus comunas
- *  con esta línea, en el correo y en la página. Mientras no haya selección de renta corta. */
-export const LINEA_RENTA_CORTA = "Estos convienen para arriendo tradicional. Para renta corta, analízalos con tu pack.";
+// La línea provisoria de renta corta del 13-oct-2026 («Estos convienen para arriendo tradicional. Para renta corta,
+// analízalos con tu pack.») salió el 14-oct-2026: quien tiene perfil de renta corta recibe su propio bloque, estimado por
+// zona (semanal-str.ts).
 
 /** Cómo se entra (13-oct-2026): en «Estás dentro», en la bienvenida y en la presentación del primer semanal. */
 export const COMO_ENTRAR = "Para entrar: tu correo y un código. Sin contraseña.";

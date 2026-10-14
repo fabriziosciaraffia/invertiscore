@@ -86,6 +86,7 @@ import { runConfigPublicaTier } from "./config-publica-catch-test";
 import { runMetaAdsSinCampanaTier } from "./meta-ads-sin-campana-catch-test";
 import { runEstudiosTier } from "./estudios-catch-test";
 import { runSemanalSinSilencioTier } from "./semanal-sin-silencio-catch-test";
+import { runSemanalStrTier } from "./semanal-str-catch-test";
 import { runCorreosRecorridoTier } from "./correos-recorrido-catch-test";
 import { runInmediatoTier } from "./inmediato-catch-test";
 import { runEjemplosGuardadosTier } from "./ejemplos-guardados-catch-test";
@@ -442,6 +443,10 @@ function printSeed(r: SeedReport) {
   // Tier SEMANAL-SIN-SILENCIO (13-oct-2026, 0 tokens): la pendiente no pierde la semana, sin deptos sale el correo corto,
   // las cuentas de prueba fuera y la baja llega a PostHog. En rojo por mutación.
   totalHard += (await runSemanalSinSilencioTier()).hard;
+  // Tier SEMANAL-STR (14-oct-2026, 0 tokens): el bloque de renta corta estimado por zona sin consultar al proveedor, un
+  // correo con dos bloques, «Analizar este» que no cobra si la medición fina cambia el veredicto, y el registro de cada
+  // comparación. En rojo por mutación.
+  totalHard += (await runSemanalStrTier()).hard;
   // Tier CORREOS-RECORRIDO (13-oct-2026, 0 tokens): el enlace del correo entra solo, el aviso antes de gastar un análisis,
   // el pack de tres por $19.990, el «cuándo» arriba de la semana y renta corta con su línea. En rojo por mutación.
   totalHard += (await runCorreosRecorridoTier()).hard;

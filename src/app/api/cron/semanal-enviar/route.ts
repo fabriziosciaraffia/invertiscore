@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
-import { cuentasPruebaSinCorreo, descartarSeleccion, enviarSeleccion, type FilaSeleccion } from "@/lib/guia/semanal-servidor";
+import { COLUMNAS_ENVIO, cuentasPruebaSinCorreo, descartarSeleccion, enviarSeleccion, type FilaSeleccion } from "@/lib/guia/semanal-servidor";
 import { semanaDelEnvio } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const semana = new URL(request.url).searchParams.get("semana") ?? semanaDelEnvio();
   try {
     const { data, error } = await admin.from("semanal_selecciones")
-      .select("id, user_id, semana, estado, items, combinacion, perfil, variante, token")
+      .select(COLUMNAS_ENVIO)
       .eq("semana", semana).in("estado", ["armada", "pendiente", "sin_match"]).is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`selecciones: ${error.message}`);
     const cuenta = { enviada: 0, descartada: 0, ya: 0, fallida: 0 };

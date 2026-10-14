@@ -209,11 +209,14 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const srv = sinComentarios(leer("src/lib/guia/ficha-servidor.ts"));
   if ((srv.match(/\bfetch\(/g) ?? []).length !== 1 || !/redirect: "manual",/.test(srv) || !/dispatcher: proxyDispatcher,/.test(srv) || !/signal: AbortSignal\.timeout\(TIMEOUT_FICHA_MS\)/.test(srv) || /\bfor\s*\(|\bwhile\s*\(|reintent/i.test(srv)) F("3 · la bajada de la ficha no es UN pedido por el proxy, sin seguir redirecciones y con tiempo máximo");
   if (!/from\("lecturas_ficha"\)\.select\("id", \{ count: "exact", head: true \}\)\.gte\("leido_at", desde\)/.test(srv)) F("3 · el tope por hora no cuenta todas las lecturas (bitácora lecturas_ficha)");
+  // «Analizar este» tiene dos puertas desde el 14-oct-2026: la de renta larga (la guía y el semanal) y la de renta corta
+  // del semanal (/api/semanal/analizar-str), con la misma red: la ficha releída antes de medir y de cobrar.
+  const ANALIZAR_ESTE = ["src/app/api/lo-que-sigue/guia/analizar/route.ts", "src/app/api/semanal/analizar-str/route.ts"];
   for (const f of archivosSrc()) {
     if (f.startsWith("src/lib/guia/")) continue;
     const s = sinComentarios(leer(f));
-    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && f !== "src/app/api/lo-que-sigue/guia/analizar/route.ts" && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este» y de «Quiero verlo»`);
-    if (/antiguedadDelAviso\(/.test(s) && f !== "src/app/api/lo-que-sigue/guia/analizar/route.ts") F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
+    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este» y de «Quiero verlo»`);
+    if (/antiguedadDelAviso\(/.test(s) && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
   }
   const claude = leer("CLAUDE.md");
   if (!/chequeo de publicación de la guía de búsqueda/.test(claude) || !/tope global por hora/.test(claude) || !/sin reintentos/.test(claude) || !/se recuerda 24 horas/.test(claude) || !/25 años supuestos/.test(claude) || !/`TOPE_FICHAS_POR_HORA` = 30/.test(claude)) F("3 · CLAUDE.md no documenta el chequeo de publicación, sus resguardos, el tope y los 25 años supuestos");

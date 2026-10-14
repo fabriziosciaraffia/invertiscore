@@ -36,7 +36,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { DIAS_ENTRADA_POR_CORREO, LINEA_RENTA_CORTA, SEMANAL_PAGINA, puedeEntrarPorCorreo } from "../../../src/lib/guia/semanal";
+import { DIAS_ENTRADA_POR_CORREO, SEMANAL_PAGINA, puedeEntrarPorCorreo } from "../../../src/lib/guia/semanal";
 import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
 import { PRODUCTO_TRES, TRES_CANTIDAD, TRES_COPY, TRES_PRECIO_CLP, rutaTres, volverSeguro } from "../../../src/lib/tres-analisis";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
@@ -83,7 +83,7 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/generateLink\(\{ type: "magiclink", email \}\)/.test(entrada) || !/sesion\.auth\.verifyOtp\(\{ token_hash: hash, type: tipo \}\)/.test(entrada) || /action_link/.test(entrada)) F("4 · la entrada no verifica el enlace mágico en el servidor (o sigue el action_link)");
   if (!/if \(eV \|\| v\?\.user\?\.id !== userId\) \{\s*if \(v\?\.user && v\.user\.id !== userId\) await sesion\.auth\.signOut\(\);/.test(entrada)) F("4 · si la sesión que quedó no es la del dueño, no se cierra");
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-  if (!/select\("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil"\)/.test(srv) || !/enviadaAt: \(s\.enviada_at as string \| null\) \?\? null/.test(srv) || !/enviadaAt: \(a\.enviado_at as string \| null\) \?\? null/.test(srv)) F("4 · la selección no trae cuándo salió el correo (el enlace no sabría si vence)");
+  if (!/select\("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id"\)/.test(srv) || !/enviadaAt: \(s\.enviada_at as string \| null\) \?\? null/.test(srv) || !/enviadaAt: \(a\.enviado_at as string \| null\) \?\? null/.test(srv)) F("4 · la selección no trae cuándo salió el correo (el enlace no sabría si vence)");
 
   // ── 5 · el aviso antes de gastar un análisis ────────────────────────────────
   if (textoUso({ tipo: "con", n: 3, noVencen: true }) !== "Usa 1 de tus 3 análisis." || textoUso({ tipo: "con", n: 1, noVencen: true }) !== "Usa tu último análisis.") F("5 · el aviso no dice «Usa 1 de tus N análisis.»");
@@ -101,16 +101,16 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/derivados: derivadosAviso\(depto, combinacion, finanzas\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
   if (!/destacado=\{<>Con el pie de <b>\{d\.pie\}<\/b> y el plazo de <b>\{d\.plazo\}<\/b> de tu perfil<\/>\}/.test(aviso)) F("5 · el aviso no destaca el pie y el plazo de su perfil");
   if (!/labelConfirmar=\{sin \? AVISO_ANALIZAR\.comprar : AVISO_ANALIZAR\.analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => router\.push\(rutaCompra\) : alAnalizar\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
-  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa");
+  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{modalidad === "str" && !sin \? .\$\{textoUso\(uso\)\} \$\{AVISO_ANALIZAR\.notaCorta\}. : textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa");
   const modal = sinComentarios(leer("src/components/formulario-v4/ModalPlausibilidad.tsx"));
   if (!/titulo = "Confirma antes de generar",/.test(modal) || !/labelRevisar = "Revisar",/.test(modal) || !/\{destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>\{destacado\}<\/p>\}/.test(modal) || !/\{labelRevisar\}\s*<\/button>/.test(modal)) F("5 · el modal del wizard no acepta el destacado y el secundario del aviso (o le cambia el texto al wizard)");
   // La página semanal: el botón abre el aviso (no genera), está también sin saldo, y «sin créditos» abre el aviso con el pack.
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-  const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal) => {", "\n  };\n");
+  const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {", "\n  };\n");
   if (!tarjetaSemanal || !/className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(tarjetaSemanal) || /analizar\(it\)/.test(tarjetaSemanal)) F("5 · en la página semanal «Analizar este» genera sin el aviso");
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
   if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); break; \}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
-  if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
+  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
   const paginaSem = sinComentarios(leer("src/app/semanal/page.tsx"));
   if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf\)/.test(paginaSem) || !/finanzas=\{finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
   // La guía: lo mismo, y el registro en la tarjeta termina en el aviso, no en un informe.
@@ -163,31 +163,30 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
 
   // ── 7 · «¿Cuándo piensas comprar?» arriba de la página semanal ──────────────
   const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));
-  if (!/const preguntarCuando = perfilPersona != null && perfilPersona\.perfil\.horizonte == null;/.test(pagina) || !/\{preguntarCuando && <PreguntaCuando \/>\}\s*<SemanalLista/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
+  if (!/const preguntarCuando = perfilPersona != null && perfilPersona\.perfil\.horizonte == null;/.test(pagina) || !/\{preguntarCuando && <PreguntaCuando \/>\}\s*\{sel\.conLargo && \(\s*<SemanalLista/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
   const pregunta = sinComentarios(leer("src/app/semanal/pregunta-cuando.tsx"));
   if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^)]*body: JSON\.stringify\(\{ horizonte: h \}\) \}\)/.test(pregunta) || !/if \(res\.ok\) setListo\(true\);/.test(pregunta) || !/if \(listo\) return null;/.test(pregunta)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");
 
-  // ── 11 · renta corta, mientras tanto ────────────────────────────────────────
-  if (LINEA_RENTA_CORTA !== "Estos convienen para arriendo tradicional. Para renta corta, analízalos con tu pack.") F("11 · la línea de renta corta no es la aprobada");
+  // ── 11 · renta corta: la línea provisoria salió (14-oct-2026) ─────────────────
+  // Del 13 al 14-oct quien solo analizó renta corta recibía los deptos de renta larga con «Estos convienen para arriendo
+  // tradicional. Para renta corta, analízalos con tu pack.». Desde el 14-oct tiene su propio bloque, estimado por zona
+  // (tier SEMANAL-STR), y la línea no queda en ninguna superficie. Un informe de renta corta sigue armando perfil.
   const soloCorta = perfilDeBusqueda([filaDesdeInformeStr({ created_at: "2026-10-01T00:00:00Z", comuna: "Santiago", input_data: { comuna: "Santiago", dormitorios: 1, banos: 1, precioCompraUF: 3000, piePct: 20, plazoCredito: 25 } })]);
   if (!soloCorta.completo || soloCorta.modalidad !== "str" || soloCorta.precioMaxUf !== 3000 || soloCorta.comunas.join() !== "Santiago") F("11 · un informe de renta corta no le arma perfil a quien solo analizó renta corta");
-  const perfilSrv = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
-  if (!/if \(\(ltr \?\? \[\]\)\.length === 0 && !informes\.some\(\(f\) => f\.modalidad === "ltr"\)\) \{\s*for \(const a of str \?\? \[\]\)/.test(perfilSrv)) F("11 · los informes de renta corta no cuentan, o cuentan también para quien tiene renta larga");
-  if (/perfil\.modalidad === "ltr" && rango/.test(srv) || !/await origenDePersona\(admin, userId, \{ rentaCorta \}\)/.test(srv)) F("11 · el semanal se le niega a un perfil de renta corta");
   if (!/q = q\.in\("tipo_analisis", \["long-term", "short-term"\]\)/.test(srv)) F("11 · quien solo analizó renta corta no está en la lista del semanal");
-  const origen = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
-  if (!/const corta = data\?\.tipo_analisis === "short-term" && !!opts\.rentaCorta;/.test(origen) || !/corta \? num\(i\.superficieUtil\) : num\(i\.superficie\), precioUF = corta \? num\(i\.precioCompraUF\) : num\(i\.precio\)/.test(origen)) F("11 · un informe de renta corta no sirve de origen (o sirve también fuera del semanal)");
-  if (!/leerOrigenGuia\(admin, b\.origenId, \{ rentaCorta: typeof b\.semanal === "string" \}\)/.test(sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts")))) F("11 · «Analizar este» rechaza la selección de quien solo analizó renta corta");
-  const corto = correoSemanal({ ...base, saldo: 1, rentaCorta: true }).html;
-  if (!corto.includes(LINEA_RENTA_CORTA) || correoSemanal({ ...base, saldo: 1 }).html.includes(LINEA_RENTA_CORTA)) F("11 · el correo no dice que los deptos son para arriendo tradicional (o se lo dice a quien busca renta larga)");
-  if (!/rentaCorta: fila\.perfil\.modalidad === "str",/.test(srv) || !/\{rentaCorta && <p className="guia-txt" data-semanal="renta-corta"><b>\{LINEA_RENTA_CORTA\}<\/b><\/p>\}/.test(lista)) F("11 · el envío o la página no dicen la línea de renta corta");
+  for (const f of ["src/lib/guia/semanal.ts", "src/lib/guia/semanal-servidor.ts", "src/app/semanal/semanal-lista.tsx", "src/app/semanal/page.tsx", "src/lib/email/correo-semanal.ts", "src/lib/guia/aviso-analizar.ts"]) {
+    const t = sinComentarios(leer(f));
+    // La línea y su marca: en el servidor `rentaCorta` sigue siendo la opción de leerOrigenGuia (otra cosa).
+    if (/analízalos con tu pack|LINEA_RENTA_CORTA/.test(t) || (!f.includes("servidor") && /rentaCorta/.test(t))) F(`11 · la línea provisoria de renta corta sigue en ${f}`);
+  }
+  if (correoSemanal({ ...base, saldo: 1 }).html.includes("analízalos con tu pack")) F("11 · el correo sigue diciendo la línea provisoria de renta corta");
 
   if (fallas.length) {
     console.log(`  ✗ CORREOS-RECORRIDO · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el enlace entra solo 7 días; «Analizar este» avisa antes de gastar y sin análisis ofrece el pack; el pack de tres se vende, se otorga y se factura; el «cuándo» se pregunta una vez; renta corta recibe renta larga con su línea");
+    console.log("  ✓ VERDE — el enlace entra solo 7 días; «Analizar este» avisa antes de gastar y sin análisis ofrece el pack; el pack de tres se vende, se otorga y se factura; el «cuándo» se pregunta una vez; la línea provisoria de renta corta salió");
   }
   return { hard: fallas.length };
 }

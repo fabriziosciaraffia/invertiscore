@@ -17,7 +17,8 @@
 // iPhone Mail), sin CSS de fondo ni SVG, esquema de color claro.
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMO_ENTRAR, LINEA_RENTA_CORTA, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
+import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
+import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
@@ -69,6 +70,16 @@ export interface DeptoCorreo {
   url: string;
   /** De dónde salió: ausente = sus comunas; «vecina»; «negociar» (lleva la marca). */
   tramo?: "vecina" | "negociar";
+  /** Del bloque de renta corta (14-oct-2026): lleva la marca «Estimado por zona». */
+  zona?: boolean;
+}
+
+/** El bloque de renta corta del correo (14-oct-2026): sus deptos, lo que busca y su pie y su plazo. */
+export interface BloqueCortoCorreo {
+  deptos: DeptoCorreo[];
+  busca: string;
+  piePct: number;
+  plazoAnios: number;
 }
 
 export interface DatosCorreoSemanal {
@@ -86,8 +97,14 @@ export interface DatosCorreoSemanal {
   regaloVence?: string | null;
   /** El primer correo de la persona: se presenta y deja la baja a la vista. */
   presentacion?: boolean;
-  /** Su perfil es de renta corta (13-oct-2026): los deptos son de renta larga y el correo lo dice. */
-  rentaCorta?: boolean;
+  /**
+   * LOS DOS BLOQUES (14-oct-2026): `largo` (por defecto, sí) es el de arriendo tradicional —`deptos`, `busca`, `piePct`
+   * y `plazoAnios`—; `corto`, el de renta corta, estimado por zona. Con los dos, cada uno lleva su título; quien solo
+   * tiene renta corta recibe solo ese. La línea provisoria del 13-oct («Estos convienen para arriendo tradicional…»)
+   * salió.
+   */
+  largo?: boolean;
+  corto?: BloqueCortoCorreo | null;
   urlBoton: string;
   /** El pack de tres (13-oct-2026), por el clic: `ir=tres`. */
   urlTres: string;
@@ -110,6 +127,7 @@ function tarjeta(d: DeptoCorreo): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #FFFFFF; border: 1px solid ${LINEA}; border-radius: 14px;">
     <tr><td style="padding: 16px 18px 6px 18px; font-family: ${FUENTE_UI}; font-size: 13px; color: ${TINTA_3};">${ojo}</td></tr>
     <tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 28px; line-height: 1.1; font-weight: 700; color: ${TINTA};"><a href="${d.url}" style="color: ${TINTA}; text-decoration: none;">UF ${miles(d.precioUF)}</a></td></tr>
+    ${d.zona ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="zona">${escaparHtml(MARCA_ZONA)}</td></tr>` : ""}
     ${d.tramo === "negociar" ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 14px; font-weight: 600; color: ${TINTA};">${escaparHtml(SEMANAL.negociar)}</td></tr>` : ""}
     <tr><td style="padding: 0 18px 14px 18px; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.5;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -136,7 +154,17 @@ function botonRojo(texto: string, url: string): string {
 const parrafo = (html: string, extra = "") =>
   `<tr><td style="padding: 0 0 14px 0; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.6; color: ${TINTA_2};${extra}">${html}</td></tr>`;
 
+/** El título de un bloque, cuando el correo trae los dos (14-oct-2026). */
+const tituloBloque = (texto: string) =>
+  `<tr><td style="padding: 10px 0 12px 0; font-family: ${FUENTE_TITULO}; font-size: 20px; line-height: 1.25; font-weight: 700; color: ${TINTA};" data-bloque="titulo">${escaparHtml(texto)}</td></tr>`;
+
 export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: string } {
+  const conLargo = d.largo !== false;
+  const corto = d.corto ?? null;
+  const dosBloques = conLargo && corto != null;
+  // El preencabezado cuenta todos los deptos, con el pie y el plazo del primer bloque que tenga.
+  const total = (conLargo ? d.deptos.length : 0) + (corto?.deptos.length ?? 0);
+  const piePre = conLargo || !corto ? d.piePct : corto.piePct, plazoPre = conLargo || !corto ? d.plazoAnios : corto.plazoAnios;
   const pie = pct(d.piePct);
   const filas: string[] = [];
   if (d.variante === "banda") {
@@ -150,10 +178,6 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     // Cómo se entra (13-oct-2026): el primer correo lo dice, para quien abra un enlace en otro aparato.
     filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
-  const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
-  filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
-  if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
-  if (d.rentaCorta) filas.push(parrafo(escaparHtml(LINEA_RENTA_CORTA), ` color: ${TINTA}; font-weight: 600;`));
   if (d.conRegalo) {
     filas.push(`<tr><td style="padding: 2px 0 18px 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -161,7 +185,30 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   </tr></table>
 </td></tr>`);
   }
-  for (const dep of d.deptos) filas.push(tarjeta(dep));
+  // El bloque de arriendo tradicional (el de siempre).
+  if (conLargo) {
+    if (dosBloques) filas.push(tituloBloque(SEMANAL_STR.bloqueLargo));
+    if (d.deptos.length > 0) {
+      const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
+      filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
+      if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
+      for (const dep of d.deptos) filas.push(tarjeta(dep));
+    } else {
+      filas.push(parrafo(escaparHtml(SEMANAL_STR.sinLargo)));
+    }
+  }
+  // El bloque de renta corta (14-oct-2026), estimado por zona: cada depto con su marca.
+  if (corto) {
+    if (dosBloques) filas.push(tituloBloque(SEMANAL_STR.bloqueCorto));
+    if (corto.deptos.length > 0) {
+      filas.push(parrafo(escaparHtml(SEMANAL_STR.intro(corto.deptos.length, corto.busca, pct(corto.piePct), corto.plazoAnios))));
+      filas.push(parrafo(escaparHtml(SEMANAL_STR.zona), ` font-size: 14px;`));
+      if (corto.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
+      for (const dep of corto.deptos) filas.push(tarjeta({ ...dep, zona: true }));
+    } else {
+      filas.push(parrafo(escaparHtml(SEMANAL_STR.sinCorto)));
+    }
+  }
   const conSaldo = d.saldo == null || d.saldo > 0;
   if (d.saldo != null && d.saldo > 0 && !d.conRegalo) filas.push(parrafo(escaparHtml(SEMANAL.saldo(d.saldo)), " padding-top: 6px;"));
   filas.push(botonRojo(SEMANAL.boton, d.urlBoton));
@@ -182,7 +229,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
 <title>${escaparHtml(SEMANAL.asunto)}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(SEMANAL.preencabezado(d.deptos.length, pie, d.plazoAnios))}</div>
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(SEMANAL.preencabezado(total, pct(piePre), plazoPre))}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAPEL}" style="background: ${PAPEL};">
     <tr>
       <td align="center" style="padding: 28px 16px;">

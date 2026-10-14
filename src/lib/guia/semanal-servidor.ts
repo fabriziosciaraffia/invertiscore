@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sondaConPatch } from "@/lib/analysis";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { payloadDeAviso, respuestasDeAviso } from "@/lib/avisos/evaluar-aviso";
-import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
+import { leerPerfilBusqueda, type PerfilDeLaPersona } from "@/lib/perfil-busqueda-servidor";
 import { FUENTE_REGALO_SEMANAL } from "@/lib/credits-grant";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { reportarFalloQuery } from "@/lib/observabilidad";
@@ -21,7 +21,10 @@ import { nombreReal } from "@/lib/welcome";
 import { sendSemanalEmail } from "@/lib/email";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
-import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
+import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type OrigenGuia } from "./guia-servidor";
+import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
+import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
+import { estadoDeFila, type EstadoBloque } from "./semanal-str";
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
@@ -30,7 +33,7 @@ import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeRegalo, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe,
-  type CandidatoSemanal, type ProgresoPrechequeo, type RespaldoSemanal,
+  type ProgresoPrechequeo, type RespaldoSemanal,
 } from "./semanal";
 
 const RUTA = "lib/guia/semanal";
@@ -49,30 +52,21 @@ export interface ItemSemanal {
   tramo?: "vecina" | "negociar";
   /** Puesto en /semanal en lugar de un depto que ya no está publicado (05-oct-2026): el id de ese depto. */
   reemplazaA?: string;
+  /** Solo en el bloque de renta corta (14-oct-2026): el ingreso bruto mensual estimado por zona (el aviso antes de gastar
+   *  lo usa para el retorno bruto). */
+  ingresoMensual?: number | null;
 }
 
-/** «Santiago Centro» (el nombre del dataset viejo) es «Santiago» en los avisos. */
-const comunaDeAviso = (c: string) => (c === "Santiago Centro" ? "Santiago" : c);
+export type { Candidato } from "./semanal-candidatos";
 
-type FilaRpc = {
-  id: string; comuna: string; lat: number; lng: number; superficie_m2: number; dormitorios: number; banos: number | null;
-  condicion: string; direccion: string | null; fecha_entrega: string | null; url: string | null; precio_uf: number;
-  antiguedad_anios: number | null; antiguedad_origen: string | null; arriendo: CandidatoGuia["arriendo"]; venta: CandidatoGuia["venta"];
-  gastos_comunes: number | null; mediana_comuna: unknown | null; score_cron: number | null;
-};
-
-export type Candidato = CandidatoGuia & CandidatoSemanal;
-
-/** El informe de renta larga más reciente de la persona que trae con qué buscar (su tasa, su pie). Con `rentaCorta`
- *  (13-oct-2026), si no hay ninguno de renta larga, el de renta corta más reciente. */
-export async function origenDePersona(admin: SupabaseClient, userId: string, opts: { rentaCorta?: boolean } = {}): Promise<OrigenGuia | null> {
-  for (const tipo of opts.rentaCorta ? ["long-term", "short-term"] : ["long-term"]) {
-    const { data } = await admin.from("analisis").select("id").eq("user_id", userId).eq("tipo_analisis", tipo)
-      .order("created_at", { ascending: false }).limit(5);
-    for (const f of data ?? []) {
-      const o = await leerOrigenGuia(admin, f.id as string, { rentaCorta: tipo === "short-term" });
-      if (o) return o;
-    }
+/** El informe de renta larga más reciente de la persona que trae con qué buscar (su tasa, su pie). El bloque de renta
+ *  corta tiene su propio origen desde el 14-oct-2026 (semanal-str-servidor.ts › origenStrDePersona). */
+export async function origenDePersona(admin: SupabaseClient, userId: string): Promise<OrigenGuia | null> {
+  const { data } = await admin.from("analisis").select("id").eq("user_id", userId).eq("tipo_analisis", "long-term")
+    .order("created_at", { ascending: false }).limit(5);
+  for (const f of data ?? []) {
+    const o = await leerOrigenGuia(admin, f.id as string);
+    if (o) return o;
   }
   return null;
 }
@@ -103,16 +97,20 @@ export async function prepararSeleccion(
   userId: string,
   cfg: { uf: number; tasa: number },
   // El aviso inmediato (05-oct-2026) prepara con los avisos NUEVOS y no mira la baja del semanal.
-  opts: { nuevosDesde?: string } = {},
+  // `perfilLeido` (14-oct-2026): el armado lee el perfil una vez para los dos bloques.
+  opts: { nuevosDesde?: string; perfilLeido?: PerfilDeLaPersona } = {},
 ): Promise<Preparada> {
-  const { perfil, semanalBajaAt } = await leerPerfilBusqueda(admin, userId);
-  if (semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
-  // Los avisos se evalúan como arriendo largo. Un perfil de renta corta recibe igual el semanal (13-oct-2026, decisión de
-  // Fabrizio): los deptos de renta larga de sus comunas, con su pie y su plazo, y el correo dice que convienen para
-  // arriendo tradicional (`rentaCorta` en el correo y en la página). El aviso inmediato sigue solo para renta larga.
+  const pp = opts.perfilLeido ?? await leerPerfilBusqueda(admin, userId);
+  if (pp.semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
+  // EL BLOQUE DE RENTA LARGA (14-oct-2026): en el semanal sale del perfil de renta larga —solo sus informes de renta
+  // larga—; quien solo tiene renta corta no tiene este bloque (recibe el de renta corta, semanal-str-servidor.ts). La
+  // línea provisoria del 13-oct («Estos convienen para arriendo tradicional…») salió. El aviso inmediato sigue como
+  // estaba: el perfil de siempre y solo para renta larga.
+  const perfil = opts.nuevosDesde ? pp.perfil : pp.perfilLtr;
+  if (!perfil) return { tipo: "sin-perfil", perfil: pp.perfil };
   const rango = rangoSemanal(perfil);
-  const rentaCorta = perfil.modalidad === "str";
-  const o = perfil.completo && rango && (!rentaCorta || !opts.nuevosDesde) ? await origenDePersona(admin, userId, { rentaCorta }) : null;
+  const rentaCorta = !!opts.nuevosDesde && perfil.modalidad === "str";
+  const o = perfil.completo && rango && !rentaCorta ? await origenDePersona(admin, userId) : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
 
@@ -204,17 +202,47 @@ export async function armarSeleccion(
     reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-seleccion", userId });
   };
 
-  const prep = await prepararSeleccion(admin, userId, cfg);
+  // LOS DOS BLOQUES (14-oct-2026): el de renta larga (su perfil de renta larga) y el de renta corta (su perfil de renta
+  // corta, estimado por zona, semanal-str-servidor.ts), con las mismas reglas y el mismo presupuesto de fichas. Quien
+  // solo tiene renta larga queda exactamente como antes: `estado_str` null y el estado de la fila, el de su bloque.
+  const pp = await leerPerfilBusqueda(admin, userId);
+  const prep = await prepararSeleccion(admin, userId, cfg, { perfilLeido: pp });
   if (prep.tipo === "baja") return "ya";
-  if (prep.tipo === "sin-perfil") {
-    await guardar({ estado: "sin_match", items: [], perfil: prep.perfil });
-    return "sin_match";
+  const prepStr = await prepararSeleccionStr(admin, userId, cfg, pp);
+  const publicado = publicadoConPresupuesto(admin, presupuesto);
+  const aItems = (g: { items: Array<{ c: Candidato; ev: Evaluado; tramo: string }> }): ItemSemanal[] =>
+    g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}) }));
+
+  const fila: Record<string, unknown> = {};
+  let largo: EstadoBloque | null = null;
+  if (prep.tipo === "lista") {
+    const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prep.p;
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo);
+    largo = g.estado;
+    Object.assign(fila, { items: aItems(g), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
+  } else {
+    // Sin bloque de renta larga: o no tiene ese perfil (solo renta corta), o le falta con qué buscar.
+    largo = pp.perfilLtr ? "sin_match" : null;
+    Object.assign(fila, { items: [], perfil: pp.perfilLtr ? prep.perfil : null });
   }
-  const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prep.p;
-  const g = await elegirSemanal(candidatos, evaluar, publicadoConPresupuesto(admin, presupuesto), respaldo);
-  const items: ItemSemanal[] = g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo !== "propia" ? { tramo } : {}) }));
-  await guardar({ estado: g.estado, items, combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
-  return g.estado;
+  let corto: EstadoBloque | null = null;
+  if (prepStr?.tipo === "lista") {
+    const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prepStr.p;
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo);
+    corto = g.estado;
+    Object.assign(fila, {
+      items_str: aItems(g), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
+      variante: varianteDe(userId),
+    });
+  } else if (prepStr) {
+    corto = "sin_match";
+    Object.assign(fila, { items_str: [], estado_str: "sin_match", perfil_str: prepStr.perfil });
+  } else {
+    Object.assign(fila, { items_str: [], estado_str: null });
+  }
+  const estado = estadoDeFila(largo, corto);
+  await guardar({ ...fila, estado });
+  return estado;
 }
 
 /**
@@ -236,11 +264,18 @@ export async function prechequearSemana(
   const almacen = almacenPublicacion(admin);
   const enMemoria = async (c: Candidato): Promise<EstadoPublicacion> =>
     (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "guia", almacen, bajarFicha, { sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS })).estado;
-  const preps = new Map<string, PreparacionSemanal | null>();
+  // Los dos bloques de cada persona (14-oct-2026): el de renta larga y el de renta corta, preparados una vez.
+  const preps = new Map<string, { ltr: PreparacionSemanal | null; str: PreparacionStr | null } | null>();
   const preparar = async (userId: string) => {
     if (!preps.has(userId)) {
-      const pr = await prepararSeleccion(admin, userId, cfg).catch(() => null);
-      preps.set(userId, pr?.tipo === "lista" ? pr.p : null);
+      const pr = await (async () => {
+        const pp = await leerPerfilBusqueda(admin, userId);
+        if (pp.semanalBajaAt) return null;
+        const [l, s] = await Promise.all([prepararSeleccion(admin, userId, cfg, { perfilLeido: pp }), prepararSeleccionStr(admin, userId, cfg, pp)]);
+        const ltr = l.tipo === "lista" ? l.p : null, str = s?.tipo === "lista" ? s.p : null;
+        return ltr || str ? { ltr, str } : null;
+      })().catch(() => null);
+      preps.set(userId, pr);
     }
     return preps.get(userId) ?? null;
   };
@@ -253,9 +288,14 @@ export async function prechequearSemana(
     async (userId) => {
       const p = await preparar(userId);
       if (!p) return null;
-      const r = await siguienteYEstado(p.candidatos, p.evaluar, enMemoria, p.respaldo);
-      estado.set(userId, r.armada ? "armada" : r.aviso ? "pendiente" : "sin-candidatos");
-      return r.aviso;
+      // Su siguiente aviso, del bloque que lo necesite (primero el de renta larga); armada cuando los dos lo están.
+      const rs = [
+        p.ltr ? await siguienteYEstado(p.ltr.candidatos, p.ltr.evaluar, enMemoria, p.ltr.respaldo) : null,
+        p.str ? await siguienteYEstado(p.str.candidatos, p.str.evaluar, enMemoria, p.str.respaldo) : null,
+      ].filter((r): r is { aviso: Candidato | null; armada: boolean } => r != null);
+      const aviso = rs.find((r) => r.aviso)?.aviso ?? null;
+      estado.set(userId, rs.every((r) => r.armada) ? "armada" : aviso ? "pendiente" : "sin-candidatos");
+      return aviso;
     },
     publicadoConPresupuesto(admin, presupuesto),
     () => !presupuesto.bloqueada && presupuesto.lecturas < LECTURAS_POR_CORRIDA_SEMANAL,
@@ -295,21 +335,12 @@ export async function guardarAvancePrechequeo(
   });
 }
 
-function candidatoDeFila(f: FilaRpc): Candidato {
-  return {
-    avisoId: f.id, distanciaM: 0, scoreCron: f.score_cron, comuna: f.comuna, lat: Number(f.lat), lng: Number(f.lng),
-    m2: Number(f.superficie_m2), dormitorios: Number(f.dormitorios), banos: Number(f.banos) || 1,
-    condicion: f.condicion === "nuevo" ? "nuevo" : "usado", direccion: f.direccion, fechaEntrega: f.fecha_entrega, url: f.url,
-    precioUF: Number(f.precio_uf), antiguedadAnios: f.antiguedad_origen === "ficha" ? f.antiguedad_anios : null,
-    antiguedadOrigen: f.antiguedad_origen, arriendo: f.arriendo, venta: f.venta, gastosComunes: f.gastos_comunes, medianaComuna: f.mediana_comuna ?? null,
-  };
-}
-
-/** Un candidato elegido, como lo guarda la selección y lo muestra el correo. */
-function itemDe(c: Candidato, ev: Evaluado): ItemSemanal {
+/** Un candidato elegido, como lo guarda la selección y lo muestra el correo. En renta corta, con el ingreso de la zona. */
+function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | null }): ItemSemanal {
   return {
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
+    ...(ev.ingresoMensual !== undefined ? { ingresoMensual: ev.ingresoMensual } : {}),
   };
 }
 
@@ -332,14 +363,20 @@ async function avisosCaidos(admin: SupabaseClient, ids: string[]): Promise<Set<s
  */
 export async function seleccionViva(
   admin: SupabaseClient,
-  sel: { tabla: "semanal_selecciones" | "avisos_inmediatos"; id: string; userId: string; items: ItemSemanal[] },
+  // `modalidad` (14-oct-2026): el bloque de renta corta se reemplaza con su propio pool (estimado por zona) y se guarda en
+  // `items_str`.
+  sel: { tabla: "semanal_selecciones" | "avisos_inmediatos"; id: string; userId: string; items: ItemSemanal[]; modalidad?: "ltr" | "str" },
   cfg: { uf: number; tasa: number },
 ): Promise<Array<FilaPaginaSemanal<ItemSemanal>>> {
   let items = sel.items;
+  const corta = sel.modalidad === "str";
   const caidos = await avisosCaidos(admin, items.map((i) => i.avisoId));
   const faltan = filasDePagina(items, caidos).filter((f) => f.caido && !f.reemplazo);
   if (faltan.length > 0) {
-    const prep = await prepararSeleccion(admin, sel.userId, cfg).catch(() => null);
+    const prep = await (corta
+      ? leerPerfilBusqueda(admin, sel.userId).then((pp) => prepararSeleccionStr(admin, sel.userId, cfg, pp))
+      : prepararSeleccion(admin, sel.userId, cfg)
+    ).catch(() => null);
     if (prep?.tipo === "lista") {
       const almacen = almacenPublicacion(admin);
       const publicado = async (c: Candidato) => (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "clic", almacen, bajarFicha)).estado;
@@ -353,7 +390,7 @@ export async function seleccionViva(
         items = [...items, { ...itemDe(r.c, r.ev), reemplazaA: f.item.avisoId }];
       }
       if (items.length > antes) {
-        const { error } = await admin.from(sel.tabla).update({ items }).eq("id", sel.id);
+        const { error } = await admin.from(sel.tabla).update(corta ? { items_str: items } : { items }).eq("id", sel.id);
         reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-reemplazo", userId: sel.userId });
       }
     }
@@ -367,9 +404,11 @@ export async function seleccionViva(
  * que ya no está vuelve a «pendiente» para armarse de nuevo; devuelve de quién son.
  */
 export async function rechequearArmadas(admin: SupabaseClient, semana: string, presupuesto: PresupuestoFichas): Promise<{ chequeados: number; caidos: number; usuarios: string[] }> {
-  const { data: sels, error } = await admin.from("semanal_selecciones").select("id, user_id, items").eq("semana", semana).eq("estado", "armada").is("enviada_at", null).order("armada_at").limit(1000);
+  const { data: sels, error } = await admin.from("semanal_selecciones").select("id, user_id, items, items_str").eq("semana", semana).eq("estado", "armada").is("enviada_at", null).order("armada_at").limit(1000);
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-armadas" });
-  const filas = (sels ?? []) as Array<{ id: string; user_id: string; items: ItemSemanal[] }>;
+  // Los dos bloques (14-oct-2026): un aviso caído de cualquiera de los dos vuelve a armar la fila.
+  const filas = ((sels ?? []) as Array<{ id: string; user_id: string; items: ItemSemanal[]; items_str: ItemSemanal[] | null }>)
+    .map((s) => ({ ...s, items: [...(s.items ?? []), ...(s.items_str ?? [])] }));
   const ids = Array.from(new Set(filas.flatMap((s) => (s.items ?? []).map((i) => i.avisoId))));
   const fechas = new Map<string, number>();
   const fichas = new Map<string, { url: string | null; comuna: string; lat: number; lng: number }>();
@@ -419,8 +458,10 @@ export interface SeleccionPorToken {
   variante: "banda" | "tarjetas" | null;
   /** Cuándo salió el correo (13-oct-2026): el enlace inicia la sesión hasta 7 días después (semanal.ts › puedeEntrarPorCorreo). */
   enviadaAt: string | null;
-  /** El perfil con que se armó era de renta corta (13-oct-2026): la página dice que los deptos son de renta larga. */
-  rentaCorta: boolean;
+  /** Tiene bloque de renta larga (14-oct-2026): su perfil de renta larga. Las semanas anteriores, siempre. */
+  conLargo: boolean;
+  /** El bloque de renta corta (14-oct-2026), estimado por zona; null si no tiene perfil de renta corta. */
+  corto: { items: ItemSemanal[]; combinacion: Combinacion | null; origenId: string | null } | null;
 }
 
 /**
@@ -444,13 +485,22 @@ export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: strin
 
 export async function seleccionPorToken(admin: SupabaseClient, token: string): Promise<SeleccionPorToken | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
-  const { data: s } = await admin.from("semanal_selecciones").select("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil").eq("token", token).maybeSingle();
+  const { data: s } = await admin.from("semanal_selecciones")
+    .select("id, user_id, semana, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id")
+    .eq("token", token).maybeSingle();
   if (s) {
+    const items = (s.items ?? []) as ItemSemanal[];
     return {
-      fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items: (s.items ?? []) as ItemSemanal[],
+      fuente: "semanal", id: s.id as string, user_id: s.user_id as string, semana: s.semana as string, items,
       combinacion: (s.combinacion ?? null) as Combinacion | null, origen_analysis_id: (s.origen_analysis_id as string | null) ?? null,
       variante: (s.variante as "banda" | "tarjetas" | null) ?? null, enviadaAt: (s.enviada_at as string | null) ?? null,
-      rentaCorta: (s.perfil as { modalidad?: string } | null)?.modalidad === "str",
+      // Desde el 14-oct-2026 el perfil de la fila es el de renta larga (null si no lo tiene); antes, siempre había bloque.
+      conLargo: s.perfil != null || items.length > 0,
+      corto: s.estado_str == null ? null : {
+        items: (s.items_str ?? []) as ItemSemanal[],
+        combinacion: (s.combinacion_str ?? null) as Combinacion | null,
+        origenId: (s.origen_str_analysis_id as string | null) ?? null,
+      },
     };
   }
   const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id, enviado_at").eq("token", token).not("enviado_at", "is", null).maybeSingle();
@@ -458,7 +508,7 @@ export async function seleccionPorToken(admin: SupabaseClient, token: string): P
   return {
     fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: (a.items ?? []) as ItemSemanal[],
     combinacion: (a.combinacion ?? null) as Combinacion | null, origen_analysis_id: (a.origen_analysis_id as string | null) ?? null, variante: null,
-    enviadaAt: (a.enviado_at as string | null) ?? null, rentaCorta: false,
+    enviadaAt: (a.enviado_at as string | null) ?? null, conLargo: true, corto: null,
   };
 }
 
@@ -560,7 +610,15 @@ export interface FilaSeleccion {
   perfil: PerfilBusqueda | null;
   variante: "banda" | "tarjetas" | null;
   token: string;
+  /** El bloque de renta corta (14-oct-2026); `estado_str` null = no tiene perfil de renta corta. */
+  items_str?: ItemSemanal[] | null;
+  estado_str?: "armada" | "pendiente" | "sin_match" | null;
+  combinacion_str?: Combinacion | null;
+  perfil_str?: PerfilBusqueda | null;
 }
+
+/** Las columnas que el envío lee de cada fila (semanal-enviar). */
+export const COLUMNAS_ENVIO = "id, user_id, semana, estado, items, combinacion, perfil, variante, token, items_str, estado_str, combinacion_str, perfil_str";
 
 /** Los enlaces del correo: todos pasan por /api/semanal (miden el clic y releen la ficha). */
 export function enlacesSemanal(sitio: string, token: string) {
@@ -588,9 +646,18 @@ export async function descartarSeleccion(admin: SupabaseClient, id: string): Pro
 
 export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida"> {
   const descartar = () => descartarSeleccion(admin, fila.id);
-  const deptos = await itemsVigentes(admin, fila.items ?? []);
+  // Los dos bloques (14-oct-2026): cada uno con sus deptos vigentes. El de renta larga existe si la fila tiene su perfil
+  // y su combinación; el de renta corta, si tiene perfil de renta corta.
+  const conLargo = !!fila.perfil && !!fila.combinacion;
+  const conCorto = fila.estado_str != null && !!fila.perfil_str && !!fila.combinacion_str;
+  const [deptos, deptosCortos] = await Promise.all([
+    conLargo ? itemsVigentes(admin, fila.items ?? []) : Promise.resolve([] as ItemSemanal[]),
+    conCorto ? itemsVigentes(admin, fila.items_str ?? []) : Promise.resolve([] as ItemSemanal[]),
+  ]);
   // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`).
-  if (queEnviarSemanal(deptos.length) === "vacio" || !fila.combinacion || !fila.perfil) return enviarSinSeleccion(admin, fila, sitio);
+  if (queEnviarSemanal(deptos.length + deptosCortos.length) === "vacio" || (!conLargo && !conCorto)) return enviarSinSeleccion(admin, fila, sitio);
+  // Los números del primer bloque que tenga (el de renta larga, si existe) van arriba del correo.
+  const combo = (conLargo ? fila.combinacion : fila.combinacion_str)!;
   const [{ data: u }, { data: pb }, { count: compras }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
     admin.auth.admin.getUserById(fila.user_id),
     admin.from("perfil_busqueda").select("semanal_baja_at, regalo_otorgado_at").eq("user_id", fila.user_id).maybeSingle(),
@@ -619,11 +686,17 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   const correo = correoSemanal({
     variante,
     nombre: nombreReal(user.user_metadata),
-    busca: textoBusca(fila.perfil),
-    rentaCorta: fila.perfil.modalidad === "str",
-    piePct: fila.combinacion.piePct,
-    plazoAnios: fila.combinacion.plazoAnios,
+    busca: conLargo ? textoBusca(fila.perfil!) : "",
+    piePct: combo.piePct,
+    plazoAnios: combo.plazoAnios,
     deptos: deptos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
+    largo: conLargo,
+    corto: conCorto ? {
+      deptos: deptosCortos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
+      busca: textoBusca(fila.perfil_str!),
+      piePct: fila.combinacion_str!.piePct,
+      plazoAnios: fila.combinacion_str!.plazoAnios,
+    } : null,
     saldo: saldo.plan ? null : saldo.disponibles,
     conRegalo,
     regaloVence,
@@ -637,12 +710,14 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     await admin.from("semanal_selecciones").update({ estado: fila.estado, enviada_at: null }).eq("id", fila.id);
     return "fallida";
   }
-  await admin.from("semanal_selecciones").update({ resend_id: r.id, con_regalo: conRegalo, variante, items: deptos }).eq("id", fila.id);
+  await admin.from("semanal_selecciones").update({ resend_id: r.id, con_regalo: conRegalo, variante, items: deptos, ...(conCorto ? { items_str: deptosCortos } : {}) }).eq("id", fila.id);
   void capturarServidor({
     event: "semanal_enviado", distinctId: fila.user_id, uuid: uuidDeterminista(`semanal_enviado:${fila.id}`),
     properties: {
-      semana: fila.semana, variante, n: deptos.length, con_regalo: conRegalo, saldo: saldo.plan ? "plan" : saldo.disponibles, presentacion,
+      semana: fila.semana, variante, n: deptos.length + deptosCortos.length, con_regalo: conRegalo, saldo: saldo.plan ? "plan" : saldo.disponibles, presentacion,
       vecinas: deptos.filter((d) => d.tramo === "vecina").length, negociar: deptos.filter((d) => d.tramo === "negociar").length,
+      // Los bloques (14-oct-2026): cuántos de renta larga y cuántos de renta corta, estimados por zona.
+      largo: conLargo ? deptos.length : null, corto: conCorto ? deptosCortos.length : null,
     },
   }).catch(() => {});
   return "enviada";

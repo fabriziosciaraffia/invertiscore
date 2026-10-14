@@ -31,12 +31,14 @@ import { guardarMetrica, leerSerie } from "@/lib/metrics-daily";
 export const FUENTE_AIRROI = "airroi";
 
 /** Quién pidió la estimación. Define qué contador se mueve. */
-export type OrigenAirroi = "wizard" | "dry-run" | "informe";
+/** «semanal» (14-oct-2026): «Analizar este» de un depto de la selección de renta corta, que mide fino antes de cobrar. */
+export type OrigenAirroi = "wizard" | "dry-run" | "informe" | "semanal";
 
 const METRICA_POR_ORIGEN: Record<OrigenAirroi, string> = {
   wizard: "calls_wizard_1d",
   "dry-run": "calls_dryrun_1d",
   informe: "calls_informe_1d",
+  semanal: "calls_semanal_1d",
 };
 
 /** Los hits no cuestan plata, pero sin ellos no se sabe si el cache sirve. */

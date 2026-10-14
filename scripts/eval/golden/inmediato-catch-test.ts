@@ -148,7 +148,7 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     // aviso cuando vino del aviso (CORREOS-RECORRIDO §6). El correo del aviso todavía ofrece el suelto (línea de arriba).
     if (!/rutaTres\(inmediato \? "inmediato" : "semanal", \{ variante: inmediato \? null : variante,/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("5 · la compra desde la página del aviso no va marcada como del aviso");
     // La página del aviso también está viva (05-oct-2026): el caído se dice y trae el siguiente, guardado en su tabla.
-    if (!/await seleccionViva\(admin, \{ tabla: sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones", id: sel\.id,/.test(sinComentarios(leer("src/app/semanal/page.tsx"))) || !/seleccionViva\(\s*admin: SupabaseClient,\s*sel: \{ tabla: "semanal_selecciones" \| "avisos_inmediatos";/.test(sem)) F("3 · la página del aviso no está viva (o guarda el reemplazo en otra tabla)");
+    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id,/.test(sinComentarios(leer("src/app/semanal/page.tsx"))) || !/seleccionViva\(\s*admin: SupabaseClient,\s*sel: \{ tabla: "semanal_selecciones" \| "avisos_inmediatos";/.test(sem)) F("3 · la página del aviso no está viva (o guarda el reemplazo en otra tabla)");
   }
 
   if (fallas.length === 0) console.log("  ✓ VERDE — solo Comprar nuevos y publicados con su perfil, después de la evaluación; un correo por día que se toma antes de mandar; lo avisado no se repite; la plantilla del semanal con su propia baja; el «Ya» pregunta a los 60 días; enviado, abierto, clic y compra medidos");

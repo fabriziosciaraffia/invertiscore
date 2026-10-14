@@ -16,7 +16,8 @@ import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { LINEA_RENTA_CORTA, MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { MARCA_ZONA, NO_DA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { rutaTres } from "@/lib/tres-analisis";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
@@ -27,7 +28,10 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
 
-export function SemanalLista({ token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, rentaCorta = false, finanzas = { tasa: null, uf: null, arriendos: {} } }: {
+export function SemanalLista({
+  token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true,
+}: {
   token: string;
   origenId: string | null;
   combinacion: { piePct: number; plazoAnios: number } | null;
@@ -37,14 +41,23 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
   variante: "banda" | "tarjetas" | null;
   /** Vino de un aviso inmediato (05-oct-2026): la compra se marca como venida del aviso. */
   inmediato?: boolean;
-  /** El perfil es de renta corta (13-oct-2026): los deptos son de renta larga y se dice. */
-  rentaCorta?: boolean;
-  /** Para el aviso antes de gastar (13-oct-2026): la tasa, la UF y el arriendo evaluado de cada depto. */
+  /** Para el aviso antes de gastar (13-oct-2026): la tasa, la UF y el arriendo evaluado de cada depto (en renta corta, el
+   *  ingreso estimado por zona). */
   finanzas?: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
+  /** LOS DOS BLOQUES (14-oct-2026): el de renta corta va estimado por zona, se analiza por /api/semanal/analizar-str y,
+   *  si la medición fina no da, muestra NO_DA con los siguientes. `bloque`: su título cuando la página trae los dos;
+   *  `conTitulo` y `cierre`: el título de la página y el cierre (comprar, pie) van una sola vez. */
+  modalidad?: "ltr" | "str";
+  bloque?: string | null;
+  conTitulo?: boolean;
+  cierre?: boolean;
 }) {
   const router = useRouter();
+  const corta = modalidad === "str";
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
+  // Renta corta: la medición fina cambió el veredicto. No se cobró; se muestran los siguientes de la selección.
+  const [noDa, setNoDa] = useState<{ avisoId: string; alternativas: string[] } | null>(null);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean } | null>(null);
   const conSaldo = saldo.tipo !== "sin";
@@ -56,17 +69,26 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
   async function analizar(it: ItemSemanal) {
     if (generando || !origenId || !combinacion) return;
     setError(null);
+    setNoDa(null);
     setGenerando(it.avisoId);
     try {
       for (let intento = 0; intento < 8; intento++) {
-        const res = await fetch("/api/lo-que-sigue/guia/analizar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, semanal: token }),
-        });
+        const res = corta
+          ? await fetch("/api/semanal/analizar-str", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token, avisoId: it.avisoId }),
+            })
+          : await fetch("/api/lo-que-sigue/guia/analizar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, semanal: token }),
+            });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
-        if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[] };
+        if (res.ok && d.id) { router.push(corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`); return; }
+        // Renta corta: con los datos de su dirección no da. No se cobró.
+        if (res.ok && d.estado === "no-da") { setNoDa({ avisoId: it.avisoId, alternativas: d.alternativas ?? [] }); break; }
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { router.refresh(); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»).
@@ -80,14 +102,18 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
     setGenerando(null);
   }
 
-  const tarjeta = (it: ItemSemanal) => {
+  const porId = new Map(filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).map((i) => [i.avisoId, i]));
+  // Los siguientes de su selección que se ofrecen cuando uno no da (los elige el servidor, en orden).
+  const alternativas = noDa ? noDa.alternativas.map((id) => porId.get(id)).filter((i): i is ItemSemanal => !!i) : [];
+  const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {
     const neg = (it.flujo ?? 0) < 0;
-    return (
-      <article key={it.avisoId} className="guia-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined}>
+    const card = (
+      <article key={clave} className="guia-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined}>
         <div className="guia-top">
           <span className="guia-ojo">{ojoDe(it)}</span>
         </div>
         <div className="guia-precio">UF {miles(it.precioUF)}</div>
+        {corta && <p className="guia-negociar" data-semanal="zona">{MARCA_ZONA}</p>}
         {it.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
         <div className="guia-dos">
           <div>
@@ -113,16 +139,28 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
         {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
       </article>
     );
+    // Renta corta, cuando la medición fina no da: el aviso y los siguientes de su selección, debajo del depto.
+    if (noDa?.avisoId !== it.avisoId || clave !== it.avisoId) return card;
+    return (
+      <div key={clave} className="guia-caido-grupo" data-semanal="no-da">
+        {card}
+        <div className="guia-caido" role="alert">
+          <p className="guia-caido-txt">{NO_DA}</p>
+        </div>
+        {alternativas.map((a) => tarjeta(a, `alt-${a.avisoId}`))}
+      </div>
+    );
   };
 
   const visibles = filas.filter((f) => !f.caido || f.reemplazo).length;
 
   return (
-    <section className="guia" data-semanal="lista">
-      <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>
+    <section className="guia" data-semanal="lista" data-modalidad={modalidad}>
+      {conTitulo && <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>}
+      {bloque && <h2 className="guia-titulo" data-semanal="bloque">{bloque}</h2>}
       {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
-      {rentaCorta && <p className="guia-txt" data-semanal="renta-corta"><b>{LINEA_RENTA_CORTA}</b></p>}
-      {saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
+      {corta && <p className="guia-txt" data-semanal="zona">{SEMANAL_STR.zona}</p>}
+      {conTitulo && saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
       <div className="guia-lista">
         {filas.map((f) => (f.caido ? (
           <div key={f.item.avisoId} className="guia-caido-grupo">
@@ -135,8 +173,8 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
           </div>
         ) : tarjeta(f.item)))}
       </div>
-      {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{SEMANAL_PAGINA.vacia}</p>}
-      {!conSaldo && visibles > 0 && (
+      {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{corta ? SEMANAL_STR.sinCorto : SEMANAL_PAGINA.vacia}</p>}
+      {cierre && !conSaldo && visibles > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">
           <EnlaceCarga href={rutaCompra()} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
             {SEMANAL_PAGINA.comprar}
@@ -144,9 +182,10 @@ export function SemanalLista({ token, origenId, combinacion, filas, destacado, s
           <p className="text-[13px] text-[var(--franco-text-secondary)]">{SEMANAL_PAGINA.comprarBajada}</p>
         </div>
       )}
-      <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>
+      {cierre && <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>}
       {confirmar && combinacion && (
         <AvisoAntesDeAnalizar
+          modalidad={modalidad}
           depto={confirmar.it}
           combinacion={combinacion}
           finanzas={{ tasa: finanzas.tasa, uf: finanzas.uf, arriendo: finanzas.arriendos[confirmar.it.avisoId] ?? null }}
