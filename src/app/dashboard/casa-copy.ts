@@ -6,6 +6,7 @@
 // (lo fija el tier CASA). El tier también fija cada frase.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
+import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 
 const SUELTO = fmtCLP(SINGLE_PRICE);
@@ -29,7 +30,7 @@ export const CASA = {
     boton: "Analizar otro depto",
   },
   plan: {
-    titulo: "Tu plan está activo.",
+    titulo: "Tu plan Ilimitado está activo.",
     bajada: "Analizar no descuenta de tu saldo.",
     boton: "Analizar otro depto",
   },
@@ -54,3 +55,9 @@ export const CASA = {
   },
   informes: "Tus informes",
 } as const;
+
+/** El saldo en una línea, para el dashboard vacío (14-oct-2026: el saldo o el plan, visible arriba para cualquier
+ *  cuenta). Sin saldo no hay línea: ahí manda el botón al primer análisis. */
+export function lineaSaldo(e: EstadoSaldo): string | null {
+  return e.tipo === "con" ? CASA.con.titulo(e.n) : e.tipo === "plan" ? CASA.plan.titulo : e.tipo === "regalo" ? CASA.regalo.titulo : null;
+}

@@ -39,7 +39,7 @@ export function textoUso(u: UsoAnalisis): string {
   switch (u.tipo) {
     case "con": return u.n === 1 ? "Usa tu último análisis." : `Usa 1 de tus ${u.n} análisis.`;
     case "regalo": return "Usa el análisis que va por cuenta de Franco.";
-    case "plan": return "Tu plan está activo: no descuenta de tu saldo.";
+    case "plan": return "Tu plan Ilimitado está activo: no descuenta de tu saldo.";
     case "sin": return AVISO_ANALIZAR.sin;
     default: return "Usa 1 de tus análisis.";
   }

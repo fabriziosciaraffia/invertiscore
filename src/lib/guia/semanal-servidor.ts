@@ -675,7 +675,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   if ((tomada?.length ?? 0) !== 1) return "ya";
 
   let saldo = await leerSaldo(admin, fila.user_id);
-  const regaloVence = correspondeRegalo({ registradoAt: new Date(user.created_at), compras: compras ?? 0, regaloOtorgadoAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.plan })
+  const regaloVence = correspondeRegalo({ registradoAt: new Date(user.created_at), compras: compras ?? 0, regaloOtorgadoAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.suscripcion })
     ? await otorgarRegalo(admin, fila.user_id)
     : null;
   const conRegalo = regaloVence != null;
