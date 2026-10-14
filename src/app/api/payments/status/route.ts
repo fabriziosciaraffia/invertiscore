@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAvailableCredits } from "@/lib/credits-grant";
-import { getUserAccessLevel } from "@/lib/access";
 import { firmaPagoValida } from "@/lib/lo-que-sigue/firma-pago";
 import { accesoAlPago } from "@/lib/lo-que-sigue/retorno-pago";
 
@@ -20,8 +19,9 @@ import { accesoAlPago } from "@/lib/lo-que-sigue/retorno-pago";
 const CAMPOS = "id, user_id, commerce_order, product, amount, status, created_at, analysis_id, payment_data";
 
 async function saldoDe(admin: ReturnType<typeof createServiceClient>, userId: string): Promise<{ saldo: number; ilimitado: boolean }> {
-  const nivel = await getUserAccessLevel(userId);
-  if (nivel === "subscriber") return { saldo: 0, ilimitado: true };
+  // Solo el plan Ilimitado es «ilimitado» (14-oct-2026): el plan 10 y el plan 50 tienen saldo, como cualquiera.
+  const { data: uc } = await admin.from("user_credits").select("is_unlimited").eq("user_id", userId).maybeSingle();
+  if (uc?.is_unlimited === true) return { saldo: 0, ilimitado: true };
   return { saldo: await getAvailableCredits(userId, admin), ilimitado: false };
 }
 

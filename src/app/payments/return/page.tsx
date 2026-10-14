@@ -35,6 +35,8 @@ function PaymentReturnContent() {
   const volver = volverSeguro(searchParams.get("volver"));
   // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
   const [saldo, setSaldo] = useState<number | null>(null);
+  // Solo el plan Ilimitado lee «Análisis ilimitados» al activar la suscripción (14-oct-2026).
+  const [ilimitado, setIlimitado] = useState(false);
   const [conSesion, setConSesion] = useState(true);
   // Estado puente: tras detectar paid de un single con análisis, mostramos
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
@@ -103,6 +105,7 @@ function PaymentReturnContent() {
           setProducto(typeof data.payment.product === "string" ? data.payment.product : null);
           setConSesion(!data.sinSesion);
           setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
+          setIlimitado(data.ilimitado === true);
           const estado = estadoDelPago(data.payment.status);
           if (estado === "paid") {
             // `pro_purchased` se retiró (28-sep-2026): el pago se mide desde el servidor con
@@ -259,7 +262,7 @@ function PaymentReturnContent() {
             </h2>
             <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
               {type === "subscription"
-                ? "Tu suscripción Franco está activa. Análisis ilimitados."
+                ? ilimitado ? "Tu suscripción Franco está activa. Análisis ilimitados." : "Tu suscripción Franco está activa."
                 : producto === PRODUCTO_TRES
                 ? TRES_COPY.listo
                 : "Tu análisis está desbloqueado."

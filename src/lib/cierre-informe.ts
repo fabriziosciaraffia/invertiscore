@@ -24,11 +24,12 @@ export interface TextoCierre {
 
 /**
  * `analisis`: los que le quedan (ledger + bienvenida sin usar). Con sesión y en cero, el enlace lleva el
- * precio. Sin sesión, o con suscripción (no paga por análisis), el enlace va solo.
+ * precio. Sin sesión, o con el plan Ilimitado (no paga por análisis), el enlace va solo. Solo el Ilimitado
+ * (14-oct-2026): el plan 10 y el plan 50 descuentan de sus lotes, así que en cero ven el precio como cualquiera.
  */
-export function textoCierre(p: { analisis: number; conSesion: boolean; suscriptor: boolean }): TextoCierre {
+export function textoCierre(p: { analisis: number; conSesion: boolean; ilimitado: boolean }): TextoCierre {
   const n = Math.max(0, Math.floor(p.analisis));
   if (n > 0) return { saldo: n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`, enlace: ENLACE_CIERRE };
-  if (p.conSesion && !p.suscriptor) return { saldo: null, enlace: `${ENLACE_CIERRE} · ${fmtCLP(SINGLE_PRICE)}` };
+  if (p.conSesion && !p.ilimitado) return { saldo: null, enlace: `${ENLACE_CIERRE} · ${fmtCLP(SINGLE_PRICE)}` };
   return { saldo: null, enlace: ENLACE_CIERRE };
 }

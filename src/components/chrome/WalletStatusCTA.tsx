@@ -9,7 +9,9 @@ import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 export interface WalletStatusCTAProps {
   welcomeAvailable: boolean;
   credits: number;
-  isSubscriber: boolean;
+  /** El plan Ilimitado: «Análisis ilimitados». El plan 10 y el plan 50 NO (14-oct-2026): ven sus análisis como
+   *  cualquiera, por `credits`. */
+  ilimitado: boolean;
   isAdmin: boolean;
   isSharedView: boolean;
   source?: "ltr" | "str" | "comparativa";
@@ -41,7 +43,7 @@ interface CTAVariant {
  *
  * Reglas (UX fix CTA welcome consumido):
  *  - isSharedView || isAdmin || welcomeAvailable → null (no renderiza).
- *  - isSubscriber → card sutil "Análisis ilimitados".
+ *  - ilimitado (solo el plan Ilimitado) → card sutil "Análisis ilimitados".
  *  - credits > 0 → card neutral "Tienes N créditos".
  *  - !welcomeAvailable && credits === 0 → card Signal Red "Sin créditos".
  *
@@ -51,7 +53,7 @@ interface CTAVariant {
 export function WalletStatusCTA({
   welcomeAvailable,
   credits,
-  isSubscriber,
+  ilimitado,
   isAdmin,
   isSharedView,
   source = "ltr",
@@ -62,7 +64,7 @@ export function WalletStatusCTA({
   const variantBase = resolveVariant({
     welcomeAvailable,
     credits,
-    isSubscriber,
+    ilimitado,
     isAdmin,
     isSharedView,
   });
@@ -157,7 +159,7 @@ export function WalletStatusCTA({
 function resolveVariant(args: {
   welcomeAvailable: boolean;
   credits: number;
-  isSubscriber: boolean;
+  ilimitado: boolean;
   isAdmin: boolean;
   isSharedView: boolean;
 }): CTAVariant | null {
@@ -166,11 +168,12 @@ function resolveVariant(args: {
   if (args.isSharedView) return null;
   if (args.isAdmin) return null;
 
-  if (args.isSubscriber) {
+  // `state` sigue siendo «subscriber» en el evento de PostHog: es el nombre con que se mide desde antes.
+  if (args.ilimitado) {
     return {
       state: "subscriber",
-      message: "Análisis ilimitados con FrancoMensual.",
-      plan: "FRANCOMENSUAL",
+      message: "Análisis ilimitados con tu plan Ilimitado.",
+      plan: "ILIMITADO",
       ctaLabel: "Crear otro análisis",
       href: "/analisis/nuevo-v4",
       tone: "neutral",

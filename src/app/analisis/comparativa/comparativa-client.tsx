@@ -72,6 +72,8 @@ interface Props {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable: boolean;
+  /** El plan Ilimitado (o admin): solo a él el pie le dice «ilimitados» (14-oct-2026). */
+  ilimitado: boolean;
   // Fase D — resumen (Variante A) de cada hijo para el MODAL. childrenBlocked =
   // true cuando el par es un grupo AMBAS no desbloqueado y el que mira no es
   // subscriber: las mini-cards abren el modal en vez de navegar al hijo.
@@ -232,7 +234,7 @@ export function ComparativaClient(p: Props) {
   const nextCtaProps = {
     isLoggedIn: p.accessLevel !== "guest" && !p.isAnonOwner,
     isAnonOwner: p.isAnonOwner ?? false,
-    isSubscriber: p.accessLevel === "subscriber",
+    ilimitado: p.ilimitado,
     credits: p.userCredits,
     welcomeAvailable: p.welcomeAvailable,
     isSharedView: p.isSharedView,
@@ -410,7 +412,7 @@ export function ComparativaClient(p: Props) {
             <WalletStatusCTA
               welcomeAvailable={p.welcomeAvailable}
               credits={p.userCredits}
-              isSubscriber={p.accessLevel === "subscriber"}
+              ilimitado={p.ilimitado}
               isAdmin={false}
               isSharedView={p.isSharedView}
               source="comparativa"

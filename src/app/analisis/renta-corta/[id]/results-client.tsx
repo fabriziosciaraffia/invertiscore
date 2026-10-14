@@ -84,6 +84,8 @@ interface STRResultsProps {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable?: boolean;
+  /** El plan Ilimitado (o admin): el pie no le pone precio. Plan 10/50, como cualquiera (14-oct-2026). */
+  ilimitado?: boolean;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -128,6 +130,7 @@ export function STRResultsClient({
   isSharedView,
   userCredits,
   welcomeAvailable = true,
+  ilimitado = false,
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -253,8 +256,6 @@ export function STRResultsClient({
     condicion: condicionDeInput(inputData as Record<string, unknown> | null),
   });
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
-
-  const isSubscriber = accessLevel === "subscriber";
 
 
   // «Lo que sigue» (28-sep-2026; reglas del 08-oct-2026, espejo de LTR): LA OFERTA ES DEL INFORME.
@@ -479,7 +480,7 @@ export function STRResultsClient({
         {ticketLqs ? (
           <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId} recienDentro={!!recienDentro} />
         ) : showCtaWelcome ? null : (
-          <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} suscriptor={isSubscriber} />
+          <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} ilimitado={ilimitado} />
         )}
         <RegistroCompletadoSonda activa={!!userId} />
         {/* «Por qué no sale» (12-oct-2026): solo con `?lqs=1`; no se mide. */}

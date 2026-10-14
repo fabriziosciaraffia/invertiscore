@@ -105,15 +105,18 @@ export default async function ComparativaPage({
   // Wallet status (in-line CTA al cierre)
   let userCredits = 0;
   let welcomeAvailable = true;
+  // Solo el Ilimitado (o el admin) es «ilimitados» en el pie (14-oct-2026).
+  let ilimitado = isAdmin;
   if (user) {
     // SALDO real = ledger + legacy vía getAvailableCredits (mismo fix que
     // /analisis/[id], /cuenta, /perfil). welcome sale del contador.
     const { data: creditsRow } = await supabase
       .from("user_credits")
-      .select("welcome_credit_used")
+      .select("welcome_credit_used, is_unlimited")
       .eq("user_id", user.id)
       .single();
     welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    ilimitado = ilimitado || creditsRow?.is_unlimited === true;
     userCredits = await getAvailableCredits(user.id, supabase);
   }
 
@@ -252,6 +255,7 @@ export default async function ComparativaPage({
       isSharedView={isSharedView}
       userCredits={userCredits}
       welcomeAvailable={welcomeAvailable}
+      ilimitado={ilimitado}
       ambasGroupId={ambasGroupId}
       childrenBlocked={childrenBlocked}
       ctaVariant={ctaVariant}

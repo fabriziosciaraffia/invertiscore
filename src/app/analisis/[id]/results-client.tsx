@@ -66,6 +66,7 @@ export function PremiumResults({
   isSharedLink = false,
   userCredits = 0,
   welcomeAvailable = true,
+  ilimitado = false,
   ownerFirstName = "",
   isLoggedIn = false,
   showCtaWelcome = false,
@@ -100,6 +101,8 @@ export function PremiumResults({
   isSharedLink?: boolean;
   userCredits?: number;
   welcomeAvailable?: boolean;
+  /** El plan Ilimitado (o admin): el pie no le pone precio. Plan 10/50, como cualquiera (14-oct-2026). */
+  ilimitado?: boolean;
   ownerFirstName?: string;
   isLoggedIn?: boolean;
   /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
@@ -683,7 +686,7 @@ export function PremiumResults({
             // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe.
             <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn} recienDentro={!!recienDentro} />
           ) : showCtaWelcome ? null : (
-            <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} suscriptor={accessLevel === "subscriber"} />
+            <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} ilimitado={ilimitado} />
           )}
         </div>
         <RegistroCompletadoSonda activa={isLoggedIn} />

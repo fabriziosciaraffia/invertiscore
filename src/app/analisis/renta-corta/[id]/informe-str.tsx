@@ -150,15 +150,18 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
 
   let userCredits = 0;
   let welcomeAvailable = true;
+  // Solo el Ilimitado (o el admin) analiza sin descontar (14-oct-2026): el pie no le pone precio.
+  let ilimitado = isAdmin;
   if (user) {
     // SALDO real = ledger + legacy vía getAvailableCredits (mismo fix que
     // /analisis/[id], /cuenta, /perfil). welcome sale del contador.
     const { data: credits } = await supabase
       .from("user_credits")
-      .select("welcome_credit_used")
+      .select("welcome_credit_used, is_unlimited")
       .eq("user_id", user.id)
       .single();
     welcomeAvailable = !(credits?.welcome_credit_used ?? false);
+    ilimitado = ilimitado || credits?.is_unlimited === true;
     userCredits = await getAvailableCredits(user.id, supabase);
   }
 
@@ -281,6 +284,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     isSharedView,
     userCredits,
     welcomeAvailable,
+    ilimitado,
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,

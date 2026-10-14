@@ -8,8 +8,8 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { RUTA_WIZARD } from "@/lib/cta-analizar";
 import { ANCHO_COLUMNA_INFORME, textoCierre } from "@/lib/cierre-informe";
 
-export function CierreInforme({ analisis, conSesion, suscriptor }: { analisis: number; conSesion: boolean; suscriptor: boolean }) {
-  const t = textoCierre({ analisis, conSesion, suscriptor });
+export function CierreInforme({ analisis, conSesion, ilimitado }: { analisis: number; conSesion: boolean; ilimitado: boolean }) {
+  const t = textoCierre({ analisis, conSesion, ilimitado });
   return (
     <p className="font-body text-[15px] leading-relaxed text-[var(--franco-text-secondary)] mx-auto my-0 w-full" style={{ maxWidth: ANCHO_COLUMNA_INFORME }} data-cierre-informe>
       {t.saldo && <>{t.saldo} </>}

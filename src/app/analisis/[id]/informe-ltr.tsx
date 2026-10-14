@@ -243,6 +243,8 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // Fetch user credits + welcome flag para "use credit" CTA y WalletStatusCTA.
   let userCredits = 0;
   let welcomeAvailable = true;
+  // Solo el Ilimitado (o el admin) analiza sin descontar (14-oct-2026): el pie no le pone precio.
+  let ilimitado = isAdmin;
   if (user) {
     // welcome_credit_used sale del contador; el SALDO real sale del ledger
     // (credit_grants + legacy) vía getAvailableCredits. Leer user_credits.credits
@@ -251,10 +253,11 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     // con el server client. Mismo fix que /cuenta y /perfil.
     const { data: creditsRow } = await supabase
       .from("user_credits")
-      .select("welcome_credit_used")
+      .select("welcome_credit_used, is_unlimited")
       .eq("user_id", user.id)
       .single();
     welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    ilimitado = ilimitado || creditsRow?.is_unlimited === true;
     userCredits = await getAvailableCredits(user.id, supabase);
   }
 
@@ -405,6 +408,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           isSharedLink={isSharedLink}
           userCredits={userCredits}
           welcomeAvailable={welcomeAvailable}
+          ilimitado={ilimitado}
           ownerFirstName={ownerFirstName}
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}

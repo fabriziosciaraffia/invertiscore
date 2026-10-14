@@ -34,7 +34,8 @@ export interface NextAnalysisCTAProps {
   isLoggedIn: boolean;
   /** Anónimo-dueño (cap F2-2): su siguiente paso es guardar ESTE análisis. */
   isAnonOwner?: boolean;
-  isSubscriber: boolean;
+  /** Solo el plan Ilimitado no paga el siguiente; el plan 10 y el plan 50, como cualquiera (14-oct-2026). */
+  ilimitado: boolean;
   credits: number;
   welcomeAvailable: boolean;
   isSharedView: boolean;
@@ -52,7 +53,7 @@ export function nextCtaState(p: NextAnalysisCTAProps): WalletState | null {
   if (p.isAnonOwner) return "anon_owner";
   // Guest no-dueño (link compartido): el botón del header único y ConversionCloser ya cubren.
   if (!p.isLoggedIn) return null;
-  if (p.isSubscriber) return "subscriber";
+  if (p.ilimitado) return "subscriber";
   if (p.credits > 0) return "credits";
   if (p.welcomeAvailable) return "welcome";
   return "no_credits";

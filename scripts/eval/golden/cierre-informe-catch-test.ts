@@ -34,11 +34,11 @@ export function runCierreInformeTier(): { hard: number } {
 
   // ── el texto de la línea ──
   const casos: Array<[Parameters<typeof textoCierre>[0], string | null, string]> = [
-    [{ analisis: 2, conSesion: true, suscriptor: false }, "Te quedan 2 análisis.", "Analizar otro depto"],
-    [{ analisis: 1, conSesion: true, suscriptor: false }, "Te queda 1 análisis.", "Analizar otro depto"],
-    [{ analisis: 0, conSesion: true, suscriptor: false }, null, "Analizar otro depto · $9.990"],
-    [{ analisis: 0, conSesion: true, suscriptor: true }, null, "Analizar otro depto"],
-    [{ analisis: 0, conSesion: false, suscriptor: false }, null, "Analizar otro depto"],
+    [{ analisis: 2, conSesion: true, ilimitado: false }, "Te quedan 2 análisis.", "Analizar otro depto"],
+    [{ analisis: 1, conSesion: true, ilimitado: false }, "Te queda 1 análisis.", "Analizar otro depto"],
+    [{ analisis: 0, conSesion: true, ilimitado: false }, null, "Analizar otro depto · $9.990"],
+    [{ analisis: 0, conSesion: true, ilimitado: true }, null, "Analizar otro depto"],
+    [{ analisis: 0, conSesion: false, ilimitado: false }, null, "Analizar otro depto"],
   ];
   for (const [p, saldo, enlace] of casos) {
     const t = textoCierre(p);
@@ -70,7 +70,7 @@ export function runCierreInformeTier(): { hard: number } {
     // y no de «loQueSigue»; sin la primera línea vieja, ya no lleva el precio que cierra.
     // ⚠ ACTA (12-oct-2026, el que vuelve) · el ticket recibe además si entra con sesión y si es la visita en que
     // se registró (TICKET-REGRESO §2).
-    const tern = new RegExp(String.raw`\{ticketLqs \? \(\s*(?:\s*)?<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} suscriptor=\{`);
+    const tern = new RegExp(String.raw`\{ticketLqs \? \(\s*(?:\s*)?<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} ilimitado=\{`);
     if (!tern.test(fin)) F(`${tipo} · el final no elige UNA acción (ticket · bienvenida · línea)`);
     if ((fin.match(/<CierreInforme\b/g) ?? []).length !== 1 || (fin.match(/<TicketPack\b/g) ?? []).length !== 1 || (fin.match(/<CtaWelcome\b/g) ?? []).length !== 1) F(`${tipo} · el final monta dos veces una acción`);
     const acciones = (fin.match(/<(CierreInforme|TicketPack|CtaWelcome|EnlaceCarga|button|a)\b/g) ?? []).length;
