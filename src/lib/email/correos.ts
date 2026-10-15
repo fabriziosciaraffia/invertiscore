@@ -192,6 +192,22 @@ export function correoAlertaCron(p: { cron: string; problema: string; detalle: s
   };
 }
 
+/** El resumen del día de los crons de varias corridas (15-oct-2026, cron-alertas.ts › regla 4): lo que quedó sin
+ *  resolver al cierre, un correo por día, en la primera vigilancia del día siguiente. */
+export function correoResumenCrons(p: { fecha: string; items: Array<{ cron: string; texto: string }> }): Correo {
+  return {
+    subject: `🚨 Crons sin resolver al cierre del ${p.fecha}`,
+    html: plantillaClara({
+      titulo: "Crons sin resolver",
+      preencabezado: `${p.items.length} sin resolver al cierre del ${p.fecha}`,
+      titular: "Lo que quedó sin resolver al cierre del día",
+      parrafos: [],
+      detalle: { filas: p.items.map((i) => ({ etiqueta: escaparHtml(i.cron), valor: escaparHtml(i.texto) })) },
+      legal: "Aviso interno de Franco.",
+    }),
+  };
+}
+
 // ── «Quiero verlo» · el aviso a la persona (01-oct-2026) ──────────────────────
 // Copy fijado por Fabrizio. Sale al tocar «Quiero verlo», después de chequear que el aviso siga
 // publicado (src/lib/guia/quiero-verlo.ts). Sin titular: el saludo abre. Sin ofrecer ayuda con la

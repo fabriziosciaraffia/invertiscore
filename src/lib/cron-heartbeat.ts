@@ -23,6 +23,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { guardarMetrica } from "@/lib/metrics-daily";
 import { CLAVE_PAUSA, FUENTE_RESULTADO, type ResultadoCron } from "@/lib/cron-resultado";
+import { alLatir } from "@/lib/cron-alertas";
+import { guardarEstadoCron, leerEstadoCron } from "@/lib/cron-estado";
 
 export const FUENTE_CRON = "cron";
 
@@ -212,12 +214,20 @@ export async function latirCron(sb: SupabaseClient, nombre: string): Promise<boo
       .eq("metrica", nombre)
       .maybeSingle();
 
-    return await guardarMetrica(sb, {
+    const ok = await guardarMetrica(sb, {
       fecha: hoy,
       fuente: FUENTE_CRON,
       metrica: nombre,
       valor: Number(previo?.valor ?? 0) + 1,
     });
+    // La corrida queda abierta hasta que cierre (15-oct-2026, cron-alertas.ts): si la anterior seguía abierta pasado el
+    // margen, se colgó y cuenta como corrida fallida.
+    try {
+      await guardarEstadoCron(sb, nombre, alLatir(await leerEstadoCron(sb, nombre), new Date()));
+    } catch (e) {
+      console.error("[cron-heartbeat] no se pudo abrir la corrida de", nombre, e);
+    }
+    return ok;
   } catch (e) {
     console.error("[cron-heartbeat] latido falló para", nombre, e);
     return false;

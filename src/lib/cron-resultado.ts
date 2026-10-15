@@ -22,6 +22,8 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { guardarMetrica } from "@/lib/metrics-daily";
+import { alCerrar, esperaResumen, type Accion, type Aviso } from "@/lib/cron-alertas";
+import { guardarEstadoCron, leerEstadoCron } from "@/lib/cron-estado";
 
 export interface ConteoCron {
   /** Filas (o unidades de trabajo) que el cron tomó para procesar. */
@@ -80,8 +82,9 @@ export function respuestaCron(conteo: ConteoCron, extra: Record<string, unknown>
 }
 
 /**
- * Cierra la corrida: deja el resultado para el panel (verde/rojo), manda la
- * alerta a hola@ si algo falló (una por cron por día) y devuelve la respuesta.
+ * Cierra la corrida: deja el resultado para el panel (verde/rojo) y el estado del cron, avisa a hola@ SOLO si hace
+ * falta una persona (cron-alertas.ts: una acción declarada en `extra.accion`, o la segunda falla seguida de un cron de
+ * una corrida al día; los de varias esperan el resumen del día) y devuelve la respuesta.
  * TODO cron termina por acá, también cuando revienta antes de contar (pasale
  * `{ procesados: 1, exitosos: 0, fallidos: 1 }` y el error en `extra.error`).
  *
@@ -107,35 +110,45 @@ export async function cerrarCron(
       valor: VALOR_RESULTADO[resultado],
       meta: { ...conteo, ...resumenError(extra) },
     });
-    if (resultado !== "ok") {
-      await alertarUnaVezAlDia(sb, nombre, hoy, `La corrida terminó con ${resultado === "fallo" ? "falla total" : "falla parcial"}: ${motivoDeFalla(conteo, extra)}.`, extra);
-    }
+    // Las reglas de las alertas (15-oct-2026): una falla sola queda en el registro y el panel.
+    const { estado, avisos } = alCerrar(
+      await leerEstadoCron(sb, nombre),
+      { ok: resultado === "ok", causa: resultado === "ok" ? null : `${resultado === "fallo" ? "falla total" : "falla parcial"}: ${motivoDeFalla(conteo, extra)}`, accion: accionDe(extra) },
+      new Date(),
+      esperaResumen(nombre),
+    );
+    await guardarEstadoCron(sb, nombre, estado);
+    for (const a of avisos) await avisar(sb, nombre, a, extra);
   } catch (e) {
     console.error("[cron-resultado] no se pudo cerrar", nombre, e);
   }
   return respuestaCron(conteo, extra);
 }
 
-/**
- * La alerta a hola@, a lo más una por cron y por motivo al día (la anota en
- * metrics_daily antes de mandarla). La usan cerrarCron y vigilar-crons.
- */
-export async function alertarUnaVezAlDia(
-  sb: SupabaseClient,
-  nombre: string,
-  hoy: string,
-  problema: string,
-  extra: Record<string, unknown> = {},
-  motivo = "falla",
-): Promise<boolean> {
-  const metrica = `${nombre}:${motivo}`;
-  const { data } = await sb.from("metrics_daily").select("valor").eq("fecha", hoy).eq("fuente", FUENTE_ALERTA).eq("metrica", metrica).maybeSingle();
-  if (data) return false;
-  await guardarMetrica(sb, { fecha: hoy, fuente: FUENTE_ALERTA, metrica, valor: 1 });
-  const { sendAlertaCronInterna } = await import("@/lib/email");
-  await sendAlertaCronInterna({ cron: nombre, problema, detalle: detalleDe(extra) });
-  return true;
+/** Lo que necesita a una persona, declarado por el cron al cerrar (`extra.accion`: { codigo, texto }). */
+export function accionDe(extra: Record<string, unknown>): Accion | null {
+  const a = extra.accion as Partial<Accion> | undefined;
+  return a && typeof a.codigo === "string" && a.codigo && typeof a.texto === "string" ? { codigo: a.codigo, texto: a.texto } : null;
 }
+
+/**
+ * Un aviso a hola@ (15-oct-2026: solo cuando las reglas de cron-alertas.ts lo piden; ya no uno por día). Queda anotado
+ * en metrics_daily (`cron-alerta`, «cron:condición» del día) antes de mandarlo: así se cuentan los correos.
+ */
+export async function avisar(sb: SupabaseClient, nombre: string, a: Aviso, extra: Record<string, unknown> = {}): Promise<void> {
+  const hoy = new Date().toISOString().slice(0, 10);
+  await guardarMetrica(sb, { fecha: hoy, fuente: FUENTE_ALERTA, metrica: `${nombre}:${a.clave}`, valor: 1 });
+  await correoDeAlertas.enviar({ cron: nombre, problema: a.texto, detalle: detalleDe(extra) });
+}
+
+/** Quién manda el correo de una alerta. Un objeto y no una función suelta: los tiers lo reemplazan por un contador
+ *  (asignarle a un export no hace nada en este repo) y así ninguna prueba le escribe a hola@. */
+export const correoDeAlertas = {
+  async enviar(p: { cron: string; problema: string; detalle: string[] }): Promise<void> {
+    const { sendAlertaCronInterna } = await import("@/lib/email");
+    await sendAlertaCronInterna(p);
+  },
+};
 
 /**
  * El motivo concreto de una falla, para el correo (02-oct-2026): cuántos de cuántos y con qué error, por

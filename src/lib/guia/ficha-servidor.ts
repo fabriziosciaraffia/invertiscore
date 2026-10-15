@@ -4,7 +4,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { proxyDispatcher } from "@/lib/services/scraper/toctoc";
 import { reportarFalloQuery } from "@/lib/observabilidad";
-import { alertarUnaVezAlDia } from "@/lib/cron-resultado";
 import { TIMEOUT_FICHA_MS, type AlmacenPublicacion, type RespuestaFicha } from "./publicacion";
 
 const RUTA = "lib/guia/ficha";
@@ -52,16 +51,9 @@ export function almacenPublicacion(admin: SupabaseClient): AlmacenPublicacion {
       reportarFalloQuery(error, { ruta: RUTA, operacion: "despublicar" });
     },
     async alertarBloqueo(l) {
-      try {
-        await alertarUnaVezAlDia(
-          admin, "ficha", new Date().toISOString().slice(0, 10),
-          `La fuente respondió ${l.codigo ?? "un desafío"} al leer una ficha: está bloqueando las lecturas. La guía muestra solo lo ya chequeado hasta que se libere.`,
-          { error: [`${l.tipo} · aviso ${l.avisoId} · ${l.codigo ?? "-"} ${l.destino ?? ""}`.trim()] },
-          "bloqueo",
-        );
-      } catch (e) {
-        console.error("[ficha] no se pudo alertar el bloqueo:", e);
-      }
+      // Un bloqueo ya no manda correo en el acto (15-oct-2026, cron-alertas.ts): queda en `lecturas_ficha` y en el panel, y
+      // la vigilancia avisa solo si pasa un día sin una lectura buena mientras hay bloqueos.
+      console.warn(`[ficha] la fuente bloquea: ${l.tipo} · aviso ${l.avisoId} · ${l.codigo ?? "-"} ${l.destino ?? ""}`.trim());
     },
   };
 }

@@ -3,7 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -469,6 +469,13 @@ export async function sendPreguntaYaEmail(to: string, correo: { subject: string;
     console.error("[pregunta_horizonte] no salió:", error);
     return false;
   }
+}
+
+/** El resumen del día de los crons de varias corridas (15-oct-2026), a hola@. */
+export async function sendResumenCronsInterno(p: Parameters<typeof correoResumenCrons>[0]): Promise<void> {
+  const { subject, html } = correoResumenCrons(p);
+  const res = await enviarCorreo("alerta_cron", null, { from: FROM_EMAIL, to: "hola@refranco.ai", subject, html });
+  if (res.error) console.error("[alerta_cron] el resumen no salió:", res.error.message);
 }
 
 export async function sendAlertaCronInterna(p: Parameters<typeof correoAlertaCron>[0]): Promise<void> {

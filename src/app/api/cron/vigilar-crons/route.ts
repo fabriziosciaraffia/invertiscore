@@ -1,30 +1,40 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { latirCron, leerLatidos } from "@/lib/cron-heartbeat";
-import { alertarUnaVezAlDia, cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
+import { avisar, cerrarCron, CORRIDA_FALLIDA, FUENTE_ALERTA } from "@/lib/cron-resultado";
+import { alVigilar, condicionBloqueo, condicionesDelCron, esperaResumen, ESTADO_INICIAL, METRICA_RESUMEN, VIGILANTE } from "@/lib/cron-alertas";
+import { guardarEstadoCron, leerEstadosCron } from "@/lib/cron-estado";
+import { guardarMetrica } from "@/lib/metrics-daily";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// La vigilancia de los crons (29-sep-2026). Cada 6 horas lee el estado de todos los crons vigilados
-// (cron-heartbeat.ts, leerLatidos) y manda a hola@ un correo por cada uno en rojo, a lo más uno por
-// cron y motivo al día. Cubre lo que el cierre de cada corrida no puede ver desde adentro:
-//   · el cron que NO corrió (un deploy dentro de su ventana, el 10-ago-2026);
-//   · el que latió y reventó antes de cerrar (no llegó a cerrarCron);
-//   · el que corre, cierra verde y dejó de escribir lo que escribía (scrape-unidades-nuevas, del 03-ago
-//     al 29-sep: 57 días sin una unidad con el latido en verde).
-// Las fallas que el propio cron detecta ya avisan solas desde cerrarCron; acá se repiten solo si la
-// alerta del día no salió (misma anotación en metrics_daily).
+// La vigilancia de los crons (29-sep-2026; reglas de las alertas desde el 15-oct-2026, cron-alertas.ts). Cada 6 horas
+// lee el estado de todos los crons vigilados (cron-heartbeat.ts › leerLatidos, y su estado entre corridas en
+// `cron_estado`) y avisa a hola@ SOLO cuando hace falta una persona:
+//   · un cron de UNA corrida al día, en el acto: dos corridas seguidas fallidas (una que latió y no cerró cuenta),
+//     dos saltadas (atrasado), un día sin una buena, o que dejó de escribir su dato;
+//   · los crons de VARIAS corridas al día, en UN correo por día —el resumen de lo que quedó sin resolver al cierre—,
+//     armado por la primera vigilancia del día siguiente;
+//   · la lectura de fichas, si pasa un día sin una lectura buena mientras hay bloqueos.
+// Sus propias fallas no esperan el resumen que arma ella: dos seguidas avisan al cerrar (cron-alertas.ts › esperaResumen).
+// Cada episodio avisa una vez: lo ya avisado queda en el estado del cron hasta que se resuelve. Lo resuelto solo queda
+// en el registro y en el panel.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
+const NOMBRE = VIGILANTE;
+/** La lectura de fichas como si fuera un cron: su estado y sus avisos viven con los demás. */
+const FICHA = "ficha";
 
-/** Qué motivo avisa la vigilancia; null = lo avisa otro (la falla de la corrida, desde cerrarCron). */
-function motivoDeAlerta(c: { atrasado: boolean; sinCierre: boolean; sinEscribir: boolean }): string | null {
-  if (c.atrasado) return "atrasado";
-  if (c.sinCierre) return "sin-cierre";
-  if (c.sinEscribir) return "sin-escribir";
-  return null;
+/** Lo que dicen las lecturas de ficha de las últimas 24 horas: los bloqueos y la última lectura buena. */
+async function estadoFicha(sb: SupabaseClient): Promise<{ bloqueos24h: number; ultimaBuena: string | null }> {
+  const desde = new Date(Date.now() - 24 * 3600e3).toISOString();
+  const [{ count, error: e1 }, { data, error: e2 }] = await Promise.all([
+    sb.from("lecturas_ficha").select("id", { count: "exact", head: true }).eq("motivo", "bloqueo").gte("leido_at", desde),
+    sb.from("lecturas_ficha").select("leido_at").in("motivo", ["publicado", "despublicado"]).order("leido_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (e1 || e2) throw new Error(`lecturas_ficha: ${(e1 ?? e2)!.message}`);
+  return { bloqueos24h: count ?? 0, ultimaBuena: (data?.leido_at as string | undefined) ?? null };
 }
-const NOMBRE = "vigilar-crons";
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -33,27 +43,50 @@ export async function GET(request: Request) {
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   await latirCron(sb, NOMBRE);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const ahora = new Date();
+  const ayer = new Date(ahora.getTime() - 864e5).toISOString().slice(0, 10);
 
   try {
-    const estado = (await leerLatidos(sb)).filter((c) => c.nombre !== NOMBRE);
-    const enRojo = estado.filter((c) => c.enRojo);
+    const [latidos, estados, { data: hecho }] = await Promise.all([
+      leerLatidos(sb),
+      leerEstadosCron(sb),
+      sb.from("metrics_daily").select("valor").eq("fecha", ayer).eq("fuente", FUENTE_ALERTA).eq("metrica", METRICA_RESUMEN).maybeSingle(),
+    ]);
+    // El resumen de ayer lo arma la primera vigilancia de hoy (y solo esa).
+    const esResumen = !hecho;
+    const estado = latidos.filter((c) => c.nombre !== NOMBRE);
+    const resumen: Array<{ cron: string; texto: string }> = [];
     let alertas = 0;
-    for (const c of enRojo) {
-      const motivo = motivoDeAlerta(c);
-      // La falla de una corrida ya avisó sola desde cerrarCron, el día que pasó. Repetirla acá al cambiar
-      // el día UTC mandaba el mismo aviso de ayer como si fuera nuevo (30-sep-2026, 00:45: la corrida
-      // parcial de unidades del 29 a las 22:40). El panel la sigue mostrando en rojo hasta la próxima corrida.
-      if (motivo === null) continue;
-      // El correo dice el motivo que DISPARÓ la alerta, no el de mayor prioridad del panel (02-oct-2026: una
-      // alerta por frescura salió diciendo «la última corrida falló entera», la falla ya avisada a las 14:00).
-      const texto = c.motivos[motivo as keyof typeof c.motivos] ?? c.motivo ?? "en rojo";
-      if (await alertarUnaVezAlDia(sb, c.nombre, hoy, texto, {}, motivo)) alertas++;
+    for (const c of estado) {
+      const e = estados.get(c.nombre) ?? { ...ESTADO_INICIAL };
+      const condiciones = condicionesDelCron(c.intervaloHoras, e, {
+        atrasado: c.atrasado, textoAtrasado: c.motivos.atrasado, sinEscribir: c.sinEscribir, textoSinEscribir: c.motivos["sin-escribir"],
+      }, ahora);
+      const r = alVigilar(e, condiciones, esperaResumen(c.nombre), esResumen);
+      if (r.estado.alertas.join("|") !== e.alertas.join("|")) await guardarEstadoCron(sb, c.nombre, r.estado);
+      for (const a of r.inmediatos) { await avisar(sb, c.nombre, a); alertas++; }
+      for (const a of r.resumen) resumen.push({ cron: c.nombre, texto: a.texto });
+    }
+    // La lectura de fichas: un bloqueo avisa solo si pasa un día sin una lectura buena.
+    const eFicha = estados.get(FICHA) ?? { ...ESTADO_INICIAL };
+    const bloqueo = condicionBloqueo(await estadoFicha(sb), ahora);
+    const rFicha = alVigilar(eFicha, bloqueo ? [bloqueo] : [], false, false);
+    if (rFicha.estado.alertas.join("|") !== eFicha.alertas.join("|")) await guardarEstadoCron(sb, FICHA, rFicha.estado);
+    for (const a of rFicha.inmediatos) { await avisar(sb, FICHA, a); alertas++; }
+    // El resumen del día (a lo más uno): la marca va siempre, para que la vigilancia siguiente no lo repita.
+    if (esResumen) {
+      await guardarMetrica(sb, { fecha: ayer, fuente: FUENTE_ALERTA, metrica: METRICA_RESUMEN, valor: resumen.length });
+      if (resumen.length) {
+        const { sendResumenCronsInterno } = await import("@/lib/email");
+        await sendResumenCronsInterno({ fecha: ayer, items: resumen });
+        alertas++;
+      }
     }
     // La vigilancia misma sale bien aunque haya crons en rojo: su trabajo es verlos y avisar.
     return cerrarCron(sb, NOMBRE, { procesados: estado.length, exitosos: estado.length, fallidos: 0 }, {
-      enRojo: enRojo.map((c) => ({ cron: c.nombre, motivo: c.motivo })),
+      enRojo: estado.filter((c) => c.enRojo).map((c) => ({ cron: c.nombre, motivo: c.motivo })),
       alertasEnviadas: alertas,
+      resumen: esResumen ? resumen.length : null,
     });
   } catch (e) {
     return cerrarCron(sb, NOMBRE, CORRIDA_FALLIDA, { error: `leer el estado: ${String(e).slice(0, 200)}` });
