@@ -7,6 +7,10 @@ import { puedeEntrarPorCorreo, rutaSueltoSemanal } from "@/lib/guia/semanal";
 import { entrarConCorreo } from "@/lib/guia/entrada-correo";
 import { rutaTres } from "@/lib/tres-analisis";
 import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
+import { waitUntil } from "@vercel/functions";
+import { EVENTOS_META, idSemanalClic } from "@/lib/meta/ids";
+import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/semanal/clic (02-oct-2026): todo enlace del correo semanal pasa por acá. Mide el clic
@@ -16,6 +20,8 @@ import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
 // y su compra va marcada como venida del aviso.
 // Desde el 13-oct-2026 el enlace ENTRA SOLO: sin sesión en ese aparato y dentro de los 7 días desde que salió el
 // correo, deja adentro al dueño de la selección (entrada-correo.ts); con otra sesión abierta no toca nada.
+// «SemanalClic» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por selección y
+// destino, desde el servidor (con el navegador de quien hizo clic) y con el espejo para el pixel en la redirección.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,7 +32,8 @@ export async function GET(request: Request) {
   const t = url.searchParams.get("t") ?? "";
   const a = url.searchParams.get("a");
   const ir = url.searchParams.get("ir");
-  const volver = (ruta: string) => NextResponse.redirect(new URL(ruta, url.origin), 302);
+  let espejoSC: EventoEspejo | null = null;
+  const volver = (ruta: string) => conEspejo(NextResponse.redirect(new URL(ruta, url.origin), 302), [espejoSC], request);
   if (!TOKEN.test(t)) return volver("/dashboard");
 
   const admin = createServiceClient();
@@ -45,6 +52,17 @@ export async function GET(request: Request) {
       properties: { semana: sel.semana, variante: sel.variante, aviso_id: avisoId, destino },
     }).catch(() => {});
   }
+
+  const sc = await emitirEventoMeta(admin, {
+    evento: EVENTOS_META.semanalClic,
+    eventId: idSemanalClic(t, avisoId ?? destino),
+    userId: sel.user_id as string,
+    datos: { destino, fuente: sel.fuente === "inmediato" ? "inmediato" : "semanal", ...(avisoId ? { aviso_id: avisoId } : {}) },
+    contexto: contextoDeRequest(request),
+    origen: "semanal-clic",
+  });
+  espejoSC = sc.espejo;
+  waitUntil(sc.envio);
 
   // El enlace entra solo (13-oct-2026): antes de cualquier destino, que todos piden sesión.
   const sesion = createClient();

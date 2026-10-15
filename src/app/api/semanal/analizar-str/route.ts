@@ -22,6 +22,10 @@ import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
 import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
 import { analizarStrDeSemanal, parecidosQueSobreviven, type ComparacionStr } from "@/lib/guia/semanal-str";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
+import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
+import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
+import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» en un depto de la selección de RENTA CORTA (14-oct-2026, decisión de Fabrizio). El bloque de renta
@@ -33,6 +37,8 @@ import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 // medidas, sin volver a consultar— (semanal-str.ts › parecidosQueSobreviven). Si da Comprar, un crédito, una vez por
 // persona y aviso (`semanal_str_analisis`), y el informe de renta corta. Cada comparación queda en
 // `comparaciones_zona_str`. Solo con sesión y solo sobre la selección de esa persona.
+// «AnalizarEste» (15-oct-2026): el evento propio de Meta sale apenas el pedido es válido, con el espejo para el pixel;
+// `analisis_creado` en PostHog cuando el informe se crea.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -52,6 +58,8 @@ export async function POST(request: Request) {
   const avisoId = b.avisoId;
 
   const admin = createAnonPipelineClient();
+  let espejoAE: EventoEspejo | null = null;
+  const salir = (res: Response) => conEspejo(res, [espejoAE], request);
   try {
     // La selección tiene que ser de esta persona y el depto, de su bloque de renta corta.
     const sel = await seleccionPorToken(admin, b.token);
@@ -62,6 +70,17 @@ export async function POST(request: Request) {
     if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
     const combo = sel.corto.combinacion;
     const clave = { user_id: user.id, aviso_id: avisoId };
+    const ae = await emitirEventoMeta(admin, {
+      evento: EVENTOS_META.analizarEste,
+      eventId: idAnalizarEste(avisoId, b.token),
+      userId: user.id,
+      email: user.email ?? null,
+      datos: { aviso_id: avisoId, desde: "semanal", modalidad: "str" },
+      contexto: contextoDeRequest(request),
+      origen: "analizar-este",
+    });
+    espejoAE = ae.espejo;
+    waitUntil(ae.envio);
 
     let anioLeido: number | null = null;
     // La medición fina y la config con que se hizo: con ellas se reevalúan los parecidos si no da.
@@ -163,6 +182,7 @@ export async function POST(request: Request) {
                 }).select("id, nombre, score, results, resumen").single();
                 if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
                 const id = data.id as string;
+                waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "str", via: "semanal" }));
                 await markPremiumAndClaimPrepaid({ dbClient: admin, analysisId: id, prepaidNeedClaim: false });
                 try {
                   await guardarPerfil(admin, perfilDesdeStr(body, (fila as { resumen?: string | null }).resumen ?? null, { analysisId: id, userId: user.id, anonClaimTokenHash: null }));
@@ -213,14 +233,14 @@ export async function POST(request: Request) {
       },
     });
 
-    if (r.estado === "despublicado") return NextResponse.json({ error: "despublicado" }, { status: 410 });
-    if (r.estado === "sin-preparar") return plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status });
-    if (r.estado === "sin-cobro") return NextResponse.json({ error: r.error }, { status: r.status });
-    if (r.estado === "en-curso") return NextResponse.json({ error: "en-curso" }, { status: 409 });
-    if (r.estado === "no-da") return NextResponse.json({ estado: "no-da", alternativas: r.alternativas });
-    return NextResponse.json({ id: r.id, estado: r.estado });
+    if (r.estado === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
+    if (r.estado === "sin-preparar") return salir(plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
+    if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
+    if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
+    if (r.estado === "no-da") return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas }));
+    return salir(NextResponse.json({ id: r.id, estado: r.estado }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso-str", userId: user.id, extra: { avisoId } });
-    return NextResponse.json({ error: "interno" }, { status: 500 });
+    return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
   }
 }

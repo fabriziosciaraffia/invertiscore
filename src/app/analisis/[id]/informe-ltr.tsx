@@ -24,6 +24,7 @@ import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
 import { readVeredicto } from "@/lib/results-helpers";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -224,6 +225,11 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // veredicto que lee el cliente (`resolvedVeredicto`): un solo resultado, que baja por props.
   const scoreInforme = results?.score ?? analisis.score;
   const veredictoInforme = readVeredicto(results) || (scoreInforme >= 70 ? "COMPRAR" : scoreInforme >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+  // ViewContent (15-oct-2026, medición para la campaña): el dueño ve su informe —una vez por informe, desde el
+  // servidor; el espejo baja al cliente y el pixel lo repite con el mismo id (src/lib/meta/vista-informe.ts).
+  const metaVista = quienMira
+    ? await emitirVistaInforme({ analysisId: analisis.id, userId: analisis.user_id ?? null, email: isOwner ? user?.email ?? null : null, veredicto: veredictoInforme, comuna: analisis.comuna ?? null, modalidad: "ltr", ruta: `/analisis/${analisis.id}` })
+    : null;
   const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
     ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
     : null;
@@ -413,6 +419,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}
           quienMiraLqs={quienMira}
+          metaVista={metaVista}
           ofertaPack={ofertaLqs.oferta}
           correoOferta={ofertaLqs.correo}
           motivoOferta={ofertaLqs.motivo}

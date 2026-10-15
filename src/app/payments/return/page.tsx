@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { metaTrack } from "@/lib/meta/pixel";
+import { espejarMeta, type EventoEspejo } from "@/lib/meta/espejo";
+import { EVENTOS_META, idCompraPlan } from "@/lib/meta/ids";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
@@ -70,11 +72,12 @@ function PaymentReturnContent() {
         const val = searchParams.get("val");
         if (sub) {
           const value = val ? Number(val) : undefined;
-          metaTrack(
-            "Subscribe",
-            Number.isFinite(value) ? { value, currency: "CLP" } : undefined,
-            `sub-${sub}`
-          );
+          // Desde el 15-oct-2026 también Purchase (la campaña se optimiza hacia compra), los dos con el id del
+          // servidor (`idCompraPlan`). La cola del pixel los guarda hasta que cargue: antes, este Subscribe se perdía
+          // siempre (el pixel carga con la página quieta y esto corre al montar).
+          for (const evento of [EVENTOS_META.compra, EVENTOS_META.suscripcion]) {
+            metaTrack(evento, Number.isFinite(value) ? { value, currency: "CLP" } : undefined, idCompraPlan(sub));
+          }
         }
       }
       return;
@@ -110,16 +113,9 @@ function PaymentReturnContent() {
           if (estado === "paid") {
             // `pro_purchased` se retiró (28-sep-2026): el pago se mide desde el servidor con
             // `pago_confirmado` (medicion-pago.ts), que no depende de que esta página lo vea.
-            // Meta Pixel: Purchase browser-side. event_id = commerce_order → dedup
-            // con el Purchase server-side (payments/confirm). El pago está
-            // confirmado en ambos lados (status paid), así que ambos llevan value.
-            if (data.payment.commerce_order) {
-              metaTrack(
-                'Purchase',
-                { value: data.payment.amount, currency: 'CLP' },
-                data.payment.commerce_order
-              );
-            }
+            // Meta Pixel: Purchase browser-side, el ESPEJO del servidor (15-oct-2026): mismo evento y mismo id
+            // (commerce_order) que manda payments/confirm; sin espejo si la cuenta es de prueba o no cobró.
+            espejarMeta(data.metaCompra ? [data.metaCompra as EventoEspejo] : []);
             setPaymentStatus("paid");
             // Single con análisis atado → llevar directo a la vista del análisis
             // comprado (la ruta auto-redirige a renta-corta si es STR). El push

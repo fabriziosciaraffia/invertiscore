@@ -8,12 +8,18 @@ import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { claveEdificio } from "@/lib/guia/ficha-anio";
 import { datosDeInformeDeAviso, mandarAvisoUnaVez } from "@/lib/guia/quiero-verlo";
 import { nombreReal } from "@/lib/welcome";
+import { waitUntil } from "@vercel/functions";
+import { EVENTOS_META, idQuieroVerlo } from "@/lib/meta/ids";
+import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Quiero verlo» (30-sep-2026; automático desde el 01-oct-2026): en un informe que salió de un aviso
 // de la guía, registra el interés —persona, perfil, aviso, veredicto— (tabla `interes_avisos`, uno
 // por informe) y le manda a la persona el aviso a su correo, después de chequear que siga publicado
 // (quiero-verlo.ts). Un aviso despublicado responde 410 y no manda nada. Nada sale a hola@.
+// «QuieroVerlo» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por informe, desde
+// el servidor y con el espejo para el pixel en la cookie de la respuesta.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -27,12 +33,25 @@ export async function POST(request: Request) {
   if (!analysisId || !UUID.test(analysisId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
+  let espejoQV: EventoEspejo | null = null;
+  const salir = (res: Response) => conEspejo(res, [espejoQV], request);
   try {
     const { data: an } = await admin.from("analisis").select("id, user_id, score, results, input_data").eq("id", analysisId).maybeSingle();
     // Renta larga y, desde el 15-oct-2026, renta corta («Analizar este» del semanal): quiero-verlo.ts › datosDeInformeDeAviso.
     const d = an ? datosDeInformeDeAviso(an) : null;
     if (!an || an.user_id !== user.id || !d) return NextResponse.json({ error: "informe" }, { status: 403 });
     const { avisoId, veredicto, score, flujo, perfil } = d;
+    const qv = await emitirEventoMeta(admin, {
+      evento: EVENTOS_META.quieroVerlo,
+      eventId: idQuieroVerlo(analysisId),
+      userId: user.id,
+      email: user.email ?? null,
+      datos: { aviso_id: avisoId, veredicto },
+      contexto: contextoDeRequest(request),
+      origen: "quiero-verlo",
+    });
+    espejoQV = qv.espejo;
+    waitUntil(qv.envio);
     const input = (an.input_data ?? {}) as Record<string, unknown>;
 
     // El interés se guarda siempre (uno por informe), salga o no el correo.
@@ -80,12 +99,12 @@ export async function POST(request: Request) {
       },
     });
 
-    if (r === "despublicado") return NextResponse.json({ error: "despublicado" }, { status: 410 });
-    if (r === "sin-chequeo") return NextResponse.json({ error: "sin-chequeo" }, { status: 503 });
-    if (r === "fallo-envio") return NextResponse.json({ error: "correo" }, { status: 502 });
-    return NextResponse.json({ ok: true, ya: r === "ya-enviado" });
+    if (r === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
+    if (r === "sin-chequeo") return salir(NextResponse.json({ error: "sin-chequeo" }, { status: 503 }));
+    if (r === "fallo-envio") return salir(NextResponse.json({ error: "correo" }, { status: 502 }));
+    return salir(NextResponse.json({ ok: true, ya: r === "ya-enviado" }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "interes", userId: user.id, extra: { analysisId } });
-    return NextResponse.json({ error: "interno" }, { status: 500 });
+    return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
   }
 }

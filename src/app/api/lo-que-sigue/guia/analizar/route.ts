@@ -21,12 +21,19 @@ import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { combinacionesGuia } from "@/lib/guia/seleccion";
 import { combinacionSemanal } from "@/lib/guia/semanal-servidor";
+import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
+import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
+import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
 // pack. Solo con sesión y solo sobre la guía del propio informe. El crédito se descuenta UNA vez por
 // persona y aviso (analizar-una-vez.ts). Antes, la ficha se chequea de nuevo con los resguardos de
 // CLAUDE.md (publicacion.ts): si el aviso se despublicó, no se cobra y la guía lo reemplaza (410).
+// «AnalizarEste» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos sale apenas el pedido
+// es válido —la intención, aunque después no se cobre—, desde el servidor y con el espejo para el pixel en la cookie
+// de la respuesta. Y `analisis_creado` en PostHog cuando el informe se crea.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -42,6 +49,8 @@ export async function POST(request: Request) {
   if (!b.origenId || !UUID.test(b.origenId) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
+  let espejoAE: EventoEspejo | null = null;
+  const salir = (res: Response) => conEspejo(res, [espejoAE], request);
   try {
     // Desde el semanal, el origen puede ser un informe de renta corta (13-oct-2026: quien solo analizó renta corta
     // recibe los deptos de renta larga de sus comunas); la selección se valida abajo contra ese origen.
@@ -54,6 +63,18 @@ export async function POST(request: Request) {
       : combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
         .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
     if (!combo) return NextResponse.json({ error: "combinacion" }, { status: 400 });
+    const desdeSemanal = typeof b.semanal === "string";
+    const ae = await emitirEventoMeta(admin, {
+      evento: EVENTOS_META.analizarEste,
+      eventId: idAnalizarEste(b.avisoId, desdeSemanal ? b.semanal! : o.analysisId),
+      userId: user.id,
+      email: user.email ?? null,
+      datos: { aviso_id: b.avisoId, desde: desdeSemanal ? "semanal" : "guia", modalidad: "ltr" },
+      contexto: contextoDeRequest(request),
+      origen: "analizar-este",
+    });
+    espejoAE = ae.espejo;
+    waitUntil(ae.envio);
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
     let anioLeido: number | null = null;
     let plausibleFallo: Response | null = null;
@@ -127,6 +148,7 @@ export async function POST(request: Request) {
             }).select("id").single();
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
+            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desdeSemanal ? "semanal" : "guia" }));
             await markPremiumAndClaimPrepaid({ dbClient: admin, analysisId: id, prepaidNeedClaim: false });
             try {
               await guardarPerfil(admin, perfilDesdeLtr(body, readVeredicto(result) ?? null, { analysisId: id, userId: user.id, anonClaimTokenHash: null }));
@@ -152,13 +174,13 @@ export async function POST(request: Request) {
       },
     });
 
-    if (r.estado === "despublicado") return NextResponse.json({ error: "despublicado" }, { status: 410 });
-    if (r.estado === "sin-preparar") return plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status });
-    if (r.estado === "sin-cobro") return NextResponse.json({ error: r.error }, { status: r.status });
-    if (r.estado === "en-curso") return NextResponse.json({ error: "en-curso" }, { status: 409 });
-    return NextResponse.json({ id: r.id, estado: r.estado });
+    if (r.estado === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
+    if (r.estado === "sin-preparar") return salir(plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
+    if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
+    if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
+    return salir(NextResponse.json({ id: r.id, estado: r.estado }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso", userId: user.id, extra: { avisoId: b.avisoId } });
-    return NextResponse.json({ error: "interno" }, { status: 500 });
+    return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
   }
 }

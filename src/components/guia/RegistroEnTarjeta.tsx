@@ -55,7 +55,8 @@ export function RegistroEnTarjeta({ ctx, next, alEntrar }: { ctx: ContextoLqs; n
     setOcupado(true);
     const { error: err } = await createClient().auth.verifyOtp({ email: enviado, token: t, type: "email" });
     if (err) { setOcupado(false); setError(REGISTRO_UN_PASO.errorCodigoMal); return; }
-    await reclamarAnalisisAnonimos(posthog, "register", { porCodigo: true });
+    // La puerta A (15-oct-2026): la tarjeta de la guía es parte de su informe.
+    await reclamarAnalisisAnonimos(posthog, "register", { porCodigo: true, puerta: { puerta: "A", detalle: "guia" } });
     emitirAuthCompletada(posthog, "signup", "email");
     consumirRegistroPendiente();
     capturarLqs(posthog, EVENTOS_LQS.registroCompletado, ctx, { via: "correo", como: "codigo", donde: "guia" });

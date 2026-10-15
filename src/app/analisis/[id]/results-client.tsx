@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { espejarMeta, type EventoEspejo } from "@/lib/meta/espejo";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
@@ -71,6 +72,7 @@ export function PremiumResults({
   isLoggedIn = false,
   showCtaWelcome = false,
   quienMiraLqs = null,
+  metaVista = null,
   ofertaPack = false,
   correoOferta = null,
   motivoOferta = "no-dueno",
@@ -112,6 +114,8 @@ export function PremiumResults({
    *  este informe; y el correo con que pagaría, si ya se sabe. Los calcula el servidor. (Reemplazan a
    *  `isAnonOwner`, que solo leía el gate viejo de «Lo que sigue».) */
   quienMiraLqs?: QuienMira;
+  /** ViewContent (15-oct-2026): el espejo del evento que el servidor mandó al dibujar el informe para su dueño. */
+  metaVista?: EventoEspejo | null;
   ofertaPack?: boolean;
   correoOferta?: string | null;
   /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
@@ -191,6 +195,10 @@ export function PremiumResults({
   // entrar con el código (la marca de la pestaña lo deja en «Estás dentro» tras el refresco).
   const recienDentro = useRecienDentro(analysisId);
   const bannerLqs = !!analysisId && bannerRegistroVisible({ quienMira: quienMiraLqs, conSesion: isLoggedIn, recienDentro: !!recienDentro, compartido: isSharedView });
+  // El pixel repite el ViewContent que mandó el servidor, con el mismo id (src/lib/meta/vista-informe.ts).
+  useEffect(() => {
+    if (metaVista) espejarMeta([metaVista]);
+  }, [metaVista]);
   const ticketLqs = !!analysisId && ofertaPack;
   const nextLqs = analysisId ? `/analisis/${analysisId}` : "/dashboard";
 

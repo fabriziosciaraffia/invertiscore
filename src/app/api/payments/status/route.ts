@@ -4,6 +4,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { firmaPagoValida } from "@/lib/lo-que-sigue/firma-pago";
 import { accesoAlPago } from "@/lib/lo-que-sigue/retorno-pago";
+import { esCuentaDePrueba } from "@/lib/meta/servidor";
+import { EVENTOS_META, idCompra } from "@/lib/meta/ids";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/payments/status?order=…[&t=…] — el estado de un pago a la vuelta de Flow.
@@ -17,6 +20,17 @@ import { accesoAlPago } from "@/lib/lo-que-sigue/retorno-pago";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CAMPOS = "id, user_id, commerce_order, product, amount, status, created_at, analysis_id, payment_data";
+
+/**
+ * El espejo de la compra (15-oct-2026, medición para la campaña): lo que /payments/return le pasa al pixel. El mismo
+ * evento y el mismo id (`commerce_order`) que manda el servidor al confirmar Flow; sin espejo si el pago no está
+ * pagado, no cobró nada, o la cuenta es de prueba.
+ */
+async function espejoCompra(admin: ReturnType<typeof createServiceClient>, f: { commerce_order?: unknown; status?: unknown; amount?: unknown; product?: unknown; user_id?: unknown }): Promise<EventoEspejo | null> {
+  if (f.status !== "paid" || typeof f.commerce_order !== "string" || !(Number(f.amount) > 0)) return null;
+  if (await esCuentaDePrueba(admin, typeof f.user_id === "string" ? f.user_id : null)) return null;
+  return { evento: EVENTOS_META.compra, eventId: idCompra(f.commerce_order), datos: { value: Number(f.amount), currency: "CLP", content_name: String(f.product ?? ""), content_type: "product" } };
+}
 
 async function saldoDe(admin: ReturnType<typeof createServiceClient>, userId: string): Promise<{ saldo: number; ilimitado: boolean }> {
   // Solo el plan Ilimitado es «ilimitado» (14-oct-2026): el plan 10 y el plan 50 tienen saldo, como cualquiera.
@@ -53,7 +67,7 @@ export async function GET(request: Request) {
     if (!data) return NextResponse.json({ payment: null });
     const { user_id: _dueno, ...payment } = data;
     void _dueno;
-    return NextResponse.json({ payment, ...(await saldoDe(admin, user!.id)) });
+    return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, data), ...(await saldoDe(admin, user!.id)) });
   }
 
   const { data: fila } = await admin.from("payments").select(CAMPOS).eq("commerce_order", commerceOrder).maybeSingle();
@@ -71,9 +85,9 @@ export async function GET(request: Request) {
   if (acceso === "firma") {
     // Sin sesión: lo justo para la pantalla. Nada del correo ni de payment_data.
     const payment = { commerce_order: fila.commerce_order, product: fila.product, amount: fila.amount, status: fila.status, analysis_id: fila.analysis_id };
-    return NextResponse.json({ payment, sinSesion: true, ...(fila.status === "paid" ? await saldoDe(admin, dueno) : {}) });
+    return NextResponse.json({ payment, sinSesion: true, ...(fila.status === "paid" ? await saldoDe(admin, dueno) : {}), metaCompra: await espejoCompra(admin, fila) });
   }
   const { user_id: _d, ...payment } = fila;
   void _d;
-  return NextResponse.json({ payment, ...(await saldoDe(admin, dueno)) });
+  return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, fila), ...(await saldoDe(admin, dueno)) });
 }

@@ -17,7 +17,6 @@
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { sha256Hex } from "@/lib/api-helpers/anon-cap";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { ligarPerfiles } from "@/lib/lo-que-sigue/perfil";
 
@@ -27,21 +26,10 @@ export interface ClaimResult {
   redirect: string | null;
 }
 
-/** Contexto del request para el evento Lead de Meta (mejor match browser-side). */
-export interface ClaimLeadCtx {
-  eventSourceUrl: string;
-  clientIp: string | null;
-  userAgent: string | null;
-  fbp: string | null;
-  fbc: string | null;
-}
-
 /**
  * Adopta las filas anónimas del token y consume el welcome. `admin` DEBE ser un
  * client service-role (el UPDATE toca filas sin dueño; RLS no lo permitiría).
- * El Lead de Meta va aparte (`enviarLeadClaim`) para que el caller decida si
- * puede diferirlo (waitUntil) — perder un evento de Meta nunca debe demorar ni
- * romper un login.
+ * Sin Lead de Meta desde el 15-oct-2026: Lead es «dejó su correo» (src/lib/meta/ids.ts), no «reclamó».
  */
 export async function claimAnalisisAnonimos(
   admin: SupabaseClient,
@@ -126,24 +114,4 @@ export async function claimAnalisisAnonimos(
       : `/analisis/${f.id}`;
   }
   return { claimed: filas.length, redirect };
-}
-
-/**
- * Meta CAPI Lead — el usuario estrenó su gratis al reclamar (F2-1 decisión 3).
- * event_id `lead-<userId>`: idempotente aunque el claim se dispare desde más de
- * una capa. Espejo del Lead que las rutas de creación emiten con
- * chargeMode==='welcome' (la rama anónima no lo emite al crear — se muda acá).
- */
-export async function enviarLeadClaim(user: User, ctx: ClaimLeadCtx): Promise<void> {
-  if (!user.email) return;
-  try {
-    await sendMetaCapiEvent({
-      eventName: "Lead",
-      eventId: `lead-${user.id}`,
-      email: user.email,
-      ...ctx,
-    });
-  } catch (e) {
-    console.error("[anon-claim] Meta CAPI Lead excepción:", e);
-  }
 }

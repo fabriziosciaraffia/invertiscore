@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { contextoDeRequest, guardarContextoMeta } from "@/lib/meta/servidor";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -198,6 +199,9 @@ export async function POST(request: Request) {
     // commerce_order determinístico (user+plan) → UPSERT idempotente: reintentar
     // el checkout del mismo plan no acumula filas. register-callback la flipea a
     // 'paid' (UPDATE) al activar; aquí solo nace pending.
+    // El navegador de la cuenta (15-oct-2026): el primer cobro llega por webhook, sin cookies; con esto el Purchase y el
+    // Subscribe llegan a Meta con fbp, fbc, IP y navegador (src/lib/meta/servidor.ts).
+    await guardarContextoMeta(admin, user.id, contextoDeRequest(request));
     const pendingOrder = `franco-sub-pending-${user.id}-${product}`;
     const { error: pendingErr } = await admin
       .from("payments")

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
-import { cookies } from "next/headers";
+import { captureApiError } from "@/lib/observabilidad";
 import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -209,40 +208,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Meta CAPI: Lead server-side — el usuario estrenó su análisis de bienvenida
-    // en un STR SUELTO. `ambasGroupId === null` es el gate de dedup: en AMBAS el
-    // cobro es uno solo y lo reporta el lado LTR (mismo criterio que el correo
-    // analysis-ready), así que este lado se calla. Resto del contrato idéntico al
-    // de /api/analisis: event_id = `lead-<userId>` (unificado post-F2 con el
-    // Lead del claim — un usuario, un Lead, dedup por id compartido), email
-    // hasheado en el helper, sin value, waitUntil propio con su try/catch —
-    // Meta jamás rompe ni demora la creación.
-    if (data?.id && chargeMode === "welcome" && !ambasGroupId && user?.email) {
-      const leadId = `lead-${user.id}`;
-      const leadEmail = user.email;
-      const cookieStore = cookies();
-      const leadCtx = {
-        eventSourceUrl: new URL(request.url).origin,
-        clientIp:
-          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-          request.headers.get("x-real-ip"),
-        userAgent: request.headers.get("user-agent"),
-        fbp: cookieStore.get("_fbp")?.value ?? null,
-        fbc: cookieStore.get("_fbc")?.value ?? null,
-      };
-      waitUntil((async () => {
-        try {
-          await sendMetaCapiEvent({
-            eventName: "Lead",
-            eventId: leadId,
-            email: leadEmail,
-            ...leadCtx,
-          });
-        } catch (e) {
-          console.error("[short-term] Meta CAPI Lead excepción:", e);
-          captureApiWarning(e, { ruta: "POST /api/analisis/short-term", operacion: "meta-capi-lead" });
-        }
-      })());
+    // La activación (15-oct-2026): `analisis_creado` en PostHog, solo con cuenta y solo el STR suelto (en AMBAS lo
+    // cuenta el lado LTR). El Lead de bienvenida se retiró: desde el 15-oct Lead es «dejó su correo».
+    if (data?.id && user?.id && !ambasGroupId) {
+      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: "str", via: "wizard" }));
     }
 
     // «Tu análisis está listo» también en renta corta (02-oct-2026): hasta acá solo lo mandaba

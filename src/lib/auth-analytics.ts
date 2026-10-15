@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { PostHog } from "posthog-js";
+import type { Puerta } from "@/lib/atribucion-puerta";
 
 const OAUTH_PENDIENTE_KEY = "franco_oauth_pendiente";
 
@@ -88,11 +89,12 @@ export function marcarOAuthPendiente(tipo: AuthTipo): void {
 export async function reclamarAnalisisAnonimos(
   posthog: PostHog | null | undefined,
   via: "login" | "register" | "sync",
-  opciones: { porCodigo?: boolean } = {},
+  opciones: { porCodigo?: boolean; puerta?: { puerta: Puerta; detalle: string } } = {},
 ): Promise<void> {
   try {
-    const res = await fetch("/api/analisis/claim", opciones.porCodigo
-      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ porCodigo: true }) }
+    // La puerta (15-oct-2026): el formulario que reclama sabe por dónde entró la cuenta (el banner, la guía: A).
+    const res = await fetch("/api/analisis/claim", opciones.porCodigo || opciones.puerta
+      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ porCodigo: opciones.porCodigo === true, ...(opciones.puerta ? { puerta: opciones.puerta.puerta, puertaDetalle: opciones.puerta.detalle } : {}) }) }
       : { method: "POST" });
     if (!res.ok) return;
     const data = (await res.json()) as { claimed?: number };

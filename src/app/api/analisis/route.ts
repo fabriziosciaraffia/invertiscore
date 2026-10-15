@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 import { runAnalysis } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
@@ -294,54 +293,11 @@ export async function POST(request: Request) {
       })());
     }
 
-    // Meta CAPI: Lead server-side — el usuario ESTRENÓ su análisis de bienvenida.
-    // Gate: chargeMode === 'welcome', la única vía por la que se consume el gratis
-    // (admin → 'admin', ilimitado → 'subscription', ledger/legacy → 'paid').
-    // event_id = `lead-<userId>` (unificado post-F2 con el Lead del claim, que
-    // ya usaba este formato): un usuario = un Lead, venga por donde venga. El
-    // caso mixto real —análisis anónimo en un navegador + registro orgánico en
-    // otro, y la red de seguridad del claim disparando después— emitía dos
-    // Leads con ids distintos; con el id compartido Meta deduplica. Sigue
-    // siendo idempotente ante retry del POST (mismo user = mismo id). Sin
-    // value: el gratis no factura. En AMBAS dispara SOLO este lado (LTR): el
-    // POST STR comparte el mismo cobro y duplicaría el evento — mismo criterio
-    // que el correo analysis-ready de arriba.
-    //
-    // waitUntil PROPIO, separado del bloque de arriba: el timeout de Meta (5s) no
-    // debe meterse delante del correo ni de la IA. Corre después del response.
-    // Este request SÍ viene del navegador (fetch del wizard), así que a diferencia
-    // de los webhooks de Flow lleva IP/UA/_fbp/_fbc → mejor match (patrón
-    // auth/callback). Se leen ACÁ, dentro del request, no dentro del deferred.
-    if (data?.id && chargeMode === "welcome" && user?.email) {
-      const leadId = `lead-${user.id}`;
-      const leadEmail = user.email;
-      const cookieStore = cookies();
-      const leadCtx = {
-        eventSourceUrl: new URL(request.url).origin,
-        clientIp:
-          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-          request.headers.get("x-real-ip"),
-        userAgent: request.headers.get("user-agent"),
-        fbp: cookieStore.get("_fbp")?.value ?? null,
-        fbc: cookieStore.get("_fbc")?.value ?? null,
-      };
-      waitUntil((async () => {
-        try {
-          await sendMetaCapiEvent({
-            eventName: "Lead",
-            eventId: leadId,
-            email: leadEmail,
-            ...leadCtx,
-          });
-        } catch (e) {
-          console.error("[api/analisis] Meta CAPI Lead excepción:", e);
-          captureApiWarning(e, {
-            ruta: "POST /api/analisis",
-            operacion: "meta-capi-lead",
-            userId,
-          });
-        }
-      })());
+    // La activación (15-oct-2026, medición para la campaña): `analisis_creado` en PostHog, solo con cuenta. El Lead de
+    // bienvenida que salía acá se retiró: el análisis gratis al registrarse no existe desde el 01-oct, y desde el
+    // 15-oct Lead es «dejó su correo» (src/lib/meta/ids.ts).
+    if (data?.id && user?.id) {
+      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: typeof data.tipo_analisis === "string" ? data.tipo_analisis : "ltr", via: "wizard" }));
     }
 
     return NextResponse.json(data);

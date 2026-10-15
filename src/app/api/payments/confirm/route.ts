@@ -8,7 +8,8 @@ import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { emitirEventoMeta } from "@/lib/meta/servidor";
+import { EVENTOS_META, idCompra } from "@/lib/meta/ids";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
@@ -21,8 +22,6 @@ import { hayGuia } from "@/lib/guia/activa";
 import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -466,18 +465,23 @@ export async function POST(request: Request) {
       // por Flow). event_id = commerce_order → Meta deduplica contra el Pixel del
       // browser (/payments/return) y contra reenvíos del webhook. Bloque aislado:
       // una falla de Meta JAMÁS rompe el 200 que Flow espera ni afecta créditos/
-      // email/boleta ya procesados arriba. Email hasheado dentro del helper.
+      // email/boleta ya procesados arriba.
+      // Desde el 15-oct-2026 por emitirEventoMeta (src/lib/meta/servidor.ts): una vez por orden, fuera las cuentas de
+      // prueba, y con el correo hasheado, el id externo y el último navegador de la cuenta (fbp, fbc, IP, navegador),
+      // que el webhook no trae y que quedó guardado al crear el pago.
       if (userId) {
         try {
           const { data: capiUser } = await supabase.auth.admin.getUserById(userId);
-          await sendMetaCapiEvent({
-            eventName: "Purchase",
-            eventId: payment.commerce_order,
+          const compra = await emitirEventoMeta(supabase, {
+            evento: EVENTOS_META.compra,
+            eventId: idCompra(payment.commerce_order),
+            userId,
             email: capiUser?.user?.email ?? null,
-            value: payment.amount,
-            currency: "CLP",
-            eventSourceUrl: SITE_URL,
+            valor: payment.amount,
+            datos: { content_name: payment.product, content_ids: [payment.product], content_type: "product" },
+            origen: "pago",
           });
+          await compra.envio;
         } catch (e) {
           console.error("[payments/confirm] Meta CAPI Purchase excepción:", e);
           captureApiWarning(e, {

@@ -21,6 +21,7 @@ import type { StrRefZonaSnapshot } from "@/lib/strref-zona";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
+import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 
 /**
@@ -268,6 +269,12 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     }
   })();
 
+  // ViewContent (15-oct-2026, medición para la campaña): el dueño ve su informe (src/lib/meta/vista-informe.ts).
+  const veredictoVista = ((results as { francoScore?: { veredicto?: string } } | null)?.francoScore?.veredicto ?? (results as { veredicto?: string } | null)?.veredicto ?? null) as string | null;
+  const metaVista = quienMira
+    ? await emitirVistaInforme({ analysisId: data.id, userId: data.user_id ?? null, email: isOwner ? user?.email ?? null : null, veredicto: veredictoVista, comuna: data.comuna ?? null, modalidad: "str", ruta: `/analisis/renta-corta/${data.id}` })
+    : null;
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -292,6 +299,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     simulacionStr,
     zonaStr,
     quienMiraLqs: quienMira,
+    metaVista,
     ofertaPack: ofertaLqs.oferta,
     correoOferta: ofertaLqs.correo,
     motivoOferta: ofertaLqs.motivo,

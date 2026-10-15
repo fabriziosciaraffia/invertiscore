@@ -124,7 +124,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
         {paso === "dentro" ? (
           <EstasDentro ctx={ctx} perfil={perfil} demo={demo} />
         ) : paso === "registro" ? (
-          <RegistroUnPaso next={next} ctx={ctx} alEntrar={entrar} />
+          <RegistroUnPaso next={next} ctx={ctx} alEntrar={entrar} demo={demo} />
         ) : (
           <>
             <p className="lqs-ojo"><b>{OFERTA_REGISTRO.ojoFuerte}</b>{OFERTA_REGISTRO.ojoResto}</p>

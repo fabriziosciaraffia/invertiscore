@@ -26,10 +26,10 @@
  * mismo event_id. Un envío redundante es visible y barato; una conversión perdida, no.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { emitirEventoMeta } from "@/lib/meta/servidor";
+import { EVENTOS_META, idCompraPlan } from "@/lib/meta/ids";
 import { parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 export type SubscribeEventResult = {
   /** true solo si se despachó el evento a Meta en este llamado. */
@@ -105,14 +105,24 @@ export async function sendSubscribeIfFirstCharge(opts: {
     // (no puede saber otra cosa: dispara en el alta, cuando todavía no hubo cargo) y
     // suele ganar la carrera, así que Meta normalmente registra ese. Ver la nota
     // completa en payments/return y register-callback.
-    await sendMetaCapiEvent({
-      eventName: "Subscribe",
-      eventId: `sub-${subId}`,
-      email: capiUser?.user?.email ?? payerEmail ?? null,
-      value: amount,
-      currency: "CLP",
-      eventSourceUrl: opts.eventSourceUrl ?? SITE_URL,
-    });
+    //
+    // Desde el 15-oct-2026 (medición para la campaña) el primer cobro manda además un PURCHASE con el valor —la campaña
+    // se optimiza hacia compra en pack, suelto y planes—, los dos con el mismo id `sub-<id>` que repite el pixel en el
+    // retorno del alta, y por emitirEventoMeta: una vez, fuera las cuentas de prueba, y con el último navegador de la
+    // cuenta (fbp, fbc, IP, navegador) y el id externo.
+    const email = capiUser?.user?.email ?? payerEmail ?? null;
+    for (const evento of [EVENTOS_META.compra, EVENTOS_META.suscripcion]) {
+      const e = await emitirEventoMeta(supabase, {
+        evento,
+        eventId: idCompraPlan(subId),
+        userId,
+        email,
+        valor: amount,
+        datos: { content_name: "plan", content_type: "product" },
+        origen: "plan",
+      });
+      await e.envio;
+    }
 
     return { sent: true };
   } catch (e) {

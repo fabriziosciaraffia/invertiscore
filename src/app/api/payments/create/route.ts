@@ -11,6 +11,7 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { randomUUID } from "crypto";
 import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
+import { contextoDeRequest, guardarContextoMeta } from "@/lib/meta/servidor";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -179,6 +180,9 @@ export async function POST(request: Request) {
 
     // Insert pending payment record AFTER Flow succeeds (service_role bypasses RLS)
     const admin = createAdminClient();
+    // El navegador de la cuenta (15-oct-2026): la compra la confirma el webhook de Flow, sin cookies; con esto el
+    // Purchase llega a Meta con fbp, fbc, IP y navegador (src/lib/meta/servidor.ts).
+    await guardarContextoMeta(admin, user.id, contextoDeRequest(request));
     const { error: insertError } = await admin.from("payments").insert({
       user_id: user.id,
       commerce_order: commerceOrder,

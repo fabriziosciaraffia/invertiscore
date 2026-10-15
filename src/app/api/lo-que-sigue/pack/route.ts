@@ -4,6 +4,9 @@
 // contraseña), ESTE informe anónimo pasa a esa cuenta (el claim de siempre, por la cookie), y se
 // abre la orden en Flow a nombre de esa persona. Vigencia del pack validada acá (410).
 // Después de pagar, /payments/return sin sesión explica cómo entrar (código al correo).
+// MEDICIÓN (15-oct-2026): dejar el correo en el ticket es un Lead de Meta (servidor + pixel, mismo id por correo), la
+// cuenta queda con la puerta A (el informe), y su navegador queda guardado para que la compra —que confirma el
+// webhook de Flow, sin cookies— llegue a Meta con fbp, fbc, IP y navegador.
 // ─────────────────────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
@@ -18,6 +21,10 @@ import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor, distinctIdDeCorreo } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError } from "@/lib/observabilidad";
+import { waitUntil } from "@vercel/functions";
+import { EVENTOS_META, idLead } from "@/lib/meta/ids";
+import { conEspejo, contextoDeRequest, emitirEventoMeta, guardarContextoMeta } from "@/lib/meta/servidor";
+import { guardarAtribucion } from "@/lib/attribution";
 
 export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -56,6 +63,19 @@ export async function POST(request: Request) {
       captureApiError(errUsuario, { ruta: "POST /api/lo-que-sigue/pack", operacion: "cuenta-por-correo" });
       return NextResponse.json({ error: "No pudimos crear tu cuenta con ese correo. Intenta de nuevo." }, { status: 500 });
     }
+    const contexto = contextoDeRequest(request);
+    const lead = await emitirEventoMeta(admin, {
+      evento: EVENTOS_META.lead,
+      eventId: await idLead(email),
+      userId: user.id,
+      email,
+      datos: { origen: "ticket", puerta: "A" },
+      contexto,
+      origen: "lead:ticket",
+    });
+    waitUntil(lead.envio);
+    waitUntil(guardarContextoMeta(admin, user.id, contexto));
+    waitUntil(guardarAtribucion(admin, user.id, { puerta: "A", puerta_detalle: "ticket", fbp: contexto.fbp, fbc: contexto.fbc }).then(() => undefined));
 
     // Este informe tiene que ser suyo: o ya lo era, o lo adopta ahora por la cookie del cap anónimo.
     if (analysis.user_id && analysis.user_id !== user.id) {
@@ -104,7 +124,7 @@ export async function POST(request: Request) {
       captureApiError(insertError, { ruta: "POST /api/lo-que-sigue/pack", operacion: "insert-payment", userId: user.id });
       return NextResponse.json({ error: "Error al registrar el pago" }, { status: 500 });
     }
-    return NextResponse.json({ url: `${flowResponse.url}?token=${flowResponse.token}` });
+    return conEspejo(NextResponse.json({ url: `${flowResponse.url}?token=${flowResponse.token}` }), [lead.espejo], request);
   } catch (err) {
     captureApiError(err, { ruta: "POST /api/lo-que-sigue/pack", operacion: "pack-desde-el-ticket" });
     return NextResponse.json({ error: "No pudimos abrir el pago. Intenta de nuevo." }, { status: 500 });

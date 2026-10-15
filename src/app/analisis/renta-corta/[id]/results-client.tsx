@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { espejarMeta, type EventoEspejo } from "@/lib/meta/espejo";
 import type { Veredicto } from "@/lib/types";
 import { construirCardStr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
@@ -102,6 +103,8 @@ interface STRResultsProps {
   /** «Lo que sigue» (08-oct-2026, `oferta-informe.ts`): quién mira, si es el dueño; si el pack va en
    *  este informe; y el correo con que pagaría, si ya se sabe. Los calcula el servidor. */
   quienMiraLqs?: QuienMira;
+  /** ViewContent (15-oct-2026): el espejo del evento que el servidor mandó al dibujar el informe para su dueño. */
+  metaVista?: EventoEspejo | null;
   ofertaPack?: boolean;
   correoOferta?: string | null;
   /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
@@ -137,6 +140,7 @@ export function STRResultsClient({
   isAnonOwner = false,
   isOrigenNavegador = false,
   quienMiraLqs = null,
+  metaVista = null,
   ofertaPack = false,
   correoOferta = null,
   motivoOferta = "no-dueno",
@@ -266,6 +270,10 @@ export function STRResultsClient({
   // El demo no la tiene: el servidor no le reconoce dueño.
   const recienDentro = useRecienDentro(analysisId);
   const bannerLqs = !!analysisId && bannerRegistroVisible({ quienMira: quienMiraLqs, conSesion: !!userId, recienDentro: !!recienDentro, compartido: isSharedView });
+  // El pixel repite el ViewContent que mandó el servidor, con el mismo id (src/lib/meta/vista-informe.ts).
+  useEffect(() => {
+    if (metaVista) espejarMeta([metaVista]);
+  }, [metaVista]);
   const ticketLqs = !!analysisId && ofertaPack;
   const ctxLqs = { analysisId, veredicto, modalidad: "str" as const };
   // «Lo que sigue» (30-sep-2026): los chips del perfil (espejo de LTR).

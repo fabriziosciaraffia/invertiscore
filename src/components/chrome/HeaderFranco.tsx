@@ -43,6 +43,7 @@ import { currentTheme, setTheme, type Theme } from "@/lib/theme";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { usePathname } from "next/navigation";
 import type { Veredicto } from "@/lib/types";
+import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
 import "./header-franco.css";
 
 export type ContextoHeader = "sitio" | "wizard" | "auth";
@@ -200,6 +201,10 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   const logueado = !!sesion;
   const modo = informe?.modo;
   const hayInforme = !!informe;
+  // La puerta C (15-oct-2026): quien abre un informe que le compartieron llegó por un referido (atribucion-puerta.ts).
+  useEffect(() => {
+    if (modo === "compartido") marcarPuertaCandidata("C", "informe_compartido");
+  }, [modo]);
 
   // Al bajar en el informe: la identidad aparece cuando la portada sale de la vista.
   const [identidad, setIdentidad] = useState<Identidad | null>(null);

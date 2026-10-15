@@ -27,6 +27,7 @@ import { anotarEvento, hojaDentro, type EventoTicket, type PorDondeTicket } from
 import { diagnosticoTicket } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, revisarMarcas, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
+import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, venceEl, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import "./lo-que-sigue.css";
 
@@ -272,6 +273,9 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
     setError(null);
     setPagando(true);
     capturarLqs(posthog, EVENTOS_LQS.packIniciado, ctx, { desde: cara, vence: hora });
+    // La puerta A (15-oct-2026): dejó su correo en el ticket de su informe. El Lead lo manda la ruta del pack y el pixel
+    // lo repite desde la cookie del espejo (MetaPixel).
+    marcarPuertaCandidata("A", "ticket");
     try {
       const res = await fetch("/api/lo-que-sigue/pack", {
         method: "POST",

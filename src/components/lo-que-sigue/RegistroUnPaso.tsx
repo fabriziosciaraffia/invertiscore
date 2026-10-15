@@ -22,6 +22,8 @@ import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPendiente, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
+import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
+import { avisarLead } from "@/lib/meta/lead-cliente";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -36,13 +38,15 @@ function IconoGoogle() {
   );
 }
 
-export function RegistroUnPaso({ next, ctx, alEntrar }: {
+export function RegistroUnPaso({ next, ctx, alEntrar, demo = false }: {
   /** Adónde vuelve el enlace o Google (el informe, o el checkout). Con código no se sale de la página. */
   next: string;
   ctx: ContextoLqs;
   /** Con código: qué hacer al entrar (recibe el correo con que entró). Sin él, se refresca la página
    *  (el informe pasa a ser propio). */
   alEntrar?: (correo: string) => void;
+  /** La demo de «Lo que sigue»: no avisa a Meta ni marca la puerta. */
+  demo?: boolean;
 }) {
   const posthog = usePostHog();
   const router = useRouter();
@@ -92,6 +96,11 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
       return;
     }
     setEnviado(c);
+    // Dejó su correo en el banner del informe (15-oct-2026): el Lead (servidor + pixel, mismo id) y la puerta A.
+    if (!demo) {
+      marcarPuertaCandidata("A", "banner");
+      void avisarLead(c, "banner", "A");
+    }
   }
 
   async function entrarConCodigo(e: FormEvent) {
@@ -112,7 +121,7 @@ export function RegistroUnPaso({ next, ctx, alEntrar }: {
     }
     // Con sesión: el análisis anónimo pasa a la cuenta (claim) y queda ligado su perfil; sale la
     // bienvenida (porCodigo: una sola vez por persona).
-    await reclamarAnalisisAnonimos(posthog, "register", { porCodigo: true });
+    await reclamarAnalisisAnonimos(posthog, "register", { porCodigo: true, puerta: { puerta: "A", detalle: "banner" } });
     emitirAuthCompletada(posthog, "signup", "email");
     consumirRegistroPendiente();
     capturarLqs(posthog, EVENTOS_LQS.registroCompletado, ctx, { via: "correo", como: "codigo" });
