@@ -75,9 +75,15 @@ export type MetaCapiEventInput = {
   fbp?: string | null;
   /** Cookie _fbc del navegador (mejora match) — solo en requests del browser. */
   fbc?: string | null;
+  /** El id de la cuenta (15-oct-2026): va hasheado en SHA-256 como `external_id`. */
+  externalId?: string | null;
+  /** Datos propios del evento (veredicto, comuna, la respuesta a «¿cuándo?»…), junto al valor en custom_data. */
+  datos?: Record<string, unknown> | null;
+  /** Código de prueba del Administrador de eventos: el evento se ve en «Probar eventos» y no cuenta en producción. */
+  testEventCode?: string | null;
 };
 
-export type MetaCapiResult = { ok: boolean; skipped?: boolean; reason?: string };
+export type MetaCapiResult = { ok: boolean; skipped?: boolean; reason?: string; status?: number };
 
 /**
  * Envía UN evento a la Conversions API. No-op seguro si el tracking está off o
@@ -96,8 +102,9 @@ export async function sendMetaCapiEvent(
     if (input.userAgent) userData.client_user_agent = input.userAgent;
     if (input.fbp) userData.fbp = input.fbp;
     if (input.fbc) userData.fbc = input.fbc;
+    if (input.externalId) userData.external_id = [crypto.createHash("sha256").update(input.externalId).digest("hex")];
 
-    const customData: Record<string, unknown> = {};
+    const customData: Record<string, unknown> = { ...(input.datos ?? {}) };
     if (typeof input.value === "number" && Number.isFinite(input.value)) {
       customData.value = input.value;
       customData.currency = input.currency ?? "CLP";
@@ -112,6 +119,8 @@ export async function sendMetaCapiEvent(
     };
     if (input.eventSourceUrl) event.event_source_url = input.eventSourceUrl;
     if (Object.keys(customData).length > 0) event.custom_data = customData;
+    const cuerpo: Record<string, unknown> = { data: [event] };
+    if (input.testEventCode) cuerpo.test_event_code = input.testEventCode;
 
     const url = `https://graph.facebook.com/${GRAPH_VERSION}/${cfg.pixelId}/events?access_token=${encodeURIComponent(
       cfg.token
@@ -124,7 +133,7 @@ export async function sendMetaCapiEvent(
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: [event] }),
+        body: JSON.stringify(cuerpo),
         signal: controller.signal,
       });
     } finally {
@@ -137,10 +146,10 @@ export async function sendMetaCapiEvent(
       console.error(
         `[meta-capi] ${input.eventName} (${input.eventId}) → HTTP ${res.status}: ${bodyText.slice(0, 500)}`
       );
-      return { ok: false, reason: `http_${res.status}` };
+      return { ok: false, reason: `http_${res.status}`, status: res.status };
     }
 
-    return { ok: true };
+    return { ok: true, status: res.status };
   } catch (err) {
     console.error(
       `[meta-capi] ${input.eventName} (${input.eventId}) excepción:`,

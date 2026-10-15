@@ -10,6 +10,17 @@ import {
   UTM_STORAGE_KEY,
   type AtribucionInput,
 } from "@/lib/attribution";
+import { marcarPuertaCandidata, puertaDeLlegada, puertaParaSincronizar } from "@/lib/atribucion-puerta";
+import { CLAVE_CUENTA_PRUEBA, marcarCuentaDePrueba } from "@/lib/meta/pixel";
+
+/** Una cookie del navegador (las del pixel: `_fbp`, `_fbc`). */
+function cookieDelNavegador(nombre: string): string | null {
+  try {
+    return document.cookie.split("; ").find((c) => c.startsWith(`${nombre}=`))?.slice(nombre.length + 1) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Clave de la PRIMERA visita (referrer + landing path). Aparte de `franco_utm`
@@ -44,6 +55,10 @@ interface OrigenGuardado {
 
 /** Anota la primera visita. No hace nada si ya había una anotada (first-touch). */
 function anotarPrimeraVisita(): void {
+  // Llegar por un enlace que le pasaron (un `?ref=`, un informe compartido) marca la puerta C (15-oct-2026); la
+  // regla de la candidata decide si gana (atribucion-puerta.ts).
+  const llegada = puertaDeLlegada({ pathname: window.location.pathname, search: window.location.search });
+  if (llegada) marcarPuertaCandidata(llegada.puerta, llegada.detalle);
   try {
     if (localStorage.getItem(ORIGIN_STORAGE_KEY)) return;
     const origen: OrigenGuardado = {
@@ -128,11 +143,14 @@ export function useAttributionSync(): void {
         // El identify de arriba NO espera este check: primero se ata la
         // persona, después se anota si es interna. Fail-soft entero: sin la
         // RPC aplicada o sin PostHog, no pasa nada.
+        // La misma marca deja fuera de Meta a este navegador (15-oct-2026): el pixel no carga y su cola no recibe
+        // nada (pixel.ts). Se vuelve a preguntar si la marca de Meta todavía no existe en este navegador.
         try {
-          if (localStorage.getItem(TEST_FLAG_KEY) !== user.id) {
+          if (localStorage.getItem(TEST_FLAG_KEY) !== user.id || localStorage.getItem(CLAVE_CUENTA_PRUEBA) === null) {
             const { data: esTest, error } = await supabase.rpc("es_test_account");
             if (!error && typeof esTest === "boolean" && !cancelado) {
               posthog?.setPersonProperties({ test_account: esTest });
+              marcarCuentaDePrueba(esTest);
               localStorage.setItem(TEST_FLAG_KEY, user.id);
             }
           }
@@ -159,9 +177,13 @@ export function useAttributionSync(): void {
         const utms = leerJson<Record<string, string>>(UTM_STORAGE_KEY) ?? {};
         const origen = leerJson<OrigenGuardado>(ORIGIN_STORAGE_KEY) ?? {};
 
+        // La puerta (15-oct-2026): la candidata de este navegador, o D; y el clic del anuncio con las cookies del pixel.
         const payload: AtribucionInput = {
           referrer: origen.referrer ?? null,
           landing_path: origen.landing_path ?? null,
+          fbp: cookieDelNavegador("_fbp"),
+          fbc: cookieDelNavegador("_fbc"),
+          ...puertaParaSincronizar(),
         };
         for (const k of UTM_KEYS) {
           payload[k] = utms[k] ?? null;

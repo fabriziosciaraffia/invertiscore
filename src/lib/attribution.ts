@@ -17,6 +17,8 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { esPuerta, fusionarPuerta, type Puerta } from "@/lib/atribucion-puerta";
+import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 
 /** Clave de localStorage que ya usa useUTMCapture. NO cambiar sin migrar. */
 export const UTM_STORAGE_KEY = "franco_utm";
@@ -44,6 +46,9 @@ export interface AtribucionInput {
   landing_path?: string | null;
   fbp?: string | null;
   fbc?: string | null;
+  /** Por dónde entró la cuenta (15-oct-2026, atribucion-puerta.ts): A informe, B selección, C referido, D orgánico. */
+  puerta?: Puerta | null;
+  puerta_detalle?: string | null;
 }
 
 export interface AtribucionRow extends AtribucionInput {
@@ -76,12 +81,51 @@ export function sanearAtribucion(raw: Record<string, unknown> | null | undefined
     landing_path: limpiar(r.landing_path),
     fbp: limpiar(r.fbp),
     fbc: limpiar(r.fbc),
+    puerta: esPuerta(r.puerta) ? r.puerta : null,
+    puerta_detalle: esPuerta(r.puerta) ? limpiar(r.puerta_detalle)?.slice(0, 60) ?? null : null,
   };
 }
 
 /** ¿Hay al menos un dato que valga la pena escribir? */
 export function tieneAlgo(a: AtribucionInput): boolean {
   return Object.values(a).some((v) => v != null && v !== "");
+}
+
+/** Pagado u orgánico según los UTM (las campañas de Meta llegan con `utm_medium=paid` y la fuente ig/fb/an/th). */
+export function canalDeUtm(a: { utm_source?: string | null; utm_medium?: string | null }): "pagado" | "organico" {
+  return a.utm_medium === "paid" || ["ig", "fb", "an", "th", "facebook", "instagram"].includes((a.utm_source ?? "").toLowerCase()) ? "pagado" : "organico";
+}
+
+async function puertaGuardada(sb: SupabaseClient, userId: string): Promise<Puerta | null> {
+  try {
+    const { data } = await sb.from("user_attribution").select("puerta").eq("user_id", userId).maybeSingle();
+    const p = (data as { puerta?: unknown } | null)?.puerta;
+    return esPuerta(p) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * La puerta quedó fijada (15-oct-2026): PostHog la sabe como propiedad de la persona (`puerta`, `campana`, `canal`)
+ * para cortar las cohortes, y la PRIMERA vez queda el evento `cuenta_atribuida` —la semana de registro del panel
+ * «Activación por semana»—, con uuid determinista: una cuenta, un evento.
+ */
+async function avisarPuerta(sb: SupabaseClient, userId: string, antes: Puerta | null): Promise<void> {
+  try {
+    const { data } = await sb.from("user_attribution").select("puerta, puerta_detalle, utm_source, utm_medium, utm_campaign").eq("user_id", userId).maybeSingle();
+    const f = data as { puerta: Puerta | null; puerta_detalle: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null } | null;
+    if (!f?.puerta) return;
+    const props = { puerta: f.puerta, campana: f.utm_campaign ?? "(sin campaña)", canal: canalDeUtm(f) };
+    await capturarServidor({
+      event: antes ? "$set" : "cuenta_atribuida",
+      distinctId: userId,
+      ...(antes ? {} : { uuid: uuidDeterminista(`cuenta_atribuida-${userId}`) }),
+      properties: { ...props, puerta_detalle: f.puerta_detalle, utm_source: f.utm_source, utm_medium: f.utm_medium, $set: props },
+    });
+  } catch (e) {
+    console.error("[guardarAtribucion] aviso a PostHog:", e);
+  }
 }
 
 /**
@@ -102,6 +146,8 @@ export async function guardarAtribucion(
   if (!userId || !tieneAlgo(datos)) return false;
 
   try {
+    // La puerta de antes, para saber si esta escritura la fija (y avisar a PostHog una vez).
+    const antes = datos.puerta ? await puertaGuardada(sb, userId) : null;
     const { error } = await sb.rpc("upsert_user_attribution", {
       p_user_id: userId,
       p_utm_source: datos.utm_source ?? null,
@@ -113,6 +159,8 @@ export async function guardarAtribucion(
       p_landing_path: datos.landing_path ?? null,
       p_fbp: datos.fbp ?? null,
       p_fbc: datos.fbc ?? null,
+      p_puerta: datos.puerta ?? null,
+      p_puerta_detalle: datos.puerta_detalle ?? null,
     });
 
     if (error) {
@@ -128,6 +176,7 @@ export async function guardarAtribucion(
       }
       return false;
     }
+    if (datos.puerta && fusionarPuerta(antes, datos.puerta) !== antes) await avisarPuerta(sb, userId, antes);
     return true;
   } catch (e) {
     console.error("[guardarAtribucion] excepción:", e);
