@@ -3,8 +3,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EL RESULTADO EN UN POP-UP (14-oct-2026, decisión de Fabrizio). Cuando «Analizar este» de renta corta mide fino y el
 // depto no da Comprar, no se cobra y se abre esto: el mensaje (`NO_DA`, o `NINGUNO_DA` si ningún parecido sobrevive)
-// y los parecidos con su botón. Nada se inserta en la lista: la tarjeta original queda marcada «No da para renta
-// corta · no cobrado», sin botón (semanal-lista.tsx). El armazón es el del modal del wizard (ModalPlausibilidad:
+// y los parecidos con su botón. Nada se inserta en la lista: la tarjeta original queda marcada (`MARCA_NO_DA`), sin
+// botón (semanal-lista.tsx). Desde el 15-oct-2026 ningún texto de la página habla del cobro. El armazón es el del modal del wizard (ModalPlausibilidad:
 // el velo, el panel, Escape y el foco dentro); las tarjetas, las de la guía (guia.css).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, type ReactNode } from "react";

@@ -15,8 +15,8 @@ import "@/components/formulario-v4/wizard-v4.css";
 
 export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr" }: {
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
-  /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo` y el aviso dice que, si la
-   *  medición fina no da, no se cobra. */
+  /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
+   *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
   modalidad?: "ltr" | "str";
   /** El pie y el plazo con que se analiza. */
   combinacion: { piePct: number; plazoAnios: number };
@@ -42,7 +42,7 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
         derivados: derivadosAviso(depto, combinacion, finanzas),
       }}
       destacado={<>Con el pie de <b>{d.pie}</b> y el plazo de <b>{d.plazo}</b> de tu perfil</>}
-      consumo={modalidad === "str" && !sin ? `${textoUso(uso)} ${AVISO_ANALIZAR.notaCorta}` : textoUso(uso)}
+      consumo={textoUso(uso)}
       labelConfirmar={sin ? AVISO_ANALIZAR.comprar : AVISO_ANALIZAR.analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}
       onConfirmar={sin ? () => router.push(rutaCompra) : alAnalizar}

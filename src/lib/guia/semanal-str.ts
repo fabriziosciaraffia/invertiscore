@@ -27,17 +27,17 @@ export const SEMANAL_STR = {
   bloqueCorto: "Para renta corta",
   intro: (n: number, busca: string, pie: string, plazo: number) =>
     `${n === 1 ? "Este depto publicado como los que buscas" : `Estos ${n} deptos publicados como los que buscas`} —${busca}— ${n === 1 ? "resulta" : "resultan"} para renta corta con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
-  zona: "Están estimados por zona: con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de su dirección; si así no da para renta corta, no te cobramos el análisis.",
+  zona: "Estimados con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de esa dirección.",
   /** Quien tiene los dos perfiles y una semana sin ninguno en un bloque. */
   sinLargo: "Para arriendo tradicional, esta semana no apareció ninguno que te convenga.",
   sinCorto: "Para renta corta, esta semana no apareció ninguno que te convenga.",
 } as const;
 
-/** «Analizar este» cuando la medición fina no da Comprar (texto de Fabrizio, 14-oct-2026). */
-export const NO_DA = "Con los datos de hoy, este depto no da para renta corta. No te cobramos el análisis. Prueba con estos, que son parecidos.";
+/** «Analizar este» cuando la medición fina no da Comprar (texto de Fabrizio, 15-oct-2026: sin mencionar el cobro). */
+export const NO_DA = "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:";
 
 /** Lo mismo cuando ninguno de los parecidos sigue dando Comprar con la medición nueva (texto de Fabrizio, 14-oct-2026). */
-export const NINGUNO_DA = "Con los datos de hoy, ninguno de tu selección da para renta corta esta semana. No te cobramos el análisis.";
+export const NINGUNO_DA = "Con los datos de su dirección, ninguno de tu selección da para renta corta esta semana. Seguimos buscando.";
 
 /** El mensaje del pop-up: con parecidos que sobreviven, `NO_DA`; sin ninguno, `NINGUNO_DA`. */
 export function mensajeNoDa(parecidos: number): string {
@@ -45,14 +45,15 @@ export function mensajeNoDa(parecidos: number): string {
 }
 
 /** La tarjeta del depto que no dio: queda marcada, sin botón (no se inserta nada en la lista). */
-export const MARCA_NO_DA = "No da para renta corta · no cobrado";
+export const MARCA_NO_DA = "No da con los datos de su dirección";
 
 /** Mientras mide (14-oct-2026): el botón pasa a un indicador giratorio con este texto. */
 export const MIDIENDO = "Midiendo con los datos de su dirección, unos 30 segundos";
 /** Pasado este tiempo, la medición se da por caída: error con «Reintentar» (la ruta corta a los 60 s). */
 export const MIDIENDO_TOPE_MS = 60_000;
-/** El error con reintentar. Reintentar no cobra dos veces: el cobro es una vez por persona y aviso (analizarUnaVez). */
-export const MIDIENDO_TARDO = "La medición tardó más de lo esperado. Si reintentas, no se cobra dos veces.";
+/** El error con reintentar. Reintentar no cobra dos veces (el cobro es una vez por persona y aviso, analizarUnaVez), pero
+ *  la página no habla del cobro (15-oct-2026). */
+export const MIDIENDO_TARDO = "La medición tardó más de lo esperado.";
 export const REINTENTAR = "Reintentar";
 
 /** Cuántos de los siguientes de su selección se ofrecen cuando uno no da («los dos o tres siguientes»). */

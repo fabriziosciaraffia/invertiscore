@@ -231,7 +231,7 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const items = ["a", "b", "c", "d", "e"].map((avisoId) => ({ avisoId }));
     const alt = STR.alternativasNoDa(items, "b", new Set(["d"])).map((x) => x.avisoId).join();
     if (alt !== "c,e,a" || STR.ALTERNATIVAS_NO_DA < 2 || STR.ALTERNATIVAS_NO_DA > 3) F(`3 · los siguientes no son «los dos o tres siguientes de su selección» (${alt})`);
-    if (STR.NO_DA !== "Con los datos de hoy, este depto no da para renta corta. No te cobramos el análisis. Prueba con estos, que son parecidos.") F("3 · el mensaje cuando no da no es el aprobado");
+    if (STR.NO_DA !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:") F("3 · el mensaje cuando no da no es el aprobado");
     // La ruta: compara contra lo que vio la persona, mide fino con el contador «semanal», y no mide sin análisis.
     if (!/mostrado: \{ veredicto: item\.veredicto!, score: item\.score \?\? null \}/.test(ruta)) F("3 · la ruta no compara contra el veredicto que vio la persona");
     if (!/await buildShortTermAnalysisRow\(body, ufValue, mercado, undefined, \{ origen: "semanal" \}\)/.test(ruta)) F("3 · la medición fina no es la del informe o no se cuenta como del semanal");

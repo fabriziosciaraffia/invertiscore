@@ -25,9 +25,9 @@ export const AVISO_ANALIZAR = {
   titulo: "¿Analizar este depto?",
   tituloSin: "No te quedan análisis",
   modalidad: "Renta larga",
-  /** El bloque de renta corta del semanal (14-oct-2026): se mide fino al analizar y, si no da, no se cobra. */
+  /** El bloque de renta corta del semanal (14-oct-2026). La última línea es la misma que en renta larga, «Usa 1 de tus N
+   *  análisis», sin condición (15-oct-2026): la página no habla del cobro. */
   modalidadCorta: "Renta corta",
-  notaCorta: "Franco lo mide con los datos de su dirección: si así no da para renta corta, no se cobra.",
   analizar: "Analizar",
   cancelar: "Cancelar",
   sin: `Para analizar este depto: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,

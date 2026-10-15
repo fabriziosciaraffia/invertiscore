@@ -167,7 +167,27 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
   // ── 6 · EL RESULTADO EN UN POP-UP ──────────────────────────────────────────────
   {
     if (STR.mensajeNoDa(2) !== STR.NO_DA || STR.mensajeNoDa(0) !== STR.NINGUNO_DA) F("6·9 · el pop-up no dice NO_DA con parecidos y NINGUNO_DA sin ninguno");
-    if (STR.MARCA_NO_DA !== "No da para renta corta · no cobrado") F("6 · la marca de la tarjeta no es la aprobada");
+    // EL COPY (15-oct-2026, Fabrizio): los textos aprobados, y ninguno habla del cobro.
+    if (STR.MARCA_NO_DA !== "No da con los datos de su dirección") F("6 · la marca de la tarjeta no es la aprobada");
+    if (STR.NO_DA !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:"
+      || STR.NINGUNO_DA !== "Con los datos de su dirección, ninguno de tu selección da para renta corta esta semana. Seguimos buscando."
+      || STR.SEMANAL_STR.zona !== "Estimados con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de esa dirección.")
+      F("6 · los textos del pop-up o del bloque no son los aprobados");
+    {
+      const { SEMANAL_PAGINA } = await import("../../../src/lib/guia/semanal");
+      const { AVISO_ANALIZAR } = await import("../../../src/lib/guia/aviso-analizar");
+      const { correoSemanal } = await import("../../../src/lib/email/correo-semanal");
+      const valores = (o: Record<string, unknown>) => Object.values(o).map((v) => (typeof v === "function" ? String((v as (...a: unknown[]) => unknown)(2, "1 dormitorio, Providencia", "20", 25)) : String(v)));
+      const textos = [
+        ...valores(STR.SEMANAL_STR), STR.NO_DA, STR.NINGUNO_DA, STR.MARCA_NO_DA, STR.MARCA_ZONA, STR.MIDIENDO, STR.MIDIENDO_TARDO, STR.REINTENTAR,
+        ...valores(SEMANAL_PAGINA as unknown as Record<string, unknown>), ...valores(AVISO_ANALIZAR as unknown as Record<string, unknown>),
+        ...(["con", "regalo", "plan"] as const).map((tipo) => textoUso(tipo === "con" ? { tipo, n: 4, noVencen: false } : tipo === "regalo" ? { tipo, vence: null } : { tipo })),
+      ];
+      const d = (n: number) => ({ comuna: "Providencia", tipologia: "2D2B", m2: 60, precioUF: 3900 + n, veredicto: "COMPRAR", score: 75, flujo: 50000, url: `https://x/${n}` });
+      const html = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "2 dormitorios, Providencia", piePct: 20, plazoAnios: 25, deptos: [d(1)], conRegalo: false, saldo: 2, urlBoton: "https://x/b", urlTres: "https://x/t", urlBaja: "https://x/baja", corto: { deptos: [d(2), d(3)], busca: "2 dormitorios, Providencia", piePct: 20, plazoAnios: 25 } }).html;
+      const conCobro = textos.filter((t) => /cobr/i.test(t));
+      if (conCobro.length || /cobr/i.test(html) || /cobr/i.test(lista) || /cobr/i.test(popup.replace(/^\s*\/\/.*$/gm, ""))) F(`6 · la página, el correo o los pop-ups todavía hablan del cobro (${JSON.stringify(conCobro)}${/cobr/i.test(html) ? " + correo" : ""})`);
+    }
     if (!/role="dialog" aria-modal="true"/.test(popup) || !/\{mensajeNoDa\(parecidos\)\}/.test(popup) || !/\{parecidos > 0 && <div className="guia guia-pop-lista" data-popup="parecidos">\{children\}<\/div>\}/.test(popup))
       F("6 · el pop-up no es un diálogo con el mensaje y los parecidos");
     if (!/\{popup && \(\s*<PopupNoDa parecidos=\{parecidos\.length\} alCerrar=\{\(\) => setPopup\(null\)\}>\s*\{parecidos\.map\(\(p\) => tarjeta\(p, `pop-\$\{p\.avisoId\}`\)\)\}\s*<\/PopupNoDa>\s*\)\}/.test(lista))

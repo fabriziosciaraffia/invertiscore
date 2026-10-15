@@ -561,7 +561,7 @@ export async function origenDeInformes(admin: SupabaseClient, userId: string, id
 }
 
 /** Los deptos de renta corta de esta persona que ya se midieron fino y no dieron (no se cobraron): la tarjeta queda
- *  marcada «No da para renta corta · no cobrado», sin botón, también al volver a la página. */
+ *  marcada (`MARCA_NO_DA`), sin botón, también al volver a la página. */
 export async function noDanEnRentaCorta(admin: SupabaseClient, userId: string, avisoIds: string[]): Promise<string[]> {
   if (avisoIds.length === 0) return [];
   const { data, error } = await admin.from("comparaciones_zona_str").select("aviso_id")
