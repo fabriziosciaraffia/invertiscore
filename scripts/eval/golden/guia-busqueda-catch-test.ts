@@ -433,7 +433,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (pastillaFichas(base({ bloqueo: 1 })).estado !== "error") F("9 · un bloqueo no pone roja la pastilla de fichas");
     if (pastillaFichas(base({ redirige: 5, despublicado: 3, publicado: 2 })).estado !== "ok") F("9 · un despublicado cambia el color de la pastilla");
     if (!/label: "Fichas \(24 h\)",\s*\.\.\.pastillaFichas\(lecturasFicha\),/.test(sinComentarios(leer("src/app/admin/operacion/page.tsx")))) F("9 · el panel de operación no muestra las lecturas de ficha");
-    if (!/alertarUnaVezAlDia\([\s\S]{0,400}?"bloqueo",\s*\)/.test(sinComentarios(leer("src/lib/guia/ficha-servidor.ts")))) F("9 · el bloqueo no alerta una vez al día");
+    // ⚠ ACTA (15-oct-2026) · un bloqueo ya no manda correo en el acto: queda en lecturas_ficha y en el panel, y la
+    // vigilancia avisa solo si pasa un día sin una lectura buena (tier ALERTAS-CRONS §6).
+    const fs9 = sinComentarios(leer("src/lib/guia/ficha-servidor.ts"));
+    if (!/async alertarBloqueo\(l\) \{\s*console\.warn\(/.test(fs9) || /alertarUnaVezAlDia|avisar\(|sendAlerta|correoDeAlertas/.test(fs9)) F("9 · el bloqueo manda correo en el acto (o no queda en el log)");
   }
 
 

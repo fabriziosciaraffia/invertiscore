@@ -141,6 +141,7 @@ import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
+import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runZonaComunaTier } from "./zona-comuna-catch-test";
@@ -598,6 +599,9 @@ function printSeed(r: SeedReport) {
   // Tier CRONS (29-sep-2026, 0 tokens, sin red ni base): el scraper de unidades sale por el proxy y el
   // 202 del WAF es error; ningún cron falla en silencio (500, rojo en el panel, alerta a hola@). ──
   totalHard += (await runCronsTier()).hard;
+  // Tier ALERTAS-CRONS (15-oct-2026, 0 tokens, sin red ni base): avisar solo cuando hace falta una persona; una
+  // corrida fallida seguida de una buena no avisa; una acción, una vez; los de varias corridas, un resumen al día. ──
+  totalHard += (await runAlertasCronsTier()).hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado
   // de versalitas; «Cómo se calcula» con layout fijo y millones en el teléfono. ──
   totalHard += runInformeTipografiaTier().hard;

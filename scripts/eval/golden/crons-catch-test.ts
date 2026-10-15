@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fallidosTolerados, fetchUnidadesProyecto, PREFIJO_VISTA_UNIDADES, TOLERANCIA_FALLA_PROYECTOS } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { conteoUnidades, CORRIDAS_POR_DIA } from "../../../src/lib/services/scraper/unidades-presupuesto";
-import { cerrarCron, motivoDeFalla, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
+import { cerrarCron, correoDeAlertas, motivoDeFalla, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
 import { anteriorAlCodigo, CRONS_VIGILADOS, escrituraVencida, estaAtrasado, leerLatidos } from "../../../src/lib/cron-heartbeat";
 import { fetchBCCH, INTENTOS_BCCH } from "../../../src/lib/bcch";
 
@@ -156,13 +156,17 @@ export async function runCronsTier(): Promise<{ hard: number }> {
   const md = Number((sinComentarios(leer("src/app/api/data/scrape-nuevos/route.ts")).match(/export const maxDuration = (\d+);/) ?? [])[1]);
   if (!(md >= 300)) F(`4 · scrape-nuevos con ${md} s: sus corridas cierran en ~55 s y se corta (el 5-oct dejó la reconciliación sin hacer)`);
 
-  // ── 2 · cerrarCron deja el resultado y alerta una vez al día ──
+  // ── 2 · cerrarCron deja el resultado; los avisos siguen las reglas de cron-alertas.ts (tier ALERTAS-CRONS) ──
+  // Ningún correo sale de verdad desde el tier.
+  correoDeAlertas.enviar = async () => {};
   {
-    const { sb, escrituras } = supabaseDoble((tabla, f) => (tabla === "metrics_daily" && f["eq:fuente"] === FUENTE_ALERTA ? { valor: 1 } : null));
+    const { sb, escrituras } = supabaseDoble(() => null);
     const r = await cerrarCron(sb, "prueba", { procesados: 3, exitosos: 0, fallidos: 3 }, { error: "x" });
     const fila = escrituras.find((e) => e.fila.fuente === FUENTE_RESULTADO);
     if (r.status !== 500 || !fila || fila.fila.valor !== 2 || fila.fila.metrica !== "prueba") F("2 · una corrida fallida no queda registrada como falla (valor 2) o no responde 500");
-    if (escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F("2 · con la alerta del día ya enviada, vuelve a alertar");
+    // ⚠ ACTA (15-oct-2026) · una falla sola queda en el registro y el panel: no avisa (la siguiente se puede poner al día).
+    if (escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F("2 · una falla sola avisa");
+    if (!escrituras.some((e) => e.tabla === "cron_estado")) F("2 · la corrida no deja el estado del cron (las reglas no podrían contar fallas seguidas)");
     const ok = supabaseDoble(() => null);
     const r2 = await cerrarCron(ok.sb, "prueba", { procesados: 2, exitosos: 2, fallidos: 0 });
     if (r2.status !== 200 || ok.escrituras.find((e) => e.fila.fuente === FUENTE_RESULTADO)?.fila.valor !== 0 || ok.escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F("2 · una corrida sana no queda en verde o alerta igual");
@@ -171,7 +175,7 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     if (dry.escrituras.length) F("2 · un ensayo (dry) deja resultado o alerta");
   }
   const cr = sinComentarios(leer("src/lib/cron-resultado.ts"));
-  if (!/await guardarMetrica\(sb, \{ fecha: hoy, fuente: FUENTE_ALERTA, metrica, valor: 1 \}\);\s*const \{ sendAlertaCronInterna \}/.test(cr)) F("2 · la alerta no se anota antes de mandarse (se repetiría por corrida)");
+  if (!/await guardarMetrica\(sb, \{ fecha: hoy, fuente: FUENTE_ALERTA, metrica: `\$\{nombre\}:\$\{a\.clave\}`, valor: 1 \}\);\s*await correoDeAlertas\.enviar\(/.test(cr)) F("2 · la alerta no se anota antes de mandarse (no se podrían contar los correos)");
   if (!/enviarCorreo\("alerta_cron", null, \{ from: FROM_EMAIL, to: 'hola@refranco\.ai'/.test(leer("src/lib/email.ts"))) F("2 · la alerta no va a hola@");
 
   // ── 2 · el panel pinta rojo la falla, la corrida sin cierre y el dato que dejó de escribirse ──
@@ -262,7 +266,7 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     }
     const um = sinComentarios(leer("src/app/api/data/update-market/route.ts"));
     if (!/import \{ fetchBCCH \} from "@\/lib\/bcch";/.test(um) || /async function fetchBCCH/.test(um)) F("3 · update-market no usa el fetchBCCH con reintento");
-    if (!/\{ success: escritos === 2, results, errors \}\);/.test(um)) F("3 · el motivo de la falla no viaja al correo (errors)");
+    if (!/\{ success: escritos === 2, results, errors, \.\.\.\(credenciales \?/.test(um)) F("3 · el motivo de la falla no viaja al correo (errors)");
   }
 
   // ── 3 · la vigilancia: un cron nuevo no está atrasado antes de su primera corrida, y la falla de ayer
@@ -310,7 +314,9 @@ export async function runCronsTier(): Promise<{ hard: number }> {
       if (!um.motivos.falla || !um.motivos["sin-escribir"] || um.motivo !== um.motivos.falla || !/^no escribe UF desde/.test(um.motivos["sin-escribir"] ?? "")) F(`3 · el estado no trae la frase de cada motivo (${JSON.stringify(um.motivos)})`);
     }
     const vgTexto = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
-    if (!/const texto = c\.motivos\[motivo as keyof typeof c\.motivos\] \?\? c\.motivo \?\? "en rojo";\s*if \(await alertarUnaVezAlDia\(sb, c\.nombre, hoy, texto, \{\}, motivo\)\)/.test(vgTexto)) F("3 · el correo de la vigilancia dice el motivo de mayor prioridad, no el que disparó la alerta");
+    // ⚠ ACTA (15-oct-2026) · la vigilancia pasa la frase de CADA motivo a las reglas (cron-alertas.ts): el aviso dice
+    // la condición que lo disparó.
+    if (!/textoAtrasado: c\.motivos\.atrasado, sinEscribir: c\.sinEscribir, textoSinEscribir: c\.motivos\["sin-escribir"\],/.test(vgTexto)) F("3 · el correo de la vigilancia no dice el motivo que disparó la alerta");
     // El motivo concreto de una falla: cuántos de cuántos y con qué error.
     const mf = [
       motivoDeFalla({ procesados: 137, exitosos: 0, fallidos: 137 }, { unidad: "proyectos", erroresPorTipo: { "http 403": 137 } }),
@@ -327,12 +333,13 @@ export async function runCronsTier(): Promise<{ hard: number }> {
       "2 de 2 elementos fallaron",
     ];
     mf.forEach((m, i) => { if (m !== esperado[i]) F(`3 · el motivo de la falla no dice cuántos de cuántos y con qué («${m}» en vez de «${esperado[i]}»)`); });
-    if (!/terminó con \$\{resultado === "fallo" \? "falla total" : "falla parcial"\}: \$\{motivoDeFalla\(conteo, extra\)\}\./.test(sinComentarios(leer("src/lib/cron-resultado.ts")))) F("3 · la alerta de la corrida no usa el motivo concreto");
+    if (!/causa: resultado === "ok" \? null : `\$\{resultado === "fallo" \? "falla total" : "falla parcial"\}: \$\{motivoDeFalla\(conteo, extra\)\}`/.test(sinComentarios(leer("src/lib/cron-resultado.ts")))) F("3 · la alerta de la corrida no usa el motivo concreto");
     const un = sinComentarios(leer("src/app/api/data/scrape-unidades-nuevas/route.ts"));
     if (!/unidad: "proyectos",\s*erroresPorTipo,/.test(un) || !/for \(const r of conError\) erroresPorTipo\[String\(r\.error\)\] = /.test(un)) F("3 · el pase de unidades no da el desglose de sus errores para el motivo");
     const vg = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
-    const cuerpo = (vg.match(/function motivoDeAlerta[\s\S]*?\n\}/) ?? [""])[0];
-    if (!cuerpo || /falla|ultimoResultado/.test(cuerpo) || !/if \(motivo === null\) continue;/.test(vg)) F("3 · la vigilancia vuelve a avisar la falla de una corrida (ya avisó cerrarCron)");
+    // ⚠ ACTA (15-oct-2026) · la vigilancia decide con el estado del cron (cron_estado), no con el último resultado: la
+    // falla que ya avisó el cierre está en lo avisado y no se repite (tier ALERTAS-CRONS).
+    if (/ultimoResultado|motivoDeAlerta/.test(vg) || !/alVigilar\(e, condiciones,/.test(vg)) F("3 · la vigilancia no decide con el estado del cron (repetiría la falla ya avisada)");
   }
 
   if (!/const cronsAtrasados = latidos\.filter\(\(l\) => l\.enRojo\);/.test(leer("src/app/admin/operacion/page.tsx"))) F("2 · el panel no pinta con enRojo (solo con «no corrió»)");
@@ -341,7 +348,7 @@ export async function runCronsTier(): Promise<{ hard: number }> {
     console.log(`  ✗ CRONS · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el scraper sale por el proxy y el 202 es error; toda falla responde 500, queda en rojo en el panel y alerta a hola@ una vez al día; la vigilancia ve el cron que no cierra y el que dejó de escribir");
+    console.log("  ✓ VERDE — el scraper sale por el proxy y el 202 es error; toda falla responde 500 y queda en rojo en el panel; los avisos a hola@ siguen las reglas de ALERTAS-CRONS; la vigilancia ve el cron que no cierra y el que dejó de escribir");
   }
   return { hard: fallas.length };
 }

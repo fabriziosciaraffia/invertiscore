@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier META-ADS-SIN-CAMPANA (13-oct-2026, 0 tokens) — el cron de Meta Ads sin un token válido no falla ni alerta.
+// Tier META-ADS-SIN-CAMPANA (13-oct-2026, 0 tokens) — el cron de Meta Ads sin un token válido no falla.
 //
 //   1 · TOKEN VENCIDO (los códigos de Meta 190, 102, 463, 467) o SIN CONFIGURAR: la corrida sale bien, sin trabajo,
 //       con la pausa «sin campaña activa»; no escribe métricas, no avisa a Sentry y, cerrada con `cerrarCron`, deja
-//       el resultado en verde con la pausa y no manda alerta.
+//       el resultado en verde con la pausa. El token VENCIDO avisa una sola vez (es una acción: regenerarlo; reglas
+//       de cron-alertas.ts, 15-oct-2026); sin configurar no avisa.
 //   2 · CON UN TOKEN VÁLIDO corre normal: escribe las cuatro métricas (con entrega o sin ella) y sale sin pausa.
 //   3 · CUALQUIER OTRA FALLA de Meta sigue siendo falla y avisa: no es «sin campaña», es «no pudimos preguntar».
 //   4 · EL VIGILANTE: con la última corrida en pausa, que no escriba métricas no lo pone en rojo (no alerta
@@ -24,7 +25,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { correrMetaAds, SIN_CAMPANA_ACTIVA, type DepsMetaAds, type FilaMetricaMeta } from "../../../src/lib/meta-ads-cron";
-import { cerrarCron, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
+import { cerrarCron, correoDeAlertas, resultadoCron, statusCron, FUENTE_ALERTA, FUENTE_RESULTADO } from "../../../src/lib/cron-resultado";
 import { CRONS_VIGILADOS, leerLatidos } from "../../../src/lib/cron-heartbeat";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -85,16 +86,28 @@ export async function runMetaAdsSinCampanaTier(): Promise<{ hard: number }> {
     if (resultadoCron(r.conteo) !== "ok" || r.extra.pausa !== SIN_CAMPANA_ACTIVA || x.avisos.length || x.llamadas()) F("1 · sin el token configurado no sale en silencio con «sin campaña activa» (o igual le pregunta a Meta)");
   }
   {
-    // Cerrada con cerrarCron: el resultado queda en verde con la pausa, y no hay alerta.
+    // Cerrada con cerrarCron: el resultado queda en verde con la pausa. ⚠ ACTA (15-oct-2026, regla de Fabrizio: lo que
+    // necesita una acción «avisa de inmediato y una sola vez») · el token vencido avisa UNA vez; ya avisado, no repite.
+    const correos: string[] = [];
+    correoDeAlertas.enviar = async (p) => { correos.push(p.problema); };
     const x = deps(() => [400, { error: { code: 190, message: "expired" } }]);
     const r = await correrMetaAds(P, x.d);
     const { sb, escrituras } = supabaseDoble(() => null);
     const res = await cerrarCron(sb, "meta-ads", r.conteo, r.extra);
+    const estadoGuardado = escrituras.find((e) => e.tabla === "cron_estado")?.fila.estado;
+    const ya = supabaseDoble((tabla) => (tabla === "cron_estado" ? { estado: estadoGuardado } : null));
+    await cerrarCron(ya.sb, "meta-ads", r.conteo, r.extra);
+    if (correos.length !== 1 || !/META_ADS_TOKEN/.test(correos[0] ?? "") || ya.escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F(`1 · el token vencido no avisa una sola vez (${correos.length} correos)`);
+    // Sin el token configurado es a propósito (sin campaña): no hay nada que hacer, no avisa.
+    const sinConfig = await correrMetaAds({ ...P, token: undefined }, deps(() => [200, { data: [] }]).d);
+    const sc = supabaseDoble(() => null);
+    await cerrarCron(sc.sb, "meta-ads", sinConfig.conteo, sinConfig.extra);
+    if (sc.escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F("1 · sin el token configurado avisa");
     const fila = escrituras.find((e) => e.fila.fuente === FUENTE_RESULTADO);
     const cuerpo = (await res.json()) as Record<string, unknown>;
     if (res.status !== 200 || !fila || fila.fila.valor !== 0) F("1 · cerrada, la corrida sin campaña no queda en verde (valor 0) o no responde 200");
     if ((fila?.fila.meta as Record<string, unknown> | undefined)?.pausa !== SIN_CAMPANA_ACTIVA) F("1 · el resultado de la corrida no guarda la pausa: el vigilante no puede saber que no escribir es lo esperado");
-    if (escrituras.some((e) => e.fila.fuente === FUENTE_ALERTA)) F("1 · la corrida sin campaña manda alerta");
+    if (escrituras.filter((e) => e.fila.fuente === FUENTE_ALERTA).length !== 1) F("1 · la primera corrida con el token vencido no anota su aviso");
     if (cuerpo.pausa !== SIN_CAMPANA_ACTIVA) F("1 · la respuesta del cron no dice «sin campaña activa»");
   }
 
@@ -160,7 +173,7 @@ export async function runMetaAdsSinCampanaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ META-ADS-SIN-CAMPANA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — sin un token válido (vencido, revocado o sin configurar) el cron sale bien en silencio con «sin campaña activa», sin escribir ni avisar, y el vigilante no lo cuenta; con el token de vuelta escribe normal; cualquier otra falla de Meta sigue siendo falla");
+    console.log("  ✓ VERDE — sin un token válido (vencido, revocado o sin configurar) el cron sale bien con «sin campaña activa», sin escribir; el token vencido avisa una sola vez y el vigilante no lo cuenta; con el token de vuelta escribe normal; cualquier otra falla de Meta sigue siendo falla");
   }
   return { hard: fallas.length };
 }
