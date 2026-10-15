@@ -333,7 +333,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\} \/>/.test(gb)
     || !/alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it, true\); \}\}/.test(gb)) F("8 · al entrar con el código no se ofrece analizar esa tarjeta");
   const regT = sinComentarios(leer("src/components/guia/RegistroEnTarjeta.tsx"));
-  if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
+  if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "guia" \} \}\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
   if (/router\.|window\.location\.(href|assign)/.test(regT)) F("8 · el registro de la tarjeta navega fuera de la pantalla");
 
 
@@ -423,7 +423,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (p.estado !== "creado" || cobros !== 1) F("9 · un aviso publicado no se analiza");
     const ruta9 = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
     if (!/chequearPublicacion\(ficha, "clic", almacenPublicacion\(admin\), bajarFicha, \{ forzar: true \}\)/.test(ruta9)) F("9 · «Analizar este» no relee la ficha antes de cobrar");
-    if (!/if \(r\.estado === "despublicado"\) return NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\);/.test(ruta9) || !/from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", o\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
+    // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de AnalizarEste (tier MEDICION-META).
+    if (!/if \(r\.estado === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(ruta9) || !/from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", o\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
     if (GUIA.despublicado !== "Este aviso ya no está publicado.") F("9 · la tarjeta no dice «Este aviso ya no está publicado.»");
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{\s*setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\);\s*setGenerando\(null\);\s*void reemplazar\(\);/.test(gb)) F("9 · la tarjeta no dice que el aviso se despublicó, o la guía no lo reemplaza");
   }
@@ -471,7 +472,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/const r = await mandarAvisoUnaVez\(\{/.test(qv) || (qv.match(/sendAvisoPedidoEmail\(/g) ?? []).length !== 1) F("10 · la ruta manda el correo por fuera de mandarAvisoUnaVez");
     if (!/"clic", almacenPublicacion\(admin\), bajarFicha,\s*\);/.test(qv)) F("10 · la ruta no chequea la ficha con la memoria de 24 horas");
     if (!/\.match\(fila\)\.is\("correo_enviado_at", null\)\.select\("analysis_id"\);\s*return \(data\?\.length \?\? 0\) === 1;/.test(qv)) F("10 · el reclamo del correo no es atómico (correo_enviado_at null → ahora)");
-    if (!/if \(r === "despublicado"\) return NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\);/.test(qv)) F("10 · un aviso despublicado no responde 410");
+    // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de QuieroVerlo (tier MEDICION-META).
+    if (!/if \(r === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(qv)) F("10 · un aviso despublicado no responde 410");
     if (!/\.from\("interes_avisos"\)\.insert\(/.test(qv)) F("10 · el interés deja de guardarse en la base");
     // Nada sale a hola@ por «Quiero verlo».
     const em = sinComentarios(leer("src/lib/email.ts"));

@@ -238,7 +238,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (!/const lugar = await reverseGeocode\(aviso\.lat, aviso\.lng\);/.test(ruta)) F("3 · la medición fina no va por la dirección del depto, como en el wizard");
     const iSaldo = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };'), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iSaldo < 0 || iMide < 0 || iSaldo > iMide) F("3 · sin análisis disponibles igual se consulta al proveedor");
-    if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) return NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas \}\);/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
+    // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de AnalizarEste (tier MEDICION-META).
+    if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) return salir\(NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas \}\)\);/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
     if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*setPopup\(\{ avisoId: it\.avisoId, parecidos: d\.alternativas \?\? \[\] \}\);\s*break;\s*\}/.test(lista))
       F("3 · la página no abre el pop-up con los parecidos cuando no da (o no marca la tarjeta)");
   }

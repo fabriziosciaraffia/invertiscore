@@ -200,7 +200,7 @@ export function runEntradaCodigoTier(): { hard: number } {
   if (iRefresh < 0) F("4 · después del código el banner no refresca la página: header y ticket siguen como anónimo");
   if (iMarca < 0 || (iRefresh >= 0 && iMarca > iRefresh)) F("4 · la marca «recién dentro» no se escribe ANTES del refresco: «Estás dentro» desaparece");
   if (!/setPaso\("dentro"\)/.test(entrarBanner)) F("4 · al entrar, el banner no pasa a «Estás dentro»");
-  if (!/<RegistroUnPaso next=\{next\} ctx=\{ctx\} alEntrar=\{entrar\} \/>/.test(banner)) F("4 · el registro del banner no usa el manejador que refresca");
+  if (!/<RegistroUnPaso next=\{next\} ctx=\{ctx\} alEntrar=\{entrar\} demo=\{demo\} \/>/.test(banner)) F("4 · el registro del banner no usa el manejador que refresca");
   {
     const s = almacen();
     const t0 = 1_000_000;
@@ -246,11 +246,12 @@ export function runEntradaCodigoTier(): { hard: number } {
   if (iBienvenida < 0) F("5 · el claim no manda la bienvenida al registrarse por código");
   if (iBienvenida >= 0 && iAtajo >= 0 && iBienvenida > iAtajo) F("5 · la bienvenida va después del atajo sin cookie: quien entra por código sin informe no la recibe");
   const aa = sinComentarios(leer("src/lib/auth-analytics.ts"));
-  if (!/body: JSON\.stringify\(\{ porCodigo: true \}\)/.test(aa)) F("5 · reclamarAnalisisAnonimos no avisa que la entrada fue por código");
+  // ⚠ ACTA (15-oct-2026, medición para la campaña) · el reclamo lleva además la puerta (A: banner, guía).
+  if (!/body: JSON\.stringify\(\{ porCodigo: opciones\.porCodigo === true,/.test(aa)) F("5 · reclamarAnalisisAnonimos no avisa que la entrada fue por código");
   for (const [f, re] of [
     ["src/components/entrar/EntrarConCodigo.tsx", /await reclamarAnalisisAnonimos\(posthog, nueva \? "register" : "login", \{ porCodigo: true \}\);/],
-    ["src/components/lo-que-sigue/RegistroUnPaso.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);/],
-    ["src/components/guia/RegistroEnTarjeta.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);/],
+    ["src/components/lo-que-sigue/RegistroUnPaso.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "banner" \} \}\);/],
+    ["src/components/guia/RegistroEnTarjeta.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "guia" \} \}\);/],
   ] as const) {
     const s = sinComentarios(leer(f));
     if (!re.test(s)) F(`5 · ${f}: al entrar por código no pide la bienvenida`);

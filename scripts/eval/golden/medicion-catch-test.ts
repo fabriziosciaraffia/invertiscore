@@ -88,7 +88,9 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
     const bloque = (confirm.match(/if \(userId\) \{\s*\n\s*try \{\s*\n\s*const \{ data: capiUser \}[\s\S]*?await capturarServidor\(eventoPagoConfirmado\(\{[\s\S]*?\}\)\);/) ?? [])[0] ?? "";
     if (!bloque) F("3 · payments/confirm no emite pago_confirmado en el mismo bloque que el Purchase de Meta");
-    if (!/eventId: payment\.commerce_order,/.test(bloque) || !/commerceOrder: payment\.commerce_order,/.test(bloque)) F("3 · el Purchase de Meta y pago_confirmado no llevan el mismo commerce_order");
+    // ⚠ ACTA (15-oct-2026) · el Purchase sale por emitirEventoMeta con `idCompra(payment.commerce_order)` (el id ES el
+    // commerce_order: src/lib/meta/ids.ts; tier MEDICION-META §1).
+    if (!/eventId: idCompra\(payment\.commerce_order\),/.test(bloque) || !/commerceOrder: payment\.commerce_order,/.test(bloque)) F("3 · el Purchase de Meta y pago_confirmado no llevan el mismo commerce_order");
     if (!/userId,\s*\n\s*product: payment\.product,\s*\n\s*amount: payment\.amount,/.test(bloque)) F("3 · pago_confirmado no lleva usuario, producto y monto del pago confirmado");
   }
 

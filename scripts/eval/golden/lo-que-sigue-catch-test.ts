@@ -329,7 +329,8 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/onChange=\{\(e\) => setCodigo\(limpiarCodigo\(e\.target\.value\)\)\}/.test(reg) || !/if \(!codigoValido\(t\) \|\| !enviado\) \{/.test(reg) || /\\d\{6\}|slice\(0, 6\)/.test(reg)) F("11 · el formulario no usa limpiarCodigo y codigoValido (o vuelve a cortar en 6)");
   if (REGISTRO_UN_PASO.errorCodigo !== "El código son 6 dígitos.") F("11 · el copy dejó de decir 6 dígitos");
   // (01-oct-2026, ENTRADA-CÓDIGO) el reclamo lleva { porCodigo: true }: con él sale la bienvenida al registrarse.
-  if (!/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true \}\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
+  // ⚠ ACTA (15-oct-2026, medición para la campaña) · el reclamo lleva además la puerta (A: banner, guía).
+  if (!/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "banner" \} \}\);[\s\S]*?EVENTOS_LQS\.registroCompletado, ctx, \{ via: "correo", como: "codigo" \}\);[\s\S]*?router\.refresh\(\);/.test(reg)) F("4 · al entrar con código no se reclama el informe, no se mide o no se refresca el informe");
   if (!/emailRedirectTo: callback\(\)/.test(reg)) F("4 · el enlace del correo no vuelve al mismo informe");
   const plantilla = leer("docs/emails/supabase-codigo.html").replace(/<!--[\s\S]*?-->/g, "");
   if (!/\{\{ \.Token \}\}/.test(plantilla) || !/\{\{ \.ConfirmationURL \}\}/.test(plantilla)) F("4 · la plantilla del correo de Supabase no lleva el código y el enlace");

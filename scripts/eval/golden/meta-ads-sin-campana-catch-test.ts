@@ -5,7 +5,8 @@
 //       con la pausa «sin campaña activa»; no escribe métricas, no avisa a Sentry y, cerrada con `cerrarCron`, deja
 //       el resultado en verde con la pausa. El token VENCIDO avisa una sola vez (es una acción: regenerarlo; reglas
 //       de cron-alertas.ts, 15-oct-2026); sin configurar no avisa.
-//   2 · CON UN TOKEN VÁLIDO corre normal: escribe las cuatro métricas (con entrega o sin ella) y sale sin pausa.
+//   2 · CON UN TOKEN VÁLIDO corre normal: escribe las cinco métricas (con entrega o sin ella; los clics al enlace desde
+//       el 15-oct-2026) y sale sin pausa.
 //   3 · CUALQUIER OTRA FALLA de Meta sigue siendo falla y avisa: no es «sin campaña», es «no pudimos preguntar».
 //   4 · EL VIGILANTE: con la última corrida en pausa, que no escriba métricas no lo pone en rojo (no alerta
 //       «sin escribir»); sin la pausa, sí; y cuando el token vuelve y escribe, queda en verde sin pausa.
@@ -114,18 +115,20 @@ export async function runMetaAdsSinCampanaTier(): Promise<{ hard: number }> {
   // ── 2 · con un token válido corre normal ─────────────────────────────────────────────────────────────
   {
     const x = deps((url) => (url.includes("level=account")
-      ? [200, { data: [{ spend: "1234.5", impressions: "1000", clicks: "40", reach: "800", account_currency: "CLP" }] }]
+      ? [200, { data: [{ spend: "1234.5", impressions: "1000", clicks: "40", inline_link_clicks: "31", reach: "800", account_currency: "CLP" }] }]
       : [200, { data: [{ campaign_id: "c1", campaign_name: "Campaña", spend: "1234.5" }] }]));
     const r = await correrMetaAds(P, x.d);
     const spend = x.guardadas.find((g) => g.metrica === "spend_1d");
     if (resultadoCron(r.conteo) !== "ok" || r.extra.pausa !== undefined) F("2 · con un token válido la corrida no sale normal (o sale en pausa)");
-    if (x.guardadas.length !== 4 || spend?.valor !== 1234.5 || (spend?.meta as { campanas?: unknown[] } | undefined)?.campanas?.length !== 1) F(`2 · con un token válido no escribe las cuatro métricas con el gasto (${x.guardadas.length} escritas)`);
+    if (x.guardadas.length !== 5 || spend?.valor !== 1234.5 || (spend?.meta as { campanas?: unknown[] } | undefined)?.campanas?.length !== 1) F(`2 · con un token válido no escribe las cinco métricas con el gasto (${x.guardadas.length} escritas)`);
+    // Los clics al enlace (15-oct-2026): su propia métrica, del campo de Meta que cuenta los que llevan al sitio.
+    if (x.guardadas.find((g) => g.metrica === "link_clicks_1d")?.valor !== 31) F("2 · con un token válido no escribe los clics al enlace");
     if (x.avisos.length) F("2 · con un token válido avisa a Sentry");
   }
   {
     const x = deps(() => [200, { data: [] }]);
     const r = await correrMetaAds(P, x.d);
-    if (resultadoCron(r.conteo) !== "ok" || r.extra.pausa !== undefined || x.guardadas.length !== 4 || x.guardadas.some((g) => g.valor !== 0) || (x.guardadas[0]?.meta as { sin_entrega?: boolean } | undefined)?.sin_entrega !== true)
+    if (resultadoCron(r.conteo) !== "ok" || r.extra.pausa !== undefined || x.guardadas.length !== 5 || x.guardadas.some((g) => g.valor !== 0) || (x.guardadas[0]?.meta as { sin_entrega?: boolean } | undefined)?.sin_entrega !== true)
       F("2 · con un token válido y sin entrega no escribe el cero medido (sin_entrega), o sale en pausa");
   }
 
