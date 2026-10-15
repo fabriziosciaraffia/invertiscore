@@ -26,12 +26,16 @@ export const METRICA_SPEND_1D = "spend_1d";
 export const METRICA_IMPRESSIONS_1D = "impressions_1d";
 export const METRICA_CLICKS_1D = "clicks_1d";
 export const METRICA_REACH_1D = "reach_1d";
+/** Clics al ENLACE (15-oct-2026): `clicks_1d` cuenta todo clic —me gusta, ver más, el perfil—; este, los que llevan
+ *  al sitio. El costo por clic de una campaña se juzga con este. */
+export const METRICA_LINK_CLICKS_1D = "link_clicks_1d";
 
-/** Las cuatro que el cron escribe, en el orden en que se leen. */
+/** Las cinco que el cron escribe, en el orden en que se leen. */
 export const METRICAS_META = [
   METRICA_SPEND_1D,
   METRICA_IMPRESSIONS_1D,
   METRICA_CLICKS_1D,
+  METRICA_LINK_CLICKS_1D,
   METRICA_REACH_1D,
 ] as const;
 

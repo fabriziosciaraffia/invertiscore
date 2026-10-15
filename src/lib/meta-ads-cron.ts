@@ -21,9 +21,25 @@ import {
   FUENTE_META_ADS,
   METRICA_CLICKS_1D,
   METRICA_IMPRESSIONS_1D,
+  METRICA_LINK_CLICKS_1D,
   METRICA_REACH_1D,
   METRICA_SPEND_1D,
 } from "@/lib/meta-ads";
+
+const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+/** Tope del relleno (15-oct-2026, la ruta con `?desde=&hasta=`): dos meses de días, de a uno. */
+export const MAX_DIAS_RELLENO = 60;
+
+/** Los días de un rango cerrado (YYYY-MM-DD), o null si el rango no sirve o pasa del tope. */
+export function diasDelRango(desde: string | null, hasta: string | null): string[] | null {
+  if (!desde || !hasta || !FECHA.test(desde) || !FECHA.test(hasta) || desde > hasta) return null;
+  const dias: string[] = [];
+  for (const d = new Date(`${desde}T00:00:00Z`); d.toISOString().slice(0, 10) <= hasta; d.setUTCDate(d.getUTCDate() + 1)) {
+    dias.push(d.toISOString().slice(0, 10));
+    if (dias.length > MAX_DIAS_RELLENO) return null;
+  }
+  return dias;
+}
 
 /** Versión de la Graph API. Explícita: sin versión, Meta usa la más vieja soportada. */
 export const GRAPH_VERSION = "v21.0";
@@ -125,7 +141,7 @@ export async function correrMetaAds(p: { token?: string; cuenta?: string; fecha:
   try {
     // 1) Nivel cuenta: es la ÚNICA cifra correcta de `reach` (no es aditivo entre campañas).
     const paramsCuenta = new URLSearchParams({
-      fields: "spend,impressions,clicks,reach,account_currency",
+      fields: "spend,impressions,clicks,inline_link_clicks,reach,account_currency",
       time_range: JSON.stringify({ since: fecha, until: fecha }),
       level: "account",
       access_token: token,
@@ -137,20 +153,22 @@ export async function correrMetaAds(p: { token?: string; cuenta?: string; fecha:
     const spend = fila ? (num(fila.spend) ?? 0) : 0;
     const impressions = fila ? (num(fila.impressions) ?? 0) : 0;
     const clicks = fila ? (num(fila.clicks) ?? 0) : 0;
+    // Clics al enlace (15-oct-2026): los que llevan al sitio; `clicks` cuenta todo clic.
+    const linkClicks = fila ? (num(fila.inline_link_clicks) ?? 0) : 0;
     const reach = fila ? (num(fila.reach) ?? 0) : 0;
     const moneda = typeof fila?.account_currency === "string" ? fila.account_currency : null;
 
     // 2) Desglose por campaña, para el jsonb: contexto, no la medición. Si falla, las métricas se guardan igual.
-    let campanas: Array<{ id: unknown; nombre: unknown; spend: number | null }> | null = null;
+    let campanas: Array<{ id: unknown; nombre: unknown; spend: number | null; link_clicks: number | null }> | null = null;
     try {
       const paramsCampana = new URLSearchParams({
-        fields: "campaign_id,campaign_name,spend,impressions,clicks",
+        fields: "campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks",
         time_range: JSON.stringify({ since: fecha, until: fecha }),
         level: "campaign",
         access_token: token,
       });
       const campRes = await graphFetch(deps, `${GRAPH_API}/${cuenta}/insights?${paramsCampana}`);
-      campanas = (campRes.data ?? []).map((c) => ({ id: c.campaign_id, nombre: c.campaign_name, spend: num(c.spend) }));
+      campanas = (campRes.data ?? []).map((c) => ({ id: c.campaign_id, nombre: c.campaign_name, spend: num(c.spend), link_clicks: num(c.inline_link_clicks) }));
     } catch (e) {
       deps.log("[cron/meta-ads] desglose por campaña no disponible:", e);
     }
@@ -168,14 +186,15 @@ export async function correrMetaAds(p: { token?: string; cuenta?: string; fecha:
       deps.guardar({ fecha, fuente: FUENTE_META_ADS, metrica: METRICA_SPEND_1D, valor: spend, meta: metaJson }),
       deps.guardar({ fecha, fuente: FUENTE_META_ADS, metrica: METRICA_IMPRESSIONS_1D, valor: impressions, meta: metaJson }),
       deps.guardar({ fecha, fuente: FUENTE_META_ADS, metrica: METRICA_CLICKS_1D, valor: clicks, meta: metaJson }),
+      deps.guardar({ fecha, fuente: FUENTE_META_ADS, metrica: METRICA_LINK_CLICKS_1D, valor: linkClicks, meta: metaJson }),
       deps.guardar({ fecha, fuente: FUENTE_META_ADS, metrica: METRICA_REACH_1D, valor: reach, meta: metaJson }),
     ]);
     const fallidas = escrituras.filter((ok) => !ok).length;
     if (fallidas > 0) {
-      deps.avisar(new Error(`No se pudieron escribir ${fallidas} de 4 métricas de Meta Ads`), { ruta: RUTA, operacion: "guardar-metrica", extra: { fecha, spend } });
-      return { conteo: { procesados: 4, exitosos: 4 - fallidas, fallidos: fallidas }, extra: { error: "escritura-parcial", fecha, escritas: 4 - fallidas } };
+      deps.avisar(new Error(`No se pudieron escribir ${fallidas} de ${escrituras.length} métricas de Meta Ads`), { ruta: RUTA, operacion: "guardar-metrica", extra: { fecha, spend } });
+      return { conteo: { procesados: escrituras.length, exitosos: escrituras.length - fallidas, fallidos: fallidas }, extra: { error: "escritura-parcial", fecha, escritas: escrituras.length - fallidas } };
     }
-    return { conteo: { procesados: 1, exitosos: 1, fallidos: 0 }, extra: { fecha, spend, impressions, clicks, reach, moneda, campanas: campanas?.length ?? null } };
+    return { conteo: { procesados: 1, exitosos: 1, fallidos: 0 }, extra: { fecha, spend, impressions, clicks, link_clicks: linkClicks, reach, moneda, campanas: campanas?.length ?? null } };
   } catch (e) {
     if (e instanceof TokenMetaMuerto) {
       // Token vencido o revocado: sin campaña activa, en silencio (ver la cabecera). Queda una línea de log con
