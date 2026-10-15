@@ -27,7 +27,7 @@ import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { leerAvisoGuia } from "./analizar-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
-import { MIN_RESPUESTAS_ZONA, respuestaTipica, type LadoMedicion } from "./semanal-str";
+import { MIN_RESPUESTAS_ZONA, aplicarMedicion, respuestaTipica, type LadoMedicion, type MedicionFina } from "./semanal-str";
 import { VENTANA_SEMANAL_DIAS, rangoSemanal, type RespaldoSemanal } from "./semanal";
 import type { Combinacion, Evaluado } from "./seleccion";
 
@@ -154,6 +154,26 @@ export function cuerpoStrDeAviso(
  *  la persona, más la tarifa y la ocupación con que se calculó y el ingreso de la zona. */
 export interface EvaluadoStr extends Evaluado, LadoMedicion {
   ingresoMensual: number | null;
+  /** Ya lo analizó (15-oct-2026): el informe que se creó al medir fino. */
+  informeId?: string;
+}
+
+/** Lo que la persona ya midió fino, por aviso, con el flujo y el ingreso del informe si se creó (15-oct-2026). */
+export async function medicionesDePersona(admin: SupabaseClient, userId: string): Promise<Map<string, { m: MedicionFina; informe?: { flujo: number | null; ingresoMensual: number | null } }>> {
+  const { data, error } = await admin.from("comparaciones_zona_str").select("aviso_id, fino_veredicto, fino_score, analysis_id").eq("user_id", userId);
+  if (error) throw new Error(`mediciones: ${error.message}`);
+  const filas = (data ?? []) as Array<{ aviso_id: string; fino_veredicto: string | null; fino_score: number | null; analysis_id: string | null }>;
+  const ids = filas.map((f) => f.analysis_id).filter((x): x is string => !!x);
+  const informes = new Map<string, { flujo: number | null; ingresoMensual: number | null }>();
+  if (ids.length) {
+    const { data: an } = await admin.from("analisis").select("id, flujo:results->escenarios->base->flujoCajaMensual, ingreso:results->escenarios->base->ingresoBrutoMensual").in("id", ids);
+    const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
+    for (const a of (an ?? []) as Array<{ id: string; flujo: unknown; ingreso: unknown }>) informes.set(a.id, { flujo: n(a.flujo), ingresoMensual: n(a.ingreso) });
+  }
+  return new Map(filas.map((f) => [f.aviso_id, {
+    m: { fino: f.fino_veredicto, finoScore: f.fino_score, analysisId: f.analysis_id },
+    informe: f.analysis_id ? informes.get(f.analysis_id) : undefined,
+  }]));
 }
 
 /** El motor de renta corta sobre un cuerpo, con una estimación de mercado (la de la zona o la fina). */
@@ -248,6 +268,8 @@ export async function prepararSeleccionStr(
   const candidatos = await leerCandidatos(propias);
 
   const asOf = new Date();
+  // Lo que ya midió fino (15-oct-2026): lo que no dio queda fuera; lo que dio Comprar con informe, «Ya lo analizaste».
+  const mediciones = await medicionesDePersona(admin, userId);
   const memo = new Map<string, Promise<EvaluadoStr | null>>();
   const evaluar = (c: Candidato): Promise<EvaluadoStr | null> => {
     const ya = memo.get(c.avisoId);
@@ -257,7 +279,8 @@ export async function prepararSeleccionStr(
       if (!zona) return null;
       const body = cuerpoStrDeAviso(c, o, combo, cfg);
       if (!body) return null;
-      return evaluarStrCon(body, zona.estimacion, cfg, c.medianaComuna, asOf);
+      const med = mediciones.get(c.avisoId);
+      return aplicarMedicion(evaluarStrCon(body, zona.estimacion, cfg, c.medianaComuna, asOf), med?.m, med?.informe);
     })();
     memo.set(c.avisoId, r);
     return r;

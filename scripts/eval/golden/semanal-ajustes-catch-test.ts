@@ -342,6 +342,61 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     }
   }
 
+  // ── 10 · LO YA MEDIDO, EN LAS SELECCIONES SIGUIENTES (15-oct-2026) ───────────────
+  {
+    const ev = { veredicto: "COMPRAR", score: 72, flujo: -9000, ingresoMensual: 970000 };
+    const ajustar = { ...ev, veredicto: "AJUSTA SUPUESTOS", score: 67 };
+    const med = (fino: string | null, analysisId: string | null = null) => ({ fino, finoScore: 81, analysisId });
+    const inf = { flujo: 42000, ingresoMensual: 1100000 };
+    const r1 = STR.aplicarMedicion(ev, undefined);
+    const r2 = STR.aplicarMedicion(ev, med("BUSCAR OTRA"));
+    const r3 = STR.aplicarMedicion(ev, med("AJUSTA SUPUESTOS"));
+    const r4 = STR.aplicarMedicion(ajustar, med("COMPRAR", "inf-1"), inf);
+    const r5 = STR.aplicarMedicion(ev, med("COMPRAR"));
+    if (r1 !== ev) F("10 · un depto sin medir deja de valer por su zona");
+    if (r2 !== null || r3 !== null) F("10 · un depto que la medición fina no dio Comprar vuelve a entrar en su selección");
+    if (!r4 || r4.veredicto !== "COMPRAR" || r4.score !== 81 || r4.flujo !== 42000 || r4.ingresoMensual !== 1100000 || r4.informeId !== "inf-1") F(`10 · uno que dio Comprar y tiene informe no entra como Comprar con su medición y su informe (${JSON.stringify(r4)})`);
+    if (r5 !== ev) F("10 · uno medido Comprar sin informe (el cobro no llegó) deja de valer por su zona");
+    if (STR.YA_ANALIZADO.texto !== "Ya lo analizaste" || STR.YA_ANALIZADO.enlace !== "Ver informe") F("10 · el texto no es «Ya lo analizaste · Ver informe»");
+    const prepStrFn = cuerpo(strSrv, "export async function prepararSeleccionStr(");
+    if (!/const mediciones = await medicionesDePersona\(admin, userId\);/.test(prepStrFn) || !/return aplicarMedicion\(evaluarStrCon\(body, zona\.estimacion, cfg, c\.medianaComuna, asOf\), med\?\.m, med\?\.informe\);/.test(prepStrFn))
+      F("10 · el armado (y el prechequeo) no aplican lo que la persona ya midió");
+    if (!/\.\.\.\(ev\.informeId \? \{ informeId: ev\.informeId \} : \{\}\),/.test(srv)) F("10 · la selección no guarda el informe de lo ya analizado");
+    if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, user\.id, idsCortos\)/.test(pagina) || !/informes=\{informesCortos\}/.test(pagina))
+      F("10 · la página no sabe cuáles ya analizó");
+    const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
+    const ramaInforme = acciones.slice(acciones.indexOf("const informe = corta ?"), acciones.indexOf("if (corta && generando === it.avisoId)"));
+    if (!/const informe = corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : undefined;\s*if \(informe\) \{\s*return \(\s*<div className="guia-acc" data-semanal="ya-analizado">/.test(ramaInforme) || !/<EnlaceCarga href=\{`\/analisis\/renta-corta\/\$\{informe\}`\} className="guia-ver-informe">\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(ramaInforme) || /analizar\(|setConfirmar|guia-an/.test(ramaInforme))
+      F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
+    // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) {
+      const sb = createClient(url, key);
+      const { prepararSeleccionStr } = await import("../../../src/lib/guia/semanal-str-servidor");
+      const { leerPerfilBusqueda } = await import("../../../src/lib/perfil-busqueda-servidor");
+      const { leerConfigGuia } = await import("../../../src/lib/guia/guia-servidor");
+      const { informesEnRentaCorta } = await import("../../../src/lib/guia/semanal-servidor");
+      const cfg = await leerConfigGuia(sb);
+      const { data: comps } = await sb.from("comparaciones_zona_str").select("user_id, aviso_id, fino_veredicto, analysis_id").limit(200);
+      let vistos = 0;
+      for (const u of Array.from(new Set((comps ?? []).map((c) => c.user_id as string))).slice(0, 5)) {
+        const prep = await prepararSeleccionStr(sb, u, cfg, await leerPerfilBusqueda(sb, u));
+        if (prep?.tipo !== "lista") continue;
+        const suyas = (comps ?? []).filter((c) => c.user_id === u);
+        const ya = await informesEnRentaCorta(sb, u, suyas.map((c) => c.aviso_id as string));
+        for (const c of prep.p.candidatos.filter((x) => suyas.some((s) => s.aviso_id === x.avisoId))) {
+          const s = suyas.find((x) => x.aviso_id === c.avisoId)!;
+          const e = await prep.p.evaluar(c);
+          vistos++;
+          if (s.fino_veredicto !== "COMPRAR" && e !== null) F(`10 · ${c.avisoId.slice(0, 8)} no dio con la medición fina y vuelve a la selección`);
+          if (s.fino_veredicto === "COMPRAR" && s.analysis_id && (e?.veredicto !== "COMPRAR" || e?.informeId !== s.analysis_id || ya[c.avisoId] !== s.analysis_id)) F(`10 · ${c.avisoId.slice(0, 8)} ya analizado no trae su informe`);
+        }
+      }
+      if (vistos === 0) F("10 · NO CORRIÓ: ningún depto ya medido entre los candidatos de quien lo midió");
+      console.log(`  · ya medidos: ${vistos} deptos revisados en la selección de quien los midió`);
+    }
+  }
+
   // ── 1 y 2 · LA JERARQUÍA Y LA TRÍADA (CSS) ──────────────────────────────────────
   {
     if (!/\{bloque && <h2 className="guia-bloque" data-semanal="bloque">\{bloque\}<\/h2>\}/.test(lista) || !/\.guia-bloque \{ font-family: var\(--font-ui\)[^}]*font-size: 18px;/.test(css)) F("1 · el título de cada bloque no es un subtítulo de sección (otra fuente y otro tamaño que el título)");

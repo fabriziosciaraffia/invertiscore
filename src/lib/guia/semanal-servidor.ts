@@ -56,6 +56,8 @@ export interface ItemSemanal {
   /** Solo en el bloque de renta corta (14-oct-2026): el ingreso bruto mensual estimado por zona (el aviso antes de gastar
    *  lo usa para el retorno bruto). */
   ingresoMensual?: number | null;
+  /** Renta corta (15-oct-2026): ya lo analizó; el informe que se creó al medir fino. */
+  informeId?: string;
 }
 
 export type { Candidato } from "./semanal-candidatos";
@@ -337,11 +339,12 @@ export async function guardarAvancePrechequeo(
 }
 
 /** Un candidato elegido, como lo guarda la selección y lo muestra el correo. En renta corta, con el ingreso de la zona. */
-function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | null }): ItemSemanal {
+function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | null; informeId?: string }): ItemSemanal {
   return {
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
     ...(ev.ingresoMensual !== undefined ? { ingresoMensual: ev.ingresoMensual } : {}),
+    ...(ev.informeId ? { informeId: ev.informeId } : {}),
   };
 }
 
@@ -558,6 +561,16 @@ export async function origenDeInformes(admin: SupabaseClient, userId: string, id
     if (o) out[a.id] = o;
   }
   return out;
+}
+
+/** Los deptos de renta corta que esta persona ya analizó (la medición fina dio Comprar y se creó el informe): «Ya lo
+ *  analizaste · Ver informe» en lugar de «Analizar este», también en selecciones armadas antes de la regla (15-oct-2026). */
+export async function informesEnRentaCorta(admin: SupabaseClient, userId: string, avisoIds: string[]): Promise<Record<string, string>> {
+  if (avisoIds.length === 0) return {};
+  const { data, error } = await admin.from("comparaciones_zona_str").select("aviso_id, analysis_id")
+    .eq("user_id", userId).in("aviso_id", avisoIds).eq("fino_veredicto", "COMPRAR").not("analysis_id", "is", null);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-ya-analizados", userId });
+  return Object.fromEntries((data ?? []).map((r) => [r.aviso_id as string, r.analysis_id as string]));
 }
 
 /** Los deptos de renta corta de esta persona que ya se midieron fino y no dieron (no se cobraron): la tarjeta queda

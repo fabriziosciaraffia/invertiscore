@@ -71,6 +71,41 @@ export function daComprar(fino: string | null | undefined): boolean {
   return fino === "COMPRAR";
 }
 
+/** Lo que una persona ya midió fino de un depto (`comparaciones_zona_str`) y, si se cobró, el informe que se creó. */
+export interface MedicionFina {
+  fino: string | null;
+  finoScore: number | null;
+  analysisId: string | null;
+}
+
+/** «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (15-oct-2026). */
+export const YA_ANALIZADO = { texto: "Ya lo analizaste", enlace: "Ver informe" } as const;
+
+/**
+ * LO YA MEDIDO, EN LAS SELECCIONES SIGUIENTES (15-oct-2026, decisión de Fabrizio). Para cada persona, un depto que ya
+ * midió fino deja de valer por su estimación por zona: si la medición fina no dio Comprar, queda FUERA (null); si dio
+ * Comprar y ya tiene informe, entra como Comprar con el puntaje de esa medición y el flujo de su informe, y lleva
+ * `informeId`: la página muestra «Ya lo analizaste · Ver informe» y no se vuelve a cobrar. Sin medición, o medido
+ * Comprar sin informe (el cobro no llegó a hacerse), la estimación por zona sigue igual.
+ */
+export function aplicarMedicion<E extends { veredicto: string | null; score: number | null; flujo: number | null; ingresoMensual?: number | null }>(
+  ev: E | null,
+  m: MedicionFina | undefined,
+  informe?: { flujo: number | null; ingresoMensual: number | null },
+): (E & { informeId?: string }) | null {
+  if (!m) return ev;
+  if (!daComprar(m.fino)) return null;
+  if (!m.analysisId || !ev) return ev;
+  return {
+    ...ev,
+    veredicto: "COMPRAR",
+    score: m.finoScore ?? ev.score,
+    flujo: informe?.flujo ?? ev.flujo,
+    ingresoMensual: informe?.ingresoMensual ?? ev.ingresoMensual ?? null,
+    informeId: m.analysisId,
+  };
+}
+
 /** Los siguientes de su selección, en orden: sin el que no dio, sin los caídos y sin los que ya se sabe que no dan. */
 function siguientesDe<I extends { avisoId: string }>(items: I[], avisoId: string, excluir: ReadonlySet<string>): I[] {
   const i = items.findIndex((x) => x.avisoId === avisoId);

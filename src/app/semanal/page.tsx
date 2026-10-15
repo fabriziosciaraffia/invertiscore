@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
-import { finanzasDeSeleccion, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
+import { finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { SEMANAL_STR } from "@/lib/guia/semanal-str";
@@ -54,13 +54,15 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   // y el arriendo con que se evaluó cada depto (en renta corta, el ingreso estimado por zona).
   const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
   const idsCortos = filasCortas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
-  const [datosSaldo, perfilPersona, finanzas, finanzasCorto, noDan] = await Promise.all([
+  const [datosSaldo, perfilPersona, finanzas, finanzasCorto, noDan, informesCortos] = await Promise.all([
     leerSaldo(admin, user.id),
     otraCuenta ? null : leerPerfilBusqueda(admin, user.id),
     finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf),
     sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf) : Promise.resolve(null),
     // Los que ya se midieron fino y no dieron: su tarjeta queda marcada, sin botón (14-oct-2026).
     otraCuenta || !sel.corto ? Promise.resolve([] as string[]) : noDanEnRentaCorta(admin, user.id, idsCortos),
+    // Los que ya analizó: «Ya lo analizaste · Ver informe», sin volver a cobrar (15-oct-2026).
+    otraCuenta || !sel.corto ? Promise.resolve({} as Record<string, string>) : informesEnRentaCorta(admin, user.id, idsCortos),
   ]);
   const ingresosCortos: Record<string, number> = {};
   for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
@@ -107,6 +109,7 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
               bloque={dosBloques ? SEMANAL_STR.bloqueCorto : null}
               conTitulo={!sel.conLargo}
               noDan={noDan}
+              informes={informesCortos}
             />
           )}
           </>

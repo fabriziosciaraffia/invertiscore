@@ -26,7 +26,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
-import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR } from "@/lib/guia/semanal-str";
+import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { rutaTres } from "@/lib/tres-analisis";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
@@ -41,7 +41,7 @@ const ESPERA_EN_CURSO_MS = 4000;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [],
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {},
 }: {
   token: string;
   origenId: string | null;
@@ -64,6 +64,8 @@ export function SemanalLista({
   cierre?: boolean;
   /** Renta corta: los que ya se midieron fino y no dieron (marcados, sin botón). */
   noDan?: string[];
+  /** Renta corta: los que ya analizó, por aviso, con su informe (15-oct-2026). */
+  informes?: Record<string, string>;
 }) {
   const router = useRouter();
   const corta = modalidad === "str";
@@ -144,6 +146,16 @@ export function SemanalLista({
   const acciones = (it: ItemSemanal): JSX.Element => {
     // Renta corta: medido fino y no dio. Queda dicho, sin botón.
     if (corta && noDa.has(it.avisoId)) return <p className="guia-no-da" data-semanal="no-da">{MARCA_NO_DA}</p>;
+    // Ya lo analizó (15-oct-2026): el informe, sin volver a medir ni a cobrar.
+    const informe = corta ? (it.informeId ?? informes[it.avisoId]) : undefined;
+    if (informe) {
+      return (
+        <div className="guia-acc" data-semanal="ya-analizado">
+          <span className="guia-cr">{YA_ANALIZADO.texto} ·</span>
+          <EnlaceCarga href={`/analisis/renta-corta/${informe}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
+        </div>
+      );
+    }
     if (corta && generando === it.avisoId) {
       return (
         <div className="guia-acc guia-midiendo" role="status" aria-live="polite" data-semanal="midiendo">
