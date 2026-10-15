@@ -14,14 +14,16 @@ import { INFORME_DE_AVISO } from "@/lib/guia/copy";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
-export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, demo = false }: { analysisId: string; veredicto: string; antiguedad: "ficha" | "supuesta" | "nuevo"; esDueno: boolean; demo?: boolean }) {
+/** `modalidad` (15-oct-2026): también en el informe de renta corta hecho desde un aviso del semanal; mismo botón, misma
+ *  ruta y mismo correo. */
+export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, demo = false, modalidad = "ltr" }: { analysisId: string; veredicto: string; antiguedad: "ficha" | "supuesta" | "nuevo"; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str" }) {
   const posthog = usePostHog();
   const [estado, setEstado] = useState<"quieto" | "enviando" | "listo" | "despublicado" | "error">("quieto");
 
   async function quieroVerlo() {
     if (estado === "enviando" || estado === "listo" || estado === "despublicado") return;
     if (demo) { setEstado("listo"); return; }
-    capturarLqs(posthog, EVENTOS_LQS.quieroVerloClick, { analysisId, veredicto, modalidad: "ltr" });
+    capturarLqs(posthog, EVENTOS_LQS.quieroVerloClick, { analysisId, veredicto, modalidad });
     setEstado("enviando");
     try {
       const r = await fetch("/api/lo-que-sigue/quiero-verlo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId }) });

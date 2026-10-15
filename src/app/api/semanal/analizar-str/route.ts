@@ -96,6 +96,8 @@ export async function POST(request: Request) {
         if (!lugar?.direccion) return { ok: false, status: 422, error: "sin-direccion" };
         const body = cuerpoStrDeAviso(aviso, o, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
+        // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo».
+        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId, desde: "semanal" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }

@@ -563,6 +563,9 @@ export interface ShortTermAnalysisBody {
   arriendoLargoMensual: number;
   lat?: number;
   lng?: number;
+  /** El informe salió de un aviso (15-oct-2026, «Analizar este» del semanal): como en renta larga, habilita «Quiero
+   *  verlo». Se persiste con el resto del cuerpo en `input_data`. */
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" };
 }
 
 export type BuildShortTermRowResult =

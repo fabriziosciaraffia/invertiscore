@@ -397,6 +397,38 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     }
   }
 
+  // ── 11 · «QUIERO VERLO» EN EL INFORME DE RENTA CORTA HECHO DESDE UN AVISO (15-oct-2026) ──
+  {
+    const { datosDeInformeDeAviso } = await import("../../../src/lib/guia/quiero-verlo");
+    const str = datosDeInformeDeAviso({ score: 71.6, results: { veredicto: "COMPRAR", escenarios: { base: { flujoCajaMensual: 41234.4 } } }, input_data: { origenAviso: { avisoId: "a1" }, piePct: 20, plazoCredito: 25, tasaInteres: 4.5, estaAmoblado: true } });
+    const ltr = datosDeInformeDeAviso({ score: 60, results: { veredicto: "AJUSTA SUPUESTOS", metrics: { flujoNetoMensual: -12000 } }, input_data: { origenAviso: { avisoId: "a2" } } });
+    if (!str || str.avisoId !== "a1" || str.flujo !== 41234 || str.veredicto !== "COMPRAR" || str.score !== 72 || !str.perfil.amoblado || !ltr || ltr.flujo !== -12000 || datosDeInformeDeAviso({ results: {}, input_data: {} }) !== null)
+      F(`11 · «Quiero verlo» no lee el aviso, el veredicto y el flujo de un informe de renta corta (o de renta larga) (${JSON.stringify(str)})`);
+    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId, desde: \"semanal\" };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
+    if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
+    const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
+    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} antiguedad=\{origenAviso\.antiguedad\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
+      F("11 · el informe de renta corta no muestra «Quiero verlo»");
+    const qvRuta = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
+    if (!/const d = an \? datosDeInformeDeAviso\(an\) : null;\s*if \(!an \|\| an\.user_id !== user\.id \|\| !d\) return NextResponse\.json\(\{ error: "informe" \}, \{ status: 403 \}\);/.test(qvRuta)) F("11 · la ruta de «Quiero verlo» no lee el informe con datosDeInformeDeAviso");
+    // Con la base real: todo informe de renta corta hecho desde un aviso del semanal sirve para «Quiero verlo».
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) {
+      const sb = createClient(url, key);
+      const { data: hechos } = await sb.from("semanal_str_analisis").select("aviso_id, analysis_id, user_id").not("analysis_id", "is", null);
+      let n = 0;
+      for (const h of hechos ?? []) {
+        const { data: an } = await sb.from("analisis").select("score, results, input_data, user_id, tipo_analisis").eq("id", h.analysis_id as string).maybeSingle();
+        if (!an) continue;
+        n++;
+        const d = datosDeInformeDeAviso(an);
+        if (!d || d.avisoId !== h.aviso_id || an.user_id !== h.user_id || d.flujo == null || !d.veredicto) F(`11 · el informe de renta corta ${String(h.analysis_id).slice(0, 8)}, hecho desde un aviso, no tiene «Quiero verlo» (${d ? `flujo ${d.flujo}, veredicto ${d.veredicto}` : "sin origenAviso"})`);
+      }
+      if (n === 0) F("11 · NO CORRIÓ: ningún informe de renta corta hecho desde un aviso");
+      console.log(`  · quiero verlo: ${n} informe(s) de renta corta hechos desde un aviso`);
+    }
+  }
+
   // ── 1 y 2 · LA JERARQUÍA Y LA TRÍADA (CSS) ──────────────────────────────────────
   {
     if (!/\{bloque && <h2 className="guia-bloque" data-semanal="bloque">\{bloque\}<\/h2>\}/.test(lista) || !/\.guia-bloque \{ font-family: var\(--font-ui\)[^}]*font-size: 18px;/.test(css)) F("1 · el título de cada bloque no es un subtítulo de sección (otra fuente y otro tamaño que el título)");

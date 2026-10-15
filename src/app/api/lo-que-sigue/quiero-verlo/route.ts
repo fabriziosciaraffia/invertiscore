@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createSupabaseServer } from "@/lib/api-helpers/analisis-pipeline";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
-import { readVeredicto } from "@/lib/results-helpers";
 import { sendAvisoPedidoEmail } from "@/lib/email";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { claveEdificio } from "@/lib/guia/ficha-anio";
-import { mandarAvisoUnaVez } from "@/lib/guia/quiero-verlo";
+import { datosDeInformeDeAviso, mandarAvisoUnaVez } from "@/lib/guia/quiero-verlo";
 import { nombreReal } from "@/lib/welcome";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,14 +29,11 @@ export async function POST(request: Request) {
   const admin = createAnonPipelineClient();
   try {
     const { data: an } = await admin.from("analisis").select("id, user_id, score, results, input_data").eq("id", analysisId).maybeSingle();
-    const input = (an?.input_data ?? {}) as Record<string, unknown> & { origenAviso?: { avisoId?: string } };
-    if (!an || an.user_id !== user.id || !input.origenAviso?.avisoId) return NextResponse.json({ error: "informe" }, { status: 403 });
-    const avisoId = input.origenAviso.avisoId;
-    const results = (an.results ?? {}) as { metrics?: { flujoNetoMensual?: number } };
-    const veredicto = readVeredicto(results as never) ?? null;
-    const score = typeof an.score === "number" ? Math.round(an.score) : null;
-    const flujo = typeof results.metrics?.flujoNetoMensual === "number" ? Math.round(results.metrics.flujoNetoMensual) : null;
-    const perfil = { piePct: Number(input.piePct) || null, plazo: Number(input.plazoCredito) || null, tasa: Number(input.tasaInteres) || null, amoblado: input.amoblado === true };
+    // Renta larga y, desde el 15-oct-2026, renta corta («Analizar este» del semanal): quiero-verlo.ts › datosDeInformeDeAviso.
+    const d = an ? datosDeInformeDeAviso(an) : null;
+    if (!an || an.user_id !== user.id || !d) return NextResponse.json({ error: "informe" }, { status: 403 });
+    const { avisoId, veredicto, score, flujo, perfil } = d;
+    const input = (an.input_data ?? {}) as Record<string, unknown>;
 
     // El interés se guarda siempre (uno por informe), salga o no el correo.
     const { error } = await admin.from("interes_avisos").insert({ analysis_id: analysisId, user_id: user.id, aviso_id: avisoId, veredicto, score, perfil });

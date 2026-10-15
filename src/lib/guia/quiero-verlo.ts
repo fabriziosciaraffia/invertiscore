@@ -11,6 +11,30 @@
 // Puro: las piezas se inyectan (el tier GUIA-BUSQUEDA §10 lo prueba con dobles y cuenta los correos).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
+import { readVeredicto } from "@/lib/results-helpers";
+
+/**
+ * Lo que «Quiero verlo» lee de un informe (15-oct-2026: también de renta corta): de qué aviso salió y lo que el correo
+ * cuenta —el veredicto y el flujo— más lo que se guarda del interés. null: el informe no salió de un aviso. El flujo de
+ * renta larga está en `metrics.flujoNetoMensual`; el de renta corta, en su escenario base.
+ */
+export function datosDeInformeDeAviso(an: { score?: unknown; results?: unknown; input_data?: unknown }): {
+  avisoId: string; veredicto: string | null; score: number | null; flujo: number | null;
+  perfil: { piePct: number | null; plazo: number | null; tasa: number | null; amoblado: boolean };
+} | null {
+  const input = (an.input_data ?? {}) as Record<string, unknown> & { origenAviso?: { avisoId?: unknown } };
+  const avisoId = input.origenAviso?.avisoId;
+  if (typeof avisoId !== "string" || !avisoId) return null;
+  const results = (an.results ?? {}) as { metrics?: { flujoNetoMensual?: unknown }; escenarios?: { base?: { flujoCajaMensual?: unknown } } };
+  const flujoNum = typeof results.metrics?.flujoNetoMensual === "number" ? results.metrics.flujoNetoMensual : results.escenarios?.base?.flujoCajaMensual;
+  return {
+    avisoId,
+    veredicto: readVeredicto(results as never) ?? null,
+    score: typeof an.score === "number" ? Math.round(an.score) : null,
+    flujo: typeof flujoNum === "number" && Number.isFinite(flujoNum) ? Math.round(flujoNum) : null,
+    perfil: { piePct: Number(input.piePct) || null, plazo: Number(input.plazoCredito) || null, tasa: Number(input.tasaInteres) || null, amoblado: input.amoblado === true || input.estaAmoblado === true },
+  };
+}
 
 export interface PiezasQuieroVerlo {
   /** ¿Ya salió el correo de este interés? */
