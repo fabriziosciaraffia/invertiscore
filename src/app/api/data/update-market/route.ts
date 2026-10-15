@@ -138,9 +138,12 @@ export async function POST(request: Request) {
   const escritos = (tasaOk ? 1 : 0) + (ufOk ? 1 : 0);
   // Los motivos viajan en `errors`: es lo que cerrarCron pone en el correo de la alerta.
   const errors = [results.tasa?.error, results.uf?.error].filter((e): e is string => !!e);
+  // Credenciales que faltan o que el BCCh rechaza (Codigo -5): necesita a una persona, avisa en el acto y una vez
+  // (15-oct-2026, cron-alertas.ts). Cualquier otra falla del BCCh es transitoria y la corrida siguiente se pone al día.
+  const credenciales = errors.some((e) => /sin credenciales|BCCh Codigo -5:/.test(e));
   return cerrarCron(supabase, "update-market",
     { procesados: 2, exitosos: escritos, fallidos: 2 - escritos },
-    { success: escritos === 2, results, errors });
+    { success: escritos === 2, results, errors, ...(credenciales ? { accion: { codigo: "bcch-credenciales", texto: "El Banco Central rechaza o no recibe las credenciales BCCH_API_USER/BCCH_API_PASS: hay que revisarlas en Vercel." } } : {}) });
 }
 
 // Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer

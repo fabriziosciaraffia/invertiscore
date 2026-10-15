@@ -96,7 +96,8 @@ export async function POST(request: Request) {
       ruta: "GET /api/cron/sentry-metrics",
       operacion: "config-sentry-incompleta",
     });
-    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { skipped: "config-incompleta", faltan, error: `Faltan variables: ${faltan.join(", ")}` });
+    // Una variable que falta necesita a una persona: avisa en el acto y una vez (15-oct-2026, cron-alertas.ts).
+    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { skipped: "config-incompleta", faltan, error: `Faltan variables: ${faltan.join(", ")}`, accion: { codigo: "sentry-config", texto: `Faltan variables de Sentry en Vercel: ${faltan.join(", ")}.` } });
   }
 
   try {
@@ -166,7 +167,12 @@ export async function POST(request: Request) {
       ruta: "GET /api/cron/sentry-metrics",
       operacion: "consultar-sentry",
     });
-    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, { error: `sentry-no-disponible: ${String(e).slice(0, 200)}` });
+    // Un 401/403 es el token: necesita a una persona (15-oct-2026). Cualquier otra caída es transitoria.
+    const tokenRechazado = /Sentry (401|403)/.test(String(e));
+    return cerrarCron(createAdminClient(), "sentry-metrics", CORRIDA_FALLIDA, {
+      error: `sentry-no-disponible: ${String(e).slice(0, 200)}`,
+      ...(tokenRechazado ? { accion: { codigo: "sentry-token", texto: "Sentry rechazó SENTRY_AUTH_TOKEN (401/403): hay que regenerarlo." } } : {}),
+    });
   }
 }
 

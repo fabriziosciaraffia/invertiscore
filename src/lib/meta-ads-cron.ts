@@ -99,9 +99,18 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Sin nada que medir: sale bien, sin trabajo, con la pausa y el porqué (para quien lea el resultado). */
+/** La acción que pide un token vencido (15-oct-2026, cron-alertas.ts › regla 2): avisa en el acto y una sola vez. */
+export const ACCION_TOKEN_META = "meta-token";
+
+/**
+ * Sin nada que medir: sale bien, sin trabajo, con la pausa y el porqué (para quien lea el resultado). Con el token
+ * vencido, además declara la ACCIÓN (15-oct-2026, regla de Fabrizio: «un token vencido avisa de inmediato y una sola
+ * vez»): la pausa sigue —sin frescura que avise «no escribe»— y el aviso sale una vez por causa. Sin configurar es a
+ * propósito (no hay campaña): no pide nada.
+ */
 function sinCampana(motivo: "token-vencido" | "sin-configurar", detalle: string): CorridaMetaAds {
-  return { conteo: { procesados: 0, exitosos: 0, fallidos: 0 }, extra: { pausa: SIN_CAMPANA_ACTIVA, motivo, detalle } };
+  const accion = motivo === "token-vencido" ? { codigo: ACCION_TOKEN_META, texto: `Meta rechazó el token de Meta Ads (${detalle}): hay que regenerar META_ADS_TOKEN.` } : undefined;
+  return { conteo: { procesados: 0, exitosos: 0, fallidos: 0 }, extra: { pausa: SIN_CAMPANA_ACTIVA, motivo, detalle, ...(accion ? { accion } : {}) } };
 }
 
 export async function correrMetaAds(p: { token?: string; cuenta?: string; fecha: string }, deps: DepsMetaAds): Promise<CorridaMetaAds> {
