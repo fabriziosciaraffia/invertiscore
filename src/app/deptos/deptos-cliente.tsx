@@ -16,8 +16,10 @@
 // CON GOOGLE (16-oct-2026): «o con Google» debajo del campo. Antes de salir, lo elegido queda guardado con una clave
 // (/api/deptos/google); vuelve a /deptos?entro=google&p=<clave> con sesión, el callback ya lo pasó a nombre del correo, y
 // desde ahí todo es igual que por código: el Lead (al volver, cuando se sabe el correo), el alta y «Estás dentro».
+// LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) usa esta misma pantalla con su cabecera, su puerta (C) y su página de
+// vuelta (`/i/CÓDIGO`): las mismas preguntas, el mismo alta, la misma entrada con Google.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePostHog } from "@/lib/posthog-react";
@@ -25,8 +27,8 @@ import { emitirAuthCompletada, marcarOAuthPendiente } from "@/lib/auth-analytics
 import { IconoGoogle } from "@/components/entrar/IconoGoogle";
 import { REGISTRO_UN_PASO, ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
-import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
-import { avisarLead } from "@/lib/meta/lead-cliente";
+import { marcarPuertaCandidata, type Puerta } from "@/lib/atribucion-puerta";
+import { avisarLead, type OrigenLead } from "@/lib/meta/lead-cliente";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { textoVence } from "@/lib/guia/semanal";
@@ -53,7 +55,18 @@ const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 /** Para buscar sin tildes: «nunoa» encuentra Ñuñoa. */
 const plano = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
-export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) {
+export interface OpcionesDeptos {
+  /** La página donde vive la pantalla: adonde vuelven el enlace del correo y Google. */
+  pagina?: string;
+  /** La puerta candidata que marca (B en /deptos; C en la página del invitado). */
+  puerta?: { puerta: Puerta; detalle: string };
+  /** De dónde sale el Lead al dejar el correo. */
+  origenLead?: OrigenLead;
+  /** Lo que va en lugar del titular y la bajada de /deptos. */
+  cabecera?: ReactNode;
+}
+
+export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera }: { sesion: { email: string } | null } & OpcionesDeptos) {
   const router = useRouter();
   const posthog = usePostHog();
   const [comunas, setComunas] = useState<string[]>([]);
@@ -79,9 +92,9 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
 
   // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta).
   useEffect(() => {
-    marcarPuertaCandidata("B", "deptos");
-    posthog?.capture("deptos_vista", {});
-  }, [posthog]);
+    marcarPuertaCandidata(puerta.puerta, puerta.detalle);
+    posthog?.capture("deptos_vista", { pagina: pagina === "/deptos" ? "deptos" : "invitacion" });
+  }, [posthog, puerta.puerta, puerta.detalle, pagina]);
 
   const completo = comunas.length > 0 && !!tipologia && !!rango;
 
@@ -141,8 +154,8 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
         body: JSON.stringify({ correo: c, elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO } }),
       });
       if (!res.ok) { setError(ALTA_COPY.error); return; }
-      // Dejó su correo en la página de selección: el Lead y la puerta B.
-      void avisarLead(c, "seleccion", "B");
+      // Dejó su correo en la página de selección (o en la del invitado): el Lead y su puerta.
+      void avisarLead(c, origenLead, puerta.puerta);
       posthog?.capture("deptos_correo", {});
       if (sesion && sesion.email.toLowerCase() === c) {
         // Ya está adentro: sin código.
@@ -152,7 +165,7 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
       const supabase = createClient();
       const { error: err } = await supabase.auth.signInWithOtp({
         email: c,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/deptos?entro=1")}`, shouldCreateUser: true },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`${pagina}?entro=1`)}`, shouldCreateUser: true },
       });
       if (err) { setError(REGISTRO_UN_PASO.errorEnvio); return; }
       // El mismo mensaje exista o no la cuenta (16-oct-2026, decisión de Fabrizio).
@@ -180,7 +193,7 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
       const supabase = createClient();
       await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destinoGoogle(d.p))}` },
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destinoGoogle(d.p, pagina))}` },
       });
     } finally {
       setOcupado(false);
@@ -215,11 +228,11 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
     const entro = new URLSearchParams(window.location.search).get("entro");
     if (entro === "google") {
       const clave = claveDeDestino(`${window.location.pathname}${window.location.search}`);
-      void avisarLead(sesion.email.toLowerCase(), "seleccion", "B");
+      void avisarLead(sesion.email.toLowerCase(), origenLead, puerta.puerta);
       posthog?.capture("deptos_correo", { via: "google" });
       void terminarAlta(clave, "google");
     } else if (entro === "1") void terminarAlta();
-  }, [sesion, terminarAlta, posthog]);
+  }, [sesion, terminarAlta, posthog, origenLead, puerta.puerta]);
 
   async function entrar(e: FormEvent) {
     e.preventDefault();
@@ -355,8 +368,12 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
 
   return (
     <div className="dp" data-deptos="elegir">
-      <h1 className="dp-titulo">{DEPTOS_COPY.titular}</h1>
-      <p className="dp-bajada">{DEPTOS_COPY.bajada}</p>
+      {cabecera === undefined ? (
+        <>
+          <h1 className="dp-titulo">{DEPTOS_COPY.titular}</h1>
+          <p className="dp-bajada">{DEPTOS_COPY.bajada}</p>
+        </>
+      ) : cabecera}
 
       <fieldset className="dp-bloque">
         <legend className="dp-pregunta">{DEPTOS_COPY.comuna} <span className="dp-ayuda">{DEPTOS_COPY.comunaAyuda}</span></legend>

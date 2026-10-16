@@ -1,0 +1,69 @@
+import type { Metadata } from "next";
+import { cookies, headers } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
+import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
+import { normalizarCodigo, REFERIDO_COPY } from "@/lib/referido";
+import { anotarDispositivoInvitador, leerInvitacion } from "@/lib/referido-servidor";
+import { InvitacionCliente, type ModoInvitacion } from "./invitacion-cliente";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// /i/CÓDIGO, LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C): «Te invitaron a Franco. Tu primer análisis va por cuenta
+// de Franco.» Las mismas preguntas de /deptos —con la puerta C y la vuelta a esta página—, o la dirección si ya trae un
+// depto, que lo lleva al informe gratis (el wizard). La cookie de la invitación la deja el middleware al abrir el enlace;
+// se cobra al registrarse, venga por donde venga.
+// Quien invita y abre su propio enlace ve su enlace para compartir (y ese navegador queda anotado: el «mismo
+// dispositivo»). Quien ya tiene cuenta, que este enlace es para quien todavía no está.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: { codigo: string } }): Promise<Metadata> {
+  const codigo = normalizarCodigo(params.codigo);
+  const inv = codigo ? await leerInvitacion(createServiceClient(), codigo) : null;
+  // La vista previa del enlace (WhatsApp, el correo): «Un amigo te invitó a Franco», o con el nombre si quien invita lo pidió.
+  const titulo = REFERIDO_COPY.quien(inv?.conNombre ? inv.nombre : null);
+  return {
+    title: { absolute: titulo },
+    description: REFERIDO_COPY.bajada,
+    robots: { index: false, follow: false },
+    openGraph: {
+      title: titulo,
+      description: REFERIDO_COPY.bajada,
+      url: codigo ? `https://refranco.ai/i/${codigo}` : "https://refranco.ai",
+      siteName: "Franco",
+      locale: "es_CL",
+      images: ["/opengraph-image"],
+    },
+  };
+}
+
+export default async function InvitacionPage({ params, searchParams }: { params: { codigo: string }; searchParams: { entro?: string } }) {
+  const codigo = normalizarCodigo(params.codigo);
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const admin = createServiceClient();
+  const inv = codigo ? await leerInvitacion(admin, codigo) : null;
+  const sesion = user?.email ? { email: user.email } : null;
+  // Volviendo del código o de Google, la pantalla termina el alta: es el invitado, aunque ya tenga sesión.
+  const volviendo = searchParams.entro === "1" || searchParams.entro === "google";
+  let modo: ModoInvitacion = "invitado";
+  if (user && !volviendo) {
+    if (inv && inv.userId === user.id) {
+      modo = "propio";
+      await anotarDispositivoInvitador(admin, user.id, huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null).dispositivo);
+    } else modo = "con_cuenta";
+  }
+  return (
+    <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
+      <HeaderFranco sesion={sesion} />
+      <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
+        <InvitacionCliente modo={modo} codigo={codigo} nombre={inv?.conNombre ? inv.nombre : null} sesion={sesion} />
+      </main>
+      <AppFooter variant="informe" />
+    </div>
+  );
+}

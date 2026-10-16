@@ -1,0 +1,19 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   /i/CÓDIGO, LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C). Lo mismo que /deptos (deptos.css) con su cabecera: el
+   titular puede ir en dos líneas (con el nombre de quien invita), la bajada del regalo y una línea para quien ya trae un
+   depto. Sin rojo nuevo: el único sigue siendo el botón del correo.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.iv-titulo { white-space: normal; font-size: min(7.4vw, 40px); }
+.iv-bajada { margin: 0 0 10px; font-size: 16px; line-height: 1.4; color: var(--franco-text-secondary); }
+.iv-con-depto { display: block; margin: 0 0 16px; padding: 0; background: none; border: 0; font: inherit; font-size: 14px; line-height: 1.45;
+  text-align: left; color: var(--franco-text-secondary); cursor: pointer; }
+.iv-con-depto u { color: var(--franco-text); text-underline-offset: 4px; }
+.iv-con-depto:focus-visible, .iv-volver:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv-pregunta { margin-top: 6px; font-size: 15px; }
+/* El campo de la dirección EN PAPEL (la variante `.he-papel` de hero-entrada.css, la del wizard), con los tokens del chrome:
+   sin esto los caminos («Estoy en el depto», «Marcarlo en el mapa») quedan en blanco, como sobre el material. */
+.iv-campo { margin: 8px 0 14px; max-width: 640px;
+  --tx: var(--franco-text); --tx2: var(--franco-text-secondary); --tx3: var(--franco-text-secondary); --tx4: var(--franco-text-tertiary);
+  --card: var(--franco-card); --line: var(--franco-border); --line2: var(--franco-border); --page: var(--franco-bg); }
+.iv-volver { margin-top: 2px; }
+.iv-boton { display: inline-flex; align-items: center; text-decoration: none; }
