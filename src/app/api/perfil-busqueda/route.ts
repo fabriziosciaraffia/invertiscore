@@ -6,6 +6,8 @@ import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
 import { waitUntil } from "@vercel/functions";
 import { emitirRegistroCompletado } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
+import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { cookieInvitacionDeCabeceras, referidoAlContestarCuando } from "@/lib/referido-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/perfil-busqueda (02-oct-2026): lo que la persona edita en «Tu perfil de búsqueda» del
@@ -26,6 +28,9 @@ export async function PUT(request: Request) {
   if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   // CompleteRegistration (15-oct-2026): contestó «¿Cuándo piensas comprar?» con sesión (src/lib/meta/registro.ts).
   const cuando = (v.cambios as { horizonte_compra?: string | null }).horizonte_compra;
+  // EL PREMIO DEL REFERIDO (16-oct-2026, la puerta C): con sesión —validó el código— y el «cuándo» contestado, quien lo
+  // invitó recibe su análisis (referido-servidor.ts). Después de responder: no demora la pantalla.
+  if (cuando) waitUntil(referidoAlContestarCuando(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInvitacionDeCabeceras(request.headers), huella: huellaDeRequest(request) }).then(() => undefined));
   if (cuando) {
     const reg = await emitirRegistroCompletado(admin, user, cuando, contextoDeRequest(request));
     if (reg) {

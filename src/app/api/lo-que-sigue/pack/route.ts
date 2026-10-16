@@ -25,6 +25,8 @@ import { waitUntil } from "@vercel/functions";
 import { EVENTOS_META, idLead } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta, guardarContextoMeta } from "@/lib/meta/servidor";
 import { guardarAtribucion } from "@/lib/attribution";
+import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { cookieInvitacionDeCabeceras, vincularInvitacion } from "@/lib/referido-servidor";
 
 export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -75,6 +77,10 @@ export async function POST(request: Request) {
     });
     waitUntil(lead.envio);
     waitUntil(guardarContextoMeta(admin, user.id, contexto));
+    // La invitación (16-oct-2026, la puerta C): si abrió un «/i/CÓDIGO», la cuenta que nace acá se liga a quien la invitó
+    // antes de la puerta A (el premio se paga cuando conteste el «cuándo» con sesión).
+    const cookieInv = cookieInvitacionDeCabeceras(request.headers);
+    if (cookieInv) await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) });
     waitUntil(guardarAtribucion(admin, user.id, { puerta: "A", puerta_detalle: "ticket", fbp: contexto.fbp, fbc: contexto.fbc }).then(() => undefined));
 
     // Este informe tiene que ser suyo: o ya lo era, o lo adopta ahora por la cookie del cap anónimo.

@@ -13,6 +13,7 @@ import { CLAVE_GOOGLE } from "@/lib/deptos/respuesta";
 import { encolarDelDia, procesarDelDia } from "@/lib/guia/del-dia-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { cuentasPruebaSinCorreo } from "@/lib/guia/semanal-servidor";
+import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/deptos/alta (16-oct-2026, la puerta B): después del código, con sesión. Lee lo que la persona eligió en
@@ -25,6 +26,8 @@ import { cuentasPruebaSinCorreo } from "@/lib/guia/semanal-servidor";
 //     las agrega.
 // CON GOOGLE (16-oct-2026): lo elegido llega a nombre del correo porque el callback lo pasó (reclavarPendienteGoogle);
 // si no alcanzó a pasarlo, la pantalla manda la clave (`{ p }`) y se pasa acá. Desde ahí, igual que por código.
+// LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) entra por acá con las mismas preguntas: la cookie de la invitación se
+// cobra primero, y la cuenta invitada queda con la puerta C en vez de la B (ya la fijó el cobro, o el callback de Google).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -43,19 +46,29 @@ export async function POST(request: Request) {
       pend = await leerPendiente(admin, user.email);
     }
     if (!pend) return NextResponse.json({ estado: "sin-pendiente" });
+    // La invitación (la puerta C): se cobra antes de la puerta B, y si la cuenta es invitada, la puerta es la C.
+    const cookieInv = cookieInvitacionDeCabeceras(request.headers);
+    const vinculo = cookieInv ? await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) }) : null;
+    const { data: ref } = await admin.from("referidos").select("estado").eq("invitado_id", user.id).maybeSingle();
+    const puerta = ref && ref.estado !== "cuenta_previa" ? "C" : "B";
+    const responder = (cuerpo: Record<string, unknown>) => {
+      const res = NextResponse.json(cuerpo);
+      if (vinculo && VINCULO_TERMINADO.has(vinculo)) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
+      return res;
+    };
     // Si ya tiene perfil con comunas, no se pisa: entra y se le pregunta si agrega las comunas.
     const { data: perfilPrevio } = await admin.from("perfil_busqueda").select("comunas").eq("user_id", user.id).maybeSingle();
     const yaTienePerfil = Array.isArray(perfilPrevio?.comunas) && (perfilPrevio.comunas as unknown[]).length > 0;
     const tipo = tipoDeAlta({ existiaAlPedir: pend.existe, cuentaCreadaAt: user.created_at, pedidoAt: pend.creadoAt, yaTienePerfil });
-    // La puerta B (atribucion-puerta.ts): la primera gana; el orgánico cede.
-    waitUntil(guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" }).then(() => undefined));
+    // La puerta B (atribucion-puerta.ts): la primera gana; el orgánico cede. La invitada ya tiene la C.
+    if (puerta === "B") waitUntil(guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" }).then(() => undefined));
 
     if (tipo === "existente") {
       const pp = await leerPerfilBusqueda(admin, user.id);
       const elegidas = Array.isArray(pend.perfil.comunas) ? (pend.perfil.comunas as string[]) : [];
       const comunasNuevas = comunasParaAgregar(pp.perfil.comunas, elegidas);
       await borrarPendiente(admin, user.email);
-      return NextResponse.json({ estado: "existente", comunasNuevas, comunas: pp.perfil.comunas });
+      return responder({ estado: "existente", comunasNuevas, comunas: pp.perfil.comunas });
     }
 
     // La cuenta nace con su perfil manual.
@@ -65,7 +78,7 @@ export async function POST(request: Request) {
     // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts).
     await admin.from("user_credits").upsert({ user_id: user.id, credits: 0, subscription_status: "none", welcome_email_sent: true }, { onConflict: "user_id", ignoreDuplicates: true });
     await admin.from("user_credits").update({ welcome_email_sent: true }).eq("user_id", user.id);
-    const regalo = await asegurarRegaloDeAlta(admin, { userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta: "B" });
+    const regalo = await asegurarRegaloDeAlta(admin, { userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta });
     await borrarPendiente(admin, user.email);
 
     // El correo del día, en cola; la primera vuelta ahora (las siguientes, el cron cada 10 minutos). Las cuentas de
@@ -85,8 +98,8 @@ export async function POST(request: Request) {
         }
       })());
     }
-    void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta: "B" } }).catch(() => {});
-    return NextResponse.json({ estado: "nueva", regaloVence: regalo.vence });
+    void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta } }).catch(() => {});
+    return responder({ estado: "nueva", regaloVence: regalo.vence });
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "alta", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

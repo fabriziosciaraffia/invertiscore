@@ -18,6 +18,9 @@
 // EL REGALO AL REGISTRARSE (16-oct-2026, regalo-alta.ts): toda cuenta nueva pasa por acá después del código (banner,
 // /entrar, guía) y recibe su análisis de regalo, con los topes por dispositivo, IP y día. Antes de responder: la
 // pantalla que sigue ya lo muestra. Una cuenta de antes del corte no hace ninguna consulta.
+//
+// LA INVITACIÓN (16-oct-2026, la puerta C): si el navegador trae la cookie de un «/i/CÓDIGO», la cuenta se liga a quien la
+// invitó ANTES de la puerta del formulario —la del referido es la que queda— y la cookie queda «usada» en la respuesta.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
@@ -31,6 +34,13 @@ import { esPuerta } from "@/lib/atribucion-puerta";
 import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion, type ResultadoVinculo } from "@/lib/referido-servidor";
+
+/** La cookie de la invitación ya se cobró: queda «usada» en la respuesta. */
+function cerrarInvitacion(res: NextResponse, vinculo: ResultadoVinculo | null): NextResponse {
+  if (vinculo && VINCULO_TERMINADO.has(vinculo)) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
+  return res;
+}
 
 export async function POST(request: Request) {
   try {
@@ -43,6 +53,10 @@ export async function POST(request: Request) {
     }
 
     const cuerpo = (await request.json().catch(() => null)) as { porCodigo?: unknown; puerta?: unknown; puertaDetalle?: unknown } | null;
+    const cookieInv = cookieInvitacionDeCabeceras(request.headers);
+    const vinculo = cookieInv
+      ? await vincularInvitacion(createAdminServiceClient(), { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) })
+      : null;
     // El regalo antes de la bienvenida: el correo lo dice (welcome.ts).
     await asegurarRegaloDeAlta(createAdminServiceClient(), {
       userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null,
@@ -57,10 +71,10 @@ export async function POST(request: Request) {
     }
 
     const token = tokenAnonDelRequest();
-    if (!token) return NextResponse.json({ claimed: 0, redirect: null });
+    if (!token) return cerrarInvitacion(NextResponse.json({ claimed: 0, redirect: null }), vinculo);
 
     const result = await claimAnalisisAnonimos(createAdminServiceClient(), user, token);
-    return NextResponse.json(result);
+    return cerrarInvitacion(NextResponse.json(result), vinculo);
   } catch (error) {
     captureApiError(error, { ruta: "POST /api/analisis/claim", operacion: "claim-anonimo" });
     // Fail-soft: un claim caído no debe romper el flujo de auth del caller.

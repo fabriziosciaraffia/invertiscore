@@ -7,6 +7,8 @@ import { pagoAbreElInforme } from "@/lib/lo-que-sigue/retorno-pago";
 import { waitUntil } from "@vercel/functions";
 import { emitirRegistroCompletado } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
+import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { cookieInvitacionDeCabeceras, referidoAlContestarCuando } from "@/lib/referido-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/lo-que-sigue/perfil (30-sep-2026): lo que la persona elige en «Estás dentro» —los chips
@@ -65,6 +67,8 @@ export async function POST(request: Request) {
   // CompleteRegistration (15-oct-2026): con sesión —validó el código— y contestó «¿Cuándo piensas comprar?»
   // (src/lib/meta/registro.ts). Sin sesión (la firma del pago) no: esa cuenta no validó nada.
   if (user && cambios.horizonte_compra) {
+    // EL PREMIO DEL REFERIDO (16-oct-2026, la puerta C): validó el código y contestó el «cuándo» (referido-servidor.ts).
+    waitUntil(referidoAlContestarCuando(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInvitacionDeCabeceras(request.headers), huella: huellaDeRequest(request) }).then(() => undefined));
     const reg = await emitirRegistroCompletado(admin, user, cambios.horizonte_compra, contextoDeRequest(request));
     if (reg) {
       waitUntil(reg.envio);

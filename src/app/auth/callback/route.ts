@@ -11,6 +11,7 @@ import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servi
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { claveDeDestino } from "@/lib/deptos/respuesta";
 import { reclavarPendienteGoogle } from "@/lib/deptos/servidor";
+import { COOKIE_INVITACION_USADA, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
 import { waitUntil } from "@vercel/functions";
 
 export async function GET(request: Request) {
@@ -116,6 +117,23 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error("[auth/callback] claim anónimo excepción:", e);
+    }
+
+    // LA INVITACIÓN (16-oct-2026, la puerta C, referido-servidor.ts): si abrió un «/i/CÓDIGO» en los últimos 30 días, la
+    // cuenta queda ligada a quien la invitó —y con la puerta C— antes del regalo y del destino. Hecho eso, la cookie se
+    // marca «usada»: otra cuenta creada en este navegador no se cobra el mismo código.
+    try {
+      const user = sessionData?.user;
+      const cookieInv = cookieStore.get(COOKIE_INVITACION_USADA.name)?.value ?? null;
+      if (user?.id && cookieInv) {
+        const vinculo = await vincularInvitacion(createAdminServiceClient(), {
+          userId: user.id, creadaAt: user.created_at, cookie: cookieInv,
+          huella: huellaDeCabeceras(request.headers, cookieStore.get(COOKIE_DISPOSITIVO)?.value ?? null),
+        });
+        if (VINCULO_TERMINADO.has(vinculo)) cookieStore.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
+      }
+    } catch (e) {
+      console.error("[auth/callback] invitación excepción:", e);
     }
 
     // El regalo al registrarse (16-oct-2026, regalo-alta.ts): antes del redirect, así el destino ya lo muestra.
