@@ -42,6 +42,11 @@
 //   contraseña» · N9 la modalidad vuelve a elegir · N10 tipología múltiple · N11 nueve comunas · N12 cinco rangos · N13
 //   sin buscador · N14 serif en el número · N15 el titular en dos líneas · N16 el pie con enlaces · N17 sin 2D por defecto.
 //
+// LA PUERTA C (16-oct-2026): la pantalla de /deptos pasó a servir también a la página del invitado (página, puerta y Lead
+// por parámetro, B y «seleccion» por defecto) y el alta elige la puerta (B, o C si la cuenta es invitada). Cuatro anclas
+// reescritas para esa forma (5 el regalo, 7 la puerta B, 9 Google ×2), dos mutaciones nuevas —X5 /deptos con la C por
+// defecto, X6 el alta con la C siempre— y G5, G7, X2 y R6 re-verificadas: 6/6 en ROJO.
+//
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/puerta-b-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
@@ -308,7 +313,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/await asegurarRegaloDeAlta\(createServiceClient\(\), \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
       const acc = sinComentarios(leer("src/lib/access.ts"));
       if (!/if \(!bienvenidaVigente\(creadaAt\)\) \{\s*bienvenida = false;\s*await asegurarRegaloDeAlta\(supabase, \{ userId, creadaAt, huella: \{ dispositivo: null, ip: null \} \}\);/.test(acc)) F("5 · el cobro todavía regala la bienvenida a una cuenta nueva");
-      if (!/const regalo = await asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella: huellaDeRequest\(request\), puerta: "B" \}\);/.test(sinComentarios(leer("src/app/api/deptos/alta/route.ts")))) F("5 · /deptos no da el regalo");
+      // Desde la puerta C (16-oct-2026) el alta también sirve a la página del invitado: la puerta es la B salvo que la cuenta
+      // sea invitada (la C la fija el cobro del código, tier PUERTA-C).
+      const altaB = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      if (!/const regalo = await asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella: huellaDeRequest\(request\), puerta \}\);/.test(altaB)
+        || !/const puerta = ref && ref\.estado !== "cuenta_previa" \? "C" : "B";/.test(altaB)) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
 
       // El aviso antes de gastar: «usa tu análisis de regalo» y «usa 1 de tus N».
@@ -347,7 +356,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         F(`7 · el «cuándo» no está renombrado en todos lados: ${textos}`);
       for (const f of ["src/lib/lo-que-sigue/copy.ts", "src/app/dashboard/casa-copy.ts", "src/lib/guia/inmediato.ts", "src/lib/email/catalogo.ts"]) if (/texto: "Ya"|: "Ya",|piensas comprar ya|listo para comprar/.test(leer(f))) F(`7 · ${f} todavía dice «Ya» o «Estoy listo para comprar»`);
       const cliente = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
-      if (!/marcarPuertaCandidata\("B", "deptos"\);/.test(cliente) || !/void avisarLead\(c, "seleccion", "B"\);/.test(cliente)) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
+      // La pantalla es la de /deptos y la del invitado (16-oct-2026): la B y el Lead «seleccion» son lo que trae por defecto,
+      // y /deptos la monta sin cambiarlos.
+      if (!/marcarPuertaCandidata\(puerta\.puerta, puerta\.detalle\);/.test(cliente) || !/void avisarLead\(c, origenLead, puerta\.puerta\);/.test(cliente)
+        || !/export function DeptosCliente\(\{ sesion, pagina = "\/deptos", puerta = \{ puerta: "B", detalle: "deptos" \}, origenLead = "seleccion", cabecera \}/.test(cliente)
+        || !/<DeptosCliente sesion=\{sesion\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
       if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios(leer("src/app/api/deptos/alta/route.ts")))) F("7 · el alta no fija la puerta B");
       if (!/datos: \{ cuando, status: "completo", \.\.\.\(atr\?\.puerta \? \{ puerta: atr\.puerta as string \} : \{\}\) \},/.test(leer("src/lib/meta/registro.ts"))) F("7 · CompleteRegistration no lleva la puerta");
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
@@ -422,9 +435,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // La pantalla guarda lo elegido ANTES de irse, y se va con la clave en el destino.
       const cli = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       const iPost = cli.indexOf('fetch("/api/deptos/google", {'), iOauth = cli.indexOf("signInWithOAuth(");
-      if (iPost < 0 || iOauth < iPost || !/redirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(destinoGoogle\(d\.p\)\)\}`/.test(cli)) F("9 · la pantalla se va a Google sin guardar lo elegido o sin la clave en el destino");
+      // `pagina` es /deptos por defecto (la página del invitado vuelve a la suya, tier PUERTA-C).
+      if (iPost < 0 || iOauth < iPost || !/redirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(destinoGoogle\(d\.p, pagina\)\)\}`/.test(cli)) F("9 · la pantalla se va a Google sin guardar lo elegido o sin la clave en el destino");
       // Al volver: el Lead (recién se sabe el correo) y el alta, como por código; «Estás dentro» lo pone terminarAlta.
-      if (!/if \(entro === "google"\) \{[\s\S]{0,240}void avisarLead\(sesion\.email\.toLowerCase\(\), "seleccion", "B"\);[\s\S]{0,160}void terminarAlta\(clave, "google"\);/.test(cli)) F("9 · al volver de Google no sale el Lead o no termina el alta");
+      if (!/if \(entro === "google"\) \{[\s\S]{0,240}void avisarLead\(sesion\.email\.toLowerCase\(\), origenLead, puerta\.puerta\);[\s\S]{0,160}void terminarAlta\(clave, "google"\);/.test(cli)) F("9 · al volver de Google no sale el Lead o no termina el alta");
       // Sin vecindad (la regla de CLAUDE.md): después del alta nueva, lo SIGUIENTE es «Estás dentro», sin un salto en el medio.
       if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));

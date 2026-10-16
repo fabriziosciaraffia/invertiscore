@@ -144,6 +144,7 @@ import { runCronsTier } from "./crons-catch-test";
 import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runMedicionMetaTier } from "./medicion-meta-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
+import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runZonaComunaTier } from "./zona-comuna-catch-test";
@@ -608,6 +609,9 @@ function printSeed(r: SeedReport) {
   // espejo, la cola del pixel, las cuentas de prueba fuera y la atribución por puerta. ──
   totalHard += (await runMedicionMetaTier()).hard;
   totalHard += (await runPuertaBTier()).hard;
+  // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
+  // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
+  totalHard += (await runPuertaCTier()).hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado
   // de versalitas; «Cómo se calcula» con layout fijo y millones en el teléfono. ──
   totalHard += runInformeTipografiaTier().hard;
