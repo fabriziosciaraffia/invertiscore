@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { FLOW_PRODUCTS, type FlowProduct, type FlowProductKey } from "@/lib/flow-products";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
+import { FUENTE_REGALO_ALTA, FUENTE_REGALO_REACTIVACION } from "@/lib/regalo-alta";
 
 function createAdminClient() {
   return createClient(
@@ -291,9 +292,13 @@ export async function consumeCredit(userId: string): Promise<boolean> {
     .select()
     .maybeSingle();
 
-  // El regalo del correo semanal se usó: el último paso del embudo del correo (02-oct-2026).
-  if (updated && grant.source === FUENTE_REGALO_SEMANAL) {
-    void capturarServidor({ event: "semanal_regalo_usado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo_usado:${grant.id}`), properties: {} }).catch(() => {});
+  // El regalo del correo semanal se usó: el último paso del embudo del correo (02-oct-2026). Desde el 16-oct-2026 también
+  // el de reactivación (el mismo correo) y, con su propio evento, el de registrarse.
+  if (updated && (grant.source === FUENTE_REGALO_SEMANAL || grant.source === FUENTE_REGALO_REACTIVACION)) {
+    void capturarServidor({ event: "semanal_regalo_usado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo_usado:${grant.id}`), properties: { fuente: grant.source } }).catch(() => {});
+  }
+  if (updated && grant.source === FUENTE_REGALO_ALTA) {
+    void capturarServidor({ event: "regalo_alta_usado", distinctId: userId, uuid: uuidDeterminista(`regalo_alta_usado:${grant.id}`), properties: {} }).catch(() => {});
   }
   return !!updated;
 }

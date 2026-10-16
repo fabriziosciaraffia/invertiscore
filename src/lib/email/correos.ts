@@ -9,7 +9,8 @@
 import { escaparHtml, LEGAL, plantillaClara, TINTA } from "./plantilla-clara";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { BIENVENIDA } from "@/app/dashboard/bienvenida-copy";
-import { COMO_ENTRAR } from "@/lib/guia/semanal";
+import { COMO_ENTRAR, textoVence } from "@/lib/guia/semanal";
+import { REGALO_COPY } from "@/lib/regalo-alta";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -238,7 +239,8 @@ export function correoAvisoPedido(p: { nombre: string | null; comuna: string; ur
 // «Ya estás en Franco» (01-oct-2026): el cuerpo son los dos bloques del dashboard vacío (los mismos
 // textos, de bienvenida-copy.ts), sin «Cómo funciona». Sin «tu primer análisis es gratis»: este
 // correo sale cuando la persona crea su primer análisis con sesión, y ese análisis ya usó el crédito.
-export function correoBienvenida(p: { nombre: string | null; sitio?: string }): Correo {
+// EL REGALO (16-oct-2026, regalo-alta.ts): si la cuenta nació con su análisis de regalo, el correo lo dice con su fecha.
+export function correoBienvenida(p: { nombre: string | null; sitio?: string; regaloVence?: string | null }): Correo {
   const sitio = p.sitio ?? SITIO;
   const [analiza, oportunidades] = BIENVENIDA.hace;
   return {
@@ -250,6 +252,7 @@ export function correoBienvenida(p: { nombre: string | null; sitio?: string }): 
       parrafos: [
         `<b>${escaparHtml(analiza.titulo)}</b> ${escaparHtml(analiza.texto)} ${TRIADA}.`,
         `<b>${escaparHtml(oportunidades.titulo)}</b> ${escaparHtml(oportunidades.texto)}`,
+        ...(p.regaloVence ? [`<b>${escaparHtml(REGALO_COPY.cargado)}</b> ${escaparHtml(textoVence(p.regaloVence))}`] : []),
         // Cómo se vuelve a entrar (13-oct-2026): la cuenta no tiene contraseña.
         escaparHtml(COMO_ENTRAR),
       ],

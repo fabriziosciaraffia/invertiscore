@@ -2,6 +2,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
+import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 
 /** Rutas que pasan por acá solo por la medición (15-oct-2026): sin sesión que refrescar. Los anuncios llegan a `/`. */
 const SOLO_MEDICION = new Set(["/", "/demo", "/metodologia"]);
@@ -9,7 +10,7 @@ const SOLO_MEDICION = new Set(["/", "/demo", "/metodologia"]);
 /**
  * La medición en la llegada (15-oct-2026, src/lib/meta/cookies.ts): guarda el clic del anuncio (`_fbc`, con el
  * `fbclid` de la URL) aunque el pixel no alcance a cargar, y prende o apaga el modo prueba de los eventos del
- * servidor (`?meta_prueba=1|0`).
+ * servidor (`?meta_prueba=1|0`). Y el dispositivo (16-oct-2026, src/lib/dispositivo.ts): el id para el tope de regalos.
  */
 function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
   const c = cookiesDeLlegada({
@@ -21,6 +22,9 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
   if (c.fbc) res.cookies.set(COOKIE_FBC, c.fbc.valor, { path: "/", maxAge: VIDA_FBC_S, sameSite: "lax", ...(c.fbc.dominio ? { domain: c.fbc.dominio } : {}) });
   if (c.prueba === "prender") res.cookies.set(COOKIE_PRUEBA, "1", { path: "/", maxAge: VIDA_PRUEBA_S, sameSite: "lax" });
   if (c.prueba === "apagar") res.cookies.set(COOKIE_PRUEBA, "", { path: "/", maxAge: 0 });
+  if (!dispositivoValido(request.cookies.get(COOKIE_DISPOSITIVO)?.value)) {
+    res.cookies.set(COOKIE_DISPOSITIVO, crypto.randomUUID(), { path: "/", maxAge: VIDA_DISPOSITIVO_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
+  }
   return res;
 }
 
@@ -43,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/demo", "/metodologia", "/dashboard/:path*", "/analisis/:path*", "/login", "/register", "/entrar", "/pricing", "/auth/callback", "/payments/return"],
+  matcher: ["/", "/demo", "/metodologia", "/dashboard/:path*", "/analisis/:path*", "/login", "/register", "/entrar", "/deptos", "/pricing", "/auth/callback", "/payments/return"],
 };

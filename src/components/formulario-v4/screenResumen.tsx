@@ -1285,6 +1285,9 @@ export function lineaConsumo(
     return "Este es tu análisis de bienvenida — el primero va por cuenta de Franco.";
   }
 
+  // El próximo que se gasta es un regalo (16-oct-2026): se dice que se usa el regalo.
+  if (tier?.proximoRegalo) return "Esto usa tu análisis de regalo.";
+
   // Saldo finito. Con plan mostramos el total del ciclo ("3 de 10"); sin plan
   // (créditos comprados sueltos) no hay denominador que mostrar.
   const saldo = tier?.credits ?? 0;

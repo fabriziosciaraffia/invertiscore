@@ -4,6 +4,7 @@ import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { anonCapDisponible } from "@/lib/api-helpers/anon-cap";
+import { FUENTES_REGALO } from "@/lib/regalo-alta";
 
 export async function GET() {
   try {
@@ -33,13 +34,25 @@ export async function GET() {
     // SALDO real = ledger (credit_grants) + legacy, vía getAvailableCredits (mismo
     // fix que /cuenta, /perfil y /analisis/[id]). welcome_credit_used sigue saliendo
     // del contador. El shape de la respuesta NO cambia: `credits` es number.
-    const [tier, credits, welcomeRow] = await Promise.all([
+    const ahora = new Date().toISOString();
+    const [tier, credits, welcomeRow, proximo] = await Promise.all([
       getUserAccessLevel(user.id),
       getAvailableCredits(user.id, supabase),
       supabase
         .from("user_credits")
         .select("welcome_credit_used, active_plan, is_unlimited, subscription_ends_at")
         .eq("user_id", user.id)
+        .maybeSingle(),
+      // El lote que se gasta primero (el orden del cobro, credits-grant.ts › consumeCredit): si es un regalo, el aviso
+      // antes de gastar lo dice (16-oct-2026).
+      supabase
+        .from("credit_grants")
+        .select("source")
+        .eq("user_id", user.id)
+        .gt("remaining", 0)
+        .or(`expires_at.is.null,expires_at.gt.${ahora}`)
+        .order("expires_at", { ascending: true, nullsFirst: false })
+        .limit(1)
         .maybeSingle(),
     ]);
 
@@ -48,6 +61,7 @@ export async function GET() {
       isAdmin: isAdminUser(user.email),
       credits,
       welcomeAvailable: !(welcomeRow.data?.welcome_credit_used ?? false),
+      proximoRegalo: !!proximo.data?.source && FUENTES_REGALO.has(proximo.data.source as string),
       email: user.email ?? null,
       // Estado del plan (lectura, NO gating). El front lo usa para distinguir un
       // suscriptor FINITO (plan10/plan50 → muestra saldo real, bloquea en 0) de un

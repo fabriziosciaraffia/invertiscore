@@ -14,6 +14,10 @@
 // los formularios del código justo después de verifyOtp— también sale `ensureWelcomeEmail` (una sola
 // vez por persona, claim atómico), en waitUntil y ANTES del atajo sin cookie: quien entra por código
 // sin informe anónimo también recibe su bienvenida.
+//
+// EL REGALO AL REGISTRARSE (16-oct-2026, regalo-alta.ts): toda cuenta nueva pasa por acá después del código (banner,
+// /entrar, guía) y recibe su análisis de regalo, con los topes por dispositivo, IP y día. Antes de responder: la
+// pantalla que sigue ya lo muestra. Una cuenta de antes del corte no hace ninguna consulta.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
@@ -26,6 +30,7 @@ import { guardarAtribucion } from "@/lib/attribution";
 import { esPuerta } from "@/lib/atribucion-puerta";
 import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
+import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
 
 export async function POST(request: Request) {
   try {
@@ -38,6 +43,10 @@ export async function POST(request: Request) {
     }
 
     const cuerpo = (await request.json().catch(() => null)) as { porCodigo?: unknown; puerta?: unknown; puertaDetalle?: unknown } | null;
+    // El regalo antes de la bienvenida: el correo lo dice (welcome.ts).
+    await asegurarRegaloDeAlta(createAdminServiceClient(), {
+      userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null,
+    });
     if (cuerpo?.porCodigo === true && user.email) {
       waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
     }

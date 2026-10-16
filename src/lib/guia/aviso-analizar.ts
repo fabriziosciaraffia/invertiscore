@@ -11,6 +11,7 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { formatearNumero, formatearPct } from "@/lib/plausibilidad";
 import { calcDividendo } from "@/components/formulario-v4/helpers-wizard";
 import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { REGALO_COPY } from "@/lib/regalo-alta";
 
 /** Lo que el aviso sabe del saldo: el estado de la casa, o «desconocido» cuando la pantalla no tiene el número. */
 export type UsoAnalisis = EstadoSaldo | { tipo: "desconocido" };
@@ -34,11 +35,12 @@ export const AVISO_ANALIZAR = {
   comprar: TRES_COPY.boton,
 } as const;
 
-/** «Usa 1 de tus N análisis.» y sus casos: el último, el regalo, el plan, y sin número. */
+/** «Usa 1 de tus N análisis.» y sus casos: el último, el regalo, el plan, y sin número. EL REGALO SE DICE (16-oct-2026):
+ *  si el que se va a gastar es un regalo —todo lo que tiene, o el que vence primero—, «Usa tu análisis de regalo.». */
 export function textoUso(u: UsoAnalisis): string {
   switch (u.tipo) {
-    case "con": return u.n === 1 ? "Usa tu último análisis." : `Usa 1 de tus ${u.n} análisis.`;
-    case "regalo": return "Usa el análisis que va por cuenta de Franco.";
+    case "con": return u.proximoRegalo ? REGALO_COPY.usaRegalo : REGALO_COPY.usaUnoDe(u.n);
+    case "regalo": return REGALO_COPY.usaRegalo;
     case "plan": return "Tu plan Ilimitado está activo: no descuenta de tu saldo.";
     case "sin": return AVISO_ANALIZAR.sin;
     default: return "Usa 1 de tus análisis.";

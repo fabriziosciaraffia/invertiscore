@@ -43,8 +43,8 @@ async function enviarCorreo(
 }
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://refranco.ai';
 
-export async function sendWelcomeEmail(to: string, name: string, opts: CorreoOpts = {}) {
-  const { subject, html } = correoBienvenida({ nombre: name, sitio: SITE_URL });
+export async function sendWelcomeEmail(to: string, name: string, opts: CorreoOpts & { regaloVence?: string | null } = {}) {
+  const { subject, html } = correoBienvenida({ nombre: name, sitio: SITE_URL, regaloVence: opts.regaloVence ?? null });
   try {
     await enviarCorreo("bienvenida", opts.userId, { from: FROM_EMAIL, to, subject, html });
   } catch (error) {
@@ -429,7 +429,7 @@ export async function sendAvisoPedidoEmail(to: string, p: Parameters<typeof corr
 /** Alerta interna de un cron que falló o dejó de escribir (29-sep-2026). Ver cron-resultado.ts. */
 /** El correo semanal (02-oct-2026). Con «List-Unsubscribe» de un clic: Gmail e iPhone Mail muestran
  *  «Cancelar suscripción» y llaman al POST de /api/semanal/baja. Devuelve el id de Resend. */
-export async function sendSemanalEmail(to: string, correo: { subject: string; html: string }, userId: string, urlBaja: string, variante: "banda" | "tarjetas" | "vacio"): Promise<{ ok: true; id: string | null } | { ok: false }> {
+export async function sendSemanalEmail(to: string, correo: { subject: string; html: string }, userId: string, urlBaja: string, variante: "banda" | "tarjetas" | "vacio" | "del_dia" | "del_dia_vacio"): Promise<{ ok: true; id: string | null } | { ok: false }> {
   try {
     const res = await enviarCorreo("semanal", userId, {
       from: FROM_EMAIL, to, subject: correo.subject, html: correo.html,

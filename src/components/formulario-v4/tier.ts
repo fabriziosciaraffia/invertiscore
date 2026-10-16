@@ -7,6 +7,8 @@ export interface TierInfo {
   isAdmin: boolean;
   credits: number;
   welcomeAvailable?: boolean;
+  /** El próximo análisis que se gasta es un regalo (16-oct-2026): el aviso lo dice («usa tu análisis de regalo»). */
+  proximoRegalo?: boolean;
   email: string | null;
   // Estado del plan (de /api/me/tier; lectura, NO gating — la autoridad es el backend).
   // El front los usa para distinguir un suscriptor FINITO (plan10/plan50: saldo real,

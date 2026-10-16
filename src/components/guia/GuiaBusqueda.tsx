@@ -145,7 +145,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     setGenerando(null);
   }
 
-  const usaUno = estado ? (estado.tipo === "con" ? GUIA_SALDO.usaUno(estado.n) : estado.tipo === "regalo" ? "va por cuenta de Franco" : null) : GUIA_SALDO.usaUno(saldo);
+  // El regalo se dice (16-oct-2026): si el que se gasta es un regalo, «usa tu análisis de regalo».
+  const usaUno = estado ? (estado.tipo === "con" ? (estado.proximoRegalo ? "usa tu análisis de regalo" : GUIA_SALDO.usaUno(estado.n)) : estado.tipo === "regalo" ? "usa tu análisis de regalo" : null) : GUIA_SALDO.usaUno(saldo);
   const uso = estado ?? usoDesdeSaldo(saldo);
   // Con sesión, «Analizar este» abre el aviso; sin sesión, primero el código en la tarjeta.
   const abrir = (it: Item) => {

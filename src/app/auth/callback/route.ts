@@ -7,6 +7,8 @@ import { createAdminServiceClient } from "@/lib/admin-auth";
 import { ANON_COOKIE } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
 import { ensureWelcomeEmail } from "@/lib/welcome";
+import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
+import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { waitUntil } from "@vercel/functions";
 
 export async function GET(request: Request) {
@@ -101,6 +103,18 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error("[auth/callback] claim anónimo excepción:", e);
+    }
+
+    // El regalo al registrarse (16-oct-2026, regalo-alta.ts): antes del redirect, así el destino ya lo muestra.
+    try {
+      const user = sessionData?.user;
+      if (user?.id) {
+        await asegurarRegaloDeAlta(createAdminServiceClient(), {
+          userId: user.id, creadaAt: user.created_at, huella: huellaDeCabeceras(request.headers, cookieStore.get(COOKIE_DISPOSITIVO)?.value ?? null),
+        });
+      }
+    } catch (e) {
+      console.error("[auth/callback] regalo excepción:", e);
     }
 
     // La bienvenida AL REGISTRARSE (01-oct-2026), no al abrir el dashboard: quien entra por el enlace

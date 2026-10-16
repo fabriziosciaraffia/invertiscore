@@ -125,13 +125,19 @@ export async function ensureWelcomeEmail(
 
     // 3) Enviar SOLO la request ganadora (la que afectó 1 fila). Si afectó 0,
     //    otra request ya ganó el claim (o ya estaba enviado) → no-op.
+    //    La cuenta que nace en /deptos (16-oct-2026) no la recibe: su bienvenida es el correo del día, con sus
+    //    primeros deptos (del-dia-servidor.ts). Lo dice su elección pendiente, que existe hasta que la cuenta nace.
+    //    Y el correo dice el regalo al registrarse, si la cuenta lo tiene (regalo-alta-servidor.ts).
     if (Array.isArray(claimed) && claimed.length === 1) {
+      const { data: pendiente } = await admin.from("deptos_pendientes").select("correo").eq("correo", email.trim().toLowerCase()).maybeSingle();
+      if (pendiente) return;
+      const { data: regalo } = await admin.from("regalos_alta").select("vence_at").eq("user_id", userId).eq("motivo", "otorgado").maybeSingle();
       let meta: Record<string, unknown> | null = metadata && typeof metadata === "object" ? metadata : null;
       if (!meta) {
         const { data } = await admin.auth.admin.getUserById(userId);
         meta = (data?.user?.user_metadata as Record<string, unknown> | undefined) ?? null;
       }
-      await sendWelcomeEmail(email, nombreReal(meta) ?? "", { userId });
+      await sendWelcomeEmail(email, nombreReal(meta) ?? "", { userId, regaloVence: (regalo?.vence_at as string | null) ?? null });
     }
   } catch (error) {
     console.error(

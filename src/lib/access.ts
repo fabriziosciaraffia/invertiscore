@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { consumeCredit as consumeLedgerCredit, getAvailableCredits } from "@/lib/credits-grant";
+import { bienvenidaVigente } from "@/lib/regalo-alta";
+import { asegurarRegaloDeAlta } from "@/lib/regalo-alta-servidor";
 
 function createAdminClient() {
   return createClient(
@@ -143,7 +145,18 @@ export async function chargeAnalysisCredit(
   // request gane la carrera si dos llegan simultáneas. También marcamos
   // onboarding_completed=true (UX fix #1b): si el user usa el welcome via
   // análisis está onboardeado de facto — no debería volver a OnboardingClient.
-  if (!row.welcome_credit_used) {
+  // DESDE EL 16-OCT-2026 la cuenta nueva no tiene bienvenida: tiene el análisis de regalo (regalo-alta.ts), que está en el
+  // ledger. Si llegó a cobrar antes de que se decidiera su regalo, se decide acá (y la bienvenida queda apagada).
+  let bienvenida = !row.welcome_credit_used;
+  if (bienvenida) {
+    const { data: cuenta } = await supabase.auth.admin.getUserById(userId);
+    const creadaAt = cuenta?.user?.created_at ?? null;
+    if (!bienvenidaVigente(creadaAt)) {
+      bienvenida = false;
+      await asegurarRegaloDeAlta(supabase, { userId, creadaAt, huella: { dispositivo: null, ip: null } });
+    }
+  }
+  if (bienvenida) {
     const { data: claimed, error: claimedError } = await supabase
       .from("user_credits")
       .update({
