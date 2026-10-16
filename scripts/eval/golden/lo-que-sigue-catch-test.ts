@@ -209,8 +209,8 @@ export function runLoQueSigueTier(): { hard: number } {
   // con tu correo; el titular solo con la urgencia; lo que recibe, aparte y en negrita.
   if (`${OFERTA_REGISTRO.ojoFuerte}${OFERTA_REGISTRO.ojoResto}` !== "Accede gratis · solo con tu correo" || OFERTA_REGISTRO.titular !== "Los deptos que convienen como inversión se van rápido." || OFERTA_REGISTRO.registro !== "Regístrate y Franco te manda cada semana una selección según tu perfil." || OFERTA_REGISTRO.bajada !== "Deptos publicados que dan Comprar con tu pie y tu plazo, chequeados ese mismo día." || OFERTA_REGISTRO.boton !== "Quiero recibirlos") F("5 · el banner no es el aprobado");
 // ⚠ ACTA (16-oct-2026, decisión de Fabrizio, goal «la puerta B») · el «cuándo» renombrado en todos lados: «Ya» desaparece,
-  // va «Estoy listo para comprar» (el valor guardado sigue siendo 'ya'). Lo fija también el tier PUERTA-B §7.
-  if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Estoy listo para comprar|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
+  // va «Quiero comprar ya» (el valor guardado sigue siendo 'ya'; el mismo día se llamó «Estoy listo para comprar»). Lo fija también el tier PUERTA-B §7.
+  if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Quiero comprar ya|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
   if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton("$14.990") !== "Comprar por $14.990") F("5 · la pestaña o el botón del ticket no son los aprobados");
   if (TICKET_PACK.vencimiento("hoy a las 21:04") !== "Solo para usuarios nuevos, en este informe · hasta hoy a las 21:04 · si te vas, guarda el enlace") F("5 · el vencimiento del ticket no es el aprobado");
   // (30-sep-2026) El copy nuevo de Fabrizio, con la guía de búsqueda debajo; sin guía, Buscar otro dice la de antes.

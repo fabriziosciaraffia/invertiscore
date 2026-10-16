@@ -14,8 +14,14 @@
 //       la bienvenida; el aviso antes de gastar dice «usa tu análisis de regalo».
 //   6 · LA REACTIVACIÓN: 4 semanas sin analizar, una cada 90 días, con su semanal.
 // Más: el «cuándo» renombrado, la medición con la puerta B y el estándar de 25 años en la evaluación de la noche.
+//   8 · LA PÁGINA QUE CONVIERTE (16-oct-2026, segunda pasada: la única meta es que dejen el correo): ocho comunas a la vista
+//       y un buscador con el resto, una sola tipología (2D), cuatro rangos, la modalidad en «Estás dentro»; la respuesta es
+//       un número con su detalle chico; el correo pegado debajo, sin nada en medio; el mismo mensaje exista o no la
+//       cuenta; serif solo en el titular, de una línea; el pie de los informes.
 //
-// ACTA DE MUTACIONES (16-oct-2026): 37/37 en ROJO, restauradas byte a byte (scratchpad mutar-puerta-b.cjs).
+// ACTA DE MUTACIONES (16-oct-2026): 55/55 en ROJO, restauradas byte a byte (scratchpad mutar-puerta-b.cjs); las 18 últimas
+// son de la segunda pasada (N1–N17, X4). N3 quedó así después de una que no cambiaba nada visible (subir el tope de
+// vecinas a 2 no las mostraba: la línea nombra la primera).
 //   Cuenta: C1 nueva a una existente · C2 el alta pisa el perfil de una existente · C3 nace con 30 años · C4 sin mirar
 //   si tiene cuenta. Cero: Z1 sin el pie · Z2 sin las vecinas · Z3 sin «te aviso» · Z4 calcula en vivo. Perfil manual:
 //   P1 sin perfil de renta larga · P2 fuera del semanal · P3 sin origen sintético · P4 el rango con holgura · P5 el
@@ -25,16 +31,21 @@
 //   bienvenida · R6 el reclamo sin regalo · R7 el aviso no lo dice · R8 «primero» sin el orden del cobro · R9 la IP topa
 //   (CGNAT: les quitaría el regalo a quienes comparten IP).
 //   Reactivación: A1 sin los 90 días · A2 con otro regalo vivo · A3 la marca una sola vez. X1 vuelve «Ya» · X2 el Lead
-//   sin la puerta B · X3 la noche sin el estándar de 25 años.
+//   sin la puerta B · X3 la noche sin el estándar de 25 años · X4 vuelve «Estoy listo para comprar». Página: N1 el número en
+//   frase · N2 el detalle sin pie ni plazo · N3 la alternativa nombra dos vecinas · N4 la alternativa larga · N5 la API dice
+//   si existe · N6 la pantalla distingue la cuenta existente · N7 algo entre el número y el correo · N8 sin «Sin
+//   contraseña» · N9 la modalidad vuelve a elegir · N10 tipología múltiple · N11 nueve comunas · N12 cinco rangos · N13
+//   sin buscador · N14 serif en el número · N15 el titular en dos líneas · N16 el pie con enlaces · N17 sin 2D por defecto.
 //
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/puerta-b-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ALTA_COPY, comunasParaAgregar, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, respuestaDeptos, tipoDeAlta, validarElecciones,
-  type ConteoComuna,
+  COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
+  TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
+import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
 import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/estandar";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
@@ -138,7 +149,6 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (PIE_DEPTOS !== 20 || PLAZO_DEPTOS !== 25) F("1 · el estándar no es pie 20 % y 25 años");
       if (JSON.stringify(comunasParaAgregar(["Ñuñoa", "Macul"], ["Ñuñoa", "La Reina"])) !== '["La Reina"]') F("1 · al entrar, las comunas a agregar repiten las que ya tiene");
       if (comunasParaAgregar(["a", "b", "c", "d", "e", "f", "g", "h"], ["x"]).length !== 0 || MAX_COMUNAS_PERFIL !== 8) F("1 · agregar comunas pasa el tope del perfil");
-      if (!/ya tienes cuenta, te mandamos el código para entrar/i.test(ALTA_COPY.yaTienes)) F("1 · el aviso de la cuenta existente no es el de Fabrizio");
       const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
       const iExist = alta.indexOf(`if (tipo === "existente") {`), iPerfil = alta.indexOf(`from("perfil_busqueda").upsert`);
       if (!/const tipo = tipoDeAlta\(\{ existiaAlPedir: pend\.existe, cuentaCreadaAt: user\.created_at, pedidoAt: pend\.creadoAt \}\);/.test(alta) || iExist < 0 || iPerfil < iExist
@@ -148,8 +158,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const correo = sinComentarios(leer("src/app/api/deptos/correo/route.ts"));
       if (!/const existe = await correoTieneCuenta\(admin, correo\);/.test(correo) || !/await guardarPendiente\(admin, correo, perfilManualDeElecciones\(v\), existe\);/.test(correo))
         F("1 · el pedido del código no mira si el correo ya tiene cuenta, o no guarda lo elegido");
+      // EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio): si la cuenta existe no vuelve al navegador.
+      if (!/return NextResponse\.json\(\{ ok: true \}\);/.test(correo) || /NextResponse\.json\(\{[^}]*existe/.test(correo)) F("1 · el pedido del código le dice al navegador si el correo tiene cuenta");
       const cliente = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
-      if (!/\{enviado\.existe \? ALTA_COPY\.yaTienes : ALTA_COPY\.nueva\}/.test(cliente) || !/shouldCreateUser: true/.test(cliente)) F("1 · la pantalla no dice «ya tienes cuenta» o no crea la cuenta con el código");
+      if (/existe|yaTienes|ya tienes cuenta/i.test(cliente) || !/<p className="dp-registro">\{DEPTOS_COPY\.enviado\(enviado\)\}<\/p>/.test(cliente) || !/shouldCreateUser: true/.test(cliente))
+        F("1 · la pantalla dice otra cosa cuando la cuenta existe, o no crea la cuenta con el código");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/create or replace function public\.correo_tiene_cuenta[\s\S]{0,200}security definer[\s\S]{0,300}revoke all on function public\.correo_tiene_cuenta\(text\) from public, anon, authenticated;/.test(mig)) F("1 · saber si un correo tiene cuenta queda abierto a cualquiera");
     }
@@ -159,18 +172,23 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const v = validarElecciones({ comunas: ["Ñuñoa"], tipologias: ["2"], rango: "3000-4000", modalidad: "ltr" });
       if (!v.ok) throw new Error("validación");
       const c = (comuna: string, total: number, comprar20: number, comprar30: number): ConteoComuna => ({ comuna, total, comprar20, comprar30 });
-      const con = respuestaDeptos(v, [c("Ñuñoa", 412, 9, 20)], []);
-      if (con.frase !== "En Ñuñoa, de 412 deptos 2D entre UF 3.000 y 4.000, 9 convienen como inversión con pie 20 % y 25 años." || con.alternativa) F(`2 · la respuesta no es la frase de Fabrizio: ${con.frase}`);
-      if (!/te los mando hoy/i.test(con.registro)) F("2 · con deptos, la invitación no promete los de hoy");
+      // LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada), con el detalle chico; sin la frase del estándar.
+      const con = respuestaDeptos(v, [c("Ñuñoa", 1008, 29, 40)], []);
+      if (con.titular !== "29 de 1.008 convienen como inversión" || con.cifra !== "29 de 1.008" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 convienen como inversión»): ${con.titular}`);
+      if (con.detalle !== "Ñuñoa · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años") F(`2 · el detalle no es «comuna · tipología · rango · pie 20 %, 25 años»: ${con.detalle}`);
+      if (respuestaDeptos(v, [c("Ñuñoa", 143, 1, 1)], []).titular !== "1 de 143 conviene como inversión") F("2 · con uno, el número no va en singular");
+      if (con.registro !== "Regístrate y te los mando hoy") F("2 · con deptos, la invitación no es «Regístrate y te los mando hoy»");
+      if ("estandar" in DEPTOS_COPY || /lo estándar/.test(leer("src/app/deptos/deptos-cliente.tsx") + leer("src/lib/deptos/respuesta.ts"))) F("2 · vuelve la frase del estándar");
       const pie = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 4)], [c("Macul", 171, 0, 17)]);
-      if (pie.convienen !== 0 || pie.alternativa !== "Con pie 30 %, 4 sí convienen." || !/ninguno conviene hoy/.test(pie.frase)) F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
+      if (pie.convienen !== 0 || pie.titular !== "0 de 143 convienen como inversión" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
       if (!/te aviso cuando aparezca uno/i.test(pie.registro)) F("2 · con cero no ofrece registrarse («te aviso cuando aparezca uno»)");
       const vec = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 3, 17), c("La Reina", 6, 1, 1), c("Providencia", 7, 5, 7)]);
-      if (vec.alternativa !== "En Providencia, comuna vecina, 5 convienen con pie 20 %. En Macul, comuna vecina, 3 convienen con pie 20 %.") F(`2 · con cero no dice en qué comuna vecina sí (las dos que más dan): ${vec.alternativa}`);
+      if (vec.alternativa !== "En Providencia, comuna vecina, 5 sí convienen.") F(`2 · con cero no dice en qué comuna vecina sí (la que más da, en una línea): ${vec.alternativa}`);
       const nada = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 0, 0)]);
-      if (nada.alternativa !== "Tampoco con pie 30 % ni en las comunas vecinas." || !/te aviso cuando aparezca uno/i.test(nada.registro)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
+      if (nada.alternativa !== "Tampoco con pie 30 % ni en comunas vecinas." || !/te aviso cuando aparezca uno/i.test(nada.registro)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
+      for (const r of [pie, vec, nada]) if ((r.alternativa ?? "").split(/\. /).length !== 1 || (r.alternativa ?? "").length > 60) F(`2 · la alternativa del cero no es una línea corta: ${r.alternativa}`);
       const vacia = respuestaDeptos(v, [], []);
-      if (!/no vimos deptos 2D entre UF 3\.000 y 4\.000 esta semana/.test(vacia.frase)) F("2 · sin avisos en el filtro la frase inventa un total");
+      if (vacia.cifra !== null || vacia.titular !== "Ninguno publicado así esta semana") F("2 · sin avisos en el filtro el número inventa un total");
       if (validarElecciones({ comunas: ["Ñuñoa", "Macul", "La Reina", "Providencia"], tipologias: ["2"], rango: "3000-4000" }).ok) F("2 · se aceptan más de tres comunas");
       const fuera = validarElecciones({ comunas: ["Viña del Mar"], tipologias: ["2"], rango: "3000-4000" });
       if (fuera.ok || fuera.error !== "fuera") F("2 · una comuna fuera del Gran Santiago no responde «por ahora solo Gran Santiago»");
@@ -178,7 +196,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (/sondaConPatch|runAnalysis|evaluarEstandar25|prefetch/.test(srv) || !/admin\.rpc\("deptos_conteo"/.test(srv)) F("2 · la respuesta calcula en vivo en vez de leer la evaluación de la noche");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/count\(\*\) filter \(where ae\.veredicto_20_25 = 'COMPRAR'\)::int,\s*count\(\*\) filter \(where ae\.veredicto_30_25 = 'COMPRAR'\)::int/.test(mig)) F("2 · el conteo no cuenta los Comprar a 25 años con pie 20 % y 30 %");
-      if (!/fuera: "Por ahora solo Gran Santiago:"/.test(leer("src/lib/deptos/respuesta.ts"))) F("2 · fuera de cobertura no dice «por ahora solo Gran Santiago»");
+      if (!/fuera: "Por ahora solo Gran Santiago\."/.test(leer("src/lib/deptos/respuesta.ts"))) F("2 · fuera de cobertura no dice «por ahora solo Gran Santiago»");
     }
 
     // ── 3 · EL PERFIL MANUAL SIN INFORMES ──
@@ -311,9 +329,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
     // ── 7 · el «cuándo» renombrado, la medición con la puerta B, el estándar de 25 años ──
     {
       const textos = ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|");
-      if (textos !== "Estoy listo para comprar|En los próximos meses|Solo estoy mirando" || CASA.perfil.horizonte.ya !== "Estoy listo para comprar" || INMEDIATO.pregunta.opciones[0].texto !== "Estoy listo para comprar")
+      if (textos !== "Quiero comprar ya|En los próximos meses|Solo estoy mirando" || CASA.perfil.horizonte.ya !== "Quiero comprar ya" || INMEDIATO.pregunta.opciones[0].texto !== "Quiero comprar ya")
         F(`7 · el «cuándo» no está renombrado en todos lados: ${textos}`);
-      for (const f of ["src/lib/lo-que-sigue/copy.ts", "src/app/dashboard/casa-copy.ts", "src/lib/guia/inmediato.ts"]) if (/texto: "Ya"|: "Ya",|piensas comprar ya/.test(leer(f))) F(`7 · ${f} todavía dice «Ya»`);
+      for (const f of ["src/lib/lo-que-sigue/copy.ts", "src/app/dashboard/casa-copy.ts", "src/lib/guia/inmediato.ts", "src/lib/email/catalogo.ts"]) if (/texto: "Ya"|: "Ya",|piensas comprar ya|listo para comprar/.test(leer(f))) F(`7 · ${f} todavía dice «Ya» o «Estoy listo para comprar»`);
       const cliente = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (!/marcarPuertaCandidata\("B", "deptos"\);/.test(cliente) || !/void avisarLead\(c, "seleccion", "B"\);/.test(cliente)) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
       if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios(leer("src/app/api/deptos/alta/route.ts")))) F("7 · el alta no fija la puerta B");
@@ -322,6 +340,35 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const fila = \{ \.\.\.evaluada, \.\.\.\(evaluada\.arriendo \? evaluarEstandar25\(candidatoDeEvaluacion\(a, evaluada\), cfg\) : ESTANDAR25_VACIO\) \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");
       if (!/plazo: PLAZO_DEPTOS, tasaMercado: cfg\.tasa/.test(leer("src/lib/avisos/estandar-deptos.ts"))) F("7 · el estándar no se evalúa a 25 años");
+    }
+    // ── 8 · LA PÁGINA QUE CONVIERTE (16-oct-2026, segunda pasada) ──
+    {
+      const disponibles = COMUNAS_DISPONIBLES as readonly string[];
+      if (COMUNAS_DESTACADAS.length !== 8 || COMUNAS_DESTACADAS.some((c) => !disponibles.includes(c))) F("8 · no son ocho comunas del Gran Santiago a la vista");
+      if (RANGOS_UF.length !== 4 || RANGOS_UF[0].min !== null || RANGOS_UF.some((r, i) => i > 0 && r.min !== RANGOS_UF[i - 1].max) || RANGOS_UF[3].max < 60000) F("8 · los rangos no son cuatro, contiguos y sin hueco");
+      if (TIPOLOGIA_POR_DEFECTO !== "2") F("8 · la tipología no viene en 2D");
+      const cli = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
+      if (!/const \[tipologia, setTipologia\] = useState<string>\(TIPOLOGIA_POR_DEFECTO\);/.test(cli) || !/onClick=\{\(\) => setTipologia\(t\.id\)\}/.test(cli)) F("8 · la tipología no es una sola, con 2D marcada");
+      if (!/\{DESTACADAS\.map\(chipComuna\)\}/.test(cli) || !/const encontradas = busqueda\.trim\(\) \? sinElegir\.filter\(\(c\) => plano\(c\)\.includes\(plano\(busqueda\)\)\) : restantes;/.test(cli) || DEPTOS_COPY.otraComuna !== "Otra comuna…") F("8 · las comunas no son las ocho a la vista más un buscador con el resto");
+      const iElegir = cli.indexOf('data-deptos="elegir"'), iModalidad = cli.indexOf("MODALIDADES_DEPTOS.map(");
+      if (iModalidad < 0 || iModalidad > iElegir || (cli.match(/MODALIDADES_DEPTOS\.map\(/g) ?? []).length !== 1 || !/data-deptos="modalidad"/.test(cli)) F("8 · la modalidad se pregunta en la pantalla de elegir (va en «Estás dentro»)");
+      // El número, el detalle y el correo pegados: entre la respuesta y el formulario, solo la alternativa del cero.
+      const sec = cli.slice(cli.indexOf('<section className="dp-respuesta"'));
+      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-detalle">'), iForm1 = sec.indexOf('<form className="dp-form"');
+      const entre = iDet < 0 || iForm1 < 0 ? "x" : sec.slice(iDet, iForm1)
+        .replace('<p className="dp-detalle">{respuesta.detalle}</p>', "")
+        .replace('{respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}', "");
+      if (iNum < 0 || iNum > iDet || !/^\s*\{paso === "codigo" && enviado \? \(\s*$/.test(entre)) F("8 · entre la respuesta y el correo hay algo más que el detalle y la alternativa");
+      const iForm = sec.indexOf('<form className="dp-form" onSubmit={pedirCodigo}');
+      const form = iForm < 0 ? "" : sec.slice(iForm, sec.indexOf("</form>", iForm));
+      const orden = ["{respuesta.registro}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
+      if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F("8 · el correo no es «Regístrate…», el campo, «Quiero recibirlos» y «Te mandamos un código. Sin contraseña.», en ese orden");
+      if (DEPTOS_COPY.sinContrasena !== "Te mandamos un código. Sin contraseña." || DEPTOS_COPY.conRegistro !== "Regístrate y te los mando hoy") F("8 · el copy del correo no es el pedido");
+      // Serif solo en el titular, de una línea; la bajada en una línea; el número en Inter, grande.
+      const css = leer("src/app/deptos/deptos.css");
+      if ((css.match(/font-heading/g) ?? []).length !== 1 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-bajada \{[^}]*white-space: nowrap;/.test(css)) F("8 · hay serif fuera del titular, o el titular o la bajada pueden ir en dos líneas");
+      if (!/\.dp-cifra \{ font-size: 30px; font-weight: 700;/.test(css) || /\.dp-(numero|cifra) \{[^}]*font-family/.test(css)) F("8 · el número no va en Inter, grande");
+      if (!/<AppFooter variant="informe" \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
     }
   } finally {
     if (posthog === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = posthog;

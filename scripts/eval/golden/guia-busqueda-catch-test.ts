@@ -567,8 +567,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // ── 13 · «¿Cuándo piensas comprar?» después de pagar ────────────────────────
   {
     const hz = sinComentarios(leer("src/components/lo-que-sigue/HorizontePostPago.tsx"));
-    // ⚠ ACTA (16-oct-2026, decisión de Fabrizio) · «Ya» se llama «Estoy listo para comprar».
-    if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Estoy listo para comprar|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
+    // ⚠ ACTA (16-oct-2026, decisión de Fabrizio) · «Ya» se llama «Quiero comprar ya» (16-oct-2026, segunda pasada: antes, «Estoy listo para comprar»).
+    if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Quiero comprar ya|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
     if (!/fetch\("\/api\/lo-que-sigue\/perfil", \{[\s\S]*?body: JSON\.stringify\(\{ analysisId: ctx\.analysisId, horizonte: h, \.\.\.\(pago \? \{ order: pago\.order, t: pago\.firma \} : \{\}\) \}\)/.test(hz)) F("13 · el horizonte no se guarda en el perfil (o se manda sin la firma del pago)");
     if (!/\{retornoPack && paymentStatus === "paid" && \(conSesion \|\| llavePago\) && \(\s*<HorizontePostPago /.test(ret)) F("13 · la pregunta no está en la pantalla de después de pagar, con el pago verificado");
     if (ret.indexOf("<HorizontePostPago") < ret.indexOf("<GuiaBusqueda")) F("13 · la pregunta va antes de la guía (va debajo, discreta)");
