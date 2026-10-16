@@ -1,10 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// /deptos, la puerta B (16-oct-2026, decisiones de Fabrizio): una persona sin depto en la mira elige comuna, tipología,
-// rango de precio y modalidad, y Franco responde AL INSTANTE con la evaluación de la noche (sin calcular en vivo):
-// «En Ñuñoa, de 143 deptos 2D entre UF 3.000 y 4.000, 17 convienen como inversión con pie 20 % y 25 años.»
-// Si da cero, dice con qué sí —con pie 30 %, o en qué comuna vecina— y aun así ofrece registrarse: «te aviso cuando
-// aparezca uno». Puro: lo prueba el tier PUERTA-B. Los conteos los trae la RPC `deptos_conteo` (mismo universo que
-// el correo semanal) y la ruta GET /api/deptos/respuesta.
+// /deptos, la puerta B (16-oct-2026, decisiones de Fabrizio): una persona sin depto en la mira elige comuna, tipología y
+// rango de precio, y Franco responde AL INSTANTE con la evaluación de la noche (sin calcular en vivo).
+// LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada: la única meta de la página es que dejen el correo): «29 de 1.008
+// convienen como inversión», y debajo el detalle «Santiago · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años». Con cero, con
+// qué sí en una línea corta —con pie 30 %, o en qué comuna vecina— y aun así el registro: «te aviso cuando aparezca uno».
+// La modalidad ya no se pregunta acá: va en «Estás dentro», con arriendo tradicional por defecto.
+// Puro: lo prueba el tier PUERTA-B. Los conteos los trae la RPC `deptos_conteo` (mismo universo que el correo semanal)
+// y la ruta GET /api/deptos/respuesta.
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_DEPTOS, PLAZO_DEPTOS } from "./estandar";
@@ -12,22 +14,31 @@ import { PIE_DEPTOS, PLAZO_DEPTOS } from "./estandar";
 export const MAX_COMUNAS_DEPTOS = 3;
 /** Un correo que se entiende (el mismo criterio que /entrar y el ticket). */
 export const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-/** Hasta cuántas comunas vecinas nombra la alternativa. */
-export const MAX_VECINAS_ALTERNATIVA = 2;
+/** La alternativa del cero va en UNA línea corta: nombra una sola comuna vecina. */
+export const MAX_VECINAS_ALTERNATIVA = 1;
+
+/**
+ * LAS OCHO COMUNAS A LA VISTA (16-oct-2026): las más buscadas, medidas en los informes de todo el historial sin cuentas de
+ * prueba —Santiago 262 (con «Santiago Centro»), Ñuñoa 206, Providencia 174, Las Condes 136, La Florida 79, Macul 60,
+ * Vitacura 47, Peñalolén 40; la novena, San Miguel, 25—. Las demás, en el buscador de «Otra comuna…».
+ */
+export const COMUNAS_DESTACADAS = ["Santiago", "Ñuñoa", "Providencia", "Las Condes", "La Florida", "Macul", "Vitacura", "Peñalolén"] as const;
 
 export interface RangoUf { id: string; min: number | null; max: number; chip: string; frase: string }
-/** Los rangos de precio en UF (los cortes siguen la distribución de los avisos: la mitad está bajo UF 3.000). */
+/**
+ * CUATRO RANGOS (16-oct-2026): los cuartiles del precio de lo que la gente analiza (UF 2.950, 3.800 y 5.500, todo el
+ * historial sin cuentas de prueba), redondeados.
+ */
 export const RANGOS_UF: readonly RangoUf[] = [
-  { id: "hasta-2000", min: null, max: 2000, chip: "Hasta UF 2.000", frase: "hasta UF 2.000" },
-  { id: "2000-3000", min: 2000, max: 3000, chip: "UF 2.000 a 3.000", frase: "entre UF 2.000 y 3.000" },
+  { id: "hasta-3000", min: null, max: 3000, chip: "Hasta UF 3.000", frase: "hasta UF 3.000" },
   { id: "3000-4000", min: 3000, max: 4000, chip: "UF 3.000 a 4.000", frase: "entre UF 3.000 y 4.000" },
   { id: "4000-5500", min: 4000, max: 5500, chip: "UF 4.000 a 5.500", frase: "entre UF 4.000 y 5.500" },
-  { id: "5500-8000", min: 5500, max: 8000, chip: "UF 5.500 a 8.000", frase: "entre UF 5.500 y 8.000" },
-  { id: "8000-12000", min: 8000, max: 12000, chip: "UF 8.000 a 12.000", frase: "entre UF 8.000 y 12.000" },
-  { id: "12000-mas", min: 12000, max: 60000, chip: "Más de UF 12.000", frase: "sobre UF 12.000" },
+  { id: "5500-mas", min: 5500, max: 60000, chip: "Más de UF 5.500", frase: "sobre UF 5.500" },
 ];
 
 export interface TipologiaDeptos { id: string; dorms: number[]; chip: string; frase: string }
+/** Una sola tipología, 2D por defecto (16-oct-2026). */
+export const TIPOLOGIA_POR_DEFECTO = "2";
 export const TIPOLOGIAS_DEPTOS: readonly TipologiaDeptos[] = [
   { id: "0", dorms: [0], chip: "Estudio", frase: "estudios" },
   { id: "1", dorms: [1], chip: "1D", frase: "1D" },
@@ -37,6 +48,7 @@ export const TIPOLOGIAS_DEPTOS: readonly TipologiaDeptos[] = [
 ];
 
 export type ModalidadDeptos = "ltr" | "str";
+/** Se pregunta en «Estás dentro» (16-oct-2026), no en la pantalla de elegir. */
 export const MODALIDADES_DEPTOS: ReadonlyArray<{ id: ModalidadDeptos; chip: string }> = [
   { id: "ltr", chip: "Arriendo tradicional" },
   { id: "str", chip: "Renta corta" },
@@ -78,37 +90,42 @@ export interface RespuestaDeptos {
   total: number;
   /** Los que convienen con el estándar (pie 20 %, 25 años). */
   convienen: number;
-  frase: string;
-  /** Con cero: con qué sí (pie 30 % o una comuna vecina), o que tampoco así. null si no es cero. */
+  /** El número: «29 de 1.008». null si esta semana no hubo avisos así. */
+  cifra: string | null;
+  /** «29 de 1.008 convienen como inversión»; sin avisos, «Ninguno publicado así esta semana». */
+  titular: string;
+  /** «Santiago · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años», chico y en gris debajo del número. */
+  detalle: string;
+  /** Con cero: con qué sí, en una línea corta. null si no es cero. */
   alternativa: string | null;
   conPie30: number | null;
   vecinas: Array<{ comuna: string; convienen: number }>;
-  /** La invitación a registrarse, con o sin deptos. */
+  /** La invitación a registrarse, pegada al número, con o sin deptos. */
   registro: string;
-  /** Renta corta: cómo se calcula (no hay veredicto de la noche para renta corta). */
-  notaModalidad: string | null;
 }
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 export const lista = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
-const convienenTexto = (n: number) => (n === 1 ? "1 conviene" : `${miles(n)} convienen`);
-const deptosTexto = (n: number) => (n === 1 ? "1 depto" : `${miles(n)} deptos`);
+const siConvienen = (n: number) => `${miles(n)} sí ${n === 1 ? "conviene" : "convienen"}`;
 
 export const DEPTOS_COPY = {
   titular: "Cada semana, los deptos que convienen",
-  bajada: "Elige qué buscas y Franco te dice en el momento cuántos convienen como inversión, con los avisos que revisó anoche.",
+  /** En una línea, también en el teléfono. */
+  bajada: "Elige y Franco te dice cuántos convienen hoy.",
   comuna: "Comuna",
-  comunaAyuda: `Hasta ${MAX_COMUNAS_DEPTOS}, del Gran Santiago.`,
-  otraComuna: "Otra comuna",
-  fuera: "Por ahora solo Gran Santiago:",
+  comunaAyuda: `Hasta ${MAX_COMUNAS_DEPTOS}`,
+  otraComuna: "Otra comuna…",
+  buscar: "Busca tu comuna",
+  fuera: "Por ahora solo Gran Santiago.",
   tipologia: "Tipología",
   rango: "Rango de precio",
-  modalidad: "Cómo lo arriendas",
-  estandar: `Con pie ${PIE_DEPTOS} % y ${PLAZO_DEPTOS} años, lo estándar. Lo cambias después en tu perfil.`,
-  conRegistro: "Regístrate y te los mando hoy, revisados uno por uno.",
-  sinDeptos: "Regístrate y te aviso cuando aparezca uno.",
+  conRegistro: "Regístrate y te los mando hoy",
+  sinDeptos: "Regístrate y te aviso cuando aparezca uno",
+  /** Debajo del botón, siempre. */
+  sinContrasena: "Te mandamos un código. Sin contraseña.",
+  /** Después de pedir el código: EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio). */
+  enviado: (correo: string) => `Te mandamos un código a ${correo}. Escríbelo acá.`,
   tope: `Hasta ${MAX_COMUNAS_DEPTOS} comunas.`,
-  notaStr: "En renta corta, Franco mide cada depto con lo que se cobra por noche en su zona: el correo trae los que mejor rinden.",
 } as const;
 
 /**
@@ -123,34 +140,23 @@ export function respuestaDeptos(
   const enSus = propias.filter((c) => v.comunas.includes(c.comuna));
   const total = enSus.reduce((s, c) => s + c.total, 0);
   const convienen = enSus.reduce((s, c) => s + c.comprar20, 0);
-  const tipo = lista(v.tipologias.map((t) => t.frase));
-  const donde = lista(v.comunas);
-  const conque = `con pie ${PIE_DEPTOS} % y ${PLAZO_DEPTOS} años`;
-  const notaModalidad = v.modalidad === "str" ? DEPTOS_COPY.notaStr : null;
+  const detalle = [lista(v.comunas), v.tipologias.map((t) => t.chip).join(" y "), v.rango.chip, `pie ${PIE_DEPTOS} %, ${PLAZO_DEPTOS} años`].join(" · ");
+  const cifra = total > 0 ? `${miles(convienen)} de ${miles(total)}` : null;
+  const titular = cifra ? `${cifra} ${convienen === 1 ? "conviene" : "convienen"} como inversión` : "Ninguno publicado así esta semana";
   if (convienen > 0) {
-    return {
-      total, convienen, alternativa: null, conPie30: null, vecinas: [], notaModalidad, registro: DEPTOS_COPY.conRegistro,
-      frase: `En ${donde}, de ${deptosTexto(total)} ${tipo} ${v.rango.frase}, ${convienenTexto(convienen)} como inversión ${conque}.`,
-    };
+    return { total, convienen, cifra, titular, detalle, alternativa: null, conPie30: null, vecinas: [], registro: DEPTOS_COPY.conRegistro };
   }
-  // EL CERO CON ALTERNATIVA: con qué pie sí (30 %, en sus mismas comunas), o en qué comuna vecina (con el estándar).
+  // EL CERO CON ALTERNATIVA, en una línea: con qué pie sí (30 %, en sus mismas comunas) o, si no, en qué comuna vecina.
   const conPie30 = enSus.reduce((s, c) => s + c.comprar30, 0);
   const vecinasQueDan = vecinas
     .filter((c) => !v.comunas.includes(c.comuna) && c.comprar20 > 0)
     .sort((a, b) => b.comprar20 - a.comprar20 || a.comuna.localeCompare(b.comuna))
     .slice(0, MAX_VECINAS_ALTERNATIVA)
     .map((c) => ({ comuna: c.comuna, convienen: c.comprar20 }));
-  const partes: string[] = [];
-  if (conPie30 > 0) partes.push(`Con pie 30 %, ${conPie30 === 1 ? "1 sí conviene" : `${miles(conPie30)} sí convienen`}.`);
-  for (const x of vecinasQueDan) partes.push(`En ${x.comuna}, comuna vecina, ${convienenTexto(x.convienen)} con pie ${PIE_DEPTOS} %.`);
-  if (partes.length === 0) partes.push(`Tampoco con pie 30 % ni en las comunas vecinas.`);
-  return {
-    total, convienen: 0, conPie30, vecinas: vecinasQueDan, notaModalidad, registro: DEPTOS_COPY.sinDeptos,
-    alternativa: partes.join(" "),
-    frase: total === 0
-      ? `En ${donde} no vimos deptos ${tipo} ${v.rango.frase} esta semana.`
-      : `En ${donde}, de ${deptosTexto(total)} ${tipo} ${v.rango.frase}, ninguno conviene hoy como inversión ${conque}.`,
-  };
+  const alternativa = conPie30 > 0 ? `Con pie 30 %, ${siConvienen(conPie30)}.`
+    : vecinasQueDan[0] ? `En ${vecinasQueDan[0].comuna}, comuna vecina, ${siConvienen(vecinasQueDan[0].convienen)}.`
+    : "Tampoco con pie 30 % ni en comunas vecinas.";
+  return { total, convienen: 0, cifra, titular, detalle, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.sinDeptos };
 }
 
 /** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. */
@@ -186,14 +192,11 @@ export function comunasParaAgregar(actuales: string[], elegidas: string[]): stri
 }
 
 export const ALTA_COPY = {
-  yaTienes: "Ya tienes cuenta, te mandamos el código para entrar.",
-  nueva: "Te mandamos un código a tu correo. Sin contraseña.",
   agregar: (comunas: string[]) => `¿Agregamos ${lista(comunas)} a tu perfil de búsqueda?`,
   agregarSi: "Sí, agregar",
   agregarNo: "No, dejarlo como está",
   agregado: "Listo, quedó en tu perfil.",
   correo: "Tu correo",
-  enviado: (correo: string) => `Lo mandamos a ${correo}. Escríbelo acá.`,
   pedir: "Quiero recibirlos",
   error: "No pudimos seguir. Intenta de nuevo.",
 } as const;

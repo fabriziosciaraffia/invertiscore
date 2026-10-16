@@ -7,7 +7,7 @@ import { DeptosCliente } from "./deptos-cliente";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /deptos, LA PUERTA B (16-oct-2026, decisiones de Fabrizio): para quien no tiene un depto en la mira. Una sola pantalla,
-// rápida, sin mapa ni Google Places: cuatro preguntas con chips, la respuesta al instante con la evaluación de la noche,
+// rápida, sin mapa ni Google Places: tres preguntas con chips, la respuesta al instante con la evaluación de la noche,
 // el registro con correo y código, «Estás dentro» y sus primeros deptos antes de cerrar la pestaña. Una sola página para
 // el anuncio, el retargeting y lo orgánico: las UTM distinguen (useAttributionSync), la puerta es B.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,10 +35,11 @@ export default async function DeptosPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco sesion={sesion} />
-      <main className="mx-auto max-w-[760px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+      <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
         <DeptosCliente sesion={sesion} />
       </main>
-      <AppFooter variant="minimal" />
+      {/* El pie de los informes (16-oct-2026): el wordmark y el aviso, sin enlaces que saquen de la página. */}
+      <AppFooter variant="informe" />
     </div>
   );
 }

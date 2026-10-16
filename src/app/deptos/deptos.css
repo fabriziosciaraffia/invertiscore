@@ -1,41 +1,54 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   /deptos, LA PUERTA B (16-oct-2026): una sola pantalla, rápida. El sistema nuevo de la casa y la guía: Inter
-   (--font-ui), Source Serif en el titular, tokens del chrome (--franco-*), claro y oscuro. Los chips elegidos en tinta
-   invertida (los toggles del sistema); el único rojo es el botón de «Quiero recibirlos» (CTA primario) y el error.
+   /deptos, LA PUERTA B (16-oct-2026; segunda pasada el mismo día: la única meta es que dejen el correo). Serif SOLO en
+   el titular, en una línea; todo lo demás en Inter (--font-ui). Chips compactos: en el teléfono todo entra en una
+   pantalla y media, y la respuesta con el campo del correo se ven sin bajar más de media pantalla. Tokens del chrome
+   (--franco-*), claro y oscuro. Los chips elegidos en tinta invertida; el único rojo es el botón «Quiero recibirlos»
+   (CTA primario) y el error.
    ═════════════════════════════════════════════════════════════════════════════ */
 .dp { font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); text-align: left; }
-.dp-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 28px; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 8px; }
-@media (min-width: 768px) { .dp-titulo { font-size: 38px; } }
-.dp-bajada { font-size: 15.5px; line-height: 1.5; color: var(--franco-text-secondary); margin: 0 0 18px; max-width: 620px; }
+/* El titular en UNA línea, también a 390: el tamaño sigue el ancho de la pantalla hasta 36 px. */
+.dp-titulo { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: min(4.6vw, 36px); line-height: 1.15; letter-spacing: -0.015em; margin: 0 0 4px; white-space: nowrap; }
+/* «Estás dentro.» y la pregunta de las comunas pueden ir en dos líneas. */
+.dp[data-deptos="dentro"] .dp-titulo, .dp[data-deptos="primeros"] .dp-titulo, .dp-titulo-largo { font-size: 28px; white-space: normal; }
+@media (min-width: 768px) { .dp[data-deptos="dentro"] .dp-titulo, .dp[data-deptos="primeros"] .dp-titulo, .dp-titulo-largo { font-size: 36px; } }
+.dp-bajada { font-size: min(3.7vw, 16px); line-height: 1.4; color: var(--franco-text-secondary); margin: 0 0 14px; white-space: nowrap; }
 .dp-bloque { border: 0; margin: 0; padding: 0; min-width: 0; }
-.dp-bloque + .dp-bloque { margin-top: 16px; }
-.dp-pregunta { font-size: 14px; font-weight: 600; margin: 0 0 8px; padding: 0; color: var(--franco-text); }
+.dp-bloque + .dp-bloque { margin-top: 12px; }
+.dp-pregunta { font-size: 13px; font-weight: 600; margin: 0 0 6px; padding: 0; color: var(--franco-text); }
 .dp-ayuda { font-weight: 400; color: var(--franco-text-tertiary); margin-left: 4px; }
 .dp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.dp-chip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border-radius: 99px; border: 1px solid var(--franco-border);
-  background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
-.dp-chip[data-activo="1"] { background: var(--franco-text); border-color: var(--franco-text); color: var(--franco-card); }
+/* Elegido y no elegido, claros: borde fino y fondo de tarjeta contra tinta llena con texto claro. */
+.dp-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 11px; border-radius: 99px; border: 1px solid var(--franco-border);
+  background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.dp-chip[data-activo="1"] { background: var(--franco-text); border-color: var(--franco-text); color: var(--franco-card); font-weight: 600; }
 .dp-chip:disabled { opacity: 0.4; cursor: default; }
 .dp-chip:focus-visible, .dp-boton:focus-visible, .dp-enlace:focus-visible, .dp-campo:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .dp-chip-otra { border-style: dashed; color: var(--franco-text-secondary); }
-.dp-fuera { margin: 8px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--franco-text-secondary); }
-.dp-respuesta { margin-top: 22px; padding: 18px; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card); }
-.dp-respuesta[data-cargando="1"] { opacity: 0.6; }
-.dp-frase { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 21px; line-height: 1.25; letter-spacing: -0.01em; margin: 0; }
-@media (min-width: 768px) { .dp-frase { font-size: 24px; } }
-.dp-alternativa { margin: 10px 0 0; font-size: 15.5px; line-height: 1.5; font-weight: 500; padding-left: 12px; border-left: 3px solid var(--franco-text); }
-.dp-nota { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-tertiary); }
-.dp-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--franco-border); }
-.dp-registro { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+.dp-buscador { margin-top: 8px; }
+.dp-encontradas { margin-top: 8px; }
+.dp-fuera { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
+/* La respuesta y el correo, juntos: nada entre el número y el campo. */
+.dp-respuesta { margin-top: 16px; padding: 16px; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card); }
+.dp-respuesta[data-cargando="1"] .dp-numero, .dp-respuesta[data-cargando="1"] .dp-detalle { opacity: 0.55; }
+.dp-numero { font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
+.dp-cifra { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+@media (min-width: 768px) { .dp-numero { font-size: 26px; } .dp-cifra { font-size: 38px; } }
+.dp-esperando { color: var(--franco-text-tertiary); }
+.dp-detalle { margin: 4px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--franco-text-tertiary); }
+.dp-alternativa { margin: 6px 0 0; font-size: 14px; line-height: 1.4; font-weight: 500; }
+.dp-form { margin-top: 12px; }
+.dp-registro { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
 .dp-fila { display: flex; gap: 8px; flex-wrap: wrap; }
-.dp-campo { flex: 1 1 220px; min-width: 0; height: 46px; border-radius: 12px; padding: 0 14px; border: 1px solid var(--franco-border); background: var(--franco-bg);
+.dp-campo { flex: 1 1 200px; min-width: 0; height: 46px; border-radius: 12px; padding: 0 14px; border: 1px solid var(--franco-border); background: var(--franco-bg);
   color: var(--franco-text); font: inherit; font-size: 16px; outline: 0; }
+.dp-campo-chico { height: 40px; width: 100%; max-width: 360px; flex: none; }
 .dp-campo:focus { border-color: var(--franco-text); }
 .dp-boton { height: 46px; border-radius: 99px; border: 0; padding: 0 22px; background: var(--signal-red); color: #FFFFFF; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap; }
 .dp-boton:disabled { opacity: 0.6; cursor: default; }
 @media (max-width: 480px) { .dp-fila .dp-boton { flex: 1 1 100%; } }
+.dp-nota { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--franco-text-tertiary); }
 .dp-enlace { background: none; border: 0; padding: 0; font: inherit; font-size: 14px; color: var(--franco-text-secondary); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .dp-error { margin: 10px 0 0; font-size: 13.5px; color: var(--signal-red); }
-.dp-regalo { margin: 6px 0 18px; padding: 12px 14px; border-left: 3px solid var(--franco-text); background: var(--franco-card); font-size: 15px; line-height: 1.5; }
+.dp-regalo { margin: 6px 0 16px; padding: 12px 14px; border-left: 3px solid var(--franco-text); background: var(--franco-card); font-size: 15px; line-height: 1.5; }
 .dp-fin { margin-top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-.dp[data-deptos="dentro"] .dp-bloque { margin-top: 8px; }
+.dp[data-deptos="dentro"] .dp-bloque { margin-top: 14px; }

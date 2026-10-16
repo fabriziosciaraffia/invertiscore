@@ -8,8 +8,9 @@ import { ipDelRequest } from "@/lib/api-helpers/anon-cap";
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/deptos/correo { correo, elecciones } (16-oct-2026, la puerta B): antes de mandar el código, guarda lo que la
 // persona eligió en /deptos (deptos_pendientes, por correo: la cuenta nace con ese perfil aunque el código se escriba en
-// otro aparato) y dice si el correo ya tiene cuenta —así la pantalla dice «ya tienes cuenta, te mandamos el código para
-// entrar» y la cuenta no se duplica—. El Lead de Meta lo manda la pantalla (/api/meta/lead, origen «seleccion»).
+// otro aparato) y anota si el correo ya tenía cuenta, para que el alta no la duplique (tipoDeAlta). Eso NO vuelve al
+// navegador (16-oct-2026, decisión de Fabrizio): la pantalla dice lo mismo exista o no la cuenta, y nadie puede averiguar
+// por acá si un correo está en Franco. El Lead de Meta lo manda la pantalla (/api/meta/lead, origen «seleccion»).
 // Un tope por IP en memoria, como el del análisis anónimo: es solo para frenar el abuso obvio.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     const existe = await correoTieneCuenta(admin, correo);
     if (existe == null) return NextResponse.json({ error: "interno" }, { status: 500 });
     await guardarPendiente(admin, correo, perfilManualDeElecciones(v), existe);
-    return NextResponse.json({ existe });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     captureApiError(e, { ruta: "POST /api/deptos/correo", operacion: "pendiente" });
     return NextResponse.json({ error: "interno" }, { status: 500 });
