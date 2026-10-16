@@ -3,12 +3,13 @@
 // último que se supo de su ficha (RPC `deptos_candidatos`) y la elección pendiente por correo (`deptos_pendientes`).
 // Sin consultas en vivo por aviso: todo sale de la evaluación de la noche (estándar de 25 años, estandar-deptos.ts).
 // ─────────────────────────────────────────────────────────────────────────────
+import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
-import { respuestaDeptos, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
+import { CLAVE_GOOGLE, PREFIJO_GOOGLE, respuestaDeptos, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
 
 const RUTA = "lib/deptos";
 type Ok = Extract<Validacion, { ok: true }>;
@@ -93,6 +94,38 @@ export async function leerPendiente(admin: SupabaseClient, correo: string): Prom
   const { data, error } = await admin.from("deptos_pendientes").select("correo, perfil, existe, creado_at").eq("correo", normalizarCorreo(correo)).maybeSingle();
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente" });
   return data ? { correo: data.correo as string, perfil: data.perfil as Record<string, unknown>, existe: !!data.existe, creadoAt: data.creado_at as string } : null;
+}
+
+/**
+ * ANTES DE IRSE A GOOGLE (16-oct-2026): lo elegido queda con una clave al azar —todavía no se sabe el correo—, con la
+ * hora del servidor (la del «pedido», para saber después si la cuenta nació con esta entrada). Devuelve la clave.
+ */
+export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Record<string, unknown>): Promise<string> {
+  const clave = randomBytes(16).toString("hex");
+  const { error } = await admin.from("deptos_pendientes").insert({ correo: `${PREFIJO_GOOGLE}${clave}`, perfil, existe: false, creado_at: new Date().toISOString() });
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-pendiente-google" });
+  if (error) throw new Error(`pendiente google: ${error.message}`);
+  return clave;
+}
+
+/**
+ * AL VOLVER DE GOOGLE, en el callback (que ya sabe el correo): lo elegido pasa a nombre del correo, con `existe` decidido
+ * como en el código —la cuenta ya existía si nació antes de que la persona saliera a Google (tipoDeAlta)—. Así el alta,
+ * la bienvenida (que no sale a la cuenta de /deptos) y todo lo demás lo leen igual que por código. true si había algo.
+ */
+export async function reclavarPendienteGoogle(admin: SupabaseClient, p: { clave: string; correo: string; cuentaCreadaAt: string | null | undefined }): Promise<boolean> {
+  if (!CLAVE_GOOGLE.test(p.clave)) return false;
+  const llave = `${PREFIJO_GOOGLE}${p.clave}`;
+  const { data, error } = await admin.from("deptos_pendientes").select("perfil, creado_at").eq("correo", llave).maybeSingle();
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente-google" });
+  if (!data) return false;
+  const pedidoAt = data.creado_at as string;
+  const existe = tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: p.cuentaCreadaAt, pedidoAt }) === "existente";
+  const { error: e2 } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(p.correo), perfil: data.perfil, existe, creado_at: pedidoAt }, { onConflict: "correo" });
+  reportarFalloQuery(e2, { ruta: RUTA, operacion: "reclavar-pendiente-google" });
+  if (e2) return false;
+  await admin.from("deptos_pendientes").delete().eq("correo", llave);
+  return true;
 }
 
 export async function borrarPendiente(admin: SupabaseClient, correo: string): Promise<void> {

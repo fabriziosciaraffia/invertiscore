@@ -175,10 +175,12 @@ export function perfilManualDeElecciones(v: Extract<Validacion, { ok: true }>): 
 /**
  * LA CUENTA INSTANTÁNEA (16-oct-2026): ¿esta entrada creó la cuenta, o el correo ya la tenía? Nueva solo si, cuando pidió
  * el código, el correo NO tenía cuenta y la cuenta nació después de ese pedido (con un minuto de holgura por relojes).
- * Una cuenta que ya existía no se duplica ni se pisa su perfil: se le pregunta si agrega las comunas.
+ * Una cuenta que ya existía no se duplica ni se pisa su perfil: se le pregunta si agrega las comunas. Y una cuenta que YA
+ * TIENE perfil con comunas nunca es nueva (16-oct-2026, visto en el QA de Google): con el minuto de holgura, quien se
+ * registró y vuelve a /deptos dentro del minuto se daba por nueva y se le pisaba el perfil.
  */
-export function tipoDeAlta(p: { existiaAlPedir: boolean; cuentaCreadaAt: string | null | undefined; pedidoAt: string }): "nueva" | "existente" {
-  if (p.existiaAlPedir || !p.cuentaCreadaAt) return "existente";
+export function tipoDeAlta(p: { existiaAlPedir: boolean; cuentaCreadaAt: string | null | undefined; pedidoAt: string; yaTienePerfil?: boolean }): "nueva" | "existente" {
+  if (p.existiaAlPedir || !p.cuentaCreadaAt || p.yaTienePerfil) return "existente";
   return Date.parse(p.cuentaCreadaAt) >= Date.parse(p.pedidoAt) - 60_000 ? "nueva" : "existente";
 }
 
@@ -191,6 +193,28 @@ export function comunasParaAgregar(actuales: string[], elegidas: string[]): stri
   return nuevas.slice(0, Math.max(0, MAX_COMUNAS_PERFIL - actuales.length));
 }
 
+// ── CON GOOGLE (16-oct-2026) ─────────────────────────────────────────────────────
+// Con el código se sabe el correo ANTES de salir; con Google no. Lo elegido queda con una clave al azar
+// (`deptos_pendientes.correo` = «google:<clave>», servidor.ts › guardarPendienteGoogle), la clave viaja en el destino de
+// vuelta —/deptos?entro=google&p=<clave>— y el callback, que ya sabe el correo, la vuelve a guardar a nombre del correo
+// (reclavarPendienteGoogle). Desde ahí, la cuenta nace exactamente igual que por código. La página del invitado, cuando
+// exista, entra por el mismo camino con su propio destino.
+export const CLAVE_GOOGLE = /^[0-9a-f]{32}$/;
+export const PREFIJO_GOOGLE = "google:";
+
+/** Adónde vuelve Google: la misma página, con la clave de lo elegido. */
+export function destinoGoogle(clave: string, pagina = "/deptos"): string {
+  return `${pagina}?entro=google&p=${clave}`;
+}
+
+/** La clave de lo elegido en un destino de vuelta de Google (`?entro=google&p=<clave>`), o null. */
+export function claveDeDestino(destino: string | null | undefined): string | null {
+  if (!destino || !destino.startsWith("/")) return null;
+  const q = new URLSearchParams(destino.split("?")[1] ?? "");
+  const p = q.get("p");
+  return q.get("entro") === "google" && p && CLAVE_GOOGLE.test(p) ? p : null;
+}
+
 export const ALTA_COPY = {
   agregar: (comunas: string[]) => `¿Agregamos ${lista(comunas)} a tu perfil de búsqueda?`,
   agregarSi: "Sí, agregar",
@@ -198,5 +222,6 @@ export const ALTA_COPY = {
   agregado: "Listo, quedó en tu perfil.",
   correo: "Tu correo",
   pedir: "Quiero recibirlos",
+  google: "o con Google",
   error: "No pudimos seguir. Intenta de nuevo.",
 } as const;

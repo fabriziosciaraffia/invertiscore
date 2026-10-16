@@ -9,6 +9,8 @@ import { claimAnalisisAnonimos } from "@/lib/anon-claim";
 import { ensureWelcomeEmail } from "@/lib/welcome";
 import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
+import { claveDeDestino } from "@/lib/deptos/respuesta";
+import { reclavarPendienteGoogle } from "@/lib/deptos/servidor";
 import { waitUntil } from "@vercel/functions";
 
 export async function GET(request: Request) {
@@ -57,6 +59,17 @@ export async function GET(request: Request) {
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       return loginConError();
+    }
+
+    // VUELVE DE GOOGLE DESDE /deptos (16-oct-2026): lo elegido antes de salir estaba guardado con una clave (el destino
+    // la trae); ahora que se sabe el correo, pasa a su nombre. Antes de la bienvenida —que no sale a la cuenta de /deptos:
+    // su bienvenida es el correo del día— y antes del alta, que lo lee por correo como si hubiera entrado por código.
+    try {
+      const clave = claveDeDestino(next);
+      const user = sessionData?.user;
+      if (clave && user?.email) await reclavarPendienteGoogle(createAdminServiceClient(), { clave, correo: user.email, cuentaCreadaAt: user.created_at });
+    } catch (e) {
+      console.error("[auth/callback] lo elegido en /deptos:", e);
     }
 
     // CompleteRegistration ya no sale acá (15-oct-2026): desde la medición para la campaña sale cuando la persona,

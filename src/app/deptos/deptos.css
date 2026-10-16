@@ -46,6 +46,13 @@
 .dp-boton { height: 46px; border-radius: 99px; border: 0; padding: 0 22px; background: var(--signal-red); color: #FFFFFF; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap; }
 .dp-boton:disabled { opacity: 0.6; cursor: default; }
 @media (max-width: 480px) { .dp-fila .dp-boton { flex: 1 1 100%; } }
+/* «o con Google», debajo del campo (16-oct-2026): en contorno, como en el banner; el rojo queda solo en «Quiero recibirlos». */
+.dp-google { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 44px; border-radius: 99px;
+  border: 1.5px solid var(--franco-border); background: var(--franco-card); color: var(--franco-text); font: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer; }
+.dp-google svg { width: 18px; height: 18px; }
+.dp-google:disabled { opacity: 0.6; cursor: default; }
+.dp-google:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+@media (min-width: 481px) { .dp-google { width: auto; padding: 0 20px; display: inline-flex; } }
 .dp-nota { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--franco-text-tertiary); }
 .dp-enlace { background: none; border: 0; padding: 0; font: inherit; font-size: 14px; color: var(--franco-text-secondary); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .dp-error { margin: 10px 0 0; font-size: 13.5px; color: var(--signal-red); }

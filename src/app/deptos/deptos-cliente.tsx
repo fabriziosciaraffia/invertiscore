@@ -13,12 +13,16 @@
 //   4 · sus primeros deptos, con el día y la hora en que Franco los vio publicados; mientras el correo del día los
 //       revisa, la pantalla vuelve a preguntar.
 // Lead al dejar el correo (servidor + pixel, mismo id) y CompleteRegistration al contestar el «cuándo», con la puerta B.
+// CON GOOGLE (16-oct-2026): «o con Google» debajo del campo. Antes de salir, lo elegido queda guardado con una clave
+// (/api/deptos/google); vuelve a /deptos?entro=google&p=<clave> con sesión, el callback ya lo pasó a nombre del correo, y
+// desde ahí todo es igual que por código: el Lead (al volver, cuando se sabe el correo), el alta y «Estás dentro».
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePostHog } from "@/lib/posthog-react";
-import { emitirAuthCompletada } from "@/lib/auth-analytics";
+import { emitirAuthCompletada, marcarOAuthPendiente } from "@/lib/auth-analytics";
+import { IconoGoogle } from "@/components/entrar/IconoGoogle";
 import { REGISTRO_UN_PASO, ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
@@ -28,7 +32,7 @@ import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { textoVence } from "@/lib/guia/semanal";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import {
-  ALTA_COPY, COMUNAS_DESTACADAS, CORREO_OK, DEPTOS_COPY, MAX_COMUNAS_DEPTOS, MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, RANGOS_UF,
+  ALTA_COPY, claveDeDestino, COMUNAS_DESTACADAS, CORREO_OK, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_DEPTOS, MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, RANGOS_UF,
   TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS, type ModalidadDeptos, type RespuestaDeptos,
 } from "@/lib/deptos/respuesta";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
@@ -160,19 +164,43 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
     }
   }
 
-  const terminarAlta = useCallback(async () => {
-    const res = await fetch("/api/deptos/alta", { method: "POST" });
+  // «o con Google»: lo elegido queda guardado con una clave, y la clave vuelve en el destino.
+  async function conGoogle() {
+    setError(null);
+    setOcupado(true);
+    try {
+      const res = await fetch("/api/deptos/google", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO } }),
+      });
+      const d = (await res.json().catch(() => ({}))) as { p?: string };
+      if (!res.ok || !d.p) { setError(ALTA_COPY.error); return; }
+      posthog?.capture("deptos_google", {});
+      marcarOAuthPendiente("signup");
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destinoGoogle(d.p))}` },
+      });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  const terminarAlta = useCallback(async (clave: string | null = null, metodo: "email" | "google" = "email") => {
+    const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}) });
     const d = (await res.json().catch(() => ({}))) as { estado?: string; regaloVence?: string | null; comunasNuevas?: string[]; comunas?: string[] };
     // El header y lo que lea la sesión se refrescan: ya está adentro.
     router.refresh();
     if (d.estado === "nueva") {
       setRegaloVence(d.regaloVence ?? null);
-      emitirAuthCompletada(posthog, "signup", "email");
+      // Con Google, el completado lo emite useAttributionSync con la marca de OAuth: acá no se repite.
+      if (metodo === "email") emitirAuthCompletada(posthog, "signup", "email");
       setPaso("dentro");
       return;
     }
     if (d.estado === "existente" && (d.comunasNuevas?.length ?? 0) > 0) {
-      emitirAuthCompletada(posthog, "login", "email");
+      if (metodo === "email") emitirAuthCompletada(posthog, "login", "email");
       setAgregar({ nuevas: d.comunasNuevas!, actuales: d.comunas ?? [] });
       setPaso("agregar");
       return;
@@ -180,10 +208,18 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
     router.push("/dashboard");
   }, [posthog, router]);
 
-  // Volvió por el enlace del correo (el código abierto en este mismo navegador): termina el alta acá.
+  // Volvió por el enlace del correo o de Google, con sesión: termina el alta acá. Con Google, el Lead sale ahora (recién se
+  // sabe el correo), igual que cuando se deja el correo; la clave va por si el callback no alcanzó a pasar lo elegido.
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("entro") === "1" && sesion) void terminarAlta();
-  }, [sesion, terminarAlta]);
+    if (typeof window === "undefined" || !sesion) return;
+    const entro = new URLSearchParams(window.location.search).get("entro");
+    if (entro === "google") {
+      const clave = claveDeDestino(`${window.location.pathname}${window.location.search}`);
+      void avisarLead(sesion.email.toLowerCase(), "seleccion", "B");
+      posthog?.capture("deptos_correo", { via: "google" });
+      void terminarAlta(clave, "google");
+    } else if (entro === "1") void terminarAlta();
+  }, [sesion, terminarAlta, posthog]);
 
   async function entrar(e: FormEvent) {
     e.preventDefault();
@@ -395,6 +431,7 @@ export function DeptosCliente({ sesion }: { sesion: { email: string } | null }) 
                       aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
                     <button type="submit" className="dp-boton" disabled={ocupado}>{ALTA_COPY.pedir}</button>
                   </div>
+                  <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={ocupado}><IconoGoogle /> {ALTA_COPY.google}</button>
                   <p className="dp-nota">{DEPTOS_COPY.sinContrasena}</p>
                 </form>
               )}

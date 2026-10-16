@@ -8,7 +8,8 @@ import { guardarAtribucion } from "@/lib/attribution";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { comunasParaAgregar, tipoDeAlta } from "@/lib/deptos/respuesta";
-import { borrarPendiente, leerPendiente } from "@/lib/deptos/servidor";
+import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "@/lib/deptos/servidor";
+import { CLAVE_GOOGLE } from "@/lib/deptos/respuesta";
 import { encolarDelDia, procesarDelDia } from "@/lib/guia/del-dia-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { cuentasPruebaSinCorreo } from "@/lib/guia/semanal-servidor";
@@ -22,6 +23,8 @@ import { cuentasPruebaSinCorreo } from "@/lib/guia/semanal-servidor";
 //     cola, con la primera vuelta en el momento;
 //   · CUENTA QUE YA EXISTÍA: nada se duplica ni se pisa; devuelve las comunas que su perfil no tiene, para preguntarle si
 //     las agrega.
+// CON GOOGLE (16-oct-2026): lo elegido llega a nombre del correo porque el callback lo pasó (reclavarPendienteGoogle);
+// si no alcanzó a pasarlo, la pantalla manda la clave (`{ p }`) y se pasa acá. Desde ahí, igual que por código.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -33,10 +36,17 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   const admin = createServiceClient();
+  const b = (await request.json().catch(() => ({}))) as { p?: unknown };
   try {
-    const pend = await leerPendiente(admin, user.email);
+    let pend = await leerPendiente(admin, user.email);
+    if (!pend && typeof b.p === "string" && CLAVE_GOOGLE.test(b.p) && await reclavarPendienteGoogle(admin, { clave: b.p, correo: user.email, cuentaCreadaAt: user.created_at })) {
+      pend = await leerPendiente(admin, user.email);
+    }
     if (!pend) return NextResponse.json({ estado: "sin-pendiente" });
-    const tipo = tipoDeAlta({ existiaAlPedir: pend.existe, cuentaCreadaAt: user.created_at, pedidoAt: pend.creadoAt });
+    // Si ya tiene perfil con comunas, no se pisa: entra y se le pregunta si agrega las comunas.
+    const { data: perfilPrevio } = await admin.from("perfil_busqueda").select("comunas").eq("user_id", user.id).maybeSingle();
+    const yaTienePerfil = Array.isArray(perfilPrevio?.comunas) && (perfilPrevio.comunas as unknown[]).length > 0;
+    const tipo = tipoDeAlta({ existiaAlPedir: pend.existe, cuentaCreadaAt: user.created_at, pedidoAt: pend.creadoAt, yaTienePerfil });
     // La puerta B (atribucion-puerta.ts): la primera gana; el orgánico cede.
     waitUntil(guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" }).then(() => undefined));
 
