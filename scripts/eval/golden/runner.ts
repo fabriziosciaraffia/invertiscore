@@ -143,6 +143,7 @@ import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
 import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runMedicionMetaTier } from "./medicion-meta-catch-test";
+import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runZonaComunaTier } from "./zona-comuna-catch-test";
@@ -606,6 +607,7 @@ function printSeed(r: SeedReport) {
   // Tier MEDICION-META (15-oct-2026, 0 tokens, sin red ni base): Meta y PostHog saben qué pasó — deduplicación por el
   // espejo, la cola del pixel, las cuentas de prueba fuera y la atribución por puerta. ──
   totalHard += (await runMedicionMetaTier()).hard;
+  totalHard += (await runPuertaBTier()).hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado
   // de versalitas; «Cómo se calcula» con layout fijo y millones en el teléfono. ──
   totalHard += runInformeTipografiaTier().hard;

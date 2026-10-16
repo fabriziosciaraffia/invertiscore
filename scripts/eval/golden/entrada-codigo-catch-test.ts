@@ -264,7 +264,8 @@ export function runEntradaCodigoTier(): { hard: number } {
   if (!/\.eq\("welcome_email_sent", false\)/.test(wel)) F("5 · ensureWelcomeEmail perdió el claim atómico (saldría más de una vez)");
 
   // ── 6 · EL SALUDO CON EL NOMBRE REAL EN TODOS LOS CORREOS ──────────────────
-  if (!/await sendWelcomeEmail\(email, nombreReal\(meta\) \?\? "", \{ userId \}\);/.test(wel)) F("6 · la bienvenida no saluda con nombreReal");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la bienvenida dice el regalo al registrarse, si la cuenta lo tiene.
+  if (!/await sendWelcomeEmail\(email, nombreReal\(meta\) \?\? "", \{ userId, regaloVence: \(regalo\?\.vence_at as string \| null\) \?\? null \}\);/.test(wel)) F("6 · la bienvenida no saluda con nombreReal");
   if (/sendWelcomeEmail\(email, (name|metadata)\b/.test(wel)) F("6 · la bienvenida saluda con el nombre que le pasan (puede venir del correo)");
   const fuentes = archivos("src", /\.(ts|tsx)$/);
   const conCorreo: string[] = [];

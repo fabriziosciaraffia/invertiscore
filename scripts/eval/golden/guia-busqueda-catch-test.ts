@@ -317,7 +317,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
   // ⚠ ACTA (13-oct-2026) · con el estado de la casa entero (`estado`, para el aviso antes de gastar), la frase sale de él;
   // sin él, del número de siempre.
-  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = estado \? \(estado\.tipo === "con" \? GUIA_SALDO\.usaUno\(estado\.n\) : estado\.tipo === "regalo" \? "va por cuenta de Franco" : null\) : GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · con un regalo que se gasta primero, «usa tu análisis de regalo».
+  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = estado \? \(estado\.tipo === "con" \? \(estado\.proximoRegalo \? "usa tu análisis de regalo" : GUIA_SALDO\.usaUno\(estado\.n\)\) : estado\.tipo === "regalo" \? "usa tu análisis de regalo" : null\) : GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
   if (!/capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad: "ltr" \}/.test(gb)) F("7 · la pantalla de después de pagar dejó de medir post_pago_visto");
   const cssGuia = leer("src/components/guia/guia.css");
   const cssTarjetas = cssGuia.slice(0, cssGuia.indexOf("/* ── el informe que sale de un aviso"));
@@ -424,7 +425,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     const ruta9 = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
     if (!/chequearPublicacion\(ficha, "clic", almacenPublicacion\(admin\), bajarFicha, \{ forzar: true \}\)/.test(ruta9)) F("9 · «Analizar este» no relee la ficha antes de cobrar");
     // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de AnalizarEste (tier MEDICION-META).
-    if (!/if \(r\.estado === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(ruta9) || !/from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", o\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (origen sintético) no hay guía guardada que rearmar.
+    if (!/if \(r\.estado === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(ruta9) || !/if \(origen\.analysisId\) await admin\.from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", origen\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
     if (GUIA.despublicado !== "Este aviso ya no está publicado.") F("9 · la tarjeta no dice «Este aviso ya no está publicado.»");
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{\s*setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\);\s*setGenerando\(null\);\s*void reemplazar\(\);/.test(gb)) F("9 · la tarjeta no dice que el aviso se despublicó, o la guía no lo reemplaza");
   }
@@ -565,7 +567,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // ── 13 · «¿Cuándo piensas comprar?» después de pagar ────────────────────────
   {
     const hz = sinComentarios(leer("src/components/lo-que-sigue/HorizontePostPago.tsx"));
-    if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Ya|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
+    // ⚠ ACTA (16-oct-2026, decisión de Fabrizio) · «Ya» se llama «Estoy listo para comprar».
+    if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Estoy listo para comprar|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
     if (!/fetch\("\/api\/lo-que-sigue\/perfil", \{[\s\S]*?body: JSON\.stringify\(\{ analysisId: ctx\.analysisId, horizonte: h, \.\.\.\(pago \? \{ order: pago\.order, t: pago\.firma \} : \{\}\) \}\)/.test(hz)) F("13 · el horizonte no se guarda en el perfil (o se manda sin la firma del pago)");
     if (!/\{retornoPack && paymentStatus === "paid" && \(conSesion \|\| llavePago\) && \(\s*<HorizontePostPago /.test(ret)) F("13 · la pregunta no está en la pantalla de después de pagar, con el pago verificado");
     if (ret.indexOf("<HorizontePostPago") < ret.indexOf("<GuiaBusqueda")) F("13 · la pregunta va antes de la guía (va debajo, discreta)");

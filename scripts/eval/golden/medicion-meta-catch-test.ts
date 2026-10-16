@@ -193,7 +193,9 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
         ["src/app/api/lo-que-sigue/pack/route.ts", [/evento: EVENTOS_META\.lead,\s*eventId: await idLead\(email\),/, /return conEspejo\(NextResponse\.json\(\{ url: [^;]*\[lead\.espejo\], request\);/]],
         ["src/app/api/lo-que-sigue/perfil/route.ts", [/const reg = await emitirRegistroCompletado\(admin, user, cambios\.horizonte_compra, contextoDeRequest\(request\)\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\.espejo\], request\);/]],
         ["src/app/api/perfil-busqueda/route.ts", [/const reg = await emitirRegistroCompletado\(admin, user, cuando, contextoDeRequest\(request\)\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\.espejo\], request\);/]],
-        ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeSemanal \? b\.semanal! : o\.analysisId\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
+        // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el origen puede ser el sintético (sin informe): sin semanal, siempre hay
+        // informe de origen, así que el id es el del informe.
+        ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeSemanal \? b\.semanal! : origen\.analysisId!\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
         ["src/app/api/semanal/analizar-str/route.ts", [/eventId: idAnalizarEste\(avisoId, b\.token\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
         ["src/app/api/lo-que-sigue/quiero-verlo/route.ts", [/eventId: idQuieroVerlo\(analysisId\),/, /espejoQV = qv\.espejo;/, /return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado" \}\)\);/]],
         ["src/app/api/semanal/clic/route.ts", [/eventId: idSemanalClic\(t, avisoId \?\? destino\),/, /espejoSC = sc\.espejo;/, /const volver = \(ruta: string\) => conEspejo\(NextResponse\.redirect\(/]],

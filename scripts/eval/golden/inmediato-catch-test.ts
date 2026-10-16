@@ -75,7 +75,8 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     if (iTomar < 0 || iMandar < 0 || iTomar > iMandar || !/\.update\(fila\)\.eq\("id", hoy\.id\)\.is\("enviado_at", null\)/.test(srv)) F("2 · el aviso se manda sin tomar la fila del día antes");
     if (!/if \(!r\.ok\) \{\s*await admin\.from\("avisos_inmediatos"\)\.update\(\{ enviado_at: null \}\)\.eq\("id", tomada\.id\);/.test(srv)) F("2 · si Resend falla, la fila del día no se suelta");
     if (TOPE_INMEDIATO < 2) F("2 · varios deptos del día no van juntos");
-    if (!/const avisados = opts\.nuevosDesde \? new Set<string>\(\) : await avisadosAlMomento\(admin, userId\);/.test(sem) || !/\.map\(candidatoDeFila\)\.filter\(\(c\) => !avisados\.has\(c\.avisoId\)\)/.test(sem)) F("2 · lo avisado se repite en el semanal");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · lo avisado al momento y lo del correo del día de la semana.
+    if (!/const avisados = opts\.nuevosDesde \|\| opts\.delDia \? new Set<string>\(\)\s*: new Set\(\[\.\.\.Array\.from\(await avisadosAlMomento\(admin, userId\)\),/.test(sem) || !/\.map\(candidatoDeFila\)\.filter\(\(c\) => !avisados\.has\(c\.avisoId\)\)/.test(sem)) F("2 · lo avisado se repite en el semanal");
     if (!/\.from\("avisos_inmediatos"\)\.select\("aviso_ids"\)\.eq\("user_id", userId\)\.not\("enviado_at", "is", null\)\.gte\("dia", desde\)/.test(sem)) F("2 · lo avisado no se lee de los avisos enviados");
   }
 

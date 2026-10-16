@@ -72,7 +72,9 @@ export function runCasaTier(): { hard: number } {
   if (e({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: false }).tipo !== "regalo") F("2 · con solo el regalo no es «regalo»");
   const reg = e({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: "2026-12-01T15:00:00Z", todoSinCaducidad: false });
   if (reg.tipo !== "regalo" || reg.vence !== "2026-12-01T15:00:00Z") F("2 · el regalo no trae su vencimiento");
-  if (!/regaloVence: vivos\.filter\(\(g\) => g\.source === FUENTE_REGALO_SEMANAL && g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · los regalos son tres (registrarse, reactivación y el viejo de los 14 días):
+  // el vencimiento sale de sus lotes, cualquiera de las tres fuentes (regalo-alta.ts › FUENTES_REGALO).
+  if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && FUENTES_REGALO\.has\(g\.source\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
   if (!/estado\.tipo === "regalo" && estado\.vence \? textoVence\(estado\.vence\)/.test(sinComentarios(leer("src/app/dashboard/casa.tsx")))) F("2 · el dashboard no dice cuándo vence el regalo");
   const con = e({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
   if (con.tipo !== "con" || con.n !== 3 || !con.noVencen) F("2 · con 3 (uno regalado) no es «con 3, no vencen»");
@@ -87,7 +89,8 @@ export function runCasaTier(): { hard: number } {
     [CASA.sin.bajada, "Para analizar otros: 3 análisis por $19.990, sin caducidad."],
     [CASA.sin.boton, "3 análisis · $19.990"],
     [CASA.sin.suelto, "O uno solo · $9.990"],
-    [CASA.regalo.titulo, "Tienes 1 análisis. Va por cuenta de Franco."],
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el regalo se llama regalo: «Tienes un análisis de regalo.».
+    [CASA.regalo.titulo, "Tienes un análisis de regalo."],
     [CASA.con.titulo(3), "Te quedan 3 análisis"],
     [CASA.con.noVencen, "No vencen."],
     [CASA.guiaTitulo, "Te recomendamos empezar por estos"],
@@ -109,7 +112,10 @@ export function runCasaTier(): { hard: number } {
   if (!/fmtCLP\(SINGLE_PRICE\)/.test(copy)) F("4 · el precio del suelto no sale de SINGLE_PRICE");
 
   // 5 · el orden
-  const orden = ["<SaldoCasa estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Continuar ", "<Archive"].map((t) => pag.indexOf(t));
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la cuenta sin informes con su perfil a mano tiene su propia casa más arriba
+  // (selección del día, regalo y perfil): el orden se mide en la casa de quien tiene informes, desde su consulta.
+  const casaConInformes = pag.slice(pag.indexOf("const recientes = await queryDashboardRows("));
+  const orden = ["<SaldoCasa estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Continuar ", "<Archive"].map((t) => casaConInformes.indexOf(t));
   if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · el orden de la casa no es saldo → selección → perfil → informes (${orden.join(",")})`);
   if (!/const guiaCasa = packOrigenId && packPerfil && hayGuia\(/.test(pag) || !/saldo\.tipo === "con"/.test(pag) || !/\.eq\("product", "pack3"\)\.eq\("status", "paid"\)/.test(pag)) F("5 · la selección no depende de un pack pagado con saldo y guía activa");
   if (!/comprador=\{!!guiaCasa\}/.test(pag)) F("5 · la bajada del perfil no distingue al comprador");

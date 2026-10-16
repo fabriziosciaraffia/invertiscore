@@ -24,7 +24,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import * as STR from "../../../src/lib/guia/semanal-str";
-import { MINIMO_SEMANAL, REGLA_CORTA, REGLA_LARGA, correspondeRegalo, elegirSemanal } from "../../../src/lib/guia/semanal";
+import { MINIMO_SEMANAL, REGLA_CORTA, REGLA_LARGA, correspondeReactivacion, elegirSemanal } from "../../../src/lib/guia/semanal";
 import { datosSaldoDe, estadoSaldo } from "../../../src/lib/casa-saldo";
 import { textoUso } from "../../../src/lib/guia/aviso-analizar";
 import { CASA, lineaSaldo } from "../../../src/app/dashboard/casa-copy";
@@ -118,8 +118,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       if (d.suscripcion !== suscripcion) F(`4 · ${nombre}: «suscripción» ${d.suscripcion} (el regalo del semanal la lee)`);
     }
     // El regalo no va a quien paga un plan, aunque ya no sea «plan».
-    if (!/plan: saldo\.suscripcion \}\)/.test(srv)) F("4 · el regalo del semanal no mira la suscripción (le iría a quien paga el plan 10)");
-    if (correspondeRegalo({ registradoAt: new Date("2026-01-01"), compras: 0, regaloOtorgadoAt: null, plan: datosSaldoDe([lote(9)], activo).suscripcion, ahora: new Date("2026-10-14") })) F("4 · con el plan 10 activo (sin compras) igual hay regalo");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el regalo del semanal es el de reactivación; sigue sin ir a quien paga un plan.
+    if (!/plan: saldo\.suscripcion, regaloVivo: saldo\.regaloRestante > 0,/.test(srv)) F("4 · el regalo del semanal no mira la suscripción (le iría a quien paga el plan 10)");
+    if (correspondeReactivacion({ registradoAt: new Date("2026-01-01"), ultimoAnalisisAt: null, ultimaReactivacionAt: null, plan: datosSaldoDe([lote(9)], activo).suscripcion, regaloVivo: false, ahora: new Date("2026-10-14") })) F("4 · con el plan 10 activo (sin compras) igual hay regalo");
     // Lo que se lee: «no descuenta» solo para el Ilimitado; el plan 10 ve sus análisis.
     if (!/Ilimitado/.test(CASA.plan.titulo) || !/Ilimitado/.test(textoUso({ tipo: "plan" }))) F("4 · el «no descuenta» no dice que es el Ilimitado");
     const con29 = estadoSaldo(casos[0][1]);
@@ -404,7 +405,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const ltr = datosDeInformeDeAviso({ score: 60, results: { veredicto: "AJUSTA SUPUESTOS", metrics: { flujoNetoMensual: -12000 } }, input_data: { origenAviso: { avisoId: "a2" } } });
     if (!str || str.avisoId !== "a1" || str.flujo !== 41234 || str.veredicto !== "COMPRAR" || str.score !== 72 || !str.perfil.amoblado || !ltr || ltr.flujo !== -12000 || datosDeInformeDeAviso({ results: {}, input_data: {} }) !== null)
       F(`11 · «Quiero verlo» no lee el aviso, el veredicto y el flujo de un informe de renta corta (o de renta larga) (${JSON.stringify(str)})`);
-    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId, desde: \"semanal\" };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (la cuenta de /deptos) el origen es null y no va.
+    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde: \"semanal\" };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
     if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} antiguedad=\{origenAviso\.antiguedad\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))

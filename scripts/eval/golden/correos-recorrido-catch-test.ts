@@ -87,7 +87,8 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
 
   // ── 5 · el aviso antes de gastar un análisis ────────────────────────────────
   if (textoUso({ tipo: "con", n: 3, noVencen: true }) !== "Usa 1 de tus 3 análisis." || textoUso({ tipo: "con", n: 1, noVencen: true }) !== "Usa tu último análisis.") F("5 · el aviso no dice «Usa 1 de tus N análisis.»");
-  if (textoUso({ tipo: "regalo", vence: null }) !== "Usa el análisis que va por cuenta de Franco." || !/no descuenta/.test(textoUso({ tipo: "plan" }))) F("5 · el aviso no distingue el regalo o el plan");
+  // ⚠ ACTA (16-oct-2026, decisión de Fabrizio, goal «la puerta B») · el aviso dice «Usa tu análisis de regalo.».
+  if (textoUso({ tipo: "regalo", vence: null }) !== "Usa tu análisis de regalo." || !/no descuenta/.test(textoUso({ tipo: "plan" }))) F("5 · el aviso no distingue el regalo o el plan");
   if (textoUso({ tipo: "sin" }) !== `Para analizar este depto: 3 análisis por $19.990, sin caducidad.` || AVISO_ANALIZAR.comprar !== TRES_COPY.boton) F("5 · sin análisis, el aviso no ofrece el pack");
   if (usoDesdeSaldo(0).tipo !== "sin" || usoDesdeSaldo(null).tipo !== "desconocido" || usoDesdeSaldo(2).tipo !== "con") F("5 · el saldo de la guía no se traduce al aviso (cero sigue ofreciendo analizar)");
   // Los datos del pop-up del wizard (13-oct-2026, pedido de Fabrizio): precio por m², pie, dividendo, retorno bruto, más
@@ -119,7 +120,8 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); break; \}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
   if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
   const paginaSem = sinComentarios(leer("src/app/semanal/page.tsx"));
-  if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf\)/.test(paginaSem) || !/finanzas=\{finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen, la tasa es la de mercado (la misma con que se evaluó).
+  if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf, cfg\.tasa\)/.test(paginaSem) || !/finanzas=\{finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
   // La guía: lo mismo, y el registro en la tarjeta termina en el aviso, no en un informe.
   const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/className="guia-an" onClick=\{\(\) => abrir\(it\)\}/.test(guia) || !/if \(!conSesion\) \{ void analizar\(it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: false \}\);/.test(guia)) F("5 · en la guía «Analizar este» genera sin el aviso");

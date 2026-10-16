@@ -569,7 +569,8 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (/Anotado|Te avisamos/.test(sin) || /lqs-visto/.test(sin)) F("8 · antes de elegir ya dice «Anotado» o marca una opción");
     if ((sin.match(/class="lqs-opcion"/g) ?? []).length !== 3) F("8 · las tres opciones no van con su estilo (borde)");
     const ya = dibujarConRouter(createElement(EstasDentro, { ctx, perfil, demo: true, horizonteInicial: "ya" }));
-    if (!/data-activa="1"[^>]*><span class="lqs-visto" aria-hidden="true">✓<\/span>Ya</.test(ya)) F("8 · la opción elegida no lleva el visto");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · «Ya» se llama «Estoy listo para comprar».
+    if (!/data-activa="1"[^>]*><span class="lqs-visto" aria-hidden="true">✓<\/span>Estoy listo para comprar</.test(ya)) F("8 · la opción elegida no lleva el visto");
     if (!/<span class="lqs-toca lqs-anotado"[^>]*>Te avisamos el mismo día que aparezca uno<\/span>/.test(ya)) F("8 · con «Ya» no dice «Te avisamos el mismo día que aparezca uno»");
     const meses = dibujarConRouter(createElement(EstasDentro, { ctx, perfil, demo: true, horizonteInicial: "meses" }));
     if (!/<span class="lqs-toca lqs-anotado"[^>]*>Anotado · toca para cambiar<\/span>/.test(meses)) F("8 · al elegir no dice «Anotado · toca para cambiar»");

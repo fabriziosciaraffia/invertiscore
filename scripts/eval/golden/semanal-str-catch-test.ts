@@ -184,7 +184,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
       F("2 · el armado no arma el bloque de renta corta con su regla (solo Comprar) y el mismo presupuesto (o no lo guarda)");
     if (!/const perfil = opts\.nuevosDesde \? pp\.perfil : pp\.perfilLtr;/.test(srv)) F("2 · el bloque de renta larga no sale del perfil de renta larga (quien solo tiene renta corta lo recibiría)");
     const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
-    if (!/perfilLtr: filasLtr\.length > 0 \? perfilDeBusqueda\(filasLtr, manual\) : null,/.test(pbs) || !/perfilStr: filasStr\.length > 0 \? perfilDeBusqueda\(filasStr, manual\)/.test(pbs)) F("2 · los dos perfiles no salen de sus informes (renta larga y renta corta por separado)");
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin ningún informe, el perfil de cada bloque sale de lo editado a mano
+    // (la cuenta de /deptos); con informes, igual que antes (PUERTA-B §3).
+    if (!/perfilLtr: filasLtr\.length > 0 \? perfilDeBusqueda\(filasLtr, manual\) : soloManual && manual\.modalidad !== "str" \? perfilDeBusqueda\(\[\], manual\) : null,/.test(pbs) || !/perfilStr: filasStr\.length > 0 \? perfilDeBusqueda\(filasStr, manual\)/.test(pbs)) F("2 · los dos perfiles no salen de sus informes (renta larga y renta corta por separado)");
     // El envío y la página.
     const enviar = srv.slice(srv.indexOf("export async function enviarSeleccion"), srv.indexOf("export async function enviarSinSeleccion"));
     if (!/conCorto \? itemsVigentes\(admin, fila\.items_str \?\? \[\]\)/.test(enviar) || !/largo: conLargo,/.test(enviar) || !/corto: conCorto \? \{\s*deptos: deptosCortos\.map/.test(enviar))

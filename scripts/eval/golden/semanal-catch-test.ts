@@ -39,7 +39,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, prechequearConPresupuesto, siguienteYEstado,
-  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeRegalo, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeReactivacion, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -103,19 +103,26 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   // 3 · el regalo
   const ahora = new Date("2026-10-05T12:00:00Z");
   const hace = (d: number) => new Date(ahora.getTime() - d * 864e5);
-  if (!correspondeRegalo({ registradoAt: hace(14), compras: 0, regaloOtorgadoAt: null, plan: false, ahora })) F("3 · a los 14 días sin compras no hay regalo");
-  if (correspondeRegalo({ registradoAt: hace(13.9), compras: 0, regaloOtorgadoAt: null, plan: false, ahora })) F("3 · hay regalo antes de los 14 días");
-  if (correspondeRegalo({ registradoAt: hace(30), compras: 1, regaloOtorgadoAt: null, plan: false, ahora })) F("3 · hay regalo para quien compró");
-  if (correspondeRegalo({ registradoAt: hace(30), compras: 0, regaloOtorgadoAt: "2026-09-01", plan: false, ahora })) F("3 · el regalo se da dos veces");
-  if (correspondeRegalo({ registradoAt: hace(30), compras: 0, regaloOtorgadoAt: null, plan: true, ahora })) F("3 · hay regalo para quien tiene plan");
+  // ⚠ ACTA (16-oct-2026, decisión de Fabrizio, goal «la puerta B») · el regalo de los 14 días pasa a ser el de
+  // REACTIVACIÓN: 4 semanas sin analizar, uno cada 90 días, sin plan ni otro regalo vivo (semanal.ts ›
+  // correspondeReactivacion; el detalle lo prueba PUERTA-B §6). Registrarse ahora SÍ regala (regalo-alta.ts).
+  const r0 = { registradoAt: hace(60), ultimoAnalisisAt: hace(28), ultimaReactivacionAt: null, plan: false, regaloVivo: false, ahora };
+  if (!correspondeReactivacion(r0)) F("3 · a las 4 semanas sin analizar no hay regalo");
+  if (correspondeReactivacion({ ...r0, ultimoAnalisisAt: hace(27.9) })) F("3 · hay regalo antes de las 4 semanas");
+  if (correspondeReactivacion({ ...r0, ultimaReactivacionAt: hace(60).toISOString() })) F("3 · el regalo se da dos veces en 90 días");
+  if (correspondeReactivacion({ ...r0, plan: true })) F("3 · hay regalo para quien tiene plan");
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
   const iMarca = srv.indexOf('.is("regalo_otorgado_at", null)');
   const iCredito = srv.indexOf('from("credit_grants").insert(');
-  if (iMarca < 0 || iCredito < 0 || iMarca > iCredito || !/source: FUENTE_REGALO_SEMANAL/.test(srv)) F("3 · el crédito del regalo no espera a ganar la marca condicional");
+  const iMarcaR = srv.indexOf(".or(`regalo_otorgado_at.is.null,regalo_otorgado_at.lt.${antes}`)");
+  if (iMarcaR < 0 || iCredito < 0 || iMarcaR > iCredito || !/source: FUENTE_REGALO_REACTIVACION/.test(srv)) F("3 · el crédito del regalo no espera a ganar la marca condicional");
+  void iMarca;
   if (DIAS_VIGENCIA_REGALO !== 60 || !/DIAS_VIGENCIA_REGALO \* 864e5/.test(srv)) F("3 · el regalo no vence a los 60 días");
   if (SEMANAL.regalo !== "El próximo que analices va por cuenta de Franco.") F("3 · la frase del regalo no es la aprobada");
+  // ⚠ ACTA (16-oct-2026) · derogada a propósito «registrarse no regala nada»: desde la puerta B, toda cuenta nueva nace con
+  // su análisis de regalo, y lo otorga UN solo lugar (regalo-alta-servidor.ts › asegurarRegaloDeAlta; PUERTA-B §5).
   const reg = sinComentarios(leer("src/app/api/analisis/claim/route.ts")) + sinComentarios(leer("src/lib/welcome.ts"));
-  if (/regalo/i.test(reg)) F("3 · registrarse regala algo");
+  if (/from\("credit_grants"\)\.insert/.test(reg)) F("3 · el registro carga créditos por fuera del regalo de alta");
 
   // 4 · el correo
   const base: DatosCorreoSemanal = {
@@ -157,7 +164,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   // estado (la pendiente no pasa a armada), y con menos de tres sale lo confirmado; sin ninguno, el correo corto. La
   // regla fina vive en SEMANAL-SIN-SILENCIO §2–§3; acá, que la fila se suelte y que el envío pase por la regla.
   if (!/if \(!r\.ok\) \{\s*await admin\.from\("semanal_selecciones"\)\.update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(srv)) F("5 · si Resend falla, la fila no se suelta");
-  if (!/if \(queEnviarSemanal\(deptos\.length \+ deptosCortos\.length\) === "vacio" \|\| \(!conLargo && !conCorto\)\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la regla sabe del correo del día: con él en la semana, el lunes va solo
+  // si hay nuevos («nada» descarta); sin bloques, como sin deptos.
+  if (!/const que = queEnviarSemanal\(conLargo \|\| conCorto \? deptos\.length \+ deptosCortos\.length : 0, \{ delDiaReciente: delDia\.enviado \}\);\s*if \(que === "nada"\) return descartar\(\);\s*if \(que === "vacio"\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
   if (!/pb\?\.semanal_baja_at\) return descartar\(\);/.test(srv)) F("5 · se le manda a quien se dio de baja");
 
   // 6 · el clic y el análisis
@@ -179,7 +188,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/deCorreo\?\.origen === "semanal"\) \{\s*await capturarServidor\(\{ event: "semanal_compra"/.test(conf) || !/\.\.\.\(prePaymentData\?\.origen === "semanal" \? \{ origen: "semanal",/.test(conf)) F("7 · la compra que vino del correo no se mide (o se pierde el origen al confirmar)");
   if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/const origenParam = searchParams\.get\("origen"\);\s*const origen = origenParam === "semanal" \? "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
   const cg = sinComentarios(leer("src/lib/credits-grant.ts"));
-  if (!/if \(updated && grant\.source === FUENTE_REGALO_SEMANAL\) \{\s*void capturarServidor\(\{ event: "semanal_regalo_usado"/.test(cg) || !/\.select\("id, remaining, source"\)/.test(cg)) F("7 · el regalo usado no se mide");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · también el de reactivación (el mismo correo); el de registrarse, aparte.
+  if (!/if \(updated && \(grant\.source === FUENTE_REGALO_SEMANAL \|\| grant\.source === FUENTE_REGALO_REACTIVACION\)\) \{\s*void capturarServidor\(\{ event: "semanal_regalo_usado"/.test(cg) || !/\.select\("id, remaining, source"\)/.test(cg)) F("7 · el regalo usado no se mide");
 
   // 8 · la baja y las tablas
   const baja = sinComentarios(leer("src/app/api/semanal/baja/route.ts"));
@@ -200,7 +210,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (textoVence("2026-12-01T15:00:00Z") !== "Vence el 1 de diciembre.") F(`9 · el vencimiento no se lee: «${textoVence("2026-12-01T15:00:00Z")}»`);
   const conFecha = correoSemanal({ ...base, variante: "tarjetas", saldo: 1, conRegalo: true, regaloVence: "2026-12-01T15:00:00Z" }).html;
   if (!conFecha.includes(`${SEMANAL.regaloBajada} Vence el 1 de diciembre.</td>`)) F("9 · el correo no dice cuándo vence el regalo");
-  if (!/const regaloVence = correspondeRegalo\([\s\S]{0,260}\? await otorgarRegalo\(admin, fila\.user_id\)/.test(srv) || !/    regaloVence,\n/.test(srv) || !/return vence;/.test(srv)) F("9 · el envío no le pasa al correo el vencimiento del regalo que otorgó");
+  // ⚠ ACTA (16-oct-2026) · el regalo del envío es el de reactivación (correspondeReactivacion / otorgarReactivacion).
+  if (!/const regaloVence = correspondeReactivacion\([\s\S]{0,420}\? await otorgarReactivacion\(admin, fila\.user_id\)/.test(srv) || !/    regaloVence,\n/.test(srv) || !/return vence;/.test(srv)) F("9 · el envío no le pasa al correo el vencimiento del regalo que otorgó");
 
   // 10 · el respaldo
   {
@@ -394,7 +405,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/"5 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
   }
 
-  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo a los 14 días una vez, dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
+  if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo de reactivación (4 semanas sin analizar, uno cada 90 días), dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }

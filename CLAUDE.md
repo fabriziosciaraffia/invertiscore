@@ -60,6 +60,8 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 - **Ilimitado**: $399.990/mes · $3.959.880/año — sin límite (`is_unlimited`).
 - Los planes `_annual` cobran el total del año up-front. Email `fabriziosciaraffia@gmail.com` (ADMIN_EMAIL) ve todo desbloqueado.
 - Orden de cobro al crear/desbloquear (`chargeAnalysisCredit`): suscripción/ilimitado (gratis) → welcome credit → ledger `credit_grants` → legacy `user_credits.credits` → si nada, cobra (Flow).
+- **El regalo al registrarse (16-oct-2026) reemplaza al welcome credit.** Toda cuenta creada desde el 16-oct-2026, por cualquier puerta, nace con 1 análisis de regalo en el ledger (`credit_grants.source = regalo_alta`, vence a los 30 días) y con `welcome_credit_used = true`: no son dos gratis. Lo otorga UN solo lugar (`asegurarRegaloDeAlta`, `src/lib/regalo-alta-servidor.ts`), con tope de 1 por dispositivo cada 30 días (cookie `franco_disp` del middleware) y 100 en el día (la IP se anota pero no topa: CGNAT). Las cuentas de antes conservan su bienvenida. El regalo de los 14 días del semanal pasó a ser el de **reactivación** (`regalo_reactivacion`: 4 semanas sin analizar, uno cada 90 días).
+- **El estándar de /deptos (16-oct-2026): pie 20 % y 25 años.** La evaluación de la noche sigue a 30 años en `veredicto_20`/`veredicto_30`; las columnas `*_20_25` / `*_30_25` de `avisos_evaluados` son el mismo aviso a 25 años (sonda, `src/lib/avisos/estandar-deptos.ts`), y de ahí sale la respuesta al instante de /deptos.
 
 ## Análisis demo protegido
 ID: `6db7a9ac-f030-4ccf-b5a8-5232ae997fb1`. No se puede eliminar (protegido en los delete-button). Siempre premium (`accessLevel="premium"`). Se usa en la landing.
