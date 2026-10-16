@@ -18,9 +18,14 @@
 //       y un buscador con el resto, una sola tipología (2D), cuatro rangos, la modalidad en «Estás dentro»; la respuesta es
 //       un número con su detalle chico; el correo pegado debajo, sin nada en medio; el mismo mensaje exista o no la
 //       cuenta; serif solo en el titular, de una línea; el pie de los informes.
+//   9 · VOLVER DE GOOGLE CON LOS CHIPS (16-oct-2026): lo elegido queda con una clave antes de salir, el callback lo pasa a
+//       nombre del correo antes de la bienvenida, y la cuenta nace igual que por código (o, si ya existía, entra y
+//       pregunta); el Lead sale al volver.
 //
-// ACTA DE MUTACIONES (16-oct-2026): 55/55 en ROJO, restauradas byte a byte (scratchpad mutar-puerta-b.cjs); las 18 últimas
-// son de la segunda pasada (N1–N17, X4). N3 quedó así después de una que no cambiaba nada visible (subir el tope de
+// ACTA DE MUTACIONES (16-oct-2026): 69/69 en ROJO, restauradas byte a byte (scratchpad mutar-puerta-b.cjs): 37 de la
+// primera pasada, 18 de la segunda (N1–N17, X4) y 14 de la entrada con Google (G1–G12, y C5–C6: la cuenta con perfil
+// nunca es nueva). G12 primero quedó VERDE —el predicado aceptaba «Estás dentro» a 300 caracteres, y un salto al
+// dashboard en el medio lo dejaba inalcanzable—: ahora exige que sea lo siguiente. N3 quedó así después de una que no cambiaba nada visible (subir el tope de
 // vecinas a 2 no las mostraba: la línea nombra la primera).
 //   Cuenta: C1 nueva a una existente · C2 el alta pisa el perfil de una existente · C3 nace con 30 años · C4 sin mirar
 //   si tiene cuenta. Cero: Z1 sin el pie · Z2 sin las vecinas · Z3 sin «te aviso» · Z4 calcula en vivo. Perfil manual:
@@ -42,10 +47,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
+  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
   TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
+import { guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle } from "../../../src/lib/deptos/servidor";
 import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/estandar";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
@@ -76,13 +82,14 @@ function baseFalsa(claves: Record<string, string> = {}) {
   let ids = 0;
   const from = (t: string) => {
     const filtros: Array<(f: Fila) => boolean> = [];
-    let op: { tipo: "select" | "insert" | "update" | "upsert"; valor?: Fila; opts?: Record<string, unknown> } = { tipo: "select" };
+    let op: { tipo: "select" | "insert" | "update" | "upsert" | "delete"; valor?: Fila; opts?: Record<string, unknown> } = { tipo: "select" };
     let cabeza = false, una: "single" | "maybe" | null = null, devolver = false;
     const b = {
       select(_c?: string, o?: { count?: string; head?: boolean }) { if (op.tipo === "select") cabeza = !!o?.head; else devolver = true; return b; },
       insert(v: Fila) { op = { tipo: "insert", valor: v }; return b; },
       update(v: Fila) { op = { tipo: "update", valor: v }; return b; },
       upsert(v: Fila, o?: Record<string, unknown>) { op = { tipo: "upsert", valor: v, opts: o }; return b; },
+      delete() { op = { tipo: "delete" }; return b; },
       eq(c: string, v: unknown) { filtros.push((f) => f[c] === v); return b; },
       gte(c: string, v: string) { filtros.push((f) => String(f[c]) >= v); return b; },
       gt(c: string, v: unknown) { filtros.push((f) => (typeof v === "number" ? Number(f[c]) > v : String(f[c]) > String(v))); return b; },
@@ -112,6 +119,10 @@ function baseFalsa(claves: Record<string, string> = {}) {
         return { data: null, error: null };
       }
       const elegidas = filas.filter((f) => filtros.every((p) => p(f)));
+      if (op.tipo === "delete") {
+        for (const f of elegidas) filas.splice(filas.indexOf(f), 1);
+        return { data: null, error: null };
+      }
       if (op.tipo === "update") {
         for (const f of elegidas) Object.assign(f, op.valor);
         return { data: devolver ? elegidas : null, error: null };
@@ -139,6 +150,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (tipoDeAlta({ existiaAlPedir: true, cuentaCreadaAt: "2026-10-16T15:00:30Z", pedidoAt: pedido }) !== "existente") F("1 · un correo que ya tenía cuenta se trata como nuevo (se duplicaría su perfil)");
       if (tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: "2026-09-01T12:00:00Z", pedidoAt: pedido }) !== "existente") F("1 · una cuenta creada antes del pedido se trata como nueva");
       if (tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: null, pedidoAt: pedido }) !== "existente") F("1 · sin fecha de la cuenta se da por nueva");
+      // Visto en el QA de Google (16-oct-2026): dentro del minuto de holgura, una cuenta con perfil se daba por nueva y se pisaba.
+      if (tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: "2026-10-16T15:00:30Z", pedidoAt: pedido, yaTienePerfil: true }) !== "existente") F("1 · a una cuenta que ya tiene perfil se la da por nueva (se le pisaría el perfil)");
       const v = validarElecciones({ comunas: ["Ñuñoa"], tipologias: ["2"], rango: "3000-4000", modalidad: "ltr" });
       if (!v.ok) F("1 · una elección válida no valida");
       else {
@@ -151,7 +164,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (comunasParaAgregar(["a", "b", "c", "d", "e", "f", "g", "h"], ["x"]).length !== 0 || MAX_COMUNAS_PERFIL !== 8) F("1 · agregar comunas pasa el tope del perfil");
       const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
       const iExist = alta.indexOf(`if (tipo === "existente") {`), iPerfil = alta.indexOf(`from("perfil_busqueda").upsert`);
-      if (!/const tipo = tipoDeAlta\(\{ existiaAlPedir: pend\.existe, cuentaCreadaAt: user\.created_at, pedidoAt: pend\.creadoAt \}\);/.test(alta) || iExist < 0 || iPerfil < iExist
+      if (!/const tipo = tipoDeAlta\(\{ existiaAlPedir: pend\.existe, cuentaCreadaAt: user\.created_at, pedidoAt: pend\.creadoAt, yaTienePerfil \}\);/.test(alta)
+        || !/const yaTienePerfil = Array\.isArray\(perfilPrevio\?\.comunas\) && \(perfilPrevio\.comunas as unknown\[\]\)\.length > 0;/.test(alta) || iExist < 0 || iPerfil < iExist
         || /perfil_busqueda/.test(alta.slice(iExist, alta.indexOf("}", alta.indexOf("return NextResponse.json({ estado: \"existente\"")))))
         F("1 · el alta no decide con tipoDeAlta, o a una cuenta existente le escribe el perfil");
       if (!/comunasParaAgregar\(pp\.perfil\.comunas, elegidas\)/.test(alta)) F("1 · a la cuenta existente no se le ofrecen las comunas que le faltan");
@@ -369,6 +383,58 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if ((css.match(/font-heading/g) ?? []).length !== 1 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-bajada \{[^}]*white-space: nowrap;/.test(css)) F("8 · hay serif fuera del titular, o el titular o la bajada pueden ir en dos líneas");
       if (!/\.dp-cifra \{ font-size: 30px; font-weight: 700;/.test(css) || /\.dp-(numero|cifra) \{[^}]*font-family/.test(css)) F("8 · el número no va en Inter, grande");
       if (!/<AppFooter variant="informe" \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
+    }
+    // ── 9 · VOLVER DE GOOGLE CON LOS CHIPS (16-oct-2026) ──
+    {
+      const v = validarElecciones({ comunas: ["Macul", "Ñuñoa"], tipologias: ["3"], rango: "4000-5500" });
+      if (!v.ok) throw new Error("validación");
+      const chips = perfilManualDeElecciones(v);
+      const db = baseFalsa({ deptos_pendientes: "correo" });
+      // Antes de salir: lo elegido, con una clave.
+      const clave = await guardarPendienteGoogle(db as never, chips);
+      const fila = db.tabla("deptos_pendientes")[0];
+      if (!CLAVE_GOOGLE.test(clave) || fila?.correo !== `google:${clave}`) F("9 · lo elegido no queda guardado con la clave antes de irse a Google");
+      const destino = destinoGoogle(clave);
+      if (destino !== `/deptos?entro=google&p=${clave}` || claveDeDestino(destino) !== clave || claveDeDestino("/deptos?entro=1") !== null
+        || claveDeDestino("/deptos?entro=google&p=xyz") !== null || claveDeDestino(`https://otro.cl/deptos?entro=google&p=${clave}`) !== null)
+        F("9 · el destino de vuelta no trae la clave (o acepta una cualquiera)");
+      // Vuelve: la cuenta nació después de salir. Lo elegido pasa a nombre del correo, con los mismos chips.
+      const despues = new Date(Date.parse(String(fila?.creado_at)) + 20_000).toISOString();
+      const paso = await reclavarPendienteGoogle(db as never, { clave, correo: "Ana@Correo.cl", cuentaCreadaAt: despues });
+      const pend = await leerPendiente(db as never, "ana@correo.cl");
+      if (!paso || !pend || db.tabla("deptos_pendientes").some((f) => f.correo === `google:${clave}`)) F("9 · al volver de Google, lo elegido no pasa a nombre del correo");
+      else {
+        if (JSON.stringify(pend.perfil) !== JSON.stringify(chips)) F("9 · al volver de Google la cuenta no nace con los chips que eligió antes de salir");
+        if (tipoDeAlta({ existiaAlPedir: pend.existe, cuentaCreadaAt: despues, pedidoAt: pend.creadoAt }) !== "nueva") F("9 · la cuenta nueva que vuelve de Google no nace como nueva");
+      }
+      // Una cuenta que ya existía: entra y pregunta si agrega las comunas.
+      const clave2 = await guardarPendienteGoogle(db as never, chips);
+      await reclavarPendienteGoogle(db as never, { clave: clave2, correo: "viejo@correo.cl", cuentaCreadaAt: "2026-09-01T00:00:00Z" });
+      const p2 = await leerPendiente(db as never, "viejo@correo.cl");
+      if (!p2 || tipoDeAlta({ existiaAlPedir: p2.existe, cuentaCreadaAt: "2026-09-01T00:00:00Z", pedidoAt: p2.creadoAt }) !== "existente") F("9 · una cuenta que ya existía y vuelve de Google se trata como nueva (se pisaría su perfil)");
+      if (await reclavarPendienteGoogle(db as never, { clave: "0".repeat(32), correo: "x@y.cl", cuentaCreadaAt: despues })) F("9 · una clave que no existe pasa algo a nombre del correo");
+      // El cableado: el callback pasa lo elegido ANTES del regalo y de la bienvenida (que no sale a la cuenta de /deptos).
+      const cb = sinComentarios(leer("src/app/auth/callback/route.ts"));
+      const iRe = cb.indexOf("await reclavarPendienteGoogle("), iReg = cb.indexOf("await asegurarRegaloDeAlta("), iWel = cb.indexOf("waitUntil(ensureWelcomeEmail(");
+      if (!/const clave = claveDeDestino\(next\);/.test(cb) || iRe < 0 || iReg < iRe || iWel < iRe
+        || !/if \(clave && user\?\.email\) await reclavarPendienteGoogle\(createAdminServiceClient\(\), \{ clave, correo: user\.email, cuentaCreadaAt: user\.created_at \}\);/.test(cb))
+        F("9 · el callback no pasa lo elegido a nombre del correo antes del regalo y la bienvenida");
+      // La pantalla guarda lo elegido ANTES de irse, y se va con la clave en el destino.
+      const cli = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
+      const iPost = cli.indexOf('fetch("/api/deptos/google", {'), iOauth = cli.indexOf("signInWithOAuth(");
+      if (iPost < 0 || iOauth < iPost || !/redirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(destinoGoogle\(d\.p\)\)\}`/.test(cli)) F("9 · la pantalla se va a Google sin guardar lo elegido o sin la clave en el destino");
+      // Al volver: el Lead (recién se sabe el correo) y el alta, como por código; «Estás dentro» lo pone terminarAlta.
+      if (!/if \(entro === "google"\) \{[\s\S]{0,240}void avisarLead\(sesion\.email\.toLowerCase\(\), "seleccion", "B"\);[\s\S]{0,160}void terminarAlta\(clave, "google"\);/.test(cli)) F("9 · al volver de Google no sale el Lead o no termina el alta");
+      // Sin vecindad (la regla de CLAUDE.md): después del alta nueva, lo SIGUIENTE es «Estás dentro», sin un salto en el medio.
+      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
+      const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
+      if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\)\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
+      const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      if (!/if \(!pend && typeof b\.p === "string" && CLAVE_GOOGLE\.test\(b\.p\) && await reclavarPendienteGoogle\(admin, \{ clave: b\.p, correo: user\.email, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
+      // «o con Google» debajo del campo: después de «Quiero recibirlos», antes de «Sin contraseña».
+      const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));
+      const og = ['type="email"', "{ALTA_COPY.pedir}", 'className="dp-google"', "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
+      if (ALTA_COPY.google !== "o con Google" || og.some((i) => i < 0) || og.some((i, k) => k > 0 && i < og[k - 1])) F("9 · «o con Google» no está debajo del campo del correo");
     }
   } finally {
     if (posthog === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = posthog;
