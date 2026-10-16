@@ -88,7 +88,7 @@ export const INMEDIATO = {
     n === 1
       ? `Apareció hoy un depto publicado como los que buscas —${busca}— que resulta con tu pie de ${pie}% y tu plazo de ${plazo} años.`
       : `Aparecieron hoy ${n} deptos publicados como los que buscas —${busca}— que resultan con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
-  porQue: "Te llega porque nos dijiste que estás listo para comprar.",
+  porQue: "Te llega porque nos dijiste que quieres comprar ya.",
   baja: "Dejar de recibir estos avisos",
   bajaSigue: "El resumen de cada semana sigue llegando.",
   botonConSaldo: "Analizar uno",
@@ -98,11 +98,11 @@ export const INMEDIATO = {
   pregunta: {
     asunto: "¿Cuándo piensas comprar?",
     titular: "¿Cuándo piensas comprar?",
-    cuerpo: "Hace dos meses nos dijiste que estabas listo para comprar, y por eso te avisamos apenas aparece un depto que conviene con lo que buscas. ¿Sigue igual?",
+    cuerpo: "Hace dos meses nos dijiste que querías comprar ya, y por eso te avisamos apenas aparece un depto que conviene con lo que buscas. ¿Sigue igual?",
     sinRespuesta: "Si no respondes, dejamos los avisos al momento y te seguimos mandando el resumen de cada semana.",
-    // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece.
+    // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece, va «Quiero comprar ya».
     opciones: [
-      { id: "ya", texto: "Estoy listo para comprar" },
+      { id: "ya", texto: "Quiero comprar ya" },
       { id: "meses", texto: "En los próximos meses" },
       { id: "mirando", texto: "Solo estoy mirando" },
     ] as ReadonlyArray<{ id: HorizonteCompra; texto: string }>,

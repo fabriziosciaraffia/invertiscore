@@ -44,9 +44,9 @@ export const CASA = {
     bajada: "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil. Cámbialo cuando quieras.",
     bajadaComprador: "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil.",
     cuando: "¿Cuándo piensas comprar?",
-    // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece; el valor guardado sigue siendo 'ya'.
-    horizonte: { ya: "Estoy listo para comprar", meses: "En los próximos meses", mirando: "Solo estoy mirando" } as Record<"ya" | "meses" | "mirando", string>,
-    respondido: { ya: "Estás listo para comprar", meses: "Piensas comprar en los próximos meses", mirando: "Por ahora solo estás mirando" } as Record<"ya" | "meses" | "mirando", string>,
+    // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece, va «Quiero comprar ya»; el valor guardado sigue siendo 'ya'.
+    horizonte: { ya: "Quiero comprar ya", meses: "En los próximos meses", mirando: "Solo estoy mirando" } as Record<"ya" | "meses" | "mirando", string>,
+    respondido: { ya: "Quieres comprar ya", meses: "Piensas comprar en los próximos meses", mirando: "Por ahora solo estás mirando" } as Record<"ya" | "meses" | "mirando", string>,
     cambiar: "cambiar",
     masComuna: "+ comuna",
     masDormitorio: "+ dormitorios",
