@@ -37,7 +37,9 @@ export type EstadoSaldo =
 export function estadoSaldo(d: DatosSaldo): EstadoSaldo {
   if (d.plan) return { tipo: "plan" };
   if (d.disponibles <= 0) return { tipo: "sin" };
-  if (d.regaloRestante > 0 && d.disponibles === d.regaloRestante) return { tipo: "regalo", vence: d.regaloVence };
+  // «Tienes UN análisis de regalo» solo con uno (16-oct-2026): con el premio por invitar puede haber dos regalos, y eso es «Te
+  // quedan 2 análisis» (el aviso antes de gastar sigue diciendo que usa el de regalo, por `proximoRegalo`).
+  if (d.regaloRestante === 1 && d.disponibles === 1) return { tipo: "regalo", vence: d.regaloVence };
   return { tipo: "con", n: d.disponibles, noVencen: d.todoSinCaducidad, proximoRegalo: d.proximoRegalo };
 }
 

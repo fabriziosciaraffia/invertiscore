@@ -13,12 +13,15 @@
 // correspondeReactivacion. Puro: lo prueba el tier PUERTA-B. La escritura vive en regalo-alta-servidor.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { FUENTE_PREMIO_REFERIDO } from "./referido";
+
 export const FUENTE_REGALO_ALTA = "regalo_alta";
 export const FUENTE_REGALO_REACTIVACION = "regalo_reactivacion";
 /** El regalo de los 14 días que hubo hasta el 16-oct-2026 (los lotes vivos siguen con este nombre). */
 export const FUENTE_REGALO_SEMANAL_LEGADO = "regalo_semanal";
-/** Todo lo que es regalo: el saldo y el aviso antes de gastar lo distinguen («usa tu análisis de regalo»). */
-export const FUENTES_REGALO: ReadonlySet<string> = new Set([FUENTE_REGALO_ALTA, FUENTE_REGALO_REACTIVACION, FUENTE_REGALO_SEMANAL_LEGADO]);
+/** Todo lo que es regalo: el saldo y el aviso antes de gastar lo distinguen («usa tu análisis de regalo»). El premio por
+ *  invitar (16-oct-2026, referido.ts) también: es un análisis que Franco regala, con su vencimiento. */
+export const FUENTES_REGALO: ReadonlySet<string> = new Set([FUENTE_REGALO_ALTA, FUENTE_REGALO_REACTIVACION, FUENTE_REGALO_SEMANAL_LEGADO, FUENTE_PREMIO_REFERIDO]);
 
 export const DIAS_VIGENCIA_REGALO_ALTA = 30;
 /** Desde cuándo una cuenta nace con el regalo (y sin la bienvenida). */

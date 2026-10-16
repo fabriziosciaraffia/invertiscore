@@ -185,6 +185,29 @@ export async function guardarAtribucion(
 }
 
 /**
+ * LA PUERTA C DEL REFERIDO (16-oct-2026, referido.ts): la cuenta nueva que entró con una invitación queda con la puerta
+ * C y el código (`invitacion:CÓDIGO`), aunque otra puerta haya llegado antes —el reclamo del banner (A) o /deptos (B)
+ * corren en el mismo registro—. Es la única escritura que pisa una puerta: la RPC `fijar_puerta_referido` no mira lo que
+ * había. PostHog se entera igual que con las otras (`cuenta_atribuida` la primera vez, `$set` si ya había una), y el
+ * panel lee la última. Nunca lanza.
+ */
+export async function fijarPuertaReferido(sb: SupabaseClient, userId: string, detalle: string): Promise<boolean> {
+  try {
+    const antes = await puertaGuardada(sb, userId);
+    const { error } = await sb.rpc("fijar_puerta_referido", { p_user_id: userId, p_detalle: detalle.slice(0, 60) });
+    if (error) {
+      console.error("[fijarPuertaReferido] rpc error:", error);
+      return false;
+    }
+    await avisarPuerta(sb, userId, antes);
+    return true;
+  } catch (e) {
+    console.error("[fijarPuertaReferido] excepción:", e);
+    return false;
+  }
+}
+
+/**
  * Lee la atribución de un usuario. Devuelve null si no hay fila o si la tabla no
  * existe todavía — el panel muestra "sin datos" en vez de romperse.
  */

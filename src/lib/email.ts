@@ -3,7 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPremioReferido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -467,6 +467,18 @@ export async function sendPreguntaYaEmail(to: string, correo: { subject: string;
     return !res.error && !!res.data;
   } catch (error) {
     console.error("[pregunta_horizonte] no salió:", error);
+    return false;
+  }
+}
+
+/** «Tu invitado entró: tienes un análisis más» (16-oct-2026, la puerta C), a quien invitó. Devuelve si salió. */
+export async function sendPremioReferidoEmail(to: string, p: Parameters<typeof correoPremioReferido>[0], opts: CorreoOpts = {}): Promise<boolean> {
+  const { subject, html } = correoPremioReferido({ ...p, sitio: p.sitio ?? SITE_URL });
+  try {
+    const res = await enviarCorreo("premio_referido", opts.userId, { from: FROM_EMAIL, to, subject, html });
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[premio_referido] no salió:", error);
     return false;
   }
 }

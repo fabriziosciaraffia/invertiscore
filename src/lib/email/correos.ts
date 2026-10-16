@@ -11,6 +11,7 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { BIENVENIDA } from "@/app/dashboard/bienvenida-copy";
 import { COMO_ENTRAR, textoVence } from "@/lib/guia/semanal";
 import { REGALO_COPY } from "@/lib/regalo-alta";
+import { REFERIDO_COPY, TOPE_PREMIOS_REFERIDO, enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -240,6 +241,28 @@ export function correoAvisoPedido(p: { nombre: string | null; comuna: string; ur
 // textos, de bienvenida-copy.ts), sin «Cómo funciona». Sin «tu primer análisis es gratis»: este
 // correo sale cuando la persona crea su primer análisis con sesión, y ese análisis ya usó el crédito.
 // EL REGALO (16-oct-2026, regalo-alta.ts): si la cuenta nació con su análisis de regalo, el correo lo dice con su fecha.
+// ── Tu invitado entró (16-oct-2026, la puerta C) ──────────────────────────────
+// A quien invitó, cuando su invitado contesta el «cuándo»: el análisis más, cuándo vence, cuántos lleva de cinco y, si le
+// quedan, su enlace para invitar a otro.
+export function correoPremioReferido(p: { nombre: string | null; vence: string; pagados: number; codigo: string | null; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const quedan = p.pagados < TOPE_PREMIOS_REFERIDO && p.codigo;
+  return {
+    subject: REFERIDO_COPY.correoAsunto,
+    html: plantillaClara({
+      titulo: REFERIDO_COPY.correoAsunto,
+      preencabezado: REFERIDO_COPY.correoTexto,
+      titular: REFERIDO_COPY.correoTitular,
+      parrafos: [
+        `${saludoDe(p.nombre)} ${escaparHtml(REFERIDO_COPY.correoCuerpo)} <b>${escaparHtml(textoVence(p.vence))}</b>`,
+        escaparHtml(REFERIDO_COPY.correoQuedan(p.pagados)),
+      ],
+      boton: { texto: REFERIDO_COPY.correoBoton, url: `${sitio}/analisis/nuevo-v4` },
+      despues: quedan ? [`${escaparHtml(REFERIDO_COPY.invitaTexto)} ${enlace(enlaceInvitacion(sitio, p.codigo!), textoEnlaceInvitacion(p.codigo!))}`] : [],
+    }),
+  };
+}
+
 export function correoBienvenida(p: { nombre: string | null; sitio?: string; regaloVence?: string | null }): Correo {
   const sitio = p.sitio ?? SITIO;
   const [analiza, oportunidades] = BIENVENIDA.hace;
