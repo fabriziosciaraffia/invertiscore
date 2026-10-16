@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
+import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
+import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
+import { PrimerosDeptos } from "@/components/deptos/PrimerosDeptos";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
@@ -60,6 +65,11 @@ export default async function DashboardPage({
   // Para saludar, solo el nombre real: nunca la parte del correo antes de la @ (01-oct-2026).
   const firstName = nombreReal(user.user_metadata) ?? "";
 
+  // El regalo al registrarse (16-oct-2026, regalo-alta.ts), como red: la cuenta que llegó hasta acá sin pasar por el
+  // código ni por el enlace (contraseña). Antes de la bienvenida: el correo lo dice.
+  await asegurarRegaloDeAlta(createServiceClient(), {
+    userId: user.id, creadaAt: user.created_at, huella: huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null),
+  });
   // Welcome email server-side e idempotente, antes del branch de onboarding.
   await ensureWelcomeEmail(user.id, user.email, fullName);
 
@@ -94,6 +104,37 @@ export default async function DashboardPage({
         },
       }
     : null;
+
+  // LA CUENTA SIN INFORMES CON SU PERFIL A MANO (16-oct-2026, la puerta B): nació en /deptos. Ve su selección del día, su
+  // regalo y su perfil, no la bienvenida de quien todavía no dijo qué busca.
+  if ((analisisCount ?? 0) === 0) {
+    const pp = await leerPerfilBusqueda(admin, user.id);
+    if (pp.soloManual && (pp.perfilLtr ?? pp.perfilStr ?? pp.perfil).completo) {
+      const pb0 = pp.perfilLtr ?? pp.perfilStr ?? pp.perfil;
+      const primeros = await primerosDeLaCuenta(admin, user.id);
+      return (
+        <div className="min-h-screen bg-[var(--franco-bg)]">
+          <ChipVeredictoTokens />
+          <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
+          <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-5 sm:px-6" data-casa="sin-informes" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+            <h1 className="mb-3.5 font-heading text-[26px] font-bold leading-[1.12] tracking-[-0.015em] text-[var(--franco-text)] sm:mb-5 sm:text-[34px]">
+              {CASA.saludo(firstName || null)}
+            </h1>
+            <SaldoCasa estado={saldo} informes={0} />
+            <div className="mt-7" data-casa="primeros">
+              <PrimerosDeptos items={primeros.items} token={primeros.token} revisando={primeros.revisando} contexto="casa" vecinas={primeros.vecinas} />
+            </div>
+            <div className="mt-7">
+              <PerfilBusquedaCasa
+                comprador={false}
+                inicial={{ dormitorios: pb0.dormitorios, comunas: pb0.comunas, precioMaxUf: pb0.precioMaxUf, precioMinUf: pb0.editado.includes("precioMin") ? pb0.precioMinUf : null, modalidad: pb0.modalidad, piePct: pb0.piePct, plazoAnios: pb0.plazoAnios, horizonte: pb0.horizonte }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   // Un usuario con ≥1 análisis está onboardeado de facto, aunque la flag no se
   // haya seteado (ej: entró por /analisis/nuevo-v4 sin pasar por el dashboard).
@@ -224,7 +265,7 @@ export default async function DashboardPage({
         <div className="mt-7">
           <PerfilBusquedaCasa
             comprador={!!guiaCasa}
-            inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
+            inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
           />
         </div>
 

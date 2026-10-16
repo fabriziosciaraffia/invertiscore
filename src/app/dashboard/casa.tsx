@@ -16,6 +16,7 @@ import { textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
 import { rutaTres } from "@/lib/tres-analisis";
 import { SELECCION_CASA, type ResumenBloque } from "@/lib/guia/seleccion-casa";
+import { RANGOS_UF } from "@/lib/deptos/respuesta";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -38,7 +39,7 @@ export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes:
     : estado.tipo === "con" ? CASA.con.titulo(estado.n)
     : CASA.plan.titulo;
   const bajada =
-    estado.tipo === "sin" ? CASA.sin.bajada
+    estado.tipo === "sin" ? (informes === 0 ? CASA.sin.bajadaPrimero : CASA.sin.bajada)
     : estado.tipo === "con" && estado.noVencen ? CASA.con.noVencen
     : estado.tipo === "plan" ? CASA.plan.bajada
     : estado.tipo === "regalo" && estado.vence ? textoVence(estado.vence)
@@ -71,7 +72,7 @@ export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes:
         </div>
       ) : (
         <EnlaceCarga href={RUTA_NUEVO} className={botonBorde} data-casa="analizar-otro">
-          {estado.tipo === "regalo" ? CASA.regalo.boton : estado.tipo === "con" ? CASA.con.boton : CASA.plan.boton}
+          {estado.tipo === "regalo" ? (informes === 0 ? CASA.regalo.botonPrimero : CASA.regalo.boton) : estado.tipo === "con" ? CASA.con.boton : CASA.plan.boton}
         </EnlaceCarga>
       )}
     </div>
@@ -104,6 +105,8 @@ export interface PerfilEditable {
   dormitorios: number[];
   comunas: string[];
   precioMaxUf: number | null;
+  /** El piso elegido en /deptos (16-oct-2026): con él, el precio es un rango. */
+  precioMinUf?: number | null;
   modalidad: Modalidad;
   piePct: number | null;
   plazoAnios: number | null;
@@ -198,13 +201,27 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
               {comunasLibres.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <label className={chip} data-chip="tope">
-            <span aria-hidden="true">{p.precioMaxUf != null ? CASA.perfil.tope(miles(p.precioMaxUf)) : CASA.perfil.sinTope}</span>
-            <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={p.precioMaxUf ?? ""} onChange={(e) => { const v = Number(e.target.value); void cambiar({ precioMaxUf: v }, { precioMaxUf: v }); }}>
-              {p.precioMaxUf == null && <option value="">{CASA.perfil.sinTope}</option>}
-              {topes.map((t) => <option key={t} value={t}>{CASA.perfil.tope(miles(t))}</option>)}
-            </select>
-          </label>
+          {p.precioMinUf != null && p.precioMaxUf != null ? (
+            // El rango de /deptos (16-oct-2026): se cambia por otro rango, con su piso y su tope.
+            <label className={chip} data-chip="rango">
+              <span aria-hidden="true">{CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf))}</span>
+              <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={RANGOS_UF.find((r) => r.min === p.precioMinUf && r.max === p.precioMaxUf)?.id ?? ""} onChange={(e) => {
+                const r = RANGOS_UF.find((x) => x.id === e.target.value);
+                if (r) void cambiar({ precioMinUf: r.min, precioMaxUf: r.max }, { precioMinUf: r.min, precioMaxUf: r.max });
+              }}>
+                {!RANGOS_UF.some((r) => r.min === p.precioMinUf && r.max === p.precioMaxUf) && <option value="">{CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf))}</option>}
+                {RANGOS_UF.map((r) => <option key={r.id} value={r.id}>{r.chip}</option>)}
+              </select>
+            </label>
+          ) : (
+            <label className={chip} data-chip="tope">
+              <span aria-hidden="true">{p.precioMaxUf != null ? CASA.perfil.tope(miles(p.precioMaxUf)) : CASA.perfil.sinTope}</span>
+              <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={p.precioMaxUf ?? ""} onChange={(e) => { const v = Number(e.target.value); void cambiar({ precioMaxUf: v }, { precioMaxUf: v }); }}>
+                {p.precioMaxUf == null && <option value="">{CASA.perfil.sinTope}</option>}
+                {topes.map((t) => <option key={t} value={t}>{CASA.perfil.tope(miles(t))}</option>)}
+              </select>
+            </label>
+          )}
           <label className={chip} data-chip="modalidad">
             <span aria-hidden="true">{ESTAS_DENTRO.modalidad[p.modalidad]}</span>
             <select aria-label="Modalidad" className={selectInvisible} value={p.modalidad} onChange={(e) => { const v = e.target.value as Modalidad; void cambiar({ modalidad: v }, { modalidad: v }); }}>

@@ -21,6 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://refranco.ai/metodologia", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: "https://refranco.ai/comunas", lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: "https://refranco.ai/cobertura", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+    { url: "https://refranco.ai/deptos", lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: "https://refranco.ai/aprende", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: "https://refranco.ai/about", lastModified: new Date(), changeFrequency: "yearly", priority: 0.4 },
     { url: "https://refranco.ai/contact", lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },

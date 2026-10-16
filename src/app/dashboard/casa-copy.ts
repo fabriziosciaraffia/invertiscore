@@ -14,15 +14,19 @@ const SUELTO = fmtCLP(SINGLE_PRICE);
 export const CASA = {
   saludo: (nombre: string | null) => (nombre ? `Hola, ${nombre}.` : "Hola."),
   sin: {
-    titulo: (informes: number) => (informes <= 1 ? "Tu primer informe ya está en tu cuenta." : `Tus ${informes} informes están en tu cuenta.`),
+    titulo: (informes: number) => (informes === 0 ? "Todavía no tienes análisis." : informes === 1 ? "Tu primer informe ya está en tu cuenta." : `Tus ${informes} informes están en tu cuenta.`),
     bajada: `Para analizar otros: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
+    /** Sin informes (16-oct-2026, la cuenta de /deptos que topó el regalo). */
+    bajadaPrimero: `Para analizar un depto: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
     boton: TRES_COPY.boton,
     suelto: `O uno solo · ${SUELTO}`,
     planes: "Ver planes",
   },
+  // El regalo (16-oct-2026): el de registrarse, el de reactivación o el viejo de los 14 días.
   regalo: {
-    titulo: "Tienes 1 análisis. Va por cuenta de Franco.",
+    titulo: "Tienes un análisis de regalo.",
     boton: "Analizar otro depto",
+    botonPrimero: "Analizar un depto",
   },
   con: {
     titulo: (n: number) => (n === 1 ? "Te queda 1 análisis" : `Te quedan ${n} análisis`),
@@ -40,13 +44,16 @@ export const CASA = {
     bajada: "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil. Cámbialo cuando quieras.",
     bajadaComprador: "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil.",
     cuando: "¿Cuándo piensas comprar?",
-    horizonte: { ya: "Ya", meses: "En los próximos meses", mirando: "Solo estoy mirando" } as Record<"ya" | "meses" | "mirando", string>,
-    respondido: { ya: "Piensas comprar ya", meses: "Piensas comprar en los próximos meses", mirando: "Por ahora solo estás mirando" } as Record<"ya" | "meses" | "mirando", string>,
+    // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece; el valor guardado sigue siendo 'ya'.
+    horizonte: { ya: "Estoy listo para comprar", meses: "En los próximos meses", mirando: "Solo estoy mirando" } as Record<"ya" | "meses" | "mirando", string>,
+    respondido: { ya: "Estás listo para comprar", meses: "Piensas comprar en los próximos meses", mirando: "Por ahora solo estás mirando" } as Record<"ya" | "meses" | "mirando", string>,
     cambiar: "cambiar",
     masComuna: "+ comuna",
     masDormitorio: "+ dormitorios",
     quitar: "Quitar",
     tope: (uf: string) => `Hasta UF ${uf}`,
+    /** Con el piso elegido en /deptos (16-oct-2026). */
+    rango: (min: string, max: string) => `UF ${min} a ${max}`,
     sinTope: "Precio tope",
     pie: (p: string) => `Pie ${p}%`,
     plazo: (a: number) => `${a} años`,

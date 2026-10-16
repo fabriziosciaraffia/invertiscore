@@ -2,8 +2,8 @@
  * LA PUERTA POR DONDE ENTRÓ CADA CUENTA (15-oct-2026, medición para la campaña). Las cohortes se cortan por esto:
  *
  *   A · informe            — dejó el correo en su informe: el banner, el ticket del pack, la tarjeta de la guía.
- *   B · página de selección — dejó el correo en la página de selección (todavía no existe: la página la marca con
- *                              `marcarPuertaCandidata("B", …)` cuando se haga).
+ *   B · página de selección — dejó el correo en /deptos (16-oct-2026): la página marca `marcarPuertaCandidata("B",
+ *                              "deptos")` y el alta la fija en el servidor (/api/deptos/alta).
  *   C · referido           — llegó por un enlace que le pasaron: un informe compartido o un `?ref=`.
  *   D · orgánico           — todo lo demás (el valor por defecto).
  *

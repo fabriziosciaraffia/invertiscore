@@ -28,12 +28,14 @@ export async function emitirRegistroCompletado(
   contexto: ContextoMeta,
 ): Promise<EmisionMeta | null> {
   if (!esAltaReciente(user.created_at, Date.now())) return null;
+  // La puerta por la que entró (16-oct-2026, la puerta B): va como dato, como en el Lead.
+  const { data: atr } = await admin.from("user_attribution").select("puerta").eq("user_id", user.id).maybeSingle();
   return emitirEventoMeta(admin, {
     evento: EVENTOS_META.registro,
     eventId: idRegistro(user.id),
     userId: user.id,
     email: user.email ?? null,
-    datos: { cuando, status: "completo" },
+    datos: { cuando, status: "completo", ...(atr?.puerta ? { puerta: atr.puerta as string } : {}) },
     contexto,
     origen: "cuando",
   });
