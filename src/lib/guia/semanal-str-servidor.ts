@@ -24,7 +24,7 @@ import type { MedianaComunaInyectada } from "@/lib/comuna-stats";
 import type { PerfilDeLaPersona } from "@/lib/perfil-busqueda-servidor";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
-import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
+import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, origenSintetico, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { leerAvisoGuia } from "./analizar-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { MIN_RESPUESTAS_ZONA, aplicarMedicion, respuestaTipica, type LadoMedicion, type MedicionFina } from "./semanal-str";
@@ -108,6 +108,12 @@ export async function leerOrigenStr(admin: SupabaseClient, analysisId: string): 
     modoGestion: corta && i.modoGestion === "administrador" ? "administrador" : "auto",
     comisionAdministrador: corta && comision > 0 && comision < 1 ? comision : 0.2,
   };
+}
+
+/** El origen sintético de renta corta (16-oct-2026, la puerta B): sin informes, el pie y el plazo de su perfil manual,
+ *  la tasa de mercado y la gestión por defecto del wizard (auto, comisión 20 %). */
+export function origenSinteticoStr(userId: string, perfil: { piePct: number | null; plazoAnios: number | null; comunas: string[]; dormitorios: number[] }, cfg: { tasa: number }): OrigenStr {
+  return { ...origenSintetico(userId, perfil, cfg), modoGestion: "auto", comisionAdministrador: 0.2 };
 }
 
 /** El informe de renta corta más reciente que trae con qué buscar; si no tiene, el de renta larga. */
@@ -240,12 +246,13 @@ export async function prepararSeleccionStr(
   admin: SupabaseClient,
   userId: string,
   cfg: { uf: number; tasa: number },
-  pp: Pick<PerfilDeLaPersona, "perfilStr">,
+  pp: Pick<PerfilDeLaPersona, "perfilStr"> & { soloManual?: boolean },
 ): Promise<PreparadaStr | null> {
   const perfil = pp.perfilStr;
   if (!perfil) return null;
   const rango = rangoSemanal(perfil);
-  const o = perfil.completo && rango ? await origenStrDePersona(admin, userId) : null;
+  // Sin informes (16-oct-2026), el origen sintético.
+  const o = perfil.completo && rango ? (await origenStrDePersona(admin, userId)) ?? (pp.soloManual ? origenSinteticoStr(userId, perfil, cfg) : null) : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");

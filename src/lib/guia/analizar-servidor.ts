@@ -27,7 +27,8 @@ export async function leerAvisoGuia(admin: SupabaseClient, avisoId: string, o: O
   const lat = Number(f.lat), lng = Number(f.lng);
   return {
     avisoId: f.id as string,
-    distanciaM: distanciaM(o, { lat, lng }),
+    // Sin informe de origen (origen sintético) no hay de qué estar lejos.
+    distanciaM: o.sintetico ? 0 : distanciaM(o, { lat, lng }),
     comuna: f.comuna as string,
     lat, lng,
     m2: Number(f.superficie_m2),
@@ -81,6 +82,6 @@ export async function cuerpoDelAviso(
     respuestasDeAviso(a, combo.piePct, o.tasa, arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }),
     contextoDeSugerencias(arriendo, arr, vta, cfg),
   ) as unknown as AnalisisInput;
-  body.origenAviso = { avisoId: c.avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId };
+  body.origenAviso = { avisoId: c.avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined };
   return body;
 }

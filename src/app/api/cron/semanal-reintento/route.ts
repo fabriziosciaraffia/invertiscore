@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const semana = new URL(request.url).searchParams.get("semana") ?? semanaDelEnvio();
   try {
     const { data, error } = await admin.from("semanal_selecciones").select("user_id")
-      .eq("semana", semana).eq("estado", "pendiente").is("enviada_at", null).order("armada_at").limit(500);
+      .eq("semana", semana).eq("tipo", "semanal").eq("estado", "pendiente").is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`pendientes: ${error.message}`);
     const fuera = await cuentasPruebaSinCorreo(admin);
     const pendientes = (data ?? []).map((r) => r.user_id as string).filter((u) => !fuera.has(u));

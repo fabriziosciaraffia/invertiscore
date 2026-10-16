@@ -12,7 +12,7 @@ import { sondaConPatch } from "@/lib/analysis";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { payloadDeAviso, respuestasDeAviso } from "@/lib/avisos/evaluar-aviso";
 import { leerPerfilBusqueda, type PerfilDeLaPersona } from "@/lib/perfil-busqueda-servidor";
-import { FUENTE_REGALO_SEMANAL } from "@/lib/credits-grant";
+import { FUENTE_REGALO_REACTIVACION } from "@/lib/regalo-alta";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { guardarMetrica } from "@/lib/metrics-daily";
@@ -21,7 +21,7 @@ import { nombreReal } from "@/lib/welcome";
 import { sendSemanalEmail } from "@/lib/email";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
-import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, type OrigenGuia } from "./guia-servidor";
+import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, origenSintetico, type OrigenGuia } from "./guia-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
@@ -33,7 +33,7 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeRegalo, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, semanaDelEnvio,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, semanaDelEnvio,
   type ProgresoPrechequeo, type RespaldoSemanal,
 } from "./semanal";
 
@@ -101,7 +101,8 @@ export async function prepararSeleccion(
   cfg: { uf: number; tasa: number },
   // El aviso inmediato (05-oct-2026) prepara con los avisos NUEVOS y no mira la baja del semanal.
   // `perfilLeido` (14-oct-2026): el armado lee el perfil una vez para los dos bloques.
-  opts: { nuevosDesde?: string; perfilLeido?: PerfilDeLaPersona } = {},
+  // `delDia` (16-oct-2026): el correo del día de una cuenta recién nacida; no excluye lo del correo del día.
+  opts: { nuevosDesde?: string; perfilLeido?: PerfilDeLaPersona; delDia?: boolean } = {},
 ): Promise<Preparada> {
   const pp = opts.perfilLeido ?? await leerPerfilBusqueda(admin, userId);
   if (pp.semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
@@ -113,13 +114,18 @@ export async function prepararSeleccion(
   if (!perfil) return { tipo: "sin-perfil", perfil: pp.perfil };
   const rango = rangoSemanal(perfil);
   const rentaCorta = !!opts.nuevosDesde && perfil.modalidad === "str";
-  const o = perfil.completo && rango && !rentaCorta ? await origenDePersona(admin, userId) : null;
+  // Sin ningún informe (16-oct-2026, la puerta B): el origen sintético, con su perfil manual y la tasa de mercado.
+  const o = perfil.completo && rango && !rentaCorta
+    ? (await origenDePersona(admin, userId)) ?? (pp.soloManual ? origenSintetico(userId, perfil, cfg) : null)
+    : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
 
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
-  // Lo que ya se le avisó al momento no se repite en el semanal (05-oct-2026).
-  const avisados = opts.nuevosDesde ? new Set<string>() : await avisadosAlMomento(admin, userId);
+  // Lo que ya se le avisó al momento no se repite en el semanal (05-oct-2026), ni lo de su correo del día (16-oct-2026:
+  // el lunes siguiente va solo si hay nuevos).
+  const avisados = opts.nuevosDesde || opts.delDia ? new Set<string>()
+    : new Set([...Array.from(await avisadosAlMomento(admin, userId)), ...Array.from((await delDiaReciente(admin, userId)).avisos)]);
   const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
     if (comunas.length === 0) return [];
     const { data, error } = opts.nuevosDesde
@@ -175,6 +181,17 @@ export async function avisadosAlMomento(admin: SupabaseClient, userId: string): 
   return new Set((data ?? []).flatMap((r) => (r.aviso_ids ?? []) as string[]));
 }
 
+/** EL CORREO DEL DÍA DE LOS ÚLTIMOS 7 DÍAS (16-oct-2026): si salió, es el semanal de esa semana; sus deptos no se
+ *  repiten y el lunes siguiente va solo si hay nuevos (semanal.ts › queEnviarSemanal). */
+export async function delDiaReciente(admin: SupabaseClient, userId: string, ahora: Date = new Date()): Promise<{ enviado: boolean; avisos: Set<string> }> {
+  const desde = new Date(ahora.getTime() - VENTANA_SEMANAL_DIAS * 864e5).toISOString();
+  const { data, error } = await admin.from("semanal_selecciones").select("items, items_str").eq("user_id", userId).eq("tipo", "del_dia")
+    .gte("enviada_at", desde).limit(5);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-del-dia", userId });
+  const filas = (data ?? []) as Array<{ items?: ItemSemanal[] | null; items_str?: ItemSemanal[] | null }>;
+  return { enviado: filas.length > 0, avisos: new Set(filas.flatMap((f) => [...(f.items ?? []), ...(f.items_str ?? [])].map((i) => i.avisoId))) };
+}
+
 /** El chequeo de un candidato con la memoria de la semana, dentro del presupuesto de la corrida. */
 export function publicadoConPresupuesto(admin: SupabaseClient, presupuesto: PresupuestoFichas) {
   const almacen = almacenPublicacion(admin);
@@ -197,8 +214,8 @@ export async function armarSeleccion(
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
 ): Promise<"ya" | "pendiente" | "armada" | "sin_match"> {
-  const { data: previa } = await admin.from("semanal_selecciones").select("estado").eq("user_id", userId).eq("semana", semana).maybeSingle();
-  if (previa && previa.estado !== "pendiente") return "ya";
+  const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo").eq("user_id", userId).eq("semana", semana).maybeSingle();
+  if (previa && (previa.estado !== "pendiente" || previa.tipo === "del_dia")) return "ya";
 
   const guardar = async (fila: Record<string, unknown>) => {
     const { error } = await admin.from("semanal_selecciones").upsert({ user_id: userId, semana, armada_at: new Date().toISOString(), ...fila }, { onConflict: "user_id,semana" });
@@ -339,7 +356,7 @@ export async function guardarAvancePrechequeo(
 }
 
 /** Un candidato elegido, como lo guarda la selección y lo muestra el correo. En renta corta, con el ingreso de la zona. */
-function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | null; informeId?: string }): ItemSemanal {
+export function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | null; informeId?: string }): ItemSemanal {
   return {
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
@@ -408,7 +425,7 @@ export async function seleccionViva(
  * que ya no está vuelve a «pendiente» para armarse de nuevo; devuelve de quién son.
  */
 export async function rechequearArmadas(admin: SupabaseClient, semana: string, presupuesto: PresupuestoFichas): Promise<{ chequeados: number; caidos: number; usuarios: string[] }> {
-  const { data: sels, error } = await admin.from("semanal_selecciones").select("id, user_id, items, items_str").eq("semana", semana).eq("estado", "armada").is("enviada_at", null).order("armada_at").limit(1000);
+  const { data: sels, error } = await admin.from("semanal_selecciones").select("id, user_id, items, items_str").eq("semana", semana).eq("tipo", "semanal").eq("estado", "armada").is("enviada_at", null).order("armada_at").limit(1000);
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-armadas" });
   // Los dos bloques (14-oct-2026): un aviso caído de cualquiera de los dos vuelve a armar la fila.
   const filas = ((sels ?? []) as Array<{ id: string; user_id: string; items: ItemSemanal[]; items_str: ItemSemanal[] | null }>)
@@ -475,7 +492,7 @@ export interface SeleccionPorToken {
  * persona (la de su origen, la misma con que se evaluó), la UF y el arriendo con que Franco evaluó cada depto. Lo que no
  * se pueda leer queda en null y el aviso dice «—».
  */
-export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: string | null, avisoIds: string[], uf: number): Promise<{ tasa: number | null; uf: number; arriendos: Record<string, number> }> {
+export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: string | null, avisoIds: string[], uf: number, tasaSinOrigen: number | null = null): Promise<{ tasa: number | null; uf: number; arriendos: Record<string, number> }> {
   const [o, { data, error }] = await Promise.all([
     origenId ? leerOrigenGuia(admin, origenId, { rentaCorta: true }) : Promise.resolve(null),
     avisoIds.length ? admin.from("avisos_evaluados").select("aviso_id, arriendo").in("aviso_id", avisoIds) : Promise.resolve({ data: [], error: null }),
@@ -486,7 +503,8 @@ export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: strin
     const m = Number(f.arriendo?.monto);
     if (Number.isFinite(m) && m > 0) arriendos[f.aviso_id] = m;
   }
-  return { tasa: o?.tasa ?? null, uf, arriendos };
+  // Sin informe de origen (la puerta B), la tasa con que se evaluó es la de mercado.
+  return { tasa: o?.tasa ?? (origenId ? null : tasaSinOrigen), uf, arriendos };
 }
 
 const COLUMNAS_PAGINA = "id, user_id, semana, token, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id";
@@ -609,28 +627,30 @@ export async function chequearAlClic(admin: SupabaseClient, avisoId: string): Pr
 }
 
 /**
- * El regalo, una vez por persona: se marca `regalo_otorgado_at` con un UPDATE condicional (dos corridas
- * no regalan dos veces) y recién entonces se carga el crédito, que vence a los 60 días.
+ * EL REGALO DE REACTIVACIÓN (16-oct-2026; hasta ese día, el de los 14 días): como mucho uno cada 90 días. Se marca
+ * `regalo_otorgado_at` —la última reactivación— con un UPDATE condicional (dos corridas no regalan dos veces) y recién
+ * entonces se carga el crédito, que vence a los 60 días.
  */
-export async function otorgarRegalo(admin: SupabaseClient, userId: string): Promise<string | null> {
+export async function otorgarReactivacion(admin: SupabaseClient, userId: string): Promise<string | null> {
   await admin.from("perfil_busqueda").upsert({ user_id: userId }, { onConflict: "user_id", ignoreDuplicates: true });
   const ahora = new Date();
+  const antes = new Date(ahora.getTime() - DIAS_ENTRE_REACTIVACIONES * 864e5).toISOString();
   const { data: ganado, error } = await admin.from("perfil_busqueda").update({ regalo_otorgado_at: ahora.toISOString() })
-    .eq("user_id", userId).is("regalo_otorgado_at", null).select("user_id");
+    .eq("user_id", userId).or(`regalo_otorgado_at.is.null,regalo_otorgado_at.lt.${antes}`).select("user_id");
   reportarFalloQuery(error, { ruta: RUTA, operacion: "marcar-regalo", userId });
   if ((ganado?.length ?? 0) !== 1) return null;
   const vence = new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO * 864e5).toISOString();
   const { error: e2 } = await admin.from("credit_grants").insert({
-    user_id: userId, amount: 1, remaining: 1, source: FUENTE_REGALO_SEMANAL, granted_at: ahora.toISOString(),
+    user_id: userId, amount: 1, remaining: 1, source: FUENTE_REGALO_REACTIVACION, granted_at: ahora.toISOString(),
     expires_at: vence,
   });
   if (e2) {
     // Sin el crédito no hay regalo: se suelta la marca para que la semana siguiente lo intente de nuevo.
     reportarFalloQuery(e2, { ruta: RUTA, operacion: "cargar-regalo", userId });
-    await admin.from("perfil_busqueda").update({ regalo_otorgado_at: null }).eq("user_id", userId);
+    await admin.from("perfil_busqueda").update({ regalo_otorgado_at: null }).eq("user_id", userId).eq("regalo_otorgado_at", ahora.toISOString());
     return null;
   }
-  void capturarServidor({ event: "semanal_regalo_otorgado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo:${userId}`), properties: { vence } }).catch(() => {});
+  void capturarServidor({ event: "semanal_regalo_otorgado", distinctId: userId, uuid: uuidDeterminista(`semanal_regalo:${userId}:${ahora.toISOString().slice(0, 10)}`), properties: { vence, tipo: "reactivacion" } }).catch(() => {});
   return vence;
 }
 
@@ -654,6 +674,16 @@ export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ us
   };
   await juntar("perfiles_inversion");
   await juntar("analisis");
+  // Y quien solo tiene su perfil a mano (16-oct-2026, la puerta B: la cuenta nace en /deptos sin informes), con qué
+  // buscar: comunas, dormitorios y tope.
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await admin.from("perfil_busqueda").select("user_id")
+      .not("comunas", "is", null).not("dormitorios", "is", null).not("precio_max_uf", "is", null).is("semanal_baja_at", null)
+      .order("user_id").range(desde, desde + 999);
+    if (error) throw new Error(`personas (perfil_busqueda): ${error.message}`);
+    for (const r of data ?? []) ids.add(r.user_id as string);
+    if ((data?.length ?? 0) < 1000) break;
+  }
   // Sin las cuentas de prueba, salvo las marcadas (13-oct-2026, decisión de Fabrizio).
   const fuera = await cuentasPruebaSinCorreo(admin);
   return Array.from(ids).filter((userId) => !fuera.has(userId)).map((userId) => ({ userId }));
@@ -725,14 +755,18 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     conLargo ? itemsVigentes(admin, fila.items ?? []) : Promise.resolve([] as ItemSemanal[]),
     conCorto ? itemsVigentes(admin, fila.items_str ?? []) : Promise.resolve([] as ItemSemanal[]),
   ]);
-  // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`).
-  if (queEnviarSemanal(deptos.length + deptosCortos.length) === "vacio" || (!conLargo && !conCorto)) return enviarSinSeleccion(admin, fila, sitio);
+  // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`). Si esta
+  // semana ya salió su correo del día (16-oct-2026), el lunes va solo si hay nuevos: sin nuevos, nada.
+  const delDia = await delDiaReciente(admin, fila.user_id);
+  const que = queEnviarSemanal(conLargo || conCorto ? deptos.length + deptosCortos.length : 0, { delDiaReciente: delDia.enviado });
+  if (que === "nada") return descartar();
+  if (que === "vacio") return enviarSinSeleccion(admin, fila, sitio);
   // Los números del primer bloque que tenga (el de renta larga, si existe) van arriba del correo.
   const combo = (conLargo ? fila.combinacion : fila.combinacion_str)!;
-  const [{ data: u }, { data: pb }, { count: compras }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
+  const [{ data: u }, { data: pb }, { data: ultimo }, { count: enviadasAntes, error: eAntes }] = await Promise.all([
     admin.auth.admin.getUserById(fila.user_id),
     admin.from("perfil_busqueda").select("semanal_baja_at, regalo_otorgado_at").eq("user_id", fila.user_id).maybeSingle(),
-    admin.from("payments").select("id", { count: "exact", head: true }).eq("user_id", fila.user_id).eq("status", "paid"),
+    admin.from("analisis").select("created_at").eq("user_id", fila.user_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     admin.from("semanal_selecciones").select("id", { count: "exact", head: true }).eq("user_id", fila.user_id).not("enviada_at", "is", null).neq("id", fila.id),
   ]);
   // Sin poder contar los envíos anteriores no se presenta: mejor perder la presentación que repetirla.
@@ -746,8 +780,12 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   if ((tomada?.length ?? 0) !== 1) return "ya";
 
   let saldo = await leerSaldo(admin, fila.user_id);
-  const regaloVence = correspondeRegalo({ registradoAt: new Date(user.created_at), compras: compras ?? 0, regaloOtorgadoAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.suscripcion })
-    ? await otorgarRegalo(admin, fila.user_id)
+  // La reactivación (16-oct-2026): 4 semanas sin analizar, una cada 90 días, sin plan y sin otro regalo vivo.
+  const regaloVence = correspondeReactivacion({
+    registradoAt: new Date(user.created_at), ultimoAnalisisAt: ultimo?.created_at ? new Date(ultimo.created_at as string) : null,
+    ultimaReactivacionAt: (pb?.regalo_otorgado_at as string | null) ?? null, plan: saldo.suscripcion, regaloVivo: saldo.regaloRestante > 0,
+  })
+    ? await otorgarReactivacion(admin, fila.user_id)
     : null;
   const conRegalo = regaloVence != null;
   if (conRegalo) saldo = await leerSaldo(admin, fila.user_id);
@@ -829,7 +867,7 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
 
 /** La combinación con que se analiza un depto del correo semanal: la de su selección, si es de esta
  *  persona, sale de este informe de origen y trae este aviso. null si no. */
-export async function combinacionSemanal(admin: SupabaseClient, token: string, userId: string, origenId: string, avisoId: string): Promise<Combinacion | null> {
+export async function combinacionSemanal(admin: SupabaseClient, token: string, userId: string, origenId: string | null, avisoId: string): Promise<Combinacion | null> {
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
   const data = await seleccionPorToken(admin, token);
   if (!data || data.user_id !== userId || data.origen_analysis_id !== origenId) return null;

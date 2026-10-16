@@ -14,9 +14,9 @@
 //     con hasta 10% de descuento, marcados «Conviene si lo negocias». Si ni así hay tres, no sale.
 //   · A QUIÉN (05-oct-2026): a toda persona con un informe de renta larga (y a quien tenga perfil), con el
 //     perfil armado desde sus informes. El primer correo de cada una se presenta.
-//   · EL REGALO: a los 14 días de registrarse sin haber comprado, el correo de esa semana suma «El
-//     próximo que analices va por cuenta de Franco.» con el crédito cargado. Una vez por persona.
-//     Registrarse no regala nada.
+//   · EL REGALO DE REACTIVACIÓN (16-oct-2026, decisión de Fabrizio; antes, el regalo de los 14 días): a quien pasa
+//     4 semanas sin analizar, el correo de esa semana suma un análisis de regalo con el crédito cargado; como mucho
+//     uno cada 90 días, sin plan y sin otro regalo vivo. El regalo al REGISTRARSE es otro: regalo-alta.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 import { TRES_COPY } from "@/lib/tres-analisis";
 import type { EstadoPublicacion } from "./publicacion";
@@ -27,7 +27,9 @@ export const TOPE_SEMANAL = 5;
 /** Cuántos candidatos (los de mejor puntaje en la evaluación del cron) se recalculan con sus números. */
 export const MAX_CANDIDATOS_SEMANAL = 40;
 export const VENTANA_SEMANAL_DIAS = 7;
-export const DIAS_REGALO = 14;
+/** La reactivación (16-oct-2026): 4 semanas sin analizar, y como mucho una cada 90 días. */
+export const DIAS_SIN_ANALIZAR_REACTIVACION = 28;
+export const DIAS_ENTRE_REACTIVACIONES = 90;
 /** GETs a fichas que una corrida del domingo se permite (dentro del tope por hora compartido, 30). */
 export const LECTURAS_POR_CORRIDA_SEMANAL = 24;
 /**
@@ -67,10 +69,12 @@ export function semanaDelEnvio(ahora: Date = new Date()): string {
   return lunes.toISOString().slice(0, 10);
 }
 
-/** El rango de precio con que se busca: del piso (con holgura) al tope. */
-export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: number | null }): { ufMin: number; ufMax: number } | null {
+/** El rango de precio con que se busca: del piso (con holgura, si se infirió de sus informes; tal cual, si lo eligió
+ *  a mano: /deptos dice «entre UF 3.000 y 4.000») al tope. */
+export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: number | null; editado?: readonly string[] }): { ufMin: number; ufMax: number } | null {
   if (p.precioMaxUf == null || p.precioMaxUf <= 0) return null;
-  const piso = p.precioMinUf != null && p.precioMinUf < p.precioMaxUf ? p.precioMinUf * (1 - HOLGURA_PISO) : 0;
+  const aMano = !!p.editado?.includes("precioMin");
+  const piso = p.precioMinUf != null && p.precioMinUf < p.precioMaxUf ? p.precioMinUf * (aMano ? 1 : 1 - HOLGURA_PISO) : 0;
   return { ufMin: Math.max(0, Math.floor(piso)), ufMax: p.precioMaxUf };
 }
 
@@ -382,8 +386,10 @@ export function esUltimaCorridaArmar(ahora: Date = new Date()): boolean {
  *     apareció ninguno…», con el enlace a su perfil.
  * Hasta hoy, con menos de tres no había correo, y la pendiente del domingo nunca salía.
  */
-export function queEnviarSemanal(deptosVigentes: number): "seleccion" | "vacio" {
-  return deptosVigentes >= 1 ? "seleccion" : "vacio";
+export function queEnviarSemanal(deptosVigentes: number, opts: { delDiaReciente?: boolean } = {}): "seleccion" | "vacio" | "nada" {
+  if (deptosVigentes >= 1) return "seleccion";
+  // EL CORREO DEL DÍA ES EL SEMANAL DE ESA SEMANA (16-oct-2026): el lunes siguiente va solo si hay nuevos.
+  return opts.delDiaReciente ? "nada" : "vacio";
 }
 
 /** El reintento del lunes temprano (13-oct-2026): las selecciones que el domingo quedaron pendientes se vuelven a
@@ -425,11 +431,19 @@ export function esPrimerSemanal(enviadasAntes: number | null | undefined): boole
   return (enviadasAntes ?? 0) === 0;
 }
 
-/** ¿Le toca el regalo esta semana? 14 días desde el registro, sin compras, nunca antes. */
-export function correspondeRegalo(p: { registradoAt: Date; compras: number; regaloOtorgadoAt: string | null; plan: boolean; ahora?: Date }): boolean {
-  const ahora = p.ahora ?? new Date();
-  if (p.regaloOtorgadoAt || p.compras > 0 || p.plan) return false;
-  return ahora.getTime() - p.registradoAt.getTime() >= DIAS_REGALO * 864e5;
+/**
+ * ¿Le toca el regalo de reactivación esta semana? (16-oct-2026) 4 semanas sin analizar —desde su último informe o, si
+ * nunca analizó, desde que se registró—, la última reactivación hace 90 días o más (o nunca), sin plan y sin otro regalo
+ * vivo (el de registrarse dura 30 días: no se suman).
+ */
+export function correspondeReactivacion(p: {
+  registradoAt: Date; ultimoAnalisisAt: Date | null; ultimaReactivacionAt: string | null; plan: boolean; regaloVivo: boolean; ahora?: Date;
+}): boolean {
+  const ahora = (p.ahora ?? new Date()).getTime();
+  if (p.plan || p.regaloVivo) return false;
+  if (p.ultimaReactivacionAt && ahora - Date.parse(p.ultimaReactivacionAt) < DIAS_ENTRE_REACTIVACIONES * 864e5) return false;
+  const desde = (p.ultimoAnalisisAt ?? p.registradoAt).getTime();
+  return ahora - desde >= DIAS_SIN_ANALIZAR_REACTIVACION * 864e5;
 }
 
 /** La variante del correo, fija por persona (mitad y mitad). */
@@ -460,7 +474,7 @@ export const SEMANAL_PAGINA = {
   bajada: (pie: string, plazo: number) => `Revisados con tu pie de ${pie}% y tu plazo de ${plazo} años. Analiza el que quieras.`,
   regalo: "El próximo que analices va por cuenta de Franco.",
   usaUno: (n: number) => (n === 1 ? "usa tu último análisis" : `usa 1 de tus ${n}`),
-  usaRegalo: "va por cuenta de Franco",
+  usaRegalo: "usa tu análisis de regalo",
   /** Sin análisis, abajo (13-oct-2026): el pack de tres en lugar de «Analizar uno · $9.990». */
   comprar: TRES_COPY.boton,
   comprarBajada: "Sin caducidad: para estos o para cualquier otro depto.",

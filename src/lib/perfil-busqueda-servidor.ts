@@ -4,6 +4,8 @@
 // Los informes de renta larga SIN fila en `perfiles_inversion` (anteriores al 28-sep-2026, cuando nació
 // la tabla) entran también, armados desde su `input_data` (`filaDesdeInforme`, 05-oct-2026): el perfil se
 // alimenta de TODOS sus informes, y el correo semanal le llega a quien tenga uno.
+// SIN INFORMES (16-oct-2026, la puerta B): la cuenta que nace en /deptos tiene solo su perfil a mano, y con él tiene su
+// perfil de renta larga (o el de renta corta, si eligió renta corta): el semanal la busca igual (`soloManual`).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
@@ -28,6 +30,8 @@ export interface PerfilDeLaPersona {
   perfilLtr: PerfilBusqueda | null;
   perfilStr: PerfilBusqueda | null;
   manual: PerfilManual;
+  /** No tiene ningún informe: todo sale de lo editado a mano (el semanal la busca con el origen sintético). */
+  soloManual: boolean;
   semanalBajaAt: string | null;
   regaloOtorgadoAt: string | null;
   /** Desde cuándo vale su respuesta a «¿Cuándo piensas comprar?» (05-oct-2026, el «Ya» vence a los 60 días). */
@@ -130,6 +134,7 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
         dormitorios: Array.isArray(m.dormitorios) ? (m.dormitorios as number[]) : null,
         comunas: Array.isArray(m.comunas) ? (m.comunas as string[]) : null,
         precioMaxUf: num(m.precio_max_uf),
+        precioMinUf: num(m.precio_min_uf),
         modalidad: modal(m.modalidad),
         piePct: num(m.pie_pct),
         plazoAnios: num(m.plazo_anios),
@@ -141,11 +146,15 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
   const horizonteDesde = manual.horizonte
     ? ((m?.actualizado_at as string | null) ?? null)
     : conHorizonte ? ((conHorizonte.pref_actualizado_at as string | null) ?? (conHorizonte.created_at as string)) : null;
+  const soloManual = informes.length === 0 && filasStr.length === 0 && m != null;
   return {
     perfil: perfilDeBusqueda(informes, manual),
-    perfilLtr: filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual) : null,
-    perfilStr: filasStr.length > 0 ? perfilDeBusqueda(filasStr, manual) : manual.modalidad === "str" && filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual) : null,
+    perfilLtr: filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual) : soloManual && manual.modalidad !== "str" ? perfilDeBusqueda([], manual) : null,
+    perfilStr: filasStr.length > 0 ? perfilDeBusqueda(filasStr, manual)
+      : manual.modalidad === "str" && filasLtr.length > 0 ? perfilDeBusqueda(filasLtr, manual)
+      : soloManual && manual.modalidad === "str" ? perfilDeBusqueda([], manual) : null,
     manual,
+    soloManual,
     semanalBajaAt: (m?.semanal_baja_at as string | null) ?? null,
     regaloOtorgadoAt: (m?.regalo_otorgado_at as string | null) ?? null,
     horizonteDesde,

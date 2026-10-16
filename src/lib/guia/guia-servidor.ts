@@ -31,9 +31,13 @@ import {
 import { MAX_LECTURAS_GUIA, chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
+import { PIE_DEPTOS, PLAZO_DEPTOS } from "@/lib/deptos/estandar";
 
 export interface OrigenGuia {
-  analysisId: string;
+  /** El informe de origen; null en el origen SINTÉTICO de quien no tiene informes (origenSintetico). */
+  analysisId: string | null;
+  /** Sin informe (16-oct-2026, la puerta B): el pie, el plazo y la tasa salen del perfil manual y del mercado. */
+  sintetico?: true;
   userId: string | null;
   comuna: string;
   lat: number;
@@ -99,6 +103,20 @@ export async function leerOrigenGuia(admin: SupabaseClient, analysisId: string, 
     tasa,
     tasaMercado: num(i.tasaMercado),
     razonSinPie: (i.razonSinPie as RazonSinCapital | undefined) ?? null,
+  };
+}
+
+/**
+ * EL ORIGEN SINTÉTICO (16-oct-2026, la puerta B): la cuenta que nace en /deptos no tiene informe del que sacar su tasa,
+ * su pie y su plazo. Se buscan con los de su perfil manual (20 % y 25 años si no los cambió) y la TASA DE MERCADO: lo
+ * mismo con que /deptos le contó cuántos convienen. Solo para quien no tiene ningún informe (perfil-busqueda-servidor.ts
+ * › soloManual); el lugar y el depto no existen (no hay parecidos que buscar), así que van en cero.
+ */
+export function origenSintetico(userId: string, perfil: { piePct: number | null; plazoAnios: number | null; comunas: string[]; dormitorios: number[] }, cfg: { tasa: number }): OrigenGuia {
+  return {
+    analysisId: null, sintetico: true, userId, comuna: perfil.comunas[0] ?? "", lat: 0, lng: 0, m2: 0, precioUF: 0,
+    dormitorios: perfil.dormitorios[0] ?? 2, piePct: perfil.piePct ?? PIE_DEPTOS, plazoAnios: perfil.plazoAnios ?? PLAZO_DEPTOS,
+    tasa: cfg.tasa, tasaMercado: cfg.tasa, razonSinPie: null,
   };
 }
 

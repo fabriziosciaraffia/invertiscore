@@ -19,7 +19,7 @@ import { antiguedadDelAviso, fichaDelAviso, leerAvisoGuia } from "@/lib/guia/ana
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
-import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
+import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, origenSinteticoStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
 import { analizarStrDeSemanal, parecidosQueSobreviven, type ComparacionStr } from "@/lib/guia/semanal-str";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
@@ -63,10 +63,13 @@ export async function POST(request: Request) {
   try {
     // La selección tiene que ser de esta persona y el depto, de su bloque de renta corta.
     const sel = await seleccionPorToken(admin, b.token);
-    if (!sel || sel.user_id !== user.id || !sel.corto?.origenId || !sel.corto.combinacion) return NextResponse.json({ error: "seleccion" }, { status: 403 });
+    // Sin informe de origen (16-oct-2026, la puerta B): la selección se armó con el origen sintético; se analiza igual.
+    if (!sel || sel.user_id !== user.id || !sel.corto?.combinacion) return NextResponse.json({ error: "seleccion" }, { status: 403 });
     const item = sel.corto.items.find((i) => i.avisoId === avisoId);
     if (!item?.veredicto) return NextResponse.json({ error: "aviso" }, { status: 400 });
-    const o = await leerOrigenStr(admin, sel.corto.origenId);
+    const o = sel.corto.origenId
+      ? await leerOrigenStr(admin, sel.corto.origenId)
+      : origenSinteticoStr(user.id, { ...sel.corto.combinacion, comunas: [], dormitorios: [] }, await leerConfigGuia(admin));
     if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
     const combo = sel.corto.combinacion;
     const clave = { user_id: user.id, aviso_id: avisoId };
@@ -116,7 +119,7 @@ export async function POST(request: Request) {
         const body = cuerpoStrDeAviso(aviso, o, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo».
-        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId, desde: "semanal" };
+        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde: "semanal" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }

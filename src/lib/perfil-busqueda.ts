@@ -8,6 +8,8 @@
 //     UF 100 (y el piso, el más barato hacia abajo, para no recomendarle lo que nunca miró);
 //   · dormitorios: todos los que analizó; modalidad, pie y plazo: los del informe más reciente;
 //   · «¿Cuándo piensas comprar?»: lo editado, o la última respuesta que dio en un informe.
+//   · SIN INFORMES (16-oct-2026, la puerta B): la cuenta que nace en /deptos tiene solo lo editado a mano —comunas,
+//     dormitorios, un RANGO de precio (piso y tope), modalidad, pie y plazo— y con eso se busca igual.
 // Puro: el tier CASA lo prueba con filas de ejemplo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
@@ -35,13 +37,15 @@ export interface PerfilManual {
   dormitorios: number[] | null;
   comunas: string[] | null;
   precioMaxUf: number | null;
+  /** El piso del rango, elegido a mano (/deptos, 16-oct-2026): se busca desde ahí, sin la holgura de lo inferido. */
+  precioMinUf?: number | null;
   modalidad: Modalidad | null;
   piePct: number | null;
   plazoAnios: number | null;
   horizonte: Horizonte | null;
 }
 
-export const MANUAL_VACIO: PerfilManual = { dormitorios: null, comunas: null, precioMaxUf: null, modalidad: null, piePct: null, plazoAnios: null, horizonte: null };
+export const MANUAL_VACIO: PerfilManual = { dormitorios: null, comunas: null, precioMaxUf: null, precioMinUf: null, modalidad: null, piePct: null, plazoAnios: null, horizonte: null };
 
 export interface PerfilBusqueda {
   dormitorios: number[];
@@ -53,7 +57,7 @@ export interface PerfilBusqueda {
   plazoAnios: number | null;
   horizonte: Horizonte | null;
   /** Qué campos vienen de la mano de la persona. */
-  editado: Array<"dormitorios" | "comunas" | "precio" | "modalidad" | "pie" | "plazo" | "horizonte">;
+  editado: Array<"dormitorios" | "comunas" | "precio" | "precioMin" | "modalidad" | "pie" | "plazo" | "horizonte">;
   /** Hay con qué buscar: al menos una comuna, un dormitorio y un tope. */
   completo: boolean;
 }
@@ -90,6 +94,10 @@ export function perfilDeBusqueda(filas: FilaPerfilInforme[], manual: PerfilManua
     precioMaxUf = manual.precioMaxUf;
     if (precioMinUf != null && precioMinUf > precioMaxUf) precioMinUf = null;
     editado.push("precio");
+  }
+  if (manual.precioMinUf != null && manual.precioMinUf > 0 && (precioMaxUf == null || manual.precioMinUf < precioMaxUf)) {
+    precioMinUf = manual.precioMinUf;
+    editado.push("precioMin");
   }
 
   let modalidad: Modalidad = reciente ? (reciente.prefModalidad ?? reciente.modalidad) : "ltr";
@@ -130,6 +138,11 @@ export function validarCambiosPerfil(b: Record<string, unknown>): { ok: true; ca
     else if (Array.isArray(b.comunas) && b.comunas.length > 0 && b.comunas.length <= 8 && b.comunas.every((x) => typeof x === "string" && COMUNAS_OK.has(x))) c.comunas = Array.from(new Set(b.comunas as string[]));
     else return { ok: false, error: "Comunas inválidas" };
   }
+  if ("precioMinUf" in b) {
+    if (b.precioMinUf === null) c.precio_min_uf = null;
+    else if (typeof b.precioMinUf === "number" && b.precioMinUf >= 500 && b.precioMinUf <= 60000) c.precio_min_uf = Math.round(b.precioMinUf);
+    else return { ok: false, error: "Precio inválido" };
+  }
   if ("precioMaxUf" in b) {
     if (b.precioMaxUf === null) c.precio_max_uf = null;
     else if (typeof b.precioMaxUf === "number" && b.precioMaxUf >= 500 && b.precioMaxUf <= 60000) c.precio_max_uf = Math.round(b.precioMaxUf);
@@ -155,6 +168,7 @@ export function validarCambiosPerfil(b: Record<string, unknown>): { ok: true; ca
     else if (HORIZONTES_OK.has(String(b.horizonte))) c.horizonte_compra = String(b.horizonte);
     else return { ok: false, error: "Horizonte inválido" };
   }
+  if (typeof c.precio_min_uf === "number" && typeof c.precio_max_uf === "number" && c.precio_min_uf >= c.precio_max_uf) return { ok: false, error: "Precio inválido" };
   if (Object.keys(c).length === 0) return { ok: false, error: "Nada que guardar" };
   return { ok: true, cambios: c };
 }

@@ -75,6 +75,10 @@
     {
       "path": "/api/cron/semanal-enviar",
       "schedule": "0,30 12 * * 1"
+    },
+    {
+      "path": "/api/cron/correo-del-dia",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

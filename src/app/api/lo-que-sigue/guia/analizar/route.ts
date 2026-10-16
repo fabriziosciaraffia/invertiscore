@@ -14,7 +14,8 @@ import {
 } from "@/lib/api-helpers/analisis-pipeline";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { guardarPerfil, perfilDesdeLtr } from "@/lib/lo-que-sigue/perfil";
-import { leerConfigGuia, leerOrigenGuia } from "@/lib/guia/guia-servidor";
+import { leerConfigGuia, leerOrigenGuia, origenSintetico, type OrigenGuia } from "@/lib/guia/guia-servidor";
+import type { Combinacion } from "@/lib/guia/seleccion";
 import { antiguedadDelAviso, cuerpoDelAviso, fichaDelAviso, leerAvisoGuia } from "@/lib/guia/analizar-servidor";
 import { analizarAvisoDeGuia } from "@/lib/guia/analizar-una-vez";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
@@ -34,6 +35,9 @@ import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 // «AnalizarEste» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos sale apenas el pedido
 // es válido —la intención, aunque después no se cobre—, desde el servidor y con el espejo para el pixel en la cookie
 // de la respuesta. Y `analisis_creado` en PostHog cuando el informe se crea.
+// SIN INFORME DE ORIGEN (16-oct-2026, la puerta B): desde el semanal de una cuenta que nació en /deptos, la selección no
+// tiene origen (`origenId` null); se valida por el token —de esta persona, sin origen y con este aviso— y se analiza con
+// la combinación de la selección y la tasa de mercado (guia-servidor.ts › origenSintetico).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -45,8 +49,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string };
-  if (!b.origenId || !UUID.test(b.origenId) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string };
+  const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
+  if ((!sinOrigen && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
   let espejoAE: EventoEspejo | null = null;
@@ -54,19 +59,29 @@ export async function POST(request: Request) {
   try {
     // Desde el semanal, el origen puede ser un informe de renta corta (13-oct-2026: quien solo analizó renta corta
     // recibe los deptos de renta larga de sus comunas); la selección se valida abajo contra ese origen.
-    const o = await leerOrigenGuia(admin, b.origenId, { rentaCorta: typeof b.semanal === "string" });
-    if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
-    // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada); desde el
-    // correo semanal, la de esa selección, que tiene que ser de esta persona, de este origen y con este aviso.
-    const combo = typeof b.semanal === "string"
-      ? await combinacionSemanal(admin, b.semanal, user.id, o.analysisId, b.avisoId)
-      : combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
-        .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
-    if (!combo) return NextResponse.json({ error: "combinacion" }, { status: 400 });
+    let o: OrigenGuia | null;
+    let combo: Combinacion | null | undefined;
+    if (sinOrigen) {
+      // La selección es de esta persona, no tiene origen y trae este aviso; el origen, el sintético con su combinación.
+      combo = await combinacionSemanal(admin, b.semanal!, user.id, null, b.avisoId);
+      o = combo ? origenSintetico(user.id, { ...combo, comunas: [], dormitorios: [] }, await leerConfigGuia(admin)) : null;
+    } else {
+      o = await leerOrigenGuia(admin, b.origenId!, { rentaCorta: typeof b.semanal === "string" });
+      if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
+      // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada); desde el
+      // correo semanal, la de esa selección, que tiene que ser de esta persona, de este origen y con este aviso.
+      combo = typeof b.semanal === "string"
+        ? await combinacionSemanal(admin, b.semanal, user.id, o.analysisId, b.avisoId)
+        : combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
+          .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
+    }
+    if (!combo || !o) return NextResponse.json({ error: "combinacion" }, { status: 400 });
+    const origen: OrigenGuia = o;
+    const combinacion: Combinacion = combo;
     const desdeSemanal = typeof b.semanal === "string";
     const ae = await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
-      eventId: idAnalizarEste(b.avisoId, desdeSemanal ? b.semanal! : o.analysisId),
+      eventId: idAnalizarEste(b.avisoId, desdeSemanal ? b.semanal! : origen.analysisId!),
       userId: user.id,
       email: user.email ?? null,
       datos: { aviso_id: b.avisoId, desde: desdeSemanal ? "semanal" : "guia", modalidad: "ltr" },
@@ -87,15 +102,15 @@ export async function POST(request: Request) {
         return c.estado;
       },
       async alDespublicar() {
-        // La guía guardada se arma de nuevo, sin este aviso.
-        await admin.from("guias_calculadas").delete().eq("analysis_id", o.analysisId);
+        // La guía guardada se arma de nuevo, sin este aviso (sin origen no hay guía guardada).
+        if (origen.analysisId) await admin.from("guias_calculadas").delete().eq("analysis_id", origen.analysisId);
       },
       async preparar() {
-        const aviso = await leerAvisoGuia(admin, b.avisoId!, o);
+        const aviso = await leerAvisoGuia(admin, b.avisoId!, origen);
         if (!aviso) return { ok: false, status: 404, error: "aviso" };
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
         const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
-        const body = await cuerpoDelAviso(aviso, o, combo, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+        const body = await cuerpoDelAviso(aviso, origen, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
         // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN».
         if (body?.origenAviso) body.origenAviso.desde = typeof b.semanal === "string" ? "semanal" : "guia";
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
@@ -107,7 +122,7 @@ export async function POST(request: Request) {
         const clave = { user_id: user.id, aviso_id: aviso.avisoId };
         return { ok: true, piezas: {
           async reclamar() {
-            const { error } = await admin.from("guia_analisis").insert({ ...clave, origen_analysis_id: o.analysisId, pie_pct: combo.piePct, plazo: combo.plazoAnios });
+            const { error } = await admin.from("guia_analisis").insert({ ...clave, origen_analysis_id: origen.analysisId, pie_pct: combinacion.piePct, plazo: combinacion.plazoAnios });
             if (!error) return { nueva: true };
             if (error.code !== "23505") throw new Error(`reclamar: ${error.message}`);
             const { data } = await admin.from("guia_analisis").select("analysis_id, cobrado_at, charge_mode, reclamado_at").match(clave).maybeSingle();

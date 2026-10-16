@@ -83,10 +83,11 @@ export function SemanalLista({
   // El pack de tres, con el origen del correo y la vuelta a esta selección (con el depto, si se compró desde uno).
   const rutaCompra = (avisoId?: string) =>
     rutaTres(inmediato ? "inmediato" : "semanal", { variante: inmediato ? null : variante, volver: `/semanal?t=${token}${avisoId ? `&a=${avisoId}` : ""}` });
-  const usa = saldo.tipo === "con" ? SEMANAL_PAGINA.usaUno(saldo.n) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
+  const usa = saldo.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
 
   async function analizar(it: ItemSemanal) {
-    if (generando || !origenId || !combinacion) return;
+    // Sin informe de origen (16-oct-2026, la puerta B) se analiza igual: la ruta valida la selección por el token.
+    if (generando || !combinacion) return;
     setError(null);
     setTardo(null);
     setPopup(null);

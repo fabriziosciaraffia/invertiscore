@@ -63,6 +63,7 @@ export const CRONS_VARIAS_AL_DIA: ReadonlySet<string> = new Set([
   "semanal-armar", // el domingo, de 11 a 23
   "semanal-reintento", // el lunes, de 08 a 11
   "semanal-enviar", // el lunes, 12:00 y 12:30
+  "correo-del-dia", // cada 10 minutos (la cola de /deptos, 16-oct-2026)
 ]);
 
 /** El cron que arma el resumen del día. */

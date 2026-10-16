@@ -59,8 +59,9 @@ export const ESTAS_DENTRO = {
   /** Cómo se vuelve a entrar (13-oct-2026): la misma frase en la bienvenida y en el primer semanal (COMO_ENTRAR). */
   comoEntrar: "Para entrar: tu correo y un código. Sin contraseña.",
   cuando: "¿Cuándo piensas comprar?",
+  // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece; el valor guardado sigue siendo 'ya'.
   horizontes: [
-    { id: "ya", texto: "Ya" },
+    { id: "ya", texto: "Estoy listo para comprar" },
     { id: "meses", texto: "En los próximos meses" },
     { id: "mirando", texto: "Solo estoy mirando" },
   ] as ReadonlyArray<{ id: HorizonteCompra; texto: string }>,
@@ -71,7 +72,7 @@ export const ESTAS_DENTRO = {
   avisoYa: "Te avisamos el mismo día que aparezca uno",
 } as const;
 
-/** Lo que va a la derecha del «¿Cuándo piensas comprar?»: nada antes de elegir; con «Ya», el aviso. */
+/** Lo que va a la derecha del «¿Cuándo piensas comprar?»: nada antes de elegir; con «Estoy listo para comprar», el aviso. */
 export function notaCuando(h: HorizonteCompra | null): string | null {
   if (!h) return null;
   return h === "ya" ? ESTAS_DENTRO.avisoYa : ESTAS_DENTRO.anotado;

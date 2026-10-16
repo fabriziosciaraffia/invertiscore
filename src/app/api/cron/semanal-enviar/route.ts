@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await admin.from("semanal_selecciones")
       .select(COLUMNAS_ENVIO)
-      .eq("semana", semana).in("estado", ["armada", "pendiente", "sin_match"]).is("enviada_at", null).order("armada_at").limit(500);
+      .eq("semana", semana).eq("tipo", "semanal").in("estado", ["armada", "pendiente", "sin_match"]).is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`selecciones: ${error.message}`);
     const cuenta = { enviada: 0, descartada: 0, ya: 0, fallida: 0 };
     const fuera = await cuentasPruebaSinCorreo(admin);

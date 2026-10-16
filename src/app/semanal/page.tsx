@@ -57,8 +57,9 @@ export default async function SemanalPage({ searchParams }: { searchParams: Reco
   const [datosSaldo, perfilPersona, finanzas, finanzasCorto, noDan, informesCortos] = await Promise.all([
     leerSaldo(admin, user.id),
     otraCuenta ? null : leerPerfilBusqueda(admin, user.id),
-    finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf),
-    sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf) : Promise.resolve(null),
+    // Sin informe de origen (16-oct-2026, la puerta B), la tasa es la de mercado: la misma con que se evaluó.
+    finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf, cfg.tasa),
+    sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf, cfg.tasa) : Promise.resolve(null),
     // Los que ya se midieron fino y no dieron: su tarjeta queda marcada, sin botón (14-oct-2026).
     otraCuenta || !sel.corto ? Promise.resolve([] as string[]) : noDanEnRentaCorta(admin, user.id, idsCortos),
     // Los que ya analizó: «Ya lo analizaste · Ver informe», sin volver a cobrar (15-oct-2026).

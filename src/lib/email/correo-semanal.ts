@@ -15,11 +15,14 @@
 // persona se presenta, con el enlace para dejar de recibirlos a la vista (no solo en el pie).
 // HTML de correo de verdad: tablas, estilos en línea, ancho 600, botón con fondo en la celda (Gmail e
 // iPhone Mail), sin CSS de fondo ni SVG, esquema de color claro.
+// EL CORREO DEL DÍA (16-oct-2026, del-dia.ts): la misma plantilla, en tarjetas, con su titular, el regalo al registrarse y
+// la hora en que Franco los vio publicados («publicados al [hora]»).
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
+import { DEL_DIA } from "@/lib/guia/del-dia";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -105,6 +108,10 @@ export interface DatosCorreoSemanal {
    */
   largo?: boolean;
   corto?: BloqueCortoCorreo | null;
+  /** El correo del día (16-oct-2026): cuándo se vieron publicados (`cuandoSeVio` del chequeo más antiguo). */
+  delDia?: { publicadosAl: string } | null;
+  /** El regalo al registrarse, vivo (16-oct-2026): cuándo vence. */
+  regaloAltaVence?: string | null;
   urlBoton: string;
   /** El pack de tres (13-oct-2026), por el clic: `ir=tres`. */
   urlTres: string;
@@ -167,14 +174,23 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   const piePre = conLargo || !corto ? d.piePct : corto.piePct, plazoPre = conLargo || !corto ? d.plazoAnios : corto.plazoAnios;
   const pie = pct(d.piePct);
   const filas: string[] = [];
-  if (d.variante === "banda") {
+  const delDia = d.delDia ?? null;
+  const titular = delDia ? DEL_DIA.titular : SEMANAL.titular;
+  if (d.variante === "banda" && !delDia) {
     filas.push(`<tr><td style="padding: 0 0 24px 0;"><a href="${d.urlBoton}" style="text-decoration: none;"><img src="${d.urlBanda ?? URL_BANDA_SEMANAL}" width="${ANCHO_BANDA}" height="${ALTO_BANDA}" alt="${escaparHtml(SEMANAL.titular)}" style="display: block; width: 100%; max-width: ${ANCHO_BANDA}px; height: auto; border: 0; border-radius: 16px; background: #2B558F; font-family: ${FUENTE_TITULO}; font-size: 24px; font-weight: 700; line-height: 1.3; color: #FFFFFF;"></a></td></tr>`);
   } else {
-    filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 26px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(SEMANAL.titular)}</td></tr>`);
+    filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 26px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(titular)}</td></tr>`);
   }
   filas.push(parrafo(escaparHtml(SEMANAL.saludo(d.nombre))));
+  if (d.regaloAltaVence) {
+    filas.push(`<tr><td style="padding: 2px 0 18px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="padding: 14px 18px; border-left: 3px solid ${TINTA}; background: #FFFFFF; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.55; color: ${TINTA};" data-regalo="alta"><b>${escaparHtml(DEL_DIA.regalo)}</b> ${escaparHtml(textoVence(d.regaloAltaVence))}</td>
+  </tr></table>
+</td></tr>`);
+  }
   if (d.presentacion) {
-    filas.push(parrafo(`${escaparHtml(SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
+    filas.push(parrafo(`${escaparHtml(delDia ? DEL_DIA.semanal : SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
     // Cómo se entra (13-oct-2026): el primer correo lo dice, para quien abra un enlace en otro aparato.
     filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
@@ -190,7 +206,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     if (dosBloques) filas.push(tituloBloque(SEMANAL_STR.bloqueLargo));
     if (d.deptos.length > 0) {
       const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
-      filas.push(parrafo(escaparHtml(SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
+      filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.introN(d.deptos.length, d.busca, pie, d.plazoAnios, negociar) : SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
       if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
       for (const dep of d.deptos) filas.push(tarjeta(dep));
     } else {
@@ -216,7 +232,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     const l = SEMANAL.lineaTres;
     filas.push(parrafo(`${escaparHtml(l.antes)}<a href="${d.urlTres}" style="color: ${TINTA}; font-weight: 600; text-decoration: underline;">${escaparHtml(l.enlace)}</a>${escaparHtml(l.despues)}`));
   }
-  filas.push(parrafo(escaparHtml(SEMANAL.revisados), ` font-size: 13px; color: ${TINTA_3};`));
+  filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.publicadosAl(delDia.publicadosAl) : SEMANAL.revisados), ` font-size: 13px; color: ${TINTA_3};`));
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -226,10 +242,10 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <meta name="x-apple-disable-message-reformatting">
-<title>${escaparHtml(SEMANAL.asunto)}</title>
+<title>${escaparHtml(delDia ? DEL_DIA.asunto : SEMANAL.asunto)}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(SEMANAL.preencabezado(total, pct(piePre), plazoPre))}</div>
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(delDia ? DEL_DIA.preencabezado(total) : SEMANAL.preencabezado(total, pct(piePre), plazoPre))}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAPEL}" style="background: ${PAPEL};">
     <tr>
       <td align="center" style="padding: 28px 16px;">
@@ -243,7 +259,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   </table>
 </body>
 </html>`;
-  return { subject: SEMANAL.asunto, html };
+  return { subject: delDia ? DEL_DIA.asunto : SEMANAL.asunto, html };
 }
 
 /** Las piezas de la plantilla, para el aviso inmediato (correo-inmediato.ts): la misma tarjeta y el mismo botón. */
@@ -251,15 +267,19 @@ export const tarjetaSemanal = tarjeta;
 export const botonRojoSemanal = botonRojo;
 export const parrafoSemanal = parrafo;
 
-/** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. */
-export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precioMaxUf: number | null }): string {
+/** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. Con el piso elegido a mano (/deptos,
+ *  16-oct-2026), el rango: «entre UF 3.000 y 4.000». */
+export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precioMaxUf: number | null; precioMinUf?: number | null; editado?: readonly string[] }): string {
   const dorm = p.dormitorios.map((x) => (x === 0 ? "studio" : String(x)));
   const dTexto = dorm.length === 0 ? null
     : dorm.length === 1 ? (dorm[0] === "studio" ? "studio" : `${dorm[0]} ${dorm[0] === "1" ? "dormitorio" : "dormitorios"}`)
     : `${dorm.slice(0, -1).join(", ")} o ${dorm[dorm.length - 1]} dormitorios`;
   const cs = p.comunas;
   const cTexto = cs.length === 0 ? null : cs.length === 1 ? cs[0] : `${cs.slice(0, -1).join(", ")} y ${cs[cs.length - 1]}`;
-  const uf = p.precioMaxUf != null ? `hasta UF ${miles(p.precioMaxUf)}` : null;
+  const conPiso = p.precioMinUf != null && p.precioMinUf > 0 && !!p.editado?.includes("precioMin");
+  const uf = p.precioMaxUf == null ? null
+    : conPiso ? `entre UF ${miles(p.precioMinUf!)} y ${miles(p.precioMaxUf)}`
+    : `hasta UF ${miles(p.precioMaxUf)}`;
   return [dTexto, cTexto, uf].filter(Boolean).join(", ");
 }
 
@@ -268,16 +288,19 @@ export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precio
  * te convenga con tu pie y tu plazo. Seguimos buscando.», con el enlace a su perfil por si quiere cambiar comunas.
  * Sin regalo, sin tarjetas y sin botón de compra. El primero de la persona se presenta igual que el otro.
  */
-export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string }): { subject: string; html: string } {
+// EL DEL DÍA VACÍO (16-oct-2026): con `delDia`, «Te aviso cuando aparezca uno», con el regalo si lo tiene.
+export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null }): { subject: string; html: string } {
   const filas: string[] = [];
-  filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(SEMANAL_VACIO.asunto)}</td></tr>`);
+  const asunto = d.delDia ? DEL_DIA.vacioAsunto : SEMANAL_VACIO.asunto;
+  filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(asunto)}</td></tr>`);
   filas.push(parrafo(escaparHtml(SEMANAL.saludo(d.nombre))));
+  if (d.regaloAltaVence) filas.push(parrafo(`<b>${escaparHtml(DEL_DIA.regalo)}</b> ${escaparHtml(textoVence(d.regaloAltaVence))}`, ` color: ${TINTA};`));
   if (d.presentacion) {
-    filas.push(parrafo(`${escaparHtml(SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
+    filas.push(parrafo(`${escaparHtml(d.delDia ? DEL_DIA.semanal : SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
     filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
-  filas.push(parrafo(escaparHtml(SEMANAL_VACIO.cuerpo)));
-  filas.push(parrafo(escaparHtml(SEMANAL_VACIO.perfil)));
+  filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacio : SEMANAL_VACIO.cuerpo)));
+  filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacioPerfil : SEMANAL_VACIO.perfil)));
   filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -287,10 +310,10 @@ export function correoSemanalVacio(d: { nombre: string | null; presentacion?: bo
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <meta name="x-apple-disable-message-reformatting">
-<title>${escaparHtml(SEMANAL_VACIO.asunto)}</title>
+<title>${escaparHtml(asunto)}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(SEMANAL_VACIO.cuerpo)}</div>
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(d.delDia ? DEL_DIA.vacio : SEMANAL_VACIO.cuerpo)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAPEL}" style="background: ${PAPEL};">
     <tr>
       <td align="center" style="padding: 28px 16px;">
@@ -304,5 +327,5 @@ export function correoSemanalVacio(d: { nombre: string | null; presentacion?: bo
   </table>
 </body>
 </html>`;
-  return { subject: SEMANAL_VACIO.asunto, html };
+  return { subject: asunto, html };
 }
