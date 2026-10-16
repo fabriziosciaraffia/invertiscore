@@ -5,13 +5,15 @@ import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
+import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25 } from "@/lib/avisos/estandar-deptos";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
 // últimos 7 días pasan por la MISMA entrada del wizard (evaluar-aviso.ts) con el perfil estándar —pie
 // 20% y 30%, 30 años, tasa de mercado— y quedan en `avisos_evaluados` con sus sugerencias (fuente y
-// muestra) y su resultado. Es la base de «Por dónde seguir buscando» (los tres
+// muestra) y su resultado; desde el 16-oct-2026, también el estándar de /deptos —pie 20% y 30%, 25 años— en
+// sus columnas _25 (estandar-deptos.ts). Es la base de «Por dónde seguir buscando» (los tres
 // parecidos): una guía de búsqueda, NO el portafolio de Franco, que es otra cosa y no se mezcla.
 //
 // PUNTO DE CONTROL: la tabla misma. Cada corrida toma los pendientes (sin evaluación o con precio
@@ -109,7 +111,9 @@ export async function GET(request: Request) {
         // no desinfla los bloques baratos (bajo UF 30/m² lo usan 5 de 190; la mediana no se mueve) y sube
         // los arriendos sospechosos de 861 a 1.280. Queda en arriendo-segmentado.ts, apagado.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { sug, ...fila } = await evaluarAviso(sb, a, cfg, { segmentar: false });
+        const { sug, ...evaluada } = await evaluarAviso(sb, a, cfg, { segmentar: false });
+        // El estándar de /deptos (16-oct-2026): el mismo aviso a 25 años, con la sonda y lo que la fila resolvió.
+        const fila = { ...evaluada, ...(evaluada.arriendo ? evaluarEstandar25(candidatoDeEvaluacion(a, evaluada), cfg) : ESTANDAR25_VACIO) };
         if (!fila.arriendo) sinArriendo++;
         // Sugerencia que cayó a la comuna porque el radio no respondió (aun reintentando): se escribe,
         // pero la corrida la cuenta como falla parcial (30-sep-2026). Ver reintento-transitorio.ts.
