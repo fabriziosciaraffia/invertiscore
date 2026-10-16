@@ -23,6 +23,7 @@ import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/gu
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { DEL_DIA } from "@/lib/guia/del-dia";
+import { REFERIDO_COPY } from "@/lib/referido";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -117,6 +118,20 @@ export interface DatosCorreoSemanal {
   urlTres: string;
   urlBaja: string;
   urlBanda?: string;
+  /** Invita a alguien (16-oct-2026, la puerta C): el enlace propio de la persona, en el pie. */
+  invitar?: EnlaceInvitarCorreo | null;
+}
+
+export interface EnlaceInvitarCorreo {
+  url: string;
+  /** «refranco.ai/i/CÓDIGO». */
+  texto: string;
+}
+
+/** La primera línea del pie: «Invita a alguien: si entra con tu enlace, los dos reciben un análisis.» y el enlace. */
+function pieInvitar(inv: EnlaceInvitarCorreo | null | undefined): string {
+  if (!inv) return "";
+  return `<span style="color: ${TINTA_2};">${escaparHtml(REFERIDO_COPY.pieSemanal)} <a href="${inv.url}" style="color: ${TINTA_2}; text-decoration: underline;" data-invitar="pie">${escaparHtml(inv.texto)}</a></span><br><br>`;
 }
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -252,7 +267,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
           <tr><td style="padding: 0 0 24px 0;">${wordmarkClaro()}</td></tr>
           ${filas.join("\n          ")}
-          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid ${LINEA}; font-family: ${FUENTE_UI}; font-size: 12px; line-height: 1.6; color: ${TINTA_3};">${SEMANAL.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${SEMANAL.baja}</a><br>${LEGAL}<br><a href="https://refranco.ai" style="color: ${TINTA_3}; text-decoration: none;">refranco.ai</a></td></tr>
+          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid ${LINEA}; font-family: ${FUENTE_UI}; font-size: 12px; line-height: 1.6; color: ${TINTA_3};">${pieInvitar(d.invitar)}${SEMANAL.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${SEMANAL.baja}</a><br>${LEGAL}<br><a href="https://refranco.ai" style="color: ${TINTA_3}; text-decoration: none;">refranco.ai</a></td></tr>
         </table>
       </td>
     </tr>
@@ -289,7 +304,7 @@ export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precio
  * Sin regalo, sin tarjetas y sin botón de compra. El primero de la persona se presenta igual que el otro.
  */
 // EL DEL DÍA VACÍO (16-oct-2026): con `delDia`, «Te aviso cuando aparezca uno», con el regalo si lo tiene.
-export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null }): { subject: string; html: string } {
+export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null; invitar?: EnlaceInvitarCorreo | null }): { subject: string; html: string } {
   const filas: string[] = [];
   const asunto = d.delDia ? DEL_DIA.vacioAsunto : SEMANAL_VACIO.asunto;
   filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(asunto)}</td></tr>`);
@@ -320,7 +335,7 @@ export function correoSemanalVacio(d: { nombre: string | null; presentacion?: bo
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
           <tr><td style="padding: 0 0 24px 0;">${wordmarkClaro()}</td></tr>
           ${filas.join("\n          ")}
-          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid ${LINEA}; font-family: ${FUENTE_UI}; font-size: 12px; line-height: 1.6; color: ${TINTA_3};">${SEMANAL.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${SEMANAL.baja}</a><br>${LEGAL}<br><a href="https://refranco.ai" style="color: ${TINTA_3}; text-decoration: none;">refranco.ai</a></td></tr>
+          <tr><td style="padding: 22px 0 0 0; border-top: 1px solid ${LINEA}; font-family: ${FUENTE_UI}; font-size: 12px; line-height: 1.6; color: ${TINTA_3};">${pieInvitar(d.invitar)}${SEMANAL.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${SEMANAL.baja}</a><br>${LEGAL}<br><a href="https://refranco.ai" style="color: ${TINTA_3}; text-decoration: none;">refranco.ai</a></td></tr>
         </table>
       </td>
     </tr>

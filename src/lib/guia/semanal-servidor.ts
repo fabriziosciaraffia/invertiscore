@@ -19,7 +19,9 @@ import { guardarMetrica } from "@/lib/metrics-daily";
 import { leerSaldo } from "@/lib/casa-saldo";
 import { nombreReal } from "@/lib/welcome";
 import { sendSemanalEmail } from "@/lib/email";
-import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
+import { correoSemanal, correoSemanalVacio, textoBusca, type EnlaceInvitarCorreo } from "@/lib/email/correo-semanal";
+import { asegurarInvitacion } from "@/lib/referido-servidor";
+import { enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, origenSintetico, type OrigenGuia } from "./guia-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
@@ -792,6 +794,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
 
   const variante = fila.variante ?? varianteDe(fila.user_id);
   const enlaces = enlacesSemanal(sitio, fila.token);
+  const invitar = await enlaceInvitarDelCorreo(admin, fila.user_id, sitio);
   const correo = correoSemanal({
     variante,
     nombre: nombreReal(user.user_metadata),
@@ -813,6 +816,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     urlBoton: enlaces.boton,
     urlTres: enlaces.tres,
     urlBaja: enlaces.baja,
+    invitar,
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, variante);
   if (!r.ok) {
@@ -830,6 +834,15 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     },
   }).catch(() => {});
   return "enviada";
+}
+
+/**
+ * Invita a alguien, en el pie del semanal (16-oct-2026, la puerta C): el enlace de siempre de la persona (el invitado ve
+ * «un amigo te invitó a Franco»). Si no se puede armar, el correo sale igual, sin la línea.
+ */
+async function enlaceInvitarDelCorreo(admin: SupabaseClient, userId: string, sitio: string): Promise<EnlaceInvitarCorreo | null> {
+  const inv = await asegurarInvitacion(admin, { userId, conNombre: false });
+  return inv ? { url: enlaceInvitacion(sitio, inv.codigo), texto: textoEnlaceInvitacion(inv.codigo) } : null;
 }
 
 /**
@@ -851,7 +864,7 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
   if ((tomada?.length ?? 0) !== 1) return "ya";
   const presentacion = !eAntes && esPrimerSemanal(enviadasAntes);
   const enlaces = enlacesSemanal(sitio, fila.token);
-  const correo = correoSemanalVacio({ nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja });
+  const correo = correoSemanalVacio({ nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio) });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, "vacio");
   if (!r.ok) {
     await admin.from("semanal_selecciones").update({ estado: fila.estado, enviada_at: null }).eq("id", fila.id);

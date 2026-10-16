@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
+import { COOKIE_INVITACION } from "@/lib/referido";
+import { vincularInvitacion } from "@/lib/referido-servidor";
+import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
 import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import { PrimerosDeptos } from "@/components/deptos/PrimerosDeptos";
 import { createClient } from "@/lib/supabase/server";
@@ -70,6 +73,14 @@ export default async function DashboardPage({
   await asegurarRegaloDeAlta(createServiceClient(), {
     userId: user.id, creadaAt: user.created_at, huella: huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null),
   });
+  // La invitación (16-oct-2026, la puerta C), también como red: la cuenta que llegó hasta acá con la cookie de un «/i/CÓDIGO»
+  // sin que ningún registro la cobrara (contraseña). Si ya se cobró, no hace nada.
+  const cookieInv = cookies().get(COOKIE_INVITACION)?.value ?? null;
+  if (cookieInv) {
+    await vincularInvitacion(createServiceClient(), {
+      userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null),
+    });
+  }
   // Welcome email server-side e idempotente, antes del branch de onboarding.
   await ensureWelcomeEmail(user.id, user.email, fullName);
 
@@ -129,6 +140,10 @@ export default async function DashboardPage({
                 comprador={false}
                 inicial={{ dormitorios: pb0.dormitorios, comunas: pb0.comunas, precioMaxUf: pb0.precioMaxUf, precioMinUf: pb0.editado.includes("precioMin") ? pb0.precioMinUf : null, modalidad: pb0.modalidad, piePct: pb0.piePct, plazoAnios: pb0.plazoAnios, horizonte: pb0.horizonte }}
               />
+            </div>
+            {/* Invita a alguien (16-oct-2026, la puerta C): los dos reciben un análisis. */}
+            <div className="mt-7">
+              <InvitaAlguien />
             </div>
           </div>
         </div>
@@ -267,6 +282,10 @@ export default async function DashboardPage({
             comprador={!!guiaCasa}
             inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
           />
+        </div>
+        {/* Invita a alguien (16-oct-2026, la puerta C): los dos reciben un análisis. */}
+        <div className="mt-7">
+          <InvitaAlguien />
         </div>
 
         {/* ── Tus informes + total. Sin botón propio: el principal es «Nuevo análisis» del header único

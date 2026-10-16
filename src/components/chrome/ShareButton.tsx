@@ -16,12 +16,18 @@
  * "Descargar PDF" al dropdown; si no, no se muestra.
  *
  * La URL compartida se arma con `window.location.origin + path`.
+ *
+ * INVITA A ALGUIEN (16-oct-2026, la puerta C): el botón solo lo ve el dueño del informe (HeaderFranco › modo «propio»,
+ * con sesión), así que el menú cierra con su enlace de invitación —«los dos reciben un análisis»—, que se pide al abrir el
+ * menú (/api/invitacion). Para que se vea también en el teléfono, el menú se abre siempre, como con el PDF; el menú
+ * nativo del sistema queda como «Más opciones».
  */
 
 import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { Button } from "@/components/ui/button";
-import { Share2, Check, Link2, Mail, Download } from "lucide-react";
+import { Share2, Check, Link2, Mail, Download, MoreHorizontal, UserPlus } from "lucide-react";
+import { REFERIDO_COPY } from "@/lib/referido";
 
 export type ShareModalidad = "LTR" | "STR" | "AMBAS";
 
@@ -80,6 +86,24 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
+  const [invitacion, setInvitacion] = useState<{ url: string; nombre: string | null } | null>(null);
+  const [invitaCopiada, setInvitaCopiada] = useState(false);
+  const [nativo, setNativo] = useState(false);
+
+  useEffect(() => {
+    setNativo(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
+
+  // El enlace de invitación, la primera vez que se abre el menú (sin sesión responde 401 y la línea no aparece).
+  useEffect(() => {
+    if (!open || invitacion) return;
+    let vivo = true;
+    void fetch("/api/invitacion", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { url?: string; nombre?: string | null } | null) => { if (vivo && d?.url) setInvitacion({ url: d.url, nombre: d.nombre ?? null }); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [open, invitacion]);
 
   useEffect(() => {
     if (!open) return;
@@ -92,25 +116,42 @@ export function ShareButton({
 
   const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : "";
 
-  const handleClick = async () => {
+  const handleClick = () => {
     posthog?.capture('analysis_shared', { analysis_id: analysisId, comuna, score, modalidad });
-    // Si hay PDF para descargar, abrimos el menú propio: el share nativo del SO solo
-    // comparte la URL y no puede exponer "Descargar PDF". Con pdfUrl presente preferimos
-    // el menú (que igual trae WhatsApp / Copiar link / Email / X + Descargar PDF).
-    if (pdfUrl) {
-      setOpen(!open);
+    // El menú propio siempre (16-oct-2026): el share nativo del SO solo comparte la URL y no puede exponer «Descargar
+    // PDF» ni «Invita a alguien». El nativo queda adentro, como «Más opciones».
+    setOpen(!open);
+  };
+
+  const shareNativo = async () => {
+    setOpen(false);
+    try {
+      await navigator.share({ title, text, url });
+    } catch {
+      /* canceló */
+    }
+  };
+
+  // Invita a alguien: el menú nativo con el mensaje de la invitación; sin él, copia el enlace.
+  const invitar = async () => {
+    if (!invitacion) return;
+    posthog?.capture('invitacion_compartida', { con_nombre: !!invitacion.nombre, donde: 'compartir_informe' });
+    if (nativo) {
+      setOpen(false);
+      try {
+        await navigator.share({ title: REFERIDO_COPY.quien(invitacion.nombre), text: REFERIDO_COPY.textoCompartir(invitacion.nombre), url: invitacion.url });
+      } catch {
+        /* canceló */
+      }
       return;
     }
-    // Mobile: use native share
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-        return;
-      } catch {
-        // user cancelled or not supported, fall through to dropdown
-      }
+    try {
+      await navigator.clipboard.writeText(invitacion.url);
+      setInvitaCopiada(true);
+      setTimeout(() => { setInvitaCopiada(false); setOpen(false); }, 1500);
+    } catch {
+      /* sin portapapeles */
     }
-    setOpen(!open);
   };
 
   const copyLink = async () => {
@@ -171,8 +212,10 @@ export function ShareButton({
         </Button>
       )}
 
+      {/* En el teléfono el menú va al ancho de la pantalla, bajo el header (QA a 390, 16-oct-2026): colgado del botón, que
+          está a la izquierda de «Nuevo análisis», se salía por el borde. Desde 640 px, colgado del botón como siempre. */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-[var(--franco-border-strong)] bg-[var(--franco-card)] p-2 shadow-lg">
+        <div data-compartir="menu" className="fixed inset-x-4 top-16 z-50 rounded-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56 border border-[var(--franco-border-strong)] bg-[var(--franco-card)] p-2 shadow-lg">
           <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
             <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
             WhatsApp
@@ -193,6 +236,21 @@ export function ShareButton({
             <button onClick={downloadPDF} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
               <Download className="h-4 w-4 text-[var(--franco-text-secondary)]" />
               Descargar PDF
+            </button>
+          )}
+          {nativo && (
+            <button onClick={() => void shareNativo()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]" data-compartir="nativo">
+              <MoreHorizontal className="h-4 w-4 text-[var(--franco-text-secondary)]" />
+              Más opciones
+            </button>
+          )}
+          {invitacion && (
+            <button onClick={() => void invitar()} className="mt-1 flex w-full items-start gap-3 rounded-lg border-t border-[var(--franco-border)] px-3 pb-2.5 pt-3 text-left text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]" data-compartir="invitar">
+              {invitaCopiada ? <Check className="mt-0.5 h-4 w-4 text-ink-400" /> : <UserPlus className="mt-0.5 h-4 w-4 text-[var(--franco-text-secondary)]" />}
+              <span className="flex flex-col">
+                <span>{invitaCopiada ? REFERIDO_COPY.copiado : REFERIDO_COPY.menuCompartir}</span>
+                <span className="text-xs text-[var(--franco-text-secondary)]">{REFERIDO_COPY.menuCompartirNota}</span>
+              </span>
             </button>
           )}
         </div>
