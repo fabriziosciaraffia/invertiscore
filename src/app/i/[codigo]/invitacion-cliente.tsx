@@ -5,7 +5,9 @@
 // registrarse, `router.refresh()` vuelve a pintar el servidor con sesión, y la pantalla no puede saltar a «ya tienes cuenta»
 // en medio de «Estás dentro».
 //   · invitado   — el titular, el regalo, y las mismas preguntas de /deptos (DeptosCliente con la puerta C y la vuelta a
-//                  esta página); o, si ya trae un depto, la dirección, que lleva al wizard y a su informe gratis;
+//                  esta página); o, si ya trae un depto, la dirección, que lleva al wizard y a su informe gratis.
+//                  Desde el 17-oct-2026, la misma pantalla que /deptos —qué es, el número, la banda del correo, «Afina
+//                  tu búsqueda»— con su línea «Te invitaron a Franco» arriba y la dirección al final;
 //   · propio     — quien invita abre su enlace: su enlace para compartir;
 //   · con_cuenta — ya tiene cuenta: el enlace es para quien todavía no está.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,16 +20,18 @@ import { CampoEntrada, type CaminoSinDireccion } from "@/components/entrada/Hero
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { urlDeLlegada } from "@/components/entrada/llegada";
 import { PREFIJO_DETALLE_INVITACION, REFERIDO_COPY, rutaInvitacion } from "@/lib/referido";
+import type { PortadaDeptos } from "@/lib/deptos/portada";
 import "@/app/deptos/deptos.css";
 import "./invitacion.css";
 
 export type ModoInvitacion = "invitado" | "propio" | "con_cuenta";
 
-export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion }: {
+export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion, portada }: {
   modo: ModoInvitacion;
   codigo: string | null;
   nombre: string | null;
   sesion: { email: string } | null;
+  portada?: PortadaDeptos;
 }) {
   const [modo] = useState(modoInicial);
   const router = useRouter();
@@ -61,11 +65,11 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion }:
   }
 
   const titular = nombre ? `${nombre} te invitó a Franco.` : REFERIDO_COPY.titular;
-  const encabezado = (
-    <>
-      <h1 className="dp-titulo iv-titulo" data-invitacion="titular">{titular}</h1>
-      <p className="iv-bajada" data-invitacion="bajada">{REFERIDO_COPY.bajada}</p>
-    </>
+  // La línea del invitado, arriba de todo (17-oct-2026): «Te invitaron a Franco. Tu primer análisis va por cuenta de Franco.»
+  const linea = (
+    <p className="iv-linea" data-invitacion="linea">
+      <b data-invitacion="titular">{titular}</b> <span data-invitacion="bajada">{REFERIDO_COPY.bajada}</span>
+    </p>
   );
 
   // Con un depto en la mira: la dirección lleva al wizard (con la dirección ya elegida) y a su informe gratis. El banner
@@ -74,8 +78,8 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion }:
     const llegada = (destino: Parameters<typeof urlDeLlegada>[0]) => router.push(urlDeLlegada(destino, "invitacion"));
     return (
       <div className="dp" data-invitacion="con-depto">
-        {encabezado}
-        <p className="dp-pregunta iv-pregunta">{REFERIDO_COPY.conDepto}</p>
+        {linea}
+        <h1 className="dp-que">{REFERIDO_COPY.conDepto}</h1>
         <div className="iv-campo he-papel">
           <CampoEntrada
             ocupado={navegando}
@@ -103,13 +107,12 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion }:
         pagina={codigo ? rutaInvitacion(codigo) : "/deptos"}
         puerta={{ puerta: "C", detalle: `${PREFIJO_DETALLE_INVITACION}${codigo ?? ""}` }}
         origenLead="invitado"
-        cabecera={
-          <>
-            {encabezado}
-            <button type="button" className="iv-con-depto" onClick={() => { posthog?.capture("invitacion_con_depto", {}); setConDepto(true); }} data-invitacion="con-depto-abrir">
-              {REFERIDO_COPY.conDepto} <u>{REFERIDO_COPY.conDeptoAccion}</u><span aria-hidden="true"> →</span>
-            </button>
-          </>
+        portada={portada}
+        cabecera={linea}
+        pie={
+          <button type="button" className="iv-con-depto" onClick={() => { posthog?.capture("invitacion_con_depto", {}); setConDepto(true); }} data-invitacion="con-depto-abrir">
+            {REFERIDO_COPY.conDepto} <u>{REFERIDO_COPY.conDeptoAccion}</u><span aria-hidden="true"> →</span>
+          </button>
         }
       />
     </div>

@@ -4,6 +4,9 @@
    pantalla y media, y la respuesta con el campo del correo se ven sin bajar más de media pantalla. Tokens del chrome
    (--franco-*), claro y oscuro. Los chips elegidos en tinta invertida; el único rojo es el botón «Quiero recibirlos»
    (CTA primario) y el error.
+   17-oct-2026 (se explica sola): arriba, qué es, en serif; el número; la BANDA del correo —el material del banner del
+   informe: degradado, grano, texto en papel, un botón en papel— es lo único con color; y «Afina tu búsqueda», los chips
+   planos y compactos, debajo.
    ═════════════════════════════════════════════════════════════════════════════ */
 .dp { font-family: var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text); text-align: left; }
 /* El titular en UNA línea, también a 390: el tamaño sigue el ancho de la pantalla hasta 36 px. */
@@ -11,7 +14,13 @@
 /* «Estás dentro.» y la pregunta de las comunas pueden ir en dos líneas. */
 .dp[data-deptos="dentro"] .dp-titulo, .dp[data-deptos="primeros"] .dp-titulo, .dp-titulo-largo { font-size: 28px; white-space: normal; }
 @media (min-width: 768px) { .dp[data-deptos="dentro"] .dp-titulo, .dp[data-deptos="primeros"] .dp-titulo, .dp-titulo-largo { font-size: 36px; } }
-.dp-bajada { font-size: min(3.7vw, 16px); line-height: 1.4; color: var(--franco-text-secondary); margin: 0 0 14px; white-space: nowrap; }
+/* Qué es, en una frase, con las cifras de la noche. */
+.dp-que { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 22px; line-height: 1.18; letter-spacing: -0.015em; margin: 0; }
+@media (min-width: 768px) { .dp-que { font-size: 32px; } }
+.dp-que-b { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--franco-text-secondary); }
+@media (min-width: 768px) { .dp-que-b { font-size: 17px; } }
+.dp-anoche { margin: 8px 0 0; font-size: 15px; line-height: 1.4; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (min-width: 768px) { .dp-anoche { font-size: 17px; } }
 .dp-bloque { border: 0; margin: 0; padding: 0; min-width: 0; }
 .dp-bloque + .dp-bloque { margin-top: 12px; }
 .dp-pregunta { font-size: 13px; font-weight: 600; margin: 0 0 6px; padding: 0; color: var(--franco-text); }
@@ -27,8 +36,8 @@
 .dp-buscador { margin-top: 8px; }
 .dp-encontradas { margin-top: 8px; }
 .dp-fuera { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
-/* La respuesta y el correo, juntos: nada entre el número y el campo. */
-.dp-respuesta { margin-top: 16px; padding: 16px; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card); }
+/* El número y, pegada debajo, la banda del correo: nada entre los dos. */
+.dp-respuesta { margin-top: 14px; }
 .dp-respuesta[data-cargando="1"] .dp-numero, .dp-respuesta[data-cargando="1"] .dp-detalle { opacity: 0.55; }
 .dp-numero { font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
 .dp-cifra { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
@@ -59,3 +68,30 @@
 .dp-regalo { margin: 6px 0 16px; padding: 12px 14px; border-left: 3px solid var(--franco-text); background: var(--franco-card); font-size: 15px; line-height: 1.5; }
 .dp-fin { margin-top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .dp[data-deptos="dentro"] .dp-bloque { margin-top: 14px; }
+
+/* ── LA BANDA DEL CORREO (17-oct-2026): el material del banner del informe (lo-que-sigue.css › .lqs-mat), fijo en claro y
+   oscuro. Lo único con color en la pantalla de elegir: el campo en papel translúcido, UN botón en papel, Google como enlace. */
+.dp-banda { position: relative; overflow: hidden; margin-top: 12px; padding: 16px 16px 12px; border-radius: 16px; color: #FAFAF8;
+  background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
+@media (min-width: 768px) { .dp-banda { padding: 22px 24px 16px; background-image: url("/landing/hero-d1x.webp"); } }
+.dp-banda::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
+.dp-banda > * { position: relative; z-index: 1; }
+.dp-banda .dp-form { margin-top: 0; }
+.dp-banda .dp-registro { margin: 0 0 10px; font-size: 17px; line-height: 1.3; font-weight: 600; color: #FAFAF8; }
+.dp-banda .dp-campo { border-color: rgba(250, 250, 248, 0.35); background: rgba(250, 250, 248, 0.12); color: #FAFAF8; }
+.dp-banda .dp-campo::placeholder { color: rgba(250, 250, 248, 0.6); }
+.dp-banda .dp-campo:focus { border-color: #FAFAF8; }
+.dp-banda .dp-boton { background: #FAFAF8; color: #0F0F0F; }
+.dp-banda .dp-google { display: inline-flex; width: auto; height: 34px; margin-top: 6px; padding: 0; border: 0; background: none; color: #FAFAF8; font-weight: 500; justify-content: flex-start; }
+.dp-banda .dp-nota { margin: 0; color: rgba(250, 250, 248, 0.72); }
+.dp-banda .dp-error { color: #FAFAF8; background: rgba(200, 50, 60, 0.35); border: 1px solid rgba(250, 250, 248, 0.35); border-radius: 12px; padding: 8px 12px; }
+.dp-banda .dp-boton:focus-visible, .dp-banda .dp-google:focus-visible, .dp-banda .dp-campo:focus-visible { outline-color: #FAFAF8; }
+
+/* ── AFINA TU BÚSQUEDA: los chips debajo de la banda, planos (sin borde, un tinte) y compactos. */
+.dp-afina { margin-top: 22px; }
+.dp-afina-t { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.dp-afina .dp-bloque + .dp-bloque { margin-top: 10px; }
+.dp-afina .dp-pregunta { margin-bottom: 5px; font-size: 12.5px; font-weight: 500; color: var(--franco-text-secondary); }
+.dp-afina .dp-chip { min-height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
+.dp-afina .dp-chip[data-activo="1"] { background: var(--franco-text); border-color: var(--franco-text); color: var(--franco-card); }
+.dp-afina .dp-chip-otra { border: 1px dashed var(--franco-border); background: none; }

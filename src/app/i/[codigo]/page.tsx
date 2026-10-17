@@ -9,6 +9,7 @@ import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { normalizarCodigo, REFERIDO_COPY } from "@/lib/referido";
 import { anotarDispositivoInvitador, leerInvitacion } from "@/lib/referido-servidor";
 import { InvitacionCliente, type ModoInvitacion } from "./invitacion-cliente";
+import { portadaDeptos } from "@/lib/deptos/portada";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /i/CÓDIGO, LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C): «Te invitaron a Franco. Tu primer análisis va por cuenta
@@ -57,11 +58,13 @@ export default async function InvitacionPage({ params, searchParams }: { params:
       await anotarDispositivoInvitador(admin, user.id, huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null).dispositivo);
     } else modo = "con_cuenta";
   }
+  // La misma portada que /deptos (17-oct-2026): la frase con las cifras de la noche y el número de la búsqueda por defecto.
+  const portada = modo === "invitado" ? await portadaDeptos() : undefined;
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco sesion={sesion} />
       <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
-        <InvitacionCliente modo={modo} codigo={codigo} nombre={inv?.conNombre ? inv.nombre : null} sesion={sesion} />
+        <InvitacionCliente modo={modo} codigo={codigo} nombre={inv?.conNombre ? inv.nombre : null} sesion={sesion} portada={portada} />
       </main>
       <AppFooter variant="informe" />
     </div>

@@ -18,6 +18,11 @@
 // desde ahí todo es igual que por código: el Lead (al volver, cuando se sabe el correo), el alta y «Estás dentro».
 // LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) usa esta misma pantalla con su cabecera, su puerta (C) y su página de
 // vuelta (`/i/CÓDIGO`): las mismas preguntas, el mismo alta, la misma entrada con Google.
+// SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026, decisión de Fabrizio): arriba, qué es, con las cifras de
+// la noche («Cada noche Franco revisa los 21.000 deptos publicados en Santiago…», «Anoche, 4.886 convenían.»); después el
+// número de una búsqueda ya elegida (Santiago, 2D, UF 3.000 a 4.000), que trae el servidor; justo debajo, la banda del
+// correo —lo único con color, como el banner del informe—; y abajo, «Afina tu búsqueda», los chips planos que cambian el
+// número al toque.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -34,10 +39,11 @@ import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { textoVence } from "@/lib/guia/semanal";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import {
-  ALTA_COPY, claveDeDestino, COMUNAS_DESTACADAS, CORREO_OK, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_DEPTOS, MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, RANGOS_UF,
+  ALTA_COPY, claveDeDestino, COMUNAS_DESTACADAS, ELECCIONES_POR_DEFECTO, CORREO_OK, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_DEPTOS, MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, RANGOS_UF,
   TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS, type ModalidadDeptos, type RespuestaDeptos,
 } from "@/lib/deptos/respuesta";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
+import type { PortadaDeptos } from "@/lib/deptos/portada";
 import { PrimerosDeptos } from "@/components/deptos/PrimerosDeptos";
 import "./deptos.css";
 
@@ -62,20 +68,27 @@ export interface OpcionesDeptos {
   puerta?: { puerta: Puerta; detalle: string };
   /** De dónde sale el Lead al dejar el correo. */
   origenLead?: OrigenLead;
-  /** Lo que va en lugar del titular y la bajada de /deptos. */
+  /** Una línea arriba de todo (la página del invitado: «Te invitaron a Franco»). */
   cabecera?: ReactNode;
+  /** Lo que va al final de la pantalla de elegir (la página del invitado: la dirección). */
+  pie?: ReactNode;
+  /** El resumen de la noche y la respuesta de la búsqueda por defecto, desde el servidor (portada.ts). */
+  portada?: PortadaDeptos;
 }
 
-export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera }: { sesion: { email: string } | null } & OpcionesDeptos) {
+/** La búsqueda por defecto, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. */
+const CLAVE_DEFECTO = `${ELECCIONES_POR_DEFECTO.comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${ELECCIONES_POR_DEFECTO.rango}`;
+
+export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera, pie, portada }: { sesion: { email: string } | null } & OpcionesDeptos) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [comunas, setComunas] = useState<string[]>([]);
+  const [comunas, setComunas] = useState<string[]>([...ELECCIONES_POR_DEFECTO.comunas]);
   const [buscando, setBuscando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [tipologia, setTipologia] = useState<string>(TIPOLOGIA_POR_DEFECTO);
-  const [rango, setRango] = useState<string>("");
+  const [rango, setRango] = useState<string>(ELECCIONES_POR_DEFECTO.rango);
   const [modalidad, setModalidad] = useState<ModalidadDeptos>(MODALIDAD_POR_DEFECTO);
-  const [respuesta, setRespuesta] = useState<RespuestaDeptos | null>(null);
+  const [respuesta, setRespuesta] = useState<RespuestaDeptos | null>(portada?.inicial ?? null);
   const [cargando, setCargando] = useState(false);
   const [paso, setPaso] = useState<Paso>("elegir");
   const [correo, setCorreo] = useState(sesion?.email ?? "");
@@ -89,6 +102,9 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [agregar, setAgregar] = useState<{ nuevas: string[]; actuales: string[] } | null>(null);
   const campoCodigo = useRef<HTMLInputElement>(null);
   const campoBuscar = useRef<HTMLInputElement>(null);
+  /** La búsqueda de la respuesta que está a la vista (la por defecto, si vino del servidor): esa no se vuelve a pedir. Se
+   *  anota al llegar la respuesta, no al pedirla: un pedido cortado (el doble efecto de React en desarrollo) se repite. */
+  const servida = useRef<string | null>(portada?.inicial ? CLAVE_DEFECTO : null);
 
   // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta).
   useEffect(() => {
@@ -98,9 +114,11 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
 
   const completo = comunas.length > 0 && !!tipologia && !!rango;
 
-  // La respuesta al instante, apenas están la comuna y el rango (la tipología viene marcada).
+  // La respuesta al instante: la búsqueda arranca elegida y cada chip la cambia; mientras llega, queda la anterior.
   useEffect(() => {
     if (!completo) { setRespuesta(null); return; }
+    const clave = `${comunas.join(",")}|${tipologia}|${rango}`;
+    if (clave === servida.current) return;
     const control = new AbortController();
     const q = new URLSearchParams({ c: comunas.join(","), t: tipologia, r: rango });
     setCargando(true);
@@ -109,6 +127,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
         const res = await fetch(`/api/deptos/respuesta?${q.toString()}`, { signal: control.signal });
         const d = (await res.json()) as RespuestaDeptos;
         if (res.ok) {
+          servida.current = clave;
           setRespuesta(d);
           posthog?.capture("deptos_respuesta", { convienen: d.convienen, total: d.total, cero: d.convienen === 0, comunas: comunas.length });
         } else setRespuesta(null);
@@ -122,8 +141,9 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comunas.join(","), tipologia, rango, completo]);
 
+  // Siempre queda una comuna: sin ella no hay número (la última no se suelta).
   const tocarComuna = (c: string) => {
-    setComunas((xs) => (xs.includes(c) ? xs.filter((x) => x !== c) : xs.length >= MAX_COMUNAS_DEPTOS ? xs : [...xs, c]));
+    setComunas((xs) => (xs.includes(c) ? (xs.length === 1 ? xs : xs.filter((x) => x !== c)) : xs.length >= MAX_COMUNAS_DEPTOS ? xs : [...xs, c]));
   };
   const elegirDelBuscador = (c: string) => {
     tocarComuna(c);
@@ -368,97 +388,98 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
 
   return (
     <div className="dp" data-deptos="elegir">
-      {cabecera === undefined ? (
-        <>
-          <h1 className="dp-titulo">{DEPTOS_COPY.titular}</h1>
-          <p className="dp-bajada">{DEPTOS_COPY.bajada}</p>
-        </>
-      ) : cabecera}
+      {cabecera}
+      <h1 className="dp-que" data-deptos="que">{DEPTOS_COPY.que(portada?.noche?.revisados ?? null)}</h1>
+      <p className="dp-que-b">{DEPTOS_COPY.queB}</p>
+      {portada?.noche && <p className="dp-anoche" data-deptos="anoche">{DEPTOS_COPY.anoche(portada.noche.convienen)}</p>}
 
-      <fieldset className="dp-bloque">
-        <legend className="dp-pregunta">{DEPTOS_COPY.comuna} <span className="dp-ayuda">{DEPTOS_COPY.comunaAyuda}</span></legend>
-        <div className="dp-chips" data-pregunta="comuna">
-          {DESTACADAS.map(chipComuna)}
-          {extras.map(chipComuna)}
-          <button type="button" className="dp-chip dp-chip-otra" aria-expanded={buscando} onClick={abrirBuscador} disabled={lleno && !buscando}>{DEPTOS_COPY.otraComuna}</button>
-        </div>
-        {buscando && (
-          <div className="dp-buscador" data-deptos="buscador">
-            <input ref={campoBuscar} className="dp-campo dp-campo-chico" type="search" placeholder={DEPTOS_COPY.buscar} aria-label={DEPTOS_COPY.buscar}
-              value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-            {encontradas.length > 0 ? (
-              <div className="dp-chips dp-encontradas">
-                {encontradas.map((c) => (
-                  <button key={c} type="button" className="dp-chip" disabled={lleno} onClick={() => elegirDelBuscador(c)}>{c}</button>
-                ))}
-              </div>
-            ) : (
-              <p className="dp-fuera" role="status" data-deptos="fuera">{DEPTOS_COPY.fuera}</p>
-            )}
-          </div>
+      <section className="dp-respuesta" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
+        {respuesta ? (
+          <>
+            <p className="dp-numero" data-convienen={respuesta.convienen}>
+              {respuesta.cifra ? <><span className="dp-cifra">{respuesta.cifra}</span>{respuesta.titular.slice(respuesta.cifra.length)}</> : respuesta.titular}
+            </p>
+            <p className="dp-detalle">{respuesta.detalle}</p>
+            {respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}
+          </>
+        ) : (
+          <p className="dp-numero dp-esperando" aria-hidden="true">…</p>
         )}
-      </fieldset>
+      </section>
+      <div className="dp-banda" data-deptos="banda">
+        {paso === "codigo" && enviado ? (
+          <form className="dp-form" onSubmit={entrar} data-deptos="codigo">
+            <p className="dp-registro">{DEPTOS_COPY.enviado(enviado)}</p>
+            <div className="dp-fila">
+              <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
+                aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
+              <button type="submit" className="dp-boton" disabled={ocupado}>{REGISTRO_UN_PASO.entrar}</button>
+            </div>
+          </form>
+        ) : (
+          <form className="dp-form" onSubmit={pedirCodigo} data-deptos="correo">
+            <p className="dp-registro">{respuesta?.registro ?? DEPTOS_COPY.conRegistro}</p>
+            <div className="dp-fila">
+              <input className="dp-campo" type="email" inputMode="email" autoComplete="email" placeholder={REGISTRO_UN_PASO.placeholder}
+                aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
+              <button type="submit" className="dp-boton" disabled={ocupado}>{ALTA_COPY.pedir}</button>
+            </div>
+            <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={ocupado}><IconoGoogle /> {ALTA_COPY.google}</button>
+            <p className="dp-nota">{DEPTOS_COPY.sinContrasena}</p>
+          </form>
+        )}
+        {error && <p className="dp-error" role="alert">{error}</p>}
+      </div>
 
-      <fieldset className="dp-bloque">
-        <legend className="dp-pregunta">{DEPTOS_COPY.tipologia}</legend>
-        <div className="dp-chips" data-pregunta="tipologia" role="radiogroup" aria-label={DEPTOS_COPY.tipologia}>
-          {TIPOLOGIAS_DEPTOS.map((t) => (
-            <button key={t.id} type="button" role="radio" className="dp-chip" aria-checked={tipologia === t.id} data-activo={tipologia === t.id ? "1" : undefined} onClick={() => setTipologia(t.id)}>
-              {t.chip}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="dp-bloque">
-        <legend className="dp-pregunta">{DEPTOS_COPY.rango}</legend>
-        <div className="dp-chips" data-pregunta="rango" role="radiogroup" aria-label={DEPTOS_COPY.rango}>
-          {RANGOS_UF.map((r) => (
-            <button key={r.id} type="button" role="radio" className="dp-chip" aria-checked={rango === r.id} data-activo={rango === r.id ? "1" : undefined} onClick={() => setRango(r.id)}>
-              {r.chip}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      {completo && (
-        <section className="dp-respuesta" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
-          {respuesta ? (
-            <>
-              <p className="dp-numero" data-convienen={respuesta.convienen}>
-                {respuesta.cifra ? <><span className="dp-cifra">{respuesta.cifra}</span>{respuesta.titular.slice(respuesta.cifra.length)}</> : respuesta.titular}
-              </p>
-              <p className="dp-detalle">{respuesta.detalle}</p>
-              {respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}
-
-              {paso === "codigo" && enviado ? (
-                <form className="dp-form" onSubmit={entrar} data-deptos="codigo">
-                  <p className="dp-registro">{DEPTOS_COPY.enviado(enviado)}</p>
-                  <div className="dp-fila">
-                    <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
-                      aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
-                    <button type="submit" className="dp-boton" disabled={ocupado}>{REGISTRO_UN_PASO.entrar}</button>
-                  </div>
-                </form>
+      <section className="dp-afina" data-deptos="afina" aria-label={DEPTOS_COPY.afina}>
+        <h2 className="dp-afina-t">{DEPTOS_COPY.afina}</h2>
+        <fieldset className="dp-bloque">
+          <legend className="dp-pregunta">{DEPTOS_COPY.comuna} <span className="dp-ayuda">{DEPTOS_COPY.comunaAyuda}</span></legend>
+          <div className="dp-chips" data-pregunta="comuna">
+            {DESTACADAS.map(chipComuna)}
+            {extras.map(chipComuna)}
+            <button type="button" className="dp-chip dp-chip-otra" aria-expanded={buscando} onClick={abrirBuscador} disabled={lleno && !buscando}>{DEPTOS_COPY.otraComuna}</button>
+          </div>
+          {buscando && (
+            <div className="dp-buscador" data-deptos="buscador">
+              <input ref={campoBuscar} className="dp-campo dp-campo-chico" type="search" placeholder={DEPTOS_COPY.buscar} aria-label={DEPTOS_COPY.buscar}
+                value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              {encontradas.length > 0 ? (
+                <div className="dp-chips dp-encontradas">
+                  {encontradas.map((c) => (
+                    <button key={c} type="button" className="dp-chip" disabled={lleno} onClick={() => elegirDelBuscador(c)}>{c}</button>
+                  ))}
+                </div>
               ) : (
-                <form className="dp-form" onSubmit={pedirCodigo} data-deptos="correo">
-                  <p className="dp-registro">{respuesta.registro}</p>
-                  <div className="dp-fila">
-                    <input className="dp-campo" type="email" inputMode="email" autoComplete="email" placeholder={REGISTRO_UN_PASO.placeholder}
-                      aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
-                    <button type="submit" className="dp-boton" disabled={ocupado}>{ALTA_COPY.pedir}</button>
-                  </div>
-                  <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={ocupado}><IconoGoogle /> {ALTA_COPY.google}</button>
-                  <p className="dp-nota">{DEPTOS_COPY.sinContrasena}</p>
-                </form>
+                <p className="dp-fuera" role="status" data-deptos="fuera">{DEPTOS_COPY.fuera}</p>
               )}
-            </>
-          ) : (
-            <p className="dp-numero dp-esperando" aria-hidden="true">…</p>
+            </div>
           )}
-          {error && <p className="dp-error" role="alert">{error}</p>}
-        </section>
-      )}
+        </fieldset>
+
+        <fieldset className="dp-bloque">
+          <legend className="dp-pregunta">{DEPTOS_COPY.tipologia}</legend>
+          <div className="dp-chips" data-pregunta="tipologia" role="radiogroup" aria-label={DEPTOS_COPY.tipologia}>
+            {TIPOLOGIAS_DEPTOS.map((t) => (
+              <button key={t.id} type="button" role="radio" className="dp-chip" aria-checked={tipologia === t.id} data-activo={tipologia === t.id ? "1" : undefined} onClick={() => setTipologia(t.id)}>
+                {t.chip}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="dp-bloque">
+          <legend className="dp-pregunta">{DEPTOS_COPY.rango}</legend>
+          <div className="dp-chips" data-pregunta="rango" role="radiogroup" aria-label={DEPTOS_COPY.rango}>
+            {RANGOS_UF.map((r) => (
+              <button key={r.id} type="button" role="radio" className="dp-chip" aria-checked={rango === r.id} data-activo={rango === r.id ? "1" : undefined} onClick={() => setRango(r.id)}>
+                {r.chip}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      </section>
+      {pie}
     </div>
   );
 }
