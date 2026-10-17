@@ -29,6 +29,10 @@
 //       firma de un pago PAGADO de ESE informe, antes de leer o calcular nada.
 //  13 · «¿CUÁNDO PIENSAS COMPRAR?» DESPUÉS DE PAGAR (02-oct-2026): los tres horizontes, discretos, debajo de la
 //       guía; se guardan en el perfil con sesión o con la firma del pago (y sin sesión, solo el horizonte).
+//  14 · «QUIERO VERLO» EN BANNER (17-oct-2026, decisión de Fabrizio: es lo que la persona pagó): degradado, texto
+//       blanco, un botón; «Este depto conviene con tus números.» solo con COMPRAR; al tocar, el botón gira con
+//       «Mandando el aviso…»; después «Listo: te lo mandamos a [correo]» con el visto (la ruta devuelve el correo), o
+//       «No pudimos mandarlo.» con «Reintentar»; 410 = despublicado; sin recargar la página.
 //   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
 //       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
@@ -49,6 +53,7 @@ import {
 import { pastillaFichas, type LecturasFicha } from "../../../src/lib/admin-fichas";
 import { sinDespublicados } from "../../../src/lib/avisos/depurar";
 import { mandarAvisoUnaVez, type PiezasQuieroVerlo } from "../../../src/lib/guia/quiero-verlo";
+import { dicesQueConviene, estadoTrasRespuesta, sePuedeTocar } from "../../../src/lib/guia/quiero-verlo-estado";
 import { correoAvisoPedido } from "../../../src/lib/email/correos";
 import { resumirQuieroVerlo, semanaDe } from "../../../src/lib/admin-quiero-verlo";
 import { analizarAvisoDeGuia, analizarUnaVez, RECLAMO_VIGENTE_MS, type PiezasAnalizar, type Reclamo } from "../../../src/lib/guia/analizar-una-vez";
@@ -90,15 +95,17 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
     [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
     [INFORME_DE_AVISO.boton, "Quiero verlo"],
-    [INFORME_DE_AVISO.bajada, "Franco te hace llegar el aviso"],
-    [INFORME_DE_AVISO.listo, "Listo. Te mandamos el aviso a tu correo."],
+    // «Quiero verlo» en banner (17-oct-2026, §14): el copy nuevo de Fabrizio.
+    [INFORME_DE_AVISO.conviene, "Este depto conviene con tus números."],
+    [INFORME_DE_AVISO.bajada, "Franco te manda el aviso al correo para que lo veas."],
+    [INFORME_DE_AVISO.listo("persona@correo.cl"), "Listo: te lo mandamos a persona@correo.cl"],
     [INFORME_DE_AVISO.despublicado, "Este aviso ya no está publicado."],
   ];
   for (const [tiene, debe] of aprobado) if (tiene !== debe) F(`1 · el copy «${debe}» cambió a «${tiene}»`);
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
   // Las frases con dato (funciones) se barren con un ejemplo.
-  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));
@@ -493,7 +500,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!correoAvisoPedido({ nombre: null, comuna: "Macul", url: "https://x", veredicto: "BUSCAR OTRA", flujo: -150000 }).html.replace(/<[^>]+>/g, " ").includes("Hola:")) F("10 · sin nombre el saludo no es «Hola:»");
     // La pantalla.
     const iav = sinComentarios(leer("src/components/guia/InformeDeAviso.tsx"));
-    if (!/setEstado\(r\.ok \? "listo" : r\.status === 410 \? "despublicado" : "error"\);/.test(iav) || !/\{INFORME_DE_AVISO\.despublicado\}/.test(iav) || /listoBajada|hoy o mañana/.test(iav)) F("10 · la pantalla no dice «Este aviso ya no está publicado.» o sigue con «hoy o mañana hábil»");
+    // Desde el 17-oct-2026 el estado lo decide estadoTrasRespuesta (§14: el 410 sigue siendo «despublicado»).
+    if (!/setEstado\(estadoTrasRespuesta\(\{ status: r\.status, cuerpo: await r\.json\(\)\.catch\(\(\) => null\) \}\)\);/.test(iav) || estadoTrasRespuesta({ status: 410, cuerpo: null }).tipo !== "despublicado"
+      || !/\{INFORME_DE_AVISO\.despublicado\}/.test(iav) || /listoBajada|hoy o mañana/.test(iav)) F("10 · la pantalla no dice «Este aviso ya no está publicado.» o sigue con «hoy o mañana hábil»");
     // El admin: los totales, y solo lectura.
     const res = resumirQuieroVerlo([
       { comuna: "Ñuñoa", veredicto: "COMPRAR", creadoAt: "2026-09-29T15:00:00Z" },
@@ -580,6 +589,44 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/if \(!pagoAbreElInforme\(\{ firmaValida, pago: p, analysisId \}\)\) return NextResponse\.json/.test(ramaSin) || !/duenoId = p!\.user_id;/.test(ramaSin) || !/\.eq\("user_id", duenoId!\)/.test(perfil)) F("13 · sin sesión, el horizonte se guarda en un perfil que no es el del dueño del pago de ESE informe");
   }
 
+  // ── 14 · «Quiero verlo» en banner, con su estado de envío (17-oct-2026) ─────────
+  {
+    // El estado que deja cada respuesta: bueno = listo con el correo; 410 = despublicado; todo lo demás, reintentar.
+    const listo = estadoTrasRespuesta({ status: 200, cuerpo: { ok: true, correo: "ana@correo.cl" } });
+    if (listo.tipo !== "listo" || listo.correo !== "ana@correo.cl") F(`14 · una respuesta buena no deja «listo» con el correo: ${JSON.stringify(listo)}`);
+    const raro = estadoTrasRespuesta({ status: 200, cuerpo: { ok: true, correo: "no-es-correo" } });
+    if (raro.tipo !== "listo" || raro.correo !== null) F("14 · algo que no es un correo se muestra en «Listo: te lo mandamos a…»");
+    if (estadoTrasRespuesta({ status: 410, cuerpo: null }).tipo !== "despublicado") F("14 · un aviso despublicado (410) no lo dice");
+    for (const s of [500, 502, 503, 401, 403]) if (estadoTrasRespuesta({ status: s, cuerpo: { error: "x" } }).tipo !== "error") F(`14 · un ${s} no queda como error para reintentar`);
+    if (estadoTrasRespuesta(null).tipo !== "error") F("14 · sin red no queda como error para reintentar");
+    // Se toca antes de mandar y para reintentar; no mientras manda ni después.
+    if (!sePuedeTocar({ tipo: "quieto" }) || !sePuedeTocar({ tipo: "error" }) || sePuedeTocar({ tipo: "enviando" }) || sePuedeTocar({ tipo: "listo", correo: null }) || sePuedeTocar({ tipo: "despublicado" }))
+      F("14 · el botón se puede tocar mientras manda o después de mandado (o no deja reintentar)");
+    if (!dicesQueConviene("COMPRAR") || dicesQueConviene("AJUSTA SUPUESTOS") || dicesQueConviene("BUSCAR OTRA")) F("14 · el banner dice «conviene» con un veredicto que no es COMPRAR");
+    // El copy.
+    if (INFORME_DE_AVISO.conviene !== "Este depto conviene con tus números." || INFORME_DE_AVISO.bajada !== "Franco te manda el aviso al correo para que lo veas." || INFORME_DE_AVISO.boton !== "Quiero verlo"
+      || INFORME_DE_AVISO.enviando !== "Mandando el aviso…" || INFORME_DE_AVISO.listo("ana@correo.cl") !== "Listo: te lo mandamos a ana@correo.cl"
+      || INFORME_DE_AVISO.error !== "No pudimos mandarlo." || INFORME_DE_AVISO.reintentar !== "Reintentar") F("14 · el copy de «Quiero verlo» no es el pedido");
+    // La pantalla: cada estado con lo suyo, sin recargar.
+    const qv = sinComentarios(leer("src/components/guia/InformeDeAviso.tsx"));
+    if (!/setEstado\(\{ tipo: "enviando" \}\);/.test(qv) || !/setEstado\(estadoTrasRespuesta\(\{ status: r\.status, cuerpo: await r\.json\(\)\.catch\(\(\) => null\) \}\)\);/.test(qv) || !/setEstado\(estadoTrasRespuesta\(null\)\);/.test(qv))
+      F("14 · el toque no pasa por «enviando» o la respuesta no decide el estado");
+    if (!/if \(!sePuedeTocar\(estado\)\) return;/.test(qv)) F("14 · el botón manda dos veces (o no deja reintentar)");
+    if (!/estado\.tipo === "enviando" \? \(\s*<><span className="qv-gira" aria-hidden="true" \/>\{INFORME_DE_AVISO\.enviando\}<\/>/.test(qv)) F("14 · mientras manda, el botón no gira con «Mandando el aviso…»");
+    if (!/<p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓<\/span>\{INFORME_DE_AVISO\.listo\(estado\.correo\)\}<\/p>/.test(qv)) F("14 · al terminar no dice «Listo: te lo mandamos a [correo]» con el visto");
+    if (!/estado\.tipo === "error" \? INFORME_DE_AVISO\.reintentar : INFORME_DE_AVISO\.boton/.test(qv) || !/<p className="qv-t" role="alert">\{INFORME_DE_AVISO\.error\}<\/p>/.test(qv)) F("14 · si falla no dice «No pudimos mandarlo.» con «Reintentar»");
+    if (!/\{dicesQueConviene\(veredicto\) && <p className="qv-t">\{INFORME_DE_AVISO\.conviene\}<\/p>\}/.test(qv)) F("14 · «Este depto conviene con tus números» no depende del veredicto");
+    if (/location\.reload|router\.refresh/.test(qv)) F("14 · el envío recarga la página");
+    if ((qv.match(/<button/g) ?? []).length !== 1) F("14 · el banner tiene más de un botón");
+    // El banner: degradado, texto blanco, un botón en papel; el indicador gira.
+    const css = leer("src/components/guia/guia.css");
+    if (!/\.qv-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.qv-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css) || !/\.qv-gira \{[^}]*animation: qv-gira/.test(css))
+      F("14 · «Quiero verlo» no va en banner (degradado, texto blanco, un botón) o el indicador no gira");
+    // La ruta devuelve el correo al que salió.
+    if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null \}\)\);/.test(sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"))))
+      F("14 · la ruta no devuelve el correo al que salió el aviso");
+  }
+
   if (fallas.length) {
     console.log(`  ✗ GUIA-BUSQUEDA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
@@ -652,6 +699,14 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 // y prohíbe la URL sin llave). §13: G10 sin sesión el perfil acepta más que el horizonte · G11 el horizonte va a un
 // perfil que no es del dueño del pago · G12 la pregunta no se monta · G13 se manda sin la firma · G16 las píldoras en
 // rojo. De paso se ajustaron §1, §2 y §7 al saldo real (GUIA_SALDO) y a la llave (urlGuia).
+// Octava vuelta (17-oct-2026, «Quiero verlo» en banner con su estado de envío; scratchpad mutar-qv.cjs, restauradas
+// byte a byte): 20/20 en rojo. §14: Q1 «Listo» sin el correo · Q2 el 410 no es despublicado (lo caza §10) · Q3 una
+// falla queda como listo · Q4 sin red queda como listo · Q5 se toca mientras manda · Q6 no deja reintentar · Q7
+// «conviene» con cualquier veredicto · Q8 sin «enviando» · Q9 el botón no gira · Q10 «Listo» sin el correo en la
+// pantalla · Q11 el error sin «Reintentar» · Q12 recarga la página · Q13 la ruta no devuelve el correo · Q14 el bloque
+// sin degradado · Q15 el botón en tinta · Q16 el indicador no gira · Q17 otro texto mientras manda · Q18 «conviene»
+// siempre en la pantalla · Q19 manda dos veces · Q20 la falla no dice «No pudimos mandarlo.». §1 y §10 se ajustaron al
+// copy nuevo y al estado de quiero-verlo-estado.ts.
 // Una corrida intermedia dejó el chequeo de F1 en rojo SIN mutar (el segundo pedido lo atajaba el año
 // del edificio, no fichas_leidas): se movió al caso sin año, donde solo fichas_leidas lo frena.
 
