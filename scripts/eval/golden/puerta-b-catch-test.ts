@@ -47,16 +47,22 @@
 // reescritas para esa forma (5 el regalo, 7 la puerta B, 9 Google ×2), dos mutaciones nuevas —X5 /deptos con la C por
 // defecto, X6 el alta con la C siempre— y G5, G7, X2 y R6 re-verificadas: 6/6 en ROJO.
 //
+//  10 · SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026): arriba, qué es, con las cifras de la noche (las
+//       mismas con que se cuenta la respuesta); la búsqueda por defecto (Santiago, 2D, UF 3.000 a 4.000) con su número
+//       desde el servidor; justo debajo, la banda del correo —lo único con color—; y «Afina tu búsqueda» con los chips
+//       planos. La página del invitado, igual, con su línea arriba. Dieciséis mutaciones nuevas (E1–E16) y cuatro anclas
+//       de la sección 8 reescritas para la banda; con N9 al día (su patrón era de la sangría vieja), 87/87 en ROJO.
+//
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/puerta-b-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
+  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, ELECCIONES_POR_DEFECTO, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
   TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
-import { guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle } from "../../../src/lib/deptos/servidor";
+import { guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle, resumenDeLaNoche } from "../../../src/lib/deptos/servidor";
 import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/estandar";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
@@ -359,8 +365,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // La pantalla es la de /deptos y la del invitado (16-oct-2026): la B y el Lead «seleccion» son lo que trae por defecto,
       // y /deptos la monta sin cambiarlos.
       if (!/marcarPuertaCandidata\(puerta\.puerta, puerta\.detalle\);/.test(cliente) || !/void avisarLead\(c, origenLead, puerta\.puerta\);/.test(cliente)
-        || !/export function DeptosCliente\(\{ sesion, pagina = "\/deptos", puerta = \{ puerta: "B", detalle: "deptos" \}, origenLead = "seleccion", cabecera \}/.test(cliente)
-        || !/<DeptosCliente sesion=\{sesion\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
+        || !/export function DeptosCliente\(\{ sesion, pagina = "\/deptos", puerta = \{ puerta: "B", detalle: "deptos" \}, origenLead = "seleccion", cabecera, pie, portada \}/.test(cliente)
+        || !/<DeptosCliente sesion=\{sesion\} portada=\{portada\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
       if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios(leer("src/app/api/deptos/alta/route.ts")))) F("7 · el alta no fija la puerta B");
       if (!/datos: \{ cuando, status: "completo", \.\.\.\(atr\?\.puerta \? \{ puerta: atr\.puerta as string \} : \{\}\) \},/.test(leer("src/lib/meta/registro.ts"))) F("7 · CompleteRegistration no lleva la puerta");
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
@@ -379,21 +385,23 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/\{DESTACADAS\.map\(chipComuna\)\}/.test(cli) || !/const encontradas = busqueda\.trim\(\) \? sinElegir\.filter\(\(c\) => plano\(c\)\.includes\(plano\(busqueda\)\)\) : restantes;/.test(cli) || DEPTOS_COPY.otraComuna !== "Otra comuna…") F("8 · las comunas no son las ocho a la vista más un buscador con el resto");
       const iElegir = cli.indexOf('data-deptos="elegir"'), iModalidad = cli.indexOf("MODALIDADES_DEPTOS.map(");
       if (iModalidad < 0 || iModalidad > iElegir || (cli.match(/MODALIDADES_DEPTOS\.map\(/g) ?? []).length !== 1 || !/data-deptos="modalidad"/.test(cli)) F("8 · la modalidad se pregunta en la pantalla de elegir (va en «Estás dentro»)");
-      // El número, el detalle y el correo pegados: entre la respuesta y el formulario, solo la alternativa del cero.
+      // El número, el detalle y el correo pegados (17-oct-2026: el correo en la banda, justo debajo de la respuesta): en la
+      // respuesta solo el número, el detalle y la alternativa del cero, y lo SIGUIENTE a la respuesta es la banda.
       const sec = cli.slice(cli.indexOf('<section className="dp-respuesta"'));
-      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-detalle">'), iForm1 = sec.indexOf('<form className="dp-form"');
-      const entre = iDet < 0 || iForm1 < 0 ? "x" : sec.slice(iDet, iForm1)
+      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-detalle">'), iFinSec = sec.indexOf("</section>");
+      const resto = iFinSec < 0 ? "x" : sec.slice(iDet, iFinSec)
         .replace('<p className="dp-detalle">{respuesta.detalle}</p>', "")
         .replace('{respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}', "");
-      if (iNum < 0 || iNum > iDet || !/^\s*\{paso === "codigo" && enviado \? \(\s*$/.test(entre)) F("8 · entre la respuesta y el correo hay algo más que el detalle y la alternativa");
+      if (iNum < 0 || iDet < iNum || !/^\s*<\/>\s*\) : \(\s*<p className="dp-numero dp-esperando" aria-hidden="true">…<\/p>\s*\)\}\s*$/.test(resto)
+        || !/^<\/section>\s*<div className="dp-banda" data-deptos="banda">\s*\{paso === "codigo" && enviado \? \(/.test(sec.slice(iFinSec))) F("8 · entre la respuesta y el correo hay algo más que el detalle y la alternativa");
       const iForm = sec.indexOf('<form className="dp-form" onSubmit={pedirCodigo}');
       const form = iForm < 0 ? "" : sec.slice(iForm, sec.indexOf("</form>", iForm));
-      const orden = ["{respuesta.registro}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
+      const orden = ["{respuesta?.registro ?? DEPTOS_COPY.conRegistro}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
       if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F("8 · el correo no es «Regístrate…», el campo, «Quiero recibirlos» y «Te mandamos un código. Sin contraseña.», en ese orden");
       if (DEPTOS_COPY.sinContrasena !== "Te mandamos un código. Sin contraseña." || DEPTOS_COPY.conRegistro !== "Regístrate y te los mando hoy") F("8 · el copy del correo no es el pedido");
-      // Serif solo en el titular, de una línea; la bajada en una línea; el número en Inter, grande.
+      // Serif solo en dos lugares: la frase de qué es (17-oct-2026) y el titular de «Estás dentro», en una línea.
       const css = leer("src/app/deptos/deptos.css");
-      if ((css.match(/font-heading/g) ?? []).length !== 1 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-bajada \{[^}]*white-space: nowrap;/.test(css)) F("8 · hay serif fuera del titular, o el titular o la bajada pueden ir en dos líneas");
+      if ((css.match(/font-heading/g) ?? []).length !== 2 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-que \{ font-family: var\(--font-heading\), Georgia, serif;/.test(css)) F("8 · hay serif fuera de la frase de arriba y del titular, o el titular puede ir en dos líneas");
       if (!/\.dp-cifra \{ font-size: 30px; font-weight: 700;/.test(css) || /\.dp-(numero|cifra) \{[^}]*font-family/.test(css)) F("8 · el número no va en Inter, grande");
       if (!/<AppFooter variant="informe" \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
     }
@@ -449,6 +457,45 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));
       const og = ['type="email"', "{ALTA_COPY.pedir}", 'className="dp-google"', "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
       if (ALTA_COPY.google !== "o con Google" || og.some((i) => i < 0) || og.some((i, k) => k > 0 && i < og[k - 1])) F("9 · «o con Google» no está debajo del campo del correo");
+    }
+    // ── 10 · SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026) ──
+    {
+      // Qué es, en una frase, con las cifras de la noche (el total redondeado a miles; los que convenían, exactos).
+      if (DEPTOS_COPY.que(21453) !== "Cada noche Franco revisa los 21.000 deptos publicados en Santiago." || DEPTOS_COPY.queB !== "Cada semana te manda los que convienen como inversión con tu pie." || DEPTOS_COPY.anoche(5315) !== "Anoche, 5.315 convenían.")
+        F("10 · la frase de arriba no dice qué es con las cifras de la noche");
+      // La búsqueda por defecto: Santiago, 2D, UF 3.000 a 4.000.
+      if (JSON.stringify(ELECCIONES_POR_DEFECTO.comunas) !== '["Santiago"]' || ELECCIONES_POR_DEFECTO.tipologias[0] !== "2" || ELECCIONES_POR_DEFECTO.rango !== "3000-4000") F("10 · la página no arranca con Santiago, 2D, UF 3.000 a 4.000");
+      // El resumen de la noche cuenta lo mismo que la respuesta: deptos_conteo sobre toda la cobertura, sumado.
+      const llamadas: Array<Record<string, unknown>> = [];
+      const rpcFalso = { rpc: async (n: string, a: Record<string, unknown>) => { llamadas.push({ n, ...a }); return { data: [{ comuna: "Santiago", total: 600, comprar_20: 4, comprar_30: 9 }, { comuna: "Ñuñoa", total: 400, comprar_20: 17, comprar_30: 30 }], error: null }; } };
+      const rn = await resumenDeLaNoche(rpcFalso as never, new Date("2026-10-17T12:00:00Z"));
+      const ll = llamadas[0] as { n?: string; comunas?: string[]; uf_min?: number; uf_max?: number; dorms?: number[] } | undefined;
+      if (rn?.revisados !== 1000 || rn.convienen !== 21 || ll?.n !== "deptos_conteo" || ll.comunas?.length !== COMUNAS_DISPONIBLES.length || ll.uf_min !== 0 || (ll.uf_max ?? 0) < 1e6 || !ll.dorms?.includes(0) || !ll.dorms?.includes(5))
+        F(`10 · el resumen de la noche no cuenta lo mismo que la respuesta (${JSON.stringify(rn)})`);
+      // El número y el correo desde el primer segundo: la respuesta por defecto viene del servidor y no se vuelve a pedir.
+      const cliD = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
+      if (!/const \[respuesta, setRespuesta\] = useState<RespuestaDeptos \| null>\(portada\?\.inicial \?\? null\);/.test(cliD)
+        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.ELECCIONES_POR_DEFECTO\.comunas\]\);/.test(cliD)
+        || !/const \[rango, setRango\] = useState<string>\(ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
+        || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca con el número de la búsqueda por defecto desde el servidor");
+      if (!/const portada = await portadaDeptos\(\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
+        F("10 · /deptos o la página del invitado no traen la portada del servidor");
+      // El orden: qué es, la cifra de anoche, el número, la banda del correo y, debajo, «Afina tu búsqueda» con los chips.
+      const el = cliD.slice(cliD.indexOf('data-deptos="elegir"'));
+      const ord = ['data-deptos="que"', 'data-deptos="anoche"', 'data-deptos="respuesta"', 'data-deptos="banda"', 'data-deptos="afina"', 'data-pregunta="comuna"', 'data-pregunta="rango"'].map((t) => el.indexOf(t));
+      if (ord.some((i) => i < 0) || ord.some((i, k) => k > 0 && i < ord[k - 1])) F("10 · el orden no es qué es, anoche, el número, la banda del correo y «Afina tu búsqueda» con los chips");
+      // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color.
+      const cssD = leer("src/app/deptos/deptos.css");
+      if (!/\.dp-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(cssD) || !/\.dp-banda \.dp-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(cssD))
+        F("10 · el correo no va en la banda (degradado, texto blanco, un botón)");
+      if ((cssD.match(/url\(|linear-gradient|radial-gradient/g) ?? []).length !== 3) F("10 · hay otro fondo con color en la página además de la banda");
+      // Los chips, planos y compactos.
+      if (!/\.dp-afina \.dp-chip \{ min-height: 30px;[^}]*border-color: transparent;/.test(cssD)) F("10 · los chips de «Afina tu búsqueda» no son planos y compactos");
+      // Siempre hay una comuna: sin ella no habría número.
+      if (!/xs\.includes\(c\) \? \(xs\.length === 1 \? xs : xs\.filter\(\(x\) => x !== c\)\)/.test(cliD)) F("10 · se puede soltar la última comuna y quedar sin número");
+      // La página del invitado: el mismo tratamiento, con su línea «Te invitaron a Franco» arriba y la dirección al final.
+      const invD = sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx"));
+      if (!/portada=\{portada\}\s+cabecera=\{linea\}\s+pie=\{/.test(invD) || !/<b data-invitacion="titular">\{titular\}<\/b>/.test(invD)) F("10 · la página del invitado no tiene el mismo tratamiento con «Te invitaron a Franco» arriba");
     }
   } finally {
     if (posthog === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = posthog;
