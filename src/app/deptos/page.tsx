@@ -15,11 +15,11 @@ import { DeptosCliente } from "./deptos-cliente";
 
 export const metadata: Metadata = {
   title: DEPTOS_COPY.titular,
-  description: "Cada noche Franco revisa los deptos publicados en Santiago. Cada semana te manda los que convienen como inversión con tu pie.",
+  description: "Cada noche Franco revisa los deptos en venta publicados en Santiago. Cada semana te manda los que convienen como inversión con tu pie.",
   alternates: { canonical: "/deptos" },
   openGraph: {
     title: DEPTOS_COPY.titular,
-    description: "Cada noche Franco revisa los deptos publicados en Santiago. Cada semana te manda los que convienen como inversión con tu pie.",
+    description: "Cada noche Franco revisa los deptos en venta publicados en Santiago. Cada semana te manda los que convienen como inversión con tu pie.",
     url: "https://refranco.ai/deptos",
     siteName: "Franco",
     locale: "es_CL",

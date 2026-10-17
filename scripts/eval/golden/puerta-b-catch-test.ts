@@ -51,7 +51,8 @@
 //       mismas con que se cuenta la respuesta); la búsqueda por defecto (Santiago, 2D, UF 3.000 a 4.000) con su número
 //       desde el servidor; justo debajo, la banda del correo —lo único con color—; y «Afina tu búsqueda» con los chips
 //       planos. La página del invitado, igual, con su línea arriba. Dieciséis mutaciones nuevas (E1–E16) y cuatro anclas
-//       de la sección 8 reescritas para la banda; con N9 al día (su patrón era de la sangría vieja), 87/87 en ROJO.
+//       de la sección 8 reescritas para la banda; con N9 al día (su patrón era de la sangría vieja), 87/87 en ROJO. Y E17: la
+//       frase dice «deptos EN VENTA» (decisión de Fabrizio, para no chocar con el +40.000 de la landing): 88/88.
 //
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/puerta-b-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -461,7 +462,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
     // ── 10 · SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026) ──
     {
       // Qué es, en una frase, con las cifras de la noche (el total redondeado a miles; los que convenían, exactos).
-      if (DEPTOS_COPY.que(21453) !== "Cada noche Franco revisa los 21.000 deptos publicados en Santiago." || DEPTOS_COPY.queB !== "Cada semana te manda los que convienen como inversión con tu pie." || DEPTOS_COPY.anoche(5315) !== "Anoche, 5.315 convenían.")
+      if (DEPTOS_COPY.que(21453) !== "Cada noche Franco revisa los 21.000 deptos en venta publicados en Santiago." || DEPTOS_COPY.queB !== "Cada semana te manda los que convienen como inversión con tu pie." || DEPTOS_COPY.anoche(5315) !== "Anoche, 5.315 convenían.")
         F("10 · la frase de arriba no dice qué es con las cifras de la noche");
       // La búsqueda por defecto: Santiago, 2D, UF 3.000 a 4.000.
       if (JSON.stringify(ELECCIONES_POR_DEFECTO.comunas) !== '["Santiago"]' || ELECCIONES_POR_DEFECTO.tipologias[0] !== "2" || ELECCIONES_POR_DEFECTO.rango !== "3000-4000") F("10 · la página no arranca con Santiago, 2D, UF 3.000 a 4.000");

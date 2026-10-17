@@ -125,9 +125,11 @@ export const DEPTOS_COPY = {
   /**
    * QUÉ ES, EN UNA FRASE (17-oct-2026, decisión de Fabrizio), con las cifras de la evaluación de la noche: las mismas con
    * que se cuenta la respuesta de abajo (deptos publicados en la última semana con arriendo de referencia; resumenDeLaNoche).
+   * «EN VENTA» (17-oct-2026, decisión de Fabrizio): el +40.000 de la landing son los comparables de venta Y arriendo
+   * (src/lib/stats.ts); sin decir «en venta», las dos cifras se leían como si se contradijeran.
    */
   que: (revisados: number | null) =>
-    revisados ? `Cada noche Franco revisa los ${milesRedondos(revisados)} deptos publicados en Santiago.` : "Cada noche Franco revisa los deptos publicados en Santiago.",
+    revisados ? `Cada noche Franco revisa los ${milesRedondos(revisados)} deptos en venta publicados en Santiago.` : "Cada noche Franco revisa los deptos en venta publicados en Santiago.",
   queB: "Cada semana te manda los que convienen como inversión con tu pie.",
   anoche: (convienen: number) => `Anoche, ${miles(convienen)} convenían.`,
   /** Los chips, debajo del correo. */

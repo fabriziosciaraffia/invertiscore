@@ -19,7 +19,7 @@
 // LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) usa esta misma pantalla con su cabecera, su puerta (C) y su página de
 // vuelta (`/i/CÓDIGO`): las mismas preguntas, el mismo alta, la misma entrada con Google.
 // SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026, decisión de Fabrizio): arriba, qué es, con las cifras de
-// la noche («Cada noche Franco revisa los 21.000 deptos publicados en Santiago…», «Anoche, 4.886 convenían.»); después el
+// la noche («Cada noche Franco revisa los 21.000 deptos en venta publicados en Santiago…», «Anoche, 4.886 convenían.»); después el
 // número de una búsqueda ya elegida (Santiago, 2D, UF 3.000 a 4.000), que trae el servidor; justo debajo, la banda del
 // correo —lo único con color, como el banner del informe—; y abajo, «Afina tu búsqueda», los chips planos que cambian el
 // número al toque.
