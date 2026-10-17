@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { CLAVE_GOOGLE, PREFIJO_GOOGLE, respuestaDeptos, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
@@ -26,6 +27,28 @@ export async function responderDeptos(admin: SupabaseClient, v: Ok, ahora: Date 
   const filas = ((data ?? []) as Array<{ comuna: string; total: number; comprar_20: number; comprar_30: number }>)
     .map((f): ConteoComuna => ({ comuna: f.comuna, total: Number(f.total) || 0, comprar20: Number(f.comprar_20) || 0, comprar30: Number(f.comprar_30) || 0 }));
   return respuestaDeptos(v, filas.filter((f) => v.comunas.includes(f.comuna)), filas.filter((f) => vecinas.includes(f.comuna)));
+}
+
+/** Lo que dice la frase de arriba de /deptos: cuántos deptos publicados revisó la noche y cuántos convenían con pie 20 %. */
+export interface ResumenNoche {
+  revisados: number;
+  convienen: number;
+}
+
+/**
+ * EL RESUMEN DE LA NOCHE (17-oct-2026): `deptos_conteo` sobre toda la cobertura, todas las tipologías y todos los precios
+ * —el mismo universo que la respuesta de cada búsqueda: publicados en la última semana, con arriendo de referencia—, así la
+ * frase y el número de abajo cuentan lo mismo. Null si falla: la frase sale sin cifra.
+ */
+export async function resumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
+  const { data, error } = await admin.rpc("deptos_conteo", {
+    comunas: [...COMUNAS_DISPONIBLES], dorms: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora),
+  });
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "resumen-noche" });
+  if (error || !data) return null;
+  const filas = data as Array<{ total: number; comprar_20: number }>;
+  const revisados = filas.reduce((s, f) => s + (Number(f.total) || 0), 0);
+  return revisados > 0 ? { revisados, convienen: filas.reduce((s, f) => s + (Number(f.comprar_20) || 0), 0) } : null;
 }
 
 /** Lo elegido desde la URL (`?c=Ñuñoa,Macul&t=2,3&r=3000-4000&m=ltr`). */

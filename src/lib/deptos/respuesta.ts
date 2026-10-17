@@ -55,6 +55,12 @@ export const MODALIDADES_DEPTOS: ReadonlyArray<{ id: ModalidadDeptos; chip: stri
 ];
 export const MODALIDAD_POR_DEFECTO: ModalidadDeptos = "ltr";
 
+/**
+ * LA BÚSQUEDA CON QUE ARRANCA LA PÁGINA (17-oct-2026, decisión de Fabrizio): Santiago, 2D, UF 3.000 a 4.000. El número y el
+ * correo están desde el primer segundo —el servidor ya trae la respuesta— y los chips de abajo la afinan.
+ */
+export const ELECCIONES_POR_DEFECTO = { comunas: ["Santiago"], tipologias: [TIPOLOGIA_POR_DEFECTO], rango: "3000-4000", modalidad: MODALIDAD_POR_DEFECTO } as const;
+
 export interface EleccionesDeptos {
   comunas: string[];
   tipologias: string[];
@@ -108,8 +114,24 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 export const lista = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
 const siConvienen = (n: number) => `${miles(n)} sí ${n === 1 ? "conviene" : "convienen"}`;
 
+/** El total de la frase de arriba, redondeado a miles como se dice («21.453» → «21.000»); bajo diez mil, exacto. */
+export function milesRedondos(n: number): string {
+  return n >= 10_000 ? miles(Math.round(n / 1000) * 1000) : miles(n);
+}
+
 export const DEPTOS_COPY = {
+  /** El título de la pestaña y de la vista previa del enlace. */
   titular: "Cada semana, los deptos que convienen",
+  /**
+   * QUÉ ES, EN UNA FRASE (17-oct-2026, decisión de Fabrizio), con las cifras de la evaluación de la noche: las mismas con
+   * que se cuenta la respuesta de abajo (deptos publicados en la última semana con arriendo de referencia; resumenDeLaNoche).
+   */
+  que: (revisados: number | null) =>
+    revisados ? `Cada noche Franco revisa los ${milesRedondos(revisados)} deptos publicados en Santiago.` : "Cada noche Franco revisa los deptos publicados en Santiago.",
+  queB: "Cada semana te manda los que convienen como inversión con tu pie.",
+  anoche: (convienen: number) => `Anoche, ${miles(convienen)} convenían.`,
+  /** Los chips, debajo del correo. */
+  afina: "Afina tu búsqueda",
   /** En una línea, también en el teléfono. */
   bajada: "Elige y Franco te dice cuántos convienen hoy.",
   comuna: "Comuna",
