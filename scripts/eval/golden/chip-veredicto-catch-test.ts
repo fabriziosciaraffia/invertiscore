@@ -145,7 +145,7 @@ export function runChipVeredictoTier(): { hard: number } {
     const arch = sinComentarios(leer("src/app/dashboard/archive.tsx"));
     // ⚠ ACTA (17-oct-2026, goal «una sola lista») · «Continuar» salió del dashboard (continuar.tsx se retiró) y en el
     // teléfono la lista es de tarjetas de una línea, una por informe: el chip va en la tabla y en la tarjeta (2).
-    if ((arch.match(/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/g) ?? []).length < 2) F("7 · el archivo del dashboard no dibuja el veredicto de sus filas con ChipVeredicto (tabla y teléfono)");
+    if ((arch.match(/<ChipVeredicto v=\{veredictoDisplay\(row\)\}( compacto)? \/>/g) ?? []).length < 2) F("7 · el archivo del dashboard no dibuja el veredicto de sus filas con ChipVeredicto (tabla y teléfono)");
     const onb = sinComentarios(leer("src/app/dashboard/bienvenida.tsx")); // la bienvenida reemplazó a onboarding-client el 29-sep-2026
     for (const v of ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"]) if (!onb.includes(`<ChipVeredicto v="${v}" />`)) F(`7 · el onboarding no muestra ${v} con ChipVeredicto`);
     const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
@@ -171,6 +171,12 @@ export function runChipVeredictoTier(): { hard: number } {
     if (texto !== `${signoVeredicto(v)} ${etiquetaVeredicto(v, "frase")}`) F(`6 · el chip de ${v} dice «${texto}», no el signo y la etiqueta de la fuente única`);
     const s = renderToStaticMarkup(createElement(ChipVeredicto, { v, variante: "sobre-fondo" }));
     if (!s.includes(`class="chip-v ${CL[v]} sobre"`)) F(`6 · la variante sobre fondo de ${v} no lleva la clase «sobre»`);
+    // COMPACTO (17-oct-2026, la tarjeta de una línea del dashboard en el teléfono): el signo con su color, y la etiqueta
+    // de la fuente única en el título y para el lector de pantalla. Verificado en rojo (17-oct-2026): K1 sin la etiqueta en el título.
+    const k = renderToStaticMarkup(createElement(ChipVeredicto, { v, compacto: true }));
+    const etq = etiquetaVeredicto(v, "frase");
+    if (!k.includes(`class="chip-v ${CL[v]} compacto"`) || k.replace(/<[^>]+>/g, "").trim() !== signoVeredicto(v) || !k.includes(`title="${etq}"`) || !k.includes(`aria-label="${etq}"`))
+      F(`6 · el chip compacto de ${v} no es el signo con su clase y la etiqueta en el título: ${k}`);
   }
   if (signoVeredicto("AJUSTA SUPUESTOS") !== "−") F("6 · el signo de Ajustar dejó de ser «−» (decisión de Fabrizio del 25-sep: el «~» de los mockups fue un error)");
 

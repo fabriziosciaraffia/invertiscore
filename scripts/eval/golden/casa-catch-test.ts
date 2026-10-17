@@ -292,7 +292,7 @@ export function runCasaTier(): { hard: number } {
     if (!/<tr\s+className=\{`group relative /.test(fila) || !/<EnlaceCarga href=\{abrir\} aria-hidden="true" tabIndex=\{-1\} className="absolute inset-0 z-0" \/>/.test(fila) || !/<EnlaceCarga href=\{abrir\} aria-label=\{displayDireccion\(row\)\} className="absolute inset-0 z-0" \/>/.test(tel)) F("11 · la fila entera no abre el informe");
     // En el teléfono: una línea —nombre, veredicto, flujo y fecha—; los filtros de lado; buscar y agrupar se quedan.
     const li = tel.slice(tel.indexOf("<li"), tel.indexOf("</li>"));
-    const piezas = [": displayDireccion(row)}", "<ChipVeredicto v={veredictoDisplay(row)} />", "{fmtCLPSigned(flujo)}", "{fmtFechaCorta(row.created_at)}"].map((t) => li.indexOf(t));
+    const piezas = [": displayDireccion(row)}", "<ChipVeredicto v={veredictoDisplay(row)} compacto />", "{fmtCLPSigned(flujo)}", "{fmtFechaCorta(row.created_at)}"].map((t) => li.indexOf(t));
     if (piezas.some((i) => i < 0) || piezas.some((i, k) => k > 0 && i < piezas[k - 1]) || /flex-wrap|<div className="mt-1/.test(li) || !/className=\{`relative flex min-h-\[48px\] items-center/.test(li)) F("11 · en el teléfono la tarjeta no es una línea con nombre, veredicto, flujo y fecha");
     if (!/className="-mx-3 mt-2\.5 flex flex-nowrap items-center gap-1\.5 overflow-x-auto px-3 [^"]*md:flex-wrap/.test(arch)) F("11 · en el teléfono los filtros no se desplazan de lado");
     if (!/<ArchiveSearch params=\{params\} \/>/.test(arch) || !/href=\{buildHref\(params, \{ group: !params\.group, open: \[\] \}\)\}\s*role="switch"/.test(arch) || !/Agrupar por propiedad\s*<\/EnlaceCarga>/.test(arch)) F("11 · se fueron buscar o agrupar por propiedad");
@@ -356,4 +356,5 @@ if (require.main === module) {
 //   L11 la página no pasa el origen · L12 «Míos» cuenta todo · L13 «Míos» sin conteo · L14 un ?sort= viejo ordena · L15
 //   la página ordena por otra cosa · L16 vuelve «Cap» · L17 sin modalidad · L18 la fila no abre el informe · L19 la
 //   tarjeta en dos líneas · L20 la tarjeta sin fecha · L21 los filtros no van de lado · L22 se va «Agrupar por
-//   propiedad» · L23 otro nombre para el filtro. 23/23 ROJO.
+//   propiedad» · L23 otro nombre para el filtro. 23/23 ROJO. Y al pasar la tarjeta del teléfono al chip compacto (con
+//   el entero, un nombre con la marca quedaba en «De…»): K2 la tarjeta vuelve al chip entero. ROJO.
