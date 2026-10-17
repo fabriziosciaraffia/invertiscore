@@ -78,7 +78,9 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAbierto((v) => !v); }}
           aria-label="Acciones del análisis"
           aria-expanded={abierto}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--franco-border)] text-[var(--franco-text-secondary)]"
+          // Sin borde y angosto (17-oct-2026): vive al final de la tarjeta de una línea del teléfono, que necesita el ancho
+          // para el nombre y el veredicto entero.
+          className="flex h-8 w-6 items-center justify-center rounded-md text-[var(--franco-text-secondary)]"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>

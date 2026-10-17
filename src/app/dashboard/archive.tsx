@@ -455,8 +455,8 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               </table>
             </div>
 
-            {/* ── En el teléfono: tarjetas de UNA línea —nombre, veredicto, flujo y fecha—. El veredicto va compacto (el signo
-                con su color; la etiqueta en el título): con el chip entero, un nombre con la marca «Franco» quedaba en «De…». En agrupado, el padre es una
+            {/* ── En el teléfono: tarjetas de UNA línea —nombre, veredicto, flujo y fecha—. El veredicto va entero, con la
+                tríada, un punto más chico; y el «···» sin borde: así el nombre de un informe con la marca «Franco» se lee. En agrupado, el padre es una
                 línea con su chevron y cuántos análisis tiene, y sus hijas aparecen debajo al expandir. ── */}
             <ul className="md:hidden" data-archivo="lista-telefono">
               {(agrupado ? aplanarParaMobile(items, params) : rows.map((row): ItemMobile => ({ row })))
@@ -471,7 +471,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                   return (
                     <li
                       key={`${row.id}-${esHija ? "h" : "p"}-${idx}`}
-                      className={`relative flex min-h-[48px] items-center gap-1.5 border-b border-[var(--franco-border)] px-3 py-2 last:border-b-0 ${
+                      className={`relative flex min-h-[48px] items-center gap-1 [&_.chip-v]:px-1.5 [&_.chip-v]:text-[11.5px] [&_[data-archivo=franco]]:px-1 [&_[data-archivo=franco]]:text-[10.5px] border-b border-[var(--franco-border)] px-3 py-2 last:border-b-0 ${
                         esHija ? "pl-7 bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]" : ""
                       }`}
                       data-archivo="tarjeta"
@@ -485,7 +485,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
 
                       {esGrupo && <Chevron abierto={abierto} />}
 
-                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <span className="flex min-w-0 flex-1 items-center gap-1">
                         <span className="truncate text-[14px] font-semibold text-[var(--franco-text)]">
                           {esHija ? (mostrarPrecio ? fmtUF(Number(row.precio)) : modalidadLabel(row) === "CORTA" ? "Renta corta" : modalidadLabel(row) === "AMBAS" ? "Ambas" : "Renta larga") : displayDireccion(row)}
                         </span>
@@ -496,11 +496,11 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                         )}
                       </span>
 
-                      {!esGrupo && <ChipVeredicto v={veredictoDisplay(row)} compacto />}
-                      <span className="shrink-0 text-[13px] font-medium tabular-nums" style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
+                      {!esGrupo && <ChipVeredicto v={veredictoDisplay(row)} />}
+                      <span className="shrink-0 text-[12.5px] font-medium tabular-nums" style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
                         {fmtCLPSigned(flujo)}
                       </span>
-                      <span className="shrink-0 text-[12px] text-[var(--franco-text-muted)]">{fmtFechaCorta(row.created_at)}</span>
+                      <span className="shrink-0 text-[11.5px] text-[var(--franco-text-muted)]">{fmtFechaCorta(row.created_at)}</span>
 
                       {/* El padre no tiene acciones propias: no es un análisis. */}
                       {!esGrupo && (
