@@ -130,7 +130,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const iGeo = ruta.indexOf("await reverseGeocode("), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iSaldo < 0 || iSin < iSaldo || iGeo < iSin || iMide < iSin) F("4 · la ruta de renta corta consulta (dirección o proveedor) antes de saber que no quedan análisis");
     // El dashboard y la bienvenida: el saldo arriba.
-    if (!/<SaldoCasa estado=\{saldo\} informes=\{stats\.total\} \/>/.test(dash) || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está arriba en el dashboard (con informes y vacío)");
+    // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · en la casa, arriba manda el banner según el estado (tier CASA §9) y
+    // el saldo o el plan va plano, justo después de «Invita a alguien»; en la bienvenida, igual que antes. Verificado en rojo: SA1 sin el saldo plano.
+    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
     // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
     if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
       F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");
@@ -222,8 +224,11 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const elegida = [deEstaSemana(filasS), deEstaSemana([...filasS].reverse()), deEstaSemana([filasS[1], filasS[2], filasS[0]])].map((x) => x?.id).join();
     if (elegida !== "nueva,nueva,nueva" || deEstaSemana([filasS[2]]) !== null) F(`7 · la selección de esta semana no es la más reciente con deptos (${elegida})`);
     if (!/const fila = deEstaSemana\(/.test(cuerpo(srv, "export async function seleccionDeEstaSemana("))) F("7 · /semanal sin token no elige la más reciente con deptos");
-    if (!/seleccionDeEstaSemana\(admin, user\.id\),/.test(dash) || !/const resumen = seleccion \? resumenSeleccion\(seleccion\) : \[\];/.test(dash) || !/<SeleccionCasa bloques=\{resumen\} \/>/.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
-    if (!/<EnlaceCarga href=\{SELECCION_CASA\.href\} className=\{botonBorde\} data-casa="ver-seleccion">/.test(casa)) F("7 · el bloque del dashboard no enlaza a la página semanal");
+    // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · «Tu selección de esta semana» es el estado de arriba del banner
+    // cuando la hay (casa-arriba.ts), en las dos casas; el detalle de la jerarquía, en el tier CASA §9.
+    // Verificado en rojo: SA2 la selección sin su título en el banner · SA3 la casa no le pasa la selección al bloque.
+    if (!/seleccionDeEstaSemana\(admin, user\.id\),/.test(dash) || !/const resumen = seleccion \? resumenSeleccion\(seleccion\) : \[\];/.test(dash) || !/bloqueDeArriba\(\{ seleccion: resumen,/.test(dash) || !/<BloqueArribaCasa bloque=\{arriba\} /.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
+    if (!/<h1 className="ca-banda-t">\{SELECCION_CASA\.titulo\}<\/h1>/.test(casa) || !/<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">/.test(casa)) F("7 · el bloque del dashboard no enlaza a la página semanal");
     if (!/if \(t && !TOKEN\.test\(t\)\) redirect\("\/dashboard"\);/.test(pagina) || !/const sel = t \? await seleccionPorToken\(admin, t\) : await seleccionDeEstaSemana\(admin, user\.id\);/.test(pagina) || /token=\{t\}/.test(pagina))
       F("7 · /semanal sin token no abre la selección de esta semana de quien entró");
     // Con la base real: la de esta semana de alguien que tiene una, con su token; y nadie más la ve por sesión.

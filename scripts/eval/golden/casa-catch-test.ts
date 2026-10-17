@@ -17,6 +17,12 @@
 //       en el error.
 //   8 · «TUS INFORMES» EN EL SISTEMA NUEVO (02-oct-2026): Inter, sin mono ni mayúsculas espaciadas, como
 //       las tarjetas de la guía (continuar, la tira de cifras, el archivo y sus piezas).
+//   9 · LA CASA VENDE (17-oct-2026, decisión de Fabrizio): UNA jerarquía. Arriba, en banner (el material del informe y de
+//       /deptos), lo más importante según el estado —la selección de esta semana; sin análisis, el pack; con un regalo
+//       sin usar, el regalo; si no, analizar—, un bloque y un botón; debajo, «Invita a alguien» con su propio color;
+//       después, plano, el saldo, el perfil compacto y los informes. Con el pie de los informes.
+//  10 · EL MENÚ DE COMPARTIR (17-oct-2026): «Invita a alguien · Los dos reciben un análisis» va primero y destacado con
+//       el color de «Invita a alguien» del dashboard.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/casa-catch-test.ts
@@ -25,6 +31,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CASA } from "../../../src/app/dashboard/casa-copy";
 import { estadoSaldo } from "../../../src/lib/casa-saldo";
+import { CASA_ARRIBA, bloqueDeArriba } from "../../../src/lib/casa-arriba";
+import type { ResumenBloque } from "../../../src/lib/guia/seleccion-casa";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil, type FilaPerfilInforme } from "../../../src/lib/perfil-busqueda";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -75,7 +83,12 @@ export function runCasaTier(): { hard: number } {
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · los regalos son tres (registrarse, reactivación y el viejo de los 14 días):
   // el vencimiento sale de sus lotes, cualquiera de las tres fuentes (regalo-alta.ts › FUENTES_REGALO).
   if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && FUENTES_REGALO\.has\(g\.source\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
-  if (!/estado\.tipo === "regalo" && estado\.vence \? textoVence\(estado\.vence\)/.test(sinComentarios(leer("src/app/dashboard/casa.tsx")))) F("2 · el dashboard no dice cuándo vence el regalo");
+  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el regalo dice cuándo vence en el banner de arriba y, si arriba manda
+  // otra cosa, en el saldo plano.
+  {
+    const c2 = sinComentarios(leer("src/app/dashboard/casa.tsx"));
+    if (!c2.includes('{bloque.vence ? `${textoVence(bloque.vence)} ` : ""}{CASA_ARRIBA.regalo.bajada}') || !c2.includes('estado.tipo === "regalo" ? `${CASA.regalo.titulo}${estado.vence ? ` ${textoVence(estado.vence)}` : ""}`')) F("2 · el dashboard no dice cuándo vence el regalo");
+  }
   const con = e({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
   if (con.tipo !== "con" || con.n !== 3 || !con.noVencen) F("2 · con 3 (uno regalado) no es «con 3, no vencen»");
   const vence = e({ disponibles: 2, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false });
@@ -114,9 +127,11 @@ export function runCasaTier(): { hard: number } {
   // 5 · el orden
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la cuenta sin informes con su perfil a mano tiene su propia casa más arriba
   // (selección del día, regalo y perfil): el orden se mide en la casa de quien tiene informes, desde su consulta.
+  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el orden es el de §9: arriba el banner, después «Invita a alguien» y,
+  // planos, el saldo, la guía del pack, el perfil y los informes. Las dos casas se miden en §9.
   const casaConInformes = pag.slice(pag.indexOf("const recientes = await queryDashboardRows("));
-  const orden = ["<SaldoCasa estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Continuar ", "<Archive"].map((t) => casaConInformes.indexOf(t));
-  if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · el orden de la casa no es saldo → selección → perfil → informes (${orden.join(",")})`);
+  const orden = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", "<SaldoPlano estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Continuar ", "<Archive"].map((t) => casaConInformes.indexOf(t));
+  if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · el orden de la casa no es banner → invitar → saldo → guía → perfil → informes (${orden.join(",")})`);
   if (!/const guiaCasa = packOrigenId && packPerfil && hayGuia\(/.test(pag) || !/saldo\.tipo === "con"/.test(pag) || !/\.eq\("product", "pack3"\)\.eq\("status", "paid"\)/.test(pag)) F("5 · la selección no depende de un pack pagado con saldo y guía activa");
   if (!/comprador=\{!!guiaCasa\}/.test(pag)) F("5 · la bajada del perfil no distingue al comprador");
   const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
@@ -139,8 +154,10 @@ export function runCasaTier(): { hard: number } {
   if (/oportunidad|portafolio|exclusivo/i.test(todos)) F("7 · aparece una vedada");
   const frases = [...exactos.map((x) => x[0]), CASA.sin.titulo(4), CASA.plan.titulo, CASA.plan.bajada, CASA.perfil.cuando, ...Object.values(CASA.perfil.horizonte), ...Object.values(CASA.perfil.respondido), CASA.perfil.error];
   for (const t of frases) if (VOSEO.test(t)) F(`7 · voseo: «${t}»`);
+  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el botón del pack pasó al banner, en papel sobre el material, como el
+  // botón del banner del informe y el de /deptos: el único rojo de la casa es el del error.
   const rojos = casa.match(/signal-red/g) ?? [];
-  if (rojos.length !== 2 || !/style=\{\{ background: "var\(--signal-red\)" \}\} data-casa="comprar-tres"/.test(casa) || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del botón de compra y del error (${rojos.length})`);
+  if (rojos.length !== 1 || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del error (${rojos.length})`);
   if (/font-mono|uppercase/.test(casa)) F("7 · la casa usa mono o mayúsculas");
 
   // 8 · «Tus informes» en el sistema nuevo
@@ -152,7 +169,84 @@ export function runCasaTier(): { hard: number } {
   if (!/data-casa="pagina" style=\{\{ fontFamily: "var\(--font-ui\), Inter/.test(pag)) F("8 · el dashboard no va en Inter");
   if (!/TEXTO_MODALIDAD\[label\]/.test(sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx")))) F("8 · el chip de modalidad no dice «Larga/Corta/Ambas»");
 
-  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, el pack de tres con el suelto debajo y sin el ticket, orden, escritura del servidor");
+  // 9 · la casa vende: una jerarquía según el estado
+  {
+    const sel: ResumenBloque[] = [{ modalidad: "ltr", titulo: "Para arriendo tradicional", texto: "", deptos: 3, conteos: [{ v: "COMPRAR", n: 3 }] }];
+    const sin = estadoSaldo({ disponibles: 0, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false });
+    const regalo = estadoSaldo({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: "2026-11-16T12:00:00Z", todoSinCaducidad: false });
+    const conRegalo = estadoSaldo({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
+    const con = estadoSaldo({ disponibles: 2, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: true });
+    const plan = estadoSaldo({ disponibles: 0, plan: true, suscripcion: true, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
+    const b = (seleccion: ResumenBloque[] | null, saldo: typeof sin, regaloRestante = 0, regaloVence: string | null = null) => bloqueDeArriba({ seleccion, saldo, regaloRestante, regaloVence });
+    if (b(sel, sin).tipo !== "seleccion" || b(sel, regalo, 1).tipo !== "seleccion") F("9 · con selección de esta semana, arriba no manda la selección");
+    if (b(null, sin).tipo !== "pack" || b([], sin).tipo !== "pack") F("9 · sin análisis y sin selección, arriba no va el pack");
+    const r = b(null, regalo, 1, "2026-11-16T12:00:00Z");
+    if (r.tipo !== "regalo" || r.vence !== "2026-11-16T12:00:00Z") F("9 · con un regalo sin usar, arriba no va «Tienes un análisis de regalo» con su vencimiento");
+    if (b(null, conRegalo, 1).tipo !== "regalo") F("9 · un regalo sin usar junto a análisis pagados no se anuncia");
+    if (b(null, con).tipo !== "analizar" || b(null, plan, 1).tipo !== "analizar") F("9 · con saldo pagado o con el plan, arriba no lleva a analizar (o el plan anuncia un regalo)");
+
+    // Lo cablea la página, en las dos casas, con el regalo leído del ledger.
+    if (!/const arriba = bloqueDeArriba\(\{ seleccion: resumen, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba\} informes=\{stats\.total\} \/>/.test(pag)) F("9 · la casa con informes no decide el bloque de arriba con bloqueDeArriba");
+    if (!/seleccionDeEstaSemana\(admin, user\.id\)\]\);/.test(pag) || !/const arriba0 = bloqueDeArriba\(\{ seleccion: seleccion0 \? resumenSeleccion\(seleccion0\) : null, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba0\} informes=\{0\} \/>/.test(pag)) F("9 · la casa sin informes no decide el bloque de arriba (o no lee su selección)");
+    // El orden de las dos casas: banner → invitar → (plano) saldo → … ; «Invita a alguien» fuera de lo plano.
+    const casaSin = pag.slice(pag.indexOf("const arriba0 = "), pag.indexOf("<AppFooter"));
+    const ordenSin = ["<BloqueArribaCasa bloque={arriba0}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba0.tipo} />", "<PrimerosDeptos ", "<PerfilBusquedaCasa"].map((t) => casaSin.indexOf(t));
+    if (ordenSin.some((i) => i < 0) || ordenSin.some((i, k) => k > 0 && i < ordenSin[k - 1])) F(`9 · la casa sin informes no es banner → invitar → plano (saldo, primeros, perfil) (${ordenSin.join(",")})`);
+    const ordenCon = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba.tipo} />"].map((t) => casaConInformes.indexOf(t));
+    if (ordenCon.some((i) => i < 0) || ordenCon.some((i, k) => k > 0 && i < ordenCon[k - 1])) F(`9 · en la casa con informes, «Invita a alguien» no queda entre el banner y lo plano (${ordenCon.join(",")})`);
+    if (/<h1/.test(pag)) F("9 · la página tiene un título propio además del banner (el saludo volvió a ser el h1)");
+    if ((pag.match(/<AppFooter variant="informe" \/>/g) ?? []).length !== 2) F("9 · las dos casas no cierran con el pie de los informes");
+
+    // Un bloque, un botón: cada estado del banner tiene un título y UN botón, y va a su lugar.
+    const fn = casa.slice(casa.indexOf("export function BloqueArribaCasa("), casa.indexOf("export function SaldoPlano("));
+    const ramas = fn.split(/if \(bloque\.tipo === "|\n  return \(/).slice(1);
+    const destino: Record<string, RegExp> = {
+      seleccion: /<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">\s*\{SELECCION_CASA\.boton\}/,
+      pack: /<EnlaceCarga href=\{RUTA_TRES_CASA\} className="ca-banda-btn" data-casa="comprar-tres">\s*\{CASA\.sin\.boton\}/,
+      regalo: /<h1 className="ca-banda-t">\{CASA\.regalo\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
+      analizar: /<h1 className="ca-banda-t">\{CASA_ARRIBA\.analizar\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
+    };
+    if (ramas.length !== 4) F(`9 · el banner no tiene sus cuatro estados (${ramas.length})`);
+    for (const [k, rama] of ramas.entries()) {
+      const tipo = k < 3 ? rama.slice(0, rama.indexOf('"')) : "analizar";
+      if ((rama.match(/className="ca-banda-btn"/g) ?? []).length !== 1 || (rama.match(/<h1 className="ca-banda-t">/g) ?? []).length !== 1) F(`9 · el estado «${tipo}» del banner no es un título y un botón`);
+      if (!destino[tipo]?.test(rama)) F(`9 · el botón del estado «${tipo}» no va a su lugar`);
+      if (!new RegExp(`<section className="ca-banda" data-casa="arriba" data-arriba="${tipo}">`).test(rama)) F(`9 · el estado «${tipo}» no va en el banner`);
+    }
+    if (!/\{b\.conteos\.map\(\(c\) => \([\s\S]{0,200}<ChipVeredicto v=\{c\.v\} variante="sobre-fondo" \/>/.test(fn)) F("9 · la selección del banner no dice sus veredictos con la tríada");
+    // El banner es el material del informe; «Invita a alguien», otro color.
+    const css = leer("src/app/dashboard/casa.css");
+    if (!/\.ca-banda \{[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.ca-banda::after \{[^}]*grano-256\.png/.test(css) || !/\.ca-banda-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css)) F("9 · el bloque de arriba no es el banner (degradado, grano y botón en papel)");
+    if (!/\.ca-banda-t \{[^}]*font-family: var\(--font-heading\)/.test(css) || /\.ca-plano-t \{[^}]*font-family/.test(css)) F("9 · serif fuera de los títulos, o el título del banner sin serif");
+    const iv = leer("src/components/invitacion/invita.css");
+    const invita = sinComentarios(leer("src/components/invitacion/InvitaAlguien.tsx"));
+    if (!/if \(variante === "casa"\) \{\s*return \(\s*<section id="invitar" className="iv-destacado"/.test(invita) || !/\[data-theme="light"\] \.iv-destacado, \[data-theme="light"\] \.iv-menu \{ --iv-fondo: #0F0F0F;/.test(iv) || !/\.iv-destacado, \.iv-menu \{ --iv-fondo: #FAFAF8;[^}]*background: var\(--iv-fondo\)/.test(iv)) F("9 · «Invita a alguien» no tiene su propio color (tinta en claro, papel en oscuro)");
+    // Lo plano: sin tarjetas.
+    if (/rounded-2xl border|bg-\[var\(--franco-card\)\] p-4|\btarjeta\b/.test(casa)) F("9 · lo de abajo vuelve a ser tarjeta");
+    if (!/<div id="perfil" className="ca-plano-sec"/.test(casa) || !/<section className="ca-plano-sec" data-casa="saldo"/.test(casa) || !/<h2 className="ca-plano-t">\{CASA\.perfil\.titulo\}<\/h2>/.test(casa)) F("9 · el saldo o el perfil no van planos");
+    if (!/if \(estado\.tipo === "regalo" && arriba === "regalo"\) return null;/.test(casa) || !/\{arriba !== "pack" && \(\s*<EnlaceCarga href=\{RUTA_TRES_CASA\}/.test(casa)) F("9 · el saldo plano repite lo que ya dice el banner");
+    const exactos9: Array<[string, string]> = [
+      [CASA_ARRIBA.seleccionBajada, "Los deptos publicados que Franco revisó con tus números."],
+      [CASA_ARRIBA.pack.titulo, "Analiza tus próximos deptos."],
+      [CASA_ARRIBA.regalo.bajada, "Úsalo en el depto que quieras."],
+      [CASA_ARRIBA.analizar.titulo, "Analiza tu próximo depto."],
+      [CASA.sin.plano, "No te quedan análisis."],
+    ];
+    for (const [real, esperado] of exactos9) if (real !== esperado) F(`9 · «${real}» debía ser «${esperado}»`);
+    for (const t of [...exactos9.map((x) => x[0]), CASA_ARRIBA.analizar.bajada, CASA_ARRIBA.analizar.boton]) if (VOSEO.test(t)) F(`9 · voseo: «${t}»`);
+  }
+
+  // 10 · el menú de compartir: la invitación primero, con su color
+  {
+    const sb = sinComentarios(leer("src/components/chrome/ShareButton.tsx"));
+    if (!/<div data-compartir="menu" [^>]*>\s*\{!sinInvitacion && \(\s*<button onClick=\{\(\) => void invitar\(\)\} disabled=\{!invitacion\} className="iv-menu [^"]*" data-compartir="invitar">/.test(sb)) F("10 · «Invita a alguien» no es lo primero del menú, o no va con su color");
+    if ((sb.match(/data-compartir="invitar"/g) ?? []).length !== 1) F("10 · «Invita a alguien» aparece más de una vez en el menú");
+    if (!/\{invitaCopiada \? REFERIDO_COPY\.copiado : REFERIDO_COPY\.menuCompartir\}<\/span>\s*<span className="iv-m-nota [^"]*">\{REFERIDO_COPY\.menuCompartirNota\}/.test(sb)) F("10 · el ítem no dice «Invita a alguien · Los dos reciben un análisis»");
+    if (!/import "@\/components\/invitacion\/invita\.css";/.test(sb)) F("10 · el menú no carga el color de «Invita a alguien»");
+    if (!/else setSinInvitacion\(true\);/.test(sb)) F("10 · sin enlace de invitación, el ítem queda colgado en el menú");
+  }
+
+  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, el pack de tres con el suelto debajo y sin el ticket, orden, escritura del servidor; arriba el banner según el estado, «Invita a alguien» con su color, lo demás plano; la invitación primero en el menú de compartir");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -189,3 +283,17 @@ if (require.main === module) {
 //   del suelto al pack, con el suelto debajo; el ticket de $14.990 sigue fuera de la casa. K10 se invierte: K26 el botón
 //   vuelve al suelto · K27 sin el suelto debajo · K28 el ticket pack3 en la casa · K29 el rojo deja el botón del pack.
 //   4/4 ROJO; cada archivo restaurado byte a byte.
+//   17-oct-2026 (goal «el dashboard vende»): §2, §5 y §7 se reescriben (actas en línea) y entran §9 y §10. Mutaciones
+//   en la tabla de abajo (scratchpad mutar-casa.cjs), cada archivo restaurado byte a byte:
+//   J1 el pack tapa a la selección · J2 una selección vacía manda · J3 sin análisis no va el pack · J4 el regalo sin
+//   vencimiento · J5 el plan anuncia el regalo · J6 el regalo solo si es todo el saldo (§9, la decisión pura)
+//   J7 la casa con informes no decide · J8 la casa sin informes sin el regalo del ledger · J9 sin su selección · J10
+//   «Invita a alguien» dentro de lo plano · J11 el saludo vuelve a ser el h1 · J12 sin el pie · J27 la guía antes del
+//   saldo (§5/§9, el cableado y el orden)
+//   J13 dos botones en el pack · J14 la selección no lleva a /semanal · J15 el regalo fuera del banner · J16 sin la
+//   tríada · J17 el banner sin el material · J18 su botón en rojo · J19 «Invita a alguien» del color del banner · J20
+//   vuelve a tarjeta · J21 el perfil vuelve a tarjeta · J22 el saldo repite el regalo · J23 serif en lo plano · J24
+//   vuelve el rojo al pack (§7) · J25 otro título · J26 el banner del regalo sin la fecha (§2)
+//   M1 la invitación no es lo primero del menú · M2 sin su color · M3 sin el CSS · M4 dos veces · M5 sin «Los dos reciben
+//   un análisis» · M6 sin enlace queda colgado · M7 el menú con otro color que el dashboard (§10)
+//   34/34 ROJO.
