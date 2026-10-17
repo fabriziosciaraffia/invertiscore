@@ -61,10 +61,15 @@ export interface AnalisisDashboardRow {
   u_comprar: boolean;
   u_ajusta: boolean;
   u_buscar: boolean;
+  /** ¿Salió de un aviso que mostró Franco (la selección semanal, el aviso inmediato o la guía)? `input_data.origenAviso`
+   *  (migración 20261017_dashboard_de_franco.sql). Lo del wizard, false. */
+  de_franco: boolean;
 }
 
 export type ModalidadFilter = "todas" | "long-term" | "short-term" | "ambas";
 export type VeredictoFilter = "todos" | Veredicto;
+/** El origen (17-oct-2026): «De Franco» (salió de un aviso) o «Míos» (los trajo la persona por el wizard). */
+export type OrigenFilter = "todos" | "franco" | "mios";
 export type DashboardSortKey = "fecha" | "score" | "flujo" | "cap" | "multiplicador";
 export type SortDir = "asc" | "desc";
 
@@ -74,6 +79,7 @@ export interface DashboardQueryParams {
   q?: string;
   modalidad?: ModalidadFilter;
   veredicto?: VeredictoFilter;
+  origen?: OrigenFilter;
   sort?: DashboardSortKey;
   dir?: SortDir;
   /** Página 0-indexed. */
@@ -96,6 +102,8 @@ export interface DashboardStats {
   score_promedio: number;
   por_modalidad: { long_term: number; short_term: number; ambas: number };
   por_veredicto: Record<Veredicto, number>;
+  /** Unidades de Franco y propias (17-oct-2026): los conteos del filtro de origen. */
+  por_origen: { franco: number; mios: number };
 }
 
 export const DEFAULT_PAGE_SIZE = 25;
@@ -135,7 +143,7 @@ export function sanitizeSearch(raw: string): string {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function aplicarFiltros(query: any, p: {
-  userId: string; q?: string; modalidad: ModalidadFilter; veredicto: VeredictoFilter;
+  userId: string; q?: string; modalidad: ModalidadFilter; veredicto: VeredictoFilter; origen: OrigenFilter;
 }) {
   let out = query
     .eq("user_id", p.userId)
@@ -155,6 +163,11 @@ function aplicarFiltros(query: any, p: {
   // Veredicto: un par matchea si CUALQUIERA de sus dos lados lo tiene.
   if (p.veredicto !== "todos") {
     out = out.eq(VERDICT_COLUMN[p.veredicto], true);
+  }
+
+  // Origen: «De Franco» o «Míos». La columna nunca es NULL (coalesce en la vista), así que un eq(false) no se come filas.
+  if (p.origen !== "todos") {
+    out = out.eq("de_franco", p.origen === "franco");
   }
 
   if (p.q) {
@@ -182,9 +195,9 @@ export async function fetchAllUnits(
   params: Omit<DashboardQueryParams, "page" | "pageSize" | "sort" | "dir">,
   limite = 2000,
 ): Promise<AnalisisDashboardRow[]> {
-  const { userId, q, modalidad = "todas", veredicto = "todos" } = params;
+  const { userId, q, modalidad = "todas", veredicto = "todos", origen = "todos" } = params;
   const { data, error } = await aplicarFiltros(supabase.from(VIEW).select("*"), {
-    userId, q, modalidad, veredicto,
+    userId, q, modalidad, veredicto, origen,
   })
     .order("created_at", { ascending: false })
     .limit(limite);
@@ -210,6 +223,7 @@ export async function queryDashboardRows(
     q,
     modalidad = "todas",
     veredicto = "todos",
+    origen = "todos",
     sort = "fecha",
     dir = "desc",
     page = 0,
@@ -218,7 +232,7 @@ export async function queryDashboardRows(
 
   let query = aplicarFiltros(
     supabase.from(VIEW).select("*", { count: "exact" }),
-    { userId, q, modalidad, veredicto },
+    { userId, q, modalidad, veredicto, origen },
   );
 
   const column = SORT_COLUMN[sort] ?? SORT_COLUMN.fecha;
@@ -286,12 +300,21 @@ export async function fetchDashboardStats(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<DashboardStats> {
-  const { data, error } = await supabase.rpc("dashboard_stats", { p_user_id: userId });
+  // Los de Franco se cuentan aparte (la RPC no sabe de origen): las mismas unidades que lista el archivo.
+  const [{ data, error }, franco] = await Promise.all([
+    supabase.rpc("dashboard_stats", { p_user_id: userId }),
+    supabase.from(VIEW).select("id", { count: "exact", head: true })
+      .eq("user_id", userId).eq("pending_payment", false).eq("es_unidad", true).eq("de_franco", true),
+  ]);
   if (error) throw new Error(`dashboard-stats: ${error.message}`);
+  if (franco.error) throw new Error(`dashboard-stats (origen): ${franco.error.message}`);
 
   const raw = (data ?? {}) as Partial<DashboardStats>;
+  const total = raw.total ?? 0;
+  const deFranco = Math.min(franco.count ?? 0, total);
   return {
-    total: raw.total ?? 0,
+    por_origen: { franco: deFranco, mios: total - deFranco },
+    total,
     flujo_positivo: raw.flujo_positivo ?? 0,
     score_promedio: raw.score_promedio ?? 0,
     por_modalidad: raw.por_modalidad ?? { long_term: 0, short_term: 0, ambas: 0 },

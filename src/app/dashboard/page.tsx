@@ -28,15 +28,12 @@ import {
   fetchAllUnits,
   fetchAmbasSiblings,
   fetchDashboardStats,
-  type AnalisisDashboardRow,
 } from "@/lib/dashboard-query";
 import { agruparPorPropiedad, contarUnidades } from "./agrupar";
 import { Bienvenida, type PerfilBienvenida } from "./bienvenida";
 import { primerAnalisisGratis } from "./bienvenida-copy";
-import { Continuar } from "./continuar";
-import { StatsStrip } from "./stats-strip";
 import { Archive } from "./archive";
-import { parseParams, primeraFrase, PAGE_SIZE, sinDireccion } from "./dashboard-helpers";
+import { parseParams, PAGE_SIZE } from "./dashboard-helpers";
 // El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 
@@ -178,6 +175,7 @@ export default async function DashboardPage({
     q: params.q || undefined,
     modalidad: params.mod,
     veredicto: params.v,
+    origen: params.origen,
   };
 
   const tope = (params.page + 1) * PAGE_SIZE;
@@ -188,7 +186,8 @@ export default async function DashboardPage({
     fetchDashboardStats(supabase, user.id),
     params.group
       ? Promise.resolve(null)
-      : queryDashboardRows(supabase, { ...filtros, sort: params.sort, dir: params.dir, page: 0, pageSize: tope }),
+      // Una sola lista, por fecha, el más reciente arriba (17-oct-2026): sin orden por columna.
+      : queryDashboardRows(supabase, { ...filtros, sort: "fecha", dir: "desc", page: 0, pageSize: tope }),
     params.group ? fetchAllUnits(supabase, filtros) : Promise.resolve(null),
   ]);
 
@@ -215,40 +214,22 @@ export default async function DashboardPage({
     );
   }
 
-  // CONTINUAR ignora los filtros del archivo: son los 4 más recientes, siempre.
-  const recientes = await queryDashboardRows(supabase, {
-    userId: user.id,
-    sort: "fecha",
-    dir: "desc",
-    page: 0,
-    pageSize: 4,
-  });
-
-  // Los hermanos `str` de los pares AMBAS de ambas zonas, en una sola consulta,
-  // y el «Siendo franco:» de la card hero — en paralelo, no encadenados.
-  const groupIds = [...(todas ?? filasPagina), ...recientes.rows]
+  // «Continuar» y la tira de cifras salieron el 17-oct-2026 (decisión de Fabrizio): «Tus informes» es una sola lista.
+  // Los hermanos `str` de los pares AMBAS de la lista, en una sola consulta.
+  const groupIds = (todas ?? filasPagina)
     .map((r) => r.ambas_group_id)
     .filter((g): g is string => Boolean(g));
-  const hero: AnalisisDashboardRow | undefined = recientes.rows[0];
-
-  const [siblings, resumenRow] = await Promise.all([
-    fetchAmbasSiblings(supabase, user.id, groupIds),
-    // `resumen` es texto largo y no vive en la vista: se pide para UNA fila.
-    hero
-      ? supabase.from("analisis").select("resumen").eq("id", hero.id).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-
-  const heroResumen = primeraFrase(resumenRow?.data?.resumen);
 
   // La casa (02-oct-2026): el saldo, la selección del pack (si compró y le quedan) y el perfil de búsqueda. Desde el
-  // 14-oct-2026 también «Tu selección de esta semana» y, en el archivo, los informes que salieron de ella.
-  const sinDirIds = [...(todas ?? filasPagina)].filter(sinDireccion).map((r) => r.id);
-  const [perfilPersona, { data: pack }, seleccion, origenes] = await Promise.all([
+  // 14-oct-2026 también «Tu selección de esta semana»; desde el 17-oct-2026, de los informes de Franco a la vista, de
+  // dónde salieron (el título de la marca «Franco»).
+  const francoIds = (todas ?? filasPagina).filter((r) => r.de_franco).map((r) => r.id);
+  const [siblings, perfilPersona, { data: pack }, seleccion, origenes] = await Promise.all([
+    fetchAmbasSiblings(supabase, user.id, groupIds),
     leerPerfilBusqueda(admin, user.id),
     admin.from("payments").select("analysis_id").eq("user_id", user.id).eq("product", "pack3").eq("status", "paid").not("analysis_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     seleccionDeEstaSemana(admin, user.id),
-    origenDeInformes(admin, user.id, sinDirIds),
+    origenDeInformes(admin, user.id, francoIds),
   ]);
   const resumen = seleccion ? resumenSeleccion(seleccion) : [];
   const packOrigenId = (pack?.analysis_id as string | null | undefined) ?? null;
@@ -310,10 +291,6 @@ export default async function DashboardPage({
             </EnlaceCarga>
           )}
         </div>
-
-        <Continuar rows={recientes.rows} siblings={siblings} heroResumen={heroResumen} />
-
-        <StatsStrip stats={stats} params={params} />
 
         <Archive
           rows={filasPagina}

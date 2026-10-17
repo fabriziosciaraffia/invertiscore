@@ -54,37 +54,7 @@ export function colorDelPuntaje(veredicto: Veredicto): string {
   return colorDeVeredicto(veredicto);
 }
 
-export function ScoreRing({ score, veredicto, size = 40 }: { score: number; veredicto: Veredicto; size?: number }) {
-  const stroke = size >= 52 ? 3.5 : 3;
-  const r = size / 2 - stroke - 1;
-  const circ = 2 * Math.PI * r;
-  const dash = (Math.max(0, Math.min(100, score)) / 100) * circ;
-  const font = size >= 52 ? 19 : size >= 44 ? 15 : 14;
-
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden="true">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--franco-border)" strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={colorDelPuntaje(veredicto)}
-          strokeWidth={stroke}
-          strokeDasharray={`${dash} ${circ}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-bold leading-none tabular-nums text-[var(--franco-text)]" style={{ fontSize: font }}>
-          {score}
-        </span>
-      </div>
-    </div>
-  );
-}
+// El anillo del puntaje y el rótulo de zona eran de «Continuar» y de la tira de cifras, que salieron el 17-oct-2026.
 
 // ─── Chevron de grupo ───────────────────────────────────────────────────────
 // Dibujado en CSS y no como glifo: JetBrains Mono no trae ▸/▾ y el fallback de
@@ -111,18 +81,5 @@ export function Chevron({ abierto }: { abierto: boolean }) {
         }
       />
     </span>
-  );
-}
-
-// ─── Rótulo de zona ─────────────────────────────────────────────────────────
-export function ZoneLabel({ children, id }: { children: React.ReactNode; id?: string }) {
-  return (
-    <div
-      id={id}
-      className="mb-2.5 mt-1.5 flex items-center gap-2.5 text-[12.5px] font-medium text-[var(--franco-text-tertiary)]"
-    >
-      {children}
-      <span className="h-px flex-1 bg-[var(--franco-border)]" aria-hidden="true" />
-    </div>
   );
 }

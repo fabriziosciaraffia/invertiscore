@@ -9,6 +9,7 @@ import type {
   AnalisisDashboardRow,
   ModalidadFilter,
   VeredictoFilter,
+  OrigenFilter,
   DashboardSortKey,
   SortDir,
 } from "@/lib/dashboard-query";
@@ -22,12 +23,29 @@ export const PAGE_SIZE = 25;
 
 const MODALIDADES: ModalidadFilter[] = ["todas", "long-term", "short-term", "ambas"];
 const VEREDICTOS: VeredictoFilter[] = ["todos", "COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
-const SORTS: DashboardSortKey[] = ["fecha", "score", "flujo", "cap", "multiplicador"];
+const ORIGENES: OrigenFilter[] = ["todos", "franco", "mios"];
+
+/**
+ * EL ARCHIVO, UNA SOLA LISTA (17-oct-2026, decisión de Fabrizio): por fecha, el más reciente arriba —sin orden por
+ * columna—, y con el origen a la vista: la marca «Franco» en los informes que salieron de un aviso (la selección semanal,
+ * el aviso inmediato o la guía) y el filtro «De Franco» / «Míos». Lo fija el tier CASA §11.
+ */
+export const ARCHIVO_COPY = {
+  marca: "Franco",
+  /** El título de la marca cuando no se sabe si fue la selección o la guía (el de cada una: textoOrigenArchivo). */
+  desdeAviso: "Desde un depto que te mostró Franco",
+  deFranco: "De Franco",
+  mios: "Míos",
+} as const;
 
 export interface DashboardParams {
   q: string;
   mod: ModalidadFilter;
   v: VeredictoFilter;
+  /** «De Franco» / «Míos» (`?o=franco|mios`). */
+  origen: OrigenFilter;
+  /** Siempre fecha, el más reciente arriba (17-oct-2026): la lista no se ordena por columna. Se conserva el campo porque
+   *  la agrupación por propiedad lo lee. */
   sort: DashboardSortKey;
   dir: SortDir;
   page: number;
@@ -44,15 +62,17 @@ export function parseParams(sp: Record<string, string | string[] | undefined>): 
   };
   const mod = one("mod") as ModalidadFilter;
   const v = one("v") as VeredictoFilter;
-  const sort = one("sort") as DashboardSortKey;
+  const origen = one("o") as OrigenFilter;
   const pageNum = Number.parseInt(one("page"), 10);
 
   return {
     q: one("q").slice(0, 80),
     mod: MODALIDADES.includes(mod) ? mod : "todas",
     v: VEREDICTOS.includes(v) ? v : "todos",
-    sort: SORTS.includes(sort) ? sort : "fecha",
-    dir: one("dir") === "asc" ? "asc" : "desc",
+    origen: ORIGENES.includes(origen) ? origen : "todos",
+    // Por fecha, el más reciente arriba, siempre: un `?sort=` viejo no cambia el orden.
+    sort: "fecha",
+    dir: "desc",
     page: Number.isFinite(pageNum) && pageNum > 0 ? Math.min(pageNum, 40) : 0,
     group: one("group") === "1",
     // Tope de 12 grupos abiertos: la URL es estado compartible, no un buffer.
@@ -73,8 +93,7 @@ export function buildHref(current: DashboardParams, patch: Partial<DashboardPara
   if (next.q) sp.set("q", next.q);
   if (next.mod !== "todas") sp.set("mod", next.mod);
   if (next.v !== "todos") sp.set("v", next.v);
-  if (next.sort !== "fecha") sp.set("sort", next.sort);
-  if (next.dir !== "desc") sp.set("dir", next.dir);
+  if (next.origen !== "todos") sp.set("o", next.origen);
   if (next.page > 0) sp.set("page", String(next.page));
   if (next.group) sp.set("group", "1");
   if (next.group && next.open.length > 0) sp.set("open", next.open.join("~"));
@@ -115,12 +134,6 @@ export function verTodosHref(current: DashboardParams, key: string): string {
   return buildHref(current, { open: [...sinEste, `*${key}`], page: current.page });
 }
 
-/** Click en un header de columna: misma columna alterna dirección, otra empieza desc. */
-export function sortHref(current: DashboardParams, key: DashboardSortKey): string {
-  const dir: SortDir = current.sort === key && current.dir === "desc" ? "asc" : "desc";
-  return buildHref(current, { sort: key, dir });
-}
-
 // ─── Formato ────────────────────────────────────────────────────────────────
 
 /** CLP con signo explícito y separador de miles chileno: `+$84.200` / `−$118.400`. */
@@ -139,18 +152,6 @@ export function fmtUF(n: number | null | undefined): string {
   return `UF ${Math.round(v).toLocaleString("es-CL")}`;
 }
 
-/** Cap rate — ya viene en porcentaje desde la vista. NULL en filas legacy. */
-export function fmtCap(n: number | null): string {
-  if (n === null || !Number.isFinite(n)) return "—";
-  return `${n.toFixed(1).replace(".", ",")}%`;
-}
-
-/** Multiplicador de capital. NULL en filas sin exitScenario. */
-export function fmtMultiplicador(n: number | null): string {
-  if (n === null || !Number.isFinite(n)) return "—";
-  return `${n.toFixed(1).replace(".", ",")}×`;
-}
-
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 /** Fecha corta para la tabla: `26 jul` · `26 jul 25` si es de otro año. */
@@ -158,28 +159,6 @@ export function fmtFechaCorta(iso: string, now = new Date()): string {
   const d = new Date(iso);
   const base = `${d.getDate()} ${MESES[d.getMonth()]}`;
   return d.getFullYear() === now.getFullYear() ? base : `${base} ${String(d.getFullYear()).slice(2)}`;
-}
-
-/**
- * Fecha relativa para las cards de CONTINUAR. Se calcula sobre días de
- * calendario, no sobre milisegundos: algo de anoche a las 23:00 es "ayer",
- * no "hace 10 horas".
- */
-export function fmtFechaRelativa(iso: string, now = new Date()): string {
-  const d = new Date(iso);
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dias = Math.round((b.getTime() - a.getTime()) / 86_400_000);
-
-  if (dias <= 0) return "hoy";
-  if (dias === 1) return "ayer";
-  if (dias < 7) return `hace ${dias} días`;
-  if (dias < 14) return "hace una semana";
-  if (dias < 31) return `hace ${Math.floor(dias / 7)} semanas`;
-  if (dias < 61) return "hace un mes";
-  if (dias < 365) return `hace ${Math.floor(dias / 30)} meses`;
-  if (dias < 730) return "hace un año";
-  return `hace ${Math.floor(dias / 365)} años`;
 }
 
 /**
@@ -191,11 +170,6 @@ export function fmtFechaRelativa(iso: string, now = new Date()): string {
 export function displayDireccion(row: Pick<AnalisisDashboardRow, "direccion" | "nombre" | "comuna">): string {
   const limpia = formatDireccionDisplay(row.direccion, null);
   return limpia || row.nombre;
-}
-
-/** ¿La fila tiene dirección real o estamos mostrando el nombre autogenerado? */
-export function sinDireccion(row: Pick<AnalisisDashboardRow, "direccion">): boolean {
-  return !row.direccion || !row.direccion.trim();
 }
 
 /** Veredicto listo para pintar. La vista ya normaliza; esto blinda filas raras. */
@@ -221,20 +195,6 @@ export function hrefAnalisis(row: AnalisisDashboardRow, strSiblingId?: string): 
  */
 export function hrefPdf(): string | null {
   return null;
-}
-
-/**
- * Primera frase de un texto. NO se puede cortar en el primer punto: en formato
- * chileno el separador de miles ES un punto, así que «El arriendo genera
- * $1.234.567 al mes.» se cortaba en «El arriendo genera $1.» (bug heredado del
- * dashboard viejo, visible en producción). Un punto solo cierra frase si viene
- * seguido de espacio o del final del texto.
- */
-export function primeraFrase(texto: string | null | undefined): string | null {
-  const t = (texto ?? "").trim();
-  if (!t) return null;
-  const m = t.match(/^[\s\S]*?[.!?](?=\s|$)/);
-  return (m ? m[0] : t).trim();
 }
 
 // El demo público vive en `src/lib/demo.ts` (dos filas, una por modalidad) desde el 25-sep-2026.
