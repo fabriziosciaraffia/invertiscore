@@ -23,13 +23,18 @@
 //       después, plano, el saldo, el perfil compacto y los informes. Con el pie de los informes.
 //  10 · EL MENÚ DE COMPARTIR (17-oct-2026): «Invita a alguien · Los dos reciben un análisis» va primero y destacado con
 //       el color de «Invita a alguien» del dashboard.
+//  11 · «TUS INFORMES», UNA SOLA LISTA (17-oct-2026, decisión de Fabrizio): sin «Continuar» ni la tira de cifras; la marca
+//       «Franco» en lo que salió de un aviso y el filtro «De Franco» / «Míos» con sus conteos; por fecha, el más reciente
+//       arriba; nombre, comuna, modalidad, veredicto, puntaje, flujo y fecha (sin «Cap» ni «Retorno»); la fila entera abre;
+//       en el teléfono, tarjetas de una línea y los filtros de lado.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/casa-catch-test.ts
 // ============================================================================
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CASA } from "../../../src/app/dashboard/casa-copy";
+import { ARCHIVO_COPY, buildHref, parseParams } from "../../../src/app/dashboard/dashboard-helpers";
 import { estadoSaldo } from "../../../src/lib/casa-saldo";
 import { CASA_ARRIBA, bloqueDeArriba } from "../../../src/lib/casa-arriba";
 import type { ResumenBloque } from "../../../src/lib/guia/seleccion-casa";
@@ -129,8 +134,10 @@ export function runCasaTier(): { hard: number } {
   // (selección del día, regalo y perfil): el orden se mide en la casa de quien tiene informes, desde su consulta.
   // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el orden es el de §9: arriba el banner, después «Invita a alguien» y,
   // planos, el saldo, la guía del pack, el perfil y los informes. Las dos casas se miden en §9.
-  const casaConInformes = pag.slice(pag.indexOf("const recientes = await queryDashboardRows("));
-  const orden = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", "<SaldoPlano estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Continuar ", "<Archive"].map((t) => casaConInformes.indexOf(t));
+  // ⚠ ACTA (17-oct-2026, goal «una sola lista») · «Continuar» salió: después de «Tus informes» va solo la lista (§11), y la
+  // casa con informes se mide desde los hermanos de los pares AMBAS (la consulta de «Continuar» ya no existe).
+  const casaConInformes = pag.slice(pag.indexOf("const groupIds = (todas ?? filasPagina)"));
+  const orden = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", "<SaldoPlano estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Archive"].map((t) => casaConInformes.indexOf(t));
   if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · el orden de la casa no es banner → invitar → saldo → guía → perfil → informes (${orden.join(",")})`);
   if (!/const guiaCasa = packOrigenId && packPerfil && hayGuia\(/.test(pag) || !/saldo\.tipo === "con"/.test(pag) || !/\.eq\("product", "pack3"\)\.eq\("status", "paid"\)/.test(pag)) F("5 · la selección no depende de un pack pagado con saldo y guía activa");
   if (!/comprador=\{!!guiaCasa\}/.test(pag)) F("5 · la bajada del perfil no distingue al comprador");
@@ -161,7 +168,8 @@ export function runCasaTier(): { hard: number } {
   if (/font-mono|uppercase/.test(casa)) F("7 · la casa usa mono o mayúsculas");
 
   // 8 · «Tus informes» en el sistema nuevo
-  for (const f of ["src/app/dashboard/continuar.tsx", "src/app/dashboard/stats-strip.tsx", "src/app/dashboard/archive.tsx", "src/app/dashboard/dashboard-ui.tsx", "src/app/dashboard/page.tsx"]) {
+  // ⚠ ACTA (17-oct-2026, goal «una sola lista») · continuar.tsx y stats-strip.tsx se retiraron (§11 mide que no vuelvan).
+  for (const f of ["src/app/dashboard/archive.tsx", "src/app/dashboard/dashboard-ui.tsx", "src/app/dashboard/page.tsx"]) {
     const s = sinComentarios(leer(f));
     if (/font-mono|\buppercase\b|tracking-\[0\.\d+em\]|JetBrains/.test(s)) F(`8 · ${f} vuelve al mono o a las mayúsculas espaciadas`);
     if (/>\s*(LARGA|CORTA|AMBAS|RETOMAR|FLUJO|ANÁLISIS)\s*</.test(s)) F(`8 · ${f} escribe un rótulo en mayúsculas`);
@@ -246,6 +254,50 @@ export function runCasaTier(): { hard: number } {
     if (!/else setSinInvitacion\(true\);/.test(sb)) F("10 · sin enlace de invitación, el ítem queda colgado en el menú");
   }
 
+  // 11 · «Tus informes», una sola lista (17-oct-2026): sin «Continuar»; el origen a la vista y filtrable; por fecha
+  {
+    const arch = sinComentarios(leer("src/app/dashboard/archive.tsx"));
+    const query = sinComentarios(leer("src/lib/dashboard-query.ts"));
+    // Se fue «Continuar»: la tarjeta grande, las tres chicas y la tira de Análisis, Flujo positivo, Puntaje y Modalidad.
+    if (existsSync(join(RAIZ, "src/app/dashboard/continuar.tsx")) || existsSync(join(RAIZ, "src/app/dashboard/stats-strip.tsx")) || /<Continuar\b|<StatsStrip\b|Flujo positivo|Puntaje promedio/.test(pag + arch)) F("11 · «Continuar» o la tira de cifras siguen en el dashboard");
+    if (!/className="ca-informes flex flex-wrap items-baseline justify-between/.test(pag) || !/<EnlaceCarga href="\/comparar"[^>]*data-lqs="comparar-entrada">/.test(pag) || pag.indexOf("{CASA.informes}") > pag.indexOf('data-lqs="comparar-entrada"')) F("11 · «Comparar» no está a la derecha de «Tus informes»");
+    // La marca de origen: «Franco» al lado del nombre de lo que salió de un aviso; lo del wizard, nada.
+    if (ARCHIVO_COPY.marca !== "Franco" || ARCHIVO_COPY.deFranco !== "De Franco" || ARCHIVO_COPY.mios !== "Míos") F("11 · el copy de la marca o del filtro no es «Franco» / «De Franco» / «Míos»");
+    const marca = arch.slice(arch.indexOf("export function MarcaFranco("), arch.indexOf("// ─── Chips"));
+    if (!/if \(!row\.de_franco\) return null;/.test(marca) || !/\{ARCHIVO_COPY\.marca\}/.test(marca)) F("11 · la marca «Franco» no depende de que el informe haya salido de un aviso");
+    const fila = arch.slice(arch.indexOf("function FilaAnalisis("), arch.indexOf("// ─── Fila de grupo"));
+    if (!/\{displayDireccion\(row\)\}\s*<\/EnlaceCarga>\s*<MarcaFranco row=\{row\} origen=\{origen\} \/>/.test(fila)) F("11 · la marca no va al lado del nombre en la tabla");
+    const tel = arch.slice(arch.indexOf('data-archivo="lista-telefono"'));
+    if (!/: displayDireccion\(row\)\}\s*<\/span>\s*\{esGrupo \? \([\s\S]{0,160}\) : \(\s*<MarcaFranco row=\{row\} origen=\{origenes\[row\.id\] \?\? null\} \/>/.test(tel)) F("11 · la marca no va al lado del nombre en el teléfono");
+    // La vista dice el origen (migración) con la misma regla que origenDeInforme: un avisoId string.
+    const mig = leer("supabase/migrations/20261017_dashboard_de_franco.sql");
+    if (!/with \(security_invoker = true\)/.test(mig) || !/coalesce\(jsonb_typeof\(\(a\.input_data -> 'origenAviso'::text\) -> 'avisoId'::text\) = 'string'::text, false\) as de_franco/.test(mig) || !/u_buscar,\s*de_franco\s*from/.test(mig)) F("11 · la vista no trae de_franco al final (o pierde security_invoker)");
+    // El filtro «De Franco» / «Míos», en la URL, en la consulta y con los conteos de la lista.
+    if (parseParams({ o: "franco" }).origen !== "franco" || parseParams({ o: "mios" }).origen !== "mios" || parseParams({ o: "x" }).origen !== "todos") F("11 · el filtro de origen no se lee de la URL (?o=franco|mios)");
+    if (!/o=franco/.test(buildHref(parseParams({}), { origen: "franco" })) || buildHref(parseParams({ o: "franco" }), { origen: "todos" }) !== "/dashboard") F("11 · el filtro de origen no viaja en la URL");
+    if (!/if \(p\.origen !== "todos"\) \{\s*out = out\.eq\("de_franco", p\.origen === "franco"\);/.test(query) || !/origen: params\.origen,/.test(pag)) F("11 · el filtro de origen no llega a la consulta");
+    if (!/\.eq\("es_unidad", true\)\.eq\("de_franco", true\)/.test(query) || !/por_origen: \{ franco: deFranco, mios: total - deFranco \}/.test(query)) F("11 · los conteos del filtro de origen no son los de la lista");
+    const filtros = arch.slice(arch.indexOf('data-archivo="filtros"'));
+    const iMod = filtros.indexOf('filtro="ambas"'), iFr = filtros.indexOf('filtro="de-franco"'), iMi = filtros.indexOf('filtro="mios"'), iVer = filtros.indexOf("veredictos.map(");
+    if (iMod < 0 || iFr < iMod || iMi < iFr || iVer < iMi || !/\{ARCHIVO_COPY\.deFranco\}<Conteo n=\{orig\.franco\} \/>/.test(filtros) || !/\{ARCHIVO_COPY\.mios\}<Conteo n=\{orig\.mios\} \/>/.test(filtros)) F("11 · «De Franco» y «Míos» no están junto a modalidad y veredicto, con sus conteos");
+    // El orden: por fecha, el más reciente arriba, siempre (un ?sort= viejo no lo cambia).
+    const pv = parseParams({ sort: "score", dir: "asc" });
+    if (pv.sort !== "fecha" || pv.dir !== "desc" || /sort=|dir=/.test(buildHref(pv, { q: "x" }))) F("11 · la lista se puede ordenar por otra cosa que la fecha");
+    if (!/queryDashboardRows\(supabase, \{ \.\.\.filtros, sort: "fecha", dir: "desc", page: 0, pageSize: tope \}\)/.test(pag) || /sortHref|sortKey/.test(arch)) F("11 · la lista no va por fecha, el más reciente arriba (o vuelve el orden por columna)");
+    // Las columnas: nombre, comuna, modalidad, veredicto, puntaje, flujo y fecha. Sin «Cap» ni «Retorno».
+    const cols = Array.from(arch.matchAll(/<Th label="([^"]+)"/g)).map((m) => m[1]).join("|");
+    if (cols !== "Nombre|Comuna|Modalidad|Veredicto|Puntaje|Flujo|Fecha") F(`11 · las columnas no son nombre, comuna, modalidad, veredicto, puntaje, flujo y fecha (${cols})`);
+    if (/cap_rate|multiplicador|fmtCap|fmtMultiplicador|"Cap"|"Retorno"/.test(arch)) F("11 · vuelven «Cap» o «Retorno»");
+    // Toda la fila abre el informe, en la tabla y en el teléfono.
+    if (!/<tr\s+className=\{`group relative /.test(fila) || !/<EnlaceCarga href=\{abrir\} aria-hidden="true" tabIndex=\{-1\} className="absolute inset-0 z-0" \/>/.test(fila) || !/<EnlaceCarga href=\{abrir\} aria-label=\{displayDireccion\(row\)\} className="absolute inset-0 z-0" \/>/.test(tel)) F("11 · la fila entera no abre el informe");
+    // En el teléfono: una línea —nombre, veredicto, flujo y fecha—; los filtros de lado; buscar y agrupar se quedan.
+    const li = tel.slice(tel.indexOf("<li"), tel.indexOf("</li>"));
+    const piezas = [": displayDireccion(row)}", "<ChipVeredicto v={veredictoDisplay(row)} />", "{fmtCLPSigned(flujo)}", "{fmtFechaCorta(row.created_at)}"].map((t) => li.indexOf(t));
+    if (piezas.some((i) => i < 0) || piezas.some((i, k) => k > 0 && i < piezas[k - 1]) || /flex-wrap|<div className="mt-1/.test(li) || !/className=\{`relative flex min-h-\[48px\] items-center/.test(li)) F("11 · en el teléfono la tarjeta no es una línea con nombre, veredicto, flujo y fecha");
+    if (!/className="-mx-3 mt-2\.5 flex flex-nowrap items-center gap-1\.5 overflow-x-auto px-3 [^"]*md:flex-wrap/.test(arch)) F("11 · en el teléfono los filtros no se desplazan de lado");
+    if (!/<ArchiveSearch params=\{params\} \/>/.test(arch) || !/href=\{buildHref\(params, \{ group: !params\.group, open: \[\] \}\)\}\s*role="switch"/.test(arch) || !/Agrupar por propiedad\s*<\/EnlaceCarga>/.test(arch)) F("11 · se fueron buscar o agrupar por propiedad");
+  }
+
   if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, el pack de tres con el suelto debajo y sin el ticket, orden, escritura del servidor; arriba el banner según el estado, «Invita a alguien» con su color, lo demás plano; la invitación primero en el menú de compartir");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
@@ -297,3 +349,11 @@ if (require.main === module) {
 //   M1 la invitación no es lo primero del menú · M2 sin su color · M3 sin el CSS · M4 dos veces · M5 sin «Los dos reciben
 //   un análisis» · M6 sin enlace queda colgado · M7 el menú con otro color que el dashboard (§10)
 //   34/34 ROJO.
+//   17-oct-2026 (goal «una sola lista»): §5 y §8 sin «Continuar» (actas en línea) y entra §11. Mutaciones (scratchpad
+//   mutar-lista.cjs), cada archivo restaurado byte a byte: L1 vuelve «Continuar» · L2 «Comparar» no queda a la derecha ·
+//   L3 la marca en todo · L4 sin marca en la tabla · L5 sin marca en el teléfono · L6 la vista con otra regla de origen ·
+//   L7 la vista sin security_invoker · L8 el filtro no se lee · L9 no viaja en la URL · L10 «Míos» trae los de Franco ·
+//   L11 la página no pasa el origen · L12 «Míos» cuenta todo · L13 «Míos» sin conteo · L14 un ?sort= viejo ordena · L15
+//   la página ordena por otra cosa · L16 vuelve «Cap» · L17 sin modalidad · L18 la fila no abre el informe · L19 la
+//   tarjeta en dos líneas · L20 la tarjeta sin fecha · L21 los filtros no van de lado · L22 se va «Agrupar por
+//   propiedad» · L23 otro nombre para el filtro. 23/23 ROJO.

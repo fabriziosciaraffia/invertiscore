@@ -33,9 +33,9 @@ const SUPERFICIES_SIN_LINK: Array<[string, string]> = [
   ["src/components/chrome/HeaderFranco.tsx", "el header"],
   ["src/components/landing-v14/Marca.tsx", "el pie de la landing"],
   ["src/app/dashboard/archive.tsx", "el archivo del dashboard (chips, columnas, filas)"],
-  ["src/app/dashboard/continuar.tsx", "«Continuar» del dashboard"],
   // (01-oct-2026) La bienvenida corta no tiene enlaces: su única acción es el botón, que navega con «Cargando…».
-  ["src/app/dashboard/stats-strip.tsx", "la tira de cifras del dashboard"],
+  // ⚠ ACTA (17-oct-2026, goal «una sola lista») · «Continuar» y la tira de cifras salieron del dashboard (continuar.tsx y
+  // stats-strip.tsx se retiraron): «Tus informes» es solo el archivo, que sigue acá.
   ["src/app/cuenta/page.tsx", "la cuenta"],
   ["src/app/perfil/page.tsx", "el perfil"],
   ["src/app/analisis/comparativa/comparativa-client.tsx", "el informe comparativo"],
@@ -127,8 +127,8 @@ export function runAffordanceTier(): { hard: number } {
     ["src/components/landing-v14/Secciones.tsx", /<EnlaceCarga className="lv-como" href="\/metodologia">/, "«Ver cómo calcula»"],
     ["src/components/landing-v14/Marca.tsx", /<EnlaceCarga href="\/metodologia">Cómo calcula<\/EnlaceCarga>/, "el pie de la landing"],
     ["src/components/CtaAnalizar.tsx", /<EnlaceCarga\s*\n\s*href=\{hrefAnalizar\(origen, \{ comuna \}\)\}/, "CtaAnalizar"],
-    ["src/app/dashboard/archive.tsx", /<EnlaceCarga href=\{sortHref\(params, sortKey\)\}/, "las columnas del archivo del dashboard"],
-    ["src/app/dashboard/continuar.tsx", /<EnlaceCarga\s*\n\s*href=\{hrefAnalisis\(hero, heroStr\?\.id\)\}/, "«Continuar» del dashboard"],
+    // ⚠ ACTA (17-oct-2026) · la lista va por fecha, sin orden por columna: lo que navega con carga es la fila entera.
+    ["src/app/dashboard/archive.tsx", /<EnlaceCarga href=\{abrir\} aria-hidden="true" tabIndex=\{-1\} className="absolute inset-0 z-0" \/>/, "las filas del archivo del dashboard"],
     ["src/app/cuenta/page.tsx", /<EnlaceCarga href="\/analisis\/nuevo-v4"/, "la cuenta"],
     ["src/app/perfil/page.tsx", /<EnlaceCarga href=\{`\/analisis\/\$\{analysis\.id\}`\}/, "los análisis del perfil"],
     ["src/components/analysis/NextAnalysisCTA.tsx", /<EnlaceCarga\s*\n\s*href=\{accion\.href\}/, "NextAnalysisCTA del informe"],

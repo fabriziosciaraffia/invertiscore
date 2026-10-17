@@ -78,14 +78,13 @@ export function runColasChicasTier(): { hard: number } {
   if (colorDelPuntaje("AJUSTA SUPUESTOS") !== "var(--chip-v-a)") F("2 · un Ajustar no pinta su puntaje con el ciruela del chip");
   const ui = sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx"));
   if (!/export function colorDelPuntaje\(veredicto: Veredicto\): string \{\s*return colorDeVeredicto\(veredicto\);/.test(ui)) F("2 · el color del puntaje no es el del chip de veredicto");
-  if (!/stroke=\{colorDelPuntaje\(veredicto\)\}/.test(ui)) F("2 · el anillo del puntaje no se pinta por el veredicto");
-  for (const r of ["src/app/dashboard/archive.tsx", "src/app/dashboard/continuar.tsx", "src/app/dashboard/dashboard-ui.tsx"]) {
+  // ⚠ ACTA (17-oct-2026, goal «una sola lista») · el anillo del puntaje (ScoreRing) era de «Continuar», que salió del
+  // dashboard con continuar.tsx: queda el puntaje de la lista, pintado con el veredicto de su fila.
+  for (const r of ["src/app/dashboard/archive.tsx", "src/app/dashboard/dashboard-ui.tsx"]) {
     const s = sinComentarios(leer(r));
     if (/\bscoreColor\b|score(_efectivo)?\s*>=\s*\d{2}\)?\s*(\?|return)/.test(s)) F(`2 · ${r} vuelve a colorear el puntaje por la nota`);
   }
   if (!/colorDelPuntaje\(veredictoDisplay\(row\)\)/.test(sinComentarios(leer("src/app/dashboard/archive.tsx")))) F("2 · la tabla del dashboard no pinta el puntaje con el veredicto de la fila");
-  const cont = sinComentarios(leer("src/app/dashboard/continuar.tsx"));
-  if ((cont.match(/<ScoreRing score=\{\w+\.score_efectivo\} veredicto=\{veredictoDisplay\(\w+\)\}/g) ?? []).length < 2) F("2 · los anillos de «Continuar» no reciben el veredicto de su fila");
 
   // ── 3 · el modo de gestión, normalizado en un solo lugar ──
   const casos: [unknown, string][] = [["auto", "auto"], ["administrador", "admin"], ["admin", "admin"], [undefined, "admin"], [null, "admin"]];

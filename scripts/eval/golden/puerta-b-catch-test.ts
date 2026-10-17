@@ -42,6 +42,14 @@
 //   contraseña» · N9 la modalidad vuelve a elegir · N10 tipología múltiple · N11 nueve comunas · N12 cinco rangos · N13
 //   sin buscador · N14 serif en el número · N15 el titular en dos líneas · N16 el pie con enlaces · N17 sin 2D por defecto.
 //
+// QUE EL NÚMERO SE ENTIENDA (17-oct-2026): §2, §8 y §10 reescritos (actas en línea). Mutaciones (scratchpad
+// mutar-lista.cjs), restauradas byte a byte: P1 el número vuelve a «como inversión» · P2 la etiqueta sin «Si buscas» · P3
+// la etiqueta con el pie · P4 otra nota · P5 la frase en dos líneas · P6 el total redondea hacia arriba · P7 el total sin
+// «+» · P8 la frase sin «como inversión» · P9 la etiqueta después del número · P10 la etiqueta sale de los chips · P11
+// mientras cambia se atenúa solo el número · P12 sin la nota · P13 el título viejo de los chips · P14 el número chico.
+// 14/14 ROJO. (P11 dejó deptos.css mutado al fallar la restauración por un bloqueo de Windows; se devolvió a mano y se
+// verificó el diff, y el runner reintenta la escritura desde entonces.)
+//
 // LA PUERTA C (16-oct-2026): la pantalla de /deptos pasó a servir también a la página del invitado (página, puerta y Lead
 // por parámetro, B y «seleccion» por defecto) y el alta elige la puerta (B, o C si la cuenta es invitada). Cuatro anclas
 // reescritas para esa forma (5 el regalo, 7 la puerta B, 9 Google ×2), dos mutaciones nuevas —X5 /deptos con la C por
@@ -59,7 +67,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, ELECCIONES_POR_DEFECTO, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
+  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, ELECCIONES_POR_DEFECTO, masDeMiles, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
   TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -200,13 +208,18 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const c = (comuna: string, total: number, comprar20: number, comprar30: number): ConteoComuna => ({ comuna, total, comprar20, comprar30 });
       // LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada), con el detalle chico; sin la frase del estándar.
       const con = respuestaDeptos(v, [c("Ñuñoa", 1008, 29, 40)], []);
-      if (con.titular !== "29 de 1.008 convienen como inversión" || con.cifra !== "29 de 1.008" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 convienen como inversión»): ${con.titular}`);
-      if (con.detalle !== "Ñuñoa · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años") F(`2 · el detalle no es «comuna · tipología · rango · pie 20 %, 25 años»: ${con.detalle}`);
-      if (respuestaDeptos(v, [c("Ñuñoa", 143, 1, 1)], []).titular !== "1 de 143 conviene como inversión") F("2 · con uno, el número no va en singular");
+      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · el número es «29 de 1.008 convienen» —«como inversión» pasó
+      // a la frase de arriba—, con la búsqueda ANTES como etiqueta («Si buscas …», sin pie ni plazo) y el pie y el plazo en
+      // una nota chica debajo («con pie 20 % y 25 años»). El «detalle» de una línea se fue.
+      if (con.titular !== "29 de 1.008 convienen" || con.cifra !== "29 de 1.008" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 convienen»): ${con.titular}`);
+      if (con.etiqueta !== "Si buscas Ñuñoa · 2D · UF 3.000 a 4.000" || con.nota !== "con pie 20 % y 25 años" || "detalle" in con) F(`2 · la etiqueta no es «Si buscas comuna · tipología · rango» o la nota no es «con pie 20 % y 25 años»: ${con.etiqueta} / ${con.nota}`);
+      const tres = respuestaDeptos(validarElecciones({ comunas: ["Ñuñoa", "Macul", "La Reina"], tipologias: ["3"], rango: "4000-5500" }) as Extract<ReturnType<typeof validarElecciones>, { ok: true }>, [c("Ñuñoa", 10, 1, 1)], []);
+      if (tres.etiqueta !== "Si buscas Ñuñoa, Macul y La Reina · 3D · UF 4.000 a 5.500") F(`2 · la etiqueta no nombra las comunas, la tipología y el rango elegidos: ${tres.etiqueta}`);
+      if (respuestaDeptos(v, [c("Ñuñoa", 143, 1, 1)], []).titular !== "1 de 143 conviene") F("2 · con uno, el número no va en singular");
       if (con.registro !== "Regístrate y te los mando hoy") F("2 · con deptos, la invitación no es «Regístrate y te los mando hoy»");
       if ("estandar" in DEPTOS_COPY || /lo estándar/.test(leer("src/app/deptos/deptos-cliente.tsx") + leer("src/lib/deptos/respuesta.ts"))) F("2 · vuelve la frase del estándar");
       const pie = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 4)], [c("Macul", 171, 0, 17)]);
-      if (pie.convienen !== 0 || pie.titular !== "0 de 143 convienen como inversión" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
+      if (pie.convienen !== 0 || pie.titular !== "0 de 143 convienen" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
       if (!/te aviso cuando aparezca uno/i.test(pie.registro)) F("2 · con cero no ofrece registrarse («te aviso cuando aparezca uno»)");
       const vec = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 3, 17), c("La Reina", 6, 1, 1), c("Providencia", 7, 5, 7)]);
       if (vec.alternativa !== "En Providencia, comuna vecina, 5 sí convienen.") F(`2 · con cero no dice en qué comuna vecina sí (la que más da, en una línea): ${vec.alternativa}`);
@@ -389,12 +402,15 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // El número, el detalle y el correo pegados (17-oct-2026: el correo en la banda, justo debajo de la respuesta): en la
       // respuesta solo el número, el detalle y la alternativa del cero, y lo SIGUIENTE a la respuesta es la banda.
       const sec = cli.slice(cli.indexOf('<section className="dp-respuesta"'));
-      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-detalle">'), iFinSec = sec.indexOf("</section>");
+      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · en la respuesta van la etiqueta («Si buscas …») ANTES del
+      // número y la nota chica («con pie 20 % y 25 años») después, en lugar del detalle.
+      const iSi = sec.indexOf('<p className="dp-si" data-deptos="si">{respuesta.etiqueta}</p>');
+      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-nota-num" data-deptos="nota">'), iFinSec = sec.indexOf("</section>");
       const resto = iFinSec < 0 ? "x" : sec.slice(iDet, iFinSec)
-        .replace('<p className="dp-detalle">{respuesta.detalle}</p>', "")
+        .replace('<p className="dp-nota-num" data-deptos="nota">{respuesta.nota}</p>', "")
         .replace('{respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}', "");
-      if (iNum < 0 || iDet < iNum || !/^\s*<\/>\s*\) : \(\s*<p className="dp-numero dp-esperando" aria-hidden="true">…<\/p>\s*\)\}\s*$/.test(resto)
-        || !/^<\/section>\s*<div className="dp-banda" data-deptos="banda">\s*\{paso === "codigo" && enviado \? \(/.test(sec.slice(iFinSec))) F("8 · entre la respuesta y el correo hay algo más que el detalle y la alternativa");
+      if (iSi < 0 || iNum < iSi || iDet < iNum || !/^\s*<\/>\s*\) : \(\s*<p className="dp-numero dp-esperando" aria-hidden="true">…<\/p>\s*\)\}\s*$/.test(resto)
+        || !/^<\/section>\s*<div className="dp-banda" data-deptos="banda">\s*\{paso === "codigo" && enviado \? \(/.test(sec.slice(iFinSec))) F("8 · entre la respuesta y el correo hay algo más que la etiqueta, el número, la nota y la alternativa");
       const iForm = sec.indexOf('<form className="dp-form" onSubmit={pedirCodigo}');
       const form = iForm < 0 ? "" : sec.slice(iForm, sec.indexOf("</form>", iForm));
       const orden = ["{respuesta?.registro ?? DEPTOS_COPY.conRegistro}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
@@ -462,8 +478,15 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
     // ── 10 · SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026) ──
     {
       // Qué es, en una frase, con las cifras de la noche (el total redondeado a miles; los que convenían, exactos).
-      if (DEPTOS_COPY.que(21453) !== "Cada noche Franco revisa los 21.000 deptos en venta publicados en Santiago." || DEPTOS_COPY.queB !== "Cada semana te manda los que convienen como inversión con tu pie." || DEPTOS_COPY.anoche(5315) !== "Anoche, 5.315 convenían.")
-        F("10 · la frase de arriba no dice qué es con las cifras de la noche");
+      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · UNA sola frase arriba, con «+» en el total (en miles y hacia
+      // abajo: nunca dice más de lo que hay) y «como inversión» en los de anoche. Se fueron la segunda línea («Cada semana
+      // te manda…») y «Anoche» como línea aparte.
+      if (DEPTOS_COPY.que(21453, 4886) !== "Cada noche Franco revisa los +21.000 deptos en venta publicados en Santiago. Anoche, 4.886 convenían como inversión.")
+        F("10 · la frase de arriba no es una sola, con las cifras de la noche");
+      if (masDeMiles(21999) !== "+21.000" || masDeMiles(21000) !== "+21.000" || masDeMiles(9876) !== "9.876") F("10 · el total de la frase no va en miles hacia abajo con «+» (o redondea hacia arriba)");
+      if (DEPTOS_COPY.que(null, null) !== "Cada noche Franco revisa los deptos en venta publicados en Santiago.") F("10 · sin cifras de la noche, la frase inventa números");
+      if ("queB" in DEPTOS_COPY || "anoche" in DEPTOS_COPY) F("10 · vuelve la frase en dos líneas");
+      if (DEPTOS_COPY.afina !== "Cambia la búsqueda") F("10 · el título de los chips no es «Cambia la búsqueda»");
       // La búsqueda por defecto: Santiago, 2D, UF 3.000 a 4.000.
       if (JSON.stringify(ELECCIONES_POR_DEFECTO.comunas) !== '["Santiago"]' || ELECCIONES_POR_DEFECTO.tipologias[0] !== "2" || ELECCIONES_POR_DEFECTO.rango !== "3000-4000") F("10 · la página no arranca con Santiago, 2D, UF 3.000 a 4.000");
       // El resumen de la noche cuenta lo mismo que la respuesta: deptos_conteo sobre toda la cobertura, sumado.
@@ -481,10 +504,16 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca con el número de la búsqueda por defecto desde el servidor");
       if (!/const portada = await portadaDeptos\(\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
         F("10 · /deptos o la página del invitado no traen la portada del servidor");
-      // El orden: qué es, la cifra de anoche, el número, la banda del correo y, debajo, «Afina tu búsqueda» con los chips.
+      // El orden: la frase, la etiqueta, el número, la nota, la banda del correo y, debajo, «Cambia la búsqueda» con los chips.
       const el = cliD.slice(cliD.indexOf('data-deptos="elegir"'));
-      const ord = ['data-deptos="que"', 'data-deptos="anoche"', 'data-deptos="respuesta"', 'data-deptos="banda"', 'data-deptos="afina"', 'data-pregunta="comuna"', 'data-pregunta="rango"'].map((t) => el.indexOf(t));
-      if (ord.some((i) => i < 0) || ord.some((i, k) => k > 0 && i < ord[k - 1])) F("10 · el orden no es qué es, anoche, el número, la banda del correo y «Afina tu búsqueda» con los chips");
+      const ord = ['data-deptos="que"', 'data-deptos="respuesta"', 'data-deptos="si"', 'className="dp-numero"', 'data-deptos="nota"', 'data-deptos="banda"', 'data-deptos="afina"', 'data-pregunta="comuna"', 'data-pregunta="rango"'].map((t) => el.indexOf(t));
+      if (ord.some((i) => i < 0) || ord.some((i, k) => k > 0 && i < ord[k - 1])) F("10 · el orden no es la frase, la etiqueta, el número, la nota, la banda del correo y «Cambia la búsqueda» con los chips");
+      if (!/<h1 className="dp-que" data-deptos="que">\{DEPTOS_COPY\.que\(portada\?\.noche\?\.revisados \?\? null, portada\?\.noche\?\.convienen \?\? null\)\}<\/h1>/.test(cliD) || (cliD.match(/<h1 /g) ?? []).length !== 3) F("10 · arriba no va UNA frase con las dos cifras de la noche");
+      // Etiqueta y número cambian juntos: los dos salen de la MISMA respuesta del servidor (no de los chips), y mientras
+      // llega la nueva se atenúan juntos.
+      if (!/<p className="dp-si" data-deptos="si">\{respuesta\.etiqueta\}<\/p>\s*<p className="dp-numero" data-convienen=\{respuesta\.convienen\}>/.test(cliD) || /DEPTOS_COPY\.si\(/.test(cliD)) F("10 · la etiqueta no sale de la misma respuesta que el número (no cambiarían juntos)");
+      if (!/\.dp-respuesta\[data-cargando="1"\] \.dp-si, \.dp-respuesta\[data-cargando="1"\] \.dp-numero, \.dp-respuesta\[data-cargando="1"\] \.dp-nota-num \{ opacity: 0\.55; \}/.test(leer("src/app/deptos/deptos.css"))) F("10 · mientras cambia, la etiqueta y el número no se atenúan juntos");
+      if (!/\.dp-nota-num \{[^}]*font-size: 12\.5px;/.test(leer("src/app/deptos/deptos.css")) || !/\.dp-numero \{ font-size: 30px; font-weight: 700;/.test(leer("src/app/deptos/deptos.css"))) F("10 · el número no es grande o la nota no es chica");
       // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color.
       const cssD = leer("src/app/deptos/deptos.css");
       if (!/\.dp-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(cssD) || !/\.dp-banda \.dp-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(cssD))

@@ -143,9 +143,9 @@ export function runChipVeredictoTier(): { hard: number } {
   // ── 7 · el dashboard ──
   {
     const arch = sinComentarios(leer("src/app/dashboard/archive.tsx"));
-    if ((arch.match(/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/g) ?? []).length < 3) F("7 · el archivo del dashboard no dibuja el veredicto de sus filas con ChipVeredicto (tabla y agrupadas)");
-    const cont = sinComentarios(leer("src/app/dashboard/continuar.tsx"));
-    if (!/<ChipVeredicto v=\{veredictoDisplay\(hero\)\} \/>/.test(cont) || !/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/.test(cont)) F("7 · «Continuar» no dibuja el veredicto con ChipVeredicto");
+    // ⚠ ACTA (17-oct-2026, goal «una sola lista») · «Continuar» salió del dashboard (continuar.tsx se retiró) y en el
+    // teléfono la lista es de tarjetas de una línea, una por informe: el chip va en la tabla y en la tarjeta (2).
+    if ((arch.match(/<ChipVeredicto v=\{veredictoDisplay\(row\)\} \/>/g) ?? []).length < 2) F("7 · el archivo del dashboard no dibuja el veredicto de sus filas con ChipVeredicto (tabla y teléfono)");
     const onb = sinComentarios(leer("src/app/dashboard/bienvenida.tsx")); // la bienvenida reemplazó a onboarding-client el 29-sep-2026
     for (const v of ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"]) if (!onb.includes(`<ChipVeredicto v="${v}" />`)) F(`7 · el onboarding no muestra ${v} con ChipVeredicto`);
     const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));

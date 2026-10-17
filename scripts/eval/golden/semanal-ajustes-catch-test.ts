@@ -263,6 +263,16 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
           probados++;
         }
         if (probados === 0) F("8 · NO CORRIÓ: ningún informe salió de un aviso");
+        // La marca «Franco» (17-oct-2026) sale de la vista: cada informe desde un aviso es de_franco; uno del wizard, no.
+        const idsAviso = (an ?? []).map((a) => a.id as string);
+        const { data: vista } = idsAviso.length ? await sb.from("analisis_dashboard").select("id, de_franco").in("id", idsAviso) : { data: [] };
+        const sinMarca = idsAviso.filter((id) => !(vista ?? []).some((v) => v.id === id && v.de_franco === true));
+        if (sinMarca.length) F(`8 · la vista no marca de Franco ${sinMarca.length} informe(s) que salieron de un aviso (${sinMarca.map((x) => x.slice(0, 8)).join(", ")})`);
+        const { data: delWizard } = await sb.from("analisis").select("id").is("input_data->origenAviso", null).limit(5);
+        const idsWizard = (delWizard ?? []).map((a) => a.id as string);
+        const { data: vistaW } = idsWizard.length ? await sb.from("analisis_dashboard").select("id, de_franco").in("id", idsWizard) : { data: [] };
+        if (idsWizard.length === 0 || (vistaW ?? []).length === 0) F("8 · NO CORRIÓ: no hay informes del wizard para probar la marca");
+        else if ((vistaW ?? []).some((v) => v.de_franco !== false)) F("8 · la vista marca de Franco un informe del wizard");
         console.log(`  · archivo: ${probados} informes desde un aviso (${vistos.semanal} de la selección, ${vistos.guia} de la guía)`);
       }
     }
@@ -282,8 +292,13 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const malos = casosOrigen.filter(([o, esp]) => origenDeInforme(o, sels) !== esp);
     if (malos.length) F(`8 · el origen de un informe no es «semanal» o «guía» según \`desde\` o su selección (${JSON.stringify(malos.map(([o]) => o))})`);
     if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía»");
-    if (!/\{origen \? textoOrigenArchivo\(origen\) : "SIN DIRECCIÓN"\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, sinDirIds\),/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 3)
-      F("8 · el archivo sigue diciendo «SIN DIRECCIÓN» a los informes de la selección o de la guía");
+    // ⚠ ACTA (17-oct-2026, goal «una sola lista») · el origen ya no reemplaza a «SIN DIRECCIÓN»: TODO informe de Franco
+    // lleva la marca «Franco» al lado del nombre, y lo que decía el archivo («Desde tu selección semanal» / «Desde tu
+    // guía») es su título. El origen se pide para los de Franco a la vista, no para los sin dirección (tier CASA §11).
+    // Verificado en rojo: S1 la marca sin decir de dónde salió · S2 el origen no se pide para los de Franco. La marca en
+    // la VISTA (§7, con la base real) no se muta: sería escribir en producción; corre sobre los 10 informes desde un aviso.
+    if (!/title=\{origen \? textoOrigenArchivo\(origen\) : ARCHIVO_COPY\.desdeAviso\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, francoIds\),/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 4)
+      F("8 · la marca «Franco» del archivo no dice de dónde salió el informe (la selección o la guía)");
     if (!/if \(o\) out\[a\.id\] = o;/.test(cuerpo(srv, "export async function origenDeInformes("))) F("8 · los informes de la guía no traen su origen al archivo");
     if (!/if \(body\?\.origenAviso\) body\.origenAviso\.desde = typeof b\.semanal === "string" \? "semanal" : "guia";/.test(sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts")))) F("8 · los informes nuevos no anotan de dónde salieron");
   }
