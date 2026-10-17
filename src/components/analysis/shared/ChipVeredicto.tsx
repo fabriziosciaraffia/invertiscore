@@ -29,7 +29,19 @@ const CLASE: Record<Veredicto, "c" | "a" | "b"> = { COMPRAR: "c", "AJUSTA SUPUES
 
 export type VarianteChipVeredicto = "normal" | "sobre-fondo";
 
-export function ChipVeredicto({ v, variante = "normal" }: { v: Veredicto; variante?: VarianteChipVeredicto }) {
+/**
+ * `compacto` (17-oct-2026): solo el signo, con el color del veredicto —la etiqueta queda en `title` y `aria-label`—. Lo
+ * usa la tarjeta de una línea del dashboard en el teléfono, donde el chip entero no deja leer el nombre.
+ */
+export function ChipVeredicto({ v, variante = "normal", compacto = false }: { v: Veredicto; variante?: VarianteChipVeredicto; compacto?: boolean }) {
+  if (compacto) {
+    const etiqueta = etiquetaVeredicto(v, "frase");
+    return (
+      <span className={`chip-v ${CLASE[v] ?? "a"} compacto${variante === "sobre-fondo" ? " sobre" : ""}`} data-veredicto={v} title={etiqueta} aria-label={etiqueta} role="img">
+        {signoVeredicto(v)}
+      </span>
+    );
+  }
   return (
     <span className={`chip-v ${CLASE[v] ?? "a"}${variante === "sobre-fondo" ? " sobre" : ""}`} data-veredicto={v}>
       {signoVeredicto(v)} {etiquetaVeredicto(v, "frase")}
@@ -42,6 +54,7 @@ export const CSS_CHIP_VEREDICTO = `
       .chip-v{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-body,system-ui);font-weight:600;
         font-size:12px;line-height:1.5;border-radius:99px;padding:1px 8px;white-space:nowrap;border:1px solid transparent;
         letter-spacing:0;text-transform:none;vertical-align:baseline}
+      .chip-v.compacto{min-width:24px;justify-content:center;padding:1px 6px}
       .chip-v.c{background:#8DB0E3;color:#0B1A2E;border-color:#8DB0E3}
       .chip-v.a{background:#35232F;color:#D8AECA;border-color:#4E3545}
       .chip-v.b{background:#3E1E21;color:#F0858C;border-color:#5C2B30}

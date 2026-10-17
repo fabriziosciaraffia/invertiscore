@@ -455,7 +455,8 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               </table>
             </div>
 
-            {/* ── En el teléfono: tarjetas de UNA línea —nombre, veredicto, flujo y fecha—. En agrupado, el padre es una
+            {/* ── En el teléfono: tarjetas de UNA línea —nombre, veredicto, flujo y fecha—. El veredicto va compacto (el signo
+                con su color; la etiqueta en el título): con el chip entero, un nombre con la marca «Franco» quedaba en «De…». En agrupado, el padre es una
                 línea con su chevron y cuántos análisis tiene, y sus hijas aparecen debajo al expandir. ── */}
             <ul className="md:hidden" data-archivo="lista-telefono">
               {(agrupado ? aplanarParaMobile(items, params) : rows.map((row): ItemMobile => ({ row })))
@@ -470,7 +471,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                   return (
                     <li
                       key={`${row.id}-${esHija ? "h" : "p"}-${idx}`}
-                      className={`relative flex min-h-[48px] items-center gap-2 border-b border-[var(--franco-border)] px-3 py-2 last:border-b-0 ${
+                      className={`relative flex min-h-[48px] items-center gap-1.5 border-b border-[var(--franco-border)] px-3 py-2 last:border-b-0 ${
                         esHija ? "pl-7 bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]" : ""
                       }`}
                       data-archivo="tarjeta"
@@ -495,7 +496,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                         )}
                       </span>
 
-                      {!esGrupo && <ChipVeredicto v={veredictoDisplay(row)} />}
+                      {!esGrupo && <ChipVeredicto v={veredictoDisplay(row)} compacto />}
                       <span className="shrink-0 text-[13px] font-medium tabular-nums" style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
                         {fmtCLPSigned(flujo)}
                       </span>
