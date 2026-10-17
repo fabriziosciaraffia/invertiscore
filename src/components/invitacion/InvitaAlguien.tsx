@@ -8,6 +8,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { REFERIDO_COPY } from "@/lib/referido";
+import "./invita.css";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 const tarjeta = "rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)]";
@@ -104,16 +105,47 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
     }
   }
 
+  // EN LA CASA, DESTACADO (17-oct-2026): el segundo nivel, con su propio color (invita.css) —tinta en claro, papel en
+  // oscuro—, distinto del banner de arriba. Un botón lleno (copiar) y, si el teléfono comparte, otro con borde.
+  if (variante === "casa") {
+    return (
+      <section id="invitar" className="iv-destacado" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="invitar">
+        <h2 className="iv-d-t">{REFERIDO_COPY.invitaTitulo}</h2>
+        <p className="iv-d-s">{REFERIDO_COPY.invitaTexto}</p>
+        <div className="iv-d-fila">
+          <p className="iv-d-enlace" data-invitar="enlace">{datos ? datos.texto : "…"}</p>
+          <div className="flex shrink-0 gap-2">
+            <button type="button" className="iv-d-btn" onClick={() => void copiar()} disabled={!datos || ocupado} data-invitar="copiar">
+              {copiado ? REFERIDO_COPY.copiado : REFERIDO_COPY.copiar}
+            </button>
+            {puedeCompartir && (
+              <button type="button" className="iv-d-btn iv-d-borde" onClick={() => void compartir()} disabled={!datos || ocupado} data-invitar="compartir">
+                {REFERIDO_COPY.compartir}
+              </button>
+            )}
+          </div>
+        </div>
+        <label className="iv-d-nombre">
+          <input type="checkbox" checked={conNombre} onChange={(e) => void tocarNombre(e.target.checked)} disabled={!datos || ocupado} data-invitar="con-nombre" />
+          {REFERIDO_COPY.conNombre}
+        </label>
+        {conNombre && (
+          <form className="mt-2.5 flex flex-col gap-2 sm:flex-row" onSubmit={usarNombre} data-invitar="nombre">
+            <input className="iv-d-campo" maxLength={40} placeholder={REFERIDO_COPY.nombrePlaceholder} aria-label={REFERIDO_COPY.nombrePlaceholder}
+              value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" />
+            <button type="submit" className="iv-d-btn iv-d-borde" disabled={ocupado || !nombre.trim()}>{REFERIDO_COPY.usarNombre}</button>
+          </form>
+        )}
+        {conNombre && datos?.conNombre && datos.nombre && <p className="iv-d-nota" data-invitar="vista">{REFERIDO_COPY.quien(datos.nombre)}.</p>}
+        {datos && <p className="iv-d-nota" data-invitar="cuenta">{datos.cuenta}</p>}
+        {error && <p className="iv-d-nota" role="alert">{error}</p>}
+      </section>
+    );
+  }
+
   return (
     <section id="invitar" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="invitar">
-      {variante === "casa" ? (
-        <>
-          <h2 className="font-heading text-[21px] font-bold leading-[1.15] tracking-[-0.01em] sm:text-[24px]">{REFERIDO_COPY.invitaTitulo}</h2>
-          <p className="mb-3 mt-1.5 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{REFERIDO_COPY.invitaTexto}</p>
-        </>
-      ) : (
-        <p className="mb-3 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{REFERIDO_COPY.invitaTexto}</p>
-      )}
+      <p className="mb-3 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{REFERIDO_COPY.invitaTexto}</p>
       <div className={`${tarjeta} p-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="min-w-0 break-all text-[17px] font-semibold tracking-[-0.005em] tabular-nums" data-invitar="enlace">

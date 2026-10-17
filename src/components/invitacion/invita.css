@@ -1,0 +1,35 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   «INVITA A ALGUIEN» DESTACADO (17-oct-2026): el segundo nivel de la casa, con su propio color, distinto del banner de
+   arriba —tinta en claro, papel en oscuro—. El mismo color marca «Invita a alguien» en el menú de compartir.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.iv-destacado, .iv-menu { --iv-fondo: #FAFAF8; --iv-tinta: #0F0F0F; --iv-tenue: rgba(15, 15, 15, 0.64); --iv-linea: rgba(15, 15, 15, 0.22); background: var(--iv-fondo); color: var(--iv-tinta); }
+[data-theme="light"] .iv-destacado, [data-theme="light"] .iv-menu { --iv-fondo: #0F0F0F; --iv-tinta: #FAFAF8; --iv-tenue: rgba(250, 250, 248, 0.72); --iv-linea: rgba(250, 250, 248, 0.28); }
+.iv-destacado { border-radius: 16px; padding: 20px; }
+@media (min-width: 768px) { .iv-destacado { padding: 24px 28px; } }
+.iv-destacado .iv-d-t { margin: 0; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 22px; line-height: 1.15; letter-spacing: -0.01em; }
+@media (min-width: 768px) { .iv-destacado .iv-d-t { font-size: 26px; } }
+.iv-destacado .iv-d-s { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: var(--iv-tenue); }
+.iv-destacado .iv-d-fila { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+@media (min-width: 640px) { .iv-destacado .iv-d-fila { flex-direction: row; align-items: center; justify-content: space-between; } }
+.iv-destacado .iv-d-enlace { min-width: 0; overflow-wrap: anywhere; font-size: 17px; font-weight: 600; letter-spacing: -0.005em; font-variant-numeric: tabular-nums; }
+.iv-destacado .iv-d-btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border-radius: 99px; border: 1.5px solid var(--iv-tinta);
+  background: var(--iv-tinta); color: var(--iv-fondo); font: 600 14px var(--font-ui), "Inter", system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+.iv-destacado .iv-d-btn.iv-d-borde { background: transparent; color: var(--iv-tinta); }
+.iv-destacado .iv-d-btn:disabled { opacity: 0.55; cursor: default; }
+.iv-destacado .iv-d-btn:focus-visible, .iv-destacado input:focus-visible { outline: 2px solid var(--iv-tinta); outline-offset: 2px; }
+.iv-destacado .iv-d-nombre { margin-top: 14px; display: flex; width: fit-content; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+/* La casilla, propia: la de WebKit no toma accent-color sin marcar y desaparece sobre la tinta. */
+.iv-destacado .iv-d-nombre input { appearance: none; -webkit-appearance: none; margin: 0; width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--iv-tinta); border-radius: 4px; background: transparent; cursor: pointer; }
+.iv-destacado .iv-d-nombre input:checked { background: var(--iv-tinta); box-shadow: inset 0 0 0 3px var(--iv-fondo); }
+.iv-destacado .iv-d-nombre input:disabled { opacity: 0.55; cursor: default; }
+.iv-destacado .iv-d-campo { height: 44px; width: 100%; min-width: 0; border-radius: 12px; border: 1px solid var(--iv-linea); background: transparent; padding: 0 14px; color: var(--iv-tinta); font: 15px var(--font-ui), "Inter", system-ui, sans-serif; }
+@media (min-width: 640px) { .iv-destacado .iv-d-campo { width: auto; flex: 1; } }
+.iv-destacado .iv-d-campo::placeholder { color: var(--iv-tenue); }
+.iv-destacado .iv-d-nota { margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: var(--iv-tenue); }
+
+/* El mismo color en el menú de compartir (ShareButton): «Invita a alguien» arriba de las demás opciones. */
+.iv-menu { cursor: pointer; transition: opacity 0.15s; }
+.iv-menu:hover { opacity: 0.9; }
+.iv-menu:disabled { cursor: default; opacity: 0.75; }
+.iv-menu:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv-menu .iv-m-nota { color: var(--iv-tenue); }

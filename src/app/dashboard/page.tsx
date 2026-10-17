@@ -14,7 +14,9 @@ import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { hayGuia } from "@/lib/guia/activa";
 import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { CASA, lineaSaldo } from "./casa-copy";
-import { PerfilBusquedaCasa, SaldoCasa, SeleccionCasa } from "./casa";
+import { BloqueArribaCasa, PerfilBusquedaCasa, SaldoPlano } from "./casa";
+import { bloqueDeArriba } from "@/lib/casa-arriba";
+import { AppFooter } from "@/components/chrome/AppFooter";
 import { origenDeInformes, seleccionDeEstaSemana } from "@/lib/guia/semanal-servidor";
 import { resumenSeleccion } from "@/lib/guia/seleccion-casa";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
@@ -122,30 +124,33 @@ export default async function DashboardPage({
     const pp = await leerPerfilBusqueda(admin, user.id);
     if (pp.soloManual && (pp.perfilLtr ?? pp.perfilStr ?? pp.perfil).completo) {
       const pb0 = pp.perfilLtr ?? pp.perfilStr ?? pp.perfil;
-      const primeros = await primerosDeLaCuenta(admin, user.id);
+      const [primeros, seleccion0] = await Promise.all([primerosDeLaCuenta(admin, user.id), seleccionDeEstaSemana(admin, user.id)]);
+      // La casa que vende (17-oct-2026): una jerarquía. Arriba, el banner según el estado; debajo, «Invita a alguien»;
+      // después, plano, el saldo, sus primeros deptos y el perfil.
+      const arriba0 = bloqueDeArriba({ seleccion: seleccion0 ? resumenSeleccion(seleccion0) : null, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
       return (
         <div className="min-h-screen bg-[var(--franco-bg)]">
           <ChipVeredictoTokens />
           <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
           <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-5 sm:px-6" data-casa="sin-informes" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
-            <h1 className="mb-3.5 font-heading text-[26px] font-bold leading-[1.12] tracking-[-0.015em] text-[var(--franco-text)] sm:mb-5 sm:text-[34px]">
-              {CASA.saludo(firstName || null)}
-            </h1>
-            <SaldoCasa estado={saldo} informes={0} />
-            <div className="mt-7" data-casa="primeros">
-              <PrimerosDeptos items={primeros.items} token={primeros.token} revisando={primeros.revisando} contexto="casa" vecinas={primeros.vecinas} />
+            <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
+            <BloqueArribaCasa bloque={arriba0} informes={0} />
+            {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
+            <div className="mt-4">
+              <InvitaAlguien />
             </div>
-            <div className="mt-7">
+            <div className="ca-plano">
+              <SaldoPlano estado={saldo} arriba={arriba0.tipo} />
+              <div className="ca-plano-sec" data-casa="primeros">
+                <PrimerosDeptos items={primeros.items} token={primeros.token} revisando={primeros.revisando} contexto="casa" vecinas={primeros.vecinas} />
+              </div>
               <PerfilBusquedaCasa
                 comprador={false}
                 inicial={{ dormitorios: pb0.dormitorios, comunas: pb0.comunas, precioMaxUf: pb0.precioMaxUf, precioMinUf: pb0.editado.includes("precioMin") ? pb0.precioMinUf : null, modalidad: pb0.modalidad, piePct: pb0.piePct, plazoAnios: pb0.plazoAnios, horizonte: pb0.horizonte }}
               />
             </div>
-            {/* Invita a alguien (16-oct-2026, la puerta C): los dos reciben un análisis. */}
-            <div className="mt-7">
-              <InvitaAlguien />
-            </div>
           </div>
+          <AppFooter variant="informe" />
         </div>
       );
     }
@@ -254,6 +259,8 @@ export default async function DashboardPage({
     ? { analysisId: packOrigenId, veredicto: String(packPerfil.veredicto ?? "") }
     : null;
   const pb = perfilPersona.perfil;
+  // La casa que vende (17-oct-2026): el bloque de arriba según el estado (casa-arriba.ts).
+  const arriba = bloqueDeArriba({ seleccion: resumen, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -261,38 +268,34 @@ export default async function DashboardPage({
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
 
       {/* Todo el dashboard en Inter (02-oct-2026): «Tus informes» pasó al sistema nuevo, como la casa y la guía. */}
-      <div className="mx-auto max-w-[1100px] px-6 pb-16 pt-5" data-casa="pagina" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
-        {/* ── La casa (02-oct-2026): saludo, saldo, la selección del pack y el perfil de búsqueda; abajo, sus informes. ── */}
-        <h1 className="mb-3.5 font-heading text-[26px] font-bold leading-[1.12] tracking-[-0.015em] text-[var(--franco-text)] sm:mb-5 sm:text-[34px]">
-          {CASA.saludo(firstName || null)}
-        </h1>
-        <SaldoCasa estado={saldo} informes={stats.total} />
-        {resumen.length > 0 && (
-          <div className="mt-7">
-            <SeleccionCasa bloques={resumen} />
-          </div>
-        )}
-        {guiaCasa && (
-          <div className="mt-7" data-casa="guia">
-            <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} estado={saldo} enCasa={{ titulo: CASA.guiaTitulo }} />
-          </div>
-        )}
-        <div className="mt-7">
+      <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-5 sm:px-6" data-casa="pagina" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+        {/* ── La casa que vende (17-oct-2026): una sola jerarquía. Arriba, el banner con lo más importante según el
+             estado y un botón; debajo, «Invita a alguien» con su color; después, plano, el saldo, la guía del pack, el
+             perfil y sus informes. ── */}
+        <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
+        <BloqueArribaCasa bloque={arriba} informes={stats.total} />
+        {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
+        <div className="mt-4">
+          <InvitaAlguien />
+        </div>
+        <div className="ca-plano">
+          <SaldoPlano estado={saldo} arriba={arriba.tipo} />
+          {guiaCasa && (
+            <div className="ca-plano-sec" data-casa="guia">
+              <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} estado={saldo} enCasa={{ titulo: CASA.guiaTitulo }} />
+            </div>
+          )}
           <PerfilBusquedaCasa
             comprador={!!guiaCasa}
             inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
           />
         </div>
-        {/* Invita a alguien (16-oct-2026, la puerta C): los dos reciben un análisis. */}
-        <div className="mt-7">
-          <InvitaAlguien />
-        </div>
 
-        {/* ── Tus informes + total. Sin botón propio: el principal es «Nuevo análisis» del header único
+        {/* ── Tus informes + total, planos. Sin botón propio: el principal es «Nuevo análisis» del header único
              (27-sep-2026, un solo botón principal por pantalla). ── */}
-        <div className="mt-9 flex flex-wrap items-baseline justify-between gap-3 pb-3.5">
+        <div className="ca-informes flex flex-wrap items-baseline justify-between gap-3 pb-3.5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="font-heading text-[21px] font-bold tracking-[-0.01em] text-[var(--franco-text)] sm:text-[24px]">
+            <h2 className="ca-plano-t text-[var(--franco-text)]">
               {CASA.informes}
             </h2>
             <span className="text-[14px] text-[var(--franco-text-secondary)]">
@@ -324,6 +327,7 @@ export default async function DashboardPage({
           origenes={origenes}
         />
       </div>
+      <AppFooter variant="informe" />
     </div>
   );
 }

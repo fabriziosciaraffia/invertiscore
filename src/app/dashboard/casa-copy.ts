@@ -21,6 +21,8 @@ export const CASA = {
     boton: TRES_COPY.boton,
     suelto: `O uno solo · ${SUELTO}`,
     planes: "Ver planes",
+    /** El saldo plano (17-oct-2026), cuando arriba manda la selección. */
+    plano: "No te quedan análisis.",
   },
   // El regalo (16-oct-2026): el de registrarse, el de reactivación o el viejo de los 14 días.
   regalo: {

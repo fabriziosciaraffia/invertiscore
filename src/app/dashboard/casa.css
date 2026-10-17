@@ -1,0 +1,40 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   LA CASA QUE VENDE (17-oct-2026, decisión de Fabrizio): una sola jerarquía.
+   · ARRIBA, el banner: el material del banner del informe y de la banda de /deptos —degradado, grano, texto en papel, UN
+     botón en papel—, fijo en claro y oscuro. Lo más importante según el estado (casa-arriba.ts).
+   · SEGUNDO NIVEL, «Invita a alguien»: su propio color, distinto del banner —tinta en claro, papel en oscuro—.
+   · DESPUÉS, PLANO: el saldo, el perfil compacto y los informes, sin tarjetas que compitan.
+   Inter en todo; serif solo en el título del banner y en los títulos de sección.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.ca-hola { margin: 0 0 10px; font-size: 15px; color: var(--franco-text-secondary); }
+
+.ca-banda { position: relative; overflow: hidden; border-radius: 16px; padding: 22px 20px 20px; color: #FAFAF8;
+  background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
+@media (min-width: 768px) { .ca-banda { padding: 30px 32px 28px; background-image: url("/landing/hero-d1x.webp"); } }
+.ca-banda::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
+.ca-banda > * { position: relative; z-index: 1; }
+.ca-banda-t { margin: 0; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.12; letter-spacing: -0.015em; color: #FAFAF8; }
+@media (min-width: 768px) { .ca-banda-t { font-size: 34px; } }
+.ca-banda-s { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: rgba(250, 250, 248, 0.82); }
+.ca-banda-fila { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.ca-banda-btn { display: inline-flex; align-items: center; justify-content: center; height: 46px; padding: 0 22px; border-radius: 99px; background: #FAFAF8; color: #0F0F0F;
+  font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
+.ca-banda-btn:focus-visible { outline: 2px solid #FAFAF8; outline-offset: 3px; }
+@media (max-width: 767px) { .ca-banda-btn { width: 100%; } }
+/* La selección resumida, con la tríada sobre el material. */
+.ca-sel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ca-sel li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; line-height: 1.4; }
+.ca-sel b { font-weight: 600; }
+.ca-sel .ca-n { color: rgba(250, 250, 248, 0.82); }
+.ca-sel .ca-v { display: inline-flex; align-items: center; gap: 5px; }
+
+/* Plano: las secciones de abajo, sin tarjeta, separadas por una línea fina. */
+.ca-plano { margin-top: 32px; }
+.ca-plano-sec { padding: 18px 0; border-top: 1px solid var(--franco-border); }
+.ca-plano-t { margin: 0 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -0.005em; }
+/* Los chips del perfil, planos como los de «Afina tu búsqueda» en /deptos. */
+.ca-chip { border: 1px solid transparent; background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
+.ca-chip:focus-within { border-color: var(--franco-text); }
+.ca-chip:disabled { cursor: default; }
+/* «Tus informes», plano: el título como los de arriba y su lista debajo. */
+.ca-informes { padding-top: 18px; border-top: 1px solid var(--franco-border); }

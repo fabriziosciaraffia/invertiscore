@@ -26,9 +26,16 @@ export interface ResumenBloque {
   modalidad: "ltr" | "str";
   titulo: string;
   texto: string;
+  /** Para el bloque de arriba del dashboard (17-oct-2026): cuántos deptos y cuántos de cada veredicto, con la tríada. */
+  deptos: number;
+  conteos: Array<{ v: Veredicto; n: number }>;
 }
 
 const ORDEN: Veredicto[] = ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
+
+function conteos(items: Array<{ veredicto?: string | null }>): Array<{ v: Veredicto; n: number }> {
+  return ORDEN.map((v) => ({ v, n: items.filter((i) => i.veredicto === v).length })).filter((c) => c.n > 0);
+}
 
 function textoBloque(items: Array<{ veredicto?: string | null }>, zona: boolean): string {
   if (items.length === 0) return SELECCION_CASA.ninguno;
@@ -48,8 +55,8 @@ export function resumenSeleccion(sel: {
   corto: { items: Array<{ veredicto?: string | null }> } | null;
 }): ResumenBloque[] {
   const out: ResumenBloque[] = [];
-  if (sel.conLargo) out.push({ modalidad: "ltr", titulo: SEMANAL_STR.bloqueLargo, texto: textoBloque(sel.items, false) });
-  if (sel.corto) out.push({ modalidad: "str", titulo: SEMANAL_STR.bloqueCorto, texto: textoBloque(sel.corto.items, true) });
+  if (sel.conLargo) out.push({ modalidad: "ltr", titulo: SEMANAL_STR.bloqueLargo, texto: textoBloque(sel.items, false), deptos: sel.items.length, conteos: conteos(sel.items) });
+  if (sel.corto) out.push({ modalidad: "str", titulo: SEMANAL_STR.bloqueCorto, texto: textoBloque(sel.corto.items, true), deptos: sel.corto.items.length, conteos: conteos(sel.corto.items) });
   return out;
 }
 

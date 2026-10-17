@@ -1,13 +1,18 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// La casa (02-oct-2026): el saldo arriba y «Tu perfil de búsqueda» editable. El perfil se alimenta de
+// La casa (02-oct-2026): el saldo y «Tu perfil de búsqueda» editable. El perfil se alimenta de
 // todos los informes (lib/perfil-busqueda.ts); lo que se toca acá queda en `perfil_busqueda` y manda
-// sobre lo inferido. Sistema nuevo: Inter, sin mono, Source Serif en los títulos. El único rojo es el
-// botón de comprar del saldo vacío. Copy en casa-copy.ts.
+// sobre lo inferido. Sistema nuevo: Inter, sin mono, Source Serif en los títulos. Copy en casa-copy.ts.
+// Desde el 17-oct-2026 la casa vende (casa.css): arriba el banner con lo más importante según el estado
+// (BloqueArribaCasa, casa-arriba.ts) y su único botón en papel; después, plano, el saldo y el perfil.
+// El único rojo es el del error.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
+import "./casa.css";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
+import { CASA_ARRIBA, type BloqueArriba } from "@/lib/casa-arriba";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { ESTAS_DENTRO } from "@/lib/lo-que-sigue/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
@@ -15,7 +20,7 @@ import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
 import { rutaTres } from "@/lib/tres-analisis";
-import { SELECCION_CASA, type ResumenBloque } from "@/lib/guia/seleccion-casa";
+import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
 import { RANGOS_UF } from "@/lib/deptos/respuesta";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
@@ -27,77 +32,107 @@ export const RUTA_SUELTO = "/checkout?product=single";
 export const RUTA_TRES_CASA = rutaTres("dashboard", { volver: "/dashboard" });
 export const RUTA_NUEVO = "/analisis/nuevo-v4";
 
-const tarjeta = "rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)]";
-const botonLleno = "inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-5 text-[14px] font-semibold text-white";
-const botonBorde = "inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border-[1.5px] border-[var(--franco-text)] px-5 text-[14px] font-semibold text-[var(--franco-text)]";
 
-export function SaldoCasa({ estado, informes }: { estado: EstadoSaldo; informes: number }) {
-  const n = estado.tipo === "con" ? estado.n : estado.tipo === "regalo" ? 1 : estado.tipo === "sin" ? 0 : null;
-  const titulo =
-    estado.tipo === "sin" ? CASA.sin.titulo(informes)
-    : estado.tipo === "regalo" ? CASA.regalo.titulo
-    : estado.tipo === "con" ? CASA.con.titulo(estado.n)
-    : CASA.plan.titulo;
-  const bajada =
-    estado.tipo === "sin" ? (informes === 0 ? CASA.sin.bajadaPrimero : CASA.sin.bajada)
-    : estado.tipo === "con" && estado.noVencen ? CASA.con.noVencen
-    : estado.tipo === "plan" ? CASA.plan.bajada
-    : estado.tipo === "regalo" && estado.vence ? textoVence(estado.vence)
-    : null;
-
-  return (
-    <div className={`${tarjeta} flex flex-col items-stretch gap-3.5 p-4 sm:flex-row sm:items-center sm:justify-between`} data-casa="saldo" data-saldo={estado.tipo} style={{ fontFamily: UI }}>
-      <div className="flex min-w-0 items-center gap-3.5">
-        {n != null && estado.tipo !== "regalo" && (
-          <span className="text-[34px] font-bold leading-none tracking-[-0.02em] tabular-nums">{n}</span>
-        )}
-        <div className="min-w-0">
-          <p className="text-[15px] font-semibold leading-snug">{titulo}</p>
-          {bajada && <p className="mt-0.5 text-[13px] text-[var(--franco-text-secondary)]">{bajada}</p>}
+/**
+ * EL BLOQUE DE ARRIBA (17-oct-2026, decisión de Fabrizio): lo más importante según el estado, en banner —el material del
+ * banner del informe, texto en papel, UN botón en papel—. Qué bloque, lo decide casa-arriba.ts › bloqueDeArriba.
+ */
+export function BloqueArribaCasa({ bloque, informes }: { bloque: BloqueArriba; informes: number }) {
+  if (bloque.tipo === "seleccion") {
+    return (
+      <section className="ca-banda" data-casa="arriba" data-arriba="seleccion">
+        <h1 className="ca-banda-t">{SELECCION_CASA.titulo}</h1>
+        <p className="ca-banda-s">{CASA_ARRIBA.seleccionBajada}</p>
+        <div className="ca-banda-fila">
+          <ul className="ca-sel" data-casa="seleccion">
+            {bloque.bloques.map((b) => (
+              <li key={b.modalidad} data-bloque={b.modalidad}>
+                <b>{b.titulo}</b>
+                <span className="ca-n">· {b.deptos === 0 ? SELECCION_CASA.ninguno : `${b.deptos} ${b.deptos === 1 ? "depto" : "deptos"}`}</span>
+                {b.conteos.map((c) => (
+                  <span key={c.v} className="ca-v">{b.conteos.length > 1 && <span className="ca-n">{c.n}</span>}<ChipVeredicto v={c.v} variante="sobre-fondo" /></span>
+                ))}
+                {b.modalidad === "str" && b.deptos > 0 && <span className="ca-n">· {SELECCION_CASA.zona}</span>}
+              </li>
+            ))}
+          </ul>
+          <EnlaceCarga href={SELECCION_CASA.href} className="ca-banda-btn" data-casa="ver-seleccion">
+            {SELECCION_CASA.boton}
+          </EnlaceCarga>
         </div>
-      </div>
-      {estado.tipo === "sin" ? (
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <EnlaceCarga href={RUTA_TRES_CASA} className={botonLleno} style={{ background: "var(--signal-red)" }} data-casa="comprar-tres">
+      </section>
+    );
+  }
+  if (bloque.tipo === "pack") {
+    return (
+      <section className="ca-banda" data-casa="arriba" data-arriba="pack">
+        <h1 className="ca-banda-t">{CASA_ARRIBA.pack.titulo}</h1>
+        <p className="ca-banda-s">{informes === 0 ? CASA.sin.bajadaPrimero : CASA.sin.bajada}</p>
+        <div className="ca-banda-fila">
+          <EnlaceCarga href={RUTA_TRES_CASA} className="ca-banda-btn" data-casa="comprar-tres">
             {CASA.sin.boton}
           </EnlaceCarga>
-          <div className="flex items-center justify-center gap-3 sm:justify-end">
-            <EnlaceCarga href={RUTA_SUELTO} className="text-center text-[13px] text-[var(--franco-text-secondary)] underline underline-offset-4" data-casa="comprar-suelto">
-              {CASA.sin.suelto}
-            </EnlaceCarga>
-            <EnlaceCarga href="/pricing" className="text-center text-[13px] text-[var(--franco-text-secondary)] underline underline-offset-4" data-casa="planes">
-              {CASA.sin.planes}
-            </EnlaceCarga>
-          </div>
         </div>
-      ) : (
-        <EnlaceCarga href={RUTA_NUEVO} className={botonBorde} data-casa="analizar-otro">
-          {estado.tipo === "regalo" ? (informes === 0 ? CASA.regalo.botonPrimero : CASA.regalo.boton) : estado.tipo === "con" ? CASA.con.boton : CASA.plan.boton}
+      </section>
+    );
+  }
+  if (bloque.tipo === "regalo") {
+    return (
+      <section className="ca-banda" data-casa="arriba" data-arriba="regalo">
+        <h1 className="ca-banda-t">{CASA.regalo.titulo}</h1>
+        <p className="ca-banda-s">{bloque.vence ? `${textoVence(bloque.vence)} ` : ""}{CASA_ARRIBA.regalo.bajada}</p>
+        <div className="ca-banda-fila">
+          <EnlaceCarga href={RUTA_NUEVO} className="ca-banda-btn" data-casa="analizar-otro">
+            {informes === 0 ? CASA.regalo.botonPrimero : CASA.regalo.boton}
+          </EnlaceCarga>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="ca-banda" data-casa="arriba" data-arriba="analizar">
+      <h1 className="ca-banda-t">{CASA_ARRIBA.analizar.titulo}</h1>
+      <p className="ca-banda-s">{CASA_ARRIBA.analizar.bajada}</p>
+      <div className="ca-banda-fila">
+        <EnlaceCarga href={RUTA_NUEVO} className="ca-banda-btn" data-casa="analizar-otro">
+          {CASA_ARRIBA.analizar.boton}
         </EnlaceCarga>
-      )}
-    </div>
+      </div>
+    </section>
   );
 }
 
-/** «Tu selección de esta semana» (14-oct-2026): sus dos bloques resumidos y el enlace a la página semanal, sin token. */
-export function SeleccionCasa({ bloques }: { bloques: ResumenBloque[] }) {
+/**
+ * EL SALDO, PLANO (17-oct-2026): una línea, sin tarjeta ni botón grande, después del segundo nivel. Lo que el banner ya
+ * dice no se repite: con el regalo arriba no hay línea; con el pack arriba, la línea lleva solo el suelto y los planes.
+ */
+export function SaldoPlano({ estado, arriba }: { estado: EstadoSaldo; arriba: BloqueArriba["tipo"] }) {
+  if (estado.tipo === "regalo" && arriba === "regalo") return null;
+  const linea =
+    estado.tipo === "sin" ? CASA.sin.plano
+    : estado.tipo === "regalo" ? `${CASA.regalo.titulo}${estado.vence ? ` ${textoVence(estado.vence)}` : ""}`
+    : estado.tipo === "con" ? `${CASA.con.titulo(estado.n)}.${estado.noVencen ? ` ${CASA.con.noVencen}` : ""}`
+    : `${CASA.plan.titulo} ${CASA.plan.bajada}`;
+  const enlace = "text-[14px] text-[var(--franco-text-secondary)] underline underline-offset-4";
   return (
-    <div style={{ fontFamily: UI }} data-casa="seleccion">
-      <h2 className="font-heading text-[21px] font-bold leading-[1.15] tracking-[-0.01em] sm:text-[24px]">{SELECCION_CASA.titulo}</h2>
-      <div className={`${tarjeta} mt-3 flex flex-col items-stretch gap-3.5 p-4 sm:flex-row sm:items-center sm:justify-between`}>
-        <ul className="flex min-w-0 flex-col gap-1.5">
-          {bloques.map((b) => (
-            <li key={b.modalidad} className="text-[14.5px] leading-snug" data-bloque={b.modalidad}>
-              <span className="font-semibold">{b.titulo}</span>
-              <span className="text-[var(--franco-text-secondary)]"> · {b.texto}</span>
-            </li>
-          ))}
-        </ul>
-        <EnlaceCarga href={SELECCION_CASA.href} className={botonBorde} data-casa="ver-seleccion">
-          {SELECCION_CASA.boton}
-        </EnlaceCarga>
+    <section className="ca-plano-sec" data-casa="saldo" data-saldo={estado.tipo} style={{ fontFamily: UI }}>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5">
+        <p className="m-0 text-[15px] font-semibold">{linea}</p>
+        {estado.tipo === "sin" && (
+          <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            {arriba !== "pack" && (
+              <EnlaceCarga href={RUTA_TRES_CASA} className={enlace} data-casa="comprar-tres-plano">{CASA.sin.boton}</EnlaceCarga>
+            )}
+            <EnlaceCarga href={RUTA_SUELTO} className={enlace} data-casa="comprar-suelto">
+              {CASA.sin.suelto}
+            </EnlaceCarga>
+            <EnlaceCarga href="/pricing" className={enlace} data-casa="planes">
+              {CASA.sin.planes}
+            </EnlaceCarga>
+          </span>
+        )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -127,8 +162,8 @@ async function guardar(cambios: Record<string, unknown>): Promise<boolean> {
   }
 }
 
-const chip = "relative inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-full border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-semibold text-[var(--franco-text)] focus-within:border-[var(--franco-text)]";
-const chipMas = "relative inline-flex min-h-[34px] shrink-0 items-center rounded-full border border-dashed border-[var(--franco-border)] px-3 text-[14px] font-medium text-[var(--franco-text-secondary)] focus-within:border-[var(--franco-text)]";
+const chip = "ca-chip relative inline-flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold text-[var(--franco-text)]";
+const chipMas = "relative inline-flex min-h-[32px] shrink-0 items-center rounded-full border border-dashed border-[var(--franco-border)] px-3 text-[13.5px] font-medium text-[var(--franco-text-secondary)] focus-within:border-[var(--franco-text)]";
 const selectInvisible = "absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0";
 
 export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEditable; comprador: boolean }) {
@@ -170,10 +205,10 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
   const preguntar = p.horizonte == null || cambiandoHorizonte;
 
   return (
-    <div id="perfil" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="perfil">
-      <h2 className="font-heading text-[21px] font-bold leading-[1.15] tracking-[-0.01em] sm:text-[24px]">{CASA.perfil.titulo}</h2>
-      <p className="mb-3 mt-1.5 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{comprador ? CASA.perfil.bajadaComprador : CASA.perfil.bajada}</p>
-      <div className={`${tarjeta} p-4`}>
+    <div id="perfil" className="ca-plano-sec" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="perfil">
+      <h2 className="ca-plano-t">{CASA.perfil.titulo}</h2>
+      <p className="mb-3 max-w-[640px] text-[14px] text-[var(--franco-text-secondary)]">{comprador ? CASA.perfil.bajadaComprador : CASA.perfil.bajada}</p>
+      <div>
         <div className="flex flex-wrap gap-1.5">
           {p.dormitorios.map((d) => (
             <button key={`d${d}`} type="button" className={chip} onClick={() => quitarDorm(d)} aria-label={`${CASA.perfil.quitar} ${CASA.perfil.dormitorios(d)}`} disabled={p.dormitorios.length === 1} data-chip="dormitorios">
@@ -245,7 +280,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
 
         {preguntar ? (
           <div data-casa="horizonte">
-            <p className="mb-1.5 mt-3.5 text-[12.5px] text-[var(--franco-text-secondary)]">{CASA.perfil.cuando}</p>
+            <p className="mb-1.5 mt-3 text-[12.5px] text-[var(--franco-text-secondary)]">{CASA.perfil.cuando}</p>
             <div className="flex flex-wrap gap-1.5">
               {(["ya", "meses", "mirando"] as const).map((h) => (
                 <button
@@ -261,7 +296,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
             </div>
           </div>
         ) : (
-          <p className="mt-3.5 border-t border-[var(--franco-border)] pt-3 text-[13px] text-[var(--franco-text-secondary)]" data-casa="horizonte-respondido">
+          <p className="mt-3 text-[13px] text-[var(--franco-text-secondary)]" data-casa="horizonte-respondido">
             {CASA.perfil.respondido[p.horizonte as Horizonte]} ·{" "}
             <button type="button" className="underline underline-offset-4" onClick={() => setCambiandoHorizonte(true)}>{CASA.perfil.cambiar}</button>
           </p>
