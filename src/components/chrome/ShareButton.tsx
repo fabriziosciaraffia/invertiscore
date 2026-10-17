@@ -18,9 +18,12 @@
  * La URL compartida se arma con `window.location.origin + path`.
  *
  * INVITA A ALGUIEN (16-oct-2026, la puerta C): el botón solo lo ve el dueño del informe (HeaderFranco › modo «propio»,
- * con sesión), así que el menú cierra con su enlace de invitación —«los dos reciben un análisis»—, que se pide al abrir el
+ * con sesión), así que el menú lleva su enlace de invitación —«los dos reciben un análisis»—, que se pide al abrir el
  * menú (/api/invitacion). Para que se vea también en el teléfono, el menú se abre siempre, como con el PDF; el menú
  * nativo del sistema queda como «Más opciones».
+ * Desde el 17-oct-2026 (decisión de Fabrizio) va ARRIBA de las demás opciones y destacado con el color de «Invita a
+ * alguien» del dashboard (invita.css › .iv-menu). Se dibuja al abrir —su texto es fijo— y se habilita cuando llega el
+ * enlace, para no correr las opciones de abajo; si el enlace no llega, sale.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -28,6 +31,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { Button } from "@/components/ui/button";
 import { Share2, Check, Link2, Mail, Download, MoreHorizontal, UserPlus } from "lucide-react";
 import { REFERIDO_COPY } from "@/lib/referido";
+import "@/components/invitacion/invita.css";
 
 export type ShareModalidad = "LTR" | "STR" | "AMBAS";
 
@@ -88,6 +92,7 @@ export function ShareButton({
   const posthog = usePostHog();
   const [invitacion, setInvitacion] = useState<{ url: string; nombre: string | null } | null>(null);
   const [invitaCopiada, setInvitaCopiada] = useState(false);
+  const [sinInvitacion, setSinInvitacion] = useState(false);
   const [nativo, setNativo] = useState(false);
 
   useEffect(() => {
@@ -96,14 +101,18 @@ export function ShareButton({
 
   // El enlace de invitación, la primera vez que se abre el menú (sin sesión responde 401 y la línea no aparece).
   useEffect(() => {
-    if (!open || invitacion) return;
+    if (!open || invitacion || sinInvitacion) return;
     let vivo = true;
     void fetch("/api/invitacion", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { url?: string; nombre?: string | null } | null) => { if (vivo && d?.url) setInvitacion({ url: d.url, nombre: d.nombre ?? null }); })
-      .catch(() => {});
+      .then((d: { url?: string; nombre?: string | null } | null) => {
+        if (!vivo) return;
+        if (d?.url) setInvitacion({ url: d.url, nombre: d.nombre ?? null });
+        else setSinInvitacion(true);
+      })
+      .catch(() => { if (vivo) setSinInvitacion(true); });
     return () => { vivo = false; };
-  }, [open, invitacion]);
+  }, [open, invitacion, sinInvitacion]);
 
   useEffect(() => {
     if (!open) return;
@@ -216,6 +225,15 @@ export function ShareButton({
           está a la izquierda de «Nuevo análisis», se salía por el borde. Desde 640 px, colgado del botón como siempre. */}
       {open && (
         <div data-compartir="menu" className="fixed inset-x-4 top-16 z-50 rounded-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56 border border-[var(--franco-border-strong)] bg-[var(--franco-card)] p-2 shadow-lg">
+          {!sinInvitacion && (
+            <button onClick={() => void invitar()} disabled={!invitacion} className="iv-menu mb-1.5 flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold" data-compartir="invitar">
+              {invitaCopiada ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <UserPlus className="mt-0.5 h-4 w-4 shrink-0" />}
+              <span className="flex flex-col">
+                <span>{invitaCopiada ? REFERIDO_COPY.copiado : REFERIDO_COPY.menuCompartir}</span>
+                <span className="iv-m-nota text-xs font-normal">{REFERIDO_COPY.menuCompartirNota}</span>
+              </span>
+            </button>
+          )}
           <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
             <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
             WhatsApp
@@ -242,15 +260,6 @@ export function ShareButton({
             <button onClick={() => void shareNativo()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]" data-compartir="nativo">
               <MoreHorizontal className="h-4 w-4 text-[var(--franco-text-secondary)]" />
               Más opciones
-            </button>
-          )}
-          {invitacion && (
-            <button onClick={() => void invitar()} className="mt-1 flex w-full items-start gap-3 rounded-lg border-t border-[var(--franco-border)] px-3 pb-2.5 pt-3 text-left text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]" data-compartir="invitar">
-              {invitaCopiada ? <Check className="mt-0.5 h-4 w-4 text-ink-400" /> : <UserPlus className="mt-0.5 h-4 w-4 text-[var(--franco-text-secondary)]" />}
-              <span className="flex flex-col">
-                <span>{invitaCopiada ? REFERIDO_COPY.copiado : REFERIDO_COPY.menuCompartir}</span>
-                <span className="text-xs text-[var(--franco-text-secondary)]">{REFERIDO_COPY.menuCompartirNota}</span>
-              </span>
             </button>
           )}
         </div>
