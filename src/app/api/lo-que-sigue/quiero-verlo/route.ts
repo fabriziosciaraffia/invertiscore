@@ -18,6 +18,7 @@ import type { EventoEspejo } from "@/lib/meta/espejo";
 // de la guía, registra el interés —persona, perfil, aviso, veredicto— (tabla `interes_avisos`, uno
 // por informe) y le manda a la persona el aviso a su correo, después de chequear que siga publicado
 // (quiero-verlo.ts). Un aviso despublicado responde 410 y no manda nada. Nada sale a hola@.
+// La respuesta buena trae el correo al que salió (17-oct-2026): el bloque dice «Listo: te lo mandamos a [correo]».
 // «QuieroVerlo» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por informe, desde
 // el servidor y con el espejo para el pixel en la cookie de la respuesta.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     if (r === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
     if (r === "sin-chequeo") return salir(NextResponse.json({ error: "sin-chequeo" }, { status: 503 }));
     if (r === "fallo-envio") return salir(NextResponse.json({ error: "correo" }, { status: 502 }));
-    return salir(NextResponse.json({ ok: true, ya: r === "ya-enviado" }));
+    return salir(NextResponse.json({ ok: true, ya: r === "ya-enviado", correo: user.email ?? null }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "interes", userId: user.id, extra: { analysisId } });
     return salir(NextResponse.json({ error: "interno" }, { status: 500 }));

@@ -53,14 +53,22 @@ export const GUIA_SALDO = {
   usaUno: (n: number | null): string | null => (n == null ? "usa 1 de tus análisis" : n <= 0 ? null : n === 1 ? "usa el último que te queda" : `usa 1 de tus ${n}`),
 } as const;
 
-/** El informe que sale de un aviso publicado. */
+/**
+ * El informe que sale de un aviso publicado. «Quiero verlo» en banner desde el 17-oct-2026 (decisión de Fabrizio: es lo que
+ * la persona pagó y pasaba desapercibido): «Este depto conviene con tus números.» —solo con COMPRAR,
+ * quiero-verlo-estado.ts › dicesQueConviene— y «Franco te manda el aviso al correo para que lo veas.»; al tocar, «Mandando
+ * el aviso…» con el indicador; después «Listo: te lo mandamos a [correo]» con el visto, o «No pudimos mandarlo.» y
+ * «Reintentar».
+ */
 export const INFORME_DE_AVISO = {
   origen: "Este análisis sale de un aviso publicado.",
   antiguedadSupuesta: "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente.",
   boton: "Quiero verlo",
-  bajada: "Franco te hace llegar el aviso",
-  // 01-oct-2026: «Quiero verlo» es automático; el aviso llega al instante (sale «hoy o mañana hábil»).
-  listo: "Listo. Te mandamos el aviso a tu correo.",
+  conviene: "Este depto conviene con tus números.",
+  bajada: "Franco te manda el aviso al correo para que lo veas.",
+  enviando: "Mandando el aviso…",
+  listo: (correo: string | null) => (correo ? `Listo: te lo mandamos a ${correo}` : "Listo: te lo mandamos a tu correo"),
   despublicado: "Este aviso ya no está publicado.",
-  error: "No pudimos registrarlo. Intenta de nuevo.",
+  error: "No pudimos mandarlo.",
+  reintentar: "Reintentar",
 } as const;
