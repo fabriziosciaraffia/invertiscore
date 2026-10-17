@@ -5,7 +5,7 @@
 // pasada, mismo día): MENOS PARA ELEGIR y el correo PEGADO A LA RESPUESTA.
 //   1 · tres preguntas con chips compactos: comuna (las ocho más buscadas y «Otra comuna…», un buscador con el resto;
 //       hasta tres), tipología (una sola, 2D por defecto) y rango (cuatro). Apenas están, la respuesta de la noche
-//       (GET /api/deptos/respuesta) es UN NÚMERO —«29 de 1.008 convienen como inversión»— con el detalle chico debajo;
+//       (GET /api/deptos/respuesta) es UN NÚMERO —«29 de 1.008 convienen»— con la búsqueda arriba y el pie y el plazo chicos debajo;
 //   2 · inmediatamente debajo, el correo: «Regístrate y te los mando hoy», el campo, «Quiero recibirlos» y «Te mandamos
 //       un código. Sin contraseña.». Después del correo, el MISMO mensaje exista o no la cuenta; al entrar, a la que ya
 //       existía se le pregunta si agrega esas comunas a su perfil;
@@ -19,10 +19,11 @@
 // LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) usa esta misma pantalla con su cabecera, su puerta (C) y su página de
 // vuelta (`/i/CÓDIGO`): las mismas preguntas, el mismo alta, la misma entrada con Google.
 // SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026, decisión de Fabrizio): arriba, qué es, con las cifras de
-// la noche («Cada noche Franco revisa los 21.000 deptos en venta publicados en Santiago…», «Anoche, 4.886 convenían.»); después el
-// número de una búsqueda ya elegida (Santiago, 2D, UF 3.000 a 4.000), que trae el servidor; justo debajo, la banda del
-// correo —lo único con color, como el banner del informe—; y abajo, «Afina tu búsqueda», los chips planos que cambian el
-// número al toque.
+// la noche, en UNA frase («Cada noche Franco revisa los +21.000 deptos en venta publicados en Santiago. Anoche, 4.886
+// convenían como inversión.»); después, como etiqueta, la búsqueda ya elegida («Si buscas Santiago · 2D · UF 3.000 a
+// 4.000», 17-oct-2026) y debajo el número grande («4 de 607 convienen») con la nota chica del pie y el plazo —etiqueta y
+// número llegan en la MISMA respuesta, así que al tocar un chip cambian juntos—; justo debajo, la banda del correo —lo
+// único con color, como el banner del informe—; y abajo, «Cambia la búsqueda», los chips planos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -389,17 +390,16 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   return (
     <div className="dp" data-deptos="elegir">
       {cabecera}
-      <h1 className="dp-que" data-deptos="que">{DEPTOS_COPY.que(portada?.noche?.revisados ?? null)}</h1>
-      <p className="dp-que-b">{DEPTOS_COPY.queB}</p>
-      {portada?.noche && <p className="dp-anoche" data-deptos="anoche">{DEPTOS_COPY.anoche(portada.noche.convienen)}</p>}
+      <h1 className="dp-que" data-deptos="que">{DEPTOS_COPY.que(portada?.noche?.revisados ?? null, portada?.noche?.convienen ?? null)}</h1>
 
       <section className="dp-respuesta" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
         {respuesta ? (
           <>
+            <p className="dp-si" data-deptos="si">{respuesta.etiqueta}</p>
             <p className="dp-numero" data-convienen={respuesta.convienen}>
               {respuesta.cifra ? <><span className="dp-cifra">{respuesta.cifra}</span>{respuesta.titular.slice(respuesta.cifra.length)}</> : respuesta.titular}
             </p>
-            <p className="dp-detalle">{respuesta.detalle}</p>
+            <p className="dp-nota-num" data-deptos="nota">{respuesta.nota}</p>
             {respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}
           </>
         ) : (

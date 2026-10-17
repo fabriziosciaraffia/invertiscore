@@ -2,7 +2,8 @@
 // /deptos, la puerta B (16-oct-2026, decisiones de Fabrizio): una persona sin depto en la mira elige comuna, tipología y
 // rango de precio, y Franco responde AL INSTANTE con la evaluación de la noche (sin calcular en vivo).
 // LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada: la única meta de la página es que dejen el correo): «29 de 1.008
-// convienen como inversión», y debajo el detalle «Santiago · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años». Con cero, con
+// convienen». Desde el 17-oct-2026, antes del número la etiqueta «Si buscas Santiago · 2D · UF 3.000 a 4.000» y debajo
+// la nota chica «con pie 20 % y 25 años». Con cero, con
 // qué sí en una línea corta —con pie 30 %, o en qué comuna vecina— y aun así el registro: «te aviso cuando aparezca uno».
 // La modalidad ya no se pregunta acá: va en «Estás dentro», con arriendo tradicional por defecto.
 // Puro: lo prueba el tier PUERTA-B. Los conteos los trae la RPC `deptos_conteo` (mismo universo que el correo semanal)
@@ -98,10 +99,15 @@ export interface RespuestaDeptos {
   convienen: number;
   /** El número: «29 de 1.008». null si esta semana no hubo avisos así. */
   cifra: string | null;
-  /** «29 de 1.008 convienen como inversión»; sin avisos, «Ninguno publicado así esta semana». */
+  /** «29 de 1.008 convienen»; sin avisos, «Ninguno publicado así esta semana». */
   titular: string;
-  /** «Santiago · 2D · UF 3.000 a 4.000 · pie 20 %, 25 años», chico y en gris debajo del número. */
-  detalle: string;
+  /**
+   * QUÉ BÚSQUEDA ES EL NÚMERO (17-oct-2026, decisión de Fabrizio): «Si buscas Santiago · 2D · UF 3.000 a 4.000», como
+   * etiqueta ANTES del número. Viene en la misma respuesta que el número, así que al tocar un chip cambian juntos.
+   */
+  etiqueta: string;
+  /** «con pie 20 % y 25 años», chico bajo el número. */
+  nota: string;
   /** Con cero: con qué sí, en una línea corta. null si no es cero. */
   alternativa: string | null;
   conPie30: number | null;
@@ -114,9 +120,10 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 export const lista = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
 const siConvienen = (n: number) => `${miles(n)} sí ${n === 1 ? "conviene" : "convienen"}`;
 
-/** El total de la frase de arriba, redondeado a miles como se dice («21.453» → «21.000»); bajo diez mil, exacto. */
-export function milesRedondos(n: number): string {
-  return n >= 10_000 ? miles(Math.round(n / 1000) * 1000) : miles(n);
+/** El total de la frase de arriba, en miles y hacia abajo, con «+» («21.453» → «+21.000»): nunca dice más de lo que hay.
+ *  Bajo diez mil, exacto. */
+export function masDeMiles(n: number): string {
+  return n >= 10_000 ? `+${miles(Math.floor(n / 1000) * 1000)}` : miles(n);
 }
 
 export const DEPTOS_COPY = {
@@ -128,12 +135,14 @@ export const DEPTOS_COPY = {
    * «EN VENTA» (17-oct-2026, decisión de Fabrizio): el +40.000 de la landing son los comparables de venta Y arriendo
    * (src/lib/stats.ts); sin decir «en venta», las dos cifras se leían como si se contradijeran.
    */
-  que: (revisados: number | null) =>
-    revisados ? `Cada noche Franco revisa los ${milesRedondos(revisados)} deptos en venta publicados en Santiago.` : "Cada noche Franco revisa los deptos en venta publicados en Santiago.",
-  queB: "Cada semana te manda los que convienen como inversión con tu pie.",
-  anoche: (convienen: number) => `Anoche, ${miles(convienen)} convenían.`,
-  /** Los chips, debajo del correo. */
-  afina: "Afina tu búsqueda",
+  // UNA SOLA FRASE ARRIBA (17-oct-2026, decisión de Fabrizio): qué revisa y cuántos convenían anoche, «como inversión».
+  que: (revisados: number | null, convienen: number | null) =>
+    `Cada noche Franco revisa los ${revisados ? `${masDeMiles(revisados)} ` : ""}deptos en venta publicados en Santiago.${convienen != null ? ` Anoche, ${miles(convienen)} convenían como inversión.` : ""}`,
+  /** La etiqueta del número: la búsqueda de los chips. */
+  si: (busqueda: string) => `Si buscas ${busqueda}`,
+  nota: `con pie ${PIE_DEPTOS} % y ${PLAZO_DEPTOS} años`,
+  /** Los chips, debajo del correo (17-oct-2026: antes «Afina tu búsqueda»). */
+  afina: "Cambia la búsqueda",
   /** En una línea, también en el teléfono. */
   bajada: "Elige y Franco te dice cuántos convienen hoy.",
   comuna: "Comuna",
@@ -164,11 +173,12 @@ export function respuestaDeptos(
   const enSus = propias.filter((c) => v.comunas.includes(c.comuna));
   const total = enSus.reduce((s, c) => s + c.total, 0);
   const convienen = enSus.reduce((s, c) => s + c.comprar20, 0);
-  const detalle = [lista(v.comunas), v.tipologias.map((t) => t.chip).join(" y "), v.rango.chip, `pie ${PIE_DEPTOS} %, ${PLAZO_DEPTOS} años`].join(" · ");
+  const etiqueta = DEPTOS_COPY.si([lista(v.comunas), v.tipologias.map((t) => t.chip).join(" y "), v.rango.chip].join(" · "));
+  const nota = DEPTOS_COPY.nota;
   const cifra = total > 0 ? `${miles(convienen)} de ${miles(total)}` : null;
-  const titular = cifra ? `${cifra} ${convienen === 1 ? "conviene" : "convienen"} como inversión` : "Ninguno publicado así esta semana";
+  const titular = cifra ? `${cifra} ${convienen === 1 ? "conviene" : "convienen"}` : "Ninguno publicado así esta semana";
   if (convienen > 0) {
-    return { total, convienen, cifra, titular, detalle, alternativa: null, conPie30: null, vecinas: [], registro: DEPTOS_COPY.conRegistro };
+    return { total, convienen, cifra, titular, etiqueta, nota, alternativa: null, conPie30: null, vecinas: [], registro: DEPTOS_COPY.conRegistro };
   }
   // EL CERO CON ALTERNATIVA, en una línea: con qué pie sí (30 %, en sus mismas comunas) o, si no, en qué comuna vecina.
   const conPie30 = enSus.reduce((s, c) => s + c.comprar30, 0);
@@ -180,7 +190,7 @@ export function respuestaDeptos(
   const alternativa = conPie30 > 0 ? `Con pie 30 %, ${siConvienen(conPie30)}.`
     : vecinasQueDan[0] ? `En ${vecinasQueDan[0].comuna}, comuna vecina, ${siConvienen(vecinasQueDan[0].convienen)}.`
     : "Tampoco con pie 30 % ni en comunas vecinas.";
-  return { total, convienen: 0, cifra, titular, detalle, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.sinDeptos };
+  return { total, convienen: 0, cifra, titular, etiqueta, nota, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.sinDeptos };
 }
 
 /** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. */

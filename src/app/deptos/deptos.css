@@ -17,10 +17,6 @@
 /* Qué es, en una frase, con las cifras de la noche. */
 .dp-que { font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 22px; line-height: 1.18; letter-spacing: -0.015em; margin: 0; }
 @media (min-width: 768px) { .dp-que { font-size: 32px; } }
-.dp-que-b { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--franco-text-secondary); }
-@media (min-width: 768px) { .dp-que-b { font-size: 17px; } }
-.dp-anoche { margin: 8px 0 0; font-size: 15px; line-height: 1.4; font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (min-width: 768px) { .dp-anoche { font-size: 17px; } }
 .dp-bloque { border: 0; margin: 0; padding: 0; min-width: 0; }
 .dp-bloque + .dp-bloque { margin-top: 12px; }
 .dp-pregunta { font-size: 13px; font-weight: 600; margin: 0 0 6px; padding: 0; color: var(--franco-text); }
@@ -38,12 +34,14 @@
 .dp-fuera { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
 /* El número y, pegada debajo, la banda del correo: nada entre los dos. */
 .dp-respuesta { margin-top: 14px; }
-.dp-respuesta[data-cargando="1"] .dp-numero, .dp-respuesta[data-cargando="1"] .dp-detalle { opacity: 0.55; }
-.dp-numero { font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
+/* Etiqueta, número y nota son UNA respuesta: mientras llega la nueva, los tres se atenúan juntos. */
+.dp-respuesta[data-cargando="1"] .dp-si, .dp-respuesta[data-cargando="1"] .dp-numero, .dp-respuesta[data-cargando="1"] .dp-nota-num { opacity: 0.55; }
+.dp-si { margin: 0 0 2px; font-size: 14px; line-height: 1.4; font-weight: 500; color: var(--franco-text-secondary); }
+.dp-numero { font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
 .dp-cifra { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-@media (min-width: 768px) { .dp-numero { font-size: 26px; } .dp-cifra { font-size: 38px; } }
+@media (min-width: 768px) { .dp-numero { font-size: 38px; } .dp-cifra { font-size: 38px; } }
 .dp-esperando { color: var(--franco-text-tertiary); }
-.dp-detalle { margin: 4px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--franco-text-tertiary); }
+.dp-nota-num { margin: 4px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--franco-text-tertiary); }
 .dp-alternativa { margin: 6px 0 0; font-size: 14px; line-height: 1.4; font-weight: 500; }
 .dp-form { margin-top: 12px; }
 .dp-registro { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
