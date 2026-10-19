@@ -25,15 +25,17 @@ const NOMBRE = VIGILANTE;
 /** La lectura de fichas como si fuera un cron: su estado y sus avisos viven con los demás. */
 const FICHA = "ficha";
 
-/** Lo que dicen las lecturas de ficha de las últimas 24 horas: los bloqueos y la última lectura buena. */
-async function estadoFicha(sb: SupabaseClient): Promise<{ bloqueos24h: number; ultimaBuena: string | null }> {
+/** Lo que dicen las lecturas de ficha de las últimas 24 horas: los bloqueos, las que no tuvieron respuesta (19-oct-2026:
+ *  con el proxy caído no hay bloqueos, solo «error» y «tiempo») y la última lectura buena. */
+async function estadoFicha(sb: SupabaseClient): Promise<{ bloqueos24h: number; sinRespuesta24h: number; ultimaBuena: string | null }> {
   const desde = new Date(Date.now() - 24 * 3600e3).toISOString();
-  const [{ count, error: e1 }, { data, error: e2 }] = await Promise.all([
+  const [{ count, error: e1 }, { count: sinResp, error: e3 }, { data, error: e2 }] = await Promise.all([
     sb.from("lecturas_ficha").select("id", { count: "exact", head: true }).eq("motivo", "bloqueo").gte("leido_at", desde),
+    sb.from("lecturas_ficha").select("id", { count: "exact", head: true }).in("motivo", ["error", "tiempo"]).gte("leido_at", desde),
     sb.from("lecturas_ficha").select("leido_at").in("motivo", ["publicado", "despublicado"]).order("leido_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (e1 || e2) throw new Error(`lecturas_ficha: ${(e1 ?? e2)!.message}`);
-  return { bloqueos24h: count ?? 0, ultimaBuena: (data?.leido_at as string | undefined) ?? null };
+  if (e1 || e2 || e3) throw new Error(`lecturas_ficha: ${(e1 ?? e2 ?? e3)!.message}`);
+  return { bloqueos24h: count ?? 0, sinRespuesta24h: sinResp ?? 0, ultimaBuena: (data?.leido_at as string | undefined) ?? null };
 }
 
 export async function GET(request: Request) {

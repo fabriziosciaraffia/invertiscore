@@ -168,9 +168,15 @@ export function alVigilar(e: EstadoCron, condiciones: Aviso[], variasAlDia: bool
   return { estado: { ...e, alertas }, inmediatos, resumen };
 }
 
-/** El bloqueo de la ficha (regla 1): solo si pasa un día sin una lectura buena mientras hay bloqueos. */
-export function condicionBloqueo(p: { bloqueos24h: number; ultimaBuena: string | null }, ahora: Date): Aviso | null {
-  if (p.bloqueos24h === 0) return null;
+/** El bloqueo de la ficha (regla 1): solo si pasa un día sin una lectura buena mientras hay lecturas fallidas. Desde el
+ *  19-oct-2026 cuentan también las que no tuvieron respuesta («error», «tiempo»): con el proxy caído del todo no hay
+ *  ningún bloqueo —ni una respuesta— y la regla callaba. */
+export function condicionBloqueo(p: { bloqueos24h: number; sinRespuesta24h?: number; ultimaBuena: string | null }, ahora: Date): Aviso | null {
+  const sinRespuesta = p.sinRespuesta24h ?? 0;
+  if (p.bloqueos24h === 0 && sinRespuesta === 0) return null;
   if (p.ultimaBuena && horasEntre(p.ultimaBuena, ahora) <= 24) return null;
-  return { clave: "bloqueo", texto: `La fuente bloquea la lectura de fichas y no hubo una lectura buena ${p.ultimaBuena ? `desde ${p.ultimaBuena.slice(0, 16).replace("T", " ")} UTC` : "en el registro"} (${p.bloqueos24h} bloqueos en 24 h). La guía muestra solo lo ya chequeado.` };
+  const desde = p.ultimaBuena ? `desde ${p.ultimaBuena.slice(0, 16).replace("T", " ")} UTC` : "en el registro";
+  const fallas = [p.bloqueos24h ? `${p.bloqueos24h} bloqueos` : null, sinRespuesta ? `${sinRespuesta} sin respuesta` : null].filter(Boolean).join(" y ");
+  const que = p.bloqueos24h ? "La fuente bloquea la lectura de fichas" : "La lectura de fichas no recibe respuesta (¿el proxy?)";
+  return { clave: "bloqueo", texto: `${que} y no hubo una lectura buena ${desde} (${fallas} en 24 h). La guía muestra solo lo ya chequeado.` };
 }
