@@ -420,7 +420,7 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url(/fonts/source-serif-4-normal-es.woff2) format('woff2');
+  src: url(/fonts/source-serif-4-700-es.woff2) format('woff2');
   unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
 }
 @font-face {
@@ -773,8 +773,10 @@
  * LAS FUENTES DE LA PRIMERA PANTALLA, MÁS CHICAS (19-oct-2026, LCP en teléfono). La serif normal e Inter van partidas:
  * el subconjunto del español (*-es.woff2, el que se precarga) y el archivo latin original con el resto del rango, que
  * el navegador baja solo si la página tiene un carácter fuera del español. Y el «re» del wordmark tiene su propia cara
- * con solo esas dos letras, incrustada: la itálica latin ya no se pide en la primera pantalla. Lo generó
- * scratchpad/fuentes/generar.mjs (subset-font); lo fija el tier LANDING-RENDIMIENTO.
+ * con solo esas dos letras, incrustada: la itálica latin ya no se pide en la primera pantalla. Y la cara 700 del español
+ * apunta a una instancia FIJA en 700 (source-serif-4-700-es.woff2, 17 kB en vez de 39): el titular y el «franco» del
+ * wordmark son lo único en serif de la primera pantalla y los dos son 700; mismos anchos que la variable a 700, medido.
+ * Lo generaron scratchpad/fuentes/generar.mjs e instancia700.mjs (subset-font); lo fija el tier LANDING-RENDIMIENTO.
  */
 @font-face {
   font-family: 'Source Serif 4 Franco Marca';

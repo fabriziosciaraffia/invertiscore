@@ -26,9 +26,10 @@ import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 // en tamaño (`fuentes.css`), así que el titular pinta sin esperarlas y no salta cuando llegan.
 // MÁS CHICAS (19-oct-2026, LCP en teléfono): se precarga el SUBCONJUNTO DEL ESPAÑOL de la serif normal y de Inter
 // (*-es.woff2, 39 y 33 kB en vez de 51 y 48); el resto del rango latin queda en el archivo original y baja solo si
-// hace falta. La itálica ya no: el «re» del wordmark tiene su propia cara incrustada en `fuentes.css`.
+// hace falta. La itálica ya no: el «re» del wordmark tiene su propia cara incrustada en `fuentes.css`. Y de la serif
+// se precarga la instancia FIJA en 700 (17 kB): la primera pantalla solo tiene serif en 700, el titular y el wordmark.
 const FUENTES_PRECARGA = [
-  "source-serif-4-normal-es.woff2",
+  "source-serif-4-700-es.woff2",
   "inter-normal-es.woff2",
 ] as const;
 

@@ -133,9 +133,10 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (/latin-ext/.test(precarga)) F("3 · vuelve a precargarse un latin-ext");
   // (01-oct-2026) Solo lo de arriba del pliegue: el titular (Source Serif normal e itálica) y el campo (Inter).
   // ⚠ ACTA (19-oct-2026, LCP en teléfono) · ahora el SUBCONJUNTO DEL ESPAÑOL de la serif normal y de Inter; la itálica
-  // sale de la precarga porque el «re» del wordmark tiene su cara incrustada (ver §6).
+  // sale de la precarga porque el «re» del wordmark tiene su cara incrustada (ver §6). Y de la serif, la instancia FIJA
+  // en 700: la primera pantalla solo tiene serif en 700 (el titular y el «franco» del wordmark).
   const caras = (precarga.match(/"[a-z0-9-]+\.woff2"/g) ?? []).map((c) => c.slice(1, -1).replace(/\.woff2$/, "")).sort();
-  const ARRIBA = ["inter-normal-es", "source-serif-4-normal-es"];
+  const ARRIBA = ["inter-normal-es", "source-serif-4-700-es"];
   if (caras.join() !== ARRIBA.join()) F(`3 · se precarga ${caras.join(", ")}: solo van las fuentes de arriba del pliegue (${ARRIBA.join(", ")})`);
   // Ninguna cara bloquea el titular: TODAS las @font-face con archivo propio son swap.
   const fuentes = leer("src/app/fuentes.css");
@@ -271,9 +272,12 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => void \(async \(\) => \{\s*try \{\s*const \{ createClient \} = await import\("@\/lib\/supabase\/client"\);/.test(atrib6)) F("6 · la atribución pide Supabase antes de que la página esté quieta");
   // e · Las fuentes de arriba en su subconjunto del español, partidas sin solaparse, y el wordmark con su cara.
   for (const n of ["source-serif-4-normal-es", "inter-normal-es"]) if (pesa(`public/fonts/${n}.woff2`) > 42_000) F(`6 · ${n}.woff2 pesa más de 42 kB (o no existe)`);
+  if (pesa("public/fonts/source-serif-4-700-es.woff2") > 20_000) F("6 · source-serif-4-700-es.woff2 pesa más de 20 kB (o no existe)");
   const fuentes6 = leer("src/app/fuentes.css");
-  for (const n of ["source-serif-4-normal", "inter-normal"]) {
-    const es6 = Array.from(fuentes6.matchAll(new RegExp(`src: url\\(/fonts/${n}-es\\.woff2\\) format\\('woff2'\\);\\s*unicode-range: ([^;]+);`, "g"))).map((m) => m[1]);
+  // La cara 700 del español de la serif apunta a la instancia fija; las otras (300, 400, 600), a la variable.
+  if (!/font-weight: 700;\s*font-display: swap;\s*src: url\(\/fonts\/source-serif-4-700-es\.woff2\) format\('woff2'\);/.test(fuentes6)) F("6 · la cara 700 de la serif vuelve a la variable entera (39 kB en vez de 17)");
+  for (const [n, esN] of [["source-serif-4-normal", "source-serif-4-(?:normal|700)"], ["inter-normal", "inter-normal"]]) {
+    const es6 = Array.from(fuentes6.matchAll(new RegExp(`src: url\\(/fonts/${esN}-es\\.woff2\\) format\\('woff2'\\);\\s*unicode-range: ([^;]+);`, "g"))).map((m) => m[1]);
     const resto6 = Array.from(fuentes6.matchAll(new RegExp(`src: url\\(/fonts/${n}-latin\\.woff2\\) format\\('woff2'\\);\\s*unicode-range: ([^;]+);`, "g"))).map((m) => m[1]);
     if (!es6.length || es6.length !== resto6.length) F(`6 · ${n}: las caras latin no están partidas en el español y el resto`);
     if (es6.some((r) => !/U\+0020-007E/.test(r)) || resto6.some((r) => /U\+0020-007E|U\+00E1|U\+00F1/.test(r))) F(`6 · ${n}: el español y el resto se solapan (o el español no cubre ASCII)`);
