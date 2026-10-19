@@ -138,6 +138,9 @@ export const DEPTOS_COPY = {
   // UNA SOLA FRASE ARRIBA (17-oct-2026, decisión de Fabrizio): qué revisa y cuántos convenían anoche, «como inversión».
   que: (revisados: number | null, convienen: number | null) =>
     `Cada noche Franco revisa los ${revisados ? `${masDeMiles(revisados)} ` : ""}deptos en venta publicados en Santiago.${convienen != null ? ` Anoche, ${miles(convienen)} convenían como inversión.` : ""}`,
+  /** Arriba, cuando se llega desde «Empezar gratis» de la página de planes (19-oct-2026, decisión de Fabrizio): el enlace
+   *  va en «Analízalo gratis», al wizard. */
+  desdePlanes: { antes: "Elige qué buscas y te mandamos los deptos cada semana. ¿Tienes un depto en la mira?", enlace: "Analízalo gratis" },
   /** La etiqueta del número: la búsqueda de los chips. */
   si: (busqueda: string) => `Si buscas ${busqueda}`,
   nota: `con pie ${PIE_DEPTOS} % y ${PLAZO_DEPTOS} años`,

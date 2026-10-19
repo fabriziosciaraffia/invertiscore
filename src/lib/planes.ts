@@ -51,8 +51,9 @@ export const PLANES_COPY = {
     nombre: "Gratis",
     precio: "$0",
     incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un análisis gratis al crear tu cuenta", "Un análisis más por cada amigo que invites"],
-    boton: "Crear mi cuenta",
-    ruta: "/deptos",
+    // «Empezar gratis» (19-oct-2026, decisión de Fabrizio): a /deptos, que desde planes dice arriba qué hacer ahí.
+    boton: "Empezar gratis",
+    ruta: "/deptos?desde=planes",
   },
   pack: {
     nombre: "Pack de 3",

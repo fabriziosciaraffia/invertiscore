@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { DEPTOS_COPY } from "@/lib/deptos/respuesta";
+import { hrefAnalizar } from "@/lib/cta-analizar";
 import { portadaDeptos } from "@/lib/deptos/portada";
 import { DeptosCliente } from "./deptos-cliente";
 
@@ -29,7 +31,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function DeptosPage() {
+export default async function DeptosPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const sesion = user?.email ? { email: user.email } : null;
@@ -40,6 +42,14 @@ export default async function DeptosPage() {
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco sesion={sesion} />
       <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
+        {/* Desde «Empezar gratis» de la página de planes (19-oct-2026): una línea arriba con qué hacer acá y, para quien ya
+            tiene un depto en la mira, el wizard. */}
+        {searchParams?.desde === "planes" && (
+          <p className="mb-5 text-[15px] leading-[1.5] text-[var(--franco-text-secondary)]" style={{ fontFamily: "var(--font-ui), Inter, sans-serif" }} data-deptos="desde-planes">
+            {DEPTOS_COPY.desdePlanes.antes}{" "}
+            <EnlaceCarga href={hrefAnalizar("pricing")} className="font-semibold text-[var(--franco-text)] underline underline-offset-2">{DEPTOS_COPY.desdePlanes.enlace}</EnlaceCarga>
+          </p>
+        )}
         <DeptosCliente sesion={sesion} portada={portada} />
       </main>
       {/* El pie de los informes (16-oct-2026): el wordmark y el aviso, sin enlaces que saquen de la página. */}
