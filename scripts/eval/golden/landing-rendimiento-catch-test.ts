@@ -279,7 +279,9 @@ export function runLandingRendimientoTier(): { hard: number } {
     if (es6.some((r) => !/U\+0020-007E/.test(r)) || resto6.some((r) => /U\+0020-007E|U\+00E1|U\+00F1/.test(r))) F(`6 · ${n}: el español y el resto se solapan (o el español no cubre ASCII)`);
   }
   if (!/font-family: 'Source Serif 4 Franco Marca';\s*font-style: italic;\s*font-weight: 400;\s*font-display: swap;\s*src: url\(data:font\/woff2;base64,[A-Za-z0-9+/=]{200,}\) format\('woff2'\);\s*unicode-range: U\+0065, U\+0072;/.test(fuentes6)
-    || !/fontFamily: "'Source Serif 4 Franco Marca', var\(--font-heading\)"/.test(leer("src/components/franco-logo.tsx"))) F("6 · el «re» del wordmark vuelve a pedir la itálica latin entera");
+    // El respaldo es el LOCAL ajustado, no la serif: mientras la cara se decodifica el navegador dibuja con el respaldo, y
+    // con la serif pedía su itálica entera (medido en el preview del 19-oct-2026).
+    || !/fontFamily: "'Source Serif 4 Franco Marca', 'Source Serif 4 Franco Fallback'"/.test(leer("src/components/franco-logo.tsx"))) F("6 · el «re» del wordmark vuelve a pedir la itálica latin entera");
 
   if (fallas.length) {
     console.log(`  ✗ LANDING-RENDIMIENTO · ${fallas.length} falla(s):`);
