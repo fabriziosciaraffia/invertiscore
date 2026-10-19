@@ -61,9 +61,13 @@ function almacen(): Storage {
   } as Storage;
 }
 
-/** Un navegador: storage, cookies y (si se pide) el pixel. */
+/**
+ * Un navegador: storage, cookies y (si se pide) el pixel. ⚠ ACTA (19-oct-2026, consentimiento de cookies) · el pixel
+ * opera SOLO con el «si» del aviso (lib/consentimiento.ts): este tier prueba el camino CON permiso, así que el navegador
+ * nace con la cookie puesta. El camino SIN permiso lo fija el tier CONSENTIMIENTO.
+ */
 function navegador() {
-  const jar = new Map<string, string>();
+  const jar = new Map<string, string>([["franco_consentimiento", "si"]]);
   const w = { sessionStorage: almacen(), localStorage: almacen() } as unknown as Record<string, unknown>;
   const doc = {
     get cookie() { return Array.from(jar.entries()).map(([k, v]) => `${k}=${v}`).join("; "); },
@@ -127,7 +131,8 @@ function baseFalsa(esPrueba: (p: { p_user_id: string | null; p_email: string | n
   return { sb: sb as never, eventos, contexto };
 }
 
-const NAVEGADOR: ContextoMeta = { ip: "200.1.1.1", ua: "Mozilla/5.0", fbp: "fb.1.1.111", fbc: "fb.1.2.abc", url: "https://refranco.ai/x", prueba: false };
+// Con el «si» del aviso de cookies (19-oct-2026): sin él no salen el correo, el id ni las cookies (tier CONSENTIMIENTO).
+const NAVEGADOR: ContextoMeta = { ip: "200.1.1.1", ua: "Mozilla/5.0", fbp: "fb.1.1.111", fbc: "fb.1.2.abc", url: "https://refranco.ai/x", prueba: false, consentimiento: true };
 
 export async function runMedicionMetaTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER MEDICION-META (deduplicación, cola del pixel, cuentas de prueba, puertas · 0 tokens) ───");
@@ -270,7 +275,7 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
       if (cookiesDeLlegada({ search: "?fbclid=IwAR1abcDEF_ghi-123", host: "refranco.ai", fbcActual: "fb.1.5.IwAR1abcDEF_ghi-123", ahoraMs: 9 }).fbc) F("2 · el mismo clic pisa el _fbc que ya estaba");
       if (cookiesDeLlegada({ search: "?fbclid=<script>", host: "refranco.ai", fbcActual: null, ahoraMs: 9 }).fbc) F("2 · un fbclid con forma rara entra a la cookie");
       const mw = sinComentarios(leer("src/middleware.ts"));
-      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(request\.nextUrl\.pathname\)\) return conMedicion\(request, NextResponse\.next\(\)\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
+      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc && conPermiso\(consentimientoDeCookie\(request\.headers\.get\("cookie"\)\)\)\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(request\.nextUrl\.pathname\)\) return conMedicion\(request, NextResponse\.next\(\)\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
     }
 
     // ── 3 · LAS CUENTAS DE PRUEBA, FUERA ──────────────────────────────────────
@@ -309,7 +314,8 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
       nav.conPixel(true);
       if ((nav.w.localStorage as Storage).getItem(CLAVE_CUENTA_PRUEBA) !== "1" || colaMeta().length || vaciarColaMeta() || nav.llamadas.length) F("3 · el navegador de una cuenta de prueba manda eventos al pixel");
       const px = sinComentarios(leer("src/components/analytics/MetaPixel.tsx"));
-      if (!/return cuandoLaPaginaEsteQuieta\(\(\) => \{\s*if \(esCuentaDePruebaNavegador\(\)\) return;/.test(px)) F("3 · el pixel carga para una cuenta de prueba");
+      // ⚠ ACTA (19-oct-2026) · la condición es ahora `pixelPermitido`: el consentimiento Y no ser cuenta de prueba.
+      if (!/return cuandoLaPaginaEsteQuieta\(\(\) => \{\s*if \(!pixelPermitido\(leerConsentimiento\(\), esCuentaDePruebaNavegador\(\)\)\) return;/.test(px)) F("3 · el pixel carga para una cuenta de prueba");
       if (!/marcarCuentaDePrueba\(esTest\);/.test(sinComentarios(leer("src/hooks/useAttributionSync.ts")))) F("3 · el navegador no queda marcado como de cuenta de prueba al entrar");
       if (!/if \(await esCuentaDePrueba\(admin, typeof f\.user_id === "string" \? f\.user_id : null\)\) return null;/.test(sinComentarios(leer("src/app/api/payments/status/route.ts")))) F("3 · el retorno del pago le pasa la compra de una cuenta de prueba al pixel");
       // El modo prueba se prende y se apaga en la llegada.

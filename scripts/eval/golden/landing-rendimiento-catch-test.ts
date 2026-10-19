@@ -74,7 +74,9 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (!/import \{ LoQueHariaFrancoDiferida \} from "\.\/RecomendacionDiferida";/.test(secciones) || !/<LoQueHariaFrancoDiferida \/>/.test(secciones)) F("2 · la sección 3 no monta la versión diferida");
   const diferida = sinComentarios(leer("src/components/landing-v14/RecomendacionDiferida.tsx"));
   if (!/dynamic\(\(\) => import\("\.\/Recomendacion"\)\.then\(\(m\) => \(\{ default: m\.LoQueHariaFranco \}\)\), \{\s*\n\s*ssr: false,/.test(diferida)) F("2 · la card real no entra por next/dynamic sin SSR");
-  if (!/cuandoLaPaginaEsteQuieta\(\(\) => setListo\(true\)\)/.test(diferida) || !/new IntersectionObserver\(/.test(diferida) || !/rootMargin: "100% 0px"/.test(diferida)) F("2 · la card no espera a la página quieta ni a acercarse");
+  if (!/cuandoLaPaginaEsteQuieta\(\(\) => setListo\(true\)\)/.test(diferida) || !/new IntersectionObserver\(/.test(diferida) || !/rootMargin: "50% 0px"/.test(diferida)) F("2 · la card no espera a la página quieta ni a acercarse");
+  // ⚠ ACTA (19-oct-2026, LCP en teléfono) · media pantalla y no una: con una, en el teléfono la sección quedaba en el
+  // borde (hero + sección 2 = dos pantallas) y la card bajaba al hidratar, antes del titular.
   if (!/\{listo && <LoQueHariaFranco \/>\}/.test(diferida)) F("2 · la card se monta antes de estar lista");
   for (const f of ["Entrada.tsx", "Respuesta.tsx", "Rotacion.tsx", "Telemetria.tsx", "Marca.tsx", "MapaSantiago.tsx", "Poblamiento.tsx", "SuaveScroll.tsx", "LinkMedido.tsx"]) {
     if (/from "\.\/Recomendacion"|analysis\/shared\/PosicionFranco|analysis\/shared\/PopupAjustes|portada\/PortadaInforme|hallazgos\/HallazgosAcordeon/.test(sinComentarios(leer(`src/components/landing-v14/${f}`)))) F(`2 · ${f} importa la card real o sus tokens: vuelve al primer paquete`);
