@@ -98,16 +98,17 @@ export function MetaPixel() {
   // track('PageView') final: el PageView lo maneja el effect de ruta de abajo, que espera a `listo`.
   // Una CUENTA DE PRUEBA (15-oct-2026) no carga el pixel: nada suyo va a Meta. Y sin consentimiento, tampoco.
   useEffect(() => {
-    if (!PIXEL_ID) return;
     const w0 = window as unknown as { fbq?: (...a: unknown[]) => void };
     if (!permiso) {
       // Revocó con el pixel ya cargado en esta página: Meta deja de recibir.
       if (typeof w0.fbq === "function") w0.fbq("consent", "revoke");
       // Y lo que el pixel ya dejó en este navegador se borra (con «no» explícito; sin elección no hay nada suyo).
+      // Antes de mirar PIXEL_ID: el `_fbc` lo pone el middleware aunque el pixel no esté configurado (preview).
       if (leerConsentimiento() === "no") borrarCookiesMeta();
       setListo(false);
       return;
     }
+    if (!PIXEL_ID) return;
     return cuandoLaPaginaEsteQuieta(() => {
     if (!pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador())) return;
     const w = window as unknown as { fbq?: (...a: unknown[]) => void; _fbq?: unknown };

@@ -2,7 +2,8 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El aviso de cookies (19-oct-2026; reglas en lib/consentimiento.ts). Una barra plana abajo, con el texto y «Rechazar» y
-// «Aceptar» AL MISMO NIVEL: la misma clase, el mismo tamaño, sin uno destacado. Sale mientras no haya elección, y vuelve
+// «Aceptar» AL MISMO NIVEL: la misma clase, el mismo tamaño, sin uno destacado (en PC, el mismo ancho fijo: con
+// el ancho del texto «Rechazar» quedaba 10 px más ancho, medido en el preview). Sale mientras no haya elección, y vuelve
 // cuando el pie pide «Cookies». Se dibuja recién en el navegador (lee la cookie) y su texto es más chico que el titular
 // de la landing, así que no le compite el LCP.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ import { useEffect, useState } from "react";
 import { COOKIES_COPY, EVENTO_ABRIR_AVISO, guardarConsentimiento, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
 
 const BOTON =
-  "h-10 flex-1 rounded-full border border-[var(--franco-border)] bg-transparent px-5 text-[14px] font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-text)] sm:flex-none";
+  "h-10 flex-1 rounded-full border border-[var(--franco-border)] bg-transparent px-5 text-[14px] font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-text)] sm:w-28 sm:flex-none";
 
 export function AvisoCookies() {
   const [visible, setVisible] = useState(false);

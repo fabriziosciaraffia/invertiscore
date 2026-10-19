@@ -218,11 +218,14 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
       const iRevoca = pos(/w0\.fbq\("consent", "revoke"\)/);
       const iBorra = pos(/if \(leerConsentimiento\(\) === "no"\) borrarCookiesMeta\(\);/);
       const iReturn = pos(/setListo\(false\);\s*return;\s*\}/);
+      // El borrado va ANTES de mirar PIXEL_ID: el `_fbc` lo pone el middleware aunque el pixel no esté configurado (en el
+      // preview no lo está, y ahí la QA lo vio sobrevivir al rechazo, 19-oct-2026).
+      const iPixel = pos(/if \(!PIXEL_ID\) return;/);
       const iQuieta = pos(/return cuandoLaPaginaEsteQuieta\(\(\) => \{/);
       const iMira = pos(/if \(!pixelPermitido\(leerConsentimiento\(\), esCuentaDePruebaNavegador\(\)\)\) return;/);
       const iScript = init.indexOf("https://connect.facebook.net/en_US/fbevents.js");
-      if (!(iSinPermiso >= 0 && iSinPermiso < iRevoca && iRevoca < iBorra && iBorra < iReturn && iReturn < iQuieta && iQuieta < iMira && iMira < iScript))
-        F(`2 · el pixel no mira el permiso antes de inyectar su script (orden: sin-permiso ${iSinPermiso}, revoca ${iRevoca}, borra ${iBorra}, return ${iReturn}, quieta ${iQuieta}, mira ${iMira}, script ${iScript})`);
+      if (!(iSinPermiso >= 0 && iSinPermiso < iRevoca && iRevoca < iBorra && iBorra < iReturn && iReturn < iPixel && iPixel < iQuieta && iQuieta < iMira && iMira < iScript))
+        F(`2 · el pixel no mira el permiso antes de inyectar su script, o el rechazo no borra sin pixel configurado (orden: sin-permiso ${iSinPermiso}, revoca ${iRevoca}, borra ${iBorra}, return ${iReturn}, pixel ${iPixel}, quieta ${iQuieta}, mira ${iMira}, script ${iScript})`);
       if (!/useEffect\(\(\) => \{\s*if \(!PIXEL_ID \|\| !permiso\) return;\s*guardarClicDelAnuncio\(\);/.test(px)) F("2 · el clic del anuncio (`_fbc`) o la cola corren sin permiso");
       if (!/setPermiso\(pixelPermitido\(leerConsentimiento\(\), esCuentaDePruebaNavegador\(\)\)\);\s*return alCambiarConsentimiento\(\(c\) => setPermiso\(pixelPermitido\(c, esCuentaDePruebaNavegador\(\)\)\)\);/.test(px)) F("2 · el permiso del pixel no sale de la elección (o no se actualiza cuando cambia)");
       // Nadie más inyecta el script de Meta.
@@ -306,6 +309,9 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
       const pares = botones.map((m) => `${m[1]}/${m[2]}/${m[3]}`).sort().join();
       if (pares !== "no/rechazar/rechazar,si/aceptar/aceptar") F(`5 · «Aceptar» y «Rechazar» no están al mismo nivel (misma clase, mismo trato): ${pares || "no los encuentro"}`);
       if ((av.match(/<button\b/g) ?? []).length !== 3) F("5 · el aviso tiene otro botón además de Aceptar y Rechazar (y el «Cookies» del pie)");
+      // Y del mismo ancho: en el teléfono se reparten la fila (flex-1); en PC, un ancho fijo (con el del texto, «Rechazar»
+      // quedaba 10 px más ancho, medido en el preview del 19-oct-2026).
+      if (!/const BOTON =\s*"[^"]*\bflex-1\b[^"]*\bsm:w-\d+\b[^"]*"/.test(av)) F("5 · los botones del aviso no tienen el mismo ancho (flex-1 en el teléfono, ancho fijo en PC)");
       // Sale mientras no haya elección; vuelve cuando el pie lo pide.
       if (!/if \(leerConsentimiento\(\) === null\) setVisible\(true\);/.test(av) || !/window\.addEventListener\(EVENTO_ABRIR_AVISO, abrir\);/.test(av)) F("5 · el aviso no sale sin elección (o el pie no lo vuelve a abrir)");
       if (!/<a href="\/privacy"[^>]*>\{COOKIES_COPY\.privacidad\}<\/a>/.test(av)) F("5 · el aviso no enlaza la política de privacidad");
@@ -345,7 +351,10 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
  * ⚠ ACTA (19-oct-2026) · verificado EN ROJO mutando el código que vigila, una regla por vez y restaurando por sha1:
  * el permiso que acepta «sin elección», el pixel que no mira el permiso, el middleware sin el gate del `_fbc`, el correo
  * sin pasar por el permiso, el espejo sin el permiso, PostHog con cookies sin «si», un botón con otra clase, un pie sin
- * «Cookies», la cookie de menos de un año y el rechazo que no borra `_fbp`.
+ * «Cookies», la cookie de menos de un año y el rechazo que no borra `_fbp` (22 mutaciones, todas rojas).
+ * ⚠ ACTA (19-oct-2026, QA del preview) · dos reglas salieron de la QA, no de leer el código: el rechazo no borraba
+ * `_fbp`/`_fbc` donde el pixel no está configurado (el borrado estaba detrás de `if (!PIXEL_ID) return;`), y en PC
+ * «Rechazar» quedaba 10 px más ancho que «Aceptar» con la misma clase. Las dos, fijadas y verificadas en rojo.
  */
 
 if (require.main === module) {
