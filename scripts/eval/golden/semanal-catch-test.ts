@@ -31,14 +31,19 @@
 //       está publicado»— y en su lugar va el siguiente mejor del perfil, chequeado y guardado.
 //  14 · EL REINTENTO NO ALERTA (05-oct-2026): una selección que falla en una corrida intermedia del domingo se
 //       reintenta en la siguiente y no cuenta como fallida; solo en la de las 23 UTC es una falla.
+//  15 · LO YA VISTO NO OCUPA LUGAR (19-oct-2026): en el correo y en /semanal, los cinco son primero los que la persona no ha
+//       visto (ni analizados ni mandados en las últimas cuatro semanas); solo si no alcanzan cinco se completa con lo visto,
+//       marcado «Ya te lo mandamos» o «Ya lo analizaste» y siempre al final. El caso: un depto ya analizado y cinco nuevos
+//       disponibles → el analizado no aparece.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/semanal-catch-test.ts
 // ============================================================================
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, prechequearConPresupuesto, siguienteYEstado,
+  DIAS_VISTO, MARCA_VISTO, REGLA_CORTA, REGLA_LARGA, queEnviarSemanal, vistosDeFilas,
   FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeReactivacion, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
@@ -166,7 +171,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/if \(!r\.ok\) \{\s*await admin\.from\("semanal_selecciones"\)\.update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(srv)) F("5 · si Resend falla, la fila no se suelta");
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la regla sabe del correo del día: con él en la semana, el lunes va solo
   // si hay nuevos («nada» descarta); sin bloques, como sin deptos.
-  if (!/const que = queEnviarSemanal\(conLargo \|\| conCorto \? deptos\.length \+ deptosCortos\.length : 0, \{ delDiaReciente: delDia\.enviado \}\);\s*if \(que === "nada"\) return descartar\(\);\s*if \(que === "vacio"\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
+  // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · la regla recibe además cuántos son NUEVOS: lo visto no cuenta como nuevo después del correo del día (SEMANAL §15).
+  if (!/const que = queEnviarSemanal\(conLargo \|\| conCorto \? deptos\.length \+ deptosCortos\.length : 0, \{ delDiaReciente: delDia\.enviado, nuevos: conLargo \|\| conCorto \? nuevos : 0 \}\);\s*if \(que === "nada"\) return descartar\(\);\s*if \(que === "vacio"\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(srv)) F("5 · el envío no pasa por la regla de qué mandar (queEnviarSemanal)");
   if (!/pb\?\.semanal_baja_at\) return descartar\(\);/.test(srv)) F("5 · se le manda a quien se dio de baja");
 
   // 6 · el clic y el análisis
@@ -331,11 +337,12 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
     // el servidor, el cron y la vigilancia
     if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
-    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo(, REGLA_CORTA)?\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
+    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_(LARGA|CORTA), visto\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
     // ⚠ ACTA (09-oct-2026) · el prechequeo elige con `siguienteYEstado` (lo mismo que el `siguienteAChequear` retirado, y
     // además si la selección se arma: el cierre ya no vuelve a recorrer a nadie) y el cron le pasa DÓNDE QUEDÓ
     // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
-    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/p\.ltr \? await siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo\) : null,\s*p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA\) : null,/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
+    // ⚠ ACTA (19-oct-2026) · el armado y el prechequeo pasan además la regla de cada bloque y lo ya visto (§15).
+    if (!/\{ sinLeer: true, memoriaMs: MEMORIA_SEMANAL_MS \}/.test(srv) || !/p\.ltr \? await siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo, REGLA_LARGA, p\.ltr\.visto\) : null,\s*p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA, p\.str\.visto\) : null,/.test(srv)) F("12 · el prechequeo no elige el siguiente con lo ya chequeado en la semana");
     const rp = sinComentarios(leer("src/app/api/cron/semanal-prechequeo/route.ts"));
     // (09-oct-2026, segunda pasada: «desde» se calcula una vez, porque también va al log del cierre.)
     // ⚠ ACTA (12-oct-2026, el techo) · la llamada lleva además `progreso`, lo que se sabe mientras corre: si el techo
@@ -403,6 +410,85 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (catches.length !== 2 || !/const ultima = esUltimaCorridaArmar\(new Date\(t0\)\);/.test(ar)) F(`14 · una falla de una corrida intermedia cuenta como fallida (y alerta) aunque la siguiente la reintente (${catches.length} de 2)`);
     if (/cuenta\.fallidas\+\+;\s*capturar/.test(ar)) F("14 · queda un catch que cuenta fallida sin mirar si hay reintento");
     if (!/"5 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
+  }
+
+  // 15 · lo ya visto no ocupa lugar (19-oct-2026)
+  {
+    type V = { avisoId: string; scoreCron: number | null };
+    const mk = (id: string, s: number): V => ({ avisoId: id, scoreCron: s });
+    const comprar = (s: number) => ({ veredicto: "COMPRAR", score: s, flujo: 1000 });
+    const pub = async () => "publicado" as const;
+    const ids = (r: { items: Array<{ c: V; visto?: string }> }) => r.items.map((x) => `${x.c.avisoId}${x.visto ? `:${x.visto}` : ""}`).join(",");
+    try {
+      // EL CASO: una persona con un depto ya analizado (el de mejor puntaje) y cinco nuevos disponibles: el analizado no aparece.
+      const seis = ["ana", "n1", "n2", "n3", "n4", "n5"].map((id, i) => mk(id, 99 - i));
+      const evSeis = async (c: V) => comprar(c.avisoId === "ana" ? 95 : 90 - Number(c.avisoId.slice(1)));
+      const pedidos: string[] = [];
+      const caso = await elegirSemanal(seis, evSeis, async (c) => { pedidos.push(c.avisoId); return "publicado" as const; }, undefined, REGLA_LARGA, (c) => (c.avisoId === "ana" ? "analizado" : null));
+      if (caso.items.some((x) => x.c.avisoId === "ana")) F(`15 · con cinco nuevos disponibles, el depto ya analizado igual aparece (${ids(caso)})`);
+      if (ids(caso) !== "n1,n2,n3,n4,n5") F(`15 · con cinco nuevos, la selección no son los cinco nuevos por puntaje (${ids(caso)})`);
+      if (pedidos.includes("ana")) F("15 · se gasta una lectura de ficha en un depto ya visto habiendo nuevos que alcanzan");
+      // Sin cinco nuevos, se completa con lo visto, marcado y SIEMPRE al final (aunque lo visto tenga mejor puntaje).
+      const mix = ["m1", "m2", "x1", "x2", "x3", "m3"].map((id, i) => mk(id, 99 - i));
+      const evMix = async (c: V) => comprar(({ m1: 98, m2: 97, m3: 96, x1: 80, x2: 79, x3: 78 } as Record<string, number>)[c.avisoId]);
+      const vMix = (c: V) => (c.avisoId.startsWith("m") ? (c.avisoId === "m2" ? "analizado" : "mandado") : null) as "mandado" | "analizado" | null;
+      const r2 = await elegirSemanal(mix, evMix, pub, undefined, REGLA_LARGA, vMix);
+      if (ids(r2) !== "x1,x2,x3,m1:mandado,m2:analizado") F(`15 · con tres nuevos, lo visto no completa al final y marcado (${ids(r2)})`);
+      // Sin ningún nuevo, lo visto (marcado) arma la selección.
+      const r3 = await elegirSemanal(mix.filter((c) => c.avisoId.startsWith("m")), evMix, pub, undefined, REGLA_LARGA, vMix);
+      if (r3.estado !== "armada" || ids(r3) !== "m1:mandado,m2:analizado,m3:mandado") F(`15 · sin nuevos, lo visto no completa la selección (${r3.estado}: ${ids(r3)})`);
+      // Un nuevo de una comuna vecina le gana el lugar a uno visto de sus comunas.
+      const propV = [mk("p1", 99), mk("v1", 98), mk("v2", 97), mk("v3", 96), mk("v4", 95)];
+      const vecN = [mk("c1", 90), mk("c2", 89), mk("c3", 88)];
+      const evPV = async (c: V) => comprar(c.scoreCron ?? 0);
+      const r4 = await elegirSemanal(propV, evPV, pub, { vecinas: async () => vecN }, REGLA_LARGA, (c) => (c.avisoId.startsWith("v") ? "mandado" : null));
+      if (ids(r4) !== "p1,c1,c2,v1:mandado,v2:mandado" || r4.items.find((x) => x.c.avisoId === "c1")?.tramo !== "vecina") F(`15 · lo visto de sus comunas le gana el lugar a un nuevo de una vecina (${ids(r4)})`);
+      // Renta corta: la misma regla.
+      const r5 = await elegirSemanal(mix, evMix, pub, undefined, REGLA_CORTA, vMix);
+      if (ids(r5) !== "x1,x2,x3,m1:mandado,m2:analizado") F(`15 · en renta corta lo visto no va al final (${ids(r5)})`);
+      // El prechequeo: armada con lo visto pero con un nuevo sin chequear, se sigue por el nuevo.
+      const memVis = async (c: V) => (c.avisoId === "x2" ? "sin-chequeo" as const : "publicado" as const);
+      const pre = await siguienteYEstado(mix, evMix, memVis, undefined, REGLA_LARGA, vMix);
+      if (pre.armada || pre.aviso?.avisoId !== "x2") F(`15 · el prechequeo da por armada con lo visto y deja sin chequear un nuevo (${pre.aviso?.avisoId ?? "nada"}, armada ${pre.armada})`);
+      const preSin = await siguienteYEstado(mix, evMix, memVis, undefined, REGLA_LARGA);
+      if (!preSin.armada) F("15 · sin vistos, el prechequeo cambió (armada con tres publicados ya chequeados)");
+      // Lo visto se lee de lo mandado (los dos bloques) y de lo analizado; lo analizado pesa más; el informe de renta larga.
+      const vs = vistosDeFilas({
+        enviadas: [{ items: [{ avisoId: "a" }, { avisoId: "b" }], items_str: [{ avisoId: "c" }] }],
+        informes: [{ id: "inf-b", avisoId: "b", largo: true }, { id: "inf-d", avisoId: "d", largo: false }, { id: "inf-b-viejo", avisoId: "b", largo: true }],
+      });
+      if (vs.get("a")?.visto !== "mandado" || vs.get("c")?.visto !== "mandado" || vs.get("b")?.visto !== "analizado" || vs.get("b")?.informeLargo !== "inf-b"
+        || vs.get("d")?.visto !== "analizado" || vs.get("d")?.informeLargo !== undefined || vs.has("e")) F(`15 · lo visto no se arma de lo mandado y lo analizado (${JSON.stringify(Array.from(vs.entries()))})`);
+      if (DIAS_VISTO !== 28 || MARCA_VISTO.mandado !== "Ya te lo mandamos" || MARCA_VISTO.analizado !== "Ya lo analizaste") F("15 · la ventana no son cuatro semanas o las marcas no son «Ya te lo mandamos» / «Ya lo analizaste»");
+      // El lunes después del correo del día va solo si hay NUEVOS: lo visto no cuenta.
+      if (queEnviarSemanal(3, { delDiaReciente: true, nuevos: 0 }) !== "nada" || queEnviarSemanal(3, { delDiaReciente: true, nuevos: 1 }) !== "seleccion" || queEnviarSemanal(3, { nuevos: 0 }) !== "seleccion") F("15 · después del correo del día sale un lunes solo con lo ya visto (o sin correo del día no sale)");
+    } catch (err) {
+      F(`15 · la selección no distingue lo ya visto (${(err as Error).message})`);
+    }
+    // El correo: la marca en la tarjeta.
+    const cv = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "2 dormitorios, Ñuñoa", piePct: 20, plazoAnios: 25, saldo: 1, conRegalo: false, urlBoton: "b", urlTres: "t", urlBaja: "z",
+      deptos: [{ comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: 3980, veredicto: "COMPRAR", score: 80, flujo: 20000, url: "x" }, { comuna: "Macul", tipologia: "2D1B", m2: 50, precioUF: 3500, veredicto: "COMPRAR", score: 85, flujo: 10000, url: "y", visto: "mandado" } as DatosCorreoSemanal["deptos"][number]] });
+    const iNuevo = cv.html.indexOf("UF 3.980"), iVisto = cv.html.indexOf("UF 3.500"), iMarca = cv.html.indexOf('data-marca="visto">Ya te lo mandamos<');
+    if (iMarca < 0 || !(iNuevo < iVisto && iVisto < iMarca) || (cv.html.match(/data-marca="visto"/g) ?? []).length !== 1) F("15 · el correo no marca «Ya te lo mandamos» en el depto ya mandado (o lo marca en otro)");
+    // El cableado: el armado, el prechequeo, la página viva y el envío usan lo visto.
+    const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
+    if (!/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto\);/.test(srv) || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(srv)) F("15 · el armado elige sin lo ya visto");
+    if (!/const vistos = await vistosDePersona\(admin, userId\);\s*const prep = await prepararSeleccion\(admin, userId, cfg, \{ perfilLeido: pp, vistos \}\);/.test(srv) || !/prepararSeleccionStr\(admin, userId, cfg, pp, vistos\)/.test(srv)) F("15 · el armado no lee lo visto para los dos bloques");
+    if (!/siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo, REGLA_LARGA, p\.ltr\.visto\)/.test(srv) || !/siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA, p\.str\.visto\)/.test(srv)) F("15 · el prechequeo elige sin lo ya visto");
+    if (!/\.filter\(\(c\) => !prep\.p\.visto\(c\)\);/.test(srv)) F("15 · en la página viva, un depto ya visto puede tomar el lugar de uno caído");
+    if (!/const vistos: Vistos = opts\.nuevosDesde \|\| opts\.delDia \? new Map\(\) : \(opts\.vistos \?\? await vistosDePersona\(admin, userId\)\);/.test(srv) || !/visto: \(c\) => vistos\.get\(c\.avisoId\)\?\.visto \?\? null,/.test(srv)) F("15 · la preparación no marca lo ya visto");
+    if (!/const nuevos = \[\.\.\.deptos, \.\.\.deptosCortos\]\.filter\(\(d\) => !d\.visto\)\.length;/.test(srv) || !/delDiaReciente: delDia\.enviado, nuevos: conLargo \|\| conCorto \? nuevos : 0 \}/.test(srv)) F("15 · el envío cuenta lo ya visto como nuevo");
+    if (!/\.\.\.\(visto \? \{ visto \} : \{\}\)/.test(srv) || !/const informeId = visto === "analizado" \? informeVisto\?\.\(c\.avisoId\) : undefined;/.test(srv)) F("15 · la selección no guarda la marca (o el informe del ya analizado)");
+    const strSrv = sinComentarios(leer("src/lib/guia/semanal-str-servidor.ts"));
+    if (!/const vistos = vistosLeidos \?\? await vistosDePersona\(admin, userId\);/.test(strSrv) || !/visto: \(c\) => vistos\.get\(c\.avisoId\)\?\.visto \?\? null,/.test(strSrv)) F("15 · el bloque de renta corta no marca lo ya visto");
+    const vis = existsSync(join(RAIZ, "src/lib/guia/vistos-servidor.ts")) ? sinComentarios(leer("src/lib/guia/vistos-servidor.ts")) : "";
+    if (!/\.from\("semanal_selecciones"\)\.select\("items, items_str"\)\.eq\("user_id", userId\)\.not\("enviada_at", "is", null\)\.gte\("enviada_at", desde\)/.test(vis)
+      || !/const desde = new Date\(ahora\.getTime\(\) - DIAS_VISTO \* 864e5\)\.toISOString\(\);/.test(vis)
+      || !/\.from\("analisis"\)\.select\("id, tipo_analisis, aviso:input_data->origenAviso->>avisoId"\)\.eq\("user_id", userId\)/.test(vis)) F("15 · lo visto no se lee de los correos de las últimas cuatro semanas y de lo analizado");
+    // La página: la marca y, en renta larga, «Ya lo analizaste · Ver informe».
+    const pg = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
+    if (!/\{it\.visto && !\(it\.visto === "analizado" && informeDe\(it\)\) && <p className="guia-negociar" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg)) F("15 · /semanal no marca lo ya visto");
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => \(corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : it\.informeId\);/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");
   }
 
   if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo de reactivación (4 semanas sin analizar, uno cada 90 días), dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");
@@ -473,3 +559,12 @@ if (require.main === module) {
 //   §4 sin saldo es «Analizar uno» a la selección con la línea del pack debajo (ya no «Analizar uno · $9.990»), §7 el
 //   checkout lee el origen por origenParam, §11 la lista incluye a quien solo tiene informes de renta corta. 3/3 ROJO:
 //   S-a el correo sin la línea del pack · S-b el checkout pierde el origen · S-c solo renta larga en la lista.
+//   §15 (19-oct-2026, lo ya visto no ocupa lugar; scratchpad rojo-semanal-prod.cjs y mutar-semanal15.cjs, restaurados byte a
+//   byte): contra el código de producción, ROJO con el caso primero («el depto ya analizado igual aparece (ana,n1,n2,n3,n4)»)
+//   y 19/19 mutaciones en ROJO: M1 la elección ignora lo visto · M2 sin marca · M3 sin la segunda vuelta · M4 las vecinas solo
+//   con lo visto · M5 el prechequeo da por armada con lo visto · M6 el lunes cuenta lo visto como nuevo · M7 lo mandado le
+//   gana a lo analizado · M8 ventana de 7 días · M9 el armado sin lo visto · M10 el prechequeo sin lo visto · M11 la página
+//   viva repone con lo visto · M12 el envío cuenta lo visto como nuevo · M13 la selección no guarda la marca · M14 renta corta
+//   sin lo visto · M15 lo mandado sin ventana · M16 el correo sin la marca · M17 la página sin la marca · M18 renta larga lleva
+//   al informe de renta corta · M19 la preparación lee lo visto en el correo del día. La primera corrida contra producción se
+//   cayó leyendo vistos-servidor.ts (no existe allá): ahora su ausencia es una falla, no una caída.

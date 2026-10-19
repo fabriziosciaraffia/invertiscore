@@ -58,7 +58,8 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
   const enviar = srv.slice(srv.indexOf("export async function enviarSeleccion"), srv.indexOf("export async function enviarSinSeleccion"));
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · descarta sin mandar SOLO si esa semana ya salió su correo del día (que es
   // el semanal de esa semana) y no hay nuevos; sin él, el correo corto como siempre (PUERTA-B §4).
-  if (!/const que = queEnviarSemanal\(conLargo \|\| conCorto \? deptos\.length \+ deptosCortos\.length : 0, \{ delDiaReciente: delDia\.enviado \}\);\s*if \(que === "nada"\) return descartar\(\);\s*if \(que === "vacio"\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(enviar) || /MINIMO_SEMANAL/.test(enviar) || queEnviarSemanal(0, { delDiaReciente: false }) !== "vacio")
+  // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · la regla recibe además cuántos son NUEVOS: lo visto no cuenta como nuevo después del correo del día (SEMANAL §15).
+  if (!/const que = queEnviarSemanal\(conLargo \|\| conCorto \? deptos\.length \+ deptosCortos\.length : 0, \{ delDiaReciente: delDia\.enviado, nuevos: conLargo \|\| conCorto \? nuevos : 0 \}\);\s*if \(que === "nada"\) return descartar\(\);\s*if \(que === "vacio"\) return enviarSinSeleccion\(admin, fila, sitio\);/.test(enviar) || /MINIMO_SEMANAL/.test(enviar) || queEnviarSemanal(0, { delDiaReciente: false }) !== "vacio")
     F("2 · el envío exige tres deptos o descarta sin mandar nada");
   if (!/update\(\{ estado: fila\.estado, enviada_at: null \}\)/.test(enviar)) F("2 · si Resend falla, la fila no vuelve a su estado (la pendiente pasaría a armada)");
   const rutaEnviar = sinComentarios(leer("src/app/api/cron/semanal-enviar/route.ts"));

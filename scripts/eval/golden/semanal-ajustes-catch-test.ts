@@ -386,8 +386,11 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, user\.id, idsCortos\)/.test(pagina) || !/informes=\{informesCortos\}/.test(pagina))
       F("10 · la página no sabe cuáles ya analizó");
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
-    const ramaInforme = acciones.slice(acciones.indexOf("const informe = corta ?"), acciones.indexOf("if (corta && generando === it.avisoId)"));
-    if (!/const informe = corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : undefined;\s*if \(informe\) \{\s*return \(\s*<div className="guia-acc" data-semanal="ya-analizado">/.test(ramaInforme) || !/<EnlaceCarga href=\{`\/analisis\/renta-corta\/\$\{informe\}`\} className="guia-ver-informe">\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(ramaInforme) || /analizar\(|setConfirmar|guia-an/.test(ramaInforme))
+    // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · el informe sale de `informeDe`: en renta corta, el de la medición
+    // (o el de la página, en vivo), como antes; en renta larga, el del depto ya analizado, que lleva a /analisis/[id] (SEMANAL §15).
+    const ramaInforme = acciones.slice(acciones.indexOf("const informe = informeDe(it);"), acciones.indexOf("if (corta && generando === it.avisoId)"));
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => \(corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : it\.informeId\);/.test(lista)
+      || !/const informe = informeDe\(it\);\s*if \(informe\) \{\s*return \(\s*<div className="guia-acc" data-semanal="ya-analizado">/.test(ramaInforme) || !/<EnlaceCarga href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="guia-ver-informe">\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(ramaInforme) || /analizar\(|setConfirmar|guia-an/.test(ramaInforme))
       F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
     // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;

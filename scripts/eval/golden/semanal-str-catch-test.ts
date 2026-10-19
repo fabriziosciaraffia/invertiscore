@@ -176,9 +176,10 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const armar = srv.slice(srv.indexOf("export async function armarSeleccion"), srv.indexOf("export async function prechequearSemana"));
     const ramaLarga = armar.slice(armar.indexOf('if (prep.tipo === "lista") {'), armar.indexOf("let corto: EstadoBloque"));
     const ramaCorta = armar.slice(armar.indexOf('if (prepStr?.tipo === "lista") {'), armar.indexOf("} else if (prepStr) {"));
-    if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp\);/.test(armar)
-      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo\);/.test(ramaLarga)
-      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA\);/.test(ramaCorta)
+    // ⚠ ACTA (19-oct-2026) · los dos bloques reciben lo ya visto, leído una vez, y cada uno elige con él (SEMANAL §15).
+    if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp, vistos\);/.test(armar)
+      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto\);/.test(ramaLarga)
+      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(ramaCorta)
       || !/items_str: aItems\(g\), estado_str: g\.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o\.analysisId,/.test(armar)
       || !/const estado = estadoDeFila\(largo, corto\);/.test(armar))
       F("2 · el armado no arma el bloque de renta corta con su regla (solo Comprar) y el mismo presupuesto (o no lo guarda)");
@@ -272,8 +273,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
   // ── 5 · EL PRESUPUESTO: los dos bloques dentro de los 240 s del prechequeo y del armado ──
   {
     const pre = srv.slice(srv.indexOf("export async function prechequearSemana"), srv.indexOf("const FUENTE_AVANCE"));
-    if (!/const \[l, s\] = await Promise\.all\(\[prepararSeleccion\(admin, userId, cfg, \{ perfilLeido: pp \}\), prepararSeleccionStr\(admin, userId, cfg, pp\)\]\);/.test(pre)
-      || !/p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA\) : null,/.test(pre)
+    // ⚠ ACTA (19-oct-2026) · el prechequeo prepara los dos bloques con lo ya visto, leído una vez (SEMANAL §15).
+    if (!/const \[l, s\] = await Promise\.all\(\[prepararSeleccion\(admin, userId, cfg, \{ perfilLeido: pp, vistos \}\), prepararSeleccionStr\(admin, userId, cfg, pp, vistos\)\]\);/.test(pre)
+      || !/p\.str \? await siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA, p\.str\.visto\) : null,/.test(pre)
       || !/estado\.set\(userId, rs\.every\(\(r\) => r\.armada\) \? "armada" : aviso \? "pendiente" : "sin-candidatos"\);/.test(pre))
       F("5 · el prechequeo no cuenta la selección de renta corta (o la da por armada sin chequear)");
     if (!/if \(pp\.semanalBajaAt\) return null;/.test(pre)) F("5 · el prechequeo prepara la renta corta de quien se dio de baja");
