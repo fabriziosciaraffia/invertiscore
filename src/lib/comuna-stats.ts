@@ -218,21 +218,10 @@ export function precioVentaNueva(
   return null;
 }
 
-// Alias de comuna (form/UI/prosa) -> forma canónica almacenada en scraped_properties.
-// El form usa "Santiago Centro" pero la tabla guarda "Santiago"; un mismatch en
-// .eq("comuna", ...) devuelve 0 filas. ÚNICO mapa de alias del repo (21-sep-2026): la mediana
-// comunal, el benchmark de cap rate, la tabla de BDO, el guard de comunas de la prosa
-// (`cifras-guard.ts`), el roster (`comunas-disponibles.ts`) y el universo STR pasan por acá.
-// Había tres copias y «Santiago Centro» sin normalizar dejó 17 filas fuera del cruce con BDO.
-// Extensible: agregar alias acá si aparecen.
-export const COMUNA_ALIASES: Record<string, string> = {
-  "Santiago Centro": "Santiago",
-  // El prompt viejo le enseñó al modelo a escribir «Santiago centro» (minúscula).
-  "Santiago centro": "Santiago",
-};
-export function normalizeComuna(comuna: string): string {
-  return COMUNA_ALIASES[comuna] ?? comuna;
-}
+// El alias de comuna vive en comuna-normalizar.ts (19-oct-2026: sin Sentry, para el cliente) y se reexporta acá, con
+// el mismo nombre: sigue siendo el ÚNICO mapa de alias del repo.
+import { normalizeComuna } from "@/lib/comuna-normalizar";
+export { COMUNA_ALIASES, normalizeComuna } from "@/lib/comuna-normalizar";
 
 // ─── Filas-proyecto vs unidades dentro de obra nueva ──────────────────────
 

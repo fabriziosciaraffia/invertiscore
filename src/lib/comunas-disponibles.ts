@@ -13,7 +13,7 @@
  *  - El resto de los nombres coinciden con el dataset (acentos incluidos).
  */
 
-import { normalizeComuna } from "@/lib/comuna-stats";
+import { normalizeComuna } from "@/lib/comuna-normalizar";
 
 export const COMUNAS_DISPONIBLES = [
   "Santiago",

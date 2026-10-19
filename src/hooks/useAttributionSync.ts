@@ -2,16 +2,16 @@
 
 import { useEffect } from "react";
 import { posthogCliente as posthog } from "@/lib/posthog-cliente";
-import { createClient } from "@/lib/supabase/client";
 import { emitirAuthCompletada, consumirOAuthPendiente } from "@/lib/auth-analytics";
 import {
   ATTRIBUTION_SYNCED_KEY,
   UTM_KEYS,
   UTM_STORAGE_KEY,
   type AtribucionInput,
-} from "@/lib/attribution";
+} from "@/lib/attribution-claves";
 import { marcarPuertaCandidata, puertaDeLlegada, puertaParaSincronizar } from "@/lib/atribucion-puerta";
 import { CLAVE_CUENTA_PRUEBA, marcarCuentaDePrueba } from "@/lib/meta/pixel";
+import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 
 /** Una cookie del navegador (las del pixel: `_fbp`, `_fbc`). */
 function cookieDelNavegador(nombre: string): string | null {
@@ -119,8 +119,11 @@ export function useAttributionSync(): void {
 
     let cancelado = false;
 
-    (async () => {
+    // Con la página quieta (19-oct-2026, LCP de la landing): Supabase entra por import() después del titular, no en el
+    // primer paquete de todas las páginas. Lo de arriba (la primera visita, la marca de OAuth) sigue siendo sincrónico.
+    const cancelarQuieta = cuandoLaPaginaEsteQuieta(() => void (async () => {
       try {
+        const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         const {
           data: { user },
@@ -207,10 +210,11 @@ export function useAttributionSync(): void {
       } catch {
         /* atribución perdida > login roto: nunca propagamos */
       }
-    })();
+    })());
 
     return () => {
       cancelado = true;
+      cancelarQuieta();
     };
   }, []);
 }

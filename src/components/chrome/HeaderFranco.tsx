@@ -37,13 +37,13 @@ import { Moon, Sun } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
-import { createClient } from "@/lib/supabase/client";
 import { purgarBorradoresYPestana } from "@/lib/draft-keys";
 import { currentTheme, setTheme, type Theme } from "@/lib/theme";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { usePathname } from "next/navigation";
 import type { Veredicto } from "@/lib/types";
 import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
+import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 import "./header-franco.css";
 
 export type ContextoHeader = "sitio" | "wizard" | "auth";
@@ -96,21 +96,28 @@ function useSesion(inicial: SesionHeader | null | undefined): SesionHeader | nul
     if (inicial !== undefined) return;
     let activo = true;
     let soltar: (() => void) | undefined;
-    try {
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
-        if (activo) setSesion(data.user ? { email: data.user.email ?? "" } : null);
-      });
-      const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-        if (activo) setSesion(s?.user ? { email: s.user.email ?? "" } : null);
-      });
-      soltar = () => sub.subscription.unsubscribe();
-    } catch {
-      // Sin configuración de Supabase (build, preview sin env): sin sesión.
-      if (activo) setSesion(null);
-    }
+    // Supabase entra por import() CUANDO LA PÁGINA ESTÁ QUIETA (19-oct-2026, LCP de la landing): el cliente pesa ~48 kB
+    // gz y no hace falta para el titular. Hasta entonces el header no muestra «Entrar» ni el avatar (como antes de
+    // resolver la sesión). Las páginas con sesión del servidor pasan `sesion` y no llegan acá.
+    const cancelarQuieta = cuandoLaPaginaEsteQuieta(() => import("@/lib/supabase/client")
+      .then(({ createClient }) => {
+        if (!activo) return;
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data }) => {
+          if (activo) setSesion(data.user ? { email: data.user.email ?? "" } : null);
+        });
+        const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+          if (activo) setSesion(s?.user ? { email: s.user.email ?? "" } : null);
+        });
+        soltar = () => sub.subscription.unsubscribe();
+      })
+      .catch(() => {
+        // Sin configuración de Supabase (build, preview sin env): sin sesión.
+        if (activo) setSesion(null);
+      }));
     return () => {
       activo = false;
+      cancelarQuieta();
       soltar?.();
     };
   }, [inicial]);
@@ -164,7 +171,7 @@ function MenuCuenta({ email }: { email: string }) {
     setAbierto(false);
     // ANTES del signOut: el borrador se purga aunque Supabase falle (logout-button.tsx).
     purgarBorradoresYPestana();
-    try { await createClient().auth.signOut(); } catch { /* sin sesión: igual a login */ }
+    try { const { createClient } = await import("@/lib/supabase/client"); await createClient().auth.signOut(); } catch { /* sin sesión: igual a login */ }
     try { posthog.reset(); } catch { /* PostHog sin inicializar */ }
     window.location.assign("/entrar");
   };

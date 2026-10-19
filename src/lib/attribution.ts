@@ -19,37 +19,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { esPuerta, fusionarPuerta, type Puerta } from "@/lib/atribucion-puerta";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
+import type { AtribucionInput } from "@/lib/attribution-claves";
 
-/** Clave de localStorage que ya usa useUTMCapture. NO cambiar sin migrar. */
-export const UTM_STORAGE_KEY = "franco_utm";
-
-/** Marca de "ya sincronicé la atribución de este usuario" (evita POST por visita). */
-export const ATTRIBUTION_SYNCED_KEY = "franco_attr_sync";
-
-export const UTM_KEYS = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_content",
-  "utm_term",
-] as const;
-
-export type UtmKey = (typeof UTM_KEYS)[number];
-
-export interface AtribucionInput {
-  utm_source?: string | null;
-  utm_medium?: string | null;
-  utm_campaign?: string | null;
-  utm_content?: string | null;
-  utm_term?: string | null;
-  referrer?: string | null;
-  landing_path?: string | null;
-  fbp?: string | null;
-  fbc?: string | null;
-  /** Por dónde entró la cuenta (15-oct-2026, atribucion-puerta.ts): A informe, B selección, C referido, D orgánico. */
-  puerta?: Puerta | null;
-  puerta_detalle?: string | null;
-}
+// Las claves y el tipo viven en attribution-claves.ts, sin imports de servidor (19-oct-2026): el cliente los importa de
+// ahí y no arrastra posthog-servidor (crypto) al navegador. Acá se reexportan para el servidor.
+export { UTM_STORAGE_KEY, ATTRIBUTION_SYNCED_KEY, UTM_KEYS, type UtmKey, type AtribucionInput } from "@/lib/attribution-claves";
 
 export interface AtribucionRow extends AtribucionInput {
   user_id: string;

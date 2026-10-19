@@ -35,7 +35,9 @@ export function LoQueHariaFrancoDiferida() {
     if (nodo && typeof IntersectionObserver !== "undefined") {
       obs = new IntersectionObserver((entradas) => {
         if (entradas.some((e) => e.isIntersecting)) setListo(true);
-      }, { rootMargin: "100% 0px" });
+      // Media pantalla (19-oct-2026, LCP en teléfono): con una entera, en el teléfono la sección quedaba justo en el
+      // borde (hero + sección 2 = dos pantallas) y la card bajaba al hidratar, antes del titular.
+      }, { rootMargin: "50% 0px" });
       obs.observe(nodo);
     }
     return () => { cancelarQuieta(); obs?.disconnect(); };
