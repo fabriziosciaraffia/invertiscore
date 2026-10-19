@@ -18,6 +18,8 @@ import {
   COOKIE_CONSENTIMIENTO,
   COOKIES_COPY,
   EVENTO_CONSENTIMIENTO,
+  EVENTO_ELECCION_COOKIES,
+  eleccionDe,
   VIDA_CONSENTIMIENTO_S,
   alCambiarConsentimiento,
   conPermiso,
@@ -301,20 +303,48 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
 
     // ── 5 · EL AVISO ───────────────────────────────────────────────────────────
     {
-      if (COOKIES_COPY.texto !== "Usamos cookies propias para que el sitio funcione. Con tu permiso, también las de Meta y la grabación de sesiones de PostHog, para medir y mejorar.") F(`5 · el texto del aviso cambió: «${COOKIES_COPY.texto}»`);
+      // ⚠ ACTA (19-oct-2026, ajuste de Fabrizio) · el aviso pasó a UNA línea, «Usamos cookies para medir qué funciona y
+      // mejorar Franco · Privacidad», sin nombrar a Meta ni a PostHog (eso lo dice la política), y «Aceptar» lleno con
+      // «Rechazar» de borde, los dos del mismo tamaño y a un clic. Antes: el texto largo con Meta y PostHog y la misma clase.
+      if (COOKIES_COPY.texto !== "Usamos cookies para medir qué funciona y mejorar Franco" || COOKIES_COPY.separador !== "·" || COOKIES_COPY.privacidad !== "Privacidad") F(`5 · el texto del aviso cambió: «${COOKIES_COPY.texto} ${COOKIES_COPY.separador} ${COOKIES_COPY.privacidad}»`);
       if (COOKIES_COPY.aceptar !== "Aceptar" || COOKIES_COPY.rechazar !== "Rechazar" || COOKIES_COPY.pie !== "Cookies") F("5 · los botones del aviso o el «Cookies» del pie cambiaron de nombre");
+      if (Object.values(COOKIES_COPY).some((t) => /Meta|PostHog|Facebook|Google/i.test(t))) F("5 · el aviso nombra a un tercero (eso va en la política, no en la barra)");
       const av = sinComentarios(leer("src/components/consentimiento/AvisoCookies.tsx"));
-      // Al MISMO NIVEL: los dos botones con exactamente la misma clase, sin nada más que los distinga a la vista.
-      const botones = Array.from(av.matchAll(/<button type="button" className=\{BOTON\} onClick=\{\(\) => elegir\("(si|no)"\)\} data-cookies="(aceptar|rechazar)">\{COOKIES_COPY\.(aceptar|rechazar)\}<\/button>/g));
-      const pares = botones.map((m) => `${m[1]}/${m[2]}/${m[3]}`).sort().join();
-      if (pares !== "no/rechazar/rechazar,si/aceptar/aceptar") F(`5 · «Aceptar» y «Rechazar» no están al mismo nivel (misma clase, mismo trato): ${pares || "no los encuentro"}`);
-      if ((av.match(/<button\b/g) ?? []).length !== 3) F("5 · el aviso tiene otro botón además de Aceptar y Rechazar (y el «Cookies» del pie)");
-      // Y del mismo ancho: en el teléfono se reparten la fila (flex-1); en PC, un ancho fijo (con el del texto, «Rechazar»
-      // quedaba 10 px más ancho, medido en el preview del 19-oct-2026).
-      if (!/const BOTON =\s*"[^"]*\bflex-1\b[^"]*\bsm:w-\d+\b[^"]*"/.test(av)) F("5 · los botones del aviso no tienen el mismo ancho (flex-1 en el teléfono, ancho fijo en PC)");
+      // Ningún texto suelto en el JSX: todo lo que se lee sale de COOKIES_COPY (lo que fija este gate).
+      const sueltos = (av.match(/>[^<>{}]*[A-Za-zÁÉÍÓÚáéíóúñ]{2,}[^<>{}]*</g) ?? []).filter((s) => !/=>/.test(s));
+      if (sueltos.length) F(`5 · el aviso tiene texto escrito a mano fuera de COOKIES_COPY: ${sueltos.join(" | ").slice(0, 120)}`);
+      // «Aceptar» lleno y «Rechazar» de borde, cada uno con su elección y su texto.
+      const botones = Array.from(av.matchAll(/<button type="button" className=\{`\$\{BOTON\} \$\{(LLENO|BORDE)\}`\} onClick=\{\(\) => elegir\("(si|no)"\)\} data-cookies="(aceptar|rechazar)">\{COOKIES_COPY\.(aceptar|rechazar)\}<\/button>/g));
+      const pares = botones.map((m) => `${m[1]}/${m[2]}/${m[3]}/${m[4]}`).sort().join();
+      if (pares !== "BORDE/no/rechazar/rechazar,LLENO/si/aceptar/aceptar") F(`5 · «Aceptar» no es el lleno y «Rechazar» el de borde (cada uno con su elección): ${pares || "no los encuentro"}`);
+      if ((av.match(/<button\b/g) ?? []).length !== 3) F("5 · el aviso tiene otro botón además de Aceptar y Rechazar (y el «Cookies» del pie): no es «a un clic»");
+      // DEL MISMO TAMAÑO: alto y ancho fijos en BOTON, que comparten; LLENO y BORDE solo cambian color (ninguna clase de
+      // tamaño, relleno ni letra).
+      const clase = (n: string) => (av.match(new RegExp(`const ${n} =\\s*"([^"]*)";`)) ?? [])[1] ?? null;
+      const [boton, lleno, borde] = [clase("BOTON"), clase("LLENO"), clase("BORDE")];
+      if (!boton || !lleno || !borde) F("5 · no encuentro las clases de los botones (el extractor no corrió)");
+      else {
+        if (!/\bh-\d+\b/.test(boton) || !/\bw-\d+\b/.test(boton) || !/\bborder\b/.test(boton)) F("5 · los botones no tienen alto y ancho fijos compartidos");
+        // Token entero: `hover:opacity-85` no es un `h-`.
+        const tamano = /^(?:(?:sm|md|lg|hover):)?(?:(?:h|w|min-w|max-w|p|px|py|pl|pr|basis)-|flex-1$|grow$|border-\d|text-\[\d)/;
+        if ([lleno, borde].some((c) => c.split(/\s+/).some((t) => tamano.test(t)))) F("5 · «Aceptar» y «Rechazar» no son del mismo tamaño (una clase de color trae tamaño)");
+        if (!/bg-\[var\(--franco-text\)\]/.test(lleno) || !/bg-transparent/.test(borde) || !/border-\[var\(--franco-text\)\]/.test(borde)) F("5 · «Aceptar» no es lleno o «Rechazar» no es de borde");
+      }
+      // UNA LÍNEA DE TEXTO: la frase sin cortar, a un tamaño que la hace caber en el ancho útil del teléfono (27,9 em
+      // medidos en Inter); en PC «· Privacidad» va en la misma línea, en el teléfono con los botones.
+      if (!/const TAMANO_FRASE = "clamp\(11px, calc\(\(100vw - 32px\) \/ 28\.2\), 13px\)";/.test(av) || !/<p\s+data-cookies="texto"\s+className="[^"]*\bwhitespace-nowrap\b[^"]*"\s+style=\{\{ fontSize: TAMANO_FRASE \}\}/.test(av)) F("5 · la frase del aviso puede ocupar más de una línea en el teléfono");
+      if (!/<span className="hidden sm:inline">\s*\{` \$\{COOKIES_COPY\.separador\} `\}\s*<a href="\/privacy" className=\{ENLACE\}>\{COOKIES_COPY\.privacidad\}<\/a>\s*<\/span>/.test(av)
+        || !/<a href="\/privacy" className=\{`\$\{ENLACE\} mr-auto text-\[13px\] sm:hidden`\}>\{COOKIES_COPY\.privacidad\}<\/a>/.test(av)) F("5 · «Privacidad» no está en la línea en PC y con los botones en el teléfono");
       // Sale mientras no haya elección; vuelve cuando el pie lo pide.
       if (!/if \(leerConsentimiento\(\) === null\) setVisible\(true\);/.test(av) || !/window\.addEventListener\(EVENTO_ABRIR_AVISO, abrir\);/.test(av)) F("5 · el aviso no sale sin elección (o el pie no lo vuelve a abrir)");
-      if (!/<a href="\/privacy"[^>]*>\{COOKIES_COPY\.privacidad\}<\/a>/.test(av)) F("5 · el aviso no enlaza la política de privacidad");
+      // LA ELECCIÓN EN POSTHOG: `cookies_eleccion` con acepta / rechaza al elegir (antes de guardar), e «ignora» al irse de la
+      // página sin elegir — una vez, con send_instantly (un capture a secas en pagehide se pierde).
+      if (EVENTO_ELECCION_COOKIES !== "cookies_eleccion" || eleccionDe("si") !== "acepta" || eleccionDe("no") !== "rechaza") F("5 · el evento de la elección cambió de nombre o de valores");
+      if (!/posthogCliente\.capture\(EVENTO_ELECCION_COOKIES, \{ eleccion: eleccionDe\(c\), origen: origen\.current \}\);\s*guardarConsentimiento\(c\);/.test(av)) F("5 · aceptar o rechazar no queda en PostHog");
+      const irse = (av.match(/const alIrse = \(\) => \{([\s\S]*?)\n {4}\};/) ?? [])[1] ?? "";
+      if (!irse || !/if \(leerConsentimiento\(\) !== null\) return;\s*window\.removeEventListener\("pagehide", alIrse\);\s*posthogCliente\.capture\(EVENTO_ELECCION_COOKIES, \{ eleccion: "ignora", origen: "aviso" \}, \{ send_instantly: true \}\);/.test(irse)
+        || !/window\.addEventListener\("pagehide", alIrse\);/.test(av)) F("5 · irse sin elegir no queda en PostHog como «ignora» (una vez, con send_instantly)");
+      if (!/origen\.current = leerConsentimiento\(\) === null \? "aviso" : "pie";/.test(av)) F("5 · el cambio desde el pie se cuenta como primera elección (ensucia la tasa)");
       if (!/<AvisoCookies \/>/.test(sinComentarios(leer("src/app/providers.tsx")))) F("5 · el aviso no se monta en el provider (no sale en todo el sitio)");
       // En tuteo, sin voseo: el aviso y la sección de cookies de la política.
       const priv = leer("src/app/privacy/page.tsx");
@@ -342,7 +372,7 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ CONSENTIMIENTO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — sin «si» no carga el pixel ni su `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; la elección dura un año, el aviso pone Aceptar y Rechazar al mismo nivel y todo pie la deja cambiar");
+    console.log("  ✓ VERDE — sin «si» no carga el pixel ni su `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; la elección dura un año; el aviso, en una línea y sin nombrar terceros, pone Aceptar lleno y Rechazar de borde del mismo tamaño, la elección queda en PostHog (acepta, rechaza, ignora) y todo pie la deja cambiar");
   }
   return { hard: fallas.length };
 }
