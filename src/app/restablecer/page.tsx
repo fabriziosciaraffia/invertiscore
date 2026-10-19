@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
 
 type Status = "checking" | "ready" | "invalid" | "done";
 
@@ -119,139 +119,59 @@ export default function RestablecerPage() {
     }, 1800);
   };
 
+  // PLANA (19-oct-2026, decisión de Fabrizio): en el diseño actual (components/plano), sin tarjeta ni logo repetido; la
+  // lógica de arriba no cambia.
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco contexto="auth" />
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
-            {status === "checking" && (
-              <div className="px-6 pt-8 pb-8 text-center">
-                <div className="mx-auto mb-4">
-                  <FrancoLogo size="xl" href="/" inverted />
-                </div>
-                <p className="font-body text-sm text-[var(--franco-text-secondary)]">
-                  Verificando el enlace...
-                </p>
-              </div>
-            )}
+      <main className={PLANO.main} style={{ fontFamily: UI_PLANO }}>
+        {status === "checking" && <p className={PLANO.bajada}>Verificando el enlace...</p>}
 
-            {status === "invalid" && (
-              <div className="px-6 pt-8 pb-8 text-center">
-                <div className="mx-auto mb-4">
-                  <FrancoLogo size="xl" href="/" inverted />
-                </div>
-                <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                  El enlace ya no sirve
-                </h1>
-                <p className="mx-auto mt-3 max-w-[340px] font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  Este enlace de recuperación expiró o ya se usó. Pide uno nuevo
-                  y vuelve a intentarlo.
-                </p>
-                <Link
-                  href="/recuperar"
-                  className="mt-6 inline-block w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"
-                >
-                  Pedir un enlace nuevo
-                </Link>
-                <Link
-                  href="/login"
-                  className="mt-4 inline-block font-body text-sm font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                >
-                  Volver a iniciar sesión
-                </Link>
-              </div>
-            )}
-
-            {status === "done" && (
-              <div className="px-6 pt-8 pb-8 text-center">
-                <div className="mx-auto mb-4">
-                  <FrancoLogo size="xl" href="/" inverted />
-                </div>
-                <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                  Contraseña actualizada
-                </h1>
-                <p className="mx-auto mt-3 max-w-[340px] font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  Listo. Te estamos llevando a tu panel...
-                </p>
-              </div>
-            )}
-
-            {status === "ready" && (
-              <>
-                {/* Header */}
-                <div className="px-6 pt-8 pb-2 text-center">
-                  <div className="mx-auto mb-4">
-                    <FrancoLogo size="xl" href="/" inverted />
-                  </div>
-                  <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                    Crea una nueva contraseña
-                  </h1>
-                  <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
-                    Elige una contraseña nueva para tu cuenta.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
-                  {error && (
-                    <div className="rounded-lg border border-[#C8323C]/20 bg-[#C8323C]/5 p-3 font-body text-sm text-[#C8323C]">
-                      {error}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="password"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Nueva contraseña
-                      </label>
-                      <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="confirm-password"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Confirmar contraseña
-                      </label>
-                      <input
-                        id="confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90 disabled:opacity-50"
-                    >
-                      {loading ? "Guardando..." : "Guardar contraseña"}
-                    </button>
-                  </form>
-                </div>
-              </>
-            )}
+        {status === "invalid" && (
+          <div>
+            <h1 className={PLANO.titulo}>El enlace ya no sirve</h1>
+            <p className={PLANO.bajada}>Este enlace de recuperación expiró o ya se usó. Pide uno nuevo y vuelve a intentarlo.</p>
+            <div className={PLANO.seccion}>
+              <Link href="/recuperar" className={PLANO.principal}>Pedir un enlace nuevo</Link>
+            </div>
+            <p className={`mt-6 ${PLANO.nota}`}>
+              <Link href="/login" className={PLANO.enlace}>Volver a iniciar sesión</Link>
+            </p>
           </div>
+        )}
 
-          {/* Franco tagline (vigente) — JetBrains Mono uppercase, tratamiento del design system */}
-          <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-tertiary)]">
-            Real estate en su estado más franco
+        {status === "done" && (
+          <div>
+            <h1 className={PLANO.titulo}>Contraseña actualizada</h1>
+            <p className={PLANO.bajada}>Listo. Te estamos llevando a tu panel...</p>
           </div>
-        </div>
-      </div>
-      <AppFooter variant="minimal" />
+        )}
+
+        {status === "ready" && (
+          <>
+            <h1 className={PLANO.titulo}>Crea una nueva contraseña</h1>
+            <p className={PLANO.bajada}>Elige una contraseña nueva para tu cuenta.</p>
+
+            <div className={`${PLANO.seccion} flex flex-col gap-3`}>
+              {error && <p className={PLANO.error} role="alert">{error}</p>}
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                <div>
+                  <label htmlFor="password" className={PLANO.label}>Nueva contraseña</label>
+                  <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={PLANO.campo} />
+                </div>
+                <div>
+                  <label htmlFor="confirm-password" className={PLANO.label}>Confirmar contraseña</label>
+                  <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={PLANO.campo} />
+                </div>
+                <button type="submit" disabled={loading} className={PLANO.principal}>
+                  {loading ? "Guardando..." : "Guardar contraseña"}
+                </button>
+              </form>
+            </div>
+          </>
+        )}
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }

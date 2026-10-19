@@ -4,9 +4,9 @@ import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
 import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
@@ -101,181 +101,74 @@ export default function RegisterPage() {
     });
   };
 
+  // PLANA (19-oct-2026, decisión de Fabrizio): en el diseño actual (components/plano), sin tarjeta ni logo repetido; la
+  // lógica de arriba no cambia.
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco contexto="auth" />
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
-            {pendingEmail ? (
-              /* Estado: confirmación enviada */
-              <div className="px-6 pt-8 pb-8 text-center">
-                <div className="mx-auto mb-4">
-                  <FrancoLogo size="xl" href="/" inverted />
-                </div>
-                <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                  Revisa tu correo
-                </h1>
-                <p className="mx-auto mt-3 max-w-[340px] font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  Te enviamos un correo a{" "}
-                  <span className="font-medium text-[var(--franco-text)]">
-                    {pendingEmail}
-                  </span>{" "}
-                  para confirmar tu cuenta. Revisa tu bandeja de entrada (y la
-                  carpeta de spam) y haz clic en el enlace para activarla.
-                </p>
-                <div className="mt-6 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-elevated)] px-4 py-3 text-left">
-                  <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
-                    ¿No llega? Espera un minuto y vuelve a mirar el spam. El
-                    enlace abre Franco y te deja adentro.
-                  </p>
-                </div>
-                <LinkAuth
-                  destino="/login"
-                  className="mt-6 inline-block font-body text-sm font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                >
-                  Volver a iniciar sesión
-                </LinkAuth>
+      <main className={PLANO.main} style={{ fontFamily: UI_PLANO }}>
+        {pendingEmail ? (
+          /* Estado: confirmación enviada */
+          <div>
+            <h1 className={PLANO.titulo}>Revisa tu correo</h1>
+            <p className={PLANO.bajada}>
+              Te enviamos un correo a <span className="font-semibold text-[var(--franco-text)]">{pendingEmail}</span> para
+              confirmar tu cuenta. Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace para activarla.
+            </p>
+            <p className={`${PLANO.seccion} ${PLANO.nota}`}>
+              ¿No llega? Espera un minuto y vuelve a mirar el spam. El enlace abre Franco y te deja adentro.
+            </p>
+            <p className={`mt-6 ${PLANO.nota}`}>
+              <LinkAuth destino="/login" className={PLANO.enlace}>Volver a iniciar sesión</LinkAuth>
+            </p>
+          </div>
+        ) : (
+          <>
+            <h1 className={PLANO.titulo}>Crea tu cuenta gratis</h1>
+            <p className={PLANO.bajada}>Análisis de cualquier departamento en 30 segundos.</p>
+
+            <div className={`${PLANO.seccion} flex flex-col gap-3`}>
+              <button type="button" onClick={handleGoogle} className={PLANO.principal}>
+                <span className="mr-2.5 inline-flex"><GoogleIcon /></span>
+                Continuar con Google
+              </button>
+              <div className="my-1 flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-[var(--franco-border)]" />
+                <span className="text-[13px] text-[var(--franco-text-muted)]">o continúa con tu correo</span>
+                <span className="h-px flex-1 bg-[var(--franco-border)]" />
               </div>
-            ) : (
-              <>
-                {/* Header */}
-                <div className="px-6 pt-8 pb-2 text-center">
-                  <div className="mx-auto mb-4">
-                    <FrancoLogo size="xl" href="/" inverted />
-                  </div>
-                  <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                    Crea tu cuenta gratis
-                  </h1>
-                  <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
-                    Análisis de cualquier departamento en 30 segundos.
-                  </p>
+              {error && <p className={PLANO.error} role="alert">{error}</p>}
+              <form onSubmit={handleRegister} className="flex flex-col gap-3">
+                <div>
+                  <label htmlFor="name" className={PLANO.label}>Nombre completo</label>
+                  <input id="name" type="text" placeholder="Juan Pérez" value={name} onChange={(e) => setName(e.target.value)} required className={PLANO.campo} />
                 </div>
-
-                <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
-                  {/* Acción primaria · Google */}
-                  <button
-                    type="button"
-                    onClick={handleGoogle}
-                    className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[var(--franco-text)] py-3 font-body text-sm font-semibold text-[var(--franco-bg)] transition-opacity hover:opacity-90"
-                  >
-                    <GoogleIcon />
-                    Continuar con Google
-                  </button>
-
-                  {/* Divisor */}
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-[var(--franco-border)]" />
-                    <span className="font-body text-xs text-[var(--franco-text-secondary)]">
-                      o continúa con tu correo
-                    </span>
-                    <div className="h-px flex-1 bg-[var(--franco-border)]" />
-                  </div>
-
-                  {error && (
-                    <div className="rounded-lg border border-[#C8323C]/20 bg-[#C8323C]/5 p-3 font-body text-sm text-[#C8323C]">
-                      {error}
-                    </div>
-                  )}
-
-                  {/* Alternativa secundaria · email + contraseña */}
-                  <form onSubmit={handleRegister} className="flex flex-col gap-4">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="name"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Nombre completo
-                      </label>
-                      <input
-                        id="name"
-                        type="text"
-                        placeholder="Juan Pérez"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="email"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Email
-                      </label>
-                      <input
-                        id="email"
-                        type="email"
-                        placeholder="tu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="password"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Contraseña
-                      </label>
-                      <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="confirm-password"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Confirmar contraseña
-                      </label>
-                      <input
-                        id="confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] py-3 font-body text-sm font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)] hover:bg-[var(--franco-elevated)] disabled:opacity-50"
-                    >
-                      {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
-                    </button>
-                  </form>
-
-                  <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
-                    ¿Ya tienes cuenta?{" "}
-                    <LinkAuth
-                      destino="/login"
-                      className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                    >
-                      Inicia sesión
-                    </LinkAuth>
-                  </p>
+                <div>
+                  <label htmlFor="email" className={PLANO.label}>Email</label>
+                  <input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className={PLANO.campo} />
                 </div>
-              </>
-            )}
-          </div>
+                <div>
+                  <label htmlFor="password" className={PLANO.label}>Contraseña</label>
+                  <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={PLANO.campo} />
+                </div>
+                <div>
+                  <label htmlFor="confirm-password" className={PLANO.label}>Confirmar contraseña</label>
+                  <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={PLANO.campo} />
+                </div>
+                <button type="submit" disabled={loading} className={PLANO.secundario}>
+                  {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
+                </button>
+              </form>
+            </div>
 
-          {/* Franco tagline */}
-          <div className="mt-6 text-center font-body text-[11px] text-[var(--franco-text-secondary)]">
-            Sin compromisos. Sin tarjeta. Solo datos.
-          </div>
-        </div>
-      </div>
-      <AppFooter variant="minimal" />
+            <p className={`mt-6 ${PLANO.nota}`}>
+              ¿Ya tienes cuenta?{" "}
+              <LinkAuth destino="/login" className={PLANO.enlace}>Inicia sesión</LinkAuth>
+            </p>
+          </>
+        )}
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }

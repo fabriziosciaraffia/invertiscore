@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
 
 export default function RecuperarPage() {
   const [email, setEmail] = useState("");
@@ -38,104 +38,50 @@ export default function RecuperarPage() {
     setLoading(false);
   };
 
+  // PLANA (19-oct-2026, decisión de Fabrizio): en el diseño actual (components/plano), sin tarjeta ni logo repetido; la
+  // lógica de arriba no cambia.
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco contexto="auth" />
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
-            {sent ? (
-              /* Estado: enlace enviado (mensaje neutro) */
-              <div className="px-6 pt-8 pb-8 text-center">
-                <div className="mx-auto mb-4">
-                  <FrancoLogo size="xl" href="/" inverted />
-                </div>
-                <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                  Revisa tu correo
-                </h1>
-                <p className="mx-auto mt-3 max-w-[340px] font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-                  Si existe una cuenta con ese correo, te enviamos un enlace para
-                  restablecer tu contraseña. Revisa tu bandeja de entrada (y la
-                  carpeta de spam).
-                </p>
-                <Link
-                  href="/login"
-                  className="mt-6 inline-block font-body text-sm font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                >
-                  Volver a iniciar sesión
-                </Link>
-              </div>
-            ) : (
-              <>
-                {/* Header */}
-                <div className="px-6 pt-8 pb-2 text-center">
-                  <div className="mx-auto mb-4">
-                    <FrancoLogo size="xl" href="/" inverted />
-                  </div>
-                  <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                    Recupera tu acceso
-                  </h1>
-                  <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
-                    Ingresa tu correo y te enviamos un enlace para crear una nueva
-                    contraseña.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
-                  {error && (
-                    <div className="rounded-lg border border-[#C8323C]/20 bg-[#C8323C]/5 p-3 font-body text-sm text-[#C8323C]">
-                      {error}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="email"
-                        className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                      >
-                        Email
-                      </label>
-                      <input
-                        id="email"
-                        type="email"
-                        placeholder="tu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90 disabled:opacity-50"
-                    >
-                      {loading ? "Enviando..." : "Enviar enlace de recuperación"}
-                    </button>
-                  </form>
-
-                  <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
-                    ¿Te acordaste?{" "}
-                    <Link
-                      href="/login"
-                      className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                    >
-                      Inicia sesión
-                    </Link>
-                  </p>
-                </div>
-              </>
-            )}
+      <main className={PLANO.main} style={{ fontFamily: UI_PLANO }}>
+        {sent ? (
+          /* Estado: enlace enviado (mensaje neutro) */
+          <div>
+            <h1 className={PLANO.titulo}>Revisa tu correo</h1>
+            <p className={PLANO.bajada}>
+              Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de
+              entrada (y la carpeta de spam).
+            </p>
+            <p className={`mt-6 ${PLANO.nota}`}>
+              <Link href="/login" className={PLANO.enlace}>Volver a iniciar sesión</Link>
+            </p>
           </div>
+        ) : (
+          <>
+            <h1 className={PLANO.titulo}>Recupera tu acceso</h1>
+            <p className={PLANO.bajada}>Ingresa tu correo y te enviamos un enlace para crear una nueva contraseña.</p>
 
-          {/* Franco tagline (vigente) — JetBrains Mono uppercase, tratamiento del design system */}
-          <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-tertiary)]">
-            Real estate en su estado más franco
-          </div>
-        </div>
-      </div>
-      <AppFooter variant="minimal" />
+            <div className={`${PLANO.seccion} flex flex-col gap-3`}>
+              {error && <p className={PLANO.error} role="alert">{error}</p>}
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                <div>
+                  <label htmlFor="email" className={PLANO.label}>Email</label>
+                  <input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className={PLANO.campo} />
+                </div>
+                <button type="submit" disabled={loading} className={PLANO.principal}>
+                  {loading ? "Enviando..." : "Enviar enlace de recuperación"}
+                </button>
+              </form>
+            </div>
+
+            <p className={`mt-6 ${PLANO.nota}`}>
+              ¿Te acordaste?{" "}
+              <Link href="/login" className={PLANO.enlace}>Inicia sesión</Link>
+            </p>
+          </>
+        )}
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }

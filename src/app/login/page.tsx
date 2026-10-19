@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
-import FrancoLogo from "@/components/franco-logo";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
 
@@ -103,123 +103,51 @@ export default function LoginPage() {
     });
   };
 
+  // PLANA (19-oct-2026, decisión de Fabrizio): las pantallas de entrar en el diseño actual (components/plano), sin tarjeta
+  // ni logo repetido; la lógica de arriba no cambia. La contraseña primero: a esta pantalla se llega desde «Entra con
+  // contraseña» de /entrar, las cuentas de antes.
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco contexto="auth" />
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
-            {/* Header */}
-            <div className="px-6 pt-8 pb-2 text-center">
-              <div className="mx-auto mb-4">
-                <FrancoLogo size="xl" href="/" inverted />
-              </div>
-              <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">
-                Bienvenido de vuelta
-              </h1>
-              <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
-                Continúa analizando tus inversiones
-              </p>
+      <main className={PLANO.main} style={{ fontFamily: UI_PLANO }}>
+        <h1 className={PLANO.titulo}>Bienvenido de vuelta</h1>
+        <p className={PLANO.bajada}>Continúa analizando tus inversiones</p>
+
+        <div className={`${PLANO.seccion} flex flex-col gap-3`}>
+          {error && <p className={PLANO.error} role="alert">{error}</p>}
+          <form onSubmit={handleLogin} className="flex flex-col gap-3">
+            <div>
+              <label htmlFor="email" className={PLANO.label}>Email</label>
+              <input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className={PLANO.campo} />
             </div>
-
-            <div className="flex flex-col gap-4 px-6 pt-5 pb-8">
-              {/* Acción primaria · Google */}
-              <button
-                type="button"
-                onClick={handleGoogle}
-                className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[var(--franco-text)] py-3 font-body text-sm font-semibold text-[var(--franco-bg)] transition-opacity hover:opacity-90"
-              >
-                <GoogleIcon />
-                Continuar con Google
-              </button>
-
-              {/* Divisor */}
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-[var(--franco-border)]" />
-                <span className="font-body text-xs text-[var(--franco-text-secondary)]">
-                  o continúa con tu correo
-                </span>
-                <div className="h-px flex-1 bg-[var(--franco-border)]" />
-              </div>
-
-              {error && (
-                <div className="rounded-lg border border-[#C8323C]/20 bg-[#C8323C]/5 p-3 font-body text-sm text-[#C8323C]">
-                  {error}
-                </div>
-              )}
-
-              {/* Alternativa secundaria · email + contraseña */}
-              <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="font-body text-sm font-semibold text-[var(--franco-text)]"
-                  >
-                    Contraseña
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] py-3 font-body text-sm font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)] hover:bg-[var(--franco-elevated)] disabled:opacity-50"
-                >
-                  {loading ? "Ingresando..." : "Iniciar sesión"}
-                </button>
-
-                <div className="text-center">
-                  <Link
-                    href="/recuperar"
-                    className="font-body text-[13px] text-[var(--franco-text-secondary)] underline-offset-2 hover:text-[var(--franco-text)] hover:underline"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
-                </div>
-              </form>
-
-              <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
-                ¿No tienes cuenta?{" "}
-                <LinkAuth
-                  destino="/register"
-                  className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
-                >
-                  Regístrate
-                </LinkAuth>
-              </p>
+            <div>
+              <label htmlFor="password" className={PLANO.label}>Contraseña</label>
+              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={PLANO.campo} />
             </div>
+            <button type="submit" disabled={loading} className={PLANO.principal}>
+              {loading ? "Ingresando..." : "Iniciar sesión"}
+            </button>
+          </form>
+          <p className={PLANO.nota}>
+            <Link href="/recuperar" className="text-[var(--franco-text)] underline underline-offset-2">¿Olvidaste tu contraseña?</Link>
+          </p>
+          <div className="my-1 flex items-center gap-3" aria-hidden="true">
+            <span className="h-px flex-1 bg-[var(--franco-border)]" />
+            <span className="text-[13px] text-[var(--franco-text-muted)]">o</span>
+            <span className="h-px flex-1 bg-[var(--franco-border)]" />
           </div>
-
-          {/* Franco tagline (vigente) — JetBrains Mono uppercase, tratamiento del design system */}
-          <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-tertiary)]">
-            Real estate en su estado más franco
-          </div>
+          <button type="button" onClick={handleGoogle} className={PLANO.secundario}>
+            <GoogleIcon />
+            Continuar con Google
+          </button>
         </div>
-      </div>
-      <AppFooter variant="minimal" />
+
+        <p className={`mt-6 ${PLANO.nota}`}>
+          ¿No tienes cuenta?{" "}
+          <LinkAuth destino="/register" className={PLANO.enlace}>Regístrate</LinkAuth>
+        </p>
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }
