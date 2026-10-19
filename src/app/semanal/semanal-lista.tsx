@@ -25,7 +25,7 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { MARCA_NEGOCIAR, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { MARCA_NEGOCIAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { rutaTres } from "@/lib/tres-analisis";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
@@ -144,16 +144,19 @@ export function SemanalLista({
   // Los parecidos que ofrece el pop-up (los elige el servidor, en orden, ya reevaluados con la medición nueva).
   const parecidos = popup ? popup.parecidos.map((id) => porId.get(id)).filter((i): i is ItemSemanal => !!i && !noDa.has(i.avisoId)) : [];
 
+  // Ya lo analizó: en renta corta, el informe de la medición fina (15-oct-2026); en renta larga, el que trae el depto ya
+  // visto (19-oct-2026).
+  const informeDe = (it: ItemSemanal): string | undefined => (corta ? (it.informeId ?? informes[it.avisoId]) : it.informeId);
   const acciones = (it: ItemSemanal): JSX.Element => {
     // Renta corta: medido fino y no dio. Queda dicho, sin botón.
     if (corta && noDa.has(it.avisoId)) return <p className="guia-no-da" data-semanal="no-da">{MARCA_NO_DA}</p>;
     // Ya lo analizó (15-oct-2026): el informe, sin volver a medir ni a cobrar.
-    const informe = corta ? (it.informeId ?? informes[it.avisoId]) : undefined;
+    const informe = informeDe(it);
     if (informe) {
       return (
         <div className="guia-acc" data-semanal="ya-analizado">
           <span className="guia-cr">{YA_ANALIZADO.texto} ·</span>
-          <EnlaceCarga href={`/analisis/renta-corta/${informe}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
+          <EnlaceCarga href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
         </div>
       );
     }
@@ -195,6 +198,8 @@ export function SemanalLista({
         <div className="guia-precio">UF {miles(it.precioUF)}</div>
         {corta && <p className="guia-negociar" data-semanal="zona">{MARCA_ZONA}</p>}
         {it.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
+        {/* Lo ya visto (19-oct-2026), al final de la lista; «Ya lo analizaste» no se repite si ya lo dice el enlace al informe. */}
+        {it.visto && !(it.visto === "analizado" && informeDe(it)) && <p className="guia-negociar" data-semanal="visto">{MARCA_VISTO[it.visto]}</p>}
         <div className="guia-dos">
           <div>
             <div className="guia-k">{GUIA.veredicto}</div>

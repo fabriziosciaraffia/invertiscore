@@ -28,7 +28,8 @@ import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, origenSintetico, type
 import { leerAvisoGuia } from "./analizar-servidor";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { MIN_RESPUESTAS_ZONA, aplicarMedicion, respuestaTipica, type LadoMedicion, type MedicionFina } from "./semanal-str";
-import { VENTANA_SEMANAL_DIAS, rangoSemanal, type RespaldoSemanal } from "./semanal";
+import { VENTANA_SEMANAL_DIAS, rangoSemanal, type RespaldoSemanal, type Visto } from "./semanal";
+import { vistosDePersona, type Vistos } from "./vistos-servidor";
 import type { Combinacion, Evaluado } from "./seleccion";
 
 /** Cuántos de cada celda (los más baratos) trae la RPC: en una celda la tarifa típica es una, y el más barato rinde más. */
@@ -233,6 +234,8 @@ export interface PreparacionStr {
   candidatos: Candidato[];
   evaluar: (c: Candidato) => Promise<EvaluadoStr | null>;
   respaldo: RespaldoSemanal<Candidato>;
+  /** Lo ya visto (19-oct-2026): va al final, marcado, solo si faltan nuevos (semanal.ts). */
+  visto: (c: Candidato) => Visto | null;
 }
 
 export type PreparadaStr = { tipo: "sin-perfil"; perfil: PerfilBusqueda } | { tipo: "lista"; p: PreparacionStr };
@@ -247,6 +250,7 @@ export async function prepararSeleccionStr(
   userId: string,
   cfg: { uf: number; tasa: number },
   pp: Pick<PerfilDeLaPersona, "perfilStr"> & { soloManual?: boolean },
+  vistosLeidos?: Vistos,
 ): Promise<PreparadaStr | null> {
   const perfil = pp.perfilStr;
   if (!perfil) return null;
@@ -277,6 +281,8 @@ export async function prepararSeleccionStr(
   const asOf = new Date();
   // Lo que ya midió fino (15-oct-2026): lo que no dio queda fuera; lo que dio Comprar con informe, «Ya lo analizaste».
   const mediciones = await medicionesDePersona(admin, userId);
+  // Lo ya visto (19-oct-2026): lo mandado en las últimas 4 semanas y lo analizado no compite con lo nuevo.
+  const vistos = vistosLeidos ?? await vistosDePersona(admin, userId);
   const memo = new Map<string, Promise<EvaluadoStr | null>>();
   const evaluar = (c: Candidato): Promise<EvaluadoStr | null> => {
     const ya = memo.get(c.avisoId);
@@ -298,6 +304,7 @@ export async function prepararSeleccionStr(
     p: {
       perfil, origen: o, combo, candidatos,
       evaluar,
+      visto: (c) => vistos.get(c.avisoId)?.visto ?? null,
       respaldo: {
         // Solo Comprar (14-oct-2026): las vecinas sí; el negociable no (REGLA_CORTA, sin evaluarConDescuento).
         vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),

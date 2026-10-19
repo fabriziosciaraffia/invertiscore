@@ -19,7 +19,7 @@
 // la hora en que Franco los vio publicados («publicados al [hora]»).
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMO_ENTRAR, MARCA_NEGOCIAR, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
+import { COMO_ENTRAR, MARCA_NEGOCIAR, MARCA_VISTO, SEMANAL_VACIO, textoVence, type Visto } from "@/lib/guia/semanal";
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { DEL_DIA } from "@/lib/guia/del-dia";
@@ -76,6 +76,8 @@ export interface DeptoCorreo {
   tramo?: "vecina" | "negociar";
   /** Del bloque de renta corta (14-oct-2026): lleva la marca «Estimado por zona». */
   zona?: boolean;
+  /** Lo ya visto (19-oct-2026): va al final, con «Ya te lo mandamos» o «Ya lo analizaste». */
+  visto?: Visto;
 }
 
 /** El bloque de renta corta del correo (14-oct-2026): sus deptos, lo que busca y su pie y su plazo. */
@@ -151,6 +153,7 @@ function tarjeta(d: DeptoCorreo): string {
     <tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 28px; line-height: 1.1; font-weight: 700; color: ${TINTA};"><a href="${d.url}" style="color: ${TINTA}; text-decoration: none;">UF ${miles(d.precioUF)}</a></td></tr>
     ${d.zona ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="zona">${escaparHtml(MARCA_ZONA)}</td></tr>` : ""}
     ${d.tramo === "negociar" ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 14px; font-weight: 600; color: ${TINTA};">${escaparHtml(SEMANAL.negociar)}</td></tr>` : ""}
+    ${d.visto ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="visto">${escaparHtml(MARCA_VISTO[d.visto])}</td></tr>` : ""}
     <tr><td style="padding: 0 18px 14px 18px; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.5;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td valign="middle" style="padding: 0 8px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="10" height="10" bgcolor="${color}" style="width: 10px; height: 10px; background: ${color}; border-radius: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table></td>

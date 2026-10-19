@@ -52,6 +52,32 @@ export const MARCA_NEGOCIAR = "Conviene si lo negocias";
 /** De dónde sale un depto de la selección: sus comunas (sin marca), una vecina o un Ajustar negociable. */
 export type TramoSemanal = "propia" | "vecina" | "negociar";
 
+/**
+ * LO YA VISTO NO OCUPA LUGAR (19-oct-2026, decisión de Fabrizio): en el correo y en /semanal, los cinco son primero los que
+ * la persona no ha visto. Visto = lo analizó (alguna vez, desde un aviso) o se lo mandamos en las últimas `DIAS_VISTO`
+ * días (el semanal o el correo del día). Solo si no alcanzan cinco nuevos se completa con vistos, marcados y siempre al
+ * final. Lo avisado al momento (30 días) y lo del correo del día de la semana siguen fuera del todo, como antes; lo que
+ * la medición fina descartó, también.
+ */
+export type Visto = "mandado" | "analizado";
+export const DIAS_VISTO = 28;
+export const MARCA_VISTO: Record<Visto, string> = { mandado: "Ya te lo mandamos", analizado: "Ya lo analizaste" };
+
+/** Lo visto de una persona, por aviso, desde sus correos enviados y sus informes: lo analizado pesa más que lo mandado. El
+ *  informe de renta larga, si lo hay, para «Ya lo analizaste · Ver informe». */
+export function vistosDeFilas(p: {
+  enviadas: Array<{ items?: Array<{ avisoId: string }> | null; items_str?: Array<{ avisoId: string }> | null }>;
+  informes: Array<{ id: string; avisoId: string; largo: boolean }>;
+}): Map<string, { visto: Visto; informeLargo?: string }> {
+  const m = new Map<string, { visto: Visto; informeLargo?: string }>();
+  for (const f of p.enviadas) for (const it of [...(f.items ?? []), ...(f.items_str ?? [])]) if (it?.avisoId) m.set(it.avisoId, { visto: "mandado" });
+  for (const a of p.informes) {
+    const ya = m.get(a.avisoId);
+    m.set(a.avisoId, { visto: "analizado", informeLargo: (ya?.visto === "analizado" ? ya.informeLargo : undefined) ?? (a.largo ? a.id : undefined) });
+  }
+  return m;
+}
+
 export type Variante = "banda" | "tarjetas";
 
 export interface CandidatoSemanal {
@@ -78,7 +104,7 @@ export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: numbe
   return { ufMin: Math.max(0, Math.floor(piso)), ufMax: p.precioMaxUf };
 }
 
-export type ElegidoSemanal<T> = { c: T; ev: Evaluado; tramo: TramoSemanal };
+export type ElegidoSemanal<T> = { c: T; ev: Evaluado; tramo: TramoSemanal; visto?: Visto };
 
 export type ResultadoSemanal<T> =
   | { estado: "armada"; items: Array<ElegidoSemanal<T>> }
@@ -123,6 +149,9 @@ const porPuntaje = <T>(xs: Evaluados<T>, veredicto: string) =>
  * respaldo completa HASTA TRES: primero Comprar de las comunas vecinas; después Ajustar (de sus comunas
  * y de las vecinas, por puntaje) que con `DESCUENTO_NEGOCIABLE` dan Comprar. Con `REGLA_CORTA`, sin negociables y,
  * con menos de tres y nada más por chequear, los que haya.
+ * LO YA VISTO NO OCUPA LUGAR (19-oct-2026): esa regla corre primero solo con lo que la persona no ha visto (`visto` null);
+ * si no alcanzan cinco, la misma regla completa con lo visto, que queda marcado y al final. Lo visto ni se chequea
+ * mientras haya nuevos que alcancen.
  */
 export async function elegirSemanal<T extends CandidatoSemanal>(
   candidatos: T[],
@@ -130,30 +159,39 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
   publicado: (c: T) => Promise<EstadoPublicacion>,
   respaldo?: RespaldoSemanal<T>,
   regla: ReglaSemanal = REGLA_LARGA,
+  visto: (c: T) => Visto | null = () => null,
 ): Promise<ResultadoSemanal<T>> {
   const items: Array<ElegidoSemanal<T>> = [];
   let sinChequeo = 0;
-  const tomar = async (lista: Evaluados<T>, tramo: TramoSemanal, hasta: number) => {
+  const tomar = async (lista: Evaluados<T>, tramo: TramoSemanal, hasta: number, vistos: boolean) => {
     for (const it of lista) {
       if (items.length >= hasta) return;
+      const v = visto(it.c);
+      if (!!v !== vistos) continue;
       if (items.some((x) => x.c.avisoId === it.c.avisoId)) continue;
       const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
-      if (e === "publicado") items.push({ ...it, tramo });
+      if (e === "publicado") items.push({ ...it, tramo, ...(v ? { visto: v } : {}) });
       else if (e === "sin-chequeo") sinChequeo++;
     }
   };
 
   const propios = await evaluarPool(candidatos, evaluar);
-  await tomar(porPuntaje(propios, "COMPRAR"), "propia", TOPE_SEMANAL);
-
-  if (items.length < MINIMO_SEMANAL && respaldo) {
-    const vecinos = await evaluarPool(await respaldo.vecinas().catch(() => [] as T[]), evaluar);
-    await tomar(porPuntaje(vecinos, "COMPRAR"), "vecina", MINIMO_SEMANAL);
-    const conDescuento = respaldo.evaluarConDescuento;
-    if (items.length < MINIMO_SEMANAL && regla.conNegociables && conDescuento) {
-      const ajustar = porPuntaje([...propios, ...vecinos], "AJUSTA SUPUESTOS");
-      const descontados = await Promise.all(ajustar.map((x) => conDescuento(x.c).catch(() => null)));
-      await tomar(ajustar.filter((_, i) => descontados[i]?.veredicto === "COMPRAR"), "negociar", MINIMO_SEMANAL);
+  let vecinos: Evaluados<T> | null = null;
+  const leerVecinos = async () => (vecinos ??= respaldo ? await evaluarPool(await respaldo.vecinas().catch(() => [] as T[]), evaluar) : []);
+  // La regla de siempre —sus comunas hasta cinco; con menos de tres, vecinas y negociables hasta tres—, sobre lo nuevo
+  // primero y, si no alcanza para cinco, sobre lo visto.
+  for (const vistos of [false, true]) {
+    if (items.length >= TOPE_SEMANAL) break;
+    await tomar(porPuntaje(propios, "COMPRAR"), "propia", TOPE_SEMANAL, vistos);
+    if (items.length < MINIMO_SEMANAL && respaldo) {
+      const vs = await leerVecinos();
+      await tomar(porPuntaje(vs, "COMPRAR"), "vecina", MINIMO_SEMANAL, vistos);
+      const conDescuento = respaldo.evaluarConDescuento;
+      if (items.length < MINIMO_SEMANAL && regla.conNegociables && conDescuento) {
+        const ajustar = porPuntaje([...propios, ...vs], "AJUSTA SUPUESTOS").filter((x) => !!visto(x.c) === vistos);
+        const descontados = await Promise.all(ajustar.map((x) => conDescuento(x.c).catch(() => null)));
+        await tomar(ajustar.filter((_, i) => descontados[i]?.veredicto === "COMPRAR"), "negociar", MINIMO_SEMANAL, vistos);
+      }
     }
   }
 
@@ -177,14 +215,18 @@ export async function siguienteYEstado<T extends CandidatoSemanal>(
   enMemoria: (c: T) => Promise<EstadoPublicacion>,
   respaldo?: RespaldoSemanal<T>,
   regla: ReglaSemanal = REGLA_LARGA,
+  visto: (c: T) => Visto | null = () => null,
 ): Promise<{ aviso: T | null; armada: boolean }> {
   const faltan: T[] = [];
   const g = await elegirSemanal(candidatos, evaluar, async (c) => {
     const e = await enMemoria(c);
     if (e === "sin-chequeo") faltan.push(c);
     return e;
-  }, respaldo, regla);
-  return g.estado === "armada" ? { aviso: null, armada: true } : { aviso: faltan[0] ?? null, armada: false };
+  }, respaldo, regla, visto);
+  // Armada con lo visto pero con nuevos sin chequear (19-oct-2026): se sigue chequeando lo nuevo, que le gana el lugar.
+  const faltaNuevo = faltan.find((c) => !visto(c));
+  if (g.estado === "armada" && !(faltaNuevo && g.items.some((x) => x.visto))) return { aviso: null, armada: true };
+  return { aviso: faltaNuevo ?? faltan[0] ?? null, armada: false };
 }
 
 /** Cuánto trabaja una corrida del prechequeo, como mucho: cierra antes del corte de 300 s de la función
@@ -386,10 +428,11 @@ export function esUltimaCorridaArmar(ahora: Date = new Date()): boolean {
  *     apareció ninguno…», con el enlace a su perfil.
  * Hasta hoy, con menos de tres no había correo, y la pendiente del domingo nunca salía.
  */
-export function queEnviarSemanal(deptosVigentes: number, opts: { delDiaReciente?: boolean } = {}): "seleccion" | "vacio" | "nada" {
-  if (deptosVigentes >= 1) return "seleccion";
-  // EL CORREO DEL DÍA ES EL SEMANAL DE ESA SEMANA (16-oct-2026): el lunes siguiente va solo si hay nuevos.
-  return opts.delDiaReciente ? "nada" : "vacio";
+export function queEnviarSemanal(deptosVigentes: number, opts: { delDiaReciente?: boolean; nuevos?: number } = {}): "seleccion" | "vacio" | "nada" {
+  // EL CORREO DEL DÍA ES EL SEMANAL DE ESA SEMANA (16-oct-2026): el lunes siguiente va solo si hay nuevos. Lo ya visto
+  // (19-oct-2026: «Ya te lo mandamos», «Ya lo analizaste») no cuenta como nuevo.
+  if (opts.delDiaReciente && (opts.nuevos ?? deptosVigentes) === 0) return "nada";
+  return deptosVigentes >= 1 ? "seleccion" : "vacio";
 }
 
 /** El reintento del lunes temprano (13-oct-2026): las selecciones que el domingo quedaron pendientes se vuelven a

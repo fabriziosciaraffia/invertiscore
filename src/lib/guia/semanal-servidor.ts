@@ -33,10 +33,11 @@ import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
+import { vistosDePersona, type Vistos } from "./vistos-servidor";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
-  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, semanaDelEnvio,
-  type ProgresoPrechequeo, type RespaldoSemanal,
+  DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
+  type ProgresoPrechequeo, type RespaldoSemanal, type Visto,
 } from "./semanal";
 
 const RUTA = "lib/guia/semanal";
@@ -58,8 +59,10 @@ export interface ItemSemanal {
   /** Solo en el bloque de renta corta (14-oct-2026): el ingreso bruto mensual estimado por zona (el aviso antes de gastar
    *  lo usa para el retorno bruto). */
   ingresoMensual?: number | null;
-  /** Renta corta (15-oct-2026): ya lo analizó; el informe que se creó al medir fino. */
+  /** Ya lo analizó: en renta corta, el informe que se creó al medir fino (15-oct-2026); en renta larga, su informe (19-oct-2026). */
   informeId?: string;
+  /** Lo ya visto (19-oct-2026): va al final, marcado «Ya te lo mandamos» o «Ya lo analizaste» (MARCA_VISTO). */
+  visto?: Visto;
 }
 
 export type { Candidato } from "./semanal-candidatos";
@@ -89,6 +92,10 @@ export interface PreparacionSemanal {
   candidatos: Candidato[];
   evaluar: (c: Candidato) => Promise<Evaluado | null>;
   respaldo: RespaldoSemanal<Candidato>;
+  /** Lo ya visto (19-oct-2026): mandado en las últimas 4 semanas o analizado. Va al final, marcado, solo si faltan nuevos. */
+  visto: (c: Candidato) => Visto | null;
+  /** El informe de renta larga de un depto ya analizado: «Ya lo analizaste · Ver informe». */
+  informeVisto: (avisoId: string) => string | undefined;
 }
 
 export type Preparada = { tipo: "baja" } | { tipo: "sin-perfil"; perfil: PerfilBusqueda } | { tipo: "lista"; p: PreparacionSemanal };
@@ -104,7 +111,9 @@ export async function prepararSeleccion(
   // El aviso inmediato (05-oct-2026) prepara con los avisos NUEVOS y no mira la baja del semanal.
   // `perfilLeido` (14-oct-2026): el armado lee el perfil una vez para los dos bloques.
   // `delDia` (16-oct-2026): el correo del día de una cuenta recién nacida; no excluye lo del correo del día.
-  opts: { nuevosDesde?: string; perfilLeido?: PerfilDeLaPersona; delDia?: boolean } = {},
+  // `vistos` (19-oct-2026): lo ya visto, leído una vez para los dos bloques; sin él se lee acá (el aviso inmediato y el
+  // correo del día no lo usan: lo suyo es lo nuevo).
+  opts: { nuevosDesde?: string; perfilLeido?: PerfilDeLaPersona; delDia?: boolean; vistos?: Vistos } = {},
 ): Promise<Preparada> {
   const pp = opts.perfilLeido ?? await leerPerfilBusqueda(admin, userId);
   if (pp.semanalBajaAt && !opts.nuevosDesde) return { tipo: "baja" };
@@ -142,6 +151,8 @@ export async function prepararSeleccion(
   };
   const propias = perfil.comunas.map(comunaDeAviso);
   const candidatos = await leerCandidatos(propias);
+  // LO YA VISTO NO OCUPA LUGAR (19-oct-2026): lo mandado en las últimas 4 semanas y lo analizado no compite con lo nuevo.
+  const vistos: Vistos = opts.nuevosDesde || opts.delDia ? new Map() : (opts.vistos ?? await vistosDePersona(admin, userId));
 
   const asOf = new Date();
   const memo = new Map<string, Promise<Evaluado | null>>();
@@ -167,6 +178,8 @@ export async function prepararSeleccion(
     p: {
       perfil, origen: o, combo, candidatos,
       evaluar: (c) => evaluarA(c, 1),
+      visto: (c) => vistos.get(c.avisoId)?.visto ?? null,
+      informeVisto: (id) => vistos.get(id)?.informeLargo,
       respaldo: {
         vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),
         evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
@@ -228,20 +241,25 @@ export async function armarSeleccion(
   // corta, estimado por zona, semanal-str-servidor.ts), con las mismas reglas y el mismo presupuesto de fichas. Quien
   // solo tiene renta larga queda exactamente como antes: `estado_str` null y el estado de la fila, el de su bloque.
   const pp = await leerPerfilBusqueda(admin, userId);
-  const prep = await prepararSeleccion(admin, userId, cfg, { perfilLeido: pp });
+  const vistos = await vistosDePersona(admin, userId);
+  const prep = await prepararSeleccion(admin, userId, cfg, { perfilLeido: pp, vistos });
   if (prep.tipo === "baja") return "ya";
-  const prepStr = await prepararSeleccionStr(admin, userId, cfg, pp);
+  const prepStr = await prepararSeleccionStr(admin, userId, cfg, pp, vistos);
   const publicado = publicadoConPresupuesto(admin, presupuesto);
-  const aItems = (g: { items: Array<{ c: Candidato; ev: Evaluado; tramo: string }> }): ItemSemanal[] =>
-    g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}) }));
+  // Lo ya visto va marcado (19-oct-2026); el de renta larga ya analizado, con su informe.
+  const aItems = (g: { items: Array<{ c: Candidato; ev: Evaluado; tramo: string; visto?: Visto }> }, informeVisto?: (id: string) => string | undefined): ItemSemanal[] =>
+    g.items.map(({ c, ev, tramo, visto }) => {
+      const informeId = visto === "analizado" ? informeVisto?.(c.avisoId) : undefined;
+      return { ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}), ...(visto ? { visto } : {}), ...(informeId ? { informeId } : {}) };
+    });
 
   const fila: Record<string, unknown> = {};
   let largo: EstadoBloque | null = null;
   if (prep.tipo === "lista") {
-    const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prep.p;
-    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo);
+    const { perfil, origen: o, combo, candidatos, evaluar, respaldo, visto, informeVisto } = prep.p;
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto);
     largo = g.estado;
-    Object.assign(fila, { items: aItems(g), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
+    Object.assign(fila, { items: aItems(g, informeVisto), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   } else {
     // Sin bloque de renta larga: o no tiene ese perfil (solo renta corta), o le falta con qué buscar.
     largo = pp.perfilLtr ? "sin_match" : null;
@@ -249,8 +267,8 @@ export async function armarSeleccion(
   }
   let corto: EstadoBloque | null = null;
   if (prepStr?.tipo === "lista") {
-    const { perfil, origen: o, combo, candidatos, evaluar, respaldo } = prepStr.p;
-    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_CORTA);
+    const { perfil, origen: o, combo, candidatos, evaluar, respaldo, visto } = prepStr.p;
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto);
     corto = g.estado;
     Object.assign(fila, {
       items_str: aItems(g), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
@@ -293,7 +311,8 @@ export async function prechequearSemana(
       const pr = await (async () => {
         const pp = await leerPerfilBusqueda(admin, userId);
         if (pp.semanalBajaAt) return null;
-        const [l, s] = await Promise.all([prepararSeleccion(admin, userId, cfg, { perfilLeido: pp }), prepararSeleccionStr(admin, userId, cfg, pp)]);
+        const vistos = await vistosDePersona(admin, userId);
+        const [l, s] = await Promise.all([prepararSeleccion(admin, userId, cfg, { perfilLeido: pp, vistos }), prepararSeleccionStr(admin, userId, cfg, pp, vistos)]);
         const ltr = l.tipo === "lista" ? l.p : null, str = s?.tipo === "lista" ? s.p : null;
         return ltr || str ? { ltr, str } : null;
       })().catch(() => null);
@@ -312,8 +331,8 @@ export async function prechequearSemana(
       if (!p) return null;
       // Su siguiente aviso, del bloque que lo necesite (primero el de renta larga); armada cuando los dos lo están.
       const rs = [
-        p.ltr ? await siguienteYEstado(p.ltr.candidatos, p.ltr.evaluar, enMemoria, p.ltr.respaldo) : null,
-        p.str ? await siguienteYEstado(p.str.candidatos, p.str.evaluar, enMemoria, p.str.respaldo, REGLA_CORTA) : null,
+        p.ltr ? await siguienteYEstado(p.ltr.candidatos, p.ltr.evaluar, enMemoria, p.ltr.respaldo, REGLA_LARGA, p.ltr.visto) : null,
+        p.str ? await siguienteYEstado(p.str.candidatos, p.str.evaluar, enMemoria, p.str.respaldo, REGLA_CORTA, p.str.visto) : null,
       ].filter((r): r is { aviso: Candidato | null; armada: boolean } => r != null);
       const aviso = rs.find((r) => r.aviso)?.aviso ?? null;
       estado.set(userId, rs.every((r) => r.armada) ? "armada" : aviso ? "pendiente" : "sin-candidatos");
@@ -403,7 +422,8 @@ export async function seleccionViva(
     if (prep?.tipo === "lista") {
       const almacen = almacenPublicacion(admin);
       const publicado = async (c: Candidato) => (await chequearPublicacion({ id: c.avisoId, url: c.url, edificio: claveEdificio(c) }, "clic", almacen, bajarFicha)).estado;
-      const pool = [...prep.p.candidatos, ...(await prep.p.respaldo.vecinas().catch(() => [] as Candidato[]))];
+      // El reemplazo es solo nuevo (19-oct-2026): lo ya visto no toma el lugar de otro.
+      const pool = [...prep.p.candidatos, ...(await prep.p.respaldo.vecinas().catch(() => [] as Candidato[]))].filter((c) => !prep.p.visto(c));
       const excluir = new Set([...items.map((i) => i.avisoId), ...Array.from(caidos)]);
       const antes = items.length;
       for (const f of faltan) {
@@ -760,7 +780,8 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`). Si esta
   // semana ya salió su correo del día (16-oct-2026), el lunes va solo si hay nuevos: sin nuevos, nada.
   const delDia = await delDiaReciente(admin, fila.user_id);
-  const que = queEnviarSemanal(conLargo || conCorto ? deptos.length + deptosCortos.length : 0, { delDiaReciente: delDia.enviado });
+  const nuevos = [...deptos, ...deptosCortos].filter((d) => !d.visto).length;
+  const que = queEnviarSemanal(conLargo || conCorto ? deptos.length + deptosCortos.length : 0, { delDiaReciente: delDia.enviado, nuevos: conLargo || conCorto ? nuevos : 0 });
   if (que === "nada") return descartar();
   if (que === "vacio") return enviarSinSeleccion(admin, fila, sitio);
   // Los números del primer bloque que tenga (el de renta larga, si existe) van arriba del correo.

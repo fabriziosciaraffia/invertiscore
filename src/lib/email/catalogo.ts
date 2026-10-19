@@ -63,6 +63,15 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "alerta_pago_fallido", tipo: "alerta_pago_fallido", nombre: "Pago fallido (aviso interno)", cuando: "Flow rechaza o anula un pago, a hola@", render: () => correoAlertaPagoFallido({ estado: "Rechazado", producto: "1 análisis", monto: 9990, email: "persona@correo.cl", fecha: "29 de septiembre de 2026, 14:05", orden: "FR-SG-0002" }) },
   { id: "semanal_banda", tipo: "semanal", nombre: "Correo semanal · variante banda", cuando: "Los lunes, a quien tiene cuenta, con 3 a 5 deptos publicados que resultan con su perfil (sin saldo: compra el suelto)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("banda", { saldo: 0, conRegalo: false }), invitar: INVITAR_MUESTRA }) },
   { id: "semanal_tarjetas", tipo: "semanal", nombre: "Correo semanal · variante tarjetas", cuando: "Los lunes, la otra mitad: sin banda, el titular en serif (con el regalo del día 14)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: true }), regaloVence: "2026-12-01T15:00:00Z", invitar: INVITAR_MUESTRA }) },
+  // Lo ya visto no ocupa lugar (19-oct-2026): cuando no alcanzan cinco nuevos, lo ya mandado o analizado completa al final, marcado.
+  { id: "semanal_vistos", tipo: "semanal", nombre: "Correo semanal · con deptos ya vistos al final", cuando: "Cuando no alcanzan cinco nuevos: lo que ya se le mandó en las últimas 4 semanas o ya analizó completa al final, marcado", render: () => {
+    const m = SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false });
+    return correoSemanal({ ...m, invitar: INVITAR_MUESTRA, deptos: [
+      ...m.deptos.slice(0, 3),
+      { ...m.deptos[3], visto: "mandado" },
+      { comuna: "Ñuñoa", tipologia: "2D2B", m2: 61, precioUF: 4450, veredicto: "COMPRAR", score: 75, flujo: 5000, url: `${SITIO}/semanal`, visto: "analizado" },
+    ] });
+  } },
   { id: "semanal_vacio", tipo: "semanal", nombre: "Correo semanal · sin deptos esta semana", cuando: "Los lunes, a quien no le quedó ningún depto confirmado (13-oct-2026): el correo corto con el enlace a su perfil (el primero se presenta)", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, invitar: INVITAR_MUESTRA }) },
   // El correo del día (16-oct-2026, la puerta B): a la cuenta nueva de /deptos, dentro de la hora; es el semanal de esa semana.
   { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: 25, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
