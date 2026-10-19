@@ -132,7 +132,7 @@
 .lv-cierre-wrap, .lv-footer-solo { position: relative; overflow: hidden; color: var(--lv-paper); background: #1F3D67; }
 .lv-cierre-wrap::after, .lv-footer-solo::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light;
+  background-image: url("/landing/grano-fino.png"); background-size: 64px; opacity: 0.8; mix-blend-mode: hard-light;
 }
 
 /* ===== 2 LA RESPUESTA ===== */
@@ -434,6 +434,11 @@
 
 /* ===== 4 POR QUÉ CREERLE (tinta) ===== */
 .lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; min-height: 100svh; position: relative; }
+/* LO DE ABAJO DEL HERO, DIFERIDO (19-oct-2026, LCP en teléfono): el navegador no calcula ni pinta estas pantallas —ni
+   pide sus imágenes, como el mapa de 109 kB— hasta que se acercan. Reservan una pantalla (`auto` recuerda la altura
+   real apenas se dibujaron una vez), así el scroll no salta. La sección de la recomendación queda fuera: ya reserva su
+   altura y su card llega diferida. La hoja de la dirección del cierre va por portal: la contención no la toca. */
+.lv-s2, .lv-s3, .lv-cierre-wrap { content-visibility: auto; contain-intrinsic-size: auto 100svh; }
 /* resplandor muy tenue del azul del token (COMPRAR) en la esquina superior
    derecha: la tinta deja de ser plana sin que aparezca un color nuevo */
 .lv-s3-glow {

@@ -389,12 +389,13 @@ export function HeroEntrada({
     <section className="he-root" aria-label="Analiza un departamento">
       {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
       <picture className="he-fondo">
-        <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
-        <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
-        {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—, y con prioridad
-            alta sus 119 kB competían con el CSS y con la fuente del titular en el teléfono. */}
+        <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
+        <source srcSet="/landing/hero-liso-m1x.webp 1x, /landing/hero-liso-m2x.webp 2x, /landing/hero-liso-m3x.webp 3x" />
+        {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—. LISO (19-oct-2026): el
+            degradado sin el grano incorporado pesa 3–17 kB en vez de 31–183 kB; el grano lo pone la capa de
+            hero-entrada.css (grano-fino.png, 8 kB). Lo fija el tier LANDING-RENDIMIENTO. */}
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/hero-m2x.webp" alt="" decoding="async" />
+        <img src="/landing/hero-liso-m2x.webp" alt="" decoding="async" />
       </picture>
       {cabecera}
       <div className="he-col">

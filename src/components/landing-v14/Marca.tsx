@@ -62,10 +62,10 @@ export function haceCuanto(iso: string, ahora: Date): string {
 export function FondoMaterial() {
   return (
     <picture className="lv-fondo lv-fondo-material">
-      <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
-      <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
+      <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
+      <source srcSet="/landing/hero-liso-m1x.webp 1x, /landing/hero-liso-m2x.webp 2x, /landing/hero-liso-m3x.webp 3x" />
       {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-      <img src="/landing/hero-m2x.webp" alt="" loading="lazy" decoding="async" />
+      <img src="/landing/hero-liso-m2x.webp" alt="" loading="lazy" decoding="async" />
     </picture>
   );
 }

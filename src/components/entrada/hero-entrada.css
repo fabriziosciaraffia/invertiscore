@@ -19,7 +19,7 @@
 .he-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
 .he-root::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light;
+  background-image: url("/landing/grano-fino.png"); background-size: 64px; opacity: 0.8; mix-blend-mode: hard-light;
 }
 .he-col { position: relative; z-index: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
 /* la cabecera es el header único (HeaderFranco, «sobre material»): header-franco.css, alineado a
