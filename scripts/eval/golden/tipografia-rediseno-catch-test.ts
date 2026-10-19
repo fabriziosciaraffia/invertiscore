@@ -119,7 +119,9 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 // aparece un carácter de ese rango. La regla pedía también latin-ext y quedó en rojo; desde el
 // 29-sep pide latin precargado y latin-ext declarado con su rango, no precargado.
 {
-  if (!/"inter-normal-latin\.woff2"/.test(LAYOUT)) F("4 · Inter no está en la lista de precarga del layout: el lector vería el fallback y después el salto");
+  // ⚠ ACTA (19-oct-2026, LCP en teléfono) · se precarga el subconjunto del español de Inter (inter-normal-es.woff2): es
+  // el que dibuja todo el texto del sitio; el resto del rango latin baja solo si hace falta (fuentes.css).
+  if (!/"inter-normal-es\.woff2"/.test(LAYOUT)) F("4 · Inter no está en la lista de precarga del layout: el lector vería el fallback y después el salto");
   if (/"inter-normal-latin-ext\.woff2"/.test(LAYOUT)) F("4 · Inter latin-ext volvió a la precarga: 194 kB de latin-ext con prioridad alta antes del titular (928bbe30)");
   if (!/src: url\(\/fonts\/inter-normal-latin-ext\.woff2\) format\('woff2'\);\s*unicode-range: U\+0100-02BA/.test(FUENTES)) F("4 · Inter latin-ext no está declarada con su unicode-range: un carácter fuera de latin caería al fallback");
   if (!/<link key=\{f\} rel="preload" href=\{`\/fonts\/\$\{f\}`\} as="font" type="font\/woff2" crossOrigin="anonymous" \/>/.test(LAYOUT)) F("4 · el layout no dibuja los <link rel=\"preload\"> de las fuentes");
