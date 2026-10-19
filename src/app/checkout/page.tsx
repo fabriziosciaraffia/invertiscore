@@ -1,368 +1,107 @@
-"use client";
-
-import { useState, useEffect, Suspense } from "react";
-import { claveActual, iniciarCarga } from "@/lib/carga-global";
-import { usePostHog } from "@/lib/posthog-react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Check, ArrowLeft, Shield } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import type { Metadata } from "next";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
-import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
-import { metaTrack } from "@/lib/meta/pixel";
-import { PRODUCTO_PACK, diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
-import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
-import { PRODUCTO_TRES, TRES_COPY, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
-import { seVende } from "@/lib/planes";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { createClient } from "@/lib/supabase/server";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
+import { resumenCompra } from "@/lib/compra/compra";
+import { PRODUCTO_PLAN } from "@/lib/planes";
+import { PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
+import { CompraCliente } from "./compra-cliente";
 
-/** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
-function resolveProduct(key: string) {
-  const p = (FLOW_PRODUCTS as Record<string, (typeof FLOW_PRODUCTS)[FlowProductKey]>)[key];
-  // Lo que ya no se vende (19-oct-2026, lib/planes.ts › VENTA_RETIRADA) cae en «Plan no encontrado»: un enlace viejo a un
-  // plan retirado no muestra una tarjeta que el servidor rechazaría.
-  if (!p || !seVende(key)) return null;
+// ─────────────────────────────────────────────────────────────────────────────
+// /checkout, LA PANTALLA DE COMPRA (19-oct-2026, decisión de Fabrizio): una sola pantalla antes de Flow, en el diseño
+// actual. El producto, el precio y lo que incluye en una línea; sin sesión, el correo («o con Google») y «Pagar $19.990»,
+// que manda el código y, al confirmarlo, va directo a Flow; con sesión, el correo puesto y solo el botón de pagar. Ya no
+// manda a /registro ni a /entrar: el código se pide acá (compra-cliente.tsx). La sesión y el plan se leen en el servidor,
+// así la pantalla llega con el correo puesto, sin un «Cargando...» antes.
+// Llegan acá: la página de planes (pack, suelto y plan), «Analizar este» sin saldo de la página semanal y de la guía (el
+// pack de tres, con su origen y su vuelta), el dashboard, los correos, el paso 4 del wizard (un análisis atado) y el
+// ticket del primer informe (el pack de 24 horas). Lo fija el tier COMPRA.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const oneTime = p.kind === "one_time";
-  const period = oneTime
-    ? "Pago único — análisis sin caducidad"
-    : p.billing === "annual"
-      ? "Facturación anual · renueva automáticamente"
-      : "Facturación mensual · cancela cuando quieras";
-  const subtitle = p.isUnlimited
-    ? "Análisis ilimitados cada mes"
-    : p.capacity === 1
-      ? "1 análisis"
-      : oneTime
-        ? `${p.capacity} análisis, sin caducidad`
-        : `${p.capacity} análisis al mes`;
+export const metadata: Metadata = {
+  title: "Comprar",
+  robots: { index: false, follow: false },
+};
 
-  return {
-    title: p.subject,
-    subtitle,
-    price: fmtCLP(p.amount),
-    amount: p.amount, // unitario, para el cálculo dinámico N × precio
-    period,
-    features: BASE_FEATURES,
-    endpoint: oneTime ? "/api/payments/create" : "/api/subscriptions/create",
-    oneTime,
-  };
-}
+export const dynamic = "force-dynamic";
 
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[var(--franco-bg)]">
-        <p className="font-body text-sm text-[var(--franco-text-secondary)]">Cargando...</p>
-      </div>
-    }>
-      <CheckoutContent />
-    </Suspense>
-  );
-}
+type Busqueda = Record<string, string | string[] | undefined>;
+const uno = (sp: Busqueda, k: string): string | null => {
+  const v = sp[k];
+  return typeof v === "string" ? v : Array.isArray(v) ? v[0] ?? null : null;
+};
 
-function CheckoutContent() {
-  const searchParams = useSearchParams();
-  const posthog = usePostHog();
-  const productKey = searchParams.get("product") || "single";
-  const analysisId = searchParams.get("analysisId");
-  // Flujo AMBAS pre-pago: el STR companion viaja junto al LTR (analysisId).
-  // Se reenvía a payments/create para que confirm desbloquee ambas filas y el
-  // return rutee a la comparativa. Null en LTR/STR single.
-  const companionStrId = searchParams.get("companionStrId");
-  // La compra que viene del correo semanal (02-oct-2026): viaja a payment_data para medirla.
-  // Y la que viene del aviso inmediato (05-oct-2026).
-  // Y el pack de tres (13-oct-2026): desde el dashboard, el aviso antes de gastar o la guía, con adónde volver.
+export default async function CheckoutPage({ searchParams }: { searchParams: Busqueda }) {
+  const productKey = uno(searchParams, "product") || "single";
+  const analysisId = uno(searchParams, "analysisId");
+  // Flujo AMBAS pre-pago: el STR companion viaja junto al LTR (analysisId); confirm desbloquea las dos filas.
+  const companionStrId = uno(searchParams, "companionStrId");
+  // La compra que viene del correo semanal (02-oct-2026) o del aviso inmediato (05-oct-2026): viaja a payment_data para
+  // medirla. Y el pack de tres (13-oct-2026), con su origen y adónde volver.
   const esTres = productKey === PRODUCTO_TRES;
-  const origenParam = searchParams.get("origen");
+  const origenParam = uno(searchParams, "origen");
   const origen = origenParam === "semanal" ? "semanal" : origenParam === "inmediato" ? "inmediato" : esTres && esOrigenTres(origenParam) ? origenParam : null;
-  const volver = esTres ? volverSeguro(searchParams.get("volver")) : null;
-  const varianteCorreo = origen === "semanal" && (searchParams.get("variante") === "banda" || searchParams.get("variante") === "tarjetas") ? searchParams.get("variante") : null;
+  const volver = esTres ? volverSeguro(uno(searchParams, "volver")) : null;
+  const varianteParam = uno(searchParams, "variante");
+  const varianteCorreo = origen === "semanal" && (varianteParam === "banda" || varianteParam === "tarjetas") ? varianteParam : null;
 
-  const product = resolveProduct(productKey);
-  // «Lo que sigue»: la vigencia del pack la dice el servidor. null = todavía no se sabe.
-  const esPack = productKey === PRODUCTO_PACK;
-  const [oferta, setOferta] = useState<{ vigente: boolean; venceAt: string } | null>(null);
-  useEffect(() => {
-    if (!esPack || !analysisId) return;
-    let alive = true;
-    fetch(`/api/lo-que-sigue/oferta?analysisId=${encodeURIComponent(analysisId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (alive && d && typeof d.vigente === "boolean") setOferta({ vigente: d.vigente, venceAt: d.venceAt }); })
-      .catch(() => { /* sin dato, el botón sigue: el servidor rechaza si venció */ });
-    return () => { alive = false; };
-  }, [esPack, analysisId]);
-  const packVencido = esPack && oferta !== null && !oferta.vigente;
-  const packCreadoAt = oferta ? new Date(new Date(oferta.venceAt).getTime() - VENTANA_PACK_MS) : null;
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  // La comuna del análisis atado (el paso 4 del wizard): «Tu análisis en Providencia».
+  const comuna = analysisId && productKey === "single"
+    ? ((await supabase.from("analisis").select("comuna").eq("id", analysisId).maybeSingle()).data?.comuna as string | undefined) ?? null
+    : null;
+  const resumen = resumenCompra(productKey, { analysisId, companionStrId, comuna });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  // Comuna del análisis atado (compra single con analysisId) para personalizar
-  // el título del checkout. Read-only, no toca el path de pago. Fallback: null
-  // → se muestra el título genérico del catálogo.
-  const [analysisComuna, setAnalysisComuna] = useState<string | null>(null);
-
-  // Cantidad de análisis (créditos). Solo aplica a la compra de crédito suelto
-  // (single sin analysisId). Reset defensivo a 1 si cambia el producto o aparece
-  // un analysisId, para no arrastrar la cantidad a un contexto donde no aplica.
-  const [qty, setQty] = useState(1);
-  useEffect(() => {
-    setQty(1);
-  }, [productKey, analysisId]);
-
-  useEffect(() => {
-    if (!analysisId) return;
-    (async () => {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from("analisis")
-          .select("comuna")
-          .eq("id", analysisId)
-          .single();
-        if (data?.comuna) setAnalysisComuna(data.comuna as string);
-      } catch {
-        /* fallback al título genérico */
-      }
-    })();
-  }, [analysisId]);
-
-  // Un producto que no existe o ya no se vende (19-oct-2026) no pide entrar: se queda en «Plan no encontrado».
-  const sinProducto = !product;
-  useEffect(() => {
-    if (sinProducto) return;
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        // Auth-gate único: sin sesión → a registro, preservando el product key
-        // (y analysisId si vino) en ?next= para retomar la compra al volver.
-        const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}${companionStrId ? `&companionStrId=${companionStrId}` : ""}${origen ? `&origen=${origen}` : ""}${varianteCorreo ? `&variante=${varianteCorreo}` : ""}${volver ? `&volver=${encodeURIComponent(volver)}` : ""}`;
-        // «Lo que sigue» (28-sep-2026): /registro es la única puerta (correo con código, o Google).
-        window.location.href = `/registro?next=${encodeURIComponent(returnUrl)}`;
-      } else {
-        setAuthenticated(true);
-      }
-    });
-  }, [sinProducto, productKey, analysisId, companionStrId, origen, varianteCorreo, volver]);
-
-  async function handlePay() {
-    if (!product) return;
-    setLoading(true);
-    setError(null);
-    // Lo que tarda se ve cargando: botón presionado y barra del header hasta que Flow responde;
-    // si responde con la URL, la página se descarga con la barra encendida.
-    const soltar = iniciarCarga(claveActual());
-    try {
-      const body: Record<string, string> = { product: productKey };
-      // analysisId solo aplica al pago único (single): desbloquea ese análisis.
-      if (analysisId && product.oneTime && !esTres) {
-        body.analysisId = analysisId;
-        // AMBAS: el STR companion viaja junto. payments/create lo stashea en
-        // payment_data; confirm desbloquea ambas filas con un solo crédito.
-        if (companionStrId) {
-          body.companionStrId = companionStrId;
-        }
-      }
-      // Cantidad: solo en pago único. Con analysisId el selector está oculto y
-      // qty=1, y el backend fuerza 1 igual → seguro mandarlo siempre en oneTime.
-      if (product.oneTime) {
-        body.quantity = String(qty);
-      }
-      if (origen) body.origen = origen;
-      if (varianteCorreo) body.variante = varianteCorreo;
-      if (volver) body.volver = volver;
-
-      const res = await fetch(product.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.url) {
-        posthog?.capture('payment_initiated', { product: productKey, amount: qty * product.amount, quantity: qty });
-        // Meta Pixel: InitiateCheckout antes de redirigir a Flow. Cubre créditos
-        // (single) y suscripciones — mismo handler. Browser-only, sin event_id
-        // (InitiateCheckout no requiere dedup con CAPI).
-        metaTrack('InitiateCheckout', { value: qty * product.amount, currency: 'CLP' });
-        window.location.href = data.url;
-      } else {
-        setError(res.status === 410 ? CHECKOUT_PACK.vencido : data?.details || data?.error || "Error al procesar el pago");
-        soltar();
-        setLoading(false);
-      }
-    } catch {
-      setError("Error de conexión. Intenta de nuevo.");
-      soltar();
-      setLoading(false);
-    }
-  }
-
-  // Product key inválido (link viejo/corrupto) → estado claro, sin romper.
-  if (!product) {
+  // Un producto que no existe o ya no se vende (19-oct-2026): «Plan no encontrado», sin pedir nada.
+  if (!resumen) {
     return (
-      <div className="min-h-screen bg-[var(--franco-bg)]">
-        <HeaderFranco />
-        <div className="max-w-[480px] mx-auto px-4 py-20 text-center">
-          <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">
-            Plan no encontrado
-          </h1>
-          <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-8">
-            El plan que buscas no existe o ya no está disponible.
-          </p>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-[#C8323C]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Ver planes disponibles
-          </Link>
-        </div>
+      <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
+        <HeaderFranco sesion={user ? { email: user.email ?? "" } : null} />
+        <main className={PLANO.main} style={{ fontFamily: UI_PLANO }} data-compra="no-encontrado">
+          <h1 className={PLANO.titulo}>Plan no encontrado</h1>
+          <p className={PLANO.bajada}>El plan que buscas no existe o ya no está disponible.</p>
+          <div className={PLANO.seccion}>
+            <EnlaceCarga href="/pricing" className={PLANO.principal}>Ver los planes</EnlaceCarga>
+          </div>
+        </main>
+        <AppFooter variant="informe" />
       </div>
     );
   }
 
-  if (authenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--franco-bg)]">
-        <p className="font-body text-sm text-[var(--franco-text-secondary)]">Cargando...</p>
-      </div>
-    );
-  }
+  // Quien ya tiene un plan vigente no vuelve a contratarlo (el servidor lo rechazaría igual).
+  const { data: cuenta } = user && productKey === PRODUCTO_PLAN
+    ? await supabase.from("user_credits").select("subscription_status, is_unlimited").eq("user_id", user.id).maybeSingle()
+    : { data: null };
+  const conPlan = !!cuenta && (cuenta.is_unlimited === true || cuenta.subscription_status === "active");
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Nav */}
-      <HeaderFranco />
-
-      <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
-        {/* Back link */}
-        <Link href={esTres ? volver ?? "/dashboard" : "/pricing"} className="inline-flex items-center gap-1.5 font-body text-sm text-[var(--franco-text-muted)] hover:text-white/70 transition-colors mb-8">
-          <ArrowLeft className="h-4 w-4" />
-          {esTres ? "Volver" : "Volver a planes"}
-        </Link>
-
-        {/* Title */}
-        <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-8">
-          Confirma tu compra
-        </h1>
-
-        {/* Product card */}
-        <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
-          <div className="mb-6">
-            <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
-              {esPack
-                ? CHECKOUT_PACK.titulo
-                : esTres
-                ? TRES_COPY.titulo
-                : product.oneTime && !analysisId
-                ? `Franco — ${qty} análisis`
-                : product.oneTime && analysisComuna
-                ? `Análisis en ${analysisComuna}`
-                : product.title}
-            </p>
-            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">
-              {esTres ? TRES_COPY.subtitulo : product.oneTime && !analysisId ? `${qty} análisis` : product.subtitle}
-            </p>
-          </div>
-
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{fmtCLP(qty * product.amount)}</span>
-          </div>
-          {product.oneTime && !analysisId && !esTres && (
-            <p className="font-mono text-xs text-[var(--franco-text-muted)] mb-1">
-              {qty} × {fmtCLP(product.amount)}
-            </p>
-          )}
-          <p className="font-body text-xs text-[var(--franco-text-muted)] mb-6">{product.period}</p>
-          {esPack && packCreadoAt && (
-            <p className={`font-body text-sm mb-6 ${packVencido ? "text-[var(--signal-red)]" : "text-[var(--franco-text)]"}`} data-lqs="checkout-vence">
-              {packVencido ? CHECKOUT_PACK.vencido : CHECKOUT_PACK.vence(diaVencimiento(packCreadoAt), horaVencimiento(packCreadoAt))}
-            </p>
-          )}
-
-          {/* Selector de cantidad — solo compra de crédito suelto (single sin
-              analysisId). Ink/neutros: Signal Red está reservado al CTA. El número
-              va en el font de datos (mono). */}
-          {product.oneTime && !analysisId && !esTres && (
-            <div className="mb-6">
-              <p className="font-body text-sm text-[var(--franco-text)] mb-3">¿Cuántos análisis?</p>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  disabled={qty <= 1}
-                  aria-label="Quitar un análisis"
-                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                >
-                  −
-                </button>
-                <span className="font-mono text-lg font-medium text-[var(--franco-text)] w-8 text-center tabular-nums">
-                  {qty}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQty((q) => Math.min(20, q + 1))}
-                  disabled={qty >= 20}
-                  aria-label="Agregar un análisis"
-                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="border-t border-[var(--franco-border)] pt-5 mb-6">
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] uppercase tracking-wide font-semibold mb-3">Incluye</p>
-            <div className="space-y-2.5">
-              {product.features.map((f) => (
-                <div key={f} className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-[var(--franco-positive)] mt-0.5 shrink-0" />
-                  <span className="font-body text-sm text-[var(--franco-text-secondary)]">{f}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <p className="font-body text-sm text-[#C8323C] mb-4">{error}</p>
-          )}
-
-          {/* Banner defensivo de cobertura. La mayoría llega acá tras pasar por
-              el wizard (ya sabe que su zona está cubierta), pero algunos compran
-              créditos primero — recordatorio antes de pagar. */}
-          <div
-            className="mb-4 rounded-lg px-3 py-2.5"
-            style={{
-              border: "0.5px solid var(--franco-border)",
-              background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-            }}
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.06em] leading-[1.5] text-[var(--franco-text-muted)] m-0">
-              Análisis solo disponible para Gran Santiago. Verifica que tu propiedad está en zona cubierta antes de comprar.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handlePay}
-            disabled={loading || packVencido}
-            data-presionado={loading ? "1" : undefined}
-            className="w-full font-body text-sm font-bold py-3.5 rounded-lg bg-[#C8323C] text-white hover:bg-[#b02a33] transition-colors min-h-[44px] disabled:opacity-50"
-            style={{ boxShadow: "0 4px 16px rgba(200,50,60,0.3)" }}
-          >
-            {loading ? "Redirigiendo a Flow..." : "Continuar al pago →"}
-          </button>
-
-          <div className="flex items-center justify-center gap-1.5 mt-4">
-            <Shield className="h-3.5 w-3.5 text-[var(--franco-text-muted)]" />
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)]">
-              Serás redirigido a Flow.cl para completar el pago de forma segura.
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
+      {/* Sin sesión, el header no ofrece «Entrar»: la compra pide el correo acá mismo. */}
+      <HeaderFranco sesion={user ? { email: user.email ?? "" } : null} contexto={user ? "sitio" : "auth"} />
+      <main className={PLANO.main} style={{ fontFamily: UI_PLANO }}>
+        <CompraCliente
+          productKey={productKey}
+          resumen={resumen}
+          analysisId={analysisId}
+          companionStrId={companionStrId}
+          origen={origen}
+          varianteCorreo={varianteCorreo}
+          volver={volver}
+          esTres={esTres}
+          esPack={productKey === PRODUCTO_PACK}
+          sesionEmail={user?.email ?? null}
+          conPlan={conPlan}
+          pagarAlEntrar={uno(searchParams, "pagar") === "1"}
+          // «Volver» vuelve adonde estaba: desde planes, a planes (el `volver` de la compra es adónde ir DESPUÉS de pagar).
+          volverHref={origen === "planes" || !esTres ? "/pricing" : volver ?? "/dashboard"}
+        />
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }
