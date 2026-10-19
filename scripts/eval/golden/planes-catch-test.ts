@@ -114,7 +114,7 @@ export function runPlanesTier(): { hard: number } {
   const exactos4: Array<[string, string]> = [
     [C.bajada, "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan."],
     [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un análisis gratis al crear tu cuenta | Un análisis más por cada amigo que invites"],
-    [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
+    [C.pack.nombre, "Pack de 3"], [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
     [C.pack.ahorro, "$6.663 cada uno, en vez de $9.990"], [C.pack.condicion, "No vencen"], [C.pack.boton, "Comprar el pack"],
     [C.plan.detalle, "Todo lo de Gratis, más 20 análisis cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$39.990 al mes"],
     [C.plan.ahorro, "$2.000 cada uno, en vez de $9.990"],
@@ -193,4 +193,5 @@ if (require.main === module) {
 //   botón secundario.
 //   Tercera pasada (lo grande es lo que se paga; el ahorro, debajo): P3, P4, P5 y P12 reescritos sobre `ahorro` · P14 lo
 //   grande vuelve a ser el precio por análisis · P16 el plan muestra grande el ahorro · P17 el ahorro del pack sobre el
-//   precio. 50/50 ROJO, con AFFORDANCE y LO-QUE-SIGUE (AF1, AF2, LQ1) también en ROJO.
+//   precio · P18 el pack vuelve a llamarse «Pack» (con «Pack de 3» se lee a la primera que son tres). 51/51 ROJO, con
+//   AFFORDANCE y LO-QUE-SIGUE (AF1, AF2, LQ1) también en ROJO.

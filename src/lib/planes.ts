@@ -55,7 +55,7 @@ export const PLANES_COPY = {
     ruta: "/deptos",
   },
   pack: {
-    nombre: "Pack",
+    nombre: "Pack de 3",
     detalle: "Todo lo de Gratis, más 3 análisis",
     precio: fmtCLP(TRES_PRECIO_CLP),
     unidad: "pago único",
