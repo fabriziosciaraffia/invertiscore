@@ -7,10 +7,10 @@ import { estadoDelPago, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { HorizontePostPago } from "@/components/lo-que-sigue/HorizontePostPago";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import { AppFooter } from "@/components/chrome/AppFooter";
 import { metaTrack } from "@/lib/meta/pixel";
 import { espejarMeta, type EventoEspejo } from "@/lib/meta/espejo";
 import { EVENTOS_META, idCompraPlan } from "@/lib/meta/ids";
@@ -18,6 +18,8 @@ import { GuiaBusqueda } from "@/components/guia/GuiaBusqueda";
 import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
+import { PLANO, UI_PLANO } from "@/components/plano/plano";
+import { RETORNO, botonTrasPagar, rutaReintentar } from "@/lib/compra/compra";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -34,6 +36,8 @@ function PaymentReturnContent() {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   // El pack de tres (13-oct-2026): dice lo que compró y vuelve adonde estaba (el aviso, la semana, la guía).
   const [producto, setProducto] = useState<string | null>(null);
+  // Lo que la compra traía (origen, variante, el par AMBAS): «Reintentar» vuelve a la misma compra.
+  const [datosPago, setDatosPago] = useState<{ origen?: string; variante?: string; companion_str_id?: string } | null>(null);
   const volver = volverSeguro(searchParams.get("volver"));
   // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
   const [saldo, setSaldo] = useState<number | null>(null);
@@ -106,6 +110,7 @@ function PaymentReturnContent() {
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
           setProducto(typeof data.payment.product === "string" ? data.payment.product : null);
+          setDatosPago((data.payment.payment_data as { origen?: string; variante?: string; companion_str_id?: string } | null) ?? null);
           setConSesion(!data.sinSesion);
           setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
           setIlimitado(data.ilimitado === true);
@@ -197,32 +202,42 @@ function PaymentReturnContent() {
     window.location.assign(hrefEntrar(volverAca, "pack"));
   }
 
-  return (
-    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
-      <HeaderFranco />
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
-<div className={retornoPack ? "w-full max-w-5xl text-left" : "w-full max-w-md text-center"}>
-        {paymentStatus === "loading" && (
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
-            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Procesando tu pago...</h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">Esto toma unos segundos.</p>
-          </div>
-        )}
+  // EL BOTÓN DE LA VUELTA (19-oct-2026, decisión de Fabrizio): uno solo. Si pagó, «Ver mis análisis» (o de vuelta a los
+  // deptos si la compra salió de la página semanal); con un análisis atado, ese análisis. Si no pasó, «Reintentar»: la
+  // misma pantalla de compra, con lo que la compra traía (lib/compra/compra.ts).
+  const tras = analysisId && producto !== PRODUCTO_TRES
+    ? { texto: "Ver mi análisis", href: `/analisis/${analysisId}` }
+    : botonTrasPagar(producto === PRODUCTO_TRES ? volver : null);
+  const reintentar = rutaReintentar({
+    suscripcion: type === "subscription",
+    producto,
+    analysisId,
+    companionStrId: datosPago?.companion_str_id ?? null,
+    origen: datosPago?.origen ?? null,
+    variante: datosPago?.variante ?? null,
+    volver,
+  });
+  const girando = <div className="mb-5 h-8 w-8 animate-spin rounded-full border-2 border-[var(--franco-border)] border-t-[var(--franco-text)]" aria-hidden="true" />;
+  // La guía después de pagar el pack del informe necesita ancho; todo lo demás va en la columna de la casa.
+  const ancha = !!retornoPack && paymentStatus === "paid";
 
-        {paymentStatus === "pending" && (
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#FBBF24]" />
-            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Confirmando pago...</h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">Estamos esperando la confirmación. No cierres esta página.</p>
+  return (
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
+      <HeaderFranco />
+      <main className={ancha ? "mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-8" : PLANO.main} style={{ fontFamily: UI_PLANO }} data-retorno={paymentStatus}>
+        {(paymentStatus === "loading" || paymentStatus === "pending") && !redirecting && (
+          <div>
+            {girando}
+            <h1 className={PLANO.titulo}>{RETORNO.procesando.titulo}</h1>
+            <p className={PLANO.bajada}>{RETORNO.procesando.cuerpo}</p>
           </div>
         )}
 
         {redirecting && (
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
-            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Pago confirmado</h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">Abriendo tu análisis…</p>
+          <div>
+            {girando}
+            <h1 className={PLANO.titulo}>{RETORNO.abriendo.titulo}</h1>
+            <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
           </div>
         )}
 
@@ -251,97 +266,66 @@ function PaymentReturnContent() {
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
-            <div className="mx-auto mb-4 text-4xl">✓</div>
-            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">
-              {type === "subscription" ? "Suscripción activada" : "Pago exitoso"}
-            </h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
+          <div data-retorno-estado="pagado">
+            <h1 className={PLANO.titulo}>{RETORNO.pagado.titulo}</h1>
+            <p className={PLANO.bajada}>
               {type === "subscription"
                 ? ilimitado ? "Tu suscripción Franco está activa. Análisis ilimitados." : "Tu suscripción Franco está activa."
                 : producto === PRODUCTO_TRES
                 ? TRES_COPY.listo
-                : "Tu análisis está desbloqueado."
+                : analysisId ? "Tu análisis está desbloqueado." : RETORNO.pagado.uno
               }
             </p>
-            <div className="mt-6 flex flex-col gap-2">
-              {producto === PRODUCTO_TRES && volver && (
-                <Link
-                  href={volver}
-                  data-tres="seguir"
-                  className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"
-                >
-                  {TRES_COPY.seguir} →
-                </Link>
-              )}
-              {analysisId && producto !== PRODUCTO_TRES && (
-                <Link
-                  href={`/analisis/${analysisId}`}
-                  className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"
-                >
-                  Ver mi análisis →
-                </Link>
-              )}
-              <Link
-                href="/dashboard"
-                className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] py-3 font-body text-sm font-medium text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]"
-              >
-                Ir al dashboard
-              </Link>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={tras.href} className={PLANO.principal} data-tres={producto === PRODUCTO_TRES ? "seguir" : undefined} data-retorno-boton="pagado">
+                {tras.texto}
+              </EnlaceCarga>
             </div>
           </div>
         )}
 
         {paymentStatus === "sin_sesion" && (
-          <div className="mx-auto max-w-md text-center" data-lqs="retorno-sin-sesion">
-            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{RETORNO_SIN_SESION.titulo}</h1>
-            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{RETORNO_SIN_SESION.cuerpo}</p>
-            <EnlaceCarga href={nextEntrar} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
-              {RETORNO_SIN_SESION.boton}
-            </EnlaceCarga>
+          <div data-lqs="retorno-sin-sesion">
+            <h1 className={PLANO.titulo}>{RETORNO_SIN_SESION.titulo}</h1>
+            <p className={PLANO.bajada}>{RETORNO_SIN_SESION.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={nextEntrar} className={PLANO.principal}>{RETORNO_SIN_SESION.boton}</EnlaceCarga>
+            </div>
           </div>
         )}
         {paymentStatus === "otra_cuenta" && (
-          <div className="mx-auto max-w-md text-center" data-lqs="retorno-otra-cuenta">
-            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{PAGO_OTRA_CUENTA.titulo}</h1>
-            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{PAGO_OTRA_CUENTA.cuerpo}</p>
-            <button type="button" onClick={entrarConOtroCorreo} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)]">
-              {PAGO_OTRA_CUENTA.boton}
-            </button>
+          <div data-lqs="retorno-otra-cuenta">
+            <h1 className={PLANO.titulo}>{PAGO_OTRA_CUENTA.titulo}</h1>
+            <p className={PLANO.bajada}>{PAGO_OTRA_CUENTA.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <button type="button" onClick={entrarConOtroCorreo} className={PLANO.principal}>{PAGO_OTRA_CUENTA.boton}</button>
+            </div>
           </div>
         )}
         {paymentStatus === "error" && retornoPack && (
-          <div className="mx-auto max-w-md text-center" data-lqs="retorno-pack-no-paso">
-            <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">{PAGO_PACK_NO_PASO.titulo}</h1>
-            <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">{PAGO_PACK_NO_PASO.cuerpo}</p>
-            <EnlaceCarga href={retornoPack.modalidad === "str" ? `/analisis/renta-corta/${retornoPack.analysisId}` : `/analisis/${retornoPack.analysisId}`} className="inline-flex items-center justify-center rounded-full bg-[var(--franco-text)] px-6 py-3 font-body text-sm font-semibold text-[var(--franco-bg)] no-underline">
-              {PAGO_PACK_NO_PASO.volver}
-            </EnlaceCarga>
+          <div data-lqs="retorno-pack-no-paso">
+            <h1 className={PLANO.titulo}>{PAGO_PACK_NO_PASO.titulo}</h1>
+            <p className={PLANO.bajada}>{PAGO_PACK_NO_PASO.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={retornoPack.modalidad === "str" ? `/analisis/renta-corta/${retornoPack.analysisId}` : `/analisis/${retornoPack.analysisId}`} className={PLANO.principal}>
+                {PAGO_PACK_NO_PASO.volver}
+              </EnlaceCarga>
+            </div>
           </div>
         )}
         {paymentStatus === "error" && !retornoPack && (
-          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
-            <div className="mx-auto mb-4 text-4xl">✕</div>
-            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Pago no procesado</h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
-              El pago fue rechazado o cancelado. No se realizó ningún cargo.
-            </p>
-            <div className="mt-6 flex flex-col gap-2">
-              <Link
-                href="/dashboard"
-                className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90"
-              >
-                Volver al dashboard
-              </Link>
+          <div data-retorno-estado="rechazado">
+            <h1 className={PLANO.titulo}>{RETORNO.rechazado.titulo}</h1>
+            <p className={PLANO.bajada}>{RETORNO.rechazado.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={reintentar} className={PLANO.principal} data-retorno-boton="reintentar">{RETORNO.reintentar}</EnlaceCarga>
             </div>
           </div>
         )}
 
-        <p className="mt-6 font-body text-[11px] text-[var(--franco-text-muted)]">
-          Pagos procesados de forma segura por Flow.cl
-        </p>
-        </div>
-      </div>
+        {!ancha && <p className={`mt-6 ${PLANO.nota}`}>{RETORNO.pie}</p>}
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }
@@ -350,7 +334,7 @@ export default function PaymentReturnPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-[var(--franco-bg)]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--franco-border)] border-t-[var(--franco-text)]" />
       </div>
     }>
       <PaymentReturnContent />

@@ -151,7 +151,9 @@ export const PAGO_OTRA_CUENTA = {
 export const PAGO_PACK_NO_PASO = {
   titulo: "El pago no pasó.",
   cuerpo: "Flow lo rechazó o se canceló. No se hizo ningún cargo.",
-  volver: "Volver a mi informe",
+  // «Reintentar» (19-oct-2026, decisión de Fabrizio: la vuelta de Flow sin pagar tiene un solo botón, «Reintentar»). Lleva
+  // al informe, donde está el ticket con el que se paga el pack.
+  volver: "Reintentar",
 } as const;
 
 export const CHECKOUT_PACK = {
