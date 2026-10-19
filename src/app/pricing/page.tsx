@@ -8,10 +8,12 @@ import { PLANES_COPY, RUTA_PLAN, RUTA_SUELTO_PLANES } from "@/lib/planes";
 import { VistaPlanes } from "./vista-planes";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /pricing (19-oct-2026, decisión de Fabrizio): tres productos a la vista —gratis, pack y plan—, una columna cada uno y
-// un botón cada uno. El pack va destacado con el material del banner y lleva debajo el suelto, «o 1 por $9.990», como
-// precio de referencia. El plan de 50, el ilimitado y los anuales ya no se muestran (planes.ts › VENTA_RETIRADA).
-// Con sesión, el botón de lo que la persona ya tiene no se lo vuelve a vender.
+// /pricing (19-oct-2026, decisión de Fabrizio; segunda pasada el mismo día): tres productos —gratis, pack y plan—, una
+// columna y un botón cada uno. Arriba, una línea: el semanal lo traen los tres; cambia cuántos análisis. Las dos pagadas
+// con la MISMA estructura —qué suman a lo de Gratis, el precio por análisis grande, el total chico, la condición, el
+// botón— y el pack destacado con el material del banner, con el suelto como botón secundario de borde fino. Sin
+// describir qué trae el análisis: debajo, el enlace al demo. El plan de 50, el ilimitado y los anuales ya no se muestran
+// (planes.ts › VENTA_RETIRADA). Con sesión, a quien ya tiene un plan no se le vuelve a vender.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
@@ -32,14 +34,13 @@ export default async function PricingPage() {
       <HeaderFranco activo="planes" sesion={user ? { email: user.email ?? "" } : null} />
       <main className="pl mx-auto max-w-[1100px] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-planes="pagina">
         <h1 className="pl-titulo">{C.titulo}</h1>
-        <p className="pl-bajada">{C.bajada}</p>
+        <p className="pl-bajada" data-planes="bajada">{C.bajada}</p>
 
         <div className="pl-grilla">
           {/* Gratis */}
           <section className="pl-col" data-planes="gratis">
             <h2 className="pl-nombre">{C.gratis.nombre}</h2>
             <p className="pl-precio"><span className="pl-monto">{C.gratis.precio}</span></p>
-            <p className="pl-detalle">{C.gratis.detalle}</p>
             <ul className="pl-incluye">
               {C.gratis.incluye.map((t) => <li key={t}>{t}</li>)}
             </ul>
@@ -55,25 +56,23 @@ export default async function PricingPage() {
           {/* El pack, destacado */}
           <section className="pl-col pl-pack" data-planes="pack">
             <h2 className="pl-nombre">{C.pack.nombre}</h2>
-            <p className="pl-precio"><span className="pl-monto">{C.pack.precio}</span></p>
             <p className="pl-detalle">{C.pack.detalle}</p>
-            <ul className="pl-incluye">
-              {C.pack.incluye.map((t) => <li key={t}>{t}</li>)}
-            </ul>
+            <p className="pl-precio"><span className="pl-monto">{C.pack.precio}</span><span className="pl-unidad">{C.pack.unidad}</span></p>
+            <p className="pl-total">{C.pack.total}</p>
+            <p className="pl-condicion">{C.pack.condicion}</p>
             <div className="pl-accion">
               <EnlaceCarga href={rutaTres("planes", { volver: "/dashboard" })} className="pl-boton" data-planes="boton-pack">{C.pack.boton}</EnlaceCarga>
-              <EnlaceCarga href={RUTA_SUELTO_PLANES} className="pl-suelto" data-planes="suelto">{C.pack.suelto}</EnlaceCarga>
+              <EnlaceCarga href={RUTA_SUELTO_PLANES} className="pl-secundario" data-planes="suelto">{C.pack.suelto}</EnlaceCarga>
             </div>
           </section>
 
           {/* El Plan Franco */}
           <section className="pl-col" data-planes="plan">
             <h2 className="pl-nombre">{C.plan.nombre}</h2>
-            <p className="pl-precio"><span className="pl-monto">{C.plan.precio}</span><span className="pl-unidad">{C.plan.unidad}</span></p>
             <p className="pl-detalle">{C.plan.detalle}</p>
-            <ul className="pl-incluye">
-              {C.plan.incluye.map((t) => <li key={t}>{t}</li>)}
-            </ul>
+            <p className="pl-precio"><span className="pl-monto">{C.plan.precio}</span><span className="pl-unidad">{C.plan.unidad}</span></p>
+            <p className="pl-total">{C.plan.total}</p>
+            <p className="pl-condicion">{C.plan.condicion}</p>
             <div className="pl-accion">
               {conPlan ? (
                 <EnlaceCarga href="/cuenta" className="pl-estado" data-planes="boton-plan">{C.planActivo}</EnlaceCarga>
@@ -84,8 +83,8 @@ export default async function PricingPage() {
           </section>
         </div>
 
-        <p className="pl-nota">
-          Por ahora, deptos del Gran Santiago. ¿Dudas? <EnlaceCarga href="/faq">Preguntas frecuentes</EnlaceCarga>.
+        <p className="pl-nota" data-planes="demo">
+          {C.demo.antes} <EnlaceCarga href={C.demo.ruta}>{C.demo.enlace}</EnlaceCarga>
         </p>
       </main>
       <AppFooter variant="informe" />

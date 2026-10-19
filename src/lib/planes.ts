@@ -9,8 +9,8 @@
 // El plan de 50, el ilimitado, los anuales y el «informe completo» de $4.990 dejan de mostrarse y de venderse
 // (VENTA_RETIRADA): las rutas de cobro los rechazan. Lo ya comprado se respeta: siguen en el catálogo de Flow, así que
 // una suscripción vigente renueva y un lote ya otorgado vale hasta su vencimiento.
-// La página de planes muestra tres columnas —gratis, pack y plan— y el suelto como línea bajo el pack. Lo fija el tier
-// PLANES.
+// La página de planes muestra tres columnas —gratis, pack y plan— y el suelto como botón secundario bajo el del pack. Lo
+// fija el tier PLANES.
 // ─────────────────────────────────────────────────────────────────────────────
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { fmtCLP } from "@/lib/pricing";
@@ -34,34 +34,49 @@ export function seVende(key: string): boolean {
 export const RUTA_PLAN = `/checkout?product=${PRODUCTO_PLAN}`;
 export const RUTA_SUELTO_PLANES = "/checkout?product=single";
 
+/** El precio de cada análisis dentro de un producto: el pack, $19.990 / 3 = $6.663; el plan, $39.990 / 20 = $2.000. */
+export const porAnalisis = (total: number, cantidad: number) => fmtCLP(Math.round(total / cantidad));
+const SUELTO_CLP = FLOW_PRODUCTS.single.amount;
+
+/**
+ * LA PÁGINA DE PLANES, SEGUNDA PASADA (19-oct-2026, decisión de Fabrizio): una sola línea arriba que dice qué tienen los
+ * tres en común (el semanal) y qué cambia (cuántos análisis); las dos tarjetas pagadas con la misma estructura y el
+ * precio POR ANÁLISIS como cifra grande; sin describir qué trae el análisis —para eso, el demo—. El total que se cobra
+ * va chico bajo la cifra grande: el precio por análisis no esconde cuánto se paga.
+ */
 export const PLANES_COPY = {
   titulo: "Elige cómo usar Franco",
-  bajada: "El mismo análisis en los tres: el veredicto, los números y los comparables de tu zona.",
+  bajada: "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan.",
   gratis: {
     nombre: "Gratis",
     precio: "$0",
-    detalle: "Para empezar",
-    incluye: ["El informe de cada análisis", "La selección semanal de deptos que convienen", "Un análisis de regalo al crear tu cuenta"],
+    incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un análisis gratis al crear tu cuenta", "Un análisis más por cada amigo que invites"],
     boton: "Crear mi cuenta",
     ruta: "/deptos",
   },
   pack: {
     nombre: "Pack",
-    precio: fmtCLP(TRES_PRECIO_CLP),
-    detalle: "3 análisis, sin vencimiento",
-    incluye: ["Úsalos cuando quieras: no vencen", "Para comparar los deptos que te interesan"],
-    boton: "Comprar 3 análisis",
-    suelto: `o 1 por ${fmtCLP(FLOW_PRODUCTS.single.amount)}`,
+    detalle: "Todo lo de Gratis, más 3 análisis",
+    precio: porAnalisis(TRES_PRECIO_CLP, 3),
+    unidad: `cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
+    total: `3 por ${fmtCLP(TRES_PRECIO_CLP)}`,
+    condicion: "No vencen",
+    boton: "Comprar el pack",
+    suelto: `Comprar solo 1 por ${fmtCLP(SUELTO_CLP)}`,
     producto: PRODUCTO_TRES,
   },
   plan: {
     nombre: "Plan Franco",
-    precio: fmtCLP(PLAN_PRECIO_CLP),
-    unidad: "al mes",
-    detalle: `${PLAN_ANALISIS_MES} análisis al mes`,
-    incluye: ["Los análisis que no uses se acumulan", "Cada mes vence a los 12 meses", "Cancelas cuando quieras"],
+    detalle: `Todo lo de Gratis, más ${PLAN_ANALISIS_MES} análisis cada mes`,
+    /** Lo que se lee en la cuenta: «Plan Franco · 20 análisis al mes». */
+    resumen: `${PLAN_ANALISIS_MES} análisis al mes`,
+    precio: porAnalisis(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES),
+    unidad: "cada uno",
+    total: `${fmtCLP(PLAN_PRECIO_CLP)} al mes`,
+    condicion: "Los que no uses se acumulan por un año. Cancelas cuando quieras",
     boton: "Contratar el plan",
   },
+  demo: { antes: "¿Quieres ver cómo es un análisis?", enlace: "Mira uno real", ruta: "/demo" },
   /** Para quien ya tiene el plan: el botón no vuelve a venderlo. */
   planActivo: "Ya tienes el Plan Franco",
 } as const;

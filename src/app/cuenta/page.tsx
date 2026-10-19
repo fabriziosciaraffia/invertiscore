@@ -77,7 +77,7 @@ export default async function CuentaPage() {
               <>
                 <p className="m-0 text-[15px]">
                   <span className="font-semibold">{plan}</span>
-                  <span className="text-[var(--franco-text-secondary)]"> · {esFranco ? PLANES_COPY.plan.detalle : C.plan.legado}</span>
+                  <span className="text-[var(--franco-text-secondary)]"> · {esFranco ? PLANES_COPY.plan.resumen : C.plan.legado}</span>
                 </p>
                 {!ilimitado && <p className="mt-1 text-[15px]">{C.plan.teQuedan(disponibles)}</p>}
                 {activo && finDelPeriodo && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.renueva(fecha(finDelPeriodo))}</p>}
