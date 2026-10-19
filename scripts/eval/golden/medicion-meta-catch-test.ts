@@ -197,7 +197,9 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
         // informe de origen, así que el id es el del informe.
         ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeSemanal \? b\.semanal! : origen\.analysisId!\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
         ["src/app/api/semanal/analizar-str/route.ts", [/eventId: idAnalizarEste\(avisoId, b\.token\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
-        ["src/app/api/lo-que-sigue/quiero-verlo/route.ts", [/eventId: idQuieroVerlo\(analysisId\),/, /espejoQV = qv\.espejo;/, /return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null \}\)\);/]],
+        // ⚠ ACTA (19-oct-2026) · la respuesta buena suma la fecha y el asunto del toque repetido (GUIA-BUSQUEDA §15 fija la
+        // línea entera); acá basta que salga por `salir`, con el espejo.
+        ["src/app/api/lo-que-sigue/quiero-verlo/route.ts", [/eventId: idQuieroVerlo\(analysisId\),/, /espejoQV = qv\.espejo;/, /return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null[ ,]/]],
         ["src/app/api/semanal/clic/route.ts", [/eventId: idSemanalClic\(t, avisoId \?\? destino\),/, /espejoSC = sc\.espejo;/, /const volver = \(ruta: string\) => conEspejo\(NextResponse\.redirect\(/]],
         ["src/app/api/payments/confirm/route.ts", [/evento: EVENTOS_META\.compra,\s*eventId: idCompra\(payment\.commerce_order\),/]],
         ["src/lib/subscriptions/subscribe-event.ts", [/for \(const evento of \[EVENTOS_META\.compra, EVENTOS_META\.suscripcion\]\) \{\s*const e = await emitirEventoMeta\(supabase, \{\s*evento,\s*eventId: idCompraPlan\(subId\),/]],
