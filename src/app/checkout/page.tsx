@@ -128,7 +128,10 @@ function CheckoutContent() {
     })();
   }, [analysisId]);
 
+  // Un producto que no existe o ya no se vende (19-oct-2026) no pide entrar: se queda en «Plan no encontrado».
+  const sinProducto = !product;
   useEffect(() => {
+    if (sinProducto) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
@@ -141,7 +144,7 @@ function CheckoutContent() {
         setAuthenticated(true);
       }
     });
-  }, [productKey, analysisId, companionStrId, origen, varianteCorreo, volver]);
+  }, [sinProducto, productKey, analysisId, companionStrId, origen, varianteCorreo, volver]);
 
   async function handlePay() {
     if (!product) return;

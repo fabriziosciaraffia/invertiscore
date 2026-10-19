@@ -62,7 +62,10 @@ export function runPlanesTier(): { hard: number } {
   const rc = sinComentarios(leer("src/app/api/subscriptions/register-callback/route.ts"));
   const iSeVende = rc.indexOf("if (!seVende(match.key))"), iAlta = rc.indexOf('flowPost("subscription/create"');
   if (iSeVende < 0 || iAlta < iSeVende) F("2 · register-callback activa un plan retirado iniciado antes del corte");
-  if (!/if \(!p \|\| !seVende\(key\)\) return null;/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("2 · el checkout muestra una tarjeta de compra de un producto retirado");
+  const ck = sinComentarios(leer("src/app/checkout/page.tsx"));
+  if (!/if \(!p \|\| !seVende\(key\)\) return null;/.test(ck)) F("2 · el checkout muestra una tarjeta de compra de un producto retirado");
+  // Sin sesión, un producto retirado no manda a registrarse para después decir «Plan no encontrado».
+  if (!/const sinProducto = !product;\s*useEffect\(\(\) => \{\s*if \(sinProducto\) return;\s*const supabase = createClient\(\);/.test(ck)) F("2 · el checkout de un producto retirado pide entrar antes de decir que no existe");
   if (!/productosRecuperables\(Object\.keys\(FLOW_PRODUCTS\) as FlowProductKey\[\]\)\.filter\(seVende\)/.test(sinComentarios(leer("src/app/api/cron/abandoned-checkout/route.ts")))) F("2 · el carrito abandonado invita a retomar la compra de un producto retirado");
   const anexo = sinComentarios(leer("src/components/comparativa/ResumenAnexoModal.tsx"));
   if (/product: "unlock"|\$4\.990|4990/.test(anexo)) F("2 · el anexo AMBAS vuelve a vender el informe completo");
@@ -144,5 +147,6 @@ if (require.main === module) {
 //   enlaces · N25 gratis sin el regalo · N28 el botón del pack va a otra compra (§4)
 //   N19 sin «cómo entras» · N20 sin los correos · N21 volver a recibir no borra la baja · N22 vuelve la tarjeta · N23
 //   cancelar vuelve a «Pro» · N24 el de 10 se llama «Plan 10» · N29 sin cancelar el plan · N30 sin Google (§5)
-//   32/32 ROJO. N15 salió VERDE la primera vez: el chequeo de «un botón» pedía TRES apariciones para fallar (una rama
+//   N33 lo retirado pide entrar antes de decir que no existe (§2, del QA en el preview).
+//   33/33 ROJO. N15 salió VERDE la primera vez: el chequeo de «un botón» pedía TRES apariciones para fallar (una rama
 //   laxa); se reescribió por columna, con el número exacto, y quedó ROJO.
