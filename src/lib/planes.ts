@@ -40,9 +40,9 @@ const SUELTO_CLP = FLOW_PRODUCTS.single.amount;
 
 /**
  * LA PÁGINA DE PLANES, SEGUNDA PASADA (19-oct-2026, decisión de Fabrizio): una sola línea arriba que dice qué tienen los
- * tres en común (el semanal) y qué cambia (cuántos análisis); las dos tarjetas pagadas con la misma estructura y el
- * precio POR ANÁLISIS como cifra grande; sin describir qué trae el análisis —para eso, el demo—. El total que se cobra
- * va chico bajo la cifra grande: el precio por análisis no esconde cuánto se paga.
+ * tres en común (el semanal) y qué cambia (cuántos análisis); las dos tarjetas pagadas con la misma estructura; sin
+ * describir qué trae el análisis —para eso, el demo—. La cifra grande es LO QUE SE PAGA ($19.990 de una vez, $39.990 al
+ * mes) y la línea de abajo hace la cuenta del ahorro: cuánto sale cada análisis contra el suelto.
  */
 export const PLANES_COPY = {
   titulo: "Elige cómo usar Franco",
@@ -57,9 +57,9 @@ export const PLANES_COPY = {
   pack: {
     nombre: "Pack",
     detalle: "Todo lo de Gratis, más 3 análisis",
-    precio: porAnalisis(TRES_PRECIO_CLP, 3),
-    unidad: `cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
-    total: `3 por ${fmtCLP(TRES_PRECIO_CLP)}`,
+    precio: fmtCLP(TRES_PRECIO_CLP),
+    unidad: "pago único",
+    ahorro: `${porAnalisis(TRES_PRECIO_CLP, 3)} cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
     condicion: "No vencen",
     boton: "Comprar el pack",
     suelto: `Comprar solo 1 por ${fmtCLP(SUELTO_CLP)}`,
@@ -70,9 +70,9 @@ export const PLANES_COPY = {
     detalle: `Todo lo de Gratis, más ${PLAN_ANALISIS_MES} análisis cada mes`,
     /** Lo que se lee en la cuenta: «Plan Franco · 20 análisis al mes». */
     resumen: `${PLAN_ANALISIS_MES} análisis al mes`,
-    precio: porAnalisis(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES),
-    unidad: "cada uno",
-    total: `${fmtCLP(PLAN_PRECIO_CLP)} al mes`,
+    precio: fmtCLP(PLAN_PRECIO_CLP),
+    unidad: "al mes",
+    ahorro: `${porAnalisis(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES)} cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
     condicion: "Los que no uses se acumulan por un año. Cancelas cuando quieras",
     boton: "Contratar el plan",
   },

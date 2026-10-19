@@ -14,17 +14,16 @@
 .pl-col { display: flex; flex-direction: column; border-radius: 16px; padding: 22px 20px 20px; border: 1px solid var(--franco-border); background: var(--franco-card); }
 @media (min-width: 768px) { .pl-col { padding: 26px 24px 24px; } }
 .pl-nombre { margin: 0; font-size: 15px; font-weight: 600; }
-/* El precio por análisis arriba y la unidad debajo, en las dos pagadas por igual: en una fila, «cada uno, en vez de
-   $9.990» se cortaba bajo la cifra en el pack y «cada uno» quedaba al lado en el plan. */
-.pl-precio { margin: 14px 0 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+/* Lo que se paga, grande, con su unidad al lado («pago único», «al mes»): cortas las dos, no se cortan. */
+.pl-precio { margin: 14px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; }
 .pl-monto { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .pl-unidad { font-size: 14px; color: var(--franco-text-secondary); }
-/* Las dos pagadas, la misma estructura: qué suman a lo de Gratis, el precio por análisis grande, el total chico, la
-   condición y el botón. */
+/* Las dos pagadas, la misma estructura: qué suman a lo de Gratis, lo que se paga grande, el ahorro por análisis debajo,
+   la condición y el botón. */
 .pl-detalle { margin: 8px 0 0; font-size: 16px; line-height: 1.35; font-weight: 600; }
 /* En columnas, dos líneas para lo que suman: el precio del pack y el del plan quedan a la misma altura. */
 @media (min-width: 768px) { .pl-detalle { min-height: 2.7em; } }
-.pl-total { margin: 4px 0 0; font-size: 13px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
+.pl-ahorro { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
 .pl-condicion { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--franco-border); font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary); }
 .pl-incluye { list-style: none; margin: 16px 0 0; padding: 16px 0 0; border-top: 1px solid var(--franco-border); display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary); }
 .pl-incluye li { display: flex; gap: 8px; }
@@ -41,7 +40,7 @@
 @media (min-width: 768px) { .pl-pack { background-image: url("/landing/hero-d1x.webp"); } }
 .pl-pack::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
 .pl-pack > * { position: relative; z-index: 1; }
-.pl-pack .pl-unidad, .pl-pack .pl-total, .pl-pack .pl-condicion { color: rgba(250, 250, 248, 0.82); }
+.pl-pack .pl-unidad, .pl-pack .pl-ahorro, .pl-pack .pl-condicion { color: rgba(250, 250, 248, 0.82); }
 .pl-pack .pl-condicion { border-top-color: rgba(250, 250, 248, 0.28); }
 .pl-pack .pl-boton { background: #FAFAF8; color: #0F0F0F; }
 .pl-pack .pl-boton:focus-visible { outline-color: #FAFAF8; }

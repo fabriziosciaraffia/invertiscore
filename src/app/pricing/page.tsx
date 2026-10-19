@@ -10,7 +10,7 @@ import { VistaPlanes } from "./vista-planes";
 // ─────────────────────────────────────────────────────────────────────────────
 // /pricing (19-oct-2026, decisión de Fabrizio; segunda pasada el mismo día): tres productos —gratis, pack y plan—, una
 // columna y un botón cada uno. Arriba, una línea: el semanal lo traen los tres; cambia cuántos análisis. Las dos pagadas
-// con la MISMA estructura —qué suman a lo de Gratis, el precio por análisis grande, el total chico, la condición, el
+// con la MISMA estructura —qué suman a lo de Gratis, lo que se paga grande, el ahorro por análisis debajo, la condición, el
 // botón— y el pack destacado con el material del banner, con el suelto como botón secundario de borde fino. Sin
 // describir qué trae el análisis: debajo, el enlace al demo. El plan de 50, el ilimitado y los anuales ya no se muestran
 // (planes.ts › VENTA_RETIRADA). Con sesión, a quien ya tiene un plan no se le vuelve a vender.
@@ -58,7 +58,7 @@ export default async function PricingPage() {
             <h2 className="pl-nombre">{C.pack.nombre}</h2>
             <p className="pl-detalle">{C.pack.detalle}</p>
             <p className="pl-precio"><span className="pl-monto">{C.pack.precio}</span><span className="pl-unidad">{C.pack.unidad}</span></p>
-            <p className="pl-total">{C.pack.total}</p>
+            <p className="pl-ahorro">{C.pack.ahorro}</p>
             <p className="pl-condicion">{C.pack.condicion}</p>
             <div className="pl-accion">
               <EnlaceCarga href={rutaTres("planes", { volver: "/dashboard" })} className="pl-boton" data-planes="boton-pack">{C.pack.boton}</EnlaceCarga>
@@ -71,7 +71,7 @@ export default async function PricingPage() {
             <h2 className="pl-nombre">{C.plan.nombre}</h2>
             <p className="pl-detalle">{C.plan.detalle}</p>
             <p className="pl-precio"><span className="pl-monto">{C.plan.precio}</span><span className="pl-unidad">{C.plan.unidad}</span></p>
-            <p className="pl-total">{C.plan.total}</p>
+            <p className="pl-ahorro">{C.plan.ahorro}</p>
             <p className="pl-condicion">{C.plan.condicion}</p>
             <div className="pl-accion">
               {conPlan ? (
