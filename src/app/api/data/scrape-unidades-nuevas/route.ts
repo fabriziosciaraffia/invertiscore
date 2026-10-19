@@ -31,6 +31,7 @@ import {
   type ProgresoUnidades,
 } from "@/lib/services/scraper/unidades-presupuesto";
 import { conTope } from "@/lib/con-tope";
+import { ACCION_PROXY_407, esSinRespuesta } from "@/lib/services/scraper/falla-red";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { cerrarCron, CORRIDA_FALLIDA, type ConteoCron } from "@/lib/cron-resultado";
@@ -178,7 +179,7 @@ async function correr(supabase: AnySupabase, dry: boolean, t0: number, progreso:
     ahora: () => Date.now(),
     dormir: (ms) => new Promise((r) => setTimeout(r, ms)),
     hastaMs: t0 + PRESUPUESTO_UNIDADES_MS - RESERVA_ESCRITURA_MS,
-  }, progreso);
+  }, progreso, (r) => esSinRespuesta(r.error));
   const resultados = lectura.resultados;
   const t1 = Date.now();
 
@@ -329,6 +330,9 @@ async function correr(supabase: AnySupabase, dry: boolean, t0: number, progreso:
     toleranciaFalla: TOLERANCIA_FALLA_PROYECTOS,
     presupuestoMs: PRESUPUESTO_UNIDADES_MS,
     porTiempo: lectura.porTiempo,
+    porCorte: lectura.porCorte,
+    // El proxy rechazó la autenticación (19-oct-2026): necesita una persona, y la alerta sale en el acto.
+    ...(conError.some((r) => /· proxy 407$/.test(String(r.error))) ? { accion: ACCION_PROXY_407 } : {}),
     proyectosEnCiclo: proyectos.length,
     proyectosIntentados: intentados.length,
     proyectosNoAlcanzados: lectura.noAlcanzados,
@@ -360,8 +364,8 @@ async function correr(supabase: AnySupabase, dry: boolean, t0: number, progreso:
   console.log(`[${NOMBRE}] cierre ${JSON.stringify({
     ms: timing.total_ms, total: proyectos.length, intentados: intentados.length, leidos: leidos.length, conError: conError.length,
     noAlcanzados: lectura.noAlcanzados, reintentos: lectura.reintentos, msPasoMax: lectura.msPasoMax,
-    msPorProyecto: Math.round(lectura.msLectura / Math.max(1, intentados.length)), porTiempo: lectura.porTiempo,
-    vencidos: vencidos.length, horasSinLeerMax: horasMax, vueltaDias, timing, dry,
+    msPorProyecto: Math.round(lectura.msLectura / Math.max(1, intentados.length)), porTiempo: lectura.porTiempo, porCorte: lectura.porCorte,
+    vencidos: vencidos.length, horasSinLeerMax: horasMax, vueltaDias, erroresPorTipo, timing, dry,
   })}`);
   // El resultado, por proyecto (29-sep-2026). Un proyecto que falla es un fallido, una escritura que falla tumba
   // la corrida, una corrida con proyectos que no trae UN solo disponible también es falla (la fuente no respondió,

@@ -16,6 +16,7 @@
 //
 // Sin JWT, pero con headers de navegador y por el proxy, como todo fetch a la fuente.
 import { proxyDispatcher } from "./toctoc";
+import { causaDeFalla } from "./falla-red";
 import { PREFIJO_FUERA_DE_LA_FICHA, PREFIJO_VISTA_UNIDADES } from "../../avisos/marcas-unidades";
 
 export { PREFIJO_FUERA_DE_LA_FICHA, PREFIJO_VISTA_UNIDADES };
@@ -149,7 +150,8 @@ export async function fetchUnidadesProyecto(base: ProyectoBase): Promise<Unidade
   } catch (e) {
     // El tope de un pedido sale con su nombre: «TimeoutError: The operation was aborted…» no dice cuál fue.
     if ((e as { name?: string })?.name === "TimeoutError") return vacio(`sin respuesta en ${TIEMPO_MAX_GET_MS / 1000} s`);
-    return vacio(String(e).slice(0, 120));
+    // La causa (19-oct-2026): «fetch failed · proxy 407», «fetch failed · ECONNRESET»… y no solo «TypeError: fetch failed».
+    return vacio(causaDeFalla(e).texto);
   }
 }
 

@@ -3,6 +3,7 @@
 // publicacion.ts.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { proxyDispatcher } from "@/lib/services/scraper/toctoc";
+import { causaDeFalla } from "@/lib/services/scraper/falla-red";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { TIMEOUT_FICHA_MS, type AlmacenPublicacion, type RespuestaFicha } from "./publicacion";
 
@@ -74,6 +75,9 @@ export async function bajarFicha(url: string): Promise<RespuestaFicha> {
     return { status: r.status, location: r.headers.get("location"), html: r.status === 200 ? await r.text() : null };
   } catch (e) {
     const n = (e as { name?: string })?.name;
-    return { falla: n === "TimeoutError" || n === "AbortError" ? "tiempo" : "red" };
+    if (n === "TimeoutError" || n === "AbortError") return { falla: "tiempo" };
+    // La causa al log (19-oct-2026): «fetch failed · proxy 407» o el error del socket, para saber si es el proxy o el portal.
+    console.warn(`[ficha] sin respuesta: ${causaDeFalla(e).texto}`);
+    return { falla: "red" };
   }
 }

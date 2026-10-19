@@ -200,6 +200,15 @@ export interface RitmoLectura { concurrencia: number; pausaLoteMs: number; pausa
 /** El reloj de la corrida (inyectable: el tier lo reemplaza por uno de mentira). Ninguna lectura empieza en o
  *  después de `hastaMs`. */
 export interface RelojLectura { ahora: () => number; dormir: (ms: number) => Promise<void>; hastaMs: number }
+/**
+ * EL CORTACIRCUITO (19-oct-2026): tantos proyectos SEGUIDOS sin respuesta (ni HTTP ni a tiempo) y la corrida deja de
+ * empezar lotes y no reintenta: el 18-oct, con el proxy sin responder, la corrida de las 20:00 hizo 33 reintentos que
+ * fallaron todos. Lo que no alcanzó lo toma la siguiente (el avance ya lo maneja). Un «fetch failed» suelto —4 de 140,
+ * lo normal— no llega a esto, y un 403 del portal no cuenta: es una respuesta. 12 y no menos: esa ventana tumbó ~13
+ * proyectos seguidos en su primer minuto, y con una caída parcial (el 77% del 13-oct) un umbral bajo cortaría corridas
+ * que igual leen algo.
+ */
+export const CORTE_SIN_RESPUESTA_SEGUIDOS = 12;
 /** Lo que se sabe MIENTRAS corre: si la corta el techo, el log dice hasta dónde llegó. */
 export interface ProgresoUnidades { intentados: number; leidos: number }
 
@@ -210,6 +219,8 @@ export interface LecturaUnidades<R> {
   noAlcanzados: number;
   /** Cortó por el reloj: quedaron proyectos o reintentos sin hacer. */
   porTiempo: boolean;
+  /** Cortó por el cortacircuito: `CORTE_SIN_RESPUESTA_SEGUIDOS` proyectos seguidos sin respuesta. */
+  porCorte: boolean;
   fallidosPrimera: number;
   reintentos: number;
   /** El paso más largo (un lote o un reintento), en ms de reloj. */
@@ -229,6 +240,8 @@ export async function leerConPresupuesto<P extends { idProyecto: number }, R ext
   ritmo: RitmoLectura,
   reloj: RelojLectura,
   progreso?: ProgresoUnidades,
+  /** ¿Este resultado es un pedido sin respuesta? Sin esto, no hay cortacircuito. */
+  sinRespuesta: (r: R) => boolean = () => false,
 ): Promise<LecturaUnidades<R>> {
   const inicio = reloj.ahora();
   const queda = (ms: number) => reloj.ahora() + ms < reloj.hastaMs;
@@ -240,6 +253,9 @@ export async function leerConPresupuesto<P extends { idProyecto: number }, R ext
   let porTiempo = false;
   let msPasoMax = 0;
   let reintentos = 0;
+  let porCorte = false;
+  let seguidos = 0;
+  const anotar = (r: R) => { seguidos = sinRespuesta(r) ? seguidos + 1 : 0; if (seguidos >= CORTE_SIN_RESPUESTA_SEGUIDOS) porCorte = true; };
   while (i < cola.length) {
     const fallidos = resultados.filter((r) => r.error).length;
     const lote = cola.slice(i, i + ritmo.concurrencia);
@@ -253,24 +269,30 @@ export async function leerConPresupuesto<P extends { idProyecto: number }, R ext
     msPasoMax = Math.max(msPasoMax, reloj.ahora() - t);
     resultados.push(...rs);
     bases.push(...lote);
+    rs.forEach(anotar);
     if (progreso) { progreso.intentados += rs.length; progreso.leidos += rs.filter((r) => !r.error).length; }
+    if (porCorte) break;
     if (i < cola.length && ritmo.pausaLoteMs > 0) await reloj.dormir(ritmo.pausaLoteMs);
   }
   const fallidosPrimera = resultados.filter((r) => r.error).length;
   // El reintento pegado al 403 vuelve a dar 403: cada uno, después de su pausa (02-oct-2026).
+  // Con el cortacircuito abierto no se reintenta: fallaría igual.
+  if (!porCorte) seguidos = 0;
   reintentar: for (let intento = 0; intento < ritmo.reintentos; intento++) {
     for (let k = 0; k < resultados.length; k++) {
       if (!resultados[k].error) continue;
+      if (porCorte) break reintentar;
       if (!queda(ritmo.pausaReintentoMs)) { porTiempo = true; break reintentar; }
       await reloj.dormir(ritmo.pausaReintentoMs);
       const t = reloj.ahora();
       resultados[k] = await leer(bases[k]);
+      anotar(resultados[k]);
       msPasoMax = Math.max(msPasoMax, reloj.ahora() - t);
       reintentos++;
       if (progreso && !resultados[k].error) progreso.leidos++;
     }
   }
-  return { resultados, noAlcanzados: cola.length - i, porTiempo, fallidosPrimera, reintentos, msPasoMax, msLectura: reloj.ahora() - inicio };
+  return { resultados, noAlcanzados: cola.length - i, porTiempo, porCorte, fallidosPrimera, reintentos, msPasoMax, msLectura: reloj.ahora() - inicio };
 }
 
 // ── El resultado de la corrida ────────────────────────────────────────────────
