@@ -44,11 +44,12 @@ const base: TierInfo = {
 
 console.log("\nLínea de consumo bajo el CTA");
 
-test("plan10 con saldo 3 → 'Te quedan 3 de 10'", () => {
+// El Plan Franco son 20 al mes desde el 19-oct-2026 (lib/planes.ts).
+test("plan10 con saldo 3 → 'Te quedan 3 de 20'", () => {
   const t: TierInfo = { ...base, credits: 3, activePlan: "plan10" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", "Providencia"),
-    "Esto usa uno de tus análisis. Te quedan 3 de 10.",
+    "Esto usa uno de tus análisis. Te quedan 3 de 20.",
   );
 });
 
@@ -64,7 +65,15 @@ test("saldo 1 usa singular ('Te queda 1')", () => {
   const t: TierInfo = { ...base, credits: 1, activePlan: "plan10" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Esto usa uno de tus análisis. Te queda 1 de 10.",
+    "Esto usa uno de tus análisis. Te queda 1 de 20.",
+  );
+});
+
+test("plan10 con más de un mes acumulado → sin denominador (el «de 20» mentiría)", () => {
+  const t: TierInfo = { ...base, credits: 34, activePlan: "plan10" };
+  assert.equal(
+    lineaConsumo(t, true, true, "ltr", undefined),
+    "Esto usa uno de tus análisis. Te quedan 34.",
   );
 });
 

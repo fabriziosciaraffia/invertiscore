@@ -307,7 +307,10 @@ export function runLoQueSigueTier(): { hard: number } {
     if ((rec as string[]).includes("pack3")) F("10 · el carrito abandonado le escribe a quien dejó el pack (vence y no vuelve)");
     if (!(rec as string[]).includes("single") || rec.length !== Object.keys(FLOW_PRODUCTS).length - 1) F("10 · el filtro del pack se lleva otros productos del recupero");
     const ab = sinComentarios(leer("src/app/api/cron/abandoned-checkout/route.ts"));
-    if (!/const RECOVERABLE_PRODUCTS = productosRecuperables\(Object\.keys\(FLOW_PRODUCTS\) as FlowProductKey\[\]\);/.test(ab) || (ab.match(/\.in\("product", RECOVERABLE_PRODUCTS\)/g) ?? []).length !== 2) F("10 · el cron de carrito abandonado no filtra con productosRecuperables en sus dos lecturas");
+    // ⚠ ACTA (19-oct-2026, goal «planes y cuenta») · además del pack, el recupero deja fuera lo que ya no se vende
+    // (lib/planes.ts › seVende): el correo invitaría a retomar una compra que el servidor rechaza (tier PLANES). Verificado en
+    // rojo: LQ1 el recupero sin el filtro de lo retirado.
+    if (!/const RECOVERABLE_PRODUCTS = productosRecuperables\(Object\.keys\(FLOW_PRODUCTS\) as FlowProductKey\[\]\)\.filter\(seVende\);/.test(ab) || (ab.match(/\.in\("product", RECOVERABLE_PRODUCTS\)/g) ?? []).length !== 2) F("10 · el cron de carrito abandonado no filtra con productosRecuperables en sus dos lecturas");
   }
 
   // ── eventos: los ocho, y del lado del cliente con veredicto y modalidad ────

@@ -129,7 +129,9 @@ export function runAffordanceTier(): { hard: number } {
     ["src/components/CtaAnalizar.tsx", /<EnlaceCarga\s*\n\s*href=\{hrefAnalizar\(origen, \{ comuna \}\)\}/, "CtaAnalizar"],
     // ⚠ ACTA (17-oct-2026) · la lista va por fecha, sin orden por columna: lo que navega con carga es la fila entera.
     ["src/app/dashboard/archive.tsx", /<EnlaceCarga href=\{abrir\} aria-hidden="true" tabIndex=\{-1\} className="absolute inset-0 z-0" \/>/, "las filas del archivo del dashboard"],
-    ["src/app/cuenta/page.tsx", /<EnlaceCarga href="\/analisis\/nuevo-v4"/, "la cuenta"],
+    // ⚠ ACTA (19-oct-2026, goal «planes y cuenta») · la cuenta plana ya no tiene el historial con «Analiza tu primer
+    // departamento»: lo que navega con carga es el enlace a los planes.
+    ["src/app/cuenta/page.tsx", /<EnlaceCarga href="\/pricing" className=\{enlace\}>/, "la cuenta"],
     ["src/app/perfil/page.tsx", /<EnlaceCarga href=\{`\/analisis\/\$\{analysis\.id\}`\}/, "los análisis del perfil"],
     ["src/components/analysis/NextAnalysisCTA.tsx", /<EnlaceCarga\s*\n\s*href=\{accion\.href\}/, "NextAnalysisCTA del informe"],
     ["src/app/analisis/[id]/results-client.tsx", /<EnlaceCarga href="\/analisis\/nuevo-v4"/, "el informe LTR"],
@@ -158,8 +160,14 @@ export function runAffordanceTier(): { hard: number } {
   const checkout = sinComentarios(leer("src/app/checkout/page.tsx"));
   if (!/setError\(null\);\s*\n\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*\n\s*try \{/.test(checkout) || !/data-presionado=\{loading \? "1" : undefined\}/.test(checkout)) F("3 · iniciar el pago (checkout) no enciende la barra ni presiona el botón");
   if ((checkout.match(/soltar\(\);\s*\n\s*setLoading\(false\);/g) ?? []).length !== 2 || /\} finally \{/.test(checkout)) F("3 · checkout suelta la barra o el botón antes de que Flow responda (o no los suelta al fallar)");
+  // ⚠ ACTA (19-oct-2026, goal «planes y cuenta») · el desbloqueo del anexo ($4.990) ya no se vende (lib/planes.ts): el
+  // anexo no inicia ningún pago —que era lo que tenía que mostrarse cargando— y al dueño le ofrece analizar el depto. Verificado
+  // en rojo: AF1 el anexo vuelve a iniciar un pago · AF2 el anexo ya no lleva a analizar. (La primera versión de esta ancla
+  // buscaba el enlace en una ventana de 400 caracteres que el className largo excedía: estaba ROJA sobre código sano, y
+  // el primer AF1 «rojo» no probaba nada. Se ancló al <a> que lleva data-anexo y se repitieron las dos.)
   const anexo = sinComentarios(leer("src/components/comparativa/ResumenAnexoModal.tsx"));
-  if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(anexo) || (anexo.match(/soltar\(\);\s*\n\s*setLoading\(false\);/g) ?? []).length !== 2 || !/data-presionado=\{loading \? "1" : undefined\}/.test(anexo)) F("3 · desbloquear el anexo no enciende la barra, no presiona el botón o no suelta al fallar");
+  const enlaceAnexo = anexo.slice(anexo.lastIndexOf("<a", anexo.indexOf('data-anexo="analizar"')), anexo.indexOf('data-anexo="analizar"'));
+  if (/\/api\/payments\/create|product: "unlock"/.test(anexo) || !/^<a\s+href="\/analisis\/nuevo-v4"/.test(enlaceAnexo)) F("3 · el anexo vuelve a cobrar el desbloqueo, o no le ofrece al dueño analizar el depto");
 
   // ── 4 · pro_purchased retirado ─────────────────────────────────────────────
   const retorno = sinComentarios(leer("src/app/payments/return/page.tsx"));
