@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 
+// «Intentar de nuevo» RECARGA la página (19-oct-2026, Sentry JAVASCRIPT-NEXTJS-9): en Next 14.2 el reinicio que Next le
+// pasa a global-error vuelve a montar el router con su caché inicial ya en null y revienta en un `.get`, así que el botón
+// nunca sacaba de esta pantalla. Recargar sí (es lo que la persona terminó haciendo a mano). Tier GLOBAL-ERROR.
 export default function GlobalError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
 }) {
   useEffect(() => {
     // Sentry entra por `import()` (se carga con la página quieta): acá se pide, no se asume.
@@ -39,7 +40,7 @@ export default function GlobalError({
             El error fue registrado automáticamente. Intenta de nuevo.
           </p>
           <button
-            onClick={reset}
+            onClick={() => window.location.reload()}
             style={{
               backgroundColor: "#C8323C",
               color: "var(--franco-text)",
