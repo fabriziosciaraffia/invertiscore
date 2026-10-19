@@ -118,14 +118,22 @@ export function CampoEntrada({
   const sugerenciasRef = useRef<HTMLDivElement>(null);
   const usaHoja = useUsaHoja();
   const [hoja, setHoja] = useState(false);
-  // El componente de la hoja, cargado aparte: se pide apenas se sabe que es un teléfono, para que al
-  // tocar el campo ya esté y la hoja se abra (y enfoque) en el mismo toque.
+  // El componente de la hoja, cargado aparte: se pide en el teléfono, para que al tocar el campo ya esté
+  // y la hoja se abra (y enfoque) en el mismo toque.
+  // CON LA PÁGINA CARGADA (19-oct-2026, LCP en teléfono): pedida al montar, sus ~52 kB a veces terminaban
+  // antes del primer pintado y Lighthouse los cargaba al titular (2,3 s o 2,65 s según la corrida). En el
+  // `load` ya pintó, y en un teléfono llega lo mismo antes de que alguien lea el titular y toque el campo;
+  // si lo toca antes, la hoja se abre cuando llega (el efecto de abajo).
   const [Hoja, setHojaComp] = useState<ComponentType<{ abierto: boolean; onClose: () => void; children: ReactNode }> | null>(null);
   useEffect(() => {
     if (!usaHoja || Hoja) return;
     let vivo = true;
-    import("./HojaDireccion").then((m) => { if (vivo) setHojaComp(() => m.default); });
-    return () => { vivo = false; };
+    const pedir = () => {
+      import("./HojaDireccion").then((m) => { if (vivo) setHojaComp(() => m.default); });
+    };
+    if (document.readyState === "complete") pedir();
+    else window.addEventListener("load", pedir, { once: true });
+    return () => { vivo = false; window.removeEventListener("load", pedir); };
   }, [usaHoja, Hoja]);
 
   const entregar = (sel: SeleccionDireccion) => {

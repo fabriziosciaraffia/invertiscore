@@ -240,7 +240,8 @@ export function runLandingRendimientoTier(): { hard: number } {
       if (visto.has(archivo)) continue;
       visto.add(archivo);
       const fuente = sinComentarios(leer(archivo));
-      for (const m of fuente.matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?[^'"]*?from\s+["']([^"']+)["']/g)) {
+      // También el import de efecto (`import "x";`, sin `from`): carga el módulo entero igual (lo cazó la mutación).
+      for (const m of fuente.matchAll(/(?:^|\n)\s*(?:(?:import|export)\s+(type\s+)?[^'"]*?from\s+|import\s+)["']([^"']+)["']/g)) {
         if (m[1]) continue; // import type: no llega al paquete
         const esp = m[2];
         if (NODE.test(esp) || PESADOS.test(esp)) { hallazgos.push(`${esp} ← ${camino.join(" → ")}`); continue; }
@@ -270,6 +271,12 @@ export function runLandingRendimientoTier(): { hard: number } {
   const atrib6 = sinComentarios(leer("src/hooks/useAttributionSync.ts"));
   if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => import\("@\/lib\/supabase\/client"\)/.test(header6)) F("6 · el header pide Supabase antes de que la página esté quieta");
   if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => void \(async \(\) => \{\s*try \{\s*const \{ createClient \} = await import\("@\/lib\/supabase\/client"\);/.test(atrib6)) F("6 · la atribución pide Supabase antes de que la página esté quieta");
+  // d' · La hoja de la dirección (~52 kB con lo suyo) se pide con la página CARGADA, no al montar: pedida al montar, a
+  //      veces terminaba antes del primer pintado y el LCP simulado saltaba de 2,3 a 2,65 s según la corrida.
+  const hero6 = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
+  if ((hero6.match(/import\("\.\/HojaDireccion"\)/g) ?? []).length !== 1
+    || !/const pedir = \(\) => \{\s*import\("\.\/HojaDireccion"\)/.test(hero6)
+    || !/if \(document\.readyState === "complete"\) pedir\(\);\s*else window\.addEventListener\("load", pedir, \{ once: true \}\);/.test(hero6)) F("6 · la hoja de la dirección vuelve a pedirse al montar el hero (antes del titular)");
   // e · Las fuentes de arriba en su subconjunto del español, partidas sin solaparse, y el wordmark con su cara.
   for (const n of ["source-serif-4-normal-es", "inter-normal-es"]) if (pesa(`public/fonts/${n}.woff2`) > 42_000) F(`6 · ${n}.woff2 pesa más de 42 kB (o no existe)`);
   if (pesa("public/fonts/source-serif-4-700-es.woff2") > 20_000) F("6 · source-serif-4-700-es.woff2 pesa más de 20 kB (o no existe)");
