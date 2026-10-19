@@ -14,11 +14,14 @@ import { metaTrack } from "@/lib/meta/pixel";
 import { PRODUCTO_PACK, diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
 import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
 import { PRODUCTO_TRES, TRES_COPY, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
+import { seVende } from "@/lib/planes";
 
 /** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
 function resolveProduct(key: string) {
   const p = (FLOW_PRODUCTS as Record<string, (typeof FLOW_PRODUCTS)[FlowProductKey]>)[key];
-  if (!p) return null;
+  // Lo que ya no se vende (19-oct-2026, lib/planes.ts › VENTA_RETIRADA) cae en «Plan no encontrado»: un enlace viejo a un
+  // plan retirado no muestra una tarjeta que el servidor rechazaría.
+  if (!p || !seVende(key)) return null;
 
   const oneTime = p.kind === "one_time";
   const period = oneTime

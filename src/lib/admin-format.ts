@@ -38,7 +38,8 @@ export function fmtDateShort(date: string | null | undefined): string {
 export function fmtPlanLabel(activePlan: string | null | undefined): string {
   switch (activePlan) {
     case "plan10":
-      return "Plan 10";
+      // El Plan Franco (19-oct-2026, lib/planes.ts): el producto plan10 con 20 al mes.
+      return "Plan Franco";
     case "plan50":
       return "Plan 50";
     case "unlimited":

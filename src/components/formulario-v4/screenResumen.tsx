@@ -80,6 +80,7 @@ import { reportarValidacionRechazo } from "./stepTelemetry";
 import { estamparSubmit } from "@/lib/informe-visto";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { MODALIDADES_OFRECIDAS } from "./screenInforme";
+import { PLAN_ANALISIS_MES } from "@/lib/planes";
 
 /**
  * Variante del gate de auth que ve el anónimo al llegar al resumen. Viaja como
@@ -1291,9 +1292,11 @@ export function lineaConsumo(
   // Saldo finito. Con plan mostramos el total del ciclo ("3 de 10"); sin plan
   // (créditos comprados sueltos) no hay denominador que mostrar.
   const saldo = tier?.credits ?? 0;
-  const totalPlan = tier?.activePlan === "plan10" ? 10 : tier?.activePlan === "plan50" ? 50 : null;
+  // El Plan Franco son 20 al mes (19-oct-2026, lib/planes.ts); los análisis se acumulan, así que con más de un mes
+  // guardado el «de N» mentiría y no se dice.
+  const totalPlan = tier?.activePlan === "plan10" ? PLAN_ANALISIS_MES : tier?.activePlan === "plan50" ? 50 : null;
   const quedan = saldo === 1 ? "Te queda 1" : `Te quedan ${saldo}`;
-  return `Esto usa uno de tus análisis. ${quedan}${totalPlan ? ` de ${totalPlan}` : ""}.`;
+  return `Esto usa uno de tus análisis. ${quedan}${totalPlan && saldo <= totalPlan ? ` de ${totalPlan}` : ""}.`;
 }
 
 function FinalCTA({ mod, isLoggedIn, anonCap, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; anonCap: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {

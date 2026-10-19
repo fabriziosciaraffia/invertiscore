@@ -6,6 +6,7 @@ import { recurringProductByPlan, setPlanFields, addOneMonth } from "@/lib/credit
 import { resolvePlanId } from "@/lib/flow-products";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
+import { seVende } from "@/lib/planes";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
         "[register-callback] sin plan persistido o planId nulo para customer:",
         customerId
       );
+      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+    }
+
+    // LA OFERTA DEL 19-OCT-2026 (lib/planes.ts): quien empezó a suscribirse a un plan que ya no se vende (antes del corte)
+    // y termina de registrar la tarjeta después, no lo activa: la tarjeta queda registrada, sin suscripción ni cobro.
+    if (!seVende(match.key)) {
+      console.error("[register-callback] plan que ya no se vende, sin suscripción:", match.key, customerId);
       return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
     }
 

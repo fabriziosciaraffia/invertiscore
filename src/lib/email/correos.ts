@@ -12,6 +12,7 @@ import { BIENVENIDA } from "@/app/dashboard/bienvenida-copy";
 import { COMO_ENTRAR, textoVence } from "@/lib/guia/semanal";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import { REFERIDO_COPY, TOPE_PREMIOS_REFERIDO, enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
+import { AUMENTO_COPY } from "@/lib/planes";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -265,6 +266,26 @@ export function correoPremioReferido(p: { nombre: string | null; vence: string; 
       ],
       boton: { texto: REFERIDO_COPY.correoBoton, url: `${sitio}/analisis/nuevo-v4` },
       despues: quedan ? [`${escaparHtml(REFERIDO_COPY.invitaTexto)} ${enlace(enlaceInvitacion(sitio, p.codigo!), textoEnlaceInvitacion(p.codigo!))}`] : [],
+    }),
+  };
+}
+
+// ── Tu plan ahora trae 20 (19-oct-2026, decisión de Fabrizio; lib/planes.ts) ──────────────────────────────────────────
+// A quien tenía el plan de 10, en el cobro de su renovación que le entrega el primer lote de 20: el aumento, al mismo
+// precio, sin que tenga que hacer nada. Sale una vez (process-charge › correspondeAvisoAumento).
+export function correoPlanAumento(p: { nombre: string | null; precio: string; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  return {
+    subject: AUMENTO_COPY.asunto,
+    html: plantillaClara({
+      titulo: AUMENTO_COPY.asunto,
+      preencabezado: AUMENTO_COPY.cuerpo(p.precio),
+      titular: AUMENTO_COPY.titular,
+      parrafos: [
+        `${saludoDe(p.nombre)} ${escaparHtml(AUMENTO_COPY.cuerpo(p.precio))}`,
+        escaparHtml(AUMENTO_COPY.acumulan),
+      ],
+      boton: { texto: AUMENTO_COPY.boton, url: `${sitio}/analisis/nuevo-v4` },
     }),
   };
 }

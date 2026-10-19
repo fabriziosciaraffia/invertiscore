@@ -22,10 +22,11 @@ export type TipoCorreo =
   | "semanal"
   | "aviso_inmediato"
   | "pregunta_horizonte"
-  | "premio_referido";
+  | "premio_referido"
+  | "plan_aumento";
 
 export const TIPOS_CORREO: readonly TipoCorreo[] = [
-  "bienvenida", "pago_confirmado", "boleta", "pago_fallido", "checkout_abandonado", "informe_listo", "eliminacion_interna", "eliminacion_usuario", "recordatorio_pack", "alerta_pago", "alerta_pago_fallido", "alerta_cron", "aviso_pedido", "semanal", "aviso_inmediato", "pregunta_horizonte", "premio_referido",
+  "bienvenida", "pago_confirmado", "boleta", "pago_fallido", "checkout_abandonado", "informe_listo", "eliminacion_interna", "eliminacion_usuario", "recordatorio_pack", "alerta_pago", "alerta_pago_fallido", "alerta_cron", "aviso_pedido", "semanal", "aviso_inmediato", "pregunta_horizonte", "premio_referido", "plan_aumento",
 ];
 
 /** La identidad que viaja en el tag `pid`: el user id si se sabe, si no la derivada del correo. */

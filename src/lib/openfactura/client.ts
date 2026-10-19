@@ -98,8 +98,9 @@ export function glosaForProduct(product: string): string {
   }
   const m = product.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
   if (m) {
+    // El de 10 mensual es el Plan Franco desde el 19-oct-2026 (lib/planes.ts).
     const nombre =
-      m[1] === "plan10" ? "Plan 10" : m[1] === "plan50" ? "Plan 50" : "Plan Ilimitado";
+      m[1] === "plan10" ? (m[2] === "mensual" ? "Plan Franco" : "Plan 10") : m[1] === "plan50" ? "Plan 50" : "Plan Ilimitado";
     const periodo = m[2] === "annual" ? "anual" : "mensual";
     return `${nombre} refranco.ai - suscripción ${periodo}`;
   }
@@ -126,7 +127,7 @@ export function conceptoBoleta(
   const m = product.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
   if (m) {
     const planNombre =
-      m[1] === "plan10" ? "Plan 10" : m[1] === "plan50" ? "Plan 50" : "Plan Ilimitado";
+      m[1] === "plan10" ? (m[2] === "mensual" ? "Plan Franco" : "Plan 10") : m[1] === "plan50" ? "Plan 50" : "Plan Ilimitado";
     return { label: glosaForProduct(product), frase: `tu suscripción al ${planNombre}` };
   }
 

@@ -5,7 +5,7 @@
 // `pendiente`: todavía no pasó a la plantilla clara porque espera una decisión de Fabrizio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { TipoCorreo } from "@/lib/medicion-correo";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoAvisoPedido, correoPagoConfirmado, correoPagoFallido, correoPremioReferido, type Correo } from "./correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoInformeListo, correoAvisoPedido, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, type Correo } from "./correos";
 import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 import { correoSemanal, correoSemanalVacio, type DatosCorreoSemanal } from "./correo-semanal";
@@ -79,6 +79,7 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "aviso_inmediato", tipo: "aviso_inmediato", nombre: "Aviso inmediato", cuando: "El día que aparece un aviso nuevo que da Comprar con el perfil de quien dijo «Quiero comprar ya» y sigue publicado (uno por día; sin saldo: compra el suelto)", render: () => correoInmediato({ nombre: "Camila", busca: "2 dormitorios, Ñuñoa, hasta UF 4.500", piePct: 20, plazoAnios: 30, deptos: [SEMANAL_MUESTRA("tarjetas", { saldo: 0, conRegalo: false }).deptos[0]], saldo: 0, urlBoton: `${SITIO}/semanal`, urlComprar: `${SITIO}/checkout?product=single&origen=inmediato`, urlBaja: `${SITIO}/semanal/baja?tipo=inmediato` }) },
   { id: "pregunta_horizonte", tipo: "pregunta_horizonte", nombre: "¿Cuándo piensas comprar? (a los 60 días del «Quiero comprar ya»)", cuando: "A los 60 días de responder «Quiero comprar ya» sin comprar; sin respuesta, quedan solo el semanal", render: () => correoPreguntaYa({ nombre: "Camila", urlRespuesta: (h) => `${SITIO}/api/inmediato/horizonte?t=muestra&h=${h}` }) },
   { id: "premio_referido", tipo: "premio_referido", nombre: "Tu invitado entró: tienes un análisis más", cuando: "A quien invitó, cuando su invitado (cuenta nueva, otro dispositivo) contesta el «cuándo»: un análisis más vigente 60 días, hasta cinco por persona", render: () => correoPremioReferido({ nombre: "Camila", vence: "2026-12-15T15:00:00Z", pagados: 2, codigo: "K7M2QX" }) },
+  { id: "plan_aumento", tipo: "plan_aumento", nombre: "Tu plan ahora trae 20 análisis al mes", cuando: "Una vez, a quien tenía el plan de 10: en el cobro de su renovación que le entrega el primer lote de 20, al mismo precio", render: () => correoPlanAumento({ nombre: "Camila", precio: "$39.990" }) },
   { id: "aviso_pedido", tipo: "aviso_pedido", nombre: "Quiero verlo: el aviso", cuando: "Alguien toca «Quiero verlo» en un informe que salió de la guía de búsqueda y el aviso sigue publicado", render: () => correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 }) },
   ...PLANTILLAS_SUPABASE.map((p) => ({
     id: p.archivo.replace(/\.html$/, ""),

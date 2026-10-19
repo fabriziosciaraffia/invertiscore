@@ -17,6 +17,7 @@
  */
 
 import { leerComision, type PagoParaComision } from "@/lib/comision-flow";
+import { FLOW_PRODUCTS } from "@/lib/flow-products";
 
 /** IVA chileno sobre el precio de venta. */
 export const IVA = 0.19;
@@ -34,13 +35,13 @@ export function familiaDe(product: string | null): FamiliaProducto {
   return /mensual|anual|unlimited|subscription/i.test(product ?? "") ? "suscripcion" : "single";
 }
 
-/** Cuántos análisis cubre un plan al mes — el peor caso de costo de IA. */
-const ANALISIS_POR_PLAN: Record<string, number> = {
-  plan10_mensual: 10,
-  plan10_anual: 10,
-  plan50_mensual: 50,
-  plan50_anual: 50,
-};
+/** Cuántos análisis cubre un plan al mes — el peor caso de costo de IA. Sale del catálogo (19-oct-2026): el Plan Franco
+ *  son 20, y las keys anuales son `_annual` (la tabla escrita a mano decía `_anual` y los anuales caían a 1). */
+const ANALISIS_POR_PLAN: Record<string, number> = Object.fromEntries(
+  Object.entries(FLOW_PRODUCTS)
+    .filter(([, p]) => p.kind === "recurring" && typeof p.capacity === "number")
+    .map(([k, p]) => [k, p.capacity as number]),
+);
 
 export interface CascadaMargen {
   familia: FamiliaProducto;

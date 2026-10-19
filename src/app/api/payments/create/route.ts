@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
+import { seVende } from "@/lib/planes";
 import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
 
   if (!product || !PRODUCTS[product]) {
     return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
+  }
+  // LA OFERTA DEL 19-OCT-2026 (lib/planes.ts): el informe completo de $4.990 y el «pro» legado ya no se venden. Lo ya
+  // comprado sigue (payments/confirm no cambia); lo que se corta es una compra nueva.
+  if (!seVende(product)) {
+    return NextResponse.json({ error: "Este producto ya no se vende" }, { status: 410 });
   }
 
   // Cantidad: default 1. Si viene, debe ser entero entre 1 y 20. Solo aplica a la

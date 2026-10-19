@@ -3,7 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPremioReferido } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -111,10 +111,12 @@ function paymentPlanCopy(product: string, analysisId?: string): {
     }
 
     const cap = fp.capacity ?? 0;
-    const planNum = fp.plan === 'plan50' ? '50' : '10';
+    // El de 10 mensual es el Plan Franco desde el 19-oct-2026 (lib/planes.ts); el de 50 y los anuales ya no se venden y
+    // conservan su nombre para quien los tiene.
+    const nombre = fp.plan === 'plan10' && fp.billing === 'monthly' ? 'Plan Franco' : `Plan ${fp.plan === 'plan50' ? '50' : '10'} ${ciclo}`;
     return {
-      productName: `Plan ${planNum} ${ciclo}`,
-      unlocks: `tu Plan ${planNum} quedó activo: ${cap} análisis al mes (facturación ${ciclo}).`,
+      productName: nombre,
+      unlocks: `tu ${nombre} quedó activo: ${cap} análisis al mes (facturación ${ciclo}).`,
       includes: [`${cap} análisis cada mes`, ...ANALYSIS_FEATURES],
     };
   }
@@ -479,6 +481,18 @@ export async function sendPremioReferidoEmail(to: string, p: Parameters<typeof c
     return !res.error && !!res.data;
   } catch (error) {
     console.error("[premio_referido] no salió:", error);
+    return false;
+  }
+}
+
+/** «Tu plan ahora trae 20 análisis al mes» (19-oct-2026), a quien venía del plan de 10. Devuelve si salió. */
+export async function sendPlanAumentoEmail(to: string, p: Parameters<typeof correoPlanAumento>[0], opts: CorreoOpts = {}): Promise<boolean> {
+  const { subject, html } = correoPlanAumento({ ...p, sitio: p.sitio ?? SITE_URL });
+  try {
+    const res = await enviarCorreo("plan_aumento", opts.userId, { from: FROM_EMAIL, to, subject, html });
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[plan_aumento] no salió:", error);
     return false;
   }
 }

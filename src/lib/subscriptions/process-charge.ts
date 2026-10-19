@@ -27,6 +27,9 @@ import {
   refreshSubscriptionEndsAt,
 } from "@/lib/credits-grant";
 import { emitirBoletaDTE, type PaymentForDTE } from "@/lib/openfactura/client";
+import { PLAN_PRECIO_CLP, PRODUCTO_PLAN, correspondeAvisoAumento } from "@/lib/planes";
+import { sendPlanAumentoEmail } from "@/lib/email";
+import { fmtCLP } from "@/lib/pricing";
 
 function createAdminClient() {
   return createClient(
@@ -329,6 +332,21 @@ export async function processSubscriptionCharge(
     }
   } else {
     console.error("[processSubscriptionCharge] sin email para boleta, user:", userId);
+  }
+
+  // 7. EL AUMENTO (19-oct-2026, lib/planes.ts): si este cobro entregó el primer lote de 20 del Plan Franco a una cuenta
+  // que venía del plan de 10, se lo cuenta por correo. Solo cuando ESTE llamado otorgó (un reintento no vuelve a avisar)
+  // y nunca rompe el cobro.
+  if (granted && match?.key === PRODUCTO_PLAN && userEmail) {
+    try {
+      const { data: lotes } = await supabase.from("credit_grants").select("amount").eq("user_id", userId).eq("source", PRODUCTO_PLAN);
+      if (correspondeAvisoAumento((lotes ?? []).map((l) => Number(l.amount) || 0))) {
+        const nombre = (authUser?.user?.user_metadata?.full_name as string | undefined)?.split(" ")[0] ?? null;
+        await sendPlanAumentoEmail(userEmail, { nombre, precio: fmtCLP(PLAN_PRECIO_CLP) }, { userId });
+      }
+    } catch (e) {
+      console.error("[processSubscriptionCharge] aviso del aumento falló:", e);
+    }
   }
 
   return { ok: true, granted, emitted, userId };

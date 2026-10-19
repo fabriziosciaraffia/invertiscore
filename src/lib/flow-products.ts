@@ -61,9 +61,12 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
     kind: "one_time", amount: 19990, subject: "Franco — 3 análisis",
     plan: "single", billing: null, capacity: 3,
   },
+  // EL PLAN FRANCO (19-oct-2026, decisión de Fabrizio; lib/planes.ts): 20 análisis al mes por $39.990 —antes 10—. Mismo
+  // planId y mismo monto, así quien tenía el plan de 10 pasa a 20 en su renovación sin tocar su suscripción; la key y
+  // `plan: "plan10"` se conservan porque están persistidas (payments.product, user_credits.active_plan).
   plan10_mensual: {
-    kind: "recurring", amount: 39990, subject: "Franco Plan 10 — mensual",
-    planId: "franco_plan10_mensual", interval: 3, plan: "plan10", billing: "monthly", capacity: 10,
+    kind: "recurring", amount: 39990, subject: "Franco — Plan Franco mensual",
+    planId: "franco_plan10_mensual", interval: 3, plan: "plan10", billing: "monthly", capacity: 20,
   },
   plan10_annual: {
     kind: "recurring", amount: 395880, subject: "Franco Plan 10 — anual",

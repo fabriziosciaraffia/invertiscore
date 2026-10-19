@@ -15,6 +15,7 @@ import { User, CreditCard, Clock, Sparkles } from "lucide-react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ChangePasswordForm } from "./change-password-form";
 import { isAdminUser } from "@/lib/admin";
+import { PLANES_COPY } from "@/lib/planes";
 
 interface PaymentRow {
   id: string;
@@ -123,7 +124,8 @@ export default async function PerfilPage() {
     // Plan FINITO (plan10/plan50): saldo REAL del ciclo (antes decía "ilimitados").
     // Solo plan10/plan50 explícitos; otro plan finito (futuro plan20, etc.) → genérico
     // "Suscripción" (no mostrar "Plan 10" a quien no lo tiene). El saldo se muestra igual.
-    planLabel = activePlan === "plan10" ? "Plan 10" : activePlan === "plan50" ? "Plan 50" : "Suscripción";
+    // Desde el 19-oct-2026 el de 10 es el Plan Franco, de 20 al mes (lib/planes.ts).
+    planLabel = activePlan === "plan10" ? PLANES_COPY.plan.nombre : activePlan === "plan50" ? "Plan 50" : "Suscripción";
     planDescription = `${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"} · todas las variables.`;
     planCtaText = "Gestionar";
     planCtaHref = "/pricing";
@@ -150,7 +152,7 @@ export default async function PerfilPage() {
     planCtaHref = "/pricing";
   } else {
     planLabel = "Gratuito";
-    planDescription = "Tu primer análisis es gratis. Para analizar más, compra análisis ($9.990) o suscríbete a un plan mensual.";
+    planDescription = "Para analizar más: el pack de 3 análisis por $19.990, o el Plan Franco, 20 al mes por $39.990.";
     planCtaText = "Ver planes";
     planCtaHref = "/pricing";
   }

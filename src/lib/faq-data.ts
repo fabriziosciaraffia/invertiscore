@@ -78,7 +78,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "analizar-varios",
         q: "¿Puedo analizar varios departamentos?",
-        a: "Sí. Puedes analizar cuantos quieras — cada departamento es un análisis. El primero es gratis; para seguir, compras análisis o te suscribes a un plan mensual con varios incluidos.",
+        a: "Sí. Puedes analizar cuantos quieras — cada departamento es un análisis. Tu cuenta trae un análisis de regalo; para seguir, compras un pack de 3 análisis o te suscribes al Plan Franco, con 20 al mes.",
       },
       {
         id: "comparar-analisis",
@@ -103,17 +103,17 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "caducan",
         q: "¿Los análisis caducan?",
-        a: "1 análisis: no caduca. Suscripciones: acumulables hasta 1 año, luego se resetea.",
+        a: "Los que compras sueltos o en pack no vencen. Los del Plan Franco se acumulan: los de cada mes vencen a los 12 meses. El análisis de regalo vence a los 30 días.",
       },
       {
         id: "cambiar-plan",
-        q: "¿Puedo cambiar de plan?",
-        a: "Sí, en cualquier momento. Ajustes aplican al siguiente ciclo.",
+        q: "¿Qué planes hay?",
+        a: "Uno: el Plan Franco, 20 análisis al mes por $39.990. Si analizas pocos, el pack de 3 por $19.990 no vence. Si ya tenías otro plan, lo sigues teniendo como lo contrataste.",
       },
       {
         id: "cancelar",
         q: "¿Qué pasa si cancelo?",
-        a: "Mantienes acceso hasta el fin del ciclo pagado.",
+        a: "El plan no se renueva más. Mantienes acceso hasta el fin del mes pagado, y los análisis que ya tienes siguen vigentes hasta que vencen. Lo cancelas en tu cuenta.",
       },
     ],
   },

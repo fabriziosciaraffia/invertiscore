@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { seVende } from "@/lib/planes";
 import { contextoDeRequest, guardarContextoMeta } from "@/lib/meta/servidor";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -101,6 +102,11 @@ export async function POST(request: Request) {
 
   if (!product || !chosen || chosen.kind !== "recurring") {
     return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
+  }
+  // LA OFERTA DEL 19-OCT-2026 (lib/planes.ts): el único plan que se vende es el Plan Franco. El de 50, el ilimitado y los
+  // anuales no aceptan suscripciones nuevas; las vigentes siguen renovando (payment-callback no cambia).
+  if (!seVende(product)) {
+    return NextResponse.json({ error: "Este plan ya no se vende" }, { status: 410 });
   }
 
   const admin = createAdmin(

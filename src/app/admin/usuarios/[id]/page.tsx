@@ -526,6 +526,7 @@ export default async function AdminUsuarioDetallePage({
     if (s === "welcome") return "Bienvenida";
     if (s === "single") return "Compra individual";
     if (s === "admin_grant") return "Otorgado por admin";
+    if (s === "plan10_mensual") return "Plan Franco";
     if (s.startsWith("plan10")) return "Plan 10";
     if (s.startsWith("plan50")) return "Plan 50";
     return s;

@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { useEffect } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { FLOW_PRODUCTS } from "@/lib/flow-products";
-import { metaTrack } from "@/lib/meta/pixel";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 
@@ -22,9 +19,10 @@ const SIGNAL_RED = "#C8323C";
  * Desktop: diálogo centrado. Mobile: sheet casi-fullscreen (sube desde abajo).
  *
  * Dos variantes de CTA:
- *   - unlock (owner): cobra el desbloqueo del informe íntegro de AMBOS hijos.
- *   - adquisicion (tercero vía share): invita a analizar lo suyo (no puede comprar
- *     el unlock ajeno).
+ *   - unlock (owner): hasta el 19-oct-2026 cobraba el desbloqueo del informe íntegro de AMBOS hijos ($4.990). Ese
+ *     producto ya no se vende (lib/planes.ts › VENTA_RETIRADA; lo ya desbloqueado sigue abierto): al dueño se le ofrece
+ *     analizar el depto por separado, que entrega el informe completo del lado que elija.
+ *   - adquisicion (tercero vía share): invita a analizar lo suyo.
  */
 export function ResumenAnexoModal({
   open,
@@ -50,8 +48,6 @@ export function ResumenAnexoModal({
   isLoggedIn: boolean;
 }) {
   const posthog = usePostHog();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Cerrar con Esc + lock del scroll del body mientras el modal está abierto.
   useEffect(() => {
@@ -68,36 +64,6 @@ export function ResumenAnexoModal({
     };
   }, [open, onClose]);
 
-  const handleUnlock = useCallback(async () => {
-    if (loading) return;
-    setLoading(true);
-    setError(null);
-    // Lo que tarda se ve cargando: presionado y barra hasta que Flow responde.
-    const soltar = iniciarCarga(claveActual());
-    posthog?.capture("unlock_cta_click", { analysisId, modalidad: data?.modalidad });
-    try {
-      const res = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product: "unlock", analysisId, ambasGroupId }),
-      });
-      const json = await res.json();
-      if (json.url) {
-        // Meta Pixel: InitiateCheckout antes de redirigir a Flow (unlock AMBAS).
-        // Browser-only, sin event_id (no requiere dedup con CAPI).
-        metaTrack('InitiateCheckout', { value: FLOW_PRODUCTS.unlock.amount, currency: 'CLP' });
-        window.location.href = json.url;
-      } else {
-        setError(json.error || "No se pudo iniciar el pago. Intenta de nuevo.");
-        soltar();
-        setLoading(false);
-      }
-    } catch {
-      setError("No se pudo iniciar el pago. Intenta de nuevo.");
-      soltar();
-      setLoading(false);
-    }
-  }, [loading, posthog, analysisId, ambasGroupId, data]);
 
   if (!open || !data) return null;
 
@@ -299,30 +265,21 @@ export function ResumenAnexoModal({
           {ctaVariant === "unlock" ? (
             <>
               <h3 className="font-serif text-[16px] font-bold leading-tight text-[var(--franco-text)]">
-                El comparativo decidió. El informe completo lo demuestra.
+                Para ver un lado completo, analízalo por separado.
               </h3>
               <p className="mt-1.5 font-body text-[12.5px] leading-relaxed text-[var(--franco-text-secondary)]">
-                Abre el análisis íntegro de renta larga y renta corta por separado: cada métrica, cada
-                escenario, cada supuesto detrás del veredicto. Una vez, por los dos lados.
+                Analiza el depto en renta larga o en renta corta y recibes su informe completo: cada número y cada
+                supuesto detrás del veredicto.
               </p>
-              <button
-                type="button"
-                onClick={handleUnlock}
-                disabled={loading}
-                data-presionado={loading ? "1" : undefined}
-                className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.03em] text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto sm:px-5 sm:text-[12px] sm:tracking-[0.06em]"
+              <a
+                href="/analisis/nuevo-v4"
+                onClick={() => posthog?.capture("anexo_analizar_click", { analysisId, ambasGroupId, modalidad: data?.modalidad })}
+                className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.03em] text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-5 sm:text-[12px] sm:tracking-[0.06em]"
                 style={{ background: SIGNAL_RED }}
+                data-anexo="analizar"
               >
-                {loading ? "Abriendo pago…" : "Ver ambos informes completos — $4.990"}
-              </button>
-              <p className="mt-2 font-body text-[11px] text-[var(--franco-text-muted)]">
-                Pago único · con boleta.
-              </p>
-              {error && (
-                <p className="mt-2 font-body text-[12px]" style={{ color: SIGNAL_RED }}>
-                  {error}
-                </p>
-              )}
+                Analizar el depto →
+              </a>
             </>
           ) : (
             <>
