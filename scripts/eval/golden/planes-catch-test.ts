@@ -114,25 +114,30 @@ export function runPlanesTier(): { hard: number } {
   const exactos4: Array<[string, string]> = [
     [C.bajada, "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan."],
     [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un análisis gratis al crear tu cuenta | Un análisis más por cada amigo que invites"],
-    [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$6.663 cada uno, en vez de $9.990"],
-    [C.pack.condicion, "No vencen"], [C.pack.boton, "Comprar el pack"],
-    [C.plan.detalle, "Todo lo de Gratis, más 20 análisis cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$2.000 cada uno"],
+    [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
+    [C.pack.ahorro, "$6.663 cada uno, en vez de $9.990"], [C.pack.condicion, "No vencen"], [C.pack.boton, "Comprar el pack"],
+    [C.plan.detalle, "Todo lo de Gratis, más 20 análisis cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$39.990 al mes"],
+    [C.plan.ahorro, "$2.000 cada uno, en vez de $9.990"],
     [C.plan.condicion, "Los que no uses se acumulan por un año. Cancelas cuando quieras"], [C.plan.boton, "Contratar el plan"],
     [`${C.demo.antes} ${C.demo.enlace}`, "¿Quieres ver cómo es un análisis? Mira uno real"],
   ];
   for (const [real, esperado] of exactos4) if (real !== esperado) F(`4 · «${real}» debía ser «${esperado}»`);
   if (/El informe de cada análisis/.test(JSON.stringify(C))) F("4 · vuelve «El informe de cada análisis»");
-  // El precio por análisis sale del catálogo, no escrito a mano; y el total que se cobra se dice, chico.
+  // ⚠ ACTA (19-oct-2026, tercera pasada de Fabrizio) · la cifra grande es LO QUE SE PAGA y la línea de abajo hace la cuenta
+  // del ahorro. Las dos cifras salen del catálogo, no escritas a mano, y el ahorro va bajo el precio en las dos.
   const planesTs = sinComentarios(leer("src/lib/planes.ts"));
-  if (!/precio: porAnalisis\(TRES_PRECIO_CLP, 3\),/.test(planesTs) || !/precio: porAnalisis\(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES\),/.test(planesTs)) F("4 · el precio por análisis no sale del catálogo");
-  if (C.pack.total !== "3 por $19.990" || C.plan.total !== "$39.990 al mes" || !/<p className="pl-total">\{C\.pack\.total\}<\/p>/.test(seccion("pack")) || !/<p className="pl-total">\{C\.plan\.total\}<\/p>/.test(seccion("plan"))) F("4 · el precio por análisis esconde el total que se cobra");
-  // Las dos pagadas, la MISMA estructura, y el precio por análisis con el mismo peso (la misma clase, sin pisarla en el pack).
+  if (!/precio: fmtCLP\(TRES_PRECIO_CLP\),/.test(planesTs) || !/precio: fmtCLP\(PLAN_PRECIO_CLP\),/.test(planesTs)
+    || !/ahorro: `\$\{porAnalisis\(TRES_PRECIO_CLP, 3\)\} cada uno, en vez de \$\{fmtCLP\(SUELTO_CLP\)\}`/.test(planesTs)
+    || !/ahorro: `\$\{porAnalisis\(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES\)\} cada uno, en vez de \$\{fmtCLP\(SUELTO_CLP\)\}`/.test(planesTs)) F("4 · el precio o el ahorro no salen del catálogo");
+  if (!/<span className="pl-monto">\{C\.pack\.precio\}<\/span><span className="pl-unidad">\{C\.pack\.unidad\}<\/span><\/p>\s*<p className="pl-ahorro">\{C\.pack\.ahorro\}<\/p>/.test(seccion("pack"))
+    || !/<span className="pl-monto">\{C\.plan\.precio\}<\/span><span className="pl-unidad">\{C\.plan\.unidad\}<\/span><\/p>\s*<p className="pl-ahorro">\{C\.plan\.ahorro\}<\/p>/.test(seccion("plan"))) F("4 · lo grande no es lo que se paga, o el ahorro no va justo debajo");
+  // Las dos pagadas, la MISMA estructura, y la cifra con el mismo peso (la misma clase, sin pisarla en el pack).
   const estructura = (k: string) => Array.from(seccion(k).matchAll(/className="(pl-[a-z]+)/g)).map((m) => m[1]).filter((c) => c !== "pl-secundario" && c !== "pl-estado").join(">");
-  if (estructura("pack") !== estructura("plan") || !/pl-nombre>pl-detalle>pl-precio>pl-monto>pl-unidad>pl-total>pl-condicion>pl-accion>pl-boton/.test(estructura("pack"))) F(`4 · las dos tarjetas pagadas no tienen la misma estructura (${estructura("pack")} / ${estructura("plan")})`);
+  if (estructura("pack") !== estructura("plan") || !/pl-nombre>pl-detalle>pl-precio>pl-monto>pl-unidad>pl-ahorro>pl-condicion>pl-accion>pl-boton/.test(estructura("pack"))) F(`4 · las dos tarjetas pagadas no tienen la misma estructura (${estructura("pack")} / ${estructura("plan")})`);
   if (/\.pl-pack \.pl-monto|\.pl-pack \.pl-precio/.test(css)) F("4 · el precio del pack pesa distinto que el del plan");
-  // Y se leen igual: la unidad bajo la cifra en las dos (en fila, la del pack se cortaba abajo y la del plan iba al lado),
-  // y en columnas lo que suman ocupa dos líneas, así los dos precios quedan a la misma altura (QA del 19-oct-2026).
-  if (!/\.pl-precio \{[^}]*flex-direction: column;/.test(css) || !/@media \(min-width: 768px\) \{ \.pl-detalle \{ min-height: 2\.7em; \} \}/.test(css)) F("4 · el precio del pack y el del plan no se leen igual (la unidad al lado en uno y abajo en otro, o a distinta altura)");
+  // Y se leen igual: en columnas lo que suman ocupa dos líneas, así los dos precios quedan a la misma altura (QA del
+  // 19-oct-2026: el del plan se cortaba en dos y el del pack no).
+  if (!/@media \(min-width: 768px\) \{ \.pl-detalle \{ min-height: 2\.7em; \} \}/.test(css)) F("4 · el precio del pack y el del plan quedan a distinta altura");
   // Sin describir qué trae el análisis; para eso, el demo.
   if (/veredicto|comparables|los números|proyecci|escenario/i.test(JSON.stringify(C) + pag)) F("4 · la página describe qué trae el análisis");
   if (!/<p className="pl-nota" data-planes="demo">\s*\{C\.demo\.antes\} <EnlaceCarga href=\{C\.demo\.ruta\}>\{C\.demo\.enlace\}<\/EnlaceCarga>/.test(pag) || C.demo.ruta !== "/demo" || !existsSync(join(RAIZ, "src/app/demo/page.tsx"))) F("4 · bajo las tarjetas no está «Mira uno real» con el enlace al demo");
@@ -184,6 +189,8 @@ if (require.main === module) {
 //   P3 el precio del pack escrito a mano · P4 el pack esconde el total · P5 el plan con otra estructura · P6 el precio del
 //   pack pesa distinto · P7 el pack describe el análisis · P8 sin el enlace al demo · P9 el secundario con borde grueso ·
 //   P10 el secundario angosto · P11 otra condición del plan · P12 el precio del plan sobre otro número · P13 la página
-//   describe el análisis fuera del copy · P14 la unidad vuelve al lado de la cifra · P15 los precios a distinta altura
-//   (§4). N14 y N31 se reescribieron sobre el botón secundario. 48/48 ROJO, con AFFORDANCE y LO-QUE-SIGUE (AF1, AF2, LQ1)
-//   también en ROJO.
+//   describe el análisis fuera del copy · P15 los precios a distinta altura (§4). N14 y N31 se reescribieron sobre el
+//   botón secundario.
+//   Tercera pasada (lo grande es lo que se paga; el ahorro, debajo): P3, P4, P5 y P12 reescritos sobre `ahorro` · P14 lo
+//   grande vuelve a ser el precio por análisis · P16 el plan muestra grande el ahorro · P17 el ahorro del pack sobre el
+//   precio. 50/50 ROJO, con AFFORDANCE y LO-QUE-SIGUE (AF1, AF2, LQ1) también en ROJO.
