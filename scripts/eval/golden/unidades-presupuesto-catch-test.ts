@@ -11,7 +11,12 @@
 // lectura empieza pasados los 210 s y los que fallan alcanzan su reintento; (3) la corrida siguiente sigue por los
 // que esta no leyó; (4) con los proyectos que hay, varios días de corridas dejan a todos con menos de 4 días sin
 // leer, y con MÁS PROYECTOS DE LOS QUE CABEN la corrida cierra en rojo y lo dice; (5) el gate de capacidad contra la
-// base: los proyectos de hoy caben en 4 días; (6) el cableado de la ruta; (7) el techo con un paso colgado.
+// base: los proyectos de hoy caben en 4 días; (6) el cableado de la ruta; (7) el techo con un paso colgado; (8, 19-oct-2026)
+// la causa del «fetch failed» (el 407 del proxy o el error del socket, de e.cause), el cortacircuito tras
+// CORTE_SIN_RESPUESTA_SEGUIDOS proyectos seguidos sin respuesta (sin lotes ni reintentos después), el 407 como acción y el
+// log de cierre con el tipo de error. §8: contra el código anterior, 6 fallas (la primera, el 18-oct: 80 reintentos, 60
+// intentados); mutaciones K1–K10 en rojo (scratchpad mutar-scraper.cjs; K3 quedó VERDE la primera vez porque había dos
+// guardas para lo mismo: se dejó una).
 //
 // ACTA (13-oct-2026). Contra la ruta de antes del arreglo (con este módulo presente): ROJO con 13 fallas. Sobre el
 // arreglo, 34/34 mutaciones en ROJO (este tier, CRONS o PRECHEQUEO-PRESUPUESTO; 35/35 en la segunda pasada, abajo), cada archivo restaurado byte a byte
@@ -42,6 +47,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import * as U from "../../../src/lib/services/scraper/unidades-presupuesto";
+import * as FR from "../../../src/lib/services/scraper/falla-red";
 import { conTope } from "../../../src/lib/con-tope";
 import { motivoDeFalla, resultadoCron } from "../../../src/lib/cron-resultado";
 
@@ -289,6 +295,51 @@ export async function runUnidadesPresupuestoTier(): Promise<{ hard: number }> {
     const c = await conTope(U.leerConPresupuesto([1, 2, 3, 4, 5, 6].map((idProyecto) => ({ idProyecto })), leerColgado, RITMO, p.reloj(1e9), progreso), 40);
     if (c.listo || Date.now() - t > 1000) F("7 · con un pedido colgado, el techo no corta la espera");
     if (progreso.intentados !== 2 || progreso.leidos !== 2) F(`7 · cortada por el techo, la corrida no sabe hasta dónde llegó (${JSON.stringify(progreso)})`);
+  }
+
+  // ── 8 · la causa del «fetch failed» y el cortacircuito (19-oct-2026) ────────────────────────────────────
+  // El 18-oct, con el proxy sin responder, la corrida de las 20:00 hizo 33 reintentos que fallaron todos, y el error
+  // guardado era «TypeError: fetch failed»: no se podía saber si era el proxy o el portal.
+  {
+    try {
+      const proxy407 = Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error("Proxy response (407) !== 200 when HTTP Tunneling"), { code: "UND_ERR_ABORTED" }) });
+      const reset = Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET", cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }) }) });
+      const c407 = FR.causaDeFalla(proxy407), cReset = FR.causaDeFalla(reset), cNada = FR.causaDeFalla(new TypeError("fetch failed")), cRaro = FR.causaDeFalla("x");
+      if (c407.texto !== "fetch failed · proxy 407" || c407.proxy !== 407) F(`8 · el 407 del proxy no se lee de e.cause (${JSON.stringify(c407)})`);
+      if (cReset.texto !== "fetch failed · ECONNRESET" || cReset.proxy !== null) F(`8 · el error del socket no se lee de e.cause (${JSON.stringify(cReset)})`);
+      if (cNada.texto !== "fetch failed" || cRaro.texto !== "fetch failed") F("8 · sin causa, el texto no es «fetch failed»");
+      if (!FR.esSinRespuesta("fetch failed · proxy 407") || !FR.esSinRespuesta("sin respuesta en 10 s") || FR.esSinRespuesta("http 403") || FR.esSinRespuesta(undefined)) F("8 · «sin respuesta» confunde un 403 (una respuesta) con un pedido sin respuesta, o al revés");
+      if (U.CORTE_SIN_RESPUESTA_SEGUIDOS < 8 || U.CORTE_SIN_RESPUESTA_SEGUIDOS > 16) F(`8 · el cortacircuito salta con ${U.CORTE_SIN_RESPUESTA_SEGUIDOS} seguidos (fuera de 8–16)`);
+      // La ventana del 18-oct: los primeros 20 se leen; después, ningún pedido tiene respuesta (también al reintentar).
+      const ids = Array.from({ length: 60 }, (_, k) => k + 1);
+      const ventana = (id: number) => (id <= 20 ? sano(id) : { ms: 170, error: "fetch failed · ECONNRESET" });
+      const leerCon = async (res: (id: number, n: number) => { ms: number; error?: string }, cortar: boolean, cuantos = ids.length) => {
+        const p = portal(res);
+        const l = await U.leerConPresupuesto(ids.concat(Array.from({ length: Math.max(0, cuantos - ids.length) }, (_, k) => ids.length + k + 1)).slice(0, cuantos).map((idProyecto) => ({ idProyecto })), p.leerP, RITMO, p.reloj(1e9), undefined, cortar ? (x: R) => FR.esSinRespuesta(x.error) : undefined);
+        return { l, intentados: l.resultados.length };
+      };
+      const conCorte = await leerCon(ventana, true);
+      if (!conCorte.l.porCorte || conCorte.l.reintentos !== 0 || conCorte.intentados > 20 + U.CORTE_SIN_RESPUESTA_SEGUIDOS + RITMO.concurrencia || conCorte.l.noAlcanzados <= 0)
+        F(`8 · con el proxy sin responder la corrida no corta: sigue con lotes o reintenta (${JSON.stringify({ porCorte: conCorte.l.porCorte, reintentos: conCorte.l.reintentos, intentados: conCorte.intentados, noAlcanzados: conCorte.l.noAlcanzados })})`);
+      const sinCorte = await leerCon(ventana, false);
+      if (sinCorte.l.porCorte || sinCorte.l.reintentos === 0) F("8 · sin la regla de corte, el lector cambió (el cortacircuito es opt-in)");
+      // Un «fetch failed» suelto (uno de cada diez) no corta y se reintenta: 13 sueltos en 130, más que el umbral sumados,
+      // así que un contador que no vuelve a cero con cada respuesta también sale rojo.
+      const suelto = await leerCon((id, n) => (n === 0 && id % 10 === 0 ? { ms: 170, error: "fetch failed" } : sano(id)), true, 130);
+      if (suelto.l.porCorte || suelto.l.reintentos !== 13 || suelto.l.resultados.some((x) => x.error)) F(`8 · un fetch failed suelto corta la corrida o no se reintenta (${JSON.stringify({ porCorte: suelto.l.porCorte, reintentos: suelto.l.reintentos })})`);
+      // Una ráfaga de 403 (el portal bloquea: es una respuesta) no corta.
+      const bloqueo = await leerCon((id, n) => (n === 0 && id > 20 ? { ms: 800, error: "http 403" } : sano(id)), true);
+      if (bloqueo.l.porCorte) F("8 · una ráfaga de 403 abre el cortacircuito (un 403 es una respuesta del portal, no un pedido sin respuesta)");
+    } catch (err) {
+      F(`8 · sin la causa del fetch failed o sin cortacircuito (${(err as Error).message})`);
+    }
+    // El cableado.
+    if (!/return vacio\(causaDeFalla\(e\)\.texto\);/.test(uniLib) || /String\(e\)\.slice/.test(uniLib)) F("8 · el proyecto que falla guarda «TypeError: fetch failed» sin la causa");
+    if (!/\}, progreso, \(r\) => esSinRespuesta\(r\.error\)\);/.test(ruta)) F("8 · la ruta no pasa la regla del cortacircuito");
+    if (!/porCorte: lectura\.porCorte,/.test(ruta) || !/vueltaDias, erroresPorTipo, timing, dry,/.test(ruta)) F("8 · el log de cierre no dice el tipo de error ni si cortó");
+    if (!/\.\.\.\(conError\.some\(\(r\) => \/· proxy 407\$\/\.test\(String\(r\.error\)\)\) \? \{ accion: ACCION_PROXY_407 \} : \{\}\),/.test(ruta) || FR.ACCION_PROXY_407.codigo !== "proxy-407") F("8 · un 407 del proxy no se declara como acción (la alerta no sale en el acto)");
+    const fs8 = sinComentarios(leer("src/lib/guia/ficha-servidor.ts"));
+    if (!/console\.warn\(`\[ficha\] sin respuesta: \$\{causaDeFalla\(e\)\.texto\}`\);/.test(fs8)) F("8 · la ficha sin respuesta no deja la causa en el log");
   }
 
   if (fallas.length) {

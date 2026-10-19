@@ -207,11 +207,22 @@ export async function runAlertasCronsTier(): Promise<{ hard: number }> {
   }
 
   // ── 6 · el bloqueo de la ficha: solo un día sin una lectura buena ──
+  // ACTA (19-oct-2026): cuentan también las lecturas sin respuesta («error», «tiempo»). Contra el código anterior, 3 fallas;
+  // mutaciones K11 (la regla las ignora) y K12 (la vigilancia no las cuenta) en rojo.
   {
     const ahora = new Date("2026-10-15T12:00:00Z");
     if (A.condicionBloqueo({ bloqueos24h: 5, ultimaBuena: "2026-10-15T01:00:00Z" }, ahora)) F("6 · un bloqueo avisa con una lectura buena en las últimas 24 horas");
     if (!A.condicionBloqueo({ bloqueos24h: 5, ultimaBuena: "2026-10-14T10:00:00Z" }, ahora)) F("6 · un día sin una lectura buena con bloqueos no avisa");
     if (A.condicionBloqueo({ bloqueos24h: 0, ultimaBuena: null }, ahora)) F("6 · sin bloqueos avisa");
+    // EL PROXY CAÍDO DEL TODO (19-oct-2026): ni un bloqueo —ninguna respuesta—, solo lecturas «error» y «tiempo»; la regla
+    // callaba. Ahora cuentan también, con la misma condición de un día sin una lectura buena.
+    const caido = A.condicionBloqueo({ bloqueos24h: 0, sinRespuesta24h: 30, ultimaBuena: "2026-10-14T10:00:00Z" }, ahora);
+    if (!caido || !/no recibe respuesta/.test(caido.texto) || !/30 sin respuesta en 24 h/.test(caido.texto)) F(`6 · con la lectura de fichas sin respuesta un día entero no avisa (o no dice que no hay respuesta): ${caido?.texto ?? "nada"}`);
+    if (A.condicionBloqueo({ bloqueos24h: 0, sinRespuesta24h: 30, ultimaBuena: "2026-10-15T01:00:00Z" }, ahora)) F("6 · lecturas sin respuesta avisan aunque hubo una lectura buena en 24 horas");
+    const ambos = A.condicionBloqueo({ bloqueos24h: 3, sinRespuesta24h: 4, ultimaBuena: null }, ahora);
+    if (!ambos || !/3 bloqueos y 4 sin respuesta en 24 h/.test(ambos.texto)) F("6 · con bloqueos y sin respuesta el aviso no dice los dos");
+    const vg6 = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
+    if (!/\.in\("motivo", \["error", "tiempo"\]\)\.gte\("leido_at", desde\)/.test(vg6) || !/sinRespuesta24h: sinResp \?\? 0,/.test(vg6)) F("6 · la vigilancia no cuenta las lecturas de ficha sin respuesta");
     const ficha = sinComentarios(leer("src/lib/guia/ficha-servidor.ts"));
     if (/avisar\(|alertarUnaVezAlDia|sendAlerta/.test(ficha)) F("6 · la lectura de una ficha bloqueada manda correo en el acto");
   }

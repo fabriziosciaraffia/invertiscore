@@ -101,7 +101,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   const vj = leer("vercel.json");
   // ⚠ ACTA (13-oct-2026) · el envío corre a las 12:00 y a las 12:30 del lunes (presupuesto de 240 s; lo que no
   // alcanza lo toma la segunda), y el lunes de 08 a 11 UTC se reintentan las pendientes (SEMANAL-SIN-SILENCIO §2).
-  if (!/"path": "\/api\/cron\/semanal-armar",\s*"schedule": "5 11-23 \* \* 0"/.test(vj) || !/"path": "\/api\/cron\/semanal-enviar",\s*"schedule": "0,30 12 \* \* 1"/.test(vj)) F("2 · los crons no arman el domingo y mandan el lunes");
+  // ⚠ ACTA (19-oct-2026) · el armado del domingo pasa de :05 a :25: a las 14:05 y 20:05 arrancaba un minuto después del cierre
+  // de scrape-unidades-nuevas y heredaba la ventana mala del proxy (el 18-oct perdió 48 lecturas de ficha).
+  if (!/"path": "\/api\/cron\/semanal-armar",\s*"schedule": "25 11-23 \* \* 0"/.test(vj) || !/"path": "\/api\/cron\/semanal-enviar",\s*"schedule": "0,30 12 \* \* 1"/.test(vj)) F("2 · los crons no arman el domingo y mandan el lunes");
   const hb = leer("src/lib/cron-heartbeat.ts");
   if (!/nombre: "semanal-armar"[^}]*intervaloHoras: 168/.test(hb) || !/nombre: "semanal-enviar"[^}]*intervaloHoras: 168/.test(hb)) F("2 · los crons del semanal no están vigilados con su cadencia semanal");
 
@@ -409,7 +411,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const catches = ar.match(/\} catch \(e\) \{\s*(?:\/\/[^\n]*\s*)?if \(ultima\) cuenta\.fallidas\+\+;\s*else cuenta\.reintentar\+\+;/g) ?? [];
     if (catches.length !== 2 || !/const ultima = esUltimaCorridaArmar\(new Date\(t0\)\);/.test(ar)) F(`14 · una falla de una corrida intermedia cuenta como fallida (y alerta) aunque la siguiente la reintente (${catches.length} de 2)`);
     if (/cuenta\.fallidas\+\+;\s*capturar/.test(ar)) F("14 · queda un catch que cuenta fallida sin mirar si hay reintento");
-    if (!/"5 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
+    if (!/"25 11-23 \* \* 0"/.test(vj)) F("14 · el armado ya no termina a las 23 UTC: revisar esUltimaCorridaArmar");
   }
 
   // 15 · lo ya visto no ocupa lugar (19-oct-2026)
