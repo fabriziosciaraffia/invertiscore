@@ -33,7 +33,9 @@ export default function FrancoLogo({
       <span className={`${s.text} leading-tight flex items-baseline`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
-          style={{ color: 'var(--franco-wm-re)', marginRight: '-0.08em' }}
+          // La cara del wordmark (19-oct-2026, fuentes.css): solo «r» y «e» de la itálica 400, incrustada. Con ella la
+          // primera pantalla no pide la itálica latin (51 kB) para dibujar dos letras; si faltara, cae a la de siempre.
+          style={{ color: 'var(--franco-wm-re)', marginRight: '-0.08em', fontFamily: "'Source Serif 4 Franco Marca', var(--font-heading)" }}
         >
           re
         </span>

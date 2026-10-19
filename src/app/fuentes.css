@@ -252,8 +252,16 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
+  src: url(/fonts/source-serif-4-normal-es.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Source Serif 4 Franco';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
   src: url(/fonts/source-serif-4-normal-latin.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-001F, U+007F-009F, U+00A2-00A6, U+00A8, U+00AC-00AF, U+00B3-00B6, U+00B8, U+00BC-00BE, U+00C0, U+00C2-00C8, U+00CA-00CC, U+00CE-00D0, U+00D2, U+00D4-00D6, U+00D8-00D9, U+00DB, U+00DD-00E0, U+00E2-00E8, U+00EA-00EC, U+00EE-00F0, U+00F2, U+00F4-00F6, U+00F8-00F9, U+00FB, U+00FD-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-2012, U+2015-2017, U+201A-201B, U+201E-2021, U+2023-2025, U+2027-2038, U+203B-206F, U+2122, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Source Serif 4 Franco';
@@ -300,8 +308,16 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  src: url(/fonts/source-serif-4-normal-es.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Source Serif 4 Franco';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
   src: url(/fonts/source-serif-4-normal-latin.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-001F, U+007F-009F, U+00A2-00A6, U+00A8, U+00AC-00AF, U+00B3-00B6, U+00B8, U+00BC-00BE, U+00C0, U+00C2-00C8, U+00CA-00CC, U+00CE-00D0, U+00D2, U+00D4-00D6, U+00D8-00D9, U+00DB, U+00DD-00E0, U+00E2-00E8, U+00EA-00EC, U+00EE-00F0, U+00F2, U+00F4-00F6, U+00F8-00F9, U+00FB, U+00FD-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-2012, U+2015-2017, U+201A-201B, U+201E-2021, U+2023-2025, U+2027-2038, U+203B-206F, U+2122, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Source Serif 4 Franco';
@@ -348,8 +364,16 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
+  src: url(/fonts/source-serif-4-normal-es.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Source Serif 4 Franco';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
   src: url(/fonts/source-serif-4-normal-latin.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-001F, U+007F-009F, U+00A2-00A6, U+00A8, U+00AC-00AF, U+00B3-00B6, U+00B8, U+00BC-00BE, U+00C0, U+00C2-00C8, U+00CA-00CC, U+00CE-00D0, U+00D2, U+00D4-00D6, U+00D8-00D9, U+00DB, U+00DD-00E0, U+00E2-00E8, U+00EA-00EC, U+00EE-00F0, U+00F2, U+00F4-00F6, U+00F8-00F9, U+00FB, U+00FD-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-2012, U+2015-2017, U+201A-201B, U+201E-2021, U+2023-2025, U+2027-2038, U+203B-206F, U+2122, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Source Serif 4 Franco';
@@ -396,8 +420,16 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
+  src: url(/fonts/source-serif-4-normal-es.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Source Serif 4 Franco';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
   src: url(/fonts/source-serif-4-normal-latin.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-001F, U+007F-009F, U+00A2-00A6, U+00A8, U+00AC-00AF, U+00B3-00B6, U+00B8, U+00BC-00BE, U+00C0, U+00C2-00C8, U+00CA-00CC, U+00CE-00D0, U+00D2, U+00D4-00D6, U+00D8-00D9, U+00DB, U+00DD-00E0, U+00E2-00E8, U+00EA-00EC, U+00EE-00F0, U+00F2, U+00F4-00F6, U+00F8-00F9, U+00FB, U+00FD-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-2012, U+2015-2017, U+201A-201B, U+201E-2021, U+2023-2025, U+2027-2038, U+203B-206F, U+2122, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'IBM Plex Sans Franco';
@@ -548,8 +580,16 @@
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
+  src: url(/fonts/inter-normal-es.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00A1, U+00A7, U+00A9-00AB, U+00B0-00B2, U+00B7, U+00B9-00BB, U+00BF, U+00C1, U+00C9, U+00CD, U+00D1, U+00D3, U+00D7, U+00DA, U+00DC, U+00E1, U+00E9, U+00ED, U+00F1, U+00F3, U+00F7, U+00FA, U+00FC, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2039-203A, U+20AC, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Inter Franco';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
   src: url(/fonts/inter-normal-latin.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-001F, U+007F-009F, U+00A2-00A6, U+00A8, U+00AC-00AF, U+00B3-00B6, U+00B8, U+00BC-00BE, U+00C0, U+00C2-00C8, U+00CA-00CC, U+00CE-00D0, U+00D2, U+00D4-00D6, U+00D8-00D9, U+00DB, U+00DD-00E0, U+00E2-00E8, U+00EA-00EC, U+00EE-00F0, U+00F2, U+00F4-00F6, U+00F8-00F9, U+00FB, U+00FD-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-2012, U+2015-2017, U+201A-201B, U+201E-2021, U+2023-2025, U+2027-2038, U+203B-206F, U+2122, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'JetBrains Mono Franco';
@@ -727,6 +767,22 @@
   descent-override: 22.29%;
   line-gap-override: 0.00%;
   size-adjust: 134.59%;
+}
+
+/*
+ * LAS FUENTES DE LA PRIMERA PANTALLA, MÁS CHICAS (19-oct-2026, LCP en teléfono). La serif normal e Inter van partidas:
+ * el subconjunto del español (*-es.woff2, el que se precarga) y el archivo latin original con el resto del rango, que
+ * el navegador baja solo si la página tiene un carácter fuera del español. Y el «re» del wordmark tiene su propia cara
+ * con solo esas dos letras, incrustada: la itálica latin ya no se pide en la primera pantalla. Lo generó
+ * scratchpad/fuentes/generar.mjs (subset-font); lo fija el tier LANDING-RENDIMIENTO.
+ */
+@font-face {
+  font-family: 'Source Serif 4 Franco Marca';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(data:font/woff2;base64,d09GMgABAAAAAAPIABAAAAAAB3wAAANtAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFhuBCBw0BmA/U1RBVFoAPBEICoF0gWwLCAABNgIkAwwEIAWFLgcgG1UGyB6DbevxqFxen8nC9ci6dYOZCJ72o83b/WeYeFSzylXMEh6SNTwRGkk6UWV/2F++j5MwUY1uV+ISFWGnLcP7v6b5VWUNFGFaVgQKR6COOH25tAM3bffzl9PbPiZedUs4lTVek8rKDihamzSRuejjYSCBxgEGFHiOS53OdEdPKzJE5o4iUsoIO3b5JhWoxzi4avrM4zPUtvVwBLVdrXYItf1VkkANEYSkmXqBKOsgs2e7TUxxAgrNACEkIQSaGCU8lcBjv0/dvh2cQJZOVWmAEEiMbNINiRH0UBmgvCAD0nZ3MohjePtrlQEO3PEqfsQlqCGdQVeXj+Zd++xjo2EoQKpqcnXaU6oQjD8xZfrmDv7swFWz/w/Jn2J6L0DuAOJtug30ggmhXkY7GIZBDx1Of9U2cGqXJ+oYtee4HqkVMvrgIgqJWEEhCylOxiWQngEBsUcZJFIhhMUNwmvXhWQHLoXtZsrNckkAQpSiJcigFhmLgP0AVICQhnZg5p25v0caH2wB7ewVeB7c3uYqHxakcYp65rQEnjfenpONrpbe1dPDgvzC44ebvbIk6Z14+fhTRmGcfmLztrCkmq8qMOQKcgdu1blXhZFzLZbcyFWnI+3TGPn5tTrkbynBnsAqMbG8Q0u4d7RSOiuVPfsnakt9ksKi3Bphzt/+r4a01P9nbH77LHfOoE7ObRNfiHmXrLLi+mnSmdqnL5t770F33vdJUg0X8Svm+U3jUSQgUEXtq2GoaBNr/Ldszh8A70atvQLw/uH1URhR/uMl8lNSK4FgtYV0GthbMODclT1WkN0n2BpPYERMwRgIsqFQEHCpmRuyqBrwOpY2PXQLfz1pFkP0bLxPvTLErl5jO81Xa4DgYqyIBaBvU6HV98jqoh9T1OJ6J5WxlM11FdGxNzafyyMGfDUTd9WNz6SLoDa+X7Yn5IqZQLExn2PMIYnQRd/h1Q3CBZJAvpzc3HyFqEaEieRNCa8X5OTFi78QDXQhGxEO2zcb8ubkx8mfH39uXhTjqBPIl1o7B09DlJ2NO9MpOlr/w2on9eLNzatkHB3rzas6ioUYAfQfKWGLpVCShImwSwXd329BZtWEuJhwHawujq6qJOiGUGI9FnZqXXzCg6uFlC1zK1o8ktyH0uliNuwlnuZxvSTghFH+Kee8GQA=) format('woff2');
+  unicode-range: U+0065, U+0072;
 }
 
 .fuentes-franco {
