@@ -16,6 +16,8 @@
 //   4 · EL INFORME TIENE SU PROPIA PANTALLA DE ERROR (19-oct-2026): /analisis/[id] y /analisis/renta-corta/[id] montan
 //       ErrorInforme —«No pudimos mostrar este informe», que está guardado, «Recargar» que recarga y «Ir a mis análisis»—,
 //       sin `reset` y con el error a Sentry: un corte de red ya no sube a global-error ni tapa la app.
+//   5 · LOS MAPAS A SENTRY (19-oct-2026): solo el build de producción los genera y sube, se borran después y su log se ve;
+//       sin las opciones viejas, que la versión 10 ignoraba en silencio.
 //
 // Verificado EN ROJO: contra el código de producción (0c3ae098) da 2 fallas (1 y 2); mutaciones 7/7 en rojo, restauradas
 // byte a byte (scratchpad mutar-global-error.cjs): G1 vuelve onClick={reset} · G2 onClick={() => reset()} · G3 la recarga
@@ -23,7 +25,8 @@
 // botón. §4: contra el código sin la pantalla, 3 fallas; mutaciones 7/7 en rojo (scratchpad mutar-error-informe.cjs): E1 el
 // botón usa reset · E2 sin Sentry · E3 sin «use client» · E4 renta corta sin error.tsx · E5 no dice que está guardado ·
 // E6 sin salida a mis análisis · E7 renta larga monta otra cosa. Verificado en el navegador (local, WebKit iPhone) con un
-// error forzado y restaurado: la pantalla se ve y «Recargar» recarga. Corre dentro del QUICK.
+// error forzado y restaurado: la pantalla se ve y «Recargar» recarga. §5: contra la config de producción, 2 fallas;
+// mutaciones 3/3 en rojo (sube desde cualquier build · no borra los mapas · el log callado). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/global-error-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -65,6 +68,16 @@ export function runGlobalErrorTier(): { hard: number } {
     const s = existsSync(join(RAIZ, ruta)) ? leer(ruta) : "";
     if (!/^"use client";/.test(s) || !/export \{ ErrorInforme as default \} from "@\/components\/analysis\/ErrorInforme";/.test(s)) F(`4 · ${ruta} no monta la pantalla de error del informe`);
   }
+
+  // ── 5 · los mapas a Sentry, solo desde el build de producción (19-oct-2026) ──
+  // Las opciones viejas no existen en @sentry/nextjs 10: se ignoraban sin aviso. Se fijan las vigentes y que la versión
+  // instalada todavía las tenga (una actualización que las renombre tiene que ponerse roja, no callar).
+  const nc = sinComentarios(leer("next.config.mjs"));
+  if (/disableSourceMapUpload|hideSourceMaps/.test(nc)) F("5 · next.config usa opciones de Sentry que la versión 10 ignora (los mapas no se controlan con ellas)");
+  if (!/const buildDeProduccion = process\.env\.VERCEL_ENV === "production";/.test(nc) || !/sourcemaps: \{ disable: !buildDeProduccion, deleteSourcemapsAfterUpload: true \},/.test(nc) || !/silent: !buildDeProduccion,/.test(nc))
+    F("5 · los mapas no se suben solo desde el build de producción, no se borran después de subir o su log no se ve");
+  const tipos = leer("node_modules/@sentry/nextjs/build/types/config/types.d.ts");
+  if (!/sourcemaps\?: \{[\s\S]*?disable\?: boolean;[\s\S]*?deleteSourcemapsAfterUpload\?: boolean;/.test(tipos)) F("5 · la versión instalada de @sentry/nextjs ya no acepta `sourcemaps.disable` / `deleteSourcemapsAfterUpload`");
 
   if (fallas.length) {
     console.log(`  ✗ GLOBAL-ERROR · ${fallas.length} falla(s):`);
