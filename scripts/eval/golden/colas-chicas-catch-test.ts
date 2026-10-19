@@ -60,13 +60,24 @@ export function runColasChicasTier(): { hard: number } {
   for (const [variable, familia] of [["--font-heading", "Source Serif 4 Franco"], ["--font-body", "IBM Plex Sans Franco"], ["--font-ui", "Inter Franco"], ["--font-mono", "JetBrains Mono Franco"]]) {
     if (!new RegExp(`\\.fuentes-franco \\{[^}]*${variable}: '${familia}', '${familia} Fallback';`).test(css)) F(`1 · ${variable} no apunta a ${familia} con su respaldo`);
     const caras = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]).filter((c) => c.includes(`font-family: '${familia}';`));
-    if (!caras.some((c) => /unicode-range: U\+0000-00FF/.test(c))) F(`1 · ${familia} sin la cara latin`);
+    // ⚠ ACTA (19-oct-2026, LCP en teléfono) · la cara latin de Inter (y de la serif normal) va partida en el subconjunto
+    // del español y el resto: lo que se pide es que, ENTRE TODAS, cubran U+0000-00FF, no que una lo escriba entero.
+    const cubre = new Set<number>();
+    for (const c of caras) {
+      const rango = (c.match(/unicode-range: ([^;]+);/) ?? [])[1] ?? "";
+      for (const r of rango.split(",").map((x) => x.trim().replace(/^U\+/, ""))) {
+        const [a, b] = r.split("-").map((h) => parseInt(h, 16));
+        for (let p = a; p <= (b ?? a) && p <= 0xff; p++) cubre.add(p);
+      }
+    }
+    if (cubre.size < 0x100) F(`1 · ${familia} sin la cara latin (sus caras cubren ${cubre.size} de los 256 puntos de U+0000-00FF)`);
     if (caras.some((c) => !/font-display: swap;/.test(c))) F(`1 · ${familia} tiene caras sin font-display: swap`);
     if (!css.includes(`font-family: '${familia} Fallback';`)) F(`1 · ${familia} sin su fuente de respaldo con métricas`);
   }
   const precarga = [...layout.matchAll(/"([a-z0-9-]+\.woff2)"/g)].map((m) => m[1]);
   // Desde el 01-oct-2026 se precargan solo las tres de arriba del pliegue; la lista exacta la fija LANDING-RENDIMIENTO §3.
-  if (precarga.length < 3) F("1 · el layout no precarga las fuentes");
+  // ⚠ ACTA (19-oct-2026, LCP en teléfono) · dos: el subconjunto del español de la serif normal y de Inter (la itálica salió).
+  if (precarga.length < 2) F("1 · el layout no precarga las fuentes");
   for (const f of precarga) if (!existsSync(join(RAIZ, "public", "fonts", f))) F(`1 · el layout precarga /fonts/${f} y no existe`);
 
   // ── 2 · el color del puntaje sigue al veredicto ──

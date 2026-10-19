@@ -16,6 +16,12 @@
 //       quieta y el PageView espera a `listo`; Sentry inicializa por `import()` y guarda lo de antes.
 //       `cuandoLaPaginaEsteQuieta` espera `load` y el ocio, y se puede cancelar.
 //   5 · EL VIEWPORT PERMITE ZOOM: sin `maximumScale` en el layout raíz.
+//   6 · LCP EN TELÉFONO (19-oct-2026, goal «en regla y rápido»: Lighthouse móvil, mediana de tres, bajo 2,5 s). El LCP
+//       simulado es todo lo que baja y corre ANTES del titular. Lo que se cortó y este tier vigila: ningún import
+//       estático de cliente de la landing llega a `crypto` (98 kB de polyfills), a Supabase, a Sentry ni a posthog-js
+//       (el grafo se recorre acá); el fondo del hero va liso (≤ 30 kB) con el grano aparte (≤ 12 kB); lo de abajo del
+//       hero lleva `content-visibility: auto`; Supabase entra por import() con la página quieta; y las fuentes de
+//       arriba van en su subconjunto del español (≤ 42 kB), con el «re» del wordmark en su propia cara incrustada.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 //   Acta 28-sep-2026: A Maps al montar (prepararPlaces() pelado en el efecto) → 1 falla · B solo `focus`
@@ -96,7 +102,8 @@ export function runLandingRendimientoTier(): { hard: number } {
   const manifest = join(raizBuild, ".next", "app-build-manifest.json");
   if (existsSync(manifest)) {
     const pages = JSON.parse(readFileSync(manifest, "utf8")).pages as Record<string, string[]>;
-    const chunks = (pages["/page"] ?? []).filter((f) => f.endsWith(".js"));
+    // El layout también (19-oct-2026): los polyfills de criptografía entraban por el provider global, no por la página.
+    const chunks = [...new Set([...(pages["/page"] ?? []), ...(pages["/layout"] ?? [])])].filter((f) => f.endsWith(".js"));
     const esProduccion = chunks.length > 3 && chunks.every((f) => /-[a-f0-9]{16}\.js$/.test(f) || /webpack-|main-app-/.test(f));
     if (!esProduccion) {
       console.log(`  · el .next de ${raizBuild} es de \`next dev\` (${chunks.length} chunks sin hash): el censo del bundle no corrió acá`);
@@ -106,6 +113,8 @@ export function runLandingRendimientoTier(): { hard: number } {
         ["DocTokens", /doc-dictamen/],
         ["el SDK de PostHog", /\$feature_flag_called|\$autocapture_disabled_server_side|posthog-recorder/],
         ["el SDK de Sentry", /sentry\.javascript\.nextjs|__SENTRY__|sentry-trace/],
+        ["los polyfills de criptografía de Node", /\.bignum=|asn1\.js|BN\.prototype\./],
+        ["el cliente de Supabase", /GoTrueClient|@supabase\/auth-js/],
       ];
       for (const f of chunks) {
         const b = readFileSync(join(raizBuild, ".next", f), "utf8");
@@ -123,8 +132,10 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (!precarga) F("3 · no encuentro FUENTES_PRECARGA (el extractor no corrió)");
   if (/latin-ext/.test(precarga)) F("3 · vuelve a precargarse un latin-ext");
   // (01-oct-2026) Solo lo de arriba del pliegue: el titular (Source Serif normal e itálica) y el campo (Inter).
+  // ⚠ ACTA (19-oct-2026, LCP en teléfono) · ahora el SUBCONJUNTO DEL ESPAÑOL de la serif normal y de Inter; la itálica
+  // sale de la precarga porque el «re» del wordmark tiene su cara incrustada (ver §6).
   const caras = (precarga.match(/"[a-z0-9-]+\.woff2"/g) ?? []).map((c) => c.slice(1, -1).replace(/\.woff2$/, "")).sort();
-  const ARRIBA = ["inter-normal-latin", "source-serif-4-italic-latin", "source-serif-4-normal-latin"];
+  const ARRIBA = ["inter-normal-es", "source-serif-4-normal-es"];
   if (caras.join() !== ARRIBA.join()) F(`3 · se precarga ${caras.join(", ")}: solo van las fuentes de arriba del pliegue (${ARRIBA.join(", ")})`);
   // Ninguna cara bloquea el titular: TODAS las @font-face con archivo propio son swap.
   const fuentes = leer("src/app/fuentes.css");
@@ -201,6 +212,74 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (!viewport) F("5 · no encuentro el viewport del layout raíz (el extractor no corrió)");
   if (/maximumScale|userScalable: false/.test(viewport)) F("5 · el viewport vuelve a impedir el zoom");
   if (!/width: "device-width"/.test(viewport) || !/initialScale: 1/.test(viewport)) F("5 · el viewport perdió width/initialScale");
+
+  // ── 6 · LCP EN TELÉFONO (19-oct-2026) ──────────────────────────────────────
+  // a · Ningún import ESTÁTICO de cliente de la landing (el layout con sus providers, el header, el hero y las islas de
+  //     la landing) llega a un módulo de Node, a Supabase, a Sentry ni a posthog-js. Los import() son otro chunk: valen.
+  {
+    const NODE = /^(node:)?(crypto|buffer|stream|zlib|fs|path|os|util|http|https|net|tls)$/;
+    const PESADOS = /^(@supabase\/|@sentry\/|posthog-js$)/;
+    const entradas = ["src/app/providers.tsx", "src/components/chrome/HeaderFranco.tsx", "src/components/entrada/HeroEntrada.tsx",
+      "src/components/landing-v14/Telemetria.tsx", "src/components/landing-v14/SuaveScroll.tsx", "src/components/landing-v14/Rotacion.tsx",
+      "src/components/landing-v14/RecomendacionDiferida.tsx", "src/components/landing-v14/Secciones.tsx"];
+    const visto = new Set<string>();
+    const cola: Array<[string, string[]]> = entradas.map((e) => [e, [e]]);
+    const hallazgos: string[] = [];
+    const resolver = (desde: string, esp: string): string | null => {
+      const base = esp.startsWith("@/") ? `src/${esp.slice(2)}` : esp.startsWith(".") ? join(desde, "..", esp).replace(/\\/g, "/") : null;
+      if (!base) return null;
+      for (const suf of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) {
+        const p = base + suf;
+        if (existsSync(join(RAIZ, p)) && /\.(ts|tsx)$/.test(p)) return p;
+      }
+      return null;
+    };
+    while (cola.length) {
+      const [archivo, camino] = cola.shift()!;
+      if (visto.has(archivo)) continue;
+      visto.add(archivo);
+      const fuente = sinComentarios(leer(archivo));
+      for (const m of fuente.matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?[^'"]*?from\s+["']([^"']+)["']/g)) {
+        if (m[1]) continue; // import type: no llega al paquete
+        const esp = m[2];
+        if (NODE.test(esp) || PESADOS.test(esp)) { hallazgos.push(`${esp} ← ${camino.join(" → ")}`); continue; }
+        const r = resolver(archivo, esp);
+        if (r) cola.push([r, [...camino, r]]);
+      }
+    }
+    if (visto.size < 40) F(`6 · el grafo de la landing recorrió solo ${visto.size} archivos (el extractor no corrió)`);
+    for (const h of hallazgos) F(`6 · un import estático de cliente arrastra al primer paquete: ${h}`);
+  }
+  // b · El fondo del hero, liso y chico; el grano, aparte.
+  const pesa = (p: string) => (existsSync(join(RAIZ, p)) ? readFileSync(join(RAIZ, p)).length : Infinity);
+  for (const v of ["m1x", "m2x", "m3x", "d1x", "d2x"]) if (pesa(`public/landing/hero-liso-${v}.webp`) > 30_000) F(`6 · hero-liso-${v}.webp pesa más de 30 kB (o no existe)`);
+  if (pesa("public/landing/grano-fino.png") > 12_000) F("6 · grano-fino.png pesa más de 12 kB (o no existe)");
+  for (const p of ["src/components/entrada/HeroEntrada.tsx", "src/components/landing-v14/Marca.tsx"]) {
+    const s6 = sinComentarios(leer(p));
+    if (/\/landing\/hero-[md]\dx\.webp/.test(s6) || !/\/landing\/hero-liso-m2x\.webp 2x/.test(s6)) F(`6 · ${p} vuelve al fondo con el grano incorporado`);
+  }
+  for (const p of ["src/components/entrada/hero-entrada.css", "src/components/landing-v14/landing.css"]) {
+    const c6 = leer(p);
+    if (/grano-256\.png/.test(c6) || !/background-image: url\("\/landing\/grano-fino\.png"\); background-size: 64px; opacity: 0\.8; mix-blend-mode: hard-light;/.test(c6)) F(`6 · ${p} vuelve al grano de 52 kB (o pierde el grano fino)`);
+  }
+  // c · Lo de abajo del hero no se calcula ni se pinta (ni pide el mapa) hasta que se acerca.
+  if (!/\.lv-s2, \.lv-s3, \.lv-cierre-wrap \{ content-visibility: auto; contain-intrinsic-size: auto 100svh; \}/.test(leer("src/components/landing-v14/landing.css"))) F("6 · las pantallas de abajo del hero vuelven a calcularse antes del titular (sin content-visibility)");
+  // d · Supabase entra con la página quieta, en el header y en la atribución.
+  const header6 = sinComentarios(leer("src/components/chrome/HeaderFranco.tsx"));
+  const atrib6 = sinComentarios(leer("src/hooks/useAttributionSync.ts"));
+  if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => import\("@\/lib\/supabase\/client"\)/.test(header6)) F("6 · el header pide Supabase antes de que la página esté quieta");
+  if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => void \(async \(\) => \{\s*try \{\s*const \{ createClient \} = await import\("@\/lib\/supabase\/client"\);/.test(atrib6)) F("6 · la atribución pide Supabase antes de que la página esté quieta");
+  // e · Las fuentes de arriba en su subconjunto del español, partidas sin solaparse, y el wordmark con su cara.
+  for (const n of ["source-serif-4-normal-es", "inter-normal-es"]) if (pesa(`public/fonts/${n}.woff2`) > 42_000) F(`6 · ${n}.woff2 pesa más de 42 kB (o no existe)`);
+  const fuentes6 = leer("src/app/fuentes.css");
+  for (const n of ["source-serif-4-normal", "inter-normal"]) {
+    const es6 = Array.from(fuentes6.matchAll(new RegExp(`src: url\\(/fonts/${n}-es\\.woff2\\) format\\('woff2'\\);\\s*unicode-range: ([^;]+);`, "g"))).map((m) => m[1]);
+    const resto6 = Array.from(fuentes6.matchAll(new RegExp(`src: url\\(/fonts/${n}-latin\\.woff2\\) format\\('woff2'\\);\\s*unicode-range: ([^;]+);`, "g"))).map((m) => m[1]);
+    if (!es6.length || es6.length !== resto6.length) F(`6 · ${n}: las caras latin no están partidas en el español y el resto`);
+    if (es6.some((r) => !/U\+0020-007E/.test(r)) || resto6.some((r) => /U\+0020-007E|U\+00E1|U\+00F1/.test(r))) F(`6 · ${n}: el español y el resto se solapan (o el español no cubre ASCII)`);
+  }
+  if (!/font-family: 'Source Serif 4 Franco Marca';\s*font-style: italic;\s*font-weight: 400;\s*font-display: swap;\s*src: url\(data:font\/woff2;base64,[A-Za-z0-9+/=]{200,}\) format\('woff2'\);\s*unicode-range: U\+0065, U\+0072;/.test(fuentes6)
+    || !/fontFamily: "'Source Serif 4 Franco Marca', var\(--font-heading\)"/.test(leer("src/components/franco-logo.tsx"))) F("6 · el «re» del wordmark vuelve a pedir la itálica latin entera");
 
   if (fallas.length) {
     console.log(`  ✗ LANDING-RENDIMIENTO · ${fallas.length} falla(s):`);
