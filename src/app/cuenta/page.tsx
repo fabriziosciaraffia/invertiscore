@@ -1,254 +1,151 @@
-import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { fechaCortaCL } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { hasSubscriptionAccess } from "@/lib/access";
-import { getAvailableCredits } from "@/lib/credits-grant";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AppFooter } from "@/components/chrome/AppFooter";
+import { fechaCortaCL } from "@/lib/fecha-cl";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { hasSubscriptionAccess } from "@/lib/access";
+import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
+import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
+import { textoVence } from "@/lib/guia/semanal";
+import { fmtCLP } from "@/lib/pricing";
+import { PLANES_COPY, nombrePlan } from "@/lib/planes";
+import { CASA } from "@/app/dashboard/casa-copy";
+import { PerfilBusquedaCasa } from "@/app/dashboard/casa";
 import { CancelSubscriptionButton } from "./cancel-dialog";
 import { DeleteAccountButton } from "./delete-account-button";
+import { CorreosCuenta } from "./correos-cuenta";
+import { CUENTA_COPY, etiquetaCompra } from "./cuenta-copy";
 
-function fmtCLP(n: number): string {
-  return "$" + Math.round(n).toLocaleString("es-CL");
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// /cuenta (19-oct-2026, decisión de Fabrizio): plana y clara, en el sistema de la casa —Inter, serif solo en el título,
+// secciones planas separadas por una línea fina, sin tarjetas—: el correo; el plan o el saldo, con las compras; el perfil
+// de búsqueda (el mismo editable del dashboard); cómo entras; y darte de baja (los correos, y eliminar la cuenta).
+// El plan de 50 y el ilimitado ya no se venden, pero quien los tiene los sigue viendo con su nombre (planes.ts).
+// ─────────────────────────────────────────────────────────────────────────────
 
-function fmtDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  return fechaCortaCL(d, { month: "long" }) || "—";
-}
+export const dynamic = "force-dynamic";
+
+const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
+const fecha = (d: string | null | undefined) => (d ? fechaCortaCL(d, { month: "long" }) || "—" : "—");
+const enlace = "text-[14px] text-[var(--franco-text)] underline underline-offset-4";
 
 export default async function CuentaPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/entrar?next=${encodeURIComponent("/cuenta")}`);
 
-  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
-  const firstName = fullName.split(' ')[0] || '';
+  const admin = createServiceClient();
+  const [{ data: fila }, datosSaldo, pp, { data: compras }] = await Promise.all([
+    supabase.from("user_credits").select("subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan").eq("user_id", user.id).maybeSingle(),
+    leerSaldo(admin, user.id),
+    leerPerfilBusqueda(admin, user.id),
+    supabase.from("payments").select("id, product, amount, created_at").eq("user_id", user.id).eq("status", "paid").gt("amount", 0).order("created_at", { ascending: false }).limit(6),
+  ]);
+  const saldo = estadoSaldo(datosSaldo);
 
-  // Fetch credits + subscription
-  const { data: creditsRow } = await supabase
-    .from("user_credits")
-    .select("credits, subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan")
-    .eq("user_id", user.id)
-    .single();
+  // El plan: vigente, cancelado con el período pagado aún en curso, o con el cobro pendiente dentro de la gracia.
+  const estado = (fila?.subscription_status as string | null) ?? "none";
+  const finDelPeriodo = (fila?.subscription_ends_at as string | null) ?? null;
+  const finDeGracia = (fila?.grace_ends_at as string | null) ?? null;
+  const ilimitado = fila?.is_unlimited === true;
+  const activo = estado === "active";
+  const cancelado = estado === "cancelled" && hasSubscriptionAccess({ subscription_status: estado, subscription_ends_at: finDelPeriodo });
+  const pendiente = estado === "past_due" && hasSubscriptionAccess({ subscription_status: estado, grace_ends_at: finDeGracia });
+  const plan = activo || cancelado || pendiente || ilimitado ? nombrePlan(fila?.active_plan as string | null, ilimitado) : null;
+  const esFranco = fila?.active_plan === "plan10" && !ilimitado;
+  const disponibles = datosSaldo.disponibles;
 
-  // Saldo real = ledger vivo (credit_grants) + contador legacy. Antes leía solo
-  // creditsRow.credits (=0 en el modelo ledger) y mostraba "FREE" a quien sí tenía
-  // crédito. RLS credit_grants_select_own permite leer los propios lotes con el
-  // anon server client.
-  const credits: number = await getAvailableCredits(user.id, supabase);
-  const subStatus: string = creditsRow?.subscription_status ?? "none";
-  const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
-  const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
-  // Distinción plan FINITO vs ILIMITADO (Etapa 2): un finito (plan10/plan50) consume
-  // saldo del ledger → ya NO es "ilimitado". Solo is_unlimited mantiene ese copy.
-  const isUnlimited: boolean = creditsRow?.is_unlimited === true;
-  const activePlan: string | null = (creditsRow?.active_plan as string) ?? null;
-  // Solo plan10/plan50 explícitos; cualquier otro plan finito (futuro plan20, etc.)
-  // → "SUSCRIPCIÓN" genérico (no mostrar "PLAN 10" a quien no lo tiene). El saldo se
-  // muestra igual.
-  const planLabel: string =
-    activePlan === "plan10" ? "PLAN 10" : activePlan === "plan50" ? "PLAN 50" : "SUSCRIPCIÓN";
-
-  // Fetch payment history
-  const { data: paymentsData } = await supabase
-    .from("payments")
-    .select("id, product, amount, status, created_at, commerce_order")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const payments = paymentsData ?? [];
-
-  // Plan state. isPastDueGrace = cargo recurrente falló pero la gracia sigue vigente
-  // (mantiene acceso). Reusamos hasSubscriptionAccess como fuente de verdad de la
-  // comparación de gracia (now < grace_ends_at); el && subStatus==='past_due' separa
-  // este caso del 'active'. Seguro server-side: esta página es Server Component, así
-  // que importar access.ts no filtra el admin client al bundle de cliente.
-  const isSubscriber = subStatus === "active";
-  // Cancelado pero con el ciclo pagado AÚN vigente: conserva acceso Pro hasta
-  // subscription_ends_at. hasSubscriptionAccess es la fuente de verdad (now <
-  // ends_at), igual que access.ts. El cancelado-vencido cae a free abajo.
-  const isCancelledActive =
-    subStatus === "cancelled" &&
-    hasSubscriptionAccess({ subscription_status: subStatus, subscription_ends_at: subEnd });
-  const isPastDueGrace =
-    subStatus === "past_due" &&
-    hasSubscriptionAccess({ subscription_status: subStatus, grace_ends_at: graceEndsAt });
-  const hasCredits = credits > 0 && !isSubscriber && !isCancelledActive && !isPastDueGrace;
-  const isFree = !isSubscriber && !isCancelledActive && !isPastDueGrace && credits === 0;
+  const conGoogle = (user.identities ?? []).some((i) => i.provider === "google");
+  const correos = { semanal: !pp.semanalBajaAt, inmediato: !pp.inmediatoBajaAt };
+  const pb = pp.perfil;
+  const C = CUENTA_COPY;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
-      {/* Navbar */}
-      <HeaderFranco />
+      <HeaderFranco sesion={{ email: user.email ?? "" }} />
+      <main className="mx-auto max-w-[720px] px-4 pb-16 pt-8 sm:px-6" style={{ fontFamily: UI }} data-cuenta="pagina">
+        <h1 className="m-0 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.015em] sm:text-[34px]">{C.titulo}</h1>
+        <p className="mt-1.5 text-[15px] text-[var(--franco-text-secondary)]" data-cuenta="correo">{user.email}</p>
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">{firstName ? `${firstName}, esta es tu cuenta` : "Tu cuenta"}</h1>
-          <p className="font-mono text-sm text-[var(--franco-text-muted)] mt-1">{user.email}</p>
-        </div>
-
-        {/* ─── Sección 1: Tu Plan ─── */}
-        <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Tu plan</h2>
-          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-            {isSubscriber && (
+        <div className="mt-7">
+          {/* El plan o el saldo, con las compras */}
+          <section className="ca-plano-sec" data-cuenta={plan ? "plan" : "saldo"}>
+            <h2 className="ca-plano-t">{plan ? C.plan.titulo : C.saldo.titulo}</h2>
+            {plan ? (
               <>
-                {isUnlimited ? (
-                  <>
-                    <StatusBadge label="SUSCRIPTOR" tone="ink-400" />
-                    <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis ilimitados</p>
-                  </>
-                ) : (
-                  <>
-                    {/* Plan FINITO: muestra el saldo REAL del ciclo (antes decía
-                        "ilimitados" — falso para un plan10/plan50). */}
-                    <StatusBadge label={planLabel} tone="ink-400" />
-                    <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                      <strong className="font-mono">{credits}</strong> análisis {credits === 1 ? "disponible" : "disponibles"}
-                    </p>
-                  </>
-                )}
-                {subEnd && (
-                  <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                    Próxima renovación: {fmtDate(subEnd)}
-                  </p>
-                )}
-                <div className="mt-4">
-                  <CancelSubscriptionButton />
-                </div>
-              </>
-            )}
-
-            {isCancelledActive && (
-              <>
-                <StatusBadge label="CANCELADA" tone="ink-500" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Tu suscripción fue cancelada</p>
-                {subEnd && (
-                  <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                    Acceso Pro hasta: <span className="font-mono">{fmtDate(subEnd)}</span>
-                  </p>
-                )}
-                <div className="mt-4">
-                  <EnlaceCarga
-                    href="/pricing"
-                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
-                  >
-                    Reactivar suscripción →
-                  </EnlaceCarga>
-                </div>
-              </>
-            )}
-
-            {isPastDueGrace && (
-              <>
-                <StatusBadge label="PAGO PENDIENTE" tone="ink-700" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                  Tu último cobro no se procesó. Mantienes acceso hasta el {fmtDate(graceEndsAt)}.
+                <p className="m-0 text-[15px]">
+                  <span className="font-semibold">{plan}</span>
+                  <span className="text-[var(--franco-text-secondary)]"> · {esFranco ? PLANES_COPY.plan.detalle : C.plan.legado}</span>
                 </p>
-                <div className="mt-4">
-                  <EnlaceCarga
-                    href="/pricing"
-                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
-                  >
-                    Actualiza tu método de pago →
-                  </EnlaceCarga>
+                {!ilimitado && <p className="mt-1 text-[15px]">{C.plan.teQuedan(disponibles)}</p>}
+                {activo && finDelPeriodo && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.renueva(fecha(finDelPeriodo))}</p>}
+                {cancelado && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.cancelado(fecha(finDelPeriodo))}</p>}
+                {pendiente && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.pendiente(fecha(finDeGracia))}</p>}
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                  {activo && <CancelSubscriptionButton />}
+                  {cancelado && <EnlaceCarga href="/pricing" className={enlace}>{C.plan.volver}</EnlaceCarga>}
+                  {pendiente && <EnlaceCarga href="/pricing" className={enlace}>{C.plan.actualizarPago}</EnlaceCarga>}
                 </div>
               </>
-            )}
-
-            {hasCredits && (
-              <>
-                <StatusBadge label="SALDO" tone="signal-red" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                  Tienes <strong className="font-mono">{credits}</strong> análisis {credits === 1 ? "disponible" : "disponibles"}
-                </p>
-                <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                  Cada análisis que generes usa 1 de tu saldo.
-                </p>
-                <div className="mt-4">
-                  <EnlaceCarga
-                    href="/pricing"
-                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
-                  >
-                    Comprar más análisis →
-                  </EnlaceCarga>
-                </div>
-              </>
-            )}
-
-            {isFree && (
-              <>
-                <StatusBadge label="FREE" tone="muted" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                  No tienes análisis ni suscripción activa
-                </p>
-                <div className="mt-4">
-                  <EnlaceCarga
-                    href="/pricing"
-                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
-                  >
-                    Ver planes →
-                  </EnlaceCarga>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        {/* ─── Sección 2: Historial de Compras ─── */}
-        <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Historial de compras</h2>
-          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 overflow-x-auto">
-            {payments.length === 0 ? (
-              <p className="font-body text-sm text-[var(--franco-text-muted)] py-2">
-                Todavía no has comprado nada.{" "}
-                <EnlaceCarga href="/analisis/nuevo-v4" className="text-signal-red hover:underline">
-                  Analiza tu primer departamento →
-                </EnlaceCarga>
-              </p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left">
-                    <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Fecha</th>
-                    <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Producto</th>
-                    <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Monto</th>
-                    <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((p) => {
-                    const productLabel = p.product === "pro" ? "Análisis" : p.product === "pack3" ? "Pack x3" : p.product === "subscription" ? "Suscripción Mensual" : p.product;
-                    const isCredit = p.amount === 0 || (p.commerce_order && p.commerce_order.startsWith("credit-"));
-                    const statusLabel = p.status === "paid" ? "Pagado" : p.status === "rejected" ? "Rechazado" : "Pendiente";
-                    const statusColor = p.status === "paid" ? "var(--ink-400)" : p.status === "rejected" ? "var(--signal-red)" : "var(--ink-500)";
-                    return (
-                      <tr key={p.id} className="border-b border-[var(--franco-border)] last:border-b-0">
-                        <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">{fmtDate(p.created_at)}</td>
-                        <td className="font-body text-xs text-[var(--franco-text)] py-2 pr-4">{productLabel}</td>
-                        <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">{isCredit ? "Crédito" : fmtCLP(p.amount)}</td>
-                        <td className="py-2">
-                          <span className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase" style={{ color: statusColor, borderColor: statusColor }}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <>
+                <p className="m-0 text-[15px] font-semibold" data-saldo={saldo.tipo}>
+                  {saldo.tipo === "sin" ? C.saldo.ninguno
+                    : saldo.tipo === "regalo" ? `${CASA.regalo.titulo}${saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}`
+                    : saldo.tipo === "con" ? `${CASA.con.titulo(saldo.n)}.${saldo.noVencen ? ` ${CASA.con.noVencen}` : ""}`
+                    : CASA.plan.titulo}
+                </p>
+                <div className="mt-3"><EnlaceCarga href="/pricing" className={enlace}>{C.saldo.comprar}</EnlaceCarga></div>
+              </>
             )}
-          </div>
-        </section>
+            {(compras ?? []).length > 0 && (
+              <div className="mt-5" data-cuenta="compras">
+                <p className="m-0 mb-1.5 text-[13px] font-medium text-[var(--franco-text-secondary)]">{C.compras}</p>
+                <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px]">
+                  {(compras ?? []).map((p) => (
+                    <li key={p.id as string} className="flex flex-wrap justify-between gap-x-4">
+                      <span>{etiquetaCompra(p.product as string)} <span className="text-[var(--franco-text-secondary)]">· {fecha(p.created_at as string)}</span></span>
+                      <span className="tabular-nums">{fmtCLP(Number(p.amount))}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
 
-        {/* ─── Sección 3: Eliminar Cuenta ─── */}
-        <section className="mt-16 border-t border-[var(--franco-border)] pt-8">
-          <DeleteAccountButton />
-        </section>
-      </div>
+          {/* El perfil de búsqueda: el mismo editable del dashboard */}
+          {pb.completo ? (
+            <PerfilBusquedaCasa
+              comprador={false}
+              inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
+            />
+          ) : (
+            <section className="ca-plano-sec" data-casa="perfil">
+              <h2 className="ca-plano-t">{CASA.perfil.titulo}</h2>
+              <p className="m-0 max-w-[560px] text-[14px] text-[var(--franco-text-secondary)]">{C.perfil.sin}</p>
+              <div className="mt-3"><EnlaceCarga href="/deptos" className={enlace}>{C.perfil.armar}</EnlaceCarga></div>
+            </section>
+          )}
+
+          {/* Cómo entras */}
+          <section className="ca-plano-sec" data-cuenta="entrar">
+            <h2 className="ca-plano-t">{C.entrar.titulo}</h2>
+            <p className="m-0 text-[15px]">{C.entrar.codigo}</p>
+            {conGoogle && <p className="mt-1 text-[15px]">{C.entrar.google}</p>}
+          </section>
+
+          {/* Darte de baja */}
+          <section className="ca-plano-sec" data-cuenta="baja">
+            <h2 className="ca-plano-t">{C.baja.titulo}</h2>
+            <p className="m-0 mb-3 max-w-[560px] text-[14px] text-[var(--franco-text-secondary)]">{C.baja.bajada}</p>
+            <CorreosCuenta inicial={correos} />
+            <div className="mt-5"><DeleteAccountButton /></div>
+          </section>
+        </div>
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }
