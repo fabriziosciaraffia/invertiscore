@@ -29,6 +29,7 @@ import { PACK_PRECIO_CLP } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { SINGLE_PRICE } from "../../../src/lib/pricing";
 import { correoPlanAumento } from "../../../src/lib/email/correos";
 import { CUENTA_COPY, etiquetaCompra } from "../../../src/app/cuenta/cuenta-copy";
+import { resumenCompra } from "../../../src/lib/compra/compra";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -62,10 +63,13 @@ export function runPlanesTier(): { hard: number } {
   const rc = sinComentarios(leer("src/app/api/subscriptions/register-callback/route.ts"));
   const iSeVende = rc.indexOf("if (!seVende(match.key))"), iAlta = rc.indexOf('flowPost("subscription/create"');
   if (iSeVende < 0 || iAlta < iSeVende) F("2 · register-callback activa un plan retirado iniciado antes del corte");
+  // ⚠ ACTA (19-oct-2026, goal «camino de compra») · lo que la pantalla dice de cada producto vive en lib/compra/compra.ts
+  // (resumenCompra), y la pantalla ya no manda a entrar a nadie: «Plan no encontrado» sale antes que la compra (page.tsx
+  // corta con `if (!resumen)` antes de dibujarla) y no hay redirección a ninguna puerta.
   const ck = sinComentarios(leer("src/app/checkout/page.tsx"));
-  if (!/if \(!p \|\| !seVende\(key\)\) return null;/.test(ck)) F("2 · el checkout muestra una tarjeta de compra de un producto retirado");
-  // Sin sesión, un producto retirado no manda a registrarse para después decir «Plan no encontrado».
-  if (!/const sinProducto = !product;\s*useEffect\(\(\) => \{\s*if \(sinProducto\) return;\s*const supabase = createClient\(\);/.test(ck)) F("2 · el checkout de un producto retirado pide entrar antes de decir que no existe");
+  if (!/if \(!p \|\| !seVende\(key\)\) return null;/.test(sinComentarios(leer("src/lib/compra/compra.ts"))) || resumenCompra("plan50_mensual") !== null || resumenCompra("unlock") !== null || resumenCompra("tres_analisis") === null) F("2 · el checkout muestra una tarjeta de compra de un producto retirado");
+  const iNoEncontrado = ck.indexOf("if (!resumen) {"), iCompra = ck.indexOf("<CompraCliente");
+  if (iNoEncontrado < 0 || iCompra < 0 || iNoEncontrado > iCompra || /redirect\(|\/registro|\/entrar/.test(ck)) F("2 · el checkout de un producto retirado pide entrar antes de decir que no existe");
   if (!/productosRecuperables\(Object\.keys\(FLOW_PRODUCTS\) as FlowProductKey\[\]\)\.filter\(seVende\)/.test(sinComentarios(leer("src/app/api/cron/abandoned-checkout/route.ts")))) F("2 · el carrito abandonado invita a retomar la compra de un producto retirado");
   const anexo = sinComentarios(leer("src/components/comparativa/ResumenAnexoModal.tsx"));
   if (/product: "unlock"|\$4\.990|4990/.test(anexo)) F("2 · el anexo AMBAS vuelve a vender el informe completo");

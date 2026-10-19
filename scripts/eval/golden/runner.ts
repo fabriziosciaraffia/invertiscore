@@ -147,6 +147,7 @@ import { runMedicionMetaTier } from "./medicion-meta-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
+import { runCompraTier } from "./compra-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runZonaComunaTier } from "./zona-comuna-catch-test";
@@ -618,6 +619,7 @@ function printSeed(r: SeedReport) {
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
   totalHard += (await runPuertaCTier()).hard;
   totalHard += runPlanesTier().hard;
+  totalHard += runCompraTier().hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado
   // de versalitas; «Cómo se calcula» con layout fijo y millones en el teléfono. ──
   totalHard += runInformeTipografiaTier().hard;

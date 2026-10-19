@@ -70,7 +70,14 @@ export function runLoQueSigueTier(): { hard: number } {
     if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
     if (/CierreRegistro|lqs-cierre/.test(s)) F(`1 · vuelve el texto del registro al final del informe ${nombre}`);
   }
-  if (!/\/registro\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx"))) || /\/register\?next=/.test(sinComentarios(leer("src/app/checkout/page.tsx")))) F("1 · el checkout no manda a /registro, la única puerta");
+  // ⚠ ACTA (19-oct-2026, goal «camino de compra», decisión de Fabrizio) · el checkout ya no manda a /registro: pide el
+  // correo y el código en su misma pantalla (useEntradaPorCodigo, la lógica de /entrar) y de ahí va directo a Flow. Lo que
+  // se fija ahora: ninguna puerta de auth en el camino (ni /registro, ni /register, ni /entrar) y el código acá mismo.
+  {
+    const ck = sinComentarios(leer("src/app/checkout/page.tsx")) + sinComentarios(leer("src/app/checkout/compra-cliente.tsx"));
+    // Una ruta escrita como texto («"/entrar?…"»), no la carpeta de un import (`@/components/entrar/…`).
+    if (/["'`]\/(registro|register|entrar)\b|redirect\(/.test(ck) ||!/useEntradaPorCodigo\(urlCompra\(estaCompra, true\)\)/.test(ck)) F("1 · el checkout manda a otra pantalla a entrar en vez de pedir el código en la suya");
+  }
   for (const [f, que] of [["src/components/analysis/HeroLTR.tsx", "HeroLTR"], ["src/components/analysis/str/HeroStrDictamen.tsx", "HeroStrDictamen"]] as const) {
     const s = sinComentarios(leer(f));
     // ⚠ ACTA (08-oct-2026, segunda pasada) · entre la card y el hueco va <FinRecomendacion />, la marca de 1 px
@@ -123,7 +130,8 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/product: PRODUCTO_PACK,\s*amount: producto\.amount,/.test(packApi) || !/urlConfirmation: `\$\{SITE_URL\}\/api\/payments\/confirm`/.test(packApi)) F("2 · el pago desde el ticket no abre la orden del pack en Flow");
   if (!/fetch\("\/api\/lo-que-sigue\/pack", \{\s*method: "POST"/.test(ticket) || !/className="lqs-tk-correo"/.test(ticket) || /\/registro\?next=/.test(ticket)) F("2 · el ticket no lleva el correo adentro directo a Flow (o sigue mandando a /registro)");
   if (!/if \(res\.status === 401\) \{\s*setPaymentStatus\("sin_sesion"\);/.test(sinComentarios(leer("src/app/payments/return/page.tsx")))) F("2 · /payments/return sin sesión no explica cómo entrar después de pagar el pack");
-  const checkout = sinComentarios(leer("src/app/checkout/page.tsx"));
+  // (19-oct-2026) La vigencia la pregunta la pantalla de compra nueva (compra-cliente.tsx).
+  const checkout = sinComentarios(leer("src/app/checkout/compra-cliente.tsx"));
   if (!/\/api\/lo-que-sigue\/oferta\?analysisId=/.test(checkout) || !/disabled=\{loading \|\| packVencido\}/.test(checkout) || !/res\.status === 410 \? CHECKOUT_PACK\.vencido/.test(checkout)) F("2 · el checkout no pregunta la vigencia al servidor, no bloquea el pago vencido o no explica el 410");
 
   // ── 3 · EL PERFIL ──────────────────────────────────────────────────────────

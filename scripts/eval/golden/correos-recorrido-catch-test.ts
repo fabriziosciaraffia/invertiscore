@@ -45,6 +45,7 @@ import { correoSemanal } from "../../../src/lib/email/correo-semanal";
 import { enlacesSemanal } from "../../../src/lib/guia/semanal-servidor";
 import { filaDesdeInformeStr } from "../../../src/lib/perfil-busqueda-servidor";
 import { perfilDeBusqueda } from "../../../src/lib/perfil-busqueda";
+import { botonTrasPagar, urlCompra } from "../../../src/lib/compra/compra";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -164,11 +165,16 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (/\$9\.990/.test(sinAnalisis)) F("6 · el correo semanal sigue ofreciendo el suelto de $9.990");
   if (correoSemanal({ ...base, saldo: 2 }).html.includes("19.990") || correoSemanal({ ...base, saldo: null }).html.includes("19.990")) F("6 · el pack se le ofrece en el correo a quien tiene análisis o plan");
   if (!/if \(ir === "tres"\) return volver\(rutaTres\(sel\.fuente === "inmediato" \? "inmediato" : "semanal", \{ variante: sel\.variante, volver: `\/semanal\?t=\$\{t\}` \}\)\);/.test(clic)) F("6 · el enlace del pack en el correo no lleva al checkout del pack");
-  const checkout = sinComentarios(leer("src/app/checkout/page.tsx"));
-  if ((checkout.match(/product\.oneTime && !analysisId && !esTres && \(/g) ?? []).length !== 2) F("6 · el checkout del pack muestra el selector de cantidad");
-  if (!/\$\{origen \? `&origen=\$\{origen\}` : ""\}\$\{varianteCorreo \? `&variante=\$\{varianteCorreo\}` : ""\}\$\{volver \? `&volver=\$\{encodeURIComponent\(volver\)\}` : ""\}/.test(checkout)) F("6 · al pedir el código, el checkout pierde el origen o la vuelta");
+  // ⚠ ACTA (19-oct-2026, goal «camino de compra», decisión de Fabrizio) · la pantalla de compra ya no tiene selector de
+  // cantidad (el pack es la compra de varios) y el código se pide en la misma pantalla: lo que no puede perderse es el
+  // origen y la vuelta en el enlace del correo y en Google (urlCompra con `pagar`). Y la vuelta de Flow tiene UN botón,
+  // que con el pack de la página semanal vuelve a los deptos (botonTrasPagar).
+  const checkout = sinComentarios(leer("src/app/checkout/compra-cliente.tsx"));
+  if (/setQty|¿Cuántos análisis\?/.test(checkout) || !/if \(product\.unico\) body\.quantity = "1";/.test(checkout)) F("6 · el checkout del pack muestra el selector de cantidad");
+  if (!/const estaCompra = \{ product: productKey, analysisId, companionStrId, origen, variante: varianteCorreo, volver \};/.test(checkout) || !/useEntradaPorCodigo\(urlCompra\(estaCompra, true\)\)/.test(checkout)
+    || urlCompra({ product: "tres_analisis", origen: "semanal", variante: "banda", volver: "/semanal?t=abc" }, true) !== "/checkout?product=tres_analisis&origen=semanal&variante=banda&volver=%2Fsemanal%3Ft%3Dabc&pagar=1") F("6 · al pedir el código, el checkout pierde el origen o la vuelta");
   const retorno = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/producto === PRODUCTO_TRES\s*\? TRES_COPY\.listo/.test(retorno) || !/\{producto === PRODUCTO_TRES && volver && \(\s*<Link\s+href=\{volver\}/.test(retorno)) F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
+  if (!/producto === PRODUCTO_TRES\s*\? TRES_COPY\.listo/.test(retorno) || !/botonTrasPagar\(producto === PRODUCTO_TRES \? volver : null\)/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar("/dashboard").texto !== "Ver mis análisis") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
 
   // ── 7 · «¿Cuándo piensas comprar?» arriba de la página semanal ──────────────
   const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));

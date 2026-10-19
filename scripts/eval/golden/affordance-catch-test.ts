@@ -157,7 +157,9 @@ export function runAffordanceTier(): { hard: number } {
   const dry = sinComentarios(leer("src/components/formulario-v4/useWizardV4DryRun.ts"));
   if (!/setRes\(\(r\) => \(\{ \.\.\.r, pendiente: true \}\)\);\s*\n\s*const soltar = iniciarCarga\(claveActual\(\)\);/.test(dry)) F("3 · el dry-run no enciende la barra ni marca pendiente al cambiar un dato");
   if (!/\.finally\(soltar\);/.test(dry) || !/clearTimeout\(t\);\s*\n\s*soltar\(\);/.test(dry) || !/pendiente: false \}\);/.test(dry)) F("3 · el dry-run no suelta la barra al llegar la respuesta (o al cancelarse)");
-  const checkout = sinComentarios(leer("src/app/checkout/page.tsx"));
+  // ⚠ ACTA (19-oct-2026, goal «camino de compra») · el pago lo inicia la pantalla de compra nueva (compra-cliente.tsx);
+  // page.tsx solo lee la sesión en el servidor. Mismas reglas: barra y botón presionado hasta que Flow responde.
+  const checkout = sinComentarios(leer("src/app/checkout/compra-cliente.tsx"));
   if (!/setError\(null\);\s*\n\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*\n\s*try \{/.test(checkout) || !/data-presionado=\{loading \? "1" : undefined\}/.test(checkout)) F("3 · iniciar el pago (checkout) no enciende la barra ni presiona el botón");
   if ((checkout.match(/soltar\(\);\s*\n\s*setLoading\(false\);/g) ?? []).length !== 2 || /\} finally \{/.test(checkout)) F("3 · checkout suelta la barra o el botón antes de que Flow responda (o no los suelta al fallar)");
   // ⚠ ACTA (19-oct-2026, goal «planes y cuenta») · el desbloqueo del anexo ($4.990) ya no se vende (lib/planes.ts): el

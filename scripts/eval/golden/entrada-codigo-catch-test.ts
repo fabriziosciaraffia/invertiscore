@@ -115,13 +115,18 @@ export function runEntradaCodigoTier(): { hard: number } {
     if (!t.includes("Mandar el código") || !t.includes("Seguir con Google") || !t.includes("¿Tu cuenta es de antes y tiene contraseña? Entra con contraseña")) F(`1 · el formulario «${ctx}» no dibuja el botón, Google o la línea de la contraseña`);
     if (ctx !== "informe" && /este informe/i.test(t)) F(`1 · el formulario «${ctx}» dice «este informe» sin informe`);
     if (!html.includes(`href="/login?next=${encodeURIComponent(next)}"`)) F(`1 · «Entra con contraseña» no lleva a /login con el next (${ctx})`);
-    if (/<h1[^>]*>/.test(html) && !/<h1 class="font-heading/.test(html)) F("1 · el título no va en Source Serif");
+    if (/<h1[^>]*>/.test(html) && !/<h1 class="[^"]*\bfont-heading\b/.test(html)) F("1 · el título no va en Source Serif");
   }
-  const comp = sinComentarios(leer("src/components/entrar/EntrarConCodigo.tsx"));
+  // ⚠ ACTA (19-oct-2026, goal «camino de compra») · /entrar pasó a plana: las clases viven en components/plano/plano.ts
+  // (las mismas de la compra, la vuelta de Flow y las otras pantallas de entrar), y la lógica del código en
+  // useEntradaPorCodigo, que comparte con la pantalla de compra. Los chequeos leen el componente con sus dos piezas.
+  const plano = sinComentarios(leer("src/components/plano/plano.ts"));
+  const hook = sinComentarios(leer("src/components/entrar/useEntradaPorCodigo.ts"));
+  const comp = sinComentarios(leer("src/components/entrar/EntrarConCodigo.tsx")) + plano;
   if (/font-mono|--font-mono|JetBrains|monospace|uppercase/.test(comp)) F("1 · el formulario usa mono o mayúsculas");
   if (/#[0-9a-fA-F]{6}\b(?![\s\S]{0,40}<\/svg>)/.test(comp.replace(/<svg[\s\S]*?<\/svg>/g, ""))) F("1 · el formulario usa hexes en vez de los tokens --franco-*");
   if (!/var\(--font-ui\)/.test(comp) || !/var\(--franco-text\)/.test(comp) || !/var\(--franco-border\)/.test(comp)) F("1 · el formulario no usa Inter (--font-ui) ni los tokens --franco-*");
-  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(comp) || !/maxLength=\{CODIGO_MAX\}/.test(comp) || !/codigoValido\(t\)/.test(comp)) F("1 · el código no se verifica con type «email» o no acepta de 6 a 8 dígitos (CODIGO_MAX / codigoValido)");
+  if (!/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(hook) || !/maxLength=\{CODIGO_MAX\}/.test(comp) || !/codigoValido\(t\)/.test(hook)) F("1 · el código no se verifica con type «email» o no acepta de 6 a 8 dígitos (CODIGO_MAX / codigoValido)");
   // /registro sigue vivo: redirige a /entrar con TODA su query.
   const reg = sinComentarios(leer("src/app/registro/page.tsx"));
   if (/RegistroUnPaso/.test(reg)) F("1 · /registro vuelve a dibujar el registro del banner (dice «este informe» sin informe)");
@@ -249,7 +254,7 @@ export function runEntradaCodigoTier(): { hard: number } {
   // ⚠ ACTA (15-oct-2026, medición para la campaña) · el reclamo lleva además la puerta (A: banner, guía).
   if (!/body: JSON\.stringify\(\{ porCodigo: opciones\.porCodigo === true,/.test(aa)) F("5 · reclamarAnalisisAnonimos no avisa que la entrada fue por código");
   for (const [f, re] of [
-    ["src/components/entrar/EntrarConCodigo.tsx", /await reclamarAnalisisAnonimos\(posthog, nueva \? "register" : "login", \{ porCodigo: true \}\);/],
+    ["src/components/entrar/useEntradaPorCodigo.ts", /await reclamarAnalisisAnonimos\(posthog, nueva \? "register" : "login", \{ porCodigo: true \}\);/],
     ["src/components/lo-que-sigue/RegistroUnPaso.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "banner" \} \}\);/],
     ["src/components/guia/RegistroEnTarjeta.tsx", /await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "guia" \} \}\);/],
   ] as const) {
@@ -257,7 +262,7 @@ export function runEntradaCodigoTier(): { hard: number } {
     if (!re.test(s)) F(`5 · ${f}: al entrar por código no pide la bienvenida`);
     if (!/verifyOtp\(/.test(s)) F(`5 · ${f}: no entra por código (verifyOtp)`);
   }
-  if (!/router\.push\(destino\);/.test(comp) || !/const destino = destinoTrasEntrar\(next\);/.test(comp)) F("5 · /entrar no vuelve al next validado");
+  if (!/const e = useEntradaPorCodigo\(next\);/.test(comp) || !/router\.push\(e\.destino\);/.test(comp) || !/const destino = destinoTrasEntrar\(destinoPedido\);/.test(hook)) F("5 · /entrar no vuelve al next validado");
   const cb = sinComentarios(leer("src/app/auth/callback/route.ts"));
   if (!/ensureWelcomeEmail\(user\.id, user\.email, user\.user_metadata \?\? null\)/.test(cb)) F("5 · /auth/callback (enlace del correo o Google) no manda la bienvenida");
   const wel = sinComentarios(leer("src/lib/welcome.ts"));

@@ -194,7 +194,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/event: "semanal_clic"/.test(clic)) F("7 · falta semanal_clic");
   const conf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   if (!/deCorreo\?\.origen === "semanal"\) \{\s*await capturarServidor\(\{ event: "semanal_compra"/.test(conf) || !/\.\.\.\(prePaymentData\?\.origen === "semanal" \? \{ origen: "semanal",/.test(conf)) F("7 · la compra que vino del correo no se mide (o se pierde el origen al confirmar)");
-  if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/const origenParam = searchParams\.get\("origen"\);\s*const origen = origenParam === "semanal" \? "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
+  if (!/\.\.\.\(origenBody === "semanal" \? \{ origen: "semanal" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/const origenParam = uno\(searchParams, "origen"\);\s*const origen = origenParam === "semanal" \? "semanal"/.test(leer("src/app/checkout/page.tsx"))) F("7 · el checkout no lleva el origen del correo al pago");
   const cg = sinComentarios(leer("src/lib/credits-grant.ts"));
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · también el de reactivación (el mismo correo); el de registrarse, aparte.
   if (!/if \(updated && \(grant\.source === FUENTE_REGALO_SEMANAL \|\| grant\.source === FUENTE_REGALO_REACTIVACION\)\) \{\s*void capturarServidor\(\{ event: "semanal_regalo_usado"/.test(cg) || !/\.select\("id, remaining, source"\)/.test(cg)) F("7 · el regalo usado no se mide");
@@ -214,7 +214,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/eventoSemanalAbierto\(evento, carga\)/.test(leer("src/app/api/webhooks/resend/route.ts"))) F("9 · el webhook no le pasa la carga (sin variante)");
   if (!/properties: \{ semana: sel\.semana, variante: sel\.variante,/.test(clic)) F("9 · semanal_clic no dice la variante");
   if (!/properties: \{ product: payment\.product, amount: payment\.amount, variante: deCorreo\.variante \?\? null \}/.test(conf) || !/origen: "semanal", \.\.\.\(prePaymentData\.variante \? \{ variante: prePaymentData\.variante \} : \{\}\)/.test(conf)) F("9 · semanal_compra no dice la variante (o el confirm la pierde)");
-  if (!/varianteBody === "banda" \|\| varianteBody === "tarjetas"\) \? \{ variante: varianteBody \}/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/if \(varianteCorreo\) body\.variante = varianteCorreo;/.test(leer("src/app/checkout/page.tsx"))) F("9 · el checkout no lleva la variante al pago");
+  if (!/varianteBody === "banda" \|\| varianteBody === "tarjetas"\) \? \{ variante: varianteBody \}/.test(sinComentarios(leer("src/app/api/payments/create/route.ts"))) || !/if \(varianteCorreo\) body\.variante = varianteCorreo;/.test(leer("src/app/checkout/compra-cliente.tsx"))) F("9 · el checkout no lleva la variante al pago");
   if (textoVence("2026-12-01T15:00:00Z") !== "Vence el 1 de diciembre.") F(`9 · el vencimiento no se lee: «${textoVence("2026-12-01T15:00:00Z")}»`);
   const conFecha = correoSemanal({ ...base, variante: "tarjetas", saldo: 1, conRegalo: true, regaloVence: "2026-12-01T15:00:00Z" }).html;
   if (!conFecha.includes(`${SEMANAL.regaloBajada} Vence el 1 de diciembre.</td>`)) F("9 · el correo no dice cuándo vence el regalo");
