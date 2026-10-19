@@ -17,7 +17,12 @@
 // el cableado del armado, el envío y la página; (3) EL ANÁLISIS QUE NO SE COBRA: si la medición fina no da Comprar
 // —aunque repita el Ajustar que vio la persona—, no se reclama ni se cobra y vuelven los parecidos; si da, un cobro; (4) EL
 // REGISTRO: cada medición queda con la zona, lo fino, si cambió y si se cobró; (5) EL PRESUPUESTO: el prechequeo y el
-// armado preparan los dos bloques dentro de los mismos 240 s.
+// armado preparan los dos bloques dentro de los mismos 240 s; (6, 19-oct-2026) EL CLIC EN UN DEPTO DE RENTA CORTA: la ruta lo
+// reconoce (deptoDelClic, en los dos bloques), `semanal_clic` lleva el depto y el bloque, y /semanal abre con ese bloque
+// primero —con el título— y el depto arriba y destacado. ACTA §6: contra el código de producción, 7 fallas; mutaciones 8/8
+// en rojo (scratchpad mutar-clic-corto.cjs): N1 la ruta busca solo en renta larga · N2 deptoDelClic ignora renta corta ·
+// N3 el evento sin bloque · N4 la página no pone primero renta corta · N5 el título abajo · N6 el reemplazo no cuenta ·
+// N7 renta corta acepta cualquier depto · N8 el cierre arriba. Verificado en el navegador con la cuenta de prueba interna.
 //
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/semanal-str-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,6 +30,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import * as STR from "../../../src/lib/guia/semanal-str";
+import * as SEM from "../../../src/lib/guia/semanal";
 import { correoSemanal } from "../../../src/lib/email/correo-semanal";
 import type { PiezasAnalizar } from "../../../src/lib/guia/analizar-una-vez";
 
@@ -285,6 +291,41 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (!/const PRESUPUESTO_MS = 240_000;/.test(rutaArmar) || !/if \(Date\.now\(\) - t0 > PRESUPUESTO_MS \|\| presupuesto\.bloqueada\) break;/.test(rutaArmar)) F("5 · el armado del domingo no corta a los 240 s");
     const rechequeo = srv.slice(srv.indexOf("export async function rechequearArmadas"), srv.indexOf("export interface SeleccionPorToken"));
     if (!/\.select\("id, user_id, items, items_str"\)/.test(rechequeo) || !/items: \[\.\.\.\(s\.items \?\? \[\]\), \.\.\.\(s\.items_str \?\? \[\]\)\]/.test(rechequeo)) F("5 · el rechequeo del domingo no mira los deptos de renta corta");
+  }
+
+  // ── 6 · EL CLIC EN UN DEPTO DE RENTA CORTA (19-oct-2026) ─────────────────────────
+  // El caso: el 19-oct, 5 clics del correo quedaron como clic «general» (aviso null, destino «seleccion»); 4 eran de
+  // personas que solo tenían renta corta. La ruta buscaba el depto solo en el bloque de renta larga, así que el evento
+  // perdía el depto y la página no lo ponía primero.
+  {
+    const L1 = "11111111-1111-4111-8111-111111111111", C1 = "22222222-2222-4222-8222-222222222222", X = "33333333-3333-4333-8333-333333333333";
+    const sel = { items: [{ avisoId: L1 }], corto: { items: [{ avisoId: C1 }] } };
+    try {
+      const corto = SEM.deptoDelClic(sel, C1);
+      if (corto.avisoId !== C1 || corto.bloque !== "corto") F(`6 · un clic en un depto de renta corta se guarda sin depto o sin su bloque (${JSON.stringify(corto)})`);
+      const largo = SEM.deptoDelClic(sel, L1);
+      if (largo.avisoId !== L1 || largo.bloque !== "largo") F(`6 · un clic en un depto de renta larga cambió (${JSON.stringify(largo)})`);
+      if (SEM.deptoDelClic(sel, X).avisoId !== null || SEM.deptoDelClic(sel, "no-es-un-id").avisoId !== null || SEM.deptoDelClic(sel, null).bloque !== null) F("6 · un depto que no está en la selección (o un id raro) se toma como depto");
+      if (SEM.deptoDelClic({ items: [{ avisoId: L1 }], corto: null }, C1).avisoId !== null) F("6 · sin bloque de renta corta (el aviso inmediato) se acepta un depto ajeno");
+      const fila = (id: string) => ({ item: { avisoId: id }, reemplazo: null as { avisoId: string } | null });
+      if (SEM.bloqueDelDestacado(C1, [fila(L1)], [fila(C1)]) !== "corto" || SEM.bloqueDelDestacado(L1, [fila(L1)], [fila(C1)]) !== "largo" || SEM.bloqueDelDestacado(null, [fila(L1)], [fila(C1)]) !== null
+        || SEM.bloqueDelDestacado(X, [fila(L1)], [{ item: { avisoId: C1 }, reemplazo: { avisoId: X } }]) !== "corto") F("6 · /semanal no sabe en qué bloque está el depto clicado (ni su reemplazo)");
+    } catch (err) {
+      F(`6 · un clic en un depto de renta corta no se reconoce (${(err as Error).message})`);
+    }
+    // La ruta: el depto se busca en los dos bloques, el evento lleva el depto y el bloque, y la página abre con él.
+    const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
+    if (!/const \{ avisoId, bloque \} = deptoDelClic\(sel, a\);/.test(clic) || /sel\.items\.some\(\(i\) => i\.avisoId === a\)/.test(clic)) F("6 · la ruta del clic busca el depto solo en el bloque de renta larga");
+    if (!/properties: \{ semana: sel\.semana, variante: sel\.variante, aviso_id: avisoId, destino, bloque \},/.test(clic)) F("6 · el evento semanal_clic no lleva el bloque del depto");
+    if (!/return volver\(`\/semanal\?t=\$\{t\}&a=\$\{avisoId\}\$\{estado === "despublicado" \? "&d=1" : ""\}`\);/.test(clic)) F("6 · el clic en un depto no abre /semanal con ese depto");
+    // La página: con el depto en renta corta, ese bloque va primero —con el título— y el de renta larga, después, con el cierre.
+    if (!/const cortoPrimero = sel\.conLargo && sel\.corto != null && bloqueDelDestacado\(a, filas, filasCortas\) === "corto";/.test(pagina)) F("6 · /semanal no decide qué bloque va primero según el depto clicado");
+    if (!/\{cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("6 · /semanal no pone primero el bloque de renta corta cuando el depto clicado es de ahí");
+    const corta = (pagina.match(/const listaCorta = sel\.corto && \(\s*<SemanalLista[\s\S]*?\/>/) ?? [""])[0];
+    const larga = (pagina.match(/const listaLarga = sel\.conLargo && \(\s*<SemanalLista[\s\S]*?\/>/) ?? [""])[0];
+    if (!/conTitulo=\{!sel\.conLargo \|\| cortoPrimero\}/.test(corta) || !/cierre=\{!cortoPrimero\}/.test(corta) || !/conTitulo=\{!cortoPrimero\}/.test(larga) || !/cierre=\{!sel\.corto \|\| cortoPrimero\}/.test(larga))
+      F("6 · con el bloque de renta corta primero, el título o el cierre quedan en el bloque equivocado");
+    if (!/filas=\{ordenadosCortos\}/.test(corta) || !/destacado=\{a\}/.test(corta)) F("6 · en su bloque, el depto clicado no va arriba ni destacado");
   }
 
   if (fallas.length) {

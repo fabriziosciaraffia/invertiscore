@@ -172,7 +172,9 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
 
   // ── 7 · «¿Cuándo piensas comprar?» arriba de la página semanal ──────────────
   const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));
-  if (!/const preguntarCuando = perfilPersona != null && perfilPersona\.perfil\.horizonte == null;/.test(pagina) || !/\{preguntarCuando && <PreguntaCuando \/>\}\s*\{sel\.conLargo && \(\s*<SemanalLista/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
+  // ⚠ ACTA (19-oct-2026) · las dos listas se arman antes y se ordenan según el depto clicado (SEMANAL-STR §6); la pregunta
+  // sigue arriba de las dos.
+  if (!/const preguntarCuando = perfilPersona != null && perfilPersona\.perfil\.horizonte == null;/.test(pagina) || !/\{preguntarCuando && <PreguntaCuando \/>\}\s*\{cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
   const pregunta = sinComentarios(leer("src/app/semanal/pregunta-cuando.tsx"));
   if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^)]*body: JSON\.stringify\(\{ horizonte: h \}\) \}\)/.test(pregunta) || !/if \(res\.ok\) setListo\(true\);/.test(pregunta) || !/if \(listo\) return null;/.test(pregunta)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");
