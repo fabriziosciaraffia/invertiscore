@@ -391,6 +391,37 @@ export async function siguienteReemplazo<T extends CandidatoSemanal>(
   return null;
 }
 
+/** El bloque de un depto del correo: el de renta larga o el de renta corta (14-oct-2026). */
+export type BloqueSemanal = "largo" | "corto";
+
+const UUID_AVISO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * El depto de un clic del correo (19-oct-2026): el aviso del enlace, si está en la selección, y en qué bloque. Hasta
+ * hoy solo se buscaba en el de renta larga, así que un clic en un depto de renta corta quedaba como clic «general», sin
+ * depto, y la página no lo ponía primero (el 19-oct, 4 de los 5 clics «generales» eran de renta corta).
+ */
+export function deptoDelClic(
+  sel: { items: Array<{ avisoId: string }>; corto: { items: Array<{ avisoId: string }> } | null },
+  a: string | null,
+): { avisoId: string | null; bloque: BloqueSemanal | null } {
+  if (!a || !UUID_AVISO.test(a)) return { avisoId: null, bloque: null };
+  if (sel.items.some((i) => i.avisoId === a)) return { avisoId: a, bloque: "largo" };
+  if (sel.corto?.items.some((i) => i.avisoId === a)) return { avisoId: a, bloque: "corto" };
+  return { avisoId: null, bloque: null };
+}
+
+/** En qué bloque está el depto destacado (`?a=`) de /semanal: ese bloque va primero, con el depto arriba (19-oct-2026). */
+export function bloqueDelDestacado<I extends { avisoId: string }>(
+  a: string | null,
+  largo: Array<{ item: I; reemplazo: I | null }>,
+  corto: Array<{ item: I; reemplazo: I | null }>,
+): BloqueSemanal | null {
+  if (!a) return null;
+  const esta = (fs: Array<{ item: I; reemplazo: I | null }>) => fs.some((f) => f.item.avisoId === a || f.reemplazo?.avisoId === a);
+  return esta(largo) ? "largo" : esta(corto) ? "corto" : null;
+}
+
 /** Lo que muestra la página: cada depto del correo, si ya no está publicado, y el que va en su lugar. */
 export interface FilaPaginaSemanal<I> {
   item: I;

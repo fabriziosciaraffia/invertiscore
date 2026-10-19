@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { chequearAlClic, seleccionPorToken } from "@/lib/guia/semanal-servidor";
-import { puedeEntrarPorCorreo, rutaSueltoSemanal } from "@/lib/guia/semanal";
+import { deptoDelClic, puedeEntrarPorCorreo, rutaSueltoSemanal } from "@/lib/guia/semanal";
 import { entrarConCorreo } from "@/lib/guia/entrada-correo";
 import { rutaTres } from "@/lib/tres-analisis";
 import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
@@ -22,9 +22,9 @@ import type { EventoEspejo } from "@/lib/meta/espejo";
 // correo, deja adentro al dueño de la selección (entrada-correo.ts); con otra sesión abierta no toca nada.
 // «SemanalClic» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por selección y
 // destino, desde el servidor (con el navegador de quien hizo clic) y con el espejo para el pixel en la redirección.
+// Desde el 19-oct-2026 el depto se reconoce en los DOS bloques (deptoDelClic) y `semanal_clic` lleva su bloque.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TOKEN = /^[0-9a-f]{20,80}$/i;
 
 export async function GET(request: Request) {
@@ -39,7 +39,8 @@ export async function GET(request: Request) {
   const admin = createServiceClient();
   const sel = await seleccionPorToken(admin, t);
   if (!sel) return volver("/dashboard");
-  const avisoId = a && UUID.test(a) && sel.items.some((i) => i.avisoId === a) ? a : null;
+  // El depto en los dos bloques (19-oct-2026): antes solo en el de renta larga, y un clic en renta corta quedaba sin depto.
+  const { avisoId, bloque } = deptoDelClic(sel, a);
   const destino = ir === "comprar" ? "comprar" : ir === "tres" ? "tres" : ir === "perfil" ? "perfil" : avisoId ? "depto" : "seleccion";
 
   if (sel.fuente === "inmediato") {
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     await capturarServidor({
       event: "semanal_clic",
       distinctId: sel.user_id as string,
-      properties: { semana: sel.semana, variante: sel.variante, aviso_id: avisoId, destino },
+      properties: { semana: sel.semana, variante: sel.variante, aviso_id: avisoId, destino, bloque },
     }).catch(() => {});
   }
 
