@@ -144,6 +144,7 @@ import { runAvisosTier } from "./avisos-catch-test";
 import { runCronsTier } from "./crons-catch-test";
 import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runMedicionMetaTier } from "./medicion-meta-catch-test";
+import { runConsentimientoTier } from "./consentimiento-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
@@ -614,6 +615,9 @@ function printSeed(r: SeedReport) {
   // Tier MEDICION-META (15-oct-2026, 0 tokens, sin red ni base): Meta y PostHog saben qué pasó — deduplicación por el
   // espejo, la cola del pixel, las cuentas de prueba fuera y la atribución por puerta. ──
   totalHard += (await runMedicionMetaTier()).hard;
+  // Tier CONSENTIMIENTO (19-oct-2026, 0 tokens, sin red ni base): sin el «si» del aviso de cookies no carga el pixel ni su
+  // `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; Aceptar y Rechazar al mismo nivel. ──
+  totalHard += (await runConsentimientoTier()).hard;
   totalHard += (await runPuertaBTier()).hard;
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
