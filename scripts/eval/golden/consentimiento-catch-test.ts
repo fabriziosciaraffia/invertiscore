@@ -332,7 +332,7 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
       }
       // UNA LÍNEA DE TEXTO: la frase sin cortar, a un tamaño que la hace caber en el ancho útil del teléfono (27,9 em
       // medidos en Inter); en PC «· Privacidad» va en la misma línea, en el teléfono con los botones.
-      if (!/const TAMANO_FRASE = "clamp\(11px, calc\(\(100vw - 32px\) \/ 28\.2\), 13px\)";/.test(av) || !/<p\s+data-cookies="texto"\s+className="[^"]*\bwhitespace-nowrap\b[^"]*"\s+style=\{\{ fontSize: TAMANO_FRASE \}\}/.test(av)) F("5 · la frase del aviso puede ocupar más de una línea en el teléfono");
+      if (!/const TAMANO_FRASE = "clamp\(10px, calc\(\(100vw - 32px\) \/ 28\.2\), 13px\)";/.test(av) || !/<p\s+data-cookies="texto"\s+className="[^"]*\bwhitespace-nowrap\b[^"]*"\s+style=\{\{ fontSize: TAMANO_FRASE \}\}/.test(av)) F("5 · la frase del aviso puede ocupar más de una línea en el teléfono");
       if (!/<span className="hidden sm:inline">\s*\{` \$\{COOKIES_COPY\.separador\} `\}\s*<a href="\/privacy" className=\{ENLACE\}>\{COOKIES_COPY\.privacidad\}<\/a>\s*<\/span>/.test(av)
         || !/<a href="\/privacy" className=\{`\$\{ENLACE\} mr-auto text-\[13px\] sm:hidden`\}>\{COOKIES_COPY\.privacidad\}<\/a>/.test(av)) F("5 · «Privacidad» no está en la línea en PC y con los botones en el teléfono");
       // Sale mientras no haya elección; vuelve cuando el pie lo pide.

@@ -4,7 +4,7 @@
 // El aviso de cookies (19-oct-2026; reglas en lib/consentimiento.ts). Una barra plana abajo, de UNA línea de texto:
 // «Usamos cookies para medir qué funciona y mejorar Franco · Privacidad», con «Aceptar» lleno y «Rechazar» de borde,
 // los dos del mismo tamaño y a un clic. En PC, todo en una fila. En el teléfono, la frase en la primera línea (con un
-// tamaño que la hace caber entera: 27,9 em medidos en Inter, entre 11 y 13 px) y «Privacidad» con los botones en la
+// tamaño que la hace caber entera: 27,9 em medidos en Inter, entre 10 y 13 px) y «Privacidad» con los botones en la
 // segunda; no más, para que no tape «Ver un análisis real» del hero.
 // Sale mientras no haya elección y vuelve cuando el pie pide «Cookies». Cada elección es un `cookies_eleccion` en
 // PostHog (acepta, rechaza, ignora). Se dibuja recién en el navegador (lee la cookie) y su texto es más chico que el
@@ -27,8 +27,12 @@ const BOTON = "h-10 w-28 shrink-0 rounded-full border text-[14px] font-semibold 
 const LLENO = "border-[var(--franco-text)] bg-[var(--franco-text)] text-[var(--franco-bg)] hover:opacity-85";
 const BORDE = "border-[var(--franco-text)] bg-transparent text-[var(--franco-text)] hover:opacity-70";
 const ENLACE = "text-[var(--franco-text)] underline underline-offset-2";
-/** La frase entra entera en una línea: el ancho útil (pantalla menos los 16 px de cada lado) sobre 28,2 em. */
-const TAMANO_FRASE = "clamp(11px, calc((100vw - 32px) / 28.2), 13px)";
+/**
+ * La frase entra entera en una línea: el ancho útil (pantalla menos los 16 px de cada lado) sobre 28,2 em. Medido en el
+ * preview: 11,6 px en 360, 12,7 en 390, 13 desde 412. El piso de 10 px es para los 320 px (iPhone SE de 2016): con 11 la
+ * frase salía cortada.
+ */
+const TAMANO_FRASE = "clamp(10px, calc((100vw - 32px) / 28.2), 13px)";
 
 export function AvisoCookies() {
   const [visible, setVisible] = useState(false);
