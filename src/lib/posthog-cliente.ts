@@ -27,6 +27,30 @@ export function opcionesPostHog(c: Consentimiento | null): Pick<PostHogConfig, "
     : { persistence: "memory", disable_session_recording: true };
 }
 
+/**
+ * LO QUE SALE AL IRSE DE LA PÁGINA (19-oct-2026, el «ignora» del aviso de cookies). Un capture en `pagehide` llega solo
+ * si se ENCOLA ANTES de que el SDK vacíe su cola en su propio `pagehide` (lo manda en el mismo beacon que `$pageleave`).
+ * Medido en un sandbox local con posthog-js 1.364.7, Chromium y WebKit, saliendo por clic y por navegación:
+ *   · oyente propio registrado ANTES que el del SDK + capture a secas → llega en los dos;
+ *   · el mismo con `send_instantly` → en Chromium NO llega;
+ *   · registrado DESPUÉS que el del SDK (aunque sea en fase de captura) + capture a secas → en Chromium NO llega.
+ * Por eso el oyente vive acá, a nivel de módulo: este módulo es el único que inicia el SDK, y lo hace después de
+ * evaluarse, así que este `pagehide` siempre va primero. Quien necesite capturar al irse se anota con `antesDeIrse`.
+ */
+const alIrse = new Set<() => void>();
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("pagehide", () => {
+    for (const fn of Array.from(alIrse)) {
+      try { fn(); } catch { /* una tarea rota no frena las demás */ }
+    }
+  });
+}
+/** Corre `fn` al irse de la página, antes de que PostHog vacíe su cola. Devuelve la función que la quita. */
+export function antesDeIrse(fn: () => void): () => void {
+  alIrse.add(fn);
+  return () => { alIrse.delete(fn); };
+}
+
 interface Llamada { metodo: string; args: unknown[] }
 
 let real: PostHog | null = null;

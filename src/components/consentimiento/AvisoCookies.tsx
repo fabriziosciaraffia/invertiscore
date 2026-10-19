@@ -20,7 +20,7 @@ import {
   leerConsentimiento,
   type Consentimiento,
 } from "@/lib/consentimiento";
-import { posthogCliente } from "@/lib/posthog-cliente";
+import { antesDeIrse, posthogCliente } from "@/lib/posthog-cliente";
 
 /** El mismo tamaño para los dos: alto, ancho fijo, borde, letra. */
 const BOTON = "h-10 w-28 shrink-0 rounded-full border text-[14px] font-semibold transition-opacity";
@@ -49,18 +49,17 @@ export function AvisoCookies() {
     return () => window.removeEventListener(EVENTO_ABRIR_AVISO, abrir);
   }, []);
 
-  // «ignora»: la persona se va de la página con el aviso a la vista y sin elegir. Una vez por página, y con
-  // `send_instantly` (fetch keepalive): un capture a secas en `pagehide` se pierde, porque el SDK ya vació su cola
-  // (medido el 03-sep-2026, memoria «posthog-capture-en-pagehide-se-pierde»).
+  // «ignora»: la persona se va de la página con el aviso a la vista y sin elegir. Una vez por página. Por
+  // `antesDeIrse` y con capture a secas: se encola antes de que el SDK vacíe su cola al irse y sale en su beacon
+  // (`send_instantly` en `pagehide` no llega en Chromium: medido, ver posthog-cliente.ts).
   useEffect(() => {
     if (!visible) return;
-    const alIrse = () => {
-      if (leerConsentimiento() !== null) return;
-      window.removeEventListener("pagehide", alIrse);
-      posthogCliente.capture(EVENTO_ELECCION_COOKIES, { eleccion: "ignora", origen: "aviso" }, { send_instantly: true });
-    };
-    window.addEventListener("pagehide", alIrse);
-    return () => window.removeEventListener("pagehide", alIrse);
+    let emitido = false;
+    return antesDeIrse(() => {
+      if (emitido || leerConsentimiento() !== null) return;
+      emitido = true;
+      posthogCliente.capture(EVENTO_ELECCION_COOKIES, { eleccion: "ignora", origen: "aviso" });
+    });
   }, [visible]);
 
   if (!visible) return null;

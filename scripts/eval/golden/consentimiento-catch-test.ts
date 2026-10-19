@@ -338,12 +338,22 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
       // Sale mientras no haya elección; vuelve cuando el pie lo pide.
       if (!/if \(leerConsentimiento\(\) === null\) setVisible\(true\);/.test(av) || !/window\.addEventListener\(EVENTO_ABRIR_AVISO, abrir\);/.test(av)) F("5 · el aviso no sale sin elección (o el pie no lo vuelve a abrir)");
       // LA ELECCIÓN EN POSTHOG: `cookies_eleccion` con acepta / rechaza al elegir (antes de guardar), e «ignora» al irse de la
-      // página sin elegir — una vez, con send_instantly (un capture a secas en pagehide se pierde).
+      // página sin elegir, una vez.
       if (EVENTO_ELECCION_COOKIES !== "cookies_eleccion" || eleccionDe("si") !== "acepta" || eleccionDe("no") !== "rechaza") F("5 · el evento de la elección cambió de nombre o de valores");
       if (!/posthogCliente\.capture\(EVENTO_ELECCION_COOKIES, \{ eleccion: eleccionDe\(c\), origen: origen\.current \}\);\s*guardarConsentimiento\(c\);/.test(av)) F("5 · aceptar o rechazar no queda en PostHog");
-      const irse = (av.match(/const alIrse = \(\) => \{([\s\S]*?)\n {4}\};/) ?? [])[1] ?? "";
-      if (!irse || !/if \(leerConsentimiento\(\) !== null\) return;\s*window\.removeEventListener\("pagehide", alIrse\);\s*posthogCliente\.capture\(EVENTO_ELECCION_COOKIES, \{ eleccion: "ignora", origen: "aviso" \}, \{ send_instantly: true \}\);/.test(irse)
-        || !/window\.addEventListener\("pagehide", alIrse\);/.test(av)) F("5 · irse sin elegir no queda en PostHog como «ignora» (una vez, con send_instantly)");
+      // ⚠ ACTA (19-oct-2026, QA en producción + sandbox local con posthog-js 1.364.7) · el «ignora» iba con `send_instantly`
+      // en un `pagehide` propio: en Chromium NO LLEGA. Lo que llega en Chromium y en WebKit es un capture A SECAS encolado
+      // ANTES de que el SDK vacíe su cola en su propio `pagehide` (sale en el beacon de `$pageleave`), y eso exige que
+      // nuestro oyente esté registrado ANTES que el del SDK — en Chromium el orden de registro manda, aun en fase de
+      // captura. Por eso el oyente vive a nivel de módulo en posthog-cliente.ts, antes de `cargarPostHog`, y el aviso se
+      // anota con `antesDeIrse`.
+      const irse = (av.match(/return antesDeIrse\(\(\) => \{([\s\S]*?)\n {4}\}\);/) ?? [])[1] ?? "";
+      if (!irse || !/if \(emitido \|\| leerConsentimiento\(\) !== null\) return;\s*emitido = true;\s*posthogCliente\.capture\(EVENTO_ELECCION_COOKIES, \{ eleccion: "ignora", origen: "aviso" \}\);/.test(irse)) F("5 · irse sin elegir no queda en PostHog como «ignora» (una vez, encolado)");
+      if (/send_instantly|addEventListener\("pagehide"/.test(av)) F("5 · el aviso vuelve a mandar el «ignora» por su cuenta (send_instantly o un pagehide propio: en Chromium no llega)");
+      const phc = sinComentarios(leer("src/lib/posthog-cliente.ts"));
+      const iOyente = phc.search(/\nif \(typeof window !== "undefined" && typeof window\.addEventListener === "function"\) \{\s*window\.addEventListener\("pagehide", \(\) => \{\s*for \(const fn of Array\.from\(alIrse\)\)/);
+      const iCarga = phc.indexOf("export function cargarPostHog(");
+      if (iOyente < 0 || iCarga < 0 || iOyente > iCarga) F("5 · el oyente de salida no está a nivel de módulo antes de que se inicie PostHog (el «ignora» llegaría tarde a la cola)");
       if (!/origen\.current = leerConsentimiento\(\) === null \? "aviso" : "pie";/.test(av)) F("5 · el cambio desde el pie se cuenta como primera elección (ensucia la tasa)");
       if (!/<AvisoCookies \/>/.test(sinComentarios(leer("src/app/providers.tsx")))) F("5 · el aviso no se monta en el provider (no sale en todo el sitio)");
       // En tuteo, sin voseo: el aviso y la sección de cookies de la política.
@@ -372,7 +382,7 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ CONSENTIMIENTO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — sin «si» no carga el pixel ni su `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; la elección dura un año; el aviso, en una línea y sin nombrar terceros, pone Aceptar lleno y Rechazar de borde del mismo tamaño, la elección queda en PostHog (acepta, rechaza, ignora) y todo pie la deja cambiar");
+    console.log("  ✓ VERDE — sin «si» no carga el pixel ni su `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; la elección dura un año; el aviso, en una línea y sin nombrar terceros, pone Aceptar lleno y Rechazar de borde del mismo tamaño, la elección queda en PostHog (acepta, rechaza, e ignora encolado antes de que el SDK se vaya) y todo pie la deja cambiar");
   }
   return { hard: fallas.length };
 }
