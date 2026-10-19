@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 import { COOKIE_INVITACION, VIDA_COOKIE_INVITACION_S, normalizarCodigo, valorCookieInvitacion } from "@/lib/referido";
+import { conPermiso, consentimientoDeCookie } from "@/lib/consentimiento";
 
 /** Rutas que pasan por acá solo por la medición (15-oct-2026): sin sesión que refrescar. Los anuncios llegan a `/`. */
 const SOLO_MEDICION = new Set(["/", "/demo", "/metodologia"]);
@@ -22,7 +23,9 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
     fbcActual: request.cookies.get(COOKIE_FBC)?.value ?? null,
     ahoraMs: Date.now(),
   });
-  if (c.fbc) res.cookies.set(COOKIE_FBC, c.fbc.valor, { path: "/", maxAge: VIDA_FBC_S, sameSite: "lax", ...(c.fbc.dominio ? { domain: c.fbc.dominio } : {}) });
+  // El `_fbc` es del pixel de Meta: solo con el «si» del aviso de cookies (19-oct-2026, lib/consentimiento.ts). Sin
+  // elección, el clic se guarda si la persona acepta con la URL del anuncio todavía abierta (MetaPixel).
+  if (c.fbc && conPermiso(consentimientoDeCookie(request.headers.get("cookie")))) res.cookies.set(COOKIE_FBC, c.fbc.valor, { path: "/", maxAge: VIDA_FBC_S, sameSite: "lax", ...(c.fbc.dominio ? { domain: c.fbc.dominio } : {}) });
   if (c.prueba === "prender") res.cookies.set(COOKIE_PRUEBA, "1", { path: "/", maxAge: VIDA_PRUEBA_S, sameSite: "lax" });
   if (c.prueba === "apagar") res.cookies.set(COOKIE_PRUEBA, "", { path: "/", maxAge: 0 });
   if (!dispositivoValido(request.cookies.get(COOKIE_DISPOSITIVO)?.value)) {

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
+import { CambiarCookies } from "@/components/consentimiento/AvisoCookies";
 
 /** Los enlaces largos del sitio. Salieron del header único el 27-sep-2026 (decisión 1 del
  *  mockup aprobado): viven en el pie, como en la landing v14. */
@@ -73,7 +74,9 @@ export function AppFooter({
           className="font-body text-[11px] m-0 leading-[1.6]"
           style={{ color: "var(--franco-text-tertiary)" }}
         >
-          {DISCLAIMER_CANONICO}
+          {DISCLAIMER_CANONICO}{" "}
+          {/* Cambiar la elección de cookies (19-oct-2026, lib/consentimiento.ts). */}
+          <CambiarCookies className="underline underline-offset-2 transition-colors hover:text-[var(--franco-text)]" />
         </p>
       </div>
     </footer>

@@ -12,7 +12,20 @@
 // carga, la fachada delega directo en el SDK real.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PostHog } from "posthog-js";
+import type { PostHog, PostHogConfig } from "posthog-js";
+import { conPermiso, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
+
+/**
+ * LO QUE CAMBIA CON EL CONSENTIMIENTO (19-oct-2026, lib/consentimiento.ts). Con «si», PostHog guarda su id en cookie y
+ * localStorage y la grabación de sesiones queda prendida (la activa la configuración remota del proyecto). Sin «si» —sin
+ * elección todavía, o con «no»— mide igual, pero SIN cookies ni almacenamiento (`memory`: el id vive solo en esta
+ * página) y SIN grabación. Lo fija el tier CONSENTIMIENTO.
+ */
+export function opcionesPostHog(c: Consentimiento | null): Pick<PostHogConfig, "persistence" | "disable_session_recording"> {
+  return conPermiso(c)
+    ? { persistence: "localStorage+cookie", disable_session_recording: false }
+    : { persistence: "memory", disable_session_recording: true };
+}
 
 interface Llamada { metodo: string; args: unknown[] }
 
@@ -59,6 +72,8 @@ export function cargarPostHog(): Promise<PostHog | null> {
         // (settings del proyecto PostHog, sampling 100%). Inputs enmascarados (precio, dirección,
         // email); el texto de la página —el informe que el usuario lee— queda visible.
         session_recording: { maskAllInputs: true },
+        // Sin consentimiento: sin cookies ni grabación (ver arriba).
+        ...opcionesPostHog(leerConsentimiento()),
       });
       real = ph;
       for (const { metodo, args } of cola.splice(0)) {
@@ -71,4 +86,31 @@ export function cargarPostHog(): Promise<PostHog | null> {
     })
     .catch(() => null);
   return cargando;
+}
+
+/** La elección cambió con la página abierta: PostHog pasa a guardar (y graba) o deja de hacerlo y borra lo suyo. */
+export function aplicarConsentimientoPostHog(c: Consentimiento): void {
+  if (!real) return; // todavía no cargó: al cargar lee la cookie
+  try {
+    real.set_config(opcionesPostHog(c));
+    if (conPermiso(c)) {
+      real.startSessionRecording();
+    } else {
+      real.stopSessionRecording();
+      borrarRastroPostHog();
+    }
+  } catch { /* un SDK a medio cargar no rompe la página */ }
+}
+
+/** Lo que PostHog dejó guardado en este navegador (cookies y almacenamiento con prefijo ph_ o __ph). */
+function borrarRastroPostHog(): void {
+  try {
+    for (const c of document.cookie.split("; ")) {
+      const nombre = c.split("=")[0];
+      if (/^(ph_|__ph)/.test(nombre)) document.cookie = `${nombre}=; Max-Age=0; Path=/`;
+    }
+    for (const almacen of [localStorage, sessionStorage]) {
+      for (const k of Object.keys(almacen)) if (/^(ph_|__ph)/.test(k)) almacen.removeItem(k);
+    }
+  } catch { /* sin acceso al almacenamiento, nada que borrar */ }
 }

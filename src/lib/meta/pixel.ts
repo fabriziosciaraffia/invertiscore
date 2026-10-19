@@ -16,6 +16,7 @@
  * `eventId` = clave de dedup compartida con la API de conversiones: el servidor manda el evento y le pasa al
  * navegador el mismo id (espejo.ts). Lo prueba el tier MEDICION-META.
  */
+import { conPermiso, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
 
 type Fbq = ((comando: string, evento: string, datos?: Record<string, unknown>, opciones?: { eventID?: string }) => void) & {
   callMethod?: unknown;
@@ -108,10 +109,18 @@ export function colaMeta(): EventoEnCola[] {
   return (leer<EventoEnCola[]>(w?.sessionStorage, CLAVE_COLA) ?? []).filter((e) => e && typeof e.t === "number" && ahora - e.t < VIDA_COLA_MS);
 }
 
-/** Encola un evento. Devuelve `false` si no entra: cuenta de prueba, sin navegador o id ya visto. */
+/**
+ * ¿Puede operar el pixel en este navegador? Solo con el «si» del aviso de cookies (19-oct-2026, lib/consentimiento.ts)
+ * y fuera de las cuentas de prueba. Sin elección todavía, no: nada se guarda ni sale hasta que la persona acepta.
+ */
+export function pixelPermitido(c: Consentimiento | null, esPrueba: boolean): boolean {
+  return conPermiso(c) && !esPrueba;
+}
+
+/** Encola un evento. Devuelve `false` si no entra: sin consentimiento, cuenta de prueba, sin navegador o id ya visto. */
 export function encolarMeta(e: Omit<EventoEnCola, "t" | "eventId"> & { eventId?: string }): boolean {
   const w = ventana();
-  if (!w || esCuentaDePruebaNavegador()) return false;
+  if (!w || !pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador())) return false;
   const eventId = e.eventId ?? nuevoId();
   const enviados = leer<string[]>(w.sessionStorage, CLAVE_ENVIADOS) ?? [];
   const cola = colaMeta();
@@ -128,7 +137,7 @@ export function encolarMeta(e: Omit<EventoEnCola, "t" | "eventId"> & { eventId?:
 export function vaciarColaMeta(): number {
   const w = ventana();
   if (!w) return 0;
-  if (esCuentaDePruebaNavegador()) {
+  if (!pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador())) {
     try { w.sessionStorage?.removeItem(CLAVE_COLA); } catch { /* nada */ }
     return 0;
   }
@@ -157,7 +166,7 @@ export function vaciarColaMeta(): number {
  */
 export function metaTrack(eventName: string, params?: Record<string, unknown>, eventId?: string): void {
   const w = ventana();
-  if (!w || esCuentaDePruebaNavegador()) return;
+  if (!w || !pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador())) return;
   if (eventName === "PageView") {
     if (typeof w.fbq === "function") w.fbq("track", "PageView");
     return;

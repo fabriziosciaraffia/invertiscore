@@ -21,10 +21,11 @@
  */
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, vaciarColaMeta } from "@/lib/meta/pixel";
+import { esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, pixelPermitido, vaciarColaMeta } from "@/lib/meta/pixel";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
 import { COOKIE_FBC, VIDA_FBC_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
+import { alCambiarConsentimiento, leerConsentimiento } from "@/lib/consentimiento";
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
@@ -67,11 +68,21 @@ export function MetaPixel() {
   const searchParams = useSearchParams();
   /** El snippet ya corrió (con la página quieta): desde acá se puede disparar. */
   const [listo, setListo] = useState(false);
-
-  // Desde la primera carga, aunque el pixel todavía no cargue: el clic del anuncio queda guardado, y la cola y el
-  // espejo del servidor se miran cada poco rato (salen apenas el pixel opera).
+  /**
+   * EL CONSENTIMIENTO (19-oct-2026, lib/consentimiento.ts): el pixel —su script, su `_fbp`, el `_fbc` del clic y la
+   * cola— corre SOLO con el «si» del aviso de cookies. Sin elección todavía, no carga; si la persona acepta con la
+   * página abierta, carga en ese momento; si revoca, Meta deja de recibir (`fbq('consent', 'revoke')`).
+   */
+  const [permiso, setPermiso] = useState(false);
   useEffect(() => {
-    if (!PIXEL_ID) return;
+    setPermiso(pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador()));
+    return alCambiarConsentimiento((c) => setPermiso(pixelPermitido(c, esCuentaDePruebaNavegador())));
+  }, []);
+
+  // Con permiso: el clic del anuncio queda guardado (lo que traiga la URL de ahora), y la cola y el espejo del
+  // servidor se miran cada poco rato (salen apenas el pixel opera).
+  useEffect(() => {
+    if (!PIXEL_ID || !permiso) return;
     guardarClicDelAnuncio();
     const mirar = () => {
       espejarMeta(consumirCookieEspejo());
@@ -80,18 +91,25 @@ export function MetaPixel() {
     mirar();
     const id = setInterval(mirar, CADA_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [permiso]);
 
   // Init (una vez), CUANDO LA PÁGINA ESTÁ QUIETA (28-sep-2026): fbevents.js más su config pesan
   // 197 kB y bloqueaban 470 ms antes del titular. Snippet estándar de fbevents SIN el
   // track('PageView') final: el PageView lo maneja el effect de ruta de abajo, que espera a `listo`.
-  // Una CUENTA DE PRUEBA (15-oct-2026) no carga el pixel: nada suyo va a Meta.
+  // Una CUENTA DE PRUEBA (15-oct-2026) no carga el pixel: nada suyo va a Meta. Y sin consentimiento, tampoco.
   useEffect(() => {
     if (!PIXEL_ID) return;
+    const w0 = window as unknown as { fbq?: (...a: unknown[]) => void };
+    if (!permiso) {
+      // Revocó con el pixel ya cargado en esta página: Meta deja de recibir.
+      if (typeof w0.fbq === "function") w0.fbq("consent", "revoke");
+      setListo(false);
+      return;
+    }
     return cuandoLaPaginaEsteQuieta(() => {
-    if (esCuentaDePruebaNavegador()) return;
-    const w = window as unknown as { fbq?: unknown; _fbq?: unknown };
-    if (w.fbq) { setListo(true); return; } // ya inicializado
+    if (!pixelPermitido(leerConsentimiento(), esCuentaDePruebaNavegador())) return;
+    const w = window as unknown as { fbq?: (...a: unknown[]) => void; _fbq?: unknown };
+    if (w.fbq) { w.fbq("consent", "grant"); setListo(true); return; } // ya inicializado (aceptó de nuevo)
 
     /* eslint-disable */
     (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
@@ -118,7 +136,7 @@ export function MetaPixel() {
     );
     setListo(true);
     });
-  }, []);
+  }, [permiso]);
 
   // PageView cuando el pixel quedó listo + cada cambio de ruta/query (navegación SPA cliente).
   // Antes de `listo` no hay `fbq`: el PageView de la carga sale apenas el snippet corre.

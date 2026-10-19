@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { CambiarCookies } from "@/components/consentimiento/AvisoCookies";
 import FrancoLogo from "@/components/franco-logo";
 import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
 import { ESLOGAN } from "@/lib/eslogan";
@@ -98,6 +99,8 @@ export function PieLanding({ ultimo, ahora, conFondo = true }: { ultimo: DatosLa
           <nav aria-label="Legal">
             <EnlaceCarga href="/terms">Términos</EnlaceCarga>
             <EnlaceCarga href="/privacy">Privacidad</EnlaceCarga>
+            {/* Cambiar la elección de cookies (19-oct-2026, lib/consentimiento.ts). */}
+            <CambiarCookies className="lv-cookies" />
           </nav>
         </div>
         <div className="lv-osm">

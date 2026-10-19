@@ -12,6 +12,10 @@
  *      (`meta_contexto`, lo guardan los requests del navegador);
  *   4. devuelve el ESPEJO —el mismo evento con el mismo id— para que el pixel lo repita (espejo.ts). Sin espejo
  *      cuando la cuenta es de prueba, cuando el evento ya salió o en modo prueba.
+ *   5. CON EL CONSENTIMIENTO (19-oct-2026, lib/consentimiento.ts): el correo hasheado, el id de la cuenta, `_fbp` y
+ *      `_fbc` salen SOLO si el navegador dijo «si» en el aviso de cookies (la cookie del request, o la que quedó en
+ *      `meta_contexto` para un webhook). Sin «si», el evento sale sin nada que identifique a la persona más allá de la
+ *      IP y el navegador, y sin espejo (el pixel no corre). Lo arma `datosParaMeta`, que prueba el tier CONSENTIMIENTO.
  *
  * Nunca lanza: una falla de Meta no rompe el pago, el registro ni el informe. Lo prueba el tier MEDICION-META.
  */
@@ -21,6 +25,7 @@ import { sendMetaCapiEvent, type MetaCapiEventInput, type MetaCapiResult } from 
 import { COOKIE_ESPEJO, TOPE_ESPEJO, VIDA_ESPEJO_S, parsearEspejo, type EventoEspejo } from "@/lib/meta/espejo";
 import { isAdminUser } from "@/lib/admin";
 import { COOKIE_PRUEBA } from "@/lib/meta/cookies";
+import { conPermiso, consentimientoDeCookie } from "@/lib/consentimiento";
 
 /** Lo que el navegador deja saber de sí en un request. */
 export interface ContextoMeta {
@@ -31,6 +36,8 @@ export interface ContextoMeta {
   url: string | null;
   /** Modo prueba: los eventos salen con el código de prueba y sin espejo. */
   prueba: boolean;
+  /** El «si» del aviso de cookies (19-oct-2026): sin él no salen el correo, el id ni las cookies del pixel. */
+  consentimiento: boolean;
 }
 
 export { COOKIE_PRUEBA };
@@ -94,6 +101,7 @@ export function contextoDeRequest(request: Request): ContextoMeta {
     fbc: leerCookie(cookie, "_fbc"),
     url: h.get("referer") ?? request.url,
     prueba: leerCookie(cookie, COOKIE_PRUEBA) === "1",
+    consentimiento: conPermiso(consentimientoDeCookie(cookie)),
   };
 }
 
@@ -107,6 +115,7 @@ export function contextoDeCabeceras(h: { get(n: string): string | null }, url: s
     fbc: leerCookie(cookie, "_fbc"),
     url,
     prueba: leerCookie(cookie, COOKIE_PRUEBA) === "1",
+    consentimiento: conPermiso(consentimientoDeCookie(cookie)),
   };
 }
 
@@ -134,7 +143,7 @@ export async function guardarContextoMeta(admin: SupabaseClient, userId: string,
   if (!userId || !tieneNavegador(c)) return;
   try {
     await admin.from("meta_contexto").upsert(
-      { user_id: userId, ip: c.ip, ua: c.ua?.slice(0, 500) ?? null, fbp: c.fbp, fbc: c.fbc, url: c.url?.slice(0, 500) ?? null, prueba: c.prueba, updated_at: new Date().toISOString() },
+      { user_id: userId, ip: c.ip, ua: c.ua?.slice(0, 500) ?? null, fbp: c.fbp, fbc: c.fbc, url: c.url?.slice(0, 500) ?? null, prueba: c.prueba, consentimiento: c.consentimiento === true, updated_at: new Date().toISOString() },
       { onConflict: "user_id" },
     );
   } catch (e) {
@@ -145,10 +154,10 @@ export async function guardarContextoMeta(admin: SupabaseClient, userId: string,
 /** El último navegador de la cuenta, si es de los últimos siete días. */
 export async function leerContextoMeta(admin: SupabaseClient, userId: string): Promise<ContextoMeta | null> {
   try {
-    const { data } = await admin.from("meta_contexto").select("ip, ua, fbp, fbc, url, prueba, updated_at").eq("user_id", userId).maybeSingle();
-    const f = data as (Omit<ContextoMeta, "prueba"> & { prueba: boolean; updated_at: string }) | null;
+    const { data } = await admin.from("meta_contexto").select("ip, ua, fbp, fbc, url, prueba, consentimiento, updated_at").eq("user_id", userId).maybeSingle();
+    const f = data as (Omit<ContextoMeta, "prueba" | "consentimiento"> & { prueba: boolean; consentimiento: boolean | null; updated_at: string }) | null;
     if (!f || Date.now() - new Date(f.updated_at).getTime() > VIDA_CONTEXTO_MS) return null;
-    return { ip: f.ip, ua: f.ua, fbp: f.fbp, fbc: f.fbc, url: f.url, prueba: f.prueba === true };
+    return { ip: f.ip, ua: f.ua, fbp: f.fbp, fbc: f.fbc, url: f.url, prueba: f.prueba === true, consentimiento: f.consentimiento === true };
   } catch {
     return null;
   }
@@ -177,6 +186,30 @@ function datosNavegador(e: EventoServidor): Record<string, unknown> | undefined 
   return Object.keys(d).length ? d : undefined;
 }
 
+/**
+ * Lo que sale a la API de conversiones (19-oct-2026). Con el «si» del aviso de cookies, todo lo que ayuda a Meta a
+ * reconocer a la persona: el correo (se hashea en capi.ts), el id de la cuenta, `_fbp` y `_fbc`. Sin él, nada de eso:
+ * el evento, su valor, la página, la IP y el navegador.
+ */
+export function datosParaMeta(e: EventoServidor, contexto: ContextoMeta | null, codigoPrueba: string | null): MetaCapiEventInput {
+  const permiso = contexto?.consentimiento === true;
+  return {
+    eventName: e.evento,
+    eventId: e.eventId,
+    email: permiso ? e.email ?? null : null,
+    value: e.valor ?? null,
+    currency: "CLP",
+    datos: e.datos ?? null,
+    eventSourceUrl: contexto?.url ?? null,
+    clientIp: contexto?.ip ?? null,
+    userAgent: contexto?.ua ?? null,
+    fbp: permiso ? contexto?.fbp ?? null : null,
+    fbc: permiso ? contexto?.fbc ?? null : null,
+    externalId: permiso ? e.userId ?? null : null,
+    testEventCode: codigoPrueba,
+  };
+}
+
 /** Ver la cabecera. Nunca lanza. */
 export async function emitirEventoMeta(admin: SupabaseClient, e: EventoServidor): Promise<EmisionMeta> {
   try {
@@ -202,7 +235,8 @@ export async function emitirEventoMeta(admin: SupabaseClient, e: EventoServidor)
     if (!nueva || nueva.length === 0) return { estado: "repetido", espejo: null, envio: LISTO };
 
     if (e.userId && tieneNavegador(e.contexto)) await guardarContextoMeta(admin, e.userId, e.contexto);
-    const espejo: EventoEspejo | null = prueba ? null : { evento: e.evento, eventId: e.eventId, ...(datosNavegador(e) ? { datos: datosNavegador(e) } : {}) };
+    // Sin el «si» del aviso de cookies no hay espejo: el pixel no corre en ese navegador.
+    const espejo: EventoEspejo | null = prueba || contexto?.consentimiento !== true ? null : { evento: e.evento, eventId: e.eventId, ...(datosNavegador(e) ? { datos: datosNavegador(e) } : {}) };
 
     const codigoPrueba = process.env.META_TEST_EVENT_CODE?.trim() || null;
     if (prueba && !codigoPrueba) {
@@ -212,21 +246,7 @@ export async function emitirEventoMeta(admin: SupabaseClient, e: EventoServidor)
 
     // 3 · El envío; el estado queda en la fila.
     const envio = (async () => {
-      const r = await envioMeta.enviar({
-        eventName: e.evento,
-        eventId: e.eventId,
-        email: e.email ?? null,
-        value: e.valor ?? null,
-        currency: "CLP",
-        datos: e.datos ?? null,
-        eventSourceUrl: contexto?.url ?? null,
-        clientIp: contexto?.ip ?? null,
-        userAgent: contexto?.ua ?? null,
-        fbp: contexto?.fbp ?? null,
-        fbc: contexto?.fbc ?? null,
-        externalId: e.userId ?? null,
-        testEventCode: prueba ? codigoPrueba : null,
-      });
+      const r = await envioMeta.enviar(datosParaMeta(e, contexto, prueba ? codigoPrueba : null));
       await anotar(admin, e.evento, e.eventId, prueba, {
         estado: r.ok ? "enviado" : r.skipped ? "apagado" : "fallo",
         detalle: r.ok ? null : `${r.reason ?? "?"}${r.status ? ` (${r.status})` : ""}`,

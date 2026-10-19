@@ -596,7 +596,8 @@
 .lv-legal { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .lv-legal p { margin: 0; max-width: 72ch; font-size: 11.5px; line-height: 1.5; color: rgba(250, 250, 248, 0.72); }
 .lv-legal nav { font-size: 12px; gap: 16px; }
-.lv-legal nav a { color: rgba(250, 250, 248, 0.86); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(250, 250, 248, 0.4); }
+.lv-legal nav a, .lv-legal nav .lv-cookies { color: rgba(250, 250, 248, 0.86); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(250, 250, 248, 0.4); }
+.lv-legal nav .lv-cookies { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
 .lv-osm {
   margin-top: 8px;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
