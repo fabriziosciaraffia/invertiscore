@@ -91,11 +91,17 @@ const nextConfig = {
   },
 };
 
+// Source maps a Sentry (19-oct-2026): las pilas llegaban minificadas (`js_no_source`) y en Sentry había cero mapas. Las
+// opciones de antes (`disableSourceMapUpload`, `hideSourceMaps`) ya no existen en @sentry/nextjs 10 y no hacían nada: cada
+// build intentaba subir con un SENTRY_AUTH_TOKEN de solo lectura, fallaba en silencio (`silent: true`) y borraba los mapas.
+// Ahora: solo el build de producción de Vercel genera y sube (nunca uno local ni un preview), los mapas se borran después
+// de subir (no quedan públicos) y el log del build dice si subió. Para que suba, el token necesita `project:releases`.
+const buildDeProduccion = process.env.VERCEL_ENV === "production";
+
 export default withSentryConfig(nextConfig, {
-  silent: true,
+  silent: !buildDeProduccion,
   org: "franco-1v",
   project: "javascript-nextjs",
-  disableSourceMapUpload: true,
-  hideSourceMaps: true,
+  sourcemaps: { disable: !buildDeProduccion, deleteSourcemapsAfterUpload: true },
   telemetry: false,
 });
