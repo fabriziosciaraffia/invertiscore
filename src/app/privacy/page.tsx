@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           Política de Privacidad
         </h1>
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-3">
-          Última actualización: marzo 2026
+          Última actualización: octubre 2026
         </p>
 
         <div className="mt-10 space-y-10">
@@ -65,9 +65,27 @@ export default function PrivacyPage() {
           {/* 4 */}
           <section>
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">4. Cookies</h2>
-            <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
-              Usamos cookies técnicas necesarias para el funcionamiento del sitio (autenticación, preferencias) y cookies de analytics para entender cómo se usa el servicio. No usamos cookies de publicidad.
-            </p>
+            {/* Lo mismo que hace el código (19-oct-2026, lib/consentimiento.ts): lo fija el tier CONSENTIMIENTO. */}
+            <div className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3 space-y-3">
+              <p>
+                Usamos cookies propias, necesarias para que el sitio funcione: tu sesión, tus preferencias y la elección que hiciste sobre cookies. Esas no se pueden apagar.
+              </p>
+              <p>Con tu permiso, usamos además:</p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>
+                  <strong className="text-[var(--franco-text)]">Meta</strong> (su pixel y su API de conversiones), para medir qué anuncios traen a quienes se registran o compran. Con tu permiso le mandamos tu correo cifrado, para reconocer el registro o la compra.
+                </li>
+                <li>
+                  <strong className="text-[var(--franco-text)]">PostHog</strong>, la grabación de sesiones, para ver dónde se traba la gente. Lo que escribes en los campos va oculto.
+                </li>
+              </ul>
+              <p>
+                Sin tu permiso, el pixel de Meta no carga y la grabación no corre. PostHog igual cuenta las visitas, pero sin guardar nada en tu navegador. Y de un registro o una compra, a Meta solo le llegan el evento, tu navegador y tu dirección IP, nunca tu correo.
+              </p>
+              <p>
+                Tu elección dura un año y la puedes cambiar cuando quieras desde «Cookies», al pie de la página.
+              </p>
+            </div>
           </section>
 
           {/* 5 */}

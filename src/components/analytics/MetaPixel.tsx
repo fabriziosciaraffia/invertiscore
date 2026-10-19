@@ -21,7 +21,7 @@
  */
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, pixelPermitido, vaciarColaMeta } from "@/lib/meta/pixel";
+import { borrarCookiesMeta, esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, pixelPermitido, vaciarColaMeta } from "@/lib/meta/pixel";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
 import { COOKIE_FBC, VIDA_FBC_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
@@ -103,6 +103,8 @@ export function MetaPixel() {
     if (!permiso) {
       // Revocó con el pixel ya cargado en esta página: Meta deja de recibir.
       if (typeof w0.fbq === "function") w0.fbq("consent", "revoke");
+      // Y lo que el pixel ya dejó en este navegador se borra (con «no» explícito; sin elección no hay nada suyo).
+      if (leerConsentimiento() === "no") borrarCookiesMeta();
       setListo(false);
       return;
     }

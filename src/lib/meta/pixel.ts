@@ -17,6 +17,7 @@
  * navegador el mismo id (espejo.ts). Lo prueba el tier MEDICION-META.
  */
 import { conPermiso, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
+import { COOKIE_FBC, dominioDeCookie } from "@/lib/meta/cookies";
 
 type Fbq = ((comando: string, evento: string, datos?: Record<string, unknown>, opciones?: { eventID?: string }) => void) & {
   callMethod?: unknown;
@@ -115,6 +116,23 @@ export function colaMeta(): EventoEnCola[] {
  */
 export function pixelPermitido(c: Consentimiento | null, esPrueba: boolean): boolean {
   return conPermiso(c) && !esPrueba;
+}
+
+/**
+ * Al revocar: las cookies que el pixel ya dejó (`_fbp`) y la del clic del anuncio (`_fbc`) se borran, en el host y en
+ * el dominio del sitio (las pone el pixel o el middleware con `.refranco.ai`). Lo mismo que PostHog con lo suyo.
+ */
+export function borrarCookiesMeta(): void {
+  if (typeof document === "undefined") return;
+  try {
+    const dominio = dominioDeCookie(window.location.host);
+    for (const nombre of ["_fbp", COOKIE_FBC]) {
+      document.cookie = `${nombre}=; Max-Age=0; Path=/`;
+      if (dominio) document.cookie = `${nombre}=; Max-Age=0; Path=/; Domain=${dominio}`;
+    }
+  } catch {
+    /* sin acceso a las cookies, nada que borrar */
+  }
 }
 
 /** Encola un evento. Devuelve `false` si no entra: sin consentimiento, cuenta de prueba, sin navegador o id ya visto. */
