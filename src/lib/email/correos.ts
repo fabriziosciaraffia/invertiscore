@@ -214,16 +214,22 @@ export function correoResumenCrons(p: { fecha: string; items: Array<{ cron: stri
 // Copy fijado por Fabrizio. Sale al tocar «Quiero verlo», después de chequear que el aviso siga
 // publicado (src/lib/guia/quiero-verlo.ts). Sin titular: el saludo abre. Sin ofrecer ayuda con la
 // visita ni con la negociación.
+/** El asunto del correo del aviso; también lo dice la pantalla cuando se vuelve a tocar «Quiero verlo» (19-oct-2026). */
+export function asuntoAvisoPedido(comuna: string): string {
+  return `El depto de ${comuna} que analizaste`;
+}
+
 export function correoAvisoPedido(p: { nombre: string | null; comuna: string; url: string; veredicto: string | null; flujo: number | null }): Correo {
+  const asunto = asuntoAvisoPedido(p.comuna);
   const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
   const saludo = primero ? `Hola, ${escaparHtml(primero)}:` : "Hola:";
   const v = p.veredicto ? etiquetaVeredicto(p.veredicto, "frase") : null;
   const flujo = p.flujo != null ? `${p.flujo < 0 ? "−" : "+"}${clp(Math.abs(p.flujo))} al mes` : null;
   const analisis = v ? `Franco lo analizó con tu pie y tu plazo: ${[v, flujo].filter(Boolean).join(", ")}.` : null;
   return {
-    subject: `El depto de ${p.comuna} que analizaste`,
+    subject: asunto,
     html: plantillaClara({
-      titulo: `El depto de ${p.comuna} que analizaste`,
+      titulo: asunto,
       preencabezado: "Acá está el aviso del depto que pediste.",
       parrafos: [saludo, "Acá está el aviso del depto que pediste."],
       boton: { texto: "Ver el aviso", url: escaparHtml(p.url) },

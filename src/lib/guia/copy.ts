@@ -68,6 +68,10 @@ export const INFORME_DE_AVISO = {
   bajada: "Franco te manda el aviso al correo para que lo veas.",
   enviando: "Mandando el aviso…",
   listo: (correo: string | null) => (correo ? `Listo: te lo mandamos a ${correo}` : "Listo: te lo mandamos a tu correo"),
+  /** El toque repetido (19-oct-2026): el aviso había salido antes y no se vuelve a mandar. `cuando`: «hoy», «ayer» o
+   *  «el 17 de octubre»; `asunto`, el del correo, para que lo encuentre. */
+  ya: (correo: string | null, cuando: string | null, asunto: string | null) =>
+    `Ya te lo mandamos${cuando ? ` ${cuando}` : ""} a ${correo ?? "tu correo"}${asunto ? `, con el asunto «${asunto}»` : ""}.`,
   despublicado: "Este aviso ya no está publicado.",
   error: "No pudimos mandarlo.",
   reintentar: "Reintentar",

@@ -3,6 +3,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { createSupabaseServer } from "@/lib/api-helpers/analisis-pipeline";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { sendAvisoPedidoEmail } from "@/lib/email";
+import { asuntoAvisoPedido } from "@/lib/email/correos";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { claveEdificio } from "@/lib/guia/ficha-anio";
@@ -19,6 +20,8 @@ import type { EventoEspejo } from "@/lib/meta/espejo";
 // por informe) y le manda a la persona el aviso a su correo, después de chequear que siga publicado
 // (quiero-verlo.ts). Un aviso despublicado responde 410 y no manda nada. Nada sale a hola@.
 // La respuesta buena trae el correo al que salió (17-oct-2026): el bloque dice «Listo: te lo mandamos a [correo]».
+// Si ya había salido (`ya: true`), trae además cuándo y con qué asunto (19-oct-2026): el bloque dice «Ya te lo mandamos
+// el [día] a [correo], con el asunto «…».», no «Listo»: ese toque no manda nada.
 // «QuieroVerlo» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por informe, desde
 // el servidor y con el espejo para el pixel en la cookie de la respuesta.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,11 +66,14 @@ export async function POST(request: Request) {
     const f = sp?.[0];
     const comuna = String(f?.comuna ?? input.comuna ?? "");
     const fila = { analysis_id: analysisId };
+    // Cuándo salió, si ya había salido: el toque repetido no manda nada y la pantalla lo dice con la fecha (19-oct-2026).
+    let enviadoAt: string | null = null;
 
     const r = await mandarAvisoUnaVez({
       async yaEnviado() {
         const { data } = await admin.from("interes_avisos").select("correo_enviado_at").match(fila).maybeSingle();
-        return !!data?.correo_enviado_at;
+        enviadoAt = (data?.correo_enviado_at as string | null | undefined) ?? null;
+        return !!enviadoAt;
       },
       async chequear() {
         if (!f?.url || f.lat == null || f.lng == null) return "sin-chequeo";
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
     if (r === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
     if (r === "sin-chequeo") return salir(NextResponse.json({ error: "sin-chequeo" }, { status: 503 }));
     if (r === "fallo-envio") return salir(NextResponse.json({ error: "correo" }, { status: 502 }));
-    return salir(NextResponse.json({ ok: true, ya: r === "ya-enviado", correo: user.email ?? null }));
+    return salir(NextResponse.json({ ok: true, ya: r === "ya-enviado", correo: user.email ?? null, ...(r === "ya-enviado" ? { enviadoAt, asunto: asuntoAvisoPedido(comuna) } : {}) }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "interes", userId: user.id, extra: { analysisId } });
     return salir(NextResponse.json({ error: "interno" }, { status: 500 }));

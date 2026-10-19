@@ -9,13 +9,14 @@
 // EN BANNER (17-oct-2026, decisión de Fabrizio: es lo que la persona pagó y pasaba desapercibido): el material del banner
 // del informe, texto blanco, un botón. Al tocar, el botón gira con «Mandando el aviso…»; después el bloque dice «Listo: te
 // lo mandamos a [correo]» con el visto; si falla, «No pudimos mandarlo.» y «Reintentar». Sin recargar la página. Los
-// estados, en quiero-verlo-estado.ts.
+// estados, en quiero-verlo-estado.ts. Si el aviso ya había salido (otro día, tras recargar), «Ya te lo mandamos el [día]
+// a [correo], con el asunto «…».» (19-oct-2026): ese toque no manda nada y no puede decir «Listo».
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { INFORME_DE_AVISO } from "@/lib/guia/copy";
-import { dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, type EstadoQuieroVerlo } from "@/lib/guia/quiero-verlo-estado";
+import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, type EstadoQuieroVerlo } from "@/lib/guia/quiero-verlo-estado";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
@@ -46,6 +47,8 @@ export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, dem
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">
           {estado.tipo === "listo" ? (
             <p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓</span>{INFORME_DE_AVISO.listo(estado.correo)}</p>
+          ) : estado.tipo === "ya" ? (
+            <p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓</span>{INFORME_DE_AVISO.ya(estado.correo, cuandoSeEnvio(estado.enviadoAt), estado.asunto)}</p>
           ) : estado.tipo === "despublicado" ? (
             <p className="qv-t" role="status">{INFORME_DE_AVISO.despublicado}</p>
           ) : (
