@@ -1,159 +1,94 @@
-"use client";
-
-import { useState, useEffect, useRef } from "react";
-import { usePostHog } from "@/lib/posthog-react";
-import Link from "next/link";
+import "./planes.css";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
-import PricingPlans from "@/components/landing/PricingPlans";
-import SavingsCalculator from "@/components/landing/SavingsCalculator";
-import { getFAQItemsByIds } from "@/lib/faq-data";
-import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { createClient } from "@/lib/supabase/server";
+import { rutaTres } from "@/lib/tres-analisis";
+import { PLANES_COPY, RUTA_PLAN, RUTA_SUELTO_PLANES } from "@/lib/planes";
+import { VistaPlanes } from "./vista-planes";
 
-// ─── FadeIn ─────────────────────────────────────────
-function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.15 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return (
-    <div ref={ref} className={className} style={{
-      opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(24px)",
-      transition: `opacity 0.6s ease-out ${delay}ms, transform 0.6s ease-out ${delay}ms`,
-    }}>
-      {children}
-    </div>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// /pricing (19-oct-2026, decisión de Fabrizio): tres productos a la vista —gratis, pack y plan—, una columna cada uno y
+// un botón cada uno. El pack va destacado con el material del banner y lleva debajo el suelto, «o 1 por $9.990», como
+// precio de referencia. El plan de 50, el ilimitado y los anuales ya no se muestran (planes.ts › VENTA_RETIRADA).
+// Con sesión, el botón de lo que la persona ya tiene no se lo vuelve a vender.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ─── FAQ (Phase 2.38 · lista simple, body siempre visible) ───
-// Teaser: 4 ítems desde la fuente única (@/lib/faq-data), mismo orden.
-const FAQ_ITEMS = getFAQItemsByIds(["caducan", "cambiar-plan", "cancelar", "factura"]);
+export const dynamic = "force-dynamic";
 
-// ─── Page ───────────────────────────────────────────
-export default function PricingPage() {
-  const posthog = usePostHog();
-  // Ya no se lee la sesion: el destino del CTA es el wizard con y sin ella.
-  useEffect(() => {
-    posthog?.capture("pricing_viewed");
-  }, []);
+export default async function PricingPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: cuenta } = user
+    ? await supabase.from("user_credits").select("subscription_status, active_plan, is_unlimited").eq("user_id", user.id).maybeSingle()
+    : { data: null };
+  // Un plan vigente (el Franco, o uno de los que ya no se venden): el botón del plan lleva a la cuenta.
+  const conPlan = !!cuenta && (cuenta.is_unlimited === true || (cuenta.subscription_status === "active" && !!cuenta.active_plan));
+  const C = PLANES_COPY;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Nav */}
-      <HeaderFranco activo="planes" />
+      <VistaPlanes />
+      <HeaderFranco activo="planes" sesion={user ? { email: user.email ?? "" } : null} />
+      <main className="pl mx-auto max-w-[1100px] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-planes="pagina">
+        <h1 className="pl-titulo">{C.titulo}</h1>
+        <p className="pl-bajada">{C.bajada}</p>
 
-      {/* Hero */}
-      <section className="px-6 pt-16 pb-10 md:pt-20">
-        <div className="mx-auto max-w-[900px] text-center">
-          <FadeIn>
-            <p className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--signal-red)]">
-              Precios
-            </p>
-            <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight text-[var(--franco-text)] md:text-[40px]">
-              Mientras más uses, más ahorras.
-            </h1>
-            <p className="mx-auto mt-4 max-w-[560px] font-body text-base leading-relaxed text-[var(--franco-text-secondary)] md:text-lg">
-              Mismo análisis, mismo veredicto. Lo único que cambia es cuánto pagas por cada uno.
-            </p>
-          </FadeIn>
+        <div className="pl-grilla">
+          {/* Gratis */}
+          <section className="pl-col" data-planes="gratis">
+            <h2 className="pl-nombre">{C.gratis.nombre}</h2>
+            <p className="pl-precio"><span className="pl-monto">{C.gratis.precio}</span></p>
+            <p className="pl-detalle">{C.gratis.detalle}</p>
+            <ul className="pl-incluye">
+              {C.gratis.incluye.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+            <div className="pl-accion">
+              {user ? (
+                <EnlaceCarga href="/dashboard" className="pl-boton pl-boton-borde" data-planes="boton-gratis">Ir a mis análisis</EnlaceCarga>
+              ) : (
+                <EnlaceCarga href={C.gratis.ruta} className="pl-boton pl-boton-borde" data-planes="boton-gratis">{C.gratis.boton}</EnlaceCarga>
+              )}
+            </div>
+          </section>
+
+          {/* El pack, destacado */}
+          <section className="pl-col pl-pack" data-planes="pack">
+            <h2 className="pl-nombre">{C.pack.nombre}</h2>
+            <p className="pl-precio"><span className="pl-monto">{C.pack.precio}</span></p>
+            <p className="pl-detalle">{C.pack.detalle}</p>
+            <ul className="pl-incluye">
+              {C.pack.incluye.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+            <div className="pl-accion">
+              <EnlaceCarga href={rutaTres("planes", { volver: "/dashboard" })} className="pl-boton" data-planes="boton-pack">{C.pack.boton}</EnlaceCarga>
+              <EnlaceCarga href={RUTA_SUELTO_PLANES} className="pl-suelto" data-planes="suelto">{C.pack.suelto}</EnlaceCarga>
+            </div>
+          </section>
+
+          {/* El Plan Franco */}
+          <section className="pl-col" data-planes="plan">
+            <h2 className="pl-nombre">{C.plan.nombre}</h2>
+            <p className="pl-precio"><span className="pl-monto">{C.plan.precio}</span><span className="pl-unidad">{C.plan.unidad}</span></p>
+            <p className="pl-detalle">{C.plan.detalle}</p>
+            <ul className="pl-incluye">
+              {C.plan.incluye.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+            <div className="pl-accion">
+              {conPlan ? (
+                <EnlaceCarga href="/cuenta" className="pl-estado" data-planes="boton-plan">{C.planActivo}</EnlaceCarga>
+              ) : (
+                <EnlaceCarga href={RUTA_PLAN} className="pl-boton pl-boton-tinta" data-planes="boton-plan">{C.plan.boton}</EnlaceCarga>
+              )}
+            </div>
+          </section>
         </div>
-      </section>
 
-      {/* Planes (4 cards + toggle · compartido con landing · bundle fuerte) */}
-      <section className="px-4 pb-4">
-        <div className="mx-auto max-w-[1180px]">
-          <FadeIn>
-            <PricingPlans emphasis="strong" />
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* Calculadora de ahorro */}
-      <section className="px-6 pt-16 pb-20">
-        <FadeIn>
-          <SavingsCalculator />
-        </FadeIn>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-6 pb-20" style={{ borderTop: "0.5px solid var(--franco-border)" }}>
-        <div className="mx-auto max-w-[720px] pt-16">
-          <FadeIn>
-            <h2 className="mb-10 text-center font-heading text-2xl font-bold text-[var(--franco-text)] md:text-[28px]">
-              Preguntas frecuentes
-            </h2>
-          </FadeIn>
-          <FadeIn delay={100}>
-            <div className="flex flex-col gap-4">
-              {FAQ_ITEMS.map((item) => (
-                <div key={item.q}>
-                  <p className="font-body text-[14px] font-semibold text-[var(--franco-text)]">
-                    {item.q}
-                  </p>
-                  <p className="mt-1 font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
-                    {item.a}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-          <div className="mt-8 text-center">
-            <Link href="/faq" className="font-body text-xs text-[var(--signal-red)] underline-offset-4 transition-colors hover:underline">
-              Ver todas las preguntas frecuentes →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Nota cobertura geográfica · al pie */}
-      <p
-        className="px-6 pb-16 text-center font-mono uppercase text-[var(--franco-text-muted)]"
-        style={{ fontSize: 10, letterSpacing: "0.08em" }}
-      >
-        Análisis disponible para Gran Santiago. Más zonas próximamente.
-      </p>
-
-      {/* Footer */}
-      <AppFooter
-        variant="rich"
-        linksSlot={
-          <div className="flex gap-9 flex-wrap">
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Producto</p>
-              <div className="flex flex-col gap-1.5">
-                <CtaAnalizar origen="pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Análisis gratis</CtaAnalizar>
-                <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Planes</Link>
-                <Link href="/dashboard" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Dashboard</Link>
-              </div>
-            </div>
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Empresa</p>
-              <div className="flex flex-col gap-1.5">
-                <Link href="/about" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Sobre Franco</Link>
-                <Link href="/aprende" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Aprende</Link>
-                <Link href="/contact" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Contacto</Link>
-              </div>
-            </div>
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Legal</p>
-              <div className="flex flex-col gap-1.5">
-                <Link href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Términos</Link>
-                <Link href="/privacy" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Privacidad</Link>
-              </div>
-            </div>
-          </div>
-        }
-      />
+        <p className="pl-nota">
+          Por ahora, deptos del Gran Santiago. ¿Dudas? <EnlaceCarga href="/faq">Preguntas frecuentes</EnlaceCarga>.
+        </p>
+      </main>
+      <AppFooter variant="informe" />
     </div>
   );
 }

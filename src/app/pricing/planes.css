@@ -1,0 +1,44 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   LA PÁGINA DE PLANES (19-oct-2026, decisión de Fabrizio): una columna por producto —gratis, pack y plan—, el pack
+   destacado con el material del banner del informe y de /deptos (degradado, grano, texto y botón en papel), un botón
+   por producto, el suelto como línea bajo el pack. Inter en todo; serif solo en el título.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.pl { font-family: var(--font-ui), "Inter", "Helvetica Neue", Arial, sans-serif; color: var(--franco-text); }
+.pl-titulo { margin: 0; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 30px; line-height: 1.12; letter-spacing: -0.015em; }
+@media (min-width: 768px) { .pl-titulo { font-size: 40px; } }
+.pl-bajada { margin: 10px 0 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: var(--franco-text-secondary); }
+
+.pl-grilla { margin-top: 28px; display: grid; gap: 14px; }
+@media (min-width: 768px) { .pl-grilla { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; } }
+
+.pl-col { display: flex; flex-direction: column; border-radius: 16px; padding: 22px 20px 20px; border: 1px solid var(--franco-border); background: var(--franco-card); }
+@media (min-width: 768px) { .pl-col { padding: 26px 24px 24px; } }
+.pl-nombre { margin: 0; font-size: 15px; font-weight: 600; }
+.pl-precio { margin: 10px 0 0; display: flex; align-items: baseline; gap: 6px; }
+.pl-monto { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.pl-unidad { font-size: 14px; color: var(--franco-text-secondary); }
+.pl-detalle { margin: 8px 0 0; font-size: 15px; font-weight: 500; }
+.pl-incluye { list-style: none; margin: 16px 0 0; padding: 16px 0 0; border-top: 1px solid var(--franco-border); display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary); }
+.pl-incluye li { display: flex; gap: 8px; }
+.pl-incluye li::before { content: "·"; font-weight: 700; color: var(--franco-text); }
+.pl-accion { margin-top: auto; padding-top: 20px; }
+.pl-boton { display: flex; align-items: center; justify-content: center; width: 100%; height: 46px; border-radius: 99px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.pl-boton-borde { border: 1.5px solid var(--franco-text); color: var(--franco-text); }
+.pl-boton-tinta { background: var(--franco-text); color: var(--franco-bg); }
+.pl-boton:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 3px; }
+.pl-estado { display: flex; align-items: center; justify-content: center; height: 46px; font-size: 14px; color: var(--franco-text-secondary); text-decoration: underline; text-underline-offset: 4px; }
+
+/* EL PACK, DESTACADO: el material del banner, fijo en claro y oscuro. */
+.pl-pack { position: relative; overflow: hidden; border: 0; color: #FAFAF8; background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
+@media (min-width: 768px) { .pl-pack { background-image: url("/landing/hero-d1x.webp"); } }
+.pl-pack::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
+.pl-pack > * { position: relative; z-index: 1; }
+.pl-pack .pl-unidad, .pl-pack .pl-incluye { color: rgba(250, 250, 248, 0.82); }
+.pl-pack .pl-incluye { border-top-color: rgba(250, 250, 248, 0.28); }
+.pl-pack .pl-incluye li::before { color: #FAFAF8; }
+.pl-pack .pl-boton { background: #FAFAF8; color: #0F0F0F; }
+.pl-pack .pl-boton:focus-visible { outline-color: #FAFAF8; }
+.pl-suelto { display: block; margin-top: 10px; text-align: center; font-size: 14px; color: rgba(250, 250, 248, 0.86); text-decoration: underline; text-underline-offset: 4px; }
+
+.pl-nota { margin: 22px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
+.pl-nota a { color: var(--franco-text); text-decoration: underline; text-underline-offset: 4px; }
