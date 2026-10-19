@@ -1,30 +1,67 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// El aviso de cookies (19-oct-2026; reglas en lib/consentimiento.ts). Una barra plana abajo, con el texto y «Rechazar» y
-// «Aceptar» AL MISMO NIVEL: la misma clase, el mismo tamaño, sin uno destacado (en PC, el mismo ancho fijo: con
-// el ancho del texto «Rechazar» quedaba 10 px más ancho, medido en el preview). Sale mientras no haya elección, y vuelve
-// cuando el pie pide «Cookies». Se dibuja recién en el navegador (lee la cookie) y su texto es más chico que el titular
-// de la landing, así que no le compite el LCP.
+// El aviso de cookies (19-oct-2026; reglas en lib/consentimiento.ts). Una barra plana abajo, de UNA línea de texto:
+// «Usamos cookies para medir qué funciona y mejorar Franco · Privacidad», con «Aceptar» lleno y «Rechazar» de borde,
+// los dos del mismo tamaño y a un clic. En PC, todo en una fila. En el teléfono, la frase en la primera línea (con un
+// tamaño que la hace caber entera: 27,9 em medidos en Inter, entre 11 y 13 px) y «Privacidad» con los botones en la
+// segunda; no más, para que no tape «Ver un análisis real» del hero.
+// Sale mientras no haya elección y vuelve cuando el pie pide «Cookies». Cada elección es un `cookies_eleccion` en
+// PostHog (acepta, rechaza, ignora). Se dibuja recién en el navegador (lee la cookie) y su texto es más chico que el
+// titular de la landing, así que no le compite el LCP.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState } from "react";
-import { COOKIES_COPY, EVENTO_ABRIR_AVISO, guardarConsentimiento, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
+import { useEffect, useRef, useState } from "react";
+import {
+  COOKIES_COPY,
+  EVENTO_ABRIR_AVISO,
+  EVENTO_ELECCION_COOKIES,
+  eleccionDe,
+  guardarConsentimiento,
+  leerConsentimiento,
+  type Consentimiento,
+} from "@/lib/consentimiento";
+import { posthogCliente } from "@/lib/posthog-cliente";
 
-const BOTON =
-  "h-10 flex-1 rounded-full border border-[var(--franco-border)] bg-transparent px-5 text-[14px] font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-text)] sm:w-28 sm:flex-none";
+/** El mismo tamaño para los dos: alto, ancho fijo, borde, letra. */
+const BOTON = "h-10 w-28 shrink-0 rounded-full border text-[14px] font-semibold transition-opacity";
+const LLENO = "border-[var(--franco-text)] bg-[var(--franco-text)] text-[var(--franco-bg)] hover:opacity-85";
+const BORDE = "border-[var(--franco-text)] bg-transparent text-[var(--franco-text)] hover:opacity-70";
+const ENLACE = "text-[var(--franco-text)] underline underline-offset-2";
+/** La frase entra entera en una línea: el ancho útil (pantalla menos los 16 px de cada lado) sobre 28,2 em. */
+const TAMANO_FRASE = "clamp(11px, calc((100vw - 32px) / 28.2), 13px)";
 
 export function AvisoCookies() {
   const [visible, setVisible] = useState(false);
+  /** «aviso» cuando sale sin elección (lo que mide la tasa); «pie» cuando alguien la reabre para cambiarla. */
+  const origen = useRef<"aviso" | "pie">("aviso");
 
   useEffect(() => {
     if (leerConsentimiento() === null) setVisible(true);
-    const abrir = () => setVisible(true);
+    const abrir = () => {
+      origen.current = leerConsentimiento() === null ? "aviso" : "pie";
+      setVisible(true);
+    };
     window.addEventListener(EVENTO_ABRIR_AVISO, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR_AVISO, abrir);
   }, []);
 
+  // «ignora»: la persona se va de la página con el aviso a la vista y sin elegir. Una vez por página, y con
+  // `send_instantly` (fetch keepalive): un capture a secas en `pagehide` se pierde, porque el SDK ya vació su cola
+  // (medido el 03-sep-2026, memoria «posthog-capture-en-pagehide-se-pierde»).
+  useEffect(() => {
+    if (!visible) return;
+    const alIrse = () => {
+      if (leerConsentimiento() !== null) return;
+      window.removeEventListener("pagehide", alIrse);
+      posthogCliente.capture(EVENTO_ELECCION_COOKIES, { eleccion: "ignora", origen: "aviso" }, { send_instantly: true });
+    };
+    window.addEventListener("pagehide", alIrse);
+    return () => window.removeEventListener("pagehide", alIrse);
+  }, [visible]);
+
   if (!visible) return null;
   const elegir = (c: Consentimiento) => {
+    posthogCliente.capture(EVENTO_ELECCION_COOKIES, { eleccion: eleccionDe(c), origen: origen.current });
     guardarConsentimiento(c);
     setVisible(false);
   };
@@ -36,14 +73,22 @@ export function AvisoCookies() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--franco-border)] bg-[var(--franco-card)]"
       style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}
     >
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-6 sm:px-6">
-        <p className="m-0 flex-1 text-[13px] leading-[1.45] text-[var(--franco-text-secondary)]">
-          {COOKIES_COPY.texto}{" "}
-          <a href="/privacy" className="text-[var(--franco-text)] underline underline-offset-2">{COOKIES_COPY.privacidad}</a>
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-6 sm:px-6 sm:py-3">
+        <p
+          data-cookies="texto"
+          className="m-0 min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap leading-[1.4] text-[var(--franco-text-secondary)]"
+          style={{ fontSize: TAMANO_FRASE }}
+        >
+          {COOKIES_COPY.texto}
+          <span className="hidden sm:inline">
+            {` ${COOKIES_COPY.separador} `}
+            <a href="/privacy" className={ENLACE}>{COOKIES_COPY.privacidad}</a>
+          </span>
         </p>
-        <div className="flex gap-2">
-          <button type="button" className={BOTON} onClick={() => elegir("no")} data-cookies="rechazar">{COOKIES_COPY.rechazar}</button>
-          <button type="button" className={BOTON} onClick={() => elegir("si")} data-cookies="aceptar">{COOKIES_COPY.aceptar}</button>
+        <div className="flex items-center gap-2">
+          <a href="/privacy" className={`${ENLACE} mr-auto text-[13px] sm:hidden`}>{COOKIES_COPY.privacidad}</a>
+          <button type="button" className={`${BOTON} ${BORDE}`} onClick={() => elegir("no")} data-cookies="rechazar">{COOKIES_COPY.rechazar}</button>
+          <button type="button" className={`${BOTON} ${LLENO}`} onClick={() => elegir("si")} data-cookies="aceptar">{COOKIES_COPY.aceptar}</button>
         </div>
       </div>
     </div>

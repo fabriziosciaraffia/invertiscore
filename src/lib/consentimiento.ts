@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EL CONSENTIMIENTO DE COOKIES (19-oct-2026, decisión de Fabrizio; pensado para la ley 21.719, que rige en diciembre).
 //
-// Un aviso honesto y breve, con «Aceptar» y «Rechazar» al mismo nivel. La elección vive en una cookie propia de un año
+// Un aviso de una línea, con «Aceptar» (lleno) y «Rechazar» (de borde) del mismo tamaño y a un clic (ajuste del
+// 19-oct-2026). La elección vive en una cookie propia de un año
 // (`franco_consentimiento`: «si» o «no») y se cambia desde el pie («Cookies»). Lo que depende de ella:
 //   · el pixel de Meta (y su `_fbc`, `_fbp` y el espejo de eventos) carga SOLO con «si» (MetaPixel.tsx, middleware);
 //   · PostHog mide siempre, pero sin «si» lo hace SIN cookies ni almacenamiento (`persistence: "memory"`) y sin la
@@ -22,13 +23,30 @@ export const EVENTO_CONSENTIMIENTO = "franco:consentimiento";
 /** El pie lo dispara para volver a mostrar el aviso. */
 export const EVENTO_ABRIR_AVISO = "franco:cookies-abrir";
 
+/**
+ * El aviso en UNA línea (19-oct-2026, decisión de Fabrizio): «Usamos cookies para medir qué funciona y mejorar Franco ·
+ * Privacidad», sin nombrar a Meta ni a PostHog (eso lo dice la política). En PC va todo en una línea; en el teléfono la
+ * frase ocupa la primera y «Privacidad» pasa a la fila de los botones (con él, la frase no cabe en 390 px a un tamaño
+ * legible: medido, 33,8 em contra 27,9 sin él).
+ */
 export const COOKIES_COPY = {
-  texto: "Usamos cookies propias para que el sitio funcione. Con tu permiso, también las de Meta y la grabación de sesiones de PostHog, para medir y mejorar.",
+  texto: "Usamos cookies para medir qué funciona y mejorar Franco",
+  separador: "·",
   aceptar: "Aceptar",
   rechazar: "Rechazar",
   privacidad: "Privacidad",
   pie: "Cookies",
 } as const;
+
+/**
+ * La elección, medida en PostHog (19-oct-2026): un `cookies_eleccion` por cada vez que el aviso sale sin elección y se
+ * resuelve — «acepta», «rechaza» o «ignora» (la persona se fue de la página con el aviso a la vista y sin elegir) — con
+ * `origen: "aviso"`; cuando alguien la cambia desde el pie, `origen: "pie"`. La tasa de aceptación del día es
+ * acepta / (acepta + rechaza + ignora) con origen «aviso» (panel «Cookies · consentimiento» en PostHog).
+ */
+export const EVENTO_ELECCION_COOKIES = "cookies_eleccion";
+export type EleccionCookies = "acepta" | "rechaza" | "ignora";
+export const eleccionDe = (c: Consentimiento): EleccionCookies => (c === "si" ? "acepta" : "rechaza");
 
 /** La elección guardada en una cabecera `Cookie` (o en `document.cookie`). `null` = todavía no eligió. */
 export function consentimientoDeCookie(cabecera: string | null | undefined): Consentimiento | null {
