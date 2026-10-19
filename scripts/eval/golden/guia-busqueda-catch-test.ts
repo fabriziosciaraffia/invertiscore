@@ -33,6 +33,8 @@
 //       blanco, un botón; «Este depto conviene con tus números.» solo con COMPRAR; al tocar, el botón gira con
 //       «Mandando el aviso…»; después «Listo: te lo mandamos a [correo]» con el visto (la ruta devuelve el correo), o
 //       «No pudimos mandarlo.» con «Reintentar»; 410 = despublicado; sin recargar la página.
+//  15 · EL TOQUE REPETIDO DICE LA VERDAD (19-oct-2026, el caso de fsm@ en 7b777de6): si el aviso ya había salido, la
+//       pantalla dice «Ya te lo mandamos el [día] a [correo], con el asunto «…».» y no «Listo: te lo mandamos».
 //   6 · SIN ESPERA (30-sep-2026): la guía recalcula con la sonda del motor y la mediana guardada en la fila
 //       evaluada (sin consultas en vivo), se calcula al confirmarse el pago del pack y se guarda por informe.
 //
@@ -53,8 +55,8 @@ import {
 import { pastillaFichas, type LecturasFicha } from "../../../src/lib/admin-fichas";
 import { sinDespublicados } from "../../../src/lib/avisos/depurar";
 import { mandarAvisoUnaVez, type PiezasQuieroVerlo } from "../../../src/lib/guia/quiero-verlo";
-import { dicesQueConviene, estadoTrasRespuesta, sePuedeTocar } from "../../../src/lib/guia/quiero-verlo-estado";
-import { correoAvisoPedido } from "../../../src/lib/email/correos";
+import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar } from "../../../src/lib/guia/quiero-verlo-estado";
+import { asuntoAvisoPedido, correoAvisoPedido } from "../../../src/lib/email/correos";
 import { resumirQuieroVerlo, semanaDe } from "../../../src/lib/admin-quiero-verlo";
 import { analizarAvisoDeGuia, analizarUnaVez, RECLAMO_VIGENTE_MS, type PiezasAnalizar, type Reclamo } from "../../../src/lib/guia/analizar-una-vez";
 import { combinacionesGuia, elegirGuia, TOPE_GUIA, type Combinacion, type Evaluado } from "../../../src/lib/guia/seleccion";
@@ -105,7 +107,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
   // Las frases con dato (funciones) se barren con un ejemplo.
-  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO).map((x) => (typeof x === "function" ? (x as (...a: string[]) => string)("persona@correo.cl", "hoy", "El depto de Ñuñoa que analizaste") : x)), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));
@@ -622,9 +624,44 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     const css = leer("src/components/guia/guia.css");
     if (!/\.qv-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.qv-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css) || !/\.qv-gira \{[^}]*animation: qv-gira/.test(css))
       F("14 · «Quiero verlo» no va en banner (degradado, texto blanco, un botón) o el indicador no gira");
-    // La ruta devuelve el correo al que salió.
-    if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null \}\)\);/.test(sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"))))
+    // La ruta devuelve el correo al que salió. (19-oct-2026: la línea suma la fecha y el asunto del toque repetido; §15.)
+    if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null[ ,]/.test(sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"))))
       F("14 · la ruta no devuelve el correo al que salió el aviso");
+  }
+
+  // ── 15 · el toque repetido dice cuándo salió, no «te lo mandamos» (19-oct-2026) ──────────
+  // El caso: fsm@sysinmobiliaria.cl, informe de renta corta 7b777de6. El aviso salió el 17-oct a las 14:59 UTC (Resend lo
+  // entregó y se abrió). El 19-oct a las 12:54 UTC volvió a tocar «Quiero verlo»: la ruta respondió «ya enviado» sin mandar
+  // nada, y la pantalla dijo «Listo: te lo mandamos a fsm@sysinmobiliaria.cl», como si acabara de salir.
+  {
+    const caso = { ok: true, ya: true, correo: "fsm@sysinmobiliaria.cl", enviadoAt: "2026-10-17T14:59:48.536+00:00", asunto: "El depto de Providencia que analizaste" };
+    const ahora = new Date("2026-10-19T12:54:47Z");
+    try {
+      const e = estadoTrasRespuesta({ status: 200, cuerpo: caso });
+      if (e.tipo !== "ya") F(`15 · el toque repetido queda como «${e.tipo}» (la pantalla dice «Listo: te lo mandamos», y no salió nada)`);
+      else if (e.correo !== caso.correo || e.enviadoAt !== caso.enviadoAt || e.asunto !== caso.asunto) F(`15 · el toque repetido pierde el correo, la fecha o el asunto: ${JSON.stringify(e)}`);
+      if (sePuedeTocar({ tipo: "ya", correo: null, enviadoAt: null, asunto: null })) F("15 · después de «ya te lo mandamos» el botón se puede tocar");
+      // Lo que se lee, palabra por palabra.
+      const dice = INFORME_DE_AVISO.ya(caso.correo, cuandoSeEnvio(caso.enviadoAt, ahora), caso.asunto);
+      if (dice !== "Ya te lo mandamos el 17 de octubre a fsm@sysinmobiliaria.cl, con el asunto «El depto de Providencia que analizaste».") F(`15 · el toque repetido dice «${dice}»`);
+      // La fecha, en la hora de Chile: hoy, ayer o el día.
+      if (cuandoSeEnvio("2026-10-19T12:06:53Z", ahora) !== "hoy" || cuandoSeEnvio("2026-10-18T15:00:00Z", ahora) !== "ayer") F("15 · lo que salió hoy o ayer no se dice «hoy» o «ayer»");
+      if (cuandoSeEnvio("2026-10-18T02:00:00Z", ahora) !== "el 17 de octubre") F("15 · la fecha del envío sale en hora UTC y no en la de Chile (02:00 UTC del 18 es el 17 en Santiago)");
+      if (cuandoSeEnvio(null, ahora) !== null || cuandoSeEnvio("no-es-fecha", ahora) !== null) F("15 · sin fecha válida se inventa un día");
+      // Sin fecha (dos toques a la vez) o sin asunto, la frase se acorta sin inventar.
+      if (INFORME_DE_AVISO.ya("ana@correo.cl", null, null) !== "Ya te lo mandamos a ana@correo.cl." || INFORME_DE_AVISO.ya(null, "hoy", null) !== "Ya te lo mandamos hoy a tu correo.") F("15 · sin fecha o sin asunto la frase inventa o queda rota");
+      // El asunto que dice la pantalla es el del correo, de una sola fuente.
+      if (asuntoAvisoPedido("Providencia") !== caso.asunto || correoAvisoPedido({ nombre: null, comuna: "Providencia", url: "https://x", veredicto: null, flujo: null }).subject !== asuntoAvisoPedido("Providencia")) F("15 · el asunto de la pantalla y el del correo salen de fuentes distintas");
+    } catch (err) {
+      F(`15 · el toque repetido no tiene estado, frase o fecha propios (${(err as Error).message})`);
+    }
+    // La ruta devuelve cuándo salió (la fila que ya tenía correo_enviado_at) y con qué asunto.
+    const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
+    if (!/enviadoAt = \(data\?\.correo_enviado_at as string \| null \| undefined\) \?\? null;\s*return !!enviadoAt;/.test(ruta)) F("15 · la ruta no guarda cuándo salió el correo al ver que ya estaba enviado");
+    if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null, \.\.\.\(r === "ya-enviado" \? \{ enviadoAt, asunto: asuntoAvisoPedido\(comuna\) \} : \{\}\) \}\)\);/.test(ruta)) F("15 · la ruta no devuelve la fecha y el asunto del envío anterior");
+    // La pantalla: el estado «ya» con su frase y el visto; nunca la frase de «listo».
+    const iav = sinComentarios(leer("src/components/guia/InformeDeAviso.tsx"));
+    if (!/estado\.tipo === "ya" \? \(\s*<p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓<\/span>\{INFORME_DE_AVISO\.ya\(estado\.correo, cuandoSeEnvio\(estado\.enviadoAt\), estado\.asunto\)\}<\/p>/.test(iav)) F("15 · la pantalla no muestra «Ya te lo mandamos el [día]…» para el toque repetido");
   }
 
   if (fallas.length) {
@@ -713,5 +750,11 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runGuiaBusquedaTier().then(({ hard }) => process.exit(hard ? 1 : 0));
 }
+// Novena vuelta (19-oct-2026, el toque repetido; scratchpad mutar-qv15.cjs, restauradas byte a byte): el caso de fsm@ en
+// 7b777de6 salió ROJO contra el código de producción (5 fallas de §15, la primera «queda como listo») y 11/11 mutaciones
+// en rojo: M1 el estado ignora `ya` · M2 la fecha en UTC · M3 «ya» se puede tocar · M4 la ruta no guarda la fecha · M5 la
+// ruta no devuelve fecha ni asunto · M6 la pantalla muestra «Listo» · M7 la frase dice «Listo» · M8 la ruta arma su propio
+// asunto · M9 sin fecha dice «null» · M10 «ayer» mal calculado · M11 el asunto del correo por otro lado (lo caza también §10).
+// §14 se aflojó a un prefijo en la línea de respuesta de la ruta: la línea entera la fija §15.
 // Cuarta vuelta (13-oct-2026, el aviso antes de gastar; CORREOS-RECORRIDO §5): 2/2 en rojo. G-a la tarjeta sin la
 // frase del regalo (el saldo entero de la casa) · G-b al entrar con el código se genera de una, sin el aviso.
