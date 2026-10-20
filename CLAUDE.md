@@ -146,6 +146,12 @@ Antes del push final, en el worktree:
    `list_deployments` por `sha` o `get_deployment` → `state: READY`. Si queda en ERROR, los logs
    del build (`list_deployment_events`) antes de tocar nada. Un push sin mirar su deploy no está
    cerrado: el 23-sep-2026 el primer preview rojo ya estaba ahí cuando se pusheó el segundo.
+6. **Después de CADA fast-forward, el golden QUICK se corre sobre MASTER, no solo sobre la rama**
+   (decisión de Fabrizio, 20-oct-2026): un árbol limpio en `origin/master` con su `npm ci` y
+   `node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --quick`. **Si sale rojo, se
+   arregla antes del siguiente goal**, el que lo dejó así o el que lo encuentra: código roto se arregla,
+   gate desactualizado se reescribe con su acta, nunca aflojándolo. El 20-oct-2026 master llegó a 8 fallas
+   duras de tres goals del mismo día (39535f66, 804fca08, 1c10d110) porque cada uno corrió solo su tier.
 
 **Y antes de cerrar, medir el índice de memoria.** Corta en **23,4 KiB**, un KiB antes del límite real (24,4), que a `276 caracteres por goal son casi cuatro goals de aviso:
 
