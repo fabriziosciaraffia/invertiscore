@@ -14,34 +14,39 @@
 
 ## La tabla (HogQL)
 
-El insight «Activación por puerta · 1 h / 1 día / 30 días» del dashboard corre esta consulta (los registrados son los
-`cuenta_atribuida` del rango de fechas del panel; la ventana se mide desde ese evento):
+El insight «Activación por puerta · 1 h / 1 día / 30 días» del dashboard corre esta consulta (la misma base que la tabla
+«Activación por semana · por puerta»: los registrados son los `cuenta_atribuida`, la puerta es la última fijada, sin
+cuentas de prueba, y cada ventana se mide desde el registro):
 
 ```sql
-WITH reg AS (
-  SELECT person_id, min(timestamp) AS t0, argMin(properties.puerta, timestamp) AS puerta
-  FROM events
-  WHERE event = 'cuenta_atribuida' AND {filters}
-  GROUP BY person_id
-),
-vis AS (SELECT person_id, min(timestamp) AS tv FROM events WHERE event = 'primera_seleccion_vista' GROUP BY person_id),
-ana AS (SELECT person_id, min(timestamp) AS ta FROM events WHERE event = 'analisis_creado' GROUP BY person_id)
-SELECT
-  coalesce(reg.puerta, 'D') AS puerta,
-  count() AS registrados,
-  countIf(vis.tv IS NOT NULL AND vis.tv <= reg.t0 + INTERVAL 1 HOUR) AS vieron_seleccion_1h,
-  countIf(ana.ta IS NOT NULL AND ana.ta <= reg.t0 + INTERVAL 1 HOUR) AS analizaron_1h,
-  countIf(ana.ta IS NOT NULL AND ana.ta <= reg.t0 + INTERVAL 1 DAY) AS analizaron_1d,
-  countIf(ana.ta IS NOT NULL AND ana.ta <= reg.t0 + INTERVAL 30 DAY) AS analizaron_30d,
-  round(100 * analizaron_1h / registrados, 1) AS pct_1h,
-  round(100 * analizaron_1d / registrados, 1) AS pct_1d,
-  round(100 * analizaron_30d / registrados, 1) AS pct_30d
-FROM reg
-LEFT JOIN vis ON vis.person_id = reg.person_id
-LEFT JOIN ana ON ana.person_id = reg.person_id
-GROUP BY puerta
-ORDER BY registrados DESC
+with base as (
+  select person_id,
+    minIf(timestamp, event = 'cuenta_atribuida') as t_reg,
+    minIf(timestamp, event = 'primera_seleccion_vista') as t_sel,
+    groupArrayIf(timestamp, event = 'analisis_creado') as analisis,
+    argMaxIf(toString(properties.puerta), timestamp, event in ('cuenta_atribuida', '$set') and notEmpty(coalesce(toString(properties.puerta), ''))) as puerta,
+    argMaxIf(coalesce(toString(properties.puerta_detalle), ''), timestamp, event in ('cuenta_atribuida', '$set') and notEmpty(coalesce(toString(properties.puerta), ''))) as detalle
+  from events
+  where event in ('cuenta_atribuida', '$set', 'analisis_creado', 'primera_seleccion_vista')
+    and timestamp >= now() - interval 30 week
+    and coalesce(person.properties.test_account, false) = false
+  group by person_id
+  having t_reg > toDateTime('2000-01-02') and t_reg >= now() - interval 26 week
+)
+select toStartOfWeek(t_reg, 1) as semana,
+  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', 'sin puerta') as puerta,
+  count() as registrados,
+  countIf(t_sel > toDateTime('2000-01-02') and t_sel < t_reg + interval 1 hour) as vieron_seleccion_1h,
+  countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 1 hour, analisis)) as analizaron_1h,
+  countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 1 day, analisis)) as analizaron_1d,
+  countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 30 day, analisis)) as analizaron_30d,
+  round(analizaron_1h / registrados, 3) as activacion_1h,
+  round(analizaron_1d / registrados, 3) as activacion_1d,
+  round(analizaron_30d / registrados, 3) as activacion_30d
+from base
+group by semana, puerta
+order by semana desc, puerta
 ```
 
-Las cuentas de prueba quedan fuera por el filtro de cuentas internas del proyecto (el mismo del resto del panel). Una
-cuenta registrada hace menos de 30 días todavía puede entrar en la columna de 30 días: la fila se lee como «hasta hoy».
+Una cuenta registrada hace menos de 30 días todavía puede entrar en la columna de 30 días: la fila se lee como «hasta
+hoy». `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteriores lo tienen en cero.
