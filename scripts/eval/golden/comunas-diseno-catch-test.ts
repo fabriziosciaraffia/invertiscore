@@ -47,7 +47,7 @@ const COMPONENTES = [
 /** Lo que el diseño viejo dejaba en el marcado y el plano ya no usa. */
 const VIEJO = /\bfont-mono\b|\bfont-body\b|\bfont-heading\b|\buppercase\b|\bshadow(-sm)?\b|\brounded-(xl|2xl|lg|r-2xl)\b|franco-positive|franco-warning|franco-v-adjust|#C8323C|monospace|text-\[var\(--franco|bg-\[#C8323C\]|rentColor/;
 
-export function runComunasDisenoTier(): { hard: number } {
+export async function runComunasDisenoTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER COMUNAS-DISENO (el índice, cada comuna y cobertura: diseño plano, enlaces, SEO y datos · 0 tokens) ───");
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
@@ -125,6 +125,28 @@ export function runComunasDisenoTier(): { hard: number } {
   if (sinDeptos.length) F(`2 · /deptos no elige: ${sinDeptos.join(", ")}`);
   const dp = sinComentarios(leer("src/app/deptos/page.tsx"));
   if (!/const portada = await portadaDeptos\(comunaDeLaUrl\(searchParams\?\.comuna\)\);/.test(dp)) F("2 · /deptos no arranca con la comuna de la dirección");
+  // Y con el rango de esa comuna (decisión de Fabrizio): el de más 2D publicados. Con el de Santiago, «Ver los deptos de
+  // Renca» (o de Vitacura, o de Quilicura) llegaba a cero publicados.
+  const sv = cargar<{ rangoConMasPublicados?: (admin: unknown, comuna: string, dorms: number[], ahora?: Date) => Promise<string> }>("src/lib/deptos/servidor");
+  if (!sv?.rangoConMasPublicados) F("2 · /deptos no elige el rango de la comuna (rangoConMasPublicados)");
+  else {
+    const llamadas: Array<{ comunas?: string[]; dorms?: number[] }> = [];
+    const rpc = (porMin: Record<number, number>) => ({
+      rpc: async (_n: string, a: { comunas: string[]; dorms: number[]; uf_min: number }) => {
+        llamadas.push(a);
+        return { data: [{ comuna: a.comunas[0], total: porMin[a.uf_min] ?? 0, comprar_20: 0, comprar_30: 0 }], error: null };
+      },
+    });
+    const barata = await sv.rangoConMasPublicados(rpc({ 0: 15, 3000: 0, 4000: 0, 5500: 0 }), "Renca", [2]);
+    const cara = await sv.rangoConMasPublicados(rpc({ 0: 0, 3000: 0, 4000: 3, 5500: 237 }), "Vitacura", [2]);
+    const vacia = await sv.rangoConMasPublicados(rpc({}), "Renca", [2]);
+    const empate = await sv.rangoConMasPublicados(rpc({ 0: 5, 3000: 5, 4000: 1 }), "Macul", [2]);
+    if (barata !== "hasta-3000" || cara !== "5500-mas") F(`2 · /deptos no arranca en el rango con más publicados de la comuna (${barata}, ${cara})`);
+    if (vacia !== "3000-4000" || empate !== "3000-4000") F("2 · sin publicados o con empate, /deptos no se queda en el rango por defecto");
+    if (llamadas.some((l) => l.comunas?.length !== 1 || l.dorms?.join() !== "2")) F("2 · el rango de la comuna se cuenta con otras comunas u otra tipología");
+  }
+  const por = sinComentarios(leer("src/lib/deptos/portada.ts"));
+  if (!/const rango = comuna \? await rangoConMasPublicados\(admin, comuna, \[\.\.\.dorms\]\) : ELECCIONES_POR_DEFECTO\.rango;/.test(por) || !/validarElecciones\(\{ \.\.\.ELECCIONES_POR_DEFECTO, comunas, rango, /.test(por) || !/return \{ noche, inicial, comunas, rango \};/.test(por)) F("2 · la portada de /deptos no responde con el rango de la comuna");
 
   // ── 3 · SEO ──────────────────────────────────────────────────────────────────
   const indSrc = leer(PAGINAS.indice);
@@ -248,7 +270,7 @@ export function runComunasDisenoTier(): { hard: number } {
     console.log(`  ✗ COMUNAS-DISENO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el índice, cada comuna y cobertura en el diseño plano; enlazan las 25 y nada a un 404; el análisis cae en el wizard con la comuna y «Ver los deptos» en /deptos con la comuna; el SEO igual; la venta con la regla de la noche, la cifra del título en el índice y ninguna prosa que contradiga su tabla");
+    console.log("  ✓ VERDE — el índice, cada comuna y cobertura en el diseño plano; enlazan las 25 y nada a un 404; el análisis cae en el wizard con la comuna y «Ver los deptos» en /deptos con la comuna y su rango; el SEO igual; la venta con la regla de la noche, la cifra del título en el índice y ninguna prosa que contradiga su tabla");
   }
   return { hard: fallas.length };
 }
@@ -260,6 +282,5 @@ export function runComunasDisenoTier(): { hard: number } {
  */
 
 if (require.main === module) {
-  const { hard } = runComunasDisenoTier();
-  process.exit(hard ? 1 : 0);
+  runComunasDisenoTier().then(({ hard }) => process.exit(hard ? 1 : 0));
 }

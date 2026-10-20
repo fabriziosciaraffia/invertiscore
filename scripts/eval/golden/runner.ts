@@ -623,7 +623,7 @@ function printSeed(r: SeedReport) {
   totalHard += (await runConsentimientoTier()).hard;
   // Tier COMUNAS-DISENO (20-oct-2026, 0 tokens, sin red ni base): el índice, cada comuna y cobertura en el diseño plano;
   // enlazan las 25 y nada a un 404; el análisis y «Ver los deptos» con la comuna; el SEO igual; la venta con la regla de la noche. ──
-  totalHard += runComunasDisenoTier().hard;
+  totalHard += (await runComunasDisenoTier()).hard;
   totalHard += (await runPuertaBTier()).hard;
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──

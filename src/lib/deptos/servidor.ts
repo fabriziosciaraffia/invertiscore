@@ -10,7 +10,7 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
-import { CLAVE_GOOGLE, PREFIJO_GOOGLE, respuestaDeptos, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
+import { CLAVE_GOOGLE, ELECCIONES_POR_DEFECTO, PREFIJO_GOOGLE, RANGOS_UF, respuestaDeptos, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
 
 const RUTA = "lib/deptos";
 type Ok = Extract<Validacion, { ok: true }>;
@@ -27,6 +27,26 @@ export async function responderDeptos(admin: SupabaseClient, v: Ok, ahora: Date 
   const filas = ((data ?? []) as Array<{ comuna: string; total: number; comprar_20: number; comprar_30: number }>)
     .map((f): ConteoComuna => ({ comuna: f.comuna, total: Number(f.total) || 0, comprar20: Number(f.comprar_20) || 0, comprar30: Number(f.comprar_30) || 0 }));
   return respuestaDeptos(v, filas.filter((f) => v.comunas.includes(f.comuna)), filas.filter((f) => vecinas.includes(f.comuna)));
+}
+
+/**
+ * EL RANGO CON QUE ARRANCA UNA COMUNA (20-oct-2026, decisión de Fabrizio): desde «Ver los deptos de [comuna]», el de los
+ * cuatro rangos con más deptos de la tipología publicados esa semana en esa comuna. El de Santiago (UF 3.000 a 4.000)
+ * dejaba a Vitacura, Quilicura y Renca en cero publicados y a casi todas sin ninguno que conviniera (Estación Central: 28
+ * y 0; con «Hasta UF 3.000», 638 y 227). Empate o todo en cero: el por defecto. Una falla también cae al por defecto.
+ */
+export async function rangoConMasPublicados(admin: SupabaseClient, comuna: string, dorms: number[], ahora: Date = new Date()): Promise<string> {
+  const conteos = await Promise.all(
+    RANGOS_UF.map(async (r) => {
+      const { data, error } = await admin.rpc("deptos_conteo", { comunas: [comuna], dorms, uf_min: r.min ?? 0, uf_max: r.max, desde: desdeVentana(ahora) });
+      reportarFalloQuery(error, { ruta: RUTA, operacion: "rango-de-la-comuna" });
+      const total = ((data ?? []) as Array<{ total: number }>).reduce((s, f) => s + (Number(f.total) || 0), 0);
+      return { id: r.id, total };
+    }),
+  );
+  const defecto = conteos.find((c) => c.id === ELECCIONES_POR_DEFECTO.rango) ?? conteos[0];
+  const mejor = conteos.reduce((a, b) => (b.total > a.total ? b : a), defecto);
+  return mejor.total > 0 ? mejor.id : ELECCIONES_POR_DEFECTO.rango;
 }
 
 /** Lo que dice la frase de arriba de /deptos: cuántos deptos publicados revisó la noche y cuántos convenían con pie 20 %. */

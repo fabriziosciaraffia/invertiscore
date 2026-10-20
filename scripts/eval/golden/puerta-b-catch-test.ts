@@ -504,11 +504,12 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // El número y el correo desde el primer segundo: la respuesta por defecto viene del servidor y no se vuelve a pedir.
       // ⚠ ACTA (20-oct-2026, «Ver los deptos de [comuna]» de las páginas de comuna) · la búsqueda inicial puede llegar con
       // `?comuna=`: las comunas iniciales salen de la portada (las por defecto, o esa), y su número igual del servidor.
+      // Y el rango inicial también (decisión de Fabrizio): el de más 2D publicados en esa comuna; sin `?comuna=`, el por defecto.
       const cliD = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (!/const \[respuesta, setRespuesta\] = useState<RespuestaDeptos \| null>\(portada\?\.inicial \?\? null\);/.test(cliD)
         || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.\(portada\?\.comunas \?\? ELECCIONES_POR_DEFECTO\.comunas\)\]\);/.test(cliD)
-        || !/const servida = useRef<string \| null>\(portada\?\.inicial \? claveInicial\(portada\.comunas\) : null\);/.test(cliD)
-        || !/const \[rango, setRango\] = useState<string>\(ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
+        || !/const servida = useRef<string \| null>\(portada\?\.inicial \? claveInicial\(portada\.comunas, portada\.rango\) : null\);/.test(cliD)
+        || !/const \[rango, setRango\] = useState<string>\(portada\?\.rango \?\? ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
         || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca con el número de la búsqueda por defecto desde el servidor");
       if (!/const portada = await portadaDeptos\(comunaDeLaUrl\(searchParams\?\.comuna\)\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
         F("10 · /deptos o la página del invitado no traen la portada del servidor");

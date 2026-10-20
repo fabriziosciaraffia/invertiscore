@@ -75,8 +75,8 @@ export interface OpcionesDeptos {
 }
 
 /** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
- *  comunas son las por defecto o la de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
-const claveInicial = (comunas: readonly string[]) => `${comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${ELECCIONES_POR_DEFECTO.rango}`;
+ *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
+const claveInicial = (comunas: readonly string[], rango: string) => `${comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${rango}`;
 
 export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera, pie, portada }: { sesion: { email: string } | null } & OpcionesDeptos) {
   const router = useRouter();
@@ -85,7 +85,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [buscando, setBuscando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [tipologia, setTipologia] = useState<string>(TIPOLOGIA_POR_DEFECTO);
-  const [rango, setRango] = useState<string>(ELECCIONES_POR_DEFECTO.rango);
+  const [rango, setRango] = useState<string>(portada?.rango ?? ELECCIONES_POR_DEFECTO.rango);
   const [modalidad, setModalidad] = useState<ModalidadDeptos>(MODALIDAD_POR_DEFECTO);
   const [respuesta, setRespuesta] = useState<RespuestaDeptos | null>(portada?.inicial ?? null);
   const [cargando, setCargando] = useState(false);
@@ -102,7 +102,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const campoBuscar = useRef<HTMLInputElement>(null);
   /** La búsqueda de la respuesta que está a la vista (la por defecto, si vino del servidor): esa no se vuelve a pedir. Se
    *  anota al llegar la respuesta, no al pedirla: un pedido cortado (el doble efecto de React en desarrollo) se repite. */
-  const servida = useRef<string | null>(portada?.inicial ? claveInicial(portada.comunas) : null);
+  const servida = useRef<string | null>(portada?.inicial ? claveInicial(portada.comunas, portada.rango) : null);
 
   // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta).
   useEffect(() => {
