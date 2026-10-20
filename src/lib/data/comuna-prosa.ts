@@ -13,9 +13,11 @@
 // pasó de faltarle $23.418 a sobrarle $99.734. Una prosa de esa semana estaría
 // diciendo lo contrario de la tabla que tiene al lado.
 //
-// QUÉ SE HACE CON EL DRIFT. Se MARCA, no se corrige ni se oculta: el render
-// publica lo que hay (una cifra movida 2% no vuelve falso el párrafo) y el
-// generador usa la marca para decidir qué rehacer en el próximo lote.
+// QUÉ SE HACE CON EL DRIFT. Se MARCA y el generador usa la marca para decidir
+// qué rehacer en el próximo lote; el render publica lo que hay (una cifra movida
+// 2% no vuelve falso el párrafo). SALVO cuando la prosa afirma lo contrario de
+// la tabla —una tipología que cambió de lado, apareció o se fue, o un líder
+// distinto—: esa no se publica (`prosaContradiceLaTabla`, 20-oct-2026).
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -226,6 +228,21 @@ export function detectarDrift(
     motivos: Array.from(new Set(motivos)),
     detalle,
   };
+}
+
+/**
+ * ¿La prosa afirma lo CONTRARIO de la tabla que tiene al lado? (20-oct-2026, decisión de Fabrizio.)
+ *
+ * El drift se marcaba y no se ocultaba porque se contaba con que el generador lo corrigiera en el próximo lote, y nadie
+ * lo corrió: siete semanas después las 25 prosas estaban desfasadas y en 10 una tipología cambió de lado (Maipú decía
+ * que al 2D le faltaban $28.477 al mes junto a una tabla que decía «se paga solo»). Con estos motivos la página
+ * muestra su síntesis calculada en vez de la prosa: dice menos, pero no se contradice. Una cifra movida o un prompt
+ * viejo siguen publicándose — el párrafo no queda falso por eso — y los corrige el generador.
+ */
+export const MOTIVOS_QUE_CONTRADICEN: readonly MotivoDrift[] = ["veredicto-dado-vuelta", "cambio-de-tipologias", "cambio-de-lider"];
+
+export function prosaContradiceLaTabla(drift: Drift): boolean {
+  return drift.motivos.some((m) => MOTIVOS_QUE_CONTRADICEN.includes(m));
 }
 
 function getSupabase() {

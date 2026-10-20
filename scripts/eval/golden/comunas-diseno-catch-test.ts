@@ -12,7 +12,7 @@
  *   3 · SEO: título, descripción, canónica, Open Graph y datos estructurados (FAQPage) de cada tipo, iguales. El único
  *       título que cambió, por decisión, es el del índice («— Franco» repetido).
  *   4 · DATOS: la venta pasa la regla de la evaluación de la noche (plausible.ts); el índice y la comparativa usan la
- *       cifra del título; el m² en pesos usa la UF del día.
+ *       cifra del título; el m² en pesos usa la UF del día; la prosa que contradice la tabla no se publica.
  *
  * Se verificó EN ROJO contra producción: corrido sobre una copia de master (el código que estaba publicado) falla en
  * las cuatro partes. Y con mutaciones, una regla por vez (acta al pie). 0 tokens.
@@ -182,6 +182,25 @@ export function runComunasDisenoTier(): { hard: number } {
   if (!/\.sort\(\(a, b\) => rentabilidadTitulo\(b\)\.medio - rentabilidadTitulo\(a\)\.medio\);/.test(ind) || (ind.match(/\{textoRentabilidadTitulo\(c\)\}/g) ?? []).length !== 2) F("4 · el índice no muestra ni ordena por la cifra del título");
   if ((det.match(/textoRentabilidadTitulo\(/g) ?? []).length !== 2 || !/const \{ min: rentMin, max: rentMax \} = rentabilidadTitulo\(stats\);/.test(det)) F("4 · la comparativa o el título no usan la cifra del título");
   if (/\bUF_CLP\b/.test(det) || !/const precioM2CLP = Math\.round\(stats\.precioM2Promedio \* stats\.supuestos\.ufCLP\);/.test(det)) F("4 · el m² en pesos usa una UF fija, no la del día");
+  // La prosa que contradice la tabla no se publica (20-oct-2026): en 10 de 25 una tipología había cambiado de lado.
+  type Snap = { dorms: number; veredictoFila: string; arriendoCLP: number; ventaUF: number; precioCuotaUF: number };
+  const cp = cargar<{
+    PROMPT_VERSION_COMUNA: number;
+    detectarDrift: (p: unknown, s: unknown, lider: number | null) => { motivos: string[] };
+    prosaContradiceLaTabla?: (d: { motivos: string[] }) => boolean;
+  }>("src/lib/data/comuna-prosa");
+  if (!cp?.prosaContradiceLaTabla) F("4 · no existe la regla de la prosa que contradice la tabla (prosaContradiceLaTabla)");
+  else {
+    const sup = { tasaAnual: 4.1, piePct: 20, plazoAnos: 30 };
+    const t = (veredictoFila: string, precioCuotaUF: number): Snap => ({ dorms: 2, veredictoFila, arriendoCLP: 515000, ventaUF: 2306, precioCuotaUF });
+    const prosa = { promptVersion: cp.PROMPT_VERSION_COMUNA, snapshot: { tipologias: [t("noSePagaSola", 3246)], liderDorms: 2, ...sup } };
+    const dadoVuelta = cp.detectarDrift(prosa, { tipologias: [t("sePagaSola", 3246)], supuestos: sup }, 2);
+    const soloCifra = cp.detectarDrift(prosa, { tipologias: [t("noSePagaSola", 3400)], supuestos: sup }, 2);
+    const otroLider = cp.detectarDrift(prosa, { tipologias: [t("noSePagaSola", 3246)], supuestos: sup }, 3);
+    if (!cp.prosaContradiceLaTabla(dadoVuelta) || !cp.prosaContradiceLaTabla(otroLider)) F("4 · la prosa con una tipología dada vuelta (o con otro líder) se sigue publicando");
+    if (cp.prosaContradiceLaTabla(soloCifra)) F("4 · una cifra movida esconde la prosa: eso lo corrige el generador, no la página");
+  }
+  if (!/const prosaComuna = prosaGuardada && !prosaContradiceLaTabla\(detectarDrift\(prosaGuardada, stats, lider\?\.dorms \?\? null\)\) \? prosaGuardada : null;/.test(det) || /prosaGuardada\.prosa/.test(det) || !/\{prosaComuna\.prosa\}/.test(det)) F("4 · comuna: la página publica la prosa sin mirar si contradice la tabla");
   // Los veredictos con su nombre de hoy en los tres cierres (decían «comprar, negociar o seguir buscando»).
   for (const [tipo, ruta] of Object.entries(PAGINAS)) if (/negociar o seguir buscando/.test(sinComentarios(leer(ruta)))) F(`4 · ${tipo}: el cierre nombra veredictos viejos («negociar»)`);
 
@@ -189,7 +208,7 @@ export function runComunasDisenoTier(): { hard: number } {
     console.log(`  ✗ COMUNAS-DISENO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el índice, cada comuna y cobertura en el diseño plano; enlazan las 25 y nada a un 404; el análisis cae en el wizard con la comuna y «Ver los deptos» en /deptos con la comuna; el SEO igual; la venta con la regla de la noche y la cifra del título en el índice");
+    console.log("  ✓ VERDE — el índice, cada comuna y cobertura en el diseño plano; enlazan las 25 y nada a un 404; el análisis cae en el wizard con la comuna y «Ver los deptos» en /deptos con la comuna; el SEO igual; la venta con la regla de la noche, la cifra del título en el índice y ninguna prosa que contradiga su tabla");
   }
   return { hard: fallas.length };
 }

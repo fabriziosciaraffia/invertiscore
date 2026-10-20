@@ -5,7 +5,7 @@ import "@/components/comunas/comunas.css";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, tipologiaLider, rentabilidadTitulo, textoRentabilidadTitulo } from "@/lib/data/comunas-seo";
 import { VeredictoCuota } from "@/components/comunas/VeredictoCuota";
 import { TablaTipologias, ProcedenciaMuestraBloque } from "@/components/comunas/TablaTipologias";
-import { getProsaComuna } from "@/lib/data/comuna-prosa";
+import { detectarDrift, getProsaComuna, prosaContradiceLaTabla } from "@/lib/data/comuna-prosa";
 import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/comunas-roster";
 import { MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
 import { MIN_PER_TYPE, esComunaEstimada } from "@/lib/data/comunas-seo";
@@ -217,7 +217,10 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   // de los números que narró (scripts/data/generar-prosa-comunas.ts). Acá SOLO
   // se lee — nunca se genera en render. Sin fila, la página cae a su síntesis
   // calculada: dice menos, pero no inventa.
-  const prosaComuna = await getProsaComuna(params.slug);
+  // Y tampoco se publica la que contradice la tabla (20-oct-2026, `prosaContradiceLaTabla`): una tipología que cambió
+  // de lado, que apareció o se fue, o un líder distinto. Esa cae a la misma síntesis hasta que el generador la rehaga.
+  const prosaGuardada = await getProsaComuna(params.slug);
+  const prosaComuna = prosaGuardada && !prosaContradiceLaTabla(detectarDrift(prosaGuardada, stats, lider?.dorms ?? null)) ? prosaGuardada : null;
   // Aviso de muestra chica. El umbral viejo (<10 propiedades) era inalcanzable:
   // la comuna ni siquiera publicaba bajo 50, así que el aviso nunca se mostró.
   // Ahora avisa cuando los números descansan en poco: una sola tipología con
