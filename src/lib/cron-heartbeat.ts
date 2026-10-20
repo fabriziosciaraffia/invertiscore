@@ -129,6 +129,9 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "semanal-reintento", label: "Correo semanal: el reintento de las pendientes (lunes)", intervaloHoras: 168, desde: "2026-10-19T08:05:00Z" },
   // La cola del correo del día (16-oct-2026, la puerta B): cada 10 minutos, todo el día.
   { nombre: "correo-del-dia", label: "Correo del día: la cola de /deptos (cada 10 minutos)", intervaloHoras: 1, desde: "2026-10-16T18:00:00Z" },
+  // La prosa de las páginas de comuna (20-oct-2026): el lunes a las 05:30 UTC, después de la evaluación de las 04:20.
+  // Escribe solo cuando hay desfase (sin frescura fija); su falla va al resumen del día (cron-alertas.ts › CRONS_AL_RESUMEN).
+  { nombre: "prosa-comunas", label: "Prosa de las páginas de comuna (lunes)", intervaloHoras: 168, desde: "2026-10-26T05:30:00Z" },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },

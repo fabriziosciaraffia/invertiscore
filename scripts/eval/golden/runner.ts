@@ -146,6 +146,7 @@ import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runMedicionMetaTier } from "./medicion-meta-catch-test";
 import { runConsentimientoTier } from "./consentimiento-catch-test";
 import { runComunasDisenoTier } from "./comunas-diseno-catch-test";
+import { runProsaComunasTier } from "./prosa-comunas-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
@@ -624,6 +625,8 @@ function printSeed(r: SeedReport) {
   // Tier COMUNAS-DISENO (20-oct-2026, 0 tokens, sin red ni base): el índice, cada comuna y cobertura en el diseño plano;
   // enlazan las 25 y nada a un 404; el análisis y «Ver los deptos» con la comuna; el SEO igual; la venta con la regla de la noche. ──
   totalHard += (await runComunasDisenoTier()).hard;
+  // La prosa de las comunas se regenera sola cada lunes (20-oct-2026): solo la desfasada, con sus controles.
+  totalHard += (await runProsaComunasTier()).hard;
   totalHard += (await runPuertaBTier()).hard;
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
