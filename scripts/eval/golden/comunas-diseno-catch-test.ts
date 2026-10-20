@@ -267,8 +267,13 @@ export async function runComunasDisenoTier(): Promise<{ hard: number }> {
     // Conchalí (142%) sobre Cerrillos (45%) en plusvalía; la sin serie no entra en esa cuenta.
     if (k.total !== 3 || k.puestoMuestra !== 1 || k.puestoRentabilidad !== 1 || k.todasSePaganSolas.n !== 2 || !k.todasSePaganSolas.estaEsUna || k.plusvalia?.puesto !== 2 || k.plusvalia?.de !== 2 || cs2.comparacionDe(z, [a, b, z]).plusvalia !== null) F("4 · los puestos entre comunas no salen de la muestra, la cifra del título y la plusvalía del parque");
   }
-  const gen = sinComentarios(leer("scripts/data/generar-prosa-comunas.ts"));
-  if (!/const parque = \(await getAllComunasStats\(\)\)\.filter\(\(s\) => esComunaDelRoster\(s\.slug\)\);/.test(gen) || !/const comparacion = comparacionDe\(stats, parque\);/.test(gen) || !/\$\{bloqueComparacion\(comparacion\)\}/.test(gen) || !/errores\.push\(\.\.\.validarComparaciones\(texto, comparacion\)\);/.test(gen) || (gen.match(/validar\((?:retry\.)?texto, stats, comparacion\)/g) ?? []).length !== 2) F("4 · el generador no le pasa al modelo los puestos reales o no rechaza la comparación que no cuadra");
+  // ⚠ ACTA (20-oct-2026) · el prompt y sus controles se mudaron del script al núcleo compartido con el cron de los lunes
+  // (src/lib/data/comuna-prosa-generador.ts); el script quedó como CLI delgada. La regla es la misma: el modelo recibe los
+  // puestos reales del parque del roster, y la comparación que no cuadra se rechaza en cada intento.
+  const gen = sinComentarios(leer("src/lib/data/comuna-prosa-generador.ts"));
+  const parqueRoster = /const parque = todas\.filter\(\(s\) => esComunaDelRoster\(s\.slug\)\);/.test(sinComentarios(leer("scripts/data/generar-prosa-comunas.ts")))
+    && /parque = parque\.filter\(\(s\) => esComunaDelRoster\(s\.slug\)\);/.test(sinComentarios(leer("src/app/api/cron/prosa-comunas/route.ts")));
+  if (!parqueRoster || !/await dosIntentos\(o, c\.stats, comparacionDe\(c\.stats, o\.parque\), r\)/.test(gen) || !/\$\{bloqueComparacion\(comparacion\)\}/.test(gen) || !/errores\.push\(\.\.\.validarComparaciones\(texto, comparacion\)\);/.test(gen) || !/errores = validarProsa\(texto, stats, comparacion\);/.test(gen)) F("4 · el generador no le pasa al modelo los puestos reales o no rechaza la comparación que no cuadra");
   if (/Así se hace bien: "la\s+muestra más grande de las 25 comunas"/.test(gen)) F("4 · el prompt vuelve a modelar «la muestra más grande de las 25» sin el puesto");
   if (!/const prosaComuna = prosaGuardada && !prosaContradiceLaTabla\(detectarDrift\(prosaGuardada, stats, lider\?\.dorms \?\? null\)\) \? prosaGuardada : null;/.test(det) || /prosaGuardada\.prosa/.test(det) || !/\{prosaComuna\.prosa\}/.test(det)) F("4 · comuna: la página publica la prosa sin mirar si contradice la tabla");
   // Los veredictos con su nombre de hoy en los tres cierres (decían «comprar, negociar o seguir buscando»).

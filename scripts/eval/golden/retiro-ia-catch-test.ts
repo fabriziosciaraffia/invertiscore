@@ -208,8 +208,15 @@ export function runRetiroIaTier(): { hard: number } {
   // ⚠ ACTA (25-sep-2026) · PARTE 2: hasta la parte 1 esto medía que cada llamada estuviera
   // DENTRO del interruptor. Los cuatro generadores (LTR, STR, persistencia STR y AMBAS) se
   // borraron, así que la regla se vuelve absoluta: ninguna llamada, en ningún archivo.
+  // ⚠ ACTA (20-oct-2026, goal de Fabrizio «la prosa de las páginas de comuna se regenera sola») · UNA excepción, y solo
+  // una: la prosa de las comunas no es del informe —la decisión del 24-sep-2026 la deja fuera expresamente— y hasta
+  // hoy se generaba desde scripts/; el cron semanal la necesita en src/. Se permite UNA llamada al modelo, en ese
+  // archivo, sin ninguno de los generadores del informe; cualquier otra llamada en src/ sigue siendo falla.
+  const PROSA_COMUNAS = "src/lib/data/comuna-prosa-generador.ts";
   for (const { rel, src } of SRC) {
-    for (const m of src.matchAll(LLAMADA)) {
+    const llamadas = Array.from(src.matchAll(LLAMADA));
+    if (rel === PROSA_COMUNAS && llamadas.length === 1 && llamadas[0][0] === ".messages.create(") continue;
+    for (const m of llamadas) {
       F(`3 · ${rel} llama a la generación (${m[0]}): los generadores se retiraron`);
     }
   }
@@ -288,7 +295,7 @@ export function runRetiroIaTier(): { hard: number } {
     console.log(`  ✗ RETIRO-IA · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — ${retirados} archivos y símbolos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; 0 llamadas a la generación en ${SRC.length} archivos de src/; el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
+    console.log(`  ✓ VERDE — ${retirados} archivos y símbolos retirados que nadie importa ni lee; ${BORRADOS.length} endpoints fuera y sin llamador; ninguna llamada a la generación en ${SRC.length} archivos de src/ (salvo la prosa de comunas); el PDF STR responde 410 como el LTR y ningún botón lo ofrece; el correo y AMBAS no leen prosa`);
   }
   return { hard: fallas.length };
 }
