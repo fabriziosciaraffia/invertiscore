@@ -23,7 +23,9 @@ import { correoSemanal, correoSemanalVacio, textoBusca, type EnlaceInvitarCorreo
 import { asegurarInvitacion } from "@/lib/referido-servidor";
 import { enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
-import { avisoDeCandidato, contextoDeFila, leerOrigenGuia, origenSintetico, type OrigenGuia } from "./guia-servidor";
+import { avisoDeCandidato, contextoDeFila, leerConfigGuia, leerOrigenGuia, origenSintetico, type OrigenGuia } from "./guia-servidor";
+import { responderDeptos } from "@/lib/deptos/servidor";
+import { PIE_DEPTOS } from "@/lib/deptos/estandar";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
@@ -37,6 +39,7 @@ import { vistosDePersona, type Vistos } from "./vistos-servidor";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
+  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, SEMANAL_VACIO, parametroDeAjuste, type AjustePerfil,
   type ProgresoPrechequeo, type RespaldoSemanal, type Visto,
 } from "./semanal";
 
@@ -63,6 +66,8 @@ export interface ItemSemanal {
   informeId?: string;
   /** Lo ya visto (19-oct-2026): va al final, marcado «Ya te lo mandamos» o «Ya lo analizaste» (MARCA_VISTO). */
   visto?: Visto;
+  /** El relleno (20-oct-2026): lo vio la evaluación de anoche publicado en el portal, sin ficha leída. Al final, marcado. */
+  sinConfirmar?: true;
 }
 
 export type { Candidato } from "./semanal-candidatos";
@@ -145,8 +150,9 @@ export async function prepararSeleccion(
       ? await admin.rpc("inmediato_candidatos", {
           comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, nuevos_desde: opts.nuevosDesde, max_filas: MAX_CANDIDATOS_SEMANAL,
         })
+      // Ordenados con el plazo de la persona (20-oct-2026), no fijo a 30 años.
       : await admin.rpc("semanal_candidatos", {
-          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL,
+          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, max_filas: MAX_CANDIDATOS_SEMANAL, plazo: combo.plazoAnios,
         });
     if (error) throw new Error(`${opts.nuevosDesde ? "inmediato" : "semanal"}_candidatos: ${error.message}`);
     return ((data ?? []) as FilaRpc[]).map(candidatoDeFila).filter((c) => !avisados.has(c.avisoId));
@@ -261,11 +267,12 @@ export async function armarSeleccion(
     const { perfil, origen: o, combo, candidatos, evaluar, respaldo, visto, informeVisto } = prep.p;
     const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto);
     largo = g.estado;
-    Object.assign(fila, { items: aItems(g, informeVisto), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
+    // El relleno (20-oct-2026): lo visto anoche sin confirmar, por si al mandar siguen faltando confirmados.
+    Object.assign(fila, { items: aItems(g, informeVisto), relleno: aItems({ items: g.relleno ?? [] }), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   } else {
     // Sin bloque de renta larga: o no tiene ese perfil (solo renta corta), o le falta con qué buscar.
     largo = pp.perfilLtr ? "sin_match" : null;
-    Object.assign(fila, { items: [], perfil: pp.perfilLtr ? prep.perfil : null });
+    Object.assign(fila, { items: [], relleno: [], perfil: pp.perfilLtr ? prep.perfil : null });
   }
   let corto: EstadoBloque | null = null;
   if (prepStr?.tipo === "lista") {
@@ -740,10 +747,12 @@ export interface FilaSeleccion {
   estado_str?: "armada" | "pendiente" | "sin_match" | null;
   combinacion_str?: Combinacion | null;
   perfil_str?: PerfilBusqueda | null;
+  /** El relleno (20-oct-2026): Comprar de anoche sin ficha leída, en orden, para completar hasta tres al mandar. */
+  relleno?: ItemSemanal[] | null;
 }
 
 /** Las columnas que el envío lee de cada fila (semanal-enviar). */
-export const COLUMNAS_ENVIO = "id, user_id, semana, estado, items, combinacion, perfil, variante, token, items_str, estado_str, combinacion_str, perfil_str";
+export const COLUMNAS_ENVIO = "id, user_id, semana, estado, items, combinacion, perfil, variante, token, items_str, estado_str, combinacion_str, perfil_str, relleno";
 
 /** Los enlaces del correo: todos pasan por /api/semanal (miden el clic y releen la ficha). */
 export function enlacesSemanal(sitio: string, token: string) {
@@ -757,7 +766,18 @@ export function enlacesSemanal(sitio: string, token: string) {
     baja: `${base}/baja?t=${token}`,
     /** Al perfil de búsqueda (13-oct-2026): el correo corto, para cambiar comunas. */
     perfil: `${base}/clic?t=${token}&ir=perfil`,
+    /** El ajuste en un toque del correo vacío (20-oct-2026): pie 30 % o una comuna vecina (semanal.ts › AjustePerfil). */
+    ajuste: (que: string) => `${base}/clic?t=${token}&ir=ajustar&que=${encodeURIComponent(que)}`,
   };
+}
+
+/** Hasta tres con el relleno (puro salvo la vigencia): los confirmados primero, lo sin confirmar al final, marcado. */
+export async function completarConRelleno(admin: SupabaseClient, confirmados: ItemSemanal[], relleno: ItemSemanal[]): Promise<ItemSemanal[]> {
+  if (confirmados.length >= MINIMO_SEMANAL || relleno.length === 0) return confirmados;
+  const ya = new Set(confirmados.map((d) => d.avisoId));
+  const vigentes = (await itemsVigentes(admin, relleno)).filter((d) => !ya.has(d.avisoId));
+  const extra = vigentes.slice(0, Math.min(TOPE_SIN_CONFIRMAR, MINIMO_SEMANAL - confirmados.length)).map((d): ItemSemanal => ({ ...d, sinConfirmar: true }));
+  return [...confirmados, ...extra];
 }
 
 /**
@@ -775,10 +795,13 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   // y su combinación; el de renta corta, si tiene perfil de renta corta.
   const conLargo = !!fila.perfil && !!fila.combinacion;
   const conCorto = fila.estado_str != null && !!fila.perfil_str && !!fila.combinacion_str;
-  const [deptos, deptosCortos] = await Promise.all([
+  const [confirmados, deptosCortos] = await Promise.all([
     conLargo ? itemsVigentes(admin, fila.items ?? []) : Promise.resolve([] as ItemSemanal[]),
     conCorto ? itemsVigentes(admin, fila.items_str ?? []) : Promise.resolve([] as ItemSemanal[]),
   ]);
+  // EL RELLENO (20-oct-2026): con menos de tres confirmados, hasta tres con lo visto anoche sin confirmar, al final y
+  // marcado; nunca más de TOPE_SIN_CONFIRMAR. Lo que desde anoche ya se vio despublicado no entra.
+  const deptos = conLargo ? await completarConRelleno(admin, confirmados, fila.relleno ?? []) : confirmados;
   // Con al menos uno confirmado sale la selección; sin ninguno, el correo corto (13-oct-2026, `queEnviarSemanal`). Si esta
   // semana ya salió su correo del día (16-oct-2026), el lunes va solo si hay nuevos: sin nuevos, nada.
   const delDia = await delDiaReciente(admin, fila.user_id);
@@ -887,7 +910,13 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
   if ((tomada?.length ?? 0) !== 1) return "ya";
   const presentacion = !eAntes && esPrimerSemanal(enviadasAntes);
   const enlaces = enlacesSemanal(sitio, fila.token);
-  const correo = correoSemanalVacio({ nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio) });
+  // La verdad del vacío (20-oct-2026): los que casi, y con qué sí (pie 30 % o una comuna vecina), con el ajuste en un toque.
+  const verdad = await verdadDelVacio(admin, fila.user_id).catch(() => null);
+  const correo = correoSemanalVacio({
+    nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio),
+    casi: verdad?.casi ?? [],
+    alternativa: verdad?.alternativa ? { texto: verdad.alternativa.texto, boton: verdad.alternativa.boton, url: enlaces.ajuste(parametroDeAjuste(verdad.alternativa.ajuste)) } : null,
+  });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, "vacio");
   if (!r.ok) {
     await admin.from("semanal_selecciones").update({ estado: fila.estado, enviada_at: null }).eq("id", fila.id);
@@ -900,6 +929,46 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
   }).catch(() => {});
   return "enviada";
 }
+
+/**
+ * LA VERDAD DEL CORREO VACÍO (20-oct-2026): los deptos que casi —los mejores Ajustar de sus comunas, recalculados con sus
+ * números— y con qué sí: la respuesta de /deptos para su búsqueda (deptos_conteo), con pie 30 % en sus comunas o en la
+ * comuna vecina que más da, cada una con su ajuste en un toque.
+ */
+export async function verdadDelVacio(admin: SupabaseClient, userId: string): Promise<{
+  casi: Array<{ comuna: string; tipologia: string | null; m2: number; precioUF: number; score: number | null; flujo: number | null }>;
+  alternativa: { texto: string; boton: string; ajuste: AjustePerfil } | null;
+}> {
+  const cfg = await leerConfigGuia(admin);
+  const pp = await leerPerfilBusqueda(admin, userId);
+  const prep = await prepararSeleccion(admin, userId, cfg, { perfilLeido: pp });
+  const perfil = pp.perfilLtr ?? pp.perfil;
+  let casi: Awaited<ReturnType<typeof verdadDelVacio>>["casi"] = [];
+  if (prep.tipo === "lista") {
+    const pool = [...prep.p.candidatos].sort((a, b) => (b.scoreCron ?? -1) - (a.scoreCron ?? -1)).slice(0, MAX_CANDIDATOS_SEMANAL);
+    const evs = await Promise.all(pool.map((c) => prep.p.evaluar(c).catch(() => null)));
+    casi = pool.map((c, i) => ({ c, ev: evs[i] })).filter((x) => x.ev?.veredicto === "AJUSTA SUPUESTOS")
+      .sort((a, b) => (b.ev!.score ?? -1) - (a.ev!.score ?? -1)).slice(0, MAX_CASI)
+      .map(({ c, ev }) => ({ comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF), score: ev!.score, flujo: ev!.flujo }));
+  }
+  const rango = rangoSemanal(perfil);
+  if (!perfil.completo || !rango) return { casi, alternativa: null };
+  const r = await responderDeptos(admin, {
+    ok: true, comunas: perfil.comunas.map(comunaDeAviso), dorms: perfil.dormitorios, tipologias: [],
+    rango: { id: "perfil", min: rango.ufMin || null, max: rango.ufMax, chip: "", frase: "" }, modalidad: "ltr",
+  });
+  const pie = perfil.piePct ?? PIE_DEPTOS;
+  if ((r.conPie30 ?? 0) > 0 && pie < 30) {
+    return { casi, alternativa: { texto: `Con pie 30 %, ${r.conPie30} sí ${r.conPie30 === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarPie(30), ajuste: { tipo: "pie", pie: 30 } } };
+  }
+  const vecina = r.vecinas[0];
+  if (vecina) {
+    return { casi, alternativa: { texto: `En ${vecina.comuna}, comuna vecina, ${vecina.convienen} sí ${vecina.convienen === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarComuna(vecina.comuna), ajuste: { tipo: "comuna", comuna: vecina.comuna } } };
+  }
+  return { casi, alternativa: null };
+}
+/** Cuántos «que casi» nombra el correo vacío. */
+export const MAX_CASI = 3;
 
 /** La combinación con que se analiza un depto del correo semanal: la de su selección, si es de esta
  *  persona, sale de este informe de origen y trae este aviso. null si no. */

@@ -8,7 +8,7 @@
 // (BloqueArribaCasa, casa-arriba.ts) y su único botón en papel; después, plano, el saldo y el perfil.
 // El único rojo es el del error.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./casa.css";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
@@ -17,7 +17,7 @@ import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { ESTAS_DENTRO } from "@/lib/lo-que-sigue/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
-import { textoVence } from "@/lib/guia/semanal";
+import { ajusteDeParametro, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
 import { CASA } from "./casa-copy";
 import { rutaTres } from "@/lib/tres-analisis";
 import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
@@ -203,10 +203,21 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
   const comunasLibres = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !p.comunas.includes(c));
   const dormsLibres = DORMS.filter((d) => !p.dormitorios.includes(d));
   const preguntar = p.horizonte == null || cambiandoHorizonte;
+  // El ajuste en un toque del correo vacío (20-oct-2026): llega con `?ajuste=` ya guardado; acá se dice qué cambió.
+  const [ajusteHecho, setAjusteHecho] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const a = ajusteDeParametro(new URLSearchParams(window.location.search).get("ajuste"), new Set(COMUNAS_DISPONIBLES as readonly string[]));
+      if (a) setAjusteHecho(a.tipo === "pie" ? `tu pie quedó en ${a.pie} %` : `${a.comuna} quedó en tu búsqueda`);
+    } catch {
+      /* sin ventana */
+    }
+  }, []);
 
   return (
     <div id="perfil" className="ca-plano-sec" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="perfil">
       <h2 className="ca-plano-t">{CASA.perfil.titulo}</h2>
+      {ajusteHecho && <p className="mb-3 text-[14px] font-semibold" role="status" data-casa="ajuste-hecho">{SEMANAL_VACIO.ajusteListo(ajusteHecho)}</p>}
       <p className="mb-3 max-w-[640px] text-[14px] text-[var(--franco-text-secondary)]">{comprador ? CASA.perfil.bajadaComprador : CASA.perfil.bajada}</p>
       <div>
         <div className="flex flex-wrap gap-1.5">

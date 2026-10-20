@@ -19,7 +19,7 @@
 // la hora en que Franco los vio publicados («publicados al [hora]»).
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { COMO_ENTRAR, MARCA_NEGOCIAR, MARCA_VISTO, SEMANAL_VACIO, textoVence, type Visto } from "@/lib/guia/semanal";
+import { asuntoSemanal, COMO_ENTRAR, MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_VACIO, textoVence, type Visto } from "@/lib/guia/semanal";
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { DEL_DIA } from "@/lib/guia/del-dia";
@@ -46,6 +46,11 @@ export const SEMANAL = {
     `Esta semana, ${n} deptos publicados como los que buscas —${busca}— resultan con tu pie de ${pie}% y tu plazo de ${plazo} años${
       negociar === 0 ? "" : negociar === 1 ? ", uno de ellos si lo negocias" : `, ${negociar} de ellos si los negocias`}.`,
   vecinas: "En tus comunas había menos de tres, así que sumamos de comunas vecinas.",
+  /** El relleno (20-oct-2026): cuántos van sin confirmar, y qué significa. */
+  sinConfirmar: (n: number) => (n === 1
+    ? "Uno lo vio anoche publicado en los resultados del portal, pero no alcanzó a revisar su ficha: va al final, marcado."
+    : `${n} los vio anoche publicados en los resultados del portal, pero no alcanzó a revisar sus fichas: van al final, marcados.`),
+  revisadosSinConfirmar: "Los confirmados, Franco los revisó hace unas horas y seguían publicados; los marcados «sin confirmar» los vio anoche en el portal. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
   presentacion: "Desde ahora, cada semana te mandamos los deptos publicados que mejor resultan con lo que buscas.",
   presentacionBaja: "Si no los quieres,",
   presentacionBajaEnlace: "deja de recibirlos",
@@ -78,6 +83,8 @@ export interface DeptoCorreo {
   zona?: boolean;
   /** Lo ya visto (19-oct-2026): va al final, con «Ya te lo mandamos» o «Ya lo analizaste». */
   visto?: Visto;
+  /** El relleno (20-oct-2026): lo vio anoche publicado en el portal, sin ficha leída. Lleva «Visto anoche, sin confirmar». */
+  sinConfirmar?: boolean;
 }
 
 /** El bloque de renta corta del correo (14-oct-2026): sus deptos, lo que busca y su pie y su plazo. */
@@ -154,6 +161,7 @@ function tarjeta(d: DeptoCorreo): string {
     ${d.zona ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="zona">${escaparHtml(MARCA_ZONA)}</td></tr>` : ""}
     ${d.tramo === "negociar" ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 14px; font-weight: 600; color: ${TINTA};">${escaparHtml(SEMANAL.negociar)}</td></tr>` : ""}
     ${d.visto ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="visto">${escaparHtml(MARCA_VISTO[d.visto])}</td></tr>` : ""}
+    ${d.sinConfirmar ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="sin-confirmar">${escaparHtml(MARCA_SIN_CONFIRMAR)}</td></tr>` : ""}
     <tr><td style="padding: 0 18px 14px 18px; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.5;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td valign="middle" style="padding: 0 8px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="10" height="10" bgcolor="${color}" style="width: 10px; height: 10px; background: ${color}; border-radius: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table></td>
@@ -193,7 +201,9 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   const pie = pct(d.piePct);
   const filas: string[] = [];
   const delDia = d.delDia ?? null;
-  const titular = delDia ? DEL_DIA.titular : SEMANAL.titular;
+  // El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 2 que te convienen».
+  const titular = delDia ? DEL_DIA.titular : asuntoSemanal(total);
+  const sinConfirmar = conLargo ? d.deptos.filter((x) => x.sinConfirmar).length : 0;
   if (d.variante === "banda" && !delDia) {
     filas.push(`<tr><td style="padding: 0 0 24px 0;"><a href="${d.urlBoton}" style="text-decoration: none;"><img src="${d.urlBanda ?? URL_BANDA_SEMANAL}" width="${ANCHO_BANDA}" height="${ALTO_BANDA}" alt="${escaparHtml(SEMANAL.titular)}" style="display: block; width: 100%; max-width: ${ANCHO_BANDA}px; height: auto; border: 0; border-radius: 16px; background: #2B558F; font-family: ${FUENTE_TITULO}; font-size: 24px; font-weight: 700; line-height: 1.3; color: #FFFFFF;"></a></td></tr>`);
   } else {
@@ -226,6 +236,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
       const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
       filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.introN(d.deptos.length, d.busca, pie, d.plazoAnios, negociar) : SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
       if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
+      if (sinConfirmar > 0) filas.push(parrafo(escaparHtml(SEMANAL.sinConfirmar(sinConfirmar))));
       for (const dep of d.deptos) filas.push(tarjeta(dep));
     } else {
       filas.push(parrafo(escaparHtml(SEMANAL_STR.sinLargo)));
@@ -250,7 +261,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     const l = SEMANAL.lineaTres;
     filas.push(parrafo(`${escaparHtml(l.antes)}<a href="${d.urlTres}" style="color: ${TINTA}; font-weight: 600; text-decoration: underline;">${escaparHtml(l.enlace)}</a>${escaparHtml(l.despues)}`));
   }
-  filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.publicadosAl(delDia.publicadosAl) : SEMANAL.revisados), ` font-size: 13px; color: ${TINTA_3};`));
+  filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.publicadosAl(delDia.publicadosAl) : sinConfirmar > 0 ? SEMANAL.revisadosSinConfirmar : SEMANAL.revisados), ` font-size: 13px; color: ${TINTA_3};`));
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -260,7 +271,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <meta name="x-apple-disable-message-reformatting">
-<title>${escaparHtml(delDia ? DEL_DIA.asunto : SEMANAL.asunto)}</title>
+<title>${escaparHtml(delDia ? DEL_DIA.asunto : asuntoSemanal(total))}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(delDia ? DEL_DIA.preencabezado(total) : SEMANAL.preencabezado(total, pct(piePre), plazoPre))}</div>
@@ -277,7 +288,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   </table>
 </body>
 </html>`;
-  return { subject: delDia ? DEL_DIA.asunto : SEMANAL.asunto, html };
+  return { subject: delDia ? DEL_DIA.asunto : asuntoSemanal(total), html };
 }
 
 /** Las piezas de la plantilla, para el aviso inmediato (correo-inmediato.ts): la misma tarjeta y el mismo botón. */
@@ -307,7 +318,21 @@ export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precio
  * Sin regalo, sin tarjetas y sin botón de compra. El primero de la persona se presenta igual que el otro.
  */
 // EL DEL DÍA VACÍO (16-oct-2026): con `delDia`, «Te aviso cuando aparezca uno», con el regalo si lo tiene.
-export function correoSemanalVacio(d: { nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null; invitar?: EnlaceInvitarCorreo | null }): { subject: string; html: string } {
+export interface CasiCorreo {
+  comuna: string;
+  tipologia: string | null;
+  m2: number;
+  precioUF: number;
+  score: number | null;
+  flujo: number | null;
+}
+
+/** El relleno de verdad del vacío (20-oct-2026): los que casi (Ajustar, con sus números) y con qué sí, con el ajuste en un toque. */
+export function correoSemanalVacio(d: {
+  nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null; invitar?: EnlaceInvitarCorreo | null;
+  casi?: CasiCorreo[];
+  alternativa?: { texto: string; boton: string; url: string } | null;
+}): { subject: string; html: string } {
   const filas: string[] = [];
   const asunto = d.delDia ? DEL_DIA.vacioAsunto : SEMANAL_VACIO.asunto;
   filas.push(`<tr><td style="padding: 0 0 22px 0; font-family: ${FUENTE_TITULO}; font-size: 24px; line-height: 1.2; font-weight: 700; color: ${TINTA};">${escaparHtml(asunto)}</td></tr>`);
@@ -318,6 +343,25 @@ export function correoSemanalVacio(d: { nombre: string | null; presentacion?: bo
     filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
   filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacio : SEMANAL_VACIO.cuerpo)));
+  // La verdad (20-oct-2026): los que casi, nombrados; y con qué sí, con el ajuste en un toque.
+  const casi = d.casi ?? [];
+  if (casi.length > 0) {
+    filas.push(parrafo(escaparHtml(SEMANAL_VACIO.casi(casi.length))));
+    for (const c of casi) {
+      const ojo = [c.comuna, c.tipologia, `${miles(c.m2)} m²`].filter(Boolean).join(" · ");
+      filas.push(`<tr><td style="padding: 0 0 8px 0; font-family: ${FUENTE_UI}; font-size: 14px; line-height: 1.5; color: ${TINTA};" data-casi="1"><b>UF ${miles(c.precioUF)}</b> · ${escaparHtml(ojo)}${c.score != null ? ` · <span style="color: ${TINTA_3};">${escaparHtml(etiquetaVeredicto("AJUSTA SUPUESTOS", "frase"))} ${c.score}</span>` : ""}</td></tr>`);
+    }
+  }
+  if (d.alternativa) {
+    filas.push(parrafo(escaparHtml(d.alternativa.texto), ` color: ${TINTA}; padding-top: 6px;`));
+    filas.push(`<tr><td style="padding: 0 0 22px 0;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="border: 1.5px solid ${TINTA}; border-radius: 999px;">
+      <a href="${d.alternativa.url}" style="display: inline-block; padding: 12px 22px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" data-ajuste="1">${escaparHtml(d.alternativa.boton)}</a>
+    </td>
+  </tr></table>
+</td></tr>`);
+  }
   filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacioPerfil : SEMANAL_VACIO.perfil)));
   filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);
   const html = `<!DOCTYPE html>

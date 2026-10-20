@@ -3,7 +3,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { chequearAlClic, seleccionPorToken } from "@/lib/guia/semanal-servidor";
-import { deptoDelClic, puedeEntrarPorCorreo, rutaSueltoSemanal } from "@/lib/guia/semanal";
+import { ajusteDeParametro, deptoDelClic, perfilConAjuste, puedeEntrarPorCorreo, rutaSueltoSemanal } from "@/lib/guia/semanal";
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { reportarFalloQuery } from "@/lib/observabilidad";
 import { entrarConCorreo } from "@/lib/guia/entrada-correo";
 import { rutaTres } from "@/lib/tres-analisis";
 import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
   if (!sel) return volver("/dashboard");
   // El depto en los dos bloques (19-oct-2026): antes solo en el de renta larga, y un clic en renta corta quedaba sin depto.
   const { avisoId, bloque } = deptoDelClic(sel, a);
-  const destino = ir === "comprar" ? "comprar" : ir === "tres" ? "tres" : ir === "perfil" ? "perfil" : avisoId ? "depto" : "seleccion";
+  const destino = ir === "comprar" ? "comprar" : ir === "tres" ? "tres" : ir === "perfil" ? "perfil" : ir === "ajustar" ? "ajustar" : avisoId ? "depto" : "seleccion";
 
   if (sel.fuente === "inmediato") {
     // Con `await` (13-oct-2026): con `void` la respuesta salía antes que el evento y se podía perder.
@@ -75,6 +77,21 @@ export async function GET(request: Request) {
 
   // El correo corto de la semana sin deptos (13-oct-2026) lleva a cambiar las comunas del perfil.
   if (ir === "perfil") return volver("/dashboard#perfil");
+  // EL AJUSTE EN UN TOQUE (20-oct-2026): el correo vacío ofrece pie 30 % o sumar la comuna vecina; el token dice de quién es
+  // el perfil, y el cambio queda guardado antes de llegar al perfil, que lo dice.
+  if (ir === "ajustar") {
+    const ajuste = ajusteDeParametro(url.searchParams.get("que"), new Set(COMUNAS_DISPONIBLES as readonly string[]));
+    if (!ajuste) return volver("/dashboard#perfil");
+    const { data: pb } = await admin.from("perfil_busqueda").select("comunas").eq("user_id", sel.user_id).maybeSingle();
+    const { data: ppi } = ajuste.tipo === "comuna" && !Array.isArray(pb?.comunas)
+      ? await admin.from("perfiles_inversion").select("comuna, pref_comuna").eq("user_id", sel.user_id).limit(50)
+      : { data: null };
+    const actuales = Array.isArray(pb?.comunas) ? (pb.comunas as string[]) : Array.from(new Set((ppi ?? []).map((r) => (r.pref_comuna ?? r.comuna) as string | null).filter((c): c is string => !!c)));
+    const { error } = await admin.from("perfil_busqueda").upsert({ user_id: sel.user_id, ...perfilConAjuste(ajuste, { comunas: actuales }), actualizado_at: new Date().toISOString() }, { onConflict: "user_id" });
+    reportarFalloQuery(error, { ruta: "api/semanal/clic", operacion: "ajustar-perfil", userId: sel.user_id });
+    await capturarServidor({ event: "semanal_ajuste", distinctId: sel.user_id, properties: { semana: sel.semana, ajuste: ajuste.tipo, ok: !error } }).catch(() => {});
+    return volver(`/dashboard?ajuste=${encodeURIComponent(url.searchParams.get("que") ?? "")}#perfil`);
+  }
   // El pack de tres (13-oct-2026): la línea del semanal a quien no tiene análisis; después de pagar vuelve a la selección.
   if (ir === "tres") return volver(rutaTres(sel.fuente === "inmediato" ? "inmediato" : "semanal", { variante: sel.variante, volver: `/semanal?t=${t}` }));
   // `ir=comprar`: el suelto, que es lo que ofrecían los correos que lo llevan (el semanal hasta el 13-oct y el inmediato).

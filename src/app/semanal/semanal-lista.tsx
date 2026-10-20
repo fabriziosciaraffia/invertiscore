@@ -25,7 +25,7 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { MARCA_NEGOCIAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
+import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { rutaTres } from "@/lib/tres-analisis";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
@@ -198,6 +198,8 @@ export function SemanalLista({
         <div className="guia-precio">UF {miles(it.precioUF)}</div>
         {corta && <p className="guia-negociar" data-semanal="zona">{MARCA_ZONA}</p>}
         {it.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
+        {/* El relleno (20-oct-2026): lo vio anoche publicado en el portal, sin ficha leída; «Analizar este» la relee antes de cobrar. */}
+        {it.sinConfirmar && <p className="guia-negociar" data-semanal="sin-confirmar">{MARCA_SIN_CONFIRMAR}</p>}
         {/* Lo ya visto (19-oct-2026), al final de la lista; «Ya lo analizaste» no se repite si ya lo dice el enlace al informe. */}
         {it.visto && !(it.visto === "analizado" && informeDe(it)) && <p className="guia-negociar" data-semanal="visto">{MARCA_VISTO[it.visto]}</p>}
         <div className="guia-dos">

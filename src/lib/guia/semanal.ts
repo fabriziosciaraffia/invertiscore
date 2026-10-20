@@ -106,10 +106,15 @@ export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: numbe
 
 export type ElegidoSemanal<T> = { c: T; ev: Evaluado; tramo: TramoSemanal; visto?: Visto };
 
+/**
+ * `relleno` (20-oct-2026): con menos de tres confirmados, los Comprar de anoche que no se alcanzaron a confirmar, en el
+ * orden en que la regla los habría chequeado (sus comunas, después las vecinas; solo lo nuevo), hasta completar tres.
+ * El envío los suma al final, marcados «Visto anoche, sin confirmar», si al mandar siguen faltando confirmados.
+ */
 export type ResultadoSemanal<T> =
-  | { estado: "armada"; items: Array<ElegidoSemanal<T>> }
-  | { estado: "sin_match"; items: [] }
-  | { estado: "pendiente"; items: Array<ElegidoSemanal<T>> };
+  | { estado: "armada"; items: Array<ElegidoSemanal<T>>; relleno?: Array<ElegidoSemanal<T>> }
+  | { estado: "sin_match"; items: []; relleno?: Array<ElegidoSemanal<T>> }
+  | { estado: "pendiente"; items: Array<ElegidoSemanal<T>>; relleno?: Array<ElegidoSemanal<T>> };
 
 /** El respaldo: los candidatos de las comunas vecinas y la evaluación con el descuento negociable (sin ella, no hay
    *  tramo «negociar»: el bloque de renta corta). */
@@ -126,9 +131,20 @@ export interface RespaldoSemanal<T> {
 export interface ReglaSemanal {
   conNegociables: boolean;
   aceptarMenos: boolean;
+  /** Con menos de tres confirmados, el relleno con lo visto anoche sin confirmar (20-oct-2026; solo renta larga). */
+  completarSinConfirmar?: boolean;
 }
-export const REGLA_LARGA: ReglaSemanal = { conNegociables: true, aceptarMenos: false };
+/**
+ * SIN MÍNIMO DE TRES EN RENTA LARGA (20-oct-2026, decisión de Fabrizio): con 1 o 2 confirmados sale la selección. Y con
+ * menos de tres confirmados se completa hasta tres con deptos que la evaluación de anoche vio publicados en los
+ * resultados del portal aunque la ficha no se haya leído (`relleno`, marcados «Visto anoche, sin confirmar», al final;
+ * nunca más de TOPE_SIN_CONFIRMAR). El 19-oct, de 17 correos cortos, 8 tenían deptos que convenían descartados por el
+ * mínimo, y una persona se dio de baja 17 minutos después del correo vacío.
+ */
+export const REGLA_LARGA: ReglaSemanal = { conNegociables: true, aceptarMenos: true, completarSinConfirmar: true };
 export const REGLA_CORTA: ReglaSemanal = { conNegociables: false, aceptarMenos: true };
+export const TOPE_SIN_CONFIRMAR = 3;
+export const MARCA_SIN_CONFIRMAR = "Visto anoche, sin confirmar";
 
 type Evaluados<T> = Array<{ c: T; ev: Evaluado }>;
 
@@ -163,6 +179,8 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
 ): Promise<ResultadoSemanal<T>> {
   const items: Array<ElegidoSemanal<T>> = [];
   let sinChequeo = 0;
+  // Lo visto anoche sin confirmar (20-oct-2026): los Comprar nuevos que quedaron sin chequeo, en el orden de la regla.
+  const sinConfirmar: Array<ElegidoSemanal<T>> = [];
   const tomar = async (lista: Evaluados<T>, tramo: TramoSemanal, hasta: number, vistos: boolean) => {
     for (const it of lista) {
       if (items.length >= hasta) return;
@@ -171,7 +189,10 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
       if (items.some((x) => x.c.avisoId === it.c.avisoId)) continue;
       const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
       if (e === "publicado") items.push({ ...it, tramo, ...(v ? { visto: v } : {}) });
-      else if (e === "sin-chequeo") sinChequeo++;
+      else if (e === "sin-chequeo") {
+        sinChequeo++;
+        if (!v && tramo !== "negociar" && !sinConfirmar.some((x) => x.c.avisoId === it.c.avisoId)) sinConfirmar.push({ ...it, tramo });
+      }
     }
   };
 
@@ -196,9 +217,11 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
   }
 
   if (items.length >= MINIMO_SEMANAL) return { estado: "armada", items };
-  // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente.
-  if (sinChequeo > 0) return { estado: "pendiente", items };
-  // Renta corta: con menos de tres y nada más por chequear, los que haya.
+  // Con menos de tres confirmados, el relleno hasta tres con lo visto anoche sin confirmar (solo renta larga).
+  const relleno = regla.completarSinConfirmar ? sinConfirmar.slice(0, Math.min(TOPE_SIN_CONFIRMAR, MINIMO_SEMANAL - items.length)) : undefined;
+  // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente (y si al mandar siguen sin chequeo, el relleno).
+  if (sinChequeo > 0) return { estado: "pendiente", items, ...(relleno?.length ? { relleno } : {}) };
+  // Con menos de tres y nada más por chequear, los que haya (renta corta desde el 14-oct-2026; renta larga desde el 20-oct).
   if (regla.aceptarMenos && items.length > 0) return { estado: "armada", items };
   return { estado: "sin_match", items: [] };
 }
@@ -493,12 +516,48 @@ export function puedeEntrarPorCorreo(p: { conSesion: boolean; enviadaAt: string 
 export const COMO_ENTRAR = "Para entrar: tu correo y un código. Sin contraseña.";
 
 /** El correo corto de la semana sin deptos (13-oct-2026). */
+/** El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 1 que te conviene», «Encontré 3 que te convienen». */
+export function asuntoSemanal(n: number): string {
+  return n === 1 ? "Encontré 1 que te conviene" : `Encontré ${n} que te convienen`;
+}
+
+/**
+ * EL CORREO VACÍO DICE LA VERDAD (20-oct-2026, decisión de Fabrizio): solo sale cuando de verdad no hay nada, y si hubo
+ * deptos que casi, los nombra; si en su combinación no hay, dice con qué sí (pie 30 % o una comuna vecina, igual que
+ * /deptos) y ofrece ajustar el perfil en un toque. Nunca «no apareció ninguno» a secas.
+ */
 export const SEMANAL_VACIO = {
   asunto: "Esta semana no apareció ninguno que te convenga",
   cuerpo: "Esta semana no apareció ninguno que te convenga con tu pie y tu plazo. Seguimos buscando.",
+  /** Hubo deptos que casi: Ajustar que con sus números no llegan a Comprar. */
+  casi: (n: number) => (n === 1 ? "Hubo 1 que casi: con tus números queda en Ajusta supuestos." : `Hubo ${n} que casi: con tus números quedan en Ajusta supuestos.`),
+  ajustarPie: (pie: number) => `Buscar con pie ${pie} %`,
+  ajustarComuna: (comuna: string) => `Sumar ${comuna} a mi búsqueda`,
+  ajusteListo: (que: string) => `Listo: ${que}. La próxima selección sale con eso.`,
   perfil: "Si quieres buscar en otras comunas, cámbialas en tu perfil:",
   boton: "Ver mi perfil de búsqueda",
 } as const;
+
+/** El ajuste en un toque del correo vacío (20-oct-2026): el pie a 30 %, o una comuna vecina sumada al perfil. */
+export type AjustePerfil = { tipo: "pie"; pie: 30 } | { tipo: "comuna"; comuna: string };
+
+export function ajusteDeParametro(v: string | null | undefined, comunasValidas: ReadonlySet<string>): AjustePerfil | null {
+  if (!v) return null;
+  if (v === "pie30") return { tipo: "pie", pie: 30 };
+  const m = v.match(/^comuna:(.{1,40})$/);
+  if (m && comunasValidas.has(m[1])) return { tipo: "comuna", comuna: m[1] };
+  return null;
+}
+
+export function parametroDeAjuste(a: AjustePerfil): string {
+  return a.tipo === "pie" ? "pie30" : `comuna:${a.comuna}`;
+}
+
+/** Cómo queda el perfil con el ajuste: el pie, o las comunas con la vecina sumada (hasta ocho, sin repetir). */
+export function perfilConAjuste(a: AjustePerfil, actual: { comunas: string[] }): Record<string, unknown> {
+  if (a.tipo === "pie") return { pie_pct: a.pie };
+  return { comunas: Array.from(new Set([...actual.comunas, a.comuna])).slice(0, 8) };
+}
 
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */
 export function esPrimerSemanal(enviadasAntes: number | null | undefined): boolean {
