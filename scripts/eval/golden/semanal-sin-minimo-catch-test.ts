@@ -108,6 +108,10 @@ export async function runSemanalSinMinimoTier(): Promise<{ hard: number }> {
     // Mutaciones: M11 el asunto vuelve al fijo · M12 la marca del relleno no se imprime · M13 el singular mal.
     {
       if (asuntoSemanal(1) !== "Encontré 1 que te conviene" || asuntoSemanal(2) !== "Encontré 2 que te convienen") F(`3 · el asunto no dice cuántos: ${asuntoSemanal(1)} / ${asuntoSemanal(2)}`);
+      // Los negociables aparte (ajuste de Fabrizio, 20-oct-2026). Mutaciones: M29 los negociables cuentan como confirmados · M30 el
+      // «solo negociables» vuelve a «te conviene» · M31 el correo no cuenta los negociables.
+      if (asuntoSemanal(1, 1) !== "Encontré 1 que conviene si negocias" || asuntoSemanal(2, 2) !== "Encontré 2 que convienen si negocias") F(`3 · solo negociables, el asunto no dice «si negocias»: ${asuntoSemanal(1, 1)}`);
+      if (asuntoSemanal(3, 1) !== "Encontré 2 que te convienen" || asuntoSemanal(2, 1) !== "Encontré 1 que te conviene") F(`3 · con mezcla, el asunto no cuenta solo los confirmados: ${asuntoSemanal(3, 1)}`);
       const base = {
         variante: "tarjetas" as const, nombre: "Ana", busca: "1 dormitorio, La Florida, hasta UF 1.400", piePct: 100, plazoAnios: 15, saldo: 1, conRegalo: false,
         urlBoton: "https://x/b", urlTres: "https://x/t", urlBaja: "https://x/baja",
@@ -117,6 +121,12 @@ export async function runSemanalSinMinimoTier(): Promise<{ hard: number }> {
       if (uno.subject !== "Encontré 1 que te conviene" || !uno.html.includes("Encontré 1 que te conviene")) F(`3 · con un depto el asunto o el titular no dicen «Encontré 1 que te conviene»: ${uno.subject}`);
       const tres = correoSemanal({ ...base, deptos: [d("a"), d("b"), d("c", { sinConfirmar: true })] });
       if (tres.subject !== "Encontré 3 que te convienen") F(`3 · con tres el asunto no dice tres: ${tres.subject}`);
+      const soloNeg = correoSemanal({ ...base, deptos: [d("n", { tramo: "negociar" })] });
+      if (soloNeg.subject !== "Encontré 1 que conviene si negocias" || !soloNeg.html.includes("Encontré 1 que conviene si negocias") || (soloNeg.html.match(/Conviene si lo negocias/g) ?? []).length !== 1)
+        F(`3 · solo un negociable: el asunto o el titular no dicen «si negocias», o la tarjeta no lleva la marca: ${soloNeg.subject}`);
+      const mezcla = correoSemanal({ ...base, deptos: [d("a"), d("b"), d("n", { tramo: "negociar" })] });
+      if (mezcla.subject !== "Encontré 2 que te convienen" || (mezcla.html.match(/Conviene si lo negocias/g) ?? []).length !== 1 || !mezcla.html.includes("uno de ellos si lo negocias"))
+        F(`3 · mezcla de confirmados y un negociable: el asunto no cuenta solo los dos, o el cuerpo no marca el negociable: ${mezcla.subject}`);
       if ((tres.html.match(new RegExp(MARCA_SIN_CONFIRMAR, "g")) ?? []).length !== 1 || !/data-marca="sin-confirmar"/.test(tres.html)) F("3 · la tarjeta del relleno no lleva «Visto anoche, sin confirmar»");
       if (!tres.html.includes("no alcanzó a revisar su ficha") || uno.html.includes("sin confirmar")) F("3 · el correo no explica el relleno (o lo explica cuando no hay)");
       if (MARCA_SIN_CONFIRMAR !== "Visto anoche, sin confirmar") F("3 · la marca cambió");

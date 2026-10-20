@@ -516,9 +516,16 @@ export function puedeEntrarPorCorreo(p: { conSesion: boolean; enviadaAt: string 
 export const COMO_ENTRAR = "Para entrar: tu correo y un código. Sin contraseña.";
 
 /** El correo corto de la semana sin deptos (13-oct-2026). */
-/** El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 1 que te conviene», «Encontré 3 que te convienen». */
-export function asuntoSemanal(n: number): string {
-  return n === 1 ? "Encontré 1 que te conviene" : `Encontré ${n} que te convienen`;
+/**
+ * El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 1 que te conviene», «Encontré 3 que te convienen».
+ * Los negociables aparte (ajuste de Fabrizio, 20-oct-2026): si lo encontrado son SOLO negociables, «Encontré 1 que
+ * conviene si negocias»; si mezcla, cuenta solo los que convienen sin negociar y el cuerpo marca los demás.
+ */
+export function asuntoSemanal(n: number, negociables = 0): string {
+  const neg = Math.min(Math.max(0, negociables), n);
+  if (n > 0 && neg >= n) return n === 1 ? "Encontré 1 que conviene si negocias" : `Encontré ${n} que convienen si negocias`;
+  const sin = n - neg;
+  return sin === 1 ? "Encontré 1 que te conviene" : `Encontré ${sin} que te convienen`;
 }
 
 /**

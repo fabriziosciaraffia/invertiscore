@@ -201,8 +201,11 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   const pie = pct(d.piePct);
   const filas: string[] = [];
   const delDia = d.delDia ?? null;
-  // El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 2 que te convienen».
-  const titular = delDia ? DEL_DIA.titular : asuntoSemanal(total);
+  // El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 2 que te convienen»; los negociables aparte, solo cuentan los
+  // que convienen sin negociar (los negociables y el relleno van marcados en el cuerpo).
+  const negociables = conLargo ? d.deptos.filter((x) => x.tramo === "negociar").length : 0;
+  const asunto = delDia ? DEL_DIA.asunto : asuntoSemanal(total, negociables);
+  const titular = delDia ? DEL_DIA.titular : asunto;
   const sinConfirmar = conLargo ? d.deptos.filter((x) => x.sinConfirmar).length : 0;
   if (d.variante === "banda" && !delDia) {
     filas.push(`<tr><td style="padding: 0 0 24px 0;"><a href="${d.urlBoton}" style="text-decoration: none;"><img src="${d.urlBanda ?? URL_BANDA_SEMANAL}" width="${ANCHO_BANDA}" height="${ALTO_BANDA}" alt="${escaparHtml(SEMANAL.titular)}" style="display: block; width: 100%; max-width: ${ANCHO_BANDA}px; height: auto; border: 0; border-radius: 16px; background: #2B558F; font-family: ${FUENTE_TITULO}; font-size: 24px; font-weight: 700; line-height: 1.3; color: #FFFFFF;"></a></td></tr>`);
@@ -271,7 +274,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <meta name="x-apple-disable-message-reformatting">
-<title>${escaparHtml(delDia ? DEL_DIA.asunto : asuntoSemanal(total))}</title>
+<title>${escaparHtml(asunto)}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(delDia ? DEL_DIA.preencabezado(total) : SEMANAL.preencabezado(total, pct(piePre), plazoPre))}</div>
@@ -288,7 +291,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   </table>
 </body>
 </html>`;
-  return { subject: delDia ? DEL_DIA.asunto : asuntoSemanal(total), html };
+  return { subject: asunto, html };
 }
 
 /** Las piezas de la plantilla, para el aviso inmediato (correo-inmediato.ts): la misma tarjeta y el mismo botón. */
