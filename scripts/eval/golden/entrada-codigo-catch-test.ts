@@ -221,9 +221,15 @@ export function runEntradaCodigoTier(): { hard: number } {
   // partió en el banner (`bannerRegistroVisible`, que suma a quien acaba de entrar) y el ticket (la
   // oferta del servidor, con `correoDelTicket`, que antepone el correo de quien acaba de entrar). Lo que
   // fija este punto no cambia: tras el refresco, «Estás dentro» sigue y el ticket no pide el correo.
+  // ⚠ ACTA (20-oct-2026) · se deroga la ADYACENCIA, no la regla: 1c10d110 (la primera selección) metió entre
+  // `useRecienDentro` y `bannerLqs` el efecto que deja la marca con `?dentro=1`, y este chequeo, que pedía las dos líneas
+  // pegadas, se puso rojo con el cableado intacto. Ahora: `recienDentro` se declara UNA vez, de `useRecienDentro(analysisId)`,
+  // y el banner lo suma en `bannerRegistroVisible`, estén donde estén.
   for (const f of ["src/app/analisis/[id]/results-client.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) {
     const s = sinComentarios(leer(f));
-    if (!/const recienDentro = useRecienDentro\(analysisId\);\s*const bannerLqs = !!analysisId && bannerRegistroVisible\(\{[^}]*recienDentro: !!recienDentro[^}]*\}\);/.test(s)) F(`4 · ${f}: el banner no suma a quien acaba de entrar (Estás dentro no sobrevive al refresco)`);
+    const declaraciones = s.match(/\b(?:const|let|var)\s+(?:\{[^}]*\brecienDentro\b[^}]*\}|recienDentro\b)/g) ?? [];
+    const deLaMarca = declaraciones.length === 1 && /const recienDentro = useRecienDentro\(analysisId\);/.test(s);
+    if (!deLaMarca || !/const bannerLqs = !!analysisId && bannerRegistroVisible\(\{[^}]*recienDentro: !!recienDentro[^}]*\}\);/.test(s)) F(`4 · ${f}: el banner no suma a quien acaba de entrar (Estás dentro no sobrevive al refresco)`);
     if (!/<BannerRegistro [^>]*pasoInicial=\{recienDentro \? "dentro" : "oferta"\}/.test(s)) F(`4 · ${f}: tras el refresco el banner no vuelve en «Estás dentro»`);
     if (!/<TicketPack [^>]*correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\}/.test(s)) F(`4 · ${f}: tras el refresco el ticket sigue pidiendo el correo`);
   }

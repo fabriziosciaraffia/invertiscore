@@ -33,7 +33,10 @@ import { textoCierre } from "../../../src/lib/cierre-informe";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
-const sinComentarios = (s: string) => s.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "");
+// ⚠ ACTA (20-oct-2026) · también los comentarios de JSX, `{/* … */}`: no se dibujan. Hasta hoy quedaban adentro y el de
+// 39535f66 en semanal-lista.tsx («la relee antes de cobrar») puso rojo el §6, que mira el texto que la persona LEE.
+// El cuerpo no puede contener `*/`: con `[\s\S]*?` un `{` seguido de un jsdoc se comía el código hasta el primer `*/}`.
+const sinComentarios = (s: string) => s.replace(/\{\s*\/\*(?:(?!\*\/)[\s\S])*\*\/\s*\}/g, "").replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "");
 /** El cuerpo de una función por su firma, hasta el cierre de su primer nivel (`\n}\n` o `\n  };\n`). */
 function cuerpo(s: string, firma: string, cierre = "\n}\n"): string {
   const i = s.indexOf(firma);
@@ -76,7 +79,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
 
   // ── 3 · RENTA CORTA SOLO CON COMPRAR ───────────────────────────────────────────
   {
-    if (REGLA_CORTA.conNegociables || !REGLA_CORTA.aceptarMenos || !REGLA_LARGA.conNegociables || REGLA_LARGA.aceptarMenos) F("3 · las reglas no son «renta corta: sin negociables y los que haya» / «renta larga: con negociables, tres o nada»");
+    // ⚠ ACTA (20-oct-2026, SEMANAL-SIN-MINIMO, 39535f66) · en renta larga el «tres o nada» se derogó por decisión de
+    // Fabrizio: con 1 o 2 confirmados sale la selección y, con menos de tres, la completa el relleno «Visto anoche, sin
+    // confirmar» (el detalle lo fija SEMANAL-SIN-MINIMO). 2f531b8d puso al día las actas de SEMANAL y dejó éstas: el rojo era
+    // del gate. Renta corta no cambia: sin negociables, los que haya y sin relleno.
+    if (REGLA_CORTA.conNegociables || !REGLA_CORTA.aceptarMenos || REGLA_CORTA.completarSinConfirmar || !REGLA_LARGA.conNegociables || !REGLA_LARGA.aceptarMenos || !REGLA_LARGA.completarSinConfirmar)
+      F("3 · las reglas no son «renta corta: sin negociables, los que haya y sin relleno» / «renta larga: con negociables, los que haya y el relleno sin confirmar»");
     // Dos Comprar y un Ajustar que con descuento daría Comprar: renta corta manda los dos, sin el negociable.
     const corta = await elegir({ a: "COMPRAR", b: "COMPRAR", c: "AJUSTA SUPUESTOS" }, REGLA_CORTA, { conDescuento: { c: "COMPRAR" } });
     if (corta.estado !== "armada" || corta.items.map((x) => x.c.avisoId).join() !== "a,b" || corta.items.some((x) => x.tramo === "negociar"))
@@ -91,11 +99,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (cero.estado !== "sin_match" || cero.items.length !== 0) F(`3 · renta corta sin Comprar no queda sin coincidencias (${cero.estado})`);
     const espera = await elegir({ a: "COMPRAR", b: "COMPRAR" }, REGLA_CORTA, { sinChequeo: ["b"] });
     if (espera.estado !== "pendiente") F(`3 · renta corta con fichas por chequear se da por armada antes de tiempo (${espera.estado})`);
-    // Renta larga, igual que antes: el negociable completa, y con menos de tres no hay selección.
+    // Renta larga: el negociable completa, y con menos de tres sale con los que haya (acta de arriba).
     const larga = await elegir({ a: "COMPRAR", b: "COMPRAR", c: "AJUSTA SUPUESTOS" }, REGLA_LARGA, { conDescuento: { c: "COMPRAR" } });
     if (larga.estado !== "armada" || larga.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join() !== "a/propia,b/propia,c/negociar") F(`3 · renta larga dejó de completar con el negociable: ${larga.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join()}`);
     const largaCorta = await elegir({ a: "COMPRAR", b: "COMPRAR" }, REGLA_LARGA);
-    if (largaCorta.estado !== "sin_match" || MINIMO_SEMANAL !== 3) F(`3 · renta larga con dos Comprar dejó de ser «tres o nada» (${largaCorta.estado})`);
+    if (largaCorta.estado !== "armada" || largaCorta.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join() !== "a/propia,b/propia" || MINIMO_SEMANAL !== 3)
+      F(`3 · renta larga con dos Comprar no los manda (${largaCorta.estado}: ${largaCorta.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join()}), o el relleno ya no apunta a tres`);
     // La regla de cobro: la ruta pasa por el orquestador, que cobra solo si lo fino da Comprar (el detalle, en SEMANAL-STR).
     if (!/if \(!daComprar\(m\.fino\.veredicto\)\) return \{ estado: "no-da", alternativas: await p\.alternativas\(\) \};/.test(sinComentarios(leer("src/lib/guia/semanal-str.ts"))))
       F("3 · la regla de cobro no es «si lo fino no da Comprar, no se cobra»");

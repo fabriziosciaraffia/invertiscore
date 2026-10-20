@@ -171,13 +171,16 @@ export async function runConfigPublicaTier(): Promise<{ hard: number }> {
     const def = new RegExp(`export function ${fn}\\(\\)[^{]*\\{([^}]*)\\}`).exec(sinComentarios(leer(p)));
     if (!def || !/SUPABASE_SERVICE_ROLE_KEY!/.test(def[1]) || /ANON_KEY/.test(def[1])) F(`6 · \`${fn}\` (${p}) no construye un cliente con la clave de service role`);
   }
+  /** ¿`fn` construye un cliente con la clave de service role? Uno de la biblioteca (verificado arriba) o uno local. */
+  const esConstructorDeServicio = (s: string, fn: string) => {
+    if (DE_SERVICIO[fn]) return true;
+    const local = new RegExp(`function ${fn}\\(\\)[^{]*\\{([^}]*)\\}`).exec(s);
+    return !!local && /SUPABASE_SERVICE_ROLE_KEY!/.test(local[1]) && !/ANON_KEY/.test(local[1]);
+  };
   const conServicio = (s: string, arg: string) => {
     if (new RegExp(`const\\s*\\{[^}]*\\b${arg}\\b[^}]*\\}\\s*=\\s*await\\s+requireAdminPage\\(`).test(s)) return true;
     const ligado = new RegExp(`const\\s+${arg}\\s*=\\s*(\\w+)\\(\\)`).exec(s);
-    if (!ligado) return false;
-    if (DE_SERVICIO[ligado[1]]) return true;
-    const local = new RegExp(`function ${ligado[1]}\\(\\)[^{]*\\{([^}]*)\\}`).exec(s);
-    return !!local && /SUPABASE_SERVICE_ROLE_KEY!/.test(local[1]) && !/ANON_KEY/.test(local[1]);
+    return !!ligado && esConstructorDeServicio(s, ligado[1]);
   };
   // Si el argumento es a su vez el parámetro de la función que llama, esa función pasa a ser ayudante y se miran
   // SUS llamadas (transitivo, con una cola).
@@ -190,7 +193,12 @@ export async function runConfigPublicaTier(): Promise<{ hard: number }> {
       for (const m of s.matchAll(new RegExp(`(?<!function\\s)\\b${fn}\\(\\s*(\\w+)`, "g"))) {
         llamadas++;
         const arg = m[1];
-        if (conServicio(s, arg)) continue;
+        // ⚠ ACTA (20-oct-2026) · el cliente también llega CONSTRUIDO EN LÍNEA —`encolarPrimeraSeleccion(createAdminServiceClient(),
+        // …)`, 804fca08—, y el censo solo reconocía una variable ligada a un constructor: daba por ajeno un cliente de service
+        // role. Se acepta el constructor en línea con la misma vara (de la biblioteca o local, con la clave de service role);
+        // cualquier otra llamada en línea sigue siendo falla.
+        const enLinea = s.startsWith("()", m.index! + m[0].length);
+        if (enLinea ? esConstructorDeServicio(s, arg) : conServicio(s, arg)) continue;
         const antes = [...s.slice(0, m.index).matchAll(/(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g)].pop();
         if (antes && new RegExp(`\\b${arg}\\s*:\\s*SupabaseClient\\b`).test(antes[2])) {
           if (!ayudantes.includes(antes[1])) { ayudantes.push(antes[1]); cola.push(antes[1]); }
