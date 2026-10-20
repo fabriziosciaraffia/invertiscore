@@ -274,8 +274,11 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
       if (c.fbc?.valor !== fbcDeFbclid("IwAR1abcDEF_ghi-123", 1000) || c.fbc.valor !== "fb.1.1000.IwAR1abcDEF_ghi-123" || c.fbc.dominio !== ".refranco.ai") F("2 · el fbclid de la llegada no queda en _fbc con el formato del pixel");
       if (cookiesDeLlegada({ search: "?fbclid=IwAR1abcDEF_ghi-123", host: "refranco.ai", fbcActual: "fb.1.5.IwAR1abcDEF_ghi-123", ahoraMs: 9 }).fbc) F("2 · el mismo clic pisa el _fbc que ya estaba");
       if (cookiesDeLlegada({ search: "?fbclid=<script>", host: "refranco.ai", fbcActual: null, ahoraMs: 9 }).fbc) F("2 · un fbclid con forma rara entra a la cookie");
+      // ACTA 20-oct-2026 (VISTA-ENTRADA): la respuesta de la landing además pasa por `conVista` —la vista del servidor y su id
+      // en `Server-Timing`—, y el pedido es `req` (el mismo, salvo en /i/, que lleva el id de la visita en una cabecera). La
+      // regla no cambia: en la landing el middleware responde con `conMedicion` sobre la respuesta de siempre.
       const mw = sinComentarios(leer("src/middleware.ts"));
-      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc && conPermiso\(consentimientoDeCookie\(request\.headers\.get\("cookie"\)\)\)\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(request\.nextUrl\.pathname\)\) return conMedicion\(request, NextResponse\.next\(\)\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
+      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc && conPermiso\(consentimientoDeCookie\(request\.headers\.get\("cookie"\)\)\)\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(req\.nextUrl\.pathname\)\) return conVista\(req, conMedicion\(req, NextResponse\.next\(\)\), event, visita\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
     }
 
     // ── 3 · LAS CUENTAS DE PRUEBA, FUERA ──────────────────────────────────────

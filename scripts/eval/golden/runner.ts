@@ -149,6 +149,7 @@ import { runComunasDisenoTier } from "./comunas-diseno-catch-test";
 import { runProsaComunasTier } from "./prosa-comunas-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
+import { runVistaEntradaTier } from "./vista-entrada-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
@@ -631,6 +632,9 @@ function printSeed(r: SeedReport) {
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
   totalHard += (await runPuertaCTier()).hard;
+  // Tier VISTA-ENTRADA (20-oct-2026, 0 tokens): la landing, /deptos e /i/ dejan su vista desde el servidor, aunque la persona
+  // se vaya antes de que cargue PostHog; sin robots ni refrescos, sin demorar la respuesta, sin duplicar con el navegador. ──
+  totalHard += (await runVistaEntradaTier()).hard;
   // Tier PRIMERA-SELECCION (20-oct-2026, 0 tokens): quien se registra ve sus deptos ahí mismo, por cualquier puerta, con
   // «Analizar este» en cada uno; toda cuenta nueva recibe el correo del día dentro de la hora, por la misma cola. ──
   totalHard += (await runPrimeraSeleccionTier()).hard;
