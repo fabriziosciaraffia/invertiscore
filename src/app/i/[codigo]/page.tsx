@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
+import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
+import { consentimientoDeCookie } from "@/lib/consentimiento";
+import { esCargaDePagina, esRobot, eventoInvitacionVista, idPostHogDeCookies } from "@/lib/invitacion-vista";
+import { capturarServidor } from "@/lib/posthog-servidor";
 import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { normalizarCodigo, REFERIDO_COPY } from "@/lib/referido";
-import { anotarDispositivoInvitador, leerInvitacion } from "@/lib/referido-servidor";
+import { anotarDispositivoInvitador, invitadorDePrueba, leerInvitacion } from "@/lib/referido-servidor";
 import { InvitacionCliente, type ModoInvitacion } from "./invitacion-cliente";
 import { portadaDeptos } from "@/lib/deptos/portada";
 
@@ -57,6 +61,26 @@ export default async function InvitacionPage({ params, searchParams }: { params:
       modo = "propio";
       await anotarDispositivoInvitador(admin, user.id, huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null).dispositivo);
     } else modo = "con_cuenta";
+  }
+  // LA VISITA SE MIDE ACÁ (20-oct-2026, lib/invitacion-vista.ts): en el servidor, con el código, con o sin consentimiento.
+  // El navegador la perdía si la persona se iba antes de que cargara PostHog. Ni robots ni el refresco de Next.
+  const cabeceras = headers();
+  const agente = cabeceras.get("user-agent");
+  if (esCargaDePagina(cabeceras) && !esRobot(agente)) {
+    const ev = eventoInvitacionVista({
+      codigo,
+      ruta: `/i/${params.codigo}`,
+      modo,
+      conNombre: !!inv?.conNombre,
+      invitadorPrueba: inv ? await invitadorDePrueba(admin, inv.userId) : false,
+      userId: user?.id ?? null,
+      consentimiento: consentimientoDeCookie(cabeceras.get("cookie")),
+      idPostHog: idPostHogDeCookies(cookies().getAll(), process.env.NEXT_PUBLIC_POSTHOG_KEY),
+      visita: crypto.randomUUID(),
+      esCarga: true,
+      agente,
+    });
+    if (ev) waitUntil(capturarServidor(ev).catch(() => false));
   }
   // La misma portada que /deptos (17-oct-2026): la frase con las cifras de la noche y el número de la búsqueda por defecto.
   const portada = modo === "invitado" ? await portadaDeptos() : undefined;

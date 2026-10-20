@@ -2,6 +2,8 @@
 // El referido, del lado del servidor (16-oct-2026; las reglas en referido.ts). Tres momentos:
 //   1 · EL ENLACE (`asegurarInvitacion`): el de siempre o, si lo pide, el que dice su nombre. Cada vez que quien invita
 //       lo abre en un navegador, ese dispositivo queda anotado (en hash): es contra lo que se mide el «mismo dispositivo».
+//       OJO (20-oct-2026): también lo anota pedir el enlace —«Invita a alguien» del dashboard y compartir un informe
+//       (GET /api/invitacion)—, así que un dispositivo anotado NO es una visita a /i/. Las visitas, en `invitacion_vista`.
 //   2 · EL COBRO DEL CÓDIGO (`vincularInvitacion`): al registrarse, por cualquier puerta —el reclamo después del código,
 //       /auth/callback (enlace y Google), el alta de /deptos y de la página del invitado, el ticket, el dashboard como
 //       red—, la cookie de la invitación liga la cuenta a quien invitó. Una fila por invitado (su clave es la cuenta): una
@@ -49,6 +51,17 @@ export async function leerInvitacion(admin: SupabaseClient, codigo: string): Pro
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-invitacion" });
   if (!data) return null;
   return { codigo: data.codigo as string, userId: data.user_id as string, conNombre: data.con_nombre === true, nombre: (data.nombre as string | null) ?? null };
+}
+
+/** ¿Quien invita es una cuenta de prueba? Marca la visita a su enlace (el panel la saca). Ante la duda, no. */
+export async function invitadorDePrueba(admin: SupabaseClient, userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await admin.from("test_accounts").select("user_id").eq("user_id", userId).maybeSingle();
+    reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-prueba", userId });
+    return !!data;
+  } catch {
+    return false;
+  }
 }
 
 /** Anota el dispositivo en los enlaces de la persona (si no estaba). */

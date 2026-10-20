@@ -11,7 +11,7 @@
 //   · propio     — quien invita abre su enlace: su enlace para compartir;
 //   · con_cuenta — ya tiene cuenta: el enlace es para quien todavía no está.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import { DeptosCliente } from "@/app/deptos/deptos-cliente";
@@ -38,10 +38,8 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion, p
   const posthog = usePostHog();
   const [conDepto, setConDepto] = useState(false);
   const [navegando, setNavegando] = useState<CaminoSinDireccion | "escribir" | null>(null);
-
-  useEffect(() => {
-    posthog?.capture("invitacion_vista", { modo, con_nombre: !!nombre, valida: !!codigo });
-  }, [posthog, modo, nombre, codigo]);
+  // `invitacion_vista` ya no sale de acá (20-oct-2026): la emite la página en el servidor (lib/invitacion-vista.ts). Desde el
+  // navegador se perdía si la persona se iba antes de que cargara PostHog, y las dos juntas la contarían dos veces.
 
   if (modo === "propio") {
     return (
