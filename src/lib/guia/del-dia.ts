@@ -102,6 +102,8 @@ export function faltanDelPerfil(p: { comunas: string[]; dormitorios: number[]; p
 export const PRIMERA_SELECCION = {
   /** Arriba de todo, con el regalo vivo. */
   tituloRegalo: "Tienes un análisis de regalo: elige uno",
+  /** Con el regalo vivo y sin deptos («ninguno», 20-oct-2026, Fabrizio): no hay qué elegir; el regalo queda guardado. */
+  tituloRegaloGuardado: "Tienes un análisis de regalo guardado",
   /** Sin regalo (topó, o lo gastó): se elige igual. */
   titulo: "Tus primeros deptos: elige uno",
   /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
@@ -127,6 +129,13 @@ export const PRIMERA_SELECCION = {
   verDeNuevo: "Ver mis primeros deptos",
   cerrar: "Cerrar",
 } as const;
+
+/** El título de la hoja: con el regalo vivo, «elige uno», salvo sin deptos, donde el regalo queda guardado (20-oct-2026).
+ *  Sin regalo, el de siempre. */
+export function tituloHoja(p: { regalo: boolean; sinDeptos: boolean }): string {
+  if (!p.regalo) return PRIMERA_SELECCION.titulo;
+  return p.sinDeptos ? PRIMERA_SELECCION.tituloRegaloGuardado : PRIMERA_SELECCION.tituloRegalo;
+}
 
 export const DEL_DIA = {
   asunto: "Tus primeros deptos, revisados hoy",

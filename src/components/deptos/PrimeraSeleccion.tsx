@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, type FaltaDelPerfil } from "@/lib/guia/del-dia";
+import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, tituloHoja, type FaltaDelPerfil } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { rutaTres } from "@/lib/tres-analisis";
@@ -159,12 +159,13 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
     );
   };
   const listo = !!datos && datos.faltan.every((f) => (f === "comuna" ? !!eleccion.comuna : f === "tipologia" ? !!eleccion.tipologia : !!eleccion.rango));
-  // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno» (20-oct-2026).
+  // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno», y con regalo el título dice que queda guardado
+  // (20-oct-2026).
   const sinDeptos = hojaSinDeptos(datos);
 
   return (
     <section className="guia dp" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
-      {titulo && <h2 className="guia-bloque" data-primera="titulo">{datos?.regaloVence ? PRIMERA_SELECCION.tituloRegalo : PRIMERA_SELECCION.titulo}</h2>}
+      {titulo && <h2 className="guia-bloque" data-primera="titulo">{tituloHoja({ regalo: !!datos?.regaloVence, sinDeptos })}</h2>}
       {titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">{PRIMERA_SELECCION.bajada}</p>}
 
       {!datos && !fallo && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}

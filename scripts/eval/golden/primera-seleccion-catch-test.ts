@@ -15,7 +15,8 @@
 //   6 · LA PANTALLA, POR PUERTA: en el informe, una hoja SOBRE el informe (fuera de la cinta, que fija position relative),
 //       una vez por informe y pestaña, con «Ver mis primeros deptos» para reabrirla; en /deptos y en la página del
 //       invitado, en la misma pantalla de «Estás dentro», sin esperar a que conteste el «cuándo».
-//   7 · «TIENES UN ANÁLISIS DE REGALO: ELIGE UNO» arriba (sin regalo, «Tus primeros deptos: elige uno»), y cada depto con
+//   7 · «TIENES UN ANÁLISIS DE REGALO: ELIGE UNO» arriba (sin regalo, «Tus primeros deptos: elige uno»; con regalo y sin
+//       deptos, «Tienes un análisis de regalo guardado»), y cada depto con
 //       «Analizar este»: el mismo aviso antes de gastar y la misma ruta que la página semanal, validada por el token.
 //   8 · ANALIZAR DESDE YA: los de la noche quedan escritos en la fila pendiente del día (solo si sigue pendiente, sin
 //       enviar y vacía), y la pantalla solo ofrece el botón cuando el aviso quedó en la selección.
@@ -40,7 +41,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION,
+  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION, tituloHoja,
 } from "../../../src/lib/guia/del-dia";
 import { encolarPrimeraSeleccion, rellenarDeLaNoche } from "../../../src/lib/guia/del-dia-servidor";
 import { queEnviarSemanal } from "../../../src/lib/guia/semanal";
@@ -261,7 +262,25 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     {
       if (PRIMERA_SELECCION.tituloRegalo !== "Tienes un análisis de regalo: elige uno") F(`7 · el título con regalo no es el pedido: ${PRIMERA_SELECCION.tituloRegalo}`);
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/\{datos\?\.regaloVence \? PRIMERA_SELECCION\.tituloRegalo : PRIMERA_SELECCION\.titulo\}/.test(ps)) F("7 · el título no dice el regalo cuando lo hay");
+      // ⚠ ACTA (20-oct-2026, Fabrizio) · sin deptos («ninguno») no hay qué elegir: con el regalo vivo el título pasa a
+      // «Tienes un análisis de regalo guardado», sin «elige uno»; en los demás estados queda igual. El título sale de
+      // `tituloHoja`, con la misma condición que esconde la bajada. Mutaciones: T25 otro texto · T26 sin deptos sigue
+      // «elige uno» · T27 dice «guardado» con deptos · T28 dice «guardado» sin regalo · T29 la pantalla no usa `tituloHoja`
+      // o le pasa otra condición.
+      if (PRIMERA_SELECCION.tituloRegaloGuardado !== "Tienes un análisis de regalo guardado") F(`7 · el título con regalo y sin deptos no es el pedido: ${PRIMERA_SELECCION.tituloRegaloGuardado}`);
+      const casos: Array<[boolean, boolean, string]> = [
+        [true, false, PRIMERA_SELECCION.tituloRegalo],
+        [true, true, "Tienes un análisis de regalo guardado"],
+        [false, false, PRIMERA_SELECCION.titulo],
+        [false, true, PRIMERA_SELECCION.titulo],
+      ];
+      for (const [regalo, sinDeptos, esperado] of casos) {
+        const t = tituloHoja({ regalo, sinDeptos });
+        if (t !== esperado) F(`7 · ${regalo ? "con" : "sin"} regalo y ${sinDeptos ? "sin" : "con"} deptos, el título es «${t}» (va «${esperado}»)`);
+      }
+      if (/elige uno/i.test(tituloHoja({ regalo: true, sinDeptos: true }))) F("7 · sin deptos el título sigue pidiendo que elija uno");
+      if (!/<h2 className="guia-bloque" data-primera="titulo">\{tituloHoja\(\{ regalo: !!datos\?\.regaloVence, sinDeptos \}\)\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
+        F("7 · el título no dice el regalo cuando lo hay, o no mira si hay deptos con la misma condición que la bajada");
       if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{puede && \(\s*<div className="guia-acc">\s*<button type="button" className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
       if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}semanal: datos\.token \}\)/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
@@ -340,7 +359,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (PRIMERA_SELECCION.bajada !== BAJADA) F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajada}»`);
       if (/anoche|correo de esta hora/i.test(PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche» o «el correo de esta hora»");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/<h2 className="guia-bloque" data-primera="titulo">\{datos\?\.regaloVence \? PRIMERA_SELECCION\.tituloRegalo : PRIMERA_SELECCION\.titulo\}<\/h2>\}\s*\{titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
+      if (!/<h2 className="guia-bloque" data-primera="titulo">\{tituloHoja\(\{ regalo: !!datos\?\.regaloVence, sinDeptos \}\)\}<\/h2>\}\s*\{titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
         F("12 · la pantalla no dibuja ese texto justo bajo «Tienes un análisis de regalo: elige uno»");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";
