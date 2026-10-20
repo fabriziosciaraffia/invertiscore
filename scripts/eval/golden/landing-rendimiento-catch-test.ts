@@ -22,6 +22,10 @@
 //       (el grafo se recorre acá); el fondo del hero va liso (≤ 30 kB) con el grano aparte (≤ 12 kB); lo de abajo del
 //       hero lleva `content-visibility: auto`; Supabase entra por import() con la página quieta; y las fuentes de
 //       arriba van en su subconjunto del español (≤ 42 kB), con el «re» del wordmark en su propia cara incrustada.
+//   7 · /pricing EN TELÉFONO (20-oct-2026, goal «el LCP de /pricing»: mediana de cinco, bajo 2,5 s). El LCP es la tarjeta
+//       del pack: pinta primero el degradado liso (las mismas medidas que el de grano) y el fondo con grano y su capa
+//       entran solo detrás de `html[data-grano]`, que el header de la página marca con la página quieta; el JS de las
+//       islas de /pricing no llega a Node, Supabase, Sentry ni posthog-js.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 //   Acta 28-sep-2026: A Maps al montar (prepararPlaces() pelado en el efecto) → 1 falla · B solo `focus`
@@ -30,6 +34,12 @@
 //   Acta 01-oct-2026 (LCP móvil): H vuelve JetBrains a la precarga → 1 · I una cara sin swap → 1 · J el titular sin
 //   respaldo ajustado → 1 · K el fondo con fetchPriority="high" → 1 · L el fondo precargado en el layout → 1 ·
 //   M falta Inter en la precarga → 1.
+//   Acta 20-oct-2026 (/pricing, §7; scratchpad mutar-pricing.cjs, cada archivo restaurado byte a byte): Q1 el pack vuelve
+//   al fondo con grano de entrada → 2 (y PLANES rojo) · Q2 lo mismo desde 768 → 2 · Q3 la capa de grano sin esperar la
+//   señal → 1 · Q4 sin el fondo con grano encima → 1 (y PLANES) · Q5 sin él desde 768 → 1 · Q6 se pierde la capa → 1 (y
+//   PLANES) · Q7 /pricing sin el header que marca la señal → 1 · Q8 la vista de planes importa posthog-js → 2 · Q9 el
+//   grano detrás de otra señal → 5 (y PLANES) · Q10 el ::before no cubre la tarjeta → 1 · Q11 el liso con otras medidas
+//   (el m1x copiado sobre el m2x) → 1. 15/15 ROJO; restaurado: verde.
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -103,7 +113,8 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (existsSync(manifest)) {
     const pages = JSON.parse(readFileSync(manifest, "utf8")).pages as Record<string, string[]>;
     // El layout también (19-oct-2026): los polyfills de criptografía entraban por el provider global, no por la página.
-    const chunks = [...new Set([...(pages["/page"] ?? []), ...(pages["/layout"] ?? [])])].filter((f) => f.endsWith(".js"));
+    // Y /pricing (20-oct-2026, §7): sus chunks propios tampoco traen nada de esto.
+    const chunks = [...new Set([...(pages["/page"] ?? []), ...(pages["/layout"] ?? []), ...(pages["/pricing/page"] ?? [])])].filter((f) => f.endsWith(".js"));
     const esProduccion = chunks.length > 3 && chunks.every((f) => /-[a-f0-9]{16}\.js$/.test(f) || /webpack-|main-app-/.test(f));
     if (!esProduccion) {
       console.log(`  · el .next de ${raizBuild} es de \`next dev\` (${chunks.length} chunks sin hash): el censo del bundle no corrió acá`);
@@ -120,7 +131,8 @@ export function runLandingRendimientoTier(): { hard: number } {
         const b = readFileSync(join(raizBuild, ".next", f), "utf8");
         for (const [que, rx] of marcas) if (rx.test(b)) F(`2 · el chunk ${f.split("/").pop()} de la landing trae ${que}`);
       }
-      console.log(`  · build de producción en ${raizBuild}: ${chunks.length} chunks de «/» revisados`);
+      if (!pages["/pricing/page"]?.length) F("2 · el manifiesto del build no tiene /pricing/page (el censo de /pricing no corrió)");
+      console.log(`  · build de producción en ${raizBuild}: ${chunks.length} chunks de «/» y /pricing revisados`);
     }
   } else {
     console.log("  · sin build a mano (.next/app-build-manifest.json): el censo del bundle no corrió acá");
@@ -294,11 +306,71 @@ export function runLandingRendimientoTier(): { hard: number } {
     // con la serif pedía su itálica entera (medido en el preview del 19-oct-2026).
     || !/fontFamily: "'Source Serif 4 Franco Marca', 'Source Serif 4 Franco Fallback'"/.test(leer("src/components/franco-logo.tsx"))) F("6 · el «re» del wordmark vuelve a pedir la itálica latin entera");
 
+  // ── 7 · /pricing EN TELÉFONO (20-oct-2026) ─────────────────────────────────
+  // El LCP de /pricing es la tarjeta del pack (su fondo), no el título: con el fondo con grano incorporado (121 kB) y la
+  // capa de grano (52 kB) bajando antes de pintarla, daba 3,16 s (mediana de 5). La tarjeta pinta primero el MISMO
+  // degradado sin grano; el fondo con grano y la capa entran con la página quieta (`html[data-grano]`, que marca el header).
+  {
+    const pl = sinComentarios(leer("src/app/pricing/planes.css"));
+    // a · lo que pinta primero: el liso, en el teléfono y desde 768.
+    if (!/(^|\n)\.pl-pack \{[^}]*background: #1F3D67 url\("\/landing\/hero-liso-m2x\.webp"\) center top \/ cover no-repeat;/.test(pl)
+      || !/@media \(min-width: 768px\) \{ \.pl-pack \{ background-image: url\("\/landing\/hero-liso-d1x\.webp"\); \} \}/.test(pl)) F("7 · la tarjeta del pack no pinta primero el degradado liso (en el teléfono y desde 768)");
+    // b · lo pesado, SOLO detrás de `html[data-grano]`: ninguna regla sin ese prefijo nombra el fondo con grano ni la capa.
+    const reglas = Array.from(pl.matchAll(/([^{}]+)\{([^{}]*)\}/g)).map((m) => ({ sel: m[1].trim(), cuerpo: m[2] }));
+    for (const r of reglas) {
+      if (/hero-[md]\dx\.webp|grano-256\.png/.test(r.cuerpo) && !/^html\[data-grano\] /.test(r.sel)) F(`7 · «${r.sel}» baja el fondo con grano (o la capa) antes de que la página esté quieta`);
+    }
+    // c · y detrás de la señal está todo lo de siempre: el fondo con grano encima, opaco, y la capa con su mezcla.
+    if (!/html\[data-grano\] \.pl-pack::before \{ background-image: url\("\/landing\/hero-m2x\.webp"\); opacity: 1; \}/.test(pl)
+      || !/@media \(min-width: 768px\) \{ html\[data-grano\] \.pl-pack::before \{ background-image: url\("\/landing\/hero-d1x\.webp"\); \} \}/.test(pl)
+      || !/\.pl-pack::before \{[^}]*inset: 0;[^}]*background: center top \/ cover no-repeat;/.test(pl)) F("7 · la tarjeta del pack ya no termina con el fondo con grano (con la página quieta, encima y opaco)");
+    if (!/html\[data-grano\] \.pl-pack::after \{ background-image: url\("\/landing\/grano-256\.png"\); opacity: 0\.08; \}/.test(pl)
+      || !/\.pl-pack::after \{[^}]*background-size: 256px; opacity: 0; mix-blend-mode: soft-light;/.test(pl)) F("7 · la tarjeta del pack perdió la capa de grano (o su mezcla)");
+    // d · alguien marca la señal EN ESTA PÁGINA: el header de /pricing, el que la pone con la página quieta.
+    if (!/<HeaderFranco /.test(sinComentarios(leer("src/app/pricing/page.tsx")))
+      || !/useEffect\(\(\) => cuandoLaPaginaEsteQuieta\(\(\) => document\.documentElement\.setAttribute\("data-grano", ""\)\), \[\]\);/.test(sinComentarios(leer("src/components/chrome/HeaderFranco.tsx")))) F("7 · en /pricing nadie marca data-grano: la tarjeta se queda sin grano");
+    // e · el liso es la misma imagen: las mismas medidas que la de grano (con `cover`, otras medidas cortan otro encuadre
+    //     y el fundido correría el degradado).
+    const medidas = (p: string): string => {
+      if (!existsSync(join(RAIZ, p))) return "no existe";
+      const b = readFileSync(join(RAIZ, p));
+      const tipo = b.toString("latin1", 12, 16);
+      if (tipo === "VP8 ") return `${b.readUInt16LE(26) & 0x3fff}×${b.readUInt16LE(28) & 0x3fff}`;
+      if (tipo === "VP8X") return `${1 + b.readUIntLE(24, 3)}×${1 + b.readUIntLE(27, 3)}`;
+      if (tipo === "VP8L") { const v = b.readUInt32LE(21); return `${1 + (v & 0x3fff)}×${1 + ((v >> 14) & 0x3fff)}`; }
+      return `formato ${tipo}`;
+    };
+    for (const v of ["m2x", "d1x"]) {
+      const [liso, grano] = [medidas(`public/landing/hero-liso-${v}.webp`), medidas(`public/landing/hero-${v}.webp`)];
+      if (liso !== grano || !/^\d+×\d+$/.test(liso)) F(`7 · hero-liso-${v} (${liso}) no tiene las medidas de hero-${v} (${grano})`);
+    }
+    // f · el JS de /pricing tampoco arrastra lo pesado (mismo recorrido que §6a, desde las islas de la página).
+    const NODE = /^(node:)?(crypto|buffer|stream|zlib|fs|path|os|util|http|https|net|tls)$/;
+    const PESADOS = /^(@supabase\/|@sentry\/|posthog-js$)/;
+    const entradas = ["src/app/pricing/vista-planes.tsx", "src/components/chrome/EnlaceCarga.tsx", "src/components/chrome/HeaderFranco.tsx"];
+    const visto = new Set<string>();
+    const cola: Array<[string, string[]]> = entradas.map((e) => [e, [e]]);
+    while (cola.length) {
+      const [archivo, camino] = cola.shift()!;
+      if (visto.has(archivo)) continue;
+      visto.add(archivo);
+      for (const m of sinComentarios(leer(archivo)).matchAll(/(?:^|\n)\s*(?:(?:import|export)\s+(type\s+)?[^'"]*?from\s+|import\s+)["']([^"']+)["']/g)) {
+        if (m[1]) continue;
+        const esp = m[2];
+        if (NODE.test(esp) || PESADOS.test(esp)) { F(`7 · un import estático de cliente de /pricing arrastra al primer paquete: ${esp} ← ${camino.join(" → ")}`); continue; }
+        const base = esp.startsWith("@/") ? `src/${esp.slice(2)}` : esp.startsWith(".") ? join(archivo, "..", esp).replace(/\\/g, "/") : null;
+        const r = base && ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((s) => base + s).find((p) => existsSync(join(RAIZ, p)) && /\.(ts|tsx)$/.test(p));
+        if (r) cola.push([r, [...camino, r]]);
+      }
+    }
+    if (visto.size < 15) F(`7 · el grafo de /pricing recorrió solo ${visto.size} archivos (el extractor no corrió)`);
+  }
+
   if (fallas.length) {
     console.log(`  ✗ LANDING-RENDIMIENTO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — Google Maps espera al primer toque; la sección 3 llega después del titular con su altura reservada y sin el motor en el paquete; sin latin-ext precargadas; PostHog, Sentry y el pixel cargan con la página quieta y no pierden lo de antes; el viewport permite zoom");
+    console.log("  ✓ VERDE — Google Maps espera al primer toque; la sección 3 llega después del titular con su altura reservada y sin el motor en el paquete; sin latin-ext precargadas; PostHog, Sentry y el pixel cargan con la página quieta y no pierden lo de antes; el viewport permite zoom; en /pricing la tarjeta del pack pinta el degradado liso y su grano entra con la página quieta");
   }
   return { hard: fallas.length };
 }

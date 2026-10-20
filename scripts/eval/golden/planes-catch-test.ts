@@ -101,7 +101,12 @@ export function runPlanesTier(): { hard: number } {
   if (cuenta(seccion("gratis"), /className="pl-boton[^"]*"/g) !== 2 || cuenta(seccion("gratis"), /data-planes="boton-gratis"/g) !== 2) F("4 · la columna gratis no tiene un botón (por caso de sesión)");
   if (cuenta(seccion("pack"), /className="pl-boton[^"]*"/g) !== 1) F("4 · la columna del pack no tiene exactamente un botón");
   if (cuenta(seccion("plan"), /className="pl-boton[^"]*"/g) !== 1 || cuenta(seccion("plan"), /className="pl-estado"/g) !== 1) F("4 · la columna del plan no tiene exactamente un botón (o su estado para quien ya lo tiene)");
-  if (!/className="pl-col pl-pack"/.test(pag) || !/\.pl-pack \{[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.pl-pack::after \{[^}]*grano-256\.png/.test(css) || !/\.pl-pack \.pl-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(css)) F("4 · el pack no va destacado con el material del banner");
+  // ⚠ ACTA (20-oct-2026, LCP de /pricing en el teléfono) · el material es el mismo, en dos tiempos: la tarjeta pinta el
+  // degradado liso y el fondo con grano y su capa entran encima con la página quieta (`html[data-grano]`). Lo que queda
+  // es lo de siempre; LANDING-RENDIMIENTO §7 vigila que lo pesado no baje antes.
+  if (!/className="pl-col pl-pack"/.test(pag) || !/\.pl-pack \{[^}]*background: #1F3D67 url\("\/landing\/hero-liso-m2x\.webp"\)/.test(css)
+    || !/html\[data-grano\] \.pl-pack::before \{ background-image: url\("\/landing\/hero-m2x\.webp"\); opacity: 1; \}/.test(css)
+    || !/html\[data-grano\] \.pl-pack::after \{ background-image: url\("\/landing\/grano-256\.png"\);/.test(css) || !/\.pl-pack \.pl-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(css)) F("4 · el pack no va destacado con el material del banner");
   // ⚠ ACTA (19-oct-2026, segunda pasada de Fabrizio) · el suelto pasa de enlace a botón secundario de borde fino, del
   // mismo ancho que el del pack, con «Comprar solo 1 por $9.990».
   if (!/<EnlaceCarga href=\{RUTA_SUELTO_PLANES\} className="pl-secundario" data-planes="suelto">\{C\.pack\.suelto\}/.test(seccion("pack")) || PLANES_COPY.pack.suelto !== "Comprar solo 1 por $9.990"

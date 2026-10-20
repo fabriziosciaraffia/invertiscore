@@ -35,10 +35,20 @@
 .pl-boton:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 3px; }
 .pl-estado { display: flex; align-items: center; justify-content: center; height: 46px; font-size: 14px; color: var(--franco-text-secondary); text-decoration: underline; text-underline-offset: 4px; }
 
-/* EL PACK, DESTACADO: el material del banner, fijo en claro y oscuro. */
-.pl-pack { position: relative; overflow: hidden; border-color: transparent; color: #FAFAF8; background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
-@media (min-width: 768px) { .pl-pack { background-image: url("/landing/hero-d1x.webp"); } }
-.pl-pack::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
+/* EL PACK, DESTACADO: el material del banner, fijo en claro y oscuro.
+   El grano entra con la página quieta (20-oct-2026, LCP en el teléfono): la tarjeta es lo más grande de la primera
+   pantalla, y su fondo con el grano incorporado (hero-m2x, 121 kB) más la capa de grano (52 kB) eran casi la mitad de lo
+   que bajaba antes de pintarla. Primero pinta el MISMO degradado sin grano (hero-liso, 9 kB: mismas medidas y color); el
+   fondo con grano y la capa entran encima cuando HeaderFranco marca `data-grano` en <html> (cuandoLaPaginaEsteQuieta),
+   con el fundido del header. Lo que queda al final es lo de siempre. */
+.pl-pack { position: relative; overflow: hidden; border-color: transparent; color: #FAFAF8; background: #1F3D67 url("/landing/hero-liso-m2x.webp") center top / cover no-repeat; }
+@media (min-width: 768px) { .pl-pack { background-image: url("/landing/hero-liso-d1x.webp"); } }
+.pl-pack::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: center top / cover no-repeat; opacity: 0; transition: opacity 0.6s ease; }
+html[data-grano] .pl-pack::before { background-image: url("/landing/hero-m2x.webp"); opacity: 1; }
+@media (min-width: 768px) { html[data-grano] .pl-pack::before { background-image: url("/landing/hero-d1x.webp"); } }
+.pl-pack::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-size: 256px; opacity: 0; mix-blend-mode: soft-light; transition: opacity 0.6s ease; }
+html[data-grano] .pl-pack::after { background-image: url("/landing/grano-256.png"); opacity: 0.08; }
+@media (prefers-reduced-motion: reduce) { .pl-pack::before, .pl-pack::after { transition: none; } }
 .pl-pack > * { position: relative; z-index: 1; }
 .pl-pack .pl-unidad, .pl-pack .pl-ahorro, .pl-pack .pl-condicion { color: rgba(250, 250, 248, 0.82); }
 .pl-pack .pl-condicion { border-top-color: rgba(250, 250, 248, 0.28); }
