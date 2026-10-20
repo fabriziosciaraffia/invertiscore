@@ -208,6 +208,9 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   const logueado = !!sesion;
   const modo = informe?.modo;
   const hayInforme = !!informe;
+  // El grano de la banda, con la página quieta (20-oct-2026, header-franco.css): fuera de lo que baja antes del primer
+  // pintado. Queda marcado en <html> y en la navegación siguiente ya está.
+  useEffect(() => cuandoLaPaginaEsteQuieta(() => document.documentElement.setAttribute("data-grano", "")), []);
   // La puerta C (15-oct-2026): quien abre un informe que le compartieron llegó por un referido (atribucion-puerta.ts).
   useEffect(() => {
     if (modo === "compartido") marcarPuertaCandidata("C", "informe_compartido");

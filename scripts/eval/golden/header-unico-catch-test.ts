@@ -115,7 +115,11 @@ export function runHeaderUnicoTier(): { hard: number } {
   }
   if (/#[0-9a-fA-F]{3,8}\b/.test(fondo)) F("2 · la banda lleva hexes: tiene que derivarse de los tokens de la tríada");
   if (!/linear-gradient\(104deg/.test(fondo) || (fondo.match(/radial-gradient\(/g) ?? []).length < 2) F("2 · la banda perdió el degradado en diagonal o el bloom");
-  if (!/\.hf::after \{[^}]*grano-256\.png/.test(css)) F("2 · la banda perdió el grano");
+  // ⚠ ACTA (20-oct-2026, decisión de Fabrizio) · el grano ya no va en `.hf::after` pelado: entra con la página quieta
+  // (`html[data-grano] .hf::after`, que marca HeaderFranco con cuandoLaPaginaEsteQuieta). El mismo archivo y la misma mezcla;
+  // son 52 kB que bajaban antes del primer pintado en todas las páginas. La regla sigue: la banda tiene su grano.
+  if (!/html\[data-grano\] \.hf::after \{ background-image: url\("\/landing\/grano-256\.png"\); opacity: 0\.22; \}/.test(css) || !/\.hf::after \{[^}]*opacity: 0; mix-blend-mode: overlay;/.test(css) || /(^|\n)\.hf::after \{[^}]*grano-256\.png/.test(css)) F("2 · la banda perdió el grano, o lo baja antes del primer pintado");
+  if (!/useEffect\(\(\) => cuandoLaPaginaEsteQuieta\(\(\) => document\.documentElement\.setAttribute\("data-grano", ""\)\), \[\]\);/.test(leer("src/components/chrome/HeaderFranco.tsx"))) F("2 · nadie marca data-grano: la banda se queda sin grano");
   if (!/height: 56px;/.test(banda) || !/@media \(min-width: 768px\) \{\s*\n\s*\.hf \{ height: 64px; \}/.test(css)) F("2 · la banda no mide 56 a 390 y 64 desde 768");
   if (!/:root\{--verdict-buscar:#C8323C; --verdict-ajusta:#6E4560; --verdict-comprar:#2B558F\}/.test(leer("src/app/globals.css"))) F("2 · los tokens de la tríada no están declarados en :root: la banda no resolvería");
 
