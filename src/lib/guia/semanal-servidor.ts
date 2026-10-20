@@ -125,9 +125,11 @@ export async function prepararSeleccion(
   if (!perfil) return { tipo: "sin-perfil", perfil: pp.perfil };
   const rango = rangoSemanal(perfil);
   const rentaCorta = !!opts.nuevosDesde && perfil.modalidad === "str";
-  // Sin ningún informe (16-oct-2026, la puerta B): el origen sintético, con su perfil manual y la tasa de mercado.
+  // Sin ningún informe (16-oct-2026, la puerta B): el origen sintético, con su perfil manual y la tasa de mercado. Y
+  // también cuando sus informes no sirven de origen (20-oct-2026: sin coordenadas, sin pie o sin plazo; visto en el QA
+  // de la primera selección, donde el correo del día salía vacío con el perfil completo): el perfil ya dice qué busca.
   const o = perfil.completo && rango && !rentaCorta
-    ? (await origenDePersona(admin, userId)) ?? (pp.soloManual ? origenSintetico(userId, perfil, cfg) : null)
+    ? (await origenDePersona(admin, userId)) ?? origenSintetico(userId, perfil, cfg)
     : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };

@@ -35,6 +35,9 @@ import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion, type ResultadoVinculo } from "@/lib/referido-servidor";
+import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
+
+const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 /** La cookie de la invitación ya se cobró: queda «usada» en la respuesta. */
 function cerrarInvitacion(res: NextResponse, vinculo: ResultadoVinculo | null): NextResponse {
@@ -61,19 +64,22 @@ export async function POST(request: Request) {
     await asegurarRegaloDeAlta(createAdminServiceClient(), {
       userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null,
     });
-    if (cuerpo?.porCodigo === true && user.email) {
-      waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
-    }
     const puerta = cuerpo?.puerta;
     if (esPuerta(puerta)) {
       const detalle = typeof cuerpo?.puertaDetalle === "string" ? cuerpo.puertaDetalle.slice(0, 60) : null;
       waitUntil(guardarAtribucion(createAdminServiceClient(), user.id, { puerta, puerta_detalle: detalle }).then(() => undefined));
     }
 
+    // El informe anónimo pasa a la cuenta PRIMERO: el correo del día y la primera selección buscan con el perfil de ese
+    // informe (visto en el QA del 20-oct-2026: encolado antes del reclamo, la primera vuelta salía vacía).
     const token = tokenAnonDelRequest();
-    if (!token) return cerrarInvitacion(NextResponse.json({ claimed: 0, redirect: null }), vinculo);
-
-    const result = await claimAnalisisAnonimos(createAdminServiceClient(), user, token);
+    const result = token ? await claimAnalisisAnonimos(createAdminServiceClient(), user, token) : { claimed: 0, redirect: null };
+    // LA PRIMERA SELECCIÓN Y EL CORREO DEL DÍA (20-oct-2026, toda puerta): la cuenta nueva queda con su correo del día en
+    // cola (la primera vuelta en el momento) ANTES de la bienvenida, que así ya no sale: su bienvenida es ese correo.
+    await encolarPrimeraSeleccion(createAdminServiceClient(), user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: "POST /api/analisis/claim" });
+    if (cuerpo?.porCodigo === true && user.email) {
+      waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
+    }
     return cerrarInvitacion(NextResponse.json(result), vinculo);
   } catch (error) {
     captureApiError(error, { ruta: "POST /api/analisis/claim", operacion: "claim-anonimo" });

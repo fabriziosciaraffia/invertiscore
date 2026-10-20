@@ -13,10 +13,16 @@ import { claveDeDestino } from "@/lib/deptos/respuesta";
 import { reclavarPendienteGoogle } from "@/lib/deptos/servidor";
 import { COOKIE_INVITACION_USADA, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
 import { waitUntil } from "@vercel/functions";
+import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
+import { destinoRecienDentro, esCuentaNueva } from "@/lib/guia/del-dia";
+
+const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  /** La cuenta acaba de nacer (20-oct-2026): su informe la recibe como recién dentro. */
+  let recienDentro = false;
   // Se lee ANTES de las salidas de error: un link de confirmación vencido
   // también tiene que devolver al usuario a donde iba, no al dashboard.
   const next = requestUrl.searchParams.get("next");
@@ -148,6 +154,20 @@ export async function GET(request: Request) {
       console.error("[auth/callback] regalo excepción:", e);
     }
 
+    // LA PRIMERA SELECCIÓN Y EL CORREO DEL DÍA (20-oct-2026, toda puerta): la cuenta nueva que vuelve por Google o por el
+    // enlace del correo queda con su correo del día en cola, antes de la bienvenida (que así no sale). La que vuelve a
+    // /deptos o a la página del invitado no: /api/deptos/alta la encola con su perfil de los chips. Y si vuelve a su
+    // informe, llega con `?dentro=1`: el informe la trata como recién dentro —«Estás dentro» y la selección sobre él—.
+    try {
+      const user = sessionData?.user;
+      if (user?.id && !claveDeDestino(next)) {
+        await encolarPrimeraSeleccion(createAdminServiceClient(), user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: "GET /auth/callback" });
+      }
+      if (user?.id) recienDentro = esCuentaNueva(user.created_at);
+    } catch (e) {
+      console.error("[auth/callback] primera selección excepción:", e);
+    }
+
     // La bienvenida AL REGISTRARSE (01-oct-2026), no al abrir el dashboard: quien entra por el enlace
     // del correo del código o por Google vuelve por acá. Una sola vez por persona (claim atómico de
     // ensureWelcomeEmail; si ya salió, no hace nada). En waitUntil: el correo no demora el redirect.
@@ -166,5 +186,5 @@ export async function GET(request: Request) {
   // redirect a dominios externos.
   const dest = esDestinoSeguro(next) ? next : "/dashboard";
 
-  return NextResponse.redirect(new URL(dest, request.url));
+  return NextResponse.redirect(new URL(destinoRecienDentro(dest, recienDentro), request.url));
 }

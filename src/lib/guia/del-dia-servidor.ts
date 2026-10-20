@@ -6,7 +6,7 @@
 // compartido; cuando se arma (o pasa la hora), manda el correo una sola vez y queda como el semanal de esa semana.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { reportarFalloQuery } from "@/lib/observabilidad";
+import { captureApiError, reportarFalloQuery } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { leerSaldo } from "@/lib/casa-saldo";
@@ -15,7 +15,8 @@ import { sendSemanalEmail } from "@/lib/email";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
 import { regaloAltaVivo } from "@/lib/regalo-alta-servidor";
 import { diaChile } from "@/lib/regalo-alta";
-import { enlacesSemanal, itemDe, prepararSeleccion, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
+import { cuentasPruebaSinCorreo, enlacesSemanal, itemDe, prepararSeleccion, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
+import { leerConfigGuia } from "./guia-servidor";
 import { prepararSeleccionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
 import { elegirSemanal, MEMORIA_SEMANAL_MS, REGLA_CORTA } from "./semanal";
@@ -24,7 +25,7 @@ import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
 import type { Candidato } from "./semanal-candidatos";
 import type { Evaluado } from "./seleccion";
-import { cuandoSeVio, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
+import { cuandoSeVio, esCuentaNueva, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
 
 const RUTA = "lib/guia/del-dia";
 
@@ -215,6 +216,66 @@ async function enviarDelDia(
     properties: { n: conDeptos ? n : 0, lo_visto: loVisto, minutos: Math.round((ahora.getTime() - Date.parse(fila.armada_at)) / 60_000), con_regalo: !!regaloVence, estado },
   }).catch(() => {});
   return "enviada";
+}
+
+/**
+ * TODA CUENTA NUEVA, POR CUALQUIER PUERTA (20-oct-2026): su correo del día en cola, con la primera vuelta en el momento
+ * (las siguientes, el cron correo-del-dia cada 10 minutos). Lo llaman las puertas que crean cuenta —/api/deptos/alta,
+ * el reclamo después del código (banner, guía, /entrar), /auth/callback (Google y el enlace del correo) y el ticket del
+ * pack—; una cuenta de antes (MINUTOS_CUENTA_NUEVA) no se encola, y una fila del día ya existente no se duplica. Las
+ * cuentas de prueba no reciben nada, salvo las marcadas. Devuelve la fila, o null si no corresponde o no se pudo. Nunca
+ * lanza: quien lo llama está en medio de un registro.
+ */
+export async function encolarPrimeraSeleccion(
+  admin: SupabaseClient,
+  user: { id: string; created_at?: string | null },
+  deps: { sitio: string; enSegundoPlano: (p: Promise<unknown>) => void; ruta: string },
+  ahora: Date = new Date(),
+): Promise<FilaDelDia | null> {
+  try {
+    if (!esCuentaNueva(user.created_at, ahora)) return null;
+    const fila = await encolarDelDia(admin, user.id, ahora);
+    if (!fila) return null;
+    // Ya hubo una vuelta (la cuenta pasó por dos puertas en el mismo registro): no se repite.
+    if (fila.intentos > 0) return fila;
+    deps.enSegundoPlano((async () => {
+      try {
+        const fuera = await cuentasPruebaSinCorreo(admin);
+        if (fuera.has(user.id)) {
+          await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);
+          return;
+        }
+        await procesarDelDia(admin, fila, await leerConfigGuia(admin), deps.sitio, { lecturas: 0, bloqueada: false });
+      } catch (e) {
+        captureApiError(e, { ruta: deps.ruta, operacion: "primera-vuelta", userId: user.id });
+      }
+    })());
+    return fila;
+  } catch (e) {
+    captureApiError(e, { ruta: deps.ruta, operacion: "encolar-primera-seleccion", userId: user.id });
+    return null;
+  }
+}
+
+/**
+ * LA PRIMERA SELECCIÓN EN PANTALLA (20-oct-2026): mientras el correo del día todavía no chequeó fichas, la pantalla muestra
+ * los mejores de la evaluación de anoche; para que «Analizar este» valga desde ya —la ruta valida el aviso por el token de
+ * la selección—, esos deptos quedan escritos en la fila pendiente del día, con la combinación y el perfil con que se
+ * eligieron. Solo sobre una fila pendiente, sin enviar y todavía vacía: si la cola ya armó o mandó, no se pisa nada.
+ * Devuelve true si escribió.
+ */
+export async function rellenarDeLaNoche(
+  admin: SupabaseClient,
+  fila: { id: string; intentos: number },
+  col: { items: ItemSemanal[]; combinacion: { piePct: number; plazoAnios: number }; perfil: unknown; origenAnalysisId: string | null },
+): Promise<boolean> {
+  if (col.items.length === 0) return false;
+  const { data, error } = await admin.from("semanal_selecciones")
+    .update({ items: col.items, combinacion: col.combinacion, perfil: col.perfil, origen_analysis_id: col.origenAnalysisId, variante: "tarjetas" })
+    .eq("id", fila.id).eq("estado", "pendiente").eq("intentos", fila.intentos).is("enviada_at", null).eq("items", "[]")
+    .select("id");
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "rellenar-de-la-noche" });
+  return (data?.length ?? 0) === 1;
 }
 
 /** Las filas del día por mandar, las más antiguas primero. */

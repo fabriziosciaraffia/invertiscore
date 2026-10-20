@@ -10,9 +10,7 @@ import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servido
 import { comunasParaAgregar, tipoDeAlta } from "@/lib/deptos/respuesta";
 import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "@/lib/deptos/servidor";
 import { CLAVE_GOOGLE } from "@/lib/deptos/respuesta";
-import { encolarDelDia, procesarDelDia } from "@/lib/guia/del-dia-servidor";
-import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { cuentasPruebaSinCorreo } from "@/lib/guia/semanal-servidor";
+import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,22 +80,9 @@ export async function POST(request: Request) {
     await borrarPendiente(admin, user.email);
 
     // El correo del día, en cola; la primera vuelta ahora (las siguientes, el cron cada 10 minutos). Las cuentas de
-    // prueba no reciben correos, salvo las marcadas.
-    const fila = await encolarDelDia(admin, user.id);
-    if (fila) {
-      waitUntil((async () => {
-        try {
-          const fuera = await cuentasPruebaSinCorreo(admin);
-          if (fuera.has(user.id)) {
-            await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);
-            return;
-          }
-          await procesarDelDia(admin, fila, await leerConfigGuia(admin), SITIO, { lecturas: 0, bloqueada: false });
-        } catch (e) {
-          captureApiError(e, { ruta: RUTA, operacion: "primera-vuelta", userId: user.id });
-        }
-      })());
-    }
+    // prueba no reciben correos, salvo las marcadas. Desde el 20-oct-2026 es el mismo encolado de todas las puertas
+    // (encolarPrimeraSeleccion); acá la cuenta YA nació con su perfil, así que la primera vuelta busca con él.
+    await encolarPrimeraSeleccion(admin, user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: RUTA });
     void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta } }).catch(() => {});
     return responder({ estado: "nueva", regaloVence: regalo.vence });
   } catch (e) {

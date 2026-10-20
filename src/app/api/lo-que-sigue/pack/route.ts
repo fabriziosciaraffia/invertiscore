@@ -27,6 +27,7 @@ import { conEspejo, contextoDeRequest, emitirEventoMeta, guardarContextoMeta } f
 import { guardarAtribucion } from "@/lib/attribution";
 import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { cookieInvitacionDeCabeceras, vincularInvitacion } from "@/lib/referido-servidor";
+import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 
 export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -82,6 +83,8 @@ export async function POST(request: Request) {
     const cookieInv = cookieInvitacionDeCabeceras(request.headers);
     if (cookieInv) await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) });
     waitUntil(guardarAtribucion(admin, user.id, { puerta: "A", puerta_detalle: "ticket", fbp: contexto.fbp, fbc: contexto.fbc }).then(() => undefined));
+    // El correo del día (20-oct-2026, toda puerta): la cuenta que nace con el ticket también lo recibe dentro de la hora.
+    await encolarPrimeraSeleccion(admin, user, { sitio: SITE_URL, enSegundoPlano: waitUntil, ruta: "POST /api/lo-que-sigue/pack" });
 
     // Este informe tiene que ser suyo: o ya lo era, o lo adopta ahora por la cookie del cap anónimo.
     if (analysis.user_id && analysis.user_id !== user.id) {

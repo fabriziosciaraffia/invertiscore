@@ -128,9 +128,15 @@ export async function ensureWelcomeEmail(
     //    La cuenta que nace en /deptos (16-oct-2026) no la recibe: su bienvenida es el correo del día, con sus
     //    primeros deptos (del-dia-servidor.ts). Lo dice su elección pendiente, que existe hasta que la cuenta nace.
     //    Y el correo dice el regalo al registrarse, si la cuenta lo tiene (regalo-alta-servidor.ts).
+    //    DESDE EL 20-oct-2026 vale para toda cuenta nueva, por cualquier puerta: si tiene su correo del día en cola
+    //    (`semanal_selecciones` con tipo 'del_dia'; encolarPrimeraSeleccion corre antes que esto en cada puerta), esa es su
+    //    bienvenida y la de siempre no sale.
     if (Array.isArray(claimed) && claimed.length === 1) {
-      const { data: pendiente } = await admin.from("deptos_pendientes").select("correo").eq("correo", email.trim().toLowerCase()).maybeSingle();
-      if (pendiente) return;
+      const [{ data: pendiente }, { data: delDia }] = await Promise.all([
+        admin.from("deptos_pendientes").select("correo").eq("correo", email.trim().toLowerCase()).maybeSingle(),
+        admin.from("semanal_selecciones").select("id").eq("user_id", userId).eq("tipo", "del_dia").limit(1).maybeSingle(),
+      ]);
+      if (pendiente || delDia) return;
       const { data: regalo } = await admin.from("regalos_alta").select("vence_at").eq("user_id", userId).eq("motivo", "otorgado").maybeSingle();
       let meta: Record<string, unknown> | null = metadata && typeof metadata === "object" ? metadata : null;
       if (!meta) {

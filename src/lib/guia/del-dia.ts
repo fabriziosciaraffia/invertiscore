@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EL CORREO DEL DÍA (16-oct-2026, decisiones de Fabrizio): quien se registra por /deptos recibe, dentro de la hora y
-// cualquiera sea su «cuándo», sus primeros deptos con la ficha chequeada. Va EN COLA para no romper el cupo de lecturas
+// cualquiera sea su «cuándo», sus primeros deptos con la ficha chequeada. DESDE EL 20-oct-2026 ES PARA TODA CUENTA NUEVA,
+// POR CUALQUIER PUERTA (el banner del informe, el ticket, la guía, /deptos, la página del invitado, Google, el enlace del
+// correo): la misma cola, las mismas reglas (encolarPrimeraSeleccion, del-dia-servidor.ts). Va EN COLA para no romper el cupo de lecturas
 // de ficha (30 GETs por hora entre todos, publicacion.ts): cada vuelta lee lo que el cupo deja y, si se copa, la vuelta
 // siguiente sigue. Pasados MINUTOS_CUPO_DEL_DIA sin poder chequear, sale con lo que el prechequeo de la noche (o otra
 // lectura de la semana) vio publicado y lo dice con la hora: «publicados al [hora]». Ese correo ES el semanal de esa
@@ -47,6 +49,73 @@ export function cuandoSeVio(iso: string, ahora: Date = new Date()): string {
 export function marcaVisto(iso: string, ahora: Date = new Date()): string {
   return `Visto publicado ${cuandoSeVio(iso, ahora)}`;
 }
+
+// ── LA PRIMERA SELECCIÓN EN PANTALLA (20-oct-2026, regla de producto de Fabrizio): quien se registra ve sus deptos ahí
+// mismo y es llevado a analizar uno. No espera. Al terminar «Estás dentro», por cualquier puerta, la pantalla muestra sus
+// primeros deptos de la evaluación de anoche con el perfil que tenga —el derivado del informe en la puerta A, el de los
+// chips en B y C—, cada uno con «Analizar este», y arriba «Tienes un análisis de regalo: elige uno». En la puerta A esa
+// pantalla aparece SOBRE el informe (una hoja), sin sacar a la persona de ahí. Si el perfil no alcanza, se le piden los
+// chips que falten en un toque y se arma. Las reglas puras viven acá; las prueba el tier PRIMERA-SELECCION. ──
+
+/** Una cuenta cuenta como NUEVA —se encola su correo del día y se le abre la primera selección— si nació hace menos de
+ *  esto. Quien entra con una cuenta de antes por el mismo camino (el código del banner) no vuelve a nacer. */
+export const MINUTOS_CUENTA_NUEVA = 60;
+
+export function esCuentaNueva(creadaAt: string | null | undefined, ahora: Date = new Date()): boolean {
+  if (!creadaAt) return false;
+  const t = Date.parse(creadaAt);
+  if (!Number.isFinite(t)) return false;
+  const edad = ahora.getTime() - t;
+  return edad >= -60_000 && edad <= MINUTOS_CUENTA_NUEVA * 60_000;
+}
+
+/** El parámetro con que el callback le dice al informe que la persona acaba de entrar (Google, el enlace del correo). */
+export const PARAM_RECIEN_DENTRO = "dentro";
+
+/** El destino del callback: si la cuenta acaba de nacer y vuelve a un informe, con `?dentro=1`; si no, tal cual. */
+export function destinoRecienDentro(dest: string, cuentaNueva: boolean): string {
+  if (!cuentaNueva || !/^\/analisis\/[0-9a-f-]{36}(?:[/?#]|$)/i.test(dest)) return dest;
+  const [ruta, hash = ""] = dest.split("#");
+  const [camino, consulta = ""] = ruta.split("?");
+  const q = new URLSearchParams(consulta);
+  q.set(PARAM_RECIEN_DENTRO, "1");
+  return `${camino}?${q.toString()}${hash ? `#${hash}` : ""}`;
+}
+
+export type FaltaDelPerfil = "comuna" | "tipologia" | "rango";
+
+/** Qué chips faltan para armar una selección: al menos una comuna, un dormitorio y un tope de precio. */
+export function faltanDelPerfil(p: { comunas: string[]; dormitorios: number[]; precioMaxUf: number | null }): FaltaDelPerfil[] {
+  const f: FaltaDelPerfil[] = [];
+  if (p.comunas.length === 0) f.push("comuna");
+  if (p.dormitorios.length === 0) f.push("tipologia");
+  if (p.precioMaxUf == null || p.precioMaxUf <= 0) f.push("rango");
+  return f;
+}
+
+export const PRIMERA_SELECCION = {
+  /** Arriba de todo, con el regalo vivo. */
+  tituloRegalo: "Tienes un análisis de regalo: elige uno",
+  /** Sin regalo (topó, o lo gastó): se elige igual. */
+  titulo: "Tus primeros deptos: elige uno",
+  bajada: "De la evaluación de anoche, con tu pie y tu plazo. Franco revisa uno por uno si siguen publicados; el correo de esta hora te lo confirma.",
+  porConfirmar: "Lo reviso ahora: el correo de esta hora te dice si sigue publicado.",
+  faltan: "Para armar tu selección falta un dato. Un toque y listo:",
+  faltaComuna: "¿En qué comuna?",
+  faltaTipologia: "¿Cuántos dormitorios?",
+  faltaRango: "¿Hasta cuánto?",
+  armar: "Ver mis deptos",
+  ninguno: "Anoche no había uno publicado que convenga con lo que buscas. Te aviso en cuanto aparezca uno.",
+  vecinas: "En tus comunas no hay uno hoy: estos son de comunas vecinas.",
+  revisando: "Revisando uno por uno si siguen publicados…",
+  cargando: "Buscando tus primeros deptos…",
+  error: "No pudimos traer tus deptos. Intenta de nuevo.",
+  reintentar: "Reintentar",
+  /** La hoja sobre el informe (la puerta A). */
+  seguirLeyendo: "Seguir leyendo el informe",
+  verDeNuevo: "Ver mis primeros deptos",
+  cerrar: "Cerrar",
+} as const;
 
 export const DEL_DIA = {
   asunto: "Tus primeros deptos, revisados hoy",
