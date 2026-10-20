@@ -11,7 +11,8 @@
 | `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
 | `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`) | analizó algo; lleva `via` (wizard · guia · semanal · …) |
-| `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, `consentimiento`, `origen` = servidor. Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona |
+| `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
+| `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición) y `origen` = servidor. Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
 ## La tabla (HogQL)
 
@@ -71,6 +72,7 @@ with vis as (
     and toString(properties.origen) = 'servidor'
     and toString(properties.modo) = 'invitado'
     and toString(properties.invitador_prueba) != 'true'
+    and toString(properties.prueba) != 'true'
   group by semana
 ),
 v as (
@@ -119,3 +121,54 @@ order by semana desc
 
 Un dispositivo anotado en `invitaciones.dispositivos` NO es una visita: lo anota también pedir el enlace desde el
 dashboard («Invita a alguien») o al compartir un informe. Las visitas se cuentan solo con `invitacion_vista`.
+
+## El embudo pagado contra orgánico (HogQL)
+
+> 20-oct-2026. El insight «Embudo pagado contra orgánico por semana» (hTrhpWKc del mismo dashboard) arranca en la vista
+> del servidor de las páginas de entrada —la landing, /deptos y /i/CÓDIGO de un invitado—, no en el primer `$pageview` del
+> navegador: quien rebota antes de que cargue PostHog ahora cuenta. `llegaron` = personas con una vista del servidor (sin
+> visitas de prueba ni enlaces de cuentas de prueba); `canal` = el de esa primera vista (los UTM); `cargaron_la_pagina` =
+> las que además tienen un `$pageview` del navegador (el mismo id: `Server-Timing`); `rebote_antes_de_cargar` = 1 −
+> cargaron / llegaron. Los pasos siguientes, por la misma persona. Las semanas anteriores al 20-oct-2026 no tienen vistas
+> del servidor: salen en cero.
+
+```sql
+with llegadas as (
+  select person_id,
+    min(timestamp) as t0,
+    argMin(toString(properties.canal), timestamp) as canal
+  from events
+  where event in ('landing_viewed', 'deptos_vista', 'invitacion_vista')
+    and timestamp >= now() - interval 16 week
+    and toString(properties.origen) = 'servidor'
+    and toString(properties.prueba) != 'true'
+    and (event != 'invitacion_vista' or (toString(properties.modo) = 'invitado' and toString(properties.invitador_prueba) != 'true'))
+    and coalesce(person.properties.test_account, false) = false
+  group by person_id
+),
+pasos as (
+  select person_id,
+    countIf(event = '$pageview') > 0 as cargo,
+    countIf(event = 'wizard4_answered') > 0 as wizard,
+    countIf(event = 'informe_visto' and properties.es_owner = true) > 0 as informe,
+    countIf(event in ('cuenta_atribuida', 'registro_completado', 'signup_completed')) > 0 as registro,
+    countIf(event = 'pago_confirmado') > 0 as compra
+  from events
+  where timestamp >= now() - interval 16 week
+    and event in ('$pageview', 'wizard4_answered', 'informe_visto', 'cuenta_atribuida', 'registro_completado', 'signup_completed', 'pago_confirmado')
+  group by person_id
+)
+select toStartOfWeek(l.t0, 1) as semana,
+  if(l.canal = 'pagado', 'pagado', 'orgánico') as origen,
+  count() as llegaron,
+  countIf(p.cargo) as cargaron_la_pagina,
+  round(1 - cargaron_la_pagina / llegaron, 3) as rebote_antes_de_cargar,
+  countIf(p.wizard) as empezaron_wizard,
+  countIf(p.informe) as vieron_su_informe,
+  countIf(p.registro) as se_registraron,
+  countIf(p.compra) as compraron,
+  round(se_registraron / llegaron, 4) as registro_por_llegada
+from llegadas as l left join pasos as p on p.person_id = l.person_id
+group by semana, origen
+order by semana desc, origen
+```
