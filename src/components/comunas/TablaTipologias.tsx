@@ -29,6 +29,9 @@
 // Signal Red solo en la brecha negativa (uso #2 de Capa 1). Las marcas de
 // muestra chica y de estimado van en Ink + tipografía — no es uso permitido
 // del rojo.
+//
+// Diseño plano (20-oct-2026, comunas.css): tabla y tarjetas con borde y sin sombra, encabezados en Inter sin
+// versalitas, cifras en Inter con números tabulares. El texto no cambió.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { ComunaStats, TipologiaStats } from "@/lib/data/comunas-seo";
@@ -79,13 +82,9 @@ function Th({ children, unidad, alineado = "right", destacado = false }: {
   destacado?: boolean;
 }) {
   return (
-    <th
-      className={`px-3 py-3.5 align-bottom font-mono text-[10px] font-medium uppercase leading-tight tracking-[0.06em] text-[var(--franco-text-tertiary)] ${
-        alineado === "left" ? "text-left" : "text-right"
-      } ${destacado ? "bg-[var(--franco-sunken,var(--franco-bg))]" : ""}`}
-    >
+    <th className={destacado ? "cm-destacada" : undefined} style={alineado === "left" ? { textAlign: "left" } : undefined}>
       {children}
-      {unidad && <span className="mt-0.5 block font-normal normal-case tracking-normal">{unidad}</span>}
+      {unidad && <span>{unidad}</span>}
     </th>
   );
 }
@@ -99,9 +98,7 @@ function MarcaRespaldo({ t }: { t: TipologiaStats }) {
   const texto = esEstimada(t) ? "Estimado · m² comunal" : t.muestraChica ? "Muestra chica" : null;
   if (!texto) return null;
   return (
-    <span className="mt-1 inline-block rounded-full border border-[var(--franco-border)] px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-secondary)]">
-      {texto}
-    </span>
+    <span className="cm-chip cm-chip-solo cm-marca">{texto}</span>
   );
 }
 
@@ -112,8 +109,8 @@ function textoEquilibrio(t: TipologiaStats): string {
 }
 
 /** Solo el veredicto negativo lleva Signal Red; "depende" va en Ink como el positivo. */
-function colorVeredicto(t: TipologiaStats, positivo: string): string {
-  return t.veredictoFila === "noSePagaSola" ? "#C8323C" : positivo;
+function claseVeredicto(t: TipologiaStats): string {
+  return t.veredictoFila === "noSePagaSola" ? " cm-negativo" : "";
 }
 
 /**
@@ -131,26 +128,17 @@ function textoDiferencia(t: TipologiaStats): string {
 /** Vista de tarjetas bajo 1024px: la tabla se reorganiza, no se encoge. */
 function TarjetasTipologias({ tips }: { tips: TipologiaStats[] }) {
   return (
-    <div className="mt-4 grid gap-3 lg:hidden">
+    <div className="cm-tipos cm-solo-tel">
       {tips.map((t) => (
-        <div key={t.dorms} className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="font-body text-[15px] font-medium text-[var(--franco-text)]">
-              {NOMBRE_TIPOLOGIA[t.dorms]}
-            </span>
-            <span
-              className="font-mono text-[11px] font-medium uppercase tracking-[0.08em]"
-              style={{ color: colorVeredicto(t, "var(--franco-text-secondary)") }}
-            >
-              {ETIQUETA_VEREDICTO[t.veredictoFila]}
-            </span>
+        <div key={t.dorms} className="cm-tipo">
+          <div className="cm-tipo-cabeza">
+            <span className="cm-tipo-nombre">{NOMBRE_TIPOLOGIA[t.dorms]}</span>
+            <span className={`cm-tipo-veredicto${claseVeredicto(t)}`}>{ETIQUETA_VEREDICTO[t.veredictoFila]}</span>
           </div>
-          <p className="mt-0.5 font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
-            {lineaMuestra(t)}
-          </p>
+          <p className="cm-comuna-pie">{lineaMuestra(t)}</p>
           <MarcaRespaldo t={t} />
 
-          <dl className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3">
+          <dl className="cm-tipo-datos">
             {[
               esEstimada(t)
                 ? { l: "Arriendo estimado", v: rangoArriendo(t), u: "rango · m² comunal" }
@@ -160,41 +148,26 @@ function TarjetasTipologias({ tips }: { tips: TipologiaStats[] }) {
               { l: "Dividendo est.", v: fmtCLP(t.dividendoCLP) },
             ].map((d) => (
               <div key={d.l}>
-                <dt className="font-body text-[11px] text-[var(--franco-text-muted)]">{d.l}</dt>
-                <dd className="mt-0.5 font-mono text-[13px] text-[var(--franco-text)]">
+                <dt>{d.l}</dt>
+                <dd>
                   {d.v}
-                  {d.u && (
-                    <span className="mt-px block font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
-                      {d.u}
-                    </span>
-                  )}
+                  {d.u && <span className="cm-unidad">{d.u}</span>}
                 </dd>
               </div>
             ))}
           </dl>
 
           {/* Diferencia y equilibrio: el par que decide, con más peso visual. */}
-          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-[var(--franco-border)] pt-3.5">
-            <div>
-              <p className="font-body text-[11px] text-[var(--franco-text-muted)]">Diferencia</p>
-              <p
-                className="mt-0.5 font-mono text-[15px] font-bold"
-                style={{ color: colorVeredicto(t, "var(--franco-text)") }}
-              >
-                {textoDiferencia(t)}
-              </p>
+          <div className="cm-tipo-par">
+            <div className="cm-dato">
+              Diferencia
+              <b className={`cm-cifra${claseVeredicto(t)}`}>{textoDiferencia(t)}</b>
             </div>
-            <div className="rounded-lg bg-[var(--franco-sunken,var(--franco-bg))] p-2.5">
-              <p className="font-body text-[11px] text-[var(--franco-text-muted)]">Precio de equilibrio</p>
-              <p className="mt-0.5 font-mono text-[15px] font-bold text-[var(--franco-text)]">
-                {uf(t.precioCuotaUF)}
-              </p>
-              <p className="mt-px font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
-                UF del depto
-              </p>
-              <p className="mt-1 font-mono text-[10px] font-medium text-[var(--franco-text-secondary)]">
-                {textoEquilibrio(t)}
-              </p>
+            <div className="cm-dato cm-tipo-equilibrio">
+              Precio de equilibrio
+              <b className="cm-cifra">{uf(t.precioCuotaUF)}</b>
+              <span className="cm-unidad">UF del depto</span>
+              <span className="cm-unidad">{textoEquilibrio(t)}</span>
             </div>
           </div>
         </div>
@@ -212,11 +185,9 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
   const dependen = tips.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
 
   return (
-    <section className="mt-14">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
-        Los números de {stats.nombre}
-      </p>
-      <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
+    <section className="cm-seccion" data-comuna="tipologias">
+      <p className="cm-rotulo">Los números de {stats.nombre}</p>
+      <h2 className="cm-h2">
         {algunaCubre
           ? "Qué cuesta, qué renta y hasta qué precio aguanta"
           : "Qué cuesta, qué renta y a qué precio se equilibra"}
@@ -225,10 +196,10 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
       {/* Móvil: tarjetas. Desktop: tabla. */}
       <TarjetasTipologias tips={tips} />
 
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] lg:block">
-        <table className="w-full text-sm">
+      <div className="cm-tabla-caja cm-solo-ancho">
+        <table className="cm-tabla">
           <thead>
-            <tr className="border-b border-[var(--franco-border)]">
+            <tr>
               <Th alineado="left">Tipología</Th>
               <Th unidad={estimadas.length ? "mediana, o rango estimado" : undefined}>Arriendo</Th>
               <Th unidad="UF del depto">Precio mediana</Th>
@@ -242,49 +213,26 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
           </thead>
           <tbody>
             {tips.map((t) => (
-              <tr key={t.dorms} className="border-b border-[var(--franco-border)] last:border-b-0">
-                <td className="px-3 py-4 text-left">
-                  <span className="font-body text-sm font-medium text-[var(--franco-text)]">
-                    {NOMBRE_TIPOLOGIA[t.dorms]}
-                  </span>
-                  <span className="mt-0.5 block whitespace-nowrap font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
-                    {lineaMuestra(t)}
-                  </span>
+              <tr key={t.dorms}>
+                <td>
+                  <b>{NOMBRE_TIPOLOGIA[t.dorms]}</b>
+                  <span className="cm-sub">{lineaMuestra(t)}</span>
                   <MarcaRespaldo t={t} />
                 </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
+                <td>
                   {rangoArriendo(t)}
-                  {esEstimada(t) && (
-                    <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
-                      estimado
-                    </span>
-                  )}
+                  {esEstimada(t) && <span className="cm-sub">estimado</span>}
                 </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
-                  {uf(t.ventaUF)}
+                <td>{uf(t.ventaUF)}</td>
+                <td>{pct1(t.rentabilidadBruta)}</td>
+                <td>{fmtCLP(t.dividendoCLP)}</td>
+                <td>
+                  <b className={claseVeredicto(t).trim() || undefined}>{textoDiferencia(t)}</b>
+                  <span className={`cm-sub${claseVeredicto(t)}`}>{ETIQUETA_VEREDICTO[t.veredictoFila]}</span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
-                  {pct1(t.rentabilidadBruta)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
-                  {fmtCLP(t.dividendoCLP)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px]">
-                  <span className="font-bold" style={{ color: colorVeredicto(t, "var(--franco-text)") }}>
-                    {textoDiferencia(t)}
-                  </span>
-                  <span
-                    className="mt-0.5 block font-mono text-[10px] font-medium uppercase tracking-[0.06em]"
-                    style={{ color: colorVeredicto(t, "var(--franco-text-secondary)") }}
-                  >
-                    {ETIQUETA_VEREDICTO[t.veredictoFila]}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap bg-[var(--franco-sunken,var(--franco-bg))] px-3 py-4 text-right font-mono text-[13px] font-bold text-[var(--franco-text)]">
+                <td className="cm-destacada">
                   {uf(t.precioCuotaUF)}
-                  <span className="mt-0.5 block font-mono text-[10px] font-medium tracking-[0.04em] text-[var(--franco-text-secondary)]">
-                    {textoEquilibrio(t)}
-                  </span>
+                  <span className="cm-sub">{textoEquilibrio(t)}</span>
                 </td>
               </tr>
             ))}
@@ -293,24 +241,22 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
       </div>
 
       {/* Supuestos: visibles junto al resultado, nunca en letra chica. */}
-      <div className="mt-3.5 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-sunken,var(--franco-bg))] p-5">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--franco-text-tertiary)]">
-          Con qué supuestos está calculado
-        </p>
-        <div className="mt-3 flex flex-wrap gap-7">
+      <div className="cm-tarjeta cm-hundida" data-comuna="supuestos">
+        <p className="cm-rotulo">Con qué supuestos está calculado</p>
+        <div className="cm-datos" style={{ marginTop: 12 }}>
           {[
             { l: "Pie", v: `${s.piePct}%` },
             { l: "Plazo", v: `${s.plazoAnos} años` },
             { l: "Tasa", v: `${s.tasaAnual.toFixed(1).replace(".", ",")}% anual` },
             { l: "UF", v: fmtCLP(s.ufCLP) },
           ].map((d) => (
-            <div key={d.l} className="font-body text-[13px] text-[var(--franco-text-secondary)]">
+            <div key={d.l} className="cm-dato">
               {d.l}
-              <b className="mt-0.5 block font-mono text-sm font-bold text-[var(--franco-text)]">{d.v}</b>
+              <b className="cm-cifra">{d.v}</b>
             </div>
           ))}
         </div>
-        <p className="mt-3.5 max-w-[78ch] font-body text-xs text-[var(--franco-text-muted)]">
+        <p className="cm-chico">
           {s.tasaEsViva
             ? "La tasa es la promedio de créditos de vivienda que publica el Banco Central, actualizada cada día."
             : "La tasa es la referencia de mercado que usa Franco cuando el dato del Banco Central no está disponible."}{" "}
@@ -336,7 +282,7 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
         </p>
       </div>
 
-      <p className="mt-5 max-w-[82ch] border-l-[3px] border-[var(--franco-border)] py-1 pl-4 font-body text-[13px] text-[var(--franco-text-muted)]">
+      <p className="cm-nota">
         Cada fila necesita al menos {MIN_PER_TYPE} ventas publicadas: sin eso no hay precio mediano y la
         fila no existe. El arriendo sale de los avisos propios de la tipología cuando hay{" "}
         {MIN_ARRIENDOS_TIPOLOGIA} o más. Si no los hay pero la comuna junta {MIN_ARRIENDOS_COMUNAL_ENTRA}{" "}
@@ -363,45 +309,57 @@ export function ProcedenciaMuestraBloque({ stats }: { stats: ComunaStats }) {
   const nComunal = estimadas[0]?.referencia.fuente === "comunalPorM2" ? estimadas[0].referencia.nComunal : 0;
 
   return (
-    <section className="mt-14">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
-        De dónde salen estos números
-      </p>
-      <div className="mt-4 flex flex-wrap gap-8 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-        <div className="font-body text-xs text-[var(--franco-text-muted)]">
+    <section className="cm-seccion" data-comuna="procedencia">
+      <p className="cm-rotulo">De dónde salen estos números</p>
+      <div className="cm-tarjeta cm-datos" style={{ gap: "16px 32px" }}>
+        <div className="cm-dato">
           Avisos que entran en el cálculo
-          <b className="mt-0.5 block font-mono text-[17px] font-bold text-[var(--franco-text)]">
+          <b className="cm-cifra">
             {p.enCalculo.toLocaleString("es-CL")}
           </b>
         </div>
-        <div className="font-body text-xs text-[var(--franco-text-muted)]">
+        <div className="cm-dato">
           Última actualización
-          <b className="mt-0.5 block font-mono text-[17px] font-bold text-[var(--franco-text)]">{fecha}</b>
+          <b className="cm-cifra">{fecha}</b>
         </div>
-        <div className="font-body text-xs text-[var(--franco-text-muted)]">
+        <div className="cm-dato">
           Tipologías publicadas
-          <b className="mt-0.5 block font-mono text-[17px] font-bold text-[var(--franco-text)]">
+          <b className="cm-cifra">
             {stats.tipologias.length} de 4
           </b>
           {estimadas.length > 0 && (
-            <span className="mt-0.5 block font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
+            <span className="cm-unidad">
               {propias} con arriendos propios · {estimadas.length} con arriendo estimado
             </span>
           )}
         </div>
       </div>
       {(excluidos > 0 || estimadas.length > 0) && (
-        <p className="mt-4 max-w-[82ch] border-l-[3px] border-[var(--franco-border)] py-1 pl-4 font-body text-[13px] text-[var(--franco-text-muted)]">
-          <b className="text-[var(--franco-text-secondary)]">Qué cuenta ese número.</b> {stats.nombre} tiene{" "}
+        <p className="cm-nota">
+          <b>Qué cuenta ese número.</b> {stats.nombre} tiene{" "}
           {p.activosTotales.toLocaleString("es-CL")} avisos activos y{" "}
           {p.enCalculo.toLocaleString("es-CL")} entran en el cálculo.
           {excluidos > 0 && (
             <>
               {" "}
-              Los {excluidos.toLocaleString("es-CL")} restantes quedaron fuera porque no publican superficie (
-              {p.sinSuperficie.toLocaleString("es-CL")}) o están fuera del rango de 1 a 4 dormitorios (
-              {p.fueraDeRango.toLocaleString("es-CL")}) — hay avisos que fallan las dos cosas, así que las dos
-              cifras no suman el total.
+              {/* La tercera razón (20-oct-2026): la venta pasa la regla de la evaluación de la noche (plausible.ts). */}
+              {p.ventasDescartadas > 0 ? (
+                <>
+                  Los {excluidos.toLocaleString("es-CL")} restantes quedaron fuera porque no publican superficie (
+                  {p.sinSuperficie.toLocaleString("es-CL")}), están fuera del rango de 1 a 4 dormitorios (
+                  {p.fueraDeRango.toLocaleString("es-CL")}) o son ventas que la evaluación de cada noche también
+                  descarta: un precio fuera de lo plausible o el mismo depto publicado dos veces (
+                  {p.ventasDescartadas.toLocaleString("es-CL")}). Hay avisos que fallan más de una cosa, así que las
+                  cifras no suman el total.
+                </>
+              ) : (
+                <>
+                  Los {excluidos.toLocaleString("es-CL")} restantes quedaron fuera porque no publican superficie (
+                  {p.sinSuperficie.toLocaleString("es-CL")}) o están fuera del rango de 1 a 4 dormitorios (
+                  {p.fueraDeRango.toLocaleString("es-CL")}) — hay avisos que fallan las dos cosas, así que las dos
+                  cifras no suman el total.
+                </>
+              )}
               {p.bajoUmbral > 0 && (
                 <>
                   {" "}

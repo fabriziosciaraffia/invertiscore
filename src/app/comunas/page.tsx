@@ -1,16 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllComunasStats, fmtCLP, tieneArriendoPropio, esComunaEstimada, rangoArriendoComuna } from "@/lib/data/comunas-seo";
+import "@/components/comunas/comunas.css";
+import {
+  getAllComunasStats,
+  fmtCLP,
+  tieneArriendoPropio,
+  esComunaEstimada,
+  rangoArriendoComuna,
+  rentabilidadTitulo,
+  textoRentabilidadTitulo,
+} from "@/lib/data/comunas-seo";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { ChipEstimado } from "@/components/comunas/ChipEstimado";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export const revalidate = 86400; // ISR: 24 hours
 
 export const metadata: Metadata = {
-  title: "Rentabilidad por Comuna — Franco",
+  // Sin «— Franco» (20-oct-2026, decisión de Fabrizio): la marca la agrega el template del root layout («%s | Franco»)
+  // y el título salía «Rentabilidad por Comuna — Franco | Franco».
+  title: "Rentabilidad por Comuna",
   description:
     "Datos reales de rentabilidad de departamentos en las principales comunas de Santiago. Actualizado semanalmente.",
   alternates: { canonical: "/comunas" },
@@ -26,11 +38,7 @@ export const metadata: Metadata = {
   },
 };
 
-function rentColor(r: number) {
-  if (r >= 5) return "var(--franco-positive)";
-  if (r >= 3) return "var(--franco-warning)";
-  return "#C8323C";
-}
+const n1 = (n: number) => n.toFixed(1).replace(".", ",");
 
 export default async function ComunasIndexPage() {
   const stats = await getAllComunasStats();
@@ -48,12 +56,16 @@ export default async function ComunasIndexPage() {
   //     error): su cifra informa, pero no compite por un puesto. Van aparte,
   //     sin número, con su rango y con la marca.
   //  3. Sin avisos suficientes ni para estimar: card sin cifras, link vivo.
+  //
+  // La cifra de cada tarjeta, y el orden, son los del TÍTULO de la página de la comuna (20-oct-2026, decisión de
+  // Fabrizio, `rentabilidadTitulo`): antes el índice promediaba todas las filas, estimadas incluidas, y Puente Alto
+  // salía 7,0% acá y 5,8% en su título.
   const conDatos = COMUNAS_ROSTER
     .map((c) => porSlug.get(c.slug))
     .filter((c): c is NonNullable<typeof c> => !!c);
   const ranking = conDatos
     .filter(tieneArriendoPropio)
-    .sort((a, b) => b.rentabilidadBruta - a.rentabilidadBruta);
+    .sort((a, b) => rentabilidadTitulo(b).medio - rentabilidadTitulo(a).medio);
   const estimadas = conDatos
     .filter(esComunaEstimada)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
@@ -61,70 +73,49 @@ export default async function ComunasIndexPage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-{/* Navbar */}
       <HeaderFranco />
 
-      <main className="mx-auto max-w-[1100px] px-6 py-16">
-        {/* Hero */}
-        <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">
-          ¿En qué comuna conviene más invertir en un departamento?
-        </h1>
-        <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
+      <main className="cm mx-auto max-w-[1100px] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-comuna="indice">
+        <h1 className="cm-titulo">¿En qué comuna conviene más invertir en un departamento?</h1>
+        <p className="cm-bajada">
           Ranking de rentabilidad en {COMUNAS_ROSTER.length} comunas del Gran
           Santiago, con datos reales de mercado actualizados cada semana.
         </p>
 
         {/* Grid del ranking */}
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="cm-grilla">
           {ranking.map((c, i) => (
-            <Link
-              key={c.slug}
-              href={`/comunas/${c.slug}`}
-              className="group rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 transition-colors hover:border-[var(--franco-border-hover)]"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">
-                  <span className="mr-2 font-mono text-[11px] font-medium tracking-[0.06em] text-[var(--franco-text-muted)]">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+            <Link key={c.slug} href={`/comunas/${c.slug}`} className="cm-comuna" data-comuna="tarjeta">
+              <div className="cm-comuna-cabeza">
+                <h2 className="cm-comuna-nombre">
+                  <span className="cm-puesto">{String(i + 1).padStart(2, "0")}</span>
                   {c.nombre}
                 </h2>
-                <span
-                  className="font-mono text-lg font-bold"
-                  style={{ color: rentColor(c.rentabilidadBruta) }}
-                >
-                  {c.rentabilidadBruta.toFixed(1).replace(".", ",")}%
-                </span>
+                <span className="cm-comuna-rent">{textoRentabilidadTitulo(c)}</span>
               </div>
-              <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">Rentabilidad bruta</p>
+              <p className="cm-comuna-pie">Rentabilidad bruta</p>
               {/* Una comuna con ALGUNA fila estimada lo dice también acá: el arriendo
                   promedio de la card la incluye. Las 100% estimadas van abajo. */}
               {c.tipologias.some((t) => t.referencia.fuente === "comunalPorM2") && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
+                <p className="cm-comuna-pie">
                   Arriendo estimado en {c.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2").length} de{" "}
                   {c.tipologias.length} tipologías
                 </p>
               )}
 
-              <div className="mt-3 flex gap-4 text-xs">
-                <div>
-                  <span className="text-[var(--franco-text-secondary)]">Arriendo prom.</span>
-                  <div className="font-mono font-medium text-[var(--franco-text)]">
-                    {fmtCLP(c.arriendoRepresentativo)}/mes
-                  </div>
+              <div className="cm-datos">
+                <div className="cm-dato">
+                  Arriendo prom.
+                  <b className="cm-cifra">{fmtCLP(c.arriendoRepresentativo)}/mes</b>
                 </div>
-                <div>
-                  <span className="text-[var(--franco-text-secondary)]">UF/m²</span>
-                  <div className="font-mono font-medium text-[var(--franco-text)]">
-                    {c.precioM2Promedio.toFixed(1).replace(".", ",")}
-                  </div>
+                <div className="cm-dato">
+                  UF/m²
+                  <b className="cm-cifra">{n1(c.precioM2Promedio)}</b>
                 </div>
                 {c.arriendoUFm2Mes > 0 && (
-                  <div>
-                    <span className="text-[var(--franco-text-secondary)]">UF/m²/mes</span>
-                    <div className="font-mono font-medium text-[var(--franco-text)]">
-                      {c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}
-                    </div>
+                  <div className="cm-dato">
+                    UF/m²/mes
+                    <b className="cm-cifra">{c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}</b>
                   </div>
                 )}
               </div>
@@ -133,73 +124,53 @@ export default async function ComunasIndexPage() {
 
           {/* Ni mediana propia ni muestra comunal para estimar: card sin cifras, link vivo. */}
           {sinDatos.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/comunas/${c.slug}`}
-              className="group rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 transition-colors hover:border-[var(--franco-border-hover)]"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">{c.nombre}</h2>
+            <Link key={c.slug} href={`/comunas/${c.slug}`} className="cm-comuna" data-comuna="tarjeta">
+              <div className="cm-comuna-cabeza">
+                <h2 className="cm-comuna-nombre">{c.nombre}</h2>
               </div>
-              <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">
-                Sin avisos suficientes esta semana, ni para estimar
-              </p>
+              <p className="cm-comuna-pie">Sin avisos suficientes esta semana, ni para estimar</p>
             </Link>
           ))}
         </div>
 
         {/* Comunas con arriendo 100% estimado: fuera del ranking, sin puesto. */}
         {estimadas.length > 0 && (
-          <section className="mt-14">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
-              Fuera del ranking
-            </p>
-            <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
-              Comunas con arriendo estimado
-            </h2>
-            <p className="mt-2 max-w-[74ch] font-body text-sm text-[var(--franco-text-secondary)]">
+          <section className="cm-seccion" data-comuna="estimadas">
+            <p className="cm-rotulo">Fuera del ranking</p>
+            <h2 className="cm-h2">Comunas con arriendo estimado</h2>
+            <p className="cm-texto" style={{ marginTop: 8 }}>
               En estas comunas ninguna tipología junta arriendos publicados propios, así que el arriendo sale del
               metro cuadrado de la comuna, con un margen de error de hasta 16%. Una cifra así te sirve para ubicarte,
               no para ordenar: por eso no compiten por un puesto con las comunas que sí tienen arriendos publicados.
             </p>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="cm-grilla" style={{ marginTop: 20 }}>
               {estimadas.map((c) => {
                 const rango = rangoArriendoComuna(c);
                 return (
-                  <Link
-                    key={c.slug}
-                    href={`/comunas/${c.slug}`}
-                    className="group rounded-xl border border-dashed border-[var(--franco-border)] bg-[var(--franco-card)] p-5 transition-colors hover:border-[var(--franco-border-hover)]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-heading text-lg font-bold text-[var(--franco-text)]">
+                  <Link key={c.slug} href={`/comunas/${c.slug}`} className="cm-comuna cm-comuna-estimada" data-comuna="tarjeta">
+                    <div className="cm-comuna-cabeza">
+                      <h3 className="cm-comuna-nombre">
                         {c.nombre}
                         <ChipEstimado />
                       </h3>
-                      <span className="font-mono text-lg font-bold text-[var(--franco-text)]">
-                        {c.rentabilidadBruta.toFixed(1).replace(".", ",")}%
-                      </span>
+                      <span className="cm-comuna-rent">{textoRentabilidadTitulo(c)}</span>
                     </div>
-                    <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">
-                      Rentabilidad bruta estimada
-                    </p>
+                    <p className="cm-comuna-pie">Rentabilidad bruta estimada</p>
 
-                    <div className="mt-3 flex gap-4 text-xs">
-                      <div>
-                        <span className="text-[var(--franco-text-secondary)]">Arriendo estimado</span>
-                        <div className="font-mono font-medium text-[var(--franco-text)]">
+                    <div className="cm-datos">
+                      <div className="cm-dato">
+                        Arriendo estimado
+                        <b className="cm-cifra">
                           {rango ? `${fmtCLP(rango.min)}–${fmtCLP(rango.max)}` : fmtCLP(c.arriendoRepresentativo)}
-                        </div>
-                        <div className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
+                        </b>
+                        <span className="cm-unidad">
                           rango · {c.tipologias.length} {c.tipologias.length === 1 ? "tipología" : "tipologías"}
-                        </div>
+                        </span>
                       </div>
-                      <div>
-                        <span className="text-[var(--franco-text-secondary)]">UF/m²</span>
-                        <div className="font-mono font-medium text-[var(--franco-text)]">
-                          {c.precioM2Promedio.toFixed(1).replace(".", ",")}
-                        </div>
+                      <div className="cm-dato">
+                        UF/m²
+                        <b className="cm-cifra">{n1(c.precioM2Promedio)}</b>
                       </div>
                     </div>
                   </Link>
@@ -209,21 +180,21 @@ export default async function ComunasIndexPage() {
           </section>
         )}
 
-        {/* CTA */}
-        <div className="mt-16 rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
-          <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">¿Tienes un depto?</h2>
-          <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
-            Analízalo gratis en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
+        {/* Cierre. Los veredictos con su nombre de hoy (20-oct-2026): decía «comprar, negociar o seguir buscando». */}
+        <section className="cm-cierre" data-comuna="cierre">
+          <h2 className="cm-h2">¿Tienes un depto?</h2>
+          <p className="cm-texto">
+            Analízalo gratis en 2 minutos. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
+            {etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o {etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}.
           </p>
-          <CtaAnalizar origen="comunas_indice"
-            className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
-          >
-            Analizar gratis
-          </CtaAnalizar>
-        </div>
+          <div className="cm-acciones">
+            <CtaAnalizar origen="comunas_indice" className="cm-boton cm-boton-tinta">
+              Analizar gratis
+            </CtaAnalizar>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
       <AppFooter variant="minimal" />
     </div>
   );

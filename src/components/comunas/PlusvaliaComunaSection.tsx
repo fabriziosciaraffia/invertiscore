@@ -114,11 +114,12 @@ function SerieGfkSVG({
       role="img"
       aria-label={`Precio UF/m² de departamentos nuevos en ${comuna}, ${desde} a ${desde + valores.length - 1}`}
       preserveAspectRatio="xMidYMid meet"
+      className="cm-grafico"
     >
       {grid.map((g, i) => (
         <g key={i}>
           <line x1={PLOT_X0} x2={PLOT_X1} y1={yFor(g)} y2={yFor(g)} stroke="var(--franco-border)" strokeWidth={1} />
-          <text x={PLOT_X0 - 8} y={yFor(g) + 3.5} textAnchor="end" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
+          <text x={PLOT_X0 - 8} y={yFor(g) + 3.5} textAnchor="end" fontSize={11} fontFamily="var(--font-ui), Inter, sans-serif" fill="var(--franco-text-muted)">
             {Math.round(g)}
           </text>
         </g>
@@ -157,7 +158,7 @@ function SerieGfkSVG({
         <circle cx={xFor(iEst)} cy={yFor(estimado.ufM2)} r={3} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} />
       )}
       {labelIdx.map((i) => (
-        <text key={i} x={xFor(i)} y={LABEL_Y} textAnchor="middle" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
+        <text key={i} x={xFor(i)} y={LABEL_Y} textAnchor="middle" fontSize={11} fontFamily="var(--font-ui), Inter, sans-serif" fill="var(--franco-text-muted)">
           {desde + i}
         </text>
       ))}
@@ -165,11 +166,11 @@ function SerieGfkSVG({
           label se ancla al final: centrado se cortaba fuera del viewBox. Sin
           "est." (F2.1): el año a secas, como los demás del eje. */}
       {estimado && (
-        <text x={VB_W - 2} y={LABEL_Y} textAnchor="end" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
+        <text x={VB_W - 2} y={LABEL_Y} textAnchor="end" fontSize={11} fontFamily="var(--font-ui), Inter, sans-serif" fill="var(--franco-text-muted)">
           {anioEst}
         </text>
       )}
-      <text x={PLOT_X0 - 8} y={PLOT_TOP - 4} textAnchor="start" fontSize={10} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
+      <text x={PLOT_X0 - 8} y={PLOT_TOP - 4} textAnchor="start" fontSize={10} fontFamily="var(--font-ui), Inter, sans-serif" fill="var(--franco-text-muted)">
         UF/m²
       </text>
     </svg>
@@ -177,21 +178,18 @@ function SerieGfkSVG({
 }
 
 // ── Piezas compartidas del patrón de sección (mockup e1c574c) ───────────────
+// Diseño plano (20-oct-2026, comunas.css): el rótulo en Inter, sin versalitas; tarjetas con borde, sin sombra.
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
-      {children}
-    </p>
-  );
+  return <p className="cm-rotulo">{children}</p>;
 }
 
 function NivelCard({ comuna }: { comuna: string }) {
   const nivel = GFK_NIVEL[comuna];
   if (!nivel) return null;
   return (
-    <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-      <p className="font-body text-xs text-[var(--franco-text-secondary)]">Precio del m² de deptos nuevos · {nivel.periodo}</p>
-      <p className="mt-1 font-mono text-xl font-bold text-[var(--franco-text)]">UF {fmt1(nivel.ufM2)}/m²</p>
+    <div className="cm-tarjeta cm-dato" style={{ marginTop: 0 }}>
+      Precio del m² de deptos nuevos · {nivel.periodo}
+      <b className="cm-cifra">UF {fmt1(nivel.ufM2)}/m²</b>
     </div>
   );
 }
@@ -210,15 +208,15 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
   const estimadoGrafico = estEncadena ? est : null;
 
   return (
-    <section className="mt-14">
+    <section className="cm-seccion" data-comuna="plusvalia">
       <Eyebrow>Plusvalía · qué ha hecho el precio</Eyebrow>
-      <h2 className="mt-2 font-heading text-2xl font-bold text-[var(--franco-text)]">
+      <h2 className="cm-h2">
         Cuánto se ha valorizado {comuna}
       </h2>
 
       {cobertura === "trayectoria_gfk" && serie && ac && (
-        <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="cm-tarjeta">
+          <div className="cm-plus-cabeza">
             {/* F4.1 — la cifra y el período salen de la TRAYECTORIA (`ac`), que es
                 la fuente única del producto, no de la serie del gráfico. La página
                 calculaba su propia anualizada sobre los puntos observados y por eso
@@ -226,24 +224,24 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
                 "2015-2025" para la misma comuna: dos cifras con la misma semántica
                 divergen apenas una de las dos incorpora un punto nuevo. GFK_SERIE
                 queda para DIBUJAR los puntos y nada más. */}
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+            <p className="cm-texto">
               El m² de departamentos nuevos en {comuna} pasó de UF {fmt1(ac.precioInicio)} a UF {fmt1(ac.precioFin)} entre {ac.rangoHist.replace("-", " y ")}.
             </p>
-            <div className="text-right">
-              <p className="font-mono text-lg font-bold text-[var(--franco-text)]">
-                {fmt1(ac.anualizada)}%<span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">anual promedio</span>
-              </p>
+            <div className="cm-plus-cifra">
+              <b className="cm-cifra" style={{ marginTop: 0 }}>
+                {fmt1(ac.anualizada)}% <span className="cm-plus-unidad">anual promedio</span>
+              </b>
               {GFK_NIVEL[comuna] && (
-                <p className="mt-0.5 font-mono text-xs text-[var(--franco-text-secondary)]">
+                <span className="cm-unidad">
                   UF {fmt1(GFK_NIVEL[comuna].ufM2)}/m² · {GFK_NIVEL[comuna].periodo}
-                </p>
+                </span>
               )}
             </div>
           </div>
-          <div className="mt-4">
+          <div className="cm-linea">
             <SerieGfkSVG comuna={comuna} desde={serie.desde} valores={serie.valores} estimado={estimadoGrafico} />
           </div>
-          <p className="mt-3 font-body text-xs text-[var(--franco-text-muted)]">
+          <p className="cm-chico">
             {/* F2.1 · las dos ramas son parejas: sin "no es proyección" en
                 ninguna. El eje ya dice años y la línea de fuente al pie declara
                 la construcción; dejar la advertencia solo en la rama con cierre
@@ -258,25 +256,24 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
       )}
 
       {cobertura === "nivel_mas_ac" && ac && (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="cm-plus-par">
           <NivelCard comuna={comuna} />
-          <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-            <p className="font-body text-xs text-[var(--franco-text-secondary)]">Valorización observada {ac.rangoHist}</p>
-            <p className="mt-1 font-mono text-xl font-bold text-[var(--franco-text)]">
-              {ac.plusvalia10a > 0 ? "+" : ""}{ac.plusvalia10a}%
-              <span className="ml-2 font-mono text-xs font-medium text-[var(--franco-text-secondary)]">({fmt1(ac.anualizada)}% anual)</span>
-            </p>
+          <div className="cm-tarjeta cm-dato" style={{ marginTop: 0 }}>
+            Valorización observada {ac.rangoHist}
+            <b className="cm-cifra">
+              {ac.plusvalia10a > 0 ? "+" : ""}{ac.plusvalia10a}% <span className="cm-plus-unidad">({fmt1(ac.anualizada)}% anual)</span>
+            </b>
           </div>
         </div>
       )}
 
       {cobertura === "solo_nivel" && (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="cm-plus-par">
           <NivelCard comuna={comuna} />
-          <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-            <p className="font-body text-xs text-[var(--franco-text-secondary)]">Trayectoria histórica</p>
-            <p className="mt-1 font-mono text-xl font-bold text-[var(--franco-text-muted)]">sin serie propia</p>
-            <p className="mt-3 font-body text-xs text-[var(--franco-text-muted)]">
+          <div className="cm-tarjeta cm-dato" style={{ marginTop: 0 }}>
+            Trayectoria histórica
+            <b className="cm-cifra" style={{ color: "var(--franco-text-muted)" }}>sin serie propia</b>
+            <p className="cm-chico">
               No hay serie histórica publicada para {comuna} — hay precio actual, no historia propia.
             </p>
           </div>
@@ -284,14 +281,14 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
       )}
 
       {cobertura === "solo_ac" && ac && (
-        <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-          <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+        <div className="cm-tarjeta">
+          <p className="cm-texto">
             Entre {ac.rangoHist.replace("-", " y ")} el precio promedio de departamentos en {comuna} subió {ac.plusvalia10a > 0 ? "+" : ""}{ac.plusvalia10a}% acumulado ({fmt1(ac.anualizada)}% anual).
           </p>
         </div>
       )}
 
-      <p className="mt-3 font-body text-[11px] text-[var(--franco-text-muted)]">
+      <p className="cm-chico">
         Fuente: elaboración propia en base a datos públicos de GfK/NielsenIQ, Tinsa, Colliers y Arenas &amp; Cayo.
       </p>
     </section>

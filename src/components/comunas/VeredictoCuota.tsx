@@ -16,6 +16,9 @@
 // Signal Red SOLO en la brecha negativa (uso #2 de Capa 1). El caso positivo va
 // en Ink, sin verde. La marca de muestra chica va en Ink + tipografía: una
 // advertencia de calidad de dato no es uso permitido del rojo.
+//
+// Diseño plano (20-oct-2026): tarjeta con borde, sin sombra ni borde lateral de color; rótulos en Inter, cifras en
+// Inter con números tabulares (comunas.css). El texto no cambió.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { ComunaStats, BandaEsfuerzo, TipologiaStats } from "@/lib/data/comunas-seo";
@@ -65,7 +68,7 @@ function ChipRespaldo({ t }: { t: TipologiaStats }) {
   const estimada = t.referencia.fuente === "comunalPorM2";
   if (!estimada && !t.muestraChica) return null;
   return (
-    <span className="ml-2 inline-block rounded-full border border-[var(--franco-border)] bg-[var(--franco-sunken,var(--franco-bg))] px-2 py-0.5 align-middle font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--franco-text-secondary)]">
+    <span className="cm-chip">
       {estimada ? `Arriendo estimado · m² comunal` : `Muestra chica · ${t.nArriendos} arriendos`}
     </span>
   );
@@ -73,19 +76,10 @@ function ChipRespaldo({ t }: { t: TipologiaStats }) {
 
 function Dato({ label, valor, critico = false, unidad }: { label: string; valor: string; critico?: boolean; unidad?: string }) {
   return (
-    <div className="font-body text-xs text-[var(--franco-text-muted)]">
+    <div className="cm-dato">
       {label}
-      <b
-        className="mt-0.5 block font-mono text-lg font-bold"
-        style={{ color: critico ? "#C8323C" : "var(--franco-text)" }}
-      >
-        {valor}
-      </b>
-      {unidad && (
-        <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
-          {unidad}
-        </span>
-      )}
+      <b className={`cm-cifra${critico ? " cm-negativo" : ""}`}>{valor}</b>
+      {unidad && <span className="cm-unidad">{unidad}</span>}
     </div>
   );
 }
@@ -97,32 +91,29 @@ function Dato({ label, valor, critico = false, unidad }: { label: string; valor:
  */
 function HeroSinVeredicto({ stats, dependen }: { stats: ComunaStats; dependen: TipologiaStats[] }) {
   return (
-    <div
-      className="mt-7 rounded-r-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-7 shadow-sm"
-      style={{ borderLeft: "3px solid var(--franco-text)" }}
-    >
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+    <div className="cm-tarjeta" data-comuna="veredicto">
+      <p className="cm-rotulo">
         ¿El arriendo paga el dividendo?
       </p>
-      <p className="mt-3 font-heading text-2xl font-bold leading-tight tracking-[-0.01em] text-[var(--franco-text)]">
+      <p className="cm-titular">
         En {stats.nombre} todavía no se puede decir: el arriendo es estimado y, en{" "}
         {dependen.length === 1 ? `el ${corto(dependen[0].dorms)}` : `las ${dependen.length} tipologías`}, su rango cruza la
         cuota.
       </p>
-      <p className="mt-3.5 max-w-[66ch] font-body text-sm text-[var(--franco-text-secondary)]">
+      <p className="cm-texto" style={{ marginTop: 12 }}>
         {COPY_DEPENDE} Franco no convierte un rango que cruza la cuota en un veredicto: con el arriendo real en la
         mano, el análisis del depto sí lo decide.
       </p>
-      <div className="mt-5 border-t border-dashed border-[var(--franco-border)] pt-5">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+      <div className="cm-separa">
+        <p className="cm-rotulo">
           Qué pasa en cada extremo del rango
         </p>
-        <div className="mt-4 flex flex-wrap gap-6">
+        <div className="cm-datos">
           {dependen.map((t) => {
             const r = brechaRango(t);
             if (!r) return null;
             return (
-              <div key={t.dorms} className="flex gap-6">
+              <div key={t.dorms} className="cm-datos" style={{ marginTop: 0 }}>
                 <Dato label={`${corto(t.dorms)} · con el piso`} valor={`−${fmtCLP(Math.abs(r.min))}`} critico unidad="al mes" />
                 <Dato label={`${corto(t.dorms)} · con el techo`} valor={`+${fmtCLP(Math.abs(r.max))}`} unidad="al mes" />
               </div>
@@ -169,14 +160,14 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
     titular = unaSola ? (
       <>
         En {stats.nombre} solo se puede publicar{dependen.length ? " con veredicto" : ""} el {unicaConFuente(decididas[0])}, y{" "}
-        <span className="text-[#C8323C]">no se paga solo</span>: faltan{" "}
+        <span className="cm-negativo">no se paga solo</span>: faltan{" "}
         {fmtCLP(Math.abs(decididas[0].brechaCLP))} cada mes.
         {notaDepende}
       </>
     ) : (
       <>
         En {stats.nombre},{" "}
-        <span className="text-[#C8323C]">
+        <span className="cm-negativo">
           ninguna de las {decididas.length} tipologías{conVeredicto} se paga sola
         </span>{" "}
         al precio de lista.
@@ -225,26 +216,23 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
   const otrasQueCubren = tips.filter((t) => t.dorms !== lider.dorms && t.veredictoFila === "sePagaSola");
 
   return (
-    <div
-      className="mt-7 rounded-r-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-7 shadow-sm"
-      style={{ borderLeft: `3px solid ${ningunaCubre ? "#C8323C" : "var(--franco-text)"}` }}
-    >
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+    <div className="cm-tarjeta" data-comuna="veredicto">
+      <p className="cm-rotulo">
         ¿El arriendo paga el dividendo?
       </p>
-      <p className="mt-3 font-heading text-2xl font-bold leading-tight tracking-[-0.01em] text-[var(--franco-text)]">
+      <p className="cm-titular">
         {titular}
       </p>
-      <p className="mt-3.5 max-w-[66ch] font-body text-sm text-[var(--franco-text-secondary)]">{bajada}</p>
+      <p className="cm-texto" style={{ marginTop: 12 }}>{bajada}</p>
 
-      <div className="mt-5 border-t border-dashed border-[var(--franco-border)] pt-5">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+      <div className="cm-separa">
+        <p className="cm-rotulo">
           {encabezadoPalanca}
         </p>
 
         {ningunaCubre ? (
           <>
-            <p className="mt-3 font-heading text-lg font-bold leading-snug text-[var(--franco-text)]">
+            <p className="cm-titular-chico">
               {estructural ? (
                 <>
                   Para que un {corto(lider.dorms)} se pagara solo habría que comprarlo a{" "}
@@ -260,7 +248,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
               )}
               <ChipRespaldo t={lider} />
             </p>
-            <div className="mt-4 flex flex-wrap gap-6">
+            <div className="cm-datos">
               <Dato label={`Precio de equilibrio · ${corto(lider.dorms)}`} valor={uf(lider.precioCuotaUF)} unidad={UNIDAD_DEPTO} />
               <Dato label="Bajo la mediana" valor={`−${pct(lider.deltaPct)}`} critico={estructural} />
               {lider.pieNecesarioPct !== null && (
@@ -270,14 +258,14 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
           </>
         ) : (
           <>
-            <p className="mt-3 font-heading text-lg font-bold leading-snug text-[var(--franco-text)]">
+            <p className="cm-titular-chico">
               Un {corto(lider.dorms)} deja de pagarse solo recién sobre{" "}
               <strong>{uf(lider.precioCuotaUF)}</strong> por el departamento completo. La mediana de la comuna
               es {uf(lider.ventaUF)}, así que tienes un {pct(lider.deltaPct)} de margen sobre el precio de
               lista.
               <ChipRespaldo t={lider} />
             </p>
-            <div className="mt-4 flex flex-wrap gap-6">
+            <div className="cm-datos">
               <Dato label={`Precio de equilibrio · ${corto(lider.dorms)}`} valor={uf(lider.precioCuotaUF)} unidad={UNIDAD_DEPTO} />
               <Dato label="Margen sobre la mediana" valor={`+${pct(lider.deltaPct)}`} />
             </div>
@@ -285,25 +273,19 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
         )}
 
         {lider.banda && (
-          <span className="mt-4 inline-block rounded-full px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.08em]"
-            style={
-              estructural
-                ? { color: "#C8323C", background: "rgba(200,50,60,0.07)" }
-                : { color: "var(--franco-text-secondary)", background: "var(--franco-sunken, var(--franco-bg))" }
-            }
-          >
-            {ETIQUETA_BANDA[lider.banda]}
-          </span>
+          <p className="cm-linea">
+            <span className={`cm-chip cm-chip-solo${estructural ? " cm-negativo" : ""}`}>{ETIQUETA_BANDA[lider.banda]}</span>
+          </p>
         )}
 
         {/* Cierre de la palanca: qué significa, y qué pasa con las demás. */}
-        <p className="mt-4 max-w-[68ch] font-body text-[13px] text-[var(--franco-text-secondary)]">
+        <p className="cm-texto-chico">
           {estructural ? (
             <>
               Ni el precio ni el pie son palancas razonables acá. Lo que dicen estos números no es que este
               depto esté caro, sino que hoy {stats.nombre} se vende a precios que sus arriendos no sostienen.
               Si buscas que el arriendo cubra la cuota, la palanca real es{" "}
-              <a href="/comunas" className="underline hover:text-[var(--franco-text)]">
+              <a href="/comunas" className="cm-enlace">
                 mirar otra comuna
               </a>
               .
@@ -344,7 +326,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
         </p>
 
         {liderEstimado && lider.referencia.fuente === "comunalPorM2" && (
-          <p className="mt-3 max-w-[68ch] font-body text-[13px] italic text-[var(--franco-text-muted)]">
+          <p className="cm-chico">
             Ojo con el respaldo de este número: el {corto(lider.dorms)} no junta arriendos publicados propios
             ({lider.nArriendos}). Su arriendo es un estimado desde el metro cuadrado de los{" "}
             {lider.referencia.nComunal.toLocaleString("es-CL")} arriendos de la comuna, ajustado por tipología, y va entre{" "}
@@ -353,7 +335,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
           </p>
         )}
         {!liderEstimado && lider.muestraChica && (
-          <p className="mt-3 max-w-[68ch] font-body text-[13px] italic text-[var(--franco-text-muted)]">
+          <p className="cm-chico">
             Ojo con el respaldo de este número: el {corto(lider.dorms)} se apoya en {lider.nArriendos} arriendos
             publicados, la muestra más chica de las que se muestran acá. Con esa cantidad la mediana se mueve
             más — tómalo como una señal de por dónde mirar, no como una promesa.

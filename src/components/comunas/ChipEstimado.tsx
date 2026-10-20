@@ -2,13 +2,8 @@
 // no de avisos propios. Misma marca en la tabla de tipologías, la comparativa
 // de comunas similares y el bloque del ranking. Ink + tipografía, nunca rojo:
 // es una advertencia de calidad de dato, no una alerta.
+// Diseño plano (20-oct-2026): la píldora `cm-chip` de comunas.css, en Inter y sin versalitas.
 
 export function ChipEstimado({ texto = "Estimado · m² comunal", className = "" }: { texto?: string; className?: string }) {
-  return (
-    <span
-      className={`ml-2 inline-block rounded-full border border-[var(--franco-border)] px-1.5 py-px align-middle font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] ${className}`}
-    >
-      {texto}
-    </span>
-  );
+  return <span className={`cm-chip ${className}`.trim()}>{texto}</span>;
 }

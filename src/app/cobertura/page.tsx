@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/components/comunas/comunas.css";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export const metadata: Metadata = {
   title: "¿Dónde está disponible Franco?",
@@ -27,68 +29,55 @@ export const metadata: Metadata = {
 // prometía cobertura distinta de la que /comunas publica. Una sola fuente para
 // "dónde hay página", y cada chip enlaza a la suya — antes eran texto plano y
 // la página de cobertura no aportaba ningún enlace interno.
+// (20-oct-2026: Renca entró a COMUNAS_DISPONIBLES; las dos listas tienen hoy las mismas 25.)
 // Orden alfabético chileno (respeta acentos y la Ñ).
 const comunas = [...COMUNAS_ROSTER].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
+// Diseño plano (20-oct-2026, comunas.css): el mismo de las páginas de comuna, de planes y del semanal.
 export default function CoberturaPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Navbar */}
       <HeaderFranco />
 
-      <main className="mx-auto max-w-[1100px] px-6 py-16">
-        {/* Hero */}
-        <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">
-          ¿Dónde está disponible Franco?
-        </h1>
-        <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
+      <main className="cm mx-auto max-w-[1100px] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-comuna="cobertura">
+        <h1 className="cm-titulo">¿Dónde está disponible Franco?</h1>
+        <p className="cm-bajada">
           Franco analiza departamentos en estas {COMUNAS_ROSTER.length} comunas de Gran Santiago.
           Cada una tiene su página con precios, arriendos y rentabilidad por tipología.
         </p>
 
         {/* Chips de comunas, cada uno enlaza a su página */}
-        <ul className="mt-10 flex flex-wrap gap-2.5">
+        <ul className="cm-lista">
           {comunas.map((c) => (
             <li key={c.slug}>
-              <Link
-                href={`/comunas/${c.slug}`}
-                className="block rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3.5 py-2 font-body text-sm text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)] hover:text-[var(--franco-text)]"
-              >
-                {c.nombre}
-              </Link>
+              <Link href={`/comunas/${c.slug}`}>{c.nombre}</Link>
             </li>
           ))}
         </ul>
 
         {/* Cierre — comuna fuera de cobertura */}
-        <p className="mt-10 font-body text-sm text-[var(--franco-text-secondary)]">
+        <p className="cm-texto" style={{ marginTop: 28 }}>
           ¿Tu comuna no está?{" "}
-          <a
-            href="mailto:hola@refranco.ai"
-            className="font-medium text-[#C8323C] hover:underline"
-          >
+          <a href="mailto:hola@refranco.ai" className="cm-enlace">
             Escríbenos a hola@refranco.ai
           </a>
         </p>
 
-        {/* CTA */}
-        <div className="mt-16 rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
-          <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">
-            ¿Tu depto está en una de estas comunas?
-          </h2>
-          <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
-            Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir
-            buscando.
+        {/* Los veredictos con su nombre de hoy (20-oct-2026): decía «comprar, negociar o seguir buscando». */}
+        <section className="cm-cierre" data-comuna="cierre">
+          <h2 className="cm-h2">¿Tu depto está en una de estas comunas?</h2>
+          <p className="cm-texto">
+            Analízalo en 2 minutos. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
+            {etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o {etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}.
           </p>
-          <CtaAnalizar origen="cobertura"
-            className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
-          >
-            Analiza tu departamento
-          </CtaAnalizar>
-        </div>
+          <div className="cm-acciones">
+            <CtaAnalizar origen="cobertura" className="cm-boton cm-boton-tinta">
+              Analiza tu departamento
+            </CtaAnalizar>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
       <AppFooter variant="minimal" />
     </div>
   );
