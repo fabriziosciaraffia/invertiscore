@@ -44,7 +44,7 @@ import { join } from "node:path";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, MARCA_NEGOCIAR, MEMORIA_SEMANAL_MS, prechequearConPresupuesto, siguienteYEstado,
   DIAS_VISTO, MARCA_VISTO, REGLA_CORTA, REGLA_LARGA, queEnviarSemanal, vistosDeFilas,
-  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, MINIMO_SEMANAL, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeReactivacion, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
+  FRESCO_DOMINGO_MS, MAX_CHEQUEOS_REEMPLAZO, esUltimaCorridaArmar, SEMANAL_PAGINA, filasDePagina, rechequearAvisos, siguienteReemplazo, RUTA_SUELTO_SEMANAL, rutaSueltoSemanal, textoVence, TOPE_SEMANAL, correspondeReactivacion, elegirSemanal, esPrimerSemanal, rangoSemanal, semanaDelEnvio, varianteDe,
 } from "../../../src/lib/guia/semanal";
 import { COMUNAS_SIN_VECINAS, comunasVecinas, vecinasDe } from "../../../src/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -88,7 +88,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   }
   {
     const { r } = await correr((id) => (["a2", "a3"].includes(id) ? "publicado" : "despublicado"));
-    if (r.estado !== "sin_match" || r.items.length !== 0) F(`1 · con menos de ${MINIMO_SEMANAL} publicados igual hay correo (${r.estado})`);
+    // ⚠ ACTA (20-oct-2026, SEMANAL-SIN-MINIMO) · el mínimo de tres se derogó: con 1 o 2 confirmados sale la selección.
+    if (r.estado !== "armada" || r.items.length !== 2) F(`1 · con dos publicados la selección no sale (${r.estado}, ${r.items.length})`);
     const p = await correr((id) => (["a2", "a3"].includes(id) ? "publicado" : "sin-chequeo"));
     if (p.r.estado !== "pendiente") F("1 · sin cupo para chequear, la selección no queda pendiente");
   }
@@ -141,9 +142,10 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   const banda = correoSemanal(base).html;
   const tarjetas = correoSemanal({ ...base, variante: "tarjetas", saldo: 2 }).html;
   const regalo = correoSemanal({ ...base, variante: "tarjetas", saldo: 1, conRegalo: true }).html;
-  if (correoSemanal(base).subject !== "Deptos publicados que Franco revisó para ti") F("4 · el asunto no es el titular aprobado");
+  // ⚠ ACTA (20-oct-2026, SEMANAL-SIN-MINIMO) · el asunto y el titular dicen cuántos: «Encontré N que te convienen».
+  if (correoSemanal(base).subject !== `Encontré ${base.deptos.length} que te convienen`) F(`4 · el asunto no dice cuántos: ${correoSemanal(base).subject}`);
   if (!banda.includes(`src="${URL_BANDA_SEMANAL}"`) || !banda.includes(`alt="${SEMANAL.titular}"`)) F("4 · la variante banda no lleva la banda del hero con el titular en el alt");
-  if (tarjetas.includes(URL_BANDA_SEMANAL) || !tarjetas.includes(`font-weight: 700; color: #0F0F0F;">${SEMANAL.titular}</td>`)) F("4 · la variante tarjetas lleva banda o no lleva el titular en serif");
+  if (tarjetas.includes(URL_BANDA_SEMANAL) || !tarjetas.includes(`font-weight: 700; color: #0F0F0F;">Encontré ${base.deptos.length} que te convienen</td>`)) F("4 · la variante tarjetas lleva banda o no lleva el titular en serif");
   for (const [n, h] of [["banda", banda], ["tarjetas", tarjetas]] as const) {
     if ((h.match(/font-size: 28px; line-height: 1\.1; font-weight: 700;/g) ?? []).length !== 3) F(`4 · ${n}: el precio no va grande en cada tarjeta`);
     if (!h.includes(`color: ${COLOR_VEREDICTO.COMPRAR};">Comprar`) || COLOR_VEREDICTO.COMPRAR !== "#2B558F") F(`4 · ${n}: el veredicto no va en su color`);
@@ -256,10 +258,11 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (c.r.items.some((x) => x.tramo === "negociar" && x.ev.veredicto !== "AJUSTA SUPUESTOS")) F("10 · entra como negociable algo que no es Ajustar (un Buscar otro con descuento)");
     // d · ni así tres: no sale.
     const d = await correrR([mk("p1", 9), mk("p3", 7)], [mk("v4", 6)], (id) => (id === "v4" ? "despublicado" : "publicado"));
-    if (d.r.estado !== "sin_match" || d.r.items.length !== 0) F(`10 · sin tres ni con el respaldo, igual hay correo (${d.r.estado})`);
+    // ⚠ ACTA (20-oct-2026, SEMANAL-SIN-MINIMO) · sin tres ni con el respaldo, salen los dos confirmados.
+    if (d.r.estado !== "armada" || d.lista !== "p1:propia") F(`10 · sin tres ni con el respaldo, el confirmado no sale solo (${d.r.estado}: ${d.lista})`);
     // e · sin respaldo (como antes) no cambia nada.
     const e = await elegirSemanal([mk("p1", 9), mk("p2", 8)], evR, async () => "publicado" as const);
-    if (e.estado !== "sin_match") F("10 · sin respaldo un solo Comprar arma correo");
+    if (e.estado !== "armada" || e.items.length === 0 || e.items[0].c.avisoId !== "p1") F(`10 · sin respaldo, un Comprar confirmado no arma correo (${e.estado}, ${e.items.length})`);
     if (DESCUENTO_NEGOCIABLE !== 0.1 || !/evaluarConDescuento: \(c\) => evaluarA\(c, 1 - DESCUENTO_NEGOCIABLE\)/.test(srv) || !/vecinas: \(\) => \(vecinas \?\?= leerCandidatos\(comunasVecinas\(propias\)\)\)/.test(srv)) F("10 · el servidor no arma el respaldo con las vecinas y el 10% de descuento");
     if (!/const cc = factorPrecio === 1 \? c : \{ \.\.\.c, precioUF: c\.precioUF \* factorPrecio \};/.test(srv)) F("10 · la evaluación con descuento no baja el precio");
     if (!/\.\.\.\(tramo === "vecina" \|\| tramo === "negociar" \? \{ tramo \} : \{\}\)/.test(srv)) F("10 · la selección no guarda de dónde salió cada depto");
