@@ -11,12 +11,14 @@
 //   · propio     — quien invita abre su enlace: su enlace para compartir;
 //   · con_cuenta — ya tiene cuenta: el enlace es para quien todavía no está.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import { DeptosCliente } from "@/app/deptos/deptos-cliente";
 import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
-import { CampoEntrada, type CaminoSinDireccion } from "@/components/entrada/HeroEntrada";
+import type { CaminoSinDireccion } from "@/components/entrada/HeroEntrada";
+import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { urlDeLlegada } from "@/components/entrada/llegada";
 import { PREFIJO_DETALLE_INVITACION, REFERIDO_COPY, rutaInvitacion } from "@/lib/referido";
@@ -25,6 +27,12 @@ import "@/app/deptos/deptos.css";
 import "./invitacion.css";
 
 export type ModoInvitacion = "invitado" | "propio" | "con_cuenta";
+
+// El campo de la dirección por import() (20-oct-2026, LCP en el teléfono): aparece solo al tocar «¿Ya tienes un depto en
+// la mira?», y con él venían el hook de Google Places, sus íconos y la hoja del hero (~8 kB de JS y su CSS) antes de
+// pintar la banda. Se pide con la página quieta, así que al tocar ya está.
+const cargarCampo = () => import("@/components/entrada/HeroEntrada").then((m) => ({ default: m.CampoEntrada }));
+const CampoEntrada = dynamic(cargarCampo, { ssr: false });
 
 export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion, portada }: {
   modo: ModoInvitacion;
@@ -38,6 +46,7 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion, p
   const posthog = usePostHog();
   const [conDepto, setConDepto] = useState(false);
   const [navegando, setNavegando] = useState<CaminoSinDireccion | "escribir" | null>(null);
+  useEffect(() => (modo === "invitado" ? cuandoLaPaginaEsteQuieta(() => { void cargarCampo(); }) : undefined), [modo]);
   // `invitacion_vista` ya no sale de acá (20-oct-2026): la emite la página en el servidor (lib/invitacion-vista.ts). Desde el
   // navegador se perdía si la persona se iba antes de que cargara PostHog, y las dos juntas la contarían dos veces.
 
