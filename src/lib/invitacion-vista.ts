@@ -11,7 +11,7 @@
 // Puro: lo prueban PUERTA-C §5 y VISTA-ENTRADA; la página lo emite con `capturarServidor`.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Consentimiento } from "@/lib/consentimiento";
-import type { EventoServidor } from "@/lib/posthog-servidor";
+import type { EventoServidor } from "@/lib/posthog-captura";
 import { EVENTO_VISTA, eventoVistaEntrada } from "@/lib/vista-entrada";
 
 export { esCargaDePagina, esRobot, idPostHogDeCookies } from "@/lib/vista-entrada";

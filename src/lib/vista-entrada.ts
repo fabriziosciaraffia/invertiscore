@@ -15,7 +15,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { canalDeUtm } from "@/lib/canal";
 import { conPermiso, type Consentimiento } from "@/lib/consentimiento";
-import type { EventoServidor } from "@/lib/posthog-servidor";
+import { agenteDelEvento, enviarCaptura, esRobot, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
+
+// Los robots se reconocen en el único punto de envío (posthog-captura.ts); acá se reexporta para las páginas.
+export { esRobot };
 
 export type PaginaEntrada = "landing" | "deptos" | "invitacion";
 
@@ -41,14 +44,6 @@ export function paginaDeEntrada(pathname: string): PaginaEntrada | null {
   if (pathname === "/deptos" || pathname === "/deptos/") return "deptos";
   if (pathname.startsWith("/i/")) return "invitacion";
   return null;
-}
-
-/** Robots de vistas previas, buscadores y clientes sin navegador. Sin agente, también. «…bot/», «…bot;» o «bot» suelto,
- *  no «bot» dentro de un modelo de teléfono (CUBOT). */
-const ROBOT = /[a-z]bot[/;]|\bbot\b|adsbot|crawl|spider|slurp|facebookexternalhit|facebookcatalog|whatsapp|telegram|discord|slack|linkedin|skype|embedly|pinterest|vkshare|quora link preview|bitly|headless|lighthouse|pagespeed|inspectiontool|curl\/|wget|python|go-http-client|node-fetch|axios|okhttp|java\//i;
-
-export function esRobot(agente: string | null | undefined): boolean {
-  return !agente || ROBOT.test(agente);
 }
 
 /** ¿Es la carga de la página? No el refresco ni la navegación de Next (cabecera RSC), ni un prefetch. */
@@ -182,27 +177,8 @@ export function idDeServerTiming(entradas: ReadonlyArray<{ name: string; descrip
   return id.length > 0 && id.length <= 200 ? id : null;
 }
 
-/** Manda el evento a PostHog con `fetch` (sirve en Edge, a diferencia de `capturarServidor`). Nunca lanza. */
-export async function enviarVista(ev: EventoServidor, deps: { fetch?: typeof fetch; key?: string; host?: string } = {}): Promise<boolean> {
-  const key = deps.key ?? process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!key) return false;
-  const host = (deps.host ?? process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com").replace(/\/$/, "");
-  const f = deps.fetch ?? globalThis.fetch;
-  try {
-    const res = await f(`${host}/capture/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: key,
-        event: ev.event,
-        distinct_id: ev.distinctId,
-        ...(ev.uuid ? { uuid: ev.uuid } : {}),
-        timestamp: ev.timestamp ?? new Date().toISOString(),
-        properties: { ...(ev.properties ?? {}), $lib: "franco-servidor" },
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+/** Manda la vista por el único punto de envío (posthog-captura.ts, sirve en Edge), con el agente que trae el evento.
+ *  Nunca lanza. */
+export function enviarVista(ev: EventoServidor, deps: DepsEnvio = {}): Promise<boolean> {
+  return enviarCaptura(ev, { valor: agenteDelEvento(ev), origen: "evento" }, deps);
 }

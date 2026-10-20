@@ -14,6 +14,16 @@
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
+## El agente de los eventos del servidor
+
+> 20-oct-2026. PostHog clasifica el tráfico por el agente (`$raw_user_agent`) y marca robot todo evento sin él
+> (`$virt_is_bot`, «Automation / no_user_agent»). Todo evento del servidor sale por un solo punto
+> (`src/lib/posthog-captura.ts`) con el agente del navegador de la persona, y `agente_origen` dice de dónde salió:
+> `evento` (las vistas de entrada), `pedido` (el pedido venía de su navegador; queda recordado en `agentes_navegador`),
+> `recordado` (delante había un webhook o un cron: el último navegador que Franco le vio) o `ninguno` (nunca se vio su
+> navegador: ese evento sigue saliendo como robot). Antes del 20-oct-2026 los eventos del servidor no tienen
+> `agente_origen` y salen todos como robot.
+
 ## La tabla (HogQL)
 
 El insight «Activación por puerta · 1 h / 1 día / 30 días» del dashboard corre esta consulta (la misma base que la tabla
