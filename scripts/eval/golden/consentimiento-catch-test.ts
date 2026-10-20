@@ -335,6 +335,10 @@ export async function runConsentimientoTier(): Promise<{ hard: number }> {
       if (!/const TAMANO_FRASE = "clamp\(10px, calc\(\(100vw - 32px\) \/ 28\.2\), 13px\)";/.test(av) || !/<p\s+data-cookies="texto"\s+className="[^"]*\bwhitespace-nowrap\b[^"]*"\s+style=\{\{ fontSize: TAMANO_FRASE \}\}/.test(av)) F("5 · la frase del aviso puede ocupar más de una línea en el teléfono");
       if (!/<span className="hidden sm:inline">\s*\{` \$\{COOKIES_COPY\.separador\} `\}\s*<a href="\/privacy" className=\{ENLACE\}>\{COOKIES_COPY\.privacidad\}<\/a>\s*<\/span>/.test(av)
         || !/<a href="\/privacy" className=\{`\$\{ENLACE\} mr-auto text-\[13px\] sm:hidden`\}>\{COOKIES_COPY\.privacidad\}<\/a>/.test(av)) F("5 · «Privacidad» no está en la línea en PC y con los botones en el teléfono");
+      // ⚠ ACTA (20-oct-2026, QA de las páginas de comuna) · la barra tapaba el final de toda página (el aviso legal y
+      // «Cookies» del pie en el teléfono, el cierre en PC). Ahora reserva su alto al final del contenido mientras se ve.
+      if (!/<div aria-hidden="true" data-cookies="espacio" style=\{\{ height: alto \}\} \/>\s*<div\s+ref=\{barra\}/.test(av)
+        || !/const ro = new ResizeObserver\(medir\);\s*ro\.observe\(el\);/.test(av)) F("5 · la barra de cookies vuelve a tapar el final de la página (sin el espacio de su alto)");
       // Sale mientras no haya elección; vuelve cuando el pie lo pide.
       if (!/if \(leerConsentimiento\(\) === null\) setVisible\(true\);/.test(av) || !/window\.addEventListener\(EVENTO_ABRIR_AVISO, abrir\);/.test(av)) F("5 · el aviso no sale sin elección (o el pie no lo vuelve a abrir)");
       // LA ELECCIÓN EN POSTHOG: `cookies_eleccion` con acepta / rechaza al elegir (antes de guardar), e «ignora» al irse de la

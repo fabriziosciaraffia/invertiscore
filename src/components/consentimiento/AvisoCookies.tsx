@@ -62,6 +62,21 @@ export function AvisoCookies() {
     });
   }, [visible]);
 
+  // LA BARRA NO TAPA EL FINAL DE LA PÁGINA (20-oct-2026, QA de las páginas de comuna): mientras está a la vista, deja al
+  // final del contenido un espacio de su mismo alto, así lo último —el aviso legal y «Cookies» del pie en el teléfono, el
+  // cierre en PC— se puede leer al llegar abajo. Va al final, así que no corre nada de lo que ya está en pantalla.
+  const barra = useRef<HTMLDivElement>(null);
+  const [alto, setAlto] = useState(0);
+  useEffect(() => {
+    const el = barra.current;
+    if (!visible || !el) return;
+    const medir = () => setAlto(Math.ceil(el.getBoundingClientRect().height));
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [visible]);
+
   if (!visible) return null;
   const elegir = (c: Consentimiento) => {
     posthogCliente.capture(EVENTO_ELECCION_COOKIES, { eleccion: eleccionDe(c), origen: origen.current });
@@ -69,7 +84,10 @@ export function AvisoCookies() {
     setVisible(false);
   };
   return (
+    <>
+    <div aria-hidden="true" data-cookies="espacio" style={{ height: alto }} />
     <div
+      ref={barra}
       role="region"
       aria-label="Cookies"
       data-cookies="aviso"
@@ -95,6 +113,7 @@ export function AvisoCookies() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
