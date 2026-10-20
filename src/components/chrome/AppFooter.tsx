@@ -24,12 +24,18 @@ interface AppFooterProps {
   variant: "minimal" | "rich" | "informe";
   showLogo?: boolean;
   linksSlot?: ReactNode;
+  /** `diferido` (20-oct-2026, LCP en el teléfono): la fuente del pie entra con la página quieta. El aviso va en IBM Plex
+   *  (40 kB) y en las páginas cortas el pie queda junto al pliegue, así que la pedía antes del primer pintado; hasta que
+   *  HeaderFranco marca `data-grano`, el pie dibuja con su respaldo local ajustado (fuentes.css). En las páginas de
+   *  aterrizaje de la campaña (/deptos, /i/CÓDIGO) y en /pricing. */
+  diferido?: boolean;
 }
 
 export function AppFooter({
   variant,
   showLogo = true,
   linksSlot,
+  diferido = false,
 }: AppFooterProps) {
   // rich tiene mas aire vertical (3-col grids, varios bloques de links).
   const gapClass = variant === "rich" ? "gap-8" : variant === "informe" ? "gap-3" : "gap-5";
@@ -39,6 +45,7 @@ export function AppFooter({
     <footer
       className="py-9 px-4 sm:px-6"
       style={{ borderTop: "0.5px solid var(--franco-border)" }}
+      data-fuente-diferida={diferido ? "" : undefined}
     >
       <div className={`mx-auto max-w-[1100px] flex flex-col ${gapClass}`}>
         {showLogo && (

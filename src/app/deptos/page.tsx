@@ -54,7 +54,7 @@ export default async function DeptosPage({ searchParams }: { searchParams?: Reco
         <DeptosCliente sesion={sesion} portada={portada} />
       </main>
       {/* El pie de los informes (16-oct-2026): el wordmark y el aviso, sin enlaces que saquen de la página. */}
-      <AppFooter variant="informe" />
+      <AppFooter variant="informe" diferido />
     </div>
   );
 }

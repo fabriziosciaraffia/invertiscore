@@ -96,7 +96,7 @@ export default async function InvitacionPage({ params, searchParams }: { params:
       <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
         <InvitacionCliente modo={modo} codigo={codigo} nombre={inv?.conNombre ? inv.nombre : null} sesion={sesion} portada={portada} />
       </main>
-      <AppFooter variant="informe" />
+      <AppFooter variant="informe" diferido />
     </div>
   );
 }

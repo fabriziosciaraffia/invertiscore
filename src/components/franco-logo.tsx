@@ -49,7 +49,10 @@ export default function FrancoLogo({
         </span>
         <span
           className={`font-body font-semibold text-[#C8323C] ${s.dot} tracking-wide`}
-          style={{ fontSize: '0.35em', letterSpacing: '0.1em' }}
+          // La cara del «.ai» (20-oct-2026, fuentes.css): solo «.», «a» e «i» de la IBM Plex, incrustada, con el mismo dibujo.
+          // Sin ella el header de cada página bajaba la IBM Plex latin entera (40 kB) para tres letras. El respaldo es el
+          // LOCAL ajustado, por lo mismo que en el «re».
+          style={{ fontSize: '0.35em', letterSpacing: '0.1em', fontFamily: "'IBM Plex Sans Franco Marca', 'IBM Plex Sans Franco Fallback'" }}
         >
           .ai
         </span>

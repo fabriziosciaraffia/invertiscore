@@ -787,6 +787,27 @@
   unicode-range: U+0065, U+0072;
 }
 
+/* El «.ai» del wordmark (20-oct-2026, LCP de /deptos y /i/CÓDIGO): solo «.», «a» e «i» de la IBM Plex latin, recortadas
+ * del MISMO archivo variable con sus tablas de variación (subset-font, scratchpad/fuentes/marca-ai.mjs; 1,6 kB en vez de
+ * 40). Declarada en 500 como la cara de la que sale: el «.ai» pide 600 y el navegador lo dibuja igual que antes (comparado
+ * píxel a píxel a DPR 1, 1,75 y 3). Con ella la primera pantalla no baja la IBM Plex entera para tres letras. */
+@font-face {
+  font-family: 'IBM Plex Sans Franco Marca';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(data:font/woff2;base64,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) format('woff2');
+  unicode-range: U+002E, U+0061, U+0069;
+}
+
+/* El pie diferido (20-oct-2026, AppFooter `diferido`): su texto va en IBM Plex y en las páginas cortas queda junto al
+ * pliegue, así que la pedía antes del primer pintado. Hasta que la página está quieta (HeaderFranco marca `data-grano`)
+ * dibuja con el respaldo local AJUSTADO —las mismas medidas, no corre nada—, y después con la IBM Plex: lo mismo que pasa
+ * con `swap` cuando la fuente llega tarde. También la fuente HEREDADA del pie, no solo la variable: el enlace del logo no
+ * declara fuente, hereda la IBM Plex ya resuelta de <body>, y como su línea tiene un inline-flex Chrome la pedía para medir
+ * el alto de esa línea (medido con el JS apagado). */
+html:not([data-grano]) footer[data-fuente-diferida] { --font-body: 'IBM Plex Sans Franco Fallback'; font-family: var(--font-body); }
+
 .fuentes-franco {
   --font-heading: 'Source Serif 4 Franco', 'Source Serif 4 Franco Fallback';
   --font-body: 'IBM Plex Sans Franco', 'IBM Plex Sans Franco Fallback';

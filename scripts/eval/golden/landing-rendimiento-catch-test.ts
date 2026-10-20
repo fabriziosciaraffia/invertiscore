@@ -29,7 +29,8 @@
 //   8 · /deptos Y /i/CÓDIGO EN TELÉFONO (20-oct-2026, goal «las dos páginas de aterrizaje de la campaña»: mediana de
 //       cinco, bajo 2,5 s). El LCP de las dos es la banda del correo (`.dp-banda`, deptos.css, que /i/CÓDIGO importa): la
 //       misma receta que §7, y el cliente de Supabase fuera del primer paquete (DeptosCliente lo pide por import() al
-//       pedir el código, al entrar con él o con Google).
+//       pedir el código, al entrar con él o con Google). Y la IBM Plex (40 kB) tampoco baja antes: el «.ai» del wordmark
+//       con su cara incrustada (recortada del mismo archivo variable) y el pie con su fuente diferida a la página quieta.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 //   Acta 28-sep-2026: A Maps al montar (prepararPlaces() pelado en el efecto) → 1 falla · B solo `focus`
@@ -52,6 +53,11 @@
 //   fondo con color (PUERTA-B) → 1 · R12 el ::before no cubre la banda → 1 · R13 el header deja de marcar data-grano → 1 ·
 //   R14 PrimeraSeleccion importa supabase-js → 2 · C1 el censo con el build de ANTES del cambio → 1 (el chunk 2990 trae el
 //   cliente de Supabase). 18/18 ROJO; restaurado y con el build nuevo: verde.
+//   Segunda pasada del §8 (la IBM Plex; scratchpad mutar-ai.cjs): S1 el «.ai» vuelve a la IBM Plex entera · S2 sin su cara ·
+//   S3 la cara es la IBM Plex entera incrustada · S4 es una instancia fija, sin variación · S5 declarada en 600 · S6 el
+//   pie sin el atributo · S7 la regla solo cambia la variable (el enlace del logo la seguía pidiendo) · S8 /deptos y S9
+//   /i/CÓDIGO con el pie de siempre · S10 el respaldo sin ajustar · S11 el pie espera otra señal. 11/11 ROJO (una falla
+//   cada una); restaurado: verde.
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -399,6 +405,41 @@ export function runLandingRendimientoTier(): { hard: number } {
     if (!/import "@\/app\/deptos\/deptos\.css";/.test(sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx")))) F("8 · /i/CÓDIGO ya no usa la banda de deptos.css: revisa su fondo");
     sinPesados("8", "/deptos", ["src/app/deptos/deptos-cliente.tsx", "src/components/chrome/EnlaceCarga.tsx", "src/components/chrome/HeaderFranco.tsx"], 25);
     sinPesados("8", "/i/CÓDIGO", ["src/app/i/[codigo]/invitacion-cliente.tsx", "src/components/chrome/HeaderFranco.tsx"], 30);
+    // g · La IBM Plex (40 kB) tampoco baja antes de la banda: el «.ai» del wordmark dibuja con su cara incrustada —«.», «a» e
+    //     «i» recortadas del MISMO archivo variable, declarada en 500 como la cara de la que sale, para que el 600 se dibuje
+    //     igual—, con el respaldo local; y el pie (el aviso va en IBM Plex) no se calcula hasta acercarse.
+    const fuentes8 = leer("src/app/fuentes.css");
+    const caraAi = (fuentes8.match(/@font-face \{\s*font-family: 'IBM Plex Sans Franco Marca';\s*font-style: normal;\s*font-weight: 500;\s*font-display: swap;\s*src: url\(data:font\/woff2;base64,([A-Za-z0-9+/=]+)\) format\('woff2'\);\s*unicode-range: U\+002E, U\+0061, U\+0069;\s*\}/) ?? [])[1];
+    const binAi = caraAi ? Buffer.from(caraAi, "base64") : null;
+    if (!binAi || binAi.toString("latin1", 0, 4) !== "wOF2" || binAi.length > 3_000) F("8 · el «.ai» del wordmark no tiene su cara incrustada (500, swap, solo «.ai», ≤ 3 kB)");
+    else {
+      // Las tablas de la woff2: el recorte conserva la variación (fvar, gvar) del archivo del que sale.
+      const CONOCIDAS = ["cmap", "head", "hhea", "hmtx", "maxp", "name", "OS/2", "post", "cvt", "fpgm", "glyf", "loca", "prep", "CFF", "VORG", "EBDT", "EBLC", "gasp", "hdmx", "kern", "LTSH", "PCLT", "VDMX", "vhea", "vmtx", "BASE", "GDEF", "GPOS", "GSUB", "EBSC", "JSTF", "MATH", "CBDT", "CBLC", "COLR", "CPAL", "SVG", "sbix", "acnt", "avar", "bdat", "bloc", "bsln", "cvar", "fdsc", "feat", "fmtx", "fvar", "gvar"];
+      const tablas = (b: Buffer): string[] => {
+        let o = 48; const out: string[] = [];
+        const base128 = () => { for (let i = 0; i < 5; i++) if (!(b[o++] & 0x80)) break; };
+        for (let i = 0; i < b.readUInt16BE(12); i++) {
+          const flags = b[o++];
+          const tag = (flags & 0x3f) === 0x3f ? b.toString("latin1", o, (o += 4)).trim() : (CONOCIDAS[flags & 0x3f] ?? "?");
+          base128();
+          if ((tag === "glyf" || tag === "loca") ? ((flags >> 6) & 3) === 0 : ((flags >> 6) & 3) !== 0) base128();
+          out.push(tag);
+        }
+        return out;
+      };
+      const t8 = tablas(binAi);
+      if (!t8.includes("fvar") || !t8.includes("gvar") || !tablas(readFileSync(join(RAIZ, "public/fonts/ibm-plex-sans-normal-latin.woff2"))).includes("fvar")) F(`8 · la cara del «.ai» no conserva la variación del archivo del que sale (${t8.join(",")})`);
+    }
+    if (!/fontFamily: "'IBM Plex Sans Franco Marca', 'IBM Plex Sans Franco Fallback'"/.test(leer("src/components/franco-logo.tsx"))) F("8 · el «.ai» del wordmark vuelve a pedir la IBM Plex latin entera");
+    // El pie: en las páginas cortas queda junto al pliegue (content-visibility no lo difiere, medido), así que su fuente
+    // espera a la página quieta: hasta `data-grano` dibuja con el respaldo local AJUSTADO (con size-adjust: no corre nada).
+    if (!/data-fuente-diferida=\{diferido \? "" : undefined\}/.test(sinComentarios(leer("src/components/chrome/AppFooter.tsx")))
+      // la variable Y la fuente heredada: el enlace del logo no declara fuente y su línea pedía la IBM Plex para medirse
+      || !/(^|\n)html:not\(\[data-grano\]\) footer\[data-fuente-diferida\] \{ --font-body: 'IBM Plex Sans Franco Fallback'; font-family: var\(--font-body\); \}/.test(sinComentarios(fuentes8))
+      || !/font-family: 'IBM Plex Sans Franco Fallback';\s*src: local\("Arial"\);[^}]*size-adjust: \d/.test(fuentes8)) F("8 · el pie diferido ya no espera a la página quieta para pedir la IBM Plex (o su respaldo no está ajustado)");
+    for (const p of ["src/app/deptos/page.tsx", "src/app/i/[codigo]/page.tsx", "src/app/pricing/page.tsx"]) {
+      if (!/<AppFooter variant="informe" diferido \/>/.test(sinComentarios(leer(p)))) F(`8 · el pie de ${p} pide la IBM Plex antes de la banda`);
+    }
   }
 
   if (fallas.length) {

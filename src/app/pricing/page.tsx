@@ -87,7 +87,7 @@ export default async function PricingPage() {
           {C.demo.antes} <EnlaceCarga href={C.demo.ruta}>{C.demo.enlace}</EnlaceCarga>
         </p>
       </main>
-      <AppFooter variant="informe" />
+      <AppFooter variant="informe" diferido />
     </div>
   );
 }
