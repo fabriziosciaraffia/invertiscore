@@ -69,7 +69,8 @@ export type Caja = readonly [number, number, number, number];
  * cae adentro de cualquier caja que contenga el extremo poniente y el norte de
  * la región. Lo cazó un test antes de que llegara a producción.
  *
- * Este piso es la UNIÓN de las 24 comunas cubiertas más 0,03° (~3 km) de margen.
+ * Este piso es la UNIÓN de las 24 comunas cubiertas más 0,03° (~3 km) de margen (Renca, que entró el 20-oct-2026,
+ * ya caía adentro: -33,40 · -70,73).
  * Es estrictamente más fuerte que la RM: excluye Ovalle, Valdivia, Arica,
  * Linares y también Viña, y además coincide con la cobertura real del producto
  * en vez de con una frontera administrativa que Franco no usa para nada.

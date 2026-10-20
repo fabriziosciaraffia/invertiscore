@@ -28,6 +28,8 @@ const PARES: Readonly<Record<string, readonly string[]>> = {
   Recoleta: ["Conchalí", "Huechuraba"],
   Huechuraba: ["Conchalí", "Quilicura"],
   Conchalí: ["Quilicura"],
+  // Renca entra a la cobertura el 20-oct-2026: limita con estas cinco (y con Cerro Navia, que no está cubierta).
+  Renca: ["Quilicura", "Conchalí", "Independencia", "Quinta Normal", "Pudahuel"],
   "San Miguel": ["La Cisterna"],
 };
 

@@ -37,6 +37,9 @@ export const COMUNAS_DISPONIBLES = [
   "Huechuraba",
   "Conchalí",
   "Quilicura",
+  // Renca (20-oct-2026, decisión de Fabrizio): tenía página de comuna pero había quedado fuera de esta lista sin
+  // registro de por qué, y «Analizar depto en Renca» caía en «fuera de cobertura». La noche ya evaluaba sus avisos.
+  "Renca",
   "San Miguel",
   "La Cisterna",
   "Puente Alto",

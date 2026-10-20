@@ -1,5 +1,6 @@
 import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 
 export interface FAQItem {
   id: string;
@@ -43,7 +44,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "datos",
         q: "¿De dónde salen los datos?",
-        a: `Analizamos información de mercado de ${COMPARABLES_TEXTO} propiedades en 24 comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
+        a: `Analizamos información de mercado de ${COMPARABLES_TEXTO} propiedades en ${COMUNAS_DISPONIBLES.length} comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
       },
       {
         id: "confiabilidad",
