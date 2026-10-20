@@ -1,8 +1,9 @@
 "use client";
 
-// Medición de la landing: `landing_viewed` al montar (con las UTM de la URL) y
-// `landing_section_viewed{n}` la primera vez que cada sección entra en
-// pantalla. Los `<section>` se identifican por `data-seccion="n"`.
+// Medición de la landing: `landing_section_viewed{n}` la primera vez que cada sección entra en
+// pantalla. Los `<section>` se identifican por `data-seccion="n"`. `landing_viewed` ya no sale de
+// acá: lo emite el servidor al servir la página, con los UTM y el `fbclid` (20-oct-2026,
+// lib/vista-entrada.ts); desde el navegador se perdía quien rebotaba antes de que cargara PostHog.
 //
 // Numeración desde FASE 1.9 (11-sep-2026, la landing v14 todavía no está en
 // producción, así que no hay histórico que preservar): 1 hero · 2 la respuesta ·
@@ -14,18 +15,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { usePostHog } from "@/lib/posthog-react";
-import { EV, utmDeUrl } from "./eventos";
-
-export function LandingViewed() {
-  const posthog = usePostHog();
-  const hecho = useRef(false);
-  useEffect(() => {
-    if (hecho.current || !posthog) return;
-    hecho.current = true;
-    posthog.capture(EV.viewed, { version: "v14", ...utmDeUrl() });
-  }, [posthog]);
-  return null;
-}
+import { EV } from "./eventos";
 
 export function SeccionVista({
   n,

@@ -8,6 +8,8 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { consentimientoDeCookie } from "@/lib/consentimiento";
 import { esCargaDePagina, esRobot, eventoInvitacionVista, idPostHogDeCookies } from "@/lib/invitacion-vista";
+import { CABECERA_VISITA, consultaDeParametros, esVisitaDePrueba, visitaDeCabecera } from "@/lib/vista-entrada";
+import { COOKIE_PRUEBA } from "@/lib/meta/cookies";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { normalizarCodigo, REFERIDO_COPY } from "@/lib/referido";
@@ -46,7 +48,7 @@ export async function generateMetadata({ params }: { params: { codigo: string } 
   };
 }
 
-export default async function InvitacionPage({ params, searchParams }: { params: { codigo: string }; searchParams: { entro?: string } }) {
+export default async function InvitacionPage({ params, searchParams }: { params: { codigo: string }; searchParams: Record<string, string | string[] | undefined> }) {
   const codigo = normalizarCodigo(params.codigo);
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -76,9 +78,13 @@ export default async function InvitacionPage({ params, searchParams }: { params:
       userId: user?.id ?? null,
       consentimiento: consentimientoDeCookie(cabeceras.get("cookie")),
       idPostHog: idPostHogDeCookies(cookies().getAll(), process.env.NEXT_PUBLIC_POSTHOG_KEY),
-      visita: crypto.randomUUID(),
+      // El id de la visita lo genera el middleware: es el mismo con que arranca PostHog en el navegador (Server-Timing).
+      visita: visitaDeCabecera(cabeceras.get(CABECERA_VISITA)) ?? crypto.randomUUID(),
       esCarga: true,
       agente,
+      search: consultaDeParametros(searchParams),
+      referer: cabeceras.get("referer"),
+      prueba: esVisitaDePrueba(consultaDeParametros(searchParams), cookies().get(COOKIE_PRUEBA)?.value),
     });
     if (ev) waitUntil(capturarServidor(ev).catch(() => false));
   }

@@ -1,6 +1,9 @@
 import { updateSession } from "@/lib/supabase/middleware";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import type { NextFetchEvent } from "next/server";
+import {
+  CABECERA_VISITA, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, paginaDeEntrada, serverTimingDeVisita,
+} from "@/lib/vista-entrada";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 import { COOKIE_INVITACION, VIDA_COOKIE_INVITACION_S, normalizarCodigo, valorCookieInvitacion } from "@/lib/referido";
@@ -38,7 +41,43 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
   return res;
 }
 
-export async function middleware(request: NextRequest) {
+/**
+ * LA VISTA DE LAS PÁGINAS DE ENTRADA (20-oct-2026, src/lib/vista-entrada.ts): la landing, /deptos y /i/CÓDIGO llevan un id
+ * de visita que el navegador recibe en `Server-Timing` —con él arranca PostHog— y la página de /i/, en `x-franco-visita`.
+ * La landing y /deptos emiten acá su vista; /i/ la emite su página, que sabe el modo. Sin demorar la respuesta.
+ */
+function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, visita: string | null): NextResponse {
+  const pagina = paginaDeEntrada(request.nextUrl.pathname);
+  if (!pagina || !visita) return res;
+  const consentimiento = consentimientoDeCookie(request.headers.get("cookie"));
+  const idPostHog = idPostHogDeCookies(request.cookies.getAll(), process.env.NEXT_PUBLIC_POSTHOG_KEY);
+  res.headers.append("Server-Timing", serverTimingDeVisita(idDeLaVisita({ userId: null, consentimiento, idPostHog, visita }).id));
+  if (pagina === "invitacion") return res;
+  const ev = eventoVistaEntrada({
+    pagina,
+    ruta: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    referer: request.headers.get("referer"),
+    userId: null,
+    consentimiento,
+    idPostHog,
+    visita,
+    esCarga: esCargaDePagina(request.headers),
+    agente: request.headers.get("user-agent"),
+    prueba: esVisitaDePrueba(request.nextUrl.search, request.cookies.get(COOKIE_PRUEBA)?.value),
+  });
+  if (ev && event) event.waitUntil(enviarVista(ev).catch(() => false));
+  return res;
+}
+
+/** El pedido con el id de la visita para la página (pisa cualquiera que traiga). */
+function conVisitaEnCabecera(request: NextRequest, visita: string): NextRequest {
+  const h = new Headers(request.headers);
+  h.set(CABECERA_VISITA, visita);
+  return new NextRequest(request, { headers: h });
+}
+
+export async function middleware(request: NextRequest, event?: NextFetchEvent) {
   // Flow.cl redirige via POST después del pago → convertir a GET.
   // Preservamos el query string (?order=commerceOrder que pone create) para que
   // /payments/return identifique la compra exacta vía /api/payments/status?order=.
@@ -47,13 +86,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 303);
   }
 
-  if (SOLO_MEDICION.has(request.nextUrl.pathname)) return conMedicion(request, NextResponse.next());
+  const pagina = paginaDeEntrada(request.nextUrl.pathname);
+  const visita = pagina ? crypto.randomUUID() : null;
+  const req = pagina === "invitacion" && visita ? conVisitaEnCabecera(request, visita) : request;
+
+  if (SOLO_MEDICION.has(req.nextUrl.pathname)) return conVista(req, conMedicion(req, NextResponse.next()), event, visita);
 
   // Timeout guard: si updateSession tarda >5s, dejar pasar sin bloquear
   const timeout = new Promise<NextResponse>((resolve) =>
-    setTimeout(() => resolve(NextResponse.next()), 5000)
+    setTimeout(() => resolve(NextResponse.next({ request: req })), 5000)
   );
-  return conMedicion(request, await Promise.race([updateSession(request), timeout]));
+  return conVista(req, conMedicion(req, await Promise.race([updateSession(req), timeout])), event, visita);
 }
 
 export const config = {

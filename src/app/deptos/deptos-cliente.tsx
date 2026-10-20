@@ -104,11 +104,11 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
    *  anota al llegar la respuesta, no al pedirla: un pedido cortado (el doble efecto de React en desarrollo) se repite. */
   const servida = useRef<string | null>(portada?.inicial ? claveInicial(portada.comunas, portada.rango) : null);
 
-  // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta).
+  // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta). La vista
+  // (`deptos_vista`, `invitacion_vista`) ya no sale de acá: la emite el servidor (20-oct-2026, lib/vista-entrada.ts).
   useEffect(() => {
     marcarPuertaCandidata(puerta.puerta, puerta.detalle);
-    posthog?.capture("deptos_vista", { pagina: pagina === "/deptos" ? "deptos" : "invitacion" });
-  }, [posthog, puerta.puerta, puerta.detalle, pagina]);
+  }, [puerta.puerta, puerta.detalle]);
 
   const completo = comunas.length > 0 && !!tipologia && !!rango;
 

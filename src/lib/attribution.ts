@@ -20,6 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { esPuerta, fusionarPuerta, type Puerta } from "@/lib/atribucion-puerta";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import type { AtribucionInput } from "@/lib/attribution-claves";
+import { canalDeUtm } from "@/lib/canal";
 
 // Las claves y el tipo viven en attribution-claves.ts, sin imports de servidor (19-oct-2026): el cliente los importa de
 // ahí y no arrastra posthog-servidor (crypto) al navegador. Acá se reexportan para el servidor.
@@ -65,10 +66,8 @@ export function tieneAlgo(a: AtribucionInput): boolean {
   return Object.values(a).some((v) => v != null && v !== "");
 }
 
-/** Pagado u orgánico según los UTM (las campañas de Meta llegan con `utm_medium=paid` y la fuente ig/fb/an/th). */
-export function canalDeUtm(a: { utm_source?: string | null; utm_medium?: string | null }): "pagado" | "organico" {
-  return a.utm_medium === "paid" || ["ig", "fb", "an", "th", "facebook", "instagram"].includes((a.utm_source ?? "").toLowerCase()) ? "pagado" : "organico";
-}
+// La regla del canal vive en canal.ts desde el 20-oct-2026 (la usa también el middleware, en Edge).
+export { canalDeUtm };
 
 async function puertaGuardada(sb: SupabaseClient, userId: string): Promise<Puerta | null> {
   try {

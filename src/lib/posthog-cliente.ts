@@ -14,6 +14,44 @@
 
 import type { PostHog, PostHogConfig } from "posthog-js";
 import { conPermiso, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
+import { idDeServerTiming } from "@/lib/vista-entrada";
+
+/**
+ * EL ID DE LA VISITA DEL SERVIDOR (20-oct-2026, lib/vista-entrada.ts). La vista de la landing, /deptos e /i/ la emite el
+ * servidor, con un id que deja en `Server-Timing`; PostHog arranca con ese mismo id (`bootstrap`) para que la vista y lo
+ * que sigue sean de la misma persona —y el embudo cuente a quien rebotó antes de que cargara el SDK—. No, si con «si» este
+ * navegador ya tiene su id de PostHog guardado: el servidor usó ese mismo, y pisarlo cortaría su historia.
+ */
+export function bootstrapDeLaVisita(p: {
+  entradas: ReadonlyArray<{ name: string; description: string }> | null | undefined;
+  permiso: boolean;
+  guardado: boolean;
+}): { distinctID: string; isIdentifiedID: false } | undefined {
+  if (p.permiso && p.guardado) return undefined;
+  const id = idDeServerTiming(p.entradas);
+  return id ? { distinctID: id, isIdentifiedID: false } : undefined;
+}
+
+/** Las entradas de `Server-Timing` de la carga de esta página. */
+function entradasDeLaCarga(): ReadonlyArray<{ name: string; description: string }> | null {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as (PerformanceEntry & { serverTiming?: ReadonlyArray<{ name: string; description: string }> }) | undefined;
+    return nav?.serverTiming ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ¿Este navegador ya guardó su id de PostHog (cookie o almacenamiento)? */
+function idGuardado(key: string): boolean {
+  const nombre = `ph_${key}_posthog`;
+  try {
+    if (document.cookie.split("; ").some((c) => c.startsWith(`${nombre}=`))) return true;
+    return localStorage.getItem(nombre) !== null;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * LO QUE CAMBIA CON EL CONSENTIMIENTO (19-oct-2026, lib/consentimiento.ts). Con «si», PostHog guarda su id en cookie y
@@ -85,7 +123,11 @@ export function cargarPostHog(): Promise<PostHog | null> {
   cargando = import("posthog-js")
     .then((m) => {
       const ph = m.default;
+      const consentimiento = leerConsentimiento();
+      const bootstrap = bootstrapDeLaVisita({ entradas: entradasDeLaCarga(), permiso: conPermiso(consentimiento), guardado: idGuardado(key) });
       ph.init(key, {
+        // Con el id de la vista del servidor (arriba).
+        ...(bootstrap ? { bootstrap } : {}),
         api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
         // 'history_change': con `true` solo se capturaba la carga completa de página — toda
         // navegación client-side (Link/router.push) quedaba sin $pageview y los paths de sesión

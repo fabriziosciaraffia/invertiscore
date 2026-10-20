@@ -20,7 +20,6 @@ import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
 import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
-import { LandingViewed } from "@/components/landing-v14/Telemetria";
 import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
 export const revalidate = 600;
@@ -47,7 +46,8 @@ export default async function LandingPage() {
     // monta (la matriz y el pop-up de combinaciones) leen sus tokens del tema. Sin esto, con el
     // sitio en oscuro saldrían oscuras sobre el papel.
     <div className="lv-root" data-theme="light" data-franco-root data-landing="v14">
-      <LandingViewed />
+      {/* `landing_viewed` lo emite el servidor (middleware, 20-oct-2026, lib/vista-entrada.ts): la página es ISR y el
+          navegador lo perdía si la persona se iba antes de que cargara PostHog. */}
       <SuaveScroll />
       <main>
         <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} />
