@@ -12,6 +12,9 @@
 //       El invitado no recibe un segundo análisis: el suyo es el regalo de cuenta nueva.
 //   4 · LAS SUPERFICIES: «Invita a alguien» en el dashboard, en el pie del semanal y al compartir un informe; la página
 //       del invitado con las mismas preguntas de /deptos o la dirección; la atribución C con el código.
+//   5 · LA VISITA (20-oct-2026): toda visita a /i/CÓDIGO registra `invitacion_vista` en el servidor, con el código, con o
+//       sin consentimiento (sin «si», un id de esa visita y sin perfil de persona); no los robots ni el refresco de Next; y
+//       la cohorte de la puerta C del panel la lee. Acta de mutaciones (I1–I15) en su sección.
 //
 // ACTA DE MUTACIONES (16-oct-2026, scratchpad mutar-puerta-c.cjs, restauradas byte a byte): 51/51 en ROJO, y tres guardas
 // redundantes VERDES a propósito (54/54 como se esperaba). Siete salieron del QA en el navegador: W9–W11 (la invitación
@@ -48,6 +51,8 @@ import { datosSaldoDe, estadoSaldo } from "../../../src/lib/casa-saldo";
 import { correoPremioReferido } from "../../../src/lib/email/correos";
 import { correoSemanal, correoSemanalVacio } from "../../../src/lib/email/correo-semanal";
 import { CATALOGO_CORREOS } from "../../../src/lib/email/catalogo";
+import { esCargaDePagina, esRobot, eventoInvitacionVista, idPostHogDeCookies } from "../../../src/lib/invitacion-vista";
+import { capturarServidor } from "../../../src/lib/posthog-servidor";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -368,6 +373,91 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       const ss = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if ((ss.match(/enlaceInvitarDelCorreo\(admin, fila\.user_id, sitio\)/g) ?? []).length !== 2) F("4 · el semanal no lleva el enlace de la persona en el pie");
       if (COOKIE_INVITACION !== "franco_invitacion") F("4 · la cookie de la invitación cambió de nombre sin migrar");
+    }
+
+    // ── 5 · LA VISITA A /i/CÓDIGO SE MIDE EN EL SERVIDOR (20-oct-2026, Fabrizio) ──
+    // Medido antes del arreglo: desde el lanzamiento PostHog tenía UNA `invitacion_vista` (de un código de una cuenta de
+    // prueba): salía del navegador y se perdía si la persona se iba antes de que cargara el SDK (página quieta). Y las «4
+    // aperturas» de la base eran dispositivos anotados por el dashboard (GET /api/invitacion), no visitas: esas cuentas no
+    // pasaron por /i/ (sus sesiones en PostHog: /semanal → /dashboard → informe). Ahora la página la emite en el servidor.
+    // ACTA (scratchpad mutar-invitacion.cjs, restauradas byte a byte): 16/16 en ROJO. I1 sin consentimiento no emite · I2 sin
+    // el código · I3 sin consentimiento usa la cookie de PostHog · I4 crea perfil de persona · I5 manda geografía · I6 con
+    // «si» no usa el id de PostHog · I7 los robots cuentan · I8a/I8b el refresco de Next cuenta (en la cabecera y en el
+    // evento) · I9 la página no la emite · I10 la emite sin mirar el consentimiento · I11 el navegador la vuelve a mandar
+    // (doble) · I12 el panel de la puerta C no filtra a los invitados · I13 sin marcar los enlaces de prueba · I14 la
+    // espera en vez de `waitUntil` · I15 sin decir su consentimiento.
+    {
+      const CHROME_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.0.0 Mobile/15E148 Safari/604.1";
+      const ROBOTS = [
+        "WhatsApp/2.24.20.79 A",
+        "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/601.2.4 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.4 facebookexternalhit/1.1 Facebot Twitterbot/1.0",
+        "TelegramBot (like TwitterBot)",
+        "Twitterbot/1.0",
+        "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "curl/8.4.0",
+      ];
+      const sinConsentimiento = {
+        codigo: "K7M2QX", ruta: "/i/K7M2QX", modo: "invitado" as const, conNombre: false, invitadorPrueba: false, userId: null,
+        consentimiento: null, idPostHog: "ph-de-este-navegador", visita: "11111111-1111-4111-8111-111111111111", esCarga: true, agente: CHROME_IPHONE,
+      };
+      const ev = eventoInvitacionVista(sinConsentimiento);
+      if (!ev) F("5 · una visita sin consentimiento no registra nada");
+      else {
+        const props = (ev.properties ?? {}) as Record<string, unknown>;
+        if (ev.event !== "invitacion_vista") F(`5 · la visita no se llama invitacion_vista: ${ev.event}`);
+        if (props.codigo !== "K7M2QX" || props.valida !== true || props.$pathname !== "/i/K7M2QX") F("5 · la visita sin consentimiento no lleva el código");
+        if (ev.distinctId !== `visita:${sinConsentimiento.visita}` || ev.uuid !== sinConsentimiento.visita) F(`5 · sin consentimiento la visita usa un id que queda en el dispositivo (${ev.distinctId}), no uno de esa visita`);
+        if (props.$process_person_profile !== false) F("5 · sin consentimiento la visita crea un perfil de persona");
+        if ("$ip" in props || props.$geoip_disable !== true) F("5 · la visita manda la IP o la geografía");
+        if (props.consentimiento !== "no" || props.origen !== "servidor" || props.modo !== "invitado" || props.invitador_prueba !== false) F("5 · la visita no dice su consentimiento, su origen, su modo o si el enlace es de prueba");
+        // Llega a PostHog con el código (capturarServidor con un fetch de mentira).
+        let cuerpo: Record<string, unknown> | null = null;
+        const ok = await capturarServidor(ev, {
+          key: "phc_prueba", host: "https://ph.test",
+          fetch: (async (_u: unknown, init?: { body?: unknown }) => { cuerpo = JSON.parse(String(init?.body)) as Record<string, unknown>; return new Response("{}", { status: 200 }); }) as unknown as typeof fetch,
+        });
+        const enviado = (cuerpo ?? {}) as Record<string, unknown>;
+        const pEnv = (enviado.properties ?? {}) as Record<string, unknown>;
+        if (!ok || enviado.event !== "invitacion_vista" || pEnv.codigo !== "K7M2QX" || enviado.distinct_id !== ev.distinctId || pEnv.$process_person_profile !== false) F("5 · la visita sin consentimiento no llega a PostHog con el código");
+      }
+      const otra = eventoInvitacionVista({ ...sinConsentimiento, visita: "22222222-2222-4222-8222-222222222222" });
+      if (!otra || otra.distinctId === ev?.distinctId) F("5 · dos visitas sin consentimiento caen en la misma persona");
+      const conNo = eventoInvitacionVista({ ...sinConsentimiento, consentimiento: "no" });
+      if (!conNo || conNo.distinctId !== `visita:${sinConsentimiento.visita}`) F("5 · con «no» la visita no queda sin persona");
+      const conSi = eventoInvitacionVista({ ...sinConsentimiento, consentimiento: "si" });
+      if (!conSi || conSi.distinctId !== "ph-de-este-navegador" || (conSi.properties as Record<string, unknown>).$process_person_profile !== true || (conSi.properties as Record<string, unknown>).consentimiento !== "si")
+        F("5 · con «si» la visita no cae en la persona de su navegador (el id de la cookie de PostHog)");
+      const conSesion = eventoInvitacionVista({ ...sinConsentimiento, userId: "u-1", modo: "propio" });
+      if (!conSesion || conSesion.distinctId !== "u-1") F("5 · con sesión la visita no es de la cuenta");
+      for (const ua of [...ROBOTS, null]) if (eventoInvitacionVista({ ...sinConsentimiento, agente: ua })) F(`5 · una vista previa o un robot (${ua ?? "sin agente"}) cuenta como visita`);
+      if (esRobot("Mozilla/5.0 (Linux; Android 11; CUBOT X30) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")) F("5 · un teléfono CUBOT cuenta como robot");
+      if (eventoInvitacionVista({ ...sinConsentimiento, esCarga: false })) F("5 · el refresco de Next (al registrarse) cuenta como otra visita");
+      const h = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null });
+      if (!esCargaDePagina(h({ "sec-fetch-dest": "document" })) || !esCargaDePagina(h({}))) F("5 · la carga de la página no cuenta como visita");
+      if (esCargaDePagina(h({ rsc: "1" })) || esCargaDePagina(h({ "next-router-prefetch": "1" })) || esCargaDePagina(h({ "sec-fetch-dest": "empty" })) || esCargaDePagina(h({ purpose: "prefetch" })))
+        F("5 · el refresco, la navegación o un prefetch de Next cuentan como visita");
+      const key = "phc_prueba";
+      if (idPostHogDeCookies([{ name: `ph_${key}_posthog`, value: encodeURIComponent(JSON.stringify({ distinct_id: "abc" })) }], key) !== "abc"
+        || idPostHogDeCookies([], key) !== null || idPostHogDeCookies([{ name: `ph_${key}_posthog`, value: "{roto" }], key) !== null || idPostHogDeCookies([{ name: `ph_${key}_posthog`, value: "{}" }], null) !== null)
+        F("5 · no lee bien el id de la cookie de PostHog");
+      // El cableado: la página la emite al pintarse —ya con el modo decidido—, con el consentimiento de la cookie y sin
+      // demorar la respuesta (waitUntil); el navegador ya no la manda (contaría dos veces).
+      const pag = sinComentarios(leer("src/app/i/[codigo]/page.tsx"));
+      const iEv = pos(pag, "const ev = eventoInvitacionVista({");
+      if (!/if \(esCargaDePagina\(cabeceras\) && !esRobot\(agente\)\) \{\s*const ev = eventoInvitacionVista\(\{/.test(pag) || !/if \(ev\) waitUntil\(capturarServidor\(ev\)\.catch\(\(\) => false\)\);/.test(pag) || iEv < pos(pag, 'else modo = "con_cuenta";') || iEv > pos(pag, "return (\n"))
+        F("5 · la página /i/ no emite la visita en el servidor (o la emite antes de saber el modo, o esperándola)");
+      if (!/consentimiento: consentimientoDeCookie\(cabeceras\.get\("cookie"\)\),/.test(pag) || !/idPostHog: idPostHogDeCookies\(cookies\(\)\.getAll\(\), process\.env\.NEXT_PUBLIC_POSTHOG_KEY\),/.test(pag)
+        || !/invitadorPrueba: inv \? await invitadorDePrueba\(admin, inv\.userId\) : false,/.test(pag) || !/codigo,\s*ruta: `\/i\/\$\{params\.codigo\}`,\s*modo,/.test(pag))
+        F("5 · la página emite la visita sin mirar el consentimiento, la cookie de PostHog, si el enlace es de prueba o el código");
+      if (/capture\(\s*["'`]invitacion_vista/.test(sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx")))) F("5 · el navegador también manda invitacion_vista: cada visita contaría dos veces");
+      // El panel: la cohorte de la puerta C («Referidos por semana», el mismo SQL del insight 7aJ56Uij) lee las visitas.
+      const doc = leer("docs/posthog-activacion-por-puerta.md");
+      const sec = doc.slice(pos(doc, "## La cohorte de la puerta C"));
+      if (!/where event = 'invitacion_vista'\s+and timestamp >= now\(\) - interval 30 week\s+and toString\(properties\.origen\) = 'servidor'\s+and toString\(properties\.modo\) = 'invitado'\s+and toString\(properties\.invitador_prueba\) != 'true'/.test(sec)
+        || !/if\(visitas = 0, null, round\(invitados_nuevos \/ visitas, 3\)\) as registro_por_visita/.test(sec) || !/from vis full outer join reg on vis\.semana = reg\.semana/.test(sec))
+        F("5 · la cohorte de la puerta C del panel no lee las visitas (invitacion_vista del servidor, de invitados, sin enlaces de prueba)");
     }
   } catch (e) {
     F(`excepción: ${e instanceof Error ? e.stack ?? e.message : String(e)}`);

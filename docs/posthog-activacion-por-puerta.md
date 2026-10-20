@@ -11,6 +11,7 @@
 | `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
 | `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`) | analizó algo; lleva `via` (wizard · guia · semanal · …) |
+| `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, `consentimiento`, `origen` = servidor. Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona |
 
 ## La tabla (HogQL)
 
@@ -50,3 +51,71 @@ order by semana desc, puerta
 
 Una cuenta registrada hace menos de 30 días todavía puede entrar en la columna de 30 días: la fila se lee como «hasta
 hoy». `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteriores lo tienen en cero.
+
+## La cohorte de la puerta C: «Referidos por semana» (HogQL)
+
+> 20-oct-2026. La tabla de la puerta C por invitación (insight 7aJ56Uij del mismo dashboard) empieza en la visita:
+> `visitas` son las `invitacion_vista` del servidor de quien abrió un enlace ajeno (`modo` = invitado), sin los enlaces
+> de cuentas de prueba; `registro_por_visita` = invitados con cuenta nueva / visitas de la misma semana. Antes del
+> 20-oct-2026 la visita salía del navegador y se perdía si la persona se iba antes de que cargara PostHog: esas semanas
+> tienen la columna en cero.
+
+```sql
+with vis as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    count() as visitas,
+    uniq(toString(properties.codigo)) as enlaces_abiertos
+  from events
+  where event = 'invitacion_vista'
+    and timestamp >= now() - interval 30 week
+    and toString(properties.origen) = 'servidor'
+    and toString(properties.modo) = 'invitado'
+    and toString(properties.invitador_prueba) != 'true'
+  group by semana
+),
+v as (
+  select person_id, any(distinct_id) as invitado, min(timestamp) as t, argMin(toString(properties.estado), timestamp) as estado
+  from events
+  where event = 'referido_vinculado' and timestamp >= now() - interval 30 week and coalesce(person.properties.test_account, false) = false
+  group by person_id
+),
+a as (
+  select person_id, groupArray(timestamp) as ts
+  from events
+  where event = 'analisis_creado' and timestamp >= now() - interval 30 week
+  group by person_id
+),
+p as (
+  select toString(properties.invitado) as invitado, argMax(event, timestamp) as resultado, argMax(coalesce(toString(properties.motivo), ''), timestamp) as motivo
+  from events
+  where event in ('referido_premiado', 'referido_sin_premio') and timestamp >= now() - interval 30 week
+  group by invitado
+),
+reg as (
+  select toStartOfWeek(v.t, 1) as semana,
+    countIf(v.estado = 'pendiente') as invitados_nuevos,
+    countIf(v.estado = 'pendiente' and arrayExists(x -> x >= v.t and x < v.t + interval 30 day, a.ts)) as analizaron_en_30_dias,
+    countIf(p.resultado = 'referido_premiado') as premios_pagados,
+    countIf(p.motivo = 'mismo_dispositivo') as mismo_dispositivo,
+    countIf(p.motivo = 'tope') as sobre_el_tope,
+    countIf(v.estado = 'cuenta_previa') as ya_tenian_cuenta
+  from v left join a on a.person_id = v.person_id left join p on p.invitado = v.invitado
+  group by semana
+)
+select greatest(coalesce(vis.semana, toDate('1970-01-01')), coalesce(reg.semana, toDate('1970-01-01'))) as semana,
+  coalesce(vis.visitas, 0) as visitas,
+  coalesce(vis.enlaces_abiertos, 0) as enlaces_abiertos,
+  coalesce(reg.invitados_nuevos, 0) as invitados_nuevos,
+  if(visitas = 0, null, round(invitados_nuevos / visitas, 3)) as registro_por_visita,
+  coalesce(reg.analizaron_en_30_dias, 0) as analizaron_en_30_dias,
+  if(invitados_nuevos = 0, null, round(analizaron_en_30_dias / invitados_nuevos, 3)) as activacion,
+  coalesce(reg.premios_pagados, 0) as premios_pagados,
+  coalesce(reg.mismo_dispositivo, 0) as mismo_dispositivo,
+  coalesce(reg.sobre_el_tope, 0) as sobre_el_tope,
+  coalesce(reg.ya_tenian_cuenta, 0) as ya_tenian_cuenta
+from vis full outer join reg on vis.semana = reg.semana
+order by semana desc
+```
+
+Un dispositivo anotado en `invitaciones.dispositivos` NO es una visita: lo anota también pedir el enlace desde el
+dashboard («Invita a alguien») o al compartir un informe. Las visitas se cuentan solo con `invitacion_vista`.
