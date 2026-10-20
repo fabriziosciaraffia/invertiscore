@@ -43,5 +43,6 @@ export function bannerRegistroVisible(p: { quienMira: QuienMira; conSesion: bool
 
 /** El correo con que paga el ticket, si ya se sabe: el de quien acaba de entrar, o el de su cuenta. */
 export function correoDelTicket(p: { recienDentro: string | null; correoConocido: string | null }): string | null {
-  return p.recienDentro ?? p.correoConocido ?? null;
+  // La marca de quien volvió por Google (20-oct-2026) puede venir sin correo (""): eso no es un correo conocido.
+  return p.recienDentro || p.correoConocido || null;
 }

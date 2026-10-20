@@ -10,8 +10,8 @@
 //       un código. Sin contraseña.». Después del correo, el MISMO mensaje exista o no la cuenta; al entrar, a la que ya
 //       existía se le pregunta si agrega esas comunas a su perfil;
 //   3 · «Estás dentro»: el regalo, la modalidad (arriendo tradicional por defecto) y «¿Cuándo piensas comprar?»;
-//   4 · sus primeros deptos, con el día y la hora en que Franco los vio publicados; mientras el correo del día los
-//       revisa, la pantalla vuelve a preguntar.
+//   4 · sus primeros deptos (20-oct-2026: EN LA MISMA PANTALLA de «Estás dentro», sin esperar a que conteste el «cuándo»;
+//       PrimeraSeleccion), cada uno con «Analizar este»; mientras el correo del día los revisa, la pantalla vuelve a preguntar.
 // Lead al dejar el correo (servidor + pixel, mismo id) y CompleteRegistration al contestar el «cuándo», con la puerta B.
 // CON GOOGLE (16-oct-2026): «o con Google» debajo del campo. Antes de salir, lo elegido queda guardado con una clave
 // (/api/deptos/google); vuelve a /deptos?entro=google&p=<clave> con sesión, el callback ya lo pasó a nombre del correo, y
@@ -43,12 +43,11 @@ import {
   ALTA_COPY, claveDeDestino, COMUNAS_DESTACADAS, ELECCIONES_POR_DEFECTO, CORREO_OK, DEPTOS_COPY, destinoGoogle, MAX_COMUNAS_DEPTOS, MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, RANGOS_UF,
   TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS, type ModalidadDeptos, type RespuestaDeptos,
 } from "@/lib/deptos/respuesta";
-import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import type { PortadaDeptos } from "@/lib/deptos/portada";
-import { PrimerosDeptos } from "@/components/deptos/PrimerosDeptos";
+import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import "./deptos.css";
 
-type Paso = "elegir" | "codigo" | "dentro" | "primeros" | "agregar";
+type Paso = "elegir" | "codigo" | "dentro" | "agregar";
 
 const DEPTOS_FIN = {
   cuenta: "Ir a mi cuenta",
@@ -56,8 +55,6 @@ const DEPTOS_FIN = {
 } as const;
 const MODALIDAD_PREGUNTA = "¿Cómo lo arriendas?";
 
-const ESPERA_MS = 4000;
-const PREGUNTAS_MAX = 25;
 const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 /** Para buscar sin tildes: «nunoa» encuentra Ñuñoa. */
 const plano = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -99,7 +96,6 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [error, setError] = useState<string | null>(null);
   const [regaloVence, setRegaloVence] = useState<string | null>(null);
   const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(null);
-  const [primeros, setPrimeros] = useState<PrimerosDeLaCuenta | null>(null);
   const [agregar, setAgregar] = useState<{ nuevas: string[]; actuales: string[] } | null>(null);
   const campoCodigo = useRef<HTMLInputElement>(null);
   const campoBuscar = useRef<HTMLInputElement>(null);
@@ -287,30 +283,10 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       // CompleteRegistration: el espejo para el pixel viene en la cookie de la respuesta.
       espejarMeta(consumirCookieEspejo());
       posthog?.capture("horizonte_elegido", { horizonte: h, donde: "deptos", modalidad });
-      setPaso("primeros");
     } catch {
       setError(ESTAS_DENTRO.errorGuardar);
     }
   }
-
-  // Los primeros deptos: se vuelve a preguntar mientras el correo del día revisa las fichas.
-  useEffect(() => {
-    if (paso !== "primeros") return;
-    let vivo = true, vueltas = 0;
-    const leer = async () => {
-      try {
-        const res = await fetch("/api/deptos/primeros", { cache: "no-store" });
-        if (!res.ok || !vivo) return;
-        const d = (await res.json()) as PrimerosDeLaCuenta;
-        setPrimeros(d);
-        if (d.revisando && ++vueltas < PREGUNTAS_MAX) window.setTimeout(() => vivo && void leer(), ESPERA_MS);
-      } catch {
-        /* queda lo último */
-      }
-    };
-    void leer();
-    return () => { vivo = false; };
-  }, [paso]);
 
   async function sumarComunas(si: boolean) {
     if (si && agregar) {
@@ -322,46 +298,42 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   }
 
   // ── Las pantallas ──
-  if (paso === "dentro" || paso === "primeros") {
+  if (paso === "dentro") {
     return (
       <div className="dp" data-deptos={paso}>
         <h1 className="dp-titulo">{ESTAS_DENTRO.titular}</h1>
         {regaloVence && (
           <p className="dp-regalo" data-deptos="regalo"><b>{REGALO_COPY.cargado}</b> {textoVence(regaloVence)}</p>
         )}
-        {paso === "dentro" ? (
-          <>
-            <div className="dp-bloque" data-deptos="modalidad">
-              <p className="dp-pregunta">{MODALIDAD_PREGUNTA}</p>
-              <div className="dp-chips" role="radiogroup" aria-label={MODALIDAD_PREGUNTA}>
-                {MODALIDADES_DEPTOS.map((m) => (
-                  <button key={m.id} type="button" role="radio" aria-checked={modalidad === m.id} className="dp-chip" data-activo={modalidad === m.id ? "1" : undefined} onClick={() => void elegirModalidad(m.id)}>
-                    {m.chip}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="dp-bloque" data-deptos="cuando">
-              <p className="dp-pregunta">{ESTAS_DENTRO.cuando}</p>
-              <div className="dp-chips" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
-                {ESTAS_DENTRO.horizontes.map((h) => (
-                  <button key={h.id} type="button" role="radio" aria-checked={horizonte === h.id} className="dp-chip" data-activo={horizonte === h.id ? "1" : undefined} onClick={() => void elegirCuando(h.id)}>
-                    {h.texto}
-                  </button>
-                ))}
-              </div>
-              <p className="dp-nota">{ESTAS_DENTRO.comoEntrar}</p>
-            </div>
-          </>
-        ) : (
-          <>
-            <PrimerosDeptos items={primeros?.items ?? []} token={primeros?.token ?? null} revisando={primeros == null || primeros.revisando} vecinas={primeros?.vecinas} />
-            <div className="dp-fin">
-              <button type="button" className="dp-boton" onClick={() => router.push("/dashboard")}>{DEPTOS_FIN.cuenta}</button>
-              <p className="dp-nota">{DEPTOS_FIN.correo}</p>
-            </div>
-          </>
-        )}
+        <div className="dp-bloque" data-deptos="modalidad">
+          <p className="dp-pregunta">{MODALIDAD_PREGUNTA}</p>
+          <div className="dp-chips" role="radiogroup" aria-label={MODALIDAD_PREGUNTA}>
+            {MODALIDADES_DEPTOS.map((m) => (
+              <button key={m.id} type="button" role="radio" aria-checked={modalidad === m.id} className="dp-chip" data-activo={modalidad === m.id ? "1" : undefined} onClick={() => void elegirModalidad(m.id)}>
+                {m.chip}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="dp-bloque" data-deptos="cuando">
+          <p className="dp-pregunta">{ESTAS_DENTRO.cuando}</p>
+          <div className="dp-chips" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
+            {ESTAS_DENTRO.horizontes.map((h) => (
+              <button key={h.id} type="button" role="radio" aria-checked={horizonte === h.id} className="dp-chip" data-activo={horizonte === h.id ? "1" : undefined} onClick={() => void elegirCuando(h.id)}>
+                {h.texto}
+              </button>
+            ))}
+          </div>
+          <p className="dp-nota">{ESTAS_DENTRO.comoEntrar}</p>
+        </div>
+        {/* La primera selección, ahí mismo (20-oct-2026): sin esperar a que conteste el «cuándo». */}
+        <div className="dp-bloque" data-deptos="primeros">
+          <PrimeraSeleccion volver={pagina} />
+        </div>
+        <div className="dp-fin">
+          <button type="button" className="dp-boton" onClick={() => router.push("/dashboard")}>{DEPTOS_FIN.cuenta}</button>
+          <p className="dp-nota">{DEPTOS_FIN.correo}</p>
+        </div>
         {error && <p className="dp-error" role="alert">{error}</p>}
       </div>
     );

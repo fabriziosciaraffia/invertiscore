@@ -229,3 +229,17 @@
 .lqs-postpago { border-radius: 16px; padding: 32px 22px; text-align: left; }
 .lqs-postpago .lqs-lead { margin: 0 0 18px; }
 .lqs-tk .lqs-despedida-s { font: 15px/1.45 var(--font-ui), "Inter", system-ui, sans-serif; color: var(--doc-tx2); margin: 0; }
+
+/* ── La primera selección sobre el informe (20-oct-2026): la hoja del ticket, más ancha, con las tarjetas de la guía ── */
+.lqs-hoja-ancha { background: var(--franco-bg); color: var(--franco-text); }
+@media (min-width: 768px) { .lqs-hoja.lqs-hoja-ancha { max-width: 640px; } }
+.lqs-ps { position: relative; padding: 8px 16px calc(22px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) { .lqs-ps { padding: 12px 24px 24px; } }
+.lqs-ps-cab { display: flex; justify-content: flex-end; margin-bottom: 2px; }
+.lqs-ps .lqs-x { flex: none; width: 32px; height: 32px; border: 1px solid var(--franco-border); border-radius: 12px; background: none; color: var(--franco-text-tertiary); font: 16px var(--font-ui), "Inter", system-ui, sans-serif; cursor: pointer; line-height: 1; }
+.lqs-ps .lqs-seguir { display: block; text-align: center; font: 500 14px var(--font-ui), "Inter", system-ui, sans-serif; color: var(--franco-text-secondary); margin-top: 18px; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; width: 100%; cursor: pointer; }
+/* «Ver mis primeros deptos», en «Estás dentro» del banner. */
+.lqs-ver-deptos { margin-top: 12px; height: 40px; }
+/* En la hoja, dos tarjetas por fila como mucho (a tres, «usa tu análisis de regalo» se parte al lado del botón). */
+@media (min-width: 768px) { .lqs-hoja-ancha .guia-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lqs-hoja-ancha .guia-acc { flex-wrap: wrap; }

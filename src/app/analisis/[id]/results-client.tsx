@@ -28,7 +28,8 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
-import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
+import { almacenSesion, marcarRecienDentro, useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
+import { PARAM_RECIEN_DENTRO } from "@/lib/guia/del-dia";
 import { hasAiV2 } from "@/lib/prosa-guardada";
 
 
@@ -194,6 +195,18 @@ export function PremiumResults({
   // pack pagado, mirado por su dueño); el banner del registro, al dueño sin sesión o a quien acaba de
   // entrar con el código (la marca de la pestaña lo deja en «Estás dentro» tras el refresco).
   const recienDentro = useRecienDentro(analysisId);
+  // VUELVE POR GOOGLE O POR EL ENLACE DEL CORREO (20-oct-2026): el callback manda `?dentro=1` a la cuenta que acaba de
+  // nacer; acá se deja la misma marca que deja el código, y el parámetro se saca de la barra. Así el banner queda en
+  // «Estás dentro» con la primera selección sobre el informe, igual que por código.
+  useEffect(() => {
+    if (!analysisId || !isLoggedIn) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(PARAM_RECIEN_DENTRO) !== "1") return;
+    marcarRecienDentro(almacenSesion(), analysisId, correoOferta ?? "");
+    url.searchParams.delete(PARAM_RECIEN_DENTRO);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisId, isLoggedIn]);
   const bannerLqs = !!analysisId && bannerRegistroVisible({ quienMira: quienMiraLqs, conSesion: isLoggedIn, recienDentro: !!recienDentro, compartido: isSharedView });
   // El pixel repite el ViewContent que mandó el servidor, con el mismo id (src/lib/meta/vista-informe.ts).
   useEffect(() => {

@@ -13,6 +13,7 @@ import { ESTAS_DENTRO, notaChips, notaCuando, type HorizonteCompra } from "@/lib
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { TIPOLOGIAS_CHIP, type PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PRIMERA_SELECCION } from "@/lib/guia/del-dia";
 
 type Campo = "tipologia" | "comuna" | "modalidad";
 
@@ -29,12 +30,14 @@ async function guardar(analysisId: string, cambios: Record<string, string>): Pro
   }
 }
 
-export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null }: {
+export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null, onVerDeptos }: {
   ctx: ContextoLqs;
   perfil: PerfilChips;
   demo?: boolean;
   /** Si ya se sabe (la demo y el tier lo usan para dibujar el estado elegido). */
   horizonteInicial?: HorizonteCompra | null;
+  /** «Ver mis primeros deptos» (20-oct-2026): vuelve a abrir la hoja con la primera selección sobre el informe. */
+  onVerDeptos?: () => void;
 }) {
   const posthog = usePostHog();
   const [pref, setPref] = useState<PerfilChips>(perfil);
@@ -118,6 +121,9 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
         </div>
         {nota && <span className="lqs-toca lqs-anotado" role="status">{nota}</span>}
       </div>
+      {onVerDeptos && (
+        <button type="button" className="lqs-btn lqs-ver-deptos" onClick={onVerDeptos} data-lqs="ver-deptos">{PRIMERA_SELECCION.verDeNuevo}</button>
+      )}
       <p className="lqs-legal lqs-aprende">{ESTAS_DENTRO.aprende}</p>
       <p className="lqs-legal" data-lqs="como-entrar">{ESTAS_DENTRO.comoEntrar}</p>
       {error && <p className="lqs-legal" role="alert">{ESTAS_DENTRO.errorGuardar}</p>}

@@ -8,6 +8,9 @@
 // LUGAR, en «Estás dentro» (chips editables y la pregunta del horizonte).
 // La barra fija que lo repetía al quedar atrás SALIÓ el 08-oct-2026: el banner queda donde está.
 // Solo para el dueño sin sesión o recién dentro (`bannerRegistroVisible`).
+// LA PRIMERA SELECCIÓN SOBRE EL INFORME (20-oct-2026): al quedar en «Estás dentro» —por código, o al volver por Google o
+// por el enlace con la marca de recién dentro—, sus primeros deptos se abren en una hoja sobre el informe
+// (HojaPrimeraSeleccion), una vez por informe y pestaña; «Ver mis primeros deptos» la vuelve a abrir.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +22,7 @@ import type { PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { RegistroUnPaso } from "./RegistroUnPaso";
 import { EstasDentro } from "./EstasDentro";
+import { HojaPrimeraSeleccion, hojaYaVista, marcarHojaVista } from "./HojaPrimeraSeleccion";
 import "./lo-que-sigue.css";
 
 export type Paso = "oferta" | "registro" | "dentro";
@@ -35,6 +39,15 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [paso, setPaso] = useState<Paso>(pasoInicial);
+  // La hoja con la primera selección (20-oct-2026): se abre sola al quedar en «Estás dentro», una vez por informe y
+  // pestaña; cerrada, «Ver mis primeros deptos» la reabre. La demo no la abre.
+  const [hoja, setHoja] = useState(false);
+  useEffect(() => {
+    if (paso !== "dentro" || demo) return;
+    if (hojaYaVista(almacenSesion(), ctx.analysisId)) return;
+    marcarHojaVista(almacenSesion(), ctx.analysisId);
+    setHoja(true);
+  }, [paso, demo, ctx.analysisId]);
   // Todos los pasos con el alto del primero (08-oct-2026, tercera pasada): se mide la oferta y los pasos
   // siguientes lo toman como alto mínimo; el CSS compacto hace que ninguno lo pase. Al cambiar el ancho
   // de la ventana la medida deja de valer y se suelta.
@@ -108,6 +121,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   const esBotonOChip = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('button, a, [data-lqs="chip"]');
 
   return (
+    <>
     <div
       ref={ref}
       className="lqs-mat lqs-banner"
@@ -122,7 +136,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
       <div className="lqs-fondo" aria-hidden="true" />
       <div className="lqs-col">
         {paso === "dentro" ? (
-          <EstasDentro ctx={ctx} perfil={perfil} demo={demo} />
+          <EstasDentro ctx={ctx} perfil={perfil} demo={demo} onVerDeptos={demo ? undefined : () => setHoja(true)} />
         ) : paso === "registro" ? (
           <RegistroUnPaso next={next} ctx={ctx} alEntrar={entrar} demo={demo} />
         ) : (
@@ -143,5 +157,8 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
         )}
       </div>
     </div>
+    {/* Fuera de la cinta: `.lqs-mat > *` fija position: relative a sus hijos y el velo tiene que ser fixed. */}
+    {paso === "dentro" && !demo && <HojaPrimeraSeleccion abierta={hoja} analysisId={ctx.analysisId} alCerrar={() => setHoja(false)} />}
+    </>
   );
 }
