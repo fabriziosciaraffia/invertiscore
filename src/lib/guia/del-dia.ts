@@ -106,6 +106,8 @@ export const PRIMERA_SELECCION = {
   tituloRegaloGuardado: "Tienes un análisis de regalo guardado",
   /** Sin regalo (topó, o lo gastó): se elige igual. */
   titulo: "Tus primeros deptos: elige uno",
+  /** Sin regalo y sin deptos («ninguno», 20-oct-2026, Fabrizio): no hay qué elegir. */
+  tituloSinDeptos: "Tus primeros deptos",
   /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
   bajada: "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.",
   /** Los otros estados de la hoja (20-oct-2026, Fabrizio), con el criterio de la bajada: su búsqueda, y la confirmación
@@ -130,10 +132,10 @@ export const PRIMERA_SELECCION = {
   cerrar: "Cerrar",
 } as const;
 
-/** El título de la hoja: con el regalo vivo, «elige uno», salvo sin deptos, donde el regalo queda guardado (20-oct-2026).
- *  Sin regalo, el de siempre. */
+/** El título de la hoja (20-oct-2026): «elige uno» solo cuando hay qué elegir. Sin deptos, con el regalo vivo, el regalo
+ *  queda guardado; sin regalo, «Tus primeros deptos» a secas. */
 export function tituloHoja(p: { regalo: boolean; sinDeptos: boolean }): string {
-  if (!p.regalo) return PRIMERA_SELECCION.titulo;
+  if (!p.regalo) return p.sinDeptos ? PRIMERA_SELECCION.tituloSinDeptos : PRIMERA_SELECCION.titulo;
   return p.sinDeptos ? PRIMERA_SELECCION.tituloRegaloGuardado : PRIMERA_SELECCION.tituloRegalo;
 }
 
