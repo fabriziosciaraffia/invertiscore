@@ -200,6 +200,46 @@ export function runComunasDisenoTier(): { hard: number } {
     if (!cp.prosaContradiceLaTabla(dadoVuelta) || !cp.prosaContradiceLaTabla(otroLider)) F("4 · la prosa con una tipología dada vuelta (o con otro líder) se sigue publicando");
     if (cp.prosaContradiceLaTabla(soloCifra)) F("4 · una cifra movida esconde la prosa: eso lo corrige el generador, no la página");
   }
+  // Y la prosa no compara con las otras comunas sin el dato (v6, 20-oct-2026): la v5 dijo «la muestra más grande de las
+  // 25» en Providencia (7.ª) y Vitacura (9.ª), «la plusvalía más baja» en Recoleta (22.ª de 23) y «poco común» que
+  // todas sus tipologías se pagaran solas en comunas donde eso pasa en 11 de 25.
+  type Comp = { total: number; puestoMuestra: number; puestoRentabilidad: number; todasSePaganSolas: { n: number; estaEsUna: boolean }; plusvalia: { puesto: number; de: number } | null };
+  const vc = (cp as unknown as { validarComparaciones?: (t: string, c: Comp) => string[] } | null)?.validarComparaciones;
+  if (!vc) F("4 · no existe el guard de las comparaciones entre comunas (validarComparaciones)");
+  else {
+    const c = (o: Partial<Comp>): Comp => ({ total: 25, puestoMuestra: 7, puestoRentabilidad: 19, todasSePaganSolas: { n: 11, estaEsUna: true }, plusvalia: { puesto: 20, de: 23 }, ...o });
+    const muestra = "Providencia tiene la muestra más grande entre las 25 comunas publicadas.";
+    const ordinal = "Es la séptima muestra más grande de las 25 comunas.";
+    const plus = "La plusvalía de 27% en diez años es la más baja que verás entre las 25 comunas publicadas.";
+    const raro = "Las tres tipologías se pagan solas, algo poco común entre las 25 comunas.";
+    const unaDe = "Tiene una de las muestras más grandes de las 25 comunas.";
+    // Dentro de la comuna no es comparar comunas (Cerrillos v6: «el 1D, que concentra la muestra más robusta»).
+    const intra = "El 1D, que concentra la muestra más robusta, no se paga solo.";
+    // Los puestos dichos con otras palabras, contra la métrica más cercana (Lo Barnechea y La Cisterna, v6).
+    const desdeAbajo = "La rentabilidad queda en el puesto 18, y la plusvalía de diez años, 26% acumulado, es la cuarta más baja de las 23 comunas con serie.";
+    const mitad = "Tiene una muestra robusta (puesto 10 de 25 comunas) y una rentabilidad bruta que se ubica en la mitad exacta del ranking.";
+    const caza = [vc(muestra, c({})), vc(ordinal, c({ puestoMuestra: 3 })), vc(plus, c({ plusvalia: { puesto: 22, de: 23 } })), vc(raro, c({})), vc(unaDe, c({ puestoMuestra: 12 })), vc(desdeAbajo, c({ puestoRentabilidad: 4, plusvalia: { puesto: 23, de: 23 } })), vc(mitad, c({ puestoMuestra: 13, puestoRentabilidad: 11 }))];
+    const deja = [vc(muestra, c({ puestoMuestra: 1 })), vc(ordinal, c({})), vc(plus, c({ plusvalia: { puesto: 23, de: 23 } })), vc(raro, c({ todasSePaganSolas: { n: 4, estaEsUna: true } })), vc(unaDe, c({})), vc(intra, c({ puestoMuestra: 18 })), vc(desdeAbajo, c({ puestoRentabilidad: 4, plusvalia: { puesto: 20, de: 23 } })), vc(mitad, c({ puestoMuestra: 10, puestoRentabilidad: 13 }))];
+    if (caza.some((e) => !e.length)) F("4 · el guard deja pasar una comparación que no cuadra con el puesto (muestra, ordinal, plusvalía o «poco común»)");
+    if (deja.some((e) => e.length)) F("4 · el guard rechaza una comparación cierta");
+  }
+  const cs2 = cargar<{ comparacionDe?: (s: unknown, parque: unknown[]) => Comp }>("src/lib/data/comunas-seo");
+  if (!cs2?.comparacionDe) F("4 · no existe el cálculo de los puestos entre comunas (comparacionDe)");
+  else {
+    const fila = (rentabilidadBruta: number, veredictoFila: string) => ({ rentabilidadBruta, veredictoFila, referencia: { fuente: "porTipologia" } });
+    const com = (slug: string, nombre: string, enCalculo: number, filas: unknown[]) => ({ slug, nombre, rentabilidadBruta: 0, procedencia: { enCalculo }, tipologias: filas });
+    // `a` va en un EXTREMO de cada orden: en el medio, ordenar al revés no le cambia el puesto y el chequeo no mediría
+    // el sentido (una mutación que invertía la muestra quedó verde así).
+    const a = com("a", "Cerrillos", 900, [fila(6.0, "sePagaSola")]);
+    const b = com("b", "Conchalí", 300, [fila(5.0, "sePagaSola"), fila(4.0, "noSePagaSola")]);
+    const z = com("z", "Comuna sin serie", 100, [fila(5.5, "sePagaSola")]);
+    const k = cs2.comparacionDe(a, [a, b, z]);
+    // Conchalí (142%) sobre Cerrillos (45%) en plusvalía; la sin serie no entra en esa cuenta.
+    if (k.total !== 3 || k.puestoMuestra !== 1 || k.puestoRentabilidad !== 1 || k.todasSePaganSolas.n !== 2 || !k.todasSePaganSolas.estaEsUna || k.plusvalia?.puesto !== 2 || k.plusvalia?.de !== 2 || cs2.comparacionDe(z, [a, b, z]).plusvalia !== null) F("4 · los puestos entre comunas no salen de la muestra, la cifra del título y la plusvalía del parque");
+  }
+  const gen = sinComentarios(leer("scripts/data/generar-prosa-comunas.ts"));
+  if (!/const parque = \(await getAllComunasStats\(\)\)\.filter\(\(s\) => esComunaDelRoster\(s\.slug\)\);/.test(gen) || !/const comparacion = comparacionDe\(stats, parque\);/.test(gen) || !/\$\{bloqueComparacion\(comparacion\)\}/.test(gen) || !/errores\.push\(\.\.\.validarComparaciones\(texto, comparacion\)\);/.test(gen) || (gen.match(/validar\((?:retry\.)?texto, stats, comparacion\)/g) ?? []).length !== 2) F("4 · el generador no le pasa al modelo los puestos reales o no rechaza la comparación que no cuadra");
+  if (/Así se hace bien: "la\s+muestra más grande de las 25 comunas"/.test(gen)) F("4 · el prompt vuelve a modelar «la muestra más grande de las 25» sin el puesto");
   if (!/const prosaComuna = prosaGuardada && !prosaContradiceLaTabla\(detectarDrift\(prosaGuardada, stats, lider\?\.dorms \?\? null\)\) \? prosaGuardada : null;/.test(det) || /prosaGuardada\.prosa/.test(det) || !/\{prosaComuna\.prosa\}/.test(det)) F("4 · comuna: la página publica la prosa sin mirar si contradice la tabla");
   // Los veredictos con su nombre de hoy en los tres cierres (decían «comprar, negociar o seguir buscando»).
   for (const [tipo, ruta] of Object.entries(PAGINAS)) if (/negociar o seguir buscando/.test(sinComentarios(leer(ruta)))) F(`4 · ${tipo}: el cierre nombra veredictos viejos («negociar»)`);

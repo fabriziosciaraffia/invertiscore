@@ -11,7 +11,8 @@ import {
   resolverReferenciaArriendo,
   type ReferenciaArriendo,
 } from "@/lib/referencia-arriendo";
-import { getTodasLasProsas, publicabaDorms } from "@/lib/data/comuna-prosa";
+import { getTodasLasProsas, publicabaDorms, type ComparacionComuna } from "@/lib/data/comuna-prosa";
+import { PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
 import { resolverVeredictoFila, type VeredictoFila } from "@/lib/veredicto-fila";
 import { claveAviso, ventaPlausible } from "@/lib/avisos/plausible";
 
@@ -143,6 +144,37 @@ export function textoRentabilidadTitulo(stats: ComunaStats): string {
   const { min, max } = rentabilidadTitulo(stats);
   const n1 = (n: number) => n.toFixed(1).replace(".", ",");
   return min === max ? `${n1(min)}%` : `${n1(min)}% a ${n1(max)}%`;
+}
+
+/** Todas las tipologías con veredicto se pagan solas (las que dependen del arriendo real no cuentan). */
+function todasSePaganSolas(s: ComunaStats): boolean {
+  const decididas = s.tipologias.filter((t) => t.veredictoFila !== "dependeDelArriendoReal");
+  return decididas.length > 0 && decididas.every((t) => t.veredictoFila === "sePagaSola");
+}
+
+function tieneSeriePlusvalia(nombre: string): boolean {
+  const cob = coberturaPlusvaliaDe(nombre);
+  return (cob === "trayectoria_gfk" || cob === "nivel_mas_ac" || cob === "solo_ac") && !!PLUSVALIA_ESTIMADO[nombre];
+}
+
+/**
+ * Los puestos de la comuna entre las publicadas (`parque`): lo único que su prosa puede comparar con las otras
+ * (prompt v6, 20-oct-2026; ver `ComparacionComuna`). La rentabilidad, con la cifra del título, como el índice.
+ */
+export function comparacionDe(stats: ComunaStats, parque: ComunaStats[]): ComparacionComuna {
+  const puesto = (orden: ComunaStats[]) => orden.findIndex((s) => s.slug === stats.slug) + 1;
+  const porMuestra = [...parque].sort((a, b) => b.procedencia.enCalculo - a.procedencia.enCalculo);
+  const porRent = [...parque].sort((a, b) => rentabilidadTitulo(b).medio - rentabilidadTitulo(a).medio);
+  const conSerie = parque
+    .filter((s) => tieneSeriePlusvalia(s.nombre))
+    .sort((a, b) => PLUSVALIA_ESTIMADO[b.nombre].plusvalia10a - PLUSVALIA_ESTIMADO[a.nombre].plusvalia10a);
+  return {
+    total: parque.length,
+    puestoMuestra: puesto(porMuestra),
+    puestoRentabilidad: puesto(porRent),
+    todasSePaganSolas: { n: parque.filter(todasSePaganSolas).length, estaEsUna: todasSePaganSolas(stats) },
+    plusvalia: tieneSeriePlusvalia(stats.nombre) ? { puesto: puesto(conSerie), de: conSerie.length } : null,
+  };
 }
 
 /** Todas las filas publicadas son estimadas: la comuna no tiene arriendos propios. */

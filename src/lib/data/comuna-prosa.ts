@@ -42,8 +42,12 @@ import type { VeredictoFila } from "@/lib/veredicto-fila";
  *  v5: el universo de comparación de la muestra son las comunas publicadas.
  *  Santiago y Providencia salieron con "la muestra más grande del país", una
  *  afirmación que ningún dato sostiene; el bloque ahora declara el universo
- *  (las 25) y el system trae el ejemplo positivo, sin prohibición. */
-export const PROMPT_VERSION_COMUNA = 5;
+ *  (las 25) y el system trae el ejemplo positivo, sin prohibición.
+ *  v6: ese ejemplo («la muestra más grande de las 25 comunas») se copiaba sin dato que lo sostuviera — cada comuna
+ *  se genera sola —, y Providencia y Vitacura se dijeron la muestra más grande siendo la 7.ª y la 9.ª. El bloque trae
+ *  ahora COMPARACIÓN (los puestos reales, `ComparacionComuna`), el ejemplo usa el puesto, y `validarComparaciones`
+ *  rechaza el superlativo que no cuadra. */
+export const PROMPT_VERSION_COMUNA = 6;
 
 /** Lo que la prosa narró, por tipología. Solo lo citable. */
 export interface SnapshotTipologia {
@@ -552,6 +556,123 @@ export function validarVeredictoRango(texto: string, stats: ComunaStats): string
         `veredicto seco sobre una fila que depende: "${antes.trim().slice(-50)} ${m[0]}" — el ${t.dorms}D no tiene veredicto; su rango cruza la cuota`
       );
     }
+  }
+  return errores;
+}
+
+/**
+ * Lo que el párrafo puede afirmar de la comuna FRENTE A LAS OTRAS publicadas (v6, 20-oct-2026). Sale del parque, no
+ * del modelo: con la v5 cada comuna se generaba sola, sin datos de las demás, y el ejemplo positivo del prompt («la
+ * muestra más grande de las 25 comunas») se copiaba tal cual — Providencia (7.ª muestra) y Vitacura (9.ª) se dijeron
+ * «la más grande» y «la más nutrida», y Recoleta, «la plusvalía más baja de las 25», sin tener la de ninguna otra.
+ */
+export interface ComparacionComuna {
+  /** Comunas publicadas con datos. */
+  total: number;
+  /** 1 = la muestra más grande (avisos que entran en el cálculo). */
+  puestoMuestra: number;
+  /** 1 = la cifra del título más alta (la misma que ordena el índice). */
+  puestoRentabilidad: number;
+  /** Comunas donde todas las tipologías con veredicto se pagan solas, y si esta es una. */
+  todasSePaganSolas: { n: number; estaEsUna: boolean };
+  /** 1 = la plusvalía de diez años más alta, entre las que tienen serie; null si esta no tiene. */
+  plusvalia: { puesto: number; de: number } | null;
+}
+
+const ORDINALES: Record<string, number> = {
+  primera: 1, segunda: 2, tercera: 3, cuarta: 4, quinta: 5, sexta: 6, séptima: 7, septima: 7, octava: 8, novena: 9, décima: 10, decima: 10,
+};
+const SUPERLATIVO_MUESTRA = /\b(?:la|es la|tiene la)\s+(?:([a-záéíóúñ]+)\s+)?(?:muestra|base de datos|base)\s+más\s+(?:grande|nutrida|amplia|sólida|robusta|extensa|completa)\b|\bla mayor muestra\b/i;
+const UNA_DE_LAS_MUESTRAS = /\buna de las muestras más (?:grandes|nutridas|amplias|sólidas|robustas|extensas)\b/i;
+/** La frase compara con las OTRAS comunas (y no las tipologías de esta: «el 1D concentra la muestra más robusta»). */
+const HABLA_DE_COMUNAS = /\bcomunas\b|\bde \d+\b|comparativo|\bparque\b/i;
+const PLUSVALIA_EXTREMA = /plusval[ií]a[^.]{0,90}\bla más (baja|alta)\b|\bla más (baja|alta)\b[^.]{0,40}plusval[ií]a|plusval[ií]a[^.]{0,40}\b(?:la )?(?:menor|mayor)\b[^.]{0,40}\b\d+ comunas\b/i;
+const RENTABILIDAD_EXTREMA = /rentabilidad[^.]{0,60}\bla más (alta|baja)\b[^.]{0,40}\bcomunas\b/i;
+const HABLA_DE_PAGARSE_SOLA = /se pagan? sol[ao]s?|pagándose sol[ao]s?/i;
+const LO_RARO = /poco común|pocas (?:de las )?comunas|no es la norma|no es (?:tan|muy) común|ya no es tan común|es raro|excepcional/i;
+/** Hasta qué fracción del parque «todas se pagan solas» se puede llamar poco común. */
+const FRACCION_POCO_COMUN = 0.25;
+// Los puestos dichos con otras palabras (v6: Lo Barnechea, la 23.ª de 23 en plusvalía, se dijo «la cuarta más baja»;
+// La Cisterna, la 11.ª de 25, «la mitad exacta del ranking»).
+const ORDINAL_EXTREMO = new RegExp(`\\b(?:la|el|es la|es el)\\s+(${Object.keys(ORDINALES).join("|")})\\s+(?:más\\s+(baja|alta|grande|chica)|(mayor|menor))\\b`, "i");
+const ULTIMO_LUGAR = /\bel último lugar\b|\bla última\b/i;
+const LA_MITAD = /\b(?:en )?la mitad( exacta)? del (?:ranking|cuadro|parque|grupo|conjunto)\b/i;
+
+/**
+ * El puesto (1 = el mayor) que nombra la frase en la posición `i`: el de la métrica escrita más cerca ANTES de ahí
+ * («la muestra es la 10.ª y la rentabilidad, la mitad del ranking» habla de la rentabilidad), o después si no hay.
+ */
+function puestoDeLaFrase(f: string, i: number, c: ComparacionComuna): { puesto: number; de: number } | null {
+  const metricas: Array<[RegExp, { puesto: number; de: number } | null]> = [
+    [/plusval/gi, c.plusvalia],
+    [/rentabilidad/gi, { puesto: c.puestoRentabilidad, de: c.total }],
+    [/muestra|avisos/gi, { puesto: c.puestoMuestra, de: c.total }],
+  ];
+  let mejor: { d: number; p: { puesto: number; de: number } | null } | null = null;
+  for (const [re, p] of metricas) {
+    for (const m of Array.from(f.matchAll(re))) {
+      const at = m.index ?? 0;
+      // Antes de `i` pesa la distancia; después, solo si no hubo nada antes.
+      const d = at <= i ? i - at : 10_000 + (at - i);
+      if (!mejor || d < mejor.d) mejor = { d, p };
+    }
+  }
+  return mejor ? mejor.p : null;
+}
+
+/** Una comparación con las otras comunas tiene que cuadrar con el puesto que trae el bloque de datos. */
+export function validarComparaciones(texto: string, c: ComparacionComuna): string[] {
+  const errores: string[] = [];
+  const frases = texto.split(/(?<=[.!?])\s+/);
+  const conComunas = frases.filter((f) => HABLA_DE_COMUNAS.test(f)).join(" ");
+  const m = conComunas.match(SUPERLATIVO_MUESTRA);
+  if (m) {
+    const puestoDicho = m[1] ? ORDINALES[m[1].toLowerCase()] ?? null : 1;
+    if (puestoDicho !== null && puestoDicho !== c.puestoMuestra) {
+      errores.push(`comparación falsa: "${m[0]}" — su muestra es la ${c.puestoMuestra}.ª de ${c.total}`);
+    }
+  }
+  // «Una de las más grandes» vale en el tercio de arriba.
+  if (UNA_DE_LAS_MUESTRAS.test(conComunas) && c.puestoMuestra > Math.ceil(c.total / 3)) {
+    errores.push(`comparación falsa: "una de las muestras más grandes" — es la ${c.puestoMuestra}.ª de ${c.total}`);
+  }
+  const p = texto.match(PLUSVALIA_EXTREMA);
+  if (p) {
+    const dice = (p[1] ?? p[2] ?? "").toLowerCase() || (/menor/i.test(p[0]) ? "baja" : "alta");
+    const cuadra = c.plusvalia && (dice === "alta" ? c.plusvalia.puesto === 1 : c.plusvalia.puesto === c.plusvalia.de);
+    if (!cuadra) errores.push(`comparación falsa: "${p[0].trim()}" — ${c.plusvalia ? `su plusvalía es la ${c.plusvalia.puesto}.ª de ${c.plusvalia.de}` : "no tiene serie de plusvalía"}`);
+  }
+  const r = texto.match(RENTABILIDAD_EXTREMA);
+  if (r) {
+    const cuadra = r[1].toLowerCase() === "alta" ? c.puestoRentabilidad === 1 : c.puestoRentabilidad === c.total;
+    if (!cuadra) errores.push(`comparación falsa: "${r[0].trim()}" — su rentabilidad es la ${c.puestoRentabilidad}.ª de ${c.total}`);
+  }
+  // Ordinales, «último lugar» y «la mitad», frase por frase y contra el puesto de lo que la frase nombra.
+  for (const f of frases.filter((x) => HABLA_DE_COMUNAS.test(x))) {
+    const ord = f.match(ORDINAL_EXTREMO);
+    const ult = f.match(ULTIMO_LUGAR);
+    const mitad = f.match(LA_MITAD);
+    const p = (m: RegExpMatchArray) => puestoDeLaFrase(f, m.index ?? 0, c);
+    const po = ord && p(ord);
+    if (ord && po) {
+      const n = ORDINALES[ord[1].toLowerCase()];
+      const desdeAbajo = /baja|chica|menor/i.test(ord[2] ?? ord[3] ?? "");
+      const real = desdeAbajo ? po.de - po.puesto + 1 : po.puesto;
+      if (n !== real) errores.push(`comparación falsa: "${ord[0]}" — es la ${real}.ª${desdeAbajo ? " desde abajo" : ""} (puesto ${po.puesto} de ${po.de})`);
+    }
+    const pu = ult && p(ult);
+    if (pu && pu.puesto !== pu.de) errores.push(`comparación falsa: "último lugar" — está en el puesto ${pu.puesto} de ${pu.de}`);
+    const pm = mitad && p(mitad);
+    if (mitad && pm) {
+      const centro = (pm.de + 1) / 2;
+      const tolerancia = mitad[1] ? 0.5 : pm.de / 6;
+      if (Math.abs(pm.puesto - centro) > tolerancia) errores.push(`comparación falsa: "${mitad[0]}" — está en el puesto ${pm.puesto} de ${pm.de}`);
+    }
+  }
+  // «Poco común que todas se paguen solas» (v5: Maipú, Estación Central, Quinta Normal) cuando pasa en 11 de 25.
+  const raro = frases.find((f) => HABLA_DE_PAGARSE_SOLA.test(f) && LO_RARO.test(f));
+  if (raro && c.todasSePaganSolas.n / c.total > FRACCION_POCO_COMUN) {
+    errores.push(`comparación falsa: "${raro.match(LO_RARO)![0]}" — ${c.todasSePaganSolas.n} de ${c.total} comunas tienen todas sus tipologías pagándose solas`);
   }
   return errores;
 }

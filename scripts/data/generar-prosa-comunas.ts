@@ -19,17 +19,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
-import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
-import { getComunaStats, tipologiaLider, fmtCLP, type ComunaStats } from "@/lib/data/comunas-seo";
+import { COMUNAS_ROSTER, esComunaDelRoster } from "@/lib/data/comunas-roster";
+import { comparacionDe, getAllComunasStats, getComunaStats, tipologiaLider, fmtCLP, type ComunaStats } from "@/lib/data/comunas-seo";
 import {
   PROMPT_VERSION_COMUNA,
   detectarDrift,
   getTodasLasProsas,
   snapshotDe,
+  validarComparaciones,
   validarCoherenciaNumerica,
   validarFuenteEstimada,
   validarRolesDeCifras,
   validarVeredictoRango,
+  type ComparacionComuna,
 } from "@/lib/data/comuna-prosa";
 import { coberturaPlusvaliaDe, PLUSVALIA_ESTIMADO } from "@/lib/plusvalia-estimado.gen";
 
@@ -89,9 +91,12 @@ REGLAS DE RAZONAMIENTO
   dice al lector qué hacer con esto o bajo qué condición le sirve la comuna.
 - Solo puedes afirmar lo que está en los DATOS que recibes. Nada de metro,
   proyectos, barrios, seguridad, colegios ni plazos de obras: no los tienes.
-- El universo con que se compara la muestra son las comunas publicadas que te
-  dice el bloque de datos, no el país ni la región. Así se hace bien: "la
-  muestra más grande de las 25 comunas".
+- Si comparas esta comuna con las otras, la comparación sale del bloque
+  COMPARACIÓN, que trae los puestos reales entre las comunas publicadas (no el
+  país ni la región). Así se hace bien, con el puesto que trae el bloque: "la
+  tercera muestra más grande de las 25 comunas", o "una de las 8 comunas, de 25,
+  donde todas las tipologías se pagan solas". Lo que el bloque no trae, no lo
+  comparas: no tienes los datos de las otras.
 - Si la muestra de una tipología es chica, no la celebres sin decirlo.
 - Una tipología marcada ARRIENDO ESTIMADO no tiene mediana propia: su arriendo
   sale del metro cuadrado de la comuna y viene como RANGO. Si la citas, dilo
@@ -117,7 +122,16 @@ FORMA
 - No uses markdown, comillas de apertura ni títulos.
 - Responde SOLO con el párrafo. Nada antes ni después.`;
 
-function bloqueDatos(stats: ComunaStats): string {
+/** Los puestos de `comparacionDe` (comunas-seo.ts), escritos para el modelo (v6). */
+function bloqueComparacion(c: ComparacionComuna): string {
+  return `COMPARACIÓN CON LAS ${c.total} COMUNAS PUBLICADAS (de mayor a menor; 1 = la mayor):
+- muestra (avisos que entran en el cálculo): puesto ${c.puestoMuestra} de ${c.total}
+- rentabilidad bruta del título de la página: puesto ${c.puestoRentabilidad} de ${c.total}
+- comunas donde todas las tipologías con veredicto se pagan solas: ${c.todasSePaganSolas.n} de ${c.total} (esta ${c.todasSePaganSolas.estaEsUna ? "es una de ellas" : "no es una de ellas"})
+- ${c.plusvalia ? `plusvalía de diez años: puesto ${c.plusvalia.puesto} de ${c.plusvalia.de} comunas con serie` : "plusvalía: esta comuna no tiene serie, así que no la compares"}`;
+}
+
+function bloqueDatos(stats: ComunaStats, comparacion: ComparacionComuna): string {
   const s = stats.supuestos;
   const lider = tipologiaLider(stats.tipologias);
   const cubren = stats.tipologias.filter((t) => t.veredictoFila === "sePagaSola").length;
@@ -171,17 +185,19 @@ ${filas}
 
 RESUMEN: ${cubren} de ${decididas} tipologías con veredicto se pagan solas${dependen.length ? `; ${dependen.map((t) => `${t.dorms}D`).join(" y ")} DEPENDE${dependen.length > 1 ? "N" : ""} del arriendo real y no cuenta${dependen.length > 1 ? "n" : ""} en ese conteo` : ""}.${lider ? ` La que encabeza es el ${lider.dorms}D.` : " Ninguna tipología encabeza: todas dependen del arriendo real."}
 MUESTRA TOTAL: ${stats.procedencia.enCalculo} avisos entran en el cálculo, de ${stats.procedencia.activosTotales} activos.
-UNIVERSO DE COMPARACIÓN DE LA MUESTRA: las ${COMUNAS_ROSTER.length} comunas publicadas (esta y otras ${COMUNAS_ROSTER.length - 1}).
-${plusvalia}`;
+${plusvalia}
+
+${bloqueComparacion(comparacion)}`;
 }
 
 async function generar(
   stats: ComunaStats,
+  comparacion: ComparacionComuna,
   instruccionExtra?: string
 ): Promise<{ texto: string; inTok: number; outTok: number }> {
   const contenido = instruccionExtra
-    ? `${bloqueDatos(stats)}\n\n${instruccionExtra}`
-    : bloqueDatos(stats);
+    ? `${bloqueDatos(stats, comparacion)}\n\n${instruccionExtra}`
+    : bloqueDatos(stats, comparacion);
   const r = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 400,
@@ -213,7 +229,7 @@ function soloFallaElLargo(errores: string[]): boolean {
   return errores.length > 0 && errores.every((e) => e.startsWith("largo fuera de rango"));
 }
 
-function validar(texto: string, stats: ComunaStats): string[] {
+function validar(texto: string, stats: ComunaStats, comparacion: ComparacionComuna): string[] {
   const errores: string[] = [];
   // Rango calibrado contra el comportamiento real: en el primer lote el modelo
   // se paró de forma sistemática en ~140 palabras y el techo de 130 rechazó 8
@@ -237,6 +253,7 @@ function validar(texto: string, stats: ComunaStats): string[] {
   errores.push(...validarRolesDeCifras(texto));
   errores.push(...validarFuenteEstimada(texto, stats));
   errores.push(...validarVeredictoRango(texto, stats));
+  errores.push(...validarComparaciones(texto, comparacion));
   return errores;
 }
 
@@ -249,6 +266,9 @@ async function main() {
     console.error(`slug desconocido: ${SOLO}`);
     process.exit(1);
   }
+
+  // El parque entero, una vez: de acá salen los puestos que el párrafo puede comparar (v6).
+  const parque = (await getAllComunasStats()).filter((s) => esComunaDelRoster(s.slug));
 
   let generadas = 0, saltadas = 0, fallidas = 0, inTot = 0, outTot = 0;
 
@@ -273,11 +293,12 @@ async function main() {
     process.stdout.write(`  gen  ${c.nombre.padEnd(18)} [${razon}] `);
 
     try {
-      const primera = await generar(stats);
+      const comparacion = comparacionDe(stats, parque);
+      const primera = await generar(stats, comparacion);
       inTot += primera.inTok;
       outTot += primera.outTok;
       let texto = primera.texto;
-      let errores = validar(texto, stats);
+      let errores = validar(texto, stats, comparacion);
 
       // UN solo reintento, y solo cuando el largo es lo único que falló. El
       // texto nuevo pasa por TODOS los guards otra vez: un párrafo más corto
@@ -287,13 +308,14 @@ async function main() {
         process.stdout.write(`(${palabras} palabras, reintento) `);
         const retry = await generar(
           stats,
+          comparacion,
           `Tu párrafo anterior tenía ${palabras} palabras y el máximo son 160. ` +
             `Escríbelo de nuevo más corto, entre 90 y 140 palabras, sin perder la ` +
             `recomendación del cierre. Mantén las mismas cifras exactas.`
         );
         inTot += retry.inTok;
         outTot += retry.outTok;
-        const erroresRetry = validar(retry.texto, stats);
+        const erroresRetry = validar(retry.texto, stats, comparacion);
         if (erroresRetry.length === 0) {
           texto = retry.texto;
           errores = [];
