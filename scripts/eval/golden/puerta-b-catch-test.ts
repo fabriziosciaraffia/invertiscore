@@ -502,12 +502,15 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (rn?.revisados !== 1000 || rn.convienen !== 21 || ll?.n !== "deptos_conteo" || ll.comunas?.length !== COMUNAS_DISPONIBLES.length || ll.uf_min !== 0 || (ll.uf_max ?? 0) < 1e6 || !ll.dorms?.includes(0) || !ll.dorms?.includes(5))
         F(`10 · el resumen de la noche no cuenta lo mismo que la respuesta (${JSON.stringify(rn)})`);
       // El número y el correo desde el primer segundo: la respuesta por defecto viene del servidor y no se vuelve a pedir.
+      // ⚠ ACTA (20-oct-2026, «Ver los deptos de [comuna]» de las páginas de comuna) · la búsqueda inicial puede llegar con
+      // `?comuna=`: las comunas iniciales salen de la portada (las por defecto, o esa), y su número igual del servidor.
       const cliD = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (!/const \[respuesta, setRespuesta\] = useState<RespuestaDeptos \| null>\(portada\?\.inicial \?\? null\);/.test(cliD)
-        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.ELECCIONES_POR_DEFECTO\.comunas\]\);/.test(cliD)
+        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.\(portada\?\.comunas \?\? ELECCIONES_POR_DEFECTO\.comunas\)\]\);/.test(cliD)
+        || !/const servida = useRef<string \| null>\(portada\?\.inicial \? claveInicial\(portada\.comunas\) : null\);/.test(cliD)
         || !/const \[rango, setRango\] = useState<string>\(ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
         || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca con el número de la búsqueda por defecto desde el servidor");
-      if (!/const portada = await portadaDeptos\(\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
+      if (!/const portada = await portadaDeptos\(comunaDeLaUrl\(searchParams\?\.comuna\)\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
         F("10 · /deptos o la página del invitado no traen la portada del servidor");
       // El orden: la frase, la etiqueta, el número, la nota, la banda del correo y, debajo, «Cambia la búsqueda» con los chips.
       const el = cliD.slice(cliD.indexOf('data-deptos="elegir"'));

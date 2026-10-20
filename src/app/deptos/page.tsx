@@ -5,7 +5,7 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { DEPTOS_COPY } from "@/lib/deptos/respuesta";
 import { hrefAnalizar } from "@/lib/cta-analizar";
-import { portadaDeptos } from "@/lib/deptos/portada";
+import { comunaDeLaUrl, portadaDeptos } from "@/lib/deptos/portada";
 import { DeptosCliente } from "./deptos-cliente";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,8 @@ export default async function DeptosPage({ searchParams }: { searchParams?: Reco
   const sesion = user?.email ? { email: user.email } : null;
   // Lo que se ve al entrar, desde el servidor (17-oct-2026): la frase con las cifras de la noche y el número de la búsqueda
   // por defecto, así el número y el correo están desde el primer segundo.
-  const portada = await portadaDeptos();
+  // Desde «Ver los deptos de [comuna]» de las páginas de comuna (20-oct-2026): la búsqueda arranca con esa comuna.
+  const portada = await portadaDeptos(comunaDeLaUrl(searchParams?.comuna));
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco sesion={sesion} />

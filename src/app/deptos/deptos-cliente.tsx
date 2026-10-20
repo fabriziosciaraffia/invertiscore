@@ -74,13 +74,14 @@ export interface OpcionesDeptos {
   portada?: PortadaDeptos;
 }
 
-/** La búsqueda por defecto, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. */
-const CLAVE_DEFECTO = `${ELECCIONES_POR_DEFECTO.comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${ELECCIONES_POR_DEFECTO.rango}`;
+/** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
+ *  comunas son las por defecto o la de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
+const claveInicial = (comunas: readonly string[]) => `${comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${ELECCIONES_POR_DEFECTO.rango}`;
 
 export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera, pie, portada }: { sesion: { email: string } | null } & OpcionesDeptos) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [comunas, setComunas] = useState<string[]>([...ELECCIONES_POR_DEFECTO.comunas]);
+  const [comunas, setComunas] = useState<string[]>([...(portada?.comunas ?? ELECCIONES_POR_DEFECTO.comunas)]);
   const [buscando, setBuscando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [tipologia, setTipologia] = useState<string>(TIPOLOGIA_POR_DEFECTO);
@@ -101,7 +102,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const campoBuscar = useRef<HTMLInputElement>(null);
   /** La búsqueda de la respuesta que está a la vista (la por defecto, si vino del servidor): esa no se vuelve a pedir. Se
    *  anota al llegar la respuesta, no al pedirla: un pedido cortado (el doble efecto de React en desarrollo) se repite. */
-  const servida = useRef<string | null>(portada?.inicial ? CLAVE_DEFECTO : null);
+  const servida = useRef<string | null>(portada?.inicial ? claveInicial(portada.comunas) : null);
 
   // La puerta B: el navegador la lleva hasta que la cuenta nace (useAttributionSync, el reclamo y el alta).
   useEffect(() => {
