@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { WizardV4 } from "@/components/formulario-v4/WizardV4";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { COMUNAS } from "@/lib/comunas";
+import { normalizeComuna } from "@/lib/comuna-normalizar";
 import { leerDireccionLlegada, leerModoLlegada } from "@/components/entrada/llegada";
 
 function NuevoAnalisisV4Inner() {
@@ -25,7 +26,9 @@ function NuevoAnalisisV4Inner() {
   // Se valida contra la cobertura: una comuna no cubierta dispararía el mensaje
   // de "fuera del Gran Santiago" antes de que el usuario escriba nada.
   const comunaParam = searchParams.get("comuna")?.trim() || "";
-  const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaParam.toLowerCase());
+  // Con el alias del repo (20-oct-2026): el dataset dice «Santiago Centro» y la página de Santiago manda «Santiago»;
+  // comparando el nombre exacto, «Analizar depto en Santiago» llegaba sin la comuna puesta.
+  const match = COMUNAS.find((c) => normalizeComuna(c.comuna).toLowerCase() === normalizeComuna(comunaParam).toLowerCase());
   const comunaInicial = match && isComunaDisponible(match.comuna) ? match : null;
 
   // ?direccion=&lat=&lng=&comuna=[&precision=] — la dirección elegida en el hero de la landing (el
