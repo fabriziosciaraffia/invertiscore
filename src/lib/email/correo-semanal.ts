@@ -332,6 +332,8 @@ export function correoSemanalVacio(d: {
   nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null; invitar?: EnlaceInvitarCorreo | null;
   casi?: CasiCorreo[];
   alternativa?: { texto: string; boton: string; url: string } | null;
+  /** Cuántos había publicados como los que busca: sin casi ni alternativa, el cuerpo lo dice en vez de «no apareció ninguno». */
+  revisados?: number | null;
 }): { subject: string; html: string } {
   const filas: string[] = [];
   const asunto = d.delDia ? DEL_DIA.vacioAsunto : SEMANAL_VACIO.asunto;
@@ -342,9 +344,12 @@ export function correoSemanalVacio(d: {
     filas.push(parrafo(`${escaparHtml(d.delDia ? DEL_DIA.semanal : SEMANAL.presentacion)} ${escaparHtml(SEMANAL.presentacionBaja)} <a href="${d.urlBaja}" style="color: ${TINTA_2}; text-decoration: underline;">${SEMANAL.presentacionBajaEnlace}</a>.`));
     filas.push(parrafo(escaparHtml(COMO_ENTRAR)));
   }
-  filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacio : SEMANAL_VACIO.cuerpo)));
-  // La verdad (20-oct-2026): los que casi, nombrados; y con qué sí, con el ajuste en un toque.
+  // La verdad (20-oct-2026): los que casi, nombrados; con qué sí, con el ajuste en un toque; y si no hay nada de eso, cuántos
+  // había y que ninguno da ni con pie 30 % ni en vecinas. Nunca «no apareció ninguno» a secas.
   const casi = d.casi ?? [];
+  const aSecas = !d.delDia && casi.length === 0 && !d.alternativa && d.revisados != null;
+  const cuerpoVacio = d.delDia ? DEL_DIA.vacio : aSecas ? SEMANAL_VACIO.revisados(d.revisados!) : SEMANAL_VACIO.cuerpo;
+  filas.push(parrafo(escaparHtml(cuerpoVacio)));
   if (casi.length > 0) {
     filas.push(parrafo(escaparHtml(SEMANAL_VACIO.casi(casi.length))));
     for (const c of casi) {
@@ -375,7 +380,7 @@ export function correoSemanalVacio(d: {
 <title>${escaparHtml(asunto)}</title>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAPEL};">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(d.delDia ? DEL_DIA.vacio : SEMANAL_VACIO.cuerpo)}</div>
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escaparHtml(cuerpoVacio)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAPEL}" style="background: ${PAPEL};">
     <tr>
       <td align="center" style="padding: 28px 16px;">

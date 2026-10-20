@@ -137,6 +137,10 @@ export async function runSemanalSinMinimoTier(): Promise<{ hard: number }> {
       if (!/href="https:\/\/x\/ajuste"/.test(v.html)) F("4 · el botón del ajuste no lleva al enlace de un toque");
       const vacio = correoSemanalVacio({ nombre: null, urlPerfil: "https://x/p", urlBaja: "https://x/b" });
       if (vacio.html.includes("que casi") || vacio.html.includes('data-ajuste')) F("4 · sin casi ni alternativa el vacío igual los imprime");
+      // Mutación M28: sin casi ni alternativa, con el conteo, el cuerpo dice cuántos había (nunca «no apareció ninguno» a secas).
+      const nada = correoSemanalVacio({ nombre: null, urlPerfil: "https://x/p", urlBaja: "https://x/b", revisados: 5 });
+      if (!nada.html.includes("5 publicados como los que buscas") || nada.html.includes("ninguno que te convenga con tu pie")) F("4 · sin casi ni alternativa el vacío sale «no apareció ninguno» a secas");
+      if (!/revisados: verdad\?\.revisados \?\? null,/.test(sinComentarios(leer("src/lib/guia/semanal-servidor.ts")))) F("4 · el envío del vacío no manda cuántos había");
       if (ajusteDeParametro("pie30", new Set(["Macul"]))?.tipo !== "pie" || ajusteDeParametro("comuna:Macul", new Set(["Macul"]))?.tipo !== "comuna" || ajusteDeParametro("comuna:Narnia", new Set(["Macul"])) !== null || ajusteDeParametro("pie50", new Set()) !== null)
         F("4 · el ajuste acepta cualquier cosa, o no acepta lo suyo");
       if (parametroDeAjuste({ tipo: "comuna", comuna: "Macul" }) !== "comuna:Macul" || parametroDeAjuste({ tipo: "pie", pie: 30 }) !== "pie30") F("4 · el parámetro del ajuste no va y vuelve");

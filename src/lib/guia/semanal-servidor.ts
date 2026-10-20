@@ -915,6 +915,7 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
   const correo = correoSemanalVacio({
     nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio),
     casi: verdad?.casi ?? [],
+    revisados: verdad?.revisados ?? null,
     alternativa: verdad?.alternativa ? { texto: verdad.alternativa.texto, boton: verdad.alternativa.boton, url: enlaces.ajuste(parametroDeAjuste(verdad.alternativa.ajuste)) } : null,
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, "vacio");
@@ -938,6 +939,8 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
 export async function verdadDelVacio(admin: SupabaseClient, userId: string): Promise<{
   casi: Array<{ comuna: string; tipologia: string | null; m2: number; precioUF: number; score: number | null; flujo: number | null }>;
   alternativa: { texto: string; boton: string; ajuste: AjustePerfil } | null;
+  /** Cuántos había publicados como los que busca (la respuesta de /deptos); null si no se pudo contar. */
+  revisados: number | null;
 }> {
   const cfg = await leerConfigGuia(admin);
   const pp = await leerPerfilBusqueda(admin, userId);
@@ -952,20 +955,20 @@ export async function verdadDelVacio(admin: SupabaseClient, userId: string): Pro
       .map(({ c, ev }) => ({ comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF), score: ev!.score, flujo: ev!.flujo }));
   }
   const rango = rangoSemanal(perfil);
-  if (!perfil.completo || !rango) return { casi, alternativa: null };
+  if (!perfil.completo || !rango) return { casi, alternativa: null, revisados: null };
   const r = await responderDeptos(admin, {
     ok: true, comunas: perfil.comunas.map(comunaDeAviso), dorms: perfil.dormitorios, tipologias: [],
     rango: { id: "perfil", min: rango.ufMin || null, max: rango.ufMax, chip: "", frase: "" }, modalidad: "ltr",
   });
   const pie = perfil.piePct ?? PIE_DEPTOS;
   if ((r.conPie30 ?? 0) > 0 && pie < 30) {
-    return { casi, alternativa: { texto: `Con pie 30 %, ${r.conPie30} sí ${r.conPie30 === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarPie(30), ajuste: { tipo: "pie", pie: 30 } } };
+    return { casi, revisados: r.total, alternativa: { texto: `Con pie 30 %, ${r.conPie30} sí ${r.conPie30 === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarPie(30), ajuste: { tipo: "pie", pie: 30 } } };
   }
   const vecina = r.vecinas[0];
   if (vecina) {
-    return { casi, alternativa: { texto: `En ${vecina.comuna}, comuna vecina, ${vecina.convienen} sí ${vecina.convienen === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarComuna(vecina.comuna), ajuste: { tipo: "comuna", comuna: vecina.comuna } } };
+    return { casi, revisados: r.total, alternativa: { texto: `En ${vecina.comuna}, comuna vecina, ${vecina.convienen} sí ${vecina.convienen === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarComuna(vecina.comuna), ajuste: { tipo: "comuna", comuna: vecina.comuna } } };
   }
-  return { casi, alternativa: null };
+  return { casi, alternativa: null, revisados: r.total };
 }
 /** Cuántos «que casi» nombra el correo vacío. */
 export const MAX_CASI = 3;

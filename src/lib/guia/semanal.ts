@@ -529,6 +529,10 @@ export function asuntoSemanal(n: number): string {
 export const SEMANAL_VACIO = {
   asunto: "Esta semana no apareció ninguno que te convenga",
   cuerpo: "Esta semana no apareció ninguno que te convenga con tu pie y tu plazo. Seguimos buscando.",
+  /** Sin casi y sin alternativa: cuántos había como los que busca, y que ninguno da ni con pie 30 % ni en vecinas. */
+  revisados: (n: number) => (n === 0
+    ? "Anoche no había ninguno publicado como los que buscas. Seguimos buscando."
+    : `Anoche había ${n} ${n === 1 ? "publicado como los que buscas, y no conviene" : "publicados como los que buscas, y ninguno conviene"} con tu pie y tu plazo, ni con pie 30 % ni en comunas vecinas. Seguimos buscando.`),
   /** Hubo deptos que casi: Ajustar que con sus números no llegan a Comprar. */
   casi: (n: number) => (n === 1 ? "Hubo 1 que casi: con tus números queda en Ajusta supuestos." : `Hubo ${n} que casi: con tus números quedan en Ajusta supuestos.`),
   ajustarPie: (pie: number) => `Buscar con pie ${pie} %`,
