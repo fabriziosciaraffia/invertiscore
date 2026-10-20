@@ -98,7 +98,8 @@ export const PRIMERA_SELECCION = {
   tituloRegalo: "Tienes un análisis de regalo: elige uno",
   /** Sin regalo (topó, o lo gastó): se elige igual. */
   titulo: "Tus primeros deptos: elige uno",
-  bajada: "De la evaluación de anoche, con tu pie y tu plazo. Franco revisa uno por uno si siguen publicados; el correo de esta hora te lo confirma.",
+  /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
+  bajada: "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.",
   porConfirmar: "Lo reviso ahora: el correo de esta hora te dice si sigue publicado.",
   faltan: "Para armar tu selección falta un dato. Un toque y listo:",
   faltaComuna: "¿En qué comuna?",

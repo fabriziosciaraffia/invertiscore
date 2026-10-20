@@ -163,7 +163,7 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
   return (
     <section className="guia dp" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
       {titulo && <h2 className="guia-bloque" data-primera="titulo">{datos?.regaloVence ? PRIMERA_SELECCION.tituloRegalo : PRIMERA_SELECCION.titulo}</h2>}
-      {titulo && <p className="guia-txt">{PRIMERA_SELECCION.bajada}</p>}
+      {titulo && <p className="guia-txt" data-primera="bajada">{PRIMERA_SELECCION.bajada}</p>}
 
       {!datos && !fallo && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
       {fallo && (
