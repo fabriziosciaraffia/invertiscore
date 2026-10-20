@@ -19,6 +19,7 @@
 //     uno cada 90 días, sin plan y sin otro regalo vivo. El regalo al REGISTRARSE es otro: regalo-alta.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 import { TRES_COPY } from "@/lib/tres-analisis";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import type { EstadoPublicacion } from "./publicacion";
 import type { Evaluado } from "./seleccion";
 
@@ -540,8 +541,9 @@ export const SEMANAL_VACIO = {
   revisados: (n: number) => (n === 0
     ? "Anoche no había ninguno publicado como los que buscas. Seguimos buscando."
     : `Anoche había ${n} ${n === 1 ? "publicado como los que buscas, y no conviene" : "publicados como los que buscas, y ninguno conviene"} con tu pie y tu plazo, ni con pie 30 % ni en comunas vecinas. Seguimos buscando.`),
-  /** Hubo deptos que casi: Ajustar que con sus números no llegan a Comprar. */
-  casi: (n: number) => (n === 1 ? "Hubo 1 que casi: con tus números queda en Ajusta supuestos." : `Hubo ${n} que casi: con tus números quedan en Ajusta supuestos.`),
+  /** Hubo deptos que casi: Ajustar que con sus números no llegan a Comprar. La etiqueta, la de las filas del mismo
+   *  correo (veredicto-etiqueta.ts): hasta el 20-oct decía «Ajusta supuestos» escrito a mano y las filas, «Ajustar». */
+  casi: (n: number) => `Hubo ${n} que casi: con tus números ${n === 1 ? "queda" : "quedan"} en ${etiquetaVeredicto("AJUSTA SUPUESTOS", "frase")}.`,
   ajustarPie: (pie: number) => `Buscar con pie ${pie} %`,
   ajustarComuna: (comuna: string) => `Sumar ${comuna} a mi búsqueda`,
   ajusteListo: (que: string) => `Listo: ${que}. La próxima selección sale con eso.`,
