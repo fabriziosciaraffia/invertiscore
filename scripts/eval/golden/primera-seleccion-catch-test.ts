@@ -24,11 +24,18 @@
 //       ventanas de 1 hora, 1 día y 30 días por puerta (docs/posthog-activacion-por-puerta.md).
 //  11 · EL REGISTRO DESDE EL BANNER UN MARTES: la fila del día lleva el martes; armada, sale en el momento; sin cupo, sale
 //       igual dentro de la hora con lo visto; y el lunes siguiente no repite lo mandado.
+//  12 · EL TEXTO BAJO EL TÍTULO (20-oct-2026, Fabrizio): «Franco eligió estos deptos para tu búsqueda, con tu pie y tu
+//       plazo. En unos minutos te llega al correo la selección confirmada.», sin «anoche» ni «el correo de esta hora», en
+//       toda superficie (la hoja, /deptos y la página del invitado lo toman de la misma constante).
+//  13 · EL TICKET DESPUÉS DE «ENTRAR» Y CON LA HOJA ABIERTA (20-oct-2026, Fabrizio): el registro completado anula el
+//       minuto del banner en uso —desde «Estás dentro» el ticket sale a los 8 s de pasar «Tu resultado a 10 años», como
+//       siempre, y lo que se toque ahí no lo vuelve a armar—; y con la hoja de la primera selección abierta el ticket
+//       espera a que se cierre: nunca le sube encima.
 //
 // ACTA DE MUTACIONES: en el cuerpo de cada sección, abajo.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/primera-seleccion-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   destinoRecienDentro, esCuentaNueva, faltanDelPerfil, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION,
@@ -38,10 +45,41 @@ import { queEnviarSemanal } from "../../../src/lib/guia/semanal";
 import { diaChile } from "../../../src/lib/regalo-alta";
 import { correoDelTicket } from "../../../src/lib/lo-que-sigue/oferta-informe";
 import { hojaYaVista, marcarHojaVista } from "../../../src/lib/lo-que-sigue/hoja-primera-seleccion";
+import { crearUsoBanner } from "../../../src/lib/lo-que-sigue/uso-banner";
+import { crearDisparador, ESPERA_FINAL_MS, LECTURA_ACTIVA_MS } from "../../../src/lib/lo-que-sigue/disparo-ticket";
+import { lineasDiagnostico } from "../../../src/lib/lo-que-sigue/diagnostico-ticket";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) => s.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "").replace(/^\s*\*.*$/gm, "");
+
+/** Un reloj que avanza a mano, con temporizadores (el de OFERTA-TICKET). */
+function relojFalso() {
+  let t = 0;
+  const tareas: { fn: () => void; en: number; vivo: boolean }[] = [];
+  return {
+    ahora: () => t,
+    programar(fn: () => void, ms: number) {
+      const h = { fn, en: t + ms, vivo: true };
+      tareas.push(h);
+      return h;
+    },
+    cancelar(h: unknown) {
+      if (h && typeof h === "object") (h as { vivo: boolean }).vivo = false;
+    },
+    avanzar(ms: number) {
+      const fin = t + ms;
+      for (;;) {
+        const prox = tareas.filter((x) => x.vivo && x.en <= fin).sort((a, b) => a.en - b.en)[0];
+        if (!prox) break;
+        t = prox.en;
+        prox.vivo = false;
+        prox.fn();
+      }
+      t = fin;
+    },
+  };
+}
 
 // ── Una base en memoria: lo justo de supabase-js que usa el encolado y el relleno (insert/update/select con filtros,
 // la unicidad (user_id, semana)); cualquier otro método encadena y devuelve vacío. ──
@@ -291,6 +329,99 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (!/\(await origenDePersona\(admin, userId\)\) \?\? origenSintetico\(userId, perfil, cfg\)/.test(sinComentarios(leer("src/lib/guia/semanal-servidor.ts"))))
         F("11 · con un informe que no sirve de origen (sin coordenadas), la cuenta de la puerta A se queda sin selección: el correo sale vacío");
     }
+
+    // ── 12 · EL TEXTO BAJO EL TÍTULO ──
+    // Mutaciones: T1 vuelve el texto viejo · T2 una palabra cambiada · T3 la pantalla deja de dibujarlo bajo el título · T4 una
+    // superficie lo escribe a mano con el texto viejo.
+    {
+      const BAJADA = "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.";
+      if (PRIMERA_SELECCION.bajada !== BAJADA) F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajada}»`);
+      if (/anoche|correo de esta hora/i.test(PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche» o «el correo de esta hora»");
+      const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
+      if (!/<h2 className="guia-bloque" data-primera="titulo">\{datos\?\.regaloVence \? PRIMERA_SELECCION\.tituloRegalo : PRIMERA_SELECCION\.titulo\}<\/h2>\}\s*\{titulo && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
+        F("12 · la pantalla no dibuja ese texto justo bajo «Tienes un análisis de regalo: elige uno»");
+      // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
+      const viejo = "De la evaluación de anoche, con tu pie y tu plazo";
+      const archivos = readdirSync(join(RAIZ, "src"), { recursive: true, encoding: "utf8" }).filter((f) => /\.(ts|tsx)$/.test(f));
+      if (archivos.length < 100) F(`12 · el barrido de src/ no corrió (${archivos.length} archivos)`);
+      for (const f of archivos) if (leer(join("src", f)).includes(viejo)) F(`12 · src/${f.replace(/\\/g, "/")} todavía dice «${viejo}…»`);
+    }
+
+    // ── 13 · EL TICKET DESPUÉS DE «ENTRAR» Y CON LA HOJA ABIERTA ──
+    // Medido antes del arreglo (next dev, 390 px, Chromium): con la hoja cerrada y la marca pasada al instante, el ticket
+    // subió 53,8 s después de la marca —61,1 s después de «Entrar»: esperaba el minuto del banner en uso—; con la hoja
+    // reabierta desde «Ver mis primeros deptos» (un botón del banner, que volvía a armar el minuto), le subió encima a los
+    // 60,8 s. Las llamadas son las de los componentes, en su orden, con el banner y el disparador de verdad.
+    // Mutaciones: T5 `entro` no suelta · T6 el banner no llama a `entro` al entrar · T7 «Estás dentro» vuelve a armar el
+    // minuto · T8 `enUso` sin la hoja · T9 la hoja no avisa al abrirse · T10 `hojaAbierta` no guarda · T11 el ticket no
+    // espera al banner · T12 el recuadro de `?lqs=1` no dice que espera a la hoja.
+    {
+      const caso = () => {
+        const reloj = relojFalso();
+        const u = crearUsoBanner(() => reloj.ahora());
+        const subidas: string[] = [];
+        const d = crearDisparador({ reloj, puedeSubir: () => true, subir: (m) => { subidas.push(m); }, enEspera: () => u.enUso() });
+        // RegistroUnPaso y BannerRegistro: el foco y el correo, «Mandar código», el paso del código, el código y «Entrar».
+        u.correoConFoco(true); u.actividad(); u.correoConFoco(false); u.codigoAbierto(true); u.actividad(); u.actividad();
+        const segundos = (n: number) => { for (let i = 0; i < n; i++) { reloj.avanzar(1000); d.tick(true); } };
+        return { reloj, u, subidas, d, segundos };
+      };
+      {
+        // Control: con el código a medio escribir sigue el minuto (la regla del banner en uso, para quien está escribiendo).
+        const c = caso();
+        c.d.llegoAlFinal();
+        c.segundos(ESPERA_FINAL_MS / 1000 + 1);
+        if (c.subidas.length) F("13 · control: con el código a medio escribir el ticket ya no espera el minuto");
+      }
+      {
+        // Entró: a los 8 s de pasar la marca, ni antes ni el minuto.
+        const c = caso();
+        c.reloj.avanzar(1500);
+        c.u.entro();
+        c.reloj.avanzar(5000);
+        c.d.llegoAlFinal();
+        c.reloj.avanzar(ESPERA_FINAL_MS - 1);
+        if (c.subidas.length) F("13 · tras «Entrar» el ticket sube antes de los 8 s de pasar la marca");
+        c.reloj.avanzar(1);
+        c.d.tick(true);
+        if (c.subidas.join() !== "final") F(`13 · con el registro completado el ticket no sale a los 8 s de pasar «Tu resultado a 10 años»: espera el minuto (${c.subidas.join() || "nunca"})`);
+      }
+      {
+        // La hoja reabierta con el disparo del final en curso: espera los dos minutos que esté abierta, y sale al cerrarla.
+        const c = caso();
+        c.u.entro();
+        c.d.llegoAlFinal();
+        c.segundos(2);
+        c.u.hojaAbierta(true);
+        c.segundos(120);
+        if (c.subidas.length) F("13 · con la hoja de la primera selección abierta, el ticket le sube encima");
+        c.u.hojaAbierta(false);
+        c.segundos(1);
+        if (c.subidas.join() !== "final") F(`13 · cerrada la hoja, el ticket no sale (${c.subidas.join() || "nunca"})`);
+      }
+      {
+        // Los 4 minutos de lectura, tocando dentro de la hoja abierta: tampoco la tapan.
+        const c = caso();
+        c.u.entro();
+        c.u.hojaAbierta(true);
+        for (let i = 0; i < LECTURA_ACTIVA_MS / 1000 + 30; i++) { c.reloj.avanzar(1000); c.d.actividad(); c.d.tick(true); }
+        if (c.subidas.length) F("13 · con la hoja abierta, los 4 minutos de lectura suben el ticket encima");
+        c.u.hojaAbierta(false);
+        c.segundos(1);
+        if (c.subidas.join() !== "lectura") F(`13 · cerrada la hoja, la lectura no sube el ticket (${c.subidas.join() || "nunca"})`);
+      }
+      // El cableado: el banner suelta al entrar y no vuelve a armar el minuto en «Estás dentro»; la hoja avisa mientras está
+      // abierta; el ticket espera a las dos cosas.
+      const banner = sinComentarios(leer("src/components/lo-que-sigue/BannerRegistro.tsx"));
+      if (!/const entrar = \(correo: string\) => \{[^}]*\n\s*usoBanner\.entro\(\);\s*setPaso\("dentro"\);/.test(banner)) F("13 · al entrar con el código el banner no suelta el minuto (falta `usoBanner.entro()` antes de «Estás dentro»)");
+      if (!/const marcarUso = \(\) => \{ if \(paso !== "dentro"\) usoBanner\.actividad\(\); \};/.test(banner)) F("13 · en «Estás dentro» los chips, el «cuándo» o «Ver mis primeros deptos» vuelven a armar el minuto");
+      const hoja = sinComentarios(leer("src/components/lo-que-sigue/HojaPrimeraSeleccion.tsx"));
+      if (!/useEffect\(\(\) => \{\s*if \(!abierta\) return;\s*usoBanner\.hojaAbierta\(true\);\s*return \(\) => usoBanner\.hojaAbierta\(false\);\s*\}, \[abierta\]\);/.test(hoja)) F("13 · la hoja no le avisa al ticket mientras está abierta");
+      if (!/enEspera: \(\) => usoBanner\.enUso\(\),/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("13 · el ticket no espera al banner ni a la hoja");
+      const recuadro = lineasDiagnostico({ motivo: "ofrecida", vigente: true, venceHora: "10:40", estadoLocal: "nunca", regreso: false, bannerMontado: true, bannerLibreEnMs: 0, hojaAbierta: true, vivo: null });
+      if (!recuadro.some((l) => /hoja[^.]*abierta; el ticket espera a que se cierre/.test(l))) F("13 · el recuadro de ?lqs=1 dice «Banner: libre» con la hoja abierta");
+      if (!/hojaAbierta: usoBanner\.conHoja\(\),/.test(sinComentarios(leer("src/components/lo-que-sigue/DiagnosticoTicket.tsx")))) F("13 · el recuadro de ?lqs=1 no lee la hoja");
+    }
   } finally {
     if (posthog === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = posthog;
   }
@@ -299,7 +430,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     console.log(`  ✗ PRIMERA-SELECCION · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — toda puerta encola el correo del día en el momento; la cuenta nueva ve su primera selección ahí mismo (sobre el informe, o en «Estás dentro»), con «Analizar este» en cada depto y el regalo arriba; los de la noche quedan en la fila del día; faltan chips, se piden; se mide por puerta");
+    console.log("  ✓ VERDE — toda puerta encola el correo del día en el momento; la cuenta nueva ve su primera selección ahí mismo (sobre el informe, o en «Estás dentro»), con «Analizar este» en cada depto y el regalo arriba; los de la noche quedan en la fila del día; faltan chips, se piden; se mide por puerta; tras «Entrar» el ticket sale a los 8 s de la marca y nunca tapa la hoja");
   }
   return { hard: fallas.length };
 }
