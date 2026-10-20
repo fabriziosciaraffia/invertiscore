@@ -159,6 +159,10 @@ export function eventoVistaEntrada(p: {
       prueba: !!p.prueba,
       origen: "servidor",
       $pathname: p.ruta,
+      // El agente de la persona, como lo manda el navegador con o sin consentimiento: sin él PostHog clasifica todo evento
+      // del servidor como «Automation / no_user_agent» y quien filtre robots perdería todas las llegadas (medido el
+      // 20-oct-2026). Los robots ya se descartaron arriba.
+      $raw_user_agent: (p.agente ?? "").slice(0, 512),
       $process_person_profile: conocida,
       $geoip_disable: true,
     },

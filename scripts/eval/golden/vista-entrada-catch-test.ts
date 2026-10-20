@@ -5,8 +5,9 @@
 //
 //   1 · LA VISITA QUE SE VA ANTES DE QUE CARGUE POSTHOG: el middleware de verdad recibe la carga de la landing desde un
 //       anuncio (UTM y fbclid) y sin consentimiento; el navegador nunca carga PostHog. Igual queda `landing_viewed` en
-//       PostHog, con los UTM, el canal, la presencia del fbclid (sin su valor), el consentimiento, un id de esa visita y
-//       sin perfil; y el navegador recibe ese id en `Server-Timing` para arrancar PostHog con el mismo.
+//       PostHog, con los UTM, el canal, la presencia del fbclid (sin su valor), el consentimiento, un id de esa visita, sin
+//       perfil y con el agente (sin él PostHog la marca robot); y el navegador recibe ese id en `Server-Timing` para
+//       arrancar PostHog con el mismo.
 //   2 · /deptos igual (`deptos_vista`); /i/CÓDIGO la emite su página (sabe el modo) con el id que le pasa el middleware.
 //   3 · NO CUENTAN los robots ni las vistas previas (WhatsApp, Meta, Telegram…) ni el refresco o el prefetch de Next.
 //   4 · CON «SI», la persona de su cookie de PostHog y el fbclid con su valor; el modo prueba queda marcado.
@@ -92,6 +93,8 @@ export async function runVistaEntradaTier(): Promise<{ hard: number }> {
         if (p.consentimiento !== "no" || p.origen !== "servidor" || p.pagina !== "landing" || p.prueba !== false || p.$pathname !== "/") F("1 · la vista no dice su consentimiento, su origen, su página, si es de prueba o su ruta");
         if (p.referente !== "l.instagram.com") F(`1 · la vista no dice quién la refirió: ${p.referente}`);
         if ("$ip" in p || p.$geoip_disable !== true) F("1 · la vista manda la IP o la geografía");
+        // Sin el agente, PostHog marca la vista como robot («Automation / no_user_agent»): medido en producción el 20-oct-2026.
+        if (p.$raw_user_agent !== IPHONE) F("1 · la vista no lleva el agente de la persona: PostHog la clasifica como robot");
         const st = res.headers.get("server-timing") ?? "";
         const id = idDeServerTiming(st.split(",").map((x) => { const m = /^\s*([^;]+);desc="([^"]*)"/.exec(x); return m ? { name: m[1], description: m[2] } : { name: "", description: "" }; }));
         if (!st.includes(`${NOMBRE_SERVER_TIMING};desc=`)) F("1 · el navegador no recibe el id de la visita (Server-Timing)");
