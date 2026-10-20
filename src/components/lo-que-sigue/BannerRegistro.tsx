@@ -105,8 +105,10 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   // header y el ticket dejen de tratar a la persona como anónima. La marca «recién dentro» (por
   // análisis, en sessionStorage) se escribe ANTES del refresco: el informe la lee y mantiene este
   // banner montado en «Estás dentro» aunque ya no sea un dueño anónimo.
+  // EL REGISTRO COMPLETADO ANULA LA ESPERA (20-oct-2026): el ticket ya no aguarda el minuto desde «Entrar».
   const entrar = (correo: string) => {
     if (!demo) marcarRecienDentro(almacenSesion(), ctx.analysisId, correo);
+    usoBanner.entro();
     setPaso("dentro");
     if (!demo) router.refresh();
   };
@@ -116,7 +118,8 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
   // EN USO (12-oct-2026): solo el foco o la escritura en un campo, abrir el paso del código (`RegistroUnPaso`) y
   // tocar un botón o un chip del banner. El scroll y el toque de paso por encima, no: hasta hoy cualquier dedo que
   // bajaba la página por encima del banner lo marcaba en uso, y el ticket esperaba 60 s más.
-  const marcarUso = () => usoBanner.actividad();
+  // En «Estás dentro», nada (20-oct-2026): ni los chips, ni el «cuándo», ni «Ver mis primeros deptos» vuelven a armar el minuto.
+  const marcarUso = () => { if (paso !== "dentro") usoBanner.actividad(); };
   const esCampo = (t: EventTarget | null) => t instanceof HTMLElement && t.matches("input, textarea, select");
   const esBotonOChip = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('button, a, [data-lqs="chip"]');
 

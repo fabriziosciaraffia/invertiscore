@@ -546,7 +546,9 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     // clic en un botón o un chip; la regla fina la fija TICKET-IOS §3. Acá, que la escritura y el clic sigan contando.
     if (!/onInputCapture=\{marcarUso\}/.test(bannerSrc) || !/onFocusCapture=\{\(e\) => \{ if \(esCampo\(e\.target\)\) marcarUso\(\); \}\}/.test(bannerSrc) || !/onClickCapture=\{\(e\) => \{ if \(esBotonOChip\(e\.target\)\) marcarUso\(\); \}\}/.test(bannerSrc))
       F("6 · la actividad en el banner no se marca (escribir, el foco en un campo, un botón o un chip)");
-    if (!/const marcarUso = \(\) => usoBanner\.actividad\(\);/.test(bannerSrc)) F("6 · el banner no marca su uso en usoBanner");
+    // ⚠ ACTA (20-oct-2026) · en «Estás dentro» ya no se marca (el registro completado anula la espera): la regla la fija
+    // PRIMERA-SELECCION §13; acá, que antes de entrar se siga marcando en usoBanner.
+    if (!/const marcarUso = \(\) => \{ if \(paso !== "dentro"\) usoBanner\.actividad\(\); \};/.test(bannerSrc)) F("6 · el banner no marca su uso en usoBanner");
     const reg = sinComentarios(leer("src/components/lo-que-sigue/RegistroUnPaso.tsx"));
     if (!/onFocus=\{\(\) => usoBanner\.correoConFoco\(true\)\}/.test(reg) || !/onBlur=\{\(\) => usoBanner\.correoConFoco\(false\)\}/.test(reg)) F("6 · el foco del correo no se avisa al ticket");
     if (!/usoBanner\.codigoAbierto\(!!enviado\);/.test(reg) || !/return \(\) => \{\s*usoBanner\.codigoAbierto\(false\);\s*usoBanner\.correoConFoco\(false\);/.test(reg)) F("6 · el paso del código abierto no se avisa al ticket (o queda marcado al desmontar)");

@@ -66,6 +66,8 @@ export function lineasDiagnostico(p: {
   regreso: boolean;
   bannerMontado: boolean;
   bannerLibreEnMs: number;
+  /** La hoja con la primera selección abierta: el ticket espera a que se cierre (20-oct-2026). */
+  hojaAbierta?: boolean;
   vivo: EstadoTicketVivo | null;
   /** La bitácora del ticket en este navegador (12-oct-2026). */
   eventos?: EventoTicket[];
@@ -82,7 +84,7 @@ export function lineasDiagnostico(p: {
   const conHistoria = () => (historia.length ? [...l, "Últimos eventos:", ...historia] : l);
   if (p.motivo !== "ofrecida" || !p.vigente) return conHistoria();
   l.push(`En este navegador: ${p.estadoLocal === "nunca" ? "nunca se mostró" : p.estadoLocal === "visto" ? "ya se mostró" : "se mostró y se cerró"}${p.regreso ? " · vuelve: no se abre solo" : ""}.`);
-  l.push(p.bannerMontado ? (p.bannerLibreEnMs > 0 ? `Banner: en uso, se libera en ${seg(p.bannerLibreEnMs)}.` : "Banner: libre.") : "Banner: no está en este informe.");
+  l.push(p.bannerMontado ? (p.hojaAbierta ? "Banner: la hoja con tus primeros deptos está abierta; el ticket espera a que se cierre." : p.bannerLibreEnMs > 0 ? `Banner: en uso, se libera en ${seg(p.bannerLibreEnMs)}.` : "Banner: libre.") : "Banner: no está en este informe.");
   const v = p.vivo;
   if (!v) {
     l.push("Ticket: no está montado.");

@@ -35,6 +35,7 @@ export function DiagnosticoTicket({ motivo, analysisId, createdAt, conSesion, re
         regreso: esRegreso({ estadoLocal, conSesion, recienDentro }),
         bannerMontado,
         bannerLibreEnMs: usoBanner.libreEnMs(),
+        hojaAbierta: usoBanner.conHoja(),
         vivo: diagnosticoTicket.leer(),
         eventos: leerBitacora(almacen, analysisId),
       }));

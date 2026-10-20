@@ -5,15 +5,22 @@
 // deptos aparecen en una hoja SOBRE el informe que estaba leyendo, sin sacarlo de ahí —el mismo velo y la misma hoja del
 // ticket (lo-que-sigue.css), más ancha—. Se abre sola una vez por informe y pestaña (sessionStorage); «Seguir leyendo el
 // informe» la cierra y «Ver mis primeros deptos», en «Estás dentro», la vuelve a abrir.
+// Abierta, el ticket del pack espera a que se cierre (20-oct-2026, `uso-banner.ts`): nunca le sube encima.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { PRIMERA_SELECCION } from "@/lib/guia/del-dia";
+import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 export { CLAVE_HOJA_VISTA, hojaYaVista, marcarHojaVista } from "@/lib/lo-que-sigue/hoja-primera-seleccion";
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import "./lo-que-sigue.css";
 
 export function HojaPrimeraSeleccion({ abierta, analysisId, alCerrar }: { abierta: boolean; analysisId: string; alCerrar: () => void }) {
   const velo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierta) return;
+    usoBanner.hojaAbierta(true);
+    return () => usoBanner.hojaAbierta(false);
+  }, [abierta]);
   useEffect(() => {
     if (!abierta) return;
     const alTeclear = (e: KeyboardEvent) => { if (e.key === "Escape") alCerrar(); };

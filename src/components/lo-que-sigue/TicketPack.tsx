@@ -143,7 +143,8 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
       reloj: { ahora: () => Date.now(), programar: (fn, ms) => window.setTimeout(fn, ms), cancelar: (h) => window.clearTimeout(h as number) },
       // Una vez por informe en este navegador, y solo con la oferta viva.
       puedeSubir: () => !vuelve() && ofertaPackVigente(createdAt),
-      // Mientras la persona usa el banner del registro, el ticket no le sube encima (08-oct-2026).
+      // Mientras la persona usa el banner del registro, el ticket no le sube encima (08-oct-2026); tampoco a la hoja con
+      // la primera selección, que lo retiene mientras está abierta (20-oct-2026).
       enEspera: () => usoBanner.enUso(),
       subir: (motivo) => {
         // «Ya se mostró» NO se guarda acá (12-oct-2026): se guarda si la hoja estuvo un segundo dentro de la pantalla.

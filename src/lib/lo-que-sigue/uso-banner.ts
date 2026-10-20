@@ -10,12 +10,18 @@
 // actividad el que se TOMA (foco, código abierto). Soltarlos no es actividad en el banner.
 // Estado de módulo compartido entre BannerRegistro/RegistroUnPaso y TicketPack, sin React adentro; el
 // reloj entra por parámetro para que el tier lo pruebe.
+// EL REGISTRO COMPLETADO Y LA HOJA (20-oct-2026, Fabrizio): con el código el minuto se anula —desde «Estás dentro»
+// el ticket sale a los 8 s de pasar «Tu resultado a 10 años», como siempre (`entro`; lo que se toque en «Estás
+// dentro» no vuelve a armarlo, BannerRegistro)—; y mientras la hoja con la primera selección está abierta el ticket
+// espera a que se cierre (`hojaAbierta`), para no taparla. Hasta hoy el ticket esperaba el minuto desde «Entrar» y,
+// con la hoja abierta, le subía encima. Lo fija el tier PRIMERA-SELECCION §13.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const QUIETUD_BANNER_MS = 60_000;
 
 export function crearUsoBanner(ahora: () => number = () => Date.now()) {
   let ultima = Number.NEGATIVE_INFINITY;
+  let hoja = false;
   const marcar = () => {
     ultima = ahora();
   };
@@ -30,8 +36,20 @@ export function crearUsoBanner(ahora: () => number = () => Date.now()) {
     codigoAbierto(si: boolean) {
       if (si) marcar();
     },
+    /** Entró con el código: el banner deja de estar en uso en el acto, sin esperar el minuto. */
+    entro() {
+      ultima = Number.NEGATIVE_INFINITY;
+    },
+    /** La hoja con la primera selección se abrió (true) o se cerró (false): abierta, el ticket espera. */
+    hojaAbierta(si: boolean) {
+      hoja = si;
+    },
+    /** ¿La hoja está abierta? Para el diagnóstico de `?lqs=1`. */
+    conHoja(): boolean {
+      return hoja;
+    },
     enUso(): boolean {
-      return ahora() - ultima < QUIETUD_BANNER_MS;
+      return hoja || ahora() - ultima < QUIETUD_BANNER_MS;
     },
     /** Cuánto le falta para liberarse (0 si está libre): para el diagnóstico de `?lqs=1`. */
     libreEnMs(): number {
