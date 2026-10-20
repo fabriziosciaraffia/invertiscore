@@ -26,7 +26,8 @@
 //       igual dentro de la hora con lo visto; y el lunes siguiente no repite lo mandado.
 //  12 · EL TEXTO BAJO EL TÍTULO (20-oct-2026, Fabrizio): «Franco eligió estos deptos para tu búsqueda, con tu pie y tu
 //       plazo. En unos minutos te llega al correo la selección confirmada.», sin «anoche» ni «el correo de esta hora», en
-//       toda superficie (la hoja, /deptos y la página del invitado lo toman de la misma constante).
+//       toda superficie (la hoja, /deptos y la página del invitado lo toman de la misma constante); y con el mismo
+//       criterio los otros estados de la hoja, el depto sin ficha leída («porConfirmar») y sin deptos («ninguno»).
 //  13 · EL TICKET DESPUÉS DE «ENTRAR» Y CON LA HOJA ABIERTA (20-oct-2026, Fabrizio): el registro completado anula el
 //       minuto del banner en uso —desde «Estás dentro» el ticket sale a los 8 s de pasar «Tu resultado a 10 años», como
 //       siempre, y lo que se toque ahí no lo vuelve a armar—; y con la hoja de la primera selección abierta el ticket
@@ -345,6 +346,18 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       const archivos = readdirSync(join(RAIZ, "src"), { recursive: true, encoding: "utf8" }).filter((f) => /\.(ts|tsx)$/.test(f));
       if (archivos.length < 100) F(`12 · el barrido de src/ no corrió (${archivos.length} archivos)`);
       for (const f of archivos) if (leer(join("src", f)).includes(viejo)) F(`12 · src/${f.replace(/\\/g, "/")} todavía dice «${viejo}…»`);
+      // LOS OTROS ESTADOS DE LA HOJA (20-oct-2026, segunda pasada de Fabrizio), con el mismo criterio: su búsqueda, y la
+      // confirmación al correo en unos minutos. Mutaciones: T14 vuelve el «porConfirmar» viejo · T15 vuelve el «ninguno» viejo
+      // · T16 la tarjeta deja de decir «porConfirmar» sin ficha leída · T17 el vacío deja de decir «ninguno» · T18 otro texto
+      // de la hoja vuelve a decir «anoche».
+      const POR_CONFIRMAR = "Elegido para tu búsqueda. En unos minutos te llega al correo si sigue publicado.";
+      const NINGUNO = "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.";
+      if (PRIMERA_SELECCION.porConfirmar !== POR_CONFIRMAR) F(`12 · el depto sin ficha leída no dice lo pedido: «${PRIMERA_SELECCION.porConfirmar}»`);
+      if (PRIMERA_SELECCION.ninguno !== NINGUNO) F(`12 · sin deptos la hoja no dice lo pedido: «${PRIMERA_SELECCION.ninguno}»`);
+      for (const [k, t] of Object.entries(PRIMERA_SELECCION)) if (/anoche|correo de esta hora/i.test(t)) F(`12 · «${k}» de la hoja dice «anoche» o «el correo de esta hora»: «${t}»`);
+      if (!/<p className="guia-cr mt-2\.5" data-primera="marca">\{it\.vistoAt \? marcaVisto\(it\.vistoAt\) : PRIMERA_SELECCION\.porConfirmar\}<\/p>/.test(ps)) F("12 · la tarjeta sin ficha leída no dice «porConfirmar»");
+      if (!/\{datos\.items\.length === 0 && !datos\.revisando && <p className="guia-txt mt-3" data-primera="ninguno">\{PRIMERA_SELECCION\.ninguno\}<\/p>\}/.test(ps)) F("12 · sin deptos la hoja no dice «ninguno»");
+      for (const f of archivos) if (leer(join("src", f)).includes("Anoche no había uno publicado que convenga")) F(`12 · src/${f.replace(/\\/g, "/")} todavía dice el «ninguno» viejo`);
     }
 
     // ── 13 · EL TICKET DESPUÉS DE «ENTRAR» Y CON LA HOJA ABIERTA ──

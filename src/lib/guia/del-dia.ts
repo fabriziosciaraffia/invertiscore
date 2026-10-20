@@ -100,13 +100,16 @@ export const PRIMERA_SELECCION = {
   titulo: "Tus primeros deptos: elige uno",
   /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
   bajada: "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.",
-  porConfirmar: "Lo reviso ahora: el correo de esta hora te dice si sigue publicado.",
+  /** Los otros estados de la hoja (20-oct-2026, Fabrizio), con el criterio de la bajada: su búsqueda, y la confirmación
+   *  al correo en unos minutos. El depto todavía sin ficha leída: */
+  porConfirmar: "Elegido para tu búsqueda. En unos minutos te llega al correo si sigue publicado.",
   faltan: "Para armar tu selección falta un dato. Un toque y listo:",
   faltaComuna: "¿En qué comuna?",
   faltaTipologia: "¿Cuántos dormitorios?",
   faltaRango: "¿Hasta cuánto?",
   armar: "Ver mis deptos",
-  ninguno: "Anoche no había uno publicado que convenga con lo que buscas. Te aviso en cuanto aparezca uno.",
+  /** Ninguno conviene: */
+  ninguno: "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.",
   vecinas: "En tus comunas no hay uno hoy: estos son de comunas vecinas.",
   revisando: "Revisando uno por uno si siguen publicados…",
   cargando: "Buscando tus primeros deptos…",
