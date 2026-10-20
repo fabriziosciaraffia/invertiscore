@@ -147,6 +147,7 @@ import { runMedicionMetaTier } from "./medicion-meta-catch-test";
 import { runConsentimientoTier } from "./consentimiento-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
+import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
@@ -622,6 +623,9 @@ function printSeed(r: SeedReport) {
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
   totalHard += (await runPuertaCTier()).hard;
+  // Tier PRIMERA-SELECCION (20-oct-2026, 0 tokens): quien se registra ve sus deptos ahí mismo, por cualquier puerta, con
+  // «Analizar este» en cada uno; toda cuenta nueva recibe el correo del día dentro de la hora, por la misma cola. ──
+  totalHard += (await runPrimeraSeleccionTier()).hard;
   totalHard += runPlanesTier().hard;
   totalHard += runCompraTier().hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado

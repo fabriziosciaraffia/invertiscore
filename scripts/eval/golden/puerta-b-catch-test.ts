@@ -253,7 +253,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (o.analysisId !== null || o.tasa !== 4.07 || o.piePct !== 20 || o.plazoAnios !== 25 || !o.sintetico) F("3 · el origen sintético no es pie 20 %, 25 años y la tasa de mercado, sin informe");
       const sem = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if (!/from\("perfil_busqueda"\)\.select\("user_id"\)\s*\.not\("comunas", "is", null\)\.not\("dormitorios", "is", null\)\.not\("precio_max_uf", "is", null\)\.is\("semanal_baja_at", null\)/.test(sem)) F("3 · quien solo tiene su perfil a mano no entra al semanal");
-      if (!/\(await origenDePersona\(admin, userId\)\) \?\? \(pp\.soloManual \? origenSintetico\(userId, perfil, cfg\) : null\)/.test(sem)) F("3 · el semanal sin informes no busca con el origen sintético");
+      // Desde el 20-oct-2026 el sintético también cubre a quien tiene informes que no sirven de origen (PRIMERA-SELECCION §11).
+      if (!/\(await origenDePersona\(admin, userId\)\) \?\? origenSintetico\(userId, perfil, cfg\)/.test(sem)) F("3 · el semanal sin informes no busca con el origen sintético");
       const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
       if (!/const soloManual = informes\.length === 0 && filasStr\.length === 0 && m != null;/.test(pbs) || !/: soloManual && manual\.modalidad !== "str" \? perfilDeBusqueda\(\[\], manual\) : null,/.test(pbs) || !/precioMinUf: num\(m\.precio_min_uf\),/.test(pbs))
         F("3 · el perfil de renta larga de una cuenta sin informes no sale de lo editado a mano (o pierde el piso)");
@@ -291,7 +292,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const sem = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if (!/if \(que === "nada"\) return descartar\(\);/.test(sem) || !/\.\.\.Array\.from\(\(await delDiaReciente\(admin, userId\)\)\.avisos\)/.test(sem)) F("4 · el semanal repite lo del correo del día o sale vacío después de él");
       const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
-      if (!/const fila = await encolarDelDia\(admin, user\.id\);/.test(alta) || !/await procesarDelDia\(admin, fila, await leerConfigGuia\(admin\), SITIO, \{ lecturas: 0, bloqueada: false \}\);/.test(alta)) F("4 · el alta no encola el correo del día con su primera vuelta");
+      // Desde el 20-oct-2026 el alta encola por la cola de todas las puertas (encolarPrimeraSeleccion: la fila y la primera vuelta en el momento).
+      
+      if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: waitUntil, ruta: RUTA \}\);/.test(alta)
+        || !/const fila = await encolarDelDia\(admin, user\.id, ahora\);/.test(dds) || !/await procesarDelDia\(admin, fila, await leerConfigGuia\(admin\), deps\.sitio, \{ lecturas: 0, bloqueada: false \}\);/.test(dds))
+        F("4 · el alta no encola el correo del día con su primera vuelta");
     }
 
     // ── 5 · EL REGALO AL REGISTRARSE ──
