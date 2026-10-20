@@ -66,6 +66,14 @@ export const CRONS_VARIAS_AL_DIA: ReadonlySet<string> = new Set([
   "correo-del-dia", // cada 10 minutos (la cola de /deptos, 16-oct-2026)
 ]);
 
+/**
+ * LOS DE UNA CORRIDA QUE IGUAL VAN AL RESUMEN (20-oct-2026, decisión de Fabrizio). prosa-comunas corre una vez por
+ * semana y su falla es una prosa que quedó con la versión anterior: nadie tiene que hacer nada en el acto, pero alguien
+ * tiene que enterarse. Va al resumen del día como los de varias corridas, y desde la PRIMERA corrida fallida: esperar
+ * dos seguidas (regla 1) sería esperar quince días. No entra a CRONS_VARIAS_AL_DIA: esa lista es la de vercel.json.
+ */
+export const CRONS_AL_RESUMEN: ReadonlySet<string> = new Set(["prosa-comunas"]);
+
 /** El cron que arma el resumen del día. */
 export const VIGILANTE = "vigilar-crons";
 
@@ -75,7 +83,7 @@ export const VIGILANTE = "vigilar-crons";
  * acto, una vez por episodio.
  */
 export function esperaResumen(nombre: string): boolean {
-  return CRONS_VARIAS_AL_DIA.has(nombre) && nombre !== VIGILANTE;
+  return (CRONS_VARIAS_AL_DIA.has(nombre) || CRONS_AL_RESUMEN.has(nombre)) && nombre !== VIGILANTE;
 }
 
 /** Sin una corrida buena por más de esto, avisa (regla 1): un día, o dos intervalos si el cron corre cada día o menos. */
@@ -137,14 +145,19 @@ export interface VistaCron {
   textoSinEscribir?: string | null;
 }
 
-/** Las condiciones que hoy piden a una persona, con su frase (regla 1 y la frescura). */
-export function condicionesDelCron(intervaloHoras: number, e: EstadoCron, v: VistaCron, ahora: Date): Aviso[] {
+/**
+ * Las condiciones que hoy piden a una persona, con su frase (regla 1 y la frescura). Con `unaFallaBasta` (los de
+ * CRONS_AL_RESUMEN) una sola corrida fallida ya es condición.
+ */
+export function condicionesDelCron(intervaloHoras: number, e: EstadoCron, v: VistaCron, ahora: Date, unaFallaBasta = false): Aviso[] {
   const out: Aviso[] = [];
   const fallas = e.fallasSeguidas + (colgada(e, ahora) ? 1 : 0);
-  if (fallas >= 2) out.push({ clave: "fallas", texto: textoFallas(fallas, colgada(e, ahora) ? "una corrida latió y no cerró (se colgó o se cortó por tiempo)" : e.causa) });
+  const umbral = unaFallaBasta ? 1 : 2;
+  const causa = colgada(e, ahora) ? "una corrida latió y no cerró (se colgó o se cortó por tiempo)" : e.causa;
+  if (fallas >= umbral) out.push({ clave: "fallas", texto: fallas === 1 ? `la última corrida falló${causa ? `. ${causa}` : ""}.` : textoFallas(fallas, causa) });
   if (v.atrasado) out.push({ clave: "atrasado", texto: v.textoAtrasado ?? "se saltó dos corridas seguidas" });
   // Un día sin una corrida buena, cuando no lo explica ya lo anterior (mismo episodio).
-  if (fallas < 2 && !v.atrasado && e.ultimaBuena && horasEntre(e.ultimaBuena, ahora) > umbralSinBuenaHoras(intervaloHoras)) {
+  if (fallas < umbral && !v.atrasado && e.ultimaBuena && horasEntre(e.ultimaBuena, ahora) > umbralSinBuenaHoras(intervaloHoras)) {
     out.push({ clave: "sin-buena", texto: `sin una corrida buena desde ${e.ultimaBuena.slice(0, 16).replace("T", " ")} UTC${e.causa ? `. La última falla: ${e.causa}` : ""}.` });
   }
   if (v.sinEscribir) out.push({ clave: "sin-escribir", texto: v.textoSinEscribir ?? "dejó de escribir su dato" });

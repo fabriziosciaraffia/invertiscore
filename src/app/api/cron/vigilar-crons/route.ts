@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { latirCron, leerLatidos } from "@/lib/cron-heartbeat";
 import { avisar, cerrarCron, CORRIDA_FALLIDA, FUENTE_ALERTA } from "@/lib/cron-resultado";
-import { alVigilar, condicionBloqueo, condicionesDelCron, esperaResumen, ESTADO_INICIAL, METRICA_RESUMEN, VIGILANTE } from "@/lib/cron-alertas";
+import { alVigilar, condicionBloqueo, condicionesDelCron, CRONS_AL_RESUMEN, esperaResumen, ESTADO_INICIAL, METRICA_RESUMEN, VIGILANTE } from "@/lib/cron-alertas";
 import { guardarEstadoCron, leerEstadosCron } from "@/lib/cron-estado";
 import { guardarMetrica } from "@/lib/metrics-daily";
 
@@ -13,7 +13,8 @@ import { guardarMetrica } from "@/lib/metrics-daily";
 //   · un cron de UNA corrida al día, en el acto: dos corridas seguidas fallidas (una que latió y no cerró cuenta),
 //     dos saltadas (atrasado), un día sin una buena, o que dejó de escribir su dato;
 //   · los crons de VARIAS corridas al día, en UN correo por día —el resumen de lo que quedó sin resolver al cierre—,
-//     armado por la primera vigilancia del día siguiente;
+//     armado por la primera vigilancia del día siguiente; y en ese mismo resumen los de CRONS_AL_RESUMEN (prosa-comunas,
+//     semanal), desde su primera corrida fallida;
 //   · la lectura de fichas, si pasa un día sin una lectura buena mientras hay bloqueos.
 // Sus propias fallas no esperan el resumen que arma ella: dos seguidas avisan al cerrar (cron-alertas.ts › esperaResumen).
 // Cada episodio avisa una vez: lo ya avisado queda en el estado del cron hasta que se resuelve. Lo resuelto solo queda
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
       const e = estados.get(c.nombre) ?? { ...ESTADO_INICIAL };
       const condiciones = condicionesDelCron(c.intervaloHoras, e, {
         atrasado: c.atrasado, textoAtrasado: c.motivos.atrasado, sinEscribir: c.sinEscribir, textoSinEscribir: c.motivos["sin-escribir"],
-      }, ahora);
+      }, ahora, CRONS_AL_RESUMEN.has(c.nombre));
       const r = alVigilar(e, condiciones, esperaResumen(c.nombre), esResumen);
       if (r.estado.alertas.join("|") !== e.alertas.join("|")) await guardarEstadoCron(sb, c.nombre, r.estado);
       for (const a of r.inmediatos) { await avisar(sb, c.nombre, a); alertas++; }

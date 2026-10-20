@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import * as A from "../../../src/lib/cron-alertas";
+import { guardarEstadoCron } from "../../../src/lib/cron-estado";
 import { cerrarCron, correoDeAlertas, FUENTE_ALERTA } from "../../../src/lib/cron-resultado";
 import { latirCron, CRONS_VIGILADOS } from "../../../src/lib/cron-heartbeat";
 
@@ -246,6 +247,41 @@ export async function runAlertasCronsTier(): Promise<{ hard: number }> {
     if (CRONS_VIGILADOS.some((c) => !vj.crons.some((x) => x.path.endsWith(`/${c.nombre}`)))) F("7 · un cron vigilado no está en vercel.json");
     const enCodigo = ["src/lib/cron-resultado.ts", "src/app/api/cron/vigilar-crons/route.ts", "src/lib/guia/ficha-servidor.ts"].some((f) => /alertarUnaVezAlDia/.test(sinComentarios(leer(f))));
     if (enCodigo) F("7 · todavía hay alertas «una vez al día» por fuera de las reglas");
+  }
+
+  // ── 9 · prosa-comunas (20-oct-2026, decisión de Fabrizio): corre una vez por semana y su falla —una prosa que quedó
+  //       con la anterior— NO avisa en el acto: va al resumen del día desde la PRIMERA corrida fallida, una vez por
+  //       episodio, y la corrida buena siguiente la resuelve (camino entero) ──
+  {
+    const nombre = "prosa-comunas";
+    const m = baseEnMemoria();
+    correos.length = 0;
+    const PARCIAL = { procesados: 3, exitosos: 2, fallidos: 1 };
+    await latirCron(m.sb, nombre);
+    await cerrarCron(m.sb, nombre, PARCIAL, { unidad: "prosas", errores: ["Quilicura: quedó la anterior — \"$293.000\" no está en los datos"] });
+    const e1 = (m.tablas.get("cron_estado")?.get(nombre)?.estado ?? null) as A.EstadoCron | null;
+    const vista = { atrasado: false, sinEscribir: false };
+    const c1 = e1 ? A.condicionesDelCron(168, e1, vista, new Date(), A.CRONS_AL_RESUMEN?.has(nombre) ?? false) : [];
+    const v1 = e1 ? A.alVigilar(e1, c1, A.esperaResumen(nombre), true) : null;
+    if (correos.length) F(`9 · ${nombre}: una prosa rechazada avisó en el acto (${correos.length} correo(s)): va al resumen del día`);
+    if (!v1 || v1.inmediatos.length || v1.resumen.length !== 1 || !/Quilicura: quedó la anterior/.test(v1.resumen[0].texto))
+      F(`9 · ${nombre}: la primera corrida fallida no entra al resumen del día con lo que quedó (${JSON.stringify(v1?.resumen ?? null)})`);
+    // El día siguiente no se repite (mismo episodio).
+    const v2 = v1 ? A.alVigilar(v1.estado, c1, A.esperaResumen(nombre), true) : null;
+    if (v2?.resumen.length) F(`9 · ${nombre}: el resumen repite el mismo episodio al día siguiente`);
+    // La corrida buena de la semana siguiente lo resuelve, sin correo.
+    if (v1) await guardarEstadoCron(m.sb, nombre, v1.estado); // lo que guarda la vigilancia
+    await latirCron(m.sb, nombre);
+    await cerrarCron(m.sb, nombre, { procesados: 1, exitosos: 1, fallidos: 0 });
+    const e3 = (m.tablas.get("cron_estado")?.get(nombre)?.estado ?? null) as A.EstadoCron | null;
+    const c3 = e3 ? A.condicionesDelCron(168, e3, vista, new Date(), true) : [];
+    const v3 = e3 ? A.alVigilar(e3, c3, A.esperaResumen(nombre), true) : null;
+    if (correos.length || !e3 || e3.fallasSeguidas !== 0 || v3?.resumen.length || v3?.estado.alertas.includes("fallas")) F(`9 · ${nombre}: la corrida buena siguiente no resuelve el episodio`);
+    // Y la excepción es solo esa: un cron de una corrida al día sigue esperando dos fallas (regla 1).
+    const otro = A.condicionesDelCron(24, { ...A.ESTADO_INICIAL, fallasSeguidas: 1, causa: "x" }, vista, new Date());
+    if (otro.length || A.esperaResumen("expire-grace") || Array.from(A.CRONS_AL_RESUMEN ?? []).some((n) => A.CRONS_VARIAS_AL_DIA.has(n))) F("9 · la excepción de la prosa se aplica a otros crons");
+    const vg9 = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
+    if (!/\}, ahora, CRONS_AL_RESUMEN\.has\(c\.nombre\)\);/.test(vg9)) F("9 · la vigilancia no le pasa la excepción a condicionesDelCron (una falla de la prosa no entraría al resumen)");
   }
 
   // ── 8 · la tabla del estado, en la base ──
