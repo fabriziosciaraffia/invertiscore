@@ -4,8 +4,9 @@ import FrancoLogo from "@/components/franco-logo";
 import { CambiarCookies } from "@/components/consentimiento/AvisoCookies";
 
 /** Los enlaces largos del sitio. Salieron del header único el 27-sep-2026 (decisión 1 del
- *  mockup aprobado): viven en el pie, como en la landing v14. */
-const ENLACES_PIE = [
+ *  mockup aprobado): viven en el pie, como en la landing v14. Las páginas de comuna los llevan
+ *  en el pie de planes, por `linksSlot` (PieComunas, 20-oct-2026). */
+export const ENLACES_PIE = [
   { href: "/metodologia", rotulo: "Cómo calcula" },
   { href: "/comunas", rotulo: "Comunas" },
   { href: "/pricing", rotulo: "Planes" },

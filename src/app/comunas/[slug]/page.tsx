@@ -12,7 +12,7 @@ import { MIN_PER_TYPE, esComunaEstimada } from "@/lib/data/comunas-seo";
 import { COPY_DEPENDE } from "@/lib/veredicto-fila";
 import { ChipEstimado } from "@/components/comunas/ChipEstimado";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { AppFooter } from "@/components/chrome/AppFooter";
+import { PieComunas } from "@/components/comunas/PieComunas";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { PlusvaliaComunaSection } from "@/components/comunas/PlusvaliaComunaSection";
@@ -165,7 +165,7 @@ function ComunaSinDatos({ nombre }: { nombre: string }) {
         </section>
       </main>
 
-      <AppFooter variant="minimal" />
+      <PieComunas />
     </div>
   );
 }
@@ -541,7 +541,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         </section>
       </main>
 
-      <AppFooter variant="minimal" />
+      <PieComunas />
     </div>
   );
 }

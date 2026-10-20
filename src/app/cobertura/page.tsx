@@ -3,7 +3,7 @@ import Link from "next/link";
 import "@/components/comunas/comunas.css";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { AppFooter } from "@/components/chrome/AppFooter";
+import { PieComunas } from "@/components/comunas/PieComunas";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
@@ -78,7 +78,7 @@ export default function CoberturaPage() {
         </section>
       </main>
 
-      <AppFooter variant="minimal" />
+      <PieComunas />
     </div>
   );
 }

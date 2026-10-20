@@ -65,6 +65,14 @@ export async function runComunasDisenoTier(): Promise<{ hard: number }> {
     const rojos = (css.match(/[^\n]*#C8323C[^\n]*/g) ?? []).filter((l) => !/cm-negativo/.test(l));
     if (rojos.length) F(`1 · la hoja usa el rojo fuera de lo negativo: ${rojos[0].slice(0, 80)}`);
   }
+  // El pie es el de planes y del semanal (`informe`, sin la frase en mono) con los mismos tres enlaces del sitio que
+  // tenía el `minimal` (PieComunas, 20-oct-2026), y la hoja no pide más fuentes que las de arriba: lo serif es 700
+  // (el énfasis lo hereda: en 600 bajaba la serif variable entera y salía más delgado) y el chip va en Inter aunque
+  // esté dentro de un nombre serif (en el índice heredaba la serif). Medido: la página dejó de bajar JetBrains Mono y
+  // la serif variable (69 kB antes del primer pintado en el teléfono).
+  const pie = sinComentarios(leer("src/components/comunas/PieComunas.tsx"));
+  if (!/<AppFooter\s+variant="informe"\s+linksSlot=\{/.test(pie) || !/\{ENLACES_PIE\.map\(\(e\) => \(\s*<Link key=\{e\.href\} href=\{e\.href\}>/.test(pie) || !/export const ENLACES_PIE = \[/.test(leer("src/components/chrome/AppFooter.tsx"))) F("1 · el pie no es el de planes con los enlaces del sitio");
+  if (css && (!/\.cm-titulo strong, \.cm-titular strong, \.cm-h2 strong \{ font-weight: inherit; \}/.test(css) || !/\.cm-chip \{ font-family: var\(--font-ui\), "Inter", sans-serif;/.test(css) || !/\.cm-pie \{[^}]*font-family: var\(--font-ui\), "Inter"/.test(css))) F("1 · la hoja pide otra cara de la serif (el énfasis en 600 o el chip heredando la serif) o el pie no va en Inter");
   for (const [tipo, ruta] of Object.entries(PAGINAS)) {
     const src = leer(ruta);
     const s = sinComentarios(src);
@@ -72,7 +80,7 @@ export async function runComunasDisenoTier(): Promise<{ hard: number }> {
     if (!/import "@\/components\/comunas\/comunas\.css";/.test(src)) F(`1 · ${tipo}: no carga la hoja del diseño plano`);
     if (!/<main className="cm mx-auto max-w-\[1100px\] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-comuna="/.test(s)) F(`1 · ${tipo}: el cuerpo no es el del diseño plano (cm, 16 px de margen en el teléfono)`);
     if (!/<h1 className="cm-titulo">/.test(s)) F(`1 · ${tipo}: el título no es el del diseño plano`);
-    if (!/<HeaderFranco \/>/.test(s) || !/<AppFooter variant="minimal" \/>/.test(s)) F(`1 · ${tipo}: no lleva la cabecera y el pie actuales (el pie con sus enlaces)`);
+    if (!/<HeaderFranco \/>/.test(s) || !/<PieComunas \/>/.test(s)) F(`1 · ${tipo}: no lleva la cabecera y el pie actuales (el pie con sus enlaces)`);
     const viejo = s.match(VIEJO);
     if (viejo) F(`1 · ${tipo}: queda el diseño viejo en el marcado (${viejo[0]})`);
     if (!/className="cm-boton cm-boton-tinta"/.test(s)) F(`1 · ${tipo}: el botón del análisis no es la píldora en tinta`);
