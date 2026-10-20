@@ -11,6 +11,7 @@
 import type { AvisoParaEvaluar } from "./evaluar-aviso";
 
 import { esFueraDeLaFicha } from "./marcas-unidades";
+import { claveAviso, ventaPlausible } from "./plausible";
 
 export const VENTANA_VISTOS_DIAS = 7;
 
@@ -48,9 +49,9 @@ export function avisosEvaluables(filas: FilaAviso[], uf: number): Array<AvisoPar
     const precio = Number(a.precio), m2 = Number(a.superficie_m2);
     if (!(precio > 0 && m2 >= 15 && m2 <= 400 && a.dormitorios != null && a.banos != null && a.lat != null && a.lng != null && a.comuna)) continue;
     const precioUF = a.moneda === "UF" ? precio : precio / uf;
-    const ufm2 = precioUF / m2;
-    if (!(precioUF >= 700 && precioUF <= 60000 && ufm2 >= 20 && ufm2 <= 300)) continue;
-    const clave = [a.comuna, Math.round(m2), a.dormitorios, a.banos, Math.round(precioUF), Number(a.lat).toFixed(3), Number(a.lng).toFixed(3)].join("|");
+    // La regla vive en plausible.ts: la misma de las páginas de comuna (20-oct-2026).
+    if (!ventaPlausible(precioUF, m2)) continue;
+    const clave = claveAviso({ comuna: a.comuna, m2, dormitorios: a.dormitorios, banos: a.banos, precioUF, lat: Number(a.lat), lng: Number(a.lng) });
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     out.push({

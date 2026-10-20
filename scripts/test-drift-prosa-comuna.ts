@@ -87,7 +87,7 @@ function stats(tipologias: TipologiaStats[], tasaAnual = 4.0): ComunaStats {
     supuestos: { piePct: 20, plazoAnos: 30, tasaAnual, tasaEsViva: true, ufCLP: 40_870 },
     procedencia: {
       activosTotales: 3744, sinSuperficie: 894, fueraDeRango: 77,
-      bajoUmbral: 0, enCalculo: 2806, ultimaActualizacion: "2026-08-28",
+      bajoUmbral: 0, ventasDescartadas: 0, enCalculo: 2806, ultimaActualizacion: "2026-08-28",
     },
   };
 }

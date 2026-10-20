@@ -13,6 +13,7 @@ import {
 } from "@/lib/referencia-arriendo";
 import { getTodasLasProsas, publicabaDorms } from "@/lib/data/comuna-prosa";
 import { resolverVeredictoFila, type VeredictoFila } from "@/lib/veredicto-fila";
+import { claveAviso, ventaPlausible } from "@/lib/avisos/plausible";
 
 // Solo el service role (13-oct-2026). Caía a la anon key si faltaba la del service role, y con la anon key la
 // tabla `config` muestra solo `tasa_hipotecaria`: la UF salía vacía y la página caía en silencio a un respaldo
@@ -123,6 +124,27 @@ export function tipologiaLider(tipologias: TipologiaStats[]): TipologiaStats | n
   return universo.reduce((a, b) => (b.deltaPct > a.deltaPct ? b : a));
 }
 
+/**
+ * LA RENTABILIDAD DEL TÍTULO de la página de la comuna (titular estable: rango, no veredicto; ver el contrato, tab D).
+ * Misma regla que el líder: el rango sale de las filas con mediana propia; las estimadas entran solo cuando no hay otra.
+ * Desde el 20-oct-2026 (decisión de Fabrizio) el índice muestra y ordena por esta misma cifra, y la comparativa la usa:
+ * antes el índice promediaba todas las filas y Puente Alto salía 7,0% en el índice y 5,8% en su título.
+ */
+export function rentabilidadTitulo(stats: ComunaStats): { min: number; max: number; medio: number } {
+  const propias = stats.tipologias.filter((t) => t.referencia.fuente === "porTipologia");
+  const rents = (propias.length ? propias : stats.tipologias).map((t) => t.rentabilidadBruta);
+  const min = rents.length ? Math.min(...rents) : stats.rentabilidadBruta;
+  const max = rents.length ? Math.max(...rents) : stats.rentabilidadBruta;
+  return { min, max, medio: (min + max) / 2 };
+}
+
+/** La cifra del título en texto: «5,8%» o «5,9% a 6,8%». */
+export function textoRentabilidadTitulo(stats: ComunaStats): string {
+  const { min, max } = rentabilidadTitulo(stats);
+  const n1 = (n: number) => n.toFixed(1).replace(".", ",");
+  return min === max ? `${n1(min)}%` : `${n1(min)}% a ${n1(max)}%`;
+}
+
 /** Todas las filas publicadas son estimadas: la comuna no tiene arriendos propios. */
 export function esComunaEstimada(stats: ComunaStats): boolean {
   return stats.tipologias.length > 0 && stats.tipologias.every((t) => t.referencia.fuente === "comunalPorM2");
@@ -229,6 +251,11 @@ export interface ProcedenciaMuestra {
   fueraDeRango: number;
   /** Excluidos por caer en una tipología que no llega al mínimo de muestra. */
   bajoUmbral: number;
+  /**
+   * Ventas descartadas por la regla de la evaluación de la noche (20-oct-2026, src/lib/avisos/plausible.ts): precio
+   * fuera de UF 700–60.000 o de UF 20–300 por m², o el mismo depto publicado dos veces.
+   */
+  ventasDescartadas: number;
   /** Los que efectivamente alimentan las cifras publicadas. */
   enCalculo: number;
   /** Fecha del scraping más reciente de la comuna (YYYY-MM-DD), o null. */
@@ -271,6 +298,10 @@ export interface RawRow {
   superficie_m2: number;
   scraped_at?: string;
   condicion?: string | null;
+  /** Para reconocer el mismo depto publicado dos veces, con la clave de la evaluación de la noche. */
+  banos?: number | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 /** Un aviso entra al cálculo, o no entra por una razón que la página declara. */
@@ -315,7 +346,7 @@ export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, typ
     // mismos de antes — el filtro no cambió, cambió dónde se aplica.
     const { data, error } = await supabase
       .from("scraped_properties")
-      .select("comuna, dormitorios, precio, moneda, superficie_m2, scraped_at, condicion")
+      .select("comuna, dormitorios, precio, moneda, superficie_m2, scraped_at, condicion, banos, lat, lng")
       .eq("type", type)
       .eq("is_active", true)
       .gt("precio", 0)
@@ -357,7 +388,7 @@ interface SegmentsBundle {
   segments: SegmentResult[];
   supuestos: SupuestosCredito;
   /** Contadores de procedencia por comuna, antes de aplicar el umbral. */
-  crudos: Map<string, { activos: number; sinSup: number; fueraRango: number; entran: number; fecha: string | null }>;
+  crudos: Map<string, { activos: number; sinSup: number; fueraRango: number; descartadas: number; entran: number; fecha: string | null }>;
 }
 
 async function computeAllSegments(): Promise<SegmentsBundle> {
@@ -404,11 +435,23 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
 
   // Clasificación de procedencia + filtro en memoria. El aviso que no entra al
   // cálculo se cuenta por SU razón, para que la página pueda decirla.
-  const crudos = new Map<string, { activos: number; sinSup: number; fueraRango: number; entran: number; fecha: string | null }>();
-  const clasificar = (rows: RawRow[]): RawRow[] => {
+  const crudos = new Map<string, { activos: number; sinSup: number; fueraRango: number; descartadas: number; entran: number; fecha: string | null }>();
+  // La venta, además, pasa la regla de la evaluación de la noche (20-oct-2026, src/lib/avisos/plausible.ts): precio
+  // plausible y sin el mismo depto dos veces. Así la mediana de la página es la de los mismos avisos que la noche
+  // evalúa (el 2D de Puente Alto daba UF 1.214 con nueve avisos de menos de UF 20/m²; la noche, UF 1.990).
+  const clavesVenta = new Set<string>();
+  const ventaQueEntra = (r: RawRow): boolean => {
+    const precioUF = r.moneda === "UF" ? r.precio : r.precio / ufValue;
+    if (!ventaPlausible(precioUF, r.superficie_m2)) return false;
+    const clave = claveAviso({ comuna: r.comuna, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos ?? null, precioUF, lat: r.lat ?? null, lng: r.lng ?? null });
+    if (clavesVenta.has(clave)) return false;
+    clavesVenta.add(clave);
+    return true;
+  };
+  const clasificar = (rows: RawRow[], esVenta: boolean): RawRow[] => {
     const pasan: RawRow[] = [];
     for (const r of rows) {
-      if (!crudos.has(r.comuna)) crudos.set(r.comuna, { activos: 0, sinSup: 0, fueraRango: 0, entran: 0, fecha: null });
+      if (!crudos.has(r.comuna)) crudos.set(r.comuna, { activos: 0, sinSup: 0, fueraRango: 0, descartadas: 0, entran: 0, fecha: null });
       const c = crudos.get(r.comuna)!;
       c.activos++;
       const d = (r.scraped_at || "").slice(0, 10);
@@ -419,12 +462,16 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
       // página nunca resta los excluidos — publica el total y el desglose.
       if (!okSup) c.sinSup++;
       if (!okDorms) c.fueraRango++;
-      if (okSup && okDorms) { c.entran++; pasan.push(r); }
+      if (okSup && okDorms) {
+        if (esVenta && !ventaQueEntra(r)) { c.descartadas++; continue; }
+        c.entran++;
+        pasan.push(r);
+      }
     }
     return pasan;
   };
-  const arriendoRows = clasificar(arriendoRowsRaw);
-  const ventaRows = clasificar(ventaRowsRaw);
+  const arriendoRows = clasificar(arriendoRowsRaw, false);
+  const ventaRows = clasificar(ventaRowsRaw, true);
 
   // Group by comuna + dormitorios
   type GroupKey = string; // "comuna|dorms"
@@ -624,6 +671,7 @@ function aggregateByComunas(bundle: SegmentsBundle): ComunaStats[] {
       fueraDeRango: crudo?.fueraRango ?? 0,
       // Lo que pasó los filtros pero cayó en una tipología sin muestra mínima.
       bajoUmbral: Math.max(0, enCalculo - totalProps),
+      ventasDescartadas: crudo?.descartadas ?? 0,
       enCalculo: totalProps,
       ultimaActualizacion: crudo?.fecha ?? null,
     };
