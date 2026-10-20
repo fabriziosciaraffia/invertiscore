@@ -425,7 +425,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const css = leer("src/app/deptos/deptos.css");
       if ((css.match(/font-heading/g) ?? []).length !== 2 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-que \{ font-family: var\(--font-heading\), Georgia, serif;/.test(css)) F("8 · hay serif fuera de la frase de arriba y del titular, o el titular puede ir en dos líneas");
       if (!/\.dp-cifra \{ font-size: 30px; font-weight: 700;/.test(css) || /\.dp-(numero|cifra) \{[^}]*font-family/.test(css)) F("8 · el número no va en Inter, grande");
-      if (!/<AppFooter variant="informe" \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
+      // ⚠ ACTA (20-oct-2026, LCP en el teléfono) · el pie puede ir `diferido` (su fuente entra con la página quieta,
+      // LANDING-RENDIMIENTO §8): sigue siendo el de los informes, sin enlaces.
+      if (!/<AppFooter variant="informe"(?: diferido)? \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
     }
     // ── 9 · VOLVER DE GOOGLE CON LOS CHIPS (16-oct-2026) ──
     {

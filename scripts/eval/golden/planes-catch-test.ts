@@ -114,7 +114,9 @@ export function runPlanesTier(): { hard: number } {
   if (!/href=\{rutaTres\("planes"/.test(seccion("pack")) || !/href=\{RUTA_PLAN\}/.test(seccion("plan")) || RUTA_PLAN !== "/checkout?product=plan10_mensual") F("4 · los botones del pack o del plan no van a su compra");
   if (!/\{conPlan \? \(\s*<EnlaceCarga href="\/cuenta" className="pl-estado"/.test(seccion("plan"))) F("4 · a quien ya tiene un plan se le vuelve a vender");
   if ((css.match(/font-heading/g) ?? []).length !== 1 || !/\.pl-titulo \{[^}]*font-family: var\(--font-heading\)/.test(css) || !/^\.pl \{[^}]*font-family: var\(--font-ui\)/m.test(css)) F("4 · hay serif fuera del título (o la página no va en Inter)");
-  if (!/<AppFooter variant="informe" \/>/.test(pag)) F("4 · el pie no es el limpio de los informes");
+  // ⚠ ACTA (20-oct-2026, LCP de las páginas de campaña) · el pie de los informes puede ir `diferido` (su fuente entra con la
+  // página quieta, LANDING-RENDIMIENTO §8): sigue siendo el limpio.
+  if (!/<AppFooter variant="informe"(?: diferido)? \/>/.test(pag)) F("4 · el pie no es el limpio de los informes");
   const visible = [JSON.stringify(PLANES_COPY), pag].join("\n");
   if (/Plan 50|Ilimitado|ilimitad|anual|4\.990|Informe completo|PRICING_PLANS|PricingPlans|SavingsCalculator/.test(visible)) F("4 · la página de planes muestra algo retirado");
   if (existsSync(join(RAIZ, "src/components/landing/PricingPlans.tsx")) || existsSync(join(RAIZ, "src/components/landing/SavingsCalculator.tsx"))) F("4 · vuelven las cuatro cards o la calculadora de ahorro");
