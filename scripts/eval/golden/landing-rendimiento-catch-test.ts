@@ -26,6 +26,10 @@
 //       del pack: pinta primero el degradado liso (las mismas medidas que el de grano) y el fondo con grano y su capa
 //       entran solo detrás de `html[data-grano]`, que el header de la página marca con la página quieta; el JS de las
 //       islas de /pricing no llega a Node, Supabase, Sentry ni posthog-js.
+//   8 · /deptos Y /i/CÓDIGO EN TELÉFONO (20-oct-2026, goal «las dos páginas de aterrizaje de la campaña»: mediana de
+//       cinco, bajo 2,5 s). El LCP de las dos es la banda del correo (`.dp-banda`, deptos.css, que /i/CÓDIGO importa): la
+//       misma receta que §7, y el cliente de Supabase fuera del primer paquete (DeptosCliente lo pide por import() al
+//       pedir el código, al entrar con él o con Google).
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 //   Acta 28-sep-2026: A Maps al montar (prepararPlaces() pelado en el efecto) → 1 falla · B solo `focus`
@@ -40,6 +44,14 @@
 //   PLANES) · Q7 /pricing sin el header que marca la señal → 1 · Q8 la vista de planes importa posthog-js → 2 · Q9 el
 //   grano detrás de otra señal → 5 (y PLANES) · Q10 el ::before no cubre la tarjeta → 1 · Q11 el liso con otras medidas
 //   (el m1x copiado sobre el m2x) → 1. 15/15 ROJO; restaurado: verde.
+//   Acta 20-oct-2026 (/deptos y /i/CÓDIGO, §8; §7 pasó a ayudantes compartidos y sus 15 se volvieron a correr: 15/15
+//   ROJO; scratchpad mutar-deptos.cjs): R1 la banda vuelve al fondo con grano de entrada → 2 (y PUERTA-B) · R2 lo mismo
+//   desde 768 → 2 · R3 la capa sin esperar la señal → 1 · R4 sin el fondo con grano encima → 1 (y PUERTA-B) · R5 sin él
+//   desde 768 → 1 · R6 se pierde la capa → 1 (y PUERTA-B) · R7 /deptos sin el header → 1 · R8 /i/CÓDIGO sin el header → 1
+//   · R9 DeptosCliente vuelve a importar Supabase estático → 2 · R10 /i/CÓDIGO deja de importar deptos.css → 1 · R11 otro
+//   fondo con color (PUERTA-B) → 1 · R12 el ::before no cubre la banda → 1 · R13 el header deja de marcar data-grano → 1 ·
+//   R14 PrimeraSeleccion importa supabase-js → 2 · C1 el censo con el build de ANTES del cambio → 1 (el chunk 2990 trae el
+//   cliente de Supabase). 18/18 ROJO; restaurado y con el build nuevo: verde.
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -114,7 +126,9 @@ export function runLandingRendimientoTier(): { hard: number } {
     const pages = JSON.parse(readFileSync(manifest, "utf8")).pages as Record<string, string[]>;
     // El layout también (19-oct-2026): los polyfills de criptografía entraban por el provider global, no por la página.
     // Y /pricing (20-oct-2026, §7): sus chunks propios tampoco traen nada de esto.
-    const chunks = [...new Set([...(pages["/page"] ?? []), ...(pages["/layout"] ?? []), ...(pages["/pricing/page"] ?? [])])].filter((f) => f.endsWith(".js"));
+    // Y /deptos y /i/CÓDIGO (20-oct-2026, §8): ahí el cliente de Supabase venía en el chunk de la página.
+    const PAGINAS = ["/pricing/page", "/deptos/page", "/i/[codigo]/page"];
+    const chunks = [...new Set([...(pages["/page"] ?? []), ...(pages["/layout"] ?? []), ...PAGINAS.flatMap((p) => pages[p] ?? [])])].filter((f) => f.endsWith(".js"));
     const esProduccion = chunks.length > 3 && chunks.every((f) => /-[a-f0-9]{16}\.js$/.test(f) || /webpack-|main-app-/.test(f));
     if (!esProduccion) {
       console.log(`  · el .next de ${raizBuild} es de \`next dev\` (${chunks.length} chunks sin hash): el censo del bundle no corrió acá`);
@@ -129,10 +143,10 @@ export function runLandingRendimientoTier(): { hard: number } {
       ];
       for (const f of chunks) {
         const b = readFileSync(join(raizBuild, ".next", f), "utf8");
-        for (const [que, rx] of marcas) if (rx.test(b)) F(`2 · el chunk ${f.split("/").pop()} de la landing trae ${que}`);
+        for (const [que, rx] of marcas) if (rx.test(b)) F(`2 · el chunk ${f.split("/").pop()} (de «/», /pricing, /deptos o /i/CÓDIGO) trae ${que}`);
       }
-      if (!pages["/pricing/page"]?.length) F("2 · el manifiesto del build no tiene /pricing/page (el censo de /pricing no corrió)");
-      console.log(`  · build de producción en ${raizBuild}: ${chunks.length} chunks de «/» y /pricing revisados`);
+      for (const p of PAGINAS) if (!pages[p]?.length) F(`2 · el manifiesto del build no tiene ${p} (el censo de esa página no corrió)`);
+      console.log(`  · build de producción en ${raizBuild}: ${chunks.length} chunks de «/», /pricing, /deptos y /i/CÓDIGO revisados`);
     }
   } else {
     console.log("  · sin build a mano (.next/app-build-manifest.json): el censo del bundle no corrió acá");
@@ -310,25 +324,36 @@ export function runLandingRendimientoTier(): { hard: number } {
   // El LCP de /pricing es la tarjeta del pack (su fondo), no el título: con el fondo con grano incorporado (121 kB) y la
   // capa de grano (52 kB) bajando antes de pintarla, daba 3,16 s (mediana de 5). La tarjeta pinta primero el MISMO
   // degradado sin grano; el fondo con grano y la capa entran con la página quieta (`html[data-grano]`, que marca el header).
+  // ── 8 · /deptos Y /i/CÓDIGO EN TELÉFONO (20-oct-2026) ──────────────────────
+  // Las dos páginas de aterrizaje de la campaña. El LCP de las dos es la banda del correo (`.dp-banda`, deptos.css, que
+  // /i/CÓDIGO importa): 3,52 y 3,67 s (mediana de 5) con el mismo fondo pesado y, además, el cliente de Supabase (48 kB)
+  // importado de forma estática por DeptosCliente, que solo lo usa al pedir el código, al entrar con él o con Google.
+  // La misma receta que §7 para la banda, y Supabase por import() dentro de esas tres acciones.
   {
-    const pl = sinComentarios(leer("src/app/pricing/planes.css"));
-    // a · lo que pinta primero: el liso, en el teléfono y desde 768.
-    if (!/(^|\n)\.pl-pack \{[^}]*background: #1F3D67 url\("\/landing\/hero-liso-m2x\.webp"\) center top \/ cover no-repeat;/.test(pl)
-      || !/@media \(min-width: 768px\) \{ \.pl-pack \{ background-image: url\("\/landing\/hero-liso-d1x\.webp"\); \} \}/.test(pl)) F("7 · la tarjeta del pack no pinta primero el degradado liso (en el teléfono y desde 768)");
-    // b · lo pesado, SOLO detrás de `html[data-grano]`: ninguna regla sin ese prefijo nombra el fondo con grano ni la capa.
-    const reglas = Array.from(pl.matchAll(/([^{}]+)\{([^{}]*)\}/g)).map((m) => ({ sel: m[1].trim(), cuerpo: m[2] }));
-    for (const r of reglas) {
-      if (/hero-[md]\dx\.webp|grano-256\.png/.test(r.cuerpo) && !/^html\[data-grano\] /.test(r.sel)) F(`7 · «${r.sel}» baja el fondo con grano (o la capa) antes de que la página esté quieta`);
-    }
-    // c · y detrás de la señal está todo lo de siempre: el fondo con grano encima, opaco, y la capa con su mezcla.
-    if (!/html\[data-grano\] \.pl-pack::before \{ background-image: url\("\/landing\/hero-m2x\.webp"\); opacity: 1; \}/.test(pl)
-      || !/@media \(min-width: 768px\) \{ html\[data-grano\] \.pl-pack::before \{ background-image: url\("\/landing\/hero-d1x\.webp"\); \} \}/.test(pl)
-      || !/\.pl-pack::before \{[^}]*inset: 0;[^}]*background: center top \/ cover no-repeat;/.test(pl)) F("7 · la tarjeta del pack ya no termina con el fondo con grano (con la página quieta, encima y opaco)");
-    if (!/html\[data-grano\] \.pl-pack::after \{ background-image: url\("\/landing\/grano-256\.png"\); opacity: 0\.08; \}/.test(pl)
-      || !/\.pl-pack::after \{[^}]*background-size: 256px; opacity: 0; mix-blend-mode: soft-light;/.test(pl)) F("7 · la tarjeta del pack perdió la capa de grano (o su mezcla)");
-    // d · alguien marca la señal EN ESTA PÁGINA: el header de /pricing, el que la pone con la página quieta.
-    if (!/<HeaderFranco /.test(sinComentarios(leer("src/app/pricing/page.tsx")))
-      || !/useEffect\(\(\) => cuandoLaPaginaEsteQuieta\(\(\) => document\.documentElement\.setAttribute\("data-grano", ""\)\), \[\]\);/.test(sinComentarios(leer("src/components/chrome/HeaderFranco.tsx")))) F("7 · en /pricing nadie marca data-grano: la tarjeta se queda sin grano");
+    const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // La receta, superficie por superficie: pinta el liso, lo pesado SOLO detrás de la señal, termina en lo de siempre, y la
+    // página que la muestra tiene el header que marca la señal.
+    const enDosTiempos = (sec: string, archivo: string, selector: string, que: string, paginas: string[]) => {
+      const css = sinComentarios(leer(archivo));
+      const s = escapar(selector);
+      // a · lo que pinta primero: el liso, en el teléfono y desde 768.
+      if (!new RegExp(`(^|\\n)${s} \\{[^}]*background: #1F3D67 url\\("/landing/hero-liso-m2x\\.webp"\\) center top / cover no-repeat;`).test(css)
+        || !new RegExp(`@media \\(min-width: 768px\\) \\{ ${s} \\{[^}]*background-image: url\\("/landing/hero-liso-d1x\\.webp"\\); \\} \\}`).test(css)) F(`${sec} · ${que} no pinta primero el degradado liso (en el teléfono y desde 768)`);
+      // b · lo pesado, SOLO detrás de `html[data-grano]`: ninguna regla sin ese prefijo nombra el fondo con grano ni la capa.
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const sel = m[1].trim();
+        if (/hero-[md]\dx\.webp|grano-256\.png/.test(m[2]) && !/^html\[data-grano\] /.test(sel)) F(`${sec} · «${sel}» baja el fondo con grano (o la capa) antes de que la página esté quieta`);
+      }
+      // c · y detrás de la señal está todo lo de siempre: el fondo con grano encima, opaco, y la capa con su mezcla.
+      if (!new RegExp(`html\\[data-grano\\] ${s}::before \\{ background-image: url\\("/landing/hero-m2x\\.webp"\\); opacity: 1; \\}`).test(css)
+        || !new RegExp(`@media \\(min-width: 768px\\) \\{ html\\[data-grano\\] ${s}::before \\{ background-image: url\\("/landing/hero-d1x\\.webp"\\); \\} \\}`).test(css)
+        || !new RegExp(`${s}::before \\{[^}]*inset: 0;[^}]*background: center top / cover no-repeat;`).test(css)) F(`${sec} · ${que} ya no termina con el fondo con grano (con la página quieta, encima y opaco)`);
+      if (!new RegExp(`html\\[data-grano\\] ${s}::after \\{ background-image: url\\("/landing/grano-256\\.png"\\); opacity: 0\\.08; \\}`).test(css)
+        || !new RegExp(`${s}::after \\{[^}]*background-size: 256px; opacity: 0; mix-blend-mode: soft-light;`).test(css)) F(`${sec} · ${que} perdió la capa de grano (o su mezcla)`);
+      // d · alguien marca la señal EN CADA PÁGINA que la muestra: su header, el que la pone con la página quieta.
+      for (const p of paginas) if (!/<HeaderFranco /.test(sinComentarios(leer(p)))) F(`${sec} · ${p} no monta el header que marca data-grano: ${que} se queda sin grano`);
+    };
+    if (!/useEffect\(\(\) => cuandoLaPaginaEsteQuieta\(\(\) => document\.documentElement\.setAttribute\("data-grano", ""\)\), \[\]\);/.test(sinComentarios(leer("src/components/chrome/HeaderFranco.tsx")))) F("7 · nadie marca data-grano: la tarjeta del pack y la banda del correo se quedan sin grano");
     // e · el liso es la misma imagen: las mismas medidas que la de grano (con `cover`, otras medidas cortan otro encuadre
     //     y el fundido correría el degradado).
     const medidas = (p: string): string => {
@@ -344,33 +369,43 @@ export function runLandingRendimientoTier(): { hard: number } {
       const [liso, grano] = [medidas(`public/landing/hero-liso-${v}.webp`), medidas(`public/landing/hero-${v}.webp`)];
       if (liso !== grano || !/^\d+×\d+$/.test(liso)) F(`7 · hero-liso-${v} (${liso}) no tiene las medidas de hero-${v} (${grano})`);
     }
-    // f · el JS de /pricing tampoco arrastra lo pesado (mismo recorrido que §6a, desde las islas de la página).
-    const NODE = /^(node:)?(crypto|buffer|stream|zlib|fs|path|os|util|http|https|net|tls)$/;
-    const PESADOS = /^(@supabase\/|@sentry\/|posthog-js$)/;
-    const entradas = ["src/app/pricing/vista-planes.tsx", "src/components/chrome/EnlaceCarga.tsx", "src/components/chrome/HeaderFranco.tsx"];
-    const visto = new Set<string>();
-    const cola: Array<[string, string[]]> = entradas.map((e) => [e, [e]]);
-    while (cola.length) {
-      const [archivo, camino] = cola.shift()!;
-      if (visto.has(archivo)) continue;
-      visto.add(archivo);
-      for (const m of sinComentarios(leer(archivo)).matchAll(/(?:^|\n)\s*(?:(?:import|export)\s+(type\s+)?[^'"]*?from\s+|import\s+)["']([^"']+)["']/g)) {
-        if (m[1]) continue;
-        const esp = m[2];
-        if (NODE.test(esp) || PESADOS.test(esp)) { F(`7 · un import estático de cliente de /pricing arrastra al primer paquete: ${esp} ← ${camino.join(" → ")}`); continue; }
-        const base = esp.startsWith("@/") ? `src/${esp.slice(2)}` : esp.startsWith(".") ? join(archivo, "..", esp).replace(/\\/g, "/") : null;
-        const r = base && ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((s) => base + s).find((p) => existsSync(join(RAIZ, p)) && /\.(ts|tsx)$/.test(p));
-        if (r) cola.push([r, [...camino, r]]);
+    // f · el JS de la página tampoco arrastra lo pesado (mismo recorrido que §6a, desde las islas de la página).
+    const sinPesados = (sec: string, pagina: string, entradas: string[], minimo: number) => {
+      const NODE = /^(node:)?(crypto|buffer|stream|zlib|fs|path|os|util|http|https|net|tls)$/;
+      const PESADOS = /^(@supabase\/|@sentry\/|posthog-js$)/;
+      const visto = new Set<string>();
+      const cola: Array<[string, string[]]> = entradas.map((e) => [e, [e]]);
+      while (cola.length) {
+        const [archivo, camino] = cola.shift()!;
+        if (visto.has(archivo)) continue;
+        visto.add(archivo);
+        for (const m of sinComentarios(leer(archivo)).matchAll(/(?:^|\n)\s*(?:(?:import|export)\s+(type\s+)?[^'"]*?from\s+|import\s+)["']([^"']+)["']/g)) {
+          if (m[1]) continue;
+          const esp = m[2];
+          if (NODE.test(esp) || PESADOS.test(esp)) { F(`${sec} · un import estático de cliente de ${pagina} arrastra al primer paquete: ${esp} ← ${camino.join(" → ")}`); continue; }
+          const base = esp.startsWith("@/") ? `src/${esp.slice(2)}` : esp.startsWith(".") ? join(archivo, "..", esp).replace(/\\/g, "/") : null;
+          const r = base && ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((s) => base + s).find((p) => existsSync(join(RAIZ, p)) && /\.(ts|tsx)$/.test(p));
+          if (r) cola.push([r, [...camino, r]]);
+        }
       }
-    }
-    if (visto.size < 15) F(`7 · el grafo de /pricing recorrió solo ${visto.size} archivos (el extractor no corrió)`);
+      if (visto.size < minimo) F(`${sec} · el grafo de ${pagina} recorrió solo ${visto.size} archivos (el extractor no corrió)`);
+    };
+
+    enDosTiempos("7", "src/app/pricing/planes.css", ".pl-pack", "la tarjeta del pack", ["src/app/pricing/page.tsx"]);
+    sinPesados("7", "/pricing", ["src/app/pricing/vista-planes.tsx", "src/components/chrome/EnlaceCarga.tsx", "src/components/chrome/HeaderFranco.tsx"], 15);
+
+    enDosTiempos("8", "src/app/deptos/deptos.css", ".dp-banda", "la banda del correo", ["src/app/deptos/page.tsx", "src/app/i/[codigo]/page.tsx"]);
+    // La banda de /i/CÓDIGO es la de deptos.css: la página del invitado la importa (si deja de hacerlo, este §8 no la cubre).
+    if (!/import "@\/app\/deptos\/deptos\.css";/.test(sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx")))) F("8 · /i/CÓDIGO ya no usa la banda de deptos.css: revisa su fondo");
+    sinPesados("8", "/deptos", ["src/app/deptos/deptos-cliente.tsx", "src/components/chrome/EnlaceCarga.tsx", "src/components/chrome/HeaderFranco.tsx"], 25);
+    sinPesados("8", "/i/CÓDIGO", ["src/app/i/[codigo]/invitacion-cliente.tsx", "src/components/chrome/HeaderFranco.tsx"], 30);
   }
 
   if (fallas.length) {
     console.log(`  ✗ LANDING-RENDIMIENTO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — Google Maps espera al primer toque; la sección 3 llega después del titular con su altura reservada y sin el motor en el paquete; sin latin-ext precargadas; PostHog, Sentry y el pixel cargan con la página quieta y no pierden lo de antes; el viewport permite zoom; en /pricing la tarjeta del pack pinta el degradado liso y su grano entra con la página quieta");
+    console.log("  ✓ VERDE — Google Maps espera al primer toque; la sección 3 llega después del titular con su altura reservada y sin el motor en el paquete; sin latin-ext precargadas; PostHog, Sentry y el pixel cargan con la página quieta y no pierden lo de antes; el viewport permite zoom; en /pricing la tarjeta del pack y en /deptos y /i/CÓDIGO la banda del correo pintan el degradado liso y su grano entra con la página quieta, sin Supabase antes");
   }
   return { hard: fallas.length };
 }

@@ -24,10 +24,12 @@
 // 4.000», 17-oct-2026) y debajo el número grande («4 de 607 convienen») con la nota chica del pie y el plazo —etiqueta y
 // número llegan en la MISMA respuesta, así que al tocar un chip cambian juntos—; justo debajo, la banda del correo —lo
 // único con color, como el banner del informe—; y abajo, «Cambia la búsqueda», los chips planos.
+// SUPABASE POR import() (20-oct-2026, LCP en el teléfono): el cliente (48 kB) solo hace falta al pedir el código, al
+// entrar con él o con Google; con el import estático bajaba antes de pintar la banda. La atribución (useAttributionSync,
+// en todas las páginas) ya lo pide con la página quieta, así que al tocar el botón el módulo suele estar en memoria.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { usePostHog } from "@/lib/posthog-react";
 import { emitirAuthCompletada, marcarOAuthPendiente } from "@/lib/auth-analytics";
 import { IconoGoogle } from "@/components/entrar/IconoGoogle";
@@ -180,6 +182,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
         await terminarAlta();
         return;
       }
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error: err } = await supabase.auth.signInWithOtp({
         email: c,
@@ -208,6 +211,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       if (!res.ok || !d.p) { setError(ALTA_COPY.error); return; }
       posthog?.capture("deptos_google", {});
       marcarOAuthPendiente("signup");
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -259,6 +263,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     setError(null);
     setOcupado(true);
     try {
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error: err } = await supabase.auth.verifyOtp({ email: enviado, token: t, type: "email" });
       if (err) { setError(REGISTRO_UN_PASO.errorCodigoMal); return; }

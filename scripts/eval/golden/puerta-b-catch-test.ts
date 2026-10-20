@@ -525,9 +525,18 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/\.dp-nota-num \{[^}]*font-size: 12\.5px;/.test(leer("src/app/deptos/deptos.css")) || !/\.dp-numero \{ font-size: 30px; font-weight: 700;/.test(leer("src/app/deptos/deptos.css"))) F("10 · el número no es grande o la nota no es chica");
       // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color.
       const cssD = leer("src/app/deptos/deptos.css");
-      if (!/\.dp-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(cssD) || !/\.dp-banda \.dp-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(cssD))
+      // ⚠ ACTA (20-oct-2026, LCP en el teléfono) · el material es el mismo, en dos tiempos: la banda pinta el degradado liso
+      // y el fondo con grano y su capa entran encima con la página quieta (`html[data-grano] .dp-banda::before/::after`).
+      // Lo que queda es lo de siempre; LANDING-RENDIMIENTO §8 vigila que lo pesado no baje antes. Y «ningún otro fondo» se
+      // cuenta por REGLA, no por cantidad de url(): son cinco, todas de la banda.
+      if (!/\.dp-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-liso-m2x\.webp"\)/.test(cssD)
+        || !/html\[data-grano\] \.dp-banda::before \{ background-image: url\("\/landing\/hero-m2x\.webp"\); opacity: 1; \}/.test(cssD)
+        || !/html\[data-grano\] \.dp-banda::after \{ background-image: url\("\/landing\/grano-256\.png"\);/.test(cssD)
+        || !/\.dp-banda \.dp-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(cssD))
         F("10 · el correo no va en la banda (degradado, texto blanco, un botón)");
-      if ((cssD.match(/url\(|linear-gradient|radial-gradient/g) ?? []).length !== 3) F("10 · hay otro fondo con color en la página además de la banda");
+      const conFondo = Array.from(cssD.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g))
+        .filter((m) => /url\(|linear-gradient|radial-gradient/.test(m[2])).map((m) => m[1].trim());
+      if (!conFondo.length || conFondo.some((sel) => !/^(html\[data-grano\] )?\.dp-banda(::before|::after)?$/.test(sel))) F(`10 · hay otro fondo con color en la página además de la banda (${conFondo.filter((sel) => !/\.dp-banda/.test(sel)).join(", ")})`);
       // Los chips, planos y compactos.
       if (!/\.dp-afina \.dp-chip \{ min-height: 30px;[^}]*border-color: transparent;/.test(cssD)) F("10 · los chips de «Afina tu búsqueda» no son planos y compactos");
       // Siempre hay una comuna: sin ella no habría número.

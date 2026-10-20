@@ -68,11 +68,21 @@
 .dp[data-deptos="dentro"] .dp-bloque { margin-top: 14px; }
 
 /* ── LA BANDA DEL CORREO (17-oct-2026): el material del banner del informe (lo-que-sigue.css › .lqs-mat), fijo en claro y
-   oscuro. Lo único con color en la pantalla de elegir: el campo en papel translúcido, UN botón en papel, Google como enlace. */
+   oscuro. Lo único con color en la pantalla de elegir: el campo en papel translúcido, UN botón en papel, Google como enlace.
+   El grano entra con la página quieta (20-oct-2026, LCP en el teléfono, la receta de /pricing): la banda es lo más grande de
+   la primera pantalla de /deptos y de /i/CÓDIGO, y su fondo con el grano incorporado (hero-m2x, 121 kB) más la capa de grano
+   (52 kB) bajaban antes de pintarla. Primero pinta el MISMO degradado sin grano (hero-liso, 9 kB: mismas medidas y color); el
+   fondo con grano y la capa entran encima cuando HeaderFranco marca `data-grano` en <html> (cuandoLaPaginaEsteQuieta), con
+   el fundido del header. Lo que queda al final es lo de siempre. */
 .dp-banda { position: relative; overflow: hidden; margin-top: 12px; padding: 16px 16px 12px; border-radius: 16px; color: #FAFAF8;
-  background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
-@media (min-width: 768px) { .dp-banda { padding: 22px 24px 16px; background-image: url("/landing/hero-d1x.webp"); } }
-.dp-banda::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
+  background: #1F3D67 url("/landing/hero-liso-m2x.webp") center top / cover no-repeat; }
+@media (min-width: 768px) { .dp-banda { padding: 22px 24px 16px; background-image: url("/landing/hero-liso-d1x.webp"); } }
+.dp-banda::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: center top / cover no-repeat; opacity: 0; transition: opacity 0.6s ease; }
+html[data-grano] .dp-banda::before { background-image: url("/landing/hero-m2x.webp"); opacity: 1; }
+@media (min-width: 768px) { html[data-grano] .dp-banda::before { background-image: url("/landing/hero-d1x.webp"); } }
+.dp-banda::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-size: 256px; opacity: 0; mix-blend-mode: soft-light; transition: opacity 0.6s ease; }
+html[data-grano] .dp-banda::after { background-image: url("/landing/grano-256.png"); opacity: 0.08; }
+@media (prefers-reduced-motion: reduce) { .dp-banda::before, .dp-banda::after { transition: none; } }
 .dp-banda > * { position: relative; z-index: 1; }
 .dp-banda .dp-form { margin-top: 0; }
 .dp-banda .dp-registro { margin: 0 0 10px; font-size: 17px; line-height: 1.3; font-weight: 600; color: #FAFAF8; }
