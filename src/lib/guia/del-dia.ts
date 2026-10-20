@@ -82,6 +82,12 @@ export function destinoRecienDentro(dest: string, cuentaNueva: boolean): string 
   return `${camino}?${q.toString()}${hash ? `#${hash}` : ""}`;
 }
 
+/** La hoja sin deptos (20-oct-2026, Fabrizio): ni chips por pedir, ni revisando, ni un depto. Ahí la bajada —«Franco eligió
+ *  estos deptos…»— no va encima de «no hay uno»: queda solo el texto de «ninguno». */
+export function hojaSinDeptos(d: { faltan: readonly unknown[]; items: readonly unknown[]; revisando: boolean } | null): boolean {
+  return !!d && d.faltan.length === 0 && d.items.length === 0 && !d.revisando;
+}
+
 export type FaltaDelPerfil = "comuna" | "tipologia" | "rango";
 
 /** Qué chips faltan para armar una selección: al menos una comuna, un dormitorio y un tope de precio. */
@@ -101,14 +107,15 @@ export const PRIMERA_SELECCION = {
   /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
   bajada: "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.",
   /** Los otros estados de la hoja (20-oct-2026, Fabrizio), con el criterio de la bajada: su búsqueda, y la confirmación
-   *  al correo en unos minutos. El depto todavía sin ficha leída: */
-  porConfirmar: "Elegido para tu búsqueda. En unos minutos te llega al correo si sigue publicado.",
+   *  al correo en unos minutos —dicha UNA vez: con deptos la dice la bajada, así que la tarjeta no la repite—. El depto
+   *  todavía sin ficha leída: */
+  porConfirmar: "Elegido para tu búsqueda.",
   faltan: "Para armar tu selección falta un dato. Un toque y listo:",
   faltaComuna: "¿En qué comuna?",
   faltaTipologia: "¿Cuántos dormitorios?",
   faltaRango: "¿Hasta cuánto?",
   armar: "Ver mis deptos",
-  /** Ninguno conviene: */
+  /** Ninguno conviene (sin la bajada, `hojaSinDeptos`: lo del correo lo dice este texto): */
   ninguno: "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.",
   vecinas: "En tus comunas no hay uno hoy: estos son de comunas vecinas.",
   revisando: "Revisando uno por uno si siguen publicados…",

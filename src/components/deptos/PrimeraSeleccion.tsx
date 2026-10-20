@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { marcaVisto, PRIMERA_SELECCION, type FaltaDelPerfil } from "@/lib/guia/del-dia";
+import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, type FaltaDelPerfil } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { rutaTres } from "@/lib/tres-analisis";
@@ -159,11 +159,13 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
     );
   };
   const listo = !!datos && datos.faltan.every((f) => (f === "comuna" ? !!eleccion.comuna : f === "tipologia" ? !!eleccion.tipologia : !!eleccion.rango));
+  // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno» (20-oct-2026).
+  const sinDeptos = hojaSinDeptos(datos);
 
   return (
     <section className="guia dp" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
       {titulo && <h2 className="guia-bloque" data-primera="titulo">{datos?.regaloVence ? PRIMERA_SELECCION.tituloRegalo : PRIMERA_SELECCION.titulo}</h2>}
-      {titulo && <p className="guia-txt" data-primera="bajada">{PRIMERA_SELECCION.bajada}</p>}
+      {titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">{PRIMERA_SELECCION.bajada}</p>}
 
       {!datos && !fallo && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
       {fallo && (
@@ -186,7 +188,7 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
       {datos && datos.faltan.length === 0 && (
         <>
           {datos.revisando && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="revisando">{PRIMERA_SELECCION.revisando}</p>}
-          {datos.items.length === 0 && !datos.revisando && <p className="guia-txt mt-3" data-primera="ninguno">{PRIMERA_SELECCION.ninguno}</p>}
+          {sinDeptos && <p className="guia-txt mt-3" data-primera="ninguno">{PRIMERA_SELECCION.ninguno}</p>}
           {datos.vecinas && datos.items.length > 0 && <p className="guia-txt mt-3" data-primera="vecinas">{PRIMERA_SELECCION.vecinas}</p>}
           {datos.items.length > 0 && (
             <div className="guia-lista mt-3">

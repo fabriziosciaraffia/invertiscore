@@ -27,7 +27,8 @@
 //  12 · EL TEXTO BAJO EL TÍTULO (20-oct-2026, Fabrizio): «Franco eligió estos deptos para tu búsqueda, con tu pie y tu
 //       plazo. En unos minutos te llega al correo la selección confirmada.», sin «anoche» ni «el correo de esta hora», en
 //       toda superficie (la hoja, /deptos y la página del invitado lo toman de la misma constante); y con el mismo
-//       criterio los otros estados de la hoja, el depto sin ficha leída («porConfirmar») y sin deptos («ninguno»).
+//       criterio los otros estados de la hoja, el depto sin ficha leída («porConfirmar») y sin deptos («ninguno»); lo del
+//       correo se lee UNA vez en cada estado, y sin deptos la bajada no se muestra.
 //  13 · EL TICKET DESPUÉS DE «ENTRAR» Y CON LA HOJA ABIERTA (20-oct-2026, Fabrizio): el registro completado anula el
 //       minuto del banner en uso —desde «Estás dentro» el ticket sale a los 8 s de pasar «Tu resultado a 10 años», como
 //       siempre, y lo que se toque ahí no lo vuelve a armar—; y con la hoja de la primera selección abierta el ticket
@@ -39,7 +40,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION,
+  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION,
 } from "../../../src/lib/guia/del-dia";
 import { encolarPrimeraSeleccion, rellenarDeLaNoche } from "../../../src/lib/guia/del-dia-servidor";
 import { queEnviarSemanal } from "../../../src/lib/guia/semanal";
@@ -339,7 +340,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (PRIMERA_SELECCION.bajada !== BAJADA) F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajada}»`);
       if (/anoche|correo de esta hora/i.test(PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche» o «el correo de esta hora»");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/<h2 className="guia-bloque" data-primera="titulo">\{datos\?\.regaloVence \? PRIMERA_SELECCION\.tituloRegalo : PRIMERA_SELECCION\.titulo\}<\/h2>\}\s*\{titulo && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
+      if (!/<h2 className="guia-bloque" data-primera="titulo">\{datos\?\.regaloVence \? PRIMERA_SELECCION\.tituloRegalo : PRIMERA_SELECCION\.titulo\}<\/h2>\}\s*\{titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
         F("12 · la pantalla no dibuja ese texto justo bajo «Tienes un análisis de regalo: elige uno»");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";
@@ -350,13 +351,29 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // confirmación al correo en unos minutos. Mutaciones: T14 vuelve el «porConfirmar» viejo · T15 vuelve el «ninguno» viejo
       // · T16 la tarjeta deja de decir «porConfirmar» sin ficha leída · T17 el vacío deja de decir «ninguno» · T18 otro texto
       // de la hoja vuelve a decir «anoche».
-      const POR_CONFIRMAR = "Elegido para tu búsqueda. En unos minutos te llega al correo si sigue publicado.";
+      // ⚠ ACTA (20-oct-2026, tercera pasada de Fabrizio) · «porConfirmar» ya no repite lo del correo: con deptos lo dice la
+      // bajada, una vez. Y sin deptos la bajada no se muestra: queda solo «ninguno». Mutaciones: T19 la tarjeta vuelve a decir
+      // lo del correo · T20 la bajada sale también sin deptos · T21 `hojaSinDeptos` da sin deptos con uno en la lista · T22 da
+      // sin deptos mientras revisa · T23 da sin deptos con chips por pedir · T24 «ninguno» sale con otra condición.
+      const POR_CONFIRMAR = "Elegido para tu búsqueda.";
       const NINGUNO = "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.";
       if (PRIMERA_SELECCION.porConfirmar !== POR_CONFIRMAR) F(`12 · el depto sin ficha leída no dice lo pedido: «${PRIMERA_SELECCION.porConfirmar}»`);
       if (PRIMERA_SELECCION.ninguno !== NINGUNO) F(`12 · sin deptos la hoja no dice lo pedido: «${PRIMERA_SELECCION.ninguno}»`);
       for (const [k, t] of Object.entries(PRIMERA_SELECCION)) if (/anoche|correo de esta hora/i.test(t)) F(`12 · «${k}» de la hoja dice «anoche» o «el correo de esta hora»: «${t}»`);
       if (!/<p className="guia-cr mt-2\.5" data-primera="marca">\{it\.vistoAt \? marcaVisto\(it\.vistoAt\) : PRIMERA_SELECCION\.porConfirmar\}<\/p>/.test(ps)) F("12 · la tarjeta sin ficha leída no dice «porConfirmar»");
-      if (!/\{datos\.items\.length === 0 && !datos\.revisando && <p className="guia-txt mt-3" data-primera="ninguno">\{PRIMERA_SELECCION\.ninguno\}<\/p>\}/.test(ps)) F("12 · sin deptos la hoja no dice «ninguno»");
+      if (!/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps) || !/\{sinDeptos && <p className="guia-txt mt-3" data-primera="ninguno">\{PRIMERA_SELECCION\.ninguno\}<\/p>\}/.test(ps)) F("12 · sin deptos la hoja no dice «ninguno» (o lo dice con otra condición que la de la bajada)");
+      // Cuándo está sin deptos: ni chips por pedir, ni revisando, ni un depto.
+      const d = (o: { faltan?: string[]; items?: number; revisando?: boolean }) => ({ faltan: o.faltan ?? [], items: Array.from({ length: o.items ?? 0 }, () => ({})), revisando: o.revisando ?? false });
+      if (!hojaSinDeptos(d({}))) F("12 · sin chips por pedir, sin revisar y sin deptos, la hoja no se da por «ninguno»");
+      if (hojaSinDeptos(d({ items: 1 })) || hojaSinDeptos(d({ revisando: true })) || hojaSinDeptos(d({ faltan: ["comuna"] })) || hojaSinDeptos(null))
+        F("12 · la hoja se da por «ninguno» con un depto, mientras revisa, con chips por pedir o sin datos (escondería la bajada)");
+      // LO DEL CORREO, UNA SOLA VEZ en lo que la persona lee en cada estado: la bajada salvo sin deptos, «ninguno» sin deptos,
+      // y «porConfirmar» en cada tarjeta sin ficha leída.
+      const loQueSeLee = (e: ReturnType<typeof d>) => [...(hojaSinDeptos(e) ? [PRIMERA_SELECCION.ninguno] : [PRIMERA_SELECCION.bajada]), ...e.items.map(() => PRIMERA_SELECCION.porConfirmar)].join(" ");
+      for (const [caso, e] of [["con 1 depto por confirmar", d({ items: 1 })], ["con 5 deptos por confirmar", d({ items: 5 })], ["sin deptos", d({})]] as const) {
+        const n = (loQueSeLee(e).match(/al correo/g) ?? []).length;
+        if (n !== 1) F(`12 · ${caso}, lo del correo se lee ${n} veces (va una)`);
+      }
       for (const f of archivos) if (leer(join("src", f)).includes("Anoche no había uno publicado que convenga")) F(`12 · src/${f.replace(/\\/g, "/")} todavía dice el «ninguno» viejo`);
     }
 
