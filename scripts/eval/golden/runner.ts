@@ -145,6 +145,7 @@ import { runCronsTier } from "./crons-catch-test";
 import { runAlertasCronsTier } from "./alertas-crons-catch-test";
 import { runMedicionMetaTier } from "./medicion-meta-catch-test";
 import { runConsentimientoTier } from "./consentimiento-catch-test";
+import { runComunasDisenoTier } from "./comunas-diseno-catch-test";
 import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
@@ -620,6 +621,9 @@ function printSeed(r: SeedReport) {
   // Tier CONSENTIMIENTO (19-oct-2026, 0 tokens, sin red ni base): sin el «si» del aviso de cookies no carga el pixel ni su
   // `_fbc`, PostHog mide sin cookies ni grabación y a Meta no le llega la persona; Aceptar y Rechazar al mismo nivel. ──
   totalHard += (await runConsentimientoTier()).hard;
+  // Tier COMUNAS-DISENO (20-oct-2026, 0 tokens, sin red ni base): el índice, cada comuna y cobertura en el diseño plano;
+  // enlazan las 25 y nada a un 404; el análisis y «Ver los deptos» con la comuna; el SEO igual; la venta con la regla de la noche. ──
+  totalHard += runComunasDisenoTier().hard;
   totalHard += (await runPuertaBTier()).hard;
   // Tier PUERTA-C (16-oct-2026, 0 tokens): el referido — el enlace, el cobro del código venga por donde venga, el premio
   // al contestar el «cuándo», el tope de cinco, el mismo dispositivo y el invitado que ya tenía cuenta. ──
