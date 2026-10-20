@@ -1,6 +1,7 @@
 import "./planes.css";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PrecargaMaterialLiso } from "@/components/chrome/PrecargaMaterialLiso";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { createClient } from "@/lib/supabase/server";
 import { rutaTres } from "@/lib/tres-analisis";
@@ -31,6 +32,7 @@ export default async function PricingPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <VistaPlanes />
+      <PrecargaMaterialLiso />
       <HeaderFranco activo="planes" sesion={user ? { email: user.email ?? "" } : null} />
       <main className="pl mx-auto max-w-[1100px] px-4 pb-16 pt-8 sm:px-6 md:pt-12" data-planes="pagina">
         <h1 className="pl-titulo">{C.titulo}</h1>

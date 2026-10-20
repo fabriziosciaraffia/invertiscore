@@ -58,6 +58,9 @@
 //   pie sin el atributo · S7 la regla solo cambia la variable (el enlace del logo la seguía pidiendo) · S8 /deptos y S9
 //   /i/CÓDIGO con el pie de siempre · S10 el respaldo sin ajustar · S11 el pie espera otra señal. 11/11 ROJO (una falla
 //   cada una); restaurado: verde.
+//   Tercera pasada del §8 (la precarga del liso; scratchpad mutar-precarga.cjs): T1 /deptos, T2 /i/CÓDIGO y T3 /pricing
+//   sin la precarga · T4 se precarga el fondo con grano → 2 · T5 los anchos cruzados · T6 una precarga de más (la capa)
+//   → 2 · T7 la precarga como prefetch. 7/7 ROJO; restaurado: verde.
 // Solo:  node --import tsx scripts/eval/golden/landing-rendimiento-catch-test.ts
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
@@ -439,7 +442,18 @@ export function runLandingRendimientoTier(): { hard: number } {
       || !/font-family: 'IBM Plex Sans Franco Fallback';\s*src: local\("Arial"\);[^}]*size-adjust: \d/.test(fuentes8)) F("8 · el pie diferido ya no espera a la página quieta para pedir la IBM Plex (o su respaldo no está ajustado)");
     for (const p of ["src/app/deptos/page.tsx", "src/app/i/[codigo]/page.tsx", "src/app/pricing/page.tsx"]) {
       if (!/<AppFooter variant="informe" diferido \/>/.test(sinComentarios(leer(p)))) F(`8 · el pie de ${p} pide la IBM Plex antes de la banda`);
+      // h · el liso se pide desde el <head>: como fondo de CSS llegaba después del primer layout y la banda se pintaba
+      //     recién cuando ya había bajado todo el JS (traza del preview, 20-oct-2026).
+      if (!/<PrecargaMaterialLiso \/>\s*\n\s*<HeaderFranco /.test(sinComentarios(leer(p)))) F(`8 · ${p} no precarga el degradado liso (la banda espera al primer layout para pedirlo)`);
     }
+    const precarga = sinComentarios(leer("src/components/chrome/PrecargaMaterialLiso.tsx"));
+    const links = precarga.match(/<link [^>]*\/>/g) ?? [];
+    if (links.length !== 2
+      || !links.some((l) => /href="\/landing\/hero-liso-m2x\.webp" media="\(max-width: 767px\)"/.test(l))
+      || !links.some((l) => /href="\/landing\/hero-liso-d1x\.webp" media="\(min-width: 768px\)"/.test(l))
+      || links.some((l) => !/^<link rel="preload" as="image" /.test(l))) F("8 · la precarga no es exactamente el liso de cada ancho (m2x hasta 767, d1x desde 768)");
+    // Lo pesado nunca se precarga: entra con la página quieta.
+    if (/hero-[md]\dx\.webp|grano-256/.test(precarga)) F("8 · la precarga pide el fondo con grano (o la capa) antes de la página quieta");
   }
 
   if (fallas.length) {

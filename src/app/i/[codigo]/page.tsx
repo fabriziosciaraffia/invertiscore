@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PrecargaMaterialLiso } from "@/components/chrome/PrecargaMaterialLiso";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { consentimientoDeCookie } from "@/lib/consentimiento";
 import { esCargaDePagina, esRobot, eventoInvitacionVista, idPostHogDeCookies } from "@/lib/invitacion-vista";
@@ -92,6 +93,7 @@ export default async function InvitacionPage({ params, searchParams }: { params:
   const portada = modo === "invitado" ? await portadaDeptos() : undefined;
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
+      <PrecargaMaterialLiso />
       <HeaderFranco sesion={sesion} />
       <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
         <InvitacionCliente modo={modo} codigo={codigo} nombre={inv?.conNombre ? inv.nombre : null} sesion={sesion} portada={portada} />

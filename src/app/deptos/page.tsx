@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PrecargaMaterialLiso } from "@/components/chrome/PrecargaMaterialLiso";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { DEPTOS_COPY } from "@/lib/deptos/respuesta";
 import { hrefAnalizar } from "@/lib/cta-analizar";
@@ -41,6 +42,7 @@ export default async function DeptosPage({ searchParams }: { searchParams?: Reco
   const portada = await portadaDeptos(comunaDeLaUrl(searchParams?.comuna));
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
+      <PrecargaMaterialLiso />
       <HeaderFranco sesion={sesion} />
       <main className="mx-auto max-w-[760px] px-4 pb-12 pt-4 sm:px-6 sm:pt-10">
         {/* Desde «Empezar gratis» de la página de planes (19-oct-2026): una línea arriba con qué hacer acá y, para quien ya
