@@ -23,8 +23,11 @@
 > `recordado` (delante había un webhook o un cron: el último navegador que Franco le vio) o `cola`. Ningún evento sale
 > sin agente: el de una persona cuyo navegador Franco todavía no vio espera en `eventos_sin_agente`, con su hora, y sale
 > cuando lo ve (un pedido suyo, o navegando con sesión por la app: el middleware). Por eso un evento `cola` puede llegar
-> a PostHog días después de su hora. Antes del 20-oct-2026 los eventos del servidor no tienen `agente_origen` y salen
-> todos como robot.
+> a PostHog hasta un día después de su hora. Lo que lleva más de 24 horas esperando sale igual (21-oct-2026), con su
+> hora, el agente genérico fijo de Franco («Mozilla/5.0 (Franco) AppleWebKit/537.36 (KHTML, like Gecko) Franco/1.0»,
+> que PostHog clasifica `Regular`) y `agente_origen` = `ninguno`: para separarlo en un panel, filtrar por ese origen.
+> Lo vacía el resumen diario de los crons (la vigilancia de las 00:45 UTC). Antes del 20-oct-2026 los eventos del
+> servidor no tienen `agente_origen` y salen todos como robot.
 
 ## La tabla (HogQL)
 

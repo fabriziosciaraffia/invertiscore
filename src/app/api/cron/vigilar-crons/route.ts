@@ -5,6 +5,7 @@ import { avisar, cerrarCron, CORRIDA_FALLIDA, FUENTE_ALERTA } from "@/lib/cron-r
 import { alVigilar, condicionBloqueo, condicionesDelCron, CRONS_AL_RESUMEN, esperaResumen, ESTADO_INICIAL, METRICA_RESUMEN, VIGILANTE } from "@/lib/cron-alertas";
 import { guardarEstadoCron, leerEstadosCron } from "@/lib/cron-estado";
 import { guardarMetrica } from "@/lib/metrics-daily";
+import { almacenSupabase, vaciarColaVencida } from "@/lib/agentes-navegador";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La vigilancia de los crons (29-sep-2026; reglas de las alertas desde el 15-oct-2026, cron-alertas.ts). Cada 6 horas
@@ -77,6 +78,7 @@ export async function GET(request: Request) {
     if (rFicha.estado.alertas.join("|") !== eFicha.alertas.join("|")) await guardarEstadoCron(sb, FICHA, rFicha.estado);
     for (const a of rFicha.inmediatos) { await avisar(sb, FICHA, a); alertas++; }
     // El resumen del día (a lo más uno): la marca va siempre, para que la vigilancia siguiente no lo repita.
+    let colaSinAgente: { enviados: number; fallidos: number } | null = null;
     if (esResumen) {
       await guardarMetrica(sb, { fecha: ayer, fuente: FUENTE_ALERTA, metrica: METRICA_RESUMEN, valor: resumen.length });
       if (resumen.length) {
@@ -84,12 +86,17 @@ export async function GET(request: Request) {
         await sendResumenCronsInterno({ fecha: ayer, items: resumen });
         alertas++;
       }
+      // La cola de eventos sin agente (21-oct-2026, agentes-navegador.ts): lo que lleva más de 24 horas esperando sale
+      // con su hora, el agente genérico de Franco y agente_origen = ninguno. Después del resumen, con tope de tiempo:
+      // lo que no alcance queda para mañana. Nunca lanza.
+      colaSinAgente = await vaciarColaVencida(almacenSupabase(() => sb));
     }
     // La vigilancia misma sale bien aunque haya crons en rojo: su trabajo es verlos y avisar.
     return cerrarCron(sb, NOMBRE, { procesados: estado.length, exitosos: estado.length, fallidos: 0 }, {
       enRojo: estado.filter((c) => c.enRojo).map((c) => ({ cron: c.nombre, motivo: c.motivo })),
       alertasEnviadas: alertas,
       resumen: esResumen ? resumen.length : null,
+      colaSinAgente,
     });
   } catch (e) {
     return cerrarCron(sb, NOMBRE, CORRIDA_FALLIDA, { error: `leer el estado: ${String(e).slice(0, 200)}` });

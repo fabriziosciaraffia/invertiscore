@@ -6,9 +6,15 @@
 //     esperan acá, con su hora, y salen cuando lo ve (`verNavegador`), con `agente_origen` = cola.
 // Franco ve el navegador de la persona cuando un evento sale de un pedido suyo (capturarServidor) y cuando navega con
 // sesión por la app (el middleware, una vez por navegador).
+// LA REGLA DE SALIDA (21-oct-2026, Fabrizio): lo que lleva más de 24 horas esperando sale igual, con su hora, el agente
+// genérico de Franco y `agente_origen` = ninguno (`vaciarColaVencida`). Lo vacía el resumen diario de los crons, la
+// vigilancia de las 00:45 UTC (api/cron/vigilar-crons).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { agenteDeNavegador, enviarCaptura, idDeCorreo, idRecordable, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
+import { AGENTE_GENERICO, agenteDeNavegador, enviarCaptura, idDeCorreo, idRecordable, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
+
+/** Cuánto espera un evento a que Franco vea el navegador de la persona antes de salir con el agente genérico. */
+export const ESPERA_MAXIMA_H = 24;
 
 export interface AlmacenAgentes {
   leer(distinctId: string): Promise<string | null>;
@@ -16,6 +22,8 @@ export interface AlmacenAgentes {
   /** El evento espera a que Franco vea el navegador de la persona. */
   encolar(ev: EventoServidor): Promise<void>;
   pendientes(distinctId: string): Promise<Array<{ id: number; evento: EventoServidor }>>;
+  /** Lo que entró a la cola antes de `antesDe` (ISO), de a `limite`. */
+  vencidos(antesDe: string, limite: number): Promise<Array<{ id: number; evento: EventoServidor }>>;
   sacar(ids: number[]): Promise<void>;
 }
 
@@ -42,6 +50,11 @@ export function almacenSupabase(cliente: () => SupabaseClient): AlmacenAgentes {
     },
     async pendientes(distinctId) {
       const { data } = await cliente().from("eventos_sin_agente").select("id, evento").eq("distinct_id", distinctId).order("id").limit(500);
+      return ((data ?? []) as Array<{ id: number; evento: EventoServidor }>);
+    },
+    async vencidos(antesDe, limite) {
+      const { data, error } = await cliente().from("eventos_sin_agente").select("id, evento").lt("creado_at", antesDe).order("id").limit(limite);
+      if (error) throw error;
       return ((data ?? []) as Array<{ id: number; evento: EventoServidor }>);
     },
     async sacar(ids) {
@@ -84,6 +97,33 @@ export async function verNavegador(distinctIds: string[], agente: string, almace
     }
   }
   return enviados;
+}
+
+/** La regla de salida: lo que lleva más de `ESPERA_MAXIMA_H` horas en la cola sale con su hora, el agente genérico de
+ *  Franco y `agente_origen` = ninguno, y deja la cola. De a 200, mientras quede tiempo (`topeMs`: la vigilancia tiene
+ *  60 s); lo que no alcance o PostHog no reciba queda para la próxima. Nunca lanza. */
+export async function vaciarColaVencida(almacen: AlmacenAgentes, deps: DepsEnvio = {}, ahora: Date = new Date(), topeMs = 20_000): Promise<{ enviados: number; fallidos: number }> {
+  const antesDe = new Date(ahora.getTime() - ESPERA_MAXIMA_H * 3600e3).toISOString();
+  const hasta = Date.now() + topeMs;
+  let enviados = 0;
+  let fallidos = 0;
+  try {
+    while (Date.now() < hasta) {
+      const vencidos = await almacen.vencidos(antesDe, 200);
+      const salieron: number[] = [];
+      for (const p of vencidos) {
+        if (Date.now() >= hasta) break;
+        if (await enviarCaptura(p.evento, { valor: AGENTE_GENERICO, origen: "ninguno" }, deps)) salieron.push(p.id);
+        else fallidos++;
+      }
+      await almacen.sacar(salieron);
+      enviados += salieron.length;
+      if (vencidos.length < 200 || salieron.length === 0) break;
+    }
+  } catch {
+    // lo que no salió queda en la cola para el resumen de mañana
+  }
+  return { enviados, fallidos };
 }
 
 /** El middleware vio a alguien con sesión navegando por la app. Si el pedido viene de un navegador y esta cuenta no

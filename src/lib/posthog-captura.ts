@@ -12,7 +12,9 @@
 //   · `pedido`    — el del pedido en curso, si viene de un navegador (`agenteDeNavegador`);
 //   · `recordado` — el último que Franco le vio a esa persona (tabla `agentes_navegador`, agentes-navegador.ts);
 //   · `cola`      — Franco todavía no había visto su navegador: el evento esperó en `eventos_sin_agente`, con su hora,
-//                   y salió cuando lo vio.
+//                   y salió cuando lo vio;
+//   · `ninguno`   — esperó más de 24 horas sin que Franco viera su navegador: sale igual, con su hora y el agente
+//                   genérico de Franco (`AGENTE_GENERICO`), para que los paneles puedan separarlo (21-oct-2026).
 // NINGÚN EVENTO SALE SIN AGENTE: `enviarCaptura` no manda uno que no lo traiga. Lo prueba el tier AGENTE-SERVIDOR.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -25,7 +27,13 @@ export interface EventoServidor {
   timestamp?: string;
 }
 
-export type OrigenAgente = "evento" | "pedido" | "recordado" | "cola";
+export type OrigenAgente = "evento" | "pedido" | "recordado" | "cola" | "ninguno";
+
+/** El agente fijo de Franco para lo que esperó más de 24 horas sin que se viera el navegador de la persona
+ *  (`agente_origen` = ninguno). PostHog lo clasifica `Regular`, no robot: medido el 21-oct-2026 con `isLikelyBot`,
+ *  `getTrafficType` y `getTrafficCategory` en su HogQL. Sin «bot», «crawl», «http» ni el formato «compatible; …; +url»
+ *  de los robots, por si PostHog los suma a su lista. No cambiarlo: los paneles lo separan por él y por el origen. */
+export const AGENTE_GENERICO = "Mozilla/5.0 (Franco) AppleWebKit/537.36 (KHTML, like Gecko) Franco/1.0";
 
 /** El agente de la persona y de dónde salió; `valor` null = todavía no se conoce (el evento espera en la cola). */
 export interface AgentePersona {
