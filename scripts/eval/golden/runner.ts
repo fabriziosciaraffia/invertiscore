@@ -153,6 +153,7 @@ import { runPuertaBTier } from "./puerta-b-catch-test";
 import { runPuertaCTier } from "./puerta-c-catch-test";
 import { runVistaEntradaTier } from "./vista-entrada-catch-test";
 import { runAgenteServidorTier } from "./agente-servidor-catch-test";
+import { runPanelActivacionTier } from "./panel-activacion-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
@@ -643,6 +644,9 @@ function printSeed(r: SeedReport) {
   // por un solo punto —el del pedido, o el último recordado si delante hay un webhook o un cron—: sin él PostHog lo
   // marca robot. ──
   totalHard += (await runAgenteServidorTier()).hard;
+  // Tier PANEL-ACTIVACION (21-oct-2026, 0 tokens): todo evento del servidor de una cuenta de prueba sale marcado desde el
+  // primero (`$set.test_account` y `prueba`), y el informe que un pago desbloquea cuenta con `analisis_creado` via = pago. ──
+  totalHard += (await runPanelActivacionTier()).hard;
   // Tier PRIMERA-SELECCION (20-oct-2026, 0 tokens): quien se registra ve sus deptos ahí mismo, por cualquier puerta, con
   // «Analizar este» en cada uno; toda cuenta nueva recibe el correo del día dentro de la hora, por la misma cola. ──
   totalHard += (await runPrimeraSeleccionTier()).hard;

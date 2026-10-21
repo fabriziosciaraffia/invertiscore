@@ -190,7 +190,9 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
         if (/from ["']posthog-node["']/.test(s)) F(`5 · src/${ruta} usa posthog-node, fuera del punto único`);
       }
       const nucleo = sinComentarios(leer("src/lib/posthog-captura.ts"));
-      if (!/f\(`\$\{host\}\/capture\/`/.test(nucleo) || !/properties: \{ \.\.\.props, \$raw_user_agent: agente\.valor, agente_origen: agente\.origen, \$lib: "franco-servidor" \}/.test(nucleo)) F("5 · el punto único no manda el agente");
+      // ⛔ ACTA 21-oct-2026 · el cuerpo suma `...marca` (la marca de cuenta de prueba, tier PANEL-ACTIVACION) ANTES del
+      // agente: la regla de acá no cambia, el agente y su origen siguen pisando lo que traiga el evento.
+      if (!/f\(`\$\{host\}\/capture\/`/.test(nucleo) || !/properties: \{ \.\.\.props, \.\.\.marca, \$raw_user_agent: agente\.valor, agente_origen: agente\.origen, \$lib: "franco-servidor" \}/.test(nucleo)) F("5 · el punto único no manda el agente");
       const srv = sinComentarios(leer("src/lib/posthog-servidor.ts"));
       if (!/enviarCaptura\(ev, agente, deps\)/.test(srv) || !/return headers\(\);/.test(srv) || !/waitUntil\(envio\);/.test(srv)) F("5 · capturarServidor no pasa por el punto único, no lee el pedido de Next o no se anota en waitUntil");
       if (!/const agentes = deps\.agentes !== undefined \? deps\.agentes : deps\.fetch \|\| process\.env\.VERCEL !== "1" \? null : almacenSupabase\(createServiceClient\);/.test(srv) || !/if \(!\(deps\.key \?\? process\.env\.NEXT_PUBLIC_POSTHOG_KEY\)\) return Promise\.resolve\(false\);/.test(srv)) F("5 · capturarServidor no usa las tablas por defecto en Vercel (o las toca sin key, en una prueba)");
@@ -198,7 +200,9 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
       if (!/\.from\("agentes_navegador"\)\.upsert\(/.test(alm) || !/\.from\("eventos_sin_agente"\)\.insert\(/.test(alm) || !/\.from\("eventos_sin_agente"\)\.delete\(\)/.test(alm)) F("5 · el almacén no recuerda el navegador o no encola y vacía en las tablas");
       if (!/return enviarCaptura\(ev, \{ valor: agenteDelEvento\(ev\), origen: "evento" \}, deps\);/.test(sinComentarios(leer("src/lib/vista-entrada.ts")))) F("5 · enviarVista no pasa por el punto único");
       const mw = sinComentarios(leer("src/middleware.ts"));
-      if (!/const res = await Promise\.race\(\[updateSession\(req, \(u\) => \{ persona = u; \}\), timeout\]\);\s*return conVista\(req, conMedicion\(req, conNavegador\(req, res, event, persona\)\), event, visita\);/.test(mw) || !/event\.waitUntil\(nav\.anotar\(almacenSupabase\(createServiceClient\)\)/.test(mw)) F("5 · el middleware no anota el navegador de quien tiene sesión");
+      // ⛔ ACTA 21-oct-2026 · `conVista` recibe además `persona` (la cuenta con sesión marca la vista de una cuenta de prueba,
+      // tier PANEL-ACTIVACION); el navegador se sigue anotando igual.
+      if (!/const res = await Promise\.race\(\[updateSession\(req, \(u\) => \{ persona = u; \}\), timeout\]\);\s*return conVista\(req, conMedicion\(req, conNavegador\(req, res, event, persona\)\), event, visita, persona\);/.test(mw) || !/event\.waitUntil\(nav\.anotar\(almacenSupabase\(createServiceClient\)\)/.test(mw)) F("5 · el middleware no anota el navegador de quien tiene sesión");
       if (!/\} = await supabase\.auth\.getUser\(\);\s*alUsuario\?\.\(user \? \{ id: user\.id, email: user\.email \?\? null \} : null\);/.test(sinComentarios(leer("src/lib/supabase/middleware.ts")))) F("5 · updateSession no avisa quién tiene sesión");
     }
 
