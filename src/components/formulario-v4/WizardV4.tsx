@@ -526,13 +526,15 @@ export function WizardV4({
             {reanalisisEsperando ? (
               <p className="wz-indic" role="status" data-reanalisis-cargando>Cargando el depto de tu informe…</p>
             ) : (
-              <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
-            )}
+              <>
+                <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
 
-            {reanalisisEsperando ? null : esPortada ? (
-              <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
-            ) : (
-              <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} reanalisis={marcaReanalisis} />
+                {esPortada ? (
+                  <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
+                ) : (
+                  <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} reanalisis={marcaReanalisis} />
+                )}
+              </>
             )}
           </div>
         </div>
