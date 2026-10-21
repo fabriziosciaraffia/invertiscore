@@ -157,6 +157,7 @@ import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
+import { runReanalisisTier } from "./reanalisis-catch-test";
 import { runInformeTipografiaTier } from "./informe-tipografia-catch-test";
 import { runArriendoTamanoTier } from "./arriendo-tamano-catch-test";
 import { runZonaComunaTier } from "./zona-comuna-catch-test";
@@ -650,6 +651,10 @@ function printSeed(r: SeedReport) {
   totalHard += (await runSemanalSinMinimoTier()).hard;
   totalHard += runPlanesTier().hard;
   totalHard += runCompraTier().hard;
+  // Tier REANALISIS (21-oct-2026, 0 tokens): el botón del pop-up Ajustar lleva al wizard con el informe entero y la
+  // recomendación de Franco puestos; el aviso del semanal antes de gastar, la compra con el depto y el precio, la línea
+  // arriba del informe nuevo con el original, y `reanalisis_precio` una vez por informe. ──
+  totalHard += runReanalisisTier().hard;
   // Tier INFORME-TIPOGRAFÍA (05-oct-2026, 0 tokens): el interior del informe sin mono, sin mayúsculas ni espaciado
   // de versalitas; «Cómo se calcula» con layout fijo y millones en el teléfono. ──
   totalHard += runInformeTipografiaTier().hard;

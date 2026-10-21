@@ -57,6 +57,13 @@
 // El chequeo de filas se reescribe por `data-fila` (el rótulo ahora lleva el ⓘ adentro, y leerlo
 // por texto contaba el botón como parte del nombre).
 //   8 · El CTA inerte, solo con descuento, nunca en Comprar.
+//
+// ⛔ ACTA 21-oct-2026 · EL BOTÓN DEJA DE SER INERTE (Fabrizio: «el botón no hace nada»). El 8 fijaba
+// el <span aria-disabled> del 13-sep a propósito: el re-análisis esperaba un parámetro de precio en
+// el wizard, la precarga del informe y la decisión del crédito. Llegaron las tres (lib/reanalisis.ts),
+// así que el 8 se da vuelta: el botón es un enlace «Ver el informe completo a UF X» a `urlReanalisis`,
+// solo con la celda de Franco con descuento y con el informe de origen (`reanalisisOrigen`), nunca en
+// Comprar. Lo que el enlace lleva adentro (precio, pie, plazo) lo fija el tier REANALISIS.
 // Corre dentro del QUICK. Solo:  node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
 // ============================================================================
 import React, { createElement } from "react";
@@ -70,6 +77,7 @@ import { celdaFranco, grillaDelPopup, hayAjustesQueMostrar, lecturaCelda, nivelM
 import { nivelDeDescuento, BANDA_TOPE_FACTIBLE_PCT, BANDA_TOPE_ARGUMENTOS_PCT } from "../../../src/lib/banda-esfuerzo";
 import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
 import { recomendacionPagas } from "../../../src/lib/como-lo-pagas";
+import { REANALISIS_COPY } from "../../../src/lib/reanalisis";
 import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
 
 (globalThis as any).React = React;
@@ -81,6 +89,8 @@ const CLASE: Record<Veredicto, string> = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a"
  *  llamara a la función que vigila, una escala rota se daría la razón a sí misma. */
 const ESCALA_ESPERADA = (d: number | null) =>
   d === null ? "fx" : d === 0 ? "e0" : d <= BANDA_TOPE_FACTIBLE_PCT ? "e1" : d <= BANDA_TOPE_ARGUMENTOS_PCT ? "e2" : "e3";
+/** El informe de origen del botón: el pop-up lo dibuja solo con él (el dueño, en su informe). */
+const ORIGEN = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
 const FILAS_TABLA = ["veredicto", "descuento", "precio", "pie", "cuota", "flujo", "coc", "cap", "tir", "score"];
 /** Las filas que llevan el ⓘ del informe. */
 const FILAS_CON_GLOSA = ["coc", "cap", "tir", "score"];
@@ -114,6 +124,7 @@ export function runPopupAjustesTier(): { hard: number } {
         veredicto: r.v, modalidad: "LTR", distancia: r.dist, mixComprar: r.res.mixComprar ?? null, currency: "CLP", valorUF: AUDIT_UF, precioUF: Number(r.input.precio),
         // «Hoy» con un score CENTINELA: la tabla tiene que imprimir el que le pasa el hero, no otro.
         antes: { cuotaMensual: r.res.metrics?.dividendo ?? null, flujoMensual: r.res.metrics?.flujoNetoMensual ?? null, cocPct: null, capRateNetoPct: null, tirPct: null, score: 7 },
+        reanalisisOrigen: ORIGEN,
       }),
     );
   const botones = (h: string) =>
@@ -192,13 +203,22 @@ export function runPopupAjustesTier(): { hard: number } {
       if (fr) F(`G4 · ${r.id}: Comprar marca una celda de Franco`);
       if (/pjx-tag fr/.test(h) || /\bfr\b/.test(bs.map((b) => b.clase).join(" "))) F(`G4 · ${r.id}: el HTML de Comprar lleva la marca «Franco»`);
       if (/más descuento/.test(h)) F(`6 · ${r.id}: Comprar dibuja las flechas de descuento (no hay descuento que pedir)`);
-      if (/Analízalo a UF/.test(h)) F(`8 · ${r.id}: Comprar dibuja el botón de re-análisis`);
+      if (/data-reanalisis|Ver el informe completo a UF/.test(h)) F(`8 · ${r.id}: Comprar dibuja el botón de re-análisis`);
       // Comprar sigue como estaba: la tríada de leyenda y las cuatro cifras.
       if (!/pjx-ley/.test(h) || !/Toca una celda para ver qué pasa con esa combinación/.test(h)) F(`6 · ${r.id}: Comprar perdió la leyenda de la tríada o su línea «Toca una celda…»`);
       if (!/Pie el día uno/.test(h) || !/TIR a 10 años/.test(h) || !/Franco Score/.test(h) || !/pjx-cifras/.test(h)) F(`6 · ${r.id}: Comprar perdió sus cuatro cifras`);
       if (/pjx-tab/.test(h)) F(`6 · ${r.id}: Comprar dibuja la tabla de Ajustar`);
       continue;
     }
+
+    // ── 8 · el botón: un enlace, solo con la celda de Franco con descuento ───
+    const enlaces = h.match(/<a\b[^>]*data-reanalisis[^>]*>[\s\S]*?<\/a>/g) ?? [];
+    const conBoton = !!fr && (fr.descuentoPct ?? 0) > 0;
+    if (conBoton) {
+      const uf = Math.round(Number(r.input.precio) * (1 - (fr!.descuentoPct ?? 0) / 100));
+      if (enlaces.length !== 1 || !/\shref="\/[^"]+"/.test(enlaces[0]) || /aria-disabled/.test(enlaces[0]) || !enlaces[0].includes(REANALISIS_COPY.boton(uf))) F(`8 · ${r.id}: la recomendación de Franco (−${fr!.descuentoPct}%) no tiene un enlace «Ver el informe completo a UF ${uf}» que navegue`);
+    } else if (enlaces.length) F(`8 · ${r.id}: hay botón de re-análisis sin celda de Franco con descuento`);
+    if (/aria-disabled="true"/.test(h)) F(`8 · ${r.id}: volvió un control inerte (aria-disabled) al pop-up`);
 
     // ── G2 · Franco nunca más difícil que la más fácil disponible ─────────────
     if (fr) {
@@ -359,7 +379,7 @@ export function runPopupAjustesTier(): { hard: number } {
   if (/\.pjx-celda\.(fr|hoy)\{outline:3px/.test(tok)) F("6 · volvieron los contornos gruesos de 3 px");
   if (/Un cambio a la vez/.test(pop)) F("6 · volvió «Un cambio a la vez»");
   if (!/Un camino que no depende de ti/.test(pop) || !/Si la zona paga más, también llega a/.test(pop)) F("7 · falta el bloque del camino de mercado («Un camino que no depende de ti»)");
-  if (!/aria-disabled="true"/.test(pop) || /href=|onClick=\{[^}]*router|<Link\b/.test(pop.slice(pop.indexOf("pjx-cta")))) F("8 · el botón de re-análisis dejó de ser inerte");
+  if (/aria-disabled/.test(pop) || !/<EnlaceCarga href=\{hrefReanalisis\} className="pjx-btn" data-reanalisis>\s*\{REANALISIS_COPY\.boton\(precioBoton\)\}/.test(pop) || !/urlReanalisis\(\{ origenId: reanalisisOrigen, precioUF: precioBoton, piePct: franco\.piePct, plazoAnios: franco\.plazoAnios \}\)/.test(pop)) F("8 · el botón de re-análisis no es el enlace «Ver el informe completo a UF X» al wizard con la recomendación de Franco");
   for (const hero of ["src/components/analysis/HeroLTR.tsx", "src/components/analysis/str/HeroStrDictamen.tsx"]) {
     const src = sinComentarios(leer(hero));
     if (!/esBuscar \? null :/.test(src)) F(`G5 · ${hero}: el footer (el botón del pop-up) no se apaga en Buscar otra`);
@@ -371,7 +391,7 @@ export function runPopupAjustesTier(): { hard: number } {
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
     if (fallas.length > 40) console.log(`     · … y ${fallas.length - 40} más`);
   } else {
-    console.log(`  ✓ VERDE — ${conGrilla} grillas del golden: cada celda dice la verdad de su combinación (escala del descuento en Ajustar, veredicto en Comprar, frase con el veredicto real), Franco nunca más difícil que la más fácil (${conFranco} filas), card, pop-up y capítulo con la misma recomendación (${conCardMix}), Comprar sin Franco, Buscar otra sin pop-up, la anatomía del contrato y el botón inerte`);
+    console.log(`  ✓ VERDE — ${conGrilla} grillas del golden: cada celda dice la verdad de su combinación (escala del descuento en Ajustar, veredicto en Comprar, frase con el veredicto real), Franco nunca más difícil que la más fácil (${conFranco} filas), card, pop-up y capítulo con la misma recomendación (${conCardMix}), Comprar sin Franco, Buscar otra sin pop-up, la anatomía del contrato y el botón al re-análisis`);
   }
   return { hard: fallas.length };
 }
