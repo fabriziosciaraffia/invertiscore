@@ -5,7 +5,7 @@ import { flowGet } from "@/lib/flow";
 import { sendAlertaPagoFallidoInterna, sendAlertaPagoInterna, sendPaymentConfirmationEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
-import { consumeCredit } from "@/lib/access";
+import { abrirInformePagado } from "@/lib/desbloqueo-pago";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { emitirEventoMeta } from "@/lib/meta/servidor";
@@ -23,8 +23,6 @@ import { hayGuia } from "@/lib/guia/activa";
 import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
-import { leerReanalisis } from "@/lib/reanalisis";
-import { capturarReanalisis } from "@/lib/reanalisis-servidor";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -163,49 +161,11 @@ export async function POST(request: Request) {
         // (corta si ya está is_premium), así que un reenvío de webhook no
         // doble-consume el crédito.
         if (analysisId) {
-          // Cómo estaba el informe antes del pago: si este pago lo abre, cuenta en la activación (abajo).
-          const { data: antesDelPago } = await supabase.from("analisis").select("is_premium, pending_payment, tipo_analisis").eq("id", analysisId).maybeSingle();
-
-          await consumeCredit(userId, analysisId);
-
-          // Flujo LTR bloqueado pre-pago: la fila se creó con pending_payment=true (ver
-          // /api/analisis/locked). Aquí la desbloqueamos. El flip CONDICIONAL (.eq
-          // pending_payment, true) es idempotente ante un reenvío del webhook. Hasta el 25-sep-2026
-          // este paso además disparaba la prosa IA diferida, retirada del informe.
-          await supabase
-            .from("analisis")
-            .update({ pending_payment: false })
-            .eq("id", analysisId)
-            .eq("pending_payment", true);
-
-          // El desbloqueo por pago (21-oct-2026, medicion-activacion.ts): `analisis_creado` con via = pago, como los
-          // hechos con saldo. Solo si este pago lo abrió (un reenvío lo encuentra abierto).
-          if (seDesbloqueaConPago(antesDelPago)) {
-            await capturarAnalisisCreado({ userId, analysisId, modalidad: modalidadDelInforme(antesDelPago?.tipo_analisis as string | null), via: VIA_PAGO });
-          }
-
-          // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el informe sale recién
-          // ahora, así que `reanalisis_precio` sale acá (uuid por informe: un reenvío del webhook no lo duplica).
-          try {
-            const { data: fila } = await supabase.from("analisis").select("input_data, tipo_analisis").eq("id", analysisId).maybeSingle();
-            const r = leerReanalisis((fila?.input_data as Record<string, unknown> | null)?.reanalisis);
-            if (r) await capturarReanalisis({ userId, analysisId, r, modalidad: fila?.tipo_analisis === "short-term" ? "str" : "ltr", conPago: true });
-          } catch (e) {
-            console.error("[payments/confirm] reanalisis_precio:", e);
-          }
-
-          // AMBAS pre-pago: la 2ª fila (STR companion) se premia DIRECTO, sin
-          // consumir otro crédito (el único cobro ya cubrió ambas). El flip
-          // combinado is_premium + pending_payment va guardado por
-          // .eq("pending_payment", true) → idempotente ante reenvío de webhook.
-          // NO se genera IA STR acá (la comparativa la corre on-demand).
-          if (companionStrId) {
-            await supabase
-              .from("analisis")
-              .update({ is_premium: true, pending_payment: false })
-              .eq("id", companionStrId)
-              .eq("pending_payment", true);
-          }
+          // El informe que abre este pago (21-oct-2026, lib/desbloqueo-pago.ts): consume el crédito recién otorgado, abre
+          // la fila bloqueada (la del wizard sin saldo, /api/analisis/locked), lo cuenta en la activación
+          // (`analisis_creado` con via = pago, solo si este pago lo abrió), el re-análisis y la fila STR de AMBAS.
+          // Todo idempotente ante un reenvío del webhook.
+          await abrirInformePagado(supabase, { userId, analysisId, companionStrId });
         }
       } else if (userId && product === PRODUCTO_PACK) {
         // «Lo que sigue» (28-sep-2026): el pack son 3 créditos al ledger, sin caducidad, en UN
