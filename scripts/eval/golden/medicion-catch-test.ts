@@ -81,9 +81,17 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     // el cliente del servidor: POST al endpoint de captura, con api_key, uuid y $lib
     const pedidos: Array<{ url: string; body: Record<string, unknown> }> = [];
     const fetchFalso = (async (url: string, init: { body: string }) => { pedidos.push({ url, body: JSON.parse(init.body) }); return { ok: true } as Response; }) as unknown as typeof fetch;
-    const ok = await capturarServidor(ev, { fetch: fetchFalso, key: "phc_test", host: "https://ph.test" });
+    // ACTA 20-oct-2026 (AGENTE-SERVIDOR): ningún evento del servidor sale sin el agente del navegador de la persona. El
+    // pago llega por el webhook de Flow, sin navegador delante: sale con el último navegador recordado de esa cuenta (un
+    // almacén de mentira); sin agente conocido no sale (espera en la cola, que acá no hay).
+    const NAV = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+    const recordado = { leer: async () => NAV, guardar: async () => {}, encolar: async () => {}, pendientes: async () => [], sacar: async () => {} };
+    const evCuenta = { ...ev, distinctId: "0f4d1489-0b03-406f-82bf-f74ec9c4af4e" };
+    const ok = await capturarServidor(evCuenta, { fetch: fetchFalso, key: "phc_test", host: "https://ph.test", cabeceras: null, agentes: recordado });
     const b = pedidos[0]?.body ?? {};
-    if (!ok || pedidos[0]?.url !== "https://ph.test/capture/" || b.api_key !== "phc_test" || b.event !== "pago_confirmado" || b.distinct_id !== "u-1" || b.uuid !== ev.uuid || (b.properties as Record<string, unknown>)?.$lib !== "franco-servidor") F(`3 · capturarServidor no manda el evento como corresponde (${JSON.stringify(pedidos[0])})`);
+    if (!ok || pedidos[0]?.url !== "https://ph.test/capture/" || b.api_key !== "phc_test" || b.event !== "pago_confirmado" || b.distinct_id !== evCuenta.distinctId || b.uuid !== ev.uuid || (b.properties as Record<string, unknown>)?.$lib !== "franco-servidor" || (b.properties as Record<string, unknown>)?.$raw_user_agent !== NAV) F(`3 · capturarServidor no manda el evento como corresponde, con el agente de la persona (${JSON.stringify(pedidos[0])})`);
+    pedidos.length = 0;
+    if (await capturarServidor(ev, { fetch: fetchFalso, key: "phc_test", host: "https://ph.test", cabeceras: null }) !== false || pedidos.length) F("3 · un evento sin el agente de la persona sale igual");
     if (await capturarServidor(ev, { fetch: fetchFalso, key: "" }) !== false) F("3 · sin key, capturarServidor tendría que devolver false sin pedir nada");
     const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
     const bloque = (confirm.match(/if \(userId\) \{\s*\n\s*try \{\s*\n\s*const \{ data: capiUser \}[\s\S]*?await capturarServidor\(eventoPagoConfirmado\(\{[\s\S]*?\}\)\);/) ?? [])[0] ?? "";

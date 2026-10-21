@@ -5,15 +5,20 @@
 // análisis, los correos y el pago. Pasa por un solo punto (posthog-captura.ts), no evento por evento.
 //
 //   1 · EL EVENTO DEL SERVIDOR SIN AGENTE: `cuenta_atribuida` sale dentro del pedido del navegador de la persona (el
-//       `headers()` de Next, de verdad) y llega a PostHog con su agente; y ese agente queda recordado para esa cuenta.
+//       `headers()` de Next, de verdad) y llega a PostHog con su agente; el agente queda recordado y sale, con él y su
+//       hora, lo que esperaba en la cola.
 //   2 · SIN NAVEGADOR DELANTE (el webhook de Resend o de Flow, el cron de Vercel, fuera de un pedido): el último agente
 //       recordado de esa persona, nunca el de quien hace el pedido; y eso no se recuerda.
 //   3 · EL QUE TRAE EL EVENTO (las vistas de entrada) manda; una visita no se recuerda.
-//   4 · NUNCA SE VIO SU NAVEGADOR: sale sin agente y lo dice (`agente_origen` = ninguno); un almacén caído no corta el envío.
+//   4 · NUNCA SE VIO SU NAVEGADOR: el evento NO sale; espera en la cola con su hora. Cuando la persona navega con sesión
+//       (el middleware), su cuenta y su correo quedan con su agente y el evento sale con él (agente_origen = cola), una
+//       vez por navegador. Con la base caída tampoco sale sin agente.
 //   5 · UN SOLO PUNTO: en src/ solo posthog-captura.ts le habla a `/capture/`; `capturarServidor` y `enviarVista` pasan
-//       por él; `capturarServidor` lee el pedido de Next, recuerda en la tabla y se anota en `waitUntil`.
+//       por él; `capturarServidor` lee el pedido de Next, encola, recuerda en la tabla y se anota en `waitUntil`; el
+//       middleware anota el navegador de quien tiene sesión.
 //   6 · QUÉ ES UN NAVEGADOR: «Mozilla/…», no un robot, con `Sec-Fetch-*`.
-//   7 · LA TABLA: `agentes_navegador` con RLS y sin políticas.
+//   7 · LAS TABLAS: `agentes_navegador` y `eventos_sin_agente`, con RLS y sin políticas.
+//   8 · EL INVARIANTE: todo lo que llegó a PostHog en este tier lleva agente; el núcleo no manda un evento sin él.
 //
 // ACTA DE MUTACIONES: en el cuerpo de cada sección.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/agente-servidor-catch-test.ts
@@ -22,8 +27,9 @@ import "./als-de-next";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { requestAsyncStorage } from "next/dist/client/components/request-async-storage.external";
-import { capturarServidor, type AlmacenAgentes } from "../../../src/lib/posthog-servidor";
-import { agenteDeNavegador } from "../../../src/lib/posthog-captura";
+import { capturarServidor, distinctIdDeCorreo, type EventoServidor } from "../../../src/lib/posthog-servidor";
+import { agenteDeNavegador, enviarCaptura, idDeCorreo } from "../../../src/lib/posthog-captura";
+import { navegadorDeSesion, type AlmacenAgentes } from "../../../src/lib/agentes-navegador";
 import { enviarVista } from "../../../src/lib/vista-entrada";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -34,54 +40,76 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebK
 const WINDOWS = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36";
 const CUENTA = "0f4d1489-0b03-406f-82bf-f74ec9c4af4e";
 const NAVEGADOR = { "user-agent": IPHONE, "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "accept-language": "es-CL" };
+const ORIGENES = ["evento", "pedido", "recordado", "cola"];
 
-type Cuerpo = { event: string; distinct_id: string; properties: Record<string, unknown> };
+type Cuerpo = { event: string; distinct_id: string; timestamp?: string; properties: Record<string, unknown> };
 
-function almacen(inicial: Record<string, string> = {}) {
+/** Todo lo que llegó a PostHog en el tier (el invariante del §8 lo recorre entero). */
+const todo: Cuerpo[] = [];
+
+function almacen(inicial: Record<string, string> = {}, cola: EventoServidor[] = []) {
   const datos = new Map(Object.entries(inicial));
   const guardados: Array<[string, string]> = [];
+  let n = 0;
+  const filas = cola.map((evento) => ({ id: ++n, evento }));
   const a: AlmacenAgentes = {
     async leer(id) { return datos.get(id) ?? null; },
     async guardar(id, agente) { guardados.push([id, agente]); datos.set(id, agente); },
+    async encolar(ev) { filas.push({ id: ++n, evento: ev }); },
+    async pendientes(id) { return filas.filter((f) => f.evento.distinctId === id); },
+    async sacar(ids) { for (const id of ids) filas.splice(filas.findIndex((f) => f.id === id), 1); },
   };
-  return { a, guardados };
+  return { a, guardados, filas };
 }
 
-/** Manda un evento por el punto único con un PostHog de mentira; `pedido` corre dentro de un pedido de Next con esas
- *  cabeceras (el `headers()` de verdad), `null` fuera de todo pedido. */
-async function mandar(ev: Parameters<typeof capturarServidor>[0], pedido: Record<string, string> | null, agentes: AlmacenAgentes | null): Promise<Cuerpo | null> {
+function posthogDeMentira() {
   const cuerpos: Cuerpo[] = [];
   const f = (async (_u: unknown, init?: { body?: unknown }) => {
-    cuerpos.push(JSON.parse(String(init?.body)) as Cuerpo);
+    const c = JSON.parse(String(init?.body)) as Cuerpo;
+    cuerpos.push(c);
+    todo.push(c);
     return new Response("{}", { status: 200 });
   }) as typeof fetch;
-  const correr = () => capturarServidor(ev, { fetch: f, key: "phc_test", host: "https://ph.test", agentes });
-  if (pedido) await requestAsyncStorage.run({ headers: new Headers(pedido) } as never, correr);
-  else await correr();
-  return cuerpos[0] ?? null;
+  return { cuerpos, deps: { fetch: f, key: "phc_test", host: "https://ph.test" } };
+}
+
+/** Manda un evento por el punto único; `pedido` corre dentro de un pedido de Next con esas cabeceras (el `headers()`
+ *  de verdad), `null` fuera de todo pedido. Devuelve todo lo que llegó a PostHog. */
+async function mandar(ev: EventoServidor, pedido: Record<string, string> | null, agentes: AlmacenAgentes | null): Promise<{ cuerpos: Cuerpo[]; ok: boolean }> {
+  const ph = posthogDeMentira();
+  const correr = () => capturarServidor(ev, { ...ph.deps, agentes });
+  const ok = pedido ? await requestAsyncStorage.run({ headers: new Headers(pedido) } as never, correr) : await correr();
+  return { cuerpos: ph.cuerpos, ok };
 }
 
 export async function runAgenteServidorTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER AGENTE-SERVIDOR (todo evento del servidor lleva el agente del navegador de la persona, por un solo punto · 0 tokens) ───");
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
+  todo.length = 0;
   try {
     // ── 1 · EL EVENTO DEL SERVIDOR SIN AGENTE ──
-    // Mutaciones: A1 el núcleo no pone el agente · A2 capturarServidor no lee el pedido de Next · A3 no recuerda el agente.
+    // Mutaciones: A1 el núcleo no pone el agente · A2 capturarServidor no lee el pedido de Next · A3 no recuerda el
+    // agente · A17 no vacía la cola al ver el navegador · A18 la cola sale sin su hora.
     {
-      const { a, guardados } = almacen();
-      const b = await mandar({ event: "cuenta_atribuida", distinctId: CUENTA, properties: { puerta: "B" } }, NAVEGADOR, a);
+      const esperando: EventoServidor = { event: "correo_entregado", distinctId: CUENTA, properties: { tipo: "semanal" }, timestamp: "2026-10-18T12:00:00.000Z" };
+      const { a, guardados, filas } = almacen({}, [esperando]);
+      const { cuerpos } = await mandar({ event: "cuenta_atribuida", distinctId: CUENTA, properties: { puerta: "B" } }, NAVEGADOR, a);
+      const b = cuerpos.find((c) => c.event === "cuenta_atribuida");
       if (!b) F("1 · cuenta_atribuida no llegó a PostHog");
       else {
         if (b.properties.$raw_user_agent !== IPHONE) F(`1 · un evento del servidor sale sin el agente del navegador de la persona (${String(b.properties.$raw_user_agent)}): PostHog lo marca robot`);
         if (b.properties.agente_origen !== "pedido") F(`1 · el evento no dice que el agente salió del pedido (${String(b.properties.agente_origen)})`);
         if (b.properties.puerta !== "B" || b.properties.$lib !== "franco-servidor") F("1 · el evento pierde sus propiedades al ponerle el agente");
       }
-      if (guardados.length !== 1 || guardados[0][0] !== CUENTA || guardados[0][1] !== IPHONE) F(`1 · el agente del navegador no queda recordado para esa cuenta (${JSON.stringify(guardados)})`);
+      if (!guardados.some(([id, ag]) => id === CUENTA && ag === IPHONE)) F(`1 · el agente del navegador no queda recordado para esa cuenta (${JSON.stringify(guardados)})`);
+      const c = cuerpos.find((x) => x.event === "correo_entregado");
+      if (!c || c.properties.$raw_user_agent !== IPHONE || c.properties.agente_origen !== "cola" || filas.length) F("1 · al ver el navegador no sale, con su agente, lo que esperaba en la cola");
+      else if (c.timestamp !== esperando.timestamp) F(`1 · lo que esperaba en la cola sale con otra hora (${c.timestamp})`);
     }
 
     // ── 2 · SIN NAVEGADOR DELANTE ──
-    // Mutaciones: A4 sin el recordado · A5 usa el agente de quien hace el pedido · A6 recuerda el agente recordado (o el del webhook).
+    // Mutaciones: A4 sin el recordado · A5 usa el agente de quien hace el pedido · A6 recuerda el agente recordado.
     {
       for (const [n, pedido] of [
         ["el webhook de Resend", { "user-agent": "Svix-Webhooks/1.24.0 (sender-1MUu7; +https://www.svix.com/http-sender/)" }],
@@ -90,7 +118,8 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
         ["fuera de un pedido", null],
       ] as const) {
         const { a, guardados } = almacen({ [CUENTA]: WINDOWS });
-        const b = await mandar({ event: "correo_entregado", distinctId: CUENTA, properties: {} }, pedido, a);
+        const { cuerpos } = await mandar({ event: "correo_entregado", distinctId: CUENTA, properties: {} }, pedido, a);
+        const b = cuerpos[0];
         if (b?.properties.$raw_user_agent !== WINDOWS || b.properties.agente_origen !== "recordado") F(`2 · con ${n} el evento no lleva el último navegador de la persona (${String(b?.properties.$raw_user_agent)})`);
         if (guardados.length) F(`2 · con ${n} se recuerda un agente que no salió de un navegador (${JSON.stringify(guardados)})`);
       }
@@ -100,29 +129,54 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
     // Mutaciones: A7 el pedido pisa al del evento · A8 se recuerda una visita.
     {
       const { a, guardados } = almacen();
-      const b = await mandar({ event: "landing_viewed", distinctId: "visita:9b7c", properties: { $raw_user_agent: WINDOWS } }, NAVEGADOR, a);
-      if (b?.properties.$raw_user_agent !== WINDOWS || b.properties.agente_origen !== "evento") F("3 · el agente que trae el evento no manda");
+      const { cuerpos } = await mandar({ event: "landing_viewed", distinctId: "visita:9b7c", properties: { $raw_user_agent: WINDOWS } }, NAVEGADOR, a);
+      if (cuerpos[0]?.properties.$raw_user_agent !== WINDOWS || cuerpos[0]?.properties.agente_origen !== "evento") F("3 · el agente que trae el evento no manda");
       if (guardados.length) F("3 · se recuerda el agente de una visita (dura una carga)");
-      const cuerpos: Cuerpo[] = [];
-      await enviarVista({ event: "deptos_vista", distinctId: "visita:1", properties: { $raw_user_agent: IPHONE } }, { key: "k", host: "https://ph.test", fetch: (async (_u: unknown, i?: { body?: unknown }) => { cuerpos.push(JSON.parse(String(i?.body)) as Cuerpo); return new Response("{}"); }) as typeof fetch });
-      if (cuerpos[0]?.properties.$raw_user_agent !== IPHONE || cuerpos[0]?.properties.agente_origen !== "evento") F("3 · la vista del middleware no sale con su agente por el punto único");
+      const ph = posthogDeMentira();
+      await enviarVista({ event: "deptos_vista", distinctId: "visita:1", properties: { $raw_user_agent: IPHONE } }, ph.deps);
+      if (ph.cuerpos[0]?.properties.$raw_user_agent !== IPHONE || ph.cuerpos[0]?.properties.agente_origen !== "evento") F("3 · la vista del middleware no sale con su agente por el punto único");
     }
 
     // ── 4 · NUNCA SE VIO SU NAVEGADOR ──
-    // Mutación: A9 un almacén caído corta el envío.
+    // Mutaciones: A9 sale sin agente en vez de esperar · A19 encola sin la hora · A20 el middleware no anota (o no vacía
+    // la cola) · A21 el correo de la cuenta no queda anotado · A22 se anota en cada pedido (sin la marca) · A23 con la
+    // base caída sale sin agente.
     {
-      const b = await mandar({ event: "pack_vencido", distinctId: "correo:0123456789abcdef01234567", properties: {} }, null, almacen().a);
-      if (!b || "$raw_user_agent" in b.properties || b.properties.agente_origen !== "ninguno") F("4 · sin navegador conocido el evento no lo dice (agente_origen = ninguno) o inventa un agente");
-      const caido: AlmacenAgentes = { leer: async () => { throw new Error("sin base"); }, guardar: async () => { throw new Error("sin base"); } };
+      const correo = "nunca.visto@ejemplo.cl";
+      const idCorreo = distinctIdDeCorreo(correo);
+      if (await idDeCorreo(correo) !== idCorreo || await idDeCorreo("  Nunca.Visto@Ejemplo.CL ") !== idCorreo) F("4 · el id del correo en Edge no es el mismo que el del servidor");
+      const { a, guardados, filas } = almacen();
+      const r1 = await mandar({ event: "semanal_enviado", distinctId: CUENTA, properties: { semana: "2026-10-19" } }, null, a);
+      const r2 = await mandar({ event: "correo_enviado", distinctId: idCorreo, properties: {} }, { "user-agent": "vercel-cron/1.0" }, a);
+      if (r1.cuerpos.length || r2.cuerpos.length) F("4 · el evento de quien Franco nunca vio sale sin agente (PostHog lo marca robot)");
+      if (filas.length !== 2 || !r1.ok) F(`4 · el evento sin agente no queda esperando en la cola (${filas.length})`);
+      if (filas.some((f) => !f.evento.timestamp)) F("4 · el evento en la cola no guarda su hora");
+      const horas = filas.map((f) => f.evento.timestamp);
+      // La persona navega con sesión por la app: el middleware la ve.
+      const nav = navegadorDeSesion({ persona: { id: CUENTA, email: correo }, cabeceras: new Headers({ ...NAVEGADOR, "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" }), marcaActual: undefined });
+      if (!nav) F("4 · el middleware no anota el navegador de quien navega con sesión");
+      else {
+        const ph = posthogDeMentira();
+        const salieron = await nav.anotar(a, ph.deps);
+        if (salieron !== 2 || filas.length || ph.cuerpos.some((c) => c.properties.$raw_user_agent !== IPHONE || c.properties.agente_origen !== "cola")) F(`4 · al verse su navegador no sale, con su agente, lo que esperaba (${salieron}; quedan ${filas.length})`);
+        if (ph.cuerpos.map((c) => c.timestamp).sort().join() !== [...horas].sort().join()) F("4 · lo que esperaba sale con otra hora");
+        if (!guardados.some(([id]) => id === CUENTA) || !guardados.some(([id]) => id === idCorreo)) F("4 · la cuenta y su correo no quedan con el agente de su navegador");
+        if (navegadorDeSesion({ persona: { id: CUENTA, email: correo }, cabeceras: new Headers(NAVEGADOR), marcaActual: nav.marca })) F("4 · el middleware vuelve a anotar el mismo navegador en cada pedido (la marca no sirve)");
+        if (!navegadorDeSesion({ persona: { id: CUENTA }, cabeceras: new Headers({ ...NAVEGADOR, "user-agent": WINDOWS }), marcaActual: nav.marca })) F("4 · un navegador nuevo de la misma cuenta no se anota");
+      }
+      if (navegadorDeSesion({ persona: null, cabeceras: new Headers(NAVEGADOR), marcaActual: undefined })) F("4 · se anota un navegador sin sesión");
+      if (navegadorDeSesion({ persona: { id: CUENTA }, cabeceras: new Headers({ "user-agent": "vercel-cron/1.0" }), marcaActual: undefined })) F("4 · se anota algo que no es un navegador");
+      const caido: AlmacenAgentes = { leer: async () => { throw new Error("sin base"); }, guardar: async () => { throw new Error("sin base"); }, encolar: async () => { throw new Error("sin base"); }, pendientes: async () => { throw new Error("sin base"); }, sacar: async () => { throw new Error("sin base"); } };
       const c = await mandar({ event: "correo_abierto", distinctId: CUENTA, properties: {} }, null, caido);
-      if (!c) F("4 · con la tabla caída el evento no sale");
+      if (c.cuerpos.length) F("4 · con la base caída el evento sale sin agente");
       const d = await mandar({ event: "analisis_creado", distinctId: CUENTA, properties: {} }, NAVEGADOR, caido);
-      if (d?.properties.$raw_user_agent !== IPHONE) F("4 · con la tabla caída el evento del navegador pierde su agente");
+      if (d.cuerpos[0]?.properties.$raw_user_agent !== IPHONE) F("4 · con la base caída el evento del navegador pierde su agente");
     }
 
     // ── 5 · UN SOLO PUNTO ──
     // Mutaciones: A10 otro archivo le habla a /capture/ · A11 enviarVista con su propio fetch · A12 sin waitUntil · A13
-    // capturarServidor sin el almacén por defecto.
+    // capturarServidor sin el almacén por defecto · A24 el middleware no anota el navegador · A25 updateSession no avisa
+    // quién tiene sesión.
     {
       const archivos = readdirSync(join(RAIZ, "src"), { recursive: true, encoding: "utf8" }).filter((f) => /\.(ts|tsx)$/.test(f));
       if (archivos.length < 100) F(`5 · el barrido de src/ no corrió (${archivos.length} archivos)`);
@@ -133,11 +187,16 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
         if (/from ["']posthog-node["']/.test(s)) F(`5 · src/${ruta} usa posthog-node, fuera del punto único`);
       }
       const nucleo = sinComentarios(leer("src/lib/posthog-captura.ts"));
-      if (!/f\(`\$\{host\}\/capture\/`/.test(nucleo) || !/\.\.\.\(agente\.valor \? \{ \$raw_user_agent: agente\.valor \} : \{\}\)/.test(nucleo)) F("5 · el punto único no manda el agente");
+      if (!/f\(`\$\{host\}\/capture\/`/.test(nucleo) || !/properties: \{ \.\.\.props, \$raw_user_agent: agente\.valor, agente_origen: agente\.origen, \$lib: "franco-servidor" \}/.test(nucleo)) F("5 · el punto único no manda el agente");
       const srv = sinComentarios(leer("src/lib/posthog-servidor.ts"));
       if (!/enviarCaptura\(ev, agente, deps\)/.test(srv) || !/return headers\(\);/.test(srv) || !/waitUntil\(envio\);/.test(srv)) F("5 · capturarServidor no pasa por el punto único, no lee el pedido de Next o no se anota en waitUntil");
-      if (!/const agentes = deps\.agentes !== undefined \? deps\.agentes : deps\.fetch \? null : almacenSupabase\(\);/.test(srv) || !/\.from\("agentes_navegador"\)\.upsert\(/.test(srv) || !/\.from\("agentes_navegador"\)\.select\("agente"\)/.test(srv)) F("5 · capturarServidor no recuerda ni lee el navegador en la tabla");
+      if (!/const agentes = deps\.agentes !== undefined \? deps\.agentes : deps\.fetch \|\| process\.env\.VERCEL !== "1" \? null : almacenSupabase\(createServiceClient\);/.test(srv) || !/if \(!\(deps\.key \?\? process\.env\.NEXT_PUBLIC_POSTHOG_KEY\)\) return Promise\.resolve\(false\);/.test(srv)) F("5 · capturarServidor no usa las tablas por defecto en Vercel (o las toca sin key, en una prueba)");
+      const alm = sinComentarios(leer("src/lib/agentes-navegador.ts"));
+      if (!/\.from\("agentes_navegador"\)\.upsert\(/.test(alm) || !/\.from\("eventos_sin_agente"\)\.insert\(/.test(alm) || !/\.from\("eventos_sin_agente"\)\.delete\(\)/.test(alm)) F("5 · el almacén no recuerda el navegador o no encola y vacía en las tablas");
       if (!/return enviarCaptura\(ev, \{ valor: agenteDelEvento\(ev\), origen: "evento" \}, deps\);/.test(sinComentarios(leer("src/lib/vista-entrada.ts")))) F("5 · enviarVista no pasa por el punto único");
+      const mw = sinComentarios(leer("src/middleware.ts"));
+      if (!/const res = await Promise\.race\(\[updateSession\(req, \(u\) => \{ persona = u; \}\), timeout\]\);\s*return conVista\(req, conMedicion\(req, conNavegador\(req, res, event, persona\)\), event, visita\);/.test(mw) || !/event\.waitUntil\(nav\.anotar\(almacenSupabase\(createServiceClient\)\)/.test(mw)) F("5 · el middleware no anota el navegador de quien tiene sesión");
+      if (!/\} = await supabase\.auth\.getUser\(\);\s*alUsuario\?\.\(user \? \{ id: user\.id, email: user\.email \?\? null \} : null\);/.test(sinComentarios(leer("src/lib/supabase/middleware.ts")))) F("5 · updateSession no avisa quién tiene sesión");
     }
 
     // ── 6 · QUÉ ES UN NAVEGADOR ──
@@ -150,10 +209,23 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
       if (agenteDeNavegador(h({ "user-agent": IPHONE }))) F("6 · un pedido sin Sec-Fetch (un servidor que se hace pasar) cuenta como navegador");
     }
 
-    // ── 7 · LA TABLA ──
+    // ── 7 · LAS TABLAS ──
+    // Mutación: A16 sin RLS.
     {
       const mig = leer("supabase/migrations/20261020_agentes_navegador.sql");
       if (!/create table if not exists public\.agentes_navegador \(\s*distinct_id text primary key/.test(mig) || !/alter table public\.agentes_navegador enable row level security;/.test(mig) || /create policy/i.test(mig)) F("7 · la tabla agentes_navegador no existe con RLS y sin políticas");
+      const cola = leer("supabase/migrations/20261020_eventos_sin_agente.sql");
+      if (!/create table if not exists public\.eventos_sin_agente \(/.test(cola) || !/alter table public\.eventos_sin_agente enable row level security;/.test(cola) || /create policy/i.test(cola)) F("7 · la cola eventos_sin_agente no existe con RLS y sin políticas");
+    }
+
+    // ── 8 · EL INVARIANTE ──
+    // Mutación: A26 el núcleo manda sin agente.
+    {
+      if (todo.length < 10) F(`8 · el tier no mandó lo suficiente para medir el invariante (${todo.length})`);
+      const sin = todo.filter((c) => typeof c.properties.$raw_user_agent !== "string" || !String(c.properties.$raw_user_agent).trim() || !ORIGENES.includes(String(c.properties.agente_origen)));
+      if (sin.length) F(`8 · ${sin.length} evento(s) llegaron a PostHog sin el agente de la persona: ${sin.map((c) => c.event).join(", ")}`);
+      const ph = posthogDeMentira();
+      if (await enviarCaptura({ event: "x", distinctId: CUENTA }, { valor: null, origen: "cola" }, ph.deps) !== false || ph.cuerpos.length) F("8 · el punto único manda un evento sin agente");
     }
   } catch (e) {
     F(`excepción: ${e instanceof Error ? e.stack ?? e.message : String(e)}`);
@@ -162,7 +234,7 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
     console.log(`  ✗ AGENTE-SERVIDOR · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — todo evento del servidor sale por un solo punto con el agente del navegador de la persona: el del pedido si viene de su navegador (y se recuerda), el último recordado si no (webhooks, crons), y sin agente solo si nunca se vio su navegador, diciéndolo");
+    console.log("  ✓ VERDE — ningún evento del servidor sale sin el agente del navegador de la persona, por un solo punto: el del pedido si viene de su navegador (y se recuerda), el último recordado si no (webhooks, crons), y si Franco no lo vio todavía el evento espera en la cola, con su hora, hasta que lo ve (el middleware, con sesión)");
   }
   return { hard: fallas.length };
 }

@@ -29,8 +29,10 @@
 //   guarda la puerta.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/medicion-meta-catch-test.ts
 // ─────────────────────────────────────────────────────────────────────────────
+import "./als-de-next";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { requestAsyncStorage } from "next/dist/client/components/request-async-storage.external";
 import { EVENTOS_META, EVENTOS_PROPIOS, idAnalizarEste, idCompra, idCompraPlan, idLead, idQuieroVerlo, idRegistro, idSemanalClic, idVistaInforme } from "../../../src/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta, envioMeta, type ContextoMeta } from "../../../src/lib/meta/servidor";
 import type { MetaCapiEventInput } from "../../../src/lib/meta/capi";
@@ -369,11 +371,18 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
           return { error: null };
         },
       } as never;
-      await guardarAtribucion(sbA, "u-p", { puerta: "D", puerta_detalle: "sin_puerta" });
-      await guardarAtribucion(sbA, "u-p", { puerta: "A", puerta_detalle: "banner" });
-      await guardarAtribucion(sbA, "u-p", { puerta: "C", puerta_detalle: "ref" });
+      // ACTA 20-oct-2026 (AGENTE-SERVIDOR): ningún evento del servidor sale sin el agente del navegador de la persona. La
+      // atribución se guarda en un pedido de su navegador (el registro, el reclamo): corre dentro de uno, con el
+      // `headers()` de Next, y cada evento sale con ese agente.
+      const NAV = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+      await requestAsyncStorage.run({ headers: new Headers({ "user-agent": NAV, "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors" }) } as never, async () => {
+        await guardarAtribucion(sbA, "u-p", { puerta: "D", puerta_detalle: "sin_puerta" });
+        await guardarAtribucion(sbA, "u-p", { puerta: "A", puerta_detalle: "banner" });
+        await guardarAtribucion(sbA, "u-p", { puerta: "C", puerta_detalle: "ref" });
+      });
       const ph = fetchs.filter((x) => x.url.includes("/capture/")).map((x) => JSON.parse(x.body) as { event: string; uuid?: string; properties: Record<string, unknown> });
       if (ph.length !== 2 || ph[0].event !== "cuenta_atribuida" || !ph[0].uuid || ph[1].event !== "$set" || (ph[1].properties.$set as Record<string, unknown>)?.puerta !== "A" || (ph[0].properties.$set as Record<string, unknown>)?.canal !== "pagado" || (ph[0].properties.$set as Record<string, unknown>)?.campana !== "120259591270350456") F(`4 · PostHog no recibe la puerta y la campaña (cuenta_atribuida una vez, $set al corregir D): ${ph.map((x) => x.event).join(",")}`);
+      if (ph.some((x) => x.properties.$raw_user_agent !== NAV)) F("4 · la atribución sale sin el agente del navegador de la persona (PostHog la marca robot)");
       delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
     }
 
