@@ -242,8 +242,11 @@ export function runReanalisisTier(): { hard: number } {
   if (!ev.uuid || ev.uuid !== ev2.uuid) F("5 · el evento no tiene un uuid por informe (un reenvío del pago lo duplicaría)");
   if (!/via: reanalisis \? "reanalisis" : "wizard"/.test(ra) || !/if \(reanalisis\) waitUntil\(capturarReanalisis\(\{ userId: user\.id, analysisId: data\.id as string, r: reanalisis, modalidad: "ltr", conPago: false \}\)\);/.test(ra)) F("5 · /api/analisis no manda «reanalisis_precio» al crear con saldo");
   if (!/if \(reanalisis\) waitUntil\(capturarReanalisis\(\{ userId: user\.id, analysisId: data\.id as string, r: reanalisis, modalidad: "str", conPago: false \}\)\);/.test(rst)) F("5 · /api/analisis/short-term no manda «reanalisis_precio» al crear con saldo");
+  // ⛔ ACTA 21-oct-2026 · el informe que abre el pago se movió de payments/confirm a `abrirInformePagado`
+  // (lib/desbloqueo-pago.ts, tier PANEL-ACTIVACION): la regla es la misma, se lee de ahí y de que confirm lo llame.
   const cf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  if (!/const r = leerReanalisis\(\(fila\?\.input_data as Record<string, unknown> \| null\)\?\.reanalisis\);\s*if \(r\) await capturarReanalisis\(\{ userId, analysisId, r, modalidad: fila\?\.tipo_analisis === "short-term" \? "str" : "ltr", conPago: true \}\);/.test(cf)) F("5 · al confirmarse el pago del suelto no sale «reanalisis_precio»");
+  const dp = sinComentarios(leer("src/lib/desbloqueo-pago.ts"));
+  if (!/const r = leerReanalisis\(f\?\.input_data\?\.reanalisis\);\s*if \(r\) await \(deps\.contarReanalisis \?\? capturarReanalisis\)\(\{ userId, analysisId, r, modalidad: f\?\.tipo_analisis === "short-term" \? "str" : "ltr", conPago: true \}\);/.test(dp) || !/await abrirInformePagado\(supabase, \{ userId, analysisId, companionStrId \}\);/.test(cf)) F("5 · al confirmarse el pago del suelto no sale «reanalisis_precio»");
   const doc = leer("docs/posthog-activacion-por-puerta.md");
   if (!/`reanalisis_precio`/.test(doc) || !/event = 'reanalisis_precio'/.test(doc)) F("5 · el panel de activación no cuenta los informes que salen del re-análisis (docs/posthog-activacion-por-puerta.md)");
 

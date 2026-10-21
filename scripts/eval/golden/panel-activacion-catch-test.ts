@@ -22,6 +22,7 @@ import { capturarServidor, distinctIdDeCorreo, type EventoServidor } from "../..
 import * as captura from "../../../src/lib/posthog-captura";
 import * as vista from "../../../src/lib/vista-entrada";
 import * as activacion from "../../../src/lib/medicion-activacion";
+import * as pago from "../../../src/lib/desbloqueo-pago";
 import { vaciarColaVencida, type AlmacenAgentes } from "../../../src/lib/agentes-navegador";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -41,6 +42,46 @@ const PRUEBA = "4b74f725-cced-42a2-aaaa-42df8c534a8a";
 const REAL = "0f4d1489-0b03-406f-82bf-f74ec9c4af4e";
 const CORREO_PRUEBA = distinctIdDeCorreo("qa-primera-1020-a1-4@refranco.ai");
 const LISTA: ReadonlySet<string> = new Set([PRUEBA, CORREO_PRUEBA]);
+
+const BLOQUEADO = "a0d99eb1-9330-4740-bce3-3a0b08fc96a6";
+const ABIERTO = "f63a640c-d99d-4c16-8375-a177023140ad";
+const STR_AMBAS = "ab2634dc-e48b-4354-a11f-60949101cc30";
+
+/** Una base de mentira con lo que usa `abrirInformePagado`: `from("analisis")` con select/update, `.eq` encadenado y
+ *  `maybeSingle`. Anota el orden de lecturas y escrituras por fila. */
+function baseDeMentira(inicial: Record<string, Record<string, unknown>>) {
+  const filas: Record<string, Record<string, unknown>> = JSON.parse(JSON.stringify(inicial));
+  const log: Array<{ op: "leer" | "escribir"; id: string }> = [];
+  const consulta = (op: { tipo: "select" } | { tipo: "update"; valores: Record<string, unknown> }) => {
+    const filtros: Array<[string, unknown]> = [];
+    const coincide = (id: string) => filtros.every(([k, v]) => (k === "id" ? id === v : filas[id]?.[k] === v));
+    const q = {
+      eq(k: string, v: unknown) { filtros.push([k, v]); return q; },
+      async maybeSingle() {
+        const id = Object.keys(filas).find(coincide);
+        if (id) log.push({ op: "leer", id });
+        return { data: id ? { ...filas[id] } : null, error: null };
+      },
+      then(res: (v: { data: null; error: null }) => unknown, rej?: (e: unknown) => unknown) {
+        try {
+          if (op.tipo === "update") for (const id of Object.keys(filas).filter(coincide)) { Object.assign(filas[id], op.valores); log.push({ op: "escribir", id }); }
+          return Promise.resolve({ data: null, error: null }).then(res, rej);
+        } catch (e) { return Promise.reject(e).then(res, rej); }
+      },
+    };
+    return q;
+  };
+  return {
+    filas,
+    from(tabla: string) {
+      if (tabla !== "analisis") throw new Error(`tabla ${tabla}`);
+      return { select: () => consulta({ tipo: "select" }), update: (valores: Record<string, unknown>) => consulta({ tipo: "update", valores }) };
+    },
+    lecturasAntes: (id: string) => log.filter((x) => x.id === id && x.op === "leer").length,
+    primeraLectura: (id: string) => log.findIndex((x) => x.id === id && x.op === "leer"),
+    primerUpdate: (id: string) => { const i = log.findIndex((x) => x.id === id && x.op === "escribir"); return i < 0 ? Infinity : i; },
+  };
+}
 
 type Cuerpo = { event: string; distinct_id: string; timestamp?: string; properties: Record<string, unknown> };
 const marcada = (c: Cuerpo | undefined) => (c?.properties.$set as Record<string, unknown> | undefined)?.test_account === true && c?.properties.prueba === true;
@@ -187,12 +228,41 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
   } catch (e) {
     F(`2 · el desbloqueo por pago no tiene con qué contarse: ${(e as Error).message}`);
   }
+  // EL DESBLOQUEO DE VERDAD (`abrirInformePagado`, lo que corre payments/confirm), contra una base de mentira: la fila
+  // bloqueada del wizard sin saldo se abre con un pago y sale UN `analisis_creado` via = pago; el reenvío de Flow, ninguno.
+  try {
+    const marcaReanalisis = { origenId: ABIERTO, precioOriginalUF: 3400, precioRecomendadoUF: 3220, piePct: 30, plazoAnios: 30 };
+    const base = baseDeMentira({
+      [BLOQUEADO]: { is_premium: false, pending_payment: true, tipo_analisis: "short-term", input_data: { reanalisis: marcaReanalisis } },
+      [ABIERTO]: { is_premium: true, pending_payment: false, tipo_analisis: "long-term", input_data: {} },
+      [STR_AMBAS]: { is_premium: false, pending_payment: true, tipo_analisis: "short-term", input_data: {} },
+    });
+    const contados: Array<{ analysisId: string; via: string; modalidad: string; userId: string }> = [];
+    const consumidos: string[] = [];
+    const reanalisisContados: string[] = [];
+    const deps = {
+      consumir: async (_u: string, id: string) => { consumidos.push(id); base.filas[id].is_premium = true; return true; },
+      contar: async (a: { userId: string | null | undefined; analysisId: string | null | undefined; modalidad: string; via: string }) => { contados.push({ analysisId: a.analysisId!, via: a.via, modalidad: a.modalidad, userId: a.userId! }); },
+      contarReanalisis: async (p: { analysisId: string; conPago: boolean }) => { reanalisisContados.push(`${p.analysisId}:${p.conPago}`); },
+    };
+    const r1 = await pago.abrirInformePagado(base as never, { userId: REAL, analysisId: BLOQUEADO, companionStrId: STR_AMBAS }, deps);
+    const r2 = await pago.abrirInformePagado(base as never, { userId: REAL, analysisId: BLOQUEADO, companionStrId: STR_AMBAS }, deps);
+    const r3 = await pago.abrirInformePagado(base as never, { userId: REAL, analysisId: ABIERTO }, deps);
+    const deBloqueado = contados.filter((c) => c.analysisId === BLOQUEADO);
+    if (!r1.abierto || deBloqueado.length !== 1 || deBloqueado[0].via !== "pago" || deBloqueado[0].modalidad !== "str" || deBloqueado[0].userId !== REAL) F(`2 · un pago que desbloquea un informe no emite UN \`analisis_creado\` con via = pago (${JSON.stringify(contados)})`);
+    if (r2.abierto) F("2 · el reenvío de Flow cuenta el informe otra vez");
+    if (reanalisisContados.join(",") !== `${BLOQUEADO}:true`) F(`2 · el re-análisis pagado no sale una vez con con_pago al abrirse (${reanalisisContados.join(",") || "nada"})`);
+    if (r3.abierto || contados.some((c) => c.analysisId === ABIERTO)) F("2 · un pago sobre un informe ya completo lo cuenta como desbloqueado");
+    if (base.filas[BLOQUEADO].pending_payment !== false || base.filas[BLOQUEADO].is_premium !== true || base.filas[STR_AMBAS].pending_payment !== false || base.filas[STR_AMBAS].is_premium !== true) F("2 · el pago no abre el informe bloqueado o su fila STR de AMBAS");
+    if (consumidos.filter((x) => x === BLOQUEADO).length < 1) F("2 · el desbloqueo no consume el crédito del pago");
+    if (base.lecturasAntes(BLOQUEADO) < 1 || base.primerUpdate(BLOQUEADO) < base.primeraLectura(BLOQUEADO)) F("2 · el informe se lee después de abrirlo (el pago no sabría que lo abrió)");
+  } catch (e) {
+    F(`2 · el desbloqueo por pago no corre: ${(e as Error).message}`);
+  }
   const cf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   const suelto = entre(cf, 'if (userId && product === "single") {', "} else if (userId && product === PRODUCTO_PACK) {");
-  const iAntes = suelto.indexOf('const { data: antesDelPago } = await supabase.from("analisis").select("is_premium, pending_payment, tipo_analisis").eq("id", analysisId).maybeSingle();');
-  const iConsumo = suelto.indexOf("await consumeCredit(userId, analysisId);");
   const emite = /if \(seDesbloqueaConPago\(antesDelPago\)\) \{\s*await capturarAnalisisCreado\(\{ userId, analysisId, modalidad: modalidadDelInforme\(antesDelPago\?\.tipo_analisis as string \| null\), via: VIA_PAGO \}\);\s*\}/;
-  if (iAntes < 0 || iConsumo < 0 || iAntes > iConsumo || !emite.test(suelto)) F("2 · la compra suelta atada a un informe no emite `analisis_creado` con via = pago al desbloquearlo (o lee el informe después de abrirlo)");
+  if (!/if \(analysisId\) \{\s*await abrirInformePagado\(supabase, \{ userId, analysisId, companionStrId \}\);\s*\}/.test(suelto) || /consumeCredit\(/.test(suelto)) F("2 · la compra suelta atada a un informe no lo abre con `abrirInformePagado` (el que cuenta el desbloqueo)");
   const pro = entre(cf, 'if (product === "pro" && analysisId) {', 'if (premiumError)');
   if (!emite.test(pro) || pro.indexOf("antesDelPago") > pro.indexOf('.update({ is_premium: true })')) F("2 · el desbloqueo `pro` no emite `analisis_creado` con via = pago");
   const doc = leer("docs/posthog-activacion-por-puerta.md");
@@ -215,6 +285,12 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
 //   orden · P9 sin caché · P10 la RPC falla y se pierde la lista buena · P11 sin el id del correo · P12 sin lista por
 //   defecto · P16 la lista por defecto solo en Vercel (el middleware en Edge quedaría sin marca) · P13 la RPC la lee
 //   cualquiera · P14 la vista anónima lleva la cuenta · P15 la lista no reconoce el id
+// El desbloqueo por pago se prueba POR COMPORTAMIENTO (`abrirInformePagado`, el que llama payments/confirm, contra una
+// base de mentira), no solo por el texto de la ruta: D1 no cuenta · D2 cuenta lo ya abierto (y el reenvío) · D3 lee el
+// informe después de abrirlo · D4 otra vía · D5 el re-análisis sale en el reenvío · D6 no abre la fila STR de AMBAS ·
+// D7 no consume el crédito · D8 confirm no lo llama: todas ROJAS. Con la base REAL (21-oct-2026, la fila bloqueada
+// a0d99eb1 de la cuenta de prueba qa-primera-1020-a2-2, sin Flow): un pago la abrió y salió UN `analisis_creado`
+// via = pago, marcado; el reenvío no contó.
 // La primera versión pedía la lista por defecto siempre que no hubiera `fetch` inyectado, y el QUICK salió con 8 fallas
 // en VISTA-ENTRADA, AGENTE-SERVIDOR y MEDICION-META: esos tiers reemplazan el `fetch` global y la RPC le llegaba al
 // falso. Por eso el default es «dentro de Next», como el almacén de agentes, y este tier lo prueba en Edge y en Node.
