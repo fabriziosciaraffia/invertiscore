@@ -12,6 +12,7 @@ import { fmtCLP } from "@/lib/pricing";
 import { PLANES_COPY, PRODUCTO_PLAN, seVende } from "@/lib/planes";
 import { PRODUCTO_TRES } from "@/lib/tres-analisis";
 import { PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { REANALISIS_COPY } from "@/lib/reanalisis";
 
 export const COMPRA = {
   volverPlanes: "Volver a planes",
@@ -52,7 +53,7 @@ export type ResumenCompra = {
  * Lo que la pantalla dice del producto. `null` = no existe o ya no se vende (19-oct-2026, planes.ts › VENTA_RETIRADA):
  * la pantalla dice «Plan no encontrado» y no pide nada.
  */
-export function resumenCompra(key: string, opts: { analysisId?: string | null; companionStrId?: string | null; comuna?: string | null } = {}): ResumenCompra | null {
+export function resumenCompra(key: string, opts: { analysisId?: string | null; companionStrId?: string | null; comuna?: string | null; reanalisis?: { direccion: string | null; precioUF: number } | null } = {}): ResumenCompra | null {
   const p = (FLOW_PRODUCTS as Record<string, (typeof FLOW_PRODUCTS)[FlowProductKey]>)[key];
   if (!p || !seVende(key)) return null;
   const unico = p.kind === "one_time";
@@ -62,6 +63,14 @@ export function resumenCompra(key: string, opts: { analysisId?: string | null; c
   }
   if (key === PRODUCTO_TRES || key === PRODUCTO_PACK) {
     return { ...base, nombre: PLANES_COPY.pack.nombre, incluye: `${p.capacity ?? 3} análisis que no vencen.` };
+  }
+  // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el depto y el precio a la vista.
+  if (key === "single" && opts.analysisId && opts.reanalisis) {
+    return {
+      ...base,
+      nombre: opts.reanalisis.direccion ? `Tu análisis de ${opts.reanalisis.direccion}` : opts.comuna ? `Tu análisis en ${opts.comuna}` : "Tu análisis",
+      incluye: REANALISIS_COPY.compraIncluye(opts.reanalisis.precioUF),
+    };
   }
   if (key === "single" && opts.analysisId) {
     return {

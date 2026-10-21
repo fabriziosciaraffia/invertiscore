@@ -160,18 +160,19 @@ function guardPieDeclarado(a: WizardV4Answers, ctx: SubmitContext): SubmitResult
   return null;
 }
 
-/** Genera el análisis con crédito (contratos v3). Devuelve el redirect destino. */
-export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): Promise<SubmitResult> {
+/** Genera el análisis con crédito (contratos v3). Devuelve el redirect destino. `extra` va en el cuerpo de un análisis
+ *  de una modalidad (el marcador del re-análisis al precio recomendado, lib/reanalisis.ts); el comparativo no lo lleva. */
+export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext, extra: Record<string, unknown> = {}): Promise<SubmitResult> {
   const mod = a.modalidad;
   const sinPie = guardPieDeclarado(a, ctx);
   if (sinPie) return sinPie;
   try {
     if (mod === "ltr") {
-      const { id } = await postJson("/api/analisis", buildLtrPayload(a, ctx));
+      const { id } = await postJson("/api/analisis", { ...buildLtrPayload(a, ctx), ...extra });
       return { ok: true, redirect: `/analisis/${id}` };
     }
     if (mod === "str") {
-      const { id } = await postJson("/api/analisis/short-term", buildStrPayload(a, ctx));
+      const { id } = await postJson("/api/analisis/short-term", { ...buildStrPayload(a, ctx), ...extra });
       return { ok: true, redirect: `/analisis/renta-corta/${id}` };
     }
     // both: pre-carga 1 crédito → ambos POSTs con chargeId + ambasGroupId.
@@ -283,8 +284,8 @@ export async function submitAnonimo(
   }
 }
 
-/** Compra pre-pago (logueado sin créditos): crea fila(s) locked y va a checkout. */
-export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Promise<SubmitResult> {
+/** Compra pre-pago (logueado sin créditos): crea fila(s) locked y va a checkout. `extra`, como en `submitConCredito`. */
+export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext, extra: Record<string, unknown> = {}): Promise<SubmitResult> {
   const mod = a.modalidad;
   const sinPie = guardPieDeclarado(a, ctx);
   if (sinPie) return sinPie;
@@ -299,7 +300,7 @@ export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Pro
       const { ltrId, strId } = (await res.json()) as { ltrId: string; strId: string };
       return { ok: true, redirect: `/checkout?product=single&analysisId=${ltrId}&companionStrId=${strId}` };
     }
-    const payload = mod === "str" ? buildStrPayload(a, ctx) : buildLtrPayload(a, ctx);
+    const payload = { ...(mod === "str" ? buildStrPayload(a, ctx) : buildLtrPayload(a, ctx)), ...extra };
     const res = await fetch("/api/analisis/locked", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

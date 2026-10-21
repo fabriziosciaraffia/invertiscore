@@ -61,7 +61,10 @@ export function SubjectCardGrid({
   despuesDeLaCard,
   trasPortada,
   alternativaComunas = null,
+  reanalisisOrigen = null,
 }: {
+  /** El re-análisis al precio recomendado (21-oct-2026): el id de este informe, solo para su dueño (lo usa el pop-up). */
+  reanalisisOrigen?: string | null;
   /** «Lo que sigue»: lo que va después de la card de Franco (lo monta HeroLTR). */
   despuesDeLaCard?: ReactNode;
   /** Lo que va entre la portada y el hero: el origen del informe cuando salió de un aviso (30-sep-2026). */
@@ -302,6 +305,7 @@ export function SubjectCardGrid({
       <HeroLTR
         accessLevel={accessLevel}
         despuesDeLaCard={despuesDeLaCard}
+        reanalisisOrigen={reanalisisOrigen}
         hallazgos={
           hallazgosOrdenados.length > 0 ? (
             <SeccionInforme

@@ -43,8 +43,11 @@
 //
 // Lo que salió el 24-sep sigue fuera: el menú de tres respuestas, los siete pares y «Un cambio a
 // la vez».
-// El botón «Analízalo a UF X» sigue inerte: conectarlo pide decidir si un re-análisis consume
-// crédito.
+// EL BOTÓN DE LA RECOMENDACIÓN (21-oct-2026, lib/reanalisis.ts): «Ver el informe completo a UF X» lleva al wizard
+// con el informe entero y la celda de Franco puestos (su precio, su pie y su plazo), en el resumen. Gasta un análisis
+// con el aviso del semanal; sin saldo, la compra del suelto. Desde el 13-sep-2026 hasta ese día fue un <span
+// aria-disabled> inerte, a la espera de decidir si el re-análisis consumía crédito: consume. Solo para el dueño del
+// informe (`reanalisisOrigen`); sin él, el bloque no se dibuja.
 //
 // BUSCAR OTRA NO TIENE POP-UP: la card dice la causa y la distancia (`buscar-otra-copy.ts`).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,6 +64,8 @@ import type { ArriendoReferencia } from "@/lib/arriendo-referencia";
 import type { PalancaDistancia } from "@/lib/types";
 import { GlosaIndicador } from "./Glosa";
 import { celdaFranco, escalaCelda, grillaDelPopup, lecturaCelda, pieDiaUnoUF, type LecturaCelda } from "@/lib/matriz-popup";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { precioRecomendadoUF, REANALISIS_COPY, urlReanalisis } from "@/lib/reanalisis";
 
 export { hayAjustesQueMostrar } from "@/lib/matriz-popup";
 
@@ -107,12 +112,15 @@ export interface PopupAjustesProps {
    *  leyenda, sin la cabecera («Hoy … con pie …», la pregunta) ni el resto del pop-up. Implica
    *  `estatico`. Es una muestra del informe, no el pop-up entero. */
   muestra?: boolean;
+  /** El informe desde el que se pide el re-análisis al precio recomendado (21-oct-2026). Solo el dueño lo pasa: sin él,
+   *  no hay botón. */
+  reanalisisOrigen?: string | null;
 }
 
 /** El chip de veredicto del pop-up es el del informe entero (`ChipVeredicto`, 25-sep-2026). */
 const Pill = ({ v }: { v: Veredicto }) => <ChipVeredicto v={v} />;
 
-export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo, estatico: estaticoProp = false, muestra = false }: PopupAjustesProps) {
+export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, currency, valorUF, precioUF, antes, referenciaArriendo, estatico: estaticoProp = false, muestra = false, reanalisisOrigen = null }: PopupAjustesProps) {
   const estatico = estaticoProp || muestra;
   const grilla = grillaDelPopup({ veredicto, distancia, mixComprar });
   const celdas = grilla?.celdas ?? [];
@@ -133,8 +141,12 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
 
   // EL ARRIENDO O LA TARIFA, APARTE: no están en la matriz porque no dependen del comprador.
   const mercado = !esComprar && distancia?.valor ? solasAComprar(distancia.valor).find((l) => l.palanca === "arriendo" || l.palanca === "adr") ?? null : null;
-  // EL BOTÓN, INERTE, con el precio de la recomendación. Solo si pide descuento.
-  const precioBoton = franco && franco.descuentoPct && franco.descuentoPct > 0 ? precioUF * (1 - franco.descuentoPct / 100) : null;
+  // EL BOTÓN, con el precio de la recomendación (en UF enteras, el mismo del texto y del informe nuevo). Solo si pide
+  // descuento y solo para el dueño del informe.
+  const precioBoton = franco && franco.descuentoPct && franco.descuentoPct > 0 && precioUF > 0 ? precioRecomendadoUF(precioUF, franco.descuentoPct) : null;
+  const hrefReanalisis = franco && precioBoton !== null && reanalisisOrigen
+    ? urlReanalisis({ origenId: reanalisisOrigen, precioUF: precioBoton, piePct: franco.piePct, plazoAnios: franco.plazoAnios })
+    : null;
 
   return (
     <div className={`pjx${estatico ? " pjx-estatico" : ""}${muestra ? " pjx-muestra" : ""}`}>
@@ -249,14 +261,12 @@ export function PopupAjustes({ veredicto, modalidad, distancia, mixComprar, curr
         <CaminoMercado palanca={mercado} modalidad={modalidad} referencia={modalidad === "LTR" ? referenciaArriendo ?? null : null} currency={currency} valorUF={valorUF} />
       )}
 
-      {!estatico && precioBoton !== null && (
+      {!estatico && precioBoton !== null && hrefReanalisis && (
         <div className="pjx-cta">
           <p>Si consigues el precio de la recomendación, el informe cambia entero.</p>
-          {/* INERTE A PROPÓSITO (13-sep-2026): conectarlo pide que el wizard acepte un precio por
-              query y decidir si un re-análisis consume crédito. */}
-          <span className="pjx-btn" aria-disabled="true">
-            Analízalo a UF {miles(precioBoton)}
-          </span>
+          <EnlaceCarga href={hrefReanalisis} className="pjx-btn" data-reanalisis>
+            {REANALISIS_COPY.boton(precioBoton)}
+          </EnlaceCarga>
         </div>
       )}
     </div>

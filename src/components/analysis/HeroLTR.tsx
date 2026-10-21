@@ -44,7 +44,11 @@ export function HeroLTR({
   hallazgos,
   accessLevel = "free",
   despuesDeLaCard,
+  reanalisisOrigen = null,
 }: {
+  /** El re-análisis al precio recomendado (21-oct-2026): el id de este informe, solo para su dueño. Sin él, el pop-up
+   *  no dibuja el botón de la recomendación. */
+  reanalisisOrigen?: string | null;
   /** «Lo que sigue» (28-sep-2026): lo que va inmediatamente después de la card de Franco (el
    *  banner del registro del primer informe anónimo). Lo decide la página; acá solo se ubica. */
   despuesDeLaCard?: ReactNode;
@@ -152,6 +156,7 @@ export function HeroLTR({
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(inputData?.precio ?? 0)}
+        reanalisisOrigen={reanalisisOrigen}
         // EL CAMINO DE MERCADO (25-sep-2026): lo que piden los avisos parecidos, de la misma
         // fuente que la referencia de la zona (`resolverArriendoReferencia`).
         referenciaArriendo={resolverArriendoReferencia(inputData)}

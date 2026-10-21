@@ -28,6 +28,8 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
+import { InformeDeReanalisis } from "@/components/analysis/InformeDeReanalisis";
+import { leerReanalisis } from "@/lib/reanalisis";
 import { almacenSesion, marcarRecienDentro, useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { PARAM_RECIEN_DENTRO } from "@/lib/guia/del-dia";
 import { hasAiV2 } from "@/lib/prosa-guardada";
@@ -214,6 +216,8 @@ export function PremiumResults({
   }, [metaVista]);
   const ticketLqs = !!analysisId && ofertaPack;
   const nextLqs = analysisId ? `/analisis/${analysisId}` : "/dashboard";
+  // El informe del re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): lo dice arriba, con el original.
+  const marcaReanalisis = leerReanalisis((inputData as unknown as Record<string, unknown> | undefined)?.reanalisis);
 
   // Top-level pre-delivery months calculation
   const mesesPreEntregaTop = useMemo(() => {
@@ -634,7 +638,10 @@ export function PremiumResults({
             despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
               <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} antiguedad={inputData.origenAviso.antiguedad} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
+            ) : marcaReanalisis ? (
+              <InformeDeReanalisis reanalisis={marcaReanalisis} modalidad="ltr" />
             ) : undefined}
+            reanalisisOrigen={isLoggedIn && !isSharedView && !isSharedLink && analysisId ? analysisId : null}
             results={results}
             inputData={inputData}
             valorUF={ufValue}

@@ -169,8 +169,11 @@ export function PopupAjustesTokens() {
       .pjx-mkt .aviso{font-size:12.5px;color:var(--doc-tx2);border-top:1px solid var(--doc-line);padding-top:8px;margin:0;display:flex;gap:6px}
       .pjx-cta{margin:16px 0 0;padding-top:12px;border-top:1px solid var(--doc-line)}
       .pjx-cta p{font-size:12.5px;color:var(--doc-tx3);margin:0 0 8px}
-      .pjx-btn{display:inline-flex;align-items:center;padding:9px 14px;border-radius:10px;background:var(--pjx-sunk);
-        color:var(--doc-tx3);font-size:13.5px;font-weight:600;cursor:not-allowed}
+      .pjx-btn{display:inline-flex;align-items:center;padding:11px 16px;border-radius:10px;background:var(--signal-red);
+        color:#fff;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .12s,transform .12s}
+      .pjx-btn:hover{filter:brightness(1.06);text-decoration:none;color:#fff}
+      .pjx-btn:active{transform:translateY(1px)}
+      .pjx-btn:focus-visible{outline:2px solid var(--doc-tx);outline-offset:2px}
       `,
       }}
     />

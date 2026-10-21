@@ -5,6 +5,8 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { createClient } from "@/lib/supabase/server";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { resumenCompra } from "@/lib/compra/compra";
+import { leerReanalisis } from "@/lib/reanalisis";
+import { direccionCorta } from "@/components/entrada/llegada";
 import { PRODUCTO_PLAN } from "@/lib/planes";
 import { PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
 import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
@@ -50,11 +52,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  // La comuna del análisis atado (el paso 4 del wizard): «Tu análisis en Providencia».
-  const comuna = analysisId && productKey === "single"
-    ? ((await supabase.from("analisis").select("comuna").eq("id", analysisId).maybeSingle()).data?.comuna as string | undefined) ?? null
+  // La comuna del análisis atado (el paso 4 del wizard): «Tu análisis en Providencia». Si es el re-análisis al precio
+  // recomendado (21-oct-2026, lib/reanalisis.ts), el depto y el precio.
+  const atado = analysisId && productKey === "single"
+    ? (await supabase.from("analisis").select("comuna, input_data").eq("id", analysisId).maybeSingle()).data
     : null;
-  const resumen = resumenCompra(productKey, { analysisId, companionStrId, comuna });
+  const comuna = (atado?.comuna as string | undefined) ?? null;
+  const marca = leerReanalisis((atado?.input_data as Record<string, unknown> | null)?.reanalisis);
+  const dirAtado = (atado?.input_data as Record<string, unknown> | null)?.direccion;
+  const reanalisis = marca ? { direccion: typeof dirAtado === "string" && dirAtado.trim() ? direccionCorta(dirAtado) : null, precioUF: marca.precioRecomendadoUF } : null;
+  const resumen = resumenCompra(productKey, { analysisId, companionStrId, comuna, reanalisis });
 
   // Un producto que no existe o ya no se vende (19-oct-2026): «Plan no encontrado», sin pedir nada.
   if (!resumen) {

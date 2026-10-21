@@ -11,6 +11,7 @@
 | `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
 | `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`) | analizó algo; lleva `via` (wizard · guia · semanal · …) |
+| `reanalisis_precio` | el servidor, una vez por informe (uuid determinista), desde el 21-oct-2026 (`src/lib/reanalisis-servidor.ts`): al crear con saldo el informe que pidió el botón «Ver el informe completo a UF X» del pop-up Ajustar, o al confirmarse el pago del suelto | el informe completo al precio que Franco recomendó negociar; lleva `informe_original`, `informe_nuevo`, `precio_original_uf`, `precio_recomendado_uf`, `descuento_pct`, `pie_pct`, `plazo_anios`, `modalidad` (ltr · str) y `con_pago`. El `analisis_creado` de ese informe (con saldo) lleva `via` = reanalisis |
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
@@ -186,4 +187,51 @@ select toStartOfWeek(l.t0, 1) as semana,
 from llegadas as l left join pasos as p on p.person_id = l.person_id
 group by semana, origen
 order by semana desc, origen
+```
+
+## El re-análisis al precio recomendado (HogQL)
+
+> 21-oct-2026. El insight «Re-análisis al precio recomendado por semana» (EkSxHqOE del mismo dashboard) cuenta los
+> informes que salen del botón «Ver el informe completo a UF X» del pop-up Ajustar: `informes_reanalisis` (un
+> `reanalisis_precio` por informe), cuántos con saldo y cuántos pagados (la compra del suelto), por modalidad, el descuento
+> promedio y `parte_de_los_creados` = los hechos con saldo / todos los `analisis_creado` de la semana (los dos con saldo:
+> un informe pagado en la compra del suelto no emite `analisis_creado`). Sin cuentas de prueba.
+
+```sql
+with re as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    count() as informes,
+    uniq(person_id) as personas,
+    countIf(toString(properties.con_pago) = 'false') as con_saldo,
+    countIf(toString(properties.con_pago) = 'true') as con_pago,
+    countIf(toString(properties.modalidad) = 'ltr') as renta_larga,
+    countIf(toString(properties.modalidad) = 'str') as renta_corta,
+    round(avg(toFloat(properties.descuento_pct)), 1) as descuento_promedio_pct
+  from events
+  where event = 'reanalisis_precio'
+    and timestamp >= now() - interval 26 week
+    and coalesce(person.properties.test_account, false) = false
+  group by semana
+),
+creados as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    count() as informes_creados
+  from events
+  where event = 'analisis_creado'
+    and timestamp >= now() - interval 26 week
+    and coalesce(person.properties.test_account, false) = false
+  group by semana
+)
+select greatest(coalesce(re.semana, toDate('1970-01-01')), coalesce(creados.semana, toDate('1970-01-01'))) as semana,
+  coalesce(re.informes, 0) as informes_reanalisis,
+  coalesce(re.personas, 0) as personas,
+  coalesce(re.con_saldo, 0) as con_saldo,
+  coalesce(re.con_pago, 0) as con_pago,
+  coalesce(re.renta_larga, 0) as renta_larga,
+  coalesce(re.renta_corta, 0) as renta_corta,
+  re.descuento_promedio_pct as descuento_promedio_pct,
+  coalesce(creados.informes_creados, 0) as informes_creados_con_saldo,
+  if(informes_creados_con_saldo = 0, null, round(con_saldo / informes_creados_con_saldo, 3)) as parte_de_los_creados
+from re full outer join creados on re.semana = creados.semana
+order by semana desc
 ```

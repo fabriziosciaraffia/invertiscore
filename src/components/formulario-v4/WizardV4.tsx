@@ -62,6 +62,8 @@ import {
 import { ModalPlausibilidad } from "./ModalPlausibilidad";
 import { decidirBorrador } from "./wizardV4Draft";
 import { aplicarPrecarga, type Precarga } from "@/lib/lo-que-sigue/precarga";
+import type { PedidoReanalisis, Reanalisis } from "@/lib/reanalisis";
+import { conRecomendacion } from "./wizardV4Reanalisis";
 import { EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
@@ -86,6 +88,7 @@ export function WizardV4({
   modoInicial = null,
   entrada = "wizard",
   precargaId = null,
+  reanalisis = null,
 }: {
   resume: boolean;
   /** Comuna precargada desde ?comuna= (páginas SEO). Solo contexto: la pantalla
@@ -100,6 +103,8 @@ export function WizardV4({
   entrada?: "landing" | "wizard";
   /** Después de pagar el pack: el informe desde el que se precarga lo de la persona (`?precarga=`). */
   precargaId?: string | null;
+  /** El re-análisis al precio recomendado (`?reanalisis=&precio=&pie=&plazo=`, 21-oct-2026, lib/reanalisis.ts). */
+  reanalisis?: PedidoReanalisis | null;
 }) {
   const posthog = usePostHog();
   const emitEvent = useCallback(
@@ -149,6 +154,35 @@ export function WizardV4({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [precargaId, w.inicializado, w.draftPendiente]);
+
+  // ── EL RE-ANÁLISIS AL PRECIO RECOMENDADO (21-oct-2026, lib/reanalisis.ts) ──────────────────────
+  // El botón del pop-up Ajustar trae el informe de origen y la recomendación (precio, pie y plazo). El informe entero
+  // vuelve como respuestas (`/api/analisis/reanalisis`), la recomendación va encima y el wizard abre en el resumen: la
+  // persona solo confirma. El marcador viaja al resumen y de ahí al cuerpo del análisis. Sin sesión, pide el código y
+  // vuelve al mismo lugar; si el informe no es suyo, sigue el wizard de siempre.
+  const [marcaReanalisis, setMarcaReanalisis] = useState<Reanalisis | null>(null);
+  // Mientras llega el informe de origen, ni la portada ni otra pregunta: la persona vería «¿Dónde está el depto?» un
+  // instante antes de saltar al resumen.
+  const [reanalisisEsperando, setReanalisisEsperando] = useState(!!reanalisis);
+  const reanalisisAplicado = useRef(false);
+  useEffect(() => {
+    if (!reanalisis || reanalisisAplicado.current || !w.inicializado) return;
+    reanalisisAplicado.current = true;
+    void (async () => {
+      const res = await fetch(`/api/analisis/reanalisis?origen=${encodeURIComponent(reanalisis.origenId)}`).catch(() => null);
+      if (res?.status === 401) {
+        window.location.href = `/registro?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      const r = res?.ok ? ((await res.json().catch(() => null)) as { respuestas: WizardV4Answers; completadas: Partial<Record<NodeId, boolean>>; precioOriginalUF: number | null } | null) : null;
+      if (r?.respuestas && r.precioOriginalUF) {
+        w.cargarRespuestas(conRecomendacion(r.respuestas, reanalisis), r.completadas ?? {});
+        setMarcaReanalisis({ origenId: reanalisis.origenId, precioOriginalUF: r.precioOriginalUF, precioRecomendadoUF: reanalisis.precioUF, piePct: reanalisis.piePct, plazoAnios: reanalisis.plazoAnios });
+      }
+      setReanalisisEsperando(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reanalisis, w.inicializado]);
 
   // Precarga de comuna (?comuna=). Una sola vez y solo si el usuario todavía no
   // tiene una: nunca debe pisar lo que ya eligió, ni al retomar un draft.
@@ -214,6 +248,8 @@ export function WizardV4({
   // pregunta. Corre apenas el hook miró el borrador, antes de que la llegada escriba nada.
   const decisionBorrador = useRef(false);
   useEffect(() => {
+    // El re-análisis no retoma ni reemplaza borradores: carga lo suyo y la oferta se retira sola.
+    if (reanalisis) return;
     if (!w.inicializado || !w.draftPendiente || decisionBorrador.current) return;
     const decision = decidirBorrador(w.draftPendiente, direccionInicial?.direccion ?? null);
     if (decision === "ofrecer") { decisionBorrador.current = true; return; }
@@ -487,12 +523,16 @@ export function WizardV4({
           <div key={nav.current} ref={screenRef} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
+            {reanalisisEsperando ? (
+              <p className="wz-indic" role="status" data-reanalisis-cargando>Cargando el depto de tu informe…</p>
+            ) : (
+              <h1 className="wz-titulo">{NODE_TITLE[nav.current]}</h1>
+            )}
 
-            {esPortada ? (
+            {reanalisisEsperando ? null : esPortada ? (
               <EntradaScreen {...screenProps} banner={bannerPortada} autoCamino={autoCamino} />
             ) : (
-              <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
+              <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} reanalisis={marcaReanalisis} />
             )}
           </div>
         </div>
@@ -533,6 +573,7 @@ function Screen({
   tier,
   isLoggedIn,
   onTerminal,
+  reanalisis,
 }: {
   node: NodeId;
   w: ReturnType<typeof useWizardV4>;
@@ -541,6 +582,7 @@ function Screen({
   tier: ReturnType<typeof useWizardV4Tier>["tier"];
   isLoggedIn: boolean;
   onTerminal: () => void;
+  reanalisis: Reanalisis | null;
 }) {
   switch (node) {
     // ── Acto 1 ──
@@ -585,7 +627,7 @@ function Screen({
       return <AdrFixScreen {...screenProps} />;
 
     case "resumen":
-      return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={onTerminal} />;
+      return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={onTerminal} reanalisis={reanalisis} />;
 
     default:
       return null;

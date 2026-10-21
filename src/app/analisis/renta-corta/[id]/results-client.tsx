@@ -26,6 +26,8 @@ import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CierreInforme } from "@/components/analysis/CierreInforme";
 import { InformeDeAviso } from "@/components/guia/InformeDeAviso";
+import { InformeDeReanalisis } from "@/components/analysis/InformeDeReanalisis";
+import { leerReanalisis } from "@/lib/reanalisis";
 import { BannerRegistro } from "@/components/lo-que-sigue/BannerRegistro";
 import { TicketPack } from "@/components/lo-que-sigue/TicketPack";
 import { DiagnosticoTicket } from "@/components/lo-que-sigue/DiagnosticoTicket";
@@ -263,6 +265,8 @@ export function STRResultsClient({
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
   // El informe salió de un aviso (15-oct-2026): «Quiero verlo», como en renta larga.
   const origenAviso = (inputData?.origenAviso ?? null) as { avisoId?: string; antiguedad: "ficha" | "supuesta" | "nuevo" } | null;
+  // El informe del re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts).
+  const marcaReanalisis = leerReanalisis((inputData as Record<string, unknown> | null | undefined)?.reanalisis);
 
 
   // «Lo que sigue» (28-sep-2026; reglas del 08-oct-2026, espejo de LTR): LA OFERTA ES DEL INFORME.
@@ -384,6 +388,12 @@ export function STRResultsClient({
             <InformeDeAviso analysisId={analysisId} veredicto={veredicto} antiguedad={origenAviso.antiguedad} esDueno={!!userId && !isSharedView} modalidad="str" />
           </SeccionInforme>
         )}
+        {/* El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): lo dice arriba, con el original. */}
+        {!origenAviso && marcaReanalisis && (
+          <SeccionInforme id="origen-reanalisis" tono="paper">
+            <InformeDeReanalisis reanalisis={marcaReanalisis} modalidad="str" />
+          </SeccionInforme>
+        )}
         {/* ═══ T1 (04-sep-2026) · el interior STR sobre piezas compartidas: hero con el
             contrato LTR → principales hallazgos → seis cifras → la inversión (seis
             capítulos I–VI) → la zona (placeholder hasta T2). Lo viejo (AdvancedSectionSTR,
@@ -395,6 +405,7 @@ export function STRResultsClient({
             página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
+            reanalisisOrigen={userId && !isSharedView && analysisId ? analysisId : null}
             despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             hallazgos={
               /* Va SIEMPRE. Su título es la línea que declara el veredicto (§10). */

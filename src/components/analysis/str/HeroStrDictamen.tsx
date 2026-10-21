@@ -45,7 +45,10 @@ export function HeroStrDictamen({
   createdAt,
   fechaProsa,
   despuesDeLaCard,
+  reanalisisOrigen = null,
 }: {
+  /** El re-análisis al precio recomendado (21-oct-2026): el id de este informe, solo para su dueño (lo usa el pop-up). */
+  reanalisisOrigen?: string | null;
   /** «Lo que sigue» (28-sep-2026): lo que va inmediatamente después de la card de Franco. */
   despuesDeLaCard?: ReactNode;
   /** Contrato §2 (bloque B): la sección de hallazgos YA ARMADA por la página, que este
@@ -112,6 +115,7 @@ export function HeroStrDictamen({
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0)}
+        reanalisisOrigen={reanalisisOrigen}
         // LA COLUMNA «HOY» DE LA TABLA (25-sep-2026): el escenario base del análisis, el mismo
         // que leen las seis cifras de arriba.
         antes={(() => {

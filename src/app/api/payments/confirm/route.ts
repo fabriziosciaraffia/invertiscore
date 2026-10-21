@@ -22,6 +22,8 @@ import { hayGuia } from "@/lib/guia/activa";
 import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
+import { leerReanalisis } from "@/lib/reanalisis";
+import { capturarReanalisis } from "@/lib/reanalisis-servidor";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -171,6 +173,16 @@ export async function POST(request: Request) {
             .update({ pending_payment: false })
             .eq("id", analysisId)
             .eq("pending_payment", true);
+
+          // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el informe sale recién
+          // ahora, así que `reanalisis_precio` sale acá (uuid por informe: un reenvío del webhook no lo duplica).
+          try {
+            const { data: fila } = await supabase.from("analisis").select("input_data, tipo_analisis").eq("id", analysisId).maybeSingle();
+            const r = leerReanalisis((fila?.input_data as Record<string, unknown> | null)?.reanalisis);
+            if (r) await capturarReanalisis({ userId, analysisId, r, modalidad: fila?.tipo_analisis === "short-term" ? "str" : "ltr", conPago: true });
+          } catch (e) {
+            console.error("[payments/confirm] reanalisis_precio:", e);
+          }
 
           // AMBAS pre-pago: la 2ª fila (STR companion) se premia DIRECTO, sin
           // consumir otro crédito (el único cobro ya cubrió ambas). El flip

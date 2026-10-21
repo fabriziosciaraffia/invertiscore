@@ -3,7 +3,8 @@
 // Wizard v4 — el wizard de producción (`RUTA_WIZARD`, src/lib/cta-analizar.ts). El v3
 // (/analisis/nuevo-v2) se borró el 25-sep-2026 y su ruta redirige acá.
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
+import { leerPedidoReanalisis } from "@/lib/reanalisis";
 import { useSearchParams } from "next/navigation";
 import { WizardV4 } from "@/components/formulario-v4/WizardV4";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
@@ -48,6 +49,12 @@ function NuevoAnalisisV4Inner() {
   const precargaParam = searchParams.get("precarga") ?? "";
   const precargaId = /^[0-9a-f-]{36}$/i.test(precargaParam) ? precargaParam : null;
 
+  // ?reanalisis=<analysisId>&precio=&pie=&plazo= — el botón del pop-up Ajustar (21-oct-2026, lib/reanalisis.ts): el
+  // informe de origen entero y la recomendación de Franco puestos, en el resumen. Sin uno válido, el wizard de siempre.
+  // useMemo: el objeto viaja como dependencia de un efecto del wizard y no tiene que cambiar en cada render.
+  const reanalisisClave = searchParams.toString();
+  const reanalisis = useMemo(() => leerPedidoReanalisis(searchParams), [reanalisisClave]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ?origen= — superficie del CTA que trajo al usuario. Viaja para que quede en
   // el $current_url del pageview automático; el wizard no lo usa para nada más.
   return (
@@ -58,6 +65,7 @@ function NuevoAnalisisV4Inner() {
       modoInicial={modoInicial}
       entrada={direccionInicial || modoInicial ? "landing" : "wizard"}
       precargaId={precargaId}
+      reanalisis={reanalisis}
     />
   );
 }

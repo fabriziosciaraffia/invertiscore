@@ -19,6 +19,7 @@ import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { waitUntil } from "@vercel/functions";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
+import { sanearReanalisis } from "@/lib/reanalisis-servidor";
 
 // Goal C: mismo perfil que /api/analisis/short-term (sin IA; AirROI en la rama
 // STR es el único fetch externo sin timeout).
@@ -141,6 +142,8 @@ export async function POST(request: Request) {
     // premia (ver payments/confirm rama companion_str_id). Devuelve { ltrId, strId }
     // para que el checkout lleve el LTR en analysis_id y el STR como companion.
     if (maybeMod.tipoAnalisis === "both" || maybeMod.modalidad === "both") {
+      // El comparativo no lleva el marcador del re-análisis.
+      for (const p of [maybeMod.ltr, maybeMod.str]) if (p && typeof p === "object") delete (p as Record<string, unknown>).reanalisis;
       const ltrPayload = maybeMod.ltr as AnalisisInput | undefined;
       const strPayload = maybeMod.str as ShortTermAnalysisBody | undefined;
       if (!ltrPayload || !strPayload) {
@@ -249,6 +252,10 @@ export async function POST(request: Request) {
 
     const body = rawBody as AnalisisInput;
     const isStr = maybeMod.tipoAnalisis === "short-term" || maybeMod.precioCompra !== undefined;
+    // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el marcador queda en input_data
+    // (validado como en /api/analisis) y `reanalisis_precio` sale cuando se confirma el pago (payments/confirm).
+    const crudo = rawBody as Record<string, unknown>;
+    await sanearReanalisis(supabase, user.id, crudo, Number(isStr ? crudo.precioCompraUF : crudo.precio));
 
     // ─── Rama STR: motor compartido (incluye AirROI), fila bloqueada ───
     if (isStr) {

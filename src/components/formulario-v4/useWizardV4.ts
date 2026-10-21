@@ -81,6 +81,9 @@ export interface UseWizardV4 {
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
   /** Retoma el draft ofrecido. */
   resumeDraft: () => void;
+  /** El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): todas las respuestas de una vez y al
+   *  resumen, para que la persona solo confirme. Retira la oferta de borrador sin borrarlo. */
+  cargarRespuestas: (answers: WizardV4Answers, completed: Partial<Record<NodeId, boolean>>) => void;
   /** El análisis se generó: retira el borrador de esta pestaña y deja de persistir. */
   cerrarBorrador: () => void;
   /** Descarta el draft ofrecido y arranca limpio. */
@@ -288,6 +291,12 @@ export function useWizardV4({
     setDraftPendiente(null);
   }, [draftPendiente, owner]);
 
+  const cargarRespuestas = useCallback((answers: WizardV4Answers, completed: Partial<Record<NodeId, boolean>>) => {
+    offeredKey.current = null;
+    setDraftPendiente(null);
+    setNav({ current: "resumen", history: [], answers, completed, mode: "flow", editContext: null, reactionSource: null, dir: "forward" });
+  }, []);
+
   const cerrarBorrador = useCallback(() => {
     cerrado.current = true;
     cerrarBorradorGenerado(owner ?? "", tabId.current);
@@ -342,6 +351,7 @@ export function useWizardV4({
     goBack,
     goDetour,
     resumeDraft,
+    cargarRespuestas,
     cerrarBorrador,
     discardDraft,
     reemplazarBorrador,

@@ -43,6 +43,8 @@ import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { buildLtrPayload, buildStrPayload, comprarLocked, datosDfl2, submitAnonimo, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
 import { obtenerTokenTurnstile } from "./turnstile";
+import { esAlPrecioRecomendado, usoDesdeTier, type Reanalisis } from "@/lib/reanalisis";
+import { textoUso } from "@/lib/guia/aviso-analizar";
 import {
   evaluarPlausibilidad,
   desdeBodyLtr,
@@ -406,11 +408,14 @@ function FilaNav({ id, titulo, resumen, cifra: ci, abierta, onToggle, children }
   );
 }
 
-export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInicial = null }: {
+export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInicial = null, reanalisis = null }: {
   w: Wizard; data: WizardV4Data; tier: TierInfo | null; isLoggedIn: boolean; onTerminal: () => void;
   /** Tarjeta abierta al montar. El wizard no la pasa (nacen cerradas); la usa el tier
    *  WIZARD-INTERIOR para dibujar el contenido de una tarjeta sin simular el toque. */
   cardInicial?: "01" | "02" | "03" | null;
+  /** El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): el aviso del semanal antes de gastar y el
+   *  marcador en el cuerpo del análisis, si se genera a ese precio. */
+  reanalisis?: Reanalisis | null;
 }) {
   const posthog = usePostHog();
   const a = w.nav.answers;
@@ -617,7 +622,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
 
   // Los DERIVADOS del estado limpio del modal: una función pura, testeable (ver abajo).
   const derivadosResumen = derivadosConfirmacion(a, data);
-  const consumo = lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna);
+  // EL RE-ANÁLISIS (21-oct-2026): el marcador va solo si se genera al precio recomendado y en una modalidad (no en el
+  // comparativo); antes de gastar, el aviso del semanal («Usa tu análisis de regalo.» / «Usa 1 de tus N análisis.»).
+  const marcaReanalisis = reanalisis && isLoggedIn && mod !== "both" && esAlPrecioRecomendado(leerNum(a.precio, DEC.precioUF), reanalisis) ? reanalisis : null;
+  const consumo = marcaReanalisis && canAnalyze ? textoUso(usoDesdeTier(tier)) : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna);
 
   // Confirmación de dirección nueva → invalidación + nota de cascada. Comuna
   // distinta descarta TODO (estimados y corregidos); misma comuna conserva
@@ -769,8 +777,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal, cardInici
     const res = esAnonimo
       ? await submitAnonimo(a, ctx, await obtenerTokenTurnstile())
       : esCredito
-        ? await submitConCredito(a, ctx)
-        : await comprarLocked(a, ctx);
+        ? await submitConCredito(a, ctx, marcaReanalisis ? { reanalisis: marcaReanalisis } : {})
+        : await comprarLocked(a, ctx, marcaReanalisis ? { reanalisis: marcaReanalisis } : {});
     if (res.ok && res.redirect) {
       // Éxito real del POST (Goal B): cierra el hueco del funnel entre
       // "submitted" (pre-fetch) y el informe. posthog-js despacha el batch con

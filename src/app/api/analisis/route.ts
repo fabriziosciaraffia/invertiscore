@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
 import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
+import { capturarReanalisis, sanearReanalisis } from "@/lib/reanalisis-servidor";
 import { runAnalysis } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
@@ -82,6 +83,9 @@ export async function POST(request: Request) {
     // y queda persistida en input_data, así el recompute de render la lee sin
     // plomería. Análisis previos no la traen ⇒ legacy. Ver modelo-costos.ts.
     body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
+    // El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): el marcador queda en input_data solo si el
+    // informe de origen es de esta cuenta y el precio es el recomendado; si no, se descarta.
+    const reanalisis = await sanearReanalisis(supabase, user?.id, body as unknown as Record<string, unknown>, Number(body.precio));
     const prepaidChargeId = body.prepaidChargeId;
     comuna = body.comuna;
     // Enlace AMBAS (flujo crédito/welcome): el wizard genera el group_id y lo
@@ -297,7 +301,8 @@ export async function POST(request: Request) {
     // bienvenida que salía acá se retiró: el análisis gratis al registrarse no existe desde el 01-oct, y desde el
     // 15-oct Lead es «dejó su correo» (src/lib/meta/ids.ts).
     if (data?.id && user?.id) {
-      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: typeof data.tipo_analisis === "string" ? data.tipo_analisis : "ltr", via: "wizard" }));
+      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: typeof data.tipo_analisis === "string" ? data.tipo_analisis : "ltr", via: reanalisis ? "reanalisis" : "wizard" }));
+      if (reanalisis) waitUntil(capturarReanalisis({ userId: user.id, analysisId: data.id as string, r: reanalisis, modalidad: "ltr", conPago: false }));
     }
 
     return NextResponse.json(data);

@@ -3,6 +3,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
 import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
+import { capturarReanalisis, sanearReanalisis } from "@/lib/reanalisis-servidor";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -67,6 +68,9 @@ export async function POST(request: Request) {
     const user = actor.tipo === "user" ? actor.user : null;
     const esAnon = actor.tipo !== "user";
     timing.auth_ms = Date.now() - t0;
+    // El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): espejo de /api/analisis; en AMBAS no va.
+    const reanalisis = ambasGroupId ? null : await sanearReanalisis(supabase, user?.id, body as Record<string, unknown>, Number(body?.precioCompraUF));
+    if (ambasGroupId) delete (body as Record<string, unknown>).reanalisis;
 
     // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
     // para derivar el yield bruto. Lectura cacheada con fallback, sin efectos.
@@ -211,7 +215,8 @@ export async function POST(request: Request) {
     // La activación (15-oct-2026): `analisis_creado` en PostHog, solo con cuenta y solo el STR suelto (en AMBAS lo
     // cuenta el lado LTR). El Lead de bienvenida se retiró: desde el 15-oct Lead es «dejó su correo».
     if (data?.id && user?.id && !ambasGroupId) {
-      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: "str", via: "wizard" }));
+      waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: "str", via: reanalisis ? "reanalisis" : "wizard" }));
+      if (reanalisis) waitUntil(capturarReanalisis({ userId: user.id, analysisId: data.id as string, r: reanalisis, modalidad: "str", conPago: false }));
     }
 
     // «Tu análisis está listo» también en renta corta (02-oct-2026): hasta acá solo lo mandaba
