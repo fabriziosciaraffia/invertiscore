@@ -20,9 +20,11 @@
 > (`$virt_is_bot`, «Automation / no_user_agent»). Todo evento del servidor sale por un solo punto
 > (`src/lib/posthog-captura.ts`) con el agente del navegador de la persona, y `agente_origen` dice de dónde salió:
 > `evento` (las vistas de entrada), `pedido` (el pedido venía de su navegador; queda recordado en `agentes_navegador`),
-> `recordado` (delante había un webhook o un cron: el último navegador que Franco le vio) o `ninguno` (nunca se vio su
-> navegador: ese evento sigue saliendo como robot). Antes del 20-oct-2026 los eventos del servidor no tienen
-> `agente_origen` y salen todos como robot.
+> `recordado` (delante había un webhook o un cron: el último navegador que Franco le vio) o `cola`. Ningún evento sale
+> sin agente: el de una persona cuyo navegador Franco todavía no vio espera en `eventos_sin_agente`, con su hora, y sale
+> cuando lo ve (un pedido suyo, o navegando con sesión por la app: el middleware). Por eso un evento `cola` puede llegar
+> a PostHog días después de su hora. Antes del 20-oct-2026 los eventos del servidor no tienen `agente_origen` y salen
+> todos como robot.
 
 ## La tabla (HogQL)
 

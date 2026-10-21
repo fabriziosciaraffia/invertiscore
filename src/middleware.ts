@@ -8,6 +8,8 @@ import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada 
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 import { COOKIE_INVITACION, VIDA_COOKIE_INVITACION_S, normalizarCodigo, valorCookieInvitacion } from "@/lib/referido";
 import { conPermiso, consentimientoDeCookie } from "@/lib/consentimiento";
+import { COOKIE_NAVEGADOR, VIDA_COOKIE_NAVEGADOR_S, almacenSupabase, navegadorDeSesion } from "@/lib/agentes-navegador";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /** Rutas que pasan por acá solo por la medición (15-oct-2026): sin sesión que refrescar. Los anuncios llegan a `/`. */
 const SOLO_MEDICION = new Set(["/", "/demo", "/metodologia"]);
@@ -70,6 +72,20 @@ function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent
   return res;
 }
 
+/**
+ * EL NAVEGADOR DE QUIEN TIENE SESIÓN (20-oct-2026, src/lib/agentes-navegador.ts): ningún evento del servidor sale sin
+ * el agente del navegador de la persona, y los de quien Franco todavía no vio esperan en una cola. Al navegar con sesión
+ * por la app, una vez por navegador y cuenta (la cookie guarda una marca), su agente queda anotado y sale lo que lo
+ * esperaba. Sin demorar la respuesta.
+ */
+function conNavegador(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, persona: { id: string; email?: string | null } | null): NextResponse {
+  const nav = navegadorDeSesion({ persona, cabeceras: request.headers, marcaActual: request.cookies.get(COOKIE_NAVEGADOR)?.value });
+  if (!nav || !event) return res;
+  res.cookies.set(COOKIE_NAVEGADOR, nav.marca, { path: "/", maxAge: VIDA_COOKIE_NAVEGADOR_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
+  event.waitUntil(nav.anotar(almacenSupabase(createServiceClient)).catch(() => 0));
+  return res;
+}
+
 /** El pedido con el id de la visita para la página (pisa cualquiera que traiga). */
 function conVisitaEnCabecera(request: NextRequest, visita: string): NextRequest {
   const h = new Headers(request.headers);
@@ -96,7 +112,9 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
   const timeout = new Promise<NextResponse>((resolve) =>
     setTimeout(() => resolve(NextResponse.next({ request: req })), 5000)
   );
-  return conVista(req, conMedicion(req, await Promise.race([updateSession(req), timeout])), event, visita);
+  let persona: { id: string; email?: string | null } | null = null;
+  const res = await Promise.race([updateSession(req, (u) => { persona = u; }), timeout]);
+  return conVista(req, conMedicion(req, conNavegador(req, res, event, persona)), event, visita);
 }
 
 export const config = {

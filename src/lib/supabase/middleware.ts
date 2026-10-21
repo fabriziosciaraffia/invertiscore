@@ -2,7 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { conNext, esDestinoSeguro } from "@/lib/auth-next";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
+/** `alUsuario` recibe a quien tiene sesión (o null): el middleware anota su navegador (20-oct-2026, agentes-navegador.ts). */
+export async function updateSession(request: NextRequest, alUsuario?: (user: { id: string; email?: string | null } | null) => void) {
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -33,6 +34,7 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  alUsuario?.(user ? { id: user.id, email: user.email ?? null } : null);
 
   const { pathname } = request.nextUrl;
 

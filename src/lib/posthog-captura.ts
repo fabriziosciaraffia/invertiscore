@@ -6,12 +6,14 @@
 // EL AGENTE: PostHog clasifica el tráfico por el agente (`$raw_user_agent`), y todo evento sin agente lo marca robot
 // («Automation / no_user_agent», `$virt_is_bot` = true; medido en producción el 20-oct-2026). Quien filtre robots
 // perdía el registro, el análisis, los correos y el pago. Cada evento lleva el del NAVEGADOR DE LA PERSONA, nunca el de
-// quien hace el pedido cuando no es ella (el webhook de Flow o de Resend, el cron de Vercel):
+// quien hace el pedido cuando no es ella (el webhook de Flow o de Resend, el cron de Vercel), y `agente_origen` dice
+// de dónde salió:
 //   · `evento`    — el que el evento ya trae (las vistas de entrada lo ponen del pedido que las sirve);
 //   · `pedido`    — el del pedido en curso, si viene de un navegador (`agenteDeNavegador`);
-//   · `recordado` — el último que Franco le vio a esa persona (tabla `agentes_navegador`, posthog-servidor.ts);
-//   · `ninguno`   — Franco nunca vio su navegador: sale sin agente y lo dice (`agente_origen`).
-// Lo prueba el tier AGENTE-SERVIDOR.
+//   · `recordado` — el último que Franco le vio a esa persona (tabla `agentes_navegador`, agentes-navegador.ts);
+//   · `cola`      — Franco todavía no había visto su navegador: el evento esperó en `eventos_sin_agente`, con su hora,
+//                   y salió cuando lo vio.
+// NINGÚN EVENTO SALE SIN AGENTE: `enviarCaptura` no manda uno que no lo traiga. Lo prueba el tier AGENTE-SERVIDOR.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EventoServidor {
@@ -23,7 +25,13 @@ export interface EventoServidor {
   timestamp?: string;
 }
 
-export type OrigenAgente = "evento" | "pedido" | "recordado" | "ninguno";
+export type OrigenAgente = "evento" | "pedido" | "recordado" | "cola";
+
+/** El agente de la persona y de dónde salió; `valor` null = todavía no se conoce (el evento espera en la cola). */
+export interface AgentePersona {
+  valor: string | null;
+  origen: OrigenAgente;
+}
 
 export interface DepsEnvio {
   fetch?: typeof fetch;
@@ -48,10 +56,18 @@ export function agenteDeNavegador(h: { get(nombre: string): string | null } | nu
   return agente.slice(0, 512);
 }
 
-/** El agente que el evento ya trae (`$raw_user_agent`), si es de un navegador. */
+/** El agente que el evento ya trae (`$raw_user_agent`), si no es de un robot (las vistas ya lo filtraron). */
 export function agenteDelEvento(ev: EventoServidor): string | null {
   const a = ev.properties?.$raw_user_agent;
-  return typeof a === "string" && /^Mozilla\//.test(a) && !esRobot(a) ? a.slice(0, 512) : null;
+  return typeof a === "string" && !esRobot(a) ? a.slice(0, 512) : null;
+}
+
+/** El id de PostHog de un correo sin cuenta (el mismo que `distinctIdDeCorreo`, que usa el `crypto` de Node), con el
+ *  `crypto.subtle` que hay en Edge y en Node. */
+export async function idDeCorreo(email: string): Promise<string> {
+  const datos = new TextEncoder().encode(email.trim().toLowerCase());
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", datos));
+  return "correo:" + Array.from(h, (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 24);
 }
 
 /** Los ids que tienen un navegador que recordar: la cuenta (uuid de Supabase) o el correo de quien todavía no tiene
@@ -61,7 +77,7 @@ export function idRecordable(distinctId: string): boolean {
 }
 
 /** Lo que se manda: el evento con el agente de la persona (`$raw_user_agent`) y de dónde salió (`agente_origen`). */
-export function cuerpoDeCaptura(ev: EventoServidor, key: string, agente: { valor: string | null; origen: OrigenAgente }, ahora: Date = new Date()) {
+export function cuerpoDeCaptura(ev: EventoServidor, key: string, agente: { valor: string; origen: OrigenAgente }, ahora: Date = new Date()) {
   const props: Record<string, unknown> = { ...(ev.properties ?? {}) };
   delete props.$raw_user_agent;
   return {
@@ -70,17 +86,15 @@ export function cuerpoDeCaptura(ev: EventoServidor, key: string, agente: { valor
     distinct_id: ev.distinctId,
     ...(ev.uuid ? { uuid: ev.uuid } : {}),
     timestamp: ev.timestamp ?? ahora.toISOString(),
-    properties: {
-      ...props,
-      ...(agente.valor ? { $raw_user_agent: agente.valor } : {}),
-      agente_origen: agente.valor ? agente.origen : "ninguno",
-      $lib: "franco-servidor",
-    },
+    properties: { ...props, $raw_user_agent: agente.valor, agente_origen: agente.origen, $lib: "franco-servidor" },
   };
 }
 
-/** Manda el evento. `true` si PostHog respondió 2xx; `false` sin key, sin red o con error. Nunca lanza. */
-export async function enviarCaptura(ev: EventoServidor, agente: { valor: string | null; origen: OrigenAgente }, deps: DepsEnvio = {}): Promise<boolean> {
+/** Manda el evento. `true` si PostHog respondió 2xx; `false` sin agente (no sale: lo encola quien llama), sin key, sin
+ *  red o con error. Nunca lanza. */
+export async function enviarCaptura(ev: EventoServidor, agente: AgentePersona, deps: DepsEnvio = {}): Promise<boolean> {
+  const valor = agente.valor?.trim();
+  if (!valor) return false;
   const key = deps.key ?? process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return false;
   const host = (deps.host ?? process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com").replace(/\/$/, "");
@@ -89,7 +103,7 @@ export async function enviarCaptura(ev: EventoServidor, agente: { valor: string 
     const res = await f(`${host}/capture/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpoDeCaptura(ev, key, agente)),
+      body: JSON.stringify(cuerpoDeCaptura(ev, key, { valor, origen: agente.origen })),
     });
     return res.ok;
   } catch {
