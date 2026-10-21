@@ -2,7 +2,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import {
-  CABECERA_VISITA, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, paginaDeEntrada, serverTimingDeVisita,
+  CABECERA_VISITA, cuentaDeCookieDeSesion, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, paginaDeEntrada, serverTimingDeVisita,
 } from "@/lib/vista-entrada";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
@@ -48,7 +48,7 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
  * de visita que el navegador recibe en `Server-Timing` —con él arranca PostHog— y la página de /i/, en `x-franco-visita`.
  * La landing y /deptos emiten acá su vista; /i/ la emite su página, que sabe el modo. Sin demorar la respuesta.
  */
-function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, visita: string | null): NextResponse {
+function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, visita: string | null, persona: { id: string } | null = null): NextResponse {
   const pagina = paginaDeEntrada(request.nextUrl.pathname);
   if (!pagina || !visita) return res;
   const consentimiento = consentimientoDeCookie(request.headers.get("cookie"));
@@ -67,6 +67,9 @@ function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent
     esCarga: esCargaDePagina(request.headers),
     agente: request.headers.get("user-agent"),
     prueba: esVisitaDePrueba(request.nextUrl.search, request.cookies.get(COOKIE_PRUEBA)?.value),
+    // La marca de cuenta de prueba (21-oct-2026): la sesión que leyó el middleware, o en la landing (que no la lee) la
+    // cookie de Supabase, sin verificar: solo marca la vista.
+    cuentaDeSesion: persona?.id ?? cuentaDeCookieDeSesion(request.cookies.getAll()),
   });
   if (ev && event) event.waitUntil(enviarVista(ev).catch(() => false));
   return res;
@@ -114,7 +117,7 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
   );
   let persona: { id: string; email?: string | null } | null = null;
   const res = await Promise.race([updateSession(req, (u) => { persona = u; }), timeout]);
-  return conVista(req, conMedicion(req, conNavegador(req, res, event, persona)), event, visita);
+  return conVista(req, conMedicion(req, conNavegador(req, res, event, persona)), event, visita, persona);
 }
 
 export const config = {

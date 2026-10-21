@@ -12,6 +12,7 @@ import { emitirEventoMeta } from "@/lib/meta/servidor";
 import { EVENTOS_META, idCompra } from "@/lib/meta/ids";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
+import { capturarAnalisisCreado, modalidadDelInforme, seDesbloqueaConPago, VIA_PAGO } from "@/lib/medicion-activacion";
 import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
 import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { esOrigenTres, PRODUCTO_TRES, TRES_CANTIDAD, volverSeguro } from "@/lib/tres-analisis";
@@ -162,6 +163,9 @@ export async function POST(request: Request) {
         // (corta si ya está is_premium), así que un reenvío de webhook no
         // doble-consume el crédito.
         if (analysisId) {
+          // Cómo estaba el informe antes del pago: si este pago lo abre, cuenta en la activación (abajo).
+          const { data: antesDelPago } = await supabase.from("analisis").select("is_premium, pending_payment, tipo_analisis").eq("id", analysisId).maybeSingle();
+
           await consumeCredit(userId, analysisId);
 
           // Flujo LTR bloqueado pre-pago: la fila se creó con pending_payment=true (ver
@@ -173,6 +177,12 @@ export async function POST(request: Request) {
             .update({ pending_payment: false })
             .eq("id", analysisId)
             .eq("pending_payment", true);
+
+          // El desbloqueo por pago (21-oct-2026, medicion-activacion.ts): `analisis_creado` con via = pago, como los
+          // hechos con saldo. Solo si este pago lo abrió (un reenvío lo encuentra abierto).
+          if (seDesbloqueaConPago(antesDelPago)) {
+            await capturarAnalisisCreado({ userId, analysisId, modalidad: modalidadDelInforme(antesDelPago?.tipo_analisis as string | null), via: VIA_PAGO });
+          }
 
           // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el informe sale recién
           // ahora, así que `reanalisis_precio` sale acá (uuid por informe: un reenvío del webhook no lo duplica).
@@ -274,6 +284,11 @@ export async function POST(request: Request) {
         // If pro and has analysisId, consume one credit for this analysis
         if (product === "pro" && analysisId) {
           newCredits = newCredits - 1;
+
+          const { data: antesDelPago } = await supabase.from("analisis").select("is_premium, pending_payment, tipo_analisis").eq("id", analysisId).maybeSingle();
+          if (seDesbloqueaConPago(antesDelPago)) {
+            await capturarAnalisisCreado({ userId, analysisId, modalidad: modalidadDelInforme(antesDelPago?.tipo_analisis as string | null), via: VIA_PAGO });
+          }
 
           const { error: premiumError } = await supabase
             .from("analisis")

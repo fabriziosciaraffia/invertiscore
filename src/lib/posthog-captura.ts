@@ -16,6 +16,14 @@
 //   · `ninguno`   — esperó más de 24 horas sin que Franco viera su navegador: sale igual, con su hora y el agente
 //                   genérico de Franco (`AGENTE_GENERICO`), para que los paneles puedan separarlo (21-oct-2026).
 // NINGÚN EVENTO SALE SIN AGENTE: `enviarCaptura` no manda uno que no lo traiga. Lo prueba el tier AGENTE-SERVIDOR.
+//
+// LA MARCA DE CUENTA DE PRUEBA (21-oct-2026, Fabrizio): todo evento de una cuenta de `test_accounts` —la misma regla
+// que `es_test_account`— sale con `$set: { test_account: true }` y `prueba: true`, desde el primer evento. PostHog
+// guarda las propiedades de la persona EN el evento (`person_id_override_properties_on_events`): la marca que el
+// navegador ponía después, y solo con el consentimiento, no sacaba de las cohortes lo que ya había entrado. La lista
+// sale de la RPC `cuentas_de_prueba` (las cuentas y el id de PostHog de su correo), con un minuto de caché; una vista
+// de entrada la mira además por la cuenta con sesión (`cuentaDeSesion`). Si no se puede saber, el evento no sale.
+// Lo prueba el tier PANEL-ACTIVACION.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EventoServidor {
@@ -25,6 +33,9 @@ export interface EventoServidor {
   /** Determinista cuando el evento puede llegar dos veces. */
   uuid?: string;
   timestamp?: string;
+  /** La cuenta con sesión en el pedido cuando no es `distinctId` (una vista de entrada sin consentimiento): también
+   *  decide la marca de cuenta de prueba. No viaja a PostHog. */
+  cuentaDeSesion?: string | null;
 }
 
 export type OrigenAgente = "evento" | "pedido" | "recordado" | "cola" | "ninguno";
@@ -45,6 +56,62 @@ export interface DepsEnvio {
   fetch?: typeof fetch;
   key?: string;
   host?: string;
+  /** Los ids de las cuentas de prueba (y de sus correos); null = no se pudo saber, y el evento no sale. Por defecto la
+   *  lista de `test_accounts` (`listaDePrueba`) dentro de Next —en Vercel, en el middleware (Edge) y en `next dev`—; con
+   *  un `fetch` inyectado o fuera de Next (una prueba), ninguna salvo que se pase: una prueba no lee la base, como el
+   *  almacén de agentes. */
+  cuentasDePrueba?: () => Promise<ReadonlySet<string> | null>;
+}
+
+/** La lista de cuentas de prueba que usa `enviarCaptura` (ver `DepsEnvio.cuentasDePrueba`). */
+function cuentasDePruebaDe(deps: DepsEnvio): Promise<ReadonlySet<string> | null> {
+  if (deps.cuentasDePrueba) return deps.cuentasDePrueba();
+  if (deps.fetch || (!process.env.NEXT_RUNTIME && process.env.VERCEL !== "1")) return Promise.resolve(new Set<string>());
+  return listaDePrueba();
+}
+
+/** Cuánto vale la lista de cuentas de prueba antes de volver a pedirla. */
+export const VIDA_LISTA_PRUEBA_MS = 60_000;
+let listaGuardada: { ids: Set<string>; hasta: number } | null = null;
+
+/** Para las pruebas: la próxima `listaDePrueba` la vuelve a pedir. */
+export function olvidarListaDePrueba(): void {
+  listaGuardada = null;
+}
+
+/** Las cuentas de `test_accounts` y el id de PostHog de su correo (RPC `cuentas_de_prueba`, solo el service role), con
+ *  `VIDA_LISTA_PRUEBA_MS` de caché. Si la RPC falla, la última que se tuvo; si nunca se tuvo, null. Sin módulos de Node:
+ *  la usa también el middleware. */
+export async function listaDePrueba(deps: { fetch?: typeof fetch; url?: string; key?: string; ahora?: number } = {}): Promise<ReadonlySet<string> | null> {
+  const ahora = deps.ahora ?? Date.now();
+  if (listaGuardada && listaGuardada.hasta > ahora) return listaGuardada.ids;
+  const url = (deps.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
+  const key = deps.key ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return listaGuardada?.ids ?? null;
+  try {
+    const res = await (deps.fetch ?? globalThis.fetch)(`${url}/rest/v1/rpc/cuentas_de_prueba`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) return listaGuardada?.ids ?? null;
+    const filas = (await res.json()) as Array<{ user_id?: string | null; id_correo?: string | null }>;
+    if (!Array.isArray(filas)) return listaGuardada?.ids ?? null;
+    const ids = new Set<string>();
+    for (const f of filas) {
+      if (f?.user_id) ids.add(f.user_id);
+      if (f?.id_correo) ids.add(f.id_correo);
+    }
+    listaGuardada = { ids, hasta: ahora + VIDA_LISTA_PRUEBA_MS };
+    return ids;
+  } catch {
+    return listaGuardada?.ids ?? null;
+  }
+}
+
+/** ¿El evento es de una cuenta de prueba? Por su id (la cuenta o su correo) o por la cuenta con sesión. */
+export function esEventoDePrueba(ev: Pick<EventoServidor, "distinctId" | "cuentaDeSesion">, lista: ReadonlySet<string>): boolean {
+  return lista.has(ev.distinctId) || (!!ev.cuentaDeSesion && lista.has(ev.cuentaDeSesion));
 }
 
 /** Robots de vistas previas, buscadores y clientes sin navegador. Sin agente, también. «…bot/», «…bot;» o «bot» suelto,
@@ -84,22 +151,26 @@ export function idRecordable(distinctId: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(distinctId) || /^correo:[0-9a-f]{24}$/.test(distinctId);
 }
 
-/** Lo que se manda: el evento con el agente de la persona (`$raw_user_agent`) y de dónde salió (`agente_origen`). */
-export function cuerpoDeCaptura(ev: EventoServidor, key: string, agente: { valor: string; origen: OrigenAgente }, ahora: Date = new Date()) {
+/** Lo que se manda: el evento con el agente de la persona (`$raw_user_agent`) y de dónde salió (`agente_origen`); si es
+ *  de una cuenta de prueba, con la marca (`$set.test_account` en la persona y `prueba` en el evento). */
+export function cuerpoDeCaptura(ev: EventoServidor, key: string, agente: { valor: string; origen: OrigenAgente }, ahora: Date = new Date(), prueba = false) {
   const props: Record<string, unknown> = { ...(ev.properties ?? {}) };
   delete props.$raw_user_agent;
+  const marca = prueba
+    ? { prueba: true, $set: { ...(typeof props.$set === "object" && props.$set ? (props.$set as Record<string, unknown>) : {}), test_account: true } }
+    : {};
   return {
     api_key: key,
     event: ev.event,
     distinct_id: ev.distinctId,
     ...(ev.uuid ? { uuid: ev.uuid } : {}),
     timestamp: ev.timestamp ?? ahora.toISOString(),
-    properties: { ...props, $raw_user_agent: agente.valor, agente_origen: agente.origen, $lib: "franco-servidor" },
+    properties: { ...props, ...marca, $raw_user_agent: agente.valor, agente_origen: agente.origen, $lib: "franco-servidor" },
   };
 }
 
 /** Manda el evento. `true` si PostHog respondió 2xx; `false` sin agente (no sale: lo encola quien llama), sin key, sin
- *  red o con error. Nunca lanza. */
+ *  saber si es de una cuenta de prueba, sin red o con error. Nunca lanza. */
 export async function enviarCaptura(ev: EventoServidor, agente: AgentePersona, deps: DepsEnvio = {}): Promise<boolean> {
   const valor = agente.valor?.trim();
   if (!valor) return false;
@@ -108,10 +179,13 @@ export async function enviarCaptura(ev: EventoServidor, agente: AgentePersona, d
   const host = (deps.host ?? process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com").replace(/\/$/, "");
   const f = deps.fetch ?? globalThis.fetch;
   try {
+    const lista = await cuentasDePruebaDe(deps);
+    // Sin saber si es una cuenta de prueba no sale: una prueba nuestra no puede contar en las cohortes.
+    if (!lista) return false;
     const res = await f(`${host}/capture/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpoDeCaptura(ev, key, { valor, origen: agente.origen })),
+      body: JSON.stringify(cuerpoDeCaptura(ev, key, { valor, origen: agente.origen }, new Date(), esEventoDePrueba(ev, lista))),
     });
     return res.ok;
   } catch {

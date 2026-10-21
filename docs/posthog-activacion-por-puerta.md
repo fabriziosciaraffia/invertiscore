@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
-| `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`) | analizó algo; lleva `via` (wizard · guia · semanal · …) |
+| `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`), y desde el 21-oct-2026 también al desbloquearse uno por pago (la compra suelta atada al informe, en `payments/confirm`) | analizó algo; lleva `via` (wizard · guia · semanal · reanalisis · pago). Con via = pago, el informe que abrió un pago, una vez (un reenvío de Flow no lo repite) |
 | `reanalisis_precio` | el servidor, una vez por informe (uuid determinista), desde el 21-oct-2026 (`src/lib/reanalisis-servidor.ts`): al crear con saldo el informe que pidió el botón «Ver el informe completo a UF X» del pop-up Ajustar, o al confirmarse el pago del suelto | el informe completo al precio que Franco recomendó negociar; lleva `informe_original`, `informe_nuevo`, `precio_original_uf`, `precio_recomendado_uf`, `descuento_pct`, `pie_pct`, `plazo_anios`, `modalidad` (ltr · str) y `con_pago`. El `analisis_creado` de ese informe (con saldo) lleva `via` = reanalisis |
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
@@ -29,6 +29,17 @@
 > que PostHog clasifica `Regular`) y `agente_origen` = `ninguno`: para separarlo en un panel, filtrar por ese origen.
 > Lo vacía el resumen diario de los crons (la vigilancia de las 00:45 UTC). Antes del 20-oct-2026 los eventos del
 > servidor no tienen `agente_origen` y salen todos como robot.
+
+## Las cuentas de prueba en los eventos del servidor
+
+> 21-oct-2026. Todo evento que el servidor manda de una cuenta de `test_accounts` (la misma regla que `es_test_account`)
+> sale marcado desde el primer evento: `$set: { test_account: true }` en la persona y `prueba: true` en el evento, por
+> el punto único (`src/lib/posthog-captura.ts`). Vale para el id de la cuenta, el id de su correo y, en las vistas de
+> entrada, la cuenta con sesión (la vista anónima no lleva su id: lleva `prueba`). La lista sale de la RPC
+> `cuentas_de_prueba` (solo el service role), con un minuto de caché; si no se puede saber, el evento no sale. Antes la
+> marcaba solo el navegador, y solo con el consentimiento, y como PostHog guarda las propiedades de la persona en el
+> evento (`person_id_override_properties_on_events`), lo ya ingerido sin marca sigue contando: las cohortes anteriores al
+> 21-oct-2026 pueden traer pruebas (por ejemplo, las cuentas `qa-primera-1020-*`).
 
 ## La tabla (HogQL)
 

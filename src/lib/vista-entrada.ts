@@ -34,6 +34,35 @@ export const CABECERA_VISITA = "x-franco-visita";
 /** El nombre en `Server-Timing` con que el navegador recibe el id. */
 export const NOMBRE_SERVER_TIMING = "franco-visita";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** La cuenta con sesión según la cookie de Supabase (`sb-<ref>-auth-token`, entera o en trozos `.0`, `.1`…), SIN
+ *  verificarla: solo decide la marca de cuenta de prueba de la vista (21-oct-2026, posthog-captura.ts), en las páginas
+ *  donde el middleware no lee la sesión (la landing). Para nada más. */
+export function cuentaDeCookieDeSesion(cookies: ReadonlyArray<{ name: string; value: string }>): string | null {
+  const trozos = cookies
+    .map((c) => ({ c, m: /^sb-[a-z0-9]+-auth-token(?:\.(\d+))?$/.exec(c.name) }))
+    .filter((x) => x.m)
+    .sort((a, b) => Number(a.m![1] ?? -1) - Number(b.m![1] ?? -1))
+    .map((x) => x.c.value);
+  if (!trozos.length) return null;
+  try {
+    let crudo = trozos.join("");
+    if (crudo.startsWith("base64-")) {
+      const b64 = crudo.slice(7).replace(/-/g, "+").replace(/_/g, "/");
+      const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+      crudo = new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0)));
+    } else {
+      crudo = decodeURIComponent(crudo);
+    }
+    const s = JSON.parse(crudo) as { user?: { id?: unknown } } | null;
+    const id = s?.user?.id;
+    return typeof id === "string" && UUID.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /** El id de la visita de la cabecera del middleware, solo si tiene forma de uuid (si no, la página genera uno). */
 export function visitaDeCabecera(v: string | null | undefined): string | null {
   return v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null;
@@ -136,6 +165,8 @@ export function eventoVistaEntrada(p: {
   agente: string | null;
   /** Una visita de QA (`esVisitaDePrueba`): queda marcada y el panel la saca. */
   prueba?: boolean;
+  /** La cuenta con sesión aunque la vista no vaya a su nombre: si es una cuenta de prueba, la vista sale marcada. */
+  cuentaDeSesion?: string | null;
   /** Lo propio de la página (la invitación: su código, el modo…). */
   extra?: Record<string, unknown>;
 }): EventoServidor | null {
@@ -146,6 +177,7 @@ export function eventoVistaEntrada(p: {
     event: EVENTO_VISTA[p.pagina],
     distinctId: id,
     uuid: p.visita,
+    ...(p.cuentaDeSesion ? { cuentaDeSesion: p.cuentaDeSesion } : {}),
     properties: {
       pagina: p.pagina,
       ...p.extra,
