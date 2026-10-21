@@ -267,6 +267,11 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
   **Y no todo lo que dice «cerrada» lo está**: cerrado con merge pendiente NO es cerrado — es trabajo terminado esperando una acción, y se queda en el índice diciéndolo.
 - **Diagnóstico read-only primero**: auditá el estado actual (queries SELECT, leer archivos) antes de escribir cualquier código. Nunca escribas sin entender el estado.
 - **Un paso a la vez**: ejecutá, reportá el output, esperá antes de continuar. No encadenar acciones irreversibles.
+- **Bloqueado por algo que solo Fabrizio puede hacer** (una llave, un pago, una decisión): el agente lo dice UNA vez, con
+  exactamente qué necesita, y se detiene. No vuelve a revisar ni a repetir el mensaje hasta que llegue una respuesta. Si
+  el control automático del goal insiste, responde una sola vez que está esperando a Fabrizio y no actúa más.
+  Motivo (21-oct-2026): un goal esperando las llaves de sandbox de Flow repitió el mismo chequeo y el mismo mensaje
+  decenas de veces sin que nada cambiara.
 - **Validá empíricamente** (sandbox, mediciones reales) antes de optimizar. No confíes en supuestos ni en docs sin verificar.
 - Mostrá el diff antes de que se apruebe un commit.
 - **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 5 veces — regla también en "Reglas de formato de texto").
