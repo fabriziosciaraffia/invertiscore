@@ -85,7 +85,7 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     // pago llega por el webhook de Flow, sin navegador delante: sale con el último navegador recordado de esa cuenta (un
     // almacén de mentira); sin agente conocido no sale (espera en la cola, que acá no hay).
     const NAV = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
-    const recordado = { leer: async () => NAV, guardar: async () => {}, encolar: async () => {}, pendientes: async () => [], sacar: async () => {} };
+    const recordado = { leer: async () => NAV, guardar: async () => {}, encolar: async () => {}, pendientes: async () => [], vencidos: async () => [], sacar: async () => {} };
     const evCuenta = { ...ev, distinctId: "0f4d1489-0b03-406f-82bf-f74ec9c4af4e" };
     const ok = await capturarServidor(evCuenta, { fetch: fetchFalso, key: "phc_test", host: "https://ph.test", cabeceras: null, agentes: recordado });
     const b = pedidos[0]?.body ?? {};

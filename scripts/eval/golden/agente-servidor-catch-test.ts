@@ -19,6 +19,8 @@
 //   6 · QUÉ ES UN NAVEGADOR: «Mozilla/…», no un robot, con `Sec-Fetch-*`.
 //   7 · LAS TABLAS: `agentes_navegador` y `eventos_sin_agente`, con RLS y sin políticas.
 //   8 · EL INVARIANTE: todo lo que llegó a PostHog en este tier lleva agente; el núcleo no manda un evento sin él.
+//   9 · LA REGLA DE SALIDA (21-oct-2026): un evento de 25 horas en la cola sale igual, con su hora, el agente genérico
+//       de Franco y agente_origen = ninguno; uno de 23 horas espera. Lo vacía el resumen diario de las 00:45 UTC.
 //
 // ACTA DE MUTACIONES: en el cuerpo de cada sección.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/agente-servidor-catch-test.ts
@@ -28,8 +30,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { requestAsyncStorage } from "next/dist/client/components/request-async-storage.external";
 import { capturarServidor, distinctIdDeCorreo, type EventoServidor } from "../../../src/lib/posthog-servidor";
-import { agenteDeNavegador, enviarCaptura, idDeCorreo } from "../../../src/lib/posthog-captura";
-import { navegadorDeSesion, type AlmacenAgentes } from "../../../src/lib/agentes-navegador";
+import { AGENTE_GENERICO, agenteDeNavegador, enviarCaptura, esRobot, idDeCorreo } from "../../../src/lib/posthog-captura";
+import { ESPERA_MAXIMA_H, navegadorDeSesion, vaciarColaVencida, type AlmacenAgentes } from "../../../src/lib/agentes-navegador";
 import { enviarVista } from "../../../src/lib/vista-entrada";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -40,23 +42,24 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebK
 const WINDOWS = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36";
 const CUENTA = "0f4d1489-0b03-406f-82bf-f74ec9c4af4e";
 const NAVEGADOR = { "user-agent": IPHONE, "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "accept-language": "es-CL" };
-const ORIGENES = ["evento", "pedido", "recordado", "cola"];
+const ORIGENES = ["evento", "pedido", "recordado", "cola", "ninguno"];
 
 type Cuerpo = { event: string; distinct_id: string; timestamp?: string; properties: Record<string, unknown> };
 
 /** Todo lo que llegó a PostHog en el tier (el invariante del §8 lo recorre entero). */
 const todo: Cuerpo[] = [];
 
-function almacen(inicial: Record<string, string> = {}, cola: EventoServidor[] = []) {
+function almacen(inicial: Record<string, string> = {}, cola: Array<EventoServidor | { evento: EventoServidor; creado: string }> = []) {
   const datos = new Map(Object.entries(inicial));
   const guardados: Array<[string, string]> = [];
   let n = 0;
-  const filas = cola.map((evento) => ({ id: ++n, evento }));
+  const filas = cola.map((c) => ("creado" in c ? { id: ++n, evento: c.evento, creado: c.creado } : { id: ++n, evento: c, creado: new Date().toISOString() }));
   const a: AlmacenAgentes = {
     async leer(id) { return datos.get(id) ?? null; },
     async guardar(id, agente) { guardados.push([id, agente]); datos.set(id, agente); },
-    async encolar(ev) { filas.push({ id: ++n, evento: ev }); },
+    async encolar(ev) { filas.push({ id: ++n, evento: ev, creado: new Date().toISOString() }); },
     async pendientes(id) { return filas.filter((f) => f.evento.distinctId === id); },
+    async vencidos(antesDe, limite) { return filas.filter((f) => f.creado < antesDe).slice(0, limite); },
     async sacar(ids) { for (const id of ids) filas.splice(filas.findIndex((f) => f.id === id), 1); },
   };
   return { a, guardados, filas };
@@ -166,7 +169,7 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
       }
       if (navegadorDeSesion({ persona: null, cabeceras: new Headers(NAVEGADOR), marcaActual: undefined })) F("4 · se anota un navegador sin sesión");
       if (navegadorDeSesion({ persona: { id: CUENTA }, cabeceras: new Headers({ "user-agent": "vercel-cron/1.0" }), marcaActual: undefined })) F("4 · se anota algo que no es un navegador");
-      const caido: AlmacenAgentes = { leer: async () => { throw new Error("sin base"); }, guardar: async () => { throw new Error("sin base"); }, encolar: async () => { throw new Error("sin base"); }, pendientes: async () => { throw new Error("sin base"); }, sacar: async () => { throw new Error("sin base"); } };
+      const caido: AlmacenAgentes = { leer: async () => { throw new Error("sin base"); }, guardar: async () => { throw new Error("sin base"); }, encolar: async () => { throw new Error("sin base"); }, pendientes: async () => { throw new Error("sin base"); }, vencidos: async () => { throw new Error("sin base"); }, sacar: async () => { throw new Error("sin base"); } };
       const c = await mandar({ event: "correo_abierto", distinctId: CUENTA, properties: {} }, null, caido);
       if (c.cuerpos.length) F("4 · con la base caída el evento sale sin agente");
       const d = await mandar({ event: "analisis_creado", distinctId: CUENTA, properties: {} }, NAVEGADOR, caido);
@@ -218,6 +221,42 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
       if (!/create table if not exists public\.eventos_sin_agente \(/.test(cola) || !/alter table public\.eventos_sin_agente enable row level security;/.test(cola) || /create policy/i.test(cola)) F("7 · la cola eventos_sin_agente no existe con RLS y sin políticas");
     }
 
+    // ── 9 · LA REGLA DE SALIDA (21-oct-2026): lo que lleva más de 24 horas esperando sale igual ──
+    // Mutaciones: B1 el resumen no vacía la cola · B2 la espera no es de 24 horas · B3 sale sin su hora · B4 sale como
+    // `cola` y no `ninguno` · B5 el agente genérico es de robot · B6 no deja la cola · B7 la vacía cada vigilancia y no
+    // solo la del resumen.
+    {
+      const ahora = new Date("2026-10-21T00:45:00.000Z");
+      const hace = (h: number) => new Date(ahora.getTime() - h * 3600e3).toISOString();
+      const viejo: EventoServidor = { event: "correo_entregado", distinctId: CUENTA, properties: { tipo: "semanal" }, timestamp: hace(25) };
+      const reciente: EventoServidor = { event: "correo_abierto", distinctId: CUENTA, properties: {}, timestamp: hace(23) };
+      const { a, filas } = almacen({}, [{ evento: viejo, creado: hace(25) }, { evento: reciente, creado: hace(23) }]);
+      const ph = posthogDeMentira();
+      const r = await vaciarColaVencida(a, ph.deps, ahora);
+      const b = ph.cuerpos.find((c) => c.event === "correo_entregado");
+      if (!b) F("9 · un evento de 25 horas en la cola no sale");
+      else {
+        if (b.properties.$raw_user_agent !== AGENTE_GENERICO || b.properties.agente_origen !== "ninguno") F(`9 · el evento de 25 horas no sale con el agente genérico de Franco y agente_origen = ninguno (${String(b.properties.agente_origen)})`);
+        if (b.timestamp !== viejo.timestamp) F(`9 · el evento de 25 horas sale con otra hora (${b.timestamp})`);
+        if (b.properties.tipo !== "semanal") F("9 · el evento de 25 horas pierde sus propiedades");
+      }
+      if (ph.cuerpos.some((c) => c.event === "correo_abierto") || filas.length !== 1 || filas[0].evento.event !== "correo_abierto") F("9 · un evento de 23 horas sale (o el de 25 no deja la cola)");
+      if (r.enviados !== 1) F(`9 · el vaciado no cuenta lo que mandó (${r.enviados})`);
+      if (ESPERA_MAXIMA_H !== 24) F(`9 · la espera máxima no es de 24 horas (${ESPERA_MAXIMA_H})`);
+      if (AGENTE_GENERICO !== "Mozilla/5.0 (Franco) AppleWebKit/537.36 (KHTML, like Gecko) Franco/1.0" || esRobot(AGENTE_GENERICO) || /bot|crawl|spider|http|compatible;/i.test(AGENTE_GENERICO)) F("9 · el agente genérico de Franco cambió o tiene forma de robot (PostHog lo clasificaría robot)");
+      const vig = sinComentarios(leer("src/app/api/cron/vigilar-crons/route.ts"));
+      // Dentro del bloque del resumen (la primera vigilancia del día) y después del correo: la vigilancia tiene 60 s.
+      const bloque = (vig.match(/if \(esResumen\) \{[\s\S]*?\n {4}\}/) ?? [""])[0];
+      if (!/sendResumenCronsInterno\([\s\S]*?colaSinAgente = await vaciarColaVencida\(almacenSupabase\(\(\) => sb\)\);\s*\}$/.test(bloque) || (vig.match(/vaciarColaVencida\(/g) ?? []).length !== 1) F("9 · el resumen diario de los crons no vacía la cola (o la vacía fuera del resumen, o antes del correo)");
+      // Con tope de tiempo: una cola grande no se come la vigilancia.
+      // Diez eventos que PostHog tarda 300 ms en recibir: sin tope son 3 s; con un tope de 100 ms, uno y se corta.
+      const lenta = almacen({}, Array.from({ length: 10 }, () => ({ evento: viejo, creado: hace(30) })));
+      const t0 = Date.now();
+      const rl = await vaciarColaVencida(lenta.a, { ...posthogDeMentira().deps, fetch: (async () => { await new Promise((r) => setTimeout(r, 300)); return new Response("{}"); }) as typeof fetch }, ahora, 100);
+      if (Date.now() - t0 > 1000 || rl.enviados >= 10 || lenta.filas.length === 0) F(`9 · el vaciado no respeta su tope de tiempo (${Date.now() - t0} ms, ${rl.enviados} enviados)`);
+      if (!/"path": "\/api\/cron\/vigilar-crons",\s*"schedule": "45 \*\/6 \* \* \*"/.test(leer("vercel.json"))) F("9 · la vigilancia ya no corre a las 00:45 UTC (el resumen del día)");
+    }
+
     // ── 8 · EL INVARIANTE ──
     // Mutación: A26 el núcleo manda sin agente.
     {
@@ -234,7 +273,7 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
     console.log(`  ✗ AGENTE-SERVIDOR · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — ningún evento del servidor sale sin el agente del navegador de la persona, por un solo punto: el del pedido si viene de su navegador (y se recuerda), el último recordado si no (webhooks, crons), y si Franco no lo vio todavía el evento espera en la cola, con su hora, hasta que lo ve (el middleware, con sesión)");
+    console.log("  ✓ VERDE — ningún evento del servidor sale sin el agente del navegador de la persona, por un solo punto: el del pedido si viene de su navegador (y se recuerda), el último recordado si no (webhooks, crons), y si Franco no lo vio todavía el evento espera en la cola, con su hora, hasta que lo ve (el middleware, con sesión); a las 24 horas sale con el agente genérico de Franco (ninguno), en el resumen de las 00:45");
   }
   return { hard: fallas.length };
 }
