@@ -209,6 +209,61 @@ export function perfilManualDeElecciones(v: Extract<Validacion, { ok: true }>): 
   };
 }
 
+// ── EL PERFIL ES DE LA PERSONA, NO DEL EJEMPLO (21-oct-2026, recorrido real de Fabrizio por la puerta B) ──────────
+// /deptos ya no arranca en Santiago: la comuna la elige la persona, y recién con ella hay número y correo. La tipología
+// y el rango sí vienen puestos, a la vista, como sugerencia. Así nadie deja el correo con la búsqueda del ejemplo. En
+// «Estás dentro», antes de los deptos, la búsqueda con que nació la cuenta en una línea —«Buscas: Santiago · 2D · UF
+// 3.000 a 4.000 · Cambiar»— con los chips a un toque; lo que cambie se guarda cuando la persona sigue («Listo», un depto o
+// «Ir a mi panel»). Lo prueba el tier PUERTA-B-RECORRIDO.
+
+/** ¿Se puede pedir el correo? Solo con al menos una comuna elegida por la persona. */
+export function puedePedirCorreo(comunas: readonly string[]): boolean {
+  return comunas.length > 0;
+}
+
+export interface BusquedaDeptos {
+  comunas: string[];
+  tipologia: string;
+  rango: string;
+}
+
+export const BUSCAS_COPY = {
+  /** Arriba de los chips cuando todavía no hay comuna. */
+  eligeComuna: "¿En qué comuna buscas?",
+  buscas: "Buscas:",
+  cambiar: "Cambiar",
+  listo: "Listo",
+  guardando: "Guardando…",
+  error: "No pudimos cambiar tu búsqueda. Intenta de nuevo.",
+} as const;
+
+/** «Santiago · 2D · UF 3.000 a 4.000»: la búsqueda, como la dice la etiqueta del número. */
+export function lineaBuscas(b: BusquedaDeptos): string {
+  const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === b.tipologia);
+  const r = RANGOS_UF.find((x) => x.id === b.rango);
+  return [lista(b.comunas), t?.chip, r?.chip].filter(Boolean).join(" · ");
+}
+
+/** La búsqueda de los chips desde el perfil manual (la inversa de `perfilManualDeElecciones`), para la línea «Buscas». */
+export function busquedaDePerfil(p: { comunas?: unknown; dormitorios?: unknown; precio_min_uf?: unknown; precio_max_uf?: unknown } | null | undefined): BusquedaDeptos | null {
+  const comunas = Array.isArray(p?.comunas) ? (p!.comunas as unknown[]).filter((c): c is string => typeof c === "string") : [];
+  if (comunas.length === 0) return null;
+  const dorms = Array.isArray(p?.dormitorios) ? (p!.dormitorios as unknown[]).map(Number).sort((a, b) => a - b) : [];
+  const t = TIPOLOGIAS_DEPTOS.find((x) => x.dorms.length === dorms.length && x.dorms.every((d, i) => d === dorms[i]));
+  const max = Number(p?.precio_max_uf);
+  const min = p?.precio_min_uf == null ? null : Number(p.precio_min_uf);
+  const r = RANGOS_UF.find((x) => x.max === max && (x.min ?? null) === min);
+  return { comunas, tipologia: t?.id ?? TIPOLOGIA_POR_DEFECTO, rango: r?.id ?? ELECCIONES_POR_DEFECTO.rango };
+}
+
+/** Lo que guarda «Listo» (PUT /api/perfil-busqueda): las comunas, los dormitorios y el rango de la línea «Buscas». */
+export function cambiosDeBusqueda(b: BusquedaDeptos): { comunas: string[]; dormitorios: number[]; precioMaxUf: number; precioMinUf: number | null } | null {
+  const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === b.tipologia);
+  const r = RANGOS_UF.find((x) => x.id === b.rango);
+  if (!puedePedirCorreo(b.comunas) || !t || !r) return null;
+  return { comunas: b.comunas, dormitorios: [...t.dorms], precioMaxUf: r.max, precioMinUf: r.min };
+}
+
 /**
  * LA CUENTA INSTANTÁNEA (16-oct-2026): ¿esta entrada creó la cuenta, o el correo ya la tenía? Nueva solo si, cuando pidió
  * el código, el correo NO tenía cuenta y la cuenta nació después de ese pedido (con un minuto de holgura por relojes).

@@ -7,6 +7,10 @@
 // CON UNA COMUNA ELEGIDA (20-oct-2026): «Ver los deptos de Ñuñoa» de las páginas de comuna llega con `?comuna=`. La
 // búsqueda arranca con esa comuna (en vez de Santiago) y su número viene igual del servidor, cacheado por comuna. Y con
 // el rango de esa comuna (decisión de Fabrizio): el de más 2D publicados, no el de Santiago (`rangoConMasPublicados`).
+//
+// SIN COMUNA, SIN NÚMERO (21-oct-2026, recorrido real de Fabrizio por la puerta B): sin `?comuna=` la búsqueda ya no
+// arranca en Santiago. La comuna la elige la persona; recién ahí hay número y correo, y el perfil con que nace la cuenta
+// es el suyo, no el del ejemplo. La frase de la noche sí viene del servidor.
 // ─────────────────────────────────────────────────────────────────────────────
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -18,7 +22,7 @@ export interface PortadaDeptos {
   noche: ResumenNoche | null;
   /** La respuesta de la búsqueda inicial; null si falló (la pantalla la pide al cargar). */
   inicial: RespuestaDeptos | null;
-  /** Las comunas de la búsqueda inicial: las por defecto, o la de `?comuna=`. */
+  /** Las comunas de la búsqueda inicial: ninguna (la elige la persona), o la de `?comuna=`. */
   comunas: string[];
   /** El rango de la búsqueda inicial: el por defecto, o el de más publicados en la comuna de `?comuna=`. */
   rango: string;
@@ -37,16 +41,22 @@ export function comunaDeLaUrl(texto: string | string[] | null | undefined): stri
 const cacheada = unstable_cache(
   async (comuna: string): Promise<PortadaDeptos> => {
     const admin = createServiceClient();
-    const comunas = comuna ? [comuna] : [...ELECCIONES_POR_DEFECTO.comunas];
+    // Sin comuna: la frase de la noche y nada más; el número llega cuando la persona elige.
+    if (!comuna) {
+      const noche = await resumenDeLaNoche(admin);
+      if (!noche) throw new Error("sin resumen de la noche");
+      return { noche, inicial: null, comunas: [], rango: ELECCIONES_POR_DEFECTO.rango };
+    }
+    const comunas = [comuna];
     const dorms = TIPOLOGIAS_DEPTOS.find((t) => t.id === ELECCIONES_POR_DEFECTO.tipologias[0])?.dorms ?? [2];
-    const rango = comuna ? await rangoConMasPublicados(admin, comuna, [...dorms]) : ELECCIONES_POR_DEFECTO.rango;
+    const rango = await rangoConMasPublicados(admin, comuna, [...dorms]);
     const v = validarElecciones({ ...ELECCIONES_POR_DEFECTO, comunas, rango, tipologias: [...ELECCIONES_POR_DEFECTO.tipologias] });
     if (!v.ok) throw new Error("la búsqueda inicial no valida");
     const [noche, inicial] = await Promise.all([resumenDeLaNoche(admin), responderDeptos(admin, v)]);
     if (!noche) throw new Error("sin resumen de la noche");
     return { noche, inicial, comunas, rango };
   },
-  ["deptos-portada-v3"],
+  ["deptos-portada-v4"],
   { revalidate: 600 },
 );
 
@@ -54,6 +64,6 @@ export async function portadaDeptos(comuna: string | null = null): Promise<Porta
   try {
     return await cacheada(comuna ?? "");
   } catch {
-    return { noche: null, inicial: null, comunas: comuna ? [comuna] : [...ELECCIONES_POR_DEFECTO.comunas], rango: ELECCIONES_POR_DEFECTO.rango };
+    return { noche: null, inicial: null, comunas: comuna ? [comuna] : [], rango: ELECCIONES_POR_DEFECTO.rango };
   }
 }

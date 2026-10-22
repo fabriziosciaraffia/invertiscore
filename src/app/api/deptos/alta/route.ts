@@ -7,7 +7,7 @@ import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { guardarAtribucion } from "@/lib/attribution";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
-import { comunasParaAgregar, tipoDeAlta } from "@/lib/deptos/respuesta";
+import { busquedaDePerfil, comunasParaAgregar, tipoDeAlta } from "@/lib/deptos/respuesta";
 import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "@/lib/deptos/servidor";
 import { CLAVE_GOOGLE } from "@/lib/deptos/respuesta";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
@@ -84,7 +84,9 @@ export async function POST(request: Request) {
     // (encolarPrimeraSeleccion); acá la cuenta YA nació con su perfil, así que la primera vuelta busca con él.
     await encolarPrimeraSeleccion(admin, user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: RUTA });
     void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta } }).catch(() => {});
-    return responder({ estado: "nueva", regaloVence: regalo.vence });
+    // La búsqueda con que nació la cuenta (21-oct-2026): la línea «Buscas: … · Cambiar» de «Estás dentro». Va en la
+    // respuesta porque quien vuelve por el enlace del correo o por Google ya no tiene los chips en la pantalla.
+    return responder({ estado: "nueva", regaloVence: regalo.vence, busqueda: busquedaDePerfil(pend.perfil as Record<string, unknown>) });
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "alta", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

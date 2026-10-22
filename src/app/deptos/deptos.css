@@ -66,6 +66,14 @@
 .dp-regalo { margin: 6px 0 16px; padding: 12px 14px; border-left: 3px solid var(--franco-text); background: var(--franco-card); font-size: 15px; line-height: 1.5; }
 .dp-fin { margin-top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .dp[data-deptos="dentro"] .dp-bloque { margin-top: 14px; }
+/* «Buscas: … · Cambiar» (21-oct-2026): una línea antes de los deptos; los chips, a un toque. Mientras cambia, la lista de
+   abajo queda tenue: lo que muestra es la búsqueda vieja hasta «Listo». */
+.dp-buscas { margin: 0; font-size: 15px; line-height: 1.5; }
+.dp-buscas-k { color: var(--franco-text-secondary); }
+.dp-buscas .dp-enlace { font-size: 15px; }
+.dp-buscas-chips { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.dp-buscas-chips .dp-fin { margin-top: 4px; }
+.dp-bloque[data-cambiando="1"] { opacity: 0.45; pointer-events: none; }
 
 /* ── LA BANDA DEL CORREO (17-oct-2026): el material del banner del informe (lo-que-sigue.css › .lqs-mat), fijo en claro y
    oscuro. Lo único con color en la pantalla de elegir: el campo en papel translúcido, UN botón en papel, Google como enlace.
