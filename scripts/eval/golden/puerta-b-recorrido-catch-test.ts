@@ -131,8 +131,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
       }
       if (r.cambiosDeBusqueda({ comunas: [], tipologia: "2", rango: "3000-4000" }) !== null) F("1 · «Buscas» sin comuna se guardaría");
     }
-    const alta = codigo("src/app/api/deptos/alta/route.ts");
-    if (!/estado: "nueva", regaloVence: regalo\.vence, busqueda: busquedaDePerfil\(pend\.perfil/.test(alta)) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea «Buscas»)");
+    // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta).
+    const alta = codigo("src/lib/deptos/alta-servidor.ts");
+    if (!/cuerpo: \{ estado: "nueva", regaloVence: regalo\.vence, busqueda: busquedaDePerfil\(pend\.perfil/.test(alta)) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea «Buscas»)");
     const dentro = entre(dc, 'paso === "dentro"', "</main>") || entre(dc, 'paso === "dentro"', "\n}\n");
     if (!/data-deptos="buscas"/.test(dentro) || !/lineaBuscas\(busca\)/.test(dentro) || !/data-deptos="cambiar"/.test(dentro)) F("1 · «Estás dentro» no dice «Buscas: … · Cambiar» antes de los deptos");
     // Lo que se toca no se guarda en el toque: recién al seguir («Listo» o «Ir a mi panel»).
@@ -156,7 +157,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
   // ── 2 · «ESTÁS DENTRO» NO SE VA SOLA ──
   try {
     const dc = codigo("src/app/deptos/deptos-cliente.tsx");
-    const terminar = entre(dc, "const terminarAlta = useCallback(", "}, [posthog, router]);");
+    // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo que la pantalla hace con la respuesta del alta vive en aplicarAlta (lo usan el
+    // alta de siempre y la entrada por código); terminarAlta solo la pide, con tope.
+    const terminar = entre(dc, "const aplicarAlta = useCallback(", "}, [posthog, router]);");
     if (!/if \(pasoActual\.current === "dentro"\) return;\s*router\.push\("\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro»");
     const efecto = entre(dc, 'const entro = new URLSearchParams(window.location.search).get("entro");', "}, [sesion, terminarAlta");
     if (!/\|\| altaPedida\.current\) return;\s*const entro = /.test(dc) || !/altaPedida\.current = true;\s*window\.history\.replaceState\(window\.history\.state, "", window\.location\.pathname\);/.test(efecto) || efecto.indexOf("claveDeDestino(") > efecto.indexOf("replaceState(")) F("2 · el `?entro=1` vuelve a correr el alta después del refresco (o la clave de Google se lee después de limpiar la dirección)");

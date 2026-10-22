@@ -156,6 +156,7 @@ import { runAgenteServidorTier } from "./agente-servidor-catch-test";
 import { runPanelActivacionTier } from "./panel-activacion-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
+import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -655,6 +656,9 @@ function printSeed(r: SeedReport) {
   // y se queda; la selección vive en el dashboard con «Analizar este» y el aviso cargando; el ticket es de toda cuenta nueva
   // (el pop-up sin saldo: el pack y «Comprar solo 1»); lo analizado se ve en vivo y el clic del correo aterriza ahí. ──
   totalHard += (await runPuertaBRecorridoTier()).hard;
+  // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
+  // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
+  totalHard += (await runEntradaAltaTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

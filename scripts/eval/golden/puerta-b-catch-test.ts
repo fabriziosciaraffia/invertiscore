@@ -182,7 +182,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (PIE_DEPTOS !== 20 || PLAZO_DEPTOS !== 25) F("1 · el estándar no es pie 20 % y 25 años");
       if (JSON.stringify(comunasParaAgregar(["Ñuñoa", "Macul"], ["Ñuñoa", "La Reina"])) !== '["La Reina"]') F("1 · al entrar, las comunas a agregar repiten las que ya tiene");
       if (comunasParaAgregar(["a", "b", "c", "d", "e", "f", "g", "h"], ["x"]).length !== 0 || MAX_COMUNAS_PERFIL !== 8) F("1 · agregar comunas pasa el tope del perfil");
-      const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       const iExist = alta.indexOf(`if (tipo === "existente") {`), iPerfil = alta.indexOf(`from("perfil_busqueda").upsert`);
       if (!/const tipo = tipoDeAlta\(\{ existiaAlPedir: pend\.existe, cuentaCreadaAt: user\.created_at, pedidoAt: pend\.creadoAt, yaTienePerfil \}\);/.test(alta)
         || !/const yaTienePerfil = Array\.isArray\(perfilPrevio\?\.comunas\) && \(perfilPrevio\.comunas as unknown\[\]\)\.length > 0;/.test(alta) || iExist < 0 || iPerfil < iExist
@@ -190,7 +191,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         F("1 · el alta no decide con tipoDeAlta, o a una cuenta existente le escribe el perfil");
       if (!/comunasParaAgregar\(pp\.perfil\.comunas, elegidas\)/.test(alta)) F("1 · a la cuenta existente no se le ofrecen las comunas que le faltan");
       const correo = sinComentarios(leer("src/app/api/deptos/correo/route.ts"));
-      if (!/const existe = await correoTieneCuenta\(admin, correo\);/.test(correo) || !/await guardarPendiente\(admin, correo, perfilManualDeElecciones\(v\), existe\);/.test(correo))
+      if (!/const existe = await correoTieneCuenta\(admin, correo\);/.test(correo) || !/await guardarPendiente\(admin, correo, perfilManualDeElecciones\(v\), existe, esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\);/.test(correo))
         F("1 · el pedido del código no mira si el correo ya tiene cuenta, o no guarda lo elegido");
       // EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio): si la cuenta existe no vuelve al navegador.
       if (!/return NextResponse\.json\(\{ ok: true \}\);/.test(correo) || /NextResponse\.json\(\{[^}]*existe/.test(correo)) F("1 · el pedido del código le dice al navegador si el correo tiene cuenta");
@@ -291,10 +292,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/eq\("tipo", "semanal"\)/.test(leer("src/app/api/cron/semanal-enviar/route.ts")) || !/eq\("tipo", "semanal"\)/.test(leer("src/app/api/cron/semanal-reintento/route.ts"))) F("4 · el envío del lunes podría tomar un correo del día");
       const sem = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if (!/if \(que === "nada"\) return descartar\(\);/.test(sem) || !/\.\.\.Array\.from\(\(await delDiaReciente\(admin, userId\)\)\.avisos\)/.test(sem)) F("4 · el semanal repite lo del correo del día o sale vacío después de él");
-      const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // Desde el 20-oct-2026 el alta encola por la cola de todas las puertas (encolarPrimeraSeleccion: la fila y la primera vuelta en el momento).
       
-      if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: waitUntil, ruta: RUTA \}\);/.test(alta)
+      if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: waitUntil, ruta: p\.ruta \}\);/.test(alta)
         || !/const fila = await encolarDelDia\(admin, user\.id, ahora\);/.test(dds) || !/await procesarDelDia\(admin, fila, await leerConfigGuia\(admin\), deps\.sitio, \{ lecturas: 0, bloqueada: false \}\);/.test(dds))
         F("4 · el alta no encola el correo del día con su primera vuelta");
     }
@@ -340,7 +342,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/if \(!bienvenidaVigente\(creadaAt\)\) \{\s*bienvenida = false;\s*await asegurarRegaloDeAlta\(supabase, \{ userId, creadaAt, huella: \{ dispositivo: null, ip: null \} \}\);/.test(acc)) F("5 · el cobro todavía regala la bienvenida a una cuenta nueva");
       // Desde la puerta C (16-oct-2026) el alta también sirve a la página del invitado: la puerta es la B salvo que la cuenta
       // sea invitada (la C la fija el cobro del código, tier PUERTA-C).
-      const altaB = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      const altaB = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       if (!/const regalo = await asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella: huellaDeRequest\(request\), puerta \}\);/.test(altaB)
         || !/const puerta = ref && ref\.estado !== "cuenta_previa" \? "C" : "B";/.test(altaB)) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
@@ -386,7 +389,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/marcarPuertaCandidata\(puerta\.puerta, puerta\.detalle\);/.test(cliente) || !/void avisarLead\(c, origenLead, puerta\.puerta\);/.test(cliente)
         || !/export function DeptosCliente\(\{ sesion, pagina = "\/deptos", puerta = \{ puerta: "B", detalle: "deptos" \}, origenLead = "seleccion", cabecera, pie, portada \}/.test(cliente)
         || !/<DeptosCliente sesion=\{sesion\} portada=\{portada\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
-      if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios(leer("src/app/api/deptos/alta/route.ts")))) F("7 · el alta no fija la puerta B");
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts"))))) F("7 · el alta no fija la puerta B");
       if (!/datos: \{ cuando, status: "completo", \.\.\.\(atr\?\.puerta \? \{ puerta: atr\.puerta as string \} : \{\}\) \},/.test(leer("src/lib/meta/registro.ts"))) F("7 · CompleteRegistration no lleva la puerta");
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
       if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const fila = \{ \.\.\.evaluada, \.\.\.\(evaluada\.arriendo \? evaluarEstandar25\(candidatoDeEvaluacion\(a, evaluada\), cfg\) : ESTANDAR25_VACIO\) \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
@@ -476,9 +480,12 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // con que nació la cuenta, para la línea «Buscas: … · Cambiar» (tier PUERTA-B-RECORRIDO §1); sigue sin un salto.
       if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
-      if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\)\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
-      const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
-      if (!/if \(!pend && typeof b\.p === "string" && CLAVE_GOOGLE\.test\(b\.p\) && await reclavarPendienteGoogle\(admin, \{ clave: b\.p, correo: user\.email, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo elegido guarda además la puerta (B o C), para medir alta_perdida.
+      if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\), esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · la clave llega a ejecutarAlta como \`p.clave\` (la ruta le pasa \`b.p\`).
+      if (!/if \(!pend && typeof p\.clave === "string" && CLAVE_GOOGLE\.test\(p\.clave\) && await reclavarPendienteGoogle\(admin, \{ clave: p\.clave, correo: user\.email, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
       // «o con Google» debajo del campo: después de «Quiero recibirlos», antes de «Sin contraseña».
       const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));
       const og = ['type="email"', "{ALTA_COPY.pedir}", 'className="dp-google"', "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));

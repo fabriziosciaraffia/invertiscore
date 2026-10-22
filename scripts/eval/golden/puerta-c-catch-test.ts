@@ -177,9 +177,20 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       // UNA INVITACIÓN POR NAVEGADOR (visto en el QA, 16-oct-2026): la cobrada queda «usada» —no se borra—, porque el
       // `router.refresh()` de la misma página volvía a pedir /i/CÓDIGO y el middleware la dejaba de nuevo.
       if (INVITACION_USADA !== "usada" || leerCookieInvitacion(INVITACION_USADA) !== null) F("1 · la marca «usada» se lee como un código");
-      for (const [n, f] of [["el callback", "src/app/auth/callback/route.ts"], ["el reclamo", "src/app/api/analisis/claim/route.ts"], ["el alta de /deptos", "src/app/api/deptos/alta/route.ts"]] as const) {
+      for (const [n, f] of [["el callback", "src/app/auth/callback/route.ts"], ["el reclamo", "src/app/api/analisis/claim/route.ts"]] as const) {
         const src = sinComentarios(leer(f));
         if (!/VINCULO_TERMINADO\.has\(vinculo\)\) (?:cookieStore|res\.cookies)\.set\(COOKIE_INVITACION_USADA\.name, COOKIE_INVITACION_USADA\.value, COOKIE_INVITACION_USADA\.options\);/.test(src) || /maxAge: 0/.test(src)) F(`1 · ${n} no deja la invitación cobrada como «usada» (otra cuenta de ese navegador se la cobraría)`);
+      }
+
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que
+      // comparten la ruta del alta y la entrada por código: el alta decide si la invitación quedó cobrada y las DOS rutas que
+      // la corren dejan la cookie «usada».
+      {
+        const altaSrv = sinComentarios(leer("src/lib/deptos/alta-servidor.ts"));
+        const rutasAlta = ["src/app/api/deptos/alta/route.ts", "src/app/api/deptos/entrar/route.ts"].map((f) => sinComentarios(leer(f)));
+        if (!/const invitacionUsada = !!vinculo && VINCULO_TERMINADO\.has\(vinculo\);/.test(altaSrv) || /maxAge: 0/.test(altaSrv)
+          || !rutasAlta.every((s) => /if \((?:r\.)?invitacionUsada\) res\.cookies\.set\(COOKIE_INVITACION_USADA\.name, COOKIE_INVITACION_USADA\.value, COOKIE_INVITACION_USADA\.options\);/.test(s)))
+          F("1 · el alta de /deptos no deja la invitación cobrada como «usada» (otra cuenta de ese navegador se la cobraría)");
       }
 
       // Uno de siempre y uno con nombre por persona; con nombre exige el nombre; el dispositivo queda anotado.
@@ -236,7 +247,8 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
         || pos(claim, "await vincularInvitacion(") > pos(claim, "guardarAtribucion(")) F("2 · el reclamo (banner, /entrar, guía) no cobra el código antes de su puerta");
       const cb = sinComentarios(leer("src/app/auth/callback/route.ts"));
       if (!/const vinculo = await vincularInvitacion\(createAdminServiceClient\(\), \{\s*userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv,/.test(cb) || pos(cb, "vincularInvitacion(") > pos(cb, "asegurarRegaloDeAlta(")) F("2 · el enlace del correo o Google no cobran el código");
-      const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
+      // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
+      const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       if (!/const vinculo = cookieInv \? await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\) : null;/.test(alta)
         || !/const puerta = ref && ref\.estado !== "cuenta_previa" \? "C" : "B";/.test(alta)
         || !/if \(puerta === "B"\) waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(alta)
