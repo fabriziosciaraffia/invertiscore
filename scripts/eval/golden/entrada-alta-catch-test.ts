@@ -146,6 +146,13 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     if (dosVeces.r.tipo !== "codigo") F("2 · el mismo código repone la sesión dos veces");
     const conSesion = await correr({ sesion: yo });
     if (conSesion.r.tipo !== "alta" || conSesion.log.includes("verificar")) F("2 · con la sesión ya puesta, verifica de nuevo (el código ya se usó)");
+    // Visto en el QA: la cookie llegó y la respuesta no. Con la sesión puesta y el alta ya hecha, la misma respuesta —no un
+    // alta nueva, que diría «sin-pendiente» y mandaría al dashboard—; con un alta vieja o de otra cuenta, el alta de siempre.
+    const cookieSinRespuesta = await correr({ sesion: yo, previa: { alta: { estado: "nueva" } } });
+    if (cookieSinRespuesta.r.tipo !== "alta" || (cookieSinRespuesta.r.tipo === "alta" && cookieSinRespuesta.r.via !== "alta-guardada") || cookieSinRespuesta.log.includes("alta")) F(`2 · con la cookie puesta y el alta ya hecha, corre el alta otra vez (iría al dashboard): ${cookieSinRespuesta.log.join()}`);
+    const altaVieja = await correr({ sesion: yo, previa: { alta: { estado: "nueva" }, verificadoAt: hace(10 * 60) } });
+    const altaAjena = await correr({ sesion: yo, previa: { alta: { estado: "nueva" }, userId: "otra" } });
+    if (!altaVieja.log.includes("alta") || !altaAjena.log.includes("alta")) F("2 · devuelve un alta guardada vieja o de otra cuenta");
     // El servidor: verifica ahí, repone con un enlace generado (sin correo) y corre la misma alta.
     const ruta = codigo("src/app/api/deptos/entrar/route.ts");
     if (!/await supabase\.auth\.verifyOtp\(\{ email: c, token: t, type: "email" \}\)/.test(ruta) || !/admin\.auth\.admin\.generateLink\(\{ type: "magiclink", email: c \}\)/.test(ruta) || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA \}\)/.test(ruta) || !/entrarConCodigo\(correo, codigo, \{/.test(ruta)) F("2 · /api/deptos/entrar no verifica en el servidor, no repone la sesión o no corre la misma alta");
@@ -220,7 +227,7 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
 
 // ACTA DE MUTACIÓN (22-oct-2026). CONTRA EL CÓDIGO DE HOY (HEAD af5c6095, todo `src/` del goal de vuelta a HEAD y los
 // archivos nuevos apartados): 15 fallas, entre ellas «"Entrar" no pide la entrada al servidor con tope y señal», «/deptos
-// verifica el código contra Supabase desde el navegador» y «el cron de /deptos no avisa las altas perdidas». Y 25
+// verifica el código contra Supabase desde el navegador» y «el cron de /deptos no avisa las altas perdidas». Y 27
 // mutaciones, cada una restaurada byte a byte, todas ROJAS:
 //   E1 sin la carrera contra el tope (la primera versión la dejaba VERDE: el pedido que nunca responde dejaba a Node sin
 //   nada pendiente y el proceso salía con 0 antes del veredicto; ahora lo vigila `conVigia`) · E2 sin reintento · E3 otro
@@ -229,6 +236,10 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
 //   E13 se avisa en cada vuelta · E14 sin la hora del minuto · E15 el cron no avisa · E16 el callback no registra · E17 el
 //   alta de siempre no marca · E18 sin aviso · E19 el botón no lo dice · E20 «Entrar» pide otra cosa · E21 /api/invitacion
 //   sin corte · E22 el código a la vista · E23 sin el camino del enlace · E24 repone con otra cosa · E25 sin salida al volver.
+// LO QUE AGREGÓ EL QA DEL MISMO DÍA: con la respuesta perdida, la cookie de la sesión SÍ llegó al navegador; el reintento
+// entraba «con sesión», corría el alta otra vez (lo elegido ya se había usado) y la pantalla se iba al dashboard. Ahora
+// devuelve el alta guardada. E9 la saca (rojo en los dos casos: repuesta y con cookie) · E26 sin la ventana · E27 sin
+// mirar que sea de la misma cuenta.
 
 if (require.main === module) {
   runEntradaAltaTier().then(({ hard }) => process.exit(hard ? 1 : 0));

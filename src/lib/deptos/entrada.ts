@@ -133,8 +133,15 @@ export async function entrarConCodigo(correo: string, codigo: string, d: DepsEnt
       if (!usuario) return { tipo: "codigo" };
       await d.marcarRepuesta(previa!.id);
       via = "repuesta";
-      if (previa!.alta && previa!.userId === usuario.id) return { tipo: "alta", cuerpo: previa!.alta, via: "alta-guardada" };
     }
+  }
+  // LA ENTRADA YA TERMINÓ EN ALTA (visto en el QA del 22-oct-2026): la respuesta se perdió pero la cookie de la sesión sí
+  // llegó (o se repuso recién). Correr el alta otra vez daría «sin-pendiente» —lo elegido ya se usó— y la pantalla se iría
+  // al dashboard en vez de «Estás dentro»: se devuelve la misma respuesta, si es de esta cuenta y de recién.
+  if (via !== "verificado") {
+    const previa = await d.ultimaEntrada(correo);
+    const reciente = !!previa && ahora.getTime() - Date.parse(previa.verificadoAt) <= VENTANA_REPONER_MS;
+    if (previa?.alta && previa.userId === usuario.id && reciente) return { tipo: "alta", cuerpo: previa.alta, via: "alta-guardada" };
   }
   const r = await d.alta(usuario);
   // Respondió (nueva, existente o sin nada pendiente): la entrada tiene su alta. Un error del alta no se marca: es perdida.
