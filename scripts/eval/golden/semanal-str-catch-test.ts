@@ -78,7 +78,10 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
   const strSrv = sinComentarios(leer("src/lib/guia/semanal-str-servidor.ts"));
   const ruta = sinComentarios(leer("src/app/api/semanal/analizar-str/route.ts"));
-  const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la selección vive en el dashboard: los dos bloques los
+  // arma el cargador compartido (seleccion-pagina-servidor.ts) y los dibuja seleccion-en-casa.tsx; /semanal redirige ahí. Las
+  // reglas de los bloques no cambian, cambian de archivo (tier PUERTA-B-RECORRIDO §7).
+  const pagina = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts")) + sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
   const pipeline = sinComentarios(leer("src/lib/api-helpers/analisis-pipeline.ts"));
 
@@ -198,7 +201,7 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const enviar = srv.slice(srv.indexOf("export async function enviarSeleccion"), srv.indexOf("export async function enviarSinSeleccion"));
     if (!/conCorto \? itemsVigentes\(admin, fila\.items_str \?\? \[\]\)/.test(enviar) || !/largo: conLargo,/.test(enviar) || !/corto: conCorto \? \{\s*deptos: deptosCortos\.map/.test(enviar))
       F("2 · el envío no manda el bloque de renta corta (o manda el de renta larga a quien no lo tiene)");
-    if (!/sel\.corto && \(\s*<SemanalLista[\s\S]*?modalidad="str"[\s\S]*?\/>/.test(pagina) || !/sel\.conLargo && \(\s*<SemanalLista/.test(pagina)) F("2 · la página no muestra el bloque de renta corta (o muestra el de renta larga a quien no lo tiene)");
+    if (!/sel\.corto && \(\s*<SemanalLista[\s\S]*?modalidad="str"[\s\S]*?\/>/.test(pagina) || !/sel\.largo && \(\s*<SemanalLista/.test(pagina) || !/largo: sel\.conLargo \? \{/.test(pagina)) F("2 · la página no muestra el bloque de renta corta (o muestra el de renta larga a quien no lo tiene)");
     if (!/\{corta && <p className="guia-negociar" data-semanal="zona">\{MARCA_ZONA\}<\/p>\}/.test(lista)) F(`2 · en la página, los deptos de renta corta no llevan la marca «${STR.MARCA_ZONA}»`);
   }
 
@@ -317,15 +320,16 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
     if (!/const \{ avisoId, bloque \} = deptoDelClic\(sel, a\);/.test(clic) || /sel\.items\.some\(\(i\) => i\.avisoId === a\)/.test(clic)) F("6 · la ruta del clic busca el depto solo en el bloque de renta larga");
     if (!/properties: \{ semana: sel\.semana, variante: sel\.variante, aviso_id: avisoId, destino, bloque \},/.test(clic)) F("6 · el evento semanal_clic no lleva el bloque del depto");
-    if (!/return volver\(`\/semanal\?t=\$\{t\}&a=\$\{avisoId\}\$\{estado === "despublicado" \? "&d=1" : ""\}`\);/.test(clic)) F("6 · el clic en un depto no abre /semanal con ese depto");
+    const { hrefSeleccion } = await import("../../../src/lib/guia/seleccion-casa");
+    if (!/return volver\(hrefSeleccion\(t, avisoId, estado === "despublicado"\)\);/.test(clic) || hrefSeleccion("abc", "x9", true) !== "/dashboard?t=abc&a=x9&d=1#seleccion") F("6 · el clic en un depto no abre la selección con ese depto");
     // La página: con el depto en renta corta, ese bloque va primero —con el título— y el de renta larga, después, con el cierre.
-    if (!/const cortoPrimero = sel\.conLargo && sel\.corto != null && bloqueDelDestacado\(a, filas, filasCortas\) === "corto";/.test(pagina)) F("6 · /semanal no decide qué bloque va primero según el depto clicado");
-    if (!/\{cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("6 · /semanal no pone primero el bloque de renta corta cuando el depto clicado es de ahí");
+    if (!/cortoPrimero: sel\.conLargo && sel\.corto != null && bloqueDelDestacado\(a, filas, filasCortas\) === "corto",/.test(pagina)) F("6 · /semanal no decide qué bloque va primero según el depto clicado");
+    if (!/\{sel\.cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("6 · /semanal no pone primero el bloque de renta corta cuando el depto clicado es de ahí");
     const corta = (pagina.match(/const listaCorta = sel\.corto && \(\s*<SemanalLista[\s\S]*?\/>/) ?? [""])[0];
-    const larga = (pagina.match(/const listaLarga = sel\.conLargo && \(\s*<SemanalLista[\s\S]*?\/>/) ?? [""])[0];
-    if (!/conTitulo=\{!sel\.conLargo \|\| cortoPrimero\}/.test(corta) || !/cierre=\{!cortoPrimero\}/.test(corta) || !/conTitulo=\{!cortoPrimero\}/.test(larga) || !/cierre=\{!sel\.corto \|\| cortoPrimero\}/.test(larga))
+    const larga = (pagina.match(/const listaLarga = sel\.largo && \(\s*<SemanalLista[\s\S]*?\/>/) ?? [""])[0];
+    if (!/conTitulo=\{!sel\.largo \|\| sel\.cortoPrimero\}/.test(corta) || !/cierre=\{!sel\.cortoPrimero\}/.test(corta) || !/conTitulo=\{!sel\.cortoPrimero\}/.test(larga) || !/cierre=\{!sel\.corto \|\| sel\.cortoPrimero\}/.test(larga))
       F("6 · con el bloque de renta corta primero, el título o el cierre quedan en el bloque equivocado");
-    if (!/filas=\{ordenadosCortos\}/.test(corta) || !/destacado=\{a\}/.test(corta)) F("6 · en su bloque, el depto clicado no va arriba ni destacado");
+    if (!/filas=\{sel\.corto\.filas\}/.test(corta) || !/\{\.\.\.comun\}/.test(corta) || !/destacado: sel\.destacado,/.test(pagina) || !/filas: primero\(filasCortas\),/.test(pagina) || !/destacado: a,/.test(pagina)) F("6 · en su bloque, el depto clicado no va arriba ni destacado");
   }
 
   if (fallas.length) {

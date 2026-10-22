@@ -40,7 +40,8 @@ import { DIAS_ENTRADA_POR_CORREO, SEMANAL_PAGINA, puedeEntrarPorCorreo } from ".
 import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
 import { PRODUCTO_TRES, TRES_CANTIDAD, TRES_COPY, TRES_PRECIO_CLP, rutaTres, volverSeguro } from "../../../src/lib/tres-analisis";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
-import { CASA } from "../../../src/app/dashboard/casa-copy";
+import { CASA, packDeCasa } from "../../../src/app/dashboard/casa-copy";
+import { compraDeLaSeleccion } from "../../../src/lib/guia/compra-desde-depto";
 import { correoSemanal } from "../../../src/lib/email/correo-semanal";
 import { enlacesSemanal } from "../../../src/lib/guia/semanal-servidor";
 import { filaDesdeInformeStr } from "../../../src/lib/perfil-busqueda-servidor";
@@ -102,8 +103,10 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const aviso = sinComentarios(leer("src/components/guia/AvisoAntesDeAnalizar.tsx"));
   if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/derivados: derivadosAviso\(depto, combinacion, finanzas\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
   if (!/destacado=\{<>Con el pie de <b>\{d\.pie\}<\/b> y el plazo de <b>\{d\.plazo\}<\/b> de tu perfil<\/>\}/.test(aviso)) F("5 · el aviso no destaca el pie y el plazo de su perfil");
-  if (!/labelConfirmar=\{sin \? AVISO_ANALIZAR\.comprar : AVISO_ANALIZAR\.analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => router\.push\(rutaCompra\) : alAnalizar\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
-  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa (en renta corta también, sin condición: 15-oct-2026)");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · sin saldo, desde la selección, el aviso compra el pack —al precio del ticket si la cuenta es nueva— y debajo el
+  // suelto (`compras`, compra-desde-depto.ts); la guía, sin `compras`, sigue con su pack de tres (tier PUERTA-B-RECORRIDO §5).
+  if (!/labelConfirmar=\{sin \? \(compras \? compras\.pack\.label : AVISO_ANALIZAR\.comprar\) : AVISO_ANALIZAR\.analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : alAnalizar\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
+  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{sin && compras \? compras\.sin : textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa (en renta corta también, sin condición: 15-oct-2026)");
   const modal = sinComentarios(leer("src/components/formulario-v4/ModalPlausibilidad.tsx"));
   if (!/titulo = "Confirma antes de generar",/.test(modal) || !/labelRevisar = "Revisar",/.test(modal) || !/\{destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>\{destacado\}<\/p>\}/.test(modal) || !/\{labelRevisar\}\s*<\/button>/.test(modal)) F("5 · el modal del wizard no acepta el destacado y el secundario del aviso (o le cambia el texto al wizard)");
   // La página semanal: el botón abre el aviso (no genera), está también sin saldo, y «sin créditos» abre el aviso con el pack.
@@ -118,11 +121,13 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
     || ((accionesSemanal ?? "").match(/analizar\(it\)/g) ?? []).length !== 1 || !/onClick=\{\(\) => void analizar\(it\)\} disabled=\{!!generando\}>\{REINTENTAR\}/.test(accionesSemanal ?? ""))
     F("5 · en la página semanal «Analizar este» genera sin el aviso");
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
-  if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); break; \}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
-  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+rutaCompra=\{rutaCompra\(confirmar\.it\.avisoId\)\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
-  const paginaSem = sinComentarios(leer("src/app/semanal/page.tsx"));
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · recién pagado desde el depto, «sin créditos» espera el crédito unas veces antes de volver a ofrecer comprar.
+  if (!/if \(d\.error === "sin-creditos"\) \{\s*if \(recienPagado && sinCredito\+\+ < REINTENTOS_CREDITO\) \{ await new Promise\(\(ok\) => setTimeout\(ok, ESPERA_CREDITO_MS\)\); continue; \}\s*setConfirmar\(\{ it, sin: true \}\);\s*break;\s*\}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
+  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}\s+rutaCompra=\{comprarSeleccion\.href\}\s+analizando=\{!!confirmar\.analizando\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; if \(corta\) setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la selección vive en el dashboard: lo que leía /semanal lo lee el cargador compartido y lo dibuja seleccion-en-casa.
+  const paginaSem = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts")) + sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen, la tasa es la de mercado (la misma con que se evaluó).
-  if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf, cfg\.tasa\)/.test(paginaSem) || !/finanzas=\{finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
+  if (!/finanzasDeSeleccion\(admin, sel\.origen_analysis_id, ids, cfg\.uf, cfg\.tasa\)/.test(paginaSem) || !/finanzas=\{sel\.largo\.finanzas\}/.test(paginaSem)) F("5 · la página semanal no lee la tasa, la UF y el arriendo para el aviso");
   // La guía: lo mismo, y el registro en la tarjeta termina en el aviso, no en un informe.
   const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/className="guia-an" onClick=\{\(\) => abrir\(it\)\}/.test(guia) || !/if \(!conSesion\) \{ void analizar\(it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: false \}\);/.test(guia)) F("5 · en la guía «Analizar este» genera sin el aviso");
@@ -142,7 +147,8 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (volverSeguro("//evil.com") !== null || volverSeguro("https://evil.com") !== null || volverSeguro("/\\evil.com") !== null || volverSeguro("/semanal?t=a") !== "/semanal?t=a") F("6 · la vuelta después de pagar acepta un sitio ajeno");
   const crear = sinComentarios(leer("src/app/api/payments/create/route.ts"));
   if (!/\[PRODUCTO_TRES\]: \{ amount: FLOW_PRODUCTS\.tres_analisis\.amount, subject: FLOW_PRODUCTS\.tres_analisis\.subject \}/.test(crear)) F("6 · payments/create no vende el pack de tres");
-  if (!/if \(product === PRODUCTO_PACK && !analysisId\) \{\s*return NextResponse\.json\(\{ error: "El pack va con tu informe" \}/.test(crear) || !/if \(!ofertaPackVigente\(analysis\.created_at as string\)\)/.test(crear)) F("6 · el ticket de $14.990 se puede comprar fuera de las 24 horas del primer informe");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket es de toda cuenta nueva: sin informe atado vale en las 24 horas de la cuenta, una vez (`ticketCuenta`).
+  if (!/if \(product === PRODUCTO_PACK && !analysisId && !ticketCuenta\) \{\s*return NextResponse\.json\(\{ error: "pack_vencido" \}, \{ status: 410 \}\);/.test(crear) || !/if \(!ofertaPackVigente\(analysis\.created_at as string\) && !ticketCuenta\)/.test(crear)) F("6 · el ticket de $14.990 se puede comprar fuera de las 24 horas del primer informe o de la cuenta");
   if (!/if \(analysisId \|\| product !== "single"\) \{\s*quantity = 1;/.test(crear)) F("6 · el pack se puede comprar en cantidad (cobraría N × $19.990)");
   const confirmar = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   if (!/\} else if \(userId && product === PRODUCTO_TRES\) \{\s*await grantCredits\(userId, PRODUCTO_TRES, TRES_CANTIDAD, \{ paymentId, noExpire: true \}\);/.test(confirmar)) F("6 · el pago del pack no otorga 3 análisis sin caducidad");
@@ -155,16 +161,21 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const faltan = Object.keys(FLOW_PRODUCTS).filter((k) => !aceptados.has(k));
   if (faltan.length) F(`6 · el CHECK de payments.product no acepta ${faltan.join(", ")} (el INSERT del pago fallaría)`);
   const casa = sinComentarios(leer("src/app/dashboard/casa.tsx"));
-  if (!/export const RUTA_TRES_CASA = rutaTres\("dashboard", \{ volver: "\/dashboard" \}\);/.test(casa) || !/<EnlaceCarga href=\{RUTA_TRES_CASA\}[^>]*data-casa="comprar-tres">\s*\{CASA\.sin\.boton\}/.test(casa) || CASA.sin.boton !== TRES_COPY.boton) F("6 · el dashboard sin análisis no ofrece el pack de tres");
-  if (SEMANAL_PAGINA.comprar !== TRES_COPY.boton || !/<EnlaceCarga href=\{rutaCompra\(\)\}/.test(lista) || /rutaSueltoSemanal|RUTA_SUELTO_INMEDIATO/.test(lista)) F("6 · la página semanal sigue ofreciendo «Analizar uno · $9.990»");
-  if (!/rutaTres\(inmediato \? "inmediato" : "semanal", \{ variante: inmediato \? null : variante, volver:/.test(lista)) F("6 · la compra de la página semanal pierde su origen o su vuelta");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el botón sale de packDeCasa: el pack de tres, o el del ticket en las 24 horas de la cuenta (tier CASA §4).
+  if (packDeCasa(false).href !== rutaTres("dashboard", { volver: "/dashboard" }) || packDeCasa(false).boton !== TRES_COPY.boton || !/<EnlaceCarga href=\{pack\.href\}[^>]*data-casa="comprar-tres"[^>]*>\s*\{pack\.boton\}/.test(casa) || CASA.sin.boton !== TRES_COPY.boton) F("6 · el dashboard sin análisis no ofrece el pack de tres");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el botón del final de la selección sale de compraDeLaSeleccion (el pack de tres, o el del ticket si la cuenta es
+  // nueva), con el origen del correo y la vuelta a la selección en el dashboard.
+  const sinTicket = compraDeLaSeleccion({ token: "abc123", origen: "semanal", variante: "banda", ticket: false });
+  if (SEMANAL_PAGINA.comprar !== TRES_COPY.boton || sinTicket.label !== TRES_COPY.boton || !/<EnlaceCarga href=\{comprarSeleccion\.href\}[^>]*>\s*\{comprarSeleccion\.label\}/.test(lista) || /rutaSueltoSemanal|RUTA_SUELTO_INMEDIATO/.test(lista)) F("6 · la página semanal sigue ofreciendo «Analizar uno · $9.990»");
+  if (!/const origenCompra = inmediato \? "inmediato" as const : "semanal" as const;/.test(lista) || !/const varianteCompra = inmediato \? null : variante;/.test(lista) || !/const comprarSeleccion = compraDeLaSeleccion\(\{ token, origen: origenCompra, variante: varianteCompra, ticket \}\);/.test(lista)
+    || sinTicket.href !== rutaTres("semanal", { variante: "banda", volver: "/dashboard?t=abc123" }) || compraDeLaSeleccion({ token: "abc123", origen: "inmediato", variante: "banda", ticket: false }).href !== rutaTres("inmediato", { volver: "/dashboard?t=abc123" })) F("6 · la compra de la página semanal pierde su origen o su vuelta");
   const enl = enlacesSemanal("https://refranco.ai", "abc123");
   const base = { variante: "tarjetas" as const, nombre: "Ana", busca: "2 dormitorios, Ñuñoa", piePct: 20, plazoAnios: 25, deptos: [DEPTO], conRegalo: false, urlBoton: enl.boton, urlTres: enl.tres, urlBaja: enl.baja };
   const sinAnalisis = correoSemanal({ ...base, saldo: 0 }).html;
   if (enl.tres !== "https://refranco.ai/api/semanal/clic?t=abc123&ir=tres" || !sinAnalisis.includes(`${TRES_COPY.lineaCorreo.antes}<a href="${enl.tres}"`) || !sinAnalisis.includes(`>${TRES_COPY.lineaCorreo.enlace}</a>${TRES_COPY.lineaCorreo.despues}`)) F("6 · el correo semanal no le menciona el pack a quien no tiene análisis");
   if (/\$9\.990/.test(sinAnalisis)) F("6 · el correo semanal sigue ofreciendo el suelto de $9.990");
   if (correoSemanal({ ...base, saldo: 2 }).html.includes("19.990") || correoSemanal({ ...base, saldo: null }).html.includes("19.990")) F("6 · el pack se le ofrece en el correo a quien tiene análisis o plan");
-  if (!/if \(ir === "tres"\) return volver\(rutaTres\(sel\.fuente === "inmediato" \? "inmediato" : "semanal", \{ variante: sel\.variante, volver: `\/semanal\?t=\$\{t\}` \}\)\);/.test(clic)) F("6 · el enlace del pack en el correo no lleva al checkout del pack");
+  if (!/if \(ir === "tres"\) return volver\(rutaTres\(sel\.fuente === "inmediato" \? "inmediato" : "semanal", \{ variante: sel\.variante, volver: `\/dashboard\?t=\$\{t\}` \}\)\);/.test(clic)) F("6 · el enlace del pack en el correo no lleva al checkout del pack");
   // ⚠ ACTA (19-oct-2026, goal «camino de compra», decisión de Fabrizio) · la pantalla de compra ya no tiene selector de
   // cantidad (el pack es la compra de varios) y el código se pide en la misma pantalla: lo que no puede perderse es el
   // origen y la vuelta en el enlace del correo y en Google (urlCompra con `pagar`). Y la vuelta de Flow tiene UN botón,
@@ -174,13 +185,17 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/const estaCompra = \{ product: productKey, analysisId, companionStrId, origen, variante: varianteCorreo, volver \};/.test(checkout) || !/useEntradaPorCodigo\(urlCompra\(estaCompra, true\)\)/.test(checkout)
     || urlCompra({ product: "tres_analisis", origen: "semanal", variante: "banda", volver: "/semanal?t=abc" }, true) !== "/checkout?product=tres_analisis&origen=semanal&variante=banda&volver=%2Fsemanal%3Ft%3Dabc&pagar=1") F("6 · al pedir el código, el checkout pierde el origen o la vuelta");
   const retorno = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/producto === PRODUCTO_TRES\s*\? TRES_COPY\.listo/.test(retorno) || !/botonTrasPagar\(producto === PRODUCTO_TRES \? volver : null\)/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar("/dashboard").texto !== "Ver mis análisis") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la vuelta (`volver`) la traen el pack de tres y, desde un depto, el pack del ticket y el suelto; con un depto
+  // vuelve a ese depto en el dashboard.
+  const alDepto = "/dashboard?t=0123456789abcdef0123456789abcdef&a=a2&analizar=1";
+  if (!/producto === PRODUCTO_TRES \|\| producto === PRODUCTO_PACK\s*\? TRES_COPY\.listo/.test(retorno) || !/: botonTrasPagar\(volver\);/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar(alDepto).href !== alDepto || botonTrasPagar("/dashboard").texto !== "Ver mis análisis") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
 
   // ── 7 · «¿Cuándo piensas comprar?» arriba de la página semanal ──────────────
-  const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la pregunta va arriba de la selección, que vive en el dashboard (seleccion-en-casa.tsx).
+  const pagina = sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx")) + sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts"));
   // ⚠ ACTA (19-oct-2026) · las dos listas se arman antes y se ordenan según el depto clicado (SEMANAL-STR §6); la pregunta
   // sigue arriba de las dos.
-  if (!/const preguntarCuando = perfilPersona != null && perfilPersona\.perfil\.horizonte == null;/.test(pagina) || !/\{preguntarCuando && <PreguntaCuando \/>\}\s*\{cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
+  if (!/preguntarCuando: perfilPersona\.perfil\.horizonte == null,/.test(pagina) || !/\{sel\.preguntarCuando && <PreguntaCuando \/>\}\s*\{sel\.cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
   const pregunta = sinComentarios(leer("src/app/semanal/pregunta-cuando.tsx"));
   if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^)]*body: JSON\.stringify\(\{ horizonte: h \}\) \}\)/.test(pregunta) || !/if \(res\.ok\) setListo\(true\);/.test(pregunta) || !/if \(listo\) return null;/.test(pregunta)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");

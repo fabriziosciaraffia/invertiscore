@@ -181,7 +181,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
 
   // 6 · el clic y el análisis
   const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
-  if (!/await chequearAlClic\(admin, avisoId\)/.test(clic) || !/&d=1/.test(clic)) F("6 · el clic no relee la ficha");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el clic aterriza en el dashboard (hrefSeleccion): el
+  // despublicado va como \`d=1\` por el mismo destino, no por una URL armada a mano.
+  if (!/const estado = await chequearAlClic\(admin, avisoId\)/.test(clic) || !/return volver\(hrefSeleccion\(t, avisoId, estado === "despublicado"\)\);/.test(clic)) F("6 · el clic no relee la ficha");
   if (!/if \(ir === "comprar"\) return volver\(rutaSueltoSemanal\(sel\.variante as "banda" \| "tarjetas" \| null\)\);/.test(clic)) F("6 · «Analizar uno · $9.990» no va a comprar el suelto");
   if (!/"clic", almacenPublicacion\(admin\), bajarFicha/.test(srv)) F("6 · el chequeo del clic no usa la memoria y el tope de siempre");
   const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
@@ -399,11 +401,13 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/\.update\(\{ estado: "pendiente" \}\)\.in\("id", caidas\.map\(\(s\) => s\.id\)\)\.eq\("estado", "armada"\)\.is\("enviada_at", null\)/.test(sv)) F("13 · la selección que perdió un aviso no se vuelve a armar");
     const ar = sinComentarios(leer("src/app/api/cron/semanal-armar/route.ts"));
     if (!/const re = await rechequearArmadas\(admin, semana, presupuesto\);/.test(ar) || !/for \(const userId of re\.usuarios\) \{[\s\S]{0,120}await armarSeleccion\(admin, userId, semana, cfg, presupuesto\);/.test(ar)) F("13 · el domingo no rechequea las armadas ni rearma en la misma corrida");
-    const pg = sinComentarios(leer("src/app/semanal/page.tsx"));
-    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id, userId: user\.id, items: sel\.items \}, cfg\)/.test(pg)) F("13 · /semanal no está viva");
+    // ⚠ ACTA (21-oct-2026) · la selección vive en el dashboard; la lee el cargador compartido, viva como siempre.
+    const pg = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts"));
+    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id, userId, items: sel\.items \}, cfg\)/.test(pg)) F("13 · /semanal no está viva");
     const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
     if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
-    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
+    // ⚠ ACTA (21-oct-2026) · antes de pedir la página de nuevo se cierra el aviso, que ahora queda abierto mientras genera.
+    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ setConfirmar\(null\); router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
     for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);
   }
 
@@ -493,7 +497,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     // La página: la marca y, en renta larga, «Ya lo analizaste · Ver informe».
     const pg = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
     if (!/\{it\.visto && !\(it\.visto === "analizado" && informeDe\(it\)\) && <p className="guia-negociar" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg)) F("15 · /semanal no marca lo ya visto");
-    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => \(corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : it\.informeId\);/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");
+    // ⚠ ACTA (21-oct-2026) · en renta larga también se lee en vivo lo ya analizado (\`informes\`, del servidor), no solo lo que
+    // traía el depto al armarse (tier PUERTA-B-RECORRIDO §6).
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");
   }
 
   if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo de reactivación (4 semanas sin analizar, uno cada 90 días), dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");

@@ -472,7 +472,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // Al volver: el Lead (recién se sabe el correo) y el alta, como por código; «Estás dentro» lo pone terminarAlta.
       if (!/if \(entro === "google"\) \{[\s\S]{0,240}void avisarLead\(sesion\.email\.toLowerCase\(\), origenLead, puerta\.puerta\);[\s\S]{0,160}void terminarAlta\(clave, "google"\);/.test(cli)) F("9 · al volver de Google no sale el Lead o no termina el alta");
       // Sin vecindad (la regla de CLAUDE.md): después del alta nueva, lo SIGUIENTE es «Estás dentro», sin un salto en el medio.
-      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
+      // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · entre el regalo y «Estás dentro» se guarda la búsqueda
+      // con que nació la cuenta, para la línea «Buscas: … · Cambiar» (tier PUERTA-B-RECORRIDO §1); sigue sin un salto.
+      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
       if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\)\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
       const alta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
@@ -507,12 +509,16 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (20-oct-2026, «Ver los deptos de [comuna]» de las páginas de comuna) · la búsqueda inicial puede llegar con
       // `?comuna=`: las comunas iniciales salen de la portada (las por defecto, o esa), y su número igual del servidor.
       // Y el rango inicial también (decisión de Fabrizio): el de más 2D publicados en esa comuna; sin `?comuna=`, el por defecto.
+      // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el perfil es de la persona: sin `?comuna=` la página
+      // arranca SIN comuna y sin número —los pide— y el número llega cuando elige una; con `?comuna=`, desde el servidor como
+      // antes (tier PUERTA-B-RECORRIDO §1). Sin comuna la búsqueda no está completa y no se pide.
       const cliD = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (!/const \[respuesta, setRespuesta\] = useState<RespuestaDeptos \| null>\(portada\?\.inicial \?\? null\);/.test(cliD)
-        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.\(portada\?\.comunas \?\? ELECCIONES_POR_DEFECTO\.comunas\)\]\);/.test(cliD)
+        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.\(portada\?\.comunas \?\? \[\]\)\]\);/.test(cliD)
+        || !/const completo = comunas\.length > 0 && !!tipologia && !!rango;/.test(cliD) || !/if \(!completo\) \{ setRespuesta\(null\); return; \}/.test(cliD)
         || !/const servida = useRef<string \| null>\(portada\?\.inicial \? claveInicial\(portada\.comunas, portada\.rango\) : null\);/.test(cliD)
         || !/const \[rango, setRango\] = useState<string>\(portada\?\.rango \?\? ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
-        || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca con el número de la búsqueda por defecto desde el servidor");
+        || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca sin comuna, o con `?comuna=` sin el número desde el servidor");
       if (!/const portada = await portadaDeptos\(comunaDeLaUrl\(searchParams\?\.comuna\)\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
         F("10 · /deptos o la página del invitado no traen la portada del servidor");
       // El orden: la frase, la etiqueta, el número, la nota, la banda del correo y, debajo, «Cambia la búsqueda» con los chips.

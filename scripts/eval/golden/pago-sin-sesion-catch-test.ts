@@ -63,6 +63,11 @@ export const LISTA_BLANCA_PRECIO_PACK: Readonly<Record<string, string>> = {
   "src/lib/email.ts": "el correo transaccional del pago confirmado",
   "src/lib/email/correos.ts": "las plantillas del pago confirmado y de la boleta",
   "src/lib/email/catalogo.ts": "la vista previa de esos correos en /admin (muestras con el monto del pack)",
+  // ⚠ ACTA (21-oct-2026, decisiones de Fabrizio en el recorrido de la puerta B) · el ticket es de toda cuenta nueva por
+  // cualquier puerta: en sus primeras 24 horas, el pop-up sin saldo de la selección lo ofrece (goal, punto 5) y la casa
+  // dice el mismo precio en el banner y en la línea del saldo (respuesta del 21-oct: «El mismo $14.990»).
+  "src/lib/guia/compra-desde-depto.ts": "el pop-up sin saldo de la selección y su botón del final, en las 24 horas de la cuenta",
+  "src/app/dashboard/casa-copy.ts": "el banner y la línea del saldo de la casa, en las 24 horas de la cuenta (packDeCasa)",
 };
 const PRECIO_PACK = [
   /\b14[.\s]?990\b/,
@@ -208,7 +213,7 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
 
   // ── 7 · el precio del pack, solo en el ticket ──────────────────────────────
   {
-    if (Object.keys(LISTA_BLANCA_PRECIO_PACK).length !== 12) F("7 · la lista blanca del precio del pack cambió (agregar un lugar es una decisión de Fabrizio, no del código)");
+    if (Object.keys(LISTA_BLANCA_PRECIO_PACK).length !== 14) F("7 · la lista blanca del precio del pack cambió (agregar un lugar es una decisión de Fabrizio, no del código)");
     for (const f of Object.keys(LISTA_BLANCA_PRECIO_PACK)) if (!existsSync(join(RAIZ, f))) F(`7 · la lista blanca nombra un archivo que no existe: ${f}`);
     if (!PRECIO_PACK.some((re) => re.test(sc("src/components/lo-que-sigue/TicketPack.tsx")))) F("7 · el barrido no ve el precio ni en el ticket (el patrón se rompió)");
     for (const f of archivosSrc()) {

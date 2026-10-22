@@ -147,9 +147,16 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     if (!/\.\.\.\(prePaymentData\?\.origen === "inmediato" \? \{ origen: "inmediato" \} : \{\}\)/.test(conf) || !/if \(deCorreo\?\.origen === "inmediato"\) \{\s*await capturarServidor\(\{ event: "aviso_inmediato_compra"/.test(conf)) F("5 · la compra que vino del aviso no se mide (o el confirm pierde el origen)");
     // ⚠ ACTA (13-oct-2026, decisión de Fabrizio) · la página compra el pack de tres, no el suelto; sigue marcada como del
     // aviso cuando vino del aviso (CORREOS-RECORRIDO §6). El correo del aviso todavía ofrece el suelto (línea de arriba).
-    if (!/rutaTres\(inmediato \? "inmediato" : "semanal", \{ variante: inmediato \? null : variante,/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("5 · la compra desde la página del aviso no va marcada como del aviso");
+    // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la selección vive en el dashboard y sus compras salen
+    // de lib/guia/compra-desde-depto.ts (el pack, el suelto y el botón del final), con el origen de la página; lo que leía
+    // /semanal lo lee el cargador compartido (seleccion-pagina-servidor.ts).
+    const listaInm = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
+    const { compraDeLaSeleccion, comprasDelDepto } = await import("../../../src/lib/guia/compra-desde-depto");
+    const conOrigen = (href: string) => new URL(href, "https://x.cl").searchParams.get("origen") === "inmediato";
+    if (!/const origenCompra = inmediato \? "inmediato" as const : "semanal" as const;/.test(listaInm) || !/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra/.test(listaInm) || !/compraDeLaSeleccion\(\{ token, origen: origenCompra/.test(listaInm)
+      || ![comprasDelDepto({ token: "abc", avisoId: "x", origen: "inmediato", ticket: false }).pack.href, comprasDelDepto({ token: "abc", avisoId: "x", origen: "inmediato", ticket: true }).suelto.href, compraDeLaSeleccion({ token: "abc", origen: "inmediato", ticket: false }).href].every(conOrigen)) F("5 · la compra desde la página del aviso no va marcada como del aviso");
     // La página del aviso también está viva (05-oct-2026): el caído se dice y trae el siguiente, guardado en su tabla.
-    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id,/.test(sinComentarios(leer("src/app/semanal/page.tsx"))) || !/seleccionViva\(\s*admin: SupabaseClient,\s*sel: \{ tabla: "semanal_selecciones" \| "avisos_inmediatos";/.test(sem)) F("3 · la página del aviso no está viva (o guarda el reemplazo en otra tabla)");
+    if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id,/.test(sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts"))) || !/seleccionViva\(\s*admin: SupabaseClient,\s*sel: \{ tabla: "semanal_selecciones" \| "avisos_inmediatos";/.test(sem)) F("3 · la página del aviso no está viva (o guarda el reemplazo en otra tabla)");
   }
 
   if (fallas.length === 0) console.log("  ✓ VERDE — solo Comprar nuevos y publicados con su perfil, después de la evaluación; un correo por día que se toma antes de mandar; lo avisado no se repite; la plantilla del semanal con su propia baja; el «Ya» pregunta a los 60 días; enviado, abierto, clic y compra medidos");

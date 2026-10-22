@@ -244,15 +244,19 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       marcarHojaVista(shim, "a");
       if (!hojaYaVista(shim, "a") || hojaYaVista(shim, "b")) F("6 · la marca de la hoja no es por informe");
       if (hojaYaVista(null, "a")) F("6 · sin storage se da por vista");
+      // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la primera selección ya no recibe adónde vuelve la
+      // compra: el pack y el suelto vuelven al dashboard con el depto, que se analiza solo (compra-desde-depto.ts). En
+      // /deptos se vuelve a armar con «Buscas · Cambiar» (`key={version}`) y se atenúa mientras se cambia; nada la esconde.
+      // Y el ya analizado dice «Ya lo analizaste · Ver informe» en vez del botón (tier PUERTA-B-RECORRIDO §6).
       const hoja = sinComentarios(leer("src/components/lo-que-sigue/HojaPrimeraSeleccion.tsx"));
-      if (!/className="lqs-velo doc-tokens"/.test(hoja) || !/\{abierta && <PrimeraSeleccion volver=\{`\/analisis\/\$\{analysisId\}`\} \/>\}/.test(hoja) || !/data-lqs="seguir-leyendo">\{PRIMERA_SELECCION\.seguirLeyendo\}/.test(hoja))
+      if (!/className="lqs-velo doc-tokens"/.test(hoja) || !/\{abierta && <PrimeraSeleccion \/>\}/.test(hoja) || !/data-lqs="seguir-leyendo">\{PRIMERA_SELECCION\.seguirLeyendo\}/.test(hoja))
         F("6 · la hoja no es el velo del ticket con la selección y «Seguir leyendo el informe»");
       const dp = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (/"primeros"/.test(dp.slice(dp.indexOf("type Paso"), dp.indexOf("\n", dp.indexOf("type Paso")))) || /setPaso\("primeros"\)/.test(dp)) F("6 · /deptos vuelve a esconder los deptos detrás del «cuándo» (el paso «primeros»)");
-      const iDentro = dp.indexOf('if (paso === "dentro") {'), iPS = dp.indexOf("<PrimeraSeleccion volver={pagina} />"), iCuando = dp.indexOf('data-deptos="cuando"');
+      const iDentro = dp.indexOf('if (paso === "dentro") {'), iPS = dp.indexOf("<PrimeraSeleccion key={version} />"), iCuando = dp.indexOf('data-deptos="cuando"');
       if (iDentro < 0 || iPS < iDentro || iCuando < 0 || iPS < iCuando) F("6 · /deptos (y la página del invitado) no muestra la primera selección en la misma pantalla de «Estás dentro», debajo del «cuándo»");
       // Sin condición en el medio: ni el «cuándo» ni nada la esconde.
-      if (!/<div className="dp-bloque" data-deptos="primeros">\s*<PrimeraSeleccion volver=\{pagina\} \/>\s*<\/div>/.test(dp)) F("6 · en /deptos la primera selección queda detrás de una condición (se vuelve a esperar)");
+      if (!/<div className="dp-bloque" data-deptos="primeros" data-cambiando=\{cambiando \? "1" : undefined\}>\s*<PrimeraSeleccion key=\{version\} \/>\s*<\/div>/.test(dp)) F("6 · en /deptos la primera selección queda detrás de una condición (se vuelve a esperar)");
       if (!/<DeptosCliente/.test(leer("src/app/i/[codigo]/invitacion-cliente.tsx"))) F("6 · la página del invitado dejó de usar la pantalla de /deptos");
     }
 
@@ -288,7 +292,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       }
       if (!/<h2 className="guia-bloque" data-primera="titulo">\{tituloHoja\(\{ regalo: !!datos\?\.regaloVence, sinDeptos \}\)\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
         F("7 · el título no dice el regalo cuando lo hay, o no mira si hay deptos con la misma condición que la bajada");
-      if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{puede && \(\s*<div className="guia-acc">\s*<button type="button" className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
+      if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{it\.informeId \? \(\s*<div className="guia-acc" data-primera="ya-analizado">[\s\S]{0,400}?<\/div>\s*\) : puede && \(\s*<div className="guia-acc">\s*<button type="button" className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
       if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}semanal: datos\.token \}\)/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
       if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : GUIA\.analizar\}/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este»");
@@ -315,7 +319,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (await rellenarDeLaNoche(admin, { id: "v", intentos: 0 }, { ...col, items: [] }) || JSON.stringify(filas[3].combinacion ?? null) !== "null") F("8 · sin deptos escribe igual");
       const srv = sinComentarios(leer("src/lib/deptos/primeros-servidor.ts"));
       if (!/enSeleccion = await rellenarDeLaNoche\(admin, fila, \{ items: comoItems, combinacion, perfil, origenAnalysisId: origenId \}\);/.test(srv)) F("8 · la pantalla no deja los de la noche en la fila del día");
-      if (!/token: enSeleccion \? token : null/.test(srv) || !/items: elegidos\.map\(\(d\) => \(\{ \.\.\.d, enSeleccion \}\)\)/.test(srv)) F("8 · la pantalla da el token (y el botón) aunque el aviso no quedó en la selección");
+      if (!/token: enSeleccion \? token : null/.test(srv) || !/items: elegidos\.map\(\(d\) => \(\{ \.\.\.d, enSeleccion, informeId: informes\[d\.avisoId\] \?\? null \}\)\)/.test(srv)) F("8 · la pantalla da el token (y el botón) aunque el aviso no quedó en la selección");
       const ds = sinComentarios(leer("src/lib/guia/del-dia-servidor.ts"));
       if (!/\.eq\("id", fila\.id\)\.eq\("estado", "pendiente"\)\.eq\("intentos", fila\.intentos\)\.is\("enviada_at", null\)\.eq\("items", "\[\]"\)/.test(ds)) F("8 · el relleno no se limita a la fila pendiente, sin enviar y vacía");
     }

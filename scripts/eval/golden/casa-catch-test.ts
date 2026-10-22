@@ -33,7 +33,8 @@
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CASA } from "../../../src/app/dashboard/casa-copy";
+import { CASA, packDeCasa } from "../../../src/app/dashboard/casa-copy";
+import { rutaTres } from "../../../src/lib/tres-analisis";
 import { ARCHIVO_COPY, buildHref, parseParams } from "../../../src/app/dashboard/dashboard-helpers";
 import { estadoSaldo } from "../../../src/lib/casa-saldo";
 import { CASA_ARRIBA, bloqueDeArriba } from "../../../src/lib/casa-arriba";
@@ -122,10 +123,20 @@ export function runCasaTier(): { hard: number } {
   const casa = sinComentarios(leer("src/app/dashboard/casa.tsx"));
   const copy = sinComentarios(leer("src/app/dashboard/casa-copy.ts"));
   const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
-  if (!/export const RUTA_TRES_CASA = rutaTres\("dashboard", \{ volver: "\/dashboard" \}\);/.test(casa) || !/<EnlaceCarga href=\{RUTA_TRES_CASA\}[^>]*data-casa="comprar-tres">\s*\{CASA\.sin\.boton\}/.test(casa)) F("4 · el botón del saldo vacío no compra el pack de tres");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket es de toda cuenta nueva por cualquier
+  // puerta: en sus primeras 24 horas (y sin el pack pagado) la casa ofrece el pack al precio del ticket, el mismo del
+  // pop-up de la selección, para que la pantalla no diga dos precios (packDeCasa; tier PUERTA-B-RECORRIDO §5). Lo que no
+  // cambia: a una cuenta de más de 24 horas, nunca el $14.990 — sin el ticket es el pack de tres de siempre, y el $14.990
+  // solo entra por packDeCasa(true), que la página decide con la cuenta (ticketDeCuentaDisponible).
+  const pk = packDeCasa(false), pt = packDeCasa(true);
+  if (pk.href !== rutaTres("dashboard", { volver: "/dashboard" }) || pk.boton !== CASA.sin.boton || pk.bajada !== CASA.sin.bajada || pk.bajadaPrimero !== CASA.sin.bajadaPrimero) F("4 · el botón del saldo vacío no compra el pack de tres");
+  if (new URL(pt.href, "https://x.cl").searchParams.get("product") !== "pack3" || pt.boton !== "3 análisis · $14.990" || !pt.bajada.includes("$14.990") || !pt.bajadaPrimero.includes("$14.990")) F("4 · en las primeras 24 horas de la cuenta, la casa no ofrece el pack al precio del ticket");
+  if ((casa.match(/const pack = packDeCasa\(ticket\);/g) ?? []).length !== 2 || !/<EnlaceCarga href=\{pack\.href\} className="ca-banda-btn" data-casa="comprar-tres"[^>]*>\s*\{pack\.boton\}/.test(casa)) F("4 · el botón del saldo vacío no sale de packDeCasa");
+  if (!/const ticket = saldo\.tipo === "sin" \? \(sel\?\.ticket \?\? await ticketDeCuentaDisponible\(admin, user\)\) : false;/.test(pag) || (pag.match(/ ticket=\{ticket\} \/>/g) ?? []).length !== 4) F("4 · la casa no decide el ticket con la cuenta (o no se lo pasa al banner y al saldo de las dos casas)");
   if (!/export const RUTA_SUELTO = "\/checkout\?product=single";/.test(casa) || !/<EnlaceCarga href=\{RUTA_SUELTO\}[^>]*data-casa="comprar-suelto">\s*\{CASA\.sin\.suelto\}/.test(casa)) F("4 · debajo del pack no está el suelto");
-  for (const [n, s] of [["casa.tsx", casa], ["casa-copy.ts", copy], ["page.tsx", pag.replace(/\.eq\("product", "pack3"\)/, "")]] as const) {
-    if (/pack3|14\.990|14990|PACK_/i.test(s)) F(`4 · el ticket de $14.990 aparece en la casa (${n})`);
+  const fueraDelPack = copy.replace(/^import .*$/gm, "").replace(/export function packDeCasa\([\s\S]*?\n\}\n/, "");
+  for (const [n, s] of [["casa.tsx", casa], ["casa-copy.ts", fueraDelPack], ["page.tsx", pag.replace(/\.eq\("product", "pack3"\)/, "")]] as const) {
+    if (/pack3|14\.990|14990|PACK_/i.test(s)) F(`4 · el ticket de $14.990 aparece en la casa fuera de packDeCasa (${n})`);
   }
   if (!/fmtCLP\(SINGLE_PRICE\)/.test(copy)) F("4 · el precio del suelto no sale de SINGLE_PRICE");
 
@@ -194,13 +205,17 @@ export function runCasaTier(): { hard: number } {
     if (b(null, con).tipo !== "analizar" || b(null, plan, 1).tipo !== "analizar") F("9 · con saldo pagado o con el plan, arriba no lleva a analizar (o el plan anuncia un regalo)");
 
     // Lo cablea la página, en las dos casas, con el regalo leído del ledger.
-    if (!/const arriba = bloqueDeArriba\(\{ seleccion: resumen, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba\} informes=\{stats\.total\} \/>/.test(pag)) F("9 · la casa con informes no decide el bloque de arriba con bloqueDeArriba");
-    if (!/seleccionDeEstaSemana\(admin, user\.id\)\]\);/.test(pag) || !/const arriba0 = bloqueDeArriba\(\{ seleccion: seleccion0 \? resumenSeleccion\(seleccion0\) : null, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba0\} informes=\{0\} \/>/.test(pag)) F("9 · la casa sin informes no decide el bloque de arriba (o no lee su selección)");
+    if (!/const arriba = bloqueDeArriba\(\{ seleccion: resumen, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba\} informes=\{stats\.total\} ticket=\{ticket\} \/>/.test(pag)) F("9 · la casa con informes no decide el bloque de arriba con bloqueDeArriba");
+    // ⚠ ACTA (21-oct-2026) · la selección se lee una vez para las dos casas (cargarSeleccionPagina: la del token del correo o
+    // la de esta semana) y el banner sale de lo vivo (resumenDePagina); el ticket va al banner (tier PUERTA-B-RECORRIDO).
+    if (!/cargarSeleccionPagina\(admin, user, \{ t: tSel, a: aSel \}\)/.test(pag) || !/const resumenSel = resumenDePagina\(sel\);/.test(pag) || !/const arriba0 = bloqueDeArriba\(\{ seleccion: resumenSel, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence \}\);/.test(pag) || !/const resumen = resumenSel \?\? \[\];/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba0\} informes=\{0\} ticket=\{ticket\} \/>/.test(pag)) F("9 · la casa sin informes no decide el bloque de arriba (o no lee su selección)");
     // El orden de las dos casas: banner → invitar → (plano) saldo → … ; «Invita a alguien» fuera de lo plano.
     const casaSin = pag.slice(pag.indexOf("const arriba0 = "), pag.indexOf("<AppFooter"));
-    const ordenSin = ["<BloqueArribaCasa bloque={arriba0}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba0.tipo} />", "<PrimerosDeptos ", "<PerfilBusquedaCasa"].map((t) => casaSin.indexOf(t));
-    if (ordenSin.some((i) => i < 0) || ordenSin.some((i, k) => k > 0 && i < ordenSin[k - 1])) F(`9 · la casa sin informes no es banner → invitar → plano (saldo, primeros, perfil) (${ordenSin.join(",")})`);
-    const ordenCon = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba.tipo} />"].map((t) => casaConInformes.indexOf(t));
+    // ⚠ ACTA (21-oct-2026) · en lugar de «sus primeros deptos» (PrimerosDeptos, retirado: «Ver y analizar» llevaba a /semanal)
+    // va su selección como tarjetas, con la primera selección si todavía no hay (SeleccionEnCasa).
+    const ordenSin = ["<BloqueArribaCasa bloque={arriba0}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba0.tipo} ticket={ticket} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera />", "<PerfilBusquedaCasa"].map((t) => casaSin.indexOf(t));
+    if (ordenSin.some((i) => i < 0) || ordenSin.some((i, k) => k > 0 && i < ordenSin[k - 1])) F(`9 · la casa sin informes no es banner → invitar → plano (saldo, selección, perfil) (${ordenSin.join(",")})`);
+    const ordenCon = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba.tipo} ticket={ticket} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={false} />"].map((t) => casaConInformes.indexOf(t));
     if (ordenCon.some((i) => i < 0) || ordenCon.some((i, k) => k > 0 && i < ordenCon[k - 1])) F(`9 · en la casa con informes, «Invita a alguien» no queda entre el banner y lo plano (${ordenCon.join(",")})`);
     if (/<h1/.test(pag)) F("9 · la página tiene un título propio además del banner (el saludo volvió a ser el h1)");
     if ((pag.match(/<AppFooter variant="informe" \/>/g) ?? []).length !== 2) F("9 · las dos casas no cierran con el pie de los informes");
@@ -210,7 +225,7 @@ export function runCasaTier(): { hard: number } {
     const ramas = fn.split(/if \(bloque\.tipo === "|\n  return \(/).slice(1);
     const destino: Record<string, RegExp> = {
       seleccion: /<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">\s*\{SELECCION_CASA\.boton\}/,
-      pack: /<EnlaceCarga href=\{RUTA_TRES_CASA\} className="ca-banda-btn" data-casa="comprar-tres">\s*\{CASA\.sin\.boton\}/,
+      pack: /<EnlaceCarga href=\{pack\.href\} className="ca-banda-btn" data-casa="comprar-tres" data-ticket=\{ticket \? "1" : undefined\}>\s*\{pack\.boton\}/,
       regalo: /<h1 className="ca-banda-t">\{CASA\.regalo\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
       analizar: /<h1 className="ca-banda-t">\{CASA_ARRIBA\.analizar\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
     };
@@ -232,7 +247,7 @@ export function runCasaTier(): { hard: number } {
     // Lo plano: sin tarjetas.
     if (/rounded-2xl border|bg-\[var\(--franco-card\)\] p-4|\btarjeta\b/.test(casa)) F("9 · lo de abajo vuelve a ser tarjeta");
     if (!/<div id="perfil" className="ca-plano-sec"/.test(casa) || !/<section className="ca-plano-sec" data-casa="saldo"/.test(casa) || !/<h2 className="ca-plano-t">\{CASA\.perfil\.titulo\}<\/h2>/.test(casa)) F("9 · el saldo o el perfil no van planos");
-    if (!/if \(estado\.tipo === "regalo" && arriba === "regalo"\) return null;/.test(casa) || !/\{arriba !== "pack" && \(\s*<EnlaceCarga href=\{RUTA_TRES_CASA\}/.test(casa)) F("9 · el saldo plano repite lo que ya dice el banner");
+    if (!/if \(estado\.tipo === "regalo" && arriba === "regalo"\) return null;/.test(casa) || !/\{arriba !== "pack" && \(\s*<EnlaceCarga href=\{pack\.href\}/.test(casa)) F("9 · el saldo plano repite lo que ya dice el banner");
     const exactos9: Array<[string, string]> = [
       [CASA_ARRIBA.seleccionBajada, "Los deptos publicados que Franco revisó con tus números."],
       [CASA_ARRIBA.pack.titulo, "Analiza tus próximos deptos."],

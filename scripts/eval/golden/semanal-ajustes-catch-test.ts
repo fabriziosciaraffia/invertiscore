@@ -69,7 +69,10 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
   const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
   const strSrv = sinComentarios(leer("src/lib/guia/semanal-str-servidor.ts"));
   const ruta = sinComentarios(leer("src/app/api/semanal/analizar-str/route.ts"));
-  const pagina = sinComentarios(leer("src/app/semanal/page.tsx"));
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · una sola página para la selección: el dashboard. Lo que
+  // hacía /semanal lo hace el cargador compartido (seleccion-pagina-servidor.ts) y lo dibuja seleccion-en-casa.tsx; /semanal
+  // redirige ahí (tier PUERTA-B-RECORRIDO §7).
+  const pagina = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts")) + sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
   const popup = sinComentarios(leer("src/components/guia/PopupNoDa.tsx"));
   const dash = sinComentarios(leer("src/app/dashboard/page.tsx"));
@@ -213,7 +216,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // También al volver: la página lee las que no dieron y no se cobraron.
     const noDan = cuerpo(srv, "export async function noDanEnRentaCorta(");
     if (!/\.from\("comparaciones_zona_str"\)\.select\("aviso_id"\)\s*\.eq\("user_id", userId\)\.in\("aviso_id", avisoIds\)\.neq\("fino_veredicto", "COMPRAR"\)\.eq\("cobrado", false\);/.test(noDan)) F("6 · al volver a la página no se sabe cuáles no dieron (o se marcan los cobrados)");
-    if (!/noDanEnRentaCorta\(admin, user\.id, idsCortos\)/.test(pagina) || !/noDan=\{noDan\}/.test(pagina) || !/const noDa = new Set\(\[\.\.\.noDan, \.\.\.noDanAhora\]\);/.test(lista)) F("6 · la marca no vuelve al recargar la página");
+    if (!/noDanEnRentaCorta\(admin, userId, idsCortos\)/.test(pagina) || !/noDan=\{sel\.corto\.noDan\}/.test(pagina) || !/const noDa = new Set\(\[\.\.\.noDan, \.\.\.noDanAhora\]\);/.test(lista)) F("6 · la marca no vuelve al recargar la página");
   }
 
   // ── 7 · LA SELECCIÓN EN EL DASHBOARD ────────────────────────────────────────────
@@ -223,7 +226,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       F(`7 · el resumen de los dos bloques no es el esperado (${JSON.stringify(r)})`);
     const soloCorto = resumenSeleccion({ conLargo: false, items: [], corto: { items: [] } });
     if (soloCorto.length !== 1 || soloCorto[0].modalidad !== "str" || soloCorto[0].texto !== SELECCION_CASA.ninguno) F(`7 · quien solo tiene renta corta (sin deptos esta semana) no ve solo su bloque (${JSON.stringify(soloCorto)})`);
-    if (SELECCION_CASA.href !== "/semanal" || SELECCION_CASA.titulo !== "Tu selección de esta semana") F("7 · el enlace o el título del bloque no son los aprobados (el enlace va sin token)");
+    // ⚠ ACTA (21-oct-2026) · «Ver tu selección» baja a las tarjetas del mismo dashboard (#seleccion), sin token.
+    if (SELECCION_CASA.href !== "#seleccion" || SELECCION_CASA.titulo !== "Tu selección de esta semana") F("7 · el enlace o el título del bloque no son los aprobados (el enlace va sin token)");
     // La de esta semana: la más reciente con algún depto; una semana vacía no tapa a la anterior. En cualquier orden.
     const filasS = [
       { id: "vieja", semana: "2026-10-05", items: [1], items_str: [] },
@@ -236,10 +240,10 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · «Tu selección de esta semana» es el estado de arriba del banner
     // cuando la hay (casa-arriba.ts), en las dos casas; el detalle de la jerarquía, en el tier CASA §9.
     // Verificado en rojo: SA2 la selección sin su título en el banner · SA3 la casa no le pasa la selección al bloque.
-    if (!/seleccionDeEstaSemana\(admin, user\.id\),/.test(dash) || !/const resumen = seleccion \? resumenSeleccion\(seleccion\) : \[\];/.test(dash) || !/bloqueDeArriba\(\{ seleccion: resumen,/.test(dash) || !/<BloqueArribaCasa bloque=\{arriba\} /.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
-    if (!/<h1 className="ca-banda-t">\{SELECCION_CASA\.titulo\}<\/h1>/.test(casa) || !/<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">/.test(casa)) F("7 · el bloque del dashboard no enlaza a la página semanal");
-    if (!/if \(t && !TOKEN\.test\(t\)\) redirect\("\/dashboard"\);/.test(pagina) || !/const sel = t \? await seleccionPorToken\(admin, t\) : await seleccionDeEstaSemana\(admin, user\.id\);/.test(pagina) || /token=\{t\}/.test(pagina))
-      F("7 · /semanal sin token no abre la selección de esta semana de quien entró");
+    if (!/cargarSeleccionPagina\(admin, user, \{ t: tSel, a: aSel \}\)/.test(dash) || !/const resumenSel = resumenDePagina\(sel\);/.test(dash) || !/const resumen = resumenSel \?\? \[\];/.test(dash) || !/bloqueDeArriba\(\{ seleccion: resumen,/.test(dash) || !/<BloqueArribaCasa bloque=\{arriba\} /.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
+    if (!/<h1 className="ca-banda-t">\{SELECCION_CASA\.titulo\}<\/h1>/.test(casa) || !/<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">/.test(casa)) F("7 · el bloque del dashboard no enlaza a la selección");
+    if (!/const t = p\.t && TOKEN\.test\(p\.t\) \? p\.t : null;/.test(pagina) || !/const sel = t \? await seleccionPorToken\(admin, t\) : await seleccionDeEstaSemana\(admin, userId\);/.test(pagina) || /token=\{t\}/.test(pagina))
+      F("7 · la selección sin token no abre la de esta semana de quien entró");
     // Con la base real: la de esta semana de alguien que tiene una, con su token; y nadie más la ve por sesión.
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) F("7 · NO CORRIÓ: faltan las variables de Supabase");
@@ -392,7 +396,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!/const mediciones = await medicionesDePersona\(admin, userId\);/.test(prepStrFn) || !/return aplicarMedicion\(evaluarStrCon\(body, zona\.estimacion, cfg, c\.medianaComuna, asOf\), med\?\.m, med\?\.informe\);/.test(prepStrFn))
       F("10 · el armado (y el prechequeo) no aplican lo que la persona ya midió");
     if (!/\.\.\.\(ev\.informeId \? \{ informeId: ev\.informeId \} : \{\}\),/.test(srv)) F("10 · la selección no guarda el informe de lo ya analizado");
-    if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, user\.id, idsCortos\)/.test(pagina) || !/informes=\{informesCortos\}/.test(pagina))
+    if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, userId, idsCortos\)/.test(pagina) || !/noDan, informes: informesCortos,/.test(pagina) || !/informes=\{sel\.corto\.informes\}/.test(pagina))
       F("10 · la página no sabe cuáles ya analizó");
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · el informe sale de `informeDe`: en renta corta, el de la medición

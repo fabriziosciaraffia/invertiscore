@@ -67,7 +67,9 @@ export function runLoQueSigueTier(): { hard: number } {
     if (!/despuesDeLaCard=\{bannerLqs \? <BannerRegistro ctx=\{ctxLqs\} next=\{nextLqs\} perfil=\{perfilLqs\} pasoInicial=\{recienDentro \? "dentro" : "oferta"\} \/> : undefined\}/.test(s)) F(`1 · el banner ${nombre} no cuelga de su gate`);
     // ⚠ ACTA (12-oct-2026, el que vuelve) · el ticket recibe además si entra con sesión y si es la visita en que se
     // registró (`esRegreso`): lo fija TICKET-REGRESO §2.
-    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
+    // ⚠ ACTA (21-oct-2026) · las 24 horas del ticket de la cuenta nueva corren desde la cuenta (`ticketDesde`); el
+    // anónimo, desde el informe, como siempre (tier PUERTA-B-RECORRIDO §5).
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
     if (/CierreRegistro|lqs-cierre/.test(s)) F(`1 · vuelve el texto del registro al final del informe ${nombre}`);
   }
   // ⚠ ACTA (19-oct-2026, goal «camino de compra», decisión de Fabrizio) · el checkout ya no manda a /registro: pide el
@@ -114,8 +116,11 @@ export function runLoQueSigueTier(): { hard: number } {
     if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
   }
   const create = sinComentarios(leer("src/app/api/payments/create/route.ts"));
-  if (!/if \(product === PRODUCTO_PACK && !analysisId\)/.test(create)) F("2 · payments/create acepta el pack sin informe");
-  if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\)\) \{[\s\S]*?eventoPackVencido\([\s\S]*?status: 410/.test(create)) F("2 · payments/create no rechaza el pack vencido con 410 ni lo mide");
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket es de toda cuenta nueva: sin informe
+  // atado vale solo mientras la cuenta tenga menos de 24 horas y no lo haya pagado (`ticketCuenta`, tier
+  // PUERTA-B-RECORRIDO §5); fuera de eso, 410 como siempre. Con informe, vence con el informe o con la cuenta.
+  if (!/if \(product === PRODUCTO_PACK && !analysisId && !ticketCuenta\) \{\s*return NextResponse\.json\(\{ error: "pack_vencido" \}, \{ status: 410 \}\);/.test(create) || !/const ticketCuenta = product === PRODUCTO_PACK && ticketDeCuenta\(user\.created_at\)/.test(create)) F("2 · payments/create acepta el pack sin informe fuera de las 24 horas de la cuenta");
+  if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\) && !ticketCuenta\) \{[\s\S]*?eventoPackVencido\([\s\S]*?status: 410/.test(create)) F("2 · payments/create no rechaza el pack vencido con 410 ni lo mide");
   if (/pack3: \{ amount: 9990/.test(create)) F("2 · vuelve el pack3 legacy de $9.990");
   const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
   if (!/product === PRODUCTO_PACK\) \{[\s\S]*?grantCredits\(userId, PRODUCTO_PACK, PACK_ANALISIS, \{ paymentId, noExpire: true \}\)/.test(confirm)) F("2 · payments/confirm no otorga los 3 créditos sin caducidad");

@@ -165,7 +165,8 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (!/const ticketLqs = !!analysisId && ofertaPack;/.test(c)) F(`1 · ${nombre}: el ticket no sale de la oferta del informe`);
     if (!/despuesDeLaCard=\{bannerLqs \? <BannerRegistro /.test(c)) F(`1 · ${nombre}: el banner no cuelga de bannerLqs`);
     // ⚠ ACTA (12-oct-2026, el que vuelve) · con `conSesion` y `recienDentro` (TICKET-REGRESO §2).
-    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
+    // ⚠ ACTA (21-oct-2026) · el ticket de la cuenta nueva cuenta desde la cuenta: `createdAt={ticketDesde ?? createdAt}`.
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
     if (/loQueSigue/.test(c)) F(`1 · ${nombre}: queda el gate viejo «loQueSigue»`);
   }
 

@@ -71,7 +71,10 @@ export async function runTicketRegresoTier(): Promise<{ hard: number }> {
   if (!/const vuelve = \(\) => esRegreso\(\{ estadoLocal: leerEstadoTicket\(almacen, ctx\.analysisId\), conSesion, recienDentro \}\);/.test(tk) || !/if \(vuelve\(\)\) setYaSubio\(true\);/.test(tk) || !/puedeSubir: \(\) => !vuelve\(\) && ofertaPackVigente\(createdAt\),/.test(tk))
     F("2 · el ticket no distingue al que vuelve (se abre solo otra vez, o la pestaña no está desde el principio)");
   if (!/const ms = venceEl\(createdAt\)\.getTime\(\) - Date\.now\(\);/.test(tk) || !/window\.setTimeout\(\(\) => setVigente\(false\)/.test(tk)) F("2 · con la página abierta, la pestaña no se va cuando la oferta vence");
-  for (const [rc, sesion] of [["src/app/analisis/[id]/results-client.tsx", "isLoggedIn"], ["src/app/analisis/renta-corta/[id]/results-client.tsx", "!!userId"]] as const) {
+  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket de la cuenta nueva va en su primer
+  // informe, que se abre con la sesión: entrar con ella NO es volver, así que `conSesion` lleva `&& !ticketDesde` (la
+  // primera vez sube solo, como el anónimo; tier PUERTA-B-RECORRIDO §5). Para el informe que nació anónimo, igual que antes.
+  for (const [rc, sesion] of [["src/app/analisis/[id]/results-client.tsx", "isLoggedIn && !ticketDesde"], ["src/app/analisis/renta-corta/[id]/results-client.tsx", "!!userId && !ticketDesde"]] as const) {
     const s = sinComentarios(leer(rc));
     if (!new RegExp(`<TicketPack [^>]*conSesion=\\{${sesion.replace(/[!]/g, "\\!")}\\} recienDentro=\\{!!recienDentro\\} />`).test(s)) F(`2 · ${rc.includes("renta-corta") ? "renta corta" : "renta larga"}: el ticket no sabe si entra con sesión o recién registrado`);
   }
