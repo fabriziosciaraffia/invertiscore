@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { perfilManualDeElecciones, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
-import { guardarPendienteGoogle } from "@/lib/deptos/servidor";
+import { esPuertaDeptos, guardarPendienteGoogle } from "@/lib/deptos/servidor";
 import { ipDelRequest } from "@/lib/api-helpers/anon-cap";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,12 +25,12 @@ function topado(ip: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const b = (await request.json().catch(() => ({}))) as { elecciones?: Partial<EleccionesDeptos> };
+  const b = (await request.json().catch(() => ({}))) as { elecciones?: Partial<EleccionesDeptos>; puerta?: unknown };
   const v = validarElecciones(b.elecciones ?? {});
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
   if (topado(ipDelRequest(request))) return NextResponse.json({ error: "tope" }, { status: 429 });
   try {
-    const p = await guardarPendienteGoogle(createServiceClient(), perfilManualDeElecciones(v));
+    const p = await guardarPendienteGoogle(createServiceClient(), perfilManualDeElecciones(v), esPuertaDeptos(b.puerta) ? b.puerta : null);
     return NextResponse.json({ p });
   } catch (e) {
     captureApiError(e, { ruta: "POST /api/deptos/google", operacion: "pendiente" });

@@ -36,6 +36,10 @@
 //     el `?entro` se saca de la URL y la pantalla se queda hasta que la persona toque un depto o «Ir a mi panel»;
 //   · antes de los deptos, «Buscas: Santiago · 2D · UF 3.000 a 4.000 · Cambiar», con los chips a un toque; lo cambiado se
 //     guarda cuando sigue («Listo» o «Ir a mi panel») y la selección del día se rearma (/api/deptos/rearmar).
+// «ENTRAR» NO QUEDA GIRANDO (22-oct-2026, lib/deptos/entrada.ts): el código ya no se verifica contra Supabase desde acá;
+// lo verifica el servidor junto con el alta (POST /api/deptos/entrar). Todo pedido de este paso tiene tope y un reintento
+// solo; si tampoco responde, el botón dice «No pudimos entrar, intenta de nuevo» y vuelve a estar activo con el mismo
+// código. Al volver por el enlace o por Google, lo mismo con el alta, y un botón para reintentarla.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -44,6 +48,7 @@ import { emitirAuthCompletada, marcarOAuthPendiente } from "@/lib/auth-analytics
 import { IconoGoogle } from "@/components/entrar/IconoGoogle";
 import { REGISTRO_UN_PASO, ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
+import { conTopeYReintento, ENTRAR_COPY } from "@/lib/deptos/entrada";
 import { marcarPuertaCandidata, type Puerta } from "@/lib/atribucion-puerta";
 import { avisarLead, type OrigenLead } from "@/lib/meta/lead-cliente";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
@@ -87,6 +92,9 @@ export interface OpcionesDeptos {
 
 /** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
  *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
+/** Lo que responde el alta (POST /api/deptos/alta y POST /api/deptos/entrar). */
+type RespuestaAlta = { estado?: string; regaloVence?: string | null; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
+
 const claveInicial = (comunas: readonly string[], rango: string) => `${comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${rango}`;
 
 export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera, pie, portada }: { sesion: { email: string } | null } & OpcionesDeptos) {
@@ -119,6 +127,10 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [version, setVersion] = useState(0);
   /** El alta se pide UNA vez: sin esto, el refresh que trae la sesión la pedía de nuevo y la pantalla se iba al dashboard. */
   const altaPedida = useRef(false);
+  // «ENTRAR» NO QUEDA GIRANDO (22-oct-2026, lib/deptos/entrada.ts): sin respuesta ni en el reintento, el botón lo dice y
+  // vuelve a estar activo con el mismo código; al volver por el enlace o por Google, con qué reintentar el alta.
+  const [falloEntrar, setFalloEntrar] = useState(false);
+  const [altaPorReintentar, setAltaPorReintentar] = useState<{ clave: string | null; metodo: "email" | "google" } | null>(null);
   const pasoActual = useRef<Paso>("elegir");
   pasoActual.current = paso;
   const campoCodigo = useRef<HTMLInputElement>(null);
@@ -195,7 +207,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     try {
       const res = await fetch("/api/deptos/correo", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: c, elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO } }),
+        body: JSON.stringify({ correo: c, elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO }, puerta: puerta.puerta }),
       });
       if (!res.ok) { setError(ALTA_COPY.error); return; }
       // Dejó su correo en la página de selección (o en la del invitado): el Lead y su puerta.
@@ -230,7 +242,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     try {
       const res = await fetch("/api/deptos/google", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO } }),
+        body: JSON.stringify({ elecciones: { comunas, tipologias: [tipologia], rango, modalidad: MODALIDAD_POR_DEFECTO }, puerta: puerta.puerta }),
       });
       const d = (await res.json().catch(() => ({}))) as { p?: string };
       if (!res.ok || !d.p) { setError(ALTA_COPY.error); return; }
@@ -247,9 +259,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     }
   }
 
-  const terminarAlta = useCallback(async (clave: string | null = null, metodo: "email" | "google" = "email") => {
-    const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}) });
-    const d = (await res.json().catch(() => ({}))) as { estado?: string; regaloVence?: string | null; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null };
+  // Lo que hace la pantalla con la respuesta del alta (venga de POST /api/deptos/alta o de POST /api/deptos/entrar).
+  const aplicarAlta = useCallback((d: RespuestaAlta, metodo: "email" | "google") => {
     // El header y lo que lea la sesión se refrescan: ya está adentro.
     router.refresh();
     if (d.estado === "nueva") {
@@ -270,6 +281,18 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     if (pasoActual.current === "dentro") return;
     router.push("/dashboard");
   }, [posthog, router]);
+
+  // Al volver por el enlace del correo o por Google: el alta, con tope y un reintento solo (entrada.ts). Si tampoco
+  // responde, la pantalla ofrece reintentarla (ya hay sesión: no hace falta otro código).
+  const terminarAlta = useCallback(async (clave: string | null = null, metodo: "email" | "google" = "email") => {
+    setAltaPorReintentar(null);
+    const r = await conTopeYReintento(async (senal) => {
+      const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}), signal: senal });
+      return (await res.json().catch(() => ({}))) as RespuestaAlta;
+    });
+    if (!r.ok) { setAltaPorReintentar({ clave, metodo }); return; }
+    aplicarAlta(r.valor, metodo);
+  }, [aplicarAlta]);
 
   // Volvió por el enlace del correo o de Google, con sesión: termina el alta acá. Con Google, el Lead sale ahora (recién se
   // sabe el correo), igual que cuando se deja el correo; la clave va por si el callback no alcanzó a pasar lo elegido.
@@ -296,14 +319,19 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     const t = limpiarCodigo(codigo);
     if (!codigoValido(t) || !enviado) { setError(REGISTRO_UN_PASO.errorCodigo); return; }
     setError(null);
+    setFalloEntrar(false);
     setOcupado(true);
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { error: err } = await supabase.auth.verifyOtp({ email: enviado, token: t, type: "email" });
-      if (err) { setError(REGISTRO_UN_PASO.errorCodigoMal); return; }
+      // El código se verifica EN EL SERVIDOR y el alta corre en el mismo pedido (POST /api/deptos/entrar), con tope y un
+      // reintento solo: si una respuesta se pierde, el mismo código repone la sesión y trae el alta ya hecha (22-oct-2026).
+      const r = await conTopeYReintento(async (senal) => {
+        const res = await fetch("/api/deptos/entrar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo: enviado, codigo: t }), signal: senal });
+        return { status: res.status, d: (await res.json().catch(() => ({}))) as RespuestaAlta };
+      });
+      if (!r.ok || r.valor.status >= 500 || r.valor.status === 401) { setFalloEntrar(true); return; }
+      if (r.valor.d.error === "codigo") { setError(REGISTRO_UN_PASO.errorCodigoMal); return; }
       altaPedida.current = true;
-      await terminarAlta();
+      aplicarAlta(r.valor.d, "email");
     } finally {
       setOcupado(false);
     }
@@ -480,6 +508,13 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       {cabecera}
       <h1 className="dp-que" data-deptos="que">{DEPTOS_COPY.que(portada?.noche?.revisados ?? null, portada?.noche?.convienen ?? null)}</h1>
 
+      {/* De vuelta por el enlace o por Google, el alta no respondió (22-oct-2026): ya hay sesión, se reintenta sin código. */}
+      {altaPorReintentar && (
+        <div className="dp-bloque" data-deptos="alta-fallida">
+          <button type="button" className="dp-boton" onClick={() => void terminarAlta(altaPorReintentar.clave, altaPorReintentar.metodo)}>{ENTRAR_COPY.noPudimos}</button>
+        </div>
+      )}
+
       {/* SIN COMUNA, SIN NÚMERO NI CORREO (21-oct-2026): primero la elige la persona. */}
       {conComuna && (<>
       <section className="dp-respuesta" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
@@ -503,7 +538,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
             <div className="dp-fila">
               <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
                 aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
-              <button type="submit" className="dp-boton" disabled={ocupado}>{REGISTRO_UN_PASO.entrar}</button>
+              <button type="submit" className="dp-boton" disabled={ocupado} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>
             </div>
           </form>
         ) : (

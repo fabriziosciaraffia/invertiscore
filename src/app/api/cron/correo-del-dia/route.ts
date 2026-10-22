@@ -6,6 +6,7 @@ import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { cuentasPruebaSinCorreo, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 import { delDiaPendientes, procesarDelDia } from "@/lib/guia/del-dia-servidor";
+import { avisarAltasPerdidas } from "@/lib/deptos/entrada-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La cola del correo del día (16-oct-2026, la puerta B; del-dia.ts): cada 10 minutos, las cuentas nuevas de /deptos cuyo
@@ -29,6 +30,14 @@ export async function GET(request: Request) {
   const admin = createServiceClient();
   await latirCron(admin, "correo-del-dia");
   const t0 = Date.now();
+  // LAS ALTAS PERDIDAS (22-oct-2026, entrada-servidor.ts): una entrada de /deptos verificada que no terminó en alta dentro
+  // del minuto sale a PostHog como `alta_perdida`, una vez. Va acá porque es el cron de /deptos; si falla, el correo sigue.
+  let altasPerdidas = 0;
+  try {
+    altasPerdidas = await avisarAltasPerdidas(admin);
+  } catch (e) {
+    capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "altas-perdidas" });
+  }
   try {
     const filas = await delDiaPendientes(admin);
     const cuenta = { enviada: 0, espera: 0, descartada: 0, ya: 0, fallida: 0 };
@@ -54,7 +63,7 @@ export async function GET(request: Request) {
     const procesadas = cuenta.enviada + cuenta.descartada + cuenta.espera + cuenta.fallida;
     // Una corrida sin nadie en la cola terminó bien: cuenta como una corrida exitosa.
     const conteo = procesadas === 0 ? { procesados: 1, exitosos: 1, fallidos: 0 } : { procesados: procesadas, exitosos: procesadas - cuenta.fallida, fallidos: cuenta.fallida };
-    return cerrarCron(admin, NOMBRE, conteo, { cola: filas.length, ...cuenta });
+    return cerrarCron(admin, NOMBRE, conteo, { cola: filas.length, ...cuenta, altasPerdidas });
   } catch (e) {
     capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
     return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e) });

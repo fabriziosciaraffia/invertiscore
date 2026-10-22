@@ -129,8 +129,11 @@ export interface Pendiente { correo: string; perfil: Record<string, unknown>; ex
 
 export const normalizarCorreo = (c: string) => c.trim().toLowerCase();
 
-export async function guardarPendiente(admin: SupabaseClient, correo: string, perfil: Record<string, unknown>, existe: boolean): Promise<void> {
-  const { error } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(correo), perfil, existe, creado_at: new Date().toISOString() }, { onConflict: "correo" });
+/** La puerta (B en /deptos, C en la página del invitado) queda con lo elegido desde el 22-oct-2026: la mide `alta_perdida`. */
+export const esPuertaDeptos = (x: unknown): x is "B" | "C" => x === "B" || x === "C";
+
+export async function guardarPendiente(admin: SupabaseClient, correo: string, perfil: Record<string, unknown>, existe: boolean, puerta: "B" | "C" | null = null): Promise<void> {
+  const { error } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(correo), perfil, existe, creado_at: new Date().toISOString(), puerta }, { onConflict: "correo" });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-pendiente" });
   if (error) throw new Error(`pendiente: ${error.message}`);
 }
@@ -145,9 +148,9 @@ export async function leerPendiente(admin: SupabaseClient, correo: string): Prom
  * ANTES DE IRSE A GOOGLE (16-oct-2026): lo elegido queda con una clave al azar —todavía no se sabe el correo—, con la
  * hora del servidor (la del «pedido», para saber después si la cuenta nació con esta entrada). Devuelve la clave.
  */
-export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Record<string, unknown>): Promise<string> {
+export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Record<string, unknown>, puerta: "B" | "C" | null = null): Promise<string> {
   const clave = randomBytes(16).toString("hex");
-  const { error } = await admin.from("deptos_pendientes").insert({ correo: `${PREFIJO_GOOGLE}${clave}`, perfil, existe: false, creado_at: new Date().toISOString() });
+  const { error } = await admin.from("deptos_pendientes").insert({ correo: `${PREFIJO_GOOGLE}${clave}`, perfil, existe: false, creado_at: new Date().toISOString(), puerta });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-pendiente-google" });
   if (error) throw new Error(`pendiente google: ${error.message}`);
   return clave;
@@ -161,12 +164,12 @@ export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Reco
 export async function reclavarPendienteGoogle(admin: SupabaseClient, p: { clave: string; correo: string; cuentaCreadaAt: string | null | undefined }): Promise<boolean> {
   if (!CLAVE_GOOGLE.test(p.clave)) return false;
   const llave = `${PREFIJO_GOOGLE}${p.clave}`;
-  const { data, error } = await admin.from("deptos_pendientes").select("perfil, creado_at").eq("correo", llave).maybeSingle();
+  const { data, error } = await admin.from("deptos_pendientes").select("perfil, creado_at, puerta").eq("correo", llave).maybeSingle();
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente-google" });
   if (!data) return false;
   const pedidoAt = data.creado_at as string;
   const existe = tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: p.cuentaCreadaAt, pedidoAt }) === "existente";
-  const { error: e2 } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(p.correo), perfil: data.perfil, existe, creado_at: pedidoAt }, { onConflict: "correo" });
+  const { error: e2 } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(p.correo), perfil: data.perfil, existe, creado_at: pedidoAt, puerta: data.puerta ?? null }, { onConflict: "correo" });
   reportarFalloQuery(e2, { ruta: RUTA, operacion: "reclavar-pendiente-google" });
   if (e2) return false;
   await admin.from("deptos_pendientes").delete().eq("correo", llave);

@@ -38,19 +38,25 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
   useEffect(() => {
     setPuedeCompartir(typeof navigator !== "undefined" && typeof navigator.share === "function");
     let vivo = true;
+    // AL IRSE DE LA PÁGINA, EL PEDIDO SE CORTA ACÁ (22-oct-2026, QA en WebKit): si el dashboard se deja antes de que
+    // responda, el navegador lo cancelaba y Safari lo anotaba en la consola como error («…due to access control checks»).
+    // Cortado por la página —al desmontar o al salir—, es un AbortError que no se dice ni se anota.
+    const control = new AbortController();
+    const cortar = () => control.abort();
+    window.addEventListener("pagehide", cortar);
     void (async () => {
       try {
-        const res = await fetch("/api/invitacion", { cache: "no-store" });
+        const res = await fetch("/api/invitacion", { cache: "no-store", signal: control.signal });
         if (!res.ok) { if (vivo) setError(REFERIDO_COPY.error); return; }
         const d = (await res.json()) as DatosInvitacion;
         if (!vivo) return;
         setDatos(d);
         setNombre(d.nombreSugerido ?? "");
       } catch {
-        if (vivo) setError(REFERIDO_COPY.error);
+        if (vivo && !control.signal.aborted) setError(REFERIDO_COPY.error);
       }
     })();
-    return () => { vivo = false; };
+    return () => { vivo = false; window.removeEventListener("pagehide", cortar); control.abort(); };
   }, []);
 
   async function pedir(body: { conNombre: boolean; nombre?: string }) {

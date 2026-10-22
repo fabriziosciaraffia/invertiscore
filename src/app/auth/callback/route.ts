@@ -10,7 +10,9 @@ import { ensureWelcomeEmail } from "@/lib/welcome";
 import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { claveDeDestino } from "@/lib/deptos/respuesta";
-import { reclavarPendienteGoogle } from "@/lib/deptos/servidor";
+import { leerPendiente, reclavarPendienteGoogle } from "@/lib/deptos/servidor";
+import { metodoDeEntrada } from "@/lib/deptos/entrada";
+import { registrarEntrada } from "@/lib/deptos/entrada-servidor";
 import { COOKIE_INVITACION_USADA, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
 import { waitUntil } from "@vercel/functions";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
@@ -77,6 +79,18 @@ export async function GET(request: Request) {
       if (clave && user?.email) await reclavarPendienteGoogle(createAdminServiceClient(), { clave, correo: user.email, cuentaCreadaAt: user.created_at });
     } catch (e) {
       console.error("[auth/callback] lo elegido en /deptos:", e);
+    }
+    // LA ENTRADA A /deptos POR EL ENLACE O POR GOOGLE (22-oct-2026): queda registrada (deptos_entradas) si hay algo elegido
+    // a su nombre; si el alta no llega dentro del minuto, cuenta como `alta_perdida` (lib/deptos/entrada-servidor.ts).
+    try {
+      const metodo = metodoDeEntrada(next);
+      const user = sessionData?.user;
+      if (metodo && user?.email) {
+        const adminEntrada = createAdminServiceClient();
+        if (await leerPendiente(adminEntrada, user.email)) await registrarEntrada(adminEntrada, { correo: user.email, userId: user.id, metodo });
+      }
+    } catch (e) {
+      console.error("[auth/callback] entrada de /deptos:", e);
     }
 
     // CompleteRegistration ya no sale acá (15-oct-2026): desde la medición para la campaña sale cuando la persona,
