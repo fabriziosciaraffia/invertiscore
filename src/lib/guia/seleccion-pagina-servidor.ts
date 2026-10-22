@@ -3,7 +3,8 @@
 // semanal, la del correo del día y la de un aviso inmediato— vive en el dashboard, como tarjetas con «Analizar este». El
 // enlace del correo entra con el token y aterriza ahí, con el depto clicado arriba; /semanal redirige al dashboard. Esto
 // es lo que hacía la página /semanal, sacado a un solo cargador: la selección viva (el caído trae su reemplazo), los dos
-// bloques, las finanzas del aviso antes de gastar, el saldo y lo ya analizado.
+// bloques, las finanzas del aviso antes de gastar, el saldo y lo ya analizado. «¿Cuándo piensas comprar?» ya no va arriba:
+// en el dashboard la pregunta el perfil de la casa (PerfilBusquedaCasa), a quien nunca la contestó, y no se repite.
 // LO YA ANALIZADO, EN VIVO: en renta larga se lee de los informes de la persona hechos desde un aviso
 // (`input_data.origenAviso.avisoId`), no solo de lo que la selección traía al armarse; así, al volver del informe, la
 // tarjeta ya dice «Ya lo analizaste · Ver informe», también en la primera selección del día.
@@ -11,7 +12,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { bloqueDelDestacado, type FilaPaginaSemanal } from "@/lib/guia/semanal";
@@ -40,7 +40,6 @@ export interface SeleccionPagina {
   saldo: EstadoSaldo;
   /** Sin saldo, el pack va al precio del ticket: la cuenta tiene menos de 24 horas y no lo pagó (compra-desde-depto.ts). */
   ticket: boolean;
-  preguntarCuando: boolean;
   destacado: string | null;
   largo: BloquePagina | null;
   corto: BloquePagina | null;
@@ -80,7 +79,7 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   if (!sel) return null;
   const otraCuenta = sel.user_id !== userId;
   if (otraCuenta) {
-    return { otraCuenta, token: sel.token, fuente: sel.fuente, variante: sel.variante, saldo: { tipo: "sin" }, ticket: false, preguntarCuando: false, destacado: null, largo: null, corto: null, cortoPrimero: false };
+    return { otraCuenta, token: sel.token, fuente: sel.fuente, variante: sel.variante, saldo: { tipo: "sin" }, ticket: false, destacado: null, largo: null, corto: null, cortoPrimero: false };
   }
   const cfg = await leerConfigGuia(admin);
   const tabla = sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones";
@@ -92,10 +91,9 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   const primero = <F extends { item: { avisoId: string } }>(fs: F[]) => (a ? [...fs.filter((f) => f.item.avisoId === a), ...fs.filter((f) => f.item.avisoId !== a)] : fs);
   const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
   const idsCortos = filasCortas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);
-  const [datosSaldo, ticket, perfilPersona, finanzas, finanzasCorto, noDan, informesCortos, informesLargos] = await Promise.all([
+  const [datosSaldo, ticket, finanzas, finanzasCorto, noDan, informesCortos, informesLargos] = await Promise.all([
     leerSaldo(admin, userId),
     ticketDeCuentaDisponible(admin, user),
-    leerPerfilBusqueda(admin, userId),
     finanzasDeSeleccion(admin, sel.origen_analysis_id, ids, cfg.uf, cfg.tasa),
     sel.corto ? finanzasDeSeleccion(admin, sel.corto.origenId, [], cfg.uf, cfg.tasa) : Promise.resolve(null),
     sel.corto ? noDanEnRentaCorta(admin, userId, idsCortos) : Promise.resolve([] as string[]),
@@ -111,7 +109,6 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
     variante: sel.variante,
     saldo: estadoSaldo(datosSaldo),
     ticket,
-    preguntarCuando: perfilPersona.perfil.horizonte == null,
     destacado: a,
     largo: sel.conLargo ? { origenId: sel.origen_analysis_id, combinacion: sel.combinacion, filas: primero(filas), finanzas, noDan: [], informes: informesLargos } : null,
     corto: sel.corto ? {

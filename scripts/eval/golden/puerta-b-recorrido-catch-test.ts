@@ -170,6 +170,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const dash = codigo("src/app/dashboard/page.tsx");
     const enCasa = codigo("src/app/dashboard/seleccion-en-casa.tsx");
     if (!enCasa || !/<SemanalLista/.test(enCasa)) F("3 · el dashboard no dibuja la selección con las tarjetas de la selección (SemanalLista)");
+    // El banner de arriba ya marca su lista con `data-casa="seleccion"`: el bloque de tarjetas lleva la suya (visto en el QA).
+    if (/data-casa="seleccion"/.test(enCasa) || (enCasa.match(/data-casa="tarjetas"/g) ?? []).length !== 3) F("3 · el bloque de tarjetas usa la misma marca que la lista del banner");
     if ((dash.match(/<SeleccionEnCasa sel=\{sel\}/g) ?? []).length < 2) F("3 · la selección como tarjetas no está en las dos ramas del dashboard (sin informes y con informes)");
     if (casaSel.SELECCION_CASA.href !== "#seleccion" || !/id: SELECCION_CASA\.ancla/.test(enCasa)) F(`3 · «Ver tu selección» no baja a la selección del dashboard (href ${casaSel.SELECCION_CASA.href})`);
     for (const p of ["src/app/semanal/semanal-lista.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/dashboard/seleccion-en-casa.tsx", "src/app/dashboard/casa.tsx", "src/app/dashboard/page.tsx"]) {

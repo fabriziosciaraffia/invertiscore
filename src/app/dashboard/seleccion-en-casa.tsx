@@ -4,10 +4,10 @@
 // que tenía /semanal (SemanalLista), con «Analizar este», el aviso antes de gastar y «Ya lo analizaste · Ver informe» en
 // vivo. El banner de arriba baja hasta acá (#seleccion); /semanal y el clic del correo redirigen acá, con el depto clicado
 // arriba. Sin selección con deptos todavía, la cuenta sin informes ve la primera selección, que pregunta sola mientras el
-// correo del día revisa las fichas (PrimeraSeleccion).
+// correo del día revisa las fichas (PrimeraSeleccion). «¿Cuándo piensas comprar?» no va acá: el perfil de la casa ya la hace
+// a quien nunca la contestó, y dos veces en la misma página sobraba (visto en el QA del 22-oct-2026).
 // ─────────────────────────────────────────────────────────────────────────────
 import { SemanalLista } from "@/app/semanal/semanal-lista";
-import { PreguntaCuando } from "@/app/semanal/pregunta-cuando";
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { SEMANAL_STR } from "@/lib/guia/semanal-str";
@@ -24,13 +24,13 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
   const ancla = { id: SELECCION_CASA.ancla, className: "ca-plano-sec", style: { scrollMarginTop: 72 } };
   if (sel?.otraCuenta) {
     return (
-      <div {...ancla} data-casa="seleccion">
+      <div {...ancla} data-casa="tarjetas">
         <p className="text-[15px]" role="alert" data-semanal="otra-cuenta">{SEMANAL_PAGINA.otraCuenta}</p>
       </div>
     );
   }
   if (!hayDeptos(sel)) {
-    return primera ? <div {...ancla} data-casa="seleccion" data-fuente="primera"><PrimeraSeleccion /></div> : null;
+    return primera ? <div {...ancla} data-casa="tarjetas" data-fuente="primera"><PrimeraSeleccion /></div> : null;
   }
   const dosBloques = !!sel.largo && !!sel.corto;
   const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, autoAnalizar, enCasa: true };
@@ -64,8 +64,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
     />
   );
   return (
-    <div {...ancla} data-casa="seleccion" data-fuente={sel.fuente}>
-      {sel.preguntarCuando && <PreguntaCuando />}
+    <div {...ancla} data-casa="tarjetas" data-fuente={sel.fuente}>
       {sel.cortoPrimero ? <>{listaCorta}{listaLarga}</> : <>{listaLarga}{listaCorta}</>}
     </div>
   );

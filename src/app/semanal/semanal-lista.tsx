@@ -275,7 +275,8 @@ export function SemanalLista({
 
   return (
     <section className="guia" data-semanal="lista" data-modalidad={modalidad}>
-      {conTitulo && (enCasa ? <h2 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h2> : <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>)}
+      {/* En la casa, un título de sección plano como «Tu perfil de búsqueda» y «Tus informes» (casa.css), no otro titular. */}
+      {conTitulo && (enCasa ? <h2 className="ca-plano-t" data-semanal="titulo">{SEMANAL_PAGINA.titulo}</h2> : <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>)}
       {bloque && <h2 className="guia-bloque" data-semanal="bloque">{bloque}</h2>}
       {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
       {corta && <p className="guia-txt" data-semanal="zona">{SEMANAL_STR.zona}</p>}

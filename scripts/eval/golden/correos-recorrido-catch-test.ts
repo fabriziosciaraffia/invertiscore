@@ -190,14 +190,16 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const alDepto = "/dashboard?t=0123456789abcdef0123456789abcdef&a=a2&analizar=1";
   if (!/producto === PRODUCTO_TRES \|\| producto === PRODUCTO_PACK\s*\? TRES_COPY\.listo/.test(retorno) || !/: botonTrasPagar\(volver\);/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar(alDepto).href !== alDepto || botonTrasPagar("/dashboard").texto !== "Ver mis análisis") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
 
-  // ── 7 · «¿Cuándo piensas comprar?» arriba de la página semanal ──────────────
-  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la pregunta va arriba de la selección, que vive en el dashboard (seleccion-en-casa.tsx).
-  const pagina = sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx")) + sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts"));
-  // ⚠ ACTA (19-oct-2026) · las dos listas se arman antes y se ordenan según el depto clicado (SEMANAL-STR §6); la pregunta
-  // sigue arriba de las dos.
-  if (!/preguntarCuando: perfilPersona\.perfil\.horizonte == null,/.test(pagina) || !/\{sel\.preguntarCuando && <PreguntaCuando \/>\}\s*\{sel\.cortoPrimero \? <>\{listaCorta\}\{listaLarga\}<\/> : <>\{listaLarga\}\{listaCorta\}<\/>\}/.test(pagina)) F("7 · la página semanal no pregunta «¿Cuándo piensas comprar?» arriba a quien nunca contestó");
-  const pregunta = sinComentarios(leer("src/app/semanal/pregunta-cuando.tsx"));
-  if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^)]*body: JSON\.stringify\(\{ horizonte: h \}\) \}\)/.test(pregunta) || !/if \(res\.ok\) setListo\(true\);/.test(pregunta) || !/if \(listo\) return null;/.test(pregunta)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
+  // ── 7 · «¿Cuándo piensas comprar?», una vez, a quien nunca la contestó ─────────
+  // ⚠ ACTA (22-oct-2026, QA del recorrido real de la puerta B) · la selección vive en el dashboard, y ahí el perfil de la casa
+  // (PerfilBusquedaCasa) ya hace la pregunta a quien no la contestó; la de arriba de la selección la repetía en la misma
+  // página. Se retiró (pregunta-cuando.tsx, reemplazado). La regla no cambia: una vez, solo sin respuesta, se guarda en el
+  // perfil y desaparece (queda «Respondido · Cambiar»).
+  const pagina = sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
+  const casaPerfil = sinComentarios(leer("src/app/dashboard/casa.tsx"));
+  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte;/.test(casaPerfil) || !/\{preguntar \? \(\s*<div data-casa="horizonte">\s*<p [^>]*>\{CASA\.perfil\.cuando\}<\/p>/.test(casaPerfil)) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
+  if (/PreguntaCuando|CASA\.perfil\.cuando|¿Cuándo piensas comprar\?/.test(pagina)) F("7 · la selección repite la pregunta del perfil en la misma página");
+  if (!/onClick=\{\(\) => \{ setCambiandoHorizonte\(false\); void cambiar\(\{ horizonte: h \}, \{ horizonte: h \}\); \}\}/.test(casaPerfil) || !/data-casa="horizonte-respondido"/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");
 
   // ── 11 · renta corta: la línea provisoria salió (14-oct-2026) ─────────────────
