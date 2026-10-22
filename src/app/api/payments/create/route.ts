@@ -13,6 +13,8 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { randomUUID } from "crypto";
 import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
 import { contextoDeRequest, guardarContextoMeta } from "@/lib/meta/servidor";
+import { ticketDeCuenta } from "@/lib/guia/compra-desde-depto";
+import { packPagadoPorCuenta } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -94,10 +96,14 @@ export async function POST(request: Request) {
   let analysisComuna: string | null = null;
   let veredictoPack: string | null = null;
   let modalidadPack: "ltr" | "str" = "ltr";
-  // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado. Sin
-  // analysisId no hay pack; vencido, se rechaza con 410 y queda medido (`pack_vencido`).
-  if (product === PRODUCTO_PACK && !analysisId) {
-    return NextResponse.json({ error: "El pack va con tu informe" }, { status: 400 });
+  // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado; vencido, se rechaza con 410 y
+  // queda medido (`pack_vencido`). EL TICKET DE LA CUENTA NUEVA (21-oct-2026, lib/guia/compra-desde-depto.ts): también
+  // vale mientras la cuenta tenga menos de 24 horas, con o sin informe atado (el pop-up sin saldo de la selección), una
+  // vez por cuenta.
+  const ticketCuenta = product === PRODUCTO_PACK && ticketDeCuenta(user.created_at)
+    && !(await packPagadoPorCuenta(createAdminClient(), user.id));
+  if (product === PRODUCTO_PACK && !analysisId && !ticketCuenta) {
+    return NextResponse.json({ error: "pack_vencido" }, { status: 410 });
   }
   if (analysisId) {
     const admin = createAdminClient();
@@ -115,7 +121,7 @@ export async function POST(request: Request) {
       if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
       veredictoPack = readVeredicto(analysis.results as never) ?? null;
       modalidadPack = modalidadDeTipo(analysis.tipo_analisis as string);
-      if (!ofertaPackVigente(analysis.created_at as string)) {
+      if (!ofertaPackVigente(analysis.created_at as string) && !ticketCuenta) {
         try {
           await capturarServidor(eventoPackVencido({ userId: user.id, analysisId, veredicto: readVeredicto(analysis.results as never) ?? null }));
         } catch (e) {
@@ -144,9 +150,11 @@ export async function POST(request: Request) {
     subject = `Franco — Informe completo ${analysisComuna}`;
   }
   const commerceOrder = `franco-${randomUUID()}`;
-  // El pack de tres (13-oct-2026): de dónde se compró y adónde vuelve.
+  // El pack de tres (13-oct-2026): de dónde se compró y adónde vuelve. Desde el 21-oct-2026 también vuelven el pack del
+  // ticket y el suelto comprados desde un depto de la selección (sin informe atado): al dashboard, con ese depto.
   const esTres = product === PRODUCTO_TRES;
-  const volverTres = esTres ? volverSeguro(volverBody) : null;
+  const conVuelta = esTres || ((product === PRODUCTO_PACK || product === "single") && !analysisId);
+  const volverTres = conVuelta ? volverSeguro(volverBody) : null;
   const origenTres = esTres && esOrigenTres(origenBody) && origenBody !== "semanal" && origenBody !== "inmediato" ? origenBody : null;
 
   try {

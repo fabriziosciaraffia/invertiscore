@@ -4,12 +4,31 @@
 // Quien no tiene análisis compra el pack de tres por $19.990 (13-oct-2026, decisión de Fabrizio; lib/tres-analisis.ts),
 // con el suelto debajo. El ticket de $14.990 (pack3) sigue solo en el ticket, para el usuario nuevo en sus 24 horas
 // (lo fija el tier CASA). El tier también fija cada frase.
+// EL TICKET DE LA CUENTA NUEVA (21-oct-2026, recorrido real de Fabrizio por la puerta B): desde esa fecha el ticket es de
+// toda cuenta nueva, por cualquier puerta, mientras tenga menos de 24 horas (lib/guia/compra-desde-depto.ts). Sin saldo,
+// la casa ofrece el pack al mismo precio que el pop-up de la selección (packDeCasa): $14.990 en esas 24 horas.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
-import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { rutaTres, TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { urlCompra } from "@/lib/compra/compra";
+import { COMPRA_DEPTO } from "@/lib/guia/compra-desde-depto";
 
 const SUELTO = fmtCLP(SINGLE_PRICE);
+
+/** Sin saldo, el pack que ofrece la casa —el banner y la línea del saldo—: el de tres, o el del ticket si la cuenta tiene
+ *  menos de 24 horas y no lo pagó. Vuelve al dashboard después de pagar. */
+export function packDeCasa(ticket: boolean): { href: string; boton: string; bajada: string; bajadaPrimero: string } {
+  if (!ticket) return { href: rutaTres("dashboard", { volver: "/dashboard" }), boton: CASA.sin.boton, bajada: CASA.sin.bajada, bajadaPrimero: CASA.sin.bajadaPrimero };
+  const precio = fmtCLP(PACK_PRECIO_CLP);
+  return {
+    href: urlCompra({ product: PRODUCTO_PACK, volver: "/dashboard" }),
+    boton: COMPRA_DEPTO.pack(PACK_PRECIO_CLP),
+    bajada: `Para analizar otros: 3 análisis por ${precio}, sin caducidad.`,
+    bajadaPrimero: `Para analizar un depto: 3 análisis por ${precio}, sin caducidad.`,
+  };
+}
 
 export const CASA = {
   saludo: (nombre: string | null) => (nombre ? `Hola, ${nombre}.` : "Hola."),

@@ -10,7 +10,7 @@ import type { MotivoSubida } from "./disparo-ticket";
 import { lineaEvento, type EventoTicket } from "./bitacora-ticket";
 
 /** Por qué hay o no hay oferta, según el servidor (`leerOfertaPack`). La vigencia (24 h) la mira el cliente. */
-export type MotivoOferta = "ofrecida" | "no-dueno" | "no-nacio-anonimo" | "pack-pagado" | "demo";
+export type MotivoOferta = "ofrecida" | "cuenta-nueva" | "no-dueno" | "no-nacio-anonimo" | "pack-pagado" | "demo";
 
 /** Lo que el ticket sabe mientras corre. */
 export interface EstadoTicketVivo {
@@ -75,14 +75,14 @@ export function lineasDiagnostico(p: {
   if (p.motivo === "no-dueno") return ["Ticket: no te reconoce como dueño de este informe (sin la cookie de tu navegador o sin tu sesión)."];
   const l: string[] = [];
   if (p.motivo === "demo") l.push("Oferta: no, es el informe de ejemplo.");
-  else if (p.motivo === "no-nacio-anonimo") l.push("Oferta: no, este informe no nació anónimo.");
+  else if (p.motivo === "no-nacio-anonimo") l.push("Oferta: no, este informe no nació anónimo ni es el primero de una cuenta nueva.");
   else if (p.motivo === "pack-pagado") l.push("Oferta: no, el pack de este informe ya está pagado.");
-  else l.push(p.vigente ? `Oferta: vigente hasta las ${p.venceHora}.` : `Oferta: vencida a las ${p.venceHora}.`);
+  else l.push(`${p.vigente ? `Oferta: vigente hasta las ${p.venceHora}` : `Oferta: vencida a las ${p.venceHora}`}${p.motivo === "cuenta-nueva" ? " (el primer informe de una cuenta nueva: 24 horas desde la cuenta)" : ""}.`);
   // Los últimos eventos, del más nuevo al más viejo (12-oct-2026): con eso se ve si se abrió, si estuvo en pantalla y
   // por dónde se cerró, aunque la oferta ya no esté.
   const historia = (p.eventos ?? []).slice(-6).reverse().map((e) => `  ${lineaEvento(e)}`);
   const conHistoria = () => (historia.length ? [...l, "Últimos eventos:", ...historia] : l);
-  if (p.motivo !== "ofrecida" || !p.vigente) return conHistoria();
+  if ((p.motivo !== "ofrecida" && p.motivo !== "cuenta-nueva") || !p.vigente) return conHistoria();
   l.push(`En este navegador: ${p.estadoLocal === "nunca" ? "nunca se mostró" : p.estadoLocal === "visto" ? "ya se mostró" : "se mostró y se cerró"}${p.regreso ? " · vuelve: no se abre solo" : ""}.`);
   l.push(p.bannerMontado ? (p.hojaAbierta ? "Banner: la hoja con tus primeros deptos está abierta; el ticket espera a que se cierre." : p.bannerLibreEnMs > 0 ? `Banner: en uso, se libera en ${seg(p.bannerLibreEnMs)}.` : "Banner: libre.") : "Banner: no está en este informe.");
   const v = p.vivo;

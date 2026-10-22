@@ -8,8 +8,12 @@ import { resumenCompra } from "@/lib/compra/compra";
 import { leerReanalisis } from "@/lib/reanalisis";
 import { direccionCorta } from "@/components/entrada/llegada";
 import { PRODUCTO_PLAN } from "@/lib/planes";
-import { PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { PRODUCTO_PACK, venceEl } from "@/lib/lo-que-sigue/oferta-pack";
 import { PRODUCTO_TRES, esOrigenTres, volverSeguro } from "@/lib/tres-analisis";
+import { deptoDeVolver } from "@/lib/guia/compra-desde-depto";
+import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
+import { seleccionPorToken } from "@/lib/guia/semanal-servidor";
+import { createServiceClient } from "@/lib/supabase/service";
 import { CompraCliente } from "./compra-cliente";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,6 +25,8 @@ import { CompraCliente } from "./compra-cliente";
 // Llegan acá: la página de planes (pack, suelto y plan), «Analizar este» sin saldo de la página semanal y de la guía (el
 // pack de tres, con su origen y su vuelta), el dashboard, los correos, el paso 4 del wizard (un análisis atado) y el
 // ticket del primer informe (el pack de 24 horas). Lo fija el tier COMPRA.
+// DESDE UN DEPTO DE LA SELECCIÓN (21-oct-2026, lib/guia/compra-desde-depto.ts): el pack —al precio del ticket si la cuenta
+// tiene menos de 24 horas— y el suelto llegan con la vuelta a ese depto, y la pantalla dice cuál es.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
@@ -46,7 +52,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
   const esTres = productKey === PRODUCTO_TRES;
   const origenParam = uno(searchParams, "origen");
   const origen = origenParam === "semanal" ? "semanal" : origenParam === "inmediato" ? "inmediato" : esTres && esOrigenTres(origenParam) ? origenParam : null;
-  const volver = esTres ? volverSeguro(uno(searchParams, "volver")) : null;
+  const conVuelta = esTres || ((productKey === PRODUCTO_PACK || productKey === "single") && !analysisId);
+  const volver = conVuelta ? volverSeguro(uno(searchParams, "volver")) : null;
   const varianteParam = uno(searchParams, "variante");
   const varianteCorreo = origen === "semanal" && (varianteParam === "banda" || varianteParam === "tarjetas") ? varianteParam : null;
 
@@ -62,6 +69,19 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
   const dirAtado = (atado?.input_data as Record<string, unknown> | null)?.direccion;
   const reanalisis = marca ? { direccion: typeof dirAtado === "string" && dirAtado.trim() ? direccionCorta(dirAtado) : null, precioUF: marca.precioRecomendadoUF } : null;
   const resumen = resumenCompra(productKey, { analysisId, companionStrId, comuna, reanalisis });
+
+  // El depto de la vuelta, si es de su selección: «Para analizar Santiago · 2D · 54 m² · UF 3.450».
+  const deVuelta = user ? deptoDeVolver(volver) : null;
+  const admin = deVuelta || (user && productKey === PRODUCTO_PACK && !analysisId) ? createServiceClient() : null;
+  const sel = deVuelta && admin ? await seleccionPorToken(admin, deVuelta.t) : null;
+  const itemDepto = sel && sel.user_id === user?.id ? [...sel.items, ...(sel.corto?.items ?? [])].find((i) => i.avisoId === deVuelta?.a) ?? null : null;
+  const depto = itemDepto
+    ? [itemDepto.comuna, itemDepto.tipologia, itemDepto.m2 > 0 ? `${Math.round(itemDepto.m2).toLocaleString("es-CL")} m²` : null, `UF ${Math.round(itemDepto.precioUF).toLocaleString("es-CL")}`].filter(Boolean).join(" · ")
+    : null;
+  // El pack sin informe atado es el ticket de la cuenta nueva: la vigencia la dice el servidor, desde la cuenta.
+  const packCuenta = user && admin && productKey === PRODUCTO_PACK && !analysisId
+    ? { vigente: await ticketDeCuentaDisponible(admin, user), venceAt: venceEl(user.created_at).toISOString() }
+    : null;
 
   // Un producto que no existe o ya no se vende (19-oct-2026): «Plan no encontrado», sin pedir nada.
   if (!resumen) {
@@ -101,11 +121,14 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
           volver={volver}
           esTres={esTres}
           esPack={productKey === PRODUCTO_PACK}
+          packCuenta={packCuenta}
+          depto={depto}
           sesionEmail={user?.email ?? null}
           conPlan={conPlan}
           pagarAlEntrar={uno(searchParams, "pagar") === "1"}
           // «Volver» vuelve adonde estaba: desde planes, a planes (el `volver` de la compra es adónde ir DESPUÉS de pagar).
-          volverHref={origen === "planes" || !esTres ? "/pricing" : volver ?? "/dashboard"}
+          // Desde un depto, «Volver» lo deja en la selección sin analizarlo.
+          volverHref={origen === "planes" || (!esTres && !volver) ? "/pricing" : !volver ? "/dashboard" : deVuelta ? volver.replace(/&analizar=1/, "") : volver}
         />
       </main>
       <AppFooter variant="informe" />

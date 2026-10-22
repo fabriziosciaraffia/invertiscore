@@ -91,6 +91,8 @@ export interface PrimerDepto {
   vistoAt: string | null;
   /** Está en su selección del día: se puede analizar desde ahí (/semanal valida el aviso contra la selección). */
   enSeleccion?: boolean;
+  /** Ya lo analizó (21-oct-2026): su informe, leído en vivo. La tarjeta dice «Ya lo analizaste · Ver informe». */
+  informeId?: string | null;
 }
 
 export const MAX_PRIMEROS = 5;

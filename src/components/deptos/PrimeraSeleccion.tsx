@@ -8,6 +8,10 @@
 // página semanal—, y arriba «Tienes un análisis de regalo: elige uno». Mientras el correo del día revisa las fichas, la
 // pantalla vuelve a preguntar. Si el perfil no alcanza para armar una selección, pide los chips que falten en un toque
 // (PUT /api/perfil-busqueda) y se arma. Las tarjetas son las de la guía (guia.css); los chips, los de /deptos.
+// 21-oct-2026 (recorrido real de Fabrizio por la puerta B), igual que la selección del dashboard (semanal-lista.tsx): el
+// aviso queda abierto con «Franco está analizando este depto…» hasta que abre el informe; sin saldo, el pack —al precio
+// del ticket si la cuenta tiene menos de 24 horas— y «Comprar solo 1», de vuelta al dashboard con el depto; y el ya
+// analizado dice «Ya lo analizaste · Ver informe», también al volver atrás desde el informe (la pantalla se relee).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +19,10 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, tituloHoja, type FaltaDelPerfil } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
-import { rutaTres } from "@/lib/tres-analisis";
+import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { comprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { COMUNAS_DESTACADAS, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
@@ -31,9 +38,7 @@ const PREGUNTAS_MAX = 25;
 const ESPERA_EN_CURSO_MS = 4000;
 const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 
-export function PrimeraSeleccion({ volver, titulo = true }: {
-  /** Adónde vuelve el checkout del pack si no le quedan análisis (esta misma pantalla). */
-  volver: string;
+export function PrimeraSeleccion({ titulo = true }: {
   /** Sin el título de arriba (la casa lo pone ella). */
   titulo?: boolean;
 }) {
@@ -42,7 +47,7 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
   const [fallo, setFallo] = useState(false);
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
-  const [confirmar, setConfirmar] = useState<{ it: PrimerDepto; sin: boolean } | null>(null);
+  const [confirmar, setConfirmar] = useState<{ it: PrimerDepto; sin: boolean; analizando?: boolean } | null>(null);
   const [eleccion, setEleccion] = useState<{ comuna: string | null; tipologia: string | null; rango: string | null }>({ comuna: null, tipologia: null, rango: null });
   const [armando, setArmando] = useState(false);
   const vueltas = useRef(0);
@@ -67,7 +72,10 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
   useEffect(() => {
     vivo.current = true;
     void leer();
-    return () => { vivo.current = false; };
+    // De vuelta atrás desde el informe, restaurada del caché del navegador: se relee (el analizado, el saldo).
+    const alVolver = (e: PageTransitionEvent) => { if (e.persisted) { vueltas.current = 0; void leer(); } };
+    window.addEventListener("pageshow", alVolver);
+    return () => { vivo.current = false; window.removeEventListener("pageshow", alVolver); };
   }, [leer]);
 
   async function armar() {
@@ -92,6 +100,9 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
     if (!datos?.combinacion || !datos.token || generando) return;
     setError(null);
     setGenerando(it.avisoId);
+    // El aviso queda abierto, cargando, con la barra del header, hasta que abre el informe (21-oct-2026).
+    const soltar = iniciarCarga(claveActual());
+    setConfirmar({ it, sin: false, analizando: true });
     try {
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
@@ -103,20 +114,22 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
         if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
         // Se dio de baja recién, o la cola ya rearmó la selección sin este: se vuelve a pedir la lista.
-        if ((res.status === 410 && d.error === "despublicado") || d.error === "combinacion") { setDatos(null); await leer(); break; }
+        if ((res.status === 410 && d.error === "despublicado") || d.error === "combinacion") { setConfirmar(null); setDatos(null); await leer(); break; }
         if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); break; }
+        setConfirmar(null);
         setError({ avisoId: it.avisoId, texto: GUIA.error });
         break;
       }
     } catch {
+      setConfirmar(null);
       setError({ avisoId: it.avisoId, texto: GUIA.error });
     }
+    soltar();
     setGenerando(null);
   }
 
   const saldo = datos?.saldo;
   const usa = saldo?.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo?.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
-  const rutaCompra = (avisoId: string) => rutaTres("semanal", { volver: datos?.token ? `/semanal?t=${datos.token}&a=${avisoId}` : volver });
   const chip = (activo: boolean, texto: string, al: () => void, clave: string) => (
     <button key={clave} type="button" role="radio" className="dp-chip" aria-checked={activo} data-activo={activo ? "1" : undefined} onClick={al}>{texto}</button>
   );
@@ -219,7 +232,12 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
                     </div>
                     <p className="guia-cr mt-2.5" data-primera="marca">{it.vistoAt ? marcaVisto(it.vistoAt) : PRIMERA_SELECCION.porConfirmar}</p>
                     {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
-                    {puede && (
+                    {it.informeId ? (
+                      <div className="guia-acc" data-primera="ya-analizado">
+                        <span className="guia-cr">{YA_ANALIZADO.texto} ·</span>
+                        <EnlaceCarga href={`/analisis/${it.informeId}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
+                      </div>
+                    ) : puede && (
                       <div className="guia-acc">
                         <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined} data-primera="analizar">
                           {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
@@ -241,9 +259,11 @@ export function PrimeraSeleccion({ volver, titulo = true }: {
           combinacion={datos.combinacion}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
-          rutaCompra={rutaCompra(confirmar.it.avisoId)}
-          alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it); }}
-          alCancelar={() => setConfirmar(null)}
+          compras={datos.token ? comprasDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", ticket: !!datos.ticket }) : null}
+          rutaCompra="/dashboard"
+          analizando={!!confirmar.analizando}
+          alAnalizar={() => void analizar(confirmar.it)}
+          alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}
     </section>

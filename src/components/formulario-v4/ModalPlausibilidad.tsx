@@ -70,6 +70,13 @@ export interface ModalPlausibilidadProps {
   labelRevisar?: string;
   marca?: string;
   /**
+   * El aviso de la selección (21-oct-2026, recorrido real de Fabrizio por la puerta B): mientras se genera, el texto del
+   * primario («Franco está analizando este depto…»), y sin saldo, una segunda compra bajo el primario («Comprar solo 1 ·
+   * $9.990»). Sin ellas, el wizard se ve como siempre.
+   */
+  labelGenerando?: string;
+  secundario?: { label: string; onClick: () => void };
+  /**
    * Qué hace el modal cuando hay anomalías.
    *
    *  · "bloqueo" (default) — el del RESUMEN. Un solo botón, sin salida: el
@@ -100,6 +107,8 @@ export function ModalPlausibilidad({
   destacado,
   labelRevisar = "Revisar",
   marca,
+  labelGenerando = "Generando…",
+  secundario,
   modo = "bloqueo",
   onSeguir,
   submitting = false,
@@ -291,12 +300,19 @@ export function ModalPlausibilidad({
               <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting} className="wz-cta wz-cta-modal">
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Generando…
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> {labelGenerando}
                   </>
                 ) : (
                   labelConfirmar
                 )}
               </button>
+              {secundario && (
+                <div className="wz-lnk-fila" style={{ marginTop: 0 }}>
+                  <button type="button" onClick={secundario.onClick} disabled={submitting} className="wz-lnk" data-modal-secundario>
+                    {secundario.label}
+                  </button>
+                </div>
+              )}
               <button type="button" onClick={cerrar} disabled={submitting} className="wz-btn2">
                 {labelRevisar}
               </button>

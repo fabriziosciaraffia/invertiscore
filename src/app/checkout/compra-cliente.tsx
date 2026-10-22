@@ -21,6 +21,7 @@ import { CODIGO_MAX } from "@/lib/lo-que-sigue/codigo";
 import { diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
 import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
 import { COMPRA, urlCompra, type ResumenCompra } from "@/lib/compra/compra";
+import { COMPRA_DEPTO } from "@/lib/guia/compra-desde-depto";
 
 export function CompraCliente(props: {
   productKey: string;
@@ -32,6 +33,10 @@ export function CompraCliente(props: {
   volver: string | null;
   esTres: boolean;
   esPack: boolean;
+  /** El ticket de la cuenta nueva (21-oct-2026): el pack sin informe atado, con su vigencia dicha por el servidor. */
+  packCuenta?: { vigente: boolean; venceAt: string } | null;
+  /** El depto que se compra para analizar, si la compra salió de uno de la selección. */
+  depto?: string | null;
   sesionEmail: string | null;
   conPlan: boolean;
   pagarAlEntrar: boolean;
@@ -44,8 +49,8 @@ export function CompraCliente(props: {
   const entrada = useEntradaPorCodigo(urlCompra(estaCompra, true));
   const [sesion, setSesion] = useState<string | null>(props.sesionEmail);
 
-  // El pack de 24 horas: la vigencia la dice el servidor. null = todavía no se sabe.
-  const [oferta, setOferta] = useState<{ vigente: boolean; venceAt: string } | null>(null);
+  // El pack de 24 horas: la vigencia la dice el servidor. null = todavía no se sabe. El de la cuenta nueva ya llega dicho.
+  const [oferta, setOferta] = useState<{ vigente: boolean; venceAt: string } | null>(props.packCuenta ?? null);
   useEffect(() => {
     if (!esPack || !analysisId) return;
     let alive = true;
@@ -142,6 +147,11 @@ export function CompraCliente(props: {
         <span className="text-[14px] text-[var(--franco-text-secondary)]">{product.unidad}</span>
       </p>
       <p className={PLANO.bajada} data-compra="incluye">{product.incluye}</p>
+      {props.depto && (
+        <p className="mt-2 text-[14px] text-[var(--franco-text)]" data-compra="depto">
+          {COMPRA_DEPTO.paraDepto} <b>{props.depto}</b>
+        </p>
+      )}
       {esPack && packCreadoAt && (
         <p className={`mt-2 text-[14px] ${packVencido ? "text-[var(--signal-red)]" : "text-[var(--franco-text)]"}`} data-lqs="checkout-vence">
           {packVencido ? CHECKOUT_PACK.vencido : CHECKOUT_PACK.vence(diaVencimiento(packCreadoAt), horaVencimiento(packCreadoAt))}

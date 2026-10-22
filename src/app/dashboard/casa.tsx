@@ -18,8 +18,7 @@ import { ESTAS_DENTRO } from "@/lib/lo-que-sigue/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { ajusteDeParametro, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
-import { CASA } from "./casa-copy";
-import { rutaTres } from "@/lib/tres-analisis";
+import { CASA, packDeCasa } from "./casa-copy";
 import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
 import { RANGOS_UF } from "@/lib/deptos/respuesta";
 
@@ -28,8 +27,8 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 
 export const RUTA_SUELTO = "/checkout?product=single";
-/** Sin análisis, el dashboard ofrece el pack de tres (13-oct-2026) y vuelve al dashboard después de pagar. */
-export const RUTA_TRES_CASA = rutaTres("dashboard", { volver: "/dashboard" });
+// Sin análisis, el pack de tres (13-oct-2026) o, en las primeras 24 horas de la cuenta, el del ticket (21-oct-2026):
+// casa-copy.ts › packDeCasa. Vuelve al dashboard después de pagar.
 export const RUTA_NUEVO = "/analisis/nuevo-v4";
 
 
@@ -37,7 +36,9 @@ export const RUTA_NUEVO = "/analisis/nuevo-v4";
  * EL BLOQUE DE ARRIBA (17-oct-2026, decisión de Fabrizio): lo más importante según el estado, en banner —el material del
  * banner del informe, texto en papel, UN botón en papel—. Qué bloque, lo decide casa-arriba.ts › bloqueDeArriba.
  */
-export function BloqueArribaCasa({ bloque, informes }: { bloque: BloqueArriba; informes: number }) {
+export function BloqueArribaCasa({ bloque, informes, ticket = false }: { bloque: BloqueArriba; informes: number; ticket?: boolean }) {
+  // Sin saldo, el pack al precio del ticket si la cuenta es nueva (21-oct-2026, casa-copy.ts › packDeCasa).
+  const pack = packDeCasa(ticket);
   if (bloque.tipo === "seleccion") {
     return (
       <section className="ca-banda" data-casa="arriba" data-arriba="seleccion">
@@ -67,10 +68,10 @@ export function BloqueArribaCasa({ bloque, informes }: { bloque: BloqueArriba; i
     return (
       <section className="ca-banda" data-casa="arriba" data-arriba="pack">
         <h1 className="ca-banda-t">{CASA_ARRIBA.pack.titulo}</h1>
-        <p className="ca-banda-s">{informes === 0 ? CASA.sin.bajadaPrimero : CASA.sin.bajada}</p>
+        <p className="ca-banda-s">{informes === 0 ? pack.bajadaPrimero : pack.bajada}</p>
         <div className="ca-banda-fila">
-          <EnlaceCarga href={RUTA_TRES_CASA} className="ca-banda-btn" data-casa="comprar-tres">
-            {CASA.sin.boton}
+          <EnlaceCarga href={pack.href} className="ca-banda-btn" data-casa="comprar-tres" data-ticket={ticket ? "1" : undefined}>
+            {pack.boton}
           </EnlaceCarga>
         </div>
       </section>
@@ -106,8 +107,9 @@ export function BloqueArribaCasa({ bloque, informes }: { bloque: BloqueArriba; i
  * EL SALDO, PLANO (17-oct-2026): una línea, sin tarjeta ni botón grande, después del segundo nivel. Lo que el banner ya
  * dice no se repite: con el regalo arriba no hay línea; con el pack arriba, la línea lleva solo el suelto y los planes.
  */
-export function SaldoPlano({ estado, arriba }: { estado: EstadoSaldo; arriba: BloqueArriba["tipo"] }) {
+export function SaldoPlano({ estado, arriba, ticket = false }: { estado: EstadoSaldo; arriba: BloqueArriba["tipo"]; ticket?: boolean }) {
   if (estado.tipo === "regalo" && arriba === "regalo") return null;
+  const pack = packDeCasa(ticket);
   const linea =
     estado.tipo === "sin" ? CASA.sin.plano
     : estado.tipo === "regalo" ? `${CASA.regalo.titulo}${estado.vence ? ` ${textoVence(estado.vence)}` : ""}`
@@ -121,7 +123,7 @@ export function SaldoPlano({ estado, arriba }: { estado: EstadoSaldo; arriba: Bl
         {estado.tipo === "sin" && (
           <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             {arriba !== "pack" && (
-              <EnlaceCarga href={RUTA_TRES_CASA} className={enlace} data-casa="comprar-tres-plano">{CASA.sin.boton}</EnlaceCarga>
+              <EnlaceCarga href={pack.href} className={enlace} data-casa="comprar-tres-plano">{pack.boton}</EnlaceCarga>
             )}
             <EnlaceCarga href={RUTA_SUELTO} className={enlace} data-casa="comprar-suelto">
               {CASA.sin.suelto}

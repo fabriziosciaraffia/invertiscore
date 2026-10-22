@@ -9,6 +9,7 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { entrarConCorreo } from "@/lib/guia/entrada-correo";
 import { rutaTres } from "@/lib/tres-analisis";
 import { RUTA_SUELTO_INMEDIATO } from "@/lib/guia/inmediato";
+import { hrefSeleccion } from "@/lib/guia/seleccion-casa";
 import { waitUntil } from "@vercel/functions";
 import { EVENTOS_META, idSemanalClic } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
@@ -25,6 +26,8 @@ import type { EventoEspejo } from "@/lib/meta/espejo";
 // «SemanalClic» (15-oct-2026, medición para la campaña): el evento propio de Meta para públicos, uno por selección y
 // destino, desde el servidor (con el navegador de quien hizo clic) y con el espejo para el pixel en la redirección.
 // Desde el 19-oct-2026 el depto se reconoce en los DOS bloques (deptoDelClic) y `semanal_clic` lleva su bloque.
+// UNA SOLA PÁGINA (21-oct-2026, recorrido real de Fabrizio por la puerta B): el clic sigue midiéndose igual, pero aterriza
+// en el dashboard, en la selección, con el depto clicado arriba (hrefSeleccion); /semanal ya no es una página propia.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TOKEN = /^[0-9a-f]{20,80}$/i;
@@ -93,11 +96,11 @@ export async function GET(request: Request) {
     return volver(`/dashboard?ajuste=${encodeURIComponent(url.searchParams.get("que") ?? "")}#perfil`);
   }
   // El pack de tres (13-oct-2026): la línea del semanal a quien no tiene análisis; después de pagar vuelve a la selección.
-  if (ir === "tres") return volver(rutaTres(sel.fuente === "inmediato" ? "inmediato" : "semanal", { variante: sel.variante, volver: `/semanal?t=${t}` }));
+  if (ir === "tres") return volver(rutaTres(sel.fuente === "inmediato" ? "inmediato" : "semanal", { variante: sel.variante, volver: `/dashboard?t=${t}` }));
   // `ir=comprar`: el suelto, que es lo que ofrecían los correos que lo llevan (el semanal hasta el 13-oct y el inmediato).
   if (ir === "comprar" && sel.fuente === "inmediato") return volver(RUTA_SUELTO_INMEDIATO);
   if (ir === "comprar") return volver(rutaSueltoSemanal(sel.variante as "banda" | "tarjetas" | null));
-  if (!avisoId) return volver(`/semanal?t=${t}`);
+  if (!avisoId) return volver(hrefSeleccion(t));
   const estado = await chequearAlClic(admin, avisoId).catch(() => "sin-chequeo" as const);
-  return volver(`/semanal?t=${t}&a=${avisoId}${estado === "despublicado" ? "&d=1" : ""}`);
+  return volver(hrefSeleccion(t, avisoId, estado === "despublicado"));
 }

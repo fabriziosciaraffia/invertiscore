@@ -161,7 +161,7 @@ export function BannerRegistro({ ctx, next, perfil, demo = false, pasoInicial = 
       </div>
     </div>
     {/* Fuera de la cinta: `.lqs-mat > *` fija position: relative a sus hijos y el velo tiene que ser fixed. */}
-    {paso === "dentro" && !demo && <HojaPrimeraSeleccion abierta={hoja} analysisId={ctx.analysisId} alCerrar={() => setHoja(false)} />}
+    {paso === "dentro" && !demo && <HojaPrimeraSeleccion abierta={hoja} alCerrar={() => setHoja(false)} />}
     </>
   );
 }

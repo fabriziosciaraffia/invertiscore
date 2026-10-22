@@ -216,6 +216,8 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     esDemo: isDemo || modoDemo,
     correoSesion: user?.email ?? null,
     duenoId: analisis.user_id ?? null,
+    // El ticket de la cuenta nueva (21-oct-2026): el primer informe de una cuenta con menos de 24 horas, por cualquier puerta.
+    cuenta: isOwner && user ? { creadaAt: user.created_at ?? null, informeCreadoAt: analisis.created_at ?? null, ambasGroupId: analisis.ambas_group_id ?? null } : null,
   });
 
   // LA ALTERNATIVA DE COMUNAS (§5), UNA VEZ Y EN EL SERVIDOR (09-oct-2026). Son 23 corridas de `runAnalysis`;
@@ -423,6 +425,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           ofertaPack={ofertaLqs.oferta}
           correoOferta={ofertaLqs.correo}
           motivoOferta={ofertaLqs.motivo}
+          ticketDesde={ofertaLqs.desde}
           medianaResolvedAt={medianaResolvedAt}
           alternativaComunas={alternativaComunas}
         />

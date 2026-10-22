@@ -145,6 +145,8 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     esDemo: esDemo(data.id) || modoDemo,
     correoSesion: user?.email ?? null,
     duenoId: data.user_id ?? null,
+    // El ticket de la cuenta nueva (21-oct-2026): espejo de /analisis/[id].
+    cuenta: isOwner && user ? { creadaAt: user.created_at ?? null, informeCreadoAt: (data.created_at as string | null) ?? null, ambasGroupId: ((data as Record<string, unknown>).ambas_group_id as string | null | undefined) ?? null } : null,
   });
 
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
@@ -303,6 +305,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     ofertaPack: ofertaLqs.oferta,
     correoOferta: ofertaLqs.correo,
     motivoOferta: ofertaLqs.motivo,
+    ticketDesde: ofertaLqs.desde,
     demo,
   };
 

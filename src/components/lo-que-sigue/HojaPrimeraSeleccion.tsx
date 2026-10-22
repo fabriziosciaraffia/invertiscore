@@ -14,7 +14,7 @@ export { CLAVE_HOJA_VISTA, hojaYaVista, marcarHojaVista } from "@/lib/lo-que-sig
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import "./lo-que-sigue.css";
 
-export function HojaPrimeraSeleccion({ abierta, analysisId, alCerrar }: { abierta: boolean; analysisId: string; alCerrar: () => void }) {
+export function HojaPrimeraSeleccion({ abierta, alCerrar }: { abierta: boolean; alCerrar: () => void }) {
   const velo = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!abierta) return;
@@ -53,7 +53,7 @@ export function HojaPrimeraSeleccion({ abierta, analysisId, alCerrar }: { abiert
           <div className="lqs-ps-cab">
             <button type="button" className="lqs-x" onClick={alCerrar} aria-label={PRIMERA_SELECCION.cerrar}>✕</button>
           </div>
-          {abierta && <PrimeraSeleccion volver={`/analisis/${analysisId}`} />}
+          {abierta && <PrimeraSeleccion />}
           <button type="button" className="lqs-seguir" onClick={alCerrar} data-lqs="seguir-leyendo">{PRIMERA_SELECCION.seguirLeyendo}</button>
         </div>
       </div>

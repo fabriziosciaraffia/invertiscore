@@ -8,6 +8,8 @@
 // (rellenarDeLaNoche) para que «Analizar este» valide el aviso por el token, y la respuesta trae lo que el aviso antes de
 // gastar necesita (la combinación, el saldo, la tasa, la UF y el arriendo evaluado). Si el perfil no alcanza, dice qué
 // chips faltan (`faltan`) y la pantalla los pide en un toque.
+// LO YA ANALIZADO, EN VIVO (21-oct-2026): cada depto trae su informe si la persona ya lo analizó (`informeId`), para que la
+// tarjeta diga «Ya lo analizaste · Ver informe» también en la primera selección del día.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
@@ -22,6 +24,7 @@ import { PIE_DEPTOS, PLAZO_DEPTOS } from "./estandar";
 import { faltanDelPerfil, MINUTOS_CUPO_DEL_DIA, type FaltaDelPerfil } from "@/lib/guia/del-dia";
 import { rellenarDeLaNoche } from "@/lib/guia/del-dia-servidor";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
+import { informesDeAvisos } from "@/lib/guia/seleccion-pagina-servidor";
 
 export interface FinanzasPrimeros {
   tasa: number | null;
@@ -48,6 +51,8 @@ export interface PrimerosDeLaCuenta {
   faltan: FaltaDelPerfil[];
   saldo: EstadoSaldo;
   finanzas: FinanzasPrimeros;
+  /** Sin saldo, el pack va al precio del ticket (la cuenta tiene menos de 24 horas). Lo pone la ruta, que tiene la cuenta. */
+  ticket?: boolean;
 }
 
 type FilaDia = { id: string; token: string; estado: string; items: unknown; armada_at: string; enviada_at: string | null; intentos: number; combinacion: unknown; origen_analysis_id: string | null };
@@ -72,9 +77,10 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   // La fila del día ya tiene deptos: los chequeados por la cola, o los de la noche que esta misma pantalla escribió.
   if (items.length > 0 && fila) {
     const ids = items.map((i) => i.avisoId);
-    const [{ data: pubs }, finanzas] = await Promise.all([
+    const [{ data: pubs }, finanzas, informes] = await Promise.all([
       admin.from("publicacion_avisos").select("aviso_id, chequeado_at").in("aviso_id", ids).eq("estado", "publicado"),
       finanzasDe(fila.origen_analysis_id, ids),
+      informesDeAvisos(admin, userId, ids),
     ]);
     const at = new Map(((pubs ?? []) as Array<{ aviso_id: string; chequeado_at: string }>).map((p) => [p.aviso_id, p.chequeado_at]));
     return {
@@ -82,7 +88,7 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
       vecinas: items.every((i) => i.tramo === "vecina"),
       items: items.slice(0, MAX_PRIMEROS).map((i) => ({
         avisoId: i.avisoId, comuna: i.comuna, tipologia: i.tipologia, m2: i.m2, precioUF: i.precioUF, veredicto: i.veredicto ?? "COMPRAR",
-        score: i.score, flujo: i.flujo, vistoAt: at.get(i.avisoId) ?? null, enSeleccion: true,
+        score: i.score, flujo: i.flujo, vistoAt: at.get(i.avisoId) ?? null, enSeleccion: true, informeId: informes[i.avisoId] ?? null,
       })),
     };
   }
@@ -119,9 +125,9 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
     // Otra pasada la llenó primero (la cola, o esta misma pantalla en otra pestaña): se lee lo que quedó.
     if (!enSeleccion) return primerosDeLaCuenta(admin, userId, ahora);
   }
-  const finanzas = await finanzasDe(origenId, elegidos.map((d) => d.avisoId));
+  const [finanzas, informes] = await Promise.all([finanzasDe(origenId, elegidos.map((d) => d.avisoId)), informesDeAvisos(admin, userId, elegidos.map((d) => d.avisoId))]);
   return {
     revisando, token: enSeleccion ? token : null, regaloVence, fuente: "noche", origenId, combinacion, faltan: [], saldo, finanzas,
-    items: elegidos.map((d) => ({ ...d, enSeleccion })), vecinas: deLaNoche.length === 0 && vecinas.length > 0,
+    items: elegidos.map((d) => ({ ...d, enSeleccion, informeId: informes[d.avisoId] ?? null })), vecinas: deLaNoche.length === 0 && vecinas.length > 0,
   };
 }

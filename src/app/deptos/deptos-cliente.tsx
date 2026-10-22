@@ -444,7 +444,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
         {/* La primera selección, ahí mismo (20-oct-2026): sin esperar a que conteste el «cuándo». Con la búsqueda nueva
             guardada, se vuelve a pedir (`version`). */}
         <div className="dp-bloque" data-deptos="primeros" data-cambiando={cambiando ? "1" : undefined}>
-          <PrimeraSeleccion key={version} volver={pagina} />
+          <PrimeraSeleccion key={version} />
         </div>
         <div className="dp-fin">
           <button type="button" className="dp-boton" onClick={() => void irAlPanel()} disabled={guardandoBusca} data-deptos="ir-panel">{DEPTOS_FIN.cuenta}</button>

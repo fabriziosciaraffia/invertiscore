@@ -13,14 +13,27 @@ import { SEMANAL_STR } from "./semanal-str";
 export const SELECCION_CASA = {
   titulo: "Tu selección de esta semana",
   boton: "Ver tu selección",
-  /** Sin token: la página la resuelve con la sesión. */
-  href: "/semanal",
+  /** Desde el 21-oct-2026 la selección vive en el dashboard, como tarjetas (dashboard/seleccion-en-casa.tsx): el botón
+   *  baja a ella. /semanal redirige ahí. */
+  href: "#seleccion",
+  ancla: "seleccion",
   zona: "estimados por zona",
   ninguno: "Esta semana, ninguno",
   /** El archivo del dashboard, en lugar de «SIN DIRECCIÓN». */
   archivo: "Desde tu selección semanal",
   archivoGuia: "Desde tu guía",
 } as const;
+
+/** La selección en el dashboard (21-oct-2026): con el token del correo y, si se clicó uno, ese depto arriba. Adonde
+ *  llevan el clic del correo (/api/semanal/clic) y la vieja /semanal. Sin token, la de esta semana de quien entró. */
+export function hrefSeleccion(t: string | null, a?: string | null, despublicado = false): string {
+  const q = new URLSearchParams();
+  if (t) q.set("t", t);
+  if (t && a) q.set("a", a);
+  if (t && a && despublicado) q.set("d", "1");
+  const s = q.toString();
+  return `/dashboard${s ? `?${s}` : ""}#${SELECCION_CASA.ancla}`;
+}
 
 export interface ResumenBloque {
   modalidad: "ltr" | "str";

@@ -7,13 +7,19 @@
 // datos que muestra el wizard —precio por m², pie, dividendo, retorno bruto— más el precio y la superficie, lo que usa
 // («Usa 1 de tus N análisis.») y Analizar / Cancelar. Sin análisis, el mismo modal ofrece el pack de tres y lleva a
 // pagarlo; después de pagar se vuelve a la página.
+// DESDE LA SELECCIÓN (21-oct-2026, recorrido real de Fabrizio por la puerta B): al tocar «Analizar», el aviso queda abierto
+// con «Franco está analizando este depto…» y la barra de carga del header —el mismo efecto que el wizard— hasta que abre el
+// informe (`analizando`). Sin saldo, el pack de tres es el principal —al precio del ticket si la cuenta tiene menos de 24
+// horas— y debajo «Comprar solo 1 · $9.990» (`compras`, lib/guia/compra-desde-depto.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useRouter } from "next/navigation";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { COMPRA_DEPTO, type ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
 import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
 import "@/components/formulario-v4/wizard-v4.css";
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr" }: {
+export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null }: {
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
    *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
@@ -26,10 +32,15 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   rutaCompra: string;
   alAnalizar: () => void;
   alCancelar: () => void;
+  /** Se está generando el informe: el aviso queda abierto, cargando, hasta que se abre. */
+  analizando?: boolean;
+  /** Sin saldo, desde la selección: el pack (principal) y el suelto (debajo), con la vuelta a este depto. */
+  compras?: ComprasDelDepto | null;
 }) {
   const router = useRouter();
   const sin = uso.tipo === "sin";
   const d = destacadoCombinacion(combinacion);
+  const comprar = (href: string) => { iniciarCarga(claveActual()); router.push(href); };
   return (
     <ModalPlausibilidad
       open
@@ -42,10 +53,13 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
         derivados: derivadosAviso(depto, combinacion, finanzas),
       }}
       destacado={<>Con el pie de <b>{d.pie}</b> y el plazo de <b>{d.plazo}</b> de tu perfil</>}
-      consumo={textoUso(uso)}
-      labelConfirmar={sin ? AVISO_ANALIZAR.comprar : AVISO_ANALIZAR.analizar}
+      consumo={sin && compras ? compras.sin : textoUso(uso)}
+      labelConfirmar={sin ? (compras ? compras.pack.label : AVISO_ANALIZAR.comprar) : AVISO_ANALIZAR.analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}
-      onConfirmar={sin ? () => router.push(rutaCompra) : alAnalizar}
+      labelGenerando={COMPRA_DEPTO.analizando}
+      submitting={analizando}
+      secundario={sin && compras ? { label: compras.suelto.label, onClick: () => comprar(compras.suelto.href) } : undefined}
+      onConfirmar={sin ? () => comprar(compras ? compras.pack.href : rutaCompra) : alAnalizar}
       onCerrar={alCancelar}
     />
   );

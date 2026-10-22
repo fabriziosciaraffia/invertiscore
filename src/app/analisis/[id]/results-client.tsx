@@ -79,6 +79,7 @@ export function PremiumResults({
   ofertaPack = false,
   correoOferta = null,
   motivoOferta = "no-dueno",
+  ticketDesde = null,
   medianaResolvedAt,
   alternativaComunas = null,
 }: {
@@ -123,6 +124,9 @@ export function PremiumResults({
   correoOferta?: string | null;
   /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
   motivoOferta?: MotivoOferta;
+  /** El ticket de la cuenta nueva (21-oct-2026, oferta-informe-servidor.ts): sus 24 horas corren desde que nació la
+   *  cuenta, no el informe. null = el ticket del informe anónimo. */
+  ticketDesde?: string | null;
   /** Fecha de la mediana comunal (snapshot o ahora): la celda de zona la declara. */
   medianaResolvedAt?: string;
   /** La alternativa de comunas, calculada UNA vez en el servidor (`informe-ltr.tsx`): el cliente no corre el motor. */
@@ -711,8 +715,9 @@ export function PremiumResults({
         <div className="mt-8">
           <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
           {ticketLqs ? (
-            // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe.
-            <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn} recienDentro={!!recienDentro} />
+            // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe. El de la cuenta nueva (21-oct-2026)
+            // cuenta desde la cuenta y sube solo la primera vez, como el anónimo: entrar con la sesión no es «volver».
+            <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn && !ticketDesde} recienDentro={!!recienDentro} />
           ) : showCtaWelcome ? null : (
             <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} ilimitado={ilimitado} />
           )}
@@ -720,7 +725,7 @@ export function PremiumResults({
         <RegistroCompletadoSonda activa={isLoggedIn} />
         {/* «Por qué no sale» (12-oct-2026): solo con `?lqs=1`; no se mide. */}
         {analysisId && createdAt && (
-          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={createdAt} conSesion={isLoggedIn} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
+          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={ticketDesde ?? createdAt} conSesion={isLoggedIn && !ticketDesde} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
         )}
       </div>
     </>

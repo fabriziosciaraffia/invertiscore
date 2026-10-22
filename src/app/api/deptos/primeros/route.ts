@@ -5,6 +5,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { esPuerta } from "@/lib/atribucion-puerta";
 import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
+import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 
 // GET /api/deptos/primeros (16-oct-2026, la puerta B; 20-oct-2026, todas las puertas): los primeros deptos de la cuenta
 // con sesión, para «Estás dentro» al terminar (lib/deptos/primeros-servidor.ts). Mientras el correo del día revisa fichas,
@@ -20,7 +21,8 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   const admin = createServiceClient();
   try {
-    const r = await primerosDeLaCuenta(admin, user.id);
+    // El ticket de la cuenta nueva (21-oct-2026, lib/guia/compra-desde-depto.ts): el precio del pack en el aviso sin saldo.
+    const [r, ticket] = await Promise.all([primerosDeLaCuenta(admin, user.id), ticketDeCuentaDisponible(admin, user)]);
     const candidata = new URL(request.url).searchParams.get("puerta");
     void (async () => {
       const { data: atr } = await admin.from("user_attribution").select("puerta").eq("user_id", user.id).maybeSingle();
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
         properties: { puerta, n: r.items.length, fuente: r.fuente, faltan: r.faltan.length, con_regalo: !!r.regaloVence, minutos_desde_alta: user.created_at ? Math.round((Date.now() - Date.parse(user.created_at)) / 60_000) : null },
       });
     })().catch(() => {});
-    return NextResponse.json(r, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ...r, ticket }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/deptos/primeros", operacion: "primeros", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
-import { leerRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { leerRetornoPack, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { analizaAlVolver } from "@/lib/guia/compra-desde-depto";
 import { estadoDelPago, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { HorizontePostPago } from "@/components/lo-que-sigue/HorizontePostPago";
@@ -48,6 +49,9 @@ function PaymentReturnContent() {
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
   // genérica antes de la navegación).
   const [redirecting, setRedirecting] = useState(false);
+  // La compra salió de un depto de la selección (21-oct-2026, compra-desde-depto.ts): pagada, vuelve sola al dashboard
+  // con ese depto, que se analiza solo. Mientras navega, «Franco está analizando este depto…».
+  const [alDepto, setAlDepto] = useState(false);
   // Guard para que el push al análisis ocurra UNA sola vez: el polling puede
   // re-ejecutar checkStatus en re-renders y no queremos re-push ni loop.
   const redirectedRef = useRef(false);
@@ -172,6 +176,11 @@ function PaymentReturnContent() {
               } else {
                 router.push(`/analisis/${data.payment.analysis_id}`);
               }
+            } else if (!redirectedRef.current && !data.payment.analysis_id && volver && analizaAlVolver(volver)) {
+              redirectedRef.current = true;
+              setRedirecting(true);
+              setAlDepto(true);
+              router.replace(volver);
             }
           } else if (estado === "error") {
             setPaymentStatus("error");
@@ -205,9 +214,10 @@ function PaymentReturnContent() {
   // EL BOTÓN DE LA VUELTA (19-oct-2026, decisión de Fabrizio): uno solo. Si pagó, «Ver mis análisis» (o de vuelta a los
   // deptos si la compra salió de la página semanal); con un análisis atado, ese análisis. Si no pasó, «Reintentar»: la
   // misma pantalla de compra, con lo que la compra traía (lib/compra/compra.ts).
+  // La vuelta (`volver`) solo la traen el pack de tres y, desde el 21-oct-2026, el pack y el suelto comprados desde un depto.
   const tras = analysisId && producto !== PRODUCTO_TRES
     ? { texto: "Ver mi análisis", href: `/analisis/${analysisId}` }
-    : botonTrasPagar(producto === PRODUCTO_TRES ? volver : null);
+    : botonTrasPagar(volver);
   const reintentar = rutaReintentar({
     suscripcion: type === "subscription",
     producto,
@@ -237,7 +247,7 @@ function PaymentReturnContent() {
           <div>
             {girando}
             <h1 className={PLANO.titulo}>{RETORNO.abriendo.titulo}</h1>
-            <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
+            <p className={PLANO.bajada} data-retorno={alDepto ? "al-depto" : undefined}>{alDepto ? RETORNO.analizandoDepto : RETORNO.abriendo.cuerpo}</p>
           </div>
         )}
 
@@ -271,7 +281,7 @@ function PaymentReturnContent() {
             <p className={PLANO.bajada}>
               {type === "subscription"
                 ? ilimitado ? "Tu suscripción Franco está activa. Análisis ilimitados." : "Tu suscripción Franco está activa."
-                : producto === PRODUCTO_TRES
+                : producto === PRODUCTO_TRES || producto === PRODUCTO_PACK
                 ? TRES_COPY.listo
                 : analysisId ? "Tu análisis está desbloqueado." : RETORNO.pagado.uno
               }

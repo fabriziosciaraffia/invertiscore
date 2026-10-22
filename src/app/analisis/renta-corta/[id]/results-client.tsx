@@ -111,6 +111,8 @@ interface STRResultsProps {
   correoOferta?: string | null;
   /** Por qué hay o no oferta del pack (servidor): para el recuadro de `?lqs=1`. */
   motivoOferta?: MotivoOferta;
+  /** El ticket de la cuenta nueva (21-oct-2026): sus 24 horas corren desde la cuenta. null = el del informe anónimo. */
+  ticketDesde?: string | null;
   /** Niveles de plazo precalculados en el server (`simularPlazoStr`): el reconstructor
    *  del input arrastra `next/headers` y no puede importarse desde el cliente, y de paso
    *  los 4 recomputes no corren en el teléfono del lector. Los consume `LineaPlazo`. */
@@ -146,6 +148,7 @@ export function STRResultsClient({
   ofertaPack = false,
   correoOferta = null,
   motivoOferta = "no-dueno",
+  ticketDesde = null,
   simulacionStr = null,
   zonaStr = null,
   demo = false,
@@ -506,14 +509,14 @@ export function STRResultsClient({
         <div style={{ height: 24 }} />
         <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
         {ticketLqs ? (
-          <TicketPack ctx={ctxLqs} createdAt={createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId} recienDentro={!!recienDentro} />
+          <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId && !ticketDesde} recienDentro={!!recienDentro} />
         ) : showCtaWelcome ? null : (
           <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} ilimitado={ilimitado} />
         )}
         <RegistroCompletadoSonda activa={!!userId} />
         {/* «Por qué no sale» (12-oct-2026): solo con `?lqs=1`; no se mide. */}
         {analysisId && createdAt && (
-          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={createdAt} conSesion={!!userId} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
+          <DiagnosticoTicket motivo={motivoOferta} analysisId={analysisId} createdAt={ticketDesde ?? createdAt} conSesion={!!userId && !ticketDesde} recienDentro={!!recienDentro} bannerMontado={bannerLqs} />
         )}
 
       </main>

@@ -5,8 +5,11 @@ import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { COOKIE_INVITACION } from "@/lib/referido";
 import { vincularInvitacion } from "@/lib/referido-servidor";
 import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
-import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
-import { PrimerosDeptos } from "@/components/deptos/PrimerosDeptos";
+import { cargarSeleccionPagina, hayDeptos, resumenDePagina } from "@/lib/guia/seleccion-pagina-servidor";
+import { hrefEntrar } from "@/lib/entrar/entrada";
+import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
+import { SeleccionEnCasa } from "./seleccion-en-casa";
+import { FrescoAlVolver } from "./fresco-al-volver";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
@@ -17,8 +20,7 @@ import { CASA, lineaSaldo } from "./casa-copy";
 import { BloqueArribaCasa, PerfilBusquedaCasa, SaldoPlano } from "./casa";
 import { bloqueDeArriba } from "@/lib/casa-arriba";
 import { AppFooter } from "@/components/chrome/AppFooter";
-import { origenDeInformes, seleccionDeEstaSemana } from "@/lib/guia/semanal-servidor";
-import { resumenSeleccion } from "@/lib/guia/seleccion-casa";
+import { origenDeInformes } from "@/lib/guia/semanal-servidor";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -48,6 +50,11 @@ import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto"
  *
  * Server Component puro: el único cliente son el input de búsqueda (debounce) y
  * los botones de acción de fila.
+ *
+ * UNA SOLA PÁGINA PARA LA SELECCIÓN (21-oct-2026, recorrido real de Fabrizio por la puerta B): la selección se dibuja
+ * acá como tarjetas (seleccion-en-casa.tsx). El enlace del correo semanal y del correo del día entra con su token
+ * (`?t=&a=`, por /api/semanal/clic, que sigue midiendo el clic) y aterriza en la selección con el depto clicado arriba;
+ * /semanal redirige acá. Al volver del informe la página se pide de nuevo sola (fresco-al-volver.tsx).
  */
 
 // La lista depende de searchParams y de datos por usuario: nada que cachear.
@@ -61,7 +68,14 @@ export default async function DashboardPage({
   const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
+  // La selección del correo (21-oct-2026): `t` su token, `a` el depto clicado, `analizar=1` la vuelta pagada de un depto.
+  const uno = (k: string) => { const v = searchParams[k]; return typeof v === "string" ? v : null; };
+  const tSel = uno("t"), aSel = uno("a");
+  // Sin sesión, el enlace del correo entra por el código y vuelve a esta misma selección.
+  if (!user && tSel) redirect(hrefEntrar(`/dashboard?${new URLSearchParams({ t: tSel, ...(aSel ? { a: aSel } : {}) }).toString()}`, "semanal"));
   if (!user) redirect("/login");
+  const autoAnalizar = uno("analizar") === "1" ? aSel : null;
+  const dibujadoAt = Date.now();
 
   const fullName = resolveDisplayName(user.user_metadata, user.email);
   // Para saludar, solo el nombre real: nunca la parte del correo antes de la @ (01-oct-2026).
@@ -102,8 +116,11 @@ export default async function DashboardPage({
   const gratis = primerAnalisisGratis(creditsRow);
   // El saldo o el plan, visible arriba para cualquier cuenta (14-oct-2026): también en el dashboard vacío.
   const admin = createServiceClient();
-  const datosSaldo = await leerSaldo(admin, user.id);
+  const [datosSaldo, sel] = await Promise.all([leerSaldo(admin, user.id), cargarSeleccionPagina(admin, user, { t: tSel, a: aSel })]);
   const saldo = estadoSaldo(datosSaldo);
+  const resumenSel = resumenDePagina(sel);
+  // Sin saldo, el pack al precio del ticket si la cuenta tiene menos de 24 horas (21-oct-2026, compra-desde-depto.ts).
+  const ticket = saldo.tipo === "sin" ? (sel?.ticket ?? await ticketDeCuentaDisponible(admin, user)) : false;
   const perfil: PerfilBienvenida | null = perfilRow?.analysis_id
     ? {
         analysisId: perfilRow.analysis_id as string,
@@ -116,31 +133,30 @@ export default async function DashboardPage({
     : null;
 
   // LA CUENTA SIN INFORMES CON SU PERFIL A MANO (16-oct-2026, la puerta B): nació en /deptos. Ve su selección del día, su
-  // regalo y su perfil, no la bienvenida de quien todavía no dijo qué busca.
+  // regalo y su perfil, no la bienvenida de quien todavía no dijo qué busca. Desde el 21-oct-2026, también quien llega
+  // por el enlace de un correo con deptos.
   if ((analisisCount ?? 0) === 0) {
     const pp = await leerPerfilBusqueda(admin, user.id);
-    if (pp.soloManual && (pp.perfilLtr ?? pp.perfilStr ?? pp.perfil).completo) {
+    if ((pp.soloManual && (pp.perfilLtr ?? pp.perfilStr ?? pp.perfil).completo) || hayDeptos(sel)) {
       const pb0 = pp.perfilLtr ?? pp.perfilStr ?? pp.perfil;
-      const [primeros, seleccion0] = await Promise.all([primerosDeLaCuenta(admin, user.id), seleccionDeEstaSemana(admin, user.id)]);
       // La casa que vende (17-oct-2026): una jerarquía. Arriba, el banner según el estado; debajo, «Invita a alguien»;
-      // después, plano, el saldo, sus primeros deptos y el perfil.
-      const arriba0 = bloqueDeArriba({ seleccion: seleccion0 ? resumenSeleccion(seleccion0) : null, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
+      // después, plano, el saldo, su selección como tarjetas (21-oct-2026) y el perfil.
+      const arriba0 = bloqueDeArriba({ seleccion: resumenSel, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
       return (
         <div className="min-h-screen bg-[var(--franco-bg)]">
           <ChipVeredictoTokens />
+          <FrescoAlVolver dibujadoAt={dibujadoAt} />
           <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
           <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-5 sm:px-6" data-casa="sin-informes" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
             <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
-            <BloqueArribaCasa bloque={arriba0} informes={0} />
+            <BloqueArribaCasa bloque={arriba0} informes={0} ticket={ticket} />
             {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
             <div className="mt-4">
               <InvitaAlguien />
             </div>
             <div className="ca-plano">
-              <SaldoPlano estado={saldo} arriba={arriba0.tipo} />
-              <div className="ca-plano-sec" data-casa="primeros">
-                <PrimerosDeptos items={primeros.items} token={primeros.token} revisando={primeros.revisando} contexto="casa" vecinas={primeros.vecinas} />
-              </div>
+              <SaldoPlano estado={saldo} arriba={arriba0.tipo} ticket={ticket} />
+              <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera />
               <PerfilBusquedaCasa
                 comprador={false}
                 inicial={{ dormitorios: pb0.dormitorios, comunas: pb0.comunas, precioMaxUf: pb0.precioMaxUf, precioMinUf: pb0.editado.includes("precioMin") ? pb0.precioMinUf : null, modalidad: pb0.modalidad, piePct: pb0.piePct, plazoAnios: pb0.plazoAnios, horizonte: pb0.horizonte }}
@@ -224,14 +240,13 @@ export default async function DashboardPage({
   // 14-oct-2026 también «Tu selección de esta semana»; desde el 17-oct-2026, de los informes de Franco a la vista, de
   // dónde salieron (el título de la marca «Franco»).
   const francoIds = (todas ?? filasPagina).filter((r) => r.de_franco).map((r) => r.id);
-  const [siblings, perfilPersona, { data: pack }, seleccion, origenes] = await Promise.all([
+  const [siblings, perfilPersona, { data: pack }, origenes] = await Promise.all([
     fetchAmbasSiblings(supabase, user.id, groupIds),
     leerPerfilBusqueda(admin, user.id),
     admin.from("payments").select("analysis_id").eq("user_id", user.id).eq("product", "pack3").eq("status", "paid").not("analysis_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    seleccionDeEstaSemana(admin, user.id),
     origenDeInformes(admin, user.id, francoIds),
   ]);
-  const resumen = seleccion ? resumenSeleccion(seleccion) : [];
+  const resumen = resumenSel ?? [];
   const packOrigenId = (pack?.analysis_id as string | null | undefined) ?? null;
   const { data: packPerfil } = packOrigenId && saldo.tipo === "con"
     ? await admin.from("perfiles_inversion").select("modalidad, veredicto").eq("analysis_id", packOrigenId).eq("user_id", user.id).maybeSingle()
@@ -246,6 +261,7 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <ChipVeredictoTokens />
+      <FrescoAlVolver dibujadoAt={dibujadoAt} />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
 
       {/* Todo el dashboard en Inter (02-oct-2026): «Tus informes» pasó al sistema nuevo, como la casa y la guía. */}
@@ -254,13 +270,15 @@ export default async function DashboardPage({
              estado y un botón; debajo, «Invita a alguien» con su color; después, plano, el saldo, la guía del pack, el
              perfil y sus informes. ── */}
         <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
-        <BloqueArribaCasa bloque={arriba} informes={stats.total} />
+        <BloqueArribaCasa bloque={arriba} informes={stats.total} ticket={ticket} />
         {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
         <div className="mt-4">
           <InvitaAlguien />
         </div>
         <div className="ca-plano">
-          <SaldoPlano estado={saldo} arriba={arriba.tipo} />
+          <SaldoPlano estado={saldo} arriba={arriba.tipo} ticket={ticket} />
+          {/* La selección como tarjetas, no solo como banner (21-oct-2026). */}
+          <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={false} />
           {guiaCasa && (
             <div className="ca-plano-sec" data-casa="guia">
               <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} estado={saldo} enCasa={{ titulo: CASA.guiaTitulo }} />
