@@ -144,7 +144,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // El dashboard y la bienvenida: el saldo arriba.
     // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · en la casa, arriba manda el banner según el estado (tier CASA §9) y
     // el saldo o el plan va plano, justo después de «Invita a alguien»; en la bienvenida, igual que antes. Verificado en rojo: SA1 sin el saldo plano.
-    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
+    // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el saldo plano recibe además el ticket de la cuenta
+    // nueva (el precio del pack en sus 24 horas, tier CASA §4).
+    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} ticket=\{ticket\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
     // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
     if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
       F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");
@@ -402,7 +404,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · el informe sale de `informeDe`: en renta corta, el de la medición
     // (o el de la página, en vivo), como antes; en renta larga, el del depto ya analizado, que lleva a /analisis/[id] (SEMANAL §15).
     const ramaInforme = acciones.slice(acciones.indexOf("const informe = informeDe(it);"), acciones.indexOf("if (corta && generando === it.avisoId)"));
-    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => \(corta \? \(it\.informeId \?\? informes\[it\.avisoId\]\) : it\.informeId\);/.test(lista)
+    // ⚠ ACTA (21-oct-2026) · en renta larga también cuenta lo leído en vivo (`informes`), no solo el del depto ya visto.
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(lista)
       || !/const informe = informeDe\(it\);\s*if \(informe\) \{\s*return \(\s*<div className="guia-acc" data-semanal="ya-analizado">/.test(ramaInforme) || !/<EnlaceCarga href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="guia-ver-informe">\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(ramaInforme) || /analizar\(|setConfirmar|guia-an/.test(ramaInforme))
       F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
     // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.
