@@ -163,6 +163,7 @@ import { runTicketVivoTier } from "./ticket-vivo-catch-test";
 import { runRegistroMetaTier } from "./registro-meta-catch-test";
 import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runCargaTier } from "./carga-catch-test";
+import { runExplorarTier } from "./explorar-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -684,6 +685,10 @@ function printSeed(r: SeedReport) {
   // respuesta, lo que navega enciende la barra del header, el PDF se pide con señal— sobre /deptos, «Estás dentro»,
   // dashboard, informe, pop-ups y compra. ──
   totalHard += runCargaTier().hard;
+  // Tier EXPLORAR (23-oct-2026, 0 tokens): el mapa de todos los que convienen —los filtros son el perfil y no lo tocan, solo
+  // Comprar de a mil, explorar no gasta, sin saldo el mapa y el aviso E, el mapa después del primer pintado, el pop-up con
+  // «Cambiar», la medición y el botón del dashboard—. ──
+  totalHard += (await runExplorarTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

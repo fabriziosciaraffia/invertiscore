@@ -10,7 +10,9 @@
 | --- | --- | --- |
 | `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
-| `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`), y desde el 21-oct-2026 también al desbloquearse uno por pago (la compra suelta atada al informe, en `payments/confirm`) | analizó algo; lleva `via` (wizard · guia · semanal · reanalisis · pago). Con via = pago, el informe que abrió un pago, una vez (un reenvío de Flow no lo repite) |
+| `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`), y desde el 21-oct-2026 también al desbloquearse uno por pago (la compra suelta atada al informe, en `payments/confirm`) | analizó algo; lleva `via` (wizard · guia · semanal · reanalisis · pago · explorar). Con via = pago, el informe que abrió un pago, una vez (un reenvío de Flow no lo repite); con via = explorar, el informe pedido desde el mapa (23-oct-2026) |
+| `explorar_vista` | la página `/explorar` al pintarse en el servidor (`fuente` = pagina) y `GET /api/explorar` con cada cambio de chip (`fuente` = cambio), desde el 23-oct-2026 (`src/lib/explorar/servidor.ts`) | miró el mapa; lleva los filtros (`comunas`, `tipologias`, `uf_min`, `uf_max`, `pie`, `plazo`), `n` (cuántos pines convienen) y `analizados` (cuántos de esos ya analizó) |
+| `explorar_analiza` | la ruta de la guía al crear el informe con `explorar: true`, desde el 23-oct-2026 | pidió un análisis desde el mapa; lleva `analysis_id`, `aviso_id`, `comuna`, `precio_uf`, `m2`, `pie_pct`, `plazo_anios`. El `analisis_creado` de ese informe lleva `via` = explorar |
 | `reanalisis_precio` | el servidor, una vez por informe (uuid determinista), desde el 21-oct-2026 (`src/lib/reanalisis-servidor.ts`): al crear con saldo el informe que pidió el botón «Ver el informe completo a UF X» del pop-up Ajustar, o al confirmarse el pago del suelto | el informe completo al precio que Franco recomendó negociar; lleva `informe_original`, `informe_nuevo`, `precio_original_uf`, `precio_recomendado_uf`, `descuento_pct`, `pie_pct`, `plazo_anios`, `modalidad` (ltr · str) y `con_pago`. El `analisis_creado` de ese informe (con saldo) lleva `via` = reanalisis |
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
@@ -198,6 +200,50 @@ select toStartOfWeek(l.t0, 1) as semana,
 from llegadas as l left join pasos as p on p.person_id = l.person_id
 group by semana, origen
 order by semana desc, origen
+```
+
+## Los análisis que salen de Explorar (HogQL)
+
+> 23-oct-2026. El insight «Explorar · vistas y análisis por semana» del mismo dashboard: cuántas personas miraron el
+> mapa (`explorar_vista`), cuántas cambiaron un chip, cuántos informes salieron de ahí (`analisis_creado` con `via` =
+> explorar) y qué parte de todos los informes de la semana son. Sin cuentas de prueba.
+
+```sql
+with vistas as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    uniq(person_id) as personas_que_miraron,
+    count() as vistas,
+    countIf(toString(properties.fuente) = 'cambio') as cambios_de_chip,
+    round(avg(toFloat(properties.n)), 0) as pines_promedio
+  from events
+  where event = 'explorar_vista'
+    and timestamp >= now() - interval 26 week
+    and coalesce(person.properties.test_account, false) = false
+  group by semana
+),
+creados as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    countIf(toString(properties.via) = 'explorar') as informes_desde_explorar,
+    uniqIf(person_id, toString(properties.via) = 'explorar') as personas_que_analizaron,
+    count() as informes_creados
+  from events
+  where event = 'analisis_creado'
+    and timestamp >= now() - interval 26 week
+    and coalesce(person.properties.test_account, false) = false
+  group by semana
+)
+select greatest(coalesce(vistas.semana, toDate('1970-01-01')), coalesce(creados.semana, toDate('1970-01-01'))) as semana,
+  coalesce(vistas.personas_que_miraron, 0) as personas_que_miraron,
+  coalesce(vistas.vistas, 0) as vistas,
+  coalesce(vistas.cambios_de_chip, 0) as cambios_de_chip,
+  vistas.pines_promedio as pines_promedio,
+  coalesce(creados.personas_que_analizaron, 0) as personas_que_analizaron,
+  coalesce(creados.informes_desde_explorar, 0) as informes_desde_explorar,
+  if(personas_que_miraron = 0, null, round(personas_que_analizaron / personas_que_miraron, 3)) as analizaron_por_mirar,
+  coalesce(creados.informes_creados, 0) as informes_creados,
+  if(informes_creados = 0, null, round(informes_desde_explorar / informes_creados, 3)) as parte_de_los_creados
+from vistas full outer join creados on vistas.semana = creados.semana
+order by semana desc
 ```
 
 ## El re-análisis al precio recomendado (HogQL)
