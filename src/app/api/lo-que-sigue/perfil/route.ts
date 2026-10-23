@@ -5,7 +5,7 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { firmaPagoValida } from "@/lib/lo-que-sigue/firma-pago";
 import { pagoAbreElInforme } from "@/lib/lo-que-sigue/retorno-pago";
 import { waitUntil } from "@vercel/functions";
-import { emitirRegistroCompletado } from "@/lib/meta/registro";
+import { emitirIntencionCompra, emitirRegistroAlCrear } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
 import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { cookieInvitacionDeCabeceras, referidoAlContestarCuando } from "@/lib/referido-servidor";
@@ -64,16 +64,18 @@ export async function POST(request: Request) {
   reportarFalloQuery(error, { ruta: "api/lo-que-sigue/perfil", operacion: "guardar-preferencias", userId: duenoId ?? undefined });
   if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Ese perfil no es tuyo" }, { status: 404 });
-  // CompleteRegistration (15-oct-2026): con sesión —validó el código— y contestó «¿Cuándo piensas comprar?»
-  // (src/lib/meta/registro.ts). Sin sesión (la firma del pago) no: esa cuenta no validó nada.
+  // Contestó «¿Cuándo piensas comprar?» con sesión —validó el código— (src/lib/meta/registro.ts, 22-oct-2026):
+  // IntencionCompra con la respuesta; y CompleteRegistration si la cuenta nació sin él (idempotente). Sin sesión (la
+  // firma del pago) no: esa cuenta no validó nada.
   if (user && cambios.horizonte_compra) {
     // EL PREMIO DEL REFERIDO (16-oct-2026, la puerta C): validó el código y contestó el «cuándo» (referido-servidor.ts).
     waitUntil(referidoAlContestarCuando(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInvitacionDeCabeceras(request.headers), huella: huellaDeRequest(request) }).then(() => undefined));
-    const reg = await emitirRegistroCompletado(admin, user, cambios.horizonte_compra, contextoDeRequest(request));
-    if (reg) {
-      waitUntil(reg.envio);
-      return conEspejo(NextResponse.json({ ok: true }), [reg.espejo], request);
-    }
+    const ctx = contextoDeRequest(request);
+    const reg = await emitirRegistroAlCrear(admin, user, ctx, { origen: "cuando" });
+    const ic = await emitirIntencionCompra(admin, user, cambios.horizonte_compra, ctx);
+    if (reg) waitUntil(reg.envio);
+    if (ic) waitUntil(ic.envio);
+    return conEspejo(NextResponse.json({ ok: true }), [reg?.espejo, ic?.espejo], request);
   }
   return NextResponse.json({ ok: true });
 }

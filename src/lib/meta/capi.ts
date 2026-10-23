@@ -81,6 +81,9 @@ export type MetaCapiEventInput = {
   datos?: Record<string, unknown> | null;
   /** Código de prueba del Administrador de eventos: el evento se ve en «Probar eventos» y no cuenta en producción. */
   testEventCode?: string | null;
+  /** Cuándo pasó (segundos unix), para el relleno de un evento que debió salir antes: Meta acepta hasta 7 días atrás. Sin
+   *  él, ahora. */
+  eventTime?: number | null;
 };
 
 export type MetaCapiResult = { ok: boolean; skipped?: boolean; reason?: string; status?: number };
@@ -112,7 +115,7 @@ export async function sendMetaCapiEvent(
 
     const event: Record<string, unknown> = {
       event_name: input.eventName,
-      event_time: Math.floor(Date.now() / 1000),
+      event_time: typeof input.eventTime === "number" && Number.isFinite(input.eventTime) ? Math.floor(input.eventTime) : Math.floor(Date.now() / 1000),
       event_id: input.eventId,
       action_source: "website",
       user_data: userData,

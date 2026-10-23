@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COOKIE_INVITACION_USADA } from "@/lib/referido-servidor";
+import { conEspejo } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 import { codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { ejecutarAlta } from "@/lib/deptos/alta-servidor";
 import { entrarConCodigo } from "@/lib/deptos/entrada";
@@ -30,6 +32,8 @@ export async function POST(request: Request) {
   const supabase = createClient();
   const admin = createServiceClient();
   let invitacionUsada = false;
+  // El espejo del CompleteRegistration de la cuenta nueva (22-oct-2026): el pixel lo repite con el mismo id.
+  let espejos: EventoEspejo[] = [];
   try {
     const r = await entrarConCodigo(correo, codigo, {
       sesionActual: async () => (await supabase.auth.getUser()).data.user ?? null,
@@ -53,12 +57,13 @@ export async function POST(request: Request) {
         if (!user) return { cuerpo: { error: "sin-sesion" }, status: 401 };
         const a = await ejecutarAlta(admin, user, request, { ruta: RUTA });
         invitacionUsada = a.invitacionUsada;
+        espejos = a.espejos;
         return { cuerpo: a.cuerpo, status: a.status };
       },
       marcarAlta: (p) => marcarAlta(admin, p),
     });
     if (r.tipo === "codigo") return NextResponse.json({ error: "codigo" }, { status: 400 });
-    const res = NextResponse.json({ ...r.cuerpo, via: r.via }, r.status ? { status: r.status } : undefined);
+    const res = conEspejo(NextResponse.json({ ...r.cuerpo, via: r.via }, r.status ? { status: r.status } : undefined), espejos, request);
     if (invitacionUsada) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
     return res;
   } catch (e) {

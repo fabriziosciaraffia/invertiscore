@@ -192,14 +192,16 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
       espejarMeta(consumidos);
       const salieron = nav.llamadas.map((l) => `${l.comando}:${l.evento}:${l.eventID}`).join();
       if (salieron !== "trackCustom:QuieroVerlo:qv-1,track:Lead:lead-1") F(`1 · el pixel no repite el espejo con el mismo id (los propios con trackCustom): ${salieron}`);
-      if (![EVENTOS_META.analizarEste, EVENTOS_META.quieroVerlo, EVENTOS_META.semanalClic].every((n) => EVENTOS_PROPIOS.has(n))) F("1 · un evento propio no sale con trackCustom");
+      if (![EVENTOS_META.analizarEste, EVENTOS_META.quieroVerlo, EVENTOS_META.semanalClic, EVENTOS_META.intencion].every((n) => EVENTOS_PROPIOS.has(n))) F("1 · un evento propio no sale con trackCustom");
 
       // El cableado: cada ruta manda por emitirEventoMeta con el id de ids.ts y deja el espejo en su respuesta.
       const rutas: Array<[string, RegExp[]]> = [
         ["src/app/api/meta/lead/route.ts", [/eventId: await idLead\(email\),/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[emision\.espejo\], request\);/]],
         ["src/app/api/lo-que-sigue/pack/route.ts", [/evento: EVENTOS_META\.lead,\s*eventId: await idLead\(email\),/, /return conEspejo\(NextResponse\.json\(\{ url: [^;]*\[lead\.espejo\], request\);/]],
-        ["src/app/api/lo-que-sigue/perfil/route.ts", [/const reg = await emitirRegistroCompletado\(admin, user, cambios\.horizonte_compra, contextoDeRequest\(request\)\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\.espejo\], request\);/]],
-        ["src/app/api/perfil-busqueda/route.ts", [/const reg = await emitirRegistroCompletado\(admin, user, cuando, contextoDeRequest\(request\)\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\.espejo\], request\);/]],
+        // ⚠ ACTA (22-oct-2026, decisión de Fabrizio) · el «cuándo» ya no es CompleteRegistration: es IntencionCompra (propio), y CompleteRegistration
+        // sale al crear la cuenta (o acá, si nació sin él). Los dos espejos van en la misma respuesta (tier REGISTRO-META).
+        ["src/app/api/lo-que-sigue/perfil/route.ts", [/const ic = await emitirIntencionCompra\(admin, user, cambios\.horizonte_compra, ctx\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\?\.espejo, ic\?\.espejo\], request\);/]],
+        ["src/app/api/perfil-busqueda/route.ts", [/const ic = await emitirIntencionCompra\(admin, user, cuando, ctx\);/, /return conEspejo\(NextResponse\.json\(\{ ok: true \}\), \[reg\?\.espejo, ic\?\.espejo\], request\);/]],
         // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el origen puede ser el sintético (sin informe): sin semanal, siempre hay
         // informe de origen, así que el id es el del informe.
         ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeSemanal \? b\.semanal! : origen\.analysisId!\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],

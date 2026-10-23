@@ -34,6 +34,8 @@ import { esPuerta } from "@/lib/atribucion-puerta";
 import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { emitirRegistroAlCrear } from "@/lib/meta/registro";
+import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
 import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion, type ResultadoVinculo } from "@/lib/referido-servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 
@@ -64,6 +66,9 @@ export async function POST(request: Request) {
     await asegurarRegaloDeAlta(createAdminServiceClient(), {
       userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null,
     });
+    // CompleteRegistration al crear la cuenta (22-oct-2026, meta/registro.ts): la puerta A (o la que traiga el reclamo).
+    const registro = await emitirRegistroAlCrear(createAdminServiceClient(), user, contextoDeRequest(request), { origen: "claim", puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null });
+    if (registro) waitUntil(registro.envio);
     const puerta = cuerpo?.puerta;
     if (esPuerta(puerta)) {
       const detalle = typeof cuerpo?.puertaDetalle === "string" ? cuerpo.puertaDetalle.slice(0, 60) : null;
@@ -80,7 +85,7 @@ export async function POST(request: Request) {
     if (cuerpo?.porCodigo === true && user.email) {
       waitUntil(ensureWelcomeEmail(user.id, user.email, user.user_metadata ?? null));
     }
-    return cerrarInvitacion(NextResponse.json(result), vinculo);
+    return conEspejo(cerrarInvitacion(NextResponse.json(result), vinculo), [registro?.espejo], request);
   } catch (error) {
     captureApiError(error, { ruta: "POST /api/analisis/claim", operacion: "claim-anonimo" });
     // Fail-soft: un claim caído no debe romper el flujo de auth del caller.

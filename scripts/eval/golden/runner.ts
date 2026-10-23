@@ -160,6 +160,8 @@ import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
 import { runTicketVivoTier } from "./ticket-vivo-catch-test";
+import { runRegistroMetaTier } from "./registro-meta-catch-test";
+import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -671,6 +673,12 @@ function printSeed(r: SeedReport) {
   // Tier TICKET-VIVO (22-oct-2026, 0 tokens): el ticket de 24 horas no se pierde al comprar un suelto —todo informe de la cuenta,
   // la tarjeta del dashboard con o sin saldo, la línea del pop-up con saldo— y el copy para quien ya tiene cuenta. ──
   totalHard += runTicketVivoTier().hard;
+  // Tier REGISTRO-META (22-oct-2026, 0 tokens): CompleteRegistration al crear la cuenta por cualquier puerta, con o sin
+  // «cuándo»; IntencionCompra al contestar; el pixel repite los dos con el mismo id; el relleno manda la hora del alta. ──
+  totalHard += (await runRegistroMetaTier()).hard;
+  // Tier RECORRIDO-22-OCT (22-oct-2026, 0 tokens): la tarjeta del re-análisis con el material del banner, «Se renueva el
+  // lunes N» en el dashboard y el correo, y qué cambia con el «cuándo» del perfil. ──
+  totalHard += runRecorrido22OctTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

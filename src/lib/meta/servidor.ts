@@ -66,6 +66,8 @@ export interface EventoServidor {
   contexto?: ContextoMeta | null;
   /** De dónde sale, para la fila de `meta_eventos`. */
   origen?: string;
+  /** Cuándo pasó (segundos unix): solo el relleno lo manda; sin él, ahora (capi.ts). */
+  eventTime?: number | null;
 }
 
 export interface EmisionMeta {
@@ -207,6 +209,7 @@ export function datosParaMeta(e: EventoServidor, contexto: ContextoMeta | null, 
     fbc: permiso ? contexto?.fbc ?? null : null,
     externalId: permiso ? e.userId ?? null : null,
     testEventCode: codigoPrueba,
+    eventTime: e.eventTime ?? null,
   };
 }
 

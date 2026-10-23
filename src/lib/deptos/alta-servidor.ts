@@ -25,6 +25,9 @@ import { busquedaDePerfil, CLAVE_GOOGLE, comunasParaAgregar, tipoDeAlta } from "
 import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "./servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 import { cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
+import { emitirRegistroAlCrear } from "@/lib/meta/registro";
+import { contextoDeRequest } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 
 const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -33,15 +36,17 @@ export interface AltaDeptos {
   status?: number;
   /** La invitación quedó cobrada: la respuesta lleva la cookie que la marca usada. */
   invitacionUsada: boolean;
+  /** Lo que el pixel repite (22-oct-2026): el CompleteRegistration de la cuenta nueva. La ruta lo deja en la cookie. */
+  espejos: EventoEspejo[];
 }
 
 export async function ejecutarAlta(admin: SupabaseClient, user: User, request: Request, p: { clave?: unknown; ruta: string }): Promise<AltaDeptos> {
-  if (!user.email) return { cuerpo: { error: "sin-sesion" }, status: 401, invitacionUsada: false };
+  if (!user.email) return { cuerpo: { error: "sin-sesion" }, status: 401, invitacionUsada: false, espejos: [] };
   let pend = await leerPendiente(admin, user.email);
   if (!pend && typeof p.clave === "string" && CLAVE_GOOGLE.test(p.clave) && await reclavarPendienteGoogle(admin, { clave: p.clave, correo: user.email, cuentaCreadaAt: user.created_at })) {
     pend = await leerPendiente(admin, user.email);
   }
-  if (!pend) return { cuerpo: { estado: "sin-pendiente" }, invitacionUsada: false };
+  if (!pend) return { cuerpo: { estado: "sin-pendiente" }, invitacionUsada: false, espejos: [] };
   // La invitación (la puerta C): se cobra antes de la puerta B, y si la cuenta es invitada, la puerta es la C.
   const cookieInv = cookieInvitacionDeCabeceras(request.headers);
   const vinculo = cookieInv ? await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) }) : null;
@@ -60,17 +65,21 @@ export async function ejecutarAlta(admin: SupabaseClient, user: User, request: R
     const elegidas = Array.isArray(pend.perfil.comunas) ? (pend.perfil.comunas as string[]) : [];
     const comunasNuevas = comunasParaAgregar(pp.perfil.comunas, elegidas);
     await borrarPendiente(admin, user.email);
-    return { cuerpo: { estado: "existente", comunasNuevas, comunas: pp.perfil.comunas }, invitacionUsada };
+    return { cuerpo: { estado: "existente", comunasNuevas, comunas: pp.perfil.comunas }, invitacionUsada, espejos: [] };
   }
 
   // La cuenta nace con su perfil manual.
   const { error: ePerfil } = await admin.from("perfil_busqueda").upsert({ user_id: user.id, ...pend.perfil, actualizado_at: new Date().toISOString() }, { onConflict: "user_id" });
   reportarFalloQuery(ePerfil, { ruta: p.ruta, operacion: "perfil", userId: user.id });
-  if (ePerfil) return { cuerpo: { error: "perfil" }, status: 500, invitacionUsada };
+  if (ePerfil) return { cuerpo: { error: "perfil" }, status: 500, invitacionUsada, espejos: [] };
   // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts).
   await admin.from("user_credits").upsert({ user_id: user.id, credits: 0, subscription_status: "none", welcome_email_sent: true }, { onConflict: "user_id", ignoreDuplicates: true });
   await admin.from("user_credits").update({ welcome_email_sent: true }).eq("user_id", user.id);
   const regalo = await asegurarRegaloDeAlta(admin, { userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta });
+  // CompleteRegistration al crear la cuenta (22-oct-2026, meta/registro.ts): con la puerta —la que el alta ya sabe— y el
+  // «cuándo» si ya está. El pixel lo repite con el espejo que la ruta deja en la cookie.
+  const registro = await emitirRegistroAlCrear(admin, user, contextoDeRequest(request), { origen: "alta", puerta });
+  if (registro) waitUntil(registro.envio);
   await borrarPendiente(admin, user.email);
 
   // El correo del día, en cola; la primera vuelta ahora (las siguientes, el cron cada 10 minutos). Las cuentas de
@@ -80,5 +89,5 @@ export async function ejecutarAlta(admin: SupabaseClient, user: User, request: R
   void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta } }).catch(() => {});
   // La búsqueda con que nació la cuenta (21-oct-2026): la línea «Buscas: … · Cambiar» de «Estás dentro». Va en la
   // respuesta porque quien vuelve por el enlace del correo o por Google ya no tiene los chips en la pantalla.
-  return { cuerpo: { estado: "nueva", regaloVence: regalo.vence, busqueda: busquedaDePerfil(pend.perfil as Record<string, unknown>) }, invitacionUsada };
+  return { cuerpo: { estado: "nueva", regaloVence: regalo.vence, busqueda: busquedaDePerfil(pend.perfil as Record<string, unknown>) }, invitacionUsada, espejos: registro?.espejo ? [registro.espejo] : [] };
 }

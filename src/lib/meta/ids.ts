@@ -10,8 +10,10 @@
 export const EVENTOS_META = {
   /** Dejó el correo: banner del informe, ticket, página de selección (B), página del invitado. */
   lead: "Lead",
-  /** Validó el código y contestó «¿Cuándo piensas comprar?»; la respuesta va como dato. */
+  /** La cuenta nueva, por cualquier puerta (22-oct-2026): sale al crearla, con la puerta y el «cuándo» si lo contestó. */
   registro: "CompleteRegistration",
+  /** Contestó «¿Cuándo piensas comprar?» después (22-oct-2026): propio, con la respuesta como dato. */
+  intencion: "IntencionCompra",
   /** Vio su informe, con el veredicto y la comuna. */
   vistaInforme: "ViewContent",
   /** Pagó: pack, suelto, tres análisis o el primer cobro de un plan. */
@@ -27,7 +29,7 @@ export const EVENTOS_META = {
 export type EventoMeta = (typeof EVENTOS_META)[keyof typeof EVENTOS_META];
 
 /** Los que no son del catálogo de Meta: el pixel los manda con `trackCustom`. */
-export const EVENTOS_PROPIOS: ReadonlySet<string> = new Set([EVENTOS_META.analizarEste, EVENTOS_META.quieroVerlo, EVENTOS_META.semanalClic]);
+export const EVENTOS_PROPIOS: ReadonlySet<string> = new Set([EVENTOS_META.analizarEste, EVENTOS_META.quieroVerlo, EVENTOS_META.semanalClic, EVENTOS_META.intencion]);
 
 /** SHA-256 en hex con la Web Crypto, que existe en el navegador y en Node. */
 export async function sha256Hex(texto: string): Promise<string> {
@@ -43,6 +45,8 @@ export async function idLead(correo: string): Promise<string> {
 }
 /** Un registro por cuenta. */
 export const idRegistro = (userId: string) => `reg-${userId}`;
+/** Una intención por cuenta y respuesta: cambiar de «mirando» a «ya» es otra señal. */
+export const idIntencion = (userId: string, cuando: string) => `ic-${userId}-${cuando.slice(0, 12)}`;
 /** Una vista por informe. */
 export const idVistaInforme = (analysisId: string) => `vc-${analysisId}`;
 /** Una compra por orden: el mismo `commerce_order` que ve /payments/return. */

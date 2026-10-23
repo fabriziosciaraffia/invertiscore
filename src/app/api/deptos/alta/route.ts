@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COOKIE_INVITACION_USADA } from "@/lib/referido-servidor";
+import { conEspejo } from "@/lib/meta/servidor";
 import { ejecutarAlta } from "@/lib/deptos/alta-servidor";
 import { marcarAlta } from "@/lib/deptos/entrada-servidor";
 
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
   try {
     const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA });
     if (typeof r.cuerpo.estado === "string") await marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo });
-    const res = NextResponse.json(r.cuerpo, r.status ? { status: r.status } : undefined);
+    // El espejo del CompleteRegistration (22-oct-2026): el pixel lo repite con el mismo id.
+    const res = conEspejo(NextResponse.json(r.cuerpo, r.status ? { status: r.status } : undefined), r.espejos, request);
     if (r.invitacionUsada) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
     return res;
   } catch (e) {

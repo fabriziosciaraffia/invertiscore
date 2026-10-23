@@ -17,6 +17,9 @@ import { COOKIE_INVITACION_USADA, VINCULO_TERMINADO, vincularInvitacion } from "
 import { waitUntil } from "@vercel/functions";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 import { destinoRecienDentro, esCuentaNueva } from "@/lib/guia/del-dia";
+import { emitirRegistroAlCrear } from "@/lib/meta/registro";
+import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
+import type { EventoEspejo } from "@/lib/meta/espejo";
 
 const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -25,6 +28,8 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   /** La cuenta acaba de nacer (20-oct-2026): su informe la recibe como recién dentro. */
   let recienDentro = false;
+  // El espejo del CompleteRegistration de la cuenta nueva (22-oct-2026), para la cookie del redirect.
+  let espejoRegistro: EventoEspejo | null = null;
   // Se lee ANTES de las salidas de error: un link de confirmación vencido
   // también tiene que devolver al usuario a donde iba, no al dashboard.
   const next = requestUrl.searchParams.get("next");
@@ -167,6 +172,17 @@ export async function GET(request: Request) {
     } catch (e) {
       console.error("[auth/callback] regalo excepción:", e);
     }
+    // El registro de la cuenta nueva para Meta (22-oct-2026, meta/registro.ts): por Google o por el enlace del correo, con
+    // la puerta que la atribución ya tenga. El pixel lo repite con el espejo que va en la cookie del redirect.
+    try {
+      const user = sessionData?.user;
+      if (user?.id) {
+        const registro = await emitirRegistroAlCrear(createAdminServiceClient(), user, contextoDeRequest(request), { origen: "callback" });
+        if (registro) { waitUntil(registro.envio); espejoRegistro = registro.espejo; }
+      }
+    } catch (e) {
+      console.error("[auth/callback] registro excepción:", e);
+    }
 
     // LA PRIMERA SELECCIÓN Y EL CORREO DEL DÍA (20-oct-2026, toda puerta): la cuenta nueva que vuelve por Google o por el
     // enlace del correo queda con su correo del día en cola, antes de la bienvenida (que así no sale). La que vuelve a
@@ -200,5 +216,5 @@ export async function GET(request: Request) {
   // redirect a dominios externos.
   const dest = esDestinoSeguro(next) ? next : "/dashboard";
 
-  return NextResponse.redirect(new URL(destinoRecienDentro(dest, recienDentro), request.url));
+  return conEspejo(NextResponse.redirect(new URL(destinoRecienDentro(dest, recienDentro), request.url)), [espejoRegistro], request);
 }
