@@ -4,43 +4,49 @@
 // LA PRIMERA SELECCIÓN (20-oct-2026, regla de producto de Fabrizio): quien se registra ve sus deptos ahí mismo y es
 // llevado a analizar uno. No espera. Al terminar «Estás dentro», por cualquier puerta —/deptos, la página del invitado y
 // sobre el informe (el banner)—, esta pantalla trae sus primeros deptos de la evaluación de anoche con el perfil que
-// tenga (GET /api/deptos/primeros), cada uno con «Analizar este» —el mismo aviso antes de gastar y la misma ruta que la
-// página semanal—, y arriba «Tienes un análisis de regalo: elige uno». Mientras el correo del día revisa las fichas, la
-// pantalla vuelve a preguntar. Si el perfil no alcanza para armar una selección, pide los chips que falten en un toque
-// (PUT /api/perfil-busqueda) y se arma. Las tarjetas son las de la guía (guia.css); los chips, los de /deptos.
+// tenga (GET /api/deptos/primeros), cada uno con «Analizar este». Mientras el correo del día revisa las fichas, la
+// pantalla vuelve a preguntar. Si el perfil no alcanza para armar una selección, pide los campos que falten (los mismos
+// tres de /deptos, CamposBusqueda) y se arma (PUT /api/perfil-busqueda).
+// SEGÚN EL MOCKUP `2-estas-dentro.html` (23-oct-2026, decisión de Fabrizio): «Tu selección», «Franco eligió estos 5 deptos
+// para tu búsqueda.», «Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te
+// interese.»; tarjetas numeradas con el pin rojo —el nombre, el precio, el veredicto con su color y el flujo— y «Analizar
+// este · usa tu regalo» (el primero en tinta, los demás en contorno); tres a la vista y «Ver los 2 que faltan». El ORDEN es
+// el de la selección (lib/guia/semanal.ts › ordenFijo): el mismo del dashboard y del correo. Sin la marca del chequeo por
+// tarjeta ni lo del correo: lo dice la bajada.
 // 21-oct-2026 (recorrido real de Fabrizio por la puerta B), igual que la selección del dashboard (semanal-lista.tsx): el
 // aviso queda abierto con «Franco está analizando este depto…» hasta que abre el informe; sin saldo, el pack —al precio
 // del ticket si la cuenta tiene menos de 24 horas— y «Comprar solo 1», de vuelta al dashboard con el depto; y el ya
 // analizado dice «Ya lo analizaste · Ver informe», también al volver atrás desde el informe (la pantalla se relee).
+// EL POP-UP RECALCULA (23-oct-2026, mockups D1 y D2): «Cambiar» abre el pie y el plazo, el veredicto se recalcula al tiro
+// (POST /api/deptos/recalcular) y «Analizar» va con la combinación elegida; nunca se cobra sin mostrar el veredicto recalculado.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, tituloHoja, type FaltaDelPerfil } from "@/lib/guia/del-dia";
+import { hojaSinDeptos, PRIMERA_SELECCION, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
-import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { recalcularDepto } from "@/lib/guia/recalcular-cliente";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
-import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
-import { COMUNAS_DESTACADAS, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
+import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
+import type { Combinacion } from "@/lib/guia/seleccion";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import type { PrimerDepto } from "@/lib/deptos/servidor";
-import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const ESPERA_MS = 4000;
 const PREGUNTAS_MAX = 25;
 const ESPERA_EN_CURSO_MS = 4000;
-const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 
-export function PrimeraSeleccion({ titulo = true }: {
-  /** Sin el título de arriba (la casa lo pone ella). */
-  titulo?: boolean;
+export function PrimeraSeleccion({ encabezado = "dentro" }: {
+  /** Dónde se monta: en «Estás dentro» (el kicker y el título) o en la casa (el título de sección de la casa). */
+  encabezado?: "dentro" | "casa";
 }) {
   const router = useRouter();
   const [datos, setDatos] = useState<PrimerosDeLaCuenta | null>(null);
@@ -48,8 +54,9 @@ export function PrimeraSeleccion({ titulo = true }: {
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
   const [confirmar, setConfirmar] = useState<{ it: PrimerDepto; sin: boolean; analizando?: boolean } | null>(null);
-  const [eleccion, setEleccion] = useState<{ comuna: string | null; tipologia: string | null; rango: string | null }>({ comuna: null, tipologia: null, rango: null });
+  const [eleccion, setEleccion] = useState<ValorBusqueda>({ comunas: [], tipologia: TIPOLOGIA_POR_DEFECTO, rango: ELECCIONES_POR_DEFECTO.rango });
   const [armando, setArmando] = useState(false);
+  const [verTodos, setVerTodos] = useState(false);
   const vueltas = useRef(0);
   const vivo = useRef(true);
 
@@ -78,12 +85,15 @@ export function PrimeraSeleccion({ titulo = true }: {
     return () => { vivo.current = false; window.removeEventListener("pageshow", alVolver); };
   }, [leer]);
 
+  // Los campos que faltan: solo esos se mandan (los demás ya están en el perfil).
+  const listo = !!datos && datos.faltan.every((f) => (f === "comuna" ? eleccion.comunas.length > 0 : f === "tipologia" ? !!eleccion.tipologia : !!eleccion.rango));
   async function armar() {
-    if (!datos || armando) return;
+    if (!datos || armando || !listo) return;
+    const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === eleccion.tipologia), r = RANGOS_UF.find((x) => x.id === eleccion.rango);
     const cambios: Record<string, unknown> = {};
-    if (datos.faltan.includes("comuna")) { if (!eleccion.comuna) return; cambios.comunas = [eleccion.comuna]; }
-    if (datos.faltan.includes("tipologia")) { const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === eleccion.tipologia); if (!t) return; cambios.dormitorios = t.dorms; }
-    if (datos.faltan.includes("rango")) { const r = RANGOS_UF.find((x) => x.id === eleccion.rango); if (!r) return; cambios.precioMaxUf = r.max; if (r.min) cambios.precioMinUf = r.min; }
+    if (datos.faltan.includes("comuna")) cambios.comunas = eleccion.comunas;
+    if (datos.faltan.includes("tipologia")) { if (!t) return; cambios.dormitorios = [...t.dorms]; }
+    if (datos.faltan.includes("rango")) { if (!r) return; cambios.precioMaxUf = r.max; if (r.min) cambios.precioMinUf = r.min; }
     setArmando(true);
     setFallo(false);
     try {
@@ -96,7 +106,7 @@ export function PrimeraSeleccion({ titulo = true }: {
     }
   }
 
-  async function analizar(it: PrimerDepto) {
+  async function analizar(it: PrimerDepto, combo: Combinacion) {
     if (!datos?.combinacion || !datos.token || generando) return;
     setError(null);
     setGenerando(it.avisoId);
@@ -108,7 +118,7 @@ export function PrimeraSeleccion({ titulo = true }: {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origenId: datos.origenId, avisoId: it.avisoId, piePct: datos.combinacion.piePct, plazoAnios: datos.combinacion.plazoAnios, semanal: datos.token }),
+          body: JSON.stringify({ origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, semanal: datos.token }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
@@ -129,125 +139,80 @@ export function PrimeraSeleccion({ titulo = true }: {
   }
 
   const saldo = datos?.saldo;
-  const usa = saldo?.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo?.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
-  const chip = (activo: boolean, texto: string, al: () => void, clave: string) => (
-    <button key={clave} type="button" role="radio" className="dp-chip" aria-checked={activo} data-activo={activo ? "1" : undefined} onClick={al}>{texto}</button>
-  );
-  const pregunta = (f: FaltaDelPerfil) => {
-    if (f === "comuna") {
-      return (
-        <fieldset key={f} className="dp-bloque" data-primera="falta-comuna">
-          <legend className="dp-pregunta">{PRIMERA_SELECCION.faltaComuna}</legend>
-          <div className="dp-chips" role="radiogroup" aria-label={PRIMERA_SELECCION.faltaComuna}>
-            {DESTACADAS.map((c) => chip(eleccion.comuna === c, c, () => setEleccion((e) => ({ ...e, comuna: c })), c))}
-            <label className="dp-chip dp-chip-otra" style={{ position: "relative" }}>
-              {eleccion.comuna && !DESTACADAS.includes(eleccion.comuna) ? eleccion.comuna : "Otra comuna…"}
-              <select aria-label="Otra comuna" value={eleccion.comuna && !DESTACADAS.includes(eleccion.comuna) ? eleccion.comuna : ""} onChange={(e) => setEleccion((x) => ({ ...x, comuna: e.target.value || null }))}
-                style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}>
-                <option value="">Otra comuna…</option>
-                {COMUNAS_DISPONIBLES.filter((c) => !DESTACADAS.includes(c)).map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
-          </div>
-        </fieldset>
-      );
-    }
-    if (f === "tipologia") {
-      return (
-        <fieldset key={f} className="dp-bloque" data-primera="falta-tipologia">
-          <legend className="dp-pregunta">{PRIMERA_SELECCION.faltaTipologia}</legend>
-          <div className="dp-chips" role="radiogroup" aria-label={PRIMERA_SELECCION.faltaTipologia}>
-            {TIPOLOGIAS_DEPTOS.map((t) => chip(eleccion.tipologia === t.id, t.chip, () => setEleccion((e) => ({ ...e, tipologia: t.id })), t.id))}
-          </div>
-        </fieldset>
-      );
-    }
-    return (
-      <fieldset key={f} className="dp-bloque" data-primera="falta-rango">
-        <legend className="dp-pregunta">{PRIMERA_SELECCION.faltaRango}</legend>
-        <div className="dp-chips" role="radiogroup" aria-label={PRIMERA_SELECCION.faltaRango}>
-          {RANGOS_UF.map((r) => chip(eleccion.rango === r.id, r.chip, () => setEleccion((e) => ({ ...e, rango: r.id })), r.id))}
-        </div>
-      </fieldset>
-    );
-  };
-  const listo = !!datos && datos.faltan.every((f) => (f === "comuna" ? !!eleccion.comuna : f === "tipologia" ? !!eleccion.tipologia : !!eleccion.rango));
-  // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno», y con regalo el título dice que queda guardado
-  // (20-oct-2026).
+  const usaRegalo = saldo?.tipo === "regalo" || (saldo?.tipo === "con" && !!saldo.proximoRegalo);
+  // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno» (20-oct-2026).
   const sinDeptos = hojaSinDeptos(datos);
+  const items = datos?.faltan.length === 0 ? datos.items : [];
+  const visibles = verTodos ? items : items.slice(0, TARJETAS_A_LA_VISTA);
+  const faltanPorVer = items.length - visibles.length;
+  const titulo = tituloSeleccion(items.length);
+  const bajada = usaRegalo ? PRIMERA_SELECCION.bajadaRegalo : PRIMERA_SELECCION.bajada;
 
   return (
-    <section className="guia dp" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
-      {titulo && <h2 className="guia-bloque" data-primera="titulo">{tituloHoja({ regalo: !!datos?.regaloVence, sinDeptos })}</h2>}
-      {titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">{PRIMERA_SELECCION.bajada}</p>}
+    <section className="dp dp-seccion" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
+      {encabezado === "dentro" && <p className="dp-kicker">{PRIMERA_SELECCION.kicker}</p>}
+      <h2 className={encabezado === "casa" ? "ca-plano-t" : "dp-h2"} data-primera="titulo">{titulo}</h2>
+      {!sinDeptos && <p className="dp-txt" data-primera="bajada">{bajada}</p>}
 
-      {!datos && !fallo && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
+      {!datos && !fallo && <p className="sel-estado" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
       {fallo && (
-        <div className="mt-3" data-primera="error">
-          <p className="guia-error" role="alert">{PRIMERA_SELECCION.error}</p>
-          <div className="guia-acc"><button type="button" className="guia-an" onClick={() => { setFallo(false); void leer(); }}>{PRIMERA_SELECCION.reintentar}</button></div>
+        <div data-primera="error">
+          <p className="sel-error" role="alert">{PRIMERA_SELECCION.error}</p>
+          <button type="button" className="sel-btn sel-btn-chico" onClick={() => { setFallo(false); void leer(); }}>{PRIMERA_SELECCION.reintentar}</button>
         </div>
       )}
 
       {datos && datos.faltan.length > 0 && (
-        <div className="mt-3" data-primera="faltan">
-          <p className="guia-txt">{PRIMERA_SELECCION.faltan}</p>
-          <div className="mt-2 flex flex-col gap-3">{datos.faltan.map(pregunta)}</div>
-          <div className="guia-acc">
-            <button type="button" className="guia-an" onClick={() => void armar()} disabled={!listo || armando} {...botonOcupado(armando)}>{PRIMERA_SELECCION.armar}</button>
-          </div>
+        <div className="sel-faltan" data-primera="faltan">
+          <p className="dp-txt">{PRIMERA_SELECCION.faltan}</p>
+          <CamposBusqueda valor={eleccion} campos={datos.faltan} onChange={(_c, v) => setEleccion(v)} ids="primera" />
+          <button type="button" className="sel-btn" data-primario="1" onClick={() => void armar()} disabled={!listo || armando} {...botonOcupado(armando)}>{PRIMERA_SELECCION.armar}</button>
         </div>
       )}
 
       {datos && datos.faltan.length === 0 && (
         <>
-          {datos.revisando && <p className="guia-txt mt-3" role="status" aria-live="polite" data-primera="revisando">{PRIMERA_SELECCION.revisando}</p>}
-          {sinDeptos && <p className="guia-txt mt-3" data-primera="ninguno">{PRIMERA_SELECCION.ninguno}</p>}
-          {datos.vecinas && datos.items.length > 0 && <p className="guia-txt mt-3" data-primera="vecinas">{PRIMERA_SELECCION.vecinas}</p>}
-          {datos.items.length > 0 && (
-            <div className="guia-lista mt-3">
-              {datos.items.map((it) => {
+          {datos.revisando && <p className="sel-estado" role="status" aria-live="polite" data-primera="revisando">{PRIMERA_SELECCION.revisando}</p>}
+          {sinDeptos && <p className="sel-estado" data-primera="ninguno">{PRIMERA_SELECCION.ninguno}</p>}
+          {datos.vecinas && items.length > 0 && <p className="sel-estado" data-primera="vecinas">{PRIMERA_SELECCION.vecinas}</p>}
+          {items.length > 0 && (
+            <div className="sel-lista" data-primera="lista">
+              {visibles.map((it, i) => {
                 const neg = (it.flujo ?? 0) < 0;
                 const puede = !!datos.token && !!it.enSeleccion && !!datos.combinacion;
                 return (
-                  <article key={it.avisoId} className="guia-av" data-visto={it.vistoAt ? "1" : "0"} data-primera="depto">
-                    <div className="guia-top">
-                      <span className="guia-ojo">{[it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ")}</span>
-                    </div>
-                    <div className="guia-precio">UF {miles(it.precioUF)}</div>
-                    <div className="guia-dos">
+                  <article key={it.avisoId} className="sel-av" data-primera="depto" data-n={i + 1}>
+                    <div className="sel-ojo"><span className="sel-pin" aria-hidden="true">{i + 1}</span>{[it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ")}</div>
+                    <div className="sel-precio">UF {miles(it.precioUF)}</div>
+                    <div className="sel-dos">
                       <div>
-                        <div className="guia-k">{GUIA.veredicto}</div>
-                        <span className="guia-ver" data-veredicto={it.veredicto}>{etiquetaVeredicto(it.veredicto, "frase")} <span className="guia-pt">{it.score ?? ""}</span></span>
+                        <span className="sel-k">{GUIA.veredicto}</span>
+                        <span className="sel-v" data-veredicto={it.veredicto}>{etiquetaVeredicto(it.veredicto, "frase")}{it.score != null ? ` · ${it.score}` : ""}</span>
                       </div>
                       <div>
-                        <div className="guia-k">{GUIA.flujo}</div>
+                        <span className="sel-k">{GUIA.flujo}</span>
                         {it.flujo != null && (
-                          <div className={`guia-flujo${neg ? " guia-neg" : ""}`}>
-                            {neg ? "−" : "+"}${miles(Math.abs(it.flujo))}
-                            <small>{neg ? GUIA.saleDeTuBolsillo : GUIA.teQueda}</small>
-                          </div>
+                          <span className={`sel-flujo${neg ? " sel-neg" : ""}`}>
+                            {neg ? "−" : "+"}${miles(Math.abs(it.flujo))} <small>{neg ? GUIA.saleDeTuBolsillo : GUIA.teQueda}</small>
+                          </span>
                         )}
                       </div>
                     </div>
-                    <p className="guia-cr mt-2.5" data-primera="marca">{it.vistoAt ? marcaVisto(it.vistoAt) : PRIMERA_SELECCION.porConfirmar}</p>
-                    {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
+                    {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
                     {it.informeId ? (
-                      <div className="guia-acc" data-primera="ya-analizado">
-                        <span className="guia-cr">{YA_ANALIZADO.texto} ·</span>
-                        <EnlaceCarga href={`/analisis/${it.informeId}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
-                      </div>
+                      <p className="sel-ya" data-primera="ya-analizado">
+                        <span>{YA_ANALIZADO.texto} ·</span>
+                        <EnlaceCarga href={`/analisis/${it.informeId}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
+                      </p>
                     ) : puede && (
-                      <div className="guia-acc">
-                        <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-primera="analizar">
-                          {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
-                        </button>
-                        {usa && <span className="guia-cr">· {usa}</span>}
-                      </div>
+                      <button type="button" className="sel-btn" data-primario={i === 0 ? "1" : undefined} onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-primera="analizar">
+                        {generando === it.avisoId ? GUIA.analizando : textoAnalizar(usaRegalo)}
+                      </button>
                     )}
                   </article>
                 );
               })}
+              {faltanPorVer > 0 && <button type="button" className="sel-mas" onClick={() => setVerTodos(true)} data-primera="ver-mas">{PRIMERA_SELECCION.verMas(faltanPorVer)}</button>}
             </div>
           )}
         </>
@@ -255,7 +220,7 @@ export function PrimeraSeleccion({ titulo = true }: {
 
       {confirmar && datos?.combinacion && (
         <AvisoAntesDeAnalizar
-          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF }}
+          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo }}
           combinacion={datos.combinacion}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
@@ -263,7 +228,8 @@ export function PrimeraSeleccion({ titulo = true }: {
           ticketConSaldo={datos.token && datos.ticket ? ticketConSaldoDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt }) : null}
           rutaCompra="/dashboard"
           analizando={!!confirmar.analizando}
-          alAnalizar={() => void analizar(confirmar.it)}
+          recalcular={datos.token ? (combo) => recalcularDepto({ token: datos.token!, avisoId: confirmar.it.avisoId, origenId: datos.origenId, combo }) : undefined}
+          alAnalizar={(combo) => void analizar(confirmar.it, combo)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}

@@ -65,7 +65,7 @@ export function InvitacionCliente({ modo: modoInicial, codigo, nombre, sesion, p
         <h1 className="dp-titulo iv-titulo">{REFERIDO_COPY.yaTienesCuenta}</h1>
         <p className="iv-bajada">{REFERIDO_COPY.yaTienesCuentaTexto}</p>
         <div className="dp-fin">
-          <a className="dp-boton iv-boton" href="/dashboard">{REFERIDO_COPY.irACuenta}</a>
+          <a className="dp-boton dp-boton-tinta iv-boton" href="/dashboard">{REFERIDO_COPY.irACuenta}</a>
         </div>
       </div>
     );

@@ -27,25 +27,26 @@ export const COMUNAS_DESTACADAS = ["Santiago", "Ñuñoa", "Providencia", "Las Co
 
 export interface RangoUf { id: string; min: number | null; max: number; chip: string; frase: string }
 /**
- * CUATRO RANGOS (16-oct-2026): los cuartiles del precio de lo que la gente analiza (UF 2.950, 3.800 y 5.500, todo el
- * historial sin cuentas de prueba), redondeados.
+ * CUATRO RANGOS (16-oct-2026: los cuartiles del precio de lo que la gente analiza, redondeados). DESDE EL 23-oct-2026, los
+ * del mockup de la puerta B (`docs/puerta-b-mockups/1b-deptos.html` y `3b-dashboard.html`): el tercero llega a UF 6.000 y
+ * el último empieza ahí. `chip` es también el nombre del `<select>` y el de la línea del perfil.
  */
 export const RANGOS_UF: readonly RangoUf[] = [
   { id: "hasta-3000", min: null, max: 3000, chip: "Hasta UF 3.000", frase: "hasta UF 3.000" },
   { id: "3000-4000", min: 3000, max: 4000, chip: "UF 3.000 a 4.000", frase: "entre UF 3.000 y 4.000" },
-  { id: "4000-5500", min: 4000, max: 5500, chip: "UF 4.000 a 5.500", frase: "entre UF 4.000 y 5.500" },
-  { id: "5500-mas", min: 5500, max: 60000, chip: "Más de UF 5.500", frase: "sobre UF 5.500" },
+  { id: "4000-6000", min: 4000, max: 6000, chip: "UF 4.000 a 6.000", frase: "entre UF 4.000 y 6.000" },
+  { id: "6000-mas", min: 6000, max: 60000, chip: "Más de UF 6.000", frase: "sobre UF 6.000" },
 ];
 
-export interface TipologiaDeptos { id: string; dorms: number[]; chip: string; frase: string }
+export interface TipologiaDeptos { id: string; dorms: number[]; chip: string; /** El nombre del `<select>` y de la línea del perfil (23-oct-2026): «2 dormitorios». */ nombre: string; frase: string }
 /** Una sola tipología, 2D por defecto (16-oct-2026). */
 export const TIPOLOGIA_POR_DEFECTO = "2";
 export const TIPOLOGIAS_DEPTOS: readonly TipologiaDeptos[] = [
-  { id: "0", dorms: [0], chip: "Estudio", frase: "estudios" },
-  { id: "1", dorms: [1], chip: "1D", frase: "1D" },
-  { id: "2", dorms: [2], chip: "2D", frase: "2D" },
-  { id: "3", dorms: [3], chip: "3D", frase: "3D" },
-  { id: "4", dorms: [4, 5], chip: "4D o más", frase: "de 4 o más dormitorios" },
+  { id: "0", dorms: [0], chip: "Estudio", nombre: "Estudio", frase: "estudios" },
+  { id: "1", dorms: [1], chip: "1D", nombre: "1 dormitorio", frase: "1D" },
+  { id: "2", dorms: [2], chip: "2D", nombre: "2 dormitorios", frase: "2D" },
+  { id: "3", dorms: [3], chip: "3D", nombre: "3 dormitorios", frase: "3D" },
+  { id: "4", dorms: [4, 5], chip: "4D o más", nombre: "4 dormitorios o más", frase: "de 4 o más dormitorios" },
 ];
 
 export type ModalidadDeptos = "ltr" | "str";
@@ -99,20 +100,20 @@ export interface RespuestaDeptos {
   convienen: number;
   /** El número: «29 de 1.008». null si esta semana no hubo avisos así. */
   cifra: string | null;
-  /** «29 de 1.008 convienen»; sin avisos, «Ninguno publicado así esta semana». */
+  /** «29 de 1.008 publicados convienen»; sin avisos, «Ninguno publicado así esta semana». */
   titular: string;
   /**
-   * QUÉ BÚSQUEDA ES EL NÚMERO (17-oct-2026, decisión de Fabrizio): «Si buscas Santiago · 2D · UF 3.000 a 4.000», como
-   * etiqueta ANTES del número. Viene en la misma respuesta que el número, así que al tocar un chip cambian juntos.
+   * LA TARJETA DEL NÚMERO (23-oct-2026, mockup `1b-deptos.html`): el número grande y, a su lado, «de 310 publicados
+   * convienen» (`resto`); debajo, la nota. Las tres piezas llegan en la MISMA respuesta: al cambiar un campo cambian juntas.
    */
-  etiqueta: string;
-  /** «con pie 20 % y 25 años», chico bajo el número. */
+  resto: string | null;
+  /** «Publicados anoche. Cambia la búsqueda y el número cambia.», chico bajo el número. */
   nota: string;
   /** Con cero: con qué sí, en una línea corta. null si no es cero. */
   alternativa: string | null;
   conPie30: number | null;
   vecinas: Array<{ comuna: string; convienen: number }>;
-  /** La invitación a registrarse, pegada al número, con o sin deptos. */
+  /** El título de la tarjeta del correo, con o sin deptos. */
   registro: string;
 }
 
@@ -126,41 +127,68 @@ export function masDeMiles(n: number): string {
   return n >= 10_000 ? `+${miles(Math.floor(n / 1000) * 1000)}` : miles(n);
 }
 
+/**
+ * EL COPY DE /deptos SEGÚN EL MOCKUP DE LA PUERTA B (23-oct-2026, `docs/puerta-b-mockups/1b-deptos.html`, decisión de
+ * Fabrizio): el título en serif, la bajada con «Se van rápido.» en negrita, la tarjeta «¿Qué buscas?» con tres campos con
+ * nombre, la tarjeta del número, la tarjeta del correo con el material de la tríada —Google primero, «o con tu correo», el
+ * campo y «Quiero verlos»— y, debajo, la prueba con las cifras de la noche y «Ver un análisis real». Sin pie ni plazo.
+ */
 export const DEPTOS_COPY = {
   /** El título de la pestaña y de la vista previa del enlace. */
   titular: "Cada semana, los deptos que convienen",
-  /**
-   * QUÉ ES, EN UNA FRASE (17-oct-2026, decisión de Fabrizio), con las cifras de la evaluación de la noche: las mismas con
-   * que se cuenta la respuesta de abajo (deptos publicados en la última semana con arriendo de referencia; resumenDeLaNoche).
-   * «EN VENTA» (17-oct-2026, decisión de Fabrizio): el +40.000 de la landing son los comparables de venta Y arriendo
-   * (src/lib/stats.ts); sin decir «en venta», las dos cifras se leían como si se contradijeran.
-   */
-  // UNA SOLA FRASE ARRIBA (17-oct-2026, decisión de Fabrizio): qué revisa y cuántos convenían anoche, «como inversión».
-  que: (revisados: number | null, convienen: number | null) =>
-    `Cada noche Franco revisa los ${revisados ? `${masDeMiles(revisados)} ` : ""}deptos en venta publicados en Santiago.${convienen != null ? ` Anoche, ${miles(convienen)} convenían como inversión.` : ""}`,
+  /** El título de la página (serif). */
+  titulo: "Accede antes que el resto a los deptos en venta que convienen como inversión.",
+  /** La bajada: la primera frase en negrita. */
+  bajadaFuerte: "Se van rápido.",
+  bajada: "Franco rastrea cada noche todas las publicaciones y selecciona las que más calzan con tu perfil de inversión.",
   /** Arriba, cuando se llega desde «Empezar gratis» de la página de planes (19-oct-2026, decisión de Fabrizio): el enlace
    *  va en «Analízalo gratis», al wizard. */
   desdePlanes: { antes: "Elige qué buscas y te mandamos los deptos cada semana. ¿Tienes un depto en la mira?", enlace: "Analízalo gratis" },
-  /** La etiqueta del número: la búsqueda de los chips. */
-  si: (busqueda: string) => `Si buscas ${busqueda}`,
-  nota: `con pie ${PIE_DEPTOS} % y ${PLAZO_DEPTOS} años`,
-  /** Los chips, debajo del correo (17-oct-2026: antes «Afina tu búsqueda»). */
-  afina: "Cambia la búsqueda",
-  /** En una línea, también en el teléfono. */
-  bajada: "Elige y Franco te dice cuántos convienen hoy.",
+  /** La tarjeta de los tres campos (los mismos que edita el perfil del dashboard: components/deptos/CamposBusqueda.tsx). */
+  queBuscas: "¿Qué buscas?",
   comuna: "Comuna",
-  comunaAyuda: `Hasta ${MAX_COMUNAS_DEPTOS}`,
-  otraComuna: "Otra comuna…",
-  buscar: "Busca tu comuna",
-  fuera: "Por ahora solo Gran Santiago.",
+  eligeComuna: "Elige una comuna",
   tipologia: "Tipología",
   rango: "Rango de precio",
-  conRegistro: "Regístrate y te los mando hoy",
-  sinDeptos: "Regístrate y te aviso cuando aparezca uno",
-  /** Debajo del botón, siempre. */
-  sinContrasena: "Te mandamos un código. Sin contraseña.",
+  /** Bajo los campos, hasta que elige la comuna. */
+  eligeYTeDecimos: "Elige la comuna y te decimos cuántos convienen hoy.",
+  /** Al lado del número: «de 310 publicados convienen». */
+  resto: (total: number, convienen: number) => `de ${miles(total)} publicados ${convienen === 1 ? "conviene" : "convienen"}`,
+  nota: "Publicados anoche. Cambia la búsqueda y el número cambia.",
+  /** La tarjeta del correo. */
+  correo: {
+    titulo: "Regístrate gratis y revísalos ahora mismo.",
+    tituloSinDeptos: "Regístrate gratis y te avisamos cuando aparezca uno.",
+    /** «Los 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.»: la negrita va en
+     *  `fuerte`. */
+    bajada: (convienen: number): { antes: string; fuerte: string; despues: string } =>
+      convienen > 1
+        ? { antes: `Los ${miles(convienen)} te llegan al correo en minutos, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
+        : convienen === 1
+          ? { antes: "Te llega al correo en minutos, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." }
+          : { antes: "Te llega al correo apenas se publique, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." },
+    google: "Entrar con Google",
+    oTuCorreo: "o con tu correo",
+    placeholder: "nombre@correo.cl",
+    boton: "Quiero verlos",
+    nota: "Sin contraseña: te mandamos un código. Nada de spam, solo deptos.",
+  },
   /** Después de pedir el código: EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio). */
   enviado: (correo: string) => `Te mandamos un código a ${correo}. Escríbelo acá.`,
+  /**
+   * LA PRUEBA, debajo del correo, con las cifras de la evaluación de la noche: las mismas con que se cuenta la respuesta de
+   * arriba (deptos publicados en la última semana con arriendo de referencia; resumenDeLaNoche). «EN VENTA» (17-oct-2026,
+   * decisión de Fabrizio): el +40.000 de la landing son los comparables de venta Y arriendo (src/lib/stats.ts); sin decir
+   * «en venta», las dos cifras se leían como si se contradijeran. La negrita va en `fuerte`.
+   */
+  prueba: (revisados: number | null, convienen: number | null): { antes: string; fuerte: string; despues: string } => ({
+    antes: "Cada noche Franco revisa ",
+    fuerte: revisados ? `las ${masDeMiles(revisados)} publicaciones` : "todas las publicaciones",
+    despues: ` en venta de Santiago y calcula cuáles convienen como inversión.${convienen != null ? ` Anoche, ${miles(convienen)} deptos.` : ""}`,
+  }),
+  verAnalisis: "Ver un análisis real",
+  /** Adónde lleva «Ver un análisis real»: el demo público. */
+  hrefAnalisis: "/demo",
   tope: `Hasta ${MAX_COMUNAS_DEPTOS} comunas.`,
 } as const;
 
@@ -176,12 +204,12 @@ export function respuestaDeptos(
   const enSus = propias.filter((c) => v.comunas.includes(c.comuna));
   const total = enSus.reduce((s, c) => s + c.total, 0);
   const convienen = enSus.reduce((s, c) => s + c.comprar20, 0);
-  const etiqueta = DEPTOS_COPY.si([lista(v.comunas), v.tipologias.map((t) => t.chip).join(" y "), v.rango.chip].join(" · "));
   const nota = DEPTOS_COPY.nota;
   const cifra = total > 0 ? `${miles(convienen)} de ${miles(total)}` : null;
-  const titular = cifra ? `${cifra} ${convienen === 1 ? "conviene" : "convienen"}` : "Ninguno publicado así esta semana";
+  const resto = total > 0 ? DEPTOS_COPY.resto(total, convienen) : null;
+  const titular = resto ? `${miles(convienen)} ${resto}` : "Ninguno publicado así esta semana";
   if (convienen > 0) {
-    return { total, convienen, cifra, titular, etiqueta, nota, alternativa: null, conPie30: null, vecinas: [], registro: DEPTOS_COPY.conRegistro };
+    return { total, convienen, cifra, titular, resto, nota, alternativa: null, conPie30: null, vecinas: [], registro: DEPTOS_COPY.correo.titulo };
   }
   // EL CERO CON ALTERNATIVA, en una línea: con qué pie sí (30 %, en sus mismas comunas) o, si no, en qué comuna vecina.
   const conPie30 = enSus.reduce((s, c) => s + c.comprar30, 0);
@@ -193,7 +221,7 @@ export function respuestaDeptos(
   const alternativa = conPie30 > 0 ? `Con pie 30 %, ${siConvienen(conPie30)}.`
     : vecinasQueDan[0] ? `En ${vecinasQueDan[0].comuna}, comuna vecina, ${siConvienen(vecinasQueDan[0].convienen)}.`
     : "Tampoco con pie 30 % ni en comunas vecinas.";
-  return { total, convienen: 0, cifra, titular, etiqueta, nota, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.sinDeptos };
+  return { total, convienen: 0, cifra, titular, resto, nota, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.correo.tituloSinDeptos };
 }
 
 /** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. */
@@ -210,11 +238,10 @@ export function perfilManualDeElecciones(v: Extract<Validacion, { ok: true }>): 
 }
 
 // ── EL PERFIL ES DE LA PERSONA, NO DEL EJEMPLO (21-oct-2026, recorrido real de Fabrizio por la puerta B) ──────────
-// /deptos ya no arranca en Santiago: la comuna la elige la persona, y recién con ella hay número y correo. La tipología
-// y el rango sí vienen puestos, a la vista, como sugerencia. Así nadie deja el correo con la búsqueda del ejemplo. En
-// «Estás dentro», antes de los deptos, la búsqueda con que nació la cuenta en una línea —«Buscas: Santiago · 2D · UF
-// 3.000 a 4.000 · Cambiar»— con los chips a un toque; lo que cambie se guarda cuando la persona sigue («Listo», un depto o
-// «Ir a mi panel»). Lo prueba el tier PUERTA-B-RECORRIDO.
+// /deptos no arranca con una comuna: la elige la persona, y recién con ella hay número y correo. La tipología y el rango
+// sí vienen puestos, a la vista, como sugerencia. Así nadie deja el correo con la búsqueda del ejemplo. En «Estás dentro»
+// (23-oct-2026, mockup `2-estas-dentro.html`), después de la selección, «Tu perfil de búsqueda» en una línea —«Providencia
+// · 2 dormitorios · UF 3.000 a 4.000»— con «Editar», que lleva al perfil del dashboard. Lo prueba el tier PUERTA-B-RECORRIDO.
 
 /** ¿Se puede pedir el correo? Solo con al menos una comuna elegida por la persona. */
 export function puedePedirCorreo(comunas: readonly string[]): boolean {
@@ -227,22 +254,34 @@ export interface BusquedaDeptos {
   rango: string;
 }
 
-export const BUSCAS_COPY = {
-  /** Arriba de los chips cuando todavía no hay comuna. */
-  eligeComuna: "¿En qué comuna buscas?",
-  buscas: "Buscas:",
-  cambiar: "Cambiar",
-  listo: "Listo",
-  guardando: "Guardando…",
-  error: "No pudimos cambiar tu búsqueda. Intenta de nuevo.",
-} as const;
-
-/** «Santiago · 2D · UF 3.000 a 4.000»: la búsqueda, como la dice la etiqueta del número. */
-export function lineaBuscas(b: BusquedaDeptos): string {
+/** La línea del perfil de «Estás dentro» (23-oct-2026): «Providencia · 2 dormitorios · UF 3.000 a 4.000», con el nombre
+ *  largo de la tipología (el de los `<select>`), no el chip. */
+export function lineaPerfil(b: BusquedaDeptos): string {
   const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === b.tipologia);
   const r = RANGOS_UF.find((x) => x.id === b.rango);
-  return [lista(b.comunas), t?.chip, r?.chip].filter(Boolean).join(" · ");
+  return [lista(b.comunas), t?.nombre, r?.chip].filter(Boolean).join(" · ");
 }
+
+/** El copy de «Estás dentro» según el mockup `2-estas-dentro.html` (23-oct-2026). Sin pie ni plazo, sin la modalidad ni
+ *  el «cuándo» (van al perfil del dashboard), sin lo del correo. */
+export const ESTAS_DENTRO_DEPTOS = {
+  titulo: "Bienvenido, estás dentro.",
+  regalo: {
+    kicker: "Regalo de bienvenida",
+    titulo: "Tienes un análisis de regalo.",
+    /** «Úsalo en el depto que más te interese de abajo. Vence el 21 de noviembre.» (la fecha, textoVence). */
+    bajada: "Úsalo en el depto que más te interese de abajo.",
+  },
+  perfil: {
+    kicker: "Tu perfil de búsqueda",
+    editar: "Editar",
+    /** Adónde lleva «Editar»: el perfil del dashboard. */
+    hrefEditar: "/dashboard#perfil",
+    nota: "Con este perfil te hacemos llegar una selección actualizada todos los lunes. Puedes editar los parámetros y la frecuencia en tu dashboard.",
+  },
+  dashboard: "Ir a mi dashboard",
+  hrefDashboard: "/dashboard",
+} as const;
 
 /** La búsqueda de los chips desde el perfil manual (la inversa de `perfilManualDeElecciones`), para la línea «Buscas». */
 export function busquedaDePerfil(p: { comunas?: unknown; dormitorios?: unknown; precio_min_uf?: unknown; precio_max_uf?: unknown } | null | undefined): BusquedaDeptos | null {
@@ -256,7 +295,8 @@ export function busquedaDePerfil(p: { comunas?: unknown; dormitorios?: unknown; 
   return { comunas, tipologia: t?.id ?? TIPOLOGIA_POR_DEFECTO, rango: r?.id ?? ELECCIONES_POR_DEFECTO.rango };
 }
 
-/** Lo que guarda «Listo» (PUT /api/perfil-busqueda): las comunas, los dormitorios y el rango de la línea «Buscas». */
+/** Lo que guardan los tres campos del perfil del dashboard (PUT /api/perfil-busqueda): las comunas, los dormitorios y el
+ *  rango. null si la búsqueda no está completa. */
 export function cambiosDeBusqueda(b: BusquedaDeptos): { comunas: string[]; dormitorios: number[]; precioMaxUf: number; precioMinUf: number | null } | null {
   const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === b.tipologia);
   const r = RANGOS_UF.find((x) => x.id === b.rango);
@@ -313,7 +353,8 @@ export const ALTA_COPY = {
   agregarNo: "No, dejarlo como está",
   agregado: "Listo, quedó en tu perfil.",
   correo: "Tu correo",
-  pedir: "Quiero recibirlos",
-  google: "o con Google",
+  /** El botón del correo y el de Google (23-oct-2026): los del mockup (DEPTOS_COPY.correo). */
+  pedir: DEPTOS_COPY.correo.boton,
+  google: DEPTOS_COPY.correo.google,
   error: "No pudimos seguir. Intenta de nuevo.",
 } as const;

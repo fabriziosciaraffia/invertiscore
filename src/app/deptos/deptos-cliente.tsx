@@ -1,80 +1,61 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /deptos en el navegador (16-oct-2026, la puerta B). La única meta de la pantalla es que dejen el correo (segunda
-// pasada, mismo día): MENOS PARA ELEGIR y el correo PEGADO A LA RESPUESTA.
-//   1 · tres preguntas con chips compactos: comuna (las ocho más buscadas y «Otra comuna…», un buscador con el resto;
-//       hasta tres), tipología (una sola, 2D por defecto) y rango (cuatro). Apenas están, la respuesta de la noche
-//       (GET /api/deptos/respuesta) es UN NÚMERO —«29 de 1.008 convienen»— con la búsqueda arriba y el pie y el plazo chicos debajo;
-//   2 · inmediatamente debajo, el correo: «Regístrate y te los mando hoy», el campo, «Quiero recibirlos» y «Te mandamos
-//       un código. Sin contraseña.». Después del correo, el MISMO mensaje exista o no la cuenta; al entrar, a la que ya
-//       existía se le pregunta si agrega esas comunas a su perfil;
-//   3 · «Estás dentro»: el regalo, la modalidad (arriendo tradicional por defecto) y «¿Cuándo piensas comprar?»;
-//   4 · sus primeros deptos (20-oct-2026: EN LA MISMA PANTALLA de «Estás dentro», sin esperar a que conteste el «cuándo»;
-//       PrimeraSeleccion), cada uno con «Analizar este»; mientras el correo del día los revisa, la pantalla vuelve a preguntar.
-// Lead al dejar el correo (servidor + pixel, mismo id) y CompleteRegistration al contestar el «cuándo», con la puerta B.
-// CON GOOGLE (16-oct-2026): «o con Google» debajo del campo. Antes de salir, lo elegido queda guardado con una clave
-// (/api/deptos/google); vuelve a /deptos?entro=google&p=<clave> con sesión, el callback ya lo pasó a nombre del correo, y
-// desde ahí todo es igual que por código: el Lead (al volver, cuando se sabe el correo), el alta y «Estás dentro».
+// /deptos en el navegador (16-oct-2026, la puerta B). La única meta de la pantalla es que dejen el correo.
+// SEGÚN LOS MOCKUPS DE LA PUERTA B (23-oct-2026, decisión de Fabrizio; `docs/puerta-b-mockups/1b-deptos.html` y
+// `2-estas-dentro.html`): el diseño plano de la casa —Inter, serif solo en el título de la página, botones píldora, la
+// tarjeta roja solo para el regalo—.
+//   1 · ELEGIR: el título y la bajada; la tarjeta «¿Qué buscas?» con los tres campos con nombre (CamposBusqueda: la comuna
+//       vacía, «Elige una comuna»; la tipología y el rango puestos como sugerencia); al elegir la comuna, la tarjeta del
+//       número («12 de 310 publicados convienen · Publicados anoche. Cambia la búsqueda y el número cambia.», de la
+//       evaluación de la noche, GET /api/deptos/respuesta) y la tarjeta del correo con el material de la tríada: primero
+//       «Entrar con Google», «o con tu correo», el campo y «Quiero verlos», «Sin contraseña: te mandamos un código». Debajo,
+//       la prueba con las cifras de la noche y «Ver un análisis real». Sin pie ni plazo.
+//   2 · EL CÓDIGO: en la misma tarjeta, «Te mandamos un código a …», el campo y «Entrar». El MISMO mensaje exista o no la
+//       cuenta; al entrar, a la que ya existía se le pregunta si agrega la comuna a su perfil.
+//   3 · «BIENVENIDO, ESTÁS DENTRO.»: la tarjeta roja del regalo; «Tu selección» con sus primeros deptos (PrimeraSeleccion,
+//       sin esperar a nada); «Tu perfil de búsqueda» en una línea con «Editar» (al dashboard) y la nota de los lunes; «Ir a
+//       mi dashboard». La modalidad y el «cuándo» ya no se preguntan acá: van al perfil del dashboard (parte 2).
+// Lead al dejar el correo (servidor + pixel, mismo id); CompleteRegistration al crear la cuenta (el alta), con la puerta B.
+// CON GOOGLE (16-oct-2026): antes de salir, lo elegido queda guardado con una clave (/api/deptos/google); vuelve a
+// /deptos?entro=google&p=<clave> con sesión, el callback ya lo pasó a nombre del correo, y desde ahí todo es igual que por
+// código: el Lead (al volver, cuando se sabe el correo), el alta y «Estás dentro».
 // LA PÁGINA DEL INVITADO (16-oct-2026, la puerta C) usa esta misma pantalla con su cabecera, su puerta (C) y su página de
-// vuelta (`/i/CÓDIGO`): las mismas preguntas, el mismo alta, la misma entrada con Google.
-// SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026, decisión de Fabrizio): arriba, qué es, con las cifras de
-// la noche, en UNA frase («Cada noche Franco revisa los +21.000 deptos en venta publicados en Santiago. Anoche, 4.886
-// convenían como inversión.»); después, como etiqueta, la búsqueda ya elegida («Si buscas Santiago · 2D · UF 3.000 a
-// 4.000», 17-oct-2026) y debajo el número grande («4 de 607 convienen») con la nota chica del pie y el plazo —etiqueta y
-// número llegan en la MISMA respuesta, así que al tocar un chip cambian juntos—; justo debajo, la banda del correo —lo
-// único con color, como el banner del informe—; y abajo, «Cambia la búsqueda», los chips planos.
+// vuelta (`/i/CÓDIGO`): los mismos campos, el mismo alta, la misma entrada con Google.
 // SUPABASE POR import() (20-oct-2026, LCP en el teléfono): el cliente (48 kB) solo hace falta al pedir el código, al
-// entrar con él o con Google; con el import estático bajaba antes de pintar la banda. La atribución (useAttributionSync,
-// en todas las páginas) ya lo pide con la página quieta, así que al tocar el botón el módulo suele estar en memoria.
-// EL RECORRIDO REAL DE FABRIZIO (21-oct-2026, lib/deptos/respuesta.ts › puedePedirCorreo):
-//   · la comuna ya no viene elegida: la página la pide y recién con ella muestra el número y la banda del correo (la
-//     tipología y el rango siguen puestos, a la vista, como sugerencia);
-//   · «Estás dentro» ya no se va sola al dashboard: al volver por el enlace del correo o por Google, `router.refresh()`
-//     traía una sesión nueva, el efecto del `?entro` corría de nuevo, el alta respondía «sin-pendiente» (lo pendiente ya
-//     se había borrado) y la pantalla caía en `router.push("/dashboard")`. Ahora el alta se pide una vez (`altaPedida`),
-//     el `?entro` se saca de la URL y la pantalla se queda hasta que la persona toque un depto o «Ir a mi panel»;
-//   · antes de los deptos, «Buscas: Santiago · 2D · UF 3.000 a 4.000 · Cambiar», con los chips a un toque; lo cambiado se
-//     guarda cuando sigue («Listo» o «Ir a mi panel») y la selección del día se rearma (/api/deptos/rearmar).
-// «ENTRAR» NO QUEDA GIRANDO (22-oct-2026, lib/deptos/entrada.ts): el código ya no se verifica contra Supabase desde acá;
-// lo verifica el servidor junto con el alta (POST /api/deptos/entrar). Todo pedido de este paso tiene tope y un reintento
-// solo; si tampoco responde, el botón dice «No pudimos entrar, intenta de nuevo» y vuelve a estar activo con el mismo
-// código. Al volver por el enlace o por Google, lo mismo con el alta, y un botón para reintentarla.
+// entrar con él o con Google; con el import estático bajaba antes de pintar la banda.
+// EL RECORRIDO REAL DE FABRIZIO (21-oct-2026, lib/deptos/respuesta.ts › puedePedirCorreo): la comuna no viene elegida;
+// recién con ella hay número y correo. «Estás dentro» no se va sola al dashboard: el alta se pide una vez (`altaPedida`),
+// el `?entro` se saca de la URL y la pantalla se queda hasta que la persona toque un depto o «Ir a mi dashboard».
+// «ENTRAR» NO QUEDA GIRANDO (22-oct-2026, lib/deptos/entrada.ts): el código lo verifica el servidor junto con el alta
+// (POST /api/deptos/entrar). Todo pedido de este paso tiene tope y un reintento solo; si tampoco responde, el botón dice
+// «No pudimos entrar, intenta de nuevo» y vuelve a estar activo con el mismo código.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import { emitirAuthCompletada, marcarOAuthPendiente } from "@/lib/auth-analytics";
 import { IconoGoogle } from "@/components/entrar/IconoGoogle";
-import { REGISTRO_UN_PASO, ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { conTopeYReintento, ENTRAR_COPY } from "@/lib/deptos/entrada";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { marcarPuertaCandidata, type Puerta } from "@/lib/atribucion-puerta";
 import { avisarLead, type OrigenLead } from "@/lib/meta/lead-cliente";
-import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
-import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { textoVence } from "@/lib/guia/semanal";
-import { REGALO_COPY } from "@/lib/regalo-alta";
 import {
-  ALTA_COPY, BUSCAS_COPY, cambiosDeBusqueda, claveDeDestino, COMUNAS_DESTACADAS, ELECCIONES_POR_DEFECTO, CORREO_OK, DEPTOS_COPY, destinoGoogle, lineaBuscas, MAX_COMUNAS_DEPTOS,
-  MODALIDADES_DEPTOS, MODALIDAD_POR_DEFECTO, puedePedirCorreo, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS, type BusquedaDeptos, type ModalidadDeptos, type RespuestaDeptos,
+  ALTA_COPY, claveDeDestino, ELECCIONES_POR_DEFECTO, CORREO_OK, DEPTOS_COPY, destinoGoogle, ESTAS_DENTRO_DEPTOS, lineaPerfil,
+  MODALIDAD_POR_DEFECTO, puedePedirCorreo, TIPOLOGIA_POR_DEFECTO, type BusquedaDeptos, type RespuestaDeptos,
 } from "@/lib/deptos/respuesta";
 import type { PortadaDeptos } from "@/lib/deptos/portada";
+import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import "./deptos.css";
 
 type Paso = "elegir" | "codigo" | "dentro" | "agregar";
 
-const DEPTOS_FIN = {
-  cuenta: "Ir a mi panel",
-  correo: "Dentro de la hora te llegan por correo, revisados uno por uno. Desde ahora, cada lunes, los nuevos.",
-} as const;
-const MODALIDAD_PREGUNTA = "¿Cómo lo arriendas?";
-
-const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
-/** Para buscar sin tildes: «nunoa» encuentra Ñuñoa. */
-const plano = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 export interface OpcionesDeptos {
   /** La página donde vive la pantalla: adonde vuelven el enlace del correo y Google. */
@@ -91,23 +72,19 @@ export interface OpcionesDeptos {
   portada?: PortadaDeptos;
 }
 
-/** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
- *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
 /** Lo que responde el alta (POST /api/deptos/alta y POST /api/deptos/entrar). */
 type RespuestaAlta = { estado?: string; regaloVence?: string | null; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
 
+/** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
+ *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
 const claveInicial = (comunas: readonly string[], rango: string) => `${comunas.join(",")}|${ELECCIONES_POR_DEFECTO.tipologias[0]}|${rango}`;
 
 export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "B", detalle: "deptos" }, origenLead = "seleccion", cabecera, pie, portada }: { sesion: { email: string } | null } & OpcionesDeptos) {
   const router = useRouter();
   const posthog = usePostHog();
-  // Sin comuna de entrada (21-oct-2026): la elige la persona; solo `?comuna=` la trae puesta.
-  const [comunas, setComunas] = useState<string[]>([...(portada?.comunas ?? [])]);
-  const [buscando, setBuscando] = useState(false);
-  const [busqueda, setBusqueda] = useState("");
-  const [tipologia, setTipologia] = useState<string>(TIPOLOGIA_POR_DEFECTO);
-  const [rango, setRango] = useState<string>(portada?.rango ?? ELECCIONES_POR_DEFECTO.rango);
-  const [modalidad, setModalidad] = useState<ModalidadDeptos>(MODALIDAD_POR_DEFECTO);
+  // Sin comuna de entrada (21-oct-2026): la elige la persona; solo `?comuna=` la trae puesta. Una comuna (el select).
+  const [busqueda, setBusqueda] = useState<ValorBusqueda>({ comunas: [...(portada?.comunas ?? [])], tipologia: TIPOLOGIA_POR_DEFECTO, rango: portada?.rango ?? ELECCIONES_POR_DEFECTO.rango });
+  const { comunas, tipologia, rango } = busqueda;
   const [respuesta, setRespuesta] = useState<RespuestaDeptos | null>(portada?.inicial ?? null);
   const [cargando, setCargando] = useState(false);
   const [paso, setPaso] = useState<Paso>("elegir");
@@ -117,20 +94,13 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [ocupado, setOcupado] = useState<false | "correo" | "google" | "entrar">(false);
   const [error, setError] = useState<string | null>(null);
   const [regaloVence, setRegaloVence] = useState<string | null>(null);
-  const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(null);
   const [agregar, setAgregar] = useState<{ nuevas: string[]; actuales: string[] } | null>(null);
-  // «Buscas: … · Cambiar» (21-oct-2026): la búsqueda con que nació la cuenta; lo cambiado se guarda al seguir.
+  // «Tu perfil de búsqueda» (23-oct-2026): la búsqueda con que nació la cuenta, en una línea; se edita en el dashboard.
   const [busca, setBusca] = useState<BusquedaDeptos | null>(null);
-  const [cambiando, setCambiando] = useState(false);
-  const [sinGuardar, setSinGuardar] = useState(false);
-  const [guardandoBusca, setGuardandoBusca] = useState(false);
-  // LO QUE ESPERA SE VE ESPERANDO (22-oct-2026, lib/carga-global.ts): qué chip se está guardando, con qué botón se está
-  // yendo al dashboard, y si el alta de la vuelta por el enlace o por Google está corriendo.
-  const [guardando, setGuardando] = useState<"modalidad" | "cuando" | null>(null);
-  const [yendo, setYendo] = useState<"panel" | "si" | "no" | null>(null);
+  // LO QUE ESPERA SE VE ESPERANDO (22-oct-2026, lib/carga-global.ts): con qué botón se está yendo al dashboard, y si el
+  // alta de la vuelta por el enlace o por Google está corriendo.
+  const [yendo, setYendo] = useState<"si" | "no" | null>(null);
   const [altaEnCurso, setAltaEnCurso] = useState(false);
-  /** Sube al guardar la búsqueda: la selección de abajo se vuelve a pedir. */
-  const [version, setVersion] = useState(0);
   /** El alta se pide UNA vez: sin esto, el refresh que trae la sesión la pedía de nuevo y la pantalla se iba al dashboard. */
   const altaPedida = useRef(false);
   // «ENTRAR» NO QUEDA GIRANDO (22-oct-2026, lib/deptos/entrada.ts): sin respuesta ni en el reintento, el botón lo dice y
@@ -140,7 +110,6 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const pasoActual = useRef<Paso>("elegir");
   pasoActual.current = paso;
   const campoCodigo = useRef<HTMLInputElement>(null);
-  const campoBuscar = useRef<HTMLInputElement>(null);
   /** La búsqueda de la respuesta que está a la vista (la por defecto, si vino del servidor): esa no se vuelve a pedir. Se
    *  anota al llegar la respuesta, no al pedirla: un pedido cortado (el doble efecto de React en desarrollo) se repite. */
   const servida = useRef<string | null>(portada?.inicial ? claveInicial(portada.comunas, portada.rango) : null);
@@ -153,7 +122,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
 
   const completo = comunas.length > 0 && !!tipologia && !!rango;
 
-  // La respuesta al instante: la búsqueda arranca elegida y cada chip la cambia; mientras llega, queda la anterior.
+  // La respuesta al instante: cada campo la cambia; mientras llega, queda la anterior.
   useEffect(() => {
     if (!completo) { setRespuesta(null); return; }
     const clave = `${comunas.join(",")}|${tipologia}|${rango}`;
@@ -180,31 +149,11 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comunas.join(","), tipologia, rango, completo]);
 
-  // Siempre queda una comuna: sin ella no hay número (la última no se suelta).
-  const tocarComuna = (c: string) => {
-    setComunas((xs) => (xs.includes(c) ? (xs.length === 1 ? xs : xs.filter((x) => x !== c)) : xs.length >= MAX_COMUNAS_DEPTOS ? xs : [...xs, c]));
-  };
-  const elegirDelBuscador = (c: string) => {
-    tocarComuna(c);
-    setBusqueda("");
-    setBuscando(false);
-  };
-  const abrirBuscador = () => {
-    setBuscando((x) => !x);
-    window.setTimeout(() => campoBuscar.current?.focus(), 30);
-  };
-  // El buscador: sin escribir, el resto del Gran Santiago (sin las ocho a la vista ni las ya elegidas); al escribir, busca
-  // en TODAS las que no eligió, sin tildes («nunoa» encuentra Ñuñoa: si no, diría que está fuera del Gran Santiago).
-  const sinElegir = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !comunas.includes(c));
-  const restantes = sinElegir.filter((c) => !DESTACADAS.includes(c));
-  const encontradas = busqueda.trim() ? sinElegir.filter((c) => plano(c).includes(plano(busqueda))) : restantes;
-  const extras = comunas.filter((c) => !DESTACADAS.includes(c));
-  const lleno = comunas.length >= MAX_COMUNAS_DEPTOS;
   const conComuna = puedePedirCorreo(comunas);
 
   async function pedirCodigo(e: FormEvent) {
     e.preventDefault();
-    // Sin comuna elegida no hay correo (la banda ni se dibuja): nadie entra con la búsqueda del ejemplo.
+    // Sin comuna elegida no hay correo (la tarjeta ni se dibuja): nadie entra con la búsqueda del ejemplo.
     if (!puedePedirCorreo(comunas)) return;
     const c = correo.trim().toLowerCase();
     if (!CORREO_OK.test(c)) { setError(REGISTRO_UN_PASO.errorCorreo); return; }
@@ -240,7 +189,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     }
   }
 
-  // «o con Google»: lo elegido queda guardado con una clave, y la clave vuelve en el destino.
+  // «Entrar con Google»: lo elegido queda guardado con una clave, y la clave vuelve en el destino.
   async function conGoogle() {
     if (!puedePedirCorreo(comunas)) return;
     setError(null);
@@ -352,67 +301,6 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     }
   }
 
-  // La modalidad, en «Estás dentro» (16-oct-2026): arriendo tradicional por defecto; se guarda al cambiarla.
-  async function elegirModalidad(m: ModalidadDeptos) {
-    setModalidad(m);
-    setGuardando("modalidad");
-    const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modalidad: m }) }).catch(() => null);
-    setGuardando(null);
-    if (!res?.ok) setError(ESTAS_DENTRO.errorGuardar);
-  }
-
-  async function elegirCuando(h: HorizonteCompra) {
-    setHorizonte(h);
-    setError(null);
-    setGuardando("cuando");
-    try {
-      const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ horizonte: h, modalidad }) });
-      if (!res.ok) { setError(ESTAS_DENTRO.errorGuardar); return; }
-      // CompleteRegistration: el espejo para el pixel viene en la cookie de la respuesta.
-      espejarMeta(consumirCookieEspejo());
-      posthog?.capture("horizonte_elegido", { horizonte: h, donde: "deptos", modalidad });
-    } catch {
-      setError(ESTAS_DENTRO.errorGuardar);
-    } finally {
-      setGuardando(null);
-    }
-  }
-
-  // «Buscas: … · Cambiar» (21-oct-2026): los chips cambian la línea; «Listo» (o seguir) guarda y rearma la selección.
-  const tocarBusca = (cambio: Partial<BusquedaDeptos>) => {
-    setBusca((b) => (b ? { ...b, ...cambio } : b));
-    setSinGuardar(true);
-  };
-  const tocarComunaBusca = (c: string) => {
-    if (!busca) return;
-    const xs = busca.comunas;
-    tocarBusca({ comunas: xs.includes(c) ? (xs.length === 1 ? xs : xs.filter((x) => x !== c)) : xs.length >= MAX_COMUNAS_DEPTOS ? xs : [...xs, c] });
-  };
-  async function guardarBusca(): Promise<boolean> {
-    const cambios = busca ? cambiosDeBusqueda(busca) : null;
-    if (!cambios) return false;
-    setGuardandoBusca(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cambios) });
-      if (!res.ok) { setError(BUSCAS_COPY.error); return false; }
-      await fetch("/api/deptos/rearmar", { method: "POST" }).catch(() => null);
-      posthog?.capture("deptos_busqueda_cambiada", { comunas: cambios.comunas.length });
-      setSinGuardar(false);
-      setCambiando(false);
-      setVersion((v) => v + 1);
-      return true;
-    } finally {
-      setGuardandoBusca(false);
-    }
-  }
-  async function irAlPanel() {
-    setYendo("panel");
-    if (sinGuardar && !(await guardarBusca())) { setYendo(null); return; }
-    iniciarCarga(claveActual());
-    router.push("/dashboard");
-  }
-
   async function sumarComunas(si: boolean) {
     setYendo(si ? "si" : "no");
     if (si && agregar) {
@@ -428,79 +316,32 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   if (paso === "dentro") {
     return (
       <div className="dp" data-deptos={paso}>
-        <h1 className="dp-titulo">{ESTAS_DENTRO.titular}</h1>
+        <h1 className="dp-titulo">{ESTAS_DENTRO_DEPTOS.titulo}</h1>
+        {/* LA TARJETA ROJA DEL REGALO (23-oct-2026): la única con color en la pantalla. */}
         {regaloVence && (
-          <p className="dp-regalo" data-deptos="regalo"><b>{REGALO_COPY.cargado}</b> {textoVence(regaloVence)}</p>
+          <section className="dp-regalo" data-deptos="regalo" aria-label={ESTAS_DENTRO_DEPTOS.regalo.kicker}>
+            <p className="dp-kicker">{ESTAS_DENTRO_DEPTOS.regalo.kicker}</p>
+            <p className="dp-regalo-t">{ESTAS_DENTRO_DEPTOS.regalo.titulo}</p>
+            <p className="dp-regalo-s">{ESTAS_DENTRO_DEPTOS.regalo.bajada} {textoVence(regaloVence)}</p>
+          </section>
         )}
-        <div className="dp-bloque" data-deptos="modalidad">
-          <p className="dp-pregunta">{MODALIDAD_PREGUNTA}</p>
-          <div className="dp-chips" role="radiogroup" aria-label={MODALIDAD_PREGUNTA}>
-            {MODALIDADES_DEPTOS.map((m) => (
-              <button key={m.id} type="button" role="radio" aria-checked={modalidad === m.id} className="dp-chip" data-activo={modalidad === m.id ? "1" : undefined} {...botonOcupado(guardando === "modalidad" && modalidad === m.id)} onClick={() => void elegirModalidad(m.id)}>
-                {m.chip}
-              </button>
-            ))}
-          </div>
+        {/* «Tu selección», ahí mismo (20-oct-2026): sin esperar a nada. */}
+        <div data-deptos="primeros">
+          <PrimeraSeleccion encabezado="dentro" />
         </div>
-        <div className="dp-bloque" data-deptos="cuando">
-          <p className="dp-pregunta">{ESTAS_DENTRO.cuando}</p>
-          <div className="dp-chips" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
-            {ESTAS_DENTRO.horizontes.map((h) => (
-              <button key={h.id} type="button" role="radio" aria-checked={horizonte === h.id} className="dp-chip" data-activo={horizonte === h.id ? "1" : undefined} {...botonOcupado(guardando === "cuando" && horizonte === h.id)} onClick={() => void elegirCuando(h.id)}>
-                {h.texto}
-              </button>
-            ))}
-          </div>
-          <p className="dp-nota">{ESTAS_DENTRO.comoEntrar}</p>
-        </div>
-        {/* LO QUE BUSCA, ANTES DE LOS DEPTOS (21-oct-2026): la búsqueda con que nació la cuenta, a un toque de cambiarla. */}
+        {/* «Tu perfil de búsqueda» (23-oct-2026): la búsqueda con que nació la cuenta; se edita en el dashboard. */}
         {busca && (
-          <div className="dp-bloque" data-deptos="buscas">
-            <p className="dp-buscas">
-              <span className="dp-buscas-k">{BUSCAS_COPY.buscas}</span> <b data-deptos="buscas-linea">{lineaBuscas(busca)}</b>{" · "}
-              <button type="button" className="dp-enlace" aria-expanded={cambiando} onClick={() => setCambiando((x) => !x)} data-deptos="cambiar">{BUSCAS_COPY.cambiar}</button>
-            </p>
-            {cambiando && (
-              <div className="dp-buscas-chips" data-deptos="buscas-chips">
-                <div className="dp-chips" data-pregunta="comuna">
-                  {[...DESTACADAS, ...busca.comunas.filter((c) => !DESTACADAS.includes(c))].map((c) => (
-                    <button key={c} type="button" className="dp-chip" aria-pressed={busca.comunas.includes(c)} data-activo={busca.comunas.includes(c) ? "1" : undefined}
-                      disabled={!busca.comunas.includes(c) && busca.comunas.length >= MAX_COMUNAS_DEPTOS} onClick={() => tocarComunaBusca(c)}>{c}</button>
-                  ))}
-                  <label className="dp-chip dp-chip-otra" style={{ position: "relative" }}>
-                    {DEPTOS_COPY.otraComuna}
-                    <select aria-label={DEPTOS_COPY.otraComuna} value="" onChange={(e) => { if (e.target.value) tocarComunaBusca(e.target.value); }}
-                      style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}>
-                      <option value="">{DEPTOS_COPY.otraComuna}</option>
-                      {(COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !DESTACADAS.includes(c) && !busca.comunas.includes(c)).map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <div className="dp-chips" data-pregunta="tipologia" role="radiogroup" aria-label={DEPTOS_COPY.tipologia}>
-                  {TIPOLOGIAS_DEPTOS.map((t) => (
-                    <button key={t.id} type="button" role="radio" className="dp-chip" aria-checked={busca.tipologia === t.id} data-activo={busca.tipologia === t.id ? "1" : undefined} onClick={() => tocarBusca({ tipologia: t.id })}>{t.chip}</button>
-                  ))}
-                </div>
-                <div className="dp-chips" data-pregunta="rango" role="radiogroup" aria-label={DEPTOS_COPY.rango}>
-                  {RANGOS_UF.map((r) => (
-                    <button key={r.id} type="button" role="radio" className="dp-chip" aria-checked={busca.rango === r.id} data-activo={busca.rango === r.id ? "1" : undefined} onClick={() => tocarBusca({ rango: r.id })}>{r.chip}</button>
-                  ))}
-                </div>
-                <div className="dp-fin">
-                  <button type="button" className="dp-boton" onClick={() => void guardarBusca()} disabled={guardandoBusca} {...botonOcupado(guardandoBusca)} data-deptos="buscas-listo">{guardandoBusca ? BUSCAS_COPY.guardando : BUSCAS_COPY.listo}</button>
-                </div>
-              </div>
-            )}
-          </div>
+          <section className="dp-perfil" data-deptos="perfil">
+            <p className="dp-kicker">{ESTAS_DENTRO_DEPTOS.perfil.kicker}</p>
+            <div className="dp-perfil-fila">
+              <p className="dp-perfil-linea" data-deptos="perfil-linea">{lineaPerfil(busca)}</p>
+              <EnlaceCarga href={ESTAS_DENTRO_DEPTOS.perfil.hrefEditar} className="dp-enlace" data-deptos="editar">{ESTAS_DENTRO_DEPTOS.perfil.editar}</EnlaceCarga>
+            </div>
+            <p className="dp-ayuda">{ESTAS_DENTRO_DEPTOS.perfil.nota}</p>
+          </section>
         )}
-        {/* La primera selección, ahí mismo (20-oct-2026): sin esperar a que conteste el «cuándo». Con la búsqueda nueva
-            guardada, se vuelve a pedir (`version`). */}
-        <div className="dp-bloque" data-deptos="primeros" data-cambiando={cambiando ? "1" : undefined}>
-          <PrimeraSeleccion key={version} />
-        </div>
         <div className="dp-fin">
-          <button type="button" className="dp-boton" onClick={() => void irAlPanel()} disabled={guardandoBusca || !!yendo} {...botonOcupado(yendo === "panel")} data-deptos="ir-panel">{DEPTOS_FIN.cuenta}</button>
-          <p className="dp-nota">{DEPTOS_FIN.correo}</p>
+          <EnlaceCarga href={ESTAS_DENTRO_DEPTOS.hrefDashboard} className="dp-boton-contorno" data-deptos="ir-panel">{ESTAS_DENTRO_DEPTOS.dashboard}</EnlaceCarga>
         </div>
         {error && <p className="dp-error" role="alert">{error}</p>}
       </div>
@@ -510,9 +351,9 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   if (paso === "agregar" && agregar) {
     return (
       <div className="dp" data-deptos="agregar">
-        <h1 className="dp-titulo dp-titulo-largo">{ALTA_COPY.agregar(agregar.nuevas)}</h1>
-        <div className="dp-fin">
-          <button type="button" className="dp-boton" onClick={() => void sumarComunas(true)} disabled={!!yendo} {...botonOcupado(yendo === "si")}>{ALTA_COPY.agregarSi}</button>
+        <h1 className="dp-titulo">{ALTA_COPY.agregar(agregar.nuevas)}</h1>
+        <div className="dp-fin dp-fin-izq">
+          <button type="button" className="dp-boton dp-boton-tinta" onClick={() => void sumarComunas(true)} disabled={!!yendo} {...botonOcupado(yendo === "si")}>{ALTA_COPY.agregarSi}</button>
           <button type="button" className="dp-enlace" onClick={() => void sumarComunas(false)} disabled={!!yendo} {...botonOcupado(yendo === "no")}>{ALTA_COPY.agregarNo}</button>
         </div>
         {error && <p className="dp-error" role="alert">{error}</p>}
@@ -520,115 +361,72 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     );
   }
 
-  const chipComuna = (c: string) => (
-    <button key={c} type="button" className="dp-chip" aria-pressed={comunas.includes(c)} data-activo={comunas.includes(c) ? "1" : undefined}
-      disabled={!comunas.includes(c) && lleno} onClick={() => tocarComuna(c)}>
-      {c}
-    </button>
-  );
-
+  const prueba = DEPTOS_COPY.prueba(portada?.noche?.revisados ?? null, portada?.noche?.convienen ?? null);
+  const bajadaCorreo = DEPTOS_COPY.correo.bajada(respuesta?.convienen ?? 0);
   return (
     <div className="dp" data-deptos="elegir">
       {cabecera}
-      <h1 className="dp-que" data-deptos="que">{DEPTOS_COPY.que(portada?.noche?.revisados ?? null, portada?.noche?.convienen ?? null)}</h1>
+      <h1 className="dp-titulo" data-deptos="titulo">{DEPTOS_COPY.titulo}</h1>
+      <p className="dp-bajada" data-deptos="bajada"><b>{DEPTOS_COPY.bajadaFuerte}</b> {DEPTOS_COPY.bajada}</p>
 
       {/* De vuelta por el enlace o por Google, el alta no respondió (22-oct-2026): ya hay sesión, se reintenta sin código. */}
       {altaPorReintentar && (
-        <div className="dp-bloque" data-deptos="alta-fallida">
-          <button type="button" className="dp-boton" onClick={() => void terminarAlta(altaPorReintentar.clave, altaPorReintentar.metodo)} disabled={altaEnCurso} {...botonOcupado(altaEnCurso)}>{ENTRAR_COPY.noPudimos}</button>
+        <div className="dp-fin dp-fin-izq" data-deptos="alta-fallida">
+          <button type="button" className="dp-boton dp-boton-tinta" onClick={() => void terminarAlta(altaPorReintentar.clave, altaPorReintentar.metodo)} disabled={altaEnCurso} {...botonOcupado(altaEnCurso)}>{ENTRAR_COPY.noPudimos}</button>
         </div>
       )}
 
+      {/* ¿QUÉ BUSCAS?: los tres campos (los mismos del perfil del dashboard). */}
+      <section className="dp-tarjeta" data-deptos="campos" aria-label={DEPTOS_COPY.queBuscas}>
+        <h2 className="dp-tarjeta-t">{DEPTOS_COPY.queBuscas}</h2>
+        <CamposBusqueda valor={busqueda} onChange={(_campo, v) => setBusqueda(v)} ids="deptos" />
+        {!conComuna && <p className="dp-ayuda" data-deptos="elige-bajada">{DEPTOS_COPY.eligeYTeDecimos}</p>}
+      </section>
+
       {/* SIN COMUNA, SIN NÚMERO NI CORREO (21-oct-2026): primero la elige la persona. */}
       {conComuna && (<>
-      <section className="dp-respuesta" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
+      <section className="dp-tarjeta dp-tarjeta-numero" aria-live="polite" data-deptos="respuesta" data-cargando={cargando ? "1" : undefined}>
         {respuesta ? (
           <>
-            <p className="dp-si" data-deptos="si">{respuesta.etiqueta}</p>
             <p className="dp-numero" data-convienen={respuesta.convienen}>
-              {respuesta.cifra ? <><span className="dp-cifra">{respuesta.cifra}</span>{respuesta.titular.slice(respuesta.cifra.length)}</> : respuesta.titular}
+              {respuesta.resto ? <><span className="dp-cifra" data-deptos="cifra">{miles(respuesta.convienen)}</span><span className="dp-resto">{respuesta.resto}</span></> : <span className="dp-resto dp-resto-solo">{respuesta.titular}</span>}
             </p>
-            <p className="dp-nota-num" data-deptos="nota">{respuesta.nota}</p>
+            <p className="dp-ayuda" data-deptos="nota">{respuesta.nota}</p>
             {respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}
           </>
         ) : (
-          <p className="dp-numero dp-esperando" aria-hidden="true">…</p>
+          <p className="dp-numero dp-esperando" aria-hidden="true"><span className="dp-cifra">…</span></p>
         )}
       </section>
       <div className="dp-banda" data-deptos="banda">
         {paso === "codigo" && enviado ? (
           <form className="dp-form" onSubmit={entrar} data-deptos="codigo">
-            <p className="dp-registro">{DEPTOS_COPY.enviado(enviado)}</p>
-            <div className="dp-fila">
-              <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
-                aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
-              <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "entrar")} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>
-            </div>
+            <p className="dp-banda-t">{DEPTOS_COPY.enviado(enviado)}</p>
+            <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
+              aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
+            <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "entrar")} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>
           </form>
         ) : (
           <form className="dp-form" onSubmit={pedirCodigo} data-deptos="correo">
-            <p className="dp-registro">{respuesta?.registro ?? DEPTOS_COPY.conRegistro}</p>
-            <div className="dp-fila">
-              <input className="dp-campo" type="email" inputMode="email" autoComplete="email" placeholder={REGISTRO_UN_PASO.placeholder}
-                aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
-              <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "correo")}>{ALTA_COPY.pedir}</button>
-            </div>
-            <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={!!ocupado} {...botonOcupado(ocupado === "google")}><IconoGoogle /> {ALTA_COPY.google}</button>
-            <p className="dp-nota">{DEPTOS_COPY.sinContrasena}</p>
+            <p className="dp-banda-t">{respuesta?.registro ?? DEPTOS_COPY.correo.titulo}</p>
+            {respuesta && <p className="dp-banda-s" data-deptos="correo-bajada">{bajadaCorreo.antes}<b>{bajadaCorreo.fuerte}</b>{bajadaCorreo.despues}</p>}
+            {/* Primero Google, con el botón oficial (23-oct-2026): blanco, la G y «Entrar con Google». */}
+            <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={!!ocupado} {...botonOcupado(ocupado === "google")} data-deptos="google"><IconoGoogle /> {ALTA_COPY.google}</button>
+            <p className="dp-o" aria-hidden="true"><span /> {DEPTOS_COPY.correo.oTuCorreo} <span /></p>
+            <input className="dp-campo" type="email" inputMode="email" autoComplete="email" placeholder={DEPTOS_COPY.correo.placeholder}
+              aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
+            <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "correo")} data-deptos="quiero-verlos">{ALTA_COPY.pedir}</button>
+            <p className="dp-nota">{DEPTOS_COPY.correo.nota}</p>
           </form>
         )}
         {error && <p className="dp-error" role="alert">{error}</p>}
       </div>
       </>)}
 
-      <section className="dp-afina" data-deptos="afina" data-sin-comuna={conComuna ? undefined : "1"} aria-label={conComuna ? DEPTOS_COPY.afina : BUSCAS_COPY.eligeComuna}>
-        <h2 className="dp-afina-t">{conComuna ? DEPTOS_COPY.afina : BUSCAS_COPY.eligeComuna}</h2>
-        {!conComuna && <p className="dp-nota" data-deptos="elige-bajada">{DEPTOS_COPY.bajada}</p>}
-        <fieldset className="dp-bloque">
-          <legend className="dp-pregunta">{DEPTOS_COPY.comuna} <span className="dp-ayuda">{DEPTOS_COPY.comunaAyuda}</span></legend>
-          <div className="dp-chips" data-pregunta="comuna">
-            {DESTACADAS.map(chipComuna)}
-            {extras.map(chipComuna)}
-            <button type="button" className="dp-chip dp-chip-otra" aria-expanded={buscando} onClick={abrirBuscador} disabled={lleno && !buscando}>{DEPTOS_COPY.otraComuna}</button>
-          </div>
-          {buscando && (
-            <div className="dp-buscador" data-deptos="buscador">
-              <input ref={campoBuscar} className="dp-campo dp-campo-chico" type="search" placeholder={DEPTOS_COPY.buscar} aria-label={DEPTOS_COPY.buscar}
-                value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-              {encontradas.length > 0 ? (
-                <div className="dp-chips dp-encontradas">
-                  {encontradas.map((c) => (
-                    <button key={c} type="button" className="dp-chip" disabled={lleno} onClick={() => elegirDelBuscador(c)}>{c}</button>
-                  ))}
-                </div>
-              ) : (
-                <p className="dp-fuera" role="status" data-deptos="fuera">{DEPTOS_COPY.fuera}</p>
-              )}
-            </div>
-          )}
-        </fieldset>
-
-        <fieldset className="dp-bloque">
-          <legend className="dp-pregunta">{DEPTOS_COPY.tipologia}</legend>
-          <div className="dp-chips" data-pregunta="tipologia" role="radiogroup" aria-label={DEPTOS_COPY.tipologia}>
-            {TIPOLOGIAS_DEPTOS.map((t) => (
-              <button key={t.id} type="button" role="radio" className="dp-chip" aria-checked={tipologia === t.id} data-activo={tipologia === t.id ? "1" : undefined} onClick={() => setTipologia(t.id)}>
-                {t.chip}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="dp-bloque">
-          <legend className="dp-pregunta">{DEPTOS_COPY.rango}</legend>
-          <div className="dp-chips" data-pregunta="rango" role="radiogroup" aria-label={DEPTOS_COPY.rango}>
-            {RANGOS_UF.map((r) => (
-              <button key={r.id} type="button" role="radio" className="dp-chip" aria-checked={rango === r.id} data-activo={rango === r.id ? "1" : undefined} onClick={() => setRango(r.id)}>
-                {r.chip}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+      {/* LA PRUEBA: las cifras de la noche y un análisis real. */}
+      <section className="dp-prueba" data-deptos="prueba">
+        <p className="dp-prueba-t">{prueba.antes}<b>{prueba.fuerte}</b>{prueba.despues}</p>
+        <EnlaceCarga href={DEPTOS_COPY.hrefAnalisis} className="dp-prueba-enlace" data-deptos="ver-analisis">{DEPTOS_COPY.verAnalisis} →</EnlaceCarga>
       </section>
       {pie}
     </div>

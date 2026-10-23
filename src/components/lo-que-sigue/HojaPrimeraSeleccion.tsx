@@ -43,7 +43,7 @@ export function HojaPrimeraSeleccion({ abierta, alCerrar }: { abierta: boolean; 
       data-abierto={abierta ? "1" : "0"}
       role={abierta ? "dialog" : undefined}
       aria-modal={abierta || undefined}
-      aria-label={PRIMERA_SELECCION.titulo}
+      aria-label={PRIMERA_SELECCION.kicker}
       onClick={(e) => { if (e.target === e.currentTarget) alCerrar(); }}
     >
       <div className="lqs-hoja lqs-hoja-ancha">

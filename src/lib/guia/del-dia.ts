@@ -45,11 +45,6 @@ export function cuandoSeVio(iso: string, ahora: Date = new Date()): string {
   return `el ${d.toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" })} a las ${horaChile(d)}`;
 }
 
-/** La marca de cada depto en «Estás dentro» y en el dashboard: «Visto publicado hoy a las 03:12». */
-export function marcaVisto(iso: string, ahora: Date = new Date()): string {
-  return `Visto publicado ${cuandoSeVio(iso, ahora)}`;
-}
-
 // ── LA PRIMERA SELECCIÓN EN PANTALLA (20-oct-2026, regla de producto de Fabrizio): quien se registra ve sus deptos ahí
 // mismo y es llevado a analizar uno. No espera. Al terminar «Estás dentro», por cualquier puerta, la pantalla muestra sus
 // primeros deptos de la evaluación de anoche con el perfil que tenga —el derivado del informe en la puerta A, el de los
@@ -82,15 +77,15 @@ export function destinoRecienDentro(dest: string, cuentaNueva: boolean): string 
   return `${camino}?${q.toString()}${hash ? `#${hash}` : ""}`;
 }
 
-/** La hoja sin deptos (20-oct-2026, Fabrizio): ni chips por pedir, ni revisando, ni un depto. Ahí la bajada —«Franco eligió
- *  estos deptos…»— no va encima de «no hay uno»: queda solo el texto de «ninguno». */
+/** La hoja sin deptos (20-oct-2026, Fabrizio): ni campos por pedir, ni revisando, ni un depto. Ahí la bajada —«Publicaciones
+ *  vigentes…»— no va encima de «no hay uno»: queda solo el texto de «ninguno». */
 export function hojaSinDeptos(d: { faltan: readonly unknown[]; items: readonly unknown[]; revisando: boolean } | null): boolean {
   return !!d && d.faltan.length === 0 && d.items.length === 0 && !d.revisando;
 }
 
 export type FaltaDelPerfil = "comuna" | "tipologia" | "rango";
 
-/** Qué chips faltan para armar una selección: al menos una comuna, un dormitorio y un tope de precio. */
+/** Qué campos faltan para armar una selección: al menos una comuna, un dormitorio y un tope de precio. */
 export function faltanDelPerfil(p: { comunas: string[]; dormitorios: number[]; precioMaxUf: number | null }): FaltaDelPerfil[] {
   const f: FaltaDelPerfil[] = [];
   if (p.comunas.length === 0) f.push("comuna");
@@ -99,25 +94,29 @@ export function faltanDelPerfil(p: { comunas: string[]; dormitorios: number[]; p
   return f;
 }
 
+/** Cuántas tarjetas se ven antes de «Ver los N que faltan» (mockup `2-estas-dentro.html`, 23-oct-2026). */
+export const TARJETAS_A_LA_VISTA = 3;
+
+/**
+ * EL COPY DE «TU SELECCIÓN» (23-oct-2026, mockup `2-estas-dentro.html`, decisión de Fabrizio): el kicker, «Franco eligió
+ * estos 5 deptos para tu búsqueda.», «Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el
+ * que más te interese.», las tarjetas numeradas con «Analizar este · usa tu regalo» y «Ver los 2 que faltan». Sin la marca
+ * del chequeo por tarjeta ni lo del correo: lo dice la bajada.
+ */
 export const PRIMERA_SELECCION = {
-  /** Arriba de todo, con el regalo vivo. */
-  tituloRegalo: "Tienes un análisis de regalo: elige uno",
-  /** Con el regalo vivo y sin deptos («ninguno», 20-oct-2026, Fabrizio): no hay qué elegir; el regalo queda guardado. */
-  tituloRegaloGuardado: "Tienes un análisis de regalo guardado",
-  /** Sin regalo (topó, o lo gastó): se elige igual. */
-  titulo: "Tus primeros deptos: elige uno",
-  /** Sin regalo y sin deptos («ninguno», 20-oct-2026, Fabrizio): no hay qué elegir. */
-  tituloSinDeptos: "Tus primeros deptos",
-  /** Bajo el título (20-oct-2026, texto de Fabrizio): sin «anoche» ni «el correo de esta hora». */
-  bajada: "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.",
-  /** Los otros estados de la hoja (20-oct-2026, Fabrizio), con el criterio de la bajada: su búsqueda, y la confirmación
-   *  al correo en unos minutos —dicha UNA vez: con deptos la dice la bajada, así que la tarjeta no la repite—. El depto
-   *  todavía sin ficha leída: */
-  porConfirmar: "Elegido para tu búsqueda.",
-  faltan: "Para armar tu selección falta un dato. Un toque y listo:",
-  faltaComuna: "¿En qué comuna?",
-  faltaTipologia: "¿Cuántos dormitorios?",
-  faltaRango: "¿Hasta cuánto?",
+  kicker: "Tu selección",
+  /** El título, con cuántos eligió. */
+  eligio: (n: number) => (n === 1 ? "Franco eligió este depto para tu búsqueda." : `Franco eligió estos ${n} deptos para tu búsqueda.`),
+  /** Mientras no hay deptos que contar: buscando, revisando, sin ninguno o faltan campos. */
+  tituloSinContar: "Tu selección",
+  /** Bajo el título: con el regalo vivo, «Usa tu regalo…»; sin él, «Analiza el que más te interese.». */
+  bajadaRegalo: "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.",
+  bajada: "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.",
+  /** El botón de cada tarjeta. */
+  analizar: "Analizar este",
+  analizarRegalo: "Analizar este · usa tu regalo",
+  verMas: (n: number) => (n === 1 ? "Ver el que falta" : `Ver los ${n} que faltan`),
+  faltan: "Para armar tu selección falta un dato:",
   armar: "Ver mis deptos",
   /** Ninguno conviene (sin la bajada, `hojaSinDeptos`: lo del correo lo dice este texto): */
   ninguno: "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.",
@@ -132,11 +131,14 @@ export const PRIMERA_SELECCION = {
   cerrar: "Cerrar",
 } as const;
 
-/** El título de la hoja (20-oct-2026): «elige uno» solo cuando hay qué elegir. Sin deptos, con el regalo vivo, el regalo
- *  queda guardado; sin regalo, «Tus primeros deptos» a secas. */
-export function tituloHoja(p: { regalo: boolean; sinDeptos: boolean }): string {
-  if (!p.regalo) return p.sinDeptos ? PRIMERA_SELECCION.tituloSinDeptos : PRIMERA_SELECCION.titulo;
-  return p.sinDeptos ? PRIMERA_SELECCION.tituloRegaloGuardado : PRIMERA_SELECCION.tituloRegalo;
+/** El título de la selección: con deptos, cuántos eligió; si no, «Tu selección» a secas. */
+export function tituloSeleccion(n: number): string {
+  return n > 0 ? PRIMERA_SELECCION.eligio(n) : PRIMERA_SELECCION.tituloSinContar;
+}
+
+/** El botón de cada tarjeta: con el regalo por gastar, lo dice. */
+export function textoAnalizar(usaRegalo: boolean): string {
+  return usaRegalo ? PRIMERA_SELECCION.analizarRegalo : PRIMERA_SELECCION.analizar;
 }
 
 export const DEL_DIA = {

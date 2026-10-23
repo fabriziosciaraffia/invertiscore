@@ -38,3 +38,6 @@
 .ca-chip:disabled { cursor: default; }
 /* «Tus informes», plano: el título como los de arriba y su lista debajo. */
 .ca-informes { padding-top: 18px; border-top: 1px solid var(--franco-border); }
+/* Los tres campos del perfil (23-oct-2026, components/deptos/CamposBusqueda.tsx con los estilos de deptos.css): acotados,
+   y después los chips de modalidad, pie y plazo. */
+.ca-perfil-campos { max-width: 560px; margin-bottom: 14px; }

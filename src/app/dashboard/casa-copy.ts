@@ -78,13 +78,13 @@ export const CASA = {
      *  mismo día; con las otras dos, solo la selección del lunes. */
     queCambia: { ya: "Te avisamos el mismo día que aparece uno.", meses: "Te llegan cada lunes.", mirando: "Te llegan cada lunes." } as Record<"ya" | "meses" | "mirando", string>,
     cambiar: "cambiar",
-    masComuna: "+ comuna",
-    masDormitorio: "+ dormitorios",
-    quitar: "Quitar",
     tope: (uf: string) => `Hasta UF ${uf}`,
     /** Con el piso elegido en /deptos (16-oct-2026). */
     rango: (min: string, max: string) => `UF ${min} a ${max}`,
     sinTope: "Precio tope",
+    /** Los tres campos (23-oct-2026): el perfil con dormitorios de varios informes, como opción actual del select. */
+    varias: (dorms: number[]) => `${dorms.map((d) => (d === 0 ? "Studio" : String(d))).join(", ").replace(/, ([^,]*)$/, " y $1")} dormitorios`,
+    sinTipologia: "Tipología",
     pie: (p: string) => `Pie ${p}%`,
     plazo: (a: number) => `${a} años`,
     dormitorios: (d: number) => (d === 0 ? "Studio" : d === 1 ? "1 dormitorio" : `${d} dormitorios`),

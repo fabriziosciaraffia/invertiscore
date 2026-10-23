@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import "./casa.css";
+import "@/app/deptos/deptos.css";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, chipOcupado } from "@/lib/carga-global";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
@@ -22,7 +23,8 @@ import { ajusteDeParametro, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal
 import { CASA, packDeCasa } from "./casa-copy";
 import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
 import { textoRenueva } from "@/lib/guia/renovacion";
-import { RANGOS_UF } from "@/lib/deptos/respuesta";
+import { RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
+import { CamposBusqueda, type CampoBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -158,10 +160,24 @@ export interface PerfilEditable {
   horizonte: Horizonte | null;
 }
 
-const TOPES = [1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 6000, 7000, 8000, 10000, 12000, 15000];
 const PIES = [10, 15, 20, 25, 30, 40, 50];
 const PLAZOS = [15, 20, 25, 30];
-const DORMS = [0, 1, 2, 3, 4];
+
+/**
+ * LOS TRES CAMPOS DEL PERFIL (23-oct-2026, mockups `1b-deptos.html` y `3b-dashboard.html`): la comuna, la tipología y el
+ * rango se editan con los mismos <select> de /deptos (CamposBusqueda, con más de una comuna). Lo que el perfil tiene y no
+ * es una de las opciones —dormitorios de varios informes («1 y 2 dormitorios»), un tope sin piso («Hasta UF 4.500»)— se
+ * muestra como la opción actual, y al elegir otra se guarda la de la lista.
+ */
+export function valorDePerfil(p: Pick<PerfilEditable, "comunas" | "dormitorios" | "precioMinUf" | "precioMaxUf">): { valor: ValorBusqueda; tipologiaExtra: string | null; rangoExtra: { id: string; chip: string } | null } {
+  const dorms = [...p.dormitorios].sort((a, b) => a - b);
+  const t = TIPOLOGIAS_DEPTOS.find((x) => x.dorms.length === dorms.length && x.dorms.every((d, i) => d === dorms[i]));
+  const tipologiaExtra = t ? null : dorms.length === 0 ? CASA.perfil.sinTipologia : CASA.perfil.varias(dorms);
+  const r = p.precioMaxUf != null ? RANGOS_UF.find((x) => x.max === p.precioMaxUf && (x.min ?? null) === (p.precioMinUf ?? null)) : undefined;
+  const rangoExtra = r ? null : { id: RANGO_ACTUAL, chip: p.precioMaxUf == null ? CASA.perfil.sinTope : p.precioMinUf != null ? CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf)) : CASA.perfil.tope(miles(p.precioMaxUf)) };
+  return { valor: { comunas: p.comunas, tipologia: t?.id ?? "", rango: r?.id ?? RANGO_ACTUAL }, tipologiaExtra, rangoExtra };
+}
+const RANGO_ACTUAL = "actual";
 
 async function guardar(cambios: Record<string, unknown>): Promise<boolean> {
   try {
@@ -173,7 +189,6 @@ async function guardar(cambios: Record<string, unknown>): Promise<boolean> {
 }
 
 const chip = "ca-chip relative inline-flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold text-[var(--franco-text)]";
-const chipMas = "relative inline-flex min-h-[32px] shrink-0 items-center rounded-full border border-dashed border-[var(--franco-border)] px-3 text-[13.5px] font-medium text-[var(--franco-text-secondary)] focus-within:border-[var(--franco-text)]";
 const selectInvisible = "absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0";
 
 export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEditable; comprador: boolean }) {
@@ -190,32 +205,18 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
     setGuardando(null);
   }
 
-  const quitarComuna = (c: string) => {
-    const resto = p.comunas.filter((x) => x !== c);
-    if (resto.length === 0) return;
-    void cambiar({ comunas: resto }, { comunas: resto });
+  // Los tres campos (23-oct-2026): cada cambio se guarda solo, como los chips.
+  const campos = valorDePerfil(p);
+  const cambiarCampo = (campo: CampoBusqueda, v: ValorBusqueda) => {
+    if (campo === "comuna") { if (v.comunas.length > 0) void cambiar({ comunas: v.comunas }, { comunas: v.comunas }); return; }
+    if (campo === "tipologia") { const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === v.tipologia); if (t) void cambiar({ dormitorios: [...t.dorms] }, { dormitorios: [...t.dorms] }); return; }
+    const r = RANGOS_UF.find((x) => x.id === v.rango);
+    if (r) void cambiar({ precioMinUf: r.min, precioMaxUf: r.max }, { precioMinUf: r.min, precioMaxUf: r.max });
   };
-  const sumarComuna = (c: string) => {
-    if (!c || p.comunas.includes(c)) return;
-    const todas = [...p.comunas, c];
-    void cambiar({ comunas: todas }, { comunas: todas });
-  };
-  const quitarDorm = (d: number) => {
-    const resto = p.dormitorios.filter((x) => x !== d);
-    if (resto.length === 0) return;
-    void cambiar({ dormitorios: resto }, { dormitorios: resto });
-  };
-  const sumarDorm = (d: number) => {
-    if (p.dormitorios.includes(d)) return;
-    const todos = [...p.dormitorios, d].sort((a, b) => a - b);
-    void cambiar({ dormitorios: todos }, { dormitorios: todos });
-  };
+  const campoOcupado: CampoBusqueda | null = guardando === "comunas" ? "comuna" : guardando === "dormitorios" ? "tipologia" : guardando === "precioMinUf+precioMaxUf" ? "rango" : null;
 
-  const topes = p.precioMaxUf != null && !TOPES.includes(p.precioMaxUf) ? [...TOPES, p.precioMaxUf].sort((a, b) => a - b) : TOPES;
   const pies = p.piePct != null && !PIES.includes(p.piePct) ? [...PIES, p.piePct].sort((a, b) => a - b) : PIES;
   const plazos = p.plazoAnios != null && !PLAZOS.includes(p.plazoAnios) ? [...PLAZOS, p.plazoAnios].sort((a, b) => a - b) : PLAZOS;
-  const comunasLibres = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !p.comunas.includes(c));
-  const dormsLibres = DORMS.filter((d) => !p.dormitorios.includes(d));
   // Mientras se guarda, los chips se quedan (el tocado, girando): si la línea los reemplazara al toque, el aro no se vería nunca
   // (lo cazó el QA del 22-oct-2026).
   const preguntar = p.horizonte == null || cambiandoHorizonte || guardando === "horizonte";
@@ -236,54 +237,12 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
       {ajusteHecho && <p className="mb-3 text-[14px] font-semibold" role="status" data-casa="ajuste-hecho">{SEMANAL_VACIO.ajusteListo(ajusteHecho)}</p>}
       <p className="mb-3 max-w-[640px] text-[14px] text-[var(--franco-text-secondary)]">{comprador ? CASA.perfil.bajadaComprador : CASA.perfil.bajada}</p>
       <div>
+        {/* Los tres campos de /deptos (23-oct-2026): la comuna (y las demás, con «+ agregar otra comuna»), la tipología y el
+            rango, como <select>; cada cambio se guarda solo y el campo se ve guardándose. */}
+        <div className="ca-perfil-campos" data-casa="campos">
+          <CamposBusqueda multiple valor={campos.valor} tipologiaExtra={campos.tipologiaExtra} rangoExtra={campos.rangoExtra} ocupado={campoOcupado} onChange={cambiarCampo} ids="casa" />
+        </div>
         <div className="flex flex-wrap gap-1.5">
-          {p.dormitorios.map((d) => (
-            <button key={`d${d}`} type="button" className={chip} onClick={() => quitarDorm(d)} aria-label={`${CASA.perfil.quitar} ${CASA.perfil.dormitorios(d)}`} disabled={p.dormitorios.length === 1} data-chip="dormitorios">
-              {CASA.perfil.dormitorios(d)}{p.dormitorios.length > 1 && <span aria-hidden="true" className="text-[12px] text-[var(--franco-text-secondary)]">×</span>}
-            </button>
-          ))}
-          {dormsLibres.length > 0 && (
-            <label className={chipMas} {...chipOcupado(guardando === "dormitorios")}>
-              <span aria-hidden="true">{CASA.perfil.masDormitorio}</span>
-              <select aria-label={CASA.perfil.masDormitorio} className={selectInvisible} value="" onChange={(e) => sumarDorm(Number(e.target.value))}>
-                <option value="" />
-                {dormsLibres.map((d) => <option key={d} value={d}>{CASA.perfil.dormitorios(d)}</option>)}
-              </select>
-            </label>
-          )}
-          {p.comunas.map((c) => (
-            <button key={c} type="button" className={chip} onClick={() => quitarComuna(c)} aria-label={`${CASA.perfil.quitar} ${c}`} disabled={p.comunas.length === 1} data-chip="comuna">
-              {c}{p.comunas.length > 1 && <span aria-hidden="true" className="text-[12px] text-[var(--franco-text-secondary)]">×</span>}
-            </button>
-          ))}
-          <label className={chipMas} {...chipOcupado(guardando === "comunas")}>
-            <span aria-hidden="true">{CASA.perfil.masComuna}</span>
-            <select aria-label={CASA.perfil.masComuna} className={selectInvisible} value="" onChange={(e) => sumarComuna(e.target.value)}>
-              <option value="" />
-              {comunasLibres.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          {p.precioMinUf != null && p.precioMaxUf != null ? (
-            // El rango de /deptos (16-oct-2026): se cambia por otro rango, con su piso y su tope.
-            <label className={chip} data-chip="rango" {...chipOcupado(guardando === "precioMinUf+precioMaxUf")}>
-              <span aria-hidden="true">{CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf))}</span>
-              <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={RANGOS_UF.find((r) => r.min === p.precioMinUf && r.max === p.precioMaxUf)?.id ?? ""} onChange={(e) => {
-                const r = RANGOS_UF.find((x) => x.id === e.target.value);
-                if (r) void cambiar({ precioMinUf: r.min, precioMaxUf: r.max }, { precioMinUf: r.min, precioMaxUf: r.max });
-              }}>
-                {!RANGOS_UF.some((r) => r.min === p.precioMinUf && r.max === p.precioMaxUf) && <option value="">{CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf))}</option>}
-                {RANGOS_UF.map((r) => <option key={r.id} value={r.id}>{r.chip}</option>)}
-              </select>
-            </label>
-          ) : (
-            <label className={chip} data-chip="tope" {...chipOcupado(guardando === "precioMaxUf")}>
-              <span aria-hidden="true">{p.precioMaxUf != null ? CASA.perfil.tope(miles(p.precioMaxUf)) : CASA.perfil.sinTope}</span>
-              <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={p.precioMaxUf ?? ""} onChange={(e) => { const v = Number(e.target.value); void cambiar({ precioMaxUf: v }, { precioMaxUf: v }); }}>
-                {p.precioMaxUf == null && <option value="">{CASA.perfil.sinTope}</option>}
-                {topes.map((t) => <option key={t} value={t}>{CASA.perfil.tope(miles(t))}</option>)}
-              </select>
-            </label>
-          )}
           <label className={chip} data-chip="modalidad" {...chipOcupado(guardando === "modalidad")}>
             <span aria-hidden="true">{ESTAS_DENTRO.modalidad[p.modalidad]}</span>
             <select aria-label="Modalidad" className={selectInvisible} value={p.modalidad} onChange={(e) => { const v = e.target.value as Modalidad; void cambiar({ modalidad: v }, { modalidad: v }); }}>
