@@ -22,7 +22,7 @@ import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { comprasDelDepto } from "@/lib/guia/compra-desde-depto";
+import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { COMUNAS_DESTACADAS, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
@@ -260,6 +260,7 @@ export function PrimeraSeleccion({ titulo = true }: {
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
           compras={datos.token ? comprasDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", ticket: !!datos.ticket }) : null}
+          ticketConSaldo={datos.token && datos.ticket ? ticketConSaldoDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt }) : null}
           rutaCompra="/dashboard"
           analizando={!!confirmar.analizando}
           alAnalizar={() => void analizar(confirmar.it)}

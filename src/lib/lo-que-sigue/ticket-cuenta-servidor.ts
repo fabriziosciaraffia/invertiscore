@@ -18,20 +18,12 @@ export async function packPagadoPorCuenta(admin: SupabaseClient, userId: string)
   return (count ?? 0) > 0;
 }
 
-/** ¿El pack va al precio del ticket para esta cuenta? Menos de 24 horas y sin el pack pagado. */
+/** ¿El pack va al precio del ticket para esta cuenta? Menos de 24 horas y sin el pack pagado. Con o sin saldo: una compra
+ *  suelta no lo apaga (22-oct-2026). */
 export async function ticketDeCuentaDisponible(admin: SupabaseClient, user: { id: string; created_at?: string | null }): Promise<boolean> {
   if (!ticketDeCuenta(user.created_at)) return false;
   return !(await packPagadoPorCuenta(admin, user.id));
 }
 
-/** ¿Es el primer informe de la cuenta? Ninguno anterior, sin contar las filas bloqueadas (pendientes de pago) ni la otra
- *  mitad de su par de renta larga y corta. */
-export async function esPrimerInforme(admin: SupabaseClient, p: { userId: string; informeId: string; creadoAt: string; ambasGroupId?: string | null }): Promise<boolean> {
-  let q = admin.from("analisis").select("id", { count: "exact", head: true })
-    .eq("user_id", p.userId).neq("id", p.informeId).lt("created_at", p.creadoAt).not("pending_payment", "is", true);
-  // NULL en un filtro de exclusión (CLAUDE.md): «todo lo que no sea este par, incluidos los sin par».
-  if (p.ambasGroupId) q = q.or(`ambas_group_id.is.null,ambas_group_id.neq.${p.ambasGroupId}`);
-  const { count, error } = await q;
-  reportarFalloQuery(error, { ruta: RUTA, operacion: "primer-informe", userId: p.userId });
-  return !error && (count ?? 0) === 0;
-}
+// ⚠ ACTA (22-oct-2026) · `esPrimerInforme` se retiró con la regla que lo necesitaba: el ticket ya no es solo del primer
+// informe de la cuenta (compra-desde-depto.ts › ticketEnElInforme).

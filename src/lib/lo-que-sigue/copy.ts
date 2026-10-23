@@ -98,8 +98,12 @@ export const TICKET_PACK = {
    *  negrita (corrección de Fabrizio, 08-oct-2026). */
   cuerpoFuerte: "La mitad del precio, solo para usuarios nuevos.",
   negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
+  /** Para quien YA tiene cuenta (22-oct-2026, decisión de Fabrizio): no «quedas registrado», sino para qué le sirven. */
+  negritaConCuenta: "Para tres deptos más de tu selección, o cualquier otro que te interese.",
   boton: (precio: string) => `Comprar por ${precio}`,
   vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este informe · hasta ${cuando} · si te vas, guarda el enlace`,
+  /** El ticket de la cuenta (22-oct-2026): va en todos sus informes, no en este; sin «guarda el enlace». */
+  vencimientoCuenta: (cuando: string) => `Solo para usuarios nuevos · hasta ${cuando}`,
   placeholderCorreo: "tu@correo.cl",
   pestana: (precio: string, hora: string) => `3 análisis por ${precio} · hasta las ${hora}`,
   errorCorreo: "Ese correo no se entiende. Revísalo.",

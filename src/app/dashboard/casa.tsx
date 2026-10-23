@@ -36,9 +36,10 @@ export const RUTA_NUEVO = "/analisis/nuevo-v4";
  * EL BLOQUE DE ARRIBA (17-oct-2026, decisión de Fabrizio): lo más importante según el estado, en banner —el material del
  * banner del informe, texto en papel, UN botón en papel—. Qué bloque, lo decide casa-arriba.ts › bloqueDeArriba.
  */
-export function BloqueArribaCasa({ bloque, informes, ticket = false }: { bloque: BloqueArriba; informes: number; ticket?: boolean }) {
-  // Sin saldo, el pack al precio del ticket si la cuenta es nueva (21-oct-2026, casa-copy.ts › packDeCasa).
-  const pack = packDeCasa(ticket);
+export function BloqueArribaCasa({ bloque, informes, ticketConSaldo = null, ticket = false }: { bloque: BloqueArriba; informes: number; /** Con saldo y el ticket vivo (22-oct-2026): cuándo nació la cuenta, para decir hasta cuándo. */ ticketConSaldo?: { cuentaCreadaAt: string } | null; ticket?: boolean }) {
+  // Sin saldo, el pack al precio del ticket si la cuenta es nueva (21-oct-2026, casa-copy.ts › packDeCasa); con saldo y el
+  // ticket vivo, la misma tarjeta con «3 más por $14.990» (22-oct-2026).
+  const pack = packDeCasa(ticket, ticketConSaldo);
   if (bloque.tipo === "seleccion") {
     return (
       <section className="ca-banda" data-casa="arriba" data-arriba="seleccion">
@@ -107,9 +108,11 @@ export function BloqueArribaCasa({ bloque, informes, ticket = false }: { bloque:
  * EL SALDO, PLANO (17-oct-2026): una línea, sin tarjeta ni botón grande, después del segundo nivel. Lo que el banner ya
  * dice no se repite: con el regalo arriba no hay línea; con el pack arriba, la línea lleva solo el suelto y los planes.
  */
-export function SaldoPlano({ estado, arriba, ticket = false }: { estado: EstadoSaldo; arriba: BloqueArriba["tipo"]; ticket?: boolean }) {
+export function SaldoPlano({ estado, arriba, ticketConSaldo = null, ticket = false }: { estado: EstadoSaldo; arriba: BloqueArriba["tipo"]; /** Con saldo y el ticket vivo (22-oct-2026): la línea «Hoy, 3 más por $14.990 · vence mañana 11:17», como enlace. */ ticketConSaldo?: { cuentaCreadaAt: string } | null; ticket?: boolean }) {
   if (estado.tipo === "regalo" && arriba === "regalo") return null;
-  const pack = packDeCasa(ticket);
+  const pack = packDeCasa(ticket, ticketConSaldo);
+  // Con saldo, mientras el ticket esté vivo y la tarjeta de arriba no lo diga ya.
+  const lineaTicket = ticket && ticketConSaldo && estado.tipo !== "sin" && estado.tipo !== "plan" && arriba !== "pack" ? pack.bajada : null;
   const linea =
     estado.tipo === "sin" ? CASA.sin.plano
     : estado.tipo === "regalo" ? `${CASA.regalo.titulo}${estado.vence ? ` ${textoVence(estado.vence)}` : ""}`
@@ -120,6 +123,9 @@ export function SaldoPlano({ estado, arriba, ticket = false }: { estado: EstadoS
     <section className="ca-plano-sec" data-casa="saldo" data-saldo={estado.tipo} style={{ fontFamily: UI }}>
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5">
         <p className="m-0 text-[15px] font-semibold">{linea}</p>
+        {lineaTicket && (
+          <EnlaceCarga href={pack.href} className={enlace} data-casa="ticket-con-saldo">{lineaTicket}</EnlaceCarga>
+        )}
         {estado.tipo === "sin" && (
           <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             {arriba !== "pack" && (

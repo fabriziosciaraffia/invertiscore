@@ -58,6 +58,8 @@ export interface ModalPlausibilidadProps {
   resumen?: ResumenConfirmacion;
   /** Línea de consumo según tier. `null` ⇒ no se renderiza (ilimitado/admin). */
   consumo?: string | null;
+  /** Una nota bajo el consumo (22-oct-2026): la línea del ticket con saldo, como enlace, sin frenar. */
+  nota?: ReactNode;
   /** Copy del primario en estado limpio (cambia en el camino de compra). */
   labelConfirmar?: string;
   /**
@@ -102,6 +104,7 @@ export function ModalPlausibilidad({
   origenes = [],
   resumen,
   consumo,
+  nota,
   labelConfirmar = "Generar el análisis",
   titulo = "Confirma antes de generar",
   destacado,
@@ -273,6 +276,7 @@ export function ModalPlausibilidad({
               )}
 
               {consumo && <p className="wz-modal-consumo">{consumo}</p>}
+              {nota && <p className="wz-modal-nota" data-modal-nota>{nota}</p>}
             </>
           )}
         </div>

@@ -166,7 +166,8 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (!/despuesDeLaCard=\{bannerLqs \? <BannerRegistro /.test(c)) F(`1 · ${nombre}: el banner no cuelga de bannerLqs`);
     // ⚠ ACTA (12-oct-2026, el que vuelve) · con `conSesion` y `recienDentro` (TICKET-REGRESO §2).
     // ⚠ ACTA (21-oct-2026) · el ticket de la cuenta nueva cuenta desde la cuenta: `createdAt={ticketDesde ?? createdAt}`.
-    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
+    // ⚠ ACTA (22-oct-2026) · `conCuenta`: para quien ya tiene cuenta el ticket cambia su copy (tier TICKET-VIVO §4).
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} conCuenta=\{[^}]+\} \/>/.test(c)) F(`1 · ${nombre}: el ticket no cuelga de ticketLqs con el correo conocido`);
     if (/loQueSigue/.test(c)) F(`1 · ${nombre}: queda el gate viejo «loQueSigue»`);
   }
 

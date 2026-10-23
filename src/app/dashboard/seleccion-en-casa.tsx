@@ -33,7 +33,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
     return primera ? <div {...ancla} data-casa="tarjetas" data-fuente="primera"><PrimeraSeleccion /></div> : null;
   }
   const dosBloques = !!sel.largo && !!sel.corto;
-  const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, autoAnalizar, enCasa: true };
+  const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, cuentaCreadaAt: sel.cuentaCreadaAt, autoAnalizar, enCasa: true };
   const listaLarga = sel.largo && (
     <SemanalLista
       {...comun}

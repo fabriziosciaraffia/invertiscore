@@ -40,6 +40,8 @@ export interface SeleccionPagina {
   saldo: EstadoSaldo;
   /** Sin saldo, el pack va al precio del ticket: la cuenta tiene menos de 24 horas y no lo pagó (compra-desde-depto.ts). */
   ticket: boolean;
+  /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea «Hoy, 3 más por $14.990 · vence …» con saldo. */
+  cuentaCreadaAt: string | null;
   destacado: string | null;
   largo: BloquePagina | null;
   corto: BloquePagina | null;
@@ -79,7 +81,7 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   if (!sel) return null;
   const otraCuenta = sel.user_id !== userId;
   if (otraCuenta) {
-    return { otraCuenta, token: sel.token, fuente: sel.fuente, variante: sel.variante, saldo: { tipo: "sin" }, ticket: false, destacado: null, largo: null, corto: null, cortoPrimero: false };
+    return { otraCuenta, token: sel.token, fuente: sel.fuente, variante: sel.variante, saldo: { tipo: "sin" }, ticket: false, cuentaCreadaAt: null, destacado: null, largo: null, corto: null, cortoPrimero: false };
   }
   const cfg = await leerConfigGuia(admin);
   const tabla = sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones";
@@ -109,6 +111,7 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
     variante: sel.variante,
     saldo: estadoSaldo(datosSaldo),
     ticket,
+    cuentaCreadaAt: ticket ? (user.created_at ?? null) : null,
     destacado: a,
     largo: sel.conLargo ? { origenId: sel.origen_analysis_id, combinacion: sel.combinacion, filas: primero(filas), finanzas, noDan: [], informes: informesLargos } : null,
     corto: sel.corto ? {

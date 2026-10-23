@@ -52,6 +52,15 @@ export function cuandoVence(createdAt: string | Date, ahora: Date = new Date(), 
   return `el ${fecha} a las ${hora}`;
 }
 
+/** La forma corta, para una línea (22-oct-2026): «hoy 21:04», «mañana 21:04» o «el 9 de octubre 21:04». */
+export function cuandoVenceCorto(createdAt: string | Date, ahora: Date = new Date(), zona = "America/Santiago"): string {
+  const hora = horaVencimiento(createdAt, zona);
+  const dia = diaVencimiento(createdAt, ahora, zona);
+  if (dia !== "otro") return `${dia} ${hora}`;
+  const fecha = new Intl.DateTimeFormat("es-CL", { timeZone: zona, day: "numeric", month: "long" }).format(venceEl(createdAt));
+  return `el ${fecha} ${hora}`;
+}
+
 /** Lo que se ahorra en los tres análisis, redondeado al mil: 3 × $9.990 − $14.990 = $14.980 → «$15.000». */
 export const PACK_AHORRO_CLP = Math.round((PACK_ANALISIS * PACK_UNITARIO_REFERENCIA_CLP - PACK_PRECIO_CLP) / 1000) * 1000;
 

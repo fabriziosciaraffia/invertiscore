@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         properties: { puerta, n: r.items.length, fuente: r.fuente, faltan: r.faltan.length, con_regalo: !!r.regaloVence, minutos_desde_alta: user.created_at ? Math.round((Date.now() - Date.parse(user.created_at)) / 60_000) : null },
       });
     })().catch(() => {});
-    return NextResponse.json({ ...r, ticket }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ...r, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/deptos/primeros", operacion: "primeros", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

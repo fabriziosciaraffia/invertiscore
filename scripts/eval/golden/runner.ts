@@ -159,6 +159,7 @@ import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
+import { runTicketVivoTier } from "./ticket-vivo-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -667,6 +668,9 @@ function printSeed(r: SeedReport) {
   // Tier VUELTA-FLOW (22-oct-2026, 0 tokens): a Flow viaja solo la orden (bajo 150: Flow corta a 200); la vuelta, el informe
   // del pack y el depto se leen del pago, y pagado desde un depto la vuelta genera y abre el informe sola. ──
   totalHard += runVueltaFlowTier().hard;
+  // Tier TICKET-VIVO (22-oct-2026, 0 tokens): el ticket de 24 horas no se pierde al comprar un suelto —todo informe de la cuenta,
+  // la tarjeta del dashboard con o sin saldo, la línea del pop-up con saldo— y el copy para quien ya tiene cuenta. ──
+  totalHard += runTicketVivoTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

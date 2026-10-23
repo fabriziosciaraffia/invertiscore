@@ -53,6 +53,8 @@ export interface PrimerosDeLaCuenta {
   finanzas: FinanzasPrimeros;
   /** Sin saldo, el pack va al precio del ticket (la cuenta tiene menos de 24 horas). Lo pone la ruta, que tiene la cuenta. */
   ticket?: boolean;
+  /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo. Lo pone la ruta. */
+  cuentaCreadaAt?: string | null;
 }
 
 type FilaDia = { id: string; token: string; estado: string; items: unknown; armada_at: string; enviada_at: string | null; intentos: number; combinacion: unknown; origen_analysis_id: string | null };

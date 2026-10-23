@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
-import { compraDeLaSeleccion, comprasDelDepto } from "@/lib/guia/compra-desde-depto";
+import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
@@ -52,7 +52,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, autoAnalizar = null, enCasa = false,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false,
 }: {
   token: string;
   origenId: string | null;
@@ -79,6 +79,8 @@ export function SemanalLista({
   informes?: Record<string, string>;
   /** La cuenta tiene menos de 24 horas y no pagó el pack: va al precio del ticket. */
   ticket?: boolean;
+  /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo en el pop-up. */
+  cuentaCreadaAt?: string | null;
   /** Volvió pagado desde este depto (`analizar=1`): se analiza solo. */
   autoAnalizar?: string | null;
   /** En el dashboard: el título es de sección, no de página. */
@@ -316,6 +318,7 @@ export function SemanalLista({
           finanzas={{ tasa: finanzas.tasa, uf: finanzas.uf, arriendo: finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : saldo}
           compras={comprasDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, ticket })}
+          ticketConSaldo={ticket && !corta ? ticketConSaldoDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt }) : null}
           rutaCompra={comprarSeleccion.href}
           analizando={!!confirmar.analizando}
           // Renta corta: el aviso se cierra y la tarjeta mide. Renta larga: queda abierto, cargando, hasta el informe.

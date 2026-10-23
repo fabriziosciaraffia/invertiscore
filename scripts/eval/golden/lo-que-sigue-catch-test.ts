@@ -69,7 +69,8 @@ export function runLoQueSigueTier(): { hard: number } {
     // registró (`esRegreso`): lo fija TICKET-REGRESO §2.
     // ⚠ ACTA (21-oct-2026) · las 24 horas del ticket de la cuenta nueva corren desde la cuenta (`ticketDesde`); el
     // anónimo, desde el informe, como siempre (tier PUERTA-B-RECORRIDO §5).
-    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
+    // ⚠ ACTA (22-oct-2026) · `conCuenta`: para quien ya tiene cuenta el ticket cambia su copy (tier TICKET-VIVO §4).
+    if (!/\{ticketLqs \? \(\s*<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} conCuenta=\{[^}]+\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme /.test(s)) F(`1 · el ticket ${nombre} no cuelga de la oferta (o desplazó el cierre de siempre)`);
     if (/CierreRegistro|lqs-cierre/.test(s)) F(`1 · vuelve el texto del registro al final del informe ${nombre}`);
   }
   // ⚠ ACTA (19-oct-2026, goal «camino de compra», decisión de Fabrizio) · el checkout ya no manda a /registro: pide el

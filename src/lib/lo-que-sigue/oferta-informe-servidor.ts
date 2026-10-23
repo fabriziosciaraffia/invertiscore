@@ -5,16 +5,16 @@
 // cuenta y liga el informe ANTES de ir a Flow). El cliente de servicio entra por parámetro: el tier
 // lo reemplaza por uno de mentira.
 // EL TICKET DE LA CUENTA NUEVA (21-oct-2026, recorrido real de Fabrizio por la puerta B): el ticket es de toda cuenta nueva,
-// por cualquier puerta. El primer informe de una cuenta, si nació en sus primeras 24 horas, lo lleva igual que el informe
-// anónimo; la ventana es la de la cuenta (`desde`), la misma del precio del pack en el pop-up sin saldo
-// (lib/guia/compra-desde-depto.ts).
+// por cualquier puerta. Todo informe de una cuenta que nació en sus primeras 24 horas lo lleva igual que el informe anónimo
+// —desde el 22-oct-2026 no solo el primero: una compra suelta no lo apaga—; la ventana es la de la cuenta (`desde`), la
+// misma del precio del pack en el pop-up sin saldo (lib/guia/compra-desde-depto.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hayPackPagado, nacioAnonimo, ofertaPackDelInforme, type QuienMira } from "./oferta-informe";
 import { PRODUCTO_PACK } from "./oferta-pack";
 import type { MotivoOferta } from "./diagnostico-ticket";
 import { ticketEnElInforme } from "@/lib/guia/compra-desde-depto";
-import { esPrimerInforme, packPagadoPorCuenta } from "./ticket-cuenta-servidor";
+import { packPagadoPorCuenta } from "./ticket-cuenta-servidor";
 
 export async function leerOfertaPack(
   admin: SupabaseClient,
@@ -39,11 +39,8 @@ export async function leerOfertaPack(
   if (!nacio) {
     const c = p.cuenta;
     if (p.quienMira === "sesion" && p.duenoId && c?.creadaAt && c.informeCreadoAt) {
-      const [primerInforme, packPagado] = await Promise.all([
-        esPrimerInforme(admin, { userId: p.duenoId, informeId: p.analysisId, creadoAt: c.informeCreadoAt, ambasGroupId: c.ambasGroupId ?? null }),
-        packPagadoPorCuenta(admin, p.duenoId),
-      ]);
-      if (ticketEnElInforme({ cuentaCreadaAt: c.creadaAt, informeCreadoAt: c.informeCreadoAt, primerInforme, packPagado })) {
+      const packPagado = await packPagadoPorCuenta(admin, p.duenoId);
+      if (ticketEnElInforme({ cuentaCreadaAt: c.creadaAt, informeCreadoAt: c.informeCreadoAt, packPagado })) {
         return { oferta: true, correo: p.correoSesion, motivo: "cuenta-nueva", desde: c.creadaAt };
       }
     }

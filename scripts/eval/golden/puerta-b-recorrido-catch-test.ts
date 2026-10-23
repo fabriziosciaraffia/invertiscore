@@ -226,9 +226,11 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const ahora = new Date("2026-10-21T15:00:00Z");
     const hace = (h: number) => new Date(ahora.getTime() - h * HORA).toISOString();
     if (!compra.ticketDeCuenta(hace(2), ahora) || compra.ticketDeCuenta(hace(25), ahora) || compra.ticketDeCuenta(null, ahora)) F("5 · el ticket no es de la cuenta con menos de 24 horas");
-    const enInforme = (p: Partial<Parameters<typeof compra.ticketEnElInforme>[0]>) => compra.ticketEnElInforme({ cuentaCreadaAt: hace(5), informeCreadoAt: hace(4), primerInforme: true, packPagado: false, ...p });
+    // ⚠ ACTA (22-oct-2026, decisión de Fabrizio) · el ticket ya no es solo del primer informe: lo lleva todo informe de la cuenta en sus 24 horas
+    // sin el pack pagado (una compra suelta no lo apaga; tier TICKET-VIVO). `primerInforme` y `esPrimerInforme` se retiraron.
+    const enInforme = (p: Partial<Parameters<typeof compra.ticketEnElInforme>[0]>) => compra.ticketEnElInforme({ cuentaCreadaAt: hace(5), informeCreadoAt: hace(4), packPagado: false, ...p });
     if (!enInforme({})) F("5 · el primer informe de una cuenta nueva no lleva el ticket");
-    if (enInforme({ primerInforme: false }) || enInforme({ packPagado: true }) || enInforme({ cuentaCreadaAt: hace(30), informeCreadoAt: hace(1) })) F("5 · lleva el ticket un informe que no es el primero, o con el pack pagado, o nacido después de las 24 horas");
+    if (enInforme({ packPagado: true }) || enInforme({ cuentaCreadaAt: hace(30), informeCreadoAt: hace(1) })) F("5 · lleva el ticket un informe con el pack pagado, o nacido después de las 24 horas");
     // El informe: leerOfertaPack con la cuenta, contra una base de mentira.
     const { leerOfertaPack } = require(join(RAIZ, "src/lib/lo-que-sigue/oferta-informe-servidor")) as typeof import("../../../src/lib/lo-que-sigue/oferta-informe-servidor");
     const ahoraReal = Date.now();
@@ -242,9 +244,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     };
     const o1 = await oferta({ analisis: 0, payments: 0 });
     if (!o1.r.oferta || o1.r.desde !== cuenta.creadaAt || o1.r.correo !== "nueva@prueba.cl") F(`5 · el primer informe de una cuenta con menos de 24 horas no lleva el ticket, desde la cuenta: ${JSON.stringify(o1.r)}`);
-    const previa = o1.consultas.find((c) => c.tabla === "analisis");
-    if (!previa || !previa.filtros.some((f) => f.startsWith('lt("created_at"')) || !previa.filtros.some((f) => f.startsWith('neq("id"'))) F("5 · «el primer informe» no se cuenta por los informes anteriores de la cuenta");
-    if ((await oferta({ analisis: 1, payments: 0 })).r.oferta) F("5 · el segundo informe de la cuenta lleva el ticket");
+    if (o1.consultas.some((c) => c.tabla === "analisis")) F("5 · la oferta sigue contando los informes anteriores de la cuenta (el ticket ya no es solo del primero)");
+    if (!(await oferta({ analisis: 1, payments: 0 })).r.oferta) F("5 · el segundo informe de la cuenta no lleva el ticket (22-oct-2026: lo lleva mientras el ticket viva)");
     if ((await oferta({ analisis: 0, payments: 1 })).r.oferta) F("5 · con el pack ya pagado, el informe lleva el ticket otra vez");
     if ((await oferta({ analisis: 0, payments: 0 }, { quienMira: "anonimo" })).r.oferta) F("5 · el ticket de la cuenta sale para quien no entró con ella");
     // El ticket en el informe cuenta desde la cuenta y sube la primera vez (entrar con la sesión no es volver).

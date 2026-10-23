@@ -717,7 +717,7 @@ export function PremiumResults({
           {ticketLqs ? (
             // «Lo que sigue»: al cierre va el ticket del pack, con el correo si ya se sabe. El de la cuenta nueva (21-oct-2026)
             // cuenta desde la cuenta y sube solo la primera vez, como el anónimo: entrar con la sesión no es «volver».
-            <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn && !ticketDesde} recienDentro={!!recienDentro} />
+            <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={isLoggedIn && !ticketDesde} recienDentro={!!recienDentro} conCuenta={isLoggedIn || !!ticketDesde} />
           ) : showCtaWelcome ? null : (
             <CierreInforme analisis={userCredits + (isLoggedIn && welcomeAvailable ? 1 : 0)} conSesion={isLoggedIn} ilimitado={ilimitado} />
           )}

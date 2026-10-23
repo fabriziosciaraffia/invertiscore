@@ -119,8 +119,11 @@ export default async function DashboardPage({
   const [datosSaldo, sel] = await Promise.all([leerSaldo(admin, user.id), cargarSeleccionPagina(admin, user, { t: tSel, a: aSel })]);
   const saldo = estadoSaldo(datosSaldo);
   const resumenSel = resumenDePagina(sel);
-  // Sin saldo, el pack al precio del ticket si la cuenta tiene menos de 24 horas (21-oct-2026, compra-desde-depto.ts).
-  const ticket = saldo.tipo === "sin" ? (sel?.ticket ?? await ticketDeCuentaDisponible(admin, user)) : false;
+  // El ticket de la cuenta nueva (21-oct-2026, compra-desde-depto.ts): menos de 24 horas y sin el pack pagado. CON O SIN
+  // SALDO (22-oct-2026, decisión de Fabrizio: una compra suelta no lo apaga): la tarjeta y la línea del saldo lo ofrecen
+  // mientras viva; con saldo dicen «3 más por $14.990» y hasta cuándo (`ticketConSaldo`).
+  const ticket = sel?.ticket ?? await ticketDeCuentaDisponible(admin, user);
+  const ticketConSaldo = ticket && saldo.tipo !== "sin" && user.created_at ? { cuentaCreadaAt: user.created_at } : null;
   const perfil: PerfilBienvenida | null = perfilRow?.analysis_id
     ? {
         analysisId: perfilRow.analysis_id as string,
@@ -141,7 +144,7 @@ export default async function DashboardPage({
       const pb0 = pp.perfilLtr ?? pp.perfilStr ?? pp.perfil;
       // La casa que vende (17-oct-2026): una jerarquía. Arriba, el banner según el estado; debajo, «Invita a alguien»;
       // después, plano, el saldo, su selección como tarjetas (21-oct-2026) y el perfil.
-      const arriba0 = bloqueDeArriba({ seleccion: resumenSel, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
+      const arriba0 = bloqueDeArriba({ seleccion: resumenSel, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence, ticket });
       return (
         <div className="min-h-screen bg-[var(--franco-bg)]">
           <ChipVeredictoTokens />
@@ -149,13 +152,13 @@ export default async function DashboardPage({
           <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
           <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-5 sm:px-6" data-casa="sin-informes" style={{ fontFamily: "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif" }}>
             <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
-            <BloqueArribaCasa bloque={arriba0} informes={0} ticket={ticket} />
+            <BloqueArribaCasa bloque={arriba0} informes={0} ticketConSaldo={ticketConSaldo} ticket={ticket} />
             {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
             <div className="mt-4">
               <InvitaAlguien />
             </div>
             <div className="ca-plano">
-              <SaldoPlano estado={saldo} arriba={arriba0.tipo} ticket={ticket} />
+              <SaldoPlano estado={saldo} arriba={arriba0.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />
               <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera />
               <PerfilBusquedaCasa
                 comprador={false}
@@ -256,7 +259,7 @@ export default async function DashboardPage({
     : null;
   const pb = perfilPersona.perfil;
   // La casa que vende (17-oct-2026): el bloque de arriba según el estado (casa-arriba.ts).
-  const arriba = bloqueDeArriba({ seleccion: resumen, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence });
+  const arriba = bloqueDeArriba({ seleccion: resumen, saldo, regaloRestante: datosSaldo.regaloRestante, regaloVence: datosSaldo.regaloVence, ticket });
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -270,13 +273,13 @@ export default async function DashboardPage({
              estado y un botón; debajo, «Invita a alguien» con su color; después, plano, el saldo, la guía del pack, el
              perfil y sus informes. ── */}
         <p className="ca-hola">{CASA.saludo(firstName || null)}</p>
-        <BloqueArribaCasa bloque={arriba} informes={stats.total} ticket={ticket} />
+        <BloqueArribaCasa bloque={arriba} informes={stats.total} ticketConSaldo={ticketConSaldo} ticket={ticket} />
         {/* Invita a alguien (16-oct-2026, la puerta C), el segundo nivel: los dos reciben un análisis. */}
         <div className="mt-4">
           <InvitaAlguien />
         </div>
         <div className="ca-plano">
-          <SaldoPlano estado={saldo} arriba={arriba.tipo} ticket={ticket} />
+          <SaldoPlano estado={saldo} arriba={arriba.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />
           {/* La selección como tarjetas, no solo como banner (21-oct-2026). */}
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={false} />
           {guiaCasa && (

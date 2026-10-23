@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { fmtCLP } from "@/lib/pricing";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
-import { ofertaPackVigente, PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { cuandoVenceCorto, ofertaPackVigente, PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
 import { rutaTres, TRES_PRECIO_CLP, volverSeguro } from "@/lib/tres-analisis";
 import { urlCompra } from "@/lib/compra/compra";
 
@@ -22,14 +22,37 @@ export function ticketDeCuenta(cuentaCreadaAt: string | null | undefined, ahora:
 }
 
 /**
- * ¿El informe lleva el ticket de la cuenta? Es el primero de la cuenta, nació en sus primeras 24 horas y la cuenta no
- * pagó el pack todavía. La vigencia la mira el ticket, como en el anónimo: un informe que nació a tiempo y se abre
- * vencido mide `pack_vencido` y no sube.
+ * ¿El informe lleva el ticket de la cuenta? Nació en las primeras 24 horas de la cuenta y la cuenta no pagó el pack
+ * todavía. EL TICKET NO SE PIERDE AL COMPRAR UN SUELTO (22-oct-2026, decisión de Fabrizio tras el recorrido real): dura 24
+ * horas desde que nació la cuenta o hasta que compre el pack, lo que pase primero, y lo lleva TODO informe de la cuenta en
+ * esa ventana, no solo el primero (hasta acá exigía «el primero», y tras pagar $9.990 el segundo informe se quedaba sin
+ * él). La vigencia la mira el ticket, como en el anónimo: un informe que nació a tiempo y se abre vencido mide
+ * `pack_vencido` y no sube.
  */
-export function ticketEnElInforme(p: { cuentaCreadaAt: string | null | undefined; informeCreadoAt: string | null | undefined; primerInforme: boolean; packPagado: boolean }): boolean {
-  if (!p.cuentaCreadaAt || !p.informeCreadoAt || !p.primerInforme || p.packPagado) return false;
+export function ticketEnElInforme(p: { cuentaCreadaAt: string | null | undefined; informeCreadoAt: string | null | undefined; packPagado: boolean }): boolean {
+  if (!p.cuentaCreadaAt || !p.informeCreadoAt || p.packPagado) return false;
   const nacio = new Date(p.informeCreadoAt);
   return Number.isFinite(nacio.getTime()) && ofertaPackVigente(p.cuentaCreadaAt, nacio);
+}
+
+/** Con saldo y el ticket vivo (22-oct-2026): una sola línea, como enlace, sin frenar —en el dashboard y debajo del
+ *  «Usa 1 de tus N análisis» del pop-up de «Analizar este»—. */
+export const TICKET_CON_SALDO = {
+  linea: (precio: string, vence: string) => `Hoy, 3 más por ${precio} · vence ${vence}`,
+  /** El botón de la tarjeta del dashboard, con saldo. */
+  boton: (precio: string) => `3 más por ${precio}`,
+} as const;
+
+/** La línea del ticket con saldo, con su vencimiento («mañana 11:17») y adónde compra. */
+export function lineaTicketConSaldo(cuentaCreadaAt: string, href: string, ahora: Date = new Date()): { texto: string; href: string } {
+  return { texto: TICKET_CON_SALDO.linea(fmtCLP(PACK_PRECIO_CLP), cuandoVenceCorto(cuentaCreadaAt, ahora)), href };
+}
+
+/** La misma línea desde un depto de la selección: compra el pack al precio del ticket y vuelve a ese depto. */
+export function ticketConSaldoDelDepto(p: { token: string; avisoId: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; cuentaCreadaAt: string | null | undefined; ahora?: Date }): { texto: string; href: string } | null {
+  if (!p.cuentaCreadaAt) return null;
+  const variante = p.origen === "semanal" ? p.variante ?? null : null;
+  return lineaTicketConSaldo(p.cuentaCreadaAt, urlCompra({ product: PRODUCTO_PACK, origen: p.origen, variante, volver: volverAlDepto(p.token, p.avisoId) }), p.ahora);
 }
 
 /** Adónde vuelve la compra hecha desde un depto: el dashboard, en la selección, con ese depto arriba y analizándose solo. */

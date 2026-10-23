@@ -76,7 +76,8 @@ export async function runTicketRegresoTier(): Promise<{ hard: number }> {
   // primera vez sube solo, como el anónimo; tier PUERTA-B-RECORRIDO §5). Para el informe que nació anónimo, igual que antes.
   for (const [rc, sesion] of [["src/app/analisis/[id]/results-client.tsx", "isLoggedIn && !ticketDesde"], ["src/app/analisis/renta-corta/[id]/results-client.tsx", "!!userId && !ticketDesde"]] as const) {
     const s = sinComentarios(leer(rc));
-    if (!new RegExp(`<TicketPack [^>]*conSesion=\\{${sesion.replace(/[!]/g, "\\!")}\\} recienDentro=\\{!!recienDentro\\} />`).test(s)) F(`2 · ${rc.includes("renta-corta") ? "renta corta" : "renta larga"}: el ticket no sabe si entra con sesión o recién registrado`);
+    // ⚠ ACTA (22-oct-2026) · después de `recienDentro` va `conCuenta` (tier TICKET-VIVO §4).
+    if (!new RegExp(`<TicketPack [^>]*conSesion=\\{${sesion.replace(/[!]/g, "\\!")}\\} recienDentro=\\{!!recienDentro\\} conCuenta=\\{[^}]+\\} />`).test(s)) F(`2 · ${rc.includes("renta-corta") ? "renta corta" : "renta larga"}: el ticket no sabe si entra con sesión o recién registrado`);
   }
 
   // ── 3 · «por qué no sale» ─────────────────────────────────────────────────────

@@ -16,10 +16,11 @@ import { useRouter } from "next/navigation";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { COMPRA_DEPTO, type ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
+import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
 import "@/components/formulario-v4/wizard-v4.css";
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null }: {
+export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null }: {
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
    *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
@@ -36,6 +37,9 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   analizando?: boolean;
   /** Sin saldo, desde la selección: el pack (principal) y el suelto (debajo), con la vuelta a este depto. */
   compras?: ComprasDelDepto | null;
+  /** CON SALDO Y EL TICKET VIVO (22-oct-2026, decisión de Fabrizio): se usa el saldo como siempre y debajo una sola línea,
+   *  «Hoy, 3 más por $14.990 · vence mañana 11:17», como enlace, sin frenar. */
+  ticketConSaldo?: { texto: string; href: string } | null;
 }) {
   const router = useRouter();
   const sin = uso.tipo === "sin";
@@ -54,6 +58,9 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       }}
       destacado={<>Con el pie de <b>{d.pie}</b> y el plazo de <b>{d.plazo}</b> de tu perfil</>}
       consumo={sin && compras ? compras.sin : textoUso(uso)}
+      nota={!sin && ticketConSaldo ? (
+        <EnlaceCarga href={ticketConSaldo.href} className="wz-modal-nota-enlace" data-modal-ticket>{ticketConSaldo.texto}</EnlaceCarga>
+      ) : undefined}
       labelConfirmar={sin ? (compras ? compras.pack.label : AVISO_ANALIZAR.comprar) : AVISO_ANALIZAR.analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}
       labelGenerando={COMPRA_DEPTO.analizando}

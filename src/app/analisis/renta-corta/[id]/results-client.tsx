@@ -509,7 +509,7 @@ export function STRResultsClient({
         <div style={{ height: 24 }} />
         <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
         {ticketLqs ? (
-          <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId && !ticketDesde} recienDentro={!!recienDentro} />
+          <TicketPack ctx={ctxLqs} createdAt={ticketDesde ?? createdAt} correoSesion={correoDelTicket({ recienDentro, correoConocido: correoOferta })} conSesion={!!userId && !ticketDesde} recienDentro={!!recienDentro} conCuenta={!!userId || !!ticketDesde} />
         ) : showCtaWelcome ? null : (
           <CierreInforme analisis={userCredits + (!!userId && welcomeAvailable ? 1 : 0)} conSesion={!!userId} ilimitado={ilimitado} />
         )}

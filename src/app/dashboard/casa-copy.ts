@@ -13,17 +13,23 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { rutaTres, TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 import { PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
 import { urlCompra } from "@/lib/compra/compra";
-import { COMPRA_DEPTO } from "@/lib/guia/compra-desde-depto";
+import { COMPRA_DEPTO, lineaTicketConSaldo, TICKET_CON_SALDO } from "@/lib/guia/compra-desde-depto";
 
 const SUELTO = fmtCLP(SINGLE_PRICE);
 
 /** Sin saldo, el pack que ofrece la casa —el banner y la línea del saldo—: el de tres, o el del ticket si la cuenta tiene
- *  menos de 24 horas y no lo pagó. Vuelve al dashboard después de pagar. */
-export function packDeCasa(ticket: boolean): { href: string; boton: string; bajada: string; bajadaPrimero: string } {
+ *  menos de 24 horas y no lo pagó. Vuelve al dashboard después de pagar. CON SALDO Y EL TICKET VIVO (22-oct-2026,
+ *  `conSaldo` = cuándo nació la cuenta): la misma tarjeta dice «3 más por $14.990» y hasta cuándo. */
+export function packDeCasa(ticket: boolean, conSaldo: { cuentaCreadaAt: string } | null = null): { href: string; boton: string; bajada: string; bajadaPrimero: string } {
   if (!ticket) return { href: rutaTres("dashboard", { volver: "/dashboard" }), boton: CASA.sin.boton, bajada: CASA.sin.bajada, bajadaPrimero: CASA.sin.bajadaPrimero };
   const precio = fmtCLP(PACK_PRECIO_CLP);
+  const href = urlCompra({ product: PRODUCTO_PACK, volver: "/dashboard" });
+  if (conSaldo) {
+    const linea = lineaTicketConSaldo(conSaldo.cuentaCreadaAt, href).texto;
+    return { href, boton: TICKET_CON_SALDO.boton(precio), bajada: linea, bajadaPrimero: linea };
+  }
   return {
-    href: urlCompra({ product: PRODUCTO_PACK, volver: "/dashboard" }),
+    href,
     boton: COMPRA_DEPTO.pack(PACK_PRECIO_CLP),
     bajada: `Para analizar otros: 3 análisis por ${precio}, sin caducidad.`,
     bajadaPrimero: `Para analizar un depto: 3 análisis por ${precio}, sin caducidad.`,

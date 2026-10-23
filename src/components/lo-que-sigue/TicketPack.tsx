@@ -43,7 +43,7 @@ function esPc(): boolean {
   }
 }
 
-export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = false, recienDentro = false }: {
+export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = false, recienDentro = false, conCuenta = false }: {
   ctx: ContextoLqs;
   createdAt: string;
   /** Entra con su sesión (12-oct-2026): a un informe que nació anónimo, eso dice que ya estuvo acá (`esRegreso`). */
@@ -53,6 +53,9 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
   /** El correo con que paga, si ya se sabe (`correoDelTicket`): recién dentro, la sesión o la cuenta de
    *  su navegador de origen. Con él, el ticket no lo pide. */
   correoSesion?: string | null;
+  /** YA TIENE CUENTA (22-oct-2026, decisión de Fabrizio): el ticket no dice «al comprar quedas registrado»; dice para qué
+   *  le sirven, y el vencimiento sin «en este informe». Con sesión, o con el ticket de la cuenta nueva. */
+  conCuenta?: boolean;
 }) {
   const posthog = usePostHog();
   const sentinel = useRef<HTMLDivElement>(null);
@@ -355,7 +358,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
                 <br />
                 <b>{TICKET_PACK.cuerpoFuerte}</b>
                 <br />
-                <b>{TICKET_PACK.negrita}</b>
+                <b>{conCuenta ? TICKET_PACK.negritaConCuenta : TICKET_PACK.negrita}</b>
               </p>
               {!correoSesion && (
                 <input
@@ -371,7 +374,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
               )}
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
               <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton(precio)}</button>
-              <p className="lqs-tk-vence" data-lqs="ticket-vence">{TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
+              <p className="lqs-tk-vence" data-lqs="ticket-vence">{conCuenta ? TICKET_PACK.vencimientoCuenta(cuandoVence(createdAt)) : TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
               <button type="button" className="lqs-seguir" onClick={() => despedirse("seguir")}>{TICKET_PACK.seguir}</button>
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
