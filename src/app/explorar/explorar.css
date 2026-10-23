@@ -38,6 +38,13 @@
 .ex-cuerpo { position: relative; flex: 1; min-height: 0; display: flex; }
 .ex-mapa-wrap { position: relative; flex: 1; min-width: 0; min-height: 0; background: var(--franco-bg); }
 .ex-mapa { position: absolute; inset: 0; }
+/* El mapa quieto del primer pintado: cubre el área del mapa debajo del real y se desvanece cuando el real dibujó sus teselas.
+   En oscuro, la misma foto invertida (calles claras sobre fondo oscuro, como el estilo oscuro del mapa). */
+.ex-mapa-quieto { position: absolute; inset: 0; z-index: 1; pointer-events: none; transition: opacity 0.5s ease; }
+.ex-mapa-quieto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
+.ex-mapa-wrap[data-mapa="teselas"] .ex-mapa-quieto { opacity: 0; }
+:root:not([data-theme="light"]) .ex-mapa-quieto img { filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.9); }
+@media (prefers-reduced-motion: reduce) { .ex-mapa-quieto { transition: none; } }
 .ex-mapa-vacio { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: var(--franco-text-tertiary); }
 .ex-pildoras { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 2; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
 .ex-pildora { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; color: var(--franco-text);

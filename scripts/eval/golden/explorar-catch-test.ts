@@ -168,8 +168,19 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/import \{ loadGoogleMaps \} from "@\/lib\/loadGoogleMaps";/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("5 · el mapa no usa el cargador de siempre");
   if (!/pines: d\.pines\.slice\(0, TOPE_HOJA\), completo: d\.n <= TOPE_HOJA/.test(codigo("src/app/explorar/page.tsx"))) F("5 · el servidor manda todos los pines al primer pintado (o no dice si están completos)");
   // La constante vive en la lib pura: desde un módulo "use client" llegaría al servidor como referencia (23-oct-2026).
-  if (!/import \{ EXPLORAR_COPY, filtrosDeUrl, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
+  if (!/import \{ EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
   if (!/if \(!inicial\.completo\) void cargar\(inicial\.filtros, false\);/.test(cli)) F("5 · el resto de los pines no llega con el mapa");
+  // ⚠ ACTA (23-oct-2026, medido en producción: 9,7 s) · sin el mapa quieto, la primera tesela de Google (a los 8 s) es el LCP.
+  for (const [k, tope] of [["m", 40], ["d", 60]] as const) {
+    const ruta = `public${ex.MAPA_QUIETO[k]}`;
+    if (!existe(ruta)) F(`5 · falta el mapa quieto ${ruta}`);
+    else if (readFileSync(join(RAIZ, ruta)).length > tope * 1024) F(`5 · el mapa quieto ${ruta} pesa más de ${tope} kB (va antes del LCP)`);
+  }
+  const pag = codigo("src/app/explorar/page.tsx");
+  if (!/<link rel="preload" as="image" href=\{MAPA_QUIETO\.m\} media="\(max-width: 767px\)" fetchPriority="high" \/>/.test(pag) || !/<link rel="preload" as="image" href=\{MAPA_QUIETO\.d\} media="\(min-width: 768px\)" fetchPriority="high" \/>/.test(pag)) F("5 · el mapa quieto no se precarga desde el <head>");
+  const iQuieto = cli.indexOf('data-explorar="mapa-quieto"'), iMapa = cli.indexOf("<MapaExplorar");
+  if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa || !/<img src=\{MAPA_QUIETO\.m\} alt="" width=\{560\} height=\{650\} fetchPriority="high"/.test(cli)) F("5 · el mapa quieto no se dibuja antes del mapa real, con prioridad alta");
+  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => onEstadoRef\.current\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
   // ── 6 · la hoja y el pin ──
   if (ex.pildora(312, 3) !== "312 convienen · 3 ya analizados" || ex.pildora(1, 0) !== "1 conviene" || ex.pildora(1200, 1) !== "1.200 convienen · 1 ya analizado") F("6 · la píldora");
@@ -258,7 +269,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
 // los pines · M15 la píldora cuenta las tarjetas · M16 «Revisado con…» sin el enlace · M17 los agrupados por latitud a secas ·
 // M18 «Analizar igual» nunca · M19 la elección no viaja · M20 el recálculo sin validar el pie · M21 explorar_vista sin los
 // pines · M22 el botón del dashboard sin el número · M23 la compra no vuelve al mapa · M24 /explorar fuera del middleware ·
-// M25 la URL acepta un pie que la noche no evaluó · M26 TOPE_HOJA desde el cliente.
+// M25 la URL acepta un pie que la noche no evaluó · M26 TOPE_HOJA desde el cliente. Y el mapa quieto (medido en producción
+// 9,7 s de LCP sin él, mutar-quieto.cjs): Q1 sin precarga · Q2 sin prioridad alta · Q3 se va al crear el mapa y no con las
+// teselas · Q4 la foto pesada. 4/4 ROJO.
 
 if (require.main === module) {
   runExplorarTier().then((r) => process.exit(r.hard ? 1 : 0));

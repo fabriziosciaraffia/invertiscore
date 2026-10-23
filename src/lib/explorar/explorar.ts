@@ -28,6 +28,9 @@ export const UF_TOPE = 60000;
  *  cliente: una constante exportada desde un módulo "use client" llega al servidor como referencia, no como número
  *  (visto el 23-oct-2026: `slice(0, referencia)` dejaba la hoja en «0 convienen» hasta que el mapa pedía el resto). */
 export const TOPE_HOJA = 24;
+/** El mapa quieto del primer pintado (el LCP del teléfono): una foto del mapa de Santiago con el estilo de Franco, en el
+ *  ancho del teléfono y en el de escritorio. En oscuro se invierte por CSS (sin una segunda foto). */
+export const MAPA_QUIETO = { m: "/explorar/mapa-quieto-m.webp", d: "/explorar/mapa-quieto-d.webp" } as const;
 
 export interface FiltrosExplorar {
   comunas: string[];

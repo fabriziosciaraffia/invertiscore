@@ -31,7 +31,7 @@ import { GUIA } from "@/lib/guia/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import {
   botonAnalizar, cambiarFiltro, capRatePct, estadoDeEntrada, etiquetaComunas, etiquetaPiePlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
-  pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
+  MAPA_QUIETO, pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
 import { AvisoSinSaldoExplorar } from "./aviso-sin-saldo";
 import "./explorar.css";
@@ -69,7 +69,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   const [cargando, setCargando] = useState<Chip | "todo" | null>(null);
   const [fallo, setFallo] = useState(false);
   const [mapaListo, setMapaListo] = useState(false);
-  const [mapa, setMapa] = useState<"cargando" | "listo" | "fallo">("cargando");
+  // «teselas»: el mapa real ya dibujó sus teselas; recién ahí se desvanece el mapa quieto del primer pintado.
+  const [mapa, setMapa] = useState<"cargando" | "listo" | "teselas" | "fallo">("cargando");
   const [seleccionado, setSeleccionado] = useState<string | null>(abrir);
   const [hoja, setHoja] = useState<"peek" | "abierta">(abrir ? "abierta" : "peek");
   const [pop, setPop] = useState<"comuna" | "tipologia" | null>(null);
@@ -341,7 +342,13 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
 
       <div className="ex-cuerpo">
         {/* ── el mapa (después del primer pintado) ── */}
-        <div className="ex-mapa-wrap">
+        <div className="ex-mapa-wrap" data-mapa={mapa}>
+          {/* El mapa quieto: lo más grande del primer cuadro (el LCP), precargado desde el <head>; debajo del mapa real. */}
+          <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
+            <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={MAPA_QUIETO.m} alt="" width={560} height={650} fetchPriority="high" decoding="async" />
+          </picture>
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar pines={pines} analizados={analizadosSet} seleccionado={seleccionado} comuna={filtros.comunas[0] ?? null} onSeleccionar={seleccionar} onEstado={setMapa} />
           )}

@@ -37,7 +37,8 @@ export interface MapaExplorarProps {
   /** Para encuadrar sin pines: la primera comuna del filtro. */
   comuna: string | null;
   onSeleccionar: (avisoId: string) => void;
-  onEstado: (estado: "listo" | "fallo") => void;
+  /** «listo»: el mapa existe; «teselas»: ya dibujó sus teselas (el mapa quieto se puede ir); «fallo»: no cargó. */
+  onEstado: (estado: "listo" | "teselas" | "fallo") => void;
 }
 
 export default function MapaExplorar({ pines, analizados, seleccionado, comuna, onSeleccionar, onEstado }: MapaExplorarProps) {
@@ -114,6 +115,7 @@ export default function MapaExplorar({ pines, analizados, seleccionado, comuna, 
         g.maps.event.addListenerOnce(map, "idle", () => { if ((map.getZoom() ?? 0) > ZOOM_MAX_ENCUADRE) map.setZoom(ZOOM_MAX_ENCUADRE); });
       };
       map.addListener("idle", () => dibujarRef.current());
+      g.maps.event.addListenerOnce(map, "tilesloaded", () => onEstadoRef.current("teselas"));
       encuadrarRef.current();
       onEstadoRef.current("listo");
     }).catch(() => { if (!cancelado) onEstadoRef.current("fallo"); });

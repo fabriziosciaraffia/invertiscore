@@ -267,7 +267,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
         // El archivo (8): cada informe que salió de un aviso dice de dónde: su selección semanal o la guía del pack.
         const { data: an } = await sb.from("analisis").select("id, user_id, origen:input_data->origenAviso").not("input_data->origenAviso", "is", null).limit(30);
         let probados = 0;
-        const vistos = { semanal: 0, guia: 0 };
+        const vistos = { semanal: 0, guia: 0, explorar: 0 };
         for (const a of an ?? []) {
           const origenes = await origenDeInformes(sb, a.user_id as string, [a.id as string]);
           const { data: sels } = await sb.from("semanal_selecciones").select("items, items_str").eq("user_id", a.user_id as string);

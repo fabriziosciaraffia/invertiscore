@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { capturarServidor } from "@/lib/posthog-servidor";
-import { EXPLORAR_COPY, filtrosDeUrl, TOPE_HOJA } from "@/lib/explorar/explorar";
+import { EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA } from "@/lib/explorar/explorar";
 import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
 import { ExplorarCliente } from "./explorar-cliente";
 
@@ -16,6 +16,11 @@ import { ExplorarCliente } from "./explorar-cliente";
 // EL PRIMER PINTADO ES LIVIANO (LCP en el teléfono): el servidor dibuja los chips, la píldora y la hoja con las primeras
 // tarjetas; el mapa es interactivo pero carga DESPUÉS del primer pintado (next/dynamic, con la página quieta), y el resto
 // de los pines llega por /api/explorar cuando el mapa está por montarse.
+// EL MAPA QUIETO (23-oct-2026, medido en producción): sin él, Lighthouse tomaba como LCP la primera tesela de Google Maps
+// —que llega a los 8 s, después del load— y daba 9,7 s con el primer pintado a 1,3 s. Una foto quieta del mapa de Santiago
+// con el estilo de Franco (public/explorar/mapa-quieto-*.webp, 16/32 kB), precargada desde el <head> y pintada debajo del
+// mapa desde el primer cuadro, es lo más grande de la pantalla: es el LCP, y las teselas, más chicas, no lo mueven. Se
+// desvanece cuando el mapa real terminó de dibujar sus teselas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = { title: EXPLORAR_COPY.pestana, robots: { index: false, follow: false } };
@@ -38,6 +43,8 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   const a = sp.get("a");
   return (
     <div className="ex-pagina" data-explorar="pagina">
+      <link rel="preload" as="image" href={MAPA_QUIETO.m} media="(max-width: 767px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
       <ExplorarCliente
         inicial={{
