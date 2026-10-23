@@ -216,7 +216,9 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
   const plazos = p.plazoAnios != null && !PLAZOS.includes(p.plazoAnios) ? [...PLAZOS, p.plazoAnios].sort((a, b) => a - b) : PLAZOS;
   const comunasLibres = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !p.comunas.includes(c));
   const dormsLibres = DORMS.filter((d) => !p.dormitorios.includes(d));
-  const preguntar = p.horizonte == null || cambiandoHorizonte;
+  // Mientras se guarda, los chips se quedan (el tocado, girando): si la línea los reemplazara al toque, el aro no se vería nunca
+  // (lo cazó el QA del 22-oct-2026).
+  const preguntar = p.horizonte == null || cambiandoHorizonte || guardando === "horizonte";
   // El ajuste en un toque del correo vacío (20-oct-2026): llega con `?ajuste=` ya guardado; acá se dice qué cambió.
   const [ajusteHecho, setAjusteHecho] = useState<string | null>(null);
   useEffect(() => {

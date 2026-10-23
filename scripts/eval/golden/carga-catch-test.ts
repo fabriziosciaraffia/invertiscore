@@ -190,6 +190,7 @@ export function runCargaTier(): { hard: number } {
   if (!/setGuardando\(campo\);\s*const ok = await guardar\(ctx\.analysisId, \{ \[campo\]: valor \}\);\s*setGuardando\(null\);/.test(dentro) || !/setGuardando\("horizonte"\);\s*const ok = await guardar\(ctx\.analysisId, \{ horizonte: h \}\);\s*setGuardando\(null\);/.test(dentro)) F("3 · «Estás dentro» no marca el chip que se guarda alrededor del fetch");
   const casa = codigo("src/app/dashboard/casa.tsx");
   if (!/setGuardando\(Object\.keys\(cuerpo\)\.join\("\+"\)\);\s*setError\(!\(await guardar\(cuerpo\)\)\);\s*setGuardando\(null\);/.test(casa)) F("3 · el perfil de la casa no marca el chip que se guarda alrededor del fetch");
+  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte \|\| guardando === "horizonte";/.test(casa)) F("3 · los chips del «cuándo» de la casa desaparecen al toque: el aro no se ve nunca (QA 22-oct)");
   const bienvenida = codigo("src/app/dashboard/bienvenida.tsx");
   if (!/setGuardando\(campo\);\s*setError\(!\(await guardar\(perfil\.analysisId, \{ \[campo\]: valor \}\)\)\);\s*setGuardando\(null\);/.test(bienvenida)) F("3 · los chips de la bienvenida no marcan el que se guarda");
   const deptos = codigo("src/app/deptos/deptos-cliente.tsx");
