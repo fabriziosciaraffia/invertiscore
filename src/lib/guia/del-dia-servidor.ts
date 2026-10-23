@@ -19,7 +19,7 @@ import { cuentasPruebaSinCorreo, enlacesSemanal, itemDe, prepararSeleccion, type
 import { leerConfigGuia } from "./guia-servidor";
 import { prepararSeleccionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
-import { elegirSemanal, MEMORIA_SEMANAL_MS, REGLA_CORTA } from "./semanal";
+import { elegirSemanal, MEMORIA_SEMANAL_MS, ordenFijo, REGLA_CORTA } from "./semanal";
 import { chequearPublicacion, MEMORIA_PUBLICACION_MS, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
@@ -36,9 +36,12 @@ export interface FilaDelDia {
   token: string;
   armada_at: string;
   intentos: number;
+  /** Lo que la fila ya tiene (23-oct-2026, el orden fijo): cada vuelta respeta el orden de lo que la pantalla mostró. */
+  items?: ItemSemanal[] | null;
+  items_str?: ItemSemanal[] | null;
 }
 
-export const COLUMNAS_DEL_DIA = "id, user_id, token, armada_at, intentos";
+export const COLUMNAS_DEL_DIA = "id, user_id, token, armada_at, intentos, items, items_str";
 
 /** Encola el correo del día de una cuenta nueva (una fila por cuenta y día). Devuelve la fila, o null si no se pudo. */
 export async function encolarDelDia(admin: SupabaseClient, userId: string, ahora: Date = new Date()): Promise<FilaDelDia | null> {
@@ -68,8 +71,9 @@ function publicadoDelDia(admin: SupabaseClient, presupuesto: PresupuestoFichas, 
 }
 
 type Elegidos = { items: Array<{ c: Candidato; ev: Evaluado; tramo: string }>; estado: EstadoBloque };
-const aItems = (g: Elegidos): ItemSemanal[] =>
-  g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}) }));
+/** Los elegidos como ítems, EN EL ORDEN FIJO de lo que la fila ya mostraba (23-oct-2026, semanal.ts › ordenFijo). */
+const aItems = (g: Elegidos, previos: ItemSemanal[] | null | undefined): ItemSemanal[] =>
+  ordenFijo(previos, g.items.map(({ c, ev, tramo }) => ({ ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}) })));
 
 /**
  * Una vuelta del correo del día. «espera»: faltó cupo y todavía hay tiempo (la vuelta siguiente sigue); «enviada»: salió
@@ -111,9 +115,17 @@ export async function procesarDelDia(
   );
   const minutos = (ahora.getTime() - Date.parse(fila.armada_at)) / 60_000;
   const paso = pasoDelDia({ estado: estadoDe(g), minutos, vueltas: fila.intentos + 1 });
+  // EL ORDEN FIJO (23-oct-2026): el orden que ya vio la persona es el que la fila tiene AHORA —la pantalla escribe los de la
+  // noche (rellenarDeLaNoche) después de que la cola encoló y mientras esta vuelta corre—, no el que traía al encolarse. Visto
+  // en el QA en WebKit: la primera vuelta partía con la fila vacía y mandaba el correo con los deptos 3 y 4 al revés.
+  const { data: actual } = await admin.from("semanal_selecciones").select("items, items_str").eq("id", fila.id).maybeSingle();
+  const previos = {
+    largo: ((actual?.items ?? fila.items ?? null) as ItemSemanal[] | null),
+    corto: ((actual?.items_str ?? fila.items_str ?? null) as ItemSemanal[] | null),
+  };
   const columnas = (x: typeof g) => ({
-    items: x.largo ? aItems(x.largo) : [],
-    items_str: x.corto ? aItems(x.corto) : [],
+    items: x.largo ? aItems(x.largo, previos.largo) : [],
+    items_str: x.corto ? aItems(x.corto, previos.corto) : [],
     estado_str: x.corto ? x.corto.estado : prepStr ? "sin_match" : null,
     combinacion: prep.tipo === "lista" ? prep.p.combo : null,
     perfil: prep.tipo === "lista" ? prep.p.perfil : pp.perfilLtr,

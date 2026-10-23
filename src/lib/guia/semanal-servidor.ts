@@ -40,7 +40,7 @@ import { textoRenueva } from "./renovacion";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
-  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, SEMANAL_VACIO, parametroDeAjuste, type AjustePerfil,
+  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, SEMANAL_VACIO, parametroDeAjuste, ordenFijo, type AjustePerfil,
   type ProgresoPrechequeo, type RespaldoSemanal, type Visto,
 } from "./semanal";
 
@@ -238,8 +238,11 @@ export async function armarSeleccion(
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
 ): Promise<"ya" | "pendiente" | "armada" | "sin_match"> {
-  const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo").eq("user_id", userId).eq("semana", semana).maybeSingle();
+  const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo, items, items_str").eq("user_id", userId).eq("semana", semana).maybeSingle();
   if (previa && (previa.estado !== "pendiente" || previa.tipo === "del_dia")) return "ya";
+  // El orden fijo (23-oct-2026, semanal.ts › ordenFijo): si la fila ya tenía deptos (volvió a pendiente por un caído), los
+  // que siguen conservan su posición y los nuevos van después.
+  const previos = { largo: (previa?.items ?? null) as ItemSemanal[] | null, corto: (previa?.items_str ?? null) as ItemSemanal[] | null };
 
   const guardar = async (fila: Record<string, unknown>) => {
     const { error } = await admin.from("semanal_selecciones").upsert({ user_id: userId, semana, armada_at: new Date().toISOString(), ...fila }, { onConflict: "user_id,semana" });
@@ -256,11 +259,11 @@ export async function armarSeleccion(
   const prepStr = await prepararSeleccionStr(admin, userId, cfg, pp, vistos);
   const publicado = publicadoConPresupuesto(admin, presupuesto);
   // Lo ya visto va marcado (19-oct-2026); el de renta larga ya analizado, con su informe.
-  const aItems = (g: { items: Array<{ c: Candidato; ev: Evaluado; tramo: string; visto?: Visto }> }, informeVisto?: (id: string) => string | undefined): ItemSemanal[] =>
-    g.items.map(({ c, ev, tramo, visto }) => {
+  const aItems = (g: { items: Array<{ c: Candidato; ev: Evaluado; tramo: string; visto?: Visto }> }, informeVisto?: (id: string) => string | undefined, previosDe: ItemSemanal[] | null = null): ItemSemanal[] =>
+    ordenFijo(previosDe, g.items.map(({ c, ev, tramo, visto }) => {
       const informeId = visto === "analizado" ? informeVisto?.(c.avisoId) : undefined;
       return { ...itemDe(c, ev), ...(tramo === "vecina" || tramo === "negociar" ? { tramo } : {}), ...(visto ? { visto } : {}), ...(informeId ? { informeId } : {}) };
-    });
+    }));
 
   const fila: Record<string, unknown> = {};
   let largo: EstadoBloque | null = null;
@@ -269,7 +272,7 @@ export async function armarSeleccion(
     const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto);
     largo = g.estado;
     // El relleno (20-oct-2026): lo visto anoche sin confirmar, por si al mandar siguen faltando confirmados.
-    Object.assign(fila, { items: aItems(g, informeVisto), relleno: aItems({ items: g.relleno ?? [] }), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
+    Object.assign(fila, { items: aItems(g, informeVisto, previos.largo), relleno: aItems({ items: g.relleno ?? [] }), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
   } else {
     // Sin bloque de renta larga: o no tiene ese perfil (solo renta corta), o le falta con qué buscar.
     largo = pp.perfilLtr ? "sin_match" : null;
@@ -281,7 +284,7 @@ export async function armarSeleccion(
     const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto);
     corto = g.estado;
     Object.assign(fila, {
-      items_str: aItems(g), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
+      items_str: aItems(g, undefined, previos.corto), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
       variante: varianteDe(userId),
     });
   } else if (prepStr) {

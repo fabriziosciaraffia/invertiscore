@@ -117,7 +117,11 @@ export async function primerosDeptos(
     score_cron: number | null; flujo: number | null; pub_estado: string | null; pub_at: string | null;
   }>;
   const fresco = (f: (typeof filas)[number]) => f.pub_estado === "publicado" && !!f.pub_at && ahora.getTime() - Date.parse(f.pub_at) < MEMORIA_SEMANAL_MS;
-  const orden = [...filas.filter(fresco), ...filas.filter((f) => !fresco(f))];
+  // El orden es determinista (23-oct-2026, el orden fijo): puntaje, flujo e id, como la RPC; a igual puntaje no depende
+  // de en qué orden llegaron las filas.
+  const porPuntaje = (a: (typeof filas)[number], b: (typeof filas)[number]) =>
+    (b.score_cron ?? -1) - (a.score_cron ?? -1) || (b.flujo ?? -Infinity) - (a.flujo ?? -Infinity) || a.id.localeCompare(b.id);
+  const orden = [...filas.filter(fresco).sort(porPuntaje), ...filas.filter((f) => !fresco(f)).sort(porPuntaje)];
   return orden.slice(0, MAX_PRIMEROS).map((f) => ({
     avisoId: f.id, comuna: f.comuna, tipologia: tipologiaDe(f.dormitorios, f.banos), m2: Math.round(Number(f.superficie_m2)), precioUF: Math.round(Number(f.precio_uf)),
     veredicto: "COMPRAR", score: f.score_cron, flujo: f.flujo, vistoAt: fresco(f) ? f.pub_at : null,

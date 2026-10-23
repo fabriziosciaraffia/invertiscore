@@ -156,8 +156,31 @@ async function evaluarPool<T extends CandidatoSemanal>(candidatos: T[], evaluar:
   return pool.map((c, i) => ({ c, ev: evs[i] })).filter((x): x is { c: T; ev: Evaluado } => x.ev != null);
 }
 
-const porPuntaje = <T>(xs: Evaluados<T>, veredicto: string) =>
-  xs.filter((x) => x.ev.veredicto === veredicto).sort((a, b) => (b.ev.score ?? -1) - (a.ev.score ?? -1));
+/**
+ * EL ORDEN ES DETERMINISTA (23-oct-2026, goal «orden fijo»): a igual puntaje, el de mejor flujo; a igual flujo, el id. Sin
+ * los desempates, dos corridas con los mismos candidatos en otro orden de entrada daban dos listas distintas, y la
+ * selección «rotaba» entre la pantalla, el dashboard y el correo.
+ */
+export const compararEvaluados = <T extends { avisoId: string }>(a: { c: T; ev: Evaluado }, b: { c: T; ev: Evaluado }): number =>
+  (b.ev.score ?? -1) - (a.ev.score ?? -1) || (b.ev.flujo ?? -Infinity) - (a.ev.flujo ?? -Infinity) || a.c.avisoId.localeCompare(b.c.avisoId);
+
+const porPuntaje = <T extends { avisoId: string }>(xs: Evaluados<T>, veredicto: string) =>
+  xs.filter((x) => x.ev.veredicto === veredicto).sort(compararEvaluados);
+
+/**
+ * EL ORDEN FIJO DE UNA SELECCIÓN (23-oct-2026, decisión de Fabrizio): una selección tiene un orden desde que se arma —el
+ * que vio la persona en «Estás dentro»— y es el mismo en el dashboard, el mapa y el correo. Cada vuelta que la rearma
+ * (la cola del correo del día, el domingo del semanal, el reemplazo de un caído) respeta el orden de lo que ya estaba:
+ * los que siguen quedan en su posición relativa y los nuevos van después, en el orden en que llegaron. Puro.
+ */
+export function ordenFijo<T extends { avisoId: string }>(previos: ReadonlyArray<{ avisoId: string }> | null | undefined, items: T[]): T[] {
+  if (!previos || previos.length === 0) return items;
+  const pos = new Map(previos.map((p, i) => [p.avisoId, i]));
+  const conPos = items.map((it, i) => ({ it, i, p: pos.get(it.avisoId) }));
+  const viejos = conPos.filter((x) => x.p != null).sort((a, b) => a.p! - b.p!);
+  const nuevos = conPos.filter((x) => x.p == null).sort((a, b) => a.i - b.i);
+  return [...viejos, ...nuevos].map((x) => x.it);
+}
 
 /**
  * Elige los deptos de la semana. `candidatos` viene de la RPC, ya filtrado por el perfil. Se recalculan
