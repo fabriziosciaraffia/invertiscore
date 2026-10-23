@@ -127,7 +127,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // línea de la selección y la urgencia: lo que se recibe cada semana lo dice el ticket y la urgencia el
   // titular del banner. Se fueron sus chequeos (2 y 2b); queda que la guía después de pagar use `hayGuia`.
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
+  // ⚠ ACTA (22-oct-2026) · el informe del pack llega con el estado del pago (`packPagado`), no en la URL (tier VUELTA-FLOW).
+  if (!/\{packPagado && \(\s*hayGuia\(packPagado\.modalidad\) \? \(\s*<GuiaBusqueda\b/.test(ret)) F("2 · después de pagar no se monta la guía con el mismo predicado que el ticket");
   if (!existsSync(join(RAIZ, "src/app/api/lo-que-sigue/guia/route.ts")) || !/fetch\(urlGuia\(analysisId, pago\)\)/.test(gb) || !urlGuia("x").startsWith("/api/lo-que-sigue/guia?a=")) F("2 · la guía no tiene ruta o el componente no la pide");
 
   // ── 3 · los resguardos de la ficha ──────────────────────────────────────────
@@ -322,7 +323,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
 
   // ── 7 · después de pagar, una idea ──────────────────────────────────────────
   if (/DESPUES_DE_PAGAR|fraseVeredicto|lqs-mat|lqs-btn|<DespuesDePagar\b/.test(gb)) F("7 · la guía vuelve a traer el bloque de color o la frase por veredicto");
-  if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,320}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
+  if (!/\{packPagado && \(\s*hayGuia\(packPagado\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,320}?sinGuia=\{<DespuesDePagar [^>]*\/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar /.test(ret)) F("7 · después de pagar se ven la guía y el bloque de color a la vez (con guía, solo la guía)");
   if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
   // ⚠ ACTA (13-oct-2026) · con el estado de la casa entero (`estado`, para el aviso antes de gastar), la frase sale de él;
   // sin él, del número de siempre.
@@ -547,7 +548,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
       const sinS = sinComentarios(leer("src/lib/lo-que-sigue/copy.ts")).match(/export const RETORNO_SIN_SESION = \{[\s\S]*?\} as const;/)?.[0] ?? "";
       if (!sinS || /\d|[Pp]ago recibido/.test(sinS)) F("11 · sin sesión ni firma, la vuelta afirma «Pago recibido» o un número que no verificó");
     }
-    if (!/\{retornoPack && paymentStatus === "paid" && \(/.test(ret) || /paymentStatus === "sin_sesion"\) && \(\s*hayGuia/.test(ret)) F("11 · la guía o «Tienes N análisis» salen sin el pago verificado");
+    if (!/const packPagado = retornoPack && paymentStatus === "paid" \? packInfo : null;/.test(ret) || !/\{packPagado && \(/.test(ret) || /paymentStatus === "sin_sesion"\) && \(\s*hayGuia/.test(ret)) F("11 · la guía o «Tienes N análisis» salen sin el pago verificado");
   }
 
   // ── 12 · la guía no se lee sin la sesión del dueño ni la firma del pago ────
@@ -581,7 +582,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (16-oct-2026, decisión de Fabrizio) · «Ya» se llama «Quiero comprar ya» (16-oct-2026, segunda pasada: antes, «Estoy listo para comprar»).
     if (!/ESTAS_DENTRO\.horizontes\.map\(/.test(hz) || !/\{ESTAS_DENTRO\.cuando\}/.test(hz) || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Quiero comprar ya|En los próximos meses|Solo estoy mirando") F("13 · después de pagar no se pregunta con los mismos tres horizontes de «Estás dentro»");
     if (!/fetch\("\/api\/lo-que-sigue\/perfil", \{[\s\S]*?body: JSON\.stringify\(\{ analysisId: ctx\.analysisId, horizonte: h, \.\.\.\(pago \? \{ order: pago\.order, t: pago\.firma \} : \{\}\) \}\)/.test(hz)) F("13 · el horizonte no se guarda en el perfil (o se manda sin la firma del pago)");
-    if (!/\{retornoPack && paymentStatus === "paid" && \(conSesion \|\| llavePago\) && \(\s*<HorizontePostPago /.test(ret)) F("13 · la pregunta no está en la pantalla de después de pagar, con el pago verificado");
+    if (!/\{packPagado && \(conSesion \|\| llavePago\) && \(\s*<HorizontePostPago /.test(ret)) F("13 · la pregunta no está en la pantalla de después de pagar, con el pago verificado");
     if (ret.indexOf("<HorizontePostPago") < ret.indexOf("<GuiaBusqueda")) F("13 · la pregunta va antes de la guía (va debajo, discreta)");
     const cssH = leer("src/components/guia/guia.css");
     if (!/\.guia-opcion \{[^}]*border: 1px solid var\(--franco-border\)/.test(cssH) || /\.guia-opcion[^{]*\{[^}]*(signal-red|#C8323C|text-transform)/.test(cssH)) F("13 · las píldoras del horizonte dejan de ser discretas (contorno fino, sin rojo ni mayúsculas)");

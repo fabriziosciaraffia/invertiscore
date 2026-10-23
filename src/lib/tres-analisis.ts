@@ -41,6 +41,7 @@ export const TRES_COPY = {
   lineaCorreo: { antes: "Para analizarlos: ", enlace: `3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}`, despues: ", sin caducidad." },
   titulo: "Franco — 3 análisis",
   subtitulo: "3 análisis, sin caducidad",
-  listo: "Listo: tienes 3 análisis más.",
+  /** 22-oct-2026 (decisión de Fabrizio): sin «Listo:», como el suelto («Tienes un análisis más»). */
+  listo: "Tienes 3 análisis más.",
   seguir: "Seguir",
 } as const;

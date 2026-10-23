@@ -188,7 +188,7 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la vuelta (`volver`) la traen el pack de tres y, desde un depto, el pack del ticket y el suelto; con un depto
   // vuelve a ese depto en el dashboard.
   const alDepto = "/dashboard?t=0123456789abcdef0123456789abcdef&a=a2&analizar=1";
-  if (!/producto === PRODUCTO_TRES \|\| producto === PRODUCTO_PACK\s*\? TRES_COPY\.listo/.test(retorno) || !/: botonTrasPagar\(volver\);/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar(alDepto).href !== alDepto || botonTrasPagar("/dashboard").texto !== "Ver mis análisis") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba");
+  if (!/producto === PRODUCTO_TRES \|\| producto === PRODUCTO_PACK\s*\? TRES_COPY\.listo/.test(retorno) || !/: botonTrasPagar\(volver\);/.test(retorno) || botonTrasPagar("/semanal?t=abc").href !== "/semanal?t=abc" || botonTrasPagar(alDepto).href !== alDepto || botonTrasPagar("/dashboard").texto !== "Ir a mi dashboard") F("6 · después de pagar el pack no dice cuántos tiene ni vuelve adonde estaba"); // 22-oct-2026: «Ir a mi dashboard» (tier VUELTA-FLOW)
 
   // ── 7 · «¿Cuándo piensas comprar?», una vez, a quien nunca la contestó ─────────
   // ⚠ ACTA (22-oct-2026, QA del recorrido real de la puerta B) · la selección vive en el dashboard, y ahí el perfil de la casa

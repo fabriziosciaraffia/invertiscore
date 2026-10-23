@@ -5,6 +5,7 @@
 // el servidor (created_at del análisis) y vence de verdad: `payments/create` rechaza después.
 // Funciones puras: las prueba el tier sin red.
 // ─────────────────────────────────────────────────────────────────────────────
+import { urlRetornoFlow } from "@/lib/compra/retorno-flow";
 
 export const PRODUCTO_PACK = "pack3" as const;
 export const PACK_ANALISIS = 3;
@@ -57,37 +58,44 @@ export const PACK_AHORRO_CLP = Math.round((PACK_ANALISIS * PACK_UNITARIO_REFEREN
 /** El wizard con lo de la persona ya cargado desde el informe `analysisId` (30-sep-2026). */
 export const rutaPrecarga = (analysisId: string) => `/analisis/nuevo-v4?precarga=${encodeURIComponent(analysisId)}`;
 
-// El retorno de Flow después del pack lleva el informe de origen y su veredicto (30-sep-2026): el
-// ticket paga SIN sesión y /payments/return no puede leer el pago sin ella. El veredicto va en una
-// letra y el id del informe ya es de la persona (el claim lo adoptó al pagar). La modalidad también
-// (`m`: l = renta larga, s = renta corta), leída de `tipo_analisis` del informe: el evento de después
-// de pagar la registra de ahí, no la supone.
-const COD_VEREDICTO = { COMPRAR: "c", "AJUSTA SUPUESTOS": "a", "BUSCAR OTRA": "b" } as const;
+// El retorno de Flow después del pack (30-sep-2026): el ticket paga SIN sesión y /payments/return no puede leer el pago
+// sin ella; la firma (`t`, firma-pago.ts, 02-oct-2026) se lo permite. Hasta el 22-oct-2026 la URL llevaba además el
+// informe de origen, su veredicto y su modalidad (`a`, `v`, `m`): 175 caracteres, y Flow corta a 200 (lib/compra/
+// retorno-flow.ts). Ahora viaja lo mínimo —la orden, `lqs=pack` y la firma— y el informe, el veredicto y la modalidad
+// los devuelve /api/payments/status leyéndolos del pago (`retornoPack`): el evento de después de pagar los registra de
+// ahí, no los supone.
 
 /** La modalidad del informe, de su `tipo_analisis`. */
 export const modalidadDeTipo = (tipo: string | null | undefined): "ltr" | "str" => (tipo === "short-term" ? "str" : "ltr");
 
-// La firma del pago (02-oct-2026, `firma-pago.ts`): `t` deja leer el estado del pago, el saldo y la guía sin
-// sesión. La hace el servidor (`firmarPago`) y llega acá hecha; sin firma la URL sale como antes.
-export function urlRetornoPack(sitio: string, order: string, analysisId: string, veredicto: string | null | undefined, modalidad: "ltr" | "str", firma?: string | null): string {
-  const v = COD_VEREDICTO[(veredicto ?? "") as keyof typeof COD_VEREDICTO] ?? "a";
-  const m = modalidad === "str" ? "s" : "l";
-  const t = firma ? `&t=${encodeURIComponent(firma)}` : "";
-  return `${sitio}/payments/return?order=${encodeURIComponent(order)}&lqs=pack&a=${encodeURIComponent(analysisId)}&v=${v}&m=${m}${t}`;
+/** Lo que /api/payments/status devuelve del pack: el informe que lo pagó, su veredicto y su modalidad. */
+export interface RetornoPack {
+  analysisId: string;
+  veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
+  modalidad: "ltr" | "str";
 }
 
-export function leerRetornoPack(sp: { get(k: string): string | null }): { analysisId: string; veredicto: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; modalidad: "ltr" | "str"; order: string | null; firma: string | null } | null {
+export function urlRetornoPack(sitio: string, order: string, firma?: string | null): string {
+  return urlRetornoFlow(sitio, order, { firma: firma ?? null });
+}
+
+/** La vuelta del pack: su marca y la firma (con forma, o nada). El resto lo trae el estado del pago. */
+export function leerRetornoPack(sp: { get(k: string): string | null }): { order: string | null; firma: string | null } | null {
   if (sp.get("lqs") !== "pack") return null;
-  const a = sp.get("a") ?? "";
-  if (!/^[0-9a-f-]{36}$/i.test(a)) return null;
-  const v = sp.get("v");
   const t = sp.get("t");
+  return { order: sp.get("order"), firma: t && /^[A-Za-z0-9_-]{32}$/.test(t) ? t : null };
+}
+
+/** Lo que el estado del pago dice del pack, saneado (lo que llegue por la red no se usa tal cual). */
+export function leerRetornoPackDelPago(x: unknown): RetornoPack | null {
+  if (!x || typeof x !== "object") return null;
+  const r = x as Record<string, unknown>;
+  if (typeof r.analysisId !== "string" || !/^[0-9a-f-]{36}$/i.test(r.analysisId)) return null;
+  const v = r.veredicto;
   return {
-    analysisId: a,
-    veredicto: v === "c" ? "COMPRAR" : v === "b" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS",
-    modalidad: sp.get("m") === "s" ? "str" : "ltr",
-    order: sp.get("order"),
-    firma: t && /^[A-Za-z0-9_-]{32}$/.test(t) ? t : null,
+    analysisId: r.analysisId,
+    veredicto: v === "COMPRAR" || v === "BUSCAR OTRA" ? v : "AJUSTA SUPUESTOS",
+    modalidad: r.modalidad === "str" ? "str" : "ltr",
   };
 }
 

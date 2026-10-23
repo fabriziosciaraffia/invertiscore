@@ -323,7 +323,7 @@ export async function POST(request: Request) {
             if (product === PRODUCTO_PACK && analysisId) {
               const { data: filaGuia } = await supabase.from("analisis").select("results, tipo_analisis").eq("id", analysisId).maybeSingle();
               if (hayGuia(modalidadDeTipo(filaGuia?.tipo_analisis as string | null))) {
-                guiaPack = urlRetornoPack(SITIO_CORREO, payment.commerce_order, analysisId, readVeredicto(filaGuia?.results as never) ?? null, "ltr", firmarPago(payment.commerce_order));
+                guiaPack = urlRetornoPack(SITIO_CORREO, payment.commerce_order, firmarPago(payment.commerce_order));
               }
             }
             await sendPaymentConfirmationEmail(

@@ -100,26 +100,29 @@ export function urlCompra(q: { product: string; analysisId?: string | null; comp
 export const RETORNO = {
   procesando: { titulo: "Confirmando tu pago…", cuerpo: "Esto toma unos segundos. No cierres esta página." },
   abriendo: { titulo: "Pago confirmado.", cuerpo: "Abriendo tu análisis…" },
-  /** La compra salió de un depto de la selección (21-oct-2026): vuelve sola y lo analiza. */
-  analizandoDepto: "Franco está analizando este depto…",
+  /** La compra salió de un depto de la selección (22-oct-2026, decisión de Fabrizio): la vuelta de Flow genera el
+   *  informe sola y lo abre; mientras, dice de cuál (el depto como en las tarjetas: compra-desde-depto.ts › nombreDelDepto). */
+  generandoDepto: (depto: string) => `Generando el informe de ${depto}…`,
   pagado: {
     titulo: "Pago confirmado.",
-    tres: "Listo: tienes 3 análisis más.",
-    uno: "Listo: tienes un análisis más.",
+    tres: "Tienes 3 análisis más.",
+    uno: "Tienes un análisis más.",
   },
   rechazado: { titulo: "El pago no pasó.", cuerpo: "Flow lo rechazó o se canceló. No se hizo ningún cargo." },
-  verMisAnalisis: "Ver mis análisis",
+  /** Sin depto de por medio (22-oct-2026): «Tienes un análisis más» y este botón. */
+  irAlDashboard: "Ir a mi dashboard",
   volverDeptos: "Volver a los deptos",
   seguir: "Seguir",
   reintentar: "Reintentar",
   pie: "Pagos procesados de forma segura por Flow.cl",
 } as const;
 
-/** El botón después de pagar: «Ver mis análisis», o de vuelta a los deptos si la compra salió de ahí. Desde el 21-oct-2026
- *  la selección vive en el dashboard: una vuelta a un depto (`/dashboard?t=…&a=…`) vuelve a ese depto. */
+/** El botón después de pagar: «Ir a mi dashboard», o de vuelta a los deptos si la compra salió de ahí y el informe no se
+ *  pudo generar solo. Desde el 21-oct-2026 la selección vive en el dashboard: una vuelta a un depto (`/dashboard?t=…&a=…`)
+ *  vuelve a ese depto. */
 export function botonTrasPagar(volver: string | null | undefined): { texto: string; href: string } {
   if (volver && /^\/dashboard\?(?:[^#]*&)?t=[0-9a-f]{20,80}&a=/i.test(volver)) return { texto: RETORNO.volverDeptos, href: volver };
-  if (!volver || volver === "/dashboard" || volver.startsWith("/dashboard?")) return { texto: RETORNO.verMisAnalisis, href: "/dashboard" };
+  if (!volver || volver === "/dashboard" || volver.startsWith("/dashboard?")) return { texto: RETORNO.irAlDashboard, href: "/dashboard" };
   if (volver.startsWith("/semanal")) return { texto: RETORNO.volverDeptos, href: volver };
   return { texto: RETORNO.seguir, href: volver };
 }

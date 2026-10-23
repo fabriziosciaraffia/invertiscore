@@ -147,7 +147,8 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
     const fp = sc("src/lib/lo-que-sigue/firma-pago.ts");
     if ((fp.match(/process\.env\.[A-Z_]+/g) ?? []).join(",") !== "process.env.SUPABASE_SERVICE_ROLE_KEY" || !/timingSafeEqual\(/.test(fp)) F("2 · la firma usa otro secreto que SUPABASE_SERVICE_ROLE_KEY (variable nueva) o compara sin tiempo constante");
 
-    const u = urlRetornoPack("https://refranco.ai", "franco-orden-1", "11111111-2222-3333-4444-555555555555", "COMPRAR", "ltr", f1);
+    // ⚠ ACTA (22-oct-2026) · la URL del pack lleva solo la orden, `lqs=pack` y la firma (Flow corta a 200; tier VUELTA-FLOW).
+    const u = urlRetornoPack("https://refranco.ai", "franco-orden-1", f1);
     const ida = leerRetornoPack(new URL(u).searchParams);
     if (!ida || ida.firma !== f1 || ida.order !== "franco-orden-1") F("2 · la firma no va y vuelve en la URL de retorno del pack");
     if (leerRetornoPack(new URL(u.replace(f1, "x<y")).searchParams)?.firma !== null) F("2 · una firma con forma inválida se lee igual");

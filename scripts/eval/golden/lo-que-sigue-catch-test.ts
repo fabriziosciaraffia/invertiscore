@@ -31,7 +31,7 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { diaVencimiento, horaVencimiento, leerRetornoPack, modalidadDeTipo, ofertaPackVigente, productosRecuperables, urlRetornoPack, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
+import { diaVencimiento, horaVencimiento, leerRetornoPack, leerRetornoPackDelPago, modalidadDeTipo, ofertaPackVigente, productosRecuperables, PACK_AHORRO_CLP, PACK_ANALISIS, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP, venceEl, VENTANA_PACK_MS } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import * as OfertaPack from "../../../src/lib/lo-que-sigue/oferta-pack";
 import { fmtCLP } from "../../../src/lib/pricing";
 import { debeSubirTicket, leerEstadoTicket, marcarTicket } from "../../../src/lib/lo-que-sigue/estado-ticket";
@@ -295,23 +295,25 @@ export function runLoQueSigueTier(): { hard: number } {
   // ── después de pagar: el retorno del pack ──────────────────────────────────
   {
     const sp = (q: string) => new URLSearchParams(q);
-    const r = leerRetornoPack(sp("order=x&lqs=pack&a=11111111-2222-3333-4444-555555555555&v=b"));
-    if (!r || r.veredicto !== "BUSCAR OTRA") F("pago · el retorno del pack no trae el informe y el veredicto");
-    // 9 · LA MODALIDAD VUELVE CON EL PAGO y el evento la registra de ahí (29-sep-2026).
-    const ida = (m: "ltr" | "str") => leerRetornoPack(new URL(urlRetornoPack("https://refranco.ai", "o1", "11111111-2222-3333-4444-555555555555", "COMPRAR", m)).searchParams);
-    if (ida("str")?.modalidad !== "str" || ida("ltr")?.modalidad !== "ltr" || ida("str")?.veredicto !== "COMPRAR") F("9 · la vuelta del pago no trae la modalidad (ida y vuelta)");
+    // ⚠ ACTA (22-oct-2026, recorrido real de Fabrizio) · Flow corta el urlReturn a 200 caracteres (lib/compra/retorno-flow.ts): la vuelta del pack
+    // ya no lleva el informe, el veredicto ni la modalidad en la URL (`a`, `v`, `m`); los devuelve /api/payments/status (`retornoPack`) leyendo
+    // el pago, y la pantalla los sanea con `leerRetornoPackDelPago`. La URL trae solo `lqs=pack` y la firma (tier VUELTA-FLOW).
+    const r = leerRetornoPack(sp("order=x&lqs=pack&t=" + "a".repeat(32)));
+    if (!r || r.order !== "x" || r.firma !== "a".repeat(32)) F("pago · el retorno del pack no trae la orden y la firma");
+    const delPago = leerRetornoPackDelPago({ analysisId: "11111111-2222-3333-4444-555555555555", veredicto: "BUSCAR OTRA", modalidad: "str" });
+    if (delPago?.veredicto !== "BUSCAR OTRA" || delPago.modalidad !== "str" || leerRetornoPackDelPago({ analysisId: "x" }) !== null) F("pago · el estado del pago no trae el informe, el veredicto y la modalidad del pack (o se usa sin sanear)");
+    // 9 · LA MODALIDAD VUELVE CON EL PAGO y el evento la registra de ahí (29-sep-2026; desde el 22-oct-2026, por el estado del pago).
     if (modalidadDeTipo("short-term") !== "str" || modalidadDeTipo("long-term") !== "ltr") F("9 · la modalidad no sale de tipo_analisis");
     for (const [f, re] of [
-      ["src/app/api/lo-que-sigue/pack/route.ts", /select\("user_id, created_at, results, tipo_analisis"\)[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo\(analysis\.tipo_analisis as string\), firmarPago\(commerceOrder\)\)/],
-      ["src/app/api/payments/create/route.ts", /modalidadPack = modalidadDeTipo\(analysis\.tipo_analisis as string\);[\s\S]*urlRetornoPack\(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack, firmarPago\(commerceOrder\)\)/],
-      ["src/app/payments/return/page.tsx", /modalidad=\{retornoPack\.modalidad\}/],
+      ["src/app/api/payments/status/route.ts", /modalidad: modalidadDeTipo\(data\.tipo_analisis as string \| null\)/],
+      ["src/app/payments/return/page.tsx", /modalidad=\{packPagado\.modalidad\}/],
       ["src/components/lo-que-sigue/DespuesDePagar.tsx", /EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad \}/],
     ] as const) if (!re.test(sinComentarios(leer(f)))) F(`9 · ${f} no lleva la modalidad del informe hasta el evento de después de pagar`);
     if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
     const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
     // (01-oct-2026) Con guía (renta larga) «Tienes N análisis. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
     // (02-oct-2026) Solo con el pago verificado (`paid`): sin sesión ni firma, la pantalla de entrar.
-    if (!/\{retornoPack && paymentStatus === "paid" && \(\s*hayGuia\(retornoPack\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,600}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
+    if (!/const packPagado = retornoPack && paymentStatus === "paid" \? packInfo : null;/.test(ret) || !/\{packPagado && \(\s*hayGuia\(packPagado\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,600}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
   }
 
   // ── 10 · EL CARRITO ABANDONADO NO LE ESCRIBE A QUIEN DEJÓ EL PACK ──────────

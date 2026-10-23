@@ -90,9 +90,11 @@ export function runCompraTier(): { hard: number } {
   if (!/\bfont-heading\b/.test(PLANO.titulo) || /font-heading/.test(PLANO.bajada + PLANO.campo + PLANO.principal + PLANO.nota) || !/rounded-full/.test(PLANO.principal) || !/\bh-12\b/.test(PLANO.campo) || !/text-\[16px\]/.test(PLANO.campo)) F("1 · las clases planas no son: serif solo en el título, píldora, campo de 48 y 16 px");
 
   // ── 2 · LA VUELTA DE FLOW, UN SOLO BOTÓN ───────────────────────────────────
-  if (RETORNO.verMisAnalisis !== "Ver mis análisis" || RETORNO.reintentar !== "Reintentar" || PAGO_PACK_NO_PASO.volver !== "Reintentar") F("2 · los botones de la vuelta no dicen «Ver mis análisis» y «Reintentar»");
+  // ⚠ ACTA (22-oct-2026, decisión de Fabrizio tras el recorrido real) · sin depto de por medio la vuelta dice «Tienes un análisis más» con «Ir a mi
+  // dashboard» (antes «Ver mis análisis»); desde un depto, la pantalla genera el informe sola (tier VUELTA-FLOW).
+  if (RETORNO.irAlDashboard !== "Ir a mi dashboard" || RETORNO.reintentar !== "Reintentar" || PAGO_PACK_NO_PASO.volver !== "Reintentar") F("2 · los botones de la vuelta no dicen «Ir a mi dashboard» y «Reintentar»");
   const b1 = botonTrasPagar(null), b2 = botonTrasPagar("/dashboard"), b3 = botonTrasPagar("/semanal?t=abc&a=1");
-  if (b1.texto !== "Ver mis análisis" || b1.href !== "/dashboard" || b2.texto !== "Ver mis análisis" || b3.texto !== "Volver a los deptos" || b3.href !== "/semanal?t=abc&a=1") F("2 · después de pagar el botón no es «Ver mis análisis» (o no vuelve a los deptos desde la página semanal)");
+  if (b1.texto !== "Ir a mi dashboard" || b1.href !== "/dashboard" || b2.texto !== "Ir a mi dashboard" || b3.texto !== "Volver a los deptos" || b3.href !== "/semanal?t=abc&a=1") F("2 · después de pagar el botón no es «Ir a mi dashboard» (o no vuelve a los deptos desde la página semanal)");
   const reintentos: Array<[Parameters<typeof rutaReintentar>[0], string]> = [
     [{ suscripcion: true }, "/checkout?product=plan10_mensual"],
     [{ producto: "tres_analisis", origen: "semanal", variante: "banda", volver: "/semanal?t=x" }, "/checkout?product=tres_analisis&origen=semanal&variante=banda&volver=%2Fsemanal%3Ft%3Dx"],

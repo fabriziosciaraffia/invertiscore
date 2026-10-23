@@ -16,7 +16,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
 import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
-import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor, distinctIdDeCorreo } from "@/lib/posthog-servidor";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -111,9 +111,9 @@ export async function POST(request: Request) {
       email,
       paymentMethod: 9,
       urlConfirmation: `${SITE_URL}/api/payments/confirm`,
-      // Con el informe, su veredicto y la firma del pago: /payments/return verifica el pago y dice el
-      // saldo real sin sesión (02-oct-2026).
-      urlReturn: urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredicto, modalidadDeTipo(analysis.tipo_analisis as string), firmarPago(commerceOrder)),
+      // Con la firma del pago: /payments/return verifica el pago y dice el saldo real sin sesión (02-oct-2026). El informe,
+      // su veredicto y su modalidad los devuelve el estado del pago (22-oct-2026, lib/compra/retorno-flow.ts).
+      urlReturn: urlRetornoPack(SITE_URL, commerceOrder, firmarPago(commerceOrder)),
     });
     if (!flowResponse.url || !flowResponse.token) {
       return NextResponse.json({ error: "Error al crear la orden de pago" }, { status: 500 });

@@ -7,6 +7,11 @@ import { accesoAlPago } from "@/lib/lo-que-sigue/retorno-pago";
 import { esCuentaDePrueba } from "@/lib/meta/servidor";
 import { EVENTOS_META, idCompra } from "@/lib/meta/ids";
 import type { EventoEspejo } from "@/lib/meta/espejo";
+import { modalidadDeTipo, PRODUCTO_PACK, type RetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { readVeredicto } from "@/lib/results-helpers";
+import { volverSeguro } from "@/lib/tres-analisis";
+import { analizaAlVolver, deptoDeVolver, nombreDelDepto, type DeptoDelPago } from "@/lib/guia/compra-desde-depto";
+import { seleccionPorToken } from "@/lib/guia/semanal-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/payments/status?order=…[&t=…] — el estado de un pago a la vuelta de Flow.
@@ -30,6 +35,31 @@ async function espejoCompra(admin: ReturnType<typeof createServiceClient>, f: { 
   if (f.status !== "paid" || typeof f.commerce_order !== "string" || !(Number(f.amount) > 0)) return null;
   if (await esCuentaDePrueba(admin, typeof f.user_id === "string" ? f.user_id : null)) return null;
   return { evento: EVENTOS_META.compra, eventId: idCompra(f.commerce_order), datos: { value: Number(f.amount), currency: "CLP", content_name: String(f.product ?? ""), content_type: "product" } };
+}
+
+/**
+ * LO QUE LA VUELTA DE FLOW YA NO TRAE EN LA URL (22-oct-2026, lib/compra/retorno-flow.ts: Flow corta a 200 caracteres).
+ * Del pago guardado salen:
+ *   · `retornoPack`: el informe que pagó el pack, su veredicto (el guardado) y su modalidad —antes iban como `a`, `v`, `m`—;
+ *   · `depto`: si la compra salió de un depto de la selección (`payment_data.volver` con `analizar=1`), la selección, el
+ *     aviso, su origen y el nombre del depto, para que la pantalla genere el informe sola y diga de cuál.
+ */
+async function retornoPackDe(admin: ReturnType<typeof createServiceClient>, f: { product?: unknown; analysis_id?: unknown }): Promise<RetornoPack | null> {
+  if (f.product !== PRODUCTO_PACK || typeof f.analysis_id !== "string") return null;
+  const { data } = await admin.from("analisis").select("results, tipo_analisis").eq("id", f.analysis_id).maybeSingle();
+  if (!data) return null;
+  return { analysisId: f.analysis_id, veredicto: readVeredicto(data.results as never) ?? "AJUSTA SUPUESTOS", modalidad: modalidadDeTipo(data.tipo_analisis as string | null) };
+}
+
+async function deptoDelPago(admin: ReturnType<typeof createServiceClient>, f: { status?: unknown; analysis_id?: unknown; user_id?: unknown; payment_data?: unknown }): Promise<DeptoDelPago | null> {
+  const volver = volverSeguro((f.payment_data as { volver?: unknown } | null)?.volver);
+  const d = deptoDeVolver(volver);
+  if (f.status !== "paid" || f.analysis_id || !d || !analizaAlVolver(volver)) return null;
+  const sel = await seleccionPorToken(admin, d.t);
+  if (!sel || sel.user_id !== f.user_id) return null;
+  const it = sel.items.find((i) => i.avisoId === d.a);
+  if (!it) return null;
+  return { token: d.t, avisoId: d.a, origenId: sel.origen_analysis_id ?? null, nombre: nombreDelDepto(it) };
 }
 
 async function saldoDe(admin: ReturnType<typeof createServiceClient>, userId: string): Promise<{ saldo: number; ilimitado: boolean }> {
@@ -67,7 +97,7 @@ export async function GET(request: Request) {
     if (!data) return NextResponse.json({ payment: null });
     const { user_id: _dueno, ...payment } = data;
     void _dueno;
-    return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, data), ...(await saldoDe(admin, user!.id)) });
+    return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, data), retornoPack: await retornoPackDe(admin, data), depto: await deptoDelPago(admin, data), ...(await saldoDe(admin, user!.id)) });
   }
 
   const { data: fila } = await admin.from("payments").select(CAMPOS).eq("commerce_order", commerceOrder).maybeSingle();
@@ -85,9 +115,9 @@ export async function GET(request: Request) {
   if (acceso === "firma") {
     // Sin sesión: lo justo para la pantalla. Nada del correo ni de payment_data.
     const payment = { commerce_order: fila.commerce_order, product: fila.product, amount: fila.amount, status: fila.status, analysis_id: fila.analysis_id };
-    return NextResponse.json({ payment, sinSesion: true, ...(fila.status === "paid" ? await saldoDe(admin, dueno) : {}), metaCompra: await espejoCompra(admin, fila) });
+    return NextResponse.json({ payment, sinSesion: true, ...(fila.status === "paid" ? await saldoDe(admin, dueno) : {}), metaCompra: await espejoCompra(admin, fila), retornoPack: await retornoPackDe(admin, fila) });
   }
   const { user_id: _d, ...payment } = fila;
   void _d;
-  return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, fila), ...(await saldoDe(admin, dueno)) });
+  return NextResponse.json({ payment, metaCompra: await espejoCompra(admin, fila), retornoPack: await retornoPackDe(admin, fila), depto: await deptoDelPago(admin, fila), ...(await saldoDe(admin, dueno)) });
 }

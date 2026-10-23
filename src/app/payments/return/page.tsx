@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { PAGO_OTRA_CUENTA, PAGO_PACK_NO_PASO, RETORNO_SIN_SESION } from "@/lib/lo-que-sigue/copy";
-import { leerRetornoPack, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
-import { analizaAlVolver } from "@/lib/guia/compra-desde-depto";
+import { leerRetornoPack, leerRetornoPackDelPago, PRODUCTO_PACK, type RetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { leerDeptoDelPago, type DeptoDelPago } from "@/lib/guia/compra-desde-depto";
 import { estadoDelPago, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { HorizontePostPago } from "@/components/lo-que-sigue/HorizontePostPago";
@@ -22,24 +22,32 @@ import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { RETORNO, botonTrasPagar, rutaReintentar } from "@/lib/compra/compra";
 
+/** Generando el informe del depto pagado: cuánto se espera entre intentos y cuántas veces se espera el crédito. */
+const ESPERA_GENERAR_MS = 2500;
+const REINTENTOS_CREDITO_RETORNO = 5;
+
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const order = searchParams.get("order");
-  // «Lo que sigue» (30-sep-2026): el pack vuelve con el informe de origen y su veredicto.
+  // «Lo que sigue» (30-sep-2026): la vuelta del pack. Desde el 22-oct-2026 la URL trae solo su marca y la firma
+  // (lib/compra/retorno-flow.ts: Flow corta a 200 caracteres); el informe, su veredicto y su modalidad llegan con el
+  // estado del pago (`packInfo`).
   const retornoPack = leerRetornoPack(searchParams);
   // La llave del pago (02-oct-2026): la firma que el servidor puso en la URL de retorno. Sin sesión deja
   // leer el estado de ESTE pago, el saldo y la guía; sin ella, la pantalla no sabe nada y pide entrar.
   const llavePago: LlavePago | null = retornoPack?.firma && order ? { order, firma: retornoPack.firma } : null;
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [packInfo, setPackInfo] = useState<RetornoPack | null>(null);
   // El pack de tres (13-oct-2026): dice lo que compró y vuelve adonde estaba (el aviso, la semana, la guía).
   const [producto, setProducto] = useState<string | null>(null);
   // Lo que la compra traía (origen, variante, el par AMBAS): «Reintentar» vuelve a la misma compra.
   const [datosPago, setDatosPago] = useState<{ origen?: string; variante?: string; companion_str_id?: string } | null>(null);
-  const volver = volverSeguro(searchParams.get("volver"));
+  // ADÓNDE VUELVE: del pago guardado (`payment_data.volver`), nunca de la URL (22-oct-2026; a Flow viaja lo mínimo).
+  const [volver, setVolver] = useState<string | null>(null);
   // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
   const [saldo, setSaldo] = useState<number | null>(null);
   // Solo el plan Ilimitado lee «Análisis ilimitados» al activar la suscripción (14-oct-2026).
@@ -49,12 +57,37 @@ function PaymentReturnContent() {
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
   // genérica antes de la navegación).
   const [redirecting, setRedirecting] = useState(false);
-  // La compra salió de un depto de la selección (21-oct-2026, compra-desde-depto.ts): pagada, vuelve sola al dashboard
-  // con ese depto, que se analiza solo. Mientras navega, «Franco está analizando este depto…».
-  const [alDepto, setAlDepto] = useState(false);
+  // LA COMPRA SALIÓ DE UN DEPTO DE LA SELECCIÓN (22-oct-2026, decisión de Fabrizio; compra-desde-depto.ts): pagada, esta
+  // pantalla genera el informe de ese depto sola —«Pago confirmado. Generando el informe de Providencia · 2D2B · 59 m² ·
+  // UF 3.500…»— y lo abre. Si no puede, vuelve al dashboard con el depto arriba, que lo intenta y dice lo que pasa.
+  const [alDepto, setAlDepto] = useState<DeptoDelPago | null>(null);
   // Guard para que el push al análisis ocurra UNA sola vez: el polling puede
   // re-ejecutar checkStatus en re-renders y no queremos re-push ni loop.
   const redirectedRef = useRef(false);
+
+  async function generarDepto(depto: DeptoDelPago, vuelta: string | null) {
+    const esperar = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+    // El crédito del pago puede llegar unos segundos después del «pagado» (el webhook lo otorga aparte): «sin créditos»
+    // se espera unas veces, como en la selección (semanal-lista.tsx › REINTENTOS_CREDITO); «en curso» (409) también.
+    let sinCredito = 0;
+    for (let intento = 0; intento < 12; intento++) {
+      try {
+        const res = await fetch("/api/lo-que-sigue/guia/analizar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ origenId: depto.origenId, avisoId: depto.avisoId, semanal: depto.token }),
+        });
+        if (res.status === 409) { await esperar(ESPERA_GENERAR_MS); continue; }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        if (res.ok && d.id) { router.replace(`/analisis/${d.id}`); return; }
+        if (d.error === "sin-creditos" && sinCredito++ < REINTENTOS_CREDITO_RETORNO) { await esperar(ESPERA_GENERAR_MS); continue; }
+        break;
+      } catch {
+        break;
+      }
+    }
+    router.replace(vuelta ?? "/dashboard");
+  }
 
   useEffect(() => {
     if (type === "subscription") {
@@ -115,6 +148,9 @@ function PaymentReturnContent() {
           setAnalysisId(data.payment.analysis_id);
           setProducto(typeof data.payment.product === "string" ? data.payment.product : null);
           setDatosPago((data.payment.payment_data as { origen?: string; variante?: string; companion_str_id?: string } | null) ?? null);
+          const vuelta = volverSeguro((data.payment.payment_data as { volver?: unknown } | null)?.volver);
+          setVolver(vuelta);
+          setPackInfo(leerRetornoPackDelPago(data.retornoPack));
           setConSesion(!data.sinSesion);
           setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
           setIlimitado(data.ilimitado === true);
@@ -176,11 +212,14 @@ function PaymentReturnContent() {
               } else {
                 router.push(`/analisis/${data.payment.analysis_id}`);
               }
-            } else if (!redirectedRef.current && !data.payment.analysis_id && volver && analizaAlVolver(volver)) {
-              redirectedRef.current = true;
-              setRedirecting(true);
-              setAlDepto(true);
-              router.replace(volver);
+            } else {
+              const depto = leerDeptoDelPago(data.depto);
+              if (!redirectedRef.current && !data.payment.analysis_id && depto) {
+                redirectedRef.current = true;
+                setRedirecting(true);
+                setAlDepto(depto);
+                void generarDepto(depto, vuelta);
+              }
             }
           } else if (estado === "error") {
             setPaymentStatus("error");
@@ -228,6 +267,8 @@ function PaymentReturnContent() {
     volver,
   });
   const girando = <div className="mb-5 h-8 w-8 animate-spin rounded-full border-2 border-[var(--franco-border)] border-t-[var(--franco-text)]" aria-hidden="true" />;
+  // El pack pagado, con lo que el estado del pago dijo de su informe.
+  const packPagado = retornoPack && paymentStatus === "paid" ? packInfo : null;
   // La guía después de pagar el pack del informe necesita ancho; todo lo demás va en la columna de la casa.
   const ancha = !!retornoPack && paymentStatus === "paid";
 
@@ -247,7 +288,7 @@ function PaymentReturnContent() {
           <div>
             {girando}
             <h1 className={PLANO.titulo}>{RETORNO.abriendo.titulo}</h1>
-            <p className={PLANO.bajada} data-retorno={alDepto ? "al-depto" : undefined}>{alDepto ? RETORNO.analizandoDepto : RETORNO.abriendo.cuerpo}</p>
+            <p className={PLANO.bajada} data-retorno={alDepto ? "al-depto" : undefined}>{alDepto ? RETORNO.generandoDepto(alDepto.nombre) : RETORNO.abriendo.cuerpo}</p>
           </div>
         )}
 
@@ -256,23 +297,24 @@ function PaymentReturnContent() {
             el informe no tiene guía, o en renta corta, «Tienes 3 análisis.» con el próximo análisis. */}
         {/* 02-oct-2026: solo con el pago VERIFICADO (con sesión, o sin ella con la firma), y con el saldo
             real. Sin sesión ni firma, la pantalla de entrar (abajo), sin «Tienes 3 análisis». */}
-        {retornoPack && paymentStatus === "paid" && (
-          hayGuia(retornoPack.modalidad) ? (
+        {/* 22-oct-2026: el informe, el veredicto y la modalidad del pack vienen con el estado del pago (`packPagado`). */}
+        {packPagado && (
+          hayGuia(packPagado.modalidad) ? (
             <GuiaBusqueda
-              analysisId={retornoPack.analysisId}
-              veredicto={retornoPack.veredicto}
+              analysisId={packPagado.analysisId}
+              veredicto={packPagado.veredicto}
               conSesion={conSesion}
               saldo={saldo}
               pago={llavePago}
-              sinGuia={<DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={conSesion} saldo={saldo} />}
+              sinGuia={<DespuesDePagar analysisId={packPagado.analysisId} veredicto={packPagado.veredicto} modalidad={packPagado.modalidad} conSesion={conSesion} saldo={saldo} />}
             />
           ) : (
-            <DespuesDePagar analysisId={retornoPack.analysisId} veredicto={retornoPack.veredicto} modalidad={retornoPack.modalidad} conSesion={conSesion} saldo={saldo} />
+            <DespuesDePagar analysisId={packPagado.analysisId} veredicto={packPagado.veredicto} modalidad={packPagado.modalidad} conSesion={conSesion} saldo={saldo} />
           )
         )}
         {/* «¿Cuándo piensas comprar?», discreto, debajo (02-oct-2026): con sesión o con la firma del pago. */}
-        {retornoPack && paymentStatus === "paid" && (conSesion || llavePago) && (
-          <HorizontePostPago ctx={{ analysisId: retornoPack.analysisId, veredicto: retornoPack.veredicto, modalidad: retornoPack.modalidad }} pago={llavePago} />
+        {packPagado && (conSesion || llavePago) && (
+          <HorizontePostPago ctx={{ analysisId: packPagado.analysisId, veredicto: packPagado.veredicto, modalidad: packPagado.modalidad }} pago={llavePago} />
         )}
 
         {!retornoPack && paymentStatus === "paid" && !redirecting && (
@@ -317,7 +359,7 @@ function PaymentReturnContent() {
             <h1 className={PLANO.titulo}>{PAGO_PACK_NO_PASO.titulo}</h1>
             <p className={PLANO.bajada}>{PAGO_PACK_NO_PASO.cuerpo}</p>
             <div className={PLANO.seccion}>
-              <EnlaceCarga href={retornoPack.modalidad === "str" ? `/analisis/renta-corta/${retornoPack.analysisId}` : `/analisis/${retornoPack.analysisId}`} className={PLANO.principal}>
+              <EnlaceCarga href={!packInfo ? "/dashboard" : packInfo.modalidad === "str" ? `/analisis/renta-corta/${packInfo.analysisId}` : `/analisis/${packInfo.analysisId}`} className={PLANO.principal}>
                 {PAGO_PACK_NO_PASO.volver}
               </EnlaceCarga>
             </div>

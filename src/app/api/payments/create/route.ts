@@ -5,7 +5,8 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { seVende } from "@/lib/planes";
-import { modalidadDeTipo, ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { ofertaPackVigente, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
+import { urlRetornoFlow } from "@/lib/compra/retorno-flow";
 import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 import { eventoPackVencido } from "@/lib/lo-que-sigue/eventos-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
@@ -94,8 +95,6 @@ export async function POST(request: Request) {
   // Ownership check (+ comuna para personalizar el subject de Flow): si el pago
   // es por un análisis, verificar que el user lo posee.
   let analysisComuna: string | null = null;
-  let veredictoPack: string | null = null;
-  let modalidadPack: "ltr" | "str" = "ltr";
   // «Lo que sigue»: el pack va atado al primer informe y vence 24 h después de creado; vencido, se rechaza con 410 y
   // queda medido (`pack_vencido`). EL TICKET DE LA CUENTA NUEVA (21-oct-2026, lib/guia/compra-desde-depto.ts): también
   // vale mientras la cuenta tenga menos de 24 horas, con o sin informe atado (el pop-up sin saldo de la selección), una
@@ -119,8 +118,6 @@ export async function POST(request: Request) {
     analysisComuna = (analysis?.comuna as string) ?? null;
     if (product === PRODUCTO_PACK) {
       if (!analysis?.created_at) return NextResponse.json({ error: "No existe ese informe" }, { status: 404 });
-      veredictoPack = readVeredicto(analysis.results as never) ?? null;
-      modalidadPack = modalidadDeTipo(analysis.tipo_analisis as string);
       if (!ofertaPackVigente(analysis.created_at as string) && !ticketCuenta) {
         try {
           await capturarServidor(eventoPackVencido({ userId: user.id, analysisId, veredicto: readVeredicto(analysis.results as never) ?? null }));
@@ -179,9 +176,11 @@ export async function POST(request: Request) {
       // Propagamos el commerceOrder al return para que /payments/return
       // identifique ESTA compra (no el "último pago del user"). El middleware
       // preserva el query string al convertir el POST de Flow en GET.
+      // Lo mínimo (22-oct-2026, lib/compra/retorno-flow.ts): Flow corta a 200 y la vuelta a un depto medía 206. La vuelta
+      // (`volver`), el informe del pack y su veredicto se leen del pago guardado, en /api/payments/status.
       urlReturn: product === PRODUCTO_PACK && analysisId
-        ? urlRetornoPack(SITE_URL, commerceOrder, analysisId, veredictoPack, modalidadPack, firmarPago(commerceOrder))
-        : `${SITE_URL}/payments/return?order=${commerceOrder}${volverTres ? `&volver=${encodeURIComponent(volverTres)}` : ""}`,
+        ? urlRetornoPack(SITE_URL, commerceOrder, firmarPago(commerceOrder))
+        : urlRetornoFlow(SITE_URL, commerceOrder),
     });
 
     if (!flowResponse.url || !flowResponse.token) {

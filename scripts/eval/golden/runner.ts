@@ -158,6 +158,7 @@ import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
+import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -663,6 +664,9 @@ function printSeed(r: SeedReport) {
   // Tier VEREDICTO-GUARDADO (22-oct-2026, 0 tokens): la portada, el PDF, comparar y la landing muestran el veredicto que el
   // motor guardó —el del correo y el dashboard— y leen el snapshot de la mediana entero, con su universo. ──
   totalHard += runVeredictoGuardadoTier().hard;
+  // Tier VUELTA-FLOW (22-oct-2026, 0 tokens): a Flow viaja solo la orden (bajo 150: Flow corta a 200); la vuelta, el informe
+  // del pack y el depto se leen del pago, y pagado desde un depto la vuelta genera y abre el informe sola. ──
+  totalHard += runVueltaFlowTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

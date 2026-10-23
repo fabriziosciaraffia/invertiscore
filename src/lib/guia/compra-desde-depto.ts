@@ -49,6 +49,29 @@ export function deptoDeVolver(volver: string | null | undefined): { t: string; a
 /** ¿La vuelta pide analizar el depto solo, apenas llega? */
 export const analizaAlVolver = (volver: string | null | undefined): boolean => deptoDeVolver(volver) != null && /[?&]analizar=1(?:&|#|$)/.test(volver ?? "");
 
+/** El depto como lo nombran las tarjetas (22-oct-2026, decisión de Fabrizio): «Providencia · 2D2B · 59 m² · UF 3.500». */
+export function nombreDelDepto(it: { comuna: string; tipologia: string | null; m2: number; precioUF: number }): string {
+  const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
+  return [it.comuna, it.tipologia, `${miles(it.m2)} m²`, `UF ${miles(it.precioUF)}`].filter(Boolean).join(" · ");
+}
+
+/** Lo que /api/payments/status dice del depto de una compra pagada (la selección, el aviso y su origen), para que la
+ *  vuelta de Flow genere el informe sola y diga de cuál. */
+export interface DeptoDelPago {
+  token: string;
+  avisoId: string;
+  origenId: string | null;
+  nombre: string;
+}
+
+/** Saneado desde la red: lo que no tenga forma no se usa. */
+export function leerDeptoDelPago(x: unknown): DeptoDelPago | null {
+  if (!x || typeof x !== "object") return null;
+  const r = x as Record<string, unknown>;
+  if (typeof r.token !== "string" || !TOKEN.test(r.token) || typeof r.avisoId !== "string" || !AVISO.test(r.avisoId) || typeof r.nombre !== "string") return null;
+  return { token: r.token, avisoId: r.avisoId, origenId: typeof r.origenId === "string" ? r.origenId : null, nombre: r.nombre };
+}
+
 export const COMPRA_DEPTO = {
   /** El secundario del pop-up sin saldo. */
   suelto: `Comprar solo 1 · ${fmtCLP(FLOW_PRODUCTS.single.amount)}`,

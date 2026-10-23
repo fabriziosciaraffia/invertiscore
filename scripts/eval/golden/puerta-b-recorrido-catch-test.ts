@@ -286,8 +286,10 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if (!/const conVuelta = esTres \|\| \(\(product === PRODUCTO_PACK \|\| product === "single"\) && !analysisId\);/.test(pc)) F("5 · el pack y el suelto comprados desde un depto no vuelven al depto");
     const ck = codigo("src/app/checkout/page.tsx"), cc = codigo("src/app/checkout/compra-cliente.tsx");
     if (!/const conVuelta = esTres \|\| \(\(productKey === PRODUCTO_PACK \|\| productKey === "single"\) && !analysisId\);/.test(ck) || !/deptoDeVolver\(volver\)/.test(ck) || !/data-compra="depto"/.test(cc)) F("5 · la pantalla de compra no muestra el depto ni guarda la vuelta");
+    // ⚠ ACTA (22-oct-2026, decisión de Fabrizio) · pagado desde un depto, la vuelta de Flow ya no manda al dashboard: GENERA el informe de ese
+    // depto sola y lo abre; el depto lo trae el estado del pago (tier VUELTA-FLOW). Solo si no puede, vuelve al dashboard con el depto arriba.
     const rt = codigo("src/app/payments/return/page.tsx");
-    if (!/!data\.payment\.analysis_id && volver && analizaAlVolver\(volver\)\) \{[\s\S]{0,140}router\.replace\(volver\)/.test(rt)) F("5 · pagado desde un depto, la vuelta de Flow no sigue sola al depto");
+    if (!/const depto = leerDeptoDelPago\(data\.depto\);\s*if \(!redirectedRef\.current && !data\.payment\.analysis_id && depto\) \{[\s\S]{0,200}void generarDepto\(depto, vuelta\);/.test(rt) || !/router\.replace\(vuelta \?\? "\/dashboard"\);/.test(rt)) F("5 · pagado desde un depto, la vuelta de Flow no genera el informe sola (ni vuelve al depto si no puede)");
   } catch (e) {
     F(`5 · no corrió: ${(e as Error).message}`);
   }
