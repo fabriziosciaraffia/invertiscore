@@ -189,7 +189,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp, vistos\);/.test(armar)
       || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto\);/.test(ramaLarga)
       || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(ramaCorta)
-      || !/items_str: aItems\(g\), estado_str: g\.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o\.analysisId,/.test(armar)
+      // ⚠ ACTA (23-oct-2026, el orden fijo, tier PUERTA-B-MOCKUPS §4) · los ítems respetan el orden de lo que la fila ya tenía.
+      || !/items_str: aItems\(g, undefined, previos\.corto\), estado_str: g\.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o\.analysisId,/.test(armar)
       || !/const estado = estadoDeFila\(largo, corto\);/.test(armar))
       F("2 · el armado no arma el bloque de renta corta con su regla (solo Comprar) y el mismo presupuesto (o no lo guarda)");
     if (!/const perfil = opts\.nuevosDesde \? pp\.perfil : pp\.perfilLtr;/.test(srv)) F("2 · el bloque de renta larga no sale del perfil de renta larga (quien solo tiene renta corta lo recibiría)");

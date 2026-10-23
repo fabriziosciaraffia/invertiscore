@@ -145,11 +145,12 @@ export async function runComunasDisenoTier(): Promise<{ hard: number }> {
         return { data: [{ comuna: a.comunas[0], total: porMin[a.uf_min] ?? 0, comprar_20: 0, comprar_30: 0 }], error: null };
       },
     });
-    const barata = await sv.rangoConMasPublicados(rpc({ 0: 15, 3000: 0, 4000: 0, 5500: 0 }), "Renca", [2]);
-    const cara = await sv.rangoConMasPublicados(rpc({ 0: 0, 3000: 0, 4000: 3, 5500: 237 }), "Vitacura", [2]);
+    // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup 1b) · los rangos son los del mockup: el último empieza en UF 6.000.
+    const barata = await sv.rangoConMasPublicados(rpc({ 0: 15, 3000: 0, 4000: 0, 6000: 0 }), "Renca", [2]);
+    const cara = await sv.rangoConMasPublicados(rpc({ 0: 0, 3000: 0, 4000: 3, 6000: 237 }), "Vitacura", [2]);
     const vacia = await sv.rangoConMasPublicados(rpc({}), "Renca", [2]);
     const empate = await sv.rangoConMasPublicados(rpc({ 0: 5, 3000: 5, 4000: 1 }), "Macul", [2]);
-    if (barata !== "hasta-3000" || cara !== "5500-mas") F(`2 · /deptos no arranca en el rango con más publicados de la comuna (${barata}, ${cara})`);
+    if (barata !== "hasta-3000" || cara !== "6000-mas") F(`2 · /deptos no arranca en el rango con más publicados de la comuna (${barata}, ${cara})`);
     if (vacia !== "3000-4000" || empate !== "3000-4000") F("2 · sin publicados o con empate, /deptos no se queda en el rango por defecto");
     if (llamadas.some((l) => l.comunas?.length !== 1 || l.dorms?.join() !== "2")) F("2 · el rango de la comuna se cuenta con otras comunas u otra tipología");
   }

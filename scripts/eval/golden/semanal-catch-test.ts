@@ -187,7 +187,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (!/if \(ir === "comprar"\) return volver\(rutaSueltoSemanal\(sel\.variante as "banda" \| "tarjetas" \| null\)\);/.test(clic)) F("6 · «Analizar uno · $9.990» no va a comprar el suelto");
   if (!/"clic", almacenPublicacion\(admin\), bajarFicha/.test(srv)) F("6 · el chequeo del clic no usa la memoria y el tope de siempre");
   const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
-  if (!/typeof b\.semanal === "string"\s*\? await combinacionSemanal\(admin, b\.semanal, user\.id, o\.analysisId, b\.avisoId\)/.test(ruta)) F("6 · «Analizar este» desde el correo no usa la combinación de su selección");
+  // ⚠ ACTA (23-oct-2026, mockup D2, tier PUERTA-B-MOCKUPS §3) · la combinación de la selección sigue validando el aviso; la que la
+  // persona cambió en el pop-up (`elegida`, ya con el veredicto recalculado a la vista) va en su lugar.
+  if (!/if \(typeof b\.semanal === "string"\) \{\s*const deLaFila = await combinacionSemanal\(admin, b\.semanal, user\.id, o\.analysisId, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(ruta)) F("6 · «Analizar este» desde el correo no usa la combinación de su selección");
   if (!/data\.user_id !== userId \|\| data\.origen_analysis_id !== origenId/.test(srv) || !/some\(\(i\) => i\.avisoId === avisoId\)\) return null;/.test(srv)) F("6 · la combinación del correo no verifica persona, origen y aviso");
 
   // 7 · los eventos

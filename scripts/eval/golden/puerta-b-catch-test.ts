@@ -67,7 +67,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, ELECCIONES_POR_DEFECTO, masDeMiles, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos,
+  ALTA_COPY, CLAVE_GOOGLE, claveDeDestino, COMUNAS_DESTACADAS, comunasParaAgregar, DEPTOS_COPY, destinoGoogle, ELECCIONES_POR_DEFECTO, masDeMiles, MAX_COMUNAS_PERFIL, perfilManualDeElecciones, RANGOS_UF, respuestaDeptos, TIPOLOGIAS_DEPTOS,
   TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
@@ -76,7 +76,7 @@ import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/e
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
 import { origenSintetico } from "../../../src/lib/guia/guia-servidor";
-import { cuandoSeVio, DEL_DIA, LECTURAS_POR_VUELTA_DEL_DIA, marcaVisto, MINUTOS_CUPO_DEL_DIA, pasoDelDia, REGLA_DEL_DIA, VUELTAS_MAX_DEL_DIA } from "../../../src/lib/guia/del-dia";
+import { cuandoSeVio, DEL_DIA, LECTURAS_POR_VUELTA_DEL_DIA, MINUTOS_CUPO_DEL_DIA, pasoDelDia, REGLA_DEL_DIA, VUELTAS_MAX_DEL_DIA } from "../../../src/lib/guia/del-dia";
 import { TOPE_FICHAS_POR_HORA } from "../../../src/lib/guia/publicacion";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "../../../src/lib/email/correo-semanal";
 import {
@@ -196,7 +196,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio): si la cuenta existe no vuelve al navegador.
       if (!/return NextResponse\.json\(\{ ok: true \}\);/.test(correo) || /NextResponse\.json\(\{[^}]*existe/.test(correo)) F("1 · el pedido del código le dice al navegador si el correo tiene cuenta");
       const cliente = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
-      if (/existe|yaTienes|ya tienes cuenta/i.test(cliente) || !/<p className="dp-registro">\{DEPTOS_COPY\.enviado\(enviado\)\}<\/p>/.test(cliente) || !/shouldCreateUser: true/.test(cliente))
+      if (/existe|yaTienes|ya tienes cuenta/i.test(cliente) || !/<p className="dp-banda-t">\{DEPTOS_COPY\.enviado\(enviado\)\}<\/p>/.test(cliente) || !/shouldCreateUser: true/.test(cliente))
         F("1 · la pantalla dice otra cosa cuando la cuenta existe, o no crea la cuenta con el código");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/create or replace function public\.correo_tiene_cuenta[\s\S]{0,200}security definer[\s\S]{0,300}revoke all on function public\.correo_tiene_cuenta\(text\) from public, anon, authenticated;/.test(mig)) F("1 · saber si un correo tiene cuenta queda abierto a cualquiera");
@@ -209,23 +209,26 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const c = (comuna: string, total: number, comprar20: number, comprar30: number): ConteoComuna => ({ comuna, total, comprar20, comprar30 });
       // LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada), con el detalle chico; sin la frase del estándar.
       const con = respuestaDeptos(v, [c("Ñuñoa", 1008, 29, 40)], []);
-      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · el número es «29 de 1.008 convienen» —«como inversión» pasó
-      // a la frase de arriba—, con la búsqueda ANTES como etiqueta («Si buscas …», sin pie ni plazo) y el pie y el plazo en
-      // una nota chica debajo («con pie 20 % y 25 años»). El «detalle» de una línea se fue.
-      if (con.titular !== "29 de 1.008 convienen" || con.cifra !== "29 de 1.008" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 convienen»): ${con.titular}`);
-      if (con.etiqueta !== "Si buscas Ñuñoa · 2D · UF 3.000 a 4.000" || con.nota !== "con pie 20 % y 25 años" || "detalle" in con) F(`2 · la etiqueta no es «Si buscas comuna · tipología · rango» o la nota no es «con pie 20 % y 25 años»: ${con.etiqueta} / ${con.nota}`);
-      const tres = respuestaDeptos(validarElecciones({ comunas: ["Ñuñoa", "Macul", "La Reina"], tipologias: ["3"], rango: "4000-5500" }) as Extract<ReturnType<typeof validarElecciones>, { ok: true }>, [c("Ñuñoa", 10, 1, 1)], []);
-      if (tres.etiqueta !== "Si buscas Ñuñoa, Macul y La Reina · 3D · UF 4.000 a 5.500") F(`2 · la etiqueta no nombra las comunas, la tipología y el rango elegidos: ${tres.etiqueta}`);
-      if (respuestaDeptos(v, [c("Ñuñoa", 143, 1, 1)], []).titular !== "1 de 143 conviene") F("2 · con uno, el número no va en singular");
-      if (con.registro !== "Regístrate y te los mando hoy") F("2 · con deptos, la invitación no es «Regístrate y te los mando hoy»");
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `1b-deptos.html`) · la tarjeta del número: el número grande y, al
+      // lado, «de 1.008 publicados convienen» (`resto`); debajo, «Publicados anoche. Cambia la búsqueda y el número cambia.»
+      // (`nota`). Se fueron la etiqueta «Si buscas …» y la nota del pie y el plazo (sin pie ni plazo en la página). Los rangos
+      // son los del mockup (el tercero hasta UF 6.000). Mutaciones: Q1 el titular sin «publicados» · Q2 la nota con el pie ·
+      // Q3 vuelve la etiqueta · Q4 el rango viejo.
+      if (con.titular !== "29 de 1.008 publicados convienen" || con.cifra !== "29 de 1.008" || con.resto !== "de 1.008 publicados convienen" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 publicados convienen»): ${con.titular}`);
+      if (con.nota !== "Publicados anoche. Cambia la búsqueda y el número cambia." || "etiqueta" in con || "detalle" in con || /pie|plazo/i.test(con.nota)) F(`2 · la nota no es «Publicados anoche…» o vuelve la etiqueta o el pie: ${con.nota}`);
+      const tres = respuestaDeptos(validarElecciones({ comunas: ["Ñuñoa", "Macul", "La Reina"], tipologias: ["3"], rango: "4000-6000" }) as Extract<ReturnType<typeof validarElecciones>, { ok: true }>, [c("Ñuñoa", 10, 1, 1)], []);
+      if (tres.resto !== "de 10 publicados conviene" || tres.titular !== "1 de 10 publicados conviene") F(`2 · con uno, el resto no va en singular: ${tres.titular}`);
+      if (RANGOS_UF.map((r) => r.id).join() !== "hasta-3000,3000-4000,4000-6000,6000-mas" || RANGOS_UF[2].max !== 6000 || RANGOS_UF[3].min !== 6000) F("2 · los rangos no son los del mockup (hasta 3.000 / 3.000 a 4.000 / 4.000 a 6.000 / más de 6.000)");
+      if (respuestaDeptos(v, [c("Ñuñoa", 143, 1, 1)], []).titular !== "1 de 143 publicados conviene") F("2 · con uno, el número no va en singular");
+      if (con.registro !== "Regístrate gratis y revísalos ahora mismo." || DEPTOS_COPY.correo.titulo !== con.registro) F("2 · con deptos, la tarjeta del correo no dice «Regístrate gratis y revísalos ahora mismo.»");
       if ("estandar" in DEPTOS_COPY || /lo estándar/.test(leer("src/app/deptos/deptos-cliente.tsx") + leer("src/lib/deptos/respuesta.ts"))) F("2 · vuelve la frase del estándar");
       const pie = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 4)], [c("Macul", 171, 0, 17)]);
-      if (pie.convienen !== 0 || pie.titular !== "0 de 143 convienen" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
-      if (!/te aviso cuando aparezca uno/i.test(pie.registro)) F("2 · con cero no ofrece registrarse («te aviso cuando aparezca uno»)");
+      if (pie.convienen !== 0 || pie.titular !== "0 de 143 publicados convienen" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
+      if (!/te avisamos cuando aparezca uno/i.test(pie.registro)) F("2 · con cero no ofrece registrarse («te avisamos cuando aparezca uno»)");
       const vec = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 3, 17), c("La Reina", 6, 1, 1), c("Providencia", 7, 5, 7)]);
       if (vec.alternativa !== "En Providencia, comuna vecina, 5 sí convienen.") F(`2 · con cero no dice en qué comuna vecina sí (la que más da, en una línea): ${vec.alternativa}`);
       const nada = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 0, 0)]);
-      if (nada.alternativa !== "Tampoco con pie 30 % ni en comunas vecinas." || !/te aviso cuando aparezca uno/i.test(nada.registro)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
+      if (nada.alternativa !== "Tampoco con pie 30 % ni en comunas vecinas." || !/te avisamos cuando aparezca uno/i.test(nada.registro)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
       for (const r of [pie, vec, nada]) if ((r.alternativa ?? "").split(/\. /).length !== 1 || (r.alternativa ?? "").length > 60) F(`2 · la alternativa del cero no es una línea corta: ${r.alternativa}`);
       const vacia = respuestaDeptos(v, [], []);
       if (vacia.cifra !== null || vacia.titular !== "Ninguno publicado así esta semana") F("2 · sin avisos en el filtro el número inventa un total");
@@ -236,7 +239,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (/sondaConPatch|runAnalysis|evaluarEstandar25|prefetch/.test(srv) || !/admin\.rpc\("deptos_conteo"/.test(srv)) F("2 · la respuesta calcula en vivo en vez de leer la evaluación de la noche");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/count\(\*\) filter \(where ae\.veredicto_20_25 = 'COMPRAR'\)::int,\s*count\(\*\) filter \(where ae\.veredicto_30_25 = 'COMPRAR'\)::int/.test(mig)) F("2 · el conteo no cuenta los Comprar a 25 años con pie 20 % y 30 %");
-      if (!/fuera: "Por ahora solo Gran Santiago\."/.test(leer("src/lib/deptos/respuesta.ts"))) F("2 · fuera de cobertura no dice «por ahora solo Gran Santiago»");
+      // ⚠ ACTA (23-oct-2026, mockup `1b-deptos.html`) · el select de comuna solo ofrece la cobertura (§8): en la página no hay
+      // estado «fuera»; la ruta sigue respondiéndolo para una URL armada a mano.
     }
 
     // ── 3 · EL PERFIL MANUAL SIN INFORMES ──
@@ -260,7 +264,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/const soloManual = informes\.length === 0 && filasStr\.length === 0 && m != null;/.test(pbs) || !/: soloManual && manual\.modalidad !== "str" \? perfilDeBusqueda\(\[\], manual\) : null,/.test(pbs) || !/precioMinUf: num\(m\.precio_min_uf\),/.test(pbs))
         F("3 · el perfil de renta larga de una cuenta sin informes no sale de lo editado a mano (o pierde el piso)");
       const an = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
-      if (!/const sinOrigen = typeof b\.semanal === "string" && b\.origenId == null;/.test(an) || !/combo = await combinacionSemanal\(admin, b\.semanal!, user\.id, null, b\.avisoId\);/.test(an)) F("3 · «Analizar este» no funciona sin informe de origen");
+      if (!/const sinOrigen = typeof b\.semanal === "string" && b\.origenId == null;/.test(an) || !/const deLaFila = await combinacionSemanal\(admin, b\.semanal!, user\.id, null, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(an)) F("3 · «Analizar este» no funciona sin informe de origen (o no acepta la combinación elegida en el pop-up, tier PUERTA-B-MOCKUPS §3)");
       if (/if \(generando \|\| !origenId \|\| !combinacion\) return;/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("3 · el botón «Analizar este» sigue mudo sin informe de origen");
     }
 
@@ -271,7 +275,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (pasoDelDia({ estado: "pendiente", minutos: MINUTOS_CUPO_DEL_DIA, vueltas: 3 }) !== "enviar_lo_visto" || pasoDelDia({ estado: "pendiente", minutos: 5, vueltas: VUELTAS_MAX_DEL_DIA }) !== "enviar_lo_visto") F("4 · pasada la hora sin cupo no sale con lo visto publicado");
       if (MINUTOS_CUPO_DEL_DIA > 60 || LECTURAS_POR_VUELTA_DEL_DIA > TOPE_FICHAS_POR_HORA || !REGLA_DEL_DIA.aceptarMenos) F("4 · el correo del día no promete la hora, o una vuelta puede gastar más que el tope por hora");
       const ahora = new Date("2026-10-16T18:00:00Z");
-      if (cuandoSeVio("2026-10-16T06:12:00Z", ahora) !== "hoy a las 03:12" || marcaVisto("2026-10-16T06:12:00Z", ahora) !== "Visto publicado hoy a las 03:12" || cuandoSeVio("2026-10-15T23:40:00Z", ahora) !== "ayer a las 20:40")
+      if (cuandoSeVio("2026-10-16T06:12:00Z", ahora) !== "hoy a las 03:12" || cuandoSeVio("2026-10-15T23:40:00Z", ahora) !== "ayer a las 20:40")
         F(`4 · la hora en que se vio publicado no es la de Chile: ${cuandoSeVio("2026-10-16T06:12:00Z", ahora)}`);
       if (queEnviarSemanal(0, { delDiaReciente: true }) !== "nada" || queEnviarSemanal(0) !== "vacio" || queEnviarSemanal(2, { delDiaReciente: true }) !== "seleccion") F("4 · el lunes después del correo del día no va solo si hay nuevos");
       const base = { variante: "tarjetas" as const, nombre: "Ana", busca: "2 dormitorios, Ñuñoa", piePct: 20, plazoAnios: 25, deptos: [{ comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: 3980, veredicto: "COMPRAR", score: 80, flujo: 20000, url: "x" }], saldo: 1, conRegalo: false, urlBoton: "b", urlTres: "t", urlBaja: "z" };
@@ -409,38 +413,49 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (RANGOS_UF.length !== 4 || RANGOS_UF[0].min !== null || RANGOS_UF.some((r, i) => i > 0 && r.min !== RANGOS_UF[i - 1].max) || RANGOS_UF[3].max < 60000) F("8 · los rangos no son cuatro, contiguos y sin hueco");
       if (TIPOLOGIA_POR_DEFECTO !== "2") F("8 · la tipología no viene en 2D");
       const cli = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
-      if (!/const \[tipologia, setTipologia\] = useState<string>\(TIPOLOGIA_POR_DEFECTO\);/.test(cli) || !/onClick=\{\(\) => setTipologia\(t\.id\)\}/.test(cli)) F("8 · la tipología no es una sola, con 2D marcada");
-      if (!/\{DESTACADAS\.map\(chipComuna\)\}/.test(cli) || !/const encontradas = busqueda\.trim\(\) \? sinElegir\.filter\(\(c\) => plano\(c\)\.includes\(plano\(busqueda\)\)\) : restantes;/.test(cli) || DEPTOS_COPY.otraComuna !== "Otra comuna…") F("8 · las comunas no son las ocho a la vista más un buscador con el resto");
-      const iElegir = cli.indexOf('data-deptos="elegir"'), iModalidad = cli.indexOf("MODALIDADES_DEPTOS.map(");
-      if (iModalidad < 0 || iModalidad > iElegir || (cli.match(/MODALIDADES_DEPTOS\.map\(/g) ?? []).length !== 1 || !/data-deptos="modalidad"/.test(cli)) F("8 · la modalidad se pregunta en la pantalla de elegir (va en «Estás dentro»)");
-      // El número, el detalle y el correo pegados (17-oct-2026: el correo en la banda, justo debajo de la respuesta): en la
-      // respuesta solo el número, el detalle y la alternativa del cero, y lo SIGUIENTE a la respuesta es la banda.
-      const sec = cli.slice(cli.indexOf('<section className="dp-respuesta"'));
-      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · en la respuesta van la etiqueta («Si buscas …») ANTES del
-      // número y la nota chica («con pie 20 % y 25 años») después, en lugar del detalle.
-      const iSi = sec.indexOf('<p className="dp-si" data-deptos="si">{respuesta.etiqueta}</p>');
-      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-nota-num" data-deptos="nota">'), iFinSec = sec.indexOf("</section>");
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `1b-deptos.html`) · los chips y el buscador se fueron: los tres
+      // campos son <select> con nombre (components/deptos/CamposBusqueda.tsx: la comuna vacía con «Elige una comuna», las ocho
+      // más buscadas primero y todas las demás; la tipología y el rango puestos). La modalidad ya no se pregunta en /deptos (va
+      // al perfil del dashboard). El número y el correo siguen pegados: la tarjeta del número y, lo siguiente, la del correo.
+      // Mutaciones: Q5 la tipología sin 2D puesta · Q6 la comuna viene puesta · Q7 faltan comunas en el select · Q8 algo entre el
+      // número y el correo · Q9 el orden del correo · Q10 serif en el cuerpo.
+      if (!/const \[busqueda, setBusqueda\] = useState<ValorBusqueda>\(\{ comunas: \[\.\.\.\(portada\?\.comunas \?\? \[\]\)\], tipologia: TIPOLOGIA_POR_DEFECTO, rango: portada\?\.rango \?\? ELECCIONES_POR_DEFECTO\.rango \}\);/.test(cli)) F("8 · la búsqueda no arranca sin comuna, con 2D y el rango puestos");
+      const campos = sinComentarios(leer("src/components/deptos/CamposBusqueda.tsx"));
+      if (!/<option value="" disabled>\{DEPTOS_COPY\.eligeComuna\}<\/option>/.test(campos) || !/\{DESTACADAS\.map\(\(c\) => <option key=\{c\} value=\{c\}>\{c\}<\/option>\)\}/.test(campos) || !/\{RESTO\.map\(\(c\) => <option key=\{c\} value=\{c\}>\{c\}<\/option>\)\}/.test(campos)
+        || !/const RESTO = \(COMUNAS_DISPONIBLES as readonly string\[\]\)\.filter\(\(c\) => !DESTACADAS\.includes\(c\)\)/.test(campos) || DEPTOS_COPY.eligeComuna !== "Elige una comuna")
+        F("8 · la comuna no es un select vacío («Elige una comuna») con las ocho más buscadas y todas las demás");
+      if (!/\{TIPOLOGIAS_DEPTOS\.map\(\(t\) => <option key=\{t\.id\} value=\{t\.id\}>\{t\.nombre\}<\/option>\)\}/.test(campos) || !/\{RANGOS_UF\.map\(\(r\) => <option key=\{r\.id\} value=\{r\.id\}>\{r\.chip\}<\/option>\)\}/.test(campos)) F("8 · la tipología y el rango no son selects con sus nombres");
+      if (TIPOLOGIAS_DEPTOS.map((t) => t.nombre).join("|") !== "Estudio|1 dormitorio|2 dormitorios|3 dormitorios|4 dormitorios o más") F("8 · los nombres de las tipologías no son los del mockup");
+      if (/MODALIDADES_DEPTOS|data-deptos="modalidad"/.test(cli)) F("8 · la modalidad se pregunta en /deptos (va en el perfil del dashboard)");
+      // El número y el correo pegados: la tarjeta del número (el número, la nota y la alternativa del cero) y, lo SIGUIENTE, la
+      // tarjeta del correo.
+      const sec = cli.slice(cli.indexOf('<section className="dp-tarjeta dp-tarjeta-numero"'));
+      const iNum = sec.indexOf('className="dp-numero"'), iDet = sec.indexOf('<p className="dp-ayuda" data-deptos="nota">'), iFinSec = sec.indexOf("</section>");
       const resto = iFinSec < 0 ? "x" : sec.slice(iDet, iFinSec)
-        .replace('<p className="dp-nota-num" data-deptos="nota">{respuesta.nota}</p>', "")
+        .replace('<p className="dp-ayuda" data-deptos="nota">{respuesta.nota}</p>', "")
         .replace('{respuesta.alternativa && <p className="dp-alternativa" data-deptos="alternativa">{respuesta.alternativa}</p>}', "");
-      if (iSi < 0 || iNum < iSi || iDet < iNum || !/^\s*<\/>\s*\) : \(\s*<p className="dp-numero dp-esperando" aria-hidden="true">…<\/p>\s*\)\}\s*$/.test(resto)
-        || !/^<\/section>\s*<div className="dp-banda" data-deptos="banda">\s*\{paso === "codigo" && enviado \? \(/.test(sec.slice(iFinSec))) F("8 · entre la respuesta y el correo hay algo más que la etiqueta, el número, la nota y la alternativa");
+      if (iNum < 0 || iDet < iNum || !/^\s*<\/>\s*\) : \(\s*<p className="dp-numero dp-esperando" aria-hidden="true"><span className="dp-cifra">…<\/span><\/p>\s*\)\}\s*$/.test(resto)
+        || !/^<\/section>\s*<div className="dp-banda" data-deptos="banda">\s*\{paso === "codigo" && enviado \? \(/.test(sec.slice(iFinSec))) F("8 · entre la respuesta y el correo hay algo más que el número, la nota y la alternativa");
       const iForm = sec.indexOf('<form className="dp-form" onSubmit={pedirCodigo}');
       const form = iForm < 0 ? "" : sec.slice(iForm, sec.indexOf("</form>", iForm));
-      const orden = ["{respuesta?.registro ?? DEPTOS_COPY.conRegistro}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
-      if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F("8 · el correo no es «Regístrate…», el campo, «Quiero recibirlos» y «Te mandamos un código. Sin contraseña.», en ese orden");
-      if (DEPTOS_COPY.sinContrasena !== "Te mandamos un código. Sin contraseña." || DEPTOS_COPY.conRegistro !== "Regístrate y te los mando hoy") F("8 · el copy del correo no es el pedido");
-      // Serif solo en dos lugares: la frase de qué es (17-oct-2026) y el titular de «Estás dentro», en una línea.
+      const orden = ["{respuesta?.registro ?? DEPTOS_COPY.correo.titulo}", 'data-deptos="correo-bajada"', 'className="dp-google"', "{DEPTOS_COPY.correo.oTuCorreo}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.correo.nota}"].map((t) => form.indexOf(t));
+      if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F("8 · el correo no es el título, la bajada, «Entrar con Google», «o con tu correo», el campo, «Quiero verlos» y la nota, en ese orden");
+      if (DEPTOS_COPY.correo.nota !== "Sin contraseña: te mandamos un código. Nada de spam, solo deptos." || DEPTOS_COPY.correo.boton !== "Quiero verlos" || ALTA_COPY.pedir !== "Quiero verlos" || DEPTOS_COPY.correo.oTuCorreo !== "o con tu correo") F("8 · el copy del correo no es el del mockup");
+      const bj = DEPTOS_COPY.correo.bajada(12);
+      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los 12 llegan al correo con un análisis de regalo");
+      // Serif solo en el título de la página, el de «Estás dentro» y el del invitado con depto (.dp-que), el número grande y el
+      // título de la tarjeta del correo (así en el mockup); el cuerpo en Inter.
       const css = leer("src/app/deptos/deptos.css");
-      if ((css.match(/font-heading/g) ?? []).length !== 2 || !/\.dp-titulo \{ font-family: var\(--font-heading\), Georgia, serif;[^}]*white-space: nowrap;/.test(css) || !/\.dp-que \{ font-family: var\(--font-heading\), Georgia, serif;/.test(css)) F("8 · hay serif fuera de la frase de arriba y del titular, o el titular puede ir en dos líneas");
-      if (!/\.dp-cifra \{ font-size: 30px; font-weight: 700;/.test(css) || /\.dp-(numero|cifra) \{[^}]*font-family/.test(css)) F("8 · el número no va en Inter, grande");
+      const serif = Array.from(css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^{}]*font-heading[^{}]*\}/g)).map((m) => m[1].trim()).sort().join("|");
+      if (serif !== ".dp-banda-t|.dp-cifra|.dp-que|.dp-titulo" || /\.dp-titulo \{[^}]*white-space: nowrap/.test(css)) F(`8 · hay serif fuera del título, el número y el título del correo, o el título no puede ir en varias líneas: ${serif}`);
+      if (!/\.dp-cifra \{ font-family: var\(--font-heading\), Georgia, serif; font-weight: 700; font-size: 44px;/.test(css)) F("8 · el número no va grande, en serif");
       // ⚠ ACTA (20-oct-2026, LCP en el teléfono) · el pie puede ir `diferido` (su fuente entra con la página quieta,
       // LANDING-RENDIMIENTO §8): sigue siendo el de los informes, sin enlaces.
       if (!/<AppFooter variant="informe"(?: diferido)? \/>/.test(leer("src/app/deptos/page.tsx"))) F("8 · el pie no es el de los informes (con enlaces que sacan de la página)");
     }
     // ── 9 · VOLVER DE GOOGLE CON LOS CHIPS (16-oct-2026) ──
     {
-      const v = validarElecciones({ comunas: ["Macul", "Ñuñoa"], tipologias: ["3"], rango: "4000-5500" });
+      const v = validarElecciones({ comunas: ["Macul", "Ñuñoa"], tipologias: ["3"], rango: "4000-6000" });
       if (!v.ok) throw new Error("validación");
       const chips = perfilManualDeElecciones(v);
       const db = baseFalsa({ deptos_pendientes: "correo" });
@@ -491,23 +506,28 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · la clave llega a ejecutarAlta como \`p.clave\` (la ruta le pasa \`b.p\`).
       if (!/if \(!pend && typeof p\.clave === "string" && CLAVE_GOOGLE\.test\(p\.clave\) && await reclavarPendienteGoogle\(admin, \{ clave: p\.clave, correo: user\.email, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
-      // «o con Google» debajo del campo: después de «Quiero recibirlos», antes de «Sin contraseña».
+      // ⚠ ACTA (23-oct-2026, mockup `1b-deptos.html`) · «Entrar con Google» va PRIMERO, con el botón oficial (blanco, la G), y
+      // después «o con tu correo», el campo y «Quiero verlos».
       const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));
-      const og = ['type="email"', "{ALTA_COPY.pedir}", 'className="dp-google"', "{DEPTOS_COPY.sinContrasena}"].map((t) => form.indexOf(t));
-      if (ALTA_COPY.google !== "o con Google" || og.some((i) => i < 0) || og.some((i, k) => k > 0 && i < og[k - 1])) F("9 · «o con Google» no está debajo del campo del correo");
+      const og = ['className="dp-google"', "{DEPTOS_COPY.correo.oTuCorreo}", 'type="email"', "{ALTA_COPY.pedir}", "{DEPTOS_COPY.correo.nota}"].map((t) => form.indexOf(t));
+      if (ALTA_COPY.google !== "Entrar con Google" || og.some((i) => i < 0) || og.some((i, k) => k > 0 && i < og[k - 1])) F("9 · «Entrar con Google» no va primero, antes de «o con tu correo» y el campo");
+      if (!/\.dp-google \{[^}]*border: 1px solid #747775; background: #FFFFFF; color: #1F1F1F;/.test(leer("src/app/deptos/deptos.css")) || !/<IconoGoogle \/> \{ALTA_COPY\.google\}<\/button>/.test(cli)) F("9 · el botón de Google no es el oficial (blanco, con la G)");
     }
     // ── 10 · SE EXPLICA SOLA Y PIDE EL CORREO DESDE EL PRINCIPIO (17-oct-2026) ──
     {
-      // Qué es, en una frase, con las cifras de la noche (el total redondeado a miles; los que convenían, exactos).
-      // ⚠ ACTA (17-oct-2026, goal «que el número se entienda») · UNA sola frase arriba, con «+» en el total (en miles y hacia
-      // abajo: nunca dice más de lo que hay) y «como inversión» en los de anoche. Se fueron la segunda línea («Cada semana
-      // te manda…») y «Anoche» como línea aparte.
-      if (DEPTOS_COPY.que(21453, 4886) !== "Cada noche Franco revisa los +21.000 deptos en venta publicados en Santiago. Anoche, 4.886 convenían como inversión.")
-        F("10 · la frase de arriba no es una sola, con las cifras de la noche");
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `1b-deptos.html`) · la frase de la noche bajó a la PRUEBA, debajo
+      // del correo («Cada noche Franco revisa las +21.000 publicaciones en venta de Santiago y calcula cuáles convienen como
+      // inversión. Anoche, 4.886 deptos.», con «Ver un análisis real»); arriba van el título en serif y la bajada con «Se van
+      // rápido.». Sin cifras, «todas las publicaciones». Mutaciones: Q11 la prueba redondea hacia arriba · Q12 inventa cifras.
+      const pr = DEPTOS_COPY.prueba(21453, 4886);
+      if (`${pr.antes}${pr.fuerte}${pr.despues}` !== "Cada noche Franco revisa las +21.000 publicaciones en venta de Santiago y calcula cuáles convienen como inversión. Anoche, 4.886 deptos." || pr.fuerte !== "las +21.000 publicaciones")
+        F("10 · la prueba no es una frase con las cifras de la noche");
       if (masDeMiles(21999) !== "+21.000" || masDeMiles(21000) !== "+21.000" || masDeMiles(9876) !== "9.876") F("10 · el total de la frase no va en miles hacia abajo con «+» (o redondea hacia arriba)");
-      if (DEPTOS_COPY.que(null, null) !== "Cada noche Franco revisa los deptos en venta publicados en Santiago.") F("10 · sin cifras de la noche, la frase inventa números");
-      if ("queB" in DEPTOS_COPY || "anoche" in DEPTOS_COPY) F("10 · vuelve la frase en dos líneas");
-      if (DEPTOS_COPY.afina !== "Cambia la búsqueda") F("10 · el título de los chips no es «Cambia la búsqueda»");
+      const pr0 = DEPTOS_COPY.prueba(null, null);
+      if (`${pr0.antes}${pr0.fuerte}${pr0.despues}` !== "Cada noche Franco revisa todas las publicaciones en venta de Santiago y calcula cuáles convienen como inversión." || /\d/.test(pr0.fuerte + pr0.despues)) F("10 · sin cifras de la noche, la prueba inventa números");
+      if ("queB" in DEPTOS_COPY || "anoche" in DEPTOS_COPY || "que" in DEPTOS_COPY || "afina" in DEPTOS_COPY) F("10 · vuelve la frase de arriba o «Cambia la búsqueda»");
+      if (DEPTOS_COPY.titulo !== "Accede antes que el resto a los deptos en venta que convienen como inversión." || DEPTOS_COPY.bajadaFuerte !== "Se van rápido." || DEPTOS_COPY.bajada !== "Franco rastrea cada noche todas las publicaciones y selecciona las que más calzan con tu perfil de inversión.")
+        F("10 · el título o la bajada no son los del mockup");
       // La búsqueda por defecto: Santiago, 2D, UF 3.000 a 4.000.
       if (JSON.stringify(ELECCIONES_POR_DEFECTO.comunas) !== '["Santiago"]' || ELECCIONES_POR_DEFECTO.tipologias[0] !== "2" || ELECCIONES_POR_DEFECTO.rango !== "3000-4000") F("10 · la página no arranca con Santiago, 2D, UF 3.000 a 4.000");
       // El resumen de la noche cuenta lo mismo que la respuesta: deptos_conteo sobre toda la cobertura, sumado.
@@ -526,41 +546,41 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // antes (tier PUERTA-B-RECORRIDO §1). Sin comuna la búsqueda no está completa y no se pide.
       const cliD = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (!/const \[respuesta, setRespuesta\] = useState<RespuestaDeptos \| null>\(portada\?\.inicial \?\? null\);/.test(cliD)
-        || !/const \[comunas, setComunas\] = useState<string\[\]>\(\[\.\.\.\(portada\?\.comunas \?\? \[\]\)\]\);/.test(cliD)
+        || !/const \{ comunas, tipologia, rango \} = busqueda;/.test(cliD)
         || !/const completo = comunas\.length > 0 && !!tipologia && !!rango;/.test(cliD) || !/if \(!completo\) \{ setRespuesta\(null\); return; \}/.test(cliD)
         || !/const servida = useRef<string \| null>\(portada\?\.inicial \? claveInicial\(portada\.comunas, portada\.rango\) : null\);/.test(cliD)
-        || !/const \[rango, setRango\] = useState<string>\(portada\?\.rango \?\? ELECCIONES_POR_DEFECTO\.rango\);/.test(cliD)
         || !/if \(clave === servida\.current\) return;/.test(cliD)) F("10 · la página no arranca sin comuna, o con `?comuna=` sin el número desde el servidor");
       if (!/const portada = await portadaDeptos\(comunaDeLaUrl\(searchParams\?\.comuna\)\);/.test(leer("src/app/deptos/page.tsx")) || !/const portada = modo === "invitado" \? await portadaDeptos\(\) : undefined;/.test(leer("src/app/i/[codigo]/page.tsx")))
         F("10 · /deptos o la página del invitado no traen la portada del servidor");
-      // El orden: la frase, la etiqueta, el número, la nota, la banda del correo y, debajo, «Cambia la búsqueda» con los chips.
+      // El orden (mockup): el título, la bajada, «¿Qué buscas?», el número, el correo y, debajo, la prueba.
       const el = cliD.slice(cliD.indexOf('data-deptos="elegir"'));
-      const ord = ['data-deptos="que"', 'data-deptos="respuesta"', 'data-deptos="si"', 'className="dp-numero"', 'data-deptos="nota"', 'data-deptos="banda"', 'data-deptos="afina"', 'data-pregunta="comuna"', 'data-pregunta="rango"'].map((t) => el.indexOf(t));
-      if (ord.some((i) => i < 0) || ord.some((i, k) => k > 0 && i < ord[k - 1])) F("10 · el orden no es la frase, la etiqueta, el número, la nota, la banda del correo y «Cambia la búsqueda» con los chips");
-      if (!/<h1 className="dp-que" data-deptos="que">\{DEPTOS_COPY\.que\(portada\?\.noche\?\.revisados \?\? null, portada\?\.noche\?\.convienen \?\? null\)\}<\/h1>/.test(cliD) || (cliD.match(/<h1 /g) ?? []).length !== 3) F("10 · arriba no va UNA frase con las dos cifras de la noche");
-      // Etiqueta y número cambian juntos: los dos salen de la MISMA respuesta del servidor (no de los chips), y mientras
+      const ord = ['data-deptos="titulo"', 'data-deptos="bajada"', 'data-deptos="campos"', 'data-deptos="respuesta"', 'data-deptos="cifra"', 'data-deptos="nota"', 'data-deptos="banda"', 'data-deptos="prueba"', 'data-deptos="ver-analisis"'].map((t) => el.indexOf(t));
+      if (ord.some((i) => i < 0) || ord.some((i, k) => k > 0 && i < ord[k - 1])) F("10 · el orden no es el título, la bajada, «¿Qué buscas?», el número, el correo y la prueba");
+      if (!/<h1 className="dp-titulo" data-deptos="titulo">\{DEPTOS_COPY\.titulo\}<\/h1>\s*<p className="dp-bajada" data-deptos="bajada"><b>\{DEPTOS_COPY\.bajadaFuerte\}<\/b> \{DEPTOS_COPY\.bajada\}<\/p>/.test(cliD) || (cliD.match(/<h1 /g) ?? []).length !== 3) F("10 · arriba no van el título en serif y la bajada con «Se van rápido.» en negrita");
+      // El número y su resto cambian juntos: los dos salen de la MISMA respuesta del servidor (no de los campos), y mientras
       // llega la nueva se atenúan juntos.
-      if (!/<p className="dp-si" data-deptos="si">\{respuesta\.etiqueta\}<\/p>\s*<p className="dp-numero" data-convienen=\{respuesta\.convienen\}>/.test(cliD) || /DEPTOS_COPY\.si\(/.test(cliD)) F("10 · la etiqueta no sale de la misma respuesta que el número (no cambiarían juntos)");
-      if (!/\.dp-respuesta\[data-cargando="1"\] \.dp-si, \.dp-respuesta\[data-cargando="1"\] \.dp-numero, \.dp-respuesta\[data-cargando="1"\] \.dp-nota-num \{ opacity: 0\.55; \}/.test(leer("src/app/deptos/deptos.css"))) F("10 · mientras cambia, la etiqueta y el número no se atenúan juntos");
-      if (!/\.dp-nota-num \{[^}]*font-size: 12\.5px;/.test(leer("src/app/deptos/deptos.css")) || !/\.dp-numero \{ font-size: 30px; font-weight: 700;/.test(leer("src/app/deptos/deptos.css"))) F("10 · el número no es grande o la nota no es chica");
-      // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color.
+      if (!/<span className="dp-cifra" data-deptos="cifra">\{miles\(respuesta\.convienen\)\}<\/span><span className="dp-resto">\{respuesta\.resto\}<\/span>/.test(cliD) || /DEPTOS_COPY\.resto\(/.test(cliD)) F("10 · el resto no sale de la misma respuesta que el número (no cambiarían juntos)");
+      if (!/\.dp-tarjeta-numero\[data-cargando="1"\] \.dp-numero, \.dp-tarjeta-numero\[data-cargando="1"\] \.dp-ayuda \{ opacity: 0\.55; \}/.test(leer("src/app/deptos/deptos.css"))) F("10 · mientras cambia, el número y la nota no se atenúan juntos");
+      if (!/<p className="dp-prueba-t">\{prueba\.antes\}<b>\{prueba\.fuerte\}<\/b>\{prueba\.despues\}<\/p>\s*<EnlaceCarga href=\{DEPTOS_COPY\.hrefAnalisis\} className="dp-prueba-enlace" data-deptos="ver-analisis">\{DEPTOS_COPY\.verAnalisis\} →<\/EnlaceCarga>/.test(cliD) || DEPTOS_COPY.hrefAnalisis !== "/demo" || DEPTOS_COPY.verAnalisis !== "Ver un análisis real")
+        F("10 · la prueba no lleva la frase con la negrita y «Ver un análisis real» al demo");
+      // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color de fondo además de
+      // la tarjeta roja del regalo (solo en «Estás dentro») y el pin rojo de las tarjetas (mockup 2).
       const cssD = leer("src/app/deptos/deptos.css");
       // ⚠ ACTA (20-oct-2026, LCP en el teléfono) · el material es el mismo, en dos tiempos: la banda pinta el degradado liso
       // y el fondo con grano y su capa entran encima con la página quieta (`html[data-grano] .dp-banda::before/::after`).
       // Lo que queda es lo de siempre; LANDING-RENDIMIENTO §8 vigila que lo pesado no baje antes. Y «ningún otro fondo» se
-      // cuenta por REGLA, no por cantidad de url(): son cinco, todas de la banda.
+      // cuenta por REGLA, no por cantidad de url(): las de la banda, y la flecha del <select> (un svg en línea, sin color de fondo).
       if (!/\.dp-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-liso-m2x\.webp"\)/.test(cssD)
         || !/html\[data-grano\] \.dp-banda::before \{ background-image: url\("\/landing\/hero-m2x\.webp"\); opacity: 1; \}/.test(cssD)
         || !/html\[data-grano\] \.dp-banda::after \{ background-image: url\("\/landing\/grano-256\.png"\);/.test(cssD)
-        || !/\.dp-banda \.dp-boton \{ background: #FAFAF8; color: #0F0F0F; \}/.test(cssD))
+        || !/\.dp-boton \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(cssD))
         F("10 · el correo no va en la banda (degradado, texto blanco, un botón)");
       const conFondo = Array.from(cssD.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g))
         .filter((m) => /url\(|linear-gradient|radial-gradient/.test(m[2])).map((m) => m[1].trim());
-      if (!conFondo.length || conFondo.some((sel) => !/^(html\[data-grano\] )?\.dp-banda(::before|::after)?$/.test(sel))) F(`10 · hay otro fondo con color en la página además de la banda (${conFondo.filter((sel) => !/\.dp-banda/.test(sel)).join(", ")})`);
-      // Los chips, planos y compactos.
-      if (!/\.dp-afina \.dp-chip \{ min-height: 30px;[^}]*border-color: transparent;/.test(cssD)) F("10 · los chips de «Afina tu búsqueda» no son planos y compactos");
-      // Siempre hay una comuna: sin ella no habría número.
-      if (!/xs\.includes\(c\) \? \(xs\.length === 1 \? xs : xs\.filter\(\(x\) => x !== c\)\)/.test(cliD)) F("10 · se puede soltar la última comuna y quedar sin número");
+      if (!conFondo.length || conFondo.some((sel) => !/^(html\[data-grano\] )?\.dp-banda(::before|::after)?$|^\.dp-select$/.test(sel))) F(`10 · hay otro fondo con color en la página además de la banda (${conFondo.filter((sel) => !/\.dp-banda|\.dp-select/.test(sel)).join(", ")})`);
+      if (!/\.dp-regalo \{[^}]*background: var\(--signal-red\); color: #FFFFFF;/.test(cssD) || !/\.sel-pin \{[^}]*background: var\(--signal-red\); color: #FFFFFF;/.test(cssD)) F("10 · la tarjeta del regalo o el pin de las tarjetas no van en Signal Red");
+      // Siempre hay una comuna: el select no tiene vacío que elegir y solo cambia con una comuna.
+      if (!/onChange=\{\(e\) => \{ const c = e\.target\.value; if \(c\) cambiar\("comuna", \{ comunas: \[c, \.\.\.extras\.filter\(\(x\) => x !== c\)\] \}\); \}\}/.test(sinComentarios(leer("src/components/deptos/CamposBusqueda.tsx")))) F("10 · se puede soltar la comuna y quedar sin número");
       // La página del invitado: el mismo tratamiento, con su línea «Te invitaron a Franco» arriba y la dirección al final.
       const invD = sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx"));
       if (!/portada=\{portada\}\s+cabecera=\{linea\}\s+pie=\{/.test(invD) || !/<b data-invitacion="titular">\{titular\}<\/b>/.test(invD)) F("10 · la página del invitado no tiene el mismo tratamiento con «Te invitaron a Franco» arriba");

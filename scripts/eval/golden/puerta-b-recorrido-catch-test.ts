@@ -100,7 +100,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
   // ── 1 · EL PERFIL ES DE LA PERSONA ──
   try {
     const dc = codigo("src/app/deptos/deptos-cliente.tsx");
-    const r = respuesta as typeof respuesta & { puedePedirCorreo?: (c: readonly string[]) => boolean; lineaBuscas?: (b: unknown) => string; busquedaDePerfil?: (p: unknown) => unknown; cambiosDeBusqueda?: (b: unknown) => unknown; BUSCAS_COPY?: Record<string, string> };
+    const r = respuesta as typeof respuesta & { puedePedirCorreo?: (c: readonly string[]) => boolean; lineaPerfil?: (b: unknown) => string; busquedaDePerfil?: (p: unknown) => unknown; cambiosDeBusqueda?: (b: unknown) => unknown };
     if (typeof r.puedePedirCorreo !== "function") F("1 · no hay regla de cuándo se puede pedir el correo (puedePedirCorreo)");
     else if (r.puedePedirCorreo([]) || !r.puedePedirCorreo(["Ñuñoa"])) F("1 · sin comuna se puede pedir el correo, o con una no");
     // La portada sin `?comuna=`: ninguna comuna (portada.ts). El componente, dibujado con ella, sin sesión.
@@ -110,7 +110,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const rango = respuesta.ELECCIONES_POR_DEFECTO.rango;
     const sinChip = dibujarConRouter(createElement(DeptosCliente, { sesion: null, portada: { noche: null, inicial: null, comunas: [], rango } }));
     if (/data-deptos="correo"/.test(sinChip) || /type="email"/.test(sinChip)) F("1 · /deptos sin comuna elegida muestra el campo del correo: una cuenta podría dejar el correo sin tocar ningún chip");
-    if (r.BUSCAS_COPY && !textos(sinChip).includes(r.BUSCAS_COPY.eligeComuna)) F(`1 · /deptos sin comuna no pide elegirla («${r.BUSCAS_COPY.eligeComuna}»)`);
+    // ⚠ ACTA (23-oct-2026, mockup 1b) · sin comuna, la tarjeta «¿Qué buscas?» dice «Elige la comuna y te decimos cuántos convienen hoy.».
+    if (!textos(sinChip).includes(respuesta.DEPTOS_COPY.eligeYTeDecimos)) F(`1 · /deptos sin comuna no pide elegirla («${respuesta.DEPTOS_COPY.eligeYTeDecimos}»)`);
     if (/data-deptos="respuesta"|data-deptos="banda"/.test(sinChip)) F("1 · /deptos sin comuna ya muestra el número o el banner del correo");
     const conChip = dibujarConRouter(createElement(DeptosCliente, { sesion: null, portada: { noche: null, inicial: null, comunas: ["Santiago"], rango } }));
     if (!/data-deptos="correo"/.test(conChip)) F("1 · con la comuna elegida, /deptos no muestra el correo (el guard no puede ser sacar el correo)");
@@ -119,37 +120,30 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
       const cuerpo = entre(dc, fn, "\n  }\n");
       if (!/if \(!puedePedirCorreo\(comunas\)\) return;/.test(cuerpo)) F(`1 · ${fn.replace("async function ", "")} no corta sin comuna`);
     }
-    // «Buscas:» y sus chips: la línea, ida y vuelta con el perfil, y lo que se guarda.
-    if (typeof r.lineaBuscas !== "function" || typeof r.busquedaDePerfil !== "function" || typeof r.cambiosDeBusqueda !== "function") F("1 · falta la línea «Buscas» (lineaBuscas, busquedaDePerfil, cambiosDeBusqueda)");
+    // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `2-estas-dentro.html`) · «Buscas: … · Cambiar» con sus chips se fue:
+    // «Estás dentro» dice «Tu perfil de búsqueda» en una línea —«Santiago · 2 dormitorios · UF 3.000 a 4.000» (lineaPerfil, con
+    // el nombre largo de la tipología)— y «Editar» lleva al perfil del dashboard (/dashboard#perfil), donde los mismos tres
+    // campos guardan cada cambio. El alta sigue devolviendo la búsqueda (busquedaDePerfil); cambiosDeBusqueda queda para el
+    // dashboard. /api/deptos/rearmar sigue (lo usará el perfil del dashboard, parte 2). Mutaciones: R39 la línea con «2D» ·
+    // R40 «Editar» a otro lado · R41 vuelven los chips de «Buscas» en «Estás dentro».
+    if (typeof r.lineaPerfil !== "function" || typeof r.busquedaDePerfil !== "function" || typeof r.cambiosDeBusqueda !== "function") F("1 · falta la línea del perfil (lineaPerfil, busquedaDePerfil, cambiosDeBusqueda)");
     else {
-      if (r.lineaBuscas({ comunas: ["Santiago"], tipologia: "2", rango: "3000-4000" }) !== "Santiago · 2D · UF 3.000 a 4.000") F(`1 · la línea «Buscas» no dice «Santiago · 2D · UF 3.000 a 4.000»: «${r.lineaBuscas({ comunas: ["Santiago"], tipologia: "2", rango: "3000-4000" })}»`);
+      if (r.lineaPerfil({ comunas: ["Santiago"], tipologia: "2", rango: "3000-4000" }) !== "Santiago · 2 dormitorios · UF 3.000 a 4.000") F(`1 · la línea del perfil no dice «Santiago · 2 dormitorios · UF 3.000 a 4.000»: «${r.lineaPerfil({ comunas: ["Santiago"], tipologia: "2", rango: "3000-4000" })}»`);
       for (const t of respuesta.TIPOLOGIAS_DEPTOS) for (const rg of respuesta.RANGOS_UF) {
         const v = respuesta.validarElecciones({ comunas: ["Ñuñoa", "Macul"], tipologias: [t.id], rango: rg.id, modalidad: "ltr" });
         if (!v.ok) { F(`1 · la elección ${t.id}/${rg.id} no valida`); continue; }
         const b = r.busquedaDePerfil(respuesta.perfilManualDeElecciones(v)) as { comunas: string[]; tipologia: string; rango: string } | null;
-        if (!b || b.tipologia !== t.id || b.rango !== rg.id || b.comunas.join() !== "Ñuñoa,Macul") F(`1 · el perfil guardado no vuelve a los chips ${t.id}/${rg.id}: ${JSON.stringify(b)}`);
+        if (!b || b.tipologia !== t.id || b.rango !== rg.id || b.comunas.join() !== "Ñuñoa,Macul") F(`1 · el perfil guardado no vuelve a los campos ${t.id}/${rg.id}: ${JSON.stringify(b)}`);
       }
-      if (r.cambiosDeBusqueda({ comunas: [], tipologia: "2", rango: "3000-4000" }) !== null) F("1 · «Buscas» sin comuna se guardaría");
+      if (r.cambiosDeBusqueda({ comunas: [], tipologia: "2", rango: "3000-4000" }) !== null) F("1 · una búsqueda sin comuna se guardaría");
     }
     // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta).
     const alta = codigo("src/lib/deptos/alta-servidor.ts");
-    if (!/cuerpo: \{ estado: "nueva", regaloVence: regalo\.vence, busqueda: busquedaDePerfil\(pend\.perfil/.test(alta)) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea «Buscas»)");
-    const dentro = entre(dc, 'paso === "dentro"', "</main>") || entre(dc, 'paso === "dentro"', "\n}\n");
-    if (!/data-deptos="buscas"/.test(dentro) || !/lineaBuscas\(busca\)/.test(dentro) || !/data-deptos="cambiar"/.test(dentro)) F("1 · «Estás dentro» no dice «Buscas: … · Cambiar» antes de los deptos");
-    // Lo que se toca no se guarda en el toque: recién al seguir («Listo» o «Ir a mi panel»).
-    for (const fn of ["const tocarBusca = (", "const tocarComunaBusca = ("]) {
-      const cuerpo = entre(dc, fn, "\n  };\n");
-      const nombre = fn.replace(/const | = \($/g, "");
-      if (!cuerpo) F(`1 · falta ${nombre}`);
-      else if (/fetch\(|guardarBusca\(/.test(cuerpo)) F(`1 · ${nombre} guarda en el toque, antes de que la persona siga`);
-    }
-    if (!/const tocarBusca = \(cambio: Partial<BusquedaDeptos>\) => \{\s*setBusca\(\(b\) => \(b \? \{ \.\.\.b, \.\.\.cambio \} : b\)\);\s*setSinGuardar\(true\);/.test(dc)) F("1 · tocar un chip de «Buscas» no cambia la línea ni queda pendiente de guardar");
-    const guardar = entre(dc, "async function guardarBusca", "\n  }\n");
-    if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(guardar) || !/fetch\("\/api\/deptos\/rearmar"/.test(guardar)) F("1 · «Listo» no guarda el perfil y rearma la selección del día");
-    const irPanel = entre(dc, "async function irAlPanel", "\n  }\n");
-    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el presionado ya no se escribe a mano: `{...botonOcupado(x)}` deja
-    // el botón presionado y con el aro; y toda ida por código tras el servidor enciende la barra con iniciarCarga(claveActual()).
-    if (!/if \(sinGuardar && !\(await guardarBusca\(\)\)\) \{ setYendo\(null\); return; \}\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(irPanel)) F("1 · «Ir a mi panel» no guarda lo cambiado antes de irse (o se va sin la barra)");
+    if (!/cuerpo: \{ estado: "nueva", regaloVence: regalo\.vence, busqueda: busquedaDePerfil\(pend\.perfil/.test(alta)) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea del perfil)");
+    const dentro = entre(dc, 'if (paso === "dentro") {', 'if (paso === "agregar" && agregar) {');
+    if (!/data-deptos="perfil"/.test(dentro) || !/<p className="dp-perfil-linea" data-deptos="perfil-linea">\{lineaPerfil\(busca\)\}<\/p>/.test(dentro) || !/<EnlaceCarga href=\{ESTAS_DENTRO_DEPTOS\.perfil\.hrefEditar\} className="dp-enlace" data-deptos="editar">/.test(dentro) || respuesta.ESTAS_DENTRO_DEPTOS.perfil.hrefEditar !== "/dashboard#perfil")
+      F("1 · «Estás dentro» no dice «Tu perfil de búsqueda» en una línea con «Editar» al perfil del dashboard");
+    if (/data-deptos="buscas"|tocarBusca|guardarBusca|<CamposBusqueda|dp-chip/.test(dentro)) F("1 · «Estás dentro» vuelve a editar la búsqueda ahí (va en el dashboard)");
     const rearmar = codigo("src/app/api/deptos/rearmar/route.ts");
     if (!/if \(fila\?\.enviada_at\) return/.test(rearmar) || !/\.delete\(\)\.eq\("id", fila\.id\)\.is\("enviada_at", null\)/.test(rearmar) || !/encolarPrimeraSeleccion\(/.test(rearmar)) F("1 · /api/deptos/rearmar no rearma solo la selección del día que todavía no salió");
   } catch (e) {
@@ -165,7 +159,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if (!/if \(pasoActual\.current === "dentro"\) return;\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro» (o se va sin la barra)");
     const efecto = entre(dc, 'const entro = new URLSearchParams(window.location.search).get("entro");', "}, [sesion, terminarAlta");
     if (!/\|\| altaPedida\.current\) return;\s*const entro = /.test(dc) || !/altaPedida\.current = true;\s*window\.history\.replaceState\(window\.history\.state, "", window\.location\.pathname\);/.test(efecto) || efecto.indexOf("claveDeDestino(") > efecto.indexOf("replaceState(")) F("2 · el `?entro=1` vuelve a correr el alta después del refresco (o la clave de Google se lee después de limpiar la dirección)");
-    if (!/data-deptos="ir-panel"/.test(dc) || !/onClick=\{\(\) => void irAlPanel\(\)\}|onClick=\{irAlPanel\}/.test(dc)) F("2 · «Estás dentro» no tiene «Ir a mi panel»");
+    // ⚠ ACTA (23-oct-2026, mockup 2) · «Ir a mi dashboard», un enlace con la barra (EnlaceCarga), al final de «Estás dentro».
+    if (!/<EnlaceCarga href=\{ESTAS_DENTRO_DEPTOS\.hrefDashboard\} className="dp-boton-contorno" data-deptos="ir-panel">\{ESTAS_DENTRO_DEPTOS\.dashboard\}<\/EnlaceCarga>/.test(dc) || respuesta.ESTAS_DENTRO_DEPTOS.dashboard !== "Ir a mi dashboard") F("2 · «Estás dentro» no tiene «Ir a mi dashboard»");
   } catch (e) {
     F(`2 · no corrió: ${(e as Error).message}`);
   }

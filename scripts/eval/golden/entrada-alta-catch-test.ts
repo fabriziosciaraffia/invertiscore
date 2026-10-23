@@ -107,7 +107,8 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     if (/setCodigo\(""\)|setEnviado\(null\)/.test(entrar)) F("1 · al fallar se pierde el código o el correo (habría que pedir otro)");
     const terminar = entre(dc, "const terminarAlta = useCallback(", "}, [aplicarAlta]);");
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/alta"/.test(terminar) || !/if \(!r\.ok\) \{ setAltaPorReintentar\(\{ clave, metodo \}\); return; \}/.test(terminar)) F("1 · al volver por el enlace o por Google, el alta no tiene tope ni salida");
-    if (!/\{altaPorReintentar && \(\s*<div className="dp-bloque" data-deptos="alta-fallida">\s*<button type="button" className="dp-boton" onClick=\{\(\) => void terminarAlta\(altaPorReintentar\.clave, altaPorReintentar\.metodo\)\} disabled=\{altaEnCurso\} \{\.\.\.botonOcupado\(altaEnCurso\)\}>\{ENTRAR_COPY\.noPudimos\}<\/button>/.test(dc)) F("1 · sin alta al volver por el enlace o por Google, no hay cómo reintentarla");
+    // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup 1b) · el reintento va fuera de la banda, con el botón en tinta (dp-fin).
+    if (!/\{altaPorReintentar && \(\s*<div className="dp-fin dp-fin-izq" data-deptos="alta-fallida">\s*<button type="button" className="dp-boton dp-boton-tinta" onClick=\{\(\) => void terminarAlta\(altaPorReintentar\.clave, altaPorReintentar\.metodo\)\} disabled=\{altaEnCurso\} \{\.\.\.botonOcupado\(altaEnCurso\)\}>\{ENTRAR_COPY\.noPudimos\}<\/button>/.test(dc)) F("1 · sin alta al volver por el enlace o por Google, no hay cómo reintentarla");
   } catch (e) {
     F(`1 · no corrió: ${(e as Error).message}`);
   }

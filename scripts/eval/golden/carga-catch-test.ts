@@ -64,11 +64,10 @@ function etiquetasCon(src: string, marcador: string): string[] {
 const BOTONES: Array<[string, string, string, number?]> = [
   ["src/app/deptos/deptos-cliente.tsx", 'data-deptos="entrar"', "/deptos · «Entrar»"],
   ["src/app/deptos/deptos-cliente.tsx", "{ALTA_COPY.pedir}</button>", "/deptos · «Pedir código»"],
-  ["src/app/deptos/deptos-cliente.tsx", "onClick={() => void conGoogle()}", "/deptos · «o con Google»"],
-  ["src/app/deptos/deptos-cliente.tsx", "onClick={() => void elegirModalidad(m.id)}", "/deptos · el chip de modalidad"],
-  ["src/app/deptos/deptos-cliente.tsx", "onClick={() => void elegirCuando(h.id)}", "/deptos · el chip del «cuándo»"],
-  ["src/app/deptos/deptos-cliente.tsx", 'data-deptos="buscas-listo"', "/deptos · «Listo» de «Buscas»"],
-  ["src/app/deptos/deptos-cliente.tsx", 'data-deptos="ir-panel"', "/deptos · «Ir a mi panel»"],
+  // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockups 1b y 2) · /deptos ya no pregunta la modalidad ni el «cuándo» (van al
+  // perfil del dashboard) ni tiene «Listo» de «Buscas» (el perfil se edita en el dashboard); «Ir a mi dashboard» es un EnlaceCarga
+  // (§4). «o con Google» pasó a «Entrar con Google», el mismo botón.
+  ["src/app/deptos/deptos-cliente.tsx", "onClick={() => void conGoogle()}", "/deptos · «Entrar con Google»"],
   ["src/app/deptos/deptos-cliente.tsx", "{ALTA_COPY.agregarSi}</button>", "/deptos · «Sí, agregar»"],
   ["src/app/deptos/deptos-cliente.tsx", "{ALTA_COPY.agregarNo}</button>", "/deptos · «No» de agregar"],
   ["src/app/deptos/deptos-cliente.tsx", "{ENTRAR_COPY.noPudimos}</button>", "/deptos · el reintento del alta"],
@@ -111,10 +110,12 @@ const CHIPS: Array<[string, string, string, number?]> = [
   ["src/components/lo-que-sigue/EstasDentro.tsx", 'aria-label="Tipología"', "«Estás dentro» · tipología"],
   ["src/components/lo-que-sigue/EstasDentro.tsx", 'aria-label="Comuna"', "«Estás dentro» · comuna"],
   ["src/components/lo-que-sigue/EstasDentro.tsx", 'aria-label="Modalidad"', "«Estás dentro» · modalidad"],
-  ["src/app/dashboard/casa.tsx", "{CASA.perfil.masDormitorio}</span>", "la casa · «+ dormitorios»"],
-  ["src/app/dashboard/casa.tsx", "{CASA.perfil.masComuna}</span>", "la casa · «+ comuna»"],
-  ["src/app/dashboard/casa.tsx", 'data-chip="rango"', "la casa · el rango"],
-  ["src/app/dashboard/casa.tsx", 'data-chip="tope"', "la casa · el tope"],
+  // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1») · la comuna, los dormitorios y el rango del perfil de la casa se editan con los
+  // tres campos de /deptos (CamposBusqueda): el nombre del campo que se guarda lleva el aro (`ocupado`, que la casa deriva de
+  // `guardando`, §3). Se fueron «+ dormitorios», «+ comuna», el rango y el tope como chips.
+  ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.comuna}</label>", "los tres campos · la comuna"],
+  ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.tipologia}</label>", "los tres campos · la tipología"],
+  ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.rango}</label>", "los tres campos · el rango"],
   ["src/app/dashboard/casa.tsx", 'data-chip="modalidad"', "la casa · la modalidad"],
   ["src/app/dashboard/casa.tsx", 'data-chip="pie"', "la casa · el pie"],
   ["src/app/dashboard/casa.tsx", 'data-chip="plazo"', "la casa · el plazo"],
@@ -127,7 +128,9 @@ const CHIPS: Array<[string, string, string, number?]> = [
 /** Los archivos auditados: en ellos el presionado no se escribe a mano (lo escribe el helper), y cuántas navegaciones
  *  por código tiene cada uno (una nueva sin la barra pone esto en rojo a propósito). */
 const AUDITADOS: Array<[string, number]> = [
-  ["src/app/deptos/deptos-cliente.tsx", 3],
+  ["src/app/deptos/deptos-cliente.tsx", 2],
+  ["src/components/deptos/CamposBusqueda.tsx", 0],
+  ["src/components/guia/AvisoAntesDeAnalizar.tsx", 1],
   ["src/components/lo-que-sigue/EstasDentro.tsx", 0],
   ["src/components/lo-que-sigue/HorizontePostPago.tsx", 0],
   ["src/app/dashboard/casa.tsx", 0],
@@ -194,15 +197,22 @@ export function runCargaTier(): { hard: number } {
   const bienvenida = codigo("src/app/dashboard/bienvenida.tsx");
   if (!/setGuardando\(campo\);\s*setError\(!\(await guardar\(perfil\.analysisId, \{ \[campo\]: valor \}\)\)\);\s*setGuardando\(null\);/.test(bienvenida)) F("3 · los chips de la bienvenida no marcan el que se guarda");
   const deptos = codigo("src/app/deptos/deptos-cliente.tsx");
-  if (!/setGuardando\("modalidad"\);\s*const res = await fetch\("\/api\/perfil-busqueda"[^\n]*\n\s*setGuardando\(null\);/.test(deptos) || !/setGuardando\("cuando"\);\s*try \{/.test(deptos)) F("3 · /deptos no marca el chip de modalidad o del «cuándo» mientras guarda");
+  // ⚠ ACTA (23-oct-2026) · los tres campos del perfil de la casa: el que se guarda se marca con `ocupado`, derivado del mismo
+  // `guardando` que marcan los chips, y el componente lo pone en el nombre del campo (chipOcupado).
+  if (!/const campoOcupado: CampoBusqueda \| null = guardando === "comunas" \? "comuna" : guardando === "dormitorios" \? "tipologia" : guardando === "precioMinUf\+precioMaxUf" \? "rango" : null;/.test(casa) || !/<CamposBusqueda multiple [^>]*ocupado=\{campoOcupado\}/.test(casa)) F("3 · el perfil de la casa no le dice a los tres campos cuál se está guardando");
+  const campos = codigo("src/components/deptos/CamposBusqueda.tsx");
+  if (!/\{\.\.\.chipOcupado\(ocupado === "comuna"\)\}/.test(campos) || !/\{\.\.\.chipOcupado\(ocupado === "tipologia"\)\}/.test(campos) || !/\{\.\.\.chipOcupado\(ocupado === "rango"\)\}/.test(campos)) F("3 · los tres campos no marcan el que se guarda con su nombre");
   const post = codigo("src/components/lo-que-sigue/HorizontePostPago.tsx");
   if (!/setGuardando\(true\);\s*capturarLqs\([^\n]*\n\s*try \{/.test(post) || !/\} finally \{\s*setGuardando\(false\);\s*\}/.test(post)) F("3 · el «cuándo» de después de pagar no marca el chip mientras guarda");
 
   // ── 4 · lo que navega después del servidor enciende la barra ──
   const cuenta = (s: string, re: RegExp) => (s.match(re) ?? []).length;
-  if (cuenta(deptos, /router\.push\("\/dashboard"\)/g) !== 3 || cuenta(deptos, /iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/g) !== 3) F("4 · en /deptos alguna ida al dashboard (el alta, «Ir a mi panel», sumar comunas) no enciende la barra");
+  // ⚠ ACTA (23-oct-2026, mockup 2) · «Ir a mi dashboard» es un enlace (EnlaceCarga: la barra la enciende él); quedan dos idas por
+  // código: el alta de una cuenta existente sin comunas nuevas y «Sí, agregar»/«No».
+  if (cuenta(deptos, /router\.push\("\/dashboard"\)/g) !== 2 || cuenta(deptos, /iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/g) !== 2) F("4 · en /deptos alguna ida al dashboard (el alta, sumar comunas) no enciende la barra");
+  if (!/<EnlaceCarga href=\{ESTAS_DENTRO_DEPTOS\.hrefDashboard\} className="dp-boton-contorno" data-deptos="ir-panel">/.test(deptos)) F("4 · «Ir a mi dashboard» no es un EnlaceCarga (se iría sin la barra)");
   if (!/setAltaEnCurso\(true\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*try \{/.test(deptos) || !/\} finally \{\s*soltar\(\);\s*setAltaEnCurso\(false\);\s*\}/.test(deptos)) F("4 · el alta de la vuelta por el enlace o por Google no enciende la barra mientras corre (ni la suelta)");
-  if (!/setYendo\("panel"\);\s*if \(sinGuardar && !\(await guardarBusca\(\)\)\) \{ setYendo\(null\); return; \}/.test(deptos) || !/setYendo\(si \? "si" : "no"\);/.test(deptos)) F("4 · «Ir a mi panel» o «Sí, agregar» no se marcan yéndose");
+  if (!/setYendo\(si \? "si" : "no"\);/.test(deptos)) F("4 · «Sí, agregar» no se marca yéndose");
   const guia = codigo("src/components/guia/GuiaBusqueda.tsx");
   if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);/.test(guia) || !/abrio = true;\s*router\.push\(`\/analisis\/\$\{d\.id\}`\);/.test(guia) || !/\} finally \{\s*if \(!abrio\) soltar\(\);\s*\}/.test(guia)) F("4 · «Analizar este» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
   if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(codigo("src/components/deptos/PrimeraSeleccion.tsx"))) F("4 · «Analizar este» de la primera selección no enciende la barra");
@@ -269,6 +279,11 @@ export function runCargaTier(): { hard: number } {
 // servidor · C12 el perfil de la casa no suelta el chip. Reescritos con su acta: AFFORDANCE §3 (checkout), ENTRADA-ALTA §1
 // (dos botones), GUIA-BUSQUEDA §14 (el aro global), PUERTA-B-RECORRIDO §1·2 (las idas con la barra), RETIRO-IA §4 (el PDF
 // es un botón), CASA §10 (invitar ocupado), PAGO-SIN-SESION §3 (otro correo con señal).
+// ACTA (23-oct-2026, goal «puerta B, parte 1»). /deptos perdió los chips de modalidad y «cuándo» y «Listo» (van al perfil del
+// dashboard, parte 2); «Ir a mi dashboard» es un EnlaceCarga (2 idas por código en vez de 3); los tres campos (CamposBusqueda)
+// reemplazan en la casa a «+ dormitorios», «+ comuna», el rango y el tope, y marcan con el aro el nombre del campo que se
+// guarda; AvisoAntesDeAnalizar entra a los auditados con su única ida (comprar). Mutaciones, todas ROJAS: D1 un campo sin
+// chipOcupado · D2 la casa sin `ocupado` · D3 «Ir a mi dashboard» como <a> sin EnlaceCarga.
 
 if (require.main === module) {
   process.exit(runCargaTier().hard ? 1 : 0);

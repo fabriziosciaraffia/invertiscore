@@ -244,7 +244,10 @@ export function runWizardInteriorTier(): { hard: number } {
   else if (/\b(font-mono|font-heading|signal-red|uppercase)/.test(mapaScr)) F("11 · la pantalla del mapa vuelve a mono, serif o rojo");
   // El rojo del CSS: solo el botón de avanzar y los estados de error / atención.
   const css = sinComentarios(leer("src/components/formulario-v4/wizard-v4.css"));
-  const PERMITIDOS = new Set([".wz-cta", ".wz-aviso.fuerte", '.wz-input[aria-invalid="true"]', ".wz-modal-o .ov.sosp", ".wz-fe.wz-ilumina", ".wz-error"]);
+  // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup D2; tier PUERTA-B-MOCKUPS §3) · el pop-up de la selección pinta en
+  // Signal Red la tarjeta del CAMBIO de veredicto («Con pie 10 % este depto da Ajustar.»: el veredicto empeoró, es atención
+  // real) y el aviso de que no pudo recalcular (un error). Nada más del pop-up.
+  const PERMITIDOS = new Set([".wz-cta", ".wz-aviso.fuerte", '.wz-input[aria-invalid="true"]', ".wz-modal-o .ov.sosp", ".wz-fe.wz-ilumina", ".wz-error", ".av-fallo", ".av-cambio", ".av-cambio b"]);
   let rojos = 0;
   for (const regla of css.split("}")) {
     const [sel, cuerpo] = regla.split("{");

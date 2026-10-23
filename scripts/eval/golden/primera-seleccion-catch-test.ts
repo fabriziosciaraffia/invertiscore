@@ -41,7 +41,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION, tituloHoja,
+  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion,
 } from "../../../src/lib/guia/del-dia";
 import { encolarPrimeraSeleccion, rellenarDeLaNoche } from "../../../src/lib/guia/del-dia-servidor";
 import { queEnviarSemanal } from "../../../src/lib/guia/semanal";
@@ -254,10 +254,11 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
         F("6 · la hoja no es el velo del ticket con la selección y «Seguir leyendo el informe»");
       const dp = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
       if (/"primeros"/.test(dp.slice(dp.indexOf("type Paso"), dp.indexOf("\n", dp.indexOf("type Paso")))) || /setPaso\("primeros"\)/.test(dp)) F("6 · /deptos vuelve a esconder los deptos detrás del «cuándo» (el paso «primeros»)");
-      const iDentro = dp.indexOf('if (paso === "dentro") {'), iPS = dp.indexOf("<PrimeraSeleccion key={version} />"), iCuando = dp.indexOf('data-deptos="cuando"');
-      if (iDentro < 0 || iPS < iDentro || iCuando < 0 || iPS < iCuando) F("6 · /deptos (y la página del invitado) no muestra la primera selección en la misma pantalla de «Estás dentro», debajo del «cuándo»");
-      // Sin condición en el medio: ni el «cuándo» ni nada la esconde.
-      if (!/<div className="dp-bloque" data-deptos="primeros" data-cambiando=\{cambiando \? "1" : undefined\}>\s*<PrimeraSeleccion key=\{version\} \/>\s*<\/div>/.test(dp)) F("6 · en /deptos la primera selección queda detrás de una condición (se vuelve a esperar)");
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `2-estas-dentro.html`) · el «cuándo» y la modalidad se fueron de
+      // «Estás dentro» (van al perfil del dashboard): la selección va justo después del regalo, sin condición.
+      const iDentro = dp.indexOf('if (paso === "dentro") {'), iPS = dp.indexOf('<PrimeraSeleccion encabezado="dentro" />');
+      if (iDentro < 0 || iPS < iDentro || /data-deptos="cuando"|data-deptos="modalidad"/.test(dp)) F("6 · /deptos (y la página del invitado) no muestra la primera selección en «Estás dentro», o vuelve a preguntar el «cuándo» ahí");
+      if (!/<div data-deptos="primeros">\s*<PrimeraSeleccion encabezado="dentro" \/>\s*<\/div>/.test(dp)) F("6 · en /deptos la primera selección queda detrás de una condición (se vuelve a esperar)");
       if (!/<DeptosCliente/.test(leer("src/app/i/[codigo]/invitacion-cliente.tsx"))) F("6 · la página del invitado dejó de usar la pantalla de /deptos");
     }
 
@@ -265,38 +266,24 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     // Mutaciones: M31 otro título · M32 el título sin mirar el regalo · M33 el botón sin el token · M34 analiza por otra ruta
     // o sin el token · M35 sin el aviso antes de gastar · M36 el botón aunque el aviso no quedó en la selección.
     {
-      if (PRIMERA_SELECCION.tituloRegalo !== "Tienes un análisis de regalo: elige uno") F(`7 · el título con regalo no es el pedido: ${PRIMERA_SELECCION.tituloRegalo}`);
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `2-estas-dentro.html`) · el título es «Franco eligió estos 5 deptos
+      // para tu búsqueda.» (con cuántos; en singular con uno; «Tu selección» mientras no hay qué contar), bajo el kicker «Tu
+      // selección»; el regalo se dice en la tarjeta roja de arriba y en el botón («Analizar este · usa tu regalo»), no en el
+      // título. Mutaciones: T32 el título sin el número · T33 el botón sin «usa tu regalo» con el regalo · T34 con regalo y sin
+      // deptos, «elige».
+      if (tituloSeleccion(5) !== "Franco eligió estos 5 deptos para tu búsqueda." || tituloSeleccion(1) !== "Franco eligió este depto para tu búsqueda." || tituloSeleccion(0) !== "Tu selección" || PRIMERA_SELECCION.kicker !== "Tu selección")
+        F(`7 · el título no es «Franco eligió estos N deptos para tu búsqueda.»: ${tituloSeleccion(5)}`);
+      if (/elige/i.test(tituloSeleccion(0)) || /elige/i.test(tituloSeleccion(3))) F("7 · el título vuelve a pedir que elija uno");
+      if (textoAnalizar(true) !== "Analizar este · usa tu regalo" || textoAnalizar(false) !== "Analizar este") F("7 · el botón no dice «Analizar este · usa tu regalo» con el regalo (y «Analizar este» sin él)");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      // ⚠ ACTA (20-oct-2026, Fabrizio) · sin deptos («ninguno») no hay qué elegir: con el regalo vivo el título pasa a
-      // «Tienes un análisis de regalo guardado», sin «elige uno»; en los demás estados queda igual. El título sale de
-      // `tituloHoja`, con la misma condición que esconde la bajada. Mutaciones: T25 otro texto · T26 sin deptos sigue
-      // «elige uno» · T27 dice «guardado» con deptos · T28 dice «guardado» sin regalo · T29 la pantalla no usa `tituloHoja`
-      // o le pasa otra condición.
-      // ⚠ ACTA (20-oct-2026, Fabrizio, segunda del título) · sin deptos y SIN regalo, el título pasa a «Tus primeros deptos»,
-      // sin «elige uno». Mutaciones: T30 sin regalo y sin deptos sigue «elige uno» · T31 otro texto.
-      if (PRIMERA_SELECCION.tituloRegaloGuardado !== "Tienes un análisis de regalo guardado") F(`7 · el título con regalo y sin deptos no es el pedido: ${PRIMERA_SELECCION.tituloRegaloGuardado}`);
-      if (PRIMERA_SELECCION.tituloSinDeptos !== "Tus primeros deptos") F(`7 · el título sin regalo y sin deptos no es el pedido: ${PRIMERA_SELECCION.tituloSinDeptos}`);
-      const casos: Array<[boolean, boolean, string]> = [
-        [true, false, PRIMERA_SELECCION.tituloRegalo],
-        [true, true, "Tienes un análisis de regalo guardado"],
-        [false, false, PRIMERA_SELECCION.titulo],
-        [false, true, "Tus primeros deptos"],
-      ];
-      for (const [regalo, sinDeptos, esperado] of casos) {
-        const t = tituloHoja({ regalo, sinDeptos });
-        if (t !== esperado) F(`7 · ${regalo ? "con" : "sin"} regalo y ${sinDeptos ? "sin" : "con"} deptos, el título es «${t}» (va «${esperado}»)`);
-      }
-      // «Elige uno» solo cuando hay qué elegir: con deptos sí, sin deptos nunca, haya o no regalo.
-      for (const regalo of [true, false]) {
-        if (/elige uno/i.test(tituloHoja({ regalo, sinDeptos: true }))) F(`7 · sin deptos y ${regalo ? "con" : "sin"} regalo, el título sigue pidiendo que elija uno`);
-        if (!/elige uno/i.test(tituloHoja({ regalo, sinDeptos: false }))) F(`7 · con deptos y ${regalo ? "con" : "sin"} regalo, el título dejó de decir «elige uno»`);
-      }
-      if (!/<h2 className="guia-bloque" data-primera="titulo">\{tituloHoja\(\{ regalo: !!datos\?\.regaloVence, sinDeptos \}\)\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
-        F("7 · el título no dice el regalo cuando lo hay, o no mira si hay deptos con la misma condición que la bajada");
-      if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{it\.informeId \? \(\s*<div className="guia-acc" data-primera="ya-analizado">[\s\S]{0,400}?<\/div>\s*\) : puede && \(\s*<div className="guia-acc">\s*<button type="button" className="guia-an" onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
+      if (!/const titulo = tituloSeleccion\(items\.length\);/.test(ps) || !/<h2 className=\{encabezado === "casa" \? "ca-plano-t" : "dp-h2"\} data-primera="titulo">\{titulo\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
+        F("7 · el título no cuenta los deptos de la selección, o no mira si hay deptos con la misma condición que la bajada");
+      if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{it\.informeId \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
       if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}semanal: datos\.token \}\)/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
-      if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : GUIA\.analizar\}/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este»");
+      if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este · usa tu regalo» con el regalo");
+      // Tres a la vista y «Ver los N que faltan» (mockup 2).
+      if (TARJETAS_A_LA_VISTA !== 3 || PRIMERA_SELECCION.verMas(2) !== "Ver los 2 que faltan" || PRIMERA_SELECCION.verMas(1) !== "Ver el que falta" || !/const visibles = verTodos \? items : items\.slice\(0, TARJETAS_A_LA_VISTA\);/.test(ps) || !/data-primera="ver-mas">\{PRIMERA_SELECCION\.verMas\(faltanPorVer\)\}<\/button>/.test(ps)) F("7 · no van tres a la vista con «Ver los N que faltan»");
       if (!/router\.push\(`\/analisis\/\$\{d\.id\}`\)/.test(ps)) F("7 · al analizar no lleva al informe");
     }
 
@@ -333,8 +320,9 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (faltanDelPerfil({ comunas: ["Ñuñoa"], dormitorios: [2], precioMaxUf: 4000 }).length !== 0) F("9 · con comuna, dormitorios y tope pide chips");
       if (JSON.stringify(faltanDelPerfil({ comunas: ["Ñuñoa"], dormitorios: [2], precioMaxUf: 0 })) !== '["rango"]') F("9 · un tope en cero pasa como rango");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/\{datos && datos\.faltan\.length > 0 && \(\s*<div className="mt-3" data-primera="faltan">/.test(ps) || !/data-primera="falta-comuna"/.test(ps) || !/data-primera="falta-tipologia"/.test(ps) || !/data-primera="falta-rango"/.test(ps))
-        F("9 · la pantalla no pide los chips que faltan");
+      // ⚠ ACTA (23-oct-2026, mockup 1b) · los que faltan se piden con los mismos tres campos de /deptos (CamposBusqueda, `campos`).
+      if (!/\{datos && datos\.faltan\.length > 0 && \(\s*<div className="sel-faltan" data-primera="faltan">/.test(ps) || !/<CamposBusqueda valor=\{eleccion\} campos=\{datos\.faltan\}/.test(ps))
+        F("9 · la pantalla no pide los campos que faltan");
       if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(ps) || !/setDatos\(null\);\s*await leer\(\);/.test(ps)) F("9 · los chips elegidos no se guardan en el perfil, o no se vuelve a armar");
     }
 
@@ -367,12 +355,15 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     // Mutaciones: T1 vuelve el texto viejo · T2 una palabra cambiada · T3 la pantalla deja de dibujarlo bajo el título · T4 una
     // superficie lo escribe a mano con el texto viejo.
     {
-      const BAJADA = "Franco eligió estos deptos para tu búsqueda, con tu pie y tu plazo. En unos minutos te llega al correo la selección confirmada.";
-      if (PRIMERA_SELECCION.bajada !== BAJADA) F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajada}»`);
-      if (/anoche|correo de esta hora/i.test(PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche» o «el correo de esta hora»");
+      // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `2-estas-dentro.html`) · la bajada es «Publicaciones vigentes y
+      // analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.» (sin regalo, «Analiza el que más te
+      // interese.»): sin pie ni plazo y sin lo del correo. Mutaciones: T35 otra bajada · T36 la bajada con el regalo sin regalo.
+      const BAJADA = "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.";
+      if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
+      if (/anoche|correo|pie|plazo/i.test(PRIMERA_SELECCION.bajadaRegalo + PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche», lo del correo, el pie o el plazo");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/<h2 className="guia-bloque" data-primera="titulo">\{tituloHoja\(\{ regalo: !!datos\?\.regaloVence, sinDeptos \}\)\}<\/h2>\}\s*\{titulo && !sinDeptos && <p className="guia-txt" data-primera="bajada">\{PRIMERA_SELECCION\.bajada\}<\/p>\}/.test(ps))
-        F("12 · la pantalla no dibuja ese texto justo bajo «Tienes un análisis de regalo: elige uno»");
+      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
+        F("12 · la pantalla no dibuja ese texto justo bajo el título (con el regalo cuando lo hay)");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";
       const archivos = readdirSync(join(RAIZ, "src"), { recursive: true, encoding: "utf8" }).filter((f) => /\.(ts|tsx)$/.test(f));
@@ -386,24 +377,23 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // bajada, una vez. Y sin deptos la bajada no se muestra: queda solo «ninguno». Mutaciones: T19 la tarjeta vuelve a decir
       // lo del correo · T20 la bajada sale también sin deptos · T21 `hojaSinDeptos` da sin deptos con uno en la lista · T22 da
       // sin deptos mientras revisa · T23 da sin deptos con chips por pedir · T24 «ninguno» sale con otra condición.
-      const POR_CONFIRMAR = "Elegido para tu búsqueda.";
+      // ⚠ ACTA (23-oct-2026, mockup 2) · la marca por tarjeta («Elegido para tu búsqueda.» / «Visto publicado…») se fue: la
+      // bajada dice una vez «Publicaciones vigentes…». Mutación: T37 vuelve la marca por tarjeta.
       const NINGUNO = "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.";
-      if (PRIMERA_SELECCION.porConfirmar !== POR_CONFIRMAR) F(`12 · el depto sin ficha leída no dice lo pedido: «${PRIMERA_SELECCION.porConfirmar}»`);
+      if ("porConfirmar" in PRIMERA_SELECCION || /data-primera="marca"|marcaVisto/.test(ps)) F("12 · vuelve la marca del chequeo por tarjeta");
       if (PRIMERA_SELECCION.ninguno !== NINGUNO) F(`12 · sin deptos la hoja no dice lo pedido: «${PRIMERA_SELECCION.ninguno}»`);
-      for (const [k, t] of Object.entries(PRIMERA_SELECCION)) if (/anoche|correo de esta hora/i.test(t)) F(`12 · «${k}» de la hoja dice «anoche» o «el correo de esta hora»: «${t}»`);
-      if (!/<p className="guia-cr mt-2\.5" data-primera="marca">\{it\.vistoAt \? marcaVisto\(it\.vistoAt\) : PRIMERA_SELECCION\.porConfirmar\}<\/p>/.test(ps)) F("12 · la tarjeta sin ficha leída no dice «porConfirmar»");
-      if (!/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps) || !/\{sinDeptos && <p className="guia-txt mt-3" data-primera="ninguno">\{PRIMERA_SELECCION\.ninguno\}<\/p>\}/.test(ps)) F("12 · sin deptos la hoja no dice «ninguno» (o lo dice con otra condición que la de la bajada)");
+      for (const [k, t] of Object.entries(PRIMERA_SELECCION)) if (typeof t === "string" && /anoche|correo de esta hora/i.test(t)) F(`12 · «${k}» de la hoja dice «anoche» o «el correo de esta hora»: «${t}»`);
+      if (!/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps) || !/\{sinDeptos && <p className="sel-estado" data-primera="ninguno">\{PRIMERA_SELECCION\.ninguno\}<\/p>\}/.test(ps)) F("12 · sin deptos la hoja no dice «ninguno» (o lo dice con otra condición que la de la bajada)");
       // Cuándo está sin deptos: ni chips por pedir, ni revisando, ni un depto.
       const d = (o: { faltan?: string[]; items?: number; revisando?: boolean }) => ({ faltan: o.faltan ?? [], items: Array.from({ length: o.items ?? 0 }, () => ({})), revisando: o.revisando ?? false });
       if (!hojaSinDeptos(d({}))) F("12 · sin chips por pedir, sin revisar y sin deptos, la hoja no se da por «ninguno»");
       if (hojaSinDeptos(d({ items: 1 })) || hojaSinDeptos(d({ revisando: true })) || hojaSinDeptos(d({ faltan: ["comuna"] })) || hojaSinDeptos(null))
         F("12 · la hoja se da por «ninguno» con un depto, mientras revisa, con chips por pedir o sin datos (escondería la bajada)");
-      // LO DEL CORREO, UNA SOLA VEZ en lo que la persona lee en cada estado: la bajada salvo sin deptos, «ninguno» sin deptos,
-      // y «porConfirmar» en cada tarjeta sin ficha leída.
-      const loQueSeLee = (e: ReturnType<typeof d>) => [...(hojaSinDeptos(e) ? [PRIMERA_SELECCION.ninguno] : [PRIMERA_SELECCION.bajada]), ...e.items.map(() => PRIMERA_SELECCION.porConfirmar)].join(" ");
-      for (const [caso, e] of [["con 1 depto por confirmar", d({ items: 1 })], ["con 5 deptos por confirmar", d({ items: 5 })], ["sin deptos", d({})]] as const) {
+      // LO DEL CORREO: con deptos no se dice (mockup 2: «sin lo del correo»); sin deptos lo dice «ninguno», una vez.
+      const loQueSeLee = (e: ReturnType<typeof d>) => (hojaSinDeptos(e) ? [PRIMERA_SELECCION.ninguno] : [PRIMERA_SELECCION.bajadaRegalo]).join(" ");
+      for (const [caso, e, va] of [["con 1 depto", d({ items: 1 }), 0], ["con 5 deptos", d({ items: 5 }), 0], ["sin deptos", d({}), 1]] as const) {
         const n = (loQueSeLee(e).match(/al correo/g) ?? []).length;
-        if (n !== 1) F(`12 · ${caso}, lo del correo se lee ${n} veces (va una)`);
+        if (n !== va) F(`12 · ${caso}, lo del correo se lee ${n} veces (va ${va})`);
       }
       for (const f of archivos) if (leer(join("src", f)).includes("Anoche no había uno publicado que convenga")) F(`12 · src/${f.replace(/\\/g, "/")} todavía dice el «ninguno» viejo`);
     }

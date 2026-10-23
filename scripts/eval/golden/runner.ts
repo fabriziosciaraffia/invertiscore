@@ -156,6 +156,7 @@ import { runAgenteServidorTier } from "./agente-servidor-catch-test";
 import { runPanelActivacionTier } from "./panel-activacion-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
+import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
@@ -663,6 +664,10 @@ function printSeed(r: SeedReport) {
   // y se queda; la selección vive en el dashboard con «Analizar este» y el aviso cargando; el ticket es de toda cuenta nueva
   // (el pop-up sin saldo: el pack y «Comprar solo 1»); lo analizado se ve en vivo y el clic del correo aterriza ahí. ──
   totalHard += (await runPuertaBRecorridoTier()).hard;
+  // Tier PUERTA-B-MOCKUPS (23-oct-2026, 0 tokens): /deptos según el mockup (sin comuna no hay correo), «Estás dentro» sin las dos
+  // preguntas, el pop-up que recalcula al cambiar el pie y nunca cobra sin el veredicto, el orden fijo de la selección y los
+  // tres campos en el perfil de la casa. ──
+  totalHard += (await runPuertaBMockupsTier()).hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;
