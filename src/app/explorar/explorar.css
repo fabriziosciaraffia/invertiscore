@@ -41,7 +41,7 @@
 /* El mapa quieto del primer pintado: cubre el área del mapa debajo del real y se desvanece cuando el real dibujó sus teselas.
    En oscuro, la misma foto invertida (calles claras sobre fondo oscuro, como el estilo oscuro del mapa). */
 .ex-mapa-quieto { position: absolute; inset: 0; z-index: 1; pointer-events: none; transition: opacity 0.5s ease; }
-.ex-mapa-quieto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 58%; }
+.ex-mapa-quieto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
 .ex-mapa-wrap[data-mapa="teselas"] .ex-mapa-quieto { opacity: 0; }
 :root:not([data-theme="light"]) .ex-mapa-quieto img { filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.9); }
 @media (prefers-reduced-motion: reduce) { .ex-mapa-quieto { transition: none; } }

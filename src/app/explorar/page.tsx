@@ -59,7 +59,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
           <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
             <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={MAPA_QUIETO_M} alt="" width={560} height={650} fetchPriority="high" decoding="async" />
+            <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="async" />
           </picture>
         }
       />
