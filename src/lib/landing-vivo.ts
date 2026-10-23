@@ -33,7 +33,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { filtroNoTest, getTestAccountIds } from "@/lib/admin-rpc";
-import { readVeredicto } from "@/lib/results-helpers";
+import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
+import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { derivarCifraClaveLtr, type CifraClave } from "@/lib/cifra-clave";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
@@ -173,18 +174,12 @@ async function ejemploDe(sb: SupabaseClient, fila: FilaEjemplo, ufLive: number, 
     try {
       const snap = fila.mediana_comuna_snapshot;
       const capRefSnapshot = fila.capref_comuna_snapshot;
+      // El snapshot entero (22-oct-2026, mediana-snapshot.ts) y el veredicto guardado (conVeredictoGuardado): como el informe.
       const medianaComuna =
         snap != null
-          ? {
-              mediana: snap.mediana,
-              n: snap.n ?? 0,
-              p25: snap.p25,
-              p75: snap.p75,
-              ...(snap.estimada ? { estimada: true } : {}),
-              capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(sb, input, uf)),
-            }
+          ? medianaDesdeSnapshot(snap, { capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(sb, input, uf)) })
           : await prefetchMedianaComunaVenta(sb, input, uf);
-      results = recomputeResultsForLegacy(input, uf, medianaComuna, new Date(fila.created_at));
+      results = conVeredictoGuardado(recomputeResultsForLegacy(input, uf, medianaComuna, new Date(fila.created_at)), fila.results);
     } catch (e) {
       aviso("recompute_" + fila.id.slice(0, 8), e);
       results = fila.results;

@@ -22,7 +22,8 @@ import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
-import { readVeredicto } from "@/lib/results-helpers";
+import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
+import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 
@@ -143,18 +144,11 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     | CapRefComunaSnapshot
     | null
     | undefined;
+  // El snapshot entero (22-oct-2026, mediana-snapshot.ts): cuartiles, «estimada» y el UNIVERSO, que el brazo de
+  // sobreprecio del gate 1 necesita; a mano se perdía y la portada contradecía al correo.
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
-        // Los cuartiles viajan con la mediana (21-sep-2026): `undefined` en snapshots
-        // anteriores al campo, y ahí el motor no emite posición.
-        ? {
-            mediana: medianaSnapshot.mediana,
-            n: medianaSnapshot.n ?? 0,
-            p25: medianaSnapshot.p25,
-            p75: medianaSnapshot.p75,
-            ...(medianaSnapshot.estimada ? { estimada: true } : {}),
-            capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
-          }
+        ? medianaDesdeSnapshot(medianaSnapshot, { capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)) })
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
   // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute
@@ -165,8 +159,10 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // Fecha de la mediana comunal para la celda de zona (goal "LTR hereda"): la del snapshot
   // (congelada al crear) o ahora, cuando se resolvió viva (filas pre-Fase A).
   const medianaResolvedAt = medianaSnapshot?.resolvedAt ?? new Date().toISOString();
+  // EL VEREDICTO ES EL GUARDADO (22-oct-2026, decisión de Fabrizio; results-helpers.ts › conVeredictoGuardado): la
+  // portada muestra el que el motor calculó al crear —el del correo y el dashboard—; el recálculo da el resto.
   const results: FullAnalysisResult | null = inputDataRaw
-    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen)
+    ? conVeredictoGuardado(recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen), rawResults)
     : (rawResults && rawResults.metrics
       ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
       : rawResults);

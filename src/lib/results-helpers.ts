@@ -34,3 +34,23 @@ export function readVeredicto(results: ResultsLike): Veredicto | undefined {
     results?.engineSignal;
   return normalizeLegacyVerdict(raw) ?? undefined;
 }
+
+/** `clasificacionColor` (legacy) deriva del veredicto: la misma regla al crear (analysis.ts) y al leer. */
+export function colorClasificacion(veredicto: Veredicto): "positive" | "red" | "yellow" {
+  return veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
+}
+
+/**
+ * EL VEREDICTO ES EL GUARDADO (22-oct-2026, decisión de Fabrizio). La portada no recalcula el veredicto: muestra el que
+ * el motor calculó al crear el informe —`results.veredicto`, el mismo que llevan el correo «tu informe está listo» y el
+ * dashboard—. Una sola fuente. El recálculo del render sigue dando las cifras, los hallazgos y la grilla; el veredicto
+ * (y su clasificación, que es el mismo valor en otro nombre) se toma de lo guardado. Sin veredicto guardado (filas
+ * legacy sin results) queda el recalculado.
+ * Motivo: un informe de fsm@ del 22-oct-2026 quedó BUSCAR OTRA al crearse (el correo lo dijo) y la portada mostraba
+ * Ajustar porque el recálculo perdía el universo de la mediana (mediana-snapshot.ts). Lo fija el tier VEREDICTO-GUARDADO.
+ */
+export function conVeredictoGuardado<T extends { veredicto?: unknown; clasificacion?: unknown; clasificacionColor?: unknown }>(recomputado: T, guardado: ResultsLike): T {
+  const v = readVeredicto(guardado);
+  if (!v) return recomputado;
+  return { ...recomputado, veredicto: v, clasificacion: v, clasificacionColor: colorClasificacion(v) };
+}

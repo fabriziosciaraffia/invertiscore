@@ -21,7 +21,8 @@ import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSna
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
-import { readVeredicto } from "@/lib/results-helpers";
+import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
+import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import type { Analisis, AnalisisInput, FullAnalysisResult, AIAnalysisV2 } from "@/lib/types";
 import { DocumentoLTR } from "./DocumentoLTR";
 import "./documento.css";
@@ -115,22 +116,17 @@ export default async function DocumentoLTRPage({
     | CapRefComunaSnapshot
     | null
     | undefined;
+  // El snapshot entero, con su universo (22-oct-2026, mediana-snapshot.ts), como la portada.
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
-        ? {
-            mediana: medianaSnapshot.mediana,
-            n: medianaSnapshot.n ?? 0,
-            p25: medianaSnapshot.p25,
-            p75: medianaSnapshot.p75,
-            ...(medianaSnapshot.estimada ? { estimada: true } : {}),
-            capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)),
-          }
+        ? medianaDesdeSnapshot(medianaSnapshot, { capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)) })
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
 
   const asOfFrozen = new Date(analisis.created_at);
+  // El veredicto es el guardado (22-oct-2026, results-helpers.ts › conVeredictoGuardado): el del correo y el dashboard.
   const results: FullAnalysisResult | null = inputDataRaw
-    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen)
+    ? conVeredictoGuardado(recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen), rawResults)
     : (rawResults && rawResults.metrics
         ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
         : rawResults);

@@ -12,7 +12,9 @@ import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-resul
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
 import { prefetchCapRefComuna, prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
-import { readVeredicto } from "@/lib/results-helpers";
+import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
+import { medianaDesdeSnapshot, type SnapshotMedianaLeido } from "@/lib/analysis/mediana-snapshot";
+import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
 import type { Veredicto } from "@/lib/types";
 
 import { COMPARAR_MAX, COMPARAR_MIN, type ColumnaComparar, type OpcionComparar } from "./comparar-tipos";
@@ -51,7 +53,7 @@ type ResultadoLeido = {
 type FilaComparar = {
   id: string; nombre: string | null; comuna: string | null; tipo_analisis: string | null; created_at: string;
   input_data: Record<string, unknown> | null; results: unknown;
-  mediana_comuna_snapshot: { mediana: number; n?: number; p25?: number; p75?: number; estimada?: boolean } | null;
+  mediana_comuna_snapshot: SnapshotMedianaLeido | null;
   capref_comuna_snapshot: unknown; strref_zona_snapshot: unknown;
 };
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -76,12 +78,13 @@ export async function columnasComparar(sb: SupabaseClient, userId: string, ids: 
       if (!esStr) {
         const uf = resolveUfForAnalysis(f.results as never, inp as never, ufLive, f.id);
         const snap = f.mediana_comuna_snapshot;
+        // El snapshot entero (22-oct-2026, mediana-snapshot.ts) y el veredicto guardado (conVeredictoGuardado): como el informe.
         const med = inp
           ? snap != null
-            ? { mediana: snap.mediana, n: snap.n ?? 0, p25: snap.p25, p75: snap.p75, ...(snap.estimada ? { estimada: true } : {}), capRefComuna: f.capref_comuna_snapshot ?? (await prefetchCapRefComuna(sb, inp as never, uf)) }
+            ? medianaDesdeSnapshot(snap, { capRefComuna: (f.capref_comuna_snapshot as CapRefComunaSnapshot | null) ?? (await prefetchCapRefComuna(sb, inp as never, uf)) })
             : await prefetchMedianaComunaVenta(sb, inp as never, uf)
           : undefined;
-        const r = (inp ? recomputeResultsForLegacy(inp as never, uf, med as never, asOf) : f.results) as ResultadoLeido;
+        const r = (inp ? conVeredictoGuardado(recomputeResultsForLegacy(inp as never, uf, med as never, asOf), f.results as never) : f.results) as ResultadoLeido;
         out.push({
           id, nombre: f.nombre || "Análisis", comuna: f.comuna ?? null, modalidad: "ltr",
           veredicto: readVeredicto(r as never) ?? null,

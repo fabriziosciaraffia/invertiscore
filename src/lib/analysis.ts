@@ -44,6 +44,7 @@ import { SOBREPRECIO_GATE_UMBRAL_PCT } from "./sobreprecio-hallazgo";
 import { repartoIngreso } from "./reparto-ingreso";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
+import { colorClasificacion } from "./results-helpers";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "./plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL, INFLACION_PROYECCION_ANUAL, crecimientoReal } from "./plusvalia-proyeccion";
@@ -2751,8 +2752,8 @@ export function runAnalysis(
   // final (post-gates y post-filtro), no del score crudo. Evita divergencia que antes ensuciaba
   // la BD (p.ej. veredicto="BUSCAR OTRA" pero clasificacion="AJUSTA SUPUESTOS").
   const clasificacion: string = veredicto;
-  const clasificacionColor: string =
-    veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
+  // La misma regla que aplica el informe al leer el veredicto guardado (results-helpers.ts › conVeredictoGuardado).
+  const clasificacionColor: string = colorClasificacion(veredicto);
 
   // ── LA GRILLA DE COMPRAR (15-sep-2026) ────────────────────────────────────
   //

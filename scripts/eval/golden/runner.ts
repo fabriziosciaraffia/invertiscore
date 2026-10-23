@@ -157,6 +157,7 @@ import { runPanelActivacionTier } from "./panel-activacion-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
+import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -659,6 +660,9 @@ function printSeed(r: SeedReport) {
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;
+  // Tier VEREDICTO-GUARDADO (22-oct-2026, 0 tokens): la portada, el PDF, comparar y la landing muestran el veredicto que el
+  // motor guardó —el del correo y el dashboard— y leen el snapshot de la mediana entero, con su universo. ──
+  totalHard += runVeredictoGuardadoTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;
