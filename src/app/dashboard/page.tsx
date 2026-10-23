@@ -9,6 +9,7 @@ import { cargarSeleccionPagina, hayDeptos, resumenDePagina } from "@/lib/guia/se
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
+import { datosExplorarCasa, ExplorarEnCasa } from "./explorar-en-casa";
 import { FrescoAlVolver } from "./fresco-al-volver";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -116,7 +117,8 @@ export default async function DashboardPage({
   const gratis = primerAnalisisGratis(creditsRow);
   // El saldo o el plan, visible arriba para cualquier cuenta (14-oct-2026): también en el dashboard vacío.
   const admin = createServiceClient();
-  const [datosSaldo, sel] = await Promise.all([leerSaldo(admin, user.id), cargarSeleccionPagina(admin, user, { t: tSel, a: aSel })]);
+  // Explorar (23-oct-2026): cuántos convienen con su búsqueda, para «Explorar los N en el mapa».
+  const [datosSaldo, sel, explorar] = await Promise.all([leerSaldo(admin, user.id), cargarSeleccionPagina(admin, user, { t: tSel, a: aSel }), datosExplorarCasa(admin, user.id)]);
   const saldo = estadoSaldo(datosSaldo);
   const resumenSel = resumenDePagina(sel);
   // El ticket de la cuenta nueva (21-oct-2026, compra-desde-depto.ts): menos de 24 horas y sin el pack pagado. CON O SIN
@@ -160,6 +162,7 @@ export default async function DashboardPage({
             <div className="ca-plano">
               <SaldoPlano estado={saldo} arriba={arriba0.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />
               <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera />
+              <ExplorarEnCasa datos={explorar} />
               <PerfilBusquedaCasa
                 comprador={false}
                 inicial={{ dormitorios: pb0.dormitorios, comunas: pb0.comunas, precioMaxUf: pb0.precioMaxUf, precioMinUf: pb0.editado.includes("precioMin") ? pb0.precioMinUf : null, modalidad: pb0.modalidad, piePct: pb0.piePct, plazoAnios: pb0.plazoAnios, horizonte: pb0.horizonte }}
@@ -282,6 +285,7 @@ export default async function DashboardPage({
           <SaldoPlano estado={saldo} arriba={arriba.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />
           {/* La selección como tarjetas, no solo como banner (21-oct-2026). */}
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={false} />
+          <ExplorarEnCasa datos={explorar} />
           {guiaCasa && (
             <div className="ca-plano-sec" data-casa="guia">
               <GuiaBusqueda analysisId={guiaCasa.analysisId} veredicto={guiaCasa.veredicto} conSesion saldo={saldo.tipo === "con" ? saldo.n : null} estado={saldo} enCasa={{ titulo: CASA.guiaTitulo }} />

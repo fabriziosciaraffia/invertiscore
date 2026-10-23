@@ -91,6 +91,12 @@ export const CASA = {
     error: "No pudimos guardarlo. Intenta de nuevo.",
   },
   informes: "Tus informes",
+  /** EXPLORAR (23-oct-2026): el botón del dashboard al mapa de todos los que convienen con su búsqueda. */
+  explorar: {
+    titulo: "Explorar el mapa",
+    bajada: "Todos los deptos que convienen con tu búsqueda, en el mapa. Explorar no gasta; analizar sí.",
+    boton: (n: number) => (n > 0 ? `Explorar los ${Math.round(n).toLocaleString("es-CL")} en el mapa` : "Explorar en el mapa"),
+  },
 } as const;
 
 /** El saldo en una línea, para el dashboard vacío (14-oct-2026: el saldo o el plan, visible arriba para cualquier
