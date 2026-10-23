@@ -73,6 +73,15 @@ export interface ModalPlausibilidadProps {
   labelRevisar?: string;
   marca?: string;
   /**
+   * EL POP-UP DE LA SELECCIÓN (23-oct-2026, mockups D1 y D2): el aviso antes de gastar dibuja su propio cuerpo —la tarjeta
+   * gris del depto, el pie y el plazo con «Cambiar», los selectores, la tarjeta del cambio, los dos derivados, la casilla—
+   * en lugar de la dirección, la modalidad, el destacado y los derivados del wizard. El consumo y la nota siguen debajo.
+   * Quien lo pasa pone el `id="modal-plausibilidad-titulo"` en la línea que nombra al depto (aria-labelledby).
+   */
+  cuerpo?: ReactNode;
+  /** El principal no se puede tocar (recalculando): deshabilitado sin el aro. */
+  bloqueado?: boolean;
+  /**
    * El aviso de la selección (21-oct-2026, recorrido real de Fabrizio por la puerta B): mientras se genera, el texto del
    * primario («Franco está analizando este depto…»), y sin saldo, una segunda compra bajo el primario («Comprar solo 1 ·
    * $9.990»). Sin ellas, el wizard se ve como siempre.
@@ -113,6 +122,8 @@ export function ModalPlausibilidad({
   destacado,
   labelRevisar = "Revisar",
   marca,
+  cuerpo,
+  bloqueado = false,
   labelGenerando = "Generando…",
   secundario,
   extra,
@@ -262,21 +273,25 @@ export function ModalPlausibilidad({
             </>
           ) : (
             <>
-              <h2 id="modal-plausibilidad-titulo" className="wz-modal-dir">
-                {resumen?.direccion ?? "Tu análisis"}
-              </h2>
-              {resumen?.modalidad && <div className="wz-modal-gl">{resumen.modalidad}</div>}
-              {destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>{destacado}</p>}
+              {cuerpo ?? (
+                <>
+                  <h2 id="modal-plausibilidad-titulo" className="wz-modal-dir">
+                    {resumen?.direccion ?? "Tu análisis"}
+                  </h2>
+                  {resumen?.modalidad && <div className="wz-modal-gl">{resumen.modalidad}</div>}
+                  {destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>{destacado}</p>}
 
-              {resumen && resumen.derivados.length > 0 && (
-                <div className="wz-modal-der">
-                  {resumen.derivados.map((d) => (
-                    <div key={d.label}>
-                      <div className="ol">{d.label}</div>
-                      <div className="ov">{d.valor}</div>
+                  {resumen && resumen.derivados.length > 0 && (
+                    <div className="wz-modal-der">
+                      {resumen.derivados.map((d) => (
+                        <div key={d.label}>
+                          <div className="ol">{d.label}</div>
+                          <div className="ov">{d.valor}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
 
               {extra && <div className="wz-modal-extra" data-modal-extra>{extra}</div>}
@@ -306,7 +321,7 @@ export function ModalPlausibilidad({
             )
           ) : (
             <>
-              <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting} {...botonOcupado(submitting)} className="wz-cta wz-cta-modal">
+              <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting || bloqueado} {...botonOcupado(submitting)} className="wz-cta wz-cta-modal">
                 {submitting ? labelGenerando : labelConfirmar}
               </button>
               {secundario && (

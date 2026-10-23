@@ -336,3 +336,32 @@
 .wz-step button:disabled { color: var(--tx4); cursor: default; }
 .wz-step-valor { width: 100%; min-width: 0; height: 46px; border: 0; background: none; text-align: center; font: inherit; font-size: 17px; font-weight: 700; color: var(--tx); outline: 0; }
 .wz-step:focus-within { box-shadow: 0 0 0 1px var(--tx); background: var(--page); }
+
+/* ═══ El pop-up de la selección (23-oct-2026, mockups D1 y D2; components/guia/AvisoAntesDeAnalizar.tsx) ═══
+   La tarjeta gris del depto, «Con pie de 20 % y plazo de 25 años · Cambiar», los selectores, la tarjeta del cambio (el
+   único tinte: rojo claro, es atención), los dos derivados y la casilla. Con los tokens del wizard (.wz4). */
+.av { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.av-tarjeta { background: var(--card); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.av-para { font-size: 13px; color: var(--tx3); }
+.av-nombre { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--tx); letter-spacing: 0; }
+.av-linea { font-size: 14px; color: var(--tx2); }
+.av-incluye { font-size: 13px; line-height: 1.4; color: var(--tx2); padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--line2); }
+.av-incluye b { font-weight: 600; color: var(--tx); }
+.av-combo { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; color: var(--tx2); }
+.av-combo b { font-weight: 600; color: var(--tx); }
+.av-cambiar { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; font-weight: 500; color: var(--tx); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; cursor: pointer; }
+.av-cambiar:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+.av-selects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.av-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.av-etq { font-size: 13px; font-weight: 500; color: var(--tx2); }
+.av-select { box-sizing: border-box; width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--line2); background-color: var(--page); color: var(--tx); padding: 0 36px 0 12px; font: inherit; font-size: 15px; appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2371717A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.av-select:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+.av-estado { margin: 0; font-size: 13px; color: var(--tx3); }
+.av-fallo { color: var(--wz-rojo); }
+.av-cambio { background: color-mix(in srgb, var(--wz-rojo) 9%, var(--page)); border: 1px solid color-mix(in srgb, var(--wz-rojo) 35%, transparent); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.av-cambio b { font-size: 14px; font-weight: 600; color: var(--wz-rojo); }
+.av-cambio span { font-size: 13px; line-height: 1.4; color: var(--tx2); }
+.av-der.wz-modal-der { margin-top: 0; padding-top: 0; border-top: 0; }
+.av-guardar { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.35; color: var(--tx2); cursor: pointer; }
+.av-guardar input { width: 18px; height: 18px; flex: none; accent-color: var(--tx); }

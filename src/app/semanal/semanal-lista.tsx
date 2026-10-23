@@ -32,6 +32,7 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { recalcularDepto } from "@/lib/guia/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
@@ -106,9 +107,11 @@ export function SemanalLista({
   const comprarSeleccion = compraDeLaSeleccion({ token, origen: origenCompra, variante: varianteCompra, ticket });
   const usa = saldo.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
 
-  async function analizar(it: ItemSemanal, recienPagado = false) {
+  // `combo` (23-oct-2026, mockup D2): la combinación que el pop-up dejó a la vista; sin él, la de la selección.
+  async function analizar(it: ItemSemanal, recienPagado = false, combo: { piePct: number; plazoAnios: number } | null = null) {
     // Sin informe de origen (16-oct-2026, la puerta B) se analiza igual: la ruta valida la selección por el token.
     if (generando || !combinacion) return;
+    const conCombo = combo ?? combinacion;
     setError(null);
     setTardo(null);
     setPopup(null);
@@ -133,7 +136,7 @@ export function SemanalLista({
           : await fetch("/api/lo-que-sigue/guia/analizar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, semanal: token }),
+              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, semanal: token }),
             });
         if (res.status === 409) {
           if (corta && Date.now() - t0 + ESPERA_EN_CURSO_MS >= MIDIENDO_TOPE_MS) { setTardo(it.avisoId); break; }
@@ -321,8 +324,10 @@ export function SemanalLista({
           ticketConSaldo={ticket && !corta ? ticketConSaldoDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt }) : null}
           rutaCompra={comprarSeleccion.href}
           analizando={!!confirmar.analizando}
+          // El pop-up recalcula (23-oct-2026, D2): solo en renta larga, con el token de la selección.
+          recalcular={corta ? undefined : (combo) => recalcularDepto({ token, avisoId: confirmar.it.avisoId, origenId, combo })}
           // Renta corta: el aviso se cierra y la tarjeta mide. Renta larga: queda abierto, cargando, hasta el informe.
-          alAnalizar={() => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it); }}
+          alAnalizar={(combo) => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it, false, corta ? null : combo); }}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}
