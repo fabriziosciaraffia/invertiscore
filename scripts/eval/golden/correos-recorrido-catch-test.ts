@@ -197,7 +197,9 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   // perfil y desaparece (queda «Respondido · Cambiar»).
   const pagina = sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   const casaPerfil = sinComentarios(leer("src/app/dashboard/casa.tsx"));
-  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte;/.test(casaPerfil) || !/\{preguntar \? \(\s*<div data-casa="horizonte">\s*<p [^>]*>\{CASA\.perfil\.cuando\}<\/p>/.test(casaPerfil)) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
+  // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · los chips también se quedan mientras se guarda la respuesta (el tocado,
+  // girando); si no, la línea los reemplazaba al toque y el aro no se veía nunca.
+  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte \|\| guardando === "horizonte";/.test(casaPerfil) || !/\{preguntar \? \(\s*<div data-casa="horizonte">\s*<p [^>]*>\{CASA\.perfil\.cuando\}<\/p>/.test(casaPerfil)) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
   if (/PreguntaCuando|CASA\.perfil\.cuando|¿Cuándo piensas comprar\?/.test(pagina)) F("7 · la selección repite la pregunta del perfil en la misma página");
   if (!/onClick=\{\(\) => \{ setCambiandoHorizonte\(false\); void cambiar\(\{ horizonte: h \}, \{ horizonte: h \}\); \}\}/.test(casaPerfil) || !/data-casa="horizonte-respondido"/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");

@@ -15,8 +15,8 @@ import { emitirRegistroAlCrear } from "@/lib/meta/registro";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
-/** Lo que Meta acepta hacia atrás. */
-export const VENTANA_RELLENO_MS = 7 * 24 * 3600_000;
+/** Lo que Meta acepta hacia atrás. (No se exporta: una ruta de Next solo exporta sus handlers y su config; el build lo rechaza.) */
+const VENTANA_RELLENO_MS = 7 * 24 * 3600_000;
 
 export async function POST(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
