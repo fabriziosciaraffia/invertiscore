@@ -6,6 +6,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA } from "@/lib/explorar/explorar";
+import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
 import { ExplorarCliente } from "./explorar-cliente";
 
@@ -20,7 +21,9 @@ import { ExplorarCliente } from "./explorar-cliente";
 // —que llega a los 8 s, después del load— y daba 9,7 s con el primer pintado a 1,3 s. Una foto quieta del mapa de Santiago
 // con el estilo de Franco (public/explorar/mapa-quieto-*.webp, 16/32 kB), precargada desde el <head> y pintada debajo del
 // mapa desde el primer cuadro, es lo más grande de la pantalla: es el LCP, y las teselas, más chicas, no lo mueven. Se
-// desvanece cuando el mapa real terminó de dibujar sus teselas.
+// desvanece cuando el mapa real terminó de dibujar sus teselas. EN EL TELÉFONO VA INCRUSTADA EN EL HTML (mapa-quieto.ts):
+// como archivo precargado empezaba a bajar 1,3 s después del primer byte y el LCP quedaba en 2,5 s. Se dibuja ACÁ, en el
+// servidor, y viaja al cliente como un nodo: así los 11 kB no entran al JS de la página.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = { title: EXPLORAR_COPY.pestana, robots: { index: false, follow: false } };
@@ -43,7 +46,6 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   const a = sp.get("a");
   return (
     <div className="ex-pagina" data-explorar="pagina">
-      <link rel="preload" as="image" href={MAPA_QUIETO.m} media="(max-width: 767px)" fetchPriority="high" />
       <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
       <ExplorarCliente
@@ -53,6 +55,13 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
         }}
         abrir={a}
         autoAnalizar={sp.get("analizar") === "1" ? a : null}
+        mapaQuieto={
+          <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
+            <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={MAPA_QUIETO_M} alt="" width={560} height={650} fetchPriority="high" decoding="async" />
+          </picture>
+        }
       />
     </div>
   );

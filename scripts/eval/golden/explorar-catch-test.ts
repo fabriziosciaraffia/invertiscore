@@ -171,15 +171,18 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/import \{ EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
   if (!/if \(!inicial\.completo\) void cargar\(inicial\.filtros, false\);/.test(cli)) F("5 · el resto de los pines no llega con el mapa");
   // ⚠ ACTA (23-oct-2026, medido en producción: 9,7 s) · sin el mapa quieto, la primera tesela de Google (a los 8 s) es el LCP.
-  for (const [k, tope] of [["m", 40], ["d", 60]] as const) {
-    const ruta = `public${ex.MAPA_QUIETO[k]}`;
-    if (!existe(ruta)) F(`5 · falta el mapa quieto ${ruta}`);
-    else if (readFileSync(join(RAIZ, ruta)).length > tope * 1024) F(`5 · el mapa quieto ${ruta} pesa más de ${tope} kB (va antes del LCP)`);
-  }
+  // En el teléfono va INCRUSTADO en el HTML (mapa-quieto.ts): como archivo precargado llegaba 1,3 s tarde y el LCP daba 2,5 s.
+  const quieto = cargar<typeof import("../../../src/lib/explorar/mapa-quieto")>("src/lib/explorar/mapa-quieto.ts");
+  if (!quieto?.MAPA_QUIETO_M?.startsWith("data:image/webp;base64,")) F("5 · falta el mapa quieto incrustado (MAPA_QUIETO_M, data URI webp)");
+  else if (quieto.MAPA_QUIETO_M.length > 24 * 1024) F(`5 · el mapa quieto incrustado pesa ${Math.round(quieto.MAPA_QUIETO_M.length / 1024)} kB en el HTML (tope 24)`);
+  if (!existe(`public${ex.MAPA_QUIETO.d}`)) F("5 · falta el mapa quieto de escritorio");
+  else if (readFileSync(join(RAIZ, `public${ex.MAPA_QUIETO.d}`)).length > 60 * 1024) F("5 · el mapa quieto de escritorio pesa más de 60 kB");
   const pag = codigo("src/app/explorar/page.tsx");
-  if (!/<link rel="preload" as="image" href=\{MAPA_QUIETO\.m\} media="\(max-width: 767px\)" fetchPriority="high" \/>/.test(pag) || !/<link rel="preload" as="image" href=\{MAPA_QUIETO\.d\} media="\(min-width: 768px\)" fetchPriority="high" \/>/.test(pag)) F("5 · el mapa quieto no se precarga desde el <head>");
-  const iQuieto = cli.indexOf('data-explorar="mapa-quieto"'), iMapa = cli.indexOf("<MapaExplorar");
-  if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa || !/<img src=\{MAPA_QUIETO\.m\} alt="" width=\{560\} height=\{650\} fetchPriority="high"/.test(cli)) F("5 · el mapa quieto no se dibuja antes del mapa real, con prioridad alta");
+  if (!/<link rel="preload" as="image" href=\{MAPA_QUIETO\.d\} media="\(min-width: 768px\)" fetchPriority="high" \/>/.test(pag)) F("5 · el mapa quieto de escritorio no se precarga desde el <head>");
+  if (/MAPA_QUIETO_M/.test(cli) || /mapa-quieto"/.test(cli)) F("5 · el mapa quieto incrustado entra al JS del cliente (va dibujado por el servidor y pasado como nodo)");
+  if (!/mapaQuieto=\{\s*<picture className="ex-mapa-quieto" data-explorar="mapa-quieto">\s*<source media="\(min-width: 768px\)" srcSet=\{MAPA_QUIETO\.d\} \/>[\s\S]{0,120}<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{650\} fetchPriority="high"/.test(pag)) F("5 · la página no dibuja el mapa quieto (teléfono incrustado, escritorio archivo) con prioridad alta");
+  const iQuieto = cli.indexOf("{mapaQuieto}"), iMapa = cli.indexOf("<MapaExplorar");
+  if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa) F("5 · el mapa quieto no se dibuja antes del mapa real");
   if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => onEstadoRef\.current\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
   // ── 6 · la hoja y el pin ──
@@ -271,7 +274,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
 // pines · M22 el botón del dashboard sin el número · M23 la compra no vuelve al mapa · M24 /explorar fuera del middleware ·
 // M25 la URL acepta un pie que la noche no evaluó · M26 TOPE_HOJA desde el cliente. Y el mapa quieto (medido en producción
 // 9,7 s de LCP sin él, mutar-quieto.cjs): Q1 sin precarga · Q2 sin prioridad alta · Q3 se va al crear el mapa y no con las
-// teselas · Q4 la foto pesada. 4/4 ROJO.
+// teselas · Q4 la foto pesada. 4/4 ROJO. Y el incrustado (como archivo precargado el LCP daba 2,5 s; mutar-quieto2.cjs): Q1'
+// sin la precarga de escritorio · Q2'' el mapa quieto después del real · Q3' el incrustado entra al JS del cliente · Q4' el
+// incrustado pesado · Q5' sin prioridad alta. 5/5 ROJO.
 
 if (require.main === module) {
   runExplorarTier().then((r) => process.exit(r.hard ? 1 : 0));

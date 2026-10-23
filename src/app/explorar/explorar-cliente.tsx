@@ -15,14 +15,14 @@
 //     «Cambiar» el pie y el plazo y el veredicto recalculado. Sin saldo, el aviso ofrece el pack y «Comprar solo 1».
 //   · Sin saldo al entrar: el aviso E encima, y el mapa se mira igual.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, chipOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import type { EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { comprasDeExplorar, lineaTicketConSaldo } from "@/lib/guia/compra-desde-depto";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
@@ -31,9 +31,8 @@ import { GUIA } from "@/lib/guia/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import {
   botonAnalizar, cambiarFiltro, capRatePct, estadoDeEntrada, etiquetaComunas, etiquetaPiePlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
-  MAPA_QUIETO, pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
+  pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
-import { AvisoSinSaldoExplorar } from "./aviso-sin-saldo";
 import "./explorar.css";
 
 /** Las tarjetas que la hoja abierta dibuja (el mapa tiene todos los pines). */
@@ -43,6 +42,10 @@ const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
+// Los dos pop-ups no hacen falta para el primer pintado (LCP en el teléfono, medido en producción el 23-oct-2026: el JS que
+// baja antes de pintar compite con el mapa quieto por el ancho de banda): entran cuando se abren.
+const AvisoAntesDeAnalizar = dynamic(() => import("@/components/guia/AvisoAntesDeAnalizar").then((m) => m.AvisoAntesDeAnalizar), { ssr: false, loading: () => null });
+const AvisoSinSaldoExplorar = dynamic(() => import("./aviso-sin-saldo").then((m) => m.AvisoSinSaldoExplorar), { ssr: false, loading: () => null });
 
 export interface DatosExplorarCliente {
   filtros: FiltrosExplorar;
@@ -62,7 +65,13 @@ export interface DatosExplorarCliente {
 
 type Chip = "comuna" | "tipologia" | "rango" | "piePlazo";
 
-export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: { inicial: DatosExplorarCliente; abrir?: string | null; autoAnalizar?: string | null }) {
+export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, mapaQuieto = null }: {
+  inicial: DatosExplorarCliente;
+  abrir?: string | null;
+  autoAnalizar?: string | null;
+  /** El mapa quieto del primer pintado, dibujado por el servidor (page.tsx): va debajo del mapa real hasta sus teselas. */
+  mapaQuieto?: ReactNode;
+}) {
   const router = useRouter();
   const [datos, setDatos] = useState(inicial);
   const [filtros, setFiltros] = useState(inicial.filtros);
@@ -343,12 +352,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
       <div className="ex-cuerpo">
         {/* ── el mapa (después del primer pintado) ── */}
         <div className="ex-mapa-wrap" data-mapa={mapa}>
-          {/* El mapa quieto: lo más grande del primer cuadro (el LCP), precargado desde el <head>; debajo del mapa real. */}
-          <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
-            <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={MAPA_QUIETO.m} alt="" width={560} height={650} fetchPriority="high" decoding="async" />
-          </picture>
+          {/* El mapa quieto: lo más grande del primer cuadro (el LCP), dibujado por el servidor; debajo del mapa real. */}
+          {mapaQuieto}
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar pines={pines} analizados={analizadosSet} seleccionado={seleccionado} comuna={filtros.comunas[0] ?? null} onSeleccionar={seleccionar} onEstado={setMapa} />
           )}
