@@ -8,6 +8,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { REFERIDO_COPY } from "@/lib/referido";
+import { botonOcupado, chipOcupado } from "@/lib/carga-global";
 import "./invita.css";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
@@ -119,7 +120,7 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
         <h2 className="iv-d-t">{REFERIDO_COPY.invitaTitulo}</h2>
         <p className="iv-d-s">{REFERIDO_COPY.invitaTexto}</p>
         <div className="iv-d-fila">
-          <p className="iv-d-enlace" data-invitar="enlace">{datos ? datos.texto : "…"}</p>
+          <p className="iv-d-enlace" data-invitar="enlace" {...chipOcupado(ocupado)}>{datos ? datos.texto : "…"}</p>
           <div className="flex shrink-0 gap-2">
             <button type="button" className="iv-d-btn" onClick={() => void copiar()} disabled={!datos || ocupado} data-invitar="copiar">
               {copiado ? REFERIDO_COPY.copiado : REFERIDO_COPY.copiar}
@@ -139,7 +140,7 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
           <form className="mt-2.5 flex flex-col gap-2 sm:flex-row" onSubmit={usarNombre} data-invitar="nombre">
             <input className="iv-d-campo" maxLength={40} placeholder={REFERIDO_COPY.nombrePlaceholder} aria-label={REFERIDO_COPY.nombrePlaceholder}
               value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" />
-            <button type="submit" className="iv-d-btn iv-d-borde" disabled={ocupado || !nombre.trim()}>{REFERIDO_COPY.usarNombre}</button>
+            <button type="submit" className="iv-d-btn iv-d-borde" disabled={ocupado || !nombre.trim()} {...botonOcupado(ocupado)}>{REFERIDO_COPY.usarNombre}</button>
           </form>
         )}
         {conNombre && datos?.conNombre && datos.nombre && <p className="iv-d-nota" data-invitar="vista">{REFERIDO_COPY.quien(datos.nombre)}.</p>}
@@ -154,7 +155,7 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
       <p className="mb-3 max-w-[640px] text-[14.5px] text-[var(--franco-text-secondary)]">{REFERIDO_COPY.invitaTexto}</p>
       <div className={`${tarjeta} p-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="min-w-0 break-all text-[17px] font-semibold tracking-[-0.005em] tabular-nums" data-invitar="enlace">
+          <p className="min-w-0 break-all text-[17px] font-semibold tracking-[-0.005em] tabular-nums" data-invitar="enlace" {...chipOcupado(ocupado)}>
             {datos ? datos.texto : <span className="text-[var(--franco-text-secondary)]">…</span>}
           </p>
           <div className="flex shrink-0 gap-2">
@@ -176,7 +177,7 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
           <form className="mt-2.5 flex flex-col gap-2 sm:flex-row" onSubmit={usarNombre} data-invitar="nombre">
             <input className="h-11 w-full min-w-0 shrink-0 rounded-xl sm:w-auto sm:flex-1 border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3.5 text-[15px] text-[var(--franco-text)]" maxLength={40}
               placeholder={REFERIDO_COPY.nombrePlaceholder} aria-label={REFERIDO_COPY.nombrePlaceholder} value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" />
-            <button type="submit" className={botonBorde} disabled={ocupado || !nombre.trim()}>{REFERIDO_COPY.usarNombre}</button>
+            <button type="submit" className={botonBorde} disabled={ocupado || !nombre.trim()} {...botonOcupado(ocupado)}>{REFERIDO_COPY.usarNombre}</button>
           </form>
         )}
         {conNombre && datos?.conNombre && datos.nombre && (

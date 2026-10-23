@@ -162,6 +162,7 @@ import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
 import { runTicketVivoTier } from "./ticket-vivo-catch-test";
 import { runRegistroMetaTier } from "./registro-meta-catch-test";
 import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
+import { runCargaTier } from "./carga-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -679,6 +680,10 @@ function printSeed(r: SeedReport) {
   // Tier RECORRIDO-22-OCT (22-oct-2026, 0 tokens): la tarjeta del re-análisis con el material del banner, «Se renueva el
   // lunes N» en el dashboard y el correo, y qué cambia con el «cuándo» del perfil. ──
   totalHard += runRecorrido22OctTier().hard;
+  // Tier CARGA (22-oct-2026, 0 tokens): el estándar de carga en todo el sitio —el botón que llama al servidor gira hasta la
+  // respuesta, lo que navega enciende la barra del header, el PDF se pide con señal— sobre /deptos, «Estás dentro»,
+  // dashboard, informe, pop-ups y compra. ──
+  totalHard += runCargaTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

@@ -101,3 +101,19 @@ const enServidor = () => false;
 export function useCargaGlobal(): boolean {
   return useSyncExternalStore(suscribirCarga, hayCarga, enServidor);
 }
+
+/**
+ * EL BOTÓN QUE LLAMA AL SERVIDOR (regla de carga, 22-oct-2026): queda presionado (`data-presionado`, el estilo global) y
+ * ocupado (`aria-busy`, que en globals.css le dibuja el aro que gira al final del texto) desde el toque hasta la respuesta.
+ * Lo que navega no pasa por acá: va por EnlaceCarga, o por `iniciarCarga(claveActual())` antes del `router.push`, y su
+ * señal es la barra bajo el header.
+ */
+export function botonOcupado(ocupado: boolean): { "aria-busy": true | undefined; "data-presionado": "1" | undefined } {
+  return { "aria-busy": ocupado || undefined, "data-presionado": ocupado ? "1" : undefined };
+}
+
+/** Lo mismo para lo que no es un <button> y también espera (un chip con <select>, una línea que se vuelve a pedir):
+ *  `data-gira` le da el aro. */
+export function chipOcupado(ocupado: boolean): ReturnType<typeof botonOcupado> & { "data-gira": "" } {
+  return { ...botonOcupado(ocupado), "data-gira": "" };
+}

@@ -263,9 +263,11 @@ export function runRetiroIaTier(): { hard: number } {
   const HELP = sinComentarios(leer("src/app/dashboard/dashboard-helpers.ts"));
   if (!/export function hrefPdf\(\): string \| null \{\s*return null;\s*\}/.test(HELP)) F("4 · el dashboard vuelve a ofrecer un PDF (hrefPdf no devuelve null)");
   const ROW = sinComentarios(leer("src/app/dashboard/row-actions.tsx"));
-  const enlacesPdf = (ROW.match(/href=\{hrefPdf\}/g) ?? []).length;
-  const gateados = (ROW.match(/\{hrefPdf && \(\s*<a\s+href=\{hrefPdf\}/g) ?? []).length;
-  if (enlacesPdf === 0 || enlacesPdf !== gateados) F(`4 · RowActions pinta ${enlacesPdf - gateados} enlace(s) de PDF sin mirar si hay PDF`);
+  // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el PDF de la fila ya no es un <a href> sino un botón que lo pide con
+  // fetch y se ve ocupado mientras baja (descargarPdf); la regla sigue siendo la misma: solo se pinta si hay PDF.
+  const enlacesPdf = (ROW.match(/onClick=\{descargarPdf\}/g) ?? []).length;
+  const gateados = (ROW.match(/\{hrefPdf && \(\s*<button\s+type="button"\s+onClick=\{descargarPdf\}/g) ?? []).length;
+  if (enlacesPdf === 0 || enlacesPdf !== gateados) F(`4 · RowActions pinta ${enlacesPdf - gateados} botón(es) de PDF sin mirar si hay PDF`);
 
   // ── 5 · la imagen del correo no lee la prosa ──
   const OG = sinComentarios(leer("src/app/api/og/veredicto/route.tsx"));

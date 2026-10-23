@@ -31,6 +31,8 @@ import { usePostHog } from "@/lib/posthog-react";
 import { Button } from "@/components/ui/button";
 import { Share2, Check, Link2, Mail, Download, MoreHorizontal, UserPlus } from "lucide-react";
 import { REFERIDO_COPY } from "@/lib/referido";
+import { botonOcupado } from "@/lib/carga-global";
+import { descargarArchivo } from "@/lib/descarga-cliente";
 import "@/components/invitacion/invita.css";
 
 export type ShareModalidad = "LTR" | "STR" | "AMBAS";
@@ -94,6 +96,7 @@ export function ShareButton({
   const [invitaCopiada, setInvitaCopiada] = useState(false);
   const [sinInvitacion, setSinInvitacion] = useState(false);
   const [nativo, setNativo] = useState(false);
+  const [descargando, setDescargando] = useState(false);
 
   useEffect(() => {
     setNativo(typeof navigator !== "undefined" && typeof navigator.share === "function");
@@ -202,11 +205,17 @@ export function ShareButton({
     setOpen(false);
   };
 
-  const downloadPDF = () => {
-    if (!pdfUrl) return;
-    // Navegación directa: el endpoint responde Content-Disposition: attachment.
-    window.location.href = pdfUrl;
-    setOpen(false);
+  // El PDF se arma en el servidor y tarda segundos (22-oct-2026, regla de carga): se pide con fetch y la opción queda
+  // ocupada hasta que baja; si no se pudo, la URL de siempre (el endpoint responde Content-Disposition: attachment).
+  const downloadPDF = async () => {
+    if (!pdfUrl || descargando) return;
+    setDescargando(true);
+    try {
+      if (!(await descargarArchivo(pdfUrl))) window.location.assign(pdfUrl);
+    } finally {
+      setDescargando(false);
+      setOpen(false);
+    }
   };
 
   return (
@@ -226,7 +235,7 @@ export function ShareButton({
       {open && (
         <div data-compartir="menu" className="fixed inset-x-4 top-16 z-50 rounded-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56 border border-[var(--franco-border-strong)] bg-[var(--franco-card)] p-2 shadow-lg">
           {!sinInvitacion && (
-            <button onClick={() => void invitar()} disabled={!invitacion} className="iv-menu mb-1.5 flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold" data-compartir="invitar">
+            <button onClick={() => void invitar()} disabled={!invitacion} {...botonOcupado(!invitacion)} className="iv-menu mb-1.5 flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold" data-compartir="invitar">
               {invitaCopiada ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <UserPlus className="mt-0.5 h-4 w-4 shrink-0" />}
               <span className="flex flex-col">
                 <span>{invitaCopiada ? REFERIDO_COPY.copiado : REFERIDO_COPY.menuCompartir}</span>
@@ -251,9 +260,9 @@ export function ShareButton({
             X (Twitter)
           </button>
           {pdfUrl && (
-            <button onClick={downloadPDF} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
+            <button onClick={() => void downloadPDF()} disabled={descargando} {...botonOcupado(descargando)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
               <Download className="h-4 w-4 text-[var(--franco-text-secondary)]" />
-              Descargar PDF
+              {descargando ? "Descargando…" : "Descargar PDF"}
             </button>
           )}
           {nativo && (

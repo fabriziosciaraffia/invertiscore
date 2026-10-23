@@ -17,6 +17,7 @@ import { TIPOLOGIAS_CHIP, type PerfilChips } from "@/lib/lo-que-sigue/perfil-chi
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { ESTAS_DENTRO } from "@/lib/lo-que-sigue/copy";
 import { BIENVENIDA } from "./bienvenida-copy";
+import { botonOcupado, chipOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
 
@@ -56,6 +57,7 @@ export function Bienvenida({
         /* no bloquea la navegación */
       }
     }
+    iniciarCarga(claveActual());
     router.push(href);
   }
 
@@ -92,6 +94,7 @@ export function Bienvenida({
             type="button"
             onClick={() => ir("/analisis/nuevo-v4")}
             disabled={yendo}
+            {...botonOcupado(yendo)}
             data-bienvenida="accion"
             className="w-full max-w-[420px] rounded-[10px] px-9 py-4 text-[16px] font-semibold text-white disabled:opacity-60"
             style={{ background: "var(--signal-red)", fontFamily: UI }}
@@ -117,11 +120,14 @@ async function guardar(analysisId: string, cambios: Record<string, string>): Pro
 function ChipsPerfil({ perfil, demo }: { perfil: PerfilBienvenida; demo: boolean }) {
   const [pref, setPref] = useState<PerfilChips>(perfil.chips);
   const [error, setError] = useState(false);
+  const [guardando, setGuardando] = useState<"tipologia" | "comuna" | "modalidad" | null>(null);
 
   async function cambiar(campo: "tipologia" | "comuna" | "modalidad", valor: string) {
     setPref((p) => ({ ...p, [campo]: valor } as PerfilChips));
     if (demo) return;
+    setGuardando(campo);
     setError(!(await guardar(perfil.analysisId, { [campo]: valor })));
+    setGuardando(null);
   }
 
   const comunas = pref.comuna && !(COMUNAS_DISPONIBLES as readonly string[]).includes(pref.comuna) ? [pref.comuna, ...COMUNAS_DISPONIBLES] : [...COMUNAS_DISPONIBLES];
@@ -134,21 +140,21 @@ function ChipsPerfil({ perfil, demo }: { perfil: PerfilBienvenida; demo: boolean
   return (
     <div className="mt-3" data-bienvenida="perfil">
       <div className="flex flex-nowrap items-center gap-2 overflow-x-auto [scrollbar-width:none]">
-        <label className={chip}>
+        <label className={chip} {...chipOcupado(guardando === "tipologia")}>
           <span aria-hidden="true">{pref.tipologia || "Tipología"}</span>
           <select aria-label="Tipología" className={select} value={pref.tipologia ?? ""} onChange={(e) => cambiar("tipologia", e.target.value)}>
             {!pref.tipologia && <option value="">Tipología</option>}
             {tipologias.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className={chip}>
+        <label className={chip} {...chipOcupado(guardando === "comuna")}>
           <span aria-hidden="true">{pref.comuna || "Comuna"}</span>
           <select aria-label="Comuna" className={select} value={pref.comuna ?? ""} onChange={(e) => cambiar("comuna", e.target.value)}>
             {!pref.comuna && <option value="">Comuna</option>}
             {comunas.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-        <label className={chip}>
+        <label className={chip} {...chipOcupado(guardando === "modalidad")}>
           <span aria-hidden="true">{ESTAS_DENTRO.modalidad[pref.modalidad]}</span>
           <select aria-label="Modalidad" className={select} value={pref.modalidad} onChange={(e) => cambiar("modalidad", e.target.value)}>
             <option value="ltr">{ESTAS_DENTRO.modalidad.ltr}</option>

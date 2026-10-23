@@ -24,6 +24,7 @@ import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPend
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
 import { avisarLead } from "@/lib/meta/lead-cliente";
+import { botonOcupado } from "@/lib/carga-global";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -56,6 +57,8 @@ export function RegistroUnPaso({ next, ctx, alEntrar, demo = false }: {
   const [enviado, setEnviado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [entrando, setEntrando] = useState(false);
+  // «o con Google» espera a que redirija (22-oct-2026, regla de carga): el botón ocupado; si no redirige, vuelve.
+  const [conGoogleEnCurso, setConGoogleEnCurso] = useState(false);
   const campoCodigo = useRef<HTMLInputElement>(null);
 
   const callback = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -130,11 +133,14 @@ export function RegistroUnPaso({ next, ctx, alEntrar, demo = false }: {
   }
 
   async function conGoogle() {
+    if (conGoogleEnCurso) return;
+    setConGoogleEnCurso(true);
     capturarLqs(posthog, EVENTOS_LQS.registroIniciado, ctx, { via: "google" });
     marcarRegistroPendiente("google", ctx);
     marcarOAuthPendiente("signup");
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback() } });
+    const { error: err } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback() } });
+    if (err) setConGoogleEnCurso(false);
   }
 
   if (enviado) {
@@ -157,7 +163,7 @@ export function RegistroUnPaso({ next, ctx, alEntrar, demo = false }: {
             value={codigo}
             onChange={(e) => setCodigo(limpiarCodigo(e.target.value))}
           />
-          <button type="submit" className="lqs-btn" disabled={entrando} data-presionado={entrando ? "1" : undefined}>{REGISTRO_UN_PASO.entrar}</button>
+          <button type="submit" className="lqs-btn" disabled={entrando} {...botonOcupado(entrando)}>{REGISTRO_UN_PASO.entrar}</button>
         </div>
         {error && <p className="lqs-error" role="alert">{error}</p>}
         <p className="lqs-legal">{REGISTRO_UN_PASO.enlaceAlternativa}</p>
@@ -182,11 +188,11 @@ export function RegistroUnPaso({ next, ctx, alEntrar, demo = false }: {
             onFocus={() => usoBanner.correoConFoco(true)}
             onBlur={() => usoBanner.correoConFoco(false)}
           />
-          <button type="submit" className="lqs-btn" disabled={enviando} data-presionado={enviando ? "1" : undefined}>{REGISTRO_UN_PASO.mandarCodigo}</button>
+          <button type="submit" className="lqs-btn" disabled={enviando} {...botonOcupado(enviando)}>{REGISTRO_UN_PASO.mandarCodigo}</button>
         </div>
         {error && <p className="lqs-error" role="alert">{error}</p>}
         <div className="lqs-o">{REGISTRO_UN_PASO.o}</div>
-        <button type="button" className="lqs-btn lqs-ghost lqs-google" onClick={conGoogle}><IconoGoogle /> {REGISTRO_UN_PASO.google}</button>
+        <button type="button" className="lqs-btn lqs-ghost lqs-google" onClick={conGoogle} disabled={conGoogleEnCurso} {...botonOcupado(conGoogleEnCurso)}><IconoGoogle /> {REGISTRO_UN_PASO.google}</button>
         <p className="lqs-legal">{REGISTRO_UN_PASO.pie}</p>
       </form>
     </div>

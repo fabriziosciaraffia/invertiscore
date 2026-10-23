@@ -8,6 +8,7 @@ import { estadoDelPago, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { DespuesDePagar } from "@/components/lo-que-sigue/DespuesDePagar";
 import { HorizontePostPago } from "@/components/lo-que-sigue/HorizontePostPago";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
@@ -245,8 +246,11 @@ function PaymentReturnContent() {
   // si no, al dashboard.
   const volverAca = typeof window === "undefined" ? "/dashboard" : window.location.pathname + window.location.search;
   const nextEntrar = hrefEntrar(retornoPack ? volverAca : "/dashboard", "pack");
+  const [saliendo, setSaliendo] = useState(false);
   async function entrarConOtroCorreo() {
+    setSaliendo(true);
     try { await createClient().auth.signOut(); } catch { /* sin sesión: igual a entrar */ }
+    iniciarCarga(claveActual());
     window.location.assign(hrefEntrar(volverAca, "pack"));
   }
 
@@ -350,7 +354,7 @@ function PaymentReturnContent() {
             <h1 className={PLANO.titulo}>{PAGO_OTRA_CUENTA.titulo}</h1>
             <p className={PLANO.bajada}>{PAGO_OTRA_CUENTA.cuerpo}</p>
             <div className={PLANO.seccion}>
-              <button type="button" onClick={entrarConOtroCorreo} className={PLANO.principal}>{PAGO_OTRA_CUENTA.boton}</button>
+              <button type="button" onClick={entrarConOtroCorreo} disabled={saliendo} {...botonOcupado(saliendo)} className={PLANO.principal}>{PAGO_OTRA_CUENTA.boton}</button>
             </div>
           </div>
         )}

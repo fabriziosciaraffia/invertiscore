@@ -101,11 +101,13 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/entrar", \{[^\n]*body: JSON\.stringify\(\{ correo: enviado, codigo: t \}\), signal: senal \}\);/.test(entrar)) F("1 · «Entrar» no pide la entrada al servidor con tope y señal");
     if (!/if \(!r\.ok \|\| r\.valor\.status >= 500 \|\| r\.valor\.status === 401\) \{ setFalloEntrar\(true\); return; \}/.test(entrar) || !/\} finally \{\s*setOcupado\(false\);\s*\}/.test(entrar)) F("1 · sin respuesta, «Entrar» no avisa o no vuelve a quedar activo");
     if (/verifyOtp/.test(dc)) F("1 · /deptos verifica el código contra Supabase desde el navegador (la respuesta se puede perder sin tope)");
-    if (!/disabled=\{ocupado\} data-deptos="entrar" data-fallo=\{falloEntrar \? "1" : undefined\}>\{falloEntrar \? ENTRAR_COPY\.noPudimos : REGISTRO_UN_PASO\.entrar\}<\/button>/.test(dc)) F("1 · el botón no dice «No pudimos entrar, intenta de nuevo» cuando falló");
+    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el presionado ya no se escribe a mano: `{...botonOcupado(x)}` deja
+    // el botón presionado y con el aro; y toda ida por código tras el servidor enciende la barra con iniciarCarga(claveActual()).
+    if (!/disabled=\{!!ocupado\} \{\.\.\.botonOcupado\(ocupado === "entrar"\)\} data-deptos="entrar" data-fallo=\{falloEntrar \? "1" : undefined\}>\{falloEntrar \? ENTRAR_COPY\.noPudimos : REGISTRO_UN_PASO\.entrar\}<\/button>/.test(dc)) F("1 · el botón no dice «No pudimos entrar, intenta de nuevo» cuando falló (o no se ve ocupado mientras entra)");
     if (/setCodigo\(""\)|setEnviado\(null\)/.test(entrar)) F("1 · al fallar se pierde el código o el correo (habría que pedir otro)");
     const terminar = entre(dc, "const terminarAlta = useCallback(", "}, [aplicarAlta]);");
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/alta"/.test(terminar) || !/if \(!r\.ok\) \{ setAltaPorReintentar\(\{ clave, metodo \}\); return; \}/.test(terminar)) F("1 · al volver por el enlace o por Google, el alta no tiene tope ni salida");
-    if (!/\{altaPorReintentar && \(\s*<div className="dp-bloque" data-deptos="alta-fallida">\s*<button type="button" className="dp-boton" onClick=\{\(\) => void terminarAlta\(altaPorReintentar\.clave, altaPorReintentar\.metodo\)\}>\{ENTRAR_COPY\.noPudimos\}<\/button>/.test(dc)) F("1 · sin alta al volver por el enlace o por Google, no hay cómo reintentarla");
+    if (!/\{altaPorReintentar && \(\s*<div className="dp-bloque" data-deptos="alta-fallida">\s*<button type="button" className="dp-boton" onClick=\{\(\) => void terminarAlta\(altaPorReintentar\.clave, altaPorReintentar\.metodo\)\} disabled=\{altaEnCurso\} \{\.\.\.botonOcupado\(altaEnCurso\)\}>\{ENTRAR_COPY\.noPudimos\}<\/button>/.test(dc)) F("1 · sin alta al volver por el enlace o por Google, no hay cómo reintentarla");
   } catch (e) {
     F(`1 · no corrió: ${(e as Error).message}`);
   }

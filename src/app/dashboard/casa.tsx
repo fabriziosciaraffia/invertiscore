@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import "./casa.css";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { botonOcupado, chipOcupado } from "@/lib/carga-global";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { CASA_ARRIBA, type BloqueArriba } from "@/lib/casa-arriba";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
@@ -179,10 +180,14 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
   const [p, setP] = useState<PerfilEditable>(inicial);
   const [error, setError] = useState(false);
   const [cambiandoHorizonte, setCambiandoHorizonte] = useState(false);
+  // El chip que se guarda se ve guardándose (22-oct-2026, regla de carga): lo nombran las claves del cuerpo.
+  const [guardando, setGuardando] = useState<string | null>(null);
 
   async function cambiar(parche: Partial<PerfilEditable>, cuerpo: Record<string, unknown>) {
     setP((x) => ({ ...x, ...parche }));
+    setGuardando(Object.keys(cuerpo).join("+"));
     setError(!(await guardar(cuerpo)));
+    setGuardando(null);
   }
 
   const quitarComuna = (c: string) => {
@@ -236,7 +241,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
             </button>
           ))}
           {dormsLibres.length > 0 && (
-            <label className={chipMas}>
+            <label className={chipMas} {...chipOcupado(guardando === "dormitorios")}>
               <span aria-hidden="true">{CASA.perfil.masDormitorio}</span>
               <select aria-label={CASA.perfil.masDormitorio} className={selectInvisible} value="" onChange={(e) => sumarDorm(Number(e.target.value))}>
                 <option value="" />
@@ -249,7 +254,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
               {c}{p.comunas.length > 1 && <span aria-hidden="true" className="text-[12px] text-[var(--franco-text-secondary)]">×</span>}
             </button>
           ))}
-          <label className={chipMas}>
+          <label className={chipMas} {...chipOcupado(guardando === "comunas")}>
             <span aria-hidden="true">{CASA.perfil.masComuna}</span>
             <select aria-label={CASA.perfil.masComuna} className={selectInvisible} value="" onChange={(e) => sumarComuna(e.target.value)}>
               <option value="" />
@@ -258,7 +263,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
           </label>
           {p.precioMinUf != null && p.precioMaxUf != null ? (
             // El rango de /deptos (16-oct-2026): se cambia por otro rango, con su piso y su tope.
-            <label className={chip} data-chip="rango">
+            <label className={chip} data-chip="rango" {...chipOcupado(guardando === "precioMinUf+precioMaxUf")}>
               <span aria-hidden="true">{CASA.perfil.rango(miles(p.precioMinUf), miles(p.precioMaxUf))}</span>
               <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={RANGOS_UF.find((r) => r.min === p.precioMinUf && r.max === p.precioMaxUf)?.id ?? ""} onChange={(e) => {
                 const r = RANGOS_UF.find((x) => x.id === e.target.value);
@@ -269,7 +274,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
               </select>
             </label>
           ) : (
-            <label className={chip} data-chip="tope">
+            <label className={chip} data-chip="tope" {...chipOcupado(guardando === "precioMaxUf")}>
               <span aria-hidden="true">{p.precioMaxUf != null ? CASA.perfil.tope(miles(p.precioMaxUf)) : CASA.perfil.sinTope}</span>
               <select aria-label={CASA.perfil.sinTope} className={selectInvisible} value={p.precioMaxUf ?? ""} onChange={(e) => { const v = Number(e.target.value); void cambiar({ precioMaxUf: v }, { precioMaxUf: v }); }}>
                 {p.precioMaxUf == null && <option value="">{CASA.perfil.sinTope}</option>}
@@ -277,20 +282,20 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
               </select>
             </label>
           )}
-          <label className={chip} data-chip="modalidad">
+          <label className={chip} data-chip="modalidad" {...chipOcupado(guardando === "modalidad")}>
             <span aria-hidden="true">{ESTAS_DENTRO.modalidad[p.modalidad]}</span>
             <select aria-label="Modalidad" className={selectInvisible} value={p.modalidad} onChange={(e) => { const v = e.target.value as Modalidad; void cambiar({ modalidad: v }, { modalidad: v }); }}>
               <option value="ltr">{ESTAS_DENTRO.modalidad.ltr}</option>
               <option value="str">{ESTAS_DENTRO.modalidad.str}</option>
             </select>
           </label>
-          <label className={chip} data-chip="pie">
+          <label className={chip} data-chip="pie" {...chipOcupado(guardando === "piePct")}>
             <span aria-hidden="true">{CASA.perfil.pie(pct(p.piePct ?? 20))}</span>
             <select aria-label="Pie" className={selectInvisible} value={p.piePct ?? 20} onChange={(e) => { const v = Number(e.target.value); void cambiar({ piePct: v }, { piePct: v }); }}>
               {pies.map((x) => <option key={x} value={x}>{CASA.perfil.pie(pct(x))}</option>)}
             </select>
           </label>
-          <label className={chip} data-chip="plazo">
+          <label className={chip} data-chip="plazo" {...chipOcupado(guardando === "plazoAnios")}>
             <span aria-hidden="true">{CASA.perfil.plazo(p.plazoAnios ?? 30)}</span>
             <select aria-label="Plazo" className={selectInvisible} value={p.plazoAnios ?? 30} onChange={(e) => { const v = Number(e.target.value); void cambiar({ plazoAnios: v }, { plazoAnios: v }); }}>
               {plazos.map((x) => <option key={x} value={x}>{CASA.perfil.plazo(x)}</option>)}
@@ -307,6 +312,7 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
                   key={h}
                   type="button"
                   aria-pressed={p.horizonte === h}
+                  {...botonOcupado(guardando === "horizonte" && p.horizonte === h)}
                   onClick={() => { setCambiandoHorizonte(false); void cambiar({ horizonte: h }, { horizonte: h }); }}
                   className={`inline-flex h-9 items-center rounded-full border px-3.5 text-[14px] font-medium ${p.horizonte === h ? "border-[var(--franco-text)] bg-[var(--franco-text)] text-[var(--franco-card)]" : "border-[var(--franco-border)] text-[var(--franco-text)]"}`}
                 >

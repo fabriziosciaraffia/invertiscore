@@ -1050,3 +1050,12 @@ input[type="number"] {
    navega y puede tardar queda «presionado» en el mismo toque (EnlaceCarga lo marca) hasta que la
    ruta cambia; la barra bajo el header hace el resto. */
 [data-presionado="1"] { opacity: 0.72; transform: translateY(1px); transition: opacity 0.12s, transform 0.12s; cursor: progress; }
+
+/* EL BOTÓN QUE ESPERA AL SERVIDOR GIRA (22-oct-2026, lib/carga-global.ts › botonOcupado): `aria-busy="true"` en un
+   <button> —o en lo que lleve `data-gira`— dibuja un aro al final del texto hasta que llega la respuesta. En un botón
+   de solo ícono (`data-solo-icono`) el aro reemplaza al ícono. */
+button[aria-busy="true"]::after, [data-gira][aria-busy="true"]::after { content: ""; display: inline-block; flex: none; width: 0.75em; height: 0.75em; margin-left: 0.5em; vertical-align: -0.1em; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: franco-gira 0.7s linear infinite; }
+button[aria-busy="true"][data-solo-icono]::after { margin-left: 0; }
+button[aria-busy="true"][data-solo-icono] > svg { display: none; }
+@keyframes franco-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::after, [data-gira][aria-busy="true"]::after { animation-duration: 2s; } }

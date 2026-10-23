@@ -27,7 +27,10 @@ export function useEntradaPorCodigo(destinoPedido: string) {
   const [correo, setCorreo] = useState("");
   const [codigo, setCodigoCrudo] = useState("");
   const [enviado, setEnviado] = useState<string | null>(null);
-  const [ocupado, setOcupado] = useState(false);
+  // QUÉ ESTÁ ESPERANDO (22-oct-2026, regla de carga): el botón que lo pidió gira; los demás solo se deshabilitan.
+  const [ocupadoEn, setOcupadoEn] = useState<"enviar" | "reenviar" | "verificar" | "google" | null>(null);
+  const ocupado = ocupadoEn !== null;
+  const setOcupado = (v: boolean) => setOcupadoEn(v ? "verificar" : null);
   const [reenviado, setReenviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const campoCodigo = useRef<HTMLInputElement>(null);
@@ -54,9 +57,9 @@ export function useEntradaPorCodigo(destinoPedido: string) {
       return;
     }
     setError(null);
-    setOcupado(true);
+    setOcupadoEn("enviar");
     const ok = await mandar(c);
-    setOcupado(false);
+    setOcupadoEn(null);
     if (!ok) {
       setError(REGISTRO_UN_PASO.errorEnvio);
       return;
@@ -67,9 +70,9 @@ export function useEntradaPorCodigo(destinoPedido: string) {
   async function mandarDeNuevo() {
     if (!enviado || ocupado) return;
     setError(null);
-    setOcupado(true);
+    setOcupadoEn("reenviar");
     const ok = await mandar(enviado);
-    setOcupado(false);
+    setOcupadoEn(null);
     if (ok) setReenviado(true);
     else setError(REGISTRO_UN_PASO.errorEnvio);
   }
@@ -90,10 +93,10 @@ export function useEntradaPorCodigo(destinoPedido: string) {
       return false;
     }
     setError(null);
-    setOcupado(true);
+    setOcupadoEn("verificar");
     const { data, error: err } = await createClient().auth.verifyOtp({ email: enviado, token: t, type: "email" });
     if (err) {
-      setOcupado(false);
+      setOcupadoEn(null);
       setError(REGISTRO_UN_PASO.errorCodigoMal);
       return false;
     }
@@ -105,13 +108,16 @@ export function useEntradaPorCodigo(destinoPedido: string) {
   }
 
   async function conGoogle() {
+    setOcupadoEn("google");
     marcarOAuthPendiente("login");
-    await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback() } });
+    const { error: err } = await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: callback() } });
+    // Si no redirige (falló), el botón vuelve a estar libre.
+    if (err) { setOcupadoEn(null); setError(REGISTRO_UN_PASO.errorEnvio); }
   }
 
   return {
     destino, correo, setCorreo, codigo, setCodigo: (v: string) => setCodigoCrudo(limpiarCodigo(v)),
-    enviado, ocupado, setOcupado, reenviado, error, setError, campoCodigo,
+    enviado, ocupado, ocupadoEn, setOcupado, reenviado, error, setError, campoCodigo,
     enviarCodigo, mandarDeNuevo, usarOtroCorreo, verificar, conGoogle,
   };
 }

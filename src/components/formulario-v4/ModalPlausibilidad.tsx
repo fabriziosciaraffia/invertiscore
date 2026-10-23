@@ -26,7 +26,8 @@
 
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { botonOcupado } from "@/lib/carga-global";
 import { valorParaMostrar, type Anomalia } from "@/lib/plausibilidad";
 
 /** Dato de origen: a qué campo puede volver el usuario desde el modal. */
@@ -301,14 +302,8 @@ export function ModalPlausibilidad({
             )
           ) : (
             <>
-              <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting} className="wz-cta wz-cta-modal">
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> {labelGenerando}
-                  </>
-                ) : (
-                  labelConfirmar
-                )}
+              <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting} {...botonOcupado(submitting)} className="wz-cta wz-cta-modal">
+                {submitting ? labelGenerando : labelConfirmar}
               </button>
               {secundario && (
                 <div className="wz-lnk-fila" style={{ marginTop: 0 }}>

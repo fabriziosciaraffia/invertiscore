@@ -199,7 +199,8 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
     const iPago = ret.search(/if \(data\.payment\) \{/);
     if (iOtra < 0 || iPago < 0 || iOtra > iPago) F("3 · la pantalla no corta en «otra cuenta» antes de esperar el pago (queda cargando)");
     if (!/\{paymentStatus === "otra_cuenta" && \([\s\S]{0,200}?\{PAGO_OTRA_CUENTA\.titulo\}[\s\S]{0,200}?\{PAGO_OTRA_CUENTA\.cuerpo\}[\s\S]{0,300}?onClick=\{entrarConOtroCorreo\}[\s\S]{0,300}?\{PAGO_OTRA_CUENTA\.boton\}/.test(ret)) F("3 · la pantalla de otra cuenta no dice qué pasa o no da la acción de entrar con otro correo");
-    if (!/async function entrarConOtroCorreo\(\) \{\s*try \{ await createClient\(\)\.auth\.signOut\(\); \}[^\n]*\n\s*window\.location\.assign\(hrefEntrar\(volverAca, "pack"\)\);/.test(ret)) F("3 · «Entrar con otro correo» no cierra la sesión ni vuelve a este pago");
+    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el botón queda ocupado (setSaliendo) y la barra se enciende antes de irse.
+    if (!/async function entrarConOtroCorreo\(\) \{\s*setSaliendo\(true\);\s*try \{ await createClient\(\)\.auth\.signOut\(\); \}[^\n]*\n\s*iniciarCarga\(claveActual\(\)\);\s*window\.location\.assign\(hrefEntrar\(volverAca, "pack"\)\);/.test(ret)) F("3 · «Entrar con otro correo» no cierra la sesión ni vuelve a este pago (o se va sin señal)");
   }
 
   // ── 6 · renta corta: el correo de listo y la línea del código ───────────────

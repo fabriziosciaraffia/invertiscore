@@ -18,6 +18,8 @@ import { useRouter } from "next/navigation";
 import { Trash2, FileText, ArrowRight, MoreHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { esDemo as esFilaDemo } from "@/lib/demo";
+import { botonOcupado } from "@/lib/carga-global";
+import { descargarArchivo } from "@/lib/descarga-cliente";
 
 interface Props {
   id: string;
@@ -31,6 +33,21 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
   const router = useRouter();
   const [borrando, setBorrando] = useState(false);
   const [abierto, setAbierto] = useState(false);
+  // El PDF se arma en el servidor y tarda segundos (22-oct-2026, regla de carga): se pide con fetch y el botón queda
+  // ocupado hasta que baja; si no se pudo, la URL de siempre.
+  const [descargando, setDescargando] = useState(false);
+  const descargarPdf = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hrefPdf || descargando) return;
+    setDescargando(true);
+    try {
+      if (!(await descargarArchivo(hrefPdf))) window.location.assign(hrefPdf);
+    } finally {
+      setDescargando(false);
+      setAbierto(false);
+    }
+  };
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const esDemo = esFilaDemo(id);
@@ -94,15 +111,16 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
               <ArrowRight className="h-3.5 w-3.5" /> Abrir análisis
             </a>
             {hrefPdf && (
-              <a href={hrefPdf} className="flex items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 font-body text-[13px] text-[var(--franco-text)] no-underline">
-                <FileText className="h-3.5 w-3.5" /> Descargar PDF
-              </a>
+              <button type="button" onClick={descargarPdf} disabled={descargando} {...botonOcupado(descargando)} className="flex w-full items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 text-left font-body text-[13px] text-[var(--franco-text)]">
+                <FileText className="h-3.5 w-3.5" /> {descargando ? "Descargando…" : "Descargar PDF"}
+              </button>
             )}
             {!esDemo && (
               <button
                 type="button"
                 onClick={eliminar}
                 disabled={borrando}
+                {...botonOcupado(borrando)}
                 className="flex w-full items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 text-left font-body text-[13px] text-signal-red disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" /> {borrando ? "Eliminando…" : "Eliminar"}
@@ -128,20 +146,26 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
         <ArrowRight className="h-3.5 w-3.5" />
       </a>
       {hrefPdf && (
-        <a
-          href={hrefPdf}
+        <button
+          type="button"
+          onClick={descargarPdf}
+          disabled={descargando}
+          {...botonOcupado(descargando)}
+          data-solo-icono
           title="Descargar PDF"
           aria-label="Descargar PDF"
           className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-[var(--franco-border-hover)] bg-[var(--franco-card)] text-[var(--franco-text-secondary)] no-underline"
         >
           <FileText className="h-3.5 w-3.5" />
-        </a>
+        </button>
       )}
       {!esDemo && (
         <button
           type="button"
           onClick={eliminar}
           disabled={borrando}
+          {...botonOcupado(borrando)}
+          data-solo-icono
           title={groupId ? "Eliminar comparativa (borra ambos análisis)" : "Eliminar análisis"}
           aria-label="Eliminar análisis"
           className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border bg-[var(--franco-card)] text-signal-red disabled:opacity-50"

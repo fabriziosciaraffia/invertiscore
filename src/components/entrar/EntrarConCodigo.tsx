@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useRouter } from "next/navigation";
 import { CODIGO_MAX } from "@/lib/lo-que-sigue/codigo";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { ENTRAR, ENTRAR_CONTEXTO, hrefConContrasena, type ContextoEntrada } from "@/lib/entrar/entrada";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { IconoGoogle } from "@/components/entrar/IconoGoogle";
@@ -23,6 +24,7 @@ export function EntrarConCodigo({ next, ctx }: { next: string; ctx: ContextoEntr
 
   async function entrar(ev: React.FormEvent) {
     if (!(await e.verificar(ev))) return;
+    iniciarCarga(claveActual());
     router.push(e.destino);
     router.refresh();
   }
@@ -47,13 +49,13 @@ export function EntrarConCodigo({ next, ctx }: { next: string; ctx: ContextoEntr
               value={e.codigo}
               onChange={(x) => e.setCodigo(x.target.value)}
             />
-            <button type="submit" className={PLANO.principal} disabled={e.ocupado}>{ENTRAR.entrar}</button>
+            <button type="submit" className={PLANO.principal} disabled={e.ocupado} {...botonOcupado(e.ocupadoEn === "verificar")}>{ENTRAR.entrar}</button>
           </div>
           {e.error && <p className={`mt-3 ${PLANO.error}`} role="alert">{e.error}</p>}
           {e.reenviado && !e.error && <p className={`mt-3 ${PLANO.nota}`} role="status">{ENTRAR.reenviado}</p>}
           <p className={`mt-5 ${PLANO.nota}`}>
             {ENTRAR.noLlego}{" "}
-            <button type="button" className={PLANO.enlace} onClick={e.mandarDeNuevo} disabled={e.ocupado}>{ENTRAR.mandarDeNuevo}</button>
+            <button type="button" className={PLANO.enlace} onClick={e.mandarDeNuevo} disabled={e.ocupado} {...botonOcupado(e.ocupadoEn === "reenviar")}>{ENTRAR.mandarDeNuevo}</button>
             {" · "}
             <button type="button" className={PLANO.enlace} onClick={e.usarOtroCorreo}>{ENTRAR.otroCorreo}</button>
           </p>
@@ -73,7 +75,7 @@ export function EntrarConCodigo({ next, ctx }: { next: string; ctx: ContextoEntr
               value={e.correo}
               onChange={(x) => e.setCorreo(x.target.value)}
             />
-            <button type="submit" className={PLANO.principal} disabled={e.ocupado}>{ENTRAR.mandarCodigo}</button>
+            <button type="submit" className={PLANO.principal} disabled={e.ocupado} {...botonOcupado(e.ocupadoEn === "enviar")}>{ENTRAR.mandarCodigo}</button>
             {e.error && <p className={PLANO.error} role="alert">{e.error}</p>}
           </form>
           <div className="my-4 flex items-center gap-3" aria-hidden="true">
@@ -81,7 +83,7 @@ export function EntrarConCodigo({ next, ctx }: { next: string; ctx: ContextoEntr
             <span className="text-[13px] text-[var(--franco-text-muted)]">{ENTRAR.o}</span>
             <span className="h-px flex-1 bg-[var(--franco-border)]" />
           </div>
-          <button type="button" onClick={e.conGoogle} className={PLANO.secundario}>
+          <button type="button" onClick={e.conGoogle} className={PLANO.secundario} disabled={e.ocupado} {...botonOcupado(e.ocupadoEn === "google")}>
             <span className={PLANO.iconoGoogle}><IconoGoogle /></span> {ENTRAR.google}
           </button>
           <p className={`mt-6 ${PLANO.nota}`} data-entrar="con-contrasena">

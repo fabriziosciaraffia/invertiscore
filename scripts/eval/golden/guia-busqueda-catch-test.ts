@@ -615,7 +615,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/setEstado\(\{ tipo: "enviando" \}\);/.test(qv) || !/setEstado\(estadoTrasRespuesta\(\{ status: r\.status, cuerpo: await r\.json\(\)\.catch\(\(\) => null\) \}\)\);/.test(qv) || !/setEstado\(estadoTrasRespuesta\(null\)\);/.test(qv))
       F("14 · el toque no pasa por «enviando» o la respuesta no decide el estado");
     if (!/if \(!sePuedeTocar\(estado\)\) return;/.test(qv)) F("14 · el botón manda dos veces (o no deja reintentar)");
-    if (!/estado\.tipo === "enviando" \? \(\s*<><span className="qv-gira" aria-hidden="true" \/>\{INFORME_DE_AVISO\.enviando\}<\/>/.test(qv)) F("14 · mientras manda, el botón no gira con «Mandando el aviso…»");
+    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el aro es el global de `{...botonOcupado(…)}` (globals.css), no un span propio.
+    if (!/\{\.\.\.botonOcupado\(estado\.tipo === "enviando"\)\}/.test(qv) || !/estado\.tipo === "enviando" \? INFORME_DE_AVISO\.enviando : estado\.tipo === "error"/.test(qv)) F("14 · mientras manda, el botón no gira con «Mandando el aviso…»");
     if (!/<p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓<\/span>\{INFORME_DE_AVISO\.listo\(estado\.correo\)\}<\/p>/.test(qv)) F("14 · al terminar no dice «Listo: te lo mandamos a [correo]» con el visto");
     if (!/estado\.tipo === "error" \? INFORME_DE_AVISO\.reintentar : INFORME_DE_AVISO\.boton/.test(qv) || !/<p className="qv-t" role="alert">\{INFORME_DE_AVISO\.error\}<\/p>/.test(qv)) F("14 · si falla no dice «No pudimos mandarlo.» con «Reintentar»");
     if (!/\{dicesQueConviene\(veredicto\) && <p className="qv-t">\{INFORME_DE_AVISO\.conviene\}<\/p>\}/.test(qv)) F("14 · «Este depto conviene con tus números» no depende del veredicto");
@@ -623,8 +624,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if ((qv.match(/<button/g) ?? []).length !== 1) F("14 · el banner tiene más de un botón");
     // El banner: degradado, texto blanco, un botón en papel; el indicador gira.
     const css = leer("src/components/guia/guia.css");
-    if (!/\.qv-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.qv-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css) || !/\.qv-gira \{[^}]*animation: qv-gira/.test(css))
-      F("14 · «Quiero verlo» no va en banner (degradado, texto blanco, un botón) o el indicador no gira");
+    if (!/\.qv-banda \{[^}]*color: #FAFAF8;[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.qv-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css) || /\.qv-gira \{/.test(css))
+      F("14 · «Quiero verlo» no va en banner (degradado, texto blanco, un botón) o volvió el aro propio (el que gira es el global)");
     // La ruta devuelve el correo al que salió. (19-oct-2026: la línea suma la fecha y el asunto del toque repetido; §15.)
     if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null[ ,]/.test(sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"))))
       F("14 · la ruta no devuelve el correo al que salió el aviso");

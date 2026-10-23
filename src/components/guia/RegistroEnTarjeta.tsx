@@ -16,6 +16,7 @@ import { REGISTRO_UN_PASO } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { capturarLqs, consumirRegistroPendiente, EVENTOS_LQS, marcarRegistroPendiente, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { GUIA } from "@/lib/guia/copy";
+import { botonOcupado } from "@/lib/carga-global";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -69,7 +70,7 @@ export function RegistroEnTarjeta({ ctx, next, alEntrar }: { ctx: ContextoLqs; n
       <div className="guia-reg-fila">
         <input ref={campo} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={CODIGO_MAX}
           placeholder={REGISTRO_UN_PASO.placeholderCodigo} aria-label="Código" value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
-        <button type="submit" disabled={ocupado} data-presionado={ocupado ? "1" : undefined}>{GUIA.entrarYAnalizar}</button>
+        <button type="submit" disabled={ocupado} {...botonOcupado(ocupado)}>{GUIA.entrarYAnalizar}</button>
       </div>
       {error && <p className="guia-error" role="alert">{error}</p>}
     </form>
@@ -79,7 +80,7 @@ export function RegistroEnTarjeta({ ctx, next, alEntrar }: { ctx: ContextoLqs; n
       <div className="guia-reg-fila">
         <input ref={campo} type="email" inputMode="email" autoComplete="email" placeholder={REGISTRO_UN_PASO.placeholder}
           aria-label="Tu correo" value={correo} onChange={(e) => setCorreo(e.target.value)} />
-        <button type="submit" disabled={ocupado} data-presionado={ocupado ? "1" : undefined}>{REGISTRO_UN_PASO.mandarCodigo}</button>
+        <button type="submit" disabled={ocupado} {...botonOcupado(ocupado)}>{REGISTRO_UN_PASO.mandarCodigo}</button>
       </div>
       {error && <p className="guia-error" role="alert">{error}</p>}
     </form>

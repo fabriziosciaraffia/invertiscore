@@ -99,9 +99,7 @@
 .qv-btn:disabled { cursor: progress; }
 .qv-btn:focus-visible { outline: 2px solid #FAFAF8; outline-offset: 3px; }
 /* El indicador giratorio, dentro del botón mientras manda. */
-.qv-gira { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(15, 15, 15, 0.22); border-top-color: #0F0F0F; animation: qv-gira 0.8s linear infinite; }
-@keyframes qv-gira { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .qv-gira { animation-duration: 2.4s; } }
+/* El aro de «Mandando el aviso…» es el global (globals.css › button[aria-busy="true"]::after, 22-oct-2026). */
 .qv-listo { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; font-size: 17px; line-height: 1.35; overflow-wrap: anywhere; }
 .qv-ok { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: #FAFAF8; color: #0F0F0F; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: none; }
 @media (max-width: 767px) { .qv-banda:not([data-qv="listo"]):not([data-qv="despublicado"]) { flex-direction: column; align-items: stretch; } }

@@ -264,7 +264,8 @@ export function runCasaTier(): { hard: number } {
   // 10 · el menú de compartir: la invitación primero, con su color
   {
     const sb = sinComentarios(leer("src/components/chrome/ShareButton.tsx"));
-    if (!/<div data-compartir="menu" [^>]*>\s*\{!sinInvitacion && \(\s*<button onClick=\{\(\) => void invitar\(\)\} disabled=\{!invitacion\} className="iv-menu [^"]*" data-compartir="invitar">/.test(sb)) F("10 · «Invita a alguien» no es lo primero del menú, o no va con su color");
+    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · mientras llega el enlace, la opción se ve ocupada ({...botonOcupado(!invitacion)}).
+    if (!/<div data-compartir="menu" [^>]*>\s*\{!sinInvitacion && \(\s*<button onClick=\{\(\) => void invitar\(\)\} disabled=\{!invitacion\} \{\.\.\.botonOcupado\(!invitacion\)\} className="iv-menu [^"]*" data-compartir="invitar">/.test(sb)) F("10 · «Invita a alguien» no es lo primero del menú, o no va con su color");
     if ((sb.match(/data-compartir="invitar"/g) ?? []).length !== 1) F("10 · «Invita a alguien» aparece más de una vez en el menú");
     if (!/\{invitaCopiada \? REFERIDO_COPY\.copiado : REFERIDO_COPY\.menuCompartir\}<\/span>\s*<span className="iv-m-nota [^"]*">\{REFERIDO_COPY\.menuCompartirNota\}/.test(sb)) F("10 · el ítem no dice «Invita a alguien · Los dos reciben un análisis»");
     if (!/import "@\/components\/invitacion\/invita\.css";/.test(sb)) F("10 · el menú no carga el color de «Invita a alguien»");

@@ -391,7 +391,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         || !/<DeptosCliente sesion=\{sesion\} portada=\{portada\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts"))))) F("7 · el alta no fija la puerta B");
-      if (!/datos: \{ cuando, status: "completo", \.\.\.\(atr\?\.puerta \? \{ puerta: atr\.puerta as string \} : \{\}\) \},/.test(leer("src/lib/meta/registro.ts"))) F("7 · CompleteRegistration no lleva la puerta");
+      // ⚠ ACTA (22-oct-2026, REGISTRO-META) · CompleteRegistration sale al crear la cuenta, con o sin «cuándo»; la puerta la lleva
+      // `datosRegistro` si existe (tier REGISTRO-META fija el resto).
+      const registro = leer("src/lib/meta/registro.ts");
+      if (!/\.\.\.\(p\.puerta \? \{ puerta: p\.puerta \} : \{\}\)/.test(registro) || !/datos: datosRegistro\(\{ puerta, cuando: leido\.cuando \}\),/.test(registro)) F("7 · CompleteRegistration no lleva la puerta");
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
       if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const fila = \{ \.\.\.evaluada, \.\.\.\(evaluada\.arriendo \? evaluarEstandar25\(candidatoDeEvaluacion\(a, evaluada\), cfg\) : ESTANDAR25_VACIO\) \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");

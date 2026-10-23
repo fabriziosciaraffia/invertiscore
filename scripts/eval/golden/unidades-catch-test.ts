@@ -184,8 +184,11 @@ export async function runUnidadesTier(): Promise<{ hard: number }> {
     if (REFERENCIA_ESTIMADA !== "referencia estimada" || !h || !h.fraseCanonica.includes("(referencia estimada)") || h.valor.estimada !== true) F("8 · la frase del sobreprecio no dice «referencia estimada» cuando la mediana la usa");
     if (!sin || sin.fraseCanonica.includes("estimada") || "estimada" in sin.valor || "estimada" in buildPrecioVsComuna({ sujetoUfM2: 70, medianaComunaUfM2: 66, confiable: true, n: 40, universo: "nuevo" })) F("8 · sin estimado, la frase o el dato cambian (tienen que quedar idénticos)");
     if (buildMedianaSnapshot({ mediana: 66, n: 40, universo: "nuevo", estimada: true }).estimada !== true || "estimada" in buildMedianaSnapshot({ mediana: 66, n: 40 })) F("8 · la foto de la mediana no guarda que fue estimada");
+    // ⚠ ACTA (22-oct-2026, VEREDICTO-GUARDADO) · la foto se relee en UN solo lugar (lib/analysis/mediana-snapshot.ts ›
+    // medianaDesdeSnapshot), que copia «estimada» con el universo y los cuartiles; las dos páginas la llaman.
+    if (!/\.\.\.\(snap\.estimada \? \{ estimada: true \} : \{\}\)/.test(leer("src/lib/analysis/mediana-snapshot.ts"))) F("8 · medianaDesdeSnapshot relee la foto sin «estimada»: el informe la olvida");
     for (const p of ["src/app/analisis/[id]/documento/page.tsx", "src/app/analisis/[id]/informe-ltr.tsx"]) {
-      if (!/\.\.\.\(medianaSnapshot\.estimada \? \{ estimada: true \} : \{\}\)/.test(leer(p))) F(`8 · ${p} relee la foto sin «estimada»: el informe la olvida`);
+      if (!/medianaDesdeSnapshot\(medianaSnapshot, /.test(leer(p))) F(`8 · ${p} no relee la foto con medianaDesdeSnapshot`);
     }
     if (!/estimada: medianaComunaVentaUF\?\.estimada/.test(sinComentarios(leer("src/lib/analysis.ts")))) F("8 · el motor no pasa «estimada» a precioVsComuna");
     const zona = sinComentarios(leer("src/components/analysis/zona/ZonaLtr.tsx"));

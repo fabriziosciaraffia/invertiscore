@@ -30,7 +30,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
@@ -230,7 +230,7 @@ export function SemanalLista({
     }
     return (
       <div className="guia-acc">
-        <button type="button" className="guia-an" onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
+        <button type="button" className="guia-an" onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)}>
           {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
         </button>
         {usa && <span className="guia-cr">· {usa}</span>}

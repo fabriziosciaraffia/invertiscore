@@ -147,7 +147,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const guardar = entre(dc, "async function guardarBusca", "\n  }\n");
     if (!/fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(guardar) || !/fetch\("\/api\/deptos\/rearmar"/.test(guardar)) F("1 · «Listo» no guarda el perfil y rearma la selección del día");
     const irPanel = entre(dc, "async function irAlPanel", "\n  }\n");
-    if (!/if \(sinGuardar && !\(await guardarBusca\(\)\)\) return;\s*router\.push\("\/dashboard"\);/.test(irPanel)) F("1 · «Ir a mi panel» no guarda lo cambiado antes de irse");
+    // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el presionado ya no se escribe a mano: `{...botonOcupado(x)}` deja
+    // el botón presionado y con el aro; y toda ida por código tras el servidor enciende la barra con iniciarCarga(claveActual()).
+    if (!/if \(sinGuardar && !\(await guardarBusca\(\)\)\) \{ setYendo\(null\); return; \}\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(irPanel)) F("1 · «Ir a mi panel» no guarda lo cambiado antes de irse (o se va sin la barra)");
     const rearmar = codigo("src/app/api/deptos/rearmar/route.ts");
     if (!/if \(fila\?\.enviada_at\) return/.test(rearmar) || !/\.delete\(\)\.eq\("id", fila\.id\)\.is\("enviada_at", null\)/.test(rearmar) || !/encolarPrimeraSeleccion\(/.test(rearmar)) F("1 · /api/deptos/rearmar no rearma solo la selección del día que todavía no salió");
   } catch (e) {
@@ -160,7 +162,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo que la pantalla hace con la respuesta del alta vive en aplicarAlta (lo usan el
     // alta de siempre y la entrada por código); terminarAlta solo la pide, con tope.
     const terminar = entre(dc, "const aplicarAlta = useCallback(", "}, [posthog, router]);");
-    if (!/if \(pasoActual\.current === "dentro"\) return;\s*router\.push\("\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro»");
+    if (!/if \(pasoActual\.current === "dentro"\) return;\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro» (o se va sin la barra)");
     const efecto = entre(dc, 'const entro = new URLSearchParams(window.location.search).get("entro");', "}, [sesion, terminarAlta");
     if (!/\|\| altaPedida\.current\) return;\s*const entro = /.test(dc) || !/altaPedida\.current = true;\s*window\.history\.replaceState\(window\.history\.state, "", window\.location\.pathname\);/.test(efecto) || efecto.indexOf("claveDeDestino(") > efecto.indexOf("replaceState(")) F("2 · el `?entro=1` vuelve a correr el alta después del refresco (o la clave de Google se lee después de limpiar la dirección)");
     if (!/data-deptos="ir-panel"/.test(dc) || !/onClick=\{\(\) => void irAlPanel\(\)\}|onClick=\{irAlPanel\}/.test(dc)) F("2 · «Estás dentro» no tiene «Ir a mi panel»");

@@ -28,6 +28,7 @@ import { diagnosticoTicket } from "@/lib/lo-que-sigue/diagnostico-ticket";
 import { crearDisparador, crearVigiaZona, EVENTOS_ACTIVIDAD, revisarMarcas, SELECTOR_FIN_CAPITULOS, SELECTOR_FIN_RECOMENDACION } from "@/lib/lo-que-sigue/disparo-ticket";
 import { usoBanner } from "@/lib/lo-que-sigue/uso-banner";
 import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoVence, horaVencimiento, ofertaPackVigente, venceEl, PACK_AHORRO_CLP, PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import "./lo-que-sigue.css";
 
@@ -288,7 +289,8 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) {
-        // La página se descarga hacia Flow con el botón presionado.
+        // La página se descarga hacia Flow con el botón presionado y la barra del header encendida.
+        iniciarCarga(claveActual());
         window.location.href = data.url;
         return;
       }
@@ -373,7 +375,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
                 />
               )}
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
-              <button type="submit" className="lqs-rojo" disabled={pagando} data-presionado={pagando ? "1" : undefined}>{TICKET_PACK.boton(precio)}</button>
+              <button type="submit" className="lqs-rojo" disabled={pagando} {...botonOcupado(pagando)}>{TICKET_PACK.boton(precio)}</button>
               <p className="lqs-tk-vence" data-lqs="ticket-vence">{conCuenta ? TICKET_PACK.vencimientoCuenta(cuandoVence(createdAt)) : TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
               <button type="button" className="lqs-seguir" onClick={() => despedirse("seguir")}>{TICKET_PACK.seguir}</button>
             </form>

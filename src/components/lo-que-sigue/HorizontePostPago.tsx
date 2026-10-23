@@ -12,6 +12,7 @@ import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
+import { botonOcupado } from "@/lib/carga-global";
 import type { LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import "../guia/guia.css";
 
@@ -19,10 +20,12 @@ export function HorizontePostPago({ ctx, pago }: { ctx: ContextoLqs; pago: Llave
   const posthog = usePostHog();
   const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(null);
   const [error, setError] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   async function elegir(h: HorizonteCompra) {
     setHorizonte(h);
     setError(false);
+    setGuardando(true);
     capturarLqs(posthog, EVENTOS_LQS.horizonteElegido, ctx, { horizonte: h, donde: "post_pago" });
     try {
       const res = await fetch("/api/lo-que-sigue/perfil", {
@@ -33,6 +36,8 @@ export function HorizontePostPago({ ctx, pago }: { ctx: ContextoLqs; pago: Llave
       setError(!res.ok);
     } catch {
       setError(true);
+    } finally {
+      setGuardando(false);
     }
   }
 
@@ -48,6 +53,7 @@ export function HorizontePostPago({ ctx, pago }: { ctx: ContextoLqs; pago: Llave
             aria-checked={horizonte === h.id}
             className="guia-opcion"
             data-activa={horizonte === h.id ? "1" : "0"}
+            {...botonOcupado(guardando && horizonte === h.id)}
             onClick={() => elegir(h.id)}
           >
             {h.texto}

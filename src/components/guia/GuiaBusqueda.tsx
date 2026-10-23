@@ -26,6 +26,7 @@ import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/e
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { rutaPrecarga } from "@/lib/lo-que-sigue/oferta-pack";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { GUIA, GUIA_SALDO } from "@/lib/guia/copy";
 import { urlGuia, type LlavePago } from "@/lib/lo-que-sigue/retorno-pago";
 import { RegistroEnTarjeta } from "./RegistroEnTarjeta";
@@ -109,7 +110,10 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     setError(null);
     setRegistrando(null);
     setGenerando(it.avisoId);
+    // La barra del header acompaña al botón hasta que abre el informe (22-oct-2026); si no abre, se suelta.
+    const soltar = iniciarCarga(claveActual());
     let resuelto = false;
+    let abrio = false;
     try {
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
@@ -121,6 +125,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
         const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string };
         if (res.ok && d.id) {
           capturarLqs(posthog, EVENTOS_LQS.guiaInformeCreado, ctx, { aviso_id: it.avisoId, nuevo_id: d.id, ya: d.estado === "ya-creado" });
+          abrio = true;
           router.push(`/analisis/${d.id}`);
           return;
         }
@@ -141,6 +146,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
       if (!resuelto) setError({ avisoId: it.avisoId, texto: GUIA.error });
     } catch {
       setError({ avisoId: it.avisoId, texto: GUIA.error });
+    } finally {
+      if (!abrio) soltar();
     }
     setGenerando(null);
   }
@@ -203,7 +210,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                     <RegistroEnTarjeta ctx={ctx} next={typeof window === "undefined" ? "/" : window.location.pathname + window.location.search} alEntrar={() => { setConSesion(true); setRegistrando(null); setConfirmar({ it, sin: false }); }} />
                   ) : (
                     <div className="guia-acc">
-                      <button type="button" className="guia-an" onClick={() => abrir(it)} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined}>
+                      <button type="button" className="guia-an" onClick={() => abrir(it)} disabled={!!generando} {...botonOcupado(generando === it.avisoId)}>
                         {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
                       </button>
                       {usaUno && <span className="guia-cr">· {usaUno}</span>}

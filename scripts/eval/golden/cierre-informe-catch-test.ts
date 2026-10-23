@@ -72,7 +72,8 @@ export function runCierreInformeTier(): { hard: number } {
     // se registró (TICKET-REGRESO §2).
     // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket de la cuenta nueva cuenta sus 24 horas
     // desde la cuenta: `createdAt={ticketDesde ?? createdAt}` (tier PUERTA-B-RECORRIDO §5). Sigue siendo UNA acción.
-    const tern = new RegExp(String.raw`\{ticketLqs \? \(\s*(?:\s*)?<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} ilimitado=\{`);
+    // ⚠ ACTA (22-oct-2026, TICKET-VIVO) · el ticket recibe `conCuenta`: con cuenta, el copy es «Para tres deptos más de tu selección…».
+    const tern = new RegExp(String.raw`\{ticketLqs \? \(\s*(?:\s*)?<TicketPack ctx=\{ctxLqs\} createdAt=\{ticketDesde \?\? createdAt\} correoSesion=\{correoDelTicket\(\{ recienDentro, correoConocido: correoOferta \}\)\} conSesion=\{[^}]+\} recienDentro=\{!!recienDentro\} conCuenta=\{[^}]+\} \/>\s*\) : showCtaWelcome \? null : \(\s*<CierreInforme analisis=\{userCredits \+ \(${sesion.replace(/[!]/g, "!")} && welcomeAvailable \? 1 : 0\)\} conSesion=\{${sesion.replace(/[!]/g, "!")}\} ilimitado=\{`);
     if (!tern.test(fin)) F(`${tipo} · el final no elige UNA acción (ticket · bienvenida · línea)`);
     if ((fin.match(/<CierreInforme\b/g) ?? []).length !== 1 || (fin.match(/<TicketPack\b/g) ?? []).length !== 1 || (fin.match(/<CtaWelcome\b/g) ?? []).length !== 1) F(`${tipo} · el final monta dos veces una acción`);
     const acciones = (fin.match(/<(CierreInforme|TicketPack|CtaWelcome|EnlaceCarga|button|a)\b/g) ?? []).length;

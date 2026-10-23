@@ -49,6 +49,7 @@ import { IconoGoogle } from "@/components/entrar/IconoGoogle";
 import { REGISTRO_UN_PASO, ESTAS_DENTRO, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { CODIGO_MAX, codigoValido, limpiarCodigo } from "@/lib/lo-que-sigue/codigo";
 import { conTopeYReintento, ENTRAR_COPY } from "@/lib/deptos/entrada";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { marcarPuertaCandidata, type Puerta } from "@/lib/atribucion-puerta";
 import { avisarLead, type OrigenLead } from "@/lib/meta/lead-cliente";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
@@ -113,7 +114,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [correo, setCorreo] = useState(sesion?.email ?? "");
   const [enviado, setEnviado] = useState<string | null>(null);
   const [codigo, setCodigo] = useState("");
-  const [ocupado, setOcupado] = useState(false);
+  const [ocupado, setOcupado] = useState<false | "correo" | "google" | "entrar">(false);
   const [error, setError] = useState<string | null>(null);
   const [regaloVence, setRegaloVence] = useState<string | null>(null);
   const [horizonte, setHorizonte] = useState<HorizonteCompra | null>(null);
@@ -123,6 +124,11 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [cambiando, setCambiando] = useState(false);
   const [sinGuardar, setSinGuardar] = useState(false);
   const [guardandoBusca, setGuardandoBusca] = useState(false);
+  // LO QUE ESPERA SE VE ESPERANDO (22-oct-2026, lib/carga-global.ts): qué chip se está guardando, con qué botón se está
+  // yendo al dashboard, y si el alta de la vuelta por el enlace o por Google está corriendo.
+  const [guardando, setGuardando] = useState<"modalidad" | "cuando" | null>(null);
+  const [yendo, setYendo] = useState<"panel" | "si" | "no" | null>(null);
+  const [altaEnCurso, setAltaEnCurso] = useState(false);
   /** Sube al guardar la búsqueda: la selección de abajo se vuelve a pedir. */
   const [version, setVersion] = useState(0);
   /** El alta se pide UNA vez: sin esto, el refresh que trae la sesión la pedía de nuevo y la pantalla se iba al dashboard. */
@@ -203,7 +209,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     const c = correo.trim().toLowerCase();
     if (!CORREO_OK.test(c)) { setError(REGISTRO_UN_PASO.errorCorreo); return; }
     setError(null);
-    setOcupado(true);
+    setOcupado("correo");
     try {
       const res = await fetch("/api/deptos/correo", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -238,7 +244,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   async function conGoogle() {
     if (!puedePedirCorreo(comunas)) return;
     setError(null);
-    setOcupado(true);
+    setOcupado("google");
     try {
       const res = await fetch("/api/deptos/google", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -279,6 +285,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     }
     // «Estás dentro» se queda hasta que la persona siga: una respuesta tardía o repetida nunca la saca de ahí.
     if (pasoActual.current === "dentro") return;
+    iniciarCarga(claveActual());
     router.push("/dashboard");
   }, [posthog, router]);
 
@@ -286,12 +293,20 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   // responde, la pantalla ofrece reintentarla (ya hay sesión: no hace falta otro código).
   const terminarAlta = useCallback(async (clave: string | null = null, metodo: "email" | "google" = "email") => {
     setAltaPorReintentar(null);
-    const r = await conTopeYReintento(async (senal) => {
-      const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}), signal: senal });
-      return (await res.json().catch(() => ({}))) as RespuestaAlta;
-    });
-    if (!r.ok) { setAltaPorReintentar({ clave, metodo }); return; }
-    aplicarAlta(r.valor, metodo);
+    // Mientras corre (hasta 8 s y un reintento) se ve: la barra del header y, si se tocó «reintentar», ese botón ocupado.
+    setAltaEnCurso(true);
+    const soltar = iniciarCarga(claveActual());
+    try {
+      const r = await conTopeYReintento(async (senal) => {
+        const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}), signal: senal });
+        return (await res.json().catch(() => ({}))) as RespuestaAlta;
+      });
+      if (!r.ok) { setAltaPorReintentar({ clave, metodo }); return; }
+      aplicarAlta(r.valor, metodo);
+    } finally {
+      soltar();
+      setAltaEnCurso(false);
+    }
   }, [aplicarAlta]);
 
   // Volvió por el enlace del correo o de Google, con sesión: termina el alta acá. Con Google, el Lead sale ahora (recién se
@@ -320,7 +335,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     if (!codigoValido(t) || !enviado) { setError(REGISTRO_UN_PASO.errorCodigo); return; }
     setError(null);
     setFalloEntrar(false);
-    setOcupado(true);
+    setOcupado("entrar");
     try {
       // El código se verifica EN EL SERVIDOR y el alta corre en el mismo pedido (POST /api/deptos/entrar), con tope y un
       // reintento solo: si una respuesta se pierde, el mismo código repone la sesión y trae el alta ya hecha (22-oct-2026).
@@ -340,13 +355,16 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   // La modalidad, en «Estás dentro» (16-oct-2026): arriendo tradicional por defecto; se guarda al cambiarla.
   async function elegirModalidad(m: ModalidadDeptos) {
     setModalidad(m);
+    setGuardando("modalidad");
     const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modalidad: m }) }).catch(() => null);
+    setGuardando(null);
     if (!res?.ok) setError(ESTAS_DENTRO.errorGuardar);
   }
 
   async function elegirCuando(h: HorizonteCompra) {
     setHorizonte(h);
     setError(null);
+    setGuardando("cuando");
     try {
       const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ horizonte: h, modalidad }) });
       if (!res.ok) { setError(ESTAS_DENTRO.errorGuardar); return; }
@@ -355,6 +373,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       posthog?.capture("horizonte_elegido", { horizonte: h, donde: "deptos", modalidad });
     } catch {
       setError(ESTAS_DENTRO.errorGuardar);
+    } finally {
+      setGuardando(null);
     }
   }
 
@@ -387,16 +407,20 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     }
   }
   async function irAlPanel() {
-    if (sinGuardar && !(await guardarBusca())) return;
+    setYendo("panel");
+    if (sinGuardar && !(await guardarBusca())) { setYendo(null); return; }
+    iniciarCarga(claveActual());
     router.push("/dashboard");
   }
 
   async function sumarComunas(si: boolean) {
+    setYendo(si ? "si" : "no");
     if (si && agregar) {
       const todas = [...agregar.actuales, ...agregar.nuevas];
       const res = await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comunas: todas }) });
-      if (!res.ok) { setError(ALTA_COPY.error); return; }
+      if (!res.ok) { setError(ALTA_COPY.error); setYendo(null); return; }
     }
+    iniciarCarga(claveActual());
     router.push("/dashboard");
   }
 
@@ -412,7 +436,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
           <p className="dp-pregunta">{MODALIDAD_PREGUNTA}</p>
           <div className="dp-chips" role="radiogroup" aria-label={MODALIDAD_PREGUNTA}>
             {MODALIDADES_DEPTOS.map((m) => (
-              <button key={m.id} type="button" role="radio" aria-checked={modalidad === m.id} className="dp-chip" data-activo={modalidad === m.id ? "1" : undefined} onClick={() => void elegirModalidad(m.id)}>
+              <button key={m.id} type="button" role="radio" aria-checked={modalidad === m.id} className="dp-chip" data-activo={modalidad === m.id ? "1" : undefined} {...botonOcupado(guardando === "modalidad" && modalidad === m.id)} onClick={() => void elegirModalidad(m.id)}>
                 {m.chip}
               </button>
             ))}
@@ -422,7 +446,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
           <p className="dp-pregunta">{ESTAS_DENTRO.cuando}</p>
           <div className="dp-chips" role="radiogroup" aria-label={ESTAS_DENTRO.cuando}>
             {ESTAS_DENTRO.horizontes.map((h) => (
-              <button key={h.id} type="button" role="radio" aria-checked={horizonte === h.id} className="dp-chip" data-activo={horizonte === h.id ? "1" : undefined} onClick={() => void elegirCuando(h.id)}>
+              <button key={h.id} type="button" role="radio" aria-checked={horizonte === h.id} className="dp-chip" data-activo={horizonte === h.id ? "1" : undefined} {...botonOcupado(guardando === "cuando" && horizonte === h.id)} onClick={() => void elegirCuando(h.id)}>
                 {h.texto}
               </button>
             ))}
@@ -463,7 +487,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
                   ))}
                 </div>
                 <div className="dp-fin">
-                  <button type="button" className="dp-boton" onClick={() => void guardarBusca()} disabled={guardandoBusca} data-deptos="buscas-listo">{guardandoBusca ? BUSCAS_COPY.guardando : BUSCAS_COPY.listo}</button>
+                  <button type="button" className="dp-boton" onClick={() => void guardarBusca()} disabled={guardandoBusca} {...botonOcupado(guardandoBusca)} data-deptos="buscas-listo">{guardandoBusca ? BUSCAS_COPY.guardando : BUSCAS_COPY.listo}</button>
                 </div>
               </div>
             )}
@@ -475,7 +499,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
           <PrimeraSeleccion key={version} />
         </div>
         <div className="dp-fin">
-          <button type="button" className="dp-boton" onClick={() => void irAlPanel()} disabled={guardandoBusca} data-deptos="ir-panel">{DEPTOS_FIN.cuenta}</button>
+          <button type="button" className="dp-boton" onClick={() => void irAlPanel()} disabled={guardandoBusca || !!yendo} {...botonOcupado(yendo === "panel")} data-deptos="ir-panel">{DEPTOS_FIN.cuenta}</button>
           <p className="dp-nota">{DEPTOS_FIN.correo}</p>
         </div>
         {error && <p className="dp-error" role="alert">{error}</p>}
@@ -488,8 +512,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       <div className="dp" data-deptos="agregar">
         <h1 className="dp-titulo dp-titulo-largo">{ALTA_COPY.agregar(agregar.nuevas)}</h1>
         <div className="dp-fin">
-          <button type="button" className="dp-boton" onClick={() => void sumarComunas(true)}>{ALTA_COPY.agregarSi}</button>
-          <button type="button" className="dp-enlace" onClick={() => void sumarComunas(false)}>{ALTA_COPY.agregarNo}</button>
+          <button type="button" className="dp-boton" onClick={() => void sumarComunas(true)} disabled={!!yendo} {...botonOcupado(yendo === "si")}>{ALTA_COPY.agregarSi}</button>
+          <button type="button" className="dp-enlace" onClick={() => void sumarComunas(false)} disabled={!!yendo} {...botonOcupado(yendo === "no")}>{ALTA_COPY.agregarNo}</button>
         </div>
         {error && <p className="dp-error" role="alert">{error}</p>}
       </div>
@@ -511,7 +535,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       {/* De vuelta por el enlace o por Google, el alta no respondió (22-oct-2026): ya hay sesión, se reintenta sin código. */}
       {altaPorReintentar && (
         <div className="dp-bloque" data-deptos="alta-fallida">
-          <button type="button" className="dp-boton" onClick={() => void terminarAlta(altaPorReintentar.clave, altaPorReintentar.metodo)}>{ENTRAR_COPY.noPudimos}</button>
+          <button type="button" className="dp-boton" onClick={() => void terminarAlta(altaPorReintentar.clave, altaPorReintentar.metodo)} disabled={altaEnCurso} {...botonOcupado(altaEnCurso)}>{ENTRAR_COPY.noPudimos}</button>
         </div>
       )}
 
@@ -538,7 +562,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
             <div className="dp-fila">
               <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
                 aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
-              <button type="submit" className="dp-boton" disabled={ocupado} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>
+              <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "entrar")} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>
             </div>
           </form>
         ) : (
@@ -547,9 +571,9 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
             <div className="dp-fila">
               <input className="dp-campo" type="email" inputMode="email" autoComplete="email" placeholder={REGISTRO_UN_PASO.placeholder}
                 aria-label={ALTA_COPY.correo} value={correo} onChange={(e) => setCorreo(e.target.value)} />
-              <button type="submit" className="dp-boton" disabled={ocupado}>{ALTA_COPY.pedir}</button>
+              <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "correo")}>{ALTA_COPY.pedir}</button>
             </div>
-            <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={ocupado}><IconoGoogle /> {ALTA_COPY.google}</button>
+            <button type="button" className="dp-google" onClick={() => void conGoogle()} disabled={!!ocupado} {...botonOcupado(ocupado === "google")}><IconoGoogle /> {ALTA_COPY.google}</button>
             <p className="dp-nota">{DEPTOS_COPY.sinContrasena}</p>
           </form>
         )}

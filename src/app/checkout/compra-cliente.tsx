@@ -9,7 +9,7 @@
 // del código es la de /entrar (useEntradaPorCodigo): la cuenta nace o entra igual, y se reclama lo anónimo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { usePostHog } from "@/lib/posthog-react";
 import { createClient } from "@/lib/supabase/client";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -128,8 +128,12 @@ export function CompraCliente(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.pagarAlEntrar, sesion, oferta, yaTienePlan, esPack]);
 
+  // «¿No es tu correo?» cierra la sesión y recarga la compra: el enlace queda ocupado y la barra encendida (22-oct-2026).
+  const [saliendo, setSaliendo] = useState(false);
   async function otraCuenta() {
+    setSaliendo(true);
     try { await createClient().auth.signOut(); } catch { /* sin sesión: igual */ }
+    iniciarCarga(claveActual());
     window.location.assign(urlCompra(estaCompra));
   }
 
@@ -174,7 +178,7 @@ export function CompraCliente(props: {
               type="button"
               onClick={handlePay}
               disabled={loading || packVencido}
-              data-presionado={loading ? "1" : undefined}
+              {...botonOcupado(loading)}
               className={PLANO.principal}
               data-compra="pagar"
             >
@@ -183,7 +187,7 @@ export function CompraCliente(props: {
             {error && <p className={PLANO.error} role="alert">{error}</p>}
             <p className={PLANO.nota}>
               {COMPRA.noEsTuCorreo}{" "}
-              <button type="button" className={PLANO.enlace} onClick={otraCuenta}>{COMPRA.otroCorreo}</button>
+              <button type="button" className={PLANO.enlace} onClick={otraCuenta} disabled={saliendo} {...botonOcupado(saliendo)}>{COMPRA.otroCorreo}</button>
             </p>
           </div>
         ) : entrada.enviado ? (
@@ -202,14 +206,14 @@ export function CompraCliente(props: {
               value={entrada.codigo}
               onChange={(x) => entrada.setCodigo(x.target.value)}
             />
-            <button type="submit" className={PLANO.principal} disabled={entrada.ocupado || loading || packVencido} data-presionado={loading ? "1" : undefined} data-compra="pagar">
+            <button type="submit" className={PLANO.principal} disabled={entrada.ocupado || loading || packVencido} {...botonOcupado(loading || entrada.ocupadoEn === "verificar")} data-compra="pagar">
               {botonPagar}
             </button>
             {errorVisible && <p className={PLANO.error} role="alert">{errorVisible}</p>}
             {entrada.reenviado && !errorVisible && <p className={PLANO.nota} role="status">{COMPRA.reenviado}</p>}
             <p className={PLANO.nota}>
               {COMPRA.noLlego}{" "}
-              <button type="button" className={PLANO.enlace} onClick={entrada.mandarDeNuevo} disabled={entrada.ocupado}>{COMPRA.mandarDeNuevo}</button>
+              <button type="button" className={PLANO.enlace} onClick={entrada.mandarDeNuevo} disabled={entrada.ocupado} {...botonOcupado(entrada.ocupadoEn === "reenviar")}>{COMPRA.mandarDeNuevo}</button>
               {" · "}
               <button type="button" className={PLANO.enlace} onClick={entrada.usarOtroCorreo}>{COMPRA.otroCorreo}</button>
             </p>
@@ -229,11 +233,11 @@ export function CompraCliente(props: {
                 onChange={(x) => entrada.setCorreo(x.target.value)}
               />
             </div>
-            <button type="submit" className={PLANO.principal} disabled={entrada.ocupado || packVencido} data-compra="pagar">
+            <button type="submit" className={PLANO.principal} disabled={entrada.ocupado || packVencido} {...botonOcupado(entrada.ocupadoEn === "enviar")} data-compra="pagar">
               {COMPRA.pagar(product.precio)}
             </button>
             {entrada.error && <p className={PLANO.error} role="alert">{entrada.error}</p>}
-            <button type="button" onClick={entrada.conGoogle} className={PLANO.secundario} disabled={packVencido} data-compra="google">
+            <button type="button" onClick={entrada.conGoogle} className={PLANO.secundario} disabled={packVencido || entrada.ocupado} {...botonOcupado(entrada.ocupadoEn === "google")} data-compra="google">
               <span className={PLANO.iconoGoogle}><IconoGoogle /></span> {COMPRA.google}
             </button>
           </form>

@@ -20,7 +20,7 @@ import { hojaSinDeptos, marcaVisto, PRIMERA_SELECCION, tituloHoja, type FaltaDel
 import { GUIA } from "@/lib/guia/copy";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
-import { claveActual, iniciarCarga } from "@/lib/carga-global";
+import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
@@ -194,7 +194,7 @@ export function PrimeraSeleccion({ titulo = true }: {
           <p className="guia-txt">{PRIMERA_SELECCION.faltan}</p>
           <div className="mt-2 flex flex-col gap-3">{datos.faltan.map(pregunta)}</div>
           <div className="guia-acc">
-            <button type="button" className="guia-an" onClick={() => void armar()} disabled={!listo || armando} data-presionado={armando ? "1" : undefined}>{PRIMERA_SELECCION.armar}</button>
+            <button type="button" className="guia-an" onClick={() => void armar()} disabled={!listo || armando} {...botonOcupado(armando)}>{PRIMERA_SELECCION.armar}</button>
           </div>
         </div>
       )}
@@ -239,7 +239,7 @@ export function PrimeraSeleccion({ titulo = true }: {
                       </div>
                     ) : puede && (
                       <div className="guia-acc">
-                        <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} data-presionado={generando === it.avisoId ? "1" : undefined} data-primera="analizar">
+                        <button type="button" className="guia-an" onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-primera="analizar">
                           {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
                         </button>
                         {usa && <span className="guia-cr">· {usa}</span>}

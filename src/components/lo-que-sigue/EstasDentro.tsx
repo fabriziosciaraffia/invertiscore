@@ -12,6 +12,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { ESTAS_DENTRO, notaChips, notaCuando, type HorizonteCompra } from "@/lib/lo-que-sigue/copy";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { TIPOLOGIAS_CHIP, type PerfilChips } from "@/lib/lo-que-sigue/perfil-chips";
+import { botonOcupado, chipOcupado } from "@/lib/carga-global";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PRIMERA_SELECCION } from "@/lib/guia/del-dia";
 
@@ -45,6 +46,8 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
   // Tocados los chips, junto a ellos dice «Anotado · toca para cambiar» (08-oct-2026, segunda pasada).
   const [chipsCambiados, setChipsCambiados] = useState(false);
   const [error, setError] = useState(false);
+  // El chip que se guarda se ve guardándose (22-oct-2026, regla de carga).
+  const [guardando, setGuardando] = useState<Campo | "horizonte" | null>(null);
 
   useEffect(() => {
     capturarLqs(posthog, EVENTOS_LQS.dentroVisto, ctx);
@@ -57,7 +60,9 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
     setChipsCambiados(true);
     capturarLqs(posthog, EVENTOS_LQS.preferenciaEditada, ctx, { campo, valor });
     if (demo) return;
+    setGuardando(campo);
     const ok = await guardar(ctx.analysisId, { [campo]: valor });
+    setGuardando(null);
     setError(!ok);
   }
 
@@ -65,7 +70,9 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
     setHorizonte(h);
     capturarLqs(posthog, EVENTOS_LQS.horizonteElegido, ctx, { horizonte: h });
     if (demo) return;
+    setGuardando("horizonte");
     const ok = await guardar(ctx.analysisId, { horizonte: h });
+    setGuardando(null);
     setError(!ok);
   }
 
@@ -81,19 +88,19 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
       <h3 className="lqs-h3 lqs-h3-dentro">{ESTAS_DENTRO.titular}</h3>
       <p className="lqs-cuerpo lqs-gris">{ESTAS_DENTRO.cuerpo}</p>
       <div className="lqs-parati" data-lqs="chips-editables">
-        <label className="lqs-chip lqs-chip-edit">
+        <label className="lqs-chip lqs-chip-edit" {...chipOcupado(guardando === "tipologia")}>
           <select aria-label="Tipología" value={pref.tipologia ?? ""} onChange={(e) => cambiar("tipologia", e.target.value)}>
             {!pref.tipologia && <option value="">Tipología</option>}
             {tipologias.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className="lqs-chip lqs-chip-edit">
+        <label className="lqs-chip lqs-chip-edit" {...chipOcupado(guardando === "comuna")}>
           <select aria-label="Comuna" value={pref.comuna ?? ""} onChange={(e) => cambiar("comuna", e.target.value)}>
             {!pref.comuna && <option value="">Comuna</option>}
             {comunas.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-        <label className="lqs-chip lqs-chip-edit">
+        <label className="lqs-chip lqs-chip-edit" {...chipOcupado(guardando === "modalidad")}>
           <select aria-label="Modalidad" value={pref.modalidad} onChange={(e) => cambiar("modalidad", e.target.value)}>
             <option value="ltr">{ESTAS_DENTRO.modalidad.ltr}</option>
             <option value="str">{ESTAS_DENTRO.modalidad.str}</option>
@@ -112,6 +119,7 @@ export function EstasDentro({ ctx, perfil, demo = false, horizonteInicial = null
               aria-checked={horizonte === h.id}
               className="lqs-opcion"
               data-activa={horizonte === h.id ? "1" : "0"}
+              {...botonOcupado(guardando === "horizonte" && horizonte === h.id)}
               onClick={() => elegir(h.id)}
             >
               {horizonte === h.id && <span className="lqs-visto" aria-hidden="true">✓</span>}

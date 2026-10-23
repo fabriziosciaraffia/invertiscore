@@ -17,6 +17,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { INFORME_DE_AVISO } from "@/lib/guia/copy";
 import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, type EstadoQuieroVerlo } from "@/lib/guia/quiero-verlo-estado";
+import { botonOcupado } from "@/lib/carga-global";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
@@ -63,10 +64,8 @@ export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, dem
                   </>
                 )}
               </div>
-              <button type="button" className="qv-btn" onClick={() => void quieroVerlo()} disabled={estado.tipo === "enviando"} aria-busy={estado.tipo === "enviando"}>
-                {estado.tipo === "enviando" ? (
-                  <><span className="qv-gira" aria-hidden="true" />{INFORME_DE_AVISO.enviando}</>
-                ) : estado.tipo === "error" ? INFORME_DE_AVISO.reintentar : INFORME_DE_AVISO.boton}
+              <button type="button" className="qv-btn" onClick={() => void quieroVerlo()} disabled={estado.tipo === "enviando"} {...botonOcupado(estado.tipo === "enviando")}>
+                {estado.tipo === "enviando" ? INFORME_DE_AVISO.enviando : estado.tipo === "error" ? INFORME_DE_AVISO.reintentar : INFORME_DE_AVISO.boton}
               </button>
             </>
           )}

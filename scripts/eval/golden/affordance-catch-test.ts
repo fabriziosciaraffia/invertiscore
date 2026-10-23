@@ -160,7 +160,8 @@ export function runAffordanceTier(): { hard: number } {
   // ⚠ ACTA (19-oct-2026, goal «camino de compra») · el pago lo inicia la pantalla de compra nueva (compra-cliente.tsx);
   // page.tsx solo lee la sesión en el servidor. Mismas reglas: barra y botón presionado hasta que Flow responde.
   const checkout = sinComentarios(leer("src/app/checkout/compra-cliente.tsx"));
-  if (!/setError\(null\);\s*\n\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*\n\s*try \{/.test(checkout) || !/data-presionado=\{loading \? "1" : undefined\}/.test(checkout)) F("3 · iniciar el pago (checkout) no enciende la barra ni presiona el botón");
+  // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el presionado lo pone `{...botonOcupado(loading)}` (presionado + aro).
+  if (!/setError\(null\);\s*\n\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*\n\s*try \{/.test(checkout) || !/\{\.\.\.botonOcupado\(loading\)\}/.test(checkout)) F("3 · iniciar el pago (checkout) no enciende la barra ni presiona el botón");
   if ((checkout.match(/soltar\(\);\s*\n\s*setLoading\(false\);/g) ?? []).length !== 2 || /\} finally \{/.test(checkout)) F("3 · checkout suelta la barra o el botón antes de que Flow responda (o no los suelta al fallar)");
   // ⚠ ACTA (19-oct-2026, goal «planes y cuenta») · el desbloqueo del anexo ($4.990) ya no se vende (lib/planes.ts): el
   // anexo no inicia ningún pago —que era lo que tenía que mostrarse cargando— y al dueño le ofrece analizar el depto. Verificado
