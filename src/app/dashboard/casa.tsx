@@ -20,6 +20,7 @@ import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { ajusteDeParametro, SEMANAL_VACIO, textoVence } from "@/lib/guia/semanal";
 import { CASA, packDeCasa } from "./casa-copy";
 import { SELECCION_CASA } from "@/lib/guia/seleccion-casa";
+import { textoRenueva } from "@/lib/guia/renovacion";
 import { RANGOS_UF } from "@/lib/deptos/respuesta";
 
 const UI = "var(--font-ui), Inter, 'Helvetica Neue', Arial, sans-serif";
@@ -44,7 +45,7 @@ export function BloqueArribaCasa({ bloque, informes, ticketConSaldo = null, tick
     return (
       <section className="ca-banda" data-casa="arriba" data-arriba="seleccion">
         <h1 className="ca-banda-t">{SELECCION_CASA.titulo}</h1>
-        <p className="ca-banda-s">{CASA_ARRIBA.seleccionBajada}</p>
+        <p className="ca-banda-s">{CASA_ARRIBA.seleccionBajada} <span data-casa="renueva">{textoRenueva()}</span></p>
         <div className="ca-banda-fila">
           <ul className="ca-sel" data-casa="seleccion">
             {bloque.bloques.map((b) => (
@@ -318,6 +319,8 @@ export function PerfilBusquedaCasa({ inicial, comprador }: { inicial: PerfilEdit
           <p className="mt-3 text-[13px] text-[var(--franco-text-secondary)]" data-casa="horizonte-respondido">
             {CASA.perfil.respondido[p.horizonte as Horizonte]} ·{" "}
             <button type="button" className="underline underline-offset-4" onClick={() => setCambiandoHorizonte(true)}>{CASA.perfil.cambiar}</button>
+            <br />
+            <span data-casa="horizonte-que-cambia">{CASA.perfil.queCambia[p.horizonte as Horizonte]}</span>
           </p>
         )}
         {error && <p role="alert" className="mt-2 text-[13px] text-[var(--signal-red)]">{CASA.perfil.error}</p>}

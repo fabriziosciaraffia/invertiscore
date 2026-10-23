@@ -122,6 +122,8 @@ export interface DatosCorreoSemanal {
   delDia?: { publicadosAl: string } | null;
   /** El regalo al registrarse, vivo (16-oct-2026): cuándo vence. */
   regaloAltaVence?: string | null;
+  /** Cuándo se renueva la selección (22-oct-2026): «Se renueva el lunes 27.» (lib/guia/renovacion.ts › textoRenueva). */
+  renueva?: string | null;
   urlBoton: string;
   /** El pack de tres (13-oct-2026), por el clic: `ir=tres`. */
   urlTres: string;
@@ -238,6 +240,8 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     if (d.deptos.length > 0) {
       const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
       filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.introN(d.deptos.length, d.busca, pie, d.plazoAnios, negociar) : SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
+      // Cuándo se renueva (22-oct-2026, lib/guia/renovacion.ts): «Se renueva el lunes 27.», como en el dashboard.
+      if (d.renueva) filas.push(parrafo(`<span data-correo="renueva">${escaparHtml(d.renueva)}</span>`));
       if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));
       if (sinConfirmar > 0) filas.push(parrafo(escaparHtml(SEMANAL.sinConfirmar(sinConfirmar))));
       for (const dep of d.deptos) filas.push(tarjeta(dep));

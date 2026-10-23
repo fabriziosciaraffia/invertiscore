@@ -26,6 +26,7 @@ import { claveEdificio } from "./ficha-anio";
 import type { Candidato } from "./semanal-candidatos";
 import type { Evaluado } from "./seleccion";
 import { cuandoSeVio, esCuentaNueva, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
+import { textoRenueva } from "./renovacion";
 
 const RUTA = "lib/guia/del-dia";
 
@@ -197,6 +198,7 @@ async function enviarDelDia(
         saldo: saldo.plan ? null : saldo.disponibles,
         conRegalo: false,
         regaloAltaVence: regaloVence,
+        renueva: textoRenueva(),
         presentacion: true,
         delDia: { publicadosAl: cuandoSeVio(masAntiguo, ahora) },
         urlBoton: enlaces.boton,

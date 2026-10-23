@@ -146,7 +146,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // el saldo o el plan va plano, justo después de «Invita a alguien»; en la bienvenida, igual que antes. Verificado en rojo: SA1 sin el saldo plano.
     // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el saldo plano recibe además el ticket de la cuenta
     // nueva (el precio del pack en sus 24 horas, tier CASA §4).
-    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} ticket=\{ticket\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
+    // ⚠ ACTA (22-oct-2026) · y el ticket con saldo (`ticketConSaldo`, tier TICKET-VIVO §2).
+    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
     // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
     if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
       F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");

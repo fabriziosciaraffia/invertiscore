@@ -217,7 +217,9 @@ export function runReanalisisTier(): { hard: number } {
   // ── 4 · El informe nuevo lo dice arriba y enlaza al original; el servidor valida el marcador ──
   if (REANALISIS_COPY.linea(3131) !== "Analizado a UF 3.131, el precio que Franco recomendó negociar" || REANALISIS_COPY.original !== "Ver el informe original") F("4 · la línea del informe nuevo no es la pedida");
   const idr = sinComentarios(leer("src/components/analysis/InformeDeReanalisis.tsx"));
-  if (!/\{REANALISIS_COPY\.linea\(reanalisis\.precioRecomendadoUF\)\}\.\{" "\}\s*<EnlaceCarga href=\{original\}/.test(idr) || !/modalidad === "str" \? `\/analisis\/renta-corta\/\$\{reanalisis\.origenId\}` : `\/analisis\/\$\{reanalisis\.origenId\}`/.test(idr)) F("4 · el informe nuevo no dice la línea con el enlace al original");
+  // ⚠ ACTA (22-oct-2026, decisión de Fabrizio) · la línea pasó a TARJETA destacada con el material del banner (guia.css › .qv-banda):
+  // la línea como título y «Ver el informe original» como botón (tier RECORRIDO-22-OCT §1).
+  if (!/<div className="qv-banda" data-reanalisis="tarjeta">[\s\S]{0,200}<p className="qv-t">\{REANALISIS_COPY\.linea\(reanalisis\.precioRecomendadoUF\)\}\.<\/p>[\s\S]{0,200}<EnlaceCarga href=\{original\} className="qv-btn"/.test(idr) || !/modalidad === "str" \? `\/analisis\/renta-corta\/\$\{reanalisis\.origenId\}` : `\/analisis\/\$\{reanalisis\.origenId\}`/.test(idr)) F("4 · el informe nuevo no dice la línea con el enlace al original");
   if (!/: marcaReanalisis \? \(\s*<InformeDeReanalisis reanalisis=\{marcaReanalisis\} modalidad="ltr" \/>/.test(rc) || !/const marcaReanalisis = leerReanalisis\(/.test(rc)) F("4 · el informe de renta larga no monta la línea arriba");
   if (!/\{!origenAviso && marcaReanalisis && \(\s*<SeccionInforme id="origen-reanalisis"[^>]*>\s*<InformeDeReanalisis reanalisis=\{marcaReanalisis\} modalidad="str" \/>/.test(rcStr)) F("4 · el informe de renta corta no monta la línea arriba");
   const marca = { origenId: ORIGEN, precioOriginalUF: 3480, precioRecomendadoUF: 3131, piePct: 25, plazoAnios: 30 };

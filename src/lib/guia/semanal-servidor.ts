@@ -36,6 +36,7 @@ import { claveEdificio } from "./ficha-anio";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { DIAS_NO_REPETIR } from "./inmediato";
 import { vistosDePersona, type Vistos } from "./vistos-servidor";
+import { textoRenueva } from "./renovacion";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
@@ -858,6 +859,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     saldo: saldo.plan ? null : saldo.disponibles,
     conRegalo,
     regaloVence,
+    renueva: textoRenueva(),
     presentacion,
     urlBoton: enlaces.boton,
     urlTres: enlaces.tres,

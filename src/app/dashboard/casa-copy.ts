@@ -74,6 +74,9 @@ export const CASA = {
     // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece, va «Quiero comprar ya»; el valor guardado sigue siendo 'ya'.
     horizonte: { ya: "Quiero comprar ya", meses: "En los próximos meses", mirando: "Solo estoy mirando" } as Record<"ya" | "meses" | "mirando", string>,
     respondido: { ya: "Quieres comprar ya", meses: "Piensas comprar en los próximos meses", mirando: "Por ahora solo estás mirando" } as Record<"ya" | "meses" | "mirando", string>,
+    /** Qué cambia con esa respuesta (22-oct-2026, decisión de Fabrizio, honesto): con «Quiero comprar ya» salen avisos el
+     *  mismo día; con las otras dos, solo la selección del lunes. */
+    queCambia: { ya: "Te avisamos el mismo día que aparece uno.", meses: "Te llegan cada lunes.", mirando: "Te llegan cada lunes." } as Record<"ya" | "meses" | "mirando", string>,
     cambiar: "cambiar",
     masComuna: "+ comuna",
     masDormitorio: "+ dormitorios",
