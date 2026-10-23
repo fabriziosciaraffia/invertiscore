@@ -29,17 +29,41 @@ export const ESTANDAR25_VACIO: FilaEstandar25 = {
   veredicto_20_25: null, score_20_25: null, flujo_20_25: null, veredicto_30_25: null, score_30_25: null, flujo_30_25: null,
 };
 
+/** Lo que la sonda dice de un aviso con un pie y un plazo: el veredicto, el puntaje, el flujo y la cuota. */
+export interface SondaDeAviso {
+  veredicto: string | null;
+  score: number | null;
+  flujo: number | null;
+  cuota: number | null;
+}
+
+/**
+ * UN AVISO CON CUALQUIER PIE Y PLAZO (23-oct-2026, el «Cambiar» del pop-up de Explorar): la misma sonda y el mismo
+ * contexto de la fila con que la noche lo evaluó y con que el semanal lo recalcula, con la tasa de mercado. null sin
+ * arriendo o sin la mediana comunal guardada (no se consulta nada en vivo).
+ */
+export function sondaDeCandidato(c: CandidatoGuia, combo: { piePct: number; plazoAnios: number }, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): SondaDeAviso | null {
+  const ctx = contextoDeFila(c, cfg);
+  if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
+  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), combo.piePct, cfg.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
+  const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
+  return {
+    veredicto: s.veredicto ?? null,
+    score: s.score != null ? Math.round(s.score) : null,
+    flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null,
+    cuota: s.metricas?.cuotaMensual != null ? Math.round(s.metricas.cuotaMensual) : null,
+  };
+}
+
 /** Un aviso a 25 años con pie 20 % y 30 %. Sin arriendo o sin la mediana comunal guardada, sin evaluación (null). */
 export function evaluarEstandar25(c: CandidatoGuia, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): FilaEstandar25 {
-  const ctx = contextoDeFila(c, cfg);
-  if (!ctx || !c.arriendo || c.medianaComuna == null) return ESTANDAR25_VACIO;
   const out: Record<string, string | number | null> = {};
   for (const pie of PIES_DEPTOS) {
-    const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), pie, cfg.tasa, c.arriendo.monto, { plazo: PLAZO_DEPTOS, tasaMercado: cfg.tasa }), ctx);
-    const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
-    out[`veredicto_${pie}_25`] = s.veredicto ?? null;
-    out[`score_${pie}_25`] = s.score != null ? Math.round(s.score) : null;
-    out[`flujo_${pie}_25`] = s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null;
+    const s = sondaDeCandidato(c, { piePct: pie, plazoAnios: PLAZO_DEPTOS }, cfg, asOf);
+    if (!s) return ESTANDAR25_VACIO;
+    out[`veredicto_${pie}_25`] = s.veredicto;
+    out[`score_${pie}_25`] = s.score;
+    out[`flujo_${pie}_25`] = s.flujo;
   }
   return out as unknown as FilaEstandar25;
 }

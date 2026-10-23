@@ -115,6 +115,33 @@ export interface ComprasDelDepto {
   sin: string;
 }
 
+/**
+ * LAS COMPRAS DESDE EXPLORAR (23-oct-2026): el aviso E al entrar sin saldo y el pop-up de «Analizar este» sin saldo
+ * ofrecen el pack —al precio del ticket si la cuenta tiene menos de 24 horas— y «Comprar solo 1», de vuelta al mapa con
+ * los mismos filtros y, si se compró desde un depto, con ese depto abierto y analizándose solo (`a` y `analizar=1`).
+ */
+export function comprasDeExplorar(p: { filtros: string; avisoId?: string | null; ticket: boolean }): ComprasDelDepto {
+  const volver = `/explorar?${p.filtros}${p.avisoId ? `&a=${encodeURIComponent(p.avisoId)}&analizar=1` : ""}`;
+  const precio = p.ticket ? PACK_PRECIO_CLP : TRES_PRECIO_CLP;
+  return {
+    pack: {
+      href: p.ticket ? urlCompra({ product: PRODUCTO_PACK, origen: "explorar", volver }) : rutaTres("explorar", { volver }),
+      label: COMPRA_DEPTO.pack(precio),
+      ticket: p.ticket,
+    },
+    suelto: { href: urlCompra({ product: "single", origen: "explorar", volver }), label: COMPRA_DEPTO.suelto },
+    sin: COMPRA_DEPTO.sin(precio),
+  };
+}
+
+/** ¿La vuelta pide abrir un depto del mapa? El aviso (`a`) de `/explorar?…&a=<id>&analizar=1`. */
+export function deptoDeVolverExplorar(volver: string | null | undefined): string | null {
+  const v = volverSeguro(volver);
+  if (!v || !(v === "/explorar" || v.startsWith("/explorar?"))) return null;
+  const a = new URLSearchParams(v.split("?")[1]?.split("#")[0] ?? "").get("a");
+  return a && AVISO.test(a) ? a : null;
+}
+
 /** El botón rojo del final de la selección, sin saldo: el pack —al precio del ticket si corresponde—, de vuelta a la
  *  selección en el dashboard. */
 export function compraDeLaSeleccion(p: { token: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; ticket: boolean }): { href: string; label: string } {

@@ -398,7 +398,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
       if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const fila = \{ \.\.\.evaluada, \.\.\.\(evaluada\.arriendo \? evaluarEstandar25\(candidatoDeEvaluacion\(a, evaluada\), cfg\) : ESTANDAR25_VACIO\) \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");
-      if (!/plazo: PLAZO_DEPTOS, tasaMercado: cfg\.tasa/.test(leer("src/lib/avisos/estandar-deptos.ts"))) F("7 · el estándar no se evalúa a 25 años");
+      // ⚠ ACTA (23-oct-2026, goal Explorar) · el estándar de 25 años y el recálculo del pop-up comparten la sonda (sondaDeCandidato); el plazo sigue siendo PLAZO_DEPTOS.
+      const estandar = leer("src/lib/avisos/estandar-deptos.ts");
+      if (!/sondaDeCandidato\(c, \{ piePct: pie, plazoAnios: PLAZO_DEPTOS \}, cfg, asOf\)/.test(estandar) || !/plazo: combo\.plazoAnios, tasaMercado: cfg\.tasa/.test(estandar)) F("7 · el estándar no se evalúa a 25 años");
     }
     // ── 8 · LA PÁGINA QUE CONVIERTE (16-oct-2026, segunda pasada) ──
     {

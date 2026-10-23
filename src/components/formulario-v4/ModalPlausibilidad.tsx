@@ -79,6 +79,8 @@ export interface ModalPlausibilidadProps {
    */
   labelGenerando?: string;
   secundario?: { label: string; onClick: () => void };
+  /** Un bloque entre los derivados y el consumo (23-oct-2026, el «Cambiar» de pie y plazo del pop-up de Explorar). */
+  extra?: ReactNode;
   /**
    * Qué hace el modal cuando hay anomalías.
    *
@@ -113,6 +115,7 @@ export function ModalPlausibilidad({
   marca,
   labelGenerando = "Generando…",
   secundario,
+  extra,
   modo = "bloqueo",
   onSeguir,
   submitting = false,
@@ -276,6 +279,7 @@ export function ModalPlausibilidad({
                 </div>
               )}
 
+              {extra && <div className="wz-modal-extra" data-modal-extra>{extra}</div>}
               {consumo && <p className="wz-modal-consumo">{consumo}</p>}
               {nota && <p className="wz-modal-nota" data-modal-nota>{nota}</p>}
             </>

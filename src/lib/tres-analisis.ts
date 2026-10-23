@@ -16,7 +16,7 @@ export const TRES_PRECIO_CLP = 19_990;
 
 /** De dónde se compró: el dashboard, el correo semanal (y su página), el aviso inmediato (su página) o la guía. El aviso
  *  antes de gastar compra con el origen de la página donde se abre. */
-export const ORIGENES_TRES = ["dashboard", "semanal", "inmediato", "guia", "planes"] as const;
+export const ORIGENES_TRES = ["dashboard", "semanal", "inmediato", "guia", "planes", "explorar"] as const;
 export type OrigenTres = (typeof ORIGENES_TRES)[number];
 export const esOrigenTres = (o: unknown): o is OrigenTres => typeof o === "string" && (ORIGENES_TRES as readonly string[]).includes(o);
 

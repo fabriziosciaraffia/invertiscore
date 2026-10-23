@@ -26,6 +26,10 @@ import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
 import type { EventoEspejo } from "@/lib/meta/espejo";
 import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
+import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
+import { capturarServidor } from "@/lib/posthog-servidor";
+import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
+import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -38,6 +42,10 @@ import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 // SIN INFORME DE ORIGEN (16-oct-2026, la puerta B): desde el semanal de una cuenta que nació en /deptos, la selección no
 // tiene origen (`origenId` null); se valida por el token —de esta persona, sin origen y con este aviso— y se analiza con
 // la combinación de la selección y la tasa de mercado (guia-servidor.ts › origenSintetico).
+// DESDE EXPLORAR (23-oct-2026, `explorar: true`): cualquier aviso evaluado del mapa, con el pie y el plazo que la persona
+// eligió en el pop-up (de las listas del pop-up), sobre el origen sintético con la tasa de mercado: lo mismo con que el
+// mapa lo mostró. El crédito se descuenta igual, una vez por persona y aviso; `analisis_creado` va con via = explorar y
+// «explorar_analiza» lleva el depto (el panel de activación cuenta cuántos análisis salen del mapa).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -49,9 +57,10 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string; explorar?: boolean };
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
-  if ((!sinOrigen && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  const desdeExplorar = b.explorar === true && b.origenId == null && typeof b.semanal !== "string";
+  if ((!sinOrigen && !desdeExplorar && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
   let espejoAE: EventoEspejo | null = null;
@@ -61,7 +70,13 @@ export async function POST(request: Request) {
     // recibe los deptos de renta larga de sus comunas); la selección se valida abajo contra ese origen.
     let o: OrigenGuia | null;
     let combo: Combinacion | null | undefined;
-    if (sinOrigen) {
+    if (desdeExplorar) {
+      // Explorar: el pie y el plazo del pop-up, de sus listas, y el origen sintético con la tasa de mercado.
+      if (!esPiePopup(b.piePct) || !esPlazoPopup(b.plazoAnios)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
+      const pp = await leerPerfilBusqueda(admin, user.id);
+      combo = { piePct: Number(b.piePct), plazoAnios: Number(b.plazoAnios) };
+      o = origenSintetico(user.id, { piePct: combo.piePct, plazoAnios: combo.plazoAnios, comunas: pp.perfil.comunas, dormitorios: pp.perfil.dormitorios }, await leerConfigGuia(admin));
+    } else if (sinOrigen) {
       // La selección es de esta persona, no tiene origen y trae este aviso; el origen, el sintético con su combinación.
       combo = await combinacionSemanal(admin, b.semanal!, user.id, null, b.avisoId);
       o = combo ? origenSintetico(user.id, { ...combo, comunas: [], dormitorios: [] }, await leerConfigGuia(admin)) : null;
@@ -79,12 +94,13 @@ export async function POST(request: Request) {
     const origen: OrigenGuia = o;
     const combinacion: Combinacion = combo;
     const desdeSemanal = typeof b.semanal === "string";
+    const desde: "semanal" | "guia" | "explorar" = desdeExplorar ? "explorar" : desdeSemanal ? "semanal" : "guia";
     const ae = await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
-      eventId: idAnalizarEste(b.avisoId, desdeSemanal ? b.semanal! : origen.analysisId!),
+      eventId: idAnalizarEste(b.avisoId, desdeExplorar ? "explorar" : desdeSemanal ? b.semanal! : origen.analysisId!),
       userId: user.id,
       email: user.email ?? null,
-      datos: { aviso_id: b.avisoId, desde: desdeSemanal ? "semanal" : "guia", modalidad: "ltr" },
+      datos: { aviso_id: b.avisoId, desde, modalidad: "ltr" },
       contexto: contextoDeRequest(request),
       origen: "analizar-este",
     });
@@ -112,7 +128,7 @@ export async function POST(request: Request) {
         const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
         const body = await cuerpoDelAviso(aviso, origen, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
         // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN».
-        if (body?.origenAviso) body.origenAviso.desde = typeof b.semanal === "string" ? "semanal" : "guia";
+        if (body?.origenAviso) body.origenAviso.desde = desde;
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
@@ -163,7 +179,10 @@ export async function POST(request: Request) {
             }).select("id").single();
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
-            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desdeSemanal ? "semanal" : "guia" }));
+            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde }));
+            if (desdeExplorar) {
+              waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId: aviso.avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios })).catch(() => false));
+            }
             await markPremiumAndClaimPrepaid({ dbClient: admin, analysisId: id, prepaidNeedClaim: false });
             try {
               await guardarPerfil(admin, perfilDesdeLtr(body, readVeredicto(result) ?? null, { analysisId: id, userId: user.id, anonClaimTokenHash: null }));

@@ -118,7 +118,7 @@ export interface AnalisisInput {
   // leen el bloque «Quiero verlo» y la nota de la antigüedad. No lo lee el motor.
   /** `desde` (14-oct-2026): de dónde se analizó el aviso —la selección semanal (o un aviso inmediato, la misma página) o
    *  la guía del pack—. El dashboard dice «Desde tu selección semanal» en vez de «SIN DIRECCIÓN». Sin él, filas anteriores. */
-  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" };
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar" };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

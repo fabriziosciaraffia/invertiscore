@@ -112,6 +112,8 @@ export const RETORNO = {
   /** Sin depto de por medio (22-oct-2026): «Tienes un análisis más» y este botón. */
   irAlDashboard: "Ir a mi dashboard",
   volverDeptos: "Volver a los deptos",
+  /** La compra salió del mapa de Explorar (23-oct-2026): de vuelta al mapa, con el depto que la pidió. */
+  volverMapa: "Volver al mapa",
   seguir: "Seguir",
   reintentar: "Reintentar",
   pie: "Pagos procesados de forma segura por Flow.cl",
@@ -124,6 +126,7 @@ export function botonTrasPagar(volver: string | null | undefined): { texto: stri
   if (volver && /^\/dashboard\?(?:[^#]*&)?t=[0-9a-f]{20,80}&a=/i.test(volver)) return { texto: RETORNO.volverDeptos, href: volver };
   if (!volver || volver === "/dashboard" || volver.startsWith("/dashboard?")) return { texto: RETORNO.irAlDashboard, href: "/dashboard" };
   if (volver.startsWith("/semanal")) return { texto: RETORNO.volverDeptos, href: volver };
+  if (volver === "/explorar" || volver.startsWith("/explorar?")) return { texto: RETORNO.volverMapa, href: volver };
   return { texto: RETORNO.seguir, href: volver };
 }
 

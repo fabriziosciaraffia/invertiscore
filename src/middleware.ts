@@ -121,5 +121,5 @@ export async function middleware(request: NextRequest, event?: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ["/", "/demo", "/metodologia", "/dashboard/:path*", "/analisis/:path*", "/login", "/register", "/entrar", "/deptos", "/i/:path*", "/pricing", "/auth/callback", "/payments/return"],
+  matcher: ["/", "/demo", "/metodologia", "/dashboard/:path*", "/explorar", "/analisis/:path*", "/login", "/register", "/entrar", "/deptos", "/i/:path*", "/pricing", "/auth/callback", "/payments/return"],
 };

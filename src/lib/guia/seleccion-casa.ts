@@ -22,6 +22,7 @@ export const SELECCION_CASA = {
   /** El archivo del dashboard, en lugar de «SIN DIRECCIÓN». */
   archivo: "Desde tu selección semanal",
   archivoGuia: "Desde tu guía",
+  archivoExplorar: "Desde Explorar",
 } as const;
 
 /** La selección en el dashboard (21-oct-2026): con el token del correo y, si se clicó uno, ese depto arriba. Adonde
@@ -79,7 +80,7 @@ export function deEstaSemana<F extends { semana: string; items?: unknown[] | nul
   return [...filas].sort((a, b) => b.semana.localeCompare(a.semana)).find((s) => (s.items ?? []).length > 0 || (s.items_str ?? []).length > 0) ?? null;
 }
 
-export type OrigenInforme = "semanal" | "guia";
+export type OrigenInforme = "semanal" | "guia" | "explorar";
 
 /**
  * ¿De dónde salió este informe? Un informe hecho desde un aviso (`origenAviso`) salió de la selección semanal (o de un
@@ -90,7 +91,8 @@ export type OrigenInforme = "semanal" | "guia";
 export function origenDeInforme(origen: unknown, avisosDeSusSelecciones: ReadonlySet<string>): OrigenInforme | null {
   const o = (origen ?? null) as { avisoId?: unknown; desde?: unknown } | null;
   if (!o || typeof o.avisoId !== "string") return null;
-  if (o.desde === "semanal" || o.desde === "guia") return o.desde;
+  // Y desde el 23-oct-2026, el mapa de Explorar (`desde` = «explorar»).
+  if (o.desde === "semanal" || o.desde === "guia" || o.desde === "explorar") return o.desde;
   return avisosDeSusSelecciones.has(o.avisoId) ? "semanal" : "guia";
 }
 
@@ -101,5 +103,5 @@ export function esDesdeSemanal(origen: unknown, avisosDeSusSelecciones: Readonly
 
 /** Lo que dice el archivo en lugar de «SIN DIRECCIÓN». */
 export function textoOrigenArchivo(o: OrigenInforme): string {
-  return o === "semanal" ? SELECCION_CASA.archivo : SELECCION_CASA.archivoGuia;
+  return o === "semanal" ? SELECCION_CASA.archivo : o === "explorar" ? SELECCION_CASA.archivoExplorar : SELECCION_CASA.archivoGuia;
 }

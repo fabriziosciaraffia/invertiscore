@@ -1,0 +1,122 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   EXPLORAR (23-oct-2026, docs/puerta-b-mockups/5-explorar.html). Inter en todo; tokens del chrome (--franco-*), claro y
+   oscuro. En el teléfono el mapa ocupa la pantalla: los chips arriba, la píldora sobre el mapa y una hoja deslizable
+   abajo (peek / abierta). En escritorio, la hoja es una columna a la izquierda y el mapa llena el resto. El rojo va solo
+   en los pines (son los que convienen), en el flujo negativo y en el error; Comprar lleva el azul de la tríada.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.ex-pagina { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
+.ex { flex: 1; min-height: 0; display: flex; flex-direction: column; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
+
+/* ── los chips ── */
+.ex-chips { position: relative; z-index: 3; display: flex; gap: 8px; padding: 10px 12px; overflow-x: auto; scrollbar-width: none; background: var(--franco-bg); border-bottom: 1px solid var(--franco-border); }
+.ex-chips::-webkit-scrollbar { display: none; }
+.ex-chip { position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--franco-text);
+  background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.ex-chip[data-suave="1"] { border-color: var(--franco-border); font-weight: 500; }
+.ex-chip::after { content: "▾"; font-size: 11px; opacity: 0.7; }
+.ex-chip[aria-busy="true"]::after { content: none; }
+.ex-chip:focus-visible, .ex-chip:focus-within { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-chip select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: none; }
+.ex-chips-fin { flex: none; width: 4px; }
+
+/* el diálogo de un chip con varias opciones (comunas, tipologías) */
+.ex-pop { position: absolute; left: 12px; right: 12px; top: 56px; z-index: 6; padding: 12px; border-radius: 16px; border: 1px solid var(--franco-border); background: var(--franco-card); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16); }
+.ex-pop-t { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.ex-pop-ayuda { font-weight: 400; color: var(--franco-text-tertiary); margin-left: 6px; }
+.ex-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 44dvh; overflow-y: auto; }
+.ex-pop-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 11px; border-radius: 99px; border: 1px solid transparent; background: color-mix(in srgb, var(--franco-text) 6%, transparent);
+  color: var(--franco-text); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.ex-pop-chip[aria-checked="true"] { background: var(--franco-text); border-color: var(--franco-text); color: var(--franco-card); font-weight: 600; }
+.ex-pop-chip:disabled { opacity: 0.4; cursor: default; }
+.ex-pop-chip:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-pop-fin { margin-top: 10px; display: flex; justify-content: flex-end; }
+.ex-pop-listo { height: 36px; padding: 0 16px; border-radius: 99px; border: 0; background: var(--franco-text); color: var(--franco-card); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ex-pop-listo:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-velo { position: fixed; inset: 0; z-index: 5; background: transparent; }
+
+/* ── el cuerpo: el mapa y la hoja ── */
+.ex-cuerpo { position: relative; flex: 1; min-height: 0; display: flex; }
+.ex-mapa-wrap { position: relative; flex: 1; min-width: 0; min-height: 0; background: var(--franco-bg); }
+.ex-mapa { position: absolute; inset: 0; }
+.ex-mapa-vacio { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: var(--franco-text-tertiary); }
+.ex-pildoras { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 2; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
+.ex-pildora { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; color: var(--franco-text);
+  background: color-mix(in srgb, var(--franco-card) 92%, transparent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); text-decoration: none; white-space: nowrap; }
+.ex-pildora[data-cargando="1"] { opacity: 0.6; }
+.ex-punto-azul { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--verdict-comprar, #2B558F); }
+[data-theme="dark"] .ex-punto-azul { background: #8DB0E3; }
+.ex-aviso-perfil { position: absolute; left: 12px; right: 12px; top: 48px; z-index: 2; margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.4; color: var(--franco-text-secondary); background: color-mix(in srgb, var(--franco-card) 92%, transparent); }
+
+/* ── la hoja ── */
+.ex-hoja { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; flex-direction: column; max-height: 72dvh; background: var(--franco-card); border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08); padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); transition: max-height 0.2s ease; }
+@media (prefers-reduced-motion: reduce) { .ex-hoja { transition: none; } }
+.ex-asa { align-self: center; width: 40px; height: 4px; border-radius: 99px; background: var(--franco-border); margin-bottom: 8px; border: 0; padding: 0; cursor: grab; touch-action: none; }
+.ex-asa-btn { background: none; border: 0; padding: 6px 0 4px; display: flex; justify-content: center; width: 100%; cursor: pointer; touch-action: none; }
+.ex-asa-btn:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; border-radius: 8px; }
+.ex-hoja-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.ex-hoja-t { margin: 0; font-size: 15px; font-weight: 600; }
+.ex-hoja-orden { font-size: 12px; color: var(--franco-text-secondary); white-space: nowrap; }
+.ex-tarjetas { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; min-height: 0; padding-bottom: 2px; }
+.ex-tarjetas::-webkit-scrollbar { display: none; }
+.ex-hoja[data-hoja="abierta"] .ex-tarjetas { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+.ex-tarjeta { flex: none; width: 250px; box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--franco-card); }
+.ex-hoja[data-hoja="abierta"] .ex-tarjeta { width: auto; }
+.ex-tarjeta[data-sel="1"] { border-color: var(--franco-text); }
+.ex-tarjeta-cuerpo { all: unset; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+.ex-tarjeta-cuerpo:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; border-radius: 8px; }
+.ex-ojo { font-size: 12px; color: var(--franco-text-secondary); }
+.ex-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ex-precio { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-ver { font-size: 13px; font-weight: 600; color: var(--verdict-comprar, #2B558F); white-space: nowrap; }
+[data-theme="dark"] .ex-ver { color: #8DB0E3; }
+.ex-flujo { font-size: 13px; color: var(--franco-text-secondary); }
+.ex-flujo b { font-weight: 600; color: var(--franco-text); }
+.ex-neg b { color: var(--signal-red); }
+.ex-an { height: 40px; border: 0; border-radius: 99px; background: var(--franco-text); color: var(--franco-card); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ex-an:disabled { opacity: 0.55; cursor: default; }
+.ex-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-ya { font-size: 13px; color: var(--franco-text-tertiary); }
+.ex-ya a { color: var(--franco-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.ex-saldo { margin: 10px 0 0; font-size: 12px; color: var(--franco-text-secondary); text-align: center; }
+.ex-error { margin: 8px 0 0; font-size: 13px; color: var(--signal-red); }
+.ex-vacia { margin: 0; font-size: 14px; line-height: 1.5; color: var(--franco-text-secondary); }
+
+/* el depto tocado */
+.ex-detalle { display: flex; flex-direction: column; gap: 12px; }
+.ex-x { height: 32px; width: 32px; flex: none; border: 1px solid var(--franco-border); border-radius: 99px; background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 16px; cursor: pointer; }
+.ex-x:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-precio-g { font-size: 26px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.ex-ver-g { font-size: 15px; }
+.ex-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding-top: 10px; border-top: 1px solid var(--franco-border); }
+.ex-cifras div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ex-cifras dt { font-size: 11px; color: var(--franco-text-secondary); }
+.ex-cifras dd { margin: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-cifras dd small { display: block; font-size: 11px; font-weight: 400; color: var(--franco-text-tertiary); }
+.ex-cifras dd[data-neg="1"] { color: var(--signal-red); }
+.ex-revisado { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--franco-bg); font-size: 13px; line-height: 1.4; color: var(--franco-text-secondary); }
+.ex-revisado strong { color: var(--franco-text); font-weight: 600; }
+.ex-cta { height: 48px; border: 0; border-radius: 99px; background: var(--franco-text); color: var(--franco-card); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.ex-cta:disabled { opacity: 0.55; cursor: default; }
+.ex-cta:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-cta-enlace { display: inline-flex; align-items: center; justify-content: center; height: 48px; border-radius: 99px; background: var(--franco-text); color: var(--franco-card); font-size: 15px; font-weight: 600; text-decoration: none; }
+
+/* el aviso E: el ticket, en el material rojo del pop-up */
+.ex-ticket { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: var(--wz-rojo); color: #FFFFFF; display: flex; flex-direction: column; gap: 6px; }
+.ex-ticket-fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ex-ticket-k { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #F5C9C4; }
+.ex-ticket-vence { font-size: 11px; font-weight: 600; background: rgba(0, 0, 0, 0.25); border-radius: 99px; padding: 3px 9px; white-space: nowrap; }
+.ex-ticket-t { font-size: 20px; font-weight: 600; line-height: 1.2; }
+.ex-plan-enlace { align-self: center; font-size: 14px; color: var(--tx2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
+
+/* ── escritorio: la hoja es una columna; el mapa, el resto ── */
+@media (min-width: 900px) {
+  .ex-chips { padding: 12px 20px; }
+  .ex-pop { left: 20px; right: auto; max-width: 560px; }
+  .ex-hoja { position: relative; order: -1; width: 420px; max-height: none; border-radius: 0; border-right: 1px solid var(--franco-border); box-shadow: none; padding: 14px 18px 12px; }
+  .ex-asa-btn { display: none; }
+  .ex-tarjetas, .ex-hoja[data-hoja="peek"] .ex-tarjetas { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  .ex-tarjeta { width: auto; }
+  .ex-pildoras { left: 16px; right: 16px; top: 14px; }
+  .ex-aviso-perfil { top: 54px; }
+}

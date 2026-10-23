@@ -117,7 +117,7 @@ export function runCompraTier(): { hard: number } {
   // (principal) y el suelto (debajo), los dos a /checkout con el depto (`compras`, lib/guia/compra-desde-depto.ts; tier
   // PUERTA-B-RECORRIDO §5). La guía sigue con su `rutaCompra`. Las dos ramas caen en la pantalla de compra.
   const comprar = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-  if (!/const comprar = \(href: string\) => \{ iniciarCarga\(claveActual\(\)\); router\.push\(href\); \};/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : alAnalizar\}/.test(aviso) || !/secundario=\{sin && compras \? \{ label: compras\.suelto\.label, onClick: \(\) => comprar\(compras\.suelto\.href\) \} : undefined\}/.test(aviso)
+  if (!/const comprar = \(href: string\) => \{ iniciarCarga\(claveActual\(\)\); router\.push\(href\); \};/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(/.test(aviso) || !/secundario=\{sin && compras \? \{ label: compras\.suelto\.label, onClick: \(\) => comprar\(compras\.suelto\.href\) \} : undefined\}/.test(aviso)
     || !rutaTres("semanal", { volver: "/dashboard?t=x" }).startsWith("/checkout?product=tres_analisis") || !RUTA_SUELTO_SEMANAL.startsWith("/checkout?") || !/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra/.test(comprar)) F("3 · «Analizar este» sin saldo no cae en la pantalla de compra");
 
   // ── 4 · GRATIS ─────────────────────────────────────────────────────────────

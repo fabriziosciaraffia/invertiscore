@@ -273,7 +273,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
           const { data: sels } = await sb.from("semanal_selecciones").select("items, items_str").eq("user_id", a.user_id as string);
           const enSel = (sels ?? []).some((x) => [...((x.items as Array<{ avisoId: string }>) ?? []), ...((x.items_str as Array<{ avisoId: string }>) ?? [])].some((i) => i.avisoId === (a.origen as { avisoId?: string } | null)?.avisoId));
           const dice = (a.origen as { desde?: string } | null)?.desde;
-          const esperado = dice === "semanal" || dice === "guia" ? dice : enSel ? "semanal" : "guia";
+          // ⚠ ACTA (23-oct-2026, goal Explorar) · un informe hecho desde el mapa dice «explorar» (origenAviso.desde).
+          const esperado = dice === "semanal" || dice === "guia" || dice === "explorar" ? dice : enSel ? "semanal" : "guia";
           if (origenes[a.id as string] !== esperado) F(`8 · el informe ${String(a.id).slice(0, 8)} dice «${origenes[a.id as string] ?? "SIN DIRECCIÓN"}» y salió de ${esperado}`);
           vistos[esperado]++;
           probados++;
@@ -307,7 +308,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     ];
     const malos = casosOrigen.filter(([o, esp]) => origenDeInforme(o, sels) !== esp);
     if (malos.length) F(`8 · el origen de un informe no es «semanal» o «guía» según \`desde\` o su selección (${JSON.stringify(malos.map(([o]) => o))})`);
-    if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía»");
+    if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía" || textoOrigenArchivo("explorar") !== "Desde Explorar") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía» / «Desde Explorar»");
     // ⚠ ACTA (17-oct-2026, goal «una sola lista») · el origen ya no reemplaza a «SIN DIRECCIÓN»: TODO informe de Franco
     // lleva la marca «Franco» al lado del nombre, y lo que decía el archivo («Desde tu selección semanal» / «Desde tu
     // guía») es su título. El origen se pide para los de Franco a la vista, no para los sin dirección (tier CASA §11).
@@ -316,7 +317,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!/title=\{origen \? textoOrigenArchivo\(origen\) : ARCHIVO_COPY\.desdeAviso\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, francoIds\),/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 4)
       F("8 · la marca «Franco» del archivo no dice de dónde salió el informe (la selección o la guía)");
     if (!/if \(o\) out\[a\.id\] = o;/.test(cuerpo(srv, "export async function origenDeInformes("))) F("8 · los informes de la guía no traen su origen al archivo");
-    if (!/if \(body\?\.origenAviso\) body\.origenAviso\.desde = typeof b\.semanal === "string" \? "semanal" : "guia";/.test(sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts")))) F("8 · los informes nuevos no anotan de dónde salieron");
+    // ⚠ ACTA (23-oct-2026, goal Explorar) · la ruta decide `desde` una vez (semanal · guia · explorar) y lo anota en el informe.
+    const rutaGuia = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
+    if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(rutaGuia) || !/if \(body\?\.origenAviso\) body\.origenAviso\.desde = desde;/.test(rutaGuia)) F("8 · los informes nuevos no anotan de dónde salieron");
   }
 
   // ── 9 · LOS PARECIDOS QUE SOBREVIVEN ────────────────────────────────────────────
