@@ -70,6 +70,10 @@ export async function POST(request: Request) {
     // recibe los deptos de renta larga de sus comunas); la selección se valida abajo contra ese origen.
     let o: OrigenGuia | null;
     let combo: Combinacion | null | undefined;
+    // LA COMBINACIÓN ELEGIDA EN EL POP-UP (23-oct-2026, mockup D2): desde una selección, el pie y el plazo que la persona
+    // cambió en «Cambiar» —de las listas del pop-up, ya con el veredicto recalculado a la vista— van en lugar de los de la
+    // selección; sin ellos, los de la fila. La selección (el token) sigue validando el aviso.
+    const elegida: Combinacion | null = typeof b.semanal === "string" && esPiePopup(b.piePct) && esPlazoPopup(b.plazoAnios) ? { piePct: Number(b.piePct), plazoAnios: Number(b.plazoAnios) } : null;
     if (desdeExplorar) {
       // Explorar: el pie y el plazo del pop-up, de sus listas, y el origen sintético con la tasa de mercado.
       if (!esPiePopup(b.piePct) || !esPlazoPopup(b.plazoAnios)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
@@ -78,17 +82,21 @@ export async function POST(request: Request) {
       o = origenSintetico(user.id, { piePct: combo.piePct, plazoAnios: combo.plazoAnios, comunas: pp.perfil.comunas, dormitorios: pp.perfil.dormitorios }, await leerConfigGuia(admin));
     } else if (sinOrigen) {
       // La selección es de esta persona, no tiene origen y trae este aviso; el origen, el sintético con su combinación.
-      combo = await combinacionSemanal(admin, b.semanal!, user.id, null, b.avisoId);
+      const deLaFila = await combinacionSemanal(admin, b.semanal!, user.id, null, b.avisoId);
+      combo = deLaFila ? elegida ?? deLaFila : null;
       o = combo ? origenSintetico(user.id, { ...combo, comunas: [], dormitorios: [] }, await leerConfigGuia(admin)) : null;
     } else {
       o = await leerOrigenGuia(admin, b.origenId!, { rentaCorta: typeof b.semanal === "string" });
       if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
       // La combinación tiene que ser una de las que la guía puede mostrar (la suya o una ajustada); desde el
       // correo semanal, la de esa selección, que tiene que ser de esta persona, de este origen y con este aviso.
-      combo = typeof b.semanal === "string"
-        ? await combinacionSemanal(admin, b.semanal, user.id, o.analysisId, b.avisoId)
-        : combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
+      if (typeof b.semanal === "string") {
+        const deLaFila = await combinacionSemanal(admin, b.semanal, user.id, o.analysisId, b.avisoId);
+        combo = deLaFila ? elegida ?? deLaFila : null;
+      } else {
+        combo = combinacionesGuia({ piePct: o.piePct, plazoAnios: o.plazoAnios, razonSinPie: o.razonSinPie })
           .find((c) => c.piePct === b.piePct && c.plazoAnios === b.plazoAnios);
+      }
     }
     if (!combo || !o) return NextResponse.json({ error: "combinacion" }, { status: 400 });
     const origen: OrigenGuia = o;

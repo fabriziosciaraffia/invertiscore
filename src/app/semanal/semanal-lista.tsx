@@ -32,12 +32,12 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
-import { recalcularDepto } from "@/lib/guia/recalcular-cliente";
+import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO } from "@/lib/guia/semanal-str";
-import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
@@ -107,11 +107,11 @@ export function SemanalLista({
   const comprarSeleccion = compraDeLaSeleccion({ token, origen: origenCompra, variante: varianteCompra, ticket });
   const usa = saldo.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
 
-  // `combo` (23-oct-2026, mockup D2): la combinación que el pop-up dejó a la vista; sin él, la de la selección.
-  async function analizar(it: ItemSemanal, recienPagado = false, combo: { piePct: number; plazoAnios: number } | null = null) {
+  // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
+  async function analizar(it: ItemSemanal, recienPagado = false, eleccion?: EleccionAnalizar) {
     // Sin informe de origen (16-oct-2026, la puerta B) se analiza igual: la ruta valida la selección por el token.
     if (generando || !combinacion) return;
-    const conCombo = combo ?? combinacion;
+    const conCombo = eleccion?.combinacion ?? combinacion;
     setError(null);
     setTardo(null);
     setPopup(null);
@@ -119,6 +119,10 @@ export function SemanalLista({
     // Renta larga (21-oct-2026): el aviso queda abierto, cargando, con la barra del header, hasta que abre el informe.
     const soltar = corta ? null : iniciarCarga(claveActual());
     if (!corta) setConfirmar({ it, sin: false, analizando: true });
+    // La casilla del pop-up: la combinación elegida queda como su perfil de búsqueda antes de analizar.
+    if (eleccion?.guardarPerfil) {
+      await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios }) }).catch(() => null);
+    }
     let sinCredito = 0;
     // Renta corta: la medición tiene tope. Pasado, se corta la espera y se ofrece reintentar.
     const t0 = Date.now();
@@ -325,9 +329,9 @@ export function SemanalLista({
           rutaCompra={comprarSeleccion.href}
           analizando={!!confirmar.analizando}
           // El pop-up recalcula (23-oct-2026, D2): solo en renta larga, con el token de la selección.
-          recalcular={corta ? undefined : (combo) => recalcularDepto({ token, avisoId: confirmar.it.avisoId, origenId, combo })}
+          cambio={corta || !confirmar.it.veredicto ? null : { recalcular: (combo) => recalcularAviso(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           // Renta corta: el aviso se cierra y la tarjeta mide. Renta larga: queda abierto, cargando, hasta el informe.
-          alAnalizar={(combo) => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it, false, corta ? null : combo); }}
+          alAnalizar={(eleccion) => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it, false, corta ? undefined : eleccion); }}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}

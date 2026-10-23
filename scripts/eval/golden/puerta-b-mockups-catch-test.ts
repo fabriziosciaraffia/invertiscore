@@ -145,72 +145,65 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
     }
 
     // ── 3 · EL POP-UP RECALCULA AL CAMBIAR EL PIE ──
+    // ⚠ ACTA (23-oct-2026, unificación con Explorar) · la API del pop-up es la de Explorar (`cambio` con `recalcular` y
+    // `base`, `alAnalizar(eleccion)`, las listas y el texto del cambio de lib/explorar/explorar.ts, la ruta
+    // /api/explorar/recalcular); acá se fija lo que el mockup D1/D2 agrega: el cuerpo (la tarjeta gris con el veredicto y
+    // el flujo, la línea del pie y el plazo con «Cambiar», solo el dividendo y el retorno), NUNCA COBRAR SIN EL VEREDICTO
+    // RECALCULADO (bloqueaAnalizar, cableado al botón), «Analizar» desde la selección con la combinación elegida (la ruta
+    // la acepta con el token) y que la primera selección y el dashboard abran el pop-up con `cambio`.
     try {
       if (!aviso) throw new Error("no carga aviso-analizar");
       const A = aviso;
-      // La combinación elegida: válida dentro de los topes; lo demás, null (se usa la de la selección).
-      if (JSON.stringify(A.combinacionElegida({ piePct: 10, plazoAnios: 25 })) !== '{"piePct":10,"plazoAnios":25}' || A.combinacionElegida({ piePct: 70, plazoAnios: 25 }) || A.combinacionElegida({ piePct: 20, plazoAnios: 25.5 })
-        || A.combinacionElegida({ piePct: 20, plazoAnios: 45 }) || A.combinacionElegida({}) || A.combinacionElegida({ piePct: "10", plazoAnios: "25" }) || A.combinacionElegida({ piePct: 20, plazoAnios: 5 }))
-        F("3 · la combinación elegida no se valida (o acepta cualquier cosa)");
-      if (JSON.stringify(A.PIES_AVISO) !== "[10,20,30]" || JSON.stringify(A.PLAZOS_AVISO) !== "[20,25,30]" || JSON.stringify(A.conActual(A.PIES_AVISO, 15)) !== "[10,15,20,30]" || JSON.stringify(A.conActual(A.PLAZOS_AVISO, 25)) !== "[20,25,30]")
-        F("3 · los selectores no son 10/20/30 % y 20/25/30 años (con el actual sumado)");
-      const base = { combo: { piePct: 20, plazoAnios: 25 }, veredicto: "COMPRAR", score: 88, flujo: 88363 };
-      const peor = { combo: { piePct: 10, plazoAnios: 25 }, veredicto: "AJUSTA SUPUESTOS", score: 71, flujo: -45120 };
-      const c = A.cambioDeVeredicto(base, peor);
-      if (c?.titulo !== "Con pie 10 % este depto da Ajustar." || c.detalle !== "Flujo mensual −$45.120 de tu bolsillo. Con 20 % daba Comprar 88 y +$88.363.") F(`3 · la tarjeta del cambio no dice lo del mockup: ${JSON.stringify(c)}`);
-      if (A.cambioDeVeredicto(base, { ...base, combo: { piePct: 30, plazoAnios: 25 }, score: 92 })) F("3 · la tarjeta del cambio sale aunque el veredicto no cambió");
-      const c2 = A.cambioDeVeredicto(base, { ...peor, combo: { piePct: 10, plazoAnios: 30 } });
-      if (c2?.titulo !== "Con pie 10 % y 30 años este depto da Ajustar." || !c2.detalle.includes("Con 20 % y 25 años daba Comprar 88")) F("3 · con el plazo cambiado, la tarjeta no lo nombra");
-      if (A.textoBotonAnalizar(true) !== "Analizar igual" || A.textoBotonAnalizar(false) !== "Analizar") F("3 · el botón no pasa a «Analizar igual» cuando el veredicto cambió");
-      if (A.lineaVeredicto(base) !== "Comprar 88 · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 · flujo +$88.363 te queda»");
-      if (A.textoGuardarPerfil({ piePct: 10, plazoAnios: 25 }) !== "Guardar 10 % y 25 años como mi perfil de búsqueda") F("3 · la casilla no dice «Guardar 10 % y 25 años como mi perfil de búsqueda»");
+      const base = { veredicto: "COMPRAR", score: 88, flujo: 88363 };
+      const peor = { veredicto: "AJUSTA SUPUESTOS", score: 71, flujo: -45120 };
+      if (A.lineaVeredicto(base) !== "Comprar 88 · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto(null) !== null || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 · flujo +$88.363 te queda»");
+      if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "El informe completo incluye el enlace a la publicación, para que lo veas y contactes a quien lo vende." || A.AVISO_ANALIZAR.incluyeCorto !== ".") F("3 · la tarjeta gris no dice qué incluye el informe");
       // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO.
       if (!A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: true, evaluacion: null }) || !A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: null })
         || A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: peor }) || A.bloqueaAnalizar({ sin: false, esBase: true, recalculando: false, evaluacion: null }) || A.bloqueaAnalizar({ sin: true, esBase: false, recalculando: true, evaluacion: null }))
         F("3 · con otra combinación se puede analizar sin el veredicto recalculado (o la base queda bloqueada)");
       const av = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
-      if (!/const bloqueado = bloqueaAnalizar\(\{ sin, esBase, recalculando, evaluacion \}\);/.test(av) || !/async function analizar\(\) \{\s*if \(bloqueado \|\| guardando\) return;/.test(av) || !/bloqueado=\{bloqueado\}/.test(av)) F("3 · el pop-up no bloquea «Analizar» mientras recalcula");
+      if (!/const bloqueado = bloqueaAnalizar\(\{ sin, esBase: !cambiada, recalculando, evaluacion: recal \}\);/.test(av) || !/bloqueado=\{bloqueado\}/.test(av)) F("3 · el pop-up no bloquea «Analizar» mientras recalcula");
       if (!/disabled=\{submitting \|\| bloqueado\}/.test(codigo("src/components/formulario-v4/ModalPlausibilidad.tsx"))) F("3 · el modal no deshabilita el principal con el bloqueo");
-      // Cada cambio recalcula; una respuesta tardía de otra combinación no pisa; «Analizar» lleva la combinación a la vista y
-      // la casilla guarda el perfil antes.
-      if (!/void recalcular\(combo\)\.then\(\(r\) => \{\s*if \(n !== pedido\.current\) return;/.test(av) || !/\}, \[combo\.piePct, combo\.plazoAnios, esBase\]\);/.test(av) || !/setEvaluacion\(\{ combo, veredicto: r\.veredicto, score: r\.score, flujo: r\.flujo \}\);/.test(av))
-        F("3 · el pop-up no recalcula en cada cambio (o una respuesta tardía pisa a la nueva)");
-      if (!/if \(!esBase && guardar\) \{\s*setGuardando\(true\);\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^\n]*piePct: combo\.piePct, plazoAnios: combo\.plazoAnios[^\n]*\n\s*setGuardando\(false\);/.test(av) || !/\n\s*alAnalizar\(combo\);\s*\n\s*\}/.test(av) || !/submitting=\{analizando \|\| guardando\}/.test(av)) F("3 · «Analizar» no lleva la combinación a la vista, o la casilla no guarda el perfil antes");
-      if (!/data-aviso="pie"/.test(av) || !/data-aviso="plazo"/.test(av) || !/\{cambio && \(\s*<div className="av-cambio" data-aviso="cambio">/.test(av) || !/labelConfirmar=\{sin \? \(compras \? compras\.pack\.label : AVISO_ANALIZAR\.comprar\) : textoBotonAnalizar\(!!cambio\)\}/.test(av) || !/onClick=\{\(\) => setCambiando\(true\)\} data-aviso="cambiar"/.test(av))
-        F("3 · faltan los selectores, la tarjeta del cambio, «Cambiar» o el botón «Analizar igual»");
-      // Las rutas: el recálculo valida la combinación y la selección; analizar acepta la elegida solo con el token.
-      const rr = codigo("src/app/api/deptos/recalcular/route.ts");
-      if (!/const combo = combinacionElegida\(b\);/.test(rr) || !/!combo\) return NextResponse\.json\(\{ error: "datos" \}, \{ status: 400 \}\);/.test(rr) || !/recalcularAviso\(createServiceClient\(\), \{ userId: user\.id, token: b\.semanal, origenId, avisoId: b\.avisoId, combo \}\)/.test(rr)) F("3 · la ruta de recálculo no valida la combinación o no exige el token");
-      const rs = codigo("src/lib/guia/recalcular-servidor.ts");
-      if (!/if \(!sel \|\| sel\.user_id !== p\.userId \|\| sel\.origen_analysis_id !== p\.origenId\) return \{ ok: false, status: 403, error: "seleccion" \};/.test(rs) || !/sondaConPatch\(body as never, cfg\.uf, aviso\.medianaComuna as never, ahora, \{\}\)/.test(rs)) F("3 · el recálculo no exige una selección propia, o no usa la sonda del motor");
+      // Una respuesta tardía de otra combinación no pisa; si no pudo, se dice y sigue bloqueado.
+      if (!/void cambio\.recalcular\(combo\)\.then\(\(r\) => \{ if \(pedido\.current === n\) \{ setRecal\(r\); setFallo\(!r\); setRecalculando\(false\); \} \}\)/.test(av) || !/data-aviso="fallo">\{AVISO_ANALIZAR\.sinRecalculo\}/.test(av)) F("3 · el pop-up no recalcula en cada cambio (o una respuesta tardía pisa a la nueva, o no dice que no pudo)");
+      // El cuerpo del mockup: la tarjeta gris, la línea del pie y el plazo con «Cambiar», los selectores, la tarjeta del cambio
+      // (en rojo solo si empeora), el dividendo y el retorno, la casilla.
+      if (!/cuerpo=\{cuerpo\}/.test(av) || /resumen=\{resumen\}|destacado=\{/.test(av)) F("3 · el pop-up no dibuja su propio cuerpo (o vuelve al del wizard)");
+      if (!orden(av, ['className="av-tarjeta"', 'data-aviso="depto">{resumen.direccion}', 'data-aviso="veredicto">{linea}', "{AVISO_ANALIZAR.incluye.antes}", 'data-aviso="pie"', 'data-aviso="plazo"', 'data-aviso="cambio" data-empeora={da.empeora ? "1" : undefined}', 'data-aviso="combo"', "{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>", "data-modal-cambiar", 'data-aviso="derivados"', 'data-aviso="guardar" data-modal-guardar']))
+        F("3 · el cuerpo del pop-up no es el del mockup (tarjeta gris, pie y plazo con «Cambiar», selectores, el cambio, los derivados, la casilla)");
+      if (!/const derivados = resumen\.derivados\.filter\(\(x\) => x\.label === "Dividendo" \|\| x\.label === "Retorno bruto"\);/.test(av)) F("3 · el pop-up muestra más que el dividendo y el retorno bruto");
+      const cssW = leer("src/components/formulario-v4/wizard-v4.css");
+      if (!/\.av-cambio\[data-empeora="1"\] \{[^}]*var\(--wz-rojo\)/.test(cssW) || /\.av-cambio \{[^}]*wz-rojo/.test(cssW) || /\.av-cambio b \{[^}]*wz-rojo/.test(cssW)) F("3 · la tarjeta del cambio va en rojo aunque no empeore (o no va en rojo cuando empeora)");
+      // La ruta de analizar acepta la combinación elegida solo con el token de la selección (las listas del pop-up).
       const an = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
-      if (!/const elegida = typeof b\.semanal === "string" \? combinacionElegida\(b\) : null;/.test(an) || (an.match(/combo = deLaFila \? elegida \?\? deLaFila : null;/g) ?? []).length !== 2) F("3 · «Analizar» no analiza con la combinación elegida en el pop-up (o la acepta sin el token)");
-      // Con una base de mentira: la selección de OTRA cuenta corta en 403 antes de leer nada más.
-      const srv = cargar<typeof import("../../../src/lib/guia/recalcular-servidor")>("src/lib/guia/recalcular-servidor");
-      if (!srv) F("3 · falta lib/guia/recalcular-servidor.ts");
-      else {
-        const lecturas: string[] = [];
-        const fila = { id: "s1", user_id: "otra", semana: "2026-10-27", token: "a".repeat(32), items: [{ avisoId: "11111111-1111-4111-8111-111111111111" }], combinacion: { piePct: 20, plazoAnios: 25 }, origen_analysis_id: null, variante: "tarjetas", enviada_at: null, perfil: {}, items_str: [], estado_str: null, combinacion_str: null, origen_str_analysis_id: null };
-        const cadena = (tabla: string) => { const q = { select: () => q, eq: () => q, in: () => q, maybeSingle: async () => ({ data: tabla === "semanal_selecciones" ? fila : null, error: null }), then: undefined }; lecturas.push(tabla); return q; };
-        const admin = { from: cadena, rpc: async () => ({ data: null, error: null }) } as never;
-        const r = await srv.recalcularAviso(admin, { userId: "yo", token: fila.token, origenId: null, avisoId: fila.items[0].avisoId, combo: { piePct: 10, plazoAnios: 25 } });
-        if (r.ok || r.status !== 403 || lecturas.some((t) => t !== "semanal_selecciones" && t !== "avisos_inmediatos")) F(`3 · el recálculo sobre la selección de otra cuenta no corta en 403 antes de leer el aviso (${JSON.stringify(r)}; leyó ${lecturas.join()})`);
-        const r2 = await srv.recalcularAviso(admin, { userId: "otra", token: fila.token, origenId: null, avisoId: "22222222-2222-4222-8222-222222222222", combo: { piePct: 10, plazoAnios: 25 } });
-        if (r2.ok || r2.status !== 403) F("3 · el recálculo de un depto que no está en la selección no corta en 403");
-      }
+      if (!/const elegida: Combinacion \| null = typeof b\.semanal === "string" && esPiePopup\(b\.piePct\) && esPlazoPopup\(b\.plazoAnios\) \? \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \} : null;/.test(an) || (an.match(/combo = deLaFila \? elegida \?\? deLaFila : null;/g) ?? []).length !== 2)
+        F("3 · «Analizar» no analiza con la combinación elegida en el pop-up (o la acepta sin el token)");
+      // La primera selección y el dashboard abren el pop-up con «Cambiar», recalculan por la ruta de Explorar y guardan el
+      // perfil si la casilla queda marcada.
+      const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx"), sl = codigo("src/app/semanal/semanal-lista.tsx");
+      if (!/cambio=\{\{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto, score: confirmar\.it\.score, flujo: confirmar\.it\.flujo \} \}\}/.test(ps) || !/alAnalizar=\{\(eleccion\) => void analizar\(confirmar\.it, eleccion\)\}/.test(ps)
+        || !/const combo = eleccion\?\.combinacion \?\? datos\.combinacion;/.test(ps) || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^\n]*piePct: combo\.piePct, plazoAnios: combo\.plazoAnios/.test(ps) || !/piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, semanal: datos\.token/.test(ps))
+        F("3 · la primera selección no abre el pop-up con «Cambiar», o no analiza con lo elegido ni guarda el perfil");
+      if (!/cambio=\{corta \|\| !confirmar\.it\.veredicto \? null : \{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(sl) || !/const conCombo = eleccion\?\.combinacion \?\? combinacion;/.test(sl) || !/if \(eleccion\?\.guardarPerfil\) \{/.test(sl))
+        F("3 · el dashboard no abre el pop-up con «Cambiar», o no analiza con lo elegido ni guarda el perfil");
+      if (!/fetch\("\/api\/explorar\/recalcular"/.test(codigo("src/lib/explorar/recalcular-cliente.ts")) || existe("src/app/api/deptos/recalcular/route.ts")) F("3 · el recálculo no va por la ruta de Explorar (o sigue la ruta duplicada)");
       // D1, dibujado: la tarjeta gris, «Con pie de 20 % y plazo de 25 años · Cambiar», el dividendo y el retorno, «Usa tu
       // análisis de regalo.», «Analizar» y «Cancelar».
       const cmp = cargar<typeof import("../../../src/components/guia/AvisoAntesDeAnalizar")>("src/components/guia/AvisoAntesDeAnalizar");
       if (!cmp) throw new Error("no carga el pop-up");
       const html = dibujarPopup(createElement(cmp.AvisoAntesDeAnalizar, {
-        depto: { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275, veredicto: "COMPRAR", score: 88, flujo: 88363 },
+        depto: { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275 },
         combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.2, uf: 39500, arriendo: 620000 }, uso: { tipo: "regalo", vence: null }, rutaCompra: "/dashboard",
-        alAnalizar: () => {}, alCancelar: () => {}, recalcular: async () => null,
+        alAnalizar: () => {}, alCancelar: () => {}, cambio: { recalcular: async () => null, base },
       }));
       const th = textos(html);
-      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b> y plazo de <b>25 años</b>", 'data-aviso="cambiar"', "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
+      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b> y plazo de <b>25 años</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
         F(`3 · D1 no se dibuja como el mockup: ${th.slice(0, 300)}`);
-      if (/data-aviso="pie"|data-aviso="guardar"|Analizar igual|Precio por m²|Renta larga|de tu perfil/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Analizar igual» o lo del wizard antes de tocar «Cambiar»");
+      if (/data-aviso="pie"|data-aviso="guardar"|Analizar igual|Precio por m²|Renta larga|de tu perfil|disabled=""/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Analizar igual», lo del wizard o el botón bloqueado antes de tocar «Cambiar»");
+      // Sin `cambio` (la guía, renta corta): la línea del pie y el plazo sin «Cambiar».
+      const sinCambio = dibujarPopup(createElement(cmp.AvisoAntesDeAnalizar, { depto: { comuna: "Ñuñoa", tipologia: "2D1B", m2: 50, precioUF: 3000 }, combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.2, uf: 39500, arriendo: 500000 }, uso: { tipo: "con", n: 2, noVencen: true }, rutaCompra: "/x", alAnalizar: () => {}, alCancelar: () => {} }));
+      if (/data-modal-cambiar|data-aviso="veredicto"/.test(sinCambio) || !/data-aviso="combo"/.test(sinCambio)) F("3 · sin `cambio` el pop-up ofrece «Cambiar» (o inventa un veredicto)");
     } catch (e) {
       F(`3 · no corrió: ${(e as Error).message}`);
     }
@@ -288,23 +281,26 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
 }
 
 // ACTA DE MUTACIÓN (23-oct-2026). CONTRA EL CÓDIGO DE HOY (un worktree limpio en HEAD 7c0264b7 con este archivo copiado): 13
-// fallas —los nueve puntos de §1 sobre la página dibujada (el correo sin comuna no, pero los selects, el número «publicados»,
-// Google primero, la prueba, el pie y el plazo en la pantalla) y §2 a §5 sin sus módulos (ESTAS_DENTRO_DEPTOS,
-// combinacionElegida, ordenFijo, valorDePerfil)—. Y 25 mutaciones (scratchpad mutar-mockups.cjs), cada una restaurada byte a
-// byte y verificada por hash, todas ROJAS: M1 el correo sin comuna · M2 sin «o con tu correo» · M3 la comuna no se marca vacía
-// · M4 vuelve el «cuándo» a «Estás dentro» · M5 la tarjeta roja sin regalo · M6 otro título · M7 el título de la selección
-// sin el número · M8 bloqueaAnalizar nunca bloquea · M9 el pop-up analiza bloqueado · M10 el modal ignora el bloqueo · M11
-// analizar ignora la combinación elegida · M12 el recálculo no mira de quién es la selección · M13 otra tarjeta del cambio ·
-// M14 la respuesta tardía pisa · M15 ordenFijo no ordena · M16 sin desempate a igual puntaje · M17 la cola del día sin los
-// previos · M18 el domingo sin los previos · M19 los primeros sin el desempate por id · M20 la casa esconde los dormitorios
-// de varios informes · M21 la ruta de recálculo acepta cualquier combinación · M22 las tarjetas sin el pin · M23 «Analizar
-// este» sin «usa tu regalo» · M24 D1 abre con los selectores · M25 la cola lee los previos del encolado y no los de ahora.
-// M7, M23 y M25 salieron VERDES la primera vez: el tier medía el módulo (tituloSeleccion, textoAnalizar) o solo una de las
-// dos líneas de la cola; se le sumó el cableado al componente y la lectura fresca de la fila. M25 nació del QA en WebKit:
-// la primera vuelta de la cola partía con la fila vacía y mandaba el correo con los deptos 3 y 4 al revés que la pantalla.
+// fallas —los nueve puntos de §1 sobre la página dibujada y §2 a §5 sin sus módulos (ESTAS_DENTRO_DEPTOS, bloqueaAnalizar,
+// ordenFijo, valorDePerfil)—. UNIFICACIÓN CON EXPLORAR (misma tarde): master trajo su propio «Cambiar» en el pop-up
+// (prop `cambio`, `alAnalizar(eleccion)`, /api/explorar/recalcular, lib/explorar/explorar.ts); el pop-up quedó con esa API y
+// el cuerpo D1/D2 del mockup, y §3 se reescribió sobre ella (se fueron combinacionElegida, cambioDeVeredicto y la ruta
+// /api/deptos/recalcular). Y 27 mutaciones (scratchpad mutar-mockups.cjs), cada una restaurada byte a byte y verificada
+// por hash, todas ROJAS: M1 el correo sin comuna · M2 sin «o con tu correo» · M3 la comuna no se marca vacía · M4 vuelve
+// el «cuándo» a «Estás dentro» · M5 la tarjeta roja sin regalo · M6 otro título · M7 el título de la selección sin el
+// número · M8 bloqueaAnalizar nunca bloquea · M9 el pop-up no bloquea el botón · M10 el modal ignora el bloqueo · M11
+// analizar ignora la combinación elegida · M12 analizar acepta la elegida sin el token · M13 la tarjeta gris sin el
+// veredicto · M14 la respuesta tardía pisa · M15 ordenFijo no ordena · M16 sin desempate a igual puntaje · M17 la cola del
+// día sin los previos · M18 el domingo sin los previos · M19 los primeros sin el desempate por id · M20 la casa esconde los
+// dormitorios de varios informes · M21 la primera selección analiza con la fila y no con lo elegido · M22 las tarjetas sin
+// el pin · M23 «Analizar este» sin «usa tu regalo» · M24 D1 abre con los selectores · M25 la cola lee los previos del
+// encolado y no los de ahora · M26 la tarjeta del cambio en rojo aunque mejore · M27 el dashboard abre el pop-up sin
+// «Cambiar». M7, M23, M25 y M26 salieron VERDES la primera vez: el tier medía el módulo o una sola regla CSS; se le sumó el
+// cableado. M25 nació del QA en WebKit: la primera vuelta de la cola partía con la fila vacía y mandaba el correo con los
+// deptos 3 y 4 al revés que la pantalla.
 // Reescritos con acta: CARGA (botones y chips de /deptos y la casa), PUERTA-B §2·§8·§9·§10, PUERTA-B-RECORRIDO §1·§2,
 // PRIMERA-SELECCION §6·§7·§9·§12, ENTRADA-ALTA §1, CORREOS-RECORRIDO §5, COMPRA §3, SEMANAL §6, SEMANAL-STR §2,
-// WIZARD-INTERIOR §11 (el rojo de la tarjeta del cambio), COMUNAS-DISENO §2 (los rangos).
+// WIZARD-INTERIOR §11 (el rojo de la tarjeta del cambio, solo si empeora), COMUNAS-DISENO §2 (los rangos).
 
 if (require.main === module) {
   runPuertaBMockupsTier().then((r) => process.exit(r.hard ? 1 : 0));

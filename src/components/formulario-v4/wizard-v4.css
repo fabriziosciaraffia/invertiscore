@@ -359,8 +359,11 @@
 .av-select:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
 .av-estado { margin: 0; font-size: 13px; color: var(--tx3); }
 .av-fallo { color: var(--wz-rojo); }
-.av-cambio { background: color-mix(in srgb, var(--wz-rojo) 9%, var(--page)); border: 1px solid color-mix(in srgb, var(--wz-rojo) 35%, transparent); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-.av-cambio b { font-size: 14px; font-weight: 600; color: var(--wz-rojo); }
+.av-cambio { background: var(--sunk); border: 1px solid var(--line2); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.av-cambio b { font-size: 14px; font-weight: 600; color: var(--tx); }
+/* Si empeora (el mockup D2): la tarjeta en Signal Red, es atencion real. */
+.av-cambio[data-empeora="1"] { background: color-mix(in srgb, var(--wz-rojo) 9%, var(--page)); border-color: color-mix(in srgb, var(--wz-rojo) 35%, transparent); }
+.av-cambio[data-empeora="1"] b { color: var(--wz-rojo); }
 .av-cambio span { font-size: 13px; line-height: 1.4; color: var(--tx2); }
 .av-der.wz-modal-der { margin-top: 0; padding-top: 0; border-top: 0; }
 .av-guardar { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.35; color: var(--tx2); cursor: pointer; }

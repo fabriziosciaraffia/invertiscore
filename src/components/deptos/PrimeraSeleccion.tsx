@@ -29,12 +29,11 @@ import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
-import { recalcularDepto } from "@/lib/guia/recalcular-cliente";
+import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
-import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
-import type { Combinacion } from "@/lib/guia/seleccion";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import type { PrimerDepto } from "@/lib/deptos/servidor";
 import "@/app/deptos/deptos.css";
@@ -106,14 +105,20 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     }
   }
 
-  async function analizar(it: PrimerDepto, combo: Combinacion) {
+  // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
+  async function analizar(it: PrimerDepto, eleccion?: EleccionAnalizar) {
     if (!datos?.combinacion || !datos.token || generando) return;
+    const combo = eleccion?.combinacion ?? datos.combinacion;
     setError(null);
     setGenerando(it.avisoId);
     // El aviso queda abierto, cargando, con la barra del header, hasta que abre el informe (21-oct-2026).
     const soltar = iniciarCarga(claveActual());
     setConfirmar({ it, sin: false, analizando: true });
     try {
+      // La casilla: la combinación elegida queda como su perfil de búsqueda antes de analizar.
+      if (eleccion?.guardarPerfil) {
+        await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combo.piePct, plazoAnios: combo.plazoAnios }) }).catch(() => null);
+      }
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
@@ -220,7 +225,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
 
       {confirmar && datos?.combinacion && (
         <AvisoAntesDeAnalizar
-          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo }}
+          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF }}
           combinacion={datos.combinacion}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
@@ -228,8 +233,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           ticketConSaldo={datos.token && datos.ticket ? ticketConSaldoDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt }) : null}
           rutaCompra="/dashboard"
           analizando={!!confirmar.analizando}
-          recalcular={datos.token ? (combo) => recalcularDepto({ token: datos.token!, avisoId: confirmar.it.avisoId, origenId: datos.origenId, combo }) : undefined}
-          alAnalizar={(combo) => void analizar(confirmar.it, combo)}
+          cambio={{ recalcular: (combo) => recalcularAviso(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
+          alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}

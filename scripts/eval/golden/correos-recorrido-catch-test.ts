@@ -37,7 +37,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DIAS_ENTRADA_POR_CORREO, SEMANAL_PAGINA, puedeEntrarPorCorreo } from "../../../src/lib/guia/semanal";
-import { AVISO_ANALIZAR, derivadosAviso, destacadoCombinacion, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
+import { AVISO_ANALIZAR, derivadosAviso, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
 import { PRODUCTO_TRES, TRES_CANTIDAD, TRES_COPY, TRES_PRECIO_CLP, rutaTres, volverSeguro } from "../../../src/lib/tres-analisis";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
 import { CASA, packDeCasa } from "../../../src/app/dashboard/casa-copy";
@@ -99,12 +99,13 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (der !== "Precio: UF 3.980 · Precio por m²: 70 UF/m² · Superficie: 57 m² · Pie: UF 796 · Dividendo: $677.817/mes · Retorno bruto: 4,7% anual") F(`5 · el aviso no muestra los datos del wizard (${der})`);
   const sinCon = derivadosAviso({ precioUF: 3980, m2: 57 }, { piePct: 20, plazoAnios: 25 }, { tasa: null, uf: 39500, arriendo: null });
   if (sinCon.find((x) => x.label === "Dividendo")?.valor !== "—" || sinCon.find((x) => x.label === "Retorno bruto")?.valor !== "—") F("5 · sin la tasa o el arriendo, el aviso inventa el dividendo o el retorno");
-  if (destacadoCombinacion({ piePct: 20, plazoAnios: 25 }).texto !== "Con el pie de 20% y el plazo de 25 años de tu perfil") F("5 · el aviso no destaca que va con el pie y el plazo del perfil");
   const aviso = sinComentarios(leer("src/components/guia/AvisoAntesDeAnalizar.tsx"));
   // ⚠ ACTA (23-oct-2026, goal Explorar) · el aviso tiene «Cambiar» (prop `cambio`, desde el mapa): los derivados siguen a la combinación elegida
   // (`combo`, que arranca en la del perfil) y la línea destacada es la de siempre cuando no hay `cambio`.
   if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/const \[combo, setCombo\] = useState\(combinacion\);/.test(aviso) || !/derivados: derivadosAviso\(depto, combo, finanzas\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
-  if (!/\) : \(\s*<>Con el pie de <b>\{d\.pie\}<\/b> y el plazo de <b>\{d\.plazo\}<\/b> de tu perfil<\/>\s*\);/.test(aviso) || !/destacado=\{destacado\}/.test(aviso)) F("5 · el aviso no destaca el pie y el plazo de su perfil");
+  // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockups D1/D2; tier PUERTA-B-MOCKUPS §3) · el aviso dibuja su propio cuerpo (`cuerpo`):
+  // el pie y el plazo van en «Con pie de 20 % y plazo de 25 años» con «Cambiar» cuando hay `cambio`; el destacado «de tu perfil» se fue.
+  if (!/cuerpo=\{cuerpo\}/.test(aviso) || !/\{c\.antes\}<b>\{c\.pie\}<\/b>\{c\.medio\}<b>\{c\.plazo\}<\/b>/.test(aviso)) F("5 · el aviso no dice el pie y el plazo con que analiza");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · sin saldo, desde la selección, el aviso compra el pack —al precio del ticket si la cuenta es nueva— y debajo el
   // suelto (`compras`, compra-desde-depto.ts); la guía, sin `compras`, sigue con su pack de tres (tier PUERTA-B-RECORRIDO §5).
   // ⚠ ACTA (23-oct-2026, goal Explorar) · con saldo el botón dice Analizar (o «Analizar igual» si el cambio empeora) y le pasa la elección a alAnalizar.
@@ -126,7 +127,7 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · recién pagado desde el depto, «sin créditos» espera el crédito unas veces antes de volver a ofrecer comprar.
   if (!/if \(d\.error === "sin-creditos"\) \{\s*if \(recienPagado && sinCredito\+\+ < REINTENTOS_CREDITO\) \{ await new Promise\(\(ok\) => setTimeout\(ok, ESPERA_CREDITO_MS\)\); continue; \}\s*setConfirmar\(\{ it, sin: true \}\);\s*break;\s*\}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
-  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}\s+ticketConSaldo=\{[^}]*\}[^\n]*\}\s+rutaCompra=\{comprarSeleccion\.href\}\s+analizando=\{!!confirmar\.analizando\}\s+alAnalizar=\{\(\) => \{ const it = confirmar\.it; if \(corta\) setConfirmar\(null\); void analizar\(it\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
+  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}\s+ticketConSaldo=\{[^}]*\}[^\n]*\}\s+rutaCompra=\{comprarSeleccion\.href\}\s+analizando=\{!!confirmar\.analizando\}\s+cambio=\{corta \|\| !confirmar\.it\.veredicto \? null : \{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto, score: confirmar\.it\.score, flujo: confirmar\.it\.flujo \} \}\}\s+alAnalizar=\{\(eleccion\) => \{ const it = confirmar\.it; if \(corta\) setConfirmar\(null\); void analizar\(it, false, corta \? undefined : eleccion\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la selección vive en el dashboard: lo que leía /semanal lo lee el cargador compartido y lo dibuja seleccion-en-casa.
   const paginaSem = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts")) + sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen, la tasa es la de mercado (la misma con que se evaluó).

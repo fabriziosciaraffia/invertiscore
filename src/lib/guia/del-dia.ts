@@ -37,6 +37,11 @@ const horaChile = (d: Date) => d.toLocaleTimeString("es-CL", { hour: "2-digit", 
 const diaChile = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });
 
 /** «hoy a las 03:12», «ayer a las 23:40», «el 14 de octubre a las 09:05»: cuándo se vio, en hora de Chile. */
+/** La marca de un pin del mapa de Explorar: «Visto publicado hoy a las 03:12» (en «Tu selección» ya no va por tarjeta). */
+export function marcaVisto(iso: string, ahora: Date = new Date()): string {
+  return `Visto publicado ${cuandoSeVio(iso, ahora)}`;
+}
+
 export function cuandoSeVio(iso: string, ahora: Date = new Date()): string {
   const d = new Date(iso);
   const hoy = diaChile(ahora), ese = diaChile(d), ayer = diaChile(new Date(ahora.getTime() - 864e5));
