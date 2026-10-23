@@ -15,7 +15,6 @@ import { REGALO_COPY } from "@/lib/regalo-alta";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
-const pctTexto = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 
 /** Lo que el aviso sabe del saldo: el estado de la casa, o «desconocido» cuando la pantalla no tiene el número. */
 export type UsoAnalisis = EstadoSaldo | { tipo: "desconocido" };
