@@ -334,7 +334,8 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (!/event: "primera_seleccion_vista", distinctId: user\.id, uuid: uuidDeterminista\(`primera_seleccion:\$\{user\.id\}`\),/.test(ruta)) F("10 · «primera selección vista» no sale una vez por cuenta");
       if (!/const puerta = esPuerta\(atr\?\.puerta\) \? atr\.puerta : esPuerta\(candidata\) \? candidata : null;/.test(ruta) || !/properties: \{ puerta, n: r\.items\.length, fuente: r\.fuente/.test(ruta)) F("10 · el evento no lleva la puerta (la del servidor, o la candidata del navegador)");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/const candidata = leerPuertaCandidata\(\);\s*const res = await fetch\(`\/api\/deptos\/primeros\$\{candidata \? `\?puerta=\$\{candidata\.puerta\}` : ""\}`/.test(ps)) F("10 · el navegador no manda su puerta candidata");
+      // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el pedido se arma con URLSearchParams (la puerta y, en «Estás dentro», mapa=1).
+      if (!/const candidata = leerPuertaCandidata\(\);\s*const qs = new URLSearchParams\(\);\s*if \(candidata\) qs\.set\("puerta", candidata\.puerta\);\s*if \(encabezado === "dentro"\) qs\.set\("mapa", "1"\);\s*const res = await fetch\(`\/api\/deptos\/primeros\$\{qs\.size \? `\?\$\{qs\.toString\(\)\}` : ""\}`/.test(ps)) F("10 · el navegador no manda su puerta candidata");
       if (!/Activación por puerta/.test(leer("docs/posthog-activacion-por-puerta.md"))) F("10 · falta la nota del panel de activación por puerta");
     }
 
@@ -362,7 +363,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
       if (/anoche|correo|pie|plazo/i.test(PRIMERA_SELECCION.bajadaRegalo + PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche», lo del correo, el pie o el plazo");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
+      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{encabezado === "dentro" && datos\?\.mapa && items\.length > 0 && <div data-primera="mapa">[^\n]*<\/div>\}\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
         F("12 · la pantalla no dibuja ese texto justo bajo el título (con el regalo cuando lo hay)");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";

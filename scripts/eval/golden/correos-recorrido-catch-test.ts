@@ -212,7 +212,8 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   // PUERTA-B-DASHBOARD §5); se guarda con «Guardar», junto con todo, y la etiqueta de pendientes se va.
   if (!/\{pendientes\.includes\("cuando"\) && \(\s*<div className="ca-pregunta" data-casa="pregunta-cuando">\s*<span className="ca-pregunta-q">\{CASA\.perfil\.cuando\}<\/span>/.test(casaPerfil) || !/pendientes=\{pendientes\}/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
   if (/PreguntaCuando|CASA\.perfil\.cuando|¿Cuándo piensas comprar\?/.test(pagina)) F("7 · la selección repite la pregunta del perfil en la misma página");
-  if (!/onClick=\{\(\) => \{ setP\(\(x\) => \(\{ \.\.\.x, horizonte: h \}\)\); setRespondida\(\(r\) => \(\{ \.\.\.r, cuando: true \}\)\); \}\}/.test(casaPerfil) || !/const ok = await guardar\(cambios\);/.test(casaPerfil) || !/const etiqueta = etiquetaPendientes\(faltan\.length\);/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
+  if (!/onClick=\{\(\) => \{ setP\(\(x\) => \(\{ \.\.\.x, horizonte: h \}\)\); setRespondida\(\(r\) => \(\{ \.\.\.r, cuando: true \}\)\); \}\}/.test(casaPerfil) || !/const ok = await guardar\(cambios\);/.test(casaPerfil) || !/const etiqueta = etiquetaPendientes\(pendientes\.filter\(\(q\) => !guardadas\[q === "modalidad" \? "modalidad" : "cuando"\]\)\.length\);/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · la etiqueta de la fila cuenta lo GUARDADO: desaparece al guardar, no al elegir.
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");
 
   // ── 11 · renta corta: la línea provisoria salió (14-oct-2026) ─────────────────

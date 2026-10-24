@@ -98,14 +98,15 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const casa = codigo("src/app/dashboard/casa.tsx");
   const copy = codigo("src/app/dashboard/casa-copy.ts");
   const cuerpo = pag.slice(pag.indexOf('data-casa="pagina"'));
-  const marcas = ['className="ca-cabecera"', "{CASA.saludo(firstName || null)}", 'data-casa="saldo"', "<OfertaCasa cuentaCreadaAt={user.created_at} />", '<InvitaAlguien variante="fila" />', "{CASA.seleccion.titulo}", 'data-casa="seleccion-linea"', "<MapaCasa datos={mapa} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar}", '<div className="ca-plegadas">', "<PerfilBusquedaCasa", '<FilaPlegada id="informes" titulo={CASA.informes}', "<Archive"];
+  const marcas = ['className="ca-cabecera"', "{CASA.saludo(firstName || null)}", 'data-casa="saldo"', "<OfertaCasa cuentaCreadaAt={user.created_at} />", '<InvitaAlguien variante="fila" />', "{CASA.seleccion.titulo}", 'data-casa="seleccion-linea"', "<MapaCasa datos={mapa} totalNoche={totalNoche} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar}", '<div className="ca-plegadas">', "<PerfilBusquedaCasa", '<FilaPlegada id="informes" titulo={CASA.informes}', "<Archive"];
   const pos = orden(cuerpo, marcas);
   if (!enOrden(pos)) F(`2 · el orden del dashboard no es saludo → píldora → oferta → invitar → selección (título, línea, mapa, tarjetas) → perfil → informes (${pos.join(",")})`);
   if (!/\{ofertaEnCasa\(\{ ticket, saldo \}\) && user\.created_at && <OfertaCasa cuentaCreadaAt=\{user\.created_at\} \/>\}/.test(pag)) F("2 · la oferta no la decide ofertaEnCasa con el ticket y el saldo");
   if (!/const pildora = pildoraSaldo\(saldo\);/.test(pag) || !/\{pildora\.texto\}\s*\{pildora\.planes && <> · <EnlaceCarga href="\/pricing" data-casa="planes">\{CASA\.verPlanes\}<\/EnlaceCarga><\/>\}/.test(pag)) F("2 · la píldora del saldo no sale de pildoraSaldo con «Ver planes» solo sin análisis");
   if (!/const pendientes = preguntasPendientes\(\{ puerta, modalidad: perfilPersona\.manual\.modalidad, horizonte: pb\.horizonte \}\);/.test(pag) || !/admin\.from\("user_attribution"\)\.select\("puerta"\)\.eq\("user_id", user\.id\)\.maybeSingle\(\)/.test(pag) || !/const puerta = esPuerta\(atr\?\.puerta\) \? atr\.puerta : null;/.test(pag) || !/pendientes=\{pendientes\}/.test(pag)) F("2 · las preguntas pendientes no se deciden con la puerta de user_attribution y lo contestado a mano");
   if (!/lineaRenueva\(pb\.horizonte\)/.test(pag) || !/lineaBusqueda\(\{ comunas: pb\.comunas, dormitorios: pb\.dormitorios/.test(pag)) F("2 · la línea de la selección no lleva el perfil y cuándo se renueva");
-  if (!/const mapa = itemsSel\.length > 0 \? await datosMapaCasa\(admin, user\.id, itemsSel\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna \}\)\)\) : null;/.test(pag) || !/\(sel\.largo\?\.filas \?\? \[\]\)\.map\(\(f\) => f\.reemplazo \?\? f\.item\)/.test(pag)) F("2 · el mapa no se arma con los deptos de la selección (el reemplazo del caído)");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el mapa se lee junto con el total de anoche de /deptos (portadaDeptos), para el botón.
+  if (!/const \[mapa, portada\] = await Promise\.all\(\[\s*itemsSel\.length > 0 \? datosMapaCasa\(admin, user\.id, itemsSel\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna \}\)\)\) : Promise\.resolve\(null\),\s*portadaDeptos\(\),\s*\]\);\s*const totalNoche = portada\.noche\?\.convienen \?\? null;/.test(pag) || !/\(sel\.largo\?\.filas \?\? \[\]\)\.map\(\(f\) => f\.reemplazo \?\? f\.item\)/.test(pag)) F("2 · el mapa no se arma con los deptos de la selección (el reemplazo del caído)");
   if (!/abierta=\{abrirInformes\}/.test(pag) || !/const abrirInformes = \["q", "mod", "v", "o", "page", "group", "open"\]\.some/.test(pag)) F("2 · «Informes realizados» no llega abierto con un filtro puesto");
   for (const viejo of ["BloqueArribaCasa", "SaldoPlano", "ExplorarEnCasa", "GuiaBusqueda", "casa-arriba", "ca-banda", "packDeCasa"]) if (pag.includes(viejo) || casa.includes(viejo)) F(`2 · vuelve lo viejo: ${viejo}`);
   if (existe("src/lib/casa-arriba.ts") || existe("src/app/dashboard/explorar-en-casa.tsx")) F("2 · casa-arriba.ts o explorar-en-casa.tsx siguen en el repo");
@@ -136,14 +137,21 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
     [CASA.perfil.proxima, "Tu próxima selección se arma con esto."],
     [CASA.perfil.agregarComuna, "+ agregar otra comuna"],
     [CASA.informes, "Informes realizados"],
-    [mapa.pildoraMapa(5, 312), "5 en tu selección · 312 más que convienen en gris"],
-    [mapa.botonExplorar(312), "Explorar los 312 en el mapa"],
+    // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · la píldora dice dónde están los grises y el botón, el total de anoche en Santiago.
+    [mapa.pildoraMapa(5, 11, ["Providencia"]), "5 en tu selección · 11 más en Providencia"],
+    [mapa.pildoraMapa(5, 11, ["Providencia", "Ñuñoa"]), "5 en tu selección · 11 más en Providencia y Ñuñoa"],
+    [mapa.pildoraMapa(5, 0, ["Providencia"]), "5 en tu selección"],
+    [mapa.botonExplorar(4807), "Explorar los 4.807 de Santiago"],
+    [mapa.botonExplorar(null), "Explorar en el mapa"],
     [lineaBusqueda({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 3000, precioMaxUf: 4000 }), "Providencia · 2 dormitorios · UF 3.000 a 4.000"],
   ];
   for (const [real, esperado] of exactos) if (real !== esperado) F(`2 · «${real}» debía ser «${esperado}»`);
   for (const t of [...exactos.map((x) => x[0]), CASA.perfil.pendiente, CASA.perfil.guardado, CASA.perfil.error]) if (VOSEO.test(t)) F(`2 · voseo: «${t}»`);
   // El perfil, plegado: la etiqueta de pendientes en la fila y la línea corta; «Invita a alguien» en una fila con «Compartir».
-  if (!/<FilaPlegada id="perfil" titulo=\{CASA\.perfil\.titulo\} etiqueta=\{etiqueta\} sub=\{textosDelPerfil\(base\)\.corta\} marca="perfil">/.test(casa) || !/const etiqueta = etiquetaPendientes\(faltan\.length\);/.test(casa)) F("2 · «Tu perfil de búsqueda» no es una fila plegada con la etiqueta de pendientes y la línea corta");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · la fila es controlada (se pliega al guardar), su línea es el resumen completo y la
+  // etiqueta cuenta lo GUARDADO.
+  if (!/<FilaPlegada id="perfil" titulo=\{CASA\.perfil\.titulo\} etiqueta=\{etiqueta\} sub=\{resumen\} marca="perfil" controlada=\{\{ abierta, alCambiar: setAbierta \}\} aviso=\{vistoGuardado \? CASA\.perfil\.guardado : null\}>/.test(casa)
+    || !/const etiqueta = etiquetaPendientes\(pendientes\.filter\(\(q\) => !guardadas\[q === "modalidad" \? "modalidad" : "cuando"\]\)\.length\);/.test(casa)) F("2 · «Tu perfil de búsqueda» no es una fila plegada controlada con la etiqueta de lo guardado y el resumen");
   const invita = codigo("src/components/invitacion/InvitaAlguien.tsx");
   if (!/if \(variante === "fila"\) \{[\s\S]*?<section id="invitar" className="iv-destacado iv-fila"[\s\S]*?\{REFERIDO_COPY\.invitaTitulo\}[\s\S]*?\{REFERIDO_COPY\.invitaTexto\}[\s\S]*?\{REFERIDO_COPY\.compartir\}[\s\S]*?<\/section>/.test(invita)) F("2 · «Invita a alguien» no tiene la variante de una fila con «Compartir»");
   const copyLibre = copy.replace(/^import .*$/gm, "");
@@ -177,13 +185,21 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const datosMapa = {
     encuadre: e, url: "https://maps.googleapis.com/maps/api/staticmap?x=1",
     seleccion: dentro.map((q, i) => ({ n: i + 1, avisoId: `a${i + 1}`, x: q!.x, y: q!.y })),
-    grises: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }], nSeleccion: 5, nConvienen: 312, nOtros: 307, desdePerfil: true,
+    grises: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }], nSeleccion: 5, nConvienen: 312, nOtros: 307, desdePerfil: true, comunas: ["Providencia"],
   };
-  const htmlMapa = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa }));
+  const htmlMapa = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa, totalNoche: 4807 }));
   const pines = Array.from(htmlMapa.matchAll(/<g data-casa="pin" data-n="(\d)"><circle[^>]*><\/circle><text[^>]*>(\d)<\/text><\/g>/g)).map((x) => `${x[1]}${x[2]}`);
   if (pines.join(",") !== "11,22,33,44,55") F(`3 · el mapa no dibuja los 5 de la selección numerados en su orden (${pines.join(",")})`);
   if ((htmlMapa.match(/<circle/g) ?? []).length !== 8) F("3 · los demás que convienen no van en gris (3 grises + 5 rojos = 8 círculos)");
-  if (!htmlMapa.includes("5 en tu selección · 307 más que convienen en gris") || !/href="\/explorar"[^>]*>Explorar los 312 en el mapa</.test(htmlMapa)) F("3 · la píldora o el botón del mapa no dicen lo suyo, o el botón no va a /explorar");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio).
+  if (!htmlMapa.includes("5 en tu selección · 307 más en Providencia") || !/href="\/explorar"[^>]*>Explorar los 4\.807 de Santiago</.test(htmlMapa)) F("3 · la píldora o el botón del mapa no dicen lo suyo, o el botón no va a /explorar");
+  // EL MAPA DE «ESTÁS DENTRO»: solo los pines rojos numerados —sin grises, sin píldora, sin botón de Explorar—.
+  const htmlSel = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa, variante: "seleccion", totalNoche: 4807 }));
+  const pinesSel = Array.from(htmlSel.matchAll(/<g data-casa="pin" data-n="(\d)">/g)).map((x) => x[1]).join(",");
+  if (pinesSel !== "1,2,3,4,5" || (htmlSel.match(/<circle/g) ?? []).length !== 5 || /data-casa="grises"|mapa-pildora|explorar-boton|Explorar|href=/.test(htmlSel)) F(`1 · el mapa de «Estás dentro» no es solo la selección (pines ${pinesSel}, ${(htmlSel.match(/<circle/g) ?? []).length} círculos)`);
+  const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
+  if (!/if \(encabezado === "dentro"\) qs\.set\("mapa", "1"\);/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{encabezado === "dentro" && datos\?\.mapa && items\.length > 0 && <div data-primera="mapa"><MapaCasa datos=\{datos\.mapa\} variante="seleccion" \/><\/div>\}/.test(ps)) F("1 · «Estás dentro» no pide el mapa o no lo dibuja bajo el título con la variante de la selección");
+  if (!/sp\.get\("mapa"\) === "1"[\s\S]{0,120}\? await datosMapaCasa\(admin, user\.id, r\.items\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna \}\)\), undefined, \{ grises: false \}\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("1 · la ruta de los primeros no arma el mapa sin grises");
   if (!/class="ca-mapa-fondo" style="background-image:url\(&quot;https:\/\/maps\.googleapis\.com/.test(htmlMapa) || renderToStaticMarkup(createElement(MapaCasa, { datos: { ...datosMapa, url: null } })).includes("ca-mapa-fondo")) F("3 · la imagen de fondo no va como fondo (o aparece sin URL)");
   const srv = codigo("src/lib/casa/mapa-casa-servidor.ts");
   if (!/const otros = explorar\.pines\.filter\(\(p\) => !enSel\.has\(p\.avisoId\)\);/.test(srv) || !/pinesExplorar\(admin, filtros\)/.test(srv) || !srv.includes('.from("scraped_properties").select("id, lat, lng").in("id", ids.slice(0, 50)).order("id").limit(50)')) F("3 · los grises no son los de Explorar menos la selección, o las coordenadas no salen de la tabla de avisos");
@@ -220,7 +236,17 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const tB = texto(htmlB);
   if (!/data-casa="preguntas" data-pendientes="2"/.test(htmlB) || !tB.includes("Dos preguntas pendientes") || !tB.includes("¿Cómo lo arriendas?") || !tB.includes("Arriendo tradicional") || !tB.includes("Renta corta") || !tB.includes("¿Cuándo piensas comprar?") || !tB.includes("Quiero comprar ya") || !tB.includes(inmediato.FRECUENCIA_COPY.nota)) F("5 · a la puerta B no se le hacen las dos preguntas con el título rojo y la regla de la frecuencia");
   if (!/data-casa="pendientes-etiqueta">2 preguntas pendientes</.test(htmlB) || /pendientes-etiqueta/.test(htmlA)) F("5 · la etiqueta «2 preguntas pendientes» no está en la fila plegada (o aparece sin pendientes)");
-  if (!tB.includes("¿Qué buscas?") || !tB.includes("Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 25 años") || !/data-casa="editar"[^>]*>Editar</.test(htmlB) || !tB.includes("Tu próxima selección se arma con esto.") || !/data-casa="guardar"[^>]*>Guardar</.test(htmlB)) F("5 · el perfil abierto no tiene «¿Qué buscas?», la frase con «Editar», «Guardar» y «Tu próxima selección se arma con esto.»");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · «Guardar» (y «Tu próxima selección se arma con esto.») solo con algo que guardar: con el
+  // perfil ya guardado no queda a la vista.
+  if (!tB.includes("¿Qué buscas?") || !tB.includes("Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 25 años") || !/data-casa="editar"[^>]*>Editar</.test(htmlB)) F("5 · el perfil abierto no tiene «¿Qué buscas?» y la frase con «Editar»");
+  if (/data-casa="guardar"|Tu próxima selección se arma con esto\./.test(htmlB)) F("5 · «Guardar» queda a la vista sin nada que guardar");
+  if (!/const conGuardar = hayCambios \|\| estado === "guardando" \|\| estado === "error";/.test(casa) || !/\{conGuardar && \(\s*<>\s*<button type="button" className="ca-guardar"/.test(casa)) F("5 · «Guardar» no depende de que haya algo que guardar");
+  // AL GUARDAR: se pliega, «Guardado.» dos segundos en la fila, y la fila dice el resumen completo.
+  const { resumenDeFila, GUARDADO_VISIBLE_MS } = require(join(RAIZ, "src/app/dashboard/casa")) as typeof import("../../../src/app/dashboard/casa");
+  const perfilB = { ...inicial, precioMinUf: 4000, precioMaxUf: 6000, modalidad: "ltr" as const, horizonte: "ya" as const };
+  if (resumenDeFila(perfilB, { modalidad: true, cuando: true }) !== "Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero comprar ya" || resumenDeFila(perfilB, { modalidad: false, cuando: false }) !== "Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años") F(`5 · la fila cerrada no dice el resumen completo: «${resumenDeFila(perfilB, { modalidad: true, cuando: true })}»`);
+  if (GUARDADO_VISIBLE_MS !== 2000 || !/if \(!ok\) \{ setEstado\("error"\); return; \}[\s\S]*?setAbierta\(false\);\s*setVistoGuardado\(true\);\s*if \(reloj\.current\) window\.clearTimeout\(reloj\.current\);\s*reloj\.current = window\.setTimeout\(\(\) => setVistoGuardado\(false\), GUARDADO_VISIBLE_MS\);/.test(casa)) F("5 · al guardar no se pliega o «Guardado.» no se va a los dos segundos");
+  if (!/open=\{controlada \? controlada\.abierta : abierta \|\| undefined\} onToggle=\{controlada \? \(e\) => controlada\.alCambiar\(e\.currentTarget\.open\) : undefined\}/.test(casa)) F("5 · la fila plegada no se puede plegar desde el perfil");
   if (!tB.includes("Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años")) F("5 · la línea corta de la fila plegada no es «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años»");
   const htmlC = dibujarConRouter(createElement(PerfilBusquedaCasa, { inicial, pendientes: ["cuando"], modalidadRespondida: true }));
   if (!/data-pendientes="1"/.test(htmlC) || !texto(htmlC).includes("Una pregunta pendiente") || /¿Cómo lo arriendas\?/.test(htmlC)) F("5 · con una sola pendiente no se dice «Una pregunta pendiente» ni se oculta la contestada");

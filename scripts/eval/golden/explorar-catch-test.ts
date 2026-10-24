@@ -95,7 +95,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (JSON.stringify(ex.PIES_EXPLORAR) !== "[10,15,20,25,30,40,50]" || JSON.stringify(ex.PLAZOS_EXPLORAR) !== "[15,20,25,30]") F("1 · los chips no ofrecen pie de 10 a 50 % y plazo de 15 a 30 años");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
   if ((cli.match(/\/api\/perfil-busqueda/g) ?? []).length !== 1 || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(cli)) F("1 · la página escribe el perfil fuera de la casilla del pop-up (o no la honra)");
-  if (!/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*const f = cambiarFiltro\(filtros, parche\);[\s\S]{0,600}void cargar\(f, true\)/.test(cli)) F("1 · cambiar un chip no es un filtro nuevo leído de /api/explorar");
+  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · cerrado, el chip no busca: `if (cerrado) return;` antes del filtro nuevo.
+  if (!/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;\s*const f = cambiarFiltro\(filtros, parche\);[\s\S]{0,600}void cargar\(f, true\)/.test(cli)) F("1 · cambiar un chip no es un filtro nuevo leído de /api/explorar");
   if (!/window\.history\.replaceState\(window\.history\.state, "", `\$\{window\.location\.pathname\}\?\$\{urlDeFiltros\(f\)\}`\)/.test(cli)) F("1 · el cambio de chip no queda en la URL");
   for (const p of ["src/app/api/explorar/route.ts", "src/app/api/explorar/recalcular/route.ts", "src/lib/explorar/servidor.ts"]) {
     const s = codigo(p);
@@ -148,15 +149,50 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ── 4 · sin saldo se ve el mapa y el aviso E ──
   const e1 = ex.estadoDeEntrada({ tipo: "sin" }), e2 = ex.estadoDeEntrada({ tipo: "con", n: 1, noVencen: false });
   if (e1.mapa !== true || e1.aviso !== true || e2.mapa !== true || e2.aviso !== false) F(`4 · estadoDeEntrada: ${JSON.stringify([e1, e2])}`);
+  // ── 4b · SIN SALDO, EXPLORAR ESTÁ CERRADO ── (⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio))
+  // Hasta hoy, al cerrar el aviso se podía explorar igual. Ahora el mapa queda a la vista pero cerrado: los chips no se
+  // tocan, los pines no se abren, la hoja muestra solo la oferta; el servidor manda los pines sin detalle y la ruta de los
+  // pines responde 403. El plan cuenta como saldo.
+  if (!e1.cerrado || e2.cerrado || ex.estadoDeEntrada({ tipo: "plan" }).cerrado || ex.estadoDeEntrada({ tipo: "regalo", vence: null }).cerrado || !ex.explorarCerrado({ tipo: "sin" })) F("4b · sin saldo Explorar no queda cerrado (o queda cerrado con saldo, con el regalo o con el plan)");
+  const pc = ex.pinCerrado({ avisoId: "a1", lat: -33.4, lng: -70.6 });
+  if (pc.precioUF !== 0 || pc.m2 !== 0 || pc.score !== null || pc.flujo !== null || pc.arriendo !== null || pc.tipologia !== null || pc.comuna !== "" || pc.lat !== -33.4) F(`4b · el pin del mapa cerrado trae detalle: ${JSON.stringify(pc)}`);
+  if (ex.AVISO_SIN_SALDO.cerrado !== "Con análisis disponibles exploras todo Santiago") F("4b · la línea del mapa cerrado");
+  const srvC = codigo("src/lib/explorar/servidor.ts");
+  if (!/if \(explorarCerrado\(saldo\)\) \{[\s\S]{0,400}return \{ \.\.\.comun, filtros: fn, calculando: false, cuenta, pines: deLaNoche\.map\(pinCerrado\), n: deLaNoche\.length, cerrado: true \};/.test(srvC)) F("4b · el servidor manda los pines con detalle sin saldo");
+  const rutaC = codigo("src/app/api/explorar/route.ts");
+  const iCerr = rutaC.indexOf("if (await explorarCerradoPara(admin, user.id)) return NextResponse.json({ error: \"cerrado\" }, { status: 403"), iCarga = rutaC.indexOf("await cargarExplorar(");
+  if (iCerr < 0 || iCarga < 0 || iCerr > iCarga) F("4b · la ruta de los pines no responde 403 sin saldo antes de leer nada");
+  const pagC = codigo("src/app/explorar/page.tsx");
+  if (!/inicial=\{d\.cerrado \? \{/.test(pagC) || !/abrir=\{d\.cerrado \? null : a\}/.test(pagC) || !/autoAnalizar=\{!d\.cerrado && sp\.get\("analizar"\) === "1" \? a : null\}/.test(pagC)) F("4b · la página no entra cerrada sin saldo (o abre un depto)");
+  if (!/function seleccionar\(avisoId: string\) \{\s*if \(cerrado\) return;/.test(cli) || !/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;/.test(cli)) F("4b · cerrado, un pin o un chip todavía abren o buscan");
+  try {
+    const { ExplorarCliente } = require(join(RAIZ, "src/app/explorar/explorar-cliente")) as typeof import("../../../src/app/explorar/explorar-cliente");
+    const filtros = ex.filtrosDePerfil({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 0, precioMaxUf: 60000, piePct: 20, plazoAnios: 25 } as never);
+    const baseC = { filtros, n: 2, analizadosN: 0, analizados: {}, ticket: true, cuentaCreadaAt: new Date(Date.now() - 3600_000).toISOString(), finanzas: { uf: 39000, tasa: 4.2 }, desdePerfil: true, completo: true, totalNoche: 4807 };
+    const pinesV = [{ avisoId: "a1", comuna: "Providencia", lat: -33.43, lng: -70.61, m2: 50, dormitorios: 2, tipologia: "2D1B", precioUF: 4500, veredicto: "COMPRAR", score: 80, flujo: 50000, arriendo: 700000, vistoAt: null }];
+    const cerradoHtml = dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...baseC, pines: pinesV.map(ex.pinCerrado), saldo: { tipo: "sin" }, cerrado: true } }));
+    const abiertoHtml = dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...baseC, pines: pinesV, saldo: { tipo: "con", n: 2, noVencen: false }, cerrado: false } }));
+    const chipsC = cerradoHtml.slice(cerradoHtml.indexOf('class="ex-chips"'), cerradoHtml.indexOf("ex-chips-fin"));
+    const apagados = (chipsC.match(/disabled=""/g) ?? []).length;
+    if (apagados < 5 || !/data-cerrado="1"/.test(chipsC)) F(`4b · cerrado, los chips no están apagados (${apagados} de 5)`);
+    const tC = cerradoHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    if (!/data-explorar="cerrado"/.test(cerradoHtml) || !tC.includes("Solo para cuentas nuevas · 3 análisis por $14.990") || !tC.includes("Aprovechar · 3 por $14.990") || !tC.includes("Comprar solo 1") || !tC.includes("Con análisis disponibles exploras todo Santiago")) F("4b · cerrado, la hoja no muestra la oferta y «Con análisis disponibles exploras todo Santiago»");
+    if (/data-explorar="tarjeta"|data-explorar="titulo-hoja"|data-explorar="saldo"/.test(cerradoHtml)) F("4b · cerrado, la hoja muestra tarjetas o la lista");
+    const chipsA = abiertoHtml.slice(abiertoHtml.indexOf('class="ex-chips"'), abiertoHtml.indexOf("ex-chips-fin"));
+    if (/disabled=""/.test(chipsA) || /data-explorar="cerrado"/.test(abiertoHtml) || !/data-explorar="tarjeta"/.test(abiertoHtml)) F("4b · con saldo Explorar queda cerrado (chips apagados o sin tarjetas)");
+  } catch (e) {
+    F(`4b · no se pudo dibujar Explorar: ${e instanceof Error ? e.message : String(e)}`);
+  }
   if (!/const entrada = estadoDeEntrada\(inicial\.saldo\);\s*const \[avisoSinSaldo, setAvisoSinSaldo\] = useState\(entrada\.aviso\);/.test(cli)) F("4 · el aviso E no sale del estado de entrada");
   if (!/\{mapaListo && mapa !== "fallo" && \(\s*<MapaExplorar/.test(cli) || /saldo[^\n]{0,40}<MapaExplorar|<MapaExplorar[^\n]{0,200}saldo/.test(cli)) F("4 · el mapa depende del saldo (sin saldo tiene que verse igual)");
   if (!/\{avisoSinSaldo && !confirmar && \(\s*<AvisoSinSaldoExplorar/.test(cli) || !/alCerrar=\{\(\) => setAvisoSinSaldo\(false\)\}/.test(cli)) F("4 · el aviso E no se monta sin saldo, o «Ahora no» no lo cierra");
   try {
     const { AvisoSinSaldoExplorar } = require(join(RAIZ, "src/app/explorar/aviso-sin-saldo")) as typeof import("../../../src/app/explorar/aviso-sin-saldo");
     const compras = comprasDeExplorar({ filtros: "c=Providencia", ticket: true });
-    const html = dibujar(createElement(AvisoSinSaldoExplorar as unknown as FC<Record<string, unknown>>, { n: 312, compras, vence: "mañana 11:17", alCerrar() {}, alIr() {} }));
+    const html = dibujar(createElement(AvisoSinSaldoExplorar as unknown as FC<Record<string, unknown>>, { totalNoche: 4807, compras, vence: "mañana 11:17", alCerrar() {}, alIr() {} }));
     // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740») · la oferta va en UNA fila: «Solo para cuentas nuevas · vence mañana 11:17».
-    for (const t of ["Para explorar los 312 necesitas análisis disponibles.", ex.AVISO_SIN_SALDO.cuerpo, "Solo para cuentas nuevas", "· vence mañana 11:17", "Comprar solo 1", "Ver el plan de 20 al mes", "Ahora no"]) {
+    // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el título dice el total de anoche en Santiago.
+    for (const t of ["Para explorar los 4.807 de Santiago necesitas análisis disponibles.", ex.AVISO_SIN_SALDO.cuerpo, "Solo para cuentas nuevas", "· vence mañana 11:17", "Comprar solo 1", "Ver el plan de 20 al mes", "Ahora no"]) {
       if (!html.includes(t)) F(`4 · el aviso E no dice «${t.slice(0, 50)}»`);
     }
     if (!/data-modal="explorar-sin-saldo"/.test(html) || !/data-explorar="ahora-no"/.test(html) || !/href="\/pricing"/.test(html)) F("4 · el aviso E sin su marca, sin «Ahora no» o sin el enlace al plan");
@@ -303,7 +339,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     await srv.pinesExplorar(admin3, F0, ahora);
     if (llamadas3.join() !== "explorar_pines") F(`10 · una combinación de la noche no sale de explorar_pines: ${llamadas3.join()}`);
   }
-  if (!/const noche = esCombinacionDeLaNoche\(filtros\);\s*const d = await cargarExplorar\(admin, user, filtros, new Date\(\), \{ pines: noche \}\);/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
+  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · la página lee junto el total de anoche de /deptos (el título del aviso sin saldo).
+  if (!/const noche = esCombinacionDeLaNoche\(filtros\);[\s\S]{0,200}const \[d, portada\] = await Promise\.all\(\[cargarExplorar\(admin, user, filtros, new Date\(\), \{ pines: noche \}\), portadaDeptos\(\)\]\);/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
   if (!/calculando: !noche, analizados: d\.analizados,/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página no le dice al navegador que está calculando");
   if (!/if \(inicial\.calculando\) \{ setCargando\("todo"\); void cargar\(inicial\.filtros, false\)/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
   if (!/const calculando = \(cargando !== null \|\| !!datos\.calculando\) && !esCombinacionDeLaNoche\(filtros\);/.test(cli) || !/\{calculando \? EXPLORAR_COPY\.calculando : <>/.test(cli) || !/data-calculando=\{calculando \? "1" : undefined\}>\{calculando \? EXPLORAR_COPY\.calculando : tituloHoja\(total\)\}/.test(cli)) F("10 · el mapa no dice «Calculando con tu pie…» mientras calcula");
@@ -323,17 +360,20 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // (app/dashboard/mapa-casa.tsx, lib/casa/mapa-casa.ts › botonExplorar) y el número son los pines de Explorar menos nada:
   // la misma RPC, por pinesExplorar (lib/casa/mapa-casa-servidor.ts). Una sola casa.
   const { botonExplorar } = require(join(RAIZ, "src/lib/casa/mapa-casa")) as typeof import("../../../src/lib/casa/mapa-casa");
-  if (botonExplorar(312) !== "Explorar los 312 en el mapa" || botonExplorar(0) !== "Explorar en el mapa" || botonExplorar(1200) !== "Explorar los 1.200 en el mapa") F("9 · el botón del dashboard");
+  // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el botón dice el total de anoche en Santiago (el de /deptos); al tocarlo, /explorar abre con
+  // los filtros del perfil.
+  if (botonExplorar(4807) !== "Explorar los 4.807 de Santiago" || botonExplorar(0) !== "Explorar en el mapa" || botonExplorar(null) !== "Explorar en el mapa") F("9 · el botón del dashboard");
   const dash = codigo("src/app/dashboard/page.tsx");
-  if ((dash.match(/<MapaCasa datos=\{mapa\} \/>/g) ?? []).length !== 1 || !/await datosMapaCasa\(admin, user\.id,/.test(dash)) F("9 · el dashboard no lleva el mapa de la selección con el botón a Explorar");
+  if ((dash.match(/<MapaCasa datos=\{mapa\} totalNoche=\{totalNoche\} \/>/g) ?? []).length !== 1 || !/datosMapaCasa\(admin, user\.id,/.test(dash) || !/const totalNoche = portada\.noche\?\.convienen \?\? null;/.test(dash)) F("9 · el dashboard no lleva el mapa de la selección con el botón a Explorar");
   const enCasa = codigo("src/app/dashboard/mapa-casa.tsx");
-  if (!/<EnlaceCarga href="\/explorar"[^\n]*data-casa="explorar-boton"[^\n]*>\s*\{botonExplorar\(datos\.nConvienen\)\}/.test(enCasa) || !/pinesExplorar\(admin, filtros\)/.test(codigo("src/lib/casa/mapa-casa-servidor.ts"))) F("9 · el botón no va a /explorar o no cuenta con la misma RPC");
+  if (!/<EnlaceCarga href="\/explorar"[^\n]*data-casa="explorar-boton"[^\n]*>\s*\{botonExplorar\(totalNoche\)\}/.test(enCasa) || !/pinesExplorar\(admin, filtros\)/.test(codigo("src/lib/casa/mapa-casa-servidor.ts"))) F("9 · el botón no va a /explorar o no cuenta con la misma RPC");
   const c = comprasDeExplorar({ filtros: "c=Providencia&t=2", avisoId: "abc", ticket: false });
   if (!/origen=explorar/.test(c.pack.href) || !/volver=%2Fexplorar%3Fc%3DProvidencia%26t%3D2%26a%3Dabc%26analizar%3D1/.test(c.pack.href) || !/product=single/.test(c.suelto.href) || !/origen=explorar/.test(c.suelto.href)) F(`9 · las compras no vuelven al mapa con el depto: ${c.pack.href} · ${c.suelto.href}`);
   if (!/product=pack3/.test(comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.href) || comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.label !== "3 análisis · $14.990") F("9 · con el ticket el pack no es el de $14.990");
   if (botonTrasPagar("/explorar?c=x&a=abc&analizar=1").texto !== "Volver al mapa" || botonTrasPagar("/explorar?c=x").href !== "/explorar?c=x") F("9 · la vuelta de Flow no vuelve al mapa");
   if (deptoDeVolverExplorar("/explorar?c=x&a=abc&analizar=1") !== "abc" || deptoDeVolverExplorar("/dashboard?t=1&a=abc") !== null) F("9 · deptoDeVolverExplorar");
-  if (!/autoAnalizar=\{sp\.get\("analizar"\) === "1" \? a : null\}/.test(codigo("src/app/explorar/page.tsx")) || !/if \(datos\.saldo\.tipo === "sin"\) setConfirmar\(\{ it, sin: true \}\);\s*else void analizar\(it\);/.test(cli)) F("9 · la vuelta pagada no analiza el depto sola");
+  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · sin saldo no se abre ni se analiza solo (cerrado); con saldo, como siempre.
+  if (!/autoAnalizar=\{!d\.cerrado && sp\.get\("analizar"\) === "1" \? a : null\}/.test(codigo("src/app/explorar/page.tsx")) || !/if \(datos\.saldo\.tipo === "sin"\) setConfirmar\(\{ it, sin: true \}\);\s*else void analizar\(it\);/.test(cli)) F("9 · la vuelta pagada no analiza el depto sola");
   if (!/"\/dashboard\/:path\*", "\/explorar",/.test(leer("src/middleware.ts"))) F("9 · /explorar no pasa por el middleware (la sesión no se refresca)");
 
   if (fallas.length) {
