@@ -368,3 +368,12 @@
 .av-der.wz-modal-der { margin-top: 0; padding-top: 0; border-top: 0; }
 .av-guardar { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.35; color: var(--tx2); cursor: pointer; }
 .av-guardar input { width: 18px; height: 18px; flex: none; accent-color: var(--tx); }
+/* SIN SALDO (24-oct-2026, mockup A de 4-ticket-y-popups.html): «No te quedan análisis.» grande en rojo y la tarjeta roja del ticket. */
+.av-sin-titulo { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.25; color: var(--wz-rojo); letter-spacing: 0; }
+.av-ticket { background: var(--wz-rojo); color: #FFFFFF; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.av-ticket-fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.av-ticket-k { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #F5C9C4; }
+.av-ticket-vence { font-size: 11px; font-weight: 600; background: rgba(0, 0, 0, 0.25); border-radius: 99px; padding: 3px 9px; white-space: nowrap; }
+.av-ticket-t { font-size: 20px; font-weight: 600; line-height: 1.2; }
+.av-ticket-s { font-size: 13px; color: #FBE3E0; }
+.av-ticket-s s { color: #E8A39D; }

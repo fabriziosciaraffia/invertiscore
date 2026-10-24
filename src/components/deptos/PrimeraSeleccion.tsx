@@ -29,6 +29,7 @@ import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
@@ -231,6 +232,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
           compras={datos.token ? comprasDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", ticket: !!datos.ticket }) : null}
           ticketConSaldo={datos.token && datos.ticket ? ticketConSaldoDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt }) : null}
+          ticketVence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
           rutaCompra="/dashboard"
           analizando={!!confirmar.analizando}
           cambio={{ recalcular: (combo) => recalcularAviso(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}

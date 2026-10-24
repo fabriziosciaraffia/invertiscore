@@ -52,7 +52,7 @@ export function AvisoSinSaldoExplorar({ n, compras, vence, alCerrar, yendo = nul
                 <span className="ex-ticket-k">{AVISO_SIN_SALDO.soloNuevas}</span>
                 {vence && <span className="ex-ticket-vence">{AVISO_SIN_SALDO.vence(vence)}</span>}
               </div>
-              <div className="ex-ticket-t">{compras.pack.label}</div>
+              <div className="ex-ticket-t">{AVISO_SIN_SALDO.packTicket(compras.pack.label.replace(/^.*·\s*/, ""))}</div>
             </div>
           )}
         </div>

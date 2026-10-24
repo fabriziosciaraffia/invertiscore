@@ -347,6 +347,8 @@ export const AVISO_SIN_SALDO = {
   cuerpo: "Con un pack, uno suelto o el plan entras al mapa completo: ves todos los que convienen para tu búsqueda y gastas un análisis solo cuando analizas uno.",
   soloNuevas: "Solo para cuentas nuevas",
   vence: (cuando: string) => `Vence ${cuando}`,
+  /** La tarjeta roja dice «3 análisis por $14.990» (mockup E; 24-oct-2026), no el botón del pack. */
+  packTicket: (precio: string) => `3 análisis por ${precio}`,
   aprovechar: (precio: string) => `Aprovechar · 3 por ${precio}`,
   plan: `Ver el plan de ${PLAN_ANALISIS_MES} al mes`,
   ahoraNo: "Ahora no",

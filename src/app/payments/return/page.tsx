@@ -290,9 +290,20 @@ function PaymentReturnContent() {
 
         {redirecting && (
           <div>
-            {girando}
+            {!alDepto && girando}
             <h1 className={PLANO.titulo}>{RETORNO.abriendo.titulo}</h1>
-            <p className={PLANO.bajada} data-retorno={alDepto ? "al-depto" : undefined}>{alDepto ? RETORNO.generandoDepto(alDepto.nombre) : RETORNO.abriendo.cuerpo}</p>
+            {alDepto ? (
+              <>
+                {/* PAGO CONFIRMADO DESDE UN DEPTO (24-oct-2026, mockup C): el depto en negrita, la barra y cuántos le quedan. */}
+                <p className={PLANO.bajada} data-retorno="al-depto">{RETORNO.desdeDepto.antes}<b className="text-[var(--franco-text)]">{alDepto.nombre}</b>{RETORNO.desdeDepto.despues}</p>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--franco-border)]" role="progressbar" aria-label={RETORNO.abriendo.titulo} data-retorno-barra>
+                  <div className="h-1.5 w-3/5 rounded-full bg-[var(--signal-red)] motion-safe:animate-pulse" />
+                </div>
+                {saldo != null && saldo > 0 && <p className="mt-2 text-[12px] text-[var(--franco-text-secondary)]" data-retorno="quedan">{RETORNO.quedanOtros(saldo - 1)}</p>}
+              </>
+            ) : (
+              <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
+            )}
           </div>
         )}
 

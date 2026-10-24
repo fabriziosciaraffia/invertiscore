@@ -38,7 +38,7 @@ export interface EleccionAnalizar {
   guardarPerfil: boolean;
 }
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null }: {
+export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null }: {
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
    *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
@@ -61,6 +61,9 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   /** CON SALDO Y EL TICKET VIVO (22-oct-2026, decisión de Fabrizio): se usa el saldo como siempre y debajo una sola línea,
    *  «Hoy, 3 más por $14.990 · vence mañana 11:17», como enlace, sin frenar. */
   ticketConSaldo?: { texto: string; href: string } | null;
+  /** SIN SALDO Y CON EL TICKET VIVO (24-oct-2026, mockup A de 4-ticket-y-popups.html): hasta cuándo («mañana 11:17»), para
+   *  la tarjeta roja de la oferta dentro del pop-up. Sin él, el pack de tres de siempre. */
+  ticketVence?: string | null;
 }) {
   const router = useRouter();
   const sin = uso.tipo === "sin";
@@ -100,14 +103,29 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   const bloqueado = bloqueaAnalizar({ sin, esBase: !cambiada, recalculando, evaluacion: recal });
   const analizar = da?.empeora ? EXPLORAR_COPY.analizarIgual : AVISO_ANALIZAR.analizar;
 
+  const conTicket = sin && !!compras?.pack.ticket;
   const cuerpo = (
-    <div className="av" data-aviso={editando ? "cambiar" : "ver"}>
+    <div className="av" data-aviso={sin ? "sin" : editando ? "cambiar" : "ver"}>
+      {/* SIN SALDO (mockup A): «No te quedan análisis.» grande y en rojo, la tarjeta gris con «Para analizar este depto:» y,
+          con el ticket vivo, la tarjeta roja de la oferta: «Solo para cuentas nuevas · Vence mañana 11:17 · 3 análisis por
+          $14.990 · $9.990 $4.997 cada uno.». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
+      {sin && <h2 id="modal-plausibilidad-titulo" className="av-sin-titulo" data-aviso="sin-titulo">{AVISO_ANALIZAR.tituloSin}</h2>}
       <div className="av-tarjeta">
         {sin && <span className="av-para">{AVISO_ANALIZAR.paraAnalizar}</span>}
-        <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>
+        {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
         <span className="av-incluye">{AVISO_ANALIZAR.incluye.antes}<b>{AVISO_ANALIZAR.incluye.fuerte}</b>{editando ? AVISO_ANALIZAR.incluyeCorto : AVISO_ANALIZAR.incluye.despues}</span>
       </div>
+      {conTicket && ticketVence && (
+        <div className="av-ticket" data-aviso="ticket" data-vence={ticketVence}>
+          <div className="av-ticket-fila">
+            <span className="av-ticket-k">{AVISO_ANALIZAR.soloNuevas}</span>
+            <span className="av-ticket-vence">{AVISO_ANALIZAR.vence(ticketVence)}</span>
+          </div>
+          <div className="av-ticket-t">{AVISO_ANALIZAR.packTicket}</div>
+          <div className="av-ticket-s"><s>{AVISO_ANALIZAR.unitarioAntes}</s> {AVISO_ANALIZAR.unitarioAhora}</div>
+        </div>
+      )}
       {!sin && (editando && cambio ? (
         <>
           <div className="av-selects">
@@ -163,18 +181,18 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       open
       anomalias={[]}
       marca={sin ? "aviso-analizar-sin" : "aviso-analizar"}
-      titulo={sin ? AVISO_ANALIZAR.tituloSin : AVISO_ANALIZAR.titulo}
+      titulo={sin ? "" : AVISO_ANALIZAR.titulo}
       cuerpo={cuerpo}
-      consumo={sin && compras ? compras.sin : textoUso(uso)}
+      consumo={sin ? (conTicket && ticketVence ? null : compras ? compras.sin : AVISO_ANALIZAR.sin) : textoUso(uso)}
       nota={!sin && ticketConSaldo ? (
         <EnlaceCarga href={ticketConSaldo.href} className="wz-modal-nota-enlace" data-modal-ticket>{ticketConSaldo.texto}</EnlaceCarga>
       ) : undefined}
-      labelConfirmar={sin ? (compras ? compras.pack.label : AVISO_ANALIZAR.comprar) : analizar}
+      labelConfirmar={sin ? (conTicket && ticketVence ? AVISO_ANALIZAR.aprovechar : compras ? compras.pack.label : AVISO_ANALIZAR.comprar) : analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}
       labelGenerando={COMPRA_DEPTO.analizando}
       submitting={analizando}
       bloqueado={bloqueado}
-      secundario={sin && compras ? { label: compras.suelto.label, onClick: () => comprar(compras.suelto.href) } : undefined}
+      secundario={sin && compras ? { label: compras.suelto.label, onClick: () => comprar(compras.suelto.href), boton: true } : undefined}
       onConfirmar={sin ? () => comprar(compras ? compras.pack.href : rutaCompra) : () => alAnalizar(cambio ? { combinacion: combo, guardarPerfil: cambiada && guardar } : undefined)}
       onCerrar={alCancelar}
     />

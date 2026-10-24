@@ -87,7 +87,7 @@ export interface ModalPlausibilidadProps {
    * $9.990»). Sin ellas, el wizard se ve como siempre.
    */
   labelGenerando?: string;
-  secundario?: { label: string; onClick: () => void };
+  secundario?: { label: string; onClick: () => void; /** Como botón con borde (24-oct-2026, mockup A: «Comprar solo 1 · $9.990»), no como enlace. */ boton?: boolean };
   /** Un bloque entre los derivados y el consumo (23-oct-2026, el «Cambiar» de pie y plazo del pop-up de Explorar). */
   extra?: ReactNode;
   /**
@@ -324,13 +324,17 @@ export function ModalPlausibilidad({
               <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting || bloqueado} {...botonOcupado(submitting)} className="wz-cta wz-cta-modal">
                 {submitting ? labelGenerando : labelConfirmar}
               </button>
-              {secundario && (
+              {secundario && (secundario.boton ? (
+                <button type="button" onClick={secundario.onClick} disabled={submitting} className="wz-btn2" data-modal-secundario>
+                  {secundario.label}
+                </button>
+              ) : (
                 <div className="wz-lnk-fila" style={{ marginTop: 0 }}>
                   <button type="button" onClick={secundario.onClick} disabled={submitting} className="wz-lnk" data-modal-secundario>
                     {secundario.label}
                   </button>
                 </div>
-              )}
+              ))}
               <button type="button" onClick={cerrar} disabled={submitting} className="wz-btn2">
                 {labelRevisar}
               </button>

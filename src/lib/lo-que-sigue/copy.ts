@@ -165,6 +165,10 @@ export const CHECKOUT_PACK = {
   subtitulo: "3 análisis, sin caducidad",
   vence: (dia: "hoy" | "mañana" | "otro", hora: string) => (dia === "otro" ? `Vence a las ${hora}.` : `Vence ${dia} a las ${hora}.`),
   vencido: "Ese precio venció y no vuelve. Un análisis cuesta $9.990, y los planes siguen en su precio.",
+  /** El ticket como oferta en la pantalla de compra (24-oct-2026, mockup B). */
+  soloNuevas: "Solo para cuentas nuevas",
+  venceCorto: (cuando: string) => `Vence ${cuando}`,
+  primeroAlPagar: { antes: "El primero, para ", despues: ", se genera al pagar." },
 } as const;
 
 // ── 6 · Comparar ─────────────────────────────────────────────────────────────

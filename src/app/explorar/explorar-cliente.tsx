@@ -408,6 +408,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
           compras={compras(confirmar.it.avisoId)}
           ticketConSaldo={ticketConSaldo}
+          ticketVence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
           rutaCompra={compras(confirmar.it.avisoId).pack.href}
           analizando={!!confirmar.analizando}
           cambio={{ recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}

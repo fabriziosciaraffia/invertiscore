@@ -18,10 +18,12 @@ import { useEntradaPorCodigo } from "@/components/entrar/useEntradaPorCodigo";
 import { PLANO } from "@/components/plano/plano";
 import { metaTrack } from "@/lib/meta/pixel";
 import { CODIGO_MAX } from "@/lib/lo-que-sigue/codigo";
-import { diaVencimiento, horaVencimiento, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
+import { cuandoVenceCorto, VENTANA_PACK_MS } from "@/lib/lo-que-sigue/oferta-pack";
+import { fmtCLP } from "@/lib/pricing";
 import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
 import { COMPRA, urlCompra, type ResumenCompra } from "@/lib/compra/compra";
 import { COMPRA_DEPTO } from "@/lib/guia/compra-desde-depto";
+import { TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 
 export function CompraCliente(props: {
   productKey: string;
@@ -145,21 +147,31 @@ export function CompraCliente(props: {
       <EnlaceCarga href={props.volverHref} className={`${PLANO.nota} no-underline hover:text-[var(--franco-text)]`} data-compra="volver">
         ← {props.volverHref === "/pricing" ? COMPRA.volverPlanes : COMPRA.volver}
       </EnlaceCarga>
-      <h1 className={`mt-5 ${PLANO.titulo}`} data-compra="producto">{product.nombre}</h1>
+      {/* EL TICKET COMO OFERTA (24-oct-2026, mockup B de 4-ticket-y-popups.html): con el pack del ticket vivo, arriba «Solo para
+          cuentas nuevas» y «Vence mañana 11:17»; el precio con el de tres tachado; y el depto que se va a analizar en la frase. */}
+      {esPack && packCreadoAt && !packVencido && (
+        <p className="mt-5 flex items-center justify-between gap-3" data-compra="ticket">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--signal-red)]">{CHECKOUT_PACK.soloNuevas}</span>
+          <span className="rounded-full border border-[var(--signal-red)] px-2.5 py-[3px] text-[11px] font-semibold text-[var(--signal-red)]" data-compra="vence">{CHECKOUT_PACK.venceCorto(cuandoVenceCorto(packCreadoAt))}</span>
+        </p>
+      )}
+      <h1 className={`${esPack && packCreadoAt && !packVencido ? "mt-3" : "mt-5"} ${PLANO.titulo}`} data-compra="producto">{product.nombre}</h1>
       <p className="mt-3 flex flex-wrap items-baseline gap-x-2" data-compra="precio">
         <span className="text-[34px] font-bold leading-none tracking-[-0.02em] tabular-nums text-[var(--franco-text)]">{product.precio}</span>
+        {esPack && packCreadoAt && !packVencido && <span className="text-[15px] text-[var(--franco-text-secondary)] line-through tabular-nums" data-compra="tachado">{fmtCLP(TRES_PRECIO_CLP)}</span>}
         <span className="text-[14px] text-[var(--franco-text-secondary)]">{product.unidad}</span>
       </p>
-      <p className={PLANO.bajada} data-compra="incluye">{product.incluye}</p>
-      {props.depto && (
+      <p className={PLANO.bajada} data-compra="incluye">
+        {product.incluye}
+        {props.depto && (esPack || esTres) && <> {CHECKOUT_PACK.primeroAlPagar.antes}<b className="text-[var(--franco-text)]" data-compra="depto">{props.depto}</b>{CHECKOUT_PACK.primeroAlPagar.despues}</>}
+      </p>
+      {props.depto && !(esPack || esTres) && (
         <p className="mt-2 text-[14px] text-[var(--franco-text)]" data-compra="depto">
           {COMPRA_DEPTO.paraDepto} <b>{props.depto}</b>
         </p>
       )}
-      {esPack && packCreadoAt && (
-        <p className={`mt-2 text-[14px] ${packVencido ? "text-[var(--signal-red)]" : "text-[var(--franco-text)]"}`} data-lqs="checkout-vence">
-          {packVencido ? CHECKOUT_PACK.vencido : CHECKOUT_PACK.vence(diaVencimiento(packCreadoAt), horaVencimiento(packCreadoAt))}
-        </p>
+      {esPack && packCreadoAt && packVencido && (
+        <p className="mt-2 text-[14px] text-[var(--signal-red)]" data-lqs="checkout-vence">{CHECKOUT_PACK.vencido}</p>
       )}
 
       <div className={PLANO.seccion}>

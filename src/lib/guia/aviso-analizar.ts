@@ -11,6 +11,7 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { formatearNumero, formatearPct } from "@/lib/plausibilidad";
 import { calcDividendo } from "@/components/formulario-v4/helpers-wizard";
 import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
@@ -27,7 +28,14 @@ export function usoDesdeSaldo(n: number | null | undefined): UsoAnalisis {
 
 export const AVISO_ANALIZAR = {
   titulo: "¿Analizar este depto?",
-  tituloSin: "No te quedan análisis",
+  tituloSin: "No te quedan análisis.",
+  /** La tarjeta roja del ticket dentro del pop-up sin saldo (24-oct-2026, mockup A). */
+  soloNuevas: "Solo para cuentas nuevas",
+  vence: (cuando: string) => `Vence ${cuando}`,
+  packTicket: `3 análisis por ${fmtCLP(PACK_PRECIO_CLP)}`,
+  unitarioAntes: fmtCLP(PACK_UNITARIO_REFERENCIA_CLP),
+  unitarioAhora: `${fmtCLP(PACK_UNITARIO_CLP)} cada uno.`,
+  aprovechar: `Aprovechar · 3 por ${fmtCLP(PACK_PRECIO_CLP)}`,
   modalidad: "Renta larga",
   /** El bloque de renta corta del semanal (14-oct-2026). La última línea es la misma que en renta larga, «Usa 1 de tus N
    *  análisis», sin condición (15-oct-2026): la página no habla del cobro. */

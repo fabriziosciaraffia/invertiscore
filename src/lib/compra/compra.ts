@@ -103,6 +103,10 @@ export const RETORNO = {
   /** La compra salió de un depto de la selección (22-oct-2026, decisión de Fabrizio): la vuelta de Flow genera el
    *  informe sola y lo abre; mientras, dice de cuál (el depto como en las tarjetas: compra-desde-depto.ts › nombreDelDepto). */
   generandoDepto: (depto: string) => `Generando el informe de ${depto}…`,
+  /** El estado C del mockup 4-ticket-y-popups.html (24-oct-2026): «Franco está analizando X. En unos segundos se abre el
+   *  informe.» y, debajo de la barra, cuántos le quedan para cualquier otro depto. */
+  desdeDepto: { antes: "Franco está analizando ", despues: ". En unos segundos se abre el informe." },
+  quedanOtros: (n: number) => (n === 1 ? "Te queda 1 análisis para cualquier otro depto." : `Te quedan ${n} análisis para cualquier otro depto.`),
   pagado: {
     titulo: "Pago confirmado.",
     tres: "Tienes 3 análisis más.",
