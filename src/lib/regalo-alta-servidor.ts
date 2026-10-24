@@ -11,8 +11,8 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { COOKIE_DISPOSITIVO, dispositivoValido } from "@/lib/dispositivo";
 import {
-  DIAS_TOPE_DISPOSITIVO, DIAS_VIGENCIA_REGALO_ALTA, FUENTE_REGALO_ALTA, decidirRegaloAlta, diaChile, esCuentaDelRegalo,
-  type DecisionRegalo,
+  DIAS_TOPE_DISPOSITIVO, DIAS_VIGENCIA_REGALO_ALTA, FUENTE_REGALO_ALTA, decidirRegaloAlta, diaChile, dispositivoTopa,
+  esCorreoDeLaCasa, esCuentaDelRegalo, type DecisionRegalo,
 } from "./regalo-alta";
 
 const RUTA = "lib/regalo-alta";
@@ -34,6 +34,36 @@ export function huellaDeCabeceras(h: { get(nombre: string): string | null }, coo
 
 export function huellaDeRequest(request: Request): Huella {
   return huellaDeCabeceras(request.headers);
+}
+
+/** Los correos de admin (ADMIN_EMAIL, separados por coma). */
+function correosAdmin(): string[] {
+  return (process.env.ADMIN_EMAIL ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
+/**
+ * ¿La cuenta es de la casa? (24-oct-2026, regalo-alta.ts) Su correo (un alias del admin o @refranco.ai), o el dispositivo:
+ * si alguno de los regalos que ya dio fue a una cuenta de prueba (`test_accounts`), es un teléfono de la casa. Solo se
+ * pregunta cuando el dispositivo ya topó. Si algo falla, no es de la casa: el tope sigue, que es lo prudente.
+ */
+async function esDeLaCasa(admin: SupabaseClient, userId: string, dispositivo: string | null): Promise<boolean> {
+  try {
+    const { data: u, error: eU } = await admin.auth.admin.getUserById(userId);
+    reportarFalloQuery(eU, { ruta: RUTA, operacion: "leer-correo", userId });
+    if (esCorreoDeLaCasa(u?.user?.email, correosAdmin())) return true;
+    if (!dispositivo) return false;
+    const { data: previas, error: eP } = await admin.from("regalos_alta").select("user_id").eq("motivo", "otorgado").eq("dispositivo_hash", dispositivo);
+    reportarFalloQuery(eP, { ruta: RUTA, operacion: "regalos-del-dispositivo", userId });
+    // La cuenta misma no está entre ellas: si ya tuviera su fila, asegurarRegaloDeAlta habría salido antes («ya»).
+    const otras = (previas ?? []).map((r) => r.user_id as string);
+    if (eP || otras.length === 0) return false;
+    const { count, error: eT } = await admin.from("test_accounts").select("user_id", { count: "exact", head: true }).in("user_id", otras);
+    reportarFalloQuery(eT, { ruta: RUTA, operacion: "dispositivo-de-prueba", userId });
+    return !eT && count != null && count > 0;
+  } catch (e) {
+    reportarFalloQuery(e, { ruta: RUTA, operacion: "de-la-casa", userId });
+    return false;
+  }
 }
 
 export interface ResultadoRegaloAlta {
@@ -83,7 +113,9 @@ export async function asegurarRegaloDeAlta(
       reportarFalloQuery(fallas[0], { ruta: RUTA, operacion: "contar-topes", userId: p.userId });
       return { estado: "fallo", vence: null };
     }
-    const decision = decidirRegaloAlta({ creadaAt: p.creadaAt, porDispositivo: disp ? disp.count : null, totalHoy: total.count ?? 0 });
+    const porDispositivo = disp ? disp.count : null;
+    const deLaCasa = dispositivoTopa(porDispositivo) ? await esDeLaCasa(admin, p.userId, p.huella.dispositivo) : false;
+    const decision = decidirRegaloAlta({ creadaAt: p.creadaAt, porDispositivo, totalHoy: total.count ?? 0, deLaCasa });
     const vence = new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO_ALTA * 864e5).toISOString();
     const otorga = decision === "otorgar";
     // La marca primero: si otra llamada ya decidió, esta no hace nada.
@@ -110,7 +142,7 @@ export async function asegurarRegaloDeAlta(
       return { estado: "fallo", vence: null };
     }
     await admin.from("regalos_alta").update({ grant_id: g.id }).eq("user_id", p.userId);
-    void capturarServidor({ event: "regalo_alta_otorgado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { vence, puerta: p.puerta ?? null } }).catch(() => {});
+    void capturarServidor({ event: "regalo_alta_otorgado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { vence, puerta: p.puerta ?? null, de_la_casa: deLaCasa } }).catch(() => {});
     return { estado: "otorgar", vence };
   } catch (e) {
     reportarFalloQuery(e, { ruta: RUTA, operacion: "asegurar", userId: p.userId });

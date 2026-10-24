@@ -81,7 +81,7 @@ import { TOPE_FICHAS_POR_HORA } from "../../../src/lib/guia/publicacion";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "../../../src/lib/email/correo-semanal";
 import {
   bienvenidaVigente, decidirRegaloAlta, DIAS_VIGENCIA_REGALO_ALTA, FUENTE_REGALO_ALTA, FUENTES_REGALO, REGALO_ALTA_DESDE, TOPE_REGALOS_DIA,
-  TOPE_REGALOS_DISPOSITIVO,
+  TOPE_REGALOS_DISPOSITIVO, esCorreoDeLaCasa,
 } from "../../../src/lib/regalo-alta";
 import { asegurarRegaloDeAlta } from "../../../src/lib/regalo-alta-servidor";
 import { datosSaldoDe, estadoSaldo } from "../../../src/lib/casa-saldo";
@@ -114,6 +114,7 @@ function baseFalsa(claves: Record<string, string> = {}) {
       gte(c: string, v: string) { filtros.push((f) => String(f[c]) >= v); return b; },
       gt(c: string, v: unknown) { filtros.push((f) => (typeof v === "number" ? Number(f[c]) > v : String(f[c]) > String(v))); return b; },
       is(c: string, v: unknown) { filtros.push((f) => (f[c] ?? null) === v); return b; },
+      in(c: string, vs: unknown[]) { filtros.push((f) => vs.includes(f[c])); return b; },
       order() { return b; },
       limit() { return b; },
       maybeSingle() { una = "maybe"; return b; },
@@ -153,7 +154,10 @@ function baseFalsa(claves: Record<string, string> = {}) {
     };
     return b;
   };
-  return { from, tablas, tabla };
+  // Los correos de las cuentas (auth.admin.getUserById): el regalo de alta pregunta si la cuenta es de la casa.
+  const usuarios = new Map<string, string>();
+  const auth = { admin: { getUserById: async (id: string) => ({ data: { user: usuarios.has(id) ? { id, email: usuarios.get(id) } : null }, error: null }) } };
+  return { from, tablas, tabla, auth, usuarios };
 }
 
 export async function runPuertaBTier(): Promise<{ hard: number }> {
@@ -339,6 +343,37 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (r5.estado !== "otorgar" || grants.length !== 2) F("5 · la misma IP con otro dispositivo se queda sin regalo");
       const r4 = await asegurarRegaloDeAlta(db as never, { userId: "u3", creadaAt: "2026-09-01T00:00:00Z", huella: { dispositivo: "d9", ip: "i9" } }, ahora);
       if (r4.estado !== "vieja" || grants.length !== 2) F("5 · una cuenta vieja recibe regalo");
+
+      // LAS CUENTAS DE LA CASA NO TOPAN POR DISPOSITIVO (24-oct-2026, el recorrido de Fabrizio por /deptos): su teléfono ya
+      // le había regalado a +franco, y +qadeptos2 nació sin regalo y sin la tarjeta de «Estás dentro». Un alias del admin,
+      // una cuenta @refranco.ai o un teléfono que ya le regaló a una cuenta de prueba reciben igual; una persona de afuera
+      // en un teléfono topado, no; y el tope del día vale para todos.
+      if (!esCorreoDeLaCasa("dueno+qadeptos2@correo.cl", ["dueno@correo.cl"]) || !esCorreoDeLaCasa("Dueno@Correo.cl", ["dueno@correo.cl"])
+        || !esCorreoDeLaCasa("qa-1024-w1@refranco.ai", []) || esCorreoDeLaCasa("persona@correo.cl", ["dueno@correo.cl"])
+        || esCorreoDeLaCasa("dueno@otro.cl", ["dueno@correo.cl"]) || esCorreoDeLaCasa("dueno.mal+x@correo.cl", ["dueno@correo.cl"]) || esCorreoDeLaCasa(null, ["dueno@correo.cl"]))
+        F("5 · el correo de la casa no se reconoce, o se reconoce uno de afuera");
+      if (decidirRegaloAlta({ creadaAt: nueva, porDispositivo: TOPE_REGALOS_DISPOSITIVO, totalHoy: 0, deLaCasa: true }) !== "otorgar") F("5 · una cuenta de la casa topa por dispositivo");
+      if (decidirRegaloAlta({ creadaAt: nueva, porDispositivo: TOPE_REGALOS_DISPOSITIVO, totalHoy: TOPE_REGALOS_DIA, deLaCasa: true }) !== "tope_dia") F("5 · la casa se salta el tope del día");
+      const adminAntes = process.env.ADMIN_EMAIL;
+      process.env.ADMIN_EMAIL = "otro-admin@correo.cl, dueno@correo.cl";
+      try {
+        // d1 ya le regaló a u1 (que todavía no es de prueba) y topó a u2.
+        db.usuarios.set("u6", "dueno+qadeptos2@correo.cl");
+        const r6 = await asegurarRegaloDeAlta(db as never, { userId: "u6", creadaAt: nueva, huella }, ahora);
+        if (r6.estado !== "otorgar" || grants.length !== 3) F(`5 · un alias del admin en un teléfono topado se queda sin regalo (${r6.estado})`);
+        db.usuarios.set("u7", "persona@correo.cl");
+        const r7 = await asegurarRegaloDeAlta(db as never, { userId: "u7", creadaAt: nueva, huella }, ahora);
+        if (r7.estado !== "tope_dispositivo" || grants.length !== 3) F(`5 · una persona de afuera en un teléfono topado recibe regalo (${r7.estado})`);
+        db.tabla("test_accounts").push({ user_id: "u1" });
+        db.usuarios.set("u8", "fsm@empresa.cl");
+        const r8 = await asegurarRegaloDeAlta(db as never, { userId: "u8", creadaAt: nueva, huella }, ahora);
+        if (r8.estado !== "otorgar" || grants.length !== 4) F(`5 · una cuenta nueva en un teléfono de prueba se queda sin regalo (${r8.estado})`);
+        db.usuarios.set("u9", "persona2@correo.cl");
+        const r9 = await asegurarRegaloDeAlta(db as never, { userId: "u9", creadaAt: nueva, huella: { dispositivo: "d2", ip: "i2" } }, ahora);
+        if (r9.estado !== "tope_dispositivo" || grants.length !== 4) F(`5 · un teléfono que solo le regaló a personas de afuera deja pasar a otra (${r9.estado})`);
+      } finally {
+        if (adminAntes === undefined) delete process.env.ADMIN_EMAIL; else process.env.ADMIN_EMAIL = adminAntes;
+      }
 
       // Por cualquier puerta: el reclamo después del código, el enlace o Google, el dashboard, el cobro, /deptos.
       const claim = sinComentarios(leer("src/app/api/analisis/claim/route.ts"));
