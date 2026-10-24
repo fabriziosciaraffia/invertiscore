@@ -84,7 +84,8 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
   if (!primero.html.includes(COMO_ENTRAR)) F("3 · el primer correo (corto) no dice cómo se entra");
   const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
   if (!/if \(ir === "perfil"\) return volver\("\/dashboard#perfil"\);/.test(clic)) F("3 · el enlace al perfil no lleva a /dashboard#perfil");
-  if (!/<div id="perfil"/.test(leer("src/app/dashboard/casa.tsx"))) F("3 · el perfil del dashboard no tiene el ancla #perfil");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el perfil es una fila plegada (<details id="perfil">) que el ancla abre (AbrirPorAncla).
+  if (!/<FilaPlegada id="perfil"/.test(leer("src/app/dashboard/casa.tsx")) || !/<details id=\{id\} className="ca-plegada"/.test(leer("src/app/dashboard/casa.tsx")) || !/<AbrirPorAncla \/>/.test(leer("src/app/dashboard/page.tsx"))) F("3 · el perfil del dashboard no tiene el ancla #perfil");
   const sin = srv.slice(srv.indexOf("export async function enviarSinSeleccion"), srv.indexOf("export async function combinacionSemanal"));
   if (!/pb\?\.semanal_baja_at\) return descartarSeleccion\(admin, fila\.id\);/.test(sin) || !/\.is\("enviada_at", null\)\.select\("id"\);\s*if \(\(tomada\?\.length \?\? 0\) !== 1\) return "ya";/.test(sin)) F("3 · el correo corto se manda a quien se dio de baja o sin tomar la fila (podría salir dos veces)");
 

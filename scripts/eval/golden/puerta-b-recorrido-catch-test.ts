@@ -172,7 +172,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if (!enCasa || !/<SemanalLista/.test(enCasa)) F("3 · el dashboard no dibuja la selección con las tarjetas de la selección (SemanalLista)");
     // El banner de arriba ya marca su lista con `data-casa="seleccion"`: el bloque de tarjetas lleva la suya (visto en el QA).
     if (/data-casa="seleccion"/.test(enCasa) || (enCasa.match(/data-casa="tarjetas"/g) ?? []).length !== 3) F("3 · el bloque de tarjetas usa la misma marca que la lista del banner");
-    if ((dash.match(/<SeleccionEnCasa sel=\{sel\}/g) ?? []).length < 2) F("3 · la selección como tarjetas no está en las dos ramas del dashboard (sin informes y con informes)");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · una sola casa, con o sin informes.
+    if ((dash.match(/<SeleccionEnCasa sel=\{sel\}/g) ?? []).length !== 1) F("3 · la selección como tarjetas no está en el dashboard");
     if (casaSel.SELECCION_CASA.href !== "#seleccion" || !/id: SELECCION_CASA\.ancla/.test(enCasa)) F(`3 · «Ver tu selección» no baja a la selección del dashboard (href ${casaSel.SELECCION_CASA.href})`);
     for (const p of ["src/app/semanal/semanal-lista.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/dashboard/seleccion-en-casa.tsx", "src/app/dashboard/casa.tsx", "src/app/dashboard/page.tsx"]) {
       if (/["'`]\/semanal(?:[?"'`]|\$\{)/.test(codigo(p))) F(`3 · ${p} todavía lleva a /semanal`);
@@ -182,9 +183,10 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const filas = [{ item: item("a1"), caido: false, reemplazo: null }, { item: item("a2", { comuna: "Ñuñoa" }), caido: false, reemplazo: null }];
     const base = { token: TOKEN, origenId: null, combinacion: { piePct: 20, plazoAnios: 25 }, filas, destacado: "a2", variante: null } as const;
     const conRegalo = dibujarConRouter(createElement(SemanalLista, { ...base, saldo: { tipo: "regalo", vence: null } }));
-    if (!new RegExp(`<button[^>]*class="guia-an"[^>]*>${GUIA.analizar}</button>`).test(conRegalo)) F("3 · la tarjeta no tiene el botón «Analizar este»");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el botón es `.sel-btn` y con el regalo dice «Analizar este · usa tu regalo» (CASA.seleccion).
+    if (!/<button[^>]*class="sel-btn"[^>]*>Analizar este · usa tu regalo<\/button>/.test(conRegalo)) F("3 · la tarjeta no tiene el botón «Analizar este»");
     if (/href="\/semanal/.test(conRegalo)) F("3 · la tarjeta lleva a /semanal");
-    if (!textos(conRegalo).toLowerCase().includes(REGALO_COPY.usaRegalo.toLowerCase().replace(/\.$/, ""))) F("3 · la tarjeta no dice que usa el análisis de regalo");
+    if (!textos(conRegalo).toLowerCase().includes("usa tu regalo")) F("3 · la tarjeta no dice que usa el análisis de regalo");
     const sl = codigo("src/app/semanal/semanal-lista.tsx");
     if (!/onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(sl)) F("3 · «Analizar este» no abre el aviso antes de gastar");
     // El aviso, dibujado: con el regalo dice «Usa tu análisis de regalo.»; con saldo, «Usa 1 de tus 3 análisis.».
@@ -300,7 +302,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
       token: TOKEN, origenId: null, combinacion: { piePct: 20, plazoAnios: 25 }, filas, destacado: null, variante: null, saldo: { tipo: "con", n: 2, noVencen: true }, informes: { a1: "inf-1" },
     }));
     if (!/href="\/analisis\/inf-1"/.test(html) || !textos(html).includes(YA_ANALIZADO.texto)) F("6 · en renta larga, el depto ya analizado no dice «Ya lo analizaste · Ver informe» con lo leído en vivo");
-    if ((html.match(/class="guia-an"/g) ?? []).length !== 1) F(`6 · el ya analizado sigue con «Analizar este» (o el otro lo perdió): ${(html.match(/class="guia-an"/g) ?? []).length} botones`);
+    if ((html.match(/class="sel-btn"/g) ?? []).length !== 1 || (html.match(/class="sel-fila"/g) ?? []).length !== 1) F(`6 · el ya analizado sigue con «Analizar este» (o el otro lo perdió): ${(html.match(/class="sel-btn"/g) ?? []).length} botones`);
     const sps = codigo("src/lib/guia/seleccion-pagina-servidor.ts");
     if (!/informesDeAvisos\(admin, userId, ids\)/.test(sps) || !/informes: informesLargos/.test(sps)) F("6 · la selección del dashboard no lee en vivo los informes de renta larga");
     const prim = codigo("src/lib/deptos/primeros-servidor.ts");
@@ -318,7 +320,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
       if (!/if \(debeRefrescar\(dibujadoAt, Date\.now\(\)\)\) router\.refresh\(\);/.test(fv) || !/if \(e\.persisted\) router\.refresh\(\);/.test(fv)) F("6 · el dashboard no se pide de nuevo al volver (router o caché del navegador)");
     }
     const dash = codigo("src/app/dashboard/page.tsx");
-    if ((dash.match(/<FrescoAlVolver dibujadoAt=\{dibujadoAt\} \/>/g) ?? []).length < 2 || !/const dibujadoAt = Date\.now\(\);/.test(dash)) F("6 · el refresco al volver no está en las dos ramas del dashboard");
+    if ((dash.match(/<FrescoAlVolver dibujadoAt=\{dibujadoAt\} \/>/g) ?? []).length !== 1 || !/const dibujadoAt = Date\.now\(\);/.test(dash)) F("6 · el refresco al volver no está en el dashboard");
     // Volvió pagado: el depto se analiza solo, una vez, y la dirección queda sin `analizar`.
     const sl = codigo("src/app/semanal/semanal-lista.tsx");
     const auto = entre(sl, "const autoHecho = useRef(false);", "}, [autoAnalizar]);");

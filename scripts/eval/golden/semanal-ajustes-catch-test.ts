@@ -147,7 +147,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el saldo plano recibe además el ticket de la cuenta
     // nueva (el precio del pack en sus 24 horas, tier CASA §4).
     // ⚠ ACTA (22-oct-2026) · y el ticket con saldo (`ticketConSaldo`, tier TICKET-VIVO §2).
-    if ((dash.match(/<SaldoPlano estado=\{saldo\} arriba=\{arriba0?\.tipo\} ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/g) ?? []).length !== 2 || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 2) F("4·7 · el saldo o el plan no está en el dashboard (con informes y vacío)");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·el saldo plano se retiró: en la casa el saldo es la píldora
+    // del saludo (lib/casa/reglas.ts › pildoraSaldo; tier PUERTA-B-DASHBOARD §1 y §2); en la bienvenida, igual que antes.
+    if (!/const pildora = pildoraSaldo\(saldo\);/.test(dash) || !/data-casa="saldo" data-saldo=\{saldo\.tipo\}/.test(dash) || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 1) F("4·7 · el saldo o el plan no está en el dashboard (la casa y la bienvenida)");
     // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
     if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
       F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");
@@ -211,11 +213,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!/\{popup && \(\s*<PopupNoDa parecidos=\{parecidos\.length\} alCerrar=\{\(\) => setPopup\(null\)\}>\s*\{parecidos\.map\(\(p\) => tarjeta\(p, `pop-\$\{p\.avisoId\}`\)\)\}\s*<\/PopupNoDa>\s*\)\}/.test(lista))
       F("6 · la página no muestra los parecidos dentro del pop-up");
     // Nada se inserta en la lista: la lista solo dibuja sus filas (y los reemplazos de los caídos).
-    const enLista = lista.slice(lista.indexOf('<div className="guia-lista">'), lista.indexOf("{visibles === 0"));
-    if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · la lista es `.sel-lista` y cada tarjeta va numerada; «Ver los N que faltan» al final.
+    const enLista = lista.slice(lista.indexOf('<div className="sel-lista" data-semanal="tarjetas">'), lista.indexOf("{visibles === 0"));
+    if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item, f\.item\.avisoId, i \+ 1\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
     // La tarjeta original: marcada, sin botón.
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
-    if (!/if \(corta && noDa\.has\(it\.avisoId\)\) return <p className="guia-no-da" data-semanal="no-da">\{MARCA_NO_DA\}<\/p>;/.test(acciones)) F("6 · la tarjeta que no dio no queda marcada sin botón");
+    if (!/if \(corta && noDa\.has\(it\.avisoId\)\) return <p className="sel-estado" data-semanal="no-da">\{MARCA_NO_DA\}<\/p>;/.test(acciones)) F("6 · la tarjeta que no dio no queda marcada sin botón");
     // También al volver: la página lee las que no dieron y no se cobraron.
     const noDan = cuerpo(srv, "export async function noDanEnRentaCorta(");
     if (!/\.from\("comparaciones_zona_str"\)\.select\("aviso_id"\)\s*\.eq\("user_id", userId\)\.in\("aviso_id", avisoIds\)\.neq\("fino_veredicto", "COMPRAR"\)\.eq\("cobrado", false\);/.test(noDan)) F("6 · al volver a la página no se sabe cuáles no dieron (o se marcan los cobrados)");
@@ -243,8 +246,10 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · «Tu selección de esta semana» es el estado de arriba del banner
     // cuando la hay (casa-arriba.ts), en las dos casas; el detalle de la jerarquía, en el tier CASA §9.
     // Verificado en rojo: SA2 la selección sin su título en el banner · SA3 la casa no le pasa la selección al bloque.
-    if (!/cargarSeleccionPagina\(admin, user, \{ t: tSel, a: aSel \}\)/.test(dash) || !/const resumenSel = resumenDePagina\(sel\);/.test(dash) || !/const resumen = resumenSel \?\? \[\];/.test(dash) || !/bloqueDeArriba\(\{ seleccion: resumen,/.test(dash) || !/<BloqueArribaCasa bloque=\{arriba\} /.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
-    if (!/<h1 className="ca-banda-t">\{SELECCION_CASA\.titulo\}<\/h1>/.test(casa) || !/<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">/.test(casa)) F("7 · el bloque del dashboard no enlaza a la selección");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·el banner se retiró: «Tu selección de esta semana» es la sección
+    // de la casa, con su mapa y sus tarjetas, leída una vez con cargarSeleccionPagina (tier PUERTA-B-DASHBOARD §2).
+    if (!/cargarSeleccionPagina\(admin, user, \{ t: tSel, a: aSel \}\)/.test(dash) || !/\{CASA\.seleccion\.titulo\}/.test(dash) || !/<SeleccionEnCasa sel=\{sel\} autoAnalizar=\{autoAnalizar\}/.test(dash)) F("7 · el dashboard no muestra «Tu selección de esta semana»");
+    if (SELECCION_CASA.titulo !== "Tu selección de esta semana" || !/const ancla = \{ id: SELECCION_CASA\.ancla,/.test(sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx")))) F("7 · la selección del dashboard perdió su título o su ancla");
     if (!/const t = p\.t && TOKEN\.test\(p\.t\) \? p\.t : null;/.test(pagina) || !/const sel = t \? await seleccionPorToken\(admin, t\) : await seleccionDeEstaSemana\(admin, userId\);/.test(pagina) || /token=\{t\}/.test(pagina))
       F("7 · la selección sin token no abre la de esta semana de quien entró");
     // Con la base real: la de esta semana de alguien que tiene una, con su token; y nadie más la ve por sesión.
@@ -314,7 +319,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // guía») es su título. El origen se pide para los de Franco a la vista, no para los sin dirección (tier CASA §11).
     // Verificado en rojo: S1 la marca sin decir de dónde salió · S2 el origen no se pide para los de Franco. La marca en
     // la VISTA (§7, con la base real) no se muta: sería escribir en producción; corre sobre los 10 informes desde un aviso.
-    if (!/title=\{origen \? textoOrigenArchivo\(origen\) : ARCHIVO_COPY\.desdeAviso\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, francoIds\),/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 4)
+    if (!/title=\{origen \? textoOrigenArchivo\(origen\) : ARCHIVO_COPY\.desdeAviso\}/.test(archivo) || !/origenDeInformes\(admin, user\.id, francoIds\)/.test(dash) || (archivo.match(/origen=\{origenes\[(item\.row|hijo|row)\.id\] \?\? null\}/g) ?? []).length !== 4)
       F("8 · la marca «Franco» del archivo no dice de dónde salió el informe (la selección o la guía)");
     if (!/if \(o\) out\[a\.id\] = o;/.test(cuerpo(srv, "export async function origenDeInformes("))) F("8 · los informes de la guía no traen su origen al archivo");
     // ⚠ ACTA (23-oct-2026, goal Explorar) · la ruta decide `desde` una vez (semanal · guia · explorar) y lo anota en el informe.
@@ -407,10 +412,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · el informe sale de `informeDe`: en renta corta, el de la medición
     // (o el de la página, en vivo), como antes; en renta larga, el del depto ya analizado, que lleva a /analisis/[id] (SEMANAL §15).
-    const ramaInforme = acciones.slice(acciones.indexOf("const informe = informeDe(it);"), acciones.indexOf("if (corta && generando === it.avisoId)"));
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el ya analizado es la fila compacta en su posición (filaAnalizada, desde `tarjeta`), no una rama
+    // de `acciones` (tier PUERTA-B-DASHBOARD §4).
+    const ramaInforme = cuerpo(lista, "const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (", "\n  );\n") + lista.slice(lista.indexOf("const tarjeta = (it: ItemSemanal"), lista.indexOf("const neg = (it.flujo ?? 0) < 0;"));
     // ⚠ ACTA (21-oct-2026) · en renta larga también cuenta lo leído en vivo (`informes`), no solo el del depto ya visto.
     if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(lista)
-      || !/const informe = informeDe\(it\);\s*if \(informe\) \{\s*return \(\s*<div className="guia-acc" data-semanal="ya-analizado">/.test(ramaInforme) || !/<EnlaceCarga href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="guia-ver-informe">\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(ramaInforme) || /analizar\(|setConfirmar|guia-an/.test(ramaInforme))
+      || !/const informe = informeDe\(it\);\s*if \(informe\) return filaAnalizada\(it, informe, n\);/.test(ramaInforme) || !/<EnlaceCarga key=\{it\.avisoId\} href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="sel-fila" data-semanal="ya-analizado"/.test(ramaInforme) || !/\{YA_ANALIZADO\.enlace\}/.test(ramaInforme) || /analizar\(|setConfirmar|sel-btn/.test(ramaInforme))
       F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
     // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -477,7 +484,10 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
   // ── 1 y 2 · LA JERARQUÍA Y LA TRÍADA (CSS) ──────────────────────────────────────
   {
     if (!/\{bloque && <h2 className="guia-bloque" data-semanal="bloque">\{bloque\}<\/h2>\}/.test(lista) || !/\.guia-bloque \{ font-family: var\(--font-ui\)[^}]*font-size: 18px;/.test(css)) F("1 · el título de cada bloque no es un subtítulo de sección (otra fuente y otro tamaño que el título)");
-    if (!/<span className="guia-ver" data-veredicto=\{it\.veredicto \?\? undefined\}>/.test(lista) || !/\.guia-ver\[data-veredicto="AJUSTA SUPUESTOS"\]::before \{ background: var\(--verdict-ajusta\); \}/.test(css) || !/\.guia-ver\[data-veredicto="BUSCAR OTRA"\]::before \{ background: var\(--verdict-buscar\); \}/.test(css))
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · en las tarjetas .sel-* el veredicto va como texto con su color: Comprar en azul, Buscar otra en
+    // rojo y Ajustar en tinta (franco-design-system › color por veredicto), en deptos.css.
+    const cssSel = leer("src/app/deptos/deptos.css");
+    if (!/<span className="sel-v" data-veredicto=\{it\.veredicto \?\? undefined\}>/.test(lista) || !/\.sel-v\[data-veredicto="COMPRAR"\] \{ color: var\(--verdict-comprar\); \}/.test(cssSel) || !/\.sel-v\[data-veredicto="BUSCAR OTRA"\] \{ color: var\(--verdict-buscar\); \}/.test(cssSel))
       F("2 · Ajustar y Buscar otro no llevan su color de la tríada en la página semanal");
   }
 

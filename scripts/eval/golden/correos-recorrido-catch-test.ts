@@ -40,7 +40,7 @@ import { DIAS_ENTRADA_POR_CORREO, SEMANAL_PAGINA, puedeEntrarPorCorreo } from ".
 import { AVISO_ANALIZAR, derivadosAviso, textoUso, usoDesdeSaldo } from "../../../src/lib/guia/aviso-analizar";
 import { PRODUCTO_TRES, TRES_CANTIDAD, TRES_COPY, TRES_PRECIO_CLP, rutaTres, volverSeguro } from "../../../src/lib/tres-analisis";
 import { FLOW_PRODUCTS } from "../../../src/lib/flow-products";
-import { CASA, packDeCasa } from "../../../src/app/dashboard/casa-copy";
+import { CASA } from "../../../src/app/dashboard/casa-copy";
 import { compraDeLaSeleccion } from "../../../src/lib/guia/compra-desde-depto";
 import { correoSemanal } from "../../../src/lib/email/correo-semanal";
 import { enlacesSemanal } from "../../../src/lib/guia/semanal-servidor";
@@ -109,25 +109,26 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · sin saldo, desde la selección, el aviso compra el pack —al precio del ticket si la cuenta es nueva— y debajo el
   // suelto (`compras`, compra-desde-depto.ts); la guía, sin `compras`, sigue con su pack de tres (tier PUERTA-B-RECORRIDO §5).
   // ⚠ ACTA (23-oct-2026, goal Explorar) · con saldo el botón dice Analizar (o «Analizar igual» si el cambio empeora) y le pasa la elección a alAnalizar.
-  if (!/const analizar = da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(aviso) || !/labelConfirmar=\{sin \? \(compras \? compras\.pack\.label : AVISO_ANALIZAR\.comprar\) : analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
-  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{sin && compras \? compras\.sin : textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa (en renta corta también, sin condición: 15-oct-2026)");
+  if (!/const analizar = da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(aviso) || !/labelConfirmar=\{sin \? \(conTicket && ticketVence \? AVISO_ANALIZAR\.aprovechar : compras \? compras\.pack\.label : AVISO_ANALIZAR\.comprar\) : analizar\}/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)\}/.test(aviso)) F("5 · el aviso no tiene Analizar (con análisis) o comprar el pack (sin)");
+  if (!/labelRevisar=\{AVISO_ANALIZAR\.cancelar\}/.test(aviso) || !/onCerrar=\{alCancelar\}/.test(aviso) || !/consumo=\{sin \? \(conTicket && ticketVence \? null : compras \? compras\.sin : AVISO_ANALIZAR\.sin\) : textoUso\(uso\)\}/.test(aviso)) F("5 · el aviso no tiene Cancelar o no dice lo que usa (en renta corta también, sin condición: 15-oct-2026)");
   const modal = sinComentarios(leer("src/components/formulario-v4/ModalPlausibilidad.tsx"));
   if (!/titulo = "Confirma antes de generar",/.test(modal) || !/labelRevisar = "Revisar",/.test(modal) || !/\{destacado && <p className="wz-modal-msg wz-modal-destacado" data-modal-destacado>\{destacado\}<\/p>\}/.test(modal) || !/\{labelRevisar\}\s*<\/button>/.test(modal)) F("5 · el modal del wizard no acepta el destacado y el secundario del aviso (o le cambia el texto al wizard)");
   // La página semanal: el botón abre el aviso (no genera), está también sin saldo, y «sin créditos» abre el aviso con el pack.
   const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-  const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {", "\n  };\n");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · las tarjetas son las .sel-* del mockup, numeradas; «Analizar este» es `.sel-btn`.
+  const tarjetaSemanal = cuerpo(lista, "const tarjeta = (it: ItemSemanal, clave: string = it.avisoId, n: number | null = null): JSX.Element => {", "\n  };\n");
   // Desde el 14-oct-2026 los botones de la tarjeta viven en «acciones»: «Analizar este» abre el aviso; el único que
   // analiza directo es «Reintentar», después de una medición que pasó del tope (el aviso ya se aceptó).
   const accionesSemanal = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
-  const botonAnalizar = accionesSemanal ? accionesSemanal.slice(accionesSemanal.lastIndexOf('<div className="guia-acc">')) : "";
+  const botonAnalizar = accionesSemanal ? accionesSemanal.slice(accionesSemanal.lastIndexOf('<button type="button" className="sel-btn" data-primario="1"')) : "";
   if (!tarjetaSemanal || !/\{acciones\(it\)\}/.test(tarjetaSemanal) || /analizar\(it\)/.test(tarjetaSemanal)
-    || !/className="guia-an" onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(botonAnalizar) || /analizar\(it\)/.test(botonAnalizar)
+    || !/className="sel-btn" data-primario="1" onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(botonAnalizar) || /analizar\(it\)/.test(botonAnalizar)
     || ((accionesSemanal ?? "").match(/analizar\(it\)/g) ?? []).length !== 1 || !/onClick=\{\(\) => void analizar\(it\)\} disabled=\{!!generando\}>\{REINTENTAR\}/.test(accionesSemanal ?? ""))
     F("5 · en la página semanal «Analizar este» genera sin el aviso");
   if (/\{conSaldo && \(\s*<div className="guia-acc">/.test(tarjetaSemanal)) F("5 · en la página semanal sin saldo no hay «Analizar este» (el aviso con el pack no se puede abrir)");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · recién pagado desde el depto, «sin créditos» espera el crédito unas veces antes de volver a ofrecer comprar.
   if (!/if \(d\.error === "sin-creditos"\) \{\s*if \(recienPagado && sinCredito\+\+ < REINTENTOS_CREDITO\) \{ await new Promise\(\(ok\) => setTimeout\(ok, ESPERA_CREDITO_MS\)\); continue; \}\s*setConfirmar\(\{ it, sin: true \}\);\s*break;\s*\}/.test(lista) || /sinCreditos/.test(lista)) F("5 · en la página semanal «sin créditos» sigue siendo un callejón");
-  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}\s+ticketConSaldo=\{[^}]*\}[^\n]*\}\s+rutaCompra=\{comprarSeleccion\.href\}\s+analizando=\{!!confirmar\.analizando\}\s+cambio=\{corta \|\| !confirmar\.it\.veredicto \? null : \{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto, score: confirmar\.it\.score, flujo: confirmar\.it\.flujo \} \}\}\s+alAnalizar=\{\(eleccion\) => \{ const it = confirmar\.it; if \(corta\) setConfirmar\(null\); void analizar\(it, false, corta \? undefined : eleccion\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
+  if (!/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+depto=\{confirmar\.it\}\s+combinacion=\{combinacion\}\s+finanzas=\{\{ tasa: finanzas\.tasa, uf: finanzas\.uf, arriendo: finanzas\.arriendos\[confirmar\.it\.avisoId\] \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : saldo\}\s+compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}\s+ticketConSaldo=\{[^}]*\}[^\n]*\}\s+ticketVence=\{ticket && cuentaCreadaAt \? cuandoVenceCorto\(cuentaCreadaAt\) : null\}\s+rutaCompra=\{comprarSeleccion\.href\}\s+analizando=\{!!confirmar\.analizando\}\s+cambio=\{corta \|\| !confirmar\.it\.veredicto \? null : \{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto, score: confirmar\.it\.score, flujo: confirmar\.it\.flujo \} \}\}\s+alAnalizar=\{\(eleccion\) => \{ const it = confirmar\.it; if \(corta\) setConfirmar\(null\); void analizar\(it, false, corta \? undefined : eleccion\); \}\}/.test(lista)) F("5 · la página semanal no monta el aviso con el pie y el plazo del perfil, sus datos, su saldo y su compra");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la selección vive en el dashboard: lo que leía /semanal lo lee el cargador compartido y lo dibuja seleccion-en-casa.
   const paginaSem = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts")) + sinComentarios(leer("src/app/dashboard/seleccion-en-casa.tsx"));
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen, la tasa es la de mercado (la misma con que se evaluó).
@@ -140,7 +141,9 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+combinacion=\{r\.combinacion\}\s+finanzas=\{\{ tasa: r\.tasa \?\? null, uf: r\.uf \?\? null, arriendo: confirmar\.it\.arriendo \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : uso\}\s+rutaCompra=\{rutaCompra\(\)\}/.test(guia) || !/const uso = estado \?\? usoDesdeSaldo\(saldo\);/.test(guia)) F("5 · la guía no monta el aviso con su pie y su plazo, sus datos, su saldo y su compra");
   const guiaSrv = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
   if (!/tasa: o\.tasa,\s*uf,/.test(guiaSrv) || !/arriendo: c\.arriendo\?\.monto \?\? null,/.test(guiaSrv) || !/const resultado = respuestaGuia\(o, g, cfg\.uf\);/.test(guiaSrv)) F("5 · la guía no trae la tasa, la UF y el arriendo para el aviso");
-  if (!/<GuiaBusqueda [^>]*\bestado=\{saldo\}/.test(leer("src/app/dashboard/page.tsx"))) F("5 · la guía del dashboard no le pasa el saldo al aviso (con cero diría «Usa 1 de tus análisis.»)");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · la guía del pack ya no se monta en el dashboard (vive en la vuelta de Flow, donde sigue
+  // recibiendo el saldo).
+  if (!/<GuiaBusqueda\s[^>]*\bsaldo=\{saldo\}/.test(leer("src/app/payments/return/page.tsx"))) F("5 · la guía de la vuelta de Flow no le pasa el saldo al aviso");
 
   // ── 6 · tres análisis por $19.990 ───────────────────────────────────────────
   const tres = FLOW_PRODUCTS.tres_analisis;
@@ -164,9 +167,10 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const aceptados = new Set(Array.from((ultima.match(/payments_product_check CHECK \(product IN \(([\s\S]*?)\)\);/i)?.[1] ?? "").matchAll(/'([a-z0-9_]+)'/g)).map((m) => m[1]));
   const faltan = Object.keys(FLOW_PRODUCTS).filter((k) => !aceptados.has(k));
   if (faltan.length) F(`6 · el CHECK de payments.product no acepta ${faltan.join(", ")} (el INSERT del pago fallaría)`);
-  const casa = sinComentarios(leer("src/app/dashboard/casa.tsx"));
-  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el botón sale de packDeCasa: el pack de tres, o el del ticket en las 24 horas de la cuenta (tier CASA §4).
-  if (packDeCasa(false).href !== rutaTres("dashboard", { volver: "/dashboard" }) || packDeCasa(false).boton !== TRES_COPY.boton || !/<EnlaceCarga href=\{pack\.href\}[^>]*data-casa="comprar-tres"[^>]*>\s*\{pack\.boton\}/.test(casa) || CASA.sin.boton !== TRES_COPY.boton) F("6 · el dashboard sin análisis no ofrece el pack de tres");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner del pack y packDeCasa se retiraron del dashboard:
+  // sin saldo, el pack lo ofrece el pop-up de «Analizar este» (tier PUERTA-B-RECORRIDO §5) y la oferta roja mientras el
+  // ticket viva (tier PUERTA-B-DASHBOARD §1). El botón del pack de tres sigue diciendo lo suyo.
+  if (CASA.sin.boton !== TRES_COPY.boton) F("6 · el dashboard sin análisis no ofrece el pack de tres");
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el botón del final de la selección sale de compraDeLaSeleccion (el pack de tres, o el del ticket si la cuenta es
   // nueva), con el origen del correo y la vuelta a la selección en el dashboard.
   const sinTicket = compraDeLaSeleccion({ token: "abc123", origen: "semanal", variante: "banda", ticket: false });
@@ -203,9 +207,12 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const casaPerfil = sinComentarios(leer("src/app/dashboard/casa.tsx"));
   // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · los chips también se quedan mientras se guarda la respuesta (el tocado,
   // girando); si no, la línea los reemplazaba al toque y el aro no se veía nunca.
-  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte \|\| guardando === "horizonte";/.test(casaPerfil) || !/\{preguntar \? \(\s*<div data-casa="horizonte">\s*<p [^>]*>\{CASA\.perfil\.cuando\}<\/p>/.test(casaPerfil)) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · «¿Cuándo piensas comprar?» es una de las dos preguntas pendientes del perfil
+  // plegado, solo para quien entró por /deptos o invitación y no contestó (lib/casa/reglas.ts › preguntasPendientes; tier
+  // PUERTA-B-DASHBOARD §5); se guarda con «Guardar», junto con todo, y la etiqueta de pendientes se va.
+  if (!/\{pendientes\.includes\("cuando"\) && \(\s*<div className="ca-pregunta" data-casa="pregunta-cuando">\s*<span className="ca-pregunta-q">\{CASA\.perfil\.cuando\}<\/span>/.test(casaPerfil) || !/pendientes=\{pendientes\}/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("7 · el dashboard no pregunta «¿Cuándo piensas comprar?» a quien nunca contestó");
   if (/PreguntaCuando|CASA\.perfil\.cuando|¿Cuándo piensas comprar\?/.test(pagina)) F("7 · la selección repite la pregunta del perfil en la misma página");
-  if (!/onClick=\{\(\) => \{ setCambiandoHorizonte\(false\); void cambiar\(\{ horizonte: h \}, \{ horizonte: h \}\); \}\}/.test(casaPerfil) || !/data-casa="horizonte-respondido"/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
+  if (!/onClick=\{\(\) => \{ setP\(\(x\) => \(\{ \.\.\.x, horizonte: h \}\)\); setRespondida\(\(r\) => \(\{ \.\.\.r, cuando: true \}\)\); \}\}/.test(casaPerfil) || !/const ok = await guardar\(cambios\);/.test(casaPerfil) || !/const etiqueta = etiquetaPendientes\(faltan\.length\);/.test(casaPerfil)) F("7 · contestar no guarda en el perfil o la pregunta no desaparece");
   if (sinAnalisis.includes("¿Cuándo piensas comprar?")) F("7 · la pregunta va en el correo");
 
   // ── 11 · renta corta: la línea provisoria salió (14-oct-2026) ─────────────────

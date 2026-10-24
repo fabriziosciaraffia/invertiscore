@@ -73,7 +73,9 @@ const BOTONES: Array<[string, string, string, number?]> = [
   ["src/app/deptos/deptos-cliente.tsx", "{ENTRAR_COPY.noPudimos}</button>", "/deptos · el reintento del alta"],
   ["src/components/lo-que-sigue/EstasDentro.tsx", "onClick={() => elegir(h.id)}", "«Estás dentro» · el «cuándo»"],
   ["src/components/lo-que-sigue/HorizontePostPago.tsx", "onClick={() => elegir(h.id)}", "después de pagar · el «cuándo»"],
-  ["src/app/dashboard/casa.tsx", "onClick={() => { setCambiandoHorizonte(false);", "la casa · el «cuándo» del perfil"],
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el perfil de la casa se guarda entero con «Guardar» (el que se ve ocupado); las dos preguntas
+  // son botones con aria-pressed, sin aro propio; la modalidad, el pie y el plazo dejaron de ser chips con autosave.
+  ["src/app/dashboard/casa.tsx", "onClick={() => void guardarTodo()}", "la casa · «Guardar» del perfil"],
   ["src/app/dashboard/bienvenida.tsx", 'data-bienvenida="accion"', "la bienvenida · el botón"],
   ["src/components/guia/GuiaBusqueda.tsx", "onClick={() => abrir(it)}", "la guía · «Analizar este»"],
   ["src/components/deptos/PrimeraSeleccion.tsx", 'data-primera="analizar"', "la primera selección · «Analizar este»"],
@@ -116,9 +118,6 @@ const CHIPS: Array<[string, string, string, number?]> = [
   ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.comuna}</label>", "los tres campos · la comuna"],
   ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.tipologia}</label>", "los tres campos · la tipología"],
   ["src/components/deptos/CamposBusqueda.tsx", "{DEPTOS_COPY.rango}</label>", "los tres campos · el rango"],
-  ["src/app/dashboard/casa.tsx", 'data-chip="modalidad"', "la casa · la modalidad"],
-  ["src/app/dashboard/casa.tsx", 'data-chip="pie"', "la casa · el pie"],
-  ["src/app/dashboard/casa.tsx", 'data-chip="plazo"', "la casa · el plazo"],
   ["src/app/dashboard/bienvenida.tsx", '{pref.tipologia || "Tipología"}', "la bienvenida · tipología"],
   ["src/app/dashboard/bienvenida.tsx", '{pref.comuna || "Comuna"}', "la bienvenida · comuna"],
   ["src/app/dashboard/bienvenida.tsx", "{ESTAS_DENTRO.modalidad[pref.modalidad]}", "la bienvenida · modalidad"],
@@ -192,14 +191,15 @@ export function runCargaTier(): { hard: number } {
   const dentro = codigo("src/components/lo-que-sigue/EstasDentro.tsx");
   if (!/setGuardando\(campo\);\s*const ok = await guardar\(ctx\.analysisId, \{ \[campo\]: valor \}\);\s*setGuardando\(null\);/.test(dentro) || !/setGuardando\("horizonte"\);\s*const ok = await guardar\(ctx\.analysisId, \{ horizonte: h \}\);\s*setGuardando\(null\);/.test(dentro)) F("3 · «Estás dentro» no marca el chip que se guarda alrededor del fetch");
   const casa = codigo("src/app/dashboard/casa.tsx");
-  if (!/setGuardando\(Object\.keys\(cuerpo\)\.join\("\+"\)\);\s*setError\(!\(await guardar\(cuerpo\)\)\);\s*setGuardando\(null\);/.test(casa)) F("3 · el perfil de la casa no marca el chip que se guarda alrededor del fetch");
-  if (!/const preguntar = p\.horizonte == null \|\| cambiandoHorizonte \|\| guardando === "horizonte";/.test(casa)) F("3 · los chips del «cuándo» de la casa desaparecen al toque: el aro no se ve nunca (QA 22-oct)");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · «Guardar» se marca ocupado alrededor del único PUT del perfil.
+  if (!/setEstado\("guardando"\);\s*const ok = await guardar\(cambios\);\s*if \(!ok\) \{ setEstado\("error"\); return; \}/.test(casa)) F("3 · el perfil de la casa no marca «Guardar» alrededor del fetch");
   const bienvenida = codigo("src/app/dashboard/bienvenida.tsx");
   if (!/setGuardando\(campo\);\s*setError\(!\(await guardar\(perfil\.analysisId, \{ \[campo\]: valor \}\)\)\);\s*setGuardando\(null\);/.test(bienvenida)) F("3 · los chips de la bienvenida no marcan el que se guarda");
   const deptos = codigo("src/app/deptos/deptos-cliente.tsx");
   // ⚠ ACTA (23-oct-2026) · los tres campos del perfil de la casa: el que se guarda se marca con `ocupado`, derivado del mismo
   // `guardando` que marcan los chips, y el componente lo pone en el nombre del campo (chipOcupado).
-  if (!/const campoOcupado: CampoBusqueda \| null = guardando === "comunas" \? "comuna" : guardando === "dormitorios" \? "tipologia" : guardando === "precioMinUf\+precioMaxUf" \? "rango" : null;/.test(casa) || !/<CamposBusqueda multiple [^>]*ocupado=\{campoOcupado\}/.test(casa)) F("3 · el perfil de la casa no le dice a los tres campos cuál se está guardando");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · los tres campos ya no se guardan solos: el ocupado es «Guardar»; los campos no llevan aro.
+  if (/ocupado=\{campoOcupado\}|campoOcupado/.test(casa) || !/<CamposBusqueda multiple [^>]*onChange=\{cambiarCampo\} ids="casa" \/>/.test(casa)) F("3 · los tres campos del perfil de la casa volvieron a guardarse solos");
   const campos = codigo("src/components/deptos/CamposBusqueda.tsx");
   if (!/\{\.\.\.chipOcupado\(ocupado === "comuna"\)\}/.test(campos) || !/\{\.\.\.chipOcupado\(ocupado === "tipologia"\)\}/.test(campos) || !/\{\.\.\.chipOcupado\(ocupado === "rango"\)\}/.test(campos)) F("3 · los tres campos no marcan el que se guarda con su nombre");
   const post = codigo("src/components/lo-que-sigue/HorizontePostPago.tsx");

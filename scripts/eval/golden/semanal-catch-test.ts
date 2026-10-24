@@ -284,7 +284,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!hNeg.includes(", uno de ellos si lo negocias.") || hProp.includes("si lo negocias.")) F("10 · la frase de arriba no dice que uno resulta si lo negocias");
     if (!hNeg.includes(SEMANAL.vecinas) || hProp.includes(SEMANAL.vecinas)) F("10 · no se dice que se sumaron comunas vecinas (o se dice sin que las haya)");
     const lista = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-    if (!/\{it\.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">\{MARCA_NEGOCIAR\}<\/p>\}/.test(lista)) F("10 · /semanal no marca el Ajustar negociable");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · las tarjetas son las .sel-* del mockup; la marca va en .sel-estado.
+    if (!/\{it\.tramo === "negociar" && <p className="sel-estado" data-semanal="negociar">\{MARCA_NEGOCIAR\}<\/p>\}/.test(lista)) F("10 · /semanal no marca el Ajustar negociable");
     for (const t of [SEMANAL.vecinas, MARCA_NEGOCIAR, SEMANAL.intro(3, base.busca, "20", 30, 2)]) if (VOSEO.test(t) || /oportunidad|portafolio|exclusiv/i.test(t)) F(`10 · voseo o palabra vedada: «${t}»`);
   }
 
@@ -407,7 +408,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const pg = sinComentarios(leer("src/lib/guia/seleccion-pagina-servidor.ts"));
     if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id, userId, items: sel\.items \}, cfg\)/.test(pg)) F("13 · /semanal no está viva");
     const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-    if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el reemplazo lleva el número de la posición del caído.
+    if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo, f\.reemplazo\.avisoId, i \+ 1\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
     // ⚠ ACTA (21-oct-2026) · antes de pedir la página de nuevo se cierra el aviso, que ahora queda abierto mientras genera.
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ setConfirmar\(null\); router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
     for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);
@@ -498,7 +500,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
       || !/\.from\("analisis"\)\.select\("id, tipo_analisis, aviso:input_data->origenAviso->>avisoId"\)\.eq\("user_id", userId\)/.test(vis)) F("15 · lo visto no se lee de los correos de las últimas cuatro semanas y de lo analizado");
     // La página: la marca y, en renta larga, «Ya lo analizaste · Ver informe».
     const pg = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-    if (!/\{it\.visto && !\(it\.visto === "analizado" && informeDe\(it\)\) && <p className="guia-negociar" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg)) F("15 · /semanal no marca lo ya visto");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · «Ya lo analizaste» ya es la fila compacta (tier PUERTA-B-DASHBOARD §4); las otras marcas, en .sel-estado.
+    if (!/\{it\.visto && it\.visto !== "analizado" && <p className="sel-estado" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg) || !/if \(informe\) return filaAnalizada\(it, informe, n\);/.test(pg)) F("15 · /semanal no marca lo ya visto");
     // ⚠ ACTA (21-oct-2026) · en renta larga también se lee en vivo lo ya analizado (\`informes\`, del servidor), no solo lo que
     // traía el depto al armarse (tier PUERTA-B-RECORRIDO §6).
     if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");

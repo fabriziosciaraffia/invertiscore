@@ -67,7 +67,8 @@ export const LISTA_BLANCA_PRECIO_PACK: Readonly<Record<string, string>> = {
   // cualquier puerta: en sus primeras 24 horas, el pop-up sin saldo de la selección lo ofrece (goal, punto 5) y la casa
   // dice el mismo precio en el banner y en la línea del saldo (respuesta del 21-oct: «El mismo $14.990»).
   "src/lib/guia/compra-desde-depto.ts": "el pop-up sin saldo de la selección y su botón del final, en las 24 horas de la cuenta",
-  "src/app/dashboard/casa-copy.ts": "el banner y la línea del saldo de la casa, en las 24 horas de la cuenta (packDeCasa)",
+  "src/app/dashboard/casa-copy.ts": "la oferta roja del dashboard mientras el ticket vive (24-oct-2026, mockup 3b)",
+  "src/lib/guia/aviso-analizar.ts": "la tarjeta roja del ticket en el pop-up sin saldo (24-oct-2026, mockup A)",
 };
 const PRECIO_PACK = [
   /\b14[.\s]?990\b/,
@@ -215,7 +216,9 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
 
   // ── 7 · el precio del pack, solo en el ticket ──────────────────────────────
   {
-    if (Object.keys(LISTA_BLANCA_PRECIO_PACK).length !== 14) F("7 · la lista blanca del precio del pack cambió (agregar un lugar es una decisión de Fabrizio, no del código)");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el goal pide la tarjeta roja del ticket dentro del pop-up sin saldo («3 análisis por
+    // $14.990 · $9.990 $4.997 cada uno»): el precio entra a lib/guia/aviso-analizar.ts (decisión de Fabrizio en el goal). 15.
+    if (Object.keys(LISTA_BLANCA_PRECIO_PACK).length !== 15) F("7 · la lista blanca del precio del pack cambió (agregar un lugar es una decisión de Fabrizio, no del código)");
     for (const f of Object.keys(LISTA_BLANCA_PRECIO_PACK)) if (!existsSync(join(RAIZ, f))) F(`7 · la lista blanca nombra un archivo que no existe: ${f}`);
     if (!PRECIO_PACK.some((re) => re.test(sc("src/components/lo-que-sigue/TicketPack.tsx")))) F("7 · el barrido no ve el precio ni en el ticket (el patrón se rompió)");
     for (const f of archivosSrc()) {

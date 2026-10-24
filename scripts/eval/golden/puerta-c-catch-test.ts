@@ -254,7 +254,7 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
         || !/if \(puerta === "B"\) waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(alta)
         || pos(alta, "vincularInvitacion(") > pos(alta, "guardarAtribucion(")) F("2 · /deptos y la página del invitado no cobran el código antes de la puerta B (o la invitada queda en B)");
       if (!/if \(cookieInv\) await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\);\s*waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "A", puerta_detalle: "ticket"/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts")))) F("2 · el ticket no cobra el código");
-      if (!/if \(cookieInv\) \{\s*await vincularInvitacion\(createServiceClient\(\), \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("2 · el dashboard no es red del código");
+      if (!/if \(cookieInv\) \{\s*await vincularInvitacion\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx"))) || !/const admin = createServiceClient\(\);/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("2 · el dashboard no es red del código");
       if (!/if \(nueva\) await fijarPuertaReferido\(admin, p\.userId, `\$\{PREFIJO_DETALLE_INVITACION\}\$\{invitacion\.codigo\}`\);/.test(leer("src/lib/referido-servidor.ts"))) F("2 · la cuenta invitada no queda con la puerta C");
       if (!/sb\.rpc\("fijar_puerta_referido", \{ p_user_id: userId, p_detalle: detalle\.slice\(0, 60\) \}\)/.test(leer("src/lib/attribution.ts"))) F("2 · la puerta C del referido no pasa por la RPC que pisa");
     }
@@ -364,7 +364,8 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
 
       // «Invita a alguien»: el dashboard (las dos casas), el menú de compartir y el pie del semanal.
       const dash = sinComentarios(leer("src/app/dashboard/page.tsx"));
-      if ((dash.match(/<InvitaAlguien \/>/g) ?? []).length !== 2) F("4 · el dashboard no tiene «Invita a alguien» (en las dos casas)");
+      // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · una sola casa, con «Invita a alguien» en una fila.
+      if ((dash.match(/<InvitaAlguien variante="fila" \/>/g) ?? []).length !== 1) F("4 · el dashboard no tiene «Invita a alguien»");
       const sb = sinComentarios(leer("src/components/chrome/ShareButton.tsx"));
       if (!/fetch\("\/api\/invitacion"/.test(sb) || !/data-compartir="invitar"/.test(sb) || /if \(typeof navigator !== "undefined" && navigator\.share\) \{\s*try \{\s*await navigator\.share\(\{ title, text, url \}\);\s*return;/.test(sb)) F("4 · al compartir un informe no aparece «Invita a alguien» (o el teléfono se lo salta)");
       // Vistos en el QA a 390 (16-oct-2026): el menú colgado del botón se salía por la izquierda (ahora, en el teléfono, al

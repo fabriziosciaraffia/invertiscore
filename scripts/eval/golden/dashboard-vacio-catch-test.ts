@@ -54,7 +54,8 @@ export function runDashboardVacioTier(): { hard: number } {
   if (!/\{yendo \? BIENVENIDA\.cargando : BIENVENIDA\.boton\(gratis\)\}/.test(b)) F("5 · el botón no depende de gratis");
   const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
   if (!/\.select\("onboarding_completed, welcome_credit_used"\)/.test(pag) || !/const gratis = primerAnalisisGratis\(creditsRow\);/.test(pag)) F("5 · la página no lee el crédito de bienvenida para decidir «gratis»");
-  if ((pag.match(/<Bienvenida nombre=\{firstName \|\| null\} gratis=\{gratis\} perfil=\{perfil\}/g) ?? []).length !== 2) F("5 · las dos ramas vacías del dashboard no usan la bienvenida con gratis y perfil");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · una sola rama vacía: la bienvenida va a quien no tiene informes ni perfil ni selección, con `onboarding` según la flag.
+  if ((pag.match(/<Bienvenida nombre=\{firstName \|\| null\} gratis=\{gratis\} perfil=\{perfil\} onboarding=\{!creditsRow\?\.onboarding_completed\}/g) ?? []).length !== 1 || !/if \(informes === 0 && !tienePerfil && !hayDeptos\(sel\)\) \{/.test(pag)) F("5 · la rama vacía del dashboard no usa la bienvenida con gratis y perfil (solo sin informes, perfil ni selección)");
   // 6
   if (BIENVENIDA.titular !== "Esto es lo que Franco hace por ti.") F("6 · el titular no es «Esto es lo que Franco hace por ti.»");
   if (BIENVENIDA.hace.length !== 2 || BIENVENIDA.hace[0]?.titulo !== "Analiza tus deptos.") F("6 · no son los dos bloques, o el primero no es «Analiza tus deptos.»");

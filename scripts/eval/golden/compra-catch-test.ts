@@ -85,8 +85,12 @@ export function runCompraTier(): { hard: number } {
   // Quien ya tiene el plan no lo vuelve a contratar: «Ya tienes el Plan Franco» y su cuenta.
   if (!/const yaTienePlan = props\.conPlan && !product\.unico;/.test(cli) || !/\{yaTienePlan \? \(\s*<div data-compra="ya-plan">/.test(cli)) F("1 · a quien ya tiene el plan se le ofrece pagarlo de nuevo");
   // Plana, en el diseño actual: sin tarjeta, sin el rojo de antes, sin mono; Inter y serif solo en el título.
-  if (/rounded-2xl border|shadow|#C8323C|font-mono|uppercase|font-body|BASE_FEATURES|Continuar al pago|Confirma tu compra/.test(pag + cli)) F("1 · la pantalla de compra vuelve a la tarjeta, al rojo, al mono o a la lista de funciones de antes");
-  if (!/className=\{`mt-5 \$\{PLANO\.titulo\}`\} data-compra="producto">\{product\.nombre\}<\/h1>/.test(cli) || !/data-compra="precio"/.test(cli) || !/<p className=\{PLANO\.bajada\} data-compra="incluye">\{product\.incluye\}<\/p>/.test(cli)) F("1 · no están el producto, el precio y lo que incluye en una línea");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · con el pack del ticket vivo, arriba va «Solo para cuentas nuevas» en mayúsculas
+  // chicas (la única del archivo) y «Vence mañana 11:17»; el precio lleva el de tres tachado; la frase de lo que incluye dice
+  // el depto («El primero, para X, se genera al pagar.»). Tier PUERTA-B-DASHBOARD §7.
+  if (/rounded-2xl border|shadow|#C8323C|font-mono|font-body|BASE_FEATURES|Continuar al pago|Confirma tu compra/.test(pag + cli)) F("1 · la pantalla de compra vuelve a la tarjeta, al rojo, al mono o a la lista de funciones de antes");
+  if ((cli.match(/\buppercase\b/g) ?? []).length !== 1 || !/data-compra="ticket">\s*<span className="text-\[11px\] font-semibold uppercase/.test(cli)) F("1 · mayúsculas fuera de la etiqueta del ticket");
+  if (!/className=\{`\$\{esPack && packCreadoAt && !packVencido \? "mt-3" : "mt-5"\} \$\{PLANO\.titulo\}`\} data-compra="producto">\{product\.nombre\}<\/h1>/.test(cli) || !/data-compra="precio"/.test(cli) || !/<p className=\{PLANO\.bajada\} data-compra="incluye">\s*\{product\.incluye\}/.test(cli)) F("1 · no están el producto, el precio y lo que incluye en una línea");
   if (!/\bfont-heading\b/.test(PLANO.titulo) || /font-heading/.test(PLANO.bajada + PLANO.campo + PLANO.principal + PLANO.nota) || !/rounded-full/.test(PLANO.principal) || !/\bh-12\b/.test(PLANO.campo) || !/text-\[16px\]/.test(PLANO.campo)) F("1 · las clases planas no son: serif solo en el título, píldora, campo de 48 y 16 px");
 
   // ── 2 · LA VUELTA DE FLOW, UN SOLO BOTÓN ───────────────────────────────────
@@ -117,7 +121,7 @@ export function runCompraTier(): { hard: number } {
   // (principal) y el suelto (debajo), los dos a /checkout con el depto (`compras`, lib/guia/compra-desde-depto.ts; tier
   // PUERTA-B-RECORRIDO §5). La guía sigue con su `rutaCompra`. Las dos ramas caen en la pantalla de compra.
   const comprar = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-  if (!/const comprar = \(href: string\) => \{ iniciarCarga\(claveActual\(\)\); router\.push\(href\); \};/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(/.test(aviso) || !/secundario=\{sin && compras \? \{ label: compras\.suelto\.label, onClick: \(\) => comprar\(compras\.suelto\.href\) \} : undefined\}/.test(aviso)
+  if (!/const comprar = \(href: string\) => \{ iniciarCarga\(claveActual\(\)\); router\.push\(href\); \};/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(/.test(aviso) || !/secundario=\{sin && compras \? \{ label: compras\.suelto\.label, onClick: \(\) => comprar\(compras\.suelto\.href\), boton: true \} : undefined\}/.test(aviso)
     || !rutaTres("semanal", { volver: "/dashboard?t=x" }).startsWith("/checkout?product=tres_analisis") || !RUTA_SUELTO_SEMANAL.startsWith("/checkout?") || !/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra/.test(comprar)) F("3 · «Analizar este» sin saldo no cae en la pantalla de compra");
 
   // ── 4 · GRATIS ─────────────────────────────────────────────────────────────

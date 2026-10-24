@@ -151,7 +151,8 @@ export function runChipVeredictoTier(): { hard: number } {
     const onb = sinComentarios(leer("src/app/dashboard/bienvenida.tsx")); // la bienvenida reemplazó a onboarding-client el 29-sep-2026
     for (const v of ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"]) if (!onb.includes(`<ChipVeredicto v="${v}" />`)) F(`7 · el onboarding no muestra ${v} con ChipVeredicto`);
     const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
-    if ((pag.match(/<ChipVeredictoTokens \/>/g) ?? []).length < 3) F("7 · la página del dashboard no monta el CSS del chip en sus tres ramas (onboarding, vacía, con análisis)");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el dashboard tiene dos ramas (la bienvenida y la casa única).
+    if ((pag.match(/<ChipVeredictoTokens \/>/g) ?? []).length < 2) F("7 · la página del dashboard no monta el CSS del chip en sus dos ramas (la bienvenida y la casa)");
     for (const p of ALCANCE.filter((x) => x.startsWith("src/app/dashboard/"))) {
       const s = sinComentarios(leer(p));
       if (/\bVERDICT_STYLE\b|\bVerdictBadge\b|--franco-v-(buy|adjust|avoid)/.test(s)) F(`7 · ${p}: volvió la paleta propia del dashboard para el veredicto`);

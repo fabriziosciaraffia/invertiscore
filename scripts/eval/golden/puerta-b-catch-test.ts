@@ -176,7 +176,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!v.ok) F("1 · una elección válida no valida");
       else {
         const p = perfilManualDeElecciones(v);
-        if (p.pie_pct !== 20 || p.plazo_anios !== 25 || p.precio_min_uf !== 3000 || p.precio_max_uf !== 4000 || JSON.stringify(p.comunas) !== '["Ñuñoa"]' || JSON.stringify(p.dormitorios) !== "[2]" || p.modalidad !== "ltr")
+        // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · la modalidad NO se escribe por defecto: /deptos ya no la pregunta y
+        // el perfil del dashboard se la pregunta a la cuenta nueva («¿Cómo lo arriendas?»); solo una elección explícita de
+        // renta corta se guarda (tier PUERTA-B-DASHBOARD §5). Sin respuesta, todo sigue en renta larga.
+        if (p.pie_pct !== 20 || p.plazo_anios !== 25 || p.precio_min_uf !== 3000 || p.precio_max_uf !== 4000 || JSON.stringify(p.comunas) !== '["Ñuñoa"]' || JSON.stringify(p.dormitorios) !== "[2]" || p.modalidad !== null)
           F(`1 · la cuenta no nace con el perfil de los chips (pie 20 %, 25 años, el rango): ${JSON.stringify(p)}`);
       }
       if (PIE_DEPTOS !== 20 || PLAZO_DEPTOS !== 25) F("1 · el estándar no es pie 20 % y 25 años");
@@ -341,7 +344,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const claim = sinComentarios(leer("src/app/api/analisis/claim/route.ts"));
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(claim) || claim.indexOf("asegurarRegaloDeAlta(") > claim.indexOf("ensureWelcomeEmail(")) F("5 · el reclamo después del código no da el regalo (o lo da después de la bienvenida)");
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(sinComentarios(leer("src/app/auth/callback/route.ts")))) F("5 · el enlace del correo o Google no dan el regalo");
-      if (!/await asegurarRegaloDeAlta\(createServiceClient\(\), \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
+      if (!/const admin = createServiceClient\(\);\s*await asegurarRegaloDeAlta\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
       const acc = sinComentarios(leer("src/lib/access.ts"));
       if (!/if \(!bienvenidaVigente\(creadaAt\)\) \{\s*bienvenida = false;\s*await asegurarRegaloDeAlta\(supabase, \{ userId, creadaAt, huella: \{ dispositivo: null, ip: null \} \}\);/.test(acc)) F("5 · el cobro todavía regala la bienvenida a una cuenta nueva");
       // Desde la puerta C (16-oct-2026) el alta también sirve a la página del invitado: la puerta es la B salvo que la cuenta

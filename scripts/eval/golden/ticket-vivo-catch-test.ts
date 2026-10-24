@@ -22,9 +22,10 @@ import React, { createElement, type ReactNode, type ReactElement, type FC } from
 import { renderToStaticMarkup } from "react-dom/server";
 // Los componentes se compilan con el JSX clásico fuera de Next: React tiene que estar en el global (como en PUERTA-B-RECORRIDO).
 (globalThis as { React?: unknown }).React = React;
-import { bloqueDeArriba } from "../../../src/lib/casa-arriba";
+import { ofertaEnCasa } from "../../../src/lib/casa/reglas";
 import { estadoSaldo } from "../../../src/lib/casa-saldo";
-import { packDeCasa } from "../../../src/app/dashboard/casa-copy";
+import { CASA } from "../../../src/app/dashboard/casa-copy";
+import { hrefOfertaCasa } from "../../../src/app/dashboard/oferta-casa";
 import { TICKET_PACK } from "../../../src/lib/lo-que-sigue/copy";
 import { cuandoVenceCorto } from "../../../src/lib/lo-que-sigue/oferta-pack";
 import * as compra from "../../../src/lib/guia/compra-desde-depto";
@@ -82,25 +83,23 @@ export function runTicketVivoTier(): { hard: number } {
     const con = estadoSaldo({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: true });
     const regalo = estadoSaldo({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: "2026-11-16T12:00:00Z", todoSinCaducidad: false });
     const plan = estadoSaldo({ disponibles: 0, plan: true, suscripcion: true, regaloRestante: 0, regaloVence: null, todoSinCaducidad: true });
-    const b = (saldo: typeof sin, ticket: boolean) => bloqueDeArriba({ seleccion: null, saldo, regaloRestante: saldo.tipo === "regalo" ? 1 : 0, regaloVence: null, ticket });
-    if (b(con, true).tipo !== "pack") F("2 · con saldo y el ticket vivo, arriba no va la tarjeta de la oferta");
-    if (b(regalo, true).tipo !== "pack") F("2 · con el regalo sin usar y el ticket vivo, arriba no va la tarjeta de la oferta");
-    if (b(con, false).tipo !== "analizar" || b(regalo, false).tipo !== "regalo") F("2 · sin ticket, con saldo, arriba cambia (tiene que seguir como antes)");
-    if (b(plan, true).tipo === "pack") F("2 · con el plan, el ticket manda arriba (analizar no descuenta)");
-    if (b(sin, true).tipo !== "pack" || b(sin, false).tipo !== "pack") F("2 · sin saldo, arriba no va el pack");
-    if (bloqueDeArriba({ seleccion: [{ modalidad: "ltr", titulo: "x", texto: "y", deptos: 1, conteos: [] }], saldo: con, regaloRestante: 0, regaloVence: null, ticket: true }).tipo !== "seleccion") F("2 · el ticket le gana a la selección de la semana");
-    const cuenta = { cuentaCreadaAt: hace(5) };
-    const conSaldo = packDeCasa(true, cuenta), sinSaldo = packDeCasa(true), sinTicket = packDeCasa(false, cuenta);
-    if (conSaldo.boton !== "3 más por $14.990") F(`2 · con saldo la tarjeta no dice «3 más por $14.990»: ${conSaldo.boton}`);
-    if (!conSaldo.bajada.startsWith("Hoy, 3 más por $14.990 · vence ") || conSaldo.bajadaPrimero !== conSaldo.bajada) F(`2 · con saldo la bajada no es la línea del ticket: ${conSaldo.bajada}`);
-    if (conSaldo.href !== sinSaldo.href || new URL(conSaldo.href, "https://x.cl").searchParams.get("product") !== "pack3") F("2 · con saldo la tarjeta no compra el pack del ticket");
-    if (sinSaldo.boton !== "3 análisis · $14.990" || sinTicket.boton === "3 más por $14.990") F("2 · sin saldo (o sin ticket) la tarjeta cambió");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner con «3 más por $14.990» y la línea del saldo se
+    // retiraron: con el ticket vivo, la casa muestra la OFERTA ROJA de una fila —«Solo para cuentas nuevas · vence mañana
+    // 11:17 · 3 análisis por $14.990 · Aprovechar»—, CON O SIN SALDO (lib/casa/reglas.ts › ofertaEnCasa; tier
+    // PUERTA-B-DASHBOARD §1), nunca con el plan; «Aprovechar» compra el pack del ticket y vuelve al dashboard.
+    const o = (saldo: typeof sin, ticket: boolean) => ofertaEnCasa({ ticket, saldo });
+    if (!o(con, true)) F("2 · con saldo y el ticket vivo, no va la oferta");
+    if (!o(regalo, true)) F("2 · con el regalo sin usar y el ticket vivo, no va la oferta");
+    if (o(con, false) || o(regalo, false) || o(sin, false)) F("2 · sin ticket va la oferta");
+    if (o(plan, true)) F("2 · con el plan va la oferta (analizar no descuenta)");
+    if (!o(sin, true)) F("2 · sin saldo y con el ticket vivo, no va la oferta");
+    if (CASA.oferta.titulo !== "3 análisis por $14.990" || CASA.oferta.boton !== "Aprovechar" || !CASA.oferta.kicker("mañana 11:17").endsWith("vence mañana 11:17")) F(`2 · la oferta no dice «3 análisis por $14.990 · Aprovechar» ni hasta cuándo: ${CASA.oferta.titulo}`);
+    if (new URL(hrefOfertaCasa(), "https://x.cl").searchParams.get("product") !== "pack3" || new URL(hrefOfertaCasa(), "https://x.cl").searchParams.get("volver") !== "/dashboard") F("2 · «Aprovechar» no compra el pack del ticket de vuelta al dashboard");
     const pag = codigo("src/app/dashboard/page.tsx");
     if (!/const ticket = sel\?\.ticket \?\? await ticketDeCuentaDisponible\(admin, user\);/.test(pag) || /saldo\.tipo === "sin" \? \(sel\?\.ticket/.test(pag)) F("2 · la página decide el ticket solo sin saldo");
-    if (!/const ticketConSaldo = ticket && saldo\.tipo !== "sin" && user\.created_at \? \{ cuentaCreadaAt: user\.created_at \} : null;/.test(pag)) F("2 · la página no arma el ticket con saldo con la fecha de la cuenta");
-    if ((pag.match(/ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/g) ?? []).length !== 4 || (pag.match(/regaloVence: datosSaldo\.regaloVence, ticket \}\)/g) ?? []).length !== 2) F("2 · el ticket con saldo no llega a la tarjeta y al saldo de las dos casas, o no entra a bloqueDeArriba");
-    const casa = codigo("src/app/dashboard/casa.tsx");
-    if (!/const lineaTicket = ticket && ticketConSaldo && estado\.tipo !== "sin" && estado\.tipo !== "plan" && arriba !== "pack" \? pack\.bajada : null;/.test(casa) || !/<EnlaceCarga href=\{pack\.href\} className=\{enlace\} data-casa="ticket-con-saldo">\{lineaTicket\}<\/EnlaceCarga>/.test(casa)) F("2 · la línea del saldo no ofrece el ticket con saldo cuando la tarjeta de arriba es otra");
+    if (!/\{ofertaEnCasa\(\{ ticket, saldo \}\) && user\.created_at && <OfertaCasa cuentaCreadaAt=\{user\.created_at\} \/>\}/.test(pag)) F("2 · la oferta no sale de ofertaEnCasa con la fecha de la cuenta");
+    const oferta = codigo("src/app/dashboard/oferta-casa.tsx");
+    if (!/\{CASA\.oferta\.kicker\(cuandoVenceCorto\(cuentaCreadaAt, ahora\)\)\}/.test(oferta) || !/<EnlaceCarga href=\{hrefOfertaCasa\(\)\} className="ca-oferta-btn" data-casa="aprovechar">\{CASA\.oferta\.boton\}<\/EnlaceCarga>/.test(oferta)) F("2 · la oferta no dice hasta cuándo o «Aprovechar» no es su botón");
   } catch (e) {
     F(`2 · explotó: ${e instanceof Error ? e.message : String(e)}`);
   }

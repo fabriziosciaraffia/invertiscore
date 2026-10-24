@@ -72,8 +72,11 @@ export function runRecorrido22OctTier(): { hard: number } {
       if (d !== esperado) F(`2 · ${que}: «${d}» (esperado «${esperado}»)`);
     }
     if (ren.textoRenueva(new Date("2026-10-22T15:00:00Z")) !== "Se renueva el lunes 26.") F(`2 · el texto no es «Se renueva el lunes 26.»: ${ren.textoRenueva(new Date("2026-10-22T15:00:00Z"))}`);
-    const casa = codigo("src/app/dashboard/casa.tsx");
-    if (!/<p className="ca-banda-s">\{CASA_ARRIBA\.seleccionBajada\} <span data-casa="renueva">\{textoRenueva\(\)\}<\/span><\/p>/.test(casa)) F("2 · «Tu selección de esta semana» del dashboard no dice cuándo se renueva");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·el banner se retiró: la línea bajo «Tu selección de esta
+    // semana» dice el perfil y cuándo se renueva (lib/casa/reglas.ts › lineaRenueva: el lunes, o todos los días con «Quiero
+    // comprar ya»; tier PUERTA-B-DASHBOARD §1 y §6).
+    const pag2 = codigo("src/app/dashboard/page.tsx");
+    if (!/lineaRenueva\(pb\.horizonte\)/.test(pag2) || !/data-casa="seleccion-linea">\{lineaSel\}/.test(pag2)) F("2 · «Tu selección de esta semana» del dashboard no dice cuándo se renueva");
     const correo = codigo("src/lib/email/correo-semanal.ts");
     if (!/if \(d\.renueva\) filas\.push\(parrafo\(`<span data-correo="renueva">\$\{escaparHtml\(d\.renueva\)\}<\/span>`\)\);/.test(correo)) F("2 · el correo no dice cuándo se renueva");
     for (const p of ["src/lib/guia/semanal-servidor.ts", "src/lib/guia/del-dia-servidor.ts"]) if (!/renueva: textoRenueva\(\),/.test(codigo(p))) F(`2 · ${p} no le pasa la renovación al correo`);
@@ -85,11 +88,13 @@ export function runRecorrido22OctTier(): { hard: number } {
   }
 
   // ── 3 · qué cambia con el «cuándo» ──
-  const qc = (CASA.perfil as { queCambia?: Record<string, string> }).queCambia;
-  if (!qc) F("3 · falta CASA.perfil.queCambia");
-  else if (qc.ya !== "Te avisamos el mismo día que aparece uno." || qc.meses !== "Te llegan cada lunes." || qc.mirando !== "Te llegan cada lunes.") F(`3 · el copy de qué cambia no es el aprobado: ${JSON.stringify(qc)}`);
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · qué cambia con el «cuándo» lo dice la regla de la frecuencia
+  // bajo la pregunta, una sola frase para las tres respuestas (lib/guia/inmediato.ts › FRECUENCIA_COPY; tier
+  // PUERTA-B-DASHBOARD §5 y §6): «Con «Quiero comprar ya» te enviamos una selección todos los días. Con las otras, una
+  // selección cada lunes.»
+  if (CASA.perfil.nota !== "Con «Quiero comprar ya» te enviamos una selección todos los días. Con las otras, una selección cada lunes.") F(`3 · el copy de qué cambia no es el aprobado: ${CASA.perfil.nota}`);
   const casa = codigo("src/app/dashboard/casa.tsx");
-  if (!/data-casa="horizonte-respondido">[\s\S]{0,400}<span data-casa="horizonte-que-cambia">\{CASA\.perfil\.queCambia\[p\.horizonte as Horizonte\]\}<\/span>/.test(casa)) F("3 · el perfil del dashboard no dice qué cambia bajo la respuesta");
+  if (!/<p className="ca-nota" data-casa="nota-frecuencia">\{CASA\.perfil\.nota\}<\/p>/.test(casa)) F("3 · el perfil del dashboard no dice qué cambia bajo la pregunta");
 
   if (fallas.length) {
     console.log(`  ✗ RECORRIDO-22-OCT · ${fallas.length} falla(s):`);

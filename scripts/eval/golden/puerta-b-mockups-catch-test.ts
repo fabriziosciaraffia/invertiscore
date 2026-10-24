@@ -258,10 +258,12 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       const b = casa.valorDePerfil({ comunas: ["Ñuñoa"], dormitorios: [1, 2], precioMinUf: null, precioMaxUf: 4500 });
       if (b.valor.tipologia !== "" || b.tipologiaExtra !== "1 y 2 dormitorios" || b.rangoExtra?.chip !== "Hasta UF 4.500" || b.valor.rango !== b.rangoExtra.id) F(`5 · lo que el perfil tiene y no es una opción no se muestra como la actual: ${JSON.stringify(b)}`);
       const cs = codigo("src/app/dashboard/casa.tsx");
-      if (!/<CamposBusqueda multiple valor=\{campos\.valor\} tipologiaExtra=\{campos\.tipologiaExtra\} rangoExtra=\{campos\.rangoExtra\} ocupado=\{campoOcupado\} onChange=\{cambiarCampo\} ids="casa" \/>/.test(cs)
-        || !/if \(campo === "comuna"\) \{ if \(v\.comunas\.length > 0\) void cambiar\(\{ comunas: v\.comunas \}, \{ comunas: v\.comunas \}\); return; \}/.test(cs)
-        || !/if \(r\) void cambiar\(\{ precioMinUf: r\.min, precioMaxUf: r\.max \}, \{ precioMinUf: r\.min, precioMaxUf: r\.max \}\);/.test(cs) || /data-chip="rango"|data-chip="tope"|masComuna|masDormitorio/.test(cs))
-        F("5 · el perfil de la casa no usa los tres campos (o no guarda cada cambio)");
+      // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · los tres campos se despliegan con «Editar» y se guardan TODOS con «Guardar»
+      // (un PUT con lo que cambió, cambiosDelPerfil), no campo por campo (tier PUERTA-B-DASHBOARD §5).
+      if (!/<CamposBusqueda multiple valor=\{campos\.valor\} tipologiaExtra=\{campos\.tipologiaExtra\} rangoExtra=\{campos\.rangoExtra\} onChange=\{cambiarCampo\} ids="casa" \/>/.test(cs)
+        || !/if \(campo === "comuna"\) \{ setP\(\(x\) => \(\{ \.\.\.x, comunas: v\.comunas \}\)\); return; \}/.test(cs)
+        || !/if \(r\) setP\(\(x\) => \(\{ \.\.\.x, precioMinUf: r\.min, precioMaxUf: r\.max \}\)\);/.test(cs) || !/const ok = await guardar\(cambios\);/.test(cs) || /data-chip="rango"|data-chip="tope"|masComuna|masDormitorio/.test(cs))
+        F("5 · el perfil de la casa no usa los tres campos (o no los guarda con «Guardar»)");
       const cb = codigo("src/components/deptos/CamposBusqueda.tsx");
       if (!/\{multiple && \(extras\.length > 0 \|\| \(comuna && valor\.comunas\.length < MAX_COMUNAS_PERFIL\)\) && \(/.test(cb) || !/\{CAMPOS_COPY\.agregarComuna\}/.test(cb)) F("5 · con varias comunas, los campos no ofrecen «+ agregar otra comuna»");
     } catch (e) {

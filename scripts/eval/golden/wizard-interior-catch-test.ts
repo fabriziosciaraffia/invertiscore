@@ -247,7 +247,9 @@ export function runWizardInteriorTier(): { hard: number } {
   // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup D2; tier PUERTA-B-MOCKUPS §3) · el pop-up de la selección pinta en
   // Signal Red la tarjeta del CAMBIO de veredicto solo cuando EMPEORA («Con pie 10 % este depto da Ajustar.»: es atención
   // real) y el aviso de que no pudo recalcular (un error). Nada más del pop-up.
-  const PERMITIDOS = new Set([".wz-cta", ".wz-aviso.fuerte", '.wz-input[aria-invalid="true"]', ".wz-modal-o .ov.sosp", ".wz-fe.wz-ilumina", ".wz-error", ".av-fallo", '.av-cambio[data-empeora="1"]', '.av-cambio[data-empeora="1"] b']);
+  const PERMITIDOS = new Set([".wz-cta", ".wz-aviso.fuerte", '.wz-input[aria-invalid="true"]', ".wz-modal-o .ov.sosp", ".wz-fe.wz-ilumina", ".wz-error", ".av-fallo", '.av-cambio[data-empeora="1"]', '.av-cambio[data-empeora="1"] b',
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · sin saldo, «No te quedan análisis.» grande en rojo y la tarjeta roja del ticket (mockup A).
+    ".av-sin-titulo", ".av-ticket"]);
   let rojos = 0;
   for (const regla of css.split("}")) {
     const [sel, cuerpo] = regla.split("{");

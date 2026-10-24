@@ -33,12 +33,9 @@
 // ============================================================================
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CASA, packDeCasa } from "../../../src/app/dashboard/casa-copy";
-import { rutaTres } from "../../../src/lib/tres-analisis";
+import { CASA } from "../../../src/app/dashboard/casa-copy";
 import { ARCHIVO_COPY, buildHref, parseParams } from "../../../src/app/dashboard/dashboard-helpers";
 import { estadoSaldo } from "../../../src/lib/casa-saldo";
-import { CASA_ARRIBA, bloqueDeArriba } from "../../../src/lib/casa-arriba";
-import type { ResumenBloque } from "../../../src/lib/guia/seleccion-casa";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil, type FilaPerfilInforme } from "../../../src/lib/perfil-busqueda";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -89,12 +86,9 @@ export function runCasaTier(): { hard: number } {
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · los regalos son tres (registrarse, reactivación y el viejo de los 14 días):
   // el vencimiento sale de sus lotes, cualquiera de las tres fuentes (regalo-alta.ts › FUENTES_REGALO).
   if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && FUENTES_REGALO\.has\(g\.source\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
-  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el regalo dice cuándo vence en el banner de arriba y, si arriba manda
-  // otra cosa, en el saldo plano.
-  {
-    const c2 = sinComentarios(leer("src/app/dashboard/casa.tsx"));
-    if (!c2.includes('{bloque.vence ? `${textoVence(bloque.vence)} ` : ""}{CASA_ARRIBA.regalo.bajada}') || !c2.includes('estado.tipo === "regalo" ? `${CASA.regalo.titulo}${estado.vence ? ` ${textoVence(estado.vence)}` : ""}`')) F("2 · el dashboard no dice cuándo vence el regalo");
-  }
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner y el saldo plano se retiraron: la píldora del
+  // saludo dice «1 análisis de regalo» (lib/casa/reglas.ts › pildoraSaldo, tier PUERTA-B-DASHBOARD §1) y cuándo vence lo
+  // dice «Estás dentro» (tier PUERTA-B-MOCKUPS). El vencimiento sigue saliendo del lote (arriba).
   const con = e({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
   if (con.tipo !== "con" || con.n !== 3 || !con.noVencen) F("2 · con 3 (uno regalado) no es «con 3, no vencen»");
   const vence = e({ disponibles: 2, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false });
@@ -114,48 +108,30 @@ export function runCasaTier(): { hard: number } {
     [CASA.con.noVencen, "No vencen."],
     [CASA.guiaTitulo, "Te recomendamos empezar por estos"],
     [CASA.perfil.titulo, "Tu perfil de búsqueda"],
-    [CASA.perfil.bajada, "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil. Cámbialo cuando quieras."],
-    [CASA.perfil.bajadaComprador, "Cada semana te enviamos los deptos publicados que mejor resultan con tu perfil."],
   ];
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · la bajada del perfil («Cada semana te enviamos…») se
+  // fue con el perfil plegado; lo que cambia con el «cuándo» lo dice la regla de la frecuencia bajo la pregunta (tier
+  // PUERTA-B-DASHBOARD §5 y §6).
   for (const [real, esperado] of exactos) if (real !== esperado) F(`3 · «${real}» debía ser «${esperado}»`);
 
   // 4 · el pack de tres; el suelto debajo; el ticket no
   const casa = sinComentarios(leer("src/app/dashboard/casa.tsx"));
   const copy = sinComentarios(leer("src/app/dashboard/casa-copy.ts"));
   const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
-  // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket es de toda cuenta nueva por cualquier
-  // puerta: en sus primeras 24 horas (y sin el pack pagado) la casa ofrece el pack al precio del ticket, el mismo del
-  // pop-up de la selección, para que la pantalla no diga dos precios (packDeCasa; tier PUERTA-B-RECORRIDO §5). Lo que no
-  // cambia: a una cuenta de más de 24 horas, nunca el $14.990 — sin el ticket es el pack de tres de siempre, y el $14.990
-  // solo entra por packDeCasa(true), que la página decide con la cuenta (ticketDeCuentaDisponible).
-  const pk = packDeCasa(false), pt = packDeCasa(true);
-  if (pk.href !== rutaTres("dashboard", { volver: "/dashboard" }) || pk.boton !== CASA.sin.boton || pk.bajada !== CASA.sin.bajada || pk.bajadaPrimero !== CASA.sin.bajadaPrimero) F("4 · el botón del saldo vacío no compra el pack de tres");
-  if (new URL(pt.href, "https://x.cl").searchParams.get("product") !== "pack3" || pt.boton !== "3 análisis · $14.990" || !pt.bajada.includes("$14.990") || !pt.bajadaPrimero.includes("$14.990")) F("4 · en las primeras 24 horas de la cuenta, la casa no ofrece el pack al precio del ticket");
-  if ((casa.match(/const pack = packDeCasa\(ticket, ticketConSaldo\);/g) ?? []).length !== 2 || !/<EnlaceCarga href=\{pack\.href\} className="ca-banda-btn" data-casa="comprar-tres"[^>]*>\s*\{pack\.boton\}/.test(casa)) F("4 · el botón del saldo vacío no sale de packDeCasa");
-  // ⚠ ACTA (22-oct-2026, decisión de Fabrizio) · el ticket se decide con la cuenta, CON O SIN SALDO (una compra suelta no lo apaga); con saldo, la
-  // tarjeta y la línea del saldo dicen «3 más por $14.990» y hasta cuándo (`ticketConSaldo`; tier TICKET-VIVO).
-  if (!/const ticket = sel\?\.ticket \?\? await ticketDeCuentaDisponible\(admin, user\);/.test(pag) || (pag.match(/ ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/g) ?? []).length !== 4) F("4 · la casa no decide el ticket con la cuenta (o no se lo pasa al banner y al saldo de las dos casas)");
-  if (!/export const RUTA_SUELTO = "\/checkout\?product=single";/.test(casa) || !/<EnlaceCarga href=\{RUTA_SUELTO\}[^>]*data-casa="comprar-suelto">\s*\{CASA\.sin\.suelto\}/.test(casa)) F("4 · debajo del pack no está el suelto");
-  const fueraDelPack = copy.replace(/^import .*$/gm, "").replace(/export function packDeCasa\([\s\S]*?\n\}\n/, "");
-  for (const [n, s] of [["casa.tsx", casa], ["casa-copy.ts", fueraDelPack], ["page.tsx", pag.replace(/\.eq\("product", "pack3"\)/, "")]] as const) {
-    if (/pack3|14\.990|14990|PACK_/i.test(s)) F(`4 · el ticket de $14.990 aparece en la casa fuera de packDeCasa (${n})`);
-  }
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner del pack, la línea del saldo con el suelto y
+  // packDeCasa se retiraron: sin saldo, la píldora dice «Sin análisis · Ver planes» y el pack lo ofrece el pop-up de
+  // «Analizar este» (el de tres, o el del ticket en las 24 horas de la cuenta: tier PUERTA-B-RECORRIDO §5); mientras el
+  // ticket viva, la oferta roja de una fila, con o sin saldo (tier PUERTA-B-DASHBOARD §1 y §2; tier TICKET-VIVO §2). Lo que
+  // sigue valiendo: el precio del suelto sale de SINGLE_PRICE y ningún precio va escrito a mano en el copy.
   if (!/fmtCLP\(SINGLE_PRICE\)/.test(copy)) F("4 · el precio del suelto no sale de SINGLE_PRICE");
+  if (/14\.990|14990|9\.990|9990|19\.990|19990/.test(copy.replace(/^import .*$/gm, ""))) F("4 · un precio escrito a mano en el copy de la casa");
 
   // 5 · el orden
-  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · la cuenta sin informes con su perfil a mano tiene su propia casa más arriba
-  // (selección del día, regalo y perfil): el orden se mide en la casa de quien tiene informes, desde su consulta.
-  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el orden es el de §9: arriba el banner, después «Invita a alguien» y,
-  // planos, el saldo, la guía del pack, el perfil y los informes. Las dos casas se miden en §9.
-  // ⚠ ACTA (17-oct-2026, goal «una sola lista») · «Continuar» salió: después de «Tus informes» va solo la lista (§11), y la
-  // casa con informes se mide desde los hermanos de los pares AMBAS (la consulta de «Continuar» ya no existe).
-  const casaConInformes = pag.slice(pag.indexOf("const groupIds = (todas ?? filasPagina)"));
-  const orden = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", "<SaldoPlano estado={saldo}", "<GuiaBusqueda analysisId={guiaCasa.analysisId}", "<PerfilBusquedaCasa", "{CASA.informes}", "<Archive"].map((t) => casaConInformes.indexOf(t));
-  if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · el orden de la casa no es banner → invitar → saldo → guía → perfil → informes (${orden.join(",")})`);
-  if (!/const guiaCasa = packOrigenId && packPerfil && hayGuia\(/.test(pag) || !/saldo\.tipo === "con"/.test(pag) || !/\.eq\("product", "pack3"\)\.eq\("status", "paid"\)/.test(pag)) F("5 · la selección no depende de un pack pagado con saldo y guía activa");
-  if (!/comprador=\{!!guiaCasa\}/.test(pag)) F("5 · la bajada del perfil no distingue al comprador");
-  const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
-  if (!/if \(!enCasa\) capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto/.test(guia) || !/enCasa \? <h2 className="guia-titulo">\{enCasa\.titulo\}<\/h2>/.test(guia)) F("5 · la guía en la casa cuenta como post-pago o no cambia su título");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el orden es el del mockup —saludo y píldora → oferta →
+  // «Invita a alguien» → la selección con su mapa y sus tarjetas → plegados, el perfil e «Informes realizados»— y lo mide
+  // el tier PUERTA-B-DASHBOARD §2, en la única casa (la cuenta con informes y la de /deptos ven la misma). La guía del
+  // pack ya no se monta en la casa (vive en la vuelta de Flow) y la bajada «comprador» se fue con ella.
+  if (/<GuiaBusqueda|guiaCasa|comprador=/.test(pag)) F("5 · la guía del pack o la bajada «comprador» volvieron a la casa");
 
   // 6 · lo editado
   const v1 = validarCambiosPerfil({ comunas: ["Ñuñoa", "Ñuñoa", "Macul"], precioMaxUf: 4499.6, horizonte: "ya", dormitorios: [2, 1] });
@@ -172,12 +148,16 @@ export function runCasaTier(): { hard: number } {
   const todos = [casa, copy].join("\n");
   if (/Te escribimos los lunes|los lunes/.test(todos)) F("7 · vuelve «Te escribimos los lunes…»");
   if (/oportunidad|portafolio|exclusivo/i.test(todos)) F("7 · aparece una vedada");
-  const frases = [...exactos.map((x) => x[0]), CASA.sin.titulo(4), CASA.plan.titulo, CASA.plan.bajada, CASA.perfil.cuando, ...Object.values(CASA.perfil.horizonte), ...Object.values(CASA.perfil.respondido), CASA.perfil.error];
+  const frases = [...exactos.map((x) => x[0]), CASA.sin.titulo(4), CASA.plan.titulo, CASA.plan.bajada, CASA.perfil.cuando, ...Object.values(CASA.perfil.horizonte), CASA.perfil.nota, CASA.perfil.proxima, CASA.perfil.error];
   for (const t of frases) if (VOSEO.test(t)) F(`7 · voseo: «${t}»`);
-  // ⚠ ACTA (17-oct-2026, goal «el dashboard vende») · el botón del pack pasó al banner, en papel sobre el material, como el
-  // botón del banner del informe y el de /deptos: el único rojo de la casa es el del error.
-  const rojos = casa.match(/signal-red/g) ?? [];
-  if (rojos.length !== 1 || !/role="alert" className="[^"]*text-\[var\(--signal-red\)\]/.test(casa)) F(`7 · hay rojo fuera del error (${rojos.length})`);
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el rojo de la casa es el del mockup y vive en casa.css: la
+  // oferta de la cuenta nueva (.ca-oferta), los pines de la selección (.ca-mapa-rojo), lo pendiente del perfil
+  // (.ca-etiqueta-roja, .ca-pendientes-k) y el error (.ca-error). En el TSX no hay rojo suelto.
+  if (/signal-red/.test(casa) || /signal-red/.test(pag)) F("7 · hay rojo escrito en el TSX de la casa (va en casa.css, en lo que el mockup pinta de rojo)");
+  const css7 = leer("src/app/dashboard/casa.css");
+  const rojosCss = (css7.match(/^[^\n{]*\{[^}]*signal-red/gm) ?? []).map((l) => l.slice(0, l.indexOf("{")).trim());
+  const permitidos = new Set([".ca-oferta", ".ca-oferta-btn", ".ca-mapa-rojo circle", ".ca-etiqueta-roja", ".ca-pendientes-k", ".ca-error", ".ca-error"]);
+  for (const sel of rojosCss) if (!permitidos.has(sel)) F(`7 · rojo en casa.css fuera de lo que el mockup pinta de rojo: ${sel}`);
   if (/font-mono|uppercase/.test(casa)) F("7 · la casa usa mono o mayúsculas");
 
   // 8 · «Tus informes» en el sistema nuevo
@@ -187,78 +167,20 @@ export function runCasaTier(): { hard: number } {
     if (/font-mono|\buppercase\b|tracking-\[0\.\d+em\]|JetBrains/.test(s)) F(`8 · ${f} vuelve al mono o a las mayúsculas espaciadas`);
     if (/>\s*(LARGA|CORTA|AMBAS|RETOMAR|FLUJO|ANÁLISIS)\s*</.test(s)) F(`8 · ${f} escribe un rótulo en mayúsculas`);
   }
-  if (!/data-casa="pagina" style=\{\{ fontFamily: "var\(--font-ui\), Inter/.test(pag)) F("8 · el dashboard no va en Inter");
+  if (!/const UI = "var\(--font-ui\), Inter/.test(pag) || !/data-casa="pagina" data-puerta=\{puerta \?\? undefined\} style=\{\{ fontFamily: UI \}\}/.test(pag)) F("8 · el dashboard no va en Inter");
   if (!/TEXTO_MODALIDAD\[label\]/.test(sinComentarios(leer("src/app/dashboard/dashboard-ui.tsx")))) F("8 · el chip de modalidad no dice «Larga/Corta/Ambas»");
 
   // 9 · la casa vende: una jerarquía según el estado
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner de arriba (bloqueDeArriba, BloqueArribaCasa,
+  // SaldoPlano, casa-arriba.ts) se retiró con el dashboard viejo: la jerarquía es la del mockup y la mide el tier
+  // PUERTA-B-DASHBOARD §2. Queda lo que sigue valiendo: «Invita a alguien» con su propio color (tinta en claro, papel en
+  // oscuro), el saludo sin h1 propio y el pie de los informes.
   {
-    const sel: ResumenBloque[] = [{ modalidad: "ltr", titulo: "Para arriendo tradicional", texto: "", deptos: 3, conteos: [{ v: "COMPRAR", n: 3 }] }];
-    const sin = estadoSaldo({ disponibles: 0, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: false });
-    const regalo = estadoSaldo({ disponibles: 1, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: "2026-11-16T12:00:00Z", todoSinCaducidad: false });
-    const conRegalo = estadoSaldo({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
-    const con = estadoSaldo({ disponibles: 2, plan: false, suscripcion: false, regaloRestante: 0, regaloVence: null, todoSinCaducidad: true });
-    const plan = estadoSaldo({ disponibles: 0, plan: true, suscripcion: true, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
-    const b = (seleccion: ResumenBloque[] | null, saldo: typeof sin, regaloRestante = 0, regaloVence: string | null = null) => bloqueDeArriba({ seleccion, saldo, regaloRestante, regaloVence });
-    if (b(sel, sin).tipo !== "seleccion" || b(sel, regalo, 1).tipo !== "seleccion") F("9 · con selección de esta semana, arriba no manda la selección");
-    if (b(null, sin).tipo !== "pack" || b([], sin).tipo !== "pack") F("9 · sin análisis y sin selección, arriba no va el pack");
-    const r = b(null, regalo, 1, "2026-11-16T12:00:00Z");
-    if (r.tipo !== "regalo" || r.vence !== "2026-11-16T12:00:00Z") F("9 · con un regalo sin usar, arriba no va «Tienes un análisis de regalo» con su vencimiento");
-    if (b(null, conRegalo, 1).tipo !== "regalo") F("9 · un regalo sin usar junto a análisis pagados no se anuncia");
-    if (b(null, con).tipo !== "analizar" || b(null, plan, 1).tipo !== "analizar") F("9 · con saldo pagado o con el plan, arriba no lleva a analizar (o el plan anuncia un regalo)");
-
-    // Lo cablea la página, en las dos casas, con el regalo leído del ledger.
-    if (!/const arriba = bloqueDeArriba\(\{ seleccion: resumen, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence, ticket \}\);/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba\} informes=\{stats\.total\} ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/.test(pag)) F("9 · la casa con informes no decide el bloque de arriba con bloqueDeArriba");
-    // ⚠ ACTA (21-oct-2026) · la selección se lee una vez para las dos casas (cargarSeleccionPagina: la del token del correo o
-    // la de esta semana) y el banner sale de lo vivo (resumenDePagina); el ticket va al banner (tier PUERTA-B-RECORRIDO).
-    if (!/cargarSeleccionPagina\(admin, user, \{ t: tSel, a: aSel \}\)/.test(pag) || !/const resumenSel = resumenDePagina\(sel\);/.test(pag) || !/const arriba0 = bloqueDeArriba\(\{ seleccion: resumenSel, saldo, regaloRestante: datosSaldo\.regaloRestante, regaloVence: datosSaldo\.regaloVence, ticket \}\);/.test(pag) || !/const resumen = resumenSel \?\? \[\];/.test(pag) || !/<BloqueArribaCasa bloque=\{arriba0\} informes=\{0\} ticketConSaldo=\{ticketConSaldo\} ticket=\{ticket\} \/>/.test(pag)) F("9 · la casa sin informes no decide el bloque de arriba (o no lee su selección)");
-    // El orden de las dos casas: banner → invitar → (plano) saldo → … ; «Invita a alguien» fuera de lo plano.
-    const casaSin = pag.slice(pag.indexOf("const arriba0 = "), pag.indexOf("<AppFooter"));
-    // ⚠ ACTA (21-oct-2026) · en lugar de «sus primeros deptos» (PrimerosDeptos, retirado: «Ver y analizar» llevaba a /semanal)
-    // va su selección como tarjetas, con la primera selección si todavía no hay (SeleccionEnCasa).
-    const ordenSin = ["<BloqueArribaCasa bloque={arriba0}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba0.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera />", "<PerfilBusquedaCasa"].map((t) => casaSin.indexOf(t));
-    if (ordenSin.some((i) => i < 0) || ordenSin.some((i, k) => k > 0 && i < ordenSin[k - 1])) F(`9 · la casa sin informes no es banner → invitar → plano (saldo, selección, perfil) (${ordenSin.join(",")})`);
-    const ordenCon = ["<BloqueArribaCasa bloque={arriba}", "<InvitaAlguien />", '<div className="ca-plano">', "<SaldoPlano estado={saldo} arriba={arriba.tipo} ticketConSaldo={ticketConSaldo} ticket={ticket} />", "<SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={false} />"].map((t) => casaConInformes.indexOf(t));
-    if (ordenCon.some((i) => i < 0) || ordenCon.some((i, k) => k > 0 && i < ordenCon[k - 1])) F(`9 · en la casa con informes, «Invita a alguien» no queda entre el banner y lo plano (${ordenCon.join(",")})`);
-    if (/<h1/.test(pag)) F("9 · la página tiene un título propio además del banner (el saludo volvió a ser el h1)");
-    if ((pag.match(/<AppFooter variant="informe" \/>/g) ?? []).length !== 2) F("9 · las dos casas no cierran con el pie de los informes");
-
-    // Un bloque, un botón: cada estado del banner tiene un título y UN botón, y va a su lugar.
-    const fn = casa.slice(casa.indexOf("export function BloqueArribaCasa("), casa.indexOf("export function SaldoPlano("));
-    const ramas = fn.split(/if \(bloque\.tipo === "|\n  return \(/).slice(1);
-    const destino: Record<string, RegExp> = {
-      seleccion: /<EnlaceCarga href=\{SELECCION_CASA\.href\} className="ca-banda-btn" data-casa="ver-seleccion">\s*\{SELECCION_CASA\.boton\}/,
-      pack: /<EnlaceCarga href=\{pack\.href\} className="ca-banda-btn" data-casa="comprar-tres" data-ticket=\{ticket \? "1" : undefined\}>\s*\{pack\.boton\}/,
-      regalo: /<h1 className="ca-banda-t">\{CASA\.regalo\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
-      analizar: /<h1 className="ca-banda-t">\{CASA_ARRIBA\.analizar\.titulo\}<\/h1>[\s\S]*<EnlaceCarga href=\{RUTA_NUEVO\} className="ca-banda-btn"/,
-    };
-    if (ramas.length !== 4) F(`9 · el banner no tiene sus cuatro estados (${ramas.length})`);
-    for (const [k, rama] of ramas.entries()) {
-      const tipo = k < 3 ? rama.slice(0, rama.indexOf('"')) : "analizar";
-      if ((rama.match(/className="ca-banda-btn"/g) ?? []).length !== 1 || (rama.match(/<h1 className="ca-banda-t">/g) ?? []).length !== 1) F(`9 · el estado «${tipo}» del banner no es un título y un botón`);
-      if (!destino[tipo]?.test(rama)) F(`9 · el botón del estado «${tipo}» no va a su lugar`);
-      if (!new RegExp(`<section className="ca-banda" data-casa="arriba" data-arriba="${tipo}">`).test(rama)) F(`9 · el estado «${tipo}» no va en el banner`);
-    }
-    if (!/\{b\.conteos\.map\(\(c\) => \([\s\S]{0,200}<ChipVeredicto v=\{c\.v\} variante="sobre-fondo" \/>/.test(fn)) F("9 · la selección del banner no dice sus veredictos con la tríada");
-    // El banner es el material del informe; «Invita a alguien», otro color.
-    const css = leer("src/app/dashboard/casa.css");
-    if (!/\.ca-banda \{[^}]*background: #1F3D67 url\("\/landing\/hero-m2x\.webp"\)/.test(css) || !/\.ca-banda::after \{[^}]*grano-256\.png/.test(css) || !/\.ca-banda-btn \{[^}]*background: #FAFAF8; color: #0F0F0F;/.test(css)) F("9 · el bloque de arriba no es el banner (degradado, grano y botón en papel)");
-    if (!/\.ca-banda-t \{[^}]*font-family: var\(--font-heading\)/.test(css) || /\.ca-plano-t \{[^}]*font-family/.test(css)) F("9 · serif fuera de los títulos, o el título del banner sin serif");
     const iv = leer("src/components/invitacion/invita.css");
-    const invita = sinComentarios(leer("src/components/invitacion/InvitaAlguien.tsx"));
-    if (!/if \(variante === "casa"\) \{\s*return \(\s*<section id="invitar" className="iv-destacado"/.test(invita) || !/\[data-theme="light"\] \.iv-destacado, \[data-theme="light"\] \.iv-menu \{ --iv-fondo: #0F0F0F;/.test(iv) || !/\.iv-destacado, \.iv-menu \{ --iv-fondo: #FAFAF8;[^}]*background: var\(--iv-fondo\)/.test(iv)) F("9 · «Invita a alguien» no tiene su propio color (tinta en claro, papel en oscuro)");
-    // Lo plano: sin tarjetas.
-    if (/rounded-2xl border|bg-\[var\(--franco-card\)\] p-4|\btarjeta\b/.test(casa)) F("9 · lo de abajo vuelve a ser tarjeta");
-    if (!/<div id="perfil" className="ca-plano-sec"/.test(casa) || !/<section className="ca-plano-sec" data-casa="saldo"/.test(casa) || !/<h2 className="ca-plano-t">\{CASA\.perfil\.titulo\}<\/h2>/.test(casa)) F("9 · el saldo o el perfil no van planos");
-    if (!/if \(estado\.tipo === "regalo" && arriba === "regalo"\) return null;/.test(casa) || !/\{arriba !== "pack" && \(\s*<EnlaceCarga href=\{pack\.href\}/.test(casa)) F("9 · el saldo plano repite lo que ya dice el banner");
-    const exactos9: Array<[string, string]> = [
-      [CASA_ARRIBA.seleccionBajada, "Los deptos publicados que Franco revisó con tus números."],
-      [CASA_ARRIBA.pack.titulo, "Analiza tus próximos deptos."],
-      [CASA_ARRIBA.regalo.bajada, "Úsalo en el depto que quieras."],
-      [CASA_ARRIBA.analizar.titulo, "Analiza tu próximo depto."],
-      [CASA.sin.plano, "No te quedan análisis."],
-    ];
-    for (const [real, esperado] of exactos9) if (real !== esperado) F(`9 · «${real}» debía ser «${esperado}»`);
-    for (const t of [...exactos9.map((x) => x[0]), CASA_ARRIBA.analizar.bajada, CASA_ARRIBA.analizar.boton]) if (VOSEO.test(t)) F(`9 · voseo: «${t}»`);
+    if (!/\[data-theme="light"\] \.iv-destacado, \[data-theme="light"\] \.iv-menu \{ --iv-fondo: #0F0F0F;/.test(iv) || !/\.iv-destacado, \.iv-menu \{ --iv-fondo: #FAFAF8;[^}]*background: var\(--iv-fondo\)/.test(iv)) F("9 · «Invita a alguien» no tiene su propio color (tinta en claro, papel en oscuro)");
+    if (/<h1/.test(pag)) F("9 · la página tiene un título propio (el saludo volvió a ser el h1)");
+    if ((pag.match(/<AppFooter variant="informe" \/>/g) ?? []).length !== 1) F("9 · la casa no cierra con el pie de los informes");
+    if (existsSync(join(RAIZ, "src/lib/casa-arriba.ts")) || /BloqueArribaCasa|SaldoPlano|bloqueDeArriba/.test(pag + casa)) F("9 · vuelve el banner de arriba");
   }
 
   // 10 · el menú de compartir: la invitación primero, con su color
@@ -278,7 +200,9 @@ export function runCasaTier(): { hard: number } {
     const query = sinComentarios(leer("src/lib/dashboard-query.ts"));
     // Se fue «Continuar»: la tarjeta grande, las tres chicas y la tira de Análisis, Flujo positivo, Puntaje y Modalidad.
     if (existsSync(join(RAIZ, "src/app/dashboard/continuar.tsx")) || existsSync(join(RAIZ, "src/app/dashboard/stats-strip.tsx")) || /<Continuar\b|<StatsStrip\b|Flujo positivo|Puntaje promedio/.test(pag + arch)) F("11 · «Continuar» o la tira de cifras siguen en el dashboard");
-    if (!/className="ca-informes flex flex-wrap items-baseline justify-between/.test(pag) || !/<EnlaceCarga href="\/comparar"[^>]*data-lqs="comparar-entrada">/.test(pag) || pag.indexOf("{CASA.informes}") > pag.indexOf('data-lqs="comparar-entrada"')) F("11 · «Comparar» no está a la derecha de «Tus informes»");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·«Tus informes» pasó a ser la fila plegada «Informes realizados»
+    // (tier PUERTA-B-DASHBOARD §2), con «Comparar» arriba de la lista.
+    if (!/<FilaPlegada id="informes" titulo=\{CASA\.informes\} n=\{stats\.total\} marca="informes" abierta=\{abrirInformes\}>/.test(pag) || !/<EnlaceCarga href="\/comparar"[^>]*data-lqs="comparar-entrada">/.test(pag) || pag.indexOf("{CASA.informes}") > pag.indexOf('data-lqs="comparar-entrada"') || pag.indexOf('data-lqs="comparar-entrada"') > pag.indexOf("<Archive")) F("11 · «Informes realizados» no es una fila plegada con «Comparar» y la lista adentro");
     // La marca de origen: «Franco» al lado del nombre de lo que salió de un aviso; lo del wizard, nada.
     if (ARCHIVO_COPY.marca !== "Franco" || ARCHIVO_COPY.deFranco !== "De Franco" || ARCHIVO_COPY.mios !== "Míos") F("11 · el copy de la marca o del filtro no es «Franco» / «De Franco» / «Míos»");
     const marca = arch.slice(arch.indexOf("export function MarcaFranco("), arch.indexOf("// ─── Chips"));
@@ -293,7 +217,7 @@ export function runCasaTier(): { hard: number } {
     // El filtro «De Franco» / «Míos», en la URL, en la consulta y con los conteos de la lista.
     if (parseParams({ o: "franco" }).origen !== "franco" || parseParams({ o: "mios" }).origen !== "mios" || parseParams({ o: "x" }).origen !== "todos") F("11 · el filtro de origen no se lee de la URL (?o=franco|mios)");
     if (!/o=franco/.test(buildHref(parseParams({}), { origen: "franco" })) || buildHref(parseParams({ o: "franco" }), { origen: "todos" }) !== "/dashboard") F("11 · el filtro de origen no viaja en la URL");
-    if (!/if \(p\.origen !== "todos"\) \{\s*out = out\.eq\("de_franco", p\.origen === "franco"\);/.test(query) || !/origen: params\.origen,/.test(pag)) F("11 · el filtro de origen no llega a la consulta");
+    if (!/if \(p\.origen !== "todos"\) \{\s*out = out\.eq\("de_franco", p\.origen === "franco"\);/.test(query) || !/origen: params\.origen/.test(pag)) F("11 · el filtro de origen no llega a la consulta");
     if (!/\.eq\("es_unidad", true\)\.eq\("de_franco", true\)/.test(query) || !/por_origen: \{ franco: deFranco, mios: total - deFranco \}/.test(query)) F("11 · los conteos del filtro de origen no son los de la lista");
     const filtros = arch.slice(arch.indexOf('data-archivo="filtros"'));
     const iMod = filtros.indexOf('filtro="ambas"'), iFr = filtros.indexOf('filtro="de-franco"'), iMi = filtros.indexOf('filtro="mios"'), iVer = filtros.indexOf("veredictos.map(");
@@ -316,7 +240,7 @@ export function runCasaTier(): { hard: number } {
     if (!/<ArchiveSearch params=\{params\} \/>/.test(arch) || !/href=\{buildHref\(params, \{ group: !params\.group, open: \[\] \}\)\}\s*role="switch"/.test(arch) || !/Agrupar por propiedad\s*<\/EnlaceCarga>/.test(arch)) F("11 · se fueron buscar o agrupar por propiedad");
   }
 
-  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, el pack de tres con el suelto debajo y sin el ticket, orden, escritura del servidor; arriba el banner según el estado, «Invita a alguien» con su color, lo demás plano; la invitación primero en el menú de compartir");
+  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, precios de su fuente, escritura del servidor; «Invita a alguien» con su color; la invitación primero en el menú de compartir; «Informes realizados» plegados");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }

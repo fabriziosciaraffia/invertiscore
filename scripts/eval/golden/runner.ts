@@ -157,6 +157,7 @@ import { runPanelActivacionTier } from "./panel-activacion-catch-test";
 import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
+import { runPuertaBDashboardTier } from "./puerta-b-dashboard-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
@@ -668,6 +669,10 @@ function printSeed(r: SeedReport) {
   // preguntas, el pop-up que recalcula al cambiar el pie y nunca cobra sin el veredicto, el orden fijo de la selección y los
   // tres campos en el perfil de la casa. ──
   totalHard += (await runPuertaBMockupsTier()).hard;
+  // Tier PUERTA-B-DASHBOARD (24-oct-2026, 0 tokens): el dashboard y el ticket según los mockups 3b y 4 — la oferta con o
+  // sin saldo mientras el ticket vive, el analizado como fila compacta en su posición, las dos preguntas ocultas para la
+  // puerta A, la selección diaria para «comprar ya», el orden, el mapa y el pop-up sin saldo.
+  totalHard += (await runPuertaBDashboardTier()).hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;

@@ -203,7 +203,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (!/conCorto \? itemsVigentes\(admin, fila\.items_str \?\? \[\]\)/.test(enviar) || !/largo: conLargo,/.test(enviar) || !/corto: conCorto \? \{\s*deptos: deptosCortos\.map/.test(enviar))
       F("2 · el envío no manda el bloque de renta corta (o manda el de renta larga a quien no lo tiene)");
     if (!/sel\.corto && \(\s*<SemanalLista[\s\S]*?modalidad="str"[\s\S]*?\/>/.test(pagina) || !/sel\.largo && \(\s*<SemanalLista/.test(pagina) || !/largo: sel\.conLargo \? \{/.test(pagina)) F("2 · la página no muestra el bloque de renta corta (o muestra el de renta larga a quien no lo tiene)");
-    if (!/\{corta && <p className="guia-negociar" data-semanal="zona">\{MARCA_ZONA\}<\/p>\}/.test(lista)) F(`2 · en la página, los deptos de renta corta no llevan la marca «${STR.MARCA_ZONA}»`);
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · las tarjetas son las .sel-* del mockup; la marca va en .sel-estado.
+    if (!/\{corta && <p className="sel-estado" data-semanal="zona">\{MARCA_ZONA\}<\/p>\}/.test(lista)) F(`2 · en la página, los deptos de renta corta no llevan la marca «${STR.MARCA_ZONA}»`);
   }
 
   // ── 3 · EL ANÁLISIS QUE NO SE COBRA CUANDO CAMBIA EL VEREDICTO ───────────────────

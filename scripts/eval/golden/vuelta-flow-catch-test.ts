@@ -119,7 +119,9 @@ export function runVueltaFlowTier(): { hard: number } {
   if (!/if \(d\.error === "sin-creditos" && sinCredito\+\+ < REINTENTOS_CREDITO_RETORNO\) \{ await esperar\(ESPERA_GENERAR_MS\); continue; \}/.test(gen)) F("3 · generarDepto no espera el crédito que el webhook otorga aparte");
   if (!/router\.replace\(vuelta \?\? "\/dashboard"\);/.test(gen)) F("3 · si no puede generar, no vuelve al dashboard con el depto");
   if (!/const depto = leerDeptoDelPago\(data\.depto\);\s*if \(!redirectedRef\.current && !data\.payment\.analysis_id && depto\) \{\s*redirectedRef\.current = true;\s*setRedirecting\(true\);\s*setAlDepto\(depto\);\s*void generarDepto\(depto, vuelta\);/.test(ret)) F("3 · pagado desde un depto, la pantalla no genera el informe una sola vez");
-  if (!/\{alDepto \? RETORNO\.generandoDepto\(alDepto\.nombre\) : RETORNO\.abriendo\.cuerpo\}/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · desde un depto, el estado C: «Franco está analizando X. En unos segundos se abre el
+  // informe.», la barra y cuántos le quedan (tier PUERTA-B-DASHBOARD §7).
+  if (!/\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{alDepto\.nombre\}<\/b>\{RETORNO\.desdeDepto\.despues\}/.test(ret) || !/<p className=\{PLANO\.bajada\}>\{RETORNO\.abriendo\.cuerpo\}<\/p>/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
   if (!/: analysisId \? "Tu análisis está desbloqueado\." : RETORNO\.pagado\.uno/.test(ret) || !/<EnlaceCarga href=\{tras\.href\}[^>]*data-retorno-boton="pagado">\s*\{tras\.texto\}/.test(ret)) F("3 · sin depto, la pantalla no dice «Tienes un análisis más» con el botón al dashboard");
   } catch (e) {
     F(`3 · explotó (faltan nombreDelDepto, leerDeptoDelPago o generandoDepto): ${e instanceof Error ? e.message : String(e)}`);

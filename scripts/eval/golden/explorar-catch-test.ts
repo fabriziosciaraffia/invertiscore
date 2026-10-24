@@ -318,11 +318,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (ex.VIDA_COMBO_MS !== 24 * 3600_000) F("10 · la caché no dura 24 horas");
 
   // ── 9 · el dashboard y las compras ──
-  if (CASA.explorar.boton(312) !== "Explorar los 312 en el mapa" || CASA.explorar.boton(0) !== "Explorar en el mapa" || CASA.explorar.boton(1200) !== "Explorar los 1.200 en el mapa") F("9 · el botón del dashboard");
+  // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el botón del dashboard vive en el mapa de la selección
+  // (app/dashboard/mapa-casa.tsx, lib/casa/mapa-casa.ts › botonExplorar) y el número son los pines de Explorar menos nada:
+  // la misma RPC, por pinesExplorar (lib/casa/mapa-casa-servidor.ts). Una sola casa.
+  const { botonExplorar } = require(join(RAIZ, "src/lib/casa/mapa-casa")) as typeof import("../../../src/lib/casa/mapa-casa");
+  if (botonExplorar(312) !== "Explorar los 312 en el mapa" || botonExplorar(0) !== "Explorar en el mapa" || botonExplorar(1200) !== "Explorar los 1.200 en el mapa") F("9 · el botón del dashboard");
   const dash = codigo("src/app/dashboard/page.tsx");
-  if ((dash.match(/<ExplorarEnCasa datos=\{explorar\} \/>/g) ?? []).length !== 2 || !/datosExplorarCasa\(admin, user\.id\)/.test(dash)) F("9 · el dashboard (las dos casas) no lleva el botón a Explorar con su número");
-  const enCasa = codigo("src/app/dashboard/explorar-en-casa.tsx");
-  if (!/<EnlaceCarga href="\/explorar"[^\n]*data-casa="explorar-boton"[^\n]*>\s*\{CASA\.explorar\.boton\(datos\.n\)\}/.test(enCasa) || !/conteoExplorar\(admin, filtros\)/.test(enCasa)) F("9 · el botón no va a /explorar o no cuenta con la misma RPC");
+  if ((dash.match(/<MapaCasa datos=\{mapa\} \/>/g) ?? []).length !== 1 || !/await datosMapaCasa\(admin, user\.id,/.test(dash)) F("9 · el dashboard no lleva el mapa de la selección con el botón a Explorar");
+  const enCasa = codigo("src/app/dashboard/mapa-casa.tsx");
+  if (!/<EnlaceCarga href="\/explorar"[^\n]*data-casa="explorar-boton"[^\n]*>\s*\{botonExplorar\(datos\.nConvienen\)\}/.test(enCasa) || !/pinesExplorar\(admin, filtros\)/.test(codigo("src/lib/casa/mapa-casa-servidor.ts"))) F("9 · el botón no va a /explorar o no cuenta con la misma RPC");
   const c = comprasDeExplorar({ filtros: "c=Providencia&t=2", avisoId: "abc", ticket: false });
   if (!/origen=explorar/.test(c.pack.href) || !/volver=%2Fexplorar%3Fc%3DProvidencia%26t%3D2%26a%3Dabc%26analizar%3D1/.test(c.pack.href) || !/product=single/.test(c.suelto.href) || !/origen=explorar/.test(c.suelto.href)) F(`9 · las compras no vuelven al mapa con el depto: ${c.pack.href} · ${c.suelto.href}`);
   if (!/product=pack3/.test(comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.href) || comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.label !== "3 análisis · $14.990") F("9 · con el ticket el pack no es el de $14.990");
