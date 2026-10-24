@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { filtrosDeUrl } from "@/lib/explorar/explorar";
-import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
+import { cargarExplorar, eventoExplorarVista, explorarCerradoPara, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar?c=…&t=…&r=min-max&p=20&z=25 (23-oct-2026): los pines del mapa para una búsqueda, con la evaluación
@@ -22,6 +22,8 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   const admin = createServiceClient();
   try {
+    // SIN SALDO, CERRADO (24-oct-2026, lib/explorar/explorar.ts › explorarCerrado): no hay otra búsqueda ni pines con detalle.
+    if (await explorarCerradoPara(admin, user.id)) return NextResponse.json({ error: "cerrado" }, { status: 403, headers: { "Cache-Control": "no-store" } });
     const sp = new URL(request.url).searchParams;
     const filtros = filtrosDeUrl(sp) ?? (await filtrosDeLaCuenta(admin, user.id)).filtros;
     const d = await cargarExplorar(admin, user, filtros);

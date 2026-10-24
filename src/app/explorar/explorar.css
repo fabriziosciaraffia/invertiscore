@@ -106,6 +106,16 @@
 .ex-cta { height: 48px; border: 0; border-radius: 99px; background: var(--franco-text); color: var(--franco-card); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .ex-cta:disabled { opacity: 0.55; cursor: default; }
 .ex-cta:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* SIN SALDO, CERRADO (24-oct-2026): la hoja muestra solo la oferta; los chips quedan a la vista, apagados. */
+.ex-chips[data-cerrado="1"] .ex-chip { opacity: 0.45; cursor: default; }
+.ex-chip:disabled, .ex-chip select:disabled { cursor: default; }
+.ex-cerrado { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.ex-cerrado-k { margin: 0 0 2px; font-size: 13px; font-weight: 600; color: var(--signal-red); }
+.ex-cta.ex-cta-rojo { background: var(--signal-red); color: #FFFFFF; }
+.ex-cta-borde { height: 42px; border: 1px solid var(--franco-text); border-radius: 99px; background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ex-cta-borde:disabled { opacity: 0.55; cursor: default; }
+.ex-cta-borde:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-cerrado-s { margin: 2px 0 0; font-size: 13px; color: var(--franco-text-secondary); text-align: center; }
 .ex-cta-enlace { display: inline-flex; align-items: center; justify-content: center; height: 48px; border-radius: 99px; background: var(--franco-text); color: var(--franco-card); font-size: 15px; font-weight: 600; text-decoration: none; }
 
 /* el aviso E: el ticket, en el material rojo del pop-up */

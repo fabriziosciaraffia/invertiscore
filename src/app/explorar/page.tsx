@@ -8,6 +8,7 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { esCombinacionDeLaNoche, EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
+import { portadaDeptos } from "@/lib/deptos/portada";
 import { ExplorarCliente } from "./explorar-cliente";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +44,8 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   // Una combinación que la noche no tiene (24-oct-2026) se calcula en el momento: no en el SSR —tardaría segundos antes del
   // primer byte— sino desde el navegador, que la pide enseguida y mientras tanto dice «Calculando con tu pie…».
   const noche = esCombinacionDeLaNoche(filtros);
-  const d = await cargarExplorar(admin, user, filtros, new Date(), { pines: noche });
+  // El total de anoche en Santiago (el de /deptos, cacheado): el aviso sin saldo lo dice (24-oct-2026).
+  const [d, portada] = await Promise.all([cargarExplorar(admin, user, filtros, new Date(), { pines: noche }), portadaDeptos()]);
   const analizadosN = d.pines.filter((p) => d.analizados[p.avisoId]).length;
   void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: noche ? d.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d.cuenta })).catch(() => false);
   const a = sp.get("a");
@@ -52,12 +54,16 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
       <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
       <ExplorarCliente
-        inicial={{
+        inicial={d.cerrado ? {
+          // SIN SALDO, CERRADO (24-oct-2026): todos los pines, sin detalle y con la combinación de la noche; nada que pedir después.
+          filtros: d.filtros, n: d.n, analizadosN: 0, pines: d.pines, completo: true, calculando: false, analizados: {},
+          saldo: d.saldo, ticket: d.ticket, cuentaCreadaAt: d.cuentaCreadaAt, finanzas: d.finanzas, desdePerfil: deUrl ? true : !!cuenta?.desdePerfil, cerrado: true, totalNoche: portada.noche?.convienen ?? null,
+        } : {
           filtros, n: d.n, analizadosN, pines: d.pines.slice(0, TOPE_HOJA), completo: noche && d.n <= TOPE_HOJA, calculando: !noche, analizados: d.analizados,
-          saldo: d.saldo, ticket: d.ticket, cuentaCreadaAt: d.cuentaCreadaAt, finanzas: d.finanzas, desdePerfil: deUrl ? true : !!cuenta?.desdePerfil,
+          saldo: d.saldo, ticket: d.ticket, cuentaCreadaAt: d.cuentaCreadaAt, finanzas: d.finanzas, desdePerfil: deUrl ? true : !!cuenta?.desdePerfil, cerrado: false, totalNoche: portada.noche?.convienen ?? null,
         }}
-        abrir={a}
-        autoAnalizar={sp.get("analizar") === "1" ? a : null}
+        abrir={d.cerrado ? null : a}
+        autoAnalizar={!d.cerrado && sp.get("analizar") === "1" ? a : null}
         mapaQuieto={
           <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
             <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />

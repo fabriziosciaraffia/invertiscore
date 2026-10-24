@@ -17,8 +17,9 @@ import { AVISO_SIN_SALDO } from "@/lib/explorar/explorar";
 import type { ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import "@/components/formulario-v4/wizard-v4.css";
 
-export function AvisoSinSaldoExplorar({ n, compras, vence, alCerrar, yendo = null, alIr }: {
-  n: number;
+export function AvisoSinSaldoExplorar({ totalNoche, compras, vence, alCerrar, yendo = null, alIr }: {
+  /** Cuántos convenían anoche en todo Santiago (24-oct-2026): «Para explorar los 4.807 de Santiago necesitas…». */
+  totalNoche: number | null;
   compras: ComprasDelDepto;
   /** Con el ticket vivo: «mañana 11:17». */
   vence: string | null;
@@ -46,7 +47,7 @@ export function AvisoSinSaldoExplorar({ n, compras, vence, alCerrar, yendo = nul
             <span>{AVISO_SIN_SALDO.sobre}</span>
             <button type="button" onClick={alCerrar} aria-label="Cerrar" className="wz-disco"><X className="w-4 h-4" aria-hidden /></button>
           </div>
-          <h2 id="ex-sin-saldo-titulo" className="wz-modal-dir">{AVISO_SIN_SALDO.titulo(n)}</h2>
+          <h2 id="ex-sin-saldo-titulo" className="wz-modal-dir">{AVISO_SIN_SALDO.titulo(totalNoche)}</h2>
           <p className="wz-modal-msg" style={{ fontWeight: 400 }}>{AVISO_SIN_SALDO.cuerpo}</p>
           {compras.pack.ticket && (
             <div className="ex-ticket" data-explorar="ticket">

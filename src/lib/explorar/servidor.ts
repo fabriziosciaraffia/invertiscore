@@ -19,7 +19,7 @@ import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servi
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import {
-  claveCombo, comboVigente, dormsDe, esCombinacionDeLaNoche, FILTROS_POR_DEFECTO, filtrosDePerfil, pieDeLaNoche, plazoDeLaNoche, porPuntaje, soloComprar,
+  claveCombo, comboVigente, dormsDe, esCombinacionDeLaNoche, explorarCerrado, FILTROS_POR_DEFECTO, filtrosDePerfil, pieDeLaNoche, pinCerrado, plazoDeLaNoche, porPuntaje, soloComprar,
   type ComboGuardado, type FiltrosExplorar, type PinExplorar,
 } from "./explorar";
 
@@ -207,6 +207,14 @@ export interface DatosExplorar {
   ticket: boolean;
   cuentaCreadaAt: string | null;
   finanzas: { uf: number | null; tasa: number | null };
+  /** SIN SALDO, CERRADO (24-oct-2026, explorar.ts › explorarCerrado): los pines van sin detalle (pinCerrado), todos, con la
+   *  combinación de la noche; no hay qué abrir ni qué recalcular. */
+  cerrado: boolean;
+}
+
+/** ¿Explorar está cerrado para esta cuenta? (sin saldo; el plan cuenta como saldo). Para cortar antes de leer pines. */
+export async function explorarCerradoPara(admin: SupabaseClient, userId: string): Promise<boolean> {
+  return explorarCerrado(estadoSaldo(await leerSaldo(admin, userId)));
 }
 
 export async function cargarExplorar(admin: SupabaseClient, user: { id: string; created_at?: string | null }, f: FiltrosExplorar, ahora: Date = new Date(), opts: { pines?: boolean } = {}): Promise<DatosExplorar> {
@@ -220,10 +228,15 @@ export async function cargarExplorar(admin: SupabaseClient, user: { id: string; 
     ticketDeCuentaDisponible(admin, user),
     leerConfigGuia(admin),
   ]);
-  return {
-    filtros: f, calculando: !leerPines, cuenta, pines, analizados, n: pines.length, saldo: estadoSaldo(datosSaldo), ticket,
-    cuentaCreadaAt: ticket ? (user.created_at ?? null) : null, finanzas: { uf: cfg.uf, tasa: cfg.tasa },
-  };
+  const saldo = estadoSaldo(datosSaldo);
+  const comun = { analizados, saldo, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null, finanzas: { uf: cfg.uf, tasa: cfg.tasa } };
+  // Sin saldo, cerrado: la combinación de la noche (nada se calcula en el momento) y los pines sin detalle.
+  if (explorarCerrado(saldo)) {
+    const fn = esCombinacionDeLaNoche(f) ? f : { ...f, pie: pieDeLaNoche(f.pie), plazo: plazoDeLaNoche(f.plazo) } as FiltrosExplorar;
+    const deLaNoche = leerPines && fn === f ? pines : await pinesExplorar(admin, fn, ahora, cuenta);
+    return { ...comun, filtros: fn, calculando: false, cuenta, pines: deLaNoche.map(pinCerrado), n: deLaNoche.length, cerrado: true };
+  }
+  return { ...comun, filtros: f, calculando: !leerPines, cuenta, pines, n: pines.length, cerrado: false };
 }
 
 /** Un aviso del mapa con su evaluación guardada, para recalcularlo con otro pie y otro plazo. null si no está. */

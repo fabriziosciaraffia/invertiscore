@@ -26,7 +26,7 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
     <main style={{ minHeight: "100dvh", padding: 16 }} data-demo-popups={estado}>
       <p style={{ fontSize: 13, opacity: 0.6 }}>/dev/popups · {estado}</p>
       {!montado ? null : estado === "e" || estado === "e0" ? (
-        <AvisoSinSaldoExplorar n={312} compras={compras} vence={ticket ? "mañana 18:07" : null} alCerrar={nada} alIr={nada} />
+        <AvisoSinSaldoExplorar totalNoche={4807} compras={compras} vence={ticket ? "mañana 18:07" : null} alCerrar={nada} alIr={nada} />
       ) : (
         <AvisoAntesDeAnalizar
           depto={DEPTO}

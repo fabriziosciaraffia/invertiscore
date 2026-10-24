@@ -241,8 +241,22 @@ export const pctUno = (n: number) => `${(Math.round(n * 10) / 10).toLocaleString
 export const flujoTexto = (flujo: number) => `${flujo < 0 ? "−" : "+"}$${miles(Math.abs(flujo))}`;
 
 /** Al entrar sin saldo: el mapa se ve igual, y encima el aviso E (4-ticket-y-popups.html). */
-export function estadoDeEntrada(s: EstadoSaldo): { mapa: true; aviso: boolean } {
-  return { mapa: true, aviso: s.tipo === "sin" };
+export function estadoDeEntrada(s: EstadoSaldo): { mapa: true; aviso: boolean; cerrado: boolean } {
+  return { mapa: true, aviso: s.tipo === "sin", cerrado: explorarCerrado(s) };
+}
+
+/**
+ * SIN SALDO, EXPLORAR ESTÁ CERRADO (24-oct-2026, recorrido de Fabrizio): al cerrar el aviso E el mapa queda a la vista pero
+ * cerrado —los chips no se tocan, los pines no se abren, la hoja muestra solo la oferta—, y el servidor tampoco sirve los
+ * pines con detalle (pinCerrado) ni otra búsqueda (GET /api/explorar responde 403). El plan cuenta como saldo.
+ */
+export function explorarCerrado(s: EstadoSaldo): boolean {
+  return s.tipo === "sin";
+}
+
+/** Un pin del mapa cerrado: solo dónde está. Sin precio, superficie, veredicto con puntaje ni flujo: no hay qué abrir. */
+export function pinCerrado(p: Pick<PinExplorar, "avisoId" | "lat" | "lng">): PinExplorar {
+  return { avisoId: p.avisoId, comuna: "", lat: p.lat, lng: p.lng, m2: 0, dormitorios: 0, tipologia: null, precioUF: 0, veredicto: "COMPRAR", score: null, flujo: null, arriendo: null, vistoAt: null };
 }
 
 // ── LOS AGRUPADOS ────────────────────────────────────────────────────────────
@@ -343,7 +357,8 @@ export const EXPLORAR_COPY = {
 /** El aviso E (4-ticket-y-popups.html): «Explorar los 312» sin saldo. El mapa se ve igual; esto va encima y se cierra. */
 export const AVISO_SIN_SALDO = {
   sobre: "Explorar el mapa",
-  titulo: (n: number) => (n > 0 ? `Para explorar los ${miles(n)} necesitas análisis disponibles.` : "Para explorar el mapa necesitas análisis disponibles."),
+  /** Con el total de anoche en todo Santiago (24-oct-2026), el mismo del botón del dashboard y de /deptos. */
+  titulo: (totalNoche: number | null | undefined) => (totalNoche != null && totalNoche > 0 ? `Para explorar los ${miles(totalNoche)} de Santiago necesitas análisis disponibles.` : "Para explorar el mapa necesitas análisis disponibles."),
   cuerpo: "Con un pack, uno suelto o el plan entras al mapa completo: ves todos los que convienen para tu búsqueda y gastas un análisis solo cuando analizas uno.",
   soloNuevas: "Solo para cuentas nuevas",
   /** En la misma fila que «Solo para cuentas nuevas» (24-oct-2026, el aviso cabe en 390 × 740). */
@@ -353,4 +368,6 @@ export const AVISO_SIN_SALDO = {
   aprovechar: (precio: string) => `Aprovechar · 3 por ${precio}`,
   plan: `Ver el plan de ${PLAN_ANALISIS_MES} al mes`,
   ahoraNo: "Ahora no",
+  /** La hoja del mapa cerrado, debajo de la oferta (24-oct-2026). */
+  cerrado: "Con análisis disponibles exploras todo Santiago",
 } as const;

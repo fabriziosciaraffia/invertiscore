@@ -13,7 +13,9 @@
 //   · Al tocar un pin, la hoja muestra el depto: precio, veredicto y puntaje, flujo, cap rate, UF por m², «Revisado con
 //     pie X y Y años…» y «Analizar este · usa 1 de tus N», que abre el mismo aviso antes de gastar de la selección, con
 //     «Cambiar» el pie y el plazo y el veredicto recalculado. Sin saldo, el aviso ofrece el pack y «Comprar solo 1».
-//   · Sin saldo al entrar: el aviso E encima, y el mapa se mira igual.
+//   · Sin saldo al entrar: el aviso E encima. SIN SALDO, EXPLORAR ESTÁ CERRADO (24-oct-2026, recorrido de Fabrizio): al
+//     cerrar el aviso el mapa queda a la vista pero cerrado —los chips no se tocan, los pines no se abren— y la hoja muestra
+//     solo la oferta y «Con análisis disponibles exploras todo Santiago». El servidor manda los pines sin detalle.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import dynamic from "next/dynamic";
@@ -30,7 +32,7 @@ import { COMUNAS_DESTACADAS, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } 
 import { GUIA } from "@/lib/guia/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import {
-  botonAnalizar, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
+  AVISO_SIN_SALDO, botonAnalizar, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
   pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
 import "./explorar.css";
@@ -63,6 +65,10 @@ export interface DatosExplorarCliente {
   desdePerfil: boolean;
   /** La combinación no es de la noche: el servidor no trajo pines y el navegador los pide enseguida («Calculando con tu pie…»). */
   calculando?: boolean;
+  /** Sin saldo, cerrado (lib/explorar/explorar.ts › explorarCerrado): los pines vienen sin detalle y no se pide nada más. */
+  cerrado?: boolean;
+  /** Cuántos convenían anoche en todo Santiago (el número de /deptos), para el aviso sin saldo. */
+  totalNoche?: number | null;
 }
 
 type Chip = "comuna" | "tipologia" | "rango" | "pie" | "plazo";
@@ -91,6 +97,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   const [caidos, setCaidos] = useState<string[]>([]);
   const entrada = estadoDeEntrada(inicial.saldo);
   const [avisoSinSaldo, setAvisoSinSaldo] = useState(entrada.aviso);
+  // Cerrado: lo dice el servidor (la cuenta sin saldo) y nada en esta pantalla lo abre; recién al volver pagado.
+  const cerrado = !!inicial.cerrado;
   const [yendo, setYendo] = useState<"pack" | "suelto" | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const vivo = useRef(true);
@@ -103,6 +111,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   const consulta = urlDeFiltros(filtros);
   const compras = useCallback((avisoId?: string | null) => comprasDeExplorar({ filtros: consulta, avisoId, ticket: datos.ticket }), [consulta, datos.ticket]);
   const ticketConSaldo = datos.ticket && datos.cuentaCreadaAt && datos.saldo.tipo !== "sin" ? lineaTicketConSaldo(datos.cuentaCreadaAt, compras().pack.href) : null;
+  /** «$14.990»: el precio del pack, como lo dice su botón (la tarjeta de la oferta y «Aprovechar · 3 por …»). */
+  const precioPack = compras().pack.label.replace(/^.*·\s*/, "");
+  const irACompra = (que: "pack" | "suelto", href: string) => { setYendo(que); iniciarCarga(claveActual()); router.push(href); };
 
   /** Pide los pines de una búsqueda. `evento`: la persona cambió un chip (el servidor deja «explorar_vista»). */
   const cargar = useCallback(async (f: FiltrosExplorar, evento: boolean) => {
@@ -137,6 +148,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   }, []);
 
   function aplicar(parche: Partial<FiltrosExplorar>, chip: Chip) {
+    if (cerrado) return;
     const f = cambiarFiltro(filtros, parche);
     if (f === filtros) return;
     setFiltros(f);
@@ -147,6 +159,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   }
 
   function seleccionar(avisoId: string) {
+    if (cerrado) return;
     setSeleccionado(avisoId);
     setHoja("abierta");
     setError(null);
@@ -297,25 +310,25 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   return (
     <div className="ex" data-explorar="cliente" data-cargando={cargando ?? undefined}>
       {/* ── los chips ── */}
-      <div className="ex-chips" role="group" aria-label="Filtros">
-        <button type="button" className="ex-chip" aria-expanded={pop === "comuna"} aria-haspopup="dialog" onClick={() => abrirPop("comuna")} {...chipOcupado(cargando === "comuna")} data-chip="comuna">{etiquetaComunas(filtros.comunas)}</button>
-        <button type="button" className="ex-chip" aria-expanded={pop === "tipologia"} aria-haspopup="dialog" onClick={() => abrirPop("tipologia")} {...chipOcupado(cargando === "tipologia")} data-chip="tipologia">{etiquetaTipologias(filtros.tipologias)}</button>
+      <div className="ex-chips" role="group" aria-label="Filtros" data-cerrado={cerrado ? "1" : undefined}>
+        <button type="button" className="ex-chip" aria-expanded={pop === "comuna"} aria-haspopup="dialog" onClick={() => abrirPop("comuna")} disabled={cerrado} {...chipOcupado(cargando === "comuna")} data-chip="comuna">{etiquetaComunas(filtros.comunas)}</button>
+        <button type="button" className="ex-chip" aria-expanded={pop === "tipologia"} aria-haspopup="dialog" onClick={() => abrirPop("tipologia")} disabled={cerrado} {...chipOcupado(cargando === "tipologia")} data-chip="tipologia">{etiquetaTipologias(filtros.tipologias)}</button>
         <label className="ex-chip" {...chipOcupado(cargando === "rango")} data-chip="rango">
           <span aria-hidden="true">{etiquetaRango(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.rango} value={rangoActual} onChange={(e) => { const r = RANGOS_UF.find((x) => x.id === e.target.value); if (r) aplicar({ ufMin: r.min ?? 0, ufMax: r.max }, "rango"); }}>
+          <select aria-label={EXPLORAR_COPY.chips.rango} disabled={cerrado} value={rangoActual} onChange={(e) => { const r = RANGOS_UF.find((x) => x.id === e.target.value); if (r) aplicar({ ufMin: r.min ?? 0, ufMax: r.max }, "rango"); }}>
             {!rangoActual && <option value="">{etiquetaRango(filtros)}</option>}
             {RANGOS_UF.map((r) => <option key={r.id} value={r.id}>{r.chip}</option>)}
           </select>
         </label>
         <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "pie")} data-chip="pie">
           <span aria-hidden="true">{etiquetaPie(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.pie} value={filtros.pie} onChange={(e) => aplicar({ pie: Number(e.target.value) as FiltrosExplorar["pie"] }, "pie")}>
+          <select aria-label={EXPLORAR_COPY.chips.pie} disabled={cerrado} value={filtros.pie} onChange={(e) => aplicar({ pie: Number(e.target.value) as FiltrosExplorar["pie"] }, "pie")}>
             {PIES_EXPLORAR.map((p) => <option key={p} value={p}>{etiquetaPie({ pie: p })}</option>)}
           </select>
         </label>
         <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "plazo")} data-chip="plazo">
           <span aria-hidden="true">{etiquetaPlazo(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.plazo} value={filtros.plazo} onChange={(e) => aplicar({ plazo: Number(e.target.value) as FiltrosExplorar["plazo"] }, "plazo")}>
+          <select aria-label={EXPLORAR_COPY.chips.plazo} disabled={cerrado} value={filtros.plazo} onChange={(e) => aplicar({ plazo: Number(e.target.value) as FiltrosExplorar["plazo"] }, "plazo")}>
             {PLAZOS_EXPLORAR.map((z) => <option key={z} value={z}>{etiquetaPlazo({ plazo: z })}</option>)}
           </select>
         </label>
@@ -380,7 +393,18 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
         </div>
 
         {/* ── la hoja ── */}
-        <section className="ex-hoja" data-explorar="hoja" data-hoja={hoja} aria-label={tituloHoja(total)}>
+        <section className="ex-hoja" data-explorar="hoja" data-hoja={cerrado ? "cerrada" : hoja} aria-label={cerrado ? AVISO_SIN_SALDO.cerrado : tituloHoja(total)}>
+          {cerrado ? (
+            // SIN SALDO, CERRADO: solo la oferta (la misma del aviso E) y qué abre tener análisis.
+            <div className="ex-cerrado" data-explorar="cerrado">
+              {compras().pack.ticket && <p className="ex-cerrado-k" data-explorar="cerrado-oferta">{AVISO_SIN_SALDO.soloNuevas} · {AVISO_SIN_SALDO.packTicket(precioPack)}</p>}
+              <button type="button" className="ex-cta ex-cta-rojo" onClick={() => irACompra("pack", compras().pack.href)} disabled={!!yendo} {...botonOcupado(yendo === "pack")} data-explorar="cerrado-pack">
+                {compras().pack.ticket ? AVISO_SIN_SALDO.aprovechar(precioPack) : compras().pack.label}
+              </button>
+              <button type="button" className="ex-cta-borde" onClick={() => irACompra("suelto", compras().suelto.href)} disabled={!!yendo} {...botonOcupado(yendo === "suelto")} data-explorar="cerrado-suelto">{compras().suelto.label}</button>
+              <p className="ex-cerrado-s" data-explorar="cerrado-linea">{AVISO_SIN_SALDO.cerrado}</p>
+            </div>
+          ) : (<>
           <button type="button" className="ex-asa-btn" aria-label={hoja === "peek" ? "Abrir la lista" : "Cerrar la lista"} onPointerDown={(e) => { arrastre.current = e.clientY; }} onPointerUp={alSoltar} onPointerCancel={() => { arrastre.current = null; }}>
             <span className="ex-asa" aria-hidden="true" />
           </button>
@@ -397,6 +421,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
               <p className="ex-saldo" data-explorar="saldo">{lineaSaldo(datos.saldo)}</p>
             </>
           )}
+          </>)}
         </section>
       </div>
 
@@ -418,7 +443,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
       )}
       {avisoSinSaldo && !confirmar && (
         <AvisoSinSaldoExplorar
-          n={total}
+          totalNoche={datos.totalNoche ?? null}
           compras={compras()}
           vence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
           yendo={yendo}
