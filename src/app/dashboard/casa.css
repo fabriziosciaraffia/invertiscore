@@ -96,3 +96,5 @@
 .ca-guardar:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .ca-proxima { margin: 8px 0 0; font-size: 12px; color: var(--franco-text-secondary); text-align: center; }
 .ca-error { margin: 8px 0 0; font-size: 13px; color: var(--signal-red); }
+/* «Guardado.» en la fila del perfil, dos segundos (24-oct-2026). */
+.ca-plegada-aviso { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--franco-text-secondary); }

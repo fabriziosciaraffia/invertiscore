@@ -9,8 +9,12 @@
 // invitación: lib/casa/reglas.ts › preguntasPendientes) con la regla de la frecuencia; «Guardar» y «Tu próxima selección
 // se arma con esto.». Todo se guarda junto, con «Guardar» (PUT /api/perfil-busqueda), y la página se vuelve a pedir
 // para que la selección diga lo nuevo. Sistema de /deptos: Inter, píldoras, el rojo solo en lo pendiente y el error.
+// AL GUARDAR (24-oct-2026, recorrido de Fabrizio): los campos y las preguntas se pliegan, la fila vuelve a su línea con el
+// resumen completo («Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero comprar ya»), la
+// etiqueta de las pendientes se va y «Guardado.» se ve dos segundos en la fila. «Guardar» solo está a la vista cuando hay
+// algo que guardar. Al abrir de nuevo: la frase con «Editar» y las preguntas ya contestadas, editables.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import "./casa.css";
 import "@/app/deptos/deptos.css";
@@ -77,6 +81,19 @@ export function textosDelPerfil(p: PerfilEditable): { frase: string; corta: stri
   };
 }
 
+/** Cuánto se ve «Guardado.» en la fila del perfil. */
+export const GUARDADO_VISIBLE_MS = 2000;
+
+/** La fila cerrada del perfil: «Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero
+ *  comprar ya». Cómo lo arrienda y cuándo piensa comprar, solo si ya lo dijo (`dichas`). */
+export function resumenDeFila(p: PerfilEditable, dichas: { modalidad: boolean; cuando: boolean }): string {
+  return [
+    textosDelPerfil(p).corta,
+    dichas.modalidad && p.modalidad ? CASA.perfil.modalidad[p.modalidad] : null,
+    dichas.cuando && p.horizonte ? CASA.perfil.horizonte[p.horizonte] : null,
+  ].filter(Boolean).join(" · ");
+}
+
 /** Lo que se manda al PUT: solo lo que cambió respecto de lo que había. `contestadas`: las preguntas pendientes que la
  *  persona contestó en esta pantalla; su respuesta va aunque coincida con lo inferido (la cuenta nace con la modalidad
  *  sin contestar y el perfil la supone renta larga: elegir «Arriendo tradicional» tiene que quedar escrito). */
@@ -101,18 +118,22 @@ async function guardar(cambios: Record<string, unknown>): Promise<boolean> {
   }
 }
 
-/** Una fila plegada del dashboard (<details>): el título, la etiqueta roja, la línea de abajo y el chevron. */
-export function FilaPlegada({ id, titulo, n, etiqueta, sub, abierta = false, children, marca }: {
+/** Una fila plegada del dashboard (<details>): el título, la etiqueta roja, la línea de abajo y el chevron. Con
+ *  `controlada`, quien la monta decide si está abierta (el perfil la pliega al guardar). `aviso`: una nota en la fila. */
+export function FilaPlegada({ id, titulo, n, etiqueta, sub, abierta = false, children, marca, controlada, aviso }: {
   id: string; titulo: string; n?: number | null; etiqueta?: string | null; sub?: string | null; abierta?: boolean; children: ReactNode; marca: string;
+  controlada?: { abierta: boolean; alCambiar: (abierta: boolean) => void };
+  aviso?: string | null;
 }) {
   return (
-    <details id={id} className="ca-plegada" open={abierta || undefined} data-casa={marca} style={{ scrollMarginTop: 80 }}>
+    <details id={id} className="ca-plegada" open={controlada ? controlada.abierta : abierta || undefined} onToggle={controlada ? (e) => controlada.alCambiar(e.currentTarget.open) : undefined} data-casa={marca} style={{ scrollMarginTop: 80 }}>
       <summary>
         <span>
           <span className="ca-plegada-t">
             {titulo}
             {n != null && <span className="ca-plegada-n">{n}</span>}
             {etiqueta && <span className="ca-etiqueta-roja" data-casa="pendientes-etiqueta">{etiqueta}</span>}
+            {aviso && <span className="ca-plegada-aviso" role="status" data-casa="guardado">{aviso}</span>}
           </span>
           {sub && <span className="ca-plegada-s">{sub}</span>}
         </span>
@@ -154,6 +175,13 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
   const [respondida, setRespondida] = useState<{ modalidad: boolean; cuando: boolean }>({ modalidad: modalidadRespondida, cuando: inicial.horizonte != null });
   // Las contestadas que ya se guardaron: después de «Guardar» no cuentan como cambio (hasta que el servidor vuelva a dibujar).
   const [enviadas, setEnviadas] = useState<PreguntaPendiente[]>([]);
+  // La fila, controlada: se pliega al guardar. «Guardado.» se ve dos segundos en la fila y se va.
+  const [abierta, setAbierta] = useState(false);
+  const [vistoGuardado, setVistoGuardado] = useState(false);
+  const reloj = useRef<number | null>(null);
+  useEffect(() => () => { if (reloj.current) window.clearTimeout(reloj.current); }, []);
+  // Lo ya guardado de las dos preguntas (lo que la fila dice cerrada): no lo que se está eligiendo.
+  const guardadas = { modalidad: modalidadRespondida || enviadas.includes("modalidad"), cuando: inicial.horizonte != null || enviadas.includes("cuando") };
   // Las pendientes de verdad: las que la cuenta debe y todavía no eligió en esta pantalla.
   const faltan = pendientes.filter((q) => (q === "modalidad" ? !respondida.modalidad : !respondida.cuando));
   // Las que contestó acá (pendientes al entrar y ya elegidas): van al PUT aunque coincidan con lo inferido.
@@ -180,6 +208,10 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
     setEnviadas((xs) => Array.from(new Set([...xs, ...contestadas])));
     setEditando(false);
     setEstado("guardado");
+    setAbierta(false);
+    setVistoGuardado(true);
+    if (reloj.current) window.clearTimeout(reloj.current);
+    reloj.current = window.setTimeout(() => setVistoGuardado(false), GUARDADO_VISIBLE_MS);
     // La selección de arriba y la línea del perfil se dibujan en el servidor: se piden de nuevo.
     router.refresh();
   }
@@ -196,9 +228,13 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
   }, []);
 
   const textos = textosDelPerfil(p);
-  const etiqueta = etiquetaPendientes(faltan.length);
+  // La etiqueta de la fila cuenta lo GUARDADO: elegir una respuesta sin guardar no la saca.
+  const etiqueta = etiquetaPendientes(pendientes.filter((q) => !guardadas[q === "modalidad" ? "modalidad" : "cuando"]).length);
+  const resumen = resumenDeFila(base, { modalidad: !pendientes.includes("modalidad") || guardadas.modalidad, cuando: guardadas.cuando });
+  // «Guardar» y su línea, solo con algo que guardar (o mientras guarda, o si falló).
+  const conGuardar = hayCambios || estado === "guardando" || estado === "error";
   return (
-    <FilaPlegada id="perfil" titulo={CASA.perfil.titulo} etiqueta={etiqueta} sub={textosDelPerfil(base).corta} marca="perfil">
+    <FilaPlegada id="perfil" titulo={CASA.perfil.titulo} etiqueta={etiqueta} sub={resumen} marca="perfil" controlada={{ abierta, alCambiar: setAbierta }} aviso={vistoGuardado ? CASA.perfil.guardado : null}>
       <div className="ca-plegada-cuerpo" style={{ fontFamily: UI }} data-casa="perfil-abierto">
         {ajusteHecho && <p className="mb-3 text-[14px] font-semibold" role="status" data-casa="ajuste-hecho">{SEMANAL_VACIO.ajusteListo(ajusteHecho)}</p>}
         <h3 className="ca-perfil-h">{CASA.perfil.queBuscas}</h3>
@@ -261,10 +297,14 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
           </div>
         )}
 
-        <button type="button" className="ca-guardar" onClick={() => void guardarTodo()} disabled={!hayCambios || estado === "guardando"} {...botonOcupado(estado === "guardando")} data-casa="guardar">
-          {estado === "guardando" ? CASA.perfil.guardando : CASA.perfil.guardar}
-        </button>
-        <p className="ca-proxima" role="status" data-casa="proxima">{estado === "guardado" && !hayCambios ? CASA.perfil.guardado : CASA.perfil.proxima}</p>
+        {conGuardar && (
+          <>
+            <button type="button" className="ca-guardar" onClick={() => void guardarTodo()} disabled={!hayCambios || estado === "guardando"} {...botonOcupado(estado === "guardando")} data-casa="guardar">
+              {estado === "guardando" ? CASA.perfil.guardando : CASA.perfil.guardar}
+            </button>
+            <p className="ca-proxima" data-casa="proxima">{CASA.perfil.proxima}</p>
+          </>
+        )}
         {estado === "error" && <p role="alert" className="ca-error">{CASA.perfil.error}</p>}
       </div>
     </FilaPlegada>
