@@ -157,7 +157,9 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       const base = { veredicto: "COMPRAR", score: 88, flujo: 88363 };
       const peor = { veredicto: "AJUSTA SUPUESTOS", score: 71, flujo: -45120 };
       if (A.lineaVeredicto(base) !== "Comprar 88 · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto(null) !== null || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 · flujo +$88.363 te queda»");
-      if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "El informe completo incluye el enlace a la publicación, para que lo veas y contactes a quien lo vende." || A.AVISO_ANALIZAR.incluyeCorto !== ".") F("3 · la tarjeta gris no dice qué incluye el informe");
+      // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740», decisión de Fabrizio) · la línea del enlace es UNA
+      // sola y corta en todos los pop-ups: «El informe incluye el enlace a la publicación.» (la de D1 ocupaba tres líneas).
+      if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "El informe incluye el enlace a la publicación." || A.AVISO_ANALIZAR.incluye.fuerte !== "el enlace a la publicación") F("3 · la tarjeta gris no dice qué incluye el informe (en una línea corta)");
       // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO.
       if (!A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: true, evaluacion: null }) || !A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: null })
         || A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: peor }) || A.bloqueaAnalizar({ sin: false, esBase: true, recalculando: false, evaluacion: null }) || A.bloqueaAnalizar({ sin: true, esBase: false, recalculando: true, evaluacion: null }))

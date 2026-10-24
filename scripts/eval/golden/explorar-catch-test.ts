@@ -155,7 +155,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     const { AvisoSinSaldoExplorar } = require(join(RAIZ, "src/app/explorar/aviso-sin-saldo")) as typeof import("../../../src/app/explorar/aviso-sin-saldo");
     const compras = comprasDeExplorar({ filtros: "c=Providencia", ticket: true });
     const html = dibujar(createElement(AvisoSinSaldoExplorar as unknown as FC<Record<string, unknown>>, { n: 312, compras, vence: "mañana 11:17", alCerrar() {}, alIr() {} }));
-    for (const t of ["Para explorar los 312 necesitas análisis disponibles.", ex.AVISO_SIN_SALDO.cuerpo, "Solo para cuentas nuevas", "Vence mañana 11:17", "Comprar solo 1", "Ver el plan de 20 al mes", "Ahora no"]) {
+    // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740») · la oferta va en UNA fila: «Solo para cuentas nuevas · vence mañana 11:17».
+    for (const t of ["Para explorar los 312 necesitas análisis disponibles.", ex.AVISO_SIN_SALDO.cuerpo, "Solo para cuentas nuevas", "· vence mañana 11:17", "Comprar solo 1", "Ver el plan de 20 al mes", "Ahora no"]) {
       if (!html.includes(t)) F(`4 · el aviso E no dice «${t.slice(0, 50)}»`);
     }
     if (!/data-modal="explorar-sin-saldo"/.test(html) || !/data-explorar="ahora-no"/.test(html) || !/href="\/pricing"/.test(html)) F("4 · el aviso E sin su marca, sin «Ahora no» o sin el enlace al plan");
