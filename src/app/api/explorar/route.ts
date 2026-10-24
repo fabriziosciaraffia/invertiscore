@@ -13,6 +13,8 @@ import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/ex
 // un chip) deja «explorar_vista» con los filtros y cuántos pines; la vista de entrada la deja la página.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
+// Una combinación nueva calcula toda la comuna en el momento (24-oct-2026, medido: ver lib/explorar/servidor.ts).
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -25,7 +27,7 @@ export async function GET(request: Request) {
     const d = await cargarExplorar(admin, user, filtros);
     if (sp.get("evento") === "1") {
       const analizados = d.pines.filter((p) => d.analizados[p.avisoId]).length;
-      void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados, fuente: "cambio" })).catch(() => false);
+      void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados, fuente: "cambio", cuenta: d.cuenta })).catch(() => false);
     }
     return NextResponse.json(d, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

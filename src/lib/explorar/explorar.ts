@@ -17,11 +17,35 @@ import { marcaVisto } from "@/lib/guia/del-dia";
 import { PLAN_ANALISIS_MES } from "@/lib/planes";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 
-/** Los dos pies y los dos plazos con que la noche evaluó cada aviso: el mapa no calcula en vivo. */
-export const PIES_EXPLORAR = [20, 30] as const;
-export const PLAZOS_EXPLORAR = [25, 30] as const;
+/**
+ * CUALQUIER PIE Y PLAZO (24-oct-2026, decisión de Fabrizio): los chips ofrecen pie de 10 a 50 % y plazo de 15 a 30 años.
+ * Las cuatro combinaciones de la noche (PIES_NOCHE × PLAZOS_NOCHE) salen de sus columnas; cualquier otra se calcula en el
+ * momento solo para los avisos de los filtros activos y se guarda 24 horas en `avisos_evaluados.combos` (servidor.ts).
+ */
+export const PIES_EXPLORAR = [10, 15, 20, 25, 30, 40, 50] as const;
+export const PLAZOS_EXPLORAR = [15, 20, 25, 30] as const;
 export type PieExplorar = (typeof PIES_EXPLORAR)[number];
 export type PlazoExplorar = (typeof PLAZOS_EXPLORAR)[number];
+/** Lo que la noche evaluó y tiene columna propia: pie 20/30 a 25 y 30 años (estandar-deptos.ts, evaluar-aviso.ts). */
+export const PIES_NOCHE = [20, 30] as const;
+export const PLAZOS_NOCHE = [25, 30] as const;
+export function esCombinacionDeLaNoche(f: Pick<FiltrosExplorar, "pie" | "plazo">): boolean {
+  return (PIES_NOCHE as readonly number[]).includes(f.pie) && (PLAZOS_NOCHE as readonly number[]).includes(f.plazo);
+}
+/** La clave de una combinación en `combos`: «15-20». */
+export const claveCombo = (f: Pick<FiltrosExplorar, "pie" | "plazo">): string => `${f.pie}-${f.plazo}`;
+/** Lo guardado por combinación: veredicto, puntaje, flujo y cuándo se calculó. Vale 24 horas, y solo si es posterior a la
+ *  evaluación de la noche de esa fila (una reevaluación lo invalida sola). */
+export interface ComboGuardado { v: string | null; s: number | null; f: number | null; at: string }
+export const VIDA_COMBO_MS = 24 * 3600_000;
+export function comboVigente(c: unknown, evaluadoAt: string | null | undefined, ahora: Date = new Date()): c is ComboGuardado {
+  if (!c || typeof c !== "object") return false;
+  const at = Date.parse(String((c as { at?: unknown }).at ?? ""));
+  if (!Number.isFinite(at)) return false;
+  if (ahora.getTime() - at > VIDA_COMBO_MS) return false;
+  const ev = evaluadoAt ? Date.parse(evaluadoAt) : NaN;
+  return !(Number.isFinite(ev) && at < ev);
+}
 /** El tope de «Más de UF 5.500» (el de RANGOS_UF). */
 export const UF_TOPE = 60000;
 /** Las tarjetas que el servidor dibuja antes del primer pintado; el resto llega con el mapa. Vive acá y no en el
@@ -53,9 +77,13 @@ const COMUNAS_OK = new Set<string>(COMUNAS_DISPONIBLES as readonly string[]);
 const esPie = (p: unknown): p is PieExplorar => (PIES_EXPLORAR as readonly number[]).includes(Number(p));
 const esPlazo = (p: unknown): p is PlazoExplorar => (PLAZOS_EXPLORAR as readonly number[]).includes(Number(p));
 
-/** El pie de la noche más cercano al de la persona (30 % o más → 30; si no, 20) y el plazo (30 o más → 30; si no, 25). */
-export function pieDeLaNoche(piePct: number | null | undefined): PieExplorar { return piePct != null && piePct >= 30 ? 30 : 20; }
-export function plazoDeLaNoche(plazoAnios: number | null | undefined): PlazoExplorar { return plazoAnios != null && plazoAnios >= 30 ? 30 : 25; }
+/** El pie de la lista más cercano al de la persona (sin pie, el estándar de 20 %) y el plazo (sin plazo, 25 años). */
+const masCercano = <T extends number>(lista: readonly T[], v: number): T => lista.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+export function pieDeLista(piePct: number | null | undefined): PieExplorar { return piePct == null ? (PIE_DEPTOS as PieExplorar) : masCercano(PIES_EXPLORAR, piePct); }
+export function plazoDeLista(plazoAnios: number | null | undefined): PlazoExplorar { return plazoAnios == null ? (PLAZO_DEPTOS as PlazoExplorar) : masCercano(PLAZOS_EXPLORAR, plazoAnios); }
+/** El pie y el plazo de la NOCHE más cercanos (para contar rápido sin calcular: el botón del dashboard). */
+export function pieDeLaNoche(piePct: number | null | undefined): (typeof PIES_NOCHE)[number] { return piePct != null && piePct >= 30 ? 30 : 20; }
+export function plazoDeLaNoche(plazoAnios: number | null | undefined): (typeof PLAZOS_NOCHE)[number] { return plazoAnios != null && plazoAnios >= 30 ? 30 : 25; }
 
 /** El id de tipología de un dormitorio del perfil (4 o más → «4»). */
 export const tipologiaDeDorm = (d: number): string => (d >= 4 ? "4" : String(Math.max(0, Math.round(d))));
@@ -72,7 +100,7 @@ export function filtrosDePerfil(p: { comunas: string[]; dormitorios: number[]; p
   if (comunas.length === 0 || tipologias.length === 0 || p.precioMaxUf == null || p.precioMaxUf <= 0) return null;
   const aMano = !!p.editado?.includes("precioMin");
   const ufMin = aMano && p.precioMinUf != null && p.precioMinUf < p.precioMaxUf ? Math.floor(p.precioMinUf) : 0;
-  return { comunas, tipologias, ufMin, ufMax: Math.round(p.precioMaxUf), pie: pieDeLaNoche(p.piePct), plazo: plazoDeLaNoche(p.plazoAnios) };
+  return { comunas, tipologias, ufMin, ufMax: Math.round(p.precioMaxUf), pie: pieDeLista(p.piePct), plazo: plazoDeLista(p.plazoAnios) };
 }
 
 /** Lo que valida cualquier filtro que llegue de afuera (la URL, la API): o es un filtro completo, o null. */
@@ -122,6 +150,8 @@ export function etiquetaRango(f: Pick<FiltrosExplorar, "ufMin" | "ufMax">): stri
 export function etiquetaPiePlazo(f: Pick<FiltrosExplorar, "pie" | "plazo">): string {
   return `${f.pie} % · ${f.plazo} años`;
 }
+export const etiquetaPie = (f: Pick<FiltrosExplorar, "pie">): string => `Pie ${f.pie} %`;
+export const etiquetaPlazo = (f: Pick<FiltrosExplorar, "plazo">): string => `${f.plazo} años`;
 /** «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años»: la búsqueda entera, en una línea. */
 export function lineaFiltros(f: FiltrosExplorar): string {
   return [lista(f.comunas), etiquetaTipologias(f.tipologias), etiquetaRango(f), etiquetaPiePlazo(f)].join(" · ");
@@ -248,8 +278,8 @@ export function agruparPines(pines: ReadonlyArray<Pick<PinExplorar, "avisoId" | 
 
 // ── EL POP-UP CON EL CAMBIO DE PIE Y PLAZO (4-ticket-y-popups.html, D1 y D2) ─────────────────────
 /** Lo que ofrece «Cambiar» en el aviso antes de gastar: el pie y el plazo con que se analiza. */
-export const PIES_POPUP = [10, 15, 20, 25, 30, 40, 50] as const;
-export const PLAZOS_POPUP = [15, 20, 25, 30] as const;
+export const PIES_POPUP = PIES_EXPLORAR;
+export const PLAZOS_POPUP = PLAZOS_EXPLORAR;
 export const esPiePopup = (p: unknown): p is (typeof PIES_POPUP)[number] => (PIES_POPUP as readonly number[]).includes(Number(p));
 export const esPlazoPopup = (p: unknown): p is (typeof PLAZOS_POPUP)[number] => (PLAZOS_POPUP as readonly number[]).includes(Number(p));
 
@@ -297,7 +327,9 @@ export const EXPLORAR_COPY = {
   /** El perfil no alcanzaba para abrir con él: se abre con la búsqueda por defecto. */
   sinPerfil: "Tu perfil no tiene comuna, tipología o tope todavía: el mapa abre con una búsqueda de ejemplo. Cámbiala en los chips.",
   /** Los chips, como diálogos. */
-  chips: { comuna: "Comuna", tipologia: "Tipología", rango: "Rango de precio", piePlazo: "Pie y plazo", listo: "Listo", hasta: (n: number) => `Hasta ${n} comunas.` },
+  chips: { comuna: "Comuna", tipologia: "Tipología", rango: "Rango de precio", piePlazo: "Pie y plazo", pie: "Pie", plazo: "Plazo", listo: "Listo", hasta: (n: number) => `Hasta ${n} comunas.` },
+  /** Mientras el servidor calcula una combinación que la noche no tiene (24-oct-2026). */
+  calculando: "Calculando con tu pie…",
   cambiar: "Cambiar",
   analizarIgual: "Analizar igual",
   guardarPerfil: (pie: number, plazo: number) => `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,

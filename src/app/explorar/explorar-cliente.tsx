@@ -30,7 +30,7 @@ import { COMUNAS_DESTACADAS, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } 
 import { GUIA } from "@/lib/guia/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import {
-  botonAnalizar, cambiarFiltro, capRatePct, estadoDeEntrada, etiquetaComunas, etiquetaPiePlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
+  botonAnalizar, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
   pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
 import "./explorar.css";
@@ -61,9 +61,11 @@ export interface DatosExplorarCliente {
   finanzas: { uf: number | null; tasa: number | null };
   /** Los filtros salieron del perfil (o de la URL); false = el perfil no alcanzaba y abre con la búsqueda de ejemplo. */
   desdePerfil: boolean;
+  /** La combinación no es de la noche: el servidor no trajo pines y el navegador los pide enseguida («Calculando con tu pie…»). */
+  calculando?: boolean;
 }
 
-type Chip = "comuna" | "tipologia" | "rango" | "piePlazo";
+type Chip = "comuna" | "tipologia" | "rango" | "pie" | "plazo";
 
 export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, mapaQuieto = null }: {
   inicial: DatosExplorarCliente;
@@ -114,7 +116,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
       if (!res.ok) { setFallo(true); return; }
       const d = (await res.json()) as Omit<DatosExplorarCliente, "analizadosN" | "completo" | "desdePerfil">;
       if (ctrl.signal.aborted) return;
-      setDatos((x) => ({ ...x, ...d, filtros: f, analizadosN: d.pines.filter((p) => d.analizados[p.avisoId]).length, completo: true }));
+      setDatos((x) => ({ ...x, ...d, filtros: f, analizadosN: d.pines.filter((p) => d.analizados[p.avisoId]).length, completo: true, calculando: false }));
       setCaidos([]);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError") && vivo.current) setFallo(true);
@@ -124,9 +126,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   // El mapa, después del primer pintado; con él, el resto de los pines si el servidor mandó solo los primeros.
   useEffect(() => {
     vivo.current = true;
+    // Una combinación que la noche no tiene: se pide ya, sin esperar a que la página esté quieta (el servidor no la calculó).
+    if (inicial.calculando) { setCargando("todo"); void cargar(inicial.filtros, false).finally(() => { if (vivo.current) setCargando(null); }); }
     const cancelar = cuandoLaPaginaEsteQuieta(() => {
       setMapaListo(true);
-      if (!inicial.completo) void cargar(inicial.filtros, false);
+      if (!inicial.completo && !inicial.calculando) void cargar(inicial.filtros, false);
     });
     return () => { vivo.current = false; cancelar(); abortRef.current?.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,6 +233,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   const ojoDe = (p: PinExplorar) => [p.comuna, p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ");
   const veredictoDe = (p: PinExplorar) => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
   const usa = botonAnalizar(datos.saldo);
+  // Una combinación que la noche no tiene, mientras el servidor la calcula: la píldora y la hoja lo dicen.
+  const calculando = (cargando !== null || !!datos.calculando) && !esCombinacionDeLaNoche(filtros);
   const visibles = hoja === "abierta" ? pines.slice(0, TOPE_LISTA) : pines.slice(0, TOPE_HOJA);
   const rangoActual = RANGOS_UF.find((r) => (r.min ?? 0) === filtros.ufMin && r.max === filtros.ufMax)?.id ?? "";
   const comunasLibres = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !DESTACADAS.includes(c));
@@ -301,10 +307,16 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
             {RANGOS_UF.map((r) => <option key={r.id} value={r.id}>{r.chip}</option>)}
           </select>
         </label>
-        <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "piePlazo")} data-chip="pie-plazo">
-          <span aria-hidden="true">{etiquetaPiePlazo(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.piePlazo} value={`${filtros.pie}-${filtros.plazo}`} onChange={(e) => { const [p, z] = e.target.value.split("-").map(Number); aplicar({ pie: p as FiltrosExplorar["pie"], plazo: z as FiltrosExplorar["plazo"] }, "piePlazo"); }}>
-            {PIES_EXPLORAR.flatMap((p) => PLAZOS_EXPLORAR.map((z) => <option key={`${p}-${z}`} value={`${p}-${z}`}>{etiquetaPiePlazo({ pie: p, plazo: z })}</option>))}
+        <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "pie")} data-chip="pie">
+          <span aria-hidden="true">{etiquetaPie(filtros)}</span>
+          <select aria-label={EXPLORAR_COPY.chips.pie} value={filtros.pie} onChange={(e) => aplicar({ pie: Number(e.target.value) as FiltrosExplorar["pie"] }, "pie")}>
+            {PIES_EXPLORAR.map((p) => <option key={p} value={p}>{etiquetaPie({ pie: p })}</option>)}
+          </select>
+        </label>
+        <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "plazo")} data-chip="plazo">
+          <span aria-hidden="true">{etiquetaPlazo(filtros)}</span>
+          <select aria-label={EXPLORAR_COPY.chips.plazo} value={filtros.plazo} onChange={(e) => aplicar({ plazo: Number(e.target.value) as FiltrosExplorar["plazo"] }, "plazo")}>
+            {PLAZOS_EXPLORAR.map((z) => <option key={z} value={z}>{etiquetaPlazo({ plazo: z })}</option>)}
           </select>
         </label>
         <span className="ex-chips-fin" aria-hidden="true" />
@@ -360,7 +372,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{EXPLORAR_COPY.sinMapa}</p>}
           <div className="ex-pildoras">
             <span className="ex-pildora" data-explorar="pildora" data-cargando={cargando ? "1" : undefined} aria-live="polite">
-              {datos.analizadosN > 0 && <span className="ex-punto-azul" aria-hidden="true" />}{pildora(total, datos.analizadosN)}
+              {calculando ? EXPLORAR_COPY.calculando : <>{datos.analizadosN > 0 && <span className="ex-punto-azul" aria-hidden="true" />}{pildora(total, datos.analizadosN)}</>}
             </span>
             <EnlaceCarga href="/dashboard" className="ex-pildora" data-explorar="volver">← {EXPLORAR_COPY.volver}</EnlaceCarga>
           </div>
@@ -375,11 +387,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           {detalle ?? (
             <>
               <div className="ex-hoja-cab">
-                <h2 className="ex-hoja-t" data-explorar="titulo-hoja">{tituloHoja(total)}</h2>
+                <h2 className="ex-hoja-t" data-explorar="titulo-hoja" data-calculando={calculando ? "1" : undefined}>{calculando ? EXPLORAR_COPY.calculando : tituloHoja(total)}</h2>
                 <span className="ex-hoja-orden">{EXPLORAR_COPY.ordenados}</span>
               </div>
               {fallo && <p className="ex-error" role="alert" data-explorar="error">{EXPLORAR_COPY.error} <button type="button" className="underline" onClick={() => { setCargando("todo"); void cargar(filtros, false).finally(() => setCargando(null)); }}>{EXPLORAR_COPY.reintentar}</button></p>}
-              {pines.length === 0 ? <p className="ex-vacia" data-explorar="vacia">{EXPLORAR_COPY.vacia}</p> : (
+              {pines.length === 0 ? (calculando ? null : <p className="ex-vacia" data-explorar="vacia">{EXPLORAR_COPY.vacia}</p>) : (
                 <div className="ex-tarjetas" data-explorar="tarjetas">{visibles.map(tarjeta)}</div>
               )}
               <p className="ex-saldo" data-explorar="saldo">{lineaSaldo(datos.saldo)}</p>

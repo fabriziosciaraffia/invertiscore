@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { capturarServidor } from "@/lib/posthog-servidor";
-import { EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA } from "@/lib/explorar/explorar";
+import { esCombinacionDeLaNoche, EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
 import { ExplorarCliente } from "./explorar-cliente";
@@ -40,9 +40,12 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   const deUrl = filtrosDeUrl(sp);
   const cuenta = deUrl ? null : await filtrosDeLaCuenta(admin, user.id);
   const filtros = deUrl ?? cuenta!.filtros;
-  const d = await cargarExplorar(admin, user, filtros);
+  // Una combinación que la noche no tiene (24-oct-2026) se calcula en el momento: no en el SSR —tardaría segundos antes del
+  // primer byte— sino desde el navegador, que la pide enseguida y mientras tanto dice «Calculando con tu pie…».
+  const noche = esCombinacionDeLaNoche(filtros);
+  const d = await cargarExplorar(admin, user, filtros, new Date(), { pines: noche });
   const analizadosN = d.pines.filter((p) => d.analizados[p.avisoId]).length;
-  void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados: analizadosN, fuente: "pagina" })).catch(() => false);
+  void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: noche ? d.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d.cuenta })).catch(() => false);
   const a = sp.get("a");
   return (
     <div className="ex-pagina" data-explorar="pagina">
@@ -50,7 +53,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
       <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
       <ExplorarCliente
         inicial={{
-          filtros, n: d.n, analizadosN, pines: d.pines.slice(0, TOPE_HOJA), completo: d.n <= TOPE_HOJA, analizados: d.analizados,
+          filtros, n: d.n, analizadosN, pines: d.pines.slice(0, TOPE_HOJA), completo: noche && d.n <= TOPE_HOJA, calculando: !noche, analizados: d.analizados,
           saldo: d.saldo, ticket: d.ticket, cuentaCreadaAt: d.cuentaCreadaAt, finanzas: d.finanzas, desdePerfil: deUrl ? true : !!cuenta?.desdePerfil,
         }}
         abrir={a}

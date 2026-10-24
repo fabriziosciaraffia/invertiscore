@@ -21,6 +21,10 @@
 //   8 · LA MEDICIÓN: «explorar_vista» con filtros y pines (la página y cada cambio), «explorar_analiza» con el depto; el
 //       archivo dice «Desde Explorar».
 //   9 · EL DASHBOARD: «Explorar los 312 en el mapa» lleva a /explorar, en las dos casas; las compras vuelven al mapa.
+//  10 · CUALQUIER PIE Y PLAZO (24-oct-2026, decisión de Fabrizio): los chips ofrecen pie de 10 a 50 % y plazo de 15 a 30
+//       años; una combinación que la noche no tiene se calcula en el momento solo para el universo de los filtros, se guarda
+//       24 horas en `avisos_evaluados.combos` (vale si es posterior a la evaluación de la fila), la página no la calcula en
+//       el SSR y el mapa dice «Calculando con tu pie…» mientras tanto. La evaluación nocturna no cambia.
 // Verificado EN ROJO contra el código de hoy y por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-catch-test.ts
 // ============================================================================
@@ -74,8 +78,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (JSON.stringify(f1) !== JSON.stringify(F0)) F(`1 · el perfil no abre tal cual: ${JSON.stringify(f1)}`);
   const f2 = ex.filtrosDePerfil({ comunas: ["Santiago", "Ñuñoa"], dormitorios: [1, 2, 4, 5], precioMinUf: 3000, precioMaxUf: 4000, piePct: 30, plazoAnios: 30, editado: [] });
   if (!f2 || f2.pie !== 30 || f2.plazo !== 30 || f2.ufMin !== 0 || JSON.stringify(f2.tipologias) !== '["1","2","4"]' || f2.comunas.length !== 2) F(`1 · pie 30 / plazo 30 / piso inferido / tipologías: ${JSON.stringify(f2)}`);
-  if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.plazo !== 25) F("1 · plazo 20 no cae a los 25 de la noche");
-  if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.pie !== 20) F("1 · pie 25 no cae a los 20 de la noche");
+  // ⚠ ACTA (24-oct-2026, goal «cualquier pie y plazo») · el perfil abre con SU pie y SU plazo (el de la lista más cercano), ya no con el de la noche.
+  if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.plazo !== 20) F("1 · el plazo 20 del perfil no abre con 20");
+  if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.pie !== 25) F("1 · el pie 25 del perfil no abre con 25");
+  if (ex.pieDeLista(12) !== 10 || ex.pieDeLista(13) !== 15 || ex.pieDeLista(null) !== 20 || ex.pieDeLista(80) !== 50 || ex.plazoDeLista(18) !== 20 || ex.plazoDeLista(null) !== 25 || ex.plazoDeLista(40) !== 30) F("1 · el pie o el plazo del perfil no caen al más cercano de la lista");
   if (ex.filtrosDePerfil({ comunas: [], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: null, plazoAnios: null }) !== null) F("1 · sin comuna el perfil igual abre");
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: null, piePct: null, plazoAnios: null }) !== null) F("1 · sin tope el perfil igual abre");
   const g = ex.cambiarFiltro(F0, { pie: 30 });
@@ -84,8 +90,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const ida = ex.urlDeFiltros(g);
   if (ida !== "c=Providencia&t=2&r=3000-4000&p=30&z=25") F(`1 · la URL de los filtros: ${ida}`);
   if (JSON.stringify(ex.filtrosDeUrl(new URLSearchParams(ida))) !== JSON.stringify(g)) F("1 · la URL no vuelve al mismo filtro");
-  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=25&z=25")) !== null) F("1 · un pie que la noche no evaluó pasa por la URL");
-  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=20&z=20")) !== null) F("1 · un plazo que la noche no evaluó pasa por la URL");
+  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=25&z=25"))?.pie !== 25 || ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=20&z=20"))?.plazo !== 20) F("1 · un pie o un plazo de la lista no pasa por la URL");
+  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=12&z=25")) !== null || ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=20&z=35")) !== null) F("1 · un pie o un plazo fuera de la lista pasa por la URL");
+  if (JSON.stringify(ex.PIES_EXPLORAR) !== "[10,15,20,25,30,40,50]" || JSON.stringify(ex.PLAZOS_EXPLORAR) !== "[15,20,25,30]") F("1 · los chips no ofrecen pie de 10 a 50 % y plazo de 15 a 30 años");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
   if ((cli.match(/\/api\/perfil-busqueda/g) ?? []).length !== 1 || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(cli)) F("1 · la página escribe el perfil fuera de la casilla del pop-up (o no la honra)");
   if (!/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*const f = cambiarFiltro\(filtros, parche\);[\s\S]{0,600}void cargar\(f, true\)/.test(cli)) F("1 · cambiar un chip no es un filtro nuevo leído de /api/explorar");
@@ -166,10 +173,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     if (/loadGoogleMaps|maps\.googleapis/.test(codigo(p))) F(`5 · ${p} trae Google Maps al primer pintado`);
   }
   if (!/import \{ loadGoogleMaps \} from "@\/lib\/loadGoogleMaps";/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("5 · el mapa no usa el cargador de siempre");
-  if (!/pines: d\.pines\.slice\(0, TOPE_HOJA\), completo: d\.n <= TOPE_HOJA/.test(codigo("src/app/explorar/page.tsx"))) F("5 · el servidor manda todos los pines al primer pintado (o no dice si están completos)");
+  if (!/pines: d\.pines\.slice\(0, TOPE_HOJA\), completo: noche && d\.n <= TOPE_HOJA/.test(codigo("src/app/explorar/page.tsx"))) F("5 · el servidor manda todos los pines al primer pintado (o no dice si están completos)");
   // La constante vive en la lib pura: desde un módulo "use client" llegaría al servidor como referencia (23-oct-2026).
-  if (!/import \{ EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
-  if (!/if \(!inicial\.completo\) void cargar\(inicial\.filtros, false\);/.test(cli)) F("5 · el resto de los pines no llega con el mapa");
+  if (!/import \{ esCombinacionDeLaNoche, EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
+  if (!/if \(!inicial\.completo && !inicial\.calculando\) void cargar\(inicial\.filtros, false\);/.test(cli)) F("5 · el resto de los pines no llega con el mapa");
   // ⚠ ACTA (23-oct-2026, medido en producción: 9,7 s) · sin el mapa quieto, la primera tesela de Google (a los 8 s) es el LCP.
   // En el teléfono va INCRUSTADO en el HTML (mapa-quieto.ts): como archivo precargado llegaba 1,3 s tarde y el LCP daba 2,5 s.
   const quieto = cargar<typeof import("../../../src/lib/explorar/mapa-quieto")>("src/lib/explorar/mapa-quieto.ts");
@@ -236,9 +243,79 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     const a = srv.eventoExplorarAnaliza({ userId: "u", analysisId: "an", avisoId: "av", comuna: "Providencia", precioUF: 3600, m2: 61, piePct: 20, plazoAnios: 25 });
     if (a.event !== "explorar_analiza" || a.properties?.aviso_id !== "av" || a.properties?.analysis_id !== "an" || a.properties?.pie_pct !== 20) F(`8 · explorar_analiza: ${JSON.stringify(a)}`);
   }
-  if (!/void capturarServidor\(eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados: analizadosN, fuente: "pagina" \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
-  if (!/if \(sp\.get\("evento"\) === "1"\) \{[\s\S]{0,300}eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados, fuente: "cambio" \}\)/.test(codigo("src/app/api/explorar/route.ts")) || !/\$\{evento \? "&evento=1" : ""\}/.test(cli)) F("8 · cambiar un chip no deja «explorar_vista»");
+  if (!/void capturarServidor\(eventoExplorarVista\(\{ userId: user\.id, filtros, n: noche \? d\.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d\.cuenta \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
+  if (!/if \(sp\.get\("evento"\) === "1"\) \{[\s\S]{0,300}eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados, fuente: "cambio", cuenta: d\.cuenta \}\)/.test(codigo("src/app/api/explorar/route.ts")) || !/\$\{evento \? "&evento=1" : ""\}/.test(cli)) F("8 · cambiar un chip no deja «explorar_vista»");
   if (textoOrigenArchivo("explorar") !== "Desde Explorar" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde Explorar»");
+
+  // ── 10 · cualquier pie y plazo: una combinación que la noche no tiene ──
+  const liviano = (leer("supabase/migrations/20261024_explorar_combos.sql").split("create or replace function").find((x) => x.startsWith(" public.explorar_universo_liviano")) ?? "");
+  if (!ex.esCombinacionDeLaNoche({ pie: 20, plazo: 25 }) || !ex.esCombinacionDeLaNoche({ pie: 30, plazo: 30 }) || ex.esCombinacionDeLaNoche({ pie: 15, plazo: 20 }) || ex.esCombinacionDeLaNoche({ pie: 20, plazo: 20 })) F("10 · esCombinacionDeLaNoche");
+  if (ex.claveCombo({ pie: 15, plazo: 20 }) !== "15-20") F("10 · la clave del combo");
+  const ahora = new Date("2026-10-24T12:00:00Z");
+  const vivo = { v: "COMPRAR", s: 80, f: 100, at: "2026-10-24T10:00:00Z" };
+  if (!ex.comboVigente(vivo, "2026-10-24T03:00:00Z", ahora)) F("10 · un combo de hace dos horas, posterior a la noche, no vale");
+  if (ex.comboVigente({ ...vivo, at: "2026-10-23T10:00:00Z" }, "2026-10-23T03:00:00Z", ahora)) F("10 · un combo de hace 26 horas sigue valiendo");
+  if (ex.comboVigente(vivo, "2026-10-24T11:00:00Z", ahora)) F("10 · un combo anterior a una reevaluación de la fila sigue valiendo");
+  if (ex.comboVigente(null, "2026-10-24T03:00:00Z", ahora) || ex.comboVigente({ v: "COMPRAR" }, "2026-10-24T03:00:00Z", ahora)) F("10 · sin combo, o sin fecha, vale");
+  if (srv) {
+    // Una base de mentira: el universo trae tres filas —A con el combo guardado y vigente, B con uno viejo (anterior a la
+    // reevaluación), C sin combo—; la sonda de mentira da Comprar a C y Ajustar a B. Tienen que salir A y C, calcularse
+    // solo B y C, guardarse B y C, y no tocar la RPC de la noche.
+    const llamadas: string[] = [];
+    const guardadas: Array<{ aviso_id: string; combo: Record<string, unknown> }> = [];
+    const filaU = (id: string, combo: unknown, evaluado: string) => ({ id, comuna: "Providencia", lat: -33.43, lng: -70.61, superficie_m2: 60, dormitorios: 2, banos: 2, precio_uf: 3600, arriendo_monto: 500000, evaluado_at: evaluado, combo, pub_estado: null, pub_at: null });
+    const pesada = (id: string) => ({ ...fila(id, null, null), score_cron: 70, arriendo: { monto: 500000, fuente: "radio", n: 5, radio: 1000, radioMonto: 500000, radioFuente: "radio", segmento: null }, venta: null, gastos_comunes: null, mediana_comuna: { x: 1 }, antiguedad_anios: null, antiguedad_origen: "supuesta", condicion: "usado", direccion: null, fecha_entrega: null, url: null });
+    const pedidasPesadas: string[] = [];
+    const filas = [
+      filaU("A", { v: "COMPRAR", s: 91, f: 120000, at: "2026-10-24T10:00:00Z" }, "2026-10-24T03:00:00Z"),
+      filaU("B", { v: "COMPRAR", s: 85, f: 90000, at: "2026-10-23T10:00:00Z" }, "2026-10-24T03:00:00Z"),
+      filaU("C", null, "2026-10-24T03:00:00Z"),
+    ];
+    const admin = {
+      rpc: (nombre: string, params: Record<string, unknown>) => {
+        llamadas.push(nombre);
+        if (nombre === "explorar_guardar_combos") { for (const x of params.filas as typeof guardadas) guardadas.push(x); return Promise.resolve({ data: guardadas.length, error: null }); }
+        if (nombre === "explorar_filas_para_sonda") { const ids = params.ids as string[]; pedidasPesadas.push(...ids); return Promise.resolve({ data: ids.map(pesada), error: null }); }
+        if (nombre === "explorar_universo_liviano") return Promise.resolve({ data: params.clave === "15-20" ? filas : [], error: null });
+        return { range: async () => ({ data: [], error: null }) };
+      },
+    } as never;
+    const sonda = (c: { avisoId: string }, combo: { piePct: number; plazoAnios: number }) => (combo.piePct !== 15 || combo.plazoAnios !== 20 ? null : c.avisoId === "C" ? { veredicto: "COMPRAR", score: 77, flujo: 50000, cuota: 1 } : { veredicto: "AJUSTA SUPUESTOS", score: 60, flujo: -10000, cuota: 1 });
+    const cuenta = { calculados: 0, ms: 0 };
+    const pines = await srv.pinesExplorar(admin, { ...F0, pie: 15, plazo: 20 }, ahora, cuenta, { sonda: sonda as never, cfg: { uf: 39000, tasa: 4.2 } });
+    if (pines.map((p) => `${p.avisoId}:${p.score}`).join(",") !== "A:91,C:77") F(`10 · con una combinación nueva no salen los Comprar guardados más los calculados, por puntaje: ${pines.map((p) => `${p.avisoId}:${p.veredicto}:${p.score}`).join(",")}`);
+    if (cuenta.calculados !== 2) F(`10 · se calcularon ${cuenta.calculados} y no los 2 que faltaban (B vencido por la reevaluación, C sin combo)`);
+    if (llamadas.includes("explorar_pines") || !llamadas.includes("explorar_universo_liviano") || !llamadas.includes("explorar_guardar_combos")) F(`10 · las RPC: ${llamadas.join(",")} (una combinación nueva lee el universo y guarda; no toca la de la noche)`);
+    if (pedidasPesadas.sort().join() !== "B,C") F(`10 · los datos pesados de la evaluación se piden para ${pedidasPesadas.join(",") || "nadie"} y no solo para lo que falta calcular (B, C)`);
+    const ids = guardadas.map((g) => g.aviso_id).sort().join(",");
+    if (ids !== "B,C" || !guardadas.every((g) => Object.keys(g.combo).join() === "15-20" && typeof (g.combo["15-20"] as { at?: unknown }).at === "string")) F(`10 · lo guardado no es solo lo calculado, bajo la clave del combo: ${JSON.stringify(guardadas).slice(0, 200)}`);
+    if (!guardadas.some((g) => g.aviso_id === "B" && (g.combo["15-20"] as { v?: unknown }).v === "AJUSTA SUPUESTOS")) F("10 · lo que no da Comprar también se guarda (si no, se recalcularía en cada visita)");
+    // La misma combinación, pedida de nuevo con todo guardado: nada se calcula y la sonda no corre.
+    const llamadas2: string[] = [];
+    const admin2 = { rpc: (nombre: string) => { llamadas2.push(nombre); return Object.assign(Promise.resolve({ data: [filaU("A", vivo, "2026-10-24T03:00:00Z")], error: null }), { range: async () => ({ data: [], error: null }) }); } } as never;
+    const cuenta2 = { calculados: 0, ms: 0 };
+    const otra = await srv.pinesExplorar(admin2, { ...F0, pie: 15, plazo: 20 }, ahora, cuenta2, { sonda: (() => { throw new Error("no debía calcular"); }) as never, cfg: { uf: 39000, tasa: 4.2 } });
+    if (otra.length !== 1 || cuenta2.calculados !== 0 || llamadas2.includes("explorar_guardar_combos")) F("10 · con todo guardado igual calcula o guarda");
+    // Y una combinación de la noche sigue saliendo de sus columnas, sin leer el universo.
+    const llamadas3: string[] = [];
+    const admin3 = { rpc: (nombre: string) => { llamadas3.push(nombre); return { range: async () => ({ data: [], error: null }) }; } } as never;
+    await srv.pinesExplorar(admin3, F0, ahora);
+    if (llamadas3.join() !== "explorar_pines") F(`10 · una combinación de la noche no sale de explorar_pines: ${llamadas3.join()}`);
+  }
+  if (!/const noche = esCombinacionDeLaNoche\(filtros\);\s*const d = await cargarExplorar\(admin, user, filtros, new Date\(\), \{ pines: noche \}\);/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
+  if (!/calculando: !noche, analizados: d\.analizados,/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página no le dice al navegador que está calculando");
+  if (!/if \(inicial\.calculando\) \{ setCargando\("todo"\); void cargar\(inicial\.filtros, false\)/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
+  if (!/const calculando = \(cargando !== null \|\| !!datos\.calculando\) && !esCombinacionDeLaNoche\(filtros\);/.test(cli) || !/\{calculando \? EXPLORAR_COPY\.calculando : <>/.test(cli) || !/data-calculando=\{calculando \? "1" : undefined\}>\{calculando \? EXPLORAR_COPY\.calculando : tituloHoja\(total\)\}/.test(cli)) F("10 · el mapa no dice «Calculando con tu pie…» mientras calcula");
+  if (ex.EXPLORAR_COPY.calculando !== "Calculando con tu pie…") F("10 · el texto no es «Calculando con tu pie…»");
+  if (!/data-chip="pie">[\s\S]{0,400}\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(cli) || !/data-chip="plazo">[\s\S]{0,400}\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(cli)) F("10 · los chips de pie y plazo no ofrecen las listas enteras");
+  const sqlC = leer("supabase/migrations/20261024_explorar_combos.sql");
+  if (!/add column if not exists combos jsonb null/.test(sqlC) || !/ae\.combos -> clave/.test(sqlC) || !/set combos = coalesce\(ae\.combos, '\{\}'::jsonb\) \|\| f\.combo/.test(sqlC)) F("10 · la caché no vive en avisos_evaluados.combos (la misma tabla que la noche) o pisa las otras combinaciones");
+  if (/combos/.test(codigo("src/app/api/cron/evaluar-avisos/route.ts"))) F("10 · la evaluación nocturna toca `combos` (no tenía que cambiar)");
+  if (!/const \{ data, error \} = await admin\.rpc\("explorar_universo_liviano", params\);\s*if \(error\) throw/.test(srvSrc) || !/const porCalcular = filas\.filter\(\(r\) => !comboVigente\(r\.combo, r\.evaluado_at, ahora\)\);/.test(srvSrc)) F("10 · el universo no se lee en un solo pedido o no se reparte entre lo vigente y lo que falta calcular");
+  if (!/returns jsonb[\s\S]{0,200}select coalesce\(jsonb_agg\(jsonb_build_object\(/.test(liviano)) F("10 · el universo liviano no devuelve un solo jsonb (el tope de mil de PostgREST lo cortaría)");
+  if (!/const PEDIDOS_A_LA_VEZ = 12;/.test(srvSrc) || (srvSrc.match(/todos\.slice\(i, i \+ PEDIDOS_A_LA_VEZ\)\.map/g) ?? []).length !== 2) F("10 · lo pesado y el guardado no se piden de a varios a la vez");
+  if (!liviano || /ae\.arriendo,|ae\.venta|mediana_comuna/.test(liviano)) F("10 · el universo liviano trae los jsonb de la evaluación (es lo que costaba 5,5 s), o no existe");
+  if (ex.VIDA_COMBO_MS !== 24 * 3600_000) F("10 · la caché no dura 24 horas");
 
   // ── 9 · el dashboard y las compras ──
   if (CASA.explorar.boton(312) !== "Explorar los 312 en el mapa" || CASA.explorar.boton(0) !== "Explorar en el mapa" || CASA.explorar.boton(1200) !== "Explorar los 1.200 en el mapa") F("9 · el botón del dashboard");
@@ -277,6 +354,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
 // teselas · Q4 la foto pesada. 4/4 ROJO. Y el incrustado (como archivo precargado el LCP daba 2,5 s; mutar-quieto2.cjs): Q1'
 // sin la precarga de escritorio · Q2'' el mapa quieto después del real · Q3' el incrustado entra al JS del cliente · Q4' el
 // incrustado pesado · Q5' sin prioridad alta. 5/5 ROJO.
+// CUALQUIER PIE Y PLAZO (24-oct-2026, mutar-combos.cjs): K1 el combo vale aunque la fila se reevaluó después · K2 vale para
+// siempre · K3 lo calculado no se guarda · K4 se calcula todo, lo vigente también · K5 una combinación nueva pasa por la RPC de
+// la noche · K6 la página calcula en el SSR · K7 el navegador no dice «Calculando…» · K8 los chips vuelven a las cuatro de la
+// noche · K9 el perfil abre con el pie de la noche · K10 el cron toca combos · K11 lo pesado se pide para todos. 11/11 ROJO.
 
 if (require.main === module) {
   runExplorarTier().then((r) => process.exit(r.hard ? 1 : 0));
