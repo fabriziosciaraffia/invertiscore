@@ -19,6 +19,9 @@
 // analizado dice «Ya lo analizaste · Ver informe», también al volver atrás desde el informe (la pantalla se relee).
 // EL POP-UP RECALCULA (23-oct-2026, mockups D1 y D2): «Cambiar» abre el pie y el plazo, el veredicto se recalcula al tiro
 // (POST /api/deptos/recalcular) y «Analizar» va con la combinación elegida; nunca se cobra sin mostrar el veredicto recalculado.
+// EL MAPA DE LA SELECCIÓN (24-oct-2026, recorrido de Fabrizio): en «Estás dentro», debajo del título, el mapa quieto con los
+// pines rojos numerados de la selección y nada más —sin grises, sin píldora, sin botón de Explorar—: un solo objetivo en
+// esa pantalla, que use el regalo en uno de los suyos. En la casa no va (el dashboard tiene el suyo).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +38,7 @@ import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
+import { MapaCasa } from "@/app/dashboard/mapa-casa";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import type { PrimerDepto } from "@/lib/deptos/servidor";
 import "@/app/deptos/deptos.css";
@@ -63,7 +67,10 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
   const leer = useCallback(async () => {
     try {
       const candidata = leerPuertaCandidata();
-      const res = await fetch(`/api/deptos/primeros${candidata ? `?puerta=${candidata.puerta}` : ""}`, { cache: "no-store" });
+      const qs = new URLSearchParams();
+      if (candidata) qs.set("puerta", candidata.puerta);
+      if (encabezado === "dentro") qs.set("mapa", "1");
+      const res = await fetch(`/api/deptos/primeros${qs.size ? `?${qs.toString()}` : ""}`, { cache: "no-store" });
       if (!vivo.current) return;
       if (!res.ok) { setFallo(true); return; }
       const d = (await res.json()) as PrimerosDeLaCuenta;
@@ -74,7 +81,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     } catch {
       if (vivo.current) setFallo(true);
     }
-  }, []);
+  }, [encabezado]);
 
   useEffect(() => {
     vivo.current = true;
@@ -158,6 +165,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     <section className="dp dp-seccion" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
       {encabezado === "dentro" && <p className="dp-kicker">{PRIMERA_SELECCION.kicker}</p>}
       <h2 className={encabezado === "casa" ? "ca-plano-t" : "dp-h2"} data-primera="titulo">{titulo}</h2>
+      {encabezado === "dentro" && datos?.mapa && items.length > 0 && <div data-primera="mapa"><MapaCasa datos={datos.mapa} variante="seleccion" /></div>}
       {!sinDeptos && <p className="dp-txt" data-primera="bajada">{bajada}</p>}
 
       {!datos && !fallo && <p className="sel-estado" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}

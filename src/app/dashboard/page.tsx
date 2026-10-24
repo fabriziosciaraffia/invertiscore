@@ -11,6 +11,7 @@ import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servi
 import { esPuerta } from "@/lib/atribucion-puerta";
 import { lineaRenueva, ofertaEnCasa, pildoraSaldo, preguntasPendientes } from "@/lib/casa/reglas";
 import { datosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
+import { portadaDeptos } from "@/lib/deptos/portada";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
 import { OfertaCasa } from "./oferta-casa";
 import { MapaCasa } from "./mapa-casa";
@@ -157,7 +158,12 @@ export default async function DashboardPage({
   const pildora = pildoraSaldo(saldo);
   // El mapa: los deptos de la selección (el reemplazo del caído, si lo hay) y los demás que convienen con su búsqueda.
   const itemsSel = hayDeptos(sel) ? (sel.largo?.filas ?? []).map((f) => f.reemplazo ?? f.item).filter((i) => !!i) : [];
-  const mapa = itemsSel.length > 0 ? await datosMapaCasa(admin, user.id, itemsSel.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }))) : null;
+  // El botón dice el total de anoche en Santiago (24-oct-2026): el de /deptos, cacheado diez minutos (lib/deptos/portada.ts).
+  const [mapa, portada] = await Promise.all([
+    itemsSel.length > 0 ? datosMapaCasa(admin, user.id, itemsSel.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }))) : Promise.resolve(null),
+    portadaDeptos(),
+  ]);
+  const totalNoche = portada.noche?.convienen ?? null;
   const lineaSel = [lineaBusqueda({ comunas: pb.comunas, dormitorios: pb.dormitorios, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, precioMaxUf: pb.precioMaxUf }), lineaRenueva(pb.horizonte)].filter(Boolean).join(" · ");
 
   // «INFORMES REALIZADOS», plegados al final: la misma lista de siempre (archive.tsx), por fecha, con búsqueda y filtros en
@@ -214,7 +220,7 @@ export default async function DashboardPage({
         <section className="ca-seccion" data-casa="seleccion">
           <h2 className="ca-t2">{CASA.seleccion.titulo}</h2>
           {lineaSel && <p className="ca-linea" data-casa="seleccion-linea">{lineaSel}</p>}
-          {mapa && <MapaCasa datos={mapa} />}
+          {mapa && <MapaCasa datos={mapa} totalNoche={totalNoche} />}
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} />
         </section>
 

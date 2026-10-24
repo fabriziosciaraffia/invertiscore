@@ -27,6 +27,8 @@ export interface DatosMapaCasa {
   nConvienen: number;
   nOtros: number;
   desdePerfil: boolean;
+  /** Las comunas de su perfil: la píldora dice dónde están los grises («11 más en Providencia»). */
+  comunas: string[];
 }
 
 export async function datosMapaCasa(
@@ -34,20 +36,25 @@ export async function datosMapaCasa(
   userId: string,
   seleccion: Array<{ avisoId: string; comuna: string }>,
   apiKey: string | undefined = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  opts: { grises?: boolean } = {},
 ): Promise<DatosMapaCasa> {
+  // «Estás dentro» (24-oct-2026) lleva solo la selección: sin los grises no se leen los pines de Explorar.
+  const conGrises = opts.grises ?? true;
   const ids = seleccion.map((s) => s.avisoId);
   const [coords, explorar] = await Promise.all([
     ids.length > 0
       ? admin.from("scraped_properties").select("id, lat, lng").in("id", ids.slice(0, 50)).order("id").limit(50)
       : Promise.resolve({ data: [] as Array<{ id: string; lat: number | null; lng: number | null }>, error: null }),
     (async () => {
+      const nada = (desdePerfil: boolean, comunas: string[] = []) => ({ pines: [] as Array<{ avisoId: string; lat: number; lng: number }>, desdePerfil, comunas });
+      if (!conGrises) return nada(false);
       try {
         const { filtros, desdePerfil } = await filtrosDeLaCuenta(admin, userId);
-        if (!desdePerfil) return { pines: [] as Array<{ avisoId: string; lat: number; lng: number }>, desdePerfil };
-        return { pines: await pinesExplorar(admin, filtros), desdePerfil };
+        if (!desdePerfil) return nada(desdePerfil);
+        return { pines: await pinesExplorar(admin, filtros), desdePerfil, comunas: [...filtros.comunas] };
       } catch (e) {
         reportarFalloQuery(e instanceof Error ? { message: e.message } : { message: String(e) }, { ruta: RUTA, operacion: "pines", userId });
-        return { pines: [] as Array<{ avisoId: string; lat: number; lng: number }>, desdePerfil: false };
+        return nada(false);
       }
     })(),
   ]);
@@ -80,5 +87,6 @@ export async function datosMapaCasa(
     nConvienen: explorar.pines.length,
     nOtros: otros.length,
     desdePerfil: explorar.desdePerfil,
+    comunas: explorar.comunas,
   };
 }

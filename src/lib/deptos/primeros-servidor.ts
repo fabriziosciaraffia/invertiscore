@@ -11,6 +11,7 @@
 // LO YA ANALIZADO, EN VIVO (21-oct-2026): cada depto trae su informe si la persona ya lo analizó (`informeId`), para que la
 // tarjeta diga «Ya lo analizaste · Ver informe» también en la primera selección del día.
 // ─────────────────────────────────────────────────────────────────────────────
+import type { DatosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { rangoSemanal } from "@/lib/guia/semanal";
@@ -55,6 +56,8 @@ export interface PrimerosDeLaCuenta {
   ticket?: boolean;
   /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo. Lo pone la ruta. */
   cuentaCreadaAt?: string | null;
+  /** El mapa quieto de la selección (24-oct-2026), solo si lo pidió «Estás dentro» (`mapa=1`). Lo pone la ruta. */
+  mapa?: DatosMapaCasa | null;
 }
 
 type FilaDia = { id: string; token: string; estado: string; items: unknown; armada_at: string; enviada_at: string | null; intentos: number; combinacion: unknown; origen_analysis_id: string | null };

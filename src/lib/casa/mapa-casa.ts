@@ -60,13 +60,28 @@ export function urlMapaCasa(e: Encuadre, apiKey: string | undefined, o: typeof M
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-/** «5 en tu selección · 312 más que convienen en gris» (sin otros: «5 en tu selección»). */
-export function pildoraMapa(enSeleccion: number, otros: number): string {
-  const base = `${enSeleccion} en tu selección`;
-  return otros > 0 ? `${base} · ${miles(otros)} más que ${otros === 1 ? "conviene" : "convienen"} en gris` : base;
+/** Dónde están los grises, por las comunas de su perfil: «en Providencia», «en Providencia y Ñuñoa», «en tus 3 comunas». */
+export function enSusComunas(comunas: readonly string[]): string {
+  if (comunas.length === 0) return "en tu búsqueda";
+  if (comunas.length === 1) return `en ${comunas[0]}`;
+  if (comunas.length === 2) return `en ${comunas[0]} y ${comunas[1]}`;
+  return `en tus ${comunas.length} comunas`;
 }
 
-/** «Explorar los 312 en el mapa» (sin cuenta, «Explorar en el mapa»). */
-export function botonExplorar(n: number): string {
-  return n > 0 ? `Explorar los ${miles(n)} en el mapa` : "Explorar en el mapa";
+/**
+ * «5 en tu selección · 11 más en Providencia» (24-oct-2026, recorrido de Fabrizio): los grises son los que convienen con
+ * los filtros de su perfil, y la píldora dice dónde. Sin otros: «5 en tu selección».
+ */
+export function pildoraMapa(enSeleccion: number, otros: number, comunas: readonly string[]): string {
+  const base = `${enSeleccion} en tu selección`;
+  return otros > 0 ? `${base} · ${miles(otros)} más ${enSusComunas(comunas)}` : base;
+}
+
+/**
+ * «Explorar los 4.807 de Santiago» (24-oct-2026): el total que convenía anoche en todo Santiago, el mismo que dice /deptos
+ * (lib/deptos/portada.ts › noche.convienen). Al tocarlo, /explorar abre con los filtros del perfil. Sin el total, «Explorar
+ * en el mapa».
+ */
+export function botonExplorar(totalNoche: number | null | undefined): string {
+  return totalNoche != null && totalNoche > 0 ? `Explorar los ${miles(totalNoche)} de Santiago` : "Explorar en el mapa";
 }
