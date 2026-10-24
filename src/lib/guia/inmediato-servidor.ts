@@ -15,7 +15,7 @@ import { nombreReal } from "@/lib/welcome";
 import { sendInmediatoEmail, sendPreguntaYaEmail } from "@/lib/email";
 import { textoBusca } from "@/lib/email/correo-semanal";
 import { correoInmediato, correoPreguntaYa } from "@/lib/email/correo-inmediato";
-import { VENTANA_NUEVOS_HORAS, RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, type HorizonteCompra } from "./inmediato";
+import { VENTANA_NUEVOS_HORAS, RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSeleccionDiaria, type HorizonteCompra } from "./inmediato";
 import { avisadosAlMomento, prepararSeleccion, publicadoConPresupuesto, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
 
 const RUTA = "lib/guia/inmediato";
@@ -82,7 +82,8 @@ export async function avisarPersona(
   if (prep.tipo !== "lista") return "no";
   const { perfil, origen, combo, candidatos, evaluar } = prep.p;
   const elegidos = await elegirInmediato(candidatos, await avisadosAlMomento(admin, userId), evaluar, publicadoConPresupuesto(admin, presupuesto));
-  if (elegidos.length === 0) return "nada";
+  // La selección diaria (24-oct-2026): si hoy no hay nuevos que convengan, no se manda nada.
+  if (!mandaSeleccionDiaria(elegidos.length)) return "nada";
 
   const items: ItemSemanal[] = elegidos.map(({ c, ev }) => ({
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),

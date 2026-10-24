@@ -30,6 +30,24 @@ export const RUTA_SUELTO_INMEDIATO = "/checkout?product=single&origen=inmediato"
 
 export type HorizonteCompra = "ya" | "meses" | "mirando";
 
+/**
+ * LA FRECUENCIA DE LA SELECCIÓN SEGÚN EL «CUÁNDO» (24-oct-2026, mockup 3b-dashboard.html, decisión de Fabrizio): con
+ * «Quiero comprar ya» sale una selección DIARIA con los nuevos que convienen (este aviso, cada mañana); con las otras dos
+ * respuestas, una selección cada lunes (el semanal). Lo dicen el perfil del dashboard y «Se renueva…».
+ */
+export type FrecuenciaSeleccion = "diaria" | "semanal";
+export function frecuenciaSeleccion(horizonte: HorizonteCompra | null | undefined): FrecuenciaSeleccion {
+  return horizonte === "ya" ? "diaria" : "semanal";
+}
+/** Si un día no hay nuevos que convengan, no se manda nada (avisarPersona devuelve «nada»). */
+export function mandaSeleccionDiaria(nuevosQueConvienen: number): boolean {
+  return nuevosQueConvienen > 0;
+}
+export const FRECUENCIA_COPY = {
+  nota: "Con «Quiero comprar ya» te enviamos una selección todos los días. Con las otras, una selección cada lunes.",
+  renuevaDiaria: "Se renueva todos los días.",
+} as const;
+
 /** ¿Le corren los avisos? «vigente»; «preguntar» (cumplió 60 días: toca la pregunta); «vencido» (se le
  *  preguntó y no respondió: solo el semanal); «no» (no dijo «Ya», o se dio de baja de los avisos). */
 export function estadoYa(p: {
