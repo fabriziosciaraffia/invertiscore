@@ -70,6 +70,10 @@ html[data-grano] .dp-banda::after { background-image: url("/landing/grano-256.pn
 .dp-banda-t { margin: 0; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 22px; line-height: 1.2; color: #FAFAF8; }
 .dp-banda-s { margin: 0; font-size: 14px; line-height: 1.4; color: rgba(250, 250, 248, 0.85); }
 .dp-banda-s b { font-weight: 600; color: #FFFFFF; }
+/* La pantalla del código sube la banda entera bajo el header fijo (24-oct-2026): «Revisa tu correo.» no queda tapado. */
+.dp-banda { scroll-margin-top: 72px; }
+/* El correo de la pantalla del código (24-oct-2026): un alias largo se corta donde haga falta, nunca se sale de la banda. */
+.dp-banda-correo { overflow-wrap: anywhere; }
 /* «Entrar con Google», el botón oficial (23-oct-2026): blanco, filete gris, la G de 20 px y el texto en 500. */
 .dp-google { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; height: 48px; margin-top: 4px; border-radius: 999px;
   border: 1px solid #747775; background: #FFFFFF; color: #1F1F1F; font: inherit; font-weight: 500; font-size: 15px; cursor: pointer; }

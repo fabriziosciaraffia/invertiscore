@@ -159,11 +159,12 @@ export const DEPTOS_COPY = {
   correo: {
     titulo: "Regístrate gratis y revísalos ahora mismo.",
     tituloSinDeptos: "Regístrate gratis y te avisamos cuando aparezca uno.",
-    /** «Los 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.»: la negrita va en
-     *  `fuerte`. */
+    /** «Los mejores de estos 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.»: la
+     *  negrita va en `fuerte`. «LOS MEJORES DE ESTOS» (24-oct-2026, recorrido de Fabrizio): lo que llega es la selección, no
+     *  los 12; prometer los 12 era falso. */
     bajada: (convienen: number): { antes: string; fuerte: string; despues: string } =>
       convienen > 1
-        ? { antes: `Los ${miles(convienen)} te llegan al correo en minutos, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
+        ? { antes: `Los mejores de estos ${miles(convienen)} te llegan al correo en minutos, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
         : convienen === 1
           ? { antes: "Te llega al correo en minutos, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." }
           : { antes: "Te llega al correo apenas se publique, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." },
@@ -173,8 +174,13 @@ export const DEPTOS_COPY = {
     boton: "Quiero verlos",
     nota: "Sin contraseña: te mandamos un código. Nada de spam, solo deptos.",
   },
-  /** Después de pedir el código: EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio). */
-  enviado: (correo: string) => `Te mandamos un código a ${correo}. Escríbelo acá.`,
+  /** Después de pedir el código: EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio). Un título
+   *  corto en serif y el correo abajo, en Inter y con corte de línea (24-oct-2026, recorrido de Fabrizio: el correo entero
+   *  en el serif del título no cabía en el teléfono). */
+  enviado: {
+    titulo: "Revisa tu correo.",
+    bajada: (correo: string) => `Te mandamos un código a ${correo}. Escríbelo acá.`,
+  },
   /**
    * LA PRUEBA, debajo del correo, con las cifras de la evaluación de la noche: las mismas con que se cuenta la respuesta de
    * arriba (deptos publicados en la última semana con arriendo de referencia; resumenDeLaNoche). «EN VENTA» (17-oct-2026,

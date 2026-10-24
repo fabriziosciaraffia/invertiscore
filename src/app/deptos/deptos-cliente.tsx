@@ -183,7 +183,12 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       // El mismo mensaje exista o no la cuenta (16-oct-2026, decisión de Fabrizio).
       setEnviado(c);
       setPaso("codigo");
-      window.setTimeout(() => campoCodigo.current?.focus(), 50);
+      // LA BANDA SUBE ENTERA (24-oct-2026, QA a 390): el foco solo bajaba lo justo para el campo y «Revisa tu correo.»
+      // quedaba tapado por el header fijo. La banda queda bajo el header (scroll-margin-top) y el foco ya no la mueve.
+      window.setTimeout(() => {
+        document.querySelector('[data-deptos="banda"]')?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+        campoCodigo.current?.focus({ preventScroll: true });
+      }, 50);
     } finally {
       setOcupado(false);
     }
@@ -312,6 +317,18 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     router.push("/dashboard");
   }
 
+  // «ESTÁS DENTRO» ABRE ARRIBA (24-oct-2026, recorrido de Fabrizio): el código se escribe abajo de todo, en la banda, y la
+  // pantalla nueva heredaba ese desplazamiento y abría en «Tu selección», salteando el título y el regalo. Se suelta el
+  // campo (en el teléfono baja el teclado) y se vuelve arriba al instante: el `smooth` global animaría el salto.
+  useEffect(() => {
+    if (paso !== "dentro" && paso !== "agregar") return;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const arriba = () => window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+    arriba();
+    const cuadro = window.requestAnimationFrame(arriba);
+    return () => window.cancelAnimationFrame(cuadro);
+  }, [paso]);
+
   // ── Las pantallas ──
   if (paso === "dentro") {
     return (
@@ -401,7 +418,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       <div className="dp-banda" data-deptos="banda">
         {paso === "codigo" && enviado ? (
           <form className="dp-form" onSubmit={entrar} data-deptos="codigo">
-            <p className="dp-banda-t">{DEPTOS_COPY.enviado(enviado)}</p>
+            <p className="dp-banda-t" data-deptos="revisa">{DEPTOS_COPY.enviado.titulo}</p>
+            <p className="dp-banda-s dp-banda-correo" data-deptos="enviado">{DEPTOS_COPY.enviado.bajada(enviado)}</p>
             <input ref={campoCodigo} className="dp-campo" inputMode="numeric" autoComplete="one-time-code" maxLength={CODIGO_MAX} placeholder={REGISTRO_UN_PASO.placeholderCodigo}
               aria-label={REGISTRO_UN_PASO.placeholderCodigo} value={codigo} onChange={(e) => setCodigo(limpiarCodigo(e.target.value))} />
             <button type="submit" className="dp-boton" disabled={!!ocupado} {...botonOcupado(ocupado === "entrar")} data-deptos="entrar" data-fallo={falloEntrar ? "1" : undefined}>{falloEntrar ? ENTRAR_COPY.noPudimos : REGISTRO_UN_PASO.entrar}</button>

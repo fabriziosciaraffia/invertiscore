@@ -203,8 +203,23 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio): si la cuenta existe no vuelve al navegador.
       if (!/return NextResponse\.json\(\{ ok: true \}\);/.test(correo) || /NextResponse\.json\(\{[^}]*existe/.test(correo)) F("1 · el pedido del código le dice al navegador si el correo tiene cuenta");
       const cliente = sinComentarios(leer("src/app/deptos/deptos-cliente.tsx"));
-      if (/existe|yaTienes|ya tienes cuenta/i.test(cliente) || !/<p className="dp-banda-t">\{DEPTOS_COPY\.enviado\(enviado\)\}<\/p>/.test(cliente) || !/shouldCreateUser: true/.test(cliente))
+      // ⚠ ACTA (24-oct-2026, recorrido de Fabrizio) · el mensaje se partió: título corto en serif («Revisa tu correo.») y el
+      // correo abajo, en Inter y con corte de línea; sigue siendo el mismo exista o no la cuenta. De paso, `\bexiste\b`
+      // vuelve a ser un límite de palabra: un heredoc lo había convertido en dos bytes 0x08 y esa mitad no medía nada.
+      if (/\bexiste\b|yaTienes|ya tienes cuenta/i.test(cliente)
+        || !/<p className="dp-banda-t" data-deptos="revisa">\{DEPTOS_COPY\.enviado\.titulo\}<\/p>\s*<p className="dp-banda-s dp-banda-correo" data-deptos="enviado">\{DEPTOS_COPY\.enviado\.bajada\(enviado\)\}<\/p>/.test(cliente)
+        || !/shouldCreateUser: true/.test(cliente))
         F("1 · la pantalla dice otra cosa cuando la cuenta existe, o no crea la cuenta con el código");
+      if (DEPTOS_COPY.enviado.titulo !== "Revisa tu correo." || DEPTOS_COPY.enviado.bajada("ana+alias-largo@correo.cl") !== "Te mandamos un código a ana+alias-largo@correo.cl. Escríbelo acá.")
+        F("1 · la pantalla del código no dice «Revisa tu correo.» y abajo «Te mandamos un código a … Escríbelo acá.»");
+      if (!/\.dp-banda-correo \{ overflow-wrap: anywhere; \}/.test(leer("src/app/deptos/deptos.css"))) F("1 · un correo largo no se corta en la pantalla del código (se sale de la banda)");
+      // La banda sube entera bajo el header fijo y el foco no la mueve: con el foco solo, el título quedaba tapado (QA a 390).
+      if (!/document\.querySelector\('\[data-deptos="banda"\]'\)\?\.scrollIntoView\(\{ block: "start", behavior: "instant" as ScrollBehavior \}\);\s*campoCodigo\.current\?\.focus\(\{ preventScroll: true \}\);/.test(cliente)
+        || !/\.dp-banda \{ scroll-margin-top: 72px; \}/.test(leer("src/app/deptos/deptos.css")))
+        F("1 · en la pantalla del código «Revisa tu correo.» queda tapado por el header (el foco baja solo lo justo para el campo)");
+      // «Estás dentro» abre arriba: el código se escribe abajo de todo y la pantalla nueva heredaba el desplazamiento.
+      if (!/useEffect\(\(\) => \{\s*if \(paso !== "dentro" && paso !== "agregar"\) return;\s*\(document\.activeElement as HTMLElement \| null\)\?\.blur\?\.\(\);\s*const arriba = \(\) => window\.scrollTo\(\{ top: 0, left: 0, behavior: "instant" as ScrollBehavior \}\);\s*arriba\(\);\s*const cuadro = window\.requestAnimationFrame\(arriba\);\s*return \(\) => window\.cancelAnimationFrame\(cuadro\);\s*\}, \[paso\]\);/.test(cliente))
+        F("1 · «Estás dentro» no abre arriba (hereda el desplazamiento del código y saltea el título)");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/create or replace function public\.correo_tiene_cuenta[\s\S]{0,200}security definer[\s\S]{0,300}revoke all on function public\.correo_tiene_cuenta\(text\) from public, anon, authenticated;/.test(mig)) F("1 · saber si un correo tiene cuenta queda abierto a cualquiera");
     }
@@ -480,7 +495,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F("8 · el correo no es el título, la bajada, «Entrar con Google», «o con tu correo», el campo, «Quiero verlos» y la nota, en ese orden");
       if (DEPTOS_COPY.correo.nota !== "Sin contraseña: te mandamos un código. Nada de spam, solo deptos." || DEPTOS_COPY.correo.boton !== "Quiero verlos" || ALTA_COPY.pedir !== "Quiero verlos" || DEPTOS_COPY.correo.oTuCorreo !== "o con tu correo") F("8 · el copy del correo no es el del mockup");
       const bj = DEPTOS_COPY.correo.bajada(12);
-      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los 12 llegan al correo con un análisis de regalo");
+      // ⚠ ACTA (24-oct-2026, recorrido de Fabrizio) · lo que llega es la selección, no los 12: «Los mejores de estos 12».
+      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los mejores de estos 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los mejores de los 12 llegan al correo con un análisis de regalo");
       // Serif solo en el título de la página, el de «Estás dentro» y el del invitado con depto (.dp-que), el número grande y el
       // título de la tarjeta del correo (así en el mockup); el cuerpo en Inter.
       const css = leer("src/app/deptos/deptos.css");

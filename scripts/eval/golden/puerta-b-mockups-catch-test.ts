@@ -97,7 +97,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       if (!/data-deptos="cifra">12<\/span><span class="dp-resto">de 310 publicados convienen</.test(con) || !tc.includes(R.DEPTOS_COPY.nota)) F("1 · con la comuna, la tarjeta del número no dice «12 de 310 publicados convienen» con su nota");
       if (!orden(con, ['data-deptos="campos"', 'data-deptos="respuesta"', 'data-deptos="banda"', 'data-deptos="google"', "o con tu correo", 'type="email"', "Quiero verlos", "Sin contraseña: te mandamos un código", 'data-deptos="prueba"']))
         F("1 · con la comuna, el correo no va después del número con Google primero, «o con tu correo», el campo, «Quiero verlos» y la nota, y la prueba al final");
-      if (!tc.includes("Regístrate gratis y revísalos ahora mismo.") || !tc.includes("Los 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.")) F("1 · la tarjeta del correo no dice el título y la bajada del mockup con el número");
+      if (!tc.includes("Regístrate gratis y revísalos ahora mismo.") || !tc.includes("Los mejores de estos 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.")) F("1 · la tarjeta del correo no dice el título y la bajada del mockup con el número");
       if (!/<button type="button" class="dp-google"[^>]*data-deptos="google"><svg/.test(con)) F("1 · «Entrar con Google» no lleva la G oficial");
       if (/pie 20|25 años|plazo/i.test(tc)) F("1 · la pantalla de elegir habla del pie o del plazo");
       // Las dos puertas cortan sin comuna en el código, no solo en lo que se dibuja.
