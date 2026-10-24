@@ -224,14 +224,17 @@ export function respuestaDeptos(
   return { total, convienen: 0, cifra, titular, resto, nota, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.correo.tituloSinDeptos };
 }
 
-/** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. */
+/** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. LA MODALIDAD
+ *  NO SE ESCRIBE POR DEFECTO (24-oct-2026, mockup 3b): /deptos ya no la pregunta, así que la cuenta nace sin contestarla y
+ *  el perfil del dashboard se la pregunta («¿Cómo lo arriendas?», lib/casa/reglas.ts › preguntasPendientes). Sin respuesta,
+ *  todo sigue en renta larga (perfil-busqueda.ts). Solo una elección explícita de renta corta se guarda. */
 export function perfilManualDeElecciones(v: Extract<Validacion, { ok: true }>): Record<string, unknown> {
   return {
     comunas: v.comunas,
     dormitorios: v.dorms,
     precio_min_uf: v.rango.min,
     precio_max_uf: v.rango.max,
-    modalidad: v.modalidad,
+    modalidad: v.modalidad === "str" ? "str" : null,
     pie_pct: PIE_DEPTOS,
     plazo_anios: PLAZO_DEPTOS,
   };

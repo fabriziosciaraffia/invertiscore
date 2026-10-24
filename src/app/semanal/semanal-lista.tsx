@@ -32,6 +32,7 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
@@ -42,6 +43,9 @@ import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
 import "@/components/guia/guia.css";
+import "@/app/deptos/deptos.css";
+import "@/app/dashboard/casa.css";
+import { CASA } from "@/app/dashboard/casa-copy";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -53,7 +57,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null,
 }: {
   token: string;
   origenId: string | null;
@@ -84,8 +88,11 @@ export function SemanalLista({
   cuentaCreadaAt?: string | null;
   /** Volvió pagado desde este depto (`analizar=1`): se analiza solo. */
   autoAnalizar?: string | null;
-  /** En el dashboard: el título es de sección, no de página. */
+  /** En el dashboard (24-oct-2026, mockup 3b): sin título ni bajada propios —los pone la página—, las tarjetas numeradas
+   *  con el pin rojo (deptos.css › .sel-*), el ya analizado como fila compacta en su misma posición y, con `aLaVista`,
+   *  solo esas a la vista y «Ver los N que faltan». */
   enCasa?: boolean;
+  aLaVista?: number | null;
 }) {
   const router = useRouter();
   const corta = modalidad === "str";
@@ -96,6 +103,8 @@ export function SemanalLista({
   // Renta corta: los que no dieron en esta visita, y el pop-up con sus parecidos.
   const [noDanAhora, setNoDanAhora] = useState<string[]>([]);
   const [popup, setPopup] = useState<{ avisoId: string; parecidos: string[] } | null>(null);
+  // Las tarjetas a la vista (24-oct-2026): las primeras `aLaVista`, y «Ver los N que faltan» para el resto.
+  const [verTodos, setVerTodos] = useState(false);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   // `analizando` (21-oct-2026): renta larga, generando con el aviso abierto.
   const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean; analizando?: boolean } | null>(null);
@@ -204,22 +213,13 @@ export function SemanalLista({
   // Ya lo analizó: en renta corta, el informe de la medición fina (15-oct-2026); en renta larga, el que trae el depto ya
   // visto (19-oct-2026) o, desde el 21-oct-2026, el que leyó el servidor recién (en vivo, al volver del informe).
   const informeDe = (it: ItemSemanal): string | undefined => it.informeId ?? informes[it.avisoId];
+  const nombre = (it: ItemSemanal) => [ojoDe(it), `UF ${miles(it.precioUF)}`, it.veredicto ? `${etiquetaVeredicto(it.veredicto, "frase")}${it.score != null ? ` ${it.score}` : ""}` : null].filter(Boolean).join(" · ");
   const acciones = (it: ItemSemanal): JSX.Element => {
     // Renta corta: medido fino y no dio. Queda dicho, sin botón.
-    if (corta && noDa.has(it.avisoId)) return <p className="guia-no-da" data-semanal="no-da">{MARCA_NO_DA}</p>;
-    // Ya lo analizó (15-oct-2026): el informe, sin volver a medir ni a cobrar.
-    const informe = informeDe(it);
-    if (informe) {
-      return (
-        <div className="guia-acc" data-semanal="ya-analizado">
-          <span className="guia-cr">{YA_ANALIZADO.texto} ·</span>
-          <EnlaceCarga href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="guia-ver-informe">{YA_ANALIZADO.enlace}</EnlaceCarga>
-        </div>
-      );
-    }
+    if (corta && noDa.has(it.avisoId)) return <p className="sel-estado" data-semanal="no-da">{MARCA_NO_DA}</p>;
     if (corta && generando === it.avisoId) {
       return (
-        <div className="guia-acc guia-midiendo" role="status" aria-live="polite" data-semanal="midiendo">
+        <div className="sel-ya" role="status" aria-live="polite" data-semanal="midiendo">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
           <span>{MIDIENDO}</span>
         </div>
@@ -227,83 +227,93 @@ export function SemanalLista({
     }
     if (corta && tardo === it.avisoId) {
       return (
-        <div className="guia-tardo" data-semanal="tardo">
-          <p className="guia-error" role="alert">{MIDIENDO_TARDO}</p>
-          <div className="guia-acc">
-            <button type="button" className="guia-an" onClick={() => void analizar(it)} disabled={!!generando}>{REINTENTAR}</button>
-          </div>
+        <div data-semanal="tardo">
+          <p className="sel-error" role="alert">{MIDIENDO_TARDO}</p>
+          <button type="button" className="sel-btn" onClick={() => void analizar(it)} disabled={!!generando}>{REINTENTAR}</button>
         </div>
       );
     }
     return (
-      <div className="guia-acc">
-        <button type="button" className="guia-an" onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)}>
-          {generando === it.avisoId ? GUIA.analizando : GUIA.analizar}
-        </button>
-        {usa && <span className="guia-cr">· {usa}</span>}
-      </div>
+      <button type="button" className="sel-btn" data-primario="1" onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-semanal="analizar">
+        {generando === it.avisoId ? GUIA.analizando : usa === SEMANAL_PAGINA.usaRegalo ? CASA.seleccion.analizarRegalo : CASA.seleccion.analizar}
+      </button>
     );
   };
 
-  const tarjeta = (it: ItemSemanal, clave: string = it.avisoId): JSX.Element => {
+  // EL YA ANALIZADO, EN SU POSICIÓN (24-oct-2026, mockup 3b): una fila compacta y gris —el pin, el depto con su veredicto,
+  // «Ya lo analizaste» y «Ver informe»—, no una tarjeta ni al final.
+  const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (
+    <EnlaceCarga key={it.avisoId} href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="sel-fila" data-semanal="ya-analizado" data-n={n ?? undefined}>
+      <span className="sel-fila-txt">
+        <span className="sel-fila-ojo">{n != null && <span className="sel-pin" aria-hidden="true">{n}</span>}{nombre(it)}</span>
+        <span className="sel-fila-ya">{YA_ANALIZADO.texto}</span>
+      </span>
+      <span className="sel-fila-ver">{YA_ANALIZADO.enlace}</span>
+    </EnlaceCarga>
+  );
+
+  const tarjeta = (it: ItemSemanal, clave: string = it.avisoId, n: number | null = null): JSX.Element => {
+    const informe = informeDe(it);
+    if (informe) return filaAnalizada(it, informe, n);
     const neg = (it.flujo ?? 0) < 0;
     return (
-      <article key={clave} className="guia-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined} data-no-da={corta && noDa.has(it.avisoId) ? "1" : undefined}>
-        <div className="guia-top">
-          <span className="guia-ojo">{ojoDe(it)}</span>
-        </div>
-        <div className="guia-precio">UF {miles(it.precioUF)}</div>
-        {corta && <p className="guia-negociar" data-semanal="zona">{MARCA_ZONA}</p>}
-        {it.tramo === "negociar" && <p className="guia-negociar" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
+      <article key={clave} className="sel-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined} data-no-da={corta && noDa.has(it.avisoId) ? "1" : undefined} data-n={n ?? undefined}>
+        <div className="sel-ojo">{n != null && <span className="sel-pin" aria-hidden="true">{n}</span>}{ojoDe(it)}</div>
+        <div className="sel-precio">UF {miles(it.precioUF)}</div>
+        {corta && <p className="sel-estado" data-semanal="zona">{MARCA_ZONA}</p>}
+        {it.tramo === "negociar" && <p className="sel-estado" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}
         {/* El relleno (20-oct-2026): lo vio anoche publicado en el portal, sin ficha leída; «Analizar este» la relee antes de cobrar. */}
-        {it.sinConfirmar && <p className="guia-negociar" data-semanal="sin-confirmar">{MARCA_SIN_CONFIRMAR}</p>}
-        {/* Lo ya visto (19-oct-2026), al final de la lista; «Ya lo analizaste» no se repite si ya lo dice el enlace al informe. */}
-        {it.visto && !(it.visto === "analizado" && informeDe(it)) && <p className="guia-negociar" data-semanal="visto">{MARCA_VISTO[it.visto]}</p>}
-        <div className="guia-dos">
+        {it.sinConfirmar && <p className="sel-estado" data-semanal="sin-confirmar">{MARCA_SIN_CONFIRMAR}</p>}
+        {/* Lo ya visto (19-oct-2026), marcado («Ya lo analizaste» ya es la fila compacta). */}
+        {it.visto && it.visto !== "analizado" && <p className="sel-estado" data-semanal="visto">{MARCA_VISTO[it.visto]}</p>}
+        <div className="sel-dos">
           <div>
-            <div className="guia-k">{GUIA.veredicto}</div>
-            <span className="guia-ver" data-veredicto={it.veredicto ?? undefined}>{it.veredicto ? etiquetaVeredicto(it.veredicto, "frase") : "—"} <span className="guia-pt">{it.score ?? ""}</span></span>
+            <span className="sel-k">{GUIA.veredicto}</span>
+            <span className="sel-v" data-veredicto={it.veredicto ?? undefined}>{it.veredicto ? etiquetaVeredicto(it.veredicto, "frase") : "—"}{it.score != null ? ` · ${it.score}` : ""}</span>
           </div>
           <div>
-            <div className="guia-k">{GUIA.flujo}</div>
+            <span className="sel-k">{GUIA.flujo}</span>
             {it.flujo != null && (
-              <div className={`guia-flujo${neg ? " guia-neg" : ""}`}>
-                {neg ? "−" : "+"}${miles(Math.abs(it.flujo))}
-                <small>{neg ? GUIA.saleDeTuBolsillo : GUIA.teQueda}</small>
-              </div>
+              <span className={`sel-flujo${neg ? " sel-neg" : ""}`}>
+                {neg ? "−" : "+"}${miles(Math.abs(it.flujo))} <small>{neg ? GUIA.saleDeTuBolsillo : GUIA.teQueda}</small>
+              </span>
             )}
           </div>
         </div>
         {acciones(it)}
-        {error?.avisoId === it.avisoId && <p className="guia-error" role="alert">{error.texto}</p>}
+        {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
       </article>
     );
   };
 
   const visibles = filas.filter((f) => !f.caido || f.reemplazo).length;
+  // El orden es el de la selección (lib/guia/semanal.ts › ordenFijo), numerado desde 1; a la vista, las primeras.
+  const filasALaVista = aLaVista != null && !verTodos ? filas.slice(0, aLaVista) : filas;
+  const faltanPorVer = filas.length - filasALaVista.length;
 
   return (
-    <section className="guia" data-semanal="lista" data-modalidad={modalidad}>
-      {/* En la casa, un título de sección plano como «Tu perfil de búsqueda» y «Tus informes» (casa.css), no otro titular. */}
-      {conTitulo && (enCasa ? <h2 className="ca-plano-t" data-semanal="titulo">{SEMANAL_PAGINA.titulo}</h2> : <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>)}
+    <section className="guia ca-tarjetas" data-semanal="lista" data-modalidad={modalidad}>
+      {/* En la casa (24-oct-2026) la página pone el título y la línea del perfil; fuera de ella, el titular de siempre. */}
+      {conTitulo && !enCasa && <h1 className="guia-titulo">{SEMANAL_PAGINA.titulo}</h1>}
       {bloque && <h2 className="guia-bloque" data-semanal="bloque">{bloque}</h2>}
-      {combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
+      {!enCasa && combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
       {corta && <p className="guia-txt" data-semanal="zona">{SEMANAL_STR.zona}</p>}
-      {conTitulo && saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
-      <div className="guia-lista">
-        {filas.map((f) => (f.caido ? (
+      {!enCasa && conTitulo && saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
+      <div className="sel-lista" data-semanal="tarjetas">
+        {filasALaVista.map((f, i) => (f.caido ? (
           <div key={f.item.avisoId} className="guia-caido-grupo">
             <div className="guia-caido" data-semanal="caido">
               <span className="guia-ojo">{ojoDe(f.item)} · UF {miles(f.item.precioUF)}</span>
               <p className="guia-caido-txt">{SEMANAL_PAGINA.caido}</p>
               {f.reemplazo && <p className="guia-caido-sub">{SEMANAL_PAGINA.enSuLugar}</p>}
             </div>
-            {f.reemplazo && tarjeta(f.reemplazo)}
+            {f.reemplazo && tarjeta(f.reemplazo, f.reemplazo.avisoId, i + 1)}
           </div>
-        ) : tarjeta(f.item)))}
+        ) : tarjeta(f.item, f.item.avisoId, i + 1)))}
+        {faltanPorVer > 0 && <button type="button" className="sel-mas" onClick={() => setVerTodos(true)} data-semanal="ver-mas">{CASA.seleccion.verMas(faltanPorVer)}</button>}
       </div>
       {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{corta ? SEMANAL_STR.sinCorto : SEMANAL_PAGINA.vacia}</p>}
-      {cierre && !conSaldo && visibles > 0 && (
+      {cierre && !enCasa && !conSaldo && visibles > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">
           <EnlaceCarga href={comprarSeleccion.href} className="inline-flex h-12 items-center rounded-full px-7 text-[16px] font-semibold text-white" style={{ background: "var(--signal-red)" }}>
             {comprarSeleccion.label}
@@ -311,7 +321,7 @@ export function SemanalLista({
           <p className="text-[13px] text-[var(--franco-text-secondary)]">{SEMANAL_PAGINA.comprarBajada}</p>
         </div>
       )}
-      {cierre && <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>}
+      {cierre && !enCasa && <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>}
       {popup && (
         <PopupNoDa parecidos={parecidos.length} alCerrar={() => setPopup(null)}>
           {parecidos.map((p) => tarjeta(p, `pop-${p.avisoId}`))}
@@ -326,6 +336,8 @@ export function SemanalLista({
           uso={confirmar.sin ? { tipo: "sin" } : saldo}
           compras={comprasDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, ticket })}
           ticketConSaldo={ticket && !corta ? ticketConSaldoDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt }) : null}
+          // Sin saldo y con el ticket vivo (24-oct-2026, mockup A): la tarjeta roja de la oferta dice hasta cuándo.
+          ticketVence={ticket && cuentaCreadaAt ? cuandoVenceCorto(cuentaCreadaAt) : null}
           rutaCompra={comprarSeleccion.href}
           analizando={!!confirmar.analizando}
           // El pop-up recalcula (23-oct-2026, D2): solo en renta larga, con el token de la selección.

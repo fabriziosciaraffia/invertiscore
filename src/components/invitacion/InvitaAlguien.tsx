@@ -26,7 +26,7 @@ export interface DatosInvitacion {
   cuenta: string;
 }
 
-export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "propio" }) {
+export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "propio" | "fila" }) {
   const posthog = usePostHog();
   const [datos, setDatos] = useState<DatosInvitacion | null>(null);
   const [conNombre, setConNombre] = useState(false);
@@ -110,6 +110,24 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
     } catch {
       /* canceló */
     }
+  }
+
+  // LA FRANJA DEL DASHBOARD (24-oct-2026, mockup 3b-dashboard.html): una sola fila con su color —«Invita a alguien · Si
+  // entra con tu enlace, los dos reciben un análisis.» y «Compartir»—. Compartir abre el menú del teléfono; donde no lo
+  // hay, copia el enlace y lo dice. Sin «Que diga mi nombre» acá: eso vive en la página del propio enlace.
+  if (variante === "fila") {
+    const compartirOCopiar = async () => { if (puedeCompartir) await compartir(); else await copiar(); };
+    return (
+      <section id="invitar" className="iv-destacado iv-fila" style={{ fontFamily: UI, scrollMarginTop: 80 }} data-casa="invitar">
+        <div className="iv-f-texto">
+          <span className="iv-f-t">{REFERIDO_COPY.invitaTitulo}</span>
+          <span className="iv-f-s">{copiado ? REFERIDO_COPY.copiado : error ?? REFERIDO_COPY.invitaTexto}</span>
+        </div>
+        <button type="button" className="iv-d-btn iv-d-borde" onClick={() => void compartirOCopiar()} disabled={!datos || ocupado} {...botonOcupado(!datos && !error)} data-invitar={puedeCompartir ? "compartir" : "copiar"}>
+          {REFERIDO_COPY.compartir}
+        </button>
+      </section>
+    );
   }
 
   // EN LA CASA, DESTACADO (17-oct-2026): el segundo nivel, con su propio color (invita.css) —tinta en claro, papel en

@@ -27,6 +27,14 @@
 .iv-destacado .iv-d-campo::placeholder { color: var(--iv-tenue); }
 .iv-destacado .iv-d-nota { margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: var(--iv-tenue); }
 
+/* LA FRANJA DEL DASHBOARD (24-oct-2026, mockup 3b): una fila, el texto a la izquierda y «Compartir» con borde a la derecha. */
+.iv-destacado.iv-fila { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+@media (min-width: 768px) { .iv-destacado.iv-fila { padding: 16px 20px; } }
+.iv-fila .iv-f-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.iv-fila .iv-f-t { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.iv-fila .iv-f-s { font-size: 12.5px; line-height: 1.4; color: var(--iv-tenue); }
+.iv-fila .iv-d-btn { height: 40px; padding: 0 14px; font-size: 13px; }
+
 /* El mismo color en el menú de compartir (ShareButton): «Invita a alguien» arriba de las demás opciones. */
 .iv-menu { cursor: pointer; transition: opacity 0.15s; }
 .iv-menu:hover { opacity: 0.9; }

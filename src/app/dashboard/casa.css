@@ -1,43 +1,98 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   LA CASA QUE VENDE (17-oct-2026, decisión de Fabrizio): una sola jerarquía.
-   · ARRIBA, el banner: el material del banner del informe y de la banda de /deptos —degradado, grano, texto en papel, UN
-     botón en papel—, fijo en claro y oscuro. Lo más importante según el estado (casa-arriba.ts).
-   · SEGUNDO NIVEL, «Invita a alguien»: su propio color, distinto del banner —tinta en claro, papel en oscuro—.
-   · DESPUÉS, PLANO: el saldo, el perfil compacto y los informes, sin tarjetas que compitan.
-   Inter en todo; serif solo en el título del banner y en los títulos de sección.
+   EL DASHBOARD (24-oct-2026, mockup docs/puerta-b-mockups/3b-dashboard.html, decisión de Fabrizio): el mismo sistema
+   plano de /deptos y «Estás dentro» (deptos.css): Inter, serif solo en los títulos de página, botones píldora, tarjetas
+   blancas de borde fino. El rojo, solo en la oferta de la cuenta nueva y en lo pendiente. Las tarjetas de la selección son
+   las .sel-* de deptos.css; acá vive lo propio del dashboard: la cabecera con la píldora del saldo, la oferta, el mapa,
+   la fila compacta del ya analizado, las filas plegadas y el perfil abierto.
    ═════════════════════════════════════════════════════════════════════════════ */
-.ca-hola { margin: 0 0 10px; font-size: 15px; color: var(--franco-text-secondary); }
+.ca-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ca-hola { margin: 0; font-size: 14px; color: var(--franco-text-secondary); }
+.ca-pildora { font-size: 13px; font-weight: 500; color: var(--franco-text-secondary); background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+.ca-pildora a { color: var(--franco-text); text-decoration: underline; text-underline-offset: 3px; }
 
-.ca-banda { position: relative; overflow: hidden; border-radius: 16px; padding: 22px 20px 20px; color: #FAFAF8;
-  background: #1F3D67 url("/landing/hero-m2x.webp") center top / cover no-repeat; }
-@media (min-width: 768px) { .ca-banda { padding: 30px 32px 28px; background-image: url("/landing/hero-d1x.webp"); } }
-.ca-banda::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: url("/landing/grano-256.png"); background-size: 256px; opacity: 0.08; mix-blend-mode: soft-light; }
-.ca-banda > * { position: relative; z-index: 1; }
-.ca-banda-t { margin: 0; font-family: var(--font-heading), Georgia, serif; font-weight: 700; font-size: 26px; line-height: 1.12; letter-spacing: -0.015em; color: #FAFAF8; }
-@media (min-width: 768px) { .ca-banda-t { font-size: 34px; } }
-.ca-banda-s { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: rgba(250, 250, 248, 0.82); }
-.ca-banda-fila { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.ca-banda-btn { display: inline-flex; align-items: center; justify-content: center; height: 46px; padding: 0 22px; border-radius: 99px; background: #FAFAF8; color: #0F0F0F;
-  font: 600 15px var(--font-ui), "Inter", system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
-.ca-banda-btn:focus-visible { outline: 2px solid #FAFAF8; outline-offset: 3px; }
-@media (max-width: 767px) { .ca-banda-btn { width: 100%; } }
-/* La selección resumida, con la tríada sobre el material. */
-.ca-sel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.ca-sel li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; line-height: 1.4; }
-.ca-sel b { font-weight: 600; }
-.ca-sel .ca-n { color: rgba(250, 250, 248, 0.82); }
-.ca-sel .ca-v { display: inline-flex; align-items: center; gap: 5px; }
+/* La oferta roja, una fila: el único rojo grande de la casa. */
+.ca-oferta { margin-top: 12px; background: var(--signal-red); color: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ca-oferta-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ca-oferta-k { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #F5C9C4; }
+.ca-oferta-t { font-size: 17px; font-weight: 600; line-height: 1.2; }
+.ca-oferta-btn { height: 40px; display: inline-flex; align-items: center; border-radius: 999px; background: #FFFFFF; color: var(--signal-red); font-size: 13px; font-weight: 600; padding: 0 14px; white-space: nowrap; text-decoration: none; flex: none; }
+.ca-oferta-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.ca-invita { margin-top: 10px; }
 
-/* Plano: las secciones de abajo, sin tarjeta, separadas por una línea fina. */
-.ca-plano { margin-top: 32px; }
-.ca-plano-sec { padding: 18px 0; border-top: 1px solid var(--franco-border); }
+/* «Tu selección de esta semana». */
+.ca-seccion { margin-top: 26px; }
+.ca-t2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.2; letter-spacing: -0.005em; }
+.ca-linea { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
+
+/* El título de sección que usa la primera selección en la casa (PrimeraSeleccion encabezado="casa"). */
 .ca-plano-t { margin: 0 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -0.005em; }
-/* Los chips del perfil, planos como los de «Afina tu búsqueda» en /deptos. */
-.ca-chip { border: 1px solid transparent; background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
-.ca-chip:focus-within { border-color: var(--franco-text); }
-.ca-chip:disabled { cursor: default; }
-/* «Tus informes», plano: el título como los de arriba y su lista debajo. */
-.ca-informes { padding-top: 18px; border-top: 1px solid var(--franco-border); }
-/* Los tres campos del perfil (23-oct-2026, components/deptos/CamposBusqueda.tsx con los estilos de deptos.css): acotados,
-   y después los chips de modalidad, pie y plazo. */
-.ca-perfil-campos { max-width: 560px; margin-bottom: 14px; }
+/* Lo plano de /cuenta, que monta el mismo perfil. */
+.ca-plano-sec { padding: 18px 0; border-top: 1px solid var(--franco-border); }
+
+/* El mapa de la selección: la imagen quieta, el SVG de los pines encima, la píldora y el botón. */
+.ca-mapa { margin-top: 14px; background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; overflow: hidden; }
+.ca-mapa-img { position: relative; background: #EBE9E3; }
+:root:not([data-theme="light"]) .ca-mapa-img { background: #2A2A2A; }
+.ca-mapa-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+:root:not([data-theme="light"]) .ca-mapa-fondo { filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.9); }
+@media (min-width: 768px) { .ca-mapa { max-width: 600px; } }
+.ca-mapa-img svg { position: relative; display: block; }
+.ca-mapa-gris circle { fill: #C9C5BB; }
+:root:not([data-theme="light"]) .ca-mapa-gris circle { fill: #6B6B72; }
+.ca-mapa-rojo circle { fill: var(--signal-red); stroke: #FFFFFF; stroke-width: 1.5; }
+.ca-mapa-rojo text { fill: #FFFFFF; font-family: var(--font-ui), Inter, sans-serif; font-size: 10px; font-weight: 600; }
+.ca-mapa-pildora { position: absolute; left: 12px; bottom: 12px; font-size: 12px; font-weight: 500; color: #1A1A1A; background: rgba(255, 255, 255, 0.92); border-radius: 999px; padding: 5px 10px; }
+.ca-mapa-pie { padding: 14px 16px; }
+.ca-boton-contorno { display: inline-flex; width: 100%; height: 46px; align-items: center; justify-content: center; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 15px; font-weight: 600; text-decoration: none; }
+.ca-boton-contorno:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+
+/* Las tarjetas de la selección (deptos.css › .sel-*). El ya analizado queda en su posición como fila compacta y gris. */
+.ca-tarjetas { margin-top: 14px; }
+.ca-tarjetas .sel-lista { margin-top: 0; }
+/* En el teléfono, las tarjetas un poco más apretadas (el dashboard entero mide menos de la mitad de lo que medía). */
+@media (max-width: 699px) { .ca-tarjetas .sel-av { padding: 14px 16px; gap: 8px; } .ca-tarjetas .sel-precio { font-size: 24px; } .ca-tarjetas .sel-btn { height: 44px; } .ca-tarjetas .sel-lista { gap: 10px; } }
+.sel-lista .sel-fila { align-self: start; }
+.sel-fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; padding: 12px 16px; text-decoration: none; color: var(--franco-text-secondary); min-width: 0; }
+.sel-fila-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sel-fila-ojo { font-size: 13px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sel-fila-ya { font-size: 12px; font-weight: 600; color: var(--verdict-comprar); padding-left: 28px; }
+:root:not([data-theme="light"]) .sel-fila-ya { color: #8DB0E3; }
+.sel-fila-ver { font-size: 13px; font-weight: 600; color: var(--franco-text); white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; flex: none; }
+.sel-fila:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+
+/* Las filas plegadas: «Tu perfil de búsqueda» e «Informes realizados». */
+.ca-plegadas { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+.ca-plegada { background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; overflow: hidden; }
+.ca-plegada > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; }
+.ca-plegada > summary::-webkit-details-marker { display: none; }
+.ca-plegada > summary:focus-visible { outline: 2px solid var(--franco-text); outline-offset: -2px; }
+.ca-plegada[open] > summary { border-bottom: 1px solid var(--franco-border); }
+.ca-plegada-t { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ca-plegada-n { font-size: 12px; font-weight: 400; color: var(--franco-text-secondary); }
+.ca-etiqueta-roja { font-size: 11px; font-weight: 600; color: var(--signal-red); background: color-mix(in srgb, var(--signal-red) 9%, var(--franco-card)); border-radius: 999px; padding: 3px 8px; }
+.ca-plegada-s { display: block; margin-top: 4px; font-size: 12px; color: var(--franco-text-secondary); }
+.ca-chevron { color: var(--franco-text-secondary); font-size: 14px; flex: none; transition: transform 0.15s ease; }
+.ca-plegada[open] .ca-chevron { transform: rotate(180deg); }
+.ca-plegada-cuerpo { padding: 16px; }
+.ca-informes-cuerpo { padding: 4px 12px 12px; }
+
+/* El perfil abierto: «¿Qué buscas?», la frase con «Editar», los campos, las dos preguntas y «Guardar». */
+.ca-perfil-h { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+.ca-perfil-frase { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; background: var(--franco-bg); border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1.45; }
+.ca-perfil-editar { font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; background: none; border: 0; padding: 0; font-family: inherit; color: var(--franco-text); cursor: pointer; }
+.ca-perfil-campos { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ca-perfil-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ca-pendientes { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.ca-pendientes-k { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--signal-red); }
+.ca-pregunta { display: flex; flex-direction: column; gap: 6px; }
+.ca-pregunta-q { font-size: 13px; color: var(--franco-text-secondary); }
+.ca-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-opcion { min-height: 40px; border: 1px solid var(--franco-border); background: var(--franco-card); color: var(--franco-text); border-radius: 999px; padding: 0 12px; font: inherit; font-size: 13px; cursor: pointer; flex: 1 0 auto; }
+.ca-opcion[aria-pressed="true"] { border-color: var(--franco-text); background: var(--franco-text); color: var(--franco-card); }
+.ca-opcion:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ca-nota { margin: 0; font-size: 12px; color: var(--franco-text-secondary); line-height: 1.4; }
+.ca-guardar { margin-top: 18px; height: 46px; width: 100%; border: 0; border-radius: 999px; background: var(--franco-text); color: var(--franco-card); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.ca-guardar:disabled { opacity: 0.55; cursor: default; }
+.ca-guardar:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ca-proxima { margin: 8px 0 0; font-size: 12px; color: var(--franco-text-secondary); text-align: center; }
+.ca-error { margin: 8px 0 0; font-size: 13px; color: var(--signal-red); }

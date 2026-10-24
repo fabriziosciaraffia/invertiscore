@@ -10,6 +10,10 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import type { Veredicto } from "@/lib/types";
 import { SEMANAL_STR } from "./semanal-str";
 
+/** Las tarjetas a la vista en el dashboard (24-oct-2026, mockup 3b: dos y «Ver los 3 que faltan»); en «Estás dentro» son tres
+ *  (lib/guia/del-dia.ts › TARJETAS_A_LA_VISTA). Con dos, el dashboard entero mide menos de la mitad del viejo en el teléfono. */
+export const TARJETAS_EN_CASA = 2;
+
 export const SELECCION_CASA = {
   titulo: "Tu selección de esta semana",
   boton: "Ver tu selección",
