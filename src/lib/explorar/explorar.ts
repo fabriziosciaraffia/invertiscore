@@ -346,7 +346,8 @@ export const AVISO_SIN_SALDO = {
   titulo: (n: number) => (n > 0 ? `Para explorar los ${miles(n)} necesitas análisis disponibles.` : "Para explorar el mapa necesitas análisis disponibles."),
   cuerpo: "Con un pack, uno suelto o el plan entras al mapa completo: ves todos los que convienen para tu búsqueda y gastas un análisis solo cuando analizas uno.",
   soloNuevas: "Solo para cuentas nuevas",
-  vence: (cuando: string) => `Vence ${cuando}`,
+  /** En la misma fila que «Solo para cuentas nuevas» (24-oct-2026, el aviso cabe en 390 × 740). */
+  vence: (cuando: string) => `· vence ${cuando}`,
   /** La tarjeta roja dice «3 análisis por $14.990» (mockup E; 24-oct-2026), no el botón del pack. */
   packTicket: (precio: string) => `3 análisis por ${precio}`,
   aprovechar: (precio: string) => `Aprovechar · 3 por ${precio}`,

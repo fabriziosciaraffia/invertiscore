@@ -11,7 +11,7 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { formatearNumero, formatearPct } from "@/lib/plausibilidad";
 import { calcDividendo } from "@/components/formulario-v4/helpers-wizard";
 import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
-import { PACK_PRECIO_CLP, PACK_UNITARIO_CLP, PACK_UNITARIO_REFERENCIA_CLP } from "@/lib/lo-que-sigue/oferta-pack";
+import { PACK_PRECIO_CLP, PACK_UNITARIO_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
@@ -29,12 +29,13 @@ export function usoDesdeSaldo(n: number | null | undefined): UsoAnalisis {
 export const AVISO_ANALIZAR = {
   titulo: "¿Analizar este depto?",
   tituloSin: "No te quedan análisis.",
-  /** La tarjeta roja del ticket dentro del pop-up sin saldo (24-oct-2026, mockup A). */
+  /** La tarjeta roja del ticket dentro del pop-up sin saldo (24-oct-2026, mockup A). EN DOS LÍNEAS (24-oct-2026, el
+   *  pop-up cabe en 390 × 740): «Solo para cuentas nuevas · vence mañana 18:07» en una fila y debajo «3 análisis por
+   *  $14.990 · $4.997 cada uno». */
   soloNuevas: "Solo para cuentas nuevas",
-  vence: (cuando: string) => `Vence ${cuando}`,
+  vence: (cuando: string) => `· vence ${cuando}`,
   packTicket: `3 análisis por ${fmtCLP(PACK_PRECIO_CLP)}`,
-  unitarioAntes: fmtCLP(PACK_UNITARIO_REFERENCIA_CLP),
-  unitarioAhora: `${fmtCLP(PACK_UNITARIO_CLP)} cada uno.`,
+  unitario: ` · ${fmtCLP(PACK_UNITARIO_CLP)} cada uno`,
   aprovechar: `Aprovechar · 3 por ${fmtCLP(PACK_PRECIO_CLP)}`,
   modalidad: "Renta larga",
   /** El bloque de renta corta del semanal (14-oct-2026). La última línea es la misma que en renta larga, «Usa 1 de tus N
@@ -44,11 +45,8 @@ export const AVISO_ANALIZAR = {
   cancelar: "Cancelar",
   sin: `Para analizar este depto: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
   comprar: TRES_COPY.boton,
-  /** La tarjeta gris del depto (D1): qué incluye el informe. En D2, la frase corta. */
-  incluye: { antes: "El informe completo incluye ", fuerte: "el enlace a la publicación", despues: ", para que lo veas y contactes a quien lo vende." },
-  incluyeCorto: ".",
-  /** Sin saldo (A): la tarjeta dice para qué. */
-  paraAnalizar: "Para analizar este depto:",
+  /** La tarjeta gris del depto: qué incluye el informe, en UNA línea corta (24-oct-2026: el pop-up cabe en 390 × 740). */
+  incluye: { antes: "El informe incluye ", fuerte: "el enlace a la publicación", despues: "." },
   sinRecalculo: "No pudimos recalcular con esa combinación. Prueba otra.",
 } as const;
 

@@ -377,3 +377,36 @@
 .av-ticket-t { font-size: 20px; font-weight: 600; line-height: 1.2; }
 .av-ticket-s { font-size: 13px; color: #FBE3E0; }
 .av-ticket-s s { color: #E8A39D; }
+
+/* ═══ LOS POP-UPS QUE CABEN EN EL TELÉFONO (24-oct-2026, decisión de Fabrizio) ═══
+   El aviso antes de analizar (sin saldo, D1, D2) y el aviso E de Explorar, enteros en 390 × 740 y sin scroll: márgenes
+   cortos, la tarjeta del depto en dos líneas más la del enlace, la oferta en una fila y una línea, «Comprar solo 1» con
+   borde y más bajo, «Cancelar» como texto. Lo mide scripts/eval/golden/popups-alto-webkit-sonda.ts. */
+@media (max-width: 767px) { .wz-modal-velo.wz-modal-velo-compacto { padding: 12px; align-items: center; } }
+.wz-modal-compacto .wz-modal-mc { padding: 14px 16px 2px; }
+.wz-modal-compacto .wz-modal-mb { gap: 6px; padding: 10px 16px 8px; margin-top: 10px; }
+.wz-modal-compacto .wz-cta.wz-cta-modal { height: 46px; }
+.wz-modal-compacto .wz-modal-consumo { margin-top: 10px; padding-top: 10px; font-size: 13px; }
+.wz-modal-compacto .wz-modal-nota { margin-top: 4px; font-size: 13px; }
+.wz-modal-compacto .wz-modal-dir { margin-top: 8px; font-size: 19px; }
+.wz-modal-compacto .wz-modal-msg { margin-top: 8px; font-size: 14px; line-height: 1.45; }
+.wz-btn2.wz-btn2-bajo { height: 40px; font-size: 14px; }
+.wz-modal-cancelar { align-self: center; min-height: 32px; padding: 0 16px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--tx3); cursor: pointer; }
+.wz-modal-cancelar:hover { color: var(--tx); }
+.wz-modal-cancelar:disabled { opacity: 0.6; cursor: not-allowed; }
+.wz-modal-cancelar:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; border-radius: 6px; }
+.wz-modal-compacto .av { gap: 10px; margin-top: 8px; }
+.wz-modal-compacto .av-tarjeta { padding: 10px 12px; gap: 2px; }
+.wz-modal-compacto .av-nombre { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wz-modal-compacto .av-linea { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wz-modal-compacto .av-incluye { font-size: 12.5px; padding-top: 6px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wz-modal-compacto .av-sin-titulo { white-space: nowrap; }
+.wz-modal-compacto .av-selects .av-select { height: 42px; }
+.wz-modal-compacto .av-cambio { padding: 10px 12px; }
+.wz-modal-compacto .av-ticket, .wz-modal-compacto .ex-ticket { padding: 10px 14px; gap: 2px; border-radius: 12px; }
+.wz-modal-compacto .ex-ticket { margin-top: 10px; }
+.wz-modal-compacto .av-ticket-fila, .wz-modal-compacto .ex-ticket-fila { justify-content: flex-start; gap: 4px; white-space: nowrap; }
+.wz-modal-compacto .av-ticket-k, .wz-modal-compacto .ex-ticket-k,
+.wz-modal-compacto .av-ticket-vence, .wz-modal-compacto .ex-ticket-vence { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; background: none; padding: 0; border-radius: 0; color: #F5C9C4; }
+.wz-modal-compacto .av-ticket-t, .wz-modal-compacto .ex-ticket-t { font-size: 16px; white-space: nowrap; }
+.wz-modal-compacto .av-ticket-s { font-size: 13px; font-weight: 500; }

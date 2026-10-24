@@ -71,6 +71,9 @@ export interface ModalPlausibilidadProps {
   titulo?: string;
   destacado?: ReactNode;
   labelRevisar?: string;
+  /** LOS POP-UPS QUE CABEN EN EL TELÉFONO (24-oct-2026): márgenes y botones más bajos, el secundario con borde y más bajo
+   *  que el principal, y el de cerrar como texto. Lo usan el aviso antes de analizar (AvisoAntesDeAnalizar); el wizard no. */
+  compacto?: boolean;
   marca?: string;
   /**
    * EL POP-UP DE LA SELECCIÓN (23-oct-2026, mockups D1 y D2): el aviso antes de gastar dibuja su propio cuerpo —la tarjeta
@@ -121,6 +124,7 @@ export function ModalPlausibilidad({
   titulo = "Confirma antes de generar",
   destacado,
   labelRevisar = "Revisar",
+  compacto = false,
   marca,
   cuerpo,
   bloqueado = false,
@@ -199,7 +203,7 @@ export function ModalPlausibilidad({
       // modal queda cortado abajo. Anclado ARRIBA con margen (no centrado
       // vertical): con el teclado abierto o varias anomalías, centrar deja la
       // mitad del contenido fuera de pantalla. Sobre la barra fija del wizard.
-      className="wz4 wz-modal-velo"
+      className={`wz4 wz-modal-velo${compacto ? " wz-modal-velo-compacto" : ""}`}
       style={{ height: "100dvh" }}
       // Sin onClick: el backdrop NO cierra (dismissOnBackdropClick=false).
       role={esAnomalia ? "alertdialog" : "dialog"}
@@ -207,7 +211,7 @@ export function ModalPlausibilidad({
       aria-labelledby="modal-plausibilidad-titulo"
       data-modal={marca}
     >
-      <div ref={panelRef} className="wz-modal modal-plausibilidad-panel">
+      <div ref={panelRef} className={`wz-modal modal-plausibilidad-panel${compacto ? " wz-modal-compacto" : ""}`}>
         {/* Cuerpo scrolleable: los botones quedan fijos abajo. Nunca un modal
             donde haya que scrollear para encontrar cómo salir. */}
         <div className="wz-modal-mc">
@@ -325,7 +329,7 @@ export function ModalPlausibilidad({
                 {submitting ? labelGenerando : labelConfirmar}
               </button>
               {secundario && (secundario.boton ? (
-                <button type="button" onClick={secundario.onClick} disabled={submitting} className="wz-btn2" data-modal-secundario>
+                <button type="button" onClick={secundario.onClick} disabled={submitting} className={compacto ? "wz-btn2 wz-btn2-bajo" : "wz-btn2"} data-modal-secundario>
                   {secundario.label}
                 </button>
               ) : (
@@ -335,7 +339,7 @@ export function ModalPlausibilidad({
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={cerrar} disabled={submitting} className="wz-btn2">
+              <button type="button" onClick={cerrar} disabled={submitting} className={compacto ? "wz-modal-cancelar" : "wz-btn2"} data-modal-cancelar>
                 {labelRevisar}
               </button>
             </>

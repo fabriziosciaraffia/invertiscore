@@ -20,6 +20,10 @@
 // DESDE LA SELECCIÓN (21-oct-2026): al tocar «Analizar», el aviso queda abierto con «Franco está analizando este depto…»
 // y la barra de carga del header hasta que abre el informe (`analizando`). Sin saldo, el pack de tres es el principal —al
 // precio del ticket si la cuenta tiene menos de 24 horas— y debajo «Comprar solo 1 · $9.990» (`compras`).
+// CABE EN EL TELÉFONO (24-oct-2026, decisión de Fabrizio): entero en 390 × 740, sin scroll, con todo lo que tiene. La
+// tarjeta del depto en dos líneas (comuna · tipología · m² · precio, y veredicto · flujo) más «El informe incluye el
+// enlace a la publicación.»; la oferta en una fila y una línea; «Comprar solo 1» es un botón de borde más bajo y
+// «Cancelar», texto (el modal en modo `compacto`). Lo mide la sonda popups-alto-webkit-sonda.ts contra /dev/popups.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -106,15 +110,14 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   const conTicket = sin && !!compras?.pack.ticket;
   const cuerpo = (
     <div className="av" data-aviso={sin ? "sin" : editando ? "cambiar" : "ver"}>
-      {/* SIN SALDO (mockup A): «No te quedan análisis.» grande y en rojo, la tarjeta gris con «Para analizar este depto:» y,
-          con el ticket vivo, la tarjeta roja de la oferta: «Solo para cuentas nuevas · Vence mañana 11:17 · 3 análisis por
-          $14.990 · $9.990 $4.997 cada uno.». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
+      {/* SIN SALDO (mockup A): «No te quedan análisis.» grande y en rojo, la tarjeta gris del depto y, con el ticket vivo,
+          la tarjeta roja de la oferta: «Solo para cuentas nuevas · vence mañana 11:17» y «3 análisis por $14.990 · $4.997
+          cada uno». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
       {sin && <h2 id="modal-plausibilidad-titulo" className="av-sin-titulo" data-aviso="sin-titulo">{AVISO_ANALIZAR.tituloSin}</h2>}
       <div className="av-tarjeta">
-        {sin && <span className="av-para">{AVISO_ANALIZAR.paraAnalizar}</span>}
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
-        <span className="av-incluye">{AVISO_ANALIZAR.incluye.antes}<b>{AVISO_ANALIZAR.incluye.fuerte}</b>{editando ? AVISO_ANALIZAR.incluyeCorto : AVISO_ANALIZAR.incluye.despues}</span>
+        <span className="av-incluye">{AVISO_ANALIZAR.incluye.antes}<b>{AVISO_ANALIZAR.incluye.fuerte}</b>{AVISO_ANALIZAR.incluye.despues}</span>
       </div>
       {conTicket && ticketVence && (
         <div className="av-ticket" data-aviso="ticket" data-vence={ticketVence}>
@@ -122,8 +125,7 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
             <span className="av-ticket-k">{AVISO_ANALIZAR.soloNuevas}</span>
             <span className="av-ticket-vence">{AVISO_ANALIZAR.vence(ticketVence)}</span>
           </div>
-          <div className="av-ticket-t">{AVISO_ANALIZAR.packTicket}</div>
-          <div className="av-ticket-s"><s>{AVISO_ANALIZAR.unitarioAntes}</s> {AVISO_ANALIZAR.unitarioAhora}</div>
+          <div className="av-ticket-t">{AVISO_ANALIZAR.packTicket}<span className="av-ticket-s">{AVISO_ANALIZAR.unitario}</span></div>
         </div>
       )}
       {!sin && (editando && cambio ? (
@@ -181,6 +183,7 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       open
       anomalias={[]}
       marca={sin ? "aviso-analizar-sin" : "aviso-analizar"}
+      compacto
       titulo={sin ? "" : AVISO_ANALIZAR.titulo}
       cuerpo={cuerpo}
       consumo={sin ? (conTicket && ticketVence ? null : compras ? compras.sin : AVISO_ANALIZAR.sin) : textoUso(uso)}
