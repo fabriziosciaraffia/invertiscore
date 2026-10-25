@@ -21,7 +21,7 @@
 
 /* ── Los tres campos (components/deptos/CamposBusqueda.tsx): nombre arriba, <select> de 48 px. También en el perfil del
    dashboard. ── */
-.dp-campos { display: flex; flex-direction: column; gap: 16px; }
+.dp-campos { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; }
 .dp-campo-b { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dp-etq { font-size: 13px; font-weight: 500; color: var(--franco-text-secondary); display: inline-flex; align-items: center; }
 .dp-select { box-sizing: border-box; width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--franco-border); background-color: var(--franco-card); color: var(--franco-text);
@@ -32,6 +32,10 @@
 .dp-select[data-vacio="1"] { border-color: var(--franco-text); color: var(--franco-text-secondary); }
 .dp-select:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .dp-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* La tipología y el rango, uno bajo el otro cuando a media columna no cabe la opción más larga («4 dormitorios o más»,
+   «UF 3.000 a 4.000»): a 390 la media columna deja 96 px de texto y el <select> la cortaba a «UF 4.000 a 6.» (25-oct-2026,
+   en /deptos y en el perfil del dashboard desde el 23-oct). Por el ancho de los campos, no de la pantalla. */
+@container (max-width: 459px) { .dp-dos { grid-template-columns: minmax(0, 1fr); } }
 .dp-extras { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
 .dp-extra { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border-radius: 99px; border: 1px solid transparent; background: color-mix(in srgb, var(--franco-text) 6%, transparent); color: var(--franco-text); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; }
 .dp-extra span { font-size: 12px; color: var(--franco-text-secondary); }

@@ -4,7 +4,8 @@
 //        UNA línea, el correo en dos como mucho y cortado SOLO en el arroba (lo de antes y lo de después, cada uno entero en
 //        su línea), nada que se salga de la banda ni de la pantalla;
 //   PE · el perfil del dashboard abierto en edición (necesita una sesión de una cuenta de prueba): la sección mide lo que
-//        necesita —contiene el pie y el plazo—, ningún contenedor los recorta y la página baja hasta verlos.
+//        necesita —contiene el pie y el plazo—, ningún contenedor los recorta y la página baja hasta verlos; y en cada
+//        <select> del perfil y de /deptos cabe entera la opción MÁS LARGA (no solo la elegida).
 // Sale con 1 si algo falla, con 2 si no pudo correr. Nada escribe: lo que no es GET se corta.
 // Uso: PLAYWRIGHT_DIR=<playwright 1.60 con WebKit> node --import tsx scripts/eval/golden/ajustes-1025-webkit-sonda.ts [--base http://localhost:3000] [--sesion <storageState.json>]
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,6 +19,13 @@ const CORREO = "fabriziosciaraffia+qadeptos5xy@gmail.com";
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
 class NoCorrio extends Error {}
+// La opción más larga de cada <select> de los campos contra el ancho que le queda entre los paddings, medida con la fuente
+// que el select usa de verdad: el elegido puede caber y otro no («2 dormitorios» cabía, «4 dormitorios o más» no).
+const TEXTO_CABE = `(async () => { await document.fonts.ready; return Array.from(document.querySelectorAll('select.dp-select')).filter((s) => s.getBoundingClientRect().width > 0).map((s) => {
+  const cs = getComputedStyle(s), c = document.createElement('canvas').getContext('2d'); c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+  let largo = 0, cual = ''; for (const o of s.options) { const w = c.measureText(o.text).width; if (w > largo) { largo = w; cual = o.text; } }
+  const cabe = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  return s.dataset.campo + ' «' + cual + '» ' + Math.round(largo) + '/' + Math.round(cabe) + (largo > cabe ? ' ⛔' : ''); }); })()`;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const MEDIR_QV = `(() => {
@@ -90,6 +98,8 @@ async function main(): Promise<void> {
           return q2.bottom > r.bottom + 0.5 || q2.right > r.right + 0.5 || q2.left < r.left - 0.5 || (sigue && q2.bottom > sigue.getBoundingClientRect().top + 0.5); }).map((x) => x.dataset.campo);
         return { contiene: q.bottom <= s.bottom + 0.5 && pi.bottom <= s.bottom + 0.5, recortan, esDetails: sec.tagName === 'DETAILS', secScroll: sec.scrollHeight - sec.clientHeight, desbordan };
       })()`);
+      const cortados = async (donde: string) => { const r: string[] = await p.evaluate(TEXTO_CABE); if (!r.length) throw new NoCorrio(`${donde}: no hay ningún <select> de los campos a la vista`); return r.filter((x) => x.endsWith("⛔")); };
+      const cortPerfil = await cortados("el perfil");
       await p.evaluate("document.querySelector('[data-campo=\"plazo\"]').scrollIntoView({ block: 'center' })");
       await p.waitForTimeout(300);
       const visible = await p.evaluate("(() => { const r = document.querySelector('[data-campo=\"plazo\"]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()");
@@ -98,6 +108,12 @@ async function main(): Promise<void> {
       if (m.desbordan.length) F(`PE · el select de ${m.desbordan.join(" y ")} se sale de su campo o pisa lo que sigue`);
       if (m.esDetails) F("PE · el perfil sigue siendo un <details> (Safari en iOS no recalcula su alto al crecer)");
       if (!visible) F("PE · la página no baja hasta el plazo");
+      if (cortPerfil.length) F(`PE · el texto no cabe en su <select>: ${cortPerfil.join(" · ")}`);
+      await p.goto(`${BASE}/deptos`, { waitUntil: "load", timeout: 180_000 });
+      await p.waitForSelector("select.dp-select", { timeout: 30_000 });
+      const cortDeptos = await cortados("/deptos");
+      console.log(`PE · opciones que no caben en su <select>: perfil ${cortPerfil.join(" · ") || "ninguna"} · /deptos ${cortDeptos.join(" · ") || "ninguna"}`);
+      if (cortDeptos.length) F(`PE · en /deptos el texto no cabe en su <select>: ${cortDeptos.join(" · ")}`);
       await ctx2.close();
     }
   } finally {
