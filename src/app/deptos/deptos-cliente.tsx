@@ -51,6 +51,7 @@ import {
 import type { PortadaDeptos } from "@/lib/deptos/portada";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
+import { PASO_REGALO_MS, TOPE_ESPERA_REGALO_MS } from "@/lib/deptos/alta-orden";
 import "./deptos.css";
 
 type Paso = "elegir" | "codigo" | "dentro" | "agregar";
@@ -73,7 +74,7 @@ export interface OpcionesDeptos {
 }
 
 /** Lo que responde el alta (POST /api/deptos/alta y POST /api/deptos/entrar). */
-type RespuestaAlta = { estado?: string; regaloVence?: string | null; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
+type RespuestaAlta = { estado?: string; regaloVence?: string | null; regalo?: string; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
 
 /** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
  *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
@@ -94,6 +95,9 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   const [ocupado, setOcupado] = useState<false | "correo" | "google" | "entrar">(false);
   const [error, setError] = useState<string | null>(null);
   const [regaloVence, setRegaloVence] = useState<string | null>(null);
+  // EL REGALO APENAS LLEGUE (25-oct-2026, lib/deptos/alta-orden.ts): el alta responde antes de que el regalo termine; si
+  // salió «pendiente», «Estás dentro» se muestra igual y la tarjeta aparece cuando el regalo está.
+  const [regaloPendiente, setRegaloPendiente] = useState(false);
   const [agregar, setAgregar] = useState<{ nuevas: string[]; actuales: string[] } | null>(null);
   // «Tu perfil de búsqueda» (23-oct-2026): la búsqueda con que nació la cuenta, en una línea; se edita en el dashboard.
   const [busca, setBusca] = useState<BusquedaDeptos | null>(null);
@@ -225,6 +229,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     router.refresh();
     if (d.estado === "nueva") {
       setRegaloVence(d.regaloVence ?? null);
+      setRegaloPendiente(!d.regaloVence && d.regalo === "pendiente");
       setBusca(d.busqueda ?? null);
       // Con Google, el completado lo emite useAttributionSync con la marca de OAuth: acá no se repite.
       if (metodo === "email") emitirAuthCompletada(posthog, "signup", "email");
@@ -262,6 +267,29 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       setAltaEnCurso(false);
     }
   }, [aplicarAlta]);
+
+  // El regalo pendiente: se pregunta cada PASO_REGALO_MS hasta que esté decidido (o hasta el tope) y se dibuja al llegar.
+  useEffect(() => {
+    if (!regaloPendiente) return;
+    let vivo = true;
+    const t0 = Date.now();
+    const mirar = async () => {
+      try {
+        const r = await fetch("/api/deptos/regalo", { cache: "no-store" });
+        const d = (await r.json().catch(() => ({}))) as { vence?: string | null; decidido?: boolean };
+        if (!vivo) return;
+        if (d.vence) setRegaloVence(d.vence);
+        if (d.vence || d.decidido) { setRegaloPendiente(false); return; }
+      } catch {
+        /* se vuelve a preguntar */
+      }
+      if (!vivo) return;
+      if (Date.now() - t0 < TOPE_ESPERA_REGALO_MS) window.setTimeout(() => void mirar(), PASO_REGALO_MS);
+      else setRegaloPendiente(false);
+    };
+    void mirar();
+    return () => { vivo = false; };
+  }, [regaloPendiente]);
 
   // Volvió por el enlace del correo o de Google, con sesión: termina el alta acá. Con Google, el Lead sale ahora (recién se
   // sabe el correo), igual que cuando se deja el correo; la clave va por si el callback no alcanzó a pasar lo elegido.

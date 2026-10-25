@@ -22,12 +22,14 @@ import { guardarAtribucion } from "@/lib/attribution";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { asegurarRegaloDeAlta, huellaDeRequest, regaloAltaVivo } from "@/lib/regalo-alta-servidor";
 import { esCuentaNueva } from "@/lib/entrar/entrada";
-import { busquedaDePerfil, CLAVE_GOOGLE, comunasParaAgregar, tipoDeAlta } from "./respuesta";
+import { busquedaDePerfil, CLAVE_GOOGLE, comunasParaAgregar } from "./respuesta";
 import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "./servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 import { cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion } from "@/lib/referido-servidor";
-import { emitirRegistroAlCrear } from "@/lib/meta/registro";
-import { contextoDeRequest } from "@/lib/meta/servidor";
+import { datosRegistro, emitirRegistroAlCrear } from "@/lib/meta/registro";
+import { EVENTOS_META, idRegistro } from "@/lib/meta/ids";
+import { contextoDeRequest, esCuentaDePrueba } from "@/lib/meta/servidor";
+import { ordenarAlta, type PiezasAlta } from "./alta-orden";
 import type { EventoEspejo } from "@/lib/meta/espejo";
 import { SIN_CRONOMETRO, type Cronometro } from "@/lib/cronometro";
 
@@ -54,70 +56,108 @@ export function respuestaDeAltaRepetida(p: { creadaAt: string | null | undefined
   return busqueda ? { estado: "nueva", regaloVence: p.regaloVence, busqueda, repetida: true } : null;
 }
 
-export async function ejecutarAlta(admin: SupabaseClient, user: User, request: Request, p: { clave?: unknown; ruta: string; crono?: Cronometro }): Promise<AltaDeptos> {
+export async function ejecutarAlta(
+  admin: SupabaseClient,
+  user: User,
+  request: Request,
+  p: {
+    clave?: unknown;
+    ruta: string;
+    crono?: Cronometro;
+    /** Lo elegido en /deptos, pedido de antes (la ruta del código lo pide junto con verificar el código). */
+    pendiente?: Promise<Awaited<ReturnType<typeof leerPendiente>>>;
+    /** Lo que corre después de responder (el waitUntil de Vercel). */
+    despues?: (p: Promise<unknown>) => void;
+  },
+): Promise<AltaDeptos> {
   if (!user.email) return { cuerpo: { error: "sin-sesion" }, status: 401, invitacionUsada: false, espejos: [] };
   // EL CRONÓMETRO (25-oct-2026): cada paso queda en la cabecera Server-Timing de la respuesta.
   const c = p.crono ?? SIN_CRONOMETRO;
+  const despues = p.despues ?? waitUntil;
   const correo = user.email;
-  let pend = await c.medir("leer-pendiente", leerPendiente(admin, correo));
-  if (!pend && typeof p.clave === "string" && CLAVE_GOOGLE.test(p.clave) && await c.medir("reclavar-google", reclavarPendienteGoogle(admin, { clave: p.clave, correo, cuentaCreadaAt: user.created_at }))) {
-    pend = await c.medir("leer-pendiente-2", leerPendiente(admin, correo));
-  }
-  if (!pend) {
-    // ¿Es el segundo pedido de un alta que ya se hizo? (respuestaDeAltaRepetida)
-    if (esCuentaNueva(user.created_at)) {
-      const [{ data: perfil }, regaloVence] = await c.medir("alta-repetida", Promise.all([
+  const huella = huellaDeRequest(request);
+  const contexto = contextoDeRequest(request);
+  // La primera vuelta del correo del día espera este permiso: se suelta después de responder, con el perfil ya escrito.
+  let soltarVuelta: () => void = () => {};
+  const permisoVuelta = new Promise<void>((ok) => { soltarVuelta = ok; });
+  let primerPendiente = p.pendiente ?? null;
+
+  const piezas: PiezasAlta = {
+    pendiente: () => {
+      const ya = primerPendiente;
+      primerPendiente = null;
+      return c.medir("leer-pendiente", ya ?? leerPendiente(admin, correo));
+    },
+    reclavarGoogle: typeof p.clave === "string" && CLAVE_GOOGLE.test(p.clave)
+      ? () => c.medir("reclavar-google", reclavarPendienteGoogle(admin, { clave: p.clave as string, correo, cuentaCreadaAt: user.created_at }))
+      : null,
+    repetida: () => c.medir("alta-repetida", (async () => {
+      const [{ data: perfil }, regaloVence] = await Promise.all([
         admin.from("perfil_busqueda").select("comunas, dormitorios, precio_min_uf, precio_max_uf").eq("user_id", user.id).maybeSingle(),
         regaloAltaVivo(admin, user.id),
-      ]));
-      const repetida = respuestaDeAltaRepetida({ creadaAt: user.created_at, perfil: perfil as Record<string, unknown> | null, regaloVence });
-      if (repetida) return { cuerpo: repetida, invitacionUsada: false, espejos: [] };
-    }
-    return { cuerpo: { estado: "sin-pendiente" }, invitacionUsada: false, espejos: [] };
+      ]);
+      return respuestaDeAltaRepetida({ creadaAt: user.created_at, perfil: perfil as Record<string, unknown> | null, regaloVence });
+    })()),
+    existente: (pend) => c.medir("existente", (async () => {
+      const pp = await leerPerfilBusqueda(admin, user.id);
+      const elegidas = Array.isArray(pend.perfil.comunas) ? (pend.perfil.comunas as string[]) : [];
+      return { comunasNuevas: comunasParaAgregar(pp.perfil.comunas, elegidas), comunas: pp.perfil.comunas };
+    })()),
+    // La cuenta nace con su perfil manual; uno que ya estaba no se pisa (ignoreDuplicates: solo devuelve la fila si la creó).
+    perfilSiFalta: (perfil) => c.medir("perfil", (async () => {
+      const { data, error } = await admin.from("perfil_busqueda").upsert({ user_id: user.id, ...perfil, actualizado_at: new Date().toISOString() }, { onConflict: "user_id", ignoreDuplicates: true }).select("user_id");
+      reportarFalloQuery(error, { ruta: p.ruta, operacion: "perfil", userId: user.id });
+      if (error) throw new Error(`perfil: ${error.message}`);
+      return (data ?? []).length > 0 ? "creado" as const : "ya-estaba" as const;
+    })()),
+    // La fila del correo del día (sin ella «Analizar este» no tiene token); su primera vuelta, después de responder.
+    filaDelDia: () => c.medir("fila-del-dia", encolarPrimeraSeleccion(admin, user, { sitio: SITIO, enSegundoPlano: despues, ruta: p.ruta, antes: permisoVuelta })),
+    // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts).
+    creditos: () => c.medir("creditos", (async () => {
+      await admin.from("user_credits").upsert({ user_id: user.id, credits: 0, subscription_status: "none", welcome_email_sent: true }, { onConflict: "user_id", ignoreDuplicates: true });
+      await admin.from("user_credits").update({ welcome_email_sent: true }).eq("user_id", user.id);
+    })()),
+    // La invitación (la puerta C): se cobra, y si la cuenta es invitada, la puerta es la C.
+    puerta: () => c.medir("puerta", (async () => {
+      const cookieInv = cookieInvitacionDeCabeceras(request.headers);
+      const vinculo = cookieInv ? await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella }) : null;
+      const { data: ref } = await admin.from("referidos").select("estado").eq("invitado_id", user.id).maybeSingle();
+      return { puerta: ref && ref.estado !== "cuenta_previa" ? "C" as const : "B" as const, invitacionUsada: !!vinculo && VINCULO_TERMINADO.has(vinculo) };
+    })()),
+    esPrueba: () => c.medir("es-prueba", contexto.prueba ? Promise.resolve(true) : esCuentaDePrueba(admin, user.id, correo)),
+    regalo: (puerta) => c.medir("regalo", asegurarRegaloDeAlta(admin, { userId: user.id, creadaAt: user.created_at, huella, puerta, crono: c, correo })),
+    // ── después de responder ──
+    vueltaDelDia: async () => { soltarVuelta(); },
+    // La puerta B (atribucion-puerta.ts): la primera gana; el orgánico cede. La invitada ya tiene la C.
+    atribucion: async (puerta) => { if (puerta === "B") await guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" }); },
+    // CompleteRegistration (22-oct-2026, meta/registro.ts): el mismo id que el espejo que ya salió en la respuesta.
+    meta: async (puerta) => { const r = await emitirRegistroAlCrear(admin, user, contexto, { origen: "alta", puerta }); if (r) await r.envio; },
+    borrarPendiente: () => borrarPendiente(admin, correo),
+    posthog: ({ regalo, puerta }) => capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo, puerta } }),
+  };
+
+  try {
+    const r = await ordenarAlta(piezas, {
+      cuentaCreadaAt: user.created_at,
+      cuentaNueva: esCuentaNueva(user.created_at),
+      // La búsqueda con que nació la cuenta (21-oct-2026): la línea de «Estás dentro», también para quien vuelve de Google.
+      busquedaDe: (perfil) => busquedaDePerfil(perfil),
+      espejoDe: (puerta, prueba) => espejoDeRegistro({ userId: user.id, puerta, prueba, consentimiento: contexto.consentimiento === true }),
+    }, despues);
+    return { cuerpo: r.cuerpo, status: r.status, invitacionUsada: r.invitacionUsada, espejos: r.espejos };
+  } catch (e) {
+    reportarFalloQuery(e instanceof Error ? { message: e.message } : { message: String(e) }, { ruta: p.ruta, operacion: "alta", userId: user.id });
+    return { cuerpo: { error: "perfil" }, status: 500, invitacionUsada: false, espejos: [] };
   }
-  // La invitación (la puerta C): se cobra antes de la puerta B, y si la cuenta es invitada, la puerta es la C.
-  const cookieInv = cookieInvitacionDeCabeceras(request.headers);
-  const vinculo = cookieInv ? await c.medir("invitacion", vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) })) : null;
-  const { data: ref } = await c.medir("referido", Promise.resolve(admin.from("referidos").select("estado").eq("invitado_id", user.id).maybeSingle()));
-  const puerta = ref && ref.estado !== "cuenta_previa" ? "C" : "B";
-  const invitacionUsada = !!vinculo && VINCULO_TERMINADO.has(vinculo);
-  // Si ya tiene perfil con comunas, no se pisa: entra y se le pregunta si agrega las comunas.
-  const { data: perfilPrevio } = await c.medir("perfil-previo", Promise.resolve(admin.from("perfil_busqueda").select("comunas").eq("user_id", user.id).maybeSingle()));
-  const yaTienePerfil = Array.isArray(perfilPrevio?.comunas) && (perfilPrevio.comunas as unknown[]).length > 0;
-  const tipo = tipoDeAlta({ existiaAlPedir: pend.existe, cuentaCreadaAt: user.created_at, pedidoAt: pend.creadoAt, yaTienePerfil });
-  // La puerta B (atribucion-puerta.ts): la primera gana; el orgánico cede. La invitada ya tiene la C.
-  if (puerta === "B") waitUntil(guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" }).then(() => undefined));
+}
 
-  if (tipo === "existente") {
-    const pp = await leerPerfilBusqueda(admin, user.id);
-    const elegidas = Array.isArray(pend.perfil.comunas) ? (pend.perfil.comunas as string[]) : [];
-    const comunasNuevas = comunasParaAgregar(pp.perfil.comunas, elegidas);
-    await borrarPendiente(admin, user.email);
-    return { cuerpo: { estado: "existente", comunasNuevas, comunas: pp.perfil.comunas }, invitacionUsada, espejos: [] };
-  }
-
-  // La cuenta nace con su perfil manual.
-  const { error: ePerfil } = await c.medir("perfil", Promise.resolve(admin.from("perfil_busqueda").upsert({ user_id: user.id, ...pend.perfil, actualizado_at: new Date().toISOString() }, { onConflict: "user_id" })));
-  reportarFalloQuery(ePerfil, { ruta: p.ruta, operacion: "perfil", userId: user.id });
-  if (ePerfil) return { cuerpo: { error: "perfil" }, status: 500, invitacionUsada, espejos: [] };
-  // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts).
-  await c.medir("creditos", async () => {
-    await admin.from("user_credits").upsert({ user_id: user.id, credits: 0, subscription_status: "none", welcome_email_sent: true }, { onConflict: "user_id", ignoreDuplicates: true });
-    await admin.from("user_credits").update({ welcome_email_sent: true }).eq("user_id", user.id);
-  });
-  const regalo = await c.medir("regalo", asegurarRegaloDeAlta(admin, { userId: user.id, creadaAt: user.created_at, huella: huellaDeRequest(request), puerta, crono: c }));
-  // CompleteRegistration al crear la cuenta (22-oct-2026, meta/registro.ts): con la puerta —la que el alta ya sabe— y el
-  // «cuándo» si ya está. El pixel lo repite con el espejo que la ruta deja en la cookie.
-  const registro = await c.medir("meta-registro", emitirRegistroAlCrear(admin, user, contextoDeRequest(request), { origen: "alta", puerta }));
-  if (registro) waitUntil(registro.envio);
-  await c.medir("borrar-pendiente", borrarPendiente(admin, correo));
-
-  // El correo del día, en cola; la primera vuelta ahora (las siguientes, el cron cada 10 minutos). Las cuentas de
-  // prueba no reciben correos, salvo las marcadas. Desde el 20-oct-2026 es el mismo encolado de todas las puertas
-  // (encolarPrimeraSeleccion); acá la cuenta YA nació con su perfil, así que la primera vuelta busca con él.
-  await c.medir("encolar-del-dia", encolarPrimeraSeleccion(admin, user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: p.ruta }));
-  void capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo: regalo.estado, puerta } }).catch(() => {});
-  // La búsqueda con que nació la cuenta (21-oct-2026): la línea «Buscas: … · Cambiar» de «Estás dentro». Va en la
-  // respuesta porque quien vuelve por el enlace del correo o por Google ya no tiene los chips en la pantalla.
-  return { cuerpo: { estado: "nueva", regaloVence: regalo.vence, busqueda: busquedaDePerfil(pend.perfil as Record<string, unknown>) }, invitacionUsada, espejos: registro?.espejo ? [registro.espejo] : [] };
+/**
+ * EL ESPEJO DEL CompleteRegistration, sin esperar a Meta (25-oct-2026): Meta sale después de responder, y el espejo que el
+ * pixel repite tiene que ir en esta respuesta. El mismo id (idRegistro) y los mismos datos (datosRegistro, sin «cuándo»:
+ * la cuenta recién nace) que manda el servidor; null en modo prueba, en una cuenta de prueba o sin el «sí» del aviso de
+ * cookies —las mismas reglas que meta/servidor.ts › emitirEventoMeta—.
+ */
+export function espejoDeRegistro(p: { userId: string; puerta: "B" | "C"; prueba: boolean; consentimiento: boolean }): EventoEspejo | null {
+  if (p.prueba || !p.consentimiento) return null;
+  return { evento: EVENTOS_META.registro, eventId: idRegistro(p.userId), datos: datosRegistro({ puerta: p.puerta, cuando: null }) };
 }

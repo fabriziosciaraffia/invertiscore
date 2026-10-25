@@ -243,7 +243,9 @@ async function enviarDelDia(
 export async function encolarPrimeraSeleccion(
   admin: SupabaseClient,
   user: { id: string; created_at?: string | null },
-  deps: { sitio: string; enSegundoPlano: (p: Promise<unknown>) => void; ruta: string },
+  /** `antes` (25-oct-2026, el alta rápida de /deptos): la primera vuelta espera esto antes de correr —el alta reserva la
+   *  fila antes de responder y suelta la vuelta después, cuando el perfil ya está escrito—. */
+  deps: { sitio: string; enSegundoPlano: (p: Promise<unknown>) => void; ruta: string; antes?: Promise<unknown> },
   ahora: Date = new Date(),
 ): Promise<FilaDelDia | null> {
   try {
@@ -254,6 +256,7 @@ export async function encolarPrimeraSeleccion(
     if (fila.intentos > 0) return fila;
     deps.enSegundoPlano((async () => {
       try {
+        if (deps.antes) await deps.antes;
         const fuera = await cuentasPruebaSinCorreo(admin);
         if (fuera.has(user.id)) {
           await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);

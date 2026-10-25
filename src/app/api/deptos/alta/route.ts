@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
@@ -31,8 +32,9 @@ export async function POST(request: Request) {
   const admin = createServiceClient();
   const b = (await request.json().catch(() => ({}))) as { p?: unknown };
   try {
-    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA, crono });
-    if (typeof r.cuerpo.estado === "string") await crono.medir("marcar-alta", marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo }));
+    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA, crono, despues: waitUntil });
+    // La marca de la entrada, después de responder (25-oct-2026, el alta rápida).
+    if (typeof r.cuerpo.estado === "string") waitUntil(marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo }).catch(() => undefined));
     // El espejo del CompleteRegistration (22-oct-2026): el pixel lo repite con el mismo id.
     const res = conEspejo(NextResponse.json(r.cuerpo, r.status ? { status: r.status } : undefined), r.espejos, request);
     res.headers.set("Server-Timing", `${frio ? 'frio;desc="1", ' : ""}${crono.serverTiming()}`);

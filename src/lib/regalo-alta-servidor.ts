@@ -47,11 +47,16 @@ function correosAdmin(): string[] {
  * si alguno de los regalos que ya dio fue a una cuenta de prueba (`test_accounts`), es un teléfono de la casa. Solo se
  * pregunta cuando el dispositivo ya topó. Si algo falla, no es de la casa: el tope sigue, que es lo prudente.
  */
-async function esDeLaCasa(admin: SupabaseClient, userId: string, dispositivo: string | null): Promise<boolean> {
+async function esDeLaCasa(admin: SupabaseClient, userId: string, dispositivo: string | null, correo?: string | null): Promise<boolean> {
   try {
-    const { data: u, error: eU } = await admin.auth.admin.getUserById(userId);
-    reportarFalloQuery(eU, { ruta: RUTA, operacion: "leer-correo", userId });
-    if (esCorreoDeLaCasa(u?.user?.email, correosAdmin())) return true;
+    // Con el correo a mano (el alta lo tiene), sin ir a Auth.
+    if (correo !== undefined) {
+      if (esCorreoDeLaCasa(correo, correosAdmin())) return true;
+    } else {
+      const { data: u, error: eU } = await admin.auth.admin.getUserById(userId);
+      reportarFalloQuery(eU, { ruta: RUTA, operacion: "leer-correo", userId });
+      if (esCorreoDeLaCasa(u?.user?.email, correosAdmin())) return true;
+    }
     if (!dispositivo) return false;
     const { data: previas, error: eP } = await admin.from("regalos_alta").select("user_id").eq("motivo", "otorgado").eq("dispositivo_hash", dispositivo);
     reportarFalloQuery(eP, { ruta: RUTA, operacion: "regalos-del-dispositivo", userId });
@@ -90,25 +95,25 @@ async function apagarBienvenida(admin: SupabaseClient, userId: string): Promise<
  */
 export async function asegurarRegaloDeAlta(
   admin: SupabaseClient,
-  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null; crono?: Cronometro },
+  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null; crono?: Cronometro; correo?: string | null },
   ahora: Date = new Date(),
 ): Promise<ResultadoRegaloAlta> {
   const c = p.crono ?? SIN_CRONOMETRO;
   try {
     if (!esCuentaDelRegalo(p.creadaAt)) return { estado: "vieja", vence: null };
-    const { data: previa, error: e0 } = await c.medir("regalo-previo", Promise.resolve(admin.from("regalos_alta").select("motivo, vence_at").eq("user_id", p.userId).maybeSingle()));
-    reportarFalloQuery(e0, { ruta: RUTA, operacion: "leer-decision", userId: p.userId });
-    if (e0) return { estado: "fallo", vence: null };
-    if (previa) return { estado: "ya", vence: previa.motivo === "otorgado" ? (previa.vence_at as string | null) : null };
-
+    // LA DECISIÓN DE ANTES Y LOS TOPES, EN UNA SOLA RONDA (25-oct-2026, el alta rápida): eran dos rondas en fila.
     const dia = diaChile(ahora);
     const desdeDisp = new Date(ahora.getTime() - DIAS_TOPE_DISPOSITIVO * 864e5).toISOString();
-    const [disp, total] = await c.medir("regalo-topes", Promise.all([
+    const [{ data: previa, error: e0 }, disp, total] = await c.medir("regalo-previo-y-topes", Promise.all([
+      admin.from("regalos_alta").select("motivo, vence_at").eq("user_id", p.userId).maybeSingle(),
       p.huella.dispositivo
         ? admin.from("regalos_alta").select("user_id", { count: "exact", head: true }).eq("motivo", "otorgado").eq("dispositivo_hash", p.huella.dispositivo).gte("decidido_at", desdeDisp)
         : Promise.resolve(null),
       admin.from("regalos_alta").select("user_id", { count: "exact", head: true }).eq("motivo", "otorgado").eq("dia", dia),
     ]));
+    reportarFalloQuery(e0, { ruta: RUTA, operacion: "leer-decision", userId: p.userId });
+    if (e0) return { estado: "fallo", vence: null };
+    if (previa) return { estado: "ya", vence: previa.motivo === "otorgado" ? (previa.vence_at as string | null) : null };
     // Un conteo sin número es «no sé», no cero (memoria «sonda de existencia»): no se regala a ciegas.
     const fallas = [disp?.error, total.error].filter(Boolean);
     if (fallas.length > 0 || (disp && disp.count == null) || total.count == null) {
@@ -116,7 +121,7 @@ export async function asegurarRegaloDeAlta(
       return { estado: "fallo", vence: null };
     }
     const porDispositivo = disp ? disp.count : null;
-    const deLaCasa = dispositivoTopa(porDispositivo) ? await c.medir("regalo-de-la-casa", esDeLaCasa(admin, p.userId, p.huella.dispositivo)) : false;
+    const deLaCasa = dispositivoTopa(porDispositivo) ? await c.medir("regalo-de-la-casa", esDeLaCasa(admin, p.userId, p.huella.dispositivo, p.correo)) : false;
     const decision = decidirRegaloAlta({ creadaAt: p.creadaAt, porDispositivo, totalHoy: total.count ?? 0, deLaCasa });
     const vence = new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO_ALTA * 864e5).toISOString();
     const otorga = decision === "otorgar";
@@ -126,18 +131,25 @@ export async function asegurarRegaloDeAlta(
       dispositivo_hash: p.huella.dispositivo, ip_hash: p.huella.ip, vence_at: otorga ? vence : null,
     })));
     if (eMarca) {
-      if ((eMarca as { code?: string }).code === "23505") return { estado: "ya", vence: null };
+      // OTRO PEDIDO DECIDIÓ PRIMERO (25-oct-2026, visto en el preview: el reclamo de la cuenta y el alta corren juntos): se
+      // devuelve lo que decidió —con su vencimiento—, no un «ya» sin fecha que deja «Estás dentro» sin la tarjeta del regalo.
+      if ((eMarca as { code?: string }).code === "23505") {
+        const { data: ganadora } = await admin.from("regalos_alta").select("motivo, vence_at").eq("user_id", p.userId).maybeSingle();
+        return { estado: "ya", vence: ganadora?.motivo === "otorgado" ? ((ganadora.vence_at as string | null) ?? null) : null };
+      }
       reportarFalloQuery(eMarca, { ruta: RUTA, operacion: "marcar", userId: p.userId });
       return { estado: "fallo", vence: null };
     }
-    await c.medir("regalo-bienvenida", apagarBienvenida(admin, p.userId));
+    // La bienvenida se apaga junto con el lote (eran dos rondas en fila).
+    const bienvenida = c.medir("regalo-bienvenida", apagarBienvenida(admin, p.userId));
     if (!otorga) {
+      await bienvenida;
       void capturarServidor({ event: "regalo_alta_topado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { motivo: decision, puerta: p.puerta ?? null } }).catch(() => {});
       return { estado: decision, vence: null };
     }
-    const { data: g, error: eGrant } = await c.medir("regalo-lote", Promise.resolve(admin.from("credit_grants").insert({
+    const [{ data: g, error: eGrant }] = await Promise.all([c.medir("regalo-lote", Promise.resolve(admin.from("credit_grants").insert({
       user_id: p.userId, amount: 1, remaining: 1, source: FUENTE_REGALO_ALTA, granted_at: ahora.toISOString(), expires_at: vence,
-    }).select("id").single()));
+    }).select("id").single())), bienvenida]);
     if (eGrant || !g) {
       reportarFalloQuery(eGrant, { ruta: RUTA, operacion: "cargar", userId: p.userId });
       await admin.from("regalos_alta").update({ motivo: "fallo", vence_at: null }).eq("user_id", p.userId);

@@ -117,6 +117,8 @@ export interface DepsEntrada {
   ahora?: () => Date;
   /** Esperar entre una mirada y otra (el tier la hace instantánea). */
   esperar?: (ms: number) => Promise<void>;
+  /** Lo que corre después de responder (el waitUntil de Vercel): marcar el alta de la entrada no demora la respuesta. */
+  despues?: (p: Promise<unknown>) => void;
 }
 
 export type ResultadoEntrada =
@@ -133,11 +135,13 @@ export async function entrarConCodigo(correo: string, codigo: string, d: DepsEnt
   const hash = d.hash(correo, codigo);
   let usuario = await d.sesionActual();
   let via: "verificado" | "con-sesion" | "repuesta" = "con-sesion";
+  // El registro de la entrada corre junto con el alta (25-oct-2026, el alta rápida): se espera antes de responder.
+  let registro: Promise<void> | null = null;
   if (!usuario || (usuario.email ?? "").toLowerCase() !== correo) {
     usuario = await d.verificar(correo, codigo);
     via = "verificado";
     if (usuario) {
-      await d.registrar({ correo, userId: usuario.id, codigoHash: hash });
+      registro = d.registrar({ correo, userId: usuario.id, codigoHash: hash });
     } else {
       const previa = await d.ultimaEntrada(correo);
       if (!puedeReponer(previa, hash, ahora)) return { tipo: "codigo" };
@@ -165,8 +169,12 @@ export async function entrarConCodigo(correo: string, codigo: string, d: DepsEnt
       }
     }
   }
-  const r = await d.alta(usuario);
+  const [r] = await Promise.all([d.alta(usuario), registro]);
   // Respondió (nueva, existente o sin nada pendiente): la entrada tiene su alta. Un error del alta no se marca: es perdida.
-  if (typeof r.cuerpo.estado === "string") await d.marcarAlta({ correo, userId: usuario.id, alta: r.cuerpo });
+  // Con `despues`, después de responder (un reintento, si llega, espera esta marca: ESPERA_ALTA_EN_CURSO_MS).
+  if (typeof r.cuerpo.estado === "string") {
+    const marca = d.marcarAlta({ correo, userId: usuario.id, alta: r.cuerpo });
+    if (d.despues) d.despues(marca.catch(() => undefined)); else await marca;
+  }
   return { tipo: "alta", cuerpo: r.cuerpo, status: r.status, via };
 }
