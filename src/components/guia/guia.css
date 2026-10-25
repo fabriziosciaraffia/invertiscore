@@ -100,8 +100,14 @@
 .qv-btn:focus-visible { outline: 2px solid #FAFAF8; outline-offset: 3px; }
 /* El indicador giratorio, dentro del botón mientras manda. */
 /* El aro de «Mandando el aviso…» es el global (globals.css › button[aria-busy="true"]::after, 22-oct-2026). */
-.qv-listo { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; font-size: 17px; line-height: 1.35; overflow-wrap: anywhere; }
+/* La confirmación (25-oct-2026, ConfirmacionEnviado.tsx): el visto y, al lado, el texto en su propia columna —que toma el
+   ancho que queda, no el mínimo—: el título arriba y el correo abajo en Inter normal, cortado antes del arroba si no cabe. */
+.qv-listo { display: flex; align-items: flex-start; gap: 10px; margin: 0; }
 .qv-ok { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: #FAFAF8; color: #0F0F0F; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: none; }
+.qv-listo-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.qv-listo-t { font-weight: 600; font-size: 17px; line-height: 1.35; }
+.qv-correo { margin-top: 2px; font: 400 15px/1.4 var(--font-ui), "Inter", system-ui, sans-serif; color: rgba(250, 250, 248, 0.92); overflow-wrap: break-word; }
+.qv-cola { margin-top: 4px; font-size: 14px; line-height: 1.4; color: rgba(250, 250, 248, 0.82); }
 @media (max-width: 767px) { .qv-banda:not([data-qv="listo"]):not([data-qv="despublicado"]) { flex-direction: column; align-items: stretch; } }
 
 /* ── «¿Cuándo piensas comprar?» después de pagar (02-oct-2026) ── discreto, debajo de la guía: una línea

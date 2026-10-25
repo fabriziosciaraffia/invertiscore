@@ -43,6 +43,10 @@
 // ============================================================================
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import React, { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+// Los componentes del repo compilan con el JSX clásico: sin esto el tier solo corre detrás de otro que ya lo dejó global.
+(globalThis as unknown as { React: typeof React }).React = React;
 import { GUIA, GUIA_SALDO, INFORME_DE_AVISO, VEDADAS_GUIA } from "../../../src/lib/guia/copy";
 import { DESPUES_DE_PAGAR, ESTAS_DENTRO } from "../../../src/lib/lo-que-sigue/copy";
 import { pagoAbreElInforme, urlGuia } from "../../../src/lib/lo-que-sigue/retorno-pago";
@@ -617,7 +621,22 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/if \(!sePuedeTocar\(estado\)\) return;/.test(qv)) F("14 · el botón manda dos veces (o no deja reintentar)");
     // ⚠ ACTA (22-oct-2026, estándar de carga · tier CARGA) · el aro es el global de `{...botonOcupado(…)}` (globals.css), no un span propio.
     if (!/\{\.\.\.botonOcupado\(estado\.tipo === "enviando"\)\}/.test(qv) || !/estado\.tipo === "enviando" \? INFORME_DE_AVISO\.enviando : estado\.tipo === "error"/.test(qv)) F("14 · mientras manda, el botón no gira con «Mandando el aviso…»");
-    if (!/<p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓<\/span>\{INFORME_DE_AVISO\.listo\(estado\.correo\)\}<\/p>/.test(qv)) F("14 · al terminar no dice «Listo: te lo mandamos a [correo]» con el visto");
+    // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio en el teléfono con +qadeptos5) · la confirmación va en dos líneas (ConfirmacionEnviado):
+    // «Listo: te lo mandamos a» y el correo abajo, cortado antes del arroba; las frases enteras siguen siendo las mismas.
+    if (!/<ConfirmacionEnviado tipo="listo" correo=\{estado\.correo\} \/>/.test(qv)) F("14 · al terminar no dice «Listo: te lo mandamos a [correo]» con el visto");
+    {
+      const { ConfirmacionEnviado } = require(join(RAIZ, "src/components/guia/ConfirmacionEnviado")) as typeof import("../../../src/components/guia/ConfirmacionEnviado");
+      const largo = "fabriziosciaraffia+qadeptos5xy@gmail.com";
+      const html = renderToStaticMarkup(createElement(ConfirmacionEnviado, { tipo: "listo", correo: largo }));
+      if (!/<span class="qv-ok" aria-hidden="true">✓<\/span><span class="qv-listo-txt"><span class="qv-listo-t">Listo: te lo mandamos a<\/span><span class="qv-correo" data-qv="correo">fabriziosciaraffia\+qadeptos5xy<wbr\/>@gmail\.com<\/span><\/span>/.test(html)) F(`14 · la confirmación no va en dos líneas con el corte antes del arroba: ${html.slice(0, 200)}`);
+      const p = INFORME_DE_AVISO.partes("ya", largo, "el 17 de octubre", "Asunto");
+      // La «a» del final no queda sola en su línea: va pegada a la palabra anterior con un espacio duro.
+      const htmlYa = renderToStaticMarkup(createElement(ConfirmacionEnviado, { tipo: "ya", correo: largo, cuando: "el 17 de octubre", asunto: "Asunto" }));
+      if (!/<span class="qv-listo-t">Ya te lo mandamos el 17 de octubre a<\/span>/.test(htmlYa)) F(`14 · en «Ya te lo mandamos…» la «a» del final puede quedar sola en su línea: ${htmlYa.slice(0, 200)}`);
+      if (`${INFORME_DE_AVISO.partes("listo", largo, null, null).titulo} ${largo}` !== INFORME_DE_AVISO.listo(largo) || p.titulo !== "Ya te lo mandamos el 17 de octubre a" || p.cola !== "Con el asunto «Asunto».") F("14 · las partes de la confirmación no dicen lo mismo que las frases");
+      const cssG = leer("src/components/guia/guia.css").replace(/\/\*[\s\S]*?\*\//g, "");
+      if (/\.qv-listo \{[^}]*overflow-wrap: anywhere/.test(cssG) || !/\.qv-listo-txt \{[^}]*flex: 1;[^}]*min-width: 0;/.test(cssG) || !/\.qv-correo \{[^}]*font: 400 15px/.test(cssG)) F("14 · el CSS de la confirmación vuelve a partir las palabras letra por letra (o el correo no va en Inter normal)");
+    }
     if (!/estado\.tipo === "error" \? INFORME_DE_AVISO\.reintentar : INFORME_DE_AVISO\.boton/.test(qv) || !/<p className="qv-t" role="alert">\{INFORME_DE_AVISO\.error\}<\/p>/.test(qv)) F("14 · si falla no dice «No pudimos mandarlo.» con «Reintentar»");
     if (!/\{dicesQueConviene\(veredicto\) && <p className="qv-t">\{INFORME_DE_AVISO\.conviene\}<\/p>\}/.test(qv)) F("14 · «Este depto conviene con tus números» no depende del veredicto");
     if (/location\.reload|router\.refresh/.test(qv)) F("14 · el envío recarga la página");
@@ -663,7 +682,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!/return salir\(NextResponse\.json\(\{ ok: true, ya: r === "ya-enviado", correo: user\.email \?\? null, \.\.\.\(r === "ya-enviado" \? \{ enviadoAt, asunto: asuntoAvisoPedido\(comuna\) \} : \{\}\) \}\)\);/.test(ruta)) F("15 · la ruta no devuelve la fecha y el asunto del envío anterior");
     // La pantalla: el estado «ya» con su frase y el visto; nunca la frase de «listo».
     const iav = sinComentarios(leer("src/components/guia/InformeDeAviso.tsx"));
-    if (!/estado\.tipo === "ya" \? \(\s*<p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓<\/span>\{INFORME_DE_AVISO\.ya\(estado\.correo, cuandoSeEnvio\(estado\.enviadoAt\), estado\.asunto\)\}<\/p>/.test(iav)) F("15 · la pantalla no muestra «Ya te lo mandamos el [día]…» para el toque repetido");
+    // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio en el teléfono con +qadeptos5) · «Ya te lo mandamos el …» con el mismo tratamiento en dos líneas.
+    if (!/estado\.tipo === "ya" \? \(\s*<ConfirmacionEnviado tipo="ya" correo=\{estado\.correo\} cuando=\{cuandoSeEnvio\(estado\.enviadoAt\)\} asunto=\{estado\.asunto\} \/>/.test(iav)) F("15 · la pantalla no muestra «Ya te lo mandamos el [día]…» para el toque repetido");
   }
 
   if (fallas.length) {

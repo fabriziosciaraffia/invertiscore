@@ -72,6 +72,12 @@ export const INFORME_DE_AVISO = {
    *  «el 17 de octubre»; `asunto`, el del correo, para que lo encuentre. */
   ya: (correo: string | null, cuando: string | null, asunto: string | null) =>
     `Ya te lo mandamos${cuando ? ` ${cuando}` : ""} a ${correo ?? "tu correo"}${asunto ? `, con el asunto «${asunto}»` : ""}.`,
+  /** EN DOS LÍNEAS (25-oct-2026, el banner se desbordaba con un correo largo): el título, el correo abajo y, en «ya», el
+   *  asunto en una tercera. Las frases enteras (`listo`, `ya`) siguen siendo las mismas, unidas. */
+  partes: (tipo: "listo" | "ya", correo: string | null, cuando: string | null, asunto: string | null): { titulo: string; correo: string; cola: string | null } =>
+    tipo === "listo"
+      ? { titulo: "Listo: te lo mandamos a", correo: correo ?? "tu correo", cola: null }
+      : { titulo: `Ya te lo mandamos${cuando ? ` ${cuando}` : ""} a`, correo: correo ?? "tu correo", cola: asunto ? `Con el asunto «${asunto}».` : null },
   despublicado: "Este aviso ya no está publicado.",
   error: "No pudimos mandarlo.",
   reintentar: "Reintentar",

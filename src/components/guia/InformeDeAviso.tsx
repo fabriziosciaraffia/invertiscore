@@ -18,6 +18,7 @@ import { capturarLqs, EVENTOS_LQS } from "@/lib/lo-que-sigue/eventos";
 import { INFORME_DE_AVISO } from "@/lib/guia/copy";
 import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, type EstadoQuieroVerlo } from "@/lib/guia/quiero-verlo-estado";
 import { botonOcupado } from "@/lib/carga-global";
+import { ConfirmacionEnviado } from "./ConfirmacionEnviado";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
@@ -47,9 +48,9 @@ export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, dem
       {esDueno && (
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">
           {estado.tipo === "listo" ? (
-            <p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓</span>{INFORME_DE_AVISO.listo(estado.correo)}</p>
+            <ConfirmacionEnviado tipo="listo" correo={estado.correo} />
           ) : estado.tipo === "ya" ? (
-            <p className="qv-listo" role="status"><span className="qv-ok" aria-hidden="true">✓</span>{INFORME_DE_AVISO.ya(estado.correo, cuandoSeEnvio(estado.enviadoAt), estado.asunto)}</p>
+            <ConfirmacionEnviado tipo="ya" correo={estado.correo} cuando={cuandoSeEnvio(estado.enviadoAt)} asunto={estado.asunto} />
           ) : estado.tipo === "despublicado" ? (
             <p className="qv-t" role="status">{INFORME_DE_AVISO.despublicado}</p>
           ) : (
