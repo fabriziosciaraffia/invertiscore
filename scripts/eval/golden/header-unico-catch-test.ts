@@ -154,7 +154,24 @@ export function runHeaderUnicoTier(): { hard: number } {
   const cuenta = (h: string) => (h.match(/class="hf-btn/g) ?? []).length;
   // 1 · enlaces largos al pie
   if (/href="\/metodologia"|href="\/comunas"|>Qué<|>Cómo<|>Precios</.test(sinSesion + conSesion)) F("6.1 · los enlaces largos volvieron al header (van al pie)");
-  if (!/class="hf-lnk hf-solo-ancho on" href="\/dashboard">Mis análisis</.test(conSesion) || !/class="hf-lnk hf-solo-ancho" href="\/pricing">Planes</.test(conSesion)) F("6.1 · con sesión, «Mis análisis» y «Planes» no quedan solo desde 768");
+  // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio en el teléfono con +qadeptos5) · con sesión «Mis análisis» pasa a «Dashboard»; el botón destacado
+  // es «Explorar» (a /explorar); «Nuevo análisis» queda como enlace desde 768 (y a 390 en el menú del avatar). Sin sesión, igual.
+  if (!/class="hf-lnk hf-solo-ancho on" href="\/dashboard">Dashboard</.test(conSesion) || !/class="hf-lnk hf-solo-ancho" href="\/pricing">Planes</.test(conSesion)) F("6.1 · con sesión, «Dashboard» y «Planes» no quedan solo desde 768");
+  {
+    const botones = Array.from(conSesion.matchAll(/<a[^>]*class="hf-btn[^"]*"[^>]*>([^<]*)</g));
+    if (botones.length !== 1 || !/href="\/explorar"/.test(botones[0][0]) || botones[0][1] !== "Explorar") F(`6.1 · con sesión el botón destacado no es «Explorar» a /explorar: ${botones.map((b) => b[0]).join(" | ")}`);
+    if (!/class="hf-lnk hf-solo-ancho" href="\/analisis\/nuevo[^"]*"[^>]*>Nuevo análisis</.test(conSesion)) F("6.1 · con sesión «Nuevo análisis» no queda como enlace de texto desde 768");
+    if (/Mis análisis/.test(conSesion + sinSesion + leer("src/components/chrome/HeaderFranco.tsx").replace(/\/\/[^\n]*/g, ""))) F("6.1 · queda «Mis análisis» en el header");
+    if (!/class="hf-btn"[^>]*>(?:<span class="hf-largo">)?Analizar departamento/.test(sinSesion) || /href="\/explorar"|>Dashboard</.test(sinSesion)) F("6.1 · sin sesión el header cambió (el botón es «Analizar departamento», sin Explorar ni Dashboard)");
+    if (!/<FrancoLogo size="banda" href=\{logueado \? "\/dashboard" : "\/"\}/.test(hdr)) F("6.1 · con sesión el logo no lleva al dashboard");
+    const cssH = leer("src/components/chrome/header-franco.css");
+    const iAngosto = cssH.indexOf("@media (max-width: 767px) {"), iSigue = cssH.indexOf("@media", iAngosto + 10);
+    const bloque390 = iAngosto >= 0 ? cssH.slice(iAngosto, iSigue > 0 ? iSigue : undefined) : "";
+    if (!/^\.hf-solo-angosto \{ display: none; \}/m.test(cssH) || !/\.hf-solo-angosto \{ display: block; \}/.test(bloque390)) F("6.1 · «Nuevo análisis» del menú no va solo a 390");
+    // En /explorar el destacado ya es «Explorar»: «Dashboard» no se enciende ahí (25-oct-2026).
+    const exp = leer("src/app/explorar/page.tsx").replace(/\{\/\*[^]*?\*\/\}/g, "");
+    if (!/<HeaderFranco [^>]*sesion=/.test(exp) || /<HeaderFranco [^>]*activo="mis"/.test(exp)) F("6.1 · en /explorar el header enciende «Dashboard»");
+  }
   const pie = leer("src/components/chrome/AppFooter.tsx");
   if (!/\{ href: "\/metodologia", rotulo: "Cómo calcula" \}/.test(pie) || !/\{ href: "\/comunas", rotulo: "Comunas" \}/.test(pie) || !/\{ href: "\/pricing", rotulo: "Planes" \}/.test(pie)) F("6.1 · el pie no lleva los enlaces largos");
   // 2 · un solo botón principal por pantalla; el wizard sin botón

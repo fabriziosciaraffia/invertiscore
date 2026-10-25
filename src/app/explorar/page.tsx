@@ -52,7 +52,8 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   return (
     <div className="ex-pagina" data-explorar="pagina">
       <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
-      <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />
+      {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). */}
+      <HeaderFranco sesion={{ email: user.email ?? "" }} />
       <ExplorarCliente
         inicial={d.cerrado ? {
           // SIN SALDO, CERRADO (24-oct-2026): todos los pines, sin detalle y con la combinación de la noche; nada que pedir después.

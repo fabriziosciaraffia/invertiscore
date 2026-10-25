@@ -139,10 +139,13 @@ html[data-grano] .hf::after { background-image: url("/landing/grano-256.png"); o
 
 /* a 390: rótulos cortos, lo que no cabe se va, y al bajar la identidad toma el lugar del wordmark */
 .hf-corto { display: none; }
+/* Lo que va solo a 390 (25-oct-2026: «Nuevo análisis» dentro del menú del avatar). */
+.hf-solo-angosto { display: none; }
 @media (max-width: 767px) {
   .hf-largo { display: none; }
   .hf-corto { display: inline; }
   .hf-solo-ancho { display: none !important; }
+  .hf-solo-angosto { display: block; }
   .hf-ghost { width: 32px; height: 32px; padding: 0; justify-content: center; border-color: transparent; }
   .hf--fijo .hf-wm, .hf--fijo .hf-oculta-fija { display: none !important; }
   .hf-menu { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; }

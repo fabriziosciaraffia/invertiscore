@@ -22,6 +22,9 @@
 //   5 · Eliminar no va en el header del informe (va al pie del informe y a la fila del dashboard).
 //   6 · El demo se ve como sin sesión: es un ejemplo, no algo que te mandaron.
 //   7 · Sin eslogan.
+// CON SESIÓN, DESDE EL 25-oct-2026 (recorrido de Fabrizio): «Mis análisis» pasa a «Dashboard» (en la barra y en el menú) y
+// el logo lleva al dashboard; el botón destacado es «Explorar» (/explorar); «Nuevo análisis» queda como enlace de texto
+// desde 768 y, a 390, dentro del menú del avatar (en el dashboard además va como botón en la página). Sin sesión, igual.
 //
 // AL BAJAR, EN EL INFORME: cuando la portada sale de la vista, el header lleva la identidad del
 // análisis —la dirección, el chip de veredicto (ChipVeredicto, variante sobre fondo) y el puntaje—.
@@ -184,7 +187,9 @@ function MenuCuenta({ email }: { email: string }) {
       {abierto && (
         <div className="hf-menu" role="menu">
           <div className="hf-menu-mail">{email}</div>
-          <EnlaceCarga href="/dashboard" role="menuitem" onClick={() => setAbierto(false)}>Mis análisis</EnlaceCarga>
+          <EnlaceCarga href="/dashboard" role="menuitem" onClick={() => setAbierto(false)}>Dashboard</EnlaceCarga>
+          {/* A 390 «Nuevo análisis» no va en la barra: va acá. Desde 768 está en la barra como enlace. */}
+          <span className="hf-solo-angosto"><CtaAnalizar origen="nav">Nuevo análisis</CtaAnalizar></span>
           <EnlaceCarga href="/pricing" role="menuitem" onClick={() => setAbierto(false)}>Planes</EnlaceCarga>
           <EnlaceCarga href="/cuenta" role="menuitem" onClick={() => setAbierto(false)}>Mi cuenta</EnlaceCarga>
           <EnlaceCarga href="/perfil" role="menuitem" onClick={() => setAbierto(false)}>Perfil</EnlaceCarga>
@@ -292,10 +297,11 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   } else {
     derecha = (
       <>
-        <EnlaceCarga href="/dashboard" className={`hf-lnk hf-solo-ancho${activo === "mis" ? " on" : ""}`}>Mis análisis</EnlaceCarga>
+        <EnlaceCarga href="/dashboard" className={`hf-lnk hf-solo-ancho${activo === "mis" ? " on" : ""}`}>Dashboard</EnlaceCarga>
         <EnlaceCarga href="/pricing" className={`hf-lnk hf-solo-ancho${activo === "planes" ? " on" : ""}`}>Planes</EnlaceCarga>
+        <CtaAnalizar origen="nav" className="hf-lnk hf-solo-ancho">Nuevo análisis</CtaAnalizar>
         {modo === "propio" && informe?.compartir ? <span className="hf-oculta-fija" style={{ display: "contents" }}>{informe.compartir}</span> : null}
-        <CtaAnalizar origen="nav" className="hf-btn hf-oculta-fija">Nuevo análisis</CtaAnalizar>
+        <EnlaceCarga href="/explorar" className="hf-btn hf-oculta-fija" data-hf="explorar">Explorar</EnlaceCarga>
         <MenuCuenta email={sesion?.email ?? ""} />
       </>
     );

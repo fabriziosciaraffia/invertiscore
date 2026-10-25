@@ -192,7 +192,8 @@ export function runEntradaCodigoTier(): { hard: number } {
     if (/aria-label="Cambiar a modo/.test(html)) F(`3 · ${nombre} con sesión: el tema queda en la barra (va al menú)`);
   }
   const menu = (hdr.match(/function MenuCuenta[\s\S]*?\n\}\n/) ?? [""])[0];
-  for (const [que, re] of [["Mis análisis", /href="\/dashboard"[^\n]{0,90}?>Mis análisis</], ["Planes", /href="\/pricing"[^\n]{0,90}?>Planes</], ["Mi cuenta", /href="\/cuenta"[^\n]{0,90}?>Mi cuenta</], ["Perfil", /href="\/perfil"[^\n]{0,90}?>Perfil</], ["el tema", /<span>Tema<\/span>/], ["Cerrar sesión", />Cerrar sesión</]] as const) {
+  // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio en el teléfono con +qadeptos5) · «Mis análisis» pasa a «Dashboard», y a 390 el menú lleva «Nuevo análisis» (solo ahí: hf-solo-angosto).
+  for (const [que, re] of [["Dashboard", /href="\/dashboard"[^\n]{0,90}?>Dashboard</], ["Nuevo análisis (a 390)", /<span className="hf-solo-angosto"><CtaAnalizar origen="nav">Nuevo análisis<\/CtaAnalizar><\/span>/], ["Planes", /href="\/pricing"[^\n]{0,90}?>Planes</], ["Mi cuenta", /href="\/cuenta"[^\n]{0,90}?>Mi cuenta</], ["Perfil", /href="\/perfil"[^\n]{0,90}?>Perfil</], ["el tema", /<span>Tema<\/span>/], ["Cerrar sesión", />Cerrar sesión</]] as const) {
     if (!re.test(menu)) F(`3 · el menú del avatar no lleva ${que}`);
   }
 
