@@ -6,6 +6,10 @@ import { COOKIE_INVITACION_USADA } from "@/lib/referido-servidor";
 import { conEspejo } from "@/lib/meta/servidor";
 import { ejecutarAlta } from "@/lib/deptos/alta-servidor";
 import { marcarAlta } from "@/lib/deptos/entrada-servidor";
+import { cronometro } from "@/lib/cronometro";
+
+/** El primer pedido de esta instancia de la función (arranque en frío): va en la cabecera Server-Timing. */
+let pedidosDeLaInstancia = 0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/deptos/alta (16-oct-2026, la puerta B): después de entrar, con sesión. Lo que hace está en
@@ -19,16 +23,19 @@ export const maxDuration = 60;
 const RUTA = "POST /api/deptos/alta";
 
 export async function POST(request: Request) {
+  const crono = cronometro();
+  const frio = pedidosDeLaInstancia++ === 0;
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await crono.medir("usuario", supabase.auth.getUser());
   if (!user?.email) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   const admin = createServiceClient();
   const b = (await request.json().catch(() => ({}))) as { p?: unknown };
   try {
-    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA });
-    if (typeof r.cuerpo.estado === "string") await marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo });
+    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA, crono });
+    if (typeof r.cuerpo.estado === "string") await crono.medir("marcar-alta", marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo }));
     // El espejo del CompleteRegistration (22-oct-2026): el pixel lo repite con el mismo id.
     const res = conEspejo(NextResponse.json(r.cuerpo, r.status ? { status: r.status } : undefined), r.espejos, request);
+    res.headers.set("Server-Timing", `${frio ? 'frio;desc="1", ' : ""}${crono.serverTiming()}`);
     if (r.invitacionUsada) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
     return res;
   } catch (e) {

@@ -10,6 +10,10 @@ import { ejecutarAlta } from "@/lib/deptos/alta-servidor";
 import { entrarConCodigo } from "@/lib/deptos/entrada";
 import { hashCodigo, marcarAlta, marcarRepuesta, registrarEntrada, ultimaEntrada } from "@/lib/deptos/entrada-servidor";
 import { normalizarCorreo } from "@/lib/deptos/servidor";
+import { cronometro } from "@/lib/cronometro";
+
+/** El primer pedido de esta instancia de la función (arranque en frío): va en la cabecera Server-Timing. */
+let pedidosDeLaInstancia = 0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/deptos/entrar { correo, codigo } (22-oct-2026, «Entrar» no puede quedar girando; reglas en
@@ -25,6 +29,8 @@ const RUTA = "POST /api/deptos/entrar";
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: Request) {
+  const crono = cronometro();
+  const frio = pedidosDeLaInstancia++ === 0;
   const b = (await request.json().catch(() => ({}))) as { correo?: unknown; codigo?: unknown };
   const correo = typeof b.correo === "string" ? normalizarCorreo(b.correo) : "";
   const codigo = typeof b.codigo === "string" ? limpiarCodigo(b.codigo) : "";
@@ -36,14 +42,14 @@ export async function POST(request: Request) {
   let espejos: EventoEspejo[] = [];
   try {
     const r = await entrarConCodigo(correo, codigo, {
-      sesionActual: async () => (await supabase.auth.getUser()).data.user ?? null,
-      verificar: async (c, t) => {
+      sesionActual: () => crono.medir("sesion", async () => (await supabase.auth.getUser()).data.user ?? null),
+      verificar: (c, t) => crono.medir("verificar", async () => {
         const { data, error } = await supabase.auth.verifyOtp({ email: c, token: t, type: "email" });
         return error ? null : data.user ?? null;
-      },
+      }),
       hash: (c, t) => hashCodigo(c, t),
-      ultimaEntrada: (c) => ultimaEntrada(admin, c),
-      registrar: (p) => registrarEntrada(admin, { ...p, metodo: "codigo" }),
+      ultimaEntrada: (c) => crono.medir("ultima-entrada", ultimaEntrada(admin, c)),
+      registrar: (p) => crono.medir("registrar-entrada", registrarEntrada(admin, { ...p, metodo: "codigo" })),
       // Sin código: un enlace mágico generado y verificado acá (no sale ningún correo); la sesión queda en la cookie.
       reponerSesion: async (c) => {
         const { data: link, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: c });
@@ -53,17 +59,18 @@ export async function POST(request: Request) {
       },
       marcarRepuesta: (id) => marcarRepuesta(admin, id),
       alta: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await crono.medir("usuario", supabase.auth.getUser());
         if (!user) return { cuerpo: { error: "sin-sesion" }, status: 401 };
-        const a = await ejecutarAlta(admin, user, request, { ruta: RUTA });
+        const a = await ejecutarAlta(admin, user, request, { ruta: RUTA, crono });
         invitacionUsada = a.invitacionUsada;
         espejos = a.espejos;
         return { cuerpo: a.cuerpo, status: a.status };
       },
-      marcarAlta: (p) => marcarAlta(admin, p),
+      marcarAlta: (p) => crono.medir("marcar-alta", marcarAlta(admin, p)),
     });
     if (r.tipo === "codigo") return NextResponse.json({ error: "codigo" }, { status: 400 });
     const res = conEspejo(NextResponse.json({ ...r.cuerpo, via: r.via }, r.status ? { status: r.status } : undefined), espejos, request);
+    res.headers.set("Server-Timing", `${frio ? 'frio;desc="1", ' : ""}${crono.serverTiming()}`);
     if (invitacionUsada) res.cookies.set(COOKIE_INVITACION_USADA.name, COOKIE_INVITACION_USADA.value, COOKIE_INVITACION_USADA.options);
     return res;
   } catch (e) {

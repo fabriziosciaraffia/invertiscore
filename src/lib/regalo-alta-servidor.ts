@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { COOKIE_DISPOSITIVO, dispositivoValido } from "@/lib/dispositivo";
+import { SIN_CRONOMETRO, type Cronometro } from "@/lib/cronometro";
 import {
   DIAS_TOPE_DISPOSITIVO, DIAS_VIGENCIA_REGALO_ALTA, FUENTE_REGALO_ALTA, decidirRegaloAlta, diaChile, dispositivoTopa,
   esCorreoDeLaCasa, esCuentaDelRegalo, type DecisionRegalo,
@@ -89,24 +90,25 @@ async function apagarBienvenida(admin: SupabaseClient, userId: string): Promise<
  */
 export async function asegurarRegaloDeAlta(
   admin: SupabaseClient,
-  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null },
+  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null; crono?: Cronometro },
   ahora: Date = new Date(),
 ): Promise<ResultadoRegaloAlta> {
+  const c = p.crono ?? SIN_CRONOMETRO;
   try {
     if (!esCuentaDelRegalo(p.creadaAt)) return { estado: "vieja", vence: null };
-    const { data: previa, error: e0 } = await admin.from("regalos_alta").select("motivo, vence_at").eq("user_id", p.userId).maybeSingle();
+    const { data: previa, error: e0 } = await c.medir("regalo-previo", Promise.resolve(admin.from("regalos_alta").select("motivo, vence_at").eq("user_id", p.userId).maybeSingle()));
     reportarFalloQuery(e0, { ruta: RUTA, operacion: "leer-decision", userId: p.userId });
     if (e0) return { estado: "fallo", vence: null };
     if (previa) return { estado: "ya", vence: previa.motivo === "otorgado" ? (previa.vence_at as string | null) : null };
 
     const dia = diaChile(ahora);
     const desdeDisp = new Date(ahora.getTime() - DIAS_TOPE_DISPOSITIVO * 864e5).toISOString();
-    const [disp, total] = await Promise.all([
+    const [disp, total] = await c.medir("regalo-topes", Promise.all([
       p.huella.dispositivo
         ? admin.from("regalos_alta").select("user_id", { count: "exact", head: true }).eq("motivo", "otorgado").eq("dispositivo_hash", p.huella.dispositivo).gte("decidido_at", desdeDisp)
         : Promise.resolve(null),
       admin.from("regalos_alta").select("user_id", { count: "exact", head: true }).eq("motivo", "otorgado").eq("dia", dia),
-    ]);
+    ]));
     // Un conteo sin número es «no sé», no cero (memoria «sonda de existencia»): no se regala a ciegas.
     const fallas = [disp?.error, total.error].filter(Boolean);
     if (fallas.length > 0 || (disp && disp.count == null) || total.count == null) {
@@ -114,34 +116,34 @@ export async function asegurarRegaloDeAlta(
       return { estado: "fallo", vence: null };
     }
     const porDispositivo = disp ? disp.count : null;
-    const deLaCasa = dispositivoTopa(porDispositivo) ? await esDeLaCasa(admin, p.userId, p.huella.dispositivo) : false;
+    const deLaCasa = dispositivoTopa(porDispositivo) ? await c.medir("regalo-de-la-casa", esDeLaCasa(admin, p.userId, p.huella.dispositivo)) : false;
     const decision = decidirRegaloAlta({ creadaAt: p.creadaAt, porDispositivo, totalHoy: total.count ?? 0, deLaCasa });
     const vence = new Date(ahora.getTime() + DIAS_VIGENCIA_REGALO_ALTA * 864e5).toISOString();
     const otorga = decision === "otorgar";
     // La marca primero: si otra llamada ya decidió, esta no hace nada.
-    const { error: eMarca } = await admin.from("regalos_alta").insert({
+    const { error: eMarca } = await c.medir("regalo-marca", Promise.resolve(admin.from("regalos_alta").insert({
       user_id: p.userId, decidido_at: ahora.toISOString(), dia, motivo: otorga ? "otorgado" : decision,
       dispositivo_hash: p.huella.dispositivo, ip_hash: p.huella.ip, vence_at: otorga ? vence : null,
-    });
+    })));
     if (eMarca) {
       if ((eMarca as { code?: string }).code === "23505") return { estado: "ya", vence: null };
       reportarFalloQuery(eMarca, { ruta: RUTA, operacion: "marcar", userId: p.userId });
       return { estado: "fallo", vence: null };
     }
-    await apagarBienvenida(admin, p.userId);
+    await c.medir("regalo-bienvenida", apagarBienvenida(admin, p.userId));
     if (!otorga) {
       void capturarServidor({ event: "regalo_alta_topado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { motivo: decision, puerta: p.puerta ?? null } }).catch(() => {});
       return { estado: decision, vence: null };
     }
-    const { data: g, error: eGrant } = await admin.from("credit_grants").insert({
+    const { data: g, error: eGrant } = await c.medir("regalo-lote", Promise.resolve(admin.from("credit_grants").insert({
       user_id: p.userId, amount: 1, remaining: 1, source: FUENTE_REGALO_ALTA, granted_at: ahora.toISOString(), expires_at: vence,
-    }).select("id").single();
+    }).select("id").single()));
     if (eGrant || !g) {
       reportarFalloQuery(eGrant, { ruta: RUTA, operacion: "cargar", userId: p.userId });
       await admin.from("regalos_alta").update({ motivo: "fallo", vence_at: null }).eq("user_id", p.userId);
       return { estado: "fallo", vence: null };
     }
-    await admin.from("regalos_alta").update({ grant_id: g.id }).eq("user_id", p.userId);
+    await c.medir("regalo-enlace", Promise.resolve(admin.from("regalos_alta").update({ grant_id: g.id }).eq("user_id", p.userId)));
     void capturarServidor({ event: "regalo_alta_otorgado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { vence, puerta: p.puerta ?? null, de_la_casa: deLaCasa } }).catch(() => {});
     return { estado: "otorgar", vence };
   } catch (e) {
