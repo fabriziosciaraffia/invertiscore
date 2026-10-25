@@ -159,6 +159,7 @@ import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
 import { runPuertaBDashboardTier } from "./puerta-b-dashboard-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
+import { runAltaOrdenTier } from "./alta-orden-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
 import { runVueltaFlowTier } from "./vuelta-flow-catch-test";
 import { runTicketVivoTier } from "./ticket-vivo-catch-test";
@@ -676,6 +677,8 @@ function printSeed(r: SeedReport) {
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;
+  // El orden del alta de /deptos (25-oct-2026, «Estás dentro» en menos de 2 s).
+  totalHard += (await runAltaOrdenTier()).hard;
   // Tier VEREDICTO-GUARDADO (22-oct-2026, 0 tokens): la portada, el PDF, comparar y la landing muestran el veredicto que el
   // motor guardó —el del correo y el dashboard— y leen el snapshot de la mediana entero, con su universo. ──
   totalHard += runVeredictoGuardadoTier().hard;

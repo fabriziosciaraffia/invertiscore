@@ -191,10 +191,13 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (comunasParaAgregar(["a", "b", "c", "d", "e", "f", "g", "h"], ["x"]).length !== 0 || MAX_COMUNAS_PERFIL !== 8) F("1 · agregar comunas pasa el tope del perfil");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
-      const iExist = alta.indexOf(`if (tipo === "existente") {`), iPerfil = alta.indexOf(`from("perfil_busqueda").upsert`);
-      if (!/const tipo = tipoDeAlta\(\{ existiaAlPedir: pend\.existe, cuentaCreadaAt: user\.created_at, pedidoAt: pend\.creadoAt, yaTienePerfil \}\);/.test(alta)
-        || !/const yaTienePerfil = Array\.isArray\(perfilPrevio\?\.comunas\) && \(perfilPrevio\.comunas as unknown\[\]\)\.length > 0;/.test(alta) || iExist < 0 || iPerfil < iExist
-        || /perfil_busqueda/.test(alta.slice(iExist, alta.indexOf("}", alta.indexOf("return NextResponse.json({ estado: \"existente\"")))))
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): tipoDeAlta decide ANTES de la tanda que
+      // escribe el perfil, la existente vuelve sin escribirlo, y el perfil se escribe solo si no estaba (ignoreDuplicates: el
+      // «ya tiene perfil» de antes ahora lo dice la escritura misma). El comportamiento, en ALTA-ORDEN §5.
+      const ord = sinComentarios(leer("src/lib/deptos/alta-orden.ts"));
+      const iTipo = ord.indexOf(`if (tipoDeAlta({ existiaAlPedir: p.existe, cuentaCreadaAt: e.cuentaCreadaAt, pedidoAt: p.creadoAt }) === "existente") {`), iTanda = ord.indexOf("piezas.perfilSiFalta(p.perfil)");
+      const ramaExistente = iTipo >= 0 ? ord.slice(iTipo, ord.indexOf("return {", iTipo)) : "";
+      if (iTipo < 0 || iTanda < iTipo || /perfilSiFalta/.test(ramaExistente) || !/\{ onConflict: "user_id", ignoreDuplicates: true \}\)\.select\("user_id"\)/.test(alta))
         F("1 · el alta no decide con tipoDeAlta, o a una cuenta existente le escribe el perfil");
       if (!/comunasParaAgregar\(pp\.perfil\.comunas, elegidas\)/.test(alta)) F("1 · a la cuenta existente no se le ofrecen las comunas que le faltan");
       const correo = sinComentarios(leer("src/app/api/deptos/correo/route.ts"));
@@ -322,7 +325,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // Desde el 20-oct-2026 el alta encola por la cola de todas las puertas (encolarPrimeraSeleccion: la fila y la primera vuelta en el momento).
       
-      if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: waitUntil, ruta: p\.ruta \}\);/.test(alta)
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la fila se reserva antes de responder y la
+      // primera vuelta espera el permiso que se suelta después (antes: permisoVuelta).
+      if (!/encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: despues, ruta: p\.ruta, antes: permisoVuelta \}\)/.test(alta) || !/if \(deps\.antes\) await deps\.antes;/.test(dds)
         || !/const fila = await encolarDelDia\(admin, user\.id, ahora\);/.test(dds) || !/await procesarDelDia\(admin, fila, await leerConfigGuia\(admin\), deps\.sitio, \{ lecturas: 0, bloqueada: false \}\);/.test(dds))
         F("4 · el alta no encola el correo del día con su primera vuelta");
     }
@@ -401,8 +406,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // sea invitada (la C la fija el cobro del código, tier PUERTA-C).
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const altaB = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
-      if (!/const regalo = await asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella: huellaDeRequest\(request\), puerta \}\);/.test(altaB)
-        || !/const puerta = ref && ref\.estado !== "cuenta_previa" \? "C" : "B";/.test(altaB)) F("5 · /deptos no da el regalo (o no con la puerta B)");
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): el regalo es una pieza que recibe la puerta.
+      if (!/regalo: \(puerta\) => c\.medir\("regalo", asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella, puerta, crono: c, correo \}\)\)/.test(altaB)
+        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(altaB) || !/const regaloP = puertaP\.then\(\(x\) => piezas\.regalo\(x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
 
       // El aviso antes de gastar: «usa tu análisis de regalo» y «usa 1 de tus N».
@@ -552,14 +558,19 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // Sin vecindad (la regla de CLAUDE.md): después del alta nueva, lo SIGUIENTE es «Estás dentro», sin un salto en el medio.
       // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · entre el regalo y «Estás dentro» se guarda la búsqueda
       // con que nació la cuenta, para la línea «Buscas: … · Cambiar» (tier PUERTA-B-RECORRIDO §1); sigue sin un salto.
-      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): entre el regalo y la búsqueda se anota si el
+      // regalo quedó pendiente (la pantalla lo pide); sigue sin un salto.
+      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setRegaloPendiente\(!d\.regaloVence && d\.regalo === "pendiente"\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo elegido guarda además la puerta (B o C), para medir alta_perdida.
       if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\), esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · la clave llega a ejecutarAlta como \`p.clave\` (la ruta le pasa \`b.p\`).
-      if (!/if \(!pend && typeof p\.clave === "string" && CLAVE_GOOGLE\.test\(p\.clave\) && await reclavarPendienteGoogle\(admin, \{ clave: p\.clave, correo: user\.email, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la clave es la pieza reclavarGoogle, que el orden
+      // corre solo si no hay nada pendiente a nombre del correo.
+      if (!/reclavarGoogle: typeof p\.clave === "string" && CLAVE_GOOGLE\.test\(p\.clave\)\s*\? \(\) => c\.medir\("reclavar-google", reclavarPendienteGoogle\(admin, \{ clave: p\.clave as string, correo, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta)
+        || !/if \(!pend && piezas\.reclavarGoogle && \(await piezas\.reclavarGoogle\(\)\)\) pend = await piezas\.pendiente\(\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts"))) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
       // ⚠ ACTA (23-oct-2026, mockup `1b-deptos.html`) · «Entrar con Google» va PRIMERO, con el botón oficial (blanco, la G), y
       // después «o con tu correo», el campo y «Quiero verlos».
       const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));

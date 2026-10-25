@@ -167,7 +167,8 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITE_URL/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts")))) F("2 · la cuenta que nace con el ticket no encola el correo del día");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
-      if (!/await encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO/.test(alta) || /encolarDelDia\(/.test(alta)) F("2 · /deptos no encola por la misma cola de todas las puertas");
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): encolarPrimeraSeleccion es la pieza de la fila (sin await pelado: va medida).
+      if (!/encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO/.test(alta) || /encolarDelDia\(/.test(alta)) F("2 · /deptos no encola por la misma cola de todas las puertas");
       const crons = JSON.parse(leer("vercel.json")) as { crons: Array<{ path: string; schedule: string }> };
       if (crons.crons.find((c) => c.path === "/api/cron/correo-del-dia")?.schedule !== "*/10 * * * *") F("2 · la cola del correo del día no corre cada 10 minutos: «dentro de la hora» no se cumple");
     }

@@ -204,13 +204,18 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
         if (r1?.estado !== "nueva" || r1.regaloVence !== "2026-11-24T14:02:33Z" || (r1.busqueda as { comunas?: string[] } | undefined)?.comunas?.[0] !== "Providencia") F(`2c · el segundo pedido de una cuenta recién creada no es «nueva» con su regalo y su búsqueda: ${JSON.stringify(r1)}`);
         if (altaSrv.respuestaDeAltaRepetida({ creadaAt: "2026-10-01T00:00:00Z", perfil, regaloVence: null }, t) !== null || altaSrv.respuestaDeAltaRepetida({ creadaAt: "2026-10-25T14:02:15Z", perfil: null, regaloVence: null }, t) !== null) F("2c · una cuenta vieja, o sin perfil, entra como «nueva»");
         const ejecutar = codigo("src/lib/deptos/alta-servidor.ts");
-        if (!/if \(!pend\) \{[\s\S]{0,700}const repetida = respuestaDeAltaRepetida\(\{ creadaAt: user\.created_at, perfil: perfil as Record<string, unknown> \| null, regaloVence \}\);\s*if \(repetida\) return \{ cuerpo: repetida,[\s\S]{0,120}return \{ cuerpo: \{ estado: "sin-pendiente" \}/.test(ejecutar)) F("2c · el alta sin nada pendiente no mira si es el segundo pedido de una cuenta recién creada");
+        // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la pieza `repetida` usa respuestaDeAltaRepetida y
+        // el orden la consulta sin nada pendiente (comportamiento en ALTA-ORDEN §5).
+        const ord = codigo("src/lib/deptos/alta-orden.ts");
+        if (!/return respuestaDeAltaRepetida\(\{ creadaAt: user\.created_at, perfil: perfil as Record<string, unknown> \| null, regaloVence \}\);/.test(ejecutar)
+          || !/if \(!pend\) \{\s*const repetida = e\.cuentaNueva \? await piezas\.repetida\(\) : null;\s*return \{ cuerpo: repetida \?\? \{ estado: "sin-pendiente" \}/.test(ord)) F("2c · el alta sin nada pendiente no mira si es el segundo pedido de una cuenta recién creada");
       }
     }
     // El servidor: verifica ahí, repone con un enlace generado (sin correo) y corre la misma alta.
     const ruta = codigo("src/app/api/deptos/entrar/route.ts");
-    if (!/await supabase\.auth\.verifyOtp\(\{ email: c, token: t, type: "email" \}\)/.test(ruta) || !/admin\.auth\.admin\.generateLink\(\{ type: "magiclink", email: c \}\)/.test(ruta) || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA \}\)/.test(ruta) || !/entrarConCodigo\(correo, codigo, \{/.test(ruta)) F("2 · /api/deptos/entrar no verifica en el servidor, no repone la sesión o no corre la misma alta");
-    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA \}\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("2 · el alta de siempre no es la misma función");
+    if (!/await supabase\.auth\.verifyOtp\(\{ email: c, token: t, type: "email" \}\)/.test(ruta) || !/admin\.auth\.admin\.generateLink\(\{ type: "magiclink", email: c \}\)/.test(ruta) || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA, crono, pendiente: pendientePrevia, despues: waitUntil \}\)/.test(ruta) || !/entrarConCodigo\(correo, codigo, \{/.test(ruta)) F("2 · /api/deptos/entrar no verifica en el servidor, no repone la sesión o no corre la misma alta");
+    // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): las dos rutas le pasan el cronómetro y lo de después.
+    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil \}\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("2 · el alta de siempre no es la misma función");
     const srv = cargar<EntradaSrv>("src/lib/deptos/entrada-servidor.ts");
     if (!srv) F("2 · falta lib/deptos/entrada-servidor");
     else {
@@ -252,7 +257,8 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     if (!/altasPerdidas = await avisarAltasPerdidas\(admin\);/.test(cron)) F("3 · el cron de /deptos no avisa las altas perdidas");
     const cb = codigo("src/app/auth/callback/route.ts");
     if (!/const metodo = metodoDeEntrada\(next\);/.test(cb) || !/if \(await leerPendiente\(adminEntrada, user\.email\)\) await registrarEntrada\(adminEntrada, \{ correo: user\.email, userId: user\.id, metodo \}\);/.test(cb)) F("3 · la entrada por el enlace o por Google no queda registrada");
-    if (!/if \(typeof r\.cuerpo\.estado === "string"\) await marcarAlta\(admin, \{ correo: user\.email, userId: user\.id, alta: r\.cuerpo \}\);/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("3 · el alta por el enlace o por Google no marca su entrada (toda entrada así contaría como perdida)");
+    // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la marca va después de responder (waitUntil).
+    if (!/if \(typeof r\.cuerpo\.estado === "string"\) waitUntil\(marcarAlta\(admin, \{ correo: user\.email, userId: user\.id, alta: r\.cuerpo \}\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("3 · el alta por el enlace o por Google no marca su entrada (toda entrada así contaría como perdida)");
     if (!/guardarPendiente\(admin, correo, perfilManualDeElecciones\(v\), existe, esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\)/.test(codigo("src/app/api/deptos/correo/route.ts")) || !/guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\), esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\)/.test(codigo("src/app/api/deptos/google/route.ts"))) F("3 · lo elegido no guarda la puerta");
     if ((codigo("src/app/deptos/deptos-cliente.tsx").match(/, puerta: puerta\.puerta \}\),/g) ?? []).length !== 2) F("3 · la pantalla no manda la puerta (al pedir el código y al ir a Google)");
     const mig = leer("supabase/migrations/20261022_deptos_entradas.sql");

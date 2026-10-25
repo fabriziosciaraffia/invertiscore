@@ -122,7 +122,12 @@ export async function runRegistroMetaTier(): Promise<{ hard: number }> {
 
   // ── 3 · el cableado ──
   const alta = codigo("src/lib/deptos/alta-servidor.ts");
-  if (!/const registro = await emitirRegistroAlCrear\(admin, user, contextoDeRequest\(request\), \{ origen: "alta", puerta \}\);\s*if \(registro\) waitUntil\(registro\.envio\);/.test(alta) || !/espejos: registro\?\.espejo \? \[registro\.espejo\] : \[\]/.test(alta)) F("3 · el alta de /deptos (y del invitado) no emite el registro al crear la cuenta ni devuelve su espejo");
+  // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): Meta sale DESPUÉS de responder (la pieza
+  // `meta`) y el espejo va en la respuesta, calculado con el mismo id y las mismas reglas (espejoDeRegistro; ALTA-ORDEN §4 y §6).
+  const ord = codigo("src/lib/deptos/alta-orden.ts");
+  if (!/meta: async \(puerta\) => \{ const r = await emitirRegistroAlCrear\(admin, user, contexto, \{ origen: "alta", puerta \}\); if \(r\) await r\.envio; \}/.test(alta)
+    || !/espejoDe: \(puerta, prueba\) => espejoDeRegistro\(\{ userId: user\.id, puerta, prueba, consentimiento: contexto\.consentimiento === true \}\)/.test(alta)
+    || !/const espejo = e\.espejoDe\(puerta\.puerta, prueba\);/.test(ord) || !/espejos: espejo \? \[espejo\] : \[\]/.test(ord) || !/despues\(seguro\(\(\) => piezas\.meta\(puerta\.puerta\)\)\);/.test(ord)) F("3 · el alta de /deptos (y del invitado) no emite el registro al crear la cuenta ni devuelve su espejo");
   if (!/conEspejo\(NextResponse\.json\(r\.cuerpo, r\.status \? \{ status: r\.status \} : undefined\), r\.espejos, request\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("3 · /api/deptos/alta no deja el espejo en la respuesta");
   const entrar = codigo("src/app/api/deptos/entrar/route.ts");
   if (!/espejos = a\.espejos;/.test(entrar) || !/conEspejo\(NextResponse\.json\(\{ \.\.\.r\.cuerpo, via: r\.via \}, r\.status \? \{ status: r\.status \} : undefined\), espejos, request\)/.test(entrar)) F("3 · /api/deptos/entrar no deja el espejo en la respuesta");

@@ -139,7 +139,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     }
     // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta).
     const alta = codigo("src/lib/deptos/alta-servidor.ts");
-    if (!/cuerpo: \{ estado: "nueva", regaloVence: regalo\.vence, busqueda: busquedaDePerfil\(pend\.perfil/.test(alta)) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea del perfil)");
+    // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la búsqueda sale de busquedaDe en las dos respuestas «nueva» (con el regalo o pendiente).
+    const ord = codigo("src/lib/deptos/alta-orden.ts");
+    if (!/busquedaDe: \(perfil\) => busquedaDePerfil\(perfil\)/.test(alta) || (ord.match(/busqueda: e\.busquedaDe\(p\.perfil\)/g) ?? []).length !== 2) F("1 · el alta no devuelve la búsqueda con que nació la cuenta (la línea del perfil)");
     const dentro = entre(dc, 'if (paso === "dentro") {', 'if (paso === "agregar" && agregar) {');
     if (!/data-deptos="perfil"/.test(dentro) || !/<p className="dp-perfil-linea" data-deptos="perfil-linea">\{lineaPerfil\(busca\)\}<\/p>/.test(dentro) || !/<EnlaceCarga href=\{ESTAS_DENTRO_DEPTOS\.perfil\.hrefEditar\} className="dp-enlace" data-deptos="editar">/.test(dentro) || respuesta.ESTAS_DENTRO_DEPTOS.perfil.hrefEditar !== "/dashboard#perfil")
       F("1 · «Estás dentro» no dice «Tu perfil de búsqueda» en una línea con «Editar» al perfil del dashboard");

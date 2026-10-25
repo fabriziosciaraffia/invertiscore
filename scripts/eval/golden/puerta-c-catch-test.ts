@@ -188,7 +188,8 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       {
         const altaSrv = sinComentarios(leer("src/lib/deptos/alta-servidor.ts"));
         const rutasAlta = ["src/app/api/deptos/alta/route.ts", "src/app/api/deptos/entrar/route.ts"].map((f) => sinComentarios(leer(f)));
-        if (!/const invitacionUsada = !!vinculo && VINCULO_TERMINADO\.has\(vinculo\);/.test(altaSrv) || /maxAge: 0/.test(altaSrv)
+        // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la invitación cobrada sale de la pieza de la puerta.
+        if (!/invitacionUsada: !!vinculo && VINCULO_TERMINADO\.has\(vinculo\)/.test(altaSrv) || /maxAge: 0/.test(altaSrv)
           || !rutasAlta.every((s) => /if \((?:r\.)?invitacionUsada\) res\.cookies\.set\(COOKIE_INVITACION_USADA\.name, COOKIE_INVITACION_USADA\.value, COOKIE_INVITACION_USADA\.options\);/.test(s)))
           F("1 · el alta de /deptos no deja la invitación cobrada como «usada» (otra cuenta de ese navegador se la cobraría)");
       }
@@ -249,10 +250,13 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       if (!/const vinculo = await vincularInvitacion\(createAdminServiceClient\(\), \{\s*userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv,/.test(cb) || pos(cb, "vincularInvitacion(") > pos(cb, "asegurarRegaloDeAlta(")) F("2 · el enlace del correo o Google no cobran el código");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
-      if (!/const vinculo = cookieInv \? await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\) : null;/.test(alta)
-        || !/const puerta = ref && ref\.estado !== "cuenta_previa" \? "C" : "B";/.test(alta)
-        || !/if \(puerta === "B"\) waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(alta)
-        || pos(alta, "vincularInvitacion(") > pos(alta, "guardarAtribucion(")) F("2 · /deptos y la página del invitado no cobran el código antes de la puerta B (o la invitada queda en B)");
+      // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): el cobro va en la pieza de la puerta (antes de
+      // responder) y la atribución B, después, con la puerta ya decidida.
+      const ord = sinComentarios(leer("src/lib/deptos/alta-orden.ts"));
+      if (!/const vinculo = cookieInv \? await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella \}\) : null;/.test(alta)
+        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(alta)
+        || !/atribucion: async \(puerta\) => \{ if \(puerta === "B"\) await guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\); \}/.test(alta)
+        || pos(alta, "vincularInvitacion(") > pos(alta, "guardarAtribucion(") || !ord.includes("despues(seguro(() => piezas.atribucion(puerta.puerta)));") || pos(ord, "piezas.esPrueba()]);") > ord.lastIndexOf("despues(seguro(() => piezas.atribucion(puerta.puerta)));")) F("2 · /deptos y la página del invitado no cobran el código antes de la puerta B (o la invitada queda en B)");
       if (!/if \(cookieInv\) await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\);\s*waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "A", puerta_detalle: "ticket"/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts")))) F("2 · el ticket no cobra el código");
       if (!/if \(cookieInv\) \{\s*await vincularInvitacion\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx"))) || !/const admin = createServiceClient\(\);/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("2 · el dashboard no es red del código");
       if (!/if \(nueva\) await fijarPuertaReferido\(admin, p\.userId, `\$\{PREFIJO_DETALLE_INVITACION\}\$\{invitacion\.codigo\}`\);/.test(leer("src/lib/referido-servidor.ts"))) F("2 · la cuenta invitada no queda con la puerta C");
