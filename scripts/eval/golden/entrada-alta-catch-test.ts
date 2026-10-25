@@ -215,7 +215,7 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     const ruta = codigo("src/app/api/deptos/entrar/route.ts");
     if (!/await supabase\.auth\.verifyOtp\(\{ email: c, token: t, type: "email" \}\)/.test(ruta) || !/admin\.auth\.admin\.generateLink\(\{ type: "magiclink", email: c \}\)/.test(ruta) || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA, crono, pendiente: pendientePrevia, despues: waitUntil \}\)/.test(ruta) || !/entrarConCodigo\(correo, codigo, \{/.test(ruta)) F("2 · /api/deptos/entrar no verifica en el servidor, no repone la sesión o no corre la misma alta");
     // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): las dos rutas le pasan el cronómetro y lo de después.
-    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil \}\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("2 · el alta de siempre no es la misma función");
+    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil, \.\.\.\(mismaCuenta && pendientePrevia \? \{ pendiente: pendientePrevia \} : \{\}\) \}\)/.test(codigo("src/app/api/deptos/alta/route.ts"))) F("2 · el alta de siempre no es la misma función");
     const srv = cargar<EntradaSrv>("src/lib/deptos/entrada-servidor.ts");
     if (!srv) F("2 · falta lib/deptos/entrada-servidor");
     else {

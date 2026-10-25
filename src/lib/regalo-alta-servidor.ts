@@ -95,7 +95,8 @@ async function apagarBienvenida(admin: SupabaseClient, userId: string): Promise<
  */
 export async function asegurarRegaloDeAlta(
   admin: SupabaseClient,
-  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null; crono?: Cronometro; correo?: string | null },
+  /** `puerta`: también una promesa (el alta de /deptos la sabe recién a la mitad; solo la usan los eventos). */
+  p: { userId: string; creadaAt: string | null | undefined; huella: Huella; puerta?: string | null | Promise<string | null>; crono?: Cronometro; correo?: string | null },
   ahora: Date = new Date(),
 ): Promise<ResultadoRegaloAlta> {
   const c = p.crono ?? SIN_CRONOMETRO;
@@ -144,7 +145,7 @@ export async function asegurarRegaloDeAlta(
     const bienvenida = c.medir("regalo-bienvenida", apagarBienvenida(admin, p.userId));
     if (!otorga) {
       await bienvenida;
-      void capturarServidor({ event: "regalo_alta_topado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { motivo: decision, puerta: p.puerta ?? null } }).catch(() => {});
+      void capturarServidor({ event: "regalo_alta_topado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { motivo: decision, puerta: (await Promise.resolve(p.puerta).catch(() => null)) ?? null } }).catch(() => {});
       return { estado: decision, vence: null };
     }
     const [{ data: g, error: eGrant }] = await Promise.all([c.medir("regalo-lote", Promise.resolve(admin.from("credit_grants").insert({
@@ -156,7 +157,7 @@ export async function asegurarRegaloDeAlta(
       return { estado: "fallo", vence: null };
     }
     await c.medir("regalo-enlace", Promise.resolve(admin.from("regalos_alta").update({ grant_id: g.id }).eq("user_id", p.userId)));
-    void capturarServidor({ event: "regalo_alta_otorgado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { vence, puerta: p.puerta ?? null, de_la_casa: deLaCasa } }).catch(() => {});
+    void capturarServidor({ event: "regalo_alta_otorgado", distinctId: p.userId, uuid: uuidDeterminista(`regalo_alta:${p.userId}`), properties: { vence, puerta: (await Promise.resolve(p.puerta).catch(() => null)) ?? null, de_la_casa: deLaCasa } }).catch(() => {});
     return { estado: "otorgar", vence };
   } catch (e) {
     reportarFalloQuery(e, { ruta: RUTA, operacion: "asegurar", userId: p.userId });

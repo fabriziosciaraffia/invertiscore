@@ -112,11 +112,9 @@ export async function ejecutarAlta(
     })()),
     // La fila del correo del día (sin ella «Analizar este» no tiene token); su primera vuelta, después de responder.
     filaDelDia: () => c.medir("fila-del-dia", encolarPrimeraSeleccion(admin, user, { sitio: SITIO, enSegundoPlano: despues, ruta: p.ruta, antes: permisoVuelta })),
-    // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts).
-    creditos: () => c.medir("creditos", (async () => {
-      await admin.from("user_credits").upsert({ user_id: user.id, credits: 0, subscription_status: "none", welcome_email_sent: true }, { onConflict: "user_id", ignoreDuplicates: true });
-      await admin.from("user_credits").update({ welcome_email_sent: true }).eq("user_id", user.id);
-    })()),
+    // Su bienvenida es el correo del día: la de siempre no sale (welcome.ts). UNA escritura (25-oct-2026): el upsert solo
+    // toca la marca; si la fila no estaba, nace con los valores por defecto de la tabla (0 créditos, 'none').
+    creditos: () => c.medir("creditos", Promise.resolve(admin.from("user_credits").upsert({ user_id: user.id, welcome_email_sent: true }, { onConflict: "user_id" }))),
     // La invitación (la puerta C): se cobra, y si la cuenta es invitada, la puerta es la C.
     puerta: () => c.medir("puerta", (async () => {
       const cookieInv = cookieInvitacionDeCabeceras(request.headers);

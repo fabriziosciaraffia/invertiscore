@@ -408,7 +408,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const altaB = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): el regalo es una pieza que recibe la puerta.
       if (!/regalo: \(puerta\) => c\.medir\("regalo", asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella, puerta, crono: c, correo \}\)\)/.test(altaB)
-        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(altaB) || !/const regaloP = puertaP\.then\(\(x\) => piezas\.regalo\(x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
+        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(altaB) || !/const regaloP = piezas\.regalo\(puertaP\.then\(\(x\) => x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
 
       // El aviso antes de gastar: «usa tu análisis de regalo» y «usa 1 de tus N».
@@ -570,7 +570,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la clave es la pieza reclavarGoogle, que el orden
       // corre solo si no hay nada pendiente a nombre del correo.
       if (!/reclavarGoogle: typeof p\.clave === "string" && CLAVE_GOOGLE\.test\(p\.clave\)\s*\? \(\) => c\.medir\("reclavar-google", reclavarPendienteGoogle\(admin, \{ clave: p\.clave as string, correo, cuentaCreadaAt: user\.created_at \}\)\)/.test(alta)
-        || !/if \(!pend && piezas\.reclavarGoogle && \(await piezas\.reclavarGoogle\(\)\)\) pend = await piezas\.pendiente\(\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts"))) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
+        || !/if \(!pend && piezas\.reclavarGoogle && \(await piezas\.reclavarGoogle\(\)\)\) pend = await piezas\.pendiente\(\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts"))) || !/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil, \.\.\.\(mismaCuenta && pendientePrevia \? \{ pendiente: pendientePrevia \} : \{\}\) \}\)/.test(alta)) F("9 · el alta no cae a la clave si el callback no alcanzó a pasar lo elegido");
       // ⚠ ACTA (23-oct-2026, mockup `1b-deptos.html`) · «Entrar con Google» va PRIMERO, con el botón oficial (blanco, la G), y
       // después «o con tu correo», el campo y «Quiero verlos».
       const form = cli.slice(cli.indexOf('<form className="dp-form" onSubmit={pedirCodigo}'));

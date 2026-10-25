@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       }),
       hash: (c, t) => hashCodigo(c, t),
       ultimaEntrada: (c) => crono.medir("ultima-entrada", ultimaEntrada(admin, c)),
-      registrar: (p) => crono.medir("registrar-entrada", registrarEntrada(admin, { ...p, metodo: "codigo" })),
+      registrar: (p) => crono.medir("registrar-entrada", registrarEntrada(admin, { ...p, metodo: "codigo", puerta: pendientePrevia.then((x) => x?.puerta ?? null) })),
       // Sin código: un enlace mágico generado y verificado acá (no sale ningún correo); la sesión queda en la cookie.
       reponerSesion: async (c) => {
         const { data: link, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: c });

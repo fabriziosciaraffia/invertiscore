@@ -8,6 +8,19 @@ import { conEspejo } from "@/lib/meta/servidor";
 import { ejecutarAlta } from "@/lib/deptos/alta-servidor";
 import { marcarAlta } from "@/lib/deptos/entrada-servidor";
 import { cronometro } from "@/lib/cronometro";
+import { leerPendiente } from "@/lib/deptos/servidor";
+
+/** El correo del token de la sesión, sin ir a Auth (se confirma después contra la cuenta verificada). */
+function correoDelToken(token: string | undefined): string | null {
+  try {
+    const cuerpo = token?.split(".")[1];
+    if (!cuerpo) return null;
+    const j = JSON.parse(Buffer.from(cuerpo.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { email?: unknown };
+    return typeof j.email === "string" ? j.email : null;
+  } catch {
+    return null;
+  }
+}
 
 /** El primer pedido de esta instancia de la función (arranque en frío): va en la cabecera Server-Timing. */
 let pedidosDeLaInstancia = 0;
@@ -27,12 +40,17 @@ export async function POST(request: Request) {
   const crono = cronometro();
   const frio = pedidosDeLaInstancia++ === 0;
   const supabase = createClient();
+  const admin = createServiceClient();
+  // EL ALTA RÁPIDA (25-oct-2026): lo elegido se pide junto con verificar la sesión; si el correo no es el de la cuenta, no se usa.
+  const { data: { session } } = await supabase.auth.getSession();
+  const correoSesion = correoDelToken(session?.access_token);
+  const pendientePrevia = correoSesion ? leerPendiente(admin, correoSesion).catch(() => null) : null;
   const { data: { user } } = await crono.medir("usuario", supabase.auth.getUser());
   if (!user?.email) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
-  const admin = createServiceClient();
   const b = (await request.json().catch(() => ({}))) as { p?: unknown };
   try {
-    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA, crono, despues: waitUntil });
+    const mismaCuenta = !!pendientePrevia && (correoSesion ?? "").toLowerCase() === user.email.toLowerCase();
+    const r = await ejecutarAlta(admin, user, request, { clave: b.p, ruta: RUTA, crono, despues: waitUntil, ...(mismaCuenta && pendientePrevia ? { pendiente: pendientePrevia } : {}) });
     // La marca de la entrada, después de responder (25-oct-2026, el alta rápida).
     if (typeof r.cuerpo.estado === "string") waitUntil(marcarAlta(admin, { correo: user.email, userId: user.id, alta: r.cuerpo }).catch(() => undefined));
     // El espejo del CompleteRegistration (22-oct-2026): el pixel lo repite con el mismo id.

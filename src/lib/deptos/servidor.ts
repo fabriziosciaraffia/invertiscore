@@ -129,7 +129,8 @@ export async function primerosDeptos(
 }
 
 /** La elección pendiente de un correo (lo elegido antes del código). */
-export interface Pendiente { correo: string; perfil: Record<string, unknown>; existe: boolean; creadoAt: string }
+/** `puerta`: la de lo elegido (B o C), para la entrada (deptos_entradas). */
+export interface Pendiente { correo: string; perfil: Record<string, unknown>; existe: boolean; creadoAt: string; puerta?: string | null }
 
 export const normalizarCorreo = (c: string) => c.trim().toLowerCase();
 
@@ -143,9 +144,9 @@ export async function guardarPendiente(admin: SupabaseClient, correo: string, pe
 }
 
 export async function leerPendiente(admin: SupabaseClient, correo: string): Promise<Pendiente | null> {
-  const { data, error } = await admin.from("deptos_pendientes").select("correo, perfil, existe, creado_at").eq("correo", normalizarCorreo(correo)).maybeSingle();
+  const { data, error } = await admin.from("deptos_pendientes").select("correo, perfil, existe, creado_at, puerta").eq("correo", normalizarCorreo(correo)).maybeSingle();
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente" });
-  return data ? { correo: data.correo as string, perfil: data.perfil as Record<string, unknown>, existe: !!data.existe, creadoAt: data.creado_at as string } : null;
+  return data ? { correo: data.correo as string, perfil: data.perfil as Record<string, unknown>, existe: !!data.existe, creadoAt: data.creado_at as string, puerta: (data.puerta as string | null | undefined) ?? null } : null;
 }
 
 /**

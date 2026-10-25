@@ -16,8 +16,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { tipoDeAlta } from "./respuesta";
 
-/** Cuánto espera la respuesta al regalo, después de la tanda: si no alcanza, sale «pendiente» y la pantalla lo pide. */
-export const ESPERA_REGALO_MS = 150;
+/** Cuánto espera la respuesta al regalo, después de la tanda: nada (medido, 25-oct-2026: el regalo tarda 1 s más que la
+ *  tanda y una espera corta nunca lo alcanzaba). Si ya está, entra; si no, sale «pendiente» y la pantalla lo pide. */
+export const ESPERA_REGALO_MS = 0;
 /** «Estás dentro» pregunta por el regalo pendiente cada tanto (GET /api/deptos/regalo), hasta que esté decidido o hasta el tope. */
 export const PASO_REGALO_MS = 600;
 export const TOPE_ESPERA_REGALO_MS = 15_000;
@@ -50,7 +51,8 @@ export interface PiezasAlta {
   /** La puerta (C si la cuenta es invitada; cobra la invitación si viene su cookie). */
   puerta: () => Promise<{ puerta: "B" | "C"; invitacionUsada: boolean }>;
   esPrueba: () => Promise<boolean>;
-  regalo: (puerta: "B" | "C") => Promise<RegaloAlta>;
+  /** La puerta llega como promesa: el regalo arranca con la tanda y la usa solo en sus eventos. */
+  regalo: (puerta: Promise<"B" | "C">) => Promise<RegaloAlta>;
   // ── después de responder ──
   vueltaDelDia: () => Promise<unknown>;
   atribucion: (puerta: "B" | "C") => Promise<unknown>;
@@ -102,7 +104,7 @@ export async function ordenarAlta(
 
   // ── LA TANDA: todo junto ──
   const puertaP = piezas.puerta();
-  const regaloP = puertaP.then((x) => piezas.regalo(x.puerta));
+  const regaloP = piezas.regalo(puertaP.then((x) => x.puerta));
   // El regalo puede terminar después de responder: lo que falta sigue en segundo plano y nunca rompe la respuesta.
   despues(regaloP.catch(() => undefined));
   const [perfil, , , puerta, prueba] = await Promise.all([piezas.perfilSiFalta(p.perfil), piezas.filaDelDia(), piezas.creditos(), puertaP, piezas.esPrueba()]);

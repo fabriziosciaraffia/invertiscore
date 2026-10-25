@@ -140,7 +140,7 @@ export async function runAltaOrdenTier(): Promise<{ hard: number }> {
     const iPend = entrar.indexOf("const pendientePrevia = leerPendiente(admin, correo)"), iEntrar = entrar.indexOf("await entrarConCodigo(");
     if (iPend < 0 || iEntrar < 0 || iPend > iEntrar || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA, crono, pendiente: pendientePrevia, despues: waitUntil \}\)/.test(entrar) || !/const user = cuenta \?\? /.test(entrar) || !/despues: waitUntil,/.test(entrar)) F("6 · la ruta del código no pide lo elegido junto con verificar, pide la cuenta otra vez, o marca la entrada antes de responder");
     const rutaAlta = sinComentarios(leer("src/app/api/deptos/alta/route.ts"));
-    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil \}\)/.test(rutaAlta) || !/waitUntil\(marcarAlta\(/.test(rutaAlta)) F("6 · la ruta del alta (Google) espera lo que va después");
+    if (!/ejecutarAlta\(admin, user, request, \{ clave: b\.p, ruta: RUTA, crono, despues: waitUntil, \.\.\.\(mismaCuenta && pendientePrevia \? \{ pendiente: pendientePrevia \} : \{\}\) \}\)/.test(rutaAlta) || !/waitUntil\(marcarAlta\(/.test(rutaAlta)) F("6 · la ruta del alta (Google) espera lo que va después");
     const entradaPura = sinComentarios(leer("src/lib/deptos/entrada.ts"));
     if (!/const \[r\] = await Promise\.all\(\[d\.alta\(usuario\), registro\]\);/.test(entradaPura) || !/if \(d\.despues\) d\.despues\(marca\.catch\(\(\) => undefined\)\); else await marca;/.test(entradaPura)) F("6 · la entrada registra antes del alta (en fila) o marca antes de responder");
     // El regalo que pierde la carrera devuelve el vencimiento de la decisión ganadora (no un «ya» sin fecha).

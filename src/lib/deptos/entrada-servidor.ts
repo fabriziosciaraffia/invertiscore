@@ -23,10 +23,11 @@ async function puertaDe(admin: SupabaseClient, correo: string): Promise<string |
   return (data?.puerta as string | null | undefined) ?? null;
 }
 
-export async function registrarEntrada(admin: SupabaseClient, p: { correo: string; userId: string; metodo: "codigo" | "enlace" | "google"; codigoHash?: string | null }): Promise<void> {
+/** `puerta`: si quien llama ya la sabe (la ruta del código lee lo elegido junto con verificar), una escritura sola. */
+export async function registrarEntrada(admin: SupabaseClient, p: { correo: string; userId: string; metodo: "codigo" | "enlace" | "google"; codigoHash?: string | null; puerta?: Promise<string | null> }): Promise<void> {
   const correo = normalizarCorreo(p.correo);
   const { error } = await admin.from("deptos_entradas").insert({
-    correo, user_id: p.userId, puerta: await puertaDe(admin, correo), metodo: p.metodo, codigo_hash: p.codigoHash ?? null,
+    correo, user_id: p.userId, puerta: p.puerta ? await p.puerta : await puertaDe(admin, correo), metodo: p.metodo, codigo_hash: p.codigoHash ?? null,
   });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "registrar", userId: p.userId });
 }
