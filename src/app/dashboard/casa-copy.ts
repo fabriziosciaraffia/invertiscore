@@ -18,6 +18,8 @@ export const CASA = {
   saludo: (nombre: string | null) => (nombre ? `Hola, ${nombre}.` : "Hola."),
   /** La píldora del saldo, arriba a la derecha (lib/casa/reglas.ts › pildoraSaldo): sin análisis lleva «Ver planes». */
   verPlanes: "Ver planes",
+  /** El botón de la página (25-oct-2026): el header lo dejó como enlace. */
+  nuevoAnalisis: "Nuevo análisis",
   /** LA OFERTA ROJA (una fila), mientras el ticket viva, con o sin saldo. */
   oferta: {
     kicker: (vence: string) => `Solo para cuentas nuevas · vence ${vence}`,

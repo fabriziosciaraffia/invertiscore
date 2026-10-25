@@ -9,6 +9,10 @@
 .ca-hola { margin: 0; font-size: 14px; color: var(--franco-text-secondary); }
 .ca-pildora { font-size: 13px; font-weight: 500; color: var(--franco-text-secondary); background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
 .ca-pildora a { color: var(--franco-text); text-decoration: underline; text-underline-offset: 3px; }
+/* «Nuevo análisis» en la página (25-oct-2026), con contorno: el botón negro de la pantalla es «Explorar», en el header. */
+.ca-acciones { margin-top: 12px; }
+.ca-boton-nuevo { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 14px; font-weight: 600; text-decoration: none; }
+.ca-boton-nuevo:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 
 /* La oferta roja, una fila: el único rojo grande de la casa. */
 .ca-oferta { margin-top: 12px; background: var(--signal-red); color: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -45,6 +49,13 @@
 .ca-mapa-pie { padding: 14px 16px; }
 .ca-boton-contorno { display: inline-flex; width: 100%; height: 46px; align-items: center; justify-content: center; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 15px; font-weight: 600; text-decoration: none; }
 .ca-boton-contorno:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* «Explorar los N de Santiago» (25-oct-2026): destacado con el material de la tríada —el azul al rojo del hero, el mismo de
+   la tarjeta del correo en /deptos—, texto blanco. El rojo pleno se queda para comprar. */
+.ca-boton-triada { position: relative; overflow: hidden; display: inline-flex; width: 100%; height: 46px; align-items: center; justify-content: center; border: 0; border-radius: 999px;
+  color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; background: #1F3D67 url("/landing/hero-liso-m2x.webp") center / cover no-repeat; box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); }
+@media (min-width: 768px) { .ca-boton-triada { background-image: url("/landing/hero-liso-d1x.webp"); } }
+.ca-boton-triada:hover { filter: brightness(1.06); }
+.ca-boton-triada:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 
 /* Las tarjetas de la selección (deptos.css › .sel-*). El ya analizado queda en su posición como fila compacta y gris. */
 .ca-tarjetas { margin-top: 14px; }
@@ -62,17 +73,17 @@
 
 /* Las filas plegadas: «Tu perfil de búsqueda» e «Informes realizados». */
 .ca-plegadas { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
-.ca-plegada { background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; overflow: hidden; }
-.ca-plegada > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; }
-.ca-plegada > summary::-webkit-details-marker { display: none; }
-.ca-plegada > summary:focus-visible { outline: 2px solid var(--franco-text); outline-offset: -2px; }
-.ca-plegada[open] > summary { border-bottom: 1px solid var(--franco-border); }
+/* La fila plegada (25-oct-2026): una sección con un botón, sin <details> y SIN recortar —el cuerpo mide lo que necesita—. */
+.ca-plegada { background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; }
+.ca-plegada-cab { width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-radius: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; }
+.ca-plegada-cab:focus-visible { outline: 2px solid var(--franco-text); outline-offset: -2px; }
+.ca-plegada[data-abierta="1"] > .ca-plegada-cab { border-bottom: 1px solid var(--franco-border); border-radius: 16px 16px 0 0; }
 .ca-plegada-t { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ca-plegada-n { font-size: 12px; font-weight: 400; color: var(--franco-text-secondary); }
 .ca-etiqueta-roja { font-size: 11px; font-weight: 600; color: var(--signal-red); background: color-mix(in srgb, var(--signal-red) 9%, var(--franco-card)); border-radius: 999px; padding: 3px 8px; }
 .ca-plegada-s { display: block; margin-top: 4px; font-size: 12px; color: var(--franco-text-secondary); }
 .ca-chevron { color: var(--franco-text-secondary); font-size: 14px; flex: none; transition: transform 0.15s ease; }
-.ca-plegada[open] .ca-chevron { transform: rotate(180deg); }
+.ca-plegada[data-abierta="1"] .ca-chevron { transform: rotate(180deg); }
 .ca-plegada-cuerpo { padding: 16px; }
 .ca-informes-cuerpo { padding: 4px 12px 12px; }
 

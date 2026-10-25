@@ -118,16 +118,37 @@ async function guardar(cambios: Record<string, unknown>): Promise<boolean> {
   }
 }
 
-/** Una fila plegada del dashboard (<details>): el título, la etiqueta roja, la línea de abajo y el chevron. Con
- *  `controlada`, quien la monta decide si está abierta (el perfil la pliega al guardar). `aviso`: una nota en la fila. */
+/** El evento con que el ancla de la dirección abre una fila plegada (AbrirPorAncla → FilaPlegada). */
+export const EVENTO_ABRIR_PLEGADA = "franco:abrir-plegada";
+
+/**
+ * Una fila plegada del dashboard: el título, la etiqueta roja, la línea de abajo y el chevron. Con `controlada`, quien la
+ * monta decide si está abierta (el perfil la pliega al guardar). `aviso`: una nota en la fila.
+ * SIN <details> (25-oct-2026, recorrido de Fabrizio en el teléfono): al tocar «Editar» el perfil crecía y quedaba cortado
+ * —el pie y el plazo bajo el borde, sin poder desplazarse—: Safari en iOS no siempre recalcula el alto de un <details> cuando
+ * su contenido crece después de abrirse, y la fila recortaba (overflow: hidden). Ahora es una sección con un botón
+ * (aria-expanded): el cuerpo va en el flujo de la página, mide lo que necesita y nada lo recorta. El cuerpo queda montado y
+ * oculto (`hidden`) al plegar, así los informes no pierden su búsqueda.
+ */
 export function FilaPlegada({ id, titulo, n, etiqueta, sub, abierta = false, children, marca, controlada, aviso }: {
   id: string; titulo: string; n?: number | null; etiqueta?: string | null; sub?: string | null; abierta?: boolean; children: ReactNode; marca: string;
   controlada?: { abierta: boolean; alCambiar: (abierta: boolean) => void };
   aviso?: string | null;
 }) {
+  const [propia, setPropia] = useState(abierta);
+  const estaAbierta = controlada ? controlada.abierta : propia;
+  const poner = (v: boolean) => (controlada ? controlada.alCambiar(v) : setPropia(v));
+  // El ancla de la dirección (`/dashboard#perfil`) la abre: AbrirPorAncla avisa con el id.
+  const ponerRef = useRef(poner);
+  ponerRef.current = poner;
+  useEffect(() => {
+    const abrir = (e: Event) => { if ((e as CustomEvent<string>).detail === id) ponerRef.current(true); };
+    window.addEventListener(EVENTO_ABRIR_PLEGADA, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_PLEGADA, abrir);
+  }, [id]);
   return (
-    <details id={id} className="ca-plegada" open={controlada ? controlada.abierta : abierta || undefined} onToggle={controlada ? (e) => controlada.alCambiar(e.currentTarget.open) : undefined} data-casa={marca} style={{ scrollMarginTop: 80 }}>
-      <summary>
+    <section id={id} className="ca-plegada" data-abierta={estaAbierta ? "1" : undefined} data-casa={marca} style={{ scrollMarginTop: 80 }}>
+      <button type="button" className="ca-plegada-cab" aria-expanded={estaAbierta} aria-controls={`${id}-cuerpo`} onClick={() => poner(!estaAbierta)}>
         <span>
           <span className="ca-plegada-t">
             {titulo}
@@ -138,9 +159,11 @@ export function FilaPlegada({ id, titulo, n, etiqueta, sub, abierta = false, chi
           {sub && <span className="ca-plegada-s">{sub}</span>}
         </span>
         <span className="ca-chevron" aria-hidden="true">▾</span>
-      </summary>
-      {children}
-    </details>
+      </button>
+      <div id={`${id}-cuerpo`} className="ca-plegada-contenido" hidden={!estaAbierta}>
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -151,7 +174,9 @@ export function AbrirPorAncla() {
       const id = window.location.hash.replace(/^#/, "");
       if (!id) return;
       const el = document.getElementById(id);
-      if (el instanceof HTMLDetailsElement) { el.open = true; el.scrollIntoView({ block: "start" }); }
+      if (!el?.classList.contains("ca-plegada")) return;
+      window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_PLEGADA, { detail: id }));
+      window.setTimeout(() => el.scrollIntoView({ block: "start" }), 0);
     };
     abrir();
     window.addEventListener("hashchange", abrir);
@@ -249,13 +274,13 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
                 rango, como <select>; más el pie y el plazo con los mismos campos. Se guardan todos con «Guardar». */}
             <CamposBusqueda multiple valor={campos.valor} tipologiaExtra={campos.tipologiaExtra} rangoExtra={campos.rangoExtra} onChange={cambiarCampo} ids="casa" />
             <div className="ca-perfil-grid">
-              <label className="dp-campo" htmlFor="casa-pie">
+              <label className="dp-campo-b" htmlFor="casa-pie">
                 <span className="dp-etq">{CASA.perfil.pieEtiqueta}</span>
                 <select id="casa-pie" className="dp-select" data-campo="pie" value={p.piePct ?? 20} onChange={(e) => { const v = Number(e.target.value); setP((x) => ({ ...x, piePct: v })); }}>
                   {pies.map((x) => <option key={x} value={x}>{pct(x)} %</option>)}
                 </select>
               </label>
-              <label className="dp-campo" htmlFor="casa-plazo">
+              <label className="dp-campo-b" htmlFor="casa-plazo">
                 <span className="dp-etq">{CASA.perfil.plazoEtiqueta}</span>
                 <select id="casa-plazo" className="dp-select" data-campo="plazo" value={p.plazoAnios ?? 25} onChange={(e) => { const v = Number(e.target.value); setP((x) => ({ ...x, plazoAnios: v })); }}>
                   {plazos.map((x) => <option key={x} value={x}>{CASA.perfil.plazo(x)}</option>)}

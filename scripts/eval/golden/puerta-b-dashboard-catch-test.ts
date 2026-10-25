@@ -246,7 +246,23 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const perfilB = { ...inicial, precioMinUf: 4000, precioMaxUf: 6000, modalidad: "ltr" as const, horizonte: "ya" as const };
   if (resumenDeFila(perfilB, { modalidad: true, cuando: true }) !== "Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero comprar ya" || resumenDeFila(perfilB, { modalidad: false, cuando: false }) !== "Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años") F(`5 · la fila cerrada no dice el resumen completo: «${resumenDeFila(perfilB, { modalidad: true, cuando: true })}»`);
   if (GUARDADO_VISIBLE_MS !== 2000 || !/if \(!ok\) \{ setEstado\("error"\); return; \}[\s\S]*?setAbierta\(false\);\s*setVistoGuardado\(true\);\s*if \(reloj\.current\) window\.clearTimeout\(reloj\.current\);\s*reloj\.current = window\.setTimeout\(\(\) => setVistoGuardado\(false\), GUARDADO_VISIBLE_MS\);/.test(casa)) F("5 · al guardar no se pliega o «Guardado.» no se va a los dos segundos");
-  if (!/open=\{controlada \? controlada\.abierta : abierta \|\| undefined\} onToggle=\{controlada \? \(e\) => controlada\.alCambiar\(e\.currentTarget\.open\) : undefined\}/.test(casa)) F("5 · la fila plegada no se puede plegar desde el perfil");
+  // El pie y el plazo van en la columna de campo de /deptos (`dp-campo-b`), no en `dp-campo`, que es el correo sobre el material
+  // (alto fijo de 48): con esa el select se salía de su caja y pisaba «Una pregunta pendiente» (25-oct-2026).
+  if (!/<label className="dp-campo-b" htmlFor="casa-pie">/.test(casa) || !/<label className="dp-campo-b" htmlFor="casa-plazo">/.test(casa) || /className="dp-campo"/.test(casa)) F("5 · el pie o el plazo del perfil van en la caja del correo de /deptos y se salen de ella");
+  // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio en el teléfono con +qadeptos5) · la fila ya no es un <details> (Safari en iOS no recalculaba
+  // su alto al crecer y el perfil en edición quedaba cortado): una sección con un botón, el cuerpo en el flujo, sin recorte.
+  if (!/const estaAbierta = controlada \? controlada\.abierta : propia;/.test(casa) || !/aria-expanded=\{estaAbierta\}/.test(casa) || !/hidden=\{!estaAbierta\}/.test(casa) || !/onClick=\{\(\) => poner\(!estaAbierta\)\}/.test(casa)) F("5 · la fila plegada no se puede plegar desde el perfil");
+  {
+    const fila = (casa.match(/export function FilaPlegada[\s\S]*?\n\}\n/) ?? [""])[0];
+    const cssCasa = leer("src/app/dashboard/casa.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const reglaFila = (cssCasa.match(/\.ca-plegada \{[^}]*\}/) ?? [""])[0];
+    if (!fila || /<details|<summary/.test(fila) || /overflow|max-height|height:/.test(reglaFila)) F("5 · la fila plegada vuelve a ser un <details> o recorta su contenido (el perfil en edición quedaría cortado)");
+    // «Nuevo análisis» sigue como botón en el dashboard (el header lo dejó como enlace), con contorno.
+    if (!/<CtaAnalizar origen="dashboard" className="ca-boton-nuevo">\{CASA\.nuevoAnalisis\}<\/CtaAnalizar>/.test(pag) || CASA.nuevoAnalisis !== "Nuevo análisis" || !/\.ca-boton-nuevo \{[^}]*border: 1px solid var\(--franco-text\)/.test(cssCasa)) F("5 · el dashboard no tiene «Nuevo análisis» como botón");
+    // «Explorar los N de Santiago» con el material de la tríada, texto blanco (el rojo pleno es para comprar).
+    const btn = (cssCasa.match(/\.ca-boton-triada \{[^}]*\}/) ?? [""])[0];
+    if (!/className="ca-boton-triada" data-casa="explorar-boton"/.test(leer("src/app/dashboard/mapa-casa.tsx")) || !/color: #FFFFFF/.test(btn) || !/url\("\/landing\/hero-liso-m2x\.webp"\)/.test(btn) || /signal-red|#C8323C/i.test(btn)) F("5 · el botón «Explorar los N de Santiago» no va con el material de la tríada");
+  }
   if (!tB.includes("Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años")) F("5 · la línea corta de la fila plegada no es «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años»");
   const htmlC = dibujarConRouter(createElement(PerfilBusquedaCasa, { inicial, pendientes: ["cuando"], modalidadRespondida: true }));
   if (!/data-pendientes="1"/.test(htmlC) || !texto(htmlC).includes("Una pregunta pendiente") || /¿Cómo lo arriendas\?/.test(htmlC)) F("5 · con una sola pendiente no se dice «Una pregunta pendiente» ni se oculta la contestada");

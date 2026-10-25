@@ -15,6 +15,7 @@ import { portadaDeptos } from "@/lib/deptos/portada";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
 import { OfertaCasa } from "./oferta-casa";
 import { MapaCasa } from "./mapa-casa";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { FrescoAlVolver } from "./fresco-al-volver";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -206,6 +207,12 @@ export default async function DashboardPage({
             {pildora.texto}
             {pildora.planes && <> · <EnlaceCarga href="/pricing" data-casa="planes">{CASA.verPlanes}</EnlaceCarga></>}
           </span>
+        </div>
+        {/* «Nuevo análisis» como botón en la página (25-oct-2026): el header lleva «Explorar» destacado y, con sesión, deja
+            «Nuevo análisis» como enlace (en el teléfono, en el menú del avatar); acá sigue a la vista. Con contorno: el
+            botón negro de la pantalla es el del header. */}
+        <div className="ca-acciones">
+          <CtaAnalizar origen="dashboard" className="ca-boton-nuevo">{CASA.nuevoAnalisis}</CtaAnalizar>
         </div>
 
         {/* 2 · la oferta roja, mientras el ticket viva (con o sin saldo) */}

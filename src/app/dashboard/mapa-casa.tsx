@@ -46,7 +46,7 @@ export function MapaCasa({ datos, variante = "casa", totalNoche = null }: {
       </div>
       {casa && (
         <div className="ca-mapa-pie">
-          <EnlaceCarga href="/explorar" className="ca-boton-contorno" data-casa="explorar-boton" data-n={totalNoche ?? undefined}>
+          <EnlaceCarga href="/explorar" className="ca-boton-triada" data-casa="explorar-boton" data-n={totalNoche ?? undefined}>
             {botonExplorar(totalNoche)}
           </EnlaceCarga>
         </div>
