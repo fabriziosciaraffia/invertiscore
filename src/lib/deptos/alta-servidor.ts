@@ -20,7 +20,8 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { guardarAtribucion } from "@/lib/attribution";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
-import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
+import { asegurarRegaloDeAlta, huellaDeRequest, regaloAltaVivo } from "@/lib/regalo-alta-servidor";
+import { esCuentaNueva } from "@/lib/entrar/entrada";
 import { busquedaDePerfil, CLAVE_GOOGLE, comunasParaAgregar, tipoDeAlta } from "./respuesta";
 import { borrarPendiente, leerPendiente, reclavarPendienteGoogle } from "./servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
@@ -40,13 +41,36 @@ export interface AltaDeptos {
   espejos: EventoEspejo[];
 }
 
+/**
+ * LA MISMA CUENTA, OTRA VEZ (25-oct-2026, recorrido de Fabrizio con +qadeptos4): un segundo pedido de alta —el reintento del
+ * navegador a los segundos, por código o al volver de Google— ya no encuentra lo elegido en /deptos porque el primero lo
+ * usó. Si la cuenta nació hace minutos (esCuentaNueva) y ya tiene su perfil, el alta está hecha: la respuesta vuelve a
+ * ser «nueva», con su regalo y su búsqueda, y la pantalla muestra «Estás dentro» en vez de irse al dashboard.
+ */
+export function respuestaDeAltaRepetida(p: { creadaAt: string | null | undefined; perfil: Record<string, unknown> | null; regaloVence: string | null }, ahora: number = Date.now()): Record<string, unknown> | null {
+  if (!esCuentaNueva(p.creadaAt, ahora)) return null;
+  const busqueda = busquedaDePerfil(p.perfil as Parameters<typeof busquedaDePerfil>[0]);
+  return busqueda ? { estado: "nueva", regaloVence: p.regaloVence, busqueda, repetida: true } : null;
+}
+
 export async function ejecutarAlta(admin: SupabaseClient, user: User, request: Request, p: { clave?: unknown; ruta: string }): Promise<AltaDeptos> {
   if (!user.email) return { cuerpo: { error: "sin-sesion" }, status: 401, invitacionUsada: false, espejos: [] };
   let pend = await leerPendiente(admin, user.email);
   if (!pend && typeof p.clave === "string" && CLAVE_GOOGLE.test(p.clave) && await reclavarPendienteGoogle(admin, { clave: p.clave, correo: user.email, cuentaCreadaAt: user.created_at })) {
     pend = await leerPendiente(admin, user.email);
   }
-  if (!pend) return { cuerpo: { estado: "sin-pendiente" }, invitacionUsada: false, espejos: [] };
+  if (!pend) {
+    // ¿Es el segundo pedido de un alta que ya se hizo? (respuestaDeAltaRepetida)
+    if (esCuentaNueva(user.created_at)) {
+      const [{ data: perfil }, regaloVence] = await Promise.all([
+        admin.from("perfil_busqueda").select("comunas, dormitorios, precio_min_uf, precio_max_uf").eq("user_id", user.id).maybeSingle(),
+        regaloAltaVivo(admin, user.id),
+      ]);
+      const repetida = respuestaDeAltaRepetida({ creadaAt: user.created_at, perfil: perfil as Record<string, unknown> | null, regaloVence });
+      if (repetida) return { cuerpo: repetida, invitacionUsada: false, espejos: [] };
+    }
+    return { cuerpo: { estado: "sin-pendiente" }, invitacionUsada: false, espejos: [] };
+  }
   // La invitación (la puerta C): se cobra antes de la puerta B, y si la cuenta es invitada, la puerta es la C.
   const cookieInv = cookieInvitacionDeCabeceras(request.headers);
   const vinculo = cookieInv ? await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) }) : null;

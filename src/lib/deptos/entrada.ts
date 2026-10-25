@@ -11,10 +11,20 @@
 //   · el reintento con el MISMO código no choca con el código ya usado: si ese código entró recién (VENTANA_REPONER_MS),
 //     el servidor repone la sesión una vez y devuelve el alta ya hecha, sin correrla dos veces;
 //   · una entrada verificada sin alta pasado ESPERA_ALTA_PERDIDA_MS sale a PostHog como `alta_perdida` con la puerta.
+// EL REINTENTO NO LE GANA AL PRIMER PEDIDO (25-oct-2026, recorrido real de Fabrizio con +qadeptos4): en producción el alta
+// tarda unos 10 s; a los 8 el navegador reintentaba, el reintento reponía la sesión, corría el alta otra vez —lo elegido
+// ya se había usado— y la respuesta «sin-pendiente» mandaba al dashboard sin «Estás dentro». Ahora el tope es de 20 s, y
+// si el reintento encuentra la entrada de esta cuenta todavía sin alta (el primero sigue corriendo), espera hasta
+// ESPERA_ALTA_EN_CURSO_MS a que la guarde y devuelve esa misma respuesta. Y el alta, si ya no hay nada pendiente para una
+// cuenta recién creada con su perfil, vuelve a responder «nueva» (alta-servidor.ts › respuestaDeAltaRepetida).
 // Puro (sin React ni Supabase): lo prueba el tier ENTRADA-ALTA con un alta que no responde.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const TOPE_ENTRAR_MS = 8000;
+/** 20 s (25-oct-2026; eran 8): el alta en producción tarda unos 10 s, y un reintento a los 8 era casi seguro. */
+export const TOPE_ENTRAR_MS = 20_000;
+/** Cuánto espera un reintento a que el primer pedido —que sigue corriendo— guarde su alta. */
+export const ESPERA_ALTA_EN_CURSO_MS = 12_000;
+export const PASO_ESPERA_MS = 500;
 export const REINTENTOS_ENTRAR = 1;
 /** Hasta cuándo el mismo código repone la sesión si la primera respuesta se perdió. */
 export const VENTANA_REPONER_MS = 3 * 60_000;
@@ -105,6 +115,8 @@ export interface DepsEntrada {
   alta: (usuario: UsuarioEntrada) => Promise<{ cuerpo: Record<string, unknown>; status?: number }>;
   marcarAlta: (p: { correo: string; userId: string; alta: Record<string, unknown> }) => Promise<void>;
   ahora?: () => Date;
+  /** Esperar entre una mirada y otra (el tier la hace instantánea). */
+  esperar?: (ms: number) => Promise<void>;
 }
 
 export type ResultadoEntrada =
@@ -139,9 +151,19 @@ export async function entrarConCodigo(correo: string, codigo: string, d: DepsEnt
   // llegó (o se repuso recién). Correr el alta otra vez daría «sin-pendiente» —lo elegido ya se usó— y la pantalla se iría
   // al dashboard en vez de «Estás dentro»: se devuelve la misma respuesta, si es de esta cuenta y de recién.
   if (via !== "verificado") {
-    const previa = await d.ultimaEntrada(correo);
-    const reciente = !!previa && ahora.getTime() - Date.parse(previa.verificadoAt) <= VENTANA_REPONER_MS;
-    if (previa?.alta && previa.userId === usuario.id && reciente) return { tipo: "alta", cuerpo: previa.alta, via: "alta-guardada" };
+    let previa = await d.ultimaEntrada(correo);
+    const deEstaCuenta = !!previa && previa.userId === usuario.id && ahora.getTime() - Date.parse(previa.verificadoAt) <= VENTANA_REPONER_MS;
+    if (deEstaCuenta && previa?.alta) return { tipo: "alta", cuerpo: previa.alta, via: "alta-guardada" };
+    // EL PRIMER PEDIDO TODAVÍA ESTÁ CORRIENDO (25-oct-2026): la entrada es de esta cuenta y de recién, pero sin alta. Correr
+    // el alta acá daría «sin-pendiente» (el primero ya usó lo elegido): se espera a que el primero guarde la suya.
+    if (deEstaCuenta && !previa?.alta) {
+      const esperar = d.esperar ?? ((ms: number) => new Promise<void>((ok) => setTimeout(ok, ms)));
+      for (let t = 0; t < ESPERA_ALTA_EN_CURSO_MS; t += PASO_ESPERA_MS) {
+        await esperar(PASO_ESPERA_MS);
+        previa = await d.ultimaEntrada(correo);
+        if (previa?.alta && previa.userId === usuario.id) return { tipo: "alta", cuerpo: previa.alta, via: "alta-guardada" };
+      }
+    }
   }
   const r = await d.alta(usuario);
   // Respondió (nueva, existente o sin nada pendiente): la entrada tiene su alta. Un error del alta no se marca: es perdida.
