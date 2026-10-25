@@ -66,7 +66,9 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
   // ── 1 · UN ALTA QUE NO RESPONDE ──
   try {
     if (!en) throw new Error("falta lib/deptos/entrada");
-    if (en.TOPE_ENTRAR_MS !== 8000 || en.REINTENTOS_ENTRAR !== 1) F(`1 · el tope no es 8 s con un reintento (${en.TOPE_ENTRAR_MS} ms, ${en.REINTENTOS_ENTRAR})`);
+    // ⚠ ACTA (25-oct-2026, recorrido de Fabrizio con +qadeptos4) · el tope sube de 8 a 20 s: en producción el alta tarda unos
+    // 10 s y a los 8 el reintento era casi seguro (y el reintento, antes de este goal, mandaba al dashboard).
+    if (en.TOPE_ENTRAR_MS !== 20_000 || en.REINTENTOS_ENTRAR !== 1) F(`1 · el tope no es 20 s con un reintento (${en.TOPE_ENTRAR_MS} ms, ${en.REINTENTOS_ENTRAR})`);
     if (en.ENTRAR_COPY.noPudimos !== "No pudimos entrar, intenta de nuevo") F(`1 · el botón no dice «No pudimos entrar, intenta de nuevo» («${en.ENTRAR_COPY.noPudimos}»)`);
     // Un pedido que NUNCA responde (ni escucha la señal): termina igual, después de dos intentos.
     let llamados = 0;
@@ -156,6 +158,55 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     const altaVieja = await correr({ sesion: yo, previa: { alta: { estado: "nueva" }, verificadoAt: hace(10 * 60) } });
     const altaAjena = await correr({ sesion: yo, previa: { alta: { estado: "nueva" }, userId: "otra" } });
     if (!altaVieja.log.includes("alta") || !altaAjena.log.includes("alta")) F("2 · devuelve un alta guardada vieja o de otra cuenta");
+    // ── 2b · EL REINTENTO NO LE GANA AL PRIMER PEDIDO (25-oct-2026, +qadeptos4 saltó al dashboard) ──
+    // El caso real: el primero verificó (14:02:29,97), sigue corriendo y todavía no guardó su alta; el reintento llega a los
+    // 8 s, el código ya se usó, repone la sesión. Si corre el alta, el alta dice «sin-pendiente» (lo elegido ya se usó) y la
+    // pantalla se va al dashboard. Tiene que esperar a que el primero guarde la suya («nueva») y devolver esa.
+    {
+      const log: string[] = [];
+      let miradas = 0, esperas = 0;
+      const enCurso = await en.entrarConCodigo("a@b.cl", "123456", {
+        sesionActual: async () => null,
+        verificar: async () => { log.push("verificar"); return null; },
+        hash: (c, t) => `h:${c}:${t}`,
+        // Las dos primeras miradas, sin alta (el primero corre); a la tercera, el primero ya guardó «nueva».
+        ultimaEntrada: async () => ({ id: "e-1", userId: "u-1", codigoHash: "h:a@b.cl:123456", verificadoAt: hace(8), alta: ++miradas >= 4 ? { estado: "nueva", regaloVence: "2026-11-24T00:00:00Z" } : null, recuperadaAt: null }),
+        registrar: async () => { log.push("registrar"); },
+        reponerSesion: async () => { log.push("reponer"); return yo; },
+        marcarRepuesta: async () => { log.push("repuesta"); },
+        alta: async () => { log.push("alta"); return { cuerpo: { estado: "sin-pendiente" } }; },
+        marcarAlta: async () => { log.push("marcar-alta"); },
+        ahora: () => ahora,
+        esperar: async () => { esperas++; },
+      });
+      const cuerpo = enCurso.tipo === "alta" ? enCurso.cuerpo : null;
+      if (cuerpo?.estado !== "nueva" || log.includes("alta") || log.includes("marcar-alta") || esperas < 1) F(`2b · el reintento corre el alta mientras el primero sigue (respondería ${JSON.stringify(cuerpo)}: al dashboard sin «Estás dentro»): ${log.join()}`);
+      // Si el primero murió sin alta, el reintento espera lo justo y corre el alta él mismo (una vez).
+      let esperas2 = 0;
+      const log2: string[] = [];
+      const muerto = await en.entrarConCodigo("a@b.cl", "123456", {
+        sesionActual: async () => null, verificar: async () => null, hash: (c, t) => `h:${c}:${t}`,
+        ultimaEntrada: async () => ({ id: "e-1", userId: "u-1", codigoHash: "h:a@b.cl:123456", verificadoAt: hace(8), alta: null, recuperadaAt: null }),
+        registrar: async () => {}, reponerSesion: async () => yo, marcarRepuesta: async () => {},
+        alta: async () => { log2.push("alta"); return { cuerpo: { estado: "nueva" } }; }, marcarAlta: async () => {},
+        ahora: () => ahora, esperar: async () => { esperas2++; },
+      });
+      if (muerto.tipo !== "alta" || log2.filter((x) => x === "alta").length !== 1 || esperas2 * en.PASO_ESPERA_MS < en.ESPERA_ALTA_EN_CURSO_MS || en.ESPERA_ALTA_EN_CURSO_MS >= en.TOPE_ENTRAR_MS) F(`2b · con el primero muerto, el reintento no espera lo justo y corre el alta una vez (${esperas2} esperas, ${log2.join()})`);
+    }
+    // ── 2c · EL ALTA REPETIDA DE UNA CUENTA RECIÉN CREADA ES «NUEVA» (por código o al volver de Google) ──
+    {
+      const altaSrv = cargar<typeof import("../../../src/lib/deptos/alta-servidor")>("src/lib/deptos/alta-servidor.ts");
+      if (!altaSrv) F("2c · falta lib/deptos/alta-servidor");
+      else {
+        const t = Date.parse("2026-10-25T14:02:40Z");
+        const perfil = { comunas: ["Providencia"], dormitorios: [2], precio_min_uf: 4000, precio_max_uf: 6000 };
+        const r1 = altaSrv.respuestaDeAltaRepetida({ creadaAt: "2026-10-25T14:02:15Z", perfil, regaloVence: "2026-11-24T14:02:33Z" }, t);
+        if (r1?.estado !== "nueva" || r1.regaloVence !== "2026-11-24T14:02:33Z" || (r1.busqueda as { comunas?: string[] } | undefined)?.comunas?.[0] !== "Providencia") F(`2c · el segundo pedido de una cuenta recién creada no es «nueva» con su regalo y su búsqueda: ${JSON.stringify(r1)}`);
+        if (altaSrv.respuestaDeAltaRepetida({ creadaAt: "2026-10-01T00:00:00Z", perfil, regaloVence: null }, t) !== null || altaSrv.respuestaDeAltaRepetida({ creadaAt: "2026-10-25T14:02:15Z", perfil: null, regaloVence: null }, t) !== null) F("2c · una cuenta vieja, o sin perfil, entra como «nueva»");
+        const ejecutar = codigo("src/lib/deptos/alta-servidor.ts");
+        if (!/if \(!pend\) \{[\s\S]{0,700}const repetida = respuestaDeAltaRepetida\(\{ creadaAt: user\.created_at, perfil: perfil as Record<string, unknown> \| null, regaloVence \}\);\s*if \(repetida\) return \{ cuerpo: repetida,[\s\S]{0,120}return \{ cuerpo: \{ estado: "sin-pendiente" \}/.test(ejecutar)) F("2c · el alta sin nada pendiente no mira si es el segundo pedido de una cuenta recién creada");
+      }
+    }
     // El servidor: verifica ahí, repone con un enlace generado (sin correo) y corre la misma alta.
     const ruta = codigo("src/app/api/deptos/entrar/route.ts");
     if (!/await supabase\.auth\.verifyOtp\(\{ email: c, token: t, type: "email" \}\)/.test(ruta) || !/admin\.auth\.admin\.generateLink\(\{ type: "magiclink", email: c \}\)/.test(ruta) || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA \}\)/.test(ruta) || !/entrarConCodigo\(correo, codigo, \{/.test(ruta)) F("2 · /api/deptos/entrar no verifica en el servidor, no repone la sesión o no corre la misma alta");
@@ -223,7 +274,7 @@ export async function runEntradaAltaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ ROJO — ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — «Entrar» con tope de 8 s y un reintento: un alta que no responde termina con el botón activo y el aviso; el mismo código repone la sesión una vez y trae el alta ya hecha; alta_perdida sale una vez con la puerta; /api/invitacion se corta al salir sin error");
+    console.log("  ✓ VERDE — «Entrar» con tope de 20 s y un reintento que espera al primer pedido: un alta que no responde termina con el botón activo y el aviso; el mismo código repone la sesión una vez y trae el alta ya hecha; alta_perdida sale una vez con la puerta; /api/invitacion se corta al salir sin error");
   }
   return { hard: fallas.length };
 }
