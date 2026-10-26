@@ -57,6 +57,18 @@
 .ca-boton-triada:hover { filter: brightness(1.06); }
 .ca-boton-triada:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 
+/* SIN OFERTA (26-oct-2026): arriba del mapa y las tarjetas, cuando con sus números no conviene ninguno en sus comunas.
+   Tinta y contorno, como «Nuevo análisis»: no es un error ni un veredicto. */
+.ca-sin-oferta { margin-top: 14px; background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; padding: 14px 16px; }
+@media (min-width: 768px) { .ca-sin-oferta { max-width: 600px; } }
+.ca-sin-oferta-t { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--franco-text); }
+.ca-sin-oferta-p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--franco-text); }
+.ca-sin-oferta-botones { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-sin-oferta-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 14px; font-weight: 600; line-height: 1.2; text-decoration: none; cursor: pointer; }
+.ca-sin-oferta-btn:disabled { opacity: 0.55; cursor: default; }
+.ca-sin-oferta-btn:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ca-sin-oferta-listo { margin: 14px 0 0; font-size: 14px; font-weight: 600; color: var(--franco-text); }
+
 /* Las tarjetas de la selección (deptos.css › .sel-*). El ya analizado queda en su posición como fila compacta y gris. */
 .ca-tarjetas { margin-top: 14px; }
 .ca-tarjetas .sel-lista { margin-top: 0; }

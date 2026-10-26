@@ -13,6 +13,8 @@ import { lineaRenueva, ofertaEnCasa, pildoraSaldo, preguntasPendientes } from "@
 import { datosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
 import { portadaDeptos } from "@/lib/deptos/portada";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
+import { AvisoSinOferta } from "./aviso-sin-oferta";
+import { leerAvisoSinOferta } from "@/lib/casa/sin-oferta-servidor";
 import { OfertaCasa } from "./oferta-casa";
 import { MapaCasa } from "./mapa-casa";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -160,12 +162,16 @@ export default async function DashboardPage({
   // El mapa: los deptos de la selección (el reemplazo del caído, si lo hay) y los demás que convienen con su búsqueda.
   const itemsSel = hayDeptos(sel) ? (sel.largo?.filas ?? []).map((f) => f.reemplazo ?? f.item).filter((i) => !!i) : [];
   // El botón dice el total de anoche en Santiago (24-oct-2026): el de /deptos, cacheado diez minutos (lib/deptos/portada.ts).
-  const [mapa, portada] = await Promise.all([
+  // SIN OFERTA (26-oct-2026, lib/casa/sin-oferta.ts): con sus números no conviene ninguno en sus comunas. Se lee solo si la
+  // selección no trae ya uno de sus comunas (sin `tramo`): el aviso nunca contradice a las tarjetas de abajo.
+  const propiaEnSeleccion = itemsSel.some((i) => !i.tramo);
+  const [mapa, portada, sinOferta] = await Promise.all([
     itemsSel.length > 0 ? datosMapaCasa(admin, user.id, itemsSel.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }))) : Promise.resolve(null),
     portadaDeptos(),
+    propiaEnSeleccion ? Promise.resolve(null) : leerAvisoSinOferta(admin, user.id, perfilPersona.perfilLtr),
   ]);
   const totalNoche = portada.noche?.convienen ?? null;
-  const lineaSel = [lineaBusqueda({ comunas: pb.comunas, dormitorios: pb.dormitorios, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, precioMaxUf: pb.precioMaxUf }), lineaRenueva(pb.horizonte)].filter(Boolean).join(" · ");
+  const lineaSel = [lineaBusqueda({ comunas: pb.comunas, dormitorios: pb.dormitorios, precioMinUf: pb.precioMinUf, precioMaxUf: pb.precioMaxUf }), lineaRenueva(pb.horizonte)].filter(Boolean).join(" · ");
 
   // «INFORMES REALIZADOS», plegados al final: la misma lista de siempre (archive.tsx), por fecha, con búsqueda y filtros en
   // la URL (`?q=&mod=&v=&o=&page=&group=&open=`); con un filtro puesto, la fila llega abierta.
@@ -227,6 +233,7 @@ export default async function DashboardPage({
         <section className="ca-seccion" data-casa="seleccion">
           <h2 className="ca-t2">{CASA.seleccion.titulo}</h2>
           {lineaSel && <p className="ca-linea" data-casa="seleccion-linea">{lineaSel}</p>}
+          <AvisoSinOferta aviso={sinOferta} />
           {mapa && <MapaCasa datos={mapa} totalNoche={totalNoche} />}
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} />
         </section>
@@ -234,7 +241,7 @@ export default async function DashboardPage({
         {/* 5 · plegados: el perfil y los informes */}
         <div className="ca-plegadas">
           <PerfilBusquedaCasa
-            inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
+            inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.precioMinUf, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
             pendientes={pendientes}
             modalidadRespondida={perfilPersona.manual.modalidad != null}
           />

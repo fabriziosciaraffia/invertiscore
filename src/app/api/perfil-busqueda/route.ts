@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
+import { ORIGEN_SIN_OFERTA } from "@/lib/casa/sin-oferta";
+import { capturarServidor } from "@/lib/posthog-servidor";
 import { waitUntil } from "@vercel/functions";
 import { emitirIntencionCompra, emitirRegistroAlCrear } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
@@ -26,6 +28,12 @@ export async function PUT(request: Request) {
   const { error } = await admin.from("perfil_busqueda").upsert({ user_id: user.id, ...v.cambios, actualizado_at: new Date().toISOString() }, { onConflict: "user_id" });
   reportarFalloQuery(error, { ruta: "api/perfil-busqueda", operacion: "guardar", userId: user.id });
   if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
+  // EL AJUSTE EN UN TOQUE DEL DASHBOARD (26-oct-2026, lib/casa/sin-oferta.ts): como `semanal_ajuste` del correo vacío, se
+  // mide cuál de las dos salidas se tocó.
+  if (body.origen === ORIGEN_SIN_OFERTA) {
+    const ajuste = "pie_pct" in v.cambios ? "pie" : "comunas" in v.cambios ? "comuna" : "otro";
+    waitUntil(capturarServidor({ event: "casa_ajuste", distinctId: user.id, properties: { origen: "sin_oferta", ajuste } }).then(() => undefined).catch(() => undefined));
+  }
   // Contestó «¿Cuándo piensas comprar?» con sesión (src/lib/meta/registro.ts, 22-oct-2026): IntencionCompra con la
   // respuesta; y CompleteRegistration si la cuenta nació sin él (idempotente).
   const cuando = (v.cambios as { horizonte_compra?: string | null }).horizonte_compra;
