@@ -98,8 +98,8 @@ export function filtrosDePerfil(p: { comunas: string[]; dormitorios: number[]; p
   const comunas = p.comunas.filter((c) => COMUNAS_OK.has(c)).slice(0, MAX_COMUNAS_PERFIL);
   const tipologias = Array.from(new Set(p.dormitorios.map(tipologiaDeDorm))).sort();
   if (comunas.length === 0 || tipologias.length === 0 || p.precioMaxUf == null || p.precioMaxUf <= 0) return null;
-  const aMano = !!p.editado?.includes("precioMin");
-  const ufMin = aMano && p.precioMinUf != null && p.precioMinUf < p.precioMaxUf ? Math.floor(p.precioMinUf) : 0;
+  // El piso, tal cual: desde el 26-oct-2026 el inferido también es un chip de /deptos (perfil-busqueda.ts), como el elegido.
+  const ufMin = p.precioMinUf != null && p.precioMinUf > 0 && p.precioMinUf < p.precioMaxUf ? Math.floor(p.precioMinUf) : 0;
   return { comunas, tipologias, ufMin, ufMax: Math.round(p.precioMaxUf), pie: pieDeLista(p.piePct), plazo: plazoDeLista(p.plazoAnios) };
 }
 

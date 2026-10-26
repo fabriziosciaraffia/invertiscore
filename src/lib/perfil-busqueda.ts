@@ -4,8 +4,11 @@
 //   · LO EDITADO A MANO MANDA sobre lo inferido, campo por campo (tabla `perfil_busqueda`; y dentro
 //     de cada informe, lo elegido en «Estás dentro» —`pref_*`— manda sobre lo que dijo ese informe);
 //   · LAS COMUNAS SE SUMAN: todas las de sus informes, sin repetir;
-//   · EL PRECIO TOPE SALE DEL RANGO DE LO ANALIZADO: el más caro que analizó, redondeado hacia arriba a
-//     UF 100 (y el piso, el más barato hacia abajo, para no recomendarle lo que nunca miró);
+//   · EL RANGO DE PRECIO ES UN CHIP DE /deptos (26-oct-2026, decisión de Fabrizio): el de los cuatro —hasta UF 3.000,
+//     3.000 a 4.000, 4.000 a 6.000, más de 6.000— que contiene el precio analizado, igual que lo elige una persona en la
+//     puerta B. Con varios informes, del chip del más barato al del más caro. Hasta el 26-oct era una banda de UF 100
+//     alrededor del precio (y con un precio redondo el semanal buscaba desde UF 0). Un precio fuera de UF 500 a 50.000 es un
+//     error de tipeo (pesos escritos como UF, ceros de más) y no arma rango;
 //   · dormitorios: todos los que analizó; modalidad, pie y plazo: los del informe más reciente;
 //   · «¿Cuándo piensas comprar?»: lo editado, o la última respuesta que dio en un informe.
 //   · SIN INFORMES (16-oct-2026, la puerta B): la cuenta que nace en /deptos tiene solo lo editado a mano —comunas,
@@ -13,6 +16,19 @@
 // Puro: el tier CASA lo prueba con filas de ejemplo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { RANGOS_UF, type RangoUf } from "@/lib/deptos/respuesta";
+
+/** Los precios con que la inferencia arma un rango: fuera de esto es un error de tipeo y se descarta. */
+export const PRECIO_INFERIBLE_MIN_UF = 500;
+export const PRECIO_INFERIBLE_MAX_UF = 50_000;
+export const precioInferible = (uf: number | null | undefined): uf is number =>
+  uf != null && Number.isFinite(uf) && uf >= PRECIO_INFERIBLE_MIN_UF && uf <= PRECIO_INFERIBLE_MAX_UF;
+
+/** El chip de /deptos que contiene un precio. El borde va al de abajo: «hasta UF 3.000» incluye 3.000 (la misma cuenta
+ *  que `deptos_conteo`, que busca con `between`). */
+export function rangoDelPrecio(uf: number): RangoUf {
+  return RANGOS_UF.find((r) => uf <= r.max) ?? RANGOS_UF[RANGOS_UF.length - 1];
+}
 
 export type Horizonte = "ya" | "meses" | "mirando";
 export type Modalidad = "ltr" | "str";
@@ -70,8 +86,6 @@ export function dormitoriosDe(tipologia: string | null | undefined): number | nu
   return m ? Number(m[1]) : null;
 }
 
-const arriba100 = (n: number) => Math.ceil(n / 100) * 100;
-const abajo100 = (n: number) => Math.floor(n / 100) * 100;
 
 export function perfilDeBusqueda(filas: FilaPerfilInforme[], manual: PerfilManual = MANUAL_VACIO): PerfilBusqueda {
   const orden = [...filas].sort((a, b) => b.creadoAt.localeCompare(a.creadoAt));
@@ -86,13 +100,15 @@ export function perfilDeBusqueda(filas: FilaPerfilInforme[], manual: PerfilManua
   let comunas = Array.from(new Set(orden.map((f) => (f.prefComuna ?? f.comuna)?.trim()).filter((c): c is string => !!c)));
   if (manual.comunas && manual.comunas.length > 0) { comunas = Array.from(new Set(manual.comunas.map((c) => c.trim()).filter(Boolean))); editado.push("comunas"); }
 
-  // Precio: el rango de lo analizado.
-  const precios = orden.map((f) => f.presupuestoUf).filter((p): p is number => p != null && p > 0);
-  let precioMaxUf = precios.length ? arriba100(Math.max(...precios)) : null;
-  let precioMinUf = precios.length ? abajo100(Math.min(...precios)) : null;
+  // Precio: el chip de /deptos de lo analizado (del chip del más barato al del más caro); lo mal tipeado no cuenta.
+  const precios = orden.map((f) => f.presupuestoUf).filter(precioInferible);
+  let precioMaxUf = precios.length ? rangoDelPrecio(Math.max(...precios)).max : null;
+  let precioMinUf = precios.length ? rangoDelPrecio(Math.min(...precios)).min : null;
   if (manual.precioMaxUf != null && manual.precioMaxUf > 0) {
+    // Lo editado manda entero: con el tope elegido a mano, el piso es el que eligió (abajo) o ninguno —el perfil dice
+    // «Hasta UF X» y busca desde cero—, nunca el piso de los informes debajo de un tope que no es el suyo.
     precioMaxUf = manual.precioMaxUf;
-    if (precioMinUf != null && precioMinUf > precioMaxUf) precioMinUf = null;
+    precioMinUf = null;
     editado.push("precio");
   }
   if (manual.precioMinUf != null && manual.precioMinUf > 0 && (precioMaxUf == null || manual.precioMinUf < precioMaxUf)) {

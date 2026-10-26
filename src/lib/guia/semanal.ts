@@ -43,8 +43,6 @@ export const LECTURAS_POR_CORRIDA_SEMANAL = 24;
 export const MEMORIA_SEMANAL_MS = VENTANA_SEMANAL_DIAS * 864e5;
 /** El crédito regalado vence a los 60 días: así se gasta primero (el FIFO va por vencimiento). */
 export const DIAS_VIGENCIA_REGALO = 60;
-/** La holgura del rango de precio: el piso baja 10% bajo lo más barato que analizó; el tope no se pasa. */
-export const HOLGURA_PISO = 0.1;
 /** El descuento con que un Ajustar puede entrar al correo: si a este precio da Comprar, conviene negociarlo. */
 export const DESCUENTO_NEGOCIABLE = 0.1;
 /** La marca de un depto que entra por el respaldo de Ajustar. */
@@ -96,12 +94,12 @@ export function semanaDelEnvio(ahora: Date = new Date()): string {
   return lunes.toISOString().slice(0, 10);
 }
 
-/** El rango de precio con que se busca: del piso (con holgura, si se infirió de sus informes; tal cual, si lo eligió
- *  a mano: /deptos dice «entre UF 3.000 y 4.000») al tope. */
-export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: number | null; editado?: readonly string[] }): { ufMin: number; ufMax: number } | null {
+/** El rango de precio con que se busca: del piso al tope, tal cual. Desde el 26-oct-2026 el perfil inferido también es un
+ *  chip de /deptos (perfil-busqueda.ts › rangoDelPrecio), así que el piso nunca lleva holgura: hasta ese día el inferido
+ *  bajaba 10 % y, con un precio redondo, piso = tope y la búsqueda arrancaba en UF 0. */
+export function rangoSemanal(p: { precioMinUf: number | null; precioMaxUf: number | null }): { ufMin: number; ufMax: number } | null {
   if (p.precioMaxUf == null || p.precioMaxUf <= 0) return null;
-  const aMano = !!p.editado?.includes("precioMin");
-  const piso = p.precioMinUf != null && p.precioMinUf < p.precioMaxUf ? p.precioMinUf * (aMano ? 1 : 1 - HOLGURA_PISO) : 0;
+  const piso = p.precioMinUf != null && p.precioMinUf > 0 && p.precioMinUf < p.precioMaxUf ? p.precioMinUf : 0;
   return { ufMin: Math.max(0, Math.floor(piso)), ufMax: p.precioMaxUf };
 }
 

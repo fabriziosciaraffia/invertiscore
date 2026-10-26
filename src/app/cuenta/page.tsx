@@ -120,7 +120,7 @@ export default async function CuentaPage() {
             <PerfilBusquedaCasa
               pendientes={[]}
               modalidadRespondida={pp.manual.modalidad != null}
-              inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.editado.includes("precioMin") ? pb.precioMinUf : null, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
+              inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.precioMinUf, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
             />
           ) : (
             <section className="ca-plano-sec" data-casa="perfil">

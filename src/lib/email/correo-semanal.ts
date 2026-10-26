@@ -19,6 +19,7 @@
 // la hora en que Franco los vio publicados («publicados al [hora]»).
 // ─────────────────────────────────────────────────────────────────────────────
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { RANGOS_UF } from "@/lib/deptos/respuesta";
 import { asuntoSemanal, COMO_ENTRAR, MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_VACIO, textoVence, type Visto } from "@/lib/guia/semanal";
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
@@ -303,8 +304,9 @@ export const tarjetaSemanal = tarjeta;
 export const botonRojoSemanal = botonRojo;
 export const parrafoSemanal = parrafo;
 
-/** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. Con el piso elegido a mano (/deptos,
- *  16-oct-2026), el rango: «entre UF 3.000 y 4.000». */
+/** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. Con piso, el rango: «entre UF 3.000 y
+ *  4.000». Si el rango es uno de los chips de /deptos (desde el 26-oct-2026 también el inferido de sus informes), la frase
+ *  del chip: «sobre UF 6.000», no «entre UF 6.000 y 60.000». */
 export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precioMaxUf: number | null; precioMinUf?: number | null; editado?: readonly string[] }): string {
   const dorm = p.dormitorios.map((x) => (x === 0 ? "studio" : String(x)));
   const dTexto = dorm.length === 0 ? null
@@ -312,8 +314,10 @@ export function textoBusca(p: { dormitorios: number[]; comunas: string[]; precio
     : `${dorm.slice(0, -1).join(", ")} o ${dorm[dorm.length - 1]} dormitorios`;
   const cs = p.comunas;
   const cTexto = cs.length === 0 ? null : cs.length === 1 ? cs[0] : `${cs.slice(0, -1).join(", ")} y ${cs[cs.length - 1]}`;
-  const conPiso = p.precioMinUf != null && p.precioMinUf > 0 && !!p.editado?.includes("precioMin");
+  const conPiso = p.precioMinUf != null && p.precioMinUf > 0;
+  const chip = p.precioMaxUf == null ? undefined : RANGOS_UF.find((r) => r.max === p.precioMaxUf && (r.min ?? 0) === (conPiso ? p.precioMinUf : 0));
   const uf = p.precioMaxUf == null ? null
+    : chip ? chip.frase
     : conPiso ? `entre UF ${miles(p.precioMinUf!)} y ${miles(p.precioMaxUf)}`
     : `hasta UF ${miles(p.precioMaxUf)}`;
   return [dTexto, cTexto, uf].filter(Boolean).join(", ");
