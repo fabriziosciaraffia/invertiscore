@@ -65,8 +65,11 @@ export function runCasaTier(): { hard: number } {
   const p = perfilDeBusqueda(filas);
   if (p.comunas.slice().sort().join("|") !== ["Ñuñoa", "San Miguel"].sort().join("|")) F(`1 · las comunas no se suman (con lo elegido primero): ${p.comunas.join(", ")}`);
   if (p.dormitorios.join(",") !== "0,1,2") F(`1 · los dormitorios no son todos los analizados: ${p.dormitorios.join(",")}`);
-  if (p.precioMaxUf !== 4300) F(`1 · el tope no sale del más caro redondeado a UF 100 hacia arriba: ${p.precioMaxUf}`);
-  if (p.precioMinUf !== 2800) F(`1 · el piso no sale del más barato redondeado hacia abajo: ${p.precioMinUf}`);
+  // ⚠ ACTA (26-oct-2026, PERFIL-OFERTA §1) · el rango inferido es el chip de /deptos que contiene el precio, ya no la banda
+  // de UF 100 (tope 4.300 / piso 2.800): del chip del más barato (2.810 → hasta UF 3.000, sin piso) al del más caro
+  // (4.230 → UF 4.000 a 6.000).
+  if (p.precioMaxUf !== 6000) F(`1 · el tope no es el del chip del más caro: ${p.precioMaxUf}`);
+  if (p.precioMinUf !== null) F(`1 · el piso no es el del chip del más barato: ${p.precioMinUf}`);
   if (p.modalidad !== "ltr" || p.piePct !== 15 || p.plazoAnios !== 25) F(`1 · modalidad/pie/plazo no son los del informe más reciente: ${p.modalidad} ${p.piePct} ${p.plazoAnios}`);
   if (p.horizonte !== "meses") F("1 · el horizonte no es la última respuesta");
   if (!p.completo || p.editado.length !== 0) F("1 · el perfil inferido no queda completo o se marca como editado");

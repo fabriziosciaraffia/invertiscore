@@ -77,7 +77,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const f1 = ex.filtrosDePerfil({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 3000, precioMaxUf: 4000, piePct: 20, plazoAnios: 25, editado: ["precioMin"] });
   if (JSON.stringify(f1) !== JSON.stringify(F0)) F(`1 · el perfil no abre tal cual: ${JSON.stringify(f1)}`);
   const f2 = ex.filtrosDePerfil({ comunas: ["Santiago", "Ñuñoa"], dormitorios: [1, 2, 4, 5], precioMinUf: 3000, precioMaxUf: 4000, piePct: 30, plazoAnios: 30, editado: [] });
-  if (!f2 || f2.pie !== 30 || f2.plazo !== 30 || f2.ufMin !== 0 || JSON.stringify(f2.tipologias) !== '["1","2","4"]' || f2.comunas.length !== 2) F(`1 · pie 30 / plazo 30 / piso inferido / tipologías: ${JSON.stringify(f2)}`);
+  // ⚠ ACTA (26-oct-2026, PERFIL-OFERTA §1) · el piso inferido es un chip de /deptos y el mapa abre con él (antes, desde UF 0).
+  if (!f2 || f2.pie !== 30 || f2.plazo !== 30 || f2.ufMin !== 3000 || JSON.stringify(f2.tipologias) !== '["1","2","4"]' || f2.comunas.length !== 2) F(`1 · pie 30 / plazo 30 / piso inferido / tipologías: ${JSON.stringify(f2)}`);
   // ⚠ ACTA (24-oct-2026, goal «cualquier pie y plazo») · el perfil abre con SU pie y SU plazo (el de la lista más cercano), ya no con el de la noche.
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.plazo !== 20) F("1 · el plazo 20 del perfil no abre con 20");
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.pie !== 25) F("1 · el pie 25 del perfil no abre con 25");

@@ -158,6 +158,7 @@ import { runPrimeraSeleccionTier } from "./primera-seleccion-catch-test";
 import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
 import { runPuertaBDashboardTier } from "./puerta-b-dashboard-catch-test";
+import { runPerfilOfertaTier } from "./perfil-oferta-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runAltaOrdenTier } from "./alta-orden-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
@@ -675,6 +676,10 @@ function printSeed(r: SeedReport) {
   // sin saldo mientras el ticket vive, el analizado como fila compacta en su posición, las dos preguntas ocultas para la
   // puerta A, la selección diaria para «comprar ya», el orden, el mapa y el pop-up sin saldo.
   totalHard += (await runPuertaBDashboardTier()).hard;
+  // Tier PERFIL-OFERTA (26-oct-2026, 0 tokens): el rango inferido es el chip de /deptos que contiene el precio (redondo o no,
+  // el mismo), el aviso «Con tu búsqueda no hay deptos que convengan esta semana» con las salidas del correo vacío, los
+  // precios fuera de UF 500 a 50.000 no arman rango y la D solo para cuentas desde el 15-oct. En rojo por mutación.
+  totalHard += runPerfilOfertaTier().hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;

@@ -93,8 +93,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const p = await correr((id) => (["a2", "a3"].includes(id) ? "publicado" : "sin-chequeo"));
     if (p.r.estado !== "pendiente") F("1 · sin cupo para chequear, la selección no queda pendiente");
   }
+  // ⚠ ACTA (26-oct-2026, PERFIL-OFERTA §1) · el piso ya no baja 10 %: el inferido también es un chip de /deptos y se busca tal cual.
   const rg = rangoSemanal({ precioMinUf: 3000, precioMaxUf: 4500 });
-  if (!rg || rg.ufMax !== 4500 || rg.ufMin !== 2700 || rangoSemanal({ precioMinUf: null, precioMaxUf: null }) !== null) F("1 · el rango de precio no es piso −10% al tope");
+  if (!rg || rg.ufMax !== 4500 || rg.ufMin !== 3000 || rangoSemanal({ precioMinUf: null, precioMaxUf: null }) !== null) F("1 · el rango de precio no es del piso al tope");
 
   // 2 · domingo arma, lunes sale
   if (semanaDelEnvio(new Date("2026-10-04T15:00:00Z")) !== "2026-10-05" || semanaDelEnvio(new Date("2026-10-05T12:00:00Z")) !== "2026-10-05" || semanaDelEnvio(new Date("2026-10-07T12:00:00Z")) !== "2026-10-12")
@@ -296,7 +297,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     const fi = filaDesdeInforme({ created_at: "2026-08-01T00:00:00Z", comuna: "Ñuñoa", input_data: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, precio: 4320, piePct: 20, plazoCredito: 25 } });
     if (fi.tipologia !== "2D2B" || fi.comuna !== "Ñuñoa" || fi.presupuestoUf !== 4320 || fi.piePct !== 20 || fi.plazoAnios !== 25 || fi.modalidad !== "ltr") F(`11 · el informe no se lee como fila de perfil (${JSON.stringify(fi)})`);
     const pf = perfilDeBusqueda([fi]);
-    if (!pf.completo || pf.modalidad !== "ltr" || pf.precioMaxUf !== 4400 || pf.dormitorios.join() !== "2") F(`11 · un informe solo no arma un perfil completo (${JSON.stringify(pf)})`);
+    // ⚠ ACTA (26-oct-2026, PERFIL-OFERTA §1) · UF 4.320 arma el chip UF 4.000 a 6.000, ya no el tope 4.400.
+    if (!pf.completo || pf.modalidad !== "ltr" || pf.precioMaxUf !== 6000 || pf.precioMinUf !== 4000 || pf.dormitorios.join() !== "2") F(`11 · un informe solo no arma un perfil completo (${JSON.stringify(pf)})`);
     const pbs = sinComentarios(leer("src/lib/perfil-busqueda-servidor.ts"));
     if (!/\.eq\("user_id", userId\)\.eq\("tipo_analisis", "long-term"\)/.test(pbs) || !/if \(conFila\.has\(a\.id as string\)\) continue;\s*const fila = filaDesdeInforme\([^;]*\);\s*informes\.push\(fila\);/.test(pbs)) F("11 · el perfil no suma los informes de renta larga sin fila de perfil");
     const pres = correoSemanal({ ...base, variante: "tarjetas", presentacion: true }).html;

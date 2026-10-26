@@ -275,8 +275,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!p.completo || p.precioMinUf !== 3000 || !p.editado.includes("precioMin")) F("3 · sin informes, el perfil manual no tiene con qué buscar o pierde el piso");
       const r = rangoSemanal(p);
       if (!r || r.ufMin !== 3000 || r.ufMax !== 4000) F(`3 · el rango elegido a mano se busca con holgura: ${JSON.stringify(r)}`);
+      // ⚠ ACTA (26-oct-2026, PERFIL-OFERTA §1) · el piso inferido ya no lleva holgura: es un chip de /deptos, como el elegido.
       const inferido = rangoSemanal({ precioMinUf: 3000, precioMaxUf: 4000 });
-      if (!inferido || inferido.ufMin !== 2700) F("3 · el piso inferido de los informes perdió su holgura");
+      if (!inferido || inferido.ufMin !== 3000) F("3 · el piso inferido de los informes se busca con holgura");
       if (textoBusca(p) !== "2 dormitorios, Ñuñoa, entre UF 3.000 y 4.000") F(`3 · el correo no dice el rango: ${textoBusca(p)}`);
       if (!validarCambiosPerfil({ precioMinUf: 3000, precioMaxUf: 4000 }).ok || validarCambiosPerfil({ precioMinUf: 4000, precioMaxUf: 3000 }).ok) F("3 · el piso del perfil no se valida contra el tope");
       const o = origenSintetico("u1", { piePct: null, plazoAnios: null, comunas: ["Ñuñoa"], dormitorios: [2] }, { tasa: 4.07 });
