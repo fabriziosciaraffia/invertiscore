@@ -167,6 +167,7 @@ import { runRegistroMetaTier } from "./registro-meta-catch-test";
 import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runCargaTier } from "./carga-catch-test";
 import { runExplorarTier } from "./explorar-catch-test";
+import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -702,6 +703,10 @@ function printSeed(r: SeedReport) {
   // Comprar de a mil, explorar no gasta, sin saldo el mapa y el aviso E, el mapa después del primer pintado, el pop-up con
   // «Cambiar», la medición y el botón del dashboard—. ──
   totalHard += (await runExplorarTier()).hard;
+  // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
+  // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
+  // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
+  totalHard += (await runPautaArreglosTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;
