@@ -66,7 +66,8 @@ export function avisoSinOferta(p: { piePct: number | null; comunas: string[] }, 
   if (enSus.reduce((s, c) => s + suyos(c), 0) > 0) return null;
   const salidas: SalidaSinOferta[] = [];
   const n30 = enSus.reduce((s, c) => s + c.comprar30, 0);
-  if (!conPie30 && n30 > 0) salidas.push({ ajuste: { tipo: "pie", pie: 30 }, texto: SIN_OFERTA.conPie(30, n30), boton: SIN_OFERTA.botonPie(30), n: n30 });
+  // Con pie 30 % o más, n30 ES su vara y ya dio cero: el pie 30 nunca se le ofrece (no hace falta preguntarlo aparte).
+  if (n30 > 0) salidas.push({ ajuste: { tipo: "pie", pie: 30 }, texto: SIN_OFERTA.conPie(30, n30), boton: SIN_OFERTA.botonPie(30), n: n30 });
   const vecina = vecinas
     .filter((c) => !comunas.includes(c.comuna) && COMUNAS_OK.has(c.comuna) && suyos(c) > 0)
     .sort((a, b) => suyos(b) - suyos(a) || a.comuna.localeCompare(b.comuna))[0];
