@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
+import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
 import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido } from "./email/correos";
 
@@ -34,6 +35,13 @@ async function enviarCorreo(
   const resend = getResend();
   if (!resend) return { data: null, error: null };
   const to = Array.isArray(mensaje.to) ? mensaje.to[0] : mensaje.to;
+  // A quién no se le manda (26-oct-2026, correo-destino.ts): ni a @refranco.ai que no existe ni a una cuenta de prueba sin
+  // `recibe_correos`. Se trata como «sin RESEND_API_KEY»: el llamador sigue, sin correo.
+  const bloqueo = destinoBloqueado(String(to ?? ""), userId, await cuentasDePruebaSinCorreo());
+  if (bloqueo) {
+    console.info(`[email] ${tipo} no sale: ${bloqueo}`);
+    return { data: null, error: null };
+  }
   const distinctId = identidadCorreo(String(to ?? ""), userId);
   const res = await resend.emails.send({ ...mensaje, tags: [...(mensaje.tags ?? []), ...tagsCorreo(tipo, distinctId)] } as MensajeResend);
   if (!res.error) {
