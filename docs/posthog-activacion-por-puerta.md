@@ -8,7 +8,7 @@
 
 | Evento | Quién lo emite | Qué marca |
 | --- | --- | --- |
-| `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico) |
+| `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico, solo cuentas creadas desde el 15-oct-2026). Desde el 26-oct-2026 una cuenta de antes del 15-oct no recibe D (`puertaAdmitida` y la RPC); las 24 que ya la tenían recibieron un `$set` con `puerta` = `antes`, que el panel lee «Antes de las puertas» |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
 | `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`), y desde el 21-oct-2026 también al desbloquearse uno por pago (la compra suelta atada al informe, en `payments/confirm`) | analizó algo; lleva `via` (wizard · guia · semanal · reanalisis · pago · explorar). Con via = pago, el informe que abrió un pago, una vez (un reenvío de Flow no lo repite); con via = explorar, el informe pedido desde el mapa (23-oct-2026) |
 | `explorar_vista` | la página `/explorar` al pintarse en el servidor (`fuente` = pagina) y `GET /api/explorar` con cada cambio de chip (`fuente` = cambio), desde el 23-oct-2026 (`src/lib/explorar/servidor.ts`) | miró el mapa; lleva los filtros (`comunas`, `tipologias`, `uf_min`, `uf_max`, `pie`, `plazo`), `n` (cuántos pines convienen; null en la vista de la página cuando la combinación se calcula en el navegador), `analizados` (cuántos de esos ya analizó) y, desde el 24-oct-2026, `de_la_noche` (la combinación tiene columna de la noche), `calculados` (cuántos avisos se calcularon en el momento) y `ms` (cuánto tardó la lectura: así se mide en producción cuánto cuesta una combinación nueva) |
@@ -65,7 +65,7 @@ with base as (
   having t_reg > toDateTime('2000-01-02') and t_reg >= now() - interval 26 week
 )
 select toStartOfWeek(t_reg, 1) as semana,
-  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', 'sin puerta') as puerta,
+  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', puerta = 'antes', 'Antes de las puertas', 'sin puerta') as puerta,
   count() as registrados,
   countIf(t_sel > toDateTime('2000-01-02') and t_sel < t_reg + interval 1 hour) as vieron_seleccion_1h,
   countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 1 hour, analisis)) as analizaron_1h,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createAdminServiceClient } from "@/lib/admin-auth";
 import { guardarAtribucion, sanearAtribucion, tieneAlgo } from "@/lib/attribution";
+import { puertaAdmitida } from "@/lib/atribucion-puerta";
 
 /**
  * Segunda mitad de la atribución: los UTM que viven en localStorage.
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-    const datos = sanearAtribucion(body);
+    const saneados = sanearAtribucion(body);
+    // ANTES DE LAS PUERTAS (26-oct-2026): la D por defecto de una cuenta de antes del 15-oct no se guarda.
+    const puerta = puertaAdmitida(saneados.puerta ?? null, user.created_at);
+    const datos = { ...saneados, puerta, puerta_detalle: puerta ? saneados.puerta_detalle : null };
 
     if (!tieneAlgo(datos)) {
       return NextResponse.json({ ok: true, skipped: "sin datos" });

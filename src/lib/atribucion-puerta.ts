@@ -5,7 +5,13 @@
  *   B · página de selección — dejó el correo en /deptos (16-oct-2026): la página marca `marcarPuertaCandidata("B",
  *                              "deptos")` y el alta la fija en el servidor (/api/deptos/alta).
  *   C · referido           — llegó por un enlace que le pasaron: un informe compartido o un `?ref=`.
- *   D · orgánico           — todo lo demás (el valor por defecto).
+ *   D · orgánico           — todo lo demás (el valor por defecto), SOLO para cuentas creadas desde el 15-oct-2026.
+ *
+ * ANTES DE LAS PUERTAS (26-oct-2026, decisión de Fabrizio): una cuenta creada antes del 15-oct-2026 (`INICIO_PUERTAS`, la
+ * medianoche de Chile) no entró por ninguna puerta medida. Cuando vuelve a la app su navegador manda D —no sabe nada— y
+ * hasta el 26-oct eso la dejaba como «D · orgánico» en la semana en que volvió (23 cuentas reales ese día). Ahora esa D
+ * no se guarda (`puertaAdmitida`, y la misma regla en la RPC): queda sin puerta, que se lee «antes de las puertas»
+ * (`etiquetaPuerta`). A, B y C sí se guardan a cualquier cuenta: esas las marca un lugar concreto, no el valor por defecto.
  *
  * Se guarda en `user_attribution.puerta`, junto a los UTM. La regla —la misma de la RPC `upsert_user_attribution`—:
  * la primera gana, salvo que D cede ante A, B o C (D es lo que manda el navegador cuando no sabe nada, y puede llegar
@@ -21,6 +27,29 @@
 export type Puerta = "A" | "B" | "C" | "D";
 export const PUERTAS: Record<Puerta, string> = { A: "informe", B: "página de selección", C: "referido", D: "orgánico" };
 export const esPuerta = (v: unknown): v is Puerta => v === "A" || v === "B" || v === "C" || v === "D";
+
+/** Desde cuándo se miden las puertas: el 15-oct-2026 a medianoche en Chile (UTC−3 en octubre). La RPC
+ *  `upsert_user_attribution` usa el mismo instante (migración 20261026_puerta_d_desde_15oct). */
+export const INICIO_PUERTAS = "2026-10-15T03:00:00Z";
+
+/** ¿La cuenta es de antes de las puertas? Sin fecha, no se sabe: se la trata como nueva. */
+export function esAntesDeLasPuertas(creadaAt: string | null | undefined): boolean {
+  const t = creadaAt ? Date.parse(creadaAt) : NaN;
+  return Number.isFinite(t) && t < Date.parse(INICIO_PUERTAS);
+}
+
+/** La puerta que se acepta guardar para esta cuenta: la D, solo si la cuenta es de desde el 15-oct-2026. */
+export function puertaAdmitida(puerta: Puerta | null, creadaAt: string | null | undefined): Puerta | null {
+  if (puerta === "D" && esAntesDeLasPuertas(creadaAt)) return null;
+  return puerta;
+}
+
+/** Cómo se lee la puerta en un reporte: la letra con su nombre, o «antes de las puertas» para la cuenta vieja sin puerta. */
+export const ANTES_DE_LAS_PUERTAS = "antes de las puertas";
+export function etiquetaPuerta(puerta: Puerta | null, creadaAt: string | null | undefined): string {
+  if (puerta) return `${puerta} · ${PUERTAS[puerta]}`;
+  return esAntesDeLasPuertas(creadaAt) ? ANTES_DE_LAS_PUERTAS : "sin puerta todavía";
+}
 
 /** La puerta que queda guardada cuando llega una nueva: la regla de la RPC. */
 export function fusionarPuerta(actual: Puerta | null, nueva: Puerta | null): Puerta | null {
