@@ -15,8 +15,13 @@ import { nombreReal } from "@/lib/welcome";
 import { sendInmediatoEmail, sendPreguntaYaEmail } from "@/lib/email";
 import { textoBusca } from "@/lib/email/correo-semanal";
 import { correoInmediato, correoPreguntaYa } from "@/lib/email/correo-inmediato";
-import { VENTANA_NUEVOS_HORAS, RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSeleccionDiaria, type HorizonteCompra } from "./inmediato";
+import { RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSeleccionDiaria, ventanaNuevosHoras, type HorizonteCompra } from "./inmediato";
 import { avisadosAlMomento, prepararSeleccion, publicadoConPresupuesto, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
+import { prepararSeleccionStr } from "./semanal-str-servidor";
+import type { Candidato } from "./semanal-candidatos";
+import type { Combinacion, Evaluado } from "./seleccion";
+import type { EstadoPublicacion } from "./publicacion";
+import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 
 const RUTA = "lib/guia/inmediato";
 const fecha = (s: string | null | undefined) => (s ? new Date(s) : null);
@@ -53,6 +58,41 @@ async function preguntar(admin: SupabaseClient, userId: string, yaDesde: Date, s
   return "pregunta";
 }
 
+/** Lo que hace falta de una preparación (renta larga o corta) para elegir el aviso del día. */
+export interface PreparacionInmediato {
+  perfil: PerfilBusqueda;
+  origen: { analysisId: string | null };
+  combo: Combinacion;
+  candidatos: Candidato[];
+  evaluar: (c: Candidato) => Promise<Evaluado | null>;
+}
+
+/**
+ * QUÉ LLEVA LA SELECCIÓN DEL DÍA (26-oct-2026). Hasta hoy el aviso era solo de renta larga: quien dijo «Quiero comprar
+ * ya» con un perfil de renta corta —dos de las tres personas reales con «Ya»— quedaba «sin-perfil» todos los días y no
+ * recibía nada, aunque el dashboard le promete una selección diaria. Ahora: primero renta larga; si no tiene ese perfil,
+ * renta corta, con los nuevos de su zona estimados como el bloque corto del semanal. La primera de cada persona mira los
+ * nuevos de la semana (`ventanaNuevosHoras`). null: no tiene con qué buscar. Lo prueba el tier PAUTA-ARREGLOS.
+ */
+export async function seleccionDelDia(
+  deps: {
+    ltr: (nuevosDesde: string) => Promise<PreparacionInmediato | null>;
+    str: (nuevosDesde: string) => Promise<PreparacionInmediato | null>;
+    avisados: () => Promise<ReadonlySet<string>>;
+    publicado: (c: Candidato) => Promise<EstadoPublicacion>;
+    primera: () => Promise<boolean>;
+  },
+  ahora: Date = new Date(),
+): Promise<{ modalidad: "ltr" | "str"; prep: PreparacionInmediato; elegidos: Array<{ c: Candidato; ev: Evaluado }>; nuevosDesde: string } | null> {
+  const nuevosDesde = new Date(ahora.getTime() - ventanaNuevosHoras(await deps.primera()) * 3600_000).toISOString().replace("Z", "");
+  const ltr = await deps.ltr(nuevosDesde);
+  const str = ltr ? null : await deps.str(nuevosDesde);
+  const prep = ltr ?? str;
+  if (!prep) return null;
+  const elegidos = await elegirInmediato(prep.candidatos, await deps.avisados(), prep.evaluar, deps.publicado);
+  return { modalidad: ltr ? "ltr" : "str", prep, elegidos, nuevosDesde };
+}
+
 /** El aviso del día de una persona (o la pregunta, si su «Ya» cumplió 60 días sin compra). */
 export async function avisarPersona(
   admin: SupabaseClient,
@@ -77,11 +117,18 @@ export async function avisarPersona(
   const { data: hoy } = await admin.from("avisos_inmediatos").select("id, enviado_at").eq("user_id", userId).eq("dia", dia).maybeSingle();
   if (hoy?.enviado_at) return "ya";
 
-  const nuevosDesde = new Date(ahora.getTime() - VENTANA_NUEVOS_HORAS * 3600_000).toISOString().replace("Z", "");
-  const prep = await prepararSeleccion(admin, userId, cfg, { nuevosDesde });
-  if (prep.tipo !== "lista") return "no";
-  const { perfil, origen, combo, candidatos, evaluar } = prep.p;
-  const elegidos = await elegirInmediato(candidatos, await avisadosAlMomento(admin, userId), evaluar, publicadoConPresupuesto(admin, presupuesto));
+  const sel = await seleccionDelDia({
+    ltr: async (nuevosDesde) => { const p = await prepararSeleccion(admin, userId, cfg, { nuevosDesde, perfilLeido: lp }); return p.tipo === "lista" ? p.p : null; },
+    str: async (nuevosDesde) => { const p = await prepararSeleccionStr(admin, userId, cfg, { perfilStr: lp.perfilStr, soloManual: true }, undefined, { nuevosDesde }); return p?.tipo === "lista" ? p.p : null; },
+    avisados: () => avisadosAlMomento(admin, userId),
+    publicado: publicadoConPresupuesto(admin, presupuesto),
+    primera: async () => {
+      const { count } = await admin.from("avisos_inmediatos").select("id", { count: "exact", head: true }).eq("user_id", userId).not("enviado_at", "is", null);
+      return (count ?? 0) === 0;
+    },
+  }, ahora);
+  if (!sel) return "no";
+  const { modalidad, prep: { perfil, origen, combo }, elegidos } = sel;
   // La selección diaria (24-oct-2026): si hoy no hay nuevos que convengan, no se manda nada.
   if (!mandaSeleccionDiaria(elegidos.length)) return "nada";
 
@@ -89,7 +136,7 @@ export async function avisarPersona(
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
   }));
-  const fila = { user_id: userId, dia, items, aviso_ids: items.map((i) => i.avisoId), combinacion: combo, perfil, origen_analysis_id: origen.analysisId, enviado_at: new Date().toISOString() };
+  const fila = { user_id: userId, dia, items, aviso_ids: items.map((i) => i.avisoId), combinacion: combo, perfil, origen_analysis_id: origen.analysisId, modalidad, enviado_at: new Date().toISOString() };
   // Se toma la fila del día ANTES de mandar: dos corridas no mandan dos correos el mismo día.
   const { data: tomada } = hoy
     ? await admin.from("avisos_inmediatos").update(fila).eq("id", hoy.id).is("enviado_at", null).select("id, token").maybeSingle()

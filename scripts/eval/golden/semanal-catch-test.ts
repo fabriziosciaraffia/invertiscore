@@ -398,7 +398,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (SEMANAL_PAGINA.caido !== "Este ya no está publicado") F("13 · el aviso de caído no es «Este ya no está publicado»");
     // el servidor, la página y el cron
     const sv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-    if (!/items = \[\.\.\.items, \{ \.\.\.itemDe\(r\.c, r\.ev\), reemplazaA: f\.item\.avisoId \}\];/.test(sv) || !/await admin\.from\(sel\.tabla\)\.update\(corta \? \{ items_str: items \} : \{ items \}\)\.eq\("id", sel\.id\);/.test(sv)) F("13 · el reemplazo no se guarda en la selección");
+    if (!/items = \[\.\.\.items, \{ \.\.\.itemDe\(r\.c, r\.ev\), reemplazaA: f\.item\.avisoId \}\];/.test(sv) || !/await admin\.from\(sel\.tabla\)\.update\(corta && sel\.tabla === "semanal_selecciones" \? \{ items_str: items \} : \{ items \}\)\.eq\("id", sel\.id\);/.test(sv)) F("13 · el reemplazo no se guarda en la selección");
+    // ⚠ ACTA (26-oct-2026) · la selección diaria de renta corta vive en avisos_inmediatos.items (una fila, una modalidad): el
+    // reemplazo escribe `items_str` solo en semanal_selecciones.
     if (!/\(await chequearPublicacion\(\{ id: c\.avisoId, url: c\.url, edificio: claveEdificio\(c\) \}, "clic", almacen, bajarFicha\)\)\.estado/.test(sv) || !/const pool = \[\.\.\.prep\.p\.candidatos, \.\.\.\(await prep\.p\.respaldo\.vecinas\(\)/.test(sv)) F("13 · el reemplazo no se chequea en el momento (o no mira las vecinas)");
     if (!/const x = await chequearPublicacion\(\{ id: avisoId, url: f\.url, edificio: claveEdificio\(f\) \}, "guia", almacen, bajarFicha\);/.test(sv)) F("13 · el rechequeo del domingo da por vigente lo chequeado en la semana");
     if (!/\.update\(\{ estado: "pendiente" \}\)\.in\("id", caidas\.map\(\(s\) => s\.id\)\)\.eq\("estado", "armada"\)\.is\("enviada_at", null\)/.test(sv)) F("13 · la selección que perdió un aviso no se vuelve a armar");

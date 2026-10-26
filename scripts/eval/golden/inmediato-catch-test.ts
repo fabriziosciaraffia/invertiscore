@@ -56,10 +56,15 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     if (uno.length !== 1) F("1 · con un solo Comprar publicado no hay aviso");
     const sinCupo = await elegirInmediato([cs[2]], new Set(), ev, async () => "sin-chequeo");
     if (sinCupo.length !== 0) F("1 · un depto sin chequear entra al aviso");
-    if (VENTANA_NUEVOS_HORAS !== 48 || !/const nuevosDesde = new Date\(ahora\.getTime\(\) - VENTANA_NUEVOS_HORAS \* 3600_000\)/.test(srv) || !/await prepararSeleccion\(admin, userId, cfg, \{ nuevosDesde \}\)/.test(srv)) F("1 · el aviso no prepara con los avisos nuevos de las 48 horas");
+    // ⚠ ACTA (26-oct-2026, goal «cuatro arreglos antes de la pauta») · la ventana es `ventanaNuevosHoras(primera)`: 48 horas
+    // desde la segunda selección diaria y la semana para la primera (antes, 48 horas siempre: en tres semanas no salió
+    // ninguna). La preparación va por `seleccionDelDia` con el perfil ya leído; el tier PAUTA-ARREGLOS prueba la regla.
+    if (VENTANA_NUEVOS_HORAS !== 48 || !/ventanaNuevosHoras\(await deps\.primera\(\)\) \* 3600_000/.test(srv) || !/await prepararSeleccion\(admin, userId, cfg, \{ nuevosDesde, perfilLeido: lp \}\)/.test(srv)) F("1 · el aviso no prepara con los avisos nuevos de las 48 horas");
     if (!/and sp\.created_at >= nuevos_desde/.test(mig) || !/create or replace function public\.inmediato_candidatos\(/.test(mig) || !/revoke execute on function public\.inmediato_candidatos[^;]*from public, anon, authenticated;/.test(mig)) F("1 · la consulta no filtra los avisos nuevos (o queda abierta al cliente)");
     if (!/opts\.nuevosDesde\s*\? await admin\.rpc\("inmediato_candidatos", \{\s*comunas, dorms: perfil\.dormitorios, uf_min: rango\.ufMin, uf_max: rango\.ufMax, nuevos_desde: opts\.nuevosDesde/.test(sem)) F("1 · la preparación no usa la consulta de los avisos nuevos con su perfil");
-    if (!/elegirInmediato\(candidatos, await avisadosAlMomento\(admin, userId\), evaluar, publicadoConPresupuesto\(admin, presupuesto\)\)/.test(srv)) F("1 · el aviso no elige con su evaluación y el chequeo de la ficha");
+    // ⚠ ACTA (26-oct-2026) · la elección vive en `seleccionDelDia` (renta larga o corta) y avisarPersona le pasa lo avisado y
+    // el chequeo de la ficha con el presupuesto de siempre.
+    if (!/elegirInmediato\(prep\.candidatos, await deps\.avisados\(\), prep\.evaluar, deps\.publicado\)/.test(srv) || !/avisados: \(\) => avisadosAlMomento\(admin, userId\)/.test(srv) || !/publicado: publicadoConPresupuesto\(admin, presupuesto\)/.test(srv)) F("1 · el aviso no elige con su evaluación y el chequeo de la ficha");
     const cron = vj.match(/"path": "\/api\/cron\/aviso-inmediato",\s*"schedule": "(\d+) (\d+) \* \* \*"/);
     const ev2 = vj.match(/"path": "\/api\/cron\/evaluar-avisos[^"]*",\s*"schedule": "(\d+) ([\d,]+) \* \* \*"/);
     const ultimaEval = ev2 ? Math.max(...ev2[2].split(",").map(Number)) * 60 + Number(ev2[1]) : NaN;

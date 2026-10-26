@@ -251,6 +251,9 @@ export async function prepararSeleccionStr(
   cfg: { uf: number; tasa: number },
   pp: Pick<PerfilDeLaPersona, "perfilStr"> & { soloManual?: boolean },
   vistosLeidos?: Vistos,
+  // La selección diaria de renta corta (26-oct-2026, inmediato-servidor.ts): los avisos NUEVOS desde esa hora, no los vistos
+  // en la semana, por la RPC gemela (`inmediato_candidatos_str`).
+  opts: { nuevosDesde?: string } = {},
 ): Promise<PreparadaStr | null> {
   const perfil = pp.perfilStr;
   if (!perfil) return null;
@@ -263,10 +266,14 @@ export async function prepararSeleccionStr(
 
   const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
     if (comunas.length === 0) return [];
-    const { data, error } = await admin.rpc("semanal_candidatos_str", {
-      comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, por_celda: POR_CELDA_STR,
-    });
-    if (error) throw new Error(`semanal_candidatos_str: ${error.message}`);
+    const { data, error } = opts.nuevosDesde
+      ? await admin.rpc("inmediato_candidatos_str", {
+          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, nuevos_desde: opts.nuevosDesde, por_celda: POR_CELDA_STR,
+        })
+      : await admin.rpc("semanal_candidatos_str", {
+          comunas, dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, por_celda: POR_CELDA_STR,
+        });
+    if (error) throw new Error(`${opts.nuevosDesde ? "inmediato" : "semanal"}_candidatos_str: ${error.message}`);
     const out: Candidato[] = [];
     for (const c of ((data ?? []) as FilaRpc[]).map(candidatoDeFila)) {
       const zona = (await zonasDeComuna(admin, c.comuna)).get(celdaDormitorios(c.dormitorios));

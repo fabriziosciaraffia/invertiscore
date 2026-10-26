@@ -23,6 +23,15 @@ export const TOPE_INMEDIATO = 5;
 export const MAX_CANDIDATOS_INMEDIATO = 40;
 /** «Nuevo»: entró al listado en las últimas 48 horas (la evaluación corre dos veces al día). */
 export const VENTANA_NUEVOS_HORAS = 48;
+/**
+ * LA PRIMERA SELECCIÓN DIARIA (26-oct-2026). Con «nuevo» = 48 horas la primera casi nunca llegaba: en tres semanas
+ * `avisos_inmediatos` no tuvo una fila, porque una comuna y una tipología juntan pocos avisos nuevos en dos días. La
+ * primera de cada persona mira los nuevos de la semana; desde la segunda, los de 48 horas.
+ */
+export const VENTANA_PRIMERA_HORAS = 7 * 24;
+export function ventanaNuevosHoras(primera: boolean): number {
+  return primera ? VENTANA_PRIMERA_HORAS : VENTANA_NUEVOS_HORAS;
+}
 /** Cuántos días atrás miran el semanal y el aviso para no repetir un depto ya avisado. */
 export const DIAS_NO_REPETIR = 30;
 

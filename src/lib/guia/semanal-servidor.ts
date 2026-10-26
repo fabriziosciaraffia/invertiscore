@@ -446,7 +446,8 @@ export async function seleccionViva(
         items = [...items, { ...itemDe(r.c, r.ev), reemplazaA: f.item.avisoId }];
       }
       if (items.length > antes) {
-        const { error } = await admin.from(sel.tabla).update(corta ? { items_str: items } : { items }).eq("id", sel.id);
+        // `avisos_inmediatos` guarda la selección diaria de renta corta en `items` (26-oct-2026: una fila, una modalidad).
+        const { error } = await admin.from(sel.tabla).update(corta && sel.tabla === "semanal_selecciones" ? { items_str: items } : { items }).eq("id", sel.id);
         reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-reemplazo", userId: sel.userId });
       }
     }
@@ -565,12 +566,17 @@ export async function seleccionPorToken(admin: SupabaseClient, token: string): P
   if (!/^[0-9a-f]{20,80}$/i.test(token)) return null;
   const { data: s } = await admin.from("semanal_selecciones").select(COLUMNAS_PAGINA).eq("token", token).maybeSingle();
   if (s) return seleccionDeFila(s as Record<string, unknown>);
-  const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id, enviado_at").eq("token", token).not("enviado_at", "is", null).maybeSingle();
+  const { data: a } = await admin.from("avisos_inmediatos").select("id, user_id, dia, items, combinacion, origen_analysis_id, enviado_at, modalidad").eq("token", token).not("enviado_at", "is", null).maybeSingle();
   if (!a) return null;
+  const itemsA = (a.items ?? []) as ItemSemanal[];
+  const combinacionA = (a.combinacion ?? null) as Combinacion | null;
+  const origenA = (a.origen_analysis_id as string | null) ?? null;
+  // La selección diaria de renta corta (26-oct-2026): sus deptos son el bloque corto de la página, que analiza en renta corta.
+  const corta = a.modalidad === "str";
   return {
-    fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: (a.items ?? []) as ItemSemanal[],
-    combinacion: (a.combinacion ?? null) as Combinacion | null, origen_analysis_id: (a.origen_analysis_id as string | null) ?? null, variante: null,
-    enviadaAt: (a.enviado_at as string | null) ?? null, conLargo: true, corto: null, token,
+    fuente: "inmediato", id: a.id as string, user_id: a.user_id as string, semana: a.dia as string, items: corta ? [] : itemsA,
+    combinacion: corta ? null : combinacionA, origen_analysis_id: corta ? null : origenA, variante: null,
+    enviadaAt: (a.enviado_at as string | null) ?? null, conLargo: !corta, corto: corta ? { items: itemsA, combinacion: combinacionA, origenId: origenA } : null, token,
   };
 }
 
