@@ -148,6 +148,25 @@ export function idDeLaVisita(p: { userId: string | null; consentimiento: Consent
   return { id: conocida ?? `visita:${p.visita}`, conocida: !!conocida };
 }
 
+/**
+ * LOS ESCÁNERES QUE POSTHOG CUENTA COMO PERSONAS (26-oct-2026, reporte del lunes: 25 de 49 vistas de la landing en una
+ * semana). Pasan el filtro de `esRobot` —no se anuncian como robot de vista previa— y PostHog los marca «Regular». Se
+ * reconocen por el agente (un escáner que se nombra, o un agente que no empieza con «Mozilla/», o que trae la cabecera
+ * pegada: «User-Agent:Mozilla…») o por el comportamiento: un navegador que carga una página manda `Accept-Language` y,
+ * desde 2023 todos, `Sec-Fetch-Mode`; un script no manda ninguna de las dos. La vista sale igual, marcada `robot: true`
+ * con su motivo, así se puede contar cuánto pesa y ningún panel la toma por una llegada.
+ */
+const ESCANER = /nomorevibe|cve-\d|hexide|indexer|scanner|scan\/|probe|checker|leakix|l9scan|zgrab|masscan|nuclei|httpx|censys|shodan|expanse|netcraft|uptime|monitor|^user-agent:/i;
+
+export type MotivoRobot = "agente" | "comportamiento";
+
+export function robotDeVisita(agente: string | null | undefined, cabeceras?: { get(nombre: string): string | null } | null): MotivoRobot | null {
+  const a = (agente ?? "").trim();
+  if (!/^Mozilla\//.test(a) || ESCANER.test(a)) return "agente";
+  if (cabeceras && cabeceras.get("accept-language") == null && cabeceras.get("sec-fetch-mode") == null) return "comportamiento";
+  return null;
+}
+
 /** El evento de la vista, o null si no es una visita (un robot, un refresco de Next). */
 export function eventoVistaEntrada(p: {
   pagina: PaginaEntrada;
@@ -163,6 +182,8 @@ export function eventoVistaEntrada(p: {
   visita: string;
   esCarga: boolean;
   agente: string | null;
+  /** Las cabeceras del pedido: con ellas se reconoce al escáner por su comportamiento (`robotDeVisita`). */
+  cabeceras?: { get(nombre: string): string | null } | null;
   /** Una visita de QA (`esVisitaDePrueba`): queda marcada y el panel la saca. */
   prueba?: boolean;
   /** La cuenta con sesión aunque la vista no vaya a su nombre: si es una cuenta de prueba, la vista sale marcada. */
@@ -171,6 +192,7 @@ export function eventoVistaEntrada(p: {
   extra?: Record<string, unknown>;
 }): EventoServidor | null {
   if (!p.esCarga || esRobot(p.agente)) return null;
+  const robot = robotDeVisita(p.agente, p.cabeceras);
   const permiso = conPermiso(p.consentimiento);
   const { id, conocida } = idDeLaVisita(p);
   return {
@@ -184,6 +206,8 @@ export function eventoVistaEntrada(p: {
       ...datosDeLlegada(p.search, p.referer, permiso),
       consentimiento: permiso ? "si" : "no",
       prueba: !!p.prueba,
+      robot: !!robot,
+      ...(robot ? { robot_motivo: robot } : {}),
       origen: "servidor",
       $pathname: p.ruta,
       // El agente de la persona, como lo manda el navegador con o sin consentimiento: sin él PostHog clasifica todo evento

@@ -5,6 +5,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { filtrosDeUrl } from "@/lib/explorar/explorar";
 import { cargarExplorar, eventoExplorarVista, explorarCerradoPara, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
+import { robotDeVisita } from "@/lib/vista-entrada";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar?c=…&t=…&r=min-max&p=20&z=25 (23-oct-2026): los pines del mapa para una búsqueda, con la evaluación
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     const d = await cargarExplorar(admin, user, filtros);
     if (sp.get("evento") === "1") {
       const analizados = d.pines.filter((p) => d.analizados[p.avisoId]).length;
-      void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados, fuente: "cambio", cuenta: d.cuenta })).catch(() => false);
+      void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados, fuente: "cambio", cuenta: d.cuenta, robot: robotDeVisita(request.headers.get("user-agent"), request.headers) })).catch(() => false);
     }
     return NextResponse.json(d, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

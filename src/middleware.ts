@@ -66,6 +66,7 @@ function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent
     visita,
     esCarga: esCargaDePagina(request.headers),
     agente: request.headers.get("user-agent"),
+    cabeceras: request.headers,
     prueba: esVisitaDePrueba(request.nextUrl.search, request.cookies.get(COOKIE_PRUEBA)?.value),
     // La marca de cuenta de prueba (21-oct-2026): la sesión que leyó el middleware, o en la landing (que no la lee) la
     // cookie de Supabase, sin verificar: solo marca la vista.

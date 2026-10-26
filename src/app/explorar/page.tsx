@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -9,6 +10,7 @@ import { esCombinacionDeLaNoche, EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { cargarExplorar, eventoExplorarVista, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
 import { portadaDeptos } from "@/lib/deptos/portada";
+import { robotDeVisita } from "@/lib/vista-entrada";
 import { ExplorarCliente } from "./explorar-cliente";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +49,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   // El total de anoche en Santiago (el de /deptos, cacheado): el aviso sin saldo lo dice (24-oct-2026).
   const [d, portada] = await Promise.all([cargarExplorar(admin, user, filtros, new Date(), { pines: noche }), portadaDeptos()]);
   const analizadosN = d.pines.filter((p) => d.analizados[p.avisoId]).length;
-  void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: noche ? d.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d.cuenta })).catch(() => false);
+  void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: noche ? d.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d.cuenta, robot: robotDeVisita(headers().get("user-agent"), headers()) })).catch(() => false);
   const a = sp.get("a");
   return (
     <div className="ex-pagina" data-explorar="pagina">

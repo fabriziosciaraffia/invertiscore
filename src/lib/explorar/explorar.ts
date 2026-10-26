@@ -355,6 +355,10 @@ export const EXPLORAR_COPY = {
 } as const;
 
 /** El aviso E (4-ticket-y-popups.html): «Explorar los 312» sin saldo. El mapa se ve igual; esto va encima y se cierra. */
+/** Los eventos del navegador en Explorar (26-oct-2026): tocar un pin del mapa y ver el aviso sin saldo. Los del servidor
+ *  («explorar_vista», «explorar_analiza») viven en servidor.ts. */
+export const EVENTOS_EXPLORAR = { pin: "explorar_pin", aviso: "explorar_aviso" } as const;
+
 export const AVISO_SIN_SALDO = {
   sobre: "Explorar el mapa",
   /** Con el total de anoche en todo Santiago (24-oct-2026), el mismo del botón del dashboard y de /deptos. */

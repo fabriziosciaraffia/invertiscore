@@ -13,7 +13,8 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { AVISO_SIN_SALDO } from "@/lib/explorar/explorar";
+import { AVISO_SIN_SALDO, EVENTOS_EXPLORAR } from "@/lib/explorar/explorar";
+import { usePostHog } from "@/lib/posthog-react";
 import type { ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import "@/components/formulario-v4/wizard-v4.css";
 
@@ -29,7 +30,15 @@ export function AvisoSinSaldoExplorar({ totalNoche, compras, vence, alCerrar, ye
   alIr: (que: "pack" | "suelto") => void;
 }) {
   const router = useRouter();
+  const posthog = usePostHog();
   const primario = useRef<HTMLButtonElement>(null);
+  // «explorar_aviso» (26-oct-2026): la persona sin saldo vio el aviso, una vez por montaje.
+  const contado = useRef(false);
+  useEffect(() => {
+    if (contado.current) return;
+    contado.current = true;
+    posthog?.capture(EVENTOS_EXPLORAR.aviso, { total_noche: totalNoche, ticket: !!compras.pack.ticket });
+  }, [posthog, totalNoche, compras.pack.ticket]);
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";

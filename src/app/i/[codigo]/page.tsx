@@ -83,6 +83,7 @@ export default async function InvitacionPage({ params, searchParams }: { params:
       visita: visitaDeCabecera(cabeceras.get(CABECERA_VISITA)) ?? crypto.randomUUID(),
       esCarga: true,
       agente,
+      cabeceras,
       search: consultaDeParametros(searchParams),
       referer: cabeceras.get("referer"),
       prueba: esVisitaDePrueba(consultaDeParametros(searchParams), cookies().get(COOKIE_PRUEBA)?.value),

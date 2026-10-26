@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, chipOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
+import { usePostHog } from "@/lib/posthog-react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import type { EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { comprasDeExplorar, lineaTicketConSaldo } from "@/lib/guia/compra-desde-depto";
@@ -32,7 +33,7 @@ import { COMUNAS_DESTACADAS, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } 
 import { GUIA } from "@/lib/guia/copy";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import {
-  AVISO_SIN_SALDO, botonAnalizar, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
+  AVISO_SIN_SALDO, botonAnalizar, EVENTOS_EXPLORAR, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
   pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
 import "./explorar.css";
@@ -81,6 +82,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   mapaQuieto?: ReactNode;
 }) {
   const router = useRouter();
+  const posthog = usePostHog();
   const [datos, setDatos] = useState(inicial);
   const [filtros, setFiltros] = useState(inicial.filtros);
   const [cargando, setCargando] = useState<Chip | "todo" | null>(null);
@@ -158,7 +160,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
     void cargar(f, true).finally(() => { if (vivo.current) setCargando(null); });
   }
 
-  function seleccionar(avisoId: string) {
+  // «explorar_pin» (26-oct-2026): tocar un pin del mapa, también con Explorar cerrado (sin saldo el pin no se abre, pero el
+  // toque dice que la persona quiso ver ese depto).
+  function seleccionar(avisoId: string, desde: "mapa" | "tarjeta" = "tarjeta") {
+    if (desde === "mapa") posthog?.capture(EVENTOS_EXPLORAR.pin, { aviso_id: avisoId, cerrado });
     if (cerrado) return;
     setSeleccionado(avisoId);
     setHoja("abierta");
@@ -380,7 +385,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           {/* El mapa quieto: lo más grande del primer cuadro (el LCP), dibujado por el servidor; debajo del mapa real. */}
           {mapaQuieto}
           {mapaListo && mapa !== "fallo" && (
-            <MapaExplorar pines={pines} analizados={analizadosSet} seleccionado={seleccionado} comuna={filtros.comunas[0] ?? null} onSeleccionar={seleccionar} onEstado={setMapa} />
+            <MapaExplorar pines={pines} analizados={analizadosSet} seleccionado={seleccionado} comuna={filtros.comunas[0] ?? null} onSeleccionar={(id: string) => seleccionar(id, "mapa")} onEstado={setMapa} />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{EXPLORAR_COPY.sinMapa}</p>}
           <div className="ex-pildoras">

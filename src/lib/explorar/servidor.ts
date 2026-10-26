@@ -18,6 +18,7 @@ import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import type { EventoServidor } from "@/lib/posthog-servidor";
+import type { MotivoRobot } from "@/lib/vista-entrada";
 import {
   claveCombo, comboVigente, dormsDe, esCombinacionDeLaNoche, explorarCerrado, FILTROS_POR_DEFECTO, filtrosDePerfil, pieDeLaNoche, pinCerrado, plazoDeLaNoche, porPuntaje, soloComprar,
   type ComboGuardado, type FiltrosExplorar, type PinExplorar,
@@ -246,13 +247,15 @@ export function candidatoExplorar(admin: SupabaseClient, avisoId: string): Promi
 
 // ── LA MEDICIÓN ──────────────────────────────────────────────────────────────
 /** «explorar_vista»: una vista del mapa, con los filtros y cuántos pines. */
-export function eventoExplorarVista(p: { userId: string; filtros: FiltrosExplorar; n: number | null; analizados: number; fuente: "pagina" | "cambio"; cuenta?: CuentaExplorar }): EventoServidor {
+// `robot` (26-oct-2026): el escáner se marca en el evento, como en las otras páginas de entrada (vista-entrada.ts › robotDeVisita).
+export function eventoExplorarVista(p: { userId: string; filtros: FiltrosExplorar; n: number | null; analizados: number; fuente: "pagina" | "cambio"; cuenta?: CuentaExplorar; robot?: MotivoRobot | null }): EventoServidor {
   return {
     event: "explorar_vista",
     distinctId: p.userId,
     properties: {
       comunas: p.filtros.comunas, tipologias: p.filtros.tipologias, uf_min: p.filtros.ufMin, uf_max: p.filtros.ufMax, pie: p.filtros.pie, plazo: p.filtros.plazo,
       n: p.n, analizados: p.analizados, fuente: p.fuente, de_la_noche: esCombinacionDeLaNoche(p.filtros),
+      robot: !!p.robot, ...(p.robot ? { robot_motivo: p.robot } : {}),
       ...(p.cuenta ? { calculados: p.cuenta.calculados, ms: p.cuenta.ms } : {}),
     },
   };

@@ -35,6 +35,8 @@ export function eventoInvitacionVista(p: {
   visita: string;
   esCarga: boolean;
   agente: string | null;
+  /** Las cabeceras del pedido: el escáner se reconoce también por cómo pide (vista-entrada.ts › robotDeVisita). */
+  cabeceras?: { get(nombre: string): string | null } | null;
   /** La consulta de la URL (los UTM y el `fbclid`) y quién la refirió. */
   search?: string;
   referer?: string | null;
@@ -52,6 +54,7 @@ export function eventoInvitacionVista(p: {
     visita: p.visita,
     esCarga: p.esCarga,
     agente: p.agente,
+    cabeceras: p.cabeceras,
     prueba: p.prueba,
     extra: { codigo: p.codigo, valida: !!p.codigo, modo: p.modo, con_nombre: p.conNombre, invitador_prueba: p.invitadorPrueba },
   });
