@@ -185,7 +185,9 @@ export async function runAgenteServidorTier(): Promise<{ hard: number }> {
       if (archivos.length < 100) F(`5 · el barrido de src/ no corrió (${archivos.length} archivos)`);
       for (const f of archivos) {
         const ruta = f.replace(/\\/g, "/");
-        const s = sinComentarios(leer(join("src", f)));
+        // ⚠ ACTA (26-oct-2026) · la supresión de Resend (`https://api.resend.com/suppressions/batch/add`) no es PostHog: se
+        // saca SOLO esa URL antes de buscar, el resto del barrido sigue igual.
+        const s = sinComentarios(leer(join("src", f))).replace(/https:\/\/api\.resend\.com\/suppressions\/batch\/add/g, "");
         if (ruta !== "lib/posthog-captura.ts" && /\/capture\/|\/i\/v0\/e|\/batch\//.test(s)) F(`5 · src/${ruta} le habla a PostHog por su cuenta, sin el punto único (sin agente)`);
         if (/from ["']posthog-node["']/.test(s)) F(`5 · src/${ruta} usa posthog-node, fuera del punto único`);
       }

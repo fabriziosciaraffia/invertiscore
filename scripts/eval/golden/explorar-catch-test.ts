@@ -164,7 +164,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (iCerr < 0 || iCarga < 0 || iCerr > iCarga) F("4b · la ruta de los pines no responde 403 sin saldo antes de leer nada");
   const pagC = codigo("src/app/explorar/page.tsx");
   if (!/inicial=\{d\.cerrado \? \{/.test(pagC) || !/abrir=\{d\.cerrado \? null : a\}/.test(pagC) || !/autoAnalizar=\{!d\.cerrado && sp\.get\("analizar"\) === "1" \? a : null\}/.test(pagC)) F("4b · la página no entra cerrada sin saldo (o abre un depto)");
-  if (!/function seleccionar\(avisoId: string\) \{\s*if \(cerrado\) return;/.test(cli) || !/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;/.test(cli)) F("4b · cerrado, un pin o un chip todavía abren o buscan");
+  // ⚠ ACTA (26-oct-2026) · antes de cortar, `seleccionar` deja «explorar_pin» si el toque fue en el mapa (también cerrado):
+  // nada más que esa medición va antes del `if (cerrado) return;`.
+  if (!/function seleccionar\(avisoId: string, desde: "mapa" \| "tarjeta" = "tarjeta"\) \{\s*if \(desde === "mapa"\) posthog\?\.capture\(EVENTOS_EXPLORAR\.pin, \{ aviso_id: avisoId, cerrado \}\);\s*if \(cerrado\) return;/.test(cli) || !/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;/.test(cli)) F("4b · cerrado, un pin o un chip todavía abren o buscan");
   try {
     const { ExplorarCliente } = require(join(RAIZ, "src/app/explorar/explorar-cliente")) as typeof import("../../../src/app/explorar/explorar-cliente");
     const filtros = ex.filtrosDePerfil({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 0, precioMaxUf: 60000, piePct: 20, plazoAnios: 25 } as never);
@@ -280,8 +282,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     const a = srv.eventoExplorarAnaliza({ userId: "u", analysisId: "an", avisoId: "av", comuna: "Providencia", precioUF: 3600, m2: 61, piePct: 20, plazoAnios: 25 });
     if (a.event !== "explorar_analiza" || a.properties?.aviso_id !== "av" || a.properties?.analysis_id !== "an" || a.properties?.pie_pct !== 20) F(`8 · explorar_analiza: ${JSON.stringify(a)}`);
   }
-  if (!/void capturarServidor\(eventoExplorarVista\(\{ userId: user\.id, filtros, n: noche \? d\.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d\.cuenta \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
-  if (!/if \(sp\.get\("evento"\) === "1"\) \{[\s\S]{0,300}eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados, fuente: "cambio", cuenta: d\.cuenta \}\)/.test(codigo("src/app/api/explorar/route.ts")) || !/\$\{evento \? "&evento=1" : ""\}/.test(cli)) F("8 · cambiar un chip no deja «explorar_vista»");
+  // ⚠ ACTA (26-oct-2026) · la vista lleva además `robot` (vista-entrada.ts › robotDeVisita; tier PAUTA-ARREGLOS §3).
+  if (!/void capturarServidor\(eventoExplorarVista\(\{ userId: user\.id, filtros, n: noche \? d\.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d\.cuenta, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
+  if (!/if \(sp\.get\("evento"\) === "1"\) \{[\s\S]{0,300}eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados, fuente: "cambio", cuenta: d\.cuenta, robot: robotDeVisita\(request\.headers\.get\("user-agent"\), request\.headers\) \}\)/.test(codigo("src/app/api/explorar/route.ts")) || !/\$\{evento \? "&evento=1" : ""\}/.test(cli)) F("8 · cambiar un chip no deja «explorar_vista»");
   if (textoOrigenArchivo("explorar") !== "Desde Explorar" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde Explorar»");
 
   // ── 10 · cualquier pie y plazo: una combinación que la noche no tiene ──
