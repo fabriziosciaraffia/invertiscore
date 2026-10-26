@@ -71,7 +71,7 @@ import {
   TIPOLOGIA_POR_DEFECTO, tipoDeAlta, validarElecciones, type ConteoComuna,
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
-import { guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle, resumenDeLaNoche } from "../../../src/lib/deptos/servidor";
+import { calcularResumenDeLaNoche, guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle } from "../../../src/lib/deptos/servidor";
 import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/estandar";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
@@ -598,7 +598,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // El resumen de la noche cuenta lo mismo que la respuesta: deptos_conteo sobre toda la cobertura, sumado.
       const llamadas: Array<Record<string, unknown>> = [];
       const rpcFalso = { rpc: async (n: string, a: Record<string, unknown>) => { llamadas.push({ n, ...a }); return { data: [{ comuna: "Santiago", total: 600, comprar_20: 4, comprar_30: 9 }, { comuna: "Ñuñoa", total: 400, comprar_20: 17, comprar_30: 30 }], error: null }; } };
-      const rn = await resumenDeLaNoche(rpcFalso as never, new Date("2026-10-17T12:00:00Z"));
+      // ⚠ ACTA (26-oct-2026, goal «cuatro arreglos antes de la pauta») · el conteo vive en `calcularResumenDeLaNoche` (lo llama
+      // el cron de la evaluación y lo guarda); `resumenDeLaNoche` lee lo guardado (tier PAUTA-ARREGLOS §4). La regla —el mismo
+      // universo que la respuesta— se prueba acá sobre el conteo.
+      const rn = await calcularResumenDeLaNoche(rpcFalso as never, new Date("2026-10-17T12:00:00Z"));
       const ll = llamadas[0] as { n?: string; comunas?: string[]; uf_min?: number; uf_max?: number; dorms?: number[] } | undefined;
       if (rn?.revisados !== 1000 || rn.convienen !== 21 || ll?.n !== "deptos_conteo" || ll.comunas?.length !== COMUNAS_DISPONIBLES.length || ll.uf_min !== 0 || (ll.uf_max ?? 0) < 1e6 || !ll.dorms?.includes(0) || !ll.dorms?.includes(5))
         F(`10 · el resumen de la noche no cuenta lo mismo que la respuesta (${JSON.stringify(rn)})`);
