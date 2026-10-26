@@ -59,8 +59,18 @@ export interface ResumenNoche {
  * EL RESUMEN DE LA NOCHE (17-oct-2026): `deptos_conteo` sobre toda la cobertura, todas las tipologías y todos los precios
  * —el mismo universo que la respuesta de cada búsqueda: publicados en la última semana, con arriendo de referencia—, así la
  * frase y el número de abajo cuentan lo mismo. Null si falla: la frase sale sin cifra.
+ *
+ * SE CALCULA UNA VEZ POR EVALUACIÓN, NO EN CADA PANTALLA (26-oct-2026). Contar toda la cobertura une ~24.000 avisos de la
+ * semana con su evaluación: 2 a 4 s con la base tranquila (medido con EXPLAIN ANALYZE) y más de los 8 s del
+ * `statement_timeout` de PostgREST cuando la base está ocupada —12 timeouts en el dashboard del 23 al 26-oct, en el SSR de
+ * /deptos, /explorar, /i y el dashboard—. Ahora lo calcula el cron de la evaluación de avisos al terminar y lo guarda en
+ * `config` (`deptos_resumen_noche`); las pantallas leen esa fila. Si no hay ninguna guardada (la primera vez), se calcula
+ * en el momento y se guarda. Una guardada vieja se sigue leyendo: el número cambia una vez por noche y es mejor que una
+ * pantalla que espera 8 s.
  */
-export async function resumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
+export const CLAVE_RESUMEN_NOCHE = "deptos_resumen_noche";
+
+export async function calcularResumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
   const { data, error } = await admin.rpc("deptos_conteo", {
     comunas: [...COMUNAS_DISPONIBLES], dorms: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora),
   });
@@ -69,6 +79,35 @@ export async function resumenDeLaNoche(admin: SupabaseClient, ahora: Date = new 
   const filas = data as Array<{ total: number; comprar_20: number }>;
   const revisados = filas.reduce((s, f) => s + (Number(f.total) || 0), 0);
   return revisados > 0 ? { revisados, convienen: filas.reduce((s, f) => s + (Number(f.comprar_20) || 0), 0) } : null;
+}
+
+/** Calcula el resumen y lo guarda (lo llama el cron de la evaluación al terminar). Null si no se pudo: queda el anterior. */
+export async function guardarResumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
+  const r = await calcularResumenDeLaNoche(admin, ahora);
+  if (!r) return null;
+  const { error } = await admin.from("config").upsert({ key: CLAVE_RESUMEN_NOCHE, value: JSON.stringify({ ...r, calculadoAt: ahora.toISOString() }), updated_at: ahora.toISOString().replace("Z", "") }, { onConflict: "key" });
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-resumen-noche" });
+  return r;
+}
+
+/** Lo guardado en `config`, o null si no hay o no se lee. */
+export function resumenGuardado(valor: string | null | undefined): ResumenNoche | null {
+  if (!valor) return null;
+  try {
+    const v = JSON.parse(valor) as Partial<ResumenNoche>;
+    const revisados = Number(v.revisados), convienen = Number(v.convienen);
+    return Number.isFinite(revisados) && revisados > 0 && Number.isFinite(convienen) ? { revisados, convienen } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
+  const { data, error } = await admin.from("config").select("value").eq("key", CLAVE_RESUMEN_NOCHE).maybeSingle();
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-resumen-noche" });
+  const guardado = resumenGuardado(data?.value as string | null | undefined);
+  if (guardado) return guardado;
+  return guardarResumenDeLaNoche(admin, ahora);
 }
 
 /** Lo elegido desde la URL (`?c=Ñuñoa,Macul&t=2,3&r=3000-4000&m=ltr`). */
