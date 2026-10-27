@@ -28,6 +28,7 @@ import { construirCardLtr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import type { Veredicto } from "@/lib/types";
 import type { AlternativaComunas } from "@/lib/alternativa-comunas";
+import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 import { FRASE_RIESGO_ENTREGA, cuotasSeVen, filaPesaCuotas, fraseCuotasPortada } from "@/lib/obra-nueva";
 
 /**
@@ -62,7 +63,10 @@ export function SubjectCardGrid({
   trasPortada,
   alternativaComunas = null,
   reanalisisOrigen = null,
+  publicacion,
 }: {
+  /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts). Obligatoria: la lee el servidor. */
+  publicacion: PublicacionPortada;
   /** El re-análisis al precio recomendado (21-oct-2026): el id de este informe, solo para su dueño (lo usa el pop-up). */
   reanalisisOrigen?: string | null;
   /** «Lo que sigue»: lo que va después de la card de Franco (lo monta HeroLTR). */
@@ -265,6 +269,7 @@ export function SubjectCardGrid({
           cifra={cifraPortada}
           cuotas={cuotasPortada}
           ficha={fichaPortada}
+          publicacion={publicacion}
           currency={currency}
           onCurrencyChange={onCurrencyChange}
           mapa={

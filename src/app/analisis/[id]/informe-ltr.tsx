@@ -26,6 +26,7 @@ import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
 import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
+import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -228,6 +229,8 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   const metaVista = quienMira
     ? await emitirVistaInforme({ analysisId: analisis.id, userId: analisis.user_id ?? null, email: isOwner ? user?.email ?? null : null, veredicto: veredictoInforme, comuna: analisis.comuna ?? null, modalidad: "ltr", ruta: `/analisis/${analisis.id}` })
     : null;
+  // El enlace a la publicación en la portada (27-oct-2026, publicacion-portada.ts): todo informe que salió de un aviso.
+  const publicacion = await publicacionDelInforme(createServiceClient(), inputDataRaw);
   const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
     ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
     : null;
@@ -424,6 +427,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           ticketDesde={ofertaLqs.desde}
           medianaResolvedAt={medianaResolvedAt}
           alternativaComunas={alternativaComunas}
+          publicacion={publicacion}
         />
 
         {/* Fallback for old analyses without full results */}

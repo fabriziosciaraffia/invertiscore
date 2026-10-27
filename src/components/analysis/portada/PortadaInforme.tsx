@@ -25,6 +25,8 @@ import { FichaModal } from "./FichaModal";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
 import type { SegCuotas } from "@/lib/obra-nueva";
+import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import { PUBLICACION_PORTADA } from "@/lib/guia/copy";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
 // --verdict / --verdict-deep que DocTokens fija según `data-verdict` en la raíz del
@@ -77,6 +79,7 @@ export function PortadaInforme({
   cifra,
   cuotas,
   ficha,
+  publicacion,
   currency,
   onCurrencyChange,
   mapa,
@@ -97,6 +100,9 @@ export function PortadaInforme({
   /** El pie en cuotas (02-oct-2026), con el mismo peso que el flujo: la frase de `fraseCuotasPortada`. */
   cuotas?: SegCuotas[] | null;
   ficha: FichaDepto;
+  /** El enlace a la publicación del aviso del que salió el informe (27-oct-2026, publicacion-portada.ts), junto a
+   *  «Ficha del depto». OBLIGATORIA: null solo si el informe no salió de un aviso. */
+  publicacion: PublicacionPortada;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza.
@@ -195,17 +201,27 @@ export function PortadaInforme({
               ))}
             </p>
           )}
-          {/* Línea de utilidades: link ficha + toggle CLP/UF (decisión e del PARÁ 0) */}
+          {/* Línea de utilidades: link ficha + toggle CLP/UF (decisión e del PARÁ 0). Desde el 27-oct-2026, junto a la
+              ficha, el enlace a la publicación cuando el informe salió de un aviso: visible sin pedirlo. */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <button type="button" className="doc-props-link" onClick={() => setFichaOpen(true)}>
-              Ficha del depto →
-            </button>
+            <div className="doc-props-links" data-portada="utilidades">
+              <button type="button" className="doc-props-link" onClick={() => setFichaOpen(true)}>
+                Ficha del depto →
+              </button>
+              {publicacion && (publicacion.despublicado ? (
+                <span className="doc-props-link doc-props-link-baja" data-publicacion="baja">{PUBLICACION_PORTADA.baja}</span>
+              ) : (
+                <a href={publicacion.url} target="_blank" rel="noopener noreferrer" className="doc-props-link" data-publicacion="enlace">
+                  {PUBLICACION_PORTADA.enlace} ↗
+                </a>
+              ))}
+            </div>
             {/* LOS COLORES DEL TOGGLE SON INLINE, así que una regla CSS no los puede
                 pisar: sobre el espectro hay que cambiarlos acá. Mismo tratamiento que el
                 botón de veredicto —blanco translúcido y anillo, no un bloque sólido— y
                 la opción activa se distingue por opacidad, no por otro color. */}
             <div
-              className="inline-flex overflow-hidden shrink-0 doc-cur-toggle"
+              className="inline-flex overflow-hidden shrink-0 ml-auto doc-cur-toggle"
               role="group"
               aria-label="Moneda"
             >
@@ -1537,6 +1553,11 @@ export function DocTokens() {
         font-family:var(--font-body, system-ui);font-size:12px;letter-spacing:0;text-transform:none;color:var(--doc-tx2);
         border-bottom:1px dashed var(--doc-line2);padding:0 0 3px;transition:color .15s,border-color .15s;font-variant-numeric:tabular-nums}
       .doc-props-link:hover{color:var(--signal-red);border-color:var(--signal-red)}
+      /* La ficha y la publicación, juntas a la izquierda (27-oct-2026); en el teléfono bajan de a una si no caben. */
+      .doc-props-links{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 18px}
+      a.doc-props-link{text-decoration:none}
+      .doc-props-link-baja{cursor:default;border-bottom-style:none}
+      .doc-props-link-baja:hover{color:var(--doc-tx2)}
       /* LA FICHA DEL DEPTO (forma A, 24-sep-2026): grupos de filas rótulo | valor dentro del Modal
          del informe. Sin mono ni serif: Inter con cifras tabulares (contrato §1). La diferencia
          contra la referencia lleva el tono de la card de zona. */

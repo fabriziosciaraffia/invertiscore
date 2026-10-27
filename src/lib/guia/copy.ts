@@ -59,11 +59,13 @@ export const GUIA_SALDO = {
  * quiero-verlo-estado.ts › dicesQueConviene— y «Franco te manda el aviso al correo para que lo veas.»; al tocar, «Mandando
  * el aviso…» con el indicador; después «Listo: te lo mandamos a [correo]» con el visto, o «No pudimos mandarlo.» y
  * «Reintentar».
+ * «MANDÁRMELO POR CORREO» (27-oct-2026, decisión de Fabrizio): el enlace a la publicación ya va en la portada
+ * (`PUBLICACION_PORTADA`), así que el botón no es la única manera de ver el aviso: es para tenerlo en el correo.
  */
 export const INFORME_DE_AVISO = {
   origen: "Este análisis sale de un aviso publicado.",
   antiguedadSupuesta: "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente.",
-  boton: "Quiero verlo",
+  boton: "Mandármelo por correo",
   conviene: "Este depto conviene con tus números.",
   bajada: "Franco te manda el aviso al correo para que lo veas.",
   enviando: "Mandando el aviso…",
@@ -81,4 +83,11 @@ export const INFORME_DE_AVISO = {
   despublicado: "Este aviso ya no está publicado.",
   error: "No pudimos mandarlo.",
   reintentar: "Reintentar",
+} as const;
+
+/** El enlace de la portada, junto a «Ficha del depto» (27-oct-2026, publicacion-portada.ts). `baja`: el chequeo de la
+ *  ficha lo dio por despublicado; va sin enlace. */
+export const PUBLICACION_PORTADA = {
+  enlace: "Ver la publicación",
+  baja: "Ya no está publicado",
 } as const;

@@ -11,6 +11,8 @@
 // lo mandamos a [correo]» con el visto; si falla, «No pudimos mandarlo.» y «Reintentar». Sin recargar la página. Los
 // estados, en quiero-verlo-estado.ts. Si el aviso ya había salido (otro día, tras recargar), «Ya te lo mandamos el [día]
 // a [correo], con el asunto «…».» (19-oct-2026): ese toque no manda nada y no puede decir «Listo».
+// «MANDÁRMELO POR CORREO» (27-oct-2026, decisión de Fabrizio): el enlace a la publicación ya está en la portada, junto a
+// «Ficha del depto» (publicacion-portada.ts); el botón de acá deja de ser «Quiero verlo» y es para tenerlo en el correo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";

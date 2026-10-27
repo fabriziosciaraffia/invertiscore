@@ -169,6 +169,7 @@ function Inner() {
         isSharedView={false}
         isLoggedIn
         medianaResolvedAt={fix.medianaSnapshot?.resolvedAt ?? new Date().toISOString()}
+        publicacion={null}
       />
       </div>
     );
@@ -181,6 +182,7 @@ function Inner() {
     return (
       <STRResultsClient
         analysisId={fix.id}
+        publicacion={null}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         results={results as any}
         inputData={fix.input_data ?? null}

@@ -33,6 +33,7 @@ import { leerReanalisis } from "@/lib/reanalisis";
 import { almacenSesion, marcarRecienDentro, useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { PARAM_RECIEN_DENTRO } from "@/lib/guia/del-dia";
 import { hasAiV2 } from "@/lib/prosa-guardada";
+import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 
 
 // El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
@@ -82,7 +83,10 @@ export function PremiumResults({
   ticketDesde = null,
   medianaResolvedAt,
   alternativaComunas = null,
+  publicacion,
 }: {
+  /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-ltr.tsx`. */
+  publicacion: PublicacionPortada;
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
   analysisId?: string;
@@ -654,6 +658,7 @@ export function PremiumResults({
             createdAt={createdAt}
             medianaResolvedAt={medianaResolvedAt}
             alternativaComunas={alternativaComunas}
+            publicacion={publicacion}
           />
         </>
       )}

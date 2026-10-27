@@ -23,6 +23,7 @@ import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
+import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
 
 /**
  * EL INFORME STR, fuera de la ruta (25-sep-2026). Espejo de `InformeLtr`: lo dibujan
@@ -277,8 +278,12 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     ? await emitirVistaInforme({ analysisId: data.id, userId: data.user_id ?? null, email: isOwner ? user?.email ?? null : null, veredicto: veredictoVista, comuna: data.comuna ?? null, modalidad: "str", ruta: `/analisis/renta-corta/${data.id}` })
     : null;
 
+  // El enlace a la publicación en la portada (27-oct-2026, publicacion-portada.ts): todo informe que salió de un aviso.
+  const publicacion = await publicacionDelInforme(createServiceClient(), data.input_data);
+
   const sharedProps = {
     analysisId: data.id,
+    publicacion,
     results,
     inputData: data.input_data,
     accessLevel,

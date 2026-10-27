@@ -61,6 +61,7 @@ import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
+import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 import { condicionDeInput, useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -74,6 +75,8 @@ function formatFechaCorta(iso: string): string {
 
 interface STRResultsProps {
   analysisId: string;
+  /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-str.tsx`. */
+  publicacion: PublicacionPortada;
   results: ShortTermResult & { francoScore?: FrancoScoreSTR };
   inputData: Record<string, unknown> | null;
   accessLevel: "guest" | "free" | "premium" | "subscriber";
@@ -127,6 +130,7 @@ interface STRResultsProps {
 
 export function STRResultsClient({
   analysisId,
+  publicacion,
   results,
   inputData,
   accessLevel,
@@ -369,6 +373,7 @@ export function STRResultsClient({
           titular={titularPortada}
           cifra={cifraPortada}
           ficha={fichaPortada}
+          publicacion={publicacion}
           currency={currency}
           onCurrencyChange={setCurrency}
           mapa={
