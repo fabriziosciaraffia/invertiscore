@@ -140,10 +140,12 @@ export async function runSemanalSinMinimoTier(): Promise<{ hard: number }> {
       const v = correoSemanalVacio({
         nombre: null, urlPerfil: "https://x/p", urlBaja: "https://x/b",
         casi: [{ comuna: "La Florida", tipologia: "1D1B", m2: 40, precioUF: 1350, score: 62, flujo: -5000 }],
-        alternativa: { texto: "Con pie 30 %, 4 sí convienen.", boton: SEMANAL_VACIO.ajustarPie(30), url: "https://x/ajuste" },
+        // ⚠ ACTA (27-oct-2026, PERFIL-OFERTA §4) · «con qué sí» ya no es una alternativa suelta: son las salidas del aviso del
+        // dashboard (la línea y un botón por salida, con la misma cuenta). La regla de las salidas la fija PERFIL-OFERTA.
+        salidas: { linea: "Con pie 30 %, 4 sí.", botones: [{ boton: SEMANAL_VACIO.ajustarPie(30), url: "https://x/ajuste" }] },
       });
       if (!v.html.includes("Hubo 1 que casi") || !/data-casi="1"/.test(v.html) || !v.html.includes("UF 1.350")) F("4 · el vacío no nombra los que casi");
-      if (!v.html.includes("Con pie 30 %, 4 sí convienen.") || !/data-ajuste="1"[^>]*>Buscar con pie 30 %/.test(v.html.replace(/\n/g, " ")) && !v.html.includes("Buscar con pie 30 %")) F("4 · el vacío no dice con qué sí ni ofrece el ajuste");
+      if (!v.html.includes("Con pie 30 %, 4 sí.") || !v.html.includes('data-ajuste="1">Buscar con pie 30 %<')) F("4 · el vacío no dice con qué sí ni ofrece el ajuste");
       if (!/href="https:\/\/x\/ajuste"/.test(v.html)) F("4 · el botón del ajuste no lleva al enlace de un toque");
       const vacio = correoSemanalVacio({ nombre: null, urlPerfil: "https://x/p", urlBaja: "https://x/b" });
       if (vacio.html.includes("que casi") || vacio.html.includes('data-ajuste')) F("4 · sin casi ni alternativa el vacío igual los imprime");
@@ -160,9 +162,11 @@ export async function runSemanalSinMinimoTier(): Promise<{ hard: number }> {
       if (!/if \(ir === "ajustar"\) \{[\s\S]{0,1500}from\("perfil_busqueda"\)\.upsert\(\{ user_id: sel\.user_id, \.\.\.perfilConAjuste\(ajuste, \{ comunas: actuales \}\), actualizado_at/.test(clic)) F("4 · el clic del ajuste no guarda el perfil");
       if (!/ajusteDeParametro\(url\.searchParams\.get\("que"\), new Set\(COMUNAS_DISPONIBLES as readonly string\[\]\)\)/.test(clic)) F("4 · el clic acepta una comuna fuera de la cobertura");
       const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-      if (!/const verdad = await verdadDelVacio\(admin, fila\.user_id\)\.catch\(\(\) => null\);/.test(srv) || !/casi: verdad\?\.casi \?\? \[\],/.test(srv) || !/url: enlaces\.ajuste\(parametroDeAjuste\(verdad\.alternativa\.ajuste\)\)/.test(srv))
+      if (!/const verdad = await verdadDelVacio\(admin, fila\.user_id\)\.catch\(\(\) => null\);/.test(srv) || !/casi: verdad\?\.casi \?\? \[\],/.test(srv) || !/url: enlaces\.ajuste\(parametroDeAjuste\(s\.ajuste\)\)/.test(srv))
         F("4 · el envío del vacío no busca la verdad (los que casi y con qué sí)");
-      if (!/if \(\(r\.conPie30 \?\? 0\) > 0 && pie < 30\)/.test(srv) || !/const vecina = r\.vecinas\[0\];/.test(srv)) F("4 · con qué sí no mira el pie 30 % ni la vecina, como /deptos");
+      // ⚠ ACTA (27-oct-2026, PERFIL-OFERTA §4) · con qué sí lo cuenta `contarSinOferta` (pie 30 %, la vecina y el chip de abajo,
+      // con la cuenta de /deptos), la misma del dashboard; antes, `responderDeptos` y un `if` por salida.
+      if (!/const cuenta = await contarSinOferta\(admin, userId, perfil\);/.test(srv)) F("4 · con qué sí no sale de la cuenta del dashboard (pie 30 %, vecina y chip de abajo)");
     }
 
     // ── 5 · LOS CANDIDATOS SE ORDENAN CON EL PLAZO DE LA PERSONA ──
