@@ -100,7 +100,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene."],
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
     [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
-    [INFORME_DE_AVISO.boton, "Quiero verlo"],
+    // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier PUBLICACION-PORTADA): el enlace a la publicación va en la portada y el
+    // botón deja de ser «Quiero verlo»: es «Mandármelo por correo».
+    [INFORME_DE_AVISO.boton, "Mandármelo por correo"],
     // «Quiero verlo» en banner (17-oct-2026, §14): el copy nuevo de Fabrizio.
     [INFORME_DE_AVISO.conviene, "Este depto conviene con tus números."],
     [INFORME_DE_AVISO.bajada, "Franco te manda el aviso al correo para que lo veas."],
@@ -610,8 +612,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (!sePuedeTocar({ tipo: "quieto" }) || !sePuedeTocar({ tipo: "error" }) || sePuedeTocar({ tipo: "enviando" }) || sePuedeTocar({ tipo: "listo", correo: null }) || sePuedeTocar({ tipo: "despublicado" }))
       F("14 · el botón se puede tocar mientras manda o después de mandado (o no deja reintentar)");
     if (!dicesQueConviene("COMPRAR") || dicesQueConviene("AJUSTA SUPUESTOS") || dicesQueConviene("BUSCAR OTRA")) F("14 · el banner dice «conviene» con un veredicto que no es COMPRAR");
-    // El copy.
-    if (INFORME_DE_AVISO.conviene !== "Este depto conviene con tus números." || INFORME_DE_AVISO.bajada !== "Franco te manda el aviso al correo para que lo veas." || INFORME_DE_AVISO.boton !== "Quiero verlo"
+    // El copy. ⚠ ACTA (27-oct-2026): el botón es «Mandármelo por correo» (antes «Quiero verlo»; tier PUBLICACION-PORTADA).
+    if (INFORME_DE_AVISO.conviene !== "Este depto conviene con tus números." || INFORME_DE_AVISO.bajada !== "Franco te manda el aviso al correo para que lo veas." || INFORME_DE_AVISO.boton !== "Mandármelo por correo"
       || INFORME_DE_AVISO.enviando !== "Mandando el aviso…" || INFORME_DE_AVISO.listo("ana@correo.cl") !== "Listo: te lo mandamos a ana@correo.cl"
       || INFORME_DE_AVISO.error !== "No pudimos mandarlo." || INFORME_DE_AVISO.reintentar !== "Reintentar") F("14 · el copy de «Quiero verlo» no es el pedido");
     // La pantalla: cada estado con lo suyo, sin recargar.

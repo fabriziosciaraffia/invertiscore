@@ -159,6 +159,7 @@ import { runPuertaBRecorridoTier } from "./puerta-b-recorrido-catch-test";
 import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
 import { runPuertaBDashboardTier } from "./puerta-b-dashboard-catch-test";
 import { runPerfilOfertaTier } from "./perfil-oferta-catch-test";
+import { runPublicacionPortadaTier } from "./publicacion-portada-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runAltaOrdenTier } from "./alta-orden-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
@@ -680,6 +681,10 @@ function printSeed(r: SeedReport) {
   // el mismo), el aviso «Con tu búsqueda no hay deptos que convengan esta semana» con las salidas del correo vacío, los
   // precios fuera de UF 500 a 50.000 no arman rango y la D solo para cuentas desde el 15-oct. En rojo por mutación.
   totalHard += runPerfilOfertaTier().hard;
+  // Tier PUBLICACION-PORTADA (27-oct-2026, 0 tokens): todo informe hecho desde un aviso lleva «Ver la publicación» junto a
+  // «Ficha del depto» en la portada —medido dibujando la portada con informes reales de la selección, por la misma función
+  // que usa la página—; despublicado lo dice sin enlace; el botón de abajo es «Mandármelo por correo». En rojo por mutación.
+  totalHard += (await runPublicacionPortadaTier()).hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;
