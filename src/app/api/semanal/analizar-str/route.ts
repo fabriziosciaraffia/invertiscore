@@ -20,7 +20,8 @@ import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
 import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, origenSinteticoStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
-import { analizarStrDeSemanal, parecidosQueSobreviven, type ComparacionStr } from "@/lib/guia/semanal-str";
+import { analizarStrDeSemanal, parecidosQueSobreviven, porQueNoDa, type ComparacionStr } from "@/lib/guia/semanal-str";
+import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
@@ -39,6 +40,10 @@ import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 // `comparaciones_zona_str`. Solo con sesión y solo sobre la selección de esa persona.
 // «AnalizarEste» (15-oct-2026): el evento propio de Meta sale apenas el pedido es válido, con el espejo para el pixel;
 // `analisis_creado` en PostHog cuando el informe se crea.
+// EL «NO DA» CON SALIDA (27-oct-2026, decisión de Fabrizio): la respuesta «no-da» trae además el enlace a la publicación
+// (el de la ficha recién chequeada), por qué no da en una línea (semanal-str.ts › porQueNoDa) y el saldo con que se midió
+// (para «Analizar igual · usa 1 de tus N»). Con `igual: true` —«Analizar igual» en el pop-up— la regla de cobro no corta:
+// se cobra un crédito y se crea el informe aunque no dé Comprar. La medición repetida sale del caché del proveedor.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string };
+  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string; igual?: unknown };
   if (!b.token || !TOKEN.test(b.token) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
   const avisoId = b.avisoId;
 
@@ -89,7 +94,11 @@ export async function POST(request: Request) {
     // La medición fina y la config con que se hizo: con ellas se reevalúan los parecidos si no da.
     let medida: { estimacion: Extract<AirbnbEstimateResponse, { success: true }>; cfg: { uf: number; tasa: number } } | null = null;
     let plausibleFallo: Response | null = null;
+    // Para el pop-up «no da»: el enlace de la ficha que se chequeó y el saldo con que se midió.
+    let publicacion: string | null = null;
+    let saldoAlMedir: EstadoSaldo | null = null;
     const r = await analizarStrDeSemanal({
+      igual: b.igual === true,
       async yaCreado() {
         const { data } = await admin.from("semanal_str_analisis").select("analysis_id").match(clave).maybeSingle();
         return (data?.analysis_id as string | null) ?? null;
@@ -100,6 +109,7 @@ export async function POST(request: Request) {
         if (!ficha) return "sin-chequeo";
         const c = await chequearPublicacion(ficha, "clic", almacenPublicacion(admin), bajarFicha, { forzar: true });
         anioLeido = c.lectura?.leida ? c.lectura.anio : null;
+        publicacion = ficha.url;
         return c.estado;
       },
       async alDespublicar() {
@@ -109,6 +119,7 @@ export async function POST(request: Request) {
         // Sin análisis disponibles no se mide: la consulta al proveedor se pagaría para nada.
         const saldo = estadoSaldo(await leerSaldo(admin, user.id));
         if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };
+        saldoAlMedir = saldo;
         const aviso = await leerAvisoGuia(admin, avisoId, o);
         if (!aviso) return { ok: false, status: 404, error: "aviso" };
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
@@ -240,7 +251,9 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
-    if (r.estado === "no-da") return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas }));
+    if (r.estado === "no-da") {
+      return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas, publicacion, porQue: porQueNoDa(r.zona, r.fino), saldo: saldoAlMedir }));
+    }
     return salir(NextResponse.json({ id: r.id, estado: r.estado }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso-str", userId: user.id, extra: { avisoId } });

@@ -101,6 +101,8 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
     derivados: derivadosAviso(depto, combo, finanzas),
   };
   const derivados = resumen.derivados.filter((x) => x.label === "Dividendo" || x.label === "Retorno bruto");
+  // Qué incluye el informe: en renta corta, los dos casos (27-oct-2026): si no da, no gasta y ve la publicación igual.
+  const incluye = modalidad === "str" ? AVISO_ANALIZAR.incluyeCorta : AVISO_ANALIZAR.incluye;
   // Lo que daba al abrir (la tarjeta gris): con la combinación de apertura, o lo recalculado si ya cambió.
   const linea = editando ? null : lineaVeredicto(cambio ? (cambiada && recal ? recal : cambio.base) : null);
   // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO: con otra combinación, hasta que llegue (aviso-analizar.ts).
@@ -117,7 +119,7 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       <div className="av-tarjeta">
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
-        <span className="av-incluye">{AVISO_ANALIZAR.incluye.antes}<b>{AVISO_ANALIZAR.incluye.fuerte}</b>{AVISO_ANALIZAR.incluye.despues}</span>
+        <span className={modalidad === "str" ? "av-incluye av-incluye-corta" : "av-incluye"} data-aviso="incluye">{incluye.antes}<b>{incluye.fuerte}</b>{incluye.despues}</span>
       </div>
       {conTicket && ticketVence && (
         <div className="av-ticket" data-aviso="ticket" data-vence={ticketVence}>

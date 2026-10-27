@@ -400,6 +400,8 @@
 .wz-modal-compacto .av-nombre { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wz-modal-compacto .av-linea { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wz-modal-compacto .av-incluye { font-size: 12.5px; padding-top: 6px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Renta corta (27-oct-2026): la promesa dice los dos casos y no cabe en una línea; se envuelve en vez de cortarse. */
+.wz-modal-compacto .av-incluye-corta { white-space: normal; }
 .wz-modal-compacto .av-sin-titulo { white-space: nowrap; }
 .wz-modal-compacto .av-selects .av-select { height: 42px; }
 .wz-modal-compacto .av-cambio { padding: 10px 12px; }

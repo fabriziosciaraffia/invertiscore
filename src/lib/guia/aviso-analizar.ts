@@ -47,6 +47,9 @@ export const AVISO_ANALIZAR = {
   comprar: TRES_COPY.boton,
   /** La tarjeta gris del depto: qué incluye el informe, en UNA línea corta (24-oct-2026: el pop-up cabe en 390 × 740). */
   incluye: { antes: "El informe incluye ", fuerte: "el enlace a la publicación", despues: "." },
+  /** RENTA CORTA (27-oct-2026, decisión de Fabrizio): la medición fina puede decir que no da, y entonces no hay informe.
+   *  La promesa dice los dos casos —y el pop-up «no da» la cumple con «Ver la publicación»—. */
+  incluyeCorta: { antes: "Si da, el informe incluye ", fuerte: "el enlace a la publicación", despues: "; si no da, no gastas y te mostramos la publicación igual." },
   sinRecalculo: "No pudimos recalcular con esa combinación. Prueba otra.",
 } as const;
 

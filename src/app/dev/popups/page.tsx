@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import { DemoPopups, type EstadoDemoPopups } from "./demo-popups";
 
 /** Acá y no en demo-popups.tsx: una constante de un módulo "use client" llega al servidor como referencia, no como lista. */
-const ESTADOS: readonly EstadoDemoPopups[] = ["a", "a0", "d1", "d1t", "d2", "e", "e0"];
+const ESTADOS: readonly EstadoDemoPopups[] = ["a", "a0", "d1", "d1t", "d2", "e", "e0", "c1", "c0", "nd", "nd2"];
 
 export const dynamic = "force-dynamic";
 

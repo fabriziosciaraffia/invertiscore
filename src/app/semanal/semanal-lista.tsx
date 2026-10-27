@@ -37,7 +37,7 @@ import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
-import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO } from "@/lib/guia/semanal-str";
+import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO, textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
@@ -51,6 +51,9 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
 const ESPERA_EN_CURSO_MS = 4000;
+/** «usa 1 de tus N» / «usa tu análisis de regalo»; null con el plan (no descuenta) o sin saldo. */
+const usoDelSaldo = (s: EstadoSaldo): string | null =>
+  s.tipo === "con" ? (s.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(s.n)) : s.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
 // Recién pagado, el crédito puede tardar unos segundos en llegar al ledger: se reintenta antes de ofrecer comprar otra vez.
 const ESPERA_CREDITO_MS = 2500;
 const REINTENTOS_CREDITO = 4;
@@ -102,7 +105,11 @@ export function SemanalLista({
   const [tardo, setTardo] = useState<string | null>(null);
   // Renta corta: los que no dieron en esta visita, y el pop-up con sus parecidos.
   const [noDanAhora, setNoDanAhora] = useState<string[]>([]);
-  const [popup, setPopup] = useState<{ avisoId: string; parecidos: string[] } | null>(null);
+  // Desde el 27-oct-2026 el pop-up lleva también el enlace a la publicación, por qué no da y el uso de «Analizar igual»
+  // (con el saldo con que midió el servidor, que tras un pago recién hecho puede ser más nuevo que el de la página).
+  const [popup, setPopup] = useState<{ it: ItemSemanal; parecidos: string[]; publicacion: string | null; porQue: string | null; uso: string | null } | null>(null);
+  // «Analizar igual» en curso: el pop-up queda abierto con el botón girando hasta que abre el informe.
+  const [analizandoIgual, setAnalizandoIgual] = useState(false);
   // Las tarjetas a la vista (24-oct-2026): las primeras `aLaVista`, y «Ver los N que faltan» para el resto.
   const [verTodos, setVerTodos] = useState(false);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
@@ -114,16 +121,18 @@ export function SemanalLista({
   const origenCompra = inmediato ? "inmediato" as const : "semanal" as const;
   const varianteCompra = inmediato ? null : variante;
   const comprarSeleccion = compraDeLaSeleccion({ token, origen: origenCompra, variante: varianteCompra, ticket });
-  const usa = saldo.tipo === "con" ? (saldo.proximoRegalo ? SEMANAL_PAGINA.usaRegalo : SEMANAL_PAGINA.usaUno(saldo.n)) : saldo.tipo === "regalo" ? SEMANAL_PAGINA.usaRegalo : null;
+  const usa = usoDelSaldo(saldo);
 
   // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
-  async function analizar(it: ItemSemanal, recienPagado = false, eleccion?: EleccionAnalizar) {
+  // `igual` (27-oct-2026): «Analizar igual» desde el pop-up «no da» de renta corta; el pop-up queda abierto, girando.
+  async function analizar(it: ItemSemanal, recienPagado = false, eleccion?: EleccionAnalizar, igual = false) {
     // Sin informe de origen (16-oct-2026, la puerta B) se analiza igual: la ruta valida la selección por el token.
     if (generando || !combinacion) return;
     const conCombo = eleccion?.combinacion ?? combinacion;
     setError(null);
     setTardo(null);
-    setPopup(null);
+    if (igual) setAnalizandoIgual(true);
+    else setPopup(null);
     setGenerando(it.avisoId);
     // Renta larga (21-oct-2026): el aviso queda abierto, cargando, con la barra del header, hasta que abre el informe.
     const soltar = corta ? null : iniciarCarga(claveActual());
@@ -143,7 +152,7 @@ export function SemanalLista({
           ? await fetch("/api/semanal/analizar-str", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ token, avisoId: it.avisoId }),
+              body: JSON.stringify({ token, avisoId: it.avisoId, ...(igual ? { igual: true } : {}) }),
               signal: control.signal,
             })
           : await fetch("/api/lo-que-sigue/guia/analizar", {
@@ -156,15 +165,18 @@ export function SemanalLista({
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[] };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null };
         if (res.ok && d.id) { router.push(corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`); return; }
         // Renta corta: con los datos de su dirección no da Comprar. No se cobró: la tarjeta queda marcada y el
-        // resultado va en el pop-up, con los parecidos que sobreviven.
+        // resultado va en el pop-up —con el enlace a la publicación, el porqué y «Analizar igual»—, con los parecidos
+        // que sobreviven.
         if (res.ok && d.estado === "no-da") {
           setNoDanAhora((xs) => [...xs, it.avisoId]);
-          setPopup({ avisoId: it.avisoId, parecidos: d.alternativas ?? [] });
+          setPopup({ it, parecidos: d.alternativas ?? [], publicacion: d.publicacion ?? null, porQue: d.porQue ?? null, uso: usoDelSaldo(d.saldo ?? saldo) });
           break;
         }
+        // Lo que sigue cierra el pop-up de «Analizar igual» si estaba abierto: el informe no salió.
+        setPopup(null);
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); router.refresh(); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»). Recién pagado, primero se
@@ -180,6 +192,7 @@ export function SemanalLista({
       }
     } catch {
       setConfirmar(null);
+      setPopup(null);
       if (corta && control.signal.aborted) setTardo(it.avisoId);
       else setError({ avisoId: it.avisoId, texto: GUIA.error });
     } finally {
@@ -187,6 +200,7 @@ export function SemanalLista({
     }
     soltar?.();
     setGenerando(null);
+    setAnalizandoIgual(false);
   }
 
   // Volvió pagado desde este depto (21-oct-2026): se analiza solo, una vez. El `analizar=1` sale de la dirección antes, así
@@ -323,7 +337,13 @@ export function SemanalLista({
       )}
       {cierre && !enCasa && <p className="guia-pie">{SEMANAL_PAGINA.pie}</p>}
       {popup && (
-        <PopupNoDa parecidos={parecidos.length} alCerrar={() => setPopup(null)}>
+        <PopupNoDa
+          parecidos={parecidos.length}
+          alCerrar={() => { if (!analizandoIgual) setPopup(null); }}
+          publicacion={popup.publicacion}
+          porQue={popup.porQue}
+          analizarIgual={{ texto: textoAnalizarIgual(popup.uso), ocupado: analizandoIgual, alTocar: () => void analizar(popup.it, false, undefined, true) }}
+        >
           {parecidos.map((p) => tarjeta(p, `pop-${p.avisoId}`))}
         </PopupNoDa>
       )}

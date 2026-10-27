@@ -10,9 +10,10 @@
 //     (semanal.ts › REGLA_CORTA). El correo y la página lo dicen con la marca `MARCA_ZONA`.
 //   · LA MEDICIÓN FINA, SOLO EN «ANALIZAR ESTE»: ahí se consulta al proveedor por la dirección del depto, como en el
 //     wizard (el costo lo asume Franco). LA REGLA DE COBRO ES SIMPLE (14-oct-2026): si la medición fina no da Comprar,
-//     no se cobra ni se descuenta nunca, y en lugar del informe se abre un pop-up con `NO_DA` y los parecidos de su
+//     no se cobra ni se descuenta nunca, y en lugar del informe se abre un pop-up con `NO_DA_DEPTO` y los parecidos de su
 //     selección que SOBREVIVEN: reevaluados con la tarifa y la ocupación recién medidas, sin consultar de nuevo, se
-//     ofrecen solo los que siguen dando Comprar; si no queda ninguno, `NINGUNO_DA`. Cada comparación queda registrada
+//     ofrecen solo los que siguen dando Comprar; si no queda ninguno, `NINGUNO_MAS`. Desde el 27-oct-2026 el pop-up
+//     dice además por qué, da el enlace a la publicación y ofrece «Analizar igual» (ése sí cobra). Cada comparación queda registrada
 //     (`comparaciones_zona_str`, con `cambio` = el veredicto cambió respecto del que vio) para revisarla en un mes.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
@@ -33,15 +34,51 @@ export const SEMANAL_STR = {
   sinCorto: "Para renta corta, esta semana no apareció ninguno que te convenga.",
 } as const;
 
-/** «Analizar este» cuando la medición fina no da Comprar (texto de Fabrizio, 15-oct-2026: sin mencionar el cobro). */
-export const NO_DA = "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:";
+// ── EL POP-UP «NO DA» (27-oct-2026, decisión de Fabrizio tras el caso de un cliente que pagó el pack el 26-oct, cayó en
+// «no da» y se quedó sin el enlace que el pop-up de antes le prometía). Cuando la medición fina cambia el veredicto, el
+// pop-up dice que no da (`NO_DA_DEPTO`), POR QUÉ en una línea (`porQueNoDa`: la tarifa o la ocupación medidas contra las
+// estimadas por zona), el enlace a la publicación («Ver la publicación») y «Analizar igual · usa 1 de tus N» para quien
+// quiera el informe completo de todas formas (ése sí cobra: `igual` en analizarStrDeSemanal); debajo, los parecidos que sí
+// dan (`PARECIDOS_DAN`) o, si no queda ninguno, `NINGUNO_MAS`. Las dos primeras frases son las de Fabrizio del 15-oct
+// (`NO_DA` partido en dos: entre ellas van el porqué y las dos salidas). Lo fija el tier NO-DA-PUBLICACION.
 
-/** Lo mismo cuando ninguno de los parecidos sigue dando Comprar con la medición nueva (texto de Fabrizio, 14-oct-2026). */
-export const NINGUNO_DA = "Con los datos de su dirección, ninguno de tu selección da para renta corta esta semana. Seguimos buscando.";
+/** La primera línea del pop-up (texto de Fabrizio, 15-oct-2026). */
+export const NO_DA_DEPTO = "Con los datos de su dirección, este depto no da para renta corta.";
+/** Antes de los parecidos que sí dan (texto de Fabrizio, 15-oct-2026). */
+export const PARECIDOS_DAN = "Estos sí dan, con esos mismos datos:";
+/** Sin parecidos que sobrevivan (antes `NINGUNO_DA`, que repetía la primera línea). */
+export const NINGUNO_MAS = "Con esos mismos datos, ninguno más de tu selección da esta semana. Seguimos buscando.";
 
-/** El mensaje del pop-up: con parecidos que sobreviven, `NO_DA`; sin ninguno, `NINGUNO_DA`. */
-export function mensajeNoDa(parecidos: number): string {
-  return parecidos > 0 ? NO_DA : NINGUNO_DA;
+/** Lo que sigue al porqué y las salidas: los parecidos que sí dan o que no queda ninguno. */
+export function continuacionNoDa(parecidos: number): string {
+  return parecidos > 0 ? PARECIDOS_DAN : NINGUNO_MAS;
+}
+
+/** El botón para quien quiere el informe de todas formas: «Analizar igual · usa 1 de tus 3» (sin el uso, con el plan). */
+export const ANALIZAR_IGUAL = "Analizar igual";
+export function textoAnalizarIgual(uso: string | null): string {
+  return uso ? `${ANALIZAR_IGUAL} · ${uso}` : ANALIZAR_IGUAL;
+}
+
+/** Desde cuánto se nombra una caída: la tarifa o la ocupación medidas, 5 % o más bajo lo estimado por zona. */
+export const CAIDA_QUE_SE_NOMBRA = 0.05;
+
+/**
+ * POR QUÉ NO DA, EN UNA LÍNEA: la tarifa por noche y la ocupación medidas en su dirección contra las que estimaba la zona.
+ * Se nombra lo que cayó `CAIDA_QUE_SE_NOMBRA` o más (las dos si cayeron las dos); si nada cayó tanto, o no hay contra qué
+ * comparar, la línea dice que con su pie y su plazo no alcanza, sin cifras inventadas.
+ */
+export function porQueNoDa(zona: LadoMedicion | null, fino: LadoMedicion): string {
+  const pesos = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
+  // Entre la cifra y el % va un espacio sin quiebre: el % no queda solo en la línea siguiente.
+  const pct = (o: number) => `${Math.round(o * 100)} %`;
+  const cae = (z: number | null | undefined, f: number | null | undefined): boolean => z != null && f != null && z > 0 && f < z * (1 - CAIDA_QUE_SE_NOMBRA);
+  const tarifa = cae(zona?.adr, fino.adr), ocupacion = cae(zona?.ocupacion, fino.ocupacion);
+  const pre = "Con tu pie y tu plazo no alcanza: en su dirección";
+  if (tarifa && ocupacion) return `${pre} la tarifa por noche es ${pesos(fino.adr!)} y la ocupación ${pct(fino.ocupacion!)}; la zona estimaba ${pesos(zona!.adr!)} y ${pct(zona!.ocupacion!)}.`;
+  if (tarifa) return `${pre} la tarifa por noche es ${pesos(fino.adr!)}; la zona estimaba ${pesos(zona!.adr!)}.`;
+  if (ocupacion) return `${pre} la ocupación es ${pct(fino.ocupacion!)}; la zona estimaba ${pct(zona!.ocupacion!)}.`;
+  return "Con tu pie y tu plazo no alcanza con la tarifa y la ocupación de su dirección.";
 }
 
 /** La tarjeta del depto que no dio: queda marcada, sin botón (no se inserta nada en la lista). */
@@ -170,17 +207,20 @@ export type ResultadoAnalizarStr =
   | ResultadoAnalizar
   | { estado: "despublicado" }
   | { estado: "sin-preparar"; status: number; error: string }
-  | { estado: "no-da"; alternativas: string[] };
+  | { estado: "no-da"; alternativas: string[]; zona: LadoMedicion | null; fino: LadoMedicion };
 
 /**
  * «Analizar este» en un depto de la selección de renta corta, de punta a punta:
  *   chequear la ficha (despublicado: avisa y para, sin crédito) → preparar y MEDIR FINO (antes de reclamar nada) →
- *   registrar la comparación → si la medición fina no da Comprar: NO_DA con los parecidos que sobreviven, sin reclamar,
- *   sin cobrar →
- *   si se sostiene: cobrar una vez y crear el informe (analizarUnaVez), y anotar en la comparación que se cobró.
+ *   registrar la comparación → si la medición fina no da Comprar: «no da» con los parecidos que sobreviven y la medición
+ *   (para el porqué), sin reclamar, sin cobrar →
+ *   si se sostiene —o la persona tocó «Analizar igual» (`igual`, 27-oct-2026)—: cobrar una vez y crear el informe
+ *   (analizarUnaVez), y anotar en la comparación que se cobró.
  * Puro: las piezas se inyectan (el tier lo prueba con dobles y cuenta cobros y registros).
  */
 export async function analizarStrDeSemanal(p: {
+  /** «Analizar igual» desde el pop-up «no da»: quiere el informe aunque no dé Comprar, y lo paga. */
+  igual?: boolean;
   /** El informe de renta corta de este aviso que la persona ya tiene: se abre sin medir ni cobrar de nuevo. */
   yaCreado(): Promise<string | null>;
   chequear(): Promise<EstadoPublicacion>;
@@ -203,7 +243,7 @@ export async function analizarStrDeSemanal(p: {
     cambio: cambiaVeredicto(m.mostrado.veredicto, m.fino.veredicto), cobrado: false, analysisId: null,
   };
   await p.registrar(base);
-  if (!daComprar(m.fino.veredicto)) return { estado: "no-da", alternativas: await p.alternativas() };
+  if (!p.igual && !daComprar(m.fino.veredicto)) return { estado: "no-da", alternativas: await p.alternativas(), zona: m.zona, fino: m.fino };
   const r = await analizarUnaVez(m.piezas);
   if (r.estado === "creado" || r.estado === "ya-creado") await p.registrar({ ...base, cobrado: true, analysisId: r.id });
   return r;
