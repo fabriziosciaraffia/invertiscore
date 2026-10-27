@@ -116,6 +116,8 @@ export const INMEDIATO = {
       ? `Apareció hoy un depto publicado como los que buscas —${busca}— que resulta con tu pie de ${pie}% y tu plazo de ${plazo} años.`
       : `Aparecieron hoy ${n} deptos publicados como los que buscas —${busca}— que resultan con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
   porQue: "Te llega porque nos dijiste que quieres comprar ya.",
+  // Con vecinas (27-oct-2026): en sus comunas no hubo nuevos que convengan.
+  vecinas: "En tus comunas no apareció ninguno nuevo que convenga, así que miramos las comunas vecinas.",
   baja: "Dejar de recibir estos avisos",
   bajaSigue: "El resumen de cada semana sigue llegando.",
   botonConSaldo: "Analizar uno",

@@ -59,6 +59,7 @@ export function correoInmediato(d: DatosCorreoInmediato): { subject: string; htm
   const filas: string[] = [titular(n === 1 ? INMEDIATO.titular : INMEDIATO.titularVarios(n))];
   filas.push(parrafoSemanal(escaparHtml(d.nombre ? `Hola, ${d.nombre}:` : "Hola:")));
   filas.push(parrafoSemanal(escaparHtml(INMEDIATO.intro(n, d.busca, pie, d.plazoAnios))));
+  if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafoSemanal(escaparHtml(INMEDIATO.vecinas)));
   for (const dep of d.deptos) filas.push(tarjetaSemanal(dep));
   const conSaldo = d.saldo == null || d.saldo > 0;
   filas.push(botonRojoSemanal(conSaldo ? INMEDIATO.botonConSaldo : INMEDIATO.botonSinSaldo, conSaldo ? d.urlBoton : d.urlComprar));

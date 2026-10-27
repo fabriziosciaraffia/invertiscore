@@ -24,7 +24,8 @@ import { join } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { BUZONES_FRANCO, destinoBloqueado } from "../../../src/lib/correo-destino";
 import { seleccionDelDia, type PreparacionInmediato } from "../../../src/lib/guia/inmediato-servidor";
-import { VENTANA_NUEVOS_HORAS, VENTANA_PRIMERA_HORAS, ventanaNuevosHoras } from "../../../src/lib/guia/inmediato";
+import { INMEDIATO, VENTANA_NUEVOS_HORAS, VENTANA_PRIMERA_HORAS, ventanaNuevosHoras } from "../../../src/lib/guia/inmediato";
+import { correoInmediato } from "../../../src/lib/email/correo-inmediato";
 import { eventoVistaEntrada, robotDeVisita } from "../../../src/lib/vista-entrada";
 import { eventoExplorarVista } from "../../../src/lib/explorar/servidor";
 import { EVENTOS_EXPLORAR } from "../../../src/lib/explorar/explorar";
@@ -86,7 +87,7 @@ export async function runPautaArreglosTier(): Promise<{ hard: number }> {
 
   // ── 2 · la selección diaria del «Ya» ──
   const T = new Date("2026-10-26T12:00:00Z");
-  const base = { avisados: async () => new Set<string>(), publicado: async () => "publicado" as const };
+  const base = { avisados: async () => new Set<string>(), vistos: async () => new Set<string>(), publicado: async () => "publicado" as const };
   const corta = await seleccionDelDia({ ...base, primera: async () => false, ltr: async () => null, str: async () => prep("COMPRAR") }, T);
   if (!corta || corta.modalidad !== "str" || corta.elegidos.length !== 1) F(`2 · una persona con «Ya» y perfil de renta corta, con un depto nuevo que conviene, no recibe su selección: ${JSON.stringify(corta && { m: corta.modalidad, n: corta.elegidos.length })}`);
   const larga = await seleccionDelDia({ ...base, primera: async () => false, ltr: async () => prep("COMPRAR"), str: async () => { throw new Error("no se pide la corta si hay larga"); } }, T);
@@ -111,6 +112,35 @@ export async function runPautaArreglosTier(): Promise<{ hard: number }> {
   if (!/corta && sel\.tabla === "semanal_selecciones" \? \{ items_str: items \} : \{ items \}/.test(codigo("src/lib/guia/semanal-servidor.ts"))) F("2 · el reemplazo de la selección diaria de renta corta escribe items_str (columna que avisos_inmediatos no tiene)");
   const str = cuerpo(codigo("src/lib/guia/semanal-str-servidor.ts"), "export async function prepararSeleccionStr(");
   if (!/opts\.nuevosDesde\s*\?\s*await admin\.rpc\("inmediato_candidatos_str"/.test(str)) F("2 · la renta corta de la selección diaria no pide los avisos NUEVOS (inmediato_candidatos_str)");
+
+  // ── 5 · con vecinas, sin repetir el semanal (27-oct-2026, decisión de Fabrizio) ──
+  const conVecinas = (veredictoPropio: string | null, veredictoVecina: string, vistos: string[] = []) => {
+    let pidioVecinas = false;
+    const p: PreparacionInmediato = {
+      ...prep("COMPRAR", veredictoPropio ? [cand("propio")] : []),
+      evaluar: async (c) => ({ veredicto: ((c as { avisoId: string }).avisoId === "propio" ? veredictoPropio : veredictoVecina) as never, score: 80, flujo: 0 }),
+      vecinas: async () => { pidioVecinas = true; return [cand("vecina", "Las Condes")]; },
+    };
+    return seleccionDelDia({ ...base, vistos: async () => new Set(vistos), primera: async () => false, ltr: async () => p, str: async () => null }, T).then((r) => ({ r, pidioVecinas }));
+  };
+  const v1 = await conVecinas("COMPRAR", "COMPRAR");
+  if (!v1.r || v1.r.deVecinas || v1.r.elegidos.map((e) => (e.c as { avisoId: string }).avisoId).join() !== "propio" || v1.pidioVecinas) F("5 · con un nuevo que conviene en sus comunas igual se miran (o se mezclan) las vecinas");
+  const v2 = await conVecinas("AJUSTA SUPUESTOS", "COMPRAR");
+  if (!v2.r || !v2.r.deVecinas || v2.r.elegidos.map((e) => (e.c as { avisoId: string }).avisoId).join() !== "vecina") F("5 · sin nuevos que convengan en sus comunas no se miran las vecinas");
+  const v3 = await conVecinas(null, "COMPRAR", ["vecina"]);
+  if (!v3.r || v3.r.elegidos.length !== 0 || v3.r.deVecinas) F("5 · un depto de vecina que ya salió en el semanal se repite en la selección diaria");
+  const v4 = await conVecinas("COMPRAR", "COMPRAR", ["propio"]);
+  if (!v4.r || v4.r.elegidos.map((e) => (e.c as { avisoId: string }).avisoId).join() !== "vecina" || !v4.r.deVecinas) F("5 · un depto de sus comunas que ya salió en el semanal se repite (o no deja pasar a la vecina)");
+  const v5 = await conVecinas("AJUSTA SUPUESTOS", "AJUSTA SUPUESTOS");
+  if (!v5.r || v5.r.elegidos.length !== 0) F("5 · un Ajustar de vecina entra a la selección diaria");
+  const av5 = cuerpo(codigo("src/lib/guia/inmediato-servidor.ts"), "export async function avisarPersona(");
+  if (!/vecinas: p\.p\.respaldo\.vecinas/.test(av5) || (av5.match(/vecinas: p\.p\.respaldo\.vecinas/g) ?? []).length !== 2) F("5 · avisarPersona no le pasa las vecinas (de renta larga y corta) a la selección diaria");
+  if (!/vistos: async \(\) => new Set\(Array\.from\(\(await vistosDePersona\(admin, userId\)\)\.keys\(\)\)\)/.test(av5)) F("5 · avisarPersona no saca lo que ya salió en el semanal (vistosDePersona)");
+  if (!/\.\.\.\(deVecinas \? \{ tramo: "vecina" as const \} : \{\}\)/.test(av5)) F("5 · los deptos de vecina no salen marcados como vecina");
+  const correoBase = { nombre: null, busca: "2D en Providencia", piePct: 20, plazoAnios: 25, saldo: 1, urlBoton: "u", urlComprar: "c", urlBaja: "b" };
+  const dep = { avisoId: "a", comuna: "Las Condes", tipologia: "2D1B", m2: 55, precioUF: 3800, veredicto: "COMPRAR", score: 80, flujo: 0, url: "x" };
+  if (!correoInmediato({ ...correoBase, deptos: [{ ...dep, tramo: "vecina" }] as never }).html.includes(INMEDIATO.vecinas)) F("5 · el correo no dice que los deptos son de comunas vecinas");
+  if (correoInmediato({ ...correoBase, deptos: [dep] as never }).html.includes(INMEDIATO.vecinas)) F("5 · el correo dice «comunas vecinas» sin que lo sean");
 
   // ── 3 · la medición de entrada no cuenta robots ──
   const escaneres = [

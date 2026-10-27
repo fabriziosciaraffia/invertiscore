@@ -18,6 +18,7 @@ import { correoInmediato, correoPreguntaYa } from "@/lib/email/correo-inmediato"
 import { RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSeleccionDiaria, ventanaNuevosHoras, type HorizonteCompra } from "./inmediato";
 import { avisadosAlMomento, prepararSeleccion, publicadoConPresupuesto, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
 import { prepararSeleccionStr } from "./semanal-str-servidor";
+import { vistosDePersona } from "./vistos-servidor";
 import type { Candidato } from "./semanal-candidatos";
 import type { Combinacion, Evaluado } from "./seleccion";
 import type { EstadoPublicacion } from "./publicacion";
@@ -65,6 +66,8 @@ export interface PreparacionInmediato {
   combo: Combinacion;
   candidatos: Candidato[];
   evaluar: (c: Candidato) => Promise<Evaluado | null>;
+  /** Los avisos NUEVOS de las comunas vecinas, con la misma ventana (el respaldo de la preparación). */
+  vecinas?: () => Promise<Candidato[]>;
 }
 
 /**
@@ -73,24 +76,34 @@ export interface PreparacionInmediato {
  * recibía nada, aunque el dashboard le promete una selección diaria. Ahora: primero renta larga; si no tiene ese perfil,
  * renta corta, con los nuevos de su zona estimados como el bloque corto del semanal. La primera de cada persona mira los
  * nuevos de la semana (`ventanaNuevosHoras`). null: no tiene con qué buscar. Lo prueba el tier PAUTA-ARREGLOS.
+ *
+ * CON VECINAS (27-oct-2026, decisión de Fabrizio): si en sus comunas no hay nuevos que convengan, se miran los nuevos de
+ * las comunas vecinas —el mismo respaldo que el semanal—, marcados como vecina. Y nunca lo que ya salió en el semanal de
+ * las últimas cuatro semanas ni lo que ya analizó (`vistos`), ni lo ya avisado (`avisados`): el día que no hay nada nuevo
+ * ni en sus comunas ni en las vecinas, no sale nada. Lo prueba el tier PAUTA-ARREGLOS §5.
  */
 export async function seleccionDelDia(
   deps: {
     ltr: (nuevosDesde: string) => Promise<PreparacionInmediato | null>;
     str: (nuevosDesde: string) => Promise<PreparacionInmediato | null>;
     avisados: () => Promise<ReadonlySet<string>>;
+    /** Lo que ya salió en el semanal (cuatro semanas) o ya analizó. */
+    vistos: () => Promise<ReadonlySet<string>>;
     publicado: (c: Candidato) => Promise<EstadoPublicacion>;
     primera: () => Promise<boolean>;
   },
   ahora: Date = new Date(),
-): Promise<{ modalidad: "ltr" | "str"; prep: PreparacionInmediato; elegidos: Array<{ c: Candidato; ev: Evaluado }>; nuevosDesde: string } | null> {
+): Promise<{ modalidad: "ltr" | "str"; prep: PreparacionInmediato; elegidos: Array<{ c: Candidato; ev: Evaluado }>; deVecinas: boolean; nuevosDesde: string } | null> {
   const nuevosDesde = new Date(ahora.getTime() - ventanaNuevosHoras(await deps.primera()) * 3600_000).toISOString().replace("Z", "");
   const ltr = await deps.ltr(nuevosDesde);
   const str = ltr ? null : await deps.str(nuevosDesde);
   const prep = ltr ?? str;
   if (!prep) return null;
-  const elegidos = await elegirInmediato(prep.candidatos, await deps.avisados(), prep.evaluar, deps.publicado);
-  return { modalidad: ltr ? "ltr" : "str", prep, elegidos, nuevosDesde };
+  const fuera = new Set([...Array.from(await deps.avisados()), ...Array.from(await deps.vistos())]);
+  const propios = await elegirInmediato(prep.candidatos, fuera, prep.evaluar, deps.publicado);
+  const vecinos = propios.length === 0 && prep.vecinas ? await elegirInmediato(await prep.vecinas(), fuera, prep.evaluar, deps.publicado) : [];
+  const deVecinas = propios.length === 0 && vecinos.length > 0;
+  return { modalidad: ltr ? "ltr" : "str", prep, elegidos: deVecinas ? vecinos : propios, deVecinas, nuevosDesde };
 }
 
 /** El aviso del día de una persona (o la pregunta, si su «Ya» cumplió 60 días sin compra). */
@@ -118,9 +131,10 @@ export async function avisarPersona(
   if (hoy?.enviado_at) return "ya";
 
   const sel = await seleccionDelDia({
-    ltr: async (nuevosDesde) => { const p = await prepararSeleccion(admin, userId, cfg, { nuevosDesde, perfilLeido: lp }); return p.tipo === "lista" ? p.p : null; },
-    str: async (nuevosDesde) => { const p = await prepararSeleccionStr(admin, userId, cfg, { perfilStr: lp.perfilStr, soloManual: true }, undefined, { nuevosDesde }); return p?.tipo === "lista" ? p.p : null; },
+    ltr: async (nuevosDesde) => { const p = await prepararSeleccion(admin, userId, cfg, { nuevosDesde, perfilLeido: lp }); return p.tipo === "lista" ? { ...p.p, vecinas: p.p.respaldo.vecinas } : null; },
+    str: async (nuevosDesde) => { const p = await prepararSeleccionStr(admin, userId, cfg, { perfilStr: lp.perfilStr, soloManual: true }, undefined, { nuevosDesde }); return p?.tipo === "lista" ? { ...p.p, vecinas: p.p.respaldo.vecinas } : null; },
     avisados: () => avisadosAlMomento(admin, userId),
+    vistos: async () => new Set(Array.from((await vistosDePersona(admin, userId)).keys())),
     publicado: publicadoConPresupuesto(admin, presupuesto),
     primera: async () => {
       const { count } = await admin.from("avisos_inmediatos").select("id", { count: "exact", head: true }).eq("user_id", userId).not("enviado_at", "is", null);
@@ -128,13 +142,13 @@ export async function avisarPersona(
     },
   }, ahora);
   if (!sel) return "no";
-  const { modalidad, prep: { perfil, origen, combo }, elegidos } = sel;
+  const { modalidad, prep: { perfil, origen, combo }, elegidos, deVecinas } = sel;
   // La selección diaria (24-oct-2026): si hoy no hay nuevos que convengan, no se manda nada.
   if (!mandaSeleccionDiaria(elegidos.length)) return "nada";
 
   const items: ItemSemanal[] = elegidos.map(({ c, ev }) => ({
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
-    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
+    veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo, ...(deVecinas ? { tramo: "vecina" as const } : {}),
   }));
   const fila = { user_id: userId, dia, items, aviso_ids: items.map((i) => i.avisoId), combinacion: combo, perfil, origen_analysis_id: origen.analysisId, modalidad, enviado_at: new Date().toISOString() };
   // Se toma la fila del día ANTES de mandar: dos corridas no mandan dos correos el mismo día.
