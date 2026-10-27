@@ -29,9 +29,9 @@ export async function PUT(request: Request) {
   reportarFalloQuery(error, { ruta: "api/perfil-busqueda", operacion: "guardar", userId: user.id });
   if (error) return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   // EL AJUSTE EN UN TOQUE DEL DASHBOARD (26-oct-2026, lib/casa/sin-oferta.ts): como `semanal_ajuste` del correo vacío, se
-  // mide cuál de las dos salidas se tocó.
+  // mide cuál de las salidas se tocó (desde el 27-oct-2026, también el chip de precio de abajo: `rango`).
   if (body.origen === ORIGEN_SIN_OFERTA) {
-    const ajuste = "pie_pct" in v.cambios ? "pie" : "comunas" in v.cambios ? "comuna" : "otro";
+    const ajuste = "pie_pct" in v.cambios ? "pie" : "comunas" in v.cambios ? "comuna" : "precio_max_uf" in v.cambios ? "rango" : "otro";
     waitUntil(capturarServidor({ event: "casa_ajuste", distinctId: user.id, properties: { origen: "sin_oferta", ajuste } }).then(() => undefined).catch(() => undefined));
   }
   // Contestó «¿Cuándo piensas comprar?» con sesión (src/lib/meta/registro.ts, 22-oct-2026): IntencionCompra con la

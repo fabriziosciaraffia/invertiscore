@@ -342,8 +342,10 @@ export interface CasiCorreo {
 export function correoSemanalVacio(d: {
   nombre: string | null; presentacion?: boolean; urlPerfil: string; urlBaja: string; delDia?: boolean; regaloAltaVence?: string | null; invitar?: EnlaceInvitarCorreo | null;
   casi?: CasiCorreo[];
-  alternativa?: { texto: string; boton: string; url: string } | null;
-  /** Cuántos había publicados como los que busca: sin casi ni alternativa, el cuerpo lo dice en vez de «no apareció ninguno». */
+  /** Con qué sí (27-oct-2026, las salidas del aviso del dashboard: casa/sin-oferta.ts): la línea «Hasta UF 3.000, 810 sí.
+   *  Con pie 30 %, 7. En Providencia, 4.» y un botón por salida, en el mismo orden. */
+  salidas?: { linea: string; botones: Array<{ boton: string; url: string }> } | null;
+  /** Cuántos había publicados como los que busca: sin casi ni salidas, el cuerpo lo dice en vez de «no apareció ninguno». */
   revisados?: number | null;
 }): { subject: string; html: string } {
   const filas: string[] = [];
@@ -358,7 +360,8 @@ export function correoSemanalVacio(d: {
   // La verdad (20-oct-2026): los que casi, nombrados; con qué sí, con el ajuste en un toque; y si no hay nada de eso, cuántos
   // había y que ninguno da ni con pie 30 % ni en vecinas. Nunca «no apareció ninguno» a secas.
   const casi = d.casi ?? [];
-  const aSecas = !d.delDia && casi.length === 0 && !d.alternativa && d.revisados != null;
+  const botones = d.salidas?.botones ?? [];
+  const aSecas = !d.delDia && casi.length === 0 && botones.length === 0 && d.revisados != null;
   const cuerpoVacio = d.delDia ? DEL_DIA.vacio : aSecas ? SEMANAL_VACIO.revisados(d.revisados!) : SEMANAL_VACIO.cuerpo;
   filas.push(parrafo(escaparHtml(cuerpoVacio)));
   if (casi.length > 0) {
@@ -368,15 +371,18 @@ export function correoSemanalVacio(d: {
       filas.push(`<tr><td style="padding: 0 0 8px 0; font-family: ${FUENTE_UI}; font-size: 14px; line-height: 1.5; color: ${TINTA};" data-casi="1"><b>UF ${miles(c.precioUF)}</b> · ${escaparHtml(ojo)}${c.score != null ? ` · <span style="color: ${TINTA_3};">${escaparHtml(etiquetaVeredicto("AJUSTA SUPUESTOS", "frase"))} ${c.score}</span>` : ""}</td></tr>`);
     }
   }
-  if (d.alternativa) {
-    filas.push(parrafo(escaparHtml(d.alternativa.texto), ` color: ${TINTA}; padding-top: 6px;`));
-    filas.push(`<tr><td style="padding: 0 0 22px 0;">
+  if (d.salidas && botones.length > 0) {
+    filas.push(parrafo(escaparHtml(d.salidas.linea), ` color: ${TINTA}; padding-top: 6px;`));
+    // Un botón por salida, uno bajo el otro (en el correo, lado a lado se corta en el teléfono), en el orden de la línea.
+    botones.forEach((b, i) => {
+      filas.push(`<tr><td style="padding: 0 0 ${i === botones.length - 1 ? 22 : 10}px 0;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
     <td style="border: 1.5px solid ${TINTA}; border-radius: 999px;">
-      <a href="${d.alternativa.url}" style="display: inline-block; padding: 12px 22px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" data-ajuste="1">${escaparHtml(d.alternativa.boton)}</a>
+      <a href="${b.url}" style="display: inline-block; padding: 12px 22px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" data-ajuste="1">${escaparHtml(b.boton)}</a>
     </td>
   </tr></table>
 </td></tr>`);
+    });
   }
   filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacioPerfil : SEMANAL_VACIO.perfil)));
   filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);

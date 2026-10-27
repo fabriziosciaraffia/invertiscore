@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { RANGOS_UF, type RangoUf } from "@/lib/deptos/respuesta";
 import type { EstadoPublicacion } from "./publicacion";
 import type { Evaluado } from "./seleccion";
 
@@ -567,30 +568,50 @@ export const SEMANAL_VACIO = {
   casi: (n: number) => `Hubo ${n} que casi: con tus números ${n === 1 ? "queda" : "quedan"} en ${etiquetaVeredicto("AJUSTA SUPUESTOS", "frase")}.`,
   ajustarPie: (pie: number) => `Buscar con pie ${pie} %`,
   ajustarComuna: (comuna: string) => `Sumar ${comuna} a mi búsqueda`,
+  /** El chip de precio de abajo (27-oct-2026): «Buscar hasta UF 3.000», «Buscar entre UF 3.000 y 4.000». */
+  ajustarRango: (rango: RangoUf) => `Buscar ${rango.frase}`,
   ajusteListo: (que: string) => `Listo: ${que}. La próxima selección sale con eso.`,
   perfil: "Si quieres buscar en otras comunas, cámbialas en tu perfil:",
   boton: "Ver mi perfil de búsqueda",
 } as const;
 
-/** El ajuste en un toque del correo vacío (20-oct-2026): el pie a 30 %, o una comuna vecina sumada al perfil. */
-export type AjustePerfil = { tipo: "pie"; pie: 30 } | { tipo: "comuna"; comuna: string };
+/** El ajuste en un toque del correo vacío (20-oct-2026): el pie a 30 %, una comuna vecina sumada al perfil o, desde el
+ *  27-oct-2026, el chip de precio de abajo (`rango` = el id del chip de /deptos). */
+export type AjustePerfil = { tipo: "pie"; pie: 30 } | { tipo: "comuna"; comuna: string } | { tipo: "rango"; rango: string };
+
+const rangoDeId = (id: string): RangoUf | undefined => RANGOS_UF.find((r) => r.id === id);
 
 export function ajusteDeParametro(v: string | null | undefined, comunasValidas: ReadonlySet<string>): AjustePerfil | null {
   if (!v) return null;
   if (v === "pie30") return { tipo: "pie", pie: 30 };
   const m = v.match(/^comuna:(.{1,40})$/);
   if (m && comunasValidas.has(m[1])) return { tipo: "comuna", comuna: m[1] };
+  const r = v.match(/^rango:([a-z0-9-]{1,20})$/);
+  if (r && rangoDeId(r[1])) return { tipo: "rango", rango: r[1] };
   return null;
 }
 
 export function parametroDeAjuste(a: AjustePerfil): string {
-  return a.tipo === "pie" ? "pie30" : `comuna:${a.comuna}`;
+  return a.tipo === "pie" ? "pie30" : a.tipo === "comuna" ? `comuna:${a.comuna}` : `rango:${a.rango}`;
 }
 
-/** Cómo queda el perfil con el ajuste: el pie, o las comunas con la vecina sumada (hasta ocho, sin repetir). */
+/** Cómo queda el perfil con el ajuste: el pie, las comunas con la vecina sumada (hasta ocho, sin repetir) o el precio en
+ *  el chip de abajo (piso y tope, como lo elige una persona en /deptos). */
 export function perfilConAjuste(a: AjustePerfil, actual: { comunas: string[] }): Record<string, unknown> {
   if (a.tipo === "pie") return { pie_pct: a.pie };
+  if (a.tipo === "rango") {
+    const r = rangoDeId(a.rango);
+    return r ? { precio_min_uf: r.min, precio_max_uf: r.max } : {};
+  }
   return { comunas: Array.from(new Set([...actual.comunas, a.comuna])).slice(0, 8) };
+}
+
+/** «tu pie quedó en 30 %» · «Providencia quedó en tu búsqueda» · «tu precio quedó hasta UF 3.000»: lo que dice
+ *  «Listo: …» después del toque, en el dashboard y al volver del correo. */
+export function queCambioAjuste(a: AjustePerfil): string {
+  if (a.tipo === "pie") return `tu pie quedó en ${a.pie} %`;
+  if (a.tipo === "comuna") return `${a.comuna} quedó en tu búsqueda`;
+  return `tu precio quedó ${rangoDeId(a.rango)?.frase ?? "en el rango nuevo"}`;
 }
 
 /** ¿Es el primer correo semanal de la persona? Entonces se presenta. */

@@ -15,6 +15,7 @@ import { portadaDeptos } from "@/lib/deptos/portada";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
 import { AvisoSinOferta } from "./aviso-sin-oferta";
 import { leerAvisoSinOferta } from "@/lib/casa/sin-oferta-servidor";
+import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
 import { OfertaCasa } from "./oferta-casa";
 import { MapaCasa } from "./mapa-casa";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -163,8 +164,11 @@ export default async function DashboardPage({
   const itemsSel = hayDeptos(sel) ? (sel.largo?.filas ?? []).map((f) => f.reemplazo ?? f.item).filter((i) => !!i) : [];
   // El botón dice el total de anoche en Santiago (24-oct-2026): el de /deptos, cacheado diez minutos (lib/deptos/portada.ts).
   // SIN OFERTA (26-oct-2026, lib/casa/sin-oferta.ts): con sus números no conviene ninguno en sus comunas. Se lee solo si la
-  // selección no trae ya uno de sus comunas (sin `tramo`): el aviso nunca contradice a las tarjetas de abajo.
-  const propiaEnSeleccion = itemsSel.some((i) => !i.tramo);
+  // selección no trae ya uno de sus comunas (sin `tramo`): el aviso nunca contradice a las tarjetas de abajo. «Sus comunas»
+  // son las de AHORA (27-oct-2026): la selección se arma con el perfil del domingo, y quien cambió de comuna a mitad de
+  // semana tiene tarjetas «propias» de una comuna que ya no busca.
+  const comunasLargo = new Set((perfilPersona.perfilLtr?.comunas ?? []).map(comunaDeAviso));
+  const propiaEnSeleccion = itemsSel.some((i) => !i.tramo && comunasLargo.has(comunaDeAviso(i.comuna)));
   const [mapa, portada, sinOferta] = await Promise.all([
     itemsSel.length > 0 ? datosMapaCasa(admin, user.id, itemsSel.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }))) : Promise.resolve(null),
     portadaDeptos(),

@@ -21,7 +21,7 @@ import "@/app/deptos/deptos.css";
 import { botonOcupado } from "@/lib/carga-global";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
-import { ajusteDeParametro, SEMANAL_VACIO } from "@/lib/guia/semanal";
+import { ajusteDeParametro, queCambioAjuste, SEMANAL_VACIO } from "@/lib/guia/semanal";
 import { etiquetaPendientes, type PreguntaPendiente } from "@/lib/casa/reglas";
 import { CASA, frasePerfil, lineaCorta } from "./casa-copy";
 import { lista, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
@@ -246,7 +246,7 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
   useEffect(() => {
     try {
       const a = ajusteDeParametro(new URLSearchParams(window.location.search).get("ajuste"), new Set(COMUNAS_DISPONIBLES as readonly string[]));
-      if (a) setAjusteHecho(a.tipo === "pie" ? `tu pie quedó en ${a.pie} %` : `${a.comuna} quedó en tu búsqueda`);
+      if (a) setAjusteHecho(queCambioAjuste(a));
     } catch {
       /* sin ventana */
     }

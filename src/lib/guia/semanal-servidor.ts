@@ -24,8 +24,8 @@ import { asegurarInvitacion } from "@/lib/referido-servidor";
 import { enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import { avisoDeCandidato, contextoDeFila, leerConfigGuia, leerOrigenGuia, origenSintetico, type OrigenGuia } from "./guia-servidor";
-import { responderDeptos } from "@/lib/deptos/servidor";
-import { PIE_DEPTOS } from "@/lib/deptos/estandar";
+import { contarSinOferta } from "@/lib/casa/sin-oferta-servidor";
+import { lineaDeSalidas, type SalidaSinOferta } from "@/lib/casa/sin-oferta";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
@@ -40,7 +40,7 @@ import { textoRenueva } from "./renovacion";
 import type { Combinacion, Evaluado } from "./seleccion";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
-  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, SEMANAL_VACIO, parametroDeAjuste, ordenFijo, type AjustePerfil,
+  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, parametroDeAjuste, ordenFijo,
   type ProgresoPrechequeo, type RespaldoSemanal, type Visto,
 } from "./semanal";
 
@@ -921,13 +921,16 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
   if ((tomada?.length ?? 0) !== 1) return "ya";
   const presentacion = !eAntes && esPrimerSemanal(enviadasAntes);
   const enlaces = enlacesSemanal(sitio, fila.token);
-  // La verdad del vacío (20-oct-2026): los que casi, y con qué sí (pie 30 % o una comuna vecina), con el ajuste en un toque.
+  // La verdad del vacío (20-oct-2026): los que casi, y con qué sí —desde el 27-oct-2026 las salidas del dashboard: el chip de
+  // precio de abajo, el pie 30 % y la comuna vecina, de mayor a menor—, cada una con su ajuste en un toque.
   const verdad = await verdadDelVacio(admin, fila.user_id).catch(() => null);
   const correo = correoSemanalVacio({
     nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio),
     casi: verdad?.casi ?? [],
     revisados: verdad?.revisados ?? null,
-    alternativa: verdad?.alternativa ? { texto: verdad.alternativa.texto, boton: verdad.alternativa.boton, url: enlaces.ajuste(parametroDeAjuste(verdad.alternativa.ajuste)) } : null,
+    salidas: verdad && verdad.salidas.length > 0
+      ? { linea: lineaDeSalidas(verdad.salidas), botones: verdad.salidas.map((s) => ({ boton: s.boton, url: enlaces.ajuste(parametroDeAjuste(s.ajuste)) })) }
+      : null,
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, "vacio");
   if (!r.ok) {
@@ -944,12 +947,13 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
 
 /**
  * LA VERDAD DEL CORREO VACÍO (20-oct-2026): los deptos que casi —los mejores Ajustar de sus comunas, recalculados con sus
- * números— y con qué sí: la respuesta de /deptos para su búsqueda (deptos_conteo), con pie 30 % en sus comunas o en la
- * comuna vecina que más da, cada una con su ajuste en un toque.
+ * números— y con qué sí. Desde el 27-oct-2026 «con qué sí» son las MISMAS salidas que el aviso del dashboard
+ * (casa/sin-oferta.ts: el chip de precio de abajo, el pie 30 % y la comuna vecina, de mayor a menor), con la misma cuenta
+ * (`contarSinOferta`): una superficie no puede ofrecer lo que la otra no.
  */
 export async function verdadDelVacio(admin: SupabaseClient, userId: string): Promise<{
   casi: Array<{ comuna: string; tipologia: string | null; m2: number; precioUF: number; score: number | null; flujo: number | null }>;
-  alternativa: { texto: string; boton: string; ajuste: AjustePerfil } | null;
+  salidas: SalidaSinOferta[];
   /** Cuántos había publicados como los que busca (la respuesta de /deptos); null si no se pudo contar. */
   revisados: number | null;
 }> {
@@ -965,21 +969,8 @@ export async function verdadDelVacio(admin: SupabaseClient, userId: string): Pro
       .sort((a, b) => (b.ev!.score ?? -1) - (a.ev!.score ?? -1)).slice(0, MAX_CASI)
       .map(({ c, ev }) => ({ comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF), score: ev!.score, flujo: ev!.flujo }));
   }
-  const rango = rangoSemanal(perfil);
-  if (!perfil.completo || !rango) return { casi, alternativa: null, revisados: null };
-  const r = await responderDeptos(admin, {
-    ok: true, comunas: perfil.comunas.map(comunaDeAviso), dorms: perfil.dormitorios, tipologias: [],
-    rango: { id: "perfil", min: rango.ufMin || null, max: rango.ufMax, chip: "", frase: "" }, modalidad: "ltr",
-  });
-  const pie = perfil.piePct ?? PIE_DEPTOS;
-  if ((r.conPie30 ?? 0) > 0 && pie < 30) {
-    return { casi, revisados: r.total, alternativa: { texto: `Con pie 30 %, ${r.conPie30} sí ${r.conPie30 === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarPie(30), ajuste: { tipo: "pie", pie: 30 } } };
-  }
-  const vecina = r.vecinas[0];
-  if (vecina) {
-    return { casi, revisados: r.total, alternativa: { texto: `En ${vecina.comuna}, comuna vecina, ${vecina.convienen} sí ${vecina.convienen === 1 ? "conviene" : "convienen"}.`, boton: SEMANAL_VACIO.ajustarComuna(vecina.comuna), ajuste: { tipo: "comuna", comuna: vecina.comuna } } };
-  }
-  return { casi, alternativa: null, revisados: r.total };
+  const cuenta = await contarSinOferta(admin, userId, perfil);
+  return { casi, salidas: cuenta?.aviso?.salidas ?? [], revisados: cuenta?.revisados ?? null };
 }
 /** Cuántos «que casi» nombra el correo vacío. */
 export const MAX_CASI = 3;

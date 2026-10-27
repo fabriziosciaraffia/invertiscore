@@ -72,7 +72,13 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
       { comuna: "Ñuñoa", tipologia: "2D2B", m2: 61, precioUF: 4450, veredicto: "COMPRAR", score: 75, flujo: 5000, url: `${SITIO}/semanal`, visto: "analizado" },
     ] });
   } },
-  { id: "semanal_vacio", tipo: "semanal", nombre: "Correo semanal · sin deptos esta semana", cuando: "Los lunes, a quien no le quedó ningún depto confirmado (13-oct-2026): el correo corto con el enlace a su perfil (el primero se presenta)", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, invitar: INVITAR_MUESTRA }) },
+  { id: "semanal_vacio", tipo: "semanal", nombre: "Correo semanal · sin deptos esta semana", cuando: "Los lunes, a quien no le quedó ningún depto confirmado (13-oct-2026): el correo corto con el enlace a su perfil (el primero se presenta)", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, invitar: INVITAR_MUESTRA,
+    // Las salidas del 27-oct-2026 (casa/sin-oferta.ts), de mayor a menor, cada una con su ajuste en un toque.
+    salidas: { linea: "Hasta UF 3.000, 810 sí. Con pie 30 %, 7. En Providencia, 4.", botones: [
+      { boton: "Buscar hasta UF 3.000", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=rango:hasta-3000` },
+      { boton: "Buscar con pie 30 %", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=pie30` },
+      { boton: "Sumar Providencia a mi búsqueda", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=comuna:Providencia` },
+    ] } }) },
   // El correo del día (16-oct-2026, la puerta B): a la cuenta nueva de /deptos, dentro de la hora; es el semanal de esa semana.
   { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: 25, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
   { id: "del_dia_vacio", tipo: "semanal", nombre: "Correo del día · sin deptos todavía", cuando: "Dentro de la hora del registro por /deptos, cuando ningún depto publicado convenía: «Te aviso cuando aparezca uno», con el regalo", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, delDia: true, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
