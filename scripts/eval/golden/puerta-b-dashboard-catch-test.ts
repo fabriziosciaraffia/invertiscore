@@ -285,8 +285,9 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const inmSrv = codigo("src/lib/guia/inmediato-servidor.ts");
   // ⚠ ACTA (26-oct-2026, goal «cuatro arreglos antes de la pauta») · la elección vive en `seleccionDelDia` (renta larga o
   // corta; la primera con los nuevos de la semana, después 48 horas) y avisarPersona corta en «nada» con lo que devuelve.
-  if (!/const elegidos = await elegirInmediato\(prep\.candidatos, await deps\.avisados\(\), prep\.evaluar, deps\.publicado\);/.test(inmSrv)
-    || !/const \{ modalidad, prep: \{ perfil, origen, combo \}, elegidos \} = sel;\s*if \(!mandaSeleccionDiaria\(elegidos\.length\)\) return "nada";/.test(inmSrv)) F("6 · avisarPersona no corta en «nada» cuando no hay nuevos que convengan");
+  // ⚠ ACTA (27-oct-2026) · con vecinas: los propios, y si no hay, los de las vecinas; el corte en «nada» mira lo elegido.
+  if (!/const propios = await elegirInmediato\(prep\.candidatos, fuera, prep\.evaluar, deps\.publicado\);/.test(inmSrv)
+    || !/const \{ modalidad, prep: \{ perfil, origen, combo \}, elegidos, deVecinas \} = sel;\s*if \(!mandaSeleccionDiaria\(elegidos\.length\)\) return "nada";/.test(inmSrv)) F("6 · avisarPersona no corta en «nada» cuando no hay nuevos que convengan");
   if (!/ventanaNuevosHoras\(await deps\.primera\(\)\) \* 3600_000/.test(inmSrv) || !/prepararSeleccion\(admin, userId, cfg, \{ nuevosDesde, perfilLeido: lp \}\)/.test(inmSrv)
     || !/prepararSeleccionStr\(admin, userId, cfg, \{ perfilStr: lp\.perfilStr, soloManual: true \}, undefined, \{ nuevosDesde \}\)/.test(inmSrv)) F("6 · la selección diaria no se arma solo con los nuevos");
   const vercel = JSON.parse(leer("vercel.json")) as { crons: Array<{ path: string; schedule: string }> };
