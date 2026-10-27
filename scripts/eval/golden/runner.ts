@@ -160,6 +160,7 @@ import { runPuertaBMockupsTier } from "./puerta-b-mockups-catch-test";
 import { runPuertaBDashboardTier } from "./puerta-b-dashboard-catch-test";
 import { runPerfilOfertaTier } from "./perfil-oferta-catch-test";
 import { runPublicacionPortadaTier } from "./publicacion-portada-catch-test";
+import { runNoDaPublicacionTier } from "./no-da-publicacion-catch-test";
 import { runEntradaAltaTier } from "./entrada-alta-catch-test";
 import { runAltaOrdenTier } from "./alta-orden-catch-test";
 import { runVeredictoGuardadoTier } from "./veredicto-guardado-catch-test";
@@ -685,6 +686,10 @@ function printSeed(r: SeedReport) {
   // «Ficha del depto» en la portada —medido dibujando la portada con informes reales de la selección, por la misma función
   // que usa la página—; despublicado lo dice sin enlace; el botón de abajo es «Mandármelo por correo». En rojo por mutación.
   totalHard += (await runPublicacionPortadaTier()).hard;
+  // Tier NO-DA-PUBLICACION (27-oct-2026, 0 tokens): el «no da» de renta corta con la medición real del caso del 26-oct —el
+  // porqué en una línea, «Ver la publicación», «Analizar igual · usa 1 de tus N» que cobra una vez— y el pop-up de antes
+  // prometiendo los dos casos. En rojo por mutación.
+  totalHard += (await runNoDaPublicacionTier()).hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
   // termina con el botón activo—, el mismo código repone la sesión, `alta_perdida` una vez con la puerta. ──
   totalHard += (await runEntradaAltaTier()).hard;

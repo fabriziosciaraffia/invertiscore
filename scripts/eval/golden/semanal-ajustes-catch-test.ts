@@ -109,7 +109,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (largaCorta.estado !== "armada" || largaCorta.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join() !== "a/propia,b/propia" || MINIMO_SEMANAL !== 3)
       F(`3 · renta larga con dos Comprar no los manda (${largaCorta.estado}: ${largaCorta.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join()}), o el relleno ya no apunta a tres`);
     // La regla de cobro: la ruta pasa por el orquestador, que cobra solo si lo fino da Comprar (el detalle, en SEMANAL-STR).
-    if (!/if \(!daComprar\(m\.fino\.veredicto\)\) return \{ estado: "no-da", alternativas: await p\.alternativas\(\) \};/.test(sinComentarios(leer("src/lib/guia/semanal-str.ts"))))
+    // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier NO-DA-PUBLICACION): el «no da» lleva la medición (para el porqué) y
+    // «Analizar igual» (`igual`) salta la regla a pedido de la persona, que paga ese informe.
+    if (!/if \(!p\.igual && !daComprar\(m\.fino\.veredicto\)\) return \{ estado: "no-da", alternativas: await p\.alternativas\(\), zona: m\.zona, fino: m\.fino \};/.test(sinComentarios(leer("src/lib/guia/semanal-str.ts"))))
       F("3 · la regla de cobro no es «si lo fino no da Comprar, no se cobra»");
   }
 
@@ -186,11 +188,13 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
 
   // ── 6 · EL RESULTADO EN UN POP-UP ──────────────────────────────────────────────
   {
-    if (STR.mensajeNoDa(2) !== STR.NO_DA || STR.mensajeNoDa(0) !== STR.NINGUNO_DA) F("6·9 · el pop-up no dice NO_DA con parecidos y NINGUNO_DA sin ninguno");
+    // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier NO-DA-PUBLICACION): `NO_DA` se parte en dos —entre la primera línea y
+    // los parecidos van el porqué, el enlace y «Analizar igual»— y `NINGUNO_DA` pasa a `NINGUNO_MAS`, sin repetir la primera.
+    if (STR.continuacionNoDa(2) !== STR.PARECIDOS_DAN || STR.continuacionNoDa(0) !== STR.NINGUNO_MAS) F("6·9 · el pop-up no sigue con los parecidos que dan, o con que no queda ninguno");
     // EL COPY (15-oct-2026, Fabrizio): los textos aprobados, y ninguno habla del cobro.
     if (STR.MARCA_NO_DA !== "No da con los datos de su dirección") F("6 · la marca de la tarjeta no es la aprobada");
-    if (STR.NO_DA !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:"
-      || STR.NINGUNO_DA !== "Con los datos de su dirección, ninguno de tu selección da para renta corta esta semana. Seguimos buscando."
+    if (STR.NO_DA_DEPTO !== "Con los datos de su dirección, este depto no da para renta corta." || STR.PARECIDOS_DAN !== "Estos sí dan, con esos mismos datos:"
+      || STR.NINGUNO_MAS !== "Con esos mismos datos, ninguno más de tu selección da esta semana. Seguimos buscando."
       || STR.SEMANAL_STR.zona !== "Estimados con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de esa dirección.")
       F("6 · los textos del pop-up o del bloque no son los aprobados");
     {
@@ -199,7 +203,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       const { correoSemanal } = await import("../../../src/lib/email/correo-semanal");
       const valores = (o: Record<string, unknown>) => Object.values(o).map((v) => (typeof v === "function" ? String((v as (...a: unknown[]) => unknown)(2, "1 dormitorio, Providencia", "20", 25)) : String(v)));
       const textos = [
-        ...valores(STR.SEMANAL_STR), STR.NO_DA, STR.NINGUNO_DA, STR.MARCA_NO_DA, STR.MARCA_ZONA, STR.MIDIENDO, STR.MIDIENDO_TARDO, STR.REINTENTAR,
+        ...valores(STR.SEMANAL_STR), STR.NO_DA_DEPTO, STR.PARECIDOS_DAN, STR.NINGUNO_MAS, STR.textoAnalizarIgual("usa 1 de tus 3"),
+        STR.porQueNoDa({ veredicto: "COMPRAR", score: 85, adr: 80367, ocupacion: 0.466 }, { veredicto: "AJUSTA SUPUESTOS", score: 68, adr: 61143, ocupacion: 0.437 }),
+        AVISO_ANALIZAR.incluyeCorta.antes + AVISO_ANALIZAR.incluyeCorta.fuerte + AVISO_ANALIZAR.incluyeCorta.despues, STR.MARCA_NO_DA, STR.MARCA_ZONA, STR.MIDIENDO, STR.MIDIENDO_TARDO, STR.REINTENTAR,
         ...valores(SEMANAL_PAGINA as unknown as Record<string, unknown>), ...valores(AVISO_ANALIZAR as unknown as Record<string, unknown>),
         ...(["con", "regalo", "plan"] as const).map((tipo) => textoUso(tipo === "con" ? { tipo, n: 4, noVencen: false } : tipo === "regalo" ? { tipo, vence: null } : { tipo })),
       ];
@@ -208,9 +214,11 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       const conCobro = textos.filter((t) => /cobr/i.test(t));
       if (conCobro.length || /cobr/i.test(html) || /cobr/i.test(lista) || /cobr/i.test(popup.replace(/^\s*\/\/.*$/gm, ""))) F(`6 · la página, el correo o los pop-ups todavía hablan del cobro (${JSON.stringify(conCobro)}${/cobr/i.test(html) ? " + correo" : ""})`);
     }
-    if (!/role="dialog" aria-modal="true"/.test(popup) || !/\{mensajeNoDa\(parecidos\)\}/.test(popup) || !/\{parecidos > 0 && <div className="guia guia-pop-lista" data-popup="parecidos">\{children\}<\/div>\}/.test(popup))
+    // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): el mensaje es `NO_DA_DEPTO` y la continuación, la de los parecidos;
+    // lo que va entre medio (el porqué, el enlace, «Analizar igual») lo mide NO-DA-PUBLICACION dibujando el pop-up.
+    if (!/role="dialog" aria-modal="true"/.test(popup) || !/\{NO_DA_DEPTO\}/.test(popup) || !/\{continuacionNoDa\(parecidos\)\}/.test(popup) || !/\{parecidos > 0 && <div className="guia guia-pop-lista" data-popup="parecidos">\{children\}<\/div>\}/.test(popup))
       F("6 · el pop-up no es un diálogo con el mensaje y los parecidos");
-    if (!/\{popup && \(\s*<PopupNoDa parecidos=\{parecidos\.length\} alCerrar=\{\(\) => setPopup\(null\)\}>\s*\{parecidos\.map\(\(p\) => tarjeta\(p, `pop-\$\{p\.avisoId\}`\)\)\}\s*<\/PopupNoDa>\s*\)\}/.test(lista))
+    if (!/\{popup && \(\s*<PopupNoDa\s+parecidos=\{parecidos\.length\}[\s\S]*?>\s*\{parecidos\.map\(\(p\) => tarjeta\(p, `pop-\$\{p\.avisoId\}`\)\)\}\s*<\/PopupNoDa>\s*\)\}/.test(lista))
       F("6 · la página no muestra los parecidos dentro del pop-up");
     // Nada se inserta en la lista: la lista solo dibuja sus filas (y los reemplazos de los caídos).
     // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · la lista es `.sel-lista` y cada tarjeta va numerada; «Ver los N que faltan» al final.

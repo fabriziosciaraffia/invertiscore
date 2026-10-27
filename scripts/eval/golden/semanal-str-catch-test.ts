@@ -245,7 +245,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const items = ["a", "b", "c", "d", "e"].map((avisoId) => ({ avisoId }));
     const alt = STR.alternativasNoDa(items, "b", new Set(["d"])).map((x) => x.avisoId).join();
     if (alt !== "c,e,a" || STR.ALTERNATIVAS_NO_DA < 2 || STR.ALTERNATIVAS_NO_DA > 3) F(`3 · los siguientes no son «los dos o tres siguientes de su selección» (${alt})`);
-    if (STR.NO_DA !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:") F("3 · el mensaje cuando no da no es el aprobado");
+    // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): `NO_DA` partido en dos, con las mismas palabras.
+    if (`${STR.NO_DA_DEPTO} ${STR.PARECIDOS_DAN}` !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:") F("3 · el mensaje cuando no da no es el aprobado");
     // La ruta: compara contra lo que vio la persona, mide fino con el contador «semanal», y no mide sin análisis.
     if (!/mostrado: \{ veredicto: item\.veredicto!, score: item\.score \?\? null \}/.test(ruta)) F("3 · la ruta no compara contra el veredicto que vio la persona");
     if (!/await buildShortTermAnalysisRow\(body, ufValue, mercado, undefined, \{ origen: "semanal" \}\)/.test(ruta)) F("3 · la medición fina no es la del informe o no se cuenta como del semanal");
@@ -253,8 +254,10 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const iSaldo = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };'), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iSaldo < 0 || iMide < 0 || iSaldo > iMide) F("3 · sin análisis disponibles igual se consulta al proveedor");
     // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de AnalizarEste (tier MEDICION-META).
-    if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) return salir\(NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas \}\)\);/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
-    if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*setPopup\(\{ avisoId: it\.avisoId, parecidos: d\.alternativas \?\? \[\] \}\);\s*break;\s*\}/.test(lista))
+    // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): la respuesta «no-da» trae además el enlace, el porqué y el saldo, y el
+    // pop-up los recibe.
+    if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) \{\s*return salir\(NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas, publicacion, porQue: porQueNoDa\(r\.zona, r\.fino\), saldo: saldoAlMedir \}\)\);\s*\}/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
+    if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*setPopup\(\{ it, parecidos: d\.alternativas \?\? \[\], publicacion: d\.publicacion \?\? null, porQue: d\.porQue \?\? null, uso: usoDelSaldo\(d\.saldo \?\? saldo\) \}\);\s*break;\s*\}/.test(lista))
       F("3 · la página no abre el pop-up con los parecidos cuando no da (o no marca la tarjeta)");
   }
 
