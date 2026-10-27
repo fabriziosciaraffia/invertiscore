@@ -169,10 +169,12 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       if (!/disabled=\{submitting \|\| bloqueado\}/.test(codigo("src/components/formulario-v4/ModalPlausibilidad.tsx"))) F("3 · el modal no deshabilita el principal con el bloqueo");
       // Una respuesta tardía de otra combinación no pisa; si no pudo, se dice y sigue bloqueado.
       if (!/void cambio\.recalcular\(combo\)\.then\(\(r\) => \{ if \(pedido\.current === n\) \{ setRecal\(r\); setFallo\(!r\); setRecalculando\(false\); \} \}\)/.test(av) || !/data-aviso="fallo">\{AVISO_ANALIZAR\.sinRecalculo\}/.test(av)) F("3 · el pop-up no recalcula en cada cambio (o una respuesta tardía pisa a la nueva, o no dice que no pudo)");
+      // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): la línea de qué incluye el informe elige su texto por modalidad
+      // (`incluye`: en renta corta, los dos casos); el orden del cuerpo es el mismo.
       // El cuerpo del mockup: la tarjeta gris, la línea del pie y el plazo con «Cambiar», los selectores, la tarjeta del cambio
       // (en rojo solo si empeora), el dividendo y el retorno, la casilla.
       if (!/cuerpo=\{cuerpo\}/.test(av) || /resumen=\{resumen\}|destacado=\{/.test(av)) F("3 · el pop-up no dibuja su propio cuerpo (o vuelve al del wizard)");
-      if (!orden(av, ['className="av-tarjeta"', 'data-aviso="depto">{resumen.direccion}', 'data-aviso="veredicto">{linea}', "{AVISO_ANALIZAR.incluye.antes}", 'data-aviso="pie"', 'data-aviso="plazo"', 'data-aviso="cambio" data-empeora={da.empeora ? "1" : undefined}', 'data-aviso="combo"', "{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>", "data-modal-cambiar", 'data-aviso="derivados"', 'data-aviso="guardar" data-modal-guardar']))
+      if (!orden(av, ['className="av-tarjeta"', 'data-aviso="depto">{resumen.direccion}', 'data-aviso="veredicto">{linea}', 'data-aviso="incluye">{incluye.antes}', 'data-aviso="pie"', 'data-aviso="plazo"', 'data-aviso="cambio" data-empeora={da.empeora ? "1" : undefined}', 'data-aviso="combo"', "{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>", "data-modal-cambiar", 'data-aviso="derivados"', 'data-aviso="guardar" data-modal-guardar']))
         F("3 · el cuerpo del pop-up no es el del mockup (tarjeta gris, pie y plazo con «Cambiar», selectores, el cambio, los derivados, la casilla)");
       if (!/const derivados = resumen\.derivados\.filter\(\(x\) => x\.label === "Dividendo" \|\| x\.label === "Retorno bruto"\);/.test(av)) F("3 · el pop-up muestra más que el dividendo y el retorno bruto");
       const cssW = leer("src/components/formulario-v4/wizard-v4.css");
