@@ -173,6 +173,7 @@ import { runExplorarTier } from "./explorar-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
+import { runNuevoUsadoTier } from "./nuevo-usado-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -730,6 +731,9 @@ function printSeed(r: SeedReport) {
   // Tier DEPTOS-CONTEO (28-oct-2026, 0 tokens; mide contra la base): el número de /deptos se lee del conteo que guarda el cron
   // de la evaluación (lo que falta se cuenta una vez y se guarda), bajo 300 ms y sin RPC (Sentry JAVASCRIPT-NEXTJS-1K). ──
   totalHard += (await runDeptosConteoTier()).hard;
+  // Tier NUEVO-USADO (28-oct-2026, 0 tokens): la línea de cada depto dice «· Usado» o «· Nuevo» si el aviso lo dice, en la misma
+  // línea y color, en todas sus fichas (Explorar, correos, pop-up, «Estás dentro», dashboard). ──
+  totalHard += (await runNuevoUsadoTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;
