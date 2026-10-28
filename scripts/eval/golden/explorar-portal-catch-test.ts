@@ -456,13 +456,15 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (28-oct-2026). 58 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
+// ACTA DE MUTACIÓN (28-oct-2026). 60 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
 // todas ROJAS. La primera pasada dio 49 de 52: tres gates flojos que se afirmaron —4D+ sin un 6D en el fixture (M32), el flujo
 // positivo sin un flujo cero (M34) y el primer pintado sin mirar la línea de antes de la página quieta (M52)—. Después del QA
 // en WebKit 390 y PC, seis más por lo que el QA cazó: M53 la noche esparce el universo en la raíz (el mapa decía «0
 // convienen») · M54 el cliente lee otra forma (verde la primera vez: se afirmó con `descompactar(d.universo)`) · M55 el aviso
 // de cookies tapa la pantalla · M56 la barra no publica su alto · M57 la lista esconde el mapa · M58 «Mi búsqueda» filtra el
 // tope de «cualquier precio».
+// Y por el LCP medido en producción (2,53 s esperando la cuenta): M59 la página espera la cuenta (sin esqueleto) · M60 el
+// esqueleto sin el mapa quieto.
 //   1 · VISTA GLOBAL: M1 el cliente abre con el perfil · M2 la global filtra Santiago · M3 la página pasa el perfil · M4 pie 30 ·
 //       M5 «Mi búsqueda» sin modalidad.
 //   2 · TARJETA: M6 «Visto publicado» · M7 «Revisado con pie» · M8 sin cap rate · M9 la caja gris · M10 sin corazón.
