@@ -3,14 +3,15 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
-import { COLUMNAS_ENVIO, cuentasPruebaSinCorreo, descartarSeleccion, enviarSeleccion, type FilaSeleccion } from "@/lib/guia/semanal-servidor";
+import { COLUMNAS_ENVIO, enviarSeleccion, type FilaSeleccion } from "@/lib/guia/semanal-servidor";
 import { semanaDelEnvio } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El lunes sale el correo semanal (02-oct-2026): a cada persona con selección de la semana, una vez. El regalo se
 // decide acá. Desde el 13-oct-2026 nadie recibe silencio por un error nuestro: la armada, la PENDIENTE (lo que
 // alcanzó a confirmarse, aunque sea menos de tres, después del reintento de la mañana) y la SIN COINCIDENCIAS (el
-// correo corto) salen todas; y las cuentas de prueba no reciben nada, salvo las marcadas.
+// correo corto) salen todas. Las cuentas de prueba siguen el mismo camino (28-oct-2026): el correo no les llega porque
+// lo frena enviarCorreo (correo-destino.ts), salvo las marcadas; su fila queda como la de una real.
 // Auth: Vercel Cron, `Authorization: Bearer ${CRON_SECRET}`.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,12 @@ export async function GET(request: Request) {
       .eq("semana", semana).eq("tipo", "semanal").in("estado", ["armada", "pendiente", "sin_match"]).is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`selecciones: ${error.message}`);
     const cuenta = { enviada: 0, descartada: 0, ya: 0, fallida: 0 };
-    const fuera = await cuentasPruebaSinCorreo(admin);
     const t0 = Date.now();
     let quedan = 0;
     for (const fila of (data ?? []) as FilaSeleccion[]) {
       if (Date.now() - t0 > PRESUPUESTO_ENVIO_MS) { quedan++; continue; }
       try {
-        cuenta[fuera.has(fila.user_id) ? await descartarSeleccion(admin, fila.id) : await enviarSeleccion(admin, fila, SITIO)]++;
+        cuenta[await enviarSeleccion(admin, fila, SITIO)]++;
       } catch (e) {
         cuenta.fallida++;
         capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "enviar-seleccion", userId: fila.user_id });

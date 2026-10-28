@@ -15,7 +15,7 @@ import { sendSemanalEmail } from "@/lib/email";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "@/lib/email/correo-semanal";
 import { regaloAltaVivo } from "@/lib/regalo-alta-servidor";
 import { diaChile } from "@/lib/regalo-alta";
-import { cuentasPruebaSinCorreo, enlacesSemanal, itemDe, prepararSeleccion, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
+import { enlacesSemanal, itemDe, prepararSeleccion, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
 import { leerConfigGuia } from "./guia-servidor";
 import { prepararSeleccionStr } from "./semanal-str-servidor";
 import { estadoDeFila, type EstadoBloque } from "./semanal-str";
@@ -237,15 +237,20 @@ async function enviarDelDia(
  * (las siguientes, el cron correo-del-dia cada 10 minutos). Lo llaman las puertas que crean cuenta —/api/deptos/alta,
  * el reclamo después del código (banner, guía, /entrar), /auth/callback (Google y el enlace del correo) y el ticket del
  * pack—; una cuenta de antes (MINUTOS_CUENTA_NUEVA) no se encola, y una fila del día ya existente no se duplica. Las
- * cuentas de prueba no reciben nada, salvo las marcadas. Devuelve la fila, o null si no corresponde o no se pudo. Nunca
- * lanza: quien lo llama está en medio de un registro.
+ * cuentas de prueba siguen el mismo camino (28-oct-2026): el correo no les llega porque lo frena enviarCorreo, no porque
+ * se les quite la fila. Devuelve la fila, o null si no corresponde o no se pudo. Nunca lanza: quien lo llama está en
+ * medio de un registro.
  */
 export async function encolarPrimeraSeleccion(
   admin: SupabaseClient,
   user: { id: string; created_at?: string | null },
   /** `antes` (25-oct-2026, el alta rápida de /deptos): la primera vuelta espera esto antes de correr —el alta reserva la
    *  fila antes de responder y suelta la vuelta después, cuando el perfil ya está escrito—. */
-  deps: { sitio: string; enSegundoPlano: (p: Promise<unknown>) => void; ruta: string; antes?: Promise<unknown> },
+  deps: {
+    sitio: string; enSegundoPlano: (p: Promise<unknown>) => void; ruta: string; antes?: Promise<unknown>;
+    /** La vuelta del correo del día; por defecto, procesarDelDia. El tier CUENTAS-PRUEBA la reemplaza. */
+    vuelta?: (fila: FilaDelDia) => Promise<unknown>;
+  },
   ahora: Date = new Date(),
 ): Promise<FilaDelDia | null> {
   try {
@@ -254,15 +259,13 @@ export async function encolarPrimeraSeleccion(
     if (!fila) return null;
     // Ya hubo una vuelta (la cuenta pasó por dos puertas en el mismo registro): no se repite.
     if (fila.intentos > 0) return fila;
+    const vuelta = deps.vuelta ?? (async (f: FilaDelDia) => procesarDelDia(admin, f, await leerConfigGuia(admin), deps.sitio, { lecturas: 0, bloqueada: false }));
     deps.enSegundoPlano((async () => {
       try {
         if (deps.antes) await deps.antes;
-        const fuera = await cuentasPruebaSinCorreo(admin);
-        if (fuera.has(user.id)) {
-          await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);
-          return;
-        }
-        await procesarDelDia(admin, fila, await leerConfigGuia(admin), deps.sitio, { lecturas: 0, bloqueada: false });
+        // La cuenta de prueba también (28-oct-2026, decisión de Fabrizio): su fila, su selección y sus botones son los de una
+        // real; lo único que no le llega es el correo, y eso lo decide enviarCorreo (correo-destino.ts).
+        await vuelta(fila);
       } catch (e) {
         captureApiError(e, { ruta: deps.ruta, operacion: "primera-vuelta", userId: user.id });
       }

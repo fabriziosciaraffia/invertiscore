@@ -4,7 +4,7 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { cuentasPruebaSinCorreo, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
+import type { PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 import { delDiaPendientes, procesarDelDia } from "@/lib/guia/del-dia-servidor";
 import { avisarAltasPerdidas } from "@/lib/deptos/entrada-servidor";
 
@@ -13,7 +13,8 @@ import { avisarAltasPerdidas } from "@/lib/deptos/entrada-servidor";
 // correo todavía no salió. Cada una arma su selección dentro del cupo de lecturas de ficha (el tope por hora es el de
 // siempre, compartido con la guía y el semanal); si el cupo se copa, la vuelta siguiente sigue, y pasada la hora sale
 // con lo que ya se vio publicado. La primera vuelta de cada cuenta corre en el momento del alta (/api/deptos/alta).
-// Las cuentas de prueba no reciben nada, salvo las marcadas (como el semanal).
+// Las cuentas de prueba siguen la misma cola (28-oct-2026): la fila y la selección son las de una real, y el correo no les
+// llega porque lo frena enviarCorreo (correo-destino.ts), salvo las marcadas con `recibe_correos`.
 // Auth: Vercel Cron, `Authorization: Bearer ${CRON_SECRET}`.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -43,14 +44,8 @@ export async function GET(request: Request) {
     const cuenta = { enviada: 0, espera: 0, descartada: 0, ya: 0, fallida: 0 };
     if (filas.length > 0) {
       const cfg = await leerConfigGuia(admin);
-      const fuera = await cuentasPruebaSinCorreo(admin);
       for (const fila of filas) {
         if (Date.now() - t0 > PRESUPUESTO_MS) break;
-        if (fuera.has(fila.user_id)) {
-          await admin.from("semanal_selecciones").update({ estado: "descartada" }).eq("id", fila.id).is("enviada_at", null);
-          cuenta.descartada++;
-          continue;
-        }
         const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
         try {
           cuenta[await procesarDelDia(admin, fila, cfg, SITIO, presupuesto)]++;

@@ -700,7 +700,7 @@ export async function otorgarReactivacion(admin: SupabaseClient, userId: string)
  * quien tenga perfil (`perfiles_inversion`). Antes eran solo los segundos: la tabla nació el 28-sep y
  * dejaba fuera a casi todos los que tienen informes.
  */
-export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ userId: string }>> {
+export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ userId: string; prueba: boolean }>> {
   const ids = new Set<string>();
   const juntar = async (tabla: "perfiles_inversion" | "analisis") => {
     for (let desde = 0; ; desde += 1000) {
@@ -725,20 +725,20 @@ export async function personasSemanal(admin: SupabaseClient): Promise<Array<{ us
     for (const r of data ?? []) ids.add(r.user_id as string);
     if ((data?.length ?? 0) < 1000) break;
   }
-  // Sin las cuentas de prueba, salvo las marcadas (13-oct-2026, decisión de Fabrizio).
-  const fuera = await cuentasPruebaSinCorreo(admin);
-  return Array.from(ids).filter((userId) => !fuera.has(userId)).map((userId) => ({ userId }));
+  // Con las cuentas de prueba (28-oct-2026, decisión de Fabrizio; antes, desde el 13-oct, quedaban fuera): una cuenta de
+  // prueba ve lo mismo que una real —su selección, sus botones, su mapa— y lo único que no le llega es el correo, que lo
+  // frena enviarCorreo (correo-destino.ts). Van al final de la cola: el tope de fichas por hora lo usan primero las personas.
+  return cuentasDePruebaAlFinal(admin, Array.from(ids));
 }
 
-/**
- * Las cuentas de prueba que NO reciben los correos (semanal y aviso inmediato, 13-oct-2026): todas las de
- * `test_accounts`, salvo las que Fabrizio marque con `recibe_correos`. Si no se puede leer, el envío no corre: mejor
- * un cron en rojo que mandarle a quien no corresponde.
- */
-export async function cuentasPruebaSinCorreo(admin: SupabaseClient): Promise<Set<string>> {
-  const { data, error } = await admin.from("test_accounts").select("user_id, recibe_correos");
-  if (error) throw new Error(`cuentas de prueba: ${error.message}`);
-  return new Set((data ?? []).filter((r) => r.recibe_correos !== true).map((r) => r.user_id as string));
+/** Las personas con las cuentas de prueba (`test_accounts`) al final, cada grupo en el orden en que llegó. Si la tabla no se
+ *  lee, van todas como reales: el orden es lo único que decide, nadie queda fuera. */
+export async function cuentasDePruebaAlFinal(admin: SupabaseClient, ids: string[]): Promise<Array<{ userId: string; prueba: boolean }>> {
+  const { data, error } = await admin.from("test_accounts").select("user_id");
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "cuentas-de-prueba" });
+  const dePrueba = new Set((data ?? []).map((r) => r.user_id as string));
+  const todas = ids.map((userId) => ({ userId, prueba: dePrueba.has(userId) }));
+  return [...todas.filter((p) => !p.prueba), ...todas.filter((p) => p.prueba)];
 }
 
 export interface FilaSeleccion {

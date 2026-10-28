@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { hojaSinDeptos, PRIMERA_SELECCION, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
+import { hojaSinDeptos, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
@@ -193,7 +193,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
             <div className="sel-lista" data-primera="lista">
               {visibles.map((it, i) => {
                 const neg = (it.flujo ?? 0) < 0;
-                const puede = !!datos.token && !!it.enSeleccion && !!datos.combinacion;
+                const puede = puedeAnalizarPrimero(datos, it);
                 return (
                   <article key={it.avisoId} className="sel-av" data-primera="depto" data-n={i + 1}>
                     <div className="sel-ojo"><span className="sel-pin" aria-hidden="true">{i + 1}</span>{[it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ")}</div>

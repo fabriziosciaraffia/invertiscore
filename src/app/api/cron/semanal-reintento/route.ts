@@ -4,7 +4,7 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { armarSeleccion, cuentasPruebaSinCorreo, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
+import { armarSeleccion, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 import { semanaDelEnvio } from "@/lib/guia/semanal";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,8 +33,7 @@ export async function GET(request: Request) {
     const { data, error } = await admin.from("semanal_selecciones").select("user_id")
       .eq("semana", semana).eq("tipo", "semanal").eq("estado", "pendiente").is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`pendientes: ${error.message}`);
-    const fuera = await cuentasPruebaSinCorreo(admin);
-    const pendientes = (data ?? []).map((r) => r.user_id as string).filter((u) => !fuera.has(u));
+    const pendientes = (data ?? []).map((r) => r.user_id as string);
     const cfg = await leerConfigGuia(admin);
     const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
     const cuenta = { armada: 0, sin_match: 0, pendiente: 0, ya: 0, fallidas: 0 };

@@ -47,8 +47,9 @@ export async function GET(request: Request) {
   try {
     const corrida = await conTope((async () => {
       const cfg = await leerConfigGuia(admin);
-      // Un orden estable: «dónde quedó» solo sirve si la lista no cambia de orden entre corridas.
-      const personas = (await personasSemanal(admin)).sort((a, b) => (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
+      // Un orden estable: «dónde quedó» solo sirve si la lista no cambia de orden entre corridas. Las cuentas de prueba al
+      // final (28-oct-2026): el tope de fichas lo usan primero las personas.
+      const personas = (await personasSemanal(admin)).sort((a, b) => Number(a.prueba) - Number(b.prueba) || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
       total = personas.length;
       const anterior = await leerAvancePrechequeo(admin);
       const desde = desdeDondeQuedo(personas, anterior?.siguiente ?? null);

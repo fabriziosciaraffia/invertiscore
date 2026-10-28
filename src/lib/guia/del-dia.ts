@@ -141,6 +141,15 @@ export function tituloSeleccion(n: number): string {
   return n > 0 ? PRIMERA_SELECCION.eligio(n) : PRIMERA_SELECCION.tituloSinContar;
 }
 
+/**
+ * ¿La tarjeta lleva «Analizar este»? Solo si el depto quedó en la selección del día (la ruta lo valida por el token) y hay
+ * con qué combinación analizarlo. La cuenta de prueba entra igual que una real (28-oct-2026): lo que la deja fuera es el
+ * correo, nunca el botón (lo prueba el tier CUENTAS-PRUEBA).
+ */
+export function puedeAnalizarPrimero(d: { token: string | null; combinacion: unknown }, it: { enSeleccion?: boolean }): boolean {
+  return !!d.token && !!it.enSeleccion && !!d.combinacion;
+}
+
 /** El botón de cada tarjeta: con el regalo por gastar, lo dice. */
 export function textoAnalizar(usaRegalo: boolean): string {
   return usaRegalo ? PRIMERA_SELECCION.analizarRegalo : PRIMERA_SELECCION.analizar;

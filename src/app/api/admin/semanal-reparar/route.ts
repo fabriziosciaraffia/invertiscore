@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { armarSeleccion, COLUMNAS_ENVIO, cuentasPruebaSinCorreo, enviarSeleccion, type FilaSeleccion, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
+import { armarSeleccion, COLUMNAS_ENVIO, enviarSeleccion, type FilaSeleccion, type PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/admin/semanal-reparar (20-oct-2026, la reparación): a las personas que el lunes recibieron el correo corto
@@ -9,7 +9,8 @@ import { armarSeleccion, COLUMNAS_ENVIO, cuentasPruebaSinCorreo, enviarSeleccion
 // real con la regla nueva, esta semana, sin esperar al lunes. Body: `{ semana: "AAAA-MM-DD", userIds: [...] }`. Por
 // persona: la fila de esa semana vuelve a «pendiente», se arma de nuevo (con el cupo de fichas de una corrida) y, si
 // quedó con al menos un depto —confirmado o visto anoche sin confirmar—, se manda; si no, la fila vuelve a como estaba y
-// no sale un segundo correo vacío. No es una corrida del cron: no late ni cierra. Las cuentas de prueba no reciben nada.
+// no sale un segundo correo vacío. No es una corrida del cron: no late ni cierra. A una cuenta de prueba se le arma igual
+// (28-oct-2026); el correo lo frena enviarCorreo (correo-destino.ts).
 // Auth: `Authorization: Bearer ${CRON_SECRET}`, como el cron.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,13 +32,11 @@ export async function POST(request: Request) {
 
   const admin = createServiceClient();
   const cfg = await leerConfigGuia(admin);
-  const fuera = await cuentasPruebaSinCorreo(admin);
   const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
   const t0 = Date.now();
   const resultado: Array<Record<string, unknown>> = [];
   for (const userId of userIds) {
     if (Date.now() - t0 > PRESUPUESTO_MS) { resultado.push({ userId, resultado: "sin-tiempo" }); continue; }
-    if (fuera.has(userId)) { resultado.push({ userId, resultado: "cuenta-de-prueba" }); continue; }
     const { data: fila } = await admin.from("semanal_selecciones").select("id, estado, enviada_at, resend_id, items, items_str").eq("user_id", userId).eq("semana", semana).eq("tipo", "semanal").maybeSingle();
     if (!fila) { resultado.push({ userId, resultado: "sin-fila" }); continue; }
     if ((fila.items as unknown[] | null)?.length || (fila.items_str as unknown[] | null)?.length) { resultado.push({ userId, resultado: "ya-tenia-deptos" }); continue; }
