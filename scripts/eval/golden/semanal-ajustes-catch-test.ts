@@ -223,7 +223,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // Nada se inserta en la lista: la lista solo dibuja sus filas (y los reemplazos de los caídos).
     // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · la lista es `.sel-lista` y cada tarjeta va numerada; «Ver los N que faltan» al final.
     const enLista = lista.slice(lista.indexOf('<div className="sel-lista" data-semanal="tarjetas">'), lista.indexOf("{visibles === 0"));
-    if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item, f\.item\.avisoId, i \+ 1\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
+    // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la tarjeta se numera desde el número de su bloque (`desdeN`: el segundo bloque sigue la cuenta del primero).
+    if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item, f\.item\.avisoId, i \+ desdeN\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
     // La tarjeta original: marcada, sin botón.
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     if (!/if \(corta && noDa\.has\(it\.avisoId\)\) return <p className="sel-estado" data-semanal="no-da">\{MARCA_NO_DA\}<\/p>;/.test(acciones)) F("6 · la tarjeta que no dio no queda marcada sin botón");

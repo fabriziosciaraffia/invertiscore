@@ -175,6 +175,7 @@ import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
 import { runNuevoUsadoTier } from "./nuevo-usado-catch-test";
 import { runRegionTier } from "./region-catch-test";
+import { runRespaldoMapaTier } from "./respaldo-mapa-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -737,6 +738,9 @@ function printSeed(r: SeedReport) {
   totalHard += (await runNuevoUsadoTier()).hard;
   // Tier REGION (28-oct-2026, 0 tokens): las funciones de Node corren en gru1, al lado de la base (sa-east-1). ──
   totalHard += runRegionTier().hard;
+  // Tier RESPALDO-MAPA (28-oct-2026, 0 tokens): toda tarjeta del dashboard tiene «Analizar este», también las del respaldo de la
+  // noche, y el mapa dibuja el bloque que tenga la persona (renta larga, corta o las dos), numerado como las tarjetas. ──
+  totalHard += (await runRespaldoMapaTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;

@@ -282,11 +282,14 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar) · la condición del botón vive en del-dia.ts › puedeAnalizarPrimero, que
       // el tier CUENTAS-PRUEBA ejercita con una cuenta de prueba nueva por /deptos; acá se prueba la función y que la tarjeta la use.
       const pa = { token: "t", combinacion: { piePct: 20, plazoAnios: 25 } };
-      if (!puedeAnalizarPrimero(pa, { enSeleccion: true }) || puedeAnalizarPrimero(pa, { enSeleccion: false }) || puedeAnalizarPrimero({ ...pa, token: null }, { enSeleccion: true }) || puedeAnalizarPrimero({ ...pa, combinacion: null }, { enSeleccion: true }))
-        F("7 · «Analizar este» se ofrece sin el token de la selección, sin la combinación o con un depto fuera de la selección");
+      // ⚠ ACTA (28-oct-2026, decisión de Fabrizio: toda tarjeta de un depto tiene «Analizar este», venga de la selección o del
+      // respaldo) · sin token, o fuera de la fila, la tarjeta se analiza como respaldo (tier RESPALDO-MAPA); sin combinación, no.
+      if (!puedeAnalizarPrimero(pa, { enSeleccion: true }) || !puedeAnalizarPrimero(pa, { enSeleccion: false }) || !puedeAnalizarPrimero({ ...pa, token: null }, { enSeleccion: true }) || puedeAnalizarPrimero({ ...pa, combinacion: null }, { enSeleccion: true }))
+        F("7 · «Analizar este» falta en una tarjeta con combinación (de la selección o del respaldo), o sale sin combinación");
       if (!/const puede = puedeAnalizarPrimero\(datos, it\);/.test(ps) ||!/\{it\.informeId \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
-      if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}semanal: datos\.token \}\)/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
+      // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · el pedido elige el modo: con su fila, el token de la selección; sin ella, `respaldo: true` (lo prueba RESPALDO-MAPA §2).
+      if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}como === "seleccion"\s*\? \{ origenId: datos\.origenId, [^}]*semanal: datos\.token \}/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
       if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este · usa tu regalo» con el regalo");
       // Tres a la vista y «Ver los N que faltan» (mockup 2).
       if (TARJETAS_A_LA_VISTA !== 3 || PRIMERA_SELECCION.verMas(2) !== "Ver los 2 que faltan" || PRIMERA_SELECCION.verMas(1) !== "Ver el que falta" || !/const visibles = verTodos \? items : items\.slice\(0, TARJETAS_A_LA_VISTA\);/.test(ps) || !/data-primera="ver-mas">\{PRIMERA_SELECCION\.verMas\(faltanPorVer\)\}<\/button>/.test(ps)) F("7 · no van tres a la vista con «Ver los N que faltan»");
@@ -341,7 +344,8 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (!/const puerta = esPuerta\(atr\?\.puerta\) \? atr\.puerta : esPuerta\(candidata\) \? candidata : null;/.test(ruta) || !/properties: \{ puerta, n: r\.items\.length, fuente: r\.fuente/.test(ruta)) F("10 · el evento no lleva la puerta (la del servidor, o la candidata del navegador)");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
       // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el pedido se arma con URLSearchParams (la puerta y, en «Estás dentro», mapa=1).
-      if (!/const candidata = leerPuertaCandidata\(\);\s*const qs = new URLSearchParams\(\);\s*if \(candidata\) qs\.set\("puerta", candidata\.puerta\);\s*if \(encabezado === "dentro"\) qs\.set\("mapa", "1"\);\s*const res = await fetch\(`\/api\/deptos\/primeros\$\{qs\.size \? `\?\$\{qs\.toString\(\)\}` : ""\}`/.test(ps)) F("10 · el navegador no manda su puerta candidata");
+      // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · en la casa pide `mapa=casa` (el respaldo dibuja el mapa del dashboard).
+      if (!/const candidata = leerPuertaCandidata\(\);\s*const qs = new URLSearchParams\(\);\s*if \(candidata\) qs\.set\("puerta", candidata\.puerta\);\s*qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);\s*const res = await fetch\(`\/api\/deptos\/primeros\$\{qs\.size \? `\?\$\{qs\.toString\(\)\}` : ""\}`/.test(ps)) F("10 · el navegador no manda su puerta candidata");
       if (!/Activación por puerta/.test(leer("docs/posthog-activacion-por-puerta.md"))) F("10 · falta la nota del panel de activación por puerta");
     }
 
@@ -369,7 +373,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
       if (/anoche|correo|pie|plazo/i.test(PRIMERA_SELECCION.bajadaRegalo + PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche», lo del correo, el pie o el plazo");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{encabezado === "dentro" && datos\?\.mapa && items\.length > 0 && <div data-primera="mapa">[^\n]*<\/div>\}\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
+      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{datos\?\.mapa && items\.length > 0 && <div data-primera="mapa">[^\n]*<\/div>\}\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
         F("12 · la pantalla no dibuja ese texto justo bajo el título (con el regalo cuando lo hay)");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";

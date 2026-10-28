@@ -10,7 +10,7 @@
 // inmediato. Ahora el único que mira test_accounts para decidir es enviarCorreo (correo-destino.ts).
 //
 //   1 · LA CUENTA DE PRUEBA NUEVA POR /deptos VE «ANALIZAR ESTE»: el alta encola la fila del día, la primera vuelta corre y
-//       «Estás dentro» (primerosDeLaCuenta) trae cada depto con el botón (puedeAnalizarPrimero) y el token de su fila. Y ve
+//       «Estás dentro» (primerosDeLaCuenta) trae cada depto con el botón por su selección (comoAnalizarPrimero) y el token de su fila. Y ve
 //       exactamente lo mismo que una cuenta real con el mismo perfil.
 //   2 · Y EL DASHBOARD TIENE CON QUÉ DIBUJAR EL MAPA: la selección de esta semana (seleccionDeEstaSemana) es su fila del día
 //       con los mismos deptos, en el bloque de renta larga (los pines del mapa).
@@ -33,7 +33,7 @@ import { join, relative } from "node:path";
 import { encolarPrimeraSeleccion } from "../../../src/lib/guia/del-dia-servidor";
 import { primerosDeLaCuenta } from "../../../src/lib/deptos/primeros-servidor";
 import { personasSemanal, seleccionDeEstaSemana } from "../../../src/lib/guia/semanal-servidor";
-import { puedeAnalizarPrimero } from "../../../src/lib/guia/del-dia";
+import { comoAnalizarPrimero } from "../../../src/lib/guia/del-dia";
 import { destinoBloqueado } from "../../../src/lib/correo-destino";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -155,14 +155,16 @@ export async function runCuentasPruebaTier(): Promise<{ hard: number }> {
       const d = prueba.datos;
       if (d.items.length === 0) F(`1 · «Estás dentro» de la cuenta de prueba no trae deptos (fuente ${d.fuente})`);
       else {
-        const sinBoton = d.items.filter((it) => !puedeAnalizarPrimero(d, it)).length;
+        // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · desde que el respaldo también tiene botón, «ve el botón» no alcanza: la cuenta de
+        // prueba tiene que analizar POR SU SELECCIÓN (el token de su fila), como una real, no como respaldo.
+        const sinBoton = d.items.filter((it) => comoAnalizarPrimero(d, it) !== "seleccion").length;
         if (sinBoton > 0) F(`1 · la cuenta de prueba nueva por /deptos no ve «Analizar este» en ${sinBoton} de ${d.items.length} deptos (token ${d.token ? "sí" : "no"})`);
         if (prueba.enBase && d.token !== prueba.enBase.token) F("1 · «Analizar este» de la cuenta de prueba no va con el token de su fila del día");
       }
       // Lo mismo que una real: los mismos deptos, en el mismo orden, con el mismo botón, la misma combinación y la misma fuente.
-      const vista = (x: typeof d) => JSON.stringify({ fuente: x.fuente, faltan: x.faltan, combinacion: x.combinacion, revisando: x.revisando, items: x.items.map((it) => [it.avisoId, puedeAnalizarPrimero(x, it)]) });
+      const vista = (x: typeof d) => JSON.stringify({ fuente: x.fuente, faltan: x.faltan, combinacion: x.combinacion, revisando: x.revisando, items: x.items.map((it) => [it.avisoId, comoAnalizarPrimero(x, it)]) });
       if (vista(d) !== vista(real.datos)) F(`1 · la cuenta de prueba no ve lo mismo que una real: ${vista(d)} contra ${vista(real.datos)}`);
-      if (real.datos.items.length === 0 || real.datos.items.some((it) => !puedeAnalizarPrimero(real.datos, it))) F("1 · la cuenta real del tier no ve «Analizar este» (el instrumento no corrió)");
+      if (real.datos.items.length === 0 || real.datos.items.some((it) => comoAnalizarPrimero(real.datos, it) !== "seleccion")) F("1 · la cuenta real del tier no ve «Analizar este» (el instrumento no corrió)");
 
       // 2 · el mapa del dashboard se arma con los deptos de la selección de renta larga (page.tsx › itemsSel).
       const s = prueba.sel;

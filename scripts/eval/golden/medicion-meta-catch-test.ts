@@ -205,7 +205,7 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
         // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el origen puede ser el sintético (sin informe): sin semanal, siempre hay
         // informe de origen, así que el id es el del informe.
         // ⚠ ACTA (23-oct-2026, goal Explorar) · desde el mapa el id es por aviso y «explorar» (no hay selección ni informe de origen).
-        ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" : desdeSemanal \? b\.semanal! : origen\.analysisId!\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
+        ["src/app/api/lo-que-sigue/guia/analizar/route.ts", [/eventId: idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" : desdeRespaldo \? "respaldo" : desdeSemanal \? b\.semanal! : origen\.analysisId!\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
         ["src/app/api/semanal/analizar-str/route.ts", [/eventId: idAnalizarEste\(avisoId, b\.token\),/, /espejoAE = ae\.espejo;/, /return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado \}\)\);/]],
         // ⚠ ACTA (19-oct-2026) · la respuesta buena suma la fecha y el asunto del toque repetido (GUIA-BUSQUEDA §15 fija la
         // línea entera); acá basta que salga por `salir`, con el espejo.

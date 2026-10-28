@@ -413,7 +413,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/const tabla = sel\.fuente === "inmediato" \? "avisos_inmediatos" : "semanal_selecciones";[\s\S]*?seleccionViva\(admin, \{ tabla, id: sel\.id, userId, items: sel\.items \}, cfg\)/.test(pg)) F("13 · /semanal no está viva");
     const li = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
     // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el reemplazo lleva el número de la posición del caído.
-    if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo, f\.reemplazo\.avisoId, i \+ 1\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
+    // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · contado desde el número de su bloque (`desdeN`), como el pin del mapa.
+    if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo, f\.reemplazo\.avisoId, i \+ desdeN\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
     // ⚠ ACTA (21-oct-2026) · antes de pedir la página de nuevo se cierra el aviso, que ahora queda abierto mientras genera.
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ setConfirmar\(null\); router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
     for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);

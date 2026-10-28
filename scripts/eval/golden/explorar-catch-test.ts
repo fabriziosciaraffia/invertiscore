@@ -137,7 +137,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   }
   const an = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
   if (!/const desdeExplorar = b\.explorar === true && b\.origenId == null && typeof b\.semanal !== "string";/.test(an)) F("3 · la ruta de la guía no conoce «explorar: true»");
-  if (!/if \(desdeExplorar\) \{[\s\S]{0,200}if \(!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)\) return NextResponse\.json\(\{ error: "combinacion" \}, \{ status: 400 \}\);/.test(an)) F("3 · desde Explorar el pie y el plazo no se validan contra las listas del pop-up");
+  // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · el respaldo de la casa se valida igual que Explorar, en la misma rama.
+  if (!/if \(desdeExplorar \|\| desdeRespaldo\) \{[\s\S]{0,200}if \(!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)\) return NextResponse\.json\(\{ error: "combinacion" \}, \{ status: 400 \}\);/.test(an)) F("3 · desde Explorar el pie y el plazo no se validan contra las listas del pop-up");
   if (!/combo = \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \};\s*o = origenSintetico\(user\.id, \{ piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, comunas: pp\.perfil\.comunas, dormitorios: pp\.perfil\.dormitorios \}, await leerConfigGuia\(admin\)\);/.test(an)) F("3 · desde Explorar no se analiza con el origen sintético y la tasa de mercado");
   if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(an) || !/via: desde \}\)\);/.test(an) || !/body\.origenAviso\.desde = desde;/.test(an)) F("3 · «explorar» no llega a analisis_creado (via) ni al informe (origenAviso.desde)");
   if (!/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(\{ userId: user\.id, analysisId: id, avisoId: aviso\.avisoId/.test(an)) F("3 · «explorar_analiza» no sale al crear el informe desde el mapa");

@@ -280,7 +280,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if (!sinSaldo.includes("3 análisis por $14.990")) F("5 · el aviso sin saldo de una cuenta nueva no dice el precio del ticket");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
     if (!/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}/.test(sl)) F("5 · la selección no le pasa las dos compras al aviso");
-    if (!/compras=\{datos\.token \? comprasDelDepto\(\{ token: datos\.token, avisoId: confirmar\.it\.avisoId, origen: "semanal", ticket: !!datos\.ticket \}\) : null\}/.test(ps)) F("5 · la primera selección no le pasa las dos compras al aviso");
+    // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la compra sale de la tarjeta: desde la selección, las dos compras con el token; desde el respaldo, las de Explorar.
+    if (!/compras=\{comprasDeLaTarjeta\(confirmar\.it\)\}/.test(ps) || !/\? comprasDelDepto\(\{ token: datos\.token, avisoId: it\.avisoId, origen: "semanal", ticket: !!datos\.ticket \}\)/.test(ps)) F("5 · la primera selección no le pasa las dos compras al aviso");
     if (!/ticketDeCuentaDisponible\(admin, user\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("5 · la primera selección no sabe si la cuenta tiene el ticket");
     // El cobro: el pack sin informe atado vale para la cuenta nueva; el pack y el suelto vuelven al depto.
     const pc = codigo("src/app/api/payments/create/route.ts");

@@ -127,7 +127,8 @@ export function runTicketVivoTier(): { hard: number } {
     if (textos(aviso({ tipo: "con", n: 1, noVencen: true })).includes("3 más por")) F("3 · sin el ticket, el pop-up ofrece «3 más»");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
     if (!/ticketConSaldo=\{ticket && !corta \? ticketConSaldoDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt \}\) : null\}/.test(sl)) F("3 · la selección no le pasa la línea del ticket al pop-up");
-    if (!/ticketConSaldo=\{datos\.token && datos\.ticket \? ticketConSaldoDelDepto\(\{ token: datos\.token, avisoId: confirmar\.it\.avisoId, origen: "semanal", cuentaCreadaAt: datos\.cuentaCreadaAt \}\) : null\}/.test(ps)) F("3 · la primera selección no le pasa la línea del ticket al pop-up");
+    // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la línea del ticket sale de la tarjeta (con el token desde la selección; con la compra de Explorar desde el respaldo).
+    if (!/ticketConSaldo=\{ticketConSaldoDeLaTarjeta\(confirmar\.it\)\}/.test(ps) || !/if \(!datos\?\.ticket\) return null;/.test(ps) || !/return ticketConSaldoDelDepto\(\{ token: datos\.token, avisoId: it\.avisoId, origen: "semanal", cuentaCreadaAt: datos\.cuentaCreadaAt \}\);/.test(ps)) F("3 · la primera selección no le pasa la línea del ticket al pop-up");
     if (!/cuentaCreadaAt: ticket \? \(user\.created_at \?\? null\) : null/.test(codigo("src/lib/guia/seleccion-pagina-servidor.ts")) || !/cuentaCreadaAt: ticket \? \(user\.created_at \?\? null\) : null/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("3 · el servidor no manda cuándo nació la cuenta junto con el ticket");
   } catch (e) {
     F(`3 · explotó: ${e instanceof Error ? `${e.message} ${(e.stack ?? "").split("\n").slice(0, 3).join(" | ")}` : String(e)}`);
