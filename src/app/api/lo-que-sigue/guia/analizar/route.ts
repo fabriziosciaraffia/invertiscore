@@ -46,6 +46,11 @@ import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 // eligió en el pop-up (de las listas del pop-up), sobre el origen sintético con la tasa de mercado: lo mismo con que el
 // mapa lo mostró. El crédito se descuenta igual, una vez por persona y aviso; `analisis_creado` va con via = explorar y
 // «explorar_analiza» lleva el depto (el panel de activación cuenta cuántos análisis salen del mapa).
+// DESDE EL RESPALDO (28-oct-2026, `respaldo: true`, decisión de Fabrizio: toda tarjeta de un depto en el dashboard tiene
+// «Analizar este»): los de la noche que la primera selección muestra sin fila del día —la cuenta sin selección esta semana—
+// no tienen token que los valide. Se analizan como un aviso evaluado, igual que desde Explorar (el pie y el plazo de las
+// listas del pop-up, el origen sintético con la tasa de mercado, el crédito una vez por persona y aviso), pero cuentan como
+// la selección (`desde` = «semanal»): es la tarjeta de «Tu selección» de la casa.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -57,10 +62,11 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string; explorar?: boolean };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string; explorar?: boolean; respaldo?: boolean };
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
   const desdeExplorar = b.explorar === true && b.origenId == null && typeof b.semanal !== "string";
-  if ((!sinOrigen && !desdeExplorar && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  const desdeRespaldo = b.respaldo === true && !desdeExplorar && b.origenId == null && typeof b.semanal !== "string";
+  if ((!sinOrigen && !desdeExplorar && !desdeRespaldo && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
   let espejoAE: EventoEspejo | null = null;
@@ -74,8 +80,8 @@ export async function POST(request: Request) {
     // cambió en «Cambiar» —de las listas del pop-up, ya con el veredicto recalculado a la vista— van en lugar de los de la
     // selección; sin ellos, los de la fila. La selección (el token) sigue validando el aviso.
     const elegida: Combinacion | null = typeof b.semanal === "string" && esPiePopup(b.piePct) && esPlazoPopup(b.plazoAnios) ? { piePct: Number(b.piePct), plazoAnios: Number(b.plazoAnios) } : null;
-    if (desdeExplorar) {
-      // Explorar: el pie y el plazo del pop-up, de sus listas, y el origen sintético con la tasa de mercado.
+    if (desdeExplorar || desdeRespaldo) {
+      // Explorar y el respaldo: el pie y el plazo del pop-up, de sus listas, y el origen sintético con la tasa de mercado.
       if (!esPiePopup(b.piePct) || !esPlazoPopup(b.plazoAnios)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
       const pp = await leerPerfilBusqueda(admin, user.id);
       combo = { piePct: Number(b.piePct), plazoAnios: Number(b.plazoAnios) };
@@ -101,11 +107,11 @@ export async function POST(request: Request) {
     if (!combo || !o) return NextResponse.json({ error: "combinacion" }, { status: 400 });
     const origen: OrigenGuia = o;
     const combinacion: Combinacion = combo;
-    const desdeSemanal = typeof b.semanal === "string";
+    const desdeSemanal = typeof b.semanal === "string" || desdeRespaldo;
     const desde: "semanal" | "guia" | "explorar" = desdeExplorar ? "explorar" : desdeSemanal ? "semanal" : "guia";
     const ae = await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
-      eventId: idAnalizarEste(b.avisoId, desdeExplorar ? "explorar" : desdeSemanal ? b.semanal! : origen.analysisId!),
+      eventId: idAnalizarEste(b.avisoId, desdeExplorar ? "explorar" : desdeRespaldo ? "respaldo" : desdeSemanal ? b.semanal! : origen.analysisId!),
       userId: user.id,
       email: user.email ?? null,
       datos: { aviso_id: b.avisoId, desde, modalidad: "ltr" },

@@ -56,8 +56,11 @@ export interface PrimerosDeLaCuenta {
   ticket?: boolean;
   /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo. Lo pone la ruta. */
   cuentaCreadaAt?: string | null;
-  /** El mapa quieto de la selección (24-oct-2026), solo si lo pidió «Estás dentro» (`mapa=1`). Lo pone la ruta. */
+  /** El mapa de la selección: quieto en «Estás dentro» (`mapa=1`, 24-oct-2026), el de la casa con los grises para el
+   *  respaldo del dashboard (`mapa=casa`, 28-oct-2026). Lo pone la ruta. */
   mapa?: DatosMapaCasa | null;
+  /** Cuántos convenían anoche en Santiago, para el botón del mapa de la casa. Lo pone la ruta. */
+  totalNoche?: number | null;
 }
 
 type FilaDia = { id: string; token: string; estado: string; items: unknown; armada_at: string; enviada_at: string | null; intentos: number; combinacion: unknown; origen_analysis_id: string | null };

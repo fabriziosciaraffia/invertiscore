@@ -7,6 +7,7 @@ import { esPuerta } from "@/lib/atribucion-puerta";
 import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { datosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
+import { portadaDeptos } from "@/lib/deptos/portada";
 
 // GET /api/deptos/primeros (16-oct-2026, la puerta B; 20-oct-2026, todas las puertas): los primeros deptos de la cuenta
 // con sesión, para «Estás dentro» al terminar (lib/deptos/primeros-servidor.ts). Mientras el correo del día revisa fichas,
@@ -26,10 +27,16 @@ export async function GET(request: Request) {
     const [r, ticket] = await Promise.all([primerosDeLaCuenta(admin, user.id), ticketDeCuentaDisponible(admin, user)]);
     const sp = new URL(request.url).searchParams;
     const candidata = sp.get("puerta");
-    // «Estás dentro» (24-oct-2026, `mapa=1`): el mapa quieto de la selección, solo los pines rojos numerados.
-    const mapa = sp.get("mapa") === "1" && r.faltan.length === 0 && r.items.length > 0
-      ? await datosMapaCasa(admin, user.id, r.items.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna })), undefined, { grises: false }).catch(() => null)
-      : null;
+    // «Estás dentro» (24-oct-2026, `mapa=1`): el mapa quieto de la selección, solo los pines rojos numerados. La casa
+    // (28-oct-2026, `mapa=casa`): el del dashboard para el respaldo de la noche —con los grises, la píldora y el botón con
+    // el total de Santiago—, numerado como las tarjetas.
+    const pideMapa = sp.get("mapa");
+    const conMapa = (pideMapa === "1" || pideMapa === "casa") && r.faltan.length === 0 && r.items.length > 0;
+    const [mapa, portada] = await Promise.all([
+      conMapa ? datosMapaCasa(admin, user.id, r.items.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna })), undefined, { grises: pideMapa === "casa" }).catch(() => null) : Promise.resolve(null),
+      conMapa && pideMapa === "casa" ? portadaDeptos() : Promise.resolve(null),
+    ]);
+    const totalNoche = portada?.noche?.convienen ?? null;
     void (async () => {
       const { data: atr } = await admin.from("user_attribution").select("puerta").eq("user_id", user.id).maybeSingle();
       const puerta = esPuerta(atr?.puerta) ? atr.puerta : esPuerta(candidata) ? candidata : null;
@@ -38,7 +45,7 @@ export async function GET(request: Request) {
         properties: { puerta, n: r.items.length, fuente: r.fuente, faltan: r.faltan.length, con_regalo: !!r.regaloVence, minutos_desde_alta: user.created_at ? Math.round((Date.now() - Date.parse(user.created_at)) / 60_000) : null },
       });
     })().catch(() => {});
-    return NextResponse.json({ ...r, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null, mapa }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ...r, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null, mapa, totalNoche }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/deptos/primeros", operacion: "primeros", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

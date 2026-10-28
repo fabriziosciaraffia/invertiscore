@@ -142,12 +142,22 @@ export function tituloSeleccion(n: number): string {
 }
 
 /**
- * ¿La tarjeta lleva «Analizar este»? Solo si el depto quedó en la selección del día (la ruta lo valida por el token) y hay
- * con qué combinación analizarlo. La cuenta de prueba entra igual que una real (28-oct-2026): lo que la deja fuera es el
- * correo, nunca el botón (lo prueba el tier CUENTAS-PRUEBA).
+ * CÓMO SE ANALIZA UNA TARJETA (28-oct-2026, decisión de Fabrizio: toda tarjeta de un depto en el dashboard tiene «Analizar
+ * este», venga de la selección o del respaldo). «seleccion»: el depto quedó en la fila del día y la ruta lo valida por su
+ * token. «respaldo»: los de la noche sin fila del día que escribir —la cuenta de antes, o la que ya recibió su correo del día
+ * sin deptos—; la ruta lo analiza como un aviso evaluado, con el origen sintético (`respaldo: true`). null: no hay con qué
+ * combinación. La cuenta de prueba entra igual que una real: lo que la deja fuera es el correo, nunca el botón (tiers
+ * CUENTAS-PRUEBA y RESPALDO-MAPA).
  */
+export type ComoAnalizar = "seleccion" | "respaldo";
+export function comoAnalizarPrimero(d: { token: string | null; combinacion: unknown }, it: { enSeleccion?: boolean }): ComoAnalizar | null {
+  if (!d.combinacion) return null;
+  return d.token && it.enSeleccion ? "seleccion" : "respaldo";
+}
+
+/** ¿La tarjeta lleva «Analizar este»? Toda la que tenga con qué combinación analizarse (comoAnalizarPrimero). */
 export function puedeAnalizarPrimero(d: { token: string | null; combinacion: unknown }, it: { enSeleccion?: boolean }): boolean {
-  return !!d.token && !!it.enSeleccion && !!d.combinacion;
+  return comoAnalizarPrimero(d, it) != null;
 }
 
 /** El botón de cada tarjeta: con el regalo por gastar, lo dice. */

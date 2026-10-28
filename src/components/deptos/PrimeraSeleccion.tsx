@@ -26,13 +26,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { hojaSinDeptos, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
+import { comoAnalizarPrimero, hojaSinDeptos, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { comprasDeExplorar, comprasDelDepto, lineaTicketConSaldo, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
@@ -70,7 +70,9 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
       const candidata = leerPuertaCandidata();
       const qs = new URLSearchParams();
       if (candidata) qs.set("puerta", candidata.puerta);
-      if (encabezado === "dentro") qs.set("mapa", "1");
+      // El mapa (24-oct-2026, «Estás dentro»: solo los rojos); en la casa (28-oct-2026), el del dashboard, con los grises,
+      // para quien todavía no tiene selección de esta semana y ve el respaldo de la noche.
+      qs.set("mapa", encabezado === "dentro" ? "1" : "casa");
       const res = await fetch(`/api/deptos/primeros${qs.size ? `?${qs.toString()}` : ""}`, { cache: "no-store" });
       if (!vivo.current) return;
       if (!res.ok) { setFallo(true); return; }
@@ -116,7 +118,9 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
 
   // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
   async function analizar(it: PrimerDepto, eleccion?: EleccionAnalizar) {
-    if (!datos?.combinacion || !datos.token || generando) return;
+    // Con su fila del día, por el token; sin ella, como respaldo (28-oct-2026, comoAnalizarPrimero).
+    const como = datos ? comoAnalizarPrimero(datos, it) : null;
+    if (!datos?.combinacion || !como || generando) return;
     const combo = eleccion?.combinacion ?? datos.combinacion;
     setError(null);
     setGenerando(it.avisoId);
@@ -132,7 +136,9 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, semanal: datos.token }),
+          body: JSON.stringify(como === "seleccion"
+            ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, semanal: datos.token }
+            : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, respaldo: true }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
@@ -152,6 +158,17 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     setGenerando(null);
   }
 
+  // Sin saldo, la compra vuelve al depto y lo analiza: desde la selección, al dashboard con el token; desde el respaldo (sin
+  // token), al mapa de Explorar con el depto (28-oct-2026), que lo abre y lo analiza solo.
+  const comprasDeLaTarjeta = (it: PrimerDepto) => !datos ? null
+    : datos.token && comoAnalizarPrimero(datos, it) === "seleccion" ? comprasDelDepto({ token: datos.token, avisoId: it.avisoId, origen: "semanal", ticket: !!datos.ticket })
+    : comprasDeExplorar({ filtros: "", avisoId: it.avisoId, ticket: !!datos.ticket });
+  const ticketConSaldoDeLaTarjeta = (it: PrimerDepto) => {
+    if (!datos?.ticket) return null;
+    if (datos.token && comoAnalizarPrimero(datos, it) === "seleccion") return ticketConSaldoDelDepto({ token: datos.token, avisoId: it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt });
+    const c = comprasDeLaTarjeta(it);
+    return c && datos.cuentaCreadaAt && datos.saldo.tipo !== "sin" ? lineaTicketConSaldo(datos.cuentaCreadaAt, c.pack.href) : null;
+  };
   const saldo = datos?.saldo;
   const usaRegalo = saldo?.tipo === "regalo" || (saldo?.tipo === "con" && !!saldo.proximoRegalo);
   // Sin deptos, la bajada no va encima de «no hay uno»: queda solo «ninguno» (20-oct-2026).
@@ -166,7 +183,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     <section className="dp dp-seccion" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
       {encabezado === "dentro" && <p className="dp-kicker">{PRIMERA_SELECCION.kicker}</p>}
       <h2 className={encabezado === "casa" ? "ca-plano-t" : "dp-h2"} data-primera="titulo">{titulo}</h2>
-      {encabezado === "dentro" && datos?.mapa && items.length > 0 && <div data-primera="mapa"><MapaCasa datos={datos.mapa} variante="seleccion" /></div>}
+      {datos?.mapa && items.length > 0 && <div data-primera="mapa"><MapaCasa datos={datos.mapa} variante={encabezado === "casa" ? "casa" : "seleccion"} totalNoche={datos.totalNoche ?? null} /></div>}
       {!sinDeptos && <p className="dp-txt" data-primera="bajada">{bajada}</p>}
 
       {!datos && !fallo && <p className="sel-estado" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
@@ -239,8 +256,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           combinacion={datos.combinacion}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
-          compras={datos.token ? comprasDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", ticket: !!datos.ticket }) : null}
-          ticketConSaldo={datos.token && datos.ticket ? ticketConSaldoDelDepto({ token: datos.token, avisoId: confirmar.it.avisoId, origen: "semanal", cuentaCreadaAt: datos.cuentaCreadaAt }) : null}
+          compras={comprasDeLaTarjeta(confirmar.it)}
+          ticketConSaldo={ticketConSaldoDeLaTarjeta(confirmar.it)}
           ticketVence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
           rutaCompra="/dashboard"
           analizando={!!confirmar.analizando}
