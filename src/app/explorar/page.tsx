@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
@@ -13,19 +15,29 @@ import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor"
 import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { robotDeVisita } from "@/lib/vista-entrada";
 import { ExplorarCliente } from "./explorar-cliente";
+import { EsqueletoExplorar } from "./esqueleto";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct). Con
 // sesión. SIN NADA EN LA URL ABRE LA VISTA GLOBAL —todo Gran Santiago, arriendo tradicional, pie 20 % y 25 años, solo los
 // Comprar: los supuestos del número de anoche—, NO el perfil de la persona («Mi búsqueda» lo aplica si lo toca). Con
 // filtros en la URL (al volver, al recargar) abre con ellos. Sin saldo se explora igual: el cobro sale en «Analizar este».
-// EL PRIMER PINTADO ES LIVIANO (LCP en el teléfono): el servidor dibuja la fila de arriba, el número del mapa con sus
-// supuestos, la hoja cerrada y el mapa quieto (la foto del mapa de Santiago, incrustada en el teléfono: es el LCP, medido el
-// 23-oct-2026); el número sale de la misma caché de diez minutos que después baja al navegador con el mapa interactivo.
+// EL PRIMER PINTADO ES LIVIANO (LCP en el teléfono): el mapa quieto (la foto del mapa de Santiago, incrustada en el teléfono:
+// es el LCP, medido el 23-oct-2026) sale con el ESQUELETO apenas se valida la sesión; la cuenta y el número llegan después
+// en el mismo pedido (Suspense). Medido en producción el 28-oct-2026: esperando la cuenta antes de mandar el HTML, el LCP daba
+// 2,53 s de mediana (1,3 s de «load delay»). El número sale de la misma caché de diez minutos que después baja al navegador.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
+
+const mapaQuieto = (
+  <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
+    <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="async" />
+  </picture>
+);
 
 export default async function ExplorarPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
   const sp = new URLSearchParams();
@@ -34,6 +46,21 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   const { data: { user } } = await supabase.auth.getUser();
   const consulta = sp.toString();
   if (!user) redirect(hrefEntrar(`/explorar${consulta ? `?${consulta}` : ""}`, "generico"));
+  return (
+    <div className="ex-pagina" data-explorar="pagina">
+      <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
+      {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). */}
+      <HeaderFranco sesion={{ email: user.email ?? "" }} />
+      <Suspense fallback={<EsqueletoExplorar consulta={consulta} mapaQuieto={mapaQuieto} />}>
+        <ExplorarConDatos consulta={consulta} user={user} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** La cuenta y el número: lo que el esqueleto no espera. */
+async function ExplorarConDatos({ consulta, user }: { consulta: string; user: User }) {
+  const sp = new URLSearchParams(consulta);
   // LA VISTA GLOBAL SIN FILTROS DEL PERFIL: lo que diga la URL, y si no dice nada, la de anoche.
   const { filtros, orden } = portalDeUrl(sp);
   const admin = createServiceClient();
@@ -46,22 +73,11 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()) })).catch(() => false);
   const a = sp.get("a");
   return (
-    <div className="ex-pagina" data-explorar="pagina">
-      <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
-      {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). */}
-      <HeaderFranco sesion={{ email: user.email ?? "" }} />
-      <ExplorarCliente
-        inicial={{ filtros, orden, n, cuenta }}
-        abrir={a}
-        autoAnalizar={sp.get("analizar") === "1" ? a : null}
-        mapaQuieto={
-          <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
-            <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="async" />
-          </picture>
-        }
-      />
-    </div>
+    <ExplorarCliente
+      inicial={{ filtros, orden, n, cuenta }}
+      abrir={a}
+      autoAnalizar={sp.get("analizar") === "1" ? a : null}
+      mapaQuieto={mapaQuieto}
+    />
   );
 }

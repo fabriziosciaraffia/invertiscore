@@ -427,6 +427,18 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (/loadGoogleMaps|maps\.googleapis/.test(cli + pag + codigo("src/lib/explorar/portal.ts"))) F("12 · Google Maps entra al primer pintado");
   if (/universo=|pines=\{/.test(pag)) F("12 · la página manda los pines en el HTML (rompe el LCP)");
   if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
+  // EL ESQUELETO NO ESPERA LA CUENTA (28-oct-2026, medido en producción: esperando perfil, saldo, guardados, informes y el número
+  // antes de mandar el HTML, el LCP del teléfono daba 2,53 s de mediana con 1,3 s de «load delay»). La página manda el esqueleto
+  // con el mapa quieto apenas valida la sesión; la cuenta y el número llegan en el mismo pedido, dentro de Suspense.
+  const cuerpoPagina = pag.slice(pag.indexOf("export default async function ExplorarPage"), pag.indexOf("async function ExplorarConDatos"));
+  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} mapaQuieto=\{mapaQuieto\} \/>\}>\s*<ExplorarConDatos consulta=\{consulta\} user=\{user\} \/>\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
+  try {
+    const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
+    const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "", mapaQuieto: createElement("i", { "data-quieto": "1" }) }));
+    if (!/data-quieto="1"/.test(e) || !texto(e).includes("Arriendo tradicional · pie 20 % · 25 años") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae el mapa quieto, la fila de arriba y la línea de los supuestos");
+  } catch (err) {
+    F(`12 · el esqueleto explotó: ${(err as Error).message}`);
+  }
   // CON LA LISTA EL MAPA NO SE ESCONDE (28-oct-2026, cazado en el QA en WebKit 390): con display:none el mapa de Google queda sin
   // tamaño y al volver se descuadra («Buscar en esta zona» caía a 50 km). La lista lo cubre entera.
   if (/data-mapa=\{mapa\}[^>]*hidden=\{/.test(cli.replace(/aria-hidden=/g, "")) || /\.ex-mapa-wrap\[hidden\]/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-lista \{ position: absolute; inset: 0; z-index: 4;/.test(leer("src/app/explorar/explorar.css"))) F("12 · con la lista abierta el mapa se esconde (y se descuadra al volver)");
