@@ -26,6 +26,9 @@ import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { CASA, lineaBusqueda, lineaSaldo } from "./casa-copy";
 import { AbrirPorAncla, FilaPlegada, PerfilBusquedaCasa } from "./casa";
+import { GuardadosCasa } from "./guardados-casa";
+import { guardadosParaCasa } from "@/lib/explorar/guardados-servidor";
+import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { origenDeInformes } from "@/lib/guia/semanal-servidor";
 import { ensureWelcomeEmail, nombreReal, resolveDisplayName } from "@/lib/welcome";
@@ -171,10 +174,13 @@ export default async function DashboardPage({
   // semana tiene tarjetas «propias» de una comuna que ya no busca.
   const comunasLargo = new Set((perfilPersona.perfilLtr?.comunas ?? []).map(comunaDeAviso));
   const propiaEnSeleccion = itemsSel.some((i) => !i.tramo && comunasLargo.has(comunaDeAviso(i.comuna)));
-  const [mapa, portada, sinOferta] = await Promise.all([
+  // «Guardados» (28-oct-2026, Explorar como portal): los del corazón, con la UF para el cap rate de la comparación.
+  const [mapa, portada, sinOferta, guardados, cfgGuia] = await Promise.all([
     enElMapa.length > 0 ? datosMapaCasa(admin, user.id, enElMapa) : Promise.resolve(null),
     portadaDeptos(),
     propiaEnSeleccion ? Promise.resolve(null) : leerAvisoSinOferta(admin, user.id, perfilPersona.perfilLtr),
+    guardadosParaCasa(admin, user.id).catch(() => []),
+    leerConfigGuia(admin).catch(() => null),
   ]);
   const totalNoche = portada.noche?.convienen ?? null;
   const lineaSel = [lineaBusqueda({ comunas: pb.comunas, dormitorios: pb.dormitorios, precioMinUf: pb.precioMinUf, precioMaxUf: pb.precioMaxUf }), lineaRenueva(pb.horizonte)].filter(Boolean).join(" · ");
@@ -244,13 +250,14 @@ export default async function DashboardPage({
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} />
         </section>
 
-        {/* 5 · plegados: el perfil y los informes */}
+        {/* 5 · plegados: el perfil, los guardados de Explorar y los informes */}
         <div className="ca-plegadas">
           <PerfilBusquedaCasa
             inicial={{ dormitorios: pb.dormitorios, comunas: pb.comunas, precioMaxUf: pb.precioMaxUf, precioMinUf: pb.precioMinUf, modalidad: pb.modalidad, piePct: pb.piePct, plazoAnios: pb.plazoAnios, horizonte: pb.horizonte }}
             pendientes={pendientes}
             modalidadRespondida={perfilPersona.manual.modalidad != null}
           />
+          <GuardadosCasa inicial={guardados} uf={cfgGuia?.uf ?? null} />
           {stats && stats.total > 0 && (
             <FilaPlegada id="informes" titulo={CASA.informes} n={stats.total} marca="informes" abierta={abrirInformes}>
               <div className="ca-informes-cuerpo">
