@@ -62,7 +62,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
 }: {
   token: string;
   origenId: string | null;
@@ -98,6 +98,8 @@ export function SemanalLista({
    *  solo esas a la vista y «Ver los N que faltan». */
   enCasa?: boolean;
   aLaVista?: number | null;
+  /** El número de la primera tarjeta (28-oct-2026): con dos bloques, el segundo sigue la cuenta del primero, como el mapa. */
+  desdeN?: number;
 }) {
   const router = useRouter();
   const corta = modalidad === "str";
@@ -323,9 +325,9 @@ export function SemanalLista({
               <p className="guia-caido-txt">{SEMANAL_PAGINA.caido}</p>
               {f.reemplazo && <p className="guia-caido-sub">{SEMANAL_PAGINA.enSuLugar}</p>}
             </div>
-            {f.reemplazo && tarjeta(f.reemplazo, f.reemplazo.avisoId, i + 1)}
+            {f.reemplazo && tarjeta(f.reemplazo, f.reemplazo.avisoId, i + desdeN)}
           </div>
-        ) : tarjeta(f.item, f.item.avisoId, i + 1)))}
+        ) : tarjeta(f.item, f.item.avisoId, i + desdeN)))}
         {faltanPorVer > 0 && <button type="button" className="sel-mas" onClick={() => setVerTodos(true)} data-semanal="ver-mas">{CASA.seleccion.verMas(faltanPorVer)}</button>}
       </div>
       {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{corta ? SEMANAL_STR.sinCorto : SEMANAL_PAGINA.vacia}</p>}

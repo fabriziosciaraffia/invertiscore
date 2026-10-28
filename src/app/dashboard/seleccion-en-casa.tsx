@@ -11,7 +11,7 @@ import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { SELECCION_CASA, TARJETAS_EN_CASA } from "@/lib/guia/seleccion-casa";
-import { hayDeptos, type SeleccionPagina } from "@/lib/guia/seleccion-pagina-servidor";
+import { bloquesEnOrden, hayDeptos, type SeleccionPagina } from "@/lib/guia/seleccion-pagina-servidor";
 
 export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
   sel: SeleccionPagina | null;
@@ -32,6 +32,8 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
     return primera ? <div {...ancla} data-casa="tarjetas" data-fuente="primera"><PrimeraSeleccion encabezado="casa" /></div> : null;
   }
   const dosBloques = !!sel.largo && !!sel.corto;
+  // Numeradas como los pines del mapa (28-oct-2026): el segundo bloque sigue la cuenta del primero.
+  const desde = (b: "largo" | "corto") => bloquesEnOrden(sel).find((x) => x.bloque === b)?.desde ?? 1;
   const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, cuentaCreadaAt: sel.cuentaCreadaAt, autoAnalizar, enCasa: true, aLaVista: TARJETAS_EN_CASA };
   const listaLarga = sel.largo && (
     <SemanalLista
@@ -39,6 +41,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
       origenId={sel.largo.origenId}
       combinacion={sel.largo.combinacion}
       filas={sel.largo.filas}
+      desdeN={desde("largo")}
       inmediato={sel.fuente === "inmediato"}
       finanzas={sel.largo.finanzas}
       bloque={dosBloques ? SEMANAL_STR.bloqueLargo : null}
@@ -53,6 +56,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
       origenId={sel.corto.origenId}
       combinacion={sel.corto.combinacion}
       filas={sel.corto.filas}
+      desdeN={desde("corto")}
       modalidad="str"
       finanzas={sel.corto.finanzas}
       bloque={dosBloques ? SEMANAL_STR.bloqueCorto : null}

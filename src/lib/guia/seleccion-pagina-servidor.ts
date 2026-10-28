@@ -54,6 +54,30 @@ export function hayDeptos(s: SeleccionPagina | null): s is SeleccionPagina {
   return !!s && !s.otraCuenta && (s.largo?.filas.length ?? 0) + (s.corto?.filas.length ?? 0) > 0;
 }
 
+/**
+ * EL MAPA Y LAS TARJETAS EN EL MISMO ORDEN (28-oct-2026, decisión de Fabrizio): los bloques en el orden en que se dibujan
+ * (el del depto clicado primero), cada uno con el número de su primera tarjeta —el segundo sigue la cuenta del primero—, y
+ * los deptos del mapa en ese orden, el reemplazo del caído en su lugar. El pin N es la tarjeta N, tenga la persona renta
+ * larga, renta corta o las dos (antes el mapa leía solo el bloque largo y quien tenía solo renta corta no lo veía).
+ */
+export function bloquesEnOrden(s: SeleccionPagina): Array<{ bloque: "largo" | "corto"; desde: number; filas: BloquePagina["filas"] }> {
+  const orden: Array<["largo" | "corto", BloquePagina | null]> = s.cortoPrimero ? [["corto", s.corto], ["largo", s.largo]] : [["largo", s.largo], ["corto", s.corto]];
+  const out: Array<{ bloque: "largo" | "corto"; desde: number; filas: BloquePagina["filas"] }> = [];
+  let n = 1;
+  for (const [bloque, b] of orden) {
+    if (!b || b.filas.length === 0) continue;
+    out.push({ bloque, desde: n, filas: b.filas });
+    n += b.filas.length;
+  }
+  return out;
+}
+
+/** Los deptos del mapa, en el orden de las tarjetas (bloquesEnOrden). Sin deptos, ninguno. */
+export function deptosDelMapa(s: SeleccionPagina | null): Array<{ avisoId: string; comuna: string }> {
+  if (!hayDeptos(s)) return [];
+  return bloquesEnOrden(s).flatMap((b) => b.filas.map((f) => f.reemplazo ?? f.item)).map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }));
+}
+
 /** El resumen para el banner de arriba del dashboard (casa-arriba.ts): los deptos vivos de cada bloque. null: no hay. */
 export function resumenDePagina(s: SeleccionPagina | null): ResumenBloque[] | null {
   if (!hayDeptos(s)) return null;

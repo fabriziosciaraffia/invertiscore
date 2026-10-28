@@ -5,7 +5,7 @@ import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { COOKIE_INVITACION } from "@/lib/referido";
 import { vincularInvitacion } from "@/lib/referido-servidor";
 import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
-import { cargarSeleccionPagina, hayDeptos } from "@/lib/guia/seleccion-pagina-servidor";
+import { cargarSeleccionPagina, deptosDelMapa, hayDeptos } from "@/lib/guia/seleccion-pagina-servidor";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { esPuerta } from "@/lib/atribucion-puerta";
@@ -160,8 +160,10 @@ export default async function DashboardPage({
   const puerta = esPuerta(atr?.puerta) ? atr.puerta : null;
   const pendientes = preguntasPendientes({ puerta, modalidad: perfilPersona.manual.modalidad, horizonte: pb.horizonte });
   const pildora = pildoraSaldo(saldo);
-  // El mapa: los deptos de la selección (el reemplazo del caído, si lo hay) y los demás que convienen con su búsqueda.
+  // El mapa: los deptos de la selección —renta larga, renta corta o los dos, en el orden y con el número de las tarjetas
+  // (28-oct-2026, deptosDelMapa)— y los demás que convienen con su búsqueda. Lo de renta larga decide además el aviso sin oferta.
   const itemsSel = hayDeptos(sel) ? (sel.largo?.filas ?? []).map((f) => f.reemplazo ?? f.item).filter((i) => !!i) : [];
+  const enElMapa = deptosDelMapa(sel);
   // El botón dice el total de anoche en Santiago (24-oct-2026): el de /deptos, cacheado diez minutos (lib/deptos/portada.ts).
   // SIN OFERTA (26-oct-2026, lib/casa/sin-oferta.ts): con sus números no conviene ninguno en sus comunas. Se lee solo si la
   // selección no trae ya uno de sus comunas (sin `tramo`): el aviso nunca contradice a las tarjetas de abajo. «Sus comunas»
@@ -170,7 +172,7 @@ export default async function DashboardPage({
   const comunasLargo = new Set((perfilPersona.perfilLtr?.comunas ?? []).map(comunaDeAviso));
   const propiaEnSeleccion = itemsSel.some((i) => !i.tramo && comunasLargo.has(comunaDeAviso(i.comuna)));
   const [mapa, portada, sinOferta] = await Promise.all([
-    itemsSel.length > 0 ? datosMapaCasa(admin, user.id, itemsSel.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }))) : Promise.resolve(null),
+    enElMapa.length > 0 ? datosMapaCasa(admin, user.id, enElMapa) : Promise.resolve(null),
     portadaDeptos(),
     propiaEnSeleccion ? Promise.resolve(null) : leerAvisoSinOferta(admin, user.id, perfilPersona.perfilLtr),
   ]);
