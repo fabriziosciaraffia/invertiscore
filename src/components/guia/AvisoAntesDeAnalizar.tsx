@@ -43,7 +43,7 @@ export interface EleccionAnalizar {
   guardarPerfil: boolean;
 }
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null }: {
+export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null }: {
   /** La tarjeta gris: con la condición del aviso, «… 77 m² · Usado · UF 4.200» (28-oct-2026, linea-depto.ts). */
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number; condicion?: CondicionDepto };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
@@ -70,6 +70,10 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   /** SIN SALDO Y CON EL TICKET VIVO (24-oct-2026, mockup A de 4-ticket-y-popups.html): hasta cuándo («mañana 11:17»), para
    *  la tarjeta roja de la oferta dentro del pop-up. Sin él, el pack de tres de siempre. */
   ticketVence?: string | null;
+  /** EL PLAN DONDE SE USA (28-oct-2026, Explorar como portal): desde el tercer análisis hecho desde Explorar en 30 días, una
+   *  línea más, sin frenar, con el enlace a la compra del plan: «Llevas 3 este mes. Con el Plan Franco, 20 al mes por
+   *  $39.990.» (lib/explorar/portal.ts › lineaPlan). Sin ella, nada cambia. */
+  planLinea?: { texto: string; href: string } | null;
 }) {
   const router = useRouter();
   const sin = uso.tipo === "sin";
@@ -191,8 +195,12 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
       titulo={sin ? "" : AVISO_ANALIZAR.titulo}
       cuerpo={cuerpo}
       consumo={sin ? (conTicket && ticketVence ? null : compras ? compras.sin : AVISO_ANALIZAR.sin) : textoUso(uso)}
-      nota={!sin && ticketConSaldo ? (
-        <EnlaceCarga href={ticketConSaldo.href} className="wz-modal-nota-enlace" data-modal-ticket>{ticketConSaldo.texto}</EnlaceCarga>
+      nota={(!sin && ticketConSaldo) || planLinea ? (
+        <>
+          {!sin && ticketConSaldo && <EnlaceCarga href={ticketConSaldo.href} className="wz-modal-nota-enlace" data-modal-ticket>{ticketConSaldo.texto}</EnlaceCarga>}
+          {!sin && ticketConSaldo && planLinea && <br />}
+          {planLinea && <EnlaceCarga href={planLinea.href} className="wz-modal-nota-enlace" data-modal-plan>{planLinea.texto}</EnlaceCarga>}
+        </>
       ) : undefined}
       labelConfirmar={sin ? (conTicket && ticketVence ? AVISO_ANALIZAR.aprovechar : compras ? compras.pack.label : AVISO_ANALIZAR.comprar) : analizar}
       labelRevisar={AVISO_ANALIZAR.cancelar}

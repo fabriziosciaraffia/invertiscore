@@ -2,39 +2,52 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
-import { capturarServidor } from "@/lib/posthog-servidor";
-import { filtrosDeUrl } from "@/lib/explorar/explorar";
-import { cargarExplorar, eventoExplorarVista, explorarCerradoPara, filtrosDeLaCuenta } from "@/lib/explorar/servidor";
-import { robotDeVisita } from "@/lib/vista-entrada";
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
+import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
+import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-servidor";
+import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/explorar?c=…&t=…&r=min-max&p=20&z=25 (23-oct-2026): los pines del mapa para una búsqueda, con la evaluación
-// de la noche. Solo con sesión (los pines azules son los informes de esta cuenta). Sin filtros válidos, los del perfil.
-// NO ESCRIBE NADA: cambiar los chips no toca el perfil guardado, y explorar no gasta. Con `evento=1` (el navegador cambió
-// un chip) deja «explorar_vista» con los filtros y cuántos pines; la vista de entrada la deja la página.
+// GET /api/explorar?m=ltr&p=20&z=25[&c=Ñuñoa] (28-oct-2026, Explorar como portal): el universo del mapa para una modalidad,
+// un pie y un plazo, compacto (portal.ts › UniversoCompacto). Los filtros de comuna, tipología, precio, flujo, fecha y zona
+// se aplican en el navegador, al instante.
+//   · Arriendo tradicional con un pie y un plazo de la noche: TODO Gran Santiago, de la caché de diez minutos (es el mismo
+//     para todos). `c` no se mira.
+//   · Cualquier otro pie o plazo, o renta corta: las comunas de `c` (el navegador las pide de a una, para ir mostrando),
+//     calculadas en el momento y guardadas 24 horas.
+// Solo con sesión. NO ESCRIBE NADA de la persona —explorar no toca el perfil ni gasta—; lo calculado queda en `combos`.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
-// Una combinación nueva calcula toda la comuna en el momento (24-oct-2026, medido: ver lib/explorar/servidor.ts).
+// Una comuna grande en una combinación nueva (Santiago, ~6.000 avisos) se calculó en 9 s en producción (24-oct-2026).
 export const maxDuration = 60;
+
+const COMUNAS_OK = new Set<string>(COMUNAS_DISPONIBLES as readonly string[]);
+/** Comunas por pedido en una combinación calculada (el navegador pide de a una). */
+const MAX_COMUNAS_POR_PEDIDO = 3;
 
 export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
-  const admin = createServiceClient();
+  const sp = new URL(request.url).searchParams;
+  const modalidad = sp.get("m") === "str" ? "str" : "ltr";
+  const pie = Number(sp.get("p") ?? 20), plazo = Number(sp.get("z") ?? 25);
+  if (!(PIES_EXPLORAR as readonly number[]).includes(pie) || !(PLAZOS_EXPLORAR as readonly number[]).includes(plazo)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
+  const q = { modalidad, pie, plazo } as const;
   try {
-    // SIN SALDO, CERRADO (24-oct-2026, lib/explorar/explorar.ts › explorarCerrado): no hay otra búsqueda ni pines con detalle.
-    if (await explorarCerradoPara(admin, user.id)) return NextResponse.json({ error: "cerrado" }, { status: 403, headers: { "Cache-Control": "no-store" } });
-    const sp = new URL(request.url).searchParams;
-    const filtros = filtrosDeUrl(sp) ?? (await filtrosDeLaCuenta(admin, user.id)).filtros;
-    const d = await cargarExplorar(admin, user, filtros);
-    if (sp.get("evento") === "1") {
-      const analizados = d.pines.filter((p) => d.analizados[p.avisoId]).length;
-      void capturarServidor(eventoExplorarVista({ userId: user.id, filtros, n: d.n, analizados, fuente: "cambio", cuenta: d.cuenta, robot: robotDeVisita(request.headers.get("user-agent"), request.headers) })).catch(() => false);
+    if (esDeLaNoche(q)) {
+      const u = await universoDeLaNocheCacheado(pie, plazo);
+      return NextResponse.json({ ...u, clave: `${modalidad}-${pie}-${plazo}`, comunas: [] }, { headers: { "Cache-Control": "private, max-age=300" } });
     }
-    return NextResponse.json(d, { headers: { "Cache-Control": "no-store" } });
+    const comunas = Array.from(new Set((sp.get("c") ?? "").split(",").map((x) => x.trim()).filter((c) => COMUNAS_OK.has(c))));
+    if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });
+    const admin = createServiceClient();
+    const cuenta = { calculados: 0, ms: 0 };
+    const pines = await universoCalculado(admin, { ...q, comunas }, new Date(), cuenta);
+    return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
-    captureApiError(e, { ruta: "GET /api/explorar", operacion: "pines", userId: user.id });
+    captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo } });
     return NextResponse.json({ error: "interno" }, { status: 500 });
   }
 }

@@ -27,6 +27,9 @@ import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
 import type { EventoEspejo } from "@/lib/meta/espejo";
 import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
+import { capturarServidor } from "@/lib/posthog-servidor";
+import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
+import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» en un depto de la selección de RENTA CORTA (14-oct-2026, decisión de Fabrizio). El bloque de renta
@@ -44,6 +47,11 @@ import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 // (el de la ficha recién chequeada), por qué no da en una línea (semanal-str.ts › porQueNoDa) y el saldo con que se midió
 // (para «Analizar igual · usa 1 de tus N»). Con `igual: true` —«Analizar igual» en el pop-up— la regla de cobro no corta:
 // se cobra un crédito y se crea el informe aunque no dé Comprar. La medición repetida sale del caché del proveedor.
+// DESDE EXPLORAR (28-oct-2026, Explorar como portal): con `explorar: true` y sin token, el depto viene del mapa en renta
+// corta —«Estimado por zona; se mide al analizar»—, con el pie y el plazo de los filtros (de las listas del pop-up) y el
+// origen sintético con la tasa de mercado. Todo lo demás es igual: la ficha se relee, se mide fino, no se cobra si no da
+// (salvo «Analizar igual») y la comparación queda registrada sin selección. Sin parecidos: Explorar ya muestra los demás.
+// El informe dice «Desde Explorar» (`origenAviso.desde`) y deja «explorar_analiza».
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -58,32 +66,36 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string; igual?: unknown };
-  if (!b.token || !TOKEN.test(b.token) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string; igual?: unknown; explorar?: unknown; piePct?: unknown; plazoAnios?: unknown };
+  const desdeExplorar = b.explorar === true && b.token == null;
+  if ((!desdeExplorar && (!b.token || !TOKEN.test(b.token))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  if (desdeExplorar && (!esPiePopup(b.piePct) || !esPlazoPopup(b.plazoAnios))) return NextResponse.json({ error: "combinacion" }, { status: 400 });
   const avisoId = b.avisoId;
 
   const admin = createAnonPipelineClient();
   let espejoAE: EventoEspejo | null = null;
   const salir = (res: Response) => conEspejo(res, [espejoAE], request);
   try {
-    // La selección tiene que ser de esta persona y el depto, de su bloque de renta corta.
-    const sel = await seleccionPorToken(admin, b.token);
+    // La selección tiene que ser de esta persona y el depto, de su bloque de renta corta. Desde Explorar no hay selección:
+    // el mapa solo muestra los que dan Comprar por zona, y eso es lo que la persona vio.
+    const sel = desdeExplorar ? null : await seleccionPorToken(admin, b.token!);
     // Sin informe de origen (16-oct-2026, la puerta B): la selección se armó con el origen sintético; se analiza igual.
-    if (!sel || sel.user_id !== user.id || !sel.corto?.combinacion) return NextResponse.json({ error: "seleccion" }, { status: 403 });
-    const item = sel.corto.items.find((i) => i.avisoId === avisoId);
+    if (!desdeExplorar && (!sel || sel.user_id !== user.id || !sel.corto?.combinacion)) return NextResponse.json({ error: "seleccion" }, { status: 403 });
+    const item = desdeExplorar ? { avisoId, veredicto: "COMPRAR", score: null as number | null } : sel!.corto!.items.find((i) => i.avisoId === avisoId);
     if (!item?.veredicto) return NextResponse.json({ error: "aviso" }, { status: 400 });
-    const o = sel.corto.origenId
-      ? await leerOrigenStr(admin, sel.corto.origenId)
-      : origenSinteticoStr(user.id, { ...sel.corto.combinacion, comunas: [], dormitorios: [] }, await leerConfigGuia(admin));
+    const combo = desdeExplorar ? { piePct: Number(b.piePct), plazoAnios: Number(b.plazoAnios) } : sel!.corto!.combinacion!;
+    const o = !desdeExplorar && sel!.corto!.origenId
+      ? await leerOrigenStr(admin, sel!.corto!.origenId)
+      : origenSinteticoStr(user.id, { ...combo, comunas: [], dormitorios: [] }, await leerConfigGuia(admin));
     if (!o || o.userId !== user.id) return NextResponse.json({ error: "origen" }, { status: 403 });
-    const combo = sel.corto.combinacion;
+    const desde = desdeExplorar ? "explorar" : "semanal";
     const clave = { user_id: user.id, aviso_id: avisoId };
     const ae = await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
-      eventId: idAnalizarEste(avisoId, b.token),
+      eventId: idAnalizarEste(avisoId, desdeExplorar ? "explorar" : b.token!),
       userId: user.id,
       email: user.email ?? null,
-      datos: { aviso_id: avisoId, desde: "semanal", modalidad: "str" },
+      datos: { aviso_id: avisoId, desde, modalidad: "str" },
       contexto: contextoDeRequest(request),
       origen: "analizar-este",
     });
@@ -130,7 +142,7 @@ export async function POST(request: Request) {
         const body = cuerpoStrDeAviso(aviso, o, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo».
-        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde: "semanal" };
+        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }
@@ -155,7 +167,8 @@ export async function POST(request: Request) {
         return {
           ok: true,
           m: {
-            mostrado: { veredicto: item.veredicto!, score: item.score ?? null },
+            // Desde Explorar lo mostrado es la zona con este mismo cuerpo (el mapa dio Comprar por zona).
+            mostrado: { veredicto: item.veredicto!, score: item.score ?? (desdeExplorar ? zonaEv?.score ?? null : null) },
             zona: zonaEv ? { veredicto: zonaEv.veredicto, score: zonaEv.score, adr: zonaEv.adr, ocupacion: zonaEv.ocupacion } : null,
             fino,
             piezas: {
@@ -196,7 +209,8 @@ export async function POST(request: Request) {
                 }).select("id, nombre, score, results, resumen").single();
                 if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
                 const id = data.id as string;
-                waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "str", via: "semanal" }));
+                waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "str", via: desde }));
+                if (desdeExplorar) waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combo.piePct, plazoAnios: combo.plazoAnios })).then(() => undefined).catch(() => undefined));
                 await markPremiumAndClaimPrepaid({ dbClient: admin, analysisId: id, prepaidNeedClaim: false });
                 try {
                   await guardarPerfil(admin, perfilDesdeStr(body, (fila as { resumen?: string | null }).resumen ?? null, { analysisId: id, userId: user.id, anonClaimTokenHash: null }));
@@ -224,7 +238,7 @@ export async function POST(request: Request) {
       async registrar(c: ComparacionStr) {
         // Una por persona y aviso: la medición fina queda en caché y repetirla no es otra observación.
         const { error } = await admin.from("comparaciones_zona_str").upsert({
-          ...clave, seleccion_id: sel.id,
+          ...clave, seleccion_id: sel?.id ?? null,
           zona_mostrado: c.mostrado, zona_score: c.mostradoScore,
           zona_veredicto: c.zona?.veredicto ?? null, zona_adr: c.zona?.adr ?? null, zona_ocupacion: c.zona?.ocupacion ?? null,
           fino_veredicto: c.fino.veredicto ?? "—", fino_score: c.fino.score, fino_adr: c.fino.adr, fino_ocupacion: c.fino.ocupacion,
@@ -236,6 +250,7 @@ export async function POST(request: Request) {
         // Los siguientes de su selección, vigentes, sin los que ya se sabe que no dan, y solo los que SIGUEN dando
         // Comprar con la tarifa y la ocupación recién medidas (el mismo cuerpo que su estimación por zona, con la
         // medición fina en lugar de la zona; sin consultar al proveedor).
+        if (!sel) return [];
         const [vigentes, { data: noDan }] = await Promise.all([
           itemsVigentes(admin, sel.corto!.items),
           admin.from("comparaciones_zona_str").select("aviso_id").eq("user_id", user.id).neq("fino_veredicto", "COMPRAR"),

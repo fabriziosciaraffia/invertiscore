@@ -4,6 +4,10 @@
 // 1.000 sin avisar y una comuna puede pasar de mil); los ya analizados, de los informes de la cuenta hechos desde un
 // aviso; el saldo, el ticket y la tasa y la UF para el aviso antes de gastar. NADA ACÁ ESCRIBE: explorar no gasta y no
 // toca el perfil. Las reglas puras viven en explorar.ts.
+// DESDE EL 28-OCT-2026 (Explorar como portal) la página y su API leen por portal-servidor.ts —la vista global en un pedido,
+// lo calculado por comuna, la cuenta—; acá queda lo que comparten con el mapa del dashboard (pinesExplorar con los filtros
+// del perfil) y el pop-up (candidatoExplorar). Se retiró la carga vieja de la página (cargarExplorar) y el corte sin saldo
+// (explorarCerradoPara): sin saldo se explora todo.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
@@ -16,13 +20,11 @@ import { leerAvisoGuia } from "@/lib/guia/analizar-servidor";
 import { leerConfigGuia, origenSintetico, type CandidatoGuia } from "@/lib/guia/guia-servidor";
 import { candidatoDeFila, type FilaRpc } from "@/lib/guia/semanal-candidatos";
 import { sondaDeCandidato, type SondaDeAviso } from "@/lib/avisos/estandar-deptos";
-import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
-import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import type { MotivoRobot } from "@/lib/vista-entrada";
 import {
-  claveCombo, comboVigente, dormsDe, esCombinacionDeLaNoche, explorarCerrado, FILTROS_POR_DEFECTO, filtrosDePerfil, pieDeLaNoche, pinCerrado, plazoDeLaNoche, porPuntaje, soloComprar,
+  claveCombo, comboVigente, dormsDe, esCombinacionDeLaNoche, FILTROS_POR_DEFECTO, filtrosDePerfil, pieDeLaNoche, plazoDeLaNoche, porPuntaje, soloComprar,
   type ComboGuardado, type FiltrosExplorar, type PinExplorar,
 } from "./explorar";
 
@@ -230,52 +232,6 @@ export async function filtrosDeLaCuenta(admin: SupabaseClient, userId: string): 
   const pp = await leerPerfilBusqueda(admin, userId);
   const f = filtrosDePerfil(pp.perfilLtr ?? pp.perfil);
   return f ? { filtros: f, desdePerfil: true } : { filtros: FILTROS_POR_DEFECTO, desdePerfil: false };
-}
-
-export interface DatosExplorar {
-  filtros: FiltrosExplorar;
-  /** La combinación no es de la noche y los pines no se leyeron todavía (la página lo deja al navegador: «Calculando con tu pie…»). */
-  calculando: boolean;
-  /** Cuántos se calcularon en el momento y cuánto tardó la lectura. */
-  cuenta: CuentaExplorar;
-  pines: PinExplorar[];
-  /** aviso → informe de los que ya analizó esta cuenta. */
-  analizados: Record<string, string>;
-  n: number;
-  saldo: EstadoSaldo;
-  ticket: boolean;
-  cuentaCreadaAt: string | null;
-  finanzas: { uf: number | null; tasa: number | null };
-  /** SIN SALDO, CERRADO (24-oct-2026, explorar.ts › explorarCerrado): los pines van sin detalle (pinCerrado), todos, con la
-   *  combinación de la noche; no hay qué abrir ni qué recalcular. */
-  cerrado: boolean;
-}
-
-/** ¿Explorar está cerrado para esta cuenta? (sin saldo; el plan cuenta como saldo). Para cortar antes de leer pines. */
-export async function explorarCerradoPara(admin: SupabaseClient, userId: string): Promise<boolean> {
-  return explorarCerrado(estadoSaldo(await leerSaldo(admin, userId)));
-}
-
-export async function cargarExplorar(admin: SupabaseClient, user: { id: string; created_at?: string | null }, f: FiltrosExplorar, ahora: Date = new Date(), opts: { pines?: boolean } = {}): Promise<DatosExplorar> {
-  // La página (SSR) no calcula una combinación nueva: deja los pines al navegador, que los pide enseguida.
-  const leerPines = opts.pines ?? true;
-  const cuenta: CuentaExplorar = { calculados: 0, ms: 0 };
-  const [pines, analizados, datosSaldo, ticket, cfg] = await Promise.all([
-    leerPines ? pinesExplorar(admin, f, ahora, cuenta) : Promise.resolve([] as PinExplorar[]),
-    informesDeExplorar(admin, user.id),
-    leerSaldo(admin, user.id),
-    ticketDeCuentaDisponible(admin, user),
-    leerConfigGuia(admin),
-  ]);
-  const saldo = estadoSaldo(datosSaldo);
-  const comun = { analizados, saldo, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null, finanzas: { uf: cfg.uf, tasa: cfg.tasa } };
-  // Sin saldo, cerrado: la combinación de la noche (nada se calcula en el momento) y los pines sin detalle.
-  if (explorarCerrado(saldo)) {
-    const fn = esCombinacionDeLaNoche(f) ? f : { ...f, pie: pieDeLaNoche(f.pie), plazo: plazoDeLaNoche(f.plazo) } as FiltrosExplorar;
-    const deLaNoche = leerPines && fn === f ? pines : await pinesExplorar(admin, fn, ahora, cuenta);
-    return { ...comun, filtros: fn, calculando: false, cuenta, pines: deLaNoche.map(pinCerrado), n: deLaNoche.length, cerrado: true };
-  }
-  return { ...comun, filtros: f, calculando: !leerPines, cuenta, pines, n: pines.length, cerrado: false };
 }
 
 /** Un aviso del mapa con su evaluación guardada, para recalcularlo con otro pie y otro plazo. null si no está. */

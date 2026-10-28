@@ -1,202 +1,282 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXPLORAR en el navegador (23-oct-2026, mockup docs/puerta-b-mockups/5-explorar.html).
-//   · Arriba, los chips con los filtros (comuna, tipología, rango, pie y plazo), editables ahí mismo: cambiarlos pide
-//     los pines de nuevo a /api/explorar y deja los filtros en la URL. NO TOCA EL PERFIL GUARDADO: el único lugar que
-//     escribe el perfil es la casilla «Guardar … como mi perfil» del pop-up, y solo si la persona la marca.
-//   · El mapa ocupa la pantalla; es interactivo pero carga DESPUÉS del primer pintado (next/dynamic, con la página
-//     quieta); mientras tanto la hoja ya muestra las primeras tarjetas que trajo el servidor, y el resto de los pines
-//     llega por /api/explorar cuando el mapa se monta.
-//   · La píldora «312 convienen · 3 ya analizados»; abajo la hoja deslizable con las tarjetas por puntaje, cada una con
-//     «Analizar este», y la línea «Tienes N análisis. Explorar no gasta; analizar sí.».
-//   · Al tocar un pin, la hoja muestra el depto: precio, veredicto y puntaje, flujo, cap rate, UF por m², «Revisado con
-//     pie X y Y años…» y «Analizar este · usa 1 de tus N», que abre el mismo aviso antes de gastar de la selección, con
-//     «Cambiar» el pie y el plazo y el veredicto recalculado. Sin saldo, el aviso ofrece el pack y «Comprar solo 1».
-//   · Sin saldo al entrar: el aviso E encima. SIN SALDO, EXPLORAR ESTÁ CERRADO (24-oct-2026, recorrido de Fabrizio): al
-//     cerrar el aviso el mapa queda a la vista pero cerrado —los chips no se tocan, los pines no se abren— y la hoja muestra
-//     solo la oferta y «Con análisis disponibles exploras todo Santiago». El servidor manda los pines sin detalle.
+// EXPLORAR COMO PORTAL en el navegador (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html).
+//   · A · AL ENTRAR, LA VISTA GLOBAL: todo Gran Santiago con los supuestos del número de anoche; bajo el número del mapa,
+//     la línea chica con esos supuestos. Arriba una sola fila: «Filtros», «Ordenar» y «Mi búsqueda» (el perfil de una
+//     vez). Al mover el mapa, «Buscar en esta zona». Abajo la hoja cerrada: «N deptos que convienen · Ver lista».
+//   · B · «FILTROS», una hoja completa (hoja-filtros.tsx): el número de «Ver N deptos» se cuenta acá, sobre el universo
+//     cargado, a cada toque. Los filtros viven en la URL; NO TOCAN EL PERFIL.
+//   · C · AL TOCAR UN PIN, una tarjeta chica sobre el mapa (tarjeta-pin.tsx), que se desliza entre los cercanos.
+//   · D · «VER LISTA» (lista-portal.tsx): ordenable, con miniatura, el corazón, «Avísame de nuevos» y el botón «Mapa».
+//   · EL UNIVERSO llega después del primer pintado (el LCP es el mapa quieto que dibuja el servidor): con un pie y un plazo
+//     de la noche, todo Gran Santiago en un pedido; si no, de a una comuna, mostrando lo que va llegando.
+//   · SIN SALDO SE EXPLORA TODO; el cobro aparece al tocar «Analizar este», con el pop-up de compra de siempre.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { botonOcupado, chipOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
+import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 import { usePostHog } from "@/lib/posthog-react";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import type { EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { comprasDeExplorar, lineaTicketConSaldo } from "@/lib/guia/compra-desde-depto";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
-import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
-import { COMUNAS_DESTACADAS, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { GUIA } from "@/lib/guia/copy";
+import type { EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
+import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
+import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  AVISO_SIN_SALDO, botonAnalizar, EVENTOS_EXPLORAR, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
-  pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
-} from "@/lib/explorar/explorar";
-import { lineaDepto } from "@/lib/guia/linea-depto";
+  cercanos, claveUniverso, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
+  numeroDelMapa, ordenar, ORDENES, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
+  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type UniversoCompacto,
+} from "@/lib/explorar/portal";
+import { TarjetaPin } from "./tarjeta-pin";
 import "./explorar.css";
 
-/** Las tarjetas que la hoja abierta dibuja (el mapa tiene todos los pines). */
-const TOPE_LISTA = 120;
-const ESPERA_EN_CURSO_MS = 4000;
-const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
-const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
-
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
-// Los dos pop-ups no hacen falta para el primer pintado (LCP en el teléfono, medido en producción el 23-oct-2026: el JS que
-// baja antes de pintar compite con el mapa quieto por el ancho de banda): entran cuando se abren.
+// Lo que no hace falta para el primer pintado entra cuando se abre (LCP en el teléfono).
+const HojaFiltros = dynamic(() => import("./hoja-filtros").then((m) => m.HojaFiltros), { ssr: false, loading: () => null });
+const ListaPortal = dynamic(() => import("./lista-portal").then((m) => m.ListaPortal), { ssr: false, loading: () => null });
+const AvisameDialogo = dynamic(() => import("./avisame-dialogo").then((m) => m.AvisameDialogo), { ssr: false, loading: () => null });
 const AvisoAntesDeAnalizar = dynamic(() => import("@/components/guia/AvisoAntesDeAnalizar").then((m) => m.AvisoAntesDeAnalizar), { ssr: false, loading: () => null });
-const AvisoSinSaldoExplorar = dynamic(() => import("./aviso-sin-saldo").then((m) => m.AvisoSinSaldoExplorar), { ssr: false, loading: () => null });
+const PopupNoDa = dynamic(() => import("@/components/guia/PopupNoDa").then((m) => m.PopupNoDa), { ssr: false, loading: () => null });
 
-export interface DatosExplorarCliente {
-  filtros: FiltrosExplorar;
-  n: number;
-  analizadosN: number;
-  pines: PinExplorar[];
-  /** `pines` trae todos (n chico) o solo los primeros TOPE_HOJA. */
-  completo: boolean;
+const ESPERA_EN_CURSO_MS = 4000;
+/** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). */
+const COMUNAS_A_LA_VEZ = 3;
+
+/** Lo que el servidor sabe de la cuenta (portal-servidor.ts › CuentaPortal), sin nada que no se pueda mostrar. */
+export interface CuentaCliente {
   analizados: Record<string, string>;
+  guardados: string[];
   saldo: EstadoSaldo;
+  suscrito: boolean;
   ticket: boolean;
   cuentaCreadaAt: string | null;
   finanzas: { uf: number | null; tasa: number | null };
-  /** Los filtros salieron del perfil (o de la URL); false = el perfil no alcanzaba y abre con la búsqueda de ejemplo. */
-  desdePerfil: boolean;
-  /** La combinación no es de la noche: el servidor no trajo pines y el navegador los pide enseguida («Calculando con tu pie…»). */
-  calculando?: boolean;
-  /** Sin saldo, cerrado (lib/explorar/explorar.ts › explorarCerrado): los pines vienen sin detalle y no se pide nada más. */
-  cerrado?: boolean;
-  /** Cuántos convenían anoche en todo Santiago (el número de /deptos), para el aviso sin saldo. */
-  totalNoche?: number | null;
+  miBusqueda: FiltrosPortal | null;
+  busquedaActual: string | null;
+  explorarEnMes: number;
 }
 
-type Chip = "comuna" | "tipologia" | "rango" | "pie" | "plazo";
+export interface InicialPortal {
+  filtros: FiltrosPortal;
+  orden: OrdenPortal;
+  /** Cuántos convienen con estos filtros, contado por el servidor para el primer pintado (null: hay que calcular). */
+  n: number | null;
+  cuenta: CuentaCliente;
+}
+
+type Universo = { comunas: "todas" | string[]; pines: PinMapa[] };
 
 export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, mapaQuieto = null }: {
-  inicial: DatosExplorarCliente;
+  inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
-  /** El mapa quieto del primer pintado, dibujado por el servidor (page.tsx): va debajo del mapa real hasta sus teselas. */
+  /** El mapa quieto del primer pintado (page.tsx): va debajo del mapa real hasta sus teselas. */
   mapaQuieto?: ReactNode;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [datos, setDatos] = useState(inicial);
+  const cuenta = inicial.cuenta;
   const [filtros, setFiltros] = useState(inicial.filtros);
-  const [cargando, setCargando] = useState<Chip | "todo" | null>(null);
+  const [orden, setOrden] = useState(inicial.orden);
+  const [universos, setUniversos] = useState<Record<string, Universo>>({});
+  const universosRef = useRef(universos);
+  universosRef.current = universos;
+  const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null);
   const [fallo, setFallo] = useState(false);
+  const [vista, setVista] = useState<"mapa" | "lista">("mapa");
   const [mapaListo, setMapaListo] = useState(false);
-  // «teselas»: el mapa real ya dibujó sus teselas; recién ahí se desvanece el mapa quieto del primer pintado.
   const [mapa, setMapa] = useState<"cargando" | "listo" | "teselas" | "fallo">("cargando");
-  const [seleccionado, setSeleccionado] = useState<string | null>(abrir);
-  const [hoja, setHoja] = useState<"peek" | "abierta">(abrir ? "abierta" : "peek");
-  const [pop, setPop] = useState<"comuna" | "tipologia" | null>(null);
-  const [confirmar, setConfirmar] = useState<{ it: PinExplorar; sin: boolean; analizando?: boolean } | null>(null);
+  const [sel, setSel] = useState<string | null>(abrir);
+  const [carrusel, setCarrusel] = useState<string[]>([]);
+  const [hojaFiltros, setHojaFiltros] = useState(false);
+  const [menuOrden, setMenuOrden] = useState(false);
+  const [zonaPendiente, setZonaPendiente] = useState<Caja | null>(null);
+  const [sinBusqueda, setSinBusqueda] = useState(false);
+  const [guardados, setGuardados] = useState<Set<string>>(() => new Set(cuenta.guardados));
+  const [confirmar, setConfirmar] = useState<{ it: PinMapa; sin: boolean; analizando?: boolean } | null>(null);
+  const [noDa, setNoDa] = useState<{ it: PinMapa; porQue: string | null; publicacion: string | null; ocupado?: boolean } | null>(null);
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
   const [caidos, setCaidos] = useState<string[]>([]);
-  const entrada = estadoDeEntrada(inicial.saldo);
-  const [avisoSinSaldo, setAvisoSinSaldo] = useState(entrada.aviso);
-  // Cerrado: lo dice el servidor (la cuenta sin saldo) y nada en esta pantalla lo abre; recién al volver pagado.
-  const cerrado = !!inicial.cerrado;
-  const [yendo, setYendo] = useState<"pack" | "suelto" | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [avisame, setAvisame] = useState(false);
   const vivo = useRef(true);
+  const uf = cuenta.finanzas.uf;
 
-  const pines = useMemo(() => datos.pines.filter((p) => !caidos.includes(p.avisoId)), [datos.pines, caidos]);
-  // Cuántos convienen: con todos los pines, los que hay; con solo los primeros (antes del mapa), lo que contó el servidor.
-  const total = datos.completo ? pines.length : Math.max(0, datos.n - caidos.length);
-  const analizadosSet = useMemo(() => new Set(Object.keys(datos.analizados)), [datos.analizados]);
-  const elegido = seleccionado ? pines.find((p) => p.avisoId === seleccionado) ?? null : null;
-  const consulta = urlDeFiltros(filtros);
-  const compras = useCallback((avisoId?: string | null) => comprasDeExplorar({ filtros: consulta, avisoId, ticket: datos.ticket }), [consulta, datos.ticket]);
-  const ticketConSaldo = datos.ticket && datos.cuentaCreadaAt && datos.saldo.tipo !== "sin" ? lineaTicketConSaldo(datos.cuentaCreadaAt, compras().pack.href) : null;
-  /** «$14.990»: el precio del pack, como lo dice su botón (la tarjeta de la oferta y «Aprovechar · 3 por …»). */
-  const precioPack = compras().pack.label.replace(/^.*·\s*/, "");
-  const irACompra = (que: "pack" | "suelto", href: string) => { setYendo(que); iniciarCarga(claveActual()); router.push(href); };
+  // ── el universo ──
+  const universoPara = useCallback((f: FiltrosPortal, us: Record<string, Universo>): PinMapa[] | null => {
+    const u = us[claveUniverso(f)];
+    if (!u) return null;
+    if (u.comunas === "todas") return u.pines;
+    const hay = new Set(u.comunas);
+    return comunasACalcular(f).every((c) => hay.has(c)) ? u.pines : null;
+  }, []);
 
-  /** Pide los pines de una búsqueda. `evento`: la persona cambió un chip (el servidor deja «explorar_vista»). */
-  const cargar = useCallback(async (f: FiltrosExplorar, evento: boolean) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
+  /** Trae lo que falte para unos filtros: la noche entera en un pedido, o lo calculado de a una comuna. */
+  const asegurar = useCallback(async (f: FiltrosPortal) => {
+    const clave = claveUniverso(f);
+    const base = `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}`;
     setFallo(false);
     try {
-      const res = await fetch(`/api/explorar?${urlDeFiltros(f)}${evento ? "&evento=1" : ""}`, { cache: "no-store", signal: ctrl.signal });
-      if (!vivo.current || ctrl.signal.aborted) return;
-      if (!res.ok) { setFallo(true); return; }
-      const d = (await res.json()) as Omit<DatosExplorarCliente, "analizadosN" | "completo" | "desdePerfil">;
-      if (ctrl.signal.aborted) return;
-      setDatos((x) => ({ ...x, ...d, filtros: f, analizadosN: d.pines.filter((p) => d.analizados[p.avisoId]).length, completo: true, calculando: false }));
-      setCaidos([]);
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError") && vivo.current) setFallo(true);
+      if (universoDeLaNoche(f)) {
+        if (universosRef.current[clave]) return;
+        const res = await fetch(base, { cache: "default" });
+        if (!res.ok) throw new Error(String(res.status));
+        const d = (await res.json()) as { universo: UniversoCompacto };
+        if (vivo.current) setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo) } }));
+        return;
+      }
+      const ya = universosRef.current[clave];
+      const tengo = new Set(ya && ya.comunas !== "todas" ? ya.comunas : []);
+      const faltan = comunasACalcular(f).filter((c) => !tengo.has(c));
+      if (faltan.length === 0) return;
+      let hechas = 0;
+      setProgreso({ hechas, total: faltan.length });
+      const cola = [...faltan];
+      let errores = 0;
+      const trabajador = async () => {
+        for (let c = cola.shift(); c; c = cola.shift()) {
+          try {
+            const res = await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" });
+            if (!res.ok) throw new Error(String(res.status));
+            const d = (await res.json()) as { universo: UniversoCompacto };
+            const nuevos = descompactar(d.universo);
+            const comuna = c;
+            if (vivo.current) setUniversos((us) => {
+              const prev = us[clave];
+              const comunas = prev && prev.comunas !== "todas" ? [...prev.comunas, comuna] : [comuna];
+              const ids = new Set((prev?.pines ?? []).map((p) => p.avisoId));
+              return { ...us, [clave]: { comunas, pines: [...(prev?.pines ?? []), ...nuevos.filter((p) => !ids.has(p.avisoId))] } };
+            });
+          } catch {
+            errores++;
+          }
+          hechas++;
+          if (vivo.current) setProgreso({ hechas, total: faltan.length });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(COMUNAS_A_LA_VEZ, faltan.length) }, trabajador));
+      if (vivo.current) { setProgreso(null); if (errores) setFallo(true); }
+    } catch {
+      if (vivo.current) { setProgreso(null); setFallo(true); }
     }
   }, []);
 
-  // El mapa, después del primer pintado; con él, el resto de los pines si el servidor mandó solo los primeros.
+  // El universo de la vista con que se entró: el de la noche, con la página quieta (el LCP es el mapa quieto); uno calculado,
+  // enseguida. El mapa interactivo, también con la página quieta.
   useEffect(() => {
     vivo.current = true;
-    // Una combinación que la noche no tiene: se pide ya, sin esperar a que la página esté quieta (el servidor no la calculó).
-    if (inicial.calculando) { setCargando("todo"); void cargar(inicial.filtros, false).finally(() => { if (vivo.current) setCargando(null); }); }
+    if (!universoDeLaNoche(inicial.filtros)) void asegurar(inicial.filtros);
     const cancelar = cuandoLaPaginaEsteQuieta(() => {
       setMapaListo(true);
-      if (!inicial.completo && !inicial.calculando) void cargar(inicial.filtros, false);
+      if (universoDeLaNoche(inicial.filtros)) void asegurar(inicial.filtros);
     });
-    return () => { vivo.current = false; cancelar(); abortRef.current?.abort(); };
+    return () => { vivo.current = false; cancelar(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function aplicar(parche: Partial<FiltrosExplorar>, chip: Chip) {
-    if (cerrado) return;
-    const f = cambiarFiltro(filtros, parche);
-    if (f === filtros) return;
-    setFiltros(f);
-    setSeleccionado(null);
-    try { window.history.replaceState(window.history.state, "", `${window.location.pathname}?${urlDeFiltros(f)}`); } catch { /* sin historial */ }
-    setCargando(chip);
-    void cargar(f, true).finally(() => { if (vivo.current) setCargando(null); });
-  }
+  const universo = universoPara(filtros, universos);
+  const visibles = useMemo(() => (universo ? ordenar(filtrar(universo, filtros).filter((p) => !caidos.includes(p.avisoId)), orden, uf) : []), [universo, filtros, orden, uf, caidos]);
+  // Antes de que llegue el universo, el número que contó el servidor (solo para los filtros con que se entró).
+  const total = universo ? visibles.length : filtros === inicial.filtros ? inicial.n : null;
+  const calculando = !universo && (progreso != null || !universoDeLaNoche(filtros));
+  const analizadosSet = useMemo(() => new Set(Object.keys(cuenta.analizados)), [cuenta.analizados]);
+  /** Cuántos darían unos filtros, sobre lo cargado (la hoja de filtros); null si hay que traer otro universo. */
+  const contar = useCallback((f: FiltrosPortal): number | null => {
+    const u = universoPara(f, universosRef.current);
+    return u ? filtrar(u, f).filter((p) => !caidos.includes(p.avisoId)).length : null;
+  }, [universoPara, caidos]);
 
-  // «explorar_pin» (26-oct-2026): tocar un pin del mapa, también con Explorar cerrado (sin saldo el pin no se abre, pero el
-  // toque dice que la persona quiso ver ese depto).
-  function seleccionar(avisoId: string, desde: "mapa" | "tarjeta" = "tarjeta") {
-    if (desde === "mapa") posthog?.capture(EVENTOS_EXPLORAR.pin, { aviso_id: avisoId, cerrado });
-    if (cerrado) return;
-    setSeleccionado(avisoId);
-    setHoja("abierta");
+  // ── los cambios ──
+  const ponerEnUrl = (f: FiltrosPortal, o: OrdenPortal) => {
+    try { const q = urlDePortal(f, o); window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`); } catch { /* sin historial */ }
+  };
+  const vistaCambio = (f: FiltrosPortal, o: OrdenPortal, fuente: string, n: number | null) =>
+    posthog?.capture(EVENTOS_PORTAL.vista, { ...propsDeFiltros(f, o), n, fuente });
+
+  /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
+  function aplicar(f: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar") {
+    const cambiados = filtrosCambiados(filtros, f);
+    setFiltros(f);
+    setSel(null);
+    setZonaPendiente(null);
+    ponerEnUrl(f, orden);
+    void asegurar(f);
+    const n = contar(f);
+    if (fuente === "filtros" && cambiados.length) posthog?.capture(EVENTOS_PORTAL.filtro, { cambiados, ...propsDeFiltros(f, orden), n });
+    vistaCambio(f, orden, fuente, n);
+  }
+  function cambiarOrden(o: OrdenPortal) {
+    setOrden(o);
+    setMenuOrden(false);
+    ponerEnUrl(filtros, o);
+    vistaCambio(filtros, o, "orden", universo ? visibles.length : null);
+  }
+  function miBusqueda() {
+    if (!cuenta.miBusqueda) { setSinBusqueda(true); return; }
+    aplicar(cuenta.miBusqueda, "mi_busqueda");
+  }
+  const enMiBusqueda = !!cuenta.miBusqueda && urlDePortal(cuenta.miBusqueda) === urlDePortal(filtros);
+
+  // «explorar_pin»: tocar un pin del mapa (la tarjeta se desliza entre los cercanos).
+  function tocarPin(avisoId: string) {
+    posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad });
+    setCarrusel(cercanos(visibles, avisoId).map((p) => p.avisoId));
+    setSel(avisoId);
     setError(null);
   }
+  const abrirDesdeLista = (avisoId: string) => { setVista("mapa"); tocarPin(avisoId); };
 
-  async function analizar(it: PinExplorar, eleccion?: EleccionAnalizar) {
+  async function alternarGuardado(avisoId: string, desde: "tarjeta" | "lista") {
+    const guardar = !guardados.has(avisoId);
+    setGuardados((s) => { const n = new Set(s); if (guardar) n.add(avisoId); else n.delete(avisoId); return n; });
+    const ok = await fetch("/api/explorar/guardados", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId, guardar, desde }) }).then((r) => r.ok).catch(() => false);
+    if (!ok && vivo.current) setGuardados((s) => { const n = new Set(s); if (guardar) n.delete(avisoId); else n.add(avisoId); return n; });
+  }
+
+  // ── analizar ──
+  const consulta = urlDePortal(filtros, orden);
+  const compras = useCallback((avisoId?: string | null) => comprasDeExplorar({ filtros: consulta, avisoId, ticket: cuenta.ticket }), [consulta, cuenta.ticket]);
+  const ticketConSaldo = cuenta.ticket && cuenta.cuentaCreadaAt && cuenta.saldo.tipo !== "sin" ? lineaTicketConSaldo(cuenta.cuentaCreadaAt, compras().pack.href) : null;
+  const plan = lineaPlan(cuenta.explorarEnMes, cuenta.suscrito);
+
+  function pedirAnalisis(it: PinMapa) {
+    setError(null);
+    setConfirmar({ it, sin: cuenta.saldo.tipo === "sin" });
+    if (plan) posthog?.capture(EVENTOS_PORTAL.planVisto, { hechos: cuenta.explorarEnMes, aviso_id: it.avisoId, sin_saldo: cuenta.saldo.tipo === "sin" });
+  }
+
+  async function analizar(it: PinMapa, eleccion?: EleccionAnalizar, igual = false) {
     if (generando) return;
     const combinacion = eleccion?.combinacion ?? { piePct: filtros.pie, plazoAnios: filtros.plazo };
     setError(null);
     setGenerando(it.avisoId);
-    // El aviso queda abierto, cargando, con la barra del header, hasta que abre el informe (como en la selección).
     const soltar = iniciarCarga(claveActual());
-    setConfirmar({ it, sin: false, analizando: true });
+    if (!igual) setConfirmar({ it, sin: false, analizando: true });
     try {
-      // La casilla del pop-up: el pie y el plazo nuevos quedan en su perfil (lo único de esta página que lo escribe).
+      // La casilla del pop-up: el pie y el plazo nuevos quedan en el perfil (además de «Avísame de nuevos», lo único que lo escribe).
       if (eleccion?.guardarPerfil) {
         await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios }) }).catch(() => null);
       }
+      const corta = filtros.modalidad === "str";
       for (let intento = 0; intento < 8; intento++) {
-        const res = await fetch("/api/lo-que-sigue/guia/analizar", {
+        const res = await fetch(corta ? "/api/semanal/analizar-str" : "/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, explorar: true }),
+          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, explorar: true, ...(igual ? { igual: true } : {}) }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null };
         if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
-        // Se dio de baja recién: sale del mapa.
-        if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); setCaidos((xs) => [...xs, it.avisoId]); setSeleccionado(null); break; }
-        if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); break; }
+        // Renta corta medida fina que no da: no se cobró; se ofrece analizar igual.
+        if (res.ok && d.estado === "no-da") { setConfirmar(null); setNoDa({ it, porQue: d.porQue ?? null, publicacion: d.publicacion ?? null }); break; }
+        if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); setNoDa(null); setCaidos((xs) => [...xs, it.avisoId]); setSel(null); break; }
+        if (d.error === "sin-creditos") { setNoDa(null); setConfirmar({ it, sin: true }); break; }
         setConfirmar(null);
+        setNoDa(null);
         setError({ avisoId: it.avisoId, texto: GUIA.error });
         break;
       }
@@ -207,26 +287,6 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
     soltar();
     setGenerando(null);
   }
-
-  // Volvió pagado desde un depto (`a` y `analizar=1`): se abre y se analiza solo, una vez.
-  const autoHecho = useRef(false);
-  useEffect(() => {
-    if (!autoAnalizar || autoHecho.current) return;
-    const it = pines.find((p) => p.avisoId === autoAnalizar);
-    if (!it) return;
-    autoHecho.current = true;
-    try {
-      const u = new URL(window.location.href);
-      u.searchParams.delete("analizar");
-      window.history.replaceState(window.history.state, "", `${u.pathname}${u.search}${u.hash}`);
-    } catch { /* igual se analiza una vez */ }
-    setSeleccionado(it.avisoId);
-    setHoja("abierta");
-    if (datos.analizados[it.avisoId]) return;
-    if (datos.saldo.tipo === "sin") setConfirmar({ it, sin: true });
-    else void analizar(it);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoAnalizar, pines]);
 
   const recalcular = useCallback(async (avisoId: string, combo: { piePct: number; plazoAnios: number }): Promise<Recalculo | null> => {
     try {
@@ -239,223 +299,185 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
     }
   }, []);
 
-  // La hoja se arrastra: hacia arriba abre, hacia abajo cierra; un toque alterna.
-  const arrastre = useRef<number | null>(null);
-  const alSoltar = (e: ReactPointerEvent) => {
-    const y0 = arrastre.current;
-    arrastre.current = null;
-    if (y0 == null) return;
-    const dy = e.clientY - y0;
-    if (dy < -24) setHoja("abierta"); else if (dy > 24) setHoja("peek"); else setHoja((h) => (h === "peek" ? "abierta" : "peek"));
-  };
+  // Volvió pagado desde un depto (`a` y `analizar=1`): se abre y se analiza solo, una vez, cuando llega el universo.
+  const autoHecho = useRef(false);
+  useEffect(() => {
+    if (!autoAnalizar || autoHecho.current || !universo) return;
+    const it = universo.find((p) => p.avisoId === autoAnalizar);
+    if (!it) return;
+    autoHecho.current = true;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("analizar");
+      window.history.replaceState(window.history.state, "", `${u.pathname}${u.search}${u.hash}`);
+    } catch { /* igual se analiza una vez */ }
+    setCarrusel([it.avisoId]);
+    setSel(it.avisoId);
+    if (cuenta.analizados[it.avisoId]) return;
+    if (cuenta.saldo.tipo === "sin") setConfirmar({ it, sin: true });
+    else void analizar(it);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAnalizar, universo]);
+  // Entró con un depto abierto (`a`): su tarjeta, con los cercanos, cuando llega el universo.
+  useEffect(() => {
+    if (!abrir || autoAnalizar || !universo || carrusel.length) return;
+    if (visibles.some((p) => p.avisoId === abrir)) setCarrusel(cercanos(visibles, abrir).map((p) => p.avisoId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [universo]);
 
-  // La línea del depto, con «· Usado» o «· Nuevo» si el aviso lo dice (28-oct-2026, linea-depto.ts).
-  const ojoDe = (p: PinExplorar) => lineaDepto(p);
-  const veredictoDe = (p: PinExplorar) => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
-  const usa = botonAnalizar(datos.saldo);
-  // Una combinación que la noche no tiene, mientras el servidor la calcula: la píldora y la hoja lo dicen.
-  const calculando = (cargando !== null || !!datos.calculando) && !esCombinacionDeLaNoche(filtros);
-  const visibles = hoja === "abierta" ? pines.slice(0, TOPE_LISTA) : pines.slice(0, TOPE_HOJA);
-  const rangoActual = RANGOS_UF.find((r) => (r.min ?? 0) === filtros.ufMin && r.max === filtros.ufMax)?.id ?? "";
-  const comunasLibres = (COMUNAS_DISPONIBLES as readonly string[]).filter((c) => !DESTACADAS.includes(c));
-  const abrirPop = (p: "comuna" | "tipologia") => setPop((x) => (x === p ? null : p));
-  const revisado = textoRevisado(filtros);
-
-  const tarjeta = (p: PinExplorar) => {
-    const informe = datos.analizados[p.avisoId];
-    const neg = (p.flujo ?? 0) < 0;
-    return (
-      <article key={p.avisoId} className="ex-tarjeta" data-explorar="tarjeta" data-aviso={p.avisoId} data-sel={p.avisoId === seleccionado ? "1" : undefined} data-analizado={informe ? "1" : undefined}>
-        <button type="button" className="ex-tarjeta-cuerpo" onClick={() => seleccionar(p.avisoId)} aria-label={`${ojoDe(p)} · UF ${miles(p.precioUF)}`}>
-          <span className="ex-ojo">{ojoDe(p)}</span>
-          <span className="ex-fila"><b className="ex-precio">UF {miles(p.precioUF)}</b><span className="ex-ver">{veredictoDe(p)}</span></span>
-          <span className={`ex-flujo${neg ? " ex-neg" : ""}`}>{p.flujo != null && <><b>{flujoTexto(p.flujo)}</b> {neg ? EXPLORAR_COPY.saleDeTuBolsillo : EXPLORAR_COPY.teQueda} · </>}{marcaDePin(p).toLowerCase()}</span>
-        </button>
-        {informe ? (
-          <span className="ex-ya" data-explorar="ya-analizado">{EXPLORAR_COPY.yaAnalizado} · <EnlaceCarga href={`/analisis/${informe}`}>{EXPLORAR_COPY.verInforme}</EnlaceCarga></span>
-        ) : (
-          <button type="button" className="ex-an" onClick={() => { setError(null); setConfirmar({ it: p, sin: datos.saldo.tipo === "sin" }); }} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
-            {generando === p.avisoId ? GUIA.analizando : EXPLORAR_COPY.analizar}
-          </button>
-        )}
-        {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}
-      </article>
-    );
-  };
-
-  const detalle = elegido && (() => {
-    const p = elegido;
-    const informe = datos.analizados[p.avisoId];
-    const cap = capRatePct(p.arriendo, p.precioUF, datos.finanzas.uf);
-    const m2 = ufPorM2(p.precioUF, p.m2);
-    const neg = (p.flujo ?? 0) < 0;
-    return (
-      <div className="ex-detalle" data-explorar="detalle" data-aviso={p.avisoId}>
-        <div className="ex-fila">
-          <span className="ex-ojo">{ojoDe(p)} · {marcaDePin(p).toLowerCase()}</span>
-          <button type="button" className="ex-x" aria-label={EXPLORAR_COPY.cerrar} onClick={() => setSeleccionado(null)} data-explorar="cerrar-detalle">×</button>
-        </div>
-        <div className="ex-fila"><b className="ex-precio-g">UF {miles(p.precioUF)}</b><span className="ex-ver ex-ver-g">{veredictoDe(p)}</span></div>
-        <dl className="ex-cifras">
-          <div><dt>{EXPLORAR_COPY.flujo}</dt><dd data-neg={neg ? "1" : undefined}>{p.flujo != null ? flujoTexto(p.flujo) : "—"}{p.flujo != null && <small>{neg ? EXPLORAR_COPY.saleDeTuBolsillo : EXPLORAR_COPY.teQueda}</small>}</dd></div>
-          <div><dt>{EXPLORAR_COPY.capRate}</dt><dd>{cap != null ? pctUno(cap) : "—"}</dd></div>
-          <div><dt>{EXPLORAR_COPY.ufM2}</dt><dd>{m2 != null ? `${miles(m2)} UF` : "—"}</dd></div>
-        </dl>
-        <p className="ex-revisado" data-explorar="revisado">{revisado.antes}<strong>{revisado.enlace}</strong>.</p>
-        {informe ? (
-          <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta-enlace" data-explorar="ver-informe">{EXPLORAR_COPY.yaAnalizado} · {EXPLORAR_COPY.verInforme}</EnlaceCarga>
-        ) : (
-          <button type="button" className="ex-cta" onClick={() => { setError(null); setConfirmar({ it: p, sin: datos.saldo.tipo === "sin" }); }} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar-detalle">
-            {generando === p.avisoId ? GUIA.analizando : usa}
-          </button>
-        )}
-        {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}
-      </div>
-    );
-  })();
+  const porId = useMemo(() => new Map((universo ?? []).map((p) => [p.avisoId, p])), [universo]);
+  const enCarrusel = carrusel.map((id) => porId.get(id)).filter((p): p is PinMapa => !!p && !caidos.includes(p.avisoId));
+  const tarjeta = vista === "mapa" && sel && enCarrusel.some((p) => p.avisoId === sel);
 
   return (
-    <div className="ex" data-explorar="cliente" data-cargando={cargando ?? undefined}>
-      {/* ── los chips ── */}
-      <div className="ex-chips" role="group" aria-label="Filtros" data-cerrado={cerrado ? "1" : undefined}>
-        <button type="button" className="ex-chip" aria-expanded={pop === "comuna"} aria-haspopup="dialog" onClick={() => abrirPop("comuna")} disabled={cerrado} {...chipOcupado(cargando === "comuna")} data-chip="comuna">{etiquetaComunas(filtros.comunas)}</button>
-        <button type="button" className="ex-chip" aria-expanded={pop === "tipologia"} aria-haspopup="dialog" onClick={() => abrirPop("tipologia")} disabled={cerrado} {...chipOcupado(cargando === "tipologia")} data-chip="tipologia">{etiquetaTipologias(filtros.tipologias)}</button>
-        <label className="ex-chip" {...chipOcupado(cargando === "rango")} data-chip="rango">
-          <span aria-hidden="true">{etiquetaRango(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.rango} disabled={cerrado} value={rangoActual} onChange={(e) => { const r = RANGOS_UF.find((x) => x.id === e.target.value); if (r) aplicar({ ufMin: r.min ?? 0, ufMax: r.max }, "rango"); }}>
-            {!rangoActual && <option value="">{etiquetaRango(filtros)}</option>}
-            {RANGOS_UF.map((r) => <option key={r.id} value={r.id}>{r.chip}</option>)}
-          </select>
-        </label>
-        <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "pie")} data-chip="pie">
-          <span aria-hidden="true">{etiquetaPie(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.pie} disabled={cerrado} value={filtros.pie} onChange={(e) => aplicar({ pie: Number(e.target.value) as FiltrosExplorar["pie"] }, "pie")}>
-            {PIES_EXPLORAR.map((p) => <option key={p} value={p}>{etiquetaPie({ pie: p })}</option>)}
-          </select>
-        </label>
-        <label className="ex-chip" data-suave="1" {...chipOcupado(cargando === "plazo")} data-chip="plazo">
-          <span aria-hidden="true">{etiquetaPlazo(filtros)}</span>
-          <select aria-label={EXPLORAR_COPY.chips.plazo} disabled={cerrado} value={filtros.plazo} onChange={(e) => aplicar({ plazo: Number(e.target.value) as FiltrosExplorar["plazo"] }, "plazo")}>
-            {PLAZOS_EXPLORAR.map((z) => <option key={z} value={z}>{etiquetaPlazo({ plazo: z })}</option>)}
-          </select>
-        </label>
-        <span className="ex-chips-fin" aria-hidden="true" />
+    <div className="ex" data-explorar="cliente" data-vista={vista} data-calculando={calculando ? "1" : undefined}>
+      {/* ── la fila de arriba ── */}
+      <div className="ex-barra" role="toolbar" aria-label="Filtros y orden">
+        <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
+          <span aria-hidden="true">☰</span> {etiquetaFiltros(filtros)}
+        </button>
+        <div className="ex-orden">
+          <button type="button" className="ex-boton ex-boton-suave" aria-haspopup="menu" aria-expanded={menuOrden} data-explorar="ordenar" onClick={() => setMenuOrden((x) => !x)}>
+            {etiquetaOrden(orden)} <span aria-hidden="true">▾</span>
+          </button>
+          {menuOrden && (
+            <>
+              <div className="ex-velo" onClick={() => setMenuOrden(false)} aria-hidden="true" />
+              <div className="ex-menu" role="menu" data-explorar="menu-orden">
+                {ORDENES.map((o) => (
+                  <button key={o.id} type="button" role="menuitemradio" aria-checked={orden === o.id} className="ex-menu-op" onClick={() => cambiarOrden(o.id)}>{o.etiqueta}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <button type="button" className="ex-boton ex-boton-suave" data-activo={enMiBusqueda ? "1" : undefined} data-explorar="mi-busqueda" onClick={miBusqueda}>{PORTAL_COPY.miBusqueda}</button>
       </div>
-      {pop && (
-        <>
-          <div className="ex-velo" onClick={() => setPop(null)} aria-hidden="true" />
-          <div className="ex-pop" role="dialog" aria-label={pop === "comuna" ? EXPLORAR_COPY.chips.comuna : EXPLORAR_COPY.chips.tipologia} data-explorar={`pop-${pop}`}>
-            {pop === "comuna" ? (
-              <>
-                <p className="ex-pop-t">{EXPLORAR_COPY.chips.comuna}<span className="ex-pop-ayuda">{EXPLORAR_COPY.chips.hasta(MAX_COMUNAS_PERFIL)}</span></p>
-                <div className="ex-pop-chips" role="group">
-                  {[...filtros.comunas, ...DESTACADAS.filter((c) => !filtros.comunas.includes(c)), ...comunasLibres.filter((c) => !filtros.comunas.includes(c))].map((c) => {
-                    const activa = filtros.comunas.includes(c);
-                    return (
-                      <button key={c} type="button" role="checkbox" aria-checked={activa} className="ex-pop-chip" disabled={!activa && filtros.comunas.length >= MAX_COMUNAS_PERFIL}
-                        onClick={() => { const comunas = activa ? filtros.comunas.filter((x) => x !== c) : [...filtros.comunas, c]; if (comunas.length > 0) aplicar({ comunas }, "comuna"); }}>
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="ex-pop-t">{EXPLORAR_COPY.chips.tipologia}</p>
-                <div className="ex-pop-chips" role="group">
-                  {TIPOLOGIAS_DEPTOS.map((t) => {
-                    const activa = filtros.tipologias.includes(t.id);
-                    return (
-                      <button key={t.id} type="button" role="checkbox" aria-checked={activa} className="ex-pop-chip"
-                        onClick={() => { const tipologias = activa ? filtros.tipologias.filter((x) => x !== t.id) : [...filtros.tipologias, t.id]; if (tipologias.length > 0) aplicar({ tipologias }, "tipologia"); }}>
-                        {t.chip}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-            <div className="ex-pop-fin"><button type="button" className="ex-pop-listo" onClick={() => setPop(null)}>{EXPLORAR_COPY.chips.listo}</button></div>
-          </div>
-        </>
+      {sinBusqueda && (
+        <p className="ex-aviso" role="status" data-explorar="sin-busqueda">
+          {PORTAL_COPY.sinMiBusqueda} <button type="button" className="ex-enlace" onClick={() => setSinBusqueda(false)}>{PORTAL_COPY.cerrar}</button>
+        </p>
       )}
 
       <div className="ex-cuerpo">
         {/* ── el mapa (después del primer pintado) ── */}
-        <div className="ex-mapa-wrap" data-mapa={mapa}>
+        <div className="ex-mapa-wrap" data-mapa={mapa} hidden={vista === "lista" ? true : undefined}>
           {/* El mapa quieto: lo más grande del primer cuadro (el LCP), dibujado por el servidor; debajo del mapa real. */}
           {mapaQuieto}
           {mapaListo && mapa !== "fallo" && (
-            <MapaExplorar pines={pines} analizados={analizadosSet} seleccionado={seleccionado} comuna={filtros.comunas[0] ?? null} onSeleccionar={(id: string) => seleccionar(id, "mapa")} onEstado={setMapa} />
+            <MapaExplorar
+              pines={visibles}
+              analizados={analizadosSet}
+              seleccionado={tarjeta ? sel : null}
+              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}`}
+              conZona={!!filtros.zona}
+              onSeleccionar={tocarPin}
+              onTocarMapa={() => setSel(null)}
+              onMovido={(c) => setZonaPendiente(c)}
+              onEstado={setMapa}
+            />
           )}
-          {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{EXPLORAR_COPY.sinMapa}</p>}
-          <div className="ex-pildoras">
-            <span className="ex-pildora" data-explorar="pildora" data-cargando={cargando ? "1" : undefined} aria-live="polite">
-              {calculando ? EXPLORAR_COPY.calculando : <>{datos.analizadosN > 0 && <span className="ex-punto-azul" aria-hidden="true" />}{pildora(total, datos.analizadosN)}</>}
-            </span>
-            <EnlaceCarga href="/dashboard" className="ex-pildora" data-explorar="volver">← {EXPLORAR_COPY.volver}</EnlaceCarga>
-          </div>
-          {!datos.desdePerfil && <p className="ex-aviso-perfil" data-explorar="sin-perfil">{EXPLORAR_COPY.sinPerfil}</p>}
+          {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
+          {zonaPendiente ? (
+            <button type="button" className="ex-zona" data-explorar="buscar-zona" onClick={() => aplicar({ ...filtros, zona: zonaPendiente }, "zona")}>{PORTAL_COPY.buscarZona}</button>
+          ) : (
+            <div className="ex-numero" data-explorar="numero" aria-live="polite">
+              <span className="ex-numero-n">{calculando ? (progreso ? PORTAL_COPY.calculandoComunas(progreso.hechas, progreso.total) : PORTAL_COPY.calculando) : total != null ? numeroDelMapa(total, filtros) : PORTAL_COPY.calculando}</span>
+              <span className="ex-numero-s" data-explorar="supuestos">{lineaSupuestos(filtros)}</span>
+            </div>
+          )}
+          {fallo && (
+            <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">
+              {PORTAL_COPY.error} <button type="button" className="ex-enlace" onClick={() => void asegurar(filtros)}>{PORTAL_COPY.reintentar}</button>
+            </p>
+          )}
+          {tarjeta ? (
+            <TarjetaPin
+              pines={enCarrusel}
+              seleccionado={sel!}
+              uf={uf}
+              analizados={cuenta.analizados}
+              guardados={guardados}
+              generando={generando}
+              error={error}
+              alCambiar={setSel}
+              alCerrar={() => setSel(null)}
+              alGuardar={(id) => void alternarGuardado(id, "tarjeta")}
+              alAnalizar={pedirAnalisis}
+            />
+          ) : (
+            <button type="button" className="ex-hoja" data-explorar="hoja" onClick={() => setVista("lista")}>
+              <span className="ex-asa" aria-hidden="true" />
+              <span className="ex-hoja-fila">
+                <span className="ex-hoja-t" data-explorar="titulo-hoja">{calculando || total == null ? PORTAL_COPY.calculando : tituloLista(total)}</span>
+                <span className="ex-hoja-ver">{PORTAL_COPY.verLista}</span>
+              </span>
+            </button>
+          )}
         </div>
 
-        {/* ── la hoja ── */}
-        <section className="ex-hoja" data-explorar="hoja" data-hoja={cerrado ? "cerrada" : hoja} aria-label={cerrado ? AVISO_SIN_SALDO.cerrado : tituloHoja(total)}>
-          {cerrado ? (
-            // SIN SALDO, CERRADO: solo la oferta (la misma del aviso E) y qué abre tener análisis.
-            <div className="ex-cerrado" data-explorar="cerrado">
-              {compras().pack.ticket && <p className="ex-cerrado-k" data-explorar="cerrado-oferta">{AVISO_SIN_SALDO.soloNuevas} · {AVISO_SIN_SALDO.packTicket(precioPack)}</p>}
-              <button type="button" className="ex-cta ex-cta-rojo" onClick={() => irACompra("pack", compras().pack.href)} disabled={!!yendo} {...botonOcupado(yendo === "pack")} data-explorar="cerrado-pack">
-                {compras().pack.ticket ? AVISO_SIN_SALDO.aprovechar(precioPack) : compras().pack.label}
-              </button>
-              <button type="button" className="ex-cta-borde" onClick={() => irACompra("suelto", compras().suelto.href)} disabled={!!yendo} {...botonOcupado(yendo === "suelto")} data-explorar="cerrado-suelto">{compras().suelto.label}</button>
-              <p className="ex-cerrado-s" data-explorar="cerrado-linea">{AVISO_SIN_SALDO.cerrado}</p>
-            </div>
-          ) : (<>
-          <button type="button" className="ex-asa-btn" aria-label={hoja === "peek" ? "Abrir la lista" : "Cerrar la lista"} onPointerDown={(e) => { arrastre.current = e.clientY; }} onPointerUp={alSoltar} onPointerCancel={() => { arrastre.current = null; }}>
-            <span className="ex-asa" aria-hidden="true" />
-          </button>
-          {detalle ?? (
-            <>
-              <div className="ex-hoja-cab">
-                <h2 className="ex-hoja-t" data-explorar="titulo-hoja" data-calculando={calculando ? "1" : undefined}>{calculando ? EXPLORAR_COPY.calculando : tituloHoja(total)}</h2>
-                <span className="ex-hoja-orden">{EXPLORAR_COPY.ordenados}</span>
-              </div>
-              {fallo && <p className="ex-error" role="alert" data-explorar="error">{EXPLORAR_COPY.error} <button type="button" className="underline" onClick={() => { setCargando("todo"); void cargar(filtros, false).finally(() => setCargando(null)); }}>{EXPLORAR_COPY.reintentar}</button></p>}
-              {pines.length === 0 ? (calculando ? null : <p className="ex-vacia" data-explorar="vacia">{EXPLORAR_COPY.vacia}</p>) : (
-                <div className="ex-tarjetas" data-explorar="tarjetas">{visibles.map(tarjeta)}</div>
-              )}
-              <p className="ex-saldo" data-explorar="saldo">{lineaSaldo(datos.saldo)}</p>
-            </>
-          )}
-          </>)}
-        </section>
+        {/* ── la lista ── */}
+        {vista === "lista" && (
+          <ListaPortal
+            pines={visibles}
+            total={total}
+            calculando={calculando}
+            orden={orden}
+            uf={uf}
+            analizados={cuenta.analizados}
+            guardados={guardados}
+            alOrden={cambiarOrden}
+            alAbrir={abrirDesdeLista}
+            alGuardar={(id) => void alternarGuardado(id, "lista")}
+            alAvisame={() => setAvisame(true)}
+            alMapa={() => setVista("mapa")}
+          />
+        )}
       </div>
+
+      {hojaFiltros && (
+        <HojaFiltros
+          filtros={filtros}
+          contar={contar}
+          asegurar={(f) => void asegurar(f)}
+          alAplicar={(f) => { setHojaFiltros(false); aplicar(f, "filtros"); }}
+          alCerrar={() => setHojaFiltros(false)}
+        />
+      )}
+      {avisame && (
+        <AvisameDialogo
+          filtros={filtros}
+          busquedaActual={cuenta.busquedaActual}
+          alElegirComunas={() => { setAvisame(false); setHojaFiltros(true); }}
+          alCerrar={() => setAvisame(false)}
+        />
+      )}
 
       {confirmar && (
         <AvisoAntesDeAnalizar
           depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
+          modalidad={filtros.modalidad}
           combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo }}
-          finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: confirmar.it.arriendo }}
-          uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}
+          finanzas={{ tasa: cuenta.finanzas.tasa, uf: cuenta.finanzas.uf, arriendo: confirmar.it.arriendo }}
+          uso={confirmar.sin ? { tipo: "sin" } : cuenta.saldo}
           compras={compras(confirmar.it.avisoId)}
           ticketConSaldo={ticketConSaldo}
-          ticketVence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
+          ticketVence={cuenta.ticket && cuenta.cuentaCreadaAt ? cuandoVenceCorto(cuenta.cuentaCreadaAt) : null}
           rutaCompra={compras(confirmar.it.avisoId).pack.href}
           analizando={!!confirmar.analizando}
-          cambio={{ recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
+          planLinea={plan}
+          cambio={filtros.modalidad === "str" ? null : { recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
         />
       )}
-      {avisoSinSaldo && !confirmar && (
-        <AvisoSinSaldoExplorar
-          totalNoche={datos.totalNoche ?? null}
-          compras={compras()}
-          vence={datos.ticket && datos.cuentaCreadaAt ? cuandoVenceCorto(datos.cuentaCreadaAt) : null}
-          yendo={yendo}
-          alIr={setYendo}
-          alCerrar={() => setAvisoSinSaldo(false)}
+      {noDa && (
+        <PopupNoDa
+          parecidos={0}
+          publicacion={noDa.publicacion}
+          porQue={noDa.porQue}
+          analizarIgual={cuenta.saldo.tipo === "sin" ? null : { texto: textoAnalizarIgual(botonAnalizar(cuenta.saldo).split(" · ")[1] ?? null), ocupado: generando === noDa.it.avisoId, alTocar: () => void analizar(noDa.it, undefined, true) }}
+          alCerrar={() => { if (!generando) setNoDa(null); }}
         />
       )}
     </div>

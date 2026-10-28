@@ -79,7 +79,8 @@ export function pildoraMapa(enSeleccion: number, otros: number, comunas: readonl
 
 /**
  * «Explorar los 4.807 de Santiago» (24-oct-2026): el total que convenía anoche en todo Santiago, el mismo que dice /deptos
- * (lib/deptos/portada.ts › noche.convienen). Al tocarlo, /explorar abre con los filtros del perfil. Sin el total, «Explorar
+ * (lib/deptos/portada.ts › noche.convienen). Al tocarlo, /explorar abre la vista global —todo Gran Santiago con esos mismos
+ * supuestos— (28-oct-2026, Explorar como portal; hasta entonces abría con los filtros del perfil). Sin el total, «Explorar
  * en el mapa».
  */
 export function botonExplorar(totalNoche: number | null | undefined): string {

@@ -1,20 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPLORAR (23-oct-2026, mockup docs/puerta-b-mockups/5-explorar.html): el mapa de TODOS los deptos que convienen para
 // una búsqueda, con la evaluación de la noche. La parte pura, sin servidor ni navegador (la prueba el tier EXPLORAR).
+// DESDE EL 28-OCT-2026 EXPLORAR ES UN PORTAL (portal.ts, 5b-explorar-portal.html): abre con la vista global y no con el
+// perfil, y sus filtros, su URL y sus textos viven allá. Acá queda lo que comparten el portal, el mapa del dashboard
+// (filtrosDePerfil, FiltrosExplorar) y el pop-up de siempre (las listas de pie y plazo, «Cambiar», el cap rate). Se
+// retiraron los chips del 23-oct (filtrosDeUrl, cambiarFiltro, etiquetas), la hoja con «Revisado con…» y «Visto anoche»,
+// «Explorar no gasta» y el mapa cerrado sin saldo del 24-oct (explorarCerrado, pinCerrado, el aviso E).
 //
-//   · LOS FILTROS son el perfil de la persona al entrar (comunas, tipología, rango, pie y plazo) y se cambian en chips
-//     arriba del mapa. Cambiarlos refresca el mapa y NO TOCA EL PERFIL GUARDADO: viven en la URL de la página y nada más.
+//   · LOS FILTROS DEL DASHBOARD: el perfil de la persona (comunas, tipología, rango, pie y plazo), para el mapa de su
+//     selección (lib/casa/mapa-casa-servidor.ts).
 //   · SOLO LOS COMPRAR: el pin es un depto que da Comprar con ese pie y ese plazo según la evaluación de anoche (a 25 años
 //     las columnas del estándar de /deptos; a 30, las de la noche: por eso el chip de pie y plazo ofrece esas cuatro
 //     combinaciones y no otras). `soloComprar` es la segunda red, después del SQL.
-//   · EXPLORAR NO GASTA NADA; analizar sí: «Analizar este» abre el mismo aviso antes de gastar que la selección.
+//   · ANALIZAR ES LO ÚNICO QUE GASTA: «Analizar este» abre el mismo aviso antes de gastar que la selección.
 //   · LOS AGRUPADOS: donde hay muchos pines, un círculo con el número (agruparPines, por celdas en la proyección del mapa).
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_DEPTOS, PLAZO_DEPTOS } from "@/lib/deptos/estandar";
-import { ELECCIONES_POR_DEFECTO, lista, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
-import { marcaVisto } from "@/lib/guia/del-dia";
-import { PLAN_ANALISIS_MES } from "@/lib/planes";
+import { ELECCIONES_POR_DEFECTO, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { CondicionDepto } from "@/lib/guia/linea-depto";
 
@@ -49,10 +52,6 @@ export function comboVigente(c: unknown, evaluadoAt: string | null | undefined, 
 }
 /** El tope de «Más de UF 5.500» (el de RANGOS_UF). */
 export const UF_TOPE = 60000;
-/** Las tarjetas que el servidor dibuja antes del primer pintado; el resto llega con el mapa. Vive acá y no en el
- *  cliente: una constante exportada desde un módulo "use client" llega al servidor como referencia, no como número
- *  (visto el 23-oct-2026: `slice(0, referencia)` dejaba la hoja en «0 convienen» hasta que el mapa pedía el resto). */
-export const TOPE_HOJA = 24;
 /** El mapa quieto del primer pintado (el LCP del teléfono): una foto del mapa de Santiago con el estilo de Franco. En el
  *  teléfono va incrustada en el HTML (mapa-quieto.ts › MAPA_QUIETO_M); en escritorio, este archivo. En oscuro se invierte
  *  por CSS (sin una segunda foto). */
@@ -116,48 +115,6 @@ export function validarFiltros(f: Partial<FiltrosExplorar> | null | undefined): 
   return { comunas, tipologias, ufMin: Math.round(ufMin), ufMax: Math.round(ufMax), pie: Number(f.pie) as PieExplorar, plazo: Number(f.plazo) as PlazoExplorar };
 }
 
-/** Los filtros en la URL de la página (`?c=Ñuñoa,Macul&t=2&r=3000-4000&p=20&z=25`), para que recargar o volver los conserve. */
-export function filtrosDeUrl(sp: { get(k: string): string | null }): FiltrosExplorar | null {
-  const lista = (k: string) => (sp.get(k) ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  const m = /^(\d+)-(\d+)$/.exec(sp.get("r") ?? "");
-  return validarFiltros({ comunas: lista("c"), tipologias: lista("t"), ufMin: m ? Number(m[1]) : NaN, ufMax: m ? Number(m[2]) : NaN, pie: Number(sp.get("p")) as PieExplorar, plazo: Number(sp.get("z")) as PlazoExplorar });
-}
-
-export function urlDeFiltros(f: FiltrosExplorar): string {
-  const p = new URLSearchParams({ c: f.comunas.join(","), t: f.tipologias.join(","), r: `${f.ufMin}-${f.ufMax}`, p: String(f.pie), z: String(f.plazo) });
-  return p.toString();
-}
-
-/** Un cambio de chips: un filtro nuevo, sin tocar el anterior ni nada más (el perfil guardado queda como estaba). */
-export function cambiarFiltro(f: FiltrosExplorar, parche: Partial<FiltrosExplorar>): FiltrosExplorar {
-  return validarFiltros({ ...f, ...parche }) ?? f;
-}
-
-const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
-
-/** Lo que dice cada chip. */
-export function etiquetaComunas(comunas: readonly string[]): string {
-  return comunas.length <= 1 ? comunas[0] ?? "Comuna" : `${comunas[0]} +${comunas.length - 1}`;
-}
-export function etiquetaTipologias(tipologias: readonly string[]): string {
-  const chips = TIPOLOGIAS_DEPTOS.filter((t) => tipologias.includes(t.id)).map((t) => t.chip);
-  return chips.length === 0 ? "Tipología" : chips.length <= 2 ? chips.join(", ") : `${chips[0]} +${chips.length - 1}`;
-}
-export function etiquetaRango(f: Pick<FiltrosExplorar, "ufMin" | "ufMax">): string {
-  const r = RANGOS_UF.find((x) => (x.min ?? 0) === f.ufMin && x.max === f.ufMax);
-  if (r) return r.chip;
-  return f.ufMin > 0 ? `UF ${miles(f.ufMin)} a ${miles(f.ufMax)}` : `Hasta UF ${miles(f.ufMax)}`;
-}
-export function etiquetaPiePlazo(f: Pick<FiltrosExplorar, "pie" | "plazo">): string {
-  return `${f.pie} % · ${f.plazo} años`;
-}
-export const etiquetaPie = (f: Pick<FiltrosExplorar, "pie">): string => `Pie ${f.pie} %`;
-export const etiquetaPlazo = (f: Pick<FiltrosExplorar, "plazo">): string => `${f.plazo} años`;
-/** «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años»: la búsqueda entera, en una línea. */
-export function lineaFiltros(f: FiltrosExplorar): string {
-  return [lista(f.comunas), etiquetaTipologias(f.tipologias), etiquetaRango(f), etiquetaPiePlazo(f)].join(" · ");
-}
-
 /** Un depto del mapa: sin enlace ni textos del aviso (eso va en el informe). */
 export interface PinExplorar {
   avisoId: string;
@@ -189,29 +146,6 @@ export function porPuntaje<T extends { score: number | null; avisoId: string }>(
   return [...pines].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId));
 }
 
-/** «312 convienen · 3 ya analizados»: la píldora sobre el mapa. */
-export function pildora(convienen: number, analizados: number): string {
-  const base = `${miles(convienen)} ${convienen === 1 ? "conviene" : "convienen"}`;
-  return analizados > 0 ? `${base} · ${miles(analizados)} ya ${analizados === 1 ? "analizado" : "analizados"}` : base;
-}
-
-/** El título de la hoja de abajo. */
-export function tituloHoja(convienen: number): string {
-  if (convienen === 0) return "Ninguno conviene con estos filtros";
-  return `${miles(convienen)} ${convienen === 1 ? "depto que conviene" : "deptos que convienen"}`;
-}
-
-/** «Tienes 2 análisis. Explorar no gasta; analizar sí.»: la línea al pie de la hoja. */
-export function lineaSaldo(s: EstadoSaldo): string {
-  const cola = EXPLORAR_COPY.noGasta;
-  switch (s.tipo) {
-    case "plan": return `Tu plan Ilimitado está activo. ${EXPLORAR_COPY.noGastaPlan}`;
-    case "regalo": return `Tienes un análisis de regalo. ${cola}`;
-    case "con": return `Tienes ${s.n === 1 ? "1 análisis" : `${s.n} análisis`}. ${cola}`;
-    default: return `No te quedan análisis. ${cola}`;
-  }
-}
-
 /** «Analizar este · usa 1 de tus 2»: el botón, con lo que usa. */
 export function botonAnalizar(s: EstadoSaldo): string {
   const base = EXPLORAR_COPY.analizar;
@@ -220,16 +154,6 @@ export function botonAnalizar(s: EstadoSaldo): string {
     case "regalo": return `${base} · usa tu análisis de regalo`;
     default: return base;
   }
-}
-
-/** «Revisado con pie 20 % y 25 años. El informe completo incluye el enlace a la publicación.» */
-export function textoRevisado(f: Pick<FiltrosExplorar, "pie" | "plazo">): { antes: string; enlace: string } {
-  return { antes: `Revisado con pie ${f.pie} % y ${f.plazo} años. El informe completo incluye `, enlace: "el enlace a la publicación" };
-}
-
-/** La marca de cada depto: cuándo se vio publicado, o «Visto anoche» si la noche lo vio en el portal sin leer la ficha. */
-export function marcaDePin(p: Pick<PinExplorar, "vistoAt">, ahora: Date = new Date()): string {
-  return p.vistoAt ? marcaVisto(p.vistoAt, ahora) : EXPLORAR_COPY.vistoAnoche;
 }
 
 /** El cap rate bruto: el arriendo del año sobre el precio, en puntos (5,8). null sin arriendo, UF o precio. */
@@ -241,26 +165,8 @@ export function ufPorM2(precioUF: number, m2: number): number | null {
   return m2 > 0 && precioUF > 0 ? precioUF / m2 : null;
 }
 export const pctUno = (n: number) => `${(Math.round(n * 10) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 export const flujoTexto = (flujo: number) => `${flujo < 0 ? "−" : "+"}$${miles(Math.abs(flujo))}`;
-
-/** Al entrar sin saldo: el mapa se ve igual, y encima el aviso E (4-ticket-y-popups.html). */
-export function estadoDeEntrada(s: EstadoSaldo): { mapa: true; aviso: boolean; cerrado: boolean } {
-  return { mapa: true, aviso: s.tipo === "sin", cerrado: explorarCerrado(s) };
-}
-
-/**
- * SIN SALDO, EXPLORAR ESTÁ CERRADO (24-oct-2026, recorrido de Fabrizio): al cerrar el aviso E el mapa queda a la vista pero
- * cerrado —los chips no se tocan, los pines no se abren, la hoja muestra solo la oferta—, y el servidor tampoco sirve los
- * pines con detalle (pinCerrado) ni otra búsqueda (GET /api/explorar responde 403). El plan cuenta como saldo.
- */
-export function explorarCerrado(s: EstadoSaldo): boolean {
-  return s.tipo === "sin";
-}
-
-/** Un pin del mapa cerrado: solo dónde está. Sin precio, superficie, veredicto con puntaje ni flujo: no hay qué abrir. */
-export function pinCerrado(p: Pick<PinExplorar, "avisoId" | "lat" | "lng">): PinExplorar {
-  return { avisoId: p.avisoId, comuna: "", lat: p.lat, lng: p.lng, m2: 0, dormitorios: 0, tipologia: null, precioUF: 0, veredicto: "COMPRAR", score: null, flujo: null, arriendo: null, vistoAt: null };
-}
 
 // ── LOS AGRUPADOS ────────────────────────────────────────────────────────────
 export interface Grupo {
@@ -319,34 +225,8 @@ export function textoCambio(p: { antes: { pie: number; veredicto: string; score:
 }
 
 export const EXPLORAR_COPY = {
-  titulo: "Explorar",
-  /** La etiqueta de la pestaña. */
-  pestana: "Explorar · los deptos que convienen",
-  volver: "Dashboard",
   analizar: "Analizar este",
-  noGasta: "Explorar no gasta; analizar sí.",
-  noGastaPlan: "Explorar no gasta nada.",
-  ordenados: "Ordenados por puntaje",
-  vistoAnoche: "Visto anoche",
-  cerrar: "Cerrar",
-  flujo: "Flujo mensual",
-  capRate: "Cap rate",
-  ufM2: "Precio por m²",
-  teQueda: "te queda",
-  saleDeTuBolsillo: "de tu bolsillo",
-  yaAnalizado: "Ya lo analizaste",
-  verInforme: "Ver informe",
-  cargando: "Buscando los que convienen…",
-  error: "No pudimos traer el mapa. Intenta de nuevo.",
-  reintentar: "Reintentar",
-  sinMapa: "El mapa no cargó, pero la lista de abajo es la misma.",
-  vacia: "Con estos filtros ninguno conviene hoy. Prueba con otra comuna, otro rango o pie 30 %.",
-  /** El perfil no alcanzaba para abrir con él: se abre con la búsqueda por defecto. */
-  sinPerfil: "Tu perfil no tiene comuna, tipología o tope todavía: el mapa abre con una búsqueda de ejemplo. Cámbiala en los chips.",
-  /** Los chips, como diálogos. */
-  chips: { comuna: "Comuna", tipologia: "Tipología", rango: "Rango de precio", piePlazo: "Pie y plazo", pie: "Pie", plazo: "Plazo", listo: "Listo", hasta: (n: number) => `Hasta ${n} comunas.` },
-  /** Mientras el servidor calcula una combinación que la noche no tiene (24-oct-2026). */
-  calculando: "Calculando con tu pie…",
+  /** Lo que ofrece «Cambiar» en el pop-up (24-oct-2026). */
   cambiar: "Cambiar",
   analizarIgual: "Analizar igual",
   guardarPerfil: (pie: number, plazo: number) => `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,
@@ -355,26 +235,4 @@ export const EXPLORAR_COPY = {
   /** En el pop-up: «Con pie de 20 % y plazo de 25 años». */
   conPieYPlazo: (pie: number, plazo: number) => ({ antes: "Con pie de ", pie: `${pie} %`, medio: " y plazo de ", plazo: `${plazo} años` }),
   recalculando: "Recalculando…",
-} as const;
-
-/** El aviso E (4-ticket-y-popups.html): «Explorar los 312» sin saldo. El mapa se ve igual; esto va encima y se cierra. */
-/** Los eventos del navegador en Explorar (26-oct-2026): tocar un pin del mapa y ver el aviso sin saldo. Los del servidor
- *  («explorar_vista», «explorar_analiza») viven en servidor.ts. */
-export const EVENTOS_EXPLORAR = { pin: "explorar_pin", aviso: "explorar_aviso" } as const;
-
-export const AVISO_SIN_SALDO = {
-  sobre: "Explorar el mapa",
-  /** Con el total de anoche en todo Santiago (24-oct-2026), el mismo del botón del dashboard y de /deptos. */
-  titulo: (totalNoche: number | null | undefined) => (totalNoche != null && totalNoche > 0 ? `Para explorar los ${miles(totalNoche)} de Santiago necesitas análisis disponibles.` : "Para explorar el mapa necesitas análisis disponibles."),
-  cuerpo: "Con un pack, uno suelto o el plan entras al mapa completo: ves todos los que convienen para tu búsqueda y gastas un análisis solo cuando analizas uno.",
-  soloNuevas: "Solo para cuentas nuevas",
-  /** En la misma fila que «Solo para cuentas nuevas» (24-oct-2026, el aviso cabe en 390 × 740). */
-  vence: (cuando: string) => `· vence ${cuando}`,
-  /** La tarjeta roja dice «3 análisis por $14.990» (mockup E; 24-oct-2026), no el botón del pack. */
-  packTicket: (precio: string) => `3 análisis por ${precio}`,
-  aprovechar: (precio: string) => `Aprovechar · 3 por ${precio}`,
-  plan: `Ver el plan de ${PLAN_ANALISIS_MES} al mes`,
-  ahoraNo: "Ahora no",
-  /** La hoja del mapa cerrado, debajo de la oferta (24-oct-2026). */
-  cerrado: "Con análisis disponibles exploras todo Santiago",
 } as const;

@@ -4,18 +4,18 @@
 // UF 3.275, Comprar 88 y +$88.363). «Cambiar» recalcula con una respuesta fija: con pie 10 % da Ajustar y −$45.120.
 // RENTA CORTA (27-oct-2026): c1 con saldo y c0 sin saldo, con la promesa de los dos casos; nd y nd2, el pop-up «no da» con
 // la medición del caso del 26-oct (tarifa $61.143 contra $80.367, ocupación 44 % contra 47 %), sin parecidos y con dos.
+// EL PLAN DONDE SE USA (28-oct-2026, Explorar como portal): p con saldo y p0 sin saldo, con la línea «Llevas 3 este mes…».
+// El aviso E de Explorar sin saldo (e, e0) se retiró con el mapa cerrado: sin saldo se explora todo.
 import { useEffect, useState } from "react";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
-import { AvisoSinSaldoExplorar } from "@/app/explorar/aviso-sin-saldo";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import { porQueNoDa, textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 import { comprasDeExplorar, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
-// El aviso E vive en /explorar y su tarjeta roja se pinta con la hoja de esa página.
-import "@/app/explorar/explorar.css";
+import { lineaPlan } from "@/lib/explorar/portal";
 
-export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "e" | "e0" | "c1" | "c0" | "nd" | "nd2";
+export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2";
 
 const DEPTO = { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275 };
 const FINANZAS = { tasa: 4.2, uf: 39_600, arriendo: 720_000 };
@@ -32,7 +32,8 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
   // Después de cargar, como en las páginas reales (se abren con un toque): el modal va por un portal que el servidor no dibuja.
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
-  const ticket = estado === "a" || estado === "e";
+  const ticket = estado === "a";
+  const sin = estado === "a" || estado === "a0" || estado === "c0" || estado === "p0";
   const compras = comprasDeExplorar({ filtros: "c=Providencia&t=2&r=0-60000&p=20&z=25", avisoId: "demo", ticket });
   return (
     <main style={{ minHeight: "100dvh", padding: 16 }} data-demo-popups={estado}>
@@ -47,16 +48,15 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
         >
           {estado === "nd2" ? [tarjetaDemo("p1", "Las Condes · 2D1B · 60 m²", "UF 3.155"), tarjetaDemo("p2", "Las Condes · 2D1B · 52 m²", "UF 3.306")] : null}
         </PopupNoDa>
-      ) : estado === "e" || estado === "e0" ? (
-        <AvisoSinSaldoExplorar totalNoche={4807} compras={compras} vence={ticket ? "mañana 18:07" : null} alCerrar={nada} alIr={nada} />
       ) : (
         <AvisoAntesDeAnalizar
           modalidad={estado === "c1" || estado === "c0" ? "str" : "ltr"}
           depto={DEPTO}
           combinacion={{ piePct: 20, plazoAnios: 25 }}
           finanzas={FINANZAS}
-          uso={estado === "a" || estado === "a0" || estado === "c0" ? { tipo: "sin" } : estado === "c1" ? { tipo: "con", n: 3, noVencen: true } : { tipo: "regalo", vence: null }}
-          compras={estado === "a" || estado === "a0" || estado === "c0" ? compras : null}
+          uso={sin ? { tipo: "sin" } : estado === "c1" || estado === "p" ? { tipo: "con", n: 3, noVencen: true } : { tipo: "regalo", vence: null }}
+          compras={sin ? compras : null}
+          planLinea={estado === "p" || estado === "p0" ? lineaPlan(3, false) : null}
           ticketVence={estado === "a" ? "mañana 18:07" : null}
           ticketConSaldo={estado === "d1t" ? ticketConSaldoDelDepto({ token: "demo", avisoId: "demo", origen: "semanal", cuentaCreadaAt: new Date(Date.now() - 3_600_000).toISOString() }) : null}
           rutaCompra="/dev/popups"
