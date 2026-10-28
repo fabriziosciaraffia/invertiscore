@@ -23,6 +23,7 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { RANGOS_UF, type RangoUf } from "@/lib/deptos/respuesta";
 import type { EstadoPublicacion } from "./publicacion";
 import type { Evaluado } from "./seleccion";
+import type { CondicionDepto } from "./linea-depto";
 
 export const MINIMO_SEMANAL = 3;
 export const TOPE_SEMANAL = 5;
@@ -84,6 +85,8 @@ export interface CandidatoSemanal {
   avisoId: string;
   /** El puntaje del cron (con pie 20%): ordena qué se recalcula primero. */
   scoreCron: number | null;
+  /** Nuevo o usado tal como lo dice el aviso (28-oct-2026, la línea de la ficha); ausente si no lo dice. */
+  condicionAviso?: CondicionDepto;
 }
 
 /** El lunes del envío (YYYY-MM-DD, hora de Chile). El domingo arma la del día siguiente; el lunes, la de hoy. */

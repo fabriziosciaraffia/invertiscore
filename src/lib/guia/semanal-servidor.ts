@@ -38,6 +38,7 @@ import { DIAS_NO_REPETIR } from "./inmediato";
 import { vistosDePersona, type Vistos } from "./vistos-servidor";
 import { textoRenueva } from "./renovacion";
 import type { Combinacion, Evaluado } from "./seleccion";
+import { condicionDe, type CondicionDepto } from "./linea-depto";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
   MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, parametroDeAjuste, ordenFijo,
@@ -69,6 +70,8 @@ export interface ItemSemanal {
   visto?: Visto;
   /** El relleno (20-oct-2026): lo vio la evaluación de anoche publicado en el portal, sin ficha leída. Al final, marcado. */
   sinConfirmar?: true;
+  /** Nuevo o usado, como lo dice el aviso (28-oct-2026): «· Usado» al final de la línea de la ficha. Ausente si no lo dice. */
+  condicion?: CondicionDepto;
 }
 
 export type { Candidato } from "./semanal-candidatos";
@@ -394,9 +397,33 @@ export function itemDe(c: Candidato, ev: Evaluado & { ingresoMensual?: number | 
   return {
     avisoId: c.avisoId, comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF),
     veredicto: ev.veredicto, score: ev.score, flujo: ev.flujo,
+    ...(c.condicionAviso ? { condicion: c.condicionAviso } : {}),
     ...(ev.ingresoMensual !== undefined ? { ingresoMensual: ev.ingresoMensual } : {}),
     ...(ev.informeId ? { informeId: ev.informeId } : {}),
   };
+}
+
+/**
+ * NUEVO O USADO EN LO YA GUARDADO (28-oct-2026, la línea de la ficha): una selección armada antes de que el ítem trajera la
+ * condición se completa leyendo el aviso. Lo que el aviso no dice queda sin ella (no se supone).
+ */
+export async function condicionesDeAvisos(admin: SupabaseClient, ids: string[]): Promise<Map<string, CondicionDepto>> {
+  const unicos = Array.from(new Set(ids)).slice(0, 200);
+  const out = new Map<string, CondicionDepto>();
+  if (unicos.length === 0) return out;
+  const { data, error } = await admin.from("scraped_properties").select("id, condicion").in("id", unicos).order("id").limit(200);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-condicion" });
+  for (const r of (data ?? []) as Array<{ id: string; condicion: unknown }>) {
+    const c = condicionDe(r.condicion);
+    if (c) out.set(r.id, c);
+  }
+  return out;
+}
+
+/** El ítem con su condición: la que trae, o la del aviso. */
+export function conCondicion<T extends { avisoId: string; condicion?: CondicionDepto }>(it: T, del: ReadonlyMap<string, CondicionDepto>): T {
+  const c = it.condicion ?? del.get(it.avisoId);
+  return c && c !== it.condicion ? { ...it, condicion: c } : it;
 }
 
 /** Los avisos que ya no están: despublicados, o que salieron de la evaluación. */
@@ -952,7 +979,7 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
  * (`contarSinOferta`): una superficie no puede ofrecer lo que la otra no.
  */
 export async function verdadDelVacio(admin: SupabaseClient, userId: string): Promise<{
-  casi: Array<{ comuna: string; tipologia: string | null; m2: number; precioUF: number; score: number | null; flujo: number | null }>;
+  casi: Array<{ comuna: string; tipologia: string | null; m2: number; precioUF: number; score: number | null; flujo: number | null; condicion?: CondicionDepto }>;
   salidas: SalidaSinOferta[];
   /** Cuántos había publicados como los que busca (la respuesta de /deptos); null si no se pudo contar. */
   revisados: number | null;
@@ -967,7 +994,7 @@ export async function verdadDelVacio(admin: SupabaseClient, userId: string): Pro
     const evs = await Promise.all(pool.map((c) => prep.p.evaluar(c).catch(() => null)));
     casi = pool.map((c, i) => ({ c, ev: evs[i] })).filter((x) => x.ev?.veredicto === "AJUSTA SUPUESTOS")
       .sort((a, b) => (b.ev!.score ?? -1) - (a.ev!.score ?? -1)).slice(0, MAX_CASI)
-      .map(({ c, ev }) => ({ comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF), score: ev!.score, flujo: ev!.flujo }));
+      .map(({ c, ev }) => ({ comuna: c.comuna, tipologia: tipologiaDe(c.dormitorios, c.banos), m2: Math.round(c.m2), precioUF: Math.round(c.precioUF), score: ev!.score, flujo: ev!.flujo, ...(c.condicionAviso ? { condicion: c.condicionAviso } : {}) }));
   }
   const cuenta = await contarSinOferta(admin, userId, perfil);
   return { casi, salidas: cuenta?.aviso?.salidas ?? [], revisados: cuenta?.revisados ?? null };

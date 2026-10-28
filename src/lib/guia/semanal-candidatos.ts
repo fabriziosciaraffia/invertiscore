@@ -3,6 +3,7 @@
 // separaron para que el lado de renta corta (semanal-str-servidor.ts) los use sin importar en círculo.
 import type { CandidatoGuia } from "./guia-servidor";
 import type { CandidatoSemanal } from "./semanal";
+import { condicionDe } from "./linea-depto";
 
 export type Candidato = CandidatoGuia & CandidatoSemanal;
 
@@ -23,5 +24,7 @@ export function candidatoDeFila(f: FilaRpc): Candidato {
     condicion: f.condicion === "nuevo" ? "nuevo" : "usado", direccion: f.direccion, fechaEntrega: f.fecha_entrega, url: f.url,
     precioUF: Number(f.precio_uf), antiguedadAnios: f.antiguedad_origen === "ficha" ? f.antiguedad_anios : null,
     antiguedadOrigen: f.antiguedad_origen, arriendo: f.arriendo, venta: f.venta, gastosComunes: f.gastos_comunes, medianaComuna: f.mediana_comuna ?? null,
+    // El motor supone «usado» si el aviso no lo dice; la línea de la ficha, no (linea-depto.ts).
+    ...(condicionDe(f.condicion) ? { condicionAviso: condicionDe(f.condicion) } : {}),
   };
 }

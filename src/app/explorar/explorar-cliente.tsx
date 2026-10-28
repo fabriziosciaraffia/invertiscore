@@ -36,6 +36,7 @@ import {
   AVISO_SIN_SALDO, botonAnalizar, EVENTOS_EXPLORAR, cambiarFiltro, capRatePct, esCombinacionDeLaNoche, estadoDeEntrada, etiquetaComunas, etiquetaPie, etiquetaPlazo, etiquetaRango, etiquetaTipologias, EXPLORAR_COPY, flujoTexto, lineaSaldo, marcaDePin,
   pctUno, PIES_EXPLORAR, pildora, PLAZOS_EXPLORAR, textoRevisado, tituloHoja, TOPE_HOJA, ufPorM2, urlDeFiltros, type FiltrosExplorar, type PinExplorar, type Recalculo,
 } from "@/lib/explorar/explorar";
+import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
 
 /** Las tarjetas que la hoja abierta dibuja (el mapa tiene todos los pines). */
@@ -248,7 +249,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
     if (dy < -24) setHoja("abierta"); else if (dy > 24) setHoja("peek"); else setHoja((h) => (h === "peek" ? "abierta" : "peek"));
   };
 
-  const ojoDe = (p: PinExplorar) => [p.comuna, p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ");
+  // La línea del depto, con «· Usado» o «· Nuevo» si el aviso lo dice (28-oct-2026, linea-depto.ts).
+  const ojoDe = (p: PinExplorar) => lineaDepto(p);
   const veredictoDe = (p: PinExplorar) => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
   const usa = botonAnalizar(datos.saldo);
   // Una combinación que la noche no tiene, mientras el servidor la calcula: la píldora y la hoja lo dicen.
@@ -432,7 +434,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
 
       {confirmar && (
         <AvisoAntesDeAnalizar
-          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF }}
+          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
           combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo }}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: confirmar.it.arriendo }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}

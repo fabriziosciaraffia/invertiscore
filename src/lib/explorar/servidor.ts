@@ -10,6 +10,8 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
+import { condicionDe } from "@/lib/guia/linea-depto";
+import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { leerAvisoGuia } from "@/lib/guia/analizar-servidor";
 import { leerConfigGuia, origenSintetico, type CandidatoGuia } from "@/lib/guia/guia-servidor";
 import { candidatoDeFila, type FilaRpc } from "@/lib/guia/semanal-candidatos";
@@ -57,9 +59,45 @@ export interface DepsCalculo {
  */
 export async function pinesExplorar(admin: SupabaseClient, f: FiltrosExplorar, ahora: Date = new Date(), cuenta?: CuentaExplorar, deps: DepsCalculo = {}): Promise<PinExplorar[]> {
   const t0 = Date.now();
-  const pines = esCombinacionDeLaNoche(f) ? await pinesDeLaNoche(admin, f, ahora) : await pinesCalculados(admin, f, ahora, cuenta, deps);
+  const [pines, noUsados] = await Promise.all([
+    esCombinacionDeLaNoche(f) ? pinesDeLaNoche(admin, f, ahora) : pinesCalculados(admin, f, ahora, cuenta, deps),
+    avisosNoUsados(admin, ahora),
+  ]);
   if (cuenta) cuenta.ms = Date.now() - t0;
-  return pines;
+  return conCondicionDePines(pines, noUsados);
+}
+
+/**
+ * NUEVO O USADO EN LOS PINES (28-oct-2026, la línea de la tarjeta y de la hoja, linea-depto.ts). Las RPC de los pines no
+ * traen la condición, y pedirla por id serían decenas de pedidos con miles de pines. Pero los pines son siempre avisos de
+ * venta activos de la ventana (`scraped_at >= desde`, las dos RPC), y casi todos dicen «usado»: se leen solo los de la
+ * ventana que NO dicen «usado» —los nuevos y los que no dicen nada, unas pocas filas, 142 ms medido—, en paralelo con los
+ * pines. Un pin que no está ahí dice «usado»; uno que está, «nuevo» o nada. Si la lectura falla (null), ningún pin lleva la
+ * palabra: nunca se supone.
+ */
+export async function avisosNoUsados(admin: SupabaseClient, ahora: Date): Promise<Map<string, unknown> | null> {
+  try {
+    const out = new Map<string, unknown>();
+    for (let desde = 0; ; desde += PAGINA_POSTGREST) {
+      const { data, error } = await admin.from("scraped_properties").select("id, condicion")
+        .eq("is_active", true).eq("type", "venta").gte("scraped_at", desdeVentana(ahora)).or("condicion.is.null,condicion.neq.usado")
+        .order("id").range(desde, desde + PAGINA_POSTGREST - 1);
+      if (error) { reportarFalloQuery(error, { ruta: RUTA, operacion: "no-usados" }); return null; }
+      for (const r of (data ?? []) as Array<{ id: string; condicion: unknown }>) out.set(r.id, r.condicion);
+      if ((data?.length ?? 0) < PAGINA_POSTGREST) return out;
+    }
+  } catch {
+    return null;
+  }
+}
+
+/** Cada pin con su condición, según los que no dicen «usado» (avisosNoUsados). */
+export function conCondicionDePines(pines: PinExplorar[], noUsados: ReadonlyMap<string, unknown> | null): PinExplorar[] {
+  if (!noUsados) return pines;
+  return pines.map((p) => {
+    const c = noUsados.has(p.avisoId) ? condicionDe(noUsados.get(p.avisoId)) : "usado";
+    return c ? { ...p, condicion: c } : p;
+  });
 }
 
 async function pinesDeLaNoche(admin: SupabaseClient, f: FiltrosExplorar, ahora: Date): Promise<PinExplorar[]> {

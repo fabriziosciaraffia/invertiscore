@@ -9,6 +9,7 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
+import { condicionDe, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { CLAVE_GOOGLE, ELECCIONES_POR_DEFECTO, PREFIJO_GOOGLE, RANGOS_UF, respuestaDeptos, TIPOLOGIAS_DEPTOS, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RangoUf, type RespuestaDeptos, type TipologiaDeptos, type Validacion } from "./respuesta";
 
@@ -229,6 +230,8 @@ export interface PrimerDepto {
   enSeleccion?: boolean;
   /** Ya lo analizó (21-oct-2026): su informe, leído en vivo. La tarjeta dice «Ya lo analizaste · Ver informe». */
   informeId?: string | null;
+  /** Nuevo o usado, como lo dice el aviso (28-oct-2026): «· Usado» al final de la línea. Ausente si no lo dice. */
+  condicion?: CondicionDepto;
 }
 
 export const MAX_PRIMEROS = 5;
@@ -250,7 +253,7 @@ export async function primerosDeptos(
   reportarFalloQuery(error, { ruta: RUTA, operacion: "primeros" });
   const filas = (data ?? []) as Array<{
     id: string; comuna: string; superficie_m2: number; dormitorios: number; banos: number | null; precio_uf: number;
-    score_cron: number | null; flujo: number | null; pub_estado: string | null; pub_at: string | null;
+    score_cron: number | null; flujo: number | null; pub_estado: string | null; pub_at: string | null; condicion: string | null;
   }>;
   const fresco = (f: (typeof filas)[number]) => f.pub_estado === "publicado" && !!f.pub_at && ahora.getTime() - Date.parse(f.pub_at) < MEMORIA_SEMANAL_MS;
   // El orden es determinista (23-oct-2026, el orden fijo): puntaje, flujo e id, como la RPC; a igual puntaje no depende
@@ -261,6 +264,7 @@ export async function primerosDeptos(
   return orden.slice(0, MAX_PRIMEROS).map((f) => ({
     avisoId: f.id, comuna: f.comuna, tipologia: tipologiaDe(f.dormitorios, f.banos), m2: Math.round(Number(f.superficie_m2)), precioUF: Math.round(Number(f.precio_uf)),
     veredicto: "COMPRAR", score: f.score_cron, flujo: f.flujo, vistoAt: fresco(f) ? f.pub_at : null,
+    ...(condicionDe(f.condicion) ? { condicion: condicionDe(f.condicion) } : {}),
   }));
 }
 

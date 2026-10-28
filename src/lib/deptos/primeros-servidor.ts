@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { rangoSemanal } from "@/lib/guia/semanal";
 import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
-import { finanzasDeSeleccion, origenDePersona, type ItemSemanal } from "@/lib/guia/semanal-servidor";
+import { condicionesDeAvisos, conCondicion, finanzasDeSeleccion, origenDePersona, type ItemSemanal } from "@/lib/guia/semanal-servidor";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
 import { regaloAltaVivo } from "@/lib/regalo-alta-servidor";
@@ -82,18 +82,21 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   // La fila del día ya tiene deptos: los chequeados por la cola, o los de la noche que esta misma pantalla escribió.
   if (items.length > 0 && fila) {
     const ids = items.map((i) => i.avisoId);
-    const [{ data: pubs }, finanzas, informes] = await Promise.all([
+    const [{ data: pubs }, finanzas, informes, delAviso] = await Promise.all([
       admin.from("publicacion_avisos").select("aviso_id, chequeado_at").in("aviso_id", ids).eq("estado", "publicado"),
       finanzasDe(fila.origen_analysis_id, ids),
       informesDeAvisos(admin, userId, ids),
+      // Nuevo o usado (28-oct-2026): lo escrito antes de que el ítem trajera la condición, la del aviso.
+      condicionesDeAvisos(admin, items.filter((i) => !i.condicion).map((i) => i.avisoId)),
     ]);
     const at = new Map(((pubs ?? []) as Array<{ aviso_id: string; chequeado_at: string }>).map((p) => [p.aviso_id, p.chequeado_at]));
     return {
       revisando, token, regaloVence, fuente: "del_dia", origenId: fila.origen_analysis_id, combinacion: comboFila, faltan: [], saldo, finanzas,
       vecinas: items.every((i) => i.tramo === "vecina"),
-      items: items.slice(0, MAX_PRIMEROS).map((i) => ({
+      items: items.slice(0, MAX_PRIMEROS).map((i) => conCondicion(i, delAviso)).map((i) => ({
         avisoId: i.avisoId, comuna: i.comuna, tipologia: i.tipologia, m2: i.m2, precioUF: i.precioUF, veredicto: i.veredicto ?? "COMPRAR",
         score: i.score, flujo: i.flujo, vistoAt: at.get(i.avisoId) ?? null, enSeleccion: true, informeId: informes[i.avisoId] ?? null,
+        ...(i.condicion ? { condicion: i.condicion } : {}),
       })),
     };
   }
@@ -124,6 +127,7 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
     origenId = pp.soloManual ? null : ((await origenDePersona(admin, userId))?.analysisId ?? null);
     const comoItems: ItemSemanal[] = elegidos.map((d) => ({
       avisoId: d.avisoId, comuna: d.comuna, tipologia: d.tipologia, m2: d.m2, precioUF: d.precioUF, veredicto: d.veredicto, score: d.score, flujo: d.flujo,
+      ...(d.condicion ? { condicion: d.condicion } : {}),
       ...(deLaNoche.length === 0 ? { tramo: "vecina" as const } : {}),
     }));
     enSeleccion = await rellenarDeLaNoche(admin, fila, { items: comoItems, combinacion, perfil, origenAnalysisId: origenId });

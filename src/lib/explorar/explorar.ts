@@ -16,6 +16,7 @@ import { ELECCIONES_POR_DEFECTO, lista, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIA
 import { marcaVisto } from "@/lib/guia/del-dia";
 import { PLAN_ANALISIS_MES } from "@/lib/planes";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
+import type { CondicionDepto } from "@/lib/guia/linea-depto";
 
 /**
  * CUALQUIER PIE Y PLAZO (24-oct-2026, decisión de Fabrizio): los chips ofrecen pie de 10 a 50 % y plazo de 15 a 30 años.
@@ -174,6 +175,8 @@ export interface PinExplorar {
   arriendo: number | null;
   /** Cuándo se vio publicado (su último chequeo de ficha), si en la última semana; null = visto anoche sin ficha leída. */
   vistoAt: string | null;
+  /** Nuevo o usado, como lo dice el aviso (28-oct-2026): «· Usado» al final de la línea de la tarjeta y de la hoja. */
+  condicion?: CondicionDepto;
 }
 
 /** SOLO SE MUESTRAN LOS COMPRAR: la segunda red, después del SQL. */

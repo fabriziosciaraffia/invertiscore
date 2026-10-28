@@ -17,7 +17,7 @@ import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servi
 import { bloqueDelDestacado, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { resumenSeleccion, type ResumenBloque } from "@/lib/guia/seleccion-casa";
 import {
-  finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva, type ItemSemanal, type SeleccionPorToken,
+  condicionesDeAvisos, conCondicion, finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva, type ItemSemanal, type SeleccionPorToken,
 } from "@/lib/guia/semanal-servidor";
 
 const TOKEN = /^[0-9a-f]{20,80}$/i;
@@ -85,10 +85,14 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   }
   const cfg = await leerConfigGuia(admin);
   const tabla = sel.fuente === "inmediato" ? "avisos_inmediatos" : "semanal_selecciones";
-  const [filas, filasCortas] = await Promise.all([
+  const [filasGuardadas, filasCortasGuardadas] = await Promise.all([
     sel.conLargo ? seleccionViva(admin, { tabla, id: sel.id, userId, items: sel.items }, cfg) : Promise.resolve([]),
     sel.corto ? seleccionViva(admin, { tabla, id: sel.id, userId, items: sel.corto.items, modalidad: "str" }, cfg) : Promise.resolve([]),
   ]);
+  // Nuevo o usado (28-oct-2026, la línea de la ficha): a lo armado antes de que el ítem trajera la condición, la del aviso.
+  const delAviso = await condicionesDeAvisos(admin, [...filasGuardadas, ...filasCortasGuardadas].flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).filter((i) => !i.condicion).map((i) => i.avisoId));
+  const completar = <F extends { item: ItemSemanal; reemplazo?: ItemSemanal | null }>(fs: F[]): F[] => fs.map((f) => ({ ...f, item: conCondicion(f.item, delAviso), ...(f.reemplazo ? { reemplazo: conCondicion(f.reemplazo, delAviso) } : {}) }));
+  const filas = completar(filasGuardadas), filasCortas = completar(filasCortasGuardadas);
   const a = p.a ?? null;
   const primero = <F extends { item: { avisoId: string } }>(fs: F[]) => (a ? [...fs.filter((f) => f.item.avisoId === a), ...fs.filter((f) => f.item.avisoId !== a)] : fs);
   const ids = filas.flatMap((f) => [f.item.avisoId, ...(f.reemplazo ? [f.reemplazo.avisoId] : [])]);

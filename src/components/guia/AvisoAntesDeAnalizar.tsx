@@ -34,6 +34,7 @@ import { COMPRA_DEPTO, nombreDelDepto, type ComprasDelDepto } from "@/lib/guia/c
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { AVISO_ANALIZAR, bloqueaAnalizar, derivadosAviso, lineaVeredicto, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
+import type { CondicionDepto } from "@/lib/guia/linea-depto";
 import "@/components/formulario-v4/wizard-v4.css";
 
 export interface EleccionAnalizar {
@@ -43,7 +44,8 @@ export interface EleccionAnalizar {
 }
 
 export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null }: {
-  depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number };
+  /** La tarjeta gris: con la condición del aviso, «… 77 m² · Usado · UF 4.200» (28-oct-2026, linea-depto.ts). */
+  depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number; condicion?: CondicionDepto };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
    *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
   modalidad?: "ltr" | "str";

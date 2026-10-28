@@ -6,6 +6,7 @@
 // puesto y, al pagar, vuelven al dashboard con ese depto arriba, que se analiza solo (`analizar=1`; decisión de Fabrizio).
 // Puro: lo fija el tier PUERTA-B-RECORRIDO.
 // ─────────────────────────────────────────────────────────────────────────────
+import { lineaDepto } from "./linea-depto";
 import { fmtCLP } from "@/lib/pricing";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { cuandoVenceCorto, ofertaPackVigente, PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
@@ -72,10 +73,11 @@ export function deptoDeVolver(volver: string | null | undefined): { t: string; a
 /** ¿La vuelta pide analizar el depto solo, apenas llega? */
 export const analizaAlVolver = (volver: string | null | undefined): boolean => deptoDeVolver(volver) != null && /[?&]analizar=1(?:&|#|$)/.test(volver ?? "");
 
-/** El depto como lo nombran las tarjetas (22-oct-2026, decisión de Fabrizio): «Providencia · 2D2B · 59 m² · UF 3.500». */
-export function nombreDelDepto(it: { comuna: string; tipologia: string | null; m2: number; precioUF: number }): string {
+/** El depto como lo nombran las tarjetas (22-oct-2026, decisión de Fabrizio): «Providencia · 2D2B · 59 m² · UF 3.500»; con
+ *  la condición del aviso, «… 59 m² · Usado · UF 3.500» (28-oct-2026, linea-depto.ts). */
+export function nombreDelDepto(it: { comuna: string; tipologia: string | null; m2: number; precioUF: number; condicion?: unknown }): string {
   const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
-  return [it.comuna, it.tipologia, `${miles(it.m2)} m²`, `UF ${miles(it.precioUF)}`].filter(Boolean).join(" · ");
+  return `${lineaDepto(it)} · UF ${miles(it.precioUF)}`;
 }
 
 /** Lo que /api/payments/status dice del depto de una compra pagada (la selección, el aviso y su origen), para que la

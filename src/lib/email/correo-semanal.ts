@@ -25,6 +25,7 @@ import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
 import { DEL_DIA } from "@/lib/guia/del-dia";
 import { REFERIDO_COPY } from "@/lib/referido";
+import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -86,6 +87,8 @@ export interface DeptoCorreo {
   visto?: Visto;
   /** El relleno (20-oct-2026): lo vio anoche publicado en el portal, sin ficha leída. Lleva «Visto anoche, sin confirmar». */
   sinConfirmar?: boolean;
+  /** Nuevo o usado, como lo dice el aviso (28-oct-2026): «· Usado» al final de la línea. Ausente si no lo dice. */
+  condicion?: CondicionDepto;
 }
 
 /** El bloque de renta corta del correo (14-oct-2026): sus deptos, lo que busca y su pie y su plazo. */
@@ -153,7 +156,8 @@ const flujoTexto = (f: number) => `${f < 0 ? "−" : "+"}$${miles(Math.abs(f))}`
 function tarjeta(d: DeptoCorreo): string {
   const color = (d.veredicto && COLOR_VEREDICTO[d.veredicto]) || TINTA;
   const v = d.veredicto ? etiquetaVeredicto(d.veredicto, "frase") : "—";
-  const ojo = escaparHtml([d.comuna, d.tipologia, `${miles(d.m2)} m²`].filter(Boolean).join(" · "));
+  // La línea del depto, con «· Usado» o «· Nuevo» si el aviso lo dice, del mismo tamaño y color (28-oct-2026, linea-depto.ts).
+  const ojo = escaparHtml(lineaDepto(d));
   const flujo = d.flujo != null
     ? `<span style="font-weight: 600; color: ${d.flujo < 0 ? ROJO : TINTA};">${flujoTexto(d.flujo)}</span> <span style="color: ${TINTA_3};">${SEMANAL.alMes}</span>`
     : "";
@@ -333,6 +337,7 @@ export interface CasiCorreo {
   comuna: string;
   tipologia: string | null;
   m2: number;
+  condicion?: CondicionDepto;
   precioUF: number;
   score: number | null;
   flujo: number | null;
@@ -367,7 +372,7 @@ export function correoSemanalVacio(d: {
   if (casi.length > 0) {
     filas.push(parrafo(escaparHtml(SEMANAL_VACIO.casi(casi.length))));
     for (const c of casi) {
-      const ojo = [c.comuna, c.tipologia, `${miles(c.m2)} m²`].filter(Boolean).join(" · ");
+      const ojo = lineaDepto(c);
       filas.push(`<tr><td style="padding: 0 0 8px 0; font-family: ${FUENTE_UI}; font-size: 14px; line-height: 1.5; color: ${TINTA};" data-casi="1"><b>UF ${miles(c.precioUF)}</b> · ${escaparHtml(ojo)}${c.score != null ? ` · <span style="color: ${TINTA_3};">${escaparHtml(etiquetaVeredicto("AJUSTA SUPUESTOS", "frase"))} ${c.score}</span>` : ""}</td></tr>`);
     }
   }

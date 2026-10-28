@@ -29,6 +29,7 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { hojaSinDeptos, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
+import { lineaDepto } from "@/lib/guia/linea-depto";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
@@ -196,7 +197,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
                 const puede = puedeAnalizarPrimero(datos, it);
                 return (
                   <article key={it.avisoId} className="sel-av" data-primera="depto" data-n={i + 1}>
-                    <div className="sel-ojo"><span className="sel-pin" aria-hidden="true">{i + 1}</span>{[it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ")}</div>
+                    <div className="sel-ojo"><span className="sel-pin" aria-hidden="true">{i + 1}</span>{lineaDepto(it)}</div>
                     <div className="sel-precio">UF {miles(it.precioUF)}</div>
                     <div className="sel-dos">
                       <div>
@@ -234,7 +235,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
 
       {confirmar && datos?.combinacion && (
         <AvisoAntesDeAnalizar
-          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF }}
+          depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
           combinacion={datos.combinacion}
           finanzas={{ tasa: datos.finanzas.tasa, uf: datos.finanzas.uf, arriendo: datos.finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : datos.saldo}

@@ -42,6 +42,7 @@ import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/A
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { ItemSemanal } from "@/lib/guia/semanal-servidor";
+import { lineaDepto } from "@/lib/guia/linea-depto";
 import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 import "@/app/dashboard/casa.css";
@@ -49,7 +50,8 @@ import { CASA } from "@/app/dashboard/casa-copy";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
-const ojoDe = (it: ItemSemanal) => [it.comuna, it.tipologia, `${miles(it.m2)} m²`].filter(Boolean).join(" · ");
+/** La línea del depto, con «· Usado» o «· Nuevo» si el aviso lo dice (28-oct-2026, linea-depto.ts). */
+const ojoDe = (it: ItemSemanal) => lineaDepto(it);
 const ESPERA_EN_CURSO_MS = 4000;
 /** «usa 1 de tus N» / «usa tu análisis de regalo»; null con el plan (no descuenta) o sin saldo. */
 const usoDelSaldo = (s: EstadoSaldo): string | null =>
