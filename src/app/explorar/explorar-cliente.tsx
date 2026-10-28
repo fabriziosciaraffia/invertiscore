@@ -29,8 +29,10 @@ import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
   cercanos, claveUniverso, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
   numeroDelMapa, ordenar, ORDENES, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
-  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type UniversoCompacto,
+  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa,
 } from "@/lib/explorar/portal";
+// Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
+import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
 import "./explorar.css";
 
@@ -85,6 +87,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
   const [universos, setUniversos] = useState<Record<string, Universo>>({});
   const universosRef = useRef(universos);
   universosRef.current = universos;
+  // Lo que ya se está pidiendo (la noche: su clave; lo calculado: clave|comuna): abrir los filtros antes de que llegue el universo
+  // no lo pide de nuevo.
+  const enCurso = useRef(new Set<string>());
   const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null);
   const [fallo, setFallo] = useState(false);
   const [vista, setVista] = useState<"mapa" | "lista">("mapa");
@@ -122,16 +127,22 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
     setFallo(false);
     try {
       if (universoDeLaNoche(f)) {
-        if (universosRef.current[clave]) return;
-        const res = await fetch(base, { cache: "default" });
-        if (!res.ok) throw new Error(String(res.status));
-        const d = (await res.json()) as { universo: UniversoCompacto };
-        if (vivo.current) setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo) } }));
+        if (universosRef.current[clave] || enCurso.current.has(clave)) return;
+        enCurso.current.add(clave);
+        try {
+          const res = await fetch(base, { cache: "default" });
+          if (!res.ok) throw new Error(String(res.status));
+          const d = (await res.json()) as RespuestaUniverso;
+          if (vivo.current) setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo) } }));
+        } finally {
+          enCurso.current.delete(clave);
+        }
         return;
       }
       const ya = universosRef.current[clave];
       const tengo = new Set(ya && ya.comunas !== "todas" ? ya.comunas : []);
-      const faltan = comunasACalcular(f).filter((c) => !tengo.has(c));
+      const faltan = comunasACalcular(f).filter((c) => !tengo.has(c) && !enCurso.current.has(`${clave}|${c}`));
+      for (const c of faltan) enCurso.current.add(`${clave}|${c}`);
       if (faltan.length === 0) return;
       let hechas = 0;
       setProgreso({ hechas, total: faltan.length });
@@ -142,7 +153,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           try {
             const res = await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" });
             if (!res.ok) throw new Error(String(res.status));
-            const d = (await res.json()) as { universo: UniversoCompacto };
+            const d = (await res.json()) as RespuestaUniverso;
             const nuevos = descompactar(d.universo);
             const comuna = c;
             if (vivo.current) setUniversos((us) => {
@@ -154,6 +165,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
           } catch {
             errores++;
           }
+          enCurso.current.delete(`${clave}|${c}`);
           hechas++;
           if (vivo.current) setProgreso({ hechas, total: faltan.length });
         }
@@ -360,8 +372,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
       )}
 
       <div className="ex-cuerpo">
-        {/* ── el mapa (después del primer pintado) ── */}
-        <div className="ex-mapa-wrap" data-mapa={mapa} hidden={vista === "lista" ? true : undefined}>
+        {/* ── el mapa (después del primer pintado) ──
+            Con la lista abierta el mapa NO se esconde: la lista lo cubre entero. Escondido (display: none) el mapa de Google se
+            queda sin tamaño y al volver se descuadra (QA en WebKit 390, 28-oct-2026: «Buscar en esta zona» quedaba a 50 km). */}
+        <div className="ex-mapa-wrap" data-mapa={mapa} aria-hidden={vista === "lista" ? true : undefined}>
           {/* El mapa quieto: lo más grande del primer cuadro (el LCP), dibujado por el servidor; debajo del mapa real. */}
           {mapaQuieto}
           {mapaListo && mapa !== "fallo" && (

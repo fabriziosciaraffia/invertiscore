@@ -5,7 +5,9 @@
    reemplaza al mapa con el botón «Mapa» flotando. El rojo va en los pines (los que convienen, uso #7), en el flujo negativo
    y el error; Comprar y los ya analizados llevan el azul de la tríada; el corazón guardado, rojo como en el mockup.
    ═════════════════════════════════════════════════════════════════════════════ */
-.ex-pagina { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
+/* Con el aviso de cookies a la vista, la pantalla se acorta su alto (AvisoCookies › --alto-aviso-cookies): si no, la barra tapa
+   la hoja de abajo, la tarjeta y el botón «Mapa». */
+.ex-pagina { height: calc(100dvh - var(--alto-aviso-cookies, 0px)); display: flex; flex-direction: column; overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
 .ex { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
 .ex button { font-family: inherit; }
 
@@ -29,7 +31,6 @@
 /* ── el cuerpo: el mapa (o la lista) ── */
 .ex-cuerpo { position: relative; flex: 1; min-height: 0; }
 .ex-mapa-wrap { position: absolute; inset: 0; background: var(--franco-bg); overflow: hidden; }
-.ex-mapa-wrap[hidden] { display: none; }
 .ex-mapa { position: absolute; inset: 0; }
 /* El mapa quieto del primer pintado (el LCP): debajo del real, se desvanece cuando el real dibujó sus teselas. En oscuro, la
    misma foto invertida. */
@@ -108,7 +109,7 @@
 .ex-fila-l .ex-corazon { margin: 0; }
 .ex-vacia { margin: 16px; font-size: 14px; line-height: 1.5; color: var(--franco-text-secondary); }
 .ex-lista-fin { height: 1px; }
-.ex-boton-mapa { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 9; transform: translateX(-50%); height: 44px; padding: 0 22px; border: 0; border-radius: 999px;
+.ex-boton-mapa { position: fixed; left: 50%; bottom: calc(18px + var(--alto-aviso-cookies, 0px) + env(safe-area-inset-bottom)); z-index: 9; transform: translateX(-50%); height: 44px; padding: 0 22px; border: 0; border-radius: 999px;
   background: var(--franco-text); color: var(--franco-card); font-size: 14px; font-weight: 600; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); cursor: pointer; }
 .ex-boton-mapa:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 3px; }
 

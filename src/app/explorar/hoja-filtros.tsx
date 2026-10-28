@@ -40,7 +40,8 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar }: 
   useEffect(() => {
     if (contar(b) != null) return;
     asegurar(b);
-    const t = window.setInterval(() => setTick((n) => n + 1), 700);
+    // Se vuelve a contar hasta que llega el universo; con el número, se deja de mirar.
+    const t = window.setInterval(() => { setTick((n) => n + 1); if (contar(b) != null) window.clearInterval(t); }, 700);
     return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [b.modalidad, b.pie, b.plazo, b.comunas.join()]);

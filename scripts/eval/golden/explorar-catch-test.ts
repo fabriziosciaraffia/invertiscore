@@ -181,7 +181,7 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const iQuieto = cli.indexOf("{mapaQuieto}"), iMapa = cli.indexOf("<MapaExplorar");
   if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa) F("5 · el mapa quieto no se dibuja antes del mapa real");
   // ⚠ ACTA (28-oct-2026) · los avisos del mapa van por `cb.current` y el contenedor se esconde con la lista.
-  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} hidden=/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
+  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} aria-hidden=\{vista === "lista" \? true : undefined\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
   // ── 6 · las cifras del pin y los agrupados ──
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la píldora, el título de la hoja, «Revisado con…», «Visto anoche» y el detalle

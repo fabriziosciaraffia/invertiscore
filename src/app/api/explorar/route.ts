@@ -4,8 +4,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
-import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
-import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-servidor";
+import { claveUniverso, universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
+import { respuestaUniverso, universoCalculado, type RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,7 +38,9 @@ export async function GET(request: Request) {
   try {
     if (esDeLaNoche(q)) {
       const u = await universoDeLaNocheCacheado(pie, plazo);
-      return NextResponse.json({ ...u, clave: `${modalidad}-${pie}-${plazo}`, comunas: [] }, { headers: { "Cache-Control": "private, max-age=300" } });
+      // La misma forma que lo calculado (RespuestaUniverso): el universo va en `universo`, con su propia tabla de comunas.
+      const r: RespuestaUniverso = { clave: claveUniverso(q), comunas: [], universo: u, calculados: 0, ms: 0 };
+      return NextResponse.json(r, { headers: { "Cache-Control": "private, max-age=300" } });
     }
     const comunas = Array.from(new Set((sp.get("c") ?? "").split(",").map((x) => x.trim()).filter((c) => COMUNAS_OK.has(c))));
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });

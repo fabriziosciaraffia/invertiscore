@@ -67,14 +67,22 @@ export function AvisoCookies() {
   // cierre en PC— se puede leer al llegar abajo. Va al final, así que no corre nada de lo que ya está en pantalla.
   const barra = useRef<HTMLDivElement>(null);
   const [alto, setAlto] = useState(0);
+  // LAS PANTALLAS FIJAS (28-oct-2026, Explorar como portal): una pantalla que no hace scroll (el mapa de /explorar, alto
+  // 100dvh) no llega nunca a ese espacio y la barra le tapaba la hoja de abajo y el botón «Mapa». Mientras se ve, la barra
+  // deja su alto en `--alto-aviso-cookies` en la raíz, y esas pantallas lo restan de su alto.
   useEffect(() => {
     const el = barra.current;
     if (!visible || !el) return;
-    const medir = () => setAlto(Math.ceil(el.getBoundingClientRect().height));
+    const raiz = document.documentElement;
+    const medir = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      setAlto(h);
+      raiz.style.setProperty("--alto-aviso-cookies", `${h}px`);
+    };
     medir();
     const ro = new ResizeObserver(medir);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); raiz.style.removeProperty("--alto-aviso-cookies"); };
   }, [visible]);
 
   if (!visible) return null;

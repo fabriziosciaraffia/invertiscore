@@ -327,7 +327,8 @@ export function filtrosDeMiBusqueda(p: Pick<PerfilBusqueda, "comunas" | "dormito
   return validarPortal({
     ...FILTROS_GLOBALES, comunas, tipologias,
     ufMin: p.precioMinUf != null && p.precioMinUf > 0 ? p.precioMinUf : null,
-    ufMax: p.precioMaxUf != null && p.precioMaxUf > 0 && p.precioMaxUf < UF_PORTAL_MAX ? p.precioMaxUf : null,
+    // El tope que guarda «Avísame» sin «hasta» (TOPE_PERFIL_UF) es «cualquier precio», no un filtro.
+    ufMax: p.precioMaxUf != null && p.precioMaxUf > 0 && p.precioMaxUf < TOPE_PERFIL_UF ? p.precioMaxUf : null,
     pie: pieDeLista(p.piePct), plazo: plazoDeLista(p.plazoAnios), modalidad: p.modalidad === "str" ? "str" : "ltr",
   });
 }

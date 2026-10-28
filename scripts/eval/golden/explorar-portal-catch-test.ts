@@ -132,6 +132,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
+  // El tope que «Avísame» guarda sin «hasta» vuelve como «cualquier precio» (cazado en el QA: «Mi búsqueda» filtraba h=60000).
+  if (po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa"], dormitorios: [2], precioMinUf: null, precioMaxUf: po.TOPE_PERFIL_UF, piePct: 20, plazoAnios: 25, modalidad: "ltr" })?.ufMax !== null) F("1 · «Mi búsqueda» convierte el tope de «cualquier precio» en un precio máximo");
   if (!/function miBusqueda\(\) \{\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/onClick=\{miBusqueda\}/.test(cli)) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
 
   // ── 2 · la tarjeta del pin sin las líneas retiradas ──
@@ -352,6 +354,18 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (!po.universoDeLaNoche({ modalidad: "ltr", pie: 30, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "str", pie: 20, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 15, plazo: 25 })) F("7 · qué sale de la noche y qué se calcula");
   if (!/if \(esDeLaNoche\(q\)\) \{\s*const u = await universoDeLaNocheCacheado\(pie, plazo\);/.test(ruta) || !/comunas\.length === 0 \|\| comunas\.length > MAX_COMUNAS_POR_PEDIDO/.test(ruta)) F("7 · la API no sirve la noche de la caché, o calcula sin acotar por comuna");
   if (!/\["explorar-mapa-v1"\],\s*\{ revalidate: 600 \}/.test(codigo("src/lib/explorar/portal-cache.ts"))) F("7 · el universo de la noche no queda en caché diez minutos");
+  // LA FORMA DE LA RESPUESTA (28-oct-2026, cazado en el QA: la noche esparcía el universo en la raíz y pisaba su tabla de
+  // comunas; el navegador leía `universo` y el mapa decía «0 convienen»). Las dos ramas arman RespuestaUniverso y el
+  // navegador lee eso; y lo compacto ida y vuelta por JSON da los mismos pines.
+  if (!/const r: RespuestaUniverso = \{ clave: claveUniverso\(q\), comunas: \[\], universo: u, calculados: 0, ms: 0 \};\s*return NextResponse\.json\(r,/.test(ruta) || /\.\.\.u[,}]/.test(ruta) || (cli.match(/\(await res\.json\(\)\) as RespuestaUniverso;/g) ?? []).length !== 2 || (cli.match(/descompactar\(d\.universo\)/g) ?? []).length !== 2) F("7 · la respuesta del universo no tiene la forma que lee el navegador (`universo` con su tabla de comunas)");
+  try {
+    const srv = require(join(RAIZ, "src/lib/explorar/portal-servidor")) as typeof import("../../../src/lib/explorar/portal-servidor");
+    const ida = JSON.parse(JSON.stringify(srv.respuestaUniverso([PIN, { ...PIN, avisoId: "z9", comuna: "Ñuñoa" }], { modalidad: "ltr", pie: 15, plazo: 20, comunas: ["Providencia"] })));
+    const vuelta = po.descompactar(ida.universo);
+    if (vuelta.length !== 2 || vuelta[1].comuna !== "Ñuñoa" || vuelta[0].precioUF !== PIN.precioUF || vuelta[0].condicion !== "usado" || ida.clave !== "ltr-15-20") F(`7 · el universo compacto no vuelve igual por JSON: ${JSON.stringify(vuelta[1])}`);
+  } catch (e) {
+    F(`7 · la respuesta del universo explotó: ${(e as Error).message}`);
+  }
   const sql = leer("supabase/migrations/20261028_explorar_portal.sql");
   if (!/create or replace function public\.explorar_mapa\(/.test(sql) || !/returns jsonb/.test(sql) || !/revoke execute on function public\.explorar_mapa\(/.test(sql) || !/= 'COMPRAR'\s*\) u;/.test(sql) || !/ae\.arriendo_sospechoso is not true/.test(sql)) F("7 · explorar_mapa no es un jsonb del mismo universo, solo Comprar y solo para el service role");
 
@@ -413,6 +427,13 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (/loadGoogleMaps|maps\.googleapis/.test(cli + pag + codigo("src/lib/explorar/portal.ts"))) F("12 · Google Maps entra al primer pintado");
   if (/universo=|pines=\{/.test(pag)) F("12 · la página manda los pines en el HTML (rompe el LCP)");
   if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
+  // CON LA LISTA EL MAPA NO SE ESCONDE (28-oct-2026, cazado en el QA en WebKit 390): con display:none el mapa de Google queda sin
+  // tamaño y al volver se descuadra («Buscar en esta zona» caía a 50 km). La lista lo cubre entera.
+  if (/data-mapa=\{mapa\}[^>]*hidden=\{/.test(cli.replace(/aria-hidden=/g, "")) || /\.ex-mapa-wrap\[hidden\]/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-lista \{ position: absolute; inset: 0; z-index: 4;/.test(leer("src/app/explorar/explorar.css"))) F("12 · con la lista abierta el mapa se esconde (y se descuadra al volver)");
+  // EL AVISO DE COOKIES NO TAPA LA PANTALLA FIJA (28-oct-2026, cazado en el QA en WebKit 390: tapaba la hoja «Ver lista» y el botón
+  // «Mapa» a quien todavía no eligió): la barra publica su alto y Explorar lo resta.
+  const css = leer("src/app/explorar/explorar.css");
+  if (!/\.ex-pagina \{ height: calc\(100dvh - var\(--alto-aviso-cookies, 0px\)\);/.test(css) || !/\.ex-boton-mapa \{[^}]*bottom: calc\(18px \+ var\(--alto-aviso-cookies, 0px\)/.test(css) || !/raiz\.style\.setProperty\("--alto-aviso-cookies", `\$\{h\}px`\);/.test(codigo("src/components/consentimiento/AvisoCookies.tsx")) || !/raiz\.style\.removeProperty\("--alto-aviso-cookies"\)/.test(codigo("src/components/consentimiento/AvisoCookies.tsx"))) F("12 · el aviso de cookies tapa la hoja de abajo o el botón «Mapa» de Explorar");
 
   if (fallas.length) {
     console.log(`  ✗ EXPLORAR-PORTAL · ${fallas.length} falla(s):`);

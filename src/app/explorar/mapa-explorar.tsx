@@ -88,7 +88,8 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
       window.clearTimeout(tope);
       const claro = esClaro();
       const map = new g.maps.Map(divRef.current, {
-        center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, clickableIcons: false,
+        // El zoom al centro derecho: abajo lo tapaban la hoja y la tarjeta (QA en WebKit 390, 28-oct-2026).
+        center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
         gestureHandling: "greedy", styles: francoMapStyleForTheme(claro ? "light" : "dark"), backgroundColor: claro ? "#F6F6F7" : "#1a1a1a",
       });
       mapRef.current = map;
