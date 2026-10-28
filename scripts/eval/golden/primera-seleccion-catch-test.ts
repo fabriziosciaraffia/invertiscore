@@ -41,7 +41,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion,
+  destinoRecienDentro, esCuentaNueva, faltanDelPerfil, hojaSinDeptos, MINUTOS_CUENTA_NUEVA, MINUTOS_CUPO_DEL_DIA, PARAM_RECIEN_DENTRO, pasoDelDia, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion,
 } from "../../../src/lib/guia/del-dia";
 import { encolarPrimeraSeleccion, rellenarDeLaNoche } from "../../../src/lib/guia/del-dia-servidor";
 import { queEnviarSemanal } from "../../../src/lib/guia/semanal";
@@ -279,7 +279,12 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
       if (!/const titulo = tituloSeleccion\(items\.length\);/.test(ps) || !/<h2 className=\{encabezado === "casa" \? "ca-plano-t" : "dp-h2"\} data-primera="titulo">\{titulo\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
         F("7 · el título no cuenta los deptos de la selección, o no mira si hay deptos con la misma condición que la bajada");
-      if (!/const puede = !!datos\.token && !!it\.enSeleccion && !!datos\.combinacion;/.test(ps) || !/\{it\.informeId \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
+      // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar) · la condición del botón vive en del-dia.ts › puedeAnalizarPrimero, que
+      // el tier CUENTAS-PRUEBA ejercita con una cuenta de prueba nueva por /deptos; acá se prueba la función y que la tarjeta la use.
+      const pa = { token: "t", combinacion: { piePct: 20, plazoAnios: 25 } };
+      if (!puedeAnalizarPrimero(pa, { enSeleccion: true }) || puedeAnalizarPrimero(pa, { enSeleccion: false }) || puedeAnalizarPrimero({ ...pa, token: null }, { enSeleccion: true }) || puedeAnalizarPrimero({ ...pa, combinacion: null }, { enSeleccion: true }))
+        F("7 · «Analizar este» se ofrece sin el token de la selección, sin la combinación o con un depto fuera de la selección");
+      if (!/const puede = puedeAnalizarPrimero\(datos, it\);/.test(ps) ||!/\{it\.informeId \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
       if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}semanal: datos\.token \}\)/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
       if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este · usa tu regalo» con el regalo");

@@ -130,7 +130,9 @@ export async function runAltaOrdenTier(): Promise<{ hard: number }> {
     if (!/const r = await ordenarAlta\(piezas, \{/.test(alta)) F("6 · el alta no usa el orden (ordenarAlta)");
     if (!/upsert\(\{ user_id: user\.id, \.\.\.perfil, actualizado_at: new Date\(\)\.toISOString\(\) \}, \{ onConflict: "user_id", ignoreDuplicates: true \}\)\.select\("user_id"\)/.test(alta)) F("6 · el perfil pisa uno que ya estaba (sin ignoreDuplicates)");
     if (!/filaDelDia: \(\) => c\.medir\("fila-del-dia", encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: despues, ruta: p\.ruta, antes: permisoVuelta \}\)\)/.test(alta) || !/vueltaDelDia: async \(\) => \{ soltarVuelta\(\); \}/.test(alta)) F("6 · la primera vuelta del correo del día no espera a después de responder");
-    if (!/if \(deps\.antes\) await deps\.antes;\s*const fuera = await cuentasPruebaSinCorreo\(admin\);/.test(sinComentarios(leer("src/lib/guia/del-dia-servidor.ts")))) F("6 · encolarPrimeraSeleccion no espera el permiso antes de la vuelta");
+    // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar) · la vuelta ya no mira si la cuenta es de prueba (lo único que la deja sin
+    // correo es enviarCorreo; tier CUENTAS-PRUEBA): después del permiso viene la vuelta misma.
+    if (!/if \(deps\.antes\) await deps\.antes;\s*await vuelta\(fila\);/.test(sinComentarios(leer("src/lib/guia/del-dia-servidor.ts")))) F("6 · encolarPrimeraSeleccion no espera el permiso antes de la vuelta");
     // El espejo con las reglas de emitirEventoMeta: sin espejo en prueba o sin el «sí» de las cookies.
     const srv = await import("../../../src/lib/deptos/alta-servidor");
     const e1 = srv.espejoDeRegistro({ userId: "u1", puerta: "C", prueba: false, consentimiento: true });

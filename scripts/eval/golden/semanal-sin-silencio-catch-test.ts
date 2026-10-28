@@ -7,7 +7,8 @@
 //   3 · SIN SELECCIÓN, UN CORREO IGUAL: sin ningún depto confirmado sale el correo corto —«Esta semana no apareció
 //       ninguno que te convenga con tu pie y tu plazo. Seguimos buscando.»— con el enlace a su perfil (que pasa por
 //       el clic y lleva a /dashboard#perfil), la baja, y sin precios, regalo ni botón de compra.
-//   10 · LAS CUENTAS DE PRUEBA fuera de los envíos, salvo las marcadas (`recibe_correos`); y la baja se registra
+//   10 · LAS CUENTAS DE PRUEBA sin el correo, salvo las marcadas (`recibe_correos`) —desde el 28-oct-2026 lo frena solo
+//       enviarCorreo: la fila y la selección son las de una real (tier CUENTAS-PRUEBA)—; y la baja se registra
 //       en PostHog desde el servidor esperando el envío (con `void` se perdió una el 12-oct).
 //   9 · Las aperturas de Resend llegan como `correo_abierto`; los clics de Resend no (los medimos nosotros).
 // ACTA (13-oct-2026). 12/12 mutaciones en ROJO: S1 con menos de tres no sale · S2 el lunes solo salen las armadas · S3 el
@@ -22,7 +23,7 @@ import { COMO_ENTRAR, HORAS_REINTENTO_LUNES, SEMANAL_VACIO, queEnviarSemanal } f
 import { correoSemanal, correoSemanalVacio } from "../../../src/lib/email/correo-semanal";
 import { correoBienvenida } from "../../../src/lib/email/correos";
 import { ESTAS_DENTRO } from "../../../src/lib/lo-que-sigue/copy";
-import { cuentasPruebaSinCorreo, personasSemanal, enlacesSemanal } from "../../../src/lib/guia/semanal-servidor";
+import { personasSemanal, enlacesSemanal } from "../../../src/lib/guia/semanal-servidor";
 import { CRONS_VIGILADOS } from "../../../src/lib/cron-heartbeat";
 import { EVENTOS_RESEND } from "../../../src/lib/medicion-correo";
 
@@ -101,11 +102,16 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
     if (tabla === "analisis") return [{ user_id: "prueba-marcada" }, { user_id: "prueba-sin-columna" }, { user_id: "otra-real" }];
     return [];
   });
-  const fuera = await cuentasPruebaSinCorreo(doble);
-  if (!fuera.has("prueba") || !fuera.has("prueba-sin-columna") || fuera.has("prueba-marcada")) F("10 · las cuentas de prueba no quedan fuera (o la marcada queda fuera)");
-  const personas = (await personasSemanal(doble)).map((p) => p.userId).sort();
-  if (personas.join() !== ["otra-real", "prueba-marcada", "real"].join()) F(`10 · el semanal se le arma a una cuenta de prueba sin marcar (${personas.join(", ")})`);
-  if (!/cuenta\[fuera\.has\(fila\.user_id\) \? await descartarSeleccion\(admin, fila\.id\) : await enviarSeleccion\(admin, fila, SITIO\)\]\+\+;/.test(rutaEnviar)) F("10 · el envío del lunes le manda a una cuenta de prueba ya armada");
+  // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar; decisión de Fabrizio: el filtro de cuentas de prueba frena SOLO el correo,
+  // nunca la fila, la selección, los botones ni el mapa) · `cuentasPruebaSinCorreo` se retiró: el semanal se les arma a todas,
+  // con las de prueba al final de la cola (CUENTAS-PRUEBA §4), el lunes se envía a todas y el correo de la de prueba sin la
+  // marca no sale porque sendSemanalEmail pasa por enviarCorreo, que mira destinoBloqueado (PAUTA-ARREGLOS §1).
+  const personas = (await personasSemanal(doble)).map((p) => p.userId);
+  const reales = ["real", "otra-real"], dePrueba = ["prueba", "prueba-marcada", "prueba-sin-columna"];
+  if ([...personas].sort().join() !== [...reales, ...dePrueba].sort().join()) F(`10 · el semanal no se le arma a todas, las de prueba incluidas (${personas.join(", ")})`);
+  else if (Math.max(...reales.map((u) => personas.indexOf(u))) > Math.min(...dePrueba.map((u) => personas.indexOf(u)))) F(`10 · las cuentas de prueba no van al final de la cola (${personas.join(", ")})`);
+  if (!/cuenta\[await enviarSeleccion\(admin, fila, SITIO\)\]\+\+;/.test(rutaEnviar)) F("10 · el envío del lunes decide por su cuenta a quién mandarle (solo enviarCorreo frena a la cuenta de prueba)");
+  if (!/export async function sendSemanalEmail[\s\S]{0,300}?const res = await enviarCorreo\("semanal", userId,/.test(leer("src/lib/email.ts"))) F("10 · el correo semanal no pasa por enviarCorreo (la cuenta de prueba lo recibiría)");
   for (const r of ["src/app/api/semanal/baja/route.ts", "src/app/api/inmediato/baja/route.ts", "src/app/api/semanal/clic/route.ts"]) {
     const s = sinComentarios(leer(r));
     if (/void capturarServidor/.test(s) || !/await capturarServidor\(\{/.test(s)) F(`10 · ${r} no espera el envío del evento a PostHog (la función responde antes y se pierde)`);

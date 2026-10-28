@@ -171,6 +171,8 @@ import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runCargaTier } from "./carga-catch-test";
 import { runExplorarTier } from "./explorar-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
+import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
+import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -722,6 +724,12 @@ function printSeed(r: SeedReport) {
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
   totalHard += (await runPautaArreglosTier()).hard;
+  // Tier CUENTAS-PRUEBA (28-oct-2026, 0 tokens): el filtro de cuentas de prueba frena SOLO el correo —una cuenta de prueba
+  // nueva por /deptos ve «Analizar este», la misma selección que una real y el mapa—, y el semanal se les arma al final de la cola. ──
+  totalHard += (await runCuentasPruebaTier()).hard;
+  // Tier DEPTOS-CONTEO (28-oct-2026, 0 tokens; mide contra la base): el número de /deptos se lee del conteo que guarda el cron
+  // de la evaluación (lo que falta se cuenta una vez y se guarda), bajo 300 ms y sin RPC (Sentry JAVASCRIPT-NEXTJS-1K). ──
+  totalHard += (await runDeptosConteoTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;
