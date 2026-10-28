@@ -329,7 +329,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): la fila se reserva antes de responder y la
       // primera vuelta espera el permiso que se suelta después (antes: permisoVuelta).
       if (!/encolarPrimeraSeleccion\(admin, user, \{ sitio: SITIO, enSegundoPlano: despues, ruta: p\.ruta, antes: permisoVuelta \}\)/.test(alta) || !/if \(deps\.antes\) await deps\.antes;/.test(dds)
-        || !/const fila = await encolarDelDia\(admin, user\.id, ahora\);/.test(dds) || !/await procesarDelDia\(admin, fila, await leerConfigGuia\(admin\), deps\.sitio, \{ lecturas: 0, bloqueada: false \}\);/.test(dds))
+        // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar; tier CUENTAS-PRUEBA) · la vuelta es inyectable (el tier la reemplaza) y por
+        // defecto es procesarDelDia; después del permiso viene la vuelta misma, sin mirar si la cuenta es de prueba.
+        || !/const fila = await encolarDelDia\(admin, user\.id, ahora\);/.test(dds) || !/const vuelta = deps\.vuelta \?\? \(async \(f: FilaDelDia\) => procesarDelDia\(admin, f, await leerConfigGuia\(admin\), deps\.sitio, \{ lecturas: 0, bloqueada: false \}\)\);/.test(dds) || !/if \(deps\.antes\) await deps\.antes;\s*await vuelta\(fila\);/.test(dds))
         F("4 · el alta no encola el correo del día con su primera vuelta");
     }
 
