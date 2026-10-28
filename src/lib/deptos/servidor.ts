@@ -10,23 +10,120 @@ import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
-import { CLAVE_GOOGLE, ELECCIONES_POR_DEFECTO, PREFIJO_GOOGLE, RANGOS_UF, respuestaDeptos, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RespuestaDeptos, type Validacion } from "./respuesta";
+import { CLAVE_GOOGLE, ELECCIONES_POR_DEFECTO, PREFIJO_GOOGLE, RANGOS_UF, respuestaDeptos, TIPOLOGIAS_DEPTOS, tipoDeAlta, validarElecciones, type ConteoComuna, type EleccionesDeptos, type RangoUf, type RespuestaDeptos, type TipologiaDeptos, type Validacion } from "./respuesta";
 
 const RUTA = "lib/deptos";
 type Ok = Extract<Validacion, { ok: true }>;
 
 const desdeVentana = (ahora: Date) => new Date(ahora.getTime() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
 
-/** La respuesta al instante: sus comunas y, por si da cero, las vecinas, en una sola consulta. */
+/** La respuesta al instante: sus comunas y, por si da cero, las vecinas, leídas del conteo guardado (conteoDeptos). */
 export async function responderDeptos(admin: SupabaseClient, v: Ok, ahora: Date = new Date()): Promise<RespuestaDeptos> {
   const vecinas = comunasVecinas(v.comunas).filter((c) => !v.comunas.includes(c));
-  const { data, error } = await admin.rpc("deptos_conteo", {
-    comunas: [...v.comunas, ...vecinas], dorms: v.dorms, uf_min: v.rango.min ?? 0, uf_max: v.rango.max, desde: desdeVentana(ahora),
-  });
-  if (error) throw new Error(`deptos_conteo: ${error.message}`);
-  const filas = ((data ?? []) as Array<{ comuna: string; total: number; comprar_20: number; comprar_30: number }>)
-    .map((f): ConteoComuna => ({ comuna: f.comuna, total: Number(f.total) || 0, comprar20: Number(f.comprar_20) || 0, comprar30: Number(f.comprar_30) || 0 }));
+  // Las comunas en cero vienen en cero (la RPC no las traía): no suman y respuestaDeptos solo ofrece vecinas que convienen.
+  const filas = await conteoDeptos(admin, v, [...v.comunas, ...vecinas], ahora);
   return respuestaDeptos(v, filas.filter((f) => v.comunas.includes(f.comuna)), filas.filter((f) => vecinas.includes(f.comuna)));
+}
+
+/**
+ * EL CONTEO DE /deptos, GUARDADO (28-oct-2026, Sentry JAVASCRIPT-NEXTJS-1K). `deptos_conteo` corría en cada GET de
+ * /api/deptos/respuesta —une la semana de avisos con su evaluación: 120 ms con la base tranquila, más de los 8 s del
+ * `statement_timeout` cuando está ocupada (Providencia, 2D, UF 3.000 a 4.000)—. Como el resumen de la noche: lo cuenta el
+ * cron de la evaluación al terminar (guardarConteosDeLaNoche), una fila de `config` por tipología y rango con TODAS las
+ * comunas de la cobertura y sus vecinas (las sin ninguno, en cero), y /deptos solo lee esa fila. Si falta (varias
+ * tipologías a la vez, una comuna nueva, antes del primer cron), se cuenta una vez con la misma RPC y se guarda. Una
+ * guardada vieja se sigue leyendo: el número cambia una vez por noche.
+ */
+export const PREFIJO_CONTEO = "deptos_conteo:";
+
+/** La fila de `config` de una búsqueda: «deptos_conteo:2|3000-4000» (las tipologías, ordenadas). */
+export function claveConteo(tipologias: ReadonlyArray<{ id: string }>, rango: { id: string }): string {
+  return `${PREFIJO_CONTEO}${tipologias.map((t) => t.id).sort().join(",")}|${rango.id}`;
+}
+
+/** Por comuna: [publicados, convienen con pie 20 %, convienen con pie 30 %]. */
+type PorComuna = Record<string, [number, number, number]>;
+
+/** Lo guardado en `config`, o null si no hay o no se lee. */
+export function conteoGuardado(valor: string | null | undefined): PorComuna | null {
+  if (!valor) return null;
+  try {
+    const v = JSON.parse(valor) as { comunas?: unknown };
+    if (!v.comunas || typeof v.comunas !== "object") return null;
+    const out: PorComuna = {};
+    for (const [c, n] of Object.entries(v.comunas as Record<string, unknown>)) {
+      if (Array.isArray(n) && n.length === 3 && n.every((x) => Number.isFinite(Number(x)))) out[c] = [Number(n[0]), Number(n[1]), Number(n[2])];
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** La RPC, para estas comunas: las que no trae quedan en cero (así se sabe que se contaron). */
+async function contarEnVivo(admin: SupabaseClient, comunas: string[], dorms: number[], rango: { min: number | null; max: number }, ahora: Date): Promise<PorComuna> {
+  const { data, error } = await admin.rpc("deptos_conteo", { comunas, dorms, uf_min: rango.min ?? 0, uf_max: rango.max, desde: desdeVentana(ahora) });
+  if (error) throw new Error(`deptos_conteo: ${error.message}`);
+  const out: PorComuna = Object.fromEntries(comunas.map((c) => [c, [0, 0, 0] as [number, number, number]]));
+  for (const f of (data ?? []) as Array<{ comuna: string; total: number; comprar_20: number; comprar_30: number }>) {
+    out[f.comuna] = [Number(f.total) || 0, Number(f.comprar_20) || 0, Number(f.comprar_30) || 0];
+  }
+  return out;
+}
+
+async function guardarConteo(admin: SupabaseClient, clave: string, comunas: PorComuna, ahora: Date): Promise<void> {
+  const { error } = await admin.from("config").upsert({ key: clave, value: JSON.stringify({ comunas, calculadoAt: ahora.toISOString() }), updated_at: ahora.toISOString().replace("Z", "") }, { onConflict: "key" });
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-conteo" });
+}
+
+/** El conteo de una búsqueda para estas comunas: lo guardado; lo que falte se cuenta una vez y se guarda. */
+export async function conteoDeptos(admin: SupabaseClient, v: Pick<Ok, "tipologias" | "dorms" | "rango">, comunas: string[], ahora: Date = new Date()): Promise<ConteoComuna[]> {
+  const clave = claveConteo(v.tipologias, v.rango);
+  const { data, error } = await admin.from("config").select("value").eq("key", clave).maybeSingle();
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-conteo" });
+  let porComuna = conteoGuardado(data?.value as string | null | undefined) ?? {};
+  const faltan = comunas.filter((c) => !(c in porComuna));
+  if (faltan.length > 0) {
+    porComuna = { ...porComuna, ...(await contarEnVivo(admin, faltan, v.dorms, v.rango, ahora)) };
+    await guardarConteo(admin, clave, porComuna, ahora);
+  }
+  return comunas.map((c) => ({ comuna: c, total: porComuna[c][0], comprar20: porComuna[c][1], comprar30: porComuna[c][2] }));
+}
+
+/** Toda comuna que /deptos puede pedir: la cobertura y sus vecinas. */
+const COMUNAS_DEL_CONTEO = Array.from(new Set([...COMUNAS_DISPONIBLES, ...comunasVecinas([...COMUNAS_DISPONIBLES])]));
+const CONTEOS_A_LA_VEZ = 4;
+
+/**
+ * Lo llama el cron de la evaluación al terminar: cada tipología por cada rango (las 20 búsquedas de una tipología), sobre
+ * todas las comunas, y de nuevo las de varias tipologías que alguien pidió. Una que falla queda con lo anterior.
+ */
+export async function guardarConteosDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<{ guardados: number; fallidos: number }> {
+  const busquedas = new Map<string, { tipologias: TipologiaDeptos[]; rango: RangoUf }>();
+  for (const t of TIPOLOGIAS_DEPTOS) for (const r of RANGOS_UF) busquedas.set(claveConteo([t], r), { tipologias: [t], rango: r });
+  const { data: previas, error } = await admin.from("config").select("key").like("key", `${PREFIJO_CONTEO}%`).limit(200);
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-conteos-previos" });
+  for (const { key } of (previas ?? []) as Array<{ key: string }>) {
+    const [ids, rangoId] = key.slice(PREFIJO_CONTEO.length).split("|");
+    const tipologias = TIPOLOGIAS_DEPTOS.filter((t) => (ids ?? "").split(",").includes(t.id));
+    const rango = RANGOS_UF.find((r) => r.id === rangoId);
+    if (tipologias.length > 0 && rango && !busquedas.has(key)) busquedas.set(key, { tipologias, rango });
+  }
+  let guardados = 0, fallidos = 0;
+  const lista = Array.from(busquedas.entries());
+  for (let i = 0; i < lista.length; i += CONTEOS_A_LA_VEZ) {
+    await Promise.all(lista.slice(i, i + CONTEOS_A_LA_VEZ).map(async ([clave, b]) => {
+      try {
+        const dorms = Array.from(new Set(b.tipologias.flatMap((t) => t.dorms))).sort((x, y) => x - y);
+        await guardarConteo(admin, clave, await contarEnVivo(admin, COMUNAS_DEL_CONTEO, dorms, b.rango, ahora), ahora);
+        guardados++;
+      } catch (e) {
+        fallidos++;
+        reportarFalloQuery({ message: e instanceof Error ? e.message : String(e) }, { ruta: RUTA, operacion: "contar-de-noche" });
+      }
+    }));
+  }
+  return { guardados, fallidos };
 }
 
 /**
