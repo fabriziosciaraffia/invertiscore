@@ -174,6 +174,7 @@ import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
 import { runNuevoUsadoTier } from "./nuevo-usado-catch-test";
+import { runRegionTier } from "./region-catch-test";
 import { runSemanalSinMinimoTier } from "./semanal-sin-minimo-catch-test";
 import { runPlanesTier } from "./planes-catch-test";
 import { runCompraTier } from "./compra-catch-test";
@@ -734,6 +735,8 @@ function printSeed(r: SeedReport) {
   // Tier NUEVO-USADO (28-oct-2026, 0 tokens): la línea de cada depto dice «· Usado» o «· Nuevo» si el aviso lo dice, en la misma
   // línea y color, en todas sus fichas (Explorar, correos, pop-up, «Estás dentro», dashboard). ──
   totalHard += (await runNuevoUsadoTier()).hard;
+  // Tier REGION (28-oct-2026, 0 tokens): las funciones de Node corren en gru1, al lado de la base (sa-east-1). ──
+  totalHard += runRegionTier().hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
   // con el número, el vacío que dice la verdad, los candidatos con el plazo de la persona y la reparación. ──
   totalHard += (await runSemanalSinMinimoTier()).hard;
