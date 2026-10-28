@@ -25,6 +25,17 @@
 //       años; una combinación que la noche no tiene se calcula en el momento solo para el universo de los filtros, se guarda
 //       24 horas en `avisos_evaluados.combos` (vale si es posterior a la evaluación de la fila), la página no la calcula en
 //       el SSR y el mapa dice «Calculando con tu pie…» mientras tanto. La evaluación nocturna no cambia.
+// ⚠ ACTA (28-oct-2026, goal «Explorar como portal», mockup 5b-explorar-portal.html) · /explorar pasó a ser un portal: abre con
+// la VISTA GLOBAL y no con el perfil, sin saldo se explora todo, y la hoja del pin es una tarjeta chica. Lo que este tier
+// fijaba de la página del 23-oct y ya no existe se RETIRÓ de acá y su reemplazo lo fija el tier EXPLORAR-PORTAL:
+//   · §1 «los filtros son el perfil»: ahora la vista global (EXPLORAR-PORTAL §1); los chips, la URL vieja y cambiarFiltro, fuera;
+//   · §4 y §4b el aviso E y Explorar cerrado sin saldo: retirados (EXPLORAR-PORTAL §4);
+//   · §6 la píldora, el título de la hoja, «Revisado con…» y «Visto anoche»: retirados (EXPLORAR-PORTAL §2 y §6);
+//   · §5 el tope de 24 tarjetas en el primer pintado: la página manda solo el número (EXPLORAR-PORTAL §12);
+//   · §8 la vista desde la API con `evento=1`: la deja el navegador (EXPLORAR-PORTAL §10);
+//   · «Explorar no gasta; analizar sí»: la línea se retiró (el goal la sacó).
+// Lo que sigue vivo se queda: solo Comprar de a mil (el mapa del dashboard), analizar por la ruta de la guía, el pop-up con
+// «Cambiar», la medición del análisis, el botón del dashboard, las compras que vuelven al mapa y cualquier pie y plazo.
 // Verificado EN ROJO contra el código de hoy y por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-catch-test.ts
 // ============================================================================
@@ -71,9 +82,11 @@ function baseConFilas(filas: unknown[]) {
 export async function runExplorarTier(): Promise<{ hard: number }> {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
-  console.log("\n─── TIER EXPLORAR (el mapa de los que convienen: filtros que no tocan el perfil, solo Comprar, explorar no gasta, sin saldo el aviso E · 0 tokens) ───");
+  console.log("\n─── TIER EXPLORAR (el mapa de los que convienen: solo Comprar, analizar por la guía, el pop-up con «Cambiar», cualquier pie y plazo · 0 tokens) ───");
 
-  // ── 1 · los filtros son el perfil y no lo tocan ──
+  // ── 1 · el perfil como filtros (el mapa del dashboard) y nada de Explorar escribe ──
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · el perfil ya no abre /explorar (EXPLORAR-PORTAL §1); sigue armando los filtros del
+  // mapa de la selección en el dashboard (lib/casa/mapa-casa-servidor.ts › filtrosDeLaCuenta), y eso es lo que queda acá.
   const f1 = ex.filtrosDePerfil({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 3000, precioMaxUf: 4000, piePct: 20, plazoAnios: 25, editado: ["precioMin"] });
   if (JSON.stringify(f1) !== JSON.stringify(F0)) F(`1 · el perfil no abre tal cual: ${JSON.stringify(f1)}`);
   const f2 = ex.filtrosDePerfil({ comunas: ["Santiago", "Ñuñoa"], dormitorios: [1, 2, 4, 5], precioMinUf: 3000, precioMaxUf: 4000, piePct: 30, plazoAnios: 30, editado: [] });
@@ -85,27 +98,16 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (ex.pieDeLista(12) !== 10 || ex.pieDeLista(13) !== 15 || ex.pieDeLista(null) !== 20 || ex.pieDeLista(80) !== 50 || ex.plazoDeLista(18) !== 20 || ex.plazoDeLista(null) !== 25 || ex.plazoDeLista(40) !== 30) F("1 · el pie o el plazo del perfil no caen al más cercano de la lista");
   if (ex.filtrosDePerfil({ comunas: [], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: null, plazoAnios: null }) !== null) F("1 · sin comuna el perfil igual abre");
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: null, piePct: null, plazoAnios: null }) !== null) F("1 · sin tope el perfil igual abre");
-  const g = ex.cambiarFiltro(F0, { pie: 30 });
-  if (F0.pie !== 20 || g.pie !== 30 || g === F0) F("1 · cambiar un chip muta el filtro anterior o no da uno nuevo");
-  if (ex.cambiarFiltro(F0, { comunas: ["Marte"] }) !== F0) F("1 · un cambio inválido no deja el filtro como estaba");
-  const ida = ex.urlDeFiltros(g);
-  if (ida !== "c=Providencia&t=2&r=3000-4000&p=30&z=25") F(`1 · la URL de los filtros: ${ida}`);
-  if (JSON.stringify(ex.filtrosDeUrl(new URLSearchParams(ida))) !== JSON.stringify(g)) F("1 · la URL no vuelve al mismo filtro");
-  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=25&z=25"))?.pie !== 25 || ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=20&z=20"))?.plazo !== 20) F("1 · un pie o un plazo de la lista no pasa por la URL");
-  if (ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=12&z=25")) !== null || ex.filtrosDeUrl(new URLSearchParams("c=Providencia&t=2&r=3000-4000&p=20&z=35")) !== null) F("1 · un pie o un plazo fuera de la lista pasa por la URL");
   if (JSON.stringify(ex.PIES_EXPLORAR) !== "[10,15,20,25,30,40,50]" || JSON.stringify(ex.PLAZOS_EXPLORAR) !== "[15,20,25,30]") F("1 · los chips no ofrecen pie de 10 a 50 % y plazo de 15 a 30 años");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
   if ((cli.match(/\/api\/perfil-busqueda/g) ?? []).length !== 1 || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"/.test(cli)) F("1 · la página escribe el perfil fuera de la casilla del pop-up (o no la honra)");
-  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · cerrado, el chip no busca: `if (cerrado) return;` antes del filtro nuevo.
-  if (!/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;\s*const f = cambiarFiltro\(filtros, parche\);[\s\S]{0,600}void cargar\(f, true\)/.test(cli)) F("1 · cambiar un chip no es un filtro nuevo leído de /api/explorar");
-  if (!/window\.history\.replaceState\(window\.history\.state, "", `\$\{window\.location\.pathname\}\?\$\{urlDeFiltros\(f\)\}`\)/.test(cli)) F("1 · el cambio de chip no queda en la URL");
-  for (const p of ["src/app/api/explorar/route.ts", "src/app/api/explorar/recalcular/route.ts", "src/lib/explorar/servidor.ts"]) {
+  // ⚠ ACTA (28-oct-2026) · las lecturas del mapa viven también en portal-cache.ts; las escrituras propias del portal (guardados,
+  // «Avísame») van por sus rutas y portal-servidor.ts, y las fija EXPLORAR-PORTAL §5 y §11.
+  for (const p of ["src/app/api/explorar/route.ts", "src/app/api/explorar/recalcular/route.ts", "src/lib/explorar/servidor.ts", "src/lib/explorar/portal-cache.ts"]) {
     const s = codigo(p);
     if (!s) F(`1 · falta ${p}`);
     else if (/\.(upsert|update|insert|delete)\(/.test(s) || /perfil_busqueda/.test(s)) F(`1 · ${p} escribe (explorar no toca nada)`);
   }
-  if (!/const filtros = filtrosDeUrl\(sp\) \?\? \(await filtrosDeLaCuenta\(admin, user\.id\)\)\.filtros;/.test(codigo("src/app/api/explorar/route.ts"))) F("1 · la API no lee los filtros de la URL, o sin ellos no cae al perfil");
-  if (!/const deUrl = filtrosDeUrl\(sp\);\s*const cuenta = deUrl \? null : await filtrosDeLaCuenta\(admin, user\.id\);/.test(codigo("src/app/explorar/page.tsx"))) F("1 · la página no abre con el perfil (o no respeta los filtros de la URL)");
 
   // ── 2 · solo los Comprar ──
   const sc = ex.soloComprar([{ veredicto: "COMPRAR", id: 1 }, { veredicto: "AJUSTA SUPUESTOS", id: 2 }, { veredicto: null, id: 3 }, { veredicto: "BUSCAR OTRA", id: 4 }]);
@@ -143,69 +145,16 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(an) || !/via: desde \}\)\);/.test(an) || !/body\.origenAviso\.desde = desde;/.test(an)) F("3 · «explorar» no llega a analisis_creado (via) ni al informe (origenAviso.desde)");
   if (!/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(\{ userId: user\.id, analysisId: id, avisoId: aviso\.avisoId/.test(an)) F("3 · «explorar_analiza» no sale al crear el informe desde el mapa");
   if (!/idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" :/.test(an)) F("3 · el AnalizarEste de Meta desde Explorar no lleva su propio id");
-  if (!/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, explorar: true \}\)/.test(cli)) F("3 · «Analizar este» del mapa no va por la ruta de la guía con explorar: true");
-  if (ex.lineaSaldo({ tipo: "con", n: 2, noVencen: false }) !== "Tienes 2 análisis. Explorar no gasta; analizar sí.") F(`3 · la línea del saldo: ${ex.lineaSaldo({ tipo: "con", n: 2, noVencen: false })}`);
-  if (ex.lineaSaldo({ tipo: "sin" }) !== "No te quedan análisis. Explorar no gasta; analizar sí.") F("3 · la línea sin saldo");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · en renta corta el mismo pedido va a la ruta STR (con «Analizar igual» si no da).
+  if (!/fetch\(corta \? "\/api\/semanal\/analizar-str" : "\/api\/lo-que-sigue\/guia\/analizar", \{/.test(cli) || !/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, explorar: true,/.test(cli)) F("3 · «Analizar este» del mapa no va por la ruta de la guía con explorar: true");
+  // ⚠ ACTA (28-oct-2026) · «Explorar no gasta; analizar sí» se retiró (lo pidió el goal); lineaSaldo ya no existe.
+  if ("lineaSaldo" in ex || /Explorar no gasta/.test(cli + codigo("src/lib/explorar/portal.ts"))) F("3 · volvió la línea «Explorar no gasta»");
   if (ex.botonAnalizar({ tipo: "con", n: 2, noVencen: false }) !== "Analizar este · usa 1 de tus 2" || ex.botonAnalizar({ tipo: "regalo", vence: null }) !== "Analizar este · usa tu análisis de regalo" || ex.botonAnalizar({ tipo: "sin" }) !== "Analizar este") F("3 · «Analizar este · usa 1 de tus N»");
 
-  // ── 4 · sin saldo se ve el mapa y el aviso E ──
-  const e1 = ex.estadoDeEntrada({ tipo: "sin" }), e2 = ex.estadoDeEntrada({ tipo: "con", n: 1, noVencen: false });
-  if (e1.mapa !== true || e1.aviso !== true || e2.mapa !== true || e2.aviso !== false) F(`4 · estadoDeEntrada: ${JSON.stringify([e1, e2])}`);
-  // ── 4b · SIN SALDO, EXPLORAR ESTÁ CERRADO ── (⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio))
-  // Hasta hoy, al cerrar el aviso se podía explorar igual. Ahora el mapa queda a la vista pero cerrado: los chips no se
-  // tocan, los pines no se abren, la hoja muestra solo la oferta; el servidor manda los pines sin detalle y la ruta de los
-  // pines responde 403. El plan cuenta como saldo.
-  if (!e1.cerrado || e2.cerrado || ex.estadoDeEntrada({ tipo: "plan" }).cerrado || ex.estadoDeEntrada({ tipo: "regalo", vence: null }).cerrado || !ex.explorarCerrado({ tipo: "sin" })) F("4b · sin saldo Explorar no queda cerrado (o queda cerrado con saldo, con el regalo o con el plan)");
-  const pc = ex.pinCerrado({ avisoId: "a1", lat: -33.4, lng: -70.6 });
-  if (pc.precioUF !== 0 || pc.m2 !== 0 || pc.score !== null || pc.flujo !== null || pc.arriendo !== null || pc.tipologia !== null || pc.comuna !== "" || pc.lat !== -33.4) F(`4b · el pin del mapa cerrado trae detalle: ${JSON.stringify(pc)}`);
-  if (ex.AVISO_SIN_SALDO.cerrado !== "Con análisis disponibles exploras todo Santiago") F("4b · la línea del mapa cerrado");
-  const srvC = codigo("src/lib/explorar/servidor.ts");
-  if (!/if \(explorarCerrado\(saldo\)\) \{[\s\S]{0,400}return \{ \.\.\.comun, filtros: fn, calculando: false, cuenta, pines: deLaNoche\.map\(pinCerrado\), n: deLaNoche\.length, cerrado: true \};/.test(srvC)) F("4b · el servidor manda los pines con detalle sin saldo");
-  const rutaC = codigo("src/app/api/explorar/route.ts");
-  const iCerr = rutaC.indexOf("if (await explorarCerradoPara(admin, user.id)) return NextResponse.json({ error: \"cerrado\" }, { status: 403"), iCarga = rutaC.indexOf("await cargarExplorar(");
-  if (iCerr < 0 || iCarga < 0 || iCerr > iCarga) F("4b · la ruta de los pines no responde 403 sin saldo antes de leer nada");
-  const pagC = codigo("src/app/explorar/page.tsx");
-  if (!/inicial=\{d\.cerrado \? \{/.test(pagC) || !/abrir=\{d\.cerrado \? null : a\}/.test(pagC) || !/autoAnalizar=\{!d\.cerrado && sp\.get\("analizar"\) === "1" \? a : null\}/.test(pagC)) F("4b · la página no entra cerrada sin saldo (o abre un depto)");
-  // ⚠ ACTA (26-oct-2026) · antes de cortar, `seleccionar` deja «explorar_pin» si el toque fue en el mapa (también cerrado):
-  // nada más que esa medición va antes del `if (cerrado) return;`.
-  if (!/function seleccionar\(avisoId: string, desde: "mapa" \| "tarjeta" = "tarjeta"\) \{\s*if \(desde === "mapa"\) posthog\?\.capture\(EVENTOS_EXPLORAR\.pin, \{ aviso_id: avisoId, cerrado \}\);\s*if \(cerrado\) return;/.test(cli) || !/function aplicar\(parche: Partial<FiltrosExplorar>, chip: Chip\) \{\s*if \(cerrado\) return;/.test(cli)) F("4b · cerrado, un pin o un chip todavía abren o buscan");
-  try {
-    const { ExplorarCliente } = require(join(RAIZ, "src/app/explorar/explorar-cliente")) as typeof import("../../../src/app/explorar/explorar-cliente");
-    const filtros = ex.filtrosDePerfil({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 0, precioMaxUf: 60000, piePct: 20, plazoAnios: 25 } as never);
-    const baseC = { filtros, n: 2, analizadosN: 0, analizados: {}, ticket: true, cuentaCreadaAt: new Date(Date.now() - 3600_000).toISOString(), finanzas: { uf: 39000, tasa: 4.2 }, desdePerfil: true, completo: true, totalNoche: 4807 };
-    const pinesV = [{ avisoId: "a1", comuna: "Providencia", lat: -33.43, lng: -70.61, m2: 50, dormitorios: 2, tipologia: "2D1B", precioUF: 4500, veredicto: "COMPRAR", score: 80, flujo: 50000, arriendo: 700000, vistoAt: null }];
-    const cerradoHtml = dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...baseC, pines: pinesV.map(ex.pinCerrado), saldo: { tipo: "sin" }, cerrado: true } }));
-    const abiertoHtml = dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...baseC, pines: pinesV, saldo: { tipo: "con", n: 2, noVencen: false }, cerrado: false } }));
-    const chipsC = cerradoHtml.slice(cerradoHtml.indexOf('class="ex-chips"'), cerradoHtml.indexOf("ex-chips-fin"));
-    const apagados = (chipsC.match(/disabled=""/g) ?? []).length;
-    if (apagados < 5 || !/data-cerrado="1"/.test(chipsC)) F(`4b · cerrado, los chips no están apagados (${apagados} de 5)`);
-    const tC = cerradoHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    if (!/data-explorar="cerrado"/.test(cerradoHtml) || !tC.includes("Solo para cuentas nuevas · 3 análisis por $14.990") || !tC.includes("Aprovechar · 3 por $14.990") || !tC.includes("Comprar solo 1") || !tC.includes("Con análisis disponibles exploras todo Santiago")) F("4b · cerrado, la hoja no muestra la oferta y «Con análisis disponibles exploras todo Santiago»");
-    if (/data-explorar="tarjeta"|data-explorar="titulo-hoja"|data-explorar="saldo"/.test(cerradoHtml)) F("4b · cerrado, la hoja muestra tarjetas o la lista");
-    const chipsA = abiertoHtml.slice(abiertoHtml.indexOf('class="ex-chips"'), abiertoHtml.indexOf("ex-chips-fin"));
-    if (/disabled=""/.test(chipsA) || /data-explorar="cerrado"/.test(abiertoHtml) || !/data-explorar="tarjeta"/.test(abiertoHtml)) F("4b · con saldo Explorar queda cerrado (chips apagados o sin tarjetas)");
-  } catch (e) {
-    F(`4b · no se pudo dibujar Explorar: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  if (!/const entrada = estadoDeEntrada\(inicial\.saldo\);\s*const \[avisoSinSaldo, setAvisoSinSaldo\] = useState\(entrada\.aviso\);/.test(cli)) F("4 · el aviso E no sale del estado de entrada");
+  // ── 4 · sin saldo (⚠ ACTA 28-oct-2026, Explorar como portal) ──
+  // El aviso E y Explorar cerrado sin saldo (§4 y §4b del 24-oct) se RETIRARON: sin saldo se explora todo y el cobro sale al
+  // analizar. Lo fija EXPLORAR-PORTAL §4; acá, que el mapa no depende del saldo.
   if (!/\{mapaListo && mapa !== "fallo" && \(\s*<MapaExplorar/.test(cli) || /saldo[^\n]{0,40}<MapaExplorar|<MapaExplorar[^\n]{0,200}saldo/.test(cli)) F("4 · el mapa depende del saldo (sin saldo tiene que verse igual)");
-  if (!/\{avisoSinSaldo && !confirmar && \(\s*<AvisoSinSaldoExplorar/.test(cli) || !/alCerrar=\{\(\) => setAvisoSinSaldo\(false\)\}/.test(cli)) F("4 · el aviso E no se monta sin saldo, o «Ahora no» no lo cierra");
-  try {
-    const { AvisoSinSaldoExplorar } = require(join(RAIZ, "src/app/explorar/aviso-sin-saldo")) as typeof import("../../../src/app/explorar/aviso-sin-saldo");
-    const compras = comprasDeExplorar({ filtros: "c=Providencia", ticket: true });
-    const html = dibujar(createElement(AvisoSinSaldoExplorar as unknown as FC<Record<string, unknown>>, { totalNoche: 4807, compras, vence: "mañana 11:17", alCerrar() {}, alIr() {} }));
-    // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740») · la oferta va en UNA fila: «Solo para cuentas nuevas · vence mañana 11:17».
-    // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el título dice el total de anoche en Santiago.
-    for (const t of ["Para explorar los 4.807 de Santiago necesitas análisis disponibles.", ex.AVISO_SIN_SALDO.cuerpo, "Solo para cuentas nuevas", "· vence mañana 11:17", "Comprar solo 1", "Ver el plan de 20 al mes", "Ahora no"]) {
-      if (!html.includes(t)) F(`4 · el aviso E no dice «${t.slice(0, 50)}»`);
-    }
-    if (!/data-modal="explorar-sin-saldo"/.test(html) || !/data-explorar="ahora-no"/.test(html) || !/href="\/pricing"/.test(html)) F("4 · el aviso E sin su marca, sin «Ahora no» o sin el enlace al plan");
-    if (!/Aprovechar · 3 por \$14\.990/.test(html)) F("4 · con el ticket el principal no es «Aprovechar · 3 por $14.990»");
-    const sinTicket = dibujar(createElement(AvisoSinSaldoExplorar as unknown as FC<Record<string, unknown>>, { n: 0, compras: comprasDeExplorar({ filtros: "c=Providencia", ticket: false }), vence: null, alCerrar() {}, alIr() {} }));
-    if (/Solo para cuentas nuevas/.test(sinTicket) || !/Para explorar el mapa necesitas análisis disponibles\./.test(sinTicket) || !/3 análisis · \$19\.990/.test(sinTicket)) F("4 · sin ticket el aviso E igual dice «Solo para cuentas nuevas», o no ofrece el pack de tres");
-  } catch (e) {
-    F(`4 · el aviso E explotó al dibujarse: ${e instanceof Error ? e.message : String(e)}`);
-  }
 
   // ── 5 · el mapa carga después del primer pintado ──
   if (!/const MapaExplorar = dynamic\(\(\) => import\("\.\/mapa-explorar"\), \{ ssr: false/.test(cli)) F("5 · el mapa no entra por next/dynamic sin SSR");
@@ -214,10 +163,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     if (/loadGoogleMaps|maps\.googleapis/.test(codigo(p))) F(`5 · ${p} trae Google Maps al primer pintado`);
   }
   if (!/import \{ loadGoogleMaps \} from "@\/lib\/loadGoogleMaps";/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("5 · el mapa no usa el cargador de siempre");
-  if (!/pines: d\.pines\.slice\(0, TOPE_HOJA\), completo: noche && d\.n <= TOPE_HOJA/.test(codigo("src/app/explorar/page.tsx"))) F("5 · el servidor manda todos los pines al primer pintado (o no dice si están completos)");
-  // La constante vive en la lib pura: desde un módulo "use client" llegaría al servidor como referencia (23-oct-2026).
-  if (!/import \{ esCombinacionDeLaNoche, EXPLORAR_COPY, filtrosDeUrl, MAPA_QUIETO, TOPE_HOJA \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || ex.TOPE_HOJA !== 24 || /export const TOPE_HOJA/.test(cli)) F("5 · TOPE_HOJA no sale de la lib pura (en el servidor una constante de un módulo \"use client\" es una referencia)");
-  if (!/if \(!inicial\.completo && !inicial\.calculando\) void cargar\(inicial\.filtros, false\);/.test(cli)) F("5 · el resto de los pines no llega con el mapa");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · la página ya no manda tarjetas: solo el número (EXPLORAR-PORTAL §12); el
+  // universo baja con la página quieta. Las constantes que la página lee siguen saliendo de la lib pura, nunca del cliente.
+  if (!/import \{ MAPA_QUIETO \} from "@\/lib\/explorar\/explorar";/.test(codigo("src/app/explorar/page.tsx")) || /export const [A-Z_]+ = /.test(cli)) F("5 · la página lee una constante de un módulo \"use client\" (en el servidor es una referencia)");
+  if (!/if \(universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("5 · el universo no llega con el mapa");
   // ⚠ ACTA (23-oct-2026, medido en producción: 9,7 s) · sin el mapa quieto, la primera tesela de Google (a los 8 s) es el LCP.
   // En el teléfono va INCRUSTADO en el HTML (mapa-quieto.ts): como archivo precargado llegaba 1,3 s tarde y el LCP daba 2,5 s.
   const quieto = cargar<typeof import("../../../src/lib/explorar/mapa-quieto")>("src/lib/explorar/mapa-quieto.ts");
@@ -231,14 +180,12 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/mapaQuieto=\{\s*<picture className="ex-mapa-quieto" data-explorar="mapa-quieto">\s*<source media="\(min-width: 768px\)" srcSet=\{MAPA_QUIETO\.d\} \/>[\s\S]{0,120}<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag)) F("5 · la página no dibuja el mapa quieto (teléfono incrustado, escritorio archivo) con prioridad alta");
   const iQuieto = cli.indexOf("{mapaQuieto}"), iMapa = cli.indexOf("<MapaExplorar");
   if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa) F("5 · el mapa quieto no se dibuja antes del mapa real");
-  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => onEstadoRef\.current\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
+  // ⚠ ACTA (28-oct-2026) · los avisos del mapa van por `cb.current` y el contenedor se esconde con la lista.
+  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} hidden=/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
-  // ── 6 · la hoja y el pin ──
-  if (ex.pildora(312, 3) !== "312 convienen · 3 ya analizados" || ex.pildora(1, 0) !== "1 conviene" || ex.pildora(1200, 1) !== "1.200 convienen · 1 ya analizado") F("6 · la píldora");
-  if (ex.tituloHoja(312) !== "312 deptos que convienen" || ex.tituloHoja(1) !== "1 depto que conviene" || !ex.tituloHoja(0).startsWith("Ninguno")) F("6 · el título de la hoja");
-  const rev = ex.textoRevisado({ pie: 20, plazo: 25 });
-  if (`${rev.antes}${rev.enlace}.` !== "Revisado con pie 20 % y 25 años. El informe completo incluye el enlace a la publicación.") F(`6 · «Revisado con…»: ${rev.antes}${rev.enlace}`);
-  if (ex.marcaDePin({ vistoAt: null }) !== "Visto anoche" || !ex.marcaDePin({ vistoAt: "2026-10-23T06:12:00Z" }, new Date("2026-10-23T12:00:00Z")).startsWith("Visto publicado hoy")) F("6 · la marca del pin");
+  // ── 6 · las cifras del pin y los agrupados ──
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · la píldora, el título de la hoja, «Revisado con…», «Visto anoche» y el detalle
+  // del pin se retiraron con la hoja vieja; la tarjeta nueva la fija EXPLORAR-PORTAL §2. Quedan las cifras y los agrupados.
   const cap = ex.capRatePct(500000, 3600, 39000);
   if (cap == null || Math.abs(cap - 4.2735) > 0.01 || ex.capRatePct(null, 3600, 39000) !== null || ex.capRatePct(500000, 3600, null) !== null) F(`6 · el cap rate: ${cap}`);
   if (ex.ufPorM2(3600, 61) == null || Math.abs((ex.ufPorM2(3600, 61) ?? 0) - 59.016) > 0.01 || ex.ufPorM2(3600, 0) !== null) F("6 · los UF por m²");
@@ -248,14 +195,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (g12.length !== 2 || !g12.some((x) => x.n === 2 && x.analizados === 1 && x.ids.includes("a") && x.ids.includes("b")) || !g12.some((x) => x.n === 1 && x.ids[0] === "c")) F(`6 · a zoom 12 dos pines a 10 m no se agrupan (o el lejano sí): ${JSON.stringify(g12)}`);
   const g19 = ex.agruparPines(cerca, 19);
   if (g19.length !== 3 || g19.some((x) => x.n !== 1)) F(`6 · a zoom 19 los pines siguen agrupados: ${JSON.stringify(g19)}`);
-  if (!/data-explorar="pildora"[\s\S]{0,220}\{pildora\(total, datos\.analizadosN\)\}/.test(cli)) F("6 · la píldora no cuenta los pines ni los ya analizados");
-  if (!/const total = datos\.completo \? pines\.length : Math\.max\(0, datos\.n - caidos\.length\);/.test(cli)) F("6 · antes del mapa la píldora cuenta las tarjetas (24) y no lo que contó el servidor");
-  if (!/data-explorar="revisado">\{revisado\.antes\}<strong>\{revisado\.enlace\}<\/strong>\.<\/p>/.test(cli)) F("6 · el detalle no lleva «Revisado con…» con el enlace destacado");
-  if (!/<dt>\{EXPLORAR_COPY\.capRate\}<\/dt><dd>\{cap != null \? pctUno\(cap\) : "—"\}/.test(cli) || !/<dt>\{EXPLORAR_COPY\.ufM2\}<\/dt>/.test(cli) || !/<dt>\{EXPLORAR_COPY\.flujo\}<\/dt>/.test(cli)) F("6 · el detalle no muestra flujo, cap rate y UF por m²");
-  if (!/data-explorar="analizar-detalle">\s*\{generando === p\.avisoId \? GUIA\.analizando : usa\}/.test(cli) || !/const usa = botonAnalizar\(datos\.saldo\);/.test(cli)) F("6 · el botón del detalle no dice «usa 1 de tus N»");
-  if (!/data-explorar="ya-analizado">\{EXPLORAR_COPY\.yaAnalizado\} · <EnlaceCarga href=\{`\/analisis\/\$\{informe\}`\}/.test(cli)) F("6 · la tarjeta del ya analizado no lleva a su informe");
   const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-  if (!/agruparPines\(visibles\.filter\(\(p\) => p\.avisoId !== sel\), zoom, analizadosRef\.current\)/.test(mapa) || !/iconoPin\(analizadosRef\.current\.has\(id\) \? azul : ROJO\)/.test(mapa) || !/iconoGrupo\(gr\.n,/.test(mapa)) F("6 · el mapa no agrupa, o no pinta de azul los ya analizados y de rojo los que convienen");
+  if (!/for \(const gr of agruparPines\(visibles, zoom, an,/.test(mapa) || !/iconoPunto\(an\.has\(id\) \? azul : ROJO\)/.test(mapa) || !/iconoGrupo\(gr\.n,/.test(mapa)) F("6 · el mapa no agrupa, o no pinta de azul los ya analizados y de rojo los que convienen");
   if (!/const ROJO = "#C8323C";/.test(mapa) || !/const AZUL_CLARO = "#2B558F";/.test(mapa)) F("6 · los colores de los pines no son Signal Red y el azul de Comprar");
 
   // ── 7 · el pop-up con «Cambiar» ──
@@ -271,7 +212,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
   if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
   if (!/derivados: derivadosAviso\(depto, combo, finanzas\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");
-  if (!/cambio=\{\{ recalcular: \(combo\) => recalcular\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(cli)) F("7 · el mapa no abre el pop-up con «Cambiar»");
+  // ⚠ ACTA (28-oct-2026) · en renta corta el pop-up va sin «Cambiar», como en la selección.
+  if (!/cambio=\{filtros\.modalidad === "str" \? null : \{ recalcular: \(combo\) => recalcular\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(cli)) F("7 · el mapa no abre el pop-up con «Cambiar»");
   const rc = codigo("src/app/api/explorar/recalcular/route.ts");
   if (!/const s = sondaDeCandidato\(c, \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \}, cfg\);/.test(rc) || !/!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)/.test(rc)) F("7 · el recálculo no va por la sonda con el pie y el plazo validados");
   const ed = codigo("src/lib/avisos/estandar-deptos.ts");
@@ -285,8 +227,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     if (a.event !== "explorar_analiza" || a.properties?.aviso_id !== "av" || a.properties?.analysis_id !== "an" || a.properties?.pie_pct !== 20) F(`8 · explorar_analiza: ${JSON.stringify(a)}`);
   }
   // ⚠ ACTA (26-oct-2026) · la vista lleva además `robot` (vista-entrada.ts › robotDeVisita; tier PAUTA-ARREGLOS §3).
-  if (!/void capturarServidor\(eventoExplorarVista\(\{ userId: user\.id, filtros, n: noche \? d\.n : null, analizados: analizadosN, fuente: "pagina", cuenta: d\.cuenta, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
-  if (!/if \(sp\.get\("evento"\) === "1"\) \{[\s\S]{0,300}eventoExplorarVista\(\{ userId: user\.id, filtros, n: d\.n, analizados, fuente: "cambio", cuenta: d\.cuenta, robot: robotDeVisita\(request\.headers\.get\("user-agent"\), request\.headers\) \}\)/.test(codigo("src/app/api/explorar/route.ts")) || !/\$\{evento \? "&evento=1" : ""\}/.test(cli)) F("8 · cambiar un chip no deja «explorar_vista»");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · la vista de entrada sale por eventoPortalVista (los filtros y el orden); los
+  // cambios los deja el navegador (los filtros se aplican ahí, sin pedir nada): EXPLORAR-PORTAL §10.
+  if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
+  if (!/posthog\?\.capture\(EVENTOS_PORTAL\.vista, \{ \.\.\.propsDeFiltros\(f, o\), n, fuente \}\)/.test(cli)) F("8 · cambiar un filtro no deja «explorar_vista»");
   if (textoOrigenArchivo("explorar") !== "Desde Explorar" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde Explorar»");
 
   // ── 10 · cualquier pie y plazo: una combinación que la noche no tiene ──
@@ -344,13 +288,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     await srv.pinesExplorar(admin3, F0, ahora);
     if (llamadas3.join() !== "explorar_pines") F(`10 · una combinación de la noche no sale de explorar_pines: ${llamadas3.join()}`);
   }
-  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · la página lee junto el total de anoche de /deptos (el título del aviso sin saldo).
-  if (!/const noche = esCombinacionDeLaNoche\(filtros\);[\s\S]{0,200}const \[d, portada\] = await Promise\.all\(\[cargarExplorar\(admin, user, filtros, new Date\(\), \{ pines: noche \}\), portadaDeptos\(\)\]\);/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
-  if (!/calculando: !noche, analizados: d\.analizados,/.test(codigo("src/app/explorar/page.tsx"))) F("10 · la página no le dice al navegador que está calculando");
-  if (!/if \(inicial\.calculando\) \{ setCargando\("todo"\); void cargar\(inicial\.filtros, false\)/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
-  if (!/const calculando = \(cargando !== null \|\| !!datos\.calculando\) && !esCombinacionDeLaNoche\(filtros\);/.test(cli) || !/\{calculando \? EXPLORAR_COPY\.calculando : <>/.test(cli) || !/data-calculando=\{calculando \? "1" : undefined\}>\{calculando \? EXPLORAR_COPY\.calculando : tituloHoja\(total\)\}/.test(cli)) F("10 · el mapa no dice «Calculando con tu pie…» mientras calcula");
-  if (ex.EXPLORAR_COPY.calculando !== "Calculando con tu pie…") F("10 · el texto no es «Calculando con tu pie…»");
-  if (!/data-chip="pie">[\s\S]{0,400}\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(cli) || !/data-chip="plazo">[\s\S]{0,400}\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(cli)) F("10 · los chips de pie y plazo no ofrecen las listas enteras");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · la página solo cuenta la combinación de la noche (de la caché); una nueva la pide
+  // el navegador enseguida, de a una comuna, y el número dice «Calculando… N de M comunas» mientras tanto. Pie y plazo viven en la
+  // hoja de filtros, con las listas enteras.
+  const pagX = codigo("src/app/explorar/page.tsx");
+  if (!/const noche = universoDeLaNoche\(filtros\);/.test(pagX) || !/noche \? universoDeLaNocheCacheado\(filtros\.pie, filtros\.plazo\)\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pagX) || /universoCalculado|pinesCalculados/.test(pagX)) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
+  if (!/if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
+  if (!/PORTAL_COPY\.calculandoComunas\(progreso\.hechas, progreso\.total\)/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
+  const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
+  if (!/\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(hojaF) || !/\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(hojaF)) F("10 · los filtros de pie y plazo no ofrecen las listas enteras");
   const sqlC = leer("supabase/migrations/20261024_explorar_combos.sql");
   if (!/add column if not exists combos jsonb null/.test(sqlC) || !/ae\.combos -> clave/.test(sqlC) || !/set combos = coalesce\(ae\.combos, '\{\}'::jsonb\) \|\| f\.combo/.test(sqlC)) F("10 · la caché no vive en avisos_evaluados.combos (la misma tabla que la noche) o pisa las otras combinaciones");
   if (/combos/.test(codigo("src/app/api/cron/evaluar-avisos/route.ts"))) F("10 · la evaluación nocturna toca `combos` (no tenía que cambiar)");
@@ -377,15 +323,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/product=pack3/.test(comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.href) || comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.label !== "3 análisis · $14.990") F("9 · con el ticket el pack no es el de $14.990");
   if (botonTrasPagar("/explorar?c=x&a=abc&analizar=1").texto !== "Volver al mapa" || botonTrasPagar("/explorar?c=x").href !== "/explorar?c=x") F("9 · la vuelta de Flow no vuelve al mapa");
   if (deptoDeVolverExplorar("/explorar?c=x&a=abc&analizar=1") !== "abc" || deptoDeVolverExplorar("/dashboard?t=1&a=abc") !== null) F("9 · deptoDeVolverExplorar");
-  // ⚠ ACTA (24-oct-2026, Explorar cerrado sin saldo) · sin saldo no se abre ni se analiza solo (cerrado); con saldo, como siempre.
-  if (!/autoAnalizar=\{!d\.cerrado && sp\.get\("analizar"\) === "1" \? a : null\}/.test(codigo("src/app/explorar/page.tsx")) || !/if \(datos\.saldo\.tipo === "sin"\) setConfirmar\(\{ it, sin: true \}\);\s*else void analizar\(it\);/.test(cli)) F("9 · la vuelta pagada no analiza el depto sola");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · ya no hay mapa cerrado: la vuelta pagada se abre y se analiza siempre.
+  if (!/autoAnalizar=\{sp\.get\("analizar"\) === "1" \? a : null\}/.test(codigo("src/app/explorar/page.tsx")) || !/if \(cuenta\.saldo\.tipo === "sin"\) setConfirmar\(\{ it, sin: true \}\);\s*else void analizar\(it\);/.test(cli)) F("9 · la vuelta pagada no analiza el depto sola");
   if (!/"\/dashboard\/:path\*", "\/explorar",/.test(leer("src/middleware.ts"))) F("9 · /explorar no pasa por el middleware (la sesión no se refresca)");
 
   if (fallas.length) {
     console.log(`  ✗ EXPLORAR · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — los filtros son el perfil y no lo tocan; solo Comprar, de a mil; explorar no gasta; sin saldo el mapa y el aviso E; el mapa después del primer pintado; la hoja, el pin y el pop-up con «Cambiar»; la medición y el botón del dashboard");
+    console.log("  ✓ VERDE — el perfil arma el mapa del dashboard y nada de Explorar lo toca; solo Comprar, de a mil; analizar por la ruta de la guía; el mapa después del primer pintado; las cifras del pin y el pop-up con «Cambiar»; la medición y el botón del dashboard; cualquier pie y plazo");
   }
   return { hard: fallas.length };
 }

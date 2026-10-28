@@ -36,7 +36,6 @@ import { primerosDeptos } from "../../../src/lib/deptos/servidor";
 import { nombreDelDepto } from "../../../src/lib/guia/compra-desde-depto";
 import { correoSemanal, correoSemanalVacio } from "../../../src/lib/email/correo-semanal";
 import { correoInmediato } from "../../../src/lib/email/correo-inmediato";
-import * as ex from "../../../src/lib/explorar/explorar";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -120,21 +119,21 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
     // ── 3 · las fichas ──
     // Mutaciones: M1 · M6 la tarjeta del correo vuelve a la línea vieja · M7 Explorar vuelve a su línea · M8 sin pasarla al pop-up.
     {
-      // Explorar: la tarjeta y la hoja del pin, dibujadas.
-      const { ExplorarCliente } = require(join(RAIZ, "src/app/explorar/explorar-cliente")) as typeof import("../../../src/app/explorar/explorar-cliente");
-      const filtros = ex.filtrosDePerfil({ comunas: ["Las Condes"], dormitorios: [2], precioMinUf: 0, precioMaxUf: 60000, piePct: 20, plazoAnios: 25 } as never);
-      const base = { filtros, n: 2, analizadosN: 0, analizados: {}, ticket: false, cuentaCreadaAt: null, finanzas: { uf: 39000, tasa: 4.2 }, desdePerfil: true, completo: true, totalNoche: 4807, saldo: { tipo: "con", n: 2, noVencen: false }, cerrado: false };
-      const p1 = { avisoId: "a1", comuna: "Las Condes", lat: -33.41, lng: -70.55, m2: 77, dormitorios: 2, tipologia: "2D2B", precioUF: 4200, veredicto: "COMPRAR", score: 80, flujo: 50000, arriendo: 900000, vistoAt: null, condicion: "usado" };
+      // Explorar: la tarjeta del pin y la lista, dibujadas.
+      // ⚠ ACTA (28-oct-2026, Explorar como portal) · la hoja del pin y sus tarjetas se reemplazaron por la tarjeta chica del pin
+      // (tarjeta-pin.tsx) y la lista (lista-portal.tsx); las dos llevan la misma línea. Sin «visto publicado» al final.
+      const { TarjetaPin } = require(join(RAIZ, "src/app/explorar/tarjeta-pin")) as typeof import("../../../src/app/explorar/tarjeta-pin");
+      const { ListaPortal } = require(join(RAIZ, "src/app/explorar/lista-portal")) as typeof import("../../../src/app/explorar/lista-portal");
+      const p1 = { avisoId: "a1", comuna: "Las Condes", lat: -33.41, lng: -70.55, m2: 77, dormitorios: 2, banos: 2, tipologia: "2D2B", precioUF: 4200, veredicto: "COMPRAR", score: 80, flujo: 50000, arriendo: 900000, condicion: "usado" as const, alta: null };
       const p2 = { ...p1, avisoId: "a2", condicion: undefined };
-      const ojosDe = (html: string) => Array.from(html.matchAll(/<span class="ex-ojo">([^<]*)<\/span>/g)).map((m) => m[1]);
-      // La lista (las tarjetas) y la hoja del pin abierto (el detalle).
-      const ojos = ojosDe(dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...base, pines: [p1, p2] } })));
+      const ojosDe = (html: string) => Array.from(html.matchAll(/<span class="ex-ojo"[^>]*>([^<]*)<\/span>/g)).map((m) => m[1]);
+      const nada = () => {};
+      const ojos = ojosDe(dibujar(createElement(TarjetaPin as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], seleccionado: "a1", uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: nada, alCerrar: nada, alGuardar: nada, alAnalizar: nada })));
       if (!ojos.includes("Las Condes · 2D2B · 77 m² · Usado")) F(`3 · la tarjeta de Explorar no dice «· Usado»: ${JSON.stringify(ojos)}`);
       if (!ojos.includes("Las Condes · 2D2B · 77 m²")) F(`3 · en Explorar, el que no dice su condición igual lleva una: ${JSON.stringify(ojos)}`);
-      const hoja = ojosDe(dibujar(createElement(ExplorarCliente as unknown as FC<Record<string, unknown>>, { inicial: { ...base, pines: [p1, p2] }, abrir: "a1" })));
-      if (!hoja.some((o) => o.startsWith("Las Condes · 2D2B · 77 m² · Usado · "))) F(`3 · la hoja del pin de Explorar no dice «· Usado»: ${JSON.stringify(hoja)}`);
-      const cli = codigo("src/app/explorar/explorar-cliente.tsx");
-      if (!/const ojoDe = \(p: PinExplorar\) => lineaDepto\(p\);/.test(cli) || !/<span className="ex-ojo">\{ojoDe\(p\)\} · \{marcaDePin\(p\)\.toLowerCase\(\)\}<\/span>/.test(cli)) F("3 · la hoja del pin de Explorar no usa la línea del depto");
+      const lista = ojosDe(dibujar(createElement(ListaPortal as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: nada, alAbrir: nada, alGuardar: nada, alAvisame: nada, alMapa: nada })));
+      if (!lista.includes("Las Condes · 2D2B · 77 m² · Usado") || !lista.includes("Las Condes · 2D2B · 77 m²")) F(`3 · la lista de Explorar no dice «· Usado» (o se lo pone al que no lo dice): ${JSON.stringify(lista)}`);
+      if (!/\{lineaDepto\(p\)\}/.test(codigo("src/app/explorar/tarjeta-pin.tsx")) || !/\{lineaDepto\(p\)\}/.test(codigo("src/app/explorar/lista-portal.tsx"))) F("3 · la tarjeta o la lista de Explorar no usan la línea del depto");
       // El correo: la tarjeta (semanal, del día, la selección diaria) y «los que casi».
       const d = (condicion?: "usado" | "nuevo") => ({ ...depto, veredicto: "COMPRAR", score: 80, flujo: 1000, url: "https://x/u", ...(condicion ? { condicion } : {}) });
       const correo = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "2D", piePct: 20, plazoAnios: 25, deptos: [d("usado"), d()], saldo: 1, conRegalo: false, presentacion: false, urlBoton: "u", urlTres: "c", urlBaja: "b" });
@@ -152,7 +151,7 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
       if (!/<div className="sel-ojo"><span className="sel-pin" aria-hidden="true">\{i \+ 1\}<\/span>\{lineaDepto\(it\)\}<\/div>/.test(ps)) F("3 · las tarjetas de «Estás dentro» no usan la línea del depto");
       if (!/depto=\{\{ comuna: confirmar\.it\.comuna, tipologia: confirmar\.it\.tipologia, m2: confirmar\.it\.m2, precioUF: confirmar\.it\.precioUF, condicion: confirmar\.it\.condicion \}\}/.test(ps)) F("3 · «Estás dentro» no le pasa la condición al pop-up");
-      if (!/depto=\{\{ comuna: confirmar\.it\.comuna, tipologia: confirmar\.it\.tipologia, m2: confirmar\.it\.m2, precioUF: confirmar\.it\.precioUF, condicion: confirmar\.it\.condicion \}\}/.test(cli)) F("3 · Explorar no le pasa la condición al pop-up");
+      if (!/depto=\{\{ comuna: confirmar\.it\.comuna, tipologia: confirmar\.it\.tipologia, m2: confirmar\.it\.m2, precioUF: confirmar\.it\.precioUF, condicion: confirmar\.it\.condicion \}\}/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("3 · Explorar no le pasa la condición al pop-up");
       const sl = codigo("src/app/semanal/semanal-lista.tsx");
       if (!/const ojoDe = \(it: ItemSemanal\) => lineaDepto\(it\);/.test(sl) || !/<div className="sel-ojo">\{n != null && <span className="sel-pin" aria-hidden="true">\{n\}<\/span>\}\{ojoDe\(it\)\}<\/div>/.test(sl) || !/depto=\{confirmar\.it\}/.test(sl)) F("3 · las tarjetas del dashboard no usan la línea del depto (o no le pasan el depto entero al pop-up)");
       if (!/const ojo = escaparHtml\(lineaDepto\(d\)\);/.test(cuerpo(codigo("src/lib/email/correo-semanal.ts"), "tarjeta"))) F("3 · la tarjeta del correo no usa la línea del depto");

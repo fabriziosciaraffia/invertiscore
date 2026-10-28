@@ -28,7 +28,7 @@ import { INMEDIATO, VENTANA_NUEVOS_HORAS, VENTANA_PRIMERA_HORAS, ventanaNuevosHo
 import { correoInmediato } from "../../../src/lib/email/correo-inmediato";
 import { eventoVistaEntrada, robotDeVisita } from "../../../src/lib/vista-entrada";
 import { eventoExplorarVista } from "../../../src/lib/explorar/servidor";
-import { EVENTOS_EXPLORAR } from "../../../src/lib/explorar/explorar";
+import { EVENTOS_PORTAL } from "../../../src/lib/explorar/portal";
 import { CLAVE_RESUMEN_NOCHE, resumenDeLaNoche, resumenGuardado } from "../../../src/lib/deptos/servidor";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -166,13 +166,16 @@ export async function runPautaArreglosTier(): Promise<{ hard: number }> {
   if (!/cabeceras:\s*request\.headers/.test(llamadaVista)) F("3 · el middleware no pasa las cabeceras a la vista (la landing y /deptos)");
   if (!/cabeceras,/.test(cuerpo(codigo("src/app/i/[codigo]/page.tsx"), "eventoInvitacionVista({")) || !/cabeceras:\s*p\.cabeceras/.test(codigo("src/lib/invitacion-vista.ts"))) F("3 · /i no pasa las cabeceras a su vista");
   if (!/robot:\s*robotDeVisita\(headers\(\)\.get\("user-agent"\),\s*headers\(\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("3 · /explorar no marca el robot en su vista");
-  if (!/robot:\s*robotDeVisita\(request\.headers\.get\("user-agent"\),\s*request\.headers\)/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · los cambios de Explorar no marcan el robot");
-  if (EVENTOS_EXPLORAR.pin !== "explorar_pin" || EVENTOS_EXPLORAR.aviso !== "explorar_aviso") F("3 · los nombres de los eventos de Explorar cambiaron");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · los cambios de filtros se aplican en el navegador, sin pedir nada: la API ya no
+  // deja la vista (la deja el navegador, EXPLORAR-PORTAL §10). Tocar un pin es `tocarPin` (no hay mapa cerrado) y el aviso sin
+  // saldo, con su «explorar_aviso», se retiró: sin saldo se explora todo.
+  if (/capturarServidor|eventoExplorarVista/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · la API del mapa volvió a dejar la vista (la deja el navegador)");
+  if (EVENTOS_PORTAL.pin !== "explorar_pin") F("3 · los nombres de los eventos de Explorar cambiaron");
   const exc = codigo("src/app/explorar/explorar-cliente.tsx");
-  const sel = cuerpo(exc, "function seleccionar(");
-  if (!/if \(desde === "mapa"\) posthog\?\.capture\(EVENTOS_EXPLORAR\.pin/.test(sel) || sel.indexOf("EVENTOS_EXPLORAR.pin") > sel.indexOf("if (cerrado) return")) F("3 · tocar un pin no deja «explorar_pin» (también con Explorar cerrado)");
-  if (!/onSeleccionar=\{\(id: string\) => seleccionar\(id, "mapa"\)\}/.test(exc)) F("3 · el mapa no avisa que el toque fue en un pin");
-  if (!/posthog\?\.capture\(EVENTOS_EXPLORAR\.aviso/.test(codigo("src/app/explorar/aviso-sin-saldo.tsx"))) F("3 · el aviso sin saldo no deja «explorar_aviso»");
+  const sel = cuerpo(exc, "function tocarPin(");
+  if (!/posthog\?\.capture\(EVENTOS_PORTAL\.pin, \{ aviso_id: avisoId/.test(sel)) F("3 · tocar un pin no deja «explorar_pin»");
+  if (!/onSeleccionar=\{tocarPin\}/.test(exc)) F("3 · el mapa no avisa que el toque fue en un pin");
+  if (existsSync(join(RAIZ, "src/app/explorar/aviso-sin-saldo.tsx")) || /explorar_aviso/.test(exc)) F("3 · volvió el aviso sin saldo de Explorar");
 
   // ── 4 · las consultas que se colgaban (comportamiento) ──
   const llamadas: string[] = [];

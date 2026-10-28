@@ -248,7 +248,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): `NO_DA` partido en dos, con las mismas palabras.
     if (`${STR.NO_DA_DEPTO} ${STR.PARECIDOS_DAN}` !== "Con los datos de su dirección, este depto no da para renta corta. Estos sí dan, con esos mismos datos:") F("3 · el mensaje cuando no da no es el aprobado");
     // La ruta: compara contra lo que vio la persona, mide fino con el contador «semanal», y no mide sin análisis.
-    if (!/mostrado: \{ veredicto: item\.veredicto!, score: item\.score \?\? null \}/.test(ruta)) F("3 · la ruta no compara contra el veredicto que vio la persona");
+    // ⚠ ACTA (28-oct-2026, Explorar como portal) · desde Explorar no hay selección: lo mostrado es el Comprar por zona del mapa,
+    // con el puntaje de la zona recalculada con ese cuerpo; desde el semanal, el de la selección como siempre.
+    if (!/mostrado: \{ veredicto: item\.veredicto!, score: item\.score \?\? \(desdeExplorar \? zonaEv\?\.score \?\? null : null\) \}/.test(ruta)) F("3 · la ruta no compara contra el veredicto que vio la persona");
     if (!/await buildShortTermAnalysisRow\(body, ufValue, mercado, undefined, \{ origen: "semanal" \}\)/.test(ruta)) F("3 · la medición fina no es la del informe o no se cuenta como del semanal");
     if (!/const lugar = await reverseGeocode\(aviso\.lat, aviso\.lng\);/.test(ruta)) F("3 · la medición fina no va por la dirección del depto, como en el wizard");
     const iSaldo = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };'), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
@@ -272,7 +274,8 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     await b.correr();
     const cb = b.n.registrar;
     if (cb.length !== 2 || cb[0].cambio || cb[0].cobrado || !cb[1].cobrado || cb[1].analysisId !== "informe-1") F(`4 · la comparación de un veredicto sostenido no queda registrada (antes de cobrar) y anotada como cobrada después (${JSON.stringify(cb)})`);
-    if (!/from\("comparaciones_zona_str"\)\.upsert\(\{\s*\.\.\.clave, seleccion_id: sel\.id,\s*zona_mostrado: c\.mostrado, zona_score: c\.mostradoScore,[\s\S]*?cambio: c\.cambio, cobrado: c\.cobrado, analysis_id: c\.analysisId,[\s\S]*?\}, \{ onConflict: "user_id,aviso_id" \}\)/.test(ruta))
+    // ⚠ ACTA (28-oct-2026, Explorar como portal) · desde Explorar la comparación se registra sin selección (`seleccion_id` null).
+    if (!/from\("comparaciones_zona_str"\)\.upsert\(\{\s*\.\.\.clave, seleccion_id: sel\?\.id \?\? null,\s*zona_mostrado: c\.mostrado, zona_score: c\.mostradoScore,[\s\S]*?cambio: c\.cambio, cobrado: c\.cobrado, analysis_id: c\.analysisId,[\s\S]*?\}, \{ onConflict: "user_id,aviso_id" \}\)/.test(ruta))
       F("4 · la ruta no guarda la comparación (zona mostrada, fina, si cambió y si se cobró) por persona y aviso");
     const mig = leer("supabase/migrations/20261014_semanal_renta_corta.sql");
     if (!/create table if not exists public\.comparaciones_zona_str \(/.test(mig) || !/cambio boolean not null,/.test(mig) || !/primary key \(user_id, aviso_id\)\s*\);\s*create index if not exists comparaciones_zona_str_medido/.test(mig) || !/revoke all on public\.comparaciones_zona_str from anon, authenticated;/.test(mig))

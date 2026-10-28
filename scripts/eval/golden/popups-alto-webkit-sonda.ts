@@ -31,7 +31,8 @@ const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? p
 const BASE = (arg("--base") ?? "http://localhost:3000").replace(/\/$/, "");
 const ANCHO = 390;
 const ALTO = Number(arg("--alto") ?? 740);
-const ESTADOS = ["a", "a0", "d1", "d1t", "d2", "e", "e0"] as const;
+// ⚠ ACTA (28-oct-2026, Explorar como portal) · el aviso E (e, e0) se retiró con el mapa cerrado; entra la línea del plan (p, p0).
+const ESTADOS = ["a", "a0", "d1", "d1t", "d2", "p", "p0"] as const;
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -122,11 +123,11 @@ async function main(): Promise<void> {
         if (e !== "d2") ok(m.linea === 1, `LÍNEAS · veredicto · flujo ocupa ${m.linea} líneas`);
         ok(m.incluye === 1 && m.incluyeTexto === "El informe incluye el enlace a la publicación.", `LÍNEAS · la línea del enlace: «${m.incluyeTexto}» en ${m.incluye} líneas`);
       }
-      if (e === "a" || e === "e") {
+      if (e === "a") {
         ok(m.filaUna === true && /^Solo para cuentas nuevas\s*·?\s*vence mañana 18:07$/i.test((m.filaTexto ?? "").replace(/\s+/g, " ")), `LÍNEAS · la oferta no va en una fila: «${m.filaTexto}» (una fila: ${m.filaUna})`);
         if (e === "a") ok(m.oferta === 1 && m.ofertaTexto === "3 análisis por $14.990 · $4.997 cada uno", `LÍNEAS · «${m.ofertaTexto}» en ${m.oferta} líneas`);
       }
-      if (e === "a" || e === "a0" || e === "e" || e === "e0") {
+      if (e === "a" || e === "a0" || e === "p0") {
         ok(!!m.suelto && m.suelto.borde >= 1 && !!m.principal && m.suelto.alto < m.principal.alto, `SUELTO · «Comprar solo 1» no es un botón de borde más bajo que el principal (${JSON.stringify(m.suelto)} vs ${JSON.stringify(m.principal)})`);
         if (e === "a") ok(m.principal?.texto === "Aprovechar · 3 por $14.990", `el principal dice «${m.principal?.texto}»`);
       }

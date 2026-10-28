@@ -465,8 +465,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!str || str.avisoId !== "a1" || str.flujo !== 41234 || str.veredicto !== "COMPRAR" || str.score !== 72 || !str.perfil.amoblado || !ltr || ltr.flujo !== -12000 || datosDeInformeDeAviso({ results: {}, input_data: {} }) !== null)
       F(`11 · «Quiero verlo» no lee el aviso, el veredicto y el flujo de un informe de renta corta (o de renta larga) (${JSON.stringify(str)})`);
     // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (la cuenta de /deptos) el origen es null y no va.
-    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde: \"semanal\" };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
-    if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
+    // ⚠ ACTA (28-oct-2026, Explorar como portal) · la misma ruta analiza desde Explorar: `desde` es «explorar» o «semanal».
+    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
+    if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild || !ruta.includes('const desde = desdeExplorar ? "explorar" : "semanal";')) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
     if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} antiguedad=\{origenAviso\.antiguedad\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
       F("11 · el informe de renta corta no muestra «Quiero verlo»");

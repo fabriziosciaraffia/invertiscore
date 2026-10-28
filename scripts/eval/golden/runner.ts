@@ -170,6 +170,7 @@ import { runRegistroMetaTier } from "./registro-meta-catch-test";
 import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runCargaTier } from "./carga-catch-test";
 import { runExplorarTier } from "./explorar-catch-test";
+import { runExplorarPortalTier } from "./explorar-portal-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -723,6 +724,10 @@ function printSeed(r: SeedReport) {
   // Comprar de a mil, explorar no gasta, sin saldo el mapa y el aviso E, el mapa después del primer pintado, el pop-up con
   // «Cambiar», la medición y el botón del dashboard—. ──
   totalHard += (await runExplorarTier()).hard;
+  // Tier EXPLORAR-PORTAL (28-oct-2026, 0 tokens): Explorar como portal —la vista global sin filtros del perfil, la tarjeta del pin
+  // sin las líneas retiradas, la foto de calle solo a menos de 40 m (si no, el mapa chico), sin saldo se explora y el cobro sale
+  // al analizar, «Avísame de nuevos» guarda el perfil; los filtros, el universo, el pin, el plan, la medición y los guardados—. ──
+  totalHard += (await runExplorarPortalTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
