@@ -254,8 +254,10 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       // responder) y la atribución B, después, con la puerta ya decidida.
       const ord = sinComentarios(leer("src/lib/deptos/alta-orden.ts"));
       if (!/const vinculo = cookieInv \? await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella \}\) : null;/.test(alta)
-        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(alta)
-        || !/atribucion: async \(puerta\) => \{ if \(puerta === "B"\) await guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\); \}/.test(alta)
+        // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la puerta del alta también puede ser la E (lo
+        // elegido vino de Explorar sin cuenta); la invitada sigue siendo C antes que todo, y la atribución se fija para B y E.
+        || !/const puerta: PuertaAlta = ref && ref\.estado !== "cuenta_previa" \? "C" : puertaElegida\.puerta === "E" \? "E" : "B";/.test(alta)
+        || !/atribucion: async \(puerta\) => \{\s*if \(puerta === "B"\) await guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\);\s*if \(puerta === "E"\) await guardarAtribucion\(admin, user\.id, \{ puerta: "E", puerta_detalle: detalleExplorar\(puertaElegida\.detalle\) \}\);\s*\},/.test(alta)
         || pos(alta, "vincularInvitacion(") > pos(alta, "guardarAtribucion(") || !ord.includes("despues(seguro(() => piezas.atribucion(puerta.puerta)));") || pos(ord, "piezas.esPrueba()]);") > ord.lastIndexOf("despues(seguro(() => piezas.atribucion(puerta.puerta)));")) F("2 · /deptos y la página del invitado no cobran el código antes de la puerta B (o la invitada queda en B)");
       if (!/if \(cookieInv\) await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\);\s*waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "A", puerta_detalle: "ticket"/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts")))) F("2 · el ticket no cobra el código");
       if (!/if \(cookieInv\) \{\s*await vincularInvitacion\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx"))) || !/const admin = createServiceClient\(\);/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("2 · el dashboard no es red del código");

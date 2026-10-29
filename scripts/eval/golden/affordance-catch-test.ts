@@ -53,8 +53,13 @@ export function runAffordanceTier(): { hard: number } {
   console.log("\n─── TIER AFFORDANCE (tocable y cargando, 0 tokens) ───");
 
   // ── 1 · LO TOCABLE SE VE TOCABLE ───────────────────────────────────────────
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasó a llamarse «Ver un análisis de ejemplo» y en
+  // la landing dejó el hero: va como ENLACE DE TEXTO debajo de la segunda puerta (TarjetaExplorar). Lo tocable se ve tocable:
+  // subrayado, con su alto para el dedo; el hero ya no lo lleva.
   const entrada = sinComentarios(leer("src/components/landing-v14/Entrada.tsx"));
-  if (!/<LinkMedido href="\/demo" className="he-pild" evento=\{EV\.ejemplo\}/.test(entrada)) F("1 · «Ver un análisis real» del hero no es la píldora (he-pild)");
+  const puertas = sinComentarios(leer("src/components/landing-v14/TarjetaExplorar.tsx"));
+  const cssLanding = leer("src/components/landing-v14/landing.css");
+  if (!/<LinkMedido href="\/demo" className="lv-ejemplo" evento=\{EV\.ejemplo\}/.test(puertas) || !/\.lv-root \.lv-ejemplo \{[^}]*padding: 6px 2px;[^}]*text-decoration: underline;/.test(cssLanding) || /\/demo|he-pild/.test(entrada)) F("1 · «Ver un análisis de ejemplo» no es un enlace subrayado bajo la segunda puerta (o vuelve al hero)");
   const portada = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
   // (01-oct-2026) La dirección del wizard ya no lleva «Ver un análisis de ejemplo»: es un paso del formulario.
   if (/href="\/demo"/.test(portada) && !/className="he-pild"/.test(portada)) F("1 · un enlace al demo en la dirección del wizard no es la píldora");

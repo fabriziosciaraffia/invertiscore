@@ -138,6 +138,10 @@ export function runLandingV14Tier(): { hard: number } {
       if (!ROJO.test(decl)) continue;
       // el único rojo de fondo: el botón de avanzar del campo
       if (/^\.he-box:hover \.he-btn, \.he-btn:focus-visible$/.test(sel)) continue;
+      // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver en el mapa →» de la segunda puerta va en el
+      // MATERIAL DE LA TRÍADA (lo pide el goal): el degradado de los tres tokens de veredicto, el mismo del hero, no el rojo de
+      // marca liso. Solo ese botón y solo ese degradado exacto.
+      if (sel === ".lv-root .lv-explorar-cta" && /^linear-gradient\(90deg, var\(--verdict-comprar\) 0%, var\(--verdict-ajusta\) 55%, var\(--verdict-buscar\) 100%\)$/.test(decl.replace(/^background:\s*/, "").trim())) continue;
       F(`8 · ${f}: «${sel}» usa el rojo de marca de fondo (${decl})`);
     }
   }
@@ -163,7 +167,9 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/popup: PopupLanding \| null;/.test(vivo) || !/hayAjustesQueMostrar\(\{ veredicto, distancia, mixComprar \}\)/.test(vivo)) F("9 · los datos del pop-up no se arman como en el informe");
 
   // ── 10 · el QA del 28-sep ──
-  if (!/<LinkMedido href="\/demo" className="he-pild" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>/.test(ent)) F("10 · «Ver un análisis real» del hero no lleva al demo (como píldora)");
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · el demo dejó el hero: «Ver un análisis de ejemplo»
+  // va debajo de la segunda puerta (TarjetaExplorar), como enlace de texto, y sigue midiendo el mismo evento.
+  if (!/<LinkMedido href="\/demo" className="lv-ejemplo" evento=\{EV\.ejemplo\} props=\{\{ origen: "puertas" \}\}>\s*\{LANDING_PUERTAS\.ejemplo\}/.test(sinComentarios(leer(`${DIR}/TarjetaExplorar.tsx`))) || /\/demo/.test(ent)) F("10 · «Ver un análisis de ejemplo» no lleva al demo desde la segunda puerta (o vuelve al hero)");
   // (01-oct-2026) La dirección del wizard dejó de ser el hero: sin el pie de la landing (ver WIZARD-ENTRADA §11).
   if (/he-pild|\/demo/.test(wiz)) F("10 · el paso de la dirección del wizard vuelve a llevar el pie de la landing");
   if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");

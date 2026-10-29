@@ -201,7 +201,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         F("1 · el alta no decide con tipoDeAlta, o a una cuenta existente le escribe el perfil");
       if (!/comunasParaAgregar\(pp\.perfil\.comunas, elegidas\)/.test(alta)) F("1 · a la cuenta existente no se le ofrecen las comunas que le faltan");
       const correo = sinComentarios(leer("src/app/api/deptos/correo/route.ts"));
-      if (!/const existe = await correoTieneCuenta\(admin, correo\);/.test(correo) || !/await guardarPendiente\(admin, correo, perfilManualDeElecciones\(v\), existe, esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\);/.test(correo))
+      // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · lo elegido sale de perfilDelPedido (abierto.ts):
+      // los chips de /deptos por perfilManualDeElecciones, como siempre, y —solo en la puerta E— los filtros de «Avísame».
+      const ab = sinComentarios(leer("src/lib/explorar/abierto.ts"));
+      if (!/const existe = await correoTieneCuenta\(admin, correo\);/.test(correo) || !/const v = perfilDelPedido\(b\);/.test(correo) || !/await guardarPendiente\(admin, correo, v\.perfil, existe, puerta, puerta === "E" \?/.test(correo)
+        || !/const v = validarElecciones\(b\.elecciones \?\? \{\}\);\s*return v\.ok \? \{ ok: true, perfil: perfilManualDeElecciones\(v\) \}/.test(ab) || !/if \(b\.puerta === "E" && b\.filtros/.test(ab))
         F("1 · el pedido del código no mira si el correo ya tiene cuenta, o no guarda lo elegido");
       // EL MISMO MENSAJE exista o no la cuenta (16-oct-2026, decisión de Fabrizio): si la cuenta existe no vuelve al navegador.
       if (!/return NextResponse\.json\(\{ ok: true \}\);/.test(correo) || /NextResponse\.json\(\{[^}]*existe/.test(correo)) F("1 · el pedido del código le dice al navegador si el correo tiene cuenta");
@@ -411,7 +415,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const altaB = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): el regalo es una pieza que recibe la puerta.
       if (!/regalo: \(puerta\) => c\.medir\("regalo", asegurarRegaloDeAlta\(admin, \{ userId: user\.id, creadaAt: user\.created_at, huella, puerta, crono: c, correo \}\)\)/.test(altaB)
-        || !/puerta: ref && ref\.estado !== "cuenta_previa" \? "C" as const : "B" as const/.test(altaB) || !/const regaloP = piezas\.regalo\(puertaP\.then\(\(x\) => x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
+        || !/const puerta: PuertaAlta = ref && ref\.estado !== "cuenta_previa" \? "C" : puertaElegida\.puerta === "E" \? "E" : "B";/.test(altaB) || !/const regaloP = piezas\.regalo\(puertaP\.then\(\(x\) => x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
 
       // El aviso antes de gastar: «usa tu análisis de regalo» y «usa 1 de tus N».
@@ -566,7 +570,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setRegaloPendiente\(!d\.regaloVence && d\.regalo === "pendiente"\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo elegido guarda además la puerta (B o C), para medir alta_perdida.
-      if (!/const p = await guardarPendienteGoogle\(createServiceClient\(\), perfilManualDeElecciones\(v\), esPuertaDeptos\(b\.puerta\) \? b\.puerta : null\);/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
+      // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la ruta de Google valida por perfilDelPedido (los mismos chips por perfilManualDeElecciones; en la puerta E, también
+      // los filtros de «Avísame») y guarda la puerta con su detalle.
+      if (!/const v = perfilDelPedido\(b\);\s*if \(!v\.ok\) return NextResponse\.json/.test(gf) || !/const p = await guardarPendienteGoogle\(createServiceClient\(\), v\.perfil, puerta, puerta === "E" \?/.test(gf)) F("9 · la ruta de Google no guarda los chips validados");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
       const alta = sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts")));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · la clave llega a ejecutarAlta como \`p.clave\` (la ruta le pasa \`b.p\`).
@@ -632,8 +638,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // llega la nueva se atenúan juntos.
       if (!/<span className="dp-cifra" data-deptos="cifra">\{miles\(respuesta\.convienen\)\}<\/span><span className="dp-resto">\{respuesta\.resto\}<\/span>/.test(cliD) || /DEPTOS_COPY\.resto\(/.test(cliD)) F("10 · el resto no sale de la misma respuesta que el número (no cambiarían juntos)");
       if (!/\.dp-tarjeta-numero\[data-cargando="1"\] \.dp-numero, \.dp-tarjeta-numero\[data-cargando="1"\] \.dp-ayuda \{ opacity: 0\.55; \}/.test(leer("src/app/deptos/deptos.css"))) F("10 · mientras cambia, el número y la nota no se atenúan juntos");
-      if (!/<p className="dp-prueba-t">\{prueba\.antes\}<b>\{prueba\.fuerte\}<\/b>\{prueba\.despues\}<\/p>\s*<EnlaceCarga href=\{DEPTOS_COPY\.hrefAnalisis\} className="dp-prueba-enlace" data-deptos="ver-analisis">\{DEPTOS_COPY\.verAnalisis\} →<\/EnlaceCarga>/.test(cliD) || DEPTOS_COPY.hrefAnalisis !== "/demo" || DEPTOS_COPY.verAnalisis !== "Ver un análisis real")
-        F("10 · la prueba no lleva la frase con la negrita y «Ver un análisis real» al demo");
+      if (!/<p className="dp-prueba-t">\{prueba\.antes\}<b>\{prueba\.fuerte\}<\/b>\{prueba\.despues\}<\/p>\s*<EnlaceCarga href=\{DEPTOS_COPY\.hrefAnalisis\} className="dp-prueba-enlace" data-deptos="ver-analisis">\{DEPTOS_COPY\.verAnalisis\} →<\/EnlaceCarga>/.test(cliD) || DEPTOS_COPY.hrefAnalisis !== "/demo" || DEPTOS_COPY.verAnalisis !== "Ver un análisis de ejemplo")
+        // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasa a «de ejemplo» en todo el sitio.
+        F("10 · la prueba no lleva la frase con la negrita y «Ver un análisis de ejemplo» al demo");
       // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color de fondo además de
       // la tarjeta roja del regalo (solo en «Estás dentro») y el pin rojo de las tarjetas (mockup 2).
       const cssD = leer("src/app/deptos/deptos.css");

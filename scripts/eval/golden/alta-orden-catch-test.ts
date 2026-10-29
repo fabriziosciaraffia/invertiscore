@@ -58,7 +58,7 @@ export async function runAltaOrdenTier(): Promise<{ hard: number }> {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
   const orden = await import("../../../src/lib/deptos/alta-orden");
-  const espejoDe = (puerta: "B" | "C", prueba: boolean) => (prueba ? null : { evento: "CompleteRegistration", eventId: "reg-u1", datos: { status: "completo", puerta } });
+  const espejoDe = (puerta: "B" | "C" | "E", prueba: boolean) => (prueba ? null : { evento: "CompleteRegistration", eventId: "reg-u1", datos: { status: "completo", puerta } });
   const base = { cuentaCreadaAt: "2026-10-25T14:00:10Z", cuentaNueva: true, busquedaDe: () => ({ comunas: ["Providencia"] }), espejoDe };
 
   // ── 1, 2 y 3 · el caso común, con el regalo lento ──

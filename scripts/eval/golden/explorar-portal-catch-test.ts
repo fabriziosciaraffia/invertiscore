@@ -118,8 +118,14 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (!po.esVistaGlobal(G) || po.filtrosActivos(G) !== 0 || po.urlDePortal(G) !== "") F("1 · la vista global cuenta filtros o deja algo en la URL");
   if (po.lineaSupuestos(G) !== "Arriendo tradicional · pie 20 % · 25 años" || po.numeroDelMapa(4807, G) !== "4.807 convienen en Gran Santiago") F(`1 · el número o la línea de los supuestos: ${po.numeroDelMapa(4807, G)} / ${po.lineaSupuestos(G)}`);
   // La página abre con la URL y nada más: el perfil no decide los filtros iniciales.
-  const asignaFiltros = pag.match(/\bfiltros\s*[=:]/g) ?? [];
-  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(pag) || !/inicial=\{\{ filtros, orden, n, cuenta \}\}/.test(pag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la página tiene ahora dos ramas: con cuenta
+  // (ExplorarConDatos) la regla es la misma —la URL tal cual—; sin cuenta (ExplorarAbierto) la URL pasa por filtrosAbiertos (pie
+  // 20 % y 25 años, sin «Solo flujo positivo»: decisión de Fabrizio) y tampoco mira ningún perfil.
+  const conCuentaPag = pag.slice(pag.indexOf("async function ExplorarConDatos"));
+  const abiertaPag = pag.slice(pag.indexOf("async function ExplorarAbierto"), pag.indexOf("async function ExplorarConDatos"));
+  const asignaFiltros = conCuentaPag.match(/\bfiltros\s*[=:]/g) ?? [];
+  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
+  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con pie 20 % y 25 años (o le pasa una cuenta)");
   if (/filtrosDeLaCuenta|filtrosDePerfil|leerPerfilBusqueda|miBusqueda/.test(pag)) F("1 · la página lee el perfil para abrir");
   if (!/const \[filtros, setFiltros\] = useState\(inicial\.filtros\);/.test(cli)) F("1 · el cliente no arranca con los filtros que mandó el servidor");
   if (modCli) {
@@ -250,7 +256,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   }
   const ruta = codigo("src/app/api/explorar/route.ts");
   if (/status: 403|leerSaldo|estadoSaldo/.test(ruta)) F("4 · la API del mapa mira el saldo (sin saldo se explora igual)");
-  if (!/function pedirAnalisis\(it: PinMapa\) \{\s*setError\(null\);\s*setConfirmar\(\{ it, sin: cuenta\.saldo\.tipo === "sin" \}\);/.test(cli) || !/uso=\{confirmar\.sin \? \{ tipo: "sin" \} : cuenta\.saldo\}/.test(cli) || !/compras=\{compras\(confirmar\.it\.avisoId\)\}/.test(cli)) F("4 · «Analizar este» sin saldo no abre el pop-up de compra de siempre");
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · sin cuenta, «Analizar este» es «Regístrate
+  // gratis para ver este depto» y abre la hoja de registro; con cuenta y sin saldo, el pop-up de compra de siempre.
+  if (!/function pedirAnalisis\(it: PinMapa\) \{\s*if \(sinCuenta\) \{ pedirRegistro\("analizar", it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: cuenta\.saldo\.tipo === "sin" \}\);/.test(cli) || !/uso=\{confirmar\.sin \? \{ tipo: "sin" \} : cuenta\.saldo\}/.test(cli) || !/compras=\{compras\(confirmar\.it\.avisoId\)\}/.test(cli)) F("4 · «Analizar este» sin saldo no abre el pop-up de compra de siempre");
   if (!/alAnalizar=\{pedirAnalisis\}/.test(cli)) F("4 · la tarjeta no pide el análisis por el pop-up");
   try {
     const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as typeof import("../../../src/components/guia/AvisoAntesDeAnalizar");
@@ -457,8 +465,10 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // EL ESQUELETO NO ESPERA LA CUENTA (28-oct-2026, medido en producción: esperando perfil, saldo, guardados, informes y el número
   // antes de mandar el HTML, el LCP del teléfono daba 2,53 s de mediana con 1,3 s de «load delay»). La página manda el esqueleto
   // con el mapa quieto apenas valida la sesión; la cuenta y el número llegan en el mismo pedido, dentro de Suspense.
-  const cuerpoPagina = pag.slice(pag.indexOf("export default async function ExplorarPage"), pag.indexOf("async function ExplorarConDatos"));
-  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} \/>\}>\s*<ExplorarConDatos consulta=\{consulta\} user=\{user\} \/>\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · dos ramas dentro del MISMO Suspense: con
+  // cuenta ExplorarConDatos, sin cuenta ExplorarAbierto (el número de la noche). Ninguna espera antes del esqueleto.
+  const cuerpoPagina = pag.slice(pag.indexOf("export default async function ExplorarPage"), pag.indexOf("async function ExplorarAbierto"));
+  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} sinCuenta=\{!user\} \/>\}>\s*\{user \? <ExplorarConDatos consulta=\{consulta\} user=\{user\} \/> : <ExplorarAbierto consulta=\{consulta\} \/>\}\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
   // UNA SOLA IMAGEN, PRIMERA EN EL HTML (28-oct-2026, candidatos a LCP medidos en Chromium: el header se pintaba antes y el mapa
   // quieto un cuadro después, o se pintaba en el esqueleto y se quitaba al llegar el cliente). La capa va en la página, antes del
   // header, y ni el esqueleto ni el cliente la dibujan.
