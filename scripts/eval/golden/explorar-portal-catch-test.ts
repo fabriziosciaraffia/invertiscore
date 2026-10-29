@@ -440,7 +440,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // header, y ni el esqueleto ni el cliente la dibujan.
   const iCapa = cuerpoPagina.indexOf("{mapaQuieto}"), iHead = cuerpoPagina.indexOf("<HeaderFranco");
   if ((pag.match(/\{mapaQuieto\}/g) ?? []).length !== 1 || iCapa < 0 || iHead < 0 || iCapa > iHead || /mapaQuieto|MAPA_QUIETO/.test(codigo("src/app/explorar/esqueleto.tsx") + cli)) F("12 · el mapa quieto no es una sola capa antes del header (se repite, se reemplaza o va después)");
-  if (!/\.ex-mapa-quieto \{ position: absolute; inset: 0; z-index: 2;/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-pagina \{ position: relative;/.test(leer("src/app/explorar/explorar.css"))) F("12 · la capa del mapa quieto no queda detrás del header y la fila de arriba y encima del mapa real");
+  if (!/\.ex-mapa-quieto \{ position: absolute; inset: 0; grid-row: 2; grid-column: 1; z-index: 2;/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-pagina \{ position: relative;/.test(leer("src/app/explorar/explorar.css"))) F("12 · la capa del mapa quieto no queda detrás del header y la fila de arriba y encima del mapa real");
+  // NUNCA A PANTALLA COMPLETA (28-oct-2026, medido en producción): Chrome toma por fondo una imagen que cubre todo el viewport y
+  // no la cuenta como LCP; con la capa sobre la página entera el LCP pasó a una tesela de Google (10,1 s de mediana). La capa va
+  // en la fila de abajo del header, y la página es una grilla de dos filas: el header y lo de abajo.
+  if (!/\.ex-pagina \{[^}]*display: grid; grid-template-rows: auto minmax\(0, 1fr\); grid-template-columns: minmax\(0, 1fr\);/.test(leer("src/app/explorar/explorar.css")) || /\.ex-mapa-quieto \{[^}]*grid-row: 1/.test(leer("src/app/explorar/explorar.css"))) F("12 · el mapa quieto cubre la pantalla entera (Chrome no lo cuenta como LCP)");
   try {
     const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
     const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "" }));
@@ -465,7 +469,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (28-oct-2026). 63 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
+// ACTA DE MUTACIÓN (28-oct-2026). 65 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
 // todas ROJAS. La primera pasada dio 49 de 52: tres gates flojos que se afirmaron —4D+ sin un 6D en el fixture (M32), el flujo
 // positivo sin un flujo cero (M34) y el primer pintado sin mirar la línea de antes de la página quieta (M52)—. Después del QA
 // en WebKit 390 y PC, seis más por lo que el QA cazó: M53 la noche esparce el universo en la raíz (el mapa decía «0
@@ -475,7 +479,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
 // Y por el LCP medido en producción (2,53 s esperando la cuenta): M59 la página espera la cuenta (sin esqueleto) · M61 el mapa
 // quieto con decoding async. Y por los candidatos a LCP medidos en Chromium (el header pintaba antes y el mapa quieto se
 // reemplazaba al llegar el cliente), la capa única de la página: M60 el mapa quieto después del header · M62 el mapa quieto
-// bajo el mapa real · M63 el esqueleto repite el mapa quieto.
+// bajo el mapa real · M63 el esqueleto repite el mapa quieto. Y por el LCP de 10,1 s (la capa a pantalla completa, que Chrome
+// toma por fondo): M64 la capa sin su fila · M65 la página sin la grilla.
 //   1 · VISTA GLOBAL: M1 el cliente abre con el perfil · M2 la global filtra Santiago · M3 la página pasa el perfil · M4 pie 30 ·
 //       M5 «Mi búsqueda» sin modalidad.
 //   2 · TARJETA: M6 «Visto publicado» · M7 «Revisado con pie» · M8 sin cap rate · M9 la caja gris · M10 sin corazón.

@@ -29,8 +29,9 @@ import { EsqueletoExplorar } from "./esqueleto";
 // UNA SOLA IMAGEN, PRIMERA EN EL HTML (28-oct-2026, candidatos a LCP medidos en Chromium): con el mapa quieto dentro del
 // esqueleto y del cliente, el navegador a veces pintaba antes el wordmark del header (el primer pintado) y el mapa quieto un
 // cuadro después, o lo pintaba en el esqueleto y lo quitaba al llegar el cliente; Lighthouse le sumaba al LCP el JS que corría
-// entremedio. Ahora es una capa de la página, antes del header en el HTML y detrás de él y de la barra (que son opacos): todo
+// entremedio. Ahora es una capa de la página, antes del header en el HTML y en la fila de abajo de él (explorar.css): todo
 // pintado que muestre el header ya la muestra, y nunca se reemplaza. Se desvanece cuando el mapa real dibujó sus teselas.
+// Y no cubre la pantalla entera: una imagen del tamaño del viewport Chrome la toma por fondo y no la cuenta como LCP.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };

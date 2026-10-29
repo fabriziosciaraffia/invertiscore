@@ -7,7 +7,8 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 /* Con el aviso de cookies a la vista, la pantalla se acorta su alto (AvisoCookies › --alto-aviso-cookies): si no, la barra tapa
    la hoja de abajo, la tarjeta y el botón «Mapa». */
-.ex-pagina { position: relative; height: calc(100dvh - var(--alto-aviso-cookies, 0px)); display: flex; flex-direction: column; overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
+/* Dos filas: el header y lo de abajo (el esqueleto o el cliente). El mapa quieto se ubica en la segunda (ver más abajo). */
+.ex-pagina { position: relative; height: calc(100dvh - var(--alto-aviso-cookies, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
 .ex { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
 .ex button { font-family: inherit; }
 
@@ -32,11 +33,12 @@
 .ex-cuerpo { position: relative; flex: 1; min-height: 0; }
 .ex-mapa-wrap { position: absolute; inset: 0; background: var(--franco-bg); overflow: hidden; }
 .ex-mapa { position: absolute; inset: 0; }
-/* El mapa quieto del primer pintado (el LCP): UNA capa de la página, primera en el HTML (page.tsx). Queda detrás del header
-   (sticky, z 40) y de la fila de arriba (z 6), que son opacos; encima del mapa real hasta que éste dibuja sus teselas, y ahí se
-   desvanece. Lo de encima del mapa (el número, la hoja, la tarjeta, la lista) va con z 3 o más. En oscuro, la misma foto
-   invertida. */
-.ex-mapa-quieto { position: absolute; inset: 0; z-index: 2; pointer-events: none; transition: opacity 0.5s ease; }
+/* El mapa quieto del primer pintado (el LCP): UNA capa de la página, primera en el HTML (page.tsx). Ocupa la fila de abajo del
+   header, NUNCA la pantalla entera: Chrome toma por fondo una imagen que cubre todo el viewport y no la cuenta como LCP (medido
+   en producción el 28-oct-2026: con la capa a pantalla completa el LCP pasó a una tesela de Google, 10,1 s de mediana). Queda
+   detrás de la fila de arriba (z 6), que es opaca; encima del mapa real hasta que éste dibuja sus teselas, y ahí se desvanece.
+   Lo de encima del mapa (el número, la hoja, la tarjeta, la lista) va con z 3 o más. En oscuro, la misma foto invertida. */
+.ex-mapa-quieto { position: absolute; inset: 0; grid-row: 2; grid-column: 1; z-index: 2; pointer-events: none; transition: opacity 0.5s ease; }
 .ex-mapa-quieto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
 .ex-pagina:has(.ex-mapa-wrap[data-mapa="teselas"]) > .ex-mapa-quieto { opacity: 0; }
 :root:not([data-theme="light"]) .ex-mapa-quieto img { filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.9); }
