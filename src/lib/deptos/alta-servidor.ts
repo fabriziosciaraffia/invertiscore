@@ -147,7 +147,7 @@ export async function ejecutarAlta(
     posthog: async ({ regalo, puerta }) => {
       await capturarServidor({ event: "deptos_alta", distinctId: user.id, uuid: uuidDeterminista(`deptos_alta:${user.id}`), properties: { regalo, puerta } });
       // El embudo de la puerta E (29-oct-2026): «registro hecho», con la llegada (landing o directo).
-      if (puerta === "E") await capturarServidor({ event: EVENTOS_ABIERTO.registroHecho, distinctId: user.id, uuid: uuidDeterminista(`${EVENTOS_ABIERTO.registroHecho}:${user.id}`), properties: { regalo, llegada: origenDeDetalle(detalleExplorar(puertaElegida.detalle)) } });
+      if (puerta === "E") await capturarServidor({ event: EVENTOS_ABIERTO.registroHecho, distinctId: user.id, uuid: uuidDeterminista(`${EVENTOS_ABIERTO.registroHecho}:${user.id}`), properties: { regalo, llegada_explorar: origenDeDetalle(detalleExplorar(puertaElegida.detalle)) } });
     },
   };
 

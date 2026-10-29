@@ -73,8 +73,9 @@ function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent
     // La marca de cuenta de prueba (21-oct-2026): la sesión que leyó el middleware, o en la landing (que no la lee) la
     // cookie de Supabase, sin verificar: solo marca la vista.
     cuentaDeSesion: persona?.id ?? cuentaDeCookieDeSesion(request.cookies.getAll()),
-    // `llegada` y no `origen`: la vista ya lleva `origen: "servidor"` (quién la emite) y lo pisaría.
-    ...(pagina === "explorar" ? { extra: { llegada: origenDeExplorar(request.nextUrl.search) } } : {}),
+    // `llegada_explorar`: ni `origen` (la vista ya lleva `origen: "servidor"` y lo pisaría) ni `llegada` a secas, que en
+    // PostHog es BOOLEANA desde el 28-sep (`wizard4_borrador_decision`) y leía «landing» y «directo» como vacío (29-oct-2026).
+    ...(pagina === "explorar" ? { extra: { llegada_explorar: origenDeExplorar(request.nextUrl.search) } } : {}),
   });
   if (ev && event) event.waitUntil(enviarVista(ev).catch(() => false));
   return res;

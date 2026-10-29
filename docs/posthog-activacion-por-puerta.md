@@ -15,9 +15,9 @@
 | `explorar_analiza` | la ruta de la guía al crear el informe con `explorar: true`, desde el 23-oct-2026 | pidió un análisis desde el mapa; lleva `analysis_id`, `aviso_id`, `comuna`, `precio_uf`, `m2`, `pie_pct`, `plazo_anios`. El `analisis_creado` de ese informe lleva `via` = explorar |
 | `reanalisis_precio` | el servidor, una vez por informe (uuid determinista), desde el 21-oct-2026 (`src/lib/reanalisis-servidor.ts`): al crear con saldo el informe que pidió el botón «Ver el informe completo a UF X» del pop-up Ajustar, o al confirmarse el pago del suelto | el informe completo al precio que Franco recomendó negociar; lleva `informe_original`, `informe_nuevo`, `precio_original_uf`, `precio_recomendado_uf`, `descuento_pct`, `pie_pct`, `plazo_anios`, `modalidad` (ltr · str) y `con_pago`. El `analisis_creado` de ese informe (con saldo) lleva `via` = reanalisis |
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
-| `explorar_abierto_vista` | el middleware al servir `/explorar` SIN sesión (`src/lib/vista-entrada.ts`), desde el 29-oct-2026 | llegó al mapa sin cuenta; lo de toda vista de entrada (abajo) y `llegada` (landing · directo: la tarjeta de la landing lleva `?desde=landing`). Con sesión no sale: esa la cuenta `explorar_vista` |
-| `explorar_bienvenida_vista` · `explorar_pin` · `explorar_registro_abierto` · `explorar_regalo_usado` | el navegador en `/explorar` sin cuenta (`explorar-cliente.tsx`), desde el 29-oct-2026 | el embudo de la puerta E: vio la bienvenida (una vez por navegador), tocó un pin (`sin_cuenta` = true), abrió la hoja de registro (`motivo`: analizar · guardar · avisame · orden · flujo · pie-plazo) y usó el regalo en un «Analizar este». Todos llevan `llegada`, salvo el regalo (ya con cuenta: su llegada es la de la cuenta) |
-| `explorar_registro_hecho` | el servidor al terminar el alta de una cuenta con puerta E (`src/lib/deptos/alta-servidor.ts`), una vez por cuenta | se registró desde el mapa; lleva `regalo` y `llegada` |
+| `explorar_abierto_vista` | el middleware al servir `/explorar` SIN sesión (`src/lib/vista-entrada.ts`), desde el 29-oct-2026 | llegó al mapa sin cuenta; lo de toda vista de entrada (abajo) y `llegada_explorar` (landing · directo: la tarjeta de la landing lleva `?desde=landing`). Con sesión no sale: esa la cuenta `explorar_vista` |
+| `explorar_bienvenida_vista` · `explorar_pin` · `explorar_registro_abierto` · `explorar_regalo_usado` | el navegador en `/explorar` sin cuenta (`explorar-cliente.tsx`), desde el 29-oct-2026 | el embudo de la puerta E: vio la bienvenida (una vez por navegador), tocó un pin (`sin_cuenta` = true), abrió la hoja de registro (`motivo`: analizar · guardar · avisame · orden · flujo · pie-plazo) y usó el regalo en un «Analizar este». Todos llevan `llegada_explorar`, salvo el regalo (ya con cuenta: su llegada es la de la cuenta) |
+| `explorar_registro_hecho` | el servidor al terminar el alta de una cuenta con puerta E (`src/lib/deptos/alta-servidor.ts`), una vez por cuenta | se registró desde el mapa; lleva `regalo` y `llegada_explorar` |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
 ## El agente de los eventos del servidor
@@ -64,6 +64,7 @@ with base as (
   where event in ('cuenta_atribuida', '$set', 'analisis_creado', 'primera_seleccion_vista')
     and timestamp >= now() - interval 30 week
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by person_id
   having t_reg > toDateTime('2000-01-02') and t_reg >= now() - interval 26 week
 )
@@ -87,17 +88,30 @@ hoy». `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteri
 
 La tabla «Activación por semana · por puerta» (e6MrN1ws) lleva la misma rama de la E desde el 29-oct-2026.
 
+**Sin cuentas de prueba, también las que se marcaron tarde (29-oct-2026).** `person.properties` en un evento es la persona
+TAL COMO ESTABA al ingerirlo: una cuenta de prueba cuyos primeros eventos salieron sin la marca sigue contando aunque después
+se la marque. Pasa con toda cuenta de prueba recién creada, por cualquier puerta: el punto único de captura mira una lista
+de `test_accounts` con un minuto de caché, y la cuenta nació dentro de ese minuto. Por eso las tres tablas de este goal
+excluyen además a quien HOY es de prueba (`person_id not in (select id from persons where properties.test_account = true)`).
+Medido al aplicarlo: en la semana del 19-oct, 8 de los 11 registros «B» y 1 de los 2 «D» eran cuentas de prueba; en la del
+26-oct, los 3 «B» y los 2 «E» (las del QA de la puerta E). Las otras tablas del dashboard todavía no lo llevan.
+
 ## La puerta E: «Puerta E · Explorar sin cuenta por semana» (HogQL)
 
 > 29-oct-2026. El insight U2TKvy0O del mismo dashboard: las visitas a `/explorar` sin sesión (la vista del servidor, sin
 > robots: `$virt_traffic_type` = Regular) y cada paso del embudo, por semana y por llegada (desde la landing · directo).
 > Personas distintas por paso: sin consentimiento cada visita es un id propio, así que `visitas` cuenta visitas. El regalo
 > usado se atribuye por la llegada de la cuenta (su `puerta_detalle`), porque ya pasa con sesión. Sin cuentas de prueba.
+>
+> **La propiedad se llama `llegada_explorar`, no `llegada`.** En PostHog el tipo de una propiedad es del NOMBRE, para todo
+> el proyecto, y `llegada` es booleana desde el 28-sep (`wizard4_borrador_decision` manda `llegada: true/false`): «landing» y
+> «directo» se leían vacíos en toda consulta y en todo filtro (medido en producción el 29-oct-2026, con los eventos del QA).
+> Antes de nombrar una propiedad nueva, buscar si el nombre ya existe con otro tipo.
 
 ```sql
 with ab as (
   select toStartOfWeek(timestamp, 1) as semana,
-    if(toString(properties.llegada) = 'landing', 'desde la landing', 'directo') as llegada,
+    if(toString(properties.llegada_explorar) = 'landing', 'desde la landing', 'directo') as llegada,
     uniqIf(person_id, event = 'explorar_abierto_vista') as visitas,
     uniqIf(person_id, event = 'explorar_bienvenida_vista') as vieron_bienvenida,
     uniqIf(person_id, event = 'explorar_pin' and toString(properties.sin_cuenta) = 'true') as tocaron_un_pin,
@@ -108,6 +122,7 @@ with ab as (
     and timestamp >= now() - interval 26 week
     and toString(properties.prueba) != 'true'
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
     and (event != 'explorar_abierto_vista' or (toString(properties.origen) = 'servidor' and properties.$virt_traffic_type = 'Regular'))
   group by semana, llegada
 ),
@@ -121,7 +136,7 @@ rg as (
   select toStartOfWeek(r.t, 1) as semana,
     if(e.detalle = 'explorar:landing', 'desde la landing', 'directo') as llegada,
     uniq(r.person_id) as usaron_el_regalo
-  from (select person_id, min(timestamp) as t from events where event = 'explorar_regalo_usado' and timestamp >= now() - interval 26 week and coalesce(person.properties.test_account, false) = false group by person_id) as r
+  from (select person_id, min(timestamp) as t from events where event = 'explorar_regalo_usado' and timestamp >= now() - interval 26 week and coalesce(person.properties.test_account, false) = false and person_id not in (select id from persons where properties.test_account = true) group by person_id) as r
   inner join e on e.person_id = r.person_id
   group by semana, llegada
 )

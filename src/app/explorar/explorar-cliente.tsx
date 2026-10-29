@@ -279,7 +279,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   function pedirRegistro(motivo: MotivoRegistro, pin: PinMapa | null, extra: { orden?: OrdenPortal; filtros?: FiltrosPortal } = {}) {
     const f = extra.filtros ?? filtros;
     setRegistro({ pedido: { motivo, pin, ...(extra.orden ? { orden: extra.orden } : {}) }, filtros: f, orden });
-    posthog?.capture(EVENTOS_ABIERTO.registroAbierto, { motivo, aviso_id: pin?.avisoId ?? null, modalidad: f.modalidad, llegada: origen });
+    posthog?.capture(EVENTOS_ABIERTO.registroAbierto, { motivo, aviso_id: pin?.avisoId ?? null, modalidad: f.modalidad, llegada_explorar: origen });
   }
 
   // La bienvenida, sin cuenta y solo la primera vez (en este navegador), con el número de la noche.
@@ -290,7 +290,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     if (bienvenidaVista(almacen)) return;
     marcarBienvenida(almacen);
     setBienvenida(true);
-    posthog?.capture(EVENTOS_ABIERTO.bienvenida, { n: inicial.n, llegada: origen });
+    posthog?.capture(EVENTOS_ABIERTO.bienvenida, { n: inicial.n, llegada_explorar: origen });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -299,7 +299,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // Sin cuenta, la hoja de registro se precarga al tocar un pin: abre al instante aunque las imágenes de la calle de los
     // cercanos ocupen la red (QA en local, 29-oct-2026: el chunk quedaba detrás de ocho imágenes y la hoja tardaba segundos).
     if (sinCuenta) void import("./hoja-registro");
-    posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada: origen } : {}) });
+    posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada_explorar: origen } : {}) });
     setCarrusel(cercanos(visibles, avisoId).map((p) => p.avisoId));
     setSel(avisoId);
     setError(null);
