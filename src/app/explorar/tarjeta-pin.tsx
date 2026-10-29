@@ -17,6 +17,7 @@ import { lineaDepto } from "@/lib/guia/linea-depto";
 import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "@/lib/explorar/explorar";
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
 import { CALLE_COPY, rutaImagenCalle } from "@/lib/explorar/calle";
+import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -61,10 +62,16 @@ export function Corazon({ guardado, alTocar }: { guardado: boolean; alTocar: () 
   );
 }
 
+/** Una cifra que sin cuenta no viaja (29-oct-2026, la puerta E): un relleno fijo, borroso y oculto a los lectores de
+ *  pantalla, NUNCA el valor (el universo sin cuenta no lo trae: abierto.ts › sinCifras). */
+export function Borroso({ texto }: { texto: string }) {
+  return <b className="ex-borroso" aria-hidden="true" data-explorar="borroso">{texto}</b>;
+}
+
 /** «Comprar · 84»: el veredicto (el color de la tríada) y el puntaje. */
 export const veredictoConPuntaje = (p: Pick<PinMapa, "veredicto" | "score">): string => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, sinCuenta = false }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -76,7 +83,10 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
   alCambiar: (avisoId: string) => void;
   alCerrar: () => void;
   alGuardar: (avisoId: string) => void;
+  /** Con cuenta, «Analizar este»; sin cuenta, «Regístrate gratis para ver este depto» (abre la hoja de registro). */
   alAnalizar: (p: PinMapa) => void;
+  /** Sin cuenta (estado C del mockup 6-puerta-e): el flujo, el cap rate y la UF por m² van borrosos y el botón pide registro. */
+  sinCuenta?: boolean;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
@@ -127,16 +137,28 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                     <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
                   </div>
                   <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}</b>
-                  <span className="ex-linea2" data-explorar="veredicto">
-                    <b className="ex-ver">{veredictoConPuntaje(p)}</b>
-                    {p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b> {PORTAL_COPY.alMes}</>}
-                  </span>
-                  <span className="ex-linea3" data-explorar="cifras">
-                    {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
-                  </span>
+                  {sinCuenta ? (
+                    <>
+                      <span className="ex-linea2" data-explorar="veredicto"><b className="ex-ver">{veredictoConPuntaje(p)}</b></span>
+                      <span className="ex-linea2" data-explorar="flujo-oculto">{ABIERTO_COPY.flujo} <Borroso texto={BORROSO.flujo} /> {ABIERTO_COPY.alMes}</span>
+                      <span className="ex-linea3" data-explorar="cifras">{ABIERTO_COPY.capRate} <Borroso texto={BORROSO.capRate} /> · <Borroso texto={BORROSO.porM2} /></span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="ex-linea2" data-explorar="veredicto">
+                        <b className="ex-ver">{veredictoConPuntaje(p)}</b>
+                        {p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b> {PORTAL_COPY.alMes}</>}
+                      </span>
+                      <span className="ex-linea3" data-explorar="cifras">
+                        {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-              {informe ? (
+              {sinCuenta ? (
+                <button type="button" className="ex-cta ex-cta-triada" onClick={() => alAnalizar(p)} data-explorar="registrate">{ABIERTO_COPY.cta}</button>
+              ) : informe ? (
                 <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{PORTAL_COPY.analizado} · {PORTAL_COPY.verInforme}</EnlaceCarga>
               ) : (
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">

@@ -15,7 +15,7 @@ import { waitUntil } from "@vercel/functions";
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** De dónde viene el correo: solo los lugares que existen (o van a existir) para dejarlo. */
-const ORIGENES = new Set(["banner", "seleccion", "invitado"]);
+const ORIGENES = new Set(["banner", "seleccion", "invitado", "explorar"]);
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { email?: unknown; origen?: unknown; puerta?: unknown; analysisId?: unknown };

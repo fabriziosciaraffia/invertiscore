@@ -72,7 +72,7 @@ html .he-input { font-size: 19px !important; }
 .he-alt button:disabled { opacity: 0.7; cursor: progress; }
 /* el pie acompaña al bloque: debajo del campo y sus caminos, con su aire */
 .he-pie { margin-top: 30px; }
-/* LO TOCABLE SE VE TOCABLE (28-sep-2026): «Ver un análisis real» era un texto suelto en serif; ahora
+/* LO TOCABLE SE VE TOCABLE (28-sep-2026): «Ver un análisis de ejemplo» (entonces «real») era un texto suelto en serif; ahora
    es la misma píldora con contorno que «Entrar» en el header (hf-pild), en papel sobre el material.
    Presionada (EnlaceCarga) se rellena, como al pasar por encima. */
 .he-pild {
@@ -229,3 +229,15 @@ html .he-papel .he-input { font-size: 17px !important; }
 .he-papel .he-wait input::placeholder { color: var(--tx4); }
 .he-papel .he-wait input:focus { border-color: var(--tx); }
 .he-papel .he-wait button { background: var(--tx); color: var(--page); }
+
+/* LA LANDING CON DOS PUERTAS (29-oct-2026, mockup docs/puerta-b-mockups/6-puerta-e.html, estado A): el hero es la puerta del
+   informe, con el rótulo «¿Tienes un depto en la mira?» sobre el título (en lugar del eslogan), y deja de ocupar la pantalla
+   entera: la segunda puerta —la tarjeta de Explorar— se ve debajo con el mismo peso. */
+.he-rotulo { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(250, 250, 248, 0.86); }
+.he-root--puertas { min-height: 0; }
+.he-root--puertas .he-mid { justify-content: flex-start; padding-top: 18px; padding-bottom: 26px; }
+.he-root--puertas .he-h1 { margin-bottom: 18px; }
+@media (min-width: 768px) {
+  .he-root--puertas .he-mid { padding-top: 40px; padding-bottom: 56px; }
+  .he-root--puertas .he-h1 { margin-bottom: 28px; }
+}

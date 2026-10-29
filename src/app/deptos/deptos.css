@@ -101,7 +101,7 @@ html[data-grano] .dp-banda::after { background-image: url("/landing/grano-256.pn
 .dp-error { margin: 10px 0 0; font-size: 13.5px; color: var(--signal-red); }
 .dp-banda .dp-error { color: #FAFAF8; background: rgba(200, 50, 60, 0.35); border: 1px solid rgba(250, 250, 248, 0.35); border-radius: 12px; padding: 8px 12px; }
 
-/* ── La prueba, debajo del correo: las cifras de la noche y «Ver un análisis real». ── */
+/* ── La prueba, debajo del correo: las cifras de la noche y «Ver un análisis de ejemplo». ── */
 .dp-prueba { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--franco-border); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .dp-prueba-t { margin: 0; font-size: 14px; line-height: 1.5; color: var(--franco-text-secondary); }
 .dp-prueba-t b { font-weight: 600; color: var(--franco-text); }

@@ -49,6 +49,10 @@ import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { resolverArriendoReferencia, type ArriendoReferencia } from "@/lib/arriendo-referencia";
 import { titularMotor } from "@/lib/titular-motor";
 import { estadoRecomendacion, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { descompactar } from "@/lib/explorar/portal";
+import { PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
+import { gruposDeLanding, type GrupoLanding } from "@/lib/explorar/puertas-landing";
 import { metricaValorONull, type AIAnalysisV2, type AnalisisInput, type FullAnalysisResult, type Hallazgo, type HallazgoDistanciaVeredicto, type MixPalancas, type Veredicto } from "@/lib/types";
 import RESPALDO from "./landing-respaldo.json";
 
@@ -123,6 +127,10 @@ export interface DatosLanding {
   /** Último análisis emitido por una cuenta no interna. */
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
+  /** LA SEGUNDA PUERTA (29-oct-2026, la puerta E): cuántos convienen anoche con pie 20 % y 25 años —el MISMO universo que
+   *  muestra Explorar sin cuenta, para que la tarjeta, la bienvenida y el mapa digan el mismo número— y los grupos del mapa
+   *  chico. null si la lectura falló (la tarjeta no sale). */
+  explorar: { n: number; grupos: GrupoLanding[] } | null;
   /** true cuando alguna lectura falló y se usó el respaldo. */
   degradado: boolean;
 }
@@ -333,7 +341,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
 
   const sb = createServiceClient();
 
-  const [ultimo, guardados] = await Promise.all([
+  const [ultimo, guardados, explorar] = await Promise.all([
     (async () => {
       try {
         const noTest = filtroNoTest(await getTestAccountIds(sb));
@@ -359,11 +367,15 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
       }
     })(),
     leerEjemplos(),
+    universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO)
+      .then((u) => { const pines = descompactar(u); return pines.length ? { n: pines.length, grupos: gruposDeLanding(pines) } : null; })
+      .catch((e) => { aviso("explorar", e); return null; }),
   ]);
 
   return {
     ultimoAnalisis: ultimo,
     ejemplos: guardados.ejemplos,
+    explorar,
     degradado: degradado || guardados.degradado,
   };
 }

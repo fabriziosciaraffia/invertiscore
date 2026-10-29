@@ -30,6 +30,8 @@ const esClaro = () => typeof document !== "undefined" && document.documentElemen
 const svgUrl = (w: number, h: number, inner: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`)}`;
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const iconoPunto = (color: string) => ({ url: svgUrl(18, 18, `<circle cx="9" cy="9" r="7" fill="${color}" stroke="${PAPEL}" stroke-width="2"/>`), w: 18, h: 18 });
+/** El elegido sin cuenta (29-oct-2026, mockup 6-puerta-e, estado C): un punto más grande en tinta, sin texto. */
+const iconoElegido = () => ({ url: svgUrl(26, 26, `<circle cx="13" cy="13" r="11" fill="${TINTA}" stroke="${PAPEL}" stroke-width="3"/>`), w: 26, h: 26 });
 function iconoGrupo(n: number, color: string) {
   const w = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56;
   const t = n.toLocaleString("es-CL");
@@ -57,9 +59,11 @@ export interface MapaExplorarProps {
   onMovido: (caja: Caja) => void;
   /** «listo»: el mapa existe; «teselas»: ya dibujó sus teselas (el mapa quieto se puede ir); «fallo»: no cargó. */
   onEstado: (estado: "listo" | "teselas" | "fallo") => void;
+  /** Sin cuenta (29-oct-2026, la puerta E): con zoom, cada pin es solo el punto —el flujo no viaja al navegador—. */
+  sinCifras?: boolean;
 }
 
-export default function MapaExplorar({ pines, analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado }: MapaExplorarProps) {
+export default function MapaExplorar({ pines, analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -69,7 +73,8 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
   const analizadosRef = useRef(analizados);
   const selRef = useRef(seleccionado);
   const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado });
-  pinesRef.current = pines; analizadosRef.current = analizados; selRef.current = seleccionado;
+  const sinCifrasRef = useRef(sinCifras);
+  pinesRef.current = pines; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras;
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado };
   const dibujarRef = useRef<() => void>(() => {});
   const encuadrarRef = useRef<() => void>(() => {});
@@ -118,7 +123,9 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
             const p = porId.get(id);
             if (!p) continue;
             const elegido = id === sel;
-            if (zoom >= ZOOM_ETIQUETAS || elegido) {
+            if (sinCifrasRef.current) {
+              marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(ROJO), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
+            } else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const t = textoPin(p, { analizado: an.has(id), ahora });
               const fondo = elegido ? TINTA : t.tipo === "analizado" ? azul : ROJO;
               marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(t.texto, fondo, elegido), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
@@ -134,7 +141,7 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
         const e = sel ? pinesRef.current.find((p) => p.avisoId === sel) : null;
         if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, 56).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
           const t = textoPin(e, { analizado: an.has(e.avisoId), ahora });
-          marcador({ lat: e.lat, lng: e.lng }, iconoEtiqueta(t.texto, TINTA, true), 20, () => cb.current.onSeleccionar(e.avisoId));
+          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? iconoElegido() : iconoEtiqueta(t.texto, TINTA, true), 20, () => cb.current.onSeleccionar(e.avisoId));
         }
       };
       encuadrarRef.current = () => {

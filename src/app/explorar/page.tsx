@@ -1,12 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
-import { hrefEntrar } from "@/lib/entrar/entrada";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { MAPA_QUIETO } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
@@ -14,12 +12,15 @@ import { descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } fr
 import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor";
 import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { robotDeVisita } from "@/lib/vista-entrada";
+import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { ExplorarCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct). Con
-// sesión. SIN NADA EN LA URL ABRE LA VISTA GLOBAL —todo Gran Santiago, arriendo tradicional, pie 20 % y 25 años, solo los
+// /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct).
+// ABIERTO SIN CUENTA desde el 29-oct-2026 (la puerta E, mockup 6-puerta-e.html): sin sesión no redirige; el mapa, los grupos,
+// los filtros y la lista se ven con pie 20 % y 25 años, sin cifras (abierto.ts), y registrarse sale de la hoja sobre el mapa.
+// SIN NADA EN LA URL ABRE LA VISTA GLOBAL —todo Gran Santiago, arriendo tradicional, pie 20 % y 25 años, solo los
 // Comprar: los supuestos del número de anoche—, NO el perfil de la persona («Mi búsqueda» lo aplica si lo toca). Con
 // filtros en la URL (al volver, al recargar) abre con ellos. Sin saldo se explora igual: el cobro sale en «Analizar este».
 // EL PRIMER PINTADO ES LIVIANO (LCP en el teléfono): el mapa quieto (la foto del mapa de Santiago, incrustada en el teléfono:
@@ -55,18 +56,30 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const consulta = sp.toString();
-  if (!user) redirect(hrefEntrar(`/explorar${consulta ? `?${consulta}` : ""}`, "generico"));
   return (
-    <div className="ex-pagina" data-explorar="pagina">
+    <div className="ex-pagina" data-explorar="pagina" data-cuenta={user ? undefined : "no"}>
       <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
       {mapaQuieto}
-      {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). */}
-      <HeaderFranco sesion={{ email: user.email ?? "" }} />
-      <Suspense fallback={<EsqueletoExplorar consulta={consulta} />}>
-        <ExplorarConDatos consulta={consulta} user={user} />
+      {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). Sin cuenta, el de la
+          entrada (wizard): el wordmark y «Entrar», sin pedir Supabase en el primer pintado (`sesion={null}`). */}
+      {user ? <HeaderFranco sesion={{ email: user.email ?? "" }} /> : <HeaderFranco contexto="wizard" sesion={null} />}
+      <Suspense fallback={<EsqueletoExplorar consulta={consulta} sinCuenta={!user} />}>
+        {user ? <ExplorarConDatos consulta={consulta} user={user} /> : <ExplorarAbierto consulta={consulta} />}
       </Suspense>
     </div>
   );
+}
+
+/** SIN CUENTA (la puerta E): el número de anoche con pie 20 % y 25 años, y nada de la persona. La vista la emite el
+ *  middleware (vista-entrada.ts › «explorar_abierto_vista», con la llegada y los robots marcados). */
+async function ExplorarAbierto({ consulta }: { consulta: string }) {
+  const sp = new URLSearchParams(consulta);
+  const base = portalDeUrl(sp);
+  const filtros = filtrosAbiertos(base.filtros);
+  const orden = ordenAbierto(base.orden);
+  const universo = universoDeLaNoche(filtros) ? await universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null) : null;
+  const n = universo ? filtrar(descompactar(universo), filtros).length : null;
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null }} abrir={sp.get("a")} origen={origenDeLlegada(sp.get("desde"))} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -88,6 +101,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       inicial={{ filtros, orden, n, cuenta }}
       abrir={a}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
+      correo={user.email ?? null}
     />
   );
 }

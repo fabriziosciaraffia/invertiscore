@@ -6,7 +6,7 @@
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
 import type { Puerta } from "@/lib/atribucion-puerta";
 
-export type OrigenLead = "banner" | "seleccion" | "invitado";
+export type OrigenLead = "banner" | "seleccion" | "invitado" | "explorar";
 
 export async function avisarLead(email: string, origen: OrigenLead, puerta?: Puerta): Promise<void> {
   try {

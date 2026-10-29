@@ -2,7 +2,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import {
-  CABECERA_VISITA, cuentaDeCookieDeSesion, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, paginaDeEntrada, serverTimingDeVisita,
+  CABECERA_VISITA, cuentaDeCookieDeSesion, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, origenDeExplorar, paginaDeEntrada, serverTimingDeVisita,
 } from "@/lib/vista-entrada";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
@@ -51,6 +51,8 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
 function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, visita: string | null, persona: { id: string } | null = null): NextResponse {
   const pagina = paginaDeEntrada(request.nextUrl.pathname);
   if (!pagina || !visita) return res;
+  // /explorar (la puerta E): la vista de la entrada es solo SIN SESIÓN; con sesión la emite la página a nombre de la cuenta.
+  if (pagina === "explorar" && persona) return res;
   const consentimiento = consentimientoDeCookie(request.headers.get("cookie"));
   const idPostHog = idPostHogDeCookies(request.cookies.getAll(), process.env.NEXT_PUBLIC_POSTHOG_KEY);
   res.headers.append("Server-Timing", serverTimingDeVisita(idDeLaVisita({ userId: null, consentimiento, idPostHog, visita }).id));
@@ -71,6 +73,8 @@ function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent
     // La marca de cuenta de prueba (21-oct-2026): la sesión que leyó el middleware, o en la landing (que no la lee) la
     // cookie de Supabase, sin verificar: solo marca la vista.
     cuentaDeSesion: persona?.id ?? cuentaDeCookieDeSesion(request.cookies.getAll()),
+    // `llegada` y no `origen`: la vista ya lleva `origen: "servidor"` (quién la emite) y lo pisaría.
+    ...(pagina === "explorar" ? { extra: { llegada: origenDeExplorar(request.nextUrl.search) } } : {}),
   });
   if (ev && event) event.waitUntil(enviarVista(ev).catch(() => false));
   return res;

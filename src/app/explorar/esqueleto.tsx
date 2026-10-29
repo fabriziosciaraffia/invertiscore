@@ -8,14 +8,15 @@
 import { lineaSupuestos, PORTAL_COPY, portalDeUrl } from "@/lib/explorar/portal";
 import "./explorar.css";
 
-export function EsqueletoExplorar({ consulta }: { consulta: string }) {
+export function EsqueletoExplorar({ consulta, sinCuenta = false }: { consulta: string; sinCuenta?: boolean }) {
   const vista = portalDeUrl(new URLSearchParams(consulta)).filtros;
   return (
     <div className="ex" data-explorar="esqueleto" aria-busy="true">
       <div className="ex-barra" aria-hidden="true">
         <span className="ex-boton"><span>☰</span> {PORTAL_COPY.filtros}</span>
         <span className="ex-boton ex-boton-suave">{PORTAL_COPY.ordenar} <span>▾</span></span>
-        <span className="ex-boton ex-boton-suave">{PORTAL_COPY.miBusqueda}</span>
+        {/* Sin cuenta no hay «Mi búsqueda» (mockup 6-puerta-e, estado C). */}
+        {!sinCuenta && <span className="ex-boton ex-boton-suave">{PORTAL_COPY.miBusqueda}</span>}
       </div>
       <div className="ex-cuerpo">
         <div className="ex-mapa-wrap" data-mapa="cargando">

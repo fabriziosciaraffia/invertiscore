@@ -17,7 +17,7 @@ import { usePostHog } from "@/lib/posthog-react";
 import { CampoEntrada, HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { urlDeLlegada } from "@/components/entrada/llegada";
-import { LinkMedido } from "./LinkMedido";
+import { LANDING_PUERTAS } from "@/lib/explorar/puertas-landing";
 import { EV, type UbicacionCampo } from "./eventos";
 
 const ORIGEN: Record<UbicacionCampo, string> = {
@@ -56,22 +56,13 @@ function useAccionesCampo(ubicacion: UbicacionCampo) {
   };
 }
 
-/** El hero de la landing: el de la entrada, con el header único que le pasa la página. El pie
- *  lleva al DEMO (QA 28-sep-2026): un informe real, el mismo al que va «Ver un análisis de
- *  ejemplo» en la portada del wizard. */
+/** El hero de la landing: el de la entrada, con el header único que le pasa la página. DESDE EL 29-oct-2026 (mockup
+ *  6-puerta-e, estado A) es la PUERTA DEL INFORME, con el rótulo «¿Tienes un depto en la mira?» sobre el título; la del
+ *  que busca dónde invertir es la tarjeta de abajo (TarjetaExplorar), y «Ver un análisis de ejemplo» —el demo, que antes
+ *  era el pie del hero— va debajo de esa tarjeta. */
 export function HeroLanding({ cabecera }: { cabecera: ReactNode }) {
   const acciones = useAccionesCampo("hero");
-  return (
-    <HeroEntrada
-      cabecera={cabecera}
-      pie={
-        <LinkMedido href="/demo" className="he-pild" evento={EV.ejemplo} props={{ origen: "hero" }}>
-          Ver un análisis real<span aria-hidden="true">→</span>
-        </LinkMedido>
-      }
-      {...acciones}
-    />
-  );
+  return <HeroEntrada cabecera={cabecera} rotulo={LANDING_PUERTAS.rotuloInforme} {...acciones} />;
 }
 
 /** El campo del cierre (y el del interior): el del hero, extraído. */

@@ -18,7 +18,7 @@ const H = PORTAL_COPY.hoja;
 const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 const TODAS = COMUNAS_DISPONIBLES as readonly string[];
 
-export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar }: {
+export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar, alPedirRegistro = null }: {
   filtros: FiltrosPortal;
   /** Cuántos darían unos filtros sobre lo cargado; null si falta su universo. */
   contar: (f: FiltrosPortal) => number | null;
@@ -26,6 +26,9 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar }: 
   asegurar: (f: FiltrosPortal) => void;
   alAplicar: (f: FiltrosPortal) => void;
   alCerrar: () => void;
+  /** SIN CUENTA (29-oct-2026, decisión de Fabrizio): pie y plazo quedan en 20 % y 25 años y «Solo flujo positivo» depende
+   *  del flujo; tocarlos abre la hoja de registro (con lo elegido hasta ahí aplicado) en vez de cambiarlos. */
+  alPedirRegistro?: ((motivo: "pie-plazo" | "flujo", f: FiltrosPortal) => void) | null;
 }) {
   const [b, setB] = useState<FiltrosPortal>(filtros);
   const [todas, setTodas] = useState(() => filtros.comunas.some((c) => !DESTACADAS.includes(c)));
@@ -95,18 +98,25 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar }: 
           </fieldset>
           <fieldset className="ex-grupo">
             <legend className="ex-grupo-t">{H.piePlazo}</legend>
-            <div className="ex-dos">
-              <label className="ex-campo"><span>{H.pie}</span>
-                <select value={b.pie} onChange={(e) => poner({ pie: Number(e.target.value) as FiltrosPortal["pie"] })} aria-label={H.pie} data-explorar="pie">
-                  {PIES_EXPLORAR.map((p) => <option key={p} value={p}>Pie {p} %</option>)}
-                </select>
-              </label>
-              <label className="ex-campo"><span>{H.plazo}</span>
-                <select value={b.plazo} onChange={(e) => poner({ plazo: Number(e.target.value) as FiltrosPortal["plazo"] })} aria-label={H.plazo} data-explorar="plazo">
-                  {PLAZOS_EXPLORAR.map((z) => <option key={z} value={z}>{z} años</option>)}
-                </select>
-              </label>
-            </div>
+            {alPedirRegistro ? (
+              <div className="ex-dos">
+                <button type="button" className="ex-campo ex-campo-cerrado" onClick={() => alPedirRegistro("pie-plazo", b)} data-explorar="pie"><span>{H.pie}</span><b>Pie {b.pie} %</b></button>
+                <button type="button" className="ex-campo ex-campo-cerrado" onClick={() => alPedirRegistro("pie-plazo", b)} data-explorar="plazo"><span>{H.plazo}</span><b>{b.plazo} años</b></button>
+              </div>
+            ) : (
+              <div className="ex-dos">
+                <label className="ex-campo"><span>{H.pie}</span>
+                  <select value={b.pie} onChange={(e) => poner({ pie: Number(e.target.value) as FiltrosPortal["pie"] })} aria-label={H.pie} data-explorar="pie">
+                    {PIES_EXPLORAR.map((p) => <option key={p} value={p}>Pie {p} %</option>)}
+                  </select>
+                </label>
+                <label className="ex-campo"><span>{H.plazo}</span>
+                  <select value={b.plazo} onChange={(e) => poner({ plazo: Number(e.target.value) as FiltrosPortal["plazo"] })} aria-label={H.plazo} data-explorar="plazo">
+                    {PLAZOS_EXPLORAR.map((z) => <option key={z} value={z}>{z} años</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
           </fieldset>
           <fieldset className="ex-grupo">
             <legend className="ex-grupo-t">{H.arriendo}</legend>
@@ -118,7 +128,7 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar }: 
           </fieldset>
           <label className="ex-interruptor">
             <span>{H.flujo}</span>
-            <input type="checkbox" role="switch" checked={b.flujoPositivo} onChange={(e) => poner({ flujoPositivo: e.target.checked })} data-explorar="flujo-positivo" />
+            <input type="checkbox" role="switch" checked={b.flujoPositivo} onChange={(e) => { if (alPedirRegistro && e.target.checked) { alPedirRegistro("flujo", b); return; } poner({ flujoPositivo: e.target.checked }); }} data-explorar="flujo-positivo" />
           </label>
           <fieldset className="ex-grupo">
             <legend className="ex-grupo-t">{H.publicados}</legend>

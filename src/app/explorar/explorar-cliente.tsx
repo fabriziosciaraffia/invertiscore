@@ -12,6 +12,11 @@
 //   · EL UNIVERSO llega después del primer pintado (el LCP es el mapa quieto que dibuja el servidor): con un pie y un plazo
 //     de la noche, todo Gran Santiago en un pedido; si no, de a una comuna, mostrando lo que va llegando.
 //   · SIN SALDO SE EXPLORA TODO; el cobro aparece al tocar «Analizar este», con el pop-up de compra de siempre.
+//   · SIN CUENTA (29-oct-2026, la puerta E, mockup 6-puerta-e): la primera vez, la bienvenida; el universo llega SIN CIFRAS
+//     (/api/explorar/abierto) y la tarjeta y la lista las muestran borrosas; pie y plazo en 20 % y 25 años. «Regístrate gratis
+//     para ver este depto», el corazón, «Avísame de nuevos», pie y plazo, «Solo flujo positivo» y ordenar por flujo o cap rate
+//     abren la hoja de registro (hoja-registro.tsx), y al terminar el alta se hace eso mismo, en el mismo pin
+//     (abierto.ts › accionDeVuelta). Con Google o el enlace del correo, el alta corre acá al volver.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -28,12 +33,20 @@ import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
   cercanos, claveUniverso, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
-  numeroDelMapa, ordenar, ORDENES, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
+  lineaBusqueda, numeroDelMapa, ordenar, ORDENES, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
   type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
+import {
+  accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS,
+  type MotivoRegistro, type OrigenExplorar, type PedidoRegistro,
+} from "@/lib/explorar/abierto";
+import { claveDeDestino } from "@/lib/deptos/respuesta";
+import { conTopeYReintento } from "@/lib/deptos/entrada";
+import { PASO_REGALO_MS, TOPE_ESPERA_REGALO_MS } from "@/lib/deptos/alta-orden";
+import { avisarLead } from "@/lib/meta/lead-cliente";
 import "./explorar.css";
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
@@ -43,6 +56,8 @@ const ListaPortal = dynamic(() => import("./lista-portal").then((m) => m.ListaPo
 const AvisameDialogo = dynamic(() => import("./avisame-dialogo").then((m) => m.AvisameDialogo), { ssr: false, loading: () => null });
 const AvisoAntesDeAnalizar = dynamic(() => import("@/components/guia/AvisoAntesDeAnalizar").then((m) => m.AvisoAntesDeAnalizar), { ssr: false, loading: () => null });
 const PopupNoDa = dynamic(() => import("@/components/guia/PopupNoDa").then((m) => m.PopupNoDa), { ssr: false, loading: () => null });
+const HojaRegistro = dynamic(() => import("./hoja-registro").then((m) => m.HojaRegistro), { ssr: false, loading: () => null });
+const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida), { ssr: false, loading: () => null });
 
 const ESPERA_EN_CURSO_MS = 4000;
 /** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). */
@@ -67,21 +82,37 @@ export interface InicialPortal {
   orden: OrdenPortal;
   /** Cuántos convienen con estos filtros, contado por el servidor para el primer pintado (null: hay que calcular). */
   n: number | null;
-  cuenta: CuentaCliente;
+  /** null: SIN CUENTA (la puerta E). */
+  cuenta: CuentaCliente | null;
 }
+
+/** Lo que se muestra sin cuenta: nada de la persona, sin saldo. */
+const CUENTA_VACIA: CuentaCliente = {
+  analizados: {}, guardados: [], saldo: { tipo: "sin" }, suscrito: false, ticket: false, cuentaCreadaAt: null,
+  finanzas: { uf: null, tasa: null }, miBusqueda: null, busquedaActual: null, explorarEnMes: 0,
+};
+/** El pop-up que usa el regalo habla solo del regalo (ofertas de a una, 29-oct-2026): sin la línea del ticket. */
+const usaRegalo = (s: EstadoSaldo): boolean => s.tipo === "regalo" || (s.tipo === "con" && !!s.proximoRegalo);
 
 type Universo = { comunas: "todas" | string[]; pines: PinMapa[] };
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: {
+export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, origen = "directo", correo = null }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
+  /** Sin cuenta: de dónde llegó (la landing o directo), el detalle de la puerta E. */
+  origen?: OrigenExplorar;
+  /** Con cuenta: el correo, para el Lead al volver de Google (recién ahí se sabe). */
+  correo?: string | null;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
-  const cuenta = inicial.cuenta;
+  // La cuenta se refresca al volver del alta (Google o el enlace): el regalo recién otorgado tiene que estar en el saldo.
+  const [cuentaViva, setCuentaViva] = useState<CuentaCliente | null>(inicial.cuenta);
+  const sinCuenta = cuentaViva == null;
+  const cuenta = cuentaViva ?? CUENTA_VACIA;
   const [filtros, setFiltros] = useState(inicial.filtros);
   const [orden, setOrden] = useState(inicial.orden);
   const [universos, setUniversos] = useState<Record<string, Universo>>({});
@@ -90,6 +121,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   // Lo que ya se está pidiendo (la noche: su clave; lo calculado: clave|comuna): abrir los filtros antes de que llegue el universo
   // no lo pide de nuevo.
   const enCurso = useRef(new Set<string>());
+  const sinCuentaRef = useRef(sinCuenta);
+  sinCuentaRef.current = sinCuenta;
   const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null);
   const [fallo, setFallo] = useState(false);
   const [vista, setVista] = useState<"mapa" | "lista">("mapa");
@@ -108,6 +141,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
   const [caidos, setCaidos] = useState<string[]>([]);
   const [avisame, setAvisame] = useState(false);
+  const [registro, setRegistro] = useState<{ pedido: PedidoRegistro; filtros: FiltrosPortal; orden: OrdenPortal } | null>(null);
+  const [bienvenida, setBienvenida] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   const vivo = useRef(true);
   const uf = cuenta.finanzas.uf;
 
@@ -123,7 +159,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   /** Trae lo que falte para unos filtros: la noche entera en un pedido, o lo calculado de a una comuna. */
   const asegurar = useCallback(async (f: FiltrosPortal) => {
     const clave = claveUniverso(f);
-    const base = `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}`;
+    // Sin cuenta, el universo sin cifras (pie 20 % y 25 años): otra ruta, pública y en la caché del CDN.
+    const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}`;
     setFallo(false);
     try {
       if (universoDeLaNoche(f)) {
@@ -210,7 +247,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
     posthog?.capture(EVENTOS_PORTAL.vista, { ...propsDeFiltros(f, o), n, fuente });
 
   /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
-  function aplicar(f: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar") {
+  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar") {
+    // Sin cuenta, pie 20 % y 25 años, y sin «Solo flujo positivo» (piden registro).
+    const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
     setFiltros(f);
     setSel(null);
@@ -222,6 +261,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
     vistaCambio(f, orden, fuente, n);
   }
   function cambiarOrden(o: OrdenPortal) {
+    // Sin cuenta, ordenar por mayor flujo o cap rate pide registro; al terminar, se ordena así.
+    if (sinCuenta && ORDENES_CON_CIFRAS.includes(o)) { setMenuOrden(false); pedirRegistro("orden", visibles[0] ?? null, { orden: o }); return; }
     setOrden(o);
     setMenuOrden(false);
     ponerEnUrl(filtros, o);
@@ -233,16 +274,44 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   }
   const enMiBusqueda = !!cuenta.miBusqueda && urlDePortal(cuenta.miBusqueda) === urlDePortal(filtros);
 
+  // ── LA HOJA DE REGISTRO (sin cuenta) ──
+  /** Abre la hoja con lo que se tocó. El perfil nace del pin (o, en «Avísame», de los filtros); al terminar, se hace eso. */
+  function pedirRegistro(motivo: MotivoRegistro, pin: PinMapa | null, extra: { orden?: OrdenPortal; filtros?: FiltrosPortal } = {}) {
+    const f = extra.filtros ?? filtros;
+    setRegistro({ pedido: { motivo, pin, ...(extra.orden ? { orden: extra.orden } : {}) }, filtros: f, orden });
+    posthog?.capture(EVENTOS_ABIERTO.registroAbierto, { motivo, aviso_id: pin?.avisoId ?? null, modalidad: f.modalidad, llegada: origen });
+  }
+
+  // La bienvenida, sin cuenta y solo la primera vez (en este navegador), con el número de la noche.
+  useEffect(() => {
+    if (!sinCuenta || inicial.n == null) return;
+    let almacen: Storage | null = null;
+    try { almacen = window.localStorage; } catch { /* sin almacenamiento: no se muestra */ }
+    if (bienvenidaVista(almacen)) return;
+    marcarBienvenida(almacen);
+    setBienvenida(true);
+    posthog?.capture(EVENTOS_ABIERTO.bienvenida, { n: inicial.n, llegada: origen });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // «explorar_pin»: tocar un pin del mapa (la tarjeta se desliza entre los cercanos).
   function tocarPin(avisoId: string) {
-    posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad });
+    posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada: origen } : {}) });
     setCarrusel(cercanos(visibles, avisoId).map((p) => p.avisoId));
     setSel(avisoId);
     setError(null);
   }
   const abrirDesdeLista = (avisoId: string) => { setVista("mapa"); tocarPin(avisoId); };
 
+  // «Avísame de nuevos»: sin cuenta y con comunas, la hoja de registro (el perfil nace de estos filtros); sin comunas, el
+  // diálogo de siempre, que pide elegirlas antes.
+  function alAvisame() {
+    if (sinCuenta && perfilDeFiltros(filtrosAbiertos(filtros)).ok) { pedirRegistro("avisame", null); return; }
+    setAvisame(true);
+  }
+
   async function alternarGuardado(avisoId: string, desde: "tarjeta" | "lista") {
+    if (sinCuenta) { pedirRegistro("guardar", porId.get(avisoId) ?? null); return; }
     const guardar = !guardados.has(avisoId);
     setGuardados((s) => { const n = new Set(s); if (guardar) n.add(avisoId); else n.delete(avisoId); return n; });
     const ok = await fetch("/api/explorar/guardados", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId, guardar, desde }) }).then((r) => r.ok).catch(() => false);
@@ -252,10 +321,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   // ── analizar ──
   const consulta = urlDePortal(filtros, orden);
   const compras = useCallback((avisoId?: string | null) => comprasDeExplorar({ filtros: consulta, avisoId, ticket: cuenta.ticket }), [consulta, cuenta.ticket]);
-  const ticketConSaldo = cuenta.ticket && cuenta.cuentaCreadaAt && cuenta.saldo.tipo !== "sin" ? lineaTicketConSaldo(cuenta.cuentaCreadaAt, compras().pack.href) : null;
+  // Con el regalo, el pop-up habla solo del regalo: el ticket aparece recién cuando se usó (ofertas de a una, 29-oct-2026).
+  const ticketConSaldo = cuenta.ticket && cuenta.cuentaCreadaAt && cuenta.saldo.tipo !== "sin" && !usaRegalo(cuenta.saldo) ? lineaTicketConSaldo(cuenta.cuentaCreadaAt, compras().pack.href) : null;
   const plan = lineaPlan(cuenta.explorarEnMes, cuenta.suscrito);
 
   function pedirAnalisis(it: PinMapa) {
+    if (sinCuenta) { pedirRegistro("analizar", it); return; }
     setError(null);
     setConfirmar({ it, sin: cuenta.saldo.tipo === "sin" });
     if (plan) posthog?.capture(EVENTOS_PORTAL.planVisto, { hechos: cuenta.explorarEnMes, aviso_id: it.avisoId, sin_saldo: cuenta.saldo.tipo === "sin" });
@@ -282,7 +353,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null };
-        if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
+        if (res.ok && d.id) {
+          // El embudo de la puerta E: «regalo usado» (el análisis salió con el regalo de alta).
+          if (usaRegalo(cuenta.saldo)) posthog?.capture(EVENTOS_ABIERTO.regaloUsado, { aviso_id: it.avisoId, analysis_id: d.id, modalidad: filtros.modalidad });
+          router.push(`/analisis/${d.id}`);
+          return;
+        }
         // Renta corta medida fina que no da: no se cobró; se ofrece analizar igual.
         if (res.ok && d.estado === "no-da") { setConfirmar(null); setNoDa({ it, porQue: d.porQue ?? null, publicacion: d.publicacion ?? null }); break; }
         if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); setNoDa(null); setCaidos((xs) => [...xs, it.avisoId]); setSel(null); break; }
@@ -338,6 +414,63 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
   }, [universo]);
 
   const porId = useMemo(() => new Map((universo ?? []).map((p) => [p.avisoId, p])), [universo]);
+
+  // ── LA VUELTA DEL ALTA (con cuenta) ──
+  // Con Google o el enlace del correo, la URL trae `entro`: el alta corre acá (la misma de /deptos), se espera el regalo y se
+  // refresca la cuenta. Por código, el alta ya corrió en la hoja y la URL solo trae `hacer`. Después, UNA vez y con el
+  // universo cargado, se hace lo que había tocado, en el mismo pin.
+  const vuelta = useRef<{ motivo: MotivoRegistro; avisoId: string | null } | null>(null);
+  const [listaVuelta, setListaVuelta] = useState(false);
+  useEffect(() => {
+    if (sinCuenta) return;
+    const sp = new URLSearchParams(window.location.search);
+    const v = accionDeVuelta(sp);
+    const entro = sp.get("entro");
+    if (!v && !entro) return;
+    vuelta.current = v;
+    const clave = entro === "google" ? claveDeDestino(`${window.location.pathname}${window.location.search}`) : null;
+    for (const k of ["entro", "p", "hacer"]) sp.delete(k);
+    try { window.history.replaceState(window.history.state, "", `${window.location.pathname}${sp.toString() ? `?${sp}` : ""}`); } catch { /* sin historial */ }
+    if (!entro) { setListaVuelta(true); return; }
+    if (entro === "google" && correo) void avisarLead(correo.toLowerCase(), "explorar", "E");
+    void (async () => {
+      const r = await conTopeYReintento(async (senal) => {
+        const res = await fetch("/api/deptos/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clave ? { p: clave } : {}), signal: senal });
+        return (await res.json().catch(() => ({}))) as { estado?: string; regalo?: string; regaloVence?: string | null };
+      });
+      if (r.ok && r.valor.estado === "nueva" && !r.valor.regaloVence && r.valor.regalo === "pendiente") {
+        const t0 = Date.now();
+        while (Date.now() - t0 < TOPE_ESPERA_REGALO_MS) {
+          const d = await fetch("/api/deptos/regalo", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})) as { vence?: string | null; decidido?: boolean };
+          if (d.vence || d.decidido) break;
+          await new Promise((ok) => setTimeout(ok, PASO_REGALO_MS));
+        }
+      }
+      const c = await fetch("/api/explorar/cuenta", { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).catch(() => null) as CuentaCliente | null;
+      if (!vivo.current) return;
+      if (c) { setCuentaViva(c); setGuardados(new Set(c.guardados)); }
+      router.refresh();
+      setListaVuelta(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const v = vuelta.current;
+    if (!listaVuelta || !v || !universo) return;
+    vuelta.current = null;
+    const it = v.avisoId ? universo.find((p) => p.avisoId === v.avisoId) ?? null : null;
+    if (it) { setCarrusel(cercanos(visibles, it.avisoId).map((p) => p.avisoId)); setSel(it.avisoId); }
+    if (v.motivo === "analizar" && it && !cuenta.analizados[it.avisoId]) pedirAnalisis(it);
+    if (v.motivo === "guardar" && it && !guardados.has(it.avisoId)) void alternarGuardado(it.avisoId, "tarjeta");
+    if (v.motivo === "pie-plazo") setHojaFiltros(true);
+    // «Avísame»: la cuenta nueva ya nació con estos filtros como búsqueda; si la cuenta ya existía, se confirma el reemplazo.
+    if (v.motivo === "avisame") {
+      const p = perfilDeFiltros(filtros);
+      if (p.ok && cuenta.busquedaActual === lineaBusqueda(p.cambios)) setAviso(PORTAL_COPY.aviso.listo);
+      else setAvisame(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listaVuelta, universo]);
   const enCarrusel = carrusel.map((id) => porId.get(id)).filter((p): p is PinMapa => !!p && !caidos.includes(p.avisoId));
   const tarjeta = vista === "mapa" && sel && enCarrusel.some((p) => p.avisoId === sel);
 
@@ -363,8 +496,13 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
             </>
           )}
         </div>
-        <button type="button" className="ex-boton ex-boton-suave" data-activo={enMiBusqueda ? "1" : undefined} data-explorar="mi-busqueda" onClick={miBusqueda}>{PORTAL_COPY.miBusqueda}</button>
+        {!sinCuenta && <button type="button" className="ex-boton ex-boton-suave" data-activo={enMiBusqueda ? "1" : undefined} data-explorar="mi-busqueda" onClick={miBusqueda}>{PORTAL_COPY.miBusqueda}</button>}
       </div>
+      {aviso && (
+        <p className="ex-aviso" role="status" data-explorar="aviso">
+          {aviso} <button type="button" className="ex-enlace" onClick={() => setAviso(null)}>{PORTAL_COPY.cerrar}</button>
+        </p>
+      )}
       {sinBusqueda && (
         <p className="ex-aviso" role="status" data-explorar="sin-busqueda">
           {PORTAL_COPY.sinMiBusqueda} <button type="button" className="ex-enlace" onClick={() => setSinBusqueda(false)}>{PORTAL_COPY.cerrar}</button>
@@ -387,6 +525,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
               onTocarMapa={() => setSel(null)}
               onMovido={(c) => setZonaPendiente(c)}
               onEstado={setMapa}
+              sinCifras={sinCuenta}
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
@@ -416,6 +555,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
               alCerrar={() => setSel(null)}
               alGuardar={(id) => void alternarGuardado(id, "tarjeta")}
               alAnalizar={pedirAnalisis}
+              sinCuenta={sinCuenta}
             />
           ) : (
             <button type="button" className="ex-hoja" data-explorar="hoja" onClick={() => setVista("lista")}>
@@ -441,8 +581,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
             alOrden={cambiarOrden}
             alAbrir={abrirDesdeLista}
             alGuardar={(id) => void alternarGuardado(id, "lista")}
-            alAvisame={() => setAvisame(true)}
+            alAvisame={alAvisame}
             alMapa={() => setVista("mapa")}
+            sinCuenta={sinCuenta}
           />
         )}
       </div>
@@ -454,6 +595,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
           asegurar={(f) => void asegurar(f)}
           alAplicar={(f) => { setHojaFiltros(false); aplicar(f, "filtros"); }}
           alCerrar={() => setHojaFiltros(false)}
+          alPedirRegistro={sinCuenta ? (motivo, f) => {
+            // Lo elegido hasta ahí se aplica; «Solo flujo positivo» vuelve prendido después del alta (va en la URL de vuelta).
+            setHojaFiltros(false);
+            aplicar(f, "filtros");
+            pedirRegistro(motivo, visibles[0] ?? null, { filtros: motivo === "flujo" ? { ...filtrosAbiertos(f), flujoPositivo: true } : filtrosAbiertos(f) });
+          } : null}
         />
       )}
       {avisame && (
@@ -464,6 +611,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: 
           alCerrar={() => setAvisame(false)}
         />
       )}
+
+      {registro && (
+        <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
+      )}
+      {bienvenida && total != null && <Bienvenida n={inicial.n ?? total} alCerrar={() => setBienvenida(false)} />}
 
       {confirmar && (
         <AvisoAntesDeAnalizar

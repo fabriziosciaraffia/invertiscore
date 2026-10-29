@@ -16,6 +16,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { tipoDeAlta } from "./respuesta";
 
+/** La puerta con que nace la cuenta por esta alta: B (/deptos), C (invitada) o E (Explorar sin cuenta, 29-oct-2026). */
+export type PuertaAlta = "B" | "C" | "E";
+
 /** Cuánto espera la respuesta al regalo, después de la tanda: nada (medido, 25-oct-2026: el regalo tarda 1 s más que la
  *  tanda y una espera corta nunca lo alcanzaba). Si ya está, entra; si no, sale «pendiente» y la pantalla lo pide. */
 export const ESPERA_REGALO_MS = 0;
@@ -48,17 +51,17 @@ export interface PiezasAlta {
   perfilSiFalta: (perfil: Record<string, unknown>) => Promise<"creado" | "ya-estaba">;
   filaDelDia: () => Promise<unknown>;
   creditos: () => Promise<unknown>;
-  /** La puerta (C si la cuenta es invitada; cobra la invitación si viene su cookie). */
-  puerta: () => Promise<{ puerta: "B" | "C"; invitacionUsada: boolean }>;
+  /** La puerta (C si la cuenta es invitada; cobra la invitación si viene su cookie; E si lo elegido vino de Explorar). */
+  puerta: () => Promise<{ puerta: PuertaAlta; invitacionUsada: boolean }>;
   esPrueba: () => Promise<boolean>;
   /** La puerta llega como promesa: el regalo arranca con la tanda y la usa solo en sus eventos. */
-  regalo: (puerta: Promise<"B" | "C">) => Promise<RegaloAlta>;
+  regalo: (puerta: Promise<PuertaAlta>) => Promise<RegaloAlta>;
   // ── después de responder ──
   vueltaDelDia: () => Promise<unknown>;
-  atribucion: (puerta: "B" | "C") => Promise<unknown>;
-  meta: (puerta: "B" | "C") => Promise<unknown>;
+  atribucion: (puerta: PuertaAlta) => Promise<unknown>;
+  meta: (puerta: PuertaAlta) => Promise<unknown>;
   borrarPendiente: () => Promise<unknown>;
-  posthog: (p: { regalo: string; puerta: "B" | "C" }) => Promise<unknown>;
+  posthog: (p: { regalo: string; puerta: PuertaAlta }) => Promise<unknown>;
 }
 
 export interface EspejoAlta { evento: string; eventId: string; datos?: Record<string, unknown> }
@@ -83,7 +86,7 @@ export async function ordenarAlta(
     /** La búsqueda de «Estás dentro», desde lo elegido. */
     busquedaDe: (perfil: Record<string, unknown>) => unknown;
     /** El espejo del CompleteRegistration (null si es prueba o sin permiso del aviso de cookies). */
-    espejoDe: (puerta: "B" | "C", prueba: boolean) => EspejoAlta | null;
+    espejoDe: (puerta: PuertaAlta, prueba: boolean) => EspejoAlta | null;
   },
   despues: (p: Promise<unknown>) => void,
   o: { esperaRegaloMs?: number } = {},

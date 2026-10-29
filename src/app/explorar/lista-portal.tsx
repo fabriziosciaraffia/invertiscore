@@ -10,12 +10,13 @@ import { useEffect, useRef, useState } from "react";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { flujoTexto } from "@/lib/explorar/explorar";
 import { ORDENES, PORTAL_COPY, tituloLista, type OrdenPortal, type PinMapa } from "@/lib/explorar/portal";
-import { Corazon, ImagenDepto, veredictoConPuntaje } from "./tarjeta-pin";
+import { BORROSO } from "@/lib/explorar/abierto";
+import { Borroso, Corazon, ImagenDepto, veredictoConPuntaje } from "./tarjeta-pin";
 
 const TANDA = 30;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function ListaPortal({ pines, total, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alAvisame, alMapa }: {
+export function ListaPortal({ pines, total, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alAvisame, alMapa, sinCuenta = false }: {
   pines: PinMapa[];
   total: number | null;
   calculando: boolean;
@@ -28,6 +29,8 @@ export function ListaPortal({ pines, total, calculando, orden, analizados, guard
   alGuardar: (avisoId: string) => void;
   alAvisame: () => void;
   alMapa: () => void;
+  /** Sin cuenta (29-oct-2026, la puerta E): el flujo va borroso, con un relleno fijo (no viaja al navegador). */
+  sinCuenta?: boolean;
 }) {
   const [hasta, setHasta] = useState(TANDA);
   const fin = useRef<HTMLDivElement>(null);
@@ -63,7 +66,7 @@ export function ListaPortal({ pines, total, calculando, orden, analizados, guard
                     <b className="ex-precio-l">UF {miles(p.precioUF)}</b>
                     <span className="ex-linea2">
                       <b className="ex-ver">{analizados[p.avisoId] ? PORTAL_COPY.analizado : veredictoConPuntaje(p)}</b>
-                      {p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b></>}
+                      {sinCuenta ? <> · <Borroso texto={BORROSO.flujo} /></> : p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b></>}
                     </span>
                   </span>
                 </button>

@@ -20,14 +20,20 @@ import { agenteDelEvento, enviarCaptura, esRobot, type DepsEnvio, type EventoSer
 // Los robots se reconocen en el único punto de envío (posthog-captura.ts); acá se reexporta para las páginas.
 export { esRobot };
 
-export type PaginaEntrada = "landing" | "deptos" | "invitacion";
+export type PaginaEntrada = "landing" | "deptos" | "invitacion" | "explorar";
 
-/** El evento de vista de cada página: los nombres de siempre, para que los paneles sigan leyéndolos. */
+/** El evento de vista de cada página: los nombres de siempre, para que los paneles sigan leyéndolos. /explorar (29-oct-2026,
+ *  la puerta E) emite la suya SOLO SIN SESIÓN, con la llegada (`llegada`: landing o directo); con sesión la emite la página a
+ *  nombre de la cuenta (`explorar_vista`). El nombre es EVENTOS_ABIERTO.vista (lib/explorar/abierto.ts). */
 export const EVENTO_VISTA: Record<PaginaEntrada, string> = {
   landing: "landing_viewed",
   deptos: "deptos_vista",
   invitacion: "invitacion_vista",
+  explorar: "explorar_abierto_vista",
 };
+
+/** De dónde llegó a /explorar: la tarjeta de la landing lleva `?desde=landing` (abierto.ts › HREF_DESDE_LANDING). */
+export const origenDeExplorar = (search: string): "landing" | "directo" => (new URLSearchParams(search).get("desde") === "landing" ? "landing" : "directo");
 
 /** La cabecera con que el middleware le pasa el id de la visita a la página (la de /i/ emite su vista ella). */
 export const CABECERA_VISITA = "x-franco-visita";
@@ -72,6 +78,7 @@ export function paginaDeEntrada(pathname: string): PaginaEntrada | null {
   if (pathname === "/") return "landing";
   if (pathname === "/deptos" || pathname === "/deptos/") return "deptos";
   if (pathname.startsWith("/i/")) return "invitacion";
+  if (pathname === "/explorar" || pathname === "/explorar/") return "explorar";
   return null;
 }
 

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
-import { CORREO_OK, perfilManualDeElecciones, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
+import { CORREO_OK, type EleccionesDeptos } from "@/lib/deptos/respuesta";
+import { detalleExplorar, perfilDelPedido } from "@/lib/explorar/abierto";
 import { correoTieneCuenta, esPuertaDeptos, guardarPendiente } from "@/lib/deptos/servidor";
 import { ipDelRequest } from "@/lib/api-helpers/anon-cap";
 
@@ -27,18 +28,21 @@ function topado(ip: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const b = (await request.json().catch(() => ({}))) as { correo?: unknown; elecciones?: Partial<EleccionesDeptos>; puerta?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { correo?: unknown; elecciones?: Partial<EleccionesDeptos>; filtros?: unknown; puerta?: unknown; detalle?: unknown };
   const correo = typeof b.correo === "string" ? b.correo.trim() : "";
   if (!CORREO_OK.test(correo)) return NextResponse.json({ error: "correo" }, { status: 400 });
-  const v = validarElecciones(b.elecciones ?? {});
+  // Los chips de /deptos (o los de un pin de Explorar); en la puerta E, también los filtros de «Avísame de nuevos».
+  const v = perfilDelPedido(b);
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
   if (topado(ipDelRequest(request))) return NextResponse.json({ error: "tope" }, { status: 429 });
   try {
     const admin = createServiceClient();
     const existe = await correoTieneCuenta(admin, correo);
     if (existe == null) return NextResponse.json({ error: "interno" }, { status: 500 });
-    // La puerta (22-oct-2026): B en /deptos, C en la página del invitado; la mide `alta_perdida`.
-    await guardarPendiente(admin, correo, perfilManualDeElecciones(v), existe, esPuertaDeptos(b.puerta) ? b.puerta : null);
+    // La puerta (22-oct-2026): B en /deptos, C en la página del invitado; la mide `alta_perdida`. E (29-oct-2026): Explorar
+    // sin cuenta, con el detalle de la llegada (landing o directo) para la atribución.
+    const puerta = esPuertaDeptos(b.puerta) ? b.puerta : null;
+    await guardarPendiente(admin, correo, v.perfil, existe, puerta, puerta === "E" ? detalleExplorar(typeof b.detalle === "string" ? b.detalle : null) : null);
     return NextResponse.json({ ok: true });
   } catch (e) {
     captureApiError(e, { ruta: "POST /api/deptos/correo", operacion: "pendiente" });

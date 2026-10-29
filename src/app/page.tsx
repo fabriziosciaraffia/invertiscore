@@ -19,6 +19,7 @@ import { leerDatosLanding } from "@/lib/landing-vivo";
 import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
+import { TarjetaExplorar } from "@/components/landing-v14/TarjetaExplorar";
 import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
 import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
@@ -51,6 +52,8 @@ export default async function LandingPage() {
       <SuaveScroll />
       <main>
         <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} />
+        {/* LA SEGUNDA PUERTA (29-oct-2026, la puerta E): Explorar sin registrarse, con el mismo peso que el informe. */}
+        <TarjetaExplorar datos={datos.explorar} />
         {/* las secciones 2 y 3 muestran el MISMO ejemplo: la rotación es una sola */}
         <RotacionEjemplos ejemplos={datos.ejemplos}>
           <LaRespuesta />

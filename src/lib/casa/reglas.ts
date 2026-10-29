@@ -25,7 +25,8 @@ export type PreguntaPendiente = "modalidad" | "cuando";
 
 /** Las preguntas que el perfil le debe hacer a esta cuenta: ninguna a quien entró con su informe. */
 export function preguntasPendientes(p: { puerta: Puerta | null; modalidad: Modalidad | null; horizonte: Horizonte | null }): PreguntaPendiente[] {
-  if (p.puerta !== "B" && p.puerta !== "C") return [];
+  // E (29-oct-2026): como B y C, nació con un perfil que eligió sin informe.
+  if (p.puerta !== "B" && p.puerta !== "C" && p.puerta !== "E") return [];
   const out: PreguntaPendiente[] = [];
   if (p.modalidad == null) out.push("modalidad");
   if (p.horizonte == null) out.push("cuando");

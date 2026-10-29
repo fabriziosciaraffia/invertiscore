@@ -269,33 +269,35 @@ export async function primerosDeptos(
 }
 
 /** La elección pendiente de un correo (lo elegido antes del código). */
-/** `puerta`: la de lo elegido (B o C), para la entrada (deptos_entradas). */
-export interface Pendiente { correo: string; perfil: Record<string, unknown>; existe: boolean; creadoAt: string; puerta?: string | null }
+/** `puerta`: la de lo elegido (B, C o E), para la entrada (deptos_entradas) y, la E, para la atribución con su detalle. */
+export interface Pendiente { correo: string; perfil: Record<string, unknown>; existe: boolean; creadoAt: string; puerta?: string | null; puertaDetalle?: string | null }
 
 export const normalizarCorreo = (c: string) => c.trim().toLowerCase();
 
-/** La puerta (B en /deptos, C en la página del invitado) queda con lo elegido desde el 22-oct-2026: la mide `alta_perdida`. */
-export const esPuertaDeptos = (x: unknown): x is "B" | "C" => x === "B" || x === "C";
+/** La puerta (B en /deptos, C en la página del invitado) queda con lo elegido desde el 22-oct-2026: la mide `alta_perdida`.
+ *  E (29-oct-2026): la hoja de registro de Explorar sin cuenta. */
+export type PuertaPendiente = "B" | "C" | "E";
+export const esPuertaDeptos = (x: unknown): x is PuertaPendiente => x === "B" || x === "C" || x === "E";
 
-export async function guardarPendiente(admin: SupabaseClient, correo: string, perfil: Record<string, unknown>, existe: boolean, puerta: "B" | "C" | null = null): Promise<void> {
-  const { error } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(correo), perfil, existe, creado_at: new Date().toISOString(), puerta }, { onConflict: "correo" });
+export async function guardarPendiente(admin: SupabaseClient, correo: string, perfil: Record<string, unknown>, existe: boolean, puerta: PuertaPendiente | null = null, puertaDetalle: string | null = null): Promise<void> {
+  const { error } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(correo), perfil, existe, creado_at: new Date().toISOString(), puerta, puerta_detalle: puertaDetalle }, { onConflict: "correo" });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-pendiente" });
   if (error) throw new Error(`pendiente: ${error.message}`);
 }
 
 export async function leerPendiente(admin: SupabaseClient, correo: string): Promise<Pendiente | null> {
-  const { data, error } = await admin.from("deptos_pendientes").select("correo, perfil, existe, creado_at, puerta").eq("correo", normalizarCorreo(correo)).maybeSingle();
+  const { data, error } = await admin.from("deptos_pendientes").select("correo, perfil, existe, creado_at, puerta, puerta_detalle").eq("correo", normalizarCorreo(correo)).maybeSingle();
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente" });
-  return data ? { correo: data.correo as string, perfil: data.perfil as Record<string, unknown>, existe: !!data.existe, creadoAt: data.creado_at as string, puerta: (data.puerta as string | null | undefined) ?? null } : null;
+  return data ? { correo: data.correo as string, perfil: data.perfil as Record<string, unknown>, existe: !!data.existe, creadoAt: data.creado_at as string, puerta: (data.puerta as string | null | undefined) ?? null, puertaDetalle: (data.puerta_detalle as string | null | undefined) ?? null } : null;
 }
 
 /**
  * ANTES DE IRSE A GOOGLE (16-oct-2026): lo elegido queda con una clave al azar —todavía no se sabe el correo—, con la
  * hora del servidor (la del «pedido», para saber después si la cuenta nació con esta entrada). Devuelve la clave.
  */
-export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Record<string, unknown>, puerta: "B" | "C" | null = null): Promise<string> {
+export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Record<string, unknown>, puerta: PuertaPendiente | null = null, puertaDetalle: string | null = null): Promise<string> {
   const clave = randomBytes(16).toString("hex");
-  const { error } = await admin.from("deptos_pendientes").insert({ correo: `${PREFIJO_GOOGLE}${clave}`, perfil, existe: false, creado_at: new Date().toISOString(), puerta });
+  const { error } = await admin.from("deptos_pendientes").insert({ correo: `${PREFIJO_GOOGLE}${clave}`, perfil, existe: false, creado_at: new Date().toISOString(), puerta, puerta_detalle: puertaDetalle });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-pendiente-google" });
   if (error) throw new Error(`pendiente google: ${error.message}`);
   return clave;
@@ -309,12 +311,12 @@ export async function guardarPendienteGoogle(admin: SupabaseClient, perfil: Reco
 export async function reclavarPendienteGoogle(admin: SupabaseClient, p: { clave: string; correo: string; cuentaCreadaAt: string | null | undefined }): Promise<boolean> {
   if (!CLAVE_GOOGLE.test(p.clave)) return false;
   const llave = `${PREFIJO_GOOGLE}${p.clave}`;
-  const { data, error } = await admin.from("deptos_pendientes").select("perfil, creado_at, puerta").eq("correo", llave).maybeSingle();
+  const { data, error } = await admin.from("deptos_pendientes").select("perfil, creado_at, puerta, puerta_detalle").eq("correo", llave).maybeSingle();
   reportarFalloQuery(error, { ruta: RUTA, operacion: "leer-pendiente-google" });
   if (!data) return false;
   const pedidoAt = data.creado_at as string;
   const existe = tipoDeAlta({ existiaAlPedir: false, cuentaCreadaAt: p.cuentaCreadaAt, pedidoAt }) === "existente";
-  const { error: e2 } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(p.correo), perfil: data.perfil, existe, creado_at: pedidoAt, puerta: data.puerta ?? null }, { onConflict: "correo" });
+  const { error: e2 } = await admin.from("deptos_pendientes").upsert({ correo: normalizarCorreo(p.correo), perfil: data.perfil, existe, creado_at: pedidoAt, puerta: data.puerta ?? null, puerta_detalle: data.puerta_detalle ?? null }, { onConflict: "correo" });
   reportarFalloQuery(e2, { ruta: RUTA, operacion: "reclavar-pendiente-google" });
   if (e2) return false;
   await admin.from("deptos_pendientes").delete().eq("correo", llave);

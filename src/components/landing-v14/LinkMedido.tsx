@@ -1,6 +1,6 @@
 "use client";
 
-// Enlace que emite un evento de PostHog al click. Para "Ver un análisis real →"
+// Enlace que emite un evento de PostHog al click. Para "Ver un análisis de ejemplo"
 // y "Ver planes →". Con href interno usa EnlaceCarga (28-sep-2026): el toque se ve
 // presionado y la barra bajo el header arranca mientras la página llega.
 

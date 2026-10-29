@@ -24,9 +24,11 @@
  * Lo prueba el tier MEDICION-META (la atribución por puerta).
  */
 
-export type Puerta = "A" | "B" | "C" | "D";
-export const PUERTAS: Record<Puerta, string> = { A: "informe", B: "página de selección", C: "referido", D: "orgánico" };
-export const esPuerta = (v: unknown): v is Puerta => v === "A" || v === "B" || v === "C" || v === "D";
+// E (29-oct-2026): Explorar sin cuenta, la hoja de registro sobre el mapa (lib/explorar/abierto.ts). Su detalle dice de
+// dónde llegó a /explorar: «explorar:landing» (la tarjeta de la landing) o «explorar:directo».
+export type Puerta = "A" | "B" | "C" | "D" | "E";
+export const PUERTAS: Record<Puerta, string> = { A: "informe", B: "página de selección", C: "referido", D: "orgánico", E: "explorar" };
+export const esPuerta = (v: unknown): v is Puerta => v === "A" || v === "B" || v === "C" || v === "D" || v === "E";
 
 /** Desde cuándo se miden las puertas: el 15-oct-2026 a medianoche en Chile (UTC−3 en octubre). La RPC
  *  `upsert_user_attribution` usa el mismo instante (migración 20261026_puerta_d_desde_15oct). */

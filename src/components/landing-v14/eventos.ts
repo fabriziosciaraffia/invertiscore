@@ -8,6 +8,8 @@ export const EV = {
   section: "landing_section_viewed",
   ctaFocus: "landing_cta_focus",
   ejemplo: "landing_ejemplo_click",
+  /** «Ver en el mapa →» de la tarjeta de la segunda puerta (29-oct-2026, la puerta E). */
+  explorar: "landing_explorar_click",
   planes: "landing_planes_click",
   sinDireccion: "landing_sin_direccion",
   /** Pausar / seguir la rotación desde «Lo que haría Franco» (`accion`, `ejemplo`). */

@@ -131,7 +131,7 @@ export function masDeMiles(n: number): string {
  * EL COPY DE /deptos SEGÚN EL MOCKUP DE LA PUERTA B (23-oct-2026, `docs/puerta-b-mockups/1b-deptos.html`, decisión de
  * Fabrizio): el título en serif, la bajada con «Se van rápido.» en negrita, la tarjeta «¿Qué buscas?» con tres campos con
  * nombre, la tarjeta del número, la tarjeta del correo con el material de la tríada —Google primero, «o con tu correo», el
- * campo y «Quiero verlos»— y, debajo, la prueba con las cifras de la noche y «Ver un análisis real». Sin pie ni plazo.
+ * campo y «Quiero verlos»— y, debajo, la prueba con las cifras de la noche y «Ver un análisis de ejemplo». Sin pie ni plazo.
  */
 export const DEPTOS_COPY = {
   /** El título de la pestaña y de la vista previa del enlace. */
@@ -192,8 +192,8 @@ export const DEPTOS_COPY = {
     fuerte: revisados ? `las ${masDeMiles(revisados)} publicaciones` : "todas las publicaciones",
     despues: ` en venta de Santiago y calcula cuáles convienen como inversión.${convienen != null ? ` Anoche, ${miles(convienen)} deptos.` : ""}`,
   }),
-  verAnalisis: "Ver un análisis real",
-  /** Adónde lleva «Ver un análisis real»: el demo público. */
+  verAnalisis: "Ver un análisis de ejemplo",
+  /** Adónde lleva «Ver un análisis de ejemplo» (29-oct-2026: antes «real», en todo el sitio): el demo público. */
   hrefAnalisis: "/demo",
   tope: `Hasta ${MAX_COMUNAS_DEPTOS} comunas.`,
 } as const;

@@ -381,20 +381,25 @@ export function HeroEntrada({
   pie,
   antes,
   despues,
+  rotulo,
   ...campo
 }: CampoEntradaProps & {
   /** La cabecera: el header único (HeaderFranco) «sobre material», que pone quien monta el hero
    *  (27-sep-2026; antes el hero dibujaba la suya, con su wordmark y su «Entrar»). */
   cabecera?: ReactNode;
-  /** Enlace del pie («Ver un análisis de ejemplo» en el wizard, «Ver un análisis real» en la landing). */
+  /** Enlace del pie («Ver un análisis de ejemplo» en el wizard). La landing ya no lo lleva: va debajo de su segunda puerta. */
   pie?: ReactNode;
+  /** EL RÓTULO DE LA PUERTA DEL INFORME (29-oct-2026, mockup 6-puerta-e, estado A): «¿Tienes un depto en la mira?» sobre el
+   *  título, en lugar del eslogan; y el hero deja de ocupar la pantalla entera para que la segunda puerta —la tarjeta de
+   *  Explorar— se vea con el mismo peso. */
+  rotulo?: string;
   /** Sobre el título: el aviso de un análisis a medias. */
   antes?: ReactNode;
   /** Bajo el campo: el rechazo de cobertura y su lista de espera. */
   despues?: ReactNode;
 }) {
   return (
-    <section className="he-root" aria-label="Analiza un departamento">
+    <section className={`he-root${rotulo ? " he-root--puertas" : ""}`} aria-label="Analiza un departamento">
       {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
       <picture className="he-fondo">
         <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
@@ -406,14 +411,17 @@ export function HeroEntrada({
         <img src="/landing/hero-liso-m2x.webp" alt="" decoding="async" />
       </picture>
       {cabecera}
-      <div className="he-col">
-        <p className="he-eslogan">{ESLOGAN}</p>
-      </div>
+      {!rotulo && (
+        <div className="he-col">
+          <p className="he-eslogan">{ESLOGAN}</p>
+        </div>
+      )}
       {/* LA INFORMACIÓN PRINCIPAL, CENTRADA EN ALTURA (QA 28-sep-2026): el título y el campo
           van al centro de la pantalla, y el pie («Ver un análisis…») acompaña debajo del bloque,
           no pegado al borde inferior. */}
       <div className="he-col he-mid">
         {antes}
+        {rotulo && <p className="he-rotulo" data-landing="rotulo">{rotulo}</p>}
         <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
         <CampoEntrada {...campo} />
         {despues}

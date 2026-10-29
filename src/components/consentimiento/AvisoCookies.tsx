@@ -5,7 +5,7 @@
 // «Usamos cookies para medir qué funciona y mejorar Franco · Privacidad», con «Aceptar» lleno y «Rechazar» de borde,
 // los dos del mismo tamaño y a un clic. En PC, todo en una fila. En el teléfono, la frase en la primera línea (con un
 // tamaño que la hace caber entera: 27,9 em medidos en Inter, entre 10 y 13 px) y «Privacidad» con los botones en la
-// segunda; no más, para que no tape «Ver un análisis real» del hero.
+// segunda; no más, para que no tape «Ver un análisis de ejemplo» (entonces «real», en el hero).
 // Sale mientras no haya elección y vuelve cuando el pie pide «Cookies». Cada elección es un `cookies_eleccion` en
 // PostHog (acepta, rechaza, ignora). Se dibuja recién en el navegador (lee la cookie) y su texto es más chico que el
 // titular de la landing, así que no le compite el LCP.

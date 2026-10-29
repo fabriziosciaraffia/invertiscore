@@ -10,7 +10,7 @@
 //       número («12 de 310 publicados convienen · Publicados anoche. Cambia la búsqueda y el número cambia.», de la
 //       evaluación de la noche, GET /api/deptos/respuesta) y la tarjeta del correo con el material de la tríada: primero
 //       «Entrar con Google», «o con tu correo», el campo y «Quiero verlos», «Sin contraseña: te mandamos un código». Debajo,
-//       la prueba con las cifras de la noche y «Ver un análisis real». Sin pie ni plazo.
+//       la prueba con las cifras de la noche y «Ver un análisis de ejemplo». Sin pie ni plazo.
 //   2 · EL CÓDIGO: en la misma tarjeta, «Te mandamos un código a …», el campo y «Entrar». El MISMO mensaje exista o no la
 //       cuenta; al entrar, a la que ya existía se le pregunta si agrega la comuna a su perfil.
 //   3 · «BIENVENIDO, ESTÁS DENTRO.»: la tarjeta roja del regalo; «Tu selección» con sus primeros deptos (PrimeraSeleccion,
@@ -469,7 +469,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       </div>
       </>)}
 
-      {/* LA PRUEBA: las cifras de la noche y un análisis real. */}
+      {/* LA PRUEBA: las cifras de la noche y un análisis de ejemplo. */}
       <section className="dp-prueba" data-deptos="prueba">
         <p className="dp-prueba-t">{prueba.antes}<b>{prueba.fuerte}</b>{prueba.despues}</p>
         <EnlaceCarga href={DEPTOS_COPY.hrefAnalisis} className="dp-prueba-enlace" data-deptos="ver-analisis">{DEPTOS_COPY.verAnalisis} →</EnlaceCarga>
