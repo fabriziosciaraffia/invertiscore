@@ -124,16 +124,23 @@ export function CampoEntrada({
   // antes del primer pintado y Lighthouse los cargaba al titular (2,3 s o 2,65 s según la corrida). En el
   // `load` ya pintó, y en un teléfono llega lo mismo antes de que alguien lea el titular y toque el campo;
   // si lo toca antes, la hoja se abre cuando llega (el efecto de abajo).
+  // DESPUÉS DEL PRIMER CUADRO, NO EN EL `load` (29-oct-2026, LCP de la landing en producción): con la tarjeta de Explorar
+  // el `load` llegó ANTES del primer pintado (720 contra 871 ms en la traza de Lighthouse), los 52 kB terminaban antes
+  // del titular y el LCP simulado quedó en 2,70 s en siete corridas de siete. Ahora se piden dos cuadros después del
+  // `load`: el titular ya está en pantalla.
   const [Hoja, setHojaComp] = useState<ComponentType<{ abierto: boolean; onClose: () => void; children: ReactNode }> | null>(null);
   useEffect(() => {
     if (!usaHoja || Hoja) return;
     let vivo = true;
+    let cuadro = 0;
+    let espera = 0;
     const pedir = () => {
       import("./HojaDireccion").then((m) => { if (vivo) setHojaComp(() => m.default); });
     };
-    if (document.readyState === "complete") pedir();
-    else window.addEventListener("load", pedir, { once: true });
-    return () => { vivo = false; window.removeEventListener("load", pedir); };
+    const trasElCuadro = () => { cuadro = requestAnimationFrame(() => { cuadro = requestAnimationFrame(() => { espera = window.setTimeout(pedir, 0); }); }); };
+    if (document.readyState === "complete") trasElCuadro();
+    else window.addEventListener("load", trasElCuadro, { once: true });
+    return () => { vivo = false; window.removeEventListener("load", trasElCuadro); cancelAnimationFrame(cuadro); window.clearTimeout(espera); };
   }, [usaHoja, Hoja]);
 
   const entregar = (sel: SeleccionDireccion) => {
@@ -401,15 +408,27 @@ export function HeroEntrada({
   return (
     <section className={`he-root${rotulo ? " he-root--puertas" : ""}`} aria-label="Analiza un departamento">
       {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
-      <picture className="he-fondo">
-        <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
-        <source srcSet="/landing/hero-liso-m1x.webp 1x, /landing/hero-liso-m2x.webp 2x, /landing/hero-liso-m3x.webp 3x" />
-        {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—. LISO (19-oct-2026): el
-            degradado sin el grano incorporado pesa 3–17 kB en vez de 31–183 kB; el grano lo pone la capa de
-            hero-entrada.css (grano-fino.png, 8 kB). Lo fija el tier LANDING-RENDIMIENTO. */}
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/hero-liso-m2x.webp" alt="" decoding="async" />
-      </picture>
+      {rotulo ? (
+        // EL HERO DE DOS PUERTAS, CON EL DEGRADADO CHICO (29-oct-2026, LCP de la landing en producción: 2,70 s). A pantalla
+        // completa Chrome toma la imagen por fondo y no la cuenta como LCP; el hero compacto ya no la cubre y la imagen pasó a
+        // ser el LCP. Un degradado liso no tiene información: a 52 × 113 (584 B) y 96 × 60 (460 B) se ve igual estirado y
+        // queda bajo el umbral de 0,05 bits por píxel con que Chrome descarta las imágenes de relleno. El LCP vuelve al titular.
+        <picture className="he-fondo">
+          <source media="(min-width: 768px)" srcSet="/landing/hero-liso-chico-d.webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+          <img src="/landing/hero-liso-chico-m.webp" alt="" decoding="async" />
+        </picture>
+      ) : (
+        <picture className="he-fondo">
+          <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
+          <source srcSet="/landing/hero-liso-m1x.webp 1x, /landing/hero-liso-m2x.webp 2x, /landing/hero-liso-m3x.webp 3x" />
+          {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—. LISO (19-oct-2026): el
+              degradado sin el grano incorporado pesa 3–17 kB en vez de 31–183 kB; el grano lo pone la capa de
+              hero-entrada.css (grano-fino.png, 8 kB). Lo fija el tier LANDING-RENDIMIENTO. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+          <img src="/landing/hero-liso-m2x.webp" alt="" decoding="async" />
+        </picture>
+      )}
       {cabecera}
       {!rotulo && (
         <div className="he-col">

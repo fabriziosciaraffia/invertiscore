@@ -308,10 +308,14 @@ export function runLandingRendimientoTier(): { hard: number } {
   if (!/const cancelarQuieta = cuandoLaPaginaEsteQuieta\(\(\) => void \(async \(\) => \{\s*try \{\s*const \{ createClient \} = await import\("@\/lib\/supabase\/client"\);/.test(atrib6)) F("6 · la atribución pide Supabase antes de que la página esté quieta");
   // d' · La hoja de la dirección (~52 kB con lo suyo) se pide con la página CARGADA, no al montar: pedida al montar, a
   //      veces terminaba antes del primer pintado y el LCP simulado saltaba de 2,3 a 2,65 s según la corrida.
+  // ⚠ ACTA (29-oct-2026, puerta E, medido en producción) · ni el `load` alcanza: con la tarjeta de Explorar el `load` llegó
+  //      antes del primer pintado (720 contra 871 ms) y el LCP simulado quedó en 2,70 s en siete corridas de siete. Se pide
+  //      dos cuadros después del `load`. Verificado en rojo volviendo a `pedir` directo en el `load` (E48, runner de la puerta E).
   const hero6 = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
   if ((hero6.match(/import\("\.\/HojaDireccion"\)/g) ?? []).length !== 1
     || !/const pedir = \(\) => \{\s*import\("\.\/HojaDireccion"\)/.test(hero6)
-    || !/if \(document\.readyState === "complete"\) pedir\(\);\s*else window\.addEventListener\("load", pedir, \{ once: true \}\);/.test(hero6)) F("6 · la hoja de la dirección vuelve a pedirse al montar el hero (antes del titular)");
+    || !/const trasElCuadro = \(\) => \{ cuadro = requestAnimationFrame\(\(\) => \{ cuadro = requestAnimationFrame\(\(\) => \{ espera = window\.setTimeout\(pedir, 0\); \}\); \}\); \};/.test(hero6)
+    || !/if \(document\.readyState === "complete"\) trasElCuadro\(\);\s*else window\.addEventListener\("load", trasElCuadro, \{ once: true \}\);/.test(hero6)) F("6 · la hoja de la dirección vuelve a pedirse antes del primer cuadro del hero (antes del titular)");
   // e · Las fuentes de arriba en su subconjunto del español, partidas sin solaparse, y el wordmark con su cara.
   for (const n of ["source-serif-4-normal-es", "inter-normal-es"]) if (pesa(`public/fonts/${n}.woff2`) > 42_000) F(`6 · ${n}.woff2 pesa más de 42 kB (o no existe)`);
   if (pesa("public/fonts/source-serif-4-700-es.woff2") > 20_000) F("6 · source-serif-4-700-es.woff2 pesa más de 20 kB (o no existe)");
