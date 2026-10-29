@@ -1,4 +1,3 @@
-import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
 
 export const metadata = {
@@ -8,13 +7,18 @@ export const metadata = {
 // 404 con marca y tema. Server component: hereda el data-theme aplicado
 // pre-paint en <html>, así que respeta el tema activo sin JS propio.
 // Sólo tokens --franco-* (sin colores hardcodeados).
+// Enlaces con <a>, no con next/link (28-oct-2026): este 404 viaja en el payload de TODA página, y una referencia a next/link
+// que la página no usa por su cuenta se resuelve con los chunks de otra ruta. En /explorar traía 30 kB de JS de la landing
+// antes del primer pintado (medido en producción); en una página de error la navegación completa no pierde nada.
 export default function NotFound() {
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center gap-8 px-6 text-center"
       style={{ background: "var(--franco-bg)", color: "var(--franco-text)" }}
     >
-      <FrancoLogo size="lg" href="/" showTagline />
+      <a href="/">
+        <FrancoLogo size="lg" showTagline />
+      </a>
 
       <div className="flex flex-col items-center gap-3">
         <p className="font-mono uppercase text-[12px] tracking-[0.2em] text-[var(--franco-text-muted)]">
@@ -29,12 +33,12 @@ export default function NotFound() {
         </p>
       </div>
 
-      <Link
+      <a
         href="/"
         className="font-body text-sm px-5 py-3 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] text-[var(--franco-text)] hover:bg-[var(--franco-elevated)] transition-colors"
       >
         Volver al inicio
-      </Link>
+      </a>
     </main>
   );
 }
