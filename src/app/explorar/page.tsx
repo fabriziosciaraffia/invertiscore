@@ -31,11 +31,15 @@ import { EsqueletoExplorar } from "./esqueleto";
 export const metadata: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
+// DECODIFICACIÓN SINCRÓNICA (28-oct-2026, medido en producción): con `decoding="async"` el mapa quieto se pintaba un cuadro
+// DESPUÉS del primer pintado (observado: FCP 820 ms, LCP 831 ms) y la simulación de Lighthouse le sumaba al LCP todo el JS que
+// arrancaba en esos 11 ms: 2,54 s de mediana, y el /explorar viejo daba 2,68 el 26-oct por lo mismo. Son 11 kB incrustados:
+// decodificarlos en el mismo cuadro no cuesta nada.
 const mapaQuieto = (
   <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
     <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="async" />
+    <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="sync" />
   </picture>
 );
 

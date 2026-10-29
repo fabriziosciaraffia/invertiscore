@@ -427,6 +427,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (/loadGoogleMaps|maps\.googleapis/.test(cli + pag + codigo("src/lib/explorar/portal.ts"))) F("12 · Google Maps entra al primer pintado");
   if (/universo=|pines=\{/.test(pag)) F("12 · la página manda los pines en el HTML (rompe el LCP)");
   if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
+  // EN EL MISMO CUADRO QUE EL PRIMER PINTADO (28-oct-2026, medido en producción): con decoding="async" el mapa quieto se pintaba
+  // 11 ms después del FCP y Lighthouse le sumaba al LCP el JS que arrancaba entremedio (2,54 s de mediana).
+  if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high" decoding="sync" \/>/.test(pag)) F("12 · el mapa quieto se decodifica aparte (se pinta un cuadro después del primer pintado y el LCP sube)");
   // EL ESQUELETO NO ESPERA LA CUENTA (28-oct-2026, medido en producción: esperando perfil, saldo, guardados, informes y el número
   // antes de mandar el HTML, el LCP del teléfono daba 2,53 s de mediana con 1,3 s de «load delay»). La página manda el esqueleto
   // con el mapa quieto apenas valida la sesión; la cuenta y el número llegan en el mismo pedido, dentro de Suspense.
