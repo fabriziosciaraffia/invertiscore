@@ -8,13 +8,16 @@
 
 | Evento | Quién lo emite | Qué marca |
 | --- | --- | --- |
-| `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico, solo cuentas creadas desde el 15-oct-2026). Desde el 26-oct-2026 una cuenta de antes del 15-oct no recibe D (`puertaAdmitida` y la RPC); las 24 que ya la tenían recibieron un `$set` con `puerta` = `antes`, que el panel lee «Antes de las puertas» |
+| `cuenta_atribuida` | el servidor, al fijar la puerta (`src/lib/attribution.ts`) | el registro; lleva `puerta` (A informe · B /deptos · C referido · D orgánico, solo cuentas creadas desde el 15-oct-2026 · E Explorar sin cuenta, desde el 29-oct-2026, con `puerta_detalle` = `explorar:landing` o `explorar:directo`). Desde el 26-oct-2026 una cuenta de antes del 15-oct no recibe D (`puertaAdmitida` y la RPC); las 24 que ya la tenían recibieron un `$set` con `puerta` = `antes`, que el panel lee «Antes de las puertas» |
 | `primera_seleccion_vista` | `GET /api/deptos/primeros`, una vez por cuenta (uuid determinista) | vio sus primeros deptos; lleva `puerta`, `n`, `fuente` (del_dia · noche · ninguno), `faltan`, `con_regalo`, `minutos_desde_alta` |
 | `analisis_creado` | el servidor, al crear un informe con cuenta (`src/lib/medicion-activacion.ts`), y desde el 21-oct-2026 también al desbloquearse uno por pago (la compra suelta atada al informe, en `payments/confirm`) | analizó algo; lleva `via` (wizard · guia · semanal · reanalisis · pago · explorar). Con via = pago, el informe que abrió un pago, una vez (un reenvío de Flow no lo repite); con via = explorar, el informe pedido desde el mapa (23-oct-2026) |
 | `explorar_vista` | la página `/explorar` al pintarse en el servidor (`fuente` = pagina) y `GET /api/explorar` con cada cambio de chip (`fuente` = cambio), desde el 23-oct-2026 (`src/lib/explorar/servidor.ts`) | miró el mapa; lleva los filtros (`comunas`, `tipologias`, `uf_min`, `uf_max`, `pie`, `plazo`), `n` (cuántos pines convienen; null en la vista de la página cuando la combinación se calcula en el navegador), `analizados` (cuántos de esos ya analizó) y, desde el 24-oct-2026, `de_la_noche` (la combinación tiene columna de la noche), `calculados` (cuántos avisos se calcularon en el momento) y `ms` (cuánto tardó la lectura: así se mide en producción cuánto cuesta una combinación nueva) |
 | `explorar_analiza` | la ruta de la guía al crear el informe con `explorar: true`, desde el 23-oct-2026 | pidió un análisis desde el mapa; lleva `analysis_id`, `aviso_id`, `comuna`, `precio_uf`, `m2`, `pie_pct`, `plazo_anios`. El `analisis_creado` de ese informe lleva `via` = explorar |
 | `reanalisis_precio` | el servidor, una vez por informe (uuid determinista), desde el 21-oct-2026 (`src/lib/reanalisis-servidor.ts`): al crear con saldo el informe que pidió el botón «Ver el informe completo a UF X» del pop-up Ajustar, o al confirmarse el pago del suelto | el informe completo al precio que Franco recomendó negociar; lleva `informe_original`, `informe_nuevo`, `precio_original_uf`, `precio_recomendado_uf`, `descuento_pct`, `pie_pct`, `plazo_anios`, `modalidad` (ltr · str) y `con_pago`. El `analisis_creado` de ese informe (con saldo) lleva `via` = reanalisis |
 | `invitacion_vista` | la página `/i/CÓDIGO` al pintarse en el servidor (`src/lib/invitacion-vista.ts`), desde el 20-oct-2026 | abrió un enlace de invitación; lleva `codigo`, `modo` (invitado · propio · con_cuenta), `con_nombre`, `invitador_prueba`, y lo de toda vista de entrada (abajo) |
+| `explorar_abierto_vista` | el middleware al servir `/explorar` SIN sesión (`src/lib/vista-entrada.ts`), desde el 29-oct-2026 | llegó al mapa sin cuenta; lo de toda vista de entrada (abajo) y `llegada` (landing · directo: la tarjeta de la landing lleva `?desde=landing`). Con sesión no sale: esa la cuenta `explorar_vista` |
+| `explorar_bienvenida_vista` · `explorar_pin` · `explorar_registro_abierto` · `explorar_regalo_usado` | el navegador en `/explorar` sin cuenta (`explorar-cliente.tsx`), desde el 29-oct-2026 | el embudo de la puerta E: vio la bienvenida (una vez por navegador), tocó un pin (`sin_cuenta` = true), abrió la hoja de registro (`motivo`: analizar · guardar · avisame · orden · flujo · pie-plazo) y usó el regalo en un «Analizar este». Todos llevan `llegada`, salvo el regalo (ya con cuenta: su llegada es la de la cuenta) |
+| `explorar_registro_hecho` | el servidor al terminar el alta de una cuenta con puerta E (`src/lib/deptos/alta-servidor.ts`), una vez por cuenta | se registró desde el mapa; lleva `regalo` y `llegada` |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
 ## El agente de los eventos del servidor
@@ -65,7 +68,7 @@ with base as (
   having t_reg > toDateTime('2000-01-02') and t_reg >= now() - interval 26 week
 )
 select toStartOfWeek(t_reg, 1) as semana,
-  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', puerta = 'antes', 'Antes de las puertas', 'sin puerta') as puerta,
+  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', puerta = 'E' and detalle = 'explorar:landing', 'E · Explorar desde la landing', puerta = 'E', 'E · Explorar directo', puerta = 'antes', 'Antes de las puertas', 'sin puerta') as puerta,
   count() as registrados,
   countIf(t_sel > toDateTime('2000-01-02') and t_sel < t_reg + interval 1 hour) as vieron_seleccion_1h,
   countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 1 hour, analisis)) as analizaron_1h,
@@ -81,6 +84,59 @@ order by semana desc, puerta
 
 Una cuenta registrada hace menos de 30 días todavía puede entrar en la columna de 30 días: la fila se lee como «hasta
 hoy». `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteriores lo tienen en cero.
+
+La tabla «Activación por semana · por puerta» (e6MrN1ws) lleva la misma rama de la E desde el 29-oct-2026.
+
+## La puerta E: «Puerta E · Explorar sin cuenta por semana» (HogQL)
+
+> 29-oct-2026. El insight U2TKvy0O del mismo dashboard: las visitas a `/explorar` sin sesión (la vista del servidor, sin
+> robots: `$virt_traffic_type` = Regular) y cada paso del embudo, por semana y por llegada (desde la landing · directo).
+> Personas distintas por paso: sin consentimiento cada visita es un id propio, así que `visitas` cuenta visitas. El regalo
+> usado se atribuye por la llegada de la cuenta (su `puerta_detalle`), porque ya pasa con sesión. Sin cuentas de prueba.
+
+```sql
+with ab as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    if(toString(properties.llegada) = 'landing', 'desde la landing', 'directo') as llegada,
+    uniqIf(person_id, event = 'explorar_abierto_vista') as visitas,
+    uniqIf(person_id, event = 'explorar_bienvenida_vista') as vieron_bienvenida,
+    uniqIf(person_id, event = 'explorar_pin' and toString(properties.sin_cuenta) = 'true') as tocaron_un_pin,
+    uniqIf(person_id, event = 'explorar_registro_abierto') as abrieron_registro,
+    uniqIf(person_id, event = 'explorar_registro_hecho') as se_registraron
+  from events
+  where event in ('explorar_abierto_vista', 'explorar_bienvenida_vista', 'explorar_pin', 'explorar_registro_abierto', 'explorar_registro_hecho')
+    and timestamp >= now() - interval 26 week
+    and toString(properties.prueba) != 'true'
+    and coalesce(person.properties.test_account, false) = false
+    and (event != 'explorar_abierto_vista' or (toString(properties.origen) = 'servidor' and properties.$virt_traffic_type = 'Regular'))
+  group by semana, llegada
+),
+e as (
+  select person_id, argMax(coalesce(toString(properties.puerta_detalle), ''), timestamp) as detalle
+  from events
+  where event in ('cuenta_atribuida', '$set') and toString(properties.puerta) = 'E' and timestamp >= now() - interval 30 week
+  group by person_id
+),
+rg as (
+  select toStartOfWeek(r.t, 1) as semana,
+    if(e.detalle = 'explorar:landing', 'desde la landing', 'directo') as llegada,
+    uniq(r.person_id) as usaron_el_regalo
+  from (select person_id, min(timestamp) as t from events where event = 'explorar_regalo_usado' and timestamp >= now() - interval 26 week and coalesce(person.properties.test_account, false) = false group by person_id) as r
+  inner join e on e.person_id = r.person_id
+  group by semana, llegada
+)
+select greatest(coalesce(ab.semana, toDate('1970-01-01')), coalesce(rg.semana, toDate('1970-01-01'))) as semana,
+  if(notEmpty(coalesce(ab.llegada, '')), ab.llegada, rg.llegada) as llegada,
+  coalesce(ab.visitas, 0) as visitas,
+  coalesce(ab.vieron_bienvenida, 0) as vieron_bienvenida,
+  coalesce(ab.tocaron_un_pin, 0) as tocaron_un_pin,
+  coalesce(ab.abrieron_registro, 0) as abrieron_registro,
+  coalesce(ab.se_registraron, 0) as se_registraron,
+  if(visitas = 0, null, round(se_registraron / visitas, 3)) as registro_por_visita,
+  coalesce(rg.usaron_el_regalo, 0) as usaron_el_regalo
+from ab full outer join rg on ab.semana = rg.semana and ab.llegada = rg.llegada
+order by semana desc, llegada
+```
 
 ## La cohorte de la puerta C: «Referidos por semana» (HogQL)
 
