@@ -8,11 +8,10 @@ export const EV = {
   section: "landing_section_viewed",
   ctaFocus: "landing_cta_focus",
   ejemplo: "landing_ejemplo_click",
-  /** «Verlos en el mapa →», el botón del hero del mapa (29-oct-2026; antes, el de la tarjeta de la puerta E). Va a /explorar. */
+  /** «Verlos en el mapa →», el botón del hero (29-oct-2026; antes, el de la tarjeta de la puerta E). Va a /explorar. */
   explorar: "landing_explorar_click",
-  /** Un toque en el mapa del hero, que también lleva a /explorar: un evento aparte del botón (29-oct-2026). El uso del campo
-   *  de dirección es `ctaFocus` (con `ubicacion` = hero) y `direccionElegida`. */
-  explorarMapa: "landing_mapa_click",
+  // ⚠ ACTA (30-oct-2026, el hero limpio de 7c-landing-limpia) · `landing_mapa_click` (un toque en el mapa del hero, 29-oct) se
+  // retiró con el mapa. El uso del campo de dirección sigue siendo `ctaFocus` (con `ubicacion` = hero) y `direccionElegida`.
   planes: "landing_planes_click",
   sinDireccion: "landing_sin_direccion",
   /** Pausar / seguir la rotación desde «Lo que haría Franco» (`accion`, `ejemplo`). */

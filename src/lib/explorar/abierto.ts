@@ -19,11 +19,11 @@ import { perfilDeFiltros, urlDePortal, validarPortal, type FiltrosPortal, type M
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 // ── LA LLEGADA (landing o directo) ───────────────────────────────────────────
-/** La tarjeta de la landing lleva a /explorar con `?desde=landing`: así se separan, en el panel por puerta, las visitas que
+/** El hero de la landing lleva a /explorar con `?desde=landing`: así se separan, en el panel por puerta, las visitas que
  *  llegan desde la landing de las que llegan directo. */
 export type OrigenExplorar = "landing" | "directo";
 // Lo de la landing vive en un módulo sin dependencias (la landing es un cliente liviano: LCP en el teléfono).
-export { DESDE_LANDING, gruposDeLanding, HERO_MAPA, HREF_DESDE_LANDING, MAPA_LANDING, pisoDeMiles, RADIO_CON_NUMERO, type GrupoLanding } from "./puertas-landing";
+export { DESDE_LANDING, HERO_MAPA, HREF_DESDE_LANDING, pisoDeMiles } from "./puertas-landing";
 export const origenDeLlegada = (desde: string | null | undefined): OrigenExplorar => (desde === DESDE_LANDING ? "landing" : "directo");
 /** El detalle de la puerta E en la atribución: «explorar:landing» o «explorar:directo». */
 export const detalleDeOrigen = (o: OrigenExplorar): string => `explorar:${o}`;

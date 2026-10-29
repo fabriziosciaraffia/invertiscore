@@ -50,9 +50,9 @@ export default async function LandingPage() {
           navegador lo perdía si la persona se iba antes de que cargara PostHog. */}
       <SuaveScroll />
       <main>
-        {/* EL MAPA ES EL HERO (29-oct-2026, opción 3 de 7-landing-puertas): las dos puertas —ver los que convienen en el mapa
-            y analizar el depto que uno tiene en la mira— en la primera pantalla. */}
-        <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} datos={{ explorar: datos.explorar, revisados: datos.revisados }} />
+        {/* EL HERO LIMPIO (30-oct-2026, 7c-landing-limpia; antes, el mapa como hero): la tríada a pantalla completa con las dos
+            puertas —ver los que convienen en el mapa y analizar el depto que uno tiene en la mira— en la primera pantalla. */}
+        <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} datos={{ convienen: datos.convienen, revisados: datos.revisados }} />
         {/* las secciones 2 y 3 muestran el MISMO ejemplo: la rotación es una sola */}
         <RotacionEjemplos ejemplos={datos.ejemplos}>
           <LaRespuesta />

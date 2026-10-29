@@ -6,7 +6,8 @@
 // análisis vienen de `leerDatosLanding`; la cifra de comparables, de la fuente única del sitio
 // (src/lib/stats.ts), sin contador en vivo: sube con el mapa y termina en «+40.000».
 //
-// El hero es el del mapa (`HeroMapa`, 29-oct-2026) y el campo del cierre es el de la entrada
+// El hero es el limpio con las dos puertas (`HeroMapa`, 30-oct-2026; el nombre quedó del hero con el mapa del 29-oct) y el
+// campo del cierre es el de la entrada
 // (`CampoEntrada`): ver `Entrada.tsx`. La cabecera es el header único, que monta la página.
 // ─────────────────────────────────────────────────────────────────────────────
 

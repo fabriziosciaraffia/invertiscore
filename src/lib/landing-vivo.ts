@@ -49,10 +49,7 @@ import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { resolverArriendoReferencia, type ArriendoReferencia } from "@/lib/arriendo-referencia";
 import { titularMotor } from "@/lib/titular-motor";
 import { estadoRecomendacion, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
-import { cuantosConvienen, descompactar } from "@/lib/explorar/portal";
-import { PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
-import { gruposDeLanding, type GrupoLanding } from "@/lib/explorar/puertas-landing";
+import { convienenHoy } from "@/lib/explorar/portal-cache";
 import { CLAVE_RESUMEN_NOCHE, resumenGuardado } from "@/lib/deptos/servidor";
 import { metricaValorONull, type AIAnalysisV2, type AnalisisInput, type FullAnalysisResult, type Hallazgo, type HallazgoDistanciaVeredicto, type MixPalancas, type Veredicto } from "@/lib/types";
 import RESPALDO from "./landing-respaldo.json";
@@ -128,10 +125,10 @@ export interface DatosLanding {
   /** Último análisis emitido por una cuenta no interna. */
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
-  /** EL HERO DEL MAPA (29-oct-2026, opción 3 de 7-landing-puertas): cuántos convienen anoche con pie 20 % y 25 años —el MISMO
-   *  universo que muestra Explorar sin cuenta, para que el título, la bienvenida y el mapa digan el mismo número— y los grupos
-   *  del mapa. null si la lectura falló (el título sale sin cifra y el mapa sin grupos). */
-  explorar: { n: number; grupos: GrupoLanding[] } | null;
+  /** EL TÍTULO DEL HERO (30-oct-2026, el hero limpio de 7c-landing-limpia): cuántos convienen hoy, el número único de todo el
+   *  sitio (convienenHoy: el universo del mapa de Explorar con pie 20 % y 25 años). El mapa del hero y sus grupos se
+   *  retiraron con él. null si la lectura falló: el título sale sin cifra. */
+  convienen: number | null;
   /** Cuántos deptos en venta revisó Franco anoche (`revisados` del resumen de la noche, `deptos_resumen_noche`): «+21.000».
    *  Solo lo guardado: la landing no lo calcula (son 2 a 4 s). null sin resumen (la frase sale sin cifra). */
   revisados: number | null;
@@ -345,7 +342,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
 
   const sb = createServiceClient();
 
-  const [ultimo, guardados, explorar, revisados] = await Promise.all([
+  const [ultimo, guardados, convienen, revisados] = await Promise.all([
     (async () => {
       try {
         const noTest = filtroNoTest(await getTestAccountIds(sb));
@@ -371,9 +368,8 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
       }
     })(),
     leerEjemplos(),
-    universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO)
-      .then((u) => { const n = cuantosConvienen(u); return n ? { n, grupos: gruposDeLanding(descompactar(u)) } : null; })
-      .catch((e) => { aviso("explorar", e); return null; }),
+    // convienenHoy no tira: devuelve null si falla, y eso se anota igual que una lectura caída.
+    convienenHoy().then((n) => { if (n == null) aviso("convienen", new Error("sin el universo de la noche")); return n; }),
     Promise.resolve(sb.from("config").select("value").eq("key", CLAVE_RESUMEN_NOCHE).maybeSingle())
       .then(({ data, error }) => { if (error) throw error; return resumenGuardado(data?.value as string | null | undefined)?.revisados ?? null; })
       .catch((e) => { aviso("revisados", e); return null; }),
@@ -382,7 +378,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
   return {
     ultimoAnalisis: ultimo,
     ejemplos: guardados.ejemplos,
-    explorar,
+    convienen,
     revisados,
     degradado: degradado || guardados.degradado,
   };

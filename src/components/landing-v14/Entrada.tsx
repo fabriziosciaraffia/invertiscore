@@ -56,9 +56,8 @@ function useAccionesCampo(ubicacion: UbicacionCampo) {
   };
 }
 
-/** EL CAMPO DEL HERO (29-oct-2026, el hero del mapa: opción 3 de docs/puerta-b-mockups/7-landing-puertas.html). El hero ya no
- *  es el de la entrada: es el mapa de los que convienen con su panel (HeroMapa, un componente de servidor), y este es el campo
- *  de su segunda puerta. El MISMO campo de siempre, con su animación que escribe sola una dirección de ejemplo; lo único
+/** EL CAMPO DEL HERO (29-oct-2026). El hero ya no es el de la entrada: es el de las dos puertas (HeroMapa, un componente de
+ *  servidor; desde el 30-oct-2026 el limpio de 7c-landing-limpia, sin mapa), y este es el campo de su segunda puerta. El MISMO campo de siempre, con su animación que escribe sola una dirección de ejemplo; lo único
  *  propio es que «¿No tienes la dirección?» aparece al tocarlo (la hoja en el teléfono, bajo el campo en el escritorio) y que
  *  el camino del mapa se llama «Ubícalo tú en el mapa», para no confundirlo con el mapa de Explorar. */
 export function CampoHero() {
