@@ -296,6 +296,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
 
   // «explorar_pin»: tocar un pin del mapa (la tarjeta se desliza entre los cercanos).
   function tocarPin(avisoId: string) {
+    // Sin cuenta, la hoja de registro se precarga al tocar un pin: abre al instante aunque las imágenes de la calle de los
+    // cercanos ocupen la red (QA en local, 29-oct-2026: el chunk quedaba detrás de ocho imágenes y la hoja tardaba segundos).
+    if (sinCuenta) void import("./hoja-registro");
     posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada: origen } : {}) });
     setCarrusel(cercanos(visibles, avisoId).map((p) => p.avisoId));
     setSel(avisoId);

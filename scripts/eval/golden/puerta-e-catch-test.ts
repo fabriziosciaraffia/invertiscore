@@ -171,6 +171,11 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (!/if \(v\.motivo === "analizar" && it && !cuenta\.analizados\[it\.avisoId\]\) pedirAnalisis\(it\);/.test(cli) || !/if \(it\) \{ setCarrusel\(cercanos\(visibles, it\.avisoId\)\.map\(\(p\) => p\.avisoId\)\); setSel\(it\.avisoId\); \}/.test(cli)) F("3 · al volver no se abre el mismo pin con el pop-up de analizar");
     if (!/!usaRegalo\(cuenta\.saldo\) \? lineaTicketConSaldo\(/.test(cli) || !/const usaRegalo = \(s: EstadoSaldo\): boolean => s\.tipo === "regalo" \|\| \(s\.tipo === "con" && !!s\.proximoRegalo\);/.test(cli)) F("3 · con el regalo el pop-up habla también del ticket (ofertas de a una)");
     if (!/if \(v\.motivo === "guardar" && it && !guardados\.has\(it\.avisoId\)\) void alternarGuardado\(it\.avisoId, "tarjeta"\);/.test(cli) || !/if \(v\.motivo === "pie-plazo"\) setHojaFiltros\(true\);/.test(cli)) F("3 · al volver no se hace lo que había tocado (guardar, pie y plazo)");
+    // LO QUE CAZÓ EL QA (29-oct-2026, local): con las imágenes de la calle de los cercanos ocupando la red, el chunk de la hoja
+    // quedaba en cola y la hoja tardaba segundos en abrir; y una foto que Google no entrega dejaba la imagen rota.
+    if (!/function tocarPin\(avisoId: string\) \{\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);/.test(cli)) F("3 · sin cuenta la hoja de registro no se precarga al tocar un pin (abre tarde)");
+    const rutaImg = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
+    if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
     // La hoja: los textos del mockup, del regalo, sin el ticket.
     const modH = cargar<{ HojaRegistro: FC<Record<string, unknown>> }>("src/app/explorar/hoja-registro");
     if (modH) {
@@ -279,7 +284,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (29-oct-2026). 40 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
+// ACTA DE MUTACIÓN (29-oct-2026). 42 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
 // todas ROJAS a la primera. Y una falla que el tier cazó ANTES de mutar nada: la llegada de la vista se mandaba como `origen`, y
 // eventoVistaEntrada escribe `origen: "servidor"` después del extra: se perdía en silencio. Ahora es `llegada`.
 //   1 · LANDING: E1 sin la segunda puerta · E2 el hero sin el rótulo · E3 el número sin rojo · E4 «Ver en el mapa» sin la llegada ·
@@ -293,6 +298,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 //       la E · E29 la base sin la E · E30 la llegada se pierde · E31 el correo sin el detalle · E32 lo elegido no se anota.
 //   5 · LA BIENVENIDA: E33 no se marca vista · E34 sin almacenamiento sale siempre · E35 habla del pie · E36 dos botones.
 //   6 · LA MEDICIÓN: E37 la vista sale con sesión · E38 sin «regalo usado» · E39 sin «registro hecho» · E40 la vista sin la llegada.
+//   Y lo que cazó el QA en local: E41 la hoja sin precarga · E42 la foto que no llega sin el mapa de respaldo.
 
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));

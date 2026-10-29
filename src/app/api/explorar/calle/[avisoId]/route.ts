@@ -20,7 +20,11 @@ export async function GET(_req: Request, { params }: { params: { avisoId: string
   if (!UUID.test(params.avisoId)) return new Response(null, { status: 404 });
   const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams("light")).catch(() => null);
   if (!img) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
-  const r = await fetch(img.url, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null);
-  if (!r || !r.ok || !(r.headers.get("content-type") ?? "").startsWith("image/")) return new Response(null, { status: 502, headers: { "Cache-Control": "no-store" } });
-  return new Response(r.body, { status: 200, headers: { "Content-Type": r.headers.get("content-type") ?? "image/jpeg", "Cache-Control": img.guardada ? CACHE : CACHE_SIN_DECIDIR, "X-Calle": img.tipo } });
+  const traer = (url: string) => fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) }).then((x) => (x.ok && (x.headers.get("content-type") ?? "").startsWith("image/") ? x : null)).catch(() => null);
+  const r = await traer(img.url);
+  if (r) return new Response(r.body, { status: 200, headers: { "Content-Type": r.headers.get("content-type") ?? "image/jpeg", "Cache-Control": img.guardada ? CACHE : CACHE_SIN_DECIDIR, "X-Calle": img.tipo } });
+  // La foto no llegó (29-oct-2026): el mapa chico de respaldo, solo cinco minutos en el CDN (la foto vuelve apenas Google la dé).
+  const m = img.respaldo ? await traer(img.respaldo) : null;
+  if (m) return new Response(m.body, { status: 200, headers: { "Content-Type": m.headers.get("content-type") ?? "image/png", "Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa" } });
+  return new Response(null, { status: 502, headers: { "Cache-Control": "no-store" } });
 }

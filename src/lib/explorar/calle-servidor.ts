@@ -90,7 +90,7 @@ function filaDeDecision(id: string, punto: Punto, d: DecisionCalle, ahora: Date)
  *  existe o no hay llave. Decide en el momento si todavía no estaba decidido. `guardada` dice si sale de una decisión
  *  guardada: un mapa por un rechazo de Google (la API apagada, la llave sin permiso) no lo es, y no se puede quedar 30 días
  *  en la caché del CDN tapando la foto que vendrá cuando Google responda. */
-export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}): Promise<{ url: string; tipo: "foto" | "mapa"; guardada: boolean } | null> {
+export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}): Promise<{ url: string; tipo: "foto" | "mapa"; guardada: boolean; respaldo?: string } | null> {
   const key = deps.key ?? llaveCalle();
   const keyMapa = deps.key ?? llaveMapaChico();
   if (!key || !keyMapa) return null;
@@ -100,7 +100,9 @@ export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, esti
     ({ data: g } = await admin.from("calle_avisos").select("aviso_id, lat, lng, estado, pano_id, rumbo, consultado_at").eq("aviso_id", avisoId).maybeSingle());
   }
   const fila = g as FilaCalle | null;
-  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key), tipo: "foto", guardada: true };
+  // Con la foto va el mapa chico de RESPALDO (29-oct-2026): si Google no la entrega (la llave sin permiso, un corte), la ruta
+  // sirve el mapa en vez de una imagen rota.
+  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key), tipo: "foto", guardada: true, respaldo: urlMapaChico({ lat: Number(fila.lat), lng: Number(fila.lng) }, keyMapa, estilo) };
   // Sin foto (o sin decidir, si Google rechazó): el mapa chico con el punto del aviso.
   const punto = fila ? { lat: Number(fila.lat), lng: Number(fila.lng) } : await puntoDelAviso(admin, avisoId);
   return punto ? { url: urlMapaChico(punto, keyMapa, estilo), tipo: "mapa", guardada: fila != null } : null;
