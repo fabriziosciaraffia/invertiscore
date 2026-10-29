@@ -84,7 +84,12 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const mod = cargar<{ TarjetaExplorar: FC<{ datos: { n: number; grupos: ab.GrupoLanding[] } | null }> }>("src/components/landing-v14/TarjetaExplorar");
     if (!mod) F("1 · la tarjeta de Explorar no carga");
     else {
-      const grupos = ab.gruposDeLanding([PIN, { ...PIN, avisoId: "b", comuna: "Ñuñoa", lat: -33.456, lng: -70.598 }, { ...PIN, avisoId: "c" }]);
+      const grupos = ab.gruposDeLanding([PIN, { ...PIN, avisoId: "b", comuna: "Maipú", lat: -33.51, lng: -70.757 }, { ...PIN, avisoId: "c" }]);
+      // SIN PISARSE (QA del 29-oct-2026: Santiago, Providencia y Ñuñoa quedaban uno encima del otro y una cifra se tapaba).
+      // Providencia y Ñuñoa están a dos kilómetros: en el mapa chico, el más chico de los dos no entra.
+      const vecinos = ab.gruposDeLanding([PIN, { ...PIN, avisoId: "c" }, { ...PIN, avisoId: "b", comuna: "Ñuñoa", lat: -33.456, lng: -70.598 }]);
+      if (vecinos.length !== 1 || vecinos[0].comuna !== "Providencia") F("1 · el mapa chico de la landing dibuja dos grupos uno encima del otro (la cifra de abajo se tapa)");
+      for (let i = 0; i < grupos.length; i++) for (let j = i + 1; j < grupos.length; j++) if (Math.hypot(grupos[i].x - grupos[j].x, grupos[i].y - grupos[j].y) < grupos[i].r + grupos[j].r) F("1 · dos grupos del mapa chico se pisan");
       const html = dibujar(createElement(mod.TarjetaExplorar, { datos: { n: 4807, grupos } }));
       const t = texto(html);
       for (const [que, ok] of [
@@ -287,7 +292,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (29-oct-2026). 43 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
+// ACTA DE MUTACIÓN (29-oct-2026). 44 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
 // todas ROJAS a la primera. Y una falla que el tier cazó ANTES de mutar nada: la llegada de la vista se mandaba como `origen`, y
 // eventoVistaEntrada escribe `origen: "servidor"` después del extra: se perdía en silencio. Ahora es `llegada`.
 //   1 · LANDING: E1 sin la segunda puerta · E2 el hero sin el rótulo · E3 el número sin rojo · E4 «Ver en el mapa» sin la llegada ·
@@ -302,7 +307,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 //   5 · LA BIENVENIDA: E33 no se marca vista · E34 sin almacenamiento sale siempre · E35 habla del pie · E36 dos botones.
 //   6 · LA MEDICIÓN: E37 la vista sale con sesión · E38 sin «regalo usado» · E39 sin «registro hecho» · E40 la vista sin la llegada.
 //   Y lo que cazó el QA en local: E41 la hoja sin precarga · E42 la foto que no llega sin el mapa de respaldo · E43 el Escape de
-//   la hoja se re-registra a cada render.
+//   la hoja se re-registra a cada render · E44 los grupos del mapa chico de la landing se pisan.
 
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));

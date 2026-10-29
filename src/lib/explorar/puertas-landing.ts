@@ -29,9 +29,10 @@ export interface GrupoLanding { comuna: string; n: number; x: number; y: number;
  *  Santiago que cubre. */
 export const MAPA_LANDING = { ancho: 318, alto: 140, margen: 18 } as const;
 export const CAJA_LANDING = { sur: -33.64, norte: -33.34, oeste: -70.79, este: -70.47 } as const;
-/** Los grupos del mapa chico: las comunas con más deptos que convienen (hasta `max`), en su centro, con un radio que
- *  crece con la cantidad. */
-export function gruposDeLanding(pines: ReadonlyArray<Pick<PinMapa, "comuna" | "lat" | "lng">>, max = 6): GrupoLanding[] {
+/** Los grupos del mapa chico: las comunas con más deptos que convienen (hasta `max`), en su centro, con un radio que crece con
+ *  la cantidad. SIN PISARSE (QA del 29-oct-2026: Santiago, Providencia y Ñuñoa quedaban uno encima del otro y una cifra se
+ *  tapaba): de mayor a menor, una comuna entra solo si su círculo no toca uno ya puesto. */
+export function gruposDeLanding(pines: ReadonlyArray<Pick<PinMapa, "comuna" | "lat" | "lng">>, max = 5): GrupoLanding[] {
   const porComuna = new Map<string, { n: number; lat: number; lng: number }>();
   for (const p of pines) {
     if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
@@ -39,16 +40,19 @@ export function gruposDeLanding(pines: ReadonlyArray<Pick<PinMapa, "comuna" | "l
     g.n++; g.lat += p.lat; g.lng += p.lng;
     porComuna.set(p.comuna, g);
   }
-  const top = Array.from(porComuna.entries()).map(([comuna, g]) => ({ comuna, n: g.n, lat: g.lat / g.n, lng: g.lng / g.n })).sort((a, b) => b.n - a.n).slice(0, max);
-  const mayor = top[0]?.n ?? 1;
+  const todas = Array.from(porComuna.entries()).map(([comuna, g]) => ({ comuna, n: g.n, lat: g.lat / g.n, lng: g.lng / g.n })).sort((a, b) => b.n - a.n);
+  const mayor = todas[0]?.n ?? 1;
   const { ancho, alto, margen } = MAPA_LANDING;
   const c = CAJA_LANDING;
   const dentro = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
-  return top.map((g) => ({
-    comuna: g.comuna,
-    n: g.n,
-    x: Math.round(dentro(margen + ((g.lng - c.oeste) / (c.este - c.oeste)) * (ancho - 2 * margen), margen, ancho - margen)),
-    y: Math.round(dentro(margen + ((c.norte - g.lat) / (c.norte - c.sur)) * (alto - 2 * margen), margen, alto - margen)),
-    r: Math.round(11 + 7 * Math.sqrt(g.n / mayor)),
-  }));
+  const puestos: GrupoLanding[] = [];
+  for (const g of todas) {
+    if (puestos.length >= max) break;
+    const r = Math.round(11 + 7 * Math.sqrt(g.n / mayor));
+    const x = Math.round(dentro(margen + ((g.lng - c.oeste) / (c.este - c.oeste)) * (ancho - 2 * margen), margen, ancho - margen));
+    const y = Math.round(dentro(margen + ((c.norte - g.lat) / (c.norte - c.sur)) * (alto - 2 * margen), margen, alto - margen));
+    if (puestos.some((o) => Math.hypot(o.x - x, o.y - y) < o.r + r + 3)) continue;
+    puestos.push({ comuna: g.comuna, n: g.n, x, y, r });
+  }
+  return puestos;
 }
