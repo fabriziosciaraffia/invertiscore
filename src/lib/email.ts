@@ -45,7 +45,7 @@ async function enviarCorreo(
   const distinctId = identidadCorreo(String(to ?? ""), userId);
   const res = await resend.emails.send({ ...mensaje, tags: [...(mensaje.tags ?? []), ...tagsCorreo(tipo, distinctId)] } as MensajeResend);
   if (!res.error) {
-    void capturarServidor(eventoCorreoEnviado({ tipo, distinctId, resendId: res.data?.id ?? null })).catch(() => {});
+    void capturarServidor(eventoCorreoEnviado({ tipo, distinctId, resendId: res.data?.id ?? null, correo: String(to ?? "") || null })).catch(() => {});
   }
   return { data: res.data ?? null, error: res.error ?? null };
 }

@@ -22,7 +22,7 @@ import crypto from "crypto";
 import { headers } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import { createServiceClient } from "@/lib/supabase/service";
-import { agenteDeNavegador, agenteDelEvento, enviarCaptura, idRecordable, type AgentePersona, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
+import { agenteDeNavegador, agenteDelEvento, enviarCaptura, idRecordable, sinCorreo, type AgentePersona, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
 import { almacenSupabase, verNavegador, type AlmacenAgentes } from "@/lib/agentes-navegador";
 
 export type { EventoServidor } from "@/lib/posthog-captura";
@@ -75,9 +75,11 @@ export async function agenteDeLaPersona(ev: EventoServidor, cabeceras: { get(nom
 
 /** Manda el evento con el agente de la persona; si todavía no se conoce, lo deja esperando en la cola. `true` si salió
  *  o quedó en la cola; `false` sin key, sin red o con error. */
-export function capturarServidor(ev: EventoServidor, deps: DepsCaptura = {}): Promise<boolean> {
+export function capturarServidor(evento: EventoServidor, deps: DepsCaptura = {}): Promise<boolean> {
   // Sin la key de PostHog no se mide nada (local, pruebas): ni se lee ni se escribe la base.
   if (!(deps.key ?? process.env.NEXT_PUBLIC_POSTHOG_KEY)) return Promise.resolve(false);
+  // Lo que decide el correo, decidido ya: el evento puede esperar en la cola sin llevarlo (29-oct-2026).
+  const ev = sinCorreo(evento);
   // Las cabeceras se leen ya, en el contexto del pedido; lo demás puede correr después de responder.
   const cabeceras = deps.cabeceras !== undefined ? deps.cabeceras : cabecerasDelPedido();
   const agentes = deps.agentes !== undefined ? deps.agentes : deps.fetch || process.env.VERCEL !== "1" ? null : almacenSupabase(createServiceClient);

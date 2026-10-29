@@ -46,10 +46,12 @@ export function tagsCorreo(tipo: TipoCorreo, distinctId: string): Array<{ name: 
   ];
 }
 
-export function eventoCorreoEnviado(args: { tipo: TipoCorreo; distinctId: string; resendId: string | null }): EventoServidor {
+export function eventoCorreoEnviado(args: { tipo: TipoCorreo; distinctId: string; resendId: string | null; correo?: string | null }): EventoServidor {
   return {
     event: "correo_enviado",
     distinctId: args.distinctId,
+    // El correo decide la marca de prueba en el punto de envío (29-oct-2026); no viaja a PostHog.
+    ...(args.correo ? { correo: args.correo } : {}),
     ...(args.resendId ? { uuid: uuidDeterminista(`correo_enviado:${args.resendId}`) } : {}),
     properties: { tipo: args.tipo, email_id: args.resendId },
   };
@@ -102,6 +104,7 @@ export function eventoDeResend(carga: unknown, svixId: string): EventoServidor |
   return {
     event: nombre,
     distinctId,
+    ...(to ? { correo: to } : {}),
     uuid: uuidDeterminista(`resend:${svixId}`),
     timestamp: c.created_at,
     properties: {

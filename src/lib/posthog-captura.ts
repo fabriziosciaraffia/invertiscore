@@ -20,10 +20,15 @@
 // LA MARCA DE CUENTA DE PRUEBA (21-oct-2026, Fabrizio): todo evento de una cuenta de `test_accounts` —la misma regla
 // que `es_test_account`— sale con `$set: { test_account: true }` y `prueba: true`, desde el primer evento. PostHog
 // guarda las propiedades de la persona EN el evento (`person_id_override_properties_on_events`): la marca que el
-// navegador ponía después, y solo con el consentimiento, no sacaba de las cohortes lo que ya había entrado. La lista
-// sale de la RPC `cuentas_de_prueba` (las cuentas y el id de PostHog de su correo), con un minuto de caché; una vista
-// de entrada la mira además por la cuenta con sesión (`cuentaDeSesion`). Si no se puede saber, el evento no sale.
-// Lo prueba el tier PANEL-ACTIVACION.
+// navegador ponía después, y solo con el consentimiento, no sacaba de las cohortes lo que ya había entrado. Si no se
+// puede saber, el evento no sale. Lo prueba el tier PANEL-ACTIVACION.
+// SE DECIDE AL EMITIR, SIN CACHÉ PARA UNA CUENTA NUEVA (29-oct-2026, Fabrizio): antes era la lista entera de
+// `test_accounts` guardada un minuto, y una cuenta de prueba creada dentro de ese minuto emitía sus primeros eventos sin
+// la marca (en la semana del 19-oct, 8 de los 11 registros «B» del panel eran de prueba). Ahora cada evento pregunta por
+// sus ids —la cuenta, el id de su correo, la cuenta con sesión de una vista— a la RPC `marca_de_prueba`: de prueba = en
+// `test_accounts` o con un correo de Franco (fabriziosciaraffia+… y @refranco.ai, la regla del trigger
+// `marcar_cuenta_interna`). Se recuerda un minuto solo lo que no cambia sin aviso: una cuenta de prueba, o una de más de
+// una hora. Y si quien emite sabe el correo (`correo`), un correo de Franco marca sin preguntar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EventoServidor {
@@ -36,6 +41,11 @@ export interface EventoServidor {
   /** La cuenta con sesión en el pedido cuando no es `distinctId` (una vista de entrada sin consentimiento): también
    *  decide la marca de cuenta de prueba. No viaja a PostHog. */
   cuentaDeSesion?: string | null;
+  /** El correo de la persona, cuando quien emite lo sabe: un correo de Franco marca el evento sin preguntar a la base.
+   *  No viaja a PostHog ni a la cola (`sinCorreo` lo cambia por `prueba` antes de guardar el evento). */
+  correo?: string | null;
+  /** Ya decidido al emitir: es de una cuenta de prueba (lo deja `sinCorreo`). No viaja a PostHog. */
+  prueba?: boolean;
 }
 
 export type OrigenAgente = "evento" | "pedido" | "recordado" | "cola" | "ninguno";
@@ -56,56 +66,107 @@ export interface DepsEnvio {
   fetch?: typeof fetch;
   key?: string;
   host?: string;
-  /** Los ids de las cuentas de prueba (y de sus correos); null = no se pudo saber, y el evento no sale. Por defecto la
-   *  lista de `test_accounts` (`listaDePrueba`) dentro de Next —en Vercel, en el middleware (Edge) y en `next dev`—; con
-   *  un `fetch` inyectado o fuera de Next (una prueba), ninguna salvo que se pase: una prueba no lee la base, como el
+  /** Una lista fija de ids de cuentas de prueba, para las pruebas que la pasan; null = no se pudo saber, y el evento no
+   *  sale. Sin ella, la marca se pregunta a la base (`marcaDePrueba`) dentro de Next —en Vercel, en el middleware (Edge)
+   *  y en `next dev`—; con un `fetch` inyectado o fuera de Next (una prueba), ninguna: una prueba no lee la base, como el
    *  almacén de agentes. */
   cuentasDePrueba?: () => Promise<ReadonlySet<string> | null>;
 }
 
-/** La lista de cuentas de prueba que usa `enviarCaptura` (ver `DepsEnvio.cuentasDePrueba`). */
-function cuentasDePruebaDe(deps: DepsEnvio): Promise<ReadonlySet<string> | null> {
-  if (deps.cuentasDePrueba) return deps.cuentasDePrueba();
-  if (deps.fetch || (!process.env.NEXT_RUNTIME && process.env.VERCEL !== "1")) return Promise.resolve(new Set<string>());
-  return listaDePrueba();
+/** ¿El evento es de una cuenta de prueba? (ver `DepsEnvio.cuentasDePrueba`). null = no se pudo saber. */
+async function pruebaDe(ev: EventoServidor, deps: DepsEnvio): Promise<boolean | null> {
+  if (ev.prueba === true || correoDePrueba(ev.correo)) return true;
+  if (deps.cuentasDePrueba) {
+    const lista = await deps.cuentasDePrueba();
+    return lista ? esEventoDePrueba(ev, lista) : null;
+  }
+  if (deps.fetch || (!process.env.NEXT_RUNTIME && process.env.VERCEL !== "1")) return false;
+  return marcaDePrueba(ev);
 }
 
-/** Cuánto vale la lista de cuentas de prueba antes de volver a pedirla. */
-export const VIDA_LISTA_PRUEBA_MS = 60_000;
-let listaGuardada: { ids: Set<string>; hasta: number } | null = null;
+/** Una cuenta más nueva que esto se pregunta a la base en cada evento: nada guardado la deja fuera. */
+export const CUENTA_NUEVA_MS = 3_600_000;
+/** Cuánto se recuerda lo sabido de una cuenta de prueba, o de una de más de una hora. */
+export const VIDA_MARCA_MS = 60_000;
+const sabidos = new Map<string, { prueba: boolean; hasta: number }>();
 
-/** Para las pruebas: la próxima `listaDePrueba` la vuelve a pedir. */
-export function olvidarListaDePrueba(): void {
-  listaGuardada = null;
+/** Para las pruebas: lo sabido se olvida. */
+export function olvidarMarcas(): void {
+  sabidos.clear();
 }
 
-/** Las cuentas de `test_accounts` y el id de PostHog de su correo (RPC `cuentas_de_prueba`, solo el service role), con
- *  `VIDA_LISTA_PRUEBA_MS` de caché. Si la RPC falla, la última que se tuvo; si nunca se tuvo, null. Sin módulos de Node:
- *  la usa también el middleware. */
-export async function listaDePrueba(deps: { fetch?: typeof fetch; url?: string; key?: string; ahora?: number } = {}): Promise<ReadonlySet<string> | null> {
+/** Los correos de Franco, de prueba por sí solos: la misma regla que el trigger `marcar_cuenta_interna` y que la RPC
+ *  `marca_de_prueba` (`ilike 'fabriziosciaraffia+%@gmail.com'` o `'%@refranco.ai'`). */
+export function correoDePrueba(correo: string | null | undefined): boolean {
+  const c = (correo ?? "").trim().toLowerCase();
+  return /^fabriziosciaraffia\+.*@gmail\.com$/.test(c) || /@refranco\.ai$/.test(c);
+}
+
+/** El evento listo para esperar en la cola o salir: lo que su correo decide queda en `prueba`, y el correo, fuera. */
+export function sinCorreo(ev: EventoServidor): EventoServidor {
+  if (ev.correo === undefined) return ev;
+  const { correo, ...resto } = ev;
+  return correoDePrueba(correo) ? { ...resto, prueba: true } : resto;
+}
+
+/** Lo que responde la RPC `marca_de_prueba` por cada id que conoce. */
+interface FilaMarca {
+  id: string;
+  prueba: boolean;
+  creada_at: string | null;
+}
+
+/** ¿Es de una cuenta de prueba? Por la cuenta, el id de su correo o la cuenta con sesión, preguntando a la base
+ *  (RPC `marca_de_prueba`, solo el service role) lo que no se sabe. Se recuerda `VIDA_MARCA_MS` solo lo de una cuenta de
+ *  prueba o de más de `CUENTA_NUEVA_MS`; lo demás se pregunta en cada evento. Sin base, lo último que se supo, aunque haya
+ *  vencido; si nunca se supo, null. Sin módulos de Node: la usa también el middleware. */
+export async function marcaDePrueba(
+  ev: Pick<EventoServidor, "distinctId" | "cuentaDeSesion">,
+  deps: { fetch?: typeof fetch; url?: string; key?: string; ahora?: number } = {},
+): Promise<boolean | null> {
   const ahora = deps.ahora ?? Date.now();
-  if (listaGuardada && listaGuardada.hasta > ahora) return listaGuardada.ids;
+  const ids = Array.from(new Set([ev.distinctId, ev.cuentaDeSesion].filter((x): x is string => !!x && idRecordable(x))));
+  let prueba = false;
+  const preguntar: string[] = [];
+  for (const id of ids) {
+    const s = sabidos.get(id);
+    if (s && s.hasta > ahora) prueba ||= s.prueba;
+    else preguntar.push(id);
+  }
+  if (!preguntar.length) return prueba;
+  const filas = await consultarMarcas(preguntar, deps);
+  for (const id of preguntar) {
+    if (!filas) {
+      const s = sabidos.get(id);
+      if (!s) return null;
+      prueba ||= s.prueba;
+      continue;
+    }
+    const f = filas.find((x) => x?.id === id);
+    const esPrueba = f?.prueba === true;
+    const creada = f?.creada_at ? Date.parse(f.creada_at) : NaN;
+    prueba ||= esPrueba;
+    if (esPrueba || (Number.isFinite(creada) && ahora - creada >= CUENTA_NUEVA_MS)) sabidos.set(id, { prueba: esPrueba, hasta: ahora + VIDA_MARCA_MS });
+    else sabidos.delete(id);
+  }
+  return prueba;
+}
+
+async function consultarMarcas(ids: string[], deps: { fetch?: typeof fetch; url?: string; key?: string }): Promise<FilaMarca[] | null> {
   const url = (deps.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
   const key = deps.key ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return listaGuardada?.ids ?? null;
+  if (!url || !key) return null;
   try {
-    const res = await (deps.fetch ?? globalThis.fetch)(`${url}/rest/v1/rpc/cuentas_de_prueba`, {
+    const res = await (deps.fetch ?? globalThis.fetch)(`${url}/rest/v1/rpc/marca_de_prueba`, {
       method: "POST",
       headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: "{}",
+      body: JSON.stringify({ p_ids: ids }),
     });
-    if (!res.ok) return listaGuardada?.ids ?? null;
-    const filas = (await res.json()) as Array<{ user_id?: string | null; id_correo?: string | null }>;
-    if (!Array.isArray(filas)) return listaGuardada?.ids ?? null;
-    const ids = new Set<string>();
-    for (const f of filas) {
-      if (f?.user_id) ids.add(f.user_id);
-      if (f?.id_correo) ids.add(f.id_correo);
-    }
-    listaGuardada = { ids, hasta: ahora + VIDA_LISTA_PRUEBA_MS };
-    return ids;
+    if (!res.ok) return null;
+    const filas = (await res.json()) as FilaMarca[];
+    return Array.isArray(filas) ? filas : null;
   } catch {
-    return listaGuardada?.ids ?? null;
+    return null;
   }
 }
 
@@ -179,13 +240,13 @@ export async function enviarCaptura(ev: EventoServidor, agente: AgentePersona, d
   const host = (deps.host ?? process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com").replace(/\/$/, "");
   const f = deps.fetch ?? globalThis.fetch;
   try {
-    const lista = await cuentasDePruebaDe(deps);
+    const prueba = await pruebaDe(ev, deps);
     // Sin saber si es una cuenta de prueba no sale: una prueba nuestra no puede contar en las cohortes.
-    if (!lista) return false;
+    if (prueba === null) return false;
     const res = await f(`${host}/capture/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpoDeCaptura(ev, key, { valor, origen: agente.origen }, new Date(), esEventoDePrueba(ev, lista))),
+      body: JSON.stringify(cuerpoDeCaptura(ev, key, { valor, origen: agente.origen }, new Date(), prueba)),
     });
     return res.ok;
   } catch {

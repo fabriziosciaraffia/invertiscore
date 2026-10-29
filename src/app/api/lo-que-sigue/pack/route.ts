@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   if (!ofertaPackVigente(analysis.created_at as string)) {
     try {
-      await capturarServidor(eventoPackVencido({ userId: distinctIdDeCorreo(email), analysisId, veredicto }));
+      await capturarServidor({ ...eventoPackVencido({ userId: distinctIdDeCorreo(email), analysisId, veredicto }), correo: email });
     } catch (e) {
       console.error("[lo-que-sigue/pack] pack_vencido excepción:", e);
     }

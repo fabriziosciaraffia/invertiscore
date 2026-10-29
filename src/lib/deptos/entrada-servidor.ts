@@ -74,6 +74,7 @@ export async function avisarAltasPerdidas(admin: SupabaseClient, ahora: Date = n
       await capturar({
         event: "alta_perdida",
         distinctId: f.user_id ?? distinctIdDeCorreo(f.correo),
+        correo: f.correo,
         uuid: uuidDeterminista(`alta_perdida:${f.id}`),
         timestamp: new Date(Date.parse(f.verificado_at) + ESPERA_ALTA_PERDIDA_MS).toISOString(),
         properties: { puerta: f.puerta ?? null, metodo: f.metodo, verificado_at: f.verificado_at },
