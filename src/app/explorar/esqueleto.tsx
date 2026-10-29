@@ -5,7 +5,7 @@
 // teléfono) esperaba esos datos: 1,3 s de «load delay» y una mediana de 2,53 s en Lighthouse (cinco corridas con sesión).
 // El mapa quieto NO va acá: es una capa única de la página (page.tsx), que el esqueleto y el cliente dejan ver.
 // ─────────────────────────────────────────────────────────────────────────────
-import { lineaSupuestos, PORTAL_COPY, portalDeUrl } from "@/lib/explorar/portal";
+import { COMO_SE_CALCULA, lineaSupuestos, PORTAL_COPY, portalDeUrl } from "@/lib/explorar/portal";
 import "./explorar.css";
 
 export function EsqueletoExplorar({ consulta, sinCuenta = false }: { consulta: string; sinCuenta?: boolean }) {
@@ -22,7 +22,8 @@ export function EsqueletoExplorar({ consulta, sinCuenta = false }: { consulta: s
         <div className="ex-mapa-wrap" data-mapa="cargando">
           <div className="ex-numero">
             <span className="ex-numero-n">{PORTAL_COPY.calculando}</span>
-            <span className="ex-numero-s">{lineaSupuestos(vista)}</span>
+            {/* La tasa llega con los datos: mientras, la línea sin ella y «¿Cómo se calcula?» todavía sin tocar. */}
+            <span className="ex-numero-s">{lineaSupuestos(vista, null)} · <span className="ex-numero-como">{COMO_SE_CALCULA.enlace}</span></span>
           </div>
           <div className="ex-hoja" aria-hidden="true">
             <span className="ex-asa" />

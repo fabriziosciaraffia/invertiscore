@@ -50,7 +50,7 @@ import { resolverArriendoReferencia, type ArriendoReferencia } from "@/lib/arrie
 import { titularMotor } from "@/lib/titular-motor";
 import { estadoRecomendacion, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
-import { descompactar } from "@/lib/explorar/portal";
+import { cuantosConvienen, descompactar } from "@/lib/explorar/portal";
 import { PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { gruposDeLanding, type GrupoLanding } from "@/lib/explorar/puertas-landing";
 import { CLAVE_RESUMEN_NOCHE, resumenGuardado } from "@/lib/deptos/servidor";
@@ -372,7 +372,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
     })(),
     leerEjemplos(),
     universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO)
-      .then((u) => { const pines = descompactar(u); return pines.length ? { n: pines.length, grupos: gruposDeLanding(pines) } : null; })
+      .then((u) => { const n = cuantosConvienen(u); return n ? { n, grupos: gruposDeLanding(descompactar(u)) } : null; })
       .catch((e) => { aviso("explorar", e); return null; }),
     Promise.resolve(sb.from("config").select("value").eq("key", CLAVE_RESUMEN_NOCHE).maybeSingle())
       .then(({ data, error }) => { if (error) throw error; return resumenGuardado(data?.value as string | null | undefined)?.revisados ?? null; })

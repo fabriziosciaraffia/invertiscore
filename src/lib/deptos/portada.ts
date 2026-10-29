@@ -11,15 +11,33 @@
 // SIN COMUNA, SIN NÚMERO (21-oct-2026, recorrido real de Fabrizio por la puerta B): sin `?comuna=` la búsqueda ya no
 // arranca en Santiago. La comuna la elige la persona; recién ahí hay número y correo, y el perfil con que nace la cuenta
 // es el suyo, no el del ejemplo. La frase de la noche sí viene del servidor.
+//
+// UN SOLO NÚMERO DE «CONVIENEN» (30-oct-2026): `noche.convienen` ya no es el del resumen de la noche (`deptos_conteo`, otro
+// universo: 4.767 contra los 4.770 del mapa) sino el de `convienenHoy` (explorar/portal-cache.ts), el universo que se ve en
+// el mapa. Lo leen la prueba de /deptos, el botón «Explorar los N de Santiago» del dashboard y /api/deptos/primeros.
+// `revisados` sigue del resumen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { convienenHoy } from "@/lib/explorar/portal-cache";
 import { ELECCIONES_POR_DEFECTO, TIPOLOGIAS_DEPTOS, validarElecciones, type RespuestaDeptos } from "./respuesta";
-import { rangoConMasPublicados, responderDeptos, resumenDeLaNoche, type ResumenNoche } from "./servidor";
+import { rangoConMasPublicados, responderDeptos, resumenDeLaNoche } from "./servidor";
+
+/** Lo de la noche que muestra la portada: cuántos revisó (el resumen) y cuántos convienen (el mapa; null sin universo). */
+export interface NocheDeptos {
+  revisados: number;
+  convienen: number | null;
+}
+
+/** El resumen de la noche con el número de «convienen» del mapa. Null sin resumen. */
+async function nocheDeptos(admin: ReturnType<typeof createServiceClient>): Promise<NocheDeptos | null> {
+  const [resumen, convienen] = await Promise.all([resumenDeLaNoche(admin), convienenHoy()]);
+  return resumen ? { revisados: resumen.revisados, convienen } : null;
+}
 
 export interface PortadaDeptos {
-  noche: ResumenNoche | null;
+  noche: NocheDeptos | null;
   /** La respuesta de la búsqueda inicial; null si falló (la pantalla la pide al cargar). */
   inicial: RespuestaDeptos | null;
   /** Las comunas de la búsqueda inicial: ninguna (la elige la persona), o la de `?comuna=`. */
@@ -43,7 +61,7 @@ const cacheada = unstable_cache(
     const admin = createServiceClient();
     // Sin comuna: la frase de la noche y nada más; el número llega cuando la persona elige.
     if (!comuna) {
-      const noche = await resumenDeLaNoche(admin);
+      const noche = await nocheDeptos(admin);
       if (!noche) throw new Error("sin resumen de la noche");
       return { noche, inicial: null, comunas: [], rango: ELECCIONES_POR_DEFECTO.rango };
     }
@@ -52,11 +70,11 @@ const cacheada = unstable_cache(
     const rango = await rangoConMasPublicados(admin, comuna, [...dorms]);
     const v = validarElecciones({ ...ELECCIONES_POR_DEFECTO, comunas, rango, tipologias: [...ELECCIONES_POR_DEFECTO.tipologias] });
     if (!v.ok) throw new Error("la búsqueda inicial no valida");
-    const [noche, inicial] = await Promise.all([resumenDeLaNoche(admin), responderDeptos(admin, v)]);
+    const [noche, inicial] = await Promise.all([nocheDeptos(admin), responderDeptos(admin, v)]);
     if (!noche) throw new Error("sin resumen de la noche");
     return { noche, inicial, comunas, rango };
   },
-  ["deptos-portada-v4"],
+  ["deptos-portada-v5"],
   { revalidate: 600 },
 );
 

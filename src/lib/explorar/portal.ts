@@ -203,6 +203,12 @@ export function compactar(pines: readonly PinMapa[]): UniversoCompacto {
   return { comunas, filas };
 }
 
+/** EL NÚMERO DE «CONVIENEN» (30-oct-2026): cuántos deptos hay en el universo que de verdad se ve en el mapa. Uno solo en
+ *  todo el sitio —la landing, /explorar y su bienvenida, el botón «Explorar los N de Santiago» y la prueba de /deptos—: todos
+ *  lo cuentan con esta función sobre el universo de la vista global (portal-cache.ts › convienenHoy). Null si no hay. */
+export const cuantosConvienen = (u: UniversoCompacto | null | undefined): number | null =>
+  u && Array.isArray(u.filas) && u.filas.length > 0 ? u.filas.length : null;
+
 export function descompactar(u: UniversoCompacto | null | undefined): PinMapa[] {
   if (!u || !Array.isArray(u.filas)) return [];
   return u.filas.map(([id, ci, lat, lng, m2, dorm, banos, precioUF, score, flujo, arriendo, cond, alta]) => pinDeFila({
@@ -280,10 +286,55 @@ export function textoPin(p: Pick<PinMapa, "flujo" | "alta">, o: { analizado: boo
   return { texto: p.flujo != null ? flujoCorto(p.flujo) : "Comprar", tipo: "flujo" };
 }
 
-/** «Arriendo tradicional · pie 20 % · 25 años»: la línea chica bajo el número del mapa. */
-export function lineaSupuestos(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo">): string {
-  return `${f.modalidad === "str" ? "Renta corta" : "Arriendo tradicional"} · pie ${f.pie} % · ${f.plazo} años`;
+/** «4,07»: la tasa con coma y hasta dos decimales. */
+export const tasaTexto = (t: number): string => t.toLocaleString("es-CL", { maximumFractionDigits: 2 });
+
+/** «pie 20 %, 25 años y tasa 4,07 %»: el crédito con que se calcula; sin la tasa, «pie 20 % y 25 años». */
+export function creditoDe(f: Pick<FiltrosPortal, "pie" | "plazo">, tasa: number | null): string {
+  return tasa != null && tasa > 0 ? `pie ${f.pie} %, ${f.plazo} años y tasa ${tasaTexto(tasa)} %` : `pie ${f.pie} % y ${f.plazo} años`;
 }
+
+/** «Con pie 20 %, 25 años y tasa 4,07 %»: la línea chica bajo el número del mapa, con y sin cuenta (30-oct-2026). El pie y el
+ *  plazo son los de los filtros (si la persona los cambia, los suyos); la tasa, la del motor (portal-cache.ts › tasaDelMotor),
+ *  nunca escrita a mano. En renta corta, «Renta corta · con pie…». A su lado, «¿Cómo se calcula?» (COMO_SE_CALCULA). */
+export function lineaSupuestos(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo">, tasa: number | null): string {
+  return f.modalidad === "str" ? `Renta corta · con ${creditoDe(f, tasa)}` : `Con ${creditoDe(f, tasa)}`;
+}
+
+/** La tasa del motor y el día en que el cron del Banco Central la revisó por última vez («29 de octubre»). La lee el
+ *  servidor (portal-cache.ts › tasaDelMotor) y la baja a /explorar. */
+export interface TasaDelMotor {
+  tasa: number;
+  revisada: string | null;
+}
+
+/** «29 de octubre»: el día (en Santiago) en que el cron del Banco Central revisó la tasa (`config.updated_at`, en UTC). */
+export function fechaDeRevision(updatedAt: string | null | undefined): string | null {
+  if (!updatedAt) return null;
+  const s = String(updatedAt).trim().replace(" ", "T");
+  const d = new Date(/[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" }) : null;
+}
+
+/** LA HOJA «¿CÓMO SE CALCULA?» (30-oct-2026, con y sin cuenta): cuatro ideas y «Entendido». La frase de «conviene» es la de
+ *  Fabrizio (30-oct-2026), escrita sobre la regla del motor (analysis.ts › evalVeredicto): Comprar es el Franco Score desde
+ *  70, o el depto que se paga solo (flujo ≥ 0, rentabilidad neta ≥ 4 % y no sobre el precio de su zona), y ninguna señal
+ *  grave lo baja. «Algunos te piden poner un poco cada mes» porque 1.113 de los 5.176 Comprar con pie 20 % y 25 años tienen
+ *  flujo negativo (medido el 30-oct-2026): dicho antes de que la persona lo vea en una tarjeta. Sin cuenta el flujo de la
+ *  tarjeta va borroso, así que esa frase dice «con tu cuenta gratis». */
+export const COMO_SE_CALCULA = {
+  enlace: "¿Cómo se calcula?",
+  titulo: "¿Cómo se calcula?",
+  noche: (f: Pick<FiltrosPortal, "pie" | "plazo">, tasa: number | null) =>
+    `Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un crédito de ${creditoDe(f, tasa)}.`,
+  conviene: "Que convenga quiere decir que Franco le da Comprar: su nota de 1 a 100 llega a 70, o el arriendo lo paga solo sin estar caro para su zona. Y en ningún caso tiene señales graves, como perder mucha plata todos los meses.",
+  poner: (sinCuenta: boolean) =>
+    sinCuenta ? "Algunos te piden poner un poco cada mes: con tu cuenta gratis, cada tarjeta te dice cuánto." : "Algunos te piden poner un poco cada mes: cada tarjeta te dice cuánto.",
+  tasa: (revisada: string | null) =>
+    `La tasa es el promedio de los créditos hipotecarios en UF que dieron los bancos el último mes, según el Banco Central. Franco la revisa cada mañana${revisada ? `; la última vez, el ${revisada}` : ""}.`,
+  otroPie: "Con otro pie o plazo el resultado cambia. Con cuenta lo ajustas en Filtros, y siempre puedes cambiarlo antes de analizar.",
+  boton: "Entendido",
+} as const;
 
 /** Dónde: «en Gran Santiago», «en Ñuñoa», «en Ñuñoa y Santiago», «en tus 3 comunas», «en esta zona». */
 export function dondeDe(f: Pick<FiltrosPortal, "comunas" | "zona">): string {
@@ -441,6 +492,8 @@ export const EVENTOS_PORTAL = {
   avisame: "explorar_avisame",
   analiza: "explorar_analiza",
   planVisto: "explorar_plan_visto",
+  /** Abrió «¿Cómo se calcula?» (30-oct-2026), con y sin cuenta. */
+  comoSeCalcula: "explorar_como_se_calcula",
 } as const;
 
 /** Las propiedades de los filtros y el orden en un evento. */

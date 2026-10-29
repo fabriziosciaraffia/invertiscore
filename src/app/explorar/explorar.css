@@ -53,6 +53,23 @@
   background: color-mix(in srgb, var(--franco-card) 95%, transparent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); max-width: calc(100% - 24px); }
 .ex-numero-n { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ex-numero-s { font-size: 11px; color: var(--franco-text-secondary); }
+/* «¿Cómo se calcula?» (30-oct-2026): un enlace en la línea chica, con su alto para el dedo (24 px) sin mover la línea. */
+.ex-numero-como { display: inline-block; border: 0; background: none; padding: 6px 0; margin: -6px 0; font: inherit; color: var(--franco-text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ex-numero-como:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; border-radius: 4px; }
+
+/* la hoja «¿Cómo se calcula?» (30-oct-2026): papel, desde abajo en el teléfono y al centro en el PC */
+.ex-calculo-velo { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 15, 15, 0.4); }
+.ex-calculo { box-sizing: border-box; width: 100%; max-width: 520px; max-height: calc(100dvh - 24px); overflow-y: auto; border-radius: 22px 22px 0 0; padding: 22px 20px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--franco-card); color: var(--franco-text); box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; gap: 16px; }
+.ex-calculo-t { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.25; }
+.ex-calculo-ideas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ex-calculo-ideas li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.45; }
+.ex-calculo-num { flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 999px; background: var(--franco-text); color: var(--franco-card); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.ex-calculo-ok { height: 50px; font-size: 16px; }
+@media (min-width: 768px) {
+  .ex-calculo-velo { align-items: center; padding: 24px; }
+  .ex-calculo { border-radius: 20px; padding: 26px 26px 22px; }
+}
 .ex[data-calculando="1"] .ex-numero-n { opacity: 0.75; }
 /* «Buscar en esta zona» (C) */
 .ex-zona { position: absolute; left: 50%; top: 12px; z-index: 3; transform: translateX(-50%); height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--franco-text);

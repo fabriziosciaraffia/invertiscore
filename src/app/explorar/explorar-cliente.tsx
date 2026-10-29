@@ -32,9 +32,9 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  cercanos, claveUniverso, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
+  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
   lineaBusqueda, numeroDelMapa, ordenar, ORDENES, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
-  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa,
+  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
@@ -58,6 +58,7 @@ const AvisoAntesDeAnalizar = dynamic(() => import("@/components/guia/AvisoAntesD
 const PopupNoDa = dynamic(() => import("@/components/guia/PopupNoDa").then((m) => m.PopupNoDa), { ssr: false, loading: () => null });
 const HojaRegistro = dynamic(() => import("./hoja-registro").then((m) => m.HojaRegistro), { ssr: false, loading: () => null });
 const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida), { ssr: false, loading: () => null });
+const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCalculo), { ssr: false, loading: () => null });
 
 const ESPERA_EN_CURSO_MS = 4000;
 /** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). */
@@ -84,6 +85,10 @@ export interface InicialPortal {
   n: number | null;
   /** null: SIN CUENTA (la puerta E). */
   cuenta: CuentaCliente | null;
+  /** La tasa del motor (portal-cache.ts › tasaDelMotor), para la línea bajo el número y «¿Cómo se calcula?»; null si no se leyó. */
+  tasa: TasaDelMotor | null;
+  /** El número de «convienen» de todo el sitio (portal-cache.ts › convienenHoy), para la bienvenida; solo sin cuenta. */
+  convienen: number | null;
 }
 
 /** Lo que se muestra sin cuenta: nada de la persona, sin saldo. */
@@ -143,6 +148,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [avisame, setAvisame] = useState(false);
   const [registro, setRegistro] = useState<{ pedido: PedidoRegistro; filtros: FiltrosPortal; orden: OrdenPortal } | null>(null);
   const [bienvenida, setBienvenida] = useState(false);
+  // «¿Cómo se calcula?» (30-oct-2026): la hoja corta bajo la línea del número, con y sin cuenta.
+  const [calculo, setCalculo] = useState(false);
+  const abrirCalculo = () => {
+    setCalculo(true);
+    posthog?.capture(EVENTOS_PORTAL.comoSeCalcula, { sin_cuenta: sinCuenta, pie: filtros.pie, plazo: filtros.plazo, modalidad: filtros.modalidad, tasa: inicial.tasa?.tasa ?? null });
+  };
   const [aviso, setAviso] = useState<string | null>(null);
   const vivo = useRef(true);
   const uf = cuenta.finanzas.uf;
@@ -537,7 +548,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           ) : (
             <div className="ex-numero" data-explorar="numero" aria-live="polite">
               <span className="ex-numero-n">{calculando ? (progreso ? PORTAL_COPY.calculandoComunas(progreso.hechas, progreso.total) : PORTAL_COPY.calculando) : total != null ? numeroDelMapa(total, filtros) : PORTAL_COPY.calculando}</span>
-              <span className="ex-numero-s" data-explorar="supuestos">{lineaSupuestos(filtros)}</span>
+              <span className="ex-numero-s" data-explorar="supuestos">
+                {lineaSupuestos(filtros, inicial.tasa?.tasa ?? null)} ·{" "}
+                <button type="button" className="ex-numero-como" data-explorar="como-se-calcula" onClick={abrirCalculo}>{COMO_SE_CALCULA.enlace}</button>
+              </span>
             </div>
           )}
           {fallo && (
@@ -618,7 +632,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       {registro && (
         <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
       )}
-      {bienvenida && total != null && <Bienvenida n={inicial.n ?? total} alCerrar={() => setBienvenida(false)} />}
+      {bienvenida && total != null && <Bienvenida n={inicial.convienen ?? inicial.n ?? total} alCerrar={() => setBienvenida(false)} />}
+      {calculo && <HojaCalculo filtros={filtros} tasa={inicial.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
 
       {confirmar && (
         <AvisoAntesDeAnalizar

@@ -10,7 +10,7 @@ import { MAPA_QUIETO } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
 import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor";
-import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { convienenHoy, tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { ExplorarCliente } from "./explorar-cliente";
@@ -77,9 +77,14 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   const base = portalDeUrl(sp);
   const filtros = filtrosAbiertos(base.filtros);
   const orden = ordenAbierto(base.orden);
-  const universo = universoDeLaNoche(filtros) ? await universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null) : null;
+  // La bienvenida dice el número de todo el sitio (convienenHoy), aunque la URL traiga filtros; el del mapa es el filtrado.
+  const [universo, tasa, convienen] = await Promise.all([
+    universoDeLaNoche(filtros) ? universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null) : Promise.resolve(null),
+    tasaDelMotor(),
+    convienenHoy(),
+  ]);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
-  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null }} abrir={sp.get("a")} origen={origenDeLlegada(sp.get("desde"))} />;
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen }} abrir={sp.get("a")} origen={origenDeLlegada(sp.get("desde"))} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -89,16 +94,17 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const { filtros, orden } = portalDeUrl(sp);
   const admin = createServiceClient();
   const noche = universoDeLaNoche(filtros);
-  const [cuenta, universo] = await Promise.all([
+  const [cuenta, universo, tasa] = await Promise.all([
     cuentaPortal(admin, user),
     noche ? universoDeLaNocheCacheado(filtros.pie, filtros.plazo).catch(() => null) : Promise.resolve(null),
+    tasaDelMotor(),
   ]);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()) })).catch(() => false);
   const a = sp.get("a");
   return (
     <ExplorarCliente
-      inicial={{ filtros, orden, n, cuenta }}
+      inicial={{ filtros, orden, n, cuenta, tasa, convienen: null }}
       abrir={a}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
       correo={user.email ?? null}
