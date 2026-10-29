@@ -81,6 +81,13 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (!/<HeroEntrada cabecera=\{cabecera\} rotulo=\{LANDING_PUERTAS\.rotuloInforme\} \{\.\.\.acciones\} \/>/.test(entrada) || !/\{rotulo && <p className="he-rotulo" data-landing="rotulo">\{rotulo\}<\/p>\}\s*<h1 className="he-h1">/.test(hero)) F("1 · el hero no lleva «¿Tienes un depto en la mira?» sobre el título");
     if (ab.LANDING_PUERTAS.rotuloInforme !== "¿Tienes un depto en la mira?") F("1 · el rótulo de la puerta del informe no es «¿Tienes un depto en la mira?»");
     if (!/\.he-root--puertas \{ min-height: 0; \}/.test(leer("src/components/entrada/hero-entrada.css"))) F("1 · el hero sigue ocupando la pantalla entera (la segunda puerta queda bajo el pliegue)");
+    // EL FONDO DEL HERO DE DOS PUERTAS NO ES EL LCP (29-oct-2026, medido en producción: 2,70 s con la imagen como LCP).
+    // Compacto, ya no cubre la pantalla y Chrome cuenta su imagen; con el degradado chico (bajo 0,05 bits por píxel) la
+    // descarta y el LCP vuelve al titular. El umbral, contra el hero más chico: 375 × 373 en el teléfono, 768 × 400 desde 768.
+    const ramaChica = (hero.match(/\{rotulo \? \(([\s\S]*?)\) : \(/) ?? [])[1] ?? "";
+    if (!/<source media="\(min-width: 768px\)" srcSet="\/landing\/hero-liso-chico-d\.webp" \/>/.test(ramaChica) || !/<img src="\/landing\/hero-liso-chico-m\.webp"/.test(ramaChica)) F("1 · el hero de dos puertas pinta el degradado grande: su imagen vuelve a ser el LCP de la landing");
+    const bytes = (p: string) => (existe(p) ? readFileSync(join(RAIZ, p)).length : Infinity);
+    if ((bytes("public/landing/hero-liso-chico-m.webp") * 8) / (375 * 373) >= 0.05 || (bytes("public/landing/hero-liso-chico-d.webp") * 8) / (768 * 400) >= 0.05) F("1 · el degradado chico del hero pasa el umbral de 0,05 bits por píxel (o no existe): Chrome lo cuenta como LCP");
     const mod = cargar<{ TarjetaExplorar: FC<{ datos: { n: number; grupos: ab.GrupoLanding[] } | null }> }>("src/components/landing-v14/TarjetaExplorar");
     if (!mod) F("1 · la tarjeta de Explorar no carga");
     else {
@@ -266,19 +273,25 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   // ── 6 · LA MEDICIÓN ──
   {
     if (paginaDeEntrada("/explorar") !== "explorar" || EVENTO_VISTA.explorar !== ab.EVENTOS_ABIERTO.vista) F("6 · /explorar no emite su vista de entrada (o con otro nombre que el del embudo)");
-    const ev = eventoVistaEntrada({ pagina: "explorar", ruta: "/explorar", search: "?desde=landing", referer: null, userId: null, consentimiento: null, idPostHog: null, visita: "11111111-1111-4111-8111-111111111111", esCarga: true, agente: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", cabeceras: { get: () => null }, extra: { llegada: "landing" } });
-    const evNav = eventoVistaEntrada({ pagina: "explorar", ruta: "/explorar", search: "", referer: null, userId: null, consentimiento: null, idPostHog: null, visita: "22222222-2222-4222-8222-222222222222", esCarga: true, agente: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", cabeceras: { get: (n: string) => (n === "accept-language" ? "es-CL" : null) }, extra: { llegada: "directo" } });
-    if (!ev || ev.event !== "explorar_abierto_vista" || ev.properties?.llegada !== "landing" || ev.properties?.robot !== true || evNav?.properties?.robot !== false || evNav?.properties?.llegada !== "directo") F(`6 · la vista sin cuenta no lleva la llegada o no marca los robots: ${JSON.stringify([ev?.properties, evNav?.properties])}`);
+    const ev = eventoVistaEntrada({ pagina: "explorar", ruta: "/explorar", search: "?desde=landing", referer: null, userId: null, consentimiento: null, idPostHog: null, visita: "11111111-1111-4111-8111-111111111111", esCarga: true, agente: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", cabeceras: { get: () => null }, extra: { llegada_explorar: "landing" } });
+    const evNav = eventoVistaEntrada({ pagina: "explorar", ruta: "/explorar", search: "", referer: null, userId: null, consentimiento: null, idPostHog: null, visita: "22222222-2222-4222-8222-222222222222", esCarga: true, agente: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", cabeceras: { get: (n: string) => (n === "accept-language" ? "es-CL" : null) }, extra: { llegada_explorar: "directo" } });
+    if (!ev || ev.event !== "explorar_abierto_vista" || ev.properties?.llegada_explorar !== "landing" || ev.properties?.robot !== true || evNav?.properties?.robot !== false || evNav?.properties?.llegada_explorar !== "directo") F(`6 · la vista sin cuenta no lleva la llegada o no marca los robots: ${JSON.stringify([ev?.properties, evNav?.properties])}`);
     const mw = codigo("src/middleware.ts");
-    if (!/if \(pagina === "explorar" && persona\) return res;/.test(mw) || !/\.\.\.\(pagina === "explorar" \? \{ extra: \{ llegada: origenDeExplorar\(request\.nextUrl\.search\) \} \} : \{\}\)/.test(mw)) F("6 · la vista de /explorar sale también con sesión, o sin la llegada");
+    if (!/if \(pagina === "explorar" && persona\) return res;/.test(mw) || !/\.\.\.\(pagina === "explorar" \? \{ extra: \{ llegada_explorar: origenDeExplorar\(request\.nextUrl\.search\) \} \} : \{\}\)/.test(mw)) F("6 · la vista de /explorar sale también con sesión, o sin la llegada");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
     for (const [que, re] of [
-      ["bienvenida vista", /posthog\?\.capture\(EVENTOS_ABIERTO\.bienvenida, \{ n: inicial\.n, llegada: origen \}\)/],
-      ["pin tocado", /posthog\?\.capture\(EVENTOS_PORTAL\.pin, \{ aviso_id: avisoId, modalidad: filtros\.modalidad, \.\.\.\(sinCuenta \? \{ sin_cuenta: true, llegada: origen \} : \{\}\) \}\)/],
-      ["registro abierto", /posthog\?\.capture\(EVENTOS_ABIERTO\.registroAbierto, \{ motivo, aviso_id: pin\?\.avisoId \?\? null, modalidad: f\.modalidad, llegada: origen \}\)/],
+      ["bienvenida vista", /posthog\?\.capture\(EVENTOS_ABIERTO\.bienvenida, \{ n: inicial\.n, llegada_explorar: origen \}\)/],
+      ["pin tocado", /posthog\?\.capture\(EVENTOS_PORTAL\.pin, \{ aviso_id: avisoId, modalidad: filtros\.modalidad, \.\.\.\(sinCuenta \? \{ sin_cuenta: true, llegada_explorar: origen \} : \{\}\) \}\)/],
+      ["registro abierto", /posthog\?\.capture\(EVENTOS_ABIERTO\.registroAbierto, \{ motivo, aviso_id: pin\?\.avisoId \?\? null, modalidad: f\.modalidad, llegada_explorar: origen \}\)/],
       ["regalo usado", /if \(usaRegalo\(cuenta\.saldo\)\) posthog\?\.capture\(EVENTOS_ABIERTO\.regaloUsado,/],
     ] as const) if (!re.test(cli)) F(`6 · falta el evento «${que}»`);
-    if (!/if \(puerta === "E"\) await capturarServidor\(\{ event: EVENTOS_ABIERTO\.registroHecho,/.test(codigo("src/lib/deptos/alta-servidor.ts"))) F("6 · falta el evento «registro hecho» (desde el servidor, con la llegada)");
+    if (!/if \(puerta === "E"\) await capturarServidor\(\{ event: EVENTOS_ABIERTO\.registroHecho,[^\n]*properties: \{ regalo, llegada_explorar: origenDeDetalle\(/.test(codigo("src/lib/deptos/alta-servidor.ts"))) F("6 · falta el evento «registro hecho» (desde el servidor, con la llegada)");
+    // LA LLEGADA SE LLAMA `llegada_explorar` (29-oct-2026, medido en producción): en PostHog el tipo de una propiedad es del
+    // NOMBRE, para todo el proyecto, y `llegada` es booleana desde el 28-sep (`wizard4_borrador_decision`): «landing» y
+    // «directo» se leían vacíos en toda consulta y en todo filtro. Ningún evento de la puerta E manda `llegada` a secas.
+    for (const [archivo, src] of [["explorar-cliente.tsx", cli], ["middleware.ts", mw], ["alta-servidor.ts", codigo("src/lib/deptos/alta-servidor.ts")]] as const) {
+      if (/[{,]\s*llegada:/.test(src)) F(`6 · ${archivo} manda la llegada como \`llegada\`, que en PostHog es booleana y la lee vacía`);
+    }
     // Nada de datos de la persona antes del registro: los eventos del embudo no llevan el correo.
     if (/capture\([^)]*correo/.test(cli) || /capture\([^)]*correo/.test(codigo("src/app/explorar/hoja-registro.tsx"))) F("6 · un evento antes del registro lleva el correo");
   }
@@ -292,7 +305,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (29-oct-2026). 44 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
+// ACTA DE MUTACIÓN (29-oct-2026). 47 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
 // todas ROJAS a la primera. Y una falla que el tier cazó ANTES de mutar nada: la llegada de la vista se mandaba como `origen`, y
 // eventoVistaEntrada escribe `origen: "servidor"` después del extra: se perdía en silencio. Ahora es `llegada`.
 //   1 · LANDING: E1 sin la segunda puerta · E2 el hero sin el rótulo · E3 el número sin rojo · E4 «Ver en el mapa» sin la llegada ·
@@ -308,6 +321,8 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 //   6 · LA MEDICIÓN: E37 la vista sale con sesión · E38 sin «regalo usado» · E39 sin «registro hecho» · E40 la vista sin la llegada.
 //   Y lo que cazó el QA en local: E41 la hoja sin precarga · E42 la foto que no llega sin el mapa de respaldo · E43 el Escape de
 //   la hoja se re-registra a cada render · E44 los grupos del mapa chico de la landing se pisan.
+//   Y lo que midió producción: E45 la vista y E46 el registro hecho mandan `llegada` (booleana en PostHog: se leía vacía) ·
+//   E47 el hero de dos puertas con el degradado grande (su imagen era el LCP: 2,70 s).
 
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));
