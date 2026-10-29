@@ -182,8 +182,9 @@ export function runLandingRendimientoTier(): { hard: number } {
   for (const [variable, respaldo] of [["--font-heading", "Source Serif 4 Franco Fallback"], ["--font-ui", "Inter Franco Fallback"]]) {
     if (!new RegExp(`${variable}: '[^']+ Franco', '${respaldo}';`).test(fuentes) || !new RegExp(`font-family: '${respaldo}';[^}]*size-adjust: \\d`).test(fuentes)) F(`3 · ${variable} no cae a un respaldo ajustado en tamaño (${respaldo})`);
   }
-  // El fondo del hero no es el LCP: no compite con prioridad alta.
-  const heroFondo = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
+  // El fondo del hero no es el LCP: no compite con prioridad alta. (29-oct-2026) El fondo del hero es el del panel del hero
+  // del mapa (HeroMapa.tsx); HeroEntrada.tsx ya solo lleva el campo.
+  const heroFondo = sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx"));
   if (/fetchPriority=["{]|fetchpriority=/i.test(heroFondo) || /<link[^>]+hero-[md]\dx\.webp/.test(layout)) F("3 · el fondo del hero vuelve a pedirse con prioridad alta (o se precarga)");
 
   // ── 4 · ANALÍTICA CUANDO LA PÁGINA ESTÁ QUIETA ─────────────────────────────
@@ -291,11 +292,16 @@ export function runLandingRendimientoTier(): { hard: number } {
   const pesa = (p: string) => (existsSync(join(RAIZ, p)) ? readFileSync(join(RAIZ, p)).length : Infinity);
   for (const v of ["m1x", "m2x", "m3x", "d1x", "d2x"]) if (pesa(`public/landing/hero-liso-${v}.webp`) > 30_000) F(`6 · hero-liso-${v}.webp pesa más de 30 kB (o no existe)`);
   if (pesa("public/landing/grano-fino.png") > 12_000) F("6 · grano-fino.png pesa más de 12 kB (o no existe)");
-  for (const p of ["src/components/entrada/HeroEntrada.tsx", "src/components/landing-v14/Marca.tsx"]) {
-    const s6 = sinComentarios(leer(p));
-    if (/\/landing\/hero-[md]\dx\.webp/.test(s6) || !/\/landing\/hero-liso-m2x\.webp 2x/.test(s6)) F(`6 · ${p} vuelve al fondo con el grano incorporado`);
+  // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · el fondo del hero ya no es el liso de HeroEntrada
+  // (se retiró): es el panel de HeroMapa, que pinta el degradado CHICO (52 × 113 y 96 × 60, puerta E) estirado, y su grano
+  // fino va en hero-mapa.css. Que el panel no pida otra imagen lo fija LANDING-MAPA §4; acá, que no vuelva al pesado.
+  {
+    const s6 = sinComentarios(leer("src/components/landing-v14/Marca.tsx"));
+    if (/\/landing\/hero-[md]\dx\.webp/.test(s6) || !/\/landing\/hero-liso-m2x\.webp 2x/.test(s6)) F("6 · src/components/landing-v14/Marca.tsx vuelve al fondo con el grano incorporado");
+    const m6 = sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx"));
+    if (/\/landing\/hero-(?:liso-)?[md]\dx\.webp/.test(m6) || !/<img src="\/landing\/hero-liso-chico-m\.webp"/.test(m6)) F("6 · src/components/landing-v14/HeroMapa.tsx vuelve a un fondo grande (o pierde el degradado chico)");
   }
-  for (const p of ["src/components/entrada/hero-entrada.css", "src/components/landing-v14/landing.css"]) {
+  for (const p of ["src/components/landing-v14/hero-mapa.css", "src/components/landing-v14/landing.css"]) {
     const c6 = leer(p);
     if (/grano-256\.png/.test(c6) || !/background-image: url\("\/landing\/grano-fino\.png"\); background-size: 64px; opacity: 0\.8; mix-blend-mode: hard-light;/.test(c6)) F(`6 · ${p} vuelve al grano de 52 kB (o pierde el grano fino)`);
   }

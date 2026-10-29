@@ -2,8 +2,8 @@
 // GOLDEN · AFFORDANCE (28-sep-2026) — catch-test
 // ============================================================================
 //   Dos reglas del sitio: LO TOCABLE SE VE TOCABLE y LO QUE TARDA SE VE CARGANDO.
-//   1 · «Ver un análisis real» del hero (landing) y «Ver un análisis de ejemplo» (portada del
-//       wizard) son la píldora con contorno (`he-pild`), no un texto suelto. «Ver cómo calcula» y
+//   1 · «Ver un ejemplo» del hero del mapa (landing) es un enlace subrayado, no un texto suelto (la
+//       píldora `he-pild` se retiró con el hero de la entrada, 29-oct-2026). «Ver cómo calcula» y
 //       las pestañas del demo también se ven tocables.
 //   2 · Todo enlace que navega pasa por `EnlaceCarga`: al toque queda `data-presionado="1"` y
 //       enciende la barra fina bajo el header (`BarraCarga`, `.hf-barra`), que se apaga cuando la
@@ -53,21 +53,17 @@ export function runAffordanceTier(): { hard: number } {
   console.log("\n─── TIER AFFORDANCE (tocable y cargando, 0 tokens) ───");
 
   // ── 1 · LO TOCABLE SE VE TOCABLE ───────────────────────────────────────────
-  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasó a llamarse «Ver un análisis de ejemplo» y en
-  // la landing dejó el hero: va como ENLACE DE TEXTO debajo de la segunda puerta (TarjetaExplorar). Lo tocable se ve tocable:
-  // subrayado, con su alto para el dedo; el hero ya no lo lleva.
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasó a llamarse «Ver un análisis de ejemplo».
+  // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · vuelve al hero como ENLACE DE TEXTO al pie del panel:
+  // «Franco te dice si conviene. Ver un ejemplo», subrayado; el campo no lo lleva.
   const entrada = sinComentarios(leer("src/components/landing-v14/Entrada.tsx"));
-  const puertas = sinComentarios(leer("src/components/landing-v14/TarjetaExplorar.tsx"));
-  const cssLanding = leer("src/components/landing-v14/landing.css");
-  if (!/<LinkMedido href="\/demo" className="lv-ejemplo" evento=\{EV\.ejemplo\}/.test(puertas) || !/\.lv-root \.lv-ejemplo \{[^}]*padding: 6px 2px;[^}]*text-decoration: underline;/.test(cssLanding) || /\/demo|he-pild/.test(entrada)) F("1 · «Ver un análisis de ejemplo» no es un enlace subrayado bajo la segunda puerta (o vuelve al hero)");
+  const puertas = sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx"));
+  const cssLanding = leer("src/components/landing-v14/hero-mapa.css");
+  if (!/<LinkMedido href="\/demo" className="hm-ejemplo-enlace" evento=\{EV\.ejemplo\}/.test(puertas) || !/\.lv-root \.hm-ejemplo-enlace \{[^}]*text-decoration: underline;/.test(cssLanding) || /\/demo|he-pild/.test(entrada)) F("1 · «Ver un análisis de ejemplo» no es un enlace subrayado bajo la segunda puerta (o vuelve al hero)");
   const portada = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
   // (01-oct-2026) La dirección del wizard ya no lleva «Ver un análisis de ejemplo»: es un paso del formulario.
   if (/href="\/demo"/.test(portada) && !/className="he-pild"/.test(portada)) F("1 · un enlace al demo en la dirección del wizard no es la píldora");
-  const heroCss = leer("src/components/entrada/hero-entrada.css");
-  const pild = (heroCss.match(/\.he-pild \{([^}]*)\}/) ?? [])[1] ?? "";
-  if (!/border-radius: 99px/.test(pild) || !/border: 1\.5px solid/.test(pild) || !/height: 38px/.test(pild) || !/display: inline-flex/.test(pild)) F("1 · la píldora del hero no tiene el contorno, el radio y el alto de «Entrar»");
-  if (/\.he-pie a \{[^}]*font-style: italic/.test(heroCss)) F("1 · vuelve el texto suelto en serif itálica en el pie del hero");
-  if (!/\.he-pild:hover, \.he-pild:focus-visible, \.he-pild\[data-presionado="1"\] \{ background: var\(--he-papel\)/.test(heroCss)) F("1 · la píldora del hero no se rellena al presionarla");
+  // (29-oct-2026) La píldora `he-pild` del pie del hero de la entrada se retiró con ese hero: nadie la montaba.
   const landingCss = leer("src/components/landing-v14/landing.css");
   const como = (landingCss.match(/\.lv-como \{([^}]*)\}/) ?? [])[1] ?? "";
   if (!/border-radius: var\(--lv-rad-pill\)/.test(como) || !/border: 1\.5px solid/.test(como)) F("1 · «Ver cómo calcula» sigue siendo un texto subrayado suelto");
@@ -127,7 +123,7 @@ export function runAffordanceTier(): { hard: number } {
   if (!/\[data-presionado="1"\] \{ opacity: 0\.72; transform: translateY\(1px\);/.test(leer("src/app/globals.css"))) F("2 · el estado presionado no tiene estilo global");
   // (f) quién la usa
   const linkMedido = sinComentarios(leer("src/components/landing-v14/LinkMedido.tsx"));
-  if (!/return <EnlaceCarga href=\{href\} className=\{className\} onClick=\{medir\}>/.test(linkMedido) || /from "next\/link"/.test(linkMedido)) F("2 · LinkMedido (el hero, «Ver planes») no navega con carga");
+  if (!/return <EnlaceCarga href=\{href\} className=\{className\} onClick=\{medir\} \{\.\.\.resto\}>/.test(linkMedido) || /from "next\/link"/.test(linkMedido)) F("2 · LinkMedido (el hero, «Ver planes») no navega con carga");
   for (const [f, rx, que] of [
     ["src/components/landing-v14/Secciones.tsx", /<EnlaceCarga className="lv-como" href="\/metodologia">/, "«Ver cómo calcula»"],
     ["src/components/landing-v14/Marca.tsx", /<EnlaceCarga href="\/metodologia">Cómo calcula<\/EnlaceCarga>/, "el pie de la landing"],

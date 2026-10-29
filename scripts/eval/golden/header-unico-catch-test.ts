@@ -98,8 +98,11 @@ export function runHeaderUnicoTier(): { hard: number } {
   for (const p of PAGINAS) {
     if (!/<HeaderFranco\b/.test(sinComentarios(leer(p)))) F(`1 · ${p} no monta el header único`);
   }
+  // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · el hero de la landing es HeroMapa: la cabecera que
+  // recibe (el header único, desde page.tsx) va en su `hm-cab`, sobre el mapa. HeroEntrada.tsx quedó con el campo, sin cabecera.
   const heroEnt = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
-  if (/he-top|he-wm|\bderecha\b/.test(heroEnt) || !/\{cabecera\}/.test(heroEnt)) F("1 · el hero de la entrada vuelve a dibujar su propia cabecera");
+  const heroMapa = sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx"));
+  if (/he-top|he-wm|\bderecha\b/.test(heroEnt + heroMapa) || !/<div className="hm-cab">\{cabecera\}<\/div>/.test(heroMapa)) F("1 · el hero de la entrada vuelve a dibujar su propia cabecera");
   // (01-oct-2026) La dirección del wizard es un paso del formulario: el header único lo pone el armazón
   // (WizardV4, en PAGINAS) y el paso no monta otro.
   if (/<HeaderFranco\b/.test(sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx")))) F("1 · el paso de la dirección monta un segundo header (lo pone el armazón del wizard)");

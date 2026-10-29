@@ -19,7 +19,8 @@
 //  11 · LA DIRECCIÓN ES UN PASO DEL FORMULARIO (01-oct-2026, decisión de Fabrizio): en el wizard no se
 //       ve como la landing —ni el material, ni el título del hero, ni su pie—: papel, la cabecera
 //       «Acto 1 · Qué compras», el título «¿Dónde está el depto?», el campo y los dos caminos. Cambia el
-//       envoltorio, no el campo. La landing sigue con HeroEntrada, y quien llega desde ella salta al mapa.
+//       envoltorio, no el campo. La landing monta el mismo campo en su hero (desde el 29-oct-2026 el del
+//       mapa, `HeroMapa` › `CampoHero`), y quien llega desde ella salta al mapa.
 //   5 · LOS EVENTOS: camino, permiso y pin movido; `entrada` en los eventos de paso; el embudo cuenta
 //       a quien llega desde la landing y tiene su hito.
 //   6 · LA GEOCODIFICACIÓN INVERSA: `/api/geocode?lat&lng` nombra el punto con su comuna, y no
@@ -149,7 +150,8 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   const hero = sinComentarios(leer("src/components/entrada/HeroEntrada.tsx"));
   if (!/import \{ useDireccionPlaces, type SeleccionDireccion \} from "\.\/useDireccionPlaces";/.test(hero)) F("4 · el hero no usa el hook compartido");
   if (!/onClick=\{\(\) => onCamino\("ubicacion"\)\}/.test(hero) || !/onClick=\{\(\) => onCamino\("mapa"\)\}/.test(hero)) F("4 · faltan los caminos sin dirección en el hero");
-  if (!/¿Ese depto es<br \/><mark>buena inversión<\/mark>\?/.test(hero)) F("4 · el título del hero no es el de la landing");
+  // (29-oct-2026, el hero del mapa) HeroEntrada.tsx ya no lleva el hero de la landing, solo su campo: el título vive en
+  // HeroMapa (`HERO_MAPA.titulo`, con el total de anoche) y lo vigila LANDING-MAPA.
   // ── 11 · la dirección es un paso del formulario ──
   if (/if \(esPortada\) \{\s*\n\s*return/.test(shell)) F("11 · la dirección vuelve a dibujarse a pantalla completa, fuera del armazón");
   if (!/<h1 className="wz-titulo">\{NODE_TITLE\[nav\.current\]\}<\/h1>\s*\n\s*\{esPortada \? \(\s*\n\s*<EntradaScreen \{\.\.\.screenProps\} banner=\{bannerPortada\} autoCamino=\{autoCamino\} \/>\s*\n\s*\) : \(/.test(shell)) F("11 · la dirección no va dentro del armazón, bajo el título del paso y con el aviso del borrador");
@@ -159,8 +161,10 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (/<HeroEntrada\b|he-root|he-h1|hero-[dm][123]x|sobreMaterial|<HeaderFranco\b|he-pild|\/demo|buena inversión/.test(ent)) F("11 · el paso de la dirección vuelve a verse como la landing (hero, material, título, pie o su propio header)");
   if (!/<div className="he-papel" data-entrada="paso">\s*\n\s*\{banner\}\s*\n\s*<CampoEntrada\b/.test(ent)) F("11 · el campo no va en papel con el aviso del borrador encima");
   const cssHero = leer("src/components/entrada/hero-entrada.css");
-  if (!/\.he-papel, \.he-papel \.he-campo \{ --he-tinta: var\(--tx\); --he-papel: var\(--tx\); --he-ghost: var\(--tx4\); \}/.test(cssHero) || !/\.he-papel \.he-box \{[^}]*background: var\(--card\); border: 1px solid var\(--line2\); box-shadow: none;/.test(cssHero) || !/body:has\(\.he-papel\) \.pac-container/.test(cssHero)) F("11 · el campo en papel no toma los tokens del wizard (o Places pierde su estilo)");
-  if (!/<HeroEntrada\b/.test(sinComentarios(leer("src/components/landing-v14/Entrada.tsx")))) F("11 · la landing dejó el hero");
+  if (!/\.he-papel, \.he-papel \.he-campo \{ --he-tinta: var\(--tx\); --he-papel: var\(--tx\); --he-ghost: var\(--tx4\); \}/.test(cssHero) || !/\.he-papel \.he-box \{[^}]*background: var\(--card\); border: 1px solid var\(--line2\); box-shadow: none;/.test(cssHero) || !/body:has\(\.he-campo\) \.pac-container/.test(cssHero)) F("11 · el campo en papel no toma los tokens del wizard (o Places pierde su estilo)");
+  // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · la landing ya no monta HeroEntrada (se retiró):
+  // su hero es HeroMapa, que monta el MISMO campo (`CampoHero` › `CampoEntrada`). Lo que se vigila es que el campo siga ahí.
+  if (!/<CampoEntrada\b/.test(sinComentarios(leer("src/components/landing-v14/Entrada.tsx"))) || !/<CampoHero \/>/.test(sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx")))) F("11 · la landing dejó el campo de la entrada en su hero");
   if (!/case "dirMapa":\s*\n\s*return <MapaScreen \{\.\.\.screenProps\} onVolver=\{w\.goBack\} \/>;/.test(shell)) F("4 · el router no monta el mapa");
   if (!/const r = await pedirUbicacion\(\);/.test(ent)) F("4 · «Estoy en el depto» no pide la ubicación del teléfono");
   // Y el sitio tiene que dejar que el navegador la dé: con `geolocation=()` la niega antes de
@@ -212,7 +216,7 @@ export async function runWizardEntradaTier(): Promise<{ hard: number }> {
   if (/\.he-hoja \{[^}]*inset: 0/.test(css) || /he-hoja-cancelar/.test(css + hero)) F("8 · vuelve la hoja a pantalla completa");
   // ⚠ ACTA (09-oct-2026, Safari en iPhone) · las sugerencias ya no van FIJAS a una altura calculada con el
   // visualViewport (`--he-pac-top`): en iOS 26, con el teclado abierto, solo se veía la primera. Van DENTRO de la
-  // hoja, en su flujo, bajo el campo: HeroEntrada muda ahí la lista que Google cuelga del <body> y la devuelve al
+  // hoja, en su flujo, bajo el campo: CampoEntrada muda ahí la lista que Google cuelga del <body> y la devuelve al
   // cerrar. Los tres chequeos de la posición fija se reemplazan por estos.
   if (!/html\.he-hoja-abierta \.he-hoja-sugerencias \.pac-container \{\s*\n\s*position: static !important; top: auto !important; left: auto !important; width: auto !important; max-width: none !important;/.test(css) || /html\.he-hoja-abierta \.pac-container \{[^}]*position: fixed/.test(css))
     F("8 · las sugerencias no van dentro de la hoja, en su flujo, bajo el campo (fijas con el área visible, en iOS 26 solo se ve la primera)");

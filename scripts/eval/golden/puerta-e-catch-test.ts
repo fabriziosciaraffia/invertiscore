@@ -2,10 +2,9 @@
 // TIER PUERTA-E — Explorar abierto sin cuenta y la landing con dos puertas (29-oct-2026, goal de Fabrizio; mockup
 // docs/puerta-b-mockups/6-puerta-e.html, estados A a D).
 //
-//   1 · LA LANDING TIENE LAS DOS PUERTAS: el hero es la del informe, con «¿Tienes un depto en la mira?» sobre el título;
-//       debajo, la tarjeta de Explorar con el mismo peso (el mapa chico con los grupos, «¿Buscas dónde invertir?», el número
-//       en rojo, «Míralos en el mapa, sin registrarte.» y «Ver en el mapa →» a /explorar?desde=landing) y «Ver un análisis de
-//       ejemplo» como enlace de texto. «Ver un análisis real» no queda en ninguna parte del sitio.
+//   1 · LA LANDING LLEVA A EXPLORAR CON SU LLEGADA (`?desde=landing`), con el número del universo de Explorar sin cuenta.
+//       «Ver un análisis real» no queda en ninguna parte del sitio. La landing con dos puertas de este goal (el rótulo y la
+//       tarjeta del mapa) la reemplazó el hero del mapa el mismo 29-oct-2026: la vigila el tier LANDING-MAPA.
 //   2 · SIN SESIÓN, EL FLUJO NO VIAJA AL NAVEGADOR: el universo sin cuenta llega sin flujo ni arriendo; la tarjeta y la lista
 //       los dibujan borrosos con un relleno fijo, nunca con el valor; con zoom el pin es solo el punto; sin «Mi búsqueda».
 //       Pie y plazo quedan en 20 % y 25 años, y lo que depende del flujo pide registro.
@@ -71,51 +70,16 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   const F = (m: string) => fallas.push(m);
   console.log("\n─── TIER PUERTA-E (Explorar sin cuenta y la landing con dos puertas: el flujo no viaja, el registro vuelve al pin con el regalo, la cuenta nace con E · 0 tokens) ───");
 
-  // ── 1 · LA LANDING TIENE LAS DOS PUERTAS ──
+  // ── 1 · LA LANDING LLEVA A EXPLORAR CON SU LLEGADA ──
+  // El hero de la landing es el MAPA desde el 29-oct-2026 (opción 3 de 7-landing-puertas): lo que era la tarjeta de la puerta E
+  // —el mapa chico, el número, «Ver en el mapa →»— lo vigila el tier LANDING-MAPA. Acá queda lo de la puerta E: la landing lleva
+  // a /explorar con `?desde=landing`, el número es el universo de Explorar sin cuenta y nada del hero arrastra Explorar.
   {
-    const pagina = codigo("src/app/page.tsx");
-    const iHero = pagina.indexOf("<Hero cabecera="), iTarjeta = pagina.indexOf("<TarjetaExplorar datos={datos.explorar} />"), iResp = pagina.indexOf("<RotacionEjemplos");
-    if (iHero < 0 || iTarjeta < iHero || iResp < iTarjeta) F("1 · la landing no monta la tarjeta de Explorar justo debajo del hero");
-    const entrada = codigo("src/components/landing-v14/Entrada.tsx");
-    const hero = codigo("src/components/entrada/HeroEntrada.tsx");
-    if (!/<HeroEntrada cabecera=\{cabecera\} rotulo=\{LANDING_PUERTAS\.rotuloInforme\} \{\.\.\.acciones\} \/>/.test(entrada) || !/\{rotulo && <p className="he-rotulo" data-landing="rotulo">\{rotulo\}<\/p>\}\s*<h1 className="he-h1">/.test(hero)) F("1 · el hero no lleva «¿Tienes un depto en la mira?» sobre el título");
-    if (ab.LANDING_PUERTAS.rotuloInforme !== "¿Tienes un depto en la mira?") F("1 · el rótulo de la puerta del informe no es «¿Tienes un depto en la mira?»");
-    if (!/\.he-root--puertas \{ min-height: 0; \}/.test(leer("src/components/entrada/hero-entrada.css"))) F("1 · el hero sigue ocupando la pantalla entera (la segunda puerta queda bajo el pliegue)");
-    // EL FONDO DEL HERO DE DOS PUERTAS NO ES EL LCP (29-oct-2026, medido en producción: 2,70 s con la imagen como LCP).
-    // Compacto, ya no cubre la pantalla y Chrome cuenta su imagen; con el degradado chico (bajo 0,05 bits por píxel) la
-    // descarta y el LCP vuelve al titular. El umbral, contra el hero más chico: 375 × 373 en el teléfono, 768 × 400 desde 768.
-    const ramaChica = (hero.match(/\{rotulo \? \(([\s\S]*?)\) : \(/) ?? [])[1] ?? "";
-    if (!/<source media="\(min-width: 768px\)" srcSet="\/landing\/hero-liso-chico-d\.webp" \/>/.test(ramaChica) || !/<img src="\/landing\/hero-liso-chico-m\.webp"/.test(ramaChica)) F("1 · el hero de dos puertas pinta el degradado grande: su imagen vuelve a ser el LCP de la landing");
-    const bytes = (p: string) => (existe(p) ? readFileSync(join(RAIZ, p)).length : Infinity);
-    if ((bytes("public/landing/hero-liso-chico-m.webp") * 8) / (375 * 373) >= 0.05 || (bytes("public/landing/hero-liso-chico-d.webp") * 8) / (768 * 400) >= 0.05) F("1 · el degradado chico del hero pasa el umbral de 0,05 bits por píxel (o no existe): Chrome lo cuenta como LCP");
-    const mod = cargar<{ TarjetaExplorar: FC<{ datos: { n: number; grupos: ab.GrupoLanding[] } | null }> }>("src/components/landing-v14/TarjetaExplorar");
-    if (!mod) F("1 · la tarjeta de Explorar no carga");
-    else {
-      const grupos = ab.gruposDeLanding([PIN, { ...PIN, avisoId: "b", comuna: "Maipú", lat: -33.51, lng: -70.757 }, { ...PIN, avisoId: "c" }]);
-      // SIN PISARSE (QA del 29-oct-2026: Santiago, Providencia y Ñuñoa quedaban uno encima del otro y una cifra se tapaba).
-      // Providencia y Ñuñoa están a dos kilómetros: en el mapa chico, el más chico de los dos no entra.
-      const vecinos = ab.gruposDeLanding([PIN, { ...PIN, avisoId: "c" }, { ...PIN, avisoId: "b", comuna: "Ñuñoa", lat: -33.456, lng: -70.598 }]);
-      if (vecinos.length !== 1 || vecinos[0].comuna !== "Providencia") F("1 · el mapa chico de la landing dibuja dos grupos uno encima del otro (la cifra de abajo se tapa)");
-      for (let i = 0; i < grupos.length; i++) for (let j = i + 1; j < grupos.length; j++) if (Math.hypot(grupos[i].x - grupos[j].x, grupos[i].y - grupos[j].y) < grupos[i].r + grupos[j].r) F("1 · dos grupos del mapa chico se pisan");
-      const html = dibujar(createElement(mod.TarjetaExplorar, { datos: { n: 4807, grupos } }));
-      const t = texto(html);
-      for (const [que, ok] of [
-        ["«¿Buscas dónde invertir?»", t.includes("¿Buscas dónde invertir?")],
-        ["el número en rojo con «deptos en venta convienen hoy.»", /<span class="lv-explorar-cifra">4\.807<\/span> deptos en venta convienen hoy\./.test(html) && /\.lv-explorar-cifra \{ color: #C8323C;/.test(leer("src/components/landing-v14/landing.css"))],
-        ["«Míralos en el mapa, sin registrarte.»", t.includes("Míralos en el mapa, sin registrarte.")],
-        ["«Ver en el mapa →» a /explorar?desde=landing", /href="\/explorar\?desde=landing"[^>]*>Ver en el mapa →/.test(html)],
-        ["el mapa chico con los grupos (un dibujo)", /<div class="lv-explorar-mapa" aria-hidden="true"><svg/.test(html) && (html.match(/<g class="lv-explorar-grupo">/g) ?? []).length === 2 && !/<img/.test(html)],
-        ["«Ver un análisis de ejemplo» al demo, debajo de la tarjeta", /href="\/demo"[^>]*>Ver un análisis de ejemplo/.test(html) && html.indexOf('href="/demo"') > html.indexOf("Ver en el mapa")],
-      ] as const) if (!ok) F(`1 · la tarjeta de la landing no tiene ${que}`);
-      if (/<button|onclick/i.test(html)) F("1 · la tarjeta de la landing trae un botón propio (el enlace medido de siempre basta)");
-      const sinDatos = dibujar(createElement(mod.TarjetaExplorar, { datos: null }));
-      if (/lv-explorar"|Ver en el mapa/.test(sinDatos) || !/Ver un análisis de ejemplo/.test(sinDatos)) F("1 · sin el número de la noche la tarjeta sale igual (o se pierde el enlace al demo)");
-      if (grupos[0]?.comuna !== "Providencia" || grupos[0].n !== 2 || grupos.some((g) => g.x < ab.MAPA_LANDING.margen || g.x > ab.MAPA_LANDING.ancho - ab.MAPA_LANDING.margen)) F(`1 · los grupos del mapa chico: ${JSON.stringify(grupos)}`);
-    }
+    if (ab.HREF_DESDE_LANDING !== "/explorar?desde=landing" || !/href=\{HREF_DESDE_LANDING\}/.test(codigo("src/components/landing-v14/HeroMapa.tsx"))) F("1 · la landing no lleva a /explorar con la llegada de la landing");
     // El número es el MISMO universo que Explorar sin cuenta (pie 20 %, 25 años): la landing, la bienvenida y el mapa dicen lo mismo.
     if (!/universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)/.test(codigo("src/lib/landing-vivo.ts"))) F("1 · el número de la landing no sale del mismo universo que Explorar sin cuenta");
-    // La landing es un cliente liviano: el hero no arrastra Explorar.
-    if (/explorar\/abierto|explorar\/portal/.test(entrada) || /^import (?!type)[^\n]*from "\.\/portal"/m.test(leer("src/lib/explorar/puertas-landing.ts"))) F("1 · el hero de la landing importa Explorar entero (pesa antes del primer pintado)");
+    // La landing es liviana: el hero no arrastra Explorar.
+    if (/explorar\/abierto|explorar\/portal/.test(codigo("src/components/landing-v14/Entrada.tsx") + codigo("src/components/landing-v14/HeroMapa.tsx")) || /^import (?!type)[^\n]*from "\.\/portal"/m.test(leer("src/lib/explorar/puertas-landing.ts"))) F("1 · el hero de la landing importa Explorar entero (pesa antes del primer pintado)");
     const real = archivos("src").filter((f) => /an[áa]lisis real\b/i.test(leer(f)));
     if (real.length) F(`1 · «Ver un análisis real» sigue en el sitio: ${real.join(", ")}`);
   }
@@ -323,6 +287,8 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 //   la hoja se re-registra a cada render · E44 los grupos del mapa chico de la landing se pisan.
 //   Y lo que midió producción: E45 la vista y E46 el registro hecho mandan `llegada` (booleana en PostHog: se leía vacía) ·
 //   E47 el hero de dos puertas con el degradado grande (su imagen era el LCP: 2,70 s).
+// ACTA (29-oct-2026, el hero del mapa): E1–E4, E44 y E47 vigilaban la tarjeta, el rótulo, los grupos del mapa chico y el hero
+// compacto, que se retiraron; lo suyo (las dos puertas, los grupos sin pisarse, el degradado chico) lo vigila LANDING-MAPA.
 
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));

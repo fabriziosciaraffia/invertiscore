@@ -172,6 +172,7 @@ import { runCargaTier } from "./carga-catch-test";
 import { runExplorarTier } from "./explorar-catch-test";
 import { runExplorarPortalTier } from "./explorar-portal-catch-test";
 import { runPuertaETier } from "./puerta-e-catch-test";
+import { runLandingMapaTier } from "./landing-mapa-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -730,6 +731,11 @@ function printSeed(r: SeedReport) {
   // al analizar, «Avísame de nuevos» guarda el perfil; los filtros, el universo, el pin, el plan, la medición y los guardados—. ──
   totalHard += (await runExplorarPortalTier()).hard;
   totalHard += (await runPuertaETier()).hard;
+  // Tier LANDING-MAPA (29-oct-2026, 0 tokens): el mapa es el hero (opción 3 de 7-landing-puertas) —las dos puertas en el
+  // primer pantallazo del teléfono (el mapa se achica antes que el título), el número del total de anoche, el título como
+  // LCP (sin imagen que compita), el campo de siempre con su animación y «¿No tienes la dirección?» en la hoja o al enfocar,
+  // y tres eventos distintos: botón, mapa y campo—. ──
+  totalHard += (await runLandingMapaTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──

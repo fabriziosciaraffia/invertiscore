@@ -2,8 +2,10 @@
 // GOLDEN · LA LANDING v14 SOBRE MASTER — catch-test (27-sep-2026). 0 tokens, sin base.
 // ============================================================================
 // Las decisiones de Fabrizio del QA de la landing (27-sep-2026), fijadas:
-//   1 · UNA PUERTA: el hero es `HeroEntrada` y el campo del cierre su `CampoEntrada`; la página
-//       monta el header único sobre el material y la dirección va al wizard con `urlDeLlegada`.
+//   1 · EL CAMPO DE SIEMPRE: el campo del hero y el del cierre son `CampoEntrada`; la página monta el
+//       header único sobre el material y la dirección va al wizard con `urlDeLlegada`. Desde el
+//       29-oct-2026 el hero es el del mapa (`HeroMapa`, opción 3 de 7-landing-puertas): lo vigila
+//       el tier LANDING-MAPA; acá, que siga siendo el de la landing y con el campo de la entrada.
 //   2 · LA CARD ES LA DEL INFORME: `PosicionFranco` + `LoQueHariaYoBloque` / `CardBuscarOtra`, con
 //       el CSS del informe (`DocTokens`). La copia `lr-` no vuelve.
 //   3 · LO QUE DICE EL INFORME: el titular del motor (`titularMotor`), la card de
@@ -76,10 +78,10 @@ export function runLandingV14Tier(): { hard: number } {
   if (tsxs.length < 10) F(`0 · leí ${tsxs.length} archivos de ${DIR}: no está leyendo la landing`);
 
   // ── 1 · una puerta ──
-  if (!/<Hero cabecera=\{<HeaderFranco contexto="wizard" sobreMaterial \/>\} \/>/.test(page)) F("1 · la página no le pasa el header único sobre el material al hero");
-  if (!/<HeroEntrada\b/.test(ent) || !/<CampoEntrada\b/.test(ent)) F("1 · la landing no monta HeroEntrada y CampoEntrada");
+  if (!/<Hero cabecera=\{<HeaderFranco contexto="wizard" sobreMaterial \/>\} datos=\{/.test(page)) F("1 · la página no le pasa el header único sobre el material al hero");
+  if (!/<CampoEntrada\b/.test(ent)) F("1 · la landing no monta el campo de la entrada (CampoEntrada)");
   if (!/router\.push\(urlDeLlegada\(sel, origen\)\)/.test(ent) || !/router\.push\(urlDeLlegada\(\{ modo \}, origen\)\)/.test(ent)) F("1 · la dirección no viaja al wizard con urlDeLlegada");
-  if (!/<HeroLanding cabecera=\{cabecera\} \/>/.test(sec) || !/<CampoLanding ubicacion="cierre" \/>/.test(sec)) F("1 · el hero o el campo del cierre no son los de la entrada");
+  if (!/<HeroMapa cabecera=\{cabecera\} datos=\{datos\} \/>/.test(sec) || !/<CampoLanding ubicacion="cierre" \/>/.test(sec)) F("1 · el hero no es el del mapa o el campo del cierre no es el de la entrada");
   if (existsSync(join(RAIZ, `${DIR}/CampoDireccion.tsx`)) || tsxs.some((f) => /useDireccionPlaces\(/.test(leer(`${DIR}/${f}`)))) F("1 · volvió un campo propio de la landing (CampoDireccion o un useDireccionPlaces directo)");
 
   // ── 2 · la card del informe ──
@@ -132,16 +134,14 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/import \{ DISCLAIMER_CANONICO \} from "@\/components\/chrome\/AppFooter";/.test(marca) || !/<p>\{DISCLAIMER_CANONICO\}<\/p>/.test(marca) || !/href="\/terms"/.test(marca) || !/href="\/privacy"/.test(marca)) F("7 · el pie no lleva el disclaimer canónico con términos y privacidad");
 
   // ── 8 · destacado sí, rojo no ──
-  const hoja = [`${DIR}/landing.css`, "src/components/entrada/hero-entrada.css", "src/components/metodologia/metodologia.css"];
+  const hoja = [`${DIR}/landing.css`, `${DIR}/hero-mapa.css`, "src/components/entrada/hero-entrada.css", "src/components/metodologia/metodologia.css"];
   for (const f of hoja) {
     for (const { sel, decl } of fondos(leer(f))) {
       if (!ROJO.test(decl)) continue;
       // el único rojo de fondo: el botón de avanzar del campo
       if (/^\.he-box:hover \.he-btn, \.he-btn:focus-visible$/.test(sel)) continue;
-      // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver en el mapa →» de la segunda puerta va en el
-      // MATERIAL DE LA TRÍADA (lo pide el goal): el degradado de los tres tokens de veredicto, el mismo del hero, no el rojo de
-      // marca liso. Solo ese botón y solo ese degradado exacto.
-      if (sel === ".lv-root .lv-explorar-cta" && /^linear-gradient\(90deg, var\(--verdict-comprar\) 0%, var\(--verdict-ajusta\) 55%, var\(--verdict-buscar\) 100%\)$/.test(decl.replace(/^background:\s*/, "").trim())) continue;
+      // (29-oct-2026) La excepción de «Ver en el mapa →» de la tarjeta de la puerta E salió con la tarjeta: el botón del hero
+      // del mapa es blanco.
       F(`8 · ${f}: «${sel}» usa el rojo de marca de fondo (${decl})`);
     }
   }
@@ -167,9 +167,9 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/popup: PopupLanding \| null;/.test(vivo) || !/hayAjustesQueMostrar\(\{ veredicto, distancia, mixComprar \}\)/.test(vivo)) F("9 · los datos del pop-up no se arman como en el informe");
 
   // ── 10 · el QA del 28-sep ──
-  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · el demo dejó el hero: «Ver un análisis de ejemplo»
-  // va debajo de la segunda puerta (TarjetaExplorar), como enlace de texto, y sigue midiendo el mismo evento.
-  if (!/<LinkMedido href="\/demo" className="lv-ejemplo" evento=\{EV\.ejemplo\} props=\{\{ origen: "puertas" \}\}>\s*\{LANDING_PUERTAS\.ejemplo\}/.test(sinComentarios(leer(`${DIR}/TarjetaExplorar.tsx`))) || /\/demo/.test(ent)) F("10 · «Ver un análisis de ejemplo» no lleva al demo desde la segunda puerta (o vuelve al hero)");
+  // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · el demo vuelve al hero, como enlace de texto al pie
+  // del panel: «Franco te dice si conviene. Ver un ejemplo». Sigue midiendo el mismo evento.
+  if (!/<LinkMedido href="\/demo" className="hm-ejemplo-enlace" evento=\{EV\.ejemplo\} props=\{\{ origen: "hero" \}\}>\{HERO_MAPA\.ejemplo\.enlace\}<\/LinkMedido>/.test(sinComentarios(leer(`${DIR}/HeroMapa.tsx`))) || /\/demo/.test(ent)) F("10 · «Ver un ejemplo» no lleva al demo desde el hero (o el campo lo lleva)");
   // (01-oct-2026) La dirección del wizard dejó de ser el hero: sin el pie de la landing (ver WIZARD-ENTRADA §11).
   if (/he-pild|\/demo/.test(wiz)) F("10 · el paso de la dirección del wizard vuelve a llevar el pie de la landing");
   if (!/export function PieRotacion\(\)/.test(rot) || (resp.match(/<PieRotacion \/>/g) ?? []).length !== 1 || (reco.match(/<PieRotacion \/>/g) ?? []).length !== 1) F("10 · las dos secciones que rotan no usan el mismo pie (barra + pausa)");
@@ -186,9 +186,7 @@ export function runLandingV14Tier(): { hard: number } {
   if (/\.lv-sreco > \.lv-col::before/.test(css) || !/\.lv-sreco \{ background: var\(--lv-gris-sec\); \}/.test(css)) F("11 · las secciones no se separan por fondo (vuelve la línea o falta el gris)");
   if (/\.lv-lista \{[^}]*border-top: 1px solid/.test(css)) F("11 · vuelve la línea sobre «Tres respuestas posibles», que topaba con el pie de la rotación");
   if (!/className="hf-txt hf-pild">Entrar<\/EnlaceCarga>/.test(hdr)) F("10 · «Entrar» sobre el material no es la píldora con contorno");
-  const heroCss = leer("src/components/entrada/hero-entrada.css");
-  if (!/\.he-mid \{ flex: 1; display: flex; flex-direction: column; justify-content: center;/.test(heroCss)) F("10 · el bloque principal del hero no va centrado en altura");
-  if (!/\{pie && <div className="he-pie">\{pie\}<\/div>\}\s*\n\s*<\/div>\s*\n\s*<\/section>/.test(sinComentarios(leer("src/components/entrada/HeroEntrada.tsx")))) F("10 · el pie del hero no acompaña al bloque (volvió al borde inferior)");
+  // (29-oct-2026) El bloque centrado y el pie del hero de la entrada se retiraron con él: el hero del mapa los vigila LANDING-MAPA.
 
   if (fallas.length) {
     console.log(`  ✗ LANDING-V14 · ${fallas.length} falla(s):`);
