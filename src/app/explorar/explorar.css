@@ -7,8 +7,11 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 /* Con el aviso de cookies a la vista, la pantalla se acorta su alto (AvisoCookies › --alto-aviso-cookies): si no, la barra tapa
    la hoja de abajo, la tarjeta y el botón «Mapa». */
-/* Dos filas: el header y lo de abajo (el esqueleto o el cliente). El mapa quieto se ubica en la segunda (ver más abajo). */
-.ex-pagina { position: relative; height: calc(100dvh - var(--alto-aviso-cookies, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--franco-bg); color: var(--franco-text); }
+/* Dos filas: el header y lo de abajo (el esqueleto o el cliente). El mapa quieto se ubica en la segunda (ver más abajo).
+   La fuente de la interfaz, la misma de .ex: el mapa quieto cuelga directo de la página y, con la del <body> (IBM Plex),
+   Chrome bajaba sus 40 kB para la línea de la imagen aunque no tenga texto (medido en producción el 29-oct-2026, bisección
+   por capas: forzando Inter solo en el mapa quieto, el pedido desaparece). */
+.ex-pagina { position: relative; height: calc(100dvh - var(--alto-aviso-cookies, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; font-family: var(--font-ui), "Inter", system-ui, sans-serif; background: var(--franco-bg); color: var(--franco-text); }
 .ex { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
 .ex button { font-family: inherit; }
 
