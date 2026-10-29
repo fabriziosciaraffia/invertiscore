@@ -26,6 +26,11 @@ import { EsqueletoExplorar } from "./esqueleto";
 // es el LCP, medido el 23-oct-2026) sale con el ESQUELETO apenas se valida la sesión; la cuenta y el número llegan después
 // en el mismo pedido (Suspense). Medido en producción el 28-oct-2026: esperando la cuenta antes de mandar el HTML, el LCP daba
 // 2,53 s de mediana (1,3 s de «load delay»). El número sale de la misma caché de diez minutos que después baja al navegador.
+// UNA SOLA IMAGEN, PRIMERA EN EL HTML (28-oct-2026, candidatos a LCP medidos en Chromium): con el mapa quieto dentro del
+// esqueleto y del cliente, el navegador a veces pintaba antes el wordmark del header (el primer pintado) y el mapa quieto un
+// cuadro después, o lo pintaba en el esqueleto y lo quitaba al llegar el cliente; Lighthouse le sumaba al LCP el JS que corría
+// entremedio. Ahora es una capa de la página, antes del header en el HTML y detrás de él y de la barra (que son opacos): todo
+// pintado que muestre el header ya la muestra, y nunca se reemplaza. Se desvanece cuando el mapa real dibujó sus teselas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
@@ -39,7 +44,7 @@ const mapaQuieto = (
   <picture className="ex-mapa-quieto" data-explorar="mapa-quieto">
     <source media="(min-width: 768px)" srcSet={MAPA_QUIETO.d} />
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={MAPA_QUIETO_M} alt="" width={560} height={514} fetchPriority="high" decoding="sync" />
+    <img src={MAPA_QUIETO_M} alt="" width={560} height={426} fetchPriority="high" decoding="sync" />
   </picture>
 );
 
@@ -53,9 +58,10 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   return (
     <div className="ex-pagina" data-explorar="pagina">
       <link rel="preload" as="image" href={MAPA_QUIETO.d} media="(min-width: 768px)" fetchPriority="high" />
+      {mapaQuieto}
       {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). */}
       <HeaderFranco sesion={{ email: user.email ?? "" }} />
-      <Suspense fallback={<EsqueletoExplorar consulta={consulta} mapaQuieto={mapaQuieto} />}>
+      <Suspense fallback={<EsqueletoExplorar consulta={consulta} />}>
         <ExplorarConDatos consulta={consulta} user={user} />
       </Suspense>
     </div>
@@ -81,7 +87,6 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       inicial={{ filtros, orden, n, cuenta }}
       abrir={a}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
-      mapaQuieto={mapaQuieto}
     />
   );
 }

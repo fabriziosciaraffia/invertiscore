@@ -13,7 +13,7 @@
 //     de la noche, todo Gran Santiago en un pedido; si no, de a una comuna, mostrando lo que va llegando.
 //   · SIN SALDO SE EXPLORA TODO; el cobro aparece al tocar «Analizar este», con el pop-up de compra de siempre.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
@@ -72,12 +72,12 @@ export interface InicialPortal {
 
 type Universo = { comunas: "todas" | string[]; pines: PinMapa[] };
 
-export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, mapaQuieto = null }: {
+// El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
+// en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
+export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
-  /** El mapa quieto del primer pintado (page.tsx): va debajo del mapa real hasta sus teselas. */
-  mapaQuieto?: ReactNode;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -376,8 +376,6 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, ma
             Con la lista abierta el mapa NO se esconde: la lista lo cubre entero. Escondido (display: none) el mapa de Google se
             queda sin tamaño y al volver se descuadra (QA en WebKit 390, 28-oct-2026: «Buscar en esta zona» quedaba a 50 km). */}
         <div className="ex-mapa-wrap" data-mapa={mapa} aria-hidden={vista === "lista" ? true : undefined}>
-          {/* El mapa quieto: lo más grande del primer cuadro (el LCP), dibujado por el servidor; debajo del mapa real. */}
-          {mapaQuieto}
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar
               pines={visibles}

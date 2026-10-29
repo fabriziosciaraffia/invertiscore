@@ -426,19 +426,25 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (!/vivo\.current = true;\s*if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);\s*const cancelar = cuandoLaPaginaEsteQuieta\(/.test(cli)) F("12 · el universo de la noche se pide antes de la página quieta (compite con el LCP)");
   if (/loadGoogleMaps|maps\.googleapis/.test(cli + pag + codigo("src/lib/explorar/portal.ts"))) F("12 · Google Maps entra al primer pintado");
   if (/universo=|pines=\{/.test(pag)) F("12 · la página manda los pines en el HTML (rompe el LCP)");
-  if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
+  if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{426\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
   // EN EL MISMO CUADRO QUE EL PRIMER PINTADO (28-oct-2026, medido en producción): con decoding="async" el mapa quieto se pintaba
   // 11 ms después del FCP y Lighthouse le sumaba al LCP el JS que arrancaba entremedio (2,54 s de mediana).
-  if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high" decoding="sync" \/>/.test(pag)) F("12 · el mapa quieto se decodifica aparte (se pinta un cuadro después del primer pintado y el LCP sube)");
+  if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{426\} fetchPriority="high" decoding="sync" \/>/.test(pag)) F("12 · el mapa quieto se decodifica aparte (se pinta un cuadro después del primer pintado y el LCP sube)");
   // EL ESQUELETO NO ESPERA LA CUENTA (28-oct-2026, medido en producción: esperando perfil, saldo, guardados, informes y el número
   // antes de mandar el HTML, el LCP del teléfono daba 2,53 s de mediana con 1,3 s de «load delay»). La página manda el esqueleto
   // con el mapa quieto apenas valida la sesión; la cuenta y el número llegan en el mismo pedido, dentro de Suspense.
   const cuerpoPagina = pag.slice(pag.indexOf("export default async function ExplorarPage"), pag.indexOf("async function ExplorarConDatos"));
-  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} mapaQuieto=\{mapaQuieto\} \/>\}>\s*<ExplorarConDatos consulta=\{consulta\} user=\{user\} \/>\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
+  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} \/>\}>\s*<ExplorarConDatos consulta=\{consulta\} user=\{user\} \/>\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
+  // UNA SOLA IMAGEN, PRIMERA EN EL HTML (28-oct-2026, candidatos a LCP medidos en Chromium: el header se pintaba antes y el mapa
+  // quieto un cuadro después, o se pintaba en el esqueleto y se quitaba al llegar el cliente). La capa va en la página, antes del
+  // header, y ni el esqueleto ni el cliente la dibujan.
+  const iCapa = cuerpoPagina.indexOf("{mapaQuieto}"), iHead = cuerpoPagina.indexOf("<HeaderFranco");
+  if ((pag.match(/\{mapaQuieto\}/g) ?? []).length !== 1 || iCapa < 0 || iHead < 0 || iCapa > iHead || /mapaQuieto|MAPA_QUIETO/.test(codigo("src/app/explorar/esqueleto.tsx") + cli)) F("12 · el mapa quieto no es una sola capa antes del header (se repite, se reemplaza o va después)");
+  if (!/\.ex-mapa-quieto \{ position: absolute; inset: 0; z-index: 2;/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-pagina \{ position: relative;/.test(leer("src/app/explorar/explorar.css"))) F("12 · la capa del mapa quieto no queda detrás del header y la fila de arriba y encima del mapa real");
   try {
     const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
-    const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "", mapaQuieto: createElement("i", { "data-quieto": "1" }) }));
-    if (!/data-quieto="1"/.test(e) || !texto(e).includes("Arriendo tradicional · pie 20 % · 25 años") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae el mapa quieto, la fila de arriba y la línea de los supuestos");
+    const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "" }));
+    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Arriendo tradicional · pie 20 % · 25 años") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba y la línea de los supuestos (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }
@@ -448,7 +454,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // EL AVISO DE COOKIES NO TAPA LA PANTALLA FIJA (28-oct-2026, cazado en el QA en WebKit 390: tapaba la hoja «Ver lista» y el botón
   // «Mapa» a quien todavía no eligió): la barra publica su alto y Explorar lo resta.
   const css = leer("src/app/explorar/explorar.css");
-  if (!/\.ex-pagina \{ height: calc\(100dvh - var\(--alto-aviso-cookies, 0px\)\);/.test(css) || !/\.ex-boton-mapa \{[^}]*bottom: calc\(18px \+ var\(--alto-aviso-cookies, 0px\)/.test(css) || !/raiz\.style\.setProperty\("--alto-aviso-cookies", `\$\{h\}px`\);/.test(codigo("src/components/consentimiento/AvisoCookies.tsx")) || !/raiz\.style\.removeProperty\("--alto-aviso-cookies"\)/.test(codigo("src/components/consentimiento/AvisoCookies.tsx"))) F("12 · el aviso de cookies tapa la hoja de abajo o el botón «Mapa» de Explorar");
+  if (!/\.ex-pagina \{[^}]*height: calc\(100dvh - var\(--alto-aviso-cookies, 0px\)\);/.test(css) || !/\.ex-boton-mapa \{[^}]*bottom: calc\(18px \+ var\(--alto-aviso-cookies, 0px\)/.test(css) || !/raiz\.style\.setProperty\("--alto-aviso-cookies", `\$\{h\}px`\);/.test(codigo("src/components/consentimiento/AvisoCookies.tsx")) || !/raiz\.style\.removeProperty\("--alto-aviso-cookies"\)/.test(codigo("src/components/consentimiento/AvisoCookies.tsx"))) F("12 · el aviso de cookies tapa la hoja de abajo o el botón «Mapa» de Explorar");
 
   if (fallas.length) {
     console.log(`  ✗ EXPLORAR-PORTAL · ${fallas.length} falla(s):`);
@@ -459,15 +465,17 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (28-oct-2026). 60 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
+// ACTA DE MUTACIÓN (28-oct-2026). 63 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
 // todas ROJAS. La primera pasada dio 49 de 52: tres gates flojos que se afirmaron —4D+ sin un 6D en el fixture (M32), el flujo
 // positivo sin un flujo cero (M34) y el primer pintado sin mirar la línea de antes de la página quieta (M52)—. Después del QA
 // en WebKit 390 y PC, seis más por lo que el QA cazó: M53 la noche esparce el universo en la raíz (el mapa decía «0
 // convienen») · M54 el cliente lee otra forma (verde la primera vez: se afirmó con `descompactar(d.universo)`) · M55 el aviso
 // de cookies tapa la pantalla · M56 la barra no publica su alto · M57 la lista esconde el mapa · M58 «Mi búsqueda» filtra el
 // tope de «cualquier precio».
-// Y por el LCP medido en producción (2,53 s esperando la cuenta): M59 la página espera la cuenta (sin esqueleto) · M60 el
-// esqueleto sin el mapa quieto.
+// Y por el LCP medido en producción (2,53 s esperando la cuenta): M59 la página espera la cuenta (sin esqueleto) · M61 el mapa
+// quieto con decoding async. Y por los candidatos a LCP medidos en Chromium (el header pintaba antes y el mapa quieto se
+// reemplazaba al llegar el cliente), la capa única de la página: M60 el mapa quieto después del header · M62 el mapa quieto
+// bajo el mapa real · M63 el esqueleto repite el mapa quieto.
 //   1 · VISTA GLOBAL: M1 el cliente abre con el perfil · M2 la global filtra Santiago · M3 la página pasa el perfil · M4 pie 30 ·
 //       M5 «Mi búsqueda» sin modalidad.
 //   2 · TARJETA: M6 «Visto publicado» · M7 «Revisado con pie» · M8 sin cap rate · M9 la caja gris · M10 sin corazón.

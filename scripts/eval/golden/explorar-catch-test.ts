@@ -42,10 +42,8 @@
 import "./als-de-next";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import React, { createElement, type FC } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import React from "react";
 import * as ex from "../../../src/lib/explorar/explorar";
-import { CASA } from "../../../src/app/dashboard/casa-copy";
 import { origenDeInforme, textoOrigenArchivo } from "../../../src/lib/guia/seleccion-casa";
 import { botonTrasPagar } from "../../../src/lib/compra/compra";
 import { comprasDeExplorar, deptoDeVolverExplorar } from "../../../src/lib/guia/compra-desde-depto";
@@ -60,11 +58,6 @@ const sinComentarios = (s: string) =>
 const codigo = (p: string) => sinComentarios(leer(p));
 function cargar<T>(ruta: string): T | null {
   try { return require(join(RAIZ, ruta)) as T; } catch { return null; }
-}
-function dibujar(el: React.ReactElement): string {
-  const { AppRouterContext } = require("next/dist/shared/lib/app-router-context.shared-runtime");
-  const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
-  return renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router }, el));
 }
 type ServidorMod = typeof import("../../../src/lib/explorar/servidor");
 
@@ -177,13 +170,16 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const pag = codigo("src/app/explorar/page.tsx");
   if (!/<link rel="preload" as="image" href=\{MAPA_QUIETO\.d\} media="\(min-width: 768px\)" fetchPriority="high" \/>/.test(pag)) F("5 · el mapa quieto de escritorio no se precarga desde el <head>");
   if (/MAPA_QUIETO_M/.test(cli) || /mapa-quieto"/.test(cli)) F("5 · el mapa quieto incrustado entra al JS del cliente (va dibujado por el servidor y pasado como nodo)");
-  // ⚠ ACTA (28-oct-2026, Explorar como portal, LCP medido en producción) · el mapa quieto es una constante de la página que va al
-  // esqueleto (lo que sale antes de los datos) y al cliente; el esqueleto lo fija EXPLORAR-PORTAL §12.
-  if (!/const mapaQuieto = \(\s*<picture className="ex-mapa-quieto" data-explorar="mapa-quieto">\s*<source media="\(min-width: 768px\)" srcSet=\{MAPA_QUIETO\.d\} \/>[\s\S]{0,120}<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{514\} fetchPriority="high"/.test(pag) || (pag.match(/mapaQuieto=\{mapaQuieto\}/g) ?? []).length !== 2) F("5 · la página no dibuja el mapa quieto (teléfono incrustado, escritorio archivo) con prioridad alta");
-  const iQuieto = cli.indexOf("{mapaQuieto}"), iMapa = cli.indexOf("<MapaExplorar");
-  if (iQuieto < 0 || iMapa < 0 || iQuieto > iMapa) F("5 · el mapa quieto no se dibuja antes del mapa real");
+  // ⚠ ACTA (28-oct-2026, candidatos a LCP medidos en Chromium) · el mapa quieto es UNA capa de la página, antes del header en el
+  // HTML, fuera del esqueleto y del cliente (EXPLORAR-PORTAL §12). La foto del teléfono es 560 × 426: la de 514 traía pegado abajo
+  // el aviso de cookies de cuando se sacó.
+  if (!/const mapaQuieto = \(\s*<picture className="ex-mapa-quieto" data-explorar="mapa-quieto">\s*<source media="\(min-width: 768px\)" srcSet=\{MAPA_QUIETO\.d\} \/>[\s\S]{0,120}<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{426\} fetchPriority="high"/.test(pag) || (pag.match(/\{mapaQuieto\}/g) ?? []).length !== 1) F("5 · la página no dibuja el mapa quieto (teléfono incrustado, escritorio archivo) con prioridad alta");
+  // ⚠ ACTA (28-oct-2026) · el mapa quieto ya no lo dibuja el cliente: es la capa de la página, antes del header (encima del mapa
+  // real por z-index hasta sus teselas).
+  const iQuieto = pag.indexOf("{mapaQuieto}"), iHeader = pag.indexOf("<HeaderFranco");
+  if (iQuieto < 0 || iHeader < 0 || iQuieto > iHeader || /mapaQuieto/.test(cli)) F("5 · el mapa quieto no se dibuja antes del mapa real");
   // ⚠ ACTA (28-oct-2026) · los avisos del mapa van por `cb.current` y el contenedor se esconde con la lista.
-  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-mapa-wrap\[data-mapa="teselas"\] \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} aria-hidden=\{vista === "lista" \? true : undefined\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
+  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-pagina:has\(\.ex-mapa-wrap\[data-mapa="teselas"\]\) > \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} aria-hidden=\{vista === "lista" \? true : undefined\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
   // ── 6 · las cifras del pin y los agrupados ──
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la píldora, el título de la hoja, «Revisado con…», «Visto anoche» y el detalle
