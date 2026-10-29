@@ -45,6 +45,15 @@
 > marcaba solo el navegador, y solo con el consentimiento, y como PostHog guarda las propiedades de la persona en el
 > evento (`person_id_override_properties_on_events`), lo ya ingerido sin marca sigue contando: las cohortes anteriores al
 > 21-oct-2026 pueden traer pruebas (por ejemplo, las cuentas `qa-primera-1020-*`).
+>
+> **29-oct-2026 · se decide al emitir, sin caché para una cuenta nueva.** La lista guardada un minuto dejaba sin marca los
+> primeros eventos de toda cuenta de prueba creada dentro de ese minuto (8 de los 11 registros «B» de la semana del 19-oct).
+> Ahora cada evento pregunta por sus ids a la RPC `marca_de_prueba` (migración `20261029_marca_de_prueba`): de prueba = en
+> `test_accounts` o con un correo de Franco (`fabriziosciaraffia+…@gmail.com`, `@refranco.ai`). Se recuerda un minuto solo
+> lo de una cuenta de prueba o de más de una hora; una cuenta nueva se pregunta en cada evento. Si quien emite sabe el
+> correo (el webhook de Resend, el correo enviado, el pack vencido, el alta perdida), un correo de Franco marca sin
+> preguntar, y el correo no viaja ni a PostHog ni a la cola. Ese día se marcaron además, una vez, las 42 personas de
+> cuentas de prueba que PostHog tenía sin la marca; y las tablas del dashboard excluyen a quien HOY es de prueba.
 
 ## La tabla (HogQL)
 
@@ -94,7 +103,7 @@ se la marque. Pasa con toda cuenta de prueba recién creada, por cualquier puert
 de `test_accounts` con un minuto de caché, y la cuenta nació dentro de ese minuto. Por eso las tres tablas de este goal
 excluyen además a quien HOY es de prueba (`person_id not in (select id from persons where properties.test_account = true)`).
 Medido al aplicarlo: en la semana del 19-oct, 8 de los 11 registros «B» y 1 de los 2 «D» eran cuentas de prueba; en la del
-26-oct, los 3 «B» y los 2 «E» (las del QA de la puerta E). Las otras tablas del dashboard todavía no lo llevan.
+26-oct, los 3 «B» y los 2 «E» (las del QA de la puerta E). Desde el 29-oct-2026 lo llevan TODAS las tablas del dashboard.
 
 ## La puerta E: «Puerta E · Explorar sin cuenta por semana» (HogQL)
 
@@ -179,6 +188,7 @@ v as (
   select person_id, any(distinct_id) as invitado, min(timestamp) as t, argMin(toString(properties.estado), timestamp) as estado
   from events
   where event = 'referido_vinculado' and timestamp >= now() - interval 30 week and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by person_id
 ),
 a as (
@@ -244,6 +254,7 @@ with llegadas as (
     and toString(properties.prueba) != 'true'
     and (event != 'invitacion_vista' or (toString(properties.modo) = 'invitado' and toString(properties.invitador_prueba) != 'true'))
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by person_id
 ),
 pasos as (
@@ -290,6 +301,7 @@ with vistas as (
   where event = 'explorar_vista'
     and timestamp >= now() - interval 26 week
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by semana
 ),
 creados as (
@@ -301,6 +313,7 @@ creados as (
   where event = 'analisis_creado'
     and timestamp >= now() - interval 26 week
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by semana
 )
 select greatest(coalesce(vistas.semana, toDate('1970-01-01')), coalesce(creados.semana, toDate('1970-01-01'))) as semana,
@@ -339,6 +352,7 @@ with re as (
   where event = 'reanalisis_precio'
     and timestamp >= now() - interval 26 week
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by semana
 ),
 creados as (
@@ -348,6 +362,7 @@ creados as (
   where event = 'analisis_creado'
     and timestamp >= now() - interval 26 week
     and coalesce(person.properties.test_account, false) = false
+    and person_id not in (select id from persons where properties.test_account = true)
   group by semana
 )
 select greatest(coalesce(re.semana, toDate('1970-01-01')), coalesce(creados.semana, toDate('1970-01-01'))) as semana,
