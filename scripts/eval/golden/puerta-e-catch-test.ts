@@ -77,7 +77,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   {
     if (ab.HREF_DESDE_LANDING !== "/explorar?desde=landing" || !/href=\{HREF_DESDE_LANDING\}/.test(codigo("src/components/landing-v14/HeroMapa.tsx"))) F("1 · la landing no lleva a /explorar con la llegada de la landing");
     // El número es el MISMO universo que Explorar sin cuenta (pie 20 %, 25 años): la landing, la bienvenida y el mapa dicen lo mismo.
-    if (!/universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)/.test(codigo("src/lib/landing-vivo.ts"))) F("1 · el número de la landing no sale del mismo universo que Explorar sin cuenta");
+    // ⚠ ACTA (30-oct-2026, el hero limpio) · la landing toma el número de `convienenHoy`, el número único de todo el sitio, que
+    // cuenta el mismo universo que Explorar sin cuenta (tier CONVIENEN-UNO).
+    if (!/convienenHoy\(\)\.then\(/.test(codigo("src/lib/landing-vivo.ts"))) F("1 · el número de la landing no sale del mismo universo que Explorar sin cuenta");
     // La landing es liviana: el hero no arrastra Explorar.
     if (/explorar\/abierto|explorar\/portal/.test(codigo("src/components/landing-v14/Entrada.tsx") + codigo("src/components/landing-v14/HeroMapa.tsx")) || /^import (?!type)[^\n]*from "\.\/portal"/m.test(leer("src/lib/explorar/puertas-landing.ts"))) F("1 · el hero de la landing importa Explorar entero (pesa antes del primer pintado)");
     const real = archivos("src").filter((f) => /an[áa]lisis real\b/i.test(leer(f)));

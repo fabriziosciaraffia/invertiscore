@@ -126,7 +126,9 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (!/return cuantosConvienen\(await universoDeLaNocheCacheado\(FILTROS_GLOBALES\.pie, FILTROS_GLOBALES\.plazo\)\);/.test(cache)) F("3 · convienenHoy no cuenta el universo del mapa de la vista global");
   // Cada superficie, de esa función.
   const vivo = codigo("src/lib/landing-vivo.ts");
-  if (!/const n = cuantosConvienen\(u\); return n \? \{ n, grupos: gruposDeLanding\(descompactar\(u\)\) \} : null;/.test(vivo)) F("3 · el título de la landing no sale de cuantosConvienen");
+  // ⚠ ACTA (30-oct-2026, el hero limpio de 7c-landing-limpia) · sin el mapa del hero la landing no necesita el universo: lee el
+  // número directo de convienenHoy, como /deptos y la bienvenida.
+  if (!/convienenHoy\(\)\.then\(\(n\) => \{ if \(n == null\) aviso\("convienen", new Error\("sin el universo de la noche"\)\); return n; \}\),/.test(vivo) || /universoDeLaNocheCacheado|descompactar/.test(vivo)) F("3 · el título de la landing no sale de convienenHoy (cuantosConvienen)");
   const por = codigo("src/lib/deptos/portada.ts");
   if (!/const \[resumen, convienen\] = await Promise\.all\(\[resumenDeLaNoche\(admin\), convienenHoy\(\)\]\);\s*return resumen \? \{ revisados: resumen\.revisados, convienen \} : null;/.test(por)
     || (por.match(/nocheDeptos\(admin\)/g) ?? []).length !== 2 || /resumen\.convienen|noche\.convienen/.test(por)) F("3 · la portada de /deptos no toma «convienen» de convienenHoy");
