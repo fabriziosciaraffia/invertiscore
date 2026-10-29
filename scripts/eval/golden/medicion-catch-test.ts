@@ -109,7 +109,7 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     if (!cuerpoEnviar) F("4 · no encuentro enviarCorreo en email.ts");
     const sueltos = (email.replace(cuerpoEnviar, "").match(/emails\.send\(/g) ?? []).length;
     if (sueltos) F(`4 · quedan ${sueltos} envío(s) que no pasan por enviarCorreo (sin tags ni correo_enviado)`);
-    if (!/tags: \[\.\.\.\(mensaje\.tags \?\? \[\]\), \.\.\.tagsCorreo\(tipo, distinctId\)\]/.test(cuerpoEnviar) || !/if \(!res\.error\) \{\s*\n\s*void capturarServidor\(eventoCorreoEnviado\(\{ tipo, distinctId, resendId: res\.data\?\.id \?\? null \}\)\)/.test(cuerpoEnviar)) F("4 · enviarCorreo no manda los tags ni emite correo_enviado al salir");
+    if (!/tags: \[\.\.\.\(mensaje\.tags \?\? \[\]\), \.\.\.tagsCorreo\(tipo, distinctId\)\]/.test(cuerpoEnviar) || !/if \(!res\.error\) \{\s*\n\s*void capturarServidor\(eventoCorreoEnviado\(\{ tipo, distinctId, resendId: res\.data\?\.id \?\? null, correo: String\(to \?\? ""\) \|\| null \}\)\)/.test(cuerpoEnviar)) F("4 · enviarCorreo no manda los tags ni emite correo_enviado al salir (con el correo, que decide la marca de prueba desde el 29-oct-2026)");
     for (const t of TIPOS_CORREO) if (!new RegExp(`enviarCorreo\\("${t}", `).test(email)) F(`4 · ningún correo sale con el tipo «${t}»`);
     const tags = tagsCorreo("informe_listo", "u-1");
     if (tags[0]?.name !== "tipo" || tags[0]?.value !== "informe_listo" || tags[1]?.name !== "pid" || tags[1]?.value !== "u-1") F("4 · tagsCorreo no arma tipo + pid");

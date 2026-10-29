@@ -23,6 +23,7 @@ import * as captura from "../../../src/lib/posthog-captura";
 import * as vista from "../../../src/lib/vista-entrada";
 import * as activacion from "../../../src/lib/medicion-activacion";
 import * as pago from "../../../src/lib/desbloqueo-pago";
+import * as correoMed from "../../../src/lib/medicion-correo";
 import { vaciarColaVencida, type AlmacenAgentes } from "../../../src/lib/agentes-navegador";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -146,43 +147,148 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
     const trozos = [{ name: "sb-mxcdyfslbgbipdistmhq-auth-token.1", value: sesion.slice(3180) }, { name: "otra", value: "1" }, { name: "sb-mxcdyfslbgbipdistmhq-auth-token.0", value: sesion.slice(0, 3180) }];
     if (vista.cuentaDeCookieDeSesion(trozos) !== PRUEBA) F("1 · la cuenta con sesión no se lee de la cookie de Supabase en trozos");
     if (vista.cuentaDeCookieDeSesion([{ name: "sb-x-auth-token", value: "base64-basura" }]) !== null || vista.cuentaDeCookieDeSesion([]) !== null) F("1 · una cookie ilegible da una cuenta");
-    // La lista por defecto: la RPC, con un minuto de caché, y la última buena si falla.
-    captura.olvidarListaDePrueba();
+    // La marca por defecto (29-oct-2026): la RPC `marca_de_prueba` por los ids del evento, con el service role; lo de una
+    // cuenta vieja o de prueba se recuerda un minuto; sin base, lo último que se supo; si nunca se supo, no se sabe.
+    captura.olvidarMarcas();
     const pedidos: Array<{ url: string; init?: RequestInit }> = [];
     let falla = false;
+    const VIEJA = new Date("2026-09-01T00:00:00Z").toISOString();
     const rpc = (async (url: unknown, init?: RequestInit) => {
       pedidos.push({ url: String(url), init });
       if (falla) return new Response("x", { status: 500 });
-      return new Response(JSON.stringify([{ user_id: PRUEBA, id_correo: CORREO_PRUEBA }]), { status: 200 });
+      const ids = (JSON.parse(String(init?.body ?? "{}")) as { p_ids?: string[] }).p_ids ?? [];
+      return new Response(JSON.stringify(ids.filter((id) => id === PRUEBA || id === CORREO_PRUEBA || id === REAL).map((id) => ({ id, prueba: id !== REAL, creada_at: VIEJA }))), { status: 200 });
     }) as typeof fetch;
     const t0 = Date.parse("2026-10-21T12:00:00Z");
-    const l1 = await captura.listaDePrueba({ fetch: rpc, url: "https://sb.test", key: "k", ahora: t0 });
-    const l2 = await captura.listaDePrueba({ fetch: rpc, url: "https://sb.test", key: "k", ahora: t0 + 30_000 });
+    const d = { fetch: rpc, url: "https://sb.test", key: "k" };
+    const m1 = await captura.marcaDePrueba({ distinctId: PRUEBA }, { ...d, ahora: t0 });
+    const m2 = await captura.marcaDePrueba({ distinctId: CORREO_PRUEBA }, { ...d, ahora: t0 });
+    const m3 = await captura.marcaDePrueba({ distinctId: "visita:6b1f2c3d", cuentaDeSesion: PRUEBA }, { ...d, ahora: t0 + 30_000 });
+    const m4 = await captura.marcaDePrueba({ distinctId: REAL }, { ...d, ahora: t0 });
+    const pedidosAntes = pedidos.length;
     falla = true;
-    const l3 = await captura.listaDePrueba({ fetch: rpc, url: "https://sb.test", key: "k", ahora: t0 + captura.VIDA_LISTA_PRUEBA_MS + 1 });
-    captura.olvidarListaDePrueba();
-    const l4 = await captura.listaDePrueba({ fetch: rpc, url: "https://sb.test", key: "k", ahora: t0 });
-    if (!l1?.has(PRUEBA) || !l1?.has(CORREO_PRUEBA)) F("1 · la lista no trae las cuentas ni el id de su correo");
-    if (pedidos[0]?.url !== "https://sb.test/rest/v1/rpc/cuentas_de_prueba" || pedidos[0]?.init?.method !== "POST" || !(pedidos[0]?.init?.headers as Record<string, string>)?.Authorization?.startsWith("Bearer ")) F("1 · la lista no sale de la RPC `cuentas_de_prueba` con el service role");
-    if (l2 !== l1 || pedidos.length !== 3) F(`1 · la lista no se guarda un minuto o no se vuelve a pedir después (${pedidos.length} pedidos)`);
-    if (!l3?.has(PRUEBA)) F("1 · si la RPC falla se pierde la última lista buena");
-    if (l4 !== null) F("1 · sin ninguna lista buena se da por sabido que no es de prueba");
-    captura.olvidarListaDePrueba();
+    const m5 = await captura.marcaDePrueba({ distinctId: PRUEBA }, { ...d, ahora: t0 + captura.VIDA_MARCA_MS + 1 });
+    captura.olvidarMarcas();
+    const m6 = await captura.marcaDePrueba({ distinctId: PRUEBA }, { ...d, ahora: t0 });
+    if (m1 !== true || m2 !== true || m4 !== false) F("1 · la marca no reconoce la cuenta, el id de su correo o una cuenta real");
+    if (m3 !== true) F("1 · la vista con sesión no se marca por la cuenta con sesión");
+    const cuerpo0 = JSON.parse(String(pedidos[0]?.init?.body ?? "{}")) as { p_ids?: string[] };
+    if (pedidos[0]?.url !== "https://sb.test/rest/v1/rpc/marca_de_prueba" || pedidos[0]?.init?.method !== "POST" || !(pedidos[0]?.init?.headers as Record<string, string>)?.Authorization?.startsWith("Bearer ") || cuerpo0.p_ids?.[0] !== PRUEBA) F("1 · la marca no sale de la RPC `marca_de_prueba` con el service role y los ids del evento");
+    if (pedidosAntes !== 3) F(`1 · lo de una cuenta vieja o de prueba no se recuerda un minuto (${pedidosAntes} consultas para cuatro marcas)`);
+    if (m5 !== true) F("1 · si la base falla se pierde lo último que se supo");
+    if (m6 !== null) F("1 · sin base y sin nada sabido se da por sabido que no es de prueba");
+    captura.olvidarMarcas();
   } catch (e) {
     F(`1 · la marca de cuenta de prueba no corre: ${(e as Error).message}`);
   }
+  // ── 1b · LA CUENTA DE PRUEBA RECIÉN CREADA (29-oct-2026, goal de Fabrizio) ──
+  // La lista se guardaba un minuto, y una cuenta de prueba creada dentro de ese minuto emitía sus primeros eventos sin la
+  // marca (medido en producción: las cuentas del QA de la puerta E; y en la semana del 19-oct, 8 de los 11 registros «B»
+  // del panel eran de prueba). La marca se decide al emitir: una cuenta de menos de una hora se pregunta en cada evento,
+  // por `test_accounts` y por su correo; lo de más de una hora (o ya de prueba) se recuerda un minuto. Corre por el camino
+  // por defecto dentro de Next, con la base y PostHog de mentira.
+  {
+    const guardado = { rt: process.env.NEXT_RUNTIME, fetch: globalThis.fetch, url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY };
+    const olvidar = () => { for (const k of ["olvidarListaDePrueba", "olvidarMarcas"]) (captura as unknown as Record<string, (() => void) | undefined>)[k]?.(); };
+    try {
+      const DIA = 86_400_000;
+      const VIEJA = "1d2c3b4a-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+      const NUEVA = "9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d";
+      const NUEVA_REAL = "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e";
+      const base = new Map<string, { prueba: boolean; creada: number }>([[VIEJA, { prueba: false, creada: Date.now() - 30 * DIA }], [PRUEBA, { prueba: true, creada: Date.now() - 9 * DIA }]]);
+      const rpc: string[] = [];
+      const cuerpos: Cuerpo[] = [];
+      let caida = false;
+      globalThis.fetch = (async (u: unknown, init?: { body?: unknown }) => {
+        const url = String(u);
+        if (url.includes("/rest/v1/rpc/")) {
+          rpc.push(url.split("/rpc/")[1]);
+          if (caida) return new Response("caída", { status: 500 });
+          if (url.endsWith("/rpc/cuentas_de_prueba")) return new Response(JSON.stringify(Array.from(base).filter(([, c]) => c.prueba).map(([id]) => ({ user_id: id, id_correo: null }))), { status: 200 });
+          if (url.endsWith("/rpc/marca_de_prueba")) {
+            const ids = (JSON.parse(String(init?.body ?? "{}")) as { p_ids?: string[] }).p_ids ?? [];
+            return new Response(JSON.stringify(ids.filter((id) => base.has(id)).map((id) => ({ id, prueba: base.get(id)!.prueba, creada_at: new Date(base.get(id)!.creada).toISOString() }))), { status: 200 });
+          }
+          return new Response("[]", { status: 404 });
+        }
+        cuerpos.push(JSON.parse(String(init?.body)) as Cuerpo);
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch;
+      process.env.NEXT_RUNTIME = "nodejs";
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://sb.test";
+      process.env.SUPABASE_SERVICE_ROLE_KEY = "k";
+      olvidar();
+      const enviar = (ev: Record<string, unknown>) => captura.enviarCaptura({ event: "cuenta_atribuida", properties: {}, ...ev } as EventoServidor, { valor: IPHONE, origen: "pedido" }, { key: "phc_test", host: "https://ph.test" });
+      const ultimo = (id: string) => cuerpos.filter((c) => c.distinct_id === id).pop();
+      // Una cuenta vieja emite primero (lo que se guarde, se guarda acá); después nace una cuenta de prueba.
+      await enviar({ distinctId: VIEJA });
+      base.set(NUEVA, { prueba: true, creada: Date.now() - 5_000 });
+      await enviar({ distinctId: NUEVA });
+      if (!marcada(ultimo(NUEVA))) F("1b · el primer evento de una cuenta de prueba recién creada sale sin la marca (lo guardado no la conocía)");
+      // Una cuenta real de menos de una hora: se pregunta en cada evento y sale sin marca; si a los minutos la anotan como
+      // de prueba (un QA que la inserta después), el siguiente evento ya sale marcado.
+      base.set(NUEVA_REAL, { prueba: false, creada: Date.now() - 60_000 });
+      const antesNueva = rpc.length;
+      await enviar({ distinctId: NUEVA_REAL });
+      await enviar({ distinctId: NUEVA_REAL });
+      if (rpc.length - antesNueva !== 2) F(`1b · una cuenta de menos de una hora se responde desde lo guardado (${rpc.length - antesNueva} consultas para dos eventos)`);
+      if (!sinMarca(ultimo(NUEVA_REAL))) F("1b · el evento de una cuenta real nueva sale marcado como prueba");
+      base.set(NUEVA_REAL, { prueba: true, creada: Date.now() - 120_000 });
+      await enviar({ distinctId: NUEVA_REAL });
+      if (!marcada(ultimo(NUEVA_REAL))) F("1b · una cuenta nueva que se anota como de prueba después sigue saliendo sin la marca");
+      // Una cuenta de más de una hora se recuerda: no una consulta por evento.
+      const antesVieja = rpc.length;
+      await enviar({ distinctId: VIEJA });
+      await enviar({ distinctId: VIEJA });
+      if (rpc.length !== antesVieja) F(`1b · una cuenta de más de una hora se pregunta en cada evento (${rpc.length - antesVieja} consultas)`);
+      if (!sinMarca(ultimo(VIEJA))) F("1b · la cuenta vieja real sale marcada");
+      // Por correo: los de Franco son de prueba en el mismo punto, aunque no haya cuenta.
+      for (const correo of ["qa-sin-cuenta-1029@refranco.ai", "fabriziosciaraffia+qa1029@gmail.com"]) {
+        const id = distinctIdDeCorreo(correo);
+        await enviar({ event: "correo_enviado", distinctId: id, correo });
+        if (!marcada(ultimo(id))) F(`1b · un evento con el correo ${correo.replace(/^[^@+]+/, "…")} sale sin la marca`);
+        if (JSON.stringify(ultimo(id) ?? {}).includes(correo)) F("1b · el correo viaja a PostHog");
+      }
+      // Sin base: una cuenta que nunca se supo no sale (no se puede saber); la vieja sale con lo último que se supo.
+      caida = true;
+      const n0 = cuerpos.length;
+      await enviar({ distinctId: "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f" });
+      if (cuerpos.length !== n0) F("1b · sin poder preguntar, el evento de una cuenta desconocida sale igual");
+    } catch (e) {
+      F(`1b · la marca de la cuenta recién creada no corre: ${(e as Error).message}`);
+    } finally {
+      globalThis.fetch = guardado.fetch;
+      if (guardado.rt === undefined) delete process.env.NEXT_RUNTIME; else process.env.NEXT_RUNTIME = guardado.rt;
+      if (guardado.url === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = guardado.url;
+      if (guardado.key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = guardado.key;
+      olvidar();
+    }
+  }
   // El cableado: el punto único usa la lista por defecto, el middleware pasa la sesión, la RPC es la regla de test_accounts.
   const nucleo = sinComentarios(leer("src/lib/posthog-captura.ts"));
-  // Por defecto, la lista de test_accounts DENTRO DE NEXT (Vercel, el middleware en Edge, `next dev`); en una prueba,
-  // ninguna salvo que se pase (los tiers que reemplazan el `fetch` global ejercitan rutas reales sin tocar la base).
-  if (!/const lista = await cuentasDePruebaDe\(deps\);\s*if \(!lista\) return false;/.test(nucleo) || !/cuerpoDeCaptura\(ev, key, \{ valor, origen: agente\.origen \}, new Date\(\), esEventoDePrueba\(ev, lista\)\)/.test(nucleo) || !/if \(deps\.cuentasDePrueba\) return deps\.cuentasDePrueba\(\);\s*if \(deps\.fetch \|\| \(!process\.env\.NEXT_RUNTIME && process\.env\.VERCEL !== "1"\)\) return Promise\.resolve\(new Set<string>\(\)\);\s*return listaDePrueba\(\);/.test(nucleo)) F("1 · `enviarCaptura` no pide la lista de cuentas de prueba por defecto (dentro de Next) o no marca con ella");
+  // Por defecto, la marca de la base DENTRO DE NEXT (Vercel, el middleware en Edge, `next dev`); en una prueba, ninguna
+  // salvo que se pase (los tiers que reemplazan el `fetch` global ejercitan rutas reales sin tocar la base). Y antes que
+  // todo, lo que el evento ya trae decidido o su correo.
+  if (!/const prueba = await pruebaDe\(ev, deps\);\s*if \(prueba === null\) return false;/.test(nucleo) || !/cuerpoDeCaptura\(ev, key, \{ valor, origen: agente\.origen \}, new Date\(\), prueba\)/.test(nucleo)
+    || !/if \(ev\.prueba === true \|\| correoDePrueba\(ev\.correo\)\) return true;\s*if \(deps\.cuentasDePrueba\) \{/.test(nucleo)
+    || !/if \(deps\.fetch \|\| \(!process\.env\.NEXT_RUNTIME && process\.env\.VERCEL !== "1"\)\) return false;\s*return marcaDePrueba\(ev\);/.test(nucleo)) F("1 · `enviarCaptura` no pregunta la marca por defecto (dentro de Next), no mira el correo o no marca con lo que sabe");
+  // Los emisores que saben el correo y van a nombre del correo lo pasan: el webhook de Resend, el correo enviado, el pack
+  // vencido y el alta perdida.
+  const deResend = correoMed.eventoDeResend({ type: "email.delivered", created_at: "2026-10-29T12:00:00Z", data: { to: ["qa-1029@refranco.ai"], email_id: "e1" } }, "svix-1");
+  if (deResend?.correo !== "qa-1029@refranco.ai") F("1 · el evento del webhook de Resend no lleva el correo a la marca");
+  if (correoMed.eventoCorreoEnviado({ tipo: "semanal", distinctId: CORREO_PRUEBA, resendId: "r1", correo: "qa@refranco.ai" }).correo !== "qa@refranco.ai") F("1 · `correo_enviado` no lleva el correo a la marca");
+  if (!/correo: String\(to \?\? ""\) \|\| null/.test(sinComentarios(leer("src/lib/email.ts"))) || !/\.\.\.eventoPackVencido\(\{[^}]*\}\), correo: email \}/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts"))) || !/distinctId: f\.user_id \?\? distinctIdDeCorreo\(f\.correo\),\s*correo: f\.correo,/.test(sinComentarios(leer("src/lib/deptos/entrada-servidor.ts")))) F("1 · un emisor a nombre del correo no le pasa el correo a la marca (correo enviado, pack vencido o alta perdida)");
+  // La cola guarda el evento sin el correo, con lo que el correo decidió.
+  if (!/const ev = sinCorreo\(evento\);/.test(sinComentarios(leer("src/lib/posthog-servidor.ts")))) F("1 · `capturarServidor` guarda el correo en la cola (o pierde lo que decidía)");
+  const sc = captura.sinCorreo({ event: "x", distinctId: CORREO_PRUEBA, correo: "QA-1029@Refranco.ai", properties: {} });
+  if (sc.prueba !== true || "correo" in sc || "prueba" in captura.sinCorreo({ event: "x", distinctId: REAL, correo: "persona@gmail.com" })) F("1 · `sinCorreo` no deja la marca del correo o no saca el correo");
   // Y que «dentro de Next» se cumpla de verdad: el default de una ruta de Node y del middleware de Edge.
   try {
     const guardado = { rt: process.env.NEXT_RUNTIME, fetch: globalThis.fetch, url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY };
     const pedidosRpc: string[] = [];
     const cuerpos: Cuerpo[] = [];
     globalThis.fetch = (async (u: unknown, init?: { body?: unknown }) => {
-      if (String(u).includes("/rest/v1/rpc/cuentas_de_prueba")) { pedidosRpc.push(String(u)); return new Response(JSON.stringify([{ user_id: PRUEBA, id_correo: null }]), { status: 200 }); }
+      if (String(u).includes("/rest/v1/rpc/marca_de_prueba")) { pedidosRpc.push(String(u)); return new Response(JSON.stringify([{ id: PRUEBA, prueba: true, creada_at: "2026-09-01T00:00:00Z" }]), { status: 200 }); }
       cuerpos.push(JSON.parse(String(init?.body)) as Cuerpo);
       return new Response("{}", { status: 200 });
     }) as typeof fetch;
@@ -191,7 +297,7 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
     try {
       for (const rt of ["edge", "nodejs"]) {
         process.env.NEXT_RUNTIME = rt;
-        captura.olvidarListaDePrueba();
+        captura.olvidarMarcas();
         await captura.enviarCaptura({ event: "x", distinctId: PRUEBA, properties: {} }, { valor: IPHONE, origen: "pedido" }, { key: "phc_test", host: "https://ph.test" });
       }
     } finally {
@@ -199,16 +305,27 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
       if (guardado.rt === undefined) delete process.env.NEXT_RUNTIME; else process.env.NEXT_RUNTIME = guardado.rt;
       if (guardado.url === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = guardado.url;
       if (guardado.key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = guardado.key;
-      captura.olvidarListaDePrueba();
+      captura.olvidarMarcas();
     }
-    if (pedidosRpc.length !== 2 || cuerpos.length !== 2 || !cuerpos.every((c) => marcada(c))) F(`1 · dentro de Next (Edge y Node) la lista por defecto no se pide o el evento no sale marcado (${pedidosRpc.length} pedidos, ${cuerpos.length} eventos)`);
+    if (pedidosRpc.length !== 2 || cuerpos.length !== 2 || !cuerpos.every((c) => marcada(c))) F(`1 · dentro de Next (Edge y Node) la marca por defecto no se pregunta o el evento no sale marcado (${pedidosRpc.length} pedidos, ${cuerpos.length} eventos)`);
   } catch (e) {
-    F(`1 · la lista por defecto dentro de Next no corre: ${(e as Error).message}`);
+    F(`1 · la marca por defecto dentro de Next no corre: ${(e as Error).message}`);
   }
   const mw = sinComentarios(leer("src/middleware.ts"));
   if (!/cuentaDeSesion: persona\?\.id \?\? cuentaDeCookieDeSesion\(request\.cookies\.getAll\(\)\)/.test(mw) || !/conVista\(req, conMedicion\(req, conNavegador\(req, res, event, persona\)\), event, visita, persona\)/.test(mw)) F("1 · el middleware no le pasa a la vista la cuenta con sesión");
-  const mig = existsSync(join(RAIZ, "supabase/migrations/20261021_cuentas_de_prueba.sql")) ? leer("supabase/migrations/20261021_cuentas_de_prueba.sql") : "";
-  if (!/from public\.test_accounts t\s*left join auth\.users u on u\.id = t\.user_id/.test(mig) || !/'correo:' \|\| substr\(encode\(sha256\(convert_to\(lower\(trim\(u\.email\)\), 'UTF8'\)\), 'hex'\), 1, 24\)/.test(mig) || !/security definer/.test(mig) || !/set search_path = public, pg_temp/.test(mig) || !/revoke all on function public\.cuentas_de_prueba\(\) from public, anon, authenticated;/.test(mig) || !/grant execute on function public\.cuentas_de_prueba\(\) to service_role;/.test(mig)) F("1 · la RPC no es la regla de test_accounts, no calcula el id del correo como `distinctIdDeCorreo` o la puede leer alguien más que el service role");
+  // La RPC de la marca (29-oct-2026): `test_accounts` O el correo de Franco (la regla del trigger y de `correoDePrueba`),
+  // la fecha de la cuenta, el id del correo como `distinctIdDeCorreo`, y solo para el service role.
+  const mig = existsSync(join(RAIZ, "supabase/migrations/20261029_marca_de_prueba.sql")) ? sinComentarios(leer("supabase/migrations/20261029_marca_de_prueba.sql")) : "";
+  if (!/returns table \(id text, prueba boolean, creada_at timestamptz\)/.test(mig)
+    || !/\(exists \(select 1 from public\.test_accounts t where t\.user_id = u\.id\)\s*or coalesce\(u\.email, ''\) ilike 'fabriziosciaraffia\+%@gmail\.com'\s*or coalesce\(u\.email, ''\) ilike '%@refranco\.ai'\) as prueba/.test(mig)
+    || !/select p\.id, c\.prueba, c\.created_at\s*from pedidos p\s*join cuentas c on c\.uid::text = lower\(p\.id\)/.test(mig)
+    || !/'correo:' \|\| substr\(encode\(sha256\(convert_to\(lower\(trim\(c\.email\)\), 'UTF8'\)\), 'hex'\), 1, 24\) = p\.id/.test(mig)
+    || !/security definer/.test(mig) || !/set search_path = public, pg_temp/.test(mig)
+    || !/revoke all on function public\.marca_de_prueba\(text\[\]\) from public, anon, authenticated;/.test(mig) || !/grant execute on function public\.marca_de_prueba\(text\[\]\) to service_role;/.test(mig)) F("1 · la RPC de la marca no es test_accounts o el correo de Franco, no da la fecha de la cuenta, no calcula el id del correo como `distinctIdDeCorreo` o la puede leer alguien más que el service role");
+  // Y el correo de Franco es el mismo en las tres partes: el trigger, la RPC y `correoDePrueba`.
+  for (const [c, esperado] of [["fabriziosciaraffia+qa@gmail.com", true], ["FabrizioSciaraffia+x@Gmail.com", true], ["qa@refranco.ai", true], ["fabriziosciaraffia@gmail.com", false], ["alguien@refranco.ai.cl", false], ["persona@gmail.com", false]] as const) {
+    if (captura.correoDePrueba(c) !== esperado) F(`1 · \`correoDePrueba\` se equivoca con ${c.replace(/^[^@+]+/, "…")}`);
+  }
   if (distinctIdDeCorreo(" QA@Refranco.ai ") !== "correo:" + createHash("sha256").update("qa@refranco.ai").digest("hex").slice(0, 24)) F("1 · `distinctIdDeCorreo` dejó de ser sha256 del correo en minúsculas (la RPC calcula ese)");
 
   // ── 2 · EL DESBLOQUEO POR PAGO ──
@@ -296,6 +413,15 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
 // falso. Por eso el default es «dentro de Next», como el almacén de agentes, y este tier lo prueba en Edge y en Node.
 //   Q1 un informe no premium sin bloqueo no cuenta · Q2 el suelto no emite · Q3 lee el informe después de abrirlo ·
 //   Q4 otra vía · Q5 el `pro` no emite · Q6 la vía no es «pago» · Q7 la modalidad · Q8 el doc
+// ACTA (29-oct-2026, goal «cuentas de prueba marcadas desde el primer evento»). CONTRA EL CÓDIGO DE ESE DÍA (83803e32, la
+// lista de `test_accounts` guardada un minuto): el bloque 1b salió con 6 fallas, la primera «el primer evento de una cuenta
+// de prueba recién creada sale sin la marca». P2, P9, P10, P12, P15 y P16 probaban la lista y se reescribieron para la marca
+// por evento. Y 17 mutaciones, cada una restaurada byte a byte (runner `mutar-marca.cjs` del scratchpad), todas ROJAS:
+//   K1 se recuerda la cuenta nueva · K2 la cuenta nueva dura cero · K3 lo viejo no se recuerda · K4 el correo de Franco no
+//   marca · K5 sin fabriziosciaraffia+ · K6 sin base una cuenta desconocida pasa por real · K7 sin base se pierde lo sabido ·
+//   K8 la cola guarda el correo · K9 `enviarCaptura` ignora el correo · K10 el default no pregunta · K11 la RPC sin el
+//   correo de Franco · K12 sin la fecha de la cuenta · K13 la RPC para cualquiera · K14 Resend sin el correo · K15 el alta
+//   perdida sin el correo · K16 el correo enviado sin el correo (tier MEDICIÓN) · K17 la vista no pregunta por la sesión
 
 if (require.main === module) {
   runPanelActivacionTier().then(({ hard }) => process.exit(hard ? 1 : 0));
