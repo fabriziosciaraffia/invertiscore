@@ -1,0 +1,98 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   EL MAPA ES EL HERO (29-oct-2026, opción 3 de docs/puerta-b-mockups/7-landing-puertas.html). HeroMapa.tsx.
+   Teléfono: el mapa arriba, que se achica primero si falta alto; el header encima con un degradado; el panel de la tríada
+   abajo, con las esquinas de arriba redondeadas, y las dos puertas siempre en la primera pantalla. PC (desde 900 px): el
+   panel a la izquierda y el mapa a la derecha, a toda la altura. MATERIAL FIJO: el panel se ve igual en claro y en oscuro;
+   el mapa cambia de papel a tinta con el tema.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.hm {
+  --hm-papel: #FAFAF8;
+  --hm-tinta: #0F0F0F;
+  --hm-mapa: #ECECEE;
+  --hm-calle: #FFFFFF;
+  --hm-grupo: #C8323C;
+  --hm-grupo-borde: #FFFFFF;
+  position: relative; display: flex; flex-direction: column; min-height: 100svh;
+  background: var(--hm-mapa); color: var(--hm-papel);
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+}
+html:not([data-theme="light"]) .hm { --hm-mapa: #1B1B1E; --hm-calle: #2A2A2F; --hm-grupo-borde: #1B1B1E; }
+
+/* El mapa: el dibujo a escala 1 (800 × 800), centrado y recortado por su caja. Se achica antes que el título: crece con lo
+   que sobra (flex 1) y tiene un piso bajo. */
+.hm-mapa { position: relative; display: block; flex: 1 1 auto; min-height: 120px; overflow: hidden; background: var(--hm-mapa); -webkit-tap-highlight-color: transparent; }
+.hm-svg { position: absolute; left: 50%; top: 50%; width: 800px; height: 800px; transform: translate(-50%, -50%); display: block; pointer-events: none; }
+.hm-svg-fondo { fill: var(--hm-mapa); }
+.hm-calles path { fill: none; stroke: var(--hm-calle); stroke-width: 9; stroke-linecap: round; }
+.hm-calles--finas path { stroke-width: 3.5; opacity: 0.85; }
+.hm-grupo circle { fill: var(--hm-grupo); stroke: var(--hm-grupo-borde); stroke-width: 2; }
+.hm-grupo text { fill: #FFFFFF; font-family: var(--font-ui), "Inter", system-ui, sans-serif; font-size: 13px; font-weight: 600; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.hm-mapa:focus-visible { outline: 3px solid var(--hm-tinta); outline-offset: -3px; }
+
+/* El header (HeaderFranco «sobre material») encima del mapa, con un degradado de la tríada para que se lea. */
+.hm-cab { position: absolute; top: 0; left: 0; right: 0; z-index: 3; background: linear-gradient(180deg, rgba(31, 61, 103, 0.86) 0%, rgba(31, 61, 103, 0.5) 55%, rgba(31, 61, 103, 0) 100%); pointer-events: none; }
+.hm-cab > * { pointer-events: auto; }
+.hm-cab .hf--material .hf-col { max-width: none; }
+
+/* El panel: la tríada (el degradado chico estirado y el grano), las esquinas de arriba redondeadas, sobre el borde del mapa. */
+.hm-panel { position: relative; z-index: 2; flex: none; margin-top: -22px; border-radius: 22px 22px 0 0; overflow: hidden; background: #1F3D67; }
+.hm-fondo { position: absolute; inset: 0; z-index: 0; display: block; }
+.hm-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.hm-panel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("/landing/grano-fino.png"); background-size: 64px; opacity: 0.8; mix-blend-mode: hard-light;
+}
+.hm-col { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 14px; padding: 22px 18px calc(20px + env(safe-area-inset-bottom)); }
+.hm-ojo { margin: 0; font-size: 13px; line-height: 1.4; color: rgba(250, 250, 248, 0.84); }
+.hm-h1 {
+  margin: 0; font-family: var(--font-heading), "Source Serif 4", Georgia, serif; font-weight: 700;
+  font-size: 32px; line-height: 1.08; letter-spacing: -0.015em; color: var(--hm-papel); text-wrap: balance;
+}
+.lv-root .hm-boton {
+  display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 999px;
+  background: var(--hm-papel); color: var(--hm-tinta); font-size: 16px; font-weight: 600; text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.lv-root .hm-boton:hover { box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.6); }
+.lv-root .hm-boton:focus-visible { outline: 2px solid var(--hm-papel); outline-offset: 3px; }
+.lv-root .hm-boton[data-presionado="1"] { transform: scale(0.985); }
+.hm-sep { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(250, 250, 248, 0.8); }
+.hm-sep::before, .hm-sep::after { content: ""; flex: 1; height: 1px; background: rgba(250, 250, 248, 0.32); }
+.hm-ejemplo { margin: 0; font-size: 13px; line-height: 1.4; color: rgba(250, 250, 248, 0.86); }
+.lv-root .hm-ejemplo-enlace { color: var(--hm-papel); text-decoration: underline; text-underline-offset: 3px; }
+
+/* EL CAMPO DE SIEMPRE (HeroEntrada › CampoEntrada, con su animación), en la piel del mockup: translúcido sobre la tríada, el
+   texto en papel y la flecha en tinta. Solo la piel: el componente, la hoja y la animación son los mismos. */
+.hm-campo .he-box { height: 52px; padding: 0 5px 0 14px; border-radius: 14px; background: rgba(250, 250, 248, 0.14); border: 1px solid rgba(250, 250, 248, 0.5); box-shadow: none; }
+.hm-campo .he-input, .hm-campo .he-input-boton { color: var(--hm-papel); caret-color: var(--hm-papel); }
+html .hm-campo .he-input { font-size: 17px !important; }
+.hm-campo .he-ph { font-size: 17px; color: var(--hm-papel); }
+.hm-campo .he-caret { height: 19px; background: var(--hm-papel); vertical-align: -3px; }
+.hm-campo .he-btn { width: 42px; height: 42px; border-radius: 10px; font-size: 19px; }
+.hm-campo .he-aviso { font-size: 13px; }
+.hm-campo .he-alt { margin-top: 8px; font-size: 13px; }
+
+/* Pantallas bajas (360 × 640): menos aire en el panel antes que achicar el título. */
+@media (max-height: 680px) and (max-width: 899px) {
+  .hm-col { gap: 11px; padding-top: 18px; }
+}
+
+/* ── PC: dos mitades a toda la altura ── */
+@media (min-width: 900px) {
+  .hm { flex-direction: row; min-height: 100vh; min-height: 100svh; }
+  .hm-panel { order: 0; flex: 0 0 50%; margin-top: 0; border-radius: 0; display: flex; }
+  .hm-mapa { order: 1; flex: 1 1 50%; min-height: 0; }
+  .hm-svg { width: 1000px; height: 1000px; }
+  .hm-grupo text { font-size: 13px; }
+  .hm-col { flex: 1; justify-content: center; gap: 16px; max-width: 520px; margin: 0 auto; padding: 104px 48px 56px; box-sizing: border-box; }
+  .hm-ojo { font-size: 14px; }
+  .hm-h1 { font-size: clamp(40px, 3.4vw, 52px); }
+  /* el header a todo el ancho y sin degradado: el wordmark sobre la tríada y «Entrar» sobre el mapa, en píldora blanca */
+  .hm-cab { background: none; }
+  .hm-cab .hf--material .hf-col { padding: 0 32px 0 48px; }
+  .hm-cab .hf-pild { background: #FFFFFF; color: var(--hm-tinta); border-color: #FFFFFF; box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.35); }
+  .hm-cab .hf-pild:hover, .hm-cab .hf-pild:focus-visible { background: var(--hm-tinta); color: #FFFFFF; border-color: var(--hm-tinta); }
+  .hm-cab .hf-der .hf-ico { color: var(--hm-tinta); }
+  html:not([data-theme="light"]) .hm-cab .hf-der .hf-ico { color: var(--hm-papel); }
+}
+@media (prefers-reduced-motion: reduce) { .lv-root .hm-boton { transition: none; } }

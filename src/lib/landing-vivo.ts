@@ -53,6 +53,7 @@ import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { descompactar } from "@/lib/explorar/portal";
 import { PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { gruposDeLanding, type GrupoLanding } from "@/lib/explorar/puertas-landing";
+import { CLAVE_RESUMEN_NOCHE, resumenGuardado } from "@/lib/deptos/servidor";
 import { metricaValorONull, type AIAnalysisV2, type AnalisisInput, type FullAnalysisResult, type Hallazgo, type HallazgoDistanciaVeredicto, type MixPalancas, type Veredicto } from "@/lib/types";
 import RESPALDO from "./landing-respaldo.json";
 
@@ -127,10 +128,13 @@ export interface DatosLanding {
   /** Último análisis emitido por una cuenta no interna. */
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
-  /** LA SEGUNDA PUERTA (29-oct-2026, la puerta E): cuántos convienen anoche con pie 20 % y 25 años —el MISMO universo que
-   *  muestra Explorar sin cuenta, para que la tarjeta, la bienvenida y el mapa digan el mismo número— y los grupos del mapa
-   *  chico. null si la lectura falló (la tarjeta no sale). */
+  /** EL HERO DEL MAPA (29-oct-2026, opción 3 de 7-landing-puertas): cuántos convienen anoche con pie 20 % y 25 años —el MISMO
+   *  universo que muestra Explorar sin cuenta, para que el título, la bienvenida y el mapa digan el mismo número— y los grupos
+   *  del mapa. null si la lectura falló (el título sale sin cifra y el mapa sin grupos). */
   explorar: { n: number; grupos: GrupoLanding[] } | null;
+  /** Cuántos deptos en venta revisó Franco anoche (`revisados` del resumen de la noche, `deptos_resumen_noche`): «+21.000».
+   *  Solo lo guardado: la landing no lo calcula (son 2 a 4 s). null sin resumen (la frase sale sin cifra). */
+  revisados: number | null;
   /** true cuando alguna lectura falló y se usó el respaldo. */
   degradado: boolean;
 }
@@ -341,7 +345,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
 
   const sb = createServiceClient();
 
-  const [ultimo, guardados, explorar] = await Promise.all([
+  const [ultimo, guardados, explorar, revisados] = await Promise.all([
     (async () => {
       try {
         const noTest = filtroNoTest(await getTestAccountIds(sb));
@@ -370,12 +374,16 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
     universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO)
       .then((u) => { const pines = descompactar(u); return pines.length ? { n: pines.length, grupos: gruposDeLanding(pines) } : null; })
       .catch((e) => { aviso("explorar", e); return null; }),
+    Promise.resolve(sb.from("config").select("value").eq("key", CLAVE_RESUMEN_NOCHE).maybeSingle())
+      .then(({ data, error }) => { if (error) throw error; return resumenGuardado(data?.value as string | null | undefined)?.revisados ?? null; })
+      .catch((e) => { aviso("revisados", e); return null; }),
   ]);
 
   return {
     ultimoAnalisis: ultimo,
     ejemplos: guardados.ejemplos,
     explorar,
+    revisados,
     degradado: degradado || guardados.degradado,
   };
 }

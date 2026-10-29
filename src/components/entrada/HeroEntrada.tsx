@@ -1,7 +1,12 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HeroEntrada — la puerta de Franco. UNA PUERTA, DOS ACCESOS (26-sep-2026).
+// CampoEntrada — el campo de dirección de Franco. UNA PUERTA, VARIOS ACCESOS (26-sep-2026).
+//
+// EL HERO SE RETIRÓ (29-oct-2026): este archivo tenía también `HeroEntrada`, el hero de material con el título y el campo,
+// que solo montaba la landing. Lo reemplazó el hero del mapa (landing-v14/HeroMapa.tsx, opción 3 de
+// docs/puerta-b-mockups/7-landing-puertas.html). Queda el campo, que montan el hero del mapa, el cierre de la landing, /i/ y
+// el paso de la dirección del wizard. Lo que sigue es la historia del hero y del campo:
 //
 // El título, el campo de dirección y los dos caminos sin dirección («Estoy en el depto» y
 // «Marcarlo en el mapa»), con el material del hero de la landing v14. Es la primera pantalla del
@@ -34,7 +39,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useDireccionPlaces, type SeleccionDireccion } from "./useDireccionPlaces";
-import { ESLOGAN } from "@/lib/eslogan";
 import "./hero-entrada.css";
 
 /** Direcciones reales del catálogo (07-sep-2026, landing v14), las que caben a 19 px en el campo a
@@ -92,6 +96,13 @@ export interface CampoEntradaProps {
    *  mapa…») hasta que la página cambia. Lo pide la landing, que navega al wizard con la respuesta;
    *  la portada del wizard cambia de pantalla en el acto y no lo necesita. */
   mantenerHojaAlEntregar?: boolean;
+  /** LOS CAMINOS SIN DIRECCIÓN, AL TOCAR EL CAMPO (29-oct-2026, el hero del mapa de la landing): «¿No tienes la dirección?» no
+   *  va bajo el campo en reposo; en el teléfono vive en la hoja (que ya lo tenía) y en el escritorio aparece bajo el campo
+   *  mientras tiene el foco (decisión de Fabrizio). */
+  caminosAlEnfocar?: boolean;
+  /** Cómo se llama el camino que ubica el depto en un mapa. La landing dice «Ubícalo tú en el mapa» para no confundirlo con
+   *  el mapa de Explorar, que es su hero; el wizard sigue con «Marcarlo en el mapa». */
+  textoMapa?: string;
 }
 
 /** El campo de dirección con sus dos caminos sin dirección, y en el teléfono la hoja. */
@@ -106,6 +117,8 @@ export function CampoEntrada({
   onEvento,
   placeholderDesde = 0,
   mantenerHojaAlEntregar = false,
+  caminosAlEnfocar = false,
+  textoMapa = "Marcarlo en el mapa",
 }: CampoEntradaProps) {
   const [texto, setTexto] = useState(valorInicial);
   const [enfocado, setEnfocado] = useState(false);
@@ -292,7 +305,7 @@ export function CampoEntrada({
         {/* La conexión con Google se abre desde el montaje; el script, recién al primer toque. */}
         <link rel="preconnect" href="https://maps.googleapis.com" />
         <link rel="preconnect" href="https://maps.gstatic.com" crossOrigin="anonymous" />
-        <div className="he-campo">
+        <div className={caminosAlEnfocar ? "he-campo he-campo--caminos-foco" : "he-campo"}>
           <form className="he-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
             <span className="he-tx">
               {usaHoja ? (
@@ -332,14 +345,16 @@ export function CampoEntrada({
           ) : espera && !hoja ? (
             <p className="he-aviso" role="status">{espera}</p>
           ) : null}
-          <div className="he-alt">
+          {/* Con los caminos al enfocar, el clic no le quita el foco al campo: en Safari un botón no se enfoca al clic, y sin
+              foco dentro el bloque se escondería antes de recibirlo. */}
+          <div className="he-alt" onMouseDown={caminosAlEnfocar ? (e) => e.preventDefault() : undefined}>
             <span className="he-alt-q">¿No tienes la dirección?</span>
             <span className="he-alt-acciones">
               <button type="button" onClick={() => onCamino("ubicacion")} disabled={deshabilitado}>
                 {ocupado === "ubicacion" ? "Buscando tu ubicación…" : "Estoy en el depto"}<span aria-hidden="true">→</span>
               </button>
               <button type="button" onClick={() => onCamino("mapa")} disabled={deshabilitado}>
-                {ocupado === "mapa" ? "Abriendo el mapa…" : "Marcarlo en el mapa"}<span aria-hidden="true">→</span>
+                {ocupado === "mapa" ? "Abriendo el mapa…" : textoMapa}<span aria-hidden="true">→</span>
               </button>
             </span>
           </div>
@@ -374,78 +389,10 @@ export function CampoEntrada({
           <div className="he-hoja-alt">
             <span>¿No tienes la dirección?</span>
             <button type="button" onClick={() => tomarCamino("ubicacion")} disabled={deshabilitado}>{ocupado === "ubicacion" ? "Buscando tu ubicación…" : "Estoy en el depto"}<span aria-hidden="true">→</span></button>
-            <button type="button" onClick={() => tomarCamino("mapa")} disabled={deshabilitado}>{ocupado === "mapa" ? "Abriendo el mapa…" : "Marcarlo en el mapa"}<span aria-hidden="true">→</span></button>
+            <button type="button" onClick={() => tomarCamino("mapa")} disabled={deshabilitado}>{ocupado === "mapa" ? "Abriendo el mapa…" : textoMapa}<span aria-hidden="true">→</span></button>
           </div>
         </Hoja>
       )}
     </>
-  );
-}
-
-/** El hero: el material, la cabecera que pone quien lo monta, el eslogan, el título y el campo. */
-export function HeroEntrada({
-  cabecera,
-  pie,
-  antes,
-  despues,
-  rotulo,
-  ...campo
-}: CampoEntradaProps & {
-  /** La cabecera: el header único (HeaderFranco) «sobre material», que pone quien monta el hero
-   *  (27-sep-2026; antes el hero dibujaba la suya, con su wordmark y su «Entrar»). */
-  cabecera?: ReactNode;
-  /** Enlace del pie («Ver un análisis de ejemplo» en el wizard). La landing ya no lo lleva: va debajo de su segunda puerta. */
-  pie?: ReactNode;
-  /** EL RÓTULO DE LA PUERTA DEL INFORME (29-oct-2026, mockup 6-puerta-e, estado A): «¿Tienes un depto en la mira?» sobre el
-   *  título, en lugar del eslogan; y el hero deja de ocupar la pantalla entera para que la segunda puerta —la tarjeta de
-   *  Explorar— se vea con el mismo peso. */
-  rotulo?: string;
-  /** Sobre el título: el aviso de un análisis a medias. */
-  antes?: ReactNode;
-  /** Bajo el campo: el rechazo de cobertura y su lista de espera. */
-  despues?: ReactNode;
-}) {
-  return (
-    <section className={`he-root${rotulo ? " he-root--puertas" : ""}`} aria-label="Analiza un departamento">
-      {/* Fondo: la escala de la tríada, generada a la resolución de cada variante (landing v14). */}
-      {rotulo ? (
-        // EL HERO DE DOS PUERTAS, CON EL DEGRADADO CHICO (29-oct-2026, LCP de la landing en producción: 2,70 s). A pantalla
-        // completa Chrome toma la imagen por fondo y no la cuenta como LCP; el hero compacto ya no la cubre y la imagen pasó a
-        // ser el LCP. Un degradado liso no tiene información: a 52 × 113 (584 B) y 96 × 60 (460 B) se ve igual estirado y
-        // queda bajo el umbral de 0,05 bits por píxel con que Chrome descarta las imágenes de relleno. El LCP vuelve al titular.
-        <picture className="he-fondo">
-          <source media="(min-width: 768px)" srcSet="/landing/hero-liso-chico-d.webp" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-          <img src="/landing/hero-liso-chico-m.webp" alt="" decoding="async" />
-        </picture>
-      ) : (
-        <picture className="he-fondo">
-          <source media="(min-width: 768px)" srcSet="/landing/hero-liso-d1x.webp 1x, /landing/hero-liso-d2x.webp 2x" />
-          <source srcSet="/landing/hero-liso-m1x.webp 1x, /landing/hero-liso-m2x.webp 2x, /landing/hero-liso-m3x.webp 3x" />
-          {/* Prioridad normal (01-oct-2026): es el fondo, no el LCP —el LCP es el titular—. LISO (19-oct-2026): el
-              degradado sin el grano incorporado pesa 3–17 kB en vez de 31–183 kB; el grano lo pone la capa de
-              hero-entrada.css (grano-fino.png, 8 kB). Lo fija el tier LANDING-RENDIMIENTO. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-          <img src="/landing/hero-liso-m2x.webp" alt="" decoding="async" />
-        </picture>
-      )}
-      {cabecera}
-      {!rotulo && (
-        <div className="he-col">
-          <p className="he-eslogan">{ESLOGAN}</p>
-        </div>
-      )}
-      {/* LA INFORMACIÓN PRINCIPAL, CENTRADA EN ALTURA (QA 28-sep-2026): el título y el campo
-          van al centro de la pantalla, y el pie («Ver un análisis…») acompaña debajo del bloque,
-          no pegado al borde inferior. */}
-      <div className="he-col he-mid">
-        {antes}
-        {rotulo && <p className="he-rotulo" data-landing="rotulo">{rotulo}</p>}
-        <h1 className="he-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
-        <CampoEntrada {...campo} />
-        {despues}
-        {pie && <div className="he-pie">{pie}</div>}
-      </div>
-    </section>
   );
 }

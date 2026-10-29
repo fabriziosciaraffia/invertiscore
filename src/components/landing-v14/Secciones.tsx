@@ -6,8 +6,8 @@
 // análisis vienen de `leerDatosLanding`; la cifra de comparables, de la fuente única del sitio
 // (src/lib/stats.ts), sin contador en vivo: sube con el mapa y termina en «+40.000».
 //
-// El hero y el campo del cierre son los de la entrada (`HeroEntrada` / `CampoEntrada`):
-// ver `Entrada.tsx`. La cabecera es el header único, que monta la página.
+// El hero es el del mapa (`HeroMapa`, 29-oct-2026) y el campo del cierre es el de la entrada
+// (`CampoEntrada`): ver `Entrada.tsx`. La cabecera es el header único, que monta la página.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ReactNode } from "react";
@@ -15,7 +15,8 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { DatosLanding } from "@/lib/landing-vivo";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { COMPARABLES_CIFRA, COMPARABLES_PISO } from "@/lib/stats";
-import { CampoLanding, HeroLanding } from "./Entrada";
+import { CampoLanding } from "./Entrada";
+import { HeroMapa, type DatosHeroMapa } from "./HeroMapa";
 import { Respuesta } from "./Respuesta";
 import { LoQueHariaFrancoDiferida } from "./RecomendacionDiferida";
 import { MapaSantiago } from "./MapaSantiago";
@@ -29,10 +30,10 @@ import { FondoMaterial, PieLanding } from "./Marca";
 // ===== 1 · HERO =====
 // El de la entrada, con la composición de la landing. La cabecera (el header único) la pasa
 // la página: así la página monta `HeaderFranco` y el hero no dibuja una propia.
-export function Hero({ cabecera }: { cabecera: ReactNode }) {
+export function Hero({ cabecera, datos }: { cabecera: ReactNode; datos: DatosHeroMapa }) {
   return (
     <SeccionVista n={1} className="lv-hero">
-      <HeroLanding cabecera={cabecera} />
+      <HeroMapa cabecera={cabecera} datos={datos} />
     </SeccionVista>
   );
 }

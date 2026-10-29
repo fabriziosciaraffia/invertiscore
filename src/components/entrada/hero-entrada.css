@@ -1,39 +1,14 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   EL HERO DE LA ENTRADA — la portada del wizard y, cuando mergee, el hero de la landing.
-   Material de la landing v14 (landing-v14/landing.css, 26-sep-2026): fondo de la escala de la
-   tríada (hero-*.webp, generado desde los tokens), grano por CSS, serif 700 con el plumón en
-   papel, el campo blanco con el botón en tinta y los caminos en papel. Es MATERIAL FIJO: se ve
-   igual en tema claro y oscuro, como la card de la recomendación del informe.
+   EL CAMPO DE LA ENTRADA (CampoEntrada): el del hero de la landing (en la piel de hero-mapa.css), el del cierre, el de /i/ y
+   el del paso de la dirección del wizard (en papel, abajo). Sobre material: la caja blanca con el botón en tinta y los
+   caminos en papel. El hero de la entrada que lo envolvía (HeroEntrada) se retiró el 29-oct-2026: lo reemplazó el hero del
+   mapa (landing-v14/HeroMapa.tsx).
    ═════════════════════════════════════════════════════════════════════════════ */
-.he-root, .he-campo {
+.he-campo {
   --he-papel: #FAFAF8;
   --he-tinta: #0F0F0F;
   --he-ghost: #A1A1AA;
 }
-.he-root {
-  position: relative; min-height: 100svh; display: flex; flex-direction: column; overflow: hidden;
-  color: var(--he-papel); background: #1F3D67;
-  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
-}
-.he-fondo { position: absolute; inset: 0; z-index: 0; display: block; }
-.he-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
-.he-root::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background-image: url("/landing/grano-fino.png"); background-size: 64px; opacity: 0.8; mix-blend-mode: hard-light;
-}
-.he-col { position: relative; z-index: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
-/* la cabecera es el header único (HeaderFranco, «sobre material»): header-franco.css, alineado a
-   esta misma columna. El eslogan va debajo del wordmark, solo en escritorio: a 390 no cabe al lado de
-   nada y queda en el pie de la landing. */
-.he-eslogan { display: none; margin: 0; }
-/* el bloque principal (título + campo + caminos + pie) CENTRADO en altura (QA 28-sep-2026) */
-.he-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 24px; padding-bottom: 40px; z-index: 2; }
-.he-h1 {
-  margin: 0 0 28px; font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
-  font-weight: 700; font-size: clamp(38px, 10.3vw, 72px); line-height: 0.96; letter-spacing: -0.03em; color: var(--he-papel);
-}
-/* con la raíz en el selector: la landing anula `mark` en su raíz y, sin esto, el plumón no se ve */
-.he-root .he-h1 mark { background: linear-gradient(transparent 60%, rgba(250, 250, 248, 0.26) 60%); color: inherit; }
 
 /* el campo: con sus variables propias, porque el cierre de la landing lo monta fuera del hero */
 .he-campo { position: relative; font-family: var(--font-ui), "Inter", system-ui, sans-serif; }
@@ -70,21 +45,6 @@ html .he-input { font-size: 19px !important; }
 .he-alt button:hover span, .he-alt button:focus-visible span { transform: translateX(4px); }
 .he-alt button:focus-visible { outline: 1.5px solid var(--he-papel); outline-offset: 2px; }
 .he-alt button:disabled { opacity: 0.7; cursor: progress; }
-/* el pie acompaña al bloque: debajo del campo y sus caminos, con su aire */
-.he-pie { margin-top: 30px; }
-/* LO TOCABLE SE VE TOCABLE (28-sep-2026): «Ver un análisis de ejemplo» (entonces «real») era un texto suelto en serif; ahora
-   es la misma píldora con contorno que «Entrar» en el header (hf-pild), en papel sobre el material.
-   Presionada (EnlaceCarga) se rellena, como al pasar por encima. */
-.he-pild {
-  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 18px; border-radius: 99px;
-  border: 1.5px solid rgba(250, 250, 248, 0.88); color: var(--he-papel); text-decoration: none;
-  font-family: var(--font-ui), "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; white-space: nowrap;
-  transition: background 0.2s, color 0.2s;
-}
-.he-pild span { display: inline-block; transition: transform 0.2s; }
-.he-pild:hover, .he-pild:focus-visible, .he-pild[data-presionado="1"] { background: var(--he-papel); color: #0F0F0F; }
-.he-pild:hover span, .he-pild:focus-visible span { transform: translateX(3px); }
-.he-pild:focus-visible { outline: 1.5px solid var(--he-papel); outline-offset: 3px; }
 
 /* bloques en papel sobre el hero (borrador, fuera de cobertura) */
 .he-nota { background: rgba(250, 250, 248, 0.95); color: #18181B; border-radius: 12px; padding: 14px 15px; margin-bottom: 22px; }
@@ -108,15 +68,15 @@ html .he-input { font-size: 19px !important; }
 .he-wait button { height: 44px; border-radius: 99px; border: 0; padding: 0 16px; background: var(--he-papel); color: #18181B; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .he-wait button:disabled { opacity: 0.6; }
 
-/* el desplegable de Places al ancho del cuadro, como en la landing (y en el paso del wizard) */
-.he-root ~ .pac-container, body:has(.he-root) .pac-container, body:has(.he-papel) .pac-container {
+/* el desplegable de Places al ancho del cuadro, donde haya un campo (la landing, /i/ y el paso del wizard) */
+body:has(.he-campo) .pac-container {
   margin-top: 2px; border: 0; border-radius: 0 0 12px 12px; background: #fff; z-index: 3000;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35); font-family: var(--font-ui), "Inter", system-ui, sans-serif;
 }
-body:has(.he-root) .pac-item, body:has(.he-papel) .pac-item { padding: 0 16px; line-height: 48px; font-size: 16px; color: #52525B; border-top: 1px solid #EFEFF1; cursor: pointer; }
-body:has(.he-root) .pac-item-query, body:has(.he-papel) .pac-item-query { font-size: 16px; color: #0F0F0F; font-weight: 600; }
-body:has(.he-root) .pac-icon, body:has(.he-papel) .pac-icon { display: none; }
-body:has(.he-root) .pac-item:hover, body:has(.he-root) .pac-item-selected, body:has(.he-papel) .pac-item:hover, body:has(.he-papel) .pac-item-selected { background: #F6F6F7; }
+body:has(.he-campo) .pac-item { padding: 0 16px; line-height: 48px; font-size: 16px; color: #52525B; border-top: 1px solid #EFEFF1; cursor: pointer; }
+body:has(.he-campo) .pac-item-query { font-size: 16px; color: #0F0F0F; font-weight: 600; }
+body:has(.he-campo) .pac-icon { display: none; }
+body:has(.he-campo) .pac-item:hover, body:has(.he-campo) .pac-item-selected { background: #F6F6F7; }
 
 /* ── EN EL TELÉFONO: el campo es un botón que abre la hoja ── */
 .he-input-boton {
@@ -163,41 +123,21 @@ html.he-hoja-abierta:not([data-theme="light"]) .pac-item-query { color: #FAFAFA;
 html.he-hoja-abierta:not([data-theme="light"]) .pac-item:hover,
 html.he-hoja-abierta:not([data-theme="light"]) .pac-item-selected { background: #1A1A1E; }
 
-/* LA COMPOSICIÓN DE LA LANDING (27-sep-2026): grilla de 1200 con el contenido a la izquierda. Las
-   medidas son las de landing-v14/landing.css, medidas en su momento: el h1 en dos líneas en la mitad
-   izquierda (64 px a 768, 70 a 1100, 88 desde 1280, en 14ch), el campo de 560 a 820 px y hasta 760 de
-   caja desde 1280. El título va pegado al campo, los dos al pie de la columna. */
+/* EL CAMPO EN EL ESCRITORIO (27-sep-2026, la composición de la landing v14): de 560 a 820 px y hasta 760 de caja desde 1280. */
 @media (min-width: 768px) {
-  .he-col { padding: 0 40px; }
-  .he-eslogan {
-    display: block; margin-top: -14px; font-size: 11px; font-weight: 500; letter-spacing: 0.16em;
-    text-transform: uppercase; color: rgba(250, 250, 248, 0.8);
-  }
-  .he-mid { padding-top: 32px; padding-bottom: 48px; }
-  .he-pie { margin-top: 36px; }
-  .he-h1 { margin-bottom: 32px; font-size: 64px; }
   .he-campo { max-width: 560px; }
   .he-box { height: 74px; }
   .he-btn { width: 62px; height: 62px; }
   .he-alt { flex-direction: row; align-items: center; gap: 22px; }
 }
 @media (min-width: 1024px) {
-  .he-col { padding: 0 48px; }
-  /* el título y el campo juntos, al pie de la columna (27-sep-2026: el aire entre los dos era
-     demasiado; el título arriba y el campo abajo los separaba media pantalla) */
-  .he-h1 { max-width: 14ch; margin-bottom: 36px; }
   .he-campo { max-width: 820px; }
 }
-@media (min-width: 1100px) {
-  .he-h1 { font-size: 70px; }
-}
 @media (min-width: 1280px) {
-  .he-h1 { font-size: 88px; }
   .he-box { max-width: 760px; height: 80px; padding-left: 24px; }
   .he-btn { width: 68px; height: 68px; }
   html .he-input { font-size: 21px !important; }
   .he-ph { font-size: 21px; }
-  .he-pild { height: 40px; font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .he-caret { animation: none; }
@@ -230,14 +170,10 @@ html .he-papel .he-input { font-size: 17px !important; }
 .he-papel .he-wait input:focus { border-color: var(--tx); }
 .he-papel .he-wait button { background: var(--tx); color: var(--page); }
 
-/* LA LANDING CON DOS PUERTAS (29-oct-2026, mockup docs/puerta-b-mockups/6-puerta-e.html, estado A): el hero es la puerta del
-   informe, con el rótulo «¿Tienes un depto en la mira?» sobre el título (en lugar del eslogan), y deja de ocupar la pantalla
-   entera: la segunda puerta —la tarjeta de Explorar— se ve debajo con el mismo peso. */
-.he-rotulo { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(250, 250, 248, 0.86); }
-.he-root--puertas { min-height: 0; }
-.he-root--puertas .he-mid { justify-content: flex-start; padding-top: 18px; padding-bottom: 26px; }
-.he-root--puertas .he-h1 { margin-bottom: 18px; }
+/* LOS CAMINOS SIN DIRECCIÓN, AL TOCAR EL CAMPO (29-oct-2026, el hero del mapa de la landing): en reposo no se ven. En el
+   teléfono viven en la hoja que abre el campo; en el escritorio aparecen bajo el campo mientras tiene el foco —o mientras se
+   toca uno de los dos caminos, que también está dentro del campo— (decisión de Fabrizio). */
+.he-campo--caminos-foco .he-alt { display: none; }
 @media (min-width: 768px) {
-  .he-root--puertas .he-mid { padding-top: 40px; padding-bottom: 56px; }
-  .he-root--puertas .he-h1 { margin-bottom: 28px; }
+  .he-campo--caminos-foco:focus-within .he-alt { display: flex; }
 }

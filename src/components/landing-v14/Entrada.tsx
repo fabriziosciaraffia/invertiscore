@@ -11,13 +11,13 @@
 // portada con el aviso y la lista de espera. La landing no duplica esa lógica.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
-import { CampoEntrada, HeroEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
+import { CampoEntrada, type CaminoSinDireccion, type EventoCampo } from "@/components/entrada/HeroEntrada";
 import type { SeleccionDireccion } from "@/components/entrada/useDireccionPlaces";
 import { urlDeLlegada } from "@/components/entrada/llegada";
-import { LANDING_PUERTAS } from "@/lib/explorar/puertas-landing";
+import { HERO_MAPA } from "@/lib/explorar/puertas-landing";
 import { EV, type UbicacionCampo } from "./eventos";
 
 const ORIGEN: Record<UbicacionCampo, string> = {
@@ -56,13 +56,14 @@ function useAccionesCampo(ubicacion: UbicacionCampo) {
   };
 }
 
-/** El hero de la landing: el de la entrada, con el header único que le pasa la página. DESDE EL 29-oct-2026 (mockup
- *  6-puerta-e, estado A) es la PUERTA DEL INFORME, con el rótulo «¿Tienes un depto en la mira?» sobre el título; la del
- *  que busca dónde invertir es la tarjeta de abajo (TarjetaExplorar), y «Ver un análisis de ejemplo» —el demo, que antes
- *  era el pie del hero— va debajo de esa tarjeta. */
-export function HeroLanding({ cabecera }: { cabecera: ReactNode }) {
+/** EL CAMPO DEL HERO (29-oct-2026, el hero del mapa: opción 3 de docs/puerta-b-mockups/7-landing-puertas.html). El hero ya no
+ *  es el de la entrada: es el mapa de los que convienen con su panel (HeroMapa, un componente de servidor), y este es el campo
+ *  de su segunda puerta. El MISMO campo de siempre, con su animación que escribe sola una dirección de ejemplo; lo único
+ *  propio es que «¿No tienes la dirección?» aparece al tocarlo (la hoja en el teléfono, bajo el campo en el escritorio) y que
+ *  el camino del mapa se llama «Ubícalo tú en el mapa», para no confundirlo con el mapa de Explorar. */
+export function CampoHero() {
   const acciones = useAccionesCampo("hero");
-  return <HeroEntrada cabecera={cabecera} rotulo={LANDING_PUERTAS.rotuloInforme} {...acciones} />;
+  return <CampoEntrada caminosAlEnfocar textoMapa={HERO_MAPA.ubicarEnMapa} {...acciones} />;
 }
 
 /** El campo del cierre (y el del interior): el del hero, extraído. */

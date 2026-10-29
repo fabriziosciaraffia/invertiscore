@@ -23,7 +23,7 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
  *  llegan desde la landing de las que llegan directo. */
 export type OrigenExplorar = "landing" | "directo";
 // Lo de la landing vive en un módulo sin dependencias (la landing es un cliente liviano: LCP en el teléfono).
-export { CAJA_LANDING, DESDE_LANDING, gruposDeLanding, HREF_DESDE_LANDING, LANDING_PUERTAS, MAPA_LANDING, type GrupoLanding } from "./puertas-landing";
+export { DESDE_LANDING, gruposDeLanding, HERO_MAPA, HREF_DESDE_LANDING, MAPA_LANDING, pisoDeMiles, RADIO_CON_NUMERO, type GrupoLanding } from "./puertas-landing";
 export const origenDeLlegada = (desde: string | null | undefined): OrigenExplorar => (desde === DESDE_LANDING ? "landing" : "directo");
 /** El detalle de la puerta E en la atribución: «explorar:landing» o «explorar:directo». */
 export const detalleDeOrigen = (o: OrigenExplorar): string => `explorar:${o}`;

@@ -19,7 +19,6 @@ import { leerDatosLanding } from "@/lib/landing-vivo";
 import { COMPARABLES_TEXTO } from "@/lib/stats";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
-import { TarjetaExplorar } from "@/components/landing-v14/TarjetaExplorar";
 import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
 import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
@@ -51,9 +50,9 @@ export default async function LandingPage() {
           navegador lo perdía si la persona se iba antes de que cargara PostHog. */}
       <SuaveScroll />
       <main>
-        <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} />
-        {/* LA SEGUNDA PUERTA (29-oct-2026, la puerta E): Explorar sin registrarse, con el mismo peso que el informe. */}
-        <TarjetaExplorar datos={datos.explorar} />
+        {/* EL MAPA ES EL HERO (29-oct-2026, opción 3 de 7-landing-puertas): las dos puertas —ver los que convienen en el mapa
+            y analizar el depto que uno tiene en la mira— en la primera pantalla. */}
+        <Hero cabecera={<HeaderFranco contexto="wizard" sobreMaterial />} datos={{ explorar: datos.explorar, revisados: datos.revisados }} />
         {/* las secciones 2 y 3 muestran el MISMO ejemplo: la rotación es una sola */}
         <RotacionEjemplos ejemplos={datos.ejemplos}>
           <LaRespuesta />
