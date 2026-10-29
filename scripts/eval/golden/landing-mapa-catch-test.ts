@@ -126,7 +126,9 @@ export async function runLandingMapaTier(): Promise<{ hard: number }> {
   if (pl.pisoDeMiles(21_999) !== 21_000 || pl.HERO_MAPA.ojo(999).includes("+")) F("2 · lo revisado no va hacia abajo a miles (o promete una cifra con menos de mil)");
   const vivo = codigo("src/lib/landing-vivo.ts");
   // El universo Y su tamaño: vigilar solo la llamada dejaba pasar un `n: 4807` fijo (LM13, verde en la primera pasada).
-  if (!/universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\s*\.then\(\(u\) => \{ const pines = descompactar\(u\); return pines\.length \? \{ n: pines\.length, grupos: gruposDeLanding\(pines\) \} : null; \}\)/.test(vivo)) F("2 · el número del título no es el tamaño del mismo universo que Explorar sin cuenta");
+  // ⚠ ACTA (30-oct-2026, un solo número de «convienen») · el tamaño se cuenta con `cuantosConvienen`, la función de todo el sitio
+  // (tier CONVIENEN-UNO).
+  if (!/universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\s*\.then\(\(u\) => \{ const n = cuantosConvienen\(u\); return n \? \{ n, grupos: gruposDeLanding\(descompactar\(u\)\) \} : null; \}\)/.test(vivo)) F("2 · el número del título no es el tamaño del mismo universo que Explorar sin cuenta");
   if (!/\.from\("config"\)\.select\("value"\)\.eq\("key", CLAVE_RESUMEN_NOCHE\)\.maybeSingle\(\)\)\s*\.then\(\(\{ data, error \}\) => \{ if \(error\) throw error; return resumenGuardado\(data\?\.value as string \| null \| undefined\)\?\.revisados \?\? null; \}\)/.test(vivo)) F("2 · lo revisado no sale del resumen de la noche guardado");
   const heroFuente = codigo("src/components/landing-v14/HeroMapa.tsx") + codigo("src/lib/explorar/puertas-landing.ts");
   if (/\b\d{1,3}\.\d{3}\b/.test(heroFuente.replace(/0\.\d+/g, ""))) F("2 · el hero escribe una cifra a mano");

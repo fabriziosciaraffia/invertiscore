@@ -116,7 +116,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (G.comunas.length || G.tipologias.length || G.ufMin != null || G.ufMax != null || G.modalidad !== "ltr" || G.flujoPositivo || G.publicados !== "todos" || G.zona) F(`1 · la vista global filtra algo: ${JSON.stringify(G)}`);
   if (G.pie !== PIE_DEPTOS || G.plazo !== PLAZO_DEPTOS) F(`1 · la vista global no tiene los supuestos del número de anoche (pie ${PIE_DEPTOS} %, ${PLAZO_DEPTOS} años): ${G.pie}/${G.plazo}`);
   if (!po.esVistaGlobal(G) || po.filtrosActivos(G) !== 0 || po.urlDePortal(G) !== "") F("1 · la vista global cuenta filtros o deja algo en la URL");
-  if (po.lineaSupuestos(G) !== "Arriendo tradicional · pie 20 % · 25 años" || po.numeroDelMapa(4807, G) !== "4.807 convienen en Gran Santiago") F(`1 · el número o la línea de los supuestos: ${po.numeroDelMapa(4807, G)} / ${po.lineaSupuestos(G)}`);
+  // ⚠ ACTA (30-oct-2026, «convienen» explicado) · la línea dice el crédito con la tasa del motor: «Con pie 20 %, 25 años y tasa
+  // 4,07 %» (sin tasa, «Con pie 20 % y 25 años»), y a su lado «¿Cómo se calcula?» (tier CONVIENEN-UNO).
+  if (po.lineaSupuestos(G, 4.07) !== "Con pie 20 %, 25 años y tasa 4,07 %" || po.lineaSupuestos(G, null) !== "Con pie 20 % y 25 años" || po.numeroDelMapa(4807, G) !== "4.807 convienen en Gran Santiago") F(`1 · el número o la línea de los supuestos: ${po.numeroDelMapa(4807, G)} / ${po.lineaSupuestos(G, 4.07)}`);
   // La página abre con la URL y nada más: el perfil no decide los filtros iniciales.
   // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la página tiene ahora dos ramas: con cuenta
   // (ExplorarConDatos) la regla es la misma —la URL tal cual—; sin cuenta (ExplorarAbierto) la URL pasa por filtrosAbiertos (pie
@@ -124,14 +126,16 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   const conCuentaPag = pag.slice(pag.indexOf("async function ExplorarConDatos"));
   const abiertaPag = pag.slice(pag.indexOf("async function ExplorarAbierto"), pag.indexOf("async function ExplorarConDatos"));
   const asignaFiltros = conCuentaPag.match(/\bfiltros\s*[=:]/g) ?? [];
-  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
-  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con pie 20 % y 25 años (o le pasa una cuenta)");
+  // ⚠ ACTA (30-oct-2026, «convienen» explicado) · `inicial` lleva además la tasa del motor (las dos ramas) y, sin cuenta, el
+  // número de todo el sitio para la bienvenida (tier CONVIENEN-UNO).
+  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
+  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con pie 20 % y 25 años (o le pasa una cuenta)");
   if (/filtrosDeLaCuenta|filtrosDePerfil|leerPerfilBusqueda|miBusqueda/.test(pag)) F("1 · la página lee el perfil para abrir");
   if (!/const \[filtros, setFiltros\] = useState\(inicial\.filtros\);/.test(cli)) F("1 · el cliente no arranca con los filtros que mandó el servidor");
   if (modCli) {
-    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase() } }));
+    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07, revisada: "29 de octubre" }, convienen: null } }));
     const t = texto(html);
-    if (!t.includes("4.807 convienen en Gran Santiago") || !t.includes("Arriendo tradicional · pie 20 % · 25 años")) F("1 · el primer pintado no dice «4.807 convienen en Gran Santiago» con sus supuestos (con una búsqueda guardada en la cuenta)");
+    if (!t.includes("4.807 convienen en Gran Santiago") || !t.includes("Con pie 20 %, 25 años y tasa 4,07 %")) F("1 · el primer pintado no dice «4.807 convienen en Gran Santiago» con sus supuestos (con una búsqueda guardada en la cuenta)");
     if (/Ñuñoa/.test(t) || /Filtros · \d/.test(t)) F("1 · el primer pintado trae los filtros del perfil");
     if (!/data-explorar="mi-busqueda"/.test(html) || !/data-explorar="filtros"/.test(html) || !/data-explorar="ordenar"/.test(html)) F("1 · falta la fila de arriba: Filtros, Ordenar y Mi búsqueda");
     if (!t.includes("4.807 deptos que convienen") || !t.includes("Ver lista")) F("1 · la hoja cerrada no dice «N deptos que convienen · Ver lista»");
@@ -490,7 +494,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   try {
     const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
     const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "" }));
-    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Arriendo tradicional · pie 20 % · 25 años") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba y la línea de los supuestos (o repite el mapa quieto)");
+    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Con pie 20 % y 25 años · ¿Cómo se calcula?") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba y la línea de los supuestos (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }

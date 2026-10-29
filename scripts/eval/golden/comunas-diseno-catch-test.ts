@@ -157,7 +157,9 @@ export async function runComunasDisenoTier(): Promise<{ hard: number }> {
   const por = sinComentarios(leer("src/lib/deptos/portada.ts"));
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · sin `?comuna=` la portada vuelve antes, sin comuna ni
   // número y con el rango por defecto (la persona elige la comuna, tier PUERTA-B-RECORRIDO §1); con comuna, su rango.
-  if (!/if \(!comuna\) \{\s*const noche = await resumenDeLaNoche\(admin\);\s*if \(!noche\) throw new Error\("sin resumen de la noche"\);\s*return \{ noche, inicial: null, comunas: \[\], rango: ELECCIONES_POR_DEFECTO\.rango \};\s*\}/.test(por)
+  // ⚠ ACTA (30-oct-2026, un solo número de «convienen») · la noche de la portada es `nocheDeptos`: el resumen (revisados) con el
+  // número del mapa (`convienenHoy`, tier CONVIENEN-UNO); la regla de esta sección —sin comuna vuelve antes— no cambia.
+  if (!/if \(!comuna\) \{\s*const noche = await nocheDeptos\(admin\);\s*if \(!noche\) throw new Error\("sin resumen de la noche"\);\s*return \{ noche, inicial: null, comunas: \[\], rango: ELECCIONES_POR_DEFECTO\.rango \};\s*\}/.test(por)
     || !/const rango = await rangoConMasPublicados\(admin, comuna, \[\.\.\.dorms\]\);/.test(por) || !/validarElecciones\(\{ \.\.\.ELECCIONES_POR_DEFECTO, comunas, rango, /.test(por) || !/return \{ noche, inicial, comunas, rango \};/.test(por)) F("2 · la portada de /deptos no responde con el rango de la comuna");
 
   // ── 3 · SEO ──────────────────────────────────────────────────────────────────
