@@ -2,8 +2,11 @@
 // LA VISTA DE LA CALLE del lado del servidor (28-oct-2026; la regla vive en calle.ts). Por aviso: lo guardado en
 // `calle_avisos` si vale (30 días y el mismo punto); si no, la metadata de Street View —gratis— y la decisión, que se
 // guarda. Un rechazo de Google (la API apagada, la llave sin permiso) no se guarda y la tarjeta lleva el mapa chico.
-// La llave es la pública de Maps (la misma del mapa del dashboard); el día que la API de Street View Static esté activa
-// en el proyecto, las fotos aparecen sin tocar nada.
+// LAS LLAVES (29-oct-2026). La metadata y la foto se piden DESDE EL SERVIDOR, sin Referer, así que van con una llave de
+// servidor solo para Street View Static (`GOOGLE_STREET_VIEW_API_KEY`, en Vercel, nunca en el navegador). Mientras no
+// exista, la pública: Google la acepta sin Referer (medido en producción el 29-oct), pero la pública está en el HTML y
+// cualquiera podría usarla para pedir fotos a cuenta de Franco; con la de servidor puesta, a la pública se le saca Street
+// View. El mapa chico sigue con la pública (Static Maps ya la tiene para el navegador).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
@@ -15,7 +18,10 @@ const A_LA_VEZ = 8;
 /** Cuántos avisos se deciden por pedido (la tarjeta pide los cercanos; la lista, los que se ven). */
 export const MAX_POR_PEDIDO = 40;
 
-export const llaveCalle = (): string | undefined => process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+/** La de Street View (metadata y foto): la de servidor, o la pública mientras la de servidor no exista. */
+export const llaveCalle = (): string | undefined => process.env.GOOGLE_STREET_VIEW_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+/** La del mapa chico (Static Maps). */
+export const llaveMapaChico = (): string | undefined => process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 type FilaCalle = { aviso_id: string; lat: number; lng: number; estado: "foto" | "mapa"; pano_id: string | null; rumbo: number | null; consultado_at: string };
 
@@ -81,20 +87,23 @@ function filaDeDecision(id: string, punto: Punto, d: DecisionCalle, ahora: Date)
 }
 
 /** La imagen de un aviso en Google: la foto de la calle si lo guardado lo permite, si no el mapa chico. null si el aviso no
- *  existe o no hay llave. Decide en el momento si todavía no estaba decidido. */
-export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}): Promise<{ url: string; tipo: "foto" | "mapa" } | null> {
+ *  existe o no hay llave. Decide en el momento si todavía no estaba decidido. `guardada` dice si sale de una decisión
+ *  guardada: un mapa por un rechazo de Google (la API apagada, la llave sin permiso) no lo es, y no se puede quedar 30 días
+ *  en la caché del CDN tapando la foto que vendrá cuando Google responda. */
+export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}): Promise<{ url: string; tipo: "foto" | "mapa"; guardada: boolean } | null> {
   const key = deps.key ?? llaveCalle();
-  if (!key) return null;
+  const keyMapa = deps.key ?? llaveMapaChico();
+  if (!key || !keyMapa) return null;
   let { data: g } = await admin.from("calle_avisos").select("aviso_id, lat, lng, estado, pano_id, rumbo, consultado_at").eq("aviso_id", avisoId).maybeSingle();
   if (!g) {
     await decisionesDeCalle(admin, [avisoId], ahora, deps);
     ({ data: g } = await admin.from("calle_avisos").select("aviso_id, lat, lng, estado, pano_id, rumbo, consultado_at").eq("aviso_id", avisoId).maybeSingle());
   }
   const fila = g as FilaCalle | null;
-  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key), tipo: "foto" };
+  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key), tipo: "foto", guardada: true };
   // Sin foto (o sin decidir, si Google rechazó): el mapa chico con el punto del aviso.
   const punto = fila ? { lat: Number(fila.lat), lng: Number(fila.lng) } : await puntoDelAviso(admin, avisoId);
-  return punto ? { url: urlMapaChico(punto, key, estilo), tipo: "mapa" } : null;
+  return punto ? { url: urlMapaChico(punto, keyMapa, estilo), tipo: "mapa", guardada: fila != null } : null;
 }
 
 async function puntoDelAviso(admin: SupabaseClient, avisoId: string): Promise<Punto | null> {

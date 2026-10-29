@@ -157,6 +157,20 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   const tarSrc = codigo("src/app/explorar/tarjeta-pin.tsx");
   if (/marcaDePin|textoRevisado|vistoAt|ex-revisado/.test(tarSrc) || /\.ex-revisado|\.ex-cifras/.test(leer("src/app/explorar/explorar.css"))) F("2 · quedan en la tarjeta (o en su CSS) las líneas retiradas");
   if (!/\.ex-tarjeta-caja \{[^}]*background: var\(--franco-card\)/.test(leer("src/app/explorar/explorar.css"))) F("2 · la caja de la tarjeta no es la superficie de card (la caja gris volvió)");
+  // ⚠ ACTA (29-oct-2026, decisión de Fabrizio) · EL CORAZÓN SIN ROJO: contorno gris y, guardado, relleno en tinta —el token del
+  // fondo de «Analizar este»—. El rojo queda para comprar, la oferta y el regalo. Un SVG y no el carácter ♥ (en iPhone puede
+  // salir como emoji rojo).
+  {
+    const css = leer("src/app/explorar/explorar.css");
+    const reglasCorazon = (css.match(/\.ex-corazon[^{]*\{[^}]*\}/g) ?? []).join("\n");
+    if (/signal-red|#C8323C|--verdict/i.test(reglasCorazon)) F("2 · el corazón lleva rojo (o un color de veredicto)");
+    if (!/\.ex-corazon-svg \{[^}]*fill: none; stroke: var\(--franco-text-muted\);/.test(css) || !/\.ex-corazon\[data-guardado="1"\] \.ex-corazon-svg \{ fill: var\(--franco-text\); stroke: var\(--franco-text\); \}/.test(css) || !/\.ex-cta \{[^}]*background: var\(--franco-text\);/.test(css)) F("2 · el corazón no es contorno gris y, guardado, relleno en la tinta de los botones");
+    if (modTar) {
+      const si = dibujar(createElement(modTar.Corazon as FC<Record<string, unknown>>, { guardado: true, alTocar: () => {} }));
+      const no = dibujar(createElement(modTar.Corazon as FC<Record<string, unknown>>, { guardado: false, alTocar: () => {} }));
+      if (!/<svg class="ex-corazon-svg"/.test(si) || !/<svg class="ex-corazon-svg"/.test(no) || /[♥♡❤]/.test(si + no) || !/data-guardado="1"/.test(si) || /data-guardado/.test(no)) F("2 · el corazón no es el SVG marcado al guardar (o vuelve el carácter ♥)");
+    }
+  }
 
   // ── 3 · la foto de calle solo a menos de 40 m; si no, el mapa chico ──
   const P = { lat: -33.4263, lng: -70.617 };
@@ -207,11 +221,21 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     const { admin: a2 } = baseFalsa({ calle_avisos: [{ aviso_id: "f", lat: P.lat, lng: P.lng, estado: "foto", pano_id: "PANO9", rumbo: 45, consultado_at: ahora.toISOString() }, { aviso_id: "m", lat: P.lat, lng: P.lng, estado: "mapa", pano_id: null, rumbo: null, consultado_at: ahora.toISOString() }] });
     const imF = await srvCalle.imagenDeCalle(a2, "f", [], ahora, { key: "K" }), imM = await srvCalle.imagenDeCalle(a2, "m", [], ahora, { key: "K" });
     if (imF?.tipo !== "foto" || !/pano=PANO9/.test(imF.url) || imM?.tipo !== "mapa" || !/staticmap/.test(imM.url)) F(`3 · la imagen servida: ${JSON.stringify([imF, imM])}`);
+    // UN RECHAZO NO SE QUEDA EN EL CDN (29-oct-2026): el mapa por un rechazo de Google no sale de una decisión guardada, y la
+    // ruta no lo puede cachear 30 días (taparía la foto cuando Google responda).
+    const { admin: a3 } = baseFalsa({ scraped_properties: [{ id: "x", lat: P.lat, lng: P.lng }], calle_avisos: [] });
+    const imX = await srvCalle.imagenDeCalle(a3, "x", [], ahora, { key: "K", metadata: async () => ({ status: "REQUEST_DENIED" }) as never });
+    if (imF?.guardada !== true || imM?.guardada !== true || imX?.tipo !== "mapa" || imX.guardada !== false) F(`3 · la imagen no dice si sale de una decisión guardada: ${JSON.stringify([imF?.guardada, imM?.guardada, imX])}`);
   } catch (e) {
     F(`3 · la decisión del servidor explotó: ${(e as Error).message}`);
   }
   const rutaImg = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
   if (!/s-maxage=2592000/.test(rutaImg) || /createClient\(\)/.test(rutaImg)) F("3 · la imagen no queda en la caché del CDN (o pide sesión y no se puede guardar)");
+  if (!/"Cache-Control": img\.guardada \? CACHE : CACHE_SIN_DECIDIR/.test(rutaImg) || !/const CACHE_SIN_DECIDIR = "public, max-age=300, s-maxage=300";/.test(rutaImg)) F("3 · el mapa por un rechazo de Google queda 30 días en el CDN (tapa la foto cuando Google responda)");
+  // LA LLAVE DE STREET VIEW ES DE SERVIDOR (29-oct-2026): la metadata y la foto se piden desde el servidor; la pública está en
+  // el HTML. Primero la de servidor; la pública solo mientras no exista. El mapa chico, con la pública.
+  const srvSrc = codigo("src/lib/explorar/calle-servidor.ts");
+  if (!/export const llaveCalle = \(\): string \| undefined => process\.env\.GOOGLE_STREET_VIEW_API_KEY \|\| process\.env\.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;/.test(srvSrc) || !/urlMapaChico\(punto, keyMapa, estilo\)/.test(srvSrc) || /NEXT_PUBLIC_GOOGLE_STREET/.test(srvSrc)) F("3 · Street View no va primero con la llave de servidor (o la expone al navegador)");
 
   // ── 4 · sin saldo se explora; el cobro sale al analizar ──
   if (modCli) {
@@ -477,7 +501,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (28-oct-2026). 68 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
+// ACTA DE MUTACIÓN (28-oct-2026; 29-oct). 73 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-portal.cjs),
 // todas ROJAS. La primera pasada dio 49 de 52: tres gates flojos que se afirmaron —4D+ sin un 6D en el fixture (M32), el flujo
 // positivo sin un flujo cero (M34) y el primer pintado sin mirar la línea de antes de la página quieta (M52)—. Después del QA
 // en WebKit 390 y PC, seis más por lo que el QA cazó: M53 la noche esparce el universo en la raíz (el mapa decía «0
@@ -490,7 +514,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
 // bajo el mapa real · M63 el esqueleto repite el mapa quieto. Y por el LCP de 10,1 s (la capa a pantalla completa, que Chrome
 // toma por fondo): M64 la capa sin su fila · M65 la página sin la grilla. Y por los 30 kB de la landing que traía el 404 raíz:
 // M66 el logo del 404 con href · M67 el 404 vuelve a next/link. Y por la IBM Plex que el mapa quieto hacía bajar: M68 la
-// página sin la fuente de la interfaz.
+// página sin la fuente de la interfaz. Y el 29-oct: M69 el corazón guardado en rojo · M70 el corazón vuelve al carácter ♥ ·
+// M71 el rechazo de Google 30 días en el CDN · M72 Street View solo con la llave pública · M73 el rechazo se marca como
+// guardado.
 //   1 · VISTA GLOBAL: M1 el cliente abre con el perfil · M2 la global filtra Santiago · M3 la página pasa el perfil · M4 pie 30 ·
 //       M5 «Mi búsqueda» sin modalidad.
 //   2 · TARJETA: M6 «Visto publicado» · M7 «Revisado con pie» · M8 sin cap rate · M9 la caja gris · M10 sin corazón.

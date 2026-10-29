@@ -13,6 +13,8 @@ export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** 30 días en el CDN (lo que Google deja guardar), 7 en el navegador. */
 const CACHE = "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400";
+/** El mapa por un rechazo de Google (nada guardado): cinco minutos, para que la foto aparezca apenas Google responda. */
+const CACHE_SIN_DECIDIR = "public, max-age=300, s-maxage=300";
 
 export async function GET(_req: Request, { params }: { params: { avisoId: string } }) {
   if (!UUID.test(params.avisoId)) return new Response(null, { status: 404 });
@@ -20,5 +22,5 @@ export async function GET(_req: Request, { params }: { params: { avisoId: string
   if (!img) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
   const r = await fetch(img.url, { cache: "no-store", signal: AbortSignal.timeout(8000) }).catch(() => null);
   if (!r || !r.ok || !(r.headers.get("content-type") ?? "").startsWith("image/")) return new Response(null, { status: 502, headers: { "Cache-Control": "no-store" } });
-  return new Response(r.body, { status: 200, headers: { "Content-Type": r.headers.get("content-type") ?? "image/jpeg", "Cache-Control": CACHE, "X-Calle": img.tipo } });
+  return new Response(r.body, { status: 200, headers: { "Content-Type": r.headers.get("content-type") ?? "image/jpeg", "Cache-Control": img.guardada ? CACHE : CACHE_SIN_DECIDIR, "X-Calle": img.tipo } });
 }

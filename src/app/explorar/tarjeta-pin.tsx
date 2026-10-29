@@ -48,11 +48,15 @@ export function ImagenDepto({ avisoId, tipo, clase, carga = "eager" }: { avisoId
   );
 }
 
-/** El corazón: guardar el depto (aparece en el dashboard, en «Guardados»). */
+/** El corazón: guardar el depto (aparece en el dashboard, en «Guardados»). De contorno gris y, guardado, relleno en tinta
+ *  —el negro de los botones—; el rojo queda para comprar, la oferta y el regalo (decisión de Fabrizio, 29-oct-2026). Un SVG
+ *  y no el carácter ♥: en iPhone ese carácter puede salir como emoji rojo, diga lo que diga el CSS. */
 export function Corazon({ guardado, alTocar }: { guardado: boolean; alTocar: () => void }) {
   return (
     <button type="button" className="ex-corazon" aria-pressed={guardado} aria-label={guardado ? `${PORTAL_COPY.guardado}. Quitar` : PORTAL_COPY.guardar} data-explorar="corazon" data-guardado={guardado ? "1" : undefined} onClick={(e) => { e.stopPropagation(); alTocar(); }}>
-      <span aria-hidden="true">{guardado ? "♥" : "♡"}</span>
+      <svg className="ex-corazon-svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
     </button>
   );
 }

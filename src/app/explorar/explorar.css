@@ -88,9 +88,11 @@
 :root:not([data-theme="light"]) .ex-ver { color: #8DB0E3; }
 .ex-neg { color: var(--signal-red); }
 .ex-linea3 { font-size: 12px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
-.ex-corazon { flex: none; width: 32px; height: 32px; margin: -6px -6px 0 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: none;
-  color: var(--franco-text-secondary); font-size: 19px; line-height: 1; cursor: pointer; }
-.ex-corazon[data-guardado="1"] { color: var(--signal-red); }
+/* El corazón: contorno gris; guardado, relleno en tinta, el mismo token del fondo de «Analizar este» (.ex-cta). Sin rojo: el
+   rojo queda para comprar, la oferta y el regalo (29-oct-2026). */
+.ex-corazon { flex: none; width: 32px; height: 32px; margin: -6px -6px 0 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: none; cursor: pointer; }
+.ex-corazon-svg { display: block; fill: none; stroke: var(--franco-text-muted); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.ex-corazon[data-guardado="1"] .ex-corazon-svg { fill: var(--franco-text); stroke: var(--franco-text); }
 .ex-cta { height: 42px; border: 0; border-radius: 999px; background: var(--franco-text); color: var(--franco-card); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0 18px; }
 .ex-cta:disabled { opacity: 0.55; cursor: default; }
 .ex-cta-enlace { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
