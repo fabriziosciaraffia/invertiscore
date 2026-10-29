@@ -13,12 +13,16 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 export function Bienvenida({ n, alCerrar }: { n: number; alCerrar: () => void }) {
   const boton = useRef<HTMLButtonElement>(null);
+  // Escape la cierra: el listener va una vez y en captura (como la hoja de registro), para que un render a mitad del evento
+  // no lo saque.
+  const cerrarRef = useRef(alCerrar);
+  cerrarRef.current = alCerrar;
   useEffect(() => {
     boton.current?.focus({ preventScroll: true });
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") alCerrar(); };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [alCerrar]);
+    const esc = (e: KeyboardEvent) => { if (e.key !== "Escape") return; e.stopImmediatePropagation(); cerrarRef.current(); };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, []);
   return (
     <div className="ex-bienvenida-velo" data-explorar="bienvenida">
       <section className="ex-bienvenida" role="dialog" aria-modal="true" aria-labelledby="ex-bienvenida-t">

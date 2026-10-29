@@ -176,6 +176,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (!/function tocarPin\(avisoId: string\) \{\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);/.test(cli)) F("3 · sin cuenta la hoja de registro no se precarga al tocar un pin (abre tarde)");
     const rutaImg = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
     if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
+    // ESCAPE CIERRA LA HOJA (QA del 29-oct-2026): el primer Escape cerraba la tarjeta de abajo y no la hoja; el listener de la
+    // hoja, re-registrado a cada render, se quitaba en medio del mismo evento. Va una vez, en captura, y corta el evento.
+    if (!/const esc = \(e: KeyboardEvent\) => \{\s*if \(e\.key !== "Escape"\) return;\s*e\.stopImmediatePropagation\(\);\s*if \(!ocupadoRef\.current\) cerrarRef\.current\(\);\s*\};\s*window\.addEventListener\("keydown", esc, true\);\s*return \(\) => window\.removeEventListener\("keydown", esc, true\);\s*\}, \[\]\);/.test(hoja)) F("3 · Escape no cierra la hoja de registro a la primera (el listener se re-registra a cada render)");
     // La hoja: los textos del mockup, del regalo, sin el ticket.
     const modH = cargar<{ HojaRegistro: FC<Record<string, unknown>> }>("src/app/explorar/hoja-registro");
     if (modH) {
@@ -284,7 +287,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
   return { hard: fallas.length };
 }
 
-// ACTA DE MUTACIÓN (29-oct-2026). 42 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
+// ACTA DE MUTACIÓN (29-oct-2026). 43 mutaciones, cada una restaurada byte a byte con su hash (scratchpad mutar-puerta-e.cjs),
 // todas ROJAS a la primera. Y una falla que el tier cazó ANTES de mutar nada: la llegada de la vista se mandaba como `origen`, y
 // eventoVistaEntrada escribe `origen: "servidor"` después del extra: se perdía en silencio. Ahora es `llegada`.
 //   1 · LANDING: E1 sin la segunda puerta · E2 el hero sin el rótulo · E3 el número sin rojo · E4 «Ver en el mapa» sin la llegada ·
@@ -298,7 +301,8 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 //       la E · E29 la base sin la E · E30 la llegada se pierde · E31 el correo sin el detalle · E32 lo elegido no se anota.
 //   5 · LA BIENVENIDA: E33 no se marca vista · E34 sin almacenamiento sale siempre · E35 habla del pie · E36 dos botones.
 //   6 · LA MEDICIÓN: E37 la vista sale con sesión · E38 sin «regalo usado» · E39 sin «registro hecho» · E40 la vista sin la llegada.
-//   Y lo que cazó el QA en local: E41 la hoja sin precarga · E42 la foto que no llega sin el mapa de respaldo.
+//   Y lo que cazó el QA en local: E41 la hoja sin precarga · E42 la foto que no llega sin el mapa de respaldo · E43 el Escape de
+//   la hoja se re-registra a cada render.
 
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));

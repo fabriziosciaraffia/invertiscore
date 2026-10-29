@@ -72,11 +72,22 @@ export function HojaRegistro({ pedido, filtros, orden, origen, alCerrar }: {
 
   // La puerta candidata de este navegador (la sincroniza useAttributionSync si la cuenta nace por otro camino).
   useEffect(() => { marcarPuertaCandidata("E", detalle); }, [detalle]);
+  // ESCAPE CIERRA LA HOJA, Y SOLO LA HOJA (QA del 29-oct-2026: el primero cerraba la tarjeta de abajo y no la hoja). El
+  // listener va UNA vez y en captura: re-registrado a cada render, el render que dispara el Escape de la tarjeta lo quitaba en
+  // medio del mismo evento y el DOM lo saltaba. En captura corre antes que el de la tarjeta y corta el evento ahí.
+  const cerrarRef = useRef(alCerrar);
+  cerrarRef.current = alCerrar;
+  const ocupadoRef = useRef<typeof ocupado>(false);
+  ocupadoRef.current = ocupado;
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !ocupado) alCerrar(); };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [alCerrar, ocupado]);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      if (!ocupadoRef.current) cerrarRef.current();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, []);
 
   async function conGoogle() {
     setError(null);
