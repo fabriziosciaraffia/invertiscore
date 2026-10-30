@@ -83,7 +83,8 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const conCuenta = pag.slice(pag.indexOf("async function ExplorarConDatos"));
   if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null \}\}/.test(conCuenta))
     F("1 · la página no baja la tasa del motor con y sin cuenta");
-  if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la hoja recibe además la tasa elegida (`elegida`).
+  if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} elegida=\{filtros\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
   // En el navegador, el enlace está con y sin cuenta.
   const modCli = (() => { try { return require(join(RAIZ, "src/app/explorar/explorar-cliente")) as { ExplorarCliente: FC<Record<string, unknown>> }; } catch (e) { F(`0 · no carga explorar-cliente: ${(e as Error).message}`); return null; } })();
   const pintar = (cuenta: unknown, tasa: po.TasaDelMotor | null) =>
@@ -178,3 +179,5 @@ if (require.main === module) {
 // cuenta no dice «registrándote» · C4 Filtros sin negrita · C5 el chip escrito a mano · C6 sin cuenta promete la cifra · C7 un
 // cuarto párrafo · C8 dos botones · C9 la hoja solo con cuenta · C10 Filtros sin la tasa de la página · C11 el pie y el plazo
 // de la hoja a mano · C12 la tasa de Filtros a mano · C13 la hoja vuelve a decir la fecha de la tasa.
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X3 —la hoja sin la tasa elegida—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

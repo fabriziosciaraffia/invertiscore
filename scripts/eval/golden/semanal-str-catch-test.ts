@@ -100,7 +100,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (/getAirbnbEstimate|buildShortTermAnalysisRow|api\.airroi\.com/.test(strSrv)) F("1 · el semanal de renta corta puede consultar al proveedor (getAirbnbEstimate / buildShortTermAnalysisRow en semanal-str-servidor.ts)");
     if (!/const ev = evaluarCuerpoStr\(body, cfg\.uf,/.test(strSrv) || !/= evaluarCuerpoStr\(body, ufValue, medianaComuna, airbnbResult, asOfPipeline\);/.test(pipeline))
       F("1 · la zona y el informe no corren el mismo cálculo (evaluarCuerpoStr)");
-    if (!/const body = cuerpoStrDeAviso\(c, o, combo, cfg\);/.test(strSrv) || !/return buildStrPayload\(answers, ctx\)/.test(strSrv) || !/modalidad: "str", modoGestion: o\.modoGestion/.test(strSrv))
+    // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · el cuerpo va con el origen y la tasa del perfil (`conTasa`; sin tasa
+    // elegida, la del motor).
+    if (!/const body = cuerpoStrDeAviso\(c, conTasa, combo, cfg\);/.test(strSrv) || !/return buildStrPayload\(answers, ctx\)/.test(strSrv) || !/modalidad: "str", modoGestion: o\.modoGestion/.test(strSrv))
       F("1 · el cuerpo del depto no es el del wizard (buildStrPayload sobre las respuestas del aviso, con la gestión de la persona)");
     // Los candidatos: de las comunas del perfil de renta corta, por rendimiento de zona; sin zona, fuera.
     if (!/admin\.rpc\("semanal_candidatos_str", \{\s*comunas, dorms: perfil\.dormitorios, uf_min: rango\.ufMin, uf_max: rango\.ufMax, desde, por_celda: POR_CELDA_STR,/.test(strSrv)
@@ -352,3 +354,5 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runSemanalStrTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X7 —la renta corta del semanal sin la tasa del perfil—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

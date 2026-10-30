@@ -102,7 +102,9 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const aviso = sinComentarios(leer("src/components/guia/AvisoAntesDeAnalizar.tsx"));
   // ⚠ ACTA (23-oct-2026, goal Explorar) · el aviso tiene «Cambiar» (prop `cambio`, desde el mapa): los derivados siguen a la combinación elegida
   // (`combo`, que arranca en la del perfil) y la línea destacada es la de siempre cuando no hay `cambio`.
-  if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/const \[combo, setCombo\] = useState\(combinacion\);/.test(aviso) || !/derivados: derivadosAviso\(depto, combo, finanzas\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la combinación lleva la tasa (vacía = la de hoy) y los
+  // derivados se calculan con la que se ve (la elegida o la de hoy).
+  if (!/<ModalPlausibilidad\s+open\s+anomalias=\{\[\]\}/.test(aviso) || !/const \[combo, setCombo\] = useState\(\{ \.\.\.combinacion, tasaPct: combinacion\.tasaPct \?\? null \}\);/.test(aviso) || !/derivados: derivadosAviso\(depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\),/.test(aviso)) F("5 · el aviso no es el pop-up del wizard con los datos del depto");
   // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockups D1/D2; tier PUERTA-B-MOCKUPS §3) · el aviso dibuja su propio cuerpo (`cuerpo`):
   // el pie y el plazo van en «Con pie de 20 % y plazo de 25 años» con «Cambiar» cuando hay `cambio`; el destacado «de tu perfil» se fue.
   if (!/cuerpo=\{cuerpo\}/.test(aviso) || !/\{c\.antes\}<b>\{c\.pie\}<\/b>\{c\.medio\}<b>\{c\.plazo\}<\/b>/.test(aviso)) F("5 · el aviso no dice el pie y el plazo con que analiza");
@@ -242,3 +244,5 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runCorreosRecorridoTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X6 —los derivados con la de hoy—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

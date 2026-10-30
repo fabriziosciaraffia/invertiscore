@@ -120,7 +120,8 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
       const an = ps.slice(ps.indexOf("async function analizar("), ps.indexOf("const comprasDeLaTarjeta"));
       if (!/const como = datos \? comoAnalizarPrimero\(datos, it\) : null;\s*if \(!datos\?\.combinacion \|\| !como \|\| generando\) return;/.test(an)) F("2 · la tarjeta todavía exige el token para analizar");
-      if (!/como === "seleccion"\s*\? \{ origenId: datos\.origenId, avisoId: it\.avisoId, piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, semanal: datos\.token \}\s*: \{ origenId: null, avisoId: it\.avisoId, piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, respaldo: true \}/.test(an)) F("2 · la tarjeta del respaldo no pide el análisis como respaldo");
+      // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · los dos pedidos llevan la tasa elegida (null = la de hoy).
+      if (!/como === "seleccion"\s*\? \{ origenId: datos\.origenId, avisoId: it\.avisoId, piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, tasaPct: combo\.tasaPct \?\? null, semanal: datos\.token \}\s*: \{ origenId: null, avisoId: it\.avisoId, piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, tasaPct: combo\.tasaPct \?\? null, respaldo: true \}/.test(an)) F("2 · la tarjeta del respaldo no pide el análisis como respaldo");
       const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
       if (!/const desdeRespaldo = b\.respaldo === true && !desdeExplorar && b\.origenId == null && typeof b\.semanal !== "string";/.test(ruta) || !/if \(\(!sinOrigen && !desdeExplorar && !desdeRespaldo && /.test(ruta)) F("2 · la ruta no acepta el respaldo");
       if (!/if \(desdeExplorar \|\| desdeRespaldo\) \{[\s\S]{0,200}?if \(!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)\) return NextResponse\.json\(\{ error: "combinacion" \}, \{ status: 400 \}\);[\s\S]{0,400}?o = origenSintetico\(/.test(ruta)) F("2 · el respaldo no se valida como Explorar (las listas del pop-up, el origen sintético)");
@@ -184,3 +185,5 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runRespaldoMapaTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X5 —el respaldo no manda la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

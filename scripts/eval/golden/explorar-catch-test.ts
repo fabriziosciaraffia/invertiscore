@@ -140,7 +140,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(\{ userId: user\.id, analysisId: id, avisoId: aviso\.avisoId/.test(an)) F("3 · «explorar_analiza» no sale al crear el informe desde el mapa");
   if (!/idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" :/.test(an)) F("3 · el AnalizarEste de Meta desde Explorar no lleva su propio id");
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · en renta corta el mismo pedido va a la ruta STR (con «Analizar igual» si no da).
-  if (!/fetch\(corta \? "\/api\/semanal\/analizar-str" : "\/api\/lo-que-sigue\/guia\/analizar", \{/.test(cli) || !/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, explorar: true,/.test(cli)) F("3 · «Analizar este» del mapa no va por la ruta de la guía con explorar: true");
+  if (!/fetch\(corta \? "\/api\/semanal\/analizar-str" : "\/api\/lo-que-sigue\/guia\/analizar", \{/.test(cli) || !/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, tasaPct, explorar: true,/.test(cli)) F("3 · «Analizar este» del mapa no va por la ruta de la guía con explorar: true");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · el pedido lleva también la tasa (TASA-EDITABLE).
   // ⚠ ACTA (28-oct-2026) · «Explorar no gasta; analizar sí» se retiró (lo pidió el goal); lineaSaldo ya no existe.
   if ("lineaSaldo" in ex || /Explorar no gasta/.test(cli + codigo("src/lib/explorar/portal.ts"))) F("3 · volvió la línea «Explorar no gasta»");
   if (ex.botonAnalizar({ tipo: "con", n: 2, noVencen: false }) !== "Analizar este · usa 1 de tus 2" || ex.botonAnalizar({ tipo: "regalo", vence: null }) !== "Analizar este · usa tu análisis de regalo" || ex.botonAnalizar({ tipo: "sin" }) !== "Analizar este") F("3 · «Analizar este · usa 1 de tus N»");
@@ -211,12 +212,14 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/void cambio\.recalcular\(combo\)\.then/.test(av)) F("7 · al cambiar no se recalcula con el servidor");
   if (!/const analizar = da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Analizar igual»");
   if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
-  if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
-  if (!/derivados: derivadosAviso\(depto, combo, finanzas\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");
+  if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la casilla nombra la tasa elegida y los derivados se calculan con la tasa que se ve.
+  if (!/derivados: derivadosAviso\(depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");
   // ⚠ ACTA (28-oct-2026) · en renta corta el pop-up va sin «Cambiar», como en la selección.
   if (!/cambio=\{filtros\.modalidad === "str" \? null : \{ recalcular: \(combo\) => recalcular\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(cli)) F("7 · el mapa no abre el pop-up con «Cambiar»");
   const rc = codigo("src/app/api/explorar/recalcular/route.ts");
-  if (!/const s = sondaDeCandidato\(c, \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \}, cfg\);/.test(rc) || !/!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)/.test(rc)) F("7 · el recálculo no va por la sonda con el pie y el plazo validados");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la sonda recibe también la tasa elegida.
+  if (!/const s = sondaDeCandidato\(c, \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\), tasa \}, cfg\);/.test(rc) || !/!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)/.test(rc)) F("7 · el recálculo no va por la sonda con el pie y el plazo validados");
   const ed = codigo("src/lib/avisos/estandar-deptos.ts");
   // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); las columnas *_25
   // siguen siendo el mismo aviso a 25 años, con su propia constante (PLAZO_COLUMNAS_25), para la opción de 25 de Filtros.
@@ -297,7 +300,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const pagX = codigo("src/app/explorar/page.tsx");
   if (!/const noche = universoDeLaNoche\(filtros\);/.test(pagX) || !/noche \? universoDeLaNocheCacheado\(filtros\.pie, filtros\.plazo\)\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pagX) || /universoCalculado|pinesCalculados/.test(pagX)) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
   if (!/if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
-  if (!/PORTAL_COPY\.calculandoComunas\(progreso\.hechas, progreso\.total\)/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con una tasa elegida dice «Calculando con tu tasa…»; sin ella, como siempre.
+  if (!/\(conTasa \? PORTAL_COPY\.calculandoTasaComunas : PORTAL_COPY\.calculandoComunas\)\(progreso\.hechas, progreso\.total\)/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
   const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
   if (!/\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(hojaF) || !/\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(hojaF)) F("10 · los filtros de pie y plazo no ofrecen las listas enteras");
   const sqlC = leer("supabase/migrations/20261024_explorar_combos.sql");
@@ -364,3 +368,5 @@ if (require.main === module) {
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real). Los predicados reescritos, 3 de 3 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): X1 la lista
 // sin plazo cae en 25 · X2 con la lista el mapa se esconde · X3 las columnas de 25 se evalúan a 30.
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X1 y X2 —la ruta del mapa y el recálculo sin la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

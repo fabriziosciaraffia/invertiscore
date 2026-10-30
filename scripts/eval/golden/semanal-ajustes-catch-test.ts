@@ -466,7 +466,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       F(`11 · «Quiero verlo» no lee el aviso, el veredicto y el flujo de un informe de renta corta (o de renta larga) (${JSON.stringify(str)})`);
     // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (la cuenta de /deptos) el origen es null y no va.
     // ⚠ ACTA (28-oct-2026, Explorar como portal) · la misma ruta analiza desde Explorar: `desde` es «explorar» o «semanal».
-    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
+    // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · `origenAviso` lleva además la tasa elegida, si la hubo.
+    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}) };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild || !ruta.includes('const desde = desdeExplorar ? "explorar" : "semanal";')) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
     if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} antiguedad=\{origenAviso\.antiguedad\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
@@ -513,3 +514,5 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runSemanalAjustesTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X8 —el informe corto sin la tasa elegida—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

@@ -187,13 +187,15 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       // perfil si la casilla queda marcada.
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx"), sl = codigo("src/app/semanal/semanal-lista.tsx");
       if (!/cambio=\{\{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto, score: confirmar\.it\.score, flujo: confirmar\.it\.flujo \} \}\}/.test(ps) || !/alAnalizar=\{\(eleccion\) => void analizar\(confirmar\.it, eleccion\)\}/.test(ps)
-        || !/const combo = eleccion\?\.combinacion \?\? datos\.combinacion;/.test(ps) || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^\n]*piePct: combo\.piePct, plazoAnios: combo\.plazoAnios/.test(ps) || !/piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, semanal: datos\.token/.test(ps))
+        || !/const combo = eleccion\?\.combinacion \?\? datos\.combinacion;/.test(ps) || !/if \(eleccion\?\.guardarPerfil\) \{\s*await fetch\("\/api\/perfil-busqueda", \{ method: "PUT"[^\n]*piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, tasaPct: combo\.tasaPct \?\? null/.test(ps) || !/piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, tasaPct: combo\.tasaPct \?\? null, semanal: datos\.token/.test(ps))
         F("3 · la primera selección no abre el pop-up con «Cambiar», o no analiza con lo elegido ni guarda el perfil");
       if (!/cambio=\{corta \|\| !confirmar\.it\.veredicto \? null : \{ recalcular: \(combo\) => recalcularAviso\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(sl) || !/const conCombo = eleccion\?\.combinacion \?\? combinacion;/.test(sl) || !/if \(eleccion\?\.guardarPerfil\) \{/.test(sl))
         F("3 · el dashboard no abre el pop-up con «Cambiar», o no analiza con lo elegido ni guarda el perfil");
       if (!/fetch\("\/api\/explorar\/recalcular"/.test(codigo("src/lib/explorar/recalcular-cliente.ts")) || existe("src/app/api/deptos/recalcular/route.ts")) F("3 · el recálculo no va por la ruta de Explorar (o sigue la ruta duplicada)");
       // D1, dibujado: la tarjeta gris, «Con pie de 20 % y plazo de 25 años · Cambiar», el dividendo y el retorno, «Usa tu
       // análisis de regalo.», «Analizar» y «Cancelar».
+      // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la línea dice también la tasa (la de hoy, 4,2 %).
+      // Y PrimeraSeleccion manda la tasa elegida (null = la de hoy) al perfil y al informe.
       const cmp = cargar<typeof import("../../../src/components/guia/AvisoAntesDeAnalizar")>("src/components/guia/AvisoAntesDeAnalizar");
       if (!cmp) throw new Error("no carga el pop-up");
       const html = dibujarPopup(createElement(cmp.AvisoAntesDeAnalizar, {
@@ -202,7 +204,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
         alAnalizar: () => {}, alCancelar: () => {}, cambio: { recalcular: async () => null, base },
       }));
       const th = textos(html);
-      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b> y plazo de <b>25 años</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
+      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b>, plazo de <b>25 años</b> y tasa de <b data-aviso=\"tasa-vista\">4,2 %</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
         F(`3 · D1 no se dibuja como el mockup: ${th.slice(0, 300)}`);
       if (/data-aviso="pie"|data-aviso="guardar"|Analizar igual|Precio por m²|Renta larga|de tu perfil|disabled=""/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Analizar igual», lo del wizard o el botón bloqueado antes de tocar «Cambiar»");
       // Sin `cambio` (la guía, renta corta): la línea del pie y el plazo sin «Cambiar».
@@ -311,3 +313,5 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runPuertaBMockupsTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X4 —la selección no manda la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

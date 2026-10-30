@@ -141,8 +141,9 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   // ── 2 · EL POP-UP Y EL WIZARD ABREN EN 30 ──
   const o = origenSintetico("u", { piePct: null, plazoAnios: null, comunas: ["Ñuñoa"], dormitorios: [2] }, { tasa: 4.07 });
   if (o.plazoAnios !== 30 || o.piePct !== 20) F(`2 · sin plazo elegido, el semanal y la guía no abren en 20 % y 30 años: ${o.piePct} / ${o.plazoAnios}`);
-  if (!/const plazo = perfil\.plazoAnios == null \? PLAZO_DEPTOS : perfil\.plazoAnios >= 30 \? 30 : 25;/.test(codigo("src/lib/deptos/primeros-servidor.ts")) || !/const combinacion = \{ piePct: pie, plazoAnios: plazo \};/.test(codigo("src/lib/deptos/primeros-servidor.ts"))) F("2 · la selección diaria no abre el pop-up con el plazo de la persona (o 30 sin él)");
-  if (!/combinacion=\{\{ piePct: filtros\.pie, plazoAnios: filtros\.plazo \}\}/.test(cli)) F("2 · el pop-up de /explorar no abre con el pie y el plazo de los filtros");
+  if (!/const plazo = perfil\.plazoAnios == null \? PLAZO_DEPTOS : perfil\.plazoAnios >= 30 \? 30 : 25;/.test(codigo("src/lib/deptos/primeros-servidor.ts")) || !/const combinacion = \{ piePct: pie, plazoAnios: plazo, \.\.\.\(tasaPct != null \? \{ tasaPct \} : \{\}\) \};/.test(codigo("src/lib/deptos/primeros-servidor.ts"))) F("2 · la selección diaria no abre el pop-up con el plazo de la persona (o 30 sin él)");
+  // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la combinación del pop-up y de la selección lleva la tasa elegida.
+  if (!/combinacion=\{\{ piePct: filtros\.pie, plazoAnios: filtros\.plazo, tasaPct: filtros\.tasa \}\}/.test(cli)) F("2 · el pop-up de /explorar no abre con el pie y el plazo de los filtros");
   if (plazoDelWizard({} as never) !== 30 || plazoDelWizard({ plazoCredito: "20" } as never) !== 20) F(`2 · el wizard sin plazo no abre en 30: ${plazoDelWizard({} as never)}`);
   const acto2 = codigo("src/components/formulario-v4/screensActo2.tsx");
   if (!/const plazo = answers\.plazoCredito \|\| String\(PLAZO_POR_DEFECTO\);/.test(acto2) || !/a \$\{PLAZO_POR_DEFECTO\} años con la tasa de mercado de hoy/.test(acto2)) F("2 · la pantalla del plazo del wizard no arranca en la constante (o el supuesto de la cuota dice otro)");
@@ -150,7 +151,8 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   try {
     const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as { AvisoAntesDeAnalizar: FC<Record<string, unknown>> };
     const h = texto(dibujarPopup(createElement(AvisoAntesDeAnalizar, { depto: PIN, combinacion: { piePct: o.piePct, plazoAnios: o.plazoAnios }, finanzas: { tasa: 4.07, uf: 39000, arriendo: PIN.arriendo }, uso: { tipo: "con", n: 2, noVencen: false }, rutaCompra: "/x", alAnalizar() {}, alCancelar() {} })));
-    if (!h.includes("Con pie de 20 % y plazo de 30 años")) F(`2 · el pop-up con el origen sin plazo no dice «Con pie de 20 % y plazo de 30 años»: «${h.slice(0, 200)}»`);
+    // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la línea dice también la tasa (la de hoy, 4,07 %).
+    if (!h.replace(/ ([.,;])/g, "$1").includes("Con pie de 20 %, plazo de 30 años y tasa de 4,07 %")) F(`2 · el pop-up con el origen sin plazo no dice «Con pie de 20 %, plazo de 30 años y tasa de 4,07 %»: «${h.slice(0, 200)}»`);
   } catch (e) {
     F(`2 · el pop-up explotó: ${(e as Error).message}`);
   }
@@ -224,8 +226,12 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
       for (const [cosa, ok] of [["las comunas", />Comunas</.test(depto)], ["la tipología", />Tipología</.test(depto)], ["el precio", />Precio</.test(depto)], ["tradicional o renta corta", /data-explorar="tradicional"/.test(depto) && /data-explorar="renta-corta"/.test(depto)], ["solo con flujo positivo", /data-explorar="flujo-positivo"/.test(depto)], ["publicados", />Publicados</.test(depto)]] as const)
         if (!ok) F(`6 · ${que}, «El depto» no tiene ${cosa}`);
       if (/data-explorar="(pie|plazo|tasa)"/.test(depto) || !/data-explorar="pie"/.test(fin) || !/data-explorar="plazo"/.test(fin)) F(`6 · ${que}, pie y plazo no van en «Tu financiamiento»`);
-      const tasa = fin.slice(fin.indexOf('data-explorar="tasa"'));
-      if (!/data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio de los bancos<\/b><\/div>/.test(fin) || /<(select|input)/.test(tasa.slice(0, 160))) F(`6 · ${que}, la tasa no es la del motor, fija («4,07 % · promedio de los bancos»)`);
+      // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con cuenta la tasa se elige: «La de hoy (4,07 %)» —la del motor— y
+      // la lista (TASA-EDITABLE); sin cuenta, cerrada con la del motor, y tocarla pide registro.
+      const tasaOk = sinCuenta
+        ? /<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio de los bancos<\/b><\/button>/.test(fin)
+        : /<select[^>]*data-explorar="tasa"[^>]*><option value="" selected="">La de hoy \(4,07 %\)<\/option>/.test(fin);
+      if (!tasaOk) F(`6 · ${que}, la tasa de «Tu financiamiento» no parte de la del motor (4,07 %)`);
       if (sinCuenta === /data-explorar="mi-busqueda"/.test(h)) F(`6 · ${que}, «Usar mi búsqueda» ${sinCuenta ? "aparece" : "no está dentro de Filtros"}`);
     }
   }
@@ -353,3 +359,5 @@ if (require.main === module) {
 // En el mismo runner, los predicados reescritos de otros tiers (cada uno con su acta en su archivo): CONVIENEN-UNO C1–C13,
 // EXPLORAR-PORTAL P1–P8, PUERTA-E E1–E5, PUERTA-B B1–B4, EXPLORAR X1–X3, DEPTOS-CONTEO D1, PERFIL-OFERTA O1–O2 y
 // PUERTA-B-DASHBOARD DB1: 104 de 104 en ROJO.
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X9 y X10 —Filtros con «La de hoy» fija y el pop-up del mapa sin la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

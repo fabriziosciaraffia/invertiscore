@@ -175,6 +175,7 @@ import { runPuertaETier } from "./puerta-e-catch-test";
 import { runLandingMapaTier } from "./landing-mapa-catch-test";
 import { runConvienenUnoTier } from "./convienen-uno-catch-test";
 import { runExplorarRecorridoTier } from "./explorar-recorrido-catch-test";
+import { runTasaEditableTier } from "./tasa-editable-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -747,6 +748,10 @@ function printSeed(r: SeedReport) {
   // bloques con la tasa del motor, la vuelta del registro a la tarjeta desbloqueada sin pop-up, las flechas del PC y los
   // mapas en oscuro. ──
   totalHard += (await runExplorarRecorridoTier()).hard;
+  // Tier TASA-EDITABLE (30-oct-2026, 0 tokens; §2 lee una fila real): la tasa elegida en Filtros, la hoja, el pop-up y la
+  // portada; lo calculado con ella se guarda con la tasa en la clave; el perfil con tasa la usa en el semanal, la selección y
+  // el informe; «La de hoy» sigue al motor; «explorar_tasa». ──
+  totalHard += (await runTasaEditableTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
