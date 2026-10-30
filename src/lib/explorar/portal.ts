@@ -3,7 +3,7 @@
 // pura: los filtros, la URL, el orden, los pines compactos y los textos. Sin servidor ni navegador (la prueba el tier
 // EXPLORAR-PORTAL). Reemplaza la entrada con el perfil del /explorar del 23-oct.
 //
-//   · LA VISTA GLOBAL AL ENTRAR (A): todo Gran Santiago, arriendo tradicional, pie 20 % y 25 años, todas las comunas,
+//   · LA VISTA GLOBAL AL ENTRAR (A): todo Gran Santiago, arriendo tradicional, el financiamiento por defecto (pie 20 % y 30 años), todas las comunas,
 //     tipologías y precios, solo los Comprar: los mismos supuestos del número de anoche (/deptos). NO ABRE CON EL PERFIL:
 //     «Mi búsqueda» lo aplica de una vez, si la persona lo toca.
 //   · LOS FILTROS (B) se aplican en el navegador sobre el universo cargado —el número de «Ver N deptos» se actualiza al
@@ -15,6 +15,7 @@
 //     azul con «✓ Analizado»; los aparecidos en las últimas 24 horas, «Nuevo hoy».
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { MAX_COMUNAS_PERFIL, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PLAN_ANALISIS_MES, PLAN_PRECIO_CLP, RUTA_PLAN } from "@/lib/planes";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
@@ -47,7 +48,7 @@ export interface FiltrosPortal {
 
 /** LA VISTA GLOBAL: lo que abre /explorar sin nada en la URL. Los supuestos del número de anoche. */
 export const FILTROS_GLOBALES: FiltrosPortal = {
-  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: 20, plazo: 25, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
+  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
 };
 export const ORDEN_POR_DEFECTO: OrdenPortal = "puntaje";
 export const ORDENES: ReadonlyArray<{ id: OrdenPortal; etiqueta: string }> = [
@@ -289,72 +290,48 @@ export function textoPin(p: Pick<PinMapa, "flujo" | "alta">, o: { analizado: boo
 /** «4,07»: la tasa con coma y hasta dos decimales. */
 export const tasaTexto = (t: number): string => t.toLocaleString("es-CL", { maximumFractionDigits: 2 });
 
-/** «pie 20 %, 25 años y tasa 4,07 %»: el crédito con que se calcula; sin la tasa, «pie 20 % y 25 años». */
-export function creditoDe(f: Pick<FiltrosPortal, "pie" | "plazo">, tasa: number | null): string {
-  return tasa != null && tasa > 0 ? `pie ${f.pie} %, ${f.plazo} años y tasa ${tasaTexto(tasa)} %` : `pie ${f.pie} % y ${f.plazo} años`;
-}
-
-/** «Con pie 20 %, 25 años y tasa 4,07 %»: la línea chica bajo el número del mapa, con y sin cuenta (30-oct-2026). El pie y el
- *  plazo son los de los filtros (si la persona los cambia, los suyos); la tasa, la del motor (portal-cache.ts › tasaDelMotor),
- *  nunca escrita a mano. En renta corta, «Renta corta · con pie…». A su lado, «¿Cómo se calcula?» (COMO_SE_CALCULA). */
-export function lineaSupuestos(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo">, tasa: number | null): string {
-  return f.modalidad === "str" ? `Renta corta · con ${creditoDe(f, tasa)}` : `Con ${creditoDe(f, tasa)}`;
-}
-
-/** La tasa del motor y el día en que el cron del Banco Central la revisó por última vez («29 de octubre»). La lee el
- *  servidor (portal-cache.ts › tasaDelMotor) y la baja a /explorar. */
+/** La tasa del motor (config.tasa_hipotecaria), que el servidor lee (portal-cache.ts › tasaDelMotor) y baja a /explorar. */
 export interface TasaDelMotor {
   tasa: number;
-  revisada: string | null;
 }
 
-/** «29 de octubre»: el día (en Santiago) en que el cron del Banco Central revisó la tasa (`config.updated_at`, en UTC). */
-export function fechaDeRevision(updatedAt: string | null | undefined): string | null {
-  if (!updatedAt) return null;
-  const s = String(updatedAt).trim().replace(" ", "T");
-  const d = new Date(/[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" }) : null;
-}
-
-/** LA HOJA «¿CÓMO SE CALCULA?» (30-oct-2026, con y sin cuenta): cuatro ideas y «Entendido». La frase de «conviene» es la de
- *  Fabrizio (30-oct-2026), escrita sobre la regla del motor (analysis.ts › evalVeredicto): Comprar es el Franco Score desde
- *  70, o el depto que se paga solo (flujo ≥ 0, rentabilidad neta ≥ 4 % y no sobre el precio de su zona), y ninguna señal
- *  grave lo baja. «Algunos te piden poner un poco cada mes» porque 1.113 de los 5.176 Comprar con pie 20 % y 25 años tienen
- *  flujo negativo (medido el 30-oct-2026): dicho antes de que la persona lo vea en una tarjeta. Sin cuenta el flujo de la
- *  tarjeta va borroso, así que esa frase dice «con tu cuenta gratis». */
+/** LA HOJA «¿CÓMO SE CALCULA?» (30-oct-2026; el texto es el del recorrido real de Fabrizio del 30-oct): tres párrafos y
+ *  «Entendido», con y sin cuenta. Los números salen de la constante del financiamiento por defecto (deptos/estandar.ts) y del
+ *  motor (la tasa), nunca escritos a mano. «Un depto lleva [✓ Comprar]» es el chip de siempre (ChipVeredicto), con la regla
+ *  del motor (analysis.ts › evalVeredicto): el Franco Score desde 70, o el depto que se paga solo (flujo ≥ 0, rentabilidad
+ *  neta ≥ 4 % y no sobre el precio de su zona), y ninguna señal grave lo baja. «Algunos te piden poner un poco cada mes»
+ *  porque uno de cada cinco Comprar tiene flujo negativo (1.113 de 5.176, medido el 30-oct-2026). Sin cuenta el flujo de la
+ *  tarjeta va borroso: esa frase dice «con tu cuenta gratis», y cambiar el perfil pide registrarse. */
 export const COMO_SE_CALCULA = {
   enlace: "¿Cómo se calcula?",
   titulo: "¿Cómo se calcula?",
-  noche: (f: Pick<FiltrosPortal, "pie" | "plazo">, tasa: number | null) =>
-    `Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un crédito de ${creditoDe(f, tasa)}.`,
-  conviene: "Que convenga quiere decir que Franco le da Comprar: su nota de 1 a 100 llega a 70, o el arriendo lo paga solo sin estar caro para su zona. Y en ningún caso tiene señales graves, como perder mucha plata todos los meses.",
-  poner: (sinCuenta: boolean) =>
-    sinCuenta ? "Algunos te piden poner un poco cada mes: con tu cuenta gratis, cada tarjeta te dice cuánto." : "Algunos te piden poner un poco cada mes: cada tarjeta te dice cuánto.",
-  tasa: (revisada: string | null) =>
-    `La tasa es el promedio de los créditos hipotecarios en UF que dieron los bancos el último mes, según el Banco Central. Franco la revisa cada mañana${revisada ? `; la última vez, el ${revisada}` : ""}.`,
-  otroPie: "Con otro pie o plazo el resultado cambia. Con cuenta lo ajustas en Filtros, y siempre puedes cambiarlo antes de analizar.",
+  estandar: (tasa: number | null) =>
+    `Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un perfil de búsqueda estándar: pie de ${PIE_POR_DEFECTO} %, crédito a ${PLAZO_POR_DEFECTO} años y ${
+      tasa != null && tasa > 0 ? `tasa de ${tasaTexto(tasa)} %, el promedio` : "la tasa promedio"
+    } de los créditos hipotecarios según el Banco Central.`,
+  cambiar: { antes: "Puedes cambiar ese perfil en ", fuerte: "Filtros", despues: (sinCuenta: boolean) => (sinCuenta ? ", registrándote gratis con tu correo." : ".") },
+  chip: {
+    antes: "Un depto lleva ",
+    despues: " cuando su nota de 1 a 100 llega a 70, o cuando el arriendo lo paga solo sin estar caro para su zona. Y nunca tiene señales graves, como perder mucha plata todos los meses. Algunos te piden poner un poco cada mes: ",
+  },
+  cuanto: (sinCuenta: boolean) => (sinCuenta ? "con tu cuenta gratis, cada tarjeta te dice cuánto." : "cada tarjeta te dice cuánto."),
   boton: "Entendido",
 } as const;
 
-/** Dónde: «en Gran Santiago», «en Ñuñoa», «en Ñuñoa y Santiago», «en tus 3 comunas», «en esta zona». */
-export function dondeDe(f: Pick<FiltrosPortal, "comunas" | "zona">): string {
-  if (f.zona) return "en esta zona";
-  if (f.comunas.length === 0) return "en Gran Santiago";
-  if (f.comunas.length === 1) return `en ${f.comunas[0]}`;
-  if (f.comunas.length === 2) return `en ${f.comunas[0]} y ${f.comunas[1]}`;
-  return `en tus ${f.comunas.length} comunas`;
-}
-
-/** «4.807 convienen en Gran Santiago»: el número del mapa. */
-export function numeroDelMapa(n: number, f: Pick<FiltrosPortal, "comunas" | "zona">): string {
-  return `${miles(n)} ${n === 1 ? "conviene" : "convienen"} ${dondeDe(f)}`;
-}
-
-/** «4.807 deptos que convienen»: la hoja cerrada y la cabecera de la lista. */
-export function tituloLista(n: number): string {
+/** «4.770 deptos» (la barra de abajo y la cabecera de la lista, con el chip ✓ Comprar al lado); sin ninguno, la frase. */
+export function deptosN(n: number): string {
   if (n === 0) return "Ninguno conviene con estos filtros";
-  return `${miles(n)} ${n === 1 ? "depto que conviene" : "deptos que convienen"}`;
+  return n === 1 ? "1 depto" : `${miles(n)} deptos`;
 }
+
+/** La píldora negra del PC (30-oct-2026): «Ver lista · 4.770» y el chip; con cero, lo mismo que la barra del teléfono. */
+export function pildoraLista(n: number): string {
+  return `Ver lista · ${n > 0 ? miles(n) : deptosN(n)}`;
+}
+
+// (30-oct-2026, recorrido real de Fabrizio) Se retiraron con la tarjeta del número `numeroDelMapa` («4.807 convienen en Gran
+// Santiago»), `tituloLista` y `dondeDe` («en Gran Santiago», que solo leían esas dos): abajo y en la lista va `deptosN` con el
+// chip ✓ Comprar.
 
 /** «Ver 1.236 deptos»: el botón de la hoja de filtros. */
 export function botonVer(n: number | null): string {
@@ -365,7 +342,6 @@ export function botonVer(n: number | null): string {
 
 /** «☰ Filtros · 5». */
 export const etiquetaFiltros = (f: FiltrosPortal): string => (filtrosActivos(f) ? `${PORTAL_COPY.filtros} · ${filtrosActivos(f)}` : PORTAL_COPY.filtros);
-export const etiquetaOrden = (o: OrdenPortal): string => (o === ORDEN_POR_DEFECTO ? PORTAL_COPY.ordenar : ORDENES.find((x) => x.id === o)?.etiqueta ?? PORTAL_COPY.ordenar);
 
 // ── «MI BÚSQUEDA» Y «AVÍSAME DE NUEVOS» ─────────────────────────────────────
 /** «Mi búsqueda»: el perfil de la persona aplicado de una vez —comunas, tipología, rango, pie, plazo y modalidad—, sobre la
@@ -403,7 +379,7 @@ export function perfilDeFiltros(f: FiltrosPortal): { ok: true; cambios: { comuna
   return { ok: true, cambios: { comunas: [...f.comunas], dormitorios: dormitoriosDePerfil(f.tipologias), precioMinUf: ufMin, precioMaxUf: ufMax, piePct: f.pie, plazoAnios: f.plazo, modalidad: f.modalidad } };
 }
 
-/** Una búsqueda en una línea, para la confirmación: «Ñuñoa y Santiago · 1D y 2D · UF 1.500 a 3.000 · pie 20 % · 25 años ·
+/** Una búsqueda en una línea, para la confirmación: «Ñuñoa y Santiago · 1D y 2D · UF 1.500 a 3.000 · pie 20 % · 30 años ·
  *  arriendo tradicional». */
 export function lineaBusqueda(b: { comunas: readonly string[]; dormitorios: readonly number[]; precioMinUf: number | null; precioMaxUf: number | null; piePct: number | null; plazoAnios: number | null; modalidad: ModalidadPortal | null }): string {
   const y = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
@@ -435,7 +411,6 @@ export function lineaPlan(hechos: number, suscrito: boolean): { texto: string; h
 export const PORTAL_COPY = {
   filtros: "Filtros",
   ordenar: "Ordenar",
-  miBusqueda: "Mi búsqueda",
   sinMiBusqueda: "Todavía no tienes una búsqueda guardada.",
   buscarZona: "Buscar en esta zona",
   verLista: "Ver lista",
@@ -467,6 +442,16 @@ export const PORTAL_COPY = {
   reintentar: "Reintentar",
   sinMapa: "El mapa no cargó, pero la lista es la misma.",
   vacia: "Con estos filtros ninguno conviene hoy. Prueba con otra comuna, otro precio u otro pie.",
+  /** Filtros en dos bloques (30-oct-2026): el depto y el financiamiento; la tasa, fija por ahora (la del motor). */
+  elDepto: "El depto",
+  tuFinanciamiento: "Tu financiamiento",
+  tasa: "Tasa",
+  tasaFija: (t: number) => `${tasaTexto(t)} % · promedio de los bancos`,
+  usarMiBusqueda: "Usar mi búsqueda",
+  /** La vuelta del registro desde un pin (30-oct-2026): la tarjeta desbloqueada con su banda, sin abrir el pop-up sola. */
+  vuelta: { listo: "Listo, ya tienes tu cuenta.", regalo: "Tu análisis de regalo está listo para este depto.", analizarRegalo: "Analizar este · usa tu regalo" },
+  anterior: "Depto anterior",
+  siguiente: "Depto siguiente",
   /** La confirmación de «Avísame de nuevos». */
   aviso: {
     titulo: "Avísame de nuevos",

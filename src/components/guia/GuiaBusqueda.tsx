@@ -244,6 +244,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it, true); }}
           // La guía (30-sep-2026) analiza con la combinación que mostró: sin «Cambiar» (no hay `recalcular`).
           alCancelar={() => setConfirmar(null)}
+          avisoId={confirmar.it.avisoId}
         />
       )}
     </section>

@@ -2,18 +2,19 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPLORAR COMO PORTAL en el navegador (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html).
-//   · A · AL ENTRAR, LA VISTA GLOBAL: todo Gran Santiago con los supuestos del número de anoche; bajo el número del mapa,
-//     la línea chica con esos supuestos. Arriba una sola fila: «Filtros», «Ordenar» y «Mi búsqueda» (el perfil de una
-//     vez). Al mover el mapa, «Buscar en esta zona». Abajo la hoja cerrada: «N deptos que convienen · Ver lista».
+//   · A · AL ENTRAR, LA VISTA GLOBAL: todo Gran Santiago con el financiamiento por defecto. Desde el 30-oct-2026 (recorrido
+//     real de Fabrizio): arriba solo «Filtros» y, a la derecha y en texto, «ⓘ ¿Cómo se calcula?»; sin la tarjeta del número
+//     sobre el mapa. Al mover el mapa, «Buscar en esta zona». Abajo, «N deptos ✓ Comprar · Ver lista»; en el PC, una píldora
+//     negra flotante al centro, «Ver lista · N ✓ Comprar», espejo del botón «Mapa» de la lista. «Mi búsqueda» vive en Filtros.
 //   · B · «FILTROS», una hoja completa (hoja-filtros.tsx): el número de «Ver N deptos» se cuenta acá, sobre el universo
 //     cargado, a cada toque. Los filtros viven en la URL; NO TOCAN EL PERFIL.
 //   · C · AL TOCAR UN PIN, una tarjeta chica sobre el mapa (tarjeta-pin.tsx), que se desliza entre los cercanos.
-//   · D · «VER LISTA» (lista-portal.tsx): ordenable, con miniatura, el corazón, «Avísame de nuevos» y el botón «Mapa».
+//   · D · «VER LISTA» (lista-portal.tsx): una hoja en el teléfono, un panel a la derecha en el PC; «Ordenar» vive solo ahí.
 //   · EL UNIVERSO llega después del primer pintado (el LCP es el mapa quieto que dibuja el servidor): con un pie y un plazo
 //     de la noche, todo Gran Santiago en un pedido; si no, de a una comuna, mostrando lo que va llegando.
 //   · SIN SALDO SE EXPLORA TODO; el cobro aparece al tocar «Analizar este», con el pop-up de compra de siempre.
 //   · SIN CUENTA (29-oct-2026, la puerta E, mockup 6-puerta-e): la primera vez, la bienvenida; el universo llega SIN CIFRAS
-//     (/api/explorar/abierto) y la tarjeta y la lista las muestran borrosas; pie y plazo en 20 % y 25 años. «Regístrate gratis
+//     (/api/explorar/abierto) y la tarjeta y la lista las muestran borrosas; pie y plazo en el financiamiento por defecto. «Regístrate gratis
 //     para ver este depto», el corazón, «Avísame de nuevos», pie y plazo, «Solo flujo positivo» y ordenar por flujo o cap rate
 //     abren la hoja de registro (hoja-registro.tsx), y al terminar el alta se hace eso mismo, en el mismo pin
 //     (abierto.ts › accionDeVuelta). Con Google o el enlace del correo, el alta corre acá al volver.
@@ -32,13 +33,14 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, descompactar, EVENTOS_PORTAL, etiquetaFiltros, etiquetaOrden, filtrar, filtrosCambiados, lineaPlan, lineaSupuestos,
-  lineaBusqueda, numeroDelMapa, ordenar, ORDENES, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, tituloLista, universoDeLaNoche, urlDePortal,
+  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, deptosN, descompactar, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, pildoraLista,
+  lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, universoDeLaNoche, urlDePortal,
   type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
+import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import {
   accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS,
   type MotivoRegistro, type OrigenExplorar, type PedidoRegistro,
@@ -136,7 +138,6 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [sel, setSel] = useState<string | null>(abrir);
   const [carrusel, setCarrusel] = useState<string[]>([]);
   const [hojaFiltros, setHojaFiltros] = useState(false);
-  const [menuOrden, setMenuOrden] = useState(false);
   const [zonaPendiente, setZonaPendiente] = useState<Caja | null>(null);
   const [sinBusqueda, setSinBusqueda] = useState(false);
   const [guardados, setGuardados] = useState<Set<string>>(() => new Set(cuenta.guardados));
@@ -148,13 +149,15 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [avisame, setAvisame] = useState(false);
   const [registro, setRegistro] = useState<{ pedido: PedidoRegistro; filtros: FiltrosPortal; orden: OrdenPortal } | null>(null);
   const [bienvenida, setBienvenida] = useState(false);
-  // «¿Cómo se calcula?» (30-oct-2026): la hoja corta bajo la línea del número, con y sin cuenta.
+  // «¿Cómo se calcula?» (30-oct-2026): la hoja corta del enlace de la barra de arriba, con y sin cuenta.
   const [calculo, setCalculo] = useState(false);
   const abrirCalculo = () => {
     setCalculo(true);
     posthog?.capture(EVENTOS_PORTAL.comoSeCalcula, { sin_cuenta: sinCuenta, pie: filtros.pie, plazo: filtros.plazo, modalidad: filtros.modalidad, tasa: inicial.tasa?.tasa ?? null });
   };
   const [aviso, setAviso] = useState<string | null>(null);
+  // Recién registrada desde un pin (30-oct-2026): esa tarjeta vuelve desbloqueada, con su banda; el pop-up lo abre la persona.
+  const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean } | null>(null);
   const vivo = useRef(true);
   const uf = cuenta.finanzas.uf;
 
@@ -170,7 +173,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   /** Trae lo que falte para unos filtros: la noche entera en un pedido, o lo calculado de a una comuna. */
   const asegurar = useCallback(async (f: FiltrosPortal) => {
     const clave = claveUniverso(f);
-    // Sin cuenta, el universo sin cifras (pie 20 % y 25 años): otra ruta, pública y en la caché del CDN.
+    // Sin cuenta, el universo sin cifras (el financiamiento por defecto): otra ruta, pública y en la caché del CDN.
     const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}`;
     setFallo(false);
     try {
@@ -259,7 +262,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
 
   /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
   function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar") {
-    // Sin cuenta, pie 20 % y 25 años, y sin «Solo flujo positivo» (piden registro).
+    // Sin cuenta, el financiamiento por defecto, y sin «Solo flujo positivo» (piden registro).
     const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
     setFiltros(f);
@@ -273,13 +276,13 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   }
   function cambiarOrden(o: OrdenPortal) {
     // Sin cuenta, ordenar por mayor flujo o cap rate pide registro; al terminar, se ordena así.
-    if (sinCuenta && ORDENES_CON_CIFRAS.includes(o)) { setMenuOrden(false); pedirRegistro("orden", visibles[0] ?? null, { orden: o }); return; }
+    if (sinCuenta && ORDENES_CON_CIFRAS.includes(o)) { pedirRegistro("orden", visibles[0] ?? null, { orden: o }); return; }
     setOrden(o);
-    setMenuOrden(false);
     ponerEnUrl(filtros, o);
     vistaCambio(filtros, o, "orden", universo ? visibles.length : null);
   }
   function miBusqueda() {
+    setHojaFiltros(false);
     if (!cuenta.miBusqueda) { setSinBusqueda(true); return; }
     aplicar(cuenta.miBusqueda, "mi_busqueda");
   }
@@ -474,7 +477,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     vuelta.current = null;
     const it = v.avisoId ? universo.find((p) => p.avisoId === v.avisoId) ?? null : null;
     if (it) { setCarrusel(cercanos(visibles, it.avisoId).map((p) => p.avisoId)); setSel(it.avisoId); }
-    if (v.motivo === "analizar" && it && !cuenta.analizados[it.avisoId]) pedirAnalisis(it);
+    // (30-oct-2026, recorrido real de Fabrizio) Desde un pin vuelve a SU tarjeta, desbloqueada y con la banda; el pop-up de
+    // «Analizar este» no se abre solo: lo abre la persona.
+    if (it && (v.motivo === "analizar" || v.motivo === "guardar")) setRecien({ avisoId: it.avisoId, regalo: usaRegalo(cuenta.saldo) });
     if (v.motivo === "guardar" && it && !guardados.has(it.avisoId)) void alternarGuardado(it.avisoId, "tarjeta");
     if (v.motivo === "pie-plazo") setHojaFiltros(true);
     // «Avísame»: la cuenta nueva ya nació con estos filtros como búsqueda; si la cuenta ya existía, se confirma el reemplazo.
@@ -486,31 +491,22 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listaVuelta, universo]);
   const enCarrusel = carrusel.map((id) => porId.get(id)).filter((p): p is PinMapa => !!p && !caidos.includes(p.avisoId));
+  // Lo de abajo: «N deptos» con el chip; mientras se calcula, el avance (antes lo decía la tarjeta del número).
+  const numeroAbajo = calculando ? (progreso ? PORTAL_COPY.calculandoComunas(progreso.hechas, progreso.total) : PORTAL_COPY.calculando) : total == null ? PORTAL_COPY.calculando : deptosN(total);
+  const conChip = !calculando && total != null && total > 0;
   const tarjeta = vista === "mapa" && sel && enCarrusel.some((p) => p.avisoId === sel);
 
   return (
     <div className="ex" data-explorar="cliente" data-vista={vista} data-calculando={calculando ? "1" : undefined}>
-      {/* ── la fila de arriba ── */}
-      <div className="ex-barra" role="toolbar" aria-label="Filtros y orden">
+      {/* ── la fila de arriba: «Filtros» y, a la derecha y en texto, «¿Cómo se calcula?» (30-oct-2026) ── */}
+      <ChipVeredictoTokens />
+      <div className="ex-barra" role="toolbar" aria-label="Filtros">
         <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
           <span aria-hidden="true">☰</span> {etiquetaFiltros(filtros)}
         </button>
-        <div className="ex-orden">
-          <button type="button" className="ex-boton ex-boton-suave" aria-haspopup="menu" aria-expanded={menuOrden} data-explorar="ordenar" onClick={() => setMenuOrden((x) => !x)}>
-            {etiquetaOrden(orden)} <span aria-hidden="true">▾</span>
-          </button>
-          {menuOrden && (
-            <>
-              <div className="ex-velo" onClick={() => setMenuOrden(false)} aria-hidden="true" />
-              <div className="ex-menu" role="menu" data-explorar="menu-orden">
-                {ORDENES.map((o) => (
-                  <button key={o.id} type="button" role="menuitemradio" aria-checked={orden === o.id} className="ex-menu-op" onClick={() => cambiarOrden(o.id)}>{o.etiqueta}</button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-        {!sinCuenta && <button type="button" className="ex-boton ex-boton-suave" data-activo={enMiBusqueda ? "1" : undefined} data-explorar="mi-busqueda" onClick={miBusqueda}>{PORTAL_COPY.miBusqueda}</button>}
+        <button type="button" className="ex-como" data-explorar="como-se-calcula" onClick={abrirCalculo}>
+          <span className="ex-como-i" aria-hidden="true">ⓘ</span> {COMO_SE_CALCULA.enlace}
+        </button>
       </div>
       {aviso && (
         <p className="ex-aviso" role="status" data-explorar="aviso">
@@ -525,9 +521,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
 
       <div className="ex-cuerpo">
         {/* ── el mapa (después del primer pintado) ──
-            Con la lista abierta el mapa NO se esconde: la lista lo cubre entero. Escondido (display: none) el mapa de Google se
-            queda sin tamaño y al volver se descuadra (QA en WebKit 390, 28-oct-2026: «Buscar en esta zona» quedaba a 50 km). */}
-        <div className="ex-mapa-wrap" data-mapa={mapa} aria-hidden={vista === "lista" ? true : undefined}>
+            Con la lista abierta el mapa NO se esconde: en el teléfono la hoja lo cubre casi entero y en el PC sigue a la vista y
+            se puede usar. Escondido (display: none) el mapa de Google se queda sin tamaño y al volver se descuadra (QA en WebKit
+            390, 28-oct-2026: «Buscar en esta zona» quedaba a 50 km). */}
+        <div className="ex-mapa-wrap" data-mapa={mapa}>
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar
               pines={visibles}
@@ -543,16 +540,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
-          {zonaPendiente ? (
+          {zonaPendiente && (
             <button type="button" className="ex-zona" data-explorar="buscar-zona" onClick={() => aplicar({ ...filtros, zona: zonaPendiente }, "zona")}>{PORTAL_COPY.buscarZona}</button>
-          ) : (
-            <div className="ex-numero" data-explorar="numero" aria-live="polite">
-              <span className="ex-numero-n">{calculando ? (progreso ? PORTAL_COPY.calculandoComunas(progreso.hechas, progreso.total) : PORTAL_COPY.calculando) : total != null ? numeroDelMapa(total, filtros) : PORTAL_COPY.calculando}</span>
-              <span className="ex-numero-s" data-explorar="supuestos">
-                {lineaSupuestos(filtros, inicial.tasa?.tasa ?? null)} ·{" "}
-                <button type="button" className="ex-numero-como" data-explorar="como-se-calcula" onClick={abrirCalculo}>{COMO_SE_CALCULA.enlace}</button>
-              </span>
-            </div>
           )}
           {fallo && (
             <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">
@@ -573,15 +562,21 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
               alGuardar={(id) => void alternarGuardado(id, "tarjeta")}
               alAnalizar={pedirAnalisis}
               sinCuenta={sinCuenta}
+              recien={recien}
             />
-          ) : (
-            <button type="button" className="ex-hoja" data-explorar="hoja" onClick={() => setVista("lista")}>
-              <span className="ex-asa" aria-hidden="true" />
-              <span className="ex-hoja-fila">
-                <span className="ex-hoja-t" data-explorar="titulo-hoja">{calculando || total == null ? PORTAL_COPY.calculando : tituloLista(total)}</span>
-                <span className="ex-hoja-ver">{PORTAL_COPY.verLista}</span>
-              </span>
-            </button>
+          ) : vista === "mapa" && (
+            <>
+              <button type="button" className="ex-hoja" data-explorar="hoja" onClick={() => setVista("lista")}>
+                <span className="ex-asa" aria-hidden="true" />
+                <span className="ex-hoja-fila">
+                  <span className="ex-hoja-t" data-explorar="titulo-hoja">{numeroAbajo}{conChip && <> <ChipVeredicto v="COMPRAR" /></>}</span>
+                  <span className="ex-hoja-ver">{PORTAL_COPY.verLista}</span>
+                </span>
+              </button>
+              <button type="button" className="ex-pildora-lista" data-explorar="ver-lista" onClick={() => setVista("lista")}>
+                {conChip ? pildoraLista(total!) : `${PORTAL_COPY.verLista} · ${numeroAbajo}`}{conChip && <> <ChipVeredicto v="COMPRAR" variante="sobre-fondo" /></>}
+              </button>
+            </>
           )}
         </div>
 
@@ -599,7 +594,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
             alAbrir={abrirDesdeLista}
             alGuardar={(id) => void alternarGuardado(id, "lista")}
             alAvisame={alAvisame}
-            alMapa={() => setVista("mapa")}
+            alCerrar={() => setVista("mapa")}
             sinCuenta={sinCuenta}
           />
         )}
@@ -608,6 +603,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       {hojaFiltros && (
         <HojaFiltros
           filtros={filtros}
+          tasa={inicial.tasa}
+          miBusqueda={sinCuenta ? null : { activa: enMiBusqueda, alUsar: miBusqueda }}
           contar={contar}
           asegurar={(f) => void asegurar(f)}
           alAplicar={(f) => { setHojaFiltros(false); aplicar(f, "filtros"); }}
@@ -633,7 +630,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
       )}
       {bienvenida && total != null && <Bienvenida n={inicial.convienen ?? inicial.n ?? total} alCerrar={() => setBienvenida(false)} />}
-      {calculo && <HojaCalculo filtros={filtros} tasa={inicial.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
+      {calculo && <HojaCalculo tasa={inicial.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
 
       {confirmar && (
         <AvisoAntesDeAnalizar
@@ -651,6 +648,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           cambio={filtros.modalidad === "str" ? null : { recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          avisoId={confirmar.it.avisoId}
         />
       )}
       {noDa && (

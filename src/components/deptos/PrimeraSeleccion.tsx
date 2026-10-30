@@ -264,6 +264,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           cambio={{ recalcular: (combo) => recalcularAviso(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          avisoId={confirmar.it.avisoId}
         />
       )}
     </section>

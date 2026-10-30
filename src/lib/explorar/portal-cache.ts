@@ -3,7 +3,7 @@
 // para el mapa: los dos leen la MISMA entrada, así el número no salta cuando llegan los pines. Una falla no se guarda.
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
-import { compactar, cuantosConvienen, fechaDeRevision, FILTROS_GLOBALES, type TasaDelMotor, type UniversoCompacto } from "./portal";
+import { compactar, cuantosConvienen, FILTROS_GLOBALES, type TasaDelMotor, type UniversoCompacto } from "./portal";
 import { universoDeLaNoche } from "./portal-servidor";
 
 const cacheado = unstable_cache(
@@ -16,7 +16,7 @@ export function universoDeLaNocheCacheado(pie: number, plazo: number): Promise<U
   return cacheado(pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25);
 }
 
-/** EL NÚMERO DE «CONVIENEN» EN TODO EL SITIO (30-oct-2026): los deptos del mapa de la vista global (pie 20 %, 25 años, todo
+/** EL NÚMERO DE «CONVIENEN» EN TODO EL SITIO (30-oct-2026): los deptos del mapa de la vista global (pie 20 %, 30 años, todo
  *  Gran Santiago), contados con `cuantosConvienen` sobre la misma entrada en caché que dibuja el mapa. Lo leen la landing, la
  *  portada de /deptos (su prueba) y, por ella, el botón del dashboard; /explorar y su bienvenida cuentan el mismo universo.
  *  Antes el dashboard y /deptos leían el resumen de la noche (`deptos_conteo`, otro universo: 4.767 contra 4.770). Null si
@@ -31,12 +31,12 @@ export async function convienenHoy(): Promise<number | null> {
 
 const tasaCacheada = unstable_cache(
   async (): Promise<TasaDelMotor | null> => {
-    const { data, error } = await createServiceClient().from("config").select("value, updated_at").eq("key", "tasa_hipotecaria").maybeSingle();
+    const { data, error } = await createServiceClient().from("config").select("value").eq("key", "tasa_hipotecaria").maybeSingle();
     if (error) throw new Error(`tasa del motor: ${error.message}`);
     const tasa = Number(data?.value);
-    return Number.isFinite(tasa) && tasa > 0 ? { tasa, revisada: fechaDeRevision(data?.updated_at as string | null | undefined) } : null;
+    return Number.isFinite(tasa) && tasa > 0 ? { tasa } : null;
   },
-  ["explorar-tasa-motor-v1"],
+  ["explorar-tasa-motor-v2"],
   { revalidate: 600 },
 );
 

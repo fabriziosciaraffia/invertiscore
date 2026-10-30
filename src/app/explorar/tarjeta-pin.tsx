@@ -7,8 +7,12 @@
 // y UF por m²; el corazón para guardar y «Analizar este», que abre el pop-up de siempre. Se desliza de lado entre los pines
 // cercanos (los puntos de abajo). SIN «visto publicado», SIN «revisado con pie y plazo», SIN caja gris: lo fija el tier
 // EXPLORAR-PORTAL.
+// EN EL PC (30-oct-2026, recorrido real de Fabrizio): flechas ‹ › a los costados para pasar entre los cercanos, y también con
+// las flechas del teclado. RECIÉN REGISTRADA desde un pin: la tarjeta de ese pin vuelve desbloqueada —las cifras pasan de
+// borrosas a nítidas— con la banda «Listo, ya tienes tu cuenta…» y el botón «Analizar este · usa tu regalo»; el pop-up lo
+// abre la persona, no se abre solo.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado } from "@/lib/carga-global";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -16,38 +20,14 @@ import { GUIA } from "@/lib/guia/copy";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "@/lib/explorar/explorar";
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
-import { CALLE_COPY, rutaImagenCalle } from "@/lib/explorar/calle";
+import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-/** Foto o mapa de cada aviso (la etiqueta «Vista de la calle» va solo con la foto). Se pide una vez por grupo de cercanos. */
-export function useCalle(ids: string[]): Record<string, "foto" | "mapa"> {
-  const [tipos, setTipos] = useState<Record<string, "foto" | "mapa">>({});
-  const clave = ids.join(",");
-  useEffect(() => {
-    if (!ids.length) return;
-    let vivo = true;
-    void fetch("/api/explorar/calle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) })
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((d: Record<string, "foto" | "mapa">) => { if (vivo) setTipos((t) => ({ ...t, ...d })); })
-      .catch(() => undefined);
-    return () => { vivo = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clave]);
-  return tipos;
-}
-
-/** La imagen de un depto: la de la calle o el mapa chico (la ruta decide y la sirve desde la caché). */
-export function ImagenDepto({ avisoId, tipo, clase, carga = "eager" }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy" }) {
-  return (
-    <span className={clase} data-explorar="imagen" data-calle={tipo ?? undefined}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={rutaImagenCalle(avisoId)} alt={tipo === "foto" ? CALLE_COPY.etiqueta : tipo === "mapa" ? CALLE_COPY.mapa : ""} loading={carga} decoding="async" width={96} height={96} />
-      {tipo === "foto" && <span className="ex-img-etq" data-explorar="vista-calle">{CALLE_COPY.etiqueta}</span>}
-    </span>
-  );
-}
+// La imagen del depto (la foto de la calle o el mapa chico, con su versión oscura) vive en components/guia/ImagenDepto.tsx:
+// la comparten la lista y el pop-up de «Analizar este».
+export { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 
 /** El corazón: guardar el depto (aparece en el dashboard, en «Guardados»). De contorno gris y, guardado, relleno en tinta
  *  —el negro de los botones—; el rojo queda para comprar, la oferta y el regalo (decisión de Fabrizio, 29-oct-2026). Un SVG
@@ -71,7 +51,7 @@ export function Borroso({ texto }: { texto: string }) {
 /** «Comprar · 84»: el veredicto (el color de la tríada) y el puntaje. */
 export const veredictoConPuntaje = (p: Pick<PinMapa, "veredicto" | "score">): string => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, sinCuenta = false }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, sinCuenta = false, recien = null }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -87,6 +67,8 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
   alAnalizar: (p: PinMapa) => void;
   /** Sin cuenta (estado C del mockup 6-puerta-e): el flujo, el cap rate y la UF por m² van borrosos y el botón pide registro. */
   sinCuenta?: boolean;
+  /** Recién registrada desde este pin (30-oct-2026): su tarjeta se desbloquea con la banda; `regalo`, si tiene el análisis de regalo. */
+  recien?: { avisoId: string; regalo: boolean } | null;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
@@ -112,23 +94,44 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
       if (p && p.avisoId !== seleccionado) { desdeAfuera.current = false; alCambiar(p.avisoId); }
     }, 90);
   };
+  // Escape la cierra; en el PC, las flechas del teclado pasan al depto anterior o al siguiente (no mientras se escribe).
+  const anterior = i > 0 ? pines[i - 1] : null;
+  const siguiente = i < pines.length - 1 ? pines[i + 1] : null;
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") alCerrar(); };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [alCerrar]);
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { alCerrar(); return; }
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+      if (e.key === "ArrowLeft" && anterior) { e.preventDefault(); alCambiar(anterior.avisoId); }
+      if (e.key === "ArrowRight" && siguiente) { e.preventDefault(); alCambiar(siguiente.avisoId); }
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [alCerrar, alCambiar, anterior, siguiente]);
 
   return (
     <section className="ex-tarjeta-wrap" aria-label="Depto elegido" data-explorar="tarjeta-pin">
+      {pines.length > 1 && (
+        <>
+          <button type="button" className="ex-flecha ex-flecha-izq" aria-label={PORTAL_COPY.anterior} disabled={!anterior} onClick={() => anterior && alCambiar(anterior.avisoId)} data-explorar="flecha-anterior">‹</button>
+          <button type="button" className="ex-flecha ex-flecha-der" aria-label={PORTAL_COPY.siguiente} disabled={!siguiente} onClick={() => siguiente && alCambiar(siguiente.avisoId)} data-explorar="flecha-siguiente">›</button>
+        </>
+      )}
       <div className="ex-tarjetas" ref={fila} onScroll={alDeslizar} data-explorar="carrusel">
         {pines.map((p) => {
           const informe = analizados[p.avisoId];
           const cap = capRatePct(p.arriendo, p.precioUF, uf);
           const m2 = ufPorM2(p.precioUF, p.m2);
           const neg = (p.flujo ?? 0) < 0;
+          const nueva = !sinCuenta && recien?.avisoId === p.avisoId;
           return (
-            <article key={p.avisoId} className="ex-tarjeta" data-explorar="tarjeta" data-aviso={p.avisoId} data-sel={p.avisoId === seleccionado ? "1" : undefined} aria-current={p.avisoId === seleccionado ? "true" : undefined}>
+            <article key={p.avisoId} className="ex-tarjeta" data-explorar="tarjeta" data-aviso={p.avisoId} data-sel={p.avisoId === seleccionado ? "1" : undefined} data-recien={nueva ? "1" : undefined} aria-current={p.avisoId === seleccionado ? "true" : undefined}>
               <div className="ex-tarjeta-caja">
+              {nueva && (
+                <p className="ex-recien" role="status" data-explorar="recien">
+                  <b>{PORTAL_COPY.vuelta.listo}</b>{recien.regalo ? ` ${PORTAL_COPY.vuelta.regalo}` : ""}
+                </p>
+              )}
               <div className="ex-tarjeta-fila">
                 <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" />
                 <div className="ex-tarjeta-datos">
@@ -162,7 +165,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                 <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{PORTAL_COPY.analizado} · {PORTAL_COPY.verInforme}</EnlaceCarga>
               ) : (
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
-                  {generando === p.avisoId ? GUIA.analizando : PORTAL_COPY.analizar}
+                  {generando === p.avisoId ? GUIA.analizando : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}
                 </button>
               )}
               {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}

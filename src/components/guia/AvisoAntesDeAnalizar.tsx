@@ -7,12 +7,12 @@
 // SEGÚN LOS MOCKUPS D1 Y D2 (23-oct-2026, `docs/puerta-b-mockups/4-ticket-y-popups.html`, decisión de Fabrizio):
 //   · D1, como se abre: la tarjeta gris del depto (comuna · tipología · m² · precio, el veredicto y el flujo, y «El
 //     informe completo incluye el enlace a la publicación, para que lo veas y contactes a quien lo vende»), «Con pie de
-//     20 % y plazo de 25 años · Cambiar», el dividendo y el retorno bruto, qué gasta («Usa tu análisis de regalo.»),
+//     20 % y plazo de 30 años · Cambiar», el dividendo y el retorno bruto, qué gasta («Usa tu análisis de regalo.»),
 //     «Analizar» y «Cancelar»;
 //   · D2, al tocar Cambiar: los selectores de pie y plazo; el veredicto SE RECALCULA AL TIRO (`cambio.recalcular`, POST
 //     /api/explorar/recalcular: la sonda del motor sobre la evaluación de la noche) y, si cambia, la tarjeta «Con pie 10 %
 //     este depto da Ajustar. Flujo mensual −$X de tu bolsillo. Con 20 % daba Comprar 88 y +$Y.» (textoCambio; en Signal
-//     Red solo si empeora), la casilla «Guardar 10 % y 25 años como mi perfil de búsqueda» y, si empeora, «Analizar igual».
+//     Red solo si empeora), la casilla «Guardar 10 % y 30 años como mi perfil de búsqueda» y, si empeora, «Analizar igual».
 //     NUNCA SE COBRA SIN MOSTRAR EL VEREDICTO RECALCULADO (bloqueaAnalizar): mientras recalcula o si no pudo, el botón no
 //     deja analizar. Lo elegido viaja en `alAnalizar` (EleccionAnalizar: la combinación y si guarda el perfil); quien lo
 //     monta guarda el perfil y analiza con esa combinación. Sin `cambio` (la guía, renta corta) no hay «Cambiar».
@@ -35,6 +35,7 @@ import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilida
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { AVISO_ANALIZAR, bloqueaAnalizar, derivadosAviso, lineaVeredicto, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
 import type { CondicionDepto } from "@/lib/guia/linea-depto";
+import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import "@/components/formulario-v4/wizard-v4.css";
 
 export interface EleccionAnalizar {
@@ -43,7 +44,10 @@ export interface EleccionAnalizar {
   guardarPerfil: boolean;
 }
 
-export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null }: {
+export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null }: {
+  /** El aviso (30-oct-2026, recorrido real de Fabrizio): su foto de la calle, o el mapa chico, va a la izquierda de la tarjeta
+   *  gris, en todas partes. Sin él, la tarjeta sola. */
+  avisoId?: string | null;
   /** La tarjeta gris: con la condición del aviso, «… 77 m² · Usado · UF 4.200» (28-oct-2026, linea-depto.ts). */
   depto: { comuna: string; tipologia: string | null; m2: number; precioUF: number; condicion?: CondicionDepto };
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
@@ -116,16 +120,20 @@ export function AvisoAntesDeAnalizar({ depto, combinacion, finanzas, uso, rutaCo
   const analizar = da?.empeora ? EXPLORAR_COPY.analizarIgual : AVISO_ANALIZAR.analizar;
 
   const conTicket = sin && !!compras?.pack.ticket;
+  const tipos = useCalle(avisoId ? [avisoId] : []);
   const cuerpo = (
     <div className="av" data-aviso={sin ? "sin" : editando ? "cambiar" : "ver"}>
       {/* SIN SALDO (mockup A): «No te quedan análisis.» grande y en rojo, la tarjeta gris del depto y, con el ticket vivo,
           la tarjeta roja de la oferta: «Solo para cuentas nuevas · vence mañana 11:17» y «3 análisis por $14.990 · $4.997
           cada uno». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
       {sin && <h2 id="modal-plausibilidad-titulo" className="av-sin-titulo" data-aviso="sin-titulo">{AVISO_ANALIZAR.tituloSin}</h2>}
+      <div className="av-tarjeta-fila">
+      {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" />}
       <div className="av-tarjeta">
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
         <span className={modalidad === "str" ? "av-incluye av-incluye-corta" : "av-incluye"} data-aviso="incluye">{incluye.antes}<b>{incluye.fuerte}</b>{incluye.despues}</span>
+      </div>
       </div>
       {conTicket && ticketVence && (
         <div className="av-ticket" data-aviso="ticket" data-vence={ticketVence}>

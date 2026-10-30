@@ -1,8 +1,8 @@
 /* ═════════════════════════════════════════════════════════════════════════════
    EXPLORAR COMO PORTAL (28-oct-2026, docs/puerta-b-mockups/5b-explorar-portal.html, estados A, B, C y D). Inter en todo;
-   tokens del chrome (--franco-*), claro y oscuro. En el teléfono el mapa ocupa la pantalla: la fila de arriba (Filtros,
-   Ordenar, Mi búsqueda), el número con sus supuestos sobre el mapa, la hoja cerrada abajo o la tarjeta del pin. La lista
-   reemplaza al mapa con el botón «Mapa» flotando. El rojo va en los pines (los que convienen, uso #7), en el flujo negativo
+   tokens del chrome (--franco-*), claro y oscuro. En el teléfono el mapa ocupa la pantalla: la fila de arriba («Filtros» y,
+   en texto, «¿Cómo se calcula?»: 30-oct-2026), la barra de abajo o la tarjeta del pin. La lista y Filtros suben como hojas
+   (en el PC, paneles a la derecha, con el mapa usable al lado). El rojo va en los pines (los que convienen, uso #7), en el flujo negativo
    y el error; Comprar y los ya analizados llevan el azul de la tríada; el corazón guardado, rojo como en el mockup.
    ═════════════════════════════════════════════════════════════════════════════ */
 /* Con el aviso de cookies a la vista, la pantalla se acorta su alto (AvisoCookies › --alto-aviso-cookies): si no, la barra tapa
@@ -22,12 +22,12 @@
 .ex-boton-suave { border-color: var(--franco-border-strong, var(--franco-border)); font-weight: 500; }
 .ex-boton[data-activo="1"] { background: var(--franco-text); border-color: var(--franco-text); color: var(--franco-card); }
 .ex-boton:focus-visible, .ex-chip:focus-visible, .ex-cta:focus-visible, .ex-enlace:focus-visible, .ex-corazon:focus-visible, .ex-zona:focus-visible, .ex-hoja:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
-.ex-orden { position: relative; flex: none; }
-.ex-menu { position: absolute; left: 0; top: 44px; z-index: 8; min-width: 190px; padding: 6px; border-radius: 14px; border: 1px solid var(--franco-border); background: var(--franco-card); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16); display: flex; flex-direction: column; }
-.ex-menu-op { text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: var(--franco-text); font-size: 14px; cursor: pointer; }
-.ex-menu-op[aria-checked="true"] { font-weight: 600; background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
-.ex-menu-op[aria-checked="true"]::after { content: " ✓"; }
-.ex-velo { position: fixed; inset: 0; z-index: 7; }
+/* «ⓘ ¿Cómo se calcula?» (30-oct-2026): a la derecha y separado, en texto y no como chip, para que se lea distinto de lo que
+   se opera; con su alto para el dedo. */
+.ex-como { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 2px; border: 0; background: none; color: var(--franco-text-secondary);
+  font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ex-como-i { font-size: 15px; text-decoration: none; }
+.ex-como:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; border-radius: 6px; }
 .ex-aviso { position: relative; z-index: 6; flex: none; margin: 0; padding: 8px 14px; font-size: 13px; color: var(--franco-text-secondary); background: var(--franco-card); border-bottom: 1px solid var(--franco-border); }
 .ex-enlace { border: 0; background: none; padding: 0; color: var(--franco-text); font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .ex-enlace:disabled { opacity: 0.5; cursor: default; }
@@ -52,29 +52,20 @@
 @media (prefers-reduced-motion: reduce) { .ex-mapa-quieto { transition: none; } }
 .ex-mapa-vacio { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: var(--franco-text-tertiary); }
 
-/* el número del mapa y sus supuestos (A) */
-.ex-numero { position: absolute; left: 12px; top: 12px; z-index: 3; display: flex; flex-direction: column; gap: 2px; padding: 7px 12px; border-radius: 14px;
-  background: color-mix(in srgb, var(--franco-card) 95%, transparent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); max-width: calc(100% - 24px); }
-.ex-numero-n { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ex-numero-s { font-size: 11px; color: var(--franco-text-secondary); }
-/* «¿Cómo se calcula?» (30-oct-2026): un enlace en la línea chica, con su alto para el dedo (24 px) sin mover la línea. */
-.ex-numero-como { display: inline-block; border: 0; background: none; padding: 6px 0; margin: -6px 0; font: inherit; color: var(--franco-text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.ex-numero-como:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; border-radius: 4px; }
-
 /* la hoja «¿Cómo se calcula?» (30-oct-2026): papel, desde abajo en el teléfono y al centro en el PC */
 .ex-calculo-velo { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 15, 15, 0.4); }
 .ex-calculo { box-sizing: border-box; width: 100%; max-width: 520px; max-height: calc(100dvh - 24px); overflow-y: auto; border-radius: 22px 22px 0 0; padding: 22px 20px calc(18px + env(safe-area-inset-bottom, 0px));
   background: var(--franco-card); color: var(--franco-text); box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; gap: 16px; }
 .ex-calculo-t { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.25; }
-.ex-calculo-ideas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.ex-calculo-ideas li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.45; }
-.ex-calculo-num { flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 999px; background: var(--franco-text); color: var(--franco-card); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.ex-calculo-p { margin: 0; font-size: 15px; line-height: 1.5; }
+.ex-calculo-p strong { font-weight: 600; }
+.ex-calculo-p .chip-v { vertical-align: 1px; }
 .ex-calculo-ok { height: 50px; font-size: 16px; }
 @media (min-width: 768px) {
   .ex-calculo-velo { align-items: center; padding: 24px; }
   .ex-calculo { border-radius: 20px; padding: 26px 26px 22px; }
 }
-.ex[data-calculando="1"] .ex-numero-n { opacity: 0.75; }
+.ex[data-calculando="1"] .ex-hoja-t { opacity: 0.75; }
 /* «Buscar en esta zona» (C) */
 .ex-zona { position: absolute; left: 50%; top: 12px; z-index: 3; transform: translateX(-50%); height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--franco-text);
   background: var(--franco-card); color: var(--franco-text); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
@@ -86,7 +77,9 @@
   border-radius: 18px 18px 0 0; background: var(--franco-card); color: var(--franco-text); box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08); text-align: left; cursor: pointer; }
 .ex-asa { align-self: center; width: 38px; height: 4px; border-radius: 999px; background: var(--franco-border-strong, var(--franco-border)); }
 .ex-hoja-fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.ex-hoja-t { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-hoja-t { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* En el PC la barra se pierde: una píldora negra flotante, abajo al centro, espejo del botón «Mapa» de la lista. */
+.ex-pildora-lista { display: none; }
 .ex-hoja-ver { flex: none; font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── la tarjeta del pin (C), que se desliza entre los cercanos ── */
@@ -117,17 +110,33 @@
 .ex-cta { height: 42px; border: 0; border-radius: 999px; background: var(--franco-text); color: var(--franco-card); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0 18px; }
 .ex-cta:disabled { opacity: 0.55; cursor: default; }
 .ex-cta-enlace { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+/* Recién registrada desde este pin (30-oct-2026): la banda arriba y las cifras que pasan de borrosas a nítidas. */
+.ex-recien { margin: 0; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.4; background: color-mix(in srgb, var(--verdict-comprar, #2B558F) 12%, var(--franco-card)); color: var(--franco-text); }
+.ex-recien b { font-weight: 600; }
+.ex-tarjeta[data-recien="1"] .ex-linea2, .ex-tarjeta[data-recien="1"] .ex-linea3 { animation: ex-desbloquear 0.7s ease-out both; }
+@keyframes ex-desbloquear { from { filter: blur(5px); opacity: 0.6; } to { filter: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ex-tarjeta[data-recien="1"] .ex-linea2, .ex-tarjeta[data-recien="1"] .ex-linea3 { animation: none; } }
+/* Las flechas ‹ › para pasar entre los cercanos: solo en el PC (en el teléfono se desliza). */
+.ex-flecha { display: none; }
 .ex-puntos { display: flex; justify-content: center; gap: 5px; }
 .ex-punto { width: 6px; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--franco-card) 70%, var(--franco-text)); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08); }
 .ex-punto[data-on="1"] { background: var(--franco-text); }
 
-/* ── la lista (D) ── */
-.ex-lista { position: absolute; inset: 0; z-index: 4; overflow-y: auto; background: var(--franco-card); padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
-.ex-lista-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px 6px; }
-.ex-lista-t { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ex-lista-orden { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 0 16px 4px; font-size: 12px; color: var(--franco-text-secondary); }
-.ex-orden-op { border: 0; background: none; padding: 4px 0; font-size: 12px; color: var(--franco-text-secondary); cursor: pointer; }
-.ex-orden-op[aria-checked="true"] { color: var(--franco-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+/* ── la lista (D): una hoja en el teléfono (30-oct-2026), un panel a la derecha en el PC ──
+   En el teléfono, casi a pantalla completa —como Filtros, desde 24 px—, sobre el header y la barra (QA del 30-oct en WebKit
+   390: dentro del cuerpo arrancaba en 118 px). */
+.ex-lista-velo { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 15, 0.35); }
+.ex-lista { position: absolute; left: 0; right: 0; bottom: 0; top: 24px; display: flex; flex-direction: column; border-radius: 22px 22px 0 0; background: var(--franco-card); color: var(--franco-text);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18); overflow: hidden; transition: transform 0.2s ease; }
+.ex-lista-arriba { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 16px 8px; border-bottom: 1px solid var(--franco-border); touch-action: none; }
+.ex-lista-asa { align-self: center; }
+.ex-lista-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ex-lista-t { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ex-lista-acciones { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ex-ordenar { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--franco-text-secondary); }
+.ex-ordenar select { height: 34px; padding: 0 10px; border: 1px solid var(--franco-border-strong, var(--franco-border)); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font: inherit; font-size: 13px; font-weight: 600; }
+.ex-ordenar select:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-lista-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 .ex-filas { list-style: none; margin: 0; padding: 4px 16px 0; }
 .ex-fila-l { display: flex; align-items: flex-start; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--franco-border); }
 .ex-fila-btn { all: unset; flex: 1; min-width: 0; display: flex; gap: 10px; cursor: pointer; }
@@ -144,12 +153,21 @@
 .ex-boton-mapa:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 3px; }
 
 /* ── la hoja de filtros (B) ── */
-.ex-filtros-velo { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.35); display: flex; justify-content: center; align-items: stretch; }
-.ex-filtros { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--franco-card); color: var(--franco-text); font-family: var(--font-ui), "Inter", system-ui, sans-serif; outline: none; }
+.ex-filtros-velo { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.35); display: flex; justify-content: center; align-items: flex-end; }
+.ex-filtros { position: relative; box-sizing: border-box; width: 100%; max-height: calc(100dvh - 24px); display: flex; flex-direction: column; border-radius: 22px 22px 0 0; overflow: hidden;
+  background: var(--franco-card); color: var(--franco-text); font-family: var(--font-ui), "Inter", system-ui, sans-serif; outline: none; box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.18); }
 .ex-filtros-cab { flex: none; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--franco-border); }
 .ex-filtros-t { margin: 0; font-size: 17px; font-weight: 600; }
 .ex-x { width: 32px; height: 32px; border: 1px solid var(--franco-border-strong, var(--franco-border)); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 16px; cursor: pointer; }
 .ex-filtros-cuerpo { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 16px; }
+/* Los dos bloques (30-oct-2026): «El depto» y «Tu financiamiento», cada uno con su título. */
+.ex-bloque { display: flex; flex-direction: column; gap: 16px; }
+.ex-bloque + .ex-bloque { padding-top: 16px; border-top: 1px solid var(--franco-border); }
+.ex-bloque-t { margin: 0; font-size: 15px; font-weight: 600; }
+.ex-mi-busqueda { align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--franco-text); background: var(--franco-card); color: var(--franco-text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ex-mi-busqueda[data-activo="1"] { background: var(--franco-text); color: var(--franco-card); }
+.ex-mi-busqueda:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-campo-fijo b { display: flex; align-items: center; height: 40px; padding: 0 10px; border: 1px dashed var(--franco-border-strong, var(--franco-border)); border-radius: 10px; font-size: 15px; font-weight: 500; color: var(--franco-text-secondary); }
 .ex-grupo { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ex-grupo-t { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
 .ex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -192,14 +210,26 @@
 /* ── escritorio: la tarjeta, la hoja y la lista no ocupan todo el ancho ── */
 @media (min-width: 768px) {
   .ex-barra { padding: 0 20px; }
-  .ex-numero { left: 20px; top: 16px; }
   .ex-zona { top: 16px; }
-  .ex-hoja { left: 20px; right: auto; bottom: 20px; width: 380px; border-radius: 18px; }
-  .ex-tarjeta-wrap { left: 14px; right: auto; bottom: 20px; width: 420px; }
-  /* Sin transform: el botón «Mapa» es fixed, y un ancestro con transform lo volvería parte del scroll. */
-  .ex-lista { max-width: 760px; margin: 0 auto; border-left: 1px solid var(--franco-border); border-right: 1px solid var(--franco-border); }
-  .ex-filtros-velo { align-items: center; padding: 24px; }
-  .ex-filtros { max-width: 480px; height: min(780px, 100%); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); }
+  .ex-hoja { display: none; }
+  .ex-pildora-lista { position: absolute; left: 50%; bottom: 24px; z-index: 4; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
+    background: var(--franco-text); color: var(--franco-card); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); cursor: pointer; }
+  .ex-pildora-lista:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 3px; }
+  .ex-tarjeta-wrap { left: 26px; right: auto; bottom: 20px; width: 420px; }
+  .ex-flecha { position: absolute; top: 50%; z-index: 6; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin-top: -24px; border: 1px solid var(--franco-border);
+    border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 20px; line-height: 1; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16); cursor: pointer; }
+  .ex-flecha:disabled { opacity: 0.35; cursor: default; }
+  .ex-flecha:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+  .ex-flecha-izq { left: -14px; }
+  .ex-flecha-der { right: -14px; }
+  /* La lista y Filtros: un panel a la derecha, encima del mapa, que sigue a la vista y se puede usar a la izquierda. */
+  .ex-lista-velo { position: absolute; inset: 0; z-index: 7; background: none; pointer-events: none; }
+  .ex-lista { pointer-events: auto; left: auto; right: 12px; top: 12px; bottom: 12px; width: 480px; border-radius: 18px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22); }
+  .ex-lista-asa { display: none; }
+  .ex-lista-scroll { padding-bottom: 16px; }
+  .ex-lista .ex-boton-mapa { display: none; }
+  .ex-filtros-velo { position: absolute; inset: 52px 0 0 0; background: none; pointer-events: none; justify-content: flex-end; align-items: stretch; padding: 12px; }
+  .ex-filtros { pointer-events: auto; width: 480px; max-height: none; height: 100%; border-radius: 18px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22); }
   .ex-modal-velo { align-items: center; }
 }
 

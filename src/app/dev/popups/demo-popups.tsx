@@ -14,6 +14,7 @@ import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 import { comprasDeExplorar, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
 import { lineaPlan } from "@/lib/explorar/portal";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
 export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2";
 
@@ -34,7 +35,7 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
   useEffect(() => setMontado(true), []);
   const ticket = estado === "a";
   const sin = estado === "a" || estado === "a0" || estado === "c0" || estado === "p0";
-  const compras = comprasDeExplorar({ filtros: "c=Providencia&t=2&r=0-60000&p=20&z=25", avisoId: "demo", ticket });
+  const compras = comprasDeExplorar({ filtros: `c=Providencia&t=2&r=0-60000&p=20&z=${PLAZO_POR_DEFECTO}`, avisoId: "demo", ticket });
   return (
     <main style={{ minHeight: "100dvh", padding: 16 }} data-demo-popups={estado}>
       <p style={{ fontSize: 13, opacity: 0.6 }}>/dev/popups · {estado}</p>
@@ -52,7 +53,7 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
         <AvisoAntesDeAnalizar
           modalidad={estado === "c1" || estado === "c0" ? "str" : "ltr"}
           depto={DEPTO}
-          combinacion={{ piePct: 20, plazoAnios: 25 }}
+          combinacion={{ piePct: 20, plazoAnios: PLAZO_POR_DEFECTO }}
           finanzas={FINANZAS}
           uso={sin ? { tipo: "sin" } : estado === "c1" || estado === "p" ? { tipo: "con", n: 3, noVencen: true } : { tipo: "regalo", vence: null }}
           compras={sin ? compras : null}
@@ -62,11 +63,13 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
           rutaCompra="/dev/popups"
           // Renta corta, como en la selección real: sin «Cambiar».
           cambio={estado === "c1" || estado === "c0" ? null : {
-            recalcular: async (c) => (c.piePct === 20 && c.plazoAnios === 25 ? { ...BASE, cuota: 553_202 } : { veredicto: "AJUSTA SUPUESTOS", score: 61, flujo: -45_120, cuota: 612_900 }),
+            recalcular: async (c) => (c.piePct === 20 && c.plazoAnios === PLAZO_POR_DEFECTO ? { ...BASE, cuota: 553_202 } : { veredicto: "AJUSTA SUPUESTOS", score: 61, flujo: -45_120, cuota: 612_900 }),
             base: BASE,
           }}
           alAnalizar={nada}
           alCancelar={nada}
+          // La imagen del depto a la izquierda de la tarjeta (30-oct-2026), como en todas partes: la sonda mide con ella.
+          avisoId="demo"
         />
       )}
     </main>

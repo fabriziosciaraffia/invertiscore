@@ -1,9 +1,11 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// «FILTROS» (28-oct-2026, estado B de 5b-explorar-portal.html): una hoja completa. Comunas (varias), tipología (varias),
-// precio desde y hasta, pie y plazo, arriendo tradicional o renta corta («Estimado por zona; se mide al analizar.»), solo con
-// flujo positivo y publicados (cualquier fecha, 7 días, hoy). El botón de abajo dice «Ver N deptos» y se actualiza al
+// «FILTROS» (28-oct-2026, estado B de 5b-explorar-portal.html; desde el 30-oct-2026, recorrido real de Fabrizio): en el teléfono
+// una hoja que sube como «¿Cómo se calcula?», en el PC un panel a la derecha igual al de la lista. Dos bloques con su título:
+// «El depto» (comunas, tipología, precio, arriendo tradicional o renta corta —«Estimado por zona; se mide al analizar.»—, solo
+// con flujo positivo y publicados) y «Tu financiamiento» (pie, plazo y la tasa: por ahora fija, la del motor, «4,07 % ·
+// promedio de los bancos»). Con cuenta, la primera fila es «Usar mi búsqueda» (el perfil de la persona). El botón de abajo dice «Ver N deptos» y se actualiza al
 // tocar: se cuenta en el navegador sobre el universo cargado (`contar`); con otro pie, otro plazo o renta corta, si ese
 // universo todavía no está, se pide al tiro y el botón dice «Ver deptos» mientras tanto. NO TOCA EL PERFIL: lo elegido
 // queda en la página y en la URL.
@@ -12,21 +14,25 @@ import { useEffect, useRef, useState } from "react";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { COMUNAS_DESTACADAS, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
-import { botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, validarPortal, type FiltrosPortal } from "@/lib/explorar/portal";
+import { botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, validarPortal, type FiltrosPortal, type TasaDelMotor } from "@/lib/explorar/portal";
 
 const H = PORTAL_COPY.hoja;
 const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
 const TODAS = COMUNAS_DISPONIBLES as readonly string[];
 
-export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar, alPedirRegistro = null }: {
+export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, asegurar, alAplicar, alCerrar, alPedirRegistro = null }: {
   filtros: FiltrosPortal;
+  /** La tasa del motor (fija por ahora): «4,07 % · promedio de los bancos». */
+  tasa: TasaDelMotor | null;
+  /** Con cuenta: «Usar mi búsqueda» aplica el perfil (`activa`: los filtros ya son los del perfil). Sin cuenta, null. */
+  miBusqueda?: { activa: boolean; alUsar: () => void } | null;
   /** Cuántos darían unos filtros sobre lo cargado; null si falta su universo. */
   contar: (f: FiltrosPortal) => number | null;
   /** Pide el universo que falte para unos filtros (otro pie, otro plazo, renta corta). */
   asegurar: (f: FiltrosPortal) => void;
   alAplicar: (f: FiltrosPortal) => void;
   alCerrar: () => void;
-  /** SIN CUENTA (29-oct-2026, decisión de Fabrizio): pie y plazo quedan en 20 % y 25 años y «Solo flujo positivo» depende
+  /** SIN CUENTA (29-oct-2026, decisión de Fabrizio): pie y plazo quedan en el financiamiento por defecto y «Solo flujo positivo» depende
    *  del flujo; tocarlos abre la hoja de registro (con lo elegido hasta ahí aplicado) en vez de cambiarlos. */
   alPedirRegistro?: ((motivo: "pie-plazo" | "flujo", f: FiltrosPortal) => void) | null;
 }) {
@@ -70,34 +76,64 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar, al
           <button type="button" className="ex-x" aria-label={PORTAL_COPY.cerrar} onClick={alCerrar}>×</button>
         </div>
         <div className="ex-filtros-cuerpo">
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.comunas}</legend>
-            <div className="ex-chips">
-              {comunas.map((c) => <button key={c} type="button" role="checkbox" aria-checked={b.comunas.includes(c)} className={chip(b.comunas.includes(c))} onClick={() => alternar("comunas", c)} data-comuna={c}>{c}</button>)}
-              <button type="button" className="ex-chip ex-chip-mas" onClick={() => setTodas((x) => !x)} data-explorar="mas-comunas">{todas ? H.menosComunas : H.masComunas(TODAS.length - DESTACADAS.length)}</button>
-            </div>
-          </fieldset>
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.tipologia}</legend>
-            <div className="ex-chips">
-              {TIPOLOGIAS_DEPTOS.map((t) => <button key={t.id} type="button" role="checkbox" aria-checked={b.tipologias.includes(t.id)} className={chip(b.tipologias.includes(t.id))} onClick={() => alternar("tipologias", t.id)}>{t.id === "4" ? "4D+" : t.chip}</button>)}
-            </div>
-          </fieldset>
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.precio}</legend>
-            <div className="ex-dos">
-              <label className="ex-campo"><span>{H.desde}</span>
-                <input inputMode="numeric" pattern="[0-9.]*" placeholder="1.500" value={desde} aria-label={H.desde}
-                  onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setDesde(v); poner({ ufMin: v ? Number(v) : null }); }} data-explorar="desde" />
-              </label>
-              <label className="ex-campo"><span>{H.hasta}</span>
-                <input inputMode="numeric" pattern="[0-9.]*" placeholder="3.000" value={hasta} aria-label={H.hasta}
-                  onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setHasta(v); poner({ ufMax: v ? Number(v) : null }); }} data-explorar="hasta" />
-              </label>
-            </div>
-          </fieldset>
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.piePlazo}</legend>
+          {miBusqueda && (
+            <button type="button" className="ex-mi-busqueda" data-activo={miBusqueda.activa ? "1" : undefined} onClick={miBusqueda.alUsar} data-explorar="mi-busqueda">{PORTAL_COPY.usarMiBusqueda}</button>
+          )}
+          <section className="ex-bloque" data-explorar="bloque-depto" aria-labelledby="ex-bloque-depto">
+            <h3 id="ex-bloque-depto" className="ex-bloque-t">{PORTAL_COPY.elDepto}</h3>
+            <fieldset className="ex-grupo">
+              <legend className="ex-grupo-t">{H.comunas}</legend>
+              <div className="ex-chips">
+                {comunas.map((c) => <button key={c} type="button" role="checkbox" aria-checked={b.comunas.includes(c)} className={chip(b.comunas.includes(c))} onClick={() => alternar("comunas", c)} data-comuna={c}>{c}</button>)}
+                <button type="button" className="ex-chip ex-chip-mas" onClick={() => setTodas((x) => !x)} data-explorar="mas-comunas">{todas ? H.menosComunas : H.masComunas(TODAS.length - DESTACADAS.length)}</button>
+              </div>
+            </fieldset>
+            <fieldset className="ex-grupo">
+              <legend className="ex-grupo-t">{H.tipologia}</legend>
+              <div className="ex-chips">
+                {TIPOLOGIAS_DEPTOS.map((t) => <button key={t.id} type="button" role="checkbox" aria-checked={b.tipologias.includes(t.id)} className={chip(b.tipologias.includes(t.id))} onClick={() => alternar("tipologias", t.id)}>{t.id === "4" ? "4D+" : t.chip}</button>)}
+              </div>
+            </fieldset>
+            <fieldset className="ex-grupo">
+              <legend className="ex-grupo-t">{H.precio}</legend>
+              <div className="ex-dos">
+                <label className="ex-campo"><span>{H.desde}</span>
+                  <input inputMode="numeric" pattern="[0-9.]*" placeholder="1.500" value={desde} aria-label={H.desde}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setDesde(v); poner({ ufMin: v ? Number(v) : null }); }} data-explorar="desde" />
+                </label>
+                <label className="ex-campo"><span>{H.hasta}</span>
+                  <input inputMode="numeric" pattern="[0-9.]*" placeholder="3.000" value={hasta} aria-label={H.hasta}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setHasta(v); poner({ ufMax: v ? Number(v) : null }); }} data-explorar="hasta" />
+                </label>
+              </div>
+            </fieldset>
+            <fieldset className="ex-grupo">
+              <legend className="ex-grupo-t">{H.arriendo}</legend>
+              <div className="ex-seg" role="radiogroup" aria-label={H.arriendo}>
+                <button type="button" role="radio" aria-checked={b.modalidad === "ltr"} className={chip(b.modalidad === "ltr")} onClick={() => poner({ modalidad: "ltr" })} data-explorar="tradicional">{H.tradicional}</button>
+                <button type="button" role="radio" aria-checked={b.modalidad === "str"} className={chip(b.modalidad === "str")} onClick={() => poner({ modalidad: "str" })} data-explorar="renta-corta">{H.corta}</button>
+              </div>
+              {b.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">{H.cortaNota}</p>}
+            </fieldset>
+            <label className="ex-interruptor">
+              <span>{H.flujo}</span>
+              <input type="checkbox" role="switch" checked={b.flujoPositivo} onChange={(e) => { if (alPedirRegistro && e.target.checked) { alPedirRegistro("flujo", b); return; } poner({ flujoPositivo: e.target.checked }); }} data-explorar="flujo-positivo" />
+            </label>
+            <fieldset className="ex-grupo">
+              <legend className="ex-grupo-t">{H.publicados}</legend>
+              <div className="ex-chips" role="radiogroup" aria-label={H.publicados}>
+                {PUBLICADOS.map((p) => <button key={p.id} type="button" role="radio" aria-checked={b.publicados === p.id} className={chip(b.publicados === p.id)} onClick={() => poner({ publicados: p.id })}>{p.etiqueta}</button>)}
+              </div>
+            </fieldset>
+            {b.zona && (
+              <div className="ex-zona-fila" data-explorar="zona-activa">
+                <span>{H.zona}</span>
+                <button type="button" className="ex-enlace" onClick={() => poner({ zona: null })}>{H.quitarZona}</button>
+              </div>
+            )}
+          </section>
+          <section className="ex-bloque" data-explorar="bloque-financiamiento" aria-labelledby="ex-bloque-fin">
+            <h3 id="ex-bloque-fin" className="ex-bloque-t">{PORTAL_COPY.tuFinanciamiento}</h3>
             {alPedirRegistro ? (
               <div className="ex-dos">
                 <button type="button" className="ex-campo ex-campo-cerrado" onClick={() => alPedirRegistro("pie-plazo", b)} data-explorar="pie"><span>{H.pie}</span><b>Pie {b.pie} %</b></button>
@@ -117,31 +153,10 @@ export function HojaFiltros({ filtros, contar, asegurar, alAplicar, alCerrar, al
                 </label>
               </div>
             )}
-          </fieldset>
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.arriendo}</legend>
-            <div className="ex-seg" role="radiogroup" aria-label={H.arriendo}>
-              <button type="button" role="radio" aria-checked={b.modalidad === "ltr"} className={chip(b.modalidad === "ltr")} onClick={() => poner({ modalidad: "ltr" })} data-explorar="tradicional">{H.tradicional}</button>
-              <button type="button" role="radio" aria-checked={b.modalidad === "str"} className={chip(b.modalidad === "str")} onClick={() => poner({ modalidad: "str" })} data-explorar="renta-corta">{H.corta}</button>
-            </div>
-            {b.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">{H.cortaNota}</p>}
-          </fieldset>
-          <label className="ex-interruptor">
-            <span>{H.flujo}</span>
-            <input type="checkbox" role="switch" checked={b.flujoPositivo} onChange={(e) => { if (alPedirRegistro && e.target.checked) { alPedirRegistro("flujo", b); return; } poner({ flujoPositivo: e.target.checked }); }} data-explorar="flujo-positivo" />
-          </label>
-          <fieldset className="ex-grupo">
-            <legend className="ex-grupo-t">{H.publicados}</legend>
-            <div className="ex-chips" role="radiogroup" aria-label={H.publicados}>
-              {PUBLICADOS.map((p) => <button key={p.id} type="button" role="radio" aria-checked={b.publicados === p.id} className={chip(b.publicados === p.id)} onClick={() => poner({ publicados: p.id })}>{p.etiqueta}</button>)}
-            </div>
-          </fieldset>
-          {b.zona && (
-            <div className="ex-zona-fila" data-explorar="zona-activa">
-              <span>{H.zona}</span>
-              <button type="button" className="ex-enlace" onClick={() => poner({ zona: null })}>{H.quitarZona}</button>
-            </div>
-          )}
+            {tasa && (
+              <div className="ex-campo ex-campo-fijo" data-explorar="tasa"><span>{PORTAL_COPY.tasa}</span><b>{PORTAL_COPY.tasaFija(tasa.tasa)}</b></div>
+            )}
+          </section>
         </div>
         <div className="ex-filtros-pie">
           <button type="button" className="ex-enlace" onClick={limpiar} data-explorar="limpiar">{PORTAL_COPY.limpiar}</button>

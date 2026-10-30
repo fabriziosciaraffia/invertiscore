@@ -369,6 +369,7 @@ export function SemanalLista({
           // Renta corta: el aviso se cierra y la tarjeta mide. Renta larga: queda abierto, cargando, hasta el informe.
           alAnalizar={(eleccion) => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it, false, corta ? undefined : eleccion); }}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          avisoId={confirmar.it.avisoId}
         />
       )}
     </section>

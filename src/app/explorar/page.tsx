@@ -19,8 +19,8 @@ import { EsqueletoExplorar } from "./esqueleto";
 // ─────────────────────────────────────────────────────────────────────────────
 // /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct).
 // ABIERTO SIN CUENTA desde el 29-oct-2026 (la puerta E, mockup 6-puerta-e.html): sin sesión no redirige; el mapa, los grupos,
-// los filtros y la lista se ven con pie 20 % y 25 años, sin cifras (abierto.ts), y registrarse sale de la hoja sobre el mapa.
-// SIN NADA EN LA URL ABRE LA VISTA GLOBAL —todo Gran Santiago, arriendo tradicional, pie 20 % y 25 años, solo los
+// los filtros y la lista se ven con el financiamiento por defecto (pie 20 % y 30 años), sin cifras (abierto.ts), y registrarse sale de la hoja sobre el mapa.
+// SIN NADA EN LA URL ABRE LA VISTA GLOBAL —todo Gran Santiago, arriendo tradicional, el financiamiento por defecto (pie 20 % y 30 años), solo los
 // Comprar: los supuestos del número de anoche—, NO el perfil de la persona («Mi búsqueda» lo aplica si lo toca). Con
 // filtros en la URL (al volver, al recargar) abre con ellos. Sin saldo se explora igual: el cobro sale en «Analizar este».
 // EL PRIMER PINTADO ES LIVIANO (LCP en el teléfono): el mapa quieto (la foto del mapa de Santiago, incrustada en el teléfono:
@@ -63,14 +63,14 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
       {/* Sin «activo»: Explorar es el botón del header, y «Dashboard» no se enciende acá (25-oct-2026). Sin cuenta, el de la
           entrada (wizard): el wordmark y «Entrar», sin pedir Supabase en el primer pintado (`sesion={null}`). */}
       {user ? <HeaderFranco sesion={{ email: user.email ?? "" }} /> : <HeaderFranco contexto="wizard" sesion={null} />}
-      <Suspense fallback={<EsqueletoExplorar consulta={consulta} sinCuenta={!user} />}>
+      <Suspense fallback={<EsqueletoExplorar />}>
         {user ? <ExplorarConDatos consulta={consulta} user={user} /> : <ExplorarAbierto consulta={consulta} />}
       </Suspense>
     </div>
   );
 }
 
-/** SIN CUENTA (la puerta E): el número de anoche con pie 20 % y 25 años, y nada de la persona. La vista la emite el
+/** SIN CUENTA (la puerta E): el número de anoche con el financiamiento por defecto (pie 20 % y 30 años), y nada de la persona. La vista la emite el
  *  middleware (vista-entrada.ts › «explorar_abierto_vista», con la llegada y los robots marcados). */
 async function ExplorarAbierto({ consulta }: { consulta: string }) {
   const sp = new URLSearchParams(consulta);
