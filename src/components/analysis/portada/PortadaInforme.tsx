@@ -26,6 +26,7 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
 import type { SegCuotas } from "@/lib/obra-nueva";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import { lineaTasaPortada, type TasaPortada } from "@/lib/guia/tasa-portada";
 import { PUBLICACION_PORTADA } from "@/lib/guia/copy";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -80,6 +81,7 @@ export function PortadaInforme({
   cuotas,
   ficha,
   publicacion,
+  tasaElegida = null,
   currency,
   onCurrencyChange,
   mapa,
@@ -103,6 +105,8 @@ export function PortadaInforme({
   /** El enlace a la publicación del aviso del que salió el informe (27-oct-2026, publicacion-portada.ts), junto a
    *  «Ficha del depto». OBLIGATORIA: null solo si el informe no salió de un aviso. */
   publicacion: PublicacionPortada;
+  /** La tasa elegida (30-oct-2026, tasa-portada.ts): una línea chica bajo el veredicto; con la de hoy, nada. */
+  tasaElegida?: TasaPortada;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza.
@@ -166,6 +170,7 @@ export function PortadaInforme({
           <GlosaIndicador glosa="francoScore" aca={score != null ? `${score} · ${etiquetaVeredicto(veredicto)}` : undefined} />
         </p>
       )}
+      {tasaElegida && <p className="doc-hero-tasa" data-portada="tasa-elegida">{lineaTasaPortada(tasaElegida)}</p>}
 
       {/* Grid portada: contenido + mapa (mapa solo PC) */}
       <div className="doc-cover-grid">
@@ -670,6 +675,10 @@ export function DocTokens() {
       .doc-dictamen .doc-hero-score{
         font-family:var(--font-body, system-ui);font-size:12.5px;letter-spacing:0;
         opacity:.75;margin:0 0 20px;font-variant-numeric:tabular-nums}
+      /* — LA TASA ELEGIDA (30-oct-2026) — pegada al score, con su misma letra: dato, no titular. */
+      .doc-dictamen .doc-hero-tasa{
+        font-family:var(--font-body, system-ui);font-size:12.5px;letter-spacing:0;
+        opacity:.75;margin:-14px 0 20px;font-variant-numeric:tabular-nums}
 
       /* — EL TITULAR — 30 px, peso 600, y el plumón BLANCO al 26%.
            NO se repunta «--doc-hl»: ese token lo usan también las marcas de prosa de

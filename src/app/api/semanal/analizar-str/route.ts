@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tasaElegidaDe } from "@/lib/deptos/estandar";
 import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -66,7 +67,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string; igual?: unknown; explorar?: unknown; piePct?: unknown; plazoAnios?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { token?: string; avisoId?: string; igual?: unknown; explorar?: unknown; piePct?: unknown; plazoAnios?: unknown; tasaPct?: unknown };
+  // LA TASA ELEGIDA (30-oct-2026): la de Filtros, si viene de Explorar (null = la de hoy).
+  if (b.tasaPct != null && tasaElegidaDe(b.tasaPct) == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
   const desdeExplorar = b.explorar === true && b.token == null;
   if ((!desdeExplorar && (!b.token || !TOKEN.test(b.token))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
   if (desdeExplorar && (!esPiePopup(b.piePct) || !esPlazoPopup(b.plazoAnios))) return NextResponse.json({ error: "combinacion" }, { status: 400 });
@@ -139,10 +142,12 @@ export async function POST(request: Request) {
         // La dirección, como en el wizard: el punto del aviso por la geocodificación inversa. Sin dirección no hay medición.
         const lugar = await reverseGeocode(aviso.lat, aviso.lng);
         if (!lugar?.direccion) return { ok: false, status: 422, error: "sin-direccion" };
-        const body = cuerpoStrDeAviso(aviso, o, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
+        // La tasa (30-oct-2026): la elegida o la de la selección; sin ella, la del motor (no la del último informe).
+        const tasaElegida = "tasaPct" in b ? tasaElegidaDe(b.tasaPct) : ((combo as { tasaPct?: number | null }).tasaPct ?? null);
+        const body = cuerpoStrDeAviso(aviso, { ...o, tasa: tasaElegida ?? cfg.tasa }, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
-        // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo».
-        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde };
+        // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo». Y la tasa elegida.
+        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}) };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }

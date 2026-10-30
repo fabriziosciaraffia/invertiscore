@@ -118,7 +118,9 @@ export interface AnalisisInput {
   // leen el bloque «Quiero verlo» y la nota de la antigüedad. No lo lee el motor.
   /** `desde` (14-oct-2026): de dónde se analizó el aviso —la selección semanal (o un aviso inmediato, la misma página) o
    *  la guía del pack—. El dashboard dice «Desde tu selección semanal» en vez de «SIN DIRECCIÓN». Sin él, filas anteriores. */
-  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar" };
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar";
+    /** La tasa que eligió la persona (30-oct-2026) y la del motor en ese momento: la portada las dice. Sin ella, la de hoy. */
+    tasaElegida?: number; tasaMercado?: number };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

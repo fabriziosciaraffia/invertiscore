@@ -565,7 +565,9 @@ export interface ShortTermAnalysisBody {
   lng?: number;
   /** El informe salió de un aviso (15-oct-2026, «Analizar este» del semanal): como en renta larga, habilita «Quiero
    *  verlo». Se persiste con el resto del cuerpo en `input_data`. Desde el 28-oct-2026 también desde Explorar en renta corta. */
-  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar" };
+  origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar";
+    /** La tasa que eligió la persona (30-oct-2026) y la del motor en ese momento: la portada las dice. Sin ella, la de hoy. */
+    tasaElegida?: number; tasaMercado?: number };
 }
 
 export type BuildShortTermRowResult =

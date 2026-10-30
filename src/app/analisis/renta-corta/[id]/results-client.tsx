@@ -63,6 +63,7 @@ import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 import { condicionDeInput, useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
+import { tasaDePortada } from "@/lib/guia/tasa-portada";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -374,6 +375,7 @@ export function STRResultsClient({
           cifra={cifraPortada}
           ficha={fichaPortada}
           publicacion={publicacion}
+          tasaElegida={tasaDePortada(inputData)}
           currency={currency}
           onCurrencyChange={setCurrency}
           mapa={

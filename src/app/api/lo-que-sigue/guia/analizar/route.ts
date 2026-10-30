@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tasaElegidaDe } from "@/lib/deptos/estandar";
 import { waitUntil } from "@vercel/functions";
 import { runAnalysis } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
@@ -62,7 +63,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; semanal?: string; explorar?: boolean; respaldo?: boolean };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean };
+  // LA TASA ELEGIDA (30-oct-2026): la del pop-up (null = la de hoy); una que no es de la lista no se acepta.
+  if (b.tasaPct != null && tasaElegidaDe(b.tasaPct) == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
   const desdeExplorar = b.explorar === true && b.origenId == null && typeof b.semanal !== "string";
   const desdeRespaldo = b.respaldo === true && !desdeExplorar && b.origenId == null && typeof b.semanal !== "string";
@@ -140,9 +143,14 @@ export async function POST(request: Request) {
         if (!aviso) return { ok: false, status: 404, error: "aviso" };
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
         const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
-        const body = await cuerpoDelAviso(aviso, origen, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
-        // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN».
+        // LA TASA (30-oct-2026): la elegida en el pop-up o la de la selección; sin ella, la del motor —también desde el semanal
+        // con un informe de origen (decisión de Fabrizio: no la del último informe)—. La guía sigue con la de su informe.
+        const tasaElegida = "tasaPct" in b ? tasaElegidaDe(b.tasaPct) : (combinacion.tasaPct ?? null);
+        const conTasa: OrigenGuia = { ...origen, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : cfg.tasa) };
+        const body = await cuerpoDelAviso(aviso, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+        // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN». Y la tasa elegida: la portada la dice.
         if (body?.origenAviso) body.origenAviso.desde = desde;
+        if (body?.origenAviso && tasaElegida != null) { body.origenAviso.tasaElegida = tasaElegida; body.origenAviso.tasaMercado = cfg.tasa; }
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;

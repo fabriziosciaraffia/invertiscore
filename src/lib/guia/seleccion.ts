@@ -31,7 +31,8 @@ export const MAX_CANDIDATOS_GUIA = 60;
 export const ESCALONES_PIE_GUIA = 3;
 const CONCURRENCIA_GUIA = 8;
 
-export type Combinacion = { piePct: number; plazoAnios: number };
+/** `tasaPct` (30-oct-2026): la tasa elegida (Filtros, el pop-up, el perfil); sin ella, la del motor. */
+export type Combinacion = { piePct: number; plazoAnios: number; tasaPct?: number | null };
 
 export interface Evaluado {
   veredicto: string | null;
