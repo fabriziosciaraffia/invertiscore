@@ -138,6 +138,7 @@ export async function leerPerfilBusqueda(admin: SupabaseClient, userId: string):
         modalidad: modal(m.modalidad),
         piePct: num(m.pie_pct),
         plazoAnios: num(m.plazo_anios),
+        tasaPct: num(m.tasa_pct),
         horizonte: horiz(m.horizonte_compra),
       }
     : MANUAL_VACIO;

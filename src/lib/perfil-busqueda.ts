@@ -16,6 +16,7 @@
 // Puro: el tier CASA lo prueba con filas de ejemplo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { esTasaElegible } from "@/lib/deptos/estandar";
 import { RANGOS_UF, type RangoUf } from "@/lib/deptos/respuesta";
 
 /** Los precios con que la inferencia arma un rango: fuera de esto es un error de tipeo y se descarta. */
@@ -58,10 +59,12 @@ export interface PerfilManual {
   modalidad: Modalidad | null;
   piePct: number | null;
   plazoAnios: number | null;
+  /** La tasa elegida (30-oct-2026); null = «la de hoy», la del motor. */
+  tasaPct?: number | null;
   horizonte: Horizonte | null;
 }
 
-export const MANUAL_VACIO: PerfilManual = { dormitorios: null, comunas: null, precioMaxUf: null, precioMinUf: null, modalidad: null, piePct: null, plazoAnios: null, horizonte: null };
+export const MANUAL_VACIO: PerfilManual = { dormitorios: null, comunas: null, precioMaxUf: null, precioMinUf: null, modalidad: null, piePct: null, plazoAnios: null, tasaPct: null, horizonte: null };
 
 export interface PerfilBusqueda {
   dormitorios: number[];
@@ -71,9 +74,12 @@ export interface PerfilBusqueda {
   modalidad: Modalidad;
   piePct: number | null;
   plazoAnios: number | null;
+  /** La tasa que eligió (30-oct-2026); null = «la de hoy»: la del motor. Nunca sale de un informe (decisión de Fabrizio:
+   *  sin tasa elegida, la del motor, no la de su último informe). */
+  tasaPct: number | null;
   horizonte: Horizonte | null;
   /** Qué campos vienen de la mano de la persona. */
-  editado: Array<"dormitorios" | "comunas" | "precio" | "precioMin" | "modalidad" | "pie" | "plazo" | "horizonte">;
+  editado: Array<"dormitorios" | "comunas" | "precio" | "precioMin" | "modalidad" | "pie" | "plazo" | "tasa" | "horizonte">;
   /** Hay con qué buscar: al menos una comuna, un dormitorio y un tope. */
   completo: boolean;
 }
@@ -125,11 +131,14 @@ export function perfilDeBusqueda(filas: FilaPerfilInforme[], manual: PerfilManua
   let plazoAnios = ltrReciente?.plazoAnios ?? null;
   if (manual.plazoAnios != null) { plazoAnios = manual.plazoAnios; editado.push("plazo"); }
 
+  const tasaPct = manual.tasaPct ?? null;
+  if (tasaPct != null) editado.push("tasa");
+
   let horizonte = orden.find((f) => f.horizonte != null)?.horizonte ?? null;
   if (manual.horizonte) { horizonte = manual.horizonte; editado.push("horizonte"); }
 
   return {
-    dormitorios, comunas, precioMinUf, precioMaxUf, modalidad, piePct, plazoAnios, horizonte, editado,
+    dormitorios, comunas, precioMinUf, precioMaxUf, modalidad, piePct, plazoAnios, tasaPct, horizonte, editado,
     completo: comunas.length > 0 && dormitorios.length > 0 && precioMaxUf != null,
   };
 }
@@ -178,6 +187,12 @@ export function validarCambiosPerfil(b: Record<string, unknown>): { ok: true; ca
     if (b.plazoAnios === null) c.plazo_anios = null;
     else if (Number.isInteger(b.plazoAnios) && (b.plazoAnios as number) >= 5 && (b.plazoAnios as number) <= 40) c.plazo_anios = b.plazoAnios;
     else return { ok: false, error: "Plazo inválido" };
+  }
+  // La tasa (30-oct-2026): null es «la de hoy» —sigue al motor—; un número, uno de la lista de Filtros.
+  if ("tasaPct" in b) {
+    if (b.tasaPct === null) c.tasa_pct = null;
+    else if (esTasaElegible(b.tasaPct)) c.tasa_pct = b.tasaPct;
+    else return { ok: false, error: "Tasa inválida" };
   }
   if ("horizonte" in b) {
     if (b.horizonte === null) c.horizonte_compra = null;

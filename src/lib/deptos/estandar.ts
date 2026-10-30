@@ -14,3 +14,14 @@ export const PIES_DEPTOS = [20, 30] as const;
 /** El plazo de las columnas `*_20_25` / `*_30_25` de avisos_evaluados: el mismo aviso a 25 años, que la noche sigue
  *  llenando porque 25 es una opción de Filtros. NO es el plazo por defecto: las columnas llevan el número en el nombre. */
 export const PLAZO_COLUMNAS_25 = 25;
+
+/** LA TASA QUE SE PUEDE ELEGIR (30-oct-2026, goal «la tasa editable en Filtros»): de 3,0 % a 6,0 %, de a 0,25. Fuera de la
+ *  lista es «la de hoy» (null): la del motor, `config.tasa_hipotecaria`, que la sigue cuando se actualiza. Elegir «La de hoy»
+ *  guarda null, nunca el número del día. */
+export const TASAS_ELEGIBLES: readonly number[] = Array.from({ length: 13 }, (_, i) => 3 + i * 0.25);
+export const esTasaElegible = (t: unknown): t is number => typeof t === "number" && TASAS_ELEGIBLES.includes(t);
+/** Una tasa que llega de afuera (la URL, un cuerpo JSON): la de la lista o null (la de hoy). */
+export const tasaElegidaDe = (t: unknown): number | null => {
+  const n = typeof t === "string" && t.trim() !== "" ? Number(t) : t;
+  return esTasaElegible(n) ? n : null;
+};
